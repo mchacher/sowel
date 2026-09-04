@@ -15,7 +15,7 @@ import type {
   SolarProfile,
   TimedCommand,
 } from "../../shared/types.js";
-import { classifyPowerReading } from "../../shared/reading-freshness.js";
+import { BUDGET_LEARNING_MS, classifyPowerReading } from "../../shared/reading-freshness.js";
 import type { Logger } from "../../core/logger.js";
 
 interface EquipmentsDeps {
@@ -226,6 +226,11 @@ export function registerEquipmentRoutes(app: FastifyInstance, deps: EquipmentsDe
               lastUpdated: binding?.lastUpdated,
               equipmentType: eq.type,
               now,
+              // The budget the engine resolved from this source's own cadence
+              // (spec 175). Without it this feed judged a 300 s poller against
+              // a two-minute window and called a healthy meter outdated, while
+              // the banner drawing the same meter stayed silent.
+              budgetMs: binding?.freshnessBudgetMs ?? BUDGET_LEARNING_MS,
             });
             // An offline equipment is kept in the feed on purpose, so the
             // display can render an "offline since" row. Its last reading is

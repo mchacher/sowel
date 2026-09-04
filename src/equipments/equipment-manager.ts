@@ -37,6 +37,7 @@ import {
   VmcHighSpeedUnavailableError,
 } from "./vmc-controller.js";
 import { deriveEquipmentStatus, isStaleBinding } from "./equipment-status.js";
+import { resolveFreshnessBudget } from "../shared/reading-freshness.js";
 import { RETRY_CHANNEL } from "./order-confirmation-tracker.js";
 import type { Device } from "../shared/types.js";
 
@@ -260,7 +261,7 @@ export class EquipmentManager {
       ),
       getDataBindingsWithValues: this.db.prepare(
         `SELECT db.id, db.equipment_id, db.device_data_id, db.alias, db.historize,
-                dd.device_id, d.name as device_name, dd.key, dd.type,
+                dd.device_id, d.name as device_name, d.integration_id, dd.key, dd.type,
                 COALESCE(db.category_override, dd.category) as category,
                 dd.value, dd.unit, dd.enum_values, dd.last_updated, dd.last_changed
          FROM data_bindings db
@@ -754,6 +755,13 @@ export class EquipmentManager {
 
     // Annotate staleness on streaming bindings (spec 116).
     const now = Date.now();
+    // Which integration backs each binding, from the join above rather than a
+    // lookup: the virtual bindings unshifted above are not in `rows`, and they
+    // are not power bindings either.
+    const integrationByBindingId = new Map<string, string>();
+    for (const row of rows) integrationByBindingId.set(row.id, row.integration_id);
+    // One `getPollingInfo()` call per integration, not per binding.
+    const declaredCache = new Map<string, number | null>();
     for (const binding of bindings) {
       binding.stale = isStaleBinding(
         binding.category,
@@ -762,9 +770,62 @@ export class EquipmentManager {
         binding.type,
         equipment?.type,
       );
+      // And the freshness budget this reading answers to (spec 175). Power
+      // only: it is the reading the four live surfaces judge, and annotating
+      // the rest would invite wiring it into the spec 116 windows, which spec
+      // 175 deliberately leaves alone.
+      if (binding.category === "power") {
+        binding.freshnessBudgetMs = this.resolvePowerBudget(
+          binding,
+          integrationByBindingId.get(binding.id),
+          declaredCache,
+        );
+      }
     }
 
     return bindings;
+  }
+
+  /**
+   * The freshness budget for one power binding, from what its source actually
+   * does rather than from its equipment's type (spec 175).
+   *
+   * Resolved here, once, so the four surfaces that ask whether a reading is
+   * live receive the answer instead of computing it: a budget restated per
+   * surface is how one meter came to be current on its card, outdated in its
+   * zone total and silent in the banner, at one instant (#883).
+   *
+   * Observed cadence first, then what the integration declares polling at,
+   * then the learning window.
+   *
+   * It costs no query: the integration comes from the join that already reads
+   * the binding, and the declared interval is asked of each integration once
+   * per call. An earlier draft looked the device up through `DeviceManager`,
+   * which put a `SELECT` per power binding on a path `getAllWithDetails` walks
+   * for every equipment on a 60 s tick, and put it there for exactly the case
+   * that lasts longest: a source with no observed cadence yet, or a dead one
+   * that will never have any (review of the first draft).
+   */
+  private resolvePowerBudget(
+    binding: DataBindingWithValue,
+    integrationId: string | undefined,
+    declaredCache: Map<string, number | null>,
+  ): number {
+    const observedMs = this.deviceManager.cadence.observedIntervalMs(binding.deviceDataId);
+
+    let declaredMs: number | null = null;
+    if (observedMs === null && integrationId !== undefined) {
+      const cached = declaredCache.get(integrationId);
+      if (cached !== undefined) {
+        declaredMs = cached;
+      } else {
+        const polling = this.integrationRegistry.getById(integrationId)?.getPollingInfo?.();
+        declaredMs = polling?.intervalMs ?? null;
+        declaredCache.set(integrationId, declaredMs);
+      }
+    }
+
+    return resolveFreshnessBudget({ observedMs, declaredMs });
   }
 
   /**
@@ -1658,6 +1719,8 @@ interface DataBindingJoinRow {
   historize: number | null;
   device_id: string;
   device_name: string;
+  /** Spec 175 — carried by the same join, so the budget costs no extra query. */
+  integration_id: string;
   key: string;
   type: string;
   category: string;

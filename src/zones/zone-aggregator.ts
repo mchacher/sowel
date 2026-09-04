@@ -16,7 +16,7 @@ import { isSubmeterEquipment } from "../equipments/metering.js";
 import {
   LIVE_POWER_ALIASES,
   classifyPowerReading,
-  powerBudgetFor,
+  BUDGET_LEARNING_MS,
 } from "../shared/reading-freshness.js";
 
 // ============================================================
@@ -634,11 +634,10 @@ export class ZoneAggregator {
   ): void {
     if (!isSubmeterEquipment(equipmentType, bindings)) return;
 
-    // `power` first, `demand_5min` as the fallback, the same order the
-    // equipment tiles use (`pickLivePowerW`). A Legrand NLPC has no `power`
-    // channel at all: looking up `power` alone does not read a stale value, it
-    // reads nothing, and the meter drops out of the total while its own card
-    // still prints live watts.
+    // The alias order the equipment tiles use (`pickLivePowerW`), so a meter
+    // counted on one surface is counted on the other. It held a `demand_5min`
+    // fallback until spec 175 established that no plugin has ever produced
+    // that alias.
     let powerBinding: DataBindingWithValue | undefined;
     for (const alias of LIVE_POWER_ALIASES) {
       // A non-numeric reading is a state, not a measurement (a thermostat's own
@@ -653,10 +652,11 @@ export class ZoneAggregator {
       value: powerBinding.value,
       lastUpdated: powerBinding.lastUpdated,
       equipmentType,
-      // A `demand_5min` reading is averaged over five minutes and cannot be
-      // fresher than that; under the meter window it would read outdated for
-      // most of every cycle (#839).
-      budgetMs: powerBudgetFor(equipmentType, powerBinding.alias),
+      // Resolved once by the engine from the source's own cadence and carried
+      // on the binding (spec 175), so this total and the tile that draws the
+      // same meter cannot disagree about its age. Absent means the engine did
+      // not resolve it, never "no budget".
+      budgetMs: powerBinding.freshnessBudgetMs ?? BUDGET_LEARNING_MS,
     });
     if (verdict !== "current") return;
 

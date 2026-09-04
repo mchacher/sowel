@@ -61,13 +61,15 @@ export const SUBMETER_FRESHNESS_SLOW_MS = 10 * 60 * 1000;
  * The aliases that can carry a live power reading, in the order a surface
  * should prefer them.
  *
- * `demand_5min` is not a second-class `power`: a Legrand NLPC meter has no
- * `power` channel at all, so a surface that looks up `power` alone does not
- * read a stale value, it reads nothing and silently omits the meter. That is
- * why `pickLivePowerW` falls back on it, and why anything summing meters must
- * do the same or under-report a supported meter shape (#866 review).
+ * It used to hold `demand_5min` as a fallback, on the premise that a Legrand
+ * NLPC meter has no `power` channel. Both halves were wrong (#883): the plugin
+ * declares `power`, `energy`, `autoconso`, `injection` and `demand_30min`, and
+ * has never declared `demand_5min` in any commit. No plugin in the registry
+ * produces that alias; its only declaration in this repository's history was a
+ * test fixture. A fallback that fires for no device is not a fallback, so it is
+ * gone rather than carried into the cadence rule (spec 175).
  */
-export const LIVE_POWER_ALIASES = ["power", "demand_5min"] as const;
+export const LIVE_POWER_ALIASES = ["power"] as const;
 
 /** The freshness budget that applies to an equipment of this type. */
 export function freshnessBudgetFor(equipmentType: string): number {
@@ -76,34 +78,67 @@ export function freshnessBudgetFor(equipmentType: string): number {
     : SUBMETER_FRESHNESS_SLOW_MS;
 }
 
+/** A source reporting every T is given 2.5 T of silence before it is doubted. */
+export const CADENCE_MULTIPLIER = 2.5;
+
 /**
- * The freshness budget for one power reading, when the binding's own cadence
- * outranks the window its equipment type implies (#839).
+ * The tightest budget any source earns, whatever its cadence.
  *
- * `METERING_EQUIPMENT_TYPES` earns the tight two-minute window because the
- * engine expects a declared meter to report continuously. Two sources in that
- * set do not, and applying it to them calls a healthy device outdated for most
- * of every reporting cycle:
- *
- * - `demand_5min`: a Legrand NLPC reports a power already averaged over five
- *   minutes, so the reading cannot be fresher than five minutes by
- *   construction.
- * - `solar_panel`: the one solar integration in the registry (apsystems)
- *   delivers on a Tasmota `tele/<root>/SENSOR` topic, whose default
- *   `TelePeriod` is 300 s.
- *
- * The ten-minute slow budget is twice the slowest of those cadences, so neither
- * oscillates, and it still catches what #744 is about (a reading 124 days old).
- *
- * This lives here rather than on one surface because both the equipment tiles
- * (#839) and the zone power total (spec 170) have to ask it, and a rule
- * restated per surface is how two surfaces came to describe one appliance two
- * contradictory ways in the first place.
+ * A Shelly at 1 Hz would otherwise be doubted after 2.5 seconds, and a single
+ * dropped MQTT message would paint the whole page stale. Two minutes is what
+ * the engine already calls a live electrical read.
  */
-export function powerBudgetFor(equipmentType: string, bindingAlias?: string | null): number {
-  if (bindingAlias === "demand_5min") return SUBMETER_FRESHNESS_SLOW_MS;
-  if (equipmentType === "solar_panel") return SUBMETER_FRESHNESS_SLOW_MS;
-  return freshnessBudgetFor(equipmentType);
+export const BUDGET_FLOOR_MS = SUBMETER_FRESHNESS_MS;
+
+/**
+ * The loosest, whatever the cadence says.
+ *
+ * A poll configured above 720 s therefore reads "outdated" between two of its
+ * own relevés, and that is a decision rather than an oversight: past half an
+ * hour of silence, a dead source is the likelier reading of the evidence, and a
+ * genuinely slow integration is covered by its device going offline, not by
+ * this window.
+ */
+export const BUDGET_CEILING_MS = 30 * 60 * 1000;
+
+/**
+ * The budget before anything is known about a source: after a restart, or for a
+ * binding whose device has yet to report three times.
+ *
+ * Deliberately the loose window rather than the tight one. Reading "outdated"
+ * across every meter for the first minutes after a restart would be a defect
+ * introduced by the fix, and an estimator with no samples has no standing to
+ * claim a tight window.
+ */
+export const BUDGET_LEARNING_MS = SUBMETER_FRESHNESS_SLOW_MS;
+
+/**
+ * How old a power reading may be, derived from what its source actually does
+ * (spec 175).
+ *
+ * This replaces `powerBudgetFor`, which answered from the equipment's type and
+ * from an alias no plugin has ever produced. A type says nothing about how
+ * often a device speaks: `main_energy_meter` covers both a Shelly streaming at
+ * 1 Hz and a cloud integration polling every 300 s, and one constant has to be
+ * wrong for one of them. #881 is what being wrong for the slow one looks like;
+ * a 1 Hz meter taking ten minutes to be declared dead is what being wrong for
+ * the fast one costs.
+ *
+ * Observed outranks declared: a plugin polling every 300 s whose upstream API
+ * only refreshes hourly is described by its arrivals, not by its timer.
+ *
+ * The multiplier is 2.5 rather than 2 because a "300 s" poll arrives at 305 to
+ * 320 s routinely (timer drift, the round trip, the engine's own write), and at
+ * exactly twice the cadence a healthy source sits on the boundary and
+ * oscillates — the same failure as #881, one factor smaller.
+ */
+export function resolveFreshnessBudget(cadence: {
+  observedMs?: number | null;
+  declaredMs?: number | null;
+}): number {
+  const base = cadence.observedMs ?? cadence.declaredMs ?? null;
+  if (base === null || !Number.isFinite(base) || base <= 0) return BUDGET_LEARNING_MS;
+  return Math.min(Math.max(base * CADENCE_MULTIPLIER, BUDGET_FLOOR_MS), BUDGET_CEILING_MS);
 }
 
 /**
@@ -203,11 +238,11 @@ export function classifyPowerReading(opts: {
   equipmentType: string;
   now?: number;
   /**
-   * Budget override, for a binding whose own nature outranks its equipment's
-   * type. The only current case is `demand_5min`: a Legrand NLPC meter reports
-   * a power already averaged over five minutes, so it cannot be fresher than
-   * five minutes and the two-minute meter window would call a healthy meter
-   * outdated most of the time (#839). Defaults to `freshnessBudgetFor(type)`.
+   * The budget this reading answers to, normally `binding.freshnessBudgetMs`
+   * (spec 175): resolved once by the engine from the source's own cadence and
+   * carried on the payload, so the four surfaces that ask this question cannot
+   * answer it differently. Defaults to `freshnessBudgetFor(type)` for a caller
+   * holding no binding.
    */
   budgetMs?: number;
   /**

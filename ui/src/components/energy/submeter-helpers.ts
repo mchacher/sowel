@@ -8,6 +8,7 @@ import type { EquipmentStatus, EquipmentWithDetails } from "../../types";
 import { pickSubmeterColor } from "./submeterPalette";
 import { isSubmeterEquipment } from "../../lib/metering";
 import {
+  BUDGET_LEARNING_MS,
   classifyPowerReading,
   type ReadingVerdict,
 } from "../../../../src/shared/reading-freshness";
@@ -72,6 +73,9 @@ export function readSubmeterReading(
     lastUpdated: binding?.lastUpdated,
     equipmentType: eq.type,
     now,
+    // The budget the engine resolved from this meter's own cadence (spec 175),
+    // the same number the donut's neighbours on the page are judged against.
+    budgetMs: binding?.freshnessBudgetMs ?? BUDGET_LEARNING_MS,
   });
   if (verdict === "current") {
     return { power: Math.abs(binding!.value as number), unknown: null, lastUpdated: binding!.lastUpdated };

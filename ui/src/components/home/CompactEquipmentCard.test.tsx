@@ -126,7 +126,7 @@ describe("CompactEquipmentCard — stale power readings (#839)", () => {
     renderCard(
       makeEquipment("energy_meter", [dayEnergy(1230)], {
         dataBindings: [
-          powerBinding({ alias: "demand_5min", value: 1240, lastUpdated: agoIso(3600) }),
+          powerBinding({ alias: "power", value: 1240, lastUpdated: agoIso(3600) }),
         ],
       }),
     );
@@ -137,12 +137,13 @@ describe("CompactEquipmentCard — stale power readings (#839)", () => {
     expect(screen.getByText(/1 h/)).toBeTruthy();
   });
 
-  it("keeps a demand_5min reading inside its own five-minute nature", () => {
+  it("keeps a reading its source's cadence still vouches for", () => {
+    // 290 s is past the old two-minute meter window. The budget comes from the
+    // source now (spec 175), and this one has none resolved, so it answers to
+    // the learning window and the figure stays on screen.
     renderCard(
       makeEquipment("energy_meter", [dayEnergy(1230)], {
-        dataBindings: [
-          powerBinding({ alias: "demand_5min", value: 1240, lastUpdated: agoIso(290) }),
-        ],
+        dataBindings: [powerBinding({ alias: "power", value: 1240, lastUpdated: agoIso(290) })],
       }),
     );
 

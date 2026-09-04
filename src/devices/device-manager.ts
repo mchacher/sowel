@@ -27,6 +27,7 @@ import type {
 import { CATEGORY_EXPECTED_TYPE, PROPERTY_TO_CATEGORY } from "../shared/constants.js";
 import { parseWireValue } from "../shared/order-wire-value.js";
 import { isCategoryTypeMismatch, normalizeValue } from "../shared/value-normalization.js";
+import { ReadingCadenceTracker } from "./reading-cadence.js";
 
 /** Parse a device_data.enum_values JSON column, tolerating malformed content. */
 function parseEnumValues(raw: string | null): string[] | null {
@@ -85,6 +86,12 @@ export class DeviceManager {
    *  (discovery declaration). Process-lifetime on purpose: chatty devices
    *  would otherwise flood the log on every report. */
   private typeWarnings = new Set<string>();
+  /**
+   * How often each device_data row actually reports (spec 175). Owned here
+   * because this is where arrivals land, whatever integration produced them;
+   * read by the freshness budget provider wired in `index.ts`.
+   */
+  readonly cadence = new ReadingCadenceTracker();
 
   constructor(db: Database.Database, eventBus: EventBus, logger: Logger) {
     this.db = db;
@@ -284,6 +291,7 @@ export class DeviceManager {
           continue;
         }
         this.stmts.deleteDeviceDataById.run(row.id);
+        this.cadence.forget(row.id);
       }
 
       // Sync Orders definitions: upsert by (device_id, key) to preserve stable IDs
@@ -594,6 +602,9 @@ export class DeviceManager {
       const previous = dataRow.value;
 
       this.stmts.updateDeviceDataValue.run(serialized, serialized, dataRow.id);
+      // Same instant the row's `last_updated` moves, so the observed cadence
+      // describes exactly the arrivals freshness is judged against (spec 175).
+      this.cadence.record(dataRow.id);
 
       events.push({
         type: "device.data.updated",
@@ -765,8 +776,11 @@ export class DeviceManager {
 
   delete(id: string): boolean {
     const existing = this.getById(id);
+    // Read before the cascade removes the rows this has to forget (spec 175).
+    const dataIds = this.stmts.getDeviceDataIds.all(id) as { id: string; key: string }[];
     const result = this.stmts.deleteDevice.run(id);
     if (result.changes > 0) {
+      for (const row of dataIds) this.cadence.forget(row.id);
       this.logger.info({ deviceId: id }, "Device deleted");
       this.eventBus.emit({
         type: "device.removed",

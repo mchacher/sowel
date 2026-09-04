@@ -510,8 +510,8 @@ function CompactEnergyValues({ equipment }: { equipment: EquipmentWithDetails })
   const { t } = useTranslation();
   const computed = equipment.computedData ?? [];
   const energyDay = computed.find((c) => c.alias === "energy_day");
-  // Live instantaneous power (issue #376): generic power binding first,
-  // Legrand NLPC demand_5min as fallback. Updated live via the WS store.
+  // Live instantaneous power (issue #376), from the `power` binding. Updated
+  // live via the WS store.
   const liveReading = resolvePowerReading(
     equipment,
     pickLivePowerBinding(equipment.dataBindings),

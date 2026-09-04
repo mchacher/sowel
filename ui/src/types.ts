@@ -577,6 +577,13 @@ export interface DataBindingWithValue extends DataBinding {
   historize?: number | null;
   /** True iff category is streaming AND lastUpdated > category timeout (spec 116). */
   stale: boolean;
+  /**
+   * How old this reading may be and still be drawn as live, derived from the
+   * source's own cadence (spec 175). Power bindings only; absent means the
+   * engine did not resolve it and the surface falls back to the learning
+   * window, never that there is no budget.
+   */
+  freshnessBudgetMs?: number;
 }
 
 export interface OrderBindingWithDetails extends OrderBinding {

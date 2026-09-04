@@ -37,18 +37,22 @@ describe("pickLivePowerW", () => {
     expect(pickLivePowerW(bindings)).toBe(1257);
   });
 
-  it("falls back to the demand_5min alias when no power-category binding exists", () => {
+  it("does not fall back on a `demand_5min` alias, which nothing produces", () => {
+    // The fallback existed on the premise that a Legrand NLPC exposes no
+    // `power` channel. It exposes one, and no plugin in the registry has ever
+    // declared `demand_5min` (spec 175). A generic binding wearing that name
+    // is not a power reading and is not presented as one.
     const bindings = [
       binding({ alias: "demand_5min", category: "generic", value: 420 }),
       binding({ id: "b2", alias: "energy", category: "energy", value: 138 }),
     ];
-    expect(pickLivePowerW(bindings)).toBe(420);
+    expect(pickLivePowerW(bindings)).toBeNull();
   });
 
   it("ignores non-numeric values", () => {
     const bindings = [
       binding({ category: "power", value: null }),
-      binding({ id: "b2", alias: "demand_5min", category: "generic", value: "n/a" }),
+      binding({ id: "b2", alias: "power", category: "power", value: "n/a" }),
     ];
     expect(pickLivePowerW(bindings)).toBeNull();
   });
