@@ -10,7 +10,7 @@
 
 export {
   CANDIDATE_BASED_TYPES,
-  POWER_STATE_ALIAS,
+  THERMOSTAT_STATE_ALIAS,
   computeBindingCandidates,
   hasFreeCandidates,
   inferBindingCategory,

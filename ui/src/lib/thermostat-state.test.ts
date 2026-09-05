@@ -7,8 +7,8 @@ function binding(alias: string, value: unknown, type?: string): DataBindingWithV
 }
 
 describe("thermostatPowerStateBinding", () => {
-  it("prefers the powerState alias over a numeric power reading", () => {
-    const bindings = [binding("power", 2974), binding("powerState", true)];
+  it("prefers the state alias over a numeric power reading", () => {
+    const bindings = [binding("power", 2974), binding("state", true)];
     expect(thermostatPowerStateBinding(bindings)?.value).toBe(true);
   });
 

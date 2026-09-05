@@ -107,12 +107,13 @@ export const SOLAR_ORDER_ALIAS = "solar";
 export const SOLAR_STATE_ALIAS = "solar_state";
 
 /**
- * Spec 176 — reserved alias for a thermostat's boolean run state. On a
- * submetered thermostat the `power` alias is the wattage read from a clamp
- * (the metering convention), so the on/off state the device reports about
- * itself binds under this alias instead.
+ * Spec 176 — alias for a thermostat's boolean run state: the SAME `state`
+ * alias every relay-style equipment already uses for on/off, not a new name.
+ * On a submetered thermostat the `power` alias is the wattage read from a
+ * clamp (the metering convention), so the on/off state the device reports
+ * about itself binds here instead.
  */
-export const POWER_STATE_ALIAS = "powerState";
+export const THERMOSTAT_STATE_ALIAS = "state";
 
 /**
  * True for an on/off command channel. Two shapes are accepted:
@@ -610,7 +611,7 @@ export function inferDataBindingCategory(
   // (capacity arbiter, power-submeter integrator, energy panel) picks
   // whichever row comes first. As `appliance_state` it is recognized as the
   // on/off state by the arbiter's isStateAlias and invisible to metering.
-  if (alias === POWER_STATE_ALIAS && equipmentType === "thermostat") {
+  if (alias === THERMOSTAT_STATE_ALIAS && equipmentType === "thermostat") {
     return "appliance_state";
   }
   return null;

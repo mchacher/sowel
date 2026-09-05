@@ -531,8 +531,8 @@ describe("computeMissingBindings alias allocation", () => {
 });
 
 describe("thermostat power aliasing (PAC on/off follow-up to #901)", () => {
-  it("aliases the device's boolean power reading powerState", () => {
-    expect(resolveAlias("power", "thermostat", undefined, "power", "boolean")).toBe("powerState");
+  it("aliases the device's boolean power reading under the shared state alias", () => {
+    expect(resolveAlias("power", "thermostat", undefined, "power", "boolean")).toBe("state");
   });
 
   it("keeps a wattage reading on the power alias (metering convention)", () => {
@@ -579,7 +579,7 @@ describe("thermostat power aliasing (PAC on/off follow-up to #901)", () => {
       plan.filter((p) => p.kind === "order").map((p) => [p.key, p.alias]),
     );
 
-    expect(dataAliases.power).toBe("powerState");
+    expect(dataAliases.power).toBe("state");
     expect(dataAliases.targetTemperature).toBe("setpoint");
     expect(dataAliases.insideTemperature).toBe("temperature");
     expect(dataAliases.outsideTemperature).toBe("outsideTemperature");
@@ -587,10 +587,10 @@ describe("thermostat power aliasing (PAC on/off follow-up to #901)", () => {
     expect(orderAliases.targetTemperature).toBe("setpoint");
   });
 
-  it("offers the unbound boolean as powerState on a submetered thermostat", () => {
+  it("offers the unbound boolean as state on a submetered thermostat", () => {
     // The PAC scenario: the `power` alias is a clamp wattage on another
     // device, and the Panasonic's own boolean was left unbound. It must be
-    // offered under powerState — not power_2, which nothing would read.
+    // offered under state — not power_2, which nothing would read.
     const missing = computeMissingBindings(
       [panasonicLike],
       "thermostat",
@@ -616,6 +616,6 @@ describe("thermostat power aliasing (PAC on/off follow-up to #901)", () => {
     );
 
     const powerRow = missing.find((m) => m.key === "power" && m.kind === "data");
-    expect(powerRow?.alias).toBe("powerState");
+    expect(powerRow?.alias).toBe("state");
   });
 });

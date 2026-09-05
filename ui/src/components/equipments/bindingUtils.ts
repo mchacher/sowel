@@ -17,7 +17,7 @@ import type {
 } from "../../types";
 import {
   CANDIDATE_BASED_TYPES,
-  POWER_STATE_ALIAS,
+  THERMOSTAT_STATE_ALIAS,
   computeBindingCandidates,
 } from "../../lib/binding-candidates";
 import { resolveHistorize } from "../../lib/history-defaults";
@@ -401,10 +401,11 @@ export function resolveAlias(
   // thermostat that alias is the wattage read from a clamp (the metering
   // convention pickLivePowerW relies on), and `UNIQUE(equipment_id, alias)`
   // means whichever binds first evicts the other — which is how the PAC lost
-  // its on/off state (issue #901). The boolean gets its own alias, and the
-  // UI reads `powerState` first for the toggle.
+  // its on/off state (issue #901). The boolean binds under the same `state`
+  // alias every relay-style equipment uses, and the UI reads it first for
+  // the toggle.
   if (equipmentType === "thermostat" && category === "power" && valueType === "boolean") {
-    return POWER_STATE_ALIAS;
+    return THERMOSTAT_STATE_ALIAS;
   }
   if (category) {
     const perType = TYPE_CATEGORY_ALIASES[equipmentType as EquipmentType]?.[category];

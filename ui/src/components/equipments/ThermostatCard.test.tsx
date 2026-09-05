@@ -5,7 +5,7 @@ import type { EquipmentWithDetails } from "../../types";
 
 // ============================================================
 // The PAC regression (#901 follow-up): on a submetered thermostat the
-// `power` alias is a clamp wattage, the run state lives under `powerState`,
+// `power` alias is a clamp wattage, the run state lives under `state`,
 // and the optimistic toggle state must survive the clamp's frequent pushes
 // until the run state itself is re-reported.
 // ============================================================
@@ -49,7 +49,7 @@ function equipment(bindings: BindingSpec[]): EquipmentWithDetails {
 
 const pacBindings = (running: boolean, watts: number): BindingSpec[] => [
   { alias: "power", value: watts },
-  { alias: "powerState", value: running },
+  { alias: "state", value: running },
   { alias: "temperature", value: 26 },
   { alias: "setpoint", value: 24.5 },
 ];
@@ -59,7 +59,7 @@ describe("ThermostatCard power state", () => {
     vi.useRealTimers();
   });
 
-  it("shows ON from powerState even though the power alias is a wattage", () => {
+  it("shows ON from the state alias even though the power alias is a wattage", () => {
     render(
       <ThermostatCard
         equipment={equipment(pacBindings(true, 2974))}
@@ -69,7 +69,7 @@ describe("ThermostatCard power state", () => {
     expect(screen.getByTitle("Turn off")).toBeTruthy();
   });
 
-  it("sends OFF when powerState reports running", async () => {
+  it("sends OFF when the state alias reports running", async () => {
     // Before the fix, `2974 === true` read as off and every tap sent ON — the
     // production log shows five ON orders in 90 s from a user trying to stop.
     const exec = vi.fn().mockResolvedValue(undefined);
@@ -97,7 +97,7 @@ describe("ThermostatCard power state", () => {
       <ThermostatCard
         equipment={equipment([
           { alias: "power", value: 14, lastUpdated: "2026-09-05T10:00:05Z" },
-          { alias: "powerState", value: false },
+          { alias: "state", value: false },
           { alias: "temperature", value: 26 },
           { alias: "setpoint", value: 24.5 },
         ])}
@@ -112,7 +112,7 @@ describe("ThermostatCard power state", () => {
       <ThermostatCard
         equipment={equipment([
           { alias: "power", value: 14, lastUpdated: "2026-09-05T10:00:05Z" },
-          { alias: "powerState", value: false, lastUpdated: "2026-09-05T10:00:20Z" },
+          { alias: "state", value: false, lastUpdated: "2026-09-05T10:00:20Z" },
           { alias: "temperature", value: 26 },
           { alias: "setpoint", value: 24.5 },
         ])}
@@ -133,7 +133,7 @@ describe("ThermostatCard power state", () => {
       <ThermostatCard
         equipment={equipment([
           { alias: "power", value: 1800, lastUpdated: "2026-09-05T10:00:30Z" },
-          { alias: "powerState", value: true, lastUpdated: "2026-09-05T10:00:30Z" },
+          { alias: "state", value: true, lastUpdated: "2026-09-05T10:00:30Z" },
           { alias: "temperature", value: 26 },
           { alias: "setpoint", value: 24.5 },
         ])}
@@ -144,7 +144,7 @@ describe("ThermostatCard power state", () => {
   });
 
   it("holds the optimistic toggle on an unmigrated submetered thermostat", async () => {
-    // No powerState binding yet, `power` is the clamp wattage: there is no
+    // No state binding yet, `power` is the clamp wattage: there is no
     // truth source at all, so the clamp's pushes must NOT wipe the optimistic
     // toggle (the original symptom); only the TTL may.
     const exec = vi.fn().mockResolvedValue(undefined);

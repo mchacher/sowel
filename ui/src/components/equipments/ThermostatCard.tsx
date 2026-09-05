@@ -20,7 +20,7 @@ import {
 } from "lucide-react";
 import type { EquipmentWithDetails } from "../../types";
 import { thermostatPowerStateBinding } from "../../lib/thermostat-state";
-import { POWER_STATE_ALIAS } from "../../lib/binding-candidates";
+import { THERMOSTAT_STATE_ALIAS } from "../../lib/binding-candidates";
 
 /** How long an optimistic control value may outlive its confirmation. */
 const OPTIMISTIC_TTL_MS = 90_000;
@@ -121,14 +121,14 @@ export function ThermostatCard({ equipment, onExecuteOrder, compact }: Thermosta
           .map((b) => b.alias),
       );
       // The `power` order is mirrored by the boolean run-state binding
-      // (`powerState` on a submetered thermostat). When no such binding
-      // exists, the mirror is the not-yet-bound powerState alias, NEVER the
+      // (the `state` alias on a submetered thermostat). When no such binding
+      // exists, the mirror is the not-yet-bound state alias, NEVER the
       // numeric `power` binding: the clamp's wattage pushes must not wipe
       // the optimistic toggle on an equipment that has no state to confirm
       // it with — that was the original symptom.
       const stateBinding = thermostatPowerStateBinding(equipment.dataBindings);
       const mirrorOf = (alias: string) =>
-        alias === "power" ? (stateBinding?.alias ?? POWER_STATE_ALIAS) : alias;
+        alias === "power" ? (stateBinding?.alias ?? THERMOSTAT_STATE_ALIAS) : alias;
       const next: Record<string, unknown> = { ...current };
       let touched = false;
       for (const k of keys) {
@@ -156,8 +156,8 @@ export function ThermostatCard({ equipment, onExecuteOrder, compact }: Thermosta
   const ecoModeBinding = equipment.dataBindings.find((b) => b.alias === "ecoMode");
   const stoveStateBinding = equipment.dataBindings.find((b) => b.alias === "stoveState");
 
-  // The run state comes from the device's own boolean (`powerState` on a
-  // submetered thermostat, legacy boolean `power` otherwise). The `power`
+  // The run state comes from the device's own boolean (the `state` alias on
+  // a submetered thermostat, legacy boolean `power` otherwise). The `power`
   // alias on a submetered thermostat is a wattage, which `=== true` read as
   // permanently off — every tap then sent ON, and the toggle never settled.
   const isOn =

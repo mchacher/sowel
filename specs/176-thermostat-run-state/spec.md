@@ -35,16 +35,16 @@ binding a thermostat today:
 
 ## Decision
 
-The device's own boolean power reading binds under a dedicated **`powerState`** alias, on the
+The device's own boolean power reading binds under a dedicated **`state`** alias, on the
 `thermostat` type only. `power` stays the wattage. Every thermostat on/off read goes through one
-helper with a strict preference order: `powerState` first, a legacy boolean `power` binding as
+helper with a strict preference order: `state` first, a legacy boolean `power` binding as
 fallback, never a wattage.
 
 Deliberately NOT generalized to other equipment types. Appliances and media players carry a working
 boolean under `power` today; renaming aliases across installs would break user recipes (parameterized
 by alias) and InfluxDB history series (keyed by alias) for zero live bug. The clean generic path is a
 future spec: a distinct `power_state` data CATEGORY at the plugin level, with alias derivation from
-the category, in line with the #839 cleanup. The `powerState` name chosen here stays compatible with
+the category, in line with the #839 cleanup. The `state` name chosen here stays compatible with
 that evolution.
 
 ## Companion plugin change
