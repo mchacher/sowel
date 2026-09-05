@@ -186,6 +186,7 @@ export function useEquipmentState(equipment: EquipmentWithDetails) {
     isWaterHeater,
     stateBinding,
     isOn,
+    gateIsOpen,
     shutterPosition,
     hasShutterState,
     shutterIsOpen,

@@ -1,4 +1,3 @@
-import { createElement } from "react";
 import { useTranslation } from "react-i18next";
 import type { TFunction } from "i18next";
 import type { DashboardWidget, EquipmentWithDetails } from "../../types";
@@ -25,7 +24,7 @@ import {
   EnergyMeterIcon,
 } from "./WidgetIcons";
 import { resolveWidgetPresentation } from "./presentation/resolveWidgetPresentation";
-import { CUSTOM_ICON_REGISTRY, shutterLevel } from "./widget-icons";
+import { renderWidgetStateIcon, shutterLevel } from "./widget-icons";
 import { SolarPanelIcon } from "../icons/SolarPanelIcon";
 import { solarWidgetState } from "./solarWidget";
 import { resolvePowerReading } from "../../lib/power-reading";
@@ -156,9 +155,6 @@ function useMobileState(
     };
   }
 
-  // Custom icon from registry
-  const customEntry = widget.icon ? CUSTOM_ICON_REGISTRY[widget.icon] : undefined;
-
   if (isLight) {
     const brightness = equipment.dataBindings.find(
       (b) => b.alias === "brightness" || b.category === "light_brightness",
@@ -169,11 +165,7 @@ function useMobileState(
         : null;
     const isDimmable = equipment.type === "light_dimmable" || equipment.type === "light_color";
     return {
-      icon: customEntry ? (
-        createElement(customEntry.component, customEntry.previewProps)
-      ) : (
-        <LightBulbIcon on={isOn} />
-      ),
+      icon: renderWidgetStateIcon(widget.icon, <LightBulbIcon on={isOn} />),
       stateLines: [isDimmable && pct !== null ? `${pct}%` : isOn ? "ON" : "OFF"],
     };
   }
@@ -191,11 +183,7 @@ function useMobileState(
             ? `${position}%`
             : null;
     return {
-      icon: customEntry ? (
-        createElement(customEntry.component, customEntry.previewProps)
-      ) : (
-        <ShutterWidgetIcon level={level} />
-      ),
+      icon: renderWidgetStateIcon(widget.icon, <ShutterWidgetIcon level={level} />),
       stateLines: text ? [text] : [],
     };
   }
@@ -212,10 +200,9 @@ function useMobileState(
             ? `${position}%`
             : null;
     return {
-      icon: customEntry ? (
-        createElement(customEntry.component, customEntry.previewProps)
-      ) : (
-        <AwningWidgetIcon deployed={position !== null && position > 0} />
+      icon: renderWidgetStateIcon(
+        widget.icon,
+        <AwningWidgetIcon deployed={position !== null && position > 0} />,
       ),
       stateLines: text ? [text] : [],
     };
@@ -237,11 +224,7 @@ function useMobileState(
     const minBound = isPoolHeatPump ? 10 : 16;
     const level = spVal !== null ? (spVal - minBound) / (30 - minBound) : undefined;
     return {
-      icon: customEntry ? (
-        createElement(customEntry.component, customEntry.previewProps)
-      ) : (
-        <ThermometerIcon warm={isOn} level={level} />
-      ),
+      icon: renderWidgetStateIcon(widget.icon, <ThermometerIcon warm={isOn} level={level} />),
       stateLines: tempVal !== null ? [`${tempVal.toFixed(1)}°C`] : [],
     };
   }
@@ -274,11 +257,7 @@ function useMobileState(
       : false;
     const isComfort = !relayOn;
     return {
-      icon: customEntry ? (
-        createElement(customEntry.component, customEntry.previewProps)
-      ) : (
-        <HeaterWidgetIcon comfort={isComfort} />
-      ),
+      icon: renderWidgetStateIcon(widget.icon, <HeaterWidgetIcon comfort={isComfort} />),
       stateLines: [isComfort ? t("controls.heater.comfort") : t("controls.heater.eco")],
     };
   }
@@ -352,11 +331,7 @@ function useMobileState(
   }
 
   if (isSensor) {
-    const sensorIcon = customEntry ? (
-      createElement(customEntry.component, customEntry.previewProps)
-    ) : (
-      <MultiSensorIcon />
-    );
+    const sensorIcon = renderWidgetStateIcon(widget.icon, <MultiSensorIcon />);
     const allSensorBindings = getSensorBindings(equipment.dataBindings);
     const visibleBindings = widget.config?.visibleBindings;
     const sensorBindings =
@@ -476,11 +451,7 @@ function useMobileState(
       ? channelState.value === true || String(channelState.value).toUpperCase() === "ON"
       : false;
     return {
-      icon: customEntry ? (
-        createElement(customEntry.component, customEntry.previewProps)
-      ) : (
-        <WaterHeaterIcon on={heaterOn} />
-      ),
+      icon: renderWidgetStateIcon(widget.icon, <WaterHeaterIcon on={heaterOn} />),
       stateLines: [
         heaterOn ? "ON" : "OFF",
         ...(tempValue !== null ? [`${tempValue.toFixed(1)}°C`] : []),
@@ -490,11 +461,7 @@ function useMobileState(
 
   if (isWaterValve) {
     return {
-      icon: customEntry ? (
-        createElement(customEntry.component, customEntry.previewProps)
-      ) : (
-        <WaterValveWidgetIcon open={isOn} />
-      ),
+      icon: renderWidgetStateIcon(widget.icon, <WaterValveWidgetIcon open={isOn} />),
       stateLines: [isOn ? t("water.open") : t("water.closed")],
     };
   }
@@ -524,10 +491,9 @@ function useMobileState(
         ? `${String(charge)} %`
         : "";
     return {
-      icon: customEntry ? (
-        createElement(customEntry.component, customEntry.previewProps)
-      ) : (
-        <BatteryCharging size={96} strokeWidth={1.2} className={tone} />
+      icon: renderWidgetStateIcon(
+        widget.icon,
+        <BatteryCharging size={96} strokeWidth={1.2} className={tone} />,
       ),
       stateLines: [
         status ? t(upsStatusKey(status)) : (raw ?? t(upsStatusKey(null))),
@@ -546,10 +512,13 @@ function useMobileState(
           ? t("equipments.vmc.v1")
           : t("equipments.vmc.off");
     return {
-      icon: customEntry ? (
-        createElement(customEntry.component, customEntry.previewProps)
-      ) : (
-        <Fan size={96} strokeWidth={1.2} className={running ? "text-primary" : "text-text-tertiary"} />
+      icon: renderWidgetStateIcon(
+        widget.icon,
+        <Fan
+          size={96}
+          strokeWidth={1.2}
+          className={running ? "text-primary" : "text-text-tertiary"}
+        />,
       ),
       stateLines: [label],
     };
@@ -569,11 +538,7 @@ function useMobileState(
             ? `${position}%`
             : null;
     return {
-      icon: customEntry ? (
-        createElement(customEntry.component, customEntry.previewProps)
-      ) : (
-        <PoolCoverIcon position={position} />
-      ),
+      icon: renderWidgetStateIcon(widget.icon, <PoolCoverIcon position={position} />),
       stateLines: text ? [text] : [],
     };
   }
