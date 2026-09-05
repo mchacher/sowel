@@ -1,5 +1,5 @@
-import { describe, it, expect, vi } from "vitest";
-import { render, screen, userEvent, waitFor } from "../../test-utils";
+import { describe, it, expect, vi, afterEach } from "vitest";
+import { act, fireEvent, render, screen, userEvent, waitFor } from "../../test-utils";
 import { ThermostatCard } from "./ThermostatCard";
 import type { EquipmentWithDetails } from "../../types";
 
@@ -55,6 +55,10 @@ const pacBindings = (running: boolean, watts: number): BindingSpec[] => [
 ];
 
 describe("ThermostatCard power state", () => {
+  afterEach(() => {
+    vi.useRealTimers();
+  });
+
   it("shows ON from powerState even though the power alias is a wattage", () => {
     render(
       <ThermostatCard
@@ -137,6 +141,62 @@ describe("ThermostatCard power state", () => {
       />,
     );
     expect(screen.getByTitle("Turn off")).toBeTruthy();
+  });
+
+  it("holds the optimistic toggle on an unmigrated submetered thermostat", async () => {
+    // No powerState binding yet, `power` is the clamp wattage: there is no
+    // truth source at all, so the clamp's pushes must NOT wipe the optimistic
+    // toggle (the original symptom); only the TTL may.
+    const exec = vi.fn().mockResolvedValue(undefined);
+    const noState: BindingSpec[] = [
+      { alias: "power", value: 11 },
+      { alias: "temperature", value: 26 },
+      { alias: "setpoint", value: 24.5 },
+    ];
+    const { rerender } = render(
+      <ThermostatCard equipment={equipment(noState)} onExecuteOrder={exec} />,
+    );
+
+    await userEvent.click(screen.getByTitle("Turn on"));
+    await waitFor(() => expect(screen.getByTitle("Turn off")).toBeTruthy());
+
+    rerender(
+      <ThermostatCard
+        equipment={equipment([
+          { alias: "power", value: 2974, lastUpdated: "2026-09-05T10:00:05Z" },
+          { alias: "temperature", value: 26 },
+          { alias: "setpoint", value: 24.5 },
+        ])}
+        onExecuteOrder={exec}
+      />,
+    );
+    expect(screen.getByTitle("Turn off")).toBeTruthy();
+  });
+
+  it("expires an unconfirmed optimistic value after the TTL", async () => {
+    vi.useFakeTimers();
+    const exec = vi.fn().mockResolvedValue(undefined);
+    render(
+      <ThermostatCard
+        equipment={equipment([
+          { alias: "power", value: 11 },
+          { alias: "temperature", value: 26 },
+          { alias: "setpoint", value: 24.5 },
+        ])}
+        onExecuteOrder={exec}
+      />,
+    );
+
+    fireEvent.click(screen.getByTitle("Turn on"));
+    await act(async () => {});
+    expect(screen.getByTitle("Turn off")).toBeTruthy();
+
+    // Nothing ever confirms the order (no state binding, no re-report): the
+    // card must fall back to the truth instead of showing ON forever.
+    await act(async () => {
+      vi.advanceTimersByTime(91_000);
+    });
+    expect(screen.getByTitle("Turn on")).toBeTruthy();
   });
 
   it("still reads a legacy boolean power binding", () => {

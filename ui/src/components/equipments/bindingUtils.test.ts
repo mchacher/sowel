@@ -539,6 +539,15 @@ describe("thermostat power aliasing (PAC on/off follow-up to #901)", () => {
     expect(resolveAlias("power", "thermostat", undefined, "power", "number")).toBe("power");
   });
 
+  it("pins the outdoor probe to outsideTemperature whatever the plugin calls the key", () => {
+    // Every thermostat surface reads alias `outsideTemperature`; without the
+    // per-type override a foreign key would bind under its raw name and the
+    // value would be bound, historized and invisible.
+    expect(
+      resolveAlias("outdoor_temp", "thermostat", undefined, "temperature_outdoor", "number"),
+    ).toBe("outsideTemperature");
+  });
+
   it("keeps the toggle_power order on the power alias ThermostatCard drives", () => {
     // The global ORDER_CATEGORY_ALIASES maps toggle_power → state, which no
     // thermostat surface reads; the per-type override must win.

@@ -15,7 +15,11 @@ import type {
   OrderBindingWithDetails,
   OrderCategory,
 } from "../../types";
-import { CANDIDATE_BASED_TYPES, computeBindingCandidates } from "../../lib/binding-candidates";
+import {
+  CANDIDATE_BASED_TYPES,
+  POWER_STATE_ALIAS,
+  computeBindingCandidates,
+} from "../../lib/binding-candidates";
 import { resolveHistorize } from "../../lib/history-defaults";
 
 // ============================================================
@@ -370,8 +374,11 @@ const TYPE_CATEGORY_ALIASES: Partial<Record<EquipmentType, Record<string, string
   // ThermostatCard drives its toggle through the `power` order alias;
   // without this override the global ORDER_CATEGORY_ALIASES would alias a
   // toggle_power order `state` and the card would lose its power button on
-  // any newly bound thermostat.
-  thermostat: { toggle_power: "power" },
+  // any newly bound thermostat. The outdoor probe pins to the alias every
+  // thermostat surface reads, whatever the plugin calls the key — and stops
+  // an outdoor point published under key `temperature` from stealing the
+  // room-temperature alias.
+  thermostat: { toggle_power: "power", temperature_outdoor: "outsideTemperature" },
 };
 
 /**
@@ -397,7 +404,7 @@ export function resolveAlias(
   // its on/off state (issue #901). The boolean gets its own alias, and the
   // UI reads `powerState` first for the toggle.
   if (equipmentType === "thermostat" && category === "power" && valueType === "boolean") {
-    return "powerState";
+    return POWER_STATE_ALIAS;
   }
   if (category) {
     const perType = TYPE_CATEGORY_ALIASES[equipmentType as EquipmentType]?.[category];

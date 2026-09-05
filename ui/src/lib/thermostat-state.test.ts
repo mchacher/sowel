@@ -2,8 +2,8 @@ import { describe, it, expect } from "vitest";
 import { thermostatPowerStateBinding } from "./thermostat-state";
 import type { DataBindingWithValue } from "../types";
 
-function binding(alias: string, value: unknown): DataBindingWithValue {
-  return { alias, value } as unknown as DataBindingWithValue;
+function binding(alias: string, value: unknown, type?: string): DataBindingWithValue {
+  return { alias, value, type } as unknown as DataBindingWithValue;
 }
 
 describe("thermostatPowerStateBinding", () => {
@@ -14,6 +14,14 @@ describe("thermostatPowerStateBinding", () => {
 
   it("falls back to a legacy boolean power binding", () => {
     const bindings = [binding("power", false)];
+    expect(thermostatPowerStateBinding(bindings)?.alias).toBe("power");
+  });
+
+  it("recognizes a value-less legacy binding by its declared type", () => {
+    // Fresh restart, first poll pending: the value is null but the binding is
+    // still the equipment's run state, not a reason to fall through to the
+    // zone widget's relay fallback.
+    const bindings = [binding("power", null, "boolean")];
     expect(thermostatPowerStateBinding(bindings)?.alias).toBe("power");
   });
 

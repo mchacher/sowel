@@ -661,4 +661,17 @@ describe("solar command channel inference (spec 152)", () => {
     expect(inferDataBindingCategory("water_heater", "state")).toBe(null);
     expect(inferDataBindingCategory("light_onoff", "solar_state")).toBe(null);
   });
+
+  it("inferDataBindingCategory tags a thermostat's powerState as appliance_state (spec 176)", () => {
+    // Without the override the binding keeps the device's `power` category and
+    // a submetered thermostat carries two category=power bindings; the
+    // arbiter, the submeter integrator and the energy panel then pick
+    // whichever row comes first.
+    expect(inferDataBindingCategory("thermostat", "powerState")).toBe("appliance_state");
+  });
+
+  it("inferDataBindingCategory leaves powerState alone outside thermostats", () => {
+    expect(inferDataBindingCategory("appliance", "powerState")).toBe(null);
+    expect(inferDataBindingCategory("thermostat", "power")).toBe(null);
+  });
 });

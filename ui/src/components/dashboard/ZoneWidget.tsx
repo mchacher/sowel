@@ -509,8 +509,12 @@ function ZoneHeatingWidget({
       const power = thermostatPowerStateBinding(eq.dataBindings);
       if (power?.value === true) on = true;
       if (!power) {
+        // Relay-style heaters: read the state's VALUE. This branch is newly
+        // reachable for a submetered thermostat without a powerState binding
+        // (spec 176), and the old existence check would have painted the zone
+        // warm forever there.
         const state = eq.dataBindings.find((b) => b.alias === "state" || b.category === "light_state");
-        if (state != null) on = true;
+        if (state?.value === true || state?.value === "ON") on = true;
       }
     }
 
