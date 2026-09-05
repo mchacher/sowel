@@ -11,6 +11,17 @@ This page summarises every published version, newest first. For the full diff be
 
 ---
 
+## 1.68.x: The alias that meant two things
+
+### v1.68.0 — 2026-09-05 { #v1-68-0 }
+
+v1.67.1 taught the order watchdog that `power` means two things on a submetered thermostat: the boolean sent to the cloud device and the wattage read from the clamp on its supply. This release teaches the rest of the product, because the watchdog was only the first victim. The interface itself had been comparing that wattage to `true` for months and concluding, on every render, that a running heat pump was off.
+
+- Fix (ui): **a thermostat's on/off is read from its own state, never from the clamp** (spec 176, #904). On a submetered thermostat every surface derived the toggle from `power === true`, and `2974 === true` is false: the card always showed OFF while the unit ran at 2974 W, every tap sent ON again — five ON orders in 90 seconds measured on production, from a user trying to stop the thing — and actually turning it off took a double-tap race inside the optimistic window, because the card also wiped its whole optimistic state on any data change while the clamp pushes a wattage every few seconds. The device's boolean now binds under `state`, the same on/off alias every relay-style equipment already uses, no new word in the data model; the alias was simply never offered to thermostats because the auto-binding whitelist predated the spec 077 categories. The binding is tagged `appliance_state` rather than inheriting the device's `power` category, and that one line is what keeps the energy engine honest: without it a submetered thermostat carries two category=power bindings and the arbiter, the submeter integrator and the energy panel each pick whichever row comes first. Every on/off read now goes through one resolver — the `state` alias first, a legacy boolean `power` second, a wattage never — and the optimistic toggle is cleared per alias, when its own mirror re-reports or after 90 seconds, instead of by whichever reading arrives next. Existing thermostats change nothing; a submetered one gains its state the day its owner adds the binding the missing-bindings panel now offers. Two latent bugs died on the way: a freshly bound thermostat silently lost its power, setpoint and outdoor-probe points, and its power order landed under an alias no thermostat surface drives. Companion release: panasonic_cc 2.3.2 adds a follow-up poll 45 s after an order, because Comfort Cloud routinely still reports the pre-order state at the first poll and the next truth was five minutes away.
+- Maintenance (deps): the weekly toolchain groups — backend and UI minor/patch updates, typescript-eslint 8.69, codeql-action v4 (#896, #897, #898, #899, #900).
+
+---
+
 ## 1.67.x: The clock a reading is judged on
 
 ### v1.67.1 — 2026-09-04 { #v1-67-1 }
