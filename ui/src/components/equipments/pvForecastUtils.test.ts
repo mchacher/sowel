@@ -280,3 +280,28 @@ describe("mergeTimeline with a measured series and no forecast history", () => {
     expect(mergeTimeline([], [], NOW, [{ at: "hier", watts: 1 }])).toEqual([]);
   });
 });
+
+describe("mergeTimeline forward horizon (#907)", () => {
+  const NOW = Date.parse("2026-08-25T12:00:00Z");
+  const at = (h: number) => new Date(NOW + h * 3_600_000).toISOString();
+
+  // The curve runs to J+5. On a one-day zoom, keeping all of it would draw one
+  // day of history against five of forecast, which does not read as a zoom.
+  const curve = [at(1), at(25), at(49), at(73), at(97)].map((a) => ({ at: a, watts: 900 }));
+
+  it("caps the forecast side at the selected window", () => {
+    const merged = mergeTimeline([], curve, NOW, [], 1);
+    expect(merged).toHaveLength(1);
+    expect(merged[0].ts).toBe(Date.parse(at(1)));
+  });
+
+  it("keeps the whole curve when no horizon is given", () => {
+    expect(mergeTimeline([], curve, NOW, [])).toHaveLength(5);
+  });
+
+  it("never trims the past, which is the window the user asked for", () => {
+    const measured = [{ at: at(-20), watts: 500 }];
+    const merged = mergeTimeline([], curve, NOW, measured, 1);
+    expect(merged.some((p) => p.actualW === 500)).toBe(true);
+  });
+});

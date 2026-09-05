@@ -38,7 +38,16 @@ function response(over: Partial<PvForecastResponse> = {}): PvForecastResponse {
     issuedAt: null,
     weatherAvailable: true,
     since: "2026-08-05",
-    accuracy: { samples: 0, maeW: null, points: [], measured: [] },
+    accuracy: {
+      samples: 0,
+      maeW: null,
+      dailyMaeWh: null,
+      dailyMaePct: null,
+      dailyDays: 0,
+      today: null,
+      points: [],
+      measured: [],
+    },
     model: null,
     ...over,
   };

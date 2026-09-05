@@ -40,8 +40,15 @@ export function PvForecastPanel({ equipmentId }: PvForecastPanelProps) {
   const { t, i18n } = useTranslation();
   const isAdmin = useAuth((s) => s.user?.role === "admin");
   const [data, setData] = useState<PvForecastResponse | null>(null);
-  /** How far back the forecast-versus-actual comparison looks, in days. */
-  const [accuracyDays, setAccuracyDays] = useState(7);
+  /**
+   * How wide the chart window is, in days. A zoom, not the score's sample: the
+   * server floors the accuracy window at a week whatever is asked here (#907),
+   * so looking at one day does not blank the figure.
+   *
+   * Three days by default: a week of hourly points is a picket fence, and the
+   * daily shape is what this panel is read for.
+   */
+  const [accuracyDays, setAccuracyDays] = useState(3);
 
   const [failed, setFailed] = useState(false);
   /**
@@ -94,7 +101,16 @@ export function PvForecastPanel({ equipmentId }: PvForecastPanelProps) {
   const now = loadedAt;
   // One timeline. Past hours carry what was promised for them, future hours the
   // current curve; see `mergeTimeline`.
-  const chart = mergeTimeline(data.accuracy.points, data.curve, now, data.accuracy.measured);
+  // The forward side is trimmed to the selected window on the short zooms only:
+  // at 7 days and beyond the curve's own J+5 horizon is already the shorter of
+  // the two, so capping changes nothing.
+  const chart = mergeTimeline(
+    data.accuracy.points,
+    data.curve,
+    now,
+    data.accuracy.measured,
+    accuracyDays,
+  );
   const spanDays = chart.length > 1 ? (chart[chart.length - 1].ts - chart[0].ts) / 86_400_000 : 0;
   // A weekday name stops helping once the span passes a fortnight.
   const tickFormat: Intl.DateTimeFormatOptions =
@@ -145,6 +161,33 @@ export function PvForecastPanel({ equipmentId }: PvForecastPanelProps) {
               <Figure label={t("equipments.pv.tomorrow")} value={tomorrowKwh} />
             </div>
 
+            {/* Is today on track. The aggregate score cannot say — it only
+                counts finished days — and the running day compared against a
+                whole day's forecast would read as a collapse, so both sides
+                are summed over the hours that have actually happened (#907). */}
+            {/* Gated on production, not on hours: `hours > 0` held from the
+                first paired hour after midnight, so the line sat at "0.0 kWh
+                forecast, 0.0 kWh measured" all night with a dangling delta. */}
+            {data.accuracy.today !== null &&
+              (data.accuracy.today.forecastWh > 0 || data.accuracy.today.actualWh > 0) && (
+              <p className="text-[11px] text-text-tertiary mb-3">
+                {t("equipments.pv.todaySoFar", {
+                  expected: (data.accuracy.today.forecastWh / 1000).toFixed(1),
+                  measured: (data.accuracy.today.actualWh / 1000).toFixed(1),
+                  count: data.accuracy.today.hours,
+                })}{" "}
+                <span
+                  className={`font-mono tabular-nums ${
+                    data.accuracy.today.actualWh >= data.accuracy.today.forecastWh
+                      ? "text-success"
+                      : "text-text-secondary"
+                  }`}
+                >
+                  {formatDelta(data.accuracy.today)}
+                </span>
+              </p>
+            )}
+
             {/* One chart, not two. The comparison and the forecast are the
                 same quantity in the same unit on adjacent stretches of time;
                 split apart, the reader had to join them up by eye. */}
@@ -152,13 +195,24 @@ export function PvForecastPanel({ equipmentId }: PvForecastPanelProps) {
               <span className="text-[12px] text-text-secondary">
                 {t("equipments.pv.accuracy")}
               </span>
-              {data.accuracy.maeW !== null ? (
+              {data.accuracy.dailyMaeWh !== null ? (
                 <>
                   <span className="text-[13px] font-semibold font-mono tabular-nums text-text">
-                    {t("equipments.pv.accuracyValue", { mae: data.accuracy.maeW })}
+                    {/* No percentage when nothing was produced to take a share
+                        of: `?? 0` printed "(0%)" over a real error, so a dead
+                        inverter under a live forecast read as a perfect score
+                        at the one moment the figure has to shout. */}
+                    {data.accuracy.dailyMaePct !== null
+                      ? t("equipments.pv.accuracyValue", {
+                          kwh: (data.accuracy.dailyMaeWh / 1000).toFixed(2),
+                          pct: data.accuracy.dailyMaePct,
+                        })
+                      : t("equipments.pv.accuracyValueNoPct", {
+                          kwh: (data.accuracy.dailyMaeWh / 1000).toFixed(2),
+                        })}
                   </span>
                   <span className="text-[11px] text-text-tertiary">
-                    {t("equipments.pv.accuracySamples", { n: data.accuracy.samples })}
+                    {t("equipments.pv.accuracySamples", { count: data.accuracy.dailyDays })}
                   </span>
                 </>
               ) : (
@@ -193,7 +247,7 @@ export function PvForecastPanel({ equipmentId }: PvForecastPanelProps) {
               {/* How far back. Bounded server-side by how long the measured
                   series is retained, so 90 days is the honest maximum. */}
               <span className="ml-auto flex items-center gap-1">
-                {[7, 30, 90].map((d) => (
+                {[1, 3, 7, 30, 90].map((d) => (
                   <button
                     key={d}
                     type="button"
@@ -316,6 +370,17 @@ export function PvForecastPanel({ equipmentId }: PvForecastPanelProps) {
         )}
     </div>
   );
+}
+
+/**
+ * How far today is running from what was expected for the same hours, as a
+ * signed percentage. Percent, not watt-hours: at 9am a 300 Wh gap means
+ * something quite different than it does at 7pm, and the share does not.
+ */
+function formatDelta(today: { forecastWh: number; actualWh: number }): string {
+  if (today.forecastWh <= 0) return "";
+  const pct = (100 * (today.actualWh - today.forecastWh)) / today.forecastWh;
+  return `${pct >= 0 ? "+" : ""}${pct.toFixed(0)}%`;
 }
 
 function Figure({ label, value }: { label: string; value: number }) {

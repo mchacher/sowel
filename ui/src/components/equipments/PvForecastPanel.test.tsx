@@ -22,7 +22,16 @@ function response(over: Partial<PvForecastResponse> = {}): PvForecastResponse {
     curve: [],
     issuedAt: null,
     weatherAvailable: true,
-    accuracy: { samples: 0, maeW: null, points: [], measured: [] },
+    accuracy: {
+      samples: 0,
+      maeW: null,
+      dailyMaeWh: null,
+      dailyMaePct: null,
+      dailyDays: 0,
+      today: null,
+      points: [],
+      measured: [],
+    },
     model: null,
     ...over,
   };
@@ -83,5 +92,88 @@ describe("PvForecastPanel (monitoring only, spec 163)", () => {
     await renderPanel(response());
     expect(screen.queryByText(/relearn from my history/i)).toBeNull();
     expect(screen.queryByText(/peak power/i)).toBeNull();
+  });
+});
+
+// ============================================================
+// Daily energy accuracy and the short windows (#907)
+// ============================================================
+
+describe("PvForecastPanel accuracy (#907)", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    setRole("user");
+  });
+
+  const scored = (over: Partial<PvForecastResponse["accuracy"]> = {}) =>
+    response({
+      curve: [{ at: new Date().toISOString(), watts: 1200 }],
+      accuracy: {
+        samples: 168,
+        maeW: 73,
+        dailyMaeWh: 1150,
+        dailyMaePct: 5.6,
+        dailyDays: 9,
+        today: null,
+        points: [],
+        measured: [],
+        ...over,
+      },
+    });
+
+  it("states the error on the daily energy, not the hourly power average", async () => {
+    await renderPanel(scored());
+    // 73 W was the figure that read as implausibly good next to a 3.4 kW peak:
+    // 44% of its window was night, where both sides are zero.
+    expect(screen.getByText(/± 1.15 kWh \(5.6%\)/)).toBeTruthy();
+    expect(screen.queryByText(/73 W/)).toBeNull();
+  });
+
+  it("counts complete days, not hours", async () => {
+    await renderPanel(scored());
+    expect(screen.getByText(/over 9 complete days/)).toBeTruthy();
+  });
+
+  it("shows the running day compared over the hours that have happened", async () => {
+    await renderPanel(
+      scored({
+        today: { day: "2026-09-05", forecastWh: 19_400, actualWh: 18_900, hours: 13 },
+      }),
+    );
+    expect(
+      screen.getByText(/19.4 kWh forecast yesterday, 18.9 kWh measured over 13 h/),
+    ).toBeTruthy();
+    expect(screen.getByText("-3%")).toBeTruthy();
+  });
+
+  it("hides the running-day line overnight, when neither side has anything yet", async () => {
+    // Gated on production, not on hours: paired hours exist from the first
+    // hour after midnight, and the line used to sit at 0.0 / 0.0 all night.
+    await renderPanel(
+      scored({ today: { day: "2026-09-05", forecastWh: 0, actualWh: 0, hours: 3 } }),
+    );
+    expect(screen.queryByText(/forecast yesterday/)).toBeNull();
+  });
+
+  it("says nothing rather than zero while no day has finished", async () => {
+    await renderPanel(scored({ dailyMaeWh: null, dailyMaePct: null, dailyDays: 0 }));
+    expect(screen.getByText(/Available once a full day/)).toBeTruthy();
+  });
+
+  it("offers a one-day and a three-day window, and opens on three", async () => {
+    await renderPanel(scored());
+    for (const label of ["1 d", "3 d", "7 d", "30 d", "90 d"]) {
+      expect(screen.getByText(label)).toBeTruthy();
+    }
+    // The zoom the panel opens on: a week of hourly points is a picket fence.
+    expect(mockedGet).toHaveBeenCalledWith("eq-pv", 3);
+  });
+
+  it("re-queries when the window changes", async () => {
+    const { container } = await renderPanel(scored());
+    const oneDay = [...container.querySelectorAll("button")].find((b) => b.textContent === "1 d");
+    oneDay?.click();
+    await new Promise((r) => setTimeout(r, 0));
+    expect(mockedGet).toHaveBeenCalledWith("eq-pv", 1);
   });
 });
