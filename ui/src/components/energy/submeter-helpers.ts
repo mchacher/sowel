@@ -26,6 +26,9 @@ export interface SubmeterRow {
   status: EquipmentStatus;
   /** Spec 173 — power shown net of the submeters declared inside this one. */
   netOfChildren?: boolean;
+  /** Spec 177 — fed by a separate supply: rendered apart, never in the donut,
+   *  the residual or the shares. */
+  separateSupply?: boolean;
   /** ISO timestamp from spec 116 statusReason, if available. */
   offlineSince: string | null;
   /** ISO timestamp of the reading that aged out, when `unknown === "stale"`. */
@@ -113,9 +116,16 @@ export function buildSubmeterRows(
   labels?: Map<string, string>,
   now: number = Date.now(),
 ): SubmeterRow[] {
-  const byId = [...equipments]
+  const enrolled = [...equipments]
     .filter((eq) => isSubmeterEquipment(eq))
     .sort((a, b) => a.id.localeCompare(b.id));
+  // Spec 177 — partition meters first, separate-supply meters after: the SAME
+  // indexing rule the by-usage backend uses, so a given equipment keeps one
+  // color across both views even once the flag splits them into two groups.
+  const byId = [
+    ...enrolled.filter((eq) => !eq.separateSupply),
+    ...enrolled.filter((eq) => eq.separateSupply),
+  ];
 
   const rows: SubmeterRow[] = byId
     .map((eq, idx) => {
@@ -129,6 +139,7 @@ export function buildSubmeterRows(
         offlineSince: eq.statusReason?.offlineSince ?? null,
         staleSince: reading.unknown === "stale" ? reading.lastUpdated : null,
         color: pickSubmeterColor(idx),
+        ...(eq.separateSupply ? { separateSupply: true } : {}),
       };
     })
     // Never bound, so nothing to say about it (#560).
@@ -143,9 +154,13 @@ export function buildSubmeterRows(
   const rawPower = new Map(rows.map((r) => [r.id, r.power] as const));
   for (const row of rows) {
     if (row.power === null) continue;
+    // Spec 177 — containment is a partition concern: a separate-supply parent
+    // renders raw in its own group, and a separate-supply child cannot be
+    // "inside" a meter on another supply, so its declaration is stored unused.
+    if (row.separateSupply) continue;
     let subtracted = 0;
     for (const eq of byId) {
-      if (eq.meteringParentId !== row.id) continue;
+      if (eq.meteringParentId !== row.id || eq.separateSupply) continue;
       subtracted += rawPower.get(eq.id) ?? 0;
     }
     if (subtracted <= 0) continue;

@@ -63,6 +63,8 @@ function makeEquipment(
     lastUpdated?: string | null;
     /** Spec 173 — the meter that already counts this one. */
     meteringParentId?: string | null;
+    /** Spec 177 — fed by a separate supply. */
+    separateSupply?: boolean;
     /** Spec 175 — the budget the engine resolved from the source's cadence. */
     freshnessBudgetMs?: number;
   } = {},
@@ -86,6 +88,7 @@ function makeEquipment(
     name,
     zoneId: "z",
     meteringParentId: opts.meteringParentId ?? null,
+    ...(opts.separateSupply ? { separateSupply: true } : {}),
     type: opts.type ?? "energy_meter",
     enabled: true,
     createdAt: "2026-05-01 00:00:00Z",
@@ -514,5 +517,72 @@ describe("nested submeters (spec 173)", () => {
     const parent = rows.find((r) => r.id === "p");
     expect(parent?.power).toBe(500);
     expect(parent?.netOfChildren).toBeUndefined();
+  });
+});
+
+describe("separate-supply meters (spec 177)", () => {
+  it("flags the row and keeps it out of the residual arithmetic", () => {
+    const rows = buildRows([
+      makeEquipment("gite", "Gite", { power: 500 }),
+      makeEquipment("ve", "VE", { power: 3000, separateSupply: true }),
+    ]);
+
+    expect(rows.find((r) => r.id === "ve")?.separateSupply).toBe(true);
+    expect(rows.find((r) => r.id === "gite")?.separateSupply).toBeUndefined();
+    // The caller splits on the flag; the residual it computes from the
+    // partition rows must not have spent the EV's watts.
+    const partition = rows.filter((r) => !r.separateSupply);
+    expect(computeOther(1000, partition)).toBe(500);
+  });
+
+  it("keeps one color per equipment across both views: partition first", () => {
+    // Backend rule: partition meters take palette indexes first, separate
+    // meters continue after — whatever the ids' own ordering says.
+    const rows = buildRows([
+      makeEquipment("a", "VE", { power: 3000, separateSupply: true }),
+      makeEquipment("b", "Gite", { power: 500 }),
+    ]);
+    expect(rows.find((r) => r.id === "b")?.color).toBe(pickSubmeterColor(0));
+    expect(rows.find((r) => r.id === "a")?.color).toBe(pickSubmeterColor(1));
+  });
+
+  it("renders a separate parent raw: containment is a partition concern", () => {
+    const rows = buildRows([
+      makeEquipment("ve", "VE", { power: 3000, separateSupply: true }),
+      makeEquipment("borne", "Borne", { power: 500, meteringParentId: "ve" }),
+    ]);
+    const ve = rows.find((r) => r.id === "ve");
+    expect(ve?.power).toBe(3000);
+    expect(ve?.netOfChildren).toBeUndefined();
+    // The declaration is stored but unused: the child renders whole too.
+    expect(rows.find((r) => r.id === "borne")?.power).toBe(500);
+  });
+
+  it("never subtracts a separate child from a partition parent", () => {
+    // A meter on another supply cannot be "inside" this one, whatever a stale
+    // declaration says.
+    const rows = buildRows([
+      makeEquipment("p", "Tableau", { power: 500 }),
+      makeEquipment("c", "VE", { power: 300, meteringParentId: "p", separateSupply: true }),
+    ]);
+    const parent = rows.find((r) => r.id === "p");
+    expect(parent?.power).toBe(500);
+    expect(parent?.netOfChildren).toBeUndefined();
+  });
+
+  it("judges a separate row's freshness like any other", () => {
+    // The flag moves the row to its own group; it does not buy the reading a
+    // longer life. An aged-out value must still say "stale", not a number.
+    const rows = buildRows([
+      makeEquipment("ve", "VE", {
+        power: 3000,
+        separateSupply: true,
+        readingAgeMs: SUBMETER_FRESHNESS_SLOW_MS + 60_000,
+      }),
+    ]);
+    const ve = rows.find((r) => r.id === "ve");
+    expect(ve?.separateSupply).toBe(true);
+    expect(ve?.power).toBeNull();
+    expect(ve?.unknown).toBe("stale");
   });
 });

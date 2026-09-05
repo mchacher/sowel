@@ -625,6 +625,119 @@ describe("PUT /api/v1/equipments/:id — nested submeters (spec 173)", () => {
   });
 });
 
+describe("PUT /api/v1/equipments/:id — separate supply (spec 177)", () => {
+  let app: ReturnType<typeof Fastify>;
+  let received: Record<string, unknown> | null;
+
+  // An EV clamp on a second supply, a normal clamp with a nested child, the
+  // house total, production.
+  const graph = [
+    { id: "ve", name: "ConsommationVE", type: "energy_meter", separateSupply: true },
+    { id: "gite", name: "ConsommationGite", type: "energy_meter", separateSupply: false },
+    {
+      id: "ce",
+      name: "ConsommationChauffeEau",
+      type: "energy_meter",
+      separateSupply: false,
+      meteringParentId: "gite",
+    },
+    { id: "edf", name: "EDF", type: "main_energy_meter", separateSupply: false },
+    { id: "pv", name: "Solaire", type: "energy_production_meter", separateSupply: false },
+  ];
+
+  beforeEach(async () => {
+    received = null;
+    app = Fastify({ logger: false, ajv: validationAjvOptions });
+    installValidationErrorHandler(app);
+    registerEquipmentRoutes(app, {
+      equipmentManager: {
+        getById: (id: string) => graph.find((e) => e.id === id) ?? null,
+        getByIdWithDetails: (id: string) => {
+          const eq = graph.find((e) => e.id === id);
+          if (!eq) return null;
+          return {
+            ...eq,
+            dataBindings: [{ alias: "power", category: "power", type: "number" }],
+          };
+        },
+        getAll: () => graph,
+        update: (_id: string, input: Record<string, unknown>) => {
+          received = input;
+          return { id: _id, separateSupply: input.separateSupply };
+        },
+      } as unknown as Parameters<typeof registerEquipmentRoutes>[1]["equipmentManager"],
+      logger: createLogger("silent").logger,
+    });
+    await app.ready();
+  });
+
+  afterEach(async () => {
+    await app.close();
+  });
+
+  const put = (id: string, payload: unknown) =>
+    app.inject({ method: "PUT", url: `/api/v1/equipments/${id}`, payload });
+
+  it("forwards the declaration, and its withdrawal", async () => {
+    expect((await put("gite", { separateSupply: true })).statusCode).toBe(200);
+    expect(received?.separateSupply).toBe(true);
+    expect((await put("ve", { separateSupply: false })).statusCode).toBe(200);
+    expect(received?.separateSupply).toBe(false);
+  });
+
+  it("leaves it untouched when the body does not mention it", async () => {
+    const res = await put("gite", { name: "Gite" });
+    expect(res.statusCode).toBe(200);
+    // undefined ≠ false: the manager keeps the stored value on undefined.
+    expect(received?.separateSupply).toBeUndefined();
+  });
+
+  it("refuses it on the house total and on a production meter", async () => {
+    // The reference and the production surfaces are what the reconciliation is
+    // FOR — the reference cannot be outside itself.
+    for (const id of ["edf", "pv"]) {
+      const res = await put(id, { separateSupply: true });
+      expect(res.statusCode).toBe(400);
+      expect(res.json().error).toBe("SeparateSupplyNotApplicable");
+    }
+    expect(received).toBeNull();
+  });
+
+  it("refuses a separate-supply meter as a metering parent", async () => {
+    // "Already counted by it" cannot be true of anything the partition renders.
+    const res = await put("gite", { meteringParentId: "ve" });
+    expect(res.statusCode).toBe(400);
+    expect(res.json().error).toBe("MeteringParentSeparateSupply");
+    expect(received).toBeNull();
+  });
+
+  it("keeps containment declarations when the flag lands on them (FR-5)", async () => {
+    // A parent with a child, and a child with a parent: the flag is accepted
+    // and the declarations are NOT touched — undefined in the forwarded update
+    // means "keep what is stored", and clearing the flag later restores the
+    // spec 173 arithmetic untouched.
+    for (const id of ["gite", "ce"]) {
+      const res = await put(id, { separateSupply: true });
+      expect(res.statusCode).toBe(200);
+      expect(received?.separateSupply).toBe(true);
+      expect(received?.meteringParentId).toBeUndefined();
+    }
+  });
+
+  it("refuses retyping an already-flagged meter into the house total", async () => {
+    // FR-4 on the RESULTING state: without this, {type: "main_energy_meter"}
+    // on ve reaches the forbidden pair without ever writing the flag, and
+    // retyping back later silently resurrects it.
+    const res = await put("ve", { type: "main_energy_meter" });
+    expect(res.statusCode).toBe(400);
+    expect(res.json().error).toBe("SeparateSupplyNotApplicable");
+    expect(received).toBeNull();
+    // Clearing the flag in the same request makes the retype honest again.
+    const ok = await put("ve", { type: "main_energy_meter", separateSupply: false });
+    expect(ok.statusCode).toBe(200);
+  });
+});
+
 // ── #832 — the feed must not serve a leftover as a current measurement ──
 //
 // The energy display is this feed's consumer and cannot work a reading's age

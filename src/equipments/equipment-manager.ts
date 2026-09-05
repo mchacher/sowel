@@ -111,6 +111,8 @@ interface UpdateEquipmentInput {
   invertDirection?: boolean;
   /** Spec 173 — the meter that already counts this equipment. `null` clears it. */
   meteringParentId?: string | null;
+  /** Spec 177 — this meter is fed by a separate supply. */
+  separateSupply?: boolean;
   /** Spec 174 phase 2 — the timed command this equipment offers. `null` clears it. */
   timedCommand?: TimedCommand | null;
 }
@@ -235,7 +237,8 @@ export class EquipmentManager {
          type = @type, icon = @icon, description = @description, enabled = @enabled,
          energy_profile = @energyProfile, require_confirmation = @requireConfirmation,
          invert_direction = @invertDirection, solar_profile = @solarProfile,
-         metering_parent_id = @meteringParentId, timed_command = @timedCommand,
+         metering_parent_id = @meteringParentId, separate_supply = @separateSupply,
+         timed_command = @timedCommand,
          updated_at = datetime('now') WHERE id = @id`,
       ),
       updateEquipmentEnergyProfile: this.db.prepare(
@@ -576,6 +579,12 @@ export class EquipmentManager {
       // absent key falls back to what is stored.
       meteringParentId:
         input.meteringParentId !== undefined ? input.meteringParentId : existing.metering_parent_id,
+      separateSupply:
+        input.separateSupply !== undefined
+          ? input.separateSupply
+            ? 1
+            : 0
+          : existing.separate_supply,
     });
 
     const equipment = this.getById(id)!;
@@ -1692,6 +1701,7 @@ interface EquipmentRow {
   require_confirmation: number;
   invert_direction: number;
   metering_parent_id: string | null;
+  separate_supply: number;
   timed_command: string | null;
   created_at: string;
   updated_at: string;
@@ -1859,6 +1869,7 @@ function rowToEquipment(row: EquipmentRow): Equipment {
     requireConfirmation: row.require_confirmation === 1,
     invertDirection: row.invert_direction === 1,
     meteringParentId: row.metering_parent_id ?? null,
+    separateSupply: row.separate_supply === 1,
     timedCommand: parseTimedCommand(row.timed_command),
     createdAt: toISOUtc(row.created_at),
     updatedAt: toISOUtc(row.updated_at),

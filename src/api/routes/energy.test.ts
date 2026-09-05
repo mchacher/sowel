@@ -48,6 +48,8 @@ interface BuildOpts {
     enabled?: boolean;
     /** Spec 173 — "already counted by that meter". */
     meteringParentId?: string | null;
+    /** Spec 177 — fed by a separate supply. */
+    separateSupply?: boolean;
   }>;
   envTz?: string | undefined;
   /** Spec 160/161 — a stand-in forecaster, for the routes that need one. */
@@ -535,6 +537,191 @@ describe("Spec 173 — /api/v1/energy/by-usage with nested submeters", () => {
 
     expect(body.totals.byEquipment.gite).toBe(170);
     expect(body.totals.byEquipment.ce).toBe(2090);
+  });
+});
+
+describe("Spec 177 — /api/v1/energy/by-usage with a separate-supply meter", () => {
+  let app: Awaited<ReturnType<typeof buildApp>> | null = null;
+
+  beforeEach(() => {
+    process.env.TZ = "Europe/Paris";
+  });
+  afterEach(async () => {
+    if (app) await app.close();
+    app = null;
+  });
+
+  /** A gîte clamp on the house network, an EV clamp on a second supply, and
+   *  the house total. The EV's 3 kWh were never in the 12.33 kWh total. */
+  const withEv = (evSeparate: boolean) => ({
+    equipments: [
+      { id: "gite", name: "ConsommationGite", type: "energy_meter" as const },
+      {
+        id: "ve",
+        name: "ConsommationVE",
+        type: "energy_meter" as const,
+        separateSupply: evSeparate,
+      },
+      { id: "edf", name: "EDF", type: "main_energy_meter" as const },
+    ],
+    submeterRowsById: {
+      gite: [{ _time: "2026-05-24T22:00:00Z", _value: 2260, alias: "energy" }],
+      ve: [{ _time: "2026-05-24T22:00:00Z", _value: 3000, alias: "energy" }],
+    },
+    mainConsumptionRows: [{ _time: "2026-05-24T22:00:00Z", _value: 12330, alias: "energy" }],
+  });
+
+  it("eats the residual while nothing is declared", async () => {
+    // The bug, written down: 3 kWh the main meter never carried land in the
+    // partition, and `other` is short by exactly that much.
+    app = await buildApp(withEv(false));
+    const body = (
+      await app.inject({
+        method: "GET",
+        url: "/api/v1/energy/by-usage?period=week&date=2026-05-30",
+      })
+    ).json();
+
+    expect(body.other.points[0].wh).toBe(12330 - 2260 - 3000);
+    expect(body.separateSupply).toBeUndefined();
+  });
+
+  it("leaves the partition and comes back apart once declared", async () => {
+    app = await buildApp(withEv(true));
+    const body = (
+      await app.inject({
+        method: "GET",
+        url: "/api/v1/energy/by-usage?period=week&date=2026-05-30",
+      })
+    ).json();
+
+    // The partition returns to what it was before the meter existed.
+    expect(body.submeters.map((s: { id: string }) => s.id)).toEqual(["gite"]);
+    expect(body.other.points[0].wh).toBe(12330 - 2260);
+    expect(body.totals.byEquipment.ve).toBeUndefined();
+
+    // The measurement is not lost: raw series, same always-N zero-fill.
+    expect(body.separateSupply).toHaveLength(1);
+    const ve = body.separateSupply[0];
+    expect(ve.id).toBe("ve");
+    expect(ve.points[0].wh).toBe(3000);
+    expect(ve.points).toHaveLength(body.submeters[0].points.length);
+  });
+
+  it("never costs another supply's kilowatt-hours", async () => {
+    // Spec 123's blended €/kWh is the MAIN meter's tariff; pricing the EV with
+    // it is exactly the error the flag exists to stop.
+    app = await buildApp({ ...withEv(true), tariff: TARIFF_20_10 });
+    const body = (
+      await app.inject({
+        method: "GET",
+        url: "/api/v1/energy/by-usage?period=week&date=2026-05-30",
+      })
+    ).json();
+
+    expect(body.separateSupply[0].cost).toBe(0);
+    expect(body.totals.costByEquipment.ve).toBeUndefined();
+  });
+
+  it("renders a containment child whole when its parent goes separate", async () => {
+    // FR-5 — the declaration is kept but stops being used: the parent left the
+    // partition, so there is nothing to subtract the child from.
+    const base = withEv(true);
+    app = await buildApp({
+      ...base,
+      equipments: [
+        ...base.equipments,
+        {
+          id: "borne",
+          name: "BorneDetail",
+          type: "energy_meter" as const,
+          meteringParentId: "ve",
+        },
+      ],
+      submeterRowsById: {
+        ...base.submeterRowsById,
+        borne: [{ _time: "2026-05-24T22:00:00Z", _value: 500, alias: "energy" }],
+      },
+    });
+    const body = (
+      await app.inject({
+        method: "GET",
+        url: "/api/v1/energy/by-usage?period=week&date=2026-05-30",
+      })
+    ).json();
+
+    const borne = body.submeters.find((s: { id: string }) => s.id === "borne");
+    expect(borne.points[0].wh).toBe(500);
+    expect(borne.netOfChildren).toBeUndefined();
+  });
+
+  it("stops subtracting a child that goes separate from its partition parent", async () => {
+    // The other direction of FR-5: gite ⊃ ce was declared, then the ce clamp
+    // moved to another supply. Its declaration is stored but inert — the
+    // parent must render raw again, not net of watts that left the network.
+    app = await buildApp({
+      equipments: [
+        { id: "gite", name: "ConsommationGite", type: "energy_meter" as const },
+        {
+          id: "ce",
+          name: "ConsommationChauffeEau",
+          type: "energy_meter" as const,
+          meteringParentId: "gite",
+          separateSupply: true,
+        },
+        { id: "edf", name: "EDF", type: "main_energy_meter" as const },
+      ],
+      submeterRowsById: {
+        gite: [{ _time: "2026-05-24T22:00:00Z", _value: 2260, alias: "energy" }],
+        ce: [{ _time: "2026-05-24T22:00:00Z", _value: 2090, alias: "energy" }],
+      },
+      mainConsumptionRows: [{ _time: "2026-05-24T22:00:00Z", _value: 12330, alias: "energy" }],
+    });
+    const body = (
+      await app.inject({
+        method: "GET",
+        url: "/api/v1/energy/by-usage?period=week&date=2026-05-30",
+      })
+    ).json();
+
+    const gite = body.submeters.find((s: { id: string }) => s.id === "gite");
+    expect(gite.points[0].wh).toBe(2260);
+    expect(gite.netOfChildren).toBeUndefined();
+    expect(body.separateSupply[0].id).toBe("ce");
+  });
+
+  it("keeps the group out of the no-main-meter fallback total", async () => {
+    const data = withEv(true);
+    data.equipments = data.equipments.filter((e) => e.type !== "main_energy_meter");
+    app = await buildApp(data);
+    const body = (
+      await app.inject({
+        method: "GET",
+        url: "/api/v1/energy/by-usage?period=week&date=2026-05-30",
+      })
+    ).json();
+
+    // A total that summed both supplies would describe no meter at all.
+    expect(body.totals.total).toBe(2260);
+    expect(body.separateSupply[0].points[0].wh).toBe(3000);
+  });
+
+  it("hands every meter to the group when all of them are separate", async () => {
+    const data = withEv(true);
+    data.equipments = data.equipments.map((e) =>
+      e.type === "energy_meter" ? { ...e, separateSupply: true } : e,
+    );
+    app = await buildApp(data);
+    const body = (
+      await app.inject({
+        method: "GET",
+        url: "/api/v1/energy/by-usage?period=week&date=2026-05-30",
+      })
+    ).json();
+
+    expect(body.submeters).toEqual([]);
+    expect(body.other.points[0].wh).toBe(12330);
+    expect(body.separateSupply).toHaveLength(2);
   });
 });
 

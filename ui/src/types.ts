@@ -366,6 +366,10 @@ export interface Equipment {
    *  consumption. The by-usage breakdown renders that parent net of its direct
    *  children. `null`/absent = counted nowhere else. */
   meteringParentId?: string | null;
+  /** Spec 177 — this meter is fed by a separate supply: its consumption never
+   *  flows through the main meter. Rendered apart from every reconciliation
+   *  (by-usage partition, live donut, `other`, cost). Default false. */
+  separateSupply?: boolean;
   /** Spec 154 — invert shutter-family command direction (shutter_move
    *  OPEN<->CLOSE, set_shutter_position -> 100-value). Command-only; ignored for
    *  non-shutter-family types. */
@@ -1528,6 +1532,9 @@ export interface EnergyByUsageResponse {
   to: string;
   resolution: "5min" | "1h" | "1d" | "1mo"; // "1mo" added in spec 119 for the year period
   submeters: SubmeterSeries[];
+  /** Spec 177 — meters on a separate supply: raw, uncosted, never in the
+   *  partition. Absent when no equipment declares the flag. */
+  separateSupply?: SubmeterSeries[];
   other: { points: EnergyByUsagePoint[] };
   totals: {
     byEquipment: Record<string, number>;

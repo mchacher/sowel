@@ -11,7 +11,7 @@ import { UnitToggle } from "./UnitToggle";
 import { formatEnergyOrCost, formatKWh } from "./format";
 import { dateLocale } from "../../lib/locale";
 import { getEnergyByUsage, getEquipments } from "../../api";
-import type { EnergyByUsageResponse } from "../../types";
+import type { EnergyByUsageResponse, SubmeterSeries } from "../../types";
 import {
   equipmentLabelMap,
   flattenZonesWithPath,
@@ -94,17 +94,17 @@ export function EnergyPage() {
   // falls back to the backend name for deleted equipments.
   const labelledByUsage = useMemo(() => {
     if (!byUsage) return null;
-    const ids = new Set(byUsage.submeters.map((s) => s.id));
+    const separate = byUsage.separateSupply ?? [];
+    const ids = new Set([...byUsage.submeters, ...separate].map((s) => s.id));
     const labels = equipmentLabelMap(
       submeterLookup.filter((e) => ids.has(e.id)),
       zoneChainMap(flattenZonesWithPath(zoneTree)),
     );
+    const relabel = (s: SubmeterSeries) => ({ ...s, name: labels.get(s.id) ?? s.name });
     return {
       ...byUsage,
-      submeters: byUsage.submeters.map((s) => ({
-        ...s,
-        name: labels.get(s.id) ?? s.name,
-      })),
+      submeters: byUsage.submeters.map(relabel),
+      separateSupply: separate.map(relabel),
     };
   }, [byUsage, submeterLookup, zoneTree]);
 
@@ -166,13 +166,38 @@ export function EnergyPage() {
                   {t("common.loading")}
                 </div>
               ) : labelledByUsage ? (
-                <EnergyByUsageChart
-                  data={labelledByUsage}
-                  period={period}
-                  date={date}
-                  height={350}
-                  unit={effectiveUnit}
-                />
+                <>
+                  <EnergyByUsageChart
+                    data={labelledByUsage}
+                    period={period}
+                    date={date}
+                    height={350}
+                    unit={effectiveUnit}
+                  />
+                  {/* Spec 177 — meters on their own supply: kWh beside the
+                      partition, never inside it, and never in € (their tariff
+                      is not the main meter's). */}
+                  {labelledByUsage.separateSupply.length > 0 && (
+                    <div className="flex flex-col items-center mt-3 gap-1">
+                      <div className="text-[11px] font-semibold uppercase tracking-wide text-text-tertiary">
+                        {t("energy.byUsage.separateSupply")}
+                      </div>
+                      <div className="flex items-center gap-4 text-[13px] text-text-secondary flex-wrap justify-center">
+                        {labelledByUsage.separateSupply.map((s) => (
+                          <span key={s.id} className="flex items-center gap-1.5">
+                            <span
+                              className="inline-block w-2.5 h-2.5 rounded-sm"
+                              style={{ backgroundColor: s.color }}
+                            />
+                            {s.name}
+                            {t("common.colon")}
+                            {`${formatKWh(s.points.reduce((acc, p) => acc + p.wh, 0), period)} kWh`}
+                          </span>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                </>
               ) : (
                 <div className="flex items-center justify-center h-[350px] text-text-tertiary text-[13px]">
                   —
