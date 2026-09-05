@@ -1,4 +1,4 @@
-import { createElement, type ComponentType } from "react";
+import { createElement, type ComponentType, type ReactElement } from "react";
 import {
   Lightbulb,
   LampDesk,
@@ -95,11 +95,29 @@ export function shutterLevel(position: number): number {
 // Custom SVG icon registry — rich icons with state
 // ============================================================
 
+/**
+ * The props a drawing is rendered from: whatever state the equipment's own
+ * icon is given (`{ on }`, `{ open }`, `{ position }`…). Deliberately open:
+ * each equipment type owns its vocabulary, the registry only adapts it.
+ */
+export type IconStateProps = Record<string, unknown>;
+
 export interface CustomIconEntry {
   label: string;
-  component: ComponentType<Record<string, unknown>>;
-  /** Default props for preview (static state) */
-  previewProps: Record<string, unknown>;
+  component: ComponentType<IconStateProps>;
+  /**
+   * Frozen props for the ICON PICKER's thumbnail, and nothing else. A live
+   * tile renders the drawing from the equipment's real state — rendering
+   * previewProps there is what made a hand-picked plug glow whatever the
+   * relay was doing.
+   */
+  previewProps: IconStateProps;
+  /**
+   * Adapt the live state to this drawing's own vocabulary. Only needed when
+   * the props are not the boolean ones filled in by `customIconProps` — the
+   * 3D printer's four-valued `state` is the one case.
+   */
+  fromState?: (state: IconStateProps) => IconStateProps;
   /** Categories this icon applies to (for filtering in picker) */
   types: string[];
 }
@@ -217,6 +235,10 @@ export const CUSTOM_ICON_REGISTRY: Record<string, CustomIconEntry> = {
     label: "Imprimante 3D",
     component: Printer3DIcon as ComponentType<Record<string, unknown>>,
     previewProps: { state: "off" },
+    // The one drawing whose prop is not a boolean. A plug only ever knows
+    // whether the machine is powered: `printing` and `error` would need data
+    // no relay exposes, so they stay out of reach from a dashboard tile.
+    fromState: (state) => ({ state: state.on === true ? "on" : "off" }),
     types: ["switch"],
   },
   motion_sensor: {
@@ -307,13 +329,28 @@ export const ICON_MAP: Record<string, LucideIcon> = {
 };
 
 export const ICON_CATEGORIES: { label: string; icons: string[] }[] = [
-  { label: "Lighting", icons: ["Lightbulb", "LampDesk", "LampFloor", "Lamp", "Sun", "Sparkles", "SunDim"] },
+  {
+    label: "Lighting",
+    icons: ["Lightbulb", "LampDesk", "LampFloor", "Lamp", "Sun", "Sparkles", "SunDim"],
+  },
   { label: "Shutters / Doors", icons: ["DoorOpen", "DoorClosed", "ArrowUpDown", "Lock", "Unlock"] },
-  { label: "Climate", icons: ["Thermometer", "Flame", "Snowflake", "Fan", "Wind", "Droplets", "CloudRain"] },
+  {
+    label: "Climate",
+    icons: ["Thermometer", "Flame", "Snowflake", "Fan", "Wind", "Droplets", "CloudRain"],
+  },
   { label: "Security", icons: ["Shield", "ShieldCheck", "Camera", "Bell", "Eye", "AlertTriangle"] },
-  { label: "Sensors", icons: ["Gauge", "Activity", "Zap", "Power", "Battery", "BatteryCharging", "Signal", "Wifi"] },
-  { label: "Rooms", icons: ["Home", "Sofa", "Bed", "CookingPot", "Bath", "Car", "Trees", "Flower2"] },
-  { label: "General", icons: ["Star", "Heart", "CircleDot", "ToggleLeft", "Settings", "Radio", "Monitor"] },
+  {
+    label: "Sensors",
+    icons: ["Gauge", "Activity", "Zap", "Power", "Battery", "BatteryCharging", "Signal", "Wifi"],
+  },
+  {
+    label: "Rooms",
+    icons: ["Home", "Sofa", "Bed", "CookingPot", "Bath", "Car", "Trees", "Flower2"],
+  },
+  {
+    label: "General",
+    icons: ["Star", "Heart", "CircleDot", "ToggleLeft", "Settings", "Radio", "Monitor"],
+  },
 ];
 
 const EQUIPMENT_DEFAULT_ICONS: Partial<Record<EquipmentType, string>> = {
@@ -376,4 +413,41 @@ export function renderWidgetIcon(
 ) {
   const Icon = getWidgetIcon(iconName, equipmentTypeOrFamily);
   return createElement(Icon, props);
+}
+
+/**
+ * Boolean props the drawings use for "this appliance is doing something".
+ * A custom icon can be picked for any equipment (the picker offers every
+ * drawing under "other"), so whichever one its type computed fills in the
+ * ones this particular drawing reads. Numeric state (`level`, `position`)
+ * is NOT cross-filled: those value spaces differ per family.
+ */
+const ACTIVITY_PROPS = ["on", "open", "active", "deployed", "warm", "comfort"] as const;
+
+/** Props to render a custom drawing with, from the state its widget resolved. */
+export function customIconProps(entry: CustomIconEntry, state: IconStateProps): IconStateProps {
+  const filled: IconStateProps = { ...state };
+  const source = ACTIVITY_PROPS.find((key) => state[key] !== undefined);
+  if (source !== undefined) {
+    const active = Boolean(state[source]);
+    for (const key of ACTIVITY_PROPS) {
+      if (filled[key] === undefined) filled[key] = active;
+    }
+  }
+  return entry.fromState ? entry.fromState(filled) : filled;
+}
+
+/**
+ * Render a dashboard widget's icon: the hand-picked drawing when the widget
+ * has one (#318), else the type's own element unchanged. The custom drawing
+ * inherits the very props the type icon was built with, so both follow the
+ * equipment's state — there is no second rule to keep in sync.
+ */
+export function renderWidgetStateIcon(
+  iconKey: string | undefined,
+  typeIcon: ReactElement,
+): ReactElement {
+  const entry = iconKey ? CUSTOM_ICON_REGISTRY[iconKey] : undefined;
+  if (!entry) return typeIcon;
+  return createElement(entry.component, customIconProps(entry, typeIcon.props as IconStateProps));
 }

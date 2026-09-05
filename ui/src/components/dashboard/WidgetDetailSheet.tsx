@@ -51,7 +51,7 @@ import {
   GarageDoorIcon,
   PoolCoverIcon,
 } from "./WidgetIcons";
-import { CUSTOM_ICON_REGISTRY, shutterLevel } from "./widget-icons";
+import { CUSTOM_ICON_REGISTRY, customIconProps, shutterLevel } from "./widget-icons";
 import { BottomSheet } from "./BottomSheet";
 import { EQUIPMENT_ZONE_SEPARATOR } from "../../lib/zone-path";
 import { ForecastDetailContent } from "./ForecastDetailContent";
@@ -70,19 +70,50 @@ interface EquipmentDetailProps {
 }
 
 export function EquipmentDetailSheet({ widget, equipment, equipmentZone, onExecuteOrder, onClose }: EquipmentDetailProps) {
-  const { isLight, isShutter, isAwning, isThermostat, isHeater, isSensor, isGate, isPoolHeatPump } = useEquipmentState(equipment);
+  const {
+    isLight,
+    isShutter,
+    isAwning,
+    isThermostat,
+    isHeater,
+    isSensor,
+    isGate,
+    isPoolHeatPump,
+    isShutterFamily,
+    shutterIsOpen,
+    isOn,
+    gateIsOpen,
+    shutterPosition,
+  } = useEquipmentState(equipment);
   // A full-width sheet header has room for the joined form, unlike the cards.
   const label = widget.label
     || (equipmentZone ? `${equipment.name}${EQUIPMENT_ZONE_SEPARATOR}${equipmentZone}` : equipment.name);
   const execOrder = (alias: string, value: unknown) => onExecuteOrder(equipment.id, alias, value);
 
-  // Get icon
+  // Sheet header icon — the hand-picked drawing only, rendered from the
+  // equipment's live state like the tile it was opened from. Reading
+  // `previewProps` here froze the sheet on the picker's thumbnail.
   const customEntry = widget.icon ? CUSTOM_ICON_REGISTRY[widget.icon] : undefined;
+  const customIcon = customEntry ? (
+    <div className="scale-[0.35]">
+      {createElement(
+        customEntry.component,
+        customIconProps(customEntry, {
+          // "Is this thing doing something" — each family reads it from the
+          // state the hook already resolved. A heater is fil pilote: its relay
+          // OPEN is comfort, which is the state its drawing calls warm.
+          on: isHeater ? !isOn : isGate ? gateIsOpen : isShutterFamily ? shutterIsOpen : isOn,
+          position: shutterPosition ?? undefined,
+          level: shutterPosition !== null ? shutterLevel(shutterPosition) : undefined,
+        }),
+      )}
+    </div>
+  ) : undefined;
 
   if (isLight && (equipment.type === "light_dimmable" || equipment.type === "light_color")) {
     return (
       <BottomSheet open onClose={onClose} title={label}
-        icon={customEntry ? <div className="scale-[0.35]">{createElement(customEntry.component, customEntry.previewProps)}</div> : undefined}
+        icon={customIcon}
       >
         <LightDetailContent equipment={equipment} onExecuteOrder={execOrder} />
       </BottomSheet>
@@ -95,7 +126,7 @@ export function EquipmentDetailSheet({ widget, equipment, equipmentZone, onExecu
   if (equipment.type === "weather_forecast") {
     return (
       <BottomSheet open onClose={onClose} title={label}
-        icon={customEntry ? <div className="scale-[0.35]">{createElement(customEntry.component, customEntry.previewProps)}</div> : undefined}
+        icon={customIcon}
       >
         <ForecastDetailContent equipment={equipment} />
       </BottomSheet>
@@ -105,7 +136,7 @@ export function EquipmentDetailSheet({ widget, equipment, equipmentZone, onExecu
   if (isShutter || isAwning || equipment.type === "pool_cover") {
     return (
       <BottomSheet open onClose={onClose} title={label}
-        icon={customEntry ? <div className="scale-[0.35]">{createElement(customEntry.component, customEntry.previewProps)}</div> : undefined}
+        icon={customIcon}
       >
         <ShutterDetailContent equipment={equipment} onExecuteOrder={execOrder} />
       </BottomSheet>
@@ -115,7 +146,7 @@ export function EquipmentDetailSheet({ widget, equipment, equipmentZone, onExecu
   if (isThermostat || isPoolHeatPump) {
     return (
       <BottomSheet open onClose={onClose} title={label}
-        icon={customEntry ? <div className="scale-[0.35]">{createElement(customEntry.component, customEntry.previewProps)}</div> : undefined}
+        icon={customIcon}
       >
         <ThermostatDetailContent equipment={equipment} onExecuteOrder={execOrder} />
       </BottomSheet>
@@ -125,7 +156,7 @@ export function EquipmentDetailSheet({ widget, equipment, equipmentZone, onExecu
   if (isHeater) {
     return (
       <BottomSheet open onClose={onClose} title={label}
-        icon={customEntry ? <div className="scale-[0.35]">{createElement(customEntry.component, customEntry.previewProps)}</div> : undefined}
+        icon={customIcon}
       >
         <HeaterDetailContent equipment={equipment} onExecuteOrder={execOrder} />
       </BottomSheet>
@@ -135,7 +166,7 @@ export function EquipmentDetailSheet({ widget, equipment, equipmentZone, onExecu
   if (isGate) {
     return (
       <BottomSheet open onClose={onClose} title={label}
-        icon={customEntry ? <div className="scale-[0.35]">{createElement(customEntry.component, customEntry.previewProps)}</div> : undefined}
+        icon={customIcon}
       >
         <GateDetailContent equipment={equipment} onExecuteOrder={execOrder} iconKey={widget.icon} />
       </BottomSheet>
@@ -145,7 +176,7 @@ export function EquipmentDetailSheet({ widget, equipment, equipmentZone, onExecu
   if (equipment.type === "weather") {
     return (
       <BottomSheet open onClose={onClose} title={label}
-        icon={customEntry ? <div className="scale-[0.35]">{createElement(customEntry.component, customEntry.previewProps)}</div> : undefined}
+        icon={customIcon}
       >
         <WeatherDetailContent equipment={equipment} />
       </BottomSheet>
@@ -155,7 +186,7 @@ export function EquipmentDetailSheet({ widget, equipment, equipmentZone, onExecu
   if (equipment.type === "vmc") {
     return (
       <BottomSheet open onClose={onClose} title={label}
-        icon={customEntry ? <div className="scale-[0.35]">{createElement(customEntry.component, customEntry.previewProps)}</div> : undefined}
+        icon={customIcon}
       >
         <div className="p-4">
           <VmcControl equipment={equipment} onExecuteOrder={execOrder} />
@@ -167,7 +198,7 @@ export function EquipmentDetailSheet({ widget, equipment, equipmentZone, onExecu
   if (isSensor) {
     return (
       <BottomSheet open onClose={onClose} title={label}
-        icon={customEntry ? <div className="scale-[0.35]">{createElement(customEntry.component, customEntry.previewProps)}</div> : undefined}
+        icon={customIcon}
       >
         <SensorDetailContent equipment={equipment} visibleBindings={widget.config?.visibleBindings} />
       </BottomSheet>

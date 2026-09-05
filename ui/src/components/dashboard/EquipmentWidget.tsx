@@ -41,7 +41,6 @@ import { resolvePowerReading } from "../../lib/power-reading";
 import { pickLivePowerBinding } from "../../lib/energy-meter-display";
 import { thermostatPowerStateBinding } from "../../lib/thermostat-state";
 import { formatRelative } from "../../lib/format-relative";
-import { createElement, type ReactNode } from "react";
 import {
   LightBulbIcon,
   ShutterWidgetIcon,
@@ -60,17 +59,9 @@ import {
 import { WeatherForecastWidget } from "./WeatherForecastWidget";
 import { WidgetCard } from "./WidgetCard";
 import { TimedEquipmentWidget } from "./TimedEquipmentWidget";
-import { CUSTOM_ICON_REGISTRY, shutterLevel } from "./widget-icons";
+import { renderWidgetStateIcon, shutterLevel } from "./widget-icons";
 import { resolveWidgetPresentation } from "./presentation/resolveWidgetPresentation";
 import { PresentationWidget } from "./presentation/PresentationWidget";
-
-/** Render the widget's custom icon (widget.icon -> CUSTOM_ICON_REGISTRY) when set,
- *  otherwise the equipment-type default. Mirrors the mobile card so a custom icon
- *  shows the same on phone and desktop (issue #318). */
-function resolveWidgetIcon(iconKey: string | undefined, fallback: ReactNode): ReactNode {
-  const custom = iconKey ? CUSTOM_ICON_REGISTRY[iconKey] : undefined;
-  return custom ? createElement(custom.component, custom.previewProps) : fallback;
-}
 
 interface EquipmentWidgetProps {
   widget: DashboardWidget;
@@ -358,7 +349,7 @@ function LightEquipmentWidget({
       {/* Zone 2: Picto + État horizontal */}
       <div className="grid grid-cols-[1fr_auto_1fr] items-center h-[104px] my-auto">
         <div />
-        {resolveWidgetIcon(iconKey, <LightBulbIcon on={isOn} />)}
+        {renderWidgetStateIcon(iconKey, <LightBulbIcon on={isOn} />)}
         <div className="flex items-center gap-2 pl-2">
           {isDimmable && brightness !== null ? (
             <>
@@ -491,7 +482,7 @@ function WaterHeaterEquipmentWidget({
     >
       <div className="grid grid-cols-[1fr_auto_1fr] items-center h-[104px] my-auto">
         <div />
-        {resolveWidgetIcon(iconKey, <WaterHeaterIcon on={isOn} />)}
+        {renderWidgetStateIcon(iconKey, <WaterHeaterIcon on={isOn} />)}
         <div className="flex flex-col items-start gap-1 pl-2">
           <span
             className={`text-[12px] font-medium px-2.5 py-0.5 rounded-full ${
@@ -576,7 +567,7 @@ function VmcEquipmentWidget({
     <WidgetCard label={label} sublabel={sublabel}>
       <div className="grid grid-cols-[1fr_auto_1fr] items-center h-[104px] my-auto">
         <div />
-        {resolveWidgetIcon(
+        {renderWidgetStateIcon(
           iconKey,
           <Fan
             size={44}
@@ -675,7 +666,7 @@ function ShutterEquipmentWidget({
       {/* Zone 2: Picto + État horizontal */}
       <div className="grid grid-cols-[1fr_auto_1fr] items-center h-[104px] my-auto">
         <div />
-        {resolveWidgetIcon(
+        {renderWidgetStateIcon(
           iconKey,
           isAwning ? (
             <AwningWidgetIcon deployed={position !== null && position > 0} />
@@ -818,7 +809,7 @@ function ThermostatEquipmentWidget({
       {/* Zone 2: Picto + temp + power */}
       <div className="grid grid-cols-[1fr_auto_1fr] items-center h-[104px] my-auto">
         <div />
-        {resolveWidgetIcon(iconKey, <ThermometerIcon warm={isOn} level={thermometerLevel} />)}
+        {renderWidgetStateIcon(iconKey, <ThermometerIcon warm={isOn} level={thermometerLevel} />)}
         <div className="flex flex-col items-start gap-2 pl-2">
           {insideTemp !== null ? (
             <div className="flex items-baseline gap-0.5">
@@ -1045,7 +1036,7 @@ function HeaterEquipmentWidget({
       {/* Zone 2: Picto + État horizontal */}
       <div className="grid grid-cols-[1fr_auto_1fr] items-center h-[104px] my-auto">
         <div />
-        {resolveWidgetIcon(iconKey, <HeaterWidgetIcon comfort={isComfort} />)}
+        {renderWidgetStateIcon(iconKey, <HeaterWidgetIcon comfort={isComfort} />)}
         <div className="pl-2">
           <span
             className={`text-[12px] font-medium px-2.5 py-0.5 rounded-full ${
@@ -1103,12 +1094,7 @@ function SensorEquipmentWidget({
 }) {
   const { sensorBindings, batteryBindings, batteryAlert } = useEquipmentState(equipment);
 
-  const customEntry = iconKey ? CUSTOM_ICON_REGISTRY[iconKey] : undefined;
-  const sensorIcon = customEntry ? (
-    createElement(customEntry.component, customEntry.previewProps)
-  ) : (
-    <MultiSensorIcon />
-  );
+  const sensorIcon = renderWidgetStateIcon(iconKey, <MultiSensorIcon />);
 
   // Filter and order bindings according to visibleBindings config
   const filteredBindings =
@@ -1592,7 +1578,7 @@ function WaterValveEquipmentWidget({
     >
       <div className="grid grid-cols-[1fr_auto_1fr] items-center h-[104px] my-auto">
         <div />
-        {resolveWidgetIcon(iconKey, <WaterValveWidgetIcon open={isOpen} />)}
+        {renderWidgetStateIcon(iconKey, <WaterValveWidgetIcon open={isOpen} />)}
         <div className="flex items-center gap-2 pl-2">
           <span
             className={`text-[12px] font-medium px-2.5 py-0.5 rounded-full ${
@@ -1708,7 +1694,7 @@ function PoolCoverEquipmentWidget({
          * viewBox and the dashboard slot reads it slightly low. Mobile
          * containers center it correctly without this offset. */}
         <div className="-mt-3">
-          {resolveWidgetIcon(iconKey, <PoolCoverIcon position={position} />)}
+          {renderWidgetStateIcon(iconKey, <PoolCoverIcon position={position} />)}
         </div>
         <div className="pl-2">
           {position === null ? (
