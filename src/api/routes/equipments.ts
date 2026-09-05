@@ -8,7 +8,7 @@ import {
   TimedActionError,
 } from "../../equipments/timed-action-manager.js";
 import { isSubmeterEquipment, METERING_RELAY_TYPES } from "../../equipments/metering.js";
-import { isTimedCommandEligible } from "../../shared/timed-command.js";
+import { isTimedCommandEligible, validateDurationSteps } from "../../shared/timed-command.js";
 import type {
   EnergyLoadProfile,
   EquipmentType,
@@ -80,6 +80,10 @@ const updateEquipmentBodySchema = {
       properties: {
         alias: { type: "string", minLength: 1 },
         durationMs: { type: "number" },
+        // Spec 178 — the ladder. Shape only here; the rules that make a ladder
+        // usable (increasing, in bounds, 2..6 rungs) are named one by one in
+        // the handler, so a rejection says which one was broken.
+        durationStepsMs: { type: "array", items: { type: "number" } },
       },
     },
     // Spec 160 — declared array geometry. The bounds are the same ones
@@ -398,7 +402,12 @@ export function registerEquipmentRoutes(app: FastifyInstance, deps: EquipmentsDe
           return reply.status(404).send({ error: "Equipment not found" });
         }
         const { alias, durationMs } = body.timedCommand;
-        if (durationMs < MIN_DURATION_MS || durationMs > MAX_DURATION_MS) {
+        // Spec 178 — with a ladder, `durationMs` is about to be replaced by the
+        // first rung, so refusing the value the client sent would reject a
+        // perfectly honest body (the ladder IS the truth) over a field nobody
+        // reads. The rungs themselves are checked below.
+        const steps = body.timedCommand.durationStepsMs;
+        if (steps === undefined && (durationMs < MIN_DURATION_MS || durationMs > MAX_DURATION_MS)) {
           return reply.status(400).send({
             error: "TimedCommandInvalid",
             message: `Duration must be between ${MIN_DURATION_MS / 1000}s and ${MAX_DURATION_MS / 3_600_000}h`,
@@ -409,6 +418,21 @@ export function registerEquipmentRoutes(app: FastifyInstance, deps: EquipmentsDe
             error: "TimedCommandNotEligible",
             message: `${details.name} needs the order "${alias}" and a state reading tied to it`,
           });
+        }
+        // Spec 178 FR-1 — the ladder a further press walks up. Validated where
+        // it is written, and `durationMs` is then FORCED to its first rung:
+        // two places claiming what the first press does is how they come to
+        // disagree, and every surface reading `durationMs` today keeps working.
+        if (steps !== undefined) {
+          const errors = validateDurationSteps(steps, MIN_DURATION_MS, MAX_DURATION_MS);
+          if (errors.length > 0) {
+            return reply.status(400).send({
+              error: "TimedCommandStepsInvalid",
+              message: errors[0],
+              details: errors,
+            });
+          }
+          body.timedCommand = { ...body.timedCommand, durationMs: steps[0] };
         }
       }
 
@@ -495,10 +519,14 @@ export function registerEquipmentRoutes(app: FastifyInstance, deps: EquipmentsDe
       // FR-13 — nothing named means "arm what this equipment is configured for".
       if (request.body?.alias === undefined) {
         try {
-          return await timedActionManager.armConfigured(request.params.id, {
+          const armed = await timedActionManager.armConfigured(request.params.id, {
             kind: "manual",
             userId,
           });
+          // Spec 178 FR-5 — a press past the top rung gave the deadline up.
+          // Said explicitly rather than as 204: a surface has to tell "the
+          // window is gone because you asked" from a call that failed.
+          return armed ?? { disarmed: true };
         } catch (err) {
           if (err instanceof TimedActionError) {
             return reply.code(err.statusCode).send({ error: err.message });
@@ -515,7 +543,7 @@ export function registerEquipmentRoutes(app: FastifyInstance, deps: EquipmentsDe
           { alias, value, revertValue, durationMs },
           { kind: "manual", userId },
         );
-        return armed;
+        return armed ?? { disarmed: true };
       } catch (err) {
         if (err instanceof TimedActionError) {
           return reply.code(err.statusCode).send({ error: err.message });

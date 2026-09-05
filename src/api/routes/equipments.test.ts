@@ -785,9 +785,17 @@ describe("timed command (spec 174 phase 2)", () => {
     timedCommand: null as unknown,
   };
 
+  // Spec 178 — what the stubbed engine answers the next press with.
+  let givesUp = false;
+  let stepIndex = 0;
+  let nextDurationMs: number | null = 900_000;
+
   beforeEach(async () => {
     saved = null;
     armedWith = null;
+    givesUp = false;
+    stepIndex = 0;
+    nextDurationMs = 900_000;
     app = Fastify({ logger: false, ajv: validationAjvOptions });
     installValidationErrorHandler(app);
     registerEquipmentRoutes(app, {
@@ -807,7 +815,17 @@ describe("timed command (spec 174 phase 2)", () => {
             const { TimedActionError } = await import("../../equipments/timed-action-manager.js");
             throw new TimedActionError("No timed command configured on this equipment", 409);
           }
-          return { alias: "command", value: null, revertValue: null, expiresAt: "x", armedAt: "y" };
+          // Spec 178 — null is the press that walked off the top of the ladder.
+          if (givesUp) return null;
+          return {
+            alias: "command",
+            value: null,
+            revertValue: null,
+            expiresAt: "x",
+            armedAt: "y",
+            stepIndex,
+            nextDurationMs,
+          };
         },
         arm: async (id: string) => {
           armedWith = { id, explicit: true };
@@ -904,5 +922,78 @@ describe("timed command (spec 174 phase 2)", () => {
     // Naming an alias brings the other two with it.
     const bad = await arm({ alias: "command" });
     expect(bad.statusCode).toBe(400);
+  });
+
+  // ── Spec 178 — the ladder, over the wire ─────────────────────
+
+  it("stores a ladder and forces the duration onto its first step", async () => {
+    // FR-1. Two places claiming what the first press does is how they come to
+    // disagree, so the API keeps exactly one of them.
+    const res = await put({
+      timedCommand: {
+        alias: "command",
+        value: null,
+        revertValue: null,
+        durationMs: 0,
+        durationStepsMs: [900_000, 1_800_000, 3_600_000],
+      },
+    });
+
+    expect(res.statusCode).toBe(200);
+    expect(saved?.timedCommand).toEqual({
+      alias: "command",
+      value: null,
+      revertValue: null,
+      durationMs: 900_000,
+      durationStepsMs: [900_000, 1_800_000, 3_600_000],
+    });
+  });
+
+  it("refuses a broken ladder, naming the rule, and persists nothing", async () => {
+    const cases: Array<[string, number[]]> = [
+      ["a ladder of one", [900_000]],
+      ["seven rungs", [1, 2, 3, 4, 5, 6, 7].map((n) => n * 60_000)],
+      ["a rung that does not grow", [1_800_000, 900_000]],
+      ["a rung below the floor", [500, 900_000]],
+      ["a rung past the ceiling", [900_000, 48 * 3_600_000]],
+    ];
+    for (const [what, durationStepsMs] of cases) {
+      const res = await put({
+        timedCommand: {
+          alias: "command",
+          value: null,
+          revertValue: null,
+          durationMs: 900_000,
+          durationStepsMs,
+        },
+      });
+      expect(res.statusCode, what).toBe(400);
+      expect(res.json().error, what).toBe("TimedCommandStepsInvalid");
+      expect(typeof res.json().message, what).toBe("string");
+      expect(saved, what).toBeNull();
+    }
+  });
+
+  it("answers the climbing press with the rung and the next length", async () => {
+    gate.timedCommand = { alias: "command", value: null, revertValue: null, durationMs: 900_000 };
+    stepIndex = 1;
+    nextDurationMs = 3_600_000;
+
+    const res = await arm({});
+
+    expect(res.statusCode).toBe(200);
+    expect(res.json()).toMatchObject({ stepIndex: 1, nextDurationMs: 3_600_000 });
+  });
+
+  it("answers the give-up press explicitly, not with a bare 204", async () => {
+    // FR-5. A surface has to tell "the window is gone because you asked" from a
+    // call that failed, and from a window that simply expired.
+    gate.timedCommand = { alias: "command", value: null, revertValue: null, durationMs: 900_000 };
+    givesUp = true;
+
+    const res = await arm({});
+
+    expect(res.statusCode).toBe(200);
+    expect(res.json()).toEqual({ disarmed: true });
   });
 });

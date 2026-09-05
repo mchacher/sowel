@@ -313,6 +313,18 @@ Une fois activée, la commande apparaît à deux endroits :
 
 Appuyer de nouveau sur la tuile pendant le créneau prolonge le délai au lieu d'agir deux fois. Annuler envoie tout de suite la commande de fermeture.
 
+#### Paliers : chaque appui demande plus longtemps
+
+Une durée unique répond « pas encore » mais jamais « combien de temps encore ». Cochez **Paliers** sous la commande temporisée et choisissez les durées que les appuis parcourent — un quart d'heure, une demi-heure, une heure, par exemple. Ensuite :
+
+- le **premier appui** agit et lance la durée la plus courte ;
+- **chaque appui suivant** passe à la durée au-dessus, comptée à partir de cet instant, et n'envoie rien ;
+- un **appui au-delà de la dernière** arrête le décompte et laisse l'équipement exactement tel qu'il est — le portail reste ouvert, et plus rien ne le refermera.
+
+Ce dernier appui n'est volontairement pas la même chose qu'annuler : annuler envoie la commande de fermeture, arrêter le décompte non. Les deux sont sur la tuile, côte à côte.
+
+De deux à six paliers, du plus court au plus long. Le premier est la durée, donc le sélecteur de durée le suit au lieu d'annoncer une valeur à lui. Modifier les paliers pendant qu'un créneau court ne le dérange pas : le créneau garde sa propre échéance et l'appui suivant repart du palier le plus proche.
+
 !!! warning "Un contact qui ne certifie qu'un seul sens"
 Le contact d'un portail prouve en général qu'il est fermé et ne fait que suggérer qu'il est ouvert. Si vous fermez le portail à la main sans que le contact le voie, le créneau continue de courir et rouvrira le portail à l'échéance. Terminez le créneau depuis Sowel plutôt qu'à la main quand cela compte.
 

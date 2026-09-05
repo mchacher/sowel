@@ -189,12 +189,18 @@ export async function removeOrderBinding(equipmentId: string, bindingId: string)
  * The body is empty on purpose — the three values live on the equipment, and a
  * tile restating them is how two surfaces come to arm two different things.
  * Pressing again while a window is open extends it and dispatches nothing.
+ *
+ * Spec 178 — with a ladder configured, a further press climbs to the next rung,
+ * and a press past the top answers `{ disarmed: true }`: the deadline is given
+ * up and nothing is dispatched, so the equipment stays where it is.
  */
-export async function armTimedCommand(equipmentId: string): Promise<TimedAction> {
-  return fetchJSON<TimedAction>(`${API_BASE}/equipments/${equipmentId}/timed-action`, {
-    method: "POST",
-    body: JSON.stringify({}),
-  });
+export async function armTimedCommand(
+  equipmentId: string,
+): Promise<TimedAction | { disarmed: true }> {
+  return fetchJSON<TimedAction | { disarmed: true }>(
+    `${API_BASE}/equipments/${equipmentId}/timed-action`,
+    { method: "POST", body: JSON.stringify({}) },
+  );
 }
 
 /**

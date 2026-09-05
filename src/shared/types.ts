@@ -405,6 +405,13 @@ export interface TimedCommand {
   revertValue: unknown;
   /** Window length in ms, within the manager's bounds. */
   durationMs: number;
+  /**
+   * Spec 178 — the ladder of window lengths a press walks up, shortest first.
+   * Absent means one length, extended in place for ever (spec 174 rule 3).
+   * When present, `durationMs` is kept equal to its first entry, so every
+   * surface that reads `durationMs` still shows what the first press does.
+   */
+  durationStepsMs?: number[];
 }
 
 /**
@@ -553,6 +560,14 @@ export interface TimedAction {
   expiresAt: string;
   armedAt: string;
   armedBy?: string;
+  /** Spec 178 — the rung this window is on. 0 without a ladder. */
+  stepIndex: number;
+  /**
+   * Spec 178 — how long the next press would make the window, or `null` when
+   * the next press gives the deadline up (top rung). Resolved by the engine so
+   * a surface renders an answer instead of recomputing the ladder.
+   */
+  nextDurationMs: number | null;
 }
 
 export interface EquipmentWithDetails extends Equipment {

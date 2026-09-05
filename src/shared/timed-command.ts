@@ -66,6 +66,87 @@ export function isTimedCommandEligible(equipment: EquipmentLike, alias?: string)
   );
 }
 
+// ============================================================
+// Spec 178 — the ladder of window lengths
+// ============================================================
+//
+// Kept beside the eligibility rule, and pure, because three callers need the
+// same answers: the manager when a press lands, the write validation, and the
+// UI when it names what the next press will do. A ladder resolved twice is a
+// ladder that will disagree with itself.
+
+/** Fewest rungs worth calling a ladder. One rung is `durationMs`, and a press
+ *  past it would give the deadline up instantly — a foot-gun on a gate. */
+export const MIN_DURATION_STEPS = 2;
+/** Most rungs. Past this, a press is a lottery rather than a choice. */
+export const MAX_DURATION_STEPS = 6;
+
+/**
+ * The FR-1 rules, as named errors rather than a boolean, so the API can say
+ * which one was broken instead of "invalid".
+ */
+export function validateDurationSteps(
+  steps: readonly number[],
+  minMs: number,
+  maxMs: number,
+): string[] {
+  const errors: string[] = [];
+  if (steps.length < MIN_DURATION_STEPS || steps.length > MAX_DURATION_STEPS) {
+    errors.push(
+      `A ladder has between ${MIN_DURATION_STEPS} and ${MAX_DURATION_STEPS} steps, got ${steps.length}`,
+    );
+  }
+  for (const [i, ms] of steps.entries()) {
+    if (!Number.isFinite(ms) || ms < minMs || ms > maxMs) {
+      errors.push(`Step ${i + 1} is outside the allowed window length`);
+    }
+  }
+  for (let i = 1; i < steps.length; i++) {
+    if (steps[i] <= steps[i - 1]) {
+      errors.push(`Step ${i + 1} must be longer than step ${i}`);
+      break;
+    }
+  }
+  return errors;
+}
+
+/**
+ * Which rung a standing window is on, given what was stored and how long the
+ * window actually is (FR-6).
+ *
+ * The stored index is trusted only while it still describes the same length:
+ * a configuration edited under a running window would otherwise make the next
+ * press jump to a rung nobody asked for. Failing that, the window is placed on
+ * the shortest rung that is not shorter than itself — the honest reading of
+ * "you are at least here". A window longer than every rung lands past the end,
+ * where the next press gives up.
+ *
+ * Returns an index that may equal `steps.length`, meaning past-the-top.
+ */
+export function resolveStep(
+  steps: readonly number[],
+  storedIndex: number,
+  currentDurationMs: number,
+): number {
+  if (steps.length === 0) return 0;
+  if (
+    Number.isInteger(storedIndex) &&
+    storedIndex >= 0 &&
+    storedIndex < steps.length &&
+    steps[storedIndex] === currentDurationMs
+  ) {
+    return storedIndex;
+  }
+  const found = steps.findIndex((ms) => ms >= currentDurationMs);
+  return found === -1 ? steps.length : found;
+}
+
+/** The length of the next press, or null when it would give the deadline up. */
+export function nextStep(steps: readonly number[], index: number): number | null {
+  const next = index + 1;
+  return next < steps.length ? steps[next] : null;
+}
+
 /**
  * True when SOME order on this equipment could be armed.
  *

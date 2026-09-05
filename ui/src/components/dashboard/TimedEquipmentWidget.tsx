@@ -33,6 +33,14 @@ export function TimedEquipmentWidget({
   const { t } = useTranslation();
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState(false);
+  // Spec 178 FR-4/FR-5 — the press that walked off the ladder leaves NO window
+  // behind, so without this the tile would snap back to its resting face and
+  // read "Run for 15 min" one press after the user deliberately stopped the
+  // countdown. On the gate this exists for, that resting face is a trap: the
+  // gate is standing open, and the impulse the tile offers would close it and
+  // arm a fresh window that re-opens it later. The tile says what just
+  // happened until the next press.
+  const [gaveUp, setGaveUp] = useState(false);
 
   const configured = equipment.timedCommand;
   const running = equipment.timedAction;
@@ -47,7 +55,11 @@ export function TimedEquipmentWidget({
     setBusy(true);
     setError(false);
     try {
-      await action();
+      const outcome = await action();
+      // The engine answers what the press did rather than leaving the tile to
+      // infer it from an absent window, which is indistinguishable from a
+      // window that just expired.
+      setGaveUp(typeof outcome === "object" && outcome !== null && "disarmed" in outcome);
       // The engine also broadcasts the window, but the person who just pressed
       // should not wait a batch to see it.
       await useEquipments.getState().fetchEquipments();
@@ -64,6 +76,16 @@ export function TimedEquipmentWidget({
   // somebody standing in front of an open gate means by pressing again.
   const arm = () => run(() => armTimedCommand(equipment.id));
   const cancel = () => run(() => cancelTimedCommand(equipment.id, true));
+
+  // Spec 178 — what the NEXT press does, in words, because with a ladder the
+  // presses stop being interchangeable. `nextDurationMs === null` is the top
+  // rung: the next press stops the countdown and leaves the gate open, which is
+  // not what the cancel button beside it does (that one closes).
+  const nextPress = running
+    ? running.nextDurationMs === null
+      ? t("dashboard.timed.giveUp")
+      : t("dashboard.timed.next", { count: Math.round(running.nextDurationMs / 60_000) })
+    : t("dashboard.timed.arm", { count: minutes });
 
   return (
     <WidgetCard
@@ -92,7 +114,9 @@ export function TimedEquipmentWidget({
               ? t("dashboard.timed.unavailable")
               : error
                 ? t("dashboard.timed.failed")
-                : t("dashboard.timed.idle", { count: minutes })}
+                : gaveUp
+                  ? t("dashboard.timed.gaveUp")
+                  : t("dashboard.timed.idle", { count: minutes })}
           </span>
         )}
       </div>
@@ -101,7 +125,7 @@ export function TimedEquipmentWidget({
         <button
           onClick={arm}
           disabled={busy || editMode || inert}
-          title={running ? t("dashboard.timed.extend") : t("dashboard.timed.arm", { count: minutes })}
+          title={nextPress}
           className={`w-10 h-10 flex items-center justify-center rounded-[6px] transition-all duration-150 cursor-pointer border border-border bg-surface text-text-secondary hover:border-primary/40 hover:text-primary hover:bg-primary/5 active:scale-[0.97] disabled:opacity-40 disabled:cursor-not-allowed ${
             running ? "!border-active/40 !text-active !bg-active/5" : ""
           }`}

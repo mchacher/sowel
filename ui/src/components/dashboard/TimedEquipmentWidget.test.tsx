@@ -26,6 +26,8 @@ const RUNNING: TimedAction = {
   revertValue: null,
   armedAt: new Date(Date.now() - 5 * 60_000).toISOString(),
   expiresAt: new Date(Date.now() + 10 * 60_000).toISOString(),
+  stepIndex: 0,
+  nextDurationMs: 15 * 60_000,
 };
 
 function gate(over: Partial<EquipmentWithDetails> = {}): EquipmentWithDetails {
@@ -71,7 +73,10 @@ describe("TimedEquipmentWidget", () => {
 
     expect(screen.getByText("10:00")).toBeTruthy();
 
-    await userEvent.click(screen.getByTitle(/Prolonger|more time/i));
+    // Spec 178 — the button says what the NEXT press does. Without a ladder
+    // that is still "extend by the configured length", named rather than
+    // implied.
+    await userEvent.click(screen.getByTitle(/Next press: 15 min|Appui suivant/i));
 
     // Same call: the engine turns it into an extension (FR-5) and dispatches
     // nothing, which is why the tile does not need a second endpoint.
@@ -122,5 +127,45 @@ describe("TimedEquipmentWidget", () => {
     await userEvent.click(screen.getByTitle(/Lancer|Run for/i));
 
     expect(api.armTimedCommand).not.toHaveBeenCalled();
+  });
+
+  // ── Spec 178 — the tile names what the next press does ─────
+
+  it("announces the next step rather than an interchangeable press", () => {
+    const onSecondRung = { ...RUNNING, stepIndex: 1, nextDurationMs: 60 * 60_000 };
+    render(
+      <TimedEquipmentWidget label="Portail" equipment={gate({ timedAction: onSecondRung })} />,
+    );
+
+    expect(screen.getByTitle(/Next press: 60 min|Appui suivant : 60 min/i)).toBeTruthy();
+  });
+
+  it("says the top rung stops the countdown, which is not what cancel does", () => {
+    // The two controls sit side by side and do opposite things: this one leaves
+    // the gate open, the X beside it closes it. Naming them apart is the point.
+    const onTopRung = { ...RUNNING, stepIndex: 2, nextDurationMs: null };
+    render(<TimedEquipmentWidget label="Portail" equipment={gate({ timedAction: onTopRung })} />);
+
+    expect(screen.getByTitle(/stop the countdown|arrêter le décompte/i)).toBeTruthy();
+  });
+
+  it("says the countdown was stopped instead of falling back to its resting face", async () => {
+    // The trap this pins: after the give-up press there is no window left, so
+    // the tile would otherwise read "Run for 15 min" over a gate standing open
+    // — and on an impulse gate that press CLOSES it, then arms a window that
+    // re-opens it later.
+    vi.mocked(api.armTimedCommand).mockResolvedValueOnce({ disarmed: true });
+    const onTopRung = { ...RUNNING, stepIndex: 2, nextDurationMs: null };
+    const { rerender } = render(
+      <TimedEquipmentWidget label="Portail" equipment={gate({ timedAction: onTopRung })} />,
+    );
+
+    await userEvent.click(screen.getByTitle(/stop the countdown|arrêter le décompte/i));
+
+    // The refetch drops the window from the store, which is what would put the
+    // tile back on its resting face.
+    rerender(<TimedEquipmentWidget label="Portail" equipment={gate()} />);
+
+    expect(await screen.findByText(/Countdown stopped|Décompte arrêté/i)).toBeTruthy();
   });
 });
