@@ -49,11 +49,11 @@
     "icon": "AirVent",
     "author": "mchacher",
     "repo": "mchacher/sowel-plugin-panasonic-cc",
-    "version": "2.3.1",
+    "version": "2.3.2",
     "tags": ["panasonic", "ac", "heating", "cooling", "comfort-cloud"],
     "sowelVersion": ">=1.2.12",
     "owner": "mchacher",
-    "sha256": "1f15348dc53d8a564824d8e556a46daa2e26338386575fbf5a5696bfd18ae490"
+    "sha256": "447646d981ad664819763e665412e8509fd393ec2297772f0322c94df86a1571"
   },
   {
     "id": "mcz_maestro",
