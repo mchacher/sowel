@@ -11,6 +11,17 @@ Cette page résume toutes les versions publiées, de la plus récente à la plus
 
 ---
 
+## 1.68.x : L'alias qui voulait dire deux choses
+
+### v1.68.0 — 2026-09-05 { #v1-68-0 }
+
+La v1.67.1 a appris au chien de garde des ordres que `power` veut dire deux choses sur un thermostat sous-compté : le booléen envoyé au device cloud et la puissance lue par la pince sur son alimentation. Cette version l'apprend au reste du produit, car le chien de garde n'était que la première victime. L'interface elle-même comparait ce wattage à `true` depuis des mois et concluait, à chaque rendu, qu'une pompe à chaleur en marche était éteinte.
+
+- Correctif (ui) : **le marche/arrêt d'un thermostat se lit sur son propre état, jamais sur la pince** (spec 176, #904). Sur un thermostat sous-compté, chaque surface dérivait la bascule de `power === true`, et `2974 === true` est faux : la carte affichait toujours OFF pendant que l'unité tournait à 2974 W, chaque appui renvoyait ON — cinq ordres ON en 90 secondes mesurés en production, d'un utilisateur qui essayait d'arrêter la machine — et l'éteindre réellement exigeait un double appui dans la fenêtre optimiste, la carte effaçant par ailleurs tout son état optimiste au moindre changement de donnée alors que la pince pousse un wattage toutes les quelques secondes. Le booléen du device se lie désormais sous `state`, le même alias marche/arrêt que tous les équipements à relais, aucun mot nouveau dans le modèle de données ; l'alias n'était simplement jamais proposé aux thermostats, la liste d'auto-liaison datant d'avant les catégories de la spec 077. La liaison est marquée `appliance_state` au lieu d'hériter de la catégorie `power` du device, et cette ligne est ce qui garde le moteur d'énergie honnête : sans elle, un thermostat sous-compté porte deux liaisons de catégorie power et l'arbitre, l'intégrateur de sous-comptage et le panneau énergie prennent chacun la première ligne venue. Toute lecture marche/arrêt passe désormais par un résolveur unique — l'alias `state` d'abord, un `power` booléen hérité ensuite, un wattage jamais — et la bascule optimiste s'efface par alias, quand son propre miroir re-rapporte ou après 90 secondes, au lieu de disparaître à la première mesure venue. Les thermostats existants ne changent pas ; un thermostat sous-compté gagne son état le jour où son propriétaire ajoute la liaison que le panneau des liaisons manquantes propose désormais. Deux bugs latents sont morts au passage : un thermostat fraîchement lié perdait silencieusement ses points d'alimentation, de consigne et de sonde extérieure, et son ordre d'alimentation atterrissait sous un alias qu'aucune surface thermostat ne pilote. Version compagnon : panasonic_cc 2.3.2 ajoute un poll de rattrapage 45 s après un ordre, Comfort Cloud rapportant couramment encore l'état d'avant l'ordre au premier poll, la vérité suivante étant à cinq minutes.
+- Maintenance (deps) : les groupes hebdomadaires d'outillage — mises à jour minor/patch backend et UI, typescript-eslint 8.69, codeql-action v4 (#896, #897, #898, #899, #900).
+
+---
+
 ## 1.67.x : L'horloge sur laquelle une mesure est jugée
 
 ### v1.67.1 — 2026-09-04 { #v1-67-1 }
