@@ -36,6 +36,7 @@ import { useDashboard } from "../../store/useDashboard";
 import { useIsMobile } from "../../hooks/useIsMobile";
 import { getSensorBindings } from "../equipments/sensorUtils";
 import { EQUIPMENT_ZONE_SEPARATOR } from "../../lib/zone-path";
+import { thermostatPowerStateBinding } from "../../lib/thermostat-state";
 
 interface WidgetGridProps {
   widgets: DashboardWidget[];
@@ -613,7 +614,7 @@ function MobileZoneCard({
       for (const eq of filtered) {
         const temp = eq.dataBindings.find((b) => b.alias === "temperature");
         if (temp && typeof temp.value === "number") temps.push(temp.value);
-        const power = eq.dataBindings.find((b) => b.alias === "power");
+        const power = thermostatPowerStateBinding(eq.dataBindings);
         if (power?.value === true) anyOn = true;
       }
       const avg = temps.length > 0

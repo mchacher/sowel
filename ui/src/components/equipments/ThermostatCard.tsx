@@ -19,6 +19,7 @@ import {
   AlertTriangle,
 } from "lucide-react";
 import type { EquipmentWithDetails } from "../../types";
+import { thermostatPowerStateBinding } from "../../lib/thermostat-state";
 
 interface ThermostatCardProps {
   equipment: EquipmentWithDetails;
@@ -70,21 +71,44 @@ export function ThermostatCard({ equipment, onExecuteOrder, compact }: Thermosta
   const [optimistic, setOptimistic] = useState<Record<string, unknown>>({});
   const prevBindingsRef = useRef(equipment.dataBindings);
 
-  // Clear optimistic values when real data changes (WebSocket update)
+  // Clear an optimistic value when ITS mirror binding is re-reported — the
+  // truth then either confirms it (same value) or reverts it (the device did
+  // not obey). Clearing everything on any change, as this used to, let the
+  // submeter clamp (which pushes a wattage every few seconds) wipe the
+  // optimistic power state long before a cloud thermostat's next poll could
+  // confirm it, so the toggle snapped back to "off" seconds after every tap.
   useEffect(() => {
     const prev = prevBindingsRef.current;
-    const changed = equipment.dataBindings.some((b) => {
-      const old = prev.find((p) => p.alias === b.alias);
-      return old && old.value !== b.value;
-    });
-    if (changed) {
-      setOptimistic({});
-    }
     prevBindingsRef.current = equipment.dataBindings;
+    setOptimistic((current) => {
+      const keys = Object.keys(current);
+      if (keys.length === 0) return current;
+      const reported = new Set(
+        equipment.dataBindings
+          .filter((b) => {
+            const old = prev.find((p) => p.alias === b.alias);
+            return old !== undefined && (old.value !== b.value || old.lastUpdated !== b.lastUpdated);
+          })
+          .map((b) => b.alias),
+      );
+      // The `power` order is mirrored by the boolean run-state binding, which
+      // lives under `powerState` on a submetered thermostat.
+      const stateBinding = thermostatPowerStateBinding(equipment.dataBindings);
+      const mirrorOf = (alias: string) =>
+        alias === "power" && stateBinding ? stateBinding.alias : alias;
+      const next: Record<string, unknown> = { ...current };
+      let touched = false;
+      for (const k of keys) {
+        if (reported.has(mirrorOf(k))) {
+          delete next[k];
+          touched = true;
+        }
+      }
+      return touched ? next : current;
+    });
   }, [equipment.dataBindings]);
 
   // Read data bindings (with optimistic overlay)
-  const powerBinding = equipment.dataBindings.find((b) => b.alias === "power");
   const modeBinding = equipment.dataBindings.find((b) => b.alias === "operationMode")
     ?? equipment.dataBindings.find((b) => b.alias === "profile");
   const targetTempBinding = equipment.dataBindings.find((b) => b.alias === "setpoint");
@@ -94,7 +118,14 @@ export function ThermostatCard({ equipment, onExecuteOrder, compact }: Thermosta
   const ecoModeBinding = equipment.dataBindings.find((b) => b.alias === "ecoMode");
   const stoveStateBinding = equipment.dataBindings.find((b) => b.alias === "stoveState");
 
-  const isOn = "power" in optimistic ? optimistic.power === true : powerBinding?.value === true;
+  // The run state comes from the device's own boolean (`powerState` on a
+  // submetered thermostat, legacy boolean `power` otherwise). The `power`
+  // alias on a submetered thermostat is a wattage, which `=== true` read as
+  // permanently off — every tap then sent ON, and the toggle never settled.
+  const isOn =
+    "power" in optimistic
+      ? optimistic.power === true
+      : thermostatPowerStateBinding(equipment.dataBindings)?.value === true;
   const stoveState = typeof stoveStateBinding?.value === "string" ? stoveStateBinding.value : null;
   const modeAlias = modeBinding?.alias ?? "operationMode";
   const currentMode = modeAlias in optimistic

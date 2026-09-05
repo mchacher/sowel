@@ -9,6 +9,7 @@ import {
   getAllBatteryBindings,
 } from "./sensorUtils";
 import { findDataByCategory, findOrderByCategory } from "./bindingUtils";
+import { thermostatPowerStateBinding } from "../../lib/thermostat-state";
 import { useWebSocket } from "../../store/useWebSocket";
 
 export function useEquipmentState(equipment: EquipmentWithDetails) {
@@ -55,7 +56,7 @@ export function useEquipmentState(equipment: EquipmentWithDetails) {
     ["state"],
   );
   const powerBinding = isThermostat
-    ? equipment.dataBindings.find((db) => db.alias === "power")
+    ? thermostatPowerStateBinding(equipment.dataBindings)
     : null;
   const modeBinding = isPoolHeatPump
     ? equipment.dataBindings.find((db) => db.alias === "mode")

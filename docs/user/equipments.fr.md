@@ -99,6 +99,8 @@ Contrôle de chauffage ou de climatisation : climatiseur, poêle à granulés, p
 - **Données attendues :** température courante, consigne cible, état d'alimentation
 - **Données additionnelles** (selon le device) : mode de fonctionnement, vitesse du ventilateur, mode éco
 
+Sur un thermostat, l'état marche/arrêt rapporté par le device lui-même est lié sous l'alias `powerState`. C'est important sur un thermostat **sous-compté** (une pompe à chaleur mesurée par une pince) : l'alias `power` y porte la puissance instantanée, et un wattage ne dit pas à l'interface si l'unité est allumée ou en veille. Si la carte du thermostat ne passe jamais à ON, ouvrez le panneau des liaisons manquantes de l'équipement et ajoutez la donnée d'alimentation du device — elle est proposée sous `powerState`. Les thermostats existants dont le booléen est lié directement sous `power` continuent de fonctionner sans changement.
+
 #### Radiateur
 
 Radiateur électrique individuel piloté par relais fil pilote.

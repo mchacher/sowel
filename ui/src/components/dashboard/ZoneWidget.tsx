@@ -15,6 +15,7 @@ import type { DashboardWidget, EquipmentWithDetails, ZoneWithChildren, WidgetFam
 import { executeZoneOrder, executeEquipmentOrder } from "../../api";
 import { findOrderByCategory } from "../equipments/bindingUtils";
 import { allSupportStop } from "../../lib/binding-utils";
+import { thermostatPowerStateBinding } from "../../lib/thermostat-state";
 import { useSliderOverride } from "../../hooks/useSliderOverride";
 import {
   LightBulbIcon,
@@ -505,7 +506,7 @@ function ZoneHeatingWidget({
       if (spBinding && typeof spBinding.value === "number") {
         setpoints.push(spBinding.value);
       }
-      const power = eq.dataBindings.find((b) => b.alias === "power");
+      const power = thermostatPowerStateBinding(eq.dataBindings);
       if (power?.value === true) on = true;
       if (!power) {
         const state = eq.dataBindings.find((b) => b.alias === "state" || b.category === "light_state");

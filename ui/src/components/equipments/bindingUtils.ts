@@ -132,7 +132,11 @@ const RELEVANT_DATA: Record<string, string[]> = {
   switch: ["light_state"],
   sensor: ["temperature", "humidity", "pressure", "luminosity", "co2", "voc", "noise", "motion", "contact_door", "contact_window", "water_leak", "smoke", "battery"],
   button: ["action", "battery"],
-  thermostat: ["temperature", "generic"],
+  // `power` / `setpoint` / `temperature_outdoor` are the spec 077 standardized
+  // thermostat categories (a Panasonic or MCZ device reports its run state,
+  // target and outdoor probe under them); the list predated that spec, so a
+  // freshly bound thermostat silently lost those points.
+  thermostat: ["temperature", "temperature_outdoor", "setpoint", "power", "generic"],
   weather: ["temperature", "temperature_outdoor", "humidity", "humidity_outdoor", "pressure", "wind", "rain", "noise", "battery"],
   weather_forecast: ["weather_condition", "temperature_outdoor", "rain", "wind"],
   // gate auto-binding is candidate-based (spec 150); this entry only feeds the
@@ -363,21 +367,38 @@ const DATA_CATEGORY_ALIASES: Record<string, string> = {
 const TYPE_CATEGORY_ALIASES: Partial<Record<EquipmentType, Record<string, string>>> = {
   water_heater: { temperature: "water_temperature" },
   gate: { light_toggle: "command", toggle_power: "command" },
+  // ThermostatCard drives its toggle through the `power` order alias;
+  // without this override the global ORDER_CATEGORY_ALIASES would alias a
+  // toggle_power order `state` and the card would lose its power button on
+  // any newly bound thermostat.
+  thermostat: { toggle_power: "power" },
 };
 
 /**
  * Resolve a device key to the standardized equipment alias for the given type.
  * Priority:
- *   1. Order / data category (plugin-agnostic)
- *   2. Per-type key map (legacy conventions like lora2mqtt R1..R4)
- *   3. Raw key
+ *   1. Typed per-type rule (a thermostat's boolean power reading)
+ *   2. Order / data category (plugin-agnostic)
+ *   3. Per-type key map (legacy conventions like lora2mqtt R1..R4)
+ *   4. Raw key
  */
 export function resolveAlias(
   key: string,
   equipmentType: string,
   categoryMap?: Record<string, string>,
   category?: string,
+  valueType?: string,
 ): string {
+  // On a thermostat the boolean `power` reading is the run state reported by
+  // the device itself. It must not claim the `power` alias: on a submetered
+  // thermostat that alias is the wattage read from a clamp (the metering
+  // convention pickLivePowerW relies on), and `UNIQUE(equipment_id, alias)`
+  // means whichever binds first evicts the other — which is how the PAC lost
+  // its on/off state (issue #901). The boolean gets its own alias, and the
+  // UI reads `powerState` first for the toggle.
+  if (equipmentType === "thermostat" && category === "power" && valueType === "boolean") {
+    return "powerState";
+  }
   if (category) {
     const perType = TYPE_CATEGORY_ALIASES[equipmentType as EquipmentType]?.[category];
     if (perType) return perType;
@@ -544,7 +565,7 @@ export function computeBindingPlan(
           device,
           data,
           vmcAlias?.[data.key] ??
-            resolveAlias(data.key, equipmentType, DATA_CATEGORY_ALIASES, data.category),
+            resolveAlias(data.key, equipmentType, DATA_CATEGORY_ALIASES, data.category, data.type),
         );
       }
       for (const order of device.orders) {
@@ -566,7 +587,7 @@ export function computeBindingPlan(
       pushData(
         device,
         data,
-        resolveAlias(data.key, equipmentType, DATA_CATEGORY_ALIASES, data.category),
+        resolveAlias(data.key, equipmentType, DATA_CATEGORY_ALIASES, data.category, data.type),
       );
     }
     for (const order of device.orders) {
