@@ -9,6 +9,7 @@
 
 import type { InfluxClient } from "../../core/influx-client.js";
 import type { Logger } from "../../core/logger.js";
+import { localDateStr } from "../../shared/local-date.js";
 
 /** Measurement the forecaster writes its curve to. */
 export const FORECAST_MEASUREMENT = "pv_forecast";
@@ -59,11 +60,50 @@ export interface MeasuredPoint {
   watts: number;
 }
 
+/** One local day scored on its energy, forecast against measured. */
+export interface DayEnergy {
+  /** Local calendar day, `YYYY-MM-DD`. */
+  day: string;
+  /** Expected energy over the paired hours, Wh. */
+  forecastWh: number;
+  /** Measured energy over those same hours, Wh. */
+  actualWh: number;
+  /** How many hours were paired. Below `COMPLETE_DAY_HOURS` the day is partial. */
+  hours: number;
+}
+
 export interface PvAccuracy {
   /** Hours compared. Zero means nothing to say, not a perfect score. */
   samples: number;
-  /** Mean absolute error in watts over those hours, null when there are none. */
+  /**
+   * Mean absolute error in watts over those hours, null when there are none.
+   *
+   * Kept for the API's shape, no longer the headline (#907). Averaged over
+   * every paired hour it is dominated by the night, where both sides are zero
+   * and the error is trivially perfect: on the reference site 74 of 168 hours,
+   * halving the figure and improving it every autumn as the nights lengthen.
+   */
   maeW: number | null;
+  /**
+   * Mean absolute error on the DAILY ENERGY, Wh, over complete days only.
+   *
+   * This is the question a household asks of a production forecast: how far
+   * off was the day. Night hours contribute nothing to an integral, so it
+   * cannot be diluted by them, and it is comparable across seasons.
+   */
+  dailyMaeWh: number | null;
+  /** The same error as a share of the measured production, percent. */
+  dailyMaePct: number | null;
+  /** Complete days behind `dailyMaeWh`. */
+  dailyDays: number;
+  /**
+   * The running local day, scored on the hours elapsed so far.
+   *
+   * Excluded from `dailyMaeWh` — a few hours against a whole day's forecast
+   * would read as a collapse in production — but reported, because "is today
+   * on track" is what the aggregate score cannot answer (#907).
+   */
+  today: DayEnergy | null;
   /** The paired series, newest last, for the chart. */
   points: AccuracyPoint[];
   /**
@@ -78,7 +118,26 @@ export interface PvAccuracy {
   measured: MeasuredPoint[];
 }
 
-const EMPTY: PvAccuracy = { samples: 0, maeW: null, points: [], measured: [] };
+const EMPTY: PvAccuracy = {
+  samples: 0,
+  maeW: null,
+  dailyMaeWh: null,
+  dailyMaePct: null,
+  dailyDays: 0,
+  today: null,
+  points: [],
+  measured: [],
+};
+
+/**
+ * Paired hours below which a local day is partial and cannot be scored.
+ *
+ * 23, not 24: a DST spring-forward day genuinely has 23 hours, and requiring
+ * 24 would silently drop it every year. An hour the meter missed mid-day also
+ * lands a day here, which is the intended answer — an outage is not a forecast
+ * miss, and scoring the day as one would blame the model for it.
+ */
+export const COMPLETE_DAY_HOURS = 23;
 
 /**
  * Pair the forecast with the production for the same hours.
@@ -181,6 +240,80 @@ export function toMeasured(actual: ReadonlyMap<string, number>): MeasuredPoint[]
 }
 
 /**
+ * The local day an hourly point belongs to.
+ *
+ * Both series label an hour by its END (see the note at the top of this file),
+ * so the point stamped at local midnight covers 23:00-00:00 and belongs to the
+ * day that just ended. Bucketing it on its own date would hand every day its
+ * predecessor's last hour. For a PV series that hour is zero and the sums do
+ * not move, but the day count does, and a day is scored or dropped on it.
+ */
+function localDayOf(at: string): string | null {
+  const ms = Date.parse(at);
+  if (!Number.isFinite(ms)) return null;
+  return localDateStr(new Date(ms - 1));
+}
+
+/**
+ * Sum the paired hours into local days.
+ *
+ * Both sides are summed over the SAME hours: an hour the meter never reported
+ * is absent from the pairing, so it is missing from both integrals rather than
+ * counting as a production of zero against a forecast. That is what makes a
+ * partial day (the running one) comparable at all.
+ */
+export function aggregateDays(points: readonly AccuracyPoint[]): DayEnergy[] {
+  const byDay = new Map<string, DayEnergy>();
+  for (const p of points) {
+    const day = localDayOf(p.at);
+    if (day === null) continue;
+    const entry = byDay.get(day) ?? { day, forecastWh: 0, actualWh: 0, hours: 0 };
+    // One hour of an hourly mean power in W is that many Wh.
+    entry.forecastWh += p.forecastW;
+    entry.actualWh += p.actualW;
+    entry.hours += 1;
+    byDay.set(day, entry);
+  }
+  return [...byDay.values()].sort((a, b) => a.day.localeCompare(b.day));
+}
+
+/**
+ * The daily-energy error, and the running day.
+ *
+ * `now` is injected rather than read here so the caller (and the tests) decide
+ * what "today" means; the boundary is local, like every day boundary in the
+ * energy stack.
+ */
+export function scoreDays(
+  points: readonly AccuracyPoint[],
+  now: Date = new Date(),
+): Pick<PvAccuracy, "dailyMaeWh" | "dailyMaePct" | "dailyDays" | "today"> {
+  const days = aggregateDays(points);
+  const todayStr = localDateStr(now);
+
+  const today = days.find((d) => d.day === todayStr) ?? null;
+  // Complete days only, and never the running one: it is complete only in the
+  // last hour of the evening, and would swing the average until then.
+  const scored = days.filter((d) => d.day !== todayStr && d.hours >= COMPLETE_DAY_HOURS);
+  if (scored.length === 0) {
+    return { dailyMaeWh: null, dailyMaePct: null, dailyDays: 0, today };
+  }
+
+  const totalErrorWh = scored.reduce((sum, d) => sum + Math.abs(d.forecastWh - d.actualWh), 0);
+  // A share of what was actually produced over the same days, not the mean of
+  // per-day percentages: a near-zero December day would otherwise post a 300%
+  // error on a few hundred watt-hours and drag the average on its own.
+  const totalActualWh = scored.reduce((sum, d) => sum + d.actualWh, 0);
+
+  return {
+    dailyMaeWh: Math.round(totalErrorWh / scored.length),
+    dailyMaePct: totalActualWh > 0 ? Math.round((1000 * totalErrorWh) / totalActualWh) / 10 : null,
+    dailyDays: scored.length,
+    today,
+  };
+}
+
+/**
  * Pair two hourly series on their common hours.
  *
  * Only hours present on both sides count. An hour the meter never reported is
@@ -191,6 +324,7 @@ export function toMeasured(actual: ReadonlyMap<string, number>): MeasuredPoint[]
 export function pairSeries(
   forecast: ReadonlyMap<string, number>,
   actual: ReadonlyMap<string, number>,
+  now: Date = new Date(),
 ): PvAccuracy {
   const points: AccuracyPoint[] = [];
 
@@ -208,6 +342,7 @@ export function pairSeries(
   return {
     samples: points.length,
     maeW: Math.round(totalError / points.length),
+    ...scoreDays(points, now),
     points,
     measured: toMeasured(actual),
   };

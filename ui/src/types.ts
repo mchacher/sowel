@@ -320,7 +320,16 @@ export interface PvForecastResponse {
   since?: string;
   accuracy: {
     samples: number;
+    /** Hourly power MAE. Kept for compatibility, no longer displayed (#907). */
     maeW: number | null;
+    /** Mean absolute error on the daily energy, Wh, over complete days. */
+    dailyMaeWh: number | null;
+    /** The same error as a share of the production over those days, percent. */
+    dailyMaePct: number | null;
+    /** Complete days behind the daily figures. */
+    dailyDays: number;
+    /** The running day so far: expected and measured over the SAME hours. */
+    today: { day: string; forecastWh: number; actualWh: number; hours: number } | null;
     points: PvAccuracyPoint[];
     /**
      * Every hour the meter recorded over the window, paired or not. The chart's

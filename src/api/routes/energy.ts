@@ -28,7 +28,33 @@ import type {
 import { requireAdmin } from "../../auth/auth-middleware.js";
 import { nonEmptyString } from "../schemas.js";
 import type { PvForecaster } from "../../energy/pv/pv-forecaster.js";
-import { queryPvAccuracy } from "../../energy/pv/pv-accuracy.js";
+import { queryPvAccuracy, type PvAccuracy } from "../../energy/pv/pv-accuracy.js";
+
+/**
+ * Shortest window the accuracy figure is ever computed over, in days (#907).
+ * The chart may be zoomed tighter than this; the score is not.
+ */
+const ACCURACY_MIN_DAYS = 7;
+
+/**
+ * Drop the paired and measured hours the chart will not draw.
+ *
+ * The score is computed over a wider window than the zoom, and shipping those
+ * extra hours would draw a 30-day history behind a one-day selection. The
+ * aggregates are already computed and ride along untouched.
+ */
+function trimToWindow(accuracy: PvAccuracy, days: number): PvAccuracy {
+  const from = Date.now() - days * 86_400_000;
+  const kept = (at: string) => {
+    const ms = Date.parse(at);
+    return !Number.isFinite(ms) || ms >= from;
+  };
+  return {
+    ...accuracy,
+    points: accuracy.points.filter((p) => kept(p.at)),
+    measured: accuracy.measured.filter((m) => kept(m.at)),
+  };
+}
 import { isActiveSolarProfile } from "../../energy/pv/solar-profile.js";
 import { ALERT_DAYS, MIN_NORMAL_DAYS } from "../../energy/pv/pv-health.js";
 
@@ -711,15 +737,33 @@ export function registerEnergyRoutes(app: FastifyInstance, deps: EnergyDeps): vo
       // the measured series is actually retained for, so a nonsense value costs
       // nothing; anything unparseable falls back to its default.
       const parsedDays = Number.parseInt(request.query.days ?? "", 10);
-      const accuracyDays = Number.isFinite(parsedDays) && parsedDays > 0 ? parsedDays : undefined;
+      const chartDays = Number.isFinite(parsedDays) && parsedDays > 0 ? parsedDays : undefined;
+      // The chart window is a zoom; the score is a statistic, and it needs a
+      // sample (#907). At one day there is often not a single complete day to
+      // score, and tying the two would blank the figure exactly when the
+      // household zoomed in to look at it. Widening the window past the zoom
+      // costs one Influx range, and the extra points are dropped below.
+      const accuracyDays = Math.max(chartDays ?? ACCURACY_MIN_DAYS, ACCURACY_MIN_DAYS);
       const accuracy =
         alias && planes.length > 0
-          ? await queryPvAccuracy(
-              influxClient,
-              { equipmentId: equipment.id, alias, days: accuracyDays },
-              logger,
+          ? trimToWindow(
+              await queryPvAccuracy(
+                influxClient,
+                { equipmentId: equipment.id, alias, days: accuracyDays },
+                logger,
+              ),
+              chartDays ?? ACCURACY_MIN_DAYS,
             )
-          : { samples: 0, maeW: null, points: [] };
+          : {
+              samples: 0,
+              maeW: null,
+              dailyMaeWh: null,
+              dailyMaePct: null,
+              dailyDays: 0,
+              today: null,
+              points: [],
+              measured: [],
+            };
 
       return {
         active: planes.length > 0,

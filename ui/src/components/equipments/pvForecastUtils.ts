@@ -97,6 +97,13 @@ export function mergeTimeline(
   curve: ReadonlyArray<{ at: string; watts: number }>,
   now: number,
   measured: ReadonlyArray<{ at: string; watts: number }> = [],
+  /**
+   * How far ahead of `now` the timeline may run, in days. The curve reaches
+   * J+5, so a one-day window that kept all of it would draw one day of history
+   * against five of forecast and would not read as a zoom (#907). Omitted, the
+   * whole curve is kept, which is what the long windows want.
+   */
+  aheadDays?: number,
 ): TimelinePoint[] {
   const byTs = new Map<number, TimelinePoint>();
 
@@ -117,11 +124,13 @@ export function mergeTimeline(
     byTs.set(ts, { ...(byTs.get(ts) ?? { ts }), forecastW: p.forecastW, actualW: p.actualW });
   }
 
+  const until = aheadDays !== undefined ? now + aheadDays * 86_400_000 : Infinity;
   for (const p of curve) {
     const ts = Date.parse(p.at);
     if (!Number.isFinite(ts)) continue;
     // The past belongs to what was promised at the time.
     if (ts < now) continue;
+    if (ts > until) continue;
     byTs.set(ts, { ...(byTs.get(ts) ?? { ts }), forecastW: p.watts });
   }
 

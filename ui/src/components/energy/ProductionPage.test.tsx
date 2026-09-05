@@ -41,7 +41,16 @@ function forecastResponse(): PvForecastResponse {
     curve: [],
     issuedAt: null,
     weatherAvailable: true,
-    accuracy: { samples: 0, maeW: null, points: [], measured: [] },
+    accuracy: {
+      samples: 0,
+      maeW: null,
+      dailyMaeWh: null,
+      dailyMaePct: null,
+      dailyDays: 0,
+      today: null,
+      points: [],
+      measured: [],
+    },
     model: null,
   };
 }
@@ -95,7 +104,8 @@ describe("ProductionPage (spec 163)", () => {
     setup({ meters: [meter("eq-1", "Shelly Solar", true)], role: "user" });
     await renderPage();
     expect(await screen.findByText(/expected production/i)).toBeTruthy();
-    expect(mockedForecast).toHaveBeenCalledWith("eq-1", 7);
+    // Three days, not seven: the window the panel opens on since #907.
+    expect(mockedForecast).toHaveBeenCalledWith("eq-1", 3);
     // A single meter needs no name heading; the panel titles say what it is.
     expect(screen.queryByText("Shelly Solar")).toBeNull();
   });
@@ -108,8 +118,8 @@ describe("ProductionPage (spec 163)", () => {
     await renderPage();
     expect(await screen.findByText("Roof array")).toBeTruthy();
     expect(screen.getByText("Garage array")).toBeTruthy();
-    expect(mockedForecast).toHaveBeenCalledWith("eq-1", 7);
-    expect(mockedForecast).toHaveBeenCalledWith("eq-2", 7);
+    expect(mockedForecast).toHaveBeenCalledWith("eq-1", 3);
+    expect(mockedForecast).toHaveBeenCalledWith("eq-2", 3);
   });
 
   it("skips undeclared meters but still names the block among several", async () => {
