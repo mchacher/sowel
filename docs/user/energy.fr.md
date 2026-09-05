@@ -180,6 +180,14 @@ Depuis la v1.57.0 elle porte aussi deux panneaux, tous deux nourris par votre pr
 
 Les deux sont détaillés dans [Suivre sa production solaire](../deep-dives/pv-health.md).
 
+**Lire la justesse.** Sous les deux totaux journaliers, le panneau de prévision indique de combien il s'est trompé : `± 1,15 kWh (5,2 %) sur 9 jours complets, prévus la veille`. C'est l'erreur sur l'**énergie d'une journée**, moyennée sur les jours terminés de la fenêtre, et le pourcentage rapporte cette erreur à ce que ces jours ont réellement produit. Seuls les jours complets comptent : une journée que le compteur n'a pas couverte de bout en bout est écartée plutôt que mise sur le dos du modèle.
+
+Le jour en cours a sa propre ligne, `Aujourd'hui à cette heure`, qui compare ce qui avait été prévu la veille pour les heures déjà écoulées à ce qui a été mesuré sur ces mêmes heures. Elle répond à « est-ce que la journée est dans les clous », ce que la moyenne sur plusieurs jours ne peut pas dire.
+
+Avant la v1.68.0, ce chiffre était une moyenne d'erreurs de puissance horaire, en watts. La moitié environ d'une fenêtre est de la nuit, où rien n'est attendu et rien n'est produit : ces heures parfaites divisaient le nombre par deux, et il s'améliorait tout seul chaque automne à mesure que les nuits s'allongeaient. Un total d'énergie ne peut pas être dilué ainsi.
+
+Les boutons au-dessus du graphe choisissent la profondeur d'historique affichée : un jour, trois jours, une semaine, un mois ou trois mois. Ils ne zooment que la courbe. La justesse, elle, regarde toujours au moins une semaine en arrière : zoomer sur une seule journée ne la prive donc pas des jours terminés dont elle a besoin.
+
 ## Arbitrage du surplus
 
 Quand vous produisez du solaire, plusieurs automatisations peuvent vouloir le même surplus au même moment (pré-refroidir la maison, faire tourner la pompe de piscine, chauffer l'eau). Sans coordination elles se le disputent : chacune s'allume en voyant de l'injection, ensemble elles dépassent, l'injection s'effondre, et tout s'éteint. L'**arbitre de surplus** est l'arbitre unique qui distribue le surplus dans l'ordre que **vous** décidez.

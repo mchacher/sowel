@@ -1,7 +1,8 @@
 import Fastify from "fastify";
 import { describe, it, expect, beforeEach, afterEach } from "vitest";
 import { createLogger } from "../../core/logger.js";
-import { registerEnergyRoutes } from "./energy.js";
+import { registerEnergyRoutes, trimToWindow } from "./energy.js";
+import { EMPTY_ACCURACY } from "../../energy/pv/pv-accuracy.js";
 import { installValidationErrorHandler, validationAjvOptions } from "../error-handler.js";
 import type {
   TariffConfig,
@@ -1567,4 +1568,58 @@ describe("PUT /api/v1/settings/energy/tariff", () => {
       expect(writes()).toHaveLength(0);
     });
   }
+});
+
+// ============================================================
+// Issue #907 — the accuracy window is a statistic, the chart window is a zoom.
+// ============================================================
+
+describe("Issue #907 — trimming the accuracy payload to the chart window", () => {
+  const hoursAgo = (n: number) => new Date(Date.now() - n * 3_600_000).toISOString();
+
+  const accuracy = {
+    ...EMPTY_ACCURACY,
+    samples: 3,
+    maeW: 50,
+    dailyMaeWh: 1150,
+    dailyMaePct: 5.2,
+    dailyDays: 9,
+    today: { day: "2026-09-05", forecastWh: 23_000, actualWh: 23_350, hours: 18 },
+    points: [
+      { at: hoursAgo(200), forecastW: 100, actualW: 90 },
+      { at: hoursAgo(40), forecastW: 200, actualW: 190 },
+      { at: hoursAgo(2), forecastW: 300, actualW: 290 },
+    ],
+    measured: [
+      { at: hoursAgo(200), watts: 90 },
+      { at: hoursAgo(2), watts: 290 },
+    ],
+  };
+
+  it("drops the hours the chart will not draw", () => {
+    const trimmed = trimToWindow(accuracy, 1);
+
+    expect(trimmed.points).toHaveLength(1);
+    expect(trimmed.measured).toHaveLength(1);
+  });
+
+  it("keeps the aggregates whole, which is the point of scoring wider than the zoom", () => {
+    // A one-day zoom has at most one complete day to score, usually none. If
+    // trimming took the aggregates with it, the headline would blank exactly
+    // when the household zoomed in to look at it.
+    const trimmed = trimToWindow(accuracy, 1);
+
+    expect(trimmed.dailyMaeWh).toBe(1150);
+    expect(trimmed.dailyDays).toBe(9);
+    expect(trimmed.today?.hours).toBe(18);
+  });
+
+  it("keeps everything when the window covers it", () => {
+    expect(trimToWindow(accuracy, 30).points).toHaveLength(3);
+  });
+
+  it("keeps an unparseable stamp rather than silently dropping a point", () => {
+    const odd = { ...accuracy, points: [{ at: "not-a-date", forecastW: 1, actualW: 1 }] };
+    expect(trimToWindow(odd, 1).points).toHaveLength(1);
+  });
 });

@@ -321,11 +321,42 @@ describe("scoreDays", () => {
     expect(res.dailyMaeWh).toBeNull();
   });
 
-  it("keeps a 23-hour day, which is what a spring-forward day genuinely has", () => {
-    const dst = localDay(2026, 3, 29, shaped(1000, 900), 23);
-    const res = scoreDays(dst, new Date(2026, 3, 2));
+  it("keeps a day one hour short, which is what a spring-forward day has", () => {
+    // Built on plain local components on purpose: under a timezone that has no
+    // DST (CI runs UTC) the local constructor would hand back 24 real hours and
+    // the case would pass for the wrong reason. What is pinned here is the
+    // threshold itself, on exactly 23 distinct paired hours.
+    const short = localDay(2026, 6, 10, shaped(1000, 900), 23);
+    const res = scoreDays(short, new Date(2026, 5, 12));
 
     expect(res.dailyDays).toBe(1);
+    expect(new Set(short.map((p) => p.at)).size).toBe(23);
+  });
+
+  it("averages the error over the days, rather than summing it", () => {
+    // Summing instead of dividing passes every single-day assertion, and ships
+    // "± 10.31 kWh" where the reference site reads "± 1.15 kWh".
+    const monday = localDay(2026, 6, 8, shaped(1000, 900)); // 700 Wh out
+    const tuesday = localDay(2026, 6, 9, shaped(1000, 500)); // 3500 Wh out
+    const res = scoreDays([...monday, ...tuesday], new Date(2026, 5, 12));
+
+    expect(res.dailyDays).toBe(2);
+    expect(res.dailyMaeWh).toBe(2100);
+  });
+
+  it("keeps the running day out even once it has a full day of hours", () => {
+    // The `hours >= COMPLETE_DAY_HOURS` filter alone does not do this: by
+    // 23:30 today has 23 paired hours and would enter the aggregate, so a
+    // collapsed afternoon would swing the headline for the last half hour of
+    // every day and swing back at midnight.
+    const yesterday = localDay(2026, 6, 10, shaped(1000, 900)); // 700 Wh out
+    const today = localDay(2026, 6, 11, shaped(1000, 300), 23); // 4900 Wh out
+    const res = scoreDays([...yesterday, ...today], new Date(2026, 5, 11, 23, 30));
+
+    expect(res.dailyDays).toBe(1);
+    expect(res.dailyMaeWh).toBe(700);
+    expect(res.today?.day).toBe("2026-06-11");
+    expect(res.today?.hours).toBe(23);
   });
 
   it("weights the percentage by production, so a dark day cannot dominate it", () => {

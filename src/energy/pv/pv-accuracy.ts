@@ -118,7 +118,8 @@ export interface PvAccuracy {
   measured: MeasuredPoint[];
 }
 
-const EMPTY: PvAccuracy = {
+/** Nothing to compare. Exported so callers building the same shape cannot drift from it. */
+export const EMPTY_ACCURACY: PvAccuracy = {
   samples: 0,
   maeW: null,
   dailyMaeWh: null,
@@ -157,7 +158,7 @@ export async function queryPvAccuracy(
 ): Promise<PvAccuracy> {
   const config = influxClient.getConfig();
   const client = influxClient.getClient();
-  if (!config || !client) return EMPTY;
+  if (!config || !client) return EMPTY_ACCURACY;
 
   // Bounded by the downsampled power retention (90 days), not by the forecast
   // side, which keeps two years. Asking for more would return fewer paired
@@ -222,7 +223,7 @@ export async function queryPvAccuracy(
     }
   } catch (err) {
     logger.warn({ err, equipmentId: params.equipmentId }, "PV accuracy query failed");
-    return EMPTY;
+    return EMPTY_ACCURACY;
   }
 
   return { ...pairSeries(forecast, actual), measured: toMeasured(actual) };
@@ -324,7 +325,6 @@ export function scoreDays(
 export function pairSeries(
   forecast: ReadonlyMap<string, number>,
   actual: ReadonlyMap<string, number>,
-  now: Date = new Date(),
 ): PvAccuracy {
   const points: AccuracyPoint[] = [];
 
@@ -335,14 +335,14 @@ export function pairSeries(
     points.push({ at, forecastW, actualW });
   }
 
-  if (points.length === 0) return { ...EMPTY, measured: toMeasured(actual) };
+  if (points.length === 0) return { ...EMPTY_ACCURACY, measured: toMeasured(actual) };
   points.sort((a, b) => a.at.localeCompare(b.at));
 
   const totalError = points.reduce((sum, p) => sum + Math.abs(p.forecastW - p.actualW), 0);
   return {
     samples: points.length,
     maeW: Math.round(totalError / points.length),
-    ...scoreDays(points, now),
+    ...scoreDays(points),
     points,
     measured: toMeasured(actual),
   };

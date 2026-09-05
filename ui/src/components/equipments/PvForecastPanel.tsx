@@ -165,12 +165,16 @@ export function PvForecastPanel({ equipmentId }: PvForecastPanelProps) {
                 counts finished days — and the running day compared against a
                 whole day's forecast would read as a collapse, so both sides
                 are summed over the hours that have actually happened (#907). */}
-            {data.accuracy.today !== null && data.accuracy.today.hours > 0 && (
+            {/* Gated on production, not on hours: `hours > 0` held from the
+                first paired hour after midnight, so the line sat at "0.0 kWh
+                forecast, 0.0 kWh measured" all night with a dangling delta. */}
+            {data.accuracy.today !== null &&
+              (data.accuracy.today.forecastWh > 0 || data.accuracy.today.actualWh > 0) && (
               <p className="text-[11px] text-text-tertiary mb-3">
                 {t("equipments.pv.todaySoFar", {
                   expected: (data.accuracy.today.forecastWh / 1000).toFixed(1),
                   measured: (data.accuracy.today.actualWh / 1000).toFixed(1),
-                  n: data.accuracy.today.hours,
+                  count: data.accuracy.today.hours,
                 })}{" "}
                 <span
                   className={`font-mono tabular-nums ${
@@ -194,13 +198,21 @@ export function PvForecastPanel({ equipmentId }: PvForecastPanelProps) {
               {data.accuracy.dailyMaeWh !== null ? (
                 <>
                   <span className="text-[13px] font-semibold font-mono tabular-nums text-text">
-                    {t("equipments.pv.accuracyValue", {
-                      kwh: (data.accuracy.dailyMaeWh / 1000).toFixed(2),
-                      pct: data.accuracy.dailyMaePct ?? 0,
-                    })}
+                    {/* No percentage when nothing was produced to take a share
+                        of: `?? 0` printed "(0%)" over a real error, so a dead
+                        inverter under a live forecast read as a perfect score
+                        at the one moment the figure has to shout. */}
+                    {data.accuracy.dailyMaePct !== null
+                      ? t("equipments.pv.accuracyValue", {
+                          kwh: (data.accuracy.dailyMaeWh / 1000).toFixed(2),
+                          pct: data.accuracy.dailyMaePct,
+                        })
+                      : t("equipments.pv.accuracyValueNoPct", {
+                          kwh: (data.accuracy.dailyMaeWh / 1000).toFixed(2),
+                        })}
                   </span>
                   <span className="text-[11px] text-text-tertiary">
-                    {t("equipments.pv.accuracySamples", { n: data.accuracy.dailyDays })}
+                    {t("equipments.pv.accuracySamples", { count: data.accuracy.dailyDays })}
                   </span>
                 </>
               ) : (

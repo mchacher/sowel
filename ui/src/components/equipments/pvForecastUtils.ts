@@ -7,6 +7,14 @@ import type { PvForecastPoint } from "../../types";
  * a +2 offset a UTC day would carry two hours of the wrong evening. The curve
  * itself is UTC instants, so the boundaries are computed locally and compared
  * as instants.
+ *
+ * Note for whoever touches either side: this attributes the local-midnight
+ * point to the day it OPENS, while `aggregateDays` in `pv-accuracy.ts`
+ * attributes it to the day it CLOSES, following the end-of-hour stamp
+ * convention documented there. On a PV series that hour is zero and no
+ * displayed figure moves, but the two definitions of "a day" sit three lines
+ * apart on the same card, and a series that is nonzero at midnight would
+ * inherit the split.
  */
 export function sumKwh(curve: readonly PvForecastPoint[], dayOffset: number): number {
   const start = new Date();

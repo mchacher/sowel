@@ -178,6 +178,14 @@ Since v1.57.0 it also carries two panels, both driven by your own installation r
 
 Both are described at length in [Following your solar production](../deep-dives/pv-health.md).
 
+**Reading the accuracy figure.** Under the two daily totals the forecast panel states how far it has been off: `± 1.15 kWh (5.2%) over 9 complete days, forecast a day ahead`. It is the error on the **energy of a day**, averaged over the finished days in the window, and the percentage is that error as a share of what those days actually produced. Only complete days count: a day the meter did not cover throughout is dropped rather than blamed on the model.
+
+The running day gets its own line, `Today so far`, comparing what was forecast the day before for the hours already elapsed with what was measured over those same hours. It answers whether today is on track, which the multi-day average cannot.
+
+Before v1.68.0 this figure was a mean of hourly power errors in watts. Roughly half of any window is night, where nothing is expected and nothing is produced, so those perfect hours halved the number, and it improved on its own every autumn as the nights lengthened. An energy total cannot be diluted that way.
+
+The buttons above the chart choose how much history it draws: one day, three days, a week, a month or three months. They are a zoom on the curve only. The accuracy figure always looks back at least a week, so zooming in to inspect a single day does not leave it without enough finished days to say anything.
+
 ## Surplus arbitration
 
 When you have solar production, several automations may want the same surplus at the same time (pre-cooling the house, running the pool pump, heating water). Left uncoordinated they fight over it: each switches on when it sees export, together they overshoot, the export collapses, and everything switches off again. The **surplus arbiter** is the single referee that hands the surplus out in an order **you** decide.

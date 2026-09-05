@@ -140,15 +140,19 @@ describe("PvForecastPanel accuracy (#907)", () => {
         today: { day: "2026-09-05", forecastWh: 19_400, actualWh: 18_900, hours: 13 },
       }),
     );
-    expect(screen.getByText(/19.4 kWh expected, 18.9 kWh measured over 13 h/)).toBeTruthy();
+    expect(
+      screen.getByText(/19.4 kWh forecast yesterday, 18.9 kWh measured over 13 h/),
+    ).toBeTruthy();
     expect(screen.getByText("-3%")).toBeTruthy();
   });
 
-  it("hides the running-day line before the first hour is paired", async () => {
+  it("hides the running-day line overnight, when neither side has anything yet", async () => {
+    // Gated on production, not on hours: paired hours exist from the first
+    // hour after midnight, and the line used to sit at 0.0 / 0.0 all night.
     await renderPanel(
-      scored({ today: { day: "2026-09-05", forecastWh: 0, actualWh: 0, hours: 0 } }),
+      scored({ today: { day: "2026-09-05", forecastWh: 0, actualWh: 0, hours: 3 } }),
     );
-    expect(screen.queryByText(/expected,/)).toBeNull();
+    expect(screen.queryByText(/forecast yesterday/)).toBeNull();
   });
 
   it("says nothing rather than zero while no day has finished", async () => {

@@ -28,7 +28,7 @@ import type {
 import { requireAdmin } from "../../auth/auth-middleware.js";
 import { nonEmptyString } from "../schemas.js";
 import type { PvForecaster } from "../../energy/pv/pv-forecaster.js";
-import { queryPvAccuracy, type PvAccuracy } from "../../energy/pv/pv-accuracy.js";
+import { EMPTY_ACCURACY, queryPvAccuracy, type PvAccuracy } from "../../energy/pv/pv-accuracy.js";
 
 /**
  * Shortest window the accuracy figure is ever computed over, in days (#907).
@@ -43,7 +43,7 @@ const ACCURACY_MIN_DAYS = 7;
  * extra hours would draw a 30-day history behind a one-day selection. The
  * aggregates are already computed and ride along untouched.
  */
-function trimToWindow(accuracy: PvAccuracy, days: number): PvAccuracy {
+export function trimToWindow(accuracy: PvAccuracy, days: number): PvAccuracy {
   const from = Date.now() - days * 86_400_000;
   const kept = (at: string) => {
     const ms = Date.parse(at);
@@ -754,16 +754,7 @@ export function registerEnergyRoutes(app: FastifyInstance, deps: EnergyDeps): vo
               ),
               chartDays ?? ACCURACY_MIN_DAYS,
             )
-          : {
-              samples: 0,
-              maeW: null,
-              dailyMaeWh: null,
-              dailyMaePct: null,
-              dailyDays: 0,
-              today: null,
-              points: [],
-              measured: [],
-            };
+          : EMPTY_ACCURACY;
 
       return {
         active: planes.length > 0,
