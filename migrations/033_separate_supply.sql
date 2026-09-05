@@ -1,0 +1,11 @@
+-- Spec 177 — a meter fed by a separate supply.
+--
+-- Every reconciliation against the main meter (`other = total − Σ submeters`,
+-- the live donut, the blended-cost attribution) assumes every submeter measures
+-- energy that flowed THROUGH the main meter. A clamp on a circuit fed by a
+-- second utility supply breaks that: its kilowatt-hours were never in the
+-- total, so the partition invents consumption and the residual is eaten to 0.
+--
+-- One boolean lets the installation say what is true of it: "this meter hangs
+-- off a different supply". Everything existing gets 0 — reconciled as today.
+ALTER TABLE equipments ADD COLUMN separate_supply INTEGER NOT NULL DEFAULT 0;

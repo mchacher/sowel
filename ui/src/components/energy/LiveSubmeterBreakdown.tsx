@@ -71,16 +71,22 @@ export function LiveSubmeterBreakdown({ house, hasMainMeter }: Props) {
   }, [equipments, zoneTree, clock]);
   if (rows.length === 0) return null;
 
-  const submeterSum = rows.reduce((acc, r) => acc + (r.power ?? 0), 0);
+  // Spec 177 — a meter on a separate supply never enters the donut, the
+  // residual or the shares: its watts were not in the house total to begin
+  // with. It keeps a group of its own below the reconciled legend.
+  const partitionRows = rows.filter((r) => !r.separateSupply);
+  const separateRows = rows.filter((r) => r.separateSupply);
+
+  const submeterSum = partitionRows.reduce((acc, r) => acc + (r.power ?? 0), 0);
   // Without a main meter, the donut represents the sum of all submeters
   // (no residual segment, consistent with spec 091 acceptance criterion).
   const total = hasMainMeter ? Math.max(0, house ?? 0) : submeterSum;
-  const other = hasMainMeter ? computeOther(total, rows) : 0;
+  const other = hasMainMeter ? computeOther(total, partitionRows) : 0;
   const overshoot = hasMainMeter && submeterSum > total * (1 + OVERSHOOT_RATIO);
   const hasStale = rows.some((r) => r.unknown === "stale");
 
   const isIdle = total < IDLE_THRESHOLD_W;
-  const segments = isIdle ? [] : buildSegments(rows, other, total);
+  const segments = isIdle ? [] : buildSegments(partitionRows, other, total);
 
   const t_total = formatPower(total);
 
@@ -93,12 +99,12 @@ export function LiveSubmeterBreakdown({ house, hasMainMeter }: Props) {
           segments={segments}
           totalLabel={isIdle ? t("energy.live.breakdown.houseIdle") : t_total.num}
           totalUnit={isIdle ? null : t_total.unit}
-          ariaLabel={buildAriaLabel(t, rows, other, total, hasMainMeter)}
+          ariaLabel={buildAriaLabel(t, partitionRows, other, total, hasMainMeter)}
           idle={isIdle}
         />
 
         <div className="flex-1 min-w-0 w-full flex flex-col gap-2">
-          {rows.map((row) => (
+          {partitionRows.map((row) => (
             <LegendRow key={row.id} row={row} total={total} t={t} />
           ))}
           {hasMainMeter && other > 0 && (
@@ -115,6 +121,19 @@ export function LiveSubmeterBreakdown({ house, hasMainMeter }: Props) {
                 {sharePercent(other, total) !== null ? `${sharePercent(other, total)}%` : "—"}
               </span>
             </div>
+          )}
+
+          {/* Spec 177 — meters on their own supply: watts shown, no share of a
+              donut whose total never carried them. */}
+          {separateRows.length > 0 && (
+            <>
+              <div className="mt-2 pt-2 border-t border-border text-[11px] font-semibold uppercase tracking-wide text-text-tertiary">
+                {t("energy.byUsage.separateSupply")}
+              </div>
+              {separateRows.map((row) => (
+                <LegendRow key={row.id} row={row} total={null} t={t} />
+              ))}
+            </>
           )}
         </div>
       </div>
@@ -251,12 +270,13 @@ function LegendRow({
   t,
 }: {
   row: SubmeterRow;
-  total: number;
+  /** Spec 177 — null for a separate-supply row: no whole, so no share. */
+  total: number | null;
   t: (key: string, opts?: Record<string, unknown>) => string;
 }) {
   const isOffline = row.status === "offline";
   const isStale = row.unknown === "stale";
-  const pct = row.power !== null ? sharePercent(row.power, total) : null;
+  const pct = row.power !== null && total !== null ? sharePercent(row.power, total) : null;
   const power = row.power !== null ? formatPower(row.power) : null;
 
   return (

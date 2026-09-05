@@ -69,6 +69,8 @@ const updateEquipmentBodySchema = {
     invertDirection: { type: "boolean" },
     // Spec 173 — id of the meter that already counts this equipment, or null.
     meteringParentId: { type: ["string", "null"], minLength: 1 },
+    // Spec 177 — this meter is fed by a separate supply.
+    separateSupply: { type: "boolean" },
     // Spec 174 phase 2 — the timed command this equipment offers, or null to
     // clear it. `value` and `revertValue` are deliberately unconstrained: an
     // order carries a boolean, an enum string, a number or nothing at all
@@ -313,6 +315,7 @@ export function registerEquipmentRoutes(app: FastifyInstance, deps: EquipmentsDe
       invertDirection?: boolean;
       solarProfile?: SolarProfile | null;
       meteringParentId?: string | null;
+      separateSupply?: boolean;
       timedCommand?: TimedCommand | null;
     };
   }>(
@@ -387,6 +390,37 @@ export function registerEquipmentRoutes(app: FastifyInstance, deps: EquipmentsDe
             message: "That declaration would make a meter contain itself",
           });
         }
+        // Spec 177 — a meter on a separate supply is outside the partition, so
+        // "already counted by it" cannot be true of anything the partition
+        // renders.
+        if (parentDetails.separateSupply) {
+          return reply.status(400).send({
+            error: "MeteringParentSeparateSupply",
+            message: `${parent.name} is fed by a separate supply, so nothing in the house partition can be counted inside it`,
+          });
+        }
+      }
+
+      // Spec 177 — the reference and the production surfaces are what the
+      // reconciliation is FOR; declaring them "outside it" is a contradiction,
+      // and silently storing it would do nothing at all. Checked on the
+      // RESULTING (type, flag) pair, not on the request alone: a type change to
+      // the house total on an already-flagged meter reaches the same forbidden
+      // state without ever writing `separateSupply: true`, and retyping it back
+      // later would silently resurrect the flag.
+      if (body.separateSupply === true || body.type !== undefined) {
+        const current = equipmentManager.getById(request.params.id);
+        if (!current) {
+          return reply.status(404).send({ error: "Equipment not found" });
+        }
+        const resultingType = body.type ?? current.type;
+        const resultingFlag = body.separateSupply ?? current.separateSupply ?? false;
+        if (resultingFlag && NON_SUBMETER_TYPES.has(resultingType)) {
+          return reply.status(400).send({
+            error: "SeparateSupplyNotApplicable",
+            message: `${current.name} is the house total or a production meter — the reconciliation reference cannot be outside itself`,
+          });
+        }
       }
 
       // Spec 174 phase 2 — a timed command is validated where it is WRITTEN, not
@@ -425,6 +459,7 @@ export function registerEquipmentRoutes(app: FastifyInstance, deps: EquipmentsDe
           requireConfirmation: body.requireConfirmation,
           invertDirection: body.invertDirection,
           meteringParentId: body.meteringParentId,
+          separateSupply: body.separateSupply,
           timedCommand: body.timedCommand,
         });
         if (!equipment) {

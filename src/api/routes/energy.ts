@@ -335,10 +335,15 @@ export function registerEnergyRoutes(app: FastifyInstance, deps: EnergyDeps): vo
     // Any equipment carrying a numeric power/energy channel, except the house
     // total / production meters (#523). Only the non-excluded types trigger a
     // binding fetch, which isSubmeterEquipment inspects for a numeric channel.
-    const submeterEquipments = equipmentManager.getAll().filter((eq) => {
+    const enrolledEquipments = equipmentManager.getAll().filter((eq) => {
       if (NON_SUBMETER_TYPES.has(eq.type)) return false;
       return isSubmeterEquipment(eq.type, equipmentManager.getDataBindingsWithValues(eq.id));
     });
+    // Spec 177 — a meter fed by a separate supply measures energy the main
+    // meter never carried. It leaves the partition (Σ, `other`, cost) entirely
+    // and is rendered apart, raw and uncosted: its tariff is unknown here.
+    const submeterEquipments = enrolledEquipments.filter((eq) => !eq.separateSupply);
+    const separateEquipments = enrolledEquipments.filter((eq) => eq.separateSupply);
     const mainEquipmentId = findEnergyEquipmentId(equipmentManager);
 
     const { from, to, resolution, bucket } = computeRange(period, dateStr, config.bucket);
@@ -493,12 +498,39 @@ export function registerEnergyRoutes(app: FastifyInstance, deps: EnergyDeps): vo
         }
       }
 
+      // Spec 177 — the separate-supply group: raw series through the same query
+      // path and the same always-N zero-fill (spec 119), but no children
+      // arithmetic (spec 173 subtraction is a partition concern) and no cost
+      // (spec 123's blended €/kWh is the MAIN meter's tariff — pricing another
+      // supply's kilowatt-hours with it is exactly the error this flag exists
+      // to stop). Colors continue the partition's palette so no two series on
+      // the page collide.
+      const separateSupply: SubmeterSeries[] = [];
+      const sortedSeparate = [...separateEquipments].sort((a, b) => a.id.localeCompare(b.id));
+      for (let i = 0; i < sortedSeparate.length; i++) {
+        const eq = sortedSeparate[i];
+        let rawPoints: EnergyByUsagePoint[] = [];
+        for (const b of buckets) {
+          rawPoints = await querySubmeterPoints(client, config.org, b, eq.id, from, to, resolution);
+          if (rawPoints.length > 0) break;
+        }
+        const byTime = new Map(rawPoints.map((p) => [p.time, p.wh] as const));
+        separateSupply.push({
+          id: eq.id,
+          name: eq.name,
+          color: pickPaletteColor(sortedSubmeters.length + i),
+          points: bucketTimes.map((time) => ({ time, wh: byTime.get(time) ?? 0 })),
+          cost: 0,
+        });
+      }
+
       const response: EnergyByUsageResponse = {
         period,
         from: from.toISOString(),
         to: to.toISOString(),
         resolution,
         submeters,
+        ...(separateSupply.length > 0 ? { separateSupply } : {}),
         other: { points: otherPoints },
         totals: {
           byEquipment: totalsByEquipment,

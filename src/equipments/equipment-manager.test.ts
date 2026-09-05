@@ -638,6 +638,18 @@ describe("EquipmentManager", () => {
     it("returns null for non-existent id", () => {
       expect(manager.update("non-existent", { name: "test" })).toBeNull();
     });
+
+    // Spec 177 — the flag must round-trip, default to false, and survive an
+    // update that does not mention it (undefined preserves, like spec 173).
+    it("persists separateSupply, defaults it to false, and keeps it on omission", () => {
+      const zone = zoneManager.create({ name: "Garage" });
+      const eq = manager.create({ name: "ConsommationVE", type: "energy_meter", zoneId: zone.id });
+      expect(eq.separateSupply).toBe(false);
+
+      expect(manager.update(eq.id, { separateSupply: true })!.separateSupply).toBe(true);
+      expect(manager.update(eq.id, { name: "VE" })!.separateSupply).toBe(true);
+      expect(manager.update(eq.id, { separateSupply: false })!.separateSupply).toBe(false);
+    });
   });
 
   describe("delete", () => {

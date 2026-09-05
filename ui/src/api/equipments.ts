@@ -57,6 +57,8 @@ export async function updateEquipment(
     solarProfile?: SolarProfile | null;
     /** Spec 173 — the meter that already counts this one; null clears it. */
     meteringParentId?: string | null;
+    /** Spec 177 — this meter is fed by a separate supply. */
+    separateSupply?: boolean;
     /** Spec 174 phase 2 — the timed command this equipment offers; null clears it. */
     timedCommand?: TimedCommand | null;
   },
