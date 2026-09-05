@@ -42,9 +42,12 @@ export function EnergyManagementPanel({
   }, [fetchArbiter]);
 
   const measuredW = useMemo(() => {
+    // Numeric guard: a thermostat's boolean run state must never shadow the
+    // clamp reading (spec 176), same rule as pickLivePowerBinding.
     const binding =
-      equipment.dataBindings.find((b) => b.category === "power") ??
-      equipment.dataBindings.find((b) => b.alias === "power");
+      equipment.dataBindings.find(
+        (b) => b.category === "power" && typeof b.value === "number",
+      ) ?? equipment.dataBindings.find((b) => b.alias === "power" && typeof b.value === "number");
     const v = binding?.value;
     return typeof v === "number" && Number.isFinite(v) && v > 0 ? Math.round(v) : null;
   }, [equipment.dataBindings]);

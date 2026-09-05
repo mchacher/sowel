@@ -19,6 +19,11 @@ import {
   AlertTriangle,
 } from "lucide-react";
 import type { EquipmentWithDetails } from "../../types";
+import { thermostatPowerStateBinding } from "../../lib/thermostat-state";
+import { THERMOSTAT_STATE_ALIAS } from "../../lib/binding-candidates";
+
+/** How long an optimistic control value may outlive its confirmation. */
+const OPTIMISTIC_TTL_MS = 90_000;
 
 interface ThermostatCardProps {
   equipment: EquipmentWithDetails;
@@ -69,22 +74,79 @@ export function ThermostatCard({ equipment, onExecuteOrder, compact }: Thermosta
   // Optimistic overrides — applied immediately, cleared when real data arrives
   const [optimistic, setOptimistic] = useState<Record<string, unknown>>({});
   const prevBindingsRef = useRef(equipment.dataBindings);
+  const optimisticTimers = useRef(new Map<string, ReturnType<typeof setTimeout>>());
 
-  // Clear optimistic values when real data changes (WebSocket update)
+  const dropOptimistic = (alias: string) => {
+    const timer = optimisticTimers.current.get(alias);
+    if (timer) {
+      clearTimeout(timer);
+      optimisticTimers.current.delete(alias);
+    }
+    setOptimistic((prev) => {
+      if (!(alias in prev)) return prev;
+      const next = { ...prev };
+      delete next[alias];
+      return next;
+    });
+  };
+
+  useEffect(() => {
+    const timers = optimisticTimers.current;
+    return () => {
+      for (const timer of timers.values()) clearTimeout(timer);
+      timers.clear();
+    };
+  }, []);
+
+  // Clear an optimistic value when ITS mirror binding is re-reported — the
+  // truth then either confirms it (same value) or reverts it (the device did
+  // not obey). Clearing everything on any change, as this used to, let the
+  // submeter clamp (which pushes a wattage every few seconds) wipe the
+  // optimistic power state long before a cloud thermostat's next poll could
+  // confirm it, so the toggle snapped back to "off" seconds after every tap.
+  // A key whose mirror never reports (no binding at all, device offline) is
+  // bounded by the TTL armed in exec, not held forever.
   useEffect(() => {
     const prev = prevBindingsRef.current;
-    const changed = equipment.dataBindings.some((b) => {
-      const old = prev.find((p) => p.alias === b.alias);
-      return old && old.value !== b.value;
-    });
-    if (changed) {
-      setOptimistic({});
-    }
     prevBindingsRef.current = equipment.dataBindings;
+    setOptimistic((current) => {
+      const keys = Object.keys(current);
+      if (keys.length === 0) return current;
+      const reported = new Set(
+        equipment.dataBindings
+          .filter((b) => {
+            const old = prev.find((p) => p.alias === b.alias);
+            return old !== undefined && (old.value !== b.value || old.lastUpdated !== b.lastUpdated);
+          })
+          .map((b) => b.alias),
+      );
+      // The `power` order is mirrored by the boolean run-state binding
+      // (the `state` alias on a submetered thermostat). When no such binding
+      // exists, the mirror is the not-yet-bound state alias, NEVER the
+      // numeric `power` binding: the clamp's wattage pushes must not wipe
+      // the optimistic toggle on an equipment that has no state to confirm
+      // it with — that was the original symptom.
+      const stateBinding = thermostatPowerStateBinding(equipment.dataBindings);
+      const mirrorOf = (alias: string) =>
+        alias === "power" ? (stateBinding?.alias ?? THERMOSTAT_STATE_ALIAS) : alias;
+      const next: Record<string, unknown> = { ...current };
+      let touched = false;
+      for (const k of keys) {
+        if (reported.has(mirrorOf(k))) {
+          delete next[k];
+          touched = true;
+          const timer = optimisticTimers.current.get(k);
+          if (timer) {
+            clearTimeout(timer);
+            optimisticTimers.current.delete(k);
+          }
+        }
+      }
+      return touched ? next : current;
+    });
   }, [equipment.dataBindings]);
 
   // Read data bindings (with optimistic overlay)
-  const powerBinding = equipment.dataBindings.find((b) => b.alias === "power");
   const modeBinding = equipment.dataBindings.find((b) => b.alias === "operationMode")
     ?? equipment.dataBindings.find((b) => b.alias === "profile");
   const targetTempBinding = equipment.dataBindings.find((b) => b.alias === "setpoint");
@@ -94,7 +156,14 @@ export function ThermostatCard({ equipment, onExecuteOrder, compact }: Thermosta
   const ecoModeBinding = equipment.dataBindings.find((b) => b.alias === "ecoMode");
   const stoveStateBinding = equipment.dataBindings.find((b) => b.alias === "stoveState");
 
-  const isOn = "power" in optimistic ? optimistic.power === true : powerBinding?.value === true;
+  // The run state comes from the device's own boolean (the `state` alias on
+  // a submetered thermostat, legacy boolean `power` otherwise). The `power`
+  // alias on a submetered thermostat is a wattage, which `=== true` read as
+  // permanently off — every tap then sent ON, and the toggle never settled.
+  const isOn =
+    "power" in optimistic
+      ? optimistic.power === true
+      : thermostatPowerStateBinding(equipment.dataBindings)?.value === true;
   const stoveState = typeof stoveStateBinding?.value === "string" ? stoveStateBinding.value : null;
   const modeAlias = modeBinding?.alias ?? "operationMode";
   const currentMode = modeAlias in optimistic
@@ -126,18 +195,24 @@ export function ThermostatCard({ equipment, onExecuteOrder, compact }: Thermosta
 
   const exec = async (alias: string, value: unknown) => {
     if (executing) return;
-    // Apply optimistic update immediately
+    // Apply optimistic update immediately, bounded by a TTL: if nothing ever
+    // re-reports the mirror (no state binding yet, device offline, order
+    // rejected upstream), the card falls back to the truth instead of
+    // showing a stale optimistic state forever. 90 s covers the Panasonic
+    // plugin's on-demand polls (10 s + 45 s) with margin.
     setOptimistic((prev) => ({ ...prev, [alias]: value }));
+    const existing = optimisticTimers.current.get(alias);
+    if (existing) clearTimeout(existing);
+    optimisticTimers.current.set(
+      alias,
+      setTimeout(() => dropOptimistic(alias), OPTIMISTIC_TTL_MS),
+    );
     setExecuting(alias);
     try {
       await onExecuteOrder(alias, value);
     } catch {
       // Revert optimistic on error
-      setOptimistic((prev) => {
-        const next = { ...prev };
-        delete next[alias];
-        return next;
-      });
+      dropOptimistic(alias);
     } finally {
       setExecuting(null);
     }
@@ -205,7 +280,9 @@ export function ThermostatCard({ equipment, onExecuteOrder, compact }: Thermosta
             const hasAlarm = stoveState.startsWith("error");
             return (
               <button
-                onClick={() => hasAlarm && exec("resetAlarm", true)}
+                onClick={() => {
+                  if (hasAlarm) void exec("resetAlarm", true);
+                }}
                 disabled={!hasAlarm || executing === "resetAlarm"}
                 className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-[6px] text-[12px] font-medium border transition-colors ${
                   hasAlarm

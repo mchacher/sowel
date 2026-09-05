@@ -73,6 +73,8 @@ Awnings share the shutter control surface (same position binding, same OPEN/STOP
 
 Thermostat covers air conditioning, pellet stoves, and heat pumps. Heater covers individual electric heaters wired through a fil-pilote relay. Water Heater (chauffe-eau / cumulus) is an on/off relay for a hot-water tank: auto-binds the on/off channel (and its power/energy when the relay meters them); a water-temperature probe can be bound optionally and is shown but kept out of the room temperature average. Setpoint control is intentionally out of scope (that would be a thermostat).
 
+On a thermostat, the on/off state reported by the device itself is bound under the `state` alias, the same on/off alias relay-style equipments use. This matters on a **submetered** thermostat (a heat pump measured by a clamp): there the `power` alias carries the live wattage, and the wattage cannot tell the UI whether the unit is on or in standby. If your thermostat card never shows as ON, open the equipment's missing-bindings panel and add the device's power reading: it is offered as `state`. Legacy thermostats with the boolean bound directly under `power` keep working unchanged.
+
 A water heater (and a switch) can also carry a dedicated **solar** on/off channel, independent from the main on/off: a second contact (e.g. a SONOFF MINI-ZBD Zigbee dry-contact relay driving the photovoltaic input of a heat-pump water heater). It is bound explicitly under the solar role, distinct from the appliance's normal operation. On a water heater left on permanent mains, only the Solar toggle appears; the card shows one toggle per bound channel. The solar channel is the actuator a solar-surplus recipe drives through the energy arbiter; the arbitration logic itself stays in the recipe.
 
 ### Access

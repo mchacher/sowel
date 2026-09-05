@@ -29,6 +29,7 @@ import { useEquipmentState } from "../equipments/useEquipmentState";
 import { findOrderByCategory } from "../equipments/bindingUtils";
 import { VmcControl } from "../equipments/VmcControl";
 import { allSupportStop } from "../../lib/binding-utils";
+import { thermostatPowerStateBinding } from "../../lib/thermostat-state";
 import { useSliderOverride } from "../../hooks/useSliderOverride";
 import { SensorValues } from "../equipments/SensorValues";
 import {
@@ -794,7 +795,7 @@ function ZoneHeatingDetail({
       if (tempBinding && typeof tempBinding.value === "number") temps.push(tempBinding.value);
       const spBinding = eq.dataBindings.find((b) => b.alias === "setpoint");
       if (spBinding && typeof spBinding.value === "number") setpoints.push(spBinding.value);
-      const power = eq.dataBindings.find((b) => b.alias === "power");
+      const power = thermostatPowerStateBinding(eq.dataBindings);
       if (power?.value === true) on = true;
     }
     const avg = (arr: number[]) => arr.length > 0
@@ -1193,7 +1194,6 @@ function ThermostatDetailContent({
 
   const isPoolHeatPump = equipment.type === "pool_heat_pump";
 
-  const powerBinding = equipment.dataBindings.find((b) => b.alias === "power");
   const modeBinding = equipment.dataBindings.find((b) => b.alias === "mode");
   const insideTempBinding = equipment.dataBindings.find((b) => b.alias === "temperature");
   const effectiveWaterTemp = equipment.computedData?.find(
@@ -1206,7 +1206,7 @@ function ThermostatDetailContent({
   // — gated by filtration / mode so we only show a representative value.
   const isOn = isPoolHeatPump
     ? typeof modeBinding?.value === "string" && modeBinding.value.toUpperCase() !== "OFF"
-    : powerBinding?.value === true;
+    : thermostatPowerStateBinding(equipment.dataBindings)?.value === true;
   const insideTemp = isPoolHeatPump
     ? typeof effectiveWaterTemp?.value === "number"
       ? effectiveWaterTemp.value

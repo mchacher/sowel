@@ -65,7 +65,7 @@ export function AddBindingModal({
     setSelectedItemId(item.id);
     setAlias(
       equipmentType
-        ? resolveAlias(item.key, equipmentType, undefined, (item as { category?: string }).category)
+        ? resolveAlias(item.key, equipmentType, undefined, item.category, item.type)
         : item.key,
     );
     setError(null);

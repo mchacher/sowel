@@ -107,6 +107,15 @@ export const SOLAR_ORDER_ALIAS = "solar";
 export const SOLAR_STATE_ALIAS = "solar_state";
 
 /**
+ * Spec 176 — alias for a thermostat's boolean run state: the SAME `state`
+ * alias every relay-style equipment already uses for on/off, not a new name.
+ * On a submetered thermostat the `power` alias is the wattage read from a
+ * clamp (the metering convention), so the on/off state the device reports
+ * about itself binds here instead.
+ */
+export const THERMOSTAT_STATE_ALIAS = "state";
+
+/**
  * True for an on/off command channel. Two shapes are accepted:
  *  - an ON/OFF enum order (`["ON","OFF"]`, e.g. Tasmota `power1`)
  *  - a boolean power-toggle order (Zigbee2MQTT exposes plug/relay `state` as a
@@ -595,6 +604,15 @@ export function inferDataBindingCategory(
 ): DataCategory | null {
   if (alias === SOLAR_STATE_ALIAS && SOLAR_CHANNEL_TYPES.has(equipmentType)) {
     return "solar_state";
+  }
+  // Spec 176 — the thermostat run-state binding must NOT keep the device's
+  // `power` category: a submetered thermostat then carries two category=power
+  // bindings (one boolean, one wattage) and every category-first consumer
+  // (capacity arbiter, power-submeter integrator, energy panel) picks
+  // whichever row comes first. As `appliance_state` it is recognized as the
+  // on/off state by the arbiter's isStateAlias and invisible to metering.
+  if (alias === THERMOSTAT_STATE_ALIAS && equipmentType === "thermostat") {
+    return "appliance_state";
   }
   return null;
 }

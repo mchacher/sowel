@@ -10,6 +10,7 @@
 
 export {
   CANDIDATE_BASED_TYPES,
+  THERMOSTAT_STATE_ALIAS,
   computeBindingCandidates,
   hasFreeCandidates,
   inferBindingCategory,

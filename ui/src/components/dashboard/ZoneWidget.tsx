@@ -15,6 +15,7 @@ import type { DashboardWidget, EquipmentWithDetails, ZoneWithChildren, WidgetFam
 import { executeZoneOrder, executeEquipmentOrder } from "../../api";
 import { findOrderByCategory } from "../equipments/bindingUtils";
 import { allSupportStop } from "../../lib/binding-utils";
+import { thermostatPowerStateBinding } from "../../lib/thermostat-state";
 import { useSliderOverride } from "../../hooks/useSliderOverride";
 import {
   LightBulbIcon,
@@ -505,11 +506,15 @@ function ZoneHeatingWidget({
       if (spBinding && typeof spBinding.value === "number") {
         setpoints.push(spBinding.value);
       }
-      const power = eq.dataBindings.find((b) => b.alias === "power");
+      const power = thermostatPowerStateBinding(eq.dataBindings);
       if (power?.value === true) on = true;
       if (!power) {
+        // Relay-style heaters: read the state's VALUE. This branch is newly
+        // reachable for a submetered thermostat without a state binding
+        // (spec 176), and the old existence check would have painted the zone
+        // warm forever there.
         const state = eq.dataBindings.find((b) => b.alias === "state" || b.category === "light_state");
-        if (state != null) on = true;
+        if (state?.value === true || state?.value === "ON") on = true;
       }
     }
 

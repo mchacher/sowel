@@ -39,6 +39,7 @@ import { SolarPanelIcon } from "../icons/SolarPanelIcon";
 import { solarWidgetState } from "./solarWidget";
 import { resolvePowerReading } from "../../lib/power-reading";
 import { pickLivePowerBinding } from "../../lib/energy-meter-display";
+import { thermostatPowerStateBinding } from "../../lib/thermostat-state";
 import { formatRelative } from "../../lib/format-relative";
 import { createElement, type ReactNode } from "react";
 import {
@@ -766,7 +767,6 @@ function ThermostatEquipmentWidget({
 
   const isPoolHeatPump = equipment.type === "pool_heat_pump";
 
-  const powerBinding = equipment.dataBindings.find((b) => b.alias === "power");
   const modeBinding = equipment.dataBindings.find((b) => b.alias === "mode");
   const insideTempBinding = equipment.dataBindings.find((b) => b.alias === "temperature");
   const effectiveWaterTemp = equipment.computedData?.find(
@@ -776,7 +776,7 @@ function ThermostatEquipmentWidget({
 
   const isOn = isPoolHeatPump
     ? typeof modeBinding?.value === "string" && modeBinding.value.toUpperCase() !== "OFF"
-    : powerBinding?.value === true;
+    : thermostatPowerStateBinding(equipment.dataBindings)?.value === true;
   const insideTemp = isPoolHeatPump
     ? typeof effectiveWaterTemp?.value === "number"
       ? effectiveWaterTemp.value

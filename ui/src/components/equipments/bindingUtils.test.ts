@@ -529,3 +529,93 @@ describe("computeMissingBindings alias allocation", () => {
     expect(missing[0].alias).toBe("temperature");
   });
 });
+
+describe("thermostat power aliasing (PAC on/off follow-up to #901)", () => {
+  it("aliases the device's boolean power reading under the shared state alias", () => {
+    expect(resolveAlias("power", "thermostat", undefined, "power", "boolean")).toBe("state");
+  });
+
+  it("keeps a wattage reading on the power alias (metering convention)", () => {
+    expect(resolveAlias("power", "thermostat", undefined, "power", "number")).toBe("power");
+  });
+
+  it("pins the outdoor probe to outsideTemperature whatever the plugin calls the key", () => {
+    // Every thermostat surface reads alias `outsideTemperature`; without the
+    // per-type override a foreign key would bind under its raw name and the
+    // value would be bound, historized and invisible.
+    expect(
+      resolveAlias("outdoor_temp", "thermostat", undefined, "temperature_outdoor", "number"),
+    ).toBe("outsideTemperature");
+  });
+
+  it("keeps the toggle_power order on the power alias ThermostatCard drives", () => {
+    // The global ORDER_CATEGORY_ALIASES maps toggle_power → state, which no
+    // thermostat surface reads; the per-type override must win.
+    expect(resolveAlias("power", "thermostat", undefined, "toggle_power", "boolean")).toBe("power");
+  });
+
+  const panasonicLike = {
+    id: "dev-pac",
+    name: "PAC",
+    data: [
+      { id: "d1", key: "power", category: "power", type: "boolean" },
+      { id: "d2", key: "targetTemperature", category: "setpoint", type: "number" },
+      { id: "d3", key: "insideTemperature", category: "temperature", type: "number" },
+      { id: "d4", key: "outsideTemperature", category: "temperature_outdoor", type: "number" },
+      { id: "d5", key: "operationMode", category: "generic", type: "enum" },
+    ],
+    orders: [
+      { id: "o1", key: "power", category: "toggle_power", type: "boolean" },
+      { id: "o2", key: "targetTemperature", category: "set_setpoint", type: "number" },
+    ],
+  } as unknown as DeviceWithDetails;
+
+  it("plans the full spec 077 surface for a cloud thermostat", () => {
+    const plan = computeBindingPlan([panasonicLike], "thermostat");
+    const dataAliases = Object.fromEntries(
+      plan.filter((p) => p.kind === "data").map((p) => [p.key, p.alias]),
+    );
+    const orderAliases = Object.fromEntries(
+      plan.filter((p) => p.kind === "order").map((p) => [p.key, p.alias]),
+    );
+
+    expect(dataAliases.power).toBe("state");
+    expect(dataAliases.targetTemperature).toBe("setpoint");
+    expect(dataAliases.insideTemperature).toBe("temperature");
+    expect(dataAliases.outsideTemperature).toBe("outsideTemperature");
+    expect(orderAliases.power).toBe("power");
+    expect(orderAliases.targetTemperature).toBe("setpoint");
+  });
+
+  it("offers the unbound boolean as state on a submetered thermostat", () => {
+    // The PAC scenario: the `power` alias is a clamp wattage on another
+    // device, and the Panasonic's own boolean was left unbound. It must be
+    // offered under state — not power_2, which nothing would read.
+    const missing = computeMissingBindings(
+      [panasonicLike],
+      "thermostat",
+      [
+        {
+          id: "b-1",
+          equipmentId: "eq-1",
+          deviceDataId: "dd-clamp",
+          alias: "power",
+          deviceId: "dev-clamp",
+          key: "power",
+        } as unknown as DataBindingWithValue,
+        {
+          id: "b-2",
+          equipmentId: "eq-1",
+          deviceDataId: "d2",
+          alias: "setpoint",
+          deviceId: "dev-pac",
+          key: "targetTemperature",
+        } as unknown as DataBindingWithValue,
+      ],
+      [],
+    );
+
+    const powerRow = missing.find((m) => m.key === "power" && m.kind === "data");
+    expect(powerRow?.alias).toBe("state");
+  });
+});
