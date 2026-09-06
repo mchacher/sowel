@@ -30,11 +30,16 @@ BASE="$(git merge-base "${BASE_REF}" HEAD)"
 # PR creates. Robust to how the files were added (plain add or rename).
 base_dirs="$(git ls-tree -d --name-only "${BASE}" -- specs/ 2>/dev/null || true)"
 
+# A `printf | grep` per folder is two processes each, ~1.9 s at 175 folders, to
+# answer a set membership question. Flatten once and let the shell match.
+base_flat=" $(printf '%s' "${base_dirs}" | tr '\n' ' ') "
+
 new_dirs=""
 for dir in $(git ls-tree -d --name-only HEAD -- specs/); do
-  if printf '%s\n' "${base_dirs}" | grep -qxF "${dir}"; then
-    continue # folder already existed — not a new feature spec
-  fi
+  case "${base_flat}" in
+    # folder already existed — not a new feature spec
+    *" ${dir} "*) continue ;;
+  esac
   new_dirs="${new_dirs} ${dir}"
 done
 
