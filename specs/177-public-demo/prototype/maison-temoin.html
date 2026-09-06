@@ -1,0 +1,943 @@
+<title>Maison témoin</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap">
+<style>
+  :root {
+    --ground: #0e1e2b;
+    --panel: rgba(12, 28, 40, 0.74);
+    --panel-border: rgba(255, 255, 255, 0.08);
+    --fg: #f3f6f8;
+    --muted: #a9bcc8;
+    --accent: #f2c035;
+    --blue: #1a4f6e;
+    --blue-light: #6fa3c2;
+    --ok: #7fd1a0;
+  }
+  html, body { height: 100%; }
+  body {
+    margin: 0;
+    background: var(--ground);
+    color: var(--fg);
+    font-family: Inter, system-ui, -apple-system, "Segoe UI", sans-serif;
+    font-size: 14px;
+    overflow: hidden;
+  }
+  #scene { position: fixed; inset: 0; width: 100vw; height: 100vh; display: block; touch-action: none; cursor: grab; }
+  #scene.dragging { cursor: grabbing; }
+  #scene.hover { cursor: pointer; }
+
+  .hud {
+    position: fixed;
+    background: var(--panel);
+    border: 1px solid var(--panel-border);
+    border-radius: 12px;
+    backdrop-filter: blur(10px);
+    -webkit-backdrop-filter: blur(10px);
+    padding: 12px 14px;
+    box-shadow: 0 8px 30px rgba(0, 0, 0, 0.25);
+  }
+  .brand { top: 16px; left: 16px; min-width: 200px; }
+  .brand .eyebrow {
+    font-size: 11px; letter-spacing: 0.12em; text-transform: uppercase; color: var(--muted);
+    margin: 0 0 4px;
+  }
+  .brand h1 { font-size: 18px; font-weight: 600; margin: 0 0 8px; text-wrap: balance; }
+  .clock {
+    font-family: "JetBrains Mono", ui-monospace, Menlo, monospace;
+    font-size: 28px; font-weight: 500; line-height: 1; font-variant-numeric: tabular-nums;
+  }
+  .clock small { font-size: 12px; color: var(--muted); margin-left: 8px; font-family: Inter, sans-serif; font-weight: 400; }
+  .narrative { margin: 8px 0 0; color: var(--muted); font-size: 13px; max-width: 26ch; line-height: 1.4; }
+
+  .people { top: 16px; right: 16px; min-width: 190px; }
+  .people ul { list-style: none; margin: 0; padding: 0; display: grid; gap: 8px; }
+  .people li { display: flex; align-items: center; gap: 10px; font-size: 13px; }
+  .people .dot { width: 10px; height: 10px; border-radius: 50%; flex: none; }
+  .people .where { color: var(--muted); margin-left: auto; font-variant-numeric: tabular-nums; }
+
+  .log { bottom: 96px; left: 16px; max-width: 360px; padding: 10px 12px; }
+  .log ul { list-style: none; margin: 0; padding: 0; display: grid; gap: 4px; }
+  .log li {
+    font-family: "JetBrains Mono", ui-monospace, Menlo, monospace; font-size: 12px; line-height: 1.4;
+    color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  }
+  .log li:last-child { color: var(--fg); }
+  .log li .t { color: var(--accent); margin-right: 8px; }
+  .log:empty { display: none; }
+
+  .controls {
+    bottom: 16px; left: 50%; transform: translateX(-50%);
+    display: flex; align-items: center; gap: 14px; padding: 10px 14px;
+    max-width: calc(100vw - 32px); box-sizing: border-box;
+  }
+  .controls button, .seg button {
+    font: inherit; color: var(--fg); background: rgba(255, 255, 255, 0.06);
+    border: 1px solid var(--panel-border); border-radius: 8px; padding: 6px 10px; cursor: pointer;
+  }
+  .controls button:hover, .seg button:hover { background: rgba(255, 255, 255, 0.12); }
+  .controls button:focus-visible, .seg button:focus-visible, input:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+  .seg { display: flex; gap: 4px; }
+  .seg button[aria-pressed="true"] { background: var(--accent); color: #1c1a10; border-color: var(--accent); }
+  .controls input[type="range"] { width: 200px; accent-color: var(--accent); }
+  .controls label { font-size: 11px; color: var(--muted); letter-spacing: 0.08em; text-transform: uppercase; }
+  .stack { display: grid; gap: 4px; }
+
+  .hint {
+    position: fixed; bottom: 72px; left: 50%; transform: translateX(-50%);
+    color: var(--muted); font-size: 12px; text-align: center; pointer-events: none;
+    text-shadow: 0 1px 6px rgba(0, 0, 0, 0.6);
+  }
+  #fallback { position: fixed; inset: 0; display: none; place-items: center; text-align: center; padding: 24px; color: var(--muted); }
+
+  @media (max-width: 640px) {
+    .people { display: none; }
+    .log { bottom: 128px; max-width: calc(100vw - 32px); }
+    .controls { flex-wrap: wrap; justify-content: center; gap: 10px; }
+    .controls input[type="range"] { width: 160px; }
+    .hint { display: none; }
+  }
+</style>
+
+<canvas id="scene" aria-label="Maison témoin en 3D"></canvas>
+<div id="fallback">La scène 3D n'a pas pu se charger (bibliothèque Three.js indisponible).</div>
+
+<section class="hud brand">
+  <p class="eyebrow">Sowel · démonstrateur</p>
+  <h1>Maison témoin</h1>
+  <div class="clock"><span id="clock">07:12</span><small id="daylabel">mardi</small></div>
+  <p class="narrative" id="narrative">La maison se réveille.</p>
+</section>
+
+<section class="hud people" aria-label="Occupants">
+  <ul id="people"></ul>
+</section>
+
+<section class="hud log" aria-live="polite"><ul id="log"></ul></section>
+
+<p class="hint">Glissez pour tourner · clic droit ou Maj + glisser pour déplacer · molette pour zoomer · cliquez une lampe, une fenêtre ou le sol d'une pièce</p>
+
+<section class="hud controls" aria-label="Simulation">
+  <button id="play" aria-label="Pause">❚❚</button>
+  <div class="stack">
+    <label for="time">Heure</label>
+    <input id="time" type="range" min="0" max="24" step="0.02" value="7.2">
+  </div>
+  <div class="stack">
+    <label>Vitesse</label>
+    <div class="seg" id="speed">
+      <button data-v="30" aria-pressed="false">Lent</button>
+      <button data-v="120" aria-pressed="true">Normal</button>
+      <button data-v="600" aria-pressed="false">Rapide</button>
+    </div>
+  </div>
+  <div class="stack">
+    <label>Météo</label>
+    <div class="seg" id="weather">
+      <button data-w="clear" aria-pressed="true">Clair</button>
+      <button data-w="cloudy" aria-pressed="false">Nuages</button>
+      <button data-w="rain" aria-pressed="false">Pluie</button>
+    </div>
+  </div>
+</section>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script>
+(function () {
+  if (typeof THREE === "undefined") {
+    document.getElementById("fallback").style.display = "grid";
+    return;
+  }
+
+  // ------------------------------------------------------------
+  // Plan de la maison (mètres). x vers l'est, z vers le sud.
+  // ------------------------------------------------------------
+  const H = 2.6;           // hauteur des murs
+  const T = 0.14;          // épaisseur des murs
+  const ROOMS = [
+    { id: "salon",   name: "Salon",          x: 0,   z: 0, w: 7,   d: 5, floor: 0xc9a06f, spot: [3.2, 3.1], loc: "au salon" },
+    { id: "cuisine", name: "Cuisine",        x: 7,   z: 0, w: 5,   d: 5, floor: 0xd8d3ca, spot: [9.4, 3.4], loc: "à la cuisine" },
+    { id: "entree",  name: "Entrée",         x: 0,   z: 5, w: 2.4, d: 4, floor: 0xd8d3ca, spot: [1.2, 7.0], loc: "dans l'entrée" },
+    { id: "sdb",     name: "Salle de bain",  x: 2.4, z: 5, w: 2.4, d: 4, floor: 0xcfdbe0, spot: [3.6, 6.6], loc: "à la salle de bain" },
+    { id: "bureau",  name: "Bureau",         x: 4.8, z: 5, w: 2.4, d: 4, floor: 0xb6bcc6, spot: [6.0, 7.2], loc: "au bureau" },
+    { id: "enfant",  name: "Chambre enfant", x: 7.2, z: 5, w: 2.4, d: 4, floor: 0xc9a06f, spot: [8.7, 7.9], loc: "dans la chambre d'enfant" },
+    { id: "chambre", name: "Chambre",        x: 9.6, z: 5, w: 2.4, d: 4, floor: 0xc9a06f, spot: [10.2, 8.1], loc: "dans la chambre" },
+  ];
+  const ROOM = Object.fromEntries(ROOMS.map((r) => [r.id, r]));
+  const CENTER = new THREE.Vector3(6, 0, 4.5);
+
+  const win = (at) => ({ at, w: 1.4, sill: 0.9, head: 2.1, kind: "window" });
+  const door = (at) => ({ at, w: 0.9, sill: 0, head: 2.1, kind: "door" });
+  const WALLS = [
+    { axis: "x", at: 0,   from: 0, to: 12, openings: [win(1.6), win(4.6), win(9.5)], outside: true },
+    { axis: "x", at: 9,   from: 0, to: 12, openings: [door(1.2), win(3.6), win(6.0), win(8.4), win(10.8)], outside: true },
+    { axis: "z", at: 0,   from: 0, to: 9,  openings: [win(2.5)], outside: true },
+    { axis: "z", at: 12,  from: 0, to: 9,  openings: [win(2.5), win(7.0)], outside: true },
+    { axis: "x", at: 5,   from: 0, to: 12, openings: [door(1.2), door(3.6), door(6.0), door(8.4), door(10.8)] },
+    { axis: "z", at: 7,   from: 0, to: 5,  openings: [door(2.5)] },
+    { axis: "z", at: 2.4, from: 5, to: 9,  openings: [] },
+    { axis: "z", at: 4.8, from: 5, to: 9,  openings: [] },
+    { axis: "z", at: 7.2, from: 5, to: 9,  openings: [] },
+    { axis: "z", at: 9.6, from: 5, to: 9,  openings: [] },
+  ];
+  // Portes = arêtes du graphe de circulation
+  const DOORS = [
+    ["salon", "cuisine", 7, 2.5], ["salon", "entree", 1.2, 5], ["salon", "sdb", 3.6, 5],
+    ["salon", "bureau", 6, 5], ["cuisine", "enfant", 8.4, 5], ["cuisine", "chambre", 10.8, 5],
+    ["entree", "away", 1.2, 9],
+  ];
+  const AWAY_SPOT = [1.2, 12.5];
+
+  // ------------------------------------------------------------
+  // Rendu
+  // ------------------------------------------------------------
+  const canvas = document.getElementById("scene");
+  const renderer = new THREE.WebGLRenderer({ canvas, antialias: true });
+  renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+  renderer.outputEncoding = THREE.sRGBEncoding;
+  renderer.shadowMap.enabled = true;
+  renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+  renderer.toneMapping = THREE.ACESFilmicToneMapping;
+  renderer.toneMappingExposure = 1.05;
+
+  const scene = new THREE.Scene();
+  scene.background = new THREE.Color(0x9fd0f0);
+  scene.fog = new THREE.Fog(0x9fd0f0, 40, 90);
+
+  const camera = new THREE.PerspectiveCamera(38, 1, 0.1, 200);
+  const orbit = { theta: -0.75, phi: 0.98, radius: 20, target: CENTER.clone() };
+  function placeCamera() {
+    const { theta, phi, radius, target } = orbit;
+    camera.position.set(
+      target.x + radius * Math.sin(phi) * Math.cos(theta),
+      target.y + radius * Math.cos(phi),
+      target.z + radius * Math.sin(phi) * Math.sin(theta)
+    );
+    camera.lookAt(target);
+  }
+
+  const sun = new THREE.DirectionalLight(0xffffff, 1.4);
+  sun.castShadow = true;
+  sun.shadow.mapSize.set(2048, 2048);
+  sun.shadow.camera.left = -14; sun.shadow.camera.right = 14;
+  sun.shadow.camera.top = 14; sun.shadow.camera.bottom = -14;
+  sun.shadow.camera.near = 1; sun.shadow.camera.far = 80;
+  sun.shadow.bias = -0.0008;
+  sun.shadow.normalBias = 0.02;
+  sun.target.position.copy(CENTER);
+  scene.add(sun, sun.target);
+  const hemi = new THREE.HemisphereLight(0xbfe0f5, 0x6e7e57, 0.55);
+  scene.add(hemi);
+  const moon = new THREE.DirectionalLight(0x8fa8c8, 0.0);
+  moon.position.set(-15, 20, -10);
+  scene.add(moon);
+
+  // ------------------------------------------------------------
+  // Matériaux et petits constructeurs
+  // ------------------------------------------------------------
+  const M = {
+    wall: new THREE.MeshStandardMaterial({ color: 0xf1ebe0, roughness: 0.92 }),
+    slab: new THREE.MeshStandardMaterial({ color: 0xd8d2c7, roughness: 0.95 }),
+    grass: new THREE.MeshStandardMaterial({ color: 0x9dbf7f, roughness: 1 }),
+    path: new THREE.MeshStandardMaterial({ color: 0xcfc6b6, roughness: 1 }),
+    wood: new THREE.MeshStandardMaterial({ color: 0x8a6240, roughness: 0.8 }),
+    woodLight: new THREE.MeshStandardMaterial({ color: 0xb98a5e, roughness: 0.8 }),
+    fabric: new THREE.MeshStandardMaterial({ color: 0x35627a, roughness: 1 }),
+    fabricLight: new THREE.MeshStandardMaterial({ color: 0xe9e2d6, roughness: 1 }),
+    white: new THREE.MeshStandardMaterial({ color: 0xf7f7f5, roughness: 0.5 }),
+    metal: new THREE.MeshStandardMaterial({ color: 0xb9bec4, roughness: 0.35, metalness: 0.6 }),
+    leaf: new THREE.MeshStandardMaterial({ color: 0x5f9a54, roughness: 1 }),
+    leafDark: new THREE.MeshStandardMaterial({ color: 0x4a7f45, roughness: 1 }),
+    trunk: new THREE.MeshStandardMaterial({ color: 0x6f5238, roughness: 1 }),
+    pot: new THREE.MeshStandardMaterial({ color: 0xc46f4e, roughness: 0.9 }),
+    amber: new THREE.MeshStandardMaterial({ color: 0xf2c035, roughness: 0.6 }),
+    glass: new THREE.MeshStandardMaterial({ color: 0xbfe0f0, roughness: 0.1, metalness: 0.1, transparent: true, opacity: 0.35 }),
+    shutter: new THREE.MeshStandardMaterial({ color: 0x7e919c, roughness: 0.7 }),
+    door: new THREE.MeshStandardMaterial({ color: 0x2f5f78, roughness: 0.6 }),
+    sensor: new THREE.MeshStandardMaterial({ color: 0xffffff, roughness: 0.5 }),
+  };
+
+  function box(w, h, d, mat, x, y, z, parent, opts) {
+    const m = new THREE.Mesh(new THREE.BoxGeometry(w, h, d), mat);
+    m.position.set(x, y, z);
+    m.castShadow = !(opts && opts.noCast);
+    m.receiveShadow = true;
+    (parent || scene).add(m);
+    return m;
+  }
+  function cyl(rTop, rBot, h, mat, x, y, z, parent, seg) {
+    const m = new THREE.Mesh(new THREE.CylinderGeometry(rTop, rBot, h, seg || 20), mat);
+    m.position.set(x, y, z);
+    m.castShadow = true; m.receiveShadow = true;
+    (parent || scene).add(m);
+    return m;
+  }
+  function sphere(r, mat, x, y, z, parent) {
+    const m = new THREE.Mesh(new THREE.SphereGeometry(r, 20, 14), mat);
+    m.position.set(x, y, z);
+    m.castShadow = true; m.receiveShadow = true;
+    (parent || scene).add(m);
+    return m;
+  }
+
+  // ------------------------------------------------------------
+  // Terrain
+  // ------------------------------------------------------------
+  const ground = new THREE.Mesh(new THREE.PlaneGeometry(140, 140), M.grass);
+  ground.rotation.x = -Math.PI / 2;
+  ground.position.set(6, -0.02, 4.5);
+  ground.receiveShadow = true;
+  scene.add(ground);
+  box(13.2, 0.16, 10.2, M.slab, 6, -0.08, 4.5, scene, { noCast: true }); // dalle
+  box(1.6, 0.04, 4.5, M.path, 1.2, 0.0, 11.4, scene, { noCast: true });   // allée
+  box(3.2, 0.06, 1.2, M.path, 1.2, 0.0, 9.9, scene, { noCast: true });    // seuil
+
+  function tree(x, z, s) {
+    const g = new THREE.Group();
+    cyl(0.12 * s, 0.16 * s, 1.2 * s, M.trunk, 0, 0.6 * s, 0, g);
+    sphere(0.9 * s, M.leaf, 0, 1.7 * s, 0, g);
+    sphere(0.65 * s, M.leafDark, 0.45 * s, 2.2 * s, 0.2 * s, g);
+    sphere(0.55 * s, M.leaf, -0.5 * s, 2.1 * s, -0.3 * s, g);
+    g.position.set(x, 0, z);
+    scene.add(g);
+  }
+  tree(-3.4, 1.5, 1.3); tree(-2.8, 7.5, 1.0); tree(15.3, 2.5, 1.4); tree(15, 8.8, 1.1);
+  tree(4.5, 13.2, 1.0); tree(9.5, 12.6, 1.2); tree(-1.5, -3.2, 1.1); tree(11.5, -3.4, 1.3);
+  function bush(x, z, s) {
+    sphere(0.4 * s, M.leafDark, x, 0.3 * s, z);
+    sphere(0.3 * s, M.leaf, x + 0.3 * s, 0.25 * s, z + 0.1 * s);
+  }
+  bush(-0.6, 10.2, 1); bush(3.1, 10.3, 1.1); bush(13, 6, 0.9); bush(13.1, -0.6, 1);
+
+  // ------------------------------------------------------------
+  // Sols par pièce (cliquables)
+  // ------------------------------------------------------------
+  const floorMeshes = [];
+  for (const r of ROOMS) {
+    const mat = new THREE.MeshStandardMaterial({ color: r.floor, roughness: 0.85 });
+    const f = new THREE.Mesh(new THREE.PlaneGeometry(r.w, r.d), mat);
+    f.rotation.x = -Math.PI / 2;
+    f.position.set(r.x + r.w / 2, 0.001, r.z + r.d / 2);
+    f.receiveShadow = true;
+    f.userData = { type: "floor", room: r.id };
+    scene.add(f);
+    floorMeshes.push(f);
+    // plinthe légère : une ligne plus sombre qui délimite la pièce
+  }
+
+  // ------------------------------------------------------------
+  // Murs avec ouvertures, vitrages et volets
+  // ------------------------------------------------------------
+  const shutters = [];   // { mesh, wallIdx, closed, target, manualUntil }
+  const windowMeshes = [];
+  function wallPiece(w, from, to, y0, y1) {
+    if (to - from <= 0.001 || y1 - y0 <= 0.001) return;
+    const len = to - from, h = y1 - y0, mid = (from + to) / 2, yc = (y0 + y1) / 2;
+    if (w.axis === "x") box(len, h, T, M.wall, mid, yc, w.at);
+    else box(T, h, len, M.wall, w.at, yc, mid);
+  }
+  WALLS.forEach((w, wi) => {
+    const ops = [...w.openings].sort((a, b) => a.at - b.at);
+    let cursor = w.from;
+    for (const o of ops) {
+      const a = o.at - o.w / 2, b = o.at + o.w / 2;
+      wallPiece(w, cursor, a, 0, H);
+      wallPiece(w, a, b, 0, o.sill);
+      wallPiece(w, a, b, o.head, H);
+      if (o.kind === "window") {
+        const gw = o.w, gh = o.head - o.sill, gy = (o.head + o.sill) / 2;
+        const glass = new THREE.Mesh(
+          w.axis === "x" ? new THREE.BoxGeometry(gw, gh, 0.03) : new THREE.BoxGeometry(0.03, gh, gw), M.glass);
+        if (w.axis === "x") glass.position.set(o.at, gy, w.at); else glass.position.set(w.at, gy, o.at);
+        glass.userData = { type: "window", idx: shutters.length };
+        scene.add(glass);
+        windowMeshes.push(glass);
+        // cadre
+        const frameMat = M.white;
+        if (w.axis === "x") {
+          box(gw + 0.08, 0.05, T + 0.04, frameMat, o.at, o.sill, w.at);
+          box(gw + 0.08, 0.05, T + 0.04, frameMat, o.at, o.head, w.at);
+        } else {
+          box(T + 0.04, 0.05, gw + 0.08, frameMat, w.at, o.sill, o.at);
+          box(T + 0.04, 0.05, gw + 0.08, frameMat, w.at, o.head, o.at);
+        }
+        // volet : géométrie ancrée en haut, mise à l'échelle en y
+        const sg = w.axis === "x" ? new THREE.BoxGeometry(gw - 0.02, gh, 0.05) : new THREE.BoxGeometry(0.05, gh, gw - 0.02);
+        sg.translate(0, -gh / 2, 0);
+        const sh = new THREE.Mesh(sg, M.shutter);
+        const off = w.outside ? (w.axis === "x" ? (w.at === 0 ? -1 : 1) : (w.at === 0 ? -1 : 1)) * (T / 2 + 0.05) : 0;
+        if (w.axis === "x") sh.position.set(o.at, o.head, w.at + off); else sh.position.set(w.at + off, o.head, o.at);
+        sh.scale.y = 0.001;
+        sh.castShadow = true;
+        sh.userData = { type: "window", idx: shutters.length };
+        scene.add(sh);
+        shutters.push({ mesh: sh, closed: false, target: 0, manualUntil: -1 });
+        windowMeshes.push(sh);
+      } else if (o.kind === "door" && w.outside) {
+        const d = box(o.w - 0.04, o.head - 0.02, 0.06, M.door, o.at, (o.head) / 2, w.at + T / 2 + 0.02);
+        d.userData = { type: "frontdoor" };
+        sphere(0.04, M.amber, o.at + 0.3, 1.05, w.at + T / 2 + 0.07);
+      }
+      cursor = b;
+    }
+    wallPiece(w, cursor, w.to, 0, H);
+    void wi;
+  });
+
+  // ------------------------------------------------------------
+  // Mobilier (boîtes et cylindres, style maison de poupée)
+  // ------------------------------------------------------------
+  function rug(x, z, w, d, color) {
+    const m = new THREE.Mesh(new THREE.PlaneGeometry(w, d), new THREE.MeshStandardMaterial({ color, roughness: 1 }));
+    m.rotation.x = -Math.PI / 2; m.position.set(x, 0.012, z); m.receiveShadow = true; scene.add(m);
+  }
+  function sofa(x, z, w, facingNorth) {
+    const g = new THREE.Group();
+    box(w, 0.42, 0.9, M.fabric, 0, 0.21, 0, g);
+    box(w, 0.4, 0.25, M.fabric, 0, 0.6, facingNorth ? 0.33 : -0.33, g);
+    box(0.22, 0.25, 0.9, M.fabric, -w / 2 + 0.11, 0.53, 0, g);
+    box(0.22, 0.25, 0.9, M.fabric, w / 2 - 0.11, 0.53, 0, g);
+    box(w - 0.5, 0.12, 0.55, M.fabricLight, 0, 0.47, facingNorth ? -0.1 : 0.1, g);
+    g.position.set(x, 0, z); scene.add(g);
+  }
+  function table(x, z, w, d, h) {
+    box(w, 0.05, d, M.woodLight, x, h, z);
+    for (const [sx, sz] of [[-1, -1], [1, -1], [-1, 1], [1, 1]])
+      box(0.06, h, 0.06, M.wood, x + sx * (w / 2 - 0.08), h / 2, z + sz * (d / 2 - 0.08));
+  }
+  function chair(x, z, rot) {
+    const g = new THREE.Group();
+    box(0.42, 0.05, 0.42, M.woodLight, 0, 0.45, 0, g);
+    box(0.42, 0.45, 0.05, M.woodLight, 0, 0.68, -0.19, g);
+    for (const [sx, sz] of [[-1, -1], [1, -1], [-1, 1], [1, 1]]) box(0.04, 0.45, 0.04, M.wood, sx * 0.18, 0.22, sz * 0.18, g);
+    g.rotation.y = rot; g.position.set(x, 0, z); scene.add(g);
+  }
+  function bed(x, z, w, d, color) {
+    box(w, 0.35, d, M.wood, x, 0.18, z);
+    box(w - 0.08, 0.18, d - 0.08, new THREE.MeshStandardMaterial({ color, roughness: 1 }), x, 0.44, z);
+    box(w - 0.3, 0.12, 0.45, M.fabricLight, x, 0.59, z - d / 2 + 0.35);
+    box(w, 0.7, 0.08, M.wood, x, 0.35, z - d / 2 + 0.02);
+  }
+  function plant(x, z, s) {
+    cyl(0.16 * s, 0.12 * s, 0.32 * s, M.pot, x, 0.16 * s, z);
+    sphere(0.28 * s, M.leaf, x, 0.58 * s, z);
+    sphere(0.2 * s, M.leafDark, x + 0.15 * s, 0.78 * s, z - 0.05 * s);
+    sphere(0.18 * s, M.leaf, x - 0.17 * s, 0.72 * s, z + 0.1 * s);
+  }
+
+  // Salon
+  rug(3.3, 2.4, 3.6, 2.6, 0xd9c3a4);
+  sofa(3.3, 3.5, 2.6, true);
+  table(3.3, 2.2, 1.1, 0.6, 0.42);
+  box(2.2, 0.5, 0.42, M.wood, 3.3, 0.25, 0.35);          // meuble TV
+  box(1.4, 0.8, 0.05, new THREE.MeshStandardMaterial({ color: 0x1b2229, roughness: 0.3 }), 3.3, 1.0, 0.33);
+  plant(0.55, 4.4, 1.3);
+  box(0.9, 1.9, 0.35, M.woodLight, 6.3, 0.95, 4.6);      // bibliothèque
+  cyl(0.18, 0.22, 1.5, M.metal, 0.6, 0.75, 0.6);          // lampadaire
+  sphere(0.22, M.fabricLight, 0.6, 1.55, 0.6);
+
+  // Cuisine
+  box(4.4, 0.9, 0.62, M.white, 9.6, 0.45, 4.55);          // plan de travail nord
+  box(4.4, 0.04, 0.66, M.woodLight, 9.6, 0.92, 4.55);
+  box(0.62, 0.9, 2.2, M.white, 11.65, 0.45, 2.6);         // retour est
+  box(0.66, 0.04, 2.2, M.woodLight, 11.65, 0.92, 2.6);
+  box(0.7, 1.85, 0.7, M.metal, 7.5, 0.93, 4.55);          // frigo
+  cyl(0.55, 0.55, 0.05, M.woodLight, 9.2, 0.74, 2.0, scene, 32);  // table ronde
+  cyl(0.06, 0.1, 0.72, M.wood, 9.2, 0.36, 2.0);
+  chair(8.5, 2.0, Math.PI / 2); chair(9.9, 2.0, -Math.PI / 2); chair(9.2, 1.3, 0); chair(9.2, 2.7, Math.PI);
+  plant(7.4, 0.5, 0.9);
+
+  // Entrée
+  box(1.2, 0.42, 0.35, M.wood, 1.2, 0.21, 5.4);           // banc
+  box(0.06, 1.9, 0.9, M.woodLight, 0.15, 0.95, 7.6);      // portemanteau
+  // Salle de bain
+  box(2.0, 0.55, 0.8, M.white, 3.6, 0.28, 8.45);          // baignoire
+  box(1.7, 0.1, 0.55, M.glass, 3.6, 0.52, 8.45);
+  box(0.6, 0.85, 0.5, M.white, 2.75, 0.43, 5.5);          // vasque
+  cyl(0.02, 0.02, 0.25, M.metal, 2.75, 0.98, 5.5);
+  box(0.5, 0.42, 0.45, M.white, 4.4, 0.21, 5.5);          // WC
+  box(0.5, 0.45, 0.16, M.white, 4.4, 0.55, 5.3);
+  // Bureau
+  box(1.8, 0.05, 0.7, M.woodLight, 6.0, 0.74, 8.4);
+  box(0.06, 0.74, 0.6, M.wood, 5.2, 0.37, 8.4); box(0.06, 0.74, 0.6, M.wood, 6.8, 0.37, 8.4);
+  box(0.6, 0.4, 0.04, new THREE.MeshStandardMaterial({ color: 0x1b2229, roughness: 0.3 }), 6.0, 1.05, 8.55);
+  chair(6.0, 7.75, Math.PI);
+  box(0.9, 1.6, 0.35, M.woodLight, 5.3, 0.8, 5.3);
+  plant(7.0, 5.5, 1.0);
+  // Chambre enfant
+  bed(7.75, 6.4, 0.95, 2.0, 0xf2c035);
+  box(0.6, 0.45, 0.6, M.pot, 9.1, 0.23, 8.5);             // coffre à jouets
+  sphere(0.16, M.amber, 8.6, 0.16, 8.6);
+  box(0.9, 1.2, 0.3, M.woodLight, 8.7, 0.6, 5.25);
+  // Chambre
+  bed(10.8, 6.5, 1.6, 2.1, 0x6fa3c2);
+  box(0.45, 0.5, 0.4, M.wood, 9.85, 0.25, 5.45);          // chevet
+  box(0.45, 0.5, 0.4, M.wood, 11.7, 0.25, 5.45);
+  box(1.3, 1.9, 0.5, M.woodLight, 10.8, 0.95, 8.7);       // armoire
+
+  // ------------------------------------------------------------
+  // Lampes (une suspension par pièce) et détecteurs
+  // ------------------------------------------------------------
+  const lamps = {};
+  const lampMeshes = [];
+  const sensors = {};
+  for (const r of ROOMS) {
+    const cx = r.x + r.w / 2, cz = r.z + r.d / 2;
+    cyl(0.01, 0.01, 0.5, M.metal, cx, H - 0.25, cz);
+    const shadeMat = new THREE.MeshStandardMaterial({ color: 0xf7f2e8, roughness: 0.6, emissive: 0xf2c035, emissiveIntensity: 0 });
+    const shade = new THREE.Mesh(new THREE.CylinderGeometry(0.22, 0.32, 0.26, 24, 1, true), shadeMat);
+    shade.material.side = THREE.DoubleSide;
+    shade.position.set(cx, H - 0.55, cz);
+    shade.userData = { type: "lamp", room: r.id };
+    scene.add(shade);
+    const bulb = new THREE.Mesh(new THREE.SphereGeometry(0.08, 12, 10), new THREE.MeshStandardMaterial({ color: 0xfff1c0, emissive: 0xf2c035, emissiveIntensity: 0 }));
+    bulb.position.set(cx, H - 0.62, cz);
+    bulb.userData = { type: "lamp", room: r.id };
+    scene.add(bulb);
+    const light = new THREE.PointLight(0xffd27a, 0, Math.max(r.w, r.d) * 1.4, 2);
+    light.position.set(cx, H - 0.7, cz);
+    scene.add(light);
+    lamps[r.id] = { on: false, shadeMat, bulbMat: bulb.material, light, manualUntil: -1, lastPresence: -1e9, level: 0 };
+    lampMeshes.push(shade, bulb);
+
+    // détecteur de mouvement : petit boîtier en haut d'un mur, LED verte
+    const sx = r.x + 0.12, sz = r.z + 0.12;
+    box(0.1, 0.1, 0.1, M.sensor, sx + 0.05, H - 0.2, sz + 0.05);
+    const ledMat = new THREE.MeshStandardMaterial({ color: 0x333333, emissive: 0x7fd1a0, emissiveIntensity: 0 });
+    const led = new THREE.Mesh(new THREE.SphereGeometry(0.035, 10, 8), ledMat);
+    led.position.set(sx + 0.1, H - 0.2, sz + 0.1);
+    scene.add(led);
+    sensors[r.id] = { ledMat, level: 0, present: false };
+  }
+
+  // ------------------------------------------------------------
+  // Occupants
+  // ------------------------------------------------------------
+  const OCCUPANTS = [
+    { name: "Marc", color: 0x1a4f6e, h: 1.0, offset: [0.35, 0.2], schedule: [
+      [0, 6.9, "chambre"], [6.9, 7.3, "sdb"], [7.3, 8.1, "cuisine"], [8.1, 17.6, "away"],
+      [17.6, 18.9, "bureau"], [18.9, 19.9, "cuisine"], [19.9, 22.6, "salon"], [22.6, 24, "chambre"]] },
+    { name: "Léa", color: 0x2c7a8c, h: 0.95, offset: [-0.35, -0.2], schedule: [
+      [0, 7.2, "chambre"], [7.2, 7.9, "cuisine"], [7.9, 12.1, "bureau"], [12.1, 12.9, "cuisine"],
+      [12.9, 18.2, "bureau"], [18.2, 19.6, "salon"], [19.6, 20.3, "cuisine"], [20.3, 22.6, "salon"], [22.6, 24, "chambre"]] },
+    { name: "Nino", color: 0xf2c035, h: 0.62, offset: [0, 0.45], schedule: [
+      [0, 7.1, "enfant"], [7.1, 7.9, "cuisine"], [7.9, 8.3, "entree"], [8.3, 16.7, "away"],
+      [16.7, 18.4, "enfant"], [18.4, 19.4, "salon"], [19.4, 20.3, "cuisine"], [20.3, 20.9, "sdb"], [20.9, 24, "enfant"]] },
+  ];
+  function buildPerson(o) {
+    const g = new THREE.Group();
+    const mat = new THREE.MeshStandardMaterial({ color: o.color, roughness: 0.7 });
+    const skin = new THREE.MeshStandardMaterial({ color: 0xf0c9a6, roughness: 0.8 });
+    const bodyH = o.h * 0.62;
+    cyl(0.16 * o.h + 0.04, 0.14 * o.h + 0.04, bodyH, mat, 0, bodyH / 2 + 0.05, 0, g, 18);
+    sphere(0.14 * o.h + 0.05, skin, 0, bodyH + 0.2 * o.h + 0.05, 0, g);
+    sphere(0.15 * o.h + 0.05, mat, 0, bodyH + 0.25 * o.h + 0.07, 0, g).scale.set(1, 0.5, 1);
+    scene.add(g);
+    return g;
+  }
+  const people = OCCUPANTS.map((o) => ({
+    ...o, mesh: buildPerson(o), pos: null, path: [], room: "away", target: "away", opacity: 1,
+  }));
+
+  // Graphe de circulation
+  const adj = {};
+  for (const [a, b, x, z] of DOORS) {
+    (adj[a] = adj[a] || []).push({ to: b, x, z });
+    (adj[b] = adj[b] || []).push({ to: a, x, z });
+  }
+  function routeBetween(from, to) {
+    if (from === to) return [];
+    const prev = { [from]: null }, queue = [from];
+    while (queue.length) {
+      const cur = queue.shift();
+      if (cur === to) break;
+      for (const e of adj[cur] || []) if (!(e.to in prev)) { prev[e.to] = { from: cur, e }; queue.push(e.to); }
+    }
+    if (!(to in prev)) return [];
+    const pts = [];
+    for (let n = to; prev[n]; n = prev[n].from) pts.unshift(new THREE.Vector3(prev[n].e.x, 0, prev[n].e.z));
+    return pts;
+  }
+  function spotOf(roomId, p) {
+    const s = roomId === "away" ? AWAY_SPOT : ROOM[roomId].spot;
+    return new THREE.Vector3(s[0] + p.offset[0], 0, s[1] + p.offset[1]);
+  }
+  function scheduledRoom(p, hour) {
+    for (const [a, b, r] of p.schedule) if (hour >= a && hour < b) return r;
+    return "chambre";
+  }
+  function roomAtPoint(x, z) {
+    for (const r of ROOMS) if (x >= r.x && x < r.x + r.w && z >= r.z && z < r.z + r.d) return r.id;
+    return "away";
+  }
+  function sendTo(p, roomId) {
+    p.path = routeBetween(p.room, roomId).concat([spotOf(roomId, p)]);
+    p.target = roomId;
+  }
+
+  // ------------------------------------------------------------
+  // État de la simulation
+  // ------------------------------------------------------------
+  const sim = {
+    hour: 7.2, day: 1, running: true, speed: 120, weather: "clear",
+    weatherTarget: 1, weatherLevel: 1, rainLevel: 0,
+  };
+  const DAYS = ["lundi", "mardi", "mercredi", "jeudi", "vendredi", "samedi", "dimanche"];
+  const logEl = document.getElementById("log");
+  const logs = [];
+  function fmt(h) {
+    const hh = Math.floor(h) % 24, mm = Math.floor((h % 1) * 60);
+    return String(hh).padStart(2, "0") + ":" + String(mm).padStart(2, "0");
+  }
+  function log(text) {
+    logs.push({ t: fmt(sim.hour), text });
+    while (logs.length > 4) logs.shift();
+    logEl.innerHTML = logs.map((l) => `<li><span class="t">${l.t}</span>${l.text}</li>`).join("");
+  }
+
+  // Placement initial
+  for (const p of people) {
+    p.room = scheduledRoom(p, sim.hour);
+    p.pos = spotOf(p.room, p);
+    p.mesh.position.copy(p.pos);
+    p.target = p.room;
+    p.path = [];
+  }
+
+  // Soleil : azimut et élévation depuis l'heure
+  function sunState(h) {
+    const el = Math.sin(((h - 6) / 12) * Math.PI);            // -1 .. 1
+    const az = ((h - 6) / 12) * Math.PI;                        // est -> ouest
+    return { el, az };
+  }
+  const SKY = {
+    night: new THREE.Color(0x0b1a2a), dawn: new THREE.Color(0xf0a868),
+    day: new THREE.Color(0x9fd0f0), dusk: new THREE.Color(0xd97a5b), overcast: new THREE.Color(0x8f9aa3),
+  };
+  const tmpColor = new THREE.Color();
+  function skyColor(el, h, weatherLevel) {
+    const c = tmpColor;
+    if (el < -0.2) c.copy(SKY.night);
+    else if (el < 0.15) {
+      const t = (el + 0.2) / 0.35;
+      c.copy(SKY.night).lerp(h < 12 ? SKY.dawn : SKY.dusk, t);
+    } else {
+      const t = Math.min(1, (el - 0.15) / 0.35);
+      c.copy(h < 12 ? SKY.dawn : SKY.dusk).lerp(SKY.day, t);
+    }
+    if (el > -0.1) c.lerp(SKY.overcast, (1 - weatherLevel) * Math.min(1, (el + 0.1) / 0.3));
+    return c;
+  }
+
+  // Pluie
+  const RAIN_N = 900;
+  const rainGeo = new THREE.BufferGeometry();
+  const rainPos = new Float32Array(RAIN_N * 3);
+  for (let i = 0; i < RAIN_N; i++) {
+    rainPos[i * 3] = 6 + (Math.random() - 0.5) * 34; rainPos[i * 3 + 1] = Math.random() * 14; rainPos[i * 3 + 2] = 4.5 + (Math.random() - 0.5) * 34;
+  }
+  rainGeo.setAttribute("position", new THREE.BufferAttribute(rainPos, 3));
+  const rainMat = new THREE.PointsMaterial({ color: 0xbfd6e8, size: 0.06, transparent: true, opacity: 0 });
+  const rain = new THREE.Points(rainGeo, rainMat);
+  scene.add(rain);
+
+  // ------------------------------------------------------------
+  // Automatisations « façon recettes » (uniquement pour raconter)
+  // ------------------------------------------------------------
+  const MOTION_TIMEOUT_MIN = 3;
+  function setLamp(id, on, why) {
+    const l = lamps[id];
+    if (l.on === on) return;
+    l.on = on;
+    log(`${ROOM[id].name} · lumière ${on ? "allumée" : "éteinte"}${why ? " (" + why + ")" : ""}`);
+  }
+  function setShutters(closed, why) {
+    let changed = false;
+    for (const s of shutters) if (s.manualUntil < sim.hour && s.closed !== closed) { s.closed = closed; changed = true; }
+    if (changed) log(`Volets ${closed ? "fermés" : "ouverts"} (${why})`);
+  }
+  let wasDark = null;
+
+  function tickAutomation(dark) {
+    for (const r of ROOMS) {
+      const l = lamps[r.id], s = sensors[r.id];
+      if (s.present) l.lastPresence = sim.hour;
+      if (l.manualUntil > sim.hour) continue;
+      const sinceMin = (sim.hour - l.lastPresence) * 60;
+      if (s.present && dark && !l.on) setLamp(r.id, true, "mouvement, il fait sombre");
+      else if (!s.present && l.on && sinceMin > MOTION_TIMEOUT_MIN) setLamp(r.id, false, `${MOTION_TIMEOUT_MIN} min sans mouvement`);
+      else if (l.on && !dark && sinceMin > MOTION_TIMEOUT_MIN) setLamp(r.id, false, "il fait jour");
+    }
+    if (wasDark !== null && wasDark !== dark) setShutters(dark, dark ? "coucher du soleil" : "lever du soleil");
+    wasDark = dark;
+  }
+
+  // ------------------------------------------------------------
+  // Interaction : orbite + clic
+  // ------------------------------------------------------------
+  const reduced = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+  let autoRotate = !reduced;
+  const drag = { active: false, moved: 0, x: 0, y: 0, id: null, pan: false };
+  canvas.addEventListener("contextmenu", (e) => e.preventDefault());
+  const pointers = new Map();
+  let pinchDist = 0;
+  canvas.addEventListener("pointerdown", (e) => {
+    pointers.set(e.pointerId, { x: e.clientX, y: e.clientY });
+    if (pointers.size === 1) {
+      drag.active = true; drag.moved = 0; drag.x = e.clientX; drag.y = e.clientY;
+      drag.pan = e.button === 2 || e.button === 1 || e.shiftKey;
+      canvas.classList.add("dragging");
+    }
+    if (pointers.size === 2) { const [a, b] = [...pointers.values()]; pinchDist = Math.hypot(a.x - b.x, a.y - b.y); }
+    canvas.setPointerCapture(e.pointerId);
+  });
+  canvas.addEventListener("pointermove", (e) => {
+    if (pointers.has(e.pointerId)) pointers.set(e.pointerId, { x: e.clientX, y: e.clientY });
+    if (pointers.size === 2) {
+      const [a, b] = [...pointers.values()];
+      const d = Math.hypot(a.x - b.x, a.y - b.y);
+      if (pinchDist) orbit.radius = THREE.MathUtils.clamp(orbit.radius * (pinchDist / d), 9, 40);
+      pinchDist = d; drag.moved = 99; return;
+    }
+    if (!drag.active) { hover(e); return; }
+    const dx = e.clientX - drag.x, dy = e.clientY - drag.y;
+    drag.x = e.clientX; drag.y = e.clientY; drag.moved += Math.abs(dx) + Math.abs(dy);
+    if (drag.moved > 3) autoRotate = false;
+    if (drag.pan) {
+      // déplacer la cible dans le plan du sol, relativement à la caméra
+      const k = orbit.radius * 0.0012;
+      const fx = Math.cos(orbit.theta), fz = Math.sin(orbit.theta);   // direction caméra -> cible (au sol)
+      orbit.target.x += (-dx * fz + dy * fx) * k * -1;
+      orbit.target.z += (dx * fx + dy * fz) * k * -1;
+      orbit.target.x = THREE.MathUtils.clamp(orbit.target.x, -8, 20);
+      orbit.target.z = THREE.MathUtils.clamp(orbit.target.z, -8, 18);
+      return;
+    }
+    orbit.theta -= dx * 0.005;
+    orbit.phi = THREE.MathUtils.clamp(orbit.phi - dy * 0.005, 0.35, 1.35);
+  });
+  function endDrag(e) {
+    pointers.delete(e.pointerId);
+    if (pointers.size === 0) {
+      canvas.classList.remove("dragging");
+      if (drag.active && drag.moved < 4) click(e);
+      drag.active = false;
+    }
+  }
+  canvas.addEventListener("pointerup", endDrag);
+  canvas.addEventListener("pointercancel", endDrag);
+  canvas.addEventListener("wheel", (e) => {
+    e.preventDefault();
+    orbit.radius = THREE.MathUtils.clamp(orbit.radius * (1 + Math.sign(e.deltaY) * 0.08), 9, 40);
+  }, { passive: false });
+
+  const ray = new THREE.Raycaster();
+  const ndc = new THREE.Vector2();
+  function pick(e) {
+    const rect = canvas.getBoundingClientRect();
+    ndc.set(((e.clientX - rect.left) / rect.width) * 2 - 1, -((e.clientY - rect.top) / rect.height) * 2 + 1);
+    ray.setFromCamera(ndc, camera);
+    const hits = ray.intersectObjects([...lampMeshes, ...windowMeshes, ...floorMeshes], false);
+    return hits.length ? hits[0].object.userData : null;
+  }
+  function hover(e) {
+    const u = pick(e);
+    canvas.classList.toggle("hover", !!(u && u.type));
+  }
+  function click(e) {
+    const u = pick(e);
+    if (!u) return;
+    if (u.type === "lamp") {
+      const l = lamps[u.room];
+      l.manualUntil = sim.hour + 0.5;
+      setLamp(u.room, !l.on, "clic visiteur");
+    } else if (u.type === "window") {
+      const s = shutters[u.idx];
+      s.closed = !s.closed; s.manualUntil = sim.hour + 1;
+      log(`Volet ${s.closed ? "fermé" : "ouvert"} (clic visiteur)`);
+    } else if (u.type === "floor") {
+      // l'occupant le plus proche s'y rend ; s'ils sont tous dehors, l'un rentre
+      const home = people.filter((p) => p.room !== "away");
+      const pool = home.length ? home : people;
+      let best = null, bd = 1e9;
+      const spot = ROOM[u.room].spot;
+      for (const p of pool) {
+        const d = p.pos.distanceTo(new THREE.Vector3(spot[0], 0, spot[1]));
+        if (d < bd) { bd = d; best = p; }
+      }
+      sendTo(best, u.room);
+      best.pinnedUntil = sim.hour + 0.4;
+      log(`${best.name} se rend ${ROOM[u.room].loc} (clic visiteur)`);
+    }
+  }
+
+  // Contrôles HUD
+  const timeEl = document.getElementById("time"), playEl = document.getElementById("play");
+  timeEl.addEventListener("input", () => { sim.hour = parseFloat(timeEl.value); });
+  playEl.addEventListener("click", () => {
+    sim.running = !sim.running;
+    playEl.textContent = sim.running ? "❚❚" : "▶";
+    playEl.setAttribute("aria-label", sim.running ? "Pause" : "Lecture");
+  });
+  function seg(id, attr, cb) {
+    const el = document.getElementById(id);
+    el.addEventListener("click", (e) => {
+      const b = e.target.closest("button"); if (!b) return;
+      for (const x of el.querySelectorAll("button")) x.setAttribute("aria-pressed", x === b ? "true" : "false");
+      cb(b.dataset[attr]);
+    });
+  }
+  seg("speed", "v", (v) => { sim.speed = parseFloat(v); });
+  seg("weather", "w", (w) => {
+    sim.weather = w;
+    log(w === "clear" ? "Météo : ciel dégagé" : w === "cloudy" ? "Météo : ciel couvert" : "Météo : pluie");
+  });
+
+  const clockEl = document.getElementById("clock"), dayEl = document.getElementById("daylabel");
+  const narrativeEl = document.getElementById("narrative"), peopleEl = document.getElementById("people");
+  function narrative(dark) {
+    const home = people.filter((p) => p.room !== "away").map((p) => p.name);
+    const h = sim.hour;
+    if (home.length === 0) return "Personne à la maison. Les volets et le chauffage suivent le mode Absent.";
+    if (h < 6.5) return "Tout le monde dort. La maison est en mode Nuit.";
+    if (h < 8.5) return "Réveil en cascade : salle de bain, cuisine, puis départ.";
+    if (h < 12) return home.length === 1 ? `${home[0]} télétravaille au bureau.` : "Matinée calme.";
+    if (h < 17) return "Après-midi. Le soleil chauffe le salon, les panneaux produisent.";
+    if (h < 20) return "Retour à la maison, la cuisine s'anime.";
+    if (h < 22.6) return dark ? "Soirée au salon, lumières sur mouvement." : "Fin de journée, il fait encore jour.";
+    return "Extinction des feux, mode Nuit dans quelques minutes.";
+  }
+
+  // ------------------------------------------------------------
+  // Boucle
+  // ------------------------------------------------------------
+  const clock = new THREE.Clock();
+  let hudTick = 0;
+  function resize() {
+    const w = Math.max(1, canvas.clientWidth || window.innerWidth);
+    const h = Math.max(1, canvas.clientHeight || window.innerHeight);
+    renderer.setSize(w, h, false);
+    camera.aspect = w / h; camera.updateProjectionMatrix();
+  }
+  window.addEventListener("resize", resize);
+  if (window.ResizeObserver) new ResizeObserver(resize).observe(canvas);
+  resize();
+
+  function frame() {
+    const dt = Math.min(clock.getDelta(), 0.1);
+
+    // temps simulé
+    if (sim.running) {
+      sim.hour += (dt * sim.speed) / 3600;
+      if (sim.hour >= 24) {
+        sim.hour -= 24; sim.day = (sim.day + 1) % 7;
+        for (const id in lamps) { lamps[id].manualUntil -= 24; lamps[id].lastPresence -= 24; }
+        for (const s of shutters) s.manualUntil -= 24;
+        for (const p of people) if (p.pinnedUntil) p.pinnedUntil -= 24;
+      }
+      timeEl.value = sim.hour.toFixed(2);
+    }
+    if (autoRotate) orbit.theta += dt * 0.04;
+    placeCamera();
+
+    // météo
+    sim.weatherTarget = sim.weather === "clear" ? 1 : sim.weather === "cloudy" ? 0.35 : 0.2;
+    sim.weatherLevel += (sim.weatherTarget - sim.weatherLevel) * Math.min(1, dt * 1.5);
+    sim.rainLevel += ((sim.weather === "rain" ? 1 : 0) - sim.rainLevel) * Math.min(1, dt * 1.5);
+
+    // soleil et ciel
+    const { el, az } = sunState(sim.hour);
+    const sunUp = Math.max(0, el);
+    const cosEl = Math.sqrt(Math.max(0, 1 - el * el));
+    sun.position.set(CENTER.x + Math.cos(az) * 30 * cosEl, CENTER.y + Math.max(el, 0.04) * 30, CENTER.z + Math.sin(az) * 30 * cosEl * 0.6);
+    sun.intensity = Math.min(1, sunUp * 2.2) * (0.35 + 0.65 * sim.weatherLevel) * 1.5;
+    sun.color.setHSL(0.09, 0.6, 0.5 + 0.5 * Math.min(1, sunUp * 3));
+    hemi.intensity = 0.12 + Math.min(1, sunUp * 2.5) * 0.5 * (0.6 + 0.4 * sim.weatherLevel);
+    moon.intensity = el < 0 ? Math.min(0.18, -el * 0.5) : 0;
+    const sky = skyColor(el, sim.hour, sim.weatherLevel);
+    scene.background.copy(sky);
+    scene.fog.color.copy(sky);
+    hemi.color.copy(sky).lerp(new THREE.Color(0xffffff), 0.3);
+    renderer.toneMappingExposure = 0.9 + 0.25 * Math.min(1, sunUp * 2);
+    const dark = el < 0.12 || (sim.weather === "rain" && el < 0.3);
+
+    // pluie
+    rainMat.opacity = sim.rainLevel * 0.7;
+    if (sim.rainLevel > 0.01) {
+      const arr = rainGeo.attributes.position.array;
+      for (let i = 0; i < RAIN_N; i++) {
+        arr[i * 3 + 1] -= dt * 9;
+        if (arr[i * 3 + 1] < 0) arr[i * 3 + 1] = 14;
+      }
+      rainGeo.attributes.position.needsUpdate = true;
+    }
+
+    // occupants : agenda, déplacements
+    for (const p of people) {
+      const want = p.pinnedUntil > sim.hour ? p.target : scheduledRoom(p, sim.hour);
+      if (want !== p.target && (p.pinnedUntil || -1) <= sim.hour) {
+        sendTo(p, want);
+      }
+      if (p.path.length) {
+        const next = p.path[0];
+        const dir = next.clone().sub(p.pos);
+        const dist = dir.length();
+        const stepLen = dt * (1.6 + Math.min(4, sim.speed / 120));
+        if (dist <= stepLen) { p.pos.copy(next); p.path.shift(); }
+        else { p.pos.add(dir.multiplyScalar(stepLen / dist)); }
+        p.mesh.rotation.y = Math.atan2(dir.x, dir.z);
+        p.mesh.position.copy(p.pos);
+        p.mesh.position.y = Math.abs(Math.sin(performance.now() / 120)) * 0.03;
+      }
+      const wasRoom = p.room;
+      p.room = p.path.length ? roomAtPoint(p.pos.x, p.pos.z) : p.target;
+      if (p.room === "away" && wasRoom !== "away") log(`${p.name} quitte la maison`);
+      if (wasRoom === "away" && p.room !== "away") log(`${p.name} rentre à la maison`);
+      const targetOpacity = p.room === "away" && !p.path.length ? 0 : 1;
+      p.opacity += (targetOpacity - p.opacity) * Math.min(1, dt * 3);
+      p.mesh.visible = p.opacity > 0.03;
+      p.mesh.traverse((m) => { if (m.material) { m.material.transparent = true; m.material.opacity = p.opacity; } });
+    }
+
+    // présence par pièce -> détecteurs
+    for (const r of ROOMS) {
+      const s = sensors[r.id];
+      s.present = people.some((p) => p.room === r.id);
+      const target = s.present ? 1 : 0;
+      s.level += (target - s.level) * Math.min(1, dt * 6);
+      s.ledMat.emissiveIntensity = s.level * (0.6 + 0.4 * Math.sin(performance.now() / 150));
+    }
+    tickAutomation(dark);
+
+    // lampes : fondu
+    for (const r of ROOMS) {
+      const l = lamps[r.id];
+      l.level += ((l.on ? 1 : 0) - l.level) * Math.min(1, dt * 5);
+      l.shadeMat.emissiveIntensity = l.level * 0.9;
+      l.bulbMat.emissiveIntensity = l.level * 2.5;
+      l.light.intensity = l.level * (dark ? 2.4 : 0.7);
+    }
+    // volets : glissement
+    for (const s of shutters) {
+      const t = s.closed ? 1 : 0.001;
+      s.mesh.scale.y += (t - s.mesh.scale.y) * Math.min(1, dt * 2.5);
+    }
+
+    // HUD (10 fois par seconde)
+    hudTick += dt;
+    if (hudTick > 0.1) {
+      hudTick = 0;
+      clockEl.textContent = fmt(sim.hour);
+      dayEl.textContent = DAYS[sim.day];
+      narrativeEl.textContent = narrative(dark);
+      peopleEl.innerHTML = people.map((p) => {
+        const where = p.room === "away" ? "dehors" : ROOM[p.room].name;
+        return `<li><span class="dot" style="background:#${p.color.toString(16).padStart(6, "0")}"></span>${p.name}<span class="where">${where}</span></li>`;
+      }).join("");
+    }
+
+    renderer.render(scene, camera);
+    requestAnimationFrame(frame);
+  }
+  log("Maison témoin prête. Cliquez une lampe, une fenêtre ou une pièce.");
+  frame();
+})();
+</script>
