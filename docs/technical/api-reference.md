@@ -109,12 +109,19 @@ endpoint not in the allowlist is admin-only.
 An API token inherits its creator's role, so a standard-scoped token is subject to
 the same gate (no privilege escalation).
 
-**Modes are split between the two sides** (issue #912). Which mode is currently on
-is runtime state, changed several times a day and dispatching orders exactly as a
-zone command does, so a `standard` user may switch it. What a mode _is_ — its name,
-its zone impacts, its actions — is configuration and stays admin-only: `POST
-/api/v1/modes`, `PUT`/`DELETE /api/v1/modes/:id` and the impact routes all return
-`403` for a non-admin.
+**Modes are split between the two sides** (issue #912). _When_ a mode is on is
+runtime state, changed several times a day, so a `standard` user may switch it.
+What a mode _is_ — its name, its zone impacts, its actions — is configuration and
+stays admin-only: `POST /api/v1/modes`, `PUT`/`DELETE /api/v1/modes/:id` and the
+impact routes all return `403` for a non-admin.
+
+Note what activation carries: a mode's impacts may include `recipe_toggle` and
+`recipe_params` actions, which enable, disable or re-parameterise a recipe
+instance durably — writes a `standard` user is refused directly, and that
+deactivating the mode does not undo. This is deliberate delegation, not an
+oversight: an admin authored the impacts, and the standard user only chooses when
+they run. The same delegation already applies to the calendar and to a physical
+button bound to a mode, neither of which carries a role.
 
 ## Current User (Me)
 

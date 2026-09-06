@@ -265,13 +265,7 @@ interface Device {
 }
 
 type DeviceSource =
-  | "zigbee2mqtt"
-  | "tasmota"
-  | "esphome"
-  | "shelly"
-  | "custom_mqtt"
-  | "panasonic_cc"
-  | "mcz_maestro";
+  "zigbee2mqtt" | "tasmota" | "esphome" | "shelly" | "custom_mqtt" | "panasonic_cc" | "mcz_maestro";
 type DeviceStatus = "online" | "offline" | "unknown";
 ```
 

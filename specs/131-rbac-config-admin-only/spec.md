@@ -40,6 +40,12 @@ new mutating endpoint is admin-only by default — no per-route opt-in to forget
 
 ## Standard write allowlist (the ONLY mutations a standard may do)
 
+> **The table below is the v1.29.0 list and is no longer complete.** Spec 174 added
+> the timed-action routes and issue #912 added the three mode-activation routes
+> (see the amendment at the end of this document). The live list is
+> `STANDARD_WRITE_ALLOWLIST` in `src/auth/auth-middleware.ts`, documented in
+> `docs/technical/api-reference.md`.
+
 | Method | Path (template)                        | Why                                                   |
 | ------ | -------------------------------------- | ----------------------------------------------------- |
 | POST   | `/api/v1/equipments/:id/orders/:alias` | Actuate an equipment (open gate, toggle light)        |
@@ -143,17 +149,42 @@ when it actually straddles the boundary the spec itself drew.
   Unchanged: `POST /api/v1/modes`, `PUT`/`DELETE /api/v1/modes/:id` and the impact
   routes stay admin-only, and the add / edit / delete controls stay behind
   `isAdmin` in the UI.
-- **Which mode is currently on** is runtime state, changed several times a day.
-  `ModeManager.activateMode` sets the active flag and dispatches the mode's zone
-  impacts — the shape of an actuation, not of a configuration change. A `standard`
-  user was already trusted with the stronger equivalent: a zone command that turns
-  every light in the house off.
+- **When a mode is on** is runtime state, changed several times a day. A
+  `standard` user was already trusted with the comparable act: a zone command
+  that turns every light in the house off.
 
 Three routes therefore moved into `STANDARD_WRITE_ALLOWLIST`: `activate`,
-`deactivate`, and `apply-to-zone/:zoneId` (weaker still — it runs one zone's
-actions and changes no state at all). The practical consequence is that a partner
+`deactivate`, and `apply-to-zone/:zoneId` (narrower — it runs one zone's impacts
+and does not touch the active flag). The practical consequence is that a partner
 or a teenager on a `standard` account can put the house in Night or Away, which
 they could not do before.
+
+### The part that needed a decision, not just a reclassification
+
+Activating a mode is **not** a pure actuation, and an early draft of this
+amendment wrongly said it was. `ModeManager.executeImpact` handles three action
+types: `order`, `recipe_toggle` and `recipe_params`. The last two durably enable
+or disable a recipe instance and rewrite its parameters — writes this spec keeps
+admin-only, and that `deactivateMode` does not undo, since deactivation clears
+the flag without running anything. So a `standard` user activating an
+admin-authored Night mode can leave a recipe disabled, and cannot re-enable it.
+
+That was weighed and accepted, on three grounds:
+
+1. **An admin authored the impacts.** The standard user chooses _when_ the mode
+   runs, never _what_ it does. This is delegation, and it is the entire purpose
+   of a mode.
+2. **The same delegation already existed, ungated.** The calendar (cron) and a
+   physical button bound to a mode both activate modes with no role attached at
+   all. Gating the HTTP route while those stayed open would have secured
+   nothing.
+3. **The alternative is worse.** Skipping recipe actions when the activator is
+   not an admin makes the same mode half-apply depending on who pressed it,
+   which is the kind of inconsistency automation must never have.
+
+The residual awkwardness is real and is **not** introduced here: a mode's
+recipe impacts are one-way, because deactivation does not revert them. An admin
+hits that too. It is worth its own issue rather than an exception in this gate.
 
 The fail-closed design of this spec is what made the amendment a three-line
 change, and it is unchanged: everything not listed is still admin-only.

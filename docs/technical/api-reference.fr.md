@@ -75,13 +75,21 @@ Deux rôles existent : `admin` et `standard`. La plupart des lectures (`GET`) so
 
 Un token API hérite du rôle de son créateur : un token de portée standard est soumis à la même barrière, sans escalade de privilège possible.
 
-**Les modes sont répartis des deux côtés** (issue #912). Le mode actuellement actif
-est un état d'exécution, changé plusieurs fois par jour et qui envoie des ordres
-exactement comme une commande de zone : un utilisateur `standard` peut donc le
-basculer. Ce qu'un mode _est_ — son nom, ses impacts de zone, ses actions — relève
-de la configuration et reste réservé à l'admin : `POST /api/v1/modes`,
-`PUT`/`DELETE /api/v1/modes/:id` et les routes d'impacts répondent `403` à un
-non-admin.
+**Les modes sont répartis des deux côtés** (issue #912). _Quand_ un mode est actif
+relève de l'état d'exécution, changé plusieurs fois par jour : un utilisateur
+`standard` peut donc le basculer. Ce qu'un mode _est_ — son nom, ses impacts de
+zone, ses actions — relève de la configuration et reste réservé à l'admin :
+`POST /api/v1/modes`, `PUT`/`DELETE /api/v1/modes/:id` et les routes d'impacts
+répondent `403` à un non-admin.
+
+Attention à ce que l'activation emporte : les impacts d'un mode peuvent contenir
+des actions `recipe_toggle` et `recipe_params`, qui activent, désactivent ou
+reparamètrent durablement une instance de recette — des écritures qu'un
+utilisateur `standard` se voit refuser directement, et que la désactivation du
+mode n'annule pas. C'est une délégation assumée, pas un oubli : un admin a écrit
+ces impacts, et l'utilisateur standard choisit seulement le moment où ils
+s'exécutent. La même délégation s'applique déjà au calendrier et à un bouton
+physique lié à un mode, qui ne portent aucun rôle.
 
 ## Current User (Me)
 

@@ -63,7 +63,9 @@ Il existe trois façons d'activer un mode :
 
 ### Activation manuelle
 
-Depuis la vue **Accueil** ou **Administration > Modes**, appuyez sur le bouton d'activation du mode. Le mode prend effet immédiatement.
+Depuis **Modes** dans le menu, ou depuis la page du mode, basculez l'interrupteur à côté de lui. Le mode prend effet immédiatement.
+
+**Tout utilisateur peut activer un mode**, pas seulement un administrateur : basculer la maison en Nuit ou en Absent fait partie du quotidien du foyer. Créer un mode, le renommer et choisir ce qu'il fait à chaque zone restent réservés aux administrateurs, si bien que ce qu'un mode applique a toujours été décidé par un administrateur.
 
 ### Déclencheurs par événement
 
