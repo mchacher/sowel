@@ -57,11 +57,13 @@ Screenshots live under `docs/screenshots/` and are referenced from `.md` files v
 5. **Never shoot on a real production instance** and **never use `./scripts/run-swap.sh local`** for screenshots:
    - Real instance data leaks personal names and the actual home topology into public docs.
    - `run-swap.sh local` stops the prod container over SSH, which crashes the real home automation.
-   - Use the demo instance and the anonymized showroom fixture instead — see "Screenshot pipeline" below.
+   - Use a local Docker instance and the anonymized showroom fixture instead — see "Screenshot pipeline" below.
 
 ### Screenshot pipeline (anonymized via demo instance)
 
-The demo instance hosts and the prod backup source are defined in the private ops repo (`../sowel-ops/ops.env`: `SOWEL_PROD_HOST`, `SOWEL_DEMO_SSH`, `SOWEL_DEMO_URL`, `SOWEL_DEMO_COMPOSE_DIR` — see `CLAUDE.md` section "Installation-specific context"). Source it first: `source ../sowel-ops/ops.env`. Two stages:
+Screenshots are shot on a **throwaway Sowel running in Docker on this machine**, never on a real instance. There is no demo host any more: one existed as a Raspberry Pi, and a box that has to be kept alive, reachable and up to date for something needed a few times a year meant every session began by repairing it. `docker-compose.docs.yml` at the repository root replaces it, on port 3001, with its own volumes and no Docker socket.
+
+Only the prod backup source comes from the private ops repo (`../sowel-ops/ops.env`: `SOWEL_PROD_HOST` — see `CLAUDE.md` section "Installation-specific context"). Source it first: `source ../sowel-ops/ops.env`. Two stages:
 
 **1. Build anonymized fixtures from a fresh prod backup**
 
@@ -102,20 +104,30 @@ await page.addStyleTag({
 // then assert it is gone rather than trusting the injection
 ```
 
-**2. Deploy fixture to demo + shoot (per language)**
+**2. Deploy fixture locally + shoot (per language)**
 
 ```bash
-# Full reset of demo
-ssh "$SOWEL_DEMO_SSH" "cd $SOWEL_DEMO_COMPOSE_DIR && docker compose down -v && docker compose pull && docker compose up -d"
-# Wait for /api/v1/auth/status to respond
-# Setup first admin via POST /api/v1/auth/setup
+DOCS=http://localhost:3001
+
+# Full reset — `down -v` wipes only this instance's volumes (own project name)
+docker compose -f docker-compose.docs.yml down -v
+docker compose -f docker-compose.docs.yml pull
+docker compose -f docker-compose.docs.yml up -d
+
+# Wait for the API rather than guessing a delay
+until curl -sf "$DOCS/api/v1/auth/status" >/dev/null; do sleep 2; done
+
+# Setup first admin via POST /api/v1/auth/setup, then log in for a token
 # Restore showroom-fr.zip via POST /api/v1/backup (multipart) — for FR shoot
-# Take FR screenshots on $SOWEL_DEMO_URL (set localStorage sowel_language=fr, reload)
+# Take FR screenshots on $DOCS (set localStorage sowel_language=fr, reload)
 # Restore showroom-en.zip via POST /api/v1/backup — for EN shoot
 # Take EN screenshots
 ```
 
-Demo compose file: `$SOWEL_DEMO_COMPOSE_DIR/docker-compose.yml`. Keep `image: ghcr.io/mchacher/sowel:<version>` aligned with the prod release. Demo port 3001 maps to container 3000.
+Pin the image when documenting a specific release:
+`SOWEL_DOCS_IMAGE=ghcr.io/mchacher/sowel:1.68.0 docker compose -f docker-compose.docs.yml up -d`.
+
+Tear it down when the session is over (`down -v`); it is meant to be disposable, and leaving it running is how it drifts out of date.
 
 ### Playwright MCP recipe (preferred)
 
