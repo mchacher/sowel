@@ -140,12 +140,22 @@ if [ "${MODE}" = "all" ] || [ "${MODE}" = "released" ]; then
   require_file "${INDEX_EN}"
   require_file "${NOTES}"
 
+  # Two passes, not two greps per listed spec. Same reasoning as the folders
+  # assertion above: this is an intersection of two sets, and `all` was still
+  # taking ~1.8 s because this half kept a process per element.
+  # `|| true` on each stage: grep exits 1 on no match, and pipefail would then
+  # kill the script mid-check without printing anything.
+  unreleased="$( { grep -E "${ROW}.*Unreleased" "${INDEX_EN}" || true; } |
+    { grep -oE "${ROW}" || true; } | tr -d '| ')"
+  # `awk '{print $2}'` keeps a letter suffix that a `tr -d` would eat (048a).
+  cited=" $( { grep -oiE "spec [0-9]{3}[a-z]?\b" "${NOTES}" || true; } |
+    awk '{print $2}' | sort -u | tr '\n' ' ') "
+
   stale=""
-  for num in $( { grep -oE "${ROW}" "${INDEX_EN}" || true; } | tr -d '| '); do
-    grep -qE "^\| ${num} \|.*Unreleased" "${INDEX_EN}" || continue
-    if grep -qiE "spec ${num}\b" "${NOTES}"; then
-      stale="${stale} ${num}"
-    fi
+  for num in ${unreleased}; do
+    case "${cited}" in
+      *" ${num} "*) stale="${stale} ${num}" ;;
+    esac
   done
 
   if [ -n "${stale}" ]; then
