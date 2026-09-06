@@ -134,9 +134,9 @@ describe("TimedActionManager", () => {
           source: { kind: "manual", userId: "u1" },
         },
       ]);
-      expect(armed.revertValue).toBe("CLOSE");
+      expect(armed!.revertValue).toBe("CLOSE");
       expect(h.rows()).toHaveLength(1);
-      expect(new Date(armed.expiresAt).getTime() - Date.now()).toBeGreaterThan(14 * 60_000);
+      expect(new Date(armed!.expiresAt).getTime() - Date.now()).toBeGreaterThan(14 * 60_000);
       expect(h.of("equipment.timed_action.armed")).toHaveLength(1);
     });
 
@@ -165,7 +165,7 @@ describe("TimedActionManager", () => {
       const impulse = { alias: "command", value: null, revertValue: null, durationMs: 900_000 };
       const armed = await h.manager.arm(h.gateId, impulse);
 
-      expect(armed.expiresAt).toBeTruthy();
+      expect(armed!.expiresAt).toBeTruthy();
       expect(h.dispatches).toEqual([
         { equipmentId: h.gateId, alias: "command", value: null, source: undefined },
       ]);
@@ -193,9 +193,9 @@ describe("TimedActionManager", () => {
       });
       const armed = await h.manager.armConfigured(h.gateId);
 
-      expect(armed.alias).toBe("command");
+      expect(armed!.alias).toBe("command");
       expect(h.dispatches).toHaveLength(1);
-      expect(h.manager.getFor(h.gateId)?.expiresAt).toBe(armed.expiresAt);
+      expect(h.manager.getFor(h.gateId)?.expiresAt).toBe(armed!.expiresAt);
     });
 
     it("rule 3 — re-arming the same action moves the deadline and sends nothing", async () => {
@@ -205,11 +205,11 @@ describe("TimedActionManager", () => {
       const second = await h.manager.arm(h.gateId, { ...ARM, durationMs: 30 * 60_000 });
 
       expect(h.dispatches).toHaveLength(1); // "open again" is "give me more time"
-      expect(new Date(second.expiresAt).getTime()).toBeGreaterThan(
-        new Date(first.expiresAt).getTime(),
+      expect(new Date(second!.expiresAt).getTime()).toBeGreaterThan(
+        new Date(first!.expiresAt).getTime(),
       );
       // The window is one window: it still says when it was opened.
-      expect(second.armedAt).toBe(first.armedAt);
+      expect(second!.armedAt).toBe(first!.armedAt);
       expect(h.of("equipment.timed_action.armed")).toHaveLength(2);
       expect(
         h
@@ -436,6 +436,198 @@ describe("TimedActionManager", () => {
       await vi.advanceTimersByTimeAsync(60 * 60_000);
       expect(h.dispatches).toHaveLength(1); // the window is still owed, not fired
       expect(h.rows()).toHaveLength(1); // and still remembered for the next start
+    });
+  });
+
+  // ── Spec 178: the ladder ─────────────────────────────────────
+  //
+  // The gesture the reference installation asked for, in one place: press to
+  // open for a quarter of an hour, press again for half, again for a full one,
+  // and once more to stop counting altogether — with the gate left where it is.
+
+  describe("spec 178 — pressing again asks for longer, then gives up", () => {
+    const LADDER = [15 * 60_000, 30 * 60_000, 60 * 60_000];
+
+    /** Put the ladder on the equipment, which is where the view reads it. */
+    const configure = (h: ReturnType<typeof buildHarness>, steps = LADDER) => {
+      h.realEquipments.update(h.gateId, {
+        timedCommand: {
+          alias: "command",
+          value: "OPEN",
+          revertValue: "CLOSE",
+          durationMs: steps[0],
+          durationStepsMs: steps,
+        },
+      });
+    };
+
+    it("first press acts and arms the first rung", async () => {
+      configure(h);
+      const armed = await h.manager.armConfigured(h.gateId, { kind: "manual", userId: "u1" });
+
+      expect(h.dispatches).toHaveLength(1);
+      expect(armed!.stepIndex).toBe(0);
+      expect(armed!.nextDurationMs).toBe(30 * 60_000);
+      const left = new Date(armed!.expiresAt).getTime() - Date.now();
+      expect(left).toBeGreaterThan(14 * 60_000);
+      expect(left).toBeLessThanOrEqual(15 * 60_000);
+    });
+
+    it("climbs to the rung above, dispatching nothing", async () => {
+      configure(h);
+      const first = await h.manager.armConfigured(h.gateId);
+      const second = await h.manager.armConfigured(h.gateId);
+
+      expect(h.dispatches).toHaveLength(1); // still just the opening
+      expect(second!.stepIndex).toBe(1);
+      expect(second!.nextDurationMs).toBe(60 * 60_000);
+      // FR-3 — counted from now, and it is still ONE window.
+      const left = new Date(second!.expiresAt).getTime() - Date.now();
+      expect(left).toBeGreaterThan(29 * 60_000);
+      expect(left).toBeLessThanOrEqual(30 * 60_000);
+      expect(second!.armedAt).toBe(first!.armedAt);
+
+      const third = await h.manager.armConfigured(h.gateId);
+      expect(third!.stepIndex).toBe(2);
+      expect(third!.nextDurationMs).toBeNull(); // the next press is the way out
+      expect(h.dispatches).toHaveLength(1);
+    });
+
+    it("gives the deadline up past the top rung, leaving the gate open", async () => {
+      configure(h);
+      await h.manager.armConfigured(h.gateId);
+      await h.manager.armConfigured(h.gateId);
+      await h.manager.armConfigured(h.gateId);
+      const off = await h.manager.armConfigured(h.gateId);
+
+      // FR-4 — the whole point: no revert goes out. A gate that closed itself
+      // here would be the opposite of what the press asked for.
+      expect(off).toBeNull();
+      expect(h.dispatches).toHaveLength(1);
+      expect(h.rows()).toHaveLength(0);
+      expect(h.manager.getFor(h.gateId)).toBeNull();
+      expect(h.of("equipment.timed_action.disarmed")).toHaveLength(1);
+      expect(h.of("equipment.timed_action.reverted")).toHaveLength(0);
+    });
+
+    it("keeps extending for ever without a ladder (spec 174 rule 3)", async () => {
+      // The retro-compat pin: every installation that never declares a ladder.
+      const a = await h.manager.arm(h.gateId, ARM);
+      const b = await h.manager.arm(h.gateId, ARM);
+      const c = await h.manager.arm(h.gateId, ARM);
+
+      expect(h.dispatches).toHaveLength(1);
+      expect([a, b, c].every((x) => x !== null)).toBe(true);
+      expect(b!.stepIndex).toBe(0);
+      expect(c!.armedAt).toBe(a!.armedAt);
+      expect(new Date(c!.expiresAt).getTime() - Date.now()).toBeGreaterThan(14 * 60_000);
+    });
+
+    it("remembers the rung across a restart", async () => {
+      configure(h);
+      await h.manager.armConfigured(h.gateId);
+      await h.manager.armConfigured(h.gateId);
+      await h.manager.armConfigured(h.gateId); // top rung
+
+      h.manager.stop();
+      h.manager.start();
+
+      // Read the rung straight from the row, and blank the length the fallback
+      // could otherwise reconstruct it from: without the persisted index this
+      // assertion is the only thing standing between a give-up press and
+      // another hour of open gate.
+      const row = h.db
+        .prepare("SELECT step_index FROM timed_actions WHERE equipment_id = ?")
+        .get(h.gateId) as { step_index: number };
+      expect(row.step_index).toBe(2);
+
+      expect(h.manager.getFor(h.gateId)?.stepIndex).toBe(2);
+      expect(await h.manager.armConfigured(h.gateId)).toBeNull();
+      expect(h.dispatches).toHaveLength(1);
+    });
+
+    it("refuses a ladder whose rungs are out of range, wherever it came from", async () => {
+      // The PUT route validates a ladder it is handed, but a row can reach the
+      // database another way: a backup restored from another instance, a
+      // hand-edited column. A [500 ms, 1 s] ladder armed a window that expired
+      // half a second later — the gate opening and closing itself, silently.
+      await expect(
+        h.manager.arm(h.gateId, { ...ARM, durationStepsMs: [500, 1_000] }),
+      ).rejects.toThrow(/Duration must be/);
+      expect(h.dispatches).toHaveLength(0);
+      expect(h.rows()).toHaveLength(0);
+    });
+
+    it("keeps the published rung inside the ladder it belongs to", async () => {
+      // `resolveStep` answers `steps.length` past the top, which `nextStep`
+      // needs; publishing it would tell a client "step 3 of 2".
+      configure(h);
+      await h.manager.armConfigured(h.gateId);
+      await h.manager.armConfigured(h.gateId); // 30 min
+
+      configure(h, [5 * 60_000, 10 * 60_000]); // both rungs shorter than the window
+      const view = h.manager.getFor(h.gateId);
+      expect(view?.stepIndex).toBe(1);
+      expect(view?.nextDurationMs).toBeNull();
+    });
+
+    it("re-places a window when the ladder changed under it (FR-6)", async () => {
+      configure(h);
+      await h.manager.armConfigured(h.gateId);
+      await h.manager.armConfigured(h.gateId); // 30 min, rung 2 of 3
+
+      configure(h, [10 * 60_000, 20 * 60_000, 40 * 60_000]);
+      // The 30-minute window is no rung of the new ladder; it sits on the
+      // shortest one that is not shorter than itself.
+      expect(h.manager.getFor(h.gateId)?.stepIndex).toBe(2);
+      expect(h.manager.getFor(h.gateId)?.nextDurationMs).toBeNull();
+    });
+
+    it("falls back to extending when the ladder is cleared under a window", async () => {
+      configure(h);
+      await h.manager.armConfigured(h.gateId);
+      h.realEquipments.update(h.gateId, {
+        timedCommand: {
+          alias: "command",
+          value: "OPEN",
+          revertValue: "CLOSE",
+          durationMs: 15 * 60_000,
+        },
+      });
+
+      const again = await h.manager.armConfigured(h.gateId);
+      expect(again).not.toBeNull();
+      expect(again!.nextDurationMs).toBe(15 * 60_000);
+      expect(h.dispatches).toHaveLength(1);
+    });
+
+    it("still reverts at the deadline, whatever rung it is on", async () => {
+      vi.useFakeTimers();
+      configure(h);
+      await h.manager.armConfigured(h.gateId);
+      await h.manager.armConfigured(h.gateId); // 30 min
+
+      await vi.advanceTimersByTimeAsync(30 * 60_000 + 100);
+      expect(h.dispatches).toHaveLength(2);
+      expect(h.dispatches[1].value).toBe("CLOSE");
+      expect(h.of("equipment.timed_action.reverted")).toHaveLength(1);
+    });
+
+    it("still disarms on a hand-revert mid-ladder (spec 174 rule 2)", async () => {
+      h.manager.start(); // rule 2 listens on the bus, which start() subscribes to
+      configure(h);
+      await h.manager.armConfigured(h.gateId);
+      await h.manager.armConfigured(h.gateId);
+
+      h.eventBus.emit({
+        type: "equipment.data.changed",
+        equipmentId: h.gateId,
+        alias: "command",
+        value: "CLOSE",
+      } as never);
+
+      expect(h.manager.getFor(h.gateId)).toBeNull();
+      expect(h.dispatches).toHaveLength(1);
     });
   });
 

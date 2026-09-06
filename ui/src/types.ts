@@ -624,6 +624,10 @@ export interface TimedCommand {
   value: unknown;
   revertValue: unknown;
   durationMs: number;
+  /** Spec 178 — the ladder of window lengths a press walks up, shortest first.
+   *  Absent = one length, extended in place. `durationMs` mirrors its first
+   *  entry, so a surface showing "what the first press does" needs no change. */
+  durationStepsMs?: number[];
 }
 
 /** Spec 174 — the window currently running on an equipment. */
@@ -635,6 +639,11 @@ export interface TimedAction {
   expiresAt: string;
   armedAt: string;
   armedBy?: string;
+  /** Spec 178 — the rung this window is on. 0 without a ladder. */
+  stepIndex: number;
+  /** Spec 178 — how long the next press would make the window, or null when
+   *  the next press gives the deadline up. Resolved by the engine. */
+  nextDurationMs: number | null;
 }
 
 export interface EquipmentWithDetails extends Equipment {
@@ -1130,11 +1139,7 @@ export interface ModeWithDetails extends Mode {
 }
 
 export type ButtonEffectType =
-  | "mode_activate"
-  | "mode_toggle"
-  | "equipment_order"
-  | "recipe_toggle"
-  | "zone_order";
+  "mode_activate" | "mode_toggle" | "equipment_order" | "recipe_toggle" | "zone_order";
 
 export interface ButtonActionBinding {
   id: string;

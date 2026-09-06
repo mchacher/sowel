@@ -230,6 +230,18 @@ Once enabled, the command shows up in two places:
 
 Pressing the tile again while the window is open gives it more time rather than acting twice. Cancelling sends the closing command straight away.
 
+#### Steps: each press asks for longer
+
+One duration answers "not yet" but never "how much longer". Tick **Steps** under the timed command and pick the lengths a press walks through — a quarter of an hour, half, a full one, say. Then:
+
+- the **first press** acts and starts the shortest length;
+- **each further press** moves to the next length, counted from that moment, and sends nothing;
+- a **press past the last one** stops the countdown and leaves the equipment exactly as it is — the gate stays open, and nothing will close it.
+
+That last press is deliberately not the same thing as cancelling: cancelling sends the closing command, stopping the countdown does not. Both are on the tile, side by side.
+
+Two to six steps, shortest first. The first one is the duration, so the duration selector follows it rather than claiming a length of its own. Editing the steps while a window is running does not disturb it: the window keeps its own deadline and the next press picks up from the nearest step.
+
 !!! warning "A contact that only certifies one direction"
 A gate's contact usually proves it is closed and only suggests it is open. If you close the gate by hand without the contact seeing it, the window keeps running and will re-open the gate at the deadline. End the window from Sowel rather than by hand when that matters.
 

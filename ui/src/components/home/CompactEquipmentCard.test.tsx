@@ -59,7 +59,6 @@ describe("CompactEquipmentCard — submetered day energy (#605)", () => {
   });
 });
 
-
 // ============================================================
 // Issue #839 — the home row must not print an aged wattage either.
 // ============================================================
@@ -90,9 +89,7 @@ function powerBinding(over: Record<string, unknown> = {}) {
 
 describe("CompactEquipmentCard — stale power readings (#839)", () => {
   it("prints a fresh metering plug draw", () => {
-    renderCard(
-      makeEquipment("switch", [], { dataBindings: [powerBinding()] }),
-    );
+    renderCard(makeEquipment("switch", [], { dataBindings: [powerBinding()] }));
 
     expect(screen.getByText("560 W")).toBeTruthy();
   });
@@ -125,9 +122,7 @@ describe("CompactEquipmentCard — stale power readings (#839)", () => {
     // survive the instantaneous power being withheld.
     renderCard(
       makeEquipment("energy_meter", [dayEnergy(1230)], {
-        dataBindings: [
-          powerBinding({ alias: "power", value: 1240, lastUpdated: agoIso(3600) }),
-        ],
+        dataBindings: [powerBinding({ alias: "power", value: 1240, lastUpdated: agoIso(3600) })],
       }),
     );
 
@@ -205,6 +200,8 @@ describe("CompactEquipmentCard — timed command (spec 174)", () => {
           revertValue: null,
           armedAt: new Date(Date.now() - 5 * 60_000).toISOString(),
           expiresAt: new Date(Date.now() + 10 * 60_000).toISOString(),
+          stepIndex: 0,
+          nextDurationMs: null,
         },
       }),
     );
