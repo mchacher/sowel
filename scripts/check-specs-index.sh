@@ -72,18 +72,42 @@ if [ "${MODE}" = "all" ] || [ "${MODE}" = "folders" ]; then
   require_file "${INDEX_EN}"
   require_file "${INDEX_FR}"
 
-  for index in "${INDEX_EN}" "${INDEX_FR}"; do
-    missing=""
-    for dir in specs/*/; do
-      [ -d "${dir}" ] || continue
-      slug="$(basename "${dir}")"
-      num="${slug%%-*}"
+  # Spec folders resolved once, in pure shell. This used to call `basename` and
+  # a `grep` per folder per index: 175 folders x 2 indexes x 2 processes is 700
+  # spawns, ~13 s on macOS, which blew the 5 s timeout of the test that runs
+  # this against the repository and so failed `npm run validate` and the
+  # pre-push hook on a developer machine while CI stayed green. The work is a
+  # set membership test; it does not need a process per element.
+  spec_slugs=""
+  for dir in specs/*/; do
+    [ -d "${dir}" ] || continue
+    slug="${dir%/}"
+    slug="${slug##*/}"
+    num="${slug%%-*}"
+    case "${num}" in
+      # 048a / 048b / 048c exist, hence the optional letter.
+      [0-9][0-9][0-9] | [0-9][0-9][0-9][a-z]) ;;
       # Not a spec folder (no NNN- prefix): nothing to look up, and inviting
       # someone to paste `| archive | ... |` would be worse than staying quiet.
-      echo "${num}" | grep -qE "^[0-9]{3}[a-z]?$" || continue
-      if ! grep -qE "^\| ${num} \|" "${index}"; then
-        missing="${missing} ${slug}"
-      fi
+      *) continue ;;
+    esac
+    spec_slugs="${spec_slugs} ${slug}"
+  done
+
+  for index in "${INDEX_EN}" "${INDEX_FR}"; do
+    # One pass over the index, reused by both assertions below.
+    # `|| true`: grep exits 1 on an index with no rows at all, and pipefail
+    # would then kill the script mid-check without printing anything.
+    listed="$( { grep -oE "${ROW}" "${index}" || true; } | tr -d '| ' )"
+    listed_flat=" $(echo "${listed}" | tr '\n' ' ') "
+
+    missing=""
+    for slug in ${spec_slugs}; do
+      num="${slug%%-*}"
+      case "${listed_flat}" in
+        *" ${num} "*) ;;
+        *) missing="${missing} ${slug}" ;;
+      esac
     done
 
     if [ -n "${missing}" ]; then
@@ -99,11 +123,9 @@ if [ "${MODE}" = "all" ] || [ "${MODE}" = "folders" ]; then
       failed=1
     fi
 
-    # A row pasted twice is invisible to the grep above, and it is how the
-    # French index grew a second copy of specs 136-172 (#872).
-    # `|| true`: grep exits 1 on an index with no rows at all, and pipefail
-    # would then kill the script mid-check without printing anything.
-    duplicated="$( { grep -oE "${ROW}" "${index}" || true; } | tr -d '| ' | sort | uniq -d | tr '\n' ' ')"
+    # A row pasted twice is invisible to the membership test above, and it is
+    # how the French index grew a second copy of specs 136-172 (#872).
+    duplicated="$(echo "${listed}" | sort | uniq -d | tr '\n' ' ')"
     if [ -n "${duplicated}" ]; then
       echo "❌ ${index} lists the same spec more than once: ${duplicated}"
       failed=1
