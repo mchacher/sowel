@@ -60,18 +60,28 @@ Deux rôles existent : `admin` et `standard`. La plupart des lectures (`GET`) so
 
 **Liste blanche des écritures `standard`** (les seules mutations qu'un utilisateur standard peut faire) :
 
-| Method        | Path                                                                                                      | Usage                      |
-| ------------- | --------------------------------------------------------------------------------------------------------- | -------------------------- |
-| POST          | `/api/v1/equipments/:id/orders/:alias`                                                                    | Actionner un équipement    |
-| POST / DELETE | `/api/v1/equipments/:id/timed-action`                                                                     | Action minutée (spec 174)  |
-| POST          | `/api/v1/zones/:id/orders/:orderKey`                                                                      | Commande de zone           |
-| PUT           | `/api/v1/me`, `/api/v1/me/preferences`, `/api/v1/me/password`                                             | Son propre compte          |
-| POST / DELETE | `/api/v1/me/tokens[/:id]`                                                                                 | Ses propres tokens API     |
-| POST / DELETE | `/api/v1/me/mfa/totp/setup`, `/totp/confirm`, `/totp`, `/backup-codes/regenerate`, `/trusted-devices/:id` | Sa propre MFA (spec 151)   |
-| POST / DELETE | `/api/v1/push/subscriptions`                                                                              | Son propre abonnement push |
-| POST          | `/api/v1/auth/logout`                                                                                     | Terminer sa propre session |
+| Method        | Path                                                                                                      | Usage                            |
+| ------------- | --------------------------------------------------------------------------------------------------------- | -------------------------------- |
+| POST          | `/api/v1/equipments/:id/orders/:alias`                                                                    | Actionner un équipement          |
+| POST / DELETE | `/api/v1/equipments/:id/timed-action`                                                                     | Action minutée (spec 174)        |
+| POST          | `/api/v1/zones/:id/orders/:orderKey`                                                                      | Commande de zone                 |
+| POST          | `/api/v1/modes/:id/activate`, `/deactivate`                                                               | Bascule du mode actif            |
+| POST          | `/api/v1/modes/:id/apply-to-zone/:zoneId`                                                                 | Application d'un mode à une zone |
+| PUT           | `/api/v1/me`, `/api/v1/me/preferences`, `/api/v1/me/password`                                             | Son propre compte                |
+| POST / DELETE | `/api/v1/me/tokens[/:id]`                                                                                 | Ses propres tokens API           |
+| POST / DELETE | `/api/v1/me/mfa/totp/setup`, `/totp/confirm`, `/totp`, `/backup-codes/regenerate`, `/trusted-devices/:id` | Sa propre MFA (spec 151)         |
+| POST / DELETE | `/api/v1/push/subscriptions`                                                                              | Son propre abonnement push       |
+| POST          | `/api/v1/auth/logout`                                                                                     | Terminer sa propre session       |
 
 Un token API hérite du rôle de son créateur : un token de portée standard est soumis à la même barrière, sans escalade de privilège possible.
+
+**Les modes sont répartis des deux côtés** (issue #912). Le mode actuellement actif
+est un état d'exécution, changé plusieurs fois par jour et qui envoie des ordres
+exactement comme une commande de zone : un utilisateur `standard` peut donc le
+basculer. Ce qu'un mode _est_ — son nom, ses impacts de zone, ses actions — relève
+de la configuration et reste réservé à l'admin : `POST /api/v1/modes`,
+`PUT`/`DELETE /api/v1/modes/:id` et les routes d'impacts répondent `403` à un
+non-admin.
 
 ## Current User (Me)
 

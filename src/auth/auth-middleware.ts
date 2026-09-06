@@ -53,6 +53,22 @@ const STANDARD_WRITE_ALLOWLIST: ReadonlyArray<{ method: string; re: RegExp }> = 
   // Usage: actuate an equipment / run a zone command
   { method: "POST", re: /^\/api\/v1\/equipments\/[^/]+\/orders\/[^/]+$/ },
   { method: "POST", re: /^\/api\/v1\/zones\/[^/]+\/orders\/[^/]+$/ },
+  // Issue #912 — spec 131 classified modes as configuration wholesale, which
+  // conflated two things: what a mode DOES (its name, its zone impacts — still
+  // admin-only, and nothing below touches that) and which mode is currently ON.
+  // The second is runtime state, changed several times a day. `activateMode`
+  // sets the active flag and then dispatches the mode's zone impacts, which is
+  // the shape of an actuation, and a standard user is already trusted with the
+  // stronger equivalent one line above: a zone command that turns every light
+  // in the house off. Refusing "put the house in Night" beside that was not a
+  // coherent boundary, and it left a family member unable to do the one thing
+  // they do most.
+  { method: "POST", re: /^\/api\/v1\/modes\/[^/]+\/activate$/ },
+  { method: "POST", re: /^\/api\/v1\/modes\/[^/]+\/deactivate$/ },
+  // Weaker still: `applyModeToZone` runs one zone's impact actions and changes
+  // no state at all, not even the active flag. Allowing `activate` while
+  // refusing this would deny the lesser act and permit the greater one.
+  { method: "POST", re: /^\/api\/v1\/modes\/[^/]+\/apply-to-zone\/[^/]+$/ },
   // Spec 174 — a timed command is an ordinary actuation with a deadline on it,
   // and the surfaces that offer it (the Home row, the Dashboard tile) render
   // for every user. What a standard user may already do outright, they may do
