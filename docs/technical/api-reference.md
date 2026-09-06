@@ -98,6 +98,8 @@ endpoint not in the allowlist is admin-only.
 | POST          | `/api/v1/equipments/:id/orders/:alias`                                                                    | Actuate an equipment    |
 | POST / DELETE | `/api/v1/equipments/:id/timed-action`                                                                     | Timed action (spec 174) |
 | POST          | `/api/v1/zones/:id/orders/:orderKey`                                                                      | Zone command            |
+| POST          | `/api/v1/modes/:id/activate`, `/deactivate`                                                               | Switch the active mode  |
+| POST          | `/api/v1/modes/:id/apply-to-zone/:zoneId`                                                                 | Apply a mode to a zone  |
 | PUT           | `/api/v1/me`, `/api/v1/me/preferences`, `/api/v1/me/password`                                             | Own account             |
 | POST / DELETE | `/api/v1/me/tokens[/:id]`                                                                                 | Own API tokens          |
 | POST / DELETE | `/api/v1/me/mfa/totp/setup`, `/totp/confirm`, `/totp`, `/backup-codes/regenerate`, `/trusted-devices/:id` | Own MFA (spec 151)      |
@@ -106,6 +108,20 @@ endpoint not in the allowlist is admin-only.
 
 An API token inherits its creator's role, so a standard-scoped token is subject to
 the same gate (no privilege escalation).
+
+**Modes are split between the two sides** (issue #912). _When_ a mode is on is
+runtime state, changed several times a day, so a `standard` user may switch it.
+What a mode _is_ — its name, its zone impacts, its actions — is configuration and
+stays admin-only: `POST /api/v1/modes`, `PUT`/`DELETE /api/v1/modes/:id` and the
+impact routes all return `403` for a non-admin.
+
+Note what activation carries: a mode's impacts may include `recipe_toggle` and
+`recipe_params` actions, which enable, disable or re-parameterise a recipe
+instance durably — writes a `standard` user is refused directly, and that
+deactivating the mode does not undo. This is deliberate delegation, not an
+oversight: an admin authored the impacts, and the standard user only chooses when
+they run. The same delegation already applies to the calendar and to a physical
+button bound to a mode, neither of which carries a role.
 
 ## Current User (Me)
 

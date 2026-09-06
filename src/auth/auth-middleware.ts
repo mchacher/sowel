@@ -53,6 +53,32 @@ const STANDARD_WRITE_ALLOWLIST: ReadonlyArray<{ method: string; re: RegExp }> = 
   // Usage: actuate an equipment / run a zone command
   { method: "POST", re: /^\/api\/v1\/equipments\/[^/]+\/orders\/[^/]+$/ },
   { method: "POST", re: /^\/api\/v1\/zones\/[^/]+\/orders\/[^/]+$/ },
+  // Issue #912 — spec 131 classified modes as configuration wholesale, which
+  // conflated two things: what a mode DOES (its name, its zone impacts — still
+  // admin-only, and nothing below touches that) and WHEN it is on. The second
+  // is runtime state, changed several times a day, and a standard user was
+  // already trusted with the comparable act one line above: a zone command
+  // that turns every light in the house off.
+  //
+  // Read this before adding to the list: activating is NOT a pure actuation.
+  // `ModeManager.executeImpact` also runs `recipe_toggle` and `recipe_params`
+  // actions, which durably enable/disable a recipe instance and rewrite its
+  // params — writes a standard user is refused directly, and that deactivating
+  // the mode does not undo. What makes it acceptable is that an ADMIN authored
+  // those impacts: the standard user chooses when the mode runs, never what it
+  // does. The same delegation already existed unguarded through the calendar
+  // (cron) and through a physical button bound to a mode, neither of which
+  // carries a role at all. Gating recipe actions by the activator's role was
+  // the alternative and it is worse: the same mode would half-apply depending
+  // on who pressed it, which is exactly the inconsistency automation must not
+  // have.
+  { method: "POST", re: /^\/api\/v1\/modes\/[^/]+\/activate$/ },
+  { method: "POST", re: /^\/api\/v1\/modes\/[^/]+\/deactivate$/ },
+  // `applyModeToZone` runs one zone's impacts and does not touch the active
+  // flag, so it is narrower than `activate` in reach while carrying the same
+  // delegation. Allowing `activate` and refusing this would permit the wider
+  // act and deny the narrower one.
+  { method: "POST", re: /^\/api\/v1\/modes\/[^/]+\/apply-to-zone\/[^/]+$/ },
   // Spec 174 — a timed command is an ordinary actuation with a deadline on it,
   // and the surfaces that offer it (the Home row, the Dashboard tile) render
   // for every user. What a standard user may already do outright, they may do

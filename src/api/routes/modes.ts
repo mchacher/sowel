@@ -137,6 +137,18 @@ export function registerModeRoutes(app: FastifyInstance, deps: ModesDeps): void 
     async (request, reply) => {
       try {
         modeManager.applyModeToZone(request.params.id, request.params.zoneId);
+        // Issue #912 — this route became reachable by a standard user, and it
+        // dispatches orders and can toggle a recipe like `activate` does. It
+        // was the only one of the three with no audit row.
+        const mode = modeManager.getMode(request.params.id);
+        auditLogger.log({
+          ...buildActor(request, userManager),
+          action: "mode.apply-to-zone",
+          targetType: "mode",
+          targetId: request.params.id,
+          ip: request.ip,
+          meta: { modeName: mode?.name ?? null, zoneId: request.params.zoneId },
+        });
         return { ok: true };
       } catch (err) {
         if (err instanceof ModeError) return reply.code(err.status).send({ error: err.message });

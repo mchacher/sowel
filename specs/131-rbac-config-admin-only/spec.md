@@ -17,6 +17,7 @@ to usage; make all configuration admin-only.** No new role is added.
 ## Goal
 
 A `standard` user can:
+
 - **View** everything (all read endpoints).
 - **Actuate** equipments (execute orders) and run **zone commands** (all-lights-off, etc.).
 - Manage **their own account**: display name, preferences (theme/language), password,
@@ -39,18 +40,24 @@ new mutating endpoint is admin-only by default — no per-route opt-in to forget
 
 ## Standard write allowlist (the ONLY mutations a standard may do)
 
-| Method | Path (template) | Why |
-| --- | --- | --- |
-| POST | `/api/v1/equipments/:id/orders/:alias` | Actuate an equipment (open gate, toggle light) |
-| POST | `/api/v1/zones/:id/orders/:orderKey` | Zone command (all-lights-off, all-shutters-close) |
-| PUT | `/api/v1/me` | Own display name |
-| PUT | `/api/v1/me/preferences` | Own theme / language |
-| PUT | `/api/v1/me/password` | Own password |
-| POST | `/api/v1/me/tokens` | Own API token (inherits standard role, no escalation) |
-| DELETE | `/api/v1/me/tokens/:id` | Revoke own API token |
-| POST | `/api/v1/push/subscriptions` | Register own device for push |
-| DELETE | `/api/v1/push/subscriptions` | Unregister own device |
-| POST | `/api/v1/auth/logout` | End own session |
+> **The table below is the v1.29.0 list and is no longer complete.** Spec 174 added
+> the timed-action routes and issue #912 added the three mode-activation routes
+> (see the amendment at the end of this document). The live list is
+> `STANDARD_WRITE_ALLOWLIST` in `src/auth/auth-middleware.ts`, documented in
+> `docs/technical/api-reference.md`.
+
+| Method | Path (template)                        | Why                                                   |
+| ------ | -------------------------------------- | ----------------------------------------------------- |
+| POST   | `/api/v1/equipments/:id/orders/:alias` | Actuate an equipment (open gate, toggle light)        |
+| POST   | `/api/v1/zones/:id/orders/:orderKey`   | Zone command (all-lights-off, all-shutters-close)     |
+| PUT    | `/api/v1/me`                           | Own display name                                      |
+| PUT    | `/api/v1/me/preferences`               | Own theme / language                                  |
+| PUT    | `/api/v1/me/password`                  | Own password                                          |
+| POST   | `/api/v1/me/tokens`                    | Own API token (inherits standard role, no escalation) |
+| DELETE | `/api/v1/me/tokens/:id`                | Revoke own API token                                  |
+| POST   | `/api/v1/push/subscriptions`           | Register own device for push                          |
+| DELETE | `/api/v1/push/subscriptions`           | Unregister own device                                 |
+| POST   | `/api/v1/auth/logout`                  | End own session                                       |
 
 Everything else that mutates → **admin only**.
 
@@ -87,6 +94,7 @@ never sees a button that would fail.
 ## Scope
 
 ### In scope
+
 - Central role-enforcement hook + pure `isStandardWriteAllowed(method, path)` predicate.
 - Remove the now-redundant per-route `requireAdmin` calls OR keep them (defense in
   depth) — decided in architecture.md.
@@ -94,12 +102,14 @@ never sees a button that would fail.
 - Docs: note the role model in `docs/technical/api-reference.md`.
 
 ### Out of scope
+
 - A third role (read-only "viewer" that cannot actuate) — noted as a possible
   future addition; not needed for #319.
 - Per-zone / per-equipment ACLs.
 - Changing how roles are assigned (admin already sets a user's role at creation).
 
 ### Future (noted by the maintainer) — per-user dashboards
+
 Today the dashboard and saved charts are **shared/global** (no `user_id` on
 `dashboard_widgets` / `chart_configs`), which is exactly why editing them is
 **admin-only** in this spec. A later phase may introduce **per-user dashboards**
@@ -110,17 +120,71 @@ one-line allowlist change; no other RBAC rework needed. Tracked separately.
 
 ## Edge cases
 
-| Case | Expected |
-| --- | --- |
-| Standard executes an equipment order | Allowed (200) |
-| Standard runs a zone command | Allowed |
-| Standard renames/deletes an equipment | 403 |
-| Standard activates a mode | 403 (modes = admin) |
-| Standard enables/disables a recipe | 403 (recipes = admin) |
-| Standard edits the shared dashboard / creates a chart | 403 |
-| Standard changes own password / preferences | Allowed |
-| Standard creates/revokes own API token | Allowed |
-| Standard-scoped API token tries a config mutation | 403 (role from token = standard) |
-| Admin does any of the above | Allowed |
-| Any user does a GET | Allowed |
-| No users yet (setup) | `/auth/setup` reachable, others 403 setupRequired (unchanged) |
+| Case                                                  | Expected                                                      |
+| ----------------------------------------------------- | ------------------------------------------------------------- |
+| Standard executes an equipment order                  | Allowed (200)                                                 |
+| Standard runs a zone command                          | Allowed                                                       |
+| Standard renames/deletes an equipment                 | 403                                                           |
+| Standard activates a mode                             | 403 (modes = admin) — **amended, see below**                  |
+| Standard enables/disables a recipe                    | 403 (recipes = admin)                                         |
+| Standard edits the shared dashboard / creates a chart | 403                                                           |
+| Standard changes own password / preferences           | Allowed                                                       |
+| Standard creates/revokes own API token                | Allowed                                                       |
+| Standard-scoped API token tries a config mutation     | 403 (role from token = standard)                              |
+| Admin does any of the above                           | Allowed                                                       |
+| Any user does a GET                                   | Allowed                                                       |
+| No users yet (setup)                                  | `/auth/setup` reachable, others 403 setupRequired (unchanged) |
+
+---
+
+## Amendment — 2026-09-06, issue #912: activating a mode is usage
+
+This spec classified modes as configuration wholesale, and the edge-case table
+above recorded `Standard activates a mode → 403`. That line no longer holds, and
+the reasoning that produced it is worth naming, because it is the kind of mistake
+a default-deny gate makes easy: a domain was assigned to one side as a whole,
+when it actually straddles the boundary the spec itself drew.
+
+- **What a mode is** — its name, its zone impacts, its actions — is configuration.
+  Unchanged: `POST /api/v1/modes`, `PUT`/`DELETE /api/v1/modes/:id` and the impact
+  routes stay admin-only, and the add / edit / delete controls stay behind
+  `isAdmin` in the UI.
+- **When a mode is on** is runtime state, changed several times a day. A
+  `standard` user was already trusted with the comparable act: a zone command
+  that turns every light in the house off.
+
+Three routes therefore moved into `STANDARD_WRITE_ALLOWLIST`: `activate`,
+`deactivate`, and `apply-to-zone/:zoneId` (narrower — it runs one zone's impacts
+and does not touch the active flag). The practical consequence is that a partner
+or a teenager on a `standard` account can put the house in Night or Away, which
+they could not do before.
+
+### The part that needed a decision, not just a reclassification
+
+Activating a mode is **not** a pure actuation, and an early draft of this
+amendment wrongly said it was. `ModeManager.executeImpact` handles three action
+types: `order`, `recipe_toggle` and `recipe_params`. The last two durably enable
+or disable a recipe instance and rewrite its parameters — writes this spec keeps
+admin-only, and that `deactivateMode` does not undo, since deactivation clears
+the flag without running anything. So a `standard` user activating an
+admin-authored Night mode can leave a recipe disabled, and cannot re-enable it.
+
+That was weighed and accepted, on three grounds:
+
+1. **An admin authored the impacts.** The standard user chooses _when_ the mode
+   runs, never _what_ it does. This is delegation, and it is the entire purpose
+   of a mode.
+2. **The same delegation already existed, ungated.** The calendar (cron) and a
+   physical button bound to a mode both activate modes with no role attached at
+   all. Gating the HTTP route while those stayed open would have secured
+   nothing.
+3. **The alternative is worse.** Skipping recipe actions when the activator is
+   not an admin makes the same mode half-apply depending on who pressed it,
+   which is the kind of inconsistency automation must never have.
+
+The residual awkwardness is real and is **not** introduced here: a mode's
+recipe impacts are one-way, because deactivation does not revert them. An admin
+hits that too. It is worth its own issue rather than an exception in this gate.
+
+The fail-closed design of this spec is what made the amendment a three-line
+change, and it is unchanged: everything not listed is still admin-only.
