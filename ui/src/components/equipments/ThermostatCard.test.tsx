@@ -434,3 +434,37 @@ describe("ThermostatCard extras (spec 177)", () => {
     expect(screen.queryByText("Other settings")).toBeNull();
   });
 });
+
+describe("ThermostatCard extras — review follow-ups (spec 177)", () => {
+  it("renders a legacy state ORDER as a toggle mirrored by the core state reading", async () => {
+    // Bound before the toggle_power → power override: the order landed under
+    // `state`. It is an extra, but its mirror is the core `state` reading, so
+    // it must be a real toggle (sends false when on), never a one-shot.
+    const exec = vi.fn().mockResolvedValue(undefined);
+    render(
+      <ThermostatCard
+        equipment={richEquipment(core, [
+          { alias: "setpoint", type: "number", min: 5, max: 40 },
+          { alias: "state", type: "boolean" },
+        ])}
+        onExecuteOrder={exec}
+      />,
+    );
+    expect(screen.queryByRole("button", { name: /Trigger/ })).toBeNull();
+    await userEvent.click(screen.getByRole("button", { name: "ON" }));
+    expect(exec).toHaveBeenCalledWith("state", false);
+  });
+
+  it("keeps showing a reading whose order has no generic control", () => {
+    render(
+      <ThermostatCard
+        equipment={richEquipment(
+          [...core, { alias: "schedule", value: "weekday" }],
+          [...coreOrders, { alias: "schedule", type: "text" }],
+        )}
+        onExecuteOrder={vi.fn().mockResolvedValue(undefined)}
+      />,
+    );
+    expect(screen.getByText("weekday")).toBeTruthy();
+  });
+});

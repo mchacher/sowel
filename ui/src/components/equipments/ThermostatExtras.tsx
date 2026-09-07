@@ -51,10 +51,16 @@ export function ThermostatExtras({
   const { t } = useTranslation();
 
   const { extraData, extraOrders } = splitThermostatExtras(dataBindings, orderBindings);
-  const dataByAlias = new Map(extraData.map((b) => [b.alias, b]));
-  const orderAliases = new Set(extraOrders.map((o) => o.alias));
+  // A control's mirror is the data binding of the same alias, wherever it
+  // lives: a legacy `state` ORDER (bound before the toggle_power → power
+  // override) mirrors the core `state` reading and must render as a toggle,
+  // not as a one-shot that can only send true.
+  const dataByAlias = new Map(dataBindings.map((b) => [b.alias, b]));
   const controls = extraOrders.filter(isControllable);
-  const readings = extraData.filter((b) => !orderAliases.has(b.alias));
+  // A reading whose order has no generic control (text/json) still shows as
+  // a chip rather than vanishing with it.
+  const controlAliases = new Set(controls.map((o) => o.alias));
+  const readings = extraData.filter((b) => !controlAliases.has(b.alias));
 
   if (controls.length === 0 && readings.length === 0) return null;
 

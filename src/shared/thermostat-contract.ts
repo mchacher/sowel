@@ -33,8 +33,6 @@ export interface ThermostatCoreEntry {
   data: boolean;
   /** The alias exists on the order side (a command). */
   order: boolean;
-  /** Present on many units, required on none. */
-  optional?: boolean;
 }
 
 /**
@@ -60,7 +58,8 @@ export const THERMOSTAT_CORE: readonly ThermostatCoreEntry[] = [
   { alias: THERMOSTAT_STATE_ALIAS, data: true, order: false },
   { alias: "power", data: true, order: true },
   { alias: "operationMode", data: true, order: true },
-  { alias: "outsideTemperature", data: true, order: false, optional: true },
+  // Present on many units, required on none.
+  { alias: "outsideTemperature", data: true, order: false },
 ];
 
 export const THERMOSTAT_CORE_DATA_ALIASES: ReadonlySet<string> = new Set(

@@ -23,7 +23,7 @@
  */
 
 import type { DataCategory, DataType, EquipmentType, OrderCategory } from "./types.js";
-import { THERMOSTAT_STATE_ALIAS, isThermostatDevice } from "./thermostat-contract";
+import { THERMOSTAT_STATE_ALIAS, isThermostatDevice } from "./thermostat-contract.js";
 import { METERING_CATEGORIES } from "./constants.js";
 
 /** Structural subset of a device_data row this module needs. */
@@ -112,7 +112,7 @@ export const SOLAR_STATE_ALIAS = "solar_state";
  * rest of the thermostat core in thermostat-contract.ts (spec 177) and
  * re-exported here for the existing importers.
  */
-export { THERMOSTAT_STATE_ALIAS } from "./thermostat-contract";
+export { THERMOSTAT_STATE_ALIAS } from "./thermostat-contract.js";
 
 /**
  * True for an on/off command channel. Two shapes are accepted:

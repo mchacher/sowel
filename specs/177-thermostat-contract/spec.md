@@ -175,5 +175,12 @@ The compact card and the dashboard widgets read the core only and are unchanged.
   when the mirror is re-reported, through the existing per-alias mechanism of spec 176.
 - An extra order with no enum values and type `enum` renders nothing (no values to offer).
 - A thermostat with only the core bound renders no extras section at all.
+- A legacy `state` order (bound before the `toggle_power → power` override) is an extra order
+  whose mirror is the core `state` reading: it renders as a toggle, never as a one-shot.
+- A reading whose same-alias order has no generic control (`text`, `json`) still shows as a chip.
+- A device publishing two readings of category `temperature` (a fumes probe and a room probe): the
+  first in publication order takes the `temperature` alias, the second is offered as
+  `temperature_2`. Neither shipped plugin does this; the plan preview (issue #707) shows it before
+  anything is written, and the alias can be swapped there.
 - Unknown mode values (a vendor publishing `heating` rather than `heat`) render the raw value
   rather than a translation key, in the mode selector as in the extras.
