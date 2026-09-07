@@ -286,6 +286,25 @@ Two rules bind the plugin rather than the core, and both matter:
   "replace the battery" alarm against the UPS. Outage alarms belong to the
   plugin, worded for what actually happened.
 
+### 2d Thermostat contract (spec 177)
+
+A `thermostat` equipment has a declared **core**, in `src/shared/thermostat-contract.ts` and nowhere else; the UI binding tables, the device selector and the thermostat card import it.
+
+| Alias                | Data | Order | Resolved from                                                                                                                |
+| -------------------- | ---- | ----- | ---------------------------------------------------------------------------------------------------------------------------- |
+| `temperature`        | ✓    |       | data category `temperature`                                                                                                  |
+| `setpoint`           | ✓    | ✓     | data category `setpoint`, order category `set_setpoint`                                                                      |
+| `state`              | ✓    |       | the device's boolean `power` reading (spec 176), re-tagged `appliance_state`                                                 |
+| `power`              | ✓    | ✓     | order category `toggle_power`; data: the wattage on a submetered unit, or a legacy boolean bound before spec 176             |
+| `operationMode`      | ✓    | ✓     | data category `operation_mode`, order category `set_operation_mode`; values `auto` / `heat` / `cool` / `dry` / `fan` / `off` |
+| `outsideTemperature` | ✓    |       | data category `temperature_outdoor` (optional)                                                                               |
+
+**Identity.** A device is offered as a thermostat when it exposes a `setpoint` data point or a `set_setpoint` order. No raw key is ever required.
+
+**Extras.** A thermostat auto-binds every order and every data point its device exposes: the core resolves to the aliases above, everything else binds under its own key. Those bindings are **extras**: they stay usable, vary per equipment, and define nothing — no core code path, no recipe contract and no card layout keys off them. The card renders them generically from the order's type (enum → buttons, boolean with a data mirror → toggle, boolean without → one-shot action, number → stepper; data without an order → read-only chip).
+
+Until issue #922 makes the plugins publish canonical names, `STANDARD_ALIASES.thermostat` in `bindingUtils.ts` still maps `targetTemperature → setpoint` and `insideTemperature → temperature`; it is the compatibility layer, not the contract.
+
 ### 3 Per-binding category override
 
 Migration `006_pool_runtime_and_category_override.sql` added `category_override` so an Equipment of type `pool_pump` can re-tag a generic relay's `toggle_power` order as `pool_pump_toggle` without touching the device definition. Effective category is `COALESCE(order_bindings.category_override, device_orders.category)`.

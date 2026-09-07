@@ -4,23 +4,18 @@ import {
   Power,
   ChevronUp,
   ChevronDown,
-  Wind,
   Snowflake,
   Sun,
   Droplets,
   Fan,
   Zap,
-  Leaf,
   Thermometer,
   Crosshair,
-  Moon,
-  Armchair,
-  Flame,
-  AlertTriangle,
 } from "lucide-react";
 import type { EquipmentWithDetails } from "../../types";
 import { thermostatPowerStateBinding } from "../../lib/thermostat-state";
 import { THERMOSTAT_STATE_ALIAS } from "../../lib/binding-candidates";
+import { ThermostatExtras } from "./ThermostatExtras";
 
 /** How long an optimistic control value may outlive its confirmation. */
 const OPTIMISTIC_TTL_MS = 90_000;
@@ -31,41 +26,26 @@ interface ThermostatCardProps {
   compact?: boolean;
 }
 
+// Spec 177 — the `operationMode` vocabulary (OPERATION_MODE_VALUES). A value
+// outside it renders its raw name with the neutral style: the card never
+// hides a mode it does not know, and never keys a layout off a vendor value.
 const MODE_ICONS: Record<string, React.ReactNode> = {
-  // HVAC modes (Panasonic, etc.)
   auto: <Zap size={14} strokeWidth={1.5} />,
   cool: <Snowflake size={14} strokeWidth={1.5} />,
   heat: <Sun size={14} strokeWidth={1.5} />,
   dry: <Droplets size={14} strokeWidth={1.5} />,
   fan: <Fan size={14} strokeWidth={1.5} />,
-  // Stove profiles (MCZ, etc.)
-  dynamic: <Zap size={14} strokeWidth={1.5} />,
-  overnight: <Moon size={14} strokeWidth={1.5} />,
-  comfort: <Armchair size={14} strokeWidth={1.5} />,
+  off: <Power size={14} strokeWidth={1.5} />,
 };
 
 const MODE_COLORS: Record<string, string> = {
-  // HVAC modes
   auto: "bg-primary/10 text-primary border-primary/30",
   cool: "bg-primary/10 text-primary border-primary/30",
   heat: "bg-error/10 text-error border-error/30",
   dry: "bg-success/10 text-success border-success/30",
   fan: "bg-text-tertiary/10 text-text-secondary border-text-tertiary/30",
-  // Stove profiles
-  dynamic: "bg-primary/10 text-primary border-primary/30",
-  overnight: "bg-primary/10 text-primary border-primary/30",
-  comfort: "bg-warning/10 text-warning border-warning/30",
+  off: "bg-border-light text-text-tertiary border-border",
 };
-
-/** Color classes for stove state badge */
-function stoveStateColor(state: string): string {
-  if (state === "off" || state === "standby") return "text-text-tertiary bg-border-light";
-  if (state.startsWith("running") || state === "auto_eco") return "text-success bg-success/10";
-  if (state.startsWith("ignition") || state === "checking" || state === "stabilizing") return "text-warning bg-warning/10";
-  if (state === "extinguishing" || state === "cooling" || state.startsWith("cleaning")) return "text-primary bg-primary/10";
-  if (state.startsWith("error")) return "text-error bg-error/10";
-  return "text-text-tertiary bg-border-light";
-}
 
 export function ThermostatCard({ equipment, onExecuteOrder, compact }: ThermostatCardProps) {
   const { t } = useTranslation();
@@ -146,15 +126,14 @@ export function ThermostatCard({ equipment, onExecuteOrder, compact }: Thermosta
     });
   }, [equipment.dataBindings]);
 
-  // Read data bindings (with optimistic overlay)
-  const modeBinding = equipment.dataBindings.find((b) => b.alias === "operationMode")
-    ?? equipment.dataBindings.find((b) => b.alias === "profile");
+  // The core (spec 177): temperature, outsideTemperature, setpoint, state,
+  // power, operationMode. Everything else bound on this equipment is an extra
+  // and is rendered generically by <ThermostatExtras> below — no vendor alias
+  // is read here.
+  const modeBinding = equipment.dataBindings.find((b) => b.alias === "operationMode");
   const targetTempBinding = equipment.dataBindings.find((b) => b.alias === "setpoint");
   const insideTempBinding = equipment.dataBindings.find((b) => b.alias === "temperature");
   const outsideTempBinding = equipment.dataBindings.find((b) => b.alias === "outsideTemperature");
-  const fanSpeedBinding = equipment.dataBindings.find((b) => b.alias === "fanSpeed");
-  const ecoModeBinding = equipment.dataBindings.find((b) => b.alias === "ecoMode");
-  const stoveStateBinding = equipment.dataBindings.find((b) => b.alias === "stoveState");
 
   // The run state comes from the device's own boolean (the `state` alias on
   // a submetered thermostat, legacy boolean `power` otherwise). The `power`
@@ -164,34 +143,21 @@ export function ThermostatCard({ equipment, onExecuteOrder, compact }: Thermosta
     "power" in optimistic
       ? optimistic.power === true
       : thermostatPowerStateBinding(equipment.dataBindings)?.value === true;
-  const stoveState = typeof stoveStateBinding?.value === "string" ? stoveStateBinding.value : null;
-  const modeAlias = modeBinding?.alias ?? "operationMode";
-  const currentMode = modeAlias in optimistic
-    ? (optimistic[modeAlias] as string | null)
+  const currentMode = "operationMode" in optimistic
+    ? (optimistic.operationMode as string | null)
     : typeof modeBinding?.value === "string" ? modeBinding.value : null;
   const targetTemp = "setpoint" in optimistic
     ? (optimistic.setpoint as number | null)
     : typeof targetTempBinding?.value === "number" ? targetTempBinding.value : null;
   const insideTemp = typeof insideTempBinding?.value === "number" ? insideTempBinding.value : null;
   const outsideTemp = typeof outsideTempBinding?.value === "number" ? outsideTempBinding.value : null;
-  const fanSpeed = "fanSpeed" in optimistic
-    ? (optimistic.fanSpeed as string | null)
-    : typeof fanSpeedBinding?.value === "string" ? fanSpeedBinding.value : null;
-  const ecoModeRaw = ecoModeBinding?.value;
-  const ecoMode = typeof ecoModeRaw === "string" ? ecoModeRaw
-    : typeof ecoModeRaw === "boolean" ? (ecoModeRaw ? "on" : null)
-    : null;
 
-  // Order bindings (available controls)
+  // Core order bindings (available controls)
   const hasPowerOrder = equipment.orderBindings.some((o) => o.alias === "power");
-  const hasResetAlarmOrder = equipment.orderBindings.some((o) => o.alias === "resetAlarm");
-  const modeOrder = equipment.orderBindings.find((o) => o.alias === "operationMode")
-    ?? equipment.orderBindings.find((o) => o.alias === "profile");
+  const modeOrder = equipment.orderBindings.find((o) => o.alias === "operationMode");
   const targetTempOrder = equipment.orderBindings.find((o) => o.alias === "setpoint");
-  const fanSpeedOrder = equipment.orderBindings.find((o) => o.alias === "fanSpeed");
 
   const availableModes = modeOrder?.enumValues ?? [];
-  const availableFanSpeeds = fanSpeedOrder?.enumValues ?? [];
 
   const exec = async (alias: string, value: unknown) => {
     if (executing) return;
@@ -269,37 +235,6 @@ export function ThermostatCard({ equipment, onExecuteOrder, compact }: Thermosta
         )}
       </div>
 
-      {/* Stove state badge + reset alarm */}
-      {stoveState && (
-        <div className="flex items-center gap-2">
-          <div className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-[6px] text-[12px] font-medium ${stoveStateColor(stoveState)}`}>
-            <Flame size={12} strokeWidth={1.5} />
-            {t(`stove.state.${stoveState}`, stoveState)}
-          </div>
-          {hasResetAlarmOrder && (() => {
-            const hasAlarm = stoveState.startsWith("error");
-            return (
-              <button
-                onClick={() => {
-                  if (hasAlarm) void exec("resetAlarm", true);
-                }}
-                disabled={!hasAlarm || executing === "resetAlarm"}
-                className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-[6px] text-[12px] font-medium border transition-colors ${
-                  hasAlarm
-                    ? "text-error bg-error/10 border-error/30 hover:bg-error/20 cursor-pointer"
-                    : "text-text-tertiary bg-border-light/50 border-border cursor-default"
-                } disabled:opacity-50 disabled:cursor-not-allowed`}
-                title={hasAlarm ? undefined : t("thermostat.noAlarm")}
-              >
-                <AlertTriangle size={12} strokeWidth={1.5} />
-                {t("thermostat.resetAlarm")}
-                {!hasAlarm && <span className="text-[11px] opacity-60">· {t("thermostat.noAlarm")}</span>}
-              </button>
-            );
-          })()}
-        </div>
-      )}
-
       {/* Target temperature control */}
       {targetTempOrder && (
         <div className="flex items-center gap-3">
@@ -335,8 +270,8 @@ export function ThermostatCard({ equipment, onExecuteOrder, compact }: Thermosta
             {availableModes.map((mode) => (
               <button
                 key={mode}
-                onClick={() => exec(modeAlias, mode)}
-                disabled={executing === modeAlias}
+                onClick={() => exec("operationMode", mode)}
+                disabled={executing === "operationMode"}
                 className={`
                   flex items-center gap-1 px-2.5 py-1.5 rounded-[6px] text-[12px] font-medium border
                   transition-colors duration-150 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed
@@ -347,49 +282,21 @@ export function ThermostatCard({ equipment, onExecuteOrder, compact }: Thermosta
                 `}
               >
                 {MODE_ICONS[mode]}
-                {t(`thermostat.modes.${mode}`)}
+                {t(`thermostat.modes.${mode}`, { defaultValue: mode })}
               </button>
             ))}
           </div>
         </div>
       )}
 
-      {/* Fan speed */}
-      {availableFanSpeeds.length > 0 && (
-        <div className="space-y-1.5">
-          <span className="text-[12px] text-text-tertiary flex items-center gap-1">
-            <Wind size={12} strokeWidth={1.5} />
-            {t("thermostat.fanSpeed")}
-          </span>
-          <div className="flex gap-1.5 flex-wrap">
-            {availableFanSpeeds.map((speed) => (
-              <button
-                key={speed}
-                onClick={() => exec("fanSpeed", speed)}
-                disabled={executing === "fanSpeed"}
-                className={`
-                  px-2.5 py-1 rounded-[6px] text-[11px] font-medium border
-                  transition-colors duration-150 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed
-                  ${fanSpeed === speed
-                    ? "bg-primary/10 text-primary border-primary/30"
-                    : "bg-surface text-text-tertiary border-border hover:text-text-secondary"
-                  }
-                `}
-              >
-                {t(`thermostat.fanSpeeds.${speed}`)}
-              </button>
-            ))}
-          </div>
-        </div>
-      )}
-
-      {/* Eco mode indicator */}
-      {ecoMode && ecoMode !== "auto" && (
-        <div className="flex items-center gap-1.5 text-[12px] text-success">
-          <Leaf size={12} strokeWidth={1.5} />
-          {ecoMode === "on" ? t("thermostat.ecoMode") : t(`thermostat.ecoModes.${ecoMode}`)}
-        </div>
-      )}
+      {/* Extras (spec 177) — whatever else is bound, rendered generically */}
+      <ThermostatExtras
+        dataBindings={equipment.dataBindings}
+        orderBindings={equipment.orderBindings}
+        optimistic={optimistic}
+        executing={executing}
+        onExec={(alias, value) => void exec(alias, value)}
+      />
     </div>
   );
 }
