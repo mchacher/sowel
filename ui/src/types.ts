@@ -67,6 +67,11 @@ export type DataCategory =
   | "ups_status"
   | "battery_runtime"
   | "ups_load"
+  // Spec 177 — a thermostat's operating mode. Closed enum, values in
+  // OPERATION_MODE_VALUES (thermostat-contract.ts): auto / heat / cool / dry /
+  // fan, plus `off` for units whose mode carries the stop. A pellet stove's
+  // programme (`profile`) is NOT a mode: it stays an extra.
+  | "operation_mode"
   | "generic";
 
 export type OrderCategory =
@@ -78,6 +83,8 @@ export type OrderCategory =
   | "set_shutter_position"
   | "toggle_power"
   | "set_setpoint"
+  // Spec 177 — set a thermostat's operating mode (values: OPERATION_MODE_VALUES).
+  | "set_operation_mode"
   | "gate_trigger"
   | "valve_toggle"
   | "toggle_mute"

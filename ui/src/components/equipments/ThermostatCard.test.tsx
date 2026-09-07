@@ -212,3 +212,225 @@ describe("ThermostatCard power state", () => {
     expect(screen.getByTitle("Turn off")).toBeTruthy();
   });
 });
+
+// ============================================================
+// Spec 177 — the card leads with the core and renders whatever else is bound
+// generically. No vendor alias has a branch of its own any more: the MCZ
+// surface, the Panasonic surface and a vendor Sowel has never met all go
+// through the same shapes, chosen by the order's type.
+// ============================================================
+
+interface RichData {
+  alias: string;
+  value: unknown;
+  unit?: string;
+}
+interface RichOrder {
+  alias: string;
+  type: "boolean" | "number" | "enum" | "text";
+  enumValues?: string[];
+  min?: number;
+  max?: number;
+  unit?: string;
+}
+
+function richEquipment(data: RichData[], orders: RichOrder[]): EquipmentWithDetails {
+  return {
+    id: "eq-rich",
+    name: "Rich",
+    type: "thermostat",
+    enabled: true,
+    dataBindings: data.map((b, i) => ({
+      id: `b-${i}`,
+      equipmentId: "eq-rich",
+      alias: b.alias,
+      value: b.value,
+      unit: b.unit,
+      lastUpdated: "2026-09-07T10:00:00Z",
+      lastChanged: "2026-09-07T10:00:00Z",
+      deviceId: "dev-1",
+      key: b.alias,
+    })),
+    orderBindings: orders.map((o, i) => ({
+      id: `o-${i}`,
+      equipmentId: "eq-rich",
+      alias: o.alias,
+      key: o.alias,
+      deviceId: "dev-1",
+      type: o.type,
+      enumValues: o.enumValues,
+      min: o.min,
+      max: o.max,
+      unit: o.unit,
+    })),
+  } as unknown as EquipmentWithDetails;
+}
+
+const core: RichData[] = [
+  { alias: "state", value: true },
+  { alias: "temperature", value: 21.5 },
+  { alias: "setpoint", value: 22 },
+];
+const coreOrders: RichOrder[] = [
+  { alias: "power", type: "boolean" },
+  { alias: "setpoint", type: "number", min: 5, max: 40 },
+];
+
+describe("ThermostatCard extras (spec 177)", () => {
+  it("still shows and controls the full MCZ pellet-stove surface, as extras", async () => {
+    const exec = vi.fn().mockResolvedValue(undefined);
+    render(
+      <ThermostatCard
+        equipment={richEquipment(
+          [
+            ...core,
+            { alias: "profile", value: "comfort" },
+            { alias: "ecoMode", value: false },
+            { alias: "stoveState", value: "running_p2" },
+            { alias: "pelletSensor", value: "sufficient" },
+            { alias: "ignitionCount", value: 42 },
+          ],
+          [
+            ...coreOrders,
+            { alias: "profile", type: "enum", enumValues: ["dynamic", "overnight", "comfort"] },
+            { alias: "ecoMode", type: "boolean" },
+            { alias: "resetAlarm", type: "boolean" },
+          ],
+        )}
+        onExecuteOrder={exec}
+      />,
+    );
+
+    expect(screen.getByText("Other settings")).toBeTruthy();
+    // The profile is a programme, not an operating mode: no core mode selector.
+    expect(screen.queryByText("Mode")).toBeNull();
+    expect(screen.getByText("Profile")).toBeTruthy();
+
+    await userEvent.click(screen.getByRole("button", { name: "Overnight" }));
+    expect(exec).toHaveBeenCalledWith("profile", "overnight");
+
+    // Boolean order with a data mirror → toggle, reads the mirror (off).
+    await userEvent.click(screen.getByRole("button", { name: "OFF" }));
+    expect(exec).toHaveBeenCalledWith("ecoMode", true);
+
+    // Boolean order without a mirror → momentary action.
+    await userEvent.click(screen.getByRole("button", { name: /Trigger/ }));
+    expect(exec).toHaveBeenCalledWith("resetAlarm", true);
+
+    // Readings with no order of their own → chips, translated where known.
+    expect(screen.getByText("Power 2")).toBeTruthy();
+    expect(screen.getByText("Sufficient")).toBeTruthy();
+    expect(screen.getByText("42")).toBeTruthy();
+  });
+
+  it("still shows and controls the full Panasonic surface: core mode, extras for the rest", async () => {
+    const exec = vi.fn().mockResolvedValue(undefined);
+    render(
+      <ThermostatCard
+        equipment={richEquipment(
+          [
+            ...core,
+            { alias: "operationMode", value: "heat" },
+            { alias: "fanSpeed", value: "low" },
+            { alias: "nanoe", value: "off" },
+            { alias: "airSwingUD", value: "up" },
+          ],
+          [
+            ...coreOrders,
+            { alias: "operationMode", type: "enum", enumValues: ["heat", "cool", "dry"] },
+            { alias: "fanSpeed", type: "enum", enumValues: ["low", "high"] },
+            { alias: "nanoe", type: "enum", enumValues: ["off", "on"] },
+            { alias: "airSwingUD", type: "enum", enumValues: ["up", "down"] },
+          ],
+        )}
+        onExecuteOrder={exec}
+      />,
+    );
+
+    expect(screen.getByText("Mode")).toBeTruthy();
+    await userEvent.click(screen.getByRole("button", { name: "Cool" }));
+    expect(exec).toHaveBeenCalledWith("operationMode", "cool");
+
+    expect(screen.getByText("Fan speed")).toBeTruthy();
+    await userEvent.click(screen.getByRole("button", { name: "High" }));
+    expect(exec).toHaveBeenCalledWith("fanSpeed", "high");
+
+    expect(screen.getByText("Nanoe")).toBeTruthy();
+    expect(screen.getByText("Vertical air swing")).toBeTruthy();
+    await userEvent.click(screen.getByRole("button", { name: "Down" }));
+    expect(exec).toHaveBeenCalledWith("airSwingUD", "down");
+  });
+
+  it("offers the reset-alarm action without a stove state to gate it", async () => {
+    // Before spec 177 the button lived inside the stove-state badge and was
+    // disabled unless that vendor string started with "error".
+    const exec = vi.fn().mockResolvedValue(undefined);
+    render(
+      <ThermostatCard
+        equipment={richEquipment(core, [...coreOrders, { alias: "resetAlarm", type: "boolean" }])}
+        onExecuteOrder={exec}
+      />,
+    );
+    const button = screen.getByRole("button", { name: /Trigger/ });
+    expect((button as HTMLButtonElement).disabled).toBe(false);
+    await userEvent.click(button);
+    expect(exec).toHaveBeenCalledWith("resetAlarm", true);
+  });
+
+  it("renders a vendor it has never met with humanised labels and raw values", async () => {
+    const exec = vi.fn().mockResolvedValue(undefined);
+    render(
+      <ThermostatCard
+        equipment={richEquipment(
+          [...core, { alias: "swing", value: "on" }, { alias: "fanLevel", value: 3 }],
+          [
+            ...coreOrders,
+            { alias: "swing", type: "enum", enumValues: ["on", "off"] },
+            { alias: "fanLevel", type: "number", min: 1, max: 5 },
+          ],
+        )}
+        onExecuteOrder={exec}
+      />,
+    );
+
+    expect(screen.getByText("Swing")).toBeTruthy();
+    await userEvent.click(screen.getByRole("button", { name: "off" }));
+    expect(exec).toHaveBeenCalledWith("swing", "off");
+
+    expect(screen.getByText("Fan level")).toBeTruthy();
+    await userEvent.click(screen.getByTitle("Fan level +"));
+    expect(exec).toHaveBeenCalledWith("fanLevel", 4);
+  });
+
+  it("shows the optimistic value on an extra until its mirror re-reports", async () => {
+    const exec = vi.fn().mockResolvedValue(undefined);
+    render(
+      <ThermostatCard
+        equipment={richEquipment(
+          [...core, { alias: "fanSpeed", value: "low" }],
+          [...coreOrders, { alias: "fanSpeed", type: "enum", enumValues: ["low", "high"] }],
+        )}
+        onExecuteOrder={exec}
+      />,
+    );
+    const high = screen.getByRole("button", { name: "High" });
+    expect(high.className).not.toContain("text-primary");
+    await userEvent.click(high);
+    await waitFor(() =>
+      expect(screen.getByRole("button", { name: "High" }).className).toContain("text-primary"),
+    );
+  });
+
+  it("renders no extras section on a core-only thermostat", () => {
+    render(
+      <ThermostatCard
+        equipment={richEquipment(
+          [...core, { alias: "power", value: 1200 }, { alias: "outsideTemperature", value: 9 }],
+          coreOrders,
+        )}
+        onExecuteOrder={vi.fn().mockResolvedValue(undefined)}
+      />,
+    );
+    expect(screen.queryByText("Other settings")).toBeNull();
+  });
+});
