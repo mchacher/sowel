@@ -533,7 +533,14 @@ export const useWebSocket = create<WebSocketState>((set) => ({
             alarms.set(`${PV_HEALTH_ALARM_PREFIX}${alert.equipmentId}`, pvHealthAlarm(alert));
           }
 
-          set({ integrationStatuses: statuses, alarms });
+          // A health snapshot without `integrations` is not "no integration is
+          // failing", it is "this snapshot does not know" — the anonymous
+          // payload (issue #926), which a token expired past its 15 min TTL
+          // now yields as a plain 200. `fetchJSON` only refreshes on a 401, so
+          // there is nothing to retry here, and overwriting would wipe the
+          // statuses that `useAggregatedIssues` renders as the visible issue.
+          // Keep what we had and let the WS events correct it.
+          set(health.integrations ? { integrationStatuses: statuses, alarms } : { alarms });
         })
         .catch(() => {
           // Ignore — will be updated by WS events

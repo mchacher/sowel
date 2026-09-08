@@ -227,6 +227,34 @@ describe("connect", () => {
     expect(s.alarms.size).toBe(0);
   });
 
+  it("on open: keeps the known statuses when health answers without integrations (#926)", async () => {
+    // An access token expired past its 15 min TTL now gets the anonymous
+    // payload as a plain 200, not a 401, so `fetchJSON` has nothing to refresh
+    // on. Treating that silence as "nothing is failing" wiped the statuses
+    // `useAggregatedIssues` renders, hiding a live integration failure.
+    api.getHealth.mockResolvedValue({
+      integrations: { zigbee2mqtt: { status: "connected" }, panasonic: { status: "error" } },
+    });
+    const first = connect();
+    first.simulateOpen();
+    await vi.waitFor(() => {
+      expect(useWebSocket.getState().integrationStatuses.panasonic).toBe("error");
+    });
+
+    // Liveness only — the anonymous shape. The battery alert is the observable
+    // proof that the second snapshot was applied: waiting on the call alone
+    // would assert before the `set()` in the `.then()` had run.
+    api.getHealth.mockResolvedValue({ status: "ok", uptime: { ms: 1, human: "1s" } });
+    api.getBatteryAlerts.mockResolvedValue([
+      { deviceDataId: "dd-9", deviceName: "Capteur", value: "5", equipmentNames: [] },
+    ]);
+    const second = connect();
+    second.simulateOpen();
+
+    await vi.waitFor(() => expect(useWebSocket.getState().alarms.size).toBe(1));
+    expect(useWebSocket.getState().integrationStatuses.panasonic).toBe("error");
+  });
+
   it("on open: restores a battery banner headlined by the equipment name (spec 143/#472)", async () => {
     vi.stubGlobal("fetch", vi.fn(async () => ({ json: async () => ({}) })));
     api.getBatteryAlerts.mockResolvedValue([

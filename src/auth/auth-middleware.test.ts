@@ -89,7 +89,10 @@ describe("auth-middleware", () => {
         logger,
       });
       // Fake protected route
-      app.get("/api/v1/test", async (req: FastifyRequest) => ({ auth: req.auth }));
+      app.get("/api/v1/test", async (req: FastifyRequest) => ({
+        auth: req.auth,
+        kind: req.tokenKind,
+      }));
       app.get("/api/v1/health", async () => ({ status: "ok" }));
       app.post("/api/v1/auth/setup", async () => ({ ok: true }));
       app.get("/non-api/foo", async () => ({ ok: true }));
@@ -136,6 +139,46 @@ describe("auth-middleware", () => {
         headers: { authorization: "Bearer swl_deadbeef" },
       });
       expect(res.statusCode).toBe(401);
+    });
+
+    // Characterization (#926): the token verification moved into the shared
+    // `verifyBearerToken`, used by this middleware, the WebSocket handshake and
+    // the public health route. The middleware is the only caller that turns a
+    // failure into a message, and it distinguishes two — nothing asserted that
+    // before, so collapsing them would have gone unnoticed.
+    it("keeps the two 401 messages distinct", async () => {
+      vi.mocked(mockAuthService.verifyApiToken).mockReturnValue(null);
+      const apiToken = await app.inject({
+        method: "GET",
+        url: "/api/v1/test",
+        headers: { authorization: "Bearer swl_deadbeef" },
+      });
+      expect(apiToken.json()).toEqual({ error: "Invalid API token" });
+
+      vi.mocked(mockAuthService.verifyAccessToken).mockImplementation(() => {
+        throw new Error("jwt expired");
+      });
+      const jwt = await app.inject({
+        method: "GET",
+        url: "/api/v1/test",
+        headers: { authorization: "Bearer header.payload.signature" },
+      });
+      expect(jwt.json()).toEqual({ error: "Invalid or expired token" });
+    });
+
+    // Spec 113 — the audit logger reads `tokenKind` to record how a mutation
+    // was authenticated, so it must survive the extraction.
+    it.each([
+      ["jwt", "Bearer header.payload.signature"],
+      ["api_token", "Bearer swl_live"],
+    ])("records tokenKind %s", async (kind, authorization) => {
+      const res = await app.inject({
+        method: "GET",
+        url: "/api/v1/test",
+        headers: { authorization },
+      });
+      expect(res.statusCode).toBe(200);
+      expect(res.json().kind).toBe(kind);
     });
 
     it("accepts valid JWT and populates request.auth", async () => {
