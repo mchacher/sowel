@@ -2,6 +2,7 @@ import type { FastifyInstance } from "fastify";
 import type { WebSocket } from "ws";
 import type { EventBus } from "../core/event-bus.js";
 import type { AuthService } from "../auth/auth-service.js";
+import { verifyBearerToken } from "../auth/auth-middleware.js";
 import type { LogRingBuffer } from "../core/log-buffer.js";
 import type { Logger } from "../core/logger.js";
 import type { EngineEvent, UserRole } from "../shared/types.js";
@@ -374,22 +375,15 @@ export function registerWebSocket(app: FastifyInstance, deps: WebSocketDeps): vo
       return;
     }
 
-    let role: UserRole;
-    try {
-      if (token.startsWith("swl_") || token.startsWith("wch_") || token.startsWith("cbl_")) {
-        const result = authService.verifyApiToken(token);
-        if (!result) {
-          socket.close(4001, "Invalid token");
-          return;
-        }
-        role = result.role;
-      } else {
-        role = authService.verifyAccessToken(token).role;
-      }
-    } catch {
+    // Both failure paths close the same way, so the shared verification covers
+    // this handshake as it does the HTTP middleware — one place knows which
+    // prefixes name an API token (#926).
+    const verified = verifyBearerToken(token, authService);
+    if (!verified.ok) {
       socket.close(4001, "Invalid token");
       return;
     }
+    const role: UserRole = verified.payload.role;
 
     // Default subscription: system events only
     const state: ClientState = { socket, role, topics: new Set(["system"]), pending: [] };

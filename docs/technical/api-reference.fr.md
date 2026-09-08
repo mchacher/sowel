@@ -552,11 +552,34 @@ Backup et restauration complète de la configuration, admin uniquement.
 
 ## Health
 
-Aucune authentification requise.
+Aucune authentification requise, mais la réponse en dépend.
 
-| Method | Path             | Description                                                                                                                              |
-| ------ | ---------------- | ---------------------------------------------------------------------------------------------------------------------------------------- |
-| `GET`  | `/api/v1/health` | Vérification de santé du système. Retourne le statut, l'uptime, les statuts d'intégration, le nombre de devices et la version du moteur. |
+| Method | Path             | Description                                                                                             |
+| ------ | ---------------- | ------------------------------------------------------------------------------------------------------- |
+| `GET`  | `/api/v1/health` | Vérification de santé du système. Répond toujours `200`, jamais `401`. Voir les deux formes ci-dessous. |
+
+**Anonyme** — la vivacité seule, ce dont une sonde de démarrage ou un moniteur d'uptime a besoin :
+
+```json
+{ "status": "ok", "uptime": { "ms": 10212688, "human": "2h 50m" } }
+```
+
+**Authentifié** — envoyez un JWT ou un token d'API dans l'en-tête `Authorization` pour obtenir en
+plus les statuts d'intégration, le nombre de devices et la version du moteur :
+
+```json
+{
+  "status": "ok",
+  "uptime": { "ms": 10212688, "human": "2h 50m" },
+  "integrations": { "zigbee2mqtt": { "status": "connected" } },
+  "devices": { "total": 110, "online": 100, "offline": 4, "unknown": 6 },
+  "version": "1.69.0"
+}
+```
+
+La version du moteur et la liste des plugins installés sont du matériau de reconnaissance, elles ne
+sont donc pas servies anonymement (issue #926). Un token absent, malformé ou expiré retombe sur la
+forme anonyme au lieu d'échouer : un moniteur n'est jamais cassé par un identifiant périmé.
 
 ---
 

@@ -83,8 +83,10 @@ curl -s "http://localhost:3000/api/v1/logs" \
 ## Diagnostic Commands
 
 ```bash
-# Health check
-curl -s http://localhost:3000/api/v1/health | python3 -m json.tool
+# Health check — the token is required for the detail (integrations, device
+# counts, version); without it the endpoint answers liveness only (#926).
+curl -s http://localhost:3000/api/v1/health \
+  -H "Authorization: Bearer $TOKEN" | python3 -m json.tool
 
 # Integration status
 curl -s http://localhost:3000/api/v1/integrations \

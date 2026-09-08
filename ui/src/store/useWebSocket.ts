@@ -1,6 +1,6 @@
 import { create } from "zustand";
 import type { BatteryAlert, EngineEvent } from "../types";
-import { getBatteryAlerts, getPvHealthAlerts, type PvHealthAlert } from "../api";
+import { getBatteryAlerts, getHealth, getPvHealthAlerts, type PvHealthAlert } from "../api";
 import { dayParam, type AlarmWording } from "../lib/alarm-message";
 import { useDevices } from "./useDevices";
 import { useZones } from "./useZones";
@@ -500,9 +500,10 @@ export const useWebSocket = create<WebSocketState>((set) => ({
       // the low-battery alerts (spec 143), which outlive both a page reload and
       // a Sowel restart. Resolved together so neither clobbers the other.
       Promise.all([
-        fetch("/api/v1/health")
-          .then((r) => r.json() as Promise<{ integrations?: Record<string, { status: string }> }>)
-          .catch(() => ({}) as { integrations?: Record<string, { status: string }> }),
+        // Authenticated (issue #926): the `integrations` map is served only to
+        // a caller carrying a token, so a bare `fetch` would silently restore
+        // an empty banner.
+        getHealth().catch(() => ({}) as { integrations?: Record<string, { status: string }> }),
         fetchBatteryAlerts(),
         // Spec 162 — standing PV health alerts. Raised exactly once and then
         // persisted server-side, so a session opened after the raise (or after
@@ -532,7 +533,14 @@ export const useWebSocket = create<WebSocketState>((set) => ({
             alarms.set(`${PV_HEALTH_ALARM_PREFIX}${alert.equipmentId}`, pvHealthAlarm(alert));
           }
 
-          set({ integrationStatuses: statuses, alarms });
+          // A health snapshot without `integrations` is not "no integration is
+          // failing", it is "this snapshot does not know" — the anonymous
+          // payload (issue #926), which a token expired past its 15 min TTL
+          // now yields as a plain 200. `fetchJSON` only refreshes on a 401, so
+          // there is nothing to retry here, and overwriting would wipe the
+          // statuses that `useAggregatedIssues` renders as the visible issue.
+          // Keep what we had and let the WS events correct it.
+          set(health.integrations ? { integrationStatuses: statuses, alarms } : { alarms });
         })
         .catch(() => {
           // Ignore — will be updated by WS events
