@@ -6,9 +6,9 @@ import {
   isThermostatCoreAlias,
   isThermostatDevice,
   splitThermostatExtras,
-} from "./thermostat-contract";
-import { computeBindingCandidates } from "./binding-candidates";
-import type { CandidateData, CandidateOrder } from "./binding-candidates";
+} from "./thermostat-contract.js";
+import { computeBindingCandidates } from "./binding-candidates.js";
+import type { CandidateData, CandidateOrder } from "./binding-candidates.js";
 
 // Spec 177 — the thermostat core is declared once; identity and the extras
 // split derive from it. The shapes below mirror what the two plugins Sowel

@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { localDateStr } from "./local-date";
+import { localDateStr } from "./local-date.js";
 
 describe("localDateStr", () => {
   it("formats the LOCAL calendar date (zero-padded), not UTC", () => {

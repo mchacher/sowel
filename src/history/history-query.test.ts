@@ -7,10 +7,10 @@ import {
   querySparkline,
   queryZoneSparkline,
   queryHistorizedAliases,
-} from "./history-query";
-import type { HistoryPoint } from "../shared/types";
-import { createLogger } from "../core/logger";
-import type { InfluxClient } from "../core/influx-client";
+} from "./history-query.js";
+import type { HistoryPoint } from "../shared/types.js";
+import { createLogger } from "../core/logger.js";
+import type { InfluxClient } from "../core/influx-client.js";
 
 const logger = createLogger("silent").logger;
 
