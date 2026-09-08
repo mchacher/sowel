@@ -3,6 +3,8 @@ import { resolve } from "node:path";
 import type { FastifyInstance } from "fastify";
 import type { DeviceManager } from "../../devices/device-manager.js";
 import type { IntegrationRegistry } from "../../integrations/integration-registry.js";
+import type { AuthService } from "../../auth/auth-service.js";
+import { optionalAuth } from "../../auth/auth-middleware.js";
 import type { Logger } from "../../core/logger.js";
 
 const pkg = JSON.parse(
@@ -12,33 +14,49 @@ const pkg = JSON.parse(
 interface HealthDeps {
   deviceManager: DeviceManager;
   integrationRegistry: IntegrationRegistry;
+  authService: AuthService;
   logger: Logger;
 }
 
 const startTime = Date.now();
 
 export function registerHealthRoutes(app: FastifyInstance, deps: HealthDeps): void {
-  const { deviceManager, integrationRegistry } = deps;
+  const { deviceManager, integrationRegistry, authService } = deps;
 
-  app.get("/api/v1/health", async () => {
-    const statusCounts = deviceManager.getStatusCounts();
-    const totalDevices = deviceManager.getDeviceCount();
+  // The route stays in PUBLIC_ROUTES: `scripts/install.sh` polls it to decide
+  // when a fresh stack is ready, and uptime monitors need it to answer without
+  // credentials. What varies is the payload, not the access (issue #926).
+  //
+  // Anonymously it reports liveness and nothing else. The engine version, the
+  // installed plugin list and the device counts are reconnaissance material —
+  // the version pins the instance to an exact release, the plugin ids reveal
+  // which protocols and vendor clouds are in play — so they are served only to
+  // a caller that proves it is already inside.
+  app.get("/api/v1/health", async (request) => {
     const uptimeMs = Date.now() - startTime;
+    const liveness = {
+      status: "ok",
+      uptime: {
+        ms: uptimeMs,
+        human: formatUptime(uptimeMs),
+      },
+    };
 
+    // Never rejects: an absent, malformed or expired token yields the anonymous
+    // payload rather than a 401, so a monitor is not broken by a stale token.
+    if (!optionalAuth(request, authService)) return liveness;
+
+    const statusCounts = deviceManager.getStatusCounts();
     const integrations: Record<string, { status: string }> = {};
     for (const info of integrationRegistry.getAllInfo()) {
       integrations[info.id] = { status: info.status };
     }
 
     return {
-      status: "ok",
-      uptime: {
-        ms: uptimeMs,
-        human: formatUptime(uptimeMs),
-      },
+      ...liveness,
       integrations,
       devices: {
-        total: totalDevices,
+        total: deviceManager.getDeviceCount(),
         online: statusCounts.online ?? 0,
         offline: statusCounts.offline ?? 0,
         unknown: statusCounts.unknown ?? 0,

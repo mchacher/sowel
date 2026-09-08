@@ -103,10 +103,12 @@ docker logs -f sowel          # live logs from stdout
 docker logs --tail 100 sowel  # last 100 lines
 ```
 
-Ou via l'API :
+Ou via l'API. En anonyme, seule la vivacité est retournée ; passez un token pour obtenir en plus
+les statuts d'intégration, le nombre de devices et la version du moteur :
 
 ```bash
 curl -s http://localhost:3000/api/v1/health | jq
+curl -s -H "Authorization: Bearer $SOWEL_TOKEN" http://localhost:3000/api/v1/health | jq
 ```
 
 ### Redémarrer

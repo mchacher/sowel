@@ -39,6 +39,48 @@ export function isPublicRoute(url: string): boolean {
 }
 
 // ============================================================
+// Bearer token verification
+// ============================================================
+
+export type BearerVerification =
+  | { ok: true; payload: JwtPayload; kind: "jwt" | "api_token" }
+  | { ok: false; reason: "invalid_api_token" | "invalid_token" };
+
+/**
+ * Verify a raw bearer token value (the part after `Bearer `).
+ *
+ * Shared by the auth middleware, which turns a failure into a 401, and by the
+ * public routes that vary their payload with authentication instead of
+ * rejecting (issue #926) — the middleware skips `PUBLIC_ROUTES` entirely, so
+ * `request.auth` is never populated for them.
+ */
+export function verifyBearerToken(token: string, authService: AuthService): BearerVerification {
+  try {
+    // API token (swl_ = current, wch_ and cbl_ = legacy)
+    if (token.startsWith("swl_") || token.startsWith("wch_") || token.startsWith("cbl_")) {
+      const payload = authService.verifyApiToken(token);
+      if (!payload) return { ok: false, reason: "invalid_api_token" };
+      return { ok: true, payload, kind: "api_token" };
+    }
+    return { ok: true, payload: authService.verifyAccessToken(token), kind: "jwt" };
+  } catch {
+    return { ok: false, reason: "invalid_token" };
+  }
+}
+
+/**
+ * Resolve the caller of a public route, without ever rejecting the request.
+ * Returns null when no bearer header is present or the token does not verify.
+ */
+export function optionalAuth(request: FastifyRequest, authService: AuthService): JwtPayload | null {
+  const header = request.headers.authorization;
+  if (!header || !header.startsWith("Bearer ")) return null;
+
+  const result = verifyBearerToken(header.slice(7), authService);
+  return result.ok ? result.payload : null;
+}
+
+// ============================================================
 // Role gate (spec 131): config is admin-only, standard = usage
 // ============================================================
 
@@ -154,29 +196,16 @@ export function registerAuthMiddleware(
       return reply.code(401).send({ error: "Authentication required" });
     }
 
-    const token = authHeader.slice(7);
+    const result = verifyBearerToken(authHeader.slice(7), authService);
 
-    try {
-      let payload: JwtPayload;
-
-      if (token.startsWith("swl_") || token.startsWith("wch_") || token.startsWith("cbl_")) {
-        // API token (swl_ = current, wch_ and cbl_ = legacy)
-        const result = authService.verifyApiToken(token);
-        if (!result) {
-          return reply.code(401).send({ error: "Invalid API token" });
-        }
-        payload = result;
-        request.tokenKind = "api_token";
-      } else {
-        // JWT
-        payload = authService.verifyAccessToken(token);
-        request.tokenKind = "jwt";
-      }
-
-      request.auth = payload;
-    } catch {
-      return reply.code(401).send({ error: "Invalid or expired token" });
+    if (!result.ok) {
+      const error =
+        result.reason === "invalid_api_token" ? "Invalid API token" : "Invalid or expired token";
+      return reply.code(401).send({ error });
     }
+
+    request.tokenKind = result.kind;
+    request.auth = result.payload;
 
     // Role gate (spec 131): a non-admin may only run the allowlisted usage
     // mutations (actuate + own account); every other write is admin-only.

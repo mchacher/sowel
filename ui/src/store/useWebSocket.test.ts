@@ -52,6 +52,9 @@ vi.mock("./useArbiter", () => ({ useArbiter: { getState: () => S.arbiter } }));
 const api = vi.hoisted(() => ({
   getBatteryAlerts: vi.fn(async () => [] as unknown[]),
   getPvHealthAlerts: vi.fn(async () => [] as unknown[]),
+  // Issue #926 — the integration map is behind authentication now, so the
+  // banner restore goes through the api client instead of a bare fetch.
+  getHealth: vi.fn(async () => ({}) as Record<string, unknown>),
 }));
 vi.mock("../api", () => api);
 
@@ -204,18 +207,13 @@ describe("connect", () => {
   });
 
   it("on open: restores integration statuses, without a second alarm for the same failure", async () => {
-    vi.stubGlobal(
-      "fetch",
-      vi.fn(async () => ({
-        json: async () => ({
-          integrations: { zigbee2mqtt: { status: "connected" }, panasonic: { status: "error" } },
-        }),
-      })),
-    );
+    api.getHealth.mockResolvedValue({
+      integrations: { zigbee2mqtt: { status: "connected" }, panasonic: { status: "error" } },
+    });
     const ws = connect();
     ws.simulateOpen();
 
-    // The health handler resolves through a fetch().then().then() chain.
+    // The health snapshot resolves asynchronously, inside a Promise.all.
     await vi.waitFor(() => {
       expect(useWebSocket.getState().integrationStatuses.zigbee2mqtt).toBe("connected");
     });

@@ -174,3 +174,19 @@ export async function setLogLevel(level: LogLevel): Promise<{ level: string; pre
     body: JSON.stringify({ level }),
   });
 }
+
+/**
+ * Engine health. The detailed payload (integrations, device counts, version)
+ * is served only to an authenticated caller since issue #926, so this goes
+ * through `fetchJSON` and not the public wrapper. An anonymous call still
+ * succeeds, it just returns liveness alone.
+ */
+export async function getHealth(): Promise<{
+  status: string;
+  uptime: { ms: number; human: string };
+  integrations?: Record<string, { status: string }>;
+  devices?: { total: number; online: number; offline: number; unknown: number };
+  version?: string;
+}> {
+  return fetchJSON(`${API_BASE}/health`);
+}

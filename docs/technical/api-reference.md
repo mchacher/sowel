@@ -636,11 +636,34 @@ Admin-only full configuration backup and restore.
 
 ## Health
 
-No authentication required.
+No authentication required, but the payload depends on it.
 
-| Method | Path             | Description                                                                                           |
-| ------ | ---------------- | ----------------------------------------------------------------------------------------------------- |
-| `GET`  | `/api/v1/health` | System health check. Returns status, uptime, integration statuses, device counts, and engine version. |
+| Method | Path             | Description                                                                       |
+| ------ | ---------------- | --------------------------------------------------------------------------------- |
+| `GET`  | `/api/v1/health` | System health check. Always answers `200`, never `401`. See the two shapes below. |
+
+**Anonymous** — liveness only, which is what a readiness probe or an uptime monitor needs:
+
+```json
+{ "status": "ok", "uptime": { "ms": 10212688, "human": "2h 50m" } }
+```
+
+**Authenticated** — send a JWT or an API token in the `Authorization` header to also get the
+integration statuses, the device counts and the engine version:
+
+```json
+{
+  "status": "ok",
+  "uptime": { "ms": 10212688, "human": "2h 50m" },
+  "integrations": { "zigbee2mqtt": { "status": "connected" } },
+  "devices": { "total": 110, "online": 100, "offline": 4, "unknown": 6 },
+  "version": "1.69.0"
+}
+```
+
+The engine version and the installed plugin list are reconnaissance material, so they are not
+served anonymously (issue #926). A token that is absent, malformed or expired degrades to the
+anonymous shape rather than failing, so a monitor is never broken by a stale credential.
 
 ---
 

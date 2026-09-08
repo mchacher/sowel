@@ -109,10 +109,12 @@ docker logs -f sowel          # live logs from stdout
 docker logs --tail 100 sowel  # last 100 lines
 ```
 
-Or via the API:
+Or via the API. Anonymously this reports liveness only; pass a token to also get the
+integration statuses, the device counts and the engine version:
 
 ```bash
 curl -s http://localhost:3000/api/v1/health | jq
+curl -s -H "Authorization: Bearer $SOWEL_TOKEN" http://localhost:3000/api/v1/health | jq
 ```
 
 ### Restart

@@ -1,6 +1,6 @@
 import { create } from "zustand";
 import type { BatteryAlert, EngineEvent } from "../types";
-import { getBatteryAlerts, getPvHealthAlerts, type PvHealthAlert } from "../api";
+import { getBatteryAlerts, getHealth, getPvHealthAlerts, type PvHealthAlert } from "../api";
 import { dayParam, type AlarmWording } from "../lib/alarm-message";
 import { useDevices } from "./useDevices";
 import { useZones } from "./useZones";
@@ -500,9 +500,10 @@ export const useWebSocket = create<WebSocketState>((set) => ({
       // the low-battery alerts (spec 143), which outlive both a page reload and
       // a Sowel restart. Resolved together so neither clobbers the other.
       Promise.all([
-        fetch("/api/v1/health")
-          .then((r) => r.json() as Promise<{ integrations?: Record<string, { status: string }> }>)
-          .catch(() => ({}) as { integrations?: Record<string, { status: string }> }),
+        // Authenticated (issue #926): the `integrations` map is served only to
+        // a caller carrying a token, so a bare `fetch` would silently restore
+        // an empty banner.
+        getHealth().catch(() => ({}) as { integrations?: Record<string, { status: string }> }),
         fetchBatteryAlerts(),
         // Spec 162 — standing PV health alerts. Raised exactly once and then
         // persisted server-side, so a session opened after the raise (or after

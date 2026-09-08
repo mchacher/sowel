@@ -321,7 +321,7 @@ export async function createServer(deps: ServerDeps) {
   app.get("/api/v1/openapi.json", async () => app.swagger());
 
   // Register routes
-  registerHealthRoutes(app, { deviceManager, integrationRegistry, logger });
+  registerHealthRoutes(app, { deviceManager, integrationRegistry, authService, logger });
   registerAuthRoutes(app, { authService, userManager, auditLogger, logger });
   registerMeRoutes(app, { authService, mfaService, userManager, auditLogger, logger });
   registerMfaRoutes(app, { authService, mfaService, userManager, auditLogger, logger });
