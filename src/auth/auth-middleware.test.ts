@@ -216,12 +216,34 @@ describe("auth-middleware", () => {
       expect(isStandardWriteAllowed("POST", "/api/v1/auth/logout")).toBe(true);
     });
 
+    // Issue #912. Spec 131 denied these; its own test matrix recorded
+    // "Standard activates a mode → 403". The line moved because activating is
+    // runtime state and an actuation, not configuration — see the allowlist
+    // comment. The test below pins the half that did NOT move.
+    it("allows a standard user to switch which mode is on", () => {
+      expect(isStandardWriteAllowed("POST", "/api/v1/modes/m1/activate")).toBe(true);
+      expect(isStandardWriteAllowed("POST", "/api/v1/modes/m1/deactivate")).toBe(true);
+      expect(isStandardWriteAllowed("POST", "/api/v1/modes/m1/apply-to-zone/z1")).toBe(true);
+    });
+
+    it("still denies configuring what a mode is or does", () => {
+      expect(isStandardWriteAllowed("POST", "/api/v1/modes")).toBe(false);
+      expect(isStandardWriteAllowed("PUT", "/api/v1/modes/m1")).toBe(false);
+      expect(isStandardWriteAllowed("DELETE", "/api/v1/modes/m1")).toBe(false);
+      expect(isStandardWriteAllowed("PUT", "/api/v1/modes/m1/impacts")).toBe(false);
+      expect(isStandardWriteAllowed("PUT", "/api/v1/modes/m1/impacts/z1")).toBe(false);
+      // Near-misses of the three rules above: a deeper or different segment
+      // must not slip through the character class.
+      expect(isStandardWriteAllowed("POST", "/api/v1/modes/m1/activate/extra")).toBe(false);
+      expect(isStandardWriteAllowed("POST", "/api/v1/modes/m1/apply-to-zone")).toBe(false);
+      expect(isStandardWriteAllowed("DELETE", "/api/v1/modes/m1/activate")).toBe(false);
+    });
+
     it("denies config mutations, including near-misses of the orders rule", () => {
       expect(isStandardWriteAllowed("POST", "/api/v1/equipments")).toBe(false);
       expect(isStandardWriteAllowed("PUT", "/api/v1/equipments/abc")).toBe(false);
       expect(isStandardWriteAllowed("DELETE", "/api/v1/equipments/abc")).toBe(false);
       expect(isStandardWriteAllowed("POST", "/api/v1/equipments/abc/order-bindings")).toBe(false);
-      expect(isStandardWriteAllowed("POST", "/api/v1/modes/m1/activate")).toBe(false);
       expect(isStandardWriteAllowed("POST", "/api/v1/recipe-instances/r1/enable")).toBe(false);
       expect(isStandardWriteAllowed("POST", "/api/v1/dashboard/widgets")).toBe(false);
       expect(isStandardWriteAllowed("PUT", "/api/v1/settings")).toBe(false);
@@ -241,8 +263,9 @@ describe("auth-middleware", () => {
 
     it("isMutationDeniedForStandard: standard denied on config, allowed on usage", () => {
       expect(isMutationDeniedForStandard("POST", "/api/v1/equipments", "standard")).toBe(true);
+      expect(isMutationDeniedForStandard("DELETE", "/api/v1/modes/m", "standard")).toBe(true);
       expect(isMutationDeniedForStandard("POST", "/api/v1/modes/m/activate", "standard")).toBe(
-        true,
+        false,
       );
       expect(
         isMutationDeniedForStandard("POST", "/api/v1/equipments/x/orders/state", "standard"),
@@ -269,6 +292,9 @@ describe("auth-middleware", () => {
       app.post("/api/v1/equipments/:id/orders/:alias", async () => ({ ok: true }));
       app.delete("/api/v1/zones/:id", async () => ({ ok: true }));
       app.post("/api/v1/modes/:id/activate", async () => ({ ok: true }));
+      app.post("/api/v1/modes/:id/deactivate", async () => ({ ok: true }));
+      app.post("/api/v1/modes/:id/apply-to-zone/:zoneId", async () => ({ ok: true }));
+      app.delete("/api/v1/modes/:id", async () => ({ ok: true }));
       app.put("/api/v1/me/password", async () => ({ ok: true }));
       await app.ready();
     });
@@ -291,10 +317,21 @@ describe("auth-middleware", () => {
       expect(
         (await app.inject({ method: "DELETE", url: "/api/v1/zones/z1", headers: auth })).statusCode,
       ).toBe(403);
+      // Deleting a mode is configuring what a mode IS — still admin-only
+      // (issue #912 moved activation only).
       expect(
-        (await app.inject({ method: "POST", url: "/api/v1/modes/m/activate", headers: auth }))
-          .statusCode,
+        (await app.inject({ method: "DELETE", url: "/api/v1/modes/m", headers: auth })).statusCode,
       ).toBe(403);
+    });
+
+    it("standard: switching which mode is on passes (#912)", async () => {
+      for (const url of [
+        "/api/v1/modes/m/activate",
+        "/api/v1/modes/m/deactivate",
+        "/api/v1/modes/m/apply-to-zone/z1",
+      ]) {
+        expect((await app.inject({ method: "POST", url, headers: auth })).statusCode).toBe(200);
+      }
     });
 
     it("standard: allowlisted usage mutations pass, even with a query string", async () => {

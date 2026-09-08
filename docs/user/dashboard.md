@@ -82,6 +82,8 @@ Each widget can have a custom label and icon that override the default equipment
 
 The icon picker offers the drawn icons that match the equipment type first, then every other one under **Other icons** — so a plug driving an air compressor or a 3D printer can wear that machine rather than a socket.
 
+A chosen icon follows the equipment exactly like the default one it replaces: switch the compressor on and its drawing lights up, close the gate and the picked drawing closes. The picker's thumbnails are static previews — what a tile shows is always the current state.
+
 ### Sensor widget configuration
 
 For sensor equipment widgets, you can choose which data bindings to display. By default, all bindings are shown. If a sensor reports temperature, humidity, and pressure but you only care about temperature, you can hide the others.

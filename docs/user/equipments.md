@@ -65,13 +65,15 @@ Awnings share the shutter control surface (same position binding, same OPEN/STOP
 
 ### Climate
 
-| Type             | Controls                                        | Expected data                                                                                                      |
-| ---------------- | ----------------------------------------------- | ------------------------------------------------------------------------------------------------------------------ |
-| **Thermostat**   | Temperature display, setpoint +/-, power on/off | current temperature, target setpoint, power state, optional mode/fan/eco                                           |
-| **Heater**       | Comfort / Eco toggle                            | relay state (fil pilote: ON = eco, OFF = comfort)                                                                  |
-| **Water Heater** | On/Off toggle, optional dedicated Solar toggle  | on/off relay state, optional solar-channel state, optional water temperature (display only), optional power/energy |
+| Type             | Controls                                              | Expected data                                                                                                          |
+| ---------------- | ----------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------- |
+| **Thermostat**   | Temperature display, setpoint +/-, power on/off, mode | core: current temperature, setpoint, run state, power, operating mode; then whatever else the device offers, as extras |
+| **Heater**       | Comfort / Eco toggle                                  | relay state (fil pilote: ON = eco, OFF = comfort)                                                                      |
+| **Water Heater** | On/Off toggle, optional dedicated Solar toggle        | on/off relay state, optional solar-channel state, optional water temperature (display only), optional power/energy     |
 
 Thermostat covers air conditioning, pellet stoves, and heat pumps. Heater covers individual electric heaters wired through a fil-pilote relay. Water Heater (chauffe-eau / cumulus) is an on/off relay for a hot-water tank: auto-binds the on/off channel (and its power/energy when the relay meters them); a water-temperature probe can be bound optionally and is shown but kept out of the room temperature average. Setpoint control is intentionally out of scope (that would be a thermostat).
+
+A thermostat has a **core** and **extras**. The core is the small set every thermostat shares and every Sowel surface relies on: `temperature`, `setpoint`, `state`, `power`, `operationMode`, plus `outsideTemperature` when the unit carries an outdoor probe. Sowel recognises a device as a thermostat when it can be given a setpoint, whatever the plugin calls the key. Everything else the device offers (a fan speed, an ioniser, a pellet stove's programme and alarm reset, a vendor setting Sowel has never met) is bound too, but as an **extra**: the card leads with the core and lists the extras in a secondary section, one control per bound command (buttons for a choice, a toggle for an on/off, an action button for a one-shot, a stepper for a number) and one chip per reading. Extras vary from one thermostat to the next and never define the type. The operating mode uses a common vocabulary: `auto`, `heat`, `cool`, `dry`, `fan`, and `off` on units whose mode carries the stop.
 
 On a thermostat, the on/off state reported by the device itself is bound under the `state` alias, the same on/off alias relay-style equipments use. This matters on a **submetered** thermostat (a heat pump measured by a clamp): there the `power` alias carries the live wattage, and the wattage cannot tell the UI whether the unit is on or in standby. If your thermostat card never shows as ON, open the equipment's missing-bindings panel and add the device's power reading: it is offered as `state`. Legacy thermostats with the boolean bound directly under `power` keep working unchanged.
 

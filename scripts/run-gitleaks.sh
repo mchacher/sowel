@@ -8,6 +8,13 @@
 # Docker image `zricethezav/gitleaks:latest`. If neither is available,
 # prints a hint and exits 0 — security is enforced again by the
 # .github/workflows/gitleaks.yml CI job so the local hook is best-effort.
+#
+# The Docker branch asks the DAEMON, not the CLI. `command -v docker` is true
+# on any machine where Docker Desktop is installed, including when it is not
+# running, so the fallback ran `docker run`, failed to connect, and returned
+# non-zero — turning "best-effort" into "no commit until you start Docker".
+# `docker info` is the cheapest question that actually means "can I run a
+# container right now".
 
 set -euo pipefail
 
@@ -53,7 +60,7 @@ run_docker() {
 
 if command -v gitleaks >/dev/null 2>&1; then
   run_local
-elif command -v docker >/dev/null 2>&1; then
+elif docker info >/dev/null 2>&1; then
   run_docker
 else
   echo "gitleaks: neither the host binary nor Docker is available — skipping scan." >&2

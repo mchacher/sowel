@@ -159,6 +159,14 @@ The same subtraction applies to the live breakdown on this page, so the donut an
 
 Two things worth knowing: deleting the outer meter clears the declaration on the ones inside it, which starts counting them twice again, so re-declare their new parent if the wiring still nests; and the equipment cards always keep showing what each clamp measures, since a card contradicting its own sensor would be worse than the overlap it fixes.
 
+##### When a meter is fed by a separate supply
+
+The opposite topology exists too: a clamp on a circuit fed by **another utility meter** — an EV charging socket on a second subscription, say. Its kilowatt-hours never flow through your main meter, so counting it in the breakdown invents consumption the main meter never saw, eats the "Other" residual down to zero, and prices another supply's energy at your main tariff.
+
+Say so on the meter: open its equipment page and tick **Fed by a separate supply**. The meter then leaves the by-usage partition and the live donut, and shows up **apart** — its own group under both, in kWh only, never in € (Sowel does not know the other supply's tariff). Its card, its history and its charts are untouched: the measurement is as real as any other, it just belongs to a different balance.
+
+A separate-supply meter cannot be picked under **Already counted by** — nothing the partition renders can be "inside" a meter on another supply.
+
 Totals widgets (peak / off-peak, autoconsumption) stay unchanged when you toggle modes.
 
 #### Longer periods

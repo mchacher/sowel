@@ -619,3 +619,82 @@ describe("thermostat power aliasing (PAC on/off follow-up to #901)", () => {
     expect(powerRow?.alias).toBe("state");
   });
 });
+
+describe("thermostat contract (spec 177) — the core is category-driven, the rest binds as extras", () => {
+  // A vendor Sowel has never met. Nothing here is a Panasonic or MCZ key; the
+  // core reaches its canonical aliases through the spec 077 / 177 categories
+  // alone, and the vendor extras (`swing`) bind under their own key.
+  const unknownVendor = {
+    id: "dev-x",
+    name: "Brand X",
+    data: [
+      { id: "d1", key: "room_temp", category: "temperature", type: "number" },
+      { id: "d2", key: "target", category: "setpoint", type: "number" },
+      { id: "d3", key: "on", category: "power", type: "boolean" },
+      { id: "d4", key: "mode", category: "operation_mode", type: "enum" },
+      { id: "d5", key: "swing", category: "generic", type: "enum" },
+    ],
+    orders: [
+      { id: "o1", key: "on", category: "toggle_power", type: "boolean" },
+      { id: "o2", key: "target", category: "set_setpoint", type: "number" },
+      { id: "o3", key: "mode", category: "set_operation_mode", type: "enum" },
+      { id: "o4", key: "swing", type: "enum" },
+    ],
+  } as unknown as DeviceWithDetails;
+
+  it("binds an unknown vendor's core under the canonical aliases and its extras under their keys", () => {
+    const plan = computeBindingPlan([unknownVendor], "thermostat");
+    const data = Object.fromEntries(plan.filter((p) => p.kind === "data").map((p) => [p.key, p.alias]));
+    const orders = Object.fromEntries(plan.filter((p) => p.kind === "order").map((p) => [p.key, p.alias]));
+
+    expect(data).toEqual({
+      room_temp: "temperature",
+      target: "setpoint",
+      on: "state",
+      mode: "operationMode",
+      swing: "swing",
+    });
+    // Before spec 177 the order list was the Panasonic/MCZ key list: `on`,
+    // `target`, `mode` and `swing` were all dropped and the equipment had no
+    // control at all.
+    expect(orders).toEqual({
+      on: "power",
+      target: "setpoint",
+      mode: "operationMode",
+      swing: "swing",
+    });
+  });
+
+  it("still binds the Panasonic extras, now as extras rather than as the type", () => {
+    const panasonic = {
+      id: "dev-pac",
+      name: "PAC",
+      data: [{ id: "d1", key: "targetTemperature", category: "setpoint", type: "number" }],
+      orders: [
+        { id: "o1", key: "targetTemperature", category: "set_setpoint", type: "number" },
+        { id: "o2", key: "fanSpeed", type: "enum" },
+        { id: "o3", key: "nanoe", type: "enum" },
+      ],
+    } as unknown as DeviceWithDetails;
+    const orders = computeBindingPlan([panasonic], "thermostat")
+      .filter((p) => p.kind === "order")
+      .map((p) => p.alias);
+    expect(orders).toEqual(["setpoint", "fanSpeed", "nanoe"]);
+  });
+
+  it("resolves the operating mode from its category on a thermostat", () => {
+    expect(resolveAlias("mode", "thermostat", undefined, "operation_mode", "enum")).toBe("operationMode");
+    expect(resolveAlias("mode", "thermostat", undefined, "set_operation_mode", "enum")).toBe("operationMode");
+  });
+
+  it("scopes the room-temperature rule to thermostats", () => {
+    expect(resolveAlias("room_temp", "thermostat", undefined, "temperature", "number")).toBe("temperature");
+    expect(resolveAlias("room_temp", "sensor", undefined, "temperature", "number")).toBe("room_temp");
+  });
+
+  it("binds every order on a thermostat and only the whitelist elsewhere", () => {
+    expect(isRelevantOrder("nanoe", "thermostat")).toBe(true);
+    expect(isRelevantOrder("anything_at_all", "thermostat")).toBe(true);
+    expect(isRelevantOrder("nanoe", "light_onoff")).toBe(false);
+  });
+});

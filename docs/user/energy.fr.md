@@ -161,6 +161,14 @@ La même soustraction s'applique à la répartition en direct de cette page, pou
 
 Deux choses à savoir : supprimer le compteur extérieur efface la déclaration portée par ceux qui sont à l'intérieur, ce qui les fait de nouveau compter deux fois, donc redéclarez leur nouveau parent si le câblage est toujours imbriqué ; et les cartes d'équipement continuent toujours d'afficher ce que chaque pince mesure, une carte qui contredirait son propre capteur étant pire que le recouvrement qu'elle corrige.
 
+##### Quand un compteur est alimenté par un autre réseau
+
+La topologie inverse existe aussi : une pince sur un circuit alimenté par **un autre compteur du fournisseur** — une prise de recharge VE sur un second abonnement, par exemple. Ses kilowattheures ne passent jamais par votre compteur principal : les compter dans la répartition invente une consommation que le principal n'a jamais vue, écrase le résidu "Autre" jusqu'à zéro, et facture au tarif principal l'énergie d'un autre réseau.
+
+Dites-le sur le compteur : ouvrez sa page d'équipement et cochez **Alimenté par un autre compteur**. Le compteur sort alors de la répartition par usage et du donut en direct, et s'affiche **à part** — son propre groupe sous chacun des deux, en kWh seulement, jamais en € (Sowel ne connaît pas le tarif de l'autre réseau). Sa carte, son historique et ses graphiques ne changent pas : la mesure est aussi réelle qu'une autre, elle appartient juste à un autre bilan.
+
+Un compteur sur alimentation séparée ne peut pas être choisi sous **Déjà compté par** — rien de ce que la répartition affiche ne peut être « dans » un compteur d'un autre réseau.
+
 Les totaux (HP / HC, autoconsommation) restent identiques entre les deux modes.
 
 #### Périodes plus longues

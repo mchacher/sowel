@@ -4,16 +4,17 @@ Guidance for Claude Code (and any AI agent) working on the Sowel repository. Thi
 
 ## Where to find context
 
-| You want to know...                                                | Read this                                                                     |
-| ------------------------------------------------------------------ | ----------------------------------------------------------------------------- |
-| What Sowel is and how it's architected                             | [docs/technical/architecture.md](docs/technical/architecture.md)              |
-| The full list of features ever shipped, by spec                    | [docs/specs-index.md](docs/specs-index.md)                                    |
-| How to deploy, update, backup, restore, troubleshoot in production | [docs/technical/deployment.md](docs/technical/deployment.md)                  |
-| Data model — tables, types, events                                 | [docs/technical/data-model.md](docs/technical/data-model.md)                  |
-| REST API and WebSocket events                                      | [docs/technical/api-reference.md](docs/technical/api-reference.md)            |
-| How to develop a plugin                                            | [docs/technical/plugin-development.md](docs/technical/plugin-development.md)  |
-| How to develop a recipe                                            | [docs/technical/recipe-development.md](docs/technical/recipe-development.md)  |
-| Specific feature history / design                                  | `specs/XXX-name/{spec,architecture,plan}.md` — index in `docs/specs-index.md` |
+| You want to know...                                                | Read this                                                                                                                                |
+| ------------------------------------------------------------------ | ---------------------------------------------------------------------------------------------------------------------------------------- |
+| What Sowel is and how it's architected                             | [docs/technical/architecture.md](docs/technical/architecture.md)                                                                         |
+| The full list of features ever shipped, by spec                    | [docs/specs-index.md](docs/specs-index.md)                                                                                               |
+| How to deploy, update, backup, restore, troubleshoot in production | [docs/technical/deployment.md](docs/technical/deployment.md)                                                                             |
+| Data model — tables, types, events                                 | [docs/technical/data-model.md](docs/technical/data-model.md)                                                                             |
+| REST API and WebSocket events                                      | [docs/technical/api-reference.md](docs/technical/api-reference.md)                                                                       |
+| How to develop a plugin                                            | [docs/technical/plugin-development.md](docs/technical/plugin-development.md)                                                             |
+| How to develop a recipe                                            | [docs/technical/recipe-development.md](docs/technical/recipe-development.md)                                                             |
+| Specific feature history / design                                  | `specs/XXX-name/{spec,architecture,plan}.md` — index in `docs/specs-index.md`                                                            |
+| The public demonstrator (separate project, 3 repos)                | [sowel-showroom `docs/project-map.md`](https://github.com/mchacher/sowel-showroom/blob/main/docs/project-map.md) — see the section below |
 
 **Do not rely on `docs/sowel-spec.md`** — it is a legacy document preserved for history. Use `docs/technical/*` and `specs/*` instead.
 
@@ -331,6 +332,31 @@ Two integration points:
 @../sowel-ops/CLAUDE.ops.md
 
 See [docs/technical/deployment.md](docs/technical/deployment.md) for the generic operations guide.
+
+## Public demonstrator (separate project, three repos)
+
+A public demo of Sowel — a fictional house that lives in real time, that anyone can visit and act on — is being built as a **project separate from this repository**. Nothing of it lands here: the showroom runs the published `ghcr.io/mchacher/sowel` image, unmodified.
+
+| Repository                                                                     | Nature         | Role                                                                                                                                                                                                |
+| ------------------------------------------------------------------------------ | -------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| [`sowel-plugin-simulator`](https://github.com/mchacher/sowel-plugin-simulator) | Sowel plugin   | Simulates the physical world (occupants on an agenda, sun, weather, thermal, PV and loads) and publishes it as ordinary devices — occupants included. Sowel's own recipes do the automation on top. |
+| [`sowel-house-3d`](https://github.com/mchacher/sowel-house-3d)                 | Application    | A stylised 3D view of a home, driven live by any Sowel instance over the public API and WebSocket. Generic; the showroom is one deployment.                                                         |
+| [`sowel-showroom`](https://github.com/mchacher/sowel-showroom)                 | Infrastructure | Compose stack, reverse proxy (guest login, deny list, quotas), nightly reset, demo fixture, and **the project map**.                                                                                |
+
+**Read the project map first** for anything demo-related: <https://github.com/mchacher/sowel-showroom/blob/main/docs/project-map.md>. It carries the decisions taken (pure simulator, no production mirror; visitors can act; one shared world; nightly reset keeping InfluxDB; real time), the alternatives already rejected, the contract between the three pieces, and the seven-phase plan with its cross-repository status. Those decisions are not reopened by a phase spec without an explicit amendment there.
+
+**What this means for work in this repository.** Anything the demo needs that the product does not offer is done in the plugin, the proxy or the 3D app — or becomes an ordinary product issue, argued on its own merits, never as "the demo needs it". The one such issue so far is [#912](https://github.com/mchacher/sowel/issues/912) (a `standard` user may activate a mode), which is a fair product improvement in its own right.
+
+The three repositories are expected as sibling directories, like `sowel-ops`:
+
+```
+<parent-dir>/
+├── sowel/                    # this repo
+├── sowel-ops/                # private ops context
+├── sowel-showroom/           # demo infrastructure + project map
+├── sowel-plugin-simulator/   # the simulated house
+└── sowel-house-3d/           # the 3D view
+```
 
 ## Skills available
 

@@ -63,7 +63,9 @@ There are three ways to activate a mode:
 
 ### Manual activation
 
-From the **Home** view or **Administration > Modes**, tap the mode's activate button. The mode takes effect immediately.
+From **Modes** in the menu, or from a mode's own page, flip the switch next to it. The mode takes effect immediately.
+
+**Any user can activate a mode**, not only an administrator: switching the house to Night or Away is something the household does several times a day. Creating a mode, renaming it and choosing what it does to each zone stay reserved to administrators, so what a mode applies is always something an administrator decided.
 
 ### Event triggers
 

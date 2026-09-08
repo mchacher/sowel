@@ -1,0 +1,78 @@
+# ============================================================
+# Sowel — local documentation instance
+# Usage: docker compose -f docker-compose.docs.yml up -d
+# ============================================================
+#
+# A throwaway Sowel on this machine, used to shoot documentation screenshots
+# from the anonymized showroom fixture (docs/fixtures/). It replaces the
+# Raspberry Pi that used to play this role: a demo host that has to be kept
+# alive, reachable and up to date is a liability for something needed a few
+# times a year, and every screenshot session began by fixing the Pi.
+#
+# Three deliberate differences with the production compose:
+#
+#   - **Port 3001**, so a `npm run dev` backend can keep 3000.
+#   - **No Docker socket.** Self-update is not needed here, and the mount
+#     grants effective root on this machine (spec 105).
+#   - **Its own project name and volumes**, so `down -v` wipes this instance
+#     and cannot touch a local production-like stack.
+#
+# Reset to zero (this is the point of the file):
+#   docker compose -f docker-compose.docs.yml down -v
+#   docker compose -f docker-compose.docs.yml up -d
+#
+# Pin the image to the release being documented when it matters:
+#   SOWEL_DOCS_IMAGE=ghcr.io/mchacher/sowel:1.68.0 docker compose -f docker-compose.docs.yml up -d
+
+name: sowel-docs
+
+services:
+  sowel:
+    image: ${SOWEL_DOCS_IMAGE:-ghcr.io/mchacher/sowel:latest}
+    container_name: sowel-docs
+    restart: unless-stopped
+    ports:
+      - "3001:3000"
+    environment:
+      # Explicit, because screenshots show clocks, schedules and energy day
+      # boundaries. Left to auto-derivation it would follow the fixture's
+      # coordinates, which are deliberately neutral (Paris).
+      - TZ=Europe/Paris
+      - INFLUX_URL=http://influxdb:8086
+      - INFLUX_TOKEN=sowel-auto-token
+      - INFLUX_ORG=sowel
+      - INFLUX_BUCKET=sowel
+    volumes:
+      - docs-data:/app/data
+      - docs-plugins:/app/plugins
+    depends_on:
+      - influxdb
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+  influxdb:
+    image: influxdb:2.7
+    container_name: sowel-docs-influxdb
+    restart: unless-stopped
+    volumes:
+      - docs-influxdb:/var/lib/influxdb2
+    environment:
+      - DOCKER_INFLUXDB_INIT_MODE=setup
+      - DOCKER_INFLUXDB_INIT_USERNAME=sowel
+      - DOCKER_INFLUXDB_INIT_PASSWORD=sowel-auto-password
+      - DOCKER_INFLUXDB_INIT_ORG=sowel
+      - DOCKER_INFLUXDB_INIT_BUCKET=sowel
+      - DOCKER_INFLUXDB_INIT_ADMIN_TOKEN=sowel-auto-token
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+volumes:
+  docs-data:
+  docs-plugins:
+  docs-influxdb:

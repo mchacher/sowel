@@ -153,8 +153,10 @@ export function ModeDetailPage() {
             )}
           </div>
         </div>
-        {isAdmin && (
         <div className="flex items-center gap-2 flex-shrink-0">
+          {/* Issue #912 — switching which mode is on is usage, not
+              configuration, so the switch renders for every authenticated
+              user. Edit and delete below stay behind `isAdmin`. */}
           <button
             onClick={handleToggle}
             className="relative w-10 h-[22px] rounded-full transition-colors duration-200 flex-shrink-0 cursor-pointer"
@@ -168,22 +170,25 @@ export function ModeDetailPage() {
               style={{ transform: mode.active ? "translateX(18px)" : "translateX(0)" }}
             />
           </button>
-          <button
-            onClick={() => setShowEditForm(true)}
-            className="p-2 text-text-secondary border border-border rounded-[6px] hover:bg-border-light transition-colors duration-150"
-            title={t("common.edit")}
-          >
-            <Pencil size={14} strokeWidth={1.5} />
-          </button>
-          <button
-            onClick={handleDelete}
-            className="p-2 text-error border border-error/30 rounded-[6px] hover:bg-error/10 transition-colors duration-150"
-            title={t("common.delete")}
-          >
-            <Trash2 size={14} strokeWidth={1.5} />
-          </button>
+          {isAdmin && (
+            <>
+              <button
+                onClick={() => setShowEditForm(true)}
+                className="p-2 text-text-secondary border border-border rounded-[6px] hover:bg-border-light transition-colors duration-150"
+                title={t("common.edit")}
+              >
+                <Pencil size={14} strokeWidth={1.5} />
+              </button>
+              <button
+                onClick={handleDelete}
+                className="p-2 text-error border border-error/30 rounded-[6px] hover:bg-error/10 transition-colors duration-150"
+                title={t("common.delete")}
+              >
+                <Trash2 size={14} strokeWidth={1.5} />
+              </button>
+            </>
+          )}
         </div>
-        )}
       </div>
 
       <div className="space-y-6 max-w-[720px]">

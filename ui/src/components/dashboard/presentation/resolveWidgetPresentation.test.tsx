@@ -221,10 +221,45 @@ describe("resolveWidgetPresentation", () => {
     });
   });
 
-  it("renders the custom widget icon override instead of the type default (#318)", () => {
-    const p = resolveWidgetPresentation(makeWidget({ icon: "light_bulb" }), makeEquipment(), t);
-    const node = p!.icon({ surface: "desktop" }) as { type: unknown };
-    expect(node.type).toBe(CUSTOM_ICON_REGISTRY.light_bulb.component);
+  describe("custom widget icon (#318)", () => {
+    function iconOf(widget: DashboardWidget, equipment: EquipmentWithDetails) {
+      const p = resolveWidgetPresentation(widget, equipment, t);
+      return p!.icon({ surface: "desktop" }) as { type: unknown; props: Record<string, unknown> };
+    }
+
+    it("renders the custom widget icon override instead of the type default", () => {
+      const node = iconOf(makeWidget({ icon: "light_bulb" }), makeEquipment());
+      expect(node.type).toBe(CUSTOM_ICON_REGISTRY.light_bulb.component);
+    });
+
+    it("draws it from the equipment's state, not from the picker's preview", () => {
+      // The compressor's previewProps are `{ on: false }` and the plug's are
+      // `{ on: true }`: rendering those froze the drawing on every tile, which
+      // is exactly what a user switching the compressor on could not see.
+      const off = iconOf(makeWidget({ icon: "air_compressor" }), makeEquipment());
+      expect(off.props.on).toBe(false);
+
+      const running = makeEquipment({ dataBindings: [dataBinding({ value: true })] });
+      expect(iconOf(makeWidget({ icon: "air_compressor" }), running).props.on).toBe(true);
+      expect(iconOf(makeWidget({ icon: "plug" }), makeEquipment()).props.on).toBe(false);
+    });
+
+    it("speaks the printer's own state vocabulary", () => {
+      const running = makeEquipment({ dataBindings: [dataBinding({ value: true })] });
+      expect(iconOf(makeWidget({ icon: "printer_3d" }), running).props.state).toBe("on");
+      expect(iconOf(makeWidget({ icon: "printer_3d" }), makeEquipment()).props.state).toBe("off");
+    });
+
+    it("agrees with the state pill beside it on every migrated type", () => {
+      // One rule per type: the drawing reads the descriptor's own isActive, so
+      // an icon saying OFF next to a pill saying ON is not representable.
+      for (const type of ["switch", "pool_pump"] as const) {
+        const eq = makeEquipment({ type, dataBindings: [dataBinding({ value: true })] });
+        const p = resolveWidgetPresentation(makeWidget({ icon: "light_bulb" }), eq, t);
+        const node = p!.icon({ surface: "desktop" }) as { props: Record<string, unknown> };
+        expect(node.props.on, type).toBe(p!.isActive);
+      }
+    });
   });
 });
 

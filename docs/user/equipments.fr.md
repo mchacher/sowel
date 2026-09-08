@@ -95,9 +95,11 @@ Le store banne partage la surface de contrôle du volet (même binding `shutter_
 
 Contrôle de chauffage ou de climatisation : climatiseur, poêle à granulés, pompe à chaleur.
 
-- **Contrôles :** Affichage de la température, ajustement de la consigne (+/-), allumage/extinction
-- **Données attendues :** température courante, consigne cible, état d'alimentation
-- **Données additionnelles** (selon le device) : mode de fonctionnement, vitesse du ventilateur, mode éco
+- **Contrôles :** Affichage de la température, ajustement de la consigne (+/-), allumage/extinction, mode
+- **Cœur :** température courante, consigne, état de marche, alimentation, mode de fonctionnement
+- **Extras** (selon le device) : tout le reste, vitesse du ventilateur, ioniseur, profil de poêle…
+
+Un thermostat a un **cœur** et des **extras**. Le cœur est le petit ensemble que tous les thermostats partagent et sur lequel toutes les surfaces de Sowel s'appuient : `temperature`, `setpoint`, `state`, `power`, `operationMode`, plus `outsideTemperature` quand l'unité a une sonde extérieure. Sowel reconnaît un device comme thermostat dès qu'on peut lui donner une consigne, quel que soit le nom de la clé chez le plugin. Tout ce que le device offre en plus (une vitesse de ventilation, un ioniseur, le programme et la remise à zéro d'alarme d'un poêle à granulés, un réglage d'un fabricant que Sowel n'a jamais rencontré) est lié aussi, mais comme **extra** : la carte mène avec le cœur et liste les extras dans une section secondaire, un contrôle par commande liée (des boutons pour un choix, un interrupteur pour un marche/arrêt, un bouton d'action pour un déclenchement, un pas à pas pour un nombre) et une puce par lecture. Les extras varient d'un thermostat à l'autre et ne définissent jamais le type. Le mode de fonctionnement utilise un vocabulaire commun : `auto`, `heat`, `cool`, `dry`, `fan`, et `off` sur les unités dont le mode porte l'arrêt.
 
 Sur un thermostat, l'état marche/arrêt rapporté par le device lui-même est lié sous l'alias `state`, le même alias marche/arrêt que les équipements à relais. C'est important sur un thermostat **sous-compté** (une pompe à chaleur mesurée par une pince) : l'alias `power` y porte la puissance instantanée, et un wattage ne dit pas à l'interface si l'unité est allumée ou en veille. Si la carte du thermostat ne passe jamais à ON, ouvrez le panneau des liaisons manquantes de l'équipement et ajoutez la donnée d'alimentation du device : elle est proposée sous `state`. Les thermostats existants dont le booléen est lié directement sous `power` continuent de fonctionner sans changement.
 
