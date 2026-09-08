@@ -73,21 +73,33 @@ export function TimedEquipmentWidget({
       }
       onClick={!running && !editMode && !inert ? arm : undefined}
     >
-      <div className="flex-1 flex items-center justify-center">
+      {/* Four things do not fit in the shell's 160 px on a phone. Of title,
+          state and controls, the title is truncated, the state is the answer
+          and the controls are the point — so the illustration is what goes,
+          and only at that width. Its row stays: flexible (`flex-1 min-h-0`),
+          it absorbs the slack on a 240 px desktop tile and collapses to a
+          gap on a phone, while the state and the controls never shrink.
+          Before this the icon held its 40 px, the stack overflowed, and the
+          shell's `overflow-hidden` cut the arm button in half. */}
+      <div className="flex-1 min-h-0 flex items-center justify-center overflow-hidden">
         {busy ? (
-          <Loader2 size={32} className="animate-spin text-text-tertiary" />
+          <Loader2 size={32} className="hidden sm:block animate-spin text-text-tertiary" />
         ) : (
-          <TimerReset size={40} strokeWidth={1.5} className="text-text-tertiary" />
+          <TimerReset
+            size={40}
+            strokeWidth={1.5}
+            className="hidden sm:block text-text-tertiary"
+          />
         )}
       </div>
 
-      <div className="flex justify-center mt-auto pt-1">
+      <div className="shrink-0 flex justify-center pt-1">
         {running ? (
           <span className="text-[12px] font-medium px-2.5 py-0.5 rounded-full bg-active/10 text-active-text">
             <TimedCountdown action={running} />
           </span>
         ) : (
-          <span className="text-[12px] font-medium px-2.5 py-0.5 rounded-full bg-border-light text-text-tertiary">
+          <span className="text-[12px] font-medium px-2.5 py-0.5 rounded-full bg-border-light text-text-tertiary text-center">
             {inert
               ? t("dashboard.timed.unavailable")
               : error
@@ -97,7 +109,7 @@ export function TimedEquipmentWidget({
         )}
       </div>
 
-      <div className="flex justify-center gap-3 mt-auto pt-1">
+      <div className="shrink-0 flex justify-center gap-3 pt-1">
         <button
           onClick={arm}
           disabled={busy || editMode || inert}

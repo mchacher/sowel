@@ -82,6 +82,8 @@ Chaque widget peut avoir une étiquette et une icône personnalisées qui rempla
 
 Le sélecteur d'icônes propose d'abord les icônes dessinées qui correspondent au type d'équipement, puis toutes les autres sous **Autres icônes** — une prise qui pilote un compresseur d'air ou une imprimante 3D peut donc porter la machine plutôt qu'une prise.
 
+Une icône choisie suit l'équipement exactement comme celle qu'elle remplace : allumez le compresseur et son dessin s'allume, fermez le portail et le dessin choisi se ferme. Les vignettes du sélecteur sont des aperçus figés — une tuile, elle, montre toujours l'état courant.
+
 ### Configuration des widgets de capteur
 
 Pour les widgets d'équipements capteurs, vous pouvez choisir quelles liaisons de données afficher. Par défaut, toutes les liaisons sont affichées. Si un capteur remonte température, humidité et pression mais que seule la température vous intéresse, vous pouvez masquer les autres.

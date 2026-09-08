@@ -1,10 +1,10 @@
-import { createElement, type ReactNode } from "react";
+import { createElement } from "react";
 import { Tv } from "lucide-react";
 import type { TFunction } from "i18next";
 import type { DashboardWidget, EquipmentWithDetails } from "../../../types";
-import { CUSTOM_ICON_REGISTRY } from "../widget-icons";
+import { CUSTOM_ICON_REGISTRY, customIconProps } from "../widget-icons";
 import { PlugWidgetIcon, PoolPumpIcon } from "../WidgetIcons";
-import type { IconCtx, WidgetControl, WidgetPresentation } from "./types";
+import type { WidgetControl, WidgetPresentation } from "./types";
 import {
   findToggleBinding,
   formatRuntime,
@@ -22,14 +22,20 @@ import {
 // that need store-derived context (e.g. sensor battery alerts) will receive
 // it as an explicit argument when they migrate.
 
-/** Custom widget icon (#318) wins over the type default on every surface. */
-function iconWithOverride(
+/**
+ * Custom widget icon (#318) wins over the type default on every surface —
+ * and follows the same state the type default would have shown. It reads the
+ * descriptor's own `isActive`, so there is one on/off rule per type and the
+ * drawing can never disagree with the state pill beside it.
+ */
+function withCustomIcon(
   widget: DashboardWidget,
-  typeIcon: (ctx: IconCtx) => ReactNode,
-): (ctx: IconCtx) => ReactNode {
+  presentation: WidgetPresentation,
+): WidgetPresentation {
   const custom = widget.icon ? CUSTOM_ICON_REGISTRY[widget.icon] : undefined;
-  if (!custom) return typeIcon;
-  return () => createElement(custom.component, custom.previewProps);
+  if (!custom) return presentation;
+  const props = customIconProps(custom, { on: presentation.isActive });
+  return { ...presentation, icon: () => createElement(custom.component, props) };
 }
 
 /** Build the single toggle control, or none when no togglable order exists. */
@@ -43,36 +49,30 @@ function toggleControlOf(
   return [{ kind: "toggle", alias: binding.alias, on, ...toggleValues(binding) }];
 }
 
-function resolveSwitch(
-  widget: DashboardWidget,
-  equipment: EquipmentWithDetails,
-): WidgetPresentation {
+function resolveSwitch(equipment: EquipmentWithDetails): WidgetPresentation {
   const on = isOnFromStateBinding(equipment);
   return {
-    icon: iconWithOverride(widget, () => <PlugWidgetIcon on={on} />),
+    icon: () => <PlugWidgetIcon on={on} />,
     isActive: on,
     state: { primary: on ? "ON" : "OFF" },
     controls: toggleControlOf(equipment, on, ["light_toggle", "toggle_power"]),
   };
 }
 
-function resolveMediaPlayer(
-  widget: DashboardWidget,
-  equipment: EquipmentWithDetails,
-): WidgetPresentation {
+function resolveMediaPlayer(equipment: EquipmentWithDetails): WidgetPresentation {
   const powerBinding = equipment.dataBindings.find((b) => b.alias === "power");
   const sourceBinding = equipment.dataBindings.find((b) => b.alias === "input_source");
   const on = powerBinding?.value === true;
   const source = typeof sourceBinding?.value === "string" ? sourceBinding.value : null;
   const toggle = equipment.orderBindings.find((ob) => ob.alias === "power");
   return {
-    icon: iconWithOverride(widget, (ctx) => (
+    icon: (ctx) => (
       <Tv
         size={ctx.surface === "mobile-card" ? 96 : 64}
         strokeWidth={1}
         className={on ? "text-primary" : "text-text-tertiary"}
       />
-    )),
+    ),
     isActive: on,
     state: { primary: on ? (source ?? "ON") : "OFF" },
     controls: toggle
@@ -81,16 +81,13 @@ function resolveMediaPlayer(
   };
 }
 
-function resolvePoolPump(
-  widget: DashboardWidget,
-  equipment: EquipmentWithDetails,
-): WidgetPresentation {
+function resolvePoolPump(equipment: EquipmentWithDetails): WidgetPresentation {
   const on = isOnFromStateBinding(equipment);
   const runtime = equipment.computedData?.find((c) => c.alias === "runtime_daily");
   const secondary =
     typeof runtime?.value === "number" ? [formatRuntime(runtime.value)] : undefined;
   return {
-    icon: iconWithOverride(widget, () => <PoolPumpIcon on={on} />),
+    icon: () => <PoolPumpIcon on={on} />,
     isActive: on,
     state: { primary: on ? "ON" : "OFF", secondary },
     // Category-first incl. pool_pump_toggle so an unrelated boolean order on
@@ -117,13 +114,18 @@ export function resolveWidgetPresentation(
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
   _t: TFunction,
 ): WidgetPresentation | null {
+  const byType = resolveByType(equipment);
+  return byType && withCustomIcon(widget, byType);
+}
+
+function resolveByType(equipment: EquipmentWithDetails): WidgetPresentation | null {
   switch (equipment.type) {
     case "switch":
-      return resolveSwitch(widget, equipment);
+      return resolveSwitch(equipment);
     case "media_player":
-      return resolveMediaPlayer(widget, equipment);
+      return resolveMediaPlayer(equipment);
     case "pool_pump":
-      return resolvePoolPump(widget, equipment);
+      return resolvePoolPump(equipment);
     default:
       return null;
   }

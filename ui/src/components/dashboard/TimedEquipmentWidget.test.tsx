@@ -116,6 +116,24 @@ describe("TimedEquipmentWidget", () => {
     expect(api.armTimedCommand).not.toHaveBeenCalled();
   });
 
+  it("never lets the controls be the row that gives ground", () => {
+    // There is no layout engine here, so what is pinned is the rule the fix
+    // rests on. Measured in a browser at 390 px: the arm button used to hang
+    // 14 px below the card's edge, and `overflow-hidden` cut it in half.
+    // The illustration is the flexible row and the only one hidden on a
+    // phone; the state and the controls never shrink.
+    const { container } = render(<TimedEquipmentWidget label="Portail" equipment={gate()} />);
+
+    const illustration = container.querySelector(".flex-1");
+    expect(illustration?.className).toContain("min-h-0");
+    expect(container.querySelector("svg")?.getAttribute("class")).toContain("hidden sm:block");
+
+    const arm = screen.getByTitle(/Lancer|Run for/i);
+    expect(arm.parentElement?.className).toContain("shrink-0");
+    const pill = container.querySelector(".rounded-full");
+    expect(pill?.parentElement?.className).toContain("shrink-0");
+  });
+
   it("is inert in edit mode, where the tile is a drag target", async () => {
     render(<TimedEquipmentWidget label="Portail" equipment={gate()} editMode />);
 
