@@ -23,6 +23,7 @@
  */
 
 import type { DataCategory, DataType, EquipmentType, OrderCategory } from "./types.js";
+import { THERMOSTAT_STATE_ALIAS, isThermostatDevice } from "./thermostat-contract.js";
 import { METERING_CATEGORIES } from "./constants.js";
 
 /** Structural subset of a device_data row this module needs. */
@@ -107,13 +108,11 @@ export const SOLAR_ORDER_ALIAS = "solar";
 export const SOLAR_STATE_ALIAS = "solar_state";
 
 /**
- * Spec 176 — alias for a thermostat's boolean run state: the SAME `state`
- * alias every relay-style equipment already uses for on/off, not a new name.
- * On a submetered thermostat the `power` alias is the wattage read from a
- * clamp (the metering convention), so the on/off state the device reports
- * about itself binds here instead.
+ * Spec 176 — alias for a thermostat's boolean run state. Declared with the
+ * rest of the thermostat core in thermostat-contract.ts (spec 177) and
+ * re-exported here for the existing importers.
  */
-export const THERMOSTAT_STATE_ALIAS = "state";
+export { THERMOSTAT_STATE_ALIAS } from "./thermostat-contract.js";
 
 /**
  * True for an on/off command channel. Two shapes are accepted:
@@ -409,14 +408,31 @@ export function computeBindingCandidates(
       ];
     }
 
-    case "thermostat":
+    case "thermostat": {
+      // Spec 177 — a thermostat is a device that can be given a setpoint
+      // (category `setpoint` / `set_setpoint`), never a device exposing some
+      // vendor key. One candidate grouping everything: the core resolves to
+      // its canonical aliases, the rest binds as extras. Not on the plan path
+      // (thermostat is not candidate-based) but the shared truth must agree
+      // with the selector.
+      if (!isThermostatDevice(deviceData, deviceOrders)) return [];
+      return [
+        {
+          id: "all",
+          label: "All thermostat data/orders",
+          dataKeys: deviceData.map((d) => d.key),
+          orderKeys: deviceOrders.map((o) => o.key),
+        },
+      ];
+    }
+
     case "heater": {
       // Single candidate grouping everything (power/setpoint/temperature).
       if (deviceData.length === 0 && deviceOrders.length === 0) return [];
       return [
         {
           id: "all",
-          label: "All thermostat data/orders",
+          label: "All heater data/orders",
           dataKeys: deviceData.map((d) => d.key),
           orderKeys: deviceOrders.map((o) => o.key),
         },

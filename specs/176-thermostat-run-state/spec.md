@@ -60,3 +60,9 @@ long.
 - The generic `power_state` category (future spec, needs a migration).
 - The order-confirmation tracker: its #901 device mirror already observes the ordered device's own
   `power` key and needs nothing from this spec.
+
+## Follow-up
+
+Spec 177 takes the root cause one layer up: it declares what a thermostat is (the `state` alias
+of this spec is one of six core aliases) and makes the vendor vocabulary that caused the collision
+bind as extras rather than as the type. Issue #921.

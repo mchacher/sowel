@@ -140,7 +140,10 @@ const RELEVANT_DATA: Record<string, string[]> = {
   // thermostat categories (a Panasonic or MCZ device reports its run state,
   // target and outdoor probe under them); the list predated that spec, so a
   // freshly bound thermostat silently lost those points.
-  thermostat: ["temperature", "temperature_outdoor", "setpoint", "power", "generic"],
+  // Spec 177 — `operation_mode` is the mode's own category; `generic` keeps
+  // binding what a plugin publishes without one (Panasonic's operationMode
+  // until #922, and every vendor extra).
+  thermostat: ["temperature", "temperature_outdoor", "setpoint", "power", "operation_mode", "generic"],
   weather: ["temperature", "temperature_outdoor", "humidity", "humidity_outdoor", "pressure", "wind", "rain", "noise", "battery"],
   weather_forecast: ["weather_condition", "temperature_outdoor", "rain", "wind"],
   // gate auto-binding is candidate-based (spec 150); this entry only feeds the
@@ -210,7 +213,7 @@ const RELEVANT_ORDERS: Record<string, string[]> = {
   awning: ["position", "state", "target_position"],
   switch: ["state", "on", "R1", "R2", "R3", "R4"],
   button: [],
-  thermostat: ["power", "operationMode", "targetTemperature", "fanSpeed", "airSwingUD", "airSwingLR", "ecoMode", "nanoe", "profile", "resetAlarm"],
+  // thermostat: no entry on purpose — see BIND_ALL_ORDER_TYPES (spec 177).
   weather: [],
   weather_forecast: [],
   // gate auto-binding is candidate-based (spec 150); kept for AddBindingModal.
@@ -270,6 +273,18 @@ const RELEVANT_ORDERS: Record<string, string[]> = {
 };
 
 /**
+ * Spec 177 — types that bind EVERY order their device exposes. A thermostat
+ * device is one appliance with no channel to protect from cross-binding (the
+ * spec 150 concern), its data side already binds everything through the
+ * `generic` category, and the list this replaced was the Panasonic and MCZ
+ * key list (`nanoe`, `airSwingUD`, `profile`, `resetAlarm`) — two vendors
+ * hard-coded as the definition of a thermostat. The core resolves to its
+ * canonical aliases through `resolveAlias`; everything else binds under its
+ * own key as an extra the card renders generically.
+ */
+const BIND_ALL_ORDER_TYPES: ReadonlySet<EquipmentType> = new Set<EquipmentType>(["thermostat"]);
+
+/**
  * Maps equipment types to relevant order *categories* for auto-binding —
  * used instead of `RELEVANT_ORDERS` (raw key names) when the order key is
  * vendor/plugin-specific and only the typed `OrderCategory` is stable
@@ -287,6 +302,10 @@ const RELEVANT_ORDER_CATEGORIES: Partial<Record<EquipmentType, OrderCategory[]>>
  * (e.g., "setpoint"). Recipes and scenarios depend on these standard aliases.
  */
 const STANDARD_ALIASES: Record<string, Record<string, string>> = {
+  // Spec 177 — the thermostat core is declared in src/shared/thermostat-contract.ts.
+  // These two entries are the compatibility layer over what the Panasonic and
+  // MCZ plugins publish today; issue #922 makes the plugins publish the
+  // canonical names and removes them.
   thermostat: {
     targetTemperature: "setpoint",
     insideTemperature: "temperature",
@@ -378,7 +397,17 @@ const TYPE_CATEGORY_ALIASES: Partial<Record<EquipmentType, Record<string, string
   // thermostat surface reads, whatever the plugin calls the key — and stops
   // an outdoor point published under key `temperature` from stealing the
   // room-temperature alias.
-  thermostat: { toggle_power: "power", temperature_outdoor: "outsideTemperature" },
+  // Spec 177 — the room temperature is category-driven like the rest of the
+  // core: whatever the plugin calls the key, a `temperature` reading on a
+  // thermostat is THE `temperature` alias the zone aggregator folds into the
+  // room average.
+  thermostat: {
+    toggle_power: "power",
+    temperature: "temperature",
+    temperature_outdoor: "outsideTemperature",
+    operation_mode: "operationMode",
+    set_operation_mode: "operationMode",
+  },
 };
 
 /**
@@ -420,6 +449,7 @@ export function isRelevantData(category: string, equipmentType: string): boolean
 }
 
 export function isRelevantOrder(key: string, equipmentType: string, category?: OrderCategory): boolean {
+  if (BIND_ALL_ORDER_TYPES.has(equipmentType as EquipmentType)) return true;
   if (category && RELEVANT_ORDER_CATEGORIES[equipmentType as EquipmentType]?.includes(category)) {
     return true;
   }

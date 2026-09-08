@@ -38,24 +38,32 @@ The script:
 
 Edit `scripts/doc/build-fixtures.py` to tweak the anonymization or translation maps.
 
-## Restoring a fixture on a demo instance
+## Restoring a fixture on a local instance
+
+`docker-compose.docs.yml` at the repository root starts a throwaway Sowel on
+port 3001, with its own volumes and no Docker socket. Nothing else is needed:
+there is no demo host to keep alive.
 
 ```bash
-# Reset the demo instance to zero
-ssh <demo-host> 'cd <demo-compose-dir> && docker compose down -v && docker compose up -d'
+# Reset to zero — `down -v` wipes only this instance's volumes
+docker compose -f docker-compose.docs.yml down -v
+docker compose -f docker-compose.docs.yml up -d
 
-# Wait for the wizard to come up, create an admin via the UI, then:
-TOKEN=$(curl -s -X POST http://<demo-host>:3001/api/v1/auth/login \
+# Wait for the API, then create the first admin through the setup wizard
+until curl -sf http://localhost:3001/api/v1/auth/status >/dev/null; do sleep 2; done
+
+TOKEN=$(curl -s -X POST http://localhost:3001/api/v1/auth/login \
   -H "Content-Type: application/json" \
   --data-raw '{"username":"admin","password":"<your-admin-pw>"}' \
   | python3 -c "import sys,json; print(json.load(sys.stdin)['accessToken'])")
 
-curl -X POST http://<demo-host>:3001/api/v1/backup \
+curl -X POST http://localhost:3001/api/v1/backup \
   -H "Authorization: Bearer $TOKEN" \
   -F "file=@docs/fixtures/showroom-fr.zip"
 ```
 
-The instance restarts with the fixture state; integrations stay disabled, so no MQTT or cloud poll runs.
+The instance restarts with the fixture state; integrations stay disabled, so no
+MQTT or cloud poll runs. Tear it down with `down -v` when you are done.
 
 ## When to regenerate
 

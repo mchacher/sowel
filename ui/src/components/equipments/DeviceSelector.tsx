@@ -10,11 +10,14 @@ import {
 } from "../../lib/binding-candidates";
 import { freeCandidates } from "../../lib/binding-utils";
 import { EQUIPMENT_TYPE_CATEGORIES } from "./equipment-type-meta";
+import { isThermostatDevice } from "../../lib/thermostat-contract";
 
 
 /** Maps EquipmentType to required data keys for filtering (when category alone is too broad). */
 const EQUIPMENT_TYPE_DATA_KEYS: Partial<Record<EquipmentType, string[]>> = {
-  thermostat: ["targetTemperature"],
+  // thermostat: no entry — compatibility is the contract identity (spec 177),
+  // a `setpoint` data category or a `set_setpoint` order category, never the
+  // raw Panasonic key `targetTemperature` this used to require.
   weather_forecast: ["j1_condition"],
   media_player: ["volume", "input_source"],
   appliance: ["state", "remaining_time"],
@@ -126,15 +129,17 @@ export function DeviceSelector({
   const requiredKeys = EQUIPMENT_TYPE_DATA_KEYS[equipmentType];
   let compatible: DeviceWithData[] = isCandidateBased
     ? availableDevices.filter((d) => (candidatesByDevice.get(d.id)?.length ?? 0) > 0)
-    : requiredKeys
-      ? availableDevices.filter((device) =>
-          device.data.some((d) => requiredKeys.includes(d.key)),
-        )
-      : categories && categories.length > 0
+    : equipmentType === "thermostat"
+      ? availableDevices.filter((d) => isThermostatDevice(d.data, d.orders ?? []))
+      : requiredKeys
         ? availableDevices.filter((device) =>
-            device.data.some((d) => categories.includes(d.category)),
+            device.data.some((d) => requiredKeys.includes(d.key)),
           )
-        : availableDevices;
+        : categories && categories.length > 0
+          ? availableDevices.filter((device) =>
+              device.data.some((d) => categories.includes(d.category)),
+            )
+          : availableDevices;
 
   // Spec 150 — gate is candidate-based: blind single-button gates (Somfy RTS
   // gate_trigger), LoRa R1..R4 relays, Zigbee on/off relays (SONOFF MINI-ZBD)
