@@ -22,6 +22,8 @@ function window_(armedMinAgo: number, expiresInMin: number): TimedAction {
     revertValue: null,
     armedAt: new Date(NOW - armedMinAgo * 60_000).toISOString(),
     expiresAt: new Date(NOW + expiresInMin * 60_000).toISOString(),
+    stepIndex: 0,
+    nextDurationMs: null,
   };
 }
 

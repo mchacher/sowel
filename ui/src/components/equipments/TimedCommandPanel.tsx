@@ -46,9 +46,7 @@ export function TimedCommandPanel({
 
   // Only orders that can actually be armed are offered: the API refuses the
   // others with a 400, and an option that always fails is worse than no option.
-  const orders = equipment.orderBindings.filter((o) =>
-    isTimedCommandEligible(equipment, o.alias),
-  );
+  const orders = equipment.orderBindings.filter((o) => isTimedCommandEligible(equipment, o.alias));
   const alias = configured?.alias ?? orders[0]?.alias ?? "";
   const order = orders.find((o) => o.alias === alias);
   const durationMs = configured?.durationMs ?? 15 * 60_000;
@@ -90,6 +88,46 @@ export function TimedCommandPanel({
   const toggle = (on: boolean) =>
     void save(on ? { alias, ...defaultsFor(order), durationMs } : null);
 
+  // ── Spec 178 — the ladder ──────────────────────────────────
+  const steps = configured?.durationStepsMs ?? [];
+  const laddered = steps.length > 0;
+
+  /** Turning the ladder on proposes the configured length, then twice and four
+   *  times it — the shape the reference installation asked for (15/30/60) when
+   *  it starts at a quarter of an hour, and something sensible from any other
+   *  starting point. */
+  const toggleLadder = (on: boolean) => {
+    if (!configured) return;
+    if (!on) {
+      // Rebuilt without the ladder rather than set to undefined: the field must
+      // be ABSENT from the body, or it would be stored as a null ladder.
+      void save({
+        alias: configured.alias,
+        value: configured.value,
+        revertValue: configured.revertValue,
+        durationMs: configured.durationMs,
+      });
+      return;
+    }
+    const proposed = [durationMs, durationMs * 2, durationMs * 4].filter(
+      (ms) => ms <= 24 * 3_600_000,
+    );
+    // Two rungs is the floor: with one, the SECOND press would already walk off
+    // the top and stop the countdown, which is not what a press means.
+    const ladder = proposed.length >= 2 ? proposed : [durationMs, durationMs * 2];
+    void save({ ...configured, durationStepsMs: ladder, durationMs: ladder[0] });
+  };
+
+  /** A rung joins or leaves the ladder. `durationMs` follows its first entry —
+   *  one truth about what the first press does, which the API enforces too. */
+  const toggleStep = (ms: number) => {
+    if (!configured || !laddered) return;
+    const next = steps.includes(ms) ? steps.filter((s) => s !== ms) : [...steps, ms];
+    next.sort((a, b) => a - b);
+    if (next.length < 2 || next.length > 6) return; // the API's rule, applied here first
+    void save({ ...configured, durationStepsMs: next, durationMs: next[0] });
+  };
+
   const patch = (field: "alias" | "value" | "revertValue" | "durationMs", raw: string) => {
     if (!configured) return;
     const next = { ...configured };
@@ -119,6 +157,7 @@ export function TimedCommandPanel({
             checked={enabled}
             disabled={saving}
             onChange={(e) => toggle(e.target.checked)}
+            aria-label={t("equipments.timed.enable")}
           />
           {t("equipments.timed.enable")}
         </label>
@@ -172,7 +211,9 @@ export function TimedCommandPanel({
           <select
             className={selectClass}
             value={String(durationMs)}
-            disabled={!enabled || saving}
+            // Spec 178 — with a ladder, the first rung IS the duration; two
+            // controls claiming it is how they come to disagree.
+            disabled={!enabled || saving || laddered}
             onChange={(e) => patch("durationMs", e.target.value)}
           >
             {DURATIONS_MS.map((ms) => (
@@ -183,6 +224,48 @@ export function TimedCommandPanel({
           </select>
         </label>
       </div>
+
+      {/* Spec 178 — the ladder a further press walks up. */}
+      {enabled && (
+        <div className="mt-4 pt-3 border-t border-border">
+          <label className="flex items-center gap-2 text-[13px] text-text cursor-pointer">
+            <input
+              type="checkbox"
+              checked={laddered}
+              disabled={saving}
+              onChange={(e) => toggleLadder(e.target.checked)}
+              aria-label={t("equipments.timed.ladder")}
+            />
+            <span className="font-semibold">{t("equipments.timed.ladder")}</span>
+          </label>
+          <p className="text-[12px] text-text-tertiary mt-1">{t("equipments.timed.ladderHint")}</p>
+
+          {laddered && (
+            <div className="flex flex-wrap gap-2 mt-3">
+              {DURATIONS_MS.map((ms) => {
+                const on = steps.includes(ms);
+                const rung = steps.indexOf(ms) + 1;
+                return (
+                  <button
+                    key={ms}
+                    type="button"
+                    onClick={() => toggleStep(ms)}
+                    disabled={saving}
+                    className={`px-2.5 py-1 text-[12px] font-medium rounded-full border transition-colors duration-150 cursor-pointer disabled:opacity-50 ${
+                      on
+                        ? "border-primary/40 bg-primary/10 text-primary"
+                        : "border-border bg-surface text-text-tertiary hover:border-primary/30"
+                    }`}
+                  >
+                    {on && <span className="font-mono mr-1">{rung}.</span>}
+                    {t("equipments.timed.minutes", { count: Math.round(ms / 60_000) })}
+                  </button>
+                );
+              })}
+            </div>
+          )}
+        </div>
+      )}
 
       {equipment.timedAction && (
         <div className="mt-4 flex items-center gap-2 text-[12px] text-text-secondary bg-active/10 border border-active/30 rounded-[8px] px-3 py-2">

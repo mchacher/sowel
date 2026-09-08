@@ -4,7 +4,7 @@ import type { EventBus } from "../core/event-bus.js";
 import type { OrderSource, TimedAction } from "../shared/types.js";
 import type { EquipmentManager } from "./equipment-manager.js";
 import { valuesMatch } from "./order-confirmation-tracker.js";
-import { isTimedCommandEligible } from "../shared/timed-command.js";
+import { isTimedCommandEligible, nextStep, resolveStep } from "../shared/timed-command.js";
 
 // ============================================================
 // Spec 174 — a timed action on an actuable equipment
@@ -60,6 +60,11 @@ interface TimedActionRow {
   expires_at: number;
   armed_at: number;
   armed_by: string | null;
+  /** Spec 178 — the rung this window is on. 0 without a ladder. */
+  step_index: number;
+  /** Spec 178 — the length of the window as armed, so the rung can be
+   *  re-resolved against a ladder that changed under it (FR-6). */
+  duration_ms: number;
 }
 
 export interface ArmTimedActionInput {
@@ -70,6 +75,8 @@ export interface ArmTimedActionInput {
   /** Value dispatched at the deadline. */
   revertValue: unknown;
   durationMs: number;
+  /** Spec 178 — the ladder a further press walks up. Absent = extend in place. */
+  durationStepsMs?: number[];
 }
 
 export class TimedActionError extends Error {
@@ -110,15 +117,19 @@ export class TimedActionManager {
     return {
       upsert: this.db.prepare(
         `INSERT INTO timed_actions
-           (equipment_id, alias, action_value, revert_value, expires_at, armed_at, armed_by)
-         VALUES (@equipmentId, @alias, @actionValue, @revertValue, @expiresAt, @armedAt, @armedBy)
+           (equipment_id, alias, action_value, revert_value, expires_at, armed_at, armed_by,
+            step_index, duration_ms)
+         VALUES (@equipmentId, @alias, @actionValue, @revertValue, @expiresAt, @armedAt, @armedBy,
+                 @stepIndex, @durationMs)
          ON CONFLICT(equipment_id) DO UPDATE SET
            alias = excluded.alias,
            action_value = excluded.action_value,
            revert_value = excluded.revert_value,
            expires_at = excluded.expires_at,
            armed_at = excluded.armed_at,
-           armed_by = excluded.armed_by`,
+           armed_by = excluded.armed_by,
+           step_index = excluded.step_index,
+           duration_ms = excluded.duration_ms`,
       ),
       getOne: this.db.prepare(`SELECT * FROM timed_actions WHERE equipment_id = ?`),
       getAll: this.db.prepare(`SELECT * FROM timed_actions ORDER BY expires_at ASC`),
@@ -186,7 +197,30 @@ export class TimedActionManager {
     return row ? this.toView(row) : null;
   }
 
+  /**
+   * The view reads the ladder from the EQUIPMENT, not from the row: a ladder
+   * edited while a window stands must take effect on the next press, which is
+   * exactly what FR-6 re-resolves.
+   */
   private toView(row: TimedActionRow): TimedAction {
+    // Spec 178 — the rung and the next press's length are resolved here, once,
+    // so no surface has to walk the ladder itself. Without a ladder the next
+    // press extends by the configured duration (spec 174 rule 3), so the field
+    // answers the same question either way and `null` means one thing only:
+    // the next press gives the deadline up.
+    const configured = this.equipmentManager.getById(row.equipment_id)?.timedCommand;
+    const ladder = configured?.durationStepsMs ?? [];
+    // May be `ladder.length` — past the top, which is what makes the next press
+    // the way out. Kept whole for `nextStep`, and clamped before it is
+    // published: "step 3 of 2" is a number no client can use.
+    const resolved =
+      ladder.length > 0 ? resolveStep(ladder, row.step_index, row.duration_ms) : row.step_index;
+    // Without a ladder the next press extends (spec 174 rule 3), so this field
+    // answers the same question either way and `null` keeps ONE meaning: the
+    // next press gives the deadline up. A row written before migration 034
+    // carries no length of its own, so it is reconstructed from the window
+    // itself rather than reported as null, which would read as "gives up".
+    const ownLength = row.duration_ms > 0 ? row.duration_ms : row.expires_at - row.armed_at;
     return {
       alias: row.alias,
       value: JSON.parse(row.action_value) as unknown,
@@ -194,6 +228,11 @@ export class TimedActionManager {
       expiresAt: new Date(row.expires_at).toISOString(),
       armedAt: new Date(row.armed_at).toISOString(),
       ...(row.armed_by !== null ? { armedBy: row.armed_by } : {}),
+      stepIndex: ladder.length > 0 ? Math.min(resolved, ladder.length - 1) : resolved,
+      nextDurationMs:
+        ladder.length > 0
+          ? nextStep(ladder, resolved)
+          : (configured?.durationMs ?? (ownLength > 0 ? ownLength : null)),
     };
   }
 
@@ -213,7 +252,7 @@ export class TimedActionManager {
    * its configuration already carries; a caller that knows better still passes
    * them explicitly to `arm`.
    */
-  async armConfigured(equipmentId: string, source?: OrderSource): Promise<TimedAction> {
+  async armConfigured(equipmentId: string, source?: OrderSource): Promise<TimedAction | null> {
     const equipment = this.equipmentManager.getById(equipmentId);
     if (!equipment) throw new TimedActionError("Equipment not found", 404);
     const configured = equipment.timedCommand;
@@ -229,23 +268,39 @@ export class TimedActionManager {
         value: configured.value,
         revertValue: configured.revertValue,
         durationMs: configured.durationMs,
+        ...(configured.durationStepsMs !== undefined
+          ? { durationStepsMs: configured.durationStepsMs }
+          : {}),
       },
       source,
     );
   }
 
+  /**
+   * Spec 178 — returns `null` when the press walked off the top of the ladder:
+   * the deadline is given up and NOTHING is dispatched, so the gate stays where
+   * it is. That is a different intent from cancelling, which reverts.
+   */
   async arm(
     equipmentId: string,
     input: ArmTimedActionInput,
     source?: OrderSource,
-  ): Promise<TimedAction> {
+  ): Promise<TimedAction | null> {
     const equipment = this.equipmentManager.getById(equipmentId);
     if (!equipment) throw new TimedActionError("Equipment not found", 404);
-    if (input.durationMs < MIN_DURATION_MS || input.durationMs > MAX_DURATION_MS) {
-      throw new TimedActionError(
+    const outOfRange = (ms: number) => ms < MIN_DURATION_MS || ms > MAX_DURATION_MS;
+    const rangeError = () =>
+      new TimedActionError(
         `Duration must be between ${MIN_DURATION_MS / 1000}s and ${MAX_DURATION_MS / 3_600_000}h`,
       );
-    }
+    if (outOfRange(input.durationMs)) throw rangeError();
+    // Spec 178 — the ladder is bounds-checked HERE too, not only where it is
+    // written. What this method schedules is a rung, not `durationMs`, and a
+    // ladder can reach the row by a path the PUT route never saw: a backup
+    // restored from another instance, a hand-edited column. Before this, a
+    // `[500, 1000]` ladder armed a window that expired half a second later —
+    // the gate opening and closing itself, with nothing to alarm on.
+    if ((input.durationStepsMs ?? []).some(outOfRange)) throw rangeError();
     // FR-9b. The first draft refused an action and a revert carrying the same
     // value, reasoning that the deadline would send what is already there. True
     // of a dedicated ON/OFF pair, false of the hardware this feature exists for:
@@ -267,6 +322,32 @@ export class TimedActionManager {
       existing !== undefined &&
       existing.alias === input.alias &&
       valuesMatch(JSON.parse(existing.action_value), input.value);
+
+    // Spec 178 — a further press walks up the ladder, and past its top it gives
+    // the deadline up. Only the WINDOW LENGTH changes here: spec 174 rule 3
+    // still holds, so nothing is dispatched on any press but the first.
+    const ladder = input.durationStepsMs ?? [];
+    let stepIndex = 0;
+    let durationMs = ladder.length > 0 ? ladder[0] : input.durationMs;
+
+    if (extending && existing) {
+      if (ladder.length > 0) {
+        const current = resolveStep(ladder, existing.step_index, existing.duration_ms);
+        const next = nextStep(ladder, current);
+        if (next === null) {
+          // FR-4. The top rung was already standing: this press is the way out.
+          // Nothing is sent — the equipment stays where the first press put it.
+          this.disarm(equipmentId, "the ladder was walked to its end");
+          return null;
+        }
+        stepIndex = current + 1;
+        durationMs = next;
+      } else {
+        // No ladder: spec 174 rule 3, extend by the configured duration.
+        stepIndex = existing.step_index;
+        durationMs = input.durationMs;
+      }
+    }
 
     if (!extending) {
       // executeOrder throws on an unknown alias or a disabled equipment, which
@@ -291,9 +372,14 @@ export class TimedActionManager {
       alias: input.alias,
       action_value: JSON.stringify(input.value ?? null),
       revert_value: JSON.stringify(input.revertValue ?? null),
-      expires_at: now + input.durationMs,
+      // FR-3 — counted from NOW, not from armedAt: the press answers "how much
+      // longer from here", and a rung shorter than the elapsed time would
+      // otherwise land in the past and fire at once.
+      expires_at: now + durationMs,
       armed_at: extending && existing ? existing.armed_at : now,
       armed_by: source?.kind === "manual" ? source.userId : null,
+      step_index: stepIndex,
+      duration_ms: durationMs,
     };
     this.stmts.upsert.run({
       equipmentId: row.equipment_id,
@@ -303,6 +389,8 @@ export class TimedActionManager {
       expiresAt: row.expires_at,
       armedAt: row.armed_at,
       armedBy: row.armed_by,
+      stepIndex: row.step_index,
+      durationMs: row.duration_ms,
     });
     this.schedule(row);
 
@@ -310,7 +398,8 @@ export class TimedActionManager {
       {
         equipmentId,
         alias: input.alias,
-        durationMs: input.durationMs,
+        durationMs,
+        stepIndex,
         extended: extending,
       },
       extending ? "Timed action extended" : "Timed action armed",

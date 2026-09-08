@@ -96,7 +96,9 @@ describe("TimedCommandPanel", () => {
     const onUpdated = vi.fn();
     render(<TimedCommandPanel equipment={configured} onUpdated={onUpdated} />);
 
-    await userEvent.click(screen.getByRole("checkbox"));
+    // Named, not "the checkbox": a configured panel also offers the spec 178
+    // ladder switch, and the two must not be told apart by their order.
+    await userEvent.click(screen.getByRole("checkbox", { name: "Enable" }));
 
     // null, not an empty object: the API keeps what is stored on undefined.
     expect(api.updateEquipment).toHaveBeenCalledWith("g1", { timedCommand: null });
@@ -112,6 +114,8 @@ describe("TimedCommandPanel", () => {
         revertValue: null,
         armedAt: new Date(Date.now() - 5 * 60_000).toISOString(),
         expiresAt: new Date(Date.now() + 10 * 60_000).toISOString(),
+        stepIndex: 0,
+        nextDurationMs: null,
       },
     });
     render(<TimedCommandPanel equipment={running} onUpdated={() => {}} />);
@@ -126,5 +130,91 @@ describe("TimedCommandPanel", () => {
     await userEvent.click(screen.getByRole("checkbox"));
 
     expect(await screen.findByText("TimedCommandNotEligible")).toBeTruthy();
+  });
+
+  // ── Spec 178 — the ladder ──────────────────────────────────
+
+  describe("the ladder (spec 178)", () => {
+    const configured = () =>
+      gate({
+        timedCommand: { alias: "command", value: null, revertValue: null, durationMs: 900_000 },
+      });
+
+    it("is off until it is asked for, and proposes 15/30/60 from a quarter-hour", async () => {
+      render(<TimedCommandPanel equipment={configured()} onUpdated={() => {}} />);
+
+      const ladder = screen.getByRole("checkbox", {
+        name: "Steps: each press asks for longer",
+      }) as HTMLInputElement;
+      expect(ladder.checked).toBe(false);
+
+      await userEvent.click(ladder);
+
+      expect(api.updateEquipment).toHaveBeenCalledWith("g1", {
+        timedCommand: expect.objectContaining({
+          durationStepsMs: [900_000, 1_800_000, 3_600_000],
+          durationMs: 900_000,
+        }),
+      });
+    });
+
+    it("keeps the duration select from claiming what the first rung already says", () => {
+      const laddered = gate({
+        timedCommand: {
+          alias: "command",
+          value: null,
+          revertValue: null,
+          durationMs: 900_000,
+          durationStepsMs: [900_000, 1_800_000],
+        },
+      });
+      render(<TimedCommandPanel equipment={laddered} onUpdated={() => {}} />);
+
+      const selects = screen.getAllByRole("combobox") as HTMLSelectElement[];
+      expect(selects[selects.length - 1].disabled).toBe(true);
+    });
+
+    it("adds a rung, keeping the ladder sorted and the duration on its first", async () => {
+      const laddered = gate({
+        timedCommand: {
+          alias: "command",
+          value: null,
+          revertValue: null,
+          durationMs: 900_000,
+          durationStepsMs: [900_000, 1_800_000],
+        },
+      });
+      render(<TimedCommandPanel equipment={laddered} onUpdated={() => {}} />);
+
+      // A shorter rung than any configured: it must land FIRST, and drag the
+      // duration with it, or the tile would announce a length nothing arms.
+      // Exact: a regex would also match the "15 min" rung already on the ladder.
+      await userEvent.click(screen.getByRole("button", { name: "5 min" }));
+
+      expect(api.updateEquipment).toHaveBeenCalledWith("g1", {
+        timedCommand: expect.objectContaining({
+          durationStepsMs: [300_000, 900_000, 1_800_000],
+          durationMs: 300_000,
+        }),
+      });
+    });
+
+    it("refuses to drop below two rungs", async () => {
+      const laddered = gate({
+        timedCommand: {
+          alias: "command",
+          value: null,
+          revertValue: null,
+          durationMs: 900_000,
+          durationStepsMs: [900_000, 1_800_000],
+        },
+      });
+      render(<TimedCommandPanel equipment={laddered} onUpdated={() => {}} />);
+
+      // One rung means the SECOND press walks off the top and stops the
+      // countdown — a foot-gun on a gate, refused here as well as by the API.
+      await userEvent.click(screen.getByRole("button", { name: /30 min/ }));
+      expect(api.updateEquipment).not.toHaveBeenCalled();
+    });
   });
 });
