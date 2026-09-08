@@ -371,7 +371,7 @@ export interface Equipment {
    *  breakdown renders the parent net of its direct children, so nested clamps
    *  stop being counted twice. `null`/absent = counted nowhere else. */
   meteringParentId?: string | null;
-  /** Spec 177 — this meter is fed by a separate supply: its consumption never
+  /** Spec 179 — this meter is fed by a separate supply: its consumption never
    *  flows through the main meter, so no reconciliation (by-usage partition,
    *  live donut, `other` residual, cost attribution) may count it. It is still
    *  a real measurement — historised and rendered apart. Default `false`. */
@@ -2104,7 +2104,7 @@ export interface EnergyByUsageResponse {
   to: string;
   resolution: "5min" | "1h" | "1d" | "1mo"; // "1mo" added in spec 119 for the year period
   submeters: SubmeterSeries[];
-  /** Spec 177 — meters fed by a separate supply: raw series, never part of the
+  /** Spec 179 — meters fed by a separate supply: raw series, never part of the
    *  partition, Σ, `other` or cost (their tariff is unknown). Omitted when no
    *  equipment declares the flag, so existing payloads are byte-identical. */
   separateSupply?: SubmeterSeries[];

@@ -63,7 +63,7 @@ function makeEquipment(
     lastUpdated?: string | null;
     /** Spec 173 — the meter that already counts this one. */
     meteringParentId?: string | null;
-    /** Spec 177 — fed by a separate supply. */
+    /** Spec 179 — fed by a separate supply. */
     separateSupply?: boolean;
     /** Spec 175 — the budget the engine resolved from the source's cadence. */
     freshnessBudgetMs?: number;
@@ -520,7 +520,7 @@ describe("nested submeters (spec 173)", () => {
   });
 });
 
-describe("separate-supply meters (spec 177)", () => {
+describe("separate-supply meters (spec 179)", () => {
   it("flags the row and keeps it out of the residual arithmetic", () => {
     const rows = buildRows([
       makeEquipment("gite", "Gite", { power: 500 }),

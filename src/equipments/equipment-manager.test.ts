@@ -639,7 +639,7 @@ describe("EquipmentManager", () => {
       expect(manager.update("non-existent", { name: "test" })).toBeNull();
     });
 
-    // Spec 177 — the flag must round-trip, default to false, and survive an
+    // Spec 179 — the flag must round-trip, default to false, and survive an
     // update that does not mention it (undefined preserves, like spec 173).
     it("persists separateSupply, defaults it to false, and keeps it on omission", () => {
       const zone = zoneManager.create({ name: "Garage" });

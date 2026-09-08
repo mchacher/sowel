@@ -1,4 +1,4 @@
-# Spec 177 — Architecture
+# Spec 179 — Architecture
 
 ## Data model
 
@@ -11,7 +11,7 @@ ALTER TABLE equipments ADD COLUMN separate_supply INTEGER NOT NULL DEFAULT 0;
 **`src/shared/types.ts`** — `Equipment` gains:
 
 ```ts
-/** Spec 177 — this meter is fed by a separate supply: its consumption never
+/** Spec 179 — this meter is fed by a separate supply: its consumption never
  *  flows through the main meter, so no reconciliation may count it. */
 separateSupply?: boolean;
 ```

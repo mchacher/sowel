@@ -339,7 +339,7 @@ export function registerEnergyRoutes(app: FastifyInstance, deps: EnergyDeps): vo
       if (NON_SUBMETER_TYPES.has(eq.type)) return false;
       return isSubmeterEquipment(eq.type, equipmentManager.getDataBindingsWithValues(eq.id));
     });
-    // Spec 177 — a meter fed by a separate supply measures energy the main
+    // Spec 179 — a meter fed by a separate supply measures energy the main
     // meter never carried. It leaves the partition (Σ, `other`, cost) entirely
     // and is rendered apart, raw and uncosted: its tariff is unknown here.
     const submeterEquipments = enrolledEquipments.filter((eq) => !eq.separateSupply);
@@ -498,7 +498,7 @@ export function registerEnergyRoutes(app: FastifyInstance, deps: EnergyDeps): vo
         }
       }
 
-      // Spec 177 — the separate-supply group: raw series through the same query
+      // Spec 179 — the separate-supply group: raw series through the same query
       // path and the same always-N zero-fill (spec 119), but no children
       // arithmetic (spec 173 subtraction is a partition concern) and no cost
       // (spec 123's blended €/kWh is the MAIN meter's tariff — pricing another

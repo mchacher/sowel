@@ -49,7 +49,7 @@ export function MeteringParentPanel({
       .filter(
         (eq) =>
           !descendants.has(eq.id) &&
-          // Spec 177 — a meter on a separate supply is outside the partition:
+          // Spec 179 — a meter on a separate supply is outside the partition:
           // nothing the partition renders can be "already counted by it". The
           // API refuses it too (400); an option that always fails is a worse
           // UI than no option.
@@ -81,7 +81,7 @@ export function MeteringParentPanel({
 
   return (
     <div className="bg-surface rounded-[10px] border border-border mb-6 p-4">
-      {/* Spec 177 — a separate-supply meter is outside the partition, so a
+      {/* Spec 179 — a separate-supply meter is outside the partition, so a
           containment declaration would sit there unused: the select yields to
           the toggle rather than offering a choice that does nothing. */}
       {!separate && (
@@ -113,7 +113,7 @@ export function MeteringParentPanel({
         </>
       )}
 
-      {/* Spec 177 — declare the meter fed by a separate supply. */}
+      {/* Spec 179 — declare the meter fed by a separate supply. */}
       <label
         className={`flex items-center gap-2 text-[13px] text-text cursor-pointer ${separate ? "" : "mt-3 pt-3 border-t border-border"}`}
       >

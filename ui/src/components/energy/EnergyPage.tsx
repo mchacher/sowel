@@ -174,7 +174,7 @@ export function EnergyPage() {
                     height={350}
                     unit={effectiveUnit}
                   />
-                  {/* Spec 177 — meters on their own supply: kWh beside the
+                  {/* Spec 179 — meters on their own supply: kWh beside the
                       partition, never inside it, and never in € (their tariff
                       is not the main meter's). */}
                   {labelledByUsage.separateSupply.length > 0 && (

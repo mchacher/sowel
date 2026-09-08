@@ -1,4 +1,4 @@
-# Spec 177 — A meter fed by a separate supply
+# Spec 179 — A meter fed by a separate supply
 
 **Status**: implemented
 **Scope**: db + core (equipments, energy) + UI

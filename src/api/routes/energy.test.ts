@@ -48,7 +48,7 @@ interface BuildOpts {
     enabled?: boolean;
     /** Spec 173 — "already counted by that meter". */
     meteringParentId?: string | null;
-    /** Spec 177 — fed by a separate supply. */
+    /** Spec 179 — fed by a separate supply. */
     separateSupply?: boolean;
   }>;
   envTz?: string | undefined;
@@ -540,7 +540,7 @@ describe("Spec 173 — /api/v1/energy/by-usage with nested submeters", () => {
   });
 });
 
-describe("Spec 177 — /api/v1/energy/by-usage with a separate-supply meter", () => {
+describe("Spec 179 — /api/v1/energy/by-usage with a separate-supply meter", () => {
   let app: Awaited<ReturnType<typeof buildApp>> | null = null;
 
   beforeEach(() => {

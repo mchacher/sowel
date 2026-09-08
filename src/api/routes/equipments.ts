@@ -69,7 +69,7 @@ const updateEquipmentBodySchema = {
     invertDirection: { type: "boolean" },
     // Spec 173 — id of the meter that already counts this equipment, or null.
     meteringParentId: { type: ["string", "null"], minLength: 1 },
-    // Spec 177 — this meter is fed by a separate supply.
+    // Spec 179 — this meter is fed by a separate supply.
     separateSupply: { type: "boolean" },
     // Spec 174 phase 2 — the timed command this equipment offers, or null to
     // clear it. `value` and `revertValue` are deliberately unconstrained: an
@@ -390,7 +390,7 @@ export function registerEquipmentRoutes(app: FastifyInstance, deps: EquipmentsDe
             message: "That declaration would make a meter contain itself",
           });
         }
-        // Spec 177 — a meter on a separate supply is outside the partition, so
+        // Spec 179 — a meter on a separate supply is outside the partition, so
         // "already counted by it" cannot be true of anything the partition
         // renders.
         if (parentDetails.separateSupply) {
@@ -401,7 +401,7 @@ export function registerEquipmentRoutes(app: FastifyInstance, deps: EquipmentsDe
         }
       }
 
-      // Spec 177 — the reference and the production surfaces are what the
+      // Spec 179 — the reference and the production surfaces are what the
       // reconciliation is FOR; declaring them "outside it" is a contradiction,
       // and silently storing it would do nothing at all. Checked on the
       // RESULTING (type, flag) pair, not on the request alone: a type change to

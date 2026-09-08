@@ -26,7 +26,7 @@ export interface SubmeterRow {
   status: EquipmentStatus;
   /** Spec 173 — power shown net of the submeters declared inside this one. */
   netOfChildren?: boolean;
-  /** Spec 177 — fed by a separate supply: rendered apart, never in the donut,
+  /** Spec 179 — fed by a separate supply: rendered apart, never in the donut,
    *  the residual or the shares. */
   separateSupply?: boolean;
   /** ISO timestamp from spec 116 statusReason, if available. */
@@ -119,7 +119,7 @@ export function buildSubmeterRows(
   const enrolled = [...equipments]
     .filter((eq) => isSubmeterEquipment(eq))
     .sort((a, b) => a.id.localeCompare(b.id));
-  // Spec 177 — partition meters first, separate-supply meters after: the SAME
+  // Spec 179 — partition meters first, separate-supply meters after: the SAME
   // indexing rule the by-usage backend uses, so a given equipment keeps one
   // color across both views even once the flag splits them into two groups.
   const byId = [
@@ -154,7 +154,7 @@ export function buildSubmeterRows(
   const rawPower = new Map(rows.map((r) => [r.id, r.power] as const));
   for (const row of rows) {
     if (row.power === null) continue;
-    // Spec 177 — containment is a partition concern: a separate-supply parent
+    // Spec 179 — containment is a partition concern: a separate-supply parent
     // renders raw in its own group, and a separate-supply child cannot be
     // "inside" a meter on another supply, so its declaration is stored unused.
     if (row.separateSupply) continue;

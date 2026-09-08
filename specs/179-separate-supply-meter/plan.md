@@ -1,4 +1,4 @@
-# Spec 177 — Implementation plan
+# Spec 179 — Implementation plan
 
 ## Steps (in dependency order)
 

@@ -1,4 +1,4 @@
--- Spec 177 — a meter fed by a separate supply.
+-- Spec 179 — a meter fed by a separate supply.
 --
 -- Every reconciliation against the main meter (`other = total − Σ submeters`,
 -- the live donut, the blended-cost attribution) assumes every submeter measures

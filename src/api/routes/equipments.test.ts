@@ -625,7 +625,7 @@ describe("PUT /api/v1/equipments/:id — nested submeters (spec 173)", () => {
   });
 });
 
-describe("PUT /api/v1/equipments/:id — separate supply (spec 177)", () => {
+describe("PUT /api/v1/equipments/:id — separate supply (spec 179)", () => {
   let app: ReturnType<typeof Fastify>;
   let received: Record<string, unknown> | null;
 

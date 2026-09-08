@@ -71,7 +71,7 @@ export function LiveSubmeterBreakdown({ house, hasMainMeter }: Props) {
   }, [equipments, zoneTree, clock]);
   if (rows.length === 0) return null;
 
-  // Spec 177 — a meter on a separate supply never enters the donut, the
+  // Spec 179 — a meter on a separate supply never enters the donut, the
   // residual or the shares: its watts were not in the house total to begin
   // with. It keeps a group of its own below the reconciled legend.
   const partitionRows = rows.filter((r) => !r.separateSupply);
@@ -123,7 +123,7 @@ export function LiveSubmeterBreakdown({ house, hasMainMeter }: Props) {
             </div>
           )}
 
-          {/* Spec 177 — meters on their own supply: watts shown, no share of a
+          {/* Spec 179 — meters on their own supply: watts shown, no share of a
               donut whose total never carried them. */}
           {separateRows.length > 0 && (
             <>
@@ -270,7 +270,7 @@ function LegendRow({
   t,
 }: {
   row: SubmeterRow;
-  /** Spec 177 — null for a separate-supply row: no whole, so no share. */
+  /** Spec 179 — null for a separate-supply row: no whole, so no share. */
   total: number | null;
   t: (key: string, opts?: Record<string, unknown>) => string;
 }) {
