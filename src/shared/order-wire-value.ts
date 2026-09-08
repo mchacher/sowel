@@ -1,4 +1,4 @@
-import type { OrderWireValue } from "./types";
+import type { OrderWireValue } from "./types.js";
 
 /**
  * Wire-value resolution for boolean orders (issue #360).

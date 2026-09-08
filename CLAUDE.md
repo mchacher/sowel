@@ -145,6 +145,7 @@ docker compose up -d         # Local docker deployment
 - UUID v4 (`crypto.randomUUID()`) for all entity IDs
 - ISO 8601 dates everywhere
 - All types in `src/shared/types.ts`, discriminated unions for EventBus
+- **Relative imports in `src/` carry an explicit `.js`** (`"./foo.js"`, never `"./foo"`), including `import type`. The backend is `"type": "module"` and runs `node dist/index.js`, so Node ESM demands it — but `moduleResolution: "bundler"` lets `tsc` accept it without, and vitest resolves it too, so a missing extension compiles, lints, passes the whole suite and then throws `ERR_MODULE_NOT_FOUND` at startup. An eslint `no-restricted-syntax` rule blocks it now. The UI is bundled by Vite and is not subject to this.
 
 ### Database
 
