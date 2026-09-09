@@ -1106,11 +1106,24 @@ function SensorEquipmentWidget({
 
   return (
     <WidgetCard label={label} sublabel={sublabel}>
-      {/* Zone 2: Picto + État — centered vertically (no bottom controls) */}
+      {/* Zone 2: Picto + État — centered vertically (no bottom controls).
+       *
+       * The readings, unlike the one short word the other tiles put in this
+       * track, need a real width, and `overflow-y-auto` was quietly taking it
+       * away: an item that scrolls has an automatic minimum size of zero, so
+       * the track collapsed to its `1fr` share. Measured on a 224 px card:
+       * 39 px of empty spacer, 120 px of picto, 39 px left for a column that
+       * needed 51 — "16.8°C" was cut, and the horizontal axis (`visible`
+       * beside a scrollable one, so `auto`) grew a scrollbar to say so.
+       *
+       * `min-w-fit` gives the column its minimum back, and the picto may now
+       * scale down to 72 px. The empty spacer therefore yields first, the
+       * drawing slides left and shrinks next, and the readings are the last
+       * thing on the tile to lose any ground. */}
       <div className="grid grid-cols-[1fr_auto_1fr] items-center flex-1 min-h-0">
         <div />
-        {sensorIcon}
-        <div className="flex flex-col items-start pl-2 overflow-y-auto max-h-full">
+        <div className="min-w-[72px] [&>svg]:max-w-full [&>svg]:h-auto">{sensorIcon}</div>
+        <div className="flex flex-col items-start pl-2 min-w-fit max-h-full overflow-y-auto overflow-x-hidden">
           <SensorValues
             sensorBindings={filteredBindings}
             batteryBindings={batteryBindings}
