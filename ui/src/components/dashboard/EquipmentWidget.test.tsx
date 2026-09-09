@@ -52,6 +52,33 @@ function makeEquipment(over: Partial<EquipmentWithDetails> = {}): EquipmentWithD
   };
 }
 
+function tempSensor(): EquipmentWithDetails {
+  return makeEquipment({
+    id: "eq-2",
+    name: "Temperature",
+    type: "sensor",
+    orderBindings: [],
+    dataBindings: [
+      {
+        id: "db-2",
+        equipmentId: "eq-2",
+        deviceDataId: "dd-2",
+        alias: "temperature",
+        deviceId: "dev-2",
+        deviceName: "Sensor",
+        key: "temperature",
+        type: "number",
+        category: "temperature",
+        value: 21.5,
+        unit: "°C",
+        lastUpdated: "2026-01-01T00:00:00Z",
+        lastChanged: "2026-01-01T00:00:00Z",
+        stale: false,
+      },
+    ] as EquipmentWithDetails["dataBindings"],
+  });
+}
+
 function makeWidget(over: Partial<DashboardWidget> = {}): DashboardWidget {
   return {
     id: "w-1",
@@ -104,38 +131,40 @@ describe("EquipmentWidget", () => {
   });
 
   it("dispatches another category (sensor) without crashing and shows its label", () => {
-    const sensor = makeEquipment({
-      id: "eq-2",
-      name: "Temperature",
-      type: "sensor",
-      orderBindings: [],
-      dataBindings: [
-        {
-          id: "db-2",
-          equipmentId: "eq-2",
-          deviceDataId: "dd-2",
-          alias: "temperature",
-          deviceId: "dev-2",
-          deviceName: "Sensor",
-          key: "temperature",
-          type: "number",
-          category: "temperature",
-          value: 21.5,
-          unit: "°C",
-          lastUpdated: "2026-01-01T00:00:00Z",
-          lastChanged: "2026-01-01T00:00:00Z",
-          stale: false,
-        },
-      ] as EquipmentWithDetails["dataBindings"],
-    });
     render(
       <EquipmentWidget
         widget={makeWidget({ equipmentId: "eq-2", label: "Living room temp" })}
-        equipment={sensor}
+        equipment={tempSensor()}
         onExecuteOrder={vi.fn()}
       />,
     );
     expect(screen.getByText("Living room temp")).toBeTruthy();
+  });
+
+  it("never lets the readings be the column that gives ground", () => {
+    // There is no layout engine here, so what is pinned is the rule the fix
+    // rests on. Measured in a browser on a 224 px card: the readings needed
+    // 51 px and their `1fr` track handed them 39, because an item that
+    // scrolls has an automatic minimum size of zero — "16.8°C" was cut and a
+    // scrollbar appeared under it. `min-w-fit` gives the minimum back, and
+    // the picto may scale down to 72 px, so the empty spacer yields first and
+    // the drawing second.
+    const { container } = render(
+      <EquipmentWidget
+        widget={makeWidget({ equipmentId: "eq-2" })}
+        equipment={tempSensor()}
+        onExecuteOrder={vi.fn()}
+      />,
+    );
+
+    const zone2 = container.querySelector(".grid");
+    const readings = zone2?.lastElementChild;
+    expect(readings?.className).toContain("min-w-fit");
+    expect(readings?.className).toContain("overflow-x-hidden");
+
+    const picto = zone2?.children[1];
+    expect(picto?.className).toContain("min-w-[72px]");
+    expect(picto?.className).toContain("[&>svg]:max-w-full");
   });
 
   // Spec 139 — two widgets on homonym equipments are told apart by their zone,
