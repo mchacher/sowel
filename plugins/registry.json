@@ -602,5 +602,19 @@
     "sowelVersion": ">=1.43.0",
     "owner": "adn-dev-adrien",
     "sha256": "02b9e67a9aeb3f905d7039051bfe84e953a0b72d6e446ba386931977eb76d244"
+  },
+  {
+    "id": "simulator",
+    "type": "integration",
+    "name": "Simulator",
+    "description": "A simulated home: occupants on an agenda, sun, weather, thermal, a pool, PV and loads, published as ordinary devices",
+    "icon": "House",
+    "author": "mchacher",
+    "repo": "mchacher/sowel-plugin-simulator",
+    "version": "0.2.0",
+    "tags": ["demo", "simulator", "showroom", "testing", "screenshots"],
+    "sowelVersion": ">=1.68.0",
+    "owner": "mchacher",
+    "sha256": "6b6d2b81b9c612c98e14f19066a7a8debaa301dce3108342ef163b47e9fc30bb"
   }
 ]
