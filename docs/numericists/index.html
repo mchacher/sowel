@@ -1,0 +1,948 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex, nofollow, noarchive">
+<meta name="description" content="Thirteen rules for building software with an AI, drawn from seven months on the Sowel home automation engine.">
+<title>The Sowel Method</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Nunito:wght@600;700&display=swap">
+<style>
+html{color-scheme:light dark}
+body{margin:0}
+img{max-width:100%}
+[hidden]{display:none!important}
+</style>
+<style>
+:root{
+  --ground:#F1F5F7; --surface:#FFFFFF; --panel:#0F2531; --panel-ink:#CFE0E8; --alt:#E4EDF1;
+  --ink:#0F2028; --ink-soft:#3A5764; --ink-mute:#6C8794;
+  --rule:#C9DAE1; --rule-soft:#DEE9ED;
+  --primary:#1A4F6E; --accent:#B3810A; --mark:#F2C035;
+  --good:#1C6B4E; --bad:#95382B; --cop:#6E4AA8;
+  --shadow:0 1px 2px rgba(15,32,40,.05), 0 18px 40px -28px rgba(15,32,40,.4);
+  --sans:Arial,"Helvetica Neue",Helvetica,"Liberation Sans",sans-serif;
+  --serif:"Arial Rounded MT Bold","Nunito",Avenir,"Segoe UI",Arial,sans-serif;
+  --mono:Menlo,Consolas,"DejaVu Sans Mono","Liberation Mono",monospace;
+}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){
+  --ground:#0A1419; --surface:#11242E; --panel:#081219; --panel-ink:#C6DBE4; --alt:#16303C;
+  --ink:#E4EEF2; --ink-soft:#A7BFCA; --ink-mute:#7B97A4;
+  --rule:#23414C; --rule-soft:#1A323D;
+  --primary:#82BAD8; --accent:#F2C035; --mark:#F2C035;
+  --good:#5DC096; --bad:#E08573; --cop:#B69BE6;
+  --shadow:0 1px 2px rgba(0,0,0,.35), 0 18px 40px -28px rgba(0,0,0,.9);
+}}
+:root[data-theme="dark"]{
+  --ground:#0A1419; --surface:#11242E; --panel:#081219; --panel-ink:#C6DBE4; --alt:#16303C;
+  --ink:#E4EEF2; --ink-soft:#A7BFCA; --ink-mute:#7B97A4;
+  --rule:#23414C; --rule-soft:#1A323D;
+  --primary:#82BAD8; --accent:#F2C035; --mark:#F2C035;
+  --good:#5DC096; --bad:#E08573; --cop:#B69BE6;
+  --shadow:0 1px 2px rgba(0,0,0,.35), 0 18px 40px -28px rgba(0,0,0,.9);
+}
+
+*{box-sizing:border-box}
+html{scroll-snap-type:y proximity; scroll-behavior:smooth}
+body{background:var(--ground); color:var(--ink); font-family:var(--sans); font-size:16px; line-height:1.6; -webkit-font-smoothing:antialiased}
+
+#bar{position:fixed; top:0; left:0; height:3px; width:0; background:var(--mark); z-index:50}
+#hud{position:fixed; bottom:0; left:0; right:0; z-index:50; display:flex; justify-content:space-between;
+  align-items:center; padding:.55rem 1.1rem; pointer-events:none;
+  font-family:var(--mono); font-size:.64rem; letter-spacing:.11em; text-transform:uppercase;
+  color:var(--ink-mute); background:linear-gradient(to top, var(--ground) 55%, transparent)}
+#count{font-variant-numeric:tabular-nums}
+
+.s{min-height:100svh; scroll-snap-align:start; display:flex; align-items:center;
+   padding:4.5rem 1.5rem 4rem; border-top:1px solid var(--rule-soft)}
+.s:first-of-type{border-top:0}
+.in{width:100%; max-width:1060px; margin:0 auto}
+
+.eyebrow{font-family:var(--mono); font-size:.66rem; font-weight:700; letter-spacing:.13em;
+  text-transform:uppercase; color:var(--accent); margin:0 0 1rem; display:flex; gap:.7rem;
+  align-items:baseline; flex-wrap:wrap}
+.eyebrow .dim{color:var(--ink-mute); font-weight:500}
+
+h1{font-family:var(--serif); font-weight:700; letter-spacing:.006em; line-height:1.12;
+   font-size:clamp(2.2rem,6vw,3.6rem); margin:0 0 1.2rem; text-wrap:balance}
+h2{font-family:var(--serif); font-weight:700; letter-spacing:.012em; line-height:1.22;
+   font-size:clamp(1.55rem,3.8vw,2.35rem); margin:0 0 1rem; text-wrap:balance}
+h3{font-family:var(--serif); font-weight:700; line-height:1.3; letter-spacing:.016em;
+   font-size:clamp(1.2rem,2.6vw,1.6rem); margin:0 0 .9rem; text-wrap:balance}
+p{margin:0 0 .9rem; max-width:66ch}
+p:last-child{margin-bottom:0}
+.lead{font-family:var(--sans); font-weight:400; font-size:clamp(1rem,1.9vw,1.2rem);
+  line-height:1.56; color:var(--ink-soft); max-width:62ch}
+.lead b{color:var(--ink); font-weight:700}
+
+.two{display:grid; grid-template-columns:minmax(0,1fr) minmax(0,1.1fr); gap:2.5rem; align-items:start}
+.narr>p{font-size:.95rem; line-height:1.6; color:var(--ink-soft); max-width:52ch}
+.narr>p strong{color:var(--ink); font-weight:600}
+.takeaway{margin-top:1.15rem !important; padding:.75rem 0 0; border-top:1px solid var(--rule);
+  font-family:var(--sans); font-style:italic; font-weight:400; font-size:.93rem;
+  line-height:1.55; color:var(--ink-mute); max-width:48ch}
+.takeaway b{font-style:normal; font-weight:700; color:var(--accent); text-transform:uppercase;
+  font-family:var(--mono); font-size:.61rem; letter-spacing:.1em; display:block; margin-bottom:.3rem}
+
+.impl{border-radius:9px; overflow:hidden; box-shadow:var(--shadow); border:1px solid var(--rule)}
+.impl>.tab{display:flex; align-items:center; gap:.55rem; background:var(--alt);
+  padding:.5rem .85rem; border-bottom:1px solid var(--rule);
+  font-family:var(--mono); font-size:.71rem; font-weight:500; color:var(--ink-soft)}
+.impl>.tab .dot{width:.5rem; height:.5rem; border-radius:50%; background:var(--mark); flex:none}
+.impl>.tab .kind{margin-left:auto; font-size:.61rem; letter-spacing:.12em; text-transform:uppercase;
+  color:var(--ink-mute); white-space:nowrap}
+.impl pre{margin:0; background:var(--panel); color:var(--panel-ink); font-family:var(--mono);
+  font-size:.715rem; line-height:1.72; padding:.95rem 1rem; overflow-x:auto; white-space:pre}
+.impl pre+.tab{border-top:1px solid var(--rule)}
+.c{color:#6E8C9A} .k{color:#F2C035} .g{color:#6FC59B} .r{color:#E08573} .w{color:#FFF;font-weight:500}
+.impl .note{background:var(--surface); padding:.65rem .85rem; font-size:.8rem; line-height:1.5;
+  color:var(--ink-soft); border-top:1px solid var(--rule-soft)}
+.impl .note b{color:var(--ink); font-weight:600}
+.impl .xover{background:var(--surface); border-top:1px solid var(--rule-soft);
+  padding:.6rem .85rem; font-size:.76rem; line-height:1.55; color:var(--ink-soft);
+  display:grid; grid-template-columns:auto minmax(0,1fr); gap:.6rem; align-items:baseline}
+.impl .xover .lbl{font-family:var(--mono); font-size:.6rem; font-weight:700; letter-spacing:.1em;
+  text-transform:uppercase; color:var(--cop); white-space:nowrap}
+.impl .xover code{font-family:var(--mono); font-weight:500; color:var(--ink)}
+
+.figs{display:grid; grid-template-columns:repeat(auto-fit,minmax(9.5rem,1fr)); gap:1px;
+  background:var(--rule); border:1px solid var(--rule); border-radius:8px; overflow:hidden; margin-top:1.8rem}
+.figs>div{background:var(--surface); padding:1.1rem 1rem}
+.figs dt{font-family:var(--mono); font-size:clamp(1.3rem,2.8vw,1.8rem); font-weight:500;
+  font-variant-numeric:tabular-nums; color:var(--primary); line-height:1.1}
+.figs dd{margin:.45rem 0 0; font-size:.78rem; line-height:1.42; color:var(--ink-mute)}
+
+.wrap{overflow-x:auto; border:1px solid var(--rule); border-radius:8px; background:var(--surface);
+  box-shadow:var(--shadow)}
+table{border-collapse:collapse; width:100%; min-width:690px; font-size:.83rem}
+th{font-family:var(--mono); font-size:.62rem; letter-spacing:.11em; text-transform:uppercase;
+  color:var(--ink-mute); text-align:left; font-weight:700; padding:.7rem .9rem;
+  border-bottom:1px solid var(--rule); background:var(--alt)}
+td{padding:.65rem .9rem; border-bottom:1px solid var(--rule-soft); vertical-align:top; color:var(--ink-soft)}
+tr:last-child td{border-bottom:0}
+td.f{font-family:var(--mono); font-size:.73rem; color:var(--primary); white-space:nowrap}
+td.p{font-family:var(--mono); font-size:.73rem; color:var(--cop); white-space:nowrap}
+td.n{color:var(--ink); font-weight:600; white-space:nowrap}
+
+.cols{display:grid; grid-template-columns:1fr 1fr; gap:1px; background:var(--rule);
+  border:1px solid var(--rule); border-radius:9px; overflow:hidden; box-shadow:var(--shadow)}
+.col{background:var(--surface); padding:1.3rem 1.4rem 1.5rem}
+.col .state{font-family:var(--mono); font-size:.63rem; font-weight:700; letter-spacing:.11em;
+  text-transform:uppercase; display:inline-block; padding:.2rem .55rem; border-radius:3px; margin-bottom:.85rem}
+.col.ok .state{color:var(--good); background:color-mix(in srgb,var(--good) 13%,transparent)}
+.col.ko .state{color:var(--bad); background:color-mix(in srgb,var(--bad) 13%,transparent)}
+.col h4{font-family:var(--sans); font-size:.92rem; font-weight:600; margin:0 0 .6rem}
+.col .big{font-family:var(--mono); font-size:1.25rem; font-weight:500; font-variant-numeric:tabular-nums;
+  line-height:1.32; margin:0 0 .5rem}
+.col.ok .big{color:var(--good)} .col.ko .big{color:var(--bad)}
+.col p{font-size:.85rem; line-height:1.5; color:var(--ink-soft); margin:0}
+.verdict{margin-top:1.3rem; padding:1rem 1.2rem; border-left:3px solid var(--mark);
+  background:var(--surface); border-radius:0 6px 6px 0; font-family:var(--sans);
+  font-weight:400; font-size:1rem; line-height:1.55; max-width:72ch}
+
+ul.plain{list-style:none; padding:0; margin:0}
+ul.plain li{display:grid; grid-template-columns:1.5rem minmax(0,1fr); gap:.85rem; padding:.8rem 0;
+  border-bottom:1px solid var(--rule-soft); max-width:74ch}
+ul.plain li:last-child{border-bottom:0}
+ul.plain li::before{content:"\00d7"; font-family:var(--mono); font-size:1.05rem; font-weight:700;
+  color:var(--bad); line-height:1.45}
+ul.plain li>span{grid-column:2; font-size:.92rem; line-height:1.55; color:var(--ink-soft)}
+ul.plain em{font-style:normal; font-weight:600; color:var(--ink)}
+
+ol.steps{counter-reset:s; list-style:none; padding:0; margin:0; max-width:74ch}
+ol.steps li{counter-increment:s; display:grid; grid-template-columns:1.85rem minmax(0,1fr);
+  gap:.9rem; padding:.8rem 0; border-bottom:1px dotted var(--rule)}
+ol.steps li:last-child{border-bottom:0}
+ol.steps li::before{content:counter(s); grid-column:1; grid-row:1/span 2; font-family:var(--mono);
+  font-size:.8rem; font-weight:700; color:var(--surface); background:var(--primary);
+  width:1.55rem; height:1.55rem; border-radius:50%; display:grid; place-items:center; margin-top:.12rem}
+ol.steps li>b{grid-column:2; grid-row:1; font-weight:600}
+ol.steps li>span{grid-column:2; grid-row:2; font-size:.91rem; line-height:1.55; color:var(--ink-soft)}
+
+.hint{margin-top:2.2rem; font-family:var(--mono); font-size:.69rem; letter-spacing:.09em;
+  text-transform:uppercase; color:var(--ink-mute); display:flex; gap:.5rem; align-items:center; flex-wrap:wrap}
+.key{border:1px solid var(--rule); border-bottom-width:2px; border-radius:4px; padding:.1rem .4rem;
+  background:var(--surface); color:var(--ink-soft)}
+.colophon{font-family:var(--mono); font-size:.73rem; line-height:1.85; color:var(--ink-mute); max-width:66ch}
+
+@media (max-width:880px){
+  .two{grid-template-columns:1fr; gap:1.6rem}
+  .cols{grid-template-columns:1fr}
+  .s{padding:3.8rem 1.15rem 4.5rem; min-height:auto}
+  .narr>p{max-width:none}
+}
+@media (prefers-reduced-motion:reduce){html{scroll-behavior:auto} *{transition:none!important; animation:none!important}}
+@media print{
+  #bar,#hud,.hint{display:none}
+  .s{min-height:auto; page-break-after:always; break-after:page; padding:1.5rem 0; border-top:0}
+  body{background:#fff; color:#111; font-size:11pt}
+  .impl pre{background:#0F2531; -webkit-print-color-adjust:exact; print-color-adjust:exact}
+}
+</style>
+</head>
+<body>
+<div id="bar"></div>
+<div id="hud"><span id="phase">The Sowel Method</span><span id="count">01 / 27</span></div>
+
+<!-- 01 TITLE -->
+<section class="s" data-phase="Opening">
+  <div class="in">
+    <p class="eyebrow"><span>Field report</span><span class="dim">·</span><span class="dim">Sowel — home automation engine</span><span class="dim">·</span><span class="dim">19 Feb → 10 Sep 2026</span></p>
+    <h1>The Sowel Method</h1>
+    <p class="lead">
+      Seven months. 217,000 lines of code across 37 repositories, running in a real house.
+      <b>Every line was written by an AI.</b> Thirteen rules, and the exact mechanism that
+      makes each one hold.
+    </p>
+    <p class="hint"><span class="key">↓</span><span class="key">→</span><span class="key">space</span> to advance<span class="dim">·</span><span class="key">f</span> fullscreen<span class="dim">·</span>27 views</p>
+  </div>
+</section>
+
+<!-- 02 SCALE -->
+<section class="s" data-phase="Opening">
+  <div class="in">
+    <p class="eyebrow"><span>The scale</span></p>
+    <h2>What seven months produced</h2>
+    <p class="lead">Built by one person directing an AI. Two friends have been contributing
+      since July: 1,463 commits from the author, 57 from them.</p>
+    <dl class="figs">
+      <div><dt>144k</dt><dd>lines of source, across 37 repositories</dd></div>
+      <div><dt>73k</dt><dd>lines of tests</dd></div>
+      <div><dt>82k</dt><dd>lines of specs and documentation</dd></div>
+      <div><dt>178</dt><dd>specs written before their code</dd></div>
+      <div><dt>726</dt><dd>reviewed and merged batches</dd></div>
+      <div><dt>159</dt><dd>published releases</dd></div>
+    </dl>
+    <p style="margin-top:1.2rem; font-size:.84rem; line-height:1.55; color:var(--ink-mute); max-width:70ch">
+      Core engine 109k · 34 plugins and recipes, one repository each, 31k · 3D house and demo
+      infrastructure 5k. The 82k of prose is not overhead. It is the reason the 144k holds together.
+    </p>
+  </div>
+</section>
+
+<!-- 03 HUMAN EQUIVALENT -->
+<section class="s" data-phase="Opening">
+  <div class="in">
+    <p class="eyebrow"><span>The human equivalent</span><span class="dim">·</span><span class="dim">the question everybody asks</span></p>
+    <h2>How long this would have taken me alone</h2>
+    <p class="lead" style="margin-bottom:.4rem">
+      217,000 lines of code. One standard rule of thumb is enough: a developer sustains
+      50 to 100 lines of production code per working day, tests, review and rework included.
+    </p>
+    <dl class="figs">
+      <div><dt>2,170<br>4,340</dt><dd>person-days, at 100 then 50 lines per day</dd></div>
+      <div><dt>10 – 20</dt><dd>years of my own working life<br><span style="font-size:.72rem">at 220 working days a year</span></dd></div>
+      <div><dt>7</dt><dd>months it actually took<br><span style="font-size:.72rem">a compression of 17 to 34 times</span></dd></div>
+      <div><dt>723 h</dt><dd>merely to read the code once<br><span style="font-size:.72rem">at 300 lines/hour, the standard review rate</span></dd></div>
+    </dl>
+    <p class="verdict">
+      Between <b>ten and twenty years</b> of one person's working life, delivered in seven months.
+      The same arithmetic explains why I cannot simply check it all myself: at the conservative
+      end of the review range, 200 lines an hour, reading this code once takes <b>7.2 months of
+      full-time work</b> — longer than it took to produce. A lone reviewer does not fall behind
+      gradually. They are behind on day one.
+    </p>
+    <p style="margin-top:1.1rem; font-size:.84rem; line-height:1.55; color:var(--ink-mute); max-width:72ch">
+      Rules of thumb, not measurements: 50–100 lines of production code per person-day sustained,
+      and 200–400 lines per hour of effective review before comprehension collapses. Halve them or
+      double them — the conclusion does not move. And this counts code only: the 82,000 lines of
+      specifications and documentation are on top.
+    </p>
+  </div>
+</section>
+
+<!-- 03 WHO WRITES WHAT -->
+<section class="s" data-phase="Opening">
+  <div class="in">
+    <p class="eyebrow"><span>The premise</span><span class="dim">·</span><span class="dim">read this before anything else</span></p>
+    <h2>Who writes what</h2>
+    <div class="wrap" style="margin-top:1.3rem">
+      <table>
+        <thead><tr><th>Artefact</th><th>Written by</th><th>The human's actual contribution</th></tr></thead>
+        <tbody>
+          <tr><td class="n">Source code</td><td class="f">AI, 100%</td><td>names the feature in two or three sentences</td></tr>
+          <tr><td class="n">Tests</td><td class="f">AI, 100%</td><td>reads the scenario list, adds the one that was missed</td></tr>
+          <tr><td class="n">Specs</td><td class="f">AI, 100%</td><td>reads, corrects, approves — or sends it back</td></tr>
+          <tr><td class="n">Documentation</td><td class="f">AI, 100%</td><td>spots what the reader will not understand</td></tr>
+          <tr><td class="n">CI checks and scripts</td><td class="f">AI, 100%</td><td>decides which rule deserves a gate</td></tr>
+          <tr><td class="n">The framing document</td><td class="f">AI, 100%</td><td>says which incident just became a rule</td></tr>
+          <tr><td class="n">The procedures themselves</td><td class="f">AI, 100%</td><td>notices the same instruction being repeated</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <p class="lead" style="margin-top:1.4rem; max-width:66ch">
+      The human gives direction, arbitrates, and approves. <b>Not one line of any of this was
+      typed by hand.</b> Which is exactly why the rest of this deck is about verification, not
+      about writing.
+    </p>
+  </div>
+</section>
+
+<!-- 04 THESIS -->
+<section class="s" data-phase="Opening">
+  <div class="in">
+    <p class="eyebrow"><span>The one idea everything else follows from</span></p>
+    <h1 style="font-size:clamp(1.7rem,4.3vw,2.85rem); max-width:24ch">You do not read the AI's code. You make the AI's code checkable.</h1>
+    <p class="lead">
+      An AI produces more code in an hour than you can read in a day. If quality depends on your
+      reading, you are the bottleneck, and you will give up inside a fortnight.
+    </p>
+    <p class="lead" style="margin-top:1rem">
+      So the human effort moves <b>upstream</b>, into the specification, and <b>downstream</b>,
+      into automated checks. Almost nothing is left in the middle.
+    </p>
+  </div>
+</section>
+
+<!-- 05 THE MAP -->
+<section class="s" data-phase="Opening">
+  <div class="in">
+    <p class="eyebrow"><span>The map</span><span class="dim">·</span><span class="dim">six artefacts, nothing more</span></p>
+    <h2>Where the rules actually live</h2>
+    <p class="lead" style="margin-bottom:1.4rem">All of it is versioned text sitting next to the code. No dedicated tooling, no platform.</p>
+    <div class="wrap">
+      <table>
+        <thead><tr><th>Artefact</th><th>Claude Code</th><th>GitHub Copilot</th><th>Role</th><th>Enforced by</th></tr></thead>
+        <tbody>
+          <tr><td class="n">Framing</td><td class="f">CLAUDE.md</td><td class="p">.github/copilot-instructions.md</td><td>conventions, prohibitions, signposting</td><td>the agent, every session</td></tr>
+          <tr><td class="n">Specification</td><td class="f">specs/NNN-name/</td><td class="p">same — plain files</td><td>intent, before any code</td><td>gate 2</td></tr>
+          <tr><td class="n">Procedure</td><td class="f">.claude/skills/</td><td class="p">.github/prompts/*.prompt.md</td><td>the method, frozen</td><td>internal gates</td></tr>
+          <tr><td class="n">Tests</td><td class="f">*.test.ts</td><td class="p">same</td><td>replayable proof</td><td><code>npm run validate</code></td></tr>
+          <tr><td class="n">Documentation</td><td class="f">docs/</td><td class="p">same</td><td>transmission</td><td>3 automated checks</td></tr>
+          <tr><td class="n">Checks</td><td class="f">.github/workflows/</td><td class="p">identical</td><td>the guarantee</td><td>the machine, no exceptions</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <p style="margin-top:1rem; font-size:.79rem; line-height:1.6; color:var(--ink-mute)">
+      The vendor is the least interesting column. Every rule in this deck is a mechanism, and
+      every mechanism has an equivalent in both tools.
+    </p>
+  </div>
+</section>
+
+<!-- 06 ACT 1 -->
+<section class="s" data-phase="Act 1 — Frame">
+  <div class="in">
+    <p class="eyebrow"><span>Act 1</span><span class="dim">·</span><span class="dim">rules 01 to 04</span></p>
+    <h1 style="font-size:clamp(2.05rem,5.4vw,3.25rem)">Frame</h1>
+    <p class="lead">Before the first line of code. The highest-return phase, and the one everybody skips.</p>
+  </div>
+</section>
+
+<!-- 07 R01 -->
+<section class="s" data-phase="Act 1 — Frame">
+  <div class="in two">
+    <div class="narr">
+      <p class="eyebrow"><span>Rule 01</span></p>
+      <h3>One entry document, re-read every session</h3>
+      <p>The agent has <strong>no memory</strong> between sessions. Everything it must know lives in a single file it reads at startup.</p>
+      <p>That file does not describe the code. It points: where to look, which conventions are not up for discussion, what must not be touched.</p>
+      <p>On a domain solver the payoff is immediate. Write down that the code is SI and not CGS, that flux is positive outward, which four validation cases must still pass, and that nobody touches the time-stepping without rerunning them. <strong>An agent that has not been told will write textbook code — correct in general, wrong in your platform.</strong></p>
+      <p class="takeaway"><b>For a numericist</b>Write it once, or re-explain it every morning for the rest of the project.</p>
+    </div>
+    <div class="impl">
+      <div class="tab"><span class="dot"></span>CLAUDE.md<span class="kind">excerpt · 395 lines</span></div>
+<pre><span class="c"># CLAUDE.md</span>
+Guidance for Claude Code (and any AI agent) working on
+Sowel. This is the <span class="w">**first file to read**</span> when starting
+a session.
+
+<span class="c">## Where to find context</span>
+| You want to know...      | Read this                      |
+| ------------------------ | ------------------------------ |
+| How it's architected     | docs/technical/architecture.md |
+| Data model               | docs/technical/data-model.md   |
+| Specific feature history | specs/XXX-name/{spec,plan}.md  |
+
+<span class="c">### Logging</span>
+- <span class="w">Always</span> use pino structured logging, <span class="w">never</span> `console.*`
+- Structured context first, message second:
+  `logger.info({ deviceId }, "Device status changed")`</pre>
+      <div class="note"><b>164 lines on day one, 395 today.</b> It grows by incident, never by anticipation.</div>
+      <div class="xover"><span class="lbl">Copilot</span><span><code>.github/copilot-instructions.md</code> for the repository, plus <code>.github/instructions/*.instructions.md</code> with an <code>applyTo:</code> glob when a convention only concerns part of the tree. <code>AGENTS.md</code> works for both tools.</span></div>
+    </div>
+  </div>
+</section>
+
+<!-- 08 R02 — WIDEN -->
+<section class="s" data-phase="Act 1 — Frame">
+  <div class="in two">
+    <div class="narr">
+      <p class="eyebrow"><span>Rule 02</span></p>
+      <h3>Use it to widen the option space, then choose</h3>
+      <p>The instinct is to ask for a solution. That wastes the machine. Ask instead for <strong>four ways to do this, and what each one fails at</strong> — then decide yourself.</p>
+      <p>For a modelling team this is where the work itself changes. Implementation cost used to decide which methods were worth considering at all. <strong>A formulation you dropped because it meant three weeks of coding is now an afternoon</strong>, so the shortlist stops being set by what you can afford to write.</p>
+      <p>The best place to practise the habit is on your own checks, because a badly designed gate is worse than none. “The docs keep drifting, add a check” gets you the first idea the model had. The question on the right got a design.</p>
+      <p>Whatever you choose goes in the spec. <strong>So do the rejected options, with their reason</strong> — otherwise the same argument reopens in three months and nobody remembers why it was settled.</p>
+      <p class="takeaway"><b>For a numericist</b>The option space widens twice. You compare more approaches, and you can finally compare the ones that were too expensive to try.</p>
+    </div>
+    <div class="impl">
+      <div class="tab"><span class="dot"></span>the question that produces a design<span class="kind">pattern</span></div>
+<pre><span class="r">✗</span>  "The docs keep drifting. Add a CI check."
+     <span class="c">→ one gate, the first one it thought of</span>
+
+<span class="g">✓</span>  "Four ways to keep the docs in step with the
+     code. For each: <span class="w">what it catches, what it
+     misses, where an author will route around it,</span>
+     and what it costs to maintain.
+     <span class="w">Do not recommend one yet.</span>"</pre>
+      <div class="tab"><span class="dot"></span>specs/167-.../architecture.md<span class="kind">what came back, verbatim</span></div>
+<pre><span class="k">## Why not the alternatives</span>
+
+<span class="w">A label instead of a trailer.</span> Labels are invisible
+in the merge commit and in `git log`, and an agent
+cannot set one without an extra API call.
+
+<span class="w">A blocking path map.</span> The false positives are what
+break the gate's credibility.
+
+<span class="w">Everything at release time.</span> The knowledge is at the
+pull request. A release-time sweep of sixteen commits
+reconstructs from memory what the author knew an hour
+after writing the code.
+
+<span class="w">A docs coverage metric.</span> Measures pages, not truth.
+A page can be long, current in structure and wrong in
+every claim — <span class="r">which is exactly what the audit found.</span></pre>
+      <div class="note"><b>Four options, three rejected in writing.</b> The design that survived — blocking mechanics, advisory heuristics — is not one anybody would have specified up front. See rule 13.</div>
+      <div class="xover"><span class="lbl">Copilot</span><span>Identical — this is a prompting habit, not a feature. Freeze the question itself as a prompt file so you stop having to remember it.</span></div>
+    </div>
+  </div>
+</section>
+
+<!-- 09 R03 -->
+<section class="s" data-phase="Act 1 — Frame">
+  <div class="in two">
+    <div class="narr">
+      <p class="eyebrow"><span>Rule 03</span></p>
+      <h3>Write the spec before the code, and approve it explicitly</h3>
+      <p>Every feature starts as a folder of three documents. The AI writes them. <strong>The human reads, corrects, approves.</strong> Nothing starts without agreement on those three pages.</p>
+      <p>This is where the whole method earns its keep. A misunderstanding costs ten minutes on two pages of prose. The same misunderstanding found inside two thousand lines of code costs half a day — and you will be tempted to keep the code rather than throw it away.</p>
+      <p>And the specification is not only yours to write. <strong>Have it derive the formulation, check the dimensions line by line, state the stability condition the scheme implies, and name the limit cases the result must reproduce.</strong> What you approve is then two pages of mathematics, which you can genuinely review — rather than a loop, which at this volume nobody can.</p>
+      <p class="takeaway"><b>For a numericist</b>Approve the derivation, not the loop. It is the only review you can still perform at this speed.</p>
+    </div>
+    <div class="impl">
+      <div class="tab"><span class="dot"></span>specs/167-documentation-currency/<span class="kind">1 folder of 178</span></div>
+<pre><span class="k">├─</span> spec.md          <span class="c">requirements, acceptance, scope</span>
+<span class="k">├─</span> architecture.md  <span class="c">data model, flows, API contracts</span>
+<span class="k">└─</span> plan.md          <span class="c">implementation steps + test plan</span>
+
+<span class="c">── from spec.md ────────────────────────────</span>
+
+<span class="w">## Context</span>
+The 2026-08-29 audit found roughly three months of
+drift: a plugin guide teaching a function signature
+that migration 004 removed [...]
+
+<span class="k">Same repository, same authors, same pace.</span>
+<span class="k">The difference is enforcement.</span></pre>
+      <div class="note"><b>57,500 lines of specification.</b> Numbered, never rewritten: together they are the decision log of the project.</div>
+      <div class="xover"><span class="lbl">Copilot</span><span>Plain Markdown in the repo — no tool required. Point Copilot at the folder from your instructions file so it reads the spec before proposing code.</span></div>
+    </div>
+  </div>
+</section>
+
+<!-- 10 R04 -->
+<section class="s" data-phase="Act 1 — Frame">
+  <div class="in two">
+    <div class="narr">
+      <p class="eyebrow"><span>Rule 04</span></p>
+      <h3>The test plan is written before the implementation</h3>
+      <p>A dedicated section of <strong>plan.md</strong> lists the nominal cases, the edge cases, and what must not change. Written before the first line, approved with the spec.</p>
+      <p>A test written afterwards only records what the code already does, mistakes included. With an AI the gap is stark: it will happily write you a passing test over wrong code.</p>
+      <p class="takeaway"><b>For a numericist</b>You choose the analytical case before meshing, not after looking at the curve.</p>
+    </div>
+    <div class="impl">
+      <div class="tab"><span class="dot"></span>specs/177-thermostat-contract/plan.md<span class="kind">excerpt</span></div>
+<pre><span class="w">## Test Plan</span>
+
+<span class="c">### Modules to test</span>
+- src/shared/thermostat-contract.ts   <span class="c">(logic)</span>
+- ui/.../bindingUtils.ts              <span class="c">(binding plan)</span>
+- ui/.../ThermostatCard.tsx           <span class="c">(render + orders)</span>
+
+<span class="c">### Scenarios</span>
+| Module   | Scenario                   | Expected      |
+|----------|----------------------------|---------------|
+| contract | Identity: Panasonic-like   | <span class="g">true</span>          |
+| contract | Identity: temperature probe| <span class="r">false</span>         |
+| contract | Extras split, MCZ surface  | core excluded |
+| Card     | resetAlarm, no stoveState  | button enabled|
+            <span class="c">↑ fails before the fix — that is the point</span></pre>
+      <div class="note"><b>Gate 3 checks the correspondence:</b> “every scenario from the test plan has a corresponding test”.</div>
+      <div class="xover"><span class="lbl">Copilot</span><span>Same file, same discipline. In the coding agent's instructions, require the test plan to exist before it may open a pull request.</span></div>
+    </div>
+  </div>
+</section>
+
+<!-- ACT 2 -->
+<section class="s" data-phase="Act 2 — Produce">
+  <div class="in">
+    <p class="eyebrow"><span>Act 2</span><span class="dim">·</span><span class="dim">rules 05 to 07</span></p>
+    <h1 style="font-size:clamp(2.05rem,5.4vw,3.25rem)">Produce</h1>
+    <p class="lead">During the work. Speed is a given. What is at stake is size and order.</p>
+  </div>
+</section>
+
+<!-- R05 -->
+<section class="s" data-phase="Act 2 — Produce">
+  <div class="in two">
+    <div class="narr">
+      <p class="eyebrow"><span>Rule 05</span></p>
+      <h3>Increments you can throw away, a direction you cannot</h3>
+      <p>A wide request — “build me the engine” — returns a great deal of <strong>plausible, uncheckable code</strong>. Your only options are to accept it whole or lose all of it. The right size is what you read in one sitting and discard without pain if it went wrong.</p>
+      <p>But small steps with no bearing simply wander, and 726 locally sensible decisions make an incoherent product. <strong>Every increment is measured against a destination written down in advance</strong> — the architecture, the roadmap, and above all a one-line invariant that has arbitrated hundreds of decisions since month one.</p>
+      <p>When a proposal does not serve that line it is dropped, however good it looks on its own. In practice: one spec, one branch, one batch, one day — each one a step <strong>towards the stated end state</strong>, not merely a step.</p>
+      <p class="takeaway"><b>Two warning signs</b>If you are not looking forward to opening the result, it is too big. If you cannot say what it moves you towards, it is drift.</p>
+    </div>
+    <div class="impl">
+      <div class="tab"><span class="dot"></span>git log<span class="kind">7 months</span></div>
+<pre><span class="k">1,556</span> commits
+<span class="k">  726</span> batches reviewed and merged
+<span class="k">  178</span> specifications
+<span class="k">  159</span> published releases
+
+<span class="c">── by kind ─────────────────────────────────</span>
+  433  fix
+  318  feat
+  173  chore
+  172  docs
+   40  refactor
+
+<span class="c">More fixes than features: the loop is short,</span>
+<span class="c">so being wrong is cheap.</span></pre>
+      <div class="tab"><span class="dot"></span>CLAUDE.md — the fixed point<span class="kind">one line, month one</span></div>
+<pre><span class="k">Guiding principle:</span>
+  <span class="w">a Device is what's on the network.</span>
+  <span class="w">An Equipment is what's in the room.</span>
+
+<span class="c">Every binding, every aggregation, every plugin</span>
+<span class="c">boundary has been settled by that sentence — and</span>
+<span class="c">not re-argued from scratch each time.</span></pre>
+      <div class="note"><b>One branch per batch, prefix enforced:</b> <code>feat/</code>, <code>fix/</code>, <code>refactor/</code>, <code>docs/</code>. Never straight onto the main branch.</div>
+      <div class="xover"><span class="lbl">Copilot</span><span>Same discipline. With the Copilot coding agent, one issue equals one pull request — write issues at the size you are willing to read.</span></div>
+    </div>
+  </div>
+</section>
+
+<!-- R06 -->
+<section class="s" data-phase="Act 2 — Produce">
+  <div class="in two">
+    <div class="narr">
+      <p class="eyebrow"><span>Rule 06</span></p>
+      <h3>Explicit gates, not good intentions</h3>
+      <p>The method is itself a document the agent must follow: understand, specify, implement, validate, get reviewed, document, wait for approval. <strong>Seven steps, seven blocking gates.</strong></p>
+      <p>Without them an agent collapses the seven steps into one and hands you the lot marked “done”. It is not cheating. It is optimising for giving you a result, and nobody told it where to stop.</p>
+      <p class="takeaway"><b>For a numericist</b>The mesh review before you launch. You do not skip it because you are in a hurry.</p>
+    </div>
+    <div class="impl">
+      <div class="tab"><span class="dot"></span>.claude/skills/sowel-feature/SKILL.md<span class="kind">excerpt</span></div>
+<pre>Follow EVERY phase below <span class="w">IN ORDER</span>. Each phase has a
+<span class="k">GATE</span> — a condition that MUST be met before proceeding.
+<span class="w">Do NOT skip gates. Do NOT combine phases.</span>
+
+<span class="c">── gate 3, verbatim ────────────────────────</span>
+
+&gt; <span class="k">GATE 3</span> — Checklist (verify ALL before proceeding):
+&gt;
+&gt; - [ ] Feature branch created (NOT main).
+&gt;       Verify: `git branch --show-current`
+&gt; - [ ] Implementation follows the order
+&gt;       (types, DB, core, logic, tests, API, UI)
+&gt; - [ ] <span class="w">Every scenario from the test plan has a
+&gt;       corresponding test</span>
+&gt; - [ ] All rules respected (strict TS, no any,
+&gt;       pino logger, try/catch)</pre>
+      <div class="note"><b>The build order is imposed too:</b> types first, interface last. The agent does not get to choose where to start.</div>
+      <div class="xover"><span class="lbl">Copilot</span><span>Put the phases and their checklists in a <code>.github/prompts/feature.prompt.md</code> file, invoked as <code>/feature</code> in chat. A custom chat mode holds the same rules for a whole session.</span></div>
+    </div>
+  </div>
+</section>
+
+<!-- R07 -->
+<section class="s" data-phase="Act 2 — Produce">
+  <div class="in two">
+    <div class="narr">
+      <p class="eyebrow"><span>Rule 07</span></p>
+      <h3>Freeze the procedures you repeat</h3>
+      <p>Seven procedures come up again and again. Each is written once, named, and invoked with a single word. You never re-explain how you work.</p>
+      <p>The gain is not typing time. It is that the procedure <strong>does not degrade on a tired day</strong>, and that it improves cumulatively instead of being reinvented each session.</p>
+      <p class="takeaway"><b>For a numericist</b>The difference between a post-processing script and redrawing the figures by hand for every study.</p>
+    </div>
+    <div class="impl">
+      <div class="tab"><span class="dot"></span>.claude/skills/<span class="kind">7 frozen procedures</span></div>
+<pre><span class="k">├─</span> sowel-feature/     <span class="c">build a feature</span>
+<span class="k">├─</span> sowel-debug/       <span class="c">investigate a bug</span>
+<span class="k">├─</span> sowel-release/     <span class="c">cut a release</span>
+<span class="k">├─</span> sowel-plugin-dev/  <span class="c">write an integration</span>
+<span class="k">├─</span> sowel-recipe-dev/  <span class="c">write an automation</span>
+<span class="k">├─</span> sowel-docs/        <span class="c">update the documentation</span>
+<span class="k">└─</span> sowel-issue/       <span class="c">take a ticket end to end</span>
+
+<span class="c">── invoked with one word ───────────────────</span>
+$ <span class="k">/sowel-feature</span> add a five-day forecast widget
+  <span class="c">→ 402 lines of procedure load themselves</span></pre>
+      <div class="note"><b>2,034 lines of frozen method.</b> Written by the AI, from the human noticing the same instruction being repeated.</div>
+      <div class="xover"><span class="lbl">Copilot</span><span><code>.github/prompts/*.prompt.md</code> gives you the same <code>/name</code> invocation in VS Code. For a standing role rather than a one-shot task, use <code>.github/chatmodes/*.chatmode.md</code>.</span></div>
+    </div>
+  </div>
+</section>
+
+<!-- ACT 3 -->
+<section class="s" data-phase="Act 3 — Lock in">
+  <div class="in">
+    <p class="eyebrow"><span>Act 3</span><span class="dim">·</span><span class="dim">rules 08 to 12</span></p>
+    <h1 style="font-size:clamp(2.05rem,5.4vw,3.25rem)">Lock in</h1>
+    <p class="lead">What survives six months. The part everybody underestimates, and the only thing separating a prototype from a living project.</p>
+  </div>
+</section>
+
+<!-- R08 -->
+<section class="s" data-phase="Act 3 — Lock in">
+  <div class="in two">
+    <div class="narr">
+      <p class="eyebrow"><span>Rule 08</span></p>
+      <h3>Spend your attention on decisions, not on lines</h3>
+      <p>Human attention is the scarce resource — 723 hours to read this code once. It is spent on the spec and the architecture, where a mistake propagates everywhere. <strong>Not on line-by-line review</strong>, which goes to a second agent that did not write the code and has no stake in liking it.</p>
+      <p>One decision is never delegated: nothing enters the main branch without explicit human approval. That is the last line of defence, and it has never been automated.</p>
+      <p class="takeaway"><b>For a numericist</b>Peer review plus conservation checks. Both, not one or the other.</p>
+    </div>
+    <div class="impl">
+      <div class="tab"><span class="dot"></span>SKILL.md · phase 5 — agent code review<span class="kind">excerpt</span></div>
+<pre>The branch diff <span class="w">MUST</span> be reviewed by a dedicated
+review agent [...] The agent must report findings
+ranked by severity, each with a <span class="k">file:line</span> pointer
+and a <span class="w">concrete failure scenario</span> — not vague style notes.
+
+<span class="c">── what the reviewing agent checks ─────────</span>
+<span class="k">Correctness</span>  logic bugs, null / offline / empty,
+             edge cases listed in the spec
+<span class="k">Conventions</span>  the rules in CLAUDE.md
+<span class="k">Scope</span>        the diff does <span class="w">only</span> what the spec says —
+             no opportunistic refactor
+<span class="k">Tests</span>        every planned scenario has a test
+<span class="k">Security</span>     no leak, no weakened isolation gate</pre>
+      <div class="note"><b>And in CLAUDE.md:</b> “Never merge a PR without explicit user approval. Present the PR, wait for ‘oui’ / ‘merge’ / ‘go’.”</div>
+      <div class="xover"><span class="lbl">Copilot</span><span>Copilot code review does this natively on the pull request, and it reads your <code>copilot-instructions.md</code>. Keep the human approval as a branch protection rule — that part is not a model's job.</span></div>
+    </div>
+  </div>
+</section>
+
+<!-- R09 -->
+<section class="s" data-phase="Act 3 — Lock in">
+  <div class="in two">
+    <div class="narr">
+      <p class="eyebrow"><span>Rule 09</span></p>
+      <h3>One line of test for every two of source</h3>
+      <p>73,000 lines of test against 144,000 of source. In the backend, where the logic actually lives, it is very nearly one to one: 42,312 lines of source, 41,058 of test. The AI writes both — and that is <strong>exactly why</strong> you need that many.</p>
+      <p>An agent will tell you something works with total confidence whether it does or not. A suite that runs in three minutes is the only contradictory answer that costs nothing to replay, and the only one still valid in six months when nobody remembers the context.</p>
+      <p class="takeaway"><b>For a numericist</b>The manufactured solution. You do not validate a solver by checking that the output looks about right.</p>
+    </div>
+    <div class="impl">
+      <div class="tab"><span class="dot"></span>npm run validate<span class="kind">one command, one verdict</span></div>
+<pre>$ npm run validate
+
+  <span class="g">✔</span> eslint src/ ui/         <span class="c">conventions</span>
+  <span class="g">✔</span> tsc --noEmit            <span class="c">types, backend</span>
+  <span class="g">✔</span> tsc -b --noEmit (ui)    <span class="c">types, interface</span>
+  <span class="g">✔</span> vitest run              <span class="c">235 test files</span>
+  <span class="g">✔</span> vite build              <span class="c">the UI compiles</span>
+
+<span class="c">── across all 37 repositories ──────────────</span>
+  <span class="k">144,117</span>  lines of source
+  <span class="k"> 72,862</span>  lines of test       <span class="c">1 : 0.51</span>
+
+<span class="c">── where the logic actually lives ──────────</span>
+   42,312  backend source
+   <span class="g">41,058</span>  backend test        <span class="g">1 : 0.97</span>
+   59,005  interface source
+   16,258  interface test      <span class="c">1 : 0.28</span></pre>
+      <div class="note"><b>One command, one verdict.</b> That is what lets the agent correct itself before showing you anything at all. The interface ratio is low on purpose: a rendered component is checked by looking at it, a tariff classifier is not.</div>
+      <div class="xover"><span class="lbl">Copilot</span><span>Identical — it is an npm script. Name it in your instructions file so the agent runs it before proposing a diff.</span></div>
+    </div>
+  </div>
+</section>
+
+<!-- R10 -->
+<section class="s" data-phase="Act 3 — Lock in">
+  <div class="in two">
+    <div class="narr">
+      <p class="eyebrow"><span>Rule 10</span></p>
+      <h3>Documentation is a deliverable, in two registers</h3>
+      <p>It is written in the same batch as the code, by the same AI, and reviewed like everything else. Crucially it is <strong>split into two registers that never mix</strong>: a user guide, task-oriented and jargon-free, and a technical guide with signatures and examples.</p>
+      <p>This is where an AI is most spectacularly worth having. Writing 70 coherent pages in two languages stops being a trade-off and becomes a reflex.</p>
+      <p class="takeaway"><b>The real payoff</b>Documentation becomes the place where you read back what the system actually does. That reading finds bugs.</p>
+    </div>
+    <div class="impl">
+      <div class="tab"><span class="dot"></span>.claude/skills/sowel-docs/SKILL.md<span class="kind">excerpt</span></div>
+<pre><span class="c">## Step 1 — Identify pages to update</span>
+| Change type       | Pages to update                  |
+|-------------------|----------------------------------|
+| New API endpoint  | technical/api-reference.md       |
+| New equipment     | user/equipments.md + data-model  |
+| Architecture      | technical/architecture.md        |
+
+<span class="c">## Step 3 — Rules</span>
+- <span class="k">User guide</span> (docs/user/): <span class="w">non-technical,
+  task-oriented</span> ("To create a zone, click...")
+- <span class="k">Technical guide</span> (docs/technical/): detailed
+  with code examples and type signatures
+
+<span class="c">## Step 5 — Screenshots · non-negotiable</span>
+- 1920x1080, fullPage, surrounding context visible
+- <span class="r">Never shoot on a real production instance</span>
+  <span class="c">→ throwaway container + anonymised fixture</span></pre>
+      <div class="note"><b>12 user pages, 14 technical pages, 70 files, 66 screenshots</b> — plus a rule that keeps a real household's data out of public docs.</div>
+      <div class="xover"><span class="lbl">Copilot</span><span>A <code>/docs</code> prompt file with the same routing table. The path-to-page mapping is the valuable part, and it is plain text either way.</span></div>
+    </div>
+  </div>
+</section>
+
+<!-- R11 -->
+<section class="s" data-phase="Act 3 — Lock in">
+  <div class="in two">
+    <div class="narr">
+      <p class="eyebrow"><span>Rule 11</span></p>
+      <h3>The rule lives in the document, the guarantee lives in the machine</h3>
+      <p>This is the most expensive lesson of the project. Writing a rule down — even in the document the agent re-reads every single session — <strong>is not enough to make it hold for six months</strong>.</p>
+      <p>Violating it has to break something visible, automatically, with no human remembering anything. A rule with no check attached is an intention. The next view proves it.</p>
+      <p class="takeaway"><b>For a numericist</b>An assertion in the code beats a remark in the report.</p>
+    </div>
+    <div class="impl">
+      <div class="tab"><span class="dot"></span>CI — every batch, no exceptions<span class="kind">5 checks</span></div>
+<pre>  <span class="g">✔</span> Backend (lint, typecheck, test)
+  <span class="g">✔</span> Frontend (lint, typecheck, build)
+  <span class="g">✔</span> Specs completeness       <span class="c">3 files per spec</span>
+  <span class="g">✔</span> Documentation currency   <span class="c">3 sub-checks</span>
+  <span class="g">✔</span> Registry bump integrity  <span class="c">SHA-256 of releases</span>
+
+<span class="c">── the one escape hatch, and its price ─────</span>
+<span class="k">Docs-Impact:</span> none — internal refactor of the retry
+             loop, no documented behaviour changes
+
+<span class="c">── from the script itself, verbatim ────────</span>
+<span class="c"># The reason is the load-bearing part and is</span>
+<span class="c"># required — a bare `Docs-Impact: none` fails.</span>
+<span class="c"># A checkbox is ticked without thought;</span>
+<span class="c"># a sentence that has to be written is not.</span></pre>
+      <div class="note"><b>The detail that matters:</b> the escape hatch exists, but it demands a hand-written sentence. That is what stops it becoming the default path.</div>
+      <div class="xover"><span class="lbl">Copilot</span><span>Identical — these are GitHub Actions and shell scripts. Nothing about this layer is model-specific, and it is the layer that actually holds.</span></div>
+    </div>
+  </div>
+</section>
+
+<!-- PROOF -->
+<section class="s" data-phase="Act 3 — Lock in">
+  <div class="in">
+    <p class="eyebrow"><span>The natural experiment</span><span class="dim">·</span><span class="dim">same repository, same author, same months</span></p>
+    <h2>Two documents, only one of them gated</h2>
+    <div class="cols" style="margin-top:1.3rem">
+      <div class="col ok">
+        <span class="state">Automated check</span>
+        <h4>The release notes</h4>
+        <p class="big">166 entries<br>0 divergence</p>
+        <p>Publishing fails if the entry is missing, in English or in French. Across 166 releases both files are exactly 1,192 lines long.</p>
+      </div>
+      <div class="col ko">
+        <span class="state">Written instruction only</span>
+        <h4>The specs index</h4>
+        <p class="big">34 rows lost<br>28 mislabelled</p>
+        <p>The instruction existed, in the same file, read at every session. An audit found three months of drift, including a guide teaching a function removed six months earlier.</p>
+      </div>
+    </div>
+    <p class="verdict">
+      Same repository, same pace, same AI, same months. <b>The only variable is the automated
+      check</b> — and it accounts for the entire gap.
+    </p>
+  </div>
+</section>
+
+<!-- R12 -->
+<section class="s" data-phase="Act 3 — Lock in">
+  <div class="in two">
+    <div class="narr">
+      <p class="eyebrow"><span>Rule 12</span></p>
+      <h3>Every incident becomes a rule, then a check</h3>
+      <p>A real one: a file extension left off an import. It compiles, it passes the linter, it passes all 235 test files — <strong>and it refuses to start in production</strong>.</p>
+      <p>The fix was not “be careful next time”. A sentence in the framing document, plus an automated check that now rejects the case, with a message explaining why.</p>
+      <p class="takeaway"><b>For a numericist</b>Post-mortem to regression case. An incident that yields only a lesson will happen again.</p>
+    </div>
+    <div class="impl">
+      <div class="tab"><span class="dot"></span>eslint.config.js<span class="kind">the check, verbatim</span></div>
+<pre><span class="k">"no-restricted-syntax"</span>: [ <span class="r">"error"</span>, {
+  selector:
+    "ImportDeclaration[source.value=/^\\.\\.?\\//]
+     :not([source.value=/\\.(js|json)$/])",
+  message:
+    <span class="w">'Relative imports need an explicit extension
+     ("./foo.js", not "./foo"): Node ESM refuses it
+     at startup, and tsc under
+     moduleResolution:bundler will not tell you.'</span>,
+}]</pre>
+      <div class="tab"><span class="dot"></span>CLAUDE.md<span class="kind">the rule, same day</span></div>
+<pre>a missing extension compiles, lints, passes the whole
+suite and <span class="r">then throws ERR_MODULE_NOT_FOUND at startup</span>.
+An eslint rule blocks it now.</pre>
+      <div class="xover"><span class="lbl">Copilot</span><span>Same two moves: one paragraph in <code>copilot-instructions.md</code>, one lint rule. The instruction stops most of it; the lint rule stops the rest.</span></div>
+    </div>
+  </div>
+</section>
+
+<!-- R13 -->
+<section class="s" data-phase="Act 4 — Compound">
+  <div class="in two">
+    <div class="narr">
+      <p class="eyebrow"><span>Rule 13</span><span class="dim">·</span><span class="dim">rule 02, pointed inwards</span></p>
+      <h3>Turn it on your own process, not just your product</h3>
+      <p>The same widening works on the toolchain, and this is where it compounds. <strong>Ask it to audit how you work</strong>, propose three ways to fix what it found, and then build the one you pick.</p>
+      <p>The August documentation audit is the clearest case. The AI was asked to go and find drift. It found three months of it, proposed the gates, wrote the spec, wrote the scripts, and wired them into CI. Two jobs became five.</p>
+      <p>Nothing in this deck was in the project on day one. All of it came out of that loop, and the loop keeps running.</p>
+      <p class="takeaway"><b>The compounding part</b>Every hour spent on the process is repaid by every batch after it. Nothing else in the method compounds like this.</p>
+    </div>
+    <div class="impl">
+      <div class="tab"><span class="dot"></span>The toolchain, day one to month seven<span class="kind">all AI-built</span></div>
+<pre>                        <span class="c">Feb</span>        <span class="c">Sep</span>
+  CI jobs               <span class="r">2</span>    <span class="k">──→</span>    <span class="g">5</span>
+  workflow files        <span class="r">1</span>    <span class="k">──→</span>    <span class="g">5</span>
+  helper scripts        <span class="r">0</span>    <span class="k">──→</span>   <span class="g">38</span>
+  frozen procedures     <span class="r">0</span>    <span class="k">──→</span>    <span class="g">7</span>
+  framing doc, lines  <span class="r">164</span>    <span class="k">──→</span>  <span class="g">395</span>
+
+<span class="c">── two tools that came out of the loop ─────</span>
+<span class="k">shadow instance</span>  a second engine seeded from a
+  production backup, inert by construction, to test
+  a candidate build against real data
+
+<span class="k">throwaway docs container</span>  replaced a Raspberry Pi
+  that "had to be kept alive, reachable and up to
+  date for something needed a few times a year"</pre>
+      <div class="note"><b>Ask for the audit, not the answer.</b> “Go through the docs against the code and tell me what has drifted” is a better prompt than any fix you could have specified.</div>
+      <div class="xover"><span class="lbl">Copilot</span><span>Same move. Point the coding agent at your workflow files and ask what is unenforced; file the result as issues and let it open the pull requests.</span></div>
+    </div>
+  </div>
+</section>
+
+<!-- COPILOT MAP -->
+<section class="s" data-phase="Act 4 — Compound">
+  <div class="in">
+    <p class="eyebrow"><span>Portability</span><span class="dim">·</span><span class="dim">the mechanism matters, the vendor does not</span></p>
+    <h2>The same thirteen rules, on GitHub Copilot</h2>
+    <div class="wrap" style="margin-top:1.2rem">
+      <table>
+        <thead><tr><th>Mechanism</th><th>Claude Code</th><th>GitHub Copilot</th></tr></thead>
+        <tbody>
+          <tr><td class="n">Repository-wide rules</td><td class="f">CLAUDE.md</td><td class="p">.github/copilot-instructions.md</td></tr>
+          <tr><td class="n">Rules for part of the tree</td><td class="f">nested CLAUDE.md</td><td class="p">.github/instructions/*.instructions.md, applyTo:</td></tr>
+          <tr><td class="n">Vendor-neutral framing</td><td class="f">AGENTS.md</td><td class="p">AGENTS.md — read by both</td></tr>
+          <tr><td class="n">Named procedure, /invoked</td><td class="f">.claude/skills/name/</td><td class="p">.github/prompts/name.prompt.md</td></tr>
+          <tr><td class="n">Standing role for a session</td><td class="f">subagent definition</td><td class="p">.github/chatmodes/*.chatmode.md</td></tr>
+          <tr><td class="n">Independent code review</td><td class="f">review subagent on the diff</td><td class="p">Copilot code review on the PR</td></tr>
+          <tr><td class="n">Whole task, unattended</td><td class="f">agent session on a branch</td><td class="p">Copilot coding agent, assigned an issue</td></tr>
+          <tr><td class="n">External tools and data</td><td class="f">MCP servers</td><td class="p">MCP servers</td></tr>
+          <tr><td class="n">Specs, tests, docs, CI</td><td class="f">plain files in the repo</td><td class="p">plain files in the repo</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <p style="margin-top:1.1rem; font-size:.84rem; line-height:1.55; color:var(--ink-mute); max-width:74ch">
+      Accurate as of 2026, and both products move fast. The bottom row is the one that will still
+      be true in five years: the load-bearing half of this method is files in your repository and
+      checks in your CI, neither of which belongs to a vendor.
+    </p>
+  </div>
+</section>
+
+<!-- TRAPS -->
+<section class="s" data-phase="Closing">
+  <div class="in">
+    <p class="eyebrow"><span>Avoid</span><span class="dim">·</span><span class="dim">all of these were lived</span></p>
+    <h2>Five traps</h2>
+    <ul class="plain" style="margin-top:1.1rem">
+      <li><span><em>Asking wide.</em> “Build me the app” returns something impressive, plausible and uncheckable. You will only be able to take it or leave it whole.</span></li>
+      <li><span><em>Believing “it works”.</em> An AI says it with identical confidence whether it is true or false. Ask for the command it ran and the output, never the conclusion alone.</span></li>
+      <li><span><em>Letting scope drift.</em> An agent will gladly “improve” three neighbouring files on the way past. What you did not ask for is not reviewed, so it is not checked.</span></li>
+      <li><span><em>Re-explaining the same convention every session.</em> If you have said it twice, it is not in the framing document. Write it once and stop repeating it.</span></li>
+      <li><span><em>Loosening a check to unblock a batch.</em> That is the exact moment drift restarts. Fix the cause, never the barrier.</span></li>
+    </ul>
+  </div>
+</section>
+
+<!-- START -->
+<section class="s" data-phase="Closing">
+  <div class="in">
+    <p class="eyebrow"><span>Getting started</span><span class="dim">·</span><span class="dim">in this order</span></p>
+    <h2>What to do on Monday</h2>
+    <ol class="steps" style="margin-top:1.1rem">
+      <li><b>A framing document, one page.</b><span>What the project does, how it is laid out, the conventions that are not negotiable. One page is enough — it will grow on its own, by incident.</span></li>
+      <li><b>One command that says yes or no.</b><span>Build, tests, formatting: a single command, a single verdict. Without it none of the later rules has anything to grip.</span></li>
+      <li><b>Ask for three options before the first spec.</b><span>On something you already know well, so you can judge the answer. This is the habit that turns the AI from a typist into a colleague.</span></li>
+      <li><b>The first spec, approved before any code.</b><span>Have it written, correct it, then measure the time saved during implementation. That is what will convince you, not this deck.</span></li>
+      <li><b>One automated check, on your known weak point.</b><span>Pick the thing that always drifts in your work. Make violating it fail the build. Exactly one, to start.</span></li>
+      <li><b>After every incident, one more line.</b><span>A rule in the document, a check in the machine. That cycle, repeated for seven months, built everything else here.</span></li>
+    </ol>
+  </div>
+</section>
+
+<!-- CLOSE -->
+<section class="s" data-phase="Closing">
+  <div class="in">
+    <h2 style="max-width:26ch">You do not read the AI's code. You make the AI's code checkable.</h2>
+    <p class="lead" style="margin-bottom:1.8rem">
+      Everything else — the thirteen rules, the six artefacts, the five checks — is only the
+      implementation of that sentence.
+    </p>
+    <p class="colophon">
+      Figures measured on the Sowel repositories, 11 September 2026.<br>
+      37 repositories · 144,117 lines of source · 72,862 lines of test<br>
+      82,085 lines of specs and documentation · 1,556 commits · 726 batches<br>
+      178 specifications · 159 releases · 70 documentation pages<br><br>
+      Open-source home automation engine · docs.sowel.org
+    </p>
+  </div>
+</section>
+
+<script>
+(function () {
+  var slides = [].slice.call(document.querySelectorAll(".s"));
+  var bar = document.getElementById("bar");
+  var count = document.getElementById("count");
+  var phase = document.getElementById("phase");
+  var total = slides.length;
+  function pad(n){ return (n < 10 ? "0" : "") + n; }
+  function current(){
+    var mid = window.innerHeight * 0.4, best = 0;
+    for (var i = 0; i < total; i++) if (slides[i].getBoundingClientRect().top <= mid) best = i;
+    return best;
+  }
+  function paint(){
+    var max = document.documentElement.scrollHeight - window.innerHeight;
+    bar.style.width = (max > 0 ? (window.scrollY / max) * 100 : 0) + "%";
+    var i = current();
+    count.textContent = pad(i + 1) + " / " + pad(total);
+    phase.textContent = slides[i].getAttribute("data-phase") || "";
+  }
+  function go(d){
+    var i = Math.min(total - 1, Math.max(0, current() + d));
+    slides[i].scrollIntoView({ block: "start" });
+  }
+  addEventListener("scroll", paint, { passive: true });
+  addEventListener("resize", paint);
+  addEventListener("keydown", function (e) {
+    var t = e.target;
+    if (t && (t.tagName === "INPUT" || t.tagName === "TEXTAREA")) return;
+    var k = e.key;
+    if (k === "ArrowDown" || k === "ArrowRight" || k === "PageDown" || k === " ") { e.preventDefault(); go(1); }
+    else if (k === "ArrowUp" || k === "ArrowLeft" || k === "PageUp") { e.preventDefault(); go(-1); }
+    else if (k === "Home") { e.preventDefault(); slides[0].scrollIntoView({ block: "start" }); }
+    else if (k === "End") { e.preventDefault(); slides[total - 1].scrollIntoView({ block: "start" }); }
+    else if (k === "f" || k === "F") {
+      if (document.fullscreenElement) document.exitFullscreen();
+      else if (document.documentElement.requestFullscreen) document.documentElement.requestFullscreen();
+    }
+  });
+  paint();
+})();
+</script>
+</body>
+</html>
