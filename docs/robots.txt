@@ -1,0 +1,8 @@
+# The documentation site is meant to be indexed. The page below is not: it is
+# shared by link for a talk, is absent from the navigation and from search, and
+# carries <meta name="robots" content="noindex"> of its own.
+#
+# This stops well-behaved crawlers. It does not make the page private — anyone
+# holding the URL can read it, and the source is in a public repository.
+User-agent: *
+Disallow: /numericists/
