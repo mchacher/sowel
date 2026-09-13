@@ -3060,7 +3060,7 @@ describe("re-adopting a load running outside arbitration (#958)", () => {
     // nobody had touched since.
     const h = makeHarness();
     h.feedState("pump", true);
-    h.order("pump", true, { kind: "manual", userId: "u1" });
+    h.order("pump", true, { kind: "manual" });
     h.run(-100, 60);
     expect(h.arbiter.getPublicState().suspensions[0]?.equipmentId).toBe("pump");
 
