@@ -98,9 +98,13 @@ describe("buildLoadTimelines (spec 148)", () => {
     expect(load.quarters).toEqual(["pending", "unmanaged", "pending", "pending"]);
   });
 
-  it("maps suspended and unclaimed-run to 'unmanaged'", () => {
+  it("maps a legacy suspended entry to 'suspended', unclaimed-run to 'unmanaged'", () => {
+    // A legacy row carries no `running`. Before #960 it fell back to
+    // "unmanaged" for want of anywhere better; now it reads as what it was —
+    // a suspension. Only a row that says, explicitly, that the load was left
+    // OFF still paints the idle tint.
     const [a] = buildLoadTimelines([dec(5, "suspended")], LOADS, START, END);
-    expect(a.quarters).toEqual(["unmanaged", "unmanaged", "unmanaged", "unmanaged"]);
+    expect(a.quarters).toEqual(["suspended", "suspended", "suspended", "suspended"]);
     const [b] = buildLoadTimelines(
       [dec(5, "unclaimed-run"), dec(50, "unclaimed-run-ended")],
       LOADS,
@@ -190,9 +194,12 @@ describe("buildLoadTimelines (issue #535) — an OFF load must not read 'unmanag
     expect(load.quarters).toEqual(["idle", "idle", "idle", "idle"]);
   });
 
-  it("keeps a suspension that left the load on (running=true) as unmanaged", () => {
+  it("#960 — a suspension that left the load on reads 'suspended', not 'unmanaged'", () => {
+    // Two different situations with two different remedies: "the arbiter has
+    // stepped aside after somebody acted" clears with "resume control now",
+    // "running outside arbitration" does not.
     const [load] = buildLoadTimelines([dec(5, "suspended", "pac", true)], LOADS, START, END);
-    expect(load.quarters).toEqual(["unmanaged", "unmanaged", "unmanaged", "unmanaged"]);
+    expect(load.quarters).toEqual(["suspended", "suspended", "suspended", "suspended"]);
   });
 
   it("maps resumed on an OFF load to idle, not granted", () => {
@@ -204,7 +211,7 @@ describe("buildLoadTimelines (issue #535) — an OFF load must not read 'unmanag
       START,
       END,
     );
-    expect(load.quarters).toEqual(["unmanaged", "idle", "idle", "idle"]);
+    expect(load.quarters).toEqual(["suspended", "idle", "idle", "idle"]);
   });
 
   it("maps resumed on a still-running load to unmanaged (no grant yet)", () => {
@@ -260,7 +267,7 @@ describe("a denied claim is an audit event, not a transition (#959)", () => {
     expect(sustainedAfter("denied")).toBeNull();
   });
 
-  it("keeps a suspended load that is running painted 'unmanaged'", () => {
+  it("keeps a suspended load that is running painted 'suspended'", () => {
     // Reference installation, 2026-09-13: the pool pump was started by hand, so
     // the arbiter suspended it `wall-switch-on` (running: true → "marche hors
     // arbitrage"). The recipe holding it retries its claim every 15 min and is
@@ -272,7 +279,7 @@ describe("a denied claim is an audit event, not a transition (#959)", () => {
       START,
       END,
     );
-    expect(load.quarters).toEqual(["unmanaged", "unmanaged", "unmanaged", "unmanaged"]);
+    expect(load.quarters).toEqual(["suspended", "suspended", "suspended", "suspended"]);
   });
 
   it("does not resurrect a state a real transition has ended", () => {

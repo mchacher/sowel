@@ -45,7 +45,7 @@ Trois points de contact, par ordre croissant de « vous n'en aurez probablement 
 - **Votre main gagne toujours.** Allumez ou éteignez une charge à la main : l'arbitre s'efface pour cette charge pendant deux heures, puis reprend discrètement. Il ne se bat jamais contre vous.
 - **Pas de cycles courts.** Une charge accordée tourne une durée minimale avant de pouvoir être retirée, et se repose une durée minimale avant d'être ré-accordée. Les compresseurs et les garnitures de pompe coûtent cher ; les faire clignoter pour courir après les nuages n'est pas de l'optimisation.
 - **La puissance réelle, pas la puissance déclarée.** L'arbitre apprend ce que chaque charge consomme vraiment au fil de ses marches et budgète avec la mesure : une pompe déclarée à 600 W qui tire en réalité 650 W ne pousse pas silencieusement la maison vers l'import.
-- **Il échoue du bon côté.** Si le compteur devient muet, l'arbitre cesse d'accorder. Si l'état réel d'une charge contredit sa décision, parce que quelqu'un a utilisé l'interrupteur mural, il se retire plutôt que de se battre contre le mur.
+- **Il échoue du bon côté.** Si le compteur devient muet, l'arbitre cesse d'accorder. Si l'état réel d'une charge contredit sa décision, parce que quelqu'un a utilisé l'interrupteur mural, il se retire plutôt que de se battre contre le mur. La frise le dit dans sa propre couleur, **pilotage manuel** : une charge dont l'arbitre s'est retiré n'est pas la même chose qu'une charge qui tourne simplement hors arbitrage, et seule la première se règle avec « reprendre le pilotage ».
 
 ---
 

@@ -45,7 +45,7 @@ Three touchpoints, in increasing order of "you will probably never need this":
 - **Your hand always wins.** Switch a load on or off manually and the arbiter steps aside for that load for two hours, then quietly resumes. It never fights you.
 - **No short-cycling.** A granted load runs a minimum duration before it can be revoked, and rests a minimum duration before it can be re-granted. Compressors and pump seals are expensive; ping-ponging them to chase clouds is not optimization.
 - **Real power, not declared power.** The arbiter learns what each load actually draws across its runs and budgets with the measured figure, so a pump declared at 600 W that really pulls 650 W doesn't silently push the house into import.
-- **It fails safe.** If the grid meter goes silent, the arbiter stops granting. If a load's real state contradicts its decision, because someone used the wall switch, it backs off rather than fighting the wall.
+- **It fails safe.** If the grid meter goes silent, the arbiter stops granting. If a load's real state contradicts its decision, because someone used the wall switch, it backs off rather than fighting the wall. The timeline says so in its own colour, **manual control**: a load the arbiter has stepped aside from is not the same thing as a load simply running outside arbitration, and only the first one clears with "resume control now".
 
 ---
 

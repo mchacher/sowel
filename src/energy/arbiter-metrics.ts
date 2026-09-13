@@ -203,7 +203,14 @@ function accumulateSpans(
       case "pending":
         row.pendingS += s;
         break;
+      // #960 — `suspended` split off from `unmanaged` for the timeline only. It
+      // counts here exactly as it did before: a suspension that leaves the load
+      // running IS time the load ran outside the arbiter's control, and moving
+      // it would silently re-baseline every `unmanagedS` row. Time under a
+      // suspension keeps its own figure in `suspendedS` as well, tracked
+      // separately from the sustained state (see accumulateSuspended).
       case "unmanaged":
+      case "suspended":
         row.unmanagedS += s;
         break;
       // "revoked" is a marker the timeline paints on a quarter that contains a

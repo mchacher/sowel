@@ -148,3 +148,32 @@ describe("displayState — dormancy applied once, for both halves (#577)", () =>
     expect(displayState("pending", false)).toBe("pending");
   });
 });
+
+describe("#960 — 'pilotage manuel' is a state of its own", () => {
+  it("gives suspended a hue distinct from every other state", () => {
+    const others: ArbiterQuarterState[] = [
+      "granted",
+      "granted-idle",
+      "pending",
+      "revoked",
+      "unmanaged",
+      "idle",
+    ];
+    for (const s of others) {
+      expect(loadStateColor("suspended")).not.toBe(loadStateColor(s));
+    }
+  });
+
+  it("no longer borrows the idle grey it used to share", () => {
+    // The reported confusion: a pump suspended AND running painted slate, then
+    // the idle grey, and the reader could not tell either from the real thing.
+    expect(loadStateColor("suspended")).not.toBe(loadStateColor("idle"));
+    expect(cellColor("suspended")).not.toBe(cellColor("idle"));
+    expect(cellColor("suspended")).not.toBe(cellColor("unmanaged"));
+  });
+
+  it("paints the ribbon cell in the same family as the pill", () => {
+    expect(cellColor("suspended")).toContain("--color-primary");
+    expect(loadStateColor("suspended")).toContain("--color-primary");
+  });
+});

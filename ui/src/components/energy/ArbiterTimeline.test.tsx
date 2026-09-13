@@ -155,3 +155,13 @@ describe("ArbiterTimeline live refresh (#514)", () => {
     expect(screen.queryByText("LIVE")).toBeNull();
   });
 });
+
+describe("#960 — the legend carries 'pilotage manuel'", () => {
+  it("advertises the suspended state alongside the others", async () => {
+    mockTimeline.mockResolvedValue(timelineData());
+    render(<ArbiterTimeline />);
+    await act(async () => {});
+    expect(screen.getByText("Manual control")).toBeTruthy();
+    expect(screen.getByText("Running (unmanaged)")).toBeTruthy();
+  });
+});

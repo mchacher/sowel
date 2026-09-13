@@ -50,15 +50,15 @@ function hhmm(ms: number): string {
 }
 
 /** Spec 165 — the states the ribbon can paint, in reading order. `suspended`
- *  is absent on purpose: the ribbon folds it into idle/unmanaged (spec 165
- *  non-goal), so advertising it in the legend would promise a colour that
- *  never appears. */
+ *  joined them in #960: it used to borrow the slate of `unmanaged` or the idle
+ *  tint, so the ribbon could not say that the arbiter had stepped aside. */
 const LEGEND_STATES: ArbiterQuarterState[] = [
   "granted",
   "granted-idle",
   "pending",
   "revoked",
   "unmanaged",
+  "suspended",
 ];
 
 export function ArbiterTimeline() {

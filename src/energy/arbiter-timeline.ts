@@ -17,7 +17,18 @@ import type { ArbiterDecision } from "../shared/types.js";
 // stays in the journal (the UI links a cell click to the journal).
 
 export type QuarterState =
-  "granted" | "granted-idle" | "pending" | "revoked" | "unmanaged" | "idle";
+  | "granted"
+  | "granted-idle"
+  | "pending"
+  | "revoked"
+  | "unmanaged"
+  // #960 — the arbiter has stepped aside for this load after somebody acted on
+  // it directly. It used to borrow another cell's colour (slate when the load
+  // was running, the idle tint when it was not), so a reader could not tell
+  // "running, and the arbiter is standing down for two hours" from "running,
+  // outside arbitration" — two situations with different remedies.
+  | "suspended"
+  | "idle";
 
 export interface TimelineLoad {
   equipmentId: string;
@@ -64,8 +75,12 @@ export function sustainedAfter(
     // A suspension caused by an OFF order (manual OFF, wall-switch-off) leaves
     // the load stopped — painting it "on outside arbitration" was issue #535.
     // Legacy entries (no `running`) keep the historical "unmanaged" reading.
+    // #960 — a suspension that leaves the load OFF keeps painting the idle
+    // tint: the lane is empty because nothing is running, which is what the
+    // ribbon is there to show, and the roster and the journal carry the
+    // suspension. A suspension that leaves it RUNNING gets its own state.
     case "suspended":
-      return running === false ? "idle" : "unmanaged";
+      return running === false ? "idle" : "suspended";
     case "unclaimed-run":
       return "unmanaged";
     // Audit-only events emitted *while another state already holds* — NOT

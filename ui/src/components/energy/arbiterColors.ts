@@ -18,7 +18,12 @@ const HUE: Record<ArbiterQuarterState, string> = {
   pending: "var(--color-warning)", // en attente de surplus
   revoked: "var(--color-error)", // surplus retiré
   unmanaged: "var(--color-slate)", // marche (hors arbitrage)
-  suspended: "var(--color-text-tertiary)", // suspendu — roster only
+  // #960 — "pilotage manuel": the arbiter has stepped aside because somebody
+  // acted on this load directly. Its own hue, and deliberately the house blue
+  // rather than another grey: it is a state a person caused and a person can
+  // end ("reprendre le pilotage"), unlike the slate of a load simply running
+  // outside arbitration.
+  suspended: "var(--color-primary)",
   idle: "var(--color-text-tertiary)", // au repos
 };
 
@@ -49,7 +54,9 @@ const CELL_FILL: Record<ArbiterQuarterState, string> = {
   pending: PENDING_FILL,
   revoked: HUE.revoked,
   unmanaged: HUE.unmanaged,
-  suspended: HUE.suspended,
+  // Tinted rather than solid: the ribbon is read as a band, and a wall of
+  // brand blue would out-shout the grants it sits next to.
+  suspended: "color-mix(in srgb, var(--color-primary) 60%, transparent)",
   idle: IDLE_FILL,
 };
 

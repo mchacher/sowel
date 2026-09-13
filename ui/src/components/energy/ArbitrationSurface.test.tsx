@@ -148,7 +148,7 @@ describe("ArbitrationSurface roster (#561, spec 165)", () => {
     });
     render(<ArbitrationSurface />);
 
-    expect(screen.getByText("Suspended")).toBeTruthy();
+    expect(screen.getByText("Manual control")).toBeTruthy();
     expect(screen.queryByText("600 W")).toBeNull();
     expect(screen.queryByText("300 W")).toBeNull();
   });
