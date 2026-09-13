@@ -21,6 +21,25 @@ version: 2
 # peers on <6.1.0, and 7.0 ships no programmatic compiler API), and it must not
 # be able to hold the rest of the toolchain hostage.
 #
+# `*-vitest` is the exception to that rule, and exists because "majors stay
+# individual" is wrong for packages that peer-lock to an exact version.
+# `@vitest/coverage-v8@5.0.0` declares `peer vitest@"5.0.0"` — not a range, the
+# exact version — so vitest 5 split across two PRs (#947, #948) gave two runs
+# that each failed `npm ci` with ERESOLVE, neither landable alone and neither
+# telling you that the other was the missing half. Same failure as the six
+# eslint PRs of #797, one layer up: there it was minors, here it is the major
+# the individual-major rule deliberately ungrouped. A version-locked family
+# travels in one PR whatever the update type, so this group sets no
+# `update-types` at all.
+#
+# It is declared first because a dependency joins the FIRST group it matches,
+# and the members are also excluded from `*-minor-patch` below: either alone
+# would do, and stating both means a reordering cannot quietly split the family
+# back apart. `/ui` carries no `@vitest/*` package today, so its group holds
+# one member and changes nothing until it does — the two ecosystems are kept
+# symmetrical on purpose, so that adding `@vitest/coverage-v8` to the UI suite
+# is a one-line change and not a rediscovery of this bug.
+#
 # The schedule stays weekly. The current backlog is the one-off catch-up from
 # turning Dependabot on, not the steady-state rate, and stretching the interval
 # would slow security patches to fix a problem grouping solves better.
@@ -35,6 +54,10 @@ updates:
     labels:
       - "dependencies"
     groups:
+      backend-vitest:
+        patterns:
+          - "vitest"
+          - "@vitest/*"
       backend-minor-patch:
         exclude-patterns:
           - "eslint"
@@ -44,6 +67,8 @@ updates:
           - "@typescript-eslint/*"
           - "prettier"
           - "typescript"
+          - "vitest"
+          - "@vitest/*"
         update-types:
           - "minor"
           - "patch"
@@ -69,6 +94,10 @@ updates:
     labels:
       - "dependencies"
     groups:
+      ui-vitest:
+        patterns:
+          - "vitest"
+          - "@vitest/*"
       ui-minor-patch:
         exclude-patterns:
           - "eslint"
@@ -78,6 +107,8 @@ updates:
           - "@typescript-eslint/*"
           - "prettier"
           - "typescript"
+          - "vitest"
+          - "@vitest/*"
         update-types:
           - "minor"
           - "patch"
