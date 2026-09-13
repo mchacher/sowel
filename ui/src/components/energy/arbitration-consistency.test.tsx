@@ -85,7 +85,17 @@ describe("spec 165 — the two halves of the surface agree", () => {
     mockTimeline.mockReset();
   });
 
-  const CASES: ArbiterLoadState[] = ["granted", "granted-idle", "pending", "unmanaged", "idle"];
+  // #960 — `suspended` joined the list: the ribbon used to fold it into
+  // unmanaged or idle while the pill said "Pilotage manuel", which is the very
+  // divergence this file exists to forbid.
+  const CASES: ArbiterLoadState[] = [
+    "granted",
+    "granted-idle",
+    "pending",
+    "unmanaged",
+    "suspended",
+    "idle",
+  ];
 
   for (const state of CASES) {
     it(`says the same word in the pill and on the ribbon for "${state}"`, async () => {

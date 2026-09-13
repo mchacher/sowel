@@ -187,11 +187,14 @@ describe("buildLoadTimelines (spec 164) — a grant nothing consumes", () => {
 });
 
 describe("buildLoadTimelines (issue #535) — an OFF load must not read 'unmanaged'", () => {
-  it("maps a suspension that switched the load off (running=false) to idle", () => {
+  it("maps a suspension that switched the load off (running=false) to suspended", () => {
     // A manual OFF order suspends arbitration — but the load is stopped, so
-    // the lane must not paint "on outside arbitration" for the whole TTL.
+    // the lane must not paint "on outside arbitration" for the whole TTL. Since
+    // #960 it does not: it paints `suspended`, which is neither, and which is
+    // also what the roster pill says for the same load at the same instant.
     const [load] = buildLoadTimelines([dec(5, "suspended", "pac", false)], LOADS, START, END);
-    expect(load.quarters).toEqual(["idle", "idle", "idle", "idle"]);
+    expect(load.quarters).toEqual(["suspended", "suspended", "suspended", "suspended"]);
+    expect(load.quarters).not.toContain("unmanaged");
   });
 
   it("#960 — a suspension that left the load on reads 'suspended', not 'unmanaged'", () => {

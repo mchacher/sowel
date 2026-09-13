@@ -37,8 +37,10 @@ describe("journalDotColor (spec 148)", () => {
     expect(journalDotColor("revoke-not-honored")).toBe("var(--color-error)");
   });
 
-  it("merges suspended (manual) and unclaimed-run into the slate token", () => {
-    expect(journalDotColor("suspended")).toBe("var(--color-slate)");
+  it("keeps unclaimed-run on the slate token, suspended on its own (#960)", () => {
+    // #960 — a cell click scrolls the journal to the row that explains it, so
+    // the row must not be painted as a different state than the cell.
+    expect(journalDotColor("suspended")).toBe("var(--color-primary)");
     expect(journalDotColor("unclaimed-run")).toBe("var(--color-slate)");
     expect(journalDotColor("watts-divergence")).toBe("var(--color-slate)");
   });
@@ -151,6 +153,9 @@ describe("displayState — dormancy applied once, for both halves (#577)", () =>
 
 describe("#960 — 'pilotage manuel' is a state of its own", () => {
   it("gives suspended a hue distinct from every other state", () => {
+    // Token-level only: this cannot catch two tokens that resolve to similar
+    // colours. The review measured the pair that matters — suspended against
+    // the slate of `unmanaged` — and the fill is solid for that reason.
     const others: ArbiterQuarterState[] = [
       "granted",
       "granted-idle",
@@ -172,8 +177,11 @@ describe("#960 — 'pilotage manuel' is a state of its own", () => {
     expect(cellColor("suspended")).not.toBe(cellColor("unmanaged"));
   });
 
-  it("paints the ribbon cell in the same family as the pill", () => {
-    expect(cellColor("suspended")).toContain("--color-primary");
+  it("paints the ribbon cell in the same solid hue as the pill", () => {
+    // Solid, not a tint: a 60 % mix measured ΔE 11 from the slate of
+    // `unmanaged` on the light surface, the two states a reader most needs to
+    // tell apart, and they sit next to each other in the legend.
+    expect(cellColor("suspended")).toBe(loadStateColor("suspended"));
     expect(loadStateColor("suspended")).toContain("--color-primary");
   });
 });

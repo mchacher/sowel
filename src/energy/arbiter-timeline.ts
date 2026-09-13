@@ -8,7 +8,8 @@ import type { ArbiterDecision } from "../shared/types.js";
 //   "granted-idle" — accordé, mais rien ne le consomme (spec 164)
 //   "pending"   — en attente (claiming surplus, none granted yet) — #561
 //   "revoked"   — surplus retiré (a revoke happened in this quarter)
-//   "unmanaged" — On (hors arbitrage): manual override or unclaimed run
+//   "suspended" — pilotage manuel (the arbiter has stood down, #960)
+//   "unmanaged" — On (hors arbitrage): a run nobody claimed
 //   "idle"      — off / not managed
 //
 // Loads don't oscillate, so a quarter shows the *sustained* state at its end,
@@ -72,15 +73,17 @@ export function sustainedAfter(
     case "unclaimed-run-ended":
     case "reset": // #604 — a restart closed an open grant/pending claim → idle
       return "idle";
-    // A suspension caused by an OFF order (manual OFF, wall-switch-off) leaves
-    // the load stopped — painting it "on outside arbitration" was issue #535.
-    // Legacy entries (no `running`) keep the historical "unmanaged" reading.
-    // #960 — a suspension that leaves the load OFF keeps painting the idle
-    // tint: the lane is empty because nothing is running, which is what the
-    // ribbon is there to show, and the roster and the journal carry the
-    // suspension. A suspension that leaves it RUNNING gets its own state.
+
+    // #960 — whichever way the switch went, the arbiter has stood down, and
+    // that is what the cell has to say. Splitting on `running` was tried and
+    // reverted in review: `resolveLoadState` returns `suspended`
+    // unconditionally, so the roster pill and the ribbon said different words
+    // about the same load at the same instant — the exact divergence spec 165
+    // introduced the shared union to make impossible. The #535 concern (an OFF
+    // load must not read "on outside arbitration") is still honoured: the
+    // state is no longer `unmanaged`, it is its own.
     case "suspended":
-      return running === false ? "idle" : "suspended";
+      return "suspended";
     case "unclaimed-run":
       return "unmanaged";
     // Audit-only events emitted *while another state already holds* — NOT

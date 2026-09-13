@@ -539,7 +539,8 @@ export interface ArbiterPublicState {
 /**
  * Spec 148 (Phase B) — the Energy → arbitrage timeline read model. A step also
  * carries `revoked`: an EVENT inside the step, never a state a load is in. The
- * ribbon never emits `suspended` (spec 165 non-goal).
+ * ribbon has emitted `suspended` since #960 (it used to fold into
+ * unmanaged/idle).
  */
 export type ArbiterQuarterState = ArbiterLoadState | "revoked";
 

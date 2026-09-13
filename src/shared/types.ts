@@ -1145,9 +1145,11 @@ export interface ArbiterPublicState {
  * additionally carries `revoked`: an EVENT inside the step, which wins the cell
  * over the sustained state, and is never a state a load is in.
  *
- * The union is shared with the roster (spec 165); the ribbon simply never emits
- * `suspended` — a suspension keeps painting idle/unmanaged there, because
- * splitting it out would move time between the spec 158 metric buckets.
+ * The union is shared with the roster (spec 165). Until #960 the ribbon never
+ * emitted `suspended`: a suspension painted idle or unmanaged there, because
+ * splitting it out would have moved time between the spec 158 metric buckets.
+ * It has its own cell now, and the buckets did not move — `arbiter-metrics.ts`
+ * translates the state back before counting (`metricState`).
  */
 export type ArbiterQuarterState = ArbiterLoadState | "revoked";
 

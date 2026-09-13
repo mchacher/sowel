@@ -46,17 +46,19 @@ export const GRANTED_IDLE_FILL = "color-mix(in srgb, var(--color-solar-auto) 35%
 export const IDLE_FILL = "color-mix(in srgb, var(--color-text-tertiary) 15%, transparent)";
 
 /** Spec 148 — the ribbon-cell fill per state: the hue above, dimmed where the
- *  state is a background one. `suspended` is here for exhaustiveness only; the
- *  ribbon never emits it (spec 165 non-goal). */
+ *  state is a background one. `suspended` has been a state the ribbon emits
+ *  since #960; it used to be here for exhaustiveness only. */
 const CELL_FILL: Record<ArbiterQuarterState, string> = {
   granted: HUE.granted,
   "granted-idle": GRANTED_IDLE_FILL,
   pending: PENDING_FILL,
   revoked: HUE.revoked,
   unmanaged: HUE.unmanaged,
-  // Tinted rather than solid: the ribbon is read as a band, and a wall of
-  // brand blue would out-shout the grants it sits next to.
-  suspended: "color-mix(in srgb, var(--color-primary) 60%, transparent)",
+  // Solid, like `unmanaged` and `revoked`. A 60 % tint was tried and measured
+  // in review at ΔE 11 from the slate of `unmanaged` on the light surface —
+  // three times closer than any other pair, and the two sit next to each other
+  // in the legend. The state it must be told apart from is exactly that one.
+  suspended: HUE.suspended,
   idle: IDLE_FILL,
 };
 
@@ -88,8 +90,8 @@ export function displayState(s: ArbiterLoadState, dormant: boolean): ArbiterLoad
 /**
  * Spec 148 — map an arbiter decision kind to its journal-dot color token.
  *
- * The "manual" (override / suspended) and "unclaimed-run" kinds merge into a
- * single "On (hors arbitrage)" state, rendered with the slate token; the journal
+ * The "unclaimed-run" kind renders with the slate token of "On (hors
+ * arbitrage)"; a suspension has carried its own colour since #960. The journal
  * row text still spells out the precise cause. All colors are CSS variables so
  * they follow the theme (dark-mode correct), unlike the previous hardcoded hex.
  */
@@ -105,7 +107,10 @@ export function journalDotColor(kind: ArbiterDecision["kind"]): string {
     case "revoked":
     case "revoke-not-honored":
       return "var(--color-error)"; // surplus retiré
+    // #960 — the row that EXPLAINS a manual-control cell must not be painted
+    // as something else: a cell click scrolls the journal to it.
     case "suspended":
+      return "var(--color-primary)"; // pilotage manuel
     case "unclaimed-run":
     case "watts-divergence":
       return "var(--color-slate)"; // On (hors arbitrage)

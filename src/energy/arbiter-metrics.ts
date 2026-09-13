@@ -15,6 +15,22 @@ import type { ArbiterDecision } from "../shared/types.js";
 import type { SurplusSample } from "./arbiter-surplus-store.js";
 import { sustainedAfter, type QuarterState } from "./arbiter-timeline.js";
 
+/**
+ * #960 — the timeline gained a `suspended` state of its own. The metrics must
+ * NOT move with it: `unmanagedS` and `idleClaimableExportWh` are published
+ * series compared against their own history, so re-baselining them to paint a
+ * cell differently would be the wrong trade. A suspension is bucketed here
+ * exactly as it was before the split — the load was running outside the
+ * arbiter's control, or it was at rest — using the same `running` flag the
+ * journal entry carries. Time under a suspension keeps its own figure in
+ * `suspendedS`, tracked separately from the sustained state.
+ */
+function metricState(kind: ArbiterDecision["kind"], running?: boolean): QuarterState | null {
+  const state = sustainedAfter(kind, running);
+  if (state !== "suspended") return state;
+  return running === false ? "idle" : "unmanaged";
+}
+
 /** Cadence of the persisted surplus series (spec 148 writes one per 5 min). */
 export const SURPLUS_SAMPLE_S = 300;
 
@@ -203,14 +219,7 @@ function accumulateSpans(
       case "pending":
         row.pendingS += s;
         break;
-      // #960 — `suspended` split off from `unmanaged` for the timeline only. It
-      // counts here exactly as it did before: a suspension that leaves the load
-      // running IS time the load ran outside the arbiter's control, and moving
-      // it would silently re-baseline every `unmanagedS` row. Time under a
-      // suspension keeps its own figure in `suspendedS` as well, tracked
-      // separately from the sustained state (see accumulateSuspended).
       case "unmanaged":
-      case "suspended":
         row.unmanagedS += s;
         break;
       // "revoked" is a marker the timeline paints on a quarter that contains a
@@ -224,14 +233,14 @@ function accumulateSpans(
   let idx = 0;
   // Entering state: replay everything strictly before the window.
   while (idx < events.length && events[idx].at < dayStartMs) {
-    const next = sustainedAfter(events[idx].kind, events[idx].running);
+    const next = metricState(events[idx].kind, events[idx].running);
     if (next) sustained = next;
     idx += 1;
   }
 
   let cursor = dayStartMs;
   for (; idx < events.length && events[idx].at < dayEndMs; idx += 1) {
-    const next = sustainedAfter(events[idx].kind, events[idx].running);
+    const next = metricState(events[idx].kind, events[idx].running);
     if (!next) continue; // audit-only event, the sustained state is unchanged
     add(sustained, events[idx].at - cursor);
     cursor = events[idx].at;
@@ -301,7 +310,7 @@ class StateCursor {
   /** State at `at`. Callers MUST pass ascending instants. */
   advanceTo(at: number): QuarterState {
     while (this.idx < this.events.length && this.events[this.idx].at <= at) {
-      const next = sustainedAfter(this.events[this.idx].kind, this.events[this.idx].running);
+      const next = metricState(this.events[this.idx].kind, this.events[this.idx].running);
       if (next) this.sustained = next;
       this.idx += 1;
     }

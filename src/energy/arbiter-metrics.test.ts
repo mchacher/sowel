@@ -593,3 +593,63 @@ describe("rollupDay — a suspension left open by a restart", () => {
     expect(row.suspendedS).toBe(3600); // 08:00 to the grant at 09:00
   });
 });
+
+describe("#960 — the timeline's new state moves no published figure", () => {
+  // Every five minutes, the cadence the rollup integrates on, so a two-hour
+  // suspension covers 24 samples instead of rounding away.
+  const steadySurplus = (): SurplusSample[] =>
+    Array.from({ length: 288 }, (_, i) => ({
+      at: midnight("2026-08-20") + i * 5 * 60_000,
+      availableW: 1500,
+    }));
+
+  it("keeps a running suspension out of the idle-claimable export", () => {
+    // The guard that was missing when `suspended` was split off: a suspended
+    // load that is RUNNING is drawing, outside arbitration, so the export it
+    // consumed is not an unseized opportunity. Reaching that exclusion list
+    // unlabelled billed it as one — and the rollup rewrites seven days of
+    // persisted history on the first restart after an upgrade.
+    const withNothing = rollupDay(input({ surplus: steadySurplus() }));
+    const withSuspension = rollupDay(
+      input({
+        decisions: [decision(at("2026-08-20", "08:00"), "suspended", { running: true })],
+        surplus: steadySurplus(),
+      }),
+    );
+    expect(withSuspension.home.idleClaimableExportWh).toBeLessThan(
+      withNothing.home.idleClaimableExportWh,
+    );
+    // The 24 samples inside the 2 h suspension, and only those.
+    const perSample = withNothing.home.idleClaimableExportWh / 288;
+    expect(withSuspension.home.idleClaimableExportWh).toBeCloseTo(perSample * 264, 6);
+  });
+
+  it("leaves the load's seconds where they were", () => {
+    // The whole point of `metricState`: the split is a display concern. A
+    // suspension that left the load running still reads as time it ran outside
+    // the arbiter's control, and still has its own figure beside it.
+    const row = pumpRow(
+      rollupDay(
+        input({
+          decisions: [decision(at("2026-08-20", "08:00"), "suspended", { running: true })],
+        }),
+      ),
+    );
+    expect(row.unmanagedS).toBe(7200); // bounded by overrideTtlS
+    expect(row.suspendedS).toBe(7200);
+    expect(row.grantedS).toBe(0);
+    expect(row.pendingS).toBe(0);
+  });
+
+  it("a suspension that left the load off counts no unmanaged time", () => {
+    const row = pumpRow(
+      rollupDay(
+        input({
+          decisions: [decision(at("2026-08-20", "08:00"), "suspended", { running: false })],
+        }),
+      ),
+    );
+    expect(row.unmanagedS).toBe(0);
+    expect(row.suspendedS).toBe(7200);
+  });
+});
