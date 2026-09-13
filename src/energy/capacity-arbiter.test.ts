@@ -3001,22 +3001,76 @@ describe("re-adopting a load running outside arbitration (#958)", () => {
     vi.useRealTimers();
   });
 
-  it("does not suspend a load somebody is claiming", () => {
-    // A claim needs engageHoldS (120 s) of sustained surplus before it can be
-    // granted, twice divergenceConfirmS (60 s). Suspending at 60 s denied the
-    // very claim that would have cleared `!granted`, so the contradiction the
-    // detector fired on could never resolve itself.
+  it("a standing claim does NOT remove the protection", () => {
+    // Deliberate: a recipe claiming through the whole solar day must not leave
+    // a load somebody switched on unprotected for the day. The first version of
+    // this fix skipped the detector while anything was claiming, and the
+    // arbiter then granted the load and revoked it out from under the person on
+    // the first deficit — the exact fight the detector exists to avoid.
     const h = makeHarness();
     h.feedState("pump", true); // started by hand, no grant, no recipe order
     h.claim("i1", { equipmentId: "pump" }); // a recipe asks for it
     h.feedMeter(-1000);
     h.run(-1000, 80); // past the confirm window
-    expect(h.arbiter.getPublicState().suspensions).toHaveLength(0);
-    h.run(-1000, 80); // past the engage hold
+    expect(h.arbiter.getPublicState().suspensions[0]?.equipmentId).toBe("pump");
+    expect(h.grantedEvents()).toHaveLength(0);
+  });
+
+  it("adopts the load back once the suspension has run its course", () => {
+    // The user-visible outcome, and the whole point of #958: after ONE
+    // suspension the load is arbitrable again, so a claim is granted and the
+    // load stops running on grid import.
+    const h = makeHarness();
+    h.feedState("pump", true); // started by hand
+    h.feedMeter(-1000);
+    h.run(-1000, 80);
+    expect(h.arbiter.getPublicState().suspensions[0]?.equipmentId).toBe("pump");
+
+    h.run(-1000, 2 * 3600 + 120); // the TTL expires, pump still running
+    h.claim("i1", { equipmentId: "pump" }); // the recipe asks again
+    h.run(-1000, 200); // past the engage hold, no second suspension in the way
     expect(h.grantedEvents()).toHaveLength(1);
     expect(h.arbiter.getPublicState().loads.find((l) => l.equipmentId === "pump")?.state).toBe(
       "granted",
     );
+  });
+
+  it("says the load is running outside arbitration once it is no longer suspended", () => {
+    // `unclaimedRunning` is fed by recipe ON orders only, so a load started by
+    // hand had nothing saying so after its suspension lapsed: the surface
+    // painted it "en attente" (or nothing) while it drew from the grid.
+    const h = makeHarness();
+    h.feedState("pump", true);
+    h.feedMeter(-100);
+    h.run(-100, 80);
+    h.run(-100, 2 * 3600 + 120); // TTL expires
+    h.run(-100, 120);
+    const unclaimed = h.arbiter
+      .getPublicState()
+      .journal.filter((j) => j.kind === "unclaimed-run" && j.equipmentId === "pump");
+    expect(unclaimed).toHaveLength(1);
+    expect(h.arbiter.getPublicState().loads.find((l) => l.equipmentId === "pump")?.state).toBe(
+      "unmanaged",
+    );
+  });
+
+  it("a manual order does not earn a phantom wall-switch suspension on top", () => {
+    // One button press used to cost four hours: `user-order` for the TTL, then
+    // the detector adding `wall-switch-on` 61 s after it expired, on a pump
+    // nobody had touched since.
+    const h = makeHarness();
+    h.feedState("pump", true);
+    h.order("pump", true, { kind: "manual", userId: "u1" });
+    h.run(-100, 60);
+    expect(h.arbiter.getPublicState().suspensions[0]?.equipmentId).toBe("pump");
+
+    h.run(-100, 2 * 3600 + 120); // TTL expires
+    h.run(-100, 300);
+    const reasons = h.arbiter
+      .getPublicState()
+      .journal.filter((j) => j.kind === "suspended" && j.equipmentId === "pump")
+      .map((j) => j.reason);
+    expect(reasons).toEqual(["user-order"]);
   });
 
   it("suspends an unclaimed load once, not once a minute", () => {

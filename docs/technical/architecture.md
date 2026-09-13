@@ -334,11 +334,12 @@ between declared flexible loads. Key invariants:
   suspension answers an **event**, not a standing condition (#958): a load left
   running outside arbitration earns one, and the same unchanged state never
   arms another — otherwise the TTL expired into an identical suspension a
-  minute later, for ever, and the load could never be adopted back. A load with
-  a pending claim is not suspended either: a claim needs `engageHoldS` (120 s)
-  of sustained surplus before it can be granted, twice `divergenceConfirmS`
-  (60 s), so suspending it denied the very claim that would have resolved the
-  contradiction.
+  minute later, for ever, and the load could never be adopted back. A pending claim
+  does not exempt a load: the protection is deferred by one TTL, never removed,
+  or a recipe claiming all day would leave a load somebody switched on open to
+  being revoked out from under them. Past its one suspension the load is
+  journaled `unclaimed-run`, which is what keeps the timeline and the daily
+  metrics from reading it as idle.
 - **Everything is journaled** (bounded ring, `GET /api/v1/energy/arbiter`) and
   surfaced on Energy → Live (allocation bar, day timeline, decision journal).
   Default off: `energy.arbiter.enabled = false` means zero behavior change.

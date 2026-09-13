@@ -1655,6 +1655,15 @@ export class CapacityArbiter {
 
   private suspend(equipmentId: string, why: string, running?: boolean): void {
     this.clearDrawState(equipmentId);
+    // #958 — remember the standing state this suspension answers, so the same
+    // unchanged state cannot arm another one when the TTL expires. Written for
+    // EVERY suspension of a load that is on, not only wall events: a manual
+    // order suspended a running load for its TTL and the detector then added a
+    // phantom `wall-switch-on` 61 s later, doubling one button press into four
+    // hours. `running === false` (a wall-off, a manual off) writes nothing —
+    // the load is not running, so there is no standing contradiction to hold.
+    const observedOn = running ?? this.reportedOnOff.get(equipmentId);
+    if (observedOn === true) this.wallOnSuspendedWhile.set(equipmentId, true);
     const until = Date.now() + this.config.overrideTtlS * 1000;
     this.overridesUntil.set(equipmentId, until);
     const granted = this.grantedClaimFor(equipmentId);
@@ -1853,21 +1862,33 @@ export class CapacityArbiter {
       // turned on but that reports off (recipeOn === true) is the actuation lag
       // the confirm window exists to absorb, not a divergence to punish.
       const wallOff = granted && !reportedOn && recipeOn !== false;
-      // #958 — two things are not a wall event either, and both used to make a
-      // load running outside arbitration impossible to adopt back:
-      //  - Somebody is CLAIMING it. The load is not abandoned, and a claim
-      //    needs `engageHoldS` (120 s) of sustained surplus before it can be
-      //    granted — twice `divergenceConfirmS` (60 s). Suspending at 60 s
-      //    denied the very claim that would have cleared `!granted`, so the
-      //    contradiction the detector fired on could never be resolved.
-      //  - The SAME standing state that already earned a suspension. The TTL
-      //    then expired into an identical suspension a minute later, for ever,
-      //    and "reprendre le pilotage" lifted one only to see the next arrive
-      //    62 s on. A suspension answers an event, not a condition.
-      const claimed = this.pendingClaimFor(equipmentId) !== undefined;
+      // #958 — a suspension answers an EVENT, not the standing state it leaves
+      // behind. The same unchanged state must never arm a second one: the TTL
+      // expired into an identical suspension a minute later, for ever, so the
+      // load could never be adopted back, and "resume control now" was undone
+      // 62 s after every press.
+      //
+      // Deliberately NOT also skipped while something is claiming the load. A
+      // recipe that claims through the whole solar day would leave a load a
+      // person switched on unprotected for the day, and the arbiter would
+      // revoke it out from under them on the first deficit — the exact fight
+      // this detector exists to avoid. The protection is deferred by one TTL,
+      // never removed.
+      const wallOnRaw = !granted && reportedOn && recipeOn !== true;
       const alreadySuspendedForThis = this.wallOnSuspendedWhile.get(equipmentId) === reportedOn;
-      const wallOn =
-        !granted && reportedOn && recipeOn !== true && !claimed && !alreadySuspendedForThis;
+      const wallOn = wallOnRaw && !alreadySuspendedForThis;
+      // Past its one suspension the load IS running outside arbitration, and
+      // nothing else says so: `unclaimedRunning` is fed by recipe ON orders
+      // only, so a load somebody started by hand left the surface painting it
+      // "en attente" — or nothing at all — while it drew from the grid.
+      if (wallOnRaw && alreadySuspendedForThis && !this.unclaimedRunning.has(equipmentId)) {
+        this.unclaimedRunning.add(equipmentId);
+        this.journal({
+          kind: "unclaimed-run",
+          equipmentId,
+          reason: "running outside arbitration",
+        });
+      }
       if (!wallOff && !wallOn) {
         this.divergenceSince.delete(equipmentId);
         continue;
@@ -1878,9 +1899,6 @@ export class CapacityArbiter {
       this.divergenceSince.set(equipmentId, since);
       if (now - since < confirmMs) continue;
       this.divergenceSince.delete(equipmentId);
-      // #958 — remember the state this suspension answers, so the same standing
-      // contradiction cannot arm another one when the TTL expires.
-      if (wallOn) this.wallOnSuspendedWhile.set(equipmentId, reportedOn);
       // Stable codes (not free text) so the UI journal can translate them.
       // wallOn ⇔ the load is on: exactly one of wallOff/wallOn holds here.
       this.suspend(equipmentId, wallOff ? "wall-switch-off" : "wall-switch-on", wallOn);
