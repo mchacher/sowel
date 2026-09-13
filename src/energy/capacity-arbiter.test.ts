@@ -2989,3 +2989,93 @@ describe("roster need and shortfall (#807)", () => {
     expect(row(h, "pump")?.needW).toBe(850); // 600 + 250 - 0
   });
 });
+
+// ── #958 — a load running outside arbitration must be adoptable again ─────
+
+describe("re-adopting a load running outside arbitration (#958)", () => {
+  beforeEach(() => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date("2026-09-13T10:00:00Z"));
+  });
+  afterEach(() => {
+    vi.useRealTimers();
+  });
+
+  it("does not suspend a load somebody is claiming", () => {
+    // A claim needs engageHoldS (120 s) of sustained surplus before it can be
+    // granted, twice divergenceConfirmS (60 s). Suspending at 60 s denied the
+    // very claim that would have cleared `!granted`, so the contradiction the
+    // detector fired on could never resolve itself.
+    const h = makeHarness();
+    h.feedState("pump", true); // started by hand, no grant, no recipe order
+    h.claim("i1", { equipmentId: "pump" }); // a recipe asks for it
+    h.feedMeter(-1000);
+    h.run(-1000, 80); // past the confirm window
+    expect(h.arbiter.getPublicState().suspensions).toHaveLength(0);
+    h.run(-1000, 80); // past the engage hold
+    expect(h.grantedEvents()).toHaveLength(1);
+    expect(h.arbiter.getPublicState().loads.find((l) => l.equipmentId === "pump")?.state).toBe(
+      "granted",
+    );
+  });
+
+  it("suspends an unclaimed load once, not once a minute", () => {
+    // The reference installation, 2026-09-13: the pool pump was started at the
+    // wall at 10:38 and stayed on. Every expiry of the 2 h TTL was followed by
+    // an identical suspension a minute later, so the load could never be
+    // claimed back — every claim was denied `override-active`.
+    const h = makeHarness();
+    h.feedMeter(-100);
+    h.feedState("pump", true);
+    h.run(-100, 80);
+    expect(h.arbiter.getPublicState().suspensions[0]?.equipmentId).toBe("pump");
+
+    // The TTL expires (2 h by default) with the pump still running, untouched.
+    h.run(-100, 2 * 3600 + 120);
+    expect(h.arbiter.getPublicState().suspensions).toHaveLength(0);
+    // …and the same standing state does not arm a second one.
+    h.run(-100, 300);
+    expect(h.arbiter.getPublicState().suspensions).toHaveLength(0);
+  });
+
+  it("re-arms on a genuine state change", () => {
+    // The memory is about a standing state, not an amnesty: switch the load
+    // off and on again at the wall and that is a new event.
+    const h = makeHarness();
+    h.feedMeter(-100);
+    h.feedState("pump", true);
+    h.run(-100, 80);
+    h.run(-100, 2 * 3600 + 120); // TTL expires
+    expect(h.arbiter.getPublicState().suspensions).toHaveLength(0);
+
+    h.feedState("pump", false);
+    h.run(-100, 20);
+    h.feedState("pump", true); // flipped on again
+    h.run(-100, 80);
+    expect(h.arbiter.getPublicState().suspensions[0]?.equipmentId).toBe("pump");
+  });
+
+  it("'resume control now' actually hands the load back", () => {
+    // Journal of the incident: resumed at 11:32:26, suspended again at
+    // 11:33:28 — 62 s later, every time. The button was inoperative for the one
+    // situation it exists for.
+    const h = makeHarness();
+    h.feedMeter(-100);
+    h.feedState("pump", true);
+    h.run(-100, 80);
+    expect(h.arbiter.getPublicState().suspensions[0]?.equipmentId).toBe("pump");
+
+    expect(h.arbiter.resumeEquipment("pump")).toBe(true);
+    h.run(-100, 300); // five minutes, well past the confirm window
+    expect(h.arbiter.getPublicState().suspensions).toHaveLength(0);
+  });
+
+  it("still suspends a load nobody is claiming when it is switched on at the wall", () => {
+    // The behaviour the detector exists for is untouched.
+    const h = makeHarness();
+    h.feedMeter(-100);
+    h.feedState("heater", true);
+    h.run(-100, 80);
+    expect(h.arbiter.getPublicState().suspensions[0]?.equipmentId).toBe("heater");
+  });
+});
