@@ -33,7 +33,7 @@
     "@fastify/websocket": "^11.3.0",
     "@influxdata/influxdb-client": "^1.35.0",
     "@types/archiver": "^8.0.0",
-    "adm-zip": "^0.6.0",
+    "adm-zip": "^0.6.1",
     "archiver": "^8.0.0",
     "bcrypt": "^6.0.0",
     "better-sqlite3": "^13.0.3",
