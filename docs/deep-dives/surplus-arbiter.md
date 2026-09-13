@@ -108,7 +108,7 @@ Priority is strict and yours: the list in Settings, top first for grants, bottom
 ### Failure modes and their answers
 
 - **Meter silence** → _stale after_ stops all granting; granted loads keep their state rather than being blind-revoked.
-- **A human at the wall switch** → _switch confirmation_ detects sustained divergence between decision and reality and suspends arbitration for that load; the journal says so.
+- **A human at the wall switch** → _switch confirmation_ detects sustained divergence between decision and reality and suspends arbitration for that load; the journal says so. A suspension answers that **event**, not the standing state it leaves behind: a load left running outside arbitration earns one suspension, and the same unchanged state never arms another. Otherwise the manual-override delay expired into an identical suspension a minute later, for ever, and the load could never be taken back — "resume control now" included, which was undone 62 s after every press. For the same reason a load with a claim waiting on it is not suspended: a claim needs _demand persistence_ before it can be granted, twice the switch confirmation, so suspending it denied the very claim that would have ended the contradiction.
 - **The load that lies about its power** → learned power replaces the declaration after a few runs (the profile card shows "Measured: N W over K runs").
 - **The 15:00 flapping band**, surplus hovering exactly around one load's need, is damped three times over: smoothing flattens the noise, holds demand persistence, min-run/min-rest floor the cycle length.
 
