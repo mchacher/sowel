@@ -254,3 +254,36 @@ describe("dormancy on the current cell (spec 165, #577)", () => {
     expect(load.quarters[3]).toBe("pending");
   });
 });
+
+describe("a denied claim is an audit event, not a transition (#959)", () => {
+  it("leaves the sustained state alone", () => {
+    expect(sustainedAfter("denied")).toBeNull();
+  });
+
+  it("keeps a suspended load that is running painted 'unmanaged'", () => {
+    // Reference installation, 2026-09-13: the pool pump was started by hand, so
+    // the arbiter suspended it `wall-switch-on` (running: true → "marche hors
+    // arbitrage"). The recipe holding it retries its claim every 15 min and is
+    // refused `override-active` every time. Each refusal used to repaint the
+    // load "au repos" — a pump drawing 600 W shown as an empty cell.
+    const [load] = buildLoadTimelines(
+      [dec(-5, "suspended", "pac", true), dec(20, "denied"), dec(50, "denied")],
+      LOADS,
+      START,
+      END,
+    );
+    expect(load.quarters).toEqual(["unmanaged", "unmanaged", "unmanaged", "unmanaged"]);
+  });
+
+  it("does not resurrect a state a real transition has ended", () => {
+    // The counterpart: a revoke DID end a claim, so the load is idle and a
+    // later denial must not paint it as anything else.
+    const [load] = buildLoadTimelines(
+      [dec(-5, "granted"), dec(20, "revoked"), dec(50, "denied")],
+      LOADS,
+      START,
+      END,
+    );
+    expect(load.quarters).toEqual(["granted", "revoked", "idle", "idle"]);
+  });
+});

@@ -58,7 +58,6 @@ export function sustainedAfter(
     case "revoked":
     case "revoke-not-honored":
     case "released":
-    case "denied":
     case "unclaimed-run-ended":
     case "reset": // #604 — a restart closed an open grant/pending claim → idle
       return "idle";
@@ -70,7 +69,12 @@ export function sustainedAfter(
     case "unclaimed-run":
       return "unmanaged";
     // Audit-only events emitted *while another state already holds* — NOT
-    // transitions. `watts-divergence` fires on a still-granted claim; a load's
+    // transitions. `denied` (#959) is journaled by `claimCapacity` INSTEAD of
+    // creating a claim, so there is no claim for it to end and nothing about
+    // the load has changed: reading it as "at rest" wiped a suspended load that
+    // was running back to idle on the next refused claim, which is a load
+    // drawing 600 W painted as an empty cell. `watts-divergence` fires on a
+    // still-granted claim; a load's
     // measured draw drifting must not repaint it from "accordé" to "hors
     // pilotage". `comfort-off-after-revoke` fires when a comfort load is
     // switched OFF after losing its grant — the load is off, so leaving the
