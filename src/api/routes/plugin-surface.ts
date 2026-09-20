@@ -134,16 +134,17 @@ function subPath(params: Record<string, unknown>): string {
 const UNSAFE_QUERY_KEYS = new Set(["__proto__", "constructor", "prototype"]);
 
 function queryOf(request: FastifyRequest): Record<string, string> {
-  // A null-prototype map, like the settings route does with a request body:
-  // nothing inherited can be mistaken for something the caller sent.
-  const out: Record<string, string> = Object.create(null) as Record<string, string>;
   const query = (request.query ?? {}) as Record<string, unknown>;
+  const pairs: [string, string][] = [];
   for (const [key, value] of Object.entries(query)) {
     if (UNSAFE_QUERY_KEYS.has(key)) continue;
-    if (typeof value === "string") out[key] = value;
-    else if (Array.isArray(value) && typeof value[0] === "string") out[key] = value[0];
+    if (typeof value === "string") pairs.push([key, value]);
+    else if (Array.isArray(value) && typeof value[0] === "string") pairs.push([key, value[0]]);
   }
-  return out;
+  // `Object.fromEntries`, not `out[key] = value`: it defines each key as an own
+  // data property instead of going through a setter, so no caller-chosen name
+  // can reach the object's own shape on the way in.
+  return Object.fromEntries(pairs);
 }
 
 /**
