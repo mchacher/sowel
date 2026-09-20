@@ -14,6 +14,7 @@ import Fastify, { type FastifyInstance } from "fastify";
 import { describe, it, expect, afterEach, vi } from "vitest";
 import { createLogger } from "../../core/logger.js";
 import { registerPluginSurfaceRoutes } from "./plugin-surface.js";
+import { pluginAssetUrl } from "../../plugins/plugin-loader.js";
 import { publicTreeSettingKey } from "../../shared/constants.js";
 import type { PluginHttpRequest, PluginHttpResponse, UserRole } from "../../shared/types.js";
 
@@ -96,7 +97,12 @@ async function buildApp(opts: BuildOpts = {}): Promise<FastifyInstance> {
   registerPluginSurfaceRoutes(app, {
     pluginLoader: {
       getPages: () => [
-        { pluginId: "demo", label: "Demo", icon: "Cpu", entryUrl: "/plugin-ui/demo/ui/panel.js" },
+        {
+          pluginId: "demo",
+          label: "Demo",
+          icon: "Cpu",
+          entryUrl: pluginAssetUrl("demo", "ui/panel.js", "1.0.0"),
+        },
       ],
     } as never,
     packageManager: {
@@ -136,12 +142,34 @@ describe("plugin pages listing", () => {
     expect(res.statusCode).toBe(403);
   });
 
+  it("announces a URL the asset tree actually serves", async () => {
+    // The one case neither half could see on its own: the listing composes the
+    // module's URL, the asset route resolves it, and they live in different
+    // files. When they disagreed the sidebar entry appeared, the page opened,
+    // and the module 404'd — with both suites green.
+    const app = await buildApp({
+      ui: { entry: "ui/panel.js", label: "Demo" },
+      pkgDir: makePluginDir(),
+    });
+    const listed = await app.inject({ method: "GET", url: "/api/v1/plugins/pages" });
+    const entryUrl = (listed.json() as Array<{ entryUrl: string }>)[0].entryUrl;
+
+    const asset = await app.inject({ method: "GET", url: entryUrl });
+    expect(asset.statusCode).toBe(200);
+    expect(asset.headers["content-type"]).toContain("text/javascript");
+  });
+
   it("returns the declared pages", async () => {
     const app = await buildApp();
     const res = await app.inject({ method: "GET", url: "/api/v1/plugins/pages" });
     expect(res.statusCode).toBe(200);
     expect(res.json()).toEqual([
-      { pluginId: "demo", label: "Demo", icon: "Cpu", entryUrl: "/plugin-ui/demo/ui/panel.js" },
+      {
+        pluginId: "demo",
+        label: "Demo",
+        icon: "Cpu",
+        entryUrl: pluginAssetUrl("demo", "ui/panel.js", "1.0.0"),
+      },
     ]);
   });
 });

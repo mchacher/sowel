@@ -1,4 +1,4 @@
-import { resolve } from "node:path";
+import { basename, resolve } from "node:path";
 import { pathToFileURL } from "node:url";
 import { cpSync, existsSync, readFileSync, readdirSync, rmSync } from "node:fs";
 import type { Logger } from "../core/logger.js";
@@ -22,6 +22,26 @@ import {
  * Uses PackageManager for distribution, handles integration lifecycle
  * (import, createPlugin, register with IntegrationRegistry).
  */
+/**
+ * Where the SPA imports a plugin's page module from.
+ *
+ * One function because the two halves have to agree and they live apart: the
+ * asset route (`/plugin-ui/:id/*`) serves the entry's own DIRECTORY as the
+ * root, so the rest of the package stays unreachable, and what it takes after
+ * the plugin id is therefore the file NAME — `ui/panel.js` on disk is served at
+ * `/plugin-ui/<id>/panel.js`. Composing the URL from the path inside the
+ * package instead hands the SPA a 404 and a page that never renders, which is
+ * exactly what two suites testing the halves separately failed to notice.
+ *
+ * The version rides along because ESM caches a module by URL for the life of
+ * the document: without it, an admin who updates a plugin and comes back to its
+ * page keeps running the previous release's panel against the new API.
+ */
+export function pluginAssetUrl(pluginId: string, entry: string, version?: string): string {
+  const file = basename(entry.replace(/^\/+/, ""));
+  return `/plugin-ui/${pluginId}/${file}?v=${encodeURIComponent(version ?? "0")}`;
+}
+
 export class PluginLoader {
   private packageManager: PackageManager;
   private integrationRegistry: IntegrationRegistry;
@@ -267,17 +287,11 @@ export class PluginLoader {
     for (const pkg of this.packageManager.getInstalledByType("integration")) {
       const ui = pkg.manifest.ui;
       if (!pkg.enabled || !ui || typeof ui.entry !== "string" || !ui.entry) continue;
-      const entry = ui.entry.replace(/^\/+/, "");
-      // The version is in the URL because ESM caches a module by URL for the
-      // life of the page: without it, an admin who updates a plugin and comes
-      // back to its page keeps running the previous release's panel against
-      // the new API until they reload the whole SPA.
-      const version = encodeURIComponent(pkg.manifest.version ?? "0");
       pages.push({
         pluginId: pkg.manifest.id,
         label: ui.label || pkg.manifest.name,
         icon: ui.icon || pkg.manifest.icon,
-        entryUrl: `/plugin-ui/${pkg.manifest.id}/${entry}?v=${version}`,
+        entryUrl: pluginAssetUrl(pkg.manifest.id, ui.entry, pkg.manifest.version),
       });
     }
     return pages;

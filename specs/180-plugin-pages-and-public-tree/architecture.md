@@ -67,7 +67,10 @@ Three route trees, registered from `src/api/server.ts`:
 `getPages(): PluginPageInfo[]` reads the **installed manifests**, not the loaded
 plugins: a plugin whose integration failed to start still has its page, and a
 sidebar entry that vanishes when a broker is down would be worse than useless.
-`entryUrl` carries the installed version (`?v=1.2.0`) because ESM caches a
+`entryUrl` is composed by the exported `pluginAssetUrl()`, which the route test
+uses too: it names the file **inside the entry's directory**, because that
+directory is what the asset route serves as its root. It carries the installed
+version (`?v=1.2.0`) because ESM caches a
 module by URL for the life of the document — without it, an admin who updates a
 plugin and returns to its page runs the previous release's panel against the new
 API. `i18n.<lang>.ui` overrides `label` when present.

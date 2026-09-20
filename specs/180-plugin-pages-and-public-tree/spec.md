@@ -65,7 +65,10 @@ another machine holds the reason it exists.
 3. The module's URL carries the installed **version** (`?v=1.2.0`). ESM caches a
    module by URL for the life of the document, so without it an admin who
    updates a plugin and returns to its page runs the previous release's panel
-   against the new API.
+   against the new API. The URL names the file **inside the entry's directory**
+   (`ui/panel.js` is announced as `/plugin-ui/<id>/panel.js`), because that
+   directory is what R1.6 serves as the root — one function composes it so the
+   listing and the asset tree cannot drift apart.
 4. The SPA imports the module at `/plugins/<id>/page` and calls
    `mount(container, ctx)`, then `unmount(container)` when leaving. `ctx` gives
    the plugin `api()` — the SPA's own authenticated client, pointed at that
@@ -148,7 +151,7 @@ another machine holds the reason it exists.
 
 | File                                    | Covers                                             |
 | --------------------------------------- | -------------------------------------------------- |
-| `src/api/routes/plugin-surface.test.ts` | R1.2, R1.6, R2.7–R2.10, R4, R5 (24 cases)          |
+| `src/api/routes/plugin-surface.test.ts` | R1.2, R1.6, R2.7–R2.10, R4, R5 (25 cases)          |
 | `src/plugins/plugin-pages.test.ts`      | R1.1–R1.3 (7 cases)                                |
 | `src/packages/package-manager.test.ts`  | R3.11 (3 cases in `getDataDir`)                    |
 | `src/backup/backup-manager.test.ts`     | R3.13 (2 cases)                                    |

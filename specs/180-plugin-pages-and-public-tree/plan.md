@@ -76,7 +76,7 @@
 
 ### Counts
 
-24 route cases (`src/api/routes/plugin-surface.test.ts`), 7 on the page listing
+25 route cases (`src/api/routes/plugin-surface.test.ts`), 7 on the page listing
 (`src/plugins/plugin-pages.test.ts`), 3 on `getDataDir`
 (`src/packages/package-manager.test.ts`), 3 on the settings proxy
 (`src/plugins/scoped-deps.test.ts`), 2 on the backup

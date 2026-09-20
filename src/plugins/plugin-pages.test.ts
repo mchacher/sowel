@@ -57,7 +57,7 @@ describe("PluginLoader.getPages", () => {
         pluginId: "guest-access",
         label: "Accès invités",
         icon: "DoorOpen",
-        entryUrl: "/plugin-ui/guest-access/ui/panel.js?v=1.0.0",
+        entryUrl: "/plugin-ui/guest-access/panel.js?v=1.0.0",
       },
     ]);
   });
@@ -96,7 +96,10 @@ describe("PluginLoader.getPages", () => {
     const loader = makeLoader([
       { manifest: { ...base, ui: { entry: "/ui/panel.js", label: "X" } }, enabled: true },
     ]);
-    expect(loader.getPages()[0].entryUrl).toBe("/plugin-ui/guest-access/ui/panel.js?v=1.0.0");
+    // The entry is `ui/panel.js` in the manifest, and the asset tree serves
+    // that directory AS `/plugin-ui/<id>/` — so the announced URL carries the
+    // file name, not the path inside the package.
+    expect(loader.getPages()[0].entryUrl).toBe("/plugin-ui/guest-access/panel.js?v=1.0.0");
   });
 
   it("carries the installed version, so an update is not served from the ESM cache", () => {
