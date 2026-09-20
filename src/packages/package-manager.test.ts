@@ -1248,6 +1248,54 @@ describe("getPackageDir — the package-id boundary", () => {
 });
 
 /**
+ * Spec 180 — a plugin's own directory is not a place to keep anything: an
+ * update removes it. `getDataDir` is the one that survives, and it is built
+ * from the same untrusted id.
+ */
+describe("getDataDir — where a plugin may keep its state", () => {
+  let dir: string;
+  let cwd: string;
+  let db: ReturnType<typeof createTestDb>;
+  let manager: PackageManager;
+
+  beforeEach(() => {
+    cwd = process.cwd();
+    dir = mkdtempSync(resolve(tmpdir(), "sowel-datadir-"));
+    mkdirSync(resolve(dir, "plugins"), { recursive: true });
+    process.chdir(dir);
+    db = createTestDb();
+    manager = new PackageManager(db, logger);
+  });
+
+  afterEach(() => {
+    db.close();
+    process.chdir(cwd);
+    rmSync(dir, { recursive: true, force: true });
+  });
+
+  it("sits under data/plugins, never under the package's own directory", () => {
+    expect(manager.getDataDir("guest-access")).toBe(
+      resolve(process.cwd(), "data", "plugins", "guest-access"),
+    );
+    expect(manager.getDataDir("guest-access")).not.toBe(manager.getPackageDir("guest-access"));
+  });
+
+  it("refuses the same ids getPackageDir refuses", () => {
+    for (const id of ["..", "../../etc", "/etc/passwd", "a/b", "", "Upper"]) {
+      expect(() => manager.getDataDir(id)).toThrow(/Invalid package id/);
+    }
+  });
+
+  it("creates the directory on demand, and is idempotent", () => {
+    const created = manager.ensureDataDir("guest-access");
+    expect(existsSync(created)).toBe(true);
+    writeFileSync(resolve(created, "accesses.json"), "[]");
+    expect(manager.ensureDataDir("guest-access")).toBe(created);
+    expect(readFileSync(resolve(created, "accesses.json"), "utf-8")).toBe("[]");
+  });
+});
+
+/**
  * `repo` reaches the path of an authenticated outbound request to GitHub, so
  * its shape decides where that request goes.
  */

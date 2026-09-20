@@ -733,6 +733,43 @@ export class BackupManager {
 // Helpers (module-private)
 // ============================================================
 
+/**
+ * Spec 180 — the plugin data tree, `data/plugins/<id>/…`.
+ *
+ * Walked rather than listed, because a plugin owns the shape of its own
+ * directory. Bounded on both axes: files only (a symlink is not a file, so it
+ * never reaches the archive), the same extension whitelist as everything else
+ * in `data/`, and a depth that stops a plugin's cache of a cache from turning
+ * a backup into a crawl.
+ */
+const PLUGIN_DATA_SUBDIR = "plugins";
+const PLUGIN_DATA_MAX_DEPTH = 4;
+
+function scanPluginDataFiles(dataDir: string, found: { files: string[]; skipped: string[] }): void {
+  const root = resolve(dataDir, PLUGIN_DATA_SUBDIR);
+  if (!existsSync(root)) return;
+
+  const walk = (dir: string, prefix: string, depth: number): void => {
+    if (depth > PLUGIN_DATA_MAX_DEPTH) return;
+    for (const entry of readdirSync(dir, { withFileTypes: true })) {
+      const relative = `${prefix}${entry.name}`;
+      if (entry.isDirectory()) {
+        walk(resolve(dir, entry.name), `${relative}/`, depth + 1);
+        continue;
+      }
+      if (!entry.isFile()) continue;
+      const ext = dataFileExtension(entry.name);
+      if (!ALLOWED_RESTORE_EXTENSIONS.has(ext.toLowerCase())) {
+        found.skipped.push(relative);
+        continue;
+      }
+      found.files.push(relative);
+    }
+  };
+
+  walk(root, `${PLUGIN_DATA_SUBDIR}/`, 1);
+}
+
 /** Scan data/ directory for files to include in backup (tokens, secrets, etc.) */
 function scanDataFiles(dataDir: string): { files: string[]; skipped: string[] } {
   if (!existsSync(dataDir)) return { files: [], skipped: [] };
@@ -755,6 +792,10 @@ function scanDataFiles(dataDir: string): { files: string[]; skipped: string[] } 
     }
     files.push(entry.name);
   }
+  // Spec 180 — a plugin's state lives under `data/plugins/<id>/`, and the
+  // scan above reads the top level only. Without this, a restored instance
+  // came back with every table and none of what the plugins held.
+  scanPluginDataFiles(dataDir, { files, skipped });
   return { files, skipped };
 }
 

@@ -67,6 +67,7 @@ import { registerNotificationPublisherRoutes } from "./routes/notification-publi
 import { registerPushRoutes } from "./routes/push.js";
 import { registerDashboardRoutes } from "./routes/dashboard.js";
 import { registerPluginRoutes } from "./routes/plugins.js";
+import { registerPluginSurfaceRoutes } from "./routes/plugin-surface.js";
 import { registerSystemRoutes } from "./routes/system.js";
 import { registerAuditRoutes } from "./routes/audit.js";
 import type { AuditLogger } from "../core/audit-logger.js";
@@ -380,6 +381,15 @@ export async function createServer(deps: ServerDeps) {
     pluginLoader,
     recipeLoader,
     integrationRegistry,
+    auditLogger,
+    userManager,
+    logger,
+  });
+  registerPluginSurfaceRoutes(app, {
+    pluginLoader,
+    packageManager,
+    integrationRegistry,
+    settingsManager,
     auditLogger,
     userManager,
     logger,

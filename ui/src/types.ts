@@ -1390,6 +1390,10 @@ export interface PluginManifest {
   i18n?: Record<string, { name: string; description: string }>;
   /** Free-form registry tags — feed the search index (spec 137). */
   tags?: string[];
+  /** Spec 180 — the plugin brings its own page into the UI. */
+  ui?: { entry: string; label: string; icon?: string };
+  /** Spec 180 — the plugin can serve anonymous callers, once an admin allows it. */
+  publicTree?: boolean;
 }
 
 export interface PluginInfo {
@@ -1401,6 +1405,17 @@ export interface PluginInfo {
   offlineDeviceCount: number;
   latestVersion?: string;
   source?: PackageSource;
+  /** Spec 180 — set only when the manifest declares a public tree. */
+  publicEnabled?: boolean;
+}
+
+/** Spec 180 — a page an installed plugin offers, as the sidebar lists it. */
+export interface PluginPageInfo {
+  pluginId: string;
+  label: string;
+  icon: string;
+  /** Absolute path the SPA imports the page module from. */
+  entryUrl: string;
 }
 
 // ============================================================

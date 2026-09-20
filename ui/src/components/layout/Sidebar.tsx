@@ -26,6 +26,8 @@ import { useAuth } from "../../store/useAuth";
 import { useUpdateAvailable } from "../../hooks/useUpdateAvailable";
 import { useEnergy } from "../../store/useEnergy";
 import { usePluginUpdates } from "./usePluginUpdates";
+import { usePluginPages } from "./usePluginPages";
+import * as LucideIcons from "lucide-react";
 import { ADMIN_NAV_ITEMS } from "./admin-nav-items";
 
 type SidebarSection = "maison" | "modes" | "analyse" | "energy" | "admin";
@@ -54,6 +56,8 @@ export function Sidebar() {
   const hasProduction = useEnergy((s) => s.hasProduction);
   const checkEnergyAvailability = useEnergy((s) => s.checkAvailability);
   const pluginUpdateCount = usePluginUpdates(isAdmin ?? false);
+  // Spec 180 — pages the installed plugins bring with them.
+  const pluginPages = usePluginPages(isAdmin ?? false);
 
   // Auto-collapse: only one section expanded at a time
   const [expandedSection, setExpandedSection] = useState<SidebarSection | null>(
@@ -276,6 +280,20 @@ export function Sidebar() {
                             </span>
                           ) : undefined
                         }
+                      />
+                    );
+                  })}
+                  {pluginPages.map((page) => {
+                    const PageIcon =
+                      (LucideIcons as unknown as Record<string, LucideIcons.LucideIcon>)[
+                        page.icon
+                      ] ?? LucideIcons.Puzzle;
+                    return (
+                      <SidebarItem
+                        key={page.pluginId}
+                        to={`/plugins/${page.pluginId}/page`}
+                        label={page.label}
+                        icon={<PageIcon size={ICON_SIZE} strokeWidth={1.5} />}
                       />
                     );
                   })}

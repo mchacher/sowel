@@ -1,6 +1,6 @@
 import { useEffect, useRef, type ReactNode } from "react";
 import { createPortal } from "react-dom";
-import { X, Loader2, ArrowUpCircle, Power, Trash2 } from "lucide-react";
+import { X, Loader2, ArrowUpCircle, Globe, Power, Trash2 } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { BottomSheet } from "../dashboard/BottomSheet";
 import { useIsMobile } from "../../hooks/useIsMobile";
@@ -40,8 +40,14 @@ export interface PluginDetailSheetProps {
    *  without this the refusal would have nowhere to show while the sheet is open. */
   actionError: string | null;
   confirmUninstall: boolean;
+  /** Spec 180 — the manifest declares an anonymous tree under /p/<id>/. */
+  publicTree?: boolean;
+  /** Spec 180 — whether an admin has opened it. */
+  publicEnabled?: boolean;
+  pluginId?: string;
   onUpdate: () => void;
   onToggle: () => void;
+  onTogglePublic?: () => void;
   onUninstall: () => void;
 }
 
@@ -176,8 +182,12 @@ function DetailBody({
   actionLoading,
   actionError,
   confirmUninstall,
+  publicTree,
+  publicEnabled,
+  pluginId,
   onUpdate,
   onToggle,
+  onTogglePublic,
   onUninstall,
 }: PluginDetailSheetProps) {
   const { t } = useTranslation();
@@ -231,6 +241,40 @@ function DetailBody({
         >
           {actionError}
         </p>
+      )}
+
+      {/* Spec 180 — the anonymous door. Its own block, above the ordinary
+          actions: opening it is not the same kind of act as enabling a plugin,
+          and the sentence under it is the whole point of showing it here. */}
+      {publicTree && (
+        <div className="border border-border-light rounded-[8px] p-3 space-y-2">
+          <div className="flex items-center justify-between gap-3">
+            <span className="inline-flex items-center gap-2 text-[13px] text-text">
+              <Globe size={15} strokeWidth={1.5} />
+              {t("plugins.publicTree")}
+            </span>
+            <button
+              onClick={onTogglePublic}
+              disabled={busy}
+              className={`min-h-[32px] px-3 text-[12px] font-medium rounded-[6px] border transition-colors cursor-pointer disabled:opacity-50 ${
+                publicEnabled
+                  ? "text-white bg-primary border-primary"
+                  : "text-text-secondary border-border hover:bg-border-light"
+              }`}
+            >
+              {actionLoading === "public" ? (
+                <Loader2 size={13} className="animate-spin" />
+              ) : publicEnabled ? (
+                t("plugins.publicTreeOn")
+              ) : (
+                t("plugins.publicTreeOff")
+              )}
+            </button>
+          </div>
+          <p className="text-[12px] text-text-tertiary">
+            {t("plugins.publicTreeHelp", { pluginId: pluginId ?? "" })}
+          </p>
+        </div>
       )}
 
       <div className="flex flex-col gap-2">

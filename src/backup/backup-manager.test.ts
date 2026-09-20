@@ -558,6 +558,42 @@ describe("BackupManager", () => {
     });
   });
 
+  // ── Spec 180 — what a plugin keeps must come back with the rest ──
+  describe("exportToFile — plugin data (spec 180)", () => {
+    it("archives data/plugins/<id>/ and restores it where it was", async () => {
+      mkdirSync(resolve(tmpDir, "plugins", "guest-access", "journal"), { recursive: true });
+      writeFileSync(resolve(tmpDir, "plugins", "guest-access", "accesses.json"), '[{"id":"a1"}]');
+      writeFileSync(
+        resolve(tmpDir, "plugins", "guest-access", "journal", "2026.json"),
+        '["opened"]',
+      );
+
+      const result = await manager.exportToFile("plugin-data.zip");
+      const archive = new AdmZip(result.path);
+      const names = archive.getEntries().map((e) => e.entryName);
+      expect(names).toContain("data/plugins/guest-access/accesses.json");
+      expect(names).toContain("data/plugins/guest-access/journal/2026.json");
+
+      rmSync(resolve(tmpDir, "plugins"), { recursive: true, force: true });
+      await manager.restoreFromBuffer(archive.toBuffer());
+
+      expect(
+        readFileSync(resolve(tmpDir, "plugins", "guest-access", "accesses.json"), "utf-8"),
+      ).toBe('[{"id":"a1"}]');
+    });
+
+    it("leaves out what the restore would refuse, plugin tree included", async () => {
+      mkdirSync(resolve(tmpDir, "plugins", "guest-access"), { recursive: true });
+      writeFileSync(resolve(tmpDir, "plugins", "guest-access", "accesses.json"), "[]");
+      writeFileSync(resolve(tmpDir, "plugins", "guest-access", "postinstall.sh"), "rm -rf /");
+
+      const result = await manager.exportToFile("plugin-data-filtered.zip");
+      const names = new AdmZip(result.path).getEntries().map((e) => e.entryName);
+      expect(names).toContain("data/plugins/guest-access/accesses.json");
+      expect(names).not.toContain("data/plugins/guest-access/postinstall.sh");
+    });
+  });
+
   // ── #790 — the restore must not hand this deployment a foreign identity ──
   //
   // The #401 guardrail compares the instance id carried in the settings table

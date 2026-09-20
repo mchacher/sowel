@@ -12,14 +12,15 @@ The `sowel-plugin-weather-forecast` plugin is used as the reference example thro
 2. [Plugin Structure](#plugin-structure)
 3. [Manifest Schema](#manifest-schema)
 4. [PluginDeps API Reference](#plugindeps-api-reference)
-5. [IntegrationPlugin Interface](#integrationplugin-interface)
-6. [Creating a Plugin Step by Step](#creating-a-plugin-step-by-step)
-7. [Device Discovery](#device-discovery)
-8. [Device Data Updates](#device-data-updates)
-9. [Order Execution](#order-execution)
-10. [Settings](#settings)
-11. [Publishing and Versioning](#publishing-and-versioning)
-12. [Troubleshooting](#troubleshooting)
+5. [Bringing a page, a door and a drawer](#bringing-a-page-a-door-and-a-drawer-spec-180)
+6. [IntegrationPlugin Interface](#integrationplugin-interface)
+7. [Creating a Plugin Step by Step](#creating-a-plugin-step-by-step)
+8. [Device Discovery](#device-discovery)
+9. [Device Data Updates](#device-data-updates)
+10. [Order Execution](#order-execution)
+11. [Settings](#settings)
+12. [Publishing and Versioning](#publishing-and-versioning)
+13. [Troubleshooting](#troubleshooting)
 
 ---
 
@@ -95,19 +96,21 @@ The `manifest.json` file describes the plugin to Sowel. It lives at the root of 
 
 ### Field Reference
 
-| Field          | Type                    | Required | Description                                                                                                                 |
-| -------------- | ----------------------- | -------- | --------------------------------------------------------------------------------------------------------------------------- |
-| `id`           | string                  | Yes      | Unique plugin identifier. Lowercase with hyphens (e.g. `weather-forecast`). Must match the directory name under `plugins/`. |
-| `name`         | string                  | Yes      | Human-readable display name shown in the UI.                                                                                |
-| `version`      | string                  | Yes      | SemVer version (e.g. `0.2.0`). **Must be updated with each release.** See [Versioning](#versioning).                        |
-| `description`  | string                  | Yes      | Short description (one sentence) shown in the plugin store and integrations page.                                           |
-| `icon`         | string                  | Yes      | Lucide icon name (e.g. `CloudSun`, `Camera`). Used in the UI for the integration card.                                      |
-| `repo`         | string                  | Yes      | GitHub `owner/repo`. Install throws `Package manifest missing 'repo'` without it, and a backup restore reinstalls from it.  |
-| `author`       | string                  | No       | Author name or organization.                                                                                                |
-| `type`         | string                  | No       | `integration` (default) or `recipe`.                                                                                        |
-| `category`     | string                  | No       | Store category (spec 137). Recipes without one land in "Other" at the bottom of the store, with no error to explain it.     |
-| `sowelVersion` | string                  | No       | SemVer range of compatible Sowel versions (e.g. `>=0.10.0`). Outside the range, the store button is disabled.               |
-| `settings`     | IntegrationSettingDef[] | No       | Array of setting definitions for the UI configuration form. See [Settings](#settings).                                      |
+| Field          | Type                    | Required | Description                                                                                                                                                                  |
+| -------------- | ----------------------- | -------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `id`           | string                  | Yes      | Unique plugin identifier. Lowercase with hyphens (e.g. `weather-forecast`). Must match the directory name under `plugins/`.                                                  |
+| `name`         | string                  | Yes      | Human-readable display name shown in the UI.                                                                                                                                 |
+| `version`      | string                  | Yes      | SemVer version (e.g. `0.2.0`). **Must be updated with each release.** See [Versioning](#versioning).                                                                         |
+| `description`  | string                  | Yes      | Short description (one sentence) shown in the plugin store and integrations page.                                                                                            |
+| `icon`         | string                  | Yes      | Lucide icon name (e.g. `CloudSun`, `Camera`). Used in the UI for the integration card.                                                                                       |
+| `repo`         | string                  | Yes      | GitHub `owner/repo`. Install throws `Package manifest missing 'repo'` without it, and a backup restore reinstalls from it.                                                   |
+| `author`       | string                  | No       | Author name or organization.                                                                                                                                                 |
+| `type`         | string                  | No       | `integration` (default) or `recipe`.                                                                                                                                         |
+| `category`     | string                  | No       | Store category (spec 137). Recipes without one land in "Other" at the bottom of the store, with no error to explain it.                                                      |
+| `sowelVersion` | string                  | No       | SemVer range of compatible Sowel versions (e.g. `>=0.10.0`). Outside the range, the store button is disabled.                                                                |
+| `settings`     | IntegrationSettingDef[] | No       | Array of setting definitions for the UI configuration form. See [Settings](#settings).                                                                                       |
+| `ui`           | PluginUiDef             | No       | Spec 180 — `{ entry, label, icon? }`: the plugin brings its own page into the UI. See [Bringing a page, a door and a drawer](#bringing-a-page-a-door-and-a-drawer-spec-180). |
+| `publicTree`   | boolean                 | No       | Spec 180 — the plugin can serve anonymous callers under `/p/<id>/*`, once an admin opens it.                                                                                 |
 
 **Fields that do NOT exist in the manifest:** `entry`, `integrationId`, `license`, `repository`. Do not include these. Note `repo` above is required and is a different field from `repository`.
 
@@ -124,6 +127,7 @@ interface PluginDeps {
   settingsManager: SettingsManager;
   deviceManager: DeviceManager;
   pluginDir: string;
+  dataDir: string; // spec 180 — survives updates; see below
 }
 ```
 
@@ -350,6 +354,154 @@ For full transparency, the soft isolation does not block:
 - `process.exit()`
 
 These would require hard isolation via worker threads (a future Sowel spec). For now, plugin authors must follow the spirit of the contract: only access your own settings, only emit your own events, only mutate your own devices.
+
+---
+
+## Bringing a page, a door and a drawer (spec 180)
+
+Three optional capabilities. A plugin that wants none of them changes nothing.
+
+### `dataDir` — where state goes
+
+`deps.dataDir` is `data/plugins/<your-id>/`, created before your factory runs.
+
+```typescript
+import { resolve } from "node:path";
+const store = resolve(deps.dataDir, "accesses.json");
+```
+
+**Never write state into `pluginDir`.** An update removes that directory and
+unpacks the new release in its place, so what you wrote beside your code
+disappears at the next version, silently. `dataDir` is untouched by install,
+update and uninstall, and it is inside the backup (same extension whitelist as
+the rest of `data/`, so keep to `.json`, `.txt`, `.png`, `.svg`…).
+
+### A page inside Sowel
+
+Declare it in the manifest:
+
+```json
+{
+  "ui": { "entry": "ui/panel.js", "label": "Guest access", "icon": "DoorOpen" }
+}
+```
+
+`entry` is an **ES module** inside your package. The SPA imports it at
+`/plugins/<id>/page` (an entry appears in the Administration menu, admin-only)
+and calls:
+
+```javascript
+export function mount(container, ctx) {
+  container.replaceChildren(render(ctx));
+}
+export function unmount(container) {
+  /* stop timers, drop listeners */
+}
+```
+
+`ctx` carries:
+
+| Field              | Use                                                                                                                                    |
+| ------------------ | -------------------------------------------------------------------------------------------------------------------------------------- |
+| `api(path, init?)` | Calls `/api/v1/plugins/<id>/page<path>` through the SPA's own authenticated client. `path` starts with `/`. Body is JSON in, JSON out. |
+| `pluginId`         | Your id.                                                                                                                               |
+| `locale`           | `"fr"`, `"en"`… — the UI's current language.                                                                                           |
+| `theme`            | `"light"` or `"dark"`.                                                                                                                 |
+| `navigate(to)`     | Navigate inside Sowel, e.g. `navigate("/equipments/abc")`.                                                                             |
+
+Plain DOM on purpose: your plugin is built in its own repository, against its
+own dependencies, and a second React in the page is a class of bug nobody
+should have to debug.
+
+**Styling.** Your page renders inside the app, so Sowel's design tokens are
+available as CSS variables — `var(--color-surface)`, `var(--color-text)`,
+`var(--color-primary)`, `var(--radius-md)`, `var(--font-sans)`. Use them and
+the page follows light and dark without any work. Tailwind classes will **not**
+work: Tailwind scans `ui/src` and has never seen your file.
+
+Assets sit next to the entry and are served from `/plugin-ui/<id>/…`
+(`.js .mjs .css .html .svg .png .jpg .ico .json .map .woff2 .webmanifest`).
+Anything outside the entry's own directory is a 404.
+
+Serve the page's API by implementing `handlePageRequest`:
+
+```typescript
+async handlePageRequest(request: PluginHttpRequest): Promise<PluginHttpResponse> {
+  if (request.method === "GET" && request.path === "/accesses") {
+    return { body: this.store.list() };
+  }
+  if (request.method === "POST" && request.path === "/accesses") {
+    const created = this.store.create(request.body, request.user?.username ?? "?");
+    return { status: 201, body: created };
+  }
+  return { status: 404, body: { error: "unknown_route" } };
+}
+```
+
+The core has already authenticated the caller and refused anyone who is not an
+admin. `request.user` is `{ id, username, role }` — enough to journal who acted,
+and you never see a token. You have **15 s** to answer.
+
+### An anonymous door
+
+Some plugins serve someone who is not a Sowel user at all. Declare it:
+
+```json
+{ "publicTree": true }
+```
+
+That makes the door **buildable**, not open. Until an admin turns it on from the
+plugin's detail sheet, `/p/<id>/*` answers the same 404 as a plugin that never
+declared it — so the setting cannot be probed from outside. You can read whether
+yours is open (and only yours), so your page can say so rather than leave the
+owner wondering why a door they declared answers 404:
+
+```typescript
+const open = deps.settingsManager.get(`plugins.${INTEGRATION_ID}.public_enabled`) === "true";
+```
+
+Writing it is refused: it is a core-owned key, which is the whole reason it does
+not live in your own namespace. Once open:
+
+```typescript
+async handlePublicRequest(request: PluginHttpRequest): Promise<PluginHttpResponse> {
+  if (request.path === "/") {
+    return { body: GUEST_PAGE_HTML, contentType: "text/html; charset=utf-8" };
+  }
+  if (request.method === "POST" && request.path === "/open") {
+    return this.openGate(request); // `request.ip` is the caller
+  }
+  return { status: 404, body: { error: "not_found" } };
+}
+```
+
+What the core does around you:
+
+- 60 requests per minute per IP (the global limit is 300);
+- `X-Robots-Tag: noindex, nofollow` on every answer;
+- `authorization` is passed through — it is **your** token, nothing else could
+  have set it — and so are `accept`, `accept-language`, `content-type` and
+  `user-agent`. Nothing else reaches you;
+- **`set-cookie` is refused.** A cookie set here would live on Sowel's origin
+  and be sent to every core route. Hand out a token and read it back from
+  `authorization` instead;
+- 30 s to answer (longer than the page API: a public call may legitimately be
+  waiting on an equipment).
+
+Everything else is yours, and that is the point: the core knows nothing about
+who your callers are. Throttle your own credentials, refuse your own bad input,
+and log what you refuse.
+
+### What you may answer
+
+`{ status, body, contentType, headers }`. A string or a Buffer is sent as-is;
+anything else is JSON. Response headers are an allowlist (`cache-control`,
+`content-type`, `content-security-policy`, `etag`, `location`, `retry-after`,
+`x-robots-tag`, `content-disposition`, `content-language`, `last-modified`);
+anything else is dropped with a warn log naming it.
+
+Throwing is safe — spec 111 confines it — and answers 500 with nothing of your
+error in it. Prefer answering a status yourself.
 
 ---
 

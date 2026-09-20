@@ -15,6 +15,7 @@ import { HomePage } from "./pages/HomePage";
 import { SettingsPage } from "./pages/SettingsPage";
 import { IntegrationsPage } from "./pages/IntegrationsPage";
 import { PluginsPage } from "./pages/PluginsPage";
+import { PluginPage } from "./pages/PluginPage";
 import { ModesPage } from "./pages/ModesPage";
 import { ModeDetailPage } from "./pages/ModeDetailPage";
 import { CalendarPage } from "./pages/CalendarPage";
@@ -75,6 +76,8 @@ export default function App() {
           <Route path="/settings" element={<SettingsPage />} />
           <Route path="/integrations" element={<AdminRoute><IntegrationsPage /></AdminRoute>} />
           <Route path="/plugins" element={<AdminRoute><PluginsPage /></AdminRoute>} />
+          {/* Spec 180 — a page an installed plugin brings with it. */}
+          <Route path="/plugins/:pluginId/page" element={<AdminRoute><PluginPage /></AdminRoute>} />
           <Route path="/mqtt-publishers" element={<AdminRoute><MqttPublishersPage /></AdminRoute>} />
           <Route path="/notification-publishers" element={<AdminRoute><NotificationPublishersPage /></AdminRoute>} />
           <Route path="/logs" element={<AdminRoute><LogsPage /></AdminRoute>} />

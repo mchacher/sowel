@@ -6,9 +6,10 @@ import type {
   IntegrationRegistry,
   IntegrationPlugin,
 } from "../integrations/integration-registry.js";
-import type { PluginManifest, PluginInfo } from "../shared/types.js";
+import type { PluginManifest, PluginInfo, PluginPageInfo } from "../shared/types.js";
 import type { PluginDeps, PluginFactory } from "../shared/plugin-api.js";
 import type { PackageManager, InstallOptions } from "../packages/package-manager.js";
+import { publicTreeSettingKey } from "../shared/constants.js";
 import {
   makeDeviceManagerProxy,
   makeEventBusProxy,
@@ -24,7 +25,7 @@ import {
 export class PluginLoader {
   private packageManager: PackageManager;
   private integrationRegistry: IntegrationRegistry;
-  private coreDeps: Omit<PluginDeps, "pluginDir">;
+  private coreDeps: Omit<PluginDeps, "pluginDir" | "dataDir">;
   private logger: Logger;
   private loadedPlugins: Map<string, IntegrationPlugin> = new Map();
   private booted = false;
@@ -36,7 +37,7 @@ export class PluginLoader {
   constructor(
     packageManager: PackageManager,
     integrationRegistry: IntegrationRegistry,
-    deps: Omit<PluginDeps, "pluginDir">,
+    deps: Omit<PluginDeps, "pluginDir" | "dataDir">,
     logger: Logger,
     shadowMode = false,
   ) {
@@ -242,8 +243,44 @@ export class PluginLoader {
         offlineDeviceCount: offlineDevices.length,
         source: pkg.source,
         ...(update ? { latestVersion: update } : {}),
+        ...(pkg.manifest.publicTree
+          ? {
+              publicEnabled:
+                this.coreDeps.settingsManager.get(publicTreeSettingKey(pkg.manifest.id)) === "true",
+            }
+          : {}),
       };
     });
+  }
+
+  /**
+   * Spec 180 — the pages the UI may offer, one per enabled plugin whose
+   * manifest declares `ui`.
+   *
+   * Read from the manifest rather than from the loaded plugin: a plugin that
+   * failed to start still has a page, and a page that vanished because the
+   * integration is misconfigured would send the user back to a sidebar entry
+   * that is no longer there.
+   */
+  getPages(): PluginPageInfo[] {
+    const pages: PluginPageInfo[] = [];
+    for (const pkg of this.packageManager.getInstalledByType("integration")) {
+      const ui = pkg.manifest.ui;
+      if (!pkg.enabled || !ui || typeof ui.entry !== "string" || !ui.entry) continue;
+      const entry = ui.entry.replace(/^\/+/, "");
+      // The version is in the URL because ESM caches a module by URL for the
+      // life of the page: without it, an admin who updates a plugin and comes
+      // back to its page keeps running the previous release's panel against
+      // the new API until they reload the whole SPA.
+      const version = encodeURIComponent(pkg.manifest.version ?? "0");
+      pages.push({
+        pluginId: pkg.manifest.id,
+        label: ui.label || pkg.manifest.name,
+        icon: ui.icon || pkg.manifest.icon,
+        entryUrl: `/plugin-ui/${pkg.manifest.id}/${entry}?v=${version}`,
+      });
+    }
+    return pages;
   }
 
   // ============================================================
@@ -287,6 +324,9 @@ export class PluginLoader {
       ),
       deviceManager: makeDeviceManagerProxy(pluginId, this.coreDeps.deviceManager, pluginLogger),
       pluginDir: pkgDir,
+      // Spec 180 — created before the factory runs, so a plugin can write to it
+      // in its constructor without checking whether it exists.
+      dataDir: this.packageManager.ensureDataDir(pluginId),
     };
 
     // Dynamic import of the plugin entry point.

@@ -480,3 +480,17 @@ export function defaultEnergyTimingsFor(type: EquipmentType): { minOnS: number; 
       return { minOnS: 900, minOffS: 300 };
   }
 }
+
+// ============================================================
+// Plugin surfaces (spec 180)
+// ============================================================
+
+/**
+ * The setting an admin flips to open a plugin's anonymous tree (`/p/<id>/*`).
+ *
+ * Core-owned, outside `integration.<id>.*`: that namespace belongs to the
+ * plugin, and a door a plugin can open for itself is not a door anyone guards.
+ */
+export function publicTreeSettingKey(pluginId: string): string {
+  return `plugins.${pluginId}.public_enabled`;
+}

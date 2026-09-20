@@ -4,6 +4,7 @@ import type { SettingsManager } from "../core/settings-manager.js";
 import type { DeviceManager } from "../devices/device-manager.js";
 import type { IntegrationPlugin } from "../integrations/integration-registry.js";
 import type { EngineEvent } from "../shared/types.js";
+import { publicTreeSettingKey } from "../shared/constants.js";
 
 // Spec 111 — Plugin soft isolation via scoped Proxy.
 //
@@ -53,13 +54,23 @@ export function makeSettingsManagerProxy(
   const ownPrefix = `integration.${pluginId}.`;
   const isOwn = (k: string): boolean => k.startsWith(ownPrefix);
   const isGlobalReadable = (k: string): boolean => GLOBAL_READABLE_KEYS.has(k);
+  /**
+   * Spec 180 — the one core-owned key a plugin may READ about itself: whether
+   * an admin has opened its anonymous tree. A plugin that cannot tell cannot
+   * say so on its own page, and the owner is left to work out why a door they
+   * declared answers 404. Writing it stays refused by the rule above, which is
+   * the whole reason the key does not live in the plugin's own namespace.
+   */
+  const ownPublicFlag = publicTreeSettingKey(pluginId);
 
   return new Proxy(inner, {
     get(target, prop, receiver) {
       switch (prop) {
         case "get":
           return (key: string): string | undefined => {
-            if (isOwn(key) || isGlobalReadable(key)) return target.get(key);
+            if (isOwn(key) || isGlobalReadable(key) || key === ownPublicFlag) {
+              return target.get(key);
+            }
             logger.warn({ pluginId, key }, "Plugin denied read on foreign setting");
             return undefined;
           };
@@ -330,6 +341,23 @@ export function wrapPluginMethods(
           "handleOAuthCallback",
           plugin.handleOAuthCallback.bind(plugin),
         ) as IntegrationPlugin["handleOAuthCallback"])
+      : undefined,
+    // Spec 180 — the two HTTP surfaces. They degrade rather than rethrow: the
+    // caller is an HTTP route, which turns the missing answer into a 500 with
+    // nothing of the plugin's stack in it. A thrown error reaching the route
+    // would be logged twice and, on the public tree, risk telling an anonymous
+    // caller how the plugin failed.
+    handlePageRequest: plugin.handlePageRequest
+      ? (wrapAsync(
+          "handlePageRequest",
+          plugin.handlePageRequest.bind(plugin),
+        ) as IntegrationPlugin["handlePageRequest"])
+      : undefined,
+    handlePublicRequest: plugin.handlePublicRequest
+      ? (wrapAsync(
+          "handlePublicRequest",
+          plugin.handlePublicRequest.bind(plugin),
+        ) as IntegrationPlugin["handlePublicRequest"])
       : undefined,
   };
 }

@@ -387,19 +387,21 @@ Routes admin uniquement pour gérer les plugins d'intégration de devices.
 
 Routes admin uniquement pour la gestion des plugins tiers.
 
-| Method | Path                             | Description                                                                               |
-| ------ | -------------------------------- | ----------------------------------------------------------------------------------------- |
-| `GET`  | `/api/v1/plugins`                | Liste les plugins installés.                                                              |
-| `GET`  | `/api/v1/plugins/store`          | Liste les plugins disponibles (registre + sources personnelles, chacun avec un `tier`).   |
-| `POST` | `/api/v1/plugins/store/refresh`  | Force le rafraîchissement du registre et des caches de releases des sources perso.        |
-| `GET`  | `/api/v1/plugins/sources`        | Liste les sources personnelles de plugins (spec 136).                                     |
-| `POST` | `/api/v1/plugins/sources`        | Ajoute une source personnelle. Body : `{ repo }` (`owner/repo` GitHub public).            |
-| `POST` | `/api/v1/plugins/sources/remove` | Retire une source personnelle. Body : `{ repo }`. Les plugins installés sont conservés.   |
-| `POST` | `/api/v1/plugins/install`        | Installe depuis GitHub. Body : `{ repo, confirmed?, expectedSha256? }`.                   |
-| `POST` | `/api/v1/plugins/:id/update`     | Met à jour un plugin. Body : `{ confirmed?, expectedSha256? }` (paquets perso seulement). |
-| `POST` | `/api/v1/plugins/:id/uninstall`  | Désinstalle un plugin.                                                                    |
-| `POST` | `/api/v1/plugins/:id/enable`     | Active un plugin (le charge et le démarre).                                               |
-| `POST` | `/api/v1/plugins/:id/disable`    | Désactive un plugin (le stoppe et le décharge).                                           |
+| Method | Path                             | Description                                                                                       |
+| ------ | -------------------------------- | ------------------------------------------------------------------------------------------------- |
+| `GET`  | `/api/v1/plugins`                | Liste les plugins installés.                                                                      |
+| `GET`  | `/api/v1/plugins/store`          | Liste les plugins disponibles (registre + sources personnelles, chacun avec un `tier`).           |
+| `POST` | `/api/v1/plugins/store/refresh`  | Force le rafraîchissement du registre et des caches de releases des sources perso.                |
+| `GET`  | `/api/v1/plugins/sources`        | Liste les sources personnelles de plugins (spec 136).                                             |
+| `POST` | `/api/v1/plugins/sources`        | Ajoute une source personnelle. Body : `{ repo }` (`owner/repo` GitHub public).                    |
+| `POST` | `/api/v1/plugins/sources/remove` | Retire une source personnelle. Body : `{ repo }`. Les plugins installés sont conservés.           |
+| `POST` | `/api/v1/plugins/install`        | Installe depuis GitHub. Body : `{ repo, confirmed?, expectedSha256? }`.                           |
+| `POST` | `/api/v1/plugins/:id/update`     | Met à jour un plugin. Body : `{ confirmed?, expectedSha256? }` (paquets perso seulement).         |
+| `POST` | `/api/v1/plugins/:id/uninstall`  | Désinstalle un plugin.                                                                            |
+| `POST` | `/api/v1/plugins/:id/enable`     | Active un plugin (le charge et le démarre).                                                       |
+| `POST` | `/api/v1/plugins/:id/disable`    | Désactive un plugin (le stoppe et le décharge).                                                   |
+| `GET`  | `/api/v1/plugins/pages`          | Spec 180 — les pages proposées par les plugins installés : `{ pluginId, label, icon, entryUrl }`. |
+| `PUT`  | `/api/v1/plugins/:id/public`     | Spec 180 — ouvre ou ferme l'arbre anonyme du plugin. Corps : `{ enabled }`. Journalisé à l'audit. |
 
 Les bodies des routes plugins sont validés par schéma (issue #597). `repo` doit porter la forme `owner/repo` pour **ajouter une source personnelle** comme pour **installer** : la valeur est interpolée dans une URL `api.github.com/repos/<repo>` et jointe au répertoire des plugins, donc sa forme est une frontière de sécurité. La suppression n'a besoin que d'une clé non vide, puisqu'il s'agit d'une recherche dans ce qui est déjà stocké. Sur les deux routes `sources`, `repo` est trimé avant vérification, donc un copier-coller avec un retour à la ligne final fonctionne toujours, et un `repo` non textuel y répond désormais 400 là où il faisait planter le handler en 500 (l'installation répondait déjà 400).
 
@@ -412,6 +414,16 @@ Toutes les écritures ici sont réservées aux admins, et la vérification s'app
 
     - `CommunityPluginConfirmationRequired` (spec 089) : plugin du registre publié par un owner non officiel. Réessayer avec `confirmed: true`.
     - `PersonalPluginConfirmationRequired` (spec 136) : plugin issu d'une source personnelle. La réponse contient `{ repo, owner, version, sha256 }` calculés depuis le tarball réel. Réessayer avec `confirmed: true` et `expectedSha256` égal au hash approuvé ; le tarball retéléchargé doit correspondre, et le hash est ensuite épinglé pour les vérifications d'intégrité futures.
+
+### Surfaces de plugin (spec 180)
+
+Trois arbres que le cœur sert pour le compte d'un plugin, en dehors des routes d'administration habituelles de `/api/v1/plugins/:id/…` :
+
+| Arbre                        | Authentification | Notes                                                                                                                                                                                                                                                                    |
+| ---------------------------- | ---------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `/api/v1/plugins/:id/page/*` | Admin            | Relayé vers le `handlePageRequest` du plugin. `GET POST PUT PATCH DELETE`. 15 s, puis 504. Le jeton de l'appelant n'est **pas** transmis ; le plugin reçoit `{ id, username, role }` à la place.                                                                         |
+| `/plugin-ui/:id/*`           | Aucune           | Les fichiers statiques de la page, depuis le répertoire de l'entrée, par liste blanche d'extensions, `Cache-Control: no-store`.                                                                                                                                          |
+| `/p/:id/*`                   | Aucune           | L'arbre anonyme du plugin. 404 tant que le manifeste ne déclare pas `publicTree` **et** qu'un administrateur n'a pas positionné `plugins.<id>.public_enabled`. 60 req/min/IP, `X-Robots-Tag: noindex, nofollow`, 30 s puis 504, et un `Set-Cookie` du plugin est refusé. |
 
 ---
 

@@ -17,6 +17,7 @@ import {
   X,
 } from "lucide-react";
 import { refreshPluginUpdateCount } from "../components/layout/usePluginUpdates";
+import { refreshPluginPages } from "../components/layout/usePluginPages";
 import { PluginDetailSheet } from "../components/plugins/PluginDetailSheet";
 import { UpdateAllBanner } from "../components/plugins/UpdateAllBanner";
 import {
@@ -34,6 +35,7 @@ import {
   enablePlugin,
   disablePlugin,
   updatePlugin,
+  setPluginPublicTree,
   getPluginSources,
   addPluginSource,
   removePluginSource,
@@ -86,6 +88,9 @@ export function PluginsPage() {
       setStore(storeData);
       setSources(sourcesData);
       refreshPluginUpdateCount();
+      // Spec 180 — an install, an update or a disable changes which plugins
+      // offer a page, and the sidebar reads that list once.
+      refreshPluginPages();
     } catch {
       // ignore
     } finally {
@@ -518,6 +523,20 @@ function PluginRow({
     }
   };
 
+  // Spec 180 — opening or shutting the plugin's anonymous tree.
+  const handleTogglePublic = async () => {
+    setActionLoading("public");
+    setActionError(null);
+    try {
+      await setPluginPublicTree(plugin.manifest.id, !plugin.publicEnabled);
+      onRefresh();
+    } catch (err) {
+      setActionError(err instanceof Error ? err.message : t("plugins.actionFailed"));
+    } finally {
+      setActionLoading(null);
+    }
+  };
+
   const handleUninstall = async (e?: React.MouseEvent) => {
     e?.stopPropagation();
     if (!confirmUninstall) {
@@ -668,8 +687,12 @@ function PluginRow({
         actionLoading={actionLoading}
         actionError={actionError}
         confirmUninstall={confirmUninstall}
+        pluginId={plugin.manifest.id}
+        publicTree={plugin.manifest.publicTree}
+        publicEnabled={plugin.publicEnabled}
         onUpdate={() => handleUpdate()}
         onToggle={() => void handleToggle()}
+        onTogglePublic={() => void handleTogglePublic()}
         onUninstall={() => void handleUninstall()}
       />
 

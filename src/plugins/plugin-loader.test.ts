@@ -68,7 +68,7 @@ function makeIntegrationRegistry(): IntegrationRegistry & { unregisterCalls: str
   return reg as unknown as IntegrationRegistry & { unregisterCalls: string[] };
 }
 
-function makeCoreDeps(): Omit<PluginDeps, "pluginDir"> {
+function makeCoreDeps(): Omit<PluginDeps, "pluginDir" | "dataDir"> {
   return {
     logger,
     eventBus: { on: () => () => {}, emit: () => {} } as unknown as PluginDeps["eventBus"],

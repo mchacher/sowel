@@ -5,6 +5,8 @@ import type {
   IntegrationStatus,
   IntegrationSettingDef,
   Device,
+  PluginHttpRequest,
+  PluginHttpResponse,
 } from "../shared/types.js";
 
 // ============================================================
@@ -65,6 +67,24 @@ export interface IntegrationPlugin {
    * Optional — only for OAuth-based integrations.
    */
   handleOAuthCallback?(code: string): Promise<void>;
+
+  /**
+   * Spec 180 — serve the plugin's own page (`/api/v1/plugins/<id>/page/*`).
+   *
+   * The core has already authenticated the caller and refused anyone who is
+   * not an admin; `request.user` names them, so a plugin can journal who acted
+   * without ever seeing a token.
+   */
+  handlePageRequest?(request: PluginHttpRequest): Promise<PluginHttpResponse>;
+
+  /**
+   * Spec 180 — serve an anonymous caller (`/p/<id>/*`).
+   *
+   * Nothing authenticated this request. The plugin is the only thing standing
+   * between the internet and whatever it does here: it declares `publicTree`
+   * in its manifest, an admin turns the door on, and the core rate-limits it.
+   */
+  handlePublicRequest?(request: PluginHttpRequest): Promise<PluginHttpResponse>;
 }
 
 // ============================================================

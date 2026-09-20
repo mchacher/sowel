@@ -2,6 +2,7 @@ import type {
   IntegrationInfo,
   PluginInfo,
   PluginManifest,
+  PluginPageInfo,
   PluginSource,
 } from "../types";
 import { fetchJSON, API_BASE, getAccessToken } from "./client";
@@ -209,5 +210,25 @@ export async function removePluginSource(repo: string): Promise<{ success: boole
   return fetchJSON(`${API_BASE}/plugins/sources/remove`, {
     method: "POST",
     body: JSON.stringify({ repo }),
+  });
+}
+
+// ============================================================
+// Plugin pages and public tree (spec 180, admin)
+// ============================================================
+
+/** The pages installed plugins bring into the UI. */
+export async function getPluginPages(): Promise<PluginPageInfo[]> {
+  return fetchJSON<PluginPageInfo[]>(`${API_BASE}/plugins/pages`);
+}
+
+/** Open or shut a plugin's anonymous tree (`/p/<id>/*`). */
+export async function setPluginPublicTree(
+  id: string,
+  enabled: boolean,
+): Promise<{ pluginId: string; enabled: boolean }> {
+  return fetchJSON(`${API_BASE}/plugins/${id}/public`, {
+    method: "PUT",
+    body: JSON.stringify({ enabled }),
   });
 }

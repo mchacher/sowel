@@ -119,6 +119,8 @@ export class PackageManager {
   private db: Database.Database;
   private logger: Logger;
   private pluginsDir: string;
+  /** Root of the writable data tree — `data/` beside `plugins/` (spec 180). */
+  private dataDir: string;
   private stmts: ReturnType<typeof this.prepareStatements>;
   private registryCache: RegistryEntry[] | null = null;
   private registryCacheTime = 0;
@@ -130,6 +132,7 @@ export class PackageManager {
     this.db = db;
     this.logger = logger.child({ module: "package-manager" });
     this.pluginsDir = resolve(process.cwd(), "plugins");
+    this.dataDir = resolve(process.cwd(), "data");
     this.stmts = this.prepareStatements();
     this.sources = new PersonalSourceManager(db, logger);
   }
@@ -201,6 +204,39 @@ export class PackageManager {
     const root = resolve(this.pluginsDir);
     if (!dir.startsWith(root + sep)) {
       throw new Error(`Invalid package id "${packageId}"`);
+    }
+    return dir;
+  }
+
+  /**
+   * Spec 180 — the directory a package may keep state in, `data/plugins/<id>/`.
+   *
+   * Deliberately NOT under `plugins/<id>/`: `updateFiles` removes that
+   * directory and unpacks the new release in its place, so anything a plugin
+   * wrote beside its own code disappeared at the next version. This one is
+   * created on demand, never removed by install, update or uninstall, and it
+   * rides along with the rest of `data/` in a backup.
+   *
+   * The id is validated exactly as `getPackageDir` validates it, and for the
+   * same reason: it reaches here from a manifest inside a downloaded tarball.
+   */
+  getDataDir(packageId: string): string {
+    if (!PACKAGE_ID_FORMAT.test(packageId)) {
+      throw new Error(`Invalid package id "${packageId}"`);
+    }
+    const root = resolve(this.dataDir, "plugins");
+    const dir = resolve(root, packageId);
+    if (!dir.startsWith(root + sep)) {
+      throw new Error(`Invalid package id "${packageId}"`);
+    }
+    return dir;
+  }
+
+  /** Create the package's data directory if it does not exist yet. */
+  ensureDataDir(packageId: string): string {
+    const dir = this.getDataDir(packageId);
+    if (!existsSync(dir)) {
+      mkdirSync(dir, { recursive: true });
     }
     return dir;
   }

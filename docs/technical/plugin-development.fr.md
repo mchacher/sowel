@@ -12,14 +12,15 @@ Le plugin `sowel-plugin-weather-forecast` est utilisé comme exemple de référe
 2. [Structure d'un plugin](#structure-dun-plugin)
 3. [Schéma du manifest](#schema-du-manifest)
 4. [Référence de l'API PluginDeps](#reference-de-lapi-plugindeps)
-5. [Interface IntegrationPlugin](#interface-integrationplugin)
-6. [Créer un plugin pas à pas](#creer-un-plugin-pas-a-pas)
-7. [Découverte de devices](#decouverte-de-devices)
-8. [Mises à jour de données device](#mises-a-jour-de-donnees-device)
-9. [Exécution d'ordres](#execution-dordres)
-10. [Réglages](#reglages)
-11. [Publication et versioning](#publication-et-versioning)
-12. [Dépannage](#depannage)
+5. [Apporter une page, une porte et un tiroir](#apporter-une-page-une-porte-et-un-tiroir-spec-180)
+6. [Interface IntegrationPlugin](#interface-integrationplugin)
+7. [Créer un plugin pas à pas](#creer-un-plugin-pas-a-pas)
+8. [Découverte de devices](#decouverte-de-devices)
+9. [Mises à jour de données device](#mises-a-jour-de-donnees-device)
+10. [Exécution d'ordres](#execution-dordres)
+11. [Réglages](#reglages)
+12. [Publication et versioning](#publication-et-versioning)
+13. [Dépannage](#depannage)
 
 ---
 
@@ -95,16 +96,18 @@ Le fichier `manifest.json` décrit le plugin à Sowel. Il vit à la racine du r�
 
 ### Référence des champs
 
-| Champ          | Type                    | Requis | Description                                                                                                                                |
-| -------------- | ----------------------- | ------ | ------------------------------------------------------------------------------------------------------------------------------------------ |
-| `id`           | string                  | Oui    | Identifiant unique du plugin. Minuscules avec tirets (par ex. `weather-forecast`). Doit correspondre au nom du répertoire sous `plugins/`. |
-| `name`         | string                  | Oui    | Nom d'affichage lisible présenté dans l'UI.                                                                                                |
-| `version`      | string                  | Oui    | Version SemVer (par ex. `0.2.0`). **Doit être mise à jour à chaque release.** Voir [Versioning](#versioning).                              |
-| `description`  | string                  | Oui    | Courte description (une phrase) affichée dans le store de plugins et la page intégrations.                                                 |
-| `icon`         | string                  | Oui    | Nom d'icône Lucide (par ex. `CloudSun`, `Camera`). Utilisé dans l'UI pour la carte d'intégration.                                          |
-| `author`       | string                  | Non    | Nom de l'auteur ou organisation.                                                                                                           |
-| `sowelVersion` | string                  | Non    | Plage SemVer des versions Sowel compatibles (par ex. `>=0.10.0`).                                                                          |
-| `settings`     | IntegrationSettingDef[] | Non    | Tableau de définitions de réglages pour le formulaire de configuration UI. Voir [Réglages](#reglages).                                     |
+| Champ          | Type                    | Requis | Description                                                                                                                                                                                     |
+| -------------- | ----------------------- | ------ | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `id`           | string                  | Oui    | Identifiant unique du plugin. Minuscules avec tirets (par ex. `weather-forecast`). Doit correspondre au nom du répertoire sous `plugins/`.                                                      |
+| `name`         | string                  | Oui    | Nom d'affichage lisible présenté dans l'UI.                                                                                                                                                     |
+| `version`      | string                  | Oui    | Version SemVer (par ex. `0.2.0`). **Doit être mise à jour à chaque release.** Voir [Versioning](#versioning).                                                                                   |
+| `description`  | string                  | Oui    | Courte description (une phrase) affichée dans le store de plugins et la page intégrations.                                                                                                      |
+| `icon`         | string                  | Oui    | Nom d'icône Lucide (par ex. `CloudSun`, `Camera`). Utilisé dans l'UI pour la carte d'intégration.                                                                                               |
+| `author`       | string                  | Non    | Nom de l'auteur ou organisation.                                                                                                                                                                |
+| `sowelVersion` | string                  | Non    | Plage SemVer des versions Sowel compatibles (par ex. `>=0.10.0`).                                                                                                                               |
+| `settings`     | IntegrationSettingDef[] | Non    | Tableau de définitions de réglages pour le formulaire de configuration UI. Voir [Réglages](#reglages).                                                                                          |
+| `ui`           | PluginUiDef             | Non    | Spec 180 — `{ entry, label, icon? }` : le plugin apporte sa propre page dans l'interface. Voir [Apporter une page, une porte et un tiroir](#apporter-une-page-une-porte-et-un-tiroir-spec-180). |
+| `publicTree`   | boolean                 | Non    | Spec 180 — le plugin peut servir des appelants anonymes sous `/p/<id>/*`, une fois la porte ouverte par un administrateur.                                                                      |
 
 **Champs qui n'existent PAS dans le manifest :** `entry`, `integrationId`, `license`, `repository`. Ne les incluez pas.
 
@@ -121,6 +124,7 @@ interface PluginDeps {
   settingsManager: SettingsManager;
   deviceManager: DeviceManager;
   pluginDir: string;
+  dataDir: string; // spec 180 — survit aux mises à jour, voir plus bas
 }
 ```
 
@@ -299,6 +303,160 @@ Pour transparence totale, l'isolation soft ne bloque pas :
 - `process.exit()`
 
 Ces protections nécessiteraient une hard isolation via worker threads (une future spec Sowel). Pour l'instant, les auteurs de plugins doivent suivre l'esprit du contrat : n'accéder qu'à vos propres settings, n'émettre que vos propres events, ne muter que vos propres devices.
+
+---
+
+## Apporter une page, une porte et un tiroir (spec 180)
+
+Trois capacités optionnelles. Un plugin qui n'en veut aucune ne change rien.
+
+### `dataDir` — où va l'état
+
+`deps.dataDir` vaut `data/plugins/<votre-id>/`, créé avant l'appel de votre
+factory.
+
+```typescript
+import { resolve } from "node:path";
+const store = resolve(deps.dataDir, "accesses.json");
+```
+
+**N'écrivez jamais votre état dans `pluginDir`.** Une mise à jour supprime ce
+répertoire et y dépose la nouvelle version : ce que vous aviez écrit à côté de
+votre code disparaît au prochain numéro, en silence. `dataDir` n'est touché ni
+par l'installation, ni par la mise à jour, ni par la désinstallation, et il part
+dans la sauvegarde (même liste d'extensions que le reste de `data/` : tenez-vous
+à `.json`, `.txt`, `.png`, `.svg`…).
+
+### Une page dans Sowel
+
+Déclarez-la dans le manifeste :
+
+```json
+{
+  "ui": { "entry": "ui/panel.js", "label": "Accès invités", "icon": "DoorOpen" }
+}
+```
+
+`entry` est un **module ES** de votre paquet. La SPA l'importe sur
+`/plugins/<id>/page` (une entrée apparaît dans le menu Administration, réservée
+aux administrateurs) et appelle :
+
+```javascript
+export function mount(container, ctx) {
+  container.replaceChildren(render(ctx));
+}
+export function unmount(container) {
+  /* arrêter les minuteries, retirer les écouteurs */
+}
+```
+
+`ctx` porte :
+
+| Champ              | Usage                                                                                                                                   |
+| ------------------ | --------------------------------------------------------------------------------------------------------------------------------------- |
+| `api(path, init?)` | Appelle `/api/v1/plugins/<id>/page<path>` via le client authentifié de la SPA. `path` commence par `/`. JSON à l'aller comme au retour. |
+| `pluginId`         | Votre identifiant.                                                                                                                      |
+| `locale`           | `"fr"`, `"en"`… — la langue courante de l'interface.                                                                                    |
+| `theme`            | `"light"` ou `"dark"`.                                                                                                                  |
+| `navigate(to)`     | Naviguer dans Sowel, par exemple `navigate("/equipments/abc")`.                                                                         |
+
+Du DOM, volontairement : votre plugin se construit dans son propre dépôt, avec
+ses propres dépendances, et un second React dans la page est une classe de
+bogues que personne ne devrait avoir à déboguer.
+
+**Style.** Votre page s'affiche dans l'application : les tokens du design system
+sont donc disponibles en variables CSS — `var(--color-surface)`,
+`var(--color-text)`, `var(--color-primary)`, `var(--radius-md)`,
+`var(--font-sans)`. Utilisez-les et la page suit les thèmes clair et sombre sans
+rien faire. Les classes Tailwind ne fonctionneront **pas** : Tailwind analyse
+`ui/src` et n'a jamais vu votre fichier.
+
+Les fichiers statiques vivent à côté de l'entrée et sont servis depuis
+`/plugin-ui/<id>/…` (`.js .mjs .css .html .svg .png .jpg .ico .json .map .woff2
+.webmanifest`). Tout ce qui sort du répertoire de l'entrée répond 404.
+
+Servez l'API de la page en implémentant `handlePageRequest` :
+
+```typescript
+async handlePageRequest(request: PluginHttpRequest): Promise<PluginHttpResponse> {
+  if (request.method === "GET" && request.path === "/accesses") {
+    return { body: this.store.list() };
+  }
+  if (request.method === "POST" && request.path === "/accesses") {
+    const created = this.store.create(request.body, request.user?.username ?? "?");
+    return { status: 201, body: created };
+  }
+  return { status: 404, body: { error: "unknown_route" } };
+}
+```
+
+Le cœur a déjà authentifié l'appelant et refusé quiconque n'est pas
+administrateur. `request.user` vaut `{ id, username, role }` — de quoi journaliser
+qui a agi, sans jamais voir de jeton. Vous avez **15 s** pour répondre.
+
+### Une porte anonyme
+
+Certains plugins servent quelqu'un qui n'est pas un utilisateur de Sowel.
+Déclarez-le :
+
+```json
+{ "publicTree": true }
+```
+
+Cela rend la porte **constructible**, pas ouverte. Tant qu'un administrateur ne
+l'a pas ouverte depuis la fiche du plugin, `/p/<id>/*` répond le même 404 qu'un
+plugin qui ne l'a jamais déclarée — le réglage n'est donc pas sondable de
+l'extérieur. Vous pouvez lire si la vôtre est ouverte (et seulement la vôtre),
+de sorte que votre page puisse le dire plutôt que de laisser le propriétaire se
+demander pourquoi une porte qu'il a déclarée répond 404 :
+
+```typescript
+const ouverte = deps.settingsManager.get(`plugins.${INTEGRATION_ID}.public_enabled`) === "true";
+```
+
+L'écrire est refusé : c'est une clé du cœur, ce qui est précisément la raison
+pour laquelle elle ne vit pas dans votre propre espace de noms. Une fois
+ouverte :
+
+```typescript
+async handlePublicRequest(request: PluginHttpRequest): Promise<PluginHttpResponse> {
+  if (request.path === "/") {
+    return { body: GUEST_PAGE_HTML, contentType: "text/html; charset=utf-8" };
+  }
+  if (request.method === "POST" && request.path === "/open") {
+    return this.openGate(request); // `request.ip` est l'appelant
+  }
+  return { status: 404, body: { error: "not_found" } };
+}
+```
+
+Ce que le cœur fait autour de vous :
+
+- 60 requêtes par minute et par IP (la limite globale est de 300) ;
+- `X-Robots-Tag: noindex, nofollow` sur chaque réponse ;
+- `authorization` passe — c'est **votre** jeton, rien d'autre n'a pu le poser —
+  ainsi que `accept`, `accept-language`, `content-type` et `user-agent`. Rien
+  d'autre ne vous parvient ;
+- **`set-cookie` est refusé.** Un cookie posé ici vivrait sur l'origine de Sowel
+  et serait envoyé à toutes les routes du cœur. Distribuez un jeton et relisez-le
+  dans `authorization` ;
+- 30 s pour répondre (plus que l'API de la page : un appel public peut
+  légitimement attendre un équipement).
+
+Tout le reste est à vous, et c'est le principe : le cœur ne sait rien de qui
+sont vos appelants. Limitez vos propres essais, refusez vos propres entrées
+invalides, et journalisez ce que vous refusez.
+
+### Ce que vous pouvez répondre
+
+`{ status, body, contentType, headers }`. Une chaîne ou un Buffer part tel quel ;
+le reste part en JSON. Les en-têtes de réponse sont une liste blanche
+(`cache-control`, `content-type`, `content-security-policy`, `etag`, `location`,
+`retry-after`, `x-robots-tag`, `content-disposition`, `content-language`,
+`last-modified`) ; le reste est écarté avec un log d'avertissement qui le nomme.
+
+Lever une exception est sans danger — la spec 111 la confine — et répond 500
+sans rien laisser filtrer de votre erreur. Préférez répondre vous-même un statut.
 
 ---
 

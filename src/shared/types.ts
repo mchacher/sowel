@@ -1762,6 +1762,69 @@ export interface PluginManifest {
   author?: string;
   sowelVersion?: string;
   settings?: IntegrationSettingDef[];
+  /** Spec 180 — the plugin brings its own page into the Sowel UI. */
+  ui?: PluginUiDef;
+  /**
+   * Spec 180 — the plugin serves anonymous callers under `/p/<id>/*`.
+   *
+   * Declaring it only makes the door buildable: it stays shut until an admin
+   * turns it on for that plugin, because an anonymous surface appearing because
+   * something was installed is exactly the kind of thing nobody notices.
+   */
+  publicTree?: boolean;
+}
+
+/** Spec 180 — where a plugin's page comes from and how it is named. */
+export interface PluginUiDef {
+  /**
+   * ES module, relative to the plugin directory (e.g. `ui/panel.js`). It
+   * exports `mount(container, ctx)` and, optionally, `unmount()`.
+   */
+  entry: string;
+  /** Sidebar label, in English. `i18n.<lang>.ui` overrides it when present. */
+  label: string;
+  /** Lucide icon name for the sidebar; the plugin's own icon when absent. */
+  icon?: string;
+}
+
+/** Spec 180 — a page the UI can offer, derived from an installed manifest. */
+export interface PluginPageInfo {
+  pluginId: string;
+  label: string;
+  icon: string;
+  /** Absolute URL path the SPA imports the module from. */
+  entryUrl: string;
+}
+
+/**
+ * Spec 180 — one HTTP call handed to a plugin.
+ *
+ * The same shape serves both surfaces: the admin page API, where `user` names
+ * the authenticated caller, and the public tree, where there is no caller to
+ * name. Headers are allowlisted rather than passed through, so a plugin cannot
+ * read a bearer token it was not given.
+ */
+export interface PluginHttpRequest {
+  method: string;
+  /** Path under the plugin's own root, always starting with `/`. */
+  path: string;
+  query: Record<string, string>;
+  headers: Record<string, string>;
+  /** Parsed JSON body, or `null` when the request carried none. */
+  body: unknown;
+  /** Caller's IP, as Fastify resolved it. */
+  ip: string;
+  /** Admin page API only. */
+  user?: { id: string; username: string; role: UserRole };
+}
+
+/** What a plugin answers. `body` is sent as JSON unless `contentType` says otherwise. */
+export interface PluginHttpResponse {
+  status?: number;
+  body?: unknown;
+  contentType?: string;
+  /** Allowlisted by the core — see `PLUGIN_RESPONSE_HEADERS`. */
+  headers?: Record<string, string>;
 }
 
 /** Raw package data from DB — no runtime info */
@@ -1783,6 +1846,8 @@ export interface PluginInfo {
   offlineDeviceCount: number;
   latestVersion?: string; // set when a newer version is available in registry
   source: PackageSource; // spec 136 — which path installed it
+  /** Spec 180 — the plugin declares a public tree and an admin has opened it. */
+  publicEnabled?: boolean;
 }
 
 // ============================================================

@@ -1598,5 +1598,13 @@
   "dashboard.timed.pick_one": "temporisé · {{count}} min",
   "dashboard.timed.pick_other": "temporisé · {{count}} min",
   "dashboard.timed.unavailable": "Commande non configurée",
-  "equipments.timed.configTitle": "Commande temporisée : configuration"
+  "equipments.timed.configTitle": "Commande temporisée : configuration",
+  "pluginPage.loading": "Chargement de la page du plugin…",
+  "pluginPage.unknown": "Aucun plugin installé nommé « {{pluginId}} » ne propose de page.",
+  "pluginPage.failed": "{{label}} n'a pas pu afficher sa page.",
+  "plugins.publicTree": "Accès public",
+  "plugins.publicTreeHelp": "Ce plugin sert des pages à des visiteurs non authentifiés sous /p/{{pluginId}}/. Ne l'ouvrez que si c'est voulu.",
+  "plugins.publicTreeOn": "Ouvert",
+  "plugins.publicTreeOff": "Fermé",
+  "plugins.openPage": "Ouvrir sa page"
 }

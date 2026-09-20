@@ -51,6 +51,25 @@ describe("SettingsManagerProxy", () => {
     expect(inner.get).toHaveBeenCalledWith(globalKey);
   });
 
+  it("allows a plugin to read whether its own public tree is open (spec 180)", () => {
+    const inner = makeMockSettings({ "plugins.guest-access.public_enabled": "true" });
+    const proxy = makeSettingsManagerProxy("guest-access", inner, logger);
+    expect(proxy.get("plugins.guest-access.public_enabled")).toBe("true");
+  });
+
+  it("does not let it read another plugin's public flag", () => {
+    const inner = makeMockSettings({ "plugins.netatmo.public_enabled": "true" });
+    const proxy = makeSettingsManagerProxy("guest-access", inner, logger);
+    expect(proxy.get("plugins.netatmo.public_enabled")).toBeUndefined();
+  });
+
+  it("does not let it open its own door", () => {
+    const inner = makeMockSettings();
+    const proxy = makeSettingsManagerProxy("guest-access", inner, logger);
+    expect(() => proxy.set("plugins.guest-access.public_enabled", "true")).toThrow(/cannot write/);
+    expect(inner.set).not.toHaveBeenCalled();
+  });
+
   it("allows write on own prefix", () => {
     const inner = makeMockSettings();
     const proxy = makeSettingsManagerProxy("netatmo", inner, logger);

@@ -70,6 +70,7 @@ describe("scoped-deps integration with canary plugin", () => {
       settingsManager: makeSettingsManagerProxy(CANARY_ID, settingsManager, logger),
       deviceManager: makeDeviceManagerProxy(CANARY_ID, deviceManager, logger),
       pluginDir: "/tmp/canary",
+      dataDir: "/tmp/canary-data",
     };
 
     const canary = createCanaryPlugin(deps, attempts);
@@ -117,6 +118,7 @@ describe("scoped-deps integration with canary plugin", () => {
       settingsManager: makeSettingsManagerProxy(CANARY_ID, settingsManager, logger),
       deviceManager: makeDeviceManagerProxy(CANARY_ID, deviceManager, logger),
       pluginDir: "/tmp/canary",
+      dataDir: "/tmp/canary-data",
     };
     const canary = createCanaryPlugin(deps, attempts);
     const wrapped = wrapPluginMethods(canary, CANARY_ID, logger);

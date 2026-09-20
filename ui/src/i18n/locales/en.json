@@ -1598,5 +1598,13 @@
   "dashboard.timed.pick_one": "timed · {{count}} min",
   "dashboard.timed.pick_other": "timed · {{count}} min",
   "dashboard.timed.unavailable": "No timed command",
-  "equipments.timed.configTitle": "Timed command settings"
+  "equipments.timed.configTitle": "Timed command settings",
+  "pluginPage.loading": "Loading the plugin's page…",
+  "pluginPage.unknown": "No installed plugin named \"{{pluginId}}\" offers a page.",
+  "pluginPage.failed": "{{label}} could not display its page.",
+  "plugins.publicTree": "Public access",
+  "plugins.publicTreeHelp": "This plugin serves pages to anonymous visitors under /p/{{pluginId}}/. Turn it on only if you mean to.",
+  "plugins.publicTreeOn": "Open",
+  "plugins.publicTreeOff": "Closed",
+  "plugins.openPage": "Open its page"
 }
