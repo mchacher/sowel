@@ -88,7 +88,7 @@ another machine holds the reason it exists.
    namespace belongs to the plugin and a door a plugin can open for itself is
    not a door anyone guards. Flipping it is audit-logged
    (`plugin.public.enable` / `.disable`) and warn-logged.
-8.bis The plugin may **read** its own flag through the scoped settings proxy —
+   8.bis The plugin may **read** its own flag through the scoped settings proxy —
    and only its own — so its page can say the door is shut instead of leaving
    the owner to work out why one they declared answers 404. Writing it is
    refused like any other foreign key.
@@ -148,7 +148,7 @@ another machine holds the reason it exists.
 
 | File                                    | Covers                                             |
 | --------------------------------------- | -------------------------------------------------- |
-| `src/api/routes/plugin-surface.test.ts` | R1.2, R1.6, R2.7–R2.10, R4, R5 (23 cases)          |
+| `src/api/routes/plugin-surface.test.ts` | R1.2, R1.6, R2.7–R2.10, R4, R5 (24 cases)          |
 | `src/plugins/plugin-pages.test.ts`      | R1.1–R1.3 (7 cases)                                |
 | `src/packages/package-manager.test.ts`  | R3.11 (3 cases in `getDataDir`)                    |
 | `src/backup/backup-manager.test.ts`     | R3.13 (2 cases)                                    |

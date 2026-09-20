@@ -47,6 +47,10 @@ Three route trees, registered from `src/api/server.ts`:
 - **Response headers are an allowlist** too (`PLUGIN_RESPONSE_HEADERS`).
   Anything else is dropped with a warn log naming the header — `set-cookie`
   deliberately included, so a plugin can never write on Sowel's origin.
+- **The query map is null-prototype and drops `__proto__`, `constructor` and
+  `prototype`.** Its keys are whatever the caller typed after the `?`, and the
+  plugin reads them by name; the same precaution the settings route takes with a
+  request body.
 - `withTimeout` turns a plugin that never answers into a 504; a plugin that
   throws is already degraded to `undefined` by spec 111, and the route answers
   500 without echoing anything back.

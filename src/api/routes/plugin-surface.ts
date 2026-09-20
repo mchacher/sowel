@@ -122,10 +122,24 @@ function subPath(params: Record<string, unknown>): string {
   return `/${raw.replace(/^\/+/, "")}`;
 }
 
+/**
+ * Property names that must never be written from a query string.
+ *
+ * The keys here are whatever the caller typed after the `?`, and the plugin
+ * receiving the map will read it by name. `__proto__` on a plain object is
+ * swallowed by the setter rather than stored, and `constructor` / `prototype`
+ * shadow what a plugin may legitimately expect to find — so the honest answer
+ * is to drop all three rather than hand over a map that lies.
+ */
+const UNSAFE_QUERY_KEYS = new Set(["__proto__", "constructor", "prototype"]);
+
 function queryOf(request: FastifyRequest): Record<string, string> {
-  const out: Record<string, string> = {};
+  // A null-prototype map, like the settings route does with a request body:
+  // nothing inherited can be mistaken for something the caller sent.
+  const out: Record<string, string> = Object.create(null) as Record<string, string>;
   const query = (request.query ?? {}) as Record<string, unknown>;
   for (const [key, value] of Object.entries(query)) {
+    if (UNSAFE_QUERY_KEYS.has(key)) continue;
     if (typeof value === "string") out[key] = value;
     else if (Array.isArray(value) && typeof value[0] === "string") out[key] = value[0];
   }

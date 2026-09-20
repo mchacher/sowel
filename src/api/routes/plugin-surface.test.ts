@@ -176,6 +176,16 @@ describe("the page API", () => {
     expect(seen[0].user).toEqual({ id: "u1", username: "adrien", role: "admin" });
   });
 
+  it("drops a query key that would write on the map's own shape", async () => {
+    const app = await buildApp({ handlePage: async () => ({ body: {} }) });
+    await app.inject({
+      method: "GET",
+      url: "/api/v1/plugins/demo/page/x?__proto__=polluted&constructor=nope&view=active",
+    });
+    expect(seen[0].query).toEqual({ view: "active" });
+    expect(({} as Record<string, unknown>)["polluted"]).toBeUndefined();
+  });
+
   it("never hands the caller's bearer token to the plugin", async () => {
     const app = await buildApp({ handlePage: async () => ({ body: {} }) });
     await app.inject({
