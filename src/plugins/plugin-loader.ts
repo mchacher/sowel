@@ -291,6 +291,8 @@ export class PluginLoader {
         pluginId: pkg.manifest.id,
         label: ui.label || pkg.manifest.name,
         icon: ui.icon || pkg.manifest.icon,
+        // Anything but an explicit `main` stays where every page used to be.
+        placement: ui.placement === "main" ? "main" : "admin",
         entryUrl: pluginAssetUrl(pkg.manifest.id, ui.entry, pkg.manifest.version),
       });
     }

@@ -1414,6 +1414,8 @@ export interface PluginPageInfo {
   pluginId: string;
   label: string;
   icon: string;
+  /** Spec 180 R1.6.bis — `main` is listed in the main navigation, `admin` under Administration. */
+  placement: "admin" | "main";
   /** Absolute path the SPA imports the page module from. */
   entryUrl: string;
 }

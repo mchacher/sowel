@@ -1785,13 +1785,22 @@ export interface PluginUiDef {
   label: string;
   /** Lucide icon name for the sidebar; the plugin's own icon when absent. */
   icon?: string;
+  /**
+   * Where the sidebar lists it. `admin` (the default) under Administration,
+   * beside Plugins; `main` in the main navigation, for a page that is used
+   * day to day rather than configured once. Still admin-only either way.
+   */
+  placement?: PluginPagePlacement;
 }
+
+export type PluginPagePlacement = "admin" | "main";
 
 /** Spec 180 — a page the UI can offer, derived from an installed manifest. */
 export interface PluginPageInfo {
   pluginId: string;
   label: string;
   icon: string;
+  placement: PluginPagePlacement;
   /** Absolute URL path the SPA imports the module from. */
   entryUrl: string;
 }

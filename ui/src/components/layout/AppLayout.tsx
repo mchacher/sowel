@@ -12,7 +12,7 @@ import { ShadowBanner } from "./ShadowBanner";
 import { TakeoverBanner } from "./TakeoverBanner";
 import { useDevices } from "../../store/useDevices";
 import { useZones } from "../../store/useZones";
-import type { ZoneWithChildren } from "../../types";
+import type { PluginPageInfo, ZoneWithChildren } from "../../types";
 import { useEquipments } from "../../store/useEquipments";
 import { useZoneAggregation } from "../../store/useZoneAggregation";
 import { useAuth } from "../../store/useAuth";
@@ -50,6 +50,9 @@ import { useVisibleIssues } from "./useAggregatedIssues";
 import { useUpdateAvailable } from "../../hooks/useUpdateAvailable";
 import { usePluginUpdates } from "./usePluginUpdates";
 import { ADMIN_NAV_ITEMS, visibleAdminNavItems } from "./admin-nav-items";
+import { usePluginPages } from "./usePluginPages";
+import { PluginPageIcon } from "./PluginPageIcon";
+import { isOnPage, pluginPagePath, splitPluginPages } from "./plugin-page-nav";
 import { InstallPrompt } from "./InstallPrompt";
 import { UpdateOverlay } from "../system/UpdateOverlay";
 import { HomeSetupWizard } from "../setup/HomeSetupWizard";
@@ -252,6 +255,8 @@ function TopbarBreadcrumb({ homeName }: { homeName: string }) {
   const { t } = useTranslation();
   const location = useLocation();
   const tree = useZones((s) => s.tree);
+  // Read only — the sidebar is what fetches the list.
+  const pluginPages = usePluginPages(false);
 
   const zoneMatch = location.pathname.match(/^\/home\/([^/]+)/);
   const path = zoneMatch ? buildZonePath(zoneMatch[1], tree) : null;
@@ -281,7 +286,7 @@ function TopbarBreadcrumb({ homeName }: { homeName: string }) {
     );
   }
 
-  const routeLabel = getRouteLabel(location.pathname, t);
+  const routeLabel = getRouteLabel(location.pathname, t, pluginPages);
   if (routeLabel) {
     return (
       <div className="text-[.82rem] font-medium text-[var(--n-400)]">
@@ -354,6 +359,8 @@ function MobileTopbarTitle({ homeName }: { homeName: string }) {
   const location = useLocation();
   const tree = useZones((s) => s.tree);
   const modes = useModes((s) => s.modes);
+  // Read only — the sidebar is what fetches the list.
+  const pluginPages = usePluginPages(false);
 
   const homeLabel = homeName || t("nav.maison");
   let sub: string | null = null;
@@ -375,7 +382,7 @@ function MobileTopbarTitle({ homeName }: { homeName: string }) {
       const mode = modes.find((m) => m.id === modeMatch[1]);
       if (mode) sub = `${t("nav.modes")} · ${mode.name}`;
     } else {
-      sub = getRouteLabel(location.pathname, t);
+      sub = getRouteLabel(location.pathname, t, pluginPages);
     }
   }
 
@@ -410,7 +417,11 @@ function buildZonePath(zoneId: string, tree: ZoneWithChildren[]): { id: string; 
   return out;
 }
 
-function getRouteLabel(pathname: string, t: (k: string) => string): string | null {
+function getRouteLabel(
+  pathname: string,
+  t: (k: string) => string,
+  pluginPages: PluginPageInfo[] = [],
+): string | null {
   if (pathname.startsWith("/dashboard")) return t("nav.dashboard");
   if (pathname.startsWith("/energy")) {
     const energy = t("nav.energy");
@@ -425,6 +436,9 @@ function getRouteLabel(pathname: string, t: (k: string) => string): string | nul
   if (pathname.startsWith("/analyse")) return t("nav.analyse");
   if (pathname.startsWith("/calendar")) return t("nav.calendar");
   if (pathname.startsWith("/integrations")) return t("nav.integrations");
+  // Spec 180 — a plugin's page is named by its own label, not « Plugins ».
+  const pluginPage = pluginPages.find((page) => isOnPage(pathname, [page]));
+  if (pluginPage) return pluginPage.label;
   if (pathname.startsWith("/plugins")) return t("nav.plugins");
   if (pathname.startsWith("/mqtt-publishers")) return t("nav.mqttPublishers");
   if (pathname.startsWith("/notification-publishers")) return t("nav.notificationPublishers");
@@ -503,6 +517,8 @@ function MobileDrawer({ onClose }: { onClose: () => void }) {
   const isAdmin = user?.role === "admin";
   const logout = useAuth((s) => s.logout);
   const pluginUpdateCount = usePluginUpdates(isAdmin ?? false);
+  // Spec 180 — the same plugin pages as the desktop sidebar, in the same places.
+  const { main: mainPages, admin: adminPages } = splitPluginPages(usePluginPages(isAdmin ?? false));
 
   const go = (to: string) => {
     navigate(to);
@@ -547,6 +563,15 @@ function MobileDrawer({ onClose }: { onClose: () => void }) {
             onClick={() => go("/analyse")}
           />
 
+          {mainPages.map((page) => (
+            <DrawerLink
+              key={page.pluginId}
+              icon={<PluginPageIcon name={page.icon} size={18} />}
+              label={page.label}
+              onClick={() => go(pluginPagePath(page.pluginId))}
+            />
+          ))}
+
           {/* Consultation pages — visible to non-admins here since the
               Administration section below is hidden for them */}
           {!isAdmin &&
@@ -589,6 +614,14 @@ function MobileDrawer({ onClose }: { onClose: () => void }) {
                   />
                 );
               })}
+              {adminPages.map((page) => (
+                <DrawerLink
+                  key={page.pluginId}
+                  icon={<PluginPageIcon name={page.icon} size={18} />}
+                  label={page.label}
+                  onClick={() => go(pluginPagePath(page.pluginId))}
+                />
+              ))}
             </>
           )}
 

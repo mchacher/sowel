@@ -80,6 +80,15 @@ another machine holds the reason it exists.
    JavaScript, and what they display sits behind the admin API. A path that
    leaves that directory is a 404, and so is every request for a plugin that is
    disabled or declares no page.
+   6.bis `ui.placement` says where the page is listed. `admin` — the default,
+   and what any other value means — puts it under Administration, beside
+   Plugins. `main` lists it in the main navigation after Analyse, for a page
+   used day to day rather than configured once (who may open a gate this
+   week). The desktop sidebar and the mobile drawer place pages from the same
+   split, so they cannot disagree, and a `main` page's route — under
+   `/plugins/` like every other — does not open the Administration section.
+   Placement changes where the entry is drawn, never who may see it: the list
+   and the page stay admin-only.
 
 ### R2 — The anonymous tree
 
@@ -133,6 +142,7 @@ another machine holds the reason it exists.
 ## Acceptance criteria
 
 - [x] A plugin declaring `ui` appears in the Administration menu with its icon
+- [x] A page declaring `placement: "main"` is listed in the main navigation, on the desktop sidebar and in the mobile drawer (R1.6.bis)
       and label, and its page renders inside the app in both themes.
 - [x] `GET /api/v1/plugins/pages` and `/api/v1/plugins/<id>/page/*` answer 403
       to a `standard` user, before the plugin is reached.
@@ -149,13 +159,14 @@ another machine holds the reason it exists.
 
 ## Tests
 
-| File                                    | Covers                                             |
-| --------------------------------------- | -------------------------------------------------- |
-| `src/api/routes/plugin-surface.test.ts` | R1.2, R1.6, R2.7–R2.10, R4, R5 (25 cases)          |
-| `src/plugins/plugin-pages.test.ts`      | R1.1–R1.3 (7 cases)                                |
-| `src/packages/package-manager.test.ts`  | R3.11 (3 cases in `getDataDir`)                    |
-| `src/backup/backup-manager.test.ts`     | R3.13 (2 cases)                                    |
-| `ui/src/pages/PluginPage.test.tsx`      | R1.4, R1.5 and the three failure screens (6 cases) |
+| File                                               | Covers                                                      |
+| -------------------------------------------------- | ----------------------------------------------------------- |
+| `src/api/routes/plugin-surface.test.ts`            | R1.2, R1.6, R2.7–R2.10, R4, R5 (25 cases)                   |
+| `src/plugins/plugin-pages.test.ts`                 | R1.1–R1.3, R1.6.bis (8 cases)                               |
+| `ui/src/components/layout/plugin-page-nav.test.ts` | R1.6.bis — the one split sidebar and drawer share (2 cases) |
+| `src/packages/package-manager.test.ts`             | R3.11 (3 cases in `getDataDir`)                             |
+| `src/backup/backup-manager.test.ts`                | R3.13 (2 cases)                                             |
+| `ui/src/pages/PluginPage.test.tsx`                 | R1.4, R1.5 and the three failure screens (6 cases)          |
 
 ## Migration and compatibility
 

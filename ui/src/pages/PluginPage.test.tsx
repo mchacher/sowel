@@ -22,6 +22,7 @@ const page = {
   pluginId: "guest-access",
   label: "Accès invités",
   icon: "DoorOpen",
+  placement: "admin" as const,
   entryUrl: "/plugin-ui/guest-access/ui/panel.js?v=1.0.0",
 };
 

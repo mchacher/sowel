@@ -96,18 +96,18 @@ Le fichier `manifest.json` décrit le plugin à Sowel. Il vit à la racine du r�
 
 ### Référence des champs
 
-| Champ          | Type                    | Requis | Description                                                                                                                                                                                     |
-| -------------- | ----------------------- | ------ | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `id`           | string                  | Oui    | Identifiant unique du plugin. Minuscules avec tirets (par ex. `weather-forecast`). Doit correspondre au nom du répertoire sous `plugins/`.                                                      |
-| `name`         | string                  | Oui    | Nom d'affichage lisible présenté dans l'UI.                                                                                                                                                     |
-| `version`      | string                  | Oui    | Version SemVer (par ex. `0.2.0`). **Doit être mise à jour à chaque release.** Voir [Versioning](#versioning).                                                                                   |
-| `description`  | string                  | Oui    | Courte description (une phrase) affichée dans le store de plugins et la page intégrations.                                                                                                      |
-| `icon`         | string                  | Oui    | Nom d'icône Lucide (par ex. `CloudSun`, `Camera`). Utilisé dans l'UI pour la carte d'intégration.                                                                                               |
-| `author`       | string                  | Non    | Nom de l'auteur ou organisation.                                                                                                                                                                |
-| `sowelVersion` | string                  | Non    | Plage SemVer des versions Sowel compatibles (par ex. `>=0.10.0`).                                                                                                                               |
-| `settings`     | IntegrationSettingDef[] | Non    | Tableau de définitions de réglages pour le formulaire de configuration UI. Voir [Réglages](#reglages).                                                                                          |
-| `ui`           | PluginUiDef             | Non    | Spec 180 — `{ entry, label, icon? }` : le plugin apporte sa propre page dans l'interface. Voir [Apporter une page, une porte et un tiroir](#apporter-une-page-une-porte-et-un-tiroir-spec-180). |
-| `publicTree`   | boolean                 | Non    | Spec 180 — le plugin peut servir des appelants anonymes sous `/p/<id>/*`, une fois la porte ouverte par un administrateur.                                                                      |
+| Champ          | Type                    | Requis | Description                                                                                                                                                                                                 |
+| -------------- | ----------------------- | ------ | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `id`           | string                  | Oui    | Identifiant unique du plugin. Minuscules avec tirets (par ex. `weather-forecast`). Doit correspondre au nom du répertoire sous `plugins/`.                                                                  |
+| `name`         | string                  | Oui    | Nom d'affichage lisible présenté dans l'UI.                                                                                                                                                                 |
+| `version`      | string                  | Oui    | Version SemVer (par ex. `0.2.0`). **Doit être mise à jour à chaque release.** Voir [Versioning](#versioning).                                                                                               |
+| `description`  | string                  | Oui    | Courte description (une phrase) affichée dans le store de plugins et la page intégrations.                                                                                                                  |
+| `icon`         | string                  | Oui    | Nom d'icône Lucide (par ex. `CloudSun`, `Camera`). Utilisé dans l'UI pour la carte d'intégration.                                                                                                           |
+| `author`       | string                  | Non    | Nom de l'auteur ou organisation.                                                                                                                                                                            |
+| `sowelVersion` | string                  | Non    | Plage SemVer des versions Sowel compatibles (par ex. `>=0.10.0`).                                                                                                                                           |
+| `settings`     | IntegrationSettingDef[] | Non    | Tableau de définitions de réglages pour le formulaire de configuration UI. Voir [Réglages](#reglages).                                                                                                      |
+| `ui`           | PluginUiDef             | Non    | Spec 180 — `{ entry, label, icon?, placement? }` : le plugin apporte sa propre page dans l'interface. Voir [Apporter une page, une porte et un tiroir](#apporter-une-page-une-porte-et-un-tiroir-spec-180). |
+| `publicTree`   | boolean                 | Non    | Spec 180 — le plugin peut servir des appelants anonymes sous `/p/<id>/*`, une fois la porte ouverte par un administrateur.                                                                                  |
 
 **Champs qui n'existent PAS dans le manifest :** `entry`, `integrationId`, `license`, `repository`. Ne les incluez pas.
 
@@ -339,7 +339,11 @@ Déclarez-la dans le manifeste :
 
 `entry` est un **module ES** de votre paquet. La SPA l'importe sur
 `/plugins/<id>/page` (une entrée apparaît dans le menu Administration, réservée
-aux administrateurs) et appelle :
+aux administrateurs) et l'appelle comme ci-dessous. Une page qui sert au
+quotidien plutôt qu'à configurer une fois peut demander la navigation
+principale avec `"placement": "main"` : elle est listée après Analyse, dans la
+barre latérale comme dans le tiroir mobile, et reste réservée aux
+administrateurs. Toute autre valeur, ou aucune, la laisse sous Administration.
 
 ```javascript
 export function mount(container, ctx) {

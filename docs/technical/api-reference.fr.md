@@ -387,21 +387,21 @@ Routes admin uniquement pour gérer les plugins d'intégration de devices.
 
 Routes admin uniquement pour la gestion des plugins tiers.
 
-| Method | Path                             | Description                                                                                       |
-| ------ | -------------------------------- | ------------------------------------------------------------------------------------------------- |
-| `GET`  | `/api/v1/plugins`                | Liste les plugins installés.                                                                      |
-| `GET`  | `/api/v1/plugins/store`          | Liste les plugins disponibles (registre + sources personnelles, chacun avec un `tier`).           |
-| `POST` | `/api/v1/plugins/store/refresh`  | Force le rafraîchissement du registre et des caches de releases des sources perso.                |
-| `GET`  | `/api/v1/plugins/sources`        | Liste les sources personnelles de plugins (spec 136).                                             |
-| `POST` | `/api/v1/plugins/sources`        | Ajoute une source personnelle. Body : `{ repo }` (`owner/repo` GitHub public).                    |
-| `POST` | `/api/v1/plugins/sources/remove` | Retire une source personnelle. Body : `{ repo }`. Les plugins installés sont conservés.           |
-| `POST` | `/api/v1/plugins/install`        | Installe depuis GitHub. Body : `{ repo, confirmed?, expectedSha256? }`.                           |
-| `POST` | `/api/v1/plugins/:id/update`     | Met à jour un plugin. Body : `{ confirmed?, expectedSha256? }` (paquets perso seulement).         |
-| `POST` | `/api/v1/plugins/:id/uninstall`  | Désinstalle un plugin.                                                                            |
-| `POST` | `/api/v1/plugins/:id/enable`     | Active un plugin (le charge et le démarre).                                                       |
-| `POST` | `/api/v1/plugins/:id/disable`    | Désactive un plugin (le stoppe et le décharge).                                                   |
-| `GET`  | `/api/v1/plugins/pages`          | Spec 180 — les pages proposées par les plugins installés : `{ pluginId, label, icon, entryUrl }`. |
-| `PUT`  | `/api/v1/plugins/:id/public`     | Spec 180 — ouvre ou ferme l'arbre anonyme du plugin. Corps : `{ enabled }`. Journalisé à l'audit. |
+| Method | Path                             | Description                                                                                                  |
+| ------ | -------------------------------- | ------------------------------------------------------------------------------------------------------------ |
+| `GET`  | `/api/v1/plugins`                | Liste les plugins installés.                                                                                 |
+| `GET`  | `/api/v1/plugins/store`          | Liste les plugins disponibles (registre + sources personnelles, chacun avec un `tier`).                      |
+| `POST` | `/api/v1/plugins/store/refresh`  | Force le rafraîchissement du registre et des caches de releases des sources perso.                           |
+| `GET`  | `/api/v1/plugins/sources`        | Liste les sources personnelles de plugins (spec 136).                                                        |
+| `POST` | `/api/v1/plugins/sources`        | Ajoute une source personnelle. Body : `{ repo }` (`owner/repo` GitHub public).                               |
+| `POST` | `/api/v1/plugins/sources/remove` | Retire une source personnelle. Body : `{ repo }`. Les plugins installés sont conservés.                      |
+| `POST` | `/api/v1/plugins/install`        | Installe depuis GitHub. Body : `{ repo, confirmed?, expectedSha256? }`.                                      |
+| `POST` | `/api/v1/plugins/:id/update`     | Met à jour un plugin. Body : `{ confirmed?, expectedSha256? }` (paquets perso seulement).                    |
+| `POST` | `/api/v1/plugins/:id/uninstall`  | Désinstalle un plugin.                                                                                       |
+| `POST` | `/api/v1/plugins/:id/enable`     | Active un plugin (le charge et le démarre).                                                                  |
+| `POST` | `/api/v1/plugins/:id/disable`    | Désactive un plugin (le stoppe et le décharge).                                                              |
+| `GET`  | `/api/v1/plugins/pages`          | Spec 180 — les pages proposées par les plugins installés : `{ pluginId, label, icon, placement, entryUrl }`. |
+| `PUT`  | `/api/v1/plugins/:id/public`     | Spec 180 — ouvre ou ferme l'arbre anonyme du plugin. Corps : `{ enabled }`. Journalisé à l'audit.            |
 
 Les bodies des routes plugins sont validés par schéma (issue #597). `repo` doit porter la forme `owner/repo` pour **ajouter une source personnelle** comme pour **installer** : la valeur est interpolée dans une URL `api.github.com/repos/<repo>` et jointe au répertoire des plugins, donc sa forme est une frontière de sécurité. La suppression n'a besoin que d'une clé non vide, puisqu'il s'agit d'une recherche dans ce qui est déjà stocké. Sur les deux routes `sources`, `repo` est trimé avant vérification, donc un copier-coller avec un retour à la ligne final fonctionne toujours, et un `repo` non textuel y répond désormais 400 là où il faisait planter le handler en 500 (l'installation répondait déjà 400).
 

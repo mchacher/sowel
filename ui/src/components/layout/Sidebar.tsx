@@ -27,14 +27,18 @@ import { useUpdateAvailable } from "../../hooks/useUpdateAvailable";
 import { useEnergy } from "../../store/useEnergy";
 import { usePluginUpdates } from "./usePluginUpdates";
 import { usePluginPages } from "./usePluginPages";
-import * as LucideIcons from "lucide-react";
 import { ADMIN_NAV_ITEMS } from "./admin-nav-items";
+import { PluginPageIcon } from "./PluginPageIcon";
+import { isOnPage, pluginPagePath, splitPluginPages } from "./plugin-page-nav";
 
 type SidebarSection = "maison" | "modes" | "analyse" | "energy" | "admin";
 
 const ADMIN_ROUTES = ADMIN_NAV_ITEMS.map((item) => item.to);
 
-function getSectionForPath(pathname: string): SidebarSection | null {
+function getSectionForPath(pathname: string, onMainPage = false): SidebarSection | null {
+  // Spec 180 R1.6.bis — a page listed in the main navigation lives under
+  // `/plugins/…` like every plugin page, but it is not an admin screen.
+  if (onMainPage) return null;
   if (pathname.startsWith("/home")) return "maison";
   if (pathname.startsWith("/modes")) return "modes";
   if (pathname.startsWith("/analyse")) return "analyse";
@@ -58,6 +62,8 @@ export function Sidebar() {
   const pluginUpdateCount = usePluginUpdates(isAdmin ?? false);
   // Spec 180 — pages the installed plugins bring with them.
   const pluginPages = usePluginPages(isAdmin ?? false);
+  const { main: mainPages, admin: adminPages } = splitPluginPages(pluginPages);
+  const onMainPage = isOnPage(location.pathname, mainPages);
 
   // Auto-collapse: only one section expanded at a time
   const [expandedSection, setExpandedSection] = useState<SidebarSection | null>(
@@ -65,10 +71,13 @@ export function Sidebar() {
   );
 
   // Auto-update expanded section when route changes (React recommended pattern)
-  const [prevPath, setPrevPath] = useState(location.pathname);
-  if (prevPath !== location.pathname) {
-    setPrevPath(location.pathname);
-    setExpandedSection(getSectionForPath(location.pathname));
+  // The page list arrives after the first render, so it is part of the key: a
+  // reload on a main-navigation page must not leave Administration open.
+  const pathKey = `${location.pathname}|${onMainPage}`;
+  const [prevPath, setPrevPath] = useState(pathKey);
+  if (prevPath !== pathKey) {
+    setPrevPath(pathKey);
+    setExpandedSection(getSectionForPath(location.pathname, onMainPage));
   }
 
   const toggleSection = (section: SidebarSection) => {
@@ -79,7 +88,7 @@ export function Sidebar() {
     checkEnergyAvailability();
   }, [checkEnergyAvailability]);
 
-  const adminActive = ADMIN_ROUTES.some((r) => location.pathname.startsWith(r));
+  const adminActive = !onMainPage && ADMIN_ROUTES.some((r) => location.pathname.startsWith(r));
   const energyActive = location.pathname.startsWith("/energy");
   const modesSubActive = !collapsed && expandedSection === "modes" && location.pathname.startsWith("/modes/");
   const analyseSubActive = !collapsed && expandedSection === "analyse" && location.pathname.startsWith("/analyse/");
@@ -231,6 +240,20 @@ export function Sidebar() {
             )}
           </>
         )}
+
+        {/* Spec 180 R1.6.bis — plugin pages used day to day, not configured once */}
+        {mainPages.map((page) => (
+          <div key={page.pluginId}>
+            <SidebarSeparator />
+            <SidebarSectionHeader
+              to={pluginPagePath(page.pluginId)}
+              label={page.label}
+              icon={<PluginPageIcon name={page.icon} size={ICON_SIZE} />}
+              collapsed={collapsed}
+              title={collapsed ? page.label : undefined}
+            />
+          </div>
+        ))}
       </div>
 
       {/* Administration section — admin only */}
@@ -283,20 +306,14 @@ export function Sidebar() {
                       />
                     );
                   })}
-                  {pluginPages.map((page) => {
-                    const PageIcon =
-                      (LucideIcons as unknown as Record<string, LucideIcons.LucideIcon>)[
-                        page.icon
-                      ] ?? LucideIcons.Puzzle;
-                    return (
-                      <SidebarItem
-                        key={page.pluginId}
-                        to={`/plugins/${page.pluginId}/page`}
-                        label={page.label}
-                        icon={<PageIcon size={ICON_SIZE} strokeWidth={1.5} />}
-                      />
-                    );
-                  })}
+                  {adminPages.map((page) => (
+                    <SidebarItem
+                      key={page.pluginId}
+                      to={pluginPagePath(page.pluginId)}
+                      label={page.label}
+                      icon={<PluginPageIcon name={page.icon} size={ICON_SIZE} />}
+                    />
+                  ))}
                 </nav>
               )}
             </>

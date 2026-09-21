@@ -96,21 +96,21 @@ The `manifest.json` file describes the plugin to Sowel. It lives at the root of 
 
 ### Field Reference
 
-| Field          | Type                    | Required | Description                                                                                                                                                                  |
-| -------------- | ----------------------- | -------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `id`           | string                  | Yes      | Unique plugin identifier. Lowercase with hyphens (e.g. `weather-forecast`). Must match the directory name under `plugins/`.                                                  |
-| `name`         | string                  | Yes      | Human-readable display name shown in the UI.                                                                                                                                 |
-| `version`      | string                  | Yes      | SemVer version (e.g. `0.2.0`). **Must be updated with each release.** See [Versioning](#versioning).                                                                         |
-| `description`  | string                  | Yes      | Short description (one sentence) shown in the plugin store and integrations page.                                                                                            |
-| `icon`         | string                  | Yes      | Lucide icon name (e.g. `CloudSun`, `Camera`). Used in the UI for the integration card.                                                                                       |
-| `repo`         | string                  | Yes      | GitHub `owner/repo`. Install throws `Package manifest missing 'repo'` without it, and a backup restore reinstalls from it.                                                   |
-| `author`       | string                  | No       | Author name or organization.                                                                                                                                                 |
-| `type`         | string                  | No       | `integration` (default) or `recipe`.                                                                                                                                         |
-| `category`     | string                  | No       | Store category (spec 137). Recipes without one land in "Other" at the bottom of the store, with no error to explain it.                                                      |
-| `sowelVersion` | string                  | No       | SemVer range of compatible Sowel versions (e.g. `>=0.10.0`). Outside the range, the store button is disabled.                                                                |
-| `settings`     | IntegrationSettingDef[] | No       | Array of setting definitions for the UI configuration form. See [Settings](#settings).                                                                                       |
-| `ui`           | PluginUiDef             | No       | Spec 180 — `{ entry, label, icon? }`: the plugin brings its own page into the UI. See [Bringing a page, a door and a drawer](#bringing-a-page-a-door-and-a-drawer-spec-180). |
-| `publicTree`   | boolean                 | No       | Spec 180 — the plugin can serve anonymous callers under `/p/<id>/*`, once an admin opens it.                                                                                 |
+| Field          | Type                    | Required | Description                                                                                                                                                                              |
+| -------------- | ----------------------- | -------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `id`           | string                  | Yes      | Unique plugin identifier. Lowercase with hyphens (e.g. `weather-forecast`). Must match the directory name under `plugins/`.                                                              |
+| `name`         | string                  | Yes      | Human-readable display name shown in the UI.                                                                                                                                             |
+| `version`      | string                  | Yes      | SemVer version (e.g. `0.2.0`). **Must be updated with each release.** See [Versioning](#versioning).                                                                                     |
+| `description`  | string                  | Yes      | Short description (one sentence) shown in the plugin store and integrations page.                                                                                                        |
+| `icon`         | string                  | Yes      | Lucide icon name (e.g. `CloudSun`, `Camera`). Used in the UI for the integration card.                                                                                                   |
+| `repo`         | string                  | Yes      | GitHub `owner/repo`. Install throws `Package manifest missing 'repo'` without it, and a backup restore reinstalls from it.                                                               |
+| `author`       | string                  | No       | Author name or organization.                                                                                                                                                             |
+| `type`         | string                  | No       | `integration` (default) or `recipe`.                                                                                                                                                     |
+| `category`     | string                  | No       | Store category (spec 137). Recipes without one land in "Other" at the bottom of the store, with no error to explain it.                                                                  |
+| `sowelVersion` | string                  | No       | SemVer range of compatible Sowel versions (e.g. `>=0.10.0`). Outside the range, the store button is disabled.                                                                            |
+| `settings`     | IntegrationSettingDef[] | No       | Array of setting definitions for the UI configuration form. See [Settings](#settings).                                                                                                   |
+| `ui`           | PluginUiDef             | No       | Spec 180 — `{ entry, label, icon?, placement? }`: the plugin brings its own page into the UI. See [Bringing a page, a door and a drawer](#bringing-a-page-a-door-and-a-drawer-spec-180). |
+| `publicTree`   | boolean                 | No       | Spec 180 — the plugin can serve anonymous callers under `/p/<id>/*`, once an admin opens it.                                                                                             |
 
 **Fields that do NOT exist in the manifest:** `entry`, `integrationId`, `license`, `repository`. Do not include these. Note `repo` above is required and is a different field from `repository`.
 
@@ -388,7 +388,10 @@ Declare it in the manifest:
 
 `entry` is an **ES module** inside your package. The SPA imports it at
 `/plugins/<id>/page` (an entry appears in the Administration menu, admin-only)
-and calls:
+and calls it as below. A page used day to day rather than configured once can
+ask for the main navigation instead with `"placement": "main"` — it is listed
+after Analyse, on the desktop sidebar and in the mobile drawer alike, and stays
+admin-only. Anything else, or nothing, keeps it under Administration.
 
 ```javascript
 export function mount(container, ctx) {

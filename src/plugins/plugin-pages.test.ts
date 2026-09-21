@@ -57,9 +57,29 @@ describe("PluginLoader.getPages", () => {
         pluginId: "guest-access",
         label: "Accès invités",
         icon: "DoorOpen",
+        placement: "admin",
         entryUrl: "/plugin-ui/guest-access/panel.js?v=1.0.0",
       },
     ]);
+  });
+
+  it("lists a page in the main navigation only when the manifest asks for it (R1.6.bis)", () => {
+    const loader = makeLoader([
+      {
+        manifest: { ...base, ui: { entry: "ui/panel.js", label: "X", placement: "main" } },
+        enabled: true,
+      },
+      {
+        manifest: {
+          ...base,
+          id: "odd",
+          // Anything unexpected is where every page used to be.
+          ui: { entry: "ui/panel.js", label: "Y", placement: "sidebar" as unknown as "main" },
+        },
+        enabled: true,
+      },
+    ]);
+    expect(loader.getPages().map((p) => p.placement)).toEqual(["main", "admin"]);
   });
 
   it("falls back to the plugin's own name and icon", () => {
