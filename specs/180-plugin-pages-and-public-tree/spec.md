@@ -99,6 +99,26 @@ equipmentId=&lang=` answering `{ text, action }` — because only the plugin
    gate). A plugin that does not answer still gets its card: its page's label
    and a plain « Open ». Admin-only, like the page.
 
+### What R1 looks like
+
+The first plugin to use it, `guest-access` (adn-dev-adrien/sowel-plugin-guest-access), on a test
+instance. The core draws the navigation entry and the card; everything inside the page, and the card's
+sentence, is the plugin's.
+
+**R1.6.bis — a page in the main navigation**, after Analyse, Administration left closed on its route:
+
+![A plugin page in the main navigation](screenshots/main-navigation.png)
+
+**R1.6.ter — the card on an equipment's page**, beside the core's own « Confirmation avant action »;
+its sentence and its link's words come from the plugin:
+
+![The card on an equipment's page](screenshots/equipment-card.png)
+
+**The mobile drawer** lists plugin pages where the sidebar does — a `main` page after Analyse, the others
+under Administration:
+
+<img src="screenshots/mobile-drawer.png" alt="Plugin page in the mobile drawer" width="300">
+
 ### R2 — The anonymous tree
 
 7. A manifest may declare `publicTree: true`. Declaring it makes the door
