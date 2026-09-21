@@ -293,6 +293,9 @@ export class PluginLoader {
         icon: ui.icon || pkg.manifest.icon,
         // Anything but an explicit `main` stays where every page used to be.
         placement: ui.placement === "main" ? "main" : "admin",
+        equipmentTypes: Array.isArray(ui.equipmentLink?.types)
+          ? ui.equipmentLink.types.filter((t): t is string => typeof t === "string" && t.length > 0)
+          : [],
         entryUrl: pluginAssetUrl(pkg.manifest.id, ui.entry, pkg.manifest.version),
       });
     }

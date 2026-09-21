@@ -1791,6 +1791,12 @@ export interface PluginUiDef {
    * day to day rather than configured once. Still admin-only either way.
    */
   placement?: PluginPagePlacement;
+  /**
+   * Spec 180 R1.6.ter — the equipment types whose own page carries a card
+   * linking here (`/plugins/<id>/page?equipment=<equipmentId>`). The card's
+   * sentence comes from the plugin, `GET <page tree>/equipment-link`.
+   */
+  equipmentLink?: { types: string[] };
 }
 
 export type PluginPagePlacement = "admin" | "main";
@@ -1801,6 +1807,8 @@ export interface PluginPageInfo {
   label: string;
   icon: string;
   placement: PluginPagePlacement;
+  /** Equipment types whose page links here — empty when the plugin asks for none. */
+  equipmentTypes: string[];
   /** Absolute URL path the SPA imports the module from. */
   entryUrl: string;
 }

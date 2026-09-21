@@ -460,21 +460,21 @@ Admin-only routes for managing device integration plugins.
 
 Admin-only routes for third-party plugin management.
 
-| Method | Path                             | Description                                                                                     |
-| ------ | -------------------------------- | ----------------------------------------------------------------------------------------------- |
-| `GET`  | `/api/v1/plugins`                | List installed plugins.                                                                         |
-| `GET`  | `/api/v1/plugins/store`          | List available plugins (registry entries + personal sources, each with a `tier`).               |
-| `POST` | `/api/v1/plugins/store/refresh`  | Force-refresh the registry and the personal source release caches.                              |
-| `GET`  | `/api/v1/plugins/sources`        | List personal plugin sources (spec 136).                                                        |
-| `POST` | `/api/v1/plugins/sources`        | Add a personal source. Body: `{ repo }` (public GitHub `owner/repo`).                           |
-| `POST` | `/api/v1/plugins/sources/remove` | Remove a personal source. Body: `{ repo }`. Installed plugins are kept.                         |
-| `POST` | `/api/v1/plugins/install`        | Install from GitHub. Body: `{ repo, confirmed?, expectedSha256? }`.                             |
-| `POST` | `/api/v1/plugins/:id/update`     | Update a plugin. Body: `{ confirmed?, expectedSha256? }` (personal packages only).              |
-| `POST` | `/api/v1/plugins/:id/uninstall`  | Uninstall a plugin.                                                                             |
-| `POST` | `/api/v1/plugins/:id/enable`     | Enable a plugin (loads and starts it).                                                          |
-| `POST` | `/api/v1/plugins/:id/disable`    | Disable a plugin (stops and unloads it).                                                        |
-| `GET`  | `/api/v1/plugins/pages`          | Spec 180 — the pages installed plugins offer: `{ pluginId, label, icon, placement, entryUrl }`. |
-| `PUT`  | `/api/v1/plugins/:id/public`     | Spec 180 — open or shut the plugin's anonymous tree. Body: `{ enabled }`. Audit-logged.         |
+| Method | Path                             | Description                                                                                                     |
+| ------ | -------------------------------- | --------------------------------------------------------------------------------------------------------------- |
+| `GET`  | `/api/v1/plugins`                | List installed plugins.                                                                                         |
+| `GET`  | `/api/v1/plugins/store`          | List available plugins (registry entries + personal sources, each with a `tier`).                               |
+| `POST` | `/api/v1/plugins/store/refresh`  | Force-refresh the registry and the personal source release caches.                                              |
+| `GET`  | `/api/v1/plugins/sources`        | List personal plugin sources (spec 136).                                                                        |
+| `POST` | `/api/v1/plugins/sources`        | Add a personal source. Body: `{ repo }` (public GitHub `owner/repo`).                                           |
+| `POST` | `/api/v1/plugins/sources/remove` | Remove a personal source. Body: `{ repo }`. Installed plugins are kept.                                         |
+| `POST` | `/api/v1/plugins/install`        | Install from GitHub. Body: `{ repo, confirmed?, expectedSha256? }`.                                             |
+| `POST` | `/api/v1/plugins/:id/update`     | Update a plugin. Body: `{ confirmed?, expectedSha256? }` (personal packages only).                              |
+| `POST` | `/api/v1/plugins/:id/uninstall`  | Uninstall a plugin.                                                                                             |
+| `POST` | `/api/v1/plugins/:id/enable`     | Enable a plugin (loads and starts it).                                                                          |
+| `POST` | `/api/v1/plugins/:id/disable`    | Disable a plugin (stops and unloads it).                                                                        |
+| `GET`  | `/api/v1/plugins/pages`          | Spec 180 — the pages installed plugins offer: `{ pluginId, label, icon, placement, equipmentTypes, entryUrl }`. |
+| `PUT`  | `/api/v1/plugins/:id/public`     | Spec 180 — open or shut the plugin's anonymous tree. Body: `{ enabled }`. Audit-logged.                         |
 
 The plugin bodies are schema-validated (issue #597). `repo` must carry the `owner/repo` shape when **adding a personal source** and when **installing**: it is interpolated into a `api.github.com/repos/<repo>` URL and joined onto the plugin directory, so its shape is a security boundary. Removal only needs a non-empty key, since it is a lookup against what is already stored. On the two `sources` routes `repo` is trimmed before it is checked, so a paste with a trailing newline still works, and a non-string `repo` there now answers 400 where it used to crash the handler with a 500 (install already answered 400).
 

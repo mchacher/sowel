@@ -33,6 +33,7 @@ import { MissingBindingsModal } from "../components/equipments/MissingBindingsMo
 import { GateControl } from "../components/equipments/GateControl";
 import { HeaterControl } from "../components/equipments/HeaterControl";
 import { ButtonActionsSection } from "../components/equipments/ButtonActionsSection";
+import { PluginEquipmentLinks } from "../components/equipments/PluginEquipmentLinks";
 import { EnergyDataPanel } from "../components/equipments/EnergyDataPanel";
 import { ElectricalMeteringPanel } from "../components/equipments/ElectricalMeteringPanel";
 import { MeteringParentPanel } from "../components/equipments/MeteringParentPanel";
@@ -444,6 +445,9 @@ export function EquipmentDetailPage() {
       {isGate && isAdmin && (
         <GateConfirmationPanel equipment={equipment} onUpdated={() => void fetchEquipments()} />
       )}
+
+      {/* Spec 180 R1.6.ter — plugin pages that asked for a link from this type, admin only */}
+      {isAdmin && <PluginEquipmentLinks equipment={equipment} />}
 
       {/* Timed command — act now, revert after N (spec 174 phase 2), admin only.
           Offered only where a hand-revert could end the window early: the

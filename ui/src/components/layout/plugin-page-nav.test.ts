@@ -7,6 +7,7 @@ const page = (pluginId: string, placement: PluginPageInfo["placement"]): PluginP
   label: pluginId,
   icon: "Puzzle",
   placement,
+  equipmentTypes: [],
   entryUrl: `/plugin-ui/${pluginId}/panel.js?v=1.0.0`,
 });
 

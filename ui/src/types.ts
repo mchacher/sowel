@@ -1416,6 +1416,8 @@ export interface PluginPageInfo {
   icon: string;
   /** Spec 180 R1.6.bis — `main` is listed in the main navigation, `admin` under Administration. */
   placement: "admin" | "main";
+  /** Spec 180 R1.6.ter — equipment types whose own page links to this one. */
+  equipmentTypes: string[];
   /** Absolute path the SPA imports the page module from. */
   entryUrl: string;
 }

@@ -89,6 +89,15 @@ another machine holds the reason it exists.
    `/plugins/` like every other — does not open the Administration section.
    Placement changes where the entry is drawn, never who may see it: the list
    and the page stay admin-only.
+   6.ter `ui.equipmentLink: { types }` asks for a card on the page of every
+   equipment of those types, beside the core's own panels (confirmation before
+   action, timed command). The card links to `/plugins/<id>/page?equipment=<id>`
+   and the page receives the query as `ctx.params`. Its sentence and the link's
+   words are the plugin's, asked of its page tree — `GET equipment-link?
+equipmentId=&lang=` answering `{ text, action }` — because only the plugin
+   knows what it holds about that equipment (how many people may open that
+   gate). A plugin that does not answer still gets its card: its page's label
+   and a plain « Open ». Admin-only, like the page.
 
 ### R2 — The anonymous tree
 
@@ -143,6 +152,7 @@ another machine holds the reason it exists.
 
 - [x] A plugin declaring `ui` appears in the Administration menu with its icon
 - [x] A page declaring `placement: "main"` is listed in the main navigation, on the desktop sidebar and in the mobile drawer (R1.6.bis)
+- [x] A page declaring `equipmentLink` gets a card on those equipments' pages, with the plugin's sentence, linking with `?equipment=` handed on as `ctx.params` (R1.6.ter)
       and label, and its page renders inside the app in both themes.
 - [x] `GET /api/v1/plugins/pages` and `/api/v1/plugins/<id>/page/*` answer 403
       to a `standard` user, before the plugin is reached.
@@ -159,14 +169,15 @@ another machine holds the reason it exists.
 
 ## Tests
 
-| File                                               | Covers                                                      |
-| -------------------------------------------------- | ----------------------------------------------------------- |
-| `src/api/routes/plugin-surface.test.ts`            | R1.2, R1.6, R2.7–R2.10, R4, R5 (25 cases)                   |
-| `src/plugins/plugin-pages.test.ts`                 | R1.1–R1.3, R1.6.bis (8 cases)                               |
-| `ui/src/components/layout/plugin-page-nav.test.ts` | R1.6.bis — the one split sidebar and drawer share (2 cases) |
-| `src/packages/package-manager.test.ts`             | R3.11 (3 cases in `getDataDir`)                             |
-| `src/backup/backup-manager.test.ts`                | R3.13 (2 cases)                                             |
-| `ui/src/pages/PluginPage.test.tsx`                 | R1.4, R1.5 and the three failure screens (6 cases)          |
+| File                                                         | Covers                                                                |
+| ------------------------------------------------------------ | --------------------------------------------------------------------- |
+| `src/api/routes/plugin-surface.test.ts`                      | R1.2, R1.6, R2.7–R2.10, R4, R5 (25 cases)                             |
+| `src/plugins/plugin-pages.test.ts`                           | R1.1–R1.3, R1.6.bis, R1.6.ter (9 cases)                               |
+| `ui/src/components/equipments/PluginEquipmentLinks.test.tsx` | R1.6.ter — the card, its fallback, only the types asked for (3 cases) |
+| `ui/src/components/layout/plugin-page-nav.test.ts`           | R1.6.bis — the one split sidebar and drawer share (2 cases)           |
+| `src/packages/package-manager.test.ts`                       | R3.11 (3 cases in `getDataDir`)                                       |
+| `src/backup/backup-manager.test.ts`                          | R3.13 (2 cases)                                                       |
+| `ui/src/pages/PluginPage.test.tsx`                           | R1.4, R1.5, `ctx.params`, and the three failure screens (7 cases)     |
 
 ## Migration and compatibility
 

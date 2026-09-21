@@ -23,12 +23,13 @@ const page = {
   label: "Accès invités",
   icon: "DoorOpen",
   placement: "admin" as const,
+  equipmentTypes: [],
   entryUrl: "/plugin-ui/guest-access/ui/panel.js?v=1.0.0",
 };
 
-function renderPage(): void {
+function renderPage(entry = "/plugins/guest-access/page"): void {
   render(
-    <MemoryRouter initialEntries={["/plugins/guest-access/page"]}>
+    <MemoryRouter initialEntries={[entry]}>
       <Routes>
         <Route path="/plugins/:pluginId/page" element={<PluginPage />} />
       </Routes>
@@ -69,6 +70,15 @@ describe("PluginPage", () => {
     expect(fetchMock.mock.calls[0][0]).toBe("/api/v1/plugins/guest-access/page/accesses");
     await expect(ctx.api("accesses")).rejects.toThrow(/must start/);
     fetchMock.mockRestore();
+  });
+
+  it("hands the plugin its query string — how an equipment's page says which equipment", async () => {
+    const mount = vi.fn();
+    vi.mocked(loader.loadPluginModule).mockResolvedValue({ mount });
+    renderPage("/plugins/guest-access/page?equipment=eq-42");
+    await waitFor(() => expect(mount).toHaveBeenCalled());
+    const ctx = (mount.mock.calls[0] as [HTMLElement, PluginPageContext])[1];
+    expect(ctx.params).toEqual({ equipment: "eq-42" });
   });
 
   it("says so when no installed plugin offers that page", async () => {

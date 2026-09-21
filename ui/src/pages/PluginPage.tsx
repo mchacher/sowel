@@ -13,7 +13,7 @@
  */
 
 import { useCallback, useEffect, useRef, useState } from "react";
-import { useNavigate, useParams } from "react-router-dom";
+import { useLocation, useNavigate, useParams } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import { AlertTriangle, Loader2 } from "lucide-react";
 import { getPluginPages } from "../api";
@@ -35,6 +35,11 @@ export interface PluginPageContext {
   theme: "light" | "dark";
   /** Navigate inside Sowel — a plugin page may link to an equipment. */
   navigate: (to: string) => void;
+  /**
+   * The page's query string, as a map. An equipment's own page links here
+   * with `?equipment=<id>` (R1.6.ter); the plugin decides what that means.
+   */
+  params: Record<string, string>;
 }
 
 type PageState = "loading" | "ready" | "unknown" | "failed";
@@ -43,6 +48,7 @@ export function PluginPage(): React.ReactElement {
   const { pluginId = "" } = useParams<{ pluginId: string }>();
   const { t, i18n } = useTranslation();
   const navigate = useNavigate();
+  const { search } = useLocation();
   const containerRef = useRef<HTMLDivElement>(null);
   const [state, setState] = useState<PageState>("loading");
   const [label, setLabel] = useState("");
@@ -92,6 +98,7 @@ export function PluginPage(): React.ReactElement {
           locale: i18n.language,
           theme: document.documentElement.classList.contains("dark") ? "dark" : "light",
           navigate: (to: string) => navigate(to),
+          params: Object.fromEntries(new URLSearchParams(search)),
         });
         if (!cancelled) setState("ready");
       } catch (err) {
@@ -111,7 +118,7 @@ export function PluginPage(): React.ReactElement {
       }
       if (container) container.replaceChildren();
     };
-  }, [pluginId, api, i18n.language, navigate]);
+  }, [pluginId, api, i18n.language, navigate, search]);
 
   return (
     <div className="p-4 sm:p-6">

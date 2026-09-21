@@ -58,6 +58,7 @@ describe("PluginLoader.getPages", () => {
         label: "Accès invités",
         icon: "DoorOpen",
         placement: "admin",
+        equipmentTypes: [],
         entryUrl: "/plugin-ui/guest-access/panel.js?v=1.0.0",
       },
     ]);
@@ -80,6 +81,27 @@ describe("PluginLoader.getPages", () => {
       },
     ]);
     expect(loader.getPages().map((p) => p.placement)).toEqual(["main", "admin"]);
+  });
+
+  it("carries the equipment types whose page links here, and nothing that is not one (R1.6.ter)", () => {
+    const loader = makeLoader([
+      {
+        manifest: {
+          ...base,
+          ui: {
+            entry: "ui/panel.js",
+            label: "X",
+            equipmentLink: { types: ["gate", "", 42 as unknown as string] },
+          },
+        },
+        enabled: true,
+      },
+      {
+        manifest: { ...base, id: "plain", ui: { entry: "ui/panel.js", label: "Y" } },
+        enabled: true,
+      },
+    ]);
+    expect(loader.getPages().map((p) => p.equipmentTypes)).toEqual([["gate"], []]);
   });
 
   it("falls back to the plugin's own name and icon", () => {
