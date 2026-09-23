@@ -53,6 +53,8 @@ routes (admin and public), `plugin-api`, `guest-page`, and in the UI `SharedAcce
 | plugin-api    | update after the owner widened                          | widening kept                                           |
 | plugin-api    | another plugin's externalId                             | invisible                                               |
 | plugin-api    | setting off                                             | `SharedAccessDisabledError`                             |
+| public page   | disc pulled past its socket                             | one press sent                                          |
+| public page   | disc released short, and keyboard confirm               | nothing sent, then one press sent                       |
 | UI page       | editor of an access with a period                       | opens (regression from the first attempt)               |
 | UI picker     | same day as the start                                   | earlier hours and minutes disabled, steps of 5          |
 | UI panel      | gate off / on / disarmed                                | button / switch and count / refused wording             |

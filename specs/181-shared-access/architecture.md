@@ -33,7 +33,7 @@ in all three at once.
 | `codes.ts`                 | The code alphabet and folding, the phone token and its hash                                         |
 | `guessing.ts`              | The failure budget, the held answer, the per-code lock, the alert (R6)                              |
 | `gate-queue.ts`            | Per-gate queue and double-press window (R4.14)                                                      |
-| `guest-page.ts`            | The public page's HTML, CSS, JS and manifest, as strings                                            |
+| `guest-page.ts`            | The public page's HTML, CSS, JS and manifest, as strings — including the pull-to-open disc (R5.20)  |
 | `plugin-api.ts`            | `deps.sharedAccess`, scoped to the calling plugin (R9)                                              |
 
 The Paris wall clock reuses the core's existing time-zone helpers (spec 061).

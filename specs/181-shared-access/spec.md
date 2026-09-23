@@ -113,16 +113,38 @@ R9 (see _Consumers_).
     the links.
 19. A phone keeps its **own token**; only its SHA-256 is stored. More than six phones on one access
     raises an alarm — information, never a block.
-20. The control is **Sowel's slide-to-confirm** (spec 146), one per gate the access opens, titled by
-    the equipment's name when there are several. Nothing is said on success: the slide turns green
-    with a check and returns to rest after two seconds, since the same gesture closes the gate
-    behind you. The page speaks only when the gate will not move.
-21. French by default, English when the phone asks. Words assume no holiday let. Before a code is
+20. **The control is a movement, not a button to validate.** The gate is one warm disc in the
+    middle of a dark screen; the visitor **pulls it upward out of its socket**, and the command
+    leaves only once the disc has cleared the socket. Released short, the disc falls back and
+    nothing was sent — a phone in a pocket, a child playing with the screen, a thumb on a page
+    still loading never open anything. Two faint chevrons above the disc announce the direction
+    before the finger lands; the socket stays drawn where the disc was, and firms up as the
+    distance is covered. One disc per gate the access opens, titled by the equipment's name when
+    there are several.
+21. The gesture has a way round for whoever cannot perform it: **the keyboard confirms**, through
+    the core's slide-to-confirm (spec 146), because a gesture nobody can perform is a gate nobody
+    can open.
+22. **What the page shows of the command is the echo of the visitor's own presses, never the
+    state of the gate.** After the disc is released: the disc dims, a pill reads « Commande
+    envoyée », a thin bar runs for the gate's declared travel time, and the press is listed under
+    « Vos commandes » — this phone's presses, the ones it made itself. The page never says whether
+    the gate is open, closed or moving (R4.16); it speaks in words only when the gate will not
+    move, and then it says why.
+23. French by default, English when the phone asks. Words assume no holiday let. Before a code is
     typed, the title names a door only if the house has one gate.
+
+The page as it stands, from the mock-up validated on 2026-09-23
+(`visitor-page.html`, which keeps the three gestures that were turned down beside this one):
+
+| At rest                           | Pulled to the release point          | Command gone                      | Refused                              |
+| --------------------------------- | ------------------------------------ | --------------------------------- | ------------------------------------ |
+| ![](screenshots/visitor-rest.png) | ![](screenshots/visitor-reached.png) | ![](screenshots/visitor-sent.png) | ![](screenshots/visitor-refused.png) |
+
+And what is seen before a code is known: ![](screenshots/visitor-code.png)
 
 ### R6 — Guessing codes
 
-22. **A correct code is never refused by the anti-guessing budget.** The code is looked up first;
+24. **A correct code is never refused by the anti-guessing budget.** The code is looked up first;
     only failures are counted, **globally** — behind a reverse proxy the core sees the proxy's
     address, not the visitor's, so « N tries per IP » would be N tries for the whole internet.
     Ten failures in ten minutes are free, then each failing answer is held back 1 s, 2, 4, 8, up to
@@ -131,40 +153,40 @@ R9 (see _Consumers_).
 
 ### R7 — The owner's page
 
-23. **« Accès partagés » in the main navigation**, after Analyse — used day to day, not configured
+25. **« Accès partagés » in the main navigation**, after Analyse — used day to day, not configured
     once. Admin-only.
-24. **A tab per gate**, « Tous » once there are two, « + portail ». On « Tous » each line says which
+26. **A tab per gate**, « Tous » once there are two, « + portail ». On « Tous » each line says which
     gates it opens.
-25. Each line: label, code, validity, hours, phones, last use; Sowel's icons for **copy the link**,
+27. Each line: label, code, validity, hours, phones, last use; Sowel's icons for **copy the link**,
     **edit**, **hold / resume**, and **« ⋯ »** for change the code, this access's journal, revoke (or
     delete, once revoked or ended).
-26. **The period is picked in order**: « Valable » (always / for a period); the day from a calendar
+28. **The period is picked in order**: « Valable » (always / for a period); the day from a calendar
     where every day before the start is struck; the time from two standard lists, **hours and
     minutes in steps of five**, the values before the start disabled on its day. Moving the start
     past the end carries the end along, keeping the length.
-27. A header line says what the owner cannot otherwise know: each gate's contact, whether it is
+29. A header line says what the owner cannot otherwise know: each gate's contact, whether it is
     armed, whether the public page is reachable (base URL set), and the external sources' state.
 
 ### R8 — On the gate's own page
 
-28. A panel **« Accès partagés »** beside « Confirmation avant action », admin-only: turned off, a
+30. A panel **« Accès partagés »** beside « Confirmation avant action », admin-only: turned off, a
     button to turn it on; turned on, the **armed switch**, the **command** (R2.5), and « 3 personnes
     peuvent ouvrir ce portail avec un code » with a link to that gate's tab.
 
 ### R9 — Accesses from elsewhere (plugins)
 
-29. A plugin may create, update and revoke **external** accesses through `deps.sharedAccess`, keyed
+31. A plugin may create, update and revoke **external** accesses through `deps.sharedAccess`, keyed
     by `(pluginId, externalId)` — idempotent, so replaying a feed changes nothing. It sets the label,
     the window and, optionally, the gates (the first gate otherwise); the owner's widening and gate
     choices are never taken back by a later update. A plugin sees and touches **only its own**
     accesses, and reads back the invitation (code and link) of each, to send it through its own
     channel.
-30. While the feature is off, `deps.sharedAccess` answers every call with a `disabled` error: the
+32. While the feature is off, `deps.sharedAccess` answers every call with a `disabled` error: the
     plugin can say so on its own page, and nothing is created behind the owner's back.
 
 ### R10 — Housekeeping
 
-31. Codes nulled seven days after the access ended; journal lines kept a year, bounded in count.
+33. Codes nulled seven days after the access ended; journal lines kept a year, bounded in count.
 
 ## Consumers
 
@@ -190,7 +212,9 @@ R9 (see _Consumers_).
 - [ ] A correct code sets a phone up even after forty wrong codes, without delay.
 - [ ] A press on a listed, armed gate inside the validity sends the gate's command through
       `executeOrder`; every refusal of R4.12 sends nothing and tells the phone why.
-- [ ] The phone never receives the gate's state.
+- [ ] The phone never receives the gate's state, and what it shows of a command is that
+      phone's own presses.
+- [ ] The disc released short of its socket sends nothing; the keyboard confirms instead.
 - [ ] « Jusqu'au » cannot be picked before « À partir du »; the server refuses it too.
 - [ ] A plugin's external access is idempotent, and a later update keeps the owner's widening.
 - [ ] Nothing is persisted outside SQLite; the data rides in the backup.
