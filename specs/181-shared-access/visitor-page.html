@@ -1,0 +1,647 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Spec 181 — the visitor page</title>
+<style>
+  :root{
+    --ink:#14100d; --paper:#f7f3ee; --line:#e0d7cb; --muted:#7b6f62;
+    --accent:#c26a18;
+    --night:#0a0705; --night2:#161210; --glow:#e8963c; --glow2:#f5b164;
+    --night-ink:#f3ece4; --night-muted:#8d8177; --bad:#e2685b; --good:#63c08a;
+  }
+  *{box-sizing:border-box}
+  html{-webkit-text-size-adjust:100%}
+  body{margin:0;background:var(--paper);color:var(--ink);
+       font:16px/1.55 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif}
+  .wrap{max-width:1180px;margin:0 auto;padding:40px 20px 80px}
+  h1{font-size:30px;line-height:1.15;margin:0 0 6px;letter-spacing:-.02em}
+  .sub{color:var(--muted);margin:0 0 28px}
+  h2{font-size:19px;margin:38px 0 10px;letter-spacing:-.01em}
+  p{margin:0 0 12px}
+  .lede{max-width:70ch}
+  .card{background:#fff;border:1px solid var(--line);border-radius:14px;padding:18px 20px;margin:0 0 14px}
+  .card h3{margin:0 0 6px;font-size:16px}
+  .card p{margin:0;color:#3f382f}
+  .flag{border-left:3px solid var(--accent);background:#fdf6ee;border-radius:0 14px 14px 0}
+  .stage{display:flex;gap:34px;align-items:flex-start;flex-wrap:wrap;margin-top:18px}
+  .side{flex:1 1 300px;min-width:290px}
+  .tabs{display:flex;flex-wrap:wrap;gap:8px;margin:0 0 14px}
+  .tab{appearance:none;border:1px solid var(--line);background:#fff;color:var(--ink);
+       border-radius:999px;padding:9px 15px;font-size:14px;font-weight:600;cursor:pointer}
+  .tab[aria-pressed="true"]{background:var(--ink);color:#fff;border-color:var(--ink)}
+  .tab small{display:block;font-weight:400;opacity:.65;font-size:11.5px}
+  .switches{display:flex;flex-direction:column;gap:9px;margin:14px 0 0}
+  .sw{display:flex;gap:10px;align-items:flex-start;font-size:14px;color:#3f382f;cursor:pointer}
+  .sw input{margin:3px 0 0}
+  .note{font-size:13.5px;color:var(--muted)}
+  code{background:#efe9e1;border-radius:5px;padding:1px 5px;font-size:13px}
+
+  /* ---------- le téléphone ---------- */
+  .phone{width:392px;flex:0 0 392px;border-radius:40px;padding:10px;background:#241d18;
+         box-shadow:0 30px 70px rgba(30,18,6,.32);}
+  .screen{position:relative;border-radius:31px;overflow:hidden;background:var(--night);
+          height:720px;color:var(--night-ink);display:flex;flex-direction:column}
+  .screen::before{content:"";position:absolute;inset:-30% -20% auto -20%;height:70%;
+    background:radial-gradient(60% 60% at 50% 40%,rgba(232,150,60,.20),transparent 70%);pointer-events:none}
+  .top{position:relative;padding:26px 24px 0;text-align:center;flex:0 0 auto}
+  .brand{font-size:11px;letter-spacing:.22em;text-transform:uppercase;color:var(--night-muted)}
+  .gname{font-size:25px;font-weight:600;margin:7px 0 12px;letter-spacing:-.01em}
+  .pill{display:inline-flex;align-items:center;gap:7px;border:1px solid rgba(232,150,60,.35);
+        background:rgba(232,150,60,.10);color:var(--glow2);border-radius:999px;
+        padding:5px 12px;font-size:12.5px;min-height:27px}
+  .pill .dot{width:7px;height:7px;border-radius:50%;background:var(--glow2);
+             animation:blink 1.4s ease-in-out infinite}
+  .pill.idle{border-color:rgba(255,255,255,.10);background:rgba(255,255,255,.04);color:var(--night-muted)}
+  .pill.idle .dot{background:var(--night-muted);animation:none}
+  .pill.bad{border-color:rgba(226,104,91,.45);background:rgba(226,104,91,.12);color:#f0a79d}
+  .pill.bad .dot{background:#f0a79d;animation:none}
+  @keyframes blink{0%,100%{opacity:1}50%{opacity:.25}}
+
+  .arena{position:relative;flex:1 1 auto;display:flex;align-items:center;justify-content:center}
+  .halo{position:absolute;border-radius:50%;border:1px solid rgba(255,255,255,.05);pointer-events:none}
+  .halo.h1{width:300px;height:300px}
+  .halo.h2{width:240px;height:240px;border-color:rgba(232,150,60,.10)}
+
+  .orb{position:relative;width:170px;height:170px;border-radius:50%;border:0;cursor:pointer;
+       background:radial-gradient(120% 120% at 35% 28%,#f7c07e,#e8963c 46%,#c9701f 100%);
+       color:#2a1704;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;
+       box-shadow:0 0 0 1px rgba(255,255,255,.18) inset,0 14px 40px rgba(232,150,60,.35),
+                  0 0 90px rgba(232,150,60,.22);
+       touch-action:none;-webkit-user-select:none;user-select:none;font-family:inherit;
+       transition:transform .16s ease, box-shadow .16s ease, filter .16s ease}
+  .orb:focus-visible{outline:3px solid #fff;outline-offset:6px}
+  .orb .verb{font-size:19px;font-weight:700;letter-spacing:.06em}
+  .orb .hint{font-size:11.5px;opacity:.72;max-width:120px;text-align:center;line-height:1.25}
+  .orb svg{width:38px;height:38px;margin-bottom:2px}
+  .orb.busy{filter:saturate(.8) brightness(.74);cursor:default;box-shadow:0 0 0 1px rgba(255,255,255,.12) inset}
+
+  .ring{position:absolute;inset:-13px;pointer-events:none}
+  .ring circle{fill:none;stroke-width:4;stroke-linecap:round;transform:rotate(-90deg);transform-origin:50% 50%}
+  .ring .bg{stroke:rgba(255,255,255,.07)}
+  .ring .fg{stroke:var(--glow2);stroke-dasharray:1 1}
+
+  /* socle laissé par la sphère quand on la tire, et guide au-dessus */
+  .socket{position:absolute;width:170px;height:170px;border-radius:50%;pointer-events:none;
+          border:1px dashed rgba(232,150,60,.30);opacity:0;transition:opacity .18s}
+  .socket.on{opacity:1}
+  .guide{position:absolute;bottom:calc(50% + 100px);left:50%;transform:translateX(-50%);
+         display:flex;flex-direction:column;align-items:center;gap:0;pointer-events:none;
+         opacity:0;transition:opacity .22s}
+  .guide.on{opacity:1}
+  .guide svg{width:20px;height:20px;color:var(--glow2);margin-bottom:-7px}
+  .guide svg:nth-child(1){opacity:.28;animation:rise 1.9s ease-in-out infinite}
+  .guide svg:nth-child(2){opacity:.55;animation:rise 1.9s ease-in-out .18s infinite}
+  @keyframes rise{0%,100%{transform:translateY(2px)}50%{transform:translateY(-3px)}}
+  .guide.reached svg{opacity:1}
+
+  /* variante glissière */
+  .slide{position:absolute;left:24px;right:24px;bottom:96px;height:62px;border-radius:999px;
+         background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.09);
+         display:flex;align-items:center;touch-action:none;-webkit-user-select:none;user-select:none}
+  .slide .lbl{position:absolute;left:0;right:0;text-align:center;font-size:13.5px;color:var(--night-muted);
+              pointer-events:none;transition:opacity .15s}
+  .knob{position:absolute;left:5px;width:52px;height:52px;border-radius:50%;cursor:grab;
+        background:radial-gradient(120% 120% at 35% 28%,#f7c07e,#e8963c 60%,#c9701f);
+        display:flex;align-items:center;justify-content:center;color:#2a1704;
+        box-shadow:0 6px 18px rgba(232,150,60,.35)}
+  .knob svg{width:22px;height:22px}
+  .knob.ok{background:radial-gradient(120% 120% at 35% 28%,#a7e6c2,#63c08a 60%,#3d8f61);color:#08301c}
+
+  /* barre de progression */
+  .prog{padding:0 24px;flex:0 0 auto;opacity:0;transition:opacity .25s}
+  .prog.on{opacity:1}
+  .bar{height:3px;border-radius:2px;background:rgba(255,255,255,.08);overflow:hidden}
+  .bar i{display:block;height:100%;width:0;background:linear-gradient(90deg,var(--glow),var(--glow2))}
+  .prog .row{display:flex;justify-content:space-between;font-size:11.5px;color:var(--night-muted);margin-top:7px}
+
+  .msg{margin:12px 24px 0;min-height:0;font-size:13.5px;color:#f0a79d;text-align:center;
+       opacity:0;transition:opacity .2s}
+  .msg.on{opacity:1}
+
+  .journal{margin:16px 12px 12px;background:rgba(255,255,255,.035);border-radius:18px;padding:6px 4px;
+           flex:0 0 auto;max-height:168px;overflow:hidden}
+  .journal h4{margin:10px 14px 6px;font-size:11px;letter-spacing:.16em;text-transform:uppercase;
+              color:var(--night-muted);font-weight:600}
+  .jrow{display:flex;align-items:center;gap:10px;padding:9px 14px;font-size:13.5px}
+  .jrow .d{width:6px;height:6px;border-radius:50%;background:var(--glow);flex:0 0 auto;opacity:.8}
+  .jrow .t{margin-left:auto;color:var(--night-muted);font-size:12px;font-variant-numeric:tabular-nums}
+  .jrow.foreign .d{background:#6d7f8f}
+  .jrow.foreign span{color:var(--night-muted)}
+  .jrow.new{animation:slidein .35s ease}
+  @keyframes slidein{from{opacity:0;transform:translateY(-6px)}to{opacity:1;transform:none}}
+
+  /* écran du code */
+  .codescreen{position:absolute;inset:0;background:var(--night);display:none;
+              flex-direction:column;align-items:center;justify-content:center;padding:0 34px;text-align:center;z-index:5}
+  .codescreen.on{display:flex}
+  .codescreen h3{font-size:22px;margin:0 0 8px;font-weight:600}
+  .codescreen p{color:var(--night-muted);font-size:14px;margin:0 0 26px}
+  .codescreen input{width:100%;background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.12);
+    border-radius:14px;color:var(--night-ink);font-size:22px;letter-spacing:.18em;text-align:center;
+    padding:15px 12px;font-family:inherit}
+  .codescreen input:focus{outline:2px solid var(--glow);border-color:transparent}
+  .codescreen button{margin-top:14px;width:100%;border:0;border-radius:14px;padding:15px;
+    background:var(--glow);color:#2a1704;font-size:16px;font-weight:700;font-family:inherit;cursor:pointer}
+  .codescreen .err{color:#f0a79d;font-size:13.5px;margin:14px 0 0;min-height:19px}
+
+  .foot{font-size:13px;color:var(--muted);margin-top:34px;border-top:1px solid var(--line);padding-top:14px}
+  [hidden]{display:none !important}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <h1>The page a visitor opens in front of the gate</h1>
+  <p class="sub">Spec 181 — shared access · the control, to be handled before a line of it is written.
+  The phone is shown in French, the page's default language.</p>
+
+  <p class="lede">A dark screen, one warm disc, everything else out of the way. What had to be
+  settled is <strong>the gesture</strong>: a movement, not a button to validate. Four were put side
+  by side, all really playable here, with a mouse or a finger, refusals included.
+  <strong>Chosen on 2026-09-23: pull the disc upward.</strong> The other three stay under the tabs,
+  so the comparison is still at hand.</p>
+
+  <div class="card flag">
+    <h3>One thing from the reference visual that is not reproduced as is</h3>
+    <p>The visual this started from showed a « Ouverture en cours » banner and a house-wide journal:
+    « opened from the application », « closed automatically ». Those are facts about
+    <em>the gate's state</em>. This page is pollable by anyone holding a code, and R4.16 says it
+    never tells whether the gate is open — otherwise a code lent out becomes a listening post on the
+    house. The banner and the journal are kept, but they carry <strong>the echo of this phone's own
+    presses</strong>: what it asked for, and the travel time running out. The « house-wide journal »
+    switch below shows the other reading, side by side.</p>
+  </div>
+
+  <h2>The opening gesture</h2>
+
+  <div class="tabs" id="tabs">
+    <button class="tab" data-v="hold" aria-pressed="false">Hold<small>one second on the disc</small></button>
+    <button class="tab" data-v="slide" aria-pressed="false">Slide<small>the core's slide-to-confirm (spec 146)</small></button>
+    <button class="tab" data-v="pull" aria-pressed="true">Pull upward ✓<small>chosen on 2026-09-23</small></button>
+    <button class="tab" data-v="turn" aria-pressed="false">Turn<small>like a key, a quarter turn</small></button>
+  </div>
+
+  <div class="stage">
+    <div class="phone">
+      <div class="screen" id="screen">
+
+        <div class="codescreen" id="codescreen">
+          <h3>Accès</h3>
+          <p>Entrez le code qu'on vous a communiqué.</p>
+          <input id="codeinput" inputmode="text" autocomplete="one-time-code" placeholder="XXXX-XXXX" aria-label="Code d'accès">
+          <button id="codego">Valider</button>
+          <p class="err" id="codeerr"></p>
+        </div>
+
+        <div class="top">
+          <div class="brand" id="brand">Domaine Solio</div>
+          <div class="gname" id="gname">Portail principal</div>
+          <span class="pill idle" id="pill"><span class="dot"></span><span id="pilltext">Prêt</span></span>
+        </div>
+
+        <div class="arena" id="arena">
+          <div class="halo h1"></div>
+          <div class="halo h2"></div>
+          <div class="socket" id="socket"></div>
+          <div class="guide" id="guide" aria-hidden="true">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"
+                 stroke-linecap="round" stroke-linejoin="round"><path d="M6 15l6-6 6 6"></path></svg>
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"
+                 stroke-linecap="round" stroke-linejoin="round"><path d="M6 15l6-6 6 6"></path></svg>
+          </div>
+
+          <button class="orb" id="orb" aria-label="Ouvrir le portail">
+            <svg class="ring" id="ring" viewBox="0 0 200 200" aria-hidden="true" hidden>
+              <circle class="bg" cx="100" cy="100" r="96"></circle>
+              <circle class="fg" id="ringfg" cx="100" cy="100" r="96"></circle>
+            </svg>
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"
+                 stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+              <path d="M3 21h8V5l-8 3z"></path><path d="M11 21h2V9l-2-1"></path>
+              <path d="M15 12h6"></path><path d="M18 9l3 3-3 3"></path>
+            </svg>
+            <span class="verb" id="verb">OUVRIR</span>
+            <span class="hint" id="hint">maintenir 1 seconde</span>
+          </button>
+
+          <div class="slide" id="slide" hidden>
+            <span class="lbl" id="slidelbl">Glisser pour actionner</span>
+            <div class="knob" id="knob" role="button" tabindex="0" aria-label="Glisser pour actionner">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"
+                   stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                <path d="M9 6l6 6-6 6"></path>
+              </svg>
+            </div>
+          </div>
+        </div>
+
+        <p class="msg" id="msg"></p>
+
+        <div class="prog" id="prog">
+          <div class="bar"><i id="barfill"></i></div>
+          <div class="row"><span id="progleft">commande envoyée</span><span id="progright">8,4 s</span></div>
+        </div>
+
+        <div class="journal" id="journal">
+          <h4 id="jtitle">Vos commandes</h4>
+          <div id="jrows"></div>
+        </div>
+
+      </div>
+    </div>
+
+    <div class="side">
+      <div class="card">
+        <h3 id="gtitle">Pull upward</h3>
+        <p id="gtext"></p>
+      </div>
+
+      <div class="switches">
+        <label class="sw"><input type="checkbox" id="swRefuse">
+          <span><strong>The house refuses</strong> — outside the allowed hours. The gesture completes
+          and opens nothing: the one moment the page speaks.</span></label>
+        <label class="sw"><input type="checkbox" id="swTwo">
+          <span><strong>Two gates</strong> on one access — the page becomes a stack of cards and the
+          title names the entrance.</span></label>
+        <label class="sw"><input type="checkbox" id="swHouse">
+          <span><strong>House-wide journal</strong> (the reference visual's reading) — kept here for the
+          record; « vos commandes » was chosen on 2026-09-23.</span></label>
+        <label class="sw"><input type="checkbox" id="swCode">
+          <span>Show the <strong>code screen</strong>, before any opening.</span></label>
+      </div>
+
+      <p class="note" style="margin-top:16px">On a keyboard: <code>Tab</code> to the disc, then hold
+      <code>Space</code>. A gesture nobody can perform would be a gate nobody can open, so every
+      variant keeps that way out.</p>
+
+      <p class="note">The duration shown (8.4 s) is the travel time declared on the equipment; on the
+      gate this was designed against it is 34 s.</p>
+    </div>
+  </div>
+
+  <h2>What this changes in the spec</h2>
+  <div class="card">
+    <p>R5.20 used to read « the control is Sowel's slide-to-confirm (spec 146) ». It is rewritten
+    around the pull, R5.21 keeps the keyboard's way out through that same slide, and R5.22 states
+    what the dark rendering is allowed to show: this phone's own presses, never the gate's state.
+    The rest of the spec does not move.</p>
+  </div>
+
+  <p class="foot">Self-contained: no font, no script, no image from anywhere else. It opens from
+  disk, offline.</p>
+</div>
+
+<script>
+(function(){
+  "use strict";
+  var $ = function(id){ return document.getElementById(id); };
+  var orb=$("orb"), ring=$("ring"), ringfg=$("ringfg"), slide=$("slide"), knob=$("knob"),
+      pill=$("pill"), pilltext=$("pilltext"), verb=$("verb"), hint=$("hint"), msg=$("msg"),
+      prog=$("prog"), barfill=$("barfill"), progright=$("progright"), progleft=$("progleft"),
+      jrows=$("jrows"), jtitle=$("jtitle"), gname=$("gname"), arena=$("arena"),
+      socket=$("socket"), guide=$("guide");
+
+  var R = 96, CIRC = 2 * Math.PI * R;
+  ringfg.style.strokeDasharray = CIRC + " " + CIRC;
+  ringfg.style.strokeDashoffset = CIRC;
+
+  var variant = "pull";
+  var busy = false;
+  var TRAVEL = 8.4;
+
+  var TEXT = {
+    hold: { title:"Hold",
+      hint:"maintenir 1 seconde",
+      body:"The finger stays down and a ring fills around the disc; let go early and it empties, nothing left. The shortest to perform one-handed, a bag in the other. Its weakness: nothing announces it before the finger has landed, so the caption has to."},
+    slide:{ title:"Slide",
+      hint:"glisser pour actionner",
+      body:"The slide the core already draws (spec 146, the one behind « confirmation before action »). One component fewer to invent, and a gesture the house uses elsewhere. It takes the lower half of the screen, and the disc is then only scenery."},
+    pull: { title:"Pull upward",
+      hint:"tirer vers le haut",
+      body:"The disc follows the finger, leaves its socket, and the command goes once it has been pulled far enough; released too early, it falls back in. The gesture has a direction and a weight — it is the closest to opening something. It asks for a little more travel than the hold."},
+    turn: { title:"Turn",
+      hint:"tourner comme une clé",
+      body:"A quarter turn, like a key in a lock. Impossible to trigger by accident in a pocket, and the metaphor is right. It is also the hardest to guess without the caption, and the hardest to do with a thumb."}
+  };
+
+  function setText(){
+    hint.textContent = TEXT[variant].hint;
+    $("gtitle").textContent = TEXT[variant].title;
+    $("gtext").textContent  = TEXT[variant].body;
+    knob.setAttribute("aria-label", TEXT[variant].hint);
+  }
+
+  // ---------- retours visuels communs ----------
+  function showMsg(t){ msg.textContent = t; msg.classList.add("on"); }
+  function hideMsg(){ msg.classList.remove("on"); }
+
+  function setPill(kind, text){
+    pill.className = "pill" + (kind === "run" ? "" : kind === "bad" ? " bad" : " idle");
+    pilltext.textContent = text;
+  }
+
+  function nowLabel(){
+    var d = new Date();
+    return String(d.getHours()).padStart(2,"0") + ":" + String(d.getMinutes()).padStart(2,"0");
+  }
+
+  function addJournal(label){
+    var row = document.createElement("div");
+    row.className = "jrow new";
+    row.innerHTML = '<span class="d"></span><span></span><span class="t"></span>';
+    row.children[1].textContent = label;
+    row.children[2].textContent = nowLabel();
+    jrows.insertBefore(row, jrows.firstChild);
+    while (jrows.children.length > 4) jrows.removeChild(jrows.lastChild);
+  }
+
+  function refused(){
+    busy = false;
+    setPill("bad", "Commande refusée");
+    showMsg("En dehors des heures autorisées. Prochaine ouverture à 08:00.");
+    orb.classList.remove("busy");
+    setText();
+    guide.classList.toggle("on", variant === "pull");
+    setTimeout(function(){ setPill("idle","Prêt"); hideMsg(); }, 4200);
+  }
+
+  function fire(){
+    if (busy) return;
+    if ($("swRefuse").checked) { refused(); return; }
+    busy = true;
+    hideMsg();
+    orb.classList.add("busy");
+    verb.textContent = "ENVOYÉ";
+    hint.textContent = "";
+    setPill("run", "Commande envoyée");
+    guide.classList.remove("on");
+    addJournal($("swHouse").checked ? "Ouvert depuis votre téléphone" : "Ouverture demandée");
+    prog.classList.add("on");
+    progleft.textContent = "commande envoyée";
+
+    var t0 = performance.now();
+    (function step(now){
+      var p = Math.min(1, (now - t0) / (TRAVEL * 1000));
+      barfill.style.width = (p * 100) + "%";
+      progright.textContent = ((1 - p) * TRAVEL).toFixed(1).replace(".", ",") + " s";
+      if (p < 1) { requestAnimationFrame(step); return; }
+      barfill.style.width = "0%";
+      prog.classList.remove("on");
+      orb.classList.remove("busy");
+      verb.textContent = "OUVRIR";
+      setText();
+      setPill("idle", "Prêt");
+      busy = false;
+      guide.classList.toggle("on", variant === "pull");
+    })(t0);
+  }
+
+  // ---------- variante : maintenir ----------
+  var holdRaf = null, holdStart = 0, holdFrom = 0, HOLD_MS = 1000;
+  function ringTo(p){ ringfg.style.strokeDashoffset = CIRC * (1 - p); }
+  function holdBegin(e){
+    if (busy || variant !== "hold") return;
+    if (e && e.pointerId !== undefined) orb.setPointerCapture(e.pointerId);
+    hideMsg();
+    ring.hidden = false;
+    holdStart = performance.now(); holdFrom = 0;
+    orb.style.transform = "scale(.965)";
+    cancelAnimationFrame(holdRaf);
+    (function up(now){
+      var p = Math.min(1, (now - holdStart) / HOLD_MS);
+      ringTo(p);
+      if (p >= 1) { orb.style.transform = ""; ring.hidden = true; ringTo(0); fire(); return; }
+      holdRaf = requestAnimationFrame(up);
+    })(holdStart);
+  }
+  function holdEnd(){
+    if (variant !== "hold") return;
+    cancelAnimationFrame(holdRaf);
+    orb.style.transform = "";
+    var p = parseFloat(getComputedStyle(ringfg).strokeDashoffset);
+    var cur = 1 - (isNaN(p) ? CIRC : p) / CIRC;
+    if (cur <= 0.001) { ring.hidden = true; return; }
+    var t0 = performance.now();
+    (function down(now){
+      var k = Math.max(0, cur * (1 - (now - t0) / 260));
+      ringTo(k);
+      if (k > 0) { holdRaf = requestAnimationFrame(down); } else { ring.hidden = true; }
+    })(t0);
+  }
+
+  // ---------- variante : tirer ----------
+  var pullY = 0, pullActive = false, PULL_MAX = 118;
+  function pullMove(e){
+    if (!pullActive) return;
+    var dy = Math.max(0, pullStartY - (e.clientY !== undefined ? e.clientY : 0));
+    pullY = Math.min(PULL_MAX + 18, dy);
+    var k = Math.min(1, pullY / PULL_MAX);
+    socket.style.borderColor = "rgba(232,150,60," + (0.22 + 0.5 * k) + ")";
+    socket.style.borderStyle = k >= 1 ? "solid" : "dashed";
+    orb.style.transform = "translateY(" + (-pullY) + "px) scale(" + (1 - .05 * k) + ")";
+    orb.style.boxShadow = "0 0 0 1px rgba(255,255,255,.18) inset,0 " + (14 + 26*k) +
+      "px " + (40 + 30*k) + "px rgba(232,150,60," + (.35 + .25*k) + "),0 0 " + (90+60*k) + "px rgba(232,150,60,.22)";
+    hint.textContent = k >= 1 ? "relâcher" : TEXT.pull.hint;
+  }
+  var pullStartY = 0;
+  function pullBegin(e){
+    if (busy || variant !== "pull") return;
+    pullActive = true; pullStartY = e.clientY;
+    if (e.pointerId !== undefined) orb.setPointerCapture(e.pointerId);
+    hideMsg();
+    socket.classList.add("on"); guide.classList.remove("on");
+    orb.style.transition = "none";
+  }
+  function pullEnd(){
+    if (!pullActive) return;
+    pullActive = false;
+    orb.style.transition = "";
+    socket.classList.remove("on");
+    socket.style.borderColor = ""; socket.style.borderStyle = "";
+    if (variant === "pull" && !busy) guide.classList.add("on");
+    var done = pullY >= PULL_MAX;
+    orb.style.transform = ""; orb.style.boxShadow = "";
+    pullY = 0;
+    if (done) fire(); else setText();
+  }
+
+  // ---------- variante : tourner ----------
+  var turnActive = false, turnPrev = 0, turnAcc = 0, TURN_TARGET = 100; // degrés
+  function angleOf(e){
+    var r = orb.getBoundingClientRect();
+    return Math.atan2(e.clientY - (r.top + r.height/2), e.clientX - (r.left + r.width/2)) * 180 / Math.PI;
+  }
+  function turnBegin(e){
+    if (busy || variant !== "turn") return;
+    turnActive = true; turnAcc = 0; turnPrev = angleOf(e);
+    if (e.pointerId !== undefined) orb.setPointerCapture(e.pointerId);
+    hideMsg();
+    ring.hidden = false;
+    orb.style.transition = "none";
+  }
+  function turnMove(e){
+    if (!turnActive) return;
+    var a = angleOf(e), d = a - turnPrev;
+    if (d > 180) d -= 360; if (d < -180) d += 360;
+    turnPrev = a;
+    turnAcc = Math.max(0, Math.min(TURN_TARGET + 12, turnAcc + d));
+    var k = Math.min(1, turnAcc / TURN_TARGET);
+    orb.style.transform = "rotate(" + turnAcc + "deg)";
+    ringTo(k);
+    hint.textContent = k >= 1 ? "relâcher" : TEXT.turn.hint;
+  }
+  function turnEnd(){
+    if (!turnActive) return;
+    turnActive = false;
+    orb.style.transition = "";
+    var done = turnAcc >= TURN_TARGET;
+    orb.style.transform = "";
+    ring.hidden = true; ringTo(0); turnAcc = 0;
+    if (done) fire(); else setText();
+  }
+
+  // ---------- variante : glissière ----------
+  var slideActive = false, slideX = 0, slideStartX = 0;
+  function slideMax(){ return slide.clientWidth - knob.offsetWidth - 10; }
+  knob.addEventListener("pointerdown", function(e){
+    if (busy) return;
+    slideActive = true; slideStartX = e.clientX - slideX;
+    knob.setPointerCapture(e.pointerId);
+    knob.style.transition = "none"; hideMsg();
+  });
+  knob.addEventListener("pointermove", function(e){
+    if (!slideActive) return;
+    slideX = Math.max(0, Math.min(slideMax(), e.clientX - slideStartX));
+    knob.style.transform = "translateX(" + slideX + "px)";
+    $("slidelbl").style.opacity = String(1 - slideX / slideMax());
+  });
+  function slideEnd(){
+    if (!slideActive) return;
+    slideActive = false;
+    knob.style.transition = "transform .25s ease";
+    var done = slideX >= slideMax() - 4;
+    slideX = 0; knob.style.transform = "";
+    $("slidelbl").style.opacity = "1";
+    if (done) { knob.classList.add("ok"); setTimeout(function(){ knob.classList.remove("ok"); }, 1400); fire(); }
+  }
+  knob.addEventListener("pointerup", slideEnd);
+  knob.addEventListener("pointercancel", slideEnd);
+  knob.addEventListener("keydown", function(e){
+    if (e.key === "Enter" || e.key === " ") { e.preventDefault(); fire(); }
+  });
+
+  // ---------- routage des gestes sur la sphère ----------
+  orb.addEventListener("pointerdown", function(e){
+    e.preventDefault();
+    if (variant === "hold") holdBegin(e);
+    else if (variant === "pull") pullBegin(e);
+    else if (variant === "turn") turnBegin(e);
+  });
+  orb.addEventListener("pointermove", function(e){
+    if (variant === "pull") pullMove(e);
+    else if (variant === "turn") turnMove(e);
+  });
+  function orbUp(){ if (variant === "hold") holdEnd(); else if (variant === "pull") pullEnd(); else if (variant === "turn") turnEnd(); }
+  orb.addEventListener("pointerup", orbUp);
+  orb.addEventListener("pointercancel", orbUp);
+  orb.addEventListener("lostpointercapture", orbUp);
+  orb.addEventListener("click", function(e){ e.preventDefault(); });
+
+  var keyHeld = false;
+  orb.addEventListener("keydown", function(e){
+    if (e.key !== " " && e.key !== "Enter") return;
+    e.preventDefault();
+    if (keyHeld) return;
+    keyHeld = true;
+    if (variant === "hold") holdBegin(null);
+    else fire();
+  });
+  orb.addEventListener("keyup", function(e){
+    if (e.key !== " " && e.key !== "Enter") return;
+    keyHeld = false;
+    if (variant === "hold") holdEnd();
+  });
+
+  // ---------- variantes ----------
+  function setVariant(v){
+    variant = v;
+    Array.prototype.forEach.call(document.querySelectorAll("#tabs .tab"), function(b){
+      b.setAttribute("aria-pressed", String(b.dataset.v === v));
+    });
+    slide.hidden = (v !== "slide");
+    orb.style.cursor = (v === "slide") ? "default" : "pointer";
+    orb.style.marginBottom = (v === "slide") ? "96px" : "";
+    hint.style.visibility = (v === "slide") ? "hidden" : "";
+    guide.classList.toggle("on", v === "pull" && !busy);
+    setText();
+  }
+  $("tabs").addEventListener("click", function(e){
+    var b = e.target.closest(".tab");
+    if (b) setVariant(b.dataset.v);
+  });
+
+  // ---------- options ----------
+  var HOUSE = [
+    ["Ouvert depuis l'application","14:06",true],
+    ["Ouvert par le code voyageur","11:42",true],
+    ["Fermeture automatique","11:44",true]
+  ];
+  var MINE = [
+    ["Ouverture demandée","11:42",false]
+  ];
+  function paintJournal(){
+    var house = $("swHouse").checked;
+    jtitle.textContent = house ? "Activité du portail" : "Vos commandes";
+    jrows.innerHTML = "";
+    (house ? HOUSE : MINE).forEach(function(r){
+      var row = document.createElement("div");
+      row.className = "jrow" + (r[2] ? " foreign" : "");
+      row.innerHTML = '<span class="d"></span><span></span><span class="t"></span>';
+      row.children[1].textContent = r[0];
+      row.children[2].textContent = r[1];
+      jrows.appendChild(row);
+    });
+  }
+  $("swHouse").addEventListener("change", paintJournal);
+
+  $("swTwo").addEventListener("change", function(){
+    var two = this.checked;
+    gname.textContent = two ? "Portail principal" : "Portail principal";
+    $("brand").textContent = two ? "Domaine Solio · 1 sur 2" : "Domaine Solio";
+    document.querySelector(".halo.h1").style.borderColor = two ? "rgba(255,255,255,.12)" : "";
+    $("hint").title = "";
+    if (two) {
+      if (!document.getElementById("peek")) {
+        var peek = document.createElement("div");
+        peek.id = "peek";
+        peek.style.cssText = "position:absolute;left:0;right:0;bottom:8px;text-align:center;font-size:12.5px;color:var(--night-muted)";
+        peek.textContent = "↓ Portail du garage";
+        arena.appendChild(peek);
+      }
+    } else {
+      var p = document.getElementById("peek");
+      if (p) p.remove();
+    }
+  });
+
+  $("swCode").addEventListener("change", function(){
+    $("codescreen").classList.toggle("on", this.checked);
+    if (this.checked) setTimeout(function(){ $("codeinput").focus(); }, 30);
+  });
+  $("codego").addEventListener("click", function(){
+    var v = $("codeinput").value.trim();
+    if (v.length < 4) { $("codeerr").textContent = "Code incorrect ou expiré."; return; }
+    $("codeerr").textContent = "";
+    $("swCode").checked = false;
+    $("codescreen").classList.remove("on");
+  });
+  $("codeinput").addEventListener("keydown", function(e){ if (e.key === "Enter") $("codego").click(); });
+
+  paintJournal();
+  setVariant("pull");
+})();
+</script>
+</body>
+</html>
