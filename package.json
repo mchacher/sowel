@@ -65,14 +65,14 @@
     "@types/web-push": "^3.6.4",
     "@types/ws": "^8.18.1",
     "@vitest/coverage-v8": "^5.0.0",
-    "eslint": "^10.10.0",
+    "eslint": "^10.11.0",
     "globals": "^17.12.0",
     "husky": "^9.1.7",
     "lint-staged": "^17.5.0",
-    "prettier": "^3.9.6",
+    "prettier": "^3.9.8",
     "tsx": "^4.23.13",
     "typescript": "^5.7.3",
-    "typescript-eslint": "^8.70.0",
+    "typescript-eslint": "^8.70.1",
     "vitest": "^5.0.0"
   },
   "lint-staged": {
