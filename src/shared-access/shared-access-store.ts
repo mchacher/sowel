@@ -183,6 +183,10 @@ export class SharedAccessStore {
         `SELECT access_id, COUNT(*) AS n FROM shared_access_phones GROUP BY access_id`,
       ),
       deletePhones: db.prepare(`DELETE FROM shared_access_phones WHERE access_id = ?`),
+      listPhones: db.prepare(
+        `SELECT * FROM shared_access_phones WHERE access_id = ? ORDER BY first_seen_at, id`,
+      ),
+      deletePhone: db.prepare(`DELETE FROM shared_access_phones WHERE id = ? AND access_id = ?`),
 
       insertJournal: db.prepare(
         `INSERT INTO shared_access_journal (at, access_id, label, kind, reason, actor, equipment_id, phone_id)
@@ -349,6 +353,15 @@ export class SharedAccessStore {
       accessId ? this.stmts.journalOf.all(accessId, limit) : this.stmts.journalAll.all(limit)
     ) as JournalRow[];
   }
+  listPhones(accessId: string): PhoneRow[] {
+    return this.stmts.listPhones.all(accessId) as PhoneRow[];
+  }
+
+  /** False when the phone is not one of this access's. */
+  deletePhone(phoneId: string, accessId: string): boolean {
+    return this.stmts.deletePhone.run(phoneId, accessId).changes > 0;
+  }
+
   phonePresses(phoneId: string, limit: number): JournalRow[] {
     return this.stmts.phonePresses.all(phoneId, limit) as JournalRow[];
   }

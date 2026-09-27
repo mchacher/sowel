@@ -851,6 +851,15 @@ export interface SharedAccessJournalEntry {
   reason: string | null;
   actor: string | null;
   equipmentId: string | null;
+  phoneTag: string | null;
+}
+
+export interface SharedAccessPhoneView {
+  id: string;
+  platform: "iphone" | "ipad" | "android" | "mac" | "windows" | "other";
+  tag: string;
+  firstSeenAt: string;
+  lastSeenAt: string;
 }
 
 /** The body of POST /accesses and PATCH /accesses/:id. Dates: `YYYY-MM-DDTHH:MM`, house time. */

@@ -1521,6 +1521,17 @@ export interface SharedAccessJournalEntry {
   reason: string | null;
   actor: string | null;
   equipmentId: string | null;
+  /** R5.23 — the phone's tag (`7K3F`) when a phone did it. */
+  phoneTag: string | null;
+}
+
+/** R5.23 — one phone set up on an access, as the owner sees it. */
+export interface SharedAccessPhoneView {
+  id: string;
+  platform: "iphone" | "ipad" | "android" | "mac" | "windows" | "other";
+  tag: string;
+  firstSeenAt: string;
+  lastSeenAt: string;
 }
 
 // ============================================================

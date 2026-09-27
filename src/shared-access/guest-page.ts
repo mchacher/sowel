@@ -9,7 +9,8 @@
 // What it shows of a command is the echo of this phone's own presses, never
 // the gate's state (R4.16, R5.22). The control is a movement: the disc is
 // pulled upward out of its socket (R5.20); the keyboard confirms with a second
-// Enter instead (R5.21).
+// Enter instead (R5.21). The screen never scrolls: the phone's journal and the
+// QR code to bring another phone in live behind the gear (R5.22).
 // ============================================================
 
 export const GUEST_PAGE_CSP =
@@ -47,17 +48,41 @@ export const GUEST_HTML = `<!doctype html>
     <header class="top">
       <div class="brand" id="brand"></div>
       <span class="pill idle" id="pill"><span class="dot"></span><span id="pillText"></span></span>
+      <button class="gear" id="gear" type="button" aria-controls="sheet" aria-expanded="false">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="3"></circle><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 1 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 1 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 1 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 1 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"></path></svg>
+      </button>
     </header>
     <div class="discs" id="discs"></div>
-    <p class="msg" id="msg" role="status"></p>
-    <div class="prog" id="prog">
-      <div class="bar"><i id="barFill"></i></div>
-      <div class="row"><span id="progLeft"></span><span id="progRight"></span></div>
+    <footer class="foot">
+      <p class="msg" id="msg" role="status"></p>
+      <div class="prog" id="prog">
+        <div class="bar"><i id="barFill"></i></div>
+        <div class="row"><span id="progLeft"></span><span id="progRight"></span></div>
+      </div>
+      <p class="last" id="last"></p>
+    </footer>
+  </section>
+
+  <section class="sheet" id="sheet" role="dialog" aria-modal="true" aria-labelledby="shTitle">
+    <div class="shtop">
+      <h2 id="shTitle">Réglages</h2>
+      <button class="x" id="shClose" type="button"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18"></path></svg></button>
     </div>
-    <section class="journal" id="journal" hidden>
-      <h2 id="jTitle">Vos commandes</h2>
-      <div id="jRows"></div>
-    </section>
+    <div class="shbody">
+      <div class="card">
+        <h3 id="shareTitle">Partager cet accès</h3>
+        <div class="share" id="share" hidden>
+          <p id="shareHint"></p>
+          <img class="qr" id="qr" alt="">
+          <button class="btn" id="copy" type="button"></button>
+        </div>
+        <p class="refuse" id="shareErr" role="status"></p>
+      </div>
+      <div class="card">
+        <h3 id="jTitle">Vos commandes</h3>
+        <div id="jRows"></div>
+      </div>
+    </div>
   </section>
   <p class="loading" id="loading">…</p>
 </main>
@@ -69,17 +94,23 @@ export const GUEST_HTML = `<!doctype html>
 export const GUEST_CSS = `:root{--night:#0a0705;--ink:#f3ece4;--muted:#8d8177;--glow:#e8963c;--glow2:#f5b164;--bad:#f0a79d}
 *{box-sizing:border-box}
 html{-webkit-text-size-adjust:100%}
-body{margin:0;background:var(--night);color:var(--ink);min-height:100vh;
+html,body{height:100%}
+body{margin:0;background:var(--night);color:var(--ink);overflow:hidden;
   font:16px/1.5 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif}
 [hidden]{display:none!important}
-.screen{position:relative;min-height:100vh;max-width:480px;margin:0 auto;display:flex;flex-direction:column;overflow:hidden;
+.screen{position:relative;height:100vh;height:100dvh;max-width:480px;margin:0 auto;display:flex;flex-direction:column;overflow:hidden;
   padding:env(safe-area-inset-top) 0 env(safe-area-inset-bottom)}
 .screen::before{content:"";position:absolute;inset:-30% -20% auto -20%;height:70%;
   background:radial-gradient(60% 60% at 50% 40%,rgba(232,150,60,.20),transparent 70%);pointer-events:none}
 .loading{margin:auto;color:var(--muted)}
-.main{flex:1;display:flex;flex-direction:column;position:relative}
-.top{padding:26px 24px 0;text-align:center}
-.brand{font-size:24px;font-weight:600;margin:0 0 12px;letter-spacing:-.01em}
+.main{flex:1;min-height:0;display:flex;flex-direction:column;position:relative}
+.top{position:relative;padding:22px 56px 0;text-align:center}
+.gear,.x{width:44px;height:44px;border-radius:50%;border:0;background:transparent;color:var(--muted);
+  display:grid;place-items:center;cursor:pointer;padding:0}
+.gear{position:absolute;top:12px;right:8px}
+.gear svg,.x svg{width:22px;height:22px}
+.gear:hover,.gear:focus-visible,.x:hover,.x:focus-visible{color:var(--ink);background:rgba(255,255,255,.06);outline:none}
+.brand{font-size:24px;font-weight:600;margin:0 0 12px;letter-spacing:-.01em;overflow-wrap:anywhere}
 .pill{display:inline-flex;align-items:center;gap:7px;border:1px solid rgba(232,150,60,.35);
   background:rgba(232,150,60,.10);color:var(--glow2);border-radius:999px;padding:5px 12px;font-size:13px;min-height:27px}
 .pill .dot{width:7px;height:7px;border-radius:50%;background:var(--glow2);animation:blink 1.4s ease-in-out infinite}
@@ -88,9 +119,9 @@ body{margin:0;background:var(--night);color:var(--ink);min-height:100vh;
 .pill.bad{border-color:rgba(226,104,91,.45);background:rgba(226,104,91,.12);color:var(--bad)}
 .pill.bad .dot{background:var(--bad);animation:none}
 @keyframes blink{0%,100%{opacity:1}50%{opacity:.25}}
-.discs{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:10px;padding:16px 0}
-.arena{position:relative;width:100%;height:330px;display:flex;align-items:center;justify-content:center}
-.discs.many .arena{height:270px}
+.discs{flex:1;min-height:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;padding:8px 0}
+.arena{position:relative;width:100%;flex:1 1 0;min-height:0;max-height:330px;display:flex;align-items:center;justify-content:center}
+.discs.many .arena{max-height:270px}
 .gname{position:absolute;bottom:4px;left:0;right:0;text-align:center;font-size:14px;color:var(--muted)}
 .halo{position:absolute;border-radius:50%;border:1px solid rgba(255,255,255,.05);pointer-events:none;width:300px;height:300px}
 .halo.h2{width:240px;height:240px;border-color:rgba(232,150,60,.10)}
@@ -119,18 +150,45 @@ body{margin:0;background:var(--night);color:var(--ink);min-height:100vh;
 .guide svg:nth-child(1){opacity:.28;animation:rise 1.9s ease-in-out infinite}
 .guide svg:nth-child(2){opacity:.55;animation:rise 1.9s ease-in-out .18s infinite}
 @keyframes rise{0%,100%{transform:translateY(2px)}50%{transform:translateY(-3px)}}
-.prog{padding:0 24px;opacity:0;transition:opacity .25s}
+.foot{padding:0 24px 18px;display:flex;flex-direction:column;gap:6px}
+.last{margin:0;min-height:19px;font-size:12.5px;color:var(--muted);text-align:center}
+.prog{opacity:0;transition:opacity .25s}
 .prog.on{opacity:1}
 .bar{height:3px;border-radius:2px;background:rgba(255,255,255,.08);overflow:hidden}
 .bar i{display:block;height:100%;width:0;background:linear-gradient(90deg,var(--glow),var(--glow2))}
 .prog .row{display:flex;justify-content:space-between;font-size:12px;color:var(--muted);margin-top:7px}
-.msg{margin:4px 24px 0;min-height:21px;font-size:14px;color:var(--bad);text-align:center}
-.journal{margin:16px 12px 12px;background:rgba(255,255,255,.035);border-radius:18px;padding:6px 4px}
-.journal h2{margin:10px 14px 6px;font-size:11px;letter-spacing:.16em;text-transform:uppercase;color:var(--muted);font-weight:600}
-.jrow{display:flex;align-items:center;gap:10px;padding:9px 14px;font-size:14px}
+.msg{margin:0;min-height:21px;font-size:14px;color:var(--bad);text-align:center}
+/* R5.22 — a short screen shrinks the disc rather than scroll. */
+@media (max-height:680px){
+  .top{padding-top:14px}.brand{font-size:21px;margin-bottom:8px}
+  .orb,.socket{width:140px;height:140px}.orb svg{width:30px;height:30px}
+  .halo{width:240px;height:240px}.halo.h2{width:196px;height:196px}
+  .guide{bottom:calc(50% + 80px)}
+}
+.sheet{position:absolute;inset:0;z-index:2;background:var(--night);display:flex;flex-direction:column;
+  padding:env(safe-area-inset-top) 0 env(safe-area-inset-bottom);
+  transform:translateY(100%);visibility:hidden;transition:transform .26s cubic-bezier(.2,.8,.2,1),visibility 0s .26s}
+.sheet.open{transform:none;visibility:visible;transition:transform .26s cubic-bezier(.2,.8,.2,1)}
+.shtop{display:flex;align-items:center;padding:14px 8px 6px 22px}
+.shtop h2{flex:1;margin:0;font-size:18px;font-weight:600}
+.shbody{flex:1;min-height:0;overflow-y:auto;padding:4px 12px 18px;display:flex;flex-direction:column;gap:12px}
+.card{background:rgba(255,255,255,.035);border-radius:18px;padding:14px}
+.card h3{margin:0 0 10px;font-size:11px;letter-spacing:.16em;text-transform:uppercase;color:var(--muted);font-weight:600}
+.share{display:flex;flex-direction:column;align-items:center;gap:12px;text-align:center}
+.share p{margin:0;font-size:14px;color:var(--muted)}
+.qr{width:190px;height:190px;background:#fff;border-radius:12px;display:block}
+.btn{border:1px solid rgba(232,150,60,.45);background:rgba(232,150,60,.10);color:var(--glow2);border-radius:12px;
+  padding:10px 18px;min-height:44px;font:inherit;font-size:14px;font-weight:600;cursor:pointer}
+.btn:focus-visible{outline:2px solid var(--glow2);outline-offset:2px}
+.refuse{margin:0;font-size:14px;color:var(--bad);text-align:center}
+.refuse:empty{display:none}
+.empty{margin:0;font-size:14px;color:var(--muted)}
+.jrow{display:flex;align-items:center;gap:10px;padding:8px 2px;font-size:14px;border-top:1px solid rgba(255,255,255,.05)}
+.jrow:first-child{border-top:0}
 .jrow .d{width:6px;height:6px;border-radius:50%;background:var(--glow);flex:0 0 auto;opacity:.8}
 .jrow.bad .d{background:var(--bad)}
-.jrow .t{margin-left:auto;color:var(--muted);font-size:12px;font-variant-numeric:tabular-nums}
+.jrow .t{margin-left:auto;color:var(--muted);font-size:12px;font-variant-numeric:tabular-nums;white-space:nowrap}
+@media (prefers-reduced-motion:reduce){.sheet,.sheet.open{transition:none}}
 .codescreen{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:0 34px;text-align:center;position:relative}
 .codescreen h1{font-size:22px;margin:0 0 8px;font-weight:600}
 .codescreen p{color:var(--muted);font-size:14px;margin:0 0 26px}
@@ -171,6 +229,10 @@ export const GUEST_JS = `(function () {
     ended: "This access has ended.", phones: "Too many phones on this access. Ask the person who gave it to you.", network: "The house cannot be reached. Try again.",
     open: "OPEN", pull: "pull upward", release: "release", sent: "SENT", enterAgain: "Enter again to open",
     ready: "Ready", commandSent: "Command sent", refused: "Command refused", journal: "Your commands",
+    settings: "Settings", close: "Close", share: "Share this access", shareHint: "For the person coming with you to scan.",
+    qr: "QR code of this access", copyLink: "Copy the link", copied: "Link copied", shareEnded: "This access has ended: there is nothing left to share.",
+    shareNoUrl: "The house has no public address yet: ask your host.", noCommands: "No command from this phone yet.",
+    lastAt: "Last opening requested at ", lastOn: "Last opening requested ", today: "today", yesterday: "yesterday",
     asked: "Opening requested", notYet: "Opens on ", nextAt: "Next opening at ", suspended: "Access on hold",
     revoked: "This access was revoked.", endedLong: "This access has ended.", noGate: "No gate on this access.",
     reasons: {
@@ -186,6 +248,10 @@ export const GUEST_JS = `(function () {
     ended: "Cet accès est terminé.", phones: "Trop de téléphones sur cet accès. Demandez à la personne qui vous l'a donné.", network: "La maison ne répond pas. Réessayez.",
     open: "OUVRIR", pull: "tirer vers le haut", release: "relâcher", sent: "ENVOYÉ", enterAgain: "Entrée pour ouvrir",
     ready: "Prêt", commandSent: "Commande envoyée", refused: "Commande refusée", journal: "Vos commandes",
+    settings: "Réglages", close: "Fermer", share: "Partager cet accès", shareHint: "À scanner par la personne qui vient avec vous.",
+    qr: "QR code de cet accès", copyLink: "Copier le lien", copied: "Lien copié", shareEnded: "Cet accès est terminé : il n'y a plus rien à partager.",
+    shareNoUrl: "La maison n'a pas encore d'adresse publique : demandez à votre hôte.", noCommands: "Aucune commande depuis ce téléphone.",
+    lastAt: "Dernière ouverture demandée à ", lastOn: "Dernière ouverture demandée ", today: "aujourd'hui", yesterday: "hier",
     asked: "Ouverture demandée", notYet: "Ouvre le ", nextAt: "Prochaine ouverture à ", suspended: "Accès suspendu",
     revoked: "Cet accès a été révoqué.", endedLong: "Cet accès est terminé.", noGate: "Aucun portail sur cet accès.",
     reasons: {
@@ -268,21 +334,42 @@ export const GUEST_JS = `(function () {
     else setPill("idle", T.ready);
   }
 
+  function sameDay(a, b) { return a.toDateString() === b.toDateString(); }
+  function when(iso) {
+    var d = new Date(iso), now = new Date(), y = new Date(now);
+    y.setDate(now.getDate() - 1);
+    if (sameDay(d, now)) return T.today + " " + hhmm(iso);
+    if (sameDay(d, y)) return T.yesterday + " " + hhmm(iso);
+    return dayTime(iso);
+  }
+
+  function renderLast() {
+    var list = (session && session.presses) || [];
+    var sent = list.filter(function (p) { return p.result === "sent"; })[0];
+    if (!sent) { $("last").textContent = ""; return; }
+    $("last").textContent = sameDay(new Date(sent.at), new Date()) ? T.lastAt + hhmm(sent.at) : T.lastOn + when(sent.at);
+  }
+
   function renderJournal() {
+    renderLast();
     var rows = $("jRows");
     rows.textContent = "";
     var list = (session && session.presses) || [];
-    $("journal").hidden = list.length === 0;
     $("jTitle").textContent = T.journal;
+    if (list.length === 0) {
+      var e = document.createElement("p"); e.className = "empty"; e.textContent = T.noCommands;
+      rows.appendChild(e);
+      return;
+    }
     var many = session && session.gates.length > 1;
-    list.slice(0, 4).forEach(function (p) {
+    list.forEach(function (p) {
       var row = document.createElement("div");
       row.className = "jrow" + (p.result === "sent" ? "" : " bad");
       var d = document.createElement("span"); d.className = "d";
       var l = document.createElement("span");
       var label = p.result === "sent" ? T.asked : (T.reasons[p.result] || T.refused);
       l.textContent = label + (many && p.gateName ? " · " + p.gateName : "");
-      var t = document.createElement("span"); t.className = "t"; t.textContent = hhmm(p.at);
+      var t = document.createElement("span"); t.className = "t"; t.textContent = when(p.at);
       row.appendChild(d); row.appendChild(l); row.appendChild(t);
       rows.appendChild(row);
     });
@@ -408,6 +495,45 @@ export const GUEST_JS = `(function () {
       if (r.status === 200) { session = r.body; if (!busy) restingPill(); renderJournal(); }
     }, function () { /* keep what is shown */ });
   }
+
+  // ── Settings (R5.22) ─────────────────────────────────────
+  var shareUrl = null;
+  function setSheet(open) {
+    $("sheet").classList.toggle("open", open);
+    $("gear").setAttribute("aria-expanded", open ? "true" : "false");
+    if (open) { renderJournal(); loadShare(); setTimeout(function () { $("shClose").focus(); }, 30); }
+    else $("gear").focus();
+  }
+  function loadShare() {
+    $("share").hidden = true; $("shareErr").textContent = "";
+    api("share", "GET").then(function (r) {
+      if (r.status === 401) { saveToken(null); setSheet(false); showCode(); return; }
+      if (r.status === 200 && r.body.qr) {
+        shareUrl = r.body.url; $("qr").src = r.body.qr; $("share").hidden = false; return;
+      }
+      var e = r.body && r.body.error;
+      $("shareErr").textContent = e === "ended" ? T.shareEnded : e === "no_public_url" ? T.shareNoUrl : T.network;
+    }, function () { $("shareErr").textContent = T.network; });
+  }
+  $("gear").setAttribute("aria-label", T.settings);
+  $("gear").title = T.settings;
+  $("shTitle").textContent = T.settings;
+  $("shClose").setAttribute("aria-label", T.close);
+  $("shareTitle").textContent = T.share;
+  $("shareHint").textContent = T.shareHint;
+  $("qr").alt = T.qr;
+  $("copy").textContent = T.copyLink;
+  $("gear").addEventListener("click", function () { setSheet(true); });
+  $("shClose").addEventListener("click", function () { setSheet(false); });
+  document.addEventListener("keydown", function (e) {
+    if (e.key === "Escape" && $("sheet").classList.contains("open")) setSheet(false);
+  });
+  $("copy").addEventListener("click", function () {
+    if (!shareUrl) return;
+    var b = $("copy");
+    var done = function () { b.textContent = T.copied; setTimeout(function () { b.textContent = T.copyLink; }, 1500); };
+    try { navigator.clipboard.writeText(shareUrl).then(done, function () { /* no clipboard */ }); } catch (x) { /* no clipboard */ }
+  });
 
   // ── Boot ─────────────────────────────────────────────────
   var m = /[#&]i=([A-Za-z0-9_-]+)/.exec(location.hash || "");

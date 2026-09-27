@@ -522,3 +522,65 @@ describe("review follow-ups", () => {
     ).toBe(true);
   });
 });
+
+describe("the phones of an access and sharing (R5.22, R5.23)", () => {
+  const IPHONE =
+    "Mozilla/5.0 (iPhone; CPU iPhone OS 18_0 like Mac OS X) AppleWebKit/605.1.15 Mobile/15E148";
+  const ANDROID = "Mozilla/5.0 (Linux; Android 14; K) AppleWebKit/537.36 Chrome/129 Mobile";
+
+  it("lists each phone by platform and a stable tag, oldest first", async () => {
+    h = buildSharedAccessHarness();
+    const a = h.manager.createAccess(
+      { label: "Gîte", gates: [{ equipmentId: h.gates.entree }] },
+      "admin",
+    );
+    await h.manager.enrol({ code: a.code! }, IPHONE);
+    h.clock.now += 60_000;
+    await h.manager.enrol({ code: a.code! }, ANDROID);
+
+    const phones = h.manager.listPhones(a.id);
+    expect(phones.map((p) => p.platform)).toEqual(["iphone", "android"]);
+    expect(phones[0].tag).toMatch(/^[0-9A-HJKMNP-TV-Z]{4}$/);
+    expect(phones[0].tag).not.toBe(phones[1].tag);
+    expect(h.manager.listPhones(a.id)[0].tag).toBe(phones[0].tag);
+  });
+
+  it("cuts one phone only: it falls back to the code screen, the other keeps opening", async () => {
+    h = buildSharedAccessHarness();
+    const a = h.manager.createAccess(
+      { label: "Gîte", gates: [{ equipmentId: h.gates.entree }] },
+      "admin",
+    );
+    const one = await h.manager.enrol({ code: a.code! }, IPHONE);
+    const two = await h.manager.enrol({ code: a.code! }, ANDROID);
+    if (!one.ok || !two.ok) throw new Error("enrol failed");
+    const [first] = h.manager.listPhones(a.id);
+
+    h.manager.cutPhone(a.id, first.id, "adrien");
+
+    expect(h.manager.session(one.token)).toBeNull();
+    expect(h.manager.session(two.token)).not.toBeNull();
+    expect(h.manager.listPhones(a.id)).toHaveLength(1);
+    const cut = h.manager.listJournal(a.id).find((e) => e.kind === "phone_cut");
+    expect(cut).toMatchObject({ actor: "adrien", phoneTag: first.tag });
+    expect(() => h.manager.cutPhone(a.id, first.id, "adrien")).toThrow(
+      expect.objectContaining({ code: "unknown_phone" }),
+    );
+  });
+
+  it("gives a phone the access's link to share, and refuses it once the access has ended", async () => {
+    h = buildSharedAccessHarness();
+    const { access, token } = await withPhone({
+      validUntil: new Date(h.at(2026, 10, 4, 11)).toISOString(),
+    });
+    expect(h.manager.shareLink(token)).toEqual({ url: access.invitationUrl });
+    expect(h.manager.shareLink("nope")).toBeNull();
+
+    h.settings.delete("sharedAccess.publicBaseUrl");
+    expect(h.manager.shareLink(token)).toEqual({ error: "no_public_url" });
+
+    h.settings.set("sharedAccess.publicBaseUrl", "https://acces.example.org");
+    h.clock.now = h.at(2026, 10, 4, 12);
+    expect(h.manager.shareLink(token)).toEqual({ error: "ended" });
+  });
+});

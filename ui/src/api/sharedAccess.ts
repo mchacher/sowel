@@ -1,5 +1,6 @@
 import type {
   SharedAccessJournalEntry,
+  SharedAccessPhoneView,
   SharedAccessProfileView,
   SharedAccessProfileWrite,
   SharedAccessState,
@@ -63,6 +64,20 @@ export async function changeSharedAccessCode(
     method: "POST",
     body: JSON.stringify({ cutPhones }),
   });
+}
+
+export async function getSharedAccessPhones(id: string): Promise<SharedAccessPhoneView[]> {
+  const res = await fetchJSON<{ phones: SharedAccessPhoneView[] }>(
+    `${BASE}/accesses/${encodeURIComponent(id)}/phones`,
+  );
+  return res.phones;
+}
+
+export async function cutSharedAccessPhone(id: string, phoneId: string): Promise<void> {
+  return fetchJSON<void>(
+    `${BASE}/accesses/${encodeURIComponent(id)}/phones/${encodeURIComponent(phoneId)}`,
+    { method: "DELETE" },
+  );
 }
 
 export async function deleteSharedAccess(id: string): Promise<void> {

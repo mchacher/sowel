@@ -5,13 +5,13 @@ import { deleteSharedAccess, sharedAccessAction } from "../../api";
 import type { SharedAccessState, SharedAccessView } from "../../types";
 import { useSharedAccess } from "../../store/useSharedAccess";
 import { formatRelative } from "../../lib/format-relative";
-import { ChangeCodeDialog, ConfirmDialog, JournalDialog } from "./AccessDialogs";
+import { ChangeCodeDialog, ConfirmDialog, JournalDialog, PhonesDialog } from "./AccessDialogs";
 import { CopyButton } from "./Invitation";
 import { pluginName } from "./helpers";
 import { useSaFormat } from "./useSaFormat";
 import { Refusal, StatusBadge, errorCode, iconBtn, useRefusalText } from "./ui";
 
-type Open = null | "menu" | "code" | "journal" | "revoke" | "delete";
+type Open = null | "menu" | "code" | "journal" | "phones" | "revoke" | "delete";
 
 /**
  * R7.28 — one access: label, code, validity, hours, phones, last use, and
@@ -83,7 +83,9 @@ export function AccessRow({
           <div className="text-[12px] text-text-secondary mt-1 flex flex-wrap gap-x-2 gap-y-0.5">
             {access.code ? (
               <span className="inline-flex items-center gap-0.5">
-                <span className="font-mono font-semibold tracking-[0.06em] text-text">{access.code}</span>
+                <span className="font-mono font-semibold tracking-[0.06em] text-text">
+                  {access.code}
+                </span>
                 <CopyButton text={access.code} label={t("sharedAccess.actions.copyCode")} />
               </span>
             ) : (
@@ -91,7 +93,20 @@ export function AccessRow({
             )}
             <span>· {fmt.period(access.validFrom, access.validUntil)}</span>
             <span>· {fmt.hours(access.timeWindows)}</span>
-            <span>· {t("sharedAccess.line.phones", { count: access.phones })}</span>
+            <span>
+              ·{" "}
+              {access.phones > 0 ? (
+                <button
+                  type="button"
+                  className="text-primary hover:underline cursor-pointer"
+                  onClick={() => setOpen("phones")}
+                >
+                  {t("sharedAccess.line.phones", { count: access.phones })}
+                </button>
+              ) : (
+                t("sharedAccess.line.phones", { count: access.phones })
+              )}
+            </span>
             <span>
               ·{" "}
               {access.lastUsedAt ? (
@@ -105,7 +120,10 @@ export function AccessRow({
             </span>
             {showGates && (
               <span>
-                · {access.gates.length ? access.gates.map((g) => g.name).join(", ") : t("sharedAccess.status.no_gate")}
+                ·{" "}
+                {access.gates.length
+                  ? access.gates.map((g) => g.name).join(", ")
+                  : t("sharedAccess.status.no_gate")}
               </span>
             )}
           </div>
@@ -147,10 +165,16 @@ export function AccessRow({
               onClick={() =>
                 void act(() => sharedAccessAction(access.id, suspended ? "resume" : "suspend"))
               }
-              aria-label={suspended ? t("sharedAccess.actions.resume") : t("sharedAccess.actions.hold")}
+              aria-label={
+                suspended ? t("sharedAccess.actions.resume") : t("sharedAccess.actions.hold")
+              }
               title={suspended ? t("sharedAccess.actions.resume") : t("sharedAccess.actions.hold")}
             >
-              {suspended ? <Play size={16} strokeWidth={1.5} /> : <Pause size={16} strokeWidth={1.5} />}
+              {suspended ? (
+                <Play size={16} strokeWidth={1.5} />
+              ) : (
+                <Pause size={16} strokeWidth={1.5} />
+              )}
             </button>
           )}
           <button
@@ -171,9 +195,13 @@ export function AccessRow({
                 className="absolute right-0 top-full mt-1 z-40 min-w-[210px] bg-surface border border-border rounded-[10px] shadow-lg py-1 text-[13px]"
               >
                 {!revoked && (
-                  <MenuItem onClick={() => setOpen("code")}>{t("sharedAccess.actions.changeCode")}</MenuItem>
+                  <MenuItem onClick={() => setOpen("code")}>
+                    {t("sharedAccess.actions.changeCode")}
+                  </MenuItem>
                 )}
-                <MenuItem onClick={() => setOpen("journal")}>{t("sharedAccess.actions.journal")}</MenuItem>
+                <MenuItem onClick={() => setOpen("journal")}>
+                  {t("sharedAccess.actions.journal")}
+                </MenuItem>
                 {!revoked && (
                   <MenuItem danger onClick={() => setOpen("revoke")}>
                     {t("sharedAccess.actions.revoke")}
@@ -195,6 +223,7 @@ export function AccessRow({
       {open === "journal" && (
         <JournalDialog access={access} state={state} onClose={() => setOpen(null)} />
       )}
+      {open === "phones" && <PhonesDialog access={access} onClose={() => setOpen(null)} />}
       {open === "revoke" && (
         <ConfirmDialog
           title={t("sharedAccess.revoke.title", { label: access.label })}

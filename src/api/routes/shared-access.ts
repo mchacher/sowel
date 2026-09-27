@@ -1,4 +1,5 @@
 import type { FastifyInstance, FastifyReply, FastifyRequest } from "fastify";
+import QRCode from "qrcode";
 import type { Logger } from "../../core/logger.js";
 import type { UserManager } from "../../auth/user-manager.js";
 import { pathIsUnder, requireAdmin } from "../../auth/auth-middleware.js";
@@ -154,6 +155,29 @@ export function registerSharedAccessRoutes(
     },
   );
 
+  app.get<{ Params: { id: string } }>(
+    `${ADMIN_BASE}/accesses/:id/phones`,
+    async (request, reply) => {
+      try {
+        return { phones: manager.listPhones(request.params.id) };
+      } catch (err) {
+        return sendError(reply, err, logger);
+      }
+    },
+  );
+
+  app.delete<{ Params: { id: string; phoneId: string } }>(
+    `${ADMIN_BASE}/accesses/:id/phones/:phoneId`,
+    async (request, reply) => {
+      try {
+        manager.cutPhone(request.params.id, request.params.phoneId, actorOf(request, userManager));
+        return reply.code(204).send();
+      } catch (err) {
+        return sendError(reply, err, logger);
+      }
+    },
+  );
+
   app.delete<{ Params: { id: string } }>(`${ADMIN_BASE}/accesses/:id`, async (request, reply) => {
     try {
       manager.deleteAccess(request.params.id, actorOf(request, userManager));
@@ -248,6 +272,28 @@ export function registerSharedAccessRoutes(
         const session = manager.session(bearer(request));
         if (!session) return reply.code(401).send({ error: "unknown_phone" });
         return session;
+      } catch (err) {
+        return sendError(reply, err, logger);
+      }
+    });
+
+    // R5.22 — the link as a QR code, drawn here: the page stays free of any
+    // library, and its CSP already admits a `data:` image.
+    app.get(`${base}/share`, NO_RATE_LIMIT, async (request, reply) => {
+      try {
+        const share = manager.shareLink(bearer(request));
+        if (!share) return reply.code(401).send({ error: "unknown_phone" });
+        if ("error" in share) return reply.code(409).send(share);
+        const svg = await QRCode.toString(share.url, {
+          type: "svg",
+          errorCorrectionLevel: "M",
+          margin: 2,
+          color: { dark: "#000000", light: "#ffffff" },
+        });
+        return reply.header("Cache-Control", "no-store").send({
+          url: share.url,
+          qr: `data:image/svg+xml;base64,${Buffer.from(svg).toString("base64")}`,
+        });
       } catch (err) {
         return sendError(reply, err, logger);
       }

@@ -9,6 +9,7 @@ import type {
   SharedAccessGateSummary,
   SharedAccessGateView,
   SharedAccessJournalEntry,
+  SharedAccessPhoneView,
   SharedAccessProfileView,
   SharedAccessRefusal,
   SharedAccessState,
@@ -37,6 +38,7 @@ import {
   type ValidityFacts,
 } from "./validity.js";
 import { GuessingBudget } from "./guessing.js";
+import { phonePlatform, phoneTag } from "./phones.js";
 import { GateQueue, GateQueueClosedError } from "./gate-queue.js";
 import {
   SharedAccessStore,
@@ -579,7 +581,32 @@ export class SharedAccessManager {
       reason: r.reason,
       actor: r.actor,
       equipmentId: r.equipment_id,
+      phoneTag: r.phone_id ? phoneTag(r.phone_id) : null,
     }));
+  }
+
+  /** R5.23 — the phones set up on an access, oldest first. */
+  listPhones(accessId: string): SharedAccessPhoneView[] {
+    this.getRow(accessId);
+    return this.store.listPhones(accessId).map((p) => ({
+      id: p.id,
+      platform: phonePlatform(p.user_agent),
+      tag: phoneTag(p.id),
+      firstSeenAt: new Date(p.first_seen_at).toISOString(),
+      lastSeenAt: new Date(p.last_seen_at).toISOString(),
+    }));
+  }
+
+  /** R5.23 — cut one phone: it falls back to the code screen, the others keep working. */
+  cutPhone(accessId: string, phoneId: string, actor: string): void {
+    this.assertEnabled();
+    const row = this.getRow(accessId);
+    if (!this.store.deletePhone(phoneId, accessId)) {
+      throw new SharedAccessError("unknown_phone", "No such phone on this access", 404);
+    }
+    this.journal(row, "phone_cut", { actor, phone_id: phoneId });
+    if (this.store.countPhones(accessId) <= PHONES_BEFORE_ALARM) this.resolvePhoneAlarm(row);
+    this.changed();
   }
 
   /** R8 — the panel on a gate's own page. */
@@ -1030,6 +1057,21 @@ export class SharedAccessManager {
       source: ALARM_SOURCE,
       message: `Shared access « ${row.label} »: phones reset`,
     });
+  }
+
+  /**
+   * R5.22 — the link a phone shows as a QR code to bring another phone in.
+   * Null when the token is unknown; refused once the access has ended, or
+   * while the house has no public address.
+   */
+  shareLink(token: string): { url: string } | { error: "ended" | "no_public_url" } | null {
+    this.assertEnabled();
+    const found = this.phoneOf(token);
+    if (!found) return null;
+    const ids = this.store.accessGates(found.access.id).map((l) => l.equipment_id);
+    if (hasEnded(this.facts(found.access, ids), this.now())) return { error: "ended" };
+    const url = this.invitationUrl(found.access);
+    return url ? { url } : { error: "no_public_url" };
   }
 
   /** What the phone sees. Null when the token is unknown (the page asks for a code again). */

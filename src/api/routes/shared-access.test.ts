@@ -138,6 +138,59 @@ describe("shared access routes", () => {
     expect(refused.json()).toMatchObject({ ok: false, reason: "not_this_gate" });
   });
 
+  it("gives an enrolled phone its link as a QR code, and lets the owner list and cut phones", async () => {
+    app = await buildApp();
+    const created = await app.inject({
+      method: "POST",
+      url: "/api/v1/shared-access/accesses",
+      payload: { label: "Gîte", gates: [{ equipmentId: h.gates.entree }] },
+    });
+    const { id, code, invitationUrl } = created.json<{
+      id: string;
+      code: string;
+      invitationUrl: string;
+    }>();
+    const enrol = await app.inject({
+      method: "POST",
+      url: "/access/api/enrol",
+      headers: { "user-agent": "Mozilla/5.0 (iPhone; CPU iPhone OS 18_0 like Mac OS X)" },
+      payload: { code },
+    });
+    const auth = { authorization: `Bearer ${enrol.json<{ token: string }>().token}` };
+
+    const share = await app.inject({ method: "GET", url: "/access/api/share", headers: auth });
+    expect(share.statusCode).toBe(200);
+    expect(share.headers["cache-control"]).toBe("no-store");
+    expect(share.json()).toMatchObject({ url: invitationUrl });
+    expect(share.json<{ qr: string }>().qr).toMatch(/^data:image\/svg\+xml;base64,/);
+    expect(
+      (
+        await app.inject({
+          method: "GET",
+          url: "/access/api/share",
+          headers: { authorization: "Bearer x" },
+        })
+      ).statusCode,
+    ).toBe(401);
+
+    const list = await app.inject({
+      method: "GET",
+      url: `/api/v1/shared-access/accesses/${id}/phones`,
+    });
+    const phones = list.json<{ phones: { id: string; platform: string }[] }>().phones;
+    expect(phones).toHaveLength(1);
+    expect(phones[0].platform).toBe("iphone");
+
+    const cut = await app.inject({
+      method: "DELETE",
+      url: `/api/v1/shared-access/accesses/${id}/phones/${phones[0].id}`,
+    });
+    expect(cut.statusCode).toBe(204);
+    expect(
+      (await app.inject({ method: "GET", url: "/access/api/session", headers: auth })).statusCode,
+    ).toBe(401);
+  });
+
   it("answers 401 to an unknown phone and to a wrong code", async () => {
     app = await buildApp();
     const s = await app.inject({
