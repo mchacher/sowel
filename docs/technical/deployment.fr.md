@@ -225,7 +225,7 @@ Après restauration, Sowel renvoie `{ restartRequired: true }`. Vous devez redé
 docker compose restart sowel
 ```
 
-Chaque ligne de table est restaurée avec les colonnes qu'elle porte : une archive aux lignes hétérogènes (construite à la main, transformée, ou assemblée à partir de deux versions) ne perd rien, et une colonne absente d'une ligne prend sa valeur par défaut pour cette ligne seulement. Une colonne inconnue du schéma courant, typiquement dans un backup fait par un Sowel plus récent, est ignorée et nommée dans une ligne de log `warn` (`Backup carries columns this schema does not have, ignored`) au lieu de faire échouer la restauration (issue #939).
+Chaque ligne de table est restaurée avec les colonnes qu'elle porte : une archive aux lignes hétérogènes (construite à la main ou transformée) conserve toute valeur pour laquelle le schéma courant a une colonne. Une colonne absente d'une ligne, ou laissée à `null` alors qu'elle est `NOT NULL` avec une valeur par défaut, prend cette valeur par défaut pour cette ligne seulement. Une colonne que le schéma courant n'a pas, typiquement dans un backup fait par un Sowel plus récent, **ne peut pas** être restaurée : ses valeurs sont écartées, nommées dans une ligne de log `warn` et listées par table dans le champ `columnsSkipped` de la réponse, au lieu de faire échouer la restauration. Une ligne qui n'est pas un objet, ou qui ne porte aucune colonne connue du schéma, fait échouer la restauration en nommant sa table et son index (issue #939).
 
 ### Restaurer un backup d'un autre déploiement (issue #401)
 

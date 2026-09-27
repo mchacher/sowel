@@ -231,7 +231,7 @@ After restore, Sowel reports `{ restartRequired: true }`. You must restart the c
 docker compose restart sowel
 ```
 
-Each table row is restored with the columns it carries, so an archive whose rows are not uniform (hand-built, transformed, or assembled from two versions) loses nothing: a column a row lacks takes its default for that row only. A column the running schema does not know, typically from a backup made by a newer Sowel, is ignored and named in a `warn` log line (`Backup carries columns this schema does not have, ignored`) rather than failing the restore (issue #939).
+Each table row is restored with the columns it carries, so an archive whose rows are not uniform (hand-built or transformed) keeps every value the running schema has a column for: a column a row lacks, or leaves `null` where the column is `NOT NULL` with a default, takes that default for that row only. A column the running schema does not have, typically from a backup made by a newer Sowel, **cannot** be restored: its values are dropped, named in a `warn` log line, and listed per table in the response's `columnsSkipped`, rather than failing the restore. A row that is not an object, or that carries no column the schema knows, fails the restore with its table and index (issue #939).
 
 ### Restoring a backup from another deployment (issue #401)
 

@@ -206,6 +206,12 @@ export interface RestoreResult {
    * restore (#829 review).
    */
   filesSkipped: number;
+  /**
+   * Keys the backup carries that the running schema has no column for,
+   * typically a backup from a newer Sowel. Their values are not restored;
+   * reported here so the loss is not left to a log line (#939).
+   */
+  columnsSkipped: { table: string; columns: string[] }[];
   restartRequired: true;
 }
 
@@ -446,6 +452,7 @@ export class BackupManager {
     }
 
     // 2. Restore SQLite
+    const columnsSkipped: RestoreResult["columnsSkipped"] = [];
     try {
       // Must be outside transaction — SQLite ignores this PRAGMA inside transactions
       this.db.pragma("foreign_keys = OFF");
@@ -459,43 +466,8 @@ export class BackupManager {
           const rows = payload.tables[table];
           if (!rows || rows.length === 0) continue;
 
-          // Each row is inserted with its own keys (#939): a column one row
-          // lacks takes its DEFAULT for that row only, instead of the first
-          // row's key list deciding for the whole table. Keys the schema
-          // does not know (a backup from a newer Sowel, a hand-built one)
-          // are dropped and named, rather than failing the whole restore.
-          const known = new Set(
-            (this.db.pragma(`table_info(${table})`) as { name: string }[]).map((c) => c.name),
-          );
-          const unknown = new Set<string>();
-          const statements = new Map<string, Database.Statement>();
-
-          for (const row of rows) {
-            const r = row as Record<string, unknown>;
-            const columns: string[] = [];
-            for (const key of Object.keys(r)) {
-              if (known.has(key)) columns.push(key);
-              else unknown.add(key);
-            }
-            const signature = columns.join(",");
-            let stmt = statements.get(signature);
-            if (!stmt) {
-              stmt = this.db.prepare(
-                columns.length === 0
-                  ? `INSERT INTO ${table} DEFAULT VALUES`
-                  : `INSERT INTO ${table} (${columns.join(", ")}) VALUES (${columns.map(() => "?").join(", ")})`,
-              );
-              statements.set(signature, stmt);
-            }
-            stmt.run(...columns.map((col) => r[col] ?? null));
-          }
-
-          if (unknown.size > 0) {
-            this.logger.warn(
-              { table, columns: [...unknown] },
-              "Backup carries columns this schema does not have, ignored",
-            );
-          }
+          const skipped = this.insertRows(table, rows);
+          if (skipped.length > 0) columnsSkipped.push({ table, columns: skipped });
         }
 
         const violations = this.db.pragma("foreign_key_check") as {
@@ -693,8 +665,71 @@ export class BackupManager {
       influxPointsRestored,
       filesRestored,
       filesSkipped,
+      columnsSkipped,
       restartRequired: true,
     };
+  }
+
+  /**
+   * Insert one table's rows, each with its own keys (#939). The first row's
+   * keys used to decide for the whole table, so a column that row lacked was
+   * dropped for every row, silently.
+   *
+   * - A key a row lacks takes the column's DEFAULT for that row only; so does
+   *   an explicit null on a NOT NULL column that has a default.
+   * - Keys match column names case-insensitively, as SQLite does.
+   * - Keys the schema does not have (a backup from a newer Sowel, a hand-built
+   *   one) are dropped, named at warn, and returned for the RestoreResult.
+   * - A row that is not an object, or carries no known column, fails the
+   *   restore with its table and index.
+   */
+  private insertRows(table: string, rows: unknown[]): string[] {
+    const info = this.db.pragma(`table_info(${table})`) as {
+      name: string;
+      notnull: number;
+      dflt_value: unknown;
+    }[];
+    const byLowerName = new Map(info.map((c) => [c.name.toLowerCase(), c]));
+    const unknown = new Set<string>();
+    const statements = new Map<string, Database.Statement>();
+
+    rows.forEach((row, index) => {
+      if (row === null || typeof row !== "object" || Array.isArray(row)) {
+        throw new Error(`Backup table ${table}, row ${index}: not an object`);
+      }
+      const values = new Map<string, unknown>();
+      for (const [key, value] of Object.entries(row as Record<string, unknown>)) {
+        const column = byLowerName.get(key.toLowerCase());
+        if (!column) {
+          unknown.add(key);
+          continue;
+        }
+        if (value == null && column.notnull && column.dflt_value !== null) continue;
+        values.set(column.name, value ?? null);
+      }
+      if (values.size === 0) {
+        throw new Error(`Backup table ${table}, row ${index}: no column this schema knows`);
+      }
+
+      const columns = [...values.keys()].sort();
+      const signature = columns.join(",");
+      let stmt = statements.get(signature);
+      if (!stmt) {
+        stmt = this.db.prepare(
+          `INSERT INTO ${table} (${columns.join(", ")}) VALUES (${columns.map(() => "?").join(", ")})`,
+        );
+        statements.set(signature, stmt);
+      }
+      stmt.run(...columns.map((c) => values.get(c)));
+    });
+
+    if (unknown.size > 0) {
+      this.logger.warn(
+        { table, columns: [...unknown] },
+        "Backup carries columns this schema does not have, their values are not restored",
+      );
+    }
+    return [...unknown];
   }
 
   // ============================================================
