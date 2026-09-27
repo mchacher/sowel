@@ -1,6 +1,6 @@
 # Spec 181 — Plan
 
-Spec first: nothing below starts before the spec is agreed upstream.
+Spec agreed upstream on 2026-09-27 (review on #970); all seven steps are done on `feat/shared-access`.
 
 ## Steps
 

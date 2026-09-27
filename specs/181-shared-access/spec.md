@@ -1,6 +1,6 @@
 # Spec 181 — Shared access: let someone open a gate, for a while
 
-**Status**: proposed — spec only, for review before any code
+**Status**: implemented on `feat/shared-access` (PR #970), awaiting review
 **Scope**: an opt-in core feature, off by default. Gates only (`gate` equipments) in this spec.
 
 ## Problem
@@ -258,27 +258,27 @@ And what is seen before a code is known: ![](screenshots/visitor-code.png)
 
 ## Acceptance criteria
 
-- [ ] With the setting off, no entry, no card, and `/access/` and every route answer 404.
-- [ ] Any `gate` equipment can be listed on an access, from « + portail » or from its page; a
+- [x] With the setting off, no entry, no card, and `/access/` and every route answer 404.
+- [x] Any `gate` equipment can be listed on an access, from « + portail » or from its page; a
       non-`gate` equipment is refused (`unsupported_equipment`); disarming one gate leaves the others.
-- [ ] A correct code sets a phone up even after forty wrong codes, without delay.
-- [ ] An access made without a code sets a phone up from its link alone; a wrong link token counts
+- [x] A correct code sets a phone up even after forty wrong codes, without delay.
+- [x] An access made without a code sets a phone up from its link alone; a wrong link token counts
       as a failure; a hundred failures at once keep at most 32 answers held.
-- [ ] A press on a listed, armed gate inside the validity sends the gate's command through
+- [x] A press on a listed, armed gate inside the validity sends the gate's command through
       `executeOrder`; every refusal of R4.12 sends nothing and tells the phone why.
-- [ ] The phone never receives the gate's state, and what it shows of a command is that
+- [x] The phone never receives the gate's state, and what it shows of a command is that
       phone's own presses.
-- [ ] The disc released short of its socket sends nothing; the keyboard confirms instead.
-- [ ] « Jusqu'au » cannot be picked before « À partir du »; the server refuses it too.
-- [ ] A plugin's external access is idempotent, takes its gates from a profile granted to that
+- [x] The disc released short of its socket sends nothing; the keyboard confirms instead.
+- [x] « Jusqu'au » cannot be picked before « À partir du »; the server refuses it too.
+- [x] A plugin's external access is idempotent, takes its gates from a profile granted to that
       plugin and never from the plugin itself, and a later update keeps the owner's widening.
-- [ ] A plugin's access without an end is refused (`no_end`); past its end it opens nothing, with
+- [x] A plugin's access without an end is refused (`no_end`); past its end it opens nothing, with
       the plugin stopped; a second stay of the same guest gets a new code and link.
-- [ ] A plugin's access naming no profile is made on the default profile; with the default profile
+- [x] A plugin's access naming no profile is made on the default profile; with the default profile
       listing no gate it is refused (`profile_incomplete`); the default profile cannot be deleted,
       any other can.
-- [ ] « Tout le temps » and « Toute la journée » store and show no date and no hour.
-- [ ] Nothing is persisted outside SQLite; the data rides in the backup.
+- [x] « Tout le temps » and « Toute la journée » store and show no date and no hour.
+- [x] Nothing is persisted outside SQLite; the data rides in the backup.
 
 ## Migration and compatibility
 
