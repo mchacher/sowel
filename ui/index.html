@@ -16,14 +16,17 @@
     <title>Sowel</title>
     <!-- Decides before first paint whether this load gets the splash (#976) -->
     <script src="/splash.js"></script>
-    <style>.no-splash #splash{display:none}</style>
+    <style>
+      #splash{position:fixed;inset:0;display:flex;align-items:center;justify-content:center;background:#F8F9FA;z-index:9999;transition:opacity .4s ease-out}
+      .dark #splash{background:#1a1a2e}
+      .no-splash #splash{display:none}
+    </style>
   </head>
   <body>
     <div id="root"></div>
 
     <!-- Splash screen — first landing or long absence only, see public/splash.js -->
-    <div id="splash" style="position:fixed;inset:0;display:flex;align-items:center;justify-content:center;background:#F8F9FA;z-index:9999;transition:opacity .4s ease-out">
-      <style>.dark #splash{background:#1a1a2e}</style>
+    <div id="splash">
       <svg xmlns="http://www.w3.org/2000/svg" viewBox="25 15 150 190" width="180" height="234" fill="none">
         <path d="M100 30 L160 90 Q165 95 160 100 L160 150 Q160 158 152 158 L48 158 Q40 158 40 150 L40 100 Q35 95 40 90 Z" fill="none" stroke="#1A4F6E" stroke-width="8" stroke-linejoin="round" stroke-linecap="round"/>
         <path d="M75 115 Q100 140 125 115" fill="none" stroke="#7FB8D4" stroke-width="6" stroke-linecap="round"/>
