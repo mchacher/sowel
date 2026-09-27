@@ -232,17 +232,18 @@ And what is seen before a code is known: ![](screenshots/visitor-code.png)
 
 ## Consumers
 
-- **A guestFlow connector plugin** (separate repository and spec) — the first user of R9. It runs
-  in Sowel; guestFlow holds no key to the house. guestFlow keeps **a list of keys to create**: a
-  stay enters it seven days before its arrival (at once for a later booking), with its arrival and
+- **A guestFlow connector plugin** (separate repository and spec) — the first user of R9. It runs in
+  Sowel; guestFlow holds no key to the house. guestFlow keeps **a list of keys to create**: a stay
+  enters it seven days before its arrival (at once for a later booking), with its arrival and
   departure date and hour, and leaves it as a revocation when cancelled. The connector reads that
-  list **every hour** and whenever the owner presses « Relever maintenant » on its page; it makes each stay an external access on the default profile, and
-  **reports every result back** — the invitation (code and link) for the guest emails, or the
-  failure and its reason, which guestFlow shows on its dashboard and pushes to its mobile app.
-  guestFlow also alerts when the list has not been read for more than three hours: a Sowel that is
-  down cannot report its own failure. It is meant as the start of a broader guestFlow ↔ Sowel link (for instance, reservations
-  of a given lodging acting on that lodging's equipments), which is that plugin's business and
-  needs nothing more from this spec.
+  list **every hour** and whenever the owner presses « Relever maintenant » on its page; it makes
+  each stay an external access on the default profile, and **reports every result back** — the
+  invitation (code and link) for the guest emails, or the failure and its reason, which guestFlow
+  shows on its dashboard and pushes to its mobile app. guestFlow also alerts when the list has not
+  been read for more than three hours: a Sowel that is down cannot report its own failure. It is
+  meant as the start of a broader guestFlow ↔ Sowel link (for instance, reservations of a given
+  lodging acting on that lodging's equipments), which is that plugin's business and needs nothing
+  more from this spec.
 
 ## Out of scope
 
