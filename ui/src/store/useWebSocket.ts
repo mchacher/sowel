@@ -10,6 +10,7 @@ import { useRecipes } from "./useRecipes";
 import { useModes } from "./useModes";
 import { useActivity } from "./useActivity";
 import { useArbiter } from "./useArbiter";
+import { useSharedAccess } from "./useSharedAccess";
 
 export type WsTopic =
   | "devices"
@@ -447,6 +448,13 @@ function handleEvent(event: EngineEvent): void {
     case "energy.capacity.denied":
     case "energy.capacity.released":
       useArbiter.getState().refreshSoon();
+      break;
+    // Spec 181 — admin-only events on the `system` topic: the lines, their
+    // statuses and last uses moved; refetch once per burst.
+    case "shared_access.changed":
+    case "shared_access.opened":
+    case "shared_access.refused":
+      useSharedAccess.getState().refreshSoon();
       break;
   }
 }

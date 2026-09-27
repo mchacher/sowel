@@ -730,7 +730,150 @@ export type OrderSource =
   | { kind: "mode"; modeId: string; modeName: string }
   | { kind: "manual"; userId: string; userName?: string }
   | { kind: "button"; buttonId: string; buttonLabel?: string }
-  | { kind: "external"; channel: string };
+  | { kind: "external"; channel: string }
+  | { kind: "shared_access"; accessId: string; label: string };
+
+// ============================================================
+// Shared access (spec 181) — mirrors src/shared/types.ts
+// ============================================================
+
+/** A daily time window on the house's clock, `HH:MM`, not crossing midnight. */
+export interface SharedAccessTimeWindow {
+  from: string;
+  to: string;
+}
+
+/** A gate listed on an access or a profile, as sent to the server (R2.5). */
+export interface SharedAccessGateInput {
+  equipmentId: string;
+  /** Null = what the gate's own button sends (an impulse gate). */
+  value?: string | null;
+}
+
+export type SharedAccessKind = "manual" | "external";
+
+export type SharedAccessRefusal =
+  | "revoked"
+  | "suspended"
+  | "not_yet"
+  | "expired"
+  | "outside_hours"
+  | "no_gate"
+  | "not_this_gate"
+  | "refused_by_house"
+  | "too_many_opens"
+  | "gate_error";
+
+export type SharedAccessStatus =
+  | "live"
+  | "outside_hours"
+  | "not_yet"
+  | "ended"
+  | "suspended"
+  | "revoked"
+  | "no_gate";
+
+export interface SharedAccessGateView {
+  equipmentId: string;
+  name: string;
+  value: unknown;
+}
+
+export interface SharedAccessSource {
+  pluginId: string;
+  externalId: string;
+  profileId: string | null;
+  profileName: string | null;
+  from: string | null;
+  until: string | null;
+  earlyOpenAt: string | null;
+  extendedUntil: string | null;
+}
+
+export interface SharedAccessView {
+  id: string;
+  kind: SharedAccessKind;
+  label: string;
+  /** Clear and already formatted (`4K7M-9QT2`); null when the access has none. */
+  code: string | null;
+  /** Null while no public address is set (R5.18). */
+  invitationUrl: string | null;
+  gates: SharedAccessGateView[];
+  validFrom: string | null;
+  validUntil: string | null;
+  timeWindows: SharedAccessTimeWindow[];
+  status: SharedAccessStatus;
+  suspendedAt: string | null;
+  revokedAt: string | null;
+  source: SharedAccessSource | null;
+  phones: number;
+  useCount: number;
+  lastUsedAt: string | null;
+  createdAt: string;
+}
+
+export interface SharedAccessGateSummary {
+  equipmentId: string;
+  name: string;
+  armed: boolean;
+  people: number;
+  commandValues: string[];
+  hasCommand: boolean;
+}
+
+export interface SharedAccessProfileView {
+  id: string;
+  name: string;
+  pluginId: string | null;
+  isDefault: boolean;
+  gates: SharedAccessGateView[];
+  validFrom: string | null;
+  validUntil: string | null;
+  timeWindows: SharedAccessTimeWindow[];
+  withCode: boolean;
+}
+
+export interface SharedAccessState {
+  enabled: boolean;
+  publicUrl: string | null;
+  accesses: SharedAccessView[];
+  gates: SharedAccessGateSummary[];
+  profiles: SharedAccessProfileView[];
+  plugins: { id: string; name: string }[];
+}
+
+export interface SharedAccessJournalEntry {
+  id: number;
+  at: string;
+  accessId: string | null;
+  label: string;
+  kind: string;
+  reason: string | null;
+  actor: string | null;
+  equipmentId: string | null;
+}
+
+/** The body of POST /accesses and PATCH /accesses/:id. Dates: `YYYY-MM-DDTHH:MM`, house time. */
+export interface SharedAccessWrite {
+  label?: string;
+  gates?: SharedAccessGateInput[];
+  withCode?: boolean;
+  validFrom?: string | null;
+  validUntil?: string | null;
+  timeWindows?: SharedAccessTimeWindow[];
+  earlyOpenAt?: string | null;
+  extendedUntil?: string | null;
+}
+
+export interface SharedAccessProfileWrite {
+  name?: string;
+  gates?: SharedAccessGateInput[];
+  validFrom?: string | null;
+  validUntil?: string | null;
+  timeWindows?: SharedAccessTimeWindow[];
+  withCode?: boolean;
+  pluginId?: string | null;
+}
 
 // ============================================================
 // Activity feed (spec 101)
@@ -911,6 +1054,15 @@ export type EngineEvent =
   | { type: "energy.capacity.denied"; equipmentId: string; instanceId: string; reason: string }
   | { type: "energy.capacity.released"; equipmentId: string; instanceId: string }
   | { type: "energy.arbiter.status"; state: ArbiterRunState; availableSurplusW: number | null }
+  | { type: "shared_access.changed" }
+  | { type: "shared_access.opened"; accessId: string; label: string; equipmentId: string }
+  | {
+      type: "shared_access.refused";
+      accessId: string | null;
+      label: string | null;
+      equipmentId: string | null;
+      reason: SharedAccessRefusal;
+    }
   | { type: "connected"; message: string; version: string };
 
 // ============================================================

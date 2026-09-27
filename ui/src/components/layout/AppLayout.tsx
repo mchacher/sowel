@@ -32,6 +32,7 @@ import {
   AlertOctagon,
   RefreshCw,
   Power,
+  KeyRound,
 } from "lucide-react";
 
 // Display name → 1-2 uppercase initials for the avatar pill.
@@ -58,6 +59,7 @@ import { useEnergy } from "../../store/useEnergy";
 import { useUiState } from "../../store/useUiState";
 import { useModes } from "../../store/useModes";
 import { getSettings } from "../../api";
+import { useSharedAccess } from "../../store/useSharedAccess";
 
 export function AppLayout() {
   const { t } = useTranslation();
@@ -112,6 +114,14 @@ export function AppLayout() {
     connect,
     disconnect,
   ]);
+
+  // Spec 181 — whether shared access is on decides the navigation entry and
+  // the gate panel. Only an admin can read it; the route 404s while it is off.
+  const isAdminUser = user?.role === "admin";
+  useEffect(() => {
+    if (isAdminUser) void useSharedAccess.getState().refresh();
+    else useSharedAccess.getState().reset();
+  }, [isAdminUser]);
 
   return (
     <div className="flex flex-col h-screen overflow-hidden">
@@ -423,6 +433,7 @@ function getRouteLabel(pathname: string, t: (k: string) => string): string | nul
   }
   if (pathname.startsWith("/modes")) return t("nav.modes");
   if (pathname.startsWith("/analyse")) return t("nav.analyse");
+  if (pathname.startsWith("/shared-access")) return t("nav.sharedAccess");
   if (pathname.startsWith("/calendar")) return t("nav.calendar");
   if (pathname.startsWith("/integrations")) return t("nav.integrations");
   if (pathname.startsWith("/plugins")) return t("nav.plugins");
@@ -503,6 +514,7 @@ function MobileDrawer({ onClose }: { onClose: () => void }) {
   const isAdmin = user?.role === "admin";
   const logout = useAuth((s) => s.logout);
   const pluginUpdateCount = usePluginUpdates(isAdmin ?? false);
+  const sharedAccessEnabled = useSharedAccess((s) => s.enabled === true);
 
   const go = (to: string) => {
     navigate(to);
@@ -546,6 +558,15 @@ function MobileDrawer({ onClose }: { onClose: () => void }) {
             label={t("nav.analyse")}
             onClick={() => go("/analyse")}
           />
+
+          {/* Shared access (spec 181) — admin-only, and only while it is on */}
+          {isAdmin && sharedAccessEnabled && (
+            <DrawerLink
+              icon={<KeyRound size={18} strokeWidth={1.5} />}
+              label={t("nav.sharedAccess")}
+              onClick={() => go("/shared-access")}
+            />
+          )}
 
           {/* Consultation pages — visible to non-admins here since the
               Administration section below is hidden for them */}

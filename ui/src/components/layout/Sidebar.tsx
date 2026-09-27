@@ -12,6 +12,7 @@ import {
   PlugZap,
   Sun,
   Activity,
+  KeyRound,
 } from "lucide-react";
 import { useState, useEffect } from "react";
 import { useTranslation } from "react-i18next";
@@ -27,6 +28,7 @@ import { useUpdateAvailable } from "../../hooks/useUpdateAvailable";
 import { useEnergy } from "../../store/useEnergy";
 import { usePluginUpdates } from "./usePluginUpdates";
 import { ADMIN_NAV_ITEMS } from "./admin-nav-items";
+import { useSharedAccess } from "../../store/useSharedAccess";
 
 type SidebarSection = "maison" | "modes" | "analyse" | "energy" | "admin";
 
@@ -54,6 +56,7 @@ export function Sidebar() {
   const hasProduction = useEnergy((s) => s.hasProduction);
   const checkEnergyAvailability = useEnergy((s) => s.checkAvailability);
   const pluginUpdateCount = usePluginUpdates(isAdmin ?? false);
+  const sharedAccessEnabled = useSharedAccess((s) => s.enabled === true);
 
   // Auto-collapse: only one section expanded at a time
   const [expandedSection, setExpandedSection] = useState<SidebarSection | null>(
@@ -183,6 +186,21 @@ export function Sidebar() {
           }}
         />
         {expandedSection === "analyse" && !collapsed && <SidebarChartList collapsed={collapsed} />}
+
+        {/* Accès partagés (spec 181) — used day to day, so in the main
+            navigation right after Analyse; admin-only, and only while on */}
+        {isAdmin && sharedAccessEnabled && (
+          <>
+            <SidebarSeparator />
+            <SidebarSectionHeader
+              to="/shared-access"
+              label={t("nav.sharedAccess")}
+              icon={<KeyRound size={ICON_SIZE} strokeWidth={1.5} />}
+              collapsed={collapsed}
+              title={collapsed ? t("nav.sharedAccess") : undefined}
+            />
+          </>
+        )}
 
         {/* Énergie — visible only when energy data available */}
         {energyAvailable && (
