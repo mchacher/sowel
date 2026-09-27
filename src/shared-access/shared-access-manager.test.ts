@@ -56,6 +56,19 @@ describe("creating accesses (R2, R3)", () => {
     ).toThrow(expect.objectContaining({ code: "invalid_value" }));
   });
 
+  it("stores no value for a gate whose command declares a single one, and sends none", async () => {
+    h = buildSharedAccessHarness();
+    const a = h.manager.createAccess(
+      { label: "X", gates: [{ equipmentId: h.gates.portillon }] },
+      "admin",
+    );
+    expect(a.gates[0].value).toBeNull();
+    const phone = await h.manager.enrol({ code: a.code! }, "ua");
+    if (!phone.ok) throw new Error("enrol");
+    await h.manager.open(phone.token, h.gates.portillon);
+    expect(h.dispatches[0]).toMatchObject({ equipmentId: h.gates.portillon, value: null });
+  });
+
   it("makes a code by default, and none when asked; the link is always there", () => {
     h = buildSharedAccessHarness();
     const withCode = h.manager.createAccess(
@@ -211,6 +224,7 @@ describe("the default profile (R9.33)", () => {
   it("lists the house's gate when it has only one", () => {
     h = buildSharedAccessHarness();
     h.equipments.delete(h.gates.garage);
+    h.equipments.delete(h.gates.portillon);
     h.manager.ensureDefaultProfile();
     expect(h.manager.getState().profiles[0].gates).toEqual([
       expect.objectContaining({ equipmentId: h.gates.entree, value: null }),

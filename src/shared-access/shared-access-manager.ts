@@ -367,8 +367,11 @@ export class SharedAccessManager {
       if (!has) {
         throw new SharedAccessError("no_command", `« ${equipment.name} » has no command`, 422);
       }
+      // R2.5 — what the gate's own button sends. With one value or none, the
+      // button sends no value and the order resolves it (spec 150); only a
+      // command with a choice (open / close / stop) needs the access to say.
       let value: string | null = null;
-      if (values.length > 0) {
+      if (values.length > 1) {
         const wanted =
           raw.value === undefined || raw.value === null
             ? values.includes("open")
@@ -856,7 +859,7 @@ export class SharedAccessManager {
         const { has, values } = this.commandValues(gates[0].id);
         if (has) {
           const value =
-            values.length === 0
+            values.length <= 1
               ? null
               : JSON.stringify(values.includes("open") ? "open" : values[0]);
           this.store.setProfileGates(id, [{ equipmentId: gates[0].id, value }]);

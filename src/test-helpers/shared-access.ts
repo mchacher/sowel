@@ -35,7 +35,7 @@ export interface SharedAccessHarness {
   dispatches: Dispatch[];
   events: EngineEvent[];
   clock: { now: number };
-  gates: { entree: string; garage: string; volet: string };
+  gates: { entree: string; garage: string; volet: string; portillon: string };
   setOutcome: (o: { success: boolean; error?: string }) => void;
   setThrows: (e: Error | null) => void;
   /** A date and hour on the house's clock, to epoch ms. */
@@ -82,6 +82,10 @@ export function buildSharedAccessHarness(
   const garage = equipments.create({ name: "Garage", type: "gate", zoneId: zone.id });
   equipments.addOrderBinding(garage.id, device("garage", ["open", "close", "stop"]), "command");
   const volet = equipments.create({ name: "Volet salon", type: "shutter", zoneId: zone.id });
+  // A gate whose command declares a single value, as a LoRa or Somfy impulse
+  // does (`["pulse"]`): its button sends no value, so neither does an access.
+  const portillon = equipments.create({ name: "Portillon", type: "gate", zoneId: zone.id });
+  equipments.addOrderBinding(portillon.id, device("portillon", ["pulse"]), "command");
 
   const settings = new Map<string, string>();
   if (opts.enabled !== false) settings.set(SETTING_ENABLED, "true");
@@ -132,7 +136,7 @@ export function buildSharedAccessHarness(
     dispatches,
     events,
     clock,
-    gates: { entree: entree.id, garage: garage.id, volet: volet.id },
+    gates: { entree: entree.id, garage: garage.id, volet: volet.id, portillon: portillon.id },
     setOutcome: (o: { success: boolean; error?: string }) => {
       outcome = o;
     },
