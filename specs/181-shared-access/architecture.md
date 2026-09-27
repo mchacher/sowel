@@ -3,7 +3,7 @@
 ## Where it sits
 
 ```
- phone ── /access/ (static page) ── /api/v1/shared-access/public/*  (no session, rate-limited)
+ phone ── /access/ (static page) ── /api/v1/shared-access/public/*  (no session)
                                               │
                                               ▼
  owner ── SPA « Accès partagés » ── /api/v1/shared-access/*  (admin)
@@ -30,30 +30,30 @@ in all three at once.
 | `shared-access-manager.ts` | The rules: create, edit, hold, revoke, delete, change the code, enrol a phone, decide, press, purge |
 | `shared-access-store.ts`   | SQLite reads and writes; no rule                                                                    |
 | `validity.ts`              | The window in force, the decision (R4.12), what the owner may write                                 |
-| `codes.ts`                 | The code alphabet and folding, the phone token and its hash                                         |
-| `guessing.ts`              | The failure budget, the held answer, the per-code lock, the alert (R6)                              |
+| `codes.ts`                 | The code alphabet and folding, the link and phone tokens and their hashes                           |
+| `guessing.ts`              | The failure budget, the held answer, the cap on answers held at once, the alert (R6)                |
 | `gate-queue.ts`            | Per-gate queue and double-press window (R4.14)                                                      |
 | `guest-page.ts`            | The public page's HTML, CSS, JS and manifest, as strings — including the pull-to-open disc (R5.20)  |
 | `plugin-api.ts`            | `deps.sharedAccess`, scoped to the calling plugin (R9)                                              |
 
-The Paris wall clock reuses the core's existing time-zone helpers (spec 061).
+The house's wall clock (`home.timezone`) reuses the core's existing time-zone helpers (spec 061).
 
 ## Data model
 
 `migrations/035_shared_access.sql`:
 
 ```sql
-ALTER TABLE equipments ADD COLUMN shared_access TEXT;   -- JSON, NULL = off (R2)
-
 CREATE TABLE shared_accesses (
   id              TEXT PRIMARY KEY,
   kind            TEXT NOT NULL CHECK (kind IN ('manual', 'external')),
   label           TEXT NOT NULL,
-  code            TEXT,                 -- clear, nulled 7 days after the end (R3.8)
+  code            TEXT,                 -- clear, optional, nulled 7 days after the end (R3.8)
+  link_token_hash TEXT NOT NULL UNIQUE, -- SHA-256 of the link's own token (R3.8)
   valid_from      INTEGER,              -- epoch ms, NULL = open-ended
   valid_until     INTEGER,
   source_plugin   TEXT,                 -- external only
   external_id     TEXT,
+  profile_id      TEXT REFERENCES shared_access_profiles(id) ON DELETE SET NULL,  -- external only
   source_from     INTEGER,              -- the source's window, external only
   source_until    INTEGER,
   early_open_at   INTEGER,              -- owner's widening of an external window
@@ -71,7 +71,22 @@ CREATE TABLE shared_accesses (
 CREATE TABLE shared_access_gates (
   access_id     TEXT NOT NULL REFERENCES shared_accesses(id) ON DELETE CASCADE,
   equipment_id  TEXT NOT NULL REFERENCES equipments(id) ON DELETE CASCADE,
+  value         TEXT,                  -- NULL = what the gate's button sends (R2.5)
   PRIMARY KEY (access_id, equipment_id)
+);
+
+CREATE TABLE shared_access_disarmed (  -- R2.4: a row = that gate refuses every press
+  equipment_id  TEXT PRIMARY KEY REFERENCES equipments(id) ON DELETE CASCADE,
+  disarmed_at   INTEGER NOT NULL,
+  disarmed_by   TEXT NOT NULL
+);
+
+CREATE TABLE shared_access_profiles (  -- R9: what a plugin's accesses open
+  id            TEXT PRIMARY KEY,
+  name          TEXT NOT NULL,
+  plugin_id     TEXT,                  -- the one plugin it is granted to; NULL = none
+  gates         TEXT NOT NULL,         -- JSON [{ equipmentId, value }]
+  time_windows  TEXT NOT NULL DEFAULT '[]'
 );
 
 CREATE TABLE shared_access_phones (
@@ -96,13 +111,12 @@ CREATE TABLE shared_access_journal (
 CREATE INDEX idx_sa_journal_at ON shared_access_journal(at);
 ```
 
-`equipments.shared_access` holds `{ "armed": true, "alias": "command", "value": "pulse" }` — the
-shape `timed_command` already uses: absence means off, no default to invent.
+Nothing is added to `equipments`. A gate has no configuration of its own: what a press sends is on
+the access (`shared_access_gates.value`, NULL on an impulse gate), and whether the gate is armed is a
+row in `shared_access_disarmed`. `ON DELETE CASCADE` on both gives R2.6's cleanup for free.
 
-**Why a gate is an equipment column and not a table.** A gate _is_ the equipment; its lifetime is
-the equipment's, and `ON DELETE CASCADE` on `shared_access_gates` gives R2.6's cleanup for free.
-
-**Why the code is in clear.** R3.8. The phone's token, which nobody dictates, is the hashed secret.
+**Why the code is in clear.** R3.8. The phone's token and the link's token, which nobody dictates,
+are the hashed secrets.
 
 ## Events
 
@@ -110,24 +124,31 @@ On the bus: `shared_access.opened`, `shared_access.refused`, `shared_access.chan
 plugin write, for the SPA over WebSocket). `system.alarm.raised` under source `shared-access` for the
 guessing alert (R6) and the phone count (R5.19), which is what reaches notifications.
 
+`OrderSource` (spec 101) gains `{ kind: "shared_access"; accessId: string; label: string }`, so the
+Activity feed names the access without a lookup and keeps naming it once the access is deleted.
+
 ## API
 
 Admin (`/api/v1/shared-access`, 404 while disabled):
 
-| Method | Path                                    |                                                                |
-| ------ | --------------------------------------- | -------------------------------------------------------------- |
-| GET    | `/state`                                | accesses shaped for the page, groups, gates, sources           |
-| GET    | `/journal?accessId=`                    |                                                                |
-| POST   | `/accesses`                             | `{ label, gates, validFrom?, validUntil?, timeWindows? }`      |
-| PATCH  | `/accesses/:id`                         | same fields; external: `earlyOpenAt`, `extendedUntil`          |
-| POST   | `/accesses/:id/{suspend,resume,revoke}` |                                                                |
-| POST   | `/accesses/:id/code`                    | `{ cutPhones }`                                                |
-| DELETE | `/accesses/:id`                         | 422 `still_live` unless revoked or ended                       |
-| GET    | `/equipment/:id`                        | the panel's line: armed, command, count of people able to open |
-| PUT    | `/equipment/:id`                        | `{ enabled, armed?, alias?, value? }` — 422 `gate_in_use`      |
+| Method | Path                                    |                                                                                                 |
+| ------ | --------------------------------------- | ----------------------------------------------------------------------------------------------- |
+| GET    | `/state`                                | accesses shaped for the page, groups, gates, sources                                            |
+| GET    | `/journal?accessId=`                    |                                                                                                 |
+| POST   | `/accesses`                             | `{ label, gates: [{ equipmentId, value? }], withCode?, validFrom?, validUntil?, timeWindows? }` |
+| PATCH  | `/accesses/:id`                         | same fields; external: `earlyOpenAt`, `extendedUntil`                                           |
+| POST   | `/accesses/:id/{suspend,resume,revoke}` |                                                                                                 |
+| POST   | `/accesses/:id/code`                    | `{ cutPhones }` — a new code (if it has one) and a new link                                     |
+| DELETE | `/accesses/:id`                         | 422 `still_live` unless revoked or ended                                                        |
+| GET    | `/equipment/:id`                        | the panel's line: armed, count of people able to open                                           |
+| PUT    | `/equipment/:id`                        | `{ armed }`                                                                                     |
+| GET    | `/profiles`                             | the profiles and the plugin each is granted to                                                  |
+| POST   | `/profiles`                             | `{ name, gates, timeWindows?, pluginId? }`                                                      |
+| PATCH  | `/profiles/:id`                         | same fields                                                                                     |
+| DELETE | `/profiles/:id`                         | the accesses made from it keep their gates                                                      |
 
 Public (`/api/v1/shared-access/public`, no session, added to `isPublicRoute`, 404 while disabled):
-`POST /enrol { code }`, `GET /session`, `POST /open { gate }` — the phone's token as a bearer.
+`POST /enrol { code } | { link }`, `GET /session`, `POST /open { gate }` — the phone's token as a bearer.
 Failures are held back per R6 before they are answered, never the request before it is handled.
 
 Static: `GET /access/`, `/access/app.js`, `/access/style.css`, `/access/manifest.webmanifest`,
@@ -143,13 +164,15 @@ existing settings route; enabling is audit-logged (spec 113).
 
 ```ts
 interface SharedAccessApi {
+  /** The profiles the owner granted to this plugin — names only, never the gates. */
+  profiles(): Array<{ id: string; name: string }>;
   upsert(
     externalId: string,
     input: {
+      profileId: string;
       label: string;
       from: string | null;
       until: string | null;
-      gates?: string[];
     },
   ): { id: string; code: string | null; invitationUrl: string | null };
   revoke(externalId: string): void;
@@ -162,18 +185,18 @@ interface SharedAccessApi {
 }
 ```
 
-Throws `SharedAccessDisabledError` while the setting is off. Scoped: another plugin's accesses do not
-exist for this one.
+Throws `SharedAccessDisabledError` while the setting is off, `UnknownProfileError` for a profile not
+granted to this plugin. Scoped: another plugin's accesses and profiles do not exist for this one.
 
 ## UI
 
-| File                                                 |                                                                     |
-| ---------------------------------------------------- | ------------------------------------------------------------------- |
-| `ui/src/pages/SharedAccessPage.tsx`                  | the page (tabs, lines, menu, dialogs)                               |
-| `ui/src/components/shared-access/*`                  | line, editor, date-time picker, add-gate dialog, change-code dialog |
-| `ui/src/components/equipments/SharedAccessPanel.tsx` | R8, mounted beside `GateConfirmationPanel`                          |
-| `ui/src/pages/SettingsPage.tsx`                      | the opt-in switch and the public address                            |
-| Sidebar / mobile drawer                              | the entry, shown only while enabled                                 |
+| File                                                 |                                                                                     |
+| ---------------------------------------------------- | ----------------------------------------------------------------------------------- |
+| `ui/src/pages/SharedAccessPage.tsx`                  | the page (tabs, lines, menu, dialogs)                                               |
+| `ui/src/components/shared-access/*`                  | line, editor, date-time picker, add-gate dialog, change-code dialog, profile editor |
+| `ui/src/components/equipments/SharedAccessPanel.tsx` | R8, mounted beside `GateConfirmationPanel`                                          |
+| `ui/src/pages/SettingsPage.tsx`                      | the opt-in switch and the public address                                            |
+| Sidebar / mobile drawer                              | the entry, shown only while enabled                                                 |
 
 EN/FR strings in the locale files, like every other page.
 

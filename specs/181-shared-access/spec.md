@@ -41,9 +41,11 @@ R9 (see _Consumers_).
 ## Vocabulary
 
 - **Shared access** (_Accès partagés_): the feature.
-- **Access**: one person's right to open — a label, a code, the gates it opens, a validity.
-- **Gate** (in this spec): a `gate` equipment on which shared access has been turned on.
-- **Phone**: a device that has been set up on an access from its code; it keeps a token.
+- **Access**: one person's right to open — a label, a link, optionally a code, the gates it opens,
+  a validity.
+- **Gate** (in this spec): a `gate` equipment. Nothing is turned on per gate: any of them can be
+  listed on an access.
+- **Phone**: a device that has been set up on an access from its link or its code; it keeps a token.
 
 ## Functional rules
 
@@ -57,33 +59,37 @@ R9 (see _Consumers_).
 
 ### R2 — Gates
 
-3. Shared access is turned on **per gate**, from the gate's own page (a panel beside « Confirmation
-   avant action ») or from the shared-access page (« + portail », a choice among the house's `gate`
-   equipments). Only `gate` equipments are offered in this spec.
-4. Each gate carries an **armed switch**, on its own page. Disarmed, a press is refused and the
-   phone is told the house refused it; the accesses are kept. Disarming the garage does not affect
-   the entrance gate.
-5. Each gate carries **the command to send** (alias and value), defaulting to its first `gate`
-   order binding — `command` / `pulse` on a standard impulse gate. Per gate, because two gates of
-   one house need not take the same order.
-6. Turning shared access off on a gate is refused while an access still able to open depends on it
-   alone (`gate_in_use`). Deleting the equipment removes the gate and every access forgets it.
+3. **Any `gate` equipment of the house can be listed on an access** — from the shared-access page
+   (« + portail ») or from the gate's own page (R8). Nothing is turned on per gate. The server checks
+   the type (`unsupported_equipment`); other types are a later decision, one type at a time.
+4. Each gate carries an **armed switch**, on its own page and on its tab. Disarmed, a press is
+   refused and the phone is told the house refused it; the accesses are kept. Disarming the garage
+   does not affect the entrance gate. The switch is the feature's own data, not a column on
+   `equipments`.
+5. **A press sends what the gate's own button sends**: its `command` order (spec 146). On an impulse
+   gate there is nothing to choose; when the command has enum values (`open` / `close` / `stop`), the
+   access stores which one opens, picked when the gate is listed on it.
+6. Deleting the equipment removes it from every access; an access left with no gate cannot open and
+   says so on the owner's page.
 
 ### R3 — Accesses
 
 7. An access carries a **label** (required), **the gates it opens** (at least one, `no_gate`
    otherwise), and a **kind**: `manual` (made on the page) or `external` (made by a plugin, R9).
-8. **The code** is eight characters of Crockford base32 without I, L, O, U, shown `4K7M-9QT2`,
-   compared with dashes, spaces and case stripped and those four letters folded onto what they are
-   mistaken for. It is **unique among everything that can still open** — it identifies the access on
-   its own. It is **kept in clear**: someone whose phone is flat must be read their code over the
-   telephone, which a hash forbids. It is nulled seven days after the access ends.
-9. **One « Change the code »**, with a choice: a new code that keeps the phones already set up (the
-   lost email), or one that also cuts them off (the lost phone).
-10. **Validity**: always, or a period (from, until) on the Paris wall clock — the house's clock.
-    Optional **time windows** every day (`08:00–20:00`), not crossing midnight, not overlapping.
-    An external access carries its source's window; the owner may **widen** it only — open earlier,
-    extend later.
+8. **The link** carries a random token of its own, 128 bits: it cannot be guessed, and only its
+   SHA-256 is stored. **The code** is optional per access, on by default: eight characters of
+   Crockford base32 without I, L, O, U, shown `4K7M-9QT2`, compared with dashes, spaces and case
+   stripped and those four letters folded onto what they are mistaken for. It is **unique among
+   everything that can still open** — it identifies the access on its own. It is **kept in clear**:
+   someone whose phone is flat must be read their code over the telephone, which a hash forbids. It
+   is nulled seven days after the access ends. Only codes are exposed to guessing (R6).
+9. **One « Change the code »**, which renews the code (when the access has one) and the link
+   together, with a choice: keep the phones already set up (the lost email), or cut them off too
+   (the lost phone).
+10. **Validity**: always, or a period (from, until) on the house's wall clock (`home.timezone`,
+    spec 061). Optional **time windows** every day (`08:00–20:00`), not crossing midnight, not
+    overlapping. An external access carries its source's window; the owner may **widen** it only —
+    open earlier, extend later.
 11. **Hold / resume**, **revoke**, and **delete only once revoked or ended** (`still_live`
     otherwise): deleting a live access used to be revoking and erasing the line in one click. The
     journal outlives the access.
@@ -97,7 +103,8 @@ R9 (see _Consumers_).
 14. Two presses of the same access within two seconds are one press. Presses queue per gate.
 15. **The core sends the gate's command itself**, through `EquipmentManager.executeOrder`, so it
     inherits inversion (spec 154), value resolution (spec 150) and delivery confirmation (spec 141).
-    The order is attributed in the Activity feed to « Accès partagé — <label> ».
+    The order carries a new `OrderSource` member, `{ kind: "shared_access", accessId, label }`, shown
+    in the Activity feed as « Accès partagé — <label> ».
 16. **The gate's state never reaches the phone.** The page is pollable by anyone holding a code; a
     button reading « Fermer » is a state display wearing a verb.
 
@@ -106,11 +113,13 @@ R9 (see _Consumers_).
 17. Served by the core at **`/access/`**, a few kilobytes of HTML, CSS and JavaScript of its own —
     not the SPA, not a framework — with `default-src 'none'`-style CSP, `X-Robots-Tag: noindex`,
     `Cache-Control: no-store` and no cookie. Its API is `/api/v1/shared-access/public/*`, the only
-    shared-access routes outside authentication, rate-limited per IP.
-18. The invitation link carries the code **in the fragment** (`/access/#i=…`), which no server,
-    proxy or log sees; it is consumed once and removed from the address bar. An **alias** (another
-    host name rewriting to `/access/`) is supported: a public base URL and path set in Settings build
-    the links.
+    shared-access routes outside authentication. They carry **no per-IP limit**, for the reason R6
+    gives: behind the proxy it would be one limit for the whole internet, which one script exhausts
+    for every visitor. Failing enrolments are governed by R6, presses by the ceilings of R4.13.
+18. The invitation link carries its own token **in the fragment** (`/access/#i=…`), which no
+    server, proxy or log sees; it is consumed once and removed from the address bar. An **alias**
+    (another host name rewriting to `/access/`) is supported: a public base URL and path set in
+    Settings build the links.
 19. A phone keeps its **own token**; only its SHA-256 is stored. More than six phones on one access
     raises an alarm — information, never a block.
 20. **The control is a movement, not a button to validate.** The gate is one warm disc in the
@@ -148,53 +157,68 @@ And what is seen before a code is known: ![](screenshots/visitor-code.png)
     only failures are counted, **globally** — behind a reverse proxy the core sees the proxy's
     address, not the visitor's, so « N tries per IP » would be N tries for the whole internet.
     Ten failures in ten minutes are free, then each failing answer is held back 1 s, 2, 4, 8, up to
-    10 s. Past 25 failures in the window the owner is alerted once. A code tried ten times is locked
-    for an hour. Per-visitor counting needs trusted-proxy configuration and is a separate spec.
+    10 s. Past 25 failures in the window the owner is alerted once. A wrong link token counts as a
+    failure like a wrong code. No code is ever locked: a live code tried is a success, and a code
+    that matches nothing has nothing to lock. Per-visitor counting needs trusted-proxy
+    configuration and is a separate spec.
+25. **Parallel guessing is bounded by a cap on held answers**: at most 32 failing answers are held
+    at once; past that, a failure is answered at once with `too_many` — still no success, and no
+    more sockets kept open. In front of the core, the reverse proxy's own quota (Caddy, CrowdSec)
+    bounds the request rate. The order of magnitude: a guesser needs about 2⁴⁰ tries against a
+    handful of live codes, and the owner is alerted from the 26th failure. An access without a
+    code (R3.8) offers nothing to guess.
 
 ### R7 — The owner's page
 
-25. **« Accès partagés » in the main navigation**, after Analyse — used day to day, not configured
+26. **« Accès partagés » in the main navigation**, after Analyse — used day to day, not configured
     once. Admin-only.
-26. **A tab per gate**, « Tous » once there are two, « + portail ». On « Tous » each line says which
-    gates it opens.
-27. Each line: label, code, validity, hours, phones, last use; Sowel's icons for **copy the link**,
+27. **A tab per gate** listed on at least one access, « Tous » once there are two, « + portail »
+    (picks a gate and opens a new access on it). On « Tous » each line says which gates it opens.
+28. Each line: label, code, validity, hours, phones, last use; Sowel's icons for **copy the link**,
     **edit**, **hold / resume**, and **« ⋯ »** for change the code, this access's journal, revoke (or
     delete, once revoked or ended).
-28. **The period is picked in order**: « Valable » (always / for a period); the day from a calendar
+29. **The period is picked in order**: « Valable » (always / for a period); the day from a calendar
     where every day before the start is struck; the time from two standard lists, **hours and
     minutes in steps of five**, the values before the start disabled on its day. Moving the start
     past the end carries the end along, keeping the length.
-29. A header line says what the owner cannot otherwise know: each gate's contact, whether it is
+30. A header line says what the owner cannot otherwise know: each gate's contact, whether it is
     armed, whether the public page is reachable (base URL set), and the external sources' state.
 
 ### R8 — On the gate's own page
 
-30. A panel **« Accès partagés »** beside « Confirmation avant action », admin-only: turned off, a
-    button to turn it on; turned on, the **armed switch**, the **command** (R2.5), and « 3 personnes
-    peuvent ouvrir ce portail avec un code » with a link to that gate's tab.
+31. A panel **« Accès partagés »** beside « Confirmation avant action », admin-only: the **armed
+    switch**, « 3 personnes peuvent ouvrir ce portail avec un code » with a link to that gate's tab,
+    and « Créer un accès » with this gate already listed.
 
 ### R9 — Accesses from elsewhere (plugins)
 
-31. A plugin may create, update and revoke **external** accesses through `deps.sharedAccess`, keyed
-    by `(pluginId, externalId)` — idempotent, so replaying a feed changes nothing. It sets the label,
-    the window and, optionally, the gates (the first gate otherwise); the owner's widening and gate
-    choices are never taken back by a later update. A plugin sees and touches **only its own**
-    accesses, and reads back the invitation (code and link) of each, to send it through its own
-    channel.
-32. While the feature is off, `deps.sharedAccess` answers every call with a `disabled` error: the
+32. **The owner decides what opens; a plugin decides who and when.** The owner writes **profiles**
+    on the shared-access page — a name, the gates (with their value, R2.5), time windows — and
+    grants each profile to one plugin. A plugin may create, update and revoke **external** accesses
+    through `deps.sharedAccess`, keyed by `(pluginId, externalId)` — idempotent, so replaying a feed
+    changes nothing. It sets the label, the window and **the profile**, among those granted to it
+    (`unknown_profile` otherwise); **it never names an equipment**. The access takes the profile's
+    gates and hours when it is created; the owner's widening and gate choices on the access are
+    never taken back by a later update. Taking a profile back from a plugin stops it creating
+    accesses on it; the existing ones stay, under the owner's hand. A plugin sees and touches **only
+    its own** accesses and profiles, and reads back the invitation (code and link) of each, to send
+    it through its own channel.
+33. While the feature is off, `deps.sharedAccess` answers every call with a `disabled` error: the
     plugin can say so on its own page, and nothing is created behind the owner's back.
 
 ### R10 — Housekeeping
 
-33. Codes nulled seven days after the access ended; journal lines kept a year, bounded in count.
+34. Codes nulled seven days after the access ended; journal lines kept a year, and at most the
+    latest 50 000.
 
 ## Consumers
 
-- **A guestFlow connector plugin** (separate repository and spec) — the first user of R9: a stay
-  becomes an external access, and the invitation is sent back to guestFlow for its guest emails.
-  It is meant as the start of a broader guestFlow ↔ Sowel link (for instance, reservations of a
-  given lodging acting on that lodging's equipments), which is that plugin's business and needs
-  nothing more from this spec.
+- **A guestFlow connector plugin** (separate repository and spec) — the first user of R9: each
+  lodging is mapped to a profile the owner granted to it (the gîte, the lodge), a stay becomes an
+  external access on that profile, and the invitation is sent back to guestFlow for its guest
+  emails. It is meant as the start of a broader guestFlow ↔ Sowel link (for instance, reservations
+  of a given lodging acting on that lodging's equipments), which is that plugin's business and
+  needs nothing more from this spec.
 
 ## Out of scope
 
@@ -208,15 +232,19 @@ And what is seen before a code is known: ![](screenshots/visitor-code.png)
 ## Acceptance criteria
 
 - [ ] With the setting off, no entry, no card, and `/access/` and every route answer 404.
-- [ ] A gate is turned on from its page or from « + portail », armed, with its own command.
+- [ ] Any `gate` equipment can be listed on an access, from « + portail » or from its page; a
+      non-`gate` equipment is refused (`unsupported_equipment`); disarming one gate leaves the others.
 - [ ] A correct code sets a phone up even after forty wrong codes, without delay.
+- [ ] An access made without a code sets a phone up from its link alone; a wrong link token counts
+      as a failure; a hundred failures at once keep at most 32 answers held.
 - [ ] A press on a listed, armed gate inside the validity sends the gate's command through
       `executeOrder`; every refusal of R4.12 sends nothing and tells the phone why.
 - [ ] The phone never receives the gate's state, and what it shows of a command is that
       phone's own presses.
 - [ ] The disc released short of its socket sends nothing; the keyboard confirms instead.
 - [ ] « Jusqu'au » cannot be picked before « À partir du »; the server refuses it too.
-- [ ] A plugin's external access is idempotent, and a later update keeps the owner's widening.
+- [ ] A plugin's external access is idempotent, takes its gates from a profile granted to that
+      plugin and never from the plugin itself, and a later update keeps the owner's widening.
 - [ ] Nothing is persisted outside SQLite; the data rides in the backup.
 
 ## Migration and compatibility
