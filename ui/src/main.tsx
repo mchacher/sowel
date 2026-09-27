@@ -24,14 +24,21 @@ createRoot(document.getElementById("root")!).render(
   </StrictMode>
 );
 
-// Hide PWA splash screen — show for at least 2s then fade out
+// Splash screen (#976) — public/splash.js decided before first paint whether
+// this load shows it. Skipped: drop it now. Shown: hold it for one wink
+// counted from first paint, then fade out.
 const splash = document.getElementById("splash");
 if (splash) {
-  const minDelay = 1600;
-  const started = Number(splash.dataset.ts) || Date.now();
-  const remaining = Math.max(0, minDelay - (Date.now() - started));
-  setTimeout(() => {
-    splash.style.opacity = "0";
-    setTimeout(() => splash.remove(), 400);
-  }, remaining);
+  const root = document.documentElement;
+  if (root.classList.contains("no-splash")) {
+    splash.remove();
+  } else {
+    const minDelay = 1200;
+    const started = Number(root.dataset.splashTs) || Date.now();
+    const remaining = Math.max(0, minDelay - (Date.now() - started));
+    setTimeout(() => {
+      splash.style.opacity = "0";
+      setTimeout(() => splash.remove(), 400);
+    }, remaining);
+  }
 }
