@@ -1614,7 +1614,7 @@
   "sharedAccess.copied": "Copied",
   "sharedAccess.tabs.all": "All",
   "sharedAccess.tabs.profiles": "Profiles",
-  "sharedAccess.tabs.addGate": "gate",
+  "sharedAccess.editor.addGate": "Add a gate",
   "sharedAccess.tabs.pickGateHint": "Pick a gate: a new access opens on it.",
   "sharedAccess.header.publicAt": "Public page:",
   "sharedAccess.header.noPublicUrl": "Public address not set: the links cannot be built.",

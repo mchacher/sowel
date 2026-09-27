@@ -146,6 +146,15 @@ function SharedAccessBody({
     setEditor({ kind: "create", gateIds: gateId ? [gateId] : [] });
   };
 
+  // « Créer un accès »: on a gate's tab, on that gate; with a single gate in
+  // the house, on it; otherwise pick the gate first.
+  const createHere = () => {
+    if (activeTab !== ALL && activeTab !== PROFILES) return openNewOn(activeTab);
+    const usable = state.gates.filter((g) => g.hasCommand);
+    if (usable.length === 1) return openNewOn(usable[0].equipmentId);
+    setPicking(!picking);
+  };
+
   const lines = state.accesses
     .filter((a) =>
       activeTab === ALL ? true : a.gates.some((g) => g.equipmentId === activeTab),
@@ -163,7 +172,8 @@ function SharedAccessBody({
     <>
       <HeaderLine state={state} />
 
-      <div className="flex items-center gap-1 mb-4 border-b border-border overflow-x-auto overflow-y-hidden [scrollbar-width:none] [&::-webkit-scrollbar]:hidden" role="tablist">
+      <div className="flex items-end gap-3 mb-4 border-b border-border">
+        <div className="flex items-center gap-1 flex-1 min-w-0 overflow-x-auto overflow-y-hidden [scrollbar-width:none] [&::-webkit-scrollbar]:hidden" role="tablist">
         {gateTabs.map((g) => (
           <button
             key={g.id}
@@ -193,14 +203,15 @@ function SharedAccessBody({
         >
           {t("sharedAccess.tabs.profiles")}
         </button>
+        </div>
         <button
           type="button"
-          className={`${tabCls(false)} inline-flex items-center gap-1`}
+          className={`${btnPrimary} inline-flex items-center gap-1 shrink-0 mb-1.5`}
           aria-expanded={picking}
-          onClick={() => setPicking(!picking)}
+          onClick={createHere}
         >
           <Plus size={14} strokeWidth={1.5} />
-          {t("sharedAccess.tabs.addGate")}
+          {t("sharedAccess.create")}
         </button>
       </div>
 
@@ -232,16 +243,14 @@ function SharedAccessBody({
         <ProfilesTab state={state} />
       ) : (
         <>
-          {activeTab !== ALL && <GateBar state={state} gateId={activeTab} onCreate={() => openNewOn(activeTab)} />}
+          {activeTab !== ALL && <GateBar state={state} gateId={activeTab} />}
           {lines.length === 0 ? (
             <div className="bg-surface border border-border rounded-[10px] p-5 text-center">
               <p className="text-[13px] text-text-secondary mb-3">{t("sharedAccess.empty")}</p>
               <button
                 type="button"
                 className={`${btnPrimary} inline-flex items-center gap-1`}
-                onClick={() =>
-                  activeTab === ALL ? setPicking(true) : openNewOn(activeTab)
-                }
+                onClick={createHere}
               >
                 <Plus size={14} strokeWidth={1.5} />
                 {t("sharedAccess.create")}
@@ -316,16 +325,8 @@ function HeaderLine({ state }: { state: SharedAccessState }) {
   );
 }
 
-/** R2.4 — the gate's armed switch on its tab, and « Créer un accès » on it. */
-function GateBar({
-  state,
-  gateId,
-  onCreate,
-}: {
-  state: SharedAccessState;
-  gateId: string;
-  onCreate: () => void;
-}) {
+/** R2.4 — the gate's armed switch on its tab. */
+function GateBar({ state, gateId }: { state: SharedAccessState; gateId: string }) {
   const { t } = useTranslation();
   const refresh = useSharedAccess((s) => s.refresh);
   const refusalText = useRefusalText();
@@ -361,11 +362,6 @@ function GateBar({
         {!gate.armed && (
           <span className="text-[12.5px] text-error">{t("sharedAccess.disarmedShort")}</span>
         )}
-        <span className="flex-1" />
-        <button type="button" className={`${btnPrimary} inline-flex items-center gap-1`} onClick={onCreate}>
-          <Plus size={14} strokeWidth={1.5} />
-          {t("sharedAccess.create")}
-        </button>
       </div>
       {error && <Refusal>{error}</Refusal>}
     </div>

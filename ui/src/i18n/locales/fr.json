@@ -1614,7 +1614,7 @@
   "sharedAccess.copied": "Copié",
   "sharedAccess.tabs.all": "Tous",
   "sharedAccess.tabs.profiles": "Profils",
-  "sharedAccess.tabs.addGate": "portail",
+  "sharedAccess.editor.addGate": "Ajouter un portail",
   "sharedAccess.tabs.pickGateHint": "Choisis un portail : un nouvel accès s'ouvre dessus.",
   "sharedAccess.header.publicAt": "Page publique :",
   "sharedAccess.header.noPublicUrl": "Adresse publique non réglée : les liens ne peuvent pas être construits.",

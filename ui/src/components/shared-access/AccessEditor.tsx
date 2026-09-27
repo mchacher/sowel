@@ -355,7 +355,7 @@ export function AccessEditor({
               onClick={() => setAdding(true)}
             >
               <Plus size={14} strokeWidth={1.5} />
-              {t("sharedAccess.tabs.addGate")}
+              {t("sharedAccess.editor.addGate")}
             </button>
           )}
         </div>
