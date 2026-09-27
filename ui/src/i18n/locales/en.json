@@ -1713,6 +1713,8 @@
   "sharedAccess.invitation.link": "Link:",
   "sharedAccess.invitation.code": "Code:",
   "sharedAccess.invitation.noCode": "No code: only the link opens, and it cannot be guessed.",
+  "sharedAccess.invitation.qrLabel": "QR code of the invitation link",
+  "sharedAccess.invitation.qrHint": "Scan it with the phone's camera",
   "sharedAccess.validity.dates": "Dates",
   "sharedAccess.validity.always": "All the time",
   "sharedAccess.validity.period": "From … to …",
