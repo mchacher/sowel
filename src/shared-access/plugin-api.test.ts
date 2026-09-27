@@ -132,7 +132,9 @@ describe("deps.sharedAccess (R9)", () => {
     if (!phone.ok) throw new Error("enrol");
     guestflow.revoke("stay-8907");
     h.clock.now = h.at(2026, 10, 4, 12);
-    expect(await h.manager.open(phone.token, h.gates.entree)).toMatchObject({ reason: "revoked" });
+    // A revoked access no longer knows its phones: the page asks for a code again.
+    expect(await h.manager.open(phone.token, h.gates.entree)).toBeNull();
+    expect(h.dispatches).toHaveLength(0);
   });
 
   it("answers `disabled` while the setting is off", () => {

@@ -38,6 +38,8 @@ export interface SharedAccessHarness {
   gates: { entree: string; garage: string; volet: string; portillon: string };
   setOutcome: (o: { success: boolean; error?: string }) => void;
   setThrows: (e: Error | null) => void;
+  /** The next dispatch waits until the returned function is called. */
+  holdNextDispatch: () => () => void;
   /** A date and hour on the house's clock, to epoch ms. */
   at: (y: number, m: number, d: number, h?: number, min?: number) => number;
 }
@@ -98,6 +100,7 @@ export function buildSharedAccessHarness(
   const dispatches: Dispatch[] = [];
   let outcome: { success: boolean; error?: string } = { success: true };
   let throws: Error | null = null;
+  let hold: Promise<void> | null = null;
   const equipmentManager = {
     getAll: () => equipments.getAll(),
     getById: (id: string) => equipments.getById(id),
@@ -108,6 +111,11 @@ export function buildSharedAccessHarness(
       value: unknown,
       source?: OrderSource,
     ) => {
+      if (hold) {
+        const waiting = hold;
+        hold = null;
+        await waiting;
+      }
       dispatches.push({ equipmentId, alias, value, source });
       if (throws) throw throws;
       return outcome;
@@ -142,6 +150,11 @@ export function buildSharedAccessHarness(
     },
     setThrows: (e: Error | null) => {
       throws = e;
+    },
+    holdNextDispatch: () => {
+      let release!: () => void;
+      hold = new Promise<void>((r) => (release = r));
+      return release;
     },
     at: (y: number, m: number, d: number, h = 0, min = 0) =>
       new Date(y, m - 1, d, h, min).getTime(),

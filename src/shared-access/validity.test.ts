@@ -59,6 +59,11 @@ describe("validity (R3.10)", () => {
 
   it("reads a date and hour without offset on the house's clock", () => {
     expect(parseInstant("2026-10-03T16:00", "from")).toBe(at(3, 16));
+    // A date alone is the house's midnight, not UTC's.
+    expect(parseInstant("2026-10-03", "from")).toBe(at(3, 0));
+    // A date no Date can write back is refused: one such row would break every list.
+    expect(() => parseInstant(1e16, "from")).toThrow();
+    expect(() => parseInstant("+275760-09-14T00:00:00.001Z", "from")).toThrow();
     expect(parseInstant(null, "from")).toBeNull();
     expect(() => parseInstant("tomorrow", "from")).toThrow();
   });

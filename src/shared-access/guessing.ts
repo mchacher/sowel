@@ -27,6 +27,8 @@ export interface GuessingOptions {
 
 export type HeldOutcome = "held" | "too_many";
 
+const MAX_TRACKED = 5000;
+
 export class GuessingBudget {
   private readonly freeFailures: number;
   private readonly windowMs: number;
@@ -76,6 +78,9 @@ export class GuessingBudget {
   async fail(): Promise<HeldOutcome> {
     this.prune();
     this.failures.push(this.now());
+    // Past a few thousand the delay and the alert no longer change; keeping
+    // every timestamp of a flood would only grow with it.
+    if (this.failures.length > MAX_TRACKED) this.failures.shift();
     const n = this.failures.length;
     if (n > this.alertAbove && !this.alerted) {
       this.alerted = true;

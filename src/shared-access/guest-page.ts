@@ -168,7 +168,7 @@ export const GUEST_JS = `(function () {
   var T = EN ? {
     access: "Access", enterCode: "Enter the code you were given.", validate: "Confirm",
     unknown: "This code opens nothing.", tooMany: "Too many attempts. Try again in a moment.",
-    ended: "This access has ended.", network: "The house cannot be reached. Try again.",
+    ended: "This access has ended.", phones: "Too many phones on this access. Ask the person who gave it to you.", network: "The house cannot be reached. Try again.",
     open: "OPEN", pull: "pull upward", release: "release", sent: "SENT", enterAgain: "Enter again to open",
     ready: "Ready", commandSent: "Command sent", refused: "Command refused", journal: "Your commands",
     asked: "Opening requested", notYet: "Opens on ", nextAt: "Next opening at ", suspended: "Access on hold",
@@ -183,7 +183,7 @@ export const GUEST_JS = `(function () {
   } : {
     access: "Accès", enterCode: "Entrez le code qu'on vous a communiqué.", validate: "Valider",
     unknown: "Ce code n'ouvre rien.", tooMany: "Trop d'essais. Réessayez dans un instant.",
-    ended: "Cet accès est terminé.", network: "La maison ne répond pas. Réessayez.",
+    ended: "Cet accès est terminé.", phones: "Trop de téléphones sur cet accès. Demandez à la personne qui vous l'a donné.", network: "La maison ne répond pas. Réessayez.",
     open: "OUVRIR", pull: "tirer vers le haut", release: "relâcher", sent: "ENVOYÉ", enterAgain: "Entrée pour ouvrir",
     ready: "Prêt", commandSent: "Commande envoyée", refused: "Commande refusée", journal: "Vos commandes",
     asked: "Ouverture demandée", notYet: "Ouvre le ", nextAt: "Prochaine ouverture à ", suspended: "Accès suspendu",
@@ -237,7 +237,7 @@ export const GUEST_JS = `(function () {
     return api("enrol", "POST", body).then(function (r) {
       if (r.status === 200 && r.body.token) { saveToken(r.body.token); session = r.body.session; showMain(); return; }
       var e = r.body && r.body.error;
-      showCode(e === "too_many" ? T.tooMany : e === "ended" ? T.ended : e === "unknown_code" ? T.unknown : T.network);
+      showCode(e === "too_many" ? T.tooMany : e === "too_many_phones" ? T.phones : e === "ended" ? T.ended : e === "unknown_code" ? T.unknown : T.network);
     }, function () { showCode(T.network); });
   }
 

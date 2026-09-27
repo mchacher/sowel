@@ -71,6 +71,12 @@ export function registerSharedAccessRoutes(
     const onPage = pathIsUnder(request, PAGE_BASE);
     if (!onAdmin && !onPage) return;
     if (!manager.isEnabled()) {
+      // An anonymous request on an unknown /api route meets the auth
+      // middleware's 401; the public API must not answer differently, or the
+      // build could be told apart from one without shared access.
+      if (pathIsUnder(request, PUBLIC_BASE)) {
+        return reply.code(401).send({ error: "Authentication required" });
+      }
       reply.callNotFound();
       return reply;
     }
@@ -222,7 +228,14 @@ export function registerSharedAccessRoutes(
             String(request.headers["user-agent"] ?? ""),
           );
           if (result.ok) return { token: result.token, session: result.session };
-          const status = result.error === "too_many" ? 429 : result.error === "ended" ? 410 : 401;
+          const status =
+            result.error === "too_many"
+              ? 429
+              : result.error === "ended"
+                ? 410
+                : result.error === "too_many_phones"
+                  ? 409
+                  : 401;
           return reply.code(status).send({ error: result.error });
         } catch (err) {
           return sendError(reply, err, logger);

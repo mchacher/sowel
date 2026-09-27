@@ -43,18 +43,30 @@ afterEach(async () => {
 });
 
 describe("shared access routes", () => {
-  it("answers 404 on the page, the public API and the owner's API while the setting is off", async () => {
+  it("answers the page and the owner's API as unknown routes while the setting is off", async () => {
     app = await buildApp({ enabled: false });
     for (const url of [
       "/access/",
       "/access/app.js",
       "/access/api/session",
-      "/api/v1/shared-access/public/session",
       "/api/v1/shared-access/state",
     ]) {
       const res = await app.inject({ method: "GET", url });
       expect(res.statusCode, url).toBe(404);
     }
+  });
+
+  it("answers the public API like any unknown /api route to an anonymous caller while off: 401", async () => {
+    app = await buildApp({ enabled: false });
+    const res = await app.inject({ method: "GET", url: "/api/v1/shared-access/public/session" });
+    expect(res.statusCode).toBe(401);
+    expect(res.json()).toEqual({ error: "Authentication required" });
+  });
+
+  it("gates a percent-encoded owner path like the plain one", async () => {
+    app = await buildApp({ role: "standard" });
+    const res = await app.inject({ method: "GET", url: "/api/v1/%73hared-access/state" });
+    expect(res.statusCode).toBe(403);
   });
 
   it("refuses the owner's routes to a non-admin, reads included", async () => {

@@ -66,12 +66,22 @@ export function validateTimeWindows(input: unknown): SharedAccessTimeWindow[] {
 /** A date given as ISO or as the house's `YYYY-MM-DDTHH:MM`, to epoch ms. */
 export function parseInstant(value: unknown, field: string): number | null {
   if (value === undefined || value === null || value === "") return null;
-  if (typeof value === "number" && Number.isFinite(value)) return value;
-  if (typeof value !== "string")
+  let ms: number;
+  if (typeof value === "number") {
+    ms = value;
+  } else if (typeof value === "string") {
+    // A date-time without an offset is read by Date as local time — the
+    // house's. A date alone would be read as UTC midnight: it is the house's
+    // midnight that is meant.
+    ms = Date.parse(/^\d{4}-\d{2}-\d{2}$/.test(value) ? `${value}T00:00` : value);
+  } else {
     throw new SharedAccessError("invalid_date", `${field} is not a date`);
-  // A date-time without an offset is read by Date as local time — the house's.
-  const ms = Date.parse(value);
-  if (Number.isNaN(ms)) throw new SharedAccessError("invalid_date", `${field} is not a date`);
+  }
+  // Beyond ±8.64e15 ms a Date cannot be written back, and one such row would
+  // break every page that lists it.
+  if (!Number.isFinite(ms) || Math.abs(ms) > 8.64e15) {
+    throw new SharedAccessError("invalid_date", `${field} is not a date`);
+  }
   return ms;
 }
 

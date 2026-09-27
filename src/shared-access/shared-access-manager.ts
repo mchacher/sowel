@@ -66,6 +66,18 @@ export const OPENS_PER_HOUR_PER_ACCESS = 12;
 export const OPENS_PER_HOUR_PER_GATE = 30;
 /** R5.19 — past this, an alarm; never a block. */
 export const PHONES_BEFORE_ALARM = 6;
+/**
+ * A hard ceiling, far above any household: past it a leaked link could only
+ * be used to fill the phones table and the journal, one enrolment at a time.
+ */
+export const MAX_PHONES_PER_ACCESS = 50;
+/**
+ * A refusal identical to this phone's previous one within this window is
+ * answered but not journalled again: a phone left on a revoked page, or a
+ * script replaying a press, must not be able to flood the journal and push the
+ * genuine openings out of its 50 000 lines.
+ */
+export const REFUSAL_REPEAT_MS = 60_000;
 /** R10 */
 export const CODE_KEPT_AFTER_END_MS = 7 * 24 * 3_600_000;
 export const JOURNAL_KEPT_MS = 365 * 24 * 3_600_000;
@@ -142,7 +154,7 @@ export interface PublicSession {
 
 export type EnrolResult =
   | { ok: true; token: string; session: PublicSession }
-  | { ok: false; error: "unknown_code" | "too_many" | "ended" };
+  | { ok: false; error: "unknown_code" | "too_many" | "ended" | "too_many_phones" };
 
 export type OpenResult =
   | { ok: true; duplicate?: boolean }
@@ -206,6 +218,7 @@ export class SharedAccessManager {
   readonly guessing: GuessingBudget;
   private readonly queue = new GateQueue();
   private readonly phoneAlarms = new Set<string>();
+  private readonly lastRefusal = new Map<string, { key: string; at: number }>();
   private readonly unsubscribes: (() => void)[] = [];
   private purgeTimer: NodeJS.Timeout | null = null;
   private pluginDirectory: () => { id: string; name: string }[] = () => [];
@@ -954,7 +967,9 @@ export class SharedAccessManager {
     const phone = token ? this.store.getPhoneByHash(sha256(token)) : undefined;
     if (!phone) return null;
     const access = this.store.getAccess(phone.access_id);
-    return access ? { phone, access } : null;
+    // A revoked access no longer knows its phones: the page falls back to the
+    // code screen, and the phone can no longer write to the journal.
+    return access && access.revoked_at === null ? { phone, access } : null;
   }
 
   /**
@@ -977,6 +992,9 @@ export class SharedAccessManager {
     const ids = this.store.accessGates(row.id).map((l) => l.equipment_id);
     if (hasEnded(this.facts(row, ids), this.now())) return { ok: false, error: "ended" };
 
+    if (this.store.countPhones(row.id) >= MAX_PHONES_PER_ACCESS) {
+      return { ok: false, error: "too_many_phones" };
+    }
     const token = generatePhoneToken();
     const now = this.now();
     const phoneId = crypto.randomUUID();
@@ -1050,14 +1068,14 @@ export class SharedAccessManager {
     };
   }
 
-  /** R4 — decide, then send the gate's own command through executeOrder. */
-  async open(token: string, gateId: string): Promise<OpenResult | null> {
-    this.assertEnabled();
-    const found = this.phoneOf(token);
-    if (!found) return null;
-    const { phone, access } = found;
-    const now = this.now();
-    this.store.touchPhone(phone.id, now);
+  /** R4.12 then R4.13: what a press on this gate would meet right now. */
+  private checkPress(
+    access: AccessRow,
+    gateId: string,
+    now: number,
+  ):
+    | { ok: true; link: GateLinkRow }
+    | { ok: false; reason: SharedAccessRefusal; activeAt?: number; nextOpeningAt?: number } {
     const links = this.store.accessGates(access.id);
     const disarmed = this.store.disarmedGates();
     const decision = decide(
@@ -1069,33 +1087,73 @@ export class SharedAccessManager {
       now,
       (id) => !disarmed.has(id),
     );
-    const knownGate = links.some((l) => l.equipment_id === gateId);
-    if (!decision.ok) {
-      return this.refuse(access, phone.id, knownGate ? gateId : null, decision.reason, {
-        activeAt: decision.activeAt,
-        nextOpeningAt: decision.nextOpeningAt,
-      });
-    }
-    if (!this.queue.acceptPress(`${access.id}:${gateId}`, now))
-      return { ok: true, duplicate: true };
+    if (!decision.ok) return decision;
     if (
       this.store.opensOfAccessSince(access.id, now - HOUR_MS) >= OPENS_PER_HOUR_PER_ACCESS ||
       this.store.opensOfGateSince(gateId, now - HOUR_MS) >= OPENS_PER_HOUR_PER_GATE
     ) {
-      return this.refuse(access, phone.id, gateId, "too_many_opens");
+      return { ok: false, reason: "too_many_opens" };
+    }
+    return { ok: true, link: links.find((l) => l.equipment_id === gateId)! };
+  }
+
+  /** R4 — decide, then send the gate's own command through executeOrder. */
+  async open(token: string, gateId: string): Promise<OpenResult | null> {
+    this.assertEnabled();
+    const found = this.phoneOf(token);
+    if (!found) return null;
+    const { phone, access } = found;
+    const now = this.now();
+    this.store.touchPhone(phone.id, now);
+    const first = this.checkPress(access, gateId, now);
+    if (!first.ok) return this.refuse(access, phone.id, gateId, first.reason, first);
+    if (!this.queue.acceptPress(`${access.id}:${gateId}`, now)) {
+      return { ok: true, duplicate: true };
     }
 
-    const link = links.find((l) => l.equipment_id === gateId)!;
     const source: OrderSource = { kind: "shared_access", accessId: access.id, label: access.label };
+    let refusal: { reason: SharedAccessRefusal; activeAt?: number; nextOpeningAt?: number } | null =
+      null;
     let error: string | null = null;
     try {
-      const outcome = await this.queue.run(gateId, () =>
-        this.equipments.executeOrder(gateId, "command", parseValue(link.value), source),
-      );
-      if (!outcome.success) error = outcome.error ?? "dispatch failed";
+      await this.queue.run(gateId, async () => {
+        // The press may have waited behind another one on this gate. What was
+        // decided before the wait is decided again: a revoke, a hold or a disarm
+        // made meanwhile stops it, and the openings the presses ahead of it made
+        // count against the ceilings.
+        const fresh = this.store.getAccess(access.id);
+        if (!fresh || fresh.revoked_at !== null) {
+          refusal = { reason: "revoked" };
+          return;
+        }
+        const check = this.checkPress(fresh, gateId, this.now());
+        if (!check.ok) {
+          refusal = check;
+          return;
+        }
+        const outcome = await this.equipments.executeOrder(
+          gateId,
+          "command",
+          parseValue(check.link.value),
+          source,
+        );
+        if (!outcome.success) {
+          error = outcome.error ?? "dispatch failed";
+          return;
+        }
+        const at = this.now();
+        this.store.updateAccess(access.id, { last_used_at: at, use_count: fresh.use_count + 1 });
+        this.journal(fresh, "opened", { equipment_id: gateId, phone_id: phone.id });
+      });
     } catch (err) {
       error = err instanceof GateQueueClosedError ? "shutting down" : (err as Error).message;
     }
+    const refused = refusal as {
+      reason: SharedAccessRefusal;
+      activeAt?: number;
+      nextOpeningAt?: number;
+    } | null;
+    if (refused) return this.refuse(access, phone.id, gateId, refused.reason, refused);
     if (error !== null) {
       this.logger.warn(
         { accessId: access.id, gateId, error },
@@ -1104,9 +1162,6 @@ export class SharedAccessManager {
       return this.refuse(access, phone.id, gateId, "gate_error");
     }
 
-    const at = this.now();
-    this.store.updateAccess(access.id, { last_used_at: at, use_count: access.use_count + 1 });
-    this.journal(access, "opened", { equipment_id: gateId, phone_id: phone.id });
     this.logger.info({ accessId: access.id, gateId }, "Shared access: gate opened");
     this.eventBus.emit({
       type: "shared_access.opened",
@@ -1125,14 +1180,29 @@ export class SharedAccessManager {
     reason: SharedAccessRefusal,
     when: { activeAt?: number; nextOpeningAt?: number } = {},
   ): OpenResult {
-    this.journal(access, "refused", { reason, equipment_id: gateId, phone_id: phoneId });
-    this.eventBus.emit({
-      type: "shared_access.refused",
-      accessId: access.id,
-      label: access.label,
-      equipmentId: gateId,
-      reason,
-    });
+    // Only a gate this access lists is named in the journal: an id the phone
+    // made up is not the house's business.
+    const listed = this.store.accessGates(access.id).some((l) => l.equipment_id === gateId);
+    const equipmentId = listed ? gateId : null;
+    const now = this.now();
+    const key = `${reason}:${equipmentId ?? ""}`;
+    const last = this.lastRefusal.get(phoneId);
+    if (!last || last.key !== key || now - last.at >= REFUSAL_REPEAT_MS) {
+      this.lastRefusal.set(phoneId, { key, at: now });
+      if (this.lastRefusal.size > 5000) {
+        for (const [id, r] of this.lastRefusal) {
+          if (now - r.at >= REFUSAL_REPEAT_MS) this.lastRefusal.delete(id);
+        }
+      }
+      this.journal(access, "refused", { reason, equipment_id: equipmentId, phone_id: phoneId });
+      this.eventBus.emit({
+        type: "shared_access.refused",
+        accessId: access.id,
+        label: access.label,
+        equipmentId,
+        reason,
+      });
+    }
     return {
       ok: false,
       reason,

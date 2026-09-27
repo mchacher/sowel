@@ -3,7 +3,13 @@ import {
   buildSharedAccessHarness,
   type SharedAccessHarness,
 } from "../test-helpers/shared-access.js";
-import { SETTING_ENABLED, SharedAccessDisabledError } from "./shared-access-manager.js";
+import {
+  MAX_PHONES_PER_ACCESS,
+  OPENS_PER_HOUR_PER_GATE,
+  SETTING_ENABLED,
+  SharedAccessDisabledError,
+} from "./shared-access-manager.js";
+import { isAdminOnlyEvent } from "../api/websocket.js";
 import { deriveLinkToken } from "./codes.js";
 
 let h: SharedAccessHarness;
@@ -348,7 +354,7 @@ describe("pressing (R4)", () => {
     expect(await h.manager.open(token, h.gates.entree)).toMatchObject({ reason: "gate_error" });
     h.setOutcome({ success: true });
     h.setThrows(new Error("Integration not connected"));
-    h.clock.now += 3000;
+    h.clock.now += 61_000;
     expect(await h.manager.open(token, h.gates.entree)).toMatchObject({ reason: "gate_error" });
     const refused = h.manager.listJournal(access.id).filter((e) => e.kind === "refused");
     expect(refused.map((e) => e.reason)).toEqual(["gate_error", "gate_error"]);
@@ -426,5 +432,93 @@ describe("the link token", () => {
       link_token_hash: string;
     };
     expect(stored.link_token_hash).toMatch(/^[0-9a-f]{64}$/);
+  });
+});
+
+describe("review follow-ups", () => {
+  it("refuses past the per-gate ceiling, whatever the access", async () => {
+    h = buildSharedAccessHarness();
+    const tokens: string[] = [];
+    for (let i = 0; i < 3; i++) {
+      tokens.push((await withPhone({ label: `P${i}` })).token);
+    }
+    let opened = 0;
+    for (let round = 0; round < 12 && opened < OPENS_PER_HOUR_PER_GATE; round++) {
+      for (const t of tokens) {
+        if (opened >= OPENS_PER_HOUR_PER_GATE) break;
+        h.clock.now += 3000;
+        expect(await h.manager.open(t, h.gates.entree)).toEqual({ ok: true });
+        opened++;
+      }
+    }
+    const fresh = await withPhone({ label: "P-fresh" });
+    h.clock.now += 3000;
+    expect(await h.manager.open(fresh.token, h.gates.entree)).toMatchObject({
+      reason: "too_many_opens",
+    });
+    expect(h.dispatches).toHaveLength(OPENS_PER_HOUR_PER_GATE);
+  });
+
+  it("forgets the phones of a revoked access: session and presses answer unknown", async () => {
+    h = buildSharedAccessHarness();
+    const { access, token } = await withPhone();
+    h.manager.revoke(access.id, "admin");
+    expect(h.manager.session(token)).toBeNull();
+    expect(await h.manager.open(token, h.gates.entree)).toBeNull();
+  });
+
+  it("journals a repeated identical refusal once a minute, and names no gate the access does not list", async () => {
+    h = buildSharedAccessHarness();
+    const { access, token } = await withPhone();
+    for (let i = 0; i < 50; i++) {
+      h.clock.now += 100;
+      await h.manager.open(token, "made-up-gate");
+    }
+    let refused = h.manager.listJournal(access.id).filter((e) => e.kind === "refused");
+    expect(refused).toHaveLength(1);
+    expect(refused[0].equipmentId).toBeNull();
+    h.clock.now += 61_000;
+    await h.manager.open(token, "made-up-gate");
+    refused = h.manager.listJournal(access.id).filter((e) => e.kind === "refused");
+    expect(refused).toHaveLength(2);
+  });
+
+  it("refuses to enrol past the hard ceiling of phones", async () => {
+    h = buildSharedAccessHarness();
+    const { access } = await withPhone();
+    for (let i = 1; i < MAX_PHONES_PER_ACCESS; i++) {
+      expect((await h.manager.enrol({ code: access.code! }, "ua")).ok).toBe(true);
+    }
+    expect(await h.manager.enrol({ code: access.code! }, "ua")).toEqual({
+      ok: false,
+      error: "too_many_phones",
+    });
+  });
+
+  it("decides again a press that waited behind another: a disarm made meanwhile stops it", async () => {
+    h = buildSharedAccessHarness();
+    const a = await withPhone({ label: "A" });
+    const b = await withPhone({ label: "B" });
+    const release = h.holdNextDispatch();
+    const first = h.manager.open(a.token, h.gates.entree);
+    const second = h.manager.open(b.token, h.gates.entree);
+    await new Promise((r) => setTimeout(r, 0));
+    h.manager.setArmed(h.gates.entree, false, "admin");
+    release();
+    expect(await first).toEqual({ ok: true });
+    expect(await second).toMatchObject({ ok: false, reason: "refused_by_house" });
+    expect(h.dispatches).toHaveLength(1);
+  });
+
+  it("keeps shared_access events away from non-admin WebSocket clients", () => {
+    expect(isAdminOnlyEvent({ type: "shared_access.changed" })).toBe(true);
+    expect(
+      isAdminOnlyEvent({
+        type: "shared_access.opened",
+        accessId: "a",
+        label: "L",
+        equipmentId: "e",
+      }),
+    ).toBe(true);
   });
 });
