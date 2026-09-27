@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeEach, afterEach } from "vitest";
+import { describe, it, expect, beforeEach, afterEach, vi } from "vitest";
 import Database from "better-sqlite3";
 import { mkdirSync, mkdtempSync, rmSync, writeFileSync, readFileSync, existsSync } from "node:fs";
 import { resolve } from "node:path";
@@ -272,6 +272,70 @@ describe("BackupManager", () => {
         value: string;
       };
       expect(restored.value).toBe("before-restore");
+    });
+  });
+
+  describe("restoreFromBuffer — ragged tables (#939)", () => {
+    function buildZip(tables: Record<string, unknown[]>): Buffer {
+      const zip = new AdmZip();
+      const all = Object.fromEntries(BACKUP_TABLES.map((t) => [t, tables[t] ?? []]));
+      zip.addFile(
+        "sowel-backup.json",
+        Buffer.from(
+          JSON.stringify({ version: 2, exportedAt: new Date().toISOString(), tables: all }),
+        ),
+      );
+      return zip.toBuffer();
+    }
+
+    it("keeps a column the first row lacks", async () => {
+      await manager.restoreFromBuffer(
+        buildZip({
+          zones: [
+            { id: "z1", name: "Salon" },
+            { id: "z2", name: "Cuisine", description: "au sud", icon: "chef-hat" },
+          ],
+        }),
+      );
+
+      const rows = db
+        .prepare(`SELECT id, description, icon, created_at FROM zones ORDER BY id`)
+        .all() as {
+        id: string;
+        description: string | null;
+        icon: string | null;
+        created_at: string | null;
+      }[];
+      expect(rows.map((r) => [r.id, r.description, r.icon])).toEqual([
+        ["z1", null, null],
+        ["z2", "au sud", "chef-hat"],
+      ]);
+      // A key a row lacks takes the column's DEFAULT, not NULL.
+      expect(rows.every((r) => r.created_at !== null)).toBe(true);
+    });
+
+    it("ignores and names a key the schema does not have, instead of failing", async () => {
+      const warn = vi.fn();
+      const spyLogger = {
+        child: () => ({ info: vi.fn(), warn, error: vi.fn(), debug: vi.fn() }),
+      } as unknown as typeof logger;
+      const spied = new BackupManager({
+        db,
+        influxClient: stubInflux,
+        logger: spyLogger,
+        dataDir: tmpDir,
+      });
+
+      const result = await spied.restoreFromBuffer(
+        buildZip({ zones: [{ id: "z1", name: "Salon", from_the_future: 1 }] }),
+      );
+
+      expect(result.success).toBe(true);
+      expect(db.prepare(`SELECT name FROM zones`).all()).toEqual([{ name: "Salon" }]);
+      expect(warn).toHaveBeenCalledWith(
+        { table: "zones", columns: ["from_the_future"] },
+        expect.stringContaining("ignored"),
+      );
     });
   });
 

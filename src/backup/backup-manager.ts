@@ -459,16 +459,42 @@ export class BackupManager {
           const rows = payload.tables[table];
           if (!rows || rows.length === 0) continue;
 
-          const firstRow = rows[0] as Record<string, unknown>;
-          const columns = Object.keys(firstRow);
-          const placeholders = columns.map(() => "?").join(", ");
-          const stmt = this.db.prepare(
-            `INSERT INTO ${table} (${columns.join(", ")}) VALUES (${placeholders})`,
+          // Each row is inserted with its own keys (#939): a column one row
+          // lacks takes its DEFAULT for that row only, instead of the first
+          // row's key list deciding for the whole table. Keys the schema
+          // does not know (a backup from a newer Sowel, a hand-built one)
+          // are dropped and named, rather than failing the whole restore.
+          const known = new Set(
+            (this.db.pragma(`table_info(${table})`) as { name: string }[]).map((c) => c.name),
           );
+          const unknown = new Set<string>();
+          const statements = new Map<string, Database.Statement>();
 
           for (const row of rows) {
             const r = row as Record<string, unknown>;
+            const columns: string[] = [];
+            for (const key of Object.keys(r)) {
+              if (known.has(key)) columns.push(key);
+              else unknown.add(key);
+            }
+            const signature = columns.join(",");
+            let stmt = statements.get(signature);
+            if (!stmt) {
+              stmt = this.db.prepare(
+                columns.length === 0
+                  ? `INSERT INTO ${table} DEFAULT VALUES`
+                  : `INSERT INTO ${table} (${columns.join(", ")}) VALUES (${columns.map(() => "?").join(", ")})`,
+              );
+              statements.set(signature, stmt);
+            }
             stmt.run(...columns.map((col) => r[col] ?? null));
+          }
+
+          if (unknown.size > 0) {
+            this.logger.warn(
+              { table, columns: [...unknown] },
+              "Backup carries columns this schema does not have, ignored",
+            );
           }
         }
 

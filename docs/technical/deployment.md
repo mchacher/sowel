@@ -231,6 +231,8 @@ After restore, Sowel reports `{ restartRequired: true }`. You must restart the c
 docker compose restart sowel
 ```
 
+Each table row is restored with the columns it carries, so an archive whose rows are not uniform (hand-built, transformed, or assembled from two versions) loses nothing: a column a row lacks takes its default for that row only. A column the running schema does not know, typically from a backup made by a newer Sowel, is ignored and named in a `warn` log line (`Backup carries columns this schema does not have, ignored`) rather than failing the restore (issue #939).
+
 ### Restoring a backup from another deployment (issue #401)
 
 The instance id stored in the settings table travels inside backups. When a restored database carries another deployment's id (a prod backup opened on a dev machine, a migration to new hardware), the engine starts **inert**: outbound integrations, recipes, publishers, and notifications stay disabled, and a red banner appears in the UI. An admin confirms the takeover from that banner (the engine then restarts armed), or you can pre-confirm with `SOWEL_TAKEOVER=1` in the environment. This prevents a copy of production data from dialing out and fighting the original deployment (MQTT client id collisions, OAuth refresh-token races).
