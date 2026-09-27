@@ -35,6 +35,9 @@ export function isPublicRoute(url: string): boolean {
   if (PUBLIC_ROUTES.has(path)) return true;
   // OAuth callbacks from external providers (no auth header available)
   if (path.match(/^\/api\/v1\/plugins\/[^/]+\/oauth\/callback$/)) return true;
+  // Spec 181 — the visitor's phone carries its own token, not a Sowel session.
+  // The routes answer 404 while shared access is off.
+  if (path.startsWith("/api/v1/shared-access/public/")) return true;
   return false;
 }
 

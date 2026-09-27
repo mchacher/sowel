@@ -17,6 +17,8 @@ import { OrderConfirmationTracker } from "./equipments/order-confirmation-tracke
 import { BatteryMonitor } from "./devices/battery-monitor.js";
 import { PoolRuntimeTracker } from "./equipments/pool-runtime-tracker.js";
 import { TimedActionManager } from "./equipments/timed-action-manager.js";
+import { SharedAccessManager } from "./shared-access/shared-access-manager.js";
+import { createSharedAccessApi } from "./shared-access/plugin-api.js";
 import { PoolWaterTempTracker } from "./equipments/pool-water-temp-tracker.js";
 import { VmcSpeedTracker } from "./equipments/vmc-controller.js";
 import { WeatherTempExtremesTracker } from "./equipments/weather-temp-extremes-tracker.js";
@@ -341,6 +343,20 @@ async function main() {
   const timedActionManager = new TimedActionManager(db, eventBus, equipmentManager, logger);
   equipmentManager.registerTimedActionProvider((eqId) => timedActionManager.getFor(eqId));
 
+  // 10c-ter. Shared access (spec 181) — off by default. Created here so plugins
+  // get their scoped API at load time; STARTED in section 17 like the timed
+  // actions, since starting it writes (the default profile, the housekeeping).
+  const sharedAccessManager = new SharedAccessManager({
+    db,
+    eventBus,
+    equipmentManager,
+    settingsManager,
+    logger,
+  });
+  sharedAccessManager.setPluginDirectory(() =>
+    integrationRegistry.getAll().map((p) => ({ id: p.id, name: p.name })),
+  );
+
   // 10d. Low battery monitor (spec 143) — raises a system alarm when a
   // battery-powered device drops under the threshold, reminding weekly until
   // the cell is replaced. Not started in shadow mode: a shadow instance must
@@ -525,7 +541,13 @@ async function main() {
   const pluginLoader = new PluginLoader(
     packageManager,
     integrationRegistry,
-    { logger, eventBus, settingsManager, deviceManager },
+    {
+      logger,
+      eventBus,
+      settingsManager,
+      deviceManager,
+      sharedAccessFor: (pluginId) => createSharedAccessApi(sharedAccessManager, pluginId),
+    },
     logger,
     config.shadowMode, // spec 124 — runtime gate on loadPlugin
   );
@@ -573,6 +595,7 @@ async function main() {
 
   const server = await createServer({
     timedActionManager,
+    sharedAccessManager,
     pvForecaster,
     db,
     deviceManager,
@@ -667,6 +690,7 @@ async function main() {
   // exists for. A revert dispatched here lands before the integrations connect
   // on a cold boot; spec 141 replays it when they do (issue #702).
   await runUnlessShadow("timedActionManager.start()", () => timedActionManager.start());
+  await runUnlessShadow("sharedAccessManager.start()", () => sharedAccessManager.start());
 
   // 17b. Start pool runtime tracker (subscribes to equipment.data.changed)
   poolRuntimeTracker.start();
@@ -819,6 +843,12 @@ async function main() {
       timedActionManager.stop();
     } catch (err) {
       logger.error({ err }, "Error stopping timed action manager");
+    }
+    try {
+      // Spec 181 — answers the held failures and refuses the queued presses.
+      sharedAccessManager.stop();
+    } catch (err) {
+      logger.error({ err }, "Error stopping shared access manager");
     }
     // #792 — must run before `db.close()`. destroy() does two things that both
     // matter here: it clears the 200ms debounce and the 60s tick, and it

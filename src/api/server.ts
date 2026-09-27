@@ -69,6 +69,7 @@ import { registerDashboardRoutes } from "./routes/dashboard.js";
 import { registerPluginRoutes } from "./routes/plugins.js";
 import { registerSystemRoutes } from "./routes/system.js";
 import { registerAuditRoutes } from "./routes/audit.js";
+import { registerSharedAccessRoutes } from "./routes/shared-access.js";
 import type { AuditLogger } from "../core/audit-logger.js";
 import type { PvForecaster } from "../energy/pv/pv-forecaster.js";
 import { registerWebSocket } from "./websocket.js";
@@ -84,6 +85,8 @@ interface ServerDeps {
   equipmentManager: EquipmentManager;
   /** Spec 174 — absent in shadow-mode-only harnesses. */
   timedActionManager?: import("../equipments/timed-action-manager.js").TimedActionManager;
+  /** Spec 181 — absent in harnesses that do not exercise shared access. */
+  sharedAccessManager?: import("../shared-access/shared-access-manager.js").SharedAccessManager;
   recipeManager: RecipeManager;
   modeManager: ModeManager;
   calendarManager: CalendarManager;
@@ -143,6 +146,7 @@ export async function createServer(deps: ServerDeps) {
     zoneAggregator,
     equipmentManager,
     timedActionManager,
+    sharedAccessManager,
     recipeManager,
     modeManager,
     calendarManager,
@@ -385,6 +389,8 @@ export async function createServer(deps: ServerDeps) {
     logger,
   });
   registerAuditRoutes(app, { auditLogger, logger });
+  if (sharedAccessManager)
+    registerSharedAccessRoutes(app, { sharedAccessManager, userManager, logger });
   registerSystemRoutes(app, {
     versionChecker,
     updateManager,

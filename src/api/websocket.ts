@@ -110,7 +110,9 @@ const ADMIN_ONLY_TOPICS = new Set<WsTopic>(["mqtt-publishers", "logs"]);
  * publisher's `channelConfig` — e.g. a Telegram bot token. Non-admin clients
  * never receive these regardless of their subscriptions (security audit S01).
  */
-const ADMIN_ONLY_EVENT_PREFIXES = new Set<string>(["notification-publisher"]);
+// `shared_access.*` names the people holding an access (spec 181), and the
+// feature is admin-only end to end.
+const ADMIN_ONLY_EVENT_PREFIXES = new Set<string>(["notification-publisher", "shared_access"]);
 
 interface ClientState {
   socket: WebSocket;

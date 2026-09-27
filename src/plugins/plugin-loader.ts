@@ -8,6 +8,7 @@ import type {
 } from "../integrations/integration-registry.js";
 import type { PluginManifest, PluginInfo } from "../shared/types.js";
 import type { PluginDeps, PluginFactory } from "../shared/plugin-api.js";
+import type { SharedAccessApi } from "../shared-access/plugin-api.js";
 import type { PackageManager, InstallOptions } from "../packages/package-manager.js";
 import {
   makeDeviceManagerProxy,
@@ -15,6 +16,12 @@ import {
   makeSettingsManagerProxy,
   wrapPluginMethods,
 } from "./scoped-deps.js";
+
+/** What every plugin's deps are built from. `sharedAccessFor` binds the plugin
+ *  id into the shared-access API (spec 181 R9). */
+type CoreDeps = Omit<PluginDeps, "pluginDir" | "sharedAccess"> & {
+  sharedAccessFor?: (pluginId: string) => SharedAccessApi;
+};
 
 /**
  * Integration-specific plugin loader.
@@ -24,7 +31,7 @@ import {
 export class PluginLoader {
   private packageManager: PackageManager;
   private integrationRegistry: IntegrationRegistry;
-  private coreDeps: Omit<PluginDeps, "pluginDir">;
+  private coreDeps: CoreDeps;
   private logger: Logger;
   private loadedPlugins: Map<string, IntegrationPlugin> = new Map();
   private booted = false;
@@ -36,7 +43,7 @@ export class PluginLoader {
   constructor(
     packageManager: PackageManager,
     integrationRegistry: IntegrationRegistry,
-    deps: Omit<PluginDeps, "pluginDir">,
+    deps: CoreDeps,
     logger: Logger,
     shadowMode = false,
   ) {
@@ -287,6 +294,7 @@ export class PluginLoader {
       ),
       deviceManager: makeDeviceManagerProxy(pluginId, this.coreDeps.deviceManager, pluginLogger),
       pluginDir: pkgDir,
+      sharedAccess: this.coreDeps.sharedAccessFor?.(pluginId),
     };
 
     // Dynamic import of the plugin entry point.
