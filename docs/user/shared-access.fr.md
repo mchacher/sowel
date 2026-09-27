@@ -57,7 +57,8 @@ La page ne dit jamais si le portail est ouvert ou fermé. Elle ne montre que **l
 visiteur lui-même**, et ne parle en mots que quand le portail ne bougera pas — hors des heures, pas
 encore valable, suspendu, révoqué — et dit alors pourquoi.
 
-La page tient sur un seul écran. La roue dentée en haut à droite ouvre **Réglages** : les
+La page est en français sur un téléphone réglé en français, et en anglais sur tous les autres.
+Elle tient sur un seul écran. La roue dentée en haut à droite ouvre **Réglages** : les
 dernières commandes du téléphone, et un **QR code** que le visiteur fait scanner à la personne qui
 l'accompagne pour installer un second téléphone sur le même accès. Aucun code n'y est affiché.
 

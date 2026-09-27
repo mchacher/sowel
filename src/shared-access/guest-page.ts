@@ -220,7 +220,8 @@ export const GUEST_JS = `(function () {
   var TOKEN_KEY = "sowel-shared-access";
   var $ = function (id) { return document.getElementById(id); };
   var langs = (navigator.languages && navigator.languages.length ? navigator.languages : [navigator.language || "fr"]);
-  var EN = !/^fr/i.test(langs[0] || "fr") && langs.some(function (l) { return /^en/i.test(l); });
+  // R5.23 — French on a phone set to French, English on every other phone.
+  var EN = !/^fr/i.test(langs[0] || "");
   if (EN) document.documentElement.lang = "en";
 
   var T = EN ? {
@@ -295,6 +296,7 @@ export const GUEST_JS = `(function () {
   function showCode(err) {
     $("loading").hidden = true; $("main").hidden = true; $("codescreen").hidden = false;
     $("codeTitle").textContent = T.access; $("codeHint").textContent = T.enterCode; $("codeGo").textContent = T.validate;
+    document.title = T.access;
     $("codeErr").textContent = err || "";
     setTimeout(function () { $("codeInput").focus(); }, 50);
   }

@@ -152,7 +152,8 @@ R9 (see _Consumers_).
     a QR code for a companion to scan, with « Copier le lien ». No code is shown on the page. The
     QR code is drawn by the core, so the page carries no library; it is refused once the access
     has ended, and while the house has no public address.
-23. French by default, English when the phone asks. Words assume no holiday let. Before a code is
+23. French on a phone set to French, **English on every other phone** — the phone's first
+    language decides. Words assume no holiday let. Before a code is
     typed, the title names a door only if the house has one gate.
 
 The page as it stands, from the mock-up validated on 2026-09-23

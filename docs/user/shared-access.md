@@ -56,7 +56,8 @@ The page never says whether the gate is open or closed. It shows only **the visi
 commands**, and speaks in words only when the gate will not move — outside the hours, not yet
 valid, on hold, revoked — and then it says why.
 
-The page fits on one screen. The gear at the top right opens **Settings**: the phone's last
+The page is in French on a phone set to French, and in English on any other phone. It fits on one
+screen. The gear at the top right opens **Settings**: the phone's last
 commands, and a **QR code** the visitor can have a companion scan to set up a second phone on the
 same access. No code is shown there.
 
