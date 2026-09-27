@@ -225,6 +225,8 @@ Après restauration, Sowel renvoie `{ restartRequired: true }`. Vous devez redé
 docker compose restart sowel
 ```
 
+Chaque ligne de table est restaurée avec les colonnes qu'elle porte : une archive aux lignes hétérogènes (construite à la main ou transformée) conserve toute valeur pour laquelle le schéma courant a une colonne. Une colonne absente d'une ligne, ou laissée à `null` alors qu'elle est `NOT NULL` avec une valeur par défaut, prend cette valeur par défaut pour cette ligne seulement. Une colonne que le schéma courant n'a pas, typiquement dans un backup fait par un Sowel plus récent, **ne peut pas** être restaurée : ses valeurs sont écartées, nommées dans une ligne de log `warn` et listées par table dans le champ `columnsSkipped` de la réponse, au lieu de faire échouer la restauration. Une ligne qui n'est pas un objet, ou qui ne porte aucune colonne connue du schéma, fait échouer la restauration en nommant sa table et son index (issue #939).
+
 ### Restaurer un backup d'un autre déploiement (issue #401)
 
 L'identifiant d'instance stocké dans la table settings voyage dans les backups. Quand une base restaurée porte l'identifiant d'un autre déploiement (backup de prod ouvert sur une machine de dev, migration vers un nouveau matériel), le moteur démarre **inerte** : intégrations sortantes, recettes, publishers et notifications restent désactivés, et un bandeau rouge s'affiche dans l'UI. Un admin confirme la reprise depuis ce bandeau (le moteur redémarre alors armé), ou vous pouvez pré-confirmer avec `SOWEL_TAKEOVER=1` dans l'environnement. Cela empêche une copie des données de production de se connecter vers l'extérieur et de perturber le déploiement d'origine (collisions de clientId MQTT, courses sur les refresh tokens OAuth).
