@@ -57,6 +57,12 @@ routes (admin and public), `plugin-api`, `guest-page`, and in the UI `SharedAcce
 | plugin-api    | another plugin's externalId or profile                  | invisible                                                           |
 | plugin-api    | upsert on a profile not granted to it                   | `UnknownProfileError`, nothing created                              |
 | plugin-api    | upsert creates                                          | the profile's gates and hours, none from the plugin                 |
+| plugin-api    | upsert without `until`                                  | `NoEndError`, nothing created                                       |
+| plugin-api    | upsert on a profile listing no gate                     | `ProfileIncompleteError`, nothing created                           |
+| plugin-api    | upsert with no `profileId`                              | made on the default profile, if granted                             |
+| manager       | first enablement; delete the default profile            | « Par défaut » created once; deletion refused                       |
+| plugin-api    | same guest, second stay                                 | new code and link; the first stops at its end                       |
+| press         | external access past its end, plugin stopped            | `expired`, nothing dispatched                                       |
 | plugin-api    | setting off                                             | `SharedAccessDisabledError`                                         |
 | public page   | disc pulled past its socket                             | one press sent                                                      |
 | public page   | disc released short, and keyboard confirm               | nothing sent, then one press sent                                   |

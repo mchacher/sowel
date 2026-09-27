@@ -86,10 +86,14 @@ R9 (see _Consumers_).
 9. **One « Change the code »**, which renews the code (when the access has one) and the link
    together, with a choice: keep the phones already set up (the lost email), or cut them off too
    (the lost phone).
-10. **Validity**: always, or a period (from, until) on the house's wall clock (`home.timezone`,
-    spec 061). Optional **time windows** every day (`08:00–20:00`), not crossing midnight, not
-    overlapping. An external access carries its source's window; the owner may **widen** it only —
-    open earlier, extend later.
+10. **Validity is two separate groups**, on the house's wall clock (`home.timezone`, spec 061):
+    - **Dates**: « Tout le temps » — no date is shown or stored — or « Du … au … » (from, until).
+    - **Heures**: « Toute la journée » — no hour is shown or stored — or « Par plages », one or
+      more time windows every day (`08:00–20:00`), not crossing midnight, not overlapping.
+
+    The same two groups are used on accesses and on profiles (R9). An external access carries its
+    source's dates; the owner may **widen** them only — open earlier, extend later.
+
 11. **Hold / resume**, **revoke**, and **delete only once revoked or ended** (`still_live`
     otherwise): deleting a live access used to be revoking and erasing the line in one click. The
     journal outlives the access.
@@ -192,31 +196,51 @@ And what is seen before a code is known: ![](screenshots/visitor-code.png)
 
 ### R9 — Accesses from elsewhere (plugins)
 
-32. **The owner decides what opens; a plugin decides who and when.** The owner writes **profiles**
-    on the shared-access page — a name, the gates (with their value, R2.5), time windows — and
-    grants each profile to one plugin. A plugin may create, update and revoke **external** accesses
-    through `deps.sharedAccess`, keyed by `(pluginId, externalId)` — idempotent, so replaying a feed
-    changes nothing. It sets the label, the window and **the profile**, among those granted to it
-    (`unknown_profile` otherwise); **it never names an equipment**. The access takes the profile's
-    gates and hours when it is created; the owner's widening and gate choices on the access are
-    never taken back by a later update. Taking a profile back from a plugin stops it creating
-    accesses on it; the existing ones stay, under the owner's hand. A plugin sees and touches **only
-    its own** accesses and profiles, and reads back the invitation (code and link) of each, to send
-    it through its own channel.
-33. While the feature is off, `deps.sharedAccess` answers every call with a `disabled` error: the
+32. **The owner decides what opens; a plugin decides who and when.** A **profile** carries a name,
+    the gates (with their value, R2.5), the two validity groups of R3.10 (dates, hours), whether its
+    accesses get a code (on by default, R3.8), and the one plugin it is granted to. Profiles live
+    in a « Profils » tab, last on the shared-access page. The owner creates, edits and **deletes**
+    them; the accesses made from a deleted profile keep their gates until their own end.
+33. **One profile is the default.** It is created when the feature is first turned on, named
+    « Par défaut », listing the house's gate when the house has only one; the owner edits it and
+    grants it to a plugin like any other, and cannot delete it. A plugin's access that names no
+    profile is made on the default profile, provided it is granted to that plugin
+    (`unknown_profile` otherwise). While the default profile lists no gate, such an access is
+    refused (`profile_incomplete`) and nothing is created.
+34. **One stay, one key.** A plugin may create, update and revoke **external** accesses through
+    `deps.sharedAccess`, keyed by `(pluginId, externalId)` — idempotent, so replaying a feed changes
+    nothing. The `externalId` names **one stay, never a person**: a guest who comes back gets a new
+    access, a new link and a new code, and the old ones stop at their own end. It sets the label,
+    **a start and an end, each a date and an hour** on the house's clock (arrival 16:00, departure
+    11:00); the end is required (`no_end` otherwise: a plugin cannot make a key that never ends).
+    It may name **a profile** among those granted to it, the default one otherwise (R9.33); **it
+    never names an equipment**. Every refusal comes back to the plugin with its reason, so it can
+    tell its own users. The access opens inside the stay's dates **and** the profile's dates
+    and hours, with the profile's gates, taken when it is created; the owner's widening and gate
+    choices on the access are never taken back by a later update. **The end is enforced by the
+    core**, whether the plugin is running or not; a cancelled stay is revoked by the plugin. Taking
+    a profile back from a plugin stops it creating accesses on it; the existing ones stay, under the
+    owner's hand. A plugin sees and touches **only its own** accesses and profiles, and reads back
+    the invitation (code and link) of each, to send it through its own channel.
+35. While the feature is off, `deps.sharedAccess` answers every call with a `disabled` error: the
     plugin can say so on its own page, and nothing is created behind the owner's back.
 
 ### R10 — Housekeeping
 
-34. Codes nulled seven days after the access ended; journal lines kept a year, and at most the
+36. Codes nulled seven days after the access ended; journal lines kept a year, and at most the
     latest 50 000.
 
 ## Consumers
 
-- **A guestFlow connector plugin** (separate repository and spec) — the first user of R9: each
-  lodging is mapped to a profile the owner granted to it (the gîte, the lodge), a stay becomes an
-  external access on that profile, and the invitation is sent back to guestFlow for its guest
-  emails. It is meant as the start of a broader guestFlow ↔ Sowel link (for instance, reservations
+- **A guestFlow connector plugin** (separate repository and spec) — the first user of R9. It runs
+  in Sowel; guestFlow holds no key to the house. guestFlow keeps **a list of keys to create**: a
+  stay enters it seven days before its arrival (at once for a later booking), with its arrival and
+  departure date and hour, and leaves it as a revocation when cancelled. The connector reads that
+  list **every hour** and whenever the owner presses « Relever maintenant » on its page; it makes each stay an external access on the default profile, and
+  **reports every result back** — the invitation (code and link) for the guest emails, or the
+  failure and its reason, which guestFlow shows on its dashboard and pushes to its mobile app.
+  guestFlow also alerts when the list has not been read for more than three hours: a Sowel that is
+  down cannot report its own failure. It is meant as the start of a broader guestFlow ↔ Sowel link (for instance, reservations
   of a given lodging acting on that lodging's equipments), which is that plugin's business and
   needs nothing more from this spec.
 
@@ -245,6 +269,12 @@ And what is seen before a code is known: ![](screenshots/visitor-code.png)
 - [ ] « Jusqu'au » cannot be picked before « À partir du »; the server refuses it too.
 - [ ] A plugin's external access is idempotent, takes its gates from a profile granted to that
       plugin and never from the plugin itself, and a later update keeps the owner's widening.
+- [ ] A plugin's access without an end is refused (`no_end`); past its end it opens nothing, with
+      the plugin stopped; a second stay of the same guest gets a new code and link.
+- [ ] A plugin's access naming no profile is made on the default profile; with the default profile
+      listing no gate it is refused (`profile_incomplete`); the default profile cannot be deleted,
+      any other can.
+- [ ] « Tout le temps » and « Toute la journée » store and show no date and no hour.
 - [ ] Nothing is persisted outside SQLite; the data rides in the backup.
 
 ## Migration and compatibility

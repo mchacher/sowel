@@ -85,8 +85,12 @@ CREATE TABLE shared_access_profiles (  -- R9: what a plugin's accesses open
   id            TEXT PRIMARY KEY,
   name          TEXT NOT NULL,
   plugin_id     TEXT,                  -- the one plugin it is granted to; NULL = none
-  gates         TEXT NOT NULL,         -- JSON [{ equipmentId, value }]
-  time_windows  TEXT NOT NULL DEFAULT '[]'
+  is_default    INTEGER NOT NULL DEFAULT 0,  -- exactly one row is 1 (R9.33); cannot be deleted
+  gates         TEXT NOT NULL DEFAULT '[]',  -- JSON [{ equipmentId, value }]
+  valid_from    INTEGER,               -- NULL/NULL = « Tout le temps »
+  valid_until   INTEGER,
+  time_windows  TEXT NOT NULL DEFAULT '[]',  -- [] = « Toute la journée »
+  with_code     INTEGER NOT NULL DEFAULT 1,
 );
 
 CREATE TABLE shared_access_phones (
@@ -143,7 +147,7 @@ Admin (`/api/v1/shared-access`, 404 while disabled):
 | GET    | `/equipment/:id`                        | the panel's line: armed, count of people able to open                                           |
 | PUT    | `/equipment/:id`                        | `{ armed }`                                                                                     |
 | GET    | `/profiles`                             | the profiles and the plugin each is granted to                                                  |
-| POST   | `/profiles`                             | `{ name, gates, timeWindows?, pluginId? }`                                                      |
+| POST   | `/profiles`                             | `{ name, gates, validFrom?, validUntil?, timeWindows?, withCode?, pluginId? }`                  |
 | PATCH  | `/profiles/:id`                         | same fields                                                                                     |
 | DELETE | `/profiles/:id`                         | the accesses made from it keep their gates                                                      |
 
@@ -165,14 +169,14 @@ existing settings route; enabling is audit-logged (spec 113).
 ```ts
 interface SharedAccessApi {
   /** The profiles the owner granted to this plugin — names only, never the gates. */
-  profiles(): Array<{ id: string; name: string }>;
+  profiles(): Array<{ id: string; name: string; isDefault: boolean; complete: boolean }>;
   upsert(
     externalId: string,
     input: {
-      profileId: string;
+      profileId?: string; // the default profile when omitted (R9.33)
       label: string;
-      from: string | null;
-      until: string | null;
+      from: string | null; // date and hour, house clock: "2026-10-03T16:00"
+      until: string; // required: a plugin's key always ends (R9.34)
     },
   ): { id: string; code: string | null; invitationUrl: string | null };
   revoke(externalId: string): void;
@@ -186,7 +190,8 @@ interface SharedAccessApi {
 ```
 
 Throws `SharedAccessDisabledError` while the setting is off, `UnknownProfileError` for a profile not
-granted to this plugin. Scoped: another plugin's accesses and profiles do not exist for this one.
+granted to this plugin, `ProfileIncompleteError` while the profile lists no gate, `NoEndError`
+without `until`. Scoped: another plugin's accesses and profiles do not exist for this one.
 
 ## UI
 
