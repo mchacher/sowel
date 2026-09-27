@@ -611,10 +611,10 @@
     "icon": "House",
     "author": "mchacher",
     "repo": "mchacher/sowel-plugin-simulator",
-    "version": "0.3.0",
+    "version": "0.4.0",
     "tags": ["demo", "simulator", "showroom", "testing", "screenshots"],
     "sowelVersion": ">=1.68.0",
     "owner": "mchacher",
-    "sha256": "55cbe95588ce2d147dd1c0cd6f1425fda22defbb727b6c3ebe4dda35c8820c55"
+    "sha256": "8c363cfd8af77a45b7d5bc013fef1425f751858b8e9c5ac900811c7ab9e2939c"
   }
 ]
