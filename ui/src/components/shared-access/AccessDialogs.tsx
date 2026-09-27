@@ -220,7 +220,7 @@ export function JournalDialog({
 }
 
 /**
- * R5.23 — the phones set up on this access, each named by its platform and a
+ * R5.19 — the phones set up on this access, each named by its platform and a
  * tag drawn from its id (« iPhone · 7K3F »), and each can be cut on its own.
  */
 export function PhonesDialog({

@@ -2,7 +2,7 @@ import { createHash } from "node:crypto";
 import { CODE_ALPHABET } from "./codes.js";
 
 // ============================================================
-// Spec 181 R5.23 — how the owner tells one phone from another.
+// Spec 181 R5.19 — how the owner tells one phone from another.
 //
 // Nothing is asked of the visitor: the phone is named by what its browser says
 // it runs on and by a short tag drawn from its id, « iPhone · 7K3F ». The tag

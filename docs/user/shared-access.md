@@ -56,6 +56,10 @@ The page never says whether the gate is open or closed. It shows only **the visi
 commands**, and speaks in words only when the gate will not move — outside the hours, not yet
 valid, on hold, revoked — and then it says why.
 
+The page fits on one screen. The gear at the top right opens **Settings**: the phone's last
+commands, and a **QR code** the visitor can have a companion scan to set up a second phone on the
+same access. No code is shown there.
+
 ## Managing accesses
 
 Each line shows the name, the code, the dates, the hours, how many phones are set up and the last
@@ -65,6 +69,8 @@ use. From the line you can:
 - **Change the code** — this also renews the link. Choose whether the phones already set up keep
   working (a lost email) or are cut off (a lost phone);
 - read **this access's journal** — every opening, refusal and change, kept a year;
+- click **N phones** to see each phone set up, named like _iPhone · 7K3F_, and **cut** one on its
+  own — it goes back to the code screen, the others keep working;
 - **Revoke**, then **delete** once revoked or ended. The journal outlives the access.
 
 The **Activity** feed names every opening: _Shared access — Plumber_.

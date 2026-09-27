@@ -57,6 +57,10 @@ La page ne dit jamais si le portail est ouvert ou fermé. Elle ne montre que **l
 visiteur lui-même**, et ne parle en mots que quand le portail ne bougera pas — hors des heures, pas
 encore valable, suspendu, révoqué — et dit alors pourquoi.
 
+La page tient sur un seul écran. La roue dentée en haut à droite ouvre **Réglages** : les
+dernières commandes du téléphone, et un **QR code** que le visiteur fait scanner à la personne qui
+l'accompagne pour installer un second téléphone sur le même accès. Aucun code n'y est affiché.
+
 ## Gérer les accès
 
 Chaque ligne montre le nom, le code, les dates, les heures, le nombre de téléphones installés et la
@@ -66,6 +70,8 @@ dernière utilisation. Depuis la ligne, vous pouvez :
 - **changer le code** — cela renouvelle aussi le lien. Choisissez si les téléphones déjà installés
   continuent de marcher (un e-mail perdu) ou sont coupés (un téléphone perdu) ;
 - lire **le journal de cet accès** — chaque ouverture, refus et modification, gardés un an ;
+- cliquer sur **N téléphones** pour voir chaque téléphone installé, nommé comme _iPhone · 7K3F_, et
+  en **couper** un seul — il revient sur l'écran du code, les autres continuent de marcher ;
 - **révoquer**, puis **supprimer** une fois révoqué ou terminé. Le journal survit à l'accès.
 
 Le fil **Activité** nomme chaque ouverture : _Accès partagé — Plombier_.

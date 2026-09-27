@@ -520,6 +520,8 @@ Settings (through `PUT /api/v1/settings`): `sharedAccess.enabled`, `sharedAccess
 | `PATCH`  | `/api/v1/shared-access/accesses/:id`                         | Same fields. On an access made by a plugin: `label`, `gates`, `timeWindows`, and `earlyOpenAt` / `extendedUntil`, which may only widen its dates. |
 | `POST`   | `/api/v1/shared-access/accesses/:id/{suspend,resume,revoke}` | Hold, resume, revoke.                                                                                                                             |
 | `POST`   | `/api/v1/shared-access/accesses/:id/code`                    | `{ cutPhones }` — a new code (when it has one) and a new link; the phones kept or cut off.                                                        |
+| `GET`    | `/api/v1/shared-access/accesses/:id/phones`                  | `{ phones: [{ id, platform, tag, firstSeenAt, lastSeenAt }] }` — `platform` is `iphone`, `ipad`, `android`, `mac`, `windows` or `other`.          |
+| `DELETE` | `/api/v1/shared-access/accesses/:id/phones/:phoneId`         | `204` — cuts that phone only. `404 unknown_phone`.                                                                                                |
 | `DELETE` | `/api/v1/shared-access/accesses/:id`                         | `204`. `422 still_live` unless revoked or ended.                                                                                                  |
 | `GET`    | `/api/v1/shared-access/equipment/:id`                        | `{ armed, people }` for a gate's panel.                                                                                                           |
 | `PUT`    | `/api/v1/shared-access/equipment/:id`                        | `{ armed }` — the gate's armed switch.                                                                                                            |
@@ -548,6 +550,7 @@ phone's token is sent as `Authorization: Bearer <token>`.
 | `POST` | `/enrol`   | `{ code }` or `{ link }` → `{ token, session }`. `401 unknown_code`, `410 ended`, `429 too_many`.                                                               |
 | `GET`  | `/session` | `{ label, status, gates, activeAt, nextOpeningAt, validUntil, travelS, presses }` — never the gate's state; `presses` are this phone's own. `401` when unknown. |
 | `POST` | `/open`    | `{ gate }` → `{ ok: true }`, or `409 { ok: false, reason, activeAt?, nextOpeningAt? }`.                                                                         |
+| `GET`  | `/share`   | `{ url, qr }` — the invitation link and its QR code as a `data:image/svg+xml` URI. `409 ended`, `409 no_public_url`, `401` when unknown.                        |
 
 A refusal `reason` is one of `revoked`, `suspended`, `not_yet`, `expired`, `outside_hours`,
 `no_gate`, `not_this_gate`, `refused_by_house` (the gate is disarmed), `too_many_opens` (12 per hour

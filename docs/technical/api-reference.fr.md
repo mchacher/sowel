@@ -447,6 +447,8 @@ vers lequel pointent les invitations), `sharedAccess.publicPath` (`/access/` par
 | `PATCH`  | `/api/v1/shared-access/accesses/:id`                         | Mêmes champs. Sur un accès créé par un plugin : `label`, `gates`, `timeWindows`, et `earlyOpenAt` / `extendedUntil`, qui ne peuvent qu'élargir ses dates.                    |
 | `POST`   | `/api/v1/shared-access/accesses/:id/{suspend,resume,revoke}` | Suspendre, reprendre, révoquer.                                                                                                                                              |
 | `POST`   | `/api/v1/shared-access/accesses/:id/code`                    | `{ cutPhones }` — un nouveau code (s'il en a un) et un nouveau lien ; les téléphones gardés ou coupés.                                                                       |
+| `GET`    | `/api/v1/shared-access/accesses/:id/phones`                  | `{ phones: [{ id, platform, tag, firstSeenAt, lastSeenAt }] }` — `platform` vaut `iphone`, `ipad`, `android`, `mac`, `windows` ou `other`.                                   |
+| `DELETE` | `/api/v1/shared-access/accesses/:id/phones/:phoneId`         | `204` — coupe ce téléphone seulement. `404 unknown_phone`.                                                                                                                   |
 | `DELETE` | `/api/v1/shared-access/accesses/:id`                         | `204`. `422 still_live` s'il n'est ni révoqué ni terminé.                                                                                                                    |
 | `GET`    | `/api/v1/shared-access/equipment/:id`                        | `{ armed, people }` pour le panneau d'un portail.                                                                                                                            |
 | `PUT`    | `/api/v1/shared-access/equipment/:id`                        | `{ armed }` — l'interrupteur armé du portail.                                                                                                                                |
@@ -476,6 +478,7 @@ règle. Le jeton du téléphone passe en `Authorization: Bearer <jeton>`.
 | `POST`  | `/enrol`   | `{ code }` ou `{ link }` → `{ token, session }`. `401 unknown_code`, `410 ended`, `429 too_many`.                                                                           |
 | `GET`   | `/session` | `{ label, status, gates, activeAt, nextOpeningAt, validUntil, travelS, presses }` — jamais l'état du portail ; `presses` sont ceux de ce téléphone. `401` s'il est inconnu. |
 | `POST`  | `/open`    | `{ gate }` → `{ ok: true }`, ou `409 { ok: false, reason, activeAt?, nextOpeningAt? }`.                                                                                     |
+| `GET`   | `/share`   | `{ url, qr }` — le lien d'invitation et son QR code en URI `data:image/svg+xml`. `409 ended`, `409 no_public_url`, `401` si inconnu.                                        |
 
 La raison d'un refus est l'une de `revoked`, `suspended`, `not_yet`, `expired`, `outside_hours`,
 `no_gate`, `not_this_gate`, `refused_by_house` (le portail est désarmé), `too_many_opens` (12 par

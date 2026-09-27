@@ -125,7 +125,10 @@ R9 (see _Consumers_).
     (another host name rewriting to `/access/`) is supported: a public base URL and path set in
     Settings build the links.
 19. A phone keeps its **own token**; only its SHA-256 is stored. More than six phones on one access
-    raises an alarm — information, never a block.
+    raises an alarm — information, never a block. Nothing is asked of the visitor to name a phone:
+    the owner sees each one as its platform, read from the browser, and a four-character tag
+    drawn from its id — « iPhone · 7K3F » — with when it was set up and last seen, and can **cut
+    one phone** on its own. A cut phone falls back to the code screen; the others keep opening.
 20. **The control is a movement, not a button to validate.** The gate is one warm disc in the
     middle of a dark screen; the visitor **pulls it upward out of its socket**, and the command
     leaves only once the disc has cleared the socket. Released short, the disc falls back and
@@ -141,10 +144,14 @@ R9 (see _Consumers_).
 22. **What the page shows of the command is the echo of the visitor's own presses, never the
     state of the gate.** After the disc is released: the disc dims, a pill reads « Commande
     envoyée », a thin bar runs for the gate's travel time (30 s: the core declares none for a
-    gate), and the press is listed under
-    « Vos commandes » — this phone's presses, the ones it made itself. The page never says whether
-    the gate is open, closed or moving (R4.16); it speaks in words only when the gate will not
-    move, and then it says why.
+    gate), and one line under the disc reads « Dernière ouverture demandée à 18:42 ». The page never
+    says whether the gate is open, closed or moving (R4.16); it speaks in words only when the gate
+    will not move, and then it says why. **The page holds on one screen and never scrolls**; a
+    short screen shrinks the disc. A gear opens **Réglages**: « Vos commandes » — this phone's last
+    eight presses, the ones it made itself — and **« Partager cet accès »**, the invitation link as
+    a QR code for a companion to scan, with « Copier le lien ». No code is shown on the page. The
+    QR code is drawn by the core, so the page carries no library; it is refused once the access
+    has ended, and while the house has no public address.
 23. French by default, English when the phone asks. Words assume no holiday let. Before a code is
     typed, the title names a door only if the house has one gate.
 

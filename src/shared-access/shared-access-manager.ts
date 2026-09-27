@@ -585,7 +585,7 @@ export class SharedAccessManager {
     }));
   }
 
-  /** R5.23 — the phones set up on an access, oldest first. */
+  /** R5.19 — the phones set up on an access, oldest first. */
   listPhones(accessId: string): SharedAccessPhoneView[] {
     this.getRow(accessId);
     return this.store.listPhones(accessId).map((p) => ({
@@ -597,7 +597,7 @@ export class SharedAccessManager {
     }));
   }
 
-  /** R5.23 — cut one phone: it falls back to the code screen, the others keep working. */
+  /** R5.19 — cut one phone: it falls back to the code screen, the others keep working. */
   cutPhone(accessId: string, phoneId: string, actor: string): void {
     this.assertEnabled();
     const row = this.getRow(accessId);

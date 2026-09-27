@@ -1,7 +1,7 @@
 import { describe, it, expect } from "vitest";
 import { phonePlatform, phoneTag } from "./phones.js";
 
-describe("phone names (R5.23)", () => {
+describe("phone names (R5.19)", () => {
   it("reads the platform family from the user agent", () => {
     expect(phonePlatform("Mozilla/5.0 (iPhone; CPU iPhone OS 18_0 like Mac OS X)")).toBe("iphone");
     expect(phonePlatform("Mozilla/5.0 (iPad; CPU OS 17_0 like Mac OS X)")).toBe("ipad");

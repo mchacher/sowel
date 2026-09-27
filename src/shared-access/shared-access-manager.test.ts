@@ -523,7 +523,7 @@ describe("review follow-ups", () => {
   });
 });
 
-describe("the phones of an access and sharing (R5.22, R5.23)", () => {
+describe("the phones of an access and sharing (R5.19, R5.22)", () => {
   const IPHONE =
     "Mozilla/5.0 (iPhone; CPU iPhone OS 18_0 like Mac OS X) AppleWebKit/605.1.15 Mobile/15E148";
   const ANDROID = "Mozilla/5.0 (Linux; Android 14; K) AppleWebKit/537.36 Chrome/129 Mobile";
@@ -552,6 +552,7 @@ describe("the phones of an access and sharing (R5.22, R5.23)", () => {
       "admin",
     );
     const one = await h.manager.enrol({ code: a.code! }, IPHONE);
+    h.clock.now += 60_000;
     const two = await h.manager.enrol({ code: a.code! }, ANDROID);
     if (!one.ok || !two.ok) throw new Error("enrol failed");
     const [first] = h.manager.listPhones(a.id);
