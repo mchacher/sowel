@@ -134,12 +134,14 @@ R9 (see _Consumers_).
     before the finger lands; the socket stays drawn where the disc was, and firms up as the
     distance is covered. One disc per gate the access opens, titled by the equipment's name when
     there are several.
-21. The gesture has a way round for whoever cannot perform it: **the keyboard confirms**, through
-    the core's slide-to-confirm (spec 146), because a gesture nobody can perform is a gate nobody
-    can open.
+21. The gesture has a way round for whoever cannot perform it: **the keyboard confirms** — Enter
+    on the focused disc, then Enter again within three seconds — because a gesture nobody can
+    perform is a gate nobody can open. (The core's slide-to-confirm of spec 146 is a component of
+    the SPA, which this page does not carry.)
 22. **What the page shows of the command is the echo of the visitor's own presses, never the
     state of the gate.** After the disc is released: the disc dims, a pill reads « Commande
-    envoyée », a thin bar runs for the gate's declared travel time, and the press is listed under
+    envoyée », a thin bar runs for the gate's travel time (30 s: the core declares none for a
+    gate), and the press is listed under
     « Vos commandes » — this phone's presses, the ones it made itself. The page never says whether
     the gate is open, closed or moving (R4.16); it speaks in words only when the gate will not
     move, and then it says why.

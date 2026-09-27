@@ -43,22 +43,53 @@ The house's wall clock (`home.timezone`) reuses the core's existing time-zone he
 `migrations/035_shared_access.sql`:
 
 ```sql
+-- Spec 181 — shared access: let someone who is not a Sowel user open a gate,
+-- for a while, with a code or a link.
+--
+-- Nothing is added to `equipments` (review [1]): a gate carries no
+-- configuration of its own. What a press sends is on the access–gate link, and
+-- whether a gate is armed is a row in `shared_access_disarmed`. Every link to an
+-- equipment cascades on its deletion, which is R2.6's cleanup.
+
+-- R9 — what a plugin's accesses open. The owner decides, the plugin only picks.
+CREATE TABLE shared_access_profiles (
+  id            TEXT PRIMARY KEY,
+  name          TEXT NOT NULL,
+  plugin_id     TEXT,                          -- the one plugin it is granted to; NULL = none
+  is_default    INTEGER NOT NULL DEFAULT 0,    -- R9.33: exactly one, never deleted
+  valid_from    INTEGER,                       -- epoch ms; NULL/NULL = « Tout le temps »
+  valid_until   INTEGER,
+  time_windows  TEXT NOT NULL DEFAULT '[]',    -- JSON [{from,to}] 'HH:MM'; [] = « Toute la journée »
+  with_code     INTEGER NOT NULL DEFAULT 1,
+  created_at    INTEGER NOT NULL
+);
+
+-- A profile's gates. A table rather than a JSON column so that deleting the
+-- equipment cascades here too (R2.6), like it does on an access.
+CREATE TABLE shared_access_profile_gates (
+  profile_id    TEXT NOT NULL REFERENCES shared_access_profiles(id) ON DELETE CASCADE,
+  equipment_id  TEXT NOT NULL REFERENCES equipments(id) ON DELETE CASCADE,
+  value         TEXT,                          -- JSON; NULL = what the gate's button sends (R2.5)
+  PRIMARY KEY (profile_id, equipment_id)
+);
+
 CREATE TABLE shared_accesses (
   id              TEXT PRIMARY KEY,
   kind            TEXT NOT NULL CHECK (kind IN ('manual', 'external')),
   label           TEXT NOT NULL,
-  code            TEXT,                 -- clear, optional, nulled 7 days after the end (R3.8)
-  link_token_hash TEXT NOT NULL UNIQUE, -- SHA-256 of the link's own token (R3.8)
-  valid_from      INTEGER,              -- epoch ms, NULL = open-ended
+  code            TEXT,                        -- clear, optional, nulled 7 days after the end (R3.8)
+  link_version    INTEGER NOT NULL DEFAULT 1,  -- bumped by « Change the code »
+  link_token_hash TEXT NOT NULL UNIQUE,        -- SHA-256 of the link's own token (R3.8)
+  valid_from      INTEGER,                     -- epoch ms, in force; NULL = open-ended
   valid_until     INTEGER,
-  source_plugin   TEXT,                 -- external only
+  source_plugin   TEXT,                        -- external only
   external_id     TEXT,
-  profile_id      TEXT REFERENCES shared_access_profiles(id) ON DELETE SET NULL,  -- external only
-  source_from     INTEGER,              -- the source's window, external only
+  profile_id      TEXT REFERENCES shared_access_profiles(id) ON DELETE SET NULL,
+  source_from     INTEGER,                     -- the source's dates, external only
   source_until    INTEGER,
-  early_open_at   INTEGER,              -- owner's widening of an external window
+  early_open_at   INTEGER,                     -- owner's widening of an external access
   extended_until  INTEGER,
-  time_windows    TEXT NOT NULL DEFAULT '[]',   -- JSON [{from,to}] 'HH:MM'
+  time_windows    TEXT NOT NULL DEFAULT '[]',
   suspended_at    INTEGER,
   revoked_at      INTEGER,
   created_at      INTEGER NOT NULL,
@@ -67,30 +98,21 @@ CREATE TABLE shared_accesses (
   use_count       INTEGER NOT NULL DEFAULT 0,
   UNIQUE (source_plugin, external_id)
 );
+-- R3.8: a code identifies its access on its own.
+CREATE UNIQUE INDEX idx_shared_accesses_code ON shared_accesses(code) WHERE code IS NOT NULL;
 
 CREATE TABLE shared_access_gates (
   access_id     TEXT NOT NULL REFERENCES shared_accesses(id) ON DELETE CASCADE,
   equipment_id  TEXT NOT NULL REFERENCES equipments(id) ON DELETE CASCADE,
-  value         TEXT,                  -- NULL = what the gate's button sends (R2.5)
+  value         TEXT,                          -- JSON; NULL = what the gate's button sends (R2.5)
   PRIMARY KEY (access_id, equipment_id)
 );
 
-CREATE TABLE shared_access_disarmed (  -- R2.4: a row = that gate refuses every press
+-- R2.4: a row = that gate refuses every press.
+CREATE TABLE shared_access_disarmed (
   equipment_id  TEXT PRIMARY KEY REFERENCES equipments(id) ON DELETE CASCADE,
   disarmed_at   INTEGER NOT NULL,
   disarmed_by   TEXT NOT NULL
-);
-
-CREATE TABLE shared_access_profiles (  -- R9: what a plugin's accesses open
-  id            TEXT PRIMARY KEY,
-  name          TEXT NOT NULL,
-  plugin_id     TEXT,                  -- the one plugin it is granted to; NULL = none
-  is_default    INTEGER NOT NULL DEFAULT 0,  -- exactly one row is 1 (R9.33); cannot be deleted
-  gates         TEXT NOT NULL DEFAULT '[]',  -- JSON [{ equipmentId, value }]
-  valid_from    INTEGER,               -- NULL/NULL = « Tout le temps »
-  valid_until   INTEGER,
-  time_windows  TEXT NOT NULL DEFAULT '[]',  -- [] = « Toute la journée »
-  with_code     INTEGER NOT NULL DEFAULT 1,
 );
 
 CREATE TABLE shared_access_phones (
@@ -102,25 +124,38 @@ CREATE TABLE shared_access_phones (
   user_agent    TEXT NOT NULL
 );
 
+-- No foreign keys: « who came in that night » outlives the access (R3.11).
 CREATE TABLE shared_access_journal (
   id            INTEGER PRIMARY KEY AUTOINCREMENT,
   at            INTEGER NOT NULL,
-  access_id     TEXT,                  -- kept after the access is deleted
-  label         TEXT NOT NULL,         -- copied: « who came in that night » outlives the access
-  kind          TEXT NOT NULL,
+  access_id     TEXT,
+  label         TEXT NOT NULL,
+  kind          TEXT NOT NULL,                 -- opened, refused, enrolled, created, ...
   reason        TEXT,
   actor         TEXT,
-  equipment_id  TEXT
+  equipment_id  TEXT,
+  phone_id      TEXT                           -- R5.22: « Vos commandes » are this phone's own
 );
 CREATE INDEX idx_sa_journal_at ON shared_access_journal(at);
+CREATE INDEX idx_sa_journal_access ON shared_access_journal(access_id, at);
+CREATE INDEX idx_sa_journal_phone ON shared_access_journal(phone_id, at);
 ```
 
 Nothing is added to `equipments`. A gate has no configuration of its own: what a press sends is on
 the access (`shared_access_gates.value`, NULL on an impulse gate), and whether the gate is armed is a
-row in `shared_access_disarmed`. `ON DELETE CASCADE` on both gives R2.6's cleanup for free.
+row in `shared_access_disarmed`. A profile's gates are a table too rather than a JSON column, so that
+`ON DELETE CASCADE` gives R2.6's cleanup for free on accesses and profiles alike.
 
 **Why the code is in clear.** R3.8. The phone's token and the link's token, which nobody dictates,
 are the hashed secrets.
+
+**How the link can be shown again.** The owner copies an access's link from its line at any time,
+and a plugin reads its invitation back — so the raw token must be recoverable, while R3.8 stores
+only its hash. The token is therefore derived, `HMAC-SHA256(secret, accessId:linkVersion)` cut to 22
+URL-safe characters, from a per-house secret kept in the setting `sharedAccess.linkSecret`
+(generated on first use; out of every plugin's settings scope).
+The table keeps `link_token_hash` for the lookup; « Change the code » bumps `link_version`, which
+changes the token.
 
 ## Events
 
@@ -151,7 +186,9 @@ Admin (`/api/v1/shared-access`, 404 while disabled):
 | PATCH  | `/profiles/:id`                         | same fields                                                                                     |
 | DELETE | `/profiles/:id`                         | the accesses made from it keep their gates                                                      |
 
-Public (`/api/v1/shared-access/public`, no session, added to `isPublicRoute`, 404 while disabled):
+Public (`/api/v1/shared-access/public`, no session, added to `isPublicRoute`, 404 while disabled;
+the same handlers are also served under the page as `/access/api/*`, which the page calls by a
+relative path so that an alias host rewriting everything to `/access/` needs no second rule):
 `POST /enrol { code } | { link }`, `GET /session`, `POST /open { gate }` — the phone's token as a bearer.
 Failures are held back per R6 before they are answered, never the request before it is handled.
 

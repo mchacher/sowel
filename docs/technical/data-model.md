@@ -270,6 +270,35 @@ All events are typed via `EngineEvent`, a TypeScript discriminated union. Handle
 | `sunlight.changed`         | --                       |
 | `settings.changed`         | `keys: string[]`         |
 
+### Shared access (spec 181)
+
+Admin-only on the WebSocket: the labels name people.
+
+| Event                   | Payload                                                     |
+| ----------------------- | ----------------------------------------------------------- |
+| `shared_access.changed` | -- (any owner or plugin write)                              |
+| `shared_access.opened`  | `accessId, label, equipmentId`                              |
+| `shared_access.refused` | `accessId, label, equipmentId, reason: SharedAccessRefusal` |
+
+An opening is an ordinary order, attributed with the `OrderSource` member
+`{ kind: "shared_access", accessId, label }`, so the Activity feed names the access even once it is
+deleted. The wrong-code alert and the phone count use `system.alarm.raised` under source
+`shared-access`.
+
+Tables (migration `035_shared_access.sql`), none of them a column on `equipments`:
+
+| Table                         | Holds                                                                                                                                                                      |
+| ----------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `shared_accesses`             | One access: label, code (clear, optional), link version and link-token hash, dates in force, source and owner widening for a plugin's access, time windows, hold / revoke. |
+| `shared_access_gates`         | The gates an access opens, with the command value when the gate's command has several. Cascades from `equipments`.                                                         |
+| `shared_access_disarmed`      | One row per disarmed gate.                                                                                                                                                 |
+| `shared_access_profiles`      | What a plugin's accesses open: dates, time windows, code or not, the plugin it is granted to, `is_default`.                                                                |
+| `shared_access_profile_gates` | A profile's gates. Cascades from `equipments`.                                                                                                                             |
+| `shared_access_phones`        | Phones set up on an access: token hash, first and last seen.                                                                                                               |
+| `shared_access_journal`       | Openings, refusals and changes, with no foreign key so it outlives the access. A year, 50 000 lines at most.                                                               |
+
+All seven ride in the backup.
+
 ### MQTT / Notification publishers
 
 | Event                                         | Payload                                              |

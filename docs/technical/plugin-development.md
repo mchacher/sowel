@@ -124,6 +124,7 @@ interface PluginDeps {
   settingsManager: SettingsManager;
   deviceManager: DeviceManager;
   pluginDir: string;
+  sharedAccess?: SharedAccessApi; // spec 181
 }
 ```
 
@@ -256,6 +257,54 @@ const cachePath = resolve(deps.pluginDir, "cache.json");
 ```
 
 **Note:** There is no `mqttConnector` in `PluginDeps`. If your plugin needs MQTT, use the `mqtt` npm package directly as a plugin dependency.
+
+### `sharedAccess` (spec 181, optional)
+
+Present on an engine with shared access, bound to your plugin's id. It lets a plugin — typically a
+booking system connector — create keys for the people it knows about, **without ever choosing what
+they open**: the owner writes **profiles** (gates, dates, hours, code or not) and grants each to one
+plugin. Test for it before use, and expect `SharedAccessDisabledError` while the owner has the
+feature off.
+
+```typescript
+interface SharedAccessApi {
+  /** The profiles granted to this plugin — names only, never the gates. */
+  profiles(): Array<{ id: string; name: string; isDefault: boolean; complete: boolean }>;
+  /** One stay, one key. Idempotent on externalId, which names a stay, never a person. */
+  upsert(
+    externalId: string,
+    input: { profileId?: string; label: string; from: string | null; until: string },
+  ): { id: string; code: string | null; invitationUrl: string | null };
+  revoke(externalId: string): void;
+  list(): Array<{
+    externalId: string;
+    state: string;
+    code: string | null;
+    invitationUrl: string | null;
+  }>;
+}
+```
+
+- `from` / `until` are a date **and** an hour on the house's clock (`"2026-10-03T16:00"`) or ISO.
+  `until` is required (`NoEndError`): a plugin cannot make a key that never ends. The core ends it on
+  its own, whether your plugin is running or not.
+- Without `profileId`, the **default profile** is used — provided the owner granted it to your plugin
+  (`UnknownProfileError` otherwise). While that profile lists no gate, `ProfileIncompleteError` and
+  nothing is created: retry on your next pass and say so on your plugin's page.
+- A replayed `upsert` changes nothing. A later one updates the label and the dates, never the gates,
+  and never takes back what the owner widened.
+- Another plugin's accesses and profiles do not exist for yours.
+
+```typescript
+if (deps.sharedAccess) {
+  const invitation = deps.sharedAccess.upsert(`stay-${stay.id}`, {
+    label: stay.guestName,
+    from: `${stay.arrival}T16:00`,
+    until: `${stay.departure}T11:00`,
+  });
+  // send invitation.code and invitation.invitationUrl through your own channel
+}
+```
 
 ---
 

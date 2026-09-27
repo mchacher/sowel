@@ -27,6 +27,7 @@ Sowel exposes a REST API under `/api/v1/` and a WebSocket endpoint at `/ws`. All
 - [Integrations (Admin)](#integrations-admin)
 - [Plugins (Admin)](#plugins-admin)
 - [Settings (Admin)](#settings-admin)
+- [Shared Access](#shared-access-spec-181)
 - [MQTT Brokers](#mqtt-brokers)
 - [MQTT Publishers](#mqtt-publishers)
 - [Notification Publishers](#notification-publishers)
@@ -496,6 +497,73 @@ Admin-only key-value settings store (used for integration config, home settings,
 | ------ | ------------------ | ------------------------------------------------------------------ |
 | `GET`  | `/api/v1/settings` | Get all settings.                                                  |
 | `PUT`  | `/api/v1/settings` | Update settings. Body: key-value object `{ "key": "value", ... }`. |
+
+---
+
+## Shared Access (spec 181)
+
+Let someone who is not a Sowel user open a gate for a while. Off by default: while the
+`sharedAccess.enabled` setting is not `"true"`, **every route below answers exactly what an unknown
+route answers**, public ones included, so the feature cannot be probed from outside. User guide:
+[Shared Access](../user/shared-access.md).
+
+Settings (through `PUT /api/v1/settings`): `sharedAccess.enabled`, `sharedAccess.publicBaseUrl`
+(the host the invitations point to), `sharedAccess.publicPath` (default `/access/`).
+
+### Owner routes (admin only, reads included)
+
+| Method   | Path                                                         | Description                                                                                                                                       |
+| -------- | ------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `GET`    | `/api/v1/shared-access/state`                                | `SharedAccessState`: accesses (codes in clear, invitation links), gates with their armed switch, profiles, plugins a profile can be granted to.   |
+| `GET`    | `/api/v1/shared-access/journal?accessId=&limit=`             | Openings, refusals and changes, newest first. Kept a year, at most 50 000 lines.                                                                  |
+| `POST`   | `/api/v1/shared-access/accesses`                             | `{ label, gates: [{ equipmentId, value? }], withCode?, validFrom?, validUntil?, timeWindows? }`. `201` with the access.                           |
+| `PATCH`  | `/api/v1/shared-access/accesses/:id`                         | Same fields. On an access made by a plugin: `label`, `gates`, `timeWindows`, and `earlyOpenAt` / `extendedUntil`, which may only widen its dates. |
+| `POST`   | `/api/v1/shared-access/accesses/:id/{suspend,resume,revoke}` | Hold, resume, revoke.                                                                                                                             |
+| `POST`   | `/api/v1/shared-access/accesses/:id/code`                    | `{ cutPhones }` — a new code (when it has one) and a new link; the phones kept or cut off.                                                        |
+| `DELETE` | `/api/v1/shared-access/accesses/:id`                         | `204`. `422 still_live` unless revoked or ended.                                                                                                  |
+| `GET`    | `/api/v1/shared-access/equipment/:id`                        | `{ armed, people }` for a gate's panel.                                                                                                           |
+| `PUT`    | `/api/v1/shared-access/equipment/:id`                        | `{ armed }` — the gate's armed switch.                                                                                                            |
+| `GET`    | `/api/v1/shared-access/profiles`                             | `{ profiles }`.                                                                                                                                   |
+| `POST`   | `/api/v1/shared-access/profiles`                             | `{ name, gates?, validFrom?, validUntil?, timeWindows?, withCode?, pluginId? }`.                                                                  |
+| `PATCH`  | `/api/v1/shared-access/profiles/:id`                         | Same fields.                                                                                                                                      |
+| `DELETE` | `/api/v1/shared-access/profiles/:id`                         | `204`. `422 default_profile` for the default one. The accesses made from it keep their gates.                                                     |
+
+Dates are ISO 8601, or `YYYY-MM-DDTHH:MM` read on the house's clock; `null` clears. Time windows are
+`[{ "from": "08:00", "to": "20:00" }]`, not crossing midnight, not overlapping.
+
+Errors are `{ "error": "<code>", "message": "..." }`: `no_gate`, `unknown_gate` (404),
+`unsupported_equipment` (422, not a `gate`), `no_command`, `invalid_value`, `label_required`,
+`end_before_start`, `window_crosses_midnight`, `windows_overlap`, `shorten_refused`, `still_live`,
+`revoked` (409), `default_profile`, `not_found` (404).
+
+### Public routes (the visitor's phone)
+
+Outside authentication, **with no per-IP rate limit**: behind a reverse proxy it would be one limit
+for the whole internet. Served twice, under `/api/v1/shared-access/public/*` and under the page as
+`/access/api/*`, so an alias host rewriting everything to `/access/` needs no second rule. The
+phone's token is sent as `Authorization: Bearer <token>`.
+
+| Method | Path       | Description                                                                                                                                                     |
+| ------ | ---------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `POST` | `/enrol`   | `{ code }` or `{ link }` → `{ token, session }`. `401 unknown_code`, `410 ended`, `429 too_many`.                                                               |
+| `GET`  | `/session` | `{ label, status, gates, activeAt, nextOpeningAt, validUntil, travelS, presses }` — never the gate's state; `presses` are this phone's own. `401` when unknown. |
+| `POST` | `/open`    | `{ gate }` → `{ ok: true }`, or `409 { ok: false, reason, activeAt?, nextOpeningAt? }`.                                                                         |
+
+A refusal `reason` is one of `revoked`, `suspended`, `not_yet`, `expired`, `outside_hours`,
+`no_gate`, `not_this_gate`, `refused_by_house` (the gate is disarmed), `too_many_opens` (12 per hour
+per access, 30 per hour per gate), `gate_error`.
+
+**Wrong codes.** Only failures are counted, globally, and a correct code is never slowed. The first
+ten failures in ten minutes are answered at once, then 1 s, 2, 4, 8, up to 10 s; at most 32 answers
+are held at once, past which a failure is answered `429 too_many` at once. Past 25 failures in the
+window a `system.alarm.raised` is emitted under source `shared-access`.
+
+### The page
+
+`GET /access/` (and `app.js`, `style.css`, `manifest.webmanifest`, `icon.svg`) — HTML, CSS and
+JavaScript of its own, with `Content-Security-Policy: default-src 'none'; script-src 'self'; ...`,
+`X-Robots-Tag: noindex`, `Cache-Control: no-store`, and no cookie. The invitation link carries its
+token in the fragment, `/access/#i=<token>`, which no server or log sees.
 
 ---
 
