@@ -129,7 +129,7 @@ export function sourceLabel(source: string): string {
     panasonic_cc: "Panasonic",
     mcz_maestro: "MCZ",
     netatmo_hc: "Legrand",
-    simulator: "Simulateur",
+    simulator: "Simulator",
   };
   return labels[source] ?? source;
 }

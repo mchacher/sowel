@@ -344,7 +344,7 @@ const STANDARD_ALIASES: Record<string, Record<string, string>> = {
  * from the (plugin-specific) key name. Checked first; falls back to the
  * per-type key map above, then to the raw key.
  */
-const ORDER_CATEGORY_ALIASES: Record<string, string> = {
+export const ORDER_CATEGORY_ALIASES: Record<string, string> = {
   light_toggle: "state",
   toggle_power: "state",
   valve_toggle: "state",

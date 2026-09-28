@@ -340,7 +340,8 @@ function LightEquipmentWidget({
     }
   };
 
-  const handleBrightnessCommit = () => slider.onCommit((v) => onExecuteOrder("brightness", v));
+  const handleBrightnessCommit = () =>
+    slider.onCommit((v) => onExecuteOrder(brightnessOrder?.alias ?? "brightness", v));
 
   const canToggle = hasToggle && equipment.enabled;
 

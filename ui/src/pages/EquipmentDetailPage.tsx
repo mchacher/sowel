@@ -307,7 +307,7 @@ export function EquipmentDetailPage() {
                 size="md"
               />
             </div>
-            <p className="text-[13px] text-text-secondary">
+            <p className="text-[13px] text-text-secondary wrap-anywhere">
               {t(TYPE_LABELS[equipment.type])}
               {equipment.description && ` · ${equipment.description}`}
               {!equipment.enabled && (
@@ -317,7 +317,7 @@ export function EquipmentDetailPage() {
             {actionBinding && actionBinding.value != null && (
               <div className="flex items-center gap-1.5 mt-1 text-[12px] text-text-tertiary">
                 <Clock size={12} strokeWidth={1.5} />
-                <span className="font-mono font-medium text-text-secondary">{String(actionBinding.value)}</span>
+                <span className="font-mono font-medium text-text-secondary min-w-0 wrap-anywhere">{String(actionBinding.value)}</span>
                 {actionBinding.lastUpdated && (
                   <span>· <RelativeTime iso={actionBinding.lastUpdated} /></span>
                 )}
