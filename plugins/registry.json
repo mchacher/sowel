@@ -7,11 +7,11 @@
     "icon": "Radio",
     "author": "mchacher",
     "repo": "mchacher/sowel-plugin-zigbee2mqtt",
-    "version": "2.7.1",
+    "version": "2.7.2",
     "tags": ["zigbee", "mqtt", "z2m", "sensors", "lights", "switches"],
     "sowelVersion": ">=1.59.0",
     "owner": "mchacher",
-    "sha256": "6ca695ac68dd639201d1ac137cb3b9a9015175ec842829b6b815a0935075a326"
+    "sha256": "66d19b5a9966dce5ad1ad91469b90974665c682bd88d2bd73d3d3e9cb2c3bf73"
   },
   {
     "id": "lora2mqtt",
@@ -452,7 +452,7 @@
     "icon": "Sun",
     "author": "mchacher",
     "repo": "mchacher/sowel-plugin-apsystems",
-    "version": "0.1.1",
+    "version": "0.2.0",
     "tags": ["apsystems", "solar", "photovoltaic", "inverter", "mqtt", "ds3", "production"],
     "i18n": {
       "fr": {
@@ -462,7 +462,7 @@
     },
     "sowelVersion": ">=1.21.0",
     "owner": "mchacher",
-    "sha256": "d12025f8c61943b7b7058e446916d63baf77521a296e2ff29fcd75e5897388d8"
+    "sha256": "ab906490f8bcafb3e417a1c642e4f2ce145436b4c478e9e28192cc281b110de5"
   },
   {
     "id": "schedule-on-off",
