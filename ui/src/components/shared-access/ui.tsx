@@ -1,5 +1,6 @@
 /* eslint-disable react-refresh/only-export-components -- small shared kit: class names and helpers beside the components */
 import { useCallback, useEffect, type ReactNode } from "react";
+import { createPortal } from "react-dom";
 import { useTranslation } from "react-i18next";
 import { X } from "lucide-react";
 import type { SharedAccessStatus } from "../../types";
@@ -53,6 +54,10 @@ export function Refusal({ children }: { children: ReactNode }) {
  * zeroes every margin, and a dialog that relied on the browser's own
  * `margin: auto` ended up pinned to the top-left corner. The flex overlay
  * centres it as well; `m-auto` keeps it centred if the overlay ever scrolls.
+ *
+ * It is rendered into `document.body`: a dialog opened from a row would
+ * otherwise inherit that row's opacity and stacking, and a later row could
+ * paint over it.
  */
 export function Dialog({
   title,
@@ -73,7 +78,7 @@ export function Dialog({
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
   }, [onClose]);
-  return (
+  return createPortal(
     <div
       className="fixed inset-0 z-50 flex items-start sm:items-center justify-center bg-black/50 p-3 sm:p-4 overflow-y-auto"
       onClick={onClose}
@@ -100,7 +105,8 @@ export function Dialog({
         </div>
         {children}
       </div>
-    </div>
+    </div>,
+    document.body,
   );
 }
 

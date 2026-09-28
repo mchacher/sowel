@@ -58,13 +58,12 @@ export function AccessRow({
   const src = access.kind === "external" ? access.source : null;
 
   return (
-    <li
-      className={`bg-surface border border-border rounded-[10px] px-3 py-2.5 ${
-        revoked || ended ? "opacity-70" : ""
-      }`}
-    >
+    <li className="bg-surface border border-border rounded-[10px] px-3 py-2.5">
       <div className="flex items-start gap-2">
-        <div className="min-w-0 flex-1">
+        {/* Faded when revoked or ended — the content only: an opacity on the
+            <li> would fade the « ⋯ » menu too and give it a stacking context
+            a later row paints over. */}
+        <div className={`min-w-0 flex-1 ${revoked || ended ? "opacity-70" : ""}`}>
           <div className="flex items-center gap-2 flex-wrap">
             <span className="text-[14px] font-semibold text-text truncate">{access.label}</span>
             <StatusBadge status={access.status} />

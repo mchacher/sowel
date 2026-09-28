@@ -121,6 +121,83 @@ describe("AccessEditor", () => {
     expect((screen.getByRole("combobox", { name: "To — hour" }) as HTMLSelectElement).value).toBe("11");
   });
 
+  describe("a period with one bound only (the API takes each bound on its own)", () => {
+    const fromOnly: SharedAccessView = { ...withPeriod, validUntil: null };
+    const untilOnly: SharedAccessView = { ...withPeriod, validFrom: null };
+
+    async function renameAndSave() {
+      const name = screen.getByLabelText("Name");
+      await userEvent.clear(name);
+      await userEvent.type(name, "Plombier bis");
+      await userEvent.click(screen.getByRole("button", { name: "Save" }));
+      await waitFor(() => expect(api.updateSharedAccess).toHaveBeenCalled());
+      return vi.mocked(api.updateSharedAccess).mock.calls[0][1];
+    }
+
+    it("keeps an access « from » a date only through a label-only edit", async () => {
+      vi.mocked(api.updateSharedAccess).mockResolvedValueOnce(fromOnly);
+      renderEditor({ kind: "edit", access: fromOnly });
+      // The end is said to be missing, not filled in.
+      expect(screen.getByText("no end date")).toBeTruthy();
+      expect(screen.queryByLabelText("To — day")).toBeNull();
+      expect(screen.getByDisplayValue("2026-10-03")).toBeTruthy();
+
+      const body = await renameAndSave();
+      expect(body.label).toBe("Plombier bis");
+      expect(body).not.toHaveProperty("validFrom");
+      expect(body).not.toHaveProperty("validUntil");
+    });
+
+    it("keeps an access « until » a date only through a label-only edit — no start at « now »", async () => {
+      vi.mocked(api.updateSharedAccess).mockResolvedValueOnce(untilOnly);
+      renderEditor({ kind: "edit", access: untilOnly });
+      expect(screen.getByText("no start date")).toBeTruthy();
+      expect(screen.queryByLabelText("From — day")).toBeNull();
+
+      const body = await renameAndSave();
+      expect(body).not.toHaveProperty("validFrom");
+      expect(body).not.toHaveProperty("validUntil");
+    });
+
+    it("sets the missing end only when the owner asks, and sends that bound alone", async () => {
+      vi.mocked(api.updateSharedAccess).mockResolvedValueOnce(withPeriod);
+      renderEditor({ kind: "edit", access: fromOnly });
+      await userEvent.click(screen.getByRole("button", { name: "Set an end" }));
+      // A day after the start: 3 Oct 16:20 → 4 Oct 16:20.
+      expect(screen.getByDisplayValue("2026-10-04")).toBeTruthy();
+      await userEvent.click(screen.getByRole("button", { name: "Save" }));
+      await waitFor(() => expect(api.updateSharedAccess).toHaveBeenCalled());
+      const body = vi.mocked(api.updateSharedAccess).mock.calls[0][1];
+      expect(body.validUntil).toBe("2026-10-04T16:20");
+      expect(body).not.toHaveProperty("validFrom");
+    });
+
+    it("sends only the bound changed on an access with both dates", async () => {
+      vi.mocked(api.updateSharedAccess).mockResolvedValueOnce(withPeriod);
+      renderEditor({ kind: "edit", access: withPeriod });
+      fireEvent.change(screen.getByLabelText("To — day"), { target: { value: "2026-10-09" } });
+      await userEvent.click(screen.getByRole("button", { name: "Save" }));
+      await waitFor(() => expect(api.updateSharedAccess).toHaveBeenCalled());
+      const body = vi.mocked(api.updateSharedAccess).mock.calls[0][1];
+      expect(body.validUntil).toBe("2026-10-09T11:00");
+      expect(body).not.toHaveProperty("validFrom");
+    });
+
+    it("still sends both dates for a new access « Du … au … »", async () => {
+      vi.mocked(api.createSharedAccess).mockResolvedValueOnce({ ...withPeriod, label: "Léa" });
+      renderEditor({ kind: "create", gateIds: ["entree"] });
+      await userEvent.type(screen.getByLabelText("Name"), "Léa");
+      await userEvent.click(screen.getByRole("button", { name: "From … to …" }));
+      expect(screen.getByLabelText("From — day")).toBeTruthy();
+      expect(screen.getByLabelText("To — day")).toBeTruthy();
+      await userEvent.click(screen.getByRole("button", { name: "Save" }));
+      await waitFor(() => expect(api.createSharedAccess).toHaveBeenCalled());
+      const body = vi.mocked(api.createSharedAccess).mock.calls[0][0];
+      expect(body.validFrom).toMatch(/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}$/);
+      expect(body.validUntil).toMatch(/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}$/);
+    });
+  });
+
   it("lists the gate it was opened on, with « open » for a gate with values", () => {
     renderEditor({ kind: "create", gateIds: ["garage"] });
     const select = screen.getByRole("combobox", { name: "What a press on Garage sends" }) as HTMLSelectElement;
@@ -210,5 +287,20 @@ describe("Dialog", () => {
     // …and sits in a flex overlay that centres it as well.
     expect(dialog.parentElement?.className).toMatch(/\bflex\b/);
     expect(dialog.parentElement?.className).toMatch(/\bjustify-center\b/);
+  });
+
+  it("is rendered into document.body, out of whatever row opened it", () => {
+    const { container } = render(
+      <ul>
+        <li className="opacity-70">
+          <Dialog title="T" onClose={() => {}}>
+            x
+          </Dialog>
+        </li>
+      </ul>,
+    );
+    const dialog = screen.getByRole("dialog");
+    expect(container.querySelector("li")?.contains(dialog)).toBe(false);
+    expect(dialog.parentElement?.parentElement).toBe(document.body);
   });
 });

@@ -3,6 +3,7 @@ import { useTranslation } from "react-i18next";
 import { Plus, X } from "lucide-react";
 import {
   type ValidityDraft,
+  addMinutes,
   moveStart,
   parseHm,
 } from "../../lib/shared-access-period";
@@ -17,6 +18,21 @@ function Group({ title, children }: { title: string; children: ReactNode }) {
       </legend>
       {children}
     </fieldset>
+  );
+}
+
+/**
+ * A bound the server does not hold (an access « from » or « until » a date
+ * only): said as such, and set only when the owner asks for it.
+ */
+function MissingBound({ text, action, onSet }: { text: string; action: string; onSet: () => void }) {
+  return (
+    <div className="flex items-center gap-2 flex-wrap">
+      <span className="text-text-tertiary">{text}</span>
+      <button type="button" className={btnSecondary} onClick={onSet}>
+        {action}
+      </button>
+    </div>
   );
 }
 
@@ -62,22 +78,40 @@ export function ValidityGroups({
               <div className="mt-2.5 grid gap-2 text-[13px] text-text-secondary">
                 <div className="flex flex-col gap-1">
                   <span>{t("sharedAccess.validity.from")}</span>
-                  <DateTimePicker
-                    label={t("sharedAccess.validity.from")}
-                    value={value.from}
-                    onChange={(from) =>
-                      set({ from, until: moveStart(value.from, from, value.until) })
-                    }
-                  />
+                  {value.from ? (
+                    <DateTimePicker
+                      label={t("sharedAccess.validity.from")}
+                      value={value.from}
+                      onChange={(from) =>
+                        set({ from, until: moveStart(value.from, from, value.until) })
+                      }
+                    />
+                  ) : (
+                    <MissingBound
+                      text={t("sharedAccess.validity.noStart")}
+                      action={t("sharedAccess.validity.setStart")}
+                      // Only on the owner's click: a day before the end it already has.
+                      onSet={() => value.until && set({ from: addMinutes(value.until, -24 * 60) })}
+                    />
+                  )}
                 </div>
                 <div className="flex flex-col gap-1">
                   <span>{t("sharedAccess.validity.until")}</span>
-                  <DateTimePicker
-                    label={t("sharedAccess.validity.until")}
-                    value={value.until}
-                    bounds={{ min: value.from, minStrict: true }}
-                    onChange={(until) => set({ until })}
-                  />
+                  {value.until ? (
+                    <DateTimePicker
+                      label={t("sharedAccess.validity.until")}
+                      value={value.until}
+                      bounds={{ min: value.from, minStrict: true }}
+                      onChange={(until) => set({ until })}
+                    />
+                  ) : (
+                    <MissingBound
+                      text={t("sharedAccess.validity.noEnd")}
+                      action={t("sharedAccess.validity.setEnd")}
+                      // Only on the owner's click: a day after the start it already has.
+                      onSet={() => value.from && set({ until: addMinutes(value.from, 24 * 60) })}
+                    />
+                  )}
                 </div>
               </div>
             )}

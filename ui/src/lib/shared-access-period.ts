@@ -161,8 +161,12 @@ export function snapInto(w: Wall, b: Bounds): Wall {
  * R7.29 — moving the start past the end carries the end along, keeping the
  * length the period had. A start that stays before the end leaves it alone.
  */
-export function moveStart(oldStart: Wall, newStart: Wall, end: Wall): Wall {
+export function moveStart(oldStart: Wall | null, newStart: Wall, end: Wall | null): Wall | null {
+  // No end (an access « from » a date only): nothing to carry.
+  if (end === null) return null;
   if (compareWall(newStart, end) < 0) return end;
+  // No start before (an access « until » a date only): a day, like a fresh period.
+  if (oldStart === null) return addMinutes(newStart, 24 * 60);
   const length = Math.max(compareWall(end, oldStart), MINUTE_STEP);
   return addMinutes(newStart, length);
 }
@@ -172,8 +176,13 @@ export function moveStart(oldStart: Wall, newStart: Wall, end: Wall): Wall {
 export interface ValidityDraft {
   /** Dates: false = « Tout le temps », true = « Du … au … ». */
   period: boolean;
-  from: Wall;
-  until: Wall;
+  /**
+   * The start and the end. Either may be null: the server holds each bound on
+   * its own, and an access « from » or « until » a date only must keep its
+   * missing bound missing — never filled in behind the owner's back.
+   */
+  from: Wall | null;
+  until: Wall | null;
   /** Heures: false = « Toute la journée », true = « Par plages ». */
   ranges: boolean;
   windows: SharedAccessTimeWindow[];
@@ -210,7 +219,7 @@ export type ValidityProblem =
 
 /** The same refusals the server gives (validity.ts), checked before sending. */
 export function checkValidity(v: ValidityDraft): ValidityProblem | null {
-  if (v.period && compareWall(v.until, v.from) <= 0) {
+  if (v.period && v.from && v.until && compareWall(v.until, v.from) <= 0) {
     return { code: "end_before_start", group: "dates" };
   }
   if (v.ranges) {
@@ -234,17 +243,36 @@ export function checkValidity(v: ValidityDraft): ValidityProblem | null {
   return null;
 }
 
-/** The body fields the two groups produce: null dates and no windows when « tout le temps / toute la journée ». */
-export function validityBody(v: ValidityDraft): {
-  validFrom: string | null;
-  validUntil: string | null;
+/** What a draft's dates mean on the wire: a missing bound, or « tout le temps », is null. */
+function boundsOf(v: ValidityDraft): { validFrom: string | null; validUntil: string | null } {
+  return {
+    validFrom: v.period && v.from ? wallToString(v.from) : null,
+    validUntil: v.period && v.until ? wallToString(v.until) : null,
+  };
+}
+
+/**
+ * The body fields the two groups produce: null dates and no windows when
+ * « tout le temps / toute la journée ». Given the draft the editor opened with
+ * (`initial`), a bound the owner did not change is left out, so the server
+ * keeps what it holds — the API takes validFrom and validUntil separately.
+ */
+export function validityBody(
+  v: ValidityDraft,
+  initial?: ValidityDraft,
+): {
+  validFrom?: string | null;
+  validUntil?: string | null;
   timeWindows: SharedAccessTimeWindow[];
 } {
-  return {
-    validFrom: v.period ? wallToString(v.from) : null,
-    validUntil: v.period ? wallToString(v.until) : null,
+  const now = boundsOf(v);
+  const was = initial ? boundsOf(initial) : null;
+  const body: { validFrom?: string | null; validUntil?: string | null; timeWindows: SharedAccessTimeWindow[] } = {
     timeWindows: v.ranges ? v.windows.map((w) => ({ from: w.from.trim(), to: w.to.trim() })) : [],
   };
+  if (!was || was.validFrom !== now.validFrom) body.validFrom = now.validFrom;
+  if (!was || was.validUntil !== now.validUntil) body.validUntil = now.validUntil;
+  return body;
 }
 
 // ── The house's clock ───────────────────────────────────────────
@@ -273,15 +301,19 @@ export function validityFromView(
   view: { validFrom: string | null; validUntil: string | null; timeWindows: SharedAccessTimeWindow[] },
   tz: string,
 ): ValidityDraft {
-  const base = emptyValidity(nowWall(tz));
-  const period = view.validFrom !== null || view.validUntil !== null;
-  const from = view.validFrom ? isoToWall(view.validFrom, tz) : base.from;
-  const until = view.validUntil ? isoToWall(view.validUntil, tz) : addMinutes(from, 24 * 60);
-  return {
-    period,
-    from,
-    until,
+  const windows = {
     ranges: view.timeWindows.length > 0,
     windows: view.timeWindows.map((w) => ({ ...w })),
+  };
+  if (view.validFrom === null && view.validUntil === null) {
+    // « Tout le temps »: a fresh day stands ready should the owner pick « Du … au … ».
+    return { ...emptyValidity(nowWall(tz)), ...windows };
+  }
+  // A period, possibly with one bound only: the missing one stays missing.
+  return {
+    period: true,
+    from: view.validFrom ? isoToWall(view.validFrom, tz) : null,
+    until: view.validUntil ? isoToWall(view.validUntil, tz) : null,
+    ...windows,
   };
 }

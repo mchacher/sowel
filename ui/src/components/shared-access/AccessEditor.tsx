@@ -94,8 +94,12 @@ export function AccessEditor({
         ? mode.gateIds.map((id) => ({ equipmentId: id, value: defaultGateValue(gateById.get(id)) }))
         : [],
   );
-  const [validity, setValidity] = useState<ValidityDraft>(() =>
-    editing ? validityFromView(editing, fmt.tz) : emptyValidity(nowWall(fmt.tz)),
+  // What the editor opened with: a bound the owner leaves alone is not sent.
+  const [initialValidity] = useState<ValidityDraft | undefined>(() =>
+    editing ? validityFromView(editing, fmt.tz) : undefined,
+  );
+  const [validity, setValidity] = useState<ValidityDraft>(
+    () => initialValidity ?? emptyValidity(nowWall(fmt.tz)),
   );
   const [withCode, setWithCode] = useState(editing ? editing.code !== null : true);
   const [adding, setAdding] = useState(false);
@@ -133,7 +137,7 @@ export function AccessEditor({
       setProblem({ field: check.group, text: validityText(check) });
       return;
     }
-    const v = validityBody(validity);
+    const v = validityBody(validity, initialValidity);
     const body: SharedAccessWrite = external
       ? {
           label: label.trim(),

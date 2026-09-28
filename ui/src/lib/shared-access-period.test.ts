@@ -19,6 +19,7 @@ import {
   roundUpToStep,
   snapInto,
   validityBody,
+  validityFromView,
 } from "./shared-access-period";
 
 const start = { date: "2026-10-03", time: "16:20" };
@@ -114,7 +115,8 @@ describe("moving the start", () => {
 
   it("carries the end when the start lands exactly on it", () => {
     const moved = moveStart(start, end, end);
-    expect(compareWall(moved, end)).toBeGreaterThan(0);
+    expect(moved).not.toBeNull();
+    expect(compareWall(moved!, end)).toBeGreaterThan(0);
   });
 
   it("is not shifted by a DST change: the wall clock is a calendar here", () => {
@@ -124,6 +126,50 @@ describe("moving the start", () => {
       date: "2026-10-29",
       time: "12:00",
     });
+  });
+});
+
+describe("a period with one bound only", () => {
+  it("has no end to carry when the access runs « from » a date only", () => {
+    expect(moveStart(start, { date: "2026-10-10", time: "08:00" }, null)).toBeNull();
+  });
+
+  it("keeps the missing bound missing when read from the server", () => {
+    const fromOnly = validityFromView(
+      { validFrom: "2026-10-03T14:20:00.000Z", validUntil: null, timeWindows: [] },
+      "Europe/Paris",
+    );
+    expect(fromOnly).toMatchObject({ period: true, from: start, until: null });
+    const untilOnly = validityFromView(
+      { validFrom: null, validUntil: "2026-10-03T14:20:00.000Z", timeWindows: [] },
+      "Europe/Paris",
+    );
+    expect(untilOnly).toMatchObject({ period: true, from: null, until: start });
+  });
+
+  it("sends a missing bound as null, and checks no order without both", () => {
+    const v: ValidityDraft = { period: true, from: start, until: null, ranges: false, windows: [] };
+    expect(validityBody(v)).toEqual({ validFrom: "2026-10-03T16:20", validUntil: null, timeWindows: [] });
+    expect(checkValidity(v)).toBeNull();
+    expect(checkValidity({ ...v, from: null, until: start })).toBeNull();
+  });
+
+  it("leaves out of the body a bound the owner did not change", () => {
+    const initial: ValidityDraft = { period: true, from: start, until: null, ranges: false, windows: [] };
+    expect(validityBody({ ...initial }, initial)).toEqual({ timeWindows: [] });
+    // Changing the start sends the start alone.
+    const moved = { ...initial, from: { date: "2026-10-04", time: "09:00" } };
+    expect(validityBody(moved, initial)).toEqual({ validFrom: "2026-10-04T09:00", timeWindows: [] });
+    // « Tout le temps » clears the bound that was held, and only that one.
+    expect(validityBody({ ...initial, period: false }, initial)).toEqual({ validFrom: null, timeWindows: [] });
+  });
+
+  it("offers a fresh day for an access held « tout le temps », without sending it", () => {
+    const always = validityFromView({ validFrom: null, validUntil: null, timeWindows: [] }, "Europe/Paris");
+    expect(always.period).toBe(false);
+    expect(always.from).not.toBeNull();
+    expect(always.until).not.toBeNull();
+    expect(validityBody(always, always)).toEqual({ timeWindows: [] });
   });
 });
 

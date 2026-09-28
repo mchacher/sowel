@@ -49,6 +49,15 @@ export function ProfilesTab({ state }: { state: SharedAccessState }) {
     () => state.profiles.find((p) => p.isDefault)?.id ?? state.profiles[0]?.id ?? null,
   );
   const [notice, setNotice] = useState<string | null>(null);
+  // The editor's identity: it changes when the owner picks another profile or
+  // « + profil », never when a new profile gets its id — so the editor, and
+  // its « saved / no gate yet » message, survive the create.
+  const [editorKey, setEditorKey] = useState(0);
+  const pick = (id: string | null) => {
+    if (id !== selected) setEditorKey((k) => k + 1);
+    setSelected(id);
+    setNotice(null);
+  };
 
   const current =
     selected === NEW ? null : (state.profiles.find((p) => p.id === selected) ?? null);
@@ -62,10 +71,7 @@ export function ProfilesTab({ state }: { state: SharedAccessState }) {
               <button
                 type="button"
                 aria-current={p.id === selected}
-                onClick={() => {
-                  setSelected(p.id);
-                  setNotice(null);
-                }}
+                onClick={() => pick(p.id)}
                 className={`w-full text-left bg-surface border rounded-[10px] px-3 py-2.5 cursor-pointer transition-colors ${
                   p.id === selected ? "border-primary" : "border-border hover:border-text-tertiary"
                 }`}
@@ -114,10 +120,7 @@ export function ProfilesTab({ state }: { state: SharedAccessState }) {
           <button
             type="button"
             className={`${btnSecondary} inline-flex items-center gap-1`}
-            onClick={() => {
-              setSelected(NEW);
-              setNotice(null);
-            }}
+            onClick={() => pick(NEW)}
           >
             <Plus size={14} strokeWidth={1.5} />
             {t("sharedAccess.profiles.add")}
@@ -128,7 +131,7 @@ export function ProfilesTab({ state }: { state: SharedAccessState }) {
       <div className="bg-surface border border-border rounded-[10px] p-4">
         {selected === NEW || current ? (
           <ProfileEditor
-            key={selected ?? ""}
+            key={editorKey}
             profile={current}
             state={state}
             onCreated={(id) => setSelected(id)}
@@ -183,8 +186,12 @@ function ProfileEditor({
         value: typeof g.value === "string" ? g.value : null,
       })) ?? [],
   );
-  const [validity, setValidity] = useState<ValidityDraft>(() =>
-    profile ? validityFromView(profile, fmt.tz) : emptyValidity(nowWall(fmt.tz)),
+  // What the editor opened with: a bound the owner leaves alone is not sent.
+  const [initialValidity, setInitialValidity] = useState<ValidityDraft | undefined>(() =>
+    profile ? validityFromView(profile, fmt.tz) : undefined,
+  );
+  const [validity, setValidity] = useState<ValidityDraft>(
+    () => initialValidity ?? emptyValidity(nowWall(fmt.tz)),
   );
   const [withCode, setWithCode] = useState(profile?.withCode ?? true);
   const [pluginId, setPluginId] = useState(profile?.pluginId ?? "");
@@ -219,7 +226,7 @@ function ProfileEditor({
       gates: gatesBody(gates, gateById),
       withCode,
       pluginId: pluginId || null,
-      ...validityBody(validity),
+      ...validityBody(validity, initialValidity),
     };
     setSaving(true);
     try {
@@ -227,6 +234,8 @@ function ProfileEditor({
         ? await updateSharedAccessProfile(profile.id, body)
         : await createSharedAccessProfile(body);
       await refresh();
+      // What the server now holds is the new reference for « changed ».
+      setInitialValidity(validityFromView(saved, fmt.tz));
       const isDefault = saved.isDefault;
       setMessage({
         ok: true,
