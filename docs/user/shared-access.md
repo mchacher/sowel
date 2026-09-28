@@ -23,6 +23,12 @@ The public address must reach Sowel from outside your home network — see
 [Remote Access](remote-access.md). If you give the page a host name of its own, point it at the
 `/access/` path of Sowel and set the path to `/`.
 
+Once the feature is on, the **On the home screen** part gives the page the **name** and **icon** it
+takes when a visitor adds it to their home screen — your logo, for instance. Pick a square image of
+at least 512 px, preferably on a solid background (iOS fills transparency with black): it is cropped
+to its centre and resized to the sizes iOS and Android ask for. A phone that already installed it
+keeps the old icon until it installs the page again.
+
 !!! warning "Put a reverse proxy in front"
 The visitor's page is the one part of Sowel that answers without an account. Serve it over
 HTTPS only, and let your reverse proxy apply its own request quota (below).
@@ -96,6 +102,11 @@ The page is in French on a phone set to French, and in English on any other phon
 screen. The gear at the top right opens **Settings**: the phone's last
 commands, and a **QR code** the visitor can have a companion scan to set up a second phone on the
 same access. No code is shown there.
+
+While the page is not on the home screen, a small card explains how to put it there, **for the
+phone in hand**: on an iPhone, "Share" then "Add to Home Screen"; on Android, the browser's
+**Install** button, or the path in its menu. Once installed it opens straight on the disc, **without
+asking for the code again**, as the same phone.
 
 ## Managing accesses
 

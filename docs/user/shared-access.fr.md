@@ -24,6 +24,12 @@ L'adresse publique doit joindre Sowel depuis l'extérieur de votre réseau — v
 [Accès distant](remote-access.md). Si vous donnez à la page un nom d'hôte à elle, faites-le pointer
 vers le chemin `/access/` de Sowel et réglez le chemin sur `/`.
 
+Une fois la fonction activée, la partie **Sur l'écran d'accueil** donne à la page le **nom** et
+l'**icône** qu'elle prendra quand un visiteur l'ajoutera à son écran d'accueil — votre logo, par
+exemple. Choisissez une image carrée d'au moins 512 px, sur fond plein de préférence (iOS remplit la
+transparence en noir) : elle est recadrée au centre et redimensionnée aux tailles qu'iOS et Android
+demandent. Un téléphone déjà installé garde l'ancienne icône jusqu'à ce qu'il réinstalle la page.
+
 !!! warning "Mettez un reverse proxy devant"
 La page du visiteur est la seule partie de Sowel qui répond sans compte. Servez-la en HTTPS
 uniquement, et laissez votre reverse proxy appliquer son propre quota de requêtes (ci-dessous).
@@ -99,6 +105,11 @@ La page est en français sur un téléphone réglé en français, et en anglais 
 Elle tient sur un seul écran. La roue dentée en haut à droite ouvre **Réglages** : les
 dernières commandes du téléphone, et un **QR code** que le visiteur fait scanner à la personne qui
 l'accompagne pour installer un second téléphone sur le même accès. Aucun code n'y est affiché.
+
+Tant que la page n'est pas sur l'écran d'accueil, un encadré explique comment l'y mettre, **selon
+le téléphone** : sur iPhone, « Partager » puis « Sur l'écran d'accueil » ; sur Android, le bouton
+**Installer** du navigateur, ou le chemin dans son menu. Installée, elle s'ouvre directement sur la
+sphère, **sans redemander le code**, comme le même téléphone.
 
 ## Gérer les accès
 

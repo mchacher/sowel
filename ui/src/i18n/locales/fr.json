@@ -1812,5 +1812,16 @@
   "sharedAccess.settings.baseUrlInvalid": "Refusé : une adresse commence par https:// (ou http://).",
   "sharedAccess.settings.path": "Chemin",
   "sharedAccess.settings.pathHelp": "Où se trouve la page des visiteurs sur cette adresse ; /access/ par défaut.",
+  "sharedAccess.app.title": "Sur l'écran d'accueil",
+  "sharedAccess.app.description": "Le nom et l'icône de la page des visiteurs quand ils l'ajoutent à leur écran d'accueil. Un téléphone déjà installé garde l'ancienne icône jusqu'à ce qu'il réinstalle.",
+  "sharedAccess.app.name": "Nom",
+  "sharedAccess.app.namePlaceholder": "Accès",
+  "sharedAccess.app.icon": "Icône",
+  "sharedAccess.app.iconDefault": "Icône par défaut",
+  "sharedAccess.app.iconChoose": "Choisir une image",
+  "sharedAccess.app.iconReset": "Revenir à l'icône par défaut",
+  "sharedAccess.app.iconHelp": "Une image carrée d'au moins 512 px, de préférence sur fond plein : iOS remplit la transparence en noir. Elle est recadrée au centre.",
+  "sharedAccess.app.iconUnreadable": "Refusé : cette image ne se lit pas.",
+  "sharedAccess.app.saved": "✓ Enregistré.",
   "sharedAccess.unreadable": "Impossible de lire l'état des accès partagés."
 }

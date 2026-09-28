@@ -140,7 +140,8 @@ R9 (see _Consumers_).
     gives: behind the proxy it would be one limit for the whole internet, which one script exhausts
     for every visitor. Failing enrolments are governed by R6, presses by the ceilings of R4.13.
 18. The invitation link carries its own token **in the fragment** (`/access/#i=…`), which no
-    server, proxy or log sees; it is consumed once and removed from the address bar. An **alias**
+    server, proxy or log sees; it is consumed once and removed from the address bar — replaced there
+    by the phone's own token, in the fragment too (R5.24). An **alias**
     (another host name rewriting to `/access/`) is supported: a public base URL and path set in
     Settings build the links.
 19. A phone keeps its **own token**; only its SHA-256 is stored. More than six phones on one access
@@ -177,6 +178,27 @@ R9 (see _Consumers_).
 23. French on a phone set to French, **English on every other phone** — the phone's first
     language decides. Words assume no holiday let. Before a code is
     typed, the title names a door only if the house has one gate.
+24. **The page installs on the home screen and keeps its phone there.** An iOS home-screen app
+    starts with a storage of its own, empty: the token written by Safari is not in it, and the
+    invitation link was consumed. So once the phone is known, **its token stays in the address
+    bar's fragment** (`/access/#t=…`, never sent to any server), and the manifest carries **no
+    `start_url`**: it defaults to the URL of the document that links it, and the page links it only
+    once the token is there. Whatever a phone saves — iOS's current address, Android's manifest
+    start URL — opens straight on the disc, with no code, as the same phone. A fixed manifest `id`
+    keeps one app whatever that URL is. A cut or revoked phone falls back to the code screen as
+    before, and the fragment is cleared.
+    - **While the page is not installed**, a small card above the footer says how to install it,
+      **for the phone in hand**: on iOS « touchez Partager, puis « Sur l'écran d'accueil » » (with
+      « ouvrez cette page dans Safari » in another iOS browser); on Android the browser's own
+      « Installer » button when it offers one, otherwise the menu path (Samsung Internet's apart);
+      nothing on a computer or once installed. Closing it hides it for the visit.
+    - **The owner names the app and gives it its icon** in Settings → Shared access (« Sur l'écran
+      d'accueil »): a name (30 characters, « Accès » by default) and an image, cropped to its centred
+      square and resized **by the owner's browser** to 180 px (iOS's apple-touch-icon), 192 and
+      512 px (Android's manifest). The backend carries no image library: it only checks it receives
+      a PNG of each size, 256 KiB at most, and stores them in settings, so the backup carries them.
+      Without an image, the page's own mark — the warm disc on the dark screen — is drawn as a PNG
+      by the backend. A phone already installed keeps its old icon until it installs again.
 
 The page as it stands, from the mock-up validated on 2026-09-23
 (`visitor-page.html`, which keeps the three gestures that were turned down beside this one):
@@ -332,6 +354,12 @@ And what is seen before a code is known: ![](screenshots/visitor-code.png)
       any other can.
 - [x] « Tout le temps » and « Toute la journée » store and show no date and no hour.
 - [x] Nothing is persisted outside SQLite; the data rides in the backup.
+- [x] A phone set up in the browser and then opened from a fresh storage on the address it saved
+      opens on the disc, with no code (R5.24); Chrome resolves the manifest's start URL with the
+      token and reports no installability error.
+- [x] The install card reads the iOS steps on an iPhone, the Android steps on an Android phone,
+      and disappears once closed; the owner's name and icon reach the page, the manifest and the
+      three icon files.
 
 ## Migration and compatibility
 

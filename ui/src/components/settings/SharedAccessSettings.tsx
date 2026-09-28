@@ -4,6 +4,7 @@ import { KeyRound, Loader2 } from "lucide-react";
 import { getSettings, updateSettings } from "../../api";
 import { SHARED_ACCESS_SETTING, useSharedAccess } from "../../store/useSharedAccess";
 import { Refusal, Switch, btnPrimary, inputCls, labelCls } from "../shared-access/ui";
+import { SharedAccessAppSettings } from "./SharedAccessAppSettings";
 
 const BASE_URL = "sharedAccess.publicBaseUrl";
 const PATH = "sharedAccess.publicPath";
@@ -12,7 +13,8 @@ const DEFAULT_PATH = "/access/";
 /**
  * Spec 181 R1 and R5.18 — the opt-in switch (off by default: no page, no card,
  * every route 404), and the public address the invitation links are built on
- * (a base URL and a path, so an alias host rewriting to `/access/` works).
+ * (a base URL and a path, so an alias host rewriting to `/access/` works),
+ * and, once on, the name and icon the page takes on a home screen (R5.24).
  */
 export function SharedAccessSettings() {
   const { t } = useTranslation();
@@ -137,6 +139,7 @@ export function SharedAccessSettings() {
           )}
         </div>
       )}
+      {!loading && enabled && <SharedAccessAppSettings />}
       {error && <Refusal>{error}</Refusal>}
     </section>
   );

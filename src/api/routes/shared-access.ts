@@ -8,12 +8,12 @@ import type { SharedAccessManager } from "../../shared-access/shared-access-mana
 import { SharedAccessError } from "../../shared-access/validity.js";
 import {
   GUEST_CSS,
-  GUEST_HTML,
-  GUEST_ICON,
   GUEST_JS,
-  GUEST_MANIFEST,
   GUEST_PAGE_CSP,
+  guestHtml,
+  guestManifest,
 } from "../../shared-access/guest-page.js";
+import type { AppBrandingInput } from "../../shared-access/app-branding.js";
 
 // ============================================================
 // Spec 181 — the shared-access routes.
@@ -331,23 +331,75 @@ export function registerSharedAccessRoutes(
     );
   }
 
+  // ── The page as an app (R5.24) ───────────────────────────────
+
+  app.get(`${ADMIN_BASE}/app`, async () => manager.branding.view());
+
+  app.put<{ Body: AppBrandingInput }>(
+    `${ADMIN_BASE}/app`,
+    // Three PNGs in base64, 256 KiB each at most.
+    { bodyLimit: 1024 * 1024 + 64 * 1024 },
+    async (request, reply) => {
+      try {
+        const view = manager.branding.update(request.body ?? {});
+        logger.info(
+          { actor: actorOf(request, userManager), customIcon: view.customIcon },
+          "Shared access app updated",
+        );
+        return view;
+      } catch (err) {
+        return sendError(reply, err, logger);
+      }
+    },
+  );
+
   // ── The page (R5.17) ─────────────────────────────────────────
 
-  const asset = (type: string, body: string) => async (_req: FastifyRequest, reply: FastifyReply) =>
-    reply
-      .type(type)
-      .header("Content-Security-Policy", GUEST_PAGE_CSP)
-      .header("X-Content-Type-Options", "nosniff")
-      .send(body);
+  const asset =
+    (type: string, body: () => string | Buffer) =>
+    async (_req: FastifyRequest, reply: FastifyReply) =>
+      reply
+        .type(type)
+        .header("Content-Security-Policy", GUEST_PAGE_CSP)
+        .header("X-Content-Type-Options", "nosniff")
+        .send(body());
+
+  const branding = () => ({
+    name: manager.branding.name(),
+    version: manager.branding.version(),
+  });
 
   app.get(PAGE_BASE, NO_RATE_LIMIT, async (_request, reply) => reply.redirect(`${PAGE_BASE}/`));
-  app.get(`${PAGE_BASE}/`, NO_RATE_LIMIT, asset("text/html; charset=utf-8", GUEST_HTML));
-  app.get(`${PAGE_BASE}/app.js`, NO_RATE_LIMIT, asset("text/javascript; charset=utf-8", GUEST_JS));
-  app.get(`${PAGE_BASE}/style.css`, NO_RATE_LIMIT, asset("text/css; charset=utf-8", GUEST_CSS));
+  app.get(
+    `${PAGE_BASE}/`,
+    NO_RATE_LIMIT,
+    asset("text/html; charset=utf-8", () => guestHtml(branding())),
+  );
+  app.get(
+    `${PAGE_BASE}/app.js`,
+    NO_RATE_LIMIT,
+    asset("text/javascript; charset=utf-8", () => GUEST_JS),
+  );
+  app.get(
+    `${PAGE_BASE}/style.css`,
+    NO_RATE_LIMIT,
+    asset("text/css; charset=utf-8", () => GUEST_CSS),
+  );
   app.get(
     `${PAGE_BASE}/manifest.webmanifest`,
     NO_RATE_LIMIT,
-    asset("application/manifest+json; charset=utf-8", GUEST_MANIFEST),
+    asset("application/manifest+json; charset=utf-8", () => guestManifest(branding())),
   );
-  app.get(`${PAGE_BASE}/icon.svg`, NO_RATE_LIMIT, asset("image/svg+xml", GUEST_ICON));
+  // R5.24 — the home-screen icons: 180 px for iOS, 192 and 512 for Android.
+  for (const [file, size] of [
+    ["apple-touch-icon.png", 180],
+    ["icon-192.png", 192],
+    ["icon-512.png", 512],
+  ] as const) {
+    app.get(
+      `${PAGE_BASE}/${file}`,
+      NO_RATE_LIMIT,
+      asset("image/png", () => manager.branding.icon(size)),
+    );
+  }
 }

@@ -1,6 +1,7 @@
 import type { Logger } from "../core/logger.js";
 import type { EventBus } from "../core/event-bus.js";
 import type { SettingsManager } from "../core/settings-manager.js";
+import { AppBranding } from "./app-branding.js";
 import type { EquipmentManager } from "../equipments/equipment-manager.js";
 import type {
   Equipment,
@@ -225,12 +226,15 @@ export class SharedAccessManager {
   private readonly unsubscribes: (() => void)[] = [];
   private purgeTimer: NodeJS.Timeout | null = null;
   private pluginDirectory: () => { id: string; name: string }[] = () => [];
+  /** R5.24 — the page's name and icon on the home screen. */
+  readonly branding: AppBranding;
 
   constructor(deps: ManagerDeps) {
     this.store = new SharedAccessStore(deps.db);
     this.eventBus = deps.eventBus;
     this.equipments = deps.equipmentManager;
     this.settings = deps.settingsManager;
+    this.branding = new AppBranding(deps.settingsManager);
     this.logger = deps.logger.child({ module: "shared-access" });
     this.now = deps.now ?? Date.now;
     this.guessing = new GuessingBudget({

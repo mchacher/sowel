@@ -462,6 +462,8 @@ de la maison dont dérivent les jetons de lien, `sharedAccess.linkSecret`, n'est
 | `POST`   | `/api/v1/shared-access/profiles`                             | `{ name, gates?, validFrom?, validUntil?, timeWindows?, withCode?, pluginId? }`.                                                                                             |
 | `PATCH`  | `/api/v1/shared-access/profiles/:id`                         | Mêmes champs.                                                                                                                                                                |
 | `DELETE` | `/api/v1/shared-access/profiles/:id`                         | `204`. `422 default_profile` pour le profil par défaut. Les accès créés depuis ce profil gardent leurs portails.                                                             |
+| `GET`    | `/api/v1/shared-access/app`                                  | `{ name, customIcon, version }` — la page du visiteur sur un écran d'accueil.                                                                                                |
+| `PUT`    | `/api/v1/shared-access/app`                                  | `{ name?, icons?: { "180", "192", "512": PNG en base64 } \| null }` — `400 invalid_app` sauf si chacune est un PNG de sa taille, 256 Kio au plus.                            |
 
 Les dates sont en ISO 8601, ou `YYYY-MM-DDTHH:MM` lu sur l'horloge de la maison ; `null` efface. Les
 plages horaires s'écrivent `[{ "from": "08:00", "to": "20:00" }]`, sans traverser minuit ni se

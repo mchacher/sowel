@@ -35,6 +35,7 @@ in all three at once.
 | `phones.ts`                | How the owner tells phones apart: platform from the user agent, a tag drawn from the id (R5.19)     |
 | `gate-queue.ts`            | Per-gate queue, double-press window, 15 s order timeout, at most 5 presses waiting (R4.14)          |
 | `guest-page.ts`            | The public page's HTML, CSS, JS and manifest, as strings — including the pull-to-open disc (R5.20)  |
+| `app-branding.ts`          | The page's name and icons on the home screen, the default icon drawn as a PNG (R5.24)               |
 | `plugin-api.ts`            | `deps.sharedAccess`, scoped to the calling plugin (R9)                                              |
 
 The house's wall clock (`home.timezone`) reuses the core's existing time-zone helpers (spec 061).
@@ -208,8 +209,14 @@ answers `409 too_many_phones` (R5.19).
 Failures are held back per R6 before they are answered, never the request before it is handled.
 
 Static: `GET /access/`, `/access/app.js`, `/access/style.css`, `/access/manifest.webmanifest`,
-`/access/icon.svg` — served from strings, CSP `default-src 'none'; script-src 'self'; style-src
+`/access/apple-touch-icon.png` (180 px), `/access/icon-192.png`, `/access/icon-512.png` — served from
+strings and from the stored icons (R5.24), CSP `default-src 'none'; script-src 'self'; style-src
 'self'; connect-src 'self'; img-src 'self' data:; manifest-src 'self'`.
+
+Home screen (R5.24), admin-only: `GET /api/v1/shared-access/app` → `{ name, customIcon, version }`;
+`PUT /api/v1/shared-access/app` `{ name?, icons?: { "180", "192", "512": base64 PNG } | null }` —
+`400 invalid_app` for anything but a PNG of the size it is filed under, or past 256 KiB. Stored as
+`sharedAccess.appName` and `sharedAccess.appIcon.<size>`.
 
 Setting: `sharedAccess.enabled`, `sharedAccess.publicBaseUrl`, `sharedAccess.publicPath` through the
 existing settings route; enabling is audit-logged (spec 113).

@@ -11,6 +11,10 @@
 // pulled upward out of its socket (R5.20); the keyboard confirms with a second
 // Enter instead (R5.21). The screen never scrolls: the phone's journal and the
 // QR code to bring another phone in live behind the gear (R5.22).
+//
+// Put on the home screen, it must still know its phone (R5.24): an iOS
+// home-screen app starts with storage of its own, empty, so the token also
+// rides in the address bar's fragment, which the installed app is started on.
 // ============================================================
 
 export const GUEST_PAGE_CSP =
@@ -18,7 +22,20 @@ export const GUEST_PAGE_CSP =
   "img-src 'self' data:; manifest-src 'self'; base-uri 'none'; form-action 'none'; " +
   "frame-ancestors 'none'";
 
-export const GUEST_HTML = `<!doctype html>
+const escapeHtml = (v: string) =>
+  v.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
+
+export interface GuestBranding {
+  name: string;
+  version: string;
+}
+
+/**
+ * The page. No `<link rel="manifest">` in it: the script adds one once the
+ * phone's token is in the address bar, so the manifest's start URL — the
+ * document's URL, since the manifest names none — carries it (R5.24).
+ */
+export const guestHtml = (b: GuestBranding) => `<!doctype html>
 <html lang="fr">
 <head>
 <meta charset="utf-8">
@@ -26,9 +43,14 @@ export const GUEST_HTML = `<!doctype html>
 <meta name="robots" content="noindex, nofollow">
 <meta name="theme-color" content="#0a0705">
 <meta name="referrer" content="no-referrer">
-<title>Accès</title>
-<link rel="manifest" href="manifest.webmanifest">
-<link rel="icon" href="icon.svg" type="image/svg+xml">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="${escapeHtml(b.name)}">
+<meta name="sowel-app-version" content="${escapeHtml(b.version)}">
+<title>${escapeHtml(b.name)}</title>
+<link rel="icon" href="icon-192.png?v=${escapeHtml(b.version)}" type="image/png">
+<link rel="apple-touch-icon" href="apple-touch-icon.png?v=${escapeHtml(b.version)}">
 <link rel="stylesheet" href="style.css">
 </head>
 <body>
@@ -54,6 +76,11 @@ export const GUEST_HTML = `<!doctype html>
     </header>
     <div class="discs" id="discs"></div>
     <footer class="foot">
+      <div class="install" id="install" hidden>
+        <p id="installText"></p>
+        <button class="btn" id="installGo" type="button" hidden></button>
+        <button class="x" id="installClose" type="button"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18"></path></svg></button>
+      </div>
       <p class="msg" id="msg" role="status"></p>
       <div class="prog" id="prog">
         <div class="bar"><i id="barFill"></i></div>
@@ -157,6 +184,13 @@ body{margin:0;background:var(--night);color:var(--ink);overflow:hidden;
 .bar{height:3px;border-radius:2px;background:rgba(255,255,255,.08);overflow:hidden}
 .bar i{display:block;height:100%;width:0;background:linear-gradient(90deg,var(--glow),var(--glow2))}
 .prog .row{display:flex;justify-content:space-between;font-size:12px;color:var(--muted);margin-top:7px}
+/* R5.24 — how to put the page on the home screen, while it is not there. */
+.install{position:relative;display:flex;flex-direction:column;align-items:flex-start;gap:8px;
+  background:rgba(232,150,60,.08);border:1px solid rgba(232,150,60,.25);border-radius:14px;padding:10px 44px 10px 14px}
+.install p{margin:0;font-size:13px;line-height:1.45;color:var(--ink)}
+.install .k{display:inline-block;width:16px;height:16px;vertical-align:-3px;margin:0 2px;color:var(--glow2)}
+.install .btn{padding:6px 14px;min-height:36px}
+.install .x{position:absolute;top:0;right:0}
 .msg{margin:0;min-height:21px;font-size:14px;color:var(--bad);text-align:center}
 /* R5.22 — a short screen shrinks the disc rather than scroll. */
 @media (max-height:680px){
@@ -202,18 +236,25 @@ body{margin:0;background:var(--night);color:var(--ink);overflow:hidden;
 .codescreen .err{color:var(--bad);font-size:14px;margin:14px 0 0;min-height:21px}
 `;
 
-export const GUEST_ICON = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64"><rect width="64" height="64" rx="14" fill="#0a0705"/><circle cx="32" cy="32" r="18" fill="#e8963c"/></svg>`;
-
-export const GUEST_MANIFEST = JSON.stringify({
-  name: "Accès",
-  short_name: "Accès",
-  start_url: "./",
-  scope: "./",
-  display: "standalone",
-  background_color: "#0a0705",
-  theme_color: "#0a0705",
-  icons: [{ src: "icon.svg", sizes: "any", type: "image/svg+xml" }],
-});
+/**
+ * No `start_url` on purpose: it defaults to the URL of the document that links
+ * the manifest, token fragment included (R5.24). A fixed `id` keeps one app
+ * whatever that URL is.
+ */
+export const guestManifest = (b: GuestBranding) =>
+  JSON.stringify({
+    id: "./",
+    name: b.name,
+    short_name: b.name,
+    scope: "./",
+    display: "standalone",
+    background_color: "#0a0705",
+    theme_color: "#0a0705",
+    icons: [
+      { src: `icon-192.png?v=${b.version}`, sizes: "192x192", type: "image/png", purpose: "any" },
+      { src: `icon-512.png?v=${b.version}`, sizes: "512x512", type: "image/png", purpose: "any" },
+    ],
+  });
 
 export const GUEST_JS = `(function () {
   "use strict";
@@ -236,6 +277,11 @@ export const GUEST_JS = `(function () {
     lastAt: "Last opening requested at ", lastOn: "Last opening requested ", today: "today", yesterday: "yesterday",
     asked: "Opening requested", notYet: "Opens on ", nextAt: "Next opening at ", suspended: "Access on hold",
     revoked: "This access was revoked.", endedLong: "This access has ended.", noGate: "No gate on this access.",
+    installIos: "Put this access on your home screen: tap Share ~SHARE~ (under ⋯ if you do not see it), then “Add to Home Screen”.", installIosOther: " If the option is missing, open this page in Safari.",
+    installAndroid: "Put this access on your home screen: open the menu ⋮, then “Add to Home screen” or “Install app”.",
+    installSamsung: "Put this access on your home screen: open the menu ≡, then “Add page to” → “Home screen”.",
+    installPrompt: "Put this access on your home screen.", install: "Install",
+    installAfter: " It will open straight away, with no code to type.",
     reasons: {
       revoked: "This access was revoked.", suspended: "This access is on hold.",
       not_yet: "Not yet.", expired: "This access has ended.", outside_hours: "Outside the allowed hours.",
@@ -256,6 +302,11 @@ export const GUEST_JS = `(function () {
     lastAt: "Dernière ouverture demandée à ", lastOn: "Dernière ouverture demandée ", today: "aujourd'hui", yesterday: "hier",
     asked: "Ouverture demandée", notYet: "Ouvre le ", nextAt: "Prochaine ouverture à ", suspended: "Accès suspendu",
     revoked: "Cet accès a été révoqué.", endedLong: "Cet accès est terminé.", noGate: "Aucun portail sur cet accès.",
+    installIos: "Mettez cet accès sur votre écran d'accueil : touchez Partager ~SHARE~ (sous ⋯ si vous ne le voyez pas), puis « Sur l'écran d'accueil ».", installIosOther: " Si l'option manque, ouvrez cette page dans Safari.",
+    installAndroid: "Mettez cet accès sur votre écran d'accueil : ouvrez le menu ⋮, puis « Ajouter à l'écran d'accueil » ou « Installer l'application ».",
+    installSamsung: "Mettez cet accès sur votre écran d'accueil : ouvrez le menu ≡, puis « Ajouter page à » → « Écran d'accueil ».",
+    installPrompt: "Mettez cet accès sur votre écran d'accueil.", install: "Installer",
+    installAfter: " Il s'ouvrira directement, sans code à saisir.",
     reasons: {
       revoked: "Cet accès a été révoqué.", suspended: "Cet accès est suspendu.",
       not_yet: "Pas encore.", expired: "Cet accès est terminé.", outside_hours: "En dehors des heures autorisées.",
@@ -268,6 +319,14 @@ export const GUEST_JS = `(function () {
 
   var token = null;
   try { token = localStorage.getItem(TOKEN_KEY); } catch (e) { token = null; }
+  // R5.24 — an app started from the home screen finds its token here: on iOS
+  // it has a storage of its own, where the one written by the browser is not.
+  var TOKEN_IN_URL = /[#&]t=([A-Za-z0-9_-]+)/;
+  var fromUrl = TOKEN_IN_URL.exec(location.hash || "");
+  if (fromUrl) {
+    token = fromUrl[1];
+    try { localStorage.setItem(TOKEN_KEY, token); } catch (e) { /* private mode */ }
+  }
   var session = null;
   var busy = false;
   var pillTimer = null;
@@ -275,7 +334,58 @@ export const GUEST_JS = `(function () {
   function saveToken(t) {
     token = t;
     try { if (t) localStorage.setItem(TOKEN_KEY, t); else localStorage.removeItem(TOKEN_KEY); } catch (e) { /* private mode */ }
+    if (!t && TOKEN_IN_URL.test(location.hash || "")) history.replaceState(null, "", location.pathname + location.search);
   }
+
+  // ── Home screen (R5.24) ──────────────────────────────────
+  var STANDALONE = (window.matchMedia && window.matchMedia("(display-mode: standalone)").matches) || navigator.standalone === true;
+  var UA = navigator.userAgent || "";
+  var IOS = /iPhone|iPad|iPod/.test(UA) || (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1);
+  var ANDROID = /Android/.test(UA);
+  var SHARE_ICON = '<svg class="k" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3v12"></path><path d="M8 7l4-4 4 4"></path><path d="M6 11H5v10h14V11h-1"></path></svg>';
+  var HINT_OFF = "sowel-shared-access-install-off";
+  var installPrompt = null;
+
+  // The manifest's start URL is the document's URL at the time the manifest is
+  // read, so it is linked only once the token is in the address bar.
+  function linkManifest() {
+    if (document.querySelector('link[rel="manifest"]')) return;
+    var meta = document.querySelector('meta[name="sowel-app-version"]');
+    var l = document.createElement("link");
+    l.rel = "manifest";
+    l.href = "manifest.webmanifest?v=" + encodeURIComponent(meta ? meta.getAttribute("content") : "");
+    document.head.appendChild(l);
+  }
+
+  function renderInstallHint() {
+    var box = $("install");
+    var off = false;
+    try { off = sessionStorage.getItem(HINT_OFF) === "1"; } catch (e) { off = false; }
+    if (STANDALONE || off || $("main").hidden || !(IOS || ANDROID)) { box.hidden = true; return; }
+    var go = $("installGo");
+    var text;
+    if (installPrompt) text = T.installPrompt;
+    else if (IOS) text = T.installIos + (/CriOS|FxiOS|EdgiOS|OPiOS/.test(UA) ? T.installIosOther : "");
+    else if (/SamsungBrowser/.test(UA)) text = T.installSamsung;
+    else text = T.installAndroid;
+    var parts = (text + T.installAfter).split("~SHARE~");
+    var p = $("installText");
+    p.textContent = parts[0];
+    if (parts.length > 1) { p.insertAdjacentHTML("beforeend", SHARE_ICON); p.appendChild(document.createTextNode(parts[1])); }
+    go.hidden = !installPrompt;
+    go.textContent = T.install;
+    box.hidden = false;
+  }
+
+  window.addEventListener("beforeinstallprompt", function (e) {
+    e.preventDefault();
+    installPrompt = e;
+    renderInstallHint();
+  });
+  window.addEventListener("appinstalled", function () {
+    installPrompt = null;
+    $("install").hidden = true;
+  });
 
   function api(path, method, body) {
     var headers = { "Accept": "application/json" };
@@ -384,7 +494,11 @@ export const GUEST_JS = `(function () {
 
   function showMain() {
     $("loading").hidden = true; $("codescreen").hidden = true; $("main").hidden = false;
-    if (location.hash) history.replaceState(null, "", location.pathname + location.search);
+    // R5.24 — the token stays in the fragment (never sent to a server), so
+    // « Add to Home Screen » saves an address that still knows this phone.
+    history.replaceState(null, "", location.pathname + location.search + "#t=" + token);
+    linkManifest();
+    renderInstallHint();
     $("brand").textContent = session.gates.length === 1 ? session.gates[0].name : session.label;
     document.title = $("brand").textContent || T.access;
     var discs = $("discs");
@@ -527,6 +641,18 @@ export const GUEST_JS = `(function () {
   $("shareHint").textContent = T.shareHint;
   $("qr").alt = T.qr;
   $("copy").textContent = T.copyLink;
+  $("installClose").setAttribute("aria-label", T.close);
+  $("installClose").addEventListener("click", function () {
+    try { sessionStorage.setItem(HINT_OFF, "1"); } catch (e) { /* private mode */ }
+    $("install").hidden = true;
+  });
+  $("installGo").addEventListener("click", function () {
+    if (!installPrompt) return;
+    var p = installPrompt;
+    installPrompt = null;
+    p.prompt();
+    renderInstallHint();
+  });
   $("gear").addEventListener("click", function () { setSheet(true); });
   $("shClose").addEventListener("click", function () { setSheet(false); });
   document.addEventListener("keydown", function (e) {
@@ -545,6 +671,7 @@ export const GUEST_JS = `(function () {
     history.replaceState(null, "", location.pathname + location.search);
     enrolWith({ link: m[1] });
   } else if (token) {
+    // A token read from the address bar (R5.24) is checked like a stored one.
     api("session", "GET").then(function (r) {
       if (r.status === 200) { session = r.body; showMain(); }
       else if (r.status === 401) { saveToken(null); showCode(); }

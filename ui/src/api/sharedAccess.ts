@@ -122,3 +122,25 @@ export async function updateSharedAccessProfile(
 export async function deleteSharedAccessProfile(id: string): Promise<void> {
   return fetchJSON<void>(`${BASE}/profiles/${encodeURIComponent(id)}`, { method: "DELETE" });
 }
+
+/** R5.24 — the visitor's page as an app on the home screen. */
+export interface SharedAccessAppView {
+  name: string;
+  customIcon: boolean;
+  version: string;
+}
+
+export async function getSharedAccessApp(): Promise<SharedAccessAppView> {
+  return fetchJSON<SharedAccessAppView>(`${BASE}/app`);
+}
+
+/** `icons`: base64 PNGs keyed by size (180, 192, 512), or null for the default mark. */
+export async function updateSharedAccessApp(body: {
+  name?: string;
+  icons?: Record<"180" | "192" | "512", string> | null;
+}): Promise<SharedAccessAppView> {
+  return fetchJSON<SharedAccessAppView>(`${BASE}/app`, {
+    method: "PUT",
+    body: JSON.stringify(body),
+  });
+}

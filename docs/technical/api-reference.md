@@ -534,6 +534,8 @@ secret the link tokens are derived from, `sharedAccess.linkSecret`, is never ret
 | `POST`   | `/api/v1/shared-access/profiles`                             | `{ name, gates?, validFrom?, validUntil?, timeWindows?, withCode?, pluginId? }`.                                                                  |
 | `PATCH`  | `/api/v1/shared-access/profiles/:id`                         | Same fields.                                                                                                                                      |
 | `DELETE` | `/api/v1/shared-access/profiles/:id`                         | `204`. `422 default_profile` for the default one. The accesses made from it keep their gates.                                                     |
+| `GET`    | `/api/v1/shared-access/app`                                  | `{ name, customIcon, version }` — the visitor's page on a home screen.                                                                            |
+| `PUT`    | `/api/v1/shared-access/app`                                  | `{ name?, icons?: { "180", "192", "512": base64 PNG } \| null }` — `400 invalid_app` unless each is a PNG of its size, 256 KiB at most.           |
 
 Dates are ISO 8601, or `YYYY-MM-DDTHH:MM` read on the house's clock; `null` clears. Time windows are
 `[{ "from": "08:00", "to": "20:00" }]`, not crossing midnight, not overlapping.
