@@ -612,7 +612,7 @@ describe("the phones of an access and sharing (R5.19, R5.22)", () => {
       reason: "busy",
     });
     release();
-    expect((await Promise.all(presses)).every((r) => r.ok)).toBe(true);
+    expect((await Promise.all(presses)).every((r) => r?.ok)).toBe(true);
   });
 
   it("stops a press that waited while the feature was turned off or the phone cut", async () => {

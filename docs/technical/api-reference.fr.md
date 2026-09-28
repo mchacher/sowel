@@ -432,10 +432,16 @@ Stockage clé-valeur des réglages admin (utilisé pour les configs d'intégrati
 Laisser quelqu'un qui n'est pas utilisateur de Sowel ouvrir un portail pour un temps. Désactivé par
 défaut : tant que le réglage `sharedAccess.enabled` ne vaut pas `"true"`, **chaque route ci-dessous
 répond exactement comme une route inconnue**, les publiques comprises, pour que la fonctionnalité ne
-puisse pas être sondée de l'extérieur. Guide utilisateur : [Accès partagés](../user/shared-access.md).
+puisse pas être sondée de l'extérieur : les routes du propriétaire et la page (`/access/*`) répondent
+`404` ; l'API publique (`/api/v1/shared-access/public/*`) répond `401` à un appelant anonyme, comme
+toute route `/api` inconnue, et un appelant qui envoie un en-tête `Bearer` reçoit la réponse propre
+du middleware d'authentification, la même que sur toute route `/api` inconnue. Guide utilisateur :
+[Accès partagés](../user/shared-access.md).
 
 Réglages (par `PUT /api/v1/settings`) : `sharedAccess.enabled`, `sharedAccess.publicBaseUrl` (l'hôte
-vers lequel pointent les invitations), `sharedAccess.publicPath` (`/access/` par défaut).
+vers lequel pointent les invitations), `sharedAccess.publicPath` (`/access/` par défaut). Le secret
+de la maison dont dérivent les jetons de lien, `sharedAccess.linkSecret`, n'est jamais renvoyé par
+`GET /api/v1/settings` et ne peut pas être écrit par `PUT /api/v1/settings`.
 
 ### Routes du propriétaire (admin uniquement, lectures comprises)
 
@@ -475,14 +481,15 @@ règle. Le jeton du téléphone passe en `Authorization: Bearer <jeton>`.
 
 | Méthode | Chemin     | Description                                                                                                                                                                 |
 | ------- | ---------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `POST`  | `/enrol`   | `{ code }` ou `{ link }` → `{ token, session }`. `401 unknown_code`, `410 ended`, `429 too_many`.                                                                           |
+| `POST`  | `/enrol`   | `{ code }` ou `{ link }` → `{ token, session }`. `401 unknown_code`, `410 ended`, `429 too_many`, `409 too_many_phones` (50 téléphones déjà installés sur l'accès).         |
 | `GET`   | `/session` | `{ label, status, gates, activeAt, nextOpeningAt, validUntil, travelS, presses }` — jamais l'état du portail ; `presses` sont ceux de ce téléphone. `401` s'il est inconnu. |
 | `POST`  | `/open`    | `{ gate }` → `{ ok: true }`, ou `409 { ok: false, reason, activeAt?, nextOpeningAt? }`.                                                                                     |
 | `GET`   | `/share`   | `{ url, qr }` — le lien d'invitation et son QR code en URI `data:image/svg+xml`. `409 ended`, `409 no_public_url`, `401` si inconnu.                                        |
 
 La raison d'un refus est l'une de `revoked`, `suspended`, `not_yet`, `expired`, `outside_hours`,
 `no_gate`, `not_this_gate`, `refused_by_house` (le portail est désarmé), `too_many_opens` (12 par
-heure par accès, 30 par heure par portail), `gate_error`.
+heure par accès, 30 par heure par portail), `busy` (5 appuis attendent déjà sur ce portail),
+`gate_error` (l'ordre du portail a échoué, ou n'a pas répondu en 15 s).
 
 **Codes faux.** Seuls les échecs sont comptés, globalement, et un code juste n'est jamais ralenti.
 Les dix premiers échecs en dix minutes sont répondus tout de suite, puis 1 s, 2, 4, 8, jusqu'à 10 s ;

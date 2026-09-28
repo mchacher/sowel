@@ -48,7 +48,10 @@ routes (admin and public), `plugin-api`, `guest-page`, and in the UI `SharedAcce
 | press         | not listed / disarmed / suspended / over a ceiling      | nothing dispatched, reason returned                                 |
 | press         | two presses within 2 s                                  | one dispatch                                                        |
 | press         | gate order fails                                        | `gate_error`, journalled                                            |
-| public routes | setting off                                             | 404 on page and API                                                 |
+| press         | gate order silent for 15 s                              | `gate_error`, the queue moves on                                    |
+| press         | a sixth press waiting on one gate                       | `busy` at once, nothing dispatched                                  |
+| enrol         | a 51st phone on one access                              | `409 too_many_phones`                                               |
+| public routes | setting off                                             | 404 on page and owner API; 401 on public API, like an unknown route |
 | public routes | session payload                                         | never carries the gate's state                                      |
 | public routes | page headers                                            | CSP, noindex, no-store, no cookie                                   |
 | admin routes  | non-admin                                               | 403                                                                 |
@@ -62,6 +65,8 @@ routes (admin and public), `plugin-api`, `guest-page`, and in the UI `SharedAcce
 | plugin-api    | upsert with no `profileId`                              | made on the default profile, if granted                             |
 | manager       | first enablement; delete the default profile            | « Par défaut » created once; deletion refused                       |
 | plugin-api    | same guest, second stay                                 | new code and link; the first stops at its end                       |
+| plugin-api    | upsert on a stay the owner revoked                      | `revoked` (409), nothing changed                                    |
+| plugin-api    | upsert on a stay the owner deleted                      | `revoked` from the tombstone, nothing created                       |
 | press         | external access past its end, plugin stopped            | `expired`, nothing dispatched                                       |
 | plugin-api    | setting off                                             | `SharedAccessDisabledError`                                         |
 | public page   | disc pulled past its socket                             | one press sent                                                      |

@@ -504,11 +504,16 @@ Admin-only key-value settings store (used for integration config, home settings,
 
 Let someone who is not a Sowel user open a gate for a while. Off by default: while the
 `sharedAccess.enabled` setting is not `"true"`, **every route below answers exactly what an unknown
-route answers**, public ones included, so the feature cannot be probed from outside. User guide:
+route answers**, public ones included, so the feature cannot be probed from outside: the owner's
+routes and the page (`/access/*`) answer `404`; the public API (`/api/v1/shared-access/public/*`)
+answers an anonymous caller `401`, as any unknown `/api` route does, and a caller sending a `Bearer`
+header gets the auth middleware's own answer, the same as on any unknown `/api` route. User guide:
 [Shared Access](../user/shared-access.md).
 
 Settings (through `PUT /api/v1/settings`): `sharedAccess.enabled`, `sharedAccess.publicBaseUrl`
-(the host the invitations point to), `sharedAccess.publicPath` (default `/access/`).
+(the host the invitations point to), `sharedAccess.publicPath` (default `/access/`). The per-house
+secret the link tokens are derived from, `sharedAccess.linkSecret`, is never returned by
+`GET /api/v1/settings` and cannot be written through `PUT /api/v1/settings`.
 
 ### Owner routes (admin only, reads included)
 
@@ -545,16 +550,17 @@ for the whole internet. Served twice, under `/api/v1/shared-access/public/*` and
 `/access/api/*`, so an alias host rewriting everything to `/access/` needs no second rule. The
 phone's token is sent as `Authorization: Bearer <token>`.
 
-| Method | Path       | Description                                                                                                                                                     |
-| ------ | ---------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `POST` | `/enrol`   | `{ code }` or `{ link }` → `{ token, session }`. `401 unknown_code`, `410 ended`, `429 too_many`.                                                               |
-| `GET`  | `/session` | `{ label, status, gates, activeAt, nextOpeningAt, validUntil, travelS, presses }` — never the gate's state; `presses` are this phone's own. `401` when unknown. |
-| `POST` | `/open`    | `{ gate }` → `{ ok: true }`, or `409 { ok: false, reason, activeAt?, nextOpeningAt? }`.                                                                         |
-| `GET`  | `/share`   | `{ url, qr }` — the invitation link and its QR code as a `data:image/svg+xml` URI. `409 ended`, `409 no_public_url`, `401` when unknown.                        |
+| Method | Path       | Description                                                                                                                                                       |
+| ------ | ---------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `POST` | `/enrol`   | `{ code }` or `{ link }` → `{ token, session }`. `401 unknown_code`, `410 ended`, `429 too_many`, `409 too_many_phones` (50 phones already set up on the access). |
+| `GET`  | `/session` | `{ label, status, gates, activeAt, nextOpeningAt, validUntil, travelS, presses }` — never the gate's state; `presses` are this phone's own. `401` when unknown.   |
+| `POST` | `/open`    | `{ gate }` → `{ ok: true }`, or `409 { ok: false, reason, activeAt?, nextOpeningAt? }`.                                                                           |
+| `GET`  | `/share`   | `{ url, qr }` — the invitation link and its QR code as a `data:image/svg+xml` URI. `409 ended`, `409 no_public_url`, `401` when unknown.                          |
 
 A refusal `reason` is one of `revoked`, `suspended`, `not_yet`, `expired`, `outside_hours`,
 `no_gate`, `not_this_gate`, `refused_by_house` (the gate is disarmed), `too_many_opens` (12 per hour
-per access, 30 per hour per gate), `gate_error`.
+per access, 30 per hour per gate), `busy` (5 presses already wait on that gate), `gate_error` (the
+gate's order failed, or did not answer within 15 s).
 
 **Wrong codes.** Only failures are counted, globally, and a correct code is never slowed. The first
 ten failures in ten minutes are answered at once, then 1 s, 2, 4, 8, up to 10 s; at most 32 answers

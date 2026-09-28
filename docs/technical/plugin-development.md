@@ -294,6 +294,21 @@ interface SharedAccessApi {
 - A replayed `upsert` changes nothing. A later one updates the label and the dates, never the gates,
   and never takes back what the owner widened.
 - Another plugin's accesses and profiles do not exist for yours.
+- **The owner's revocation wins over your feed.** An `upsert` on a stay the owner revoked throws
+  `revoked` and changes nothing. If the owner deleted the access, Sowel keeps a tombstone for your
+  `externalId` (for a year), so replaying that stay also throws `revoked` and creates nothing. Tell
+  your users the key was withdrawn in Sowel; do not retry under a new `externalId`.
+
+Every error is a `SharedAccessError` carrying a `code` (and the `statusCode` the owner's API
+would use):
+
+| `code`               | Class                       | When                                                                     |
+| -------------------- | --------------------------- | ------------------------------------------------------------------------ |
+| `disabled`           | `SharedAccessDisabledError` | The owner has the feature off. Nothing is created.                       |
+| `unknown_profile`    | `UnknownProfileError`       | The profile (or the default one) is not granted to your plugin.          |
+| `profile_incomplete` | `ProfileIncompleteError`    | The profile lists no gate yet. Nothing is created; retry later.          |
+| `no_end`             | `NoEndError`                | `until` is missing: a plugin's key always ends.                          |
+| `revoked` (409)      | `SharedAccessError`         | The owner revoked or deleted this stay's access. Nothing is (re)created. |
 
 ```typescript
 if (deps.sharedAccess) {

@@ -260,6 +260,22 @@ interface SharedAccessApi {
 - Un `upsert` rejoué ne change rien. Un suivant met à jour le nom et les dates, jamais les portails,
   et ne reprend jamais ce que le propriétaire a élargi.
 - Les accès et profils d'un autre plugin n'existent pas pour le vôtre.
+- **La révocation du propriétaire l'emporte sur votre flux.** Un `upsert` sur un séjour que le
+  propriétaire a révoqué lève `revoked` et ne change rien. Si le propriétaire a supprimé l'accès,
+  Sowel garde une pierre tombale pour votre `externalId` (un an), si bien que rejouer ce séjour lève
+  aussi `revoked` et ne crée rien. Dites à vos utilisateurs que la clé a été retirée dans Sowel ; ne
+  réessayez pas sous un nouvel `externalId`.
+
+Chaque erreur est une `SharedAccessError` qui porte un `code` (et le `statusCode` HTTP qu'utiliserait
+l'API du propriétaire) :
+
+| `code`               | Classe                      | Quand                                                                            |
+| -------------------- | --------------------------- | -------------------------------------------------------------------------------- |
+| `disabled`           | `SharedAccessDisabledError` | Le propriétaire a désactivé la fonctionnalité. Rien n'est créé.                  |
+| `unknown_profile`    | `UnknownProfileError`       | Le profil (ou le profil par défaut) n'est pas accordé à votre plugin.            |
+| `profile_incomplete` | `ProfileIncompleteError`    | Le profil ne liste encore aucun portail. Rien n'est créé ; réessayez plus tard.  |
+| `no_end`             | `NoEndError`                | `until` manque : la clé d'un plugin a toujours une fin.                          |
+| `revoked` (409)      | `SharedAccessError`         | Le propriétaire a révoqué ou supprimé l'accès de ce séjour. Rien n'est (re)créé. |
 
 ```typescript
 if (deps.sharedAccess) {

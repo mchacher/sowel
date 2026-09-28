@@ -53,14 +53,19 @@ R9 (see _Consumers_).
 
 1. A core setting `sharedAccess.enabled`, **false by default**, turned on and off in Settings by an
    admin. Audit-logged.
-2. While it is off: no navigation entry, no card on equipment pages, every shared-access API route
-   and the public page answer **404** — the same 404 as an unknown route, so the feature cannot be
-   probed from outside. The data is kept; turning it back on restores everything as it was.
+2. While it is off: no navigation entry, no card on equipment pages, and every shared-access
+   surface answers **exactly what an unknown route answers**, so the feature cannot be probed from
+   outside. The owner's routes and the public page (`/access/*`) answer **404**. The public API
+   (`/api/v1/shared-access/public/*`) answers an anonymous caller **401**, because that is what any
+   unknown `/api` route answers to an anonymous caller (the auth middleware's answer): a 404 there
+   would tell this build apart from one without shared access. With a `Bearer` header, the answer
+   is the auth middleware's own, the same as on any unknown `/api` route. The data is kept; turning
+   it back on restores everything as it was.
 
 ### R2 — Gates
 
 3. **Any `gate` equipment of the house can be listed on an access** — from the shared-access page
-   (« + portail ») or from the gate's own page (R8). Nothing is turned on per gate. The server checks
+   (« Créer un accès », R7.27) or from the gate's own page (R8). Nothing is turned on per gate. The server checks
    the type (`unsupported_equipment`); other types are a later decision, one type at a time.
 4. Each gate carries an **armed switch**, on its own page and on its tab. Disarmed, a press is
    refused and the phone is told the house refused it; the accesses are kept. Disarming the garage
@@ -76,8 +81,16 @@ R9 (see _Consumers_).
 
 7. An access carries a **label** (required), **the gates it opens** (at least one, `no_gate`
    otherwise), and a **kind**: `manual` (made on the page) or `external` (made by a plugin, R9).
-8. **The link** carries a random token of its own, 128 bits: it cannot be guessed, and only its
-   SHA-256 is stored. **The code** is optional per access, on by default: eight characters of
+8. **The link** carries a token of its own, 128 bits and a little more: it cannot be guessed, and
+   only its SHA-256 is stored. The token is not random: it is **derived**,
+   `HMAC-SHA256(sharedAccess.linkSecret, "<accessId>:<linkVersion>")` cut to 22 base64url
+   characters, so that the owner can **copy the link again at any time** and a plugin can read its
+   invitation back, while the table keeps only the hash. `sharedAccess.linkSecret` is one random
+   secret per house, generated on first use and kept in the settings table; it is **never returned**
+   by `GET /api/v1/settings` and **cannot be written** through `PUT /api/v1/settings`, and it is out
+   of every plugin's settings scope. It **rides in the backup**: whoever holds a backup can rebuild
+   every live link, so a backup is to be kept like a key. « Change the code » (R3.9) bumps the link
+   version, which kills the old link. **The code** is optional per access, on by default: eight characters of
    Crockford base32 without I, L, O, U, shown `4K7M-9QT2`, compared with dashes, spaces and case
    stripped and those four letters folded onto what they are mistaken for. It is **unique among
    everything that can still open** — it identifies the access on its own. It is **kept in clear**:
@@ -104,7 +117,13 @@ R9 (see _Consumers_).
     the gate is one the access lists (`not_this_gate`) → the gate is armed (`refused_by_house`) →
     under the ceilings. **The decision comes first**: a refused press never reaches the gate.
 13. **Ceilings**: 12 opens per hour per access, 30 per hour per gate.
-14. Two presses of the same access within two seconds are one press. Presses queue per gate.
+14. Two presses of the same access within two seconds are one press. Presses queue per gate, and
+    a gate whose integration never answers must not hold every later press with its request open:
+    a gate order that has not answered within **15 s** ends as `gate_error`, and the queue moves
+    on; at most **5 presses wait** on one gate, past which a press is refused at once with
+    **`busy`**. The refusals a phone can be told are therefore: `revoked`, `suspended`, `not_yet`,
+    `expired`, `outside_hours`, `no_gate`, `not_this_gate`, `refused_by_house`, `too_many_opens`,
+    `busy` and `gate_error`.
 15. **The core sends the gate's command itself**, through `EquipmentManager.executeOrder`, so it
     inherits inversion (spec 154), value resolution (spec 150) and delivery confirmation (spec 141).
     The order carries a new `OrderSource` member, `{ kind: "shared_access", accessId, label }`, shown
@@ -125,7 +144,9 @@ R9 (see _Consumers_).
     (another host name rewriting to `/access/`) is supported: a public base URL and path set in
     Settings build the links.
 19. A phone keeps its **own token**; only its SHA-256 is stored. More than six phones on one access
-    raises an alarm — information, never a block. Nothing is asked of the visitor to name a phone:
+    raises an alarm — information, never a block below 50. At 50 phones a further enrolment is
+    refused (`too_many_phones`, 409): the ceiling keeps one leaked link from filling the phones
+    table and the journal. Nothing is asked of the visitor to name a phone:
     the owner sees each one as its platform, read from the browser, and a four-character tag
     drawn from its id — « iPhone · 7K3F » — with when it was set up and last seen, and can **cut
     one phone** on its own. A cut phone falls back to the code screen; the others keep opening.
@@ -150,8 +171,9 @@ R9 (see _Consumers_).
     short screen shrinks the disc. A gear opens **Réglages**: « Vos commandes » — this phone's last
     eight presses, the ones it made itself — and **« Partager cet accès »**, the invitation link as
     a QR code for a companion to scan, with « Copier le lien ». No code is shown on the page. The
-    QR code is drawn by the core, so the page carries no library; it is refused once the access
-    has ended, and while the house has no public address.
+    QR code is drawn by the core (`GET …/public/share`, with the backend's existing `qrcode`
+    dependency), so the page carries no library; it is refused once the access has ended, and
+    while the house has no public address.
 23. French on a phone set to French, **English on every other phone** — the phone's first
     language decides. Words assume no holiday let. Before a code is
     typed, the title names a door only if the house has one gate.
@@ -175,19 +197,29 @@ And what is seen before a code is known: ![](screenshots/visitor-code.png)
     failure like a wrong code. No code is ever locked: a live code tried is a success, and a code
     that matches nothing has nothing to lock. Per-visitor counting needs trusted-proxy
     configuration and is a separate spec.
-25. **Parallel guessing is bounded by a cap on held answers**: at most 32 failing answers are held
-    at once; past that, a failure is answered at once with `too_many` — still no success, and no
-    more sockets kept open. In front of the core, the reverse proxy's own quota (Caddy, CrowdSec)
-    bounds the request rate. The order of magnitude: a guesser needs about 2⁴⁰ tries against a
-    handful of live codes, and the owner is alerted from the 26th failure. An access without a
-    code (R3.8) offers nothing to guess.
+25. **Parallel guessing is bounded in front of the core, not by it.** At most 32 failing answers
+    are held at once; past that, a failure is answered at once with `too_many`. That keeps sockets
+    bounded, but the answer is still a verdict on a real guess, so the cap bounds sockets, not
+    tries. The rate of tries is bounded by the reverse proxy's own quota (Caddy, CrowdSec), which a
+    deployment exposing this page needs; the deployment guide says so. The order of magnitude: a
+    guesser needs about 2⁴⁰ tries against a handful of live codes, and the owner is alerted from
+    the 26th failure. An access without a code (R3.8) offers nothing to guess.
 
 ### R7 — The owner's page
 
 26. **« Accès partagés » in the main navigation**, after Analyse — used day to day, not configured
     once. Admin-only.
-27. **A tab per gate** listed on at least one access, « Tous » once there are two, « + portail »
-    (picks a gate and opens a new access on it). On « Tous » each line says which gates it opens.
+27. **A tab per gate** listed on at least one access, « Tous » once there are two, « Profils »
+    last (R9.32). A **« Créer un accès »** button stands next to the tabs, not as a tab: on a gate's
+    tab it creates an access on that gate; with a single gate in the house, on that gate; otherwise
+    it asks for the gate first. On « Tous » each line says which gates it opens.
+
+    **The invitation is shown as a QR code** wherever it is handed over — in the editor, after a
+    creation, after a code change — beside the link and the code, so the owner can have a phone
+    scan it from the screen. The QR code is drawn **in the browser** by the `qrcode` package, a new
+    runtime dependency of the UI: it is small, needs no network, and the link carries the access's
+    token, so it must never be sent to a third-party renderer.
+
 28. Each line: label, code, validity, hours, phones, last use; Sowel's icons for **copy the link**,
     **edit**, **hold / resume**, and **« ⋯ »** for change the code, this access's journal, revoke (or
     delete, once revoked or ended).
@@ -228,7 +260,12 @@ And what is seen before a code is known: ![](screenshots/visitor-code.png)
     tell its own users. The access opens inside the stay's dates **and** the profile's dates
     and hours, with the profile's gates, taken when it is created; the owner's widening and gate
     choices on the access are never taken back by a later update. **The end is enforced by the
-    core**, whether the plugin is running or not; a cancelled stay is revoked by the plugin. Taking
+    core**, whether the plugin is running or not; a cancelled stay is revoked by the plugin.
+    **The owner's revocation wins over the feed**: an upsert on a stay the owner revoked answers
+    the error `revoked` (409) and changes nothing, instead of a success the plugin would pass on
+    as a live invitation. An external access the owner **deleted** leaves a **tombstone** for its
+    `(pluginId, externalId)`, so a later upsert of the same stay also answers `revoked` and creates
+    nothing; tombstones are purged with the journal, after a year (R10.36). Taking
     a profile back from a plugin stops it creating accesses on it; the existing ones stay, under the
     owner's hand. A plugin sees and touches **only its own** accesses and profiles, and reads back
     the invitation (code and link) of each, to send it through its own channel.
@@ -238,7 +275,7 @@ And what is seen before a code is known: ![](screenshots/visitor-code.png)
 ### R10 — Housekeeping
 
 36. Codes nulled seven days after the access ended; journal lines kept a year, and at most the
-    latest 50 000.
+    latest 50 000; the tombstones of deleted external accesses (R9.34) kept a year.
 
 ## Consumers
 
@@ -261,13 +298,14 @@ And what is seen before a code is known: ![](screenshots/visitor-code.png)
 - Non-admin users managing accesses.
 - Equipment types other than `gate` (locks, doors): the model does not depend on the type, the
   offer does.
-- A QR code rendered by the core, SMS sending, guest accounts.
+- SMS or email sending by the core, guest accounts. (The QR codes of R5.22 and R7.27 are in scope.)
 - Days of the week on time windows.
 
 ## Acceptance criteria
 
-- [x] With the setting off, no entry, no card, and `/access/` and every route answer 404.
-- [x] Any `gate` equipment can be listed on an access, from « + portail » or from its page; a
+- [x] With the setting off, no entry, no card; `/access/` and the owner's routes answer 404, and
+      the public API answers an anonymous caller 401, like any unknown `/api` route.
+- [x] Any `gate` equipment can be listed on an access, from « Créer un accès » or from its page; a
       non-`gate` equipment is refused (`unsupported_equipment`); disarming one gate leaves the others.
 - [x] A correct code sets a phone up even after forty wrong codes, without delay.
 - [x] An access made without a code sets a phone up from its link alone; a wrong link token counts
@@ -282,6 +320,13 @@ And what is seen before a code is known: ![](screenshots/visitor-code.png)
       plugin and never from the plugin itself, and a later update keeps the owner's widening.
 - [x] A plugin's access without an end is refused (`no_end`); past its end it opens nothing, with
       the plugin stopped; a second stay of the same guest gets a new code and link.
+- [x] An upsert on a stay the owner revoked, or on one the owner deleted, answers `revoked` and
+      creates nothing.
+- [x] A gate order that does not answer within 15 s ends as `gate_error`; a sixth press waiting on
+      one gate is refused with `busy`.
+- [x] At 50 phones on one access, a further enrolment is refused (`too_many_phones`).
+- [x] The owner's « Créer un accès » creates on the gate of the open tab, on the only gate, or asks
+      for the gate; the invitation shows the link as a QR code drawn in the browser.
 - [x] A plugin's access naming no profile is made on the default profile; with the default profile
       listing no gate it is refused (`profile_incomplete`); the default profile cannot be deleted,
       any other can.

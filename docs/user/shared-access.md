@@ -25,14 +25,47 @@ The public address must reach Sowel from outside your home network — see
 
 !!! warning "Put a reverse proxy in front"
 The visitor's page is the one part of Sowel that answers without an account. Serve it over
-HTTPS only, and let your reverse proxy apply its own request quota.
+HTTPS only, and let your reverse proxy apply its own request quota (below).
+
+### A request quota at the reverse proxy { #reverse-proxy-quota }
+
+Exposing `/access/` publicly **requires a rate quota at your reverse proxy**. Sowel slows wrong
+codes down and caps how many wrong answers it holds at once, but it sees every visitor through the
+proxy's address, so it cannot count tries per visitor: only the proxy can. A minimal Caddy example,
+with the [caddy-ratelimit](https://github.com/mholt/caddy-ratelimit) module (build Caddy with
+`xcaddy build --with github.com/mholt/caddy-ratelimit`):
+
+```caddyfile
+{
+  order rate_limit before reverse_proxy
+}
+
+sowel.example.org {
+  @access path /access/* /api/v1/shared-access/public/*
+  rate_limit @access {
+    zone shared_access {
+      key    {remote_host}
+      events 30
+      window 1m
+    }
+  }
+  reverse_proxy localhost:3000
+}
+```
+
+30 requests a minute per address is plenty for a person at a gate. If Caddy itself sits behind
+another proxy or a tunnel, key on the visitor's real address instead of `{remote_host}` (behind
+Cloudflare, `{http.request.header.CF-Connecting-IP}`). A [CrowdSec](https://www.crowdsec.net/)
+bouncer on the proxy is a good complement: it bans the addresses that keep guessing.
 
 Once it is on, **Shared access** appears in the main menu, after Analyse.
 
 ## Creating an access
 
-On the **Shared access** page, press **+ gate** and pick the gate, or open a gate's page and press
-**Create an access** in its **Shared access** panel. Then:
+On the **Shared access** page, press **Create an access**, next to the tabs: on a gate's tab it
+creates the access on that gate, and with a single gate in the house on that one; otherwise it asks
+for the gate first. You can also open a gate's page and press **Create an access** in its
+**Shared access** panel. Then:
 
 - **Name** — who it is for: _Plumber_, _Léa_, _Neighbours_.
 - **Gates** — the gates it opens. Only `gate` equipments can be listed. When a gate's command has
@@ -44,7 +77,10 @@ On the **Shared access** page, press **+ gate** and pick the gate, or open a gat
   read out over the phone or shown on a sign. Untick it for someone who will only ever tap the link:
   the link carries a token of its own that cannot be guessed.
 
-Copy the link with the link icon on the line and send it however you like.
+Once the access is created, the invitation shows the link, the code and a **QR code** of the link,
+which a phone can scan straight from your screen; the same comes back after a code change and in
+the editor. The QR code is drawn by your browser: the link never leaves it. Later, copy the link
+with the link icon on the line and send it however you like.
 
 ## What the visitor sees
 
@@ -99,5 +135,9 @@ guest who comes back gets a new link and a new code.
 
 - A code is looked up before anything else, and a **correct code is never slowed down**. Wrong codes
   are answered more and more slowly past ten in ten minutes, and past 25 you are alerted.
-- More than six phones on one access raises an alert — information, never a block.
+- More than six phones on one access raises an alert — information, never a block below 50. At
+  50 phones, a further phone is refused.
+- Every link is derived from a secret kept in Sowel's settings, which ride in the backup: whoever
+  holds a backup can rebuild the live links. Keep backups like a key. **Change the code** kills an
+  access's old link.
 - Codes are erased seven days after their access ends.

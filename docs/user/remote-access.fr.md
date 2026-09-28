@@ -173,3 +173,4 @@ Assurez-vous d'utiliser un mot de passe fort pour votre compte admin Sowel. Tout
 - L'authentification JWT intégrée à Sowel protège tous les endpoints d'API
 - Envisagez d'ajouter des politiques [Cloudflare Access](https://developers.cloudflare.com/cloudflare-one/policies/access/) pour une couche d'authentification supplémentaire (par ex. codes uniques par email)
 - Des tokens d'API peuvent être créés depuis les Réglages pour des intégrations externes nécessitant un accès programmatique
+- Si vous exposez la page visiteur des [Accès partagés](shared-access.md) (`/access/`), mettez un quota de requêtes devant elle au reverse proxy (rate limit Caddy, CrowdSec) : voir [Un quota de requêtes au reverse proxy](shared-access.md#reverse-proxy-quota)

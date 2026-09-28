@@ -127,6 +127,7 @@ sowel/
 │   ├── notifications/           # Notification channels (Telegram, etc.)
 │   ├── ai/                      # LLM integration (Claude/OpenAI/Ollama) -- V1.0+
 │   ├── auth/                    # JWT + API tokens, middleware, first-run setup
+│   ├── shared-access/           # Accès partagés (spec 181) : codes et liens qui ouvrent un portail, page publique
 │   ├── users/                   # User CRUD, preferences
 │   ├── api/                     # Fastify server, WebSocket handler, route files
 │   │   ├── server.ts            # Server setup and route registration
@@ -304,6 +305,37 @@ Deux conséquences à connaître :
 - **Middleware d'auth** : tente d'abord le décodage JWT, puis le lookup de token d'API.
 - **Rôles** : `admin` > `standard` > `viewer` (permissions hiérarchiques).
 - **Setup au premier démarrage** : `POST /api/v1/auth/setup` crée le premier utilisateur admin.
+
+---
+
+## Accès partagés (spec 181)
+
+`src/shared-access/` permet à quelqu'un qui n'est pas utilisateur de Sowel d'ouvrir un équipement
+`gate` pour un temps, avec un code ou un lien. La fonctionnalité est à activer
+(`sharedAccess.enabled`, désactivée par défaut) ; tant qu'elle est désactivée, chaque surface répond
+comme une route inconnue.
+
+- **Un gestionnaire, trois appelants.** `SharedAccessManager` porte toutes les règles pour les routes
+  admin du propriétaire (`/api/v1/shared-access/*`), les routes anonymes qu'appelle la page du
+  visiteur (`/api/v1/shared-access/public/*`, servies aussi en `/access/api/*`) et le
+  `deps.sharedAccess` propre à chaque plugin (spec 181 R9). Aucun ne touche directement
+  `SharedAccessStore` (SQLite, migrations `035` et `036`).
+- **Décider, puis appuyer.** Un appui est d'abord décidé (révoqué, suspendu, validité, portail listé
+  et armé, plafonds), puis mis en file par portail (`gate-queue.ts` : double appui, délai de 15 s sur
+  l'ordre, 5 en attente au plus) et envoyé par `EquipmentManager.executeOrder` avec l'`OrderSource`
+  `{ kind: "shared_access" }` : inversion, résolution de valeur, confirmation de livraison et
+  attribution dans l'Activité viennent avec.
+- **La surface publique.** `guest-page.ts` sert la page du visiteur depuis des chaînes, en
+  `/access/` : pas la SPA, CSP stricte, `no-store`, aucun cookie. Seuls les échecs comptent dans un
+  budget anti-devinette global (`guessing.ts`) ; le débit d'essais par visiteur est l'affaire du
+  reverse proxy.
+- **Secrets.** Les codes sont gardés en clair à dessein (ils se dictent au téléphone). Les jetons de
+  lien dérivent du secret de la maison `sharedAccess.linkSecret`, que l'API des réglages ne renvoie
+  jamais ; les jetons de téléphone sont aléatoires. Seuls les hachés des jetons de lien et de
+  téléphone sont stockés.
+
+Détails : [spec 181](https://github.com/mchacher/sowel/tree/main/specs/181-shared-access),
+[guide utilisateur](../user/shared-access.md), [API](api-reference.md#shared-access-spec-181).
 
 ---
 

@@ -26,14 +26,49 @@ vers le chemin `/access/` de Sowel et réglez le chemin sur `/`.
 
 !!! warning "Mettez un reverse proxy devant"
 La page du visiteur est la seule partie de Sowel qui répond sans compte. Servez-la en HTTPS
-uniquement, et laissez votre reverse proxy appliquer son propre quota de requêtes.
+uniquement, et laissez votre reverse proxy appliquer son propre quota de requêtes (ci-dessous).
+
+### Un quota de requêtes au reverse proxy { #reverse-proxy-quota }
+
+Exposer `/access/` publiquement **exige un quota de requêtes au reverse proxy**. Sowel ralentit les
+codes faux et plafonne le nombre de réponses fausses qu'il retient à la fois, mais il voit chaque
+visiteur par l'adresse du proxy, donc il ne peut pas compter les essais par visiteur : seul le proxy
+le peut. Un exemple minimal pour Caddy, avec le module
+[caddy-ratelimit](https://github.com/mholt/caddy-ratelimit) (construisez Caddy avec
+`xcaddy build --with github.com/mholt/caddy-ratelimit`) :
+
+```caddyfile
+{
+  order rate_limit before reverse_proxy
+}
+
+sowel.example.org {
+  @access path /access/* /api/v1/shared-access/public/*
+  rate_limit @access {
+    zone shared_access {
+      key    {remote_host}
+      events 30
+      window 1m
+    }
+  }
+  reverse_proxy localhost:3000
+}
+```
+
+30 requêtes par minute et par adresse suffisent largement à une personne devant un portail. Si
+Caddy est lui-même derrière un autre proxy ou un tunnel, prenez comme clé l'adresse réelle du
+visiteur au lieu de `{remote_host}` (derrière Cloudflare, `{http.request.header.CF-Connecting-IP}`).
+Un bouncer [CrowdSec](https://www.crowdsec.net/) sur le proxy complète bien : il bannit les
+adresses qui s'acharnent à deviner.
 
 Une fois activée, **Accès partagés** apparaît dans le menu principal, après Analyse.
 
 ## Créer un accès
 
-Sur la page **Accès partagés**, appuyez sur **+ portail** et choisissez le portail, ou ouvrez la fiche
-d'un portail et appuyez sur **Créer un accès** dans son panneau **Accès partagés**. Puis :
+Sur la page **Accès partagés**, appuyez sur **Créer un accès**, à côté des onglets : sur l'onglet
+d'un portail, l'accès est créé sur ce portail, et s'il n'y a qu'un portail dans la maison, sur
+celui-là ; sinon, il demande d'abord le portail. Vous pouvez aussi ouvrir la fiche d'un portail et
+appuyer sur **Créer un accès** dans son panneau **Accès partagés**. Puis :
 
 - **Nom** — pour qui : _Plombier_, _Léa_, _Voisins_.
 - **Portails** — ceux qu'il ouvre. Seuls les équipements `gate` peuvent être listés. Quand la
@@ -45,7 +80,10 @@ d'un portail et appuyez sur **Créer un accès** dans son panneau **Accès parta
   dicté au téléphone ou affiché dans une entrée. Décochez-le pour quelqu'un qui ne fera que cliquer
   le lien : le lien porte un jeton à lui, impossible à deviner.
 
-Copiez le lien avec l'icône de lien sur la ligne et envoyez-le comme vous voulez.
+Une fois l'accès créé, l'invitation montre le lien, le code et un **QR code** du lien, qu'un
+téléphone peut scanner directement sur votre écran ; on les retrouve après un changement de code et
+dans l'éditeur. Le QR code est dessiné par votre navigateur : le lien n'en sort pas. Plus tard,
+copiez le lien avec l'icône de lien sur la ligne et envoyez-le comme vous voulez.
 
 ## Ce que voit le visiteur
 
@@ -103,5 +141,9 @@ revient reçoit un nouveau lien et un nouveau code.
 - Un code est cherché avant toute chose, et **un code juste n'est jamais ralenti**. Les codes faux
   sont répondus de plus en plus lentement au-delà de dix en dix minutes, et au-delà de 25 vous êtes
   alerté.
-- Plus de six téléphones sur un même accès lève une alerte — une information, jamais un blocage.
+- Plus de six téléphones sur un même accès lève une alerte — une information, jamais un blocage
+  en dessous de 50. À 50 téléphones, un téléphone de plus est refusé.
+- Chaque lien dérive d'un secret gardé dans les réglages de Sowel, qui voyagent dans le backup :
+  qui détient un backup peut reconstruire les liens en cours. Gardez vos backups comme une clé.
+  **Changer le code** tue l'ancien lien d'un accès.
 - Les codes sont effacés sept jours après la fin de leur accès.

@@ -32,7 +32,8 @@ in all three at once.
 | `validity.ts`              | The window in force, the decision (R4.12), what the owner may write                                 |
 | `codes.ts`                 | The code alphabet and folding, the link and phone tokens and their hashes                           |
 | `guessing.ts`              | The failure budget, the held answer, the cap on answers held at once, the alert (R6)                |
-| `gate-queue.ts`            | Per-gate queue and double-press window (R4.14)                                                      |
+| `phones.ts`                | How the owner tells phones apart: platform from the user agent, a tag drawn from the id (R5.19)     |
+| `gate-queue.ts`            | Per-gate queue, double-press window, 15 s order timeout, at most 5 presses waiting (R4.14)          |
 | `guest-page.ts`            | The public page's HTML, CSS, JS and manifest, as strings — including the pull-to-open disc (R5.20)  |
 | `plugin-api.ts`            | `deps.sharedAccess`, scoped to the calling plugin (R9)                                              |
 
@@ -151,11 +152,19 @@ are the hashed secrets.
 
 **How the link can be shown again.** The owner copies an access's link from its line at any time,
 and a plugin reads its invitation back — so the raw token must be recoverable, while R3.8 stores
-only its hash. The token is therefore derived, `HMAC-SHA256(secret, accessId:linkVersion)` cut to 22
-URL-safe characters, from a per-house secret kept in the setting `sharedAccess.linkSecret`
-(generated on first use; out of every plugin's settings scope).
-The table keeps `link_token_hash` for the lookup; « Change the code » bumps `link_version`, which
-changes the token.
+only its hash. The token is therefore derived, not random:
+`HMAC-SHA256(sharedAccess.linkSecret, "<accessId>:<linkVersion>")` sliced to 22 base64url
+characters (`deriveLinkToken` in `codes.ts`), from a per-house secret generated on first use. The
+secret lives in the `settings` table but is **never returned** by `GET /api/v1/settings`, **cannot
+be written** through `PUT /api/v1/settings`, and is out of every plugin's settings scope. It rides
+in the backup like every setting, so **a backup can rebuild every live link**: it is to be kept
+like a key. The table keeps `link_token_hash` for the lookup; « Change the code » bumps
+`link_version`, which changes the token and kills the old link.
+
+`migrations/036_shared_access_tombstones.sql` adds `shared_access_tombstones (plugin_id,
+external_id, deleted_at)`: deleting an external access keeps its key, so a later upsert of the same
+stay answers `revoked` instead of creating a fresh access (R9.34). Purged with the journal, after a
+year. The same migration indexes the journal by gate and by access for the ceilings of R4.13.
 
 ## Events
 
@@ -168,7 +177,7 @@ Activity feed names the access without a lookup and keeps naming it once the acc
 
 ## API
 
-Admin (`/api/v1/shared-access`, 404 while disabled):
+Admin (`/api/v1/shared-access`, 404 while disabled, like an unknown route):
 
 | Method | Path                                    |                                                                                                 |
 | ------ | --------------------------------------- | ----------------------------------------------------------------------------------------------- |
@@ -186,10 +195,16 @@ Admin (`/api/v1/shared-access`, 404 while disabled):
 | PATCH  | `/profiles/:id`                         | same fields                                                                                     |
 | DELETE | `/profiles/:id`                         | the accesses made from it keep their gates                                                      |
 
-Public (`/api/v1/shared-access/public`, no session, added to `isPublicRoute`, 404 while disabled;
+Public (`/api/v1/shared-access/public`, no session, added to `isPublicRoute`; while disabled it
+answers an anonymous caller 401, which is what any unknown `/api` route answers to one, and with a
+`Bearer` header the auth middleware's own answer, so the build cannot be told apart from one
+without shared access;
 the same handlers are also served under the page as `/access/api/*`, which the page calls by a
 relative path so that an alias host rewriting everything to `/access/` needs no second rule):
-`POST /enrol { code } | { link }`, `GET /session`, `POST /open { gate }` — the phone's token as a bearer.
+`POST /enrol { code } | { link }`, `GET /session`, `POST /open { gate }`, `GET /share` (the
+invitation link and its QR code, drawn server-side with the backend's existing `qrcode`
+dependency) — the phone's token as a bearer. An enrolment on an access that already has 50 phones
+answers `409 too_many_phones` (R5.19).
 Failures are held back per R6 before they are answered, never the request before it is handled.
 
 Static: `GET /access/`, `/access/app.js`, `/access/style.css`, `/access/manifest.webmanifest`,
@@ -228,21 +243,31 @@ interface SharedAccessApi {
 
 Throws `SharedAccessDisabledError` while the setting is off, `UnknownProfileError` for a profile not
 granted to this plugin, `ProfileIncompleteError` while the profile lists no gate, `NoEndError`
-without `until`. Scoped: another plugin's accesses and profiles do not exist for this one.
+without `until`, and a `SharedAccessError` with code `revoked` (409) on a stay the owner revoked,
+or deleted (the tombstone of R9.34). Scoped: another plugin's accesses and profiles do not exist for this one.
 
 ## UI
 
-| File                                                 |                                                                                     |
-| ---------------------------------------------------- | ----------------------------------------------------------------------------------- |
-| `ui/src/pages/SharedAccessPage.tsx`                  | the page (tabs, lines, menu, dialogs)                                               |
-| `ui/src/components/shared-access/*`                  | line, editor, date-time picker, add-gate dialog, change-code dialog, profile editor |
-| `ui/src/components/equipments/SharedAccessPanel.tsx` | R8, mounted beside `GateConfirmationPanel`                                          |
-| `ui/src/pages/SettingsPage.tsx`                      | the opt-in switch and the public address                                            |
-| Sidebar / mobile drawer                              | the entry, shown only while enabled                                                 |
+| File                                                 |                                                                                                              |
+| ---------------------------------------------------- | ------------------------------------------------------------------------------------------------------------ |
+| `ui/src/pages/SharedAccessPage.tsx`                  | the page (tabs, lines, menu, dialogs)                                                                        |
+| `ui/src/components/shared-access/*`                  | line, editor, date-time picker, gate picker, change-code dialog, profile editor, invitation with its QR code |
+| `ui/src/components/equipments/SharedAccessPanel.tsx` | R8, mounted beside `GateConfirmationPanel`                                                                   |
+| `ui/src/pages/SettingsPage.tsx`                      | the opt-in switch and the public address                                                                     |
+| Sidebar / mobile drawer                              | the entry, shown only while enabled                                                                          |
+
+« Créer un accès » stands next to the tabs (R7.27): on a gate's tab it creates on that gate, with a
+single gate in the house on it, otherwise it opens the gate picker first.
+
+The invitation (`Invitation.tsx`: editor, after creation, after a code change) draws the link as a
+QR code in the browser with the `qrcode` package, the one new runtime dependency of the UI: small,
+no network, and the link carries the access's token, so it must never go to a third-party
+renderer.
 
 EN/FR strings in the locale files, like every other page.
 
 ## Shutdown
 
 Pending held answers and queued presses are released with `gate_error`; nothing is persisted from
-them. No timer survives.
+them. No timer survives. The same `gate_error` ends a press whose gate order has not answered within
+15 s, and a press finding 5 already waiting on its gate is refused with `busy` (R4.14).

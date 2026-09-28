@@ -173,3 +173,4 @@ Make sure you use strong passwords for your Sowel admin account. Anyone with the
 - Sowel's built-in JWT authentication protects all API endpoints
 - Consider adding [Cloudflare Access](https://developers.cloudflare.com/cloudflare-one/policies/access/) policies for an additional layer of authentication (e.g., email-based one-time codes)
 - API tokens can be created from Settings for external integrations that need programmatic access
+- If you expose the [Shared access](shared-access.md) visitor page (`/access/`), put a request quota in front of it at your reverse proxy (Caddy rate limit, CrowdSec): see [A request quota at the reverse proxy](shared-access.md#reverse-proxy-quota)
