@@ -17,6 +17,7 @@ import { ModeForm } from "../components/modes/ModeForm";
 import type { ModeWithDetails, EquipmentWithDetails, ZoneModeImpactAction, CalendarSlot, ButtonActionBinding } from "../types";
 import { useWsSubscription } from "../hooks/useWsSubscription";
 import { flattenZonesWithPath } from "../lib/zone-path";
+import { brightnessPercent, brightnessScale } from "../lib/brightness";
 
 export function ModeDetailPage() {
   useWsSubscription(["modes"]);
@@ -303,8 +304,8 @@ function ImpactActionRow({
         const on = action.value === "ON" || action.value === true;
         detail = on ? "ON" : "OFF";
       } else if (action.orderAlias === "brightness") {
-        const max = eq.orderBindings.find((o) => o.alias === "brightness")?.max ?? 254;
-        detail = `${t("controls.brightness")} ${Math.round((Number(action.value) / max) * 100)}%`;
+        const scale = brightnessScale(eq.orderBindings.find((o) => o.alias === "brightness"));
+        detail = `${t("controls.brightness")} ${brightnessPercent(Number(action.value), scale)}%`;
       }
     } else if (action.orderAlias === "state" && (action.value === "ON" || action.value === "OFF")) {
       detail = action.value as string;

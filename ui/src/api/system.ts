@@ -79,6 +79,8 @@ export async function restoreLocalBackup(filename: string): Promise<{
   filesRestored: number;
   /** Entries the restore refused: unlisted extension, symlink, path escape. */
   filesSkipped: number;
+  /** Backup keys the running schema has no column for; not restored (#939). */
+  columnsSkipped: { table: string; columns: string[] }[];
   restartRequired: boolean;
 }> {
   return fetchJSON(`${API_BASE}/backup/restore-local`, {

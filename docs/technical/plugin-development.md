@@ -859,9 +859,8 @@ When your plugin detects devices (from an API, MQTT, or local scan), register th
 ```typescript
 deviceManager.upsertFromDiscovery(
   integrationId: string,     // Your plugin ID (e.g. "weather-forecast")
-  source: DeviceSource,      // Closed union, not free text: zigbee2mqtt | lora2mqtt | tasmota |
-                             // esphome | shelly | custom_mqtt | panasonic_cc | mcz_maestro | netatmo_hc.
-                             // Use "custom_mqtt" rather than claiming a transport you do not speak.
+  source: DeviceSource,      // Where the device came from: typically your plugin ID. An open union
+                             // (issue #937): the listed values are the ones the core has labels for.
   discovered: DiscoveredDevice,
 ): void;
 ```
@@ -888,7 +887,8 @@ interface DiscoveredDevice {
     type: string; // Value type: "boolean" | "number" | "enum" | "text"
     category?: string; // Order category — how bindings resolve this order (spec 110)
     min?: number; // For numeric orders: minimum value
-    max?: number; // For numeric orders: maximum value
+    max?: number; // For numeric orders: maximum value. A set_brightness order's min/max is
+    //               the dimmer's scale in the UI; Zigbee's 0–254 only when none is declared (#933)
     enumValues?: string[]; // For enum orders: allowed values
     unit?: string; // Unit (e.g. "C")
     valueOn?: string | number | boolean; // For boolean orders: wire value for true (e.g. "ON")

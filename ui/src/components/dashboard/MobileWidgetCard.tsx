@@ -30,6 +30,8 @@ import { solarWidgetState } from "./solarWidget";
 import { resolvePowerReading } from "../../lib/power-reading";
 import { pickLivePowerBinding } from "../../lib/energy-meter-display";
 import { formatRelative } from "../../lib/format-relative";
+import { brightnessPercent, brightnessScale } from "../../lib/brightness";
+import { findOrderByCategory } from "../equipments/bindingUtils";
 import {
   parseForecastDays,
   CONDITION_ICONS,
@@ -159,9 +161,13 @@ function useMobileState(
     const brightness = equipment.dataBindings.find(
       (b) => b.alias === "brightness" || b.category === "light_brightness",
     );
+    // Issue #933 — the dimmer's declared range; Zigbee's only when none is declared.
+    const scale = brightnessScale(
+      findOrderByCategory(equipment.orderBindings, ["set_brightness"], ["brightness"]),
+    );
     const pct =
       brightness && typeof brightness.value === "number"
-        ? Math.round((brightness.value / 254) * 100)
+        ? brightnessPercent(brightness.value, scale)
         : null;
     const isDimmable = equipment.type === "light_dimmable" || equipment.type === "light_color";
     return {

@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { isRelevantData, isRelevantOrder, resolveAlias } from "./bindingUtils";
+import { isRelevantData, isRelevantOrder, resolveAlias, ORDER_CATEGORY_ALIASES } from "./bindingUtils";
 import { findDataByCategory, findOrderByCategory } from "./bindingUtils";
 import { computeBindingPlan, computeMissingBindings } from "./bindingUtils";
 import type {
@@ -241,6 +241,28 @@ describe("gate equipment type relevance (blind single-button RTS gate)", () => {
   it("ignores unrelated orders", () => {
     expect(isRelevantOrder("position", "gate")).toBe(false);
     expect(isRelevantOrder("color", "gate")).toBe(false);
+  });
+});
+
+// Issue #932 — every surface finds its power/command control by order alias.
+// Each row pins the alias a type's surfaces read against the category a
+// plugin declares, so a global remap cannot silently strip a control again
+// (it did twice: thermostat in spec 176, media_player here).
+describe("order aliases the surfaces read (issue #932)", () => {
+  // Through the real global map, with device keys that differ from the
+  // alias, so a change to ORDER_CATEGORY_ALIASES that strips a control fails
+  // here rather than on a freshly bound device.
+  it.each([
+    // [equipment type, device key, order category, alias read by the surfaces]
+    ["media_player", "switch", "toggle_power", "power"], // MediaPlayerPanel, widget
+    ["thermostat", "onoff", "toggle_power", "power"], // ThermostatCard, EquipmentWidget, detail sheet
+    ["gate", "relay_1", "toggle_power", "command"], // GateControl
+    ["gate", "relay_1", "light_toggle", "command"],
+    ["light_onoff", "relay_1", "light_toggle", "state"], // LightControl
+    ["light_dimmable", "level", "set_brightness", "brightness"],
+    ["shutter", "motor", "shutter_move", "state"],
+  ])("%s: a %s order declared %s resolves to %s", (type, key, category, alias) => {
+    expect(resolveAlias(key, type, ORDER_CATEGORY_ALIASES, category)).toBe(alias);
   });
 });
 

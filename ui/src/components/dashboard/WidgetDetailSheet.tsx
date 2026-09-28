@@ -54,6 +54,7 @@ import {
 import { CUSTOM_ICON_REGISTRY, customIconProps, shutterLevel } from "./widget-icons";
 import { BottomSheet } from "./BottomSheet";
 import { EQUIPMENT_ZONE_SEPARATOR } from "../../lib/zone-path";
+import { brightnessPercent, brightnessScale } from "../../lib/brightness";
 import { ForecastDetailContent } from "./ForecastDetailContent";
 
 // ============================================================
@@ -983,7 +984,6 @@ function LightDetailContent({
     ? brightnessBinding.value
     : null;
   const brightness = slider.displayValue(deviceBrightness);
-  const brightnessPct = brightness !== null ? Math.round((brightness / 254) * 100) : null;
 
   // Category-first resolver — see spec 110.
   const toggleBinding =
@@ -996,6 +996,9 @@ function LightDetailContent({
     ["set_brightness"],
     ["brightness"],
   );
+  // Issue #933 — the dimmer's declared range; Zigbee's only when none is declared.
+  const scale = brightnessScale(brightnessOrderBinding);
+  const brightnessPct = brightness !== null ? brightnessPercent(brightness, scale) : null;
 
   const handleToggle = async () => {
     if (executing || !toggleBinding) return;
@@ -1030,8 +1033,8 @@ function LightDetailContent({
         <div className="flex items-center gap-3">
           <input
             type="range"
-            min={0}
-            max={254}
+            min={scale.min}
+            max={scale.max}
             value={brightness}
             onPointerDown={slider.onStart}
             onChange={(e) => slider.onChange(Number(e.target.value))}

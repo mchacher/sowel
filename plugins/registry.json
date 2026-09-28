@@ -571,7 +571,7 @@
     "icon": "Sun",
     "author": "mchacher",
     "repo": "mchacher/sowel-recipe-water-heater-solar",
-    "version": "0.2.0",
+    "version": "0.3.0",
     "tags": ["water-heater", "solar", "energy", "surplus", "automation"],
     "i18n": {
       "fr": {
@@ -581,7 +581,7 @@
     },
     "sowelVersion": ">=1.52.0",
     "owner": "mchacher",
-    "sha256": "1a3457402124ac0dbb98a7130e0e73bf4e960777a3f1850cee3aedfcce89031d"
+    "sha256": "4500c9f5bbafc54bc3c0b9296c1bfedb605ea4b54fa406478facda27567e6805"
   },
   {
     "id": "nut",
@@ -611,10 +611,10 @@
     "icon": "House",
     "author": "mchacher",
     "repo": "mchacher/sowel-plugin-simulator",
-    "version": "0.4.0",
+    "version": "0.4.1",
     "tags": ["demo", "simulator", "showroom", "testing", "screenshots"],
     "sowelVersion": ">=1.68.0",
     "owner": "mchacher",
-    "sha256": "8c363cfd8af77a45b7d5bc013fef1425f751858b8e9c5ac900811c7ab9e2939c"
+    "sha256": "51f4b1fccb5c87c5bb1648fd8322cdddd551c3e72d56d7a55111b689fe1c3c5b"
   }
 ]

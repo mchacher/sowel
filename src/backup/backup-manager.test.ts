@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeEach, afterEach } from "vitest";
+import { describe, it, expect, beforeEach, afterEach, vi } from "vitest";
 import Database from "better-sqlite3";
 import { mkdirSync, mkdtempSync, rmSync, writeFileSync, readFileSync, existsSync } from "node:fs";
 import { resolve } from "node:path";
@@ -272,6 +272,128 @@ describe("BackupManager", () => {
         value: string;
       };
       expect(restored.value).toBe("before-restore");
+    });
+  });
+
+  describe("restoreFromBuffer — ragged tables (#939)", () => {
+    function buildZip(tables: Record<string, unknown[]>): Buffer {
+      const zip = new AdmZip();
+      const all = Object.fromEntries(BACKUP_TABLES.map((t) => [t, tables[t] ?? []]));
+      zip.addFile(
+        "sowel-backup.json",
+        Buffer.from(
+          JSON.stringify({ version: 2, exportedAt: new Date().toISOString(), tables: all }),
+        ),
+      );
+      return zip.toBuffer();
+    }
+
+    it("keeps a column the first row lacks", async () => {
+      await manager.restoreFromBuffer(
+        buildZip({
+          zones: [
+            { id: "z1", name: "Salon" },
+            { id: "z2", name: "Cuisine", description: "au sud", icon: "chef-hat" },
+          ],
+        }),
+      );
+
+      const rows = db.prepare(`SELECT id, description, icon FROM zones ORDER BY id`).all();
+      expect(rows).toEqual([
+        { id: "z1", description: null, icon: null },
+        { id: "z2", description: "au sud", icon: "chef-hat" },
+      ]);
+    });
+
+    it("gives a later row that lacks a key the column's DEFAULT, not NULL", async () => {
+      await manager.restoreFromBuffer(
+        buildZip({
+          zones: [
+            { id: "z1", name: "Salon", created_at: "2026-01-01 00:00:00" },
+            { id: "z2", name: "Cuisine" },
+          ],
+        }),
+      );
+
+      const rows = db.prepare(`SELECT id, created_at FROM zones ORDER BY id`).all() as {
+        id: string;
+        created_at: string | null;
+      }[];
+      expect(rows[0].created_at).toBe("2026-01-01 00:00:00");
+      expect(rows[1].created_at).not.toBeNull();
+    });
+
+    it("gives an explicit null on a NOT NULL column its DEFAULT", async () => {
+      await manager.restoreFromBuffer(
+        buildZip({ devices: [{ id: "d1", name: "Relais", source: null, status: "online" }] }),
+      );
+
+      expect(db.prepare(`SELECT source, status FROM devices`).get()).toEqual({
+        source: "zigbee2mqtt",
+        status: "online",
+      });
+    });
+
+    it("matches keys to columns case-insensitively, as SQLite does", async () => {
+      await manager.restoreFromBuffer(
+        buildZip({ zones: [{ ID: "z1", Name: "Salon", Description: "x" }] }),
+      );
+
+      expect(db.prepare(`SELECT id, name, description FROM zones`).get()).toEqual({
+        id: "z1",
+        name: "Salon",
+        description: "x",
+      });
+    });
+
+    it("reports and logs a key the schema does not have, instead of failing", async () => {
+      const warn = vi.fn();
+      const spyLogger = {
+        child: () => ({ info: vi.fn(), warn, error: vi.fn(), debug: vi.fn() }),
+      } as unknown as typeof logger;
+      const spied = new BackupManager({
+        db,
+        influxClient: stubInflux,
+        logger: spyLogger,
+        dataDir: tmpDir,
+      });
+
+      const result = await spied.restoreFromBuffer(
+        buildZip({ zones: [{ id: "z1", name: "Salon", from_the_future: 1 }] }),
+      );
+
+      expect(result.success).toBe(true);
+      expect(result.columnsSkipped).toEqual([{ table: "zones", columns: ["from_the_future"] }]);
+      expect(db.prepare(`SELECT name FROM zones`).all()).toEqual([{ name: "Salon" }]);
+      expect(warn).toHaveBeenCalledWith(
+        { table: "zones", columns: ["from_the_future"] },
+        expect.stringContaining("not restored"),
+      );
+    });
+
+    it("reports nothing skipped on a clean restore", async () => {
+      const result = await manager.restoreFromBuffer(
+        buildZip({ zones: [{ id: "z1", name: "Salon" }] }),
+      );
+      expect(result.columnsSkipped).toEqual([]);
+    });
+
+    it("refuses a row that is not an object, naming table and index, and rolls back", async () => {
+      db.prepare(`INSERT INTO zones (id, name) VALUES ('keep', 'Avant')`).run();
+
+      await expect(
+        manager.restoreFromBuffer(buildZip({ zones: [{ id: "z1", name: "Salon" }, "abc"] })),
+      ).rejects.toThrow("Backup table zones, row 1: not an object");
+      await expect(manager.restoreFromBuffer(buildZip({ zones: [null] }))).rejects.toThrow(
+        "Backup table zones, row 0: not an object",
+      );
+      expect(db.prepare(`SELECT id FROM zones`).all()).toEqual([{ id: "keep" }]);
+    });
+
+    it("refuses a row with no column the schema knows", async () => {
+      await expect(manager.restoreFromBuffer(buildZip({ zones: [{ nope: 1 }] }))).rejects.toThrow(
+        "Backup table zones, row 0: no column this schema knows",
+      );
     });
   });
 

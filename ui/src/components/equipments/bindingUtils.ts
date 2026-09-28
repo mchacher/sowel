@@ -344,7 +344,7 @@ const STANDARD_ALIASES: Record<string, Record<string, string>> = {
  * from the (plugin-specific) key name. Checked first; falls back to the
  * per-type key map above, then to the raw key.
  */
-const ORDER_CATEGORY_ALIASES: Record<string, string> = {
+export const ORDER_CATEGORY_ALIASES: Record<string, string> = {
   light_toggle: "state",
   toggle_power: "state",
   valve_toggle: "state",
@@ -408,6 +408,11 @@ const TYPE_CATEGORY_ALIASES: Partial<Record<EquipmentType, Record<string, string
     operation_mode: "operationMode",
     set_operation_mode: "operationMode",
   },
+  // Issue #932 — MediaPlayerPanel, the widget presentation and the compact
+  // card all drive power through the `power` order alias; the global map
+  // would alias a toggle_power order `state` and leave a freshly bound TV
+  // with no power button.
+  media_player: { toggle_power: "power" },
 };
 
 /**
