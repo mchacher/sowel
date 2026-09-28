@@ -4,6 +4,7 @@ import { Power } from "lucide-react";
 import type { EquipmentWithDetails } from "../../types";
 import { useSliderOverride } from "../../hooks/useSliderOverride";
 import { findOrderByCategory, findMainOnOffOrder } from "./bindingUtils";
+import { brightnessPercent, brightnessScale } from "../../lib/brightness";
 
 interface LightControlProps {
   equipment: EquipmentWithDetails;
@@ -46,6 +47,9 @@ export function LightControl({ equipment, onExecuteOrder, compact }: LightContro
   );
   const hasBrightness =
     !!brightnessOrderBinding && brightnessOrderBinding.type === "number";
+  // Issue #933 — the dimmer's declared range, 0–254 only when none is declared.
+  const scale = brightnessScale(brightnessOrderBinding);
+  const pct = brightness !== null ? brightnessPercent(brightness, scale) : 0;
 
   const handleToggle = async (e?: React.MouseEvent) => {
     e?.preventDefault();
@@ -78,8 +82,8 @@ export function LightControl({ equipment, onExecuteOrder, compact }: LightContro
           <div className="flex items-center gap-2">
             <input
               type="range"
-              min={0}
-              max={254}
+              min={scale.min}
+              max={scale.max}
               value={brightness}
               onPointerDown={(e) => { e.stopPropagation(); slider.onStart(); }}
               onChange={(e) => slider.onChange(Number(e.target.value))}
@@ -87,10 +91,10 @@ export function LightControl({ equipment, onExecuteOrder, compact }: LightContro
               onTouchEnd={handleBrightnessCommit}
               onClick={(e) => e.stopPropagation()}
               className="w-[48px] sm:w-[80px] slider-active"
-              style={{ "--fill-pct": `${(brightness / 254) * 100}%` } as React.CSSProperties}
+              style={{ "--fill-pct": `${pct}%` } as React.CSSProperties}
             />
             <span className="text-[11px] text-text-tertiary w-7 text-right tabular-nums">
-              {Math.round((brightness / 254) * 100)}%
+              {pct}%
             </span>
           </div>
         )}
@@ -142,18 +146,18 @@ export function LightControl({ equipment, onExecuteOrder, compact }: LightContro
           <span className="text-[12px] text-text-tertiary w-16">{t("controls.brightness")}</span>
           <input
             type="range"
-            min={0}
-            max={254}
+            min={scale.min}
+            max={scale.max}
             value={brightness}
             onPointerDown={slider.onStart}
             onChange={(e) => slider.onChange(Number(e.target.value))}
             onMouseUp={handleBrightnessCommit}
             onTouchEnd={handleBrightnessCommit}
             className="flex-1 slider-active"
-            style={{ "--fill-pct": `${(brightness / 254) * 100}%` } as React.CSSProperties}
+            style={{ "--fill-pct": `${pct}%` } as React.CSSProperties}
           />
           <span className="text-[12px] text-text-secondary w-10 text-right">
-            {Math.round((brightness / 254) * 100)}%
+            {pct}%
           </span>
         </div>
       )}

@@ -122,6 +122,13 @@ export type OrderCategory =
 // Device
 // ============================================================
 
+/**
+ * Where a device came from: the transport or integration that discovered it.
+ * A display and sort key, not a discriminant — nothing switches on it — so
+ * the union is open (issue #937): a plugin names its own source without a
+ * core change (apsystems, netatmo_weather, … already do). The listed values
+ * are the ones known to the core, for autocompletion and labels.
+ */
 export type DeviceSource =
   | "zigbee2mqtt"
   | "lora2mqtt"
@@ -131,7 +138,9 @@ export type DeviceSource =
   | "custom_mqtt"
   | "panasonic_cc"
   | "mcz_maestro"
-  | "netatmo_hc";
+  | "netatmo_hc"
+  | "simulator"
+  | (string & {});
 
 export type DeviceStatus = "online" | "offline" | "unknown";
 

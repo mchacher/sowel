@@ -7,6 +7,7 @@ import { useRecipes } from "../../store/useRecipes";
 import { setModeImpact, removeModeImpact } from "../../api";
 import type { ModeWithDetails, ZoneModeImpactAction, EquipmentWithDetails, OrderBindingWithDetails } from "../../types";
 import { recipeName } from "../../lib/recipe-i18n";
+import { brightnessPercent, brightnessScale } from "../../lib/brightness";
 
 interface ZoneModesSectionProps {
   zoneId: string;
@@ -374,8 +375,8 @@ function formatOrderLabel(
       return <>{name} → {on ? "ON" : "OFF"}</>;
     }
     if (action.orderAlias === "brightness") {
-      const max = eq.orderBindings.find((o) => o.alias === "brightness")?.max ?? 254;
-      return <>{name} → {t("controls.brightness")} {Math.round((Number(action.value) / max) * 100)}%</>;
+      const scale = brightnessScale(eq.orderBindings.find((o) => o.alias === "brightness"));
+      return <>{name} → {t("controls.brightness")} {brightnessPercent(Number(action.value), scale)}%</>;
     }
   }
 
@@ -632,6 +633,7 @@ function SmartOrderPicker({
   const stateOrder = orders.find((o) => o.alias === "state");
   const turnOnOrder = orders.find((o) => o.alias === "turn_on");
   const brightnessOrder = orders.find((o) => o.alias === "brightness");
+  const brightnessRange = brightnessScale(brightnessOrder);
   const positionOrder = orders.find((o) => o.alias === "position");
   const selectedOrder = orders.find((o) => o.alias === orderAlias);
 
@@ -695,7 +697,7 @@ function SmartOrderPicker({
       lightOptions.push({ alias: toggleAlias, val: offVal, label: "OFF" });
     }
     if (brightnessOrder) {
-      lightOptions.push({ alias: "brightness", val: String(brightnessOrder.max ?? 254), label: t("controls.brightness") });
+      lightOptions.push({ alias: "brightness", val: String(brightnessRange.max), label: t("controls.brightness") });
     }
     return (
       <div className="space-y-1.5">
@@ -714,14 +716,14 @@ function SmartOrderPicker({
           <div className="flex items-center gap-1.5">
             <input
               type="range"
-              min={brightnessOrder.min ?? 0}
-              max={brightnessOrder.max ?? 254}
+              min={brightnessRange.min}
+              max={brightnessRange.max}
               value={Number(orderValue) || 0}
               onChange={(e) => onChangeValue(e.target.value)}
               className="flex-1"
             />
             <span className="text-[10px] text-text-secondary tabular-nums w-7 text-right">
-              {Math.round((Number(orderValue) / (brightnessOrder.max ?? 254)) * 100)}%
+              {brightnessPercent(Number(orderValue), brightnessRange)}%
             </span>
           </div>
         )}

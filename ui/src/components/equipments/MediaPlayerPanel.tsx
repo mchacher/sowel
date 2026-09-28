@@ -2,6 +2,7 @@ import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import { Power, Monitor, Loader2 } from "lucide-react";
 import type { EquipmentWithDetails } from "../../types";
+import { findOrderByCategory } from "./bindingUtils";
 
 interface MediaPlayerPanelProps {
   equipment: EquipmentWithDetails;
@@ -20,7 +21,10 @@ export function MediaPlayerPanel({ equipment, onExecuteOrder }: MediaPlayerPanel
   const currentSource = typeof sourceBinding?.value === "string" ? sourceBinding.value : "—";
   const pictureMode = typeof pictureModeBinding?.value === "string" ? pictureModeBinding.value : null;
 
-  const hasPowerOrder = equipment.orderBindings.some((o) => o.alias === "power");
+  // Category first (#932): a TV bound while toggle_power was aliased `state`
+  // keeps that alias, and must still get its power button.
+  const powerOrder = findOrderByCategory(equipment.orderBindings, ["toggle_power"], ["power"]);
+  const hasPowerOrder = !!powerOrder;
   const hasSourceOrder = equipment.orderBindings.some((o) => o.alias === "input_source");
 
   const exec = async (alias: string, value: unknown) => {
@@ -45,7 +49,7 @@ export function MediaPlayerPanel({ equipment, onExecuteOrder }: MediaPlayerPanel
         <div className="flex items-center gap-4">
           {hasPowerOrder && (
             <button
-              onClick={() => exec("power", !isOn)}
+              onClick={() => powerOrder && exec(powerOrder.alias, !isOn)}
               disabled={executing !== null}
               className={`w-10 h-10 flex items-center justify-center rounded-[8px] transition-all cursor-pointer border ${
                 isOn
@@ -53,7 +57,7 @@ export function MediaPlayerPanel({ equipment, onExecuteOrder }: MediaPlayerPanel
                   : "border-border text-text-tertiary hover:border-primary/30 hover:text-primary"
               } disabled:opacity-40`}
             >
-              {executing === "power" ? (
+              {executing === powerOrder?.alias ? (
                 <Loader2 size={18} className="animate-spin" />
               ) : (
                 <Power size={18} strokeWidth={1.5} />

@@ -20,7 +20,9 @@ type DeviceSource =
   | "custom_mqtt"
   | "panasonic_cc"
   | "mcz_maestro"
-  | "netatmo_hc";
+  | "netatmo_hc"
+  | "simulator"
+  | (string & {}); // open: a plugin may name its own source (issue #937)
 
 type DeviceStatus = "online" | "offline" | "unknown";
 

@@ -192,6 +192,21 @@ describe("resolveWidgetPresentation", () => {
       off.dataBindings[0].value = false;
       expect(resolveWidgetPresentation(makeWidget(), off, t)!.state.primary).toBe("OFF");
     });
+
+    it("finds the power order by category, so a TV bound under alias `state` keeps its toggle (#932)", () => {
+      const tv = makeTv({
+        orderBindings: [
+          orderBinding({
+            alias: "state",
+            key: "power",
+            type: "boolean",
+            category: "toggle_power",
+            enumValues: undefined,
+          }),
+        ],
+      });
+      expect(toggleOf(resolveWidgetPresentation(makeWidget(), tv, t))).toMatchObject({ alias: "state" });
+    });
   });
 
   describe("pool_pump", () => {

@@ -729,7 +729,7 @@ Quand votre plugin détecte des devices (depuis une API, MQTT, ou un scan local)
 ```typescript
 deviceManager.upsertFromDiscovery(
   integrationId: string,     // Your plugin ID (e.g. "weather-forecast")
-  source: string,            // Device source identifier (typically your plugin ID)
+  source: string,            // Origine du device, typiquement l'ID de votre plugin (union ouverte, #937)
   discovered: DiscoveredDevice,
 ): void;
 ```
@@ -756,7 +756,8 @@ interface DiscoveredDevice {
     type: string; // Value type: "boolean" | "number" | "enum" | "text"
     category?: string; // Catégorie de l'ordre — c'est par elle que les liaisons se résolvent (spec 110)
     min?: number; // For numeric orders: minimum value
-    max?: number; // For numeric orders: maximum value
+    max?: number; // Ordres numériques : valeur maximale. Le min/max d'un ordre set_brightness est
+    //               l'échelle du variateur dans l'UI ; 0–254 (Zigbee) seulement s'il n'en déclare pas (#933)
     enumValues?: string[]; // For enum orders: allowed values
     unit?: string; // Unit (e.g. "C")
   }[];

@@ -11,6 +11,7 @@ import {
   isOnFromStateBinding,
   toggleValues,
 } from "./resolve-helpers";
+import { findOrderByCategory } from "../../equipments/bindingUtils";
 
 // Spec 149 (issue #325) — single source of truth for a widget type's
 // icon/state/controls. Returns null for types not yet migrated: callers fall
@@ -64,7 +65,8 @@ function resolveMediaPlayer(equipment: EquipmentWithDetails): WidgetPresentation
   const sourceBinding = equipment.dataBindings.find((b) => b.alias === "input_source");
   const on = powerBinding?.value === true;
   const source = typeof sourceBinding?.value === "string" ? sourceBinding.value : null;
-  const toggle = equipment.orderBindings.find((ob) => ob.alias === "power");
+  // Category first (#932): an older TV binding may carry the alias `state`.
+  const toggle = findOrderByCategory(equipment.orderBindings, ["toggle_power"], ["power"]);
   return {
     icon: (ctx) => (
       <Tv
