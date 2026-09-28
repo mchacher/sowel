@@ -8,6 +8,7 @@ export const INTEGRATION_LABELS: Record<string, string> = {
   esphome: "ESPHome",
   shelly: "Shelly",
   custom_mqtt: "MQTT",
+  simulator: "Simulateur",
 };
 
 /** Short labels for mobile / compact display. */
@@ -20,4 +21,5 @@ export const INTEGRATION_SHORT_LABELS: Record<string, string> = {
   esphome: "ESPHome",
   shelly: "Shelly",
   custom_mqtt: "MQTT",
+  simulator: "Simulateur",
 };

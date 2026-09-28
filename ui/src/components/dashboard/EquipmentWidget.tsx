@@ -41,6 +41,7 @@ import { resolvePowerReading } from "../../lib/power-reading";
 import { pickLivePowerBinding } from "../../lib/energy-meter-display";
 import { thermostatPowerStateBinding } from "../../lib/thermostat-state";
 import { formatRelative } from "../../lib/format-relative";
+import { brightnessPercent, brightnessScale } from "../../lib/brightness";
 import {
   LightBulbIcon,
   ShutterWidgetIcon,
@@ -312,7 +313,10 @@ function LightEquipmentWidget({
       ? brightnessBinding.value
       : null;
   const brightness = slider.displayValue(deviceBrightness);
-  const brightnessPct = brightness !== null ? Math.round((brightness / 254) * 100) : null;
+  // Issue #933 — the dimmer's declared range; Zigbee's only when none is declared.
+  const brightnessOrder = findOrderByCategory(equipment.orderBindings, ["set_brightness"], ["brightness"]);
+  const scale = brightnessScale(brightnessOrder);
+  const brightnessPct = brightness !== null ? brightnessPercent(brightness, scale) : null;
 
   const isDimmable = equipment.type === "light_dimmable" || equipment.type === "light_color";
 
@@ -355,8 +359,8 @@ function LightEquipmentWidget({
             <>
               <input
                 type="range"
-                min={0}
-                max={254}
+                min={scale.min}
+                max={scale.max}
                 value={brightness}
                 onPointerDown={slider.onStart}
                 onChange={(e) => slider.onChange(Number(e.target.value))}

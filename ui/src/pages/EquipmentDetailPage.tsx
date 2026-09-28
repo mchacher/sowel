@@ -288,14 +288,16 @@ export function EquipmentDetailPage() {
       )}
 
       {/* Header */}
-      <div className="flex items-start justify-between mb-4 sm:mb-8">
-        <div className="flex items-center gap-3">
-          <div className="w-10 h-10 rounded-[8px] bg-primary-light flex items-center justify-center text-primary">
+      {/* min-w-0 down the chain + wrap-anywhere: a long name with no spaces
+          (issue #950) wraps instead of widening the page on a phone. */}
+      <div className="flex items-start justify-between gap-3 mb-4 sm:mb-8">
+        <div className="flex items-center gap-3 min-w-0">
+          <div className="w-10 h-10 shrink-0 rounded-[8px] bg-primary-light flex items-center justify-center text-primary">
             {equipmentState.iconElement}
           </div>
-          <div>
+          <div className="min-w-0">
             <div className="flex items-center gap-3 flex-wrap">
-              <h1>
+              <h1 className="min-w-0 wrap-anywhere">
                 {equipment.name}
               </h1>
               {/* Spec 116: availability badge next to the equipment name */}
@@ -324,7 +326,7 @@ export function EquipmentDetailPage() {
           </div>
         </div>
         {isAdmin && (
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2 shrink-0">
           <button
             onClick={() => setShowEditForm(true)}
             className="flex items-center gap-1.5 p-2 sm:px-3 sm:py-2 text-[13px] font-medium text-text-secondary border border-border rounded-[6px] hover:bg-border-light transition-colors duration-150 cursor-pointer"

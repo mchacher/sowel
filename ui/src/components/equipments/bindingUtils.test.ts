@@ -244,6 +244,24 @@ describe("gate equipment type relevance (blind single-button RTS gate)", () => {
   });
 });
 
+// Issue #932 — every surface finds its power/command control by order alias.
+// Each row pins the alias a type's surfaces read against the category a
+// plugin declares, so a global remap cannot silently strip a control again
+// (it did twice: thermostat in spec 176, media_player here).
+describe("order aliases the surfaces read (issue #932)", () => {
+  it.each([
+    // [equipment type, device key, order category, alias read by the surfaces]
+    ["media_player", "power", "toggle_power", "power"], // MediaPlayerPanel, widget, compact card
+    ["thermostat", "power", "toggle_power", "power"], // ThermostatCard, EquipmentWidget, detail sheet
+    ["gate", "state", "toggle_power", "command"], // GateControl
+    ["gate", "state", "light_toggle", "command"],
+    ["light_onoff", "state", "light_toggle", "state"],
+    ["switch", "state", "toggle_power", "state"],
+  ])("%s: a %s order declared %s resolves to %s", (type, key, category, alias) => {
+    expect(resolveAlias(key, type, undefined, category)).toBe(alias);
+  });
+});
+
 describe("water_heater equipment type (spec 135)", () => {
   it("on/off relay state is relevant, so is optional temperature/power/energy", () => {
     expect(isRelevantData("light_state", "water_heater")).toBe(true);

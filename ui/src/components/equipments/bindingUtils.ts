@@ -408,6 +408,11 @@ const TYPE_CATEGORY_ALIASES: Partial<Record<EquipmentType, Record<string, string
     operation_mode: "operationMode",
     set_operation_mode: "operationMode",
   },
+  // Issue #932 — MediaPlayerPanel, the widget presentation and the compact
+  // card all drive power through the `power` order alias; the global map
+  // would alias a toggle_power order `state` and leave a freshly bound TV
+  // with no power button.
+  media_player: { toggle_power: "power" },
 };
 
 /**
