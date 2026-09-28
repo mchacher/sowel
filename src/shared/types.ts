@@ -1433,6 +1433,8 @@ export type SharedAccessRefusal =
   | "not_this_gate"
   | "refused_by_house"
   | "too_many_opens"
+  /** Too many presses already wait on this gate (R4.14). */
+  | "busy"
   | "gate_error";
 
 /** Where an access stands right now, for the owner's line. */
@@ -1523,6 +1525,40 @@ export interface SharedAccessJournalEntry {
   equipmentId: string | null;
   /** R5.19 — the phone's tag (`7K3F`) when a phone did it. */
   phoneTag: string | null;
+}
+
+/** What a plugin gets back for a stay (spec 181 R9). */
+export interface PluginInvitation {
+  id: string;
+  code: string | null;
+  invitationUrl: string | null;
+}
+
+/**
+ * Spec 181 R9 — `deps.sharedAccess`, created per plugin so the plugin id is
+ * bound, not passed. A plugin decides who and when; the owner's profiles decide
+ * what opens. It never names an equipment.
+ */
+export interface SharedAccessApi {
+  /** The profiles the owner granted to this plugin — names only, never the gates. */
+  profiles(): Array<{ id: string; name: string; isDefault: boolean; complete: boolean }>;
+  /**
+   * One stay, one key (R9.34). Idempotent on `externalId`, which names a stay,
+   * never a person. `from` / `until` are dates with their hour on the house's
+   * clock (`2026-10-03T16:00`) or ISO; `until` is required. Without
+   * `profileId`, the default profile is used.
+   */
+  upsert(
+    externalId: string,
+    input: { profileId?: string; label: string; from: string | null; until: string },
+  ): PluginInvitation;
+  revoke(externalId: string): void;
+  list(): Array<{
+    externalId: string;
+    state: SharedAccessStatus;
+    code: string | null;
+    invitationUrl: string | null;
+  }>;
 }
 
 /** R5.19 — one phone set up on an access, as the owner sees it. */

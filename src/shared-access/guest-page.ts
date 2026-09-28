@@ -241,6 +241,7 @@ export const GUEST_JS = `(function () {
       not_yet: "Not yet.", expired: "This access has ended.", outside_hours: "Outside the allowed hours.",
       no_gate: "No gate on this access.", not_this_gate: "This access does not open this gate.",
       refused_by_house: "The house refused the command.", too_many_opens: "Too many openings in the last hour.",
+      busy: "The gate is busy. Try again in a moment.",
       gate_error: "The gate did not take the command. Try again."
     }
   } : {
@@ -260,6 +261,7 @@ export const GUEST_JS = `(function () {
       not_yet: "Pas encore.", expired: "Cet accès est terminé.", outside_hours: "En dehors des heures autorisées.",
       no_gate: "Aucun portail sur cet accès.", not_this_gate: "Cet accès n'ouvre pas ce portail.",
       refused_by_house: "La maison a refusé la commande.", too_many_opens: "Trop d'ouvertures dans l'heure.",
+      busy: "Le portail est occupé. Réessayez dans un instant.",
       gate_error: "Le portail n'a pas pris la commande. Réessayez."
     }
   };

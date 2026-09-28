@@ -202,6 +202,14 @@ export class SharedAccessStore {
         `SELECT * FROM shared_access_journal
          WHERE phone_id = ? AND kind IN ('opened', 'refused') ORDER BY at DESC, id DESC LIMIT ?`,
       ),
+      insertTombstone: db.prepare(
+        `INSERT OR REPLACE INTO shared_access_tombstones (plugin_id, external_id, deleted_at)
+         VALUES (?, ?, ?)`,
+      ),
+      hasTombstone: db.prepare(
+        `SELECT 1 FROM shared_access_tombstones WHERE plugin_id = ? AND external_id = ?`,
+      ),
+      purgeTombstones: db.prepare(`DELETE FROM shared_access_tombstones WHERE deleted_at < ?`),
       opensOfAccess: db.prepare(
         `SELECT COUNT(*) AS n FROM shared_access_journal
          WHERE access_id = ? AND kind = 'opened' AND at >= ?`,
@@ -251,6 +259,15 @@ export class SharedAccessStore {
   insertAccess(row: AccessRow): void {
     this.stmts.insertAccess.run(row);
   }
+  /** One more opening, counted in SQL: two gates of one access press in parallel. */
+  countUse(id: string, at: number): void {
+    this.db
+      .prepare(
+        `UPDATE shared_accesses SET last_used_at = ?, use_count = use_count + 1 WHERE id = ?`,
+      )
+      .run(at, id);
+  }
+
   updateAccess(id: string, fields: Partial<AccessRow>): void {
     const keys = Object.keys(fields).filter((k) => ACCESS_MUTABLE.has(k as keyof AccessRow));
     if (keys.length === 0) return;
@@ -365,6 +382,15 @@ export class SharedAccessStore {
   phonePresses(phoneId: string, limit: number): JournalRow[] {
     return this.stmts.phonePresses.all(phoneId, limit) as JournalRow[];
   }
+  /** R9.34 — a deleted plugin access keeps its key, so the stay stays revoked. */
+  addTombstone(pluginId: string, externalId: string, at: number): void {
+    this.stmts.insertTombstone.run(pluginId, externalId, at);
+  }
+
+  hasTombstone(pluginId: string, externalId: string): boolean {
+    return this.stmts.hasTombstone.get(pluginId, externalId) !== undefined;
+  }
+
   opensOfAccessSince(accessId: string, since: number): number {
     return (this.stmts.opensOfAccess.get(accessId, since) as { n: number }).n;
   }
@@ -382,6 +408,7 @@ export class SharedAccessStore {
       const codes = this.stmts.nullEndedCodes.run({ before: opts.codesEndedBefore }).changes;
       const old = this.stmts.purgeJournalOld.run(opts.journalBefore).changes;
       const excess = this.stmts.purgeJournalExcess.run(opts.journalMax).changes;
+      this.stmts.purgeTombstones.run(opts.journalBefore);
       return { codes, journal: old + excess };
     });
   }

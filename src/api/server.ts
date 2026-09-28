@@ -390,7 +390,12 @@ export async function createServer(deps: ServerDeps) {
   });
   registerAuditRoutes(app, { auditLogger, logger });
   if (sharedAccessManager)
-    registerSharedAccessRoutes(app, { sharedAccessManager, userManager, logger });
+    registerSharedAccessRoutes(app, {
+      sharedAccessManager,
+      userManager,
+      authService,
+      logger,
+    });
   registerSystemRoutes(app, {
     versionChecker,
     updateManager,

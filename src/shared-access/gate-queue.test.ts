@@ -1,5 +1,11 @@
 import { describe, it, expect } from "vitest";
-import { GateQueue, GateQueueClosedError, DOUBLE_PRESS_MS } from "./gate-queue.js";
+import {
+  GateQueue,
+  GateQueueClosedError,
+  GateBusyError,
+  GateTimeoutError,
+  DOUBLE_PRESS_MS,
+} from "./gate-queue.js";
 
 describe("per-gate queue and double press (R4.14)", () => {
   it("counts two presses of the same key within two seconds as one", () => {
@@ -37,5 +43,24 @@ describe("per-gate queue and double press (R4.14)", () => {
     await expect(q.run("g1", async () => 1)).rejects.toBeInstanceOf(GateQueueClosedError);
     release();
     await running;
+  });
+
+  it("gives up on a gate that never answers, and runs the next press", async () => {
+    const q = new GateQueue(30, 5);
+    const hung = q.run("g1", () => new Promise<void>(() => {}));
+    const next = q.run("g1", async () => "next");
+    await expect(hung).rejects.toBeInstanceOf(GateTimeoutError);
+    await expect(next).resolves.toBe("next");
+  });
+
+  it("refuses at once past five presses waiting on one gate, never on another", async () => {
+    const q = new GateQueue(10_000, 5);
+    let release!: () => void;
+    const running = q.run("g1", () => new Promise<void>((r) => (release = r)));
+    const waiting = Array.from({ length: 5 }, () => q.run("g1", async () => {}));
+    await expect(q.run("g1", async () => {})).rejects.toBeInstanceOf(GateBusyError);
+    await expect(q.run("g2", async () => "ok")).resolves.toBe("ok");
+    release();
+    await Promise.all([running, ...waiting]);
   });
 });

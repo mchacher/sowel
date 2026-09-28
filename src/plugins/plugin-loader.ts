@@ -8,7 +8,7 @@ import type {
 } from "../integrations/integration-registry.js";
 import type { PluginManifest, PluginInfo } from "../shared/types.js";
 import type { PluginDeps, PluginFactory } from "../shared/plugin-api.js";
-import type { SharedAccessApi } from "../shared-access/plugin-api.js";
+import type { SharedAccessApi } from "../shared/types.js";
 import type { PackageManager, InstallOptions } from "../packages/package-manager.js";
 import {
   makeDeviceManagerProxy,

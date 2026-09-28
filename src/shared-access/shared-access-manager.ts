@@ -8,6 +8,7 @@ import type {
   SharedAccessGateInput,
   SharedAccessGateSummary,
   SharedAccessGateView,
+  PluginInvitation,
   SharedAccessJournalEntry,
   SharedAccessPhoneView,
   SharedAccessProfileView,
@@ -39,7 +40,7 @@ import {
 } from "./validity.js";
 import { GuessingBudget } from "./guessing.js";
 import { phonePlatform, phoneTag } from "./phones.js";
-import { GateQueue, GateQueueClosedError } from "./gate-queue.js";
+import { GateBusyError, GateQueue, GateQueueClosedError, GateTimeoutError } from "./gate-queue.js";
 import {
   SharedAccessStore,
   type AccessRow,
@@ -167,12 +168,6 @@ export type OpenResult =
       nextOpeningAt?: string;
     };
 
-export interface PluginInvitation {
-  id: string;
-  code: string | null;
-  invitationUrl: string | null;
-}
-
 interface ManagerDeps {
   db: Database.Database;
   eventBus: EventBus;
@@ -221,6 +216,12 @@ export class SharedAccessManager {
   private readonly queue = new GateQueue();
   private readonly phoneAlarms = new Set<string>();
   private readonly lastRefusal = new Map<string, { key: string; at: number }>();
+  /**
+   * Openings dispatched but not yet journaled, per access. Two gates of one
+   * access run in separate queues; without this, both could pass the
+   * per-access ceiling on the same count.
+   */
+  private readonly inFlight = new Map<string, number>();
   private readonly unsubscribes: (() => void)[] = [];
   private purgeTimer: NodeJS.Timeout | null = null;
   private pluginDirectory: () => { id: string; name: string }[] = () => [];
@@ -275,6 +276,11 @@ export class SharedAccessManager {
       }),
     );
     if (this.isEnabled()) this.ensureDefaultProfile();
+    // An alarm raised before a restart must still be resolvable after it.
+    for (const [accessId, n] of this.store.phoneCounts()) {
+      const row = this.store.getAccess(accessId);
+      if (n > PHONES_BEFORE_ALARM && row && row.revoked_at === null) this.phoneAlarms.add(accessId);
+    }
     this.purge();
     this.purgeTimer = setInterval(() => this.purge(), HOUR_MS);
     this.purgeTimer.unref?.();
@@ -733,20 +739,27 @@ export class SharedAccessManager {
       }
     } else {
       // R3.10 — an external access keeps its source's dates; the owner may
-      // widen them only: open earlier, extend later.
-      const early =
-        input.earlyOpenAt !== undefined
-          ? parseInstant(input.earlyOpenAt, "earlyOpenAt")
-          : row.early_open_at;
-      const extended =
-        input.extendedUntil !== undefined
-          ? parseInstant(input.extendedUntil, "extendedUntil")
-          : row.extended_until;
-      if (early !== null && row.source_from !== null && early > row.source_from) {
-        throw new SharedAccessError("shorten_refused", "Only an earlier opening is allowed");
+      // widen them only: open earlier, extend later. Only what this call sends
+      // is checked: a widening stored earlier that the source has since
+      // overtaken (guestFlow moved the departure past it) widens nothing any
+      // more, and is dropped rather than blocking every later edit.
+      let early = row.early_open_at;
+      if (input.earlyOpenAt !== undefined) {
+        early = parseInstant(input.earlyOpenAt, "earlyOpenAt");
+        if (early !== null && row.source_from !== null && early > row.source_from) {
+          throw new SharedAccessError("shorten_refused", "Only an earlier opening is allowed");
+        }
+      } else if (early !== null && row.source_from !== null && early >= row.source_from) {
+        early = null;
       }
-      if (extended !== null && row.source_until !== null && extended < row.source_until) {
-        throw new SharedAccessError("shorten_refused", "Only a later end is allowed");
+      let extended = row.extended_until;
+      if (input.extendedUntil !== undefined) {
+        extended = parseInstant(input.extendedUntil, "extendedUntil");
+        if (extended !== null && row.source_until !== null && extended < row.source_until) {
+          throw new SharedAccessError("shorten_refused", "Only a later end is allowed");
+        }
+      } else if (extended !== null && row.source_until !== null && extended <= row.source_until) {
+        extended = null;
       }
       fields.early_open_at = early;
       fields.extended_until = extended;
@@ -782,8 +795,10 @@ export class SharedAccessManager {
     this.assertEnabled();
     const row = this.getRow(id);
     if (row.revoked_at === null && row.suspended_at === null) {
-      this.store.updateAccess(id, { suspended_at: this.now() });
-      this.journal(row, "suspended", { actor });
+      this.store.transaction(() => {
+        this.store.updateAccess(id, { suspended_at: this.now() });
+        this.journal(row, "suspended", { actor });
+      });
       this.changed();
     }
     return this.getAccess(id);
@@ -793,8 +808,10 @@ export class SharedAccessManager {
     this.assertEnabled();
     const row = this.getRow(id);
     if (row.suspended_at !== null) {
-      this.store.updateAccess(id, { suspended_at: null });
-      this.journal(row, "resumed", { actor });
+      this.store.transaction(() => {
+        this.store.updateAccess(id, { suspended_at: null });
+        this.journal(row, "resumed", { actor });
+      });
       this.changed();
     }
     return this.getAccess(id);
@@ -804,8 +821,10 @@ export class SharedAccessManager {
     this.assertEnabled();
     const row = this.getRow(id);
     if (row.revoked_at === null) {
-      this.store.updateAccess(id, { revoked_at: this.now() });
-      this.journal(row, "revoked", { actor });
+      this.store.transaction(() => {
+        this.store.updateAccess(id, { revoked_at: this.now() });
+        this.journal(row, "revoked", { actor });
+      });
       this.resolvePhoneAlarm(row);
       this.changed();
     }
@@ -822,6 +841,9 @@ export class SharedAccessManager {
     }
     this.store.transaction(() => {
       this.journal(row, "deleted", { actor });
+      if (row.source_plugin && row.external_id) {
+        this.store.addTombstone(row.source_plugin, row.external_id, this.now());
+      }
       this.store.deleteAccess(id);
     });
     this.resolvePhoneAlarm(row);
@@ -897,11 +919,10 @@ export class SharedAccessManager {
       });
       if (gates.length === 1) {
         const { has, values } = this.commandValues(gates[0].id);
-        if (has) {
-          const value =
-            values.length <= 1
-              ? null
-              : JSON.stringify(values.includes("open") ? "open" : values[0]);
+        // A command with several values and no `open` is not guessed at:
+        // `close` or `stop` would not open. The owner picks the value then.
+        if (has && (values.length <= 1 || values.includes("open"))) {
+          const value = values.length <= 1 ? null : JSON.stringify("open");
           this.store.setProfileGates(id, [{ equipmentId: gates[0].id, value }]);
         }
       }
@@ -1025,15 +1046,18 @@ export class SharedAccessManager {
     const token = generatePhoneToken();
     const now = this.now();
     const phoneId = crypto.randomUUID();
-    this.store.insertPhone({
-      id: phoneId,
-      access_id: row.id,
-      token_hash: sha256(token),
-      first_seen_at: now,
-      last_seen_at: now,
-      user_agent: userAgent.slice(0, 300),
+    const enrolled = row;
+    this.store.transaction(() => {
+      this.store.insertPhone({
+        id: phoneId,
+        access_id: enrolled.id,
+        token_hash: sha256(token),
+        first_seen_at: now,
+        last_seen_at: now,
+        user_agent: userAgent.slice(0, 300),
+      });
+      this.journal(enrolled, "enrolled", { phone_id: phoneId });
     });
-    this.journal(row, "enrolled", { phone_id: phoneId });
     const phones = this.store.countPhones(row.id);
     if (phones > PHONES_BEFORE_ALARM && !this.phoneAlarms.has(row.id)) {
       this.phoneAlarms.add(row.id);
@@ -1042,7 +1066,9 @@ export class SharedAccessManager {
         alarmId: `shared-access:phones:${row.id}`,
         level: "warning",
         source: ALARM_SOURCE,
-        message: `Shared access « ${row.label} »: ${phones} phones set up`,
+        // No label: alarms reach every user's Activity feed, and a label is
+        // usually a person's name. The owner's page says which access it is.
+        message: `Shared access: ${phones} phones set up on one access`,
       });
     }
     this.changed();
@@ -1055,7 +1081,7 @@ export class SharedAccessManager {
       type: "system.alarm.resolved",
       alarmId: `shared-access:phones:${row.id}`,
       source: ALARM_SOURCE,
-      message: `Shared access « ${row.label} »: phones reset`,
+      message: "Shared access: phones back to normal on one access",
     });
   }
 
@@ -1130,8 +1156,10 @@ export class SharedAccessManager {
       (id) => !disarmed.has(id),
     );
     if (!decision.ok) return decision;
+    const opening = this.inFlight.get(access.id) ?? 0;
     if (
-      this.store.opensOfAccessSince(access.id, now - HOUR_MS) >= OPENS_PER_HOUR_PER_ACCESS ||
+      this.store.opensOfAccessSince(access.id, now - HOUR_MS) + opening >=
+        OPENS_PER_HOUR_PER_ACCESS ||
       this.store.opensOfGateSince(gateId, now - HOUR_MS) >= OPENS_PER_HOUR_PER_GATE
     ) {
       return { ok: false, reason: "too_many_opens" };
@@ -1160,9 +1188,13 @@ export class SharedAccessManager {
     try {
       await this.queue.run(gateId, async () => {
         // The press may have waited behind another one on this gate. What was
-        // decided before the wait is decided again: a revoke, a hold or a disarm
-        // made meanwhile stops it, and the openings the presses ahead of it made
-        // count against the ceilings.
+        // decided before the wait is decided again: the feature turned off, the
+        // phone cut, a revoke, a hold or a disarm made meanwhile stops it, and
+        // the openings the presses ahead of it made count against the ceilings.
+        if (!this.isEnabled() || !this.phoneOf(token)) {
+          refusal = { reason: "revoked" };
+          return;
+        }
         const fresh = this.store.getAccess(access.id);
         if (!fresh || fresh.revoked_at !== null) {
           refusal = { reason: "revoked" };
@@ -1173,22 +1205,32 @@ export class SharedAccessManager {
           refusal = check;
           return;
         }
-        const outcome = await this.equipments.executeOrder(
-          gateId,
-          "command",
-          parseValue(check.link.value),
-          source,
-        );
-        if (!outcome.success) {
-          error = outcome.error ?? "dispatch failed";
-          return;
+        this.inFlight.set(access.id, (this.inFlight.get(access.id) ?? 0) + 1);
+        try {
+          const outcome = await this.equipments.executeOrder(
+            gateId,
+            "command",
+            parseValue(check.link.value),
+            source,
+          );
+          if (!outcome.success) {
+            error = outcome.error ?? "dispatch failed";
+            return;
+          }
+          this.store.transaction(() => {
+            this.store.countUse(access.id, this.now());
+            this.journal(fresh, "opened", { equipment_id: gateId, phone_id: phone.id });
+          });
+        } finally {
+          const left = (this.inFlight.get(access.id) ?? 1) - 1;
+          if (left > 0) this.inFlight.set(access.id, left);
+          else this.inFlight.delete(access.id);
         }
-        const at = this.now();
-        this.store.updateAccess(access.id, { last_used_at: at, use_count: fresh.use_count + 1 });
-        this.journal(fresh, "opened", { equipment_id: gateId, phone_id: phone.id });
       });
     } catch (err) {
-      error = err instanceof GateQueueClosedError ? "shutting down" : (err as Error).message;
+      if (err instanceof GateBusyError) refusal = { reason: "busy" };
+      else if (err instanceof GateTimeoutError) error = "the gate did not answer in time";
+      else error = err instanceof GateQueueClosedError ? "shutting down" : (err as Error).message;
     }
     const refused = refusal as {
       reason: SharedAccessRefusal;
@@ -1300,8 +1342,24 @@ export class SharedAccessManager {
     if (stayUntil === null) throw new NoEndError();
     checkPeriod(stayFrom, stayUntil);
 
+    // R9.34 — a stay the owner revoked, or revoked and deleted, stays revoked:
+    // the plugin hears why, and nothing is created again.
+    const existing = this.store.getAccessByExternal(pluginId, externalId);
+    if (
+      (existing && existing.revoked_at !== null) ||
+      (!existing && this.store.hasTombstone(pluginId, externalId))
+    ) {
+      throw new SharedAccessError("revoked", "The owner revoked this stay's access", 409);
+    }
+
     let profile: ProfileRow | undefined;
-    if (input.profileId !== undefined && input.profileId !== null) {
+    if (existing) {
+      // An update keeps the access on the profile it was made on: another
+      // profile's dates must not re-clamp it, and a profile taken back from the
+      // plugin later must not block updates that revoke would still allow.
+      profile = existing.profile_id ? this.store.getProfile(existing.profile_id) : undefined;
+      if (!profile) throw new UnknownProfileError("This stay's profile no longer exists");
+    } else if (input.profileId !== undefined && input.profileId !== null) {
       profile =
         typeof input.profileId === "string" ? this.store.getProfile(input.profileId) : undefined;
       if (!profile || profile.plugin_id !== pluginId) throw new UnknownProfileError();
@@ -1329,9 +1387,7 @@ export class SharedAccessManager {
       );
     }
 
-    const existing = this.store.getAccessByExternal(pluginId, externalId);
     if (existing) {
-      if (existing.revoked_at !== null) return this.pluginInvitation(existing);
       const fields: Partial<AccessRow> = {
         label,
         source_from: sourceFrom,
@@ -1401,8 +1457,10 @@ export class SharedAccessManager {
     if (typeof externalId !== "string") return;
     const row = this.store.getAccessByExternal(pluginId, externalId);
     if (!row || row.revoked_at !== null) return;
-    this.store.updateAccess(row.id, { revoked_at: this.now() });
-    this.journal(row, "revoked", { actor: `plugin:${pluginId}` });
+    this.store.transaction(() => {
+      this.store.updateAccess(row.id, { revoked_at: this.now() });
+      this.journal(row, "revoked", { actor: `plugin:${pluginId}` });
+    });
     this.resolvePhoneAlarm(row);
     this.changed();
   }

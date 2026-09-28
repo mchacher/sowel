@@ -1,6 +1,7 @@
 import { describe, it, expect, afterEach, vi } from "vitest";
 import {
   buildSharedAccessHarness,
+  silentLogger,
   type SharedAccessHarness,
 } from "../test-helpers/shared-access.js";
 import {
@@ -8,6 +9,7 @@ import {
   OPENS_PER_HOUR_PER_GATE,
   SETTING_ENABLED,
   SharedAccessDisabledError,
+  SharedAccessManager,
 } from "./shared-access-manager.js";
 import { isAdminOnlyEvent } from "../api/websocket.js";
 import { deriveLinkToken } from "./codes.js";
@@ -583,5 +585,85 @@ describe("the phones of an access and sharing (R5.19, R5.22)", () => {
     h.settings.set("sharedAccess.publicBaseUrl", "https://acces.example.org");
     h.clock.now = h.at(2026, 10, 4, 12);
     expect(h.manager.shareLink(token)).toEqual({ error: "ended" });
+  });
+
+  it("gives up on a gate that never answers after 15 s: gate_error, and the next press runs", async () => {
+    h = buildSharedAccessHarness();
+    const a = await withPhone({ label: "A" });
+    const b = await withPhone({ label: "B" });
+    vi.useFakeTimers({ toFake: ["setTimeout", "clearTimeout"] });
+    h.holdNextDispatch(); // never released: the integration hangs
+    const hung = h.manager.open(a.token, h.gates.entree);
+    const next = h.manager.open(b.token, h.gates.entree);
+    await vi.advanceTimersByTimeAsync(15_000);
+    expect(await hung).toMatchObject({ ok: false, reason: "gate_error" });
+    expect(await next).toEqual({ ok: true });
+  });
+
+  it("refuses with busy past five presses waiting on one gate", async () => {
+    h = buildSharedAccessHarness();
+    const phones = [];
+    for (let i = 0; i < 7; i++) phones.push(await withPhone({ label: `P${i}` }));
+    const release = h.holdNextDispatch();
+    const presses = phones.slice(0, 6).map((p) => h.manager.open(p.token, h.gates.entree));
+    await new Promise((r) => setTimeout(r, 0));
+    expect(await h.manager.open(phones[6].token, h.gates.entree)).toMatchObject({
+      ok: false,
+      reason: "busy",
+    });
+    release();
+    expect((await Promise.all(presses)).every((r) => r.ok)).toBe(true);
+  });
+
+  it("stops a press that waited while the feature was turned off or the phone cut", async () => {
+    h = buildSharedAccessHarness();
+    const a = await withPhone({ label: "A" });
+    const b = await withPhone({ label: "B" });
+    const release = h.holdNextDispatch();
+    const first = h.manager.open(a.token, h.gates.entree);
+    const second = h.manager.open(b.token, h.gates.entree);
+    await new Promise((r) => setTimeout(r, 0));
+    const [phone] = h.manager.listPhones(b.access.id);
+    h.manager.cutPhone(b.access.id, phone.id, "admin");
+    release();
+    expect(await first).toEqual({ ok: true });
+    expect(await second).toMatchObject({ ok: false });
+    expect(h.dispatches).toHaveLength(1);
+  });
+
+  it("counts every opening of an access pressing two gates at once", async () => {
+    h = buildSharedAccessHarness();
+    const { access, token } = await withPhone({
+      gates: [{ equipmentId: h.gates.entree }, { equipmentId: h.gates.portillon }],
+    });
+    const release = h.holdNextDispatch();
+    const one = h.manager.open(token, h.gates.entree);
+    const two = h.manager.open(token, h.gates.portillon);
+    await new Promise((r) => setTimeout(r, 0));
+    release();
+    await Promise.all([one, two]);
+    expect(h.manager.getAccess(access.id).useCount).toBe(2);
+  });
+
+  it("can still resolve a phone alarm raised before a restart", async () => {
+    h = buildSharedAccessHarness();
+    const { access } = await withPhone();
+    for (let i = 0; i < 6; i++) await h.manager.enrol({ code: access.code! }, "ua");
+    expect(h.events.some((e) => e.type === "system.alarm.raised")).toBe(true);
+    const alarm = h.events.find((e) => e.type === "system.alarm.raised") as { message: string };
+    expect(alarm.message).not.toContain(access.label);
+    h.manager.stop();
+    const restarted = new SharedAccessManager({
+      db: h.db,
+      eventBus: h.eventBus,
+      equipmentManager: h.equipments as never,
+      settingsManager: { get: (k: string) => h.settings.get(k), set: () => {} },
+      logger: silentLogger,
+      now: () => h.clock.now,
+    });
+    restarted.start();
+    restarted.revoke(access.id, "admin");
+    expect(h.events.some((e) => e.type === "system.alarm.resolved")).toBe(true);
+    restarted.stop();
   });
 });

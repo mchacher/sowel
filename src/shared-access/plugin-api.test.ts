@@ -16,7 +16,7 @@ let h: SharedAccessHarness;
 
 afterEach(() => h?.manager.stop());
 
-/** The house as Adrien set it up: the default profile opens the entrance gate, 08:00–22:00, granted to guestFlow. */
+/** A typical house: the default profile opens the entrance gate, 08:00–22:00, granted to guestFlow. */
 function setup() {
   h = buildSharedAccessHarness();
   h.manager.ensureDefaultProfile();
@@ -142,5 +142,47 @@ describe("deps.sharedAccess (R9)", () => {
     h.settings.set(SETTING_ENABLED, "false");
     expect(() => guestflow.upsert("stay-1", stay)).toThrow(SharedAccessDisabledError);
     expect(() => guestflow.profiles()).toThrow(SharedAccessDisabledError);
+  });
+
+  // Review of 2026-09-27 — blocker: a stay the owner cut off must stay cut off.
+  it("never brings back a stay the owner revoked and deleted: the replay answers revoked", () => {
+    const { guestflow } = setup();
+    const inv = guestflow.upsert("stay-8841", stay);
+    h.manager.revoke(inv.id, "admin");
+    expect(() => guestflow.upsert("stay-8841", stay)).toThrow(
+      expect.objectContaining({ code: "revoked", statusCode: 409 }),
+    );
+    h.manager.deleteAccess(inv.id, "admin");
+    expect(() => guestflow.upsert("stay-8841", stay)).toThrow(
+      expect.objectContaining({ code: "revoked" }),
+    );
+    expect(h.manager.getState().accesses).toHaveLength(0);
+    // Another stay of the same plugin is not affected.
+    expect(guestflow.upsert("stay-9000", stay).code).not.toBeNull();
+  });
+
+  it("keeps an update on the access's own profile, even once the profile is taken back", () => {
+    const { guestflow, def } = setup();
+    const inv = guestflow.upsert("stay-8841", stay);
+    h.manager.updateProfile(def.id, { pluginId: null });
+    guestflow.upsert("stay-8841", { ...stay, label: "Martin (2 pers.)" });
+    expect(h.manager.getAccess(inv.id).label).toBe("Martin (2 pers.)");
+    expect(() => guestflow.upsert("stay-new", stay)).toThrow(
+      expect.objectContaining({ code: "unknown_profile" }),
+    );
+  });
+
+  it("drops a widening the stay has overtaken instead of locking the owner out", () => {
+    const { guestflow } = setup();
+    const inv = guestflow.upsert("stay-8841", stay);
+    h.manager.updateAccess(inv.id, { extendedUntil: "2026-10-07T15:00" }, "admin");
+    guestflow.upsert("stay-8841", { ...stay, until: "2026-10-07T18:00" });
+    const renamed = h.manager.updateAccess(inv.id, { label: "Martin, famille" }, "admin");
+    expect(renamed.label).toBe("Martin, famille");
+    expect(renamed.validUntil).toBe(new Date(h.at(2026, 10, 7, 18)).toISOString());
+    // A widening sent now is still checked.
+    expect(() =>
+      h.manager.updateAccess(inv.id, { extendedUntil: "2026-10-07T17:00" }, "admin"),
+    ).toThrow(expect.objectContaining({ code: "shorten_refused" }));
   });
 });

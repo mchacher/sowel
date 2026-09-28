@@ -63,6 +63,17 @@ describe("shared access routes", () => {
     expect(res.json()).toEqual({ error: "Authentication required" });
   });
 
+  it("answers a bearer on the public API while off exactly as the auth middleware would", async () => {
+    app = await buildApp({ enabled: false });
+    const res = await app.inject({
+      method: "GET",
+      url: "/api/v1/shared-access/public/session",
+      headers: { authorization: "Bearer not-a-token" },
+    });
+    expect(res.statusCode).toBe(401);
+    expect(res.json()).toEqual({ error: "Invalid or expired token" });
+  });
+
   it("gates a percent-encoded owner path like the plain one", async () => {
     app = await buildApp({ role: "standard" });
     const res = await app.inject({ method: "GET", url: "/api/v1/%73hared-access/state" });

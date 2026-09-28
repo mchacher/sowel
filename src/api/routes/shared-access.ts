@@ -2,7 +2,8 @@ import type { FastifyInstance, FastifyReply, FastifyRequest } from "fastify";
 import QRCode from "qrcode";
 import type { Logger } from "../../core/logger.js";
 import type { UserManager } from "../../auth/user-manager.js";
-import { pathIsUnder, requireAdmin } from "../../auth/auth-middleware.js";
+import { pathIsUnder, requireAdmin, verifyBearerToken } from "../../auth/auth-middleware.js";
+import type { AuthService } from "../../auth/auth-service.js";
 import type { SharedAccessManager } from "../../shared-access/shared-access-manager.js";
 import { SharedAccessError } from "../../shared-access/validity.js";
 import {
@@ -31,6 +32,8 @@ import {
 interface SharedAccessRouteDeps {
   sharedAccessManager: SharedAccessManager;
   userManager: UserManager;
+  /** To answer, while off, exactly what the auth middleware answers (R1.2). */
+  authService?: AuthService;
   logger: Logger;
 }
 
@@ -72,11 +75,24 @@ export function registerSharedAccessRoutes(
     const onPage = pathIsUnder(request, PAGE_BASE);
     if (!onAdmin && !onPage) return;
     if (!manager.isEnabled()) {
-      // An anonymous request on an unknown /api route meets the auth
-      // middleware's 401; the public API must not answer differently, or the
-      // build could be told apart from one without shared access.
+      // A request on an unknown /api route meets the auth middleware first;
+      // the public API must answer what it would, bearer or not, or the build
+      // could be told apart from one without shared access.
       if (pathIsUnder(request, PUBLIC_BASE)) {
-        return reply.code(401).send({ error: "Authentication required" });
+        const header = request.headers.authorization;
+        if (!header || !header.startsWith("Bearer ")) {
+          return reply.code(401).send({ error: "Authentication required" });
+        }
+        const result = deps.authService
+          ? verifyBearerToken(header.slice(7), deps.authService)
+          : ({ ok: false, reason: "invalid_token" } as const);
+        if (!result.ok) {
+          const error =
+            result.reason === "invalid_api_token"
+              ? "Invalid API token"
+              : "Invalid or expired token";
+          return reply.code(401).send({ error });
+        }
       }
       reply.callNotFound();
       return reply;

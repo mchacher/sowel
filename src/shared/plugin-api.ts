@@ -3,7 +3,7 @@ import type { EventBus } from "../core/event-bus.js";
 import type { SettingsManager } from "../core/settings-manager.js";
 import type { DeviceManager } from "../devices/device-manager.js";
 import type { IntegrationPlugin } from "../integrations/integration-registry.js";
-import type { SharedAccessApi } from "../shared-access/plugin-api.js";
+import type { SharedAccessApi } from "./types.js";
 
 export interface PluginDeps {
   logger: Logger;

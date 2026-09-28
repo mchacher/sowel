@@ -5,14 +5,36 @@
 // again. So presses reaching one gate run one after the other, never together,
 // and two presses of the same access on the same gate within two seconds — a
 // thumb that bounced, a page that retried — are one.
+//
+// A gate whose integration never answers must not hold every later press with
+// its request open: a press gives up after ORDER_TIMEOUT_MS, and past
+// MAX_WAITING presses waiting on one gate, a new one is refused at once.
 // ============================================================
 
 export const DOUBLE_PRESS_MS = 2000;
+export const ORDER_TIMEOUT_MS = 15_000;
+export const MAX_WAITING = 5;
 
 export class GateQueueClosedError extends Error {
   constructor() {
     super("Gate queue closed");
     this.name = "GateQueueClosedError";
+  }
+}
+
+/** The gate did not answer in time; the queue has moved on. */
+export class GateTimeoutError extends Error {
+  constructor() {
+    super("The gate did not answer in time");
+    this.name = "GateTimeoutError";
+  }
+}
+
+/** Too many presses already wait on this gate. */
+export class GateBusyError extends Error {
+  constructor() {
+    super("Too many presses waiting on this gate");
+    this.name = "GateBusyError";
   }
 }
 
@@ -27,6 +49,11 @@ export class GateQueue {
   private readonly lastPress = new Map<string, number>();
   private closed = false;
 
+  constructor(
+    private readonly timeoutMs = ORDER_TIMEOUT_MS,
+    private readonly maxWaiting = MAX_WAITING,
+  ) {}
+
   /** True, and remembered, unless the same key pressed within the window. */
   acceptPress(key: string, now: number): boolean {
     const last = this.lastPress.get(key);
@@ -38,16 +65,29 @@ export class GateQueue {
     return true;
   }
 
-  /** Run `fn` once every earlier press on this gate has finished. */
+  /**
+   * Run `fn` once every earlier press on this gate has finished, or given up:
+   * a task still running after the timeout is abandoned (rejected with
+   * GateTimeoutError) and the next one starts.
+   */
   run<T>(gateId: string, fn: () => Promise<T>): Promise<T> {
     if (this.closed) return Promise.reject(new GateQueueClosedError());
+    if ((this.queues.get(gateId)?.length ?? 0) >= this.maxWaiting) {
+      return Promise.reject(new GateBusyError());
+    }
     return new Promise<T>((resolve, reject) => {
       const task: Task = {
         run: async () => {
+          let timer: NodeJS.Timeout | undefined;
+          const timeout = new Promise<never>((_, fail) => {
+            timer = setTimeout(() => fail(new GateTimeoutError()), this.timeoutMs);
+          });
           try {
-            resolve(await fn());
+            resolve(await Promise.race([fn(), timeout]));
           } catch (err) {
             reject(err as Error);
+          } finally {
+            clearTimeout(timer);
           }
         },
         cancel: () => reject(new GateQueueClosedError()),

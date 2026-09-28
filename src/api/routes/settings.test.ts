@@ -15,6 +15,8 @@ const logger = createLogger("silent").logger;
 interface BuildOpts {
   authed?: boolean;
   role?: UserRole;
+  /** Settings already stored when the app starts. */
+  seed?: Record<string, string>;
 }
 
 /** Audit entries the route emitted, so a test can prove one was not lost. */
@@ -34,7 +36,7 @@ async function buildApp(opts: BuildOpts = {}) {
     });
   }
 
-  const store: Record<string, string> = {};
+  const store: Record<string, string> = { ...opts.seed };
   registerSettingsRoutes(app, {
     settingsManager: {
       getAll: () => ({ ...store }),
@@ -165,5 +167,32 @@ describe("a __proto__ key never reaches the handler", () => {
     expect(res.statusCode).toBe(200);
     expect((audited as { targetId: string }[]).map((e) => e.targetId)).toContain("constructor");
     await app.close();
+  });
+});
+
+describe("internal settings (spec 181)", () => {
+  let app: Awaited<ReturnType<typeof buildApp>> | null = null;
+
+  afterEach(async () => {
+    if (app) await app.close();
+    app = null;
+  });
+
+  // Spec 181 R3.8 — the link secret rebuilds every live link: never shown, never written here.
+  it("keeps the shared-access link secret out of GET and refuses it on PUT", async () => {
+    app = await buildApp({
+      authed: true,
+      role: "admin",
+      seed: { "sharedAccess.linkSecret": "the-house-secret", "home.name": "Maison" },
+    });
+    const put = await app.inject({
+      method: "PUT",
+      url: "/api/v1/settings",
+      payload: { "sharedAccess.linkSecret": "forged" },
+    });
+    expect(put.statusCode).toBe(400);
+    expect(put.json()).toMatchObject({ error: "internal_setting" });
+    const res = await app.inject({ method: "GET", url: "/api/v1/settings" });
+    expect(res.json()).toEqual({ "home.name": "Maison" });
   });
 });

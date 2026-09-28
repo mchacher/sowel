@@ -143,6 +143,7 @@ export const BACKUP_TABLES = [
   "shared_access_disarmed",
   "shared_access_phones",
   "shared_access_journal",
+  "shared_access_tombstones",
 ] as const;
 
 // Reverse order for deletion (children first) + tables not exported but must be cleared
