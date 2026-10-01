@@ -11,6 +11,29 @@ Cette page résume toutes les versions publiées, de la plus récente à la plus
 
 ---
 
+## 1.72.x : Une clé du portail, pour un temps
+
+### v1.72.0 — 2026-10-01 { #v1-72-0 }
+
+Une nouvelle fonctionnalité, apportée par Adrien Jouve et validée en production sur son installation avant d'être intégrée. Une personne qui n'est pas utilisatrice de Sowel peut désormais ouvrir un portail pendant une période et à certaines heures, depuis son téléphone. Le reste se compose de correctifs et d'un nettoyage de sécurité des dépendances, qui ferme toutes les alertes Dependabot ouvertes.
+
+- Nouveauté (cœur) : **accès partagés — laisser quelqu'un ouvrir un portail, pour un temps** (spec 181, #970). Un enfant qui rentre de l'école, un artisan le mardi, un voisin en août, les hôtes d'une location saisonnière : jusqu'ici, il fallait confier une télécommande, créer un compte Sowel qui ouvre tout, ou ouvrir soi-même. La fonctionnalité est **à activer, désactivée par défaut**. Tant qu'elle est désactivée, rien ne change et toutes les nouvelles routes répondent 404.
+  - **Ce que le propriétaire confie.** Un accès est un lien, accompagné par défaut d'un code, valable **pendant une période et à certaines heures**, à l'heure de la maison. Il n'ouvre que les portails qu'il liste. Le propriétaire peut le suspendre, le révoquer ou en changer le code en un clic, voir les téléphones enregistrés et en couper un, et chaque appui laisse une ligne dans un journal.
+  - **Ce que voit le visiteur.** Une petite page à part, `/access/` (CSP stricte, aucun cookie, `noindex`), où l'on tire un disque vers le haut pour ouvrir. Un disque relâché trop tôt n'envoie rien. La page n'indique jamais si le portail est ouvert ou fermé : elle répond à quiconque détient un code. Le visiteur peut partager l'accès avec un proche grâce à un QR code.
+  - **Comment le portail est actionné.** Le cœur envoie la commande du portail par le chemin normal des ordres : inversion, résolution des valeurs et confirmation de livraison s'appliquent. Le fil d'activité l'affiche comme « Accès partagé — <libellé> ». Chaque portail a son propre interrupteur d'armement.
+  - **Codes devinés.** Un code juste n'est jamais ralenti. Les échecs sont comptés globalement et retenus, et le propriétaire est alerté au-delà de 25. Une installation qui expose cette page doit avoir un quota de requêtes sur son reverse proxy ; [le guide explique pourquoi](user/shared-access.md#reverse-proxy-quota).
+  - **Pour les plugins.** `deps.sharedAccess` permet à un plugin de créer des accès à partir d'un flux de réservations. Les profils du propriétaire décident des portails qui s'ouvrent ; le plugin dit seulement qui et quand. Un séjour révoqué par le propriétaire reste révoqué, même si le flux le renvoie.
+  - Guide : [Accès partagés](user/shared-access.md).
+- Correctif (sauvegarde) : **une restauration garde toutes les colonnes, pas seulement celles de la première ligne** (issue #939, #980). La restauration construisait une requête par table à partir des clés de la première ligne : une colonne absente de cette ligne disparaissait pour toute la table, sans rien dire. Dans le jeu de données du showroom, le profil énergétique de 3 équipements sur 86 se perdait et l'arbitre redémarrait sans aucune charge. Chaque ligne est désormais insérée avec ses propres colonnes, et une colonne inconnue du schéma est signalée dans le résultat de la restauration au lieu de la faire échouer.
+- Correctif (ui) : **l'écran de démarrage ne s'affiche qu'à une première arrivée** (issue #976, #979). Il s'affichait à chaque chargement complet pendant environ 2 s : rafraîchissement, lien direct, notification, redirection après connexion. Il n'apparaît plus qu'à une première visite ou après plus de 8 heures d'absence, et le thème sombre est appliqué dès le premier affichage.
+- Correctif (ui) : **une TV retrouve son bouton marche/arrêt, un variateur respecte sa plage déclarée, un nom long n'élargit plus la page sur mobile** (issues #932, #933, #950, #937 ; #983). Une TV fraîchement liée n'avait pas de bouton marche/arrêt, car son ordre était lié sous un autre alias. Un variateur déclarant 0–100 affichait 39 % à fond. Un nom sans espaces décalait la page d'un équipement sur téléphone. `simulator` est désormais une source d'appareil connue.
+- Sécurité (dépendances) : **toutes les alertes Dependabot ouvertes sont fermées** (#985, #986, #987, #989, #990, #991). `fast-uri`, `ip-address`, `brace-expansion` et `@grpc/grpc-js` passent en versions corrigées, côté backend et côté UI. Les 20 alertes, dont 9 hautes, portaient toutes sur des dépendances indirectes.
+- Maintenance (dépendances) : les groupes mineur/patch et outillage du backend et de l'UI, le groupe GitHub Actions et `@babel/core` (#968, #971, #972, #973, #974, #981).
+- Maintenance (tests) : **un test pouvait écrire dans le vrai dépôt depuis un hook git** (issue #993, #994). Lancé par le hook de pre-push dans un worktree git, le test de mise à jour du registre héritait de `GIT_DIR`, réinitialisait le vrai dépôt en dépôt nu et commitait sur la branche en cours de push. Chaque appel git y tourne désormais sans les variables propres au dépôt. Aussi : les tests du logger pino-roll ont plus de marge et une échéance qui dit ce qu'elle a trouvé (issue #988, #992), et un commentaire de la CI décrit ce qui arrive vraiment aux runs en attente sur main (#995).
+- Maintenance (plugins) : le simulateur entre au registre (0.3.0, puis 0.4.0 et 0.4.1), avec water-heater-solar 0.3.0, zigbee2mqtt 2.7.2 et apsystems 0.2.0 (#940, #975, #977, #978, #984).
+
+---
+
 ## 1.71.x : une charge que l'arbitre ne pilote pas
 
 ### v1.71.0 — 2026-09-13 { #v1-71-0 }
