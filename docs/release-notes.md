@@ -11,6 +11,29 @@ This page summarises every published version, newest first. For the full diff be
 
 ---
 
+## 1.72.x: A key to the gate, for a while
+
+### v1.72.0 — 2026-10-01 { #v1-72-0 }
+
+One new feature, contributed by Adrien Jouve and validated in production on his installation before it was merged. Someone who is not a Sowel user can now open a gate for a period and at certain hours, from their phone. The rest is fixes and a security sweep of the dependencies, which closes every open Dependabot alert.
+
+- Feat (core): **shared access — let someone open a gate, for a while** (spec 181, #970). A child coming home from school, a tradesperson on Tuesday, a neighbour in August, the guests of a holiday let: until now the choice was to hand over a remote, to give out a Sowel account that opens everything, or to open the gate yourself. The feature is **opt-in and off by default**. While it is off, nothing changes and every new route answers 404.
+  - **What the owner hands out.** An access is a link, plus a code by default, valid **for a period and at certain hours** on the house's clock. It opens only the gates it lists. The owner can hold it, revoke it or change its code in one click, list the phones set up on it and cut one of them, and every press leaves a line in a journal.
+  - **What the visitor sees.** A small page of its own at `/access/` (strict CSP, no cookie, `noindex`), where a disc is pulled upward to open. A disc released short sends nothing. The page never shows whether the gate is open or closed: it is reachable by anyone holding a code. The visitor can share the access with a companion through a QR code.
+  - **How the gate is pressed.** The core sends the gate's own command through the normal order path, so inversion, value resolution and delivery confirmation all apply. The Activity feed shows it as « Accès partagé — <label> ». Each gate has its own armed switch.
+  - **Guessing.** A correct code is never slowed down. Failures are counted globally and held back, and the owner is alerted past 25 of them. A deployment that exposes this page needs a request quota at its reverse proxy; [the guide says why](user/shared-access.md#reverse-proxy-quota).
+  - **For plugins.** `deps.sharedAccess` lets a plugin create accesses from a booking feed. The owner's profiles decide which gates open; the plugin only says who and when. A stay revoked by the owner stays revoked, even when the feed replays it.
+  - Guide: [Shared access](user/shared-access.md).
+- Fix (backup): **a restore keeps every column, not just those the first row had** (issue #939, #980). The restore built one statement per table from the first row's keys, so a column that row lacked was dropped for the whole table, silently. In the showroom fixture, the energy profile of 3 equipments out of 86 vanished and the arbiter restarted with no loads. Each row is now inserted with its own columns, and a column the schema does not know is reported in the restore result instead of failing it.
+- Fix (ui): **the splash shows on a first landing only** (issue #976, #979). It showed on every full load for about 2 s: refresh, a deep link, a notification tap, the redirect after login. It now shows on a first visit, or after more than 8 hours away, and the dark theme is applied before the first paint.
+- Fix (ui): **a TV gets its power button back, a dimmer uses its declared range, a long name no longer widens the page on a phone** (issues #932, #933, #950, #937; #983). A freshly bound TV had no power button, because its power order was bound under another alias. A dimmer declaring 0–100 read 39 % at full. A name without spaces pushed the equipment page sideways on mobile. `simulator` is now a known device source.
+- Security (deps): **every open Dependabot alert closed** (#985, #986, #987, #989, #990, #991). `fast-uri`, `ip-address`, `brace-expansion` and `@grpc/grpc-js` are moved to patched versions, on the backend and in the UI. The 20 alerts, 9 of them high, were all transitive dependencies.
+- Maintenance (deps): the backend and UI minor/patch and toolchain groups, the GitHub Actions group and `@babel/core` (#968, #971, #972, #973, #974, #981).
+- Maintenance (tests): **a test could write into the real repository from a git hook** (issue #993, #994). Run from the pre-push hook in a git worktree, the registry-bump test inherited `GIT_DIR`, re-initialised the real repository as bare and committed onto the branch being pushed. Every git call in it now runs without the repository-local variables. Also: the pino-roll logger tests get room and a diagnosable deadline (issue #988, #992), and a CI comment says what really happens to queued runs on main (#995).
+- Maintenance (plugins): the simulator joins the registry (0.3.0, then 0.4.0 and 0.4.1), with water-heater-solar 0.3.0, zigbee2mqtt 2.7.2 and apsystems 0.2.0 (#940, #975, #977, #978, #984).
+
+---
+
 ## 1.71.x: A load the arbiter is not driving
 
 ### v1.71.0 — 2026-09-13 { #v1-71-0 }
