@@ -8,7 +8,10 @@ on:
 
 # Supersede a PR's in-flight run when a fixup lands, so the run that matters
 # starts immediately instead of queueing behind one nobody is waiting for.
-# Pushes to main are never cancelled: a half-run on main tells you nothing.
+# A run on main is never cancelled once started: a half-run on main tells you
+# nothing. A queued one can be: GitHub keeps one pending run per group, so when
+# several merges land in a row, each new push replaces the push still waiting,
+# and only the last commit, which carries all of them, is tested.
 concurrency:
   group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
   cancel-in-progress: ${{ github.event_name == 'pull_request' }}
