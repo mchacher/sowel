@@ -17,6 +17,28 @@ import { join, resolve } from "node:path";
 
 const SCRIPT = resolve(import.meta.dirname, "../../scripts/check-registry-bump.sh");
 
+/**
+ * The environment every git call and the script run in, minus the variables
+ * that tell git which repository to use. Inside a git hook — `npm run validate`
+ * from pre-push — git exports GIT_DIR, and it wins over `cwd`: the throwaway
+ * repository's `git init` then re-initialised the real one as bare, and its
+ * commits landed on the branch being pushed (#993). The list is git's own:
+ * `git rev-parse --local-env-vars`, plus the numbered GIT_CONFIG_KEY/VALUE pairs.
+ */
+const REPO_LOCAL_GIT_VARS = new Set(
+  execFileSync("git", ["rev-parse", "--local-env-vars"], { encoding: "utf-8" })
+    .split("\n")
+    .filter(Boolean),
+);
+
+function isolatedEnv(extra: NodeJS.ProcessEnv = {}): NodeJS.ProcessEnv {
+  const env: NodeJS.ProcessEnv = { ...process.env, ...extra };
+  for (const key of Object.keys(env)) {
+    if (REPO_LOCAL_GIT_VARS.has(key) || /^GIT_CONFIG_(KEY|VALUE)_\d+$/.test(key)) delete env[key];
+  }
+  return env;
+}
+
 interface Entry {
   id: string;
   type: string;
@@ -45,7 +67,7 @@ describe("scripts/check-registry-bump.sh (spec 089, issue #892)", () => {
   let assets: string;
 
   function git(...args: string[]): void {
-    execFileSync("git", args, { cwd: dir, stdio: "ignore" });
+    execFileSync("git", args, { cwd: dir, stdio: "ignore", env: isolatedEnv() });
   }
 
   /** Writes the registry and commits it, so each call is one revision. */
@@ -90,7 +112,7 @@ describe("scripts/check-registry-bump.sh (spec 089, issue #892)", () => {
       const stdout = execFileSync("bash", [SCRIPT, baseRef], {
         cwd: dir,
         encoding: "utf-8",
-        env: { ...process.env, SOWEL_REGISTRY_ASSET_DIR: assets },
+        env: isolatedEnv({ SOWEL_REGISTRY_ASSET_DIR: assets }),
         stdio: ["ignore", "pipe", "pipe"],
       });
       return { status: 0, out: stdout };
@@ -103,13 +125,40 @@ describe("scripts/check-registry-bump.sh (spec 089, issue #892)", () => {
   beforeEach(() => {
     dir = mkdtempSync(join(tmpdir(), "registry-bump-"));
     assets = mkdtempSync(join(tmpdir(), "registry-assets-"));
-    execFileSync("git", ["init", "-q"], { cwd: dir });
+    execFileSync("git", ["init", "-q"], { cwd: dir, env: isolatedEnv() });
     commitRegistry([entry({ sha256: "a".repeat(64) })], "base");
   });
 
   afterEach(() => {
     rmSync(dir, { recursive: true, force: true });
     rmSync(assets, { recursive: true, force: true });
+  });
+
+  it("never touches the repository GIT_DIR points at, as inside a git hook (#993)", () => {
+    const decoy = mkdtempSync(join(tmpdir(), "registry-decoy-"));
+    execFileSync("git", ["init", "-q"], { cwd: decoy, env: isolatedEnv() });
+    const saved = process.env.GIT_DIR;
+    process.env.GIT_DIR = join(decoy, ".git");
+    try {
+      commitRegistry([entry({ version: "1.1.0" })], "bump");
+      run();
+    } finally {
+      if (saved === undefined) delete process.env.GIT_DIR;
+      else process.env.GIT_DIR = saved;
+    }
+
+    const count = (cwd: string): string =>
+      execFileSync("git", ["rev-list", "--all", "--count"], {
+        cwd,
+        encoding: "utf-8",
+        env: isolatedEnv(),
+      }).trim();
+    try {
+      expect(count(decoy)).toBe("0");
+      expect(count(dir)).toBe("2");
+    } finally {
+      rmSync(decoy, { recursive: true, force: true });
+    }
   });
 
   it("passes when the bumped entry matches its published asset", () => {
