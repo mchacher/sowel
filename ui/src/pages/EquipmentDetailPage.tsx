@@ -38,6 +38,7 @@ import { ElectricalMeteringPanel } from "../components/equipments/ElectricalMete
 import { MeteringParentPanel } from "../components/equipments/MeteringParentPanel";
 import { EnergyManagementPanel } from "../components/equipments/EnergyManagementPanel";
 import { GateConfirmationPanel } from "../components/equipments/GateConfirmationPanel";
+import { SharedAccessPanel } from "../components/equipments/SharedAccessPanel";
 import { TimedCommandPanel } from "../components/equipments/TimedCommandPanel";
 import { TimedCommandControl } from "../components/equipments/TimedCommandControl";
 import { hasTimedCommandCandidate } from "../../../src/shared/timed-command";
@@ -446,6 +447,9 @@ export function EquipmentDetailPage() {
       {isGate && isAdmin && (
         <GateConfirmationPanel equipment={equipment} onUpdated={() => void fetchEquipments()} />
       )}
+
+      {/* Gate — shared access (spec 181 R8), admin only, hidden while off */}
+      {isGate && isAdmin && <SharedAccessPanel equipmentId={equipment.id} />}
 
       {/* Timed command — act now, revert after N (spec 174 phase 2), admin only.
           Offered only where a hand-revert could end the window early: the

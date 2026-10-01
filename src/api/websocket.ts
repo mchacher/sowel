@@ -110,7 +110,12 @@ const ADMIN_ONLY_TOPICS = new Set<WsTopic>(["mqtt-publishers", "logs"]);
  * publisher's `channelConfig` — e.g. a Telegram bot token. Non-admin clients
  * never receive these regardless of their subscriptions (security audit S01).
  */
-const ADMIN_ONLY_EVENT_PREFIXES = new Set<string>(["notification-publisher"]);
+// `shared_access.*` names the people holding an access (spec 181): its events
+// reach admins only. The label still reaches every user in one place, on
+// purpose: an opening is an order, and the Activity feed attributes an order to
+// its source (R4.15, `OrderSource.label`), as it does for a recipe or a user.
+// The shared-access alarms carry no label.
+const ADMIN_ONLY_EVENT_PREFIXES = new Set<string>(["notification-publisher", "shared_access"]);
 
 interface ClientState {
   socket: WebSocket;

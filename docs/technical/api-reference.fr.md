@@ -26,6 +26,7 @@ Sowel expose une API REST sous `/api/v1/` et un endpoint WebSocket à `/ws`. Tou
 - [Integrations (Admin)](#integrations-admin)
 - [Plugins (Admin)](#plugins-admin)
 - [Settings (Admin)](#settings-admin)
+- [Shared Access](#shared-access-spec-181)
 - [MQTT Brokers](#mqtt-brokers)
 - [MQTT Publishers](#mqtt-publishers)
 - [Notification Publishers](#notification-publishers)
@@ -423,6 +424,87 @@ Stockage clé-valeur des réglages admin (utilisé pour les configs d'intégrati
 | ------ | ------------------ | --------------------------------------------------------------------------- |
 | `GET`  | `/api/v1/settings` | Récupère tous les réglages.                                                 |
 | `PUT`  | `/api/v1/settings` | Met à jour les réglages. Body : objet clé-valeur `{ "key": "value", ... }`. |
+
+---
+
+## Shared Access (spec 181)
+
+Laisser quelqu'un qui n'est pas utilisateur de Sowel ouvrir un portail pour un temps. Désactivé par
+défaut : tant que le réglage `sharedAccess.enabled` ne vaut pas `"true"`, **chaque route ci-dessous
+répond exactement comme une route inconnue**, les publiques comprises, pour que la fonctionnalité ne
+puisse pas être sondée de l'extérieur : les routes du propriétaire et la page (`/access/*`) répondent
+`404` ; l'API publique (`/api/v1/shared-access/public/*`) répond `401` à un appelant anonyme, comme
+toute route `/api` inconnue, et un appelant qui envoie un en-tête `Bearer` reçoit la réponse propre
+du middleware d'authentification, la même que sur toute route `/api` inconnue. Guide utilisateur :
+[Accès partagés](../user/shared-access.md).
+
+Réglages (par `PUT /api/v1/settings`) : `sharedAccess.enabled`, `sharedAccess.publicBaseUrl` (l'hôte
+vers lequel pointent les invitations), `sharedAccess.publicPath` (`/access/` par défaut). Le secret
+de la maison dont dérivent les jetons de lien, `sharedAccess.linkSecret`, n'est jamais renvoyé par
+`GET /api/v1/settings` et ne peut pas être écrit par `PUT /api/v1/settings`.
+
+### Routes du propriétaire (admin uniquement, lectures comprises)
+
+| Méthode  | Chemin                                                       | Description                                                                                                                                                                  |
+| -------- | ------------------------------------------------------------ | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `GET`    | `/api/v1/shared-access/state`                                | `SharedAccessState` : les accès (codes en clair, liens d'invitation), les portails et leur interrupteur armé, les profils, les plugins auxquels un profil peut être accordé. |
+| `GET`    | `/api/v1/shared-access/journal?accessId=&limit=`             | Ouvertures, refus et modifications, du plus récent au plus ancien. Gardés un an, 50 000 lignes au plus.                                                                      |
+| `POST`   | `/api/v1/shared-access/accesses`                             | `{ label, gates: [{ equipmentId, value? }], withCode?, validFrom?, validUntil?, timeWindows? }`. `201` avec l'accès.                                                         |
+| `PATCH`  | `/api/v1/shared-access/accesses/:id`                         | Mêmes champs. Sur un accès créé par un plugin : `label`, `gates`, `timeWindows`, et `earlyOpenAt` / `extendedUntil`, qui ne peuvent qu'élargir ses dates.                    |
+| `POST`   | `/api/v1/shared-access/accesses/:id/{suspend,resume,revoke}` | Suspendre, reprendre, révoquer.                                                                                                                                              |
+| `POST`   | `/api/v1/shared-access/accesses/:id/code`                    | `{ cutPhones }` — un nouveau code (s'il en a un) et un nouveau lien ; les téléphones gardés ou coupés.                                                                       |
+| `GET`    | `/api/v1/shared-access/accesses/:id/phones`                  | `{ phones: [{ id, platform, tag, firstSeenAt, lastSeenAt }] }` — `platform` vaut `iphone`, `ipad`, `android`, `mac`, `windows` ou `other`.                                   |
+| `DELETE` | `/api/v1/shared-access/accesses/:id/phones/:phoneId`         | `204` — coupe ce téléphone seulement. `404 unknown_phone`.                                                                                                                   |
+| `DELETE` | `/api/v1/shared-access/accesses/:id`                         | `204`. `422 still_live` s'il n'est ni révoqué ni terminé.                                                                                                                    |
+| `GET`    | `/api/v1/shared-access/equipment/:id`                        | `{ armed, people }` pour le panneau d'un portail.                                                                                                                            |
+| `PUT`    | `/api/v1/shared-access/equipment/:id`                        | `{ armed }` — l'interrupteur armé du portail.                                                                                                                                |
+| `GET`    | `/api/v1/shared-access/profiles`                             | `{ profiles }`.                                                                                                                                                              |
+| `POST`   | `/api/v1/shared-access/profiles`                             | `{ name, gates?, validFrom?, validUntil?, timeWindows?, withCode?, pluginId? }`.                                                                                             |
+| `PATCH`  | `/api/v1/shared-access/profiles/:id`                         | Mêmes champs.                                                                                                                                                                |
+| `DELETE` | `/api/v1/shared-access/profiles/:id`                         | `204`. `422 default_profile` pour le profil par défaut. Les accès créés depuis ce profil gardent leurs portails.                                                             |
+| `GET`    | `/api/v1/shared-access/app`                                  | `{ name, customIcon, version }` — la page du visiteur sur un écran d'accueil.                                                                                                |
+| `PUT`    | `/api/v1/shared-access/app`                                  | `{ name?, icons?: { "180", "192", "512": PNG en base64 } \| null }` — `400 invalid_app` sauf si chacune est un PNG de sa taille, 256 Kio au plus.                            |
+
+Les dates sont en ISO 8601, ou `YYYY-MM-DDTHH:MM` lu sur l'horloge de la maison ; `null` efface. Les
+plages horaires s'écrivent `[{ "from": "08:00", "to": "20:00" }]`, sans traverser minuit ni se
+chevaucher.
+
+Les erreurs sont `{ "error": "<code>", "message": "..." }` : `no_gate`, `unknown_gate` (404),
+`unsupported_equipment` (422, pas un `gate`), `no_command`, `invalid_value`, `label_required`,
+`end_before_start`, `window_crosses_midnight`, `windows_overlap`, `shorten_refused`, `still_live`,
+`revoked` (409), `default_profile`, `not_found` (404).
+
+### Routes publiques (le téléphone du visiteur)
+
+Hors authentification, **sans limite par IP** : derrière un reverse proxy, ce serait une seule limite
+pour tout internet. Servies deux fois, sous `/api/v1/shared-access/public/*` et sous la page en
+`/access/api/*`, pour qu'un hôte alias qui réécrit tout vers `/access/` n'ait besoin d'aucune autre
+règle. Le jeton du téléphone passe en `Authorization: Bearer <jeton>`.
+
+| Méthode | Chemin     | Description                                                                                                                                                                 |
+| ------- | ---------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `POST`  | `/enrol`   | `{ code }` ou `{ link }` → `{ token, session }`. `401 unknown_code`, `410 ended`, `429 too_many`, `409 too_many_phones` (50 téléphones déjà installés sur l'accès).         |
+| `GET`   | `/session` | `{ label, status, gates, activeAt, nextOpeningAt, validUntil, travelS, presses }` — jamais l'état du portail ; `presses` sont ceux de ce téléphone. `401` s'il est inconnu. |
+| `POST`  | `/open`    | `{ gate }` → `{ ok: true }`, ou `409 { ok: false, reason, activeAt?, nextOpeningAt? }`.                                                                                     |
+| `GET`   | `/share`   | `{ url, qr }` — le lien d'invitation et son QR code en URI `data:image/svg+xml`. `409 ended`, `409 no_public_url`, `401` si inconnu.                                        |
+
+La raison d'un refus est l'une de `revoked`, `suspended`, `not_yet`, `expired`, `outside_hours`,
+`no_gate`, `not_this_gate`, `refused_by_house` (le portail est désarmé), `too_many_opens` (12 par
+heure par accès, 30 par heure par portail), `busy` (5 appuis attendent déjà sur ce portail),
+`gate_error` (l'ordre du portail a échoué, ou n'a pas répondu en 15 s).
+
+**Codes faux.** Seuls les échecs sont comptés, globalement, et un code juste n'est jamais ralenti.
+Les dix premiers échecs en dix minutes sont répondus tout de suite, puis 1 s, 2, 4, 8, jusqu'à 10 s ;
+32 réponses au plus sont retenues à la fois, au-delà un échec est répondu `429 too_many` sur-le-champ.
+Au-delà de 25 échecs dans la fenêtre, un `system.alarm.raised` est émis sous la source
+`shared-access`.
+
+### La page
+
+`GET /access/` (et `app.js`, `style.css`, `manifest.webmanifest`, `icon.svg`) — du HTML, du CSS et du
+JavaScript à elle, avec `Content-Security-Policy: default-src 'none'; script-src 'self'; ...`,
+`X-Robots-Tag: noindex`, `Cache-Control: no-store`, et aucun cookie. Le lien d'invitation porte son
+jeton dans le fragment, `/access/#i=<jeton>`, qu'aucun serveur ni journal ne voit.
 
 ---
 

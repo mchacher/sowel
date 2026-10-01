@@ -82,6 +82,7 @@ sowel/
 │   ├── mqtt-publishers/         # Outbound MQTT (broker + publisher managers)
 │   ├── notifications/           # Telegram/webhook/FCM/ntfy notification publishers
 │   ├── auth/                    # JWT + API tokens, MFA, middleware, user manager, first-run setup
+│   ├── shared-access/           # Shared access (spec 181): codes/links opening a gate, public page
 │   ├── api/                     # Fastify server, WebSocket, route files
 │   └── shared/                  # types.ts (all interfaces), constants.ts, plugin-api.ts
 ├── ui/                          # React frontend (separate Vite project)

@@ -161,5 +161,7 @@ function formatSource(source: OrderSource, t: (key: string, opts?: Record<string
       return t("activity.source.button", { buttonLabel: source.buttonLabel ?? source.buttonId });
     case "external":
       return t("activity.source.external", { channel: source.channel });
+    case "shared_access":
+      return t("activity.source.shared_access", { label: source.label });
   }
 }

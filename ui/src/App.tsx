@@ -24,6 +24,7 @@ import { AnalysePage } from "./pages/AnalysePage";
 import { MqttPublishersPage } from "./pages/MqttPublishersPage";
 import { NotificationPublishersPage } from "./pages/NotificationPublishersPage";
 import { DashboardPage } from "./pages/DashboardPage";
+import { SharedAccessPage } from "./pages/SharedAccessPage";
 import { EnergyPage } from "./components/energy/EnergyPage";
 import { ProductionPage } from "./components/energy/ProductionPage";
 import { LiveEnergyPage } from "./components/energy/LiveEnergyPage";
@@ -72,6 +73,7 @@ export default function App() {
           <Route path="/energy/production" element={<ProductionPage />} />
           <Route path="/analyse" element={<AnalysePage />} />
           <Route path="/analyse/:chartId" element={<AnalysePage />} />
+          <Route path="/shared-access" element={<AdminRoute><SharedAccessPage /></AdminRoute>} />
           <Route path="/settings" element={<SettingsPage />} />
           <Route path="/integrations" element={<AdminRoute><IntegrationsPage /></AdminRoute>} />
           <Route path="/plugins" element={<AdminRoute><PluginsPage /></AdminRoute>} />

@@ -51,6 +51,7 @@ import { copyToClipboard } from "../lib/clipboard";
 import type { ApiToken, User, UserRole, MfaStatus, MfaTrustedDevice } from "../types";
 import { TariffSettings } from "../components/settings/TariffSettings";
 import { ArbiterSettings } from "../components/settings/ArbiterSettings";
+import { SharedAccessSettings } from "../components/settings/SharedAccessSettings";
 import { SolarInstallationSettings } from "../components/settings/SolarInstallationSettings";
 import { initialSettingsTab } from "../lib/settings-tab";
 import type { SettingsTab } from "../lib/settings-tab";
@@ -114,6 +115,7 @@ export function SettingsPage() {
         {activeTab === "general" && isAdmin && (
           <div className="space-y-6">
             <HomeSettingsSection />
+            <SharedAccessSettings />
           </div>
         )}
 

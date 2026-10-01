@@ -1407,7 +1407,177 @@ export type OrderSource =
   | { kind: "mode"; modeId: string; modeName: string }
   | { kind: "manual"; userId: string; userName?: string }
   | { kind: "button"; buttonId: string; buttonLabel?: string }
-  | { kind: "external"; channel: string };
+  | { kind: "external"; channel: string }
+  // Spec 181 — a press from someone holding a shared access. The label rides in
+  // the source so the Activity feed still names the access once it is deleted.
+  | { kind: "shared_access"; accessId: string; label: string };
+
+// ============================================================
+// Shared access (spec 181)
+// ============================================================
+
+/** A daily time window on the house's clock, `HH:MM`, not crossing midnight. */
+export interface SharedAccessTimeWindow {
+  from: string;
+  to: string;
+}
+
+/** A gate listed on an access or a profile, with what a press sends (R2.5). */
+export interface SharedAccessGateInput {
+  equipmentId: string;
+  /** Null = what the gate's own button sends (an impulse gate). */
+  value?: unknown;
+}
+
+export type SharedAccessKind = "manual" | "external";
+
+/** Why a press was refused, in the order R4.12 checks them. */
+export type SharedAccessRefusal =
+  | "revoked"
+  | "suspended"
+  | "not_yet"
+  | "expired"
+  | "outside_hours"
+  | "no_gate"
+  | "not_this_gate"
+  | "refused_by_house"
+  | "too_many_opens"
+  /** Too many presses already wait on this gate (R4.14). */
+  | "busy"
+  | "gate_error";
+
+/** Where an access stands right now, for the owner's line. */
+export type SharedAccessStatus =
+  "live" | "outside_hours" | "not_yet" | "ended" | "suspended" | "revoked" | "no_gate";
+
+export interface SharedAccessGateView {
+  equipmentId: string;
+  name: string;
+  value: unknown;
+}
+
+export interface SharedAccessView {
+  id: string;
+  kind: SharedAccessKind;
+  label: string;
+  /** Clear, for the owner to read out (R3.8). Null when the access has none. */
+  code: string | null;
+  /** The invitation link; null while no public address is set (R5.18). */
+  invitationUrl: string | null;
+  gates: SharedAccessGateView[];
+  /** ISO, in force. Null = open-ended. */
+  validFrom: string | null;
+  validUntil: string | null;
+  timeWindows: SharedAccessTimeWindow[];
+  status: SharedAccessStatus;
+  suspendedAt: string | null;
+  revokedAt: string | null;
+  /** External only: where it came from, and what the owner widened. */
+  source: {
+    pluginId: string;
+    externalId: string;
+    profileId: string | null;
+    profileName: string | null;
+    from: string | null;
+    until: string | null;
+    earlyOpenAt: string | null;
+    extendedUntil: string | null;
+  } | null;
+  phones: number;
+  useCount: number;
+  lastUsedAt: string | null;
+  createdAt: string;
+}
+
+export interface SharedAccessGateSummary {
+  equipmentId: string;
+  name: string;
+  armed: boolean;
+  /** Accesses listing this gate that can still open (not revoked, not ended). */
+  people: number;
+  /** Values of the gate's `command` order, when it has enum values (R2.5). */
+  commandValues: string[];
+  hasCommand: boolean;
+}
+
+export interface SharedAccessProfileView {
+  id: string;
+  name: string;
+  pluginId: string | null;
+  isDefault: boolean;
+  gates: SharedAccessGateView[];
+  validFrom: string | null;
+  validUntil: string | null;
+  timeWindows: SharedAccessTimeWindow[];
+  withCode: boolean;
+}
+
+export interface SharedAccessState {
+  enabled: boolean;
+  /** Base of the invitation links, or null when unset (the page cannot be reached). */
+  publicUrl: string | null;
+  accesses: SharedAccessView[];
+  gates: SharedAccessGateSummary[];
+  profiles: SharedAccessProfileView[];
+  /** Integration plugins a profile can be granted to. */
+  plugins: { id: string; name: string }[];
+}
+
+export interface SharedAccessJournalEntry {
+  id: number;
+  at: string;
+  accessId: string | null;
+  label: string;
+  kind: string;
+  reason: string | null;
+  actor: string | null;
+  equipmentId: string | null;
+  /** R5.19 — the phone's tag (`7K3F`) when a phone did it. */
+  phoneTag: string | null;
+}
+
+/** What a plugin gets back for a stay (spec 181 R9). */
+export interface PluginInvitation {
+  id: string;
+  code: string | null;
+  invitationUrl: string | null;
+}
+
+/**
+ * Spec 181 R9 — `deps.sharedAccess`, created per plugin so the plugin id is
+ * bound, not passed. A plugin decides who and when; the owner's profiles decide
+ * what opens. It never names an equipment.
+ */
+export interface SharedAccessApi {
+  /** The profiles the owner granted to this plugin — names only, never the gates. */
+  profiles(): Array<{ id: string; name: string; isDefault: boolean; complete: boolean }>;
+  /**
+   * One stay, one key (R9.34). Idempotent on `externalId`, which names a stay,
+   * never a person. `from` / `until` are dates with their hour on the house's
+   * clock (`2026-10-03T16:00`) or ISO; `until` is required. Without
+   * `profileId`, the default profile is used.
+   */
+  upsert(
+    externalId: string,
+    input: { profileId?: string; label: string; from: string | null; until: string },
+  ): PluginInvitation;
+  revoke(externalId: string): void;
+  list(): Array<{
+    externalId: string;
+    state: SharedAccessStatus;
+    code: string | null;
+    invitationUrl: string | null;
+  }>;
+}
+
+/** R5.19 — one phone set up on an access, as the owner sees it. */
+export interface SharedAccessPhoneView {
+  id: string;
+  platform: "iphone" | "ipad" | "android" | "mac" | "windows" | "other";
+  tag: string;
+  firstSeenAt: string;
+  lastSeenAt: string;
+}
 
 // ============================================================
 // Activity feed (spec 101)
@@ -1584,6 +1754,16 @@ export type EngineEvent =
   | { type: "calendar.profile.changed"; profileId: string; profileName: string }
   // Settings events
   | { type: "settings.changed"; keys: string[] }
+  // Spec 181 — shared access. Admin-only on the WebSocket: labels name people.
+  | { type: "shared_access.changed" }
+  | { type: "shared_access.opened"; accessId: string; label: string; equipmentId: string }
+  | {
+      type: "shared_access.refused";
+      accessId: string | null;
+      label: string | null;
+      equipmentId: string | null;
+      reason: SharedAccessRefusal;
+    }
   // Sunlight events
   | { type: "sunlight.changed" }
   // MQTT Broker events

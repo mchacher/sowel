@@ -118,6 +118,7 @@ plugins:
             Recipes: Recettes
             Plugins: Plugins
             Energy Monitoring: Suivi énergétique
+            Shared Access: Accès partagés
             Remote Access: Accès distant
             Release Notes: Notes de version
 
@@ -156,6 +157,7 @@ nav:
     - Recipes: user/recipes.md
     - Plugins: user/plugins.md
     - Energy Monitoring: user/energy.md
+    - Shared Access: user/shared-access.md
     - Remote Access: user/remote-access.md
     - Release Notes: release-notes.md
 

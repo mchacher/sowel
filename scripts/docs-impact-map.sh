@@ -42,6 +42,8 @@ src/equipments/|docs/technical/data-model/equipments.md
 src/zones/|docs/technical/data-model/zones.md
 src/modes/|docs/technical/data-model/modes.md
 src/auth/|docs/technical/api-reference.md
+src/shared-access/|docs/user/shared-access.md, docs/technical/api-reference.md, docs/technical/data-model.md, docs/technical/plugin-development.md
+ui/src/components/shared-access/|docs/user/shared-access.md
 migrations/|docs/technical/data-model/
 Dockerfile|docs/technical/deployment.md
 docker-compose.yml|docs/technical/deployment.md

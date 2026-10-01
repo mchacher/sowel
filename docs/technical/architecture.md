@@ -132,6 +132,7 @@ sowel/
 │   ├── mqtt-publishers/         # Outbound MQTT publishing (broker, publisher, on-change filter)
 │   ├── notifications/           # Notification channels (Telegram, ntfy, web push)
 │   ├── auth/                    # JWT + API tokens, MFA, middleware, user manager, first-run setup
+│   ├── shared-access/           # Shared access (spec 181): codes and links opening a gate, public page
 │   ├── api/                     # Fastify server, WebSocket handler, route files
 │   │   ├── server.ts            # Server setup and route registration
 │   │   ├── websocket.ts         # WebSocket handler with topic subscriptions
@@ -418,6 +419,34 @@ The Fastify server registers `@fastify/helmet` with a Content-Security-Policy th
 ### CORS defaults
 
 `CORS_ORIGINS` defaults to `http://localhost:3000,http://localhost:5173`. Setting it to `*` is permitted but emits a startup warning, doubled when `API_HOST` is not loopback.
+
+---
+
+## Shared Access (spec 181)
+
+`src/shared-access/` lets someone who is not a Sowel user open a `gate` equipment for a while, with
+a code or a link. It is opt-in (`sharedAccess.enabled`, off by default); while it is off, every
+surface answers like an unknown route.
+
+- **One manager, three callers.** `SharedAccessManager` holds every rule for the owner's admin
+  routes (`/api/v1/shared-access/*`), the anonymous routes the visitor's page calls
+  (`/api/v1/shared-access/public/*`, also served as `/access/api/*`) and the per-plugin
+  `deps.sharedAccess` (spec 181 R9). None of them touches `SharedAccessStore` (SQLite, migrations
+  `035` and `036`) directly.
+- **Decide, then press.** A press is decided first (revoked, held, validity, gate listed and armed,
+  ceilings), then queued per gate (`gate-queue.ts`: double press, 15 s order timeout, at most 5
+  waiting) and sent through `EquipmentManager.executeOrder` with the `OrderSource`
+  `{ kind: "shared_access" }`, so inversion, value resolution, delivery confirmation and Activity
+  attribution come with it.
+- **The public surface.** `guest-page.ts` serves the visitor's page from strings at `/access/`: not
+  the SPA, strict CSP, `no-store`, no cookie. Only failures count against a global anti-guessing
+  budget (`guessing.ts`); the rate of tries per visitor is the reverse proxy's job.
+- **Secrets.** Codes are kept in clear on purpose (they are read out over the telephone). Link
+  tokens are derived from the per-house `sharedAccess.linkSecret`, which the settings API never
+  returns; phone tokens are random. Only the hashes of link and phone tokens are stored.
+
+Details: [spec 181](https://github.com/mchacher/sowel/tree/main/specs/181-shared-access),
+[user guide](../user/shared-access.md), [API](api-reference.md#shared-access-spec-181).
 
 ---
 

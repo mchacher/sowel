@@ -12,3 +12,4 @@ export * from "./mqtt";
 export * from "./notifications";
 export * from "./dashboard";
 export * from "./energy";
+export * from "./sharedAccess";

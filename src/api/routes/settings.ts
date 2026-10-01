@@ -6,6 +6,14 @@ import { AuditLogger } from "../../core/audit-logger.js";
 import type { UserManager } from "../../auth/user-manager.js";
 import { pathIs, requireAdmin } from "../../auth/auth-middleware.js";
 import { buildActor } from "../audit-context.js";
+import { SETTING_LINK_SECRET } from "../../shared-access/shared-access-manager.js";
+
+/**
+ * Settings the core keeps for itself: never returned, never written through
+ * this API. The shared-access link secret (spec 181 R3.8) rebuilds every live
+ * invitation link, and changing it would silently break every link sent.
+ */
+const INTERNAL_SETTINGS = new Set<string>([SETTING_LINK_SECRET]);
 
 interface SettingsDeps {
   settingsManager: SettingsManager;
@@ -38,15 +46,20 @@ export function registerSettingsRoutes(app: FastifyInstance, deps: SettingsDeps)
 
   // GET /api/v1/settings — Get all settings (admin only)
   app.get("/api/v1/settings", async () => {
-    return settingsManager.getAll();
+    const all = settingsManager.getAll();
+    return Object.fromEntries(Object.entries(all).filter(([key]) => !INTERNAL_SETTINGS.has(key)));
   });
 
   // PUT /api/v1/settings — Update settings (admin only)
   app.put<{ Body: Record<string, string> }>(
     "/api/v1/settings",
     { schema: { body: settingsBodySchema } },
-    async (request) => {
+    async (request, reply) => {
       const entries = request.body;
+      const internal = Object.keys(entries).filter((key) => INTERNAL_SETTINGS.has(key));
+      if (internal.length > 0) {
+        return reply.code(400).send({ error: "internal_setting", keys: internal });
+      }
 
       // Capture old values BEFORE the write for the audit meta.
       //

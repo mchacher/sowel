@@ -270,6 +270,48 @@ All events are typed via `EngineEvent`, a TypeScript discriminated union. Handle
 | `sunlight.changed`         | --                       |
 | `settings.changed`         | `keys: string[]`         |
 
+### Shared access (spec 181)
+
+Admin-only on the WebSocket: the labels name people.
+
+| Event                   | Payload                                                     |
+| ----------------------- | ----------------------------------------------------------- |
+| `shared_access.changed` | -- (any owner or plugin write)                              |
+| `shared_access.opened`  | `accessId, label, equipmentId`                              |
+| `shared_access.refused` | `accessId, label, equipmentId, reason: SharedAccessRefusal` |
+
+An opening is an ordinary order, attributed with the `OrderSource` member
+`{ kind: "shared_access", accessId, label }`, so the Activity feed names the access even once it is
+deleted. The wrong-code alert and the phone count use `system.alarm.raised` under source
+`shared-access`.
+
+Tables (migrations `035_shared_access.sql` and `036_shared_access_tombstones.sql`), none of them a column on `equipments`:
+
+| Table                         | Holds                                                                                                                                                                      |
+| ----------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `shared_accesses`             | One access: label, code (clear, optional), link version and link-token hash, dates in force, source and owner widening for a plugin's access, time windows, hold / revoke. |
+| `shared_access_gates`         | The gates an access opens, with the command value when the gate's command has several. Cascades from `equipments`.                                                         |
+| `shared_access_disarmed`      | One row per disarmed gate.                                                                                                                                                 |
+| `shared_access_profiles`      | What a plugin's accesses open: dates, time windows, code or not, the plugin it is granted to, `is_default`.                                                                |
+| `shared_access_profile_gates` | A profile's gates. Cascades from `equipments`.                                                                                                                             |
+| `shared_access_phones`        | Phones set up on an access: token hash, first and last seen.                                                                                                               |
+| `shared_access_journal`       | Openings, refusals and changes, with no foreign key so it outlives the access. A year, 50 000 lines at most.                                                               |
+| `shared_access_tombstones`    | The `(plugin, externalId)` of an external access the owner deleted, so a later upsert of that stay answers `revoked` (migration `036`). Purged after a year.               |
+
+All eight ride in the backup.
+
+**The link token is derived, not random.** It is
+`HMAC-SHA256(sharedAccess.linkSecret, "<accessId>:<linkVersion>")` sliced to 22 base64url
+characters (`deriveLinkToken` in `src/shared-access/codes.ts`), and only its SHA-256 is stored, in
+`link_token_hash`. The derivation exists so the owner can copy an access's link again at any time,
+and a plugin can read its invitation back. « Change the code » bumps `link_version`, which changes
+the token and kills the old link.
+
+`sharedAccess.linkSecret` is one random secret per house, generated on first use and kept in the
+`settings` table. It is never returned by `GET /api/v1/settings`, cannot be written through
+`PUT /api/v1/settings`, and is out of every plugin's settings scope. It rides in the backup with the
+other settings, so **a backup can rebuild every live link**: keep backups like a key.
+
 ### MQTT / Notification publishers
 
 | Event                                         | Payload                                              |

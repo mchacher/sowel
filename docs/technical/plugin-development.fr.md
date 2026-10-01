@@ -121,6 +121,7 @@ interface PluginDeps {
   settingsManager: SettingsManager;
   deviceManager: DeviceManager;
   pluginDir: string;
+  sharedAccess?: SharedAccessApi; // spec 181
 }
 ```
 
@@ -220,6 +221,72 @@ const cachePath = resolve(deps.pluginDir, "cache.json");
 ```
 
 **Note :** il n'y a pas de `mqttConnector` dans `PluginDeps`. Si votre plugin a besoin de MQTT, utilisez le package npm `mqtt` directement comme dépendance du plugin.
+
+### `sharedAccess` (spec 181, optionnel)
+
+Présent sur un moteur doté des accès partagés, lié à l'identifiant de votre plugin. Il permet à un
+plugin — typiquement le connecteur d'un système de réservation — de créer des clés pour les
+personnes qu'il connaît, **sans jamais choisir ce qu'elles ouvrent** : le propriétaire écrit des
+**profils** (portails, dates, heures, code ou non) et accorde chacun à un plugin. Testez sa présence
+avant usage, et attendez-vous à `SharedAccessDisabledError` tant que le propriétaire n'a pas activé
+la fonctionnalité.
+
+```typescript
+interface SharedAccessApi {
+  /** Les profils accordés à ce plugin — des noms, jamais les portails. */
+  profiles(): Array<{ id: string; name: string; isDefault: boolean; complete: boolean }>;
+  /** Un séjour, une clé. Idempotent sur externalId, qui nomme un séjour, jamais une personne. */
+  upsert(
+    externalId: string,
+    input: { profileId?: string; label: string; from: string | null; until: string },
+  ): { id: string; code: string | null; invitationUrl: string | null };
+  revoke(externalId: string): void;
+  list(): Array<{
+    externalId: string;
+    state: string;
+    code: string | null;
+    invitationUrl: string | null;
+  }>;
+}
+```
+
+- `from` / `until` sont une date **et** une heure sur l'horloge de la maison (`"2026-10-03T16:00"`)
+  ou de l'ISO. `until` est obligatoire (`NoEndError`) : un plugin ne peut pas créer une clé sans fin.
+  Le cœur la termine seul, que votre plugin tourne ou non.
+- Sans `profileId`, c'est le **profil par défaut** — à condition que le propriétaire l'ait accordé à
+  votre plugin (`UnknownProfileError` sinon). Tant que ce profil ne liste aucun portail,
+  `ProfileIncompleteError` et rien n'est créé : réessayez au passage suivant et dites-le sur la page
+  de votre plugin.
+- Un `upsert` rejoué ne change rien. Un suivant met à jour le nom et les dates, jamais les portails,
+  et ne reprend jamais ce que le propriétaire a élargi.
+- Les accès et profils d'un autre plugin n'existent pas pour le vôtre.
+- **La révocation du propriétaire l'emporte sur votre flux.** Un `upsert` sur un séjour que le
+  propriétaire a révoqué lève `revoked` et ne change rien. Si le propriétaire a supprimé l'accès,
+  Sowel garde une pierre tombale pour votre `externalId` (un an), si bien que rejouer ce séjour lève
+  aussi `revoked` et ne crée rien. Dites à vos utilisateurs que la clé a été retirée dans Sowel ; ne
+  réessayez pas sous un nouvel `externalId`.
+
+Chaque erreur est une `SharedAccessError` qui porte un `code` (et le `statusCode` HTTP qu'utiliserait
+l'API du propriétaire) :
+
+| `code`               | Classe                      | Quand                                                                            |
+| -------------------- | --------------------------- | -------------------------------------------------------------------------------- |
+| `disabled`           | `SharedAccessDisabledError` | Le propriétaire a désactivé la fonctionnalité. Rien n'est créé.                  |
+| `unknown_profile`    | `UnknownProfileError`       | Le profil (ou le profil par défaut) n'est pas accordé à votre plugin.            |
+| `profile_incomplete` | `ProfileIncompleteError`    | Le profil ne liste encore aucun portail. Rien n'est créé ; réessayez plus tard.  |
+| `no_end`             | `NoEndError`                | `until` manque : la clé d'un plugin a toujours une fin.                          |
+| `revoked` (409)      | `SharedAccessError`         | Le propriétaire a révoqué ou supprimé l'accès de ce séjour. Rien n'est (re)créé. |
+
+```typescript
+if (deps.sharedAccess) {
+  const invitation = deps.sharedAccess.upsert(`stay-${stay.id}`, {
+    label: stay.guestName,
+    from: `${stay.arrival}T16:00`,
+    until: `${stay.departure}T11:00`,
+  });
+  // envoyer invitation.code et invitation.invitationUrl par votre propre canal
+}
+```
 
 ---
 

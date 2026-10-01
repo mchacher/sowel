@@ -134,6 +134,16 @@ export const BACKUP_TABLES = [
   // review found the restore cascading them away through `equipments`.
   "pv_health_day",
   "pv_health_alert",
+  // Spec 181 — after `equipments`, for the same reason: their gate links
+  // cascade from it. Profiles before the accesses that point at them.
+  "shared_access_profiles",
+  "shared_access_profile_gates",
+  "shared_accesses",
+  "shared_access_gates",
+  "shared_access_disarmed",
+  "shared_access_phones",
+  "shared_access_journal",
+  "shared_access_tombstones",
 ] as const;
 
 // Reverse order for deletion (children first) + tables not exported but must be cleared
