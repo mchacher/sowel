@@ -1,8 +1,16 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from "vitest";
 import pino from "pino";
-import { mkdtempSync, rmSync, readdirSync, readFileSync, writeFileSync, utimesSync } from "node:fs";
+import {
+  existsSync,
+  mkdtempSync,
+  rmSync,
+  readdirSync,
+  readFileSync,
+  writeFileSync,
+  utimesSync,
+} from "node:fs";
 import { tmpdir } from "node:os";
-import { join } from "node:path";
+import { dirname, join } from "node:path";
 import { fileTransportOptions, purgeLegacyLogFiles } from "./logger.js";
 
 // #400 — one calendar day must map to one predictable log file across restarts.
@@ -16,6 +24,14 @@ function today(): string {
   return `${d.getFullYear()}-${mm}-${dd}`;
 }
 
+/**
+ * How long a transport may take to flush and close. A run takes ~0.3 s; this
+ * only has to fire before the block's own timeout — twice over, since the
+ * restart case writes twice — so that a transport that never closes fails
+ * with what it left on disk instead of a bare timeout (#988).
+ */
+const CLOSE_DEADLINE_MS = 10_000;
+
 /** Spin a real pino-roll transport, write one line, close it. */
 async function writeOneLine(baseFile: string, message: string): Promise<void> {
   const transport = pino.transport({
@@ -24,12 +40,26 @@ async function writeOneLine(baseFile: string, message: string): Promise<void> {
   });
   const logger = pino(transport);
   logger.info(message);
-  await new Promise<void>((resolve, reject) => {
-    transport.on("close", resolve);
-    transport.on("error", reject);
-    // flushSync is unavailable through the worker; end() flushes then closes.
-    transport.end();
-  });
+  let deadline: NodeJS.Timeout | undefined;
+  try {
+    await new Promise<void>((resolve, reject) => {
+      deadline = setTimeout(() => {
+        const dir = dirname(baseFile);
+        const files = existsSync(dir) ? readdirSync(dir).join(", ") : "(no directory)";
+        reject(
+          new Error(
+            `pino-roll transport did not close within ${CLOSE_DEADLINE_MS} ms; files: ${files}`,
+          ),
+        );
+      }, CLOSE_DEADLINE_MS);
+      transport.on("close", resolve);
+      transport.on("error", reject);
+      // flushSync is unavailable through the worker; end() flushes then closes.
+      transport.end();
+    });
+  } finally {
+    clearTimeout(deadline);
+  }
 }
 
 describe("fileTransportOptions", () => {
@@ -43,7 +73,9 @@ describe("fileTransportOptions", () => {
   });
 });
 
-describe("pino-roll file naming (integration)", () => {
+// Each case starts a real worker thread, so the block gets more room than the
+// 5 s default; CLOSE_DEADLINE_MS fires first and says what was left on disk.
+describe("pino-roll file naming (integration)", { timeout: 30_000 }, () => {
   let dir: string;
 
   beforeEach(() => {
