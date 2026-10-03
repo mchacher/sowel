@@ -40,6 +40,8 @@ export const NON_SUBMETER_TYPES: ReadonlySet<EquipmentType> = new Set<EquipmentT
   "main_energy_meter",
   "energy_production_meter",
   "solar_panel",
+  // Spec 183 — a car never counts: the charger measures its energy.
+  "electric_vehicle",
 ]);
 
 interface BindingLike {

@@ -387,6 +387,7 @@ const EQUIPMENT_DEFAULT_ICONS: Partial<Record<EquipmentType, string>> = {
   vmc: "Fan",
   ups: "BatteryCharging",
   ev_charger: "EvCharger",
+  electric_vehicle: "Car",
 };
 
 const FAMILY_DEFAULT_ICONS: Record<WidgetFamily, string> = {

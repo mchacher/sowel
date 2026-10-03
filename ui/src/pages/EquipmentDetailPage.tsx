@@ -15,6 +15,7 @@ import { ThermostatCard } from "../components/equipments/ThermostatCard";
 import { WaterValveControl } from "../components/equipments/WaterValveControl";
 import { VmcControl } from "../components/equipments/VmcControl";
 import { EvChargerControl } from "../components/equipments/EvChargerControl";
+import { ElectricVehicleControl } from "../components/equipments/ElectricVehicleControl";
 import { PoolHeatPumpControl } from "../components/equipments/PoolHeatPumpControl";
 import { SensorDataPanel } from "../components/equipments/SensorDataPanel";
 import { SolarPanelDataPanel } from "../components/equipments/SolarPanelDataPanel";
@@ -487,6 +488,17 @@ export function EquipmentDetailPage() {
         </div>
       )}
 
+      {/* Electric vehicle (spec 183): battery, range, state, wake, charge limit. */}
+      {equipment.type === "electric_vehicle" && (
+        <div className="bg-surface rounded-[10px] border border-border p-4 mb-6">
+          <h3 className="text-[14px] font-semibold text-text mb-3">{t("equipments.controls")}</h3>
+          <ElectricVehicleControl
+            equipment={equipment}
+            onExecuteOrder={(alias, value) => executeOrder(equipment.id, alias, value)}
+          />
+        </div>
+      )}
+
       {/* EV charger (spec 182): start/stop, vehicle, power, session, current. */}
       {equipment.type === "ev_charger" && (
         <div className="bg-surface rounded-[10px] border border-border p-4 mb-6">
@@ -593,7 +605,8 @@ export function EquipmentDetailPage() {
       )}
 
       {/* Energy management — flexible-load declaration (spec 140), admin only */}
-      {isAdmin && equipment.orderBindings.length > 0 && (
+      {/* Spec 183 — a vehicle is never a flexible load: the charger is. */}
+      {isAdmin && equipment.orderBindings.length > 0 && equipment.type !== "electric_vehicle" && (
         <EnergyManagementPanel equipment={equipment} onUpdated={() => void fetchEquipments()} />
       )}
 

@@ -14,5 +14,7 @@ export function needsDetailSheet(equipmentType: string): boolean {
     // Spec 182 — starting a charge is not a light switch: a tap opens the
     // sheet (start/stop, current), never toggles on the spot.
     "ev_charger",
+    // Spec 183 — a car's sheet holds its battery, wake and charge limit.
+    "electric_vehicle",
   ].includes(equipmentType);
 }

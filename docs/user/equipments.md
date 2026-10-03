@@ -112,6 +112,12 @@ Buttons are inputs only — bind them to a [recipe](recipes.md) action or a [mod
 | **Energy Production Meter** | Production display + autoconsumption calculation                   | production power, cumulative production          | One allowed per system.                                                                                                |
 | **EV Charger**              | Start/stop, vehicle state, power, session energy, charging current | see below                                        | A controllable load and a submeter. Deferrable by default for the [energy arbiter](energy.md).                         |
 
+#### Electric vehicle
+
+An **electric vehicle** is a battery-electric or plug-in hybrid car, read from its maker's cloud. Its card shows the battery level (with the charge limit marked when the car exposes one), the electric range, the charging state (_Plugged in_, _Waiting for power_, _Charging_…) and, when the car's last report is more than 15 minutes old, how old it is: a sleeping car reports nothing, and an old battery level is not today's. Its detail page adds **Wake up** and **Start charging** buttons and a charge-limit setting when the car supports them; on mobile, a tap opens that sheet.
+
+Sowel defines what a car carries, whatever the maker: battery level, range, plugged, charging state, last report time, at home (yes/no, no coordinates), mileage, charge limit, and the wake and start-charging commands. A car is not an energy meter nor a flexible load: the charger measures and is controlled. Fuel and climate values of a plug-in hybrid stay visible as extras.
+
 #### EV charger
 
 An **EV charger** (borne de recharge) is a charging station for an electric vehicle, portable or wall-mounted. Its card shows whether a car is plugged in (_Unplugged_, _Plugged in_, _Charging_), the live power while it charges and the energy delivered this session; its detail page adds a start/stop toggle and a charging-current stepper bounded by the charger's own range. On mobile, a tap opens the detail sheet: starting a charge is never a single accidental tap. A charger offers no timed command: its charge is driven by a recipe and the energy arbiter.

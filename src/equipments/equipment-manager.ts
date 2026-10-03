@@ -40,6 +40,16 @@ import { deriveEquipmentStatus, isStaleBinding } from "./equipment-status.js";
 import { resolveFreshnessBudget } from "../shared/reading-freshness.js";
 import { RETRY_CHANNEL } from "./order-confirmation-tracker.js";
 import { EV_CHARGER_CATEGORY_ALIASES } from "../shared/ev-charger-contract.js";
+import { ELECTRIC_VEHICLE_CATEGORY_ALIASES } from "../shared/electric-vehicle-contract.js";
+
+/**
+ * Equipment types whose contract binds points by category (specs 182, 183):
+ * category → contract alias, applied first on auto-binding.
+ */
+const CONTRACT_CATEGORY_ALIASES: Readonly<Record<string, Readonly<Record<string, string>>>> = {
+  ev_charger: EV_CHARGER_CATEGORY_ALIASES,
+  electric_vehicle: ELECTRIC_VEHICLE_CATEGORY_ALIASES,
+};
 import type { Device } from "../shared/types.js";
 
 /** A function that returns computed data entries for a given equipment. */
@@ -82,6 +92,7 @@ const VALID_EQUIPMENT_TYPES: Set<string> = new Set([
   "vmc",
   "ups",
   "ev_charger",
+  "electric_vehicle",
 ]);
 
 // ============================================================
@@ -419,11 +430,12 @@ export class EquipmentManager {
           });
       }
 
-      // Spec 182 — an EV charger binds its contract points under the contract
-      // alias derived from their category, the API path included, and binds
-      // them first so a vendor key that happens to equal an alias cannot take
-      // it. A point whose contract alias is already taken keeps its own key.
-      const contract = input.type === "ev_charger" ? EV_CHARGER_CATEGORY_ALIASES : null;
+      // Specs 182, 183 — an equipment with a contract binds its contract
+      // points under the contract alias derived from their category, the API
+      // path included, and binds them first so a vendor key that happens to
+      // equal an alias cannot take it. A point whose contract alias is already
+      // taken keeps its own key.
+      const contract = CONTRACT_CATEGORY_ALIASES[input.type] ?? null;
       const contractAlias = (category: string | undefined): string | undefined =>
         contract && category ? contract[category] : undefined;
       const contractFirst = <T extends { category?: string }>(items: readonly T[]): T[] =>

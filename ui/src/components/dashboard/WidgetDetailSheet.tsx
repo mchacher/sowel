@@ -29,6 +29,7 @@ import { useEquipmentState } from "../equipments/useEquipmentState";
 import { findOrderByCategory } from "../equipments/bindingUtils";
 import { VmcControl } from "../equipments/VmcControl";
 import { EvChargerControl } from "../equipments/EvChargerControl";
+import { ElectricVehicleControl } from "../equipments/ElectricVehicleControl";
 import { allSupportStop } from "../../lib/binding-utils";
 import { thermostatPowerStateBinding } from "../../lib/thermostat-state";
 import { useSliderOverride } from "../../hooks/useSliderOverride";
@@ -181,6 +182,18 @@ export function EquipmentDetailSheet({ widget, equipment, equipmentZone, onExecu
         icon={customIcon}
       >
         <WeatherDetailContent equipment={equipment} />
+      </BottomSheet>
+    );
+  }
+
+  if (equipment.type === "electric_vehicle") {
+    return (
+      <BottomSheet open onClose={onClose} title={label}
+        icon={customIcon}
+      >
+        <div className="p-4">
+          <ElectricVehicleControl equipment={equipment} onExecuteOrder={execOrder} />
+        </div>
       </BottomSheet>
     );
   }

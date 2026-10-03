@@ -49,7 +49,11 @@ interface BindingLike {
  * arbiter; a generic "send, then send back after N minutes" would cut a charge
  * in the middle, or arm the charging current, which carries no state at all.
  */
-export const TIMED_EXCLUDED_TYPES: ReadonlySet<string> = new Set(["ev_charger"]);
+export const TIMED_EXCLUDED_TYPES: ReadonlySet<string> = new Set([
+  "ev_charger",
+  // Spec 183 — a car's orders are momentary (wake, start) or a setting.
+  "electric_vehicle",
+]);
 
 interface EquipmentLike {
   /** The equipment type; absent on callers that do not know it (never excluded then). */

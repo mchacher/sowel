@@ -821,3 +821,47 @@ describe("ev_charger auto-binding (spec 182)", () => {
     expect(resolveAlias("relay_1", "gate", ORDER_CATEGORY_ALIASES, "light_toggle")).toBe("command");
   });
 });
+
+// Spec 183 — the electric vehicle contract binds from categories, contract first.
+describe("electric_vehicle auto-binding (spec 183)", () => {
+  const renault = {
+    id: "dev-car",
+    name: "Rafale",
+    data: [
+      { id: "d0", key: "range", category: "generic", type: "number" },
+      { id: "d1", key: "batteryLevel", category: "ev_battery_level", type: "number" },
+      { id: "d2", key: "batteryAutonomy", category: "ev_range", type: "number" },
+      { id: "d3", key: "plugStatus", category: "ev_plugged", type: "boolean" },
+      { id: "d4", key: "chargingStatus", category: "ev_charging_state", type: "enum" },
+      { id: "d5", key: "timestamp", category: "ev_reported_at", type: "text" },
+      { id: "d6", key: "fuelAutonomy", category: "generic", type: "number" },
+    ],
+    orders: [
+      { id: "o1", key: "lights", category: "ev_wake", type: "boolean" },
+      { id: "o2", key: "socTarget", category: "set_ev_charge_limit", type: "number", min: 50, max: 100 },
+      { id: "o3", key: "horn", type: "boolean" },
+    ],
+  } as unknown as DeviceWithDetails;
+
+  it("binds the contract aliases, contract first, extras under their keys", () => {
+    const plan = computeBindingPlan([renault], "electric_vehicle");
+    const data = Object.fromEntries(plan.filter((p) => p.kind === "data").map((p) => [p.key, p.alias]));
+    const orders = Object.fromEntries(plan.filter((p) => p.kind === "order").map((p) => [p.key, p.alias]));
+    expect(data).toEqual({
+      batteryLevel: "battery_level",
+      batteryAutonomy: "range",
+      plugStatus: "plugged",
+      chargingStatus: "charging_state",
+      timestamp: "reported_at",
+      range: "range_2",
+      fuelAutonomy: "fuelAutonomy",
+    });
+    // The horn is not part of the contract: opt-in.
+    expect(orders).toEqual({ lights: "wake", socTarget: "charge_limit" });
+  });
+
+  it("leaves the EV charger plan unchanged", () => {
+    expect(resolveAlias("charge", "ev_charger", ORDER_CATEGORY_ALIASES, "toggle_power")).toBe("state");
+  });
+});
+

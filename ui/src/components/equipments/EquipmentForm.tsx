@@ -36,6 +36,7 @@ const EQUIPMENT_TYPE_KEYS: { value: EquipmentType; labelKey: string }[] = [
   { value: "vmc", labelKey: "equipments.type.vmc" },
   { value: "ups", labelKey: "equipments.type.ups" },
   { value: "ev_charger", labelKey: "equipments.type.ev_charger" },
+  { value: "electric_vehicle", labelKey: "equipments.type.electric_vehicle" },
 ];
 
 interface EquipmentFormProps {

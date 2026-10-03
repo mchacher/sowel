@@ -2,13 +2,13 @@
 
 ## Steps
 
-- [ ] 1. Contract module and tests.
-- [ ] 2. Types (backend + UI), `CATEGORY_EXPECTED_TYPE`, `VALID_EQUIPMENT_TYPES`, `NON_SUBMETER_TYPES` (both), `TIMED_EXCLUDED_TYPES`.
-- [ ] 3. Contract-first auto-binding generalised to a per-type contract map (backend `createWithAutoBindings`, UI `computeBindingPlan`), `ev_charger` behaviour unchanged.
-- [ ] 4. UI binding rules, type meta, form, device selector.
-- [ ] 5. Read model `electricVehicleState.ts` + tests; `ElectricVehicleControl`.
-- [ ] 6. Surfaces: card, zone group, widgets, sheet, detail page (no energy panel).
-- [ ] 7. i18n EN/FR, docs EN/FR, specs index EN/FR.
+- [x] 1. Contract module and tests.
+- [x] 2. Types (backend + UI), `CATEGORY_EXPECTED_TYPE`, `VALID_EQUIPMENT_TYPES`, `NON_SUBMETER_TYPES` (both), `TIMED_EXCLUDED_TYPES`.
+- [x] 3. Contract-first auto-binding generalised to a per-type contract map (backend `createWithAutoBindings`, UI `computeBindingPlan`), `ev_charger` behaviour unchanged.
+- [x] 4. UI binding rules, type meta, form, device selector.
+- [x] 5. Read model `electricVehicleState.ts` + tests; `ElectricVehicleControl`.
+- [x] 6. Surfaces: card, zone group, widgets, sheet, detail page (no energy panel).
+- [x] 7. i18n EN/FR, docs EN/FR, specs index EN/FR.
 - [ ] 8. Validate; candidate-instance check with the Renault plugin when it exists.
 
 ## Test plan

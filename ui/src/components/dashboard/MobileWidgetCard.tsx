@@ -47,8 +47,10 @@ import {
   Fan,
   BatteryCharging,
   EvCharger,
+  Car,
 } from "lucide-react";
 import { evChargerStateOf, evVehicleKey } from "../equipments/evChargerState";
+import { electricVehicleStateOf, evChargingStateKey } from "../equipments/electricVehicleState";
 import { gateNeedsConfirm } from "./gate-confirm";
 import { ForecastConfidenceMark } from "./ForecastConfidenceMark";
 import { vmcSpeedOf } from "../equipments/vmcSpeed";
@@ -513,6 +515,32 @@ function useMobileState(
       stateLines: [
         status ? t(upsStatusKey(status)) : (raw ?? t(upsStatusKey(null))),
         ...(detail ? [detail] : []),
+      ],
+    };
+  }
+
+  if (equipment.type === "electric_vehicle") {
+    // Spec 183 — battery first, then range and state.
+    const s = electricVehicleStateOf(equipment);
+    return {
+      icon: renderWidgetStateIcon(
+        widget.icon,
+        <Car
+          size={96}
+          strokeWidth={1.2}
+          className={s.chargingState === "charging" ? "text-accent" : "text-primary"}
+        />,
+      ),
+      stateLines: [
+        s.batteryLevel !== null ? `${Math.round(s.batteryLevel)} %` : "—",
+        ...[
+          [
+            s.rangeKm !== null ? `${Math.round(s.rangeKm)} km` : null,
+            s.chargingState ? t(evChargingStateKey(s.chargingState)) : null,
+          ]
+            .filter(Boolean)
+            .join(" · "),
+        ].filter((l) => l !== ""),
       ],
     };
   }

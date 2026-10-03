@@ -11,6 +11,7 @@ import {
   WashingMachine,
   Waves,
   Camera,
+  Car,
   BatteryCharging,
   Fan,
 } from "lucide-react";
@@ -47,6 +48,7 @@ const EQUIPMENT_GROUPS: EquipmentGroup[] = [
   { labelKey: "equipments.group.displays", types: ["display"], icon: <Monitor size={14} strokeWidth={1.5} /> },
   { labelKey: "equipments.group.cameras", types: ["camera"], icon: <Camera size={14} strokeWidth={1.5} /> },
   { labelKey: "equipments.group.power", types: ["ups", "ev_charger"], icon: <BatteryCharging size={14} strokeWidth={1.5} /> },
+  { labelKey: "equipments.group.vehicles", types: ["electric_vehicle"], icon: <Car size={14} strokeWidth={1.5} /> },
   { labelKey: "equipments.group.other", types: ["switch", "button", "gate"], icon: <ToggleRight size={14} strokeWidth={1.5} /> },
 ];
 
