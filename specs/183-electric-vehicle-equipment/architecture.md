@@ -1,6 +1,6 @@
 # Spec 183 — Architecture
 
-Same shape as spec 182: no migration, no new event, no new API route. A new `EquipmentType`, nine categories, a contract module, binding rules, surfaces.
+Same shape as spec 182: no migration, no new event, no new API route. A new `EquipmentType`, eleven categories, a contract module, binding rules, surfaces.
 
 ## Contract module
 
@@ -50,7 +50,7 @@ export const EV_REPORT_STALE_MS = 15 * 60_000;
 
 ## Binding (UI)
 
-- `bindingUtils.ts`: `RELEVANT_DATA.electric_vehicle` = the seven data categories + `generic`; `RELEVANT_ORDER_CATEGORIES.electric_vehicle` = `ev_wake`, `ev_charge_start`; `TYPE_CATEGORY_ALIASES.electric_vehicle` = the contract map; the contract-first ordering generalised from `ev_charger` to any type with a contract map.
+- `bindingUtils.ts`: `RELEVANT_DATA.electric_vehicle` = the eight data categories + `generic`; `RELEVANT_ORDER_CATEGORIES.electric_vehicle` = `ev_wake`, `ev_charge_start`; `TYPE_CATEGORY_ALIASES.electric_vehicle` = the contract map; the contract-first ordering generalised from `ev_charger` to any type with a contract map.
 - `DeviceSelector`: `isElectricVehicleDevice` identity filter, like the charger.
 
 ## UI

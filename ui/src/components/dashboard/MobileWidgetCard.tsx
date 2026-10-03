@@ -30,6 +30,7 @@ import { solarWidgetState } from "./solarWidget";
 import { resolvePowerReading } from "../../lib/power-reading";
 import { pickLivePowerBinding } from "../../lib/energy-meter-display";
 import { formatRelative } from "../../lib/format-relative";
+import { useStalenessClock } from "../../hooks/useStalenessClock";
 import { brightnessPercent, brightnessScale } from "../../lib/brightness";
 import { findOrderByCategory } from "../equipments/bindingUtils";
 import {
@@ -141,6 +142,8 @@ function useMobileState(
   equipment: EquipmentWithDetails,
   t: TFunction,
 ): { icon: React.ReactNode; stateLines: string[]; footer?: React.ReactNode } {
+  // Spec 183 — a sleeping car sends no event; the clock ages its report.
+  const now = useStalenessClock();
   const {
     isLight,
     isShutter,
@@ -521,7 +524,7 @@ function useMobileState(
 
   if (equipment.type === "electric_vehicle") {
     // Spec 183 — battery first, then range and state.
-    const s = electricVehicleStateOf(equipment);
+    const s = electricVehicleStateOf(equipment, now);
     return {
       icon: renderWidgetStateIcon(
         widget.icon,
@@ -541,6 +544,9 @@ function useMobileState(
             .filter(Boolean)
             .join(" · "),
         ].filter((l) => l !== ""),
+        ...(s.reportStale && s.reportedAt
+          ? [t("reading.ago", { age: formatRelative(s.reportedAt, t) })]
+          : []),
       ],
     };
   }

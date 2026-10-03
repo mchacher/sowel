@@ -293,7 +293,7 @@
   "equipments.electricVehicle.limit": "limit {{value}} %",
   "equipments.electricVehicle.atHome": "At home",
   "equipments.electricVehicle.away": "Away",
-  "equipments.electricVehicle.reported": "Reported {{age}}",
+  "equipments.electricVehicle.reported": "Reported {{age}} ago",
   "equipments.electricVehicle.wake": "Wake up",
   "equipments.electricVehicle.wakeSent": "Wake-up sent",
   "equipments.electricVehicle.startCharging": "Start charging",

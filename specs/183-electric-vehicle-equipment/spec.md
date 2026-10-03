@@ -38,19 +38,19 @@ So a car is an equipment in its own right. Sowel has none: no type, no categorie
 
 ### Core aliases
 
-| Alias              | Side  | Category                        | Type    | Unit | Required    | Meaning                                                                          |
-| ------------------ | ----- | ------------------------------- | ------- | ---- | ----------- | -------------------------------------------------------------------------------- |
-| `battery_level`    | data  | **`ev_battery_level`** (new)    | number  | %    | yes         | Traction battery state of charge                                                 |
-| `range`            | data  | **`ev_range`** (new)            | number  | km   | recommended | Electric range                                                                   |
-| `plugged`          | data  | **`ev_plugged`** (new)          | boolean | —    | recommended | A charging cable is connected to the car                                         |
-| `charging_state`   | data  | **`ev_charging_state`** (new)   | enum    | —    | recommended | What the car says about charging (vocabulary below)                              |
-| `reported_at`      | data  | **`ev_reported_at`** (new)      | string  | ISO  | recommended | When the car itself last reported — not when the plugin polled                   |
-| `at_home`          | data  | **`ev_at_home`** (new)          | boolean | —    | optional    | The car is at the home location (computed by the plugin, no coordinates)         |
-| `mileage`          | data  | **`ev_mileage`** (new)          | number  | km   | optional    | Odometer                                                                         |
-| `charge_limit`     | data  | **`ev_charge_limit`** (new)     | number  | %    | optional    | The charge limit the car applies by itself (set in the car or its app)           |
-| `set_charge_limit` | order | **`set_ev_charge_limit`** (new) | number  | %    | optional    | Change that limit, on cars whose maker allows it; bounded by the order's min/max |
-| `wake`             | order | **`ev_wake`** (new)             | none    | —    | recommended | Wake the car; the plugin chooses the means                                       |
-| `charge_start`     | order | **`ev_charge_start`** (new)     | none    | —    | optional    | Ask the car to start charging, on cars whose maker allows it                     |
+| Alias            | Side  | Category                        | Type    | Unit | Required    | Meaning                                                                          |
+| ---------------- | ----- | ------------------------------- | ------- | ---- | ----------- | -------------------------------------------------------------------------------- |
+| `battery_level`  | data  | **`ev_battery_level`** (new)    | number  | %    | yes         | Traction battery state of charge                                                 |
+| `range`          | data  | **`ev_range`** (new)            | number  | km   | recommended | Electric range                                                                   |
+| `plugged`        | data  | **`ev_plugged`** (new)          | boolean | —    | recommended | A charging cable is connected to the car                                         |
+| `charging_state` | data  | **`ev_charging_state`** (new)   | enum    | —    | recommended | What the car says about charging (vocabulary below)                              |
+| `reported_at`    | data  | **`ev_reported_at`** (new)      | string  | ISO  | recommended | When the car itself last reported — not when the plugin polled                   |
+| `at_home`        | data  | **`ev_at_home`** (new)          | boolean | —    | optional    | The car is at the home location (computed by the plugin, no coordinates)         |
+| `mileage`        | data  | **`ev_mileage`** (new)          | number  | km   | optional    | Odometer                                                                         |
+| `charge_limit`   | data  | **`ev_charge_limit`** (new)     | number  | %    | optional    | The charge limit the car applies by itself (set in the car or its app)           |
+| `charge_limit`   | order | **`set_ev_charge_limit`** (new) | number  | %    | optional    | Change that limit, on cars whose maker allows it; bounded by the order's min/max |
+| `wake`           | order | **`ev_wake`** (new)             | none    | —    | recommended | Wake the car; the plugin chooses the means                                       |
+| `charge_start`   | order | **`ev_charge_start`** (new)     | none    | —    | optional    | Ask the car to start charging, on cars whose maker allows it                     |
 
 Everything else a plugin binds — fuel level and range, climate status, tyre pressures, the maker's raw codes — is an **extra**: bound and visible, and no core path, card layout or recipe contract keys off it (the spec 177 rule).
 
@@ -85,13 +85,13 @@ A device is offered for an `electric_vehicle` when it declares `ev_battery_level
 
 - **FR1 — Type.** `electric_vehicle` is a valid `EquipmentType`, creatable from the form and the API, persisted, exported and restored. No migration.
 - **FR2 — Contract module.** `src/shared/electric-vehicle-contract.ts` declares the core table, the category → alias map, the identity rule, `EV_CHARGING_STATE_VALUES`, and the extras split. Binding, UI and tests import it.
-- **FR3 — Categories.** The eleven categories join `DataCategory` / `OrderCategory` (backend and UI mirror), with their expected value types, labelled EN/FR.
+- **FR3 — Categories.** The eleven categories join `DataCategory` / `OrderCategory` (backend and UI mirror), with their expected value types; the eight data categories are labelled EN/FR (order categories are not shown to users, as for spec 182).
 - **FR4 — Auto-binding.** Both creation paths (UI plan and API `deviceIds`) bind the contract points under their contract alias, from their category, first; `generic` data binds as extras; other orders are opt-in.
-- **FR5 — Not a meter, not a load.** An `electric_vehicle` is never a submeter and never a flexible load for the arbiter: no energy profile, no metering panel. The charger is the load.
+- **FR5 — Not a meter, not a load.** An `electric_vehicle` is never a submeter and never a flexible load for the arbiter: no energy profile (the server clears one on save, including one carried over from another type), no metering panel. The charger is the load.
 - **FR6 — No timed command.** Like the charger (spec 182 FR12).
 - **FR7 — Freshness.** Every surface that shows the battery level shows its age from `reported_at` when it is more than 15 minutes old ("il y a 2 h").
 - **FR8 — Zone card and dashboard widget** (desktop and mobile): a car icon, the battery level as the headline with a bar, the range, a plug/charging indicator, the age. A mobile tap opens the detail sheet.
-- **FR9 — Detail page and sheet.** The contract values (the battery bar marks `charge_limit` when bound), a **Wake** button when `wake` is bound a **Start charging** button when `charge_start` is bound, and a charge-limit stepper when `set_charge_limit` is bound (each sends its order and reports success or the plugin's error), then the extras.
+- **FR9 — Detail page and sheet.** The contract values (the battery bar marks `charge_limit` when bound), a **Wake** button when `wake` is bound a **Start charging** button when `charge_start` is bound, and a charge-limit stepper when the `charge_limit` order is bound (each sends its order and reports success or the plugin's error), then the extras.
 - **FR10 — Zone grouping.** A new "Vehicles" group in the zone view.
 - **FR11 — Documentation.** User guide (EN/FR) section with the contract; data model; specs index EN/FR.
 
@@ -119,6 +119,6 @@ A device is offered for an `electric_vehicle` when it declares `ev_battery_level
 
 ## Decisions
 
-Taken with the maintainer on 2026-10-03: one type for battery-electric and plug-in hybrid, fuel as extras; location as `at_home` only; orders `wake` and `charge_start`; the car's charge limit in the contract (`charge_limit` / `set_charge_limit`, optional); car ↔ charger link in the recipe, not the core. Measured the same day: the Rafale forbids `charging-start` (`err.func.wired.forbidden`) and wakes on a remote lights command.
+Taken with the maintainer on 2026-10-03: one type for battery-electric and plug-in hybrid, fuel as extras; location as `at_home` only; orders `wake` and `charge_start`; the car's charge limit in the contract (`charge_limit`, data and order — order category `set_ev_charge_limit` —, optional); car ↔ charger link in the recipe, not the core. Measured the same day: the Rafale forbids `charging-start` (`err.func.wired.forbidden`) and wakes on a remote lights command.
 
 Taken by the agent, flagged for review: category names with an `ev_` prefix; `reported_at` as a contract point rather than a binding attribute; a 15-minute threshold before showing the age; a dedicated "Vehicles" zone group.

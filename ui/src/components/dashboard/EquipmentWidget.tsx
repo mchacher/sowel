@@ -48,6 +48,7 @@ import { resolvePowerReading } from "../../lib/power-reading";
 import { pickLivePowerBinding } from "../../lib/energy-meter-display";
 import { thermostatPowerStateBinding } from "../../lib/thermostat-state";
 import { formatRelative } from "../../lib/format-relative";
+import { useStalenessClock } from "../../hooks/useStalenessClock";
 import { brightnessPercent, brightnessScale } from "../../lib/brightness";
 import {
   LightBulbIcon,
@@ -1430,7 +1431,8 @@ function ElectricVehicleEquipmentWidget({
   iconKey?: string;
 }) {
   const { t } = useTranslation();
-  const s = electricVehicleStateOf(equipment);
+  const now = useStalenessClock();
+  const s = electricVehicleStateOf(equipment, now);
   return (
     <WidgetCard label={label} sublabel={sublabel}>
       <div className="flex-1 flex flex-col items-center justify-center gap-2 px-2">

@@ -293,7 +293,7 @@
   "equipments.electricVehicle.limit": "limite {{value}} %",
   "equipments.electricVehicle.atHome": "À la maison",
   "equipments.electricVehicle.away": "Absent",
-  "equipments.electricVehicle.reported": "Relevé {{age}}",
+  "equipments.electricVehicle.reported": "Relevé il y a {{age}}",
   "equipments.electricVehicle.wake": "Réveiller",
   "equipments.electricVehicle.wakeSent": "Réveil envoyé",
   "equipments.electricVehicle.startCharging": "Démarrer la charge",

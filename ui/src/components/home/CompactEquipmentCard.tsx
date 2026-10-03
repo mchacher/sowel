@@ -33,6 +33,7 @@ import { EquipmentStatusBadge } from "../equipments/EquipmentStatusBadge";
 import { pickLivePowerBinding, formatWatts } from "../../lib/energy-meter-display";
 import { resolvePowerReading } from "../../lib/power-reading";
 import { formatRelative } from "../../lib/format-relative";
+import { useStalenessClock } from "../../hooks/useStalenessClock";
 import type { DataBindingWithValue } from "../../types";
 
 interface CompactEquipmentCardProps {
@@ -632,7 +633,8 @@ function PoolPumpRuntime({ equipment }: { equipment: EquipmentWithDetails }) {
  */
 function CompactElectricVehicle({ equipment }: { equipment: EquipmentWithDetails }) {
   const { t } = useTranslation();
-  const s = electricVehicleStateOf(equipment);
+  const now = useStalenessClock();
+  const s = electricVehicleStateOf(equipment, now);
   return (
     <div className="flex items-center gap-2 flex-shrink-0">
       {s.chargingState && (
@@ -649,7 +651,9 @@ function CompactElectricVehicle({ equipment }: { equipment: EquipmentWithDetails
         </span>
       )}
       {s.reportStale && s.reportedAt && (
-        <span className="text-[11px] text-text-tertiary">{formatRelative(s.reportedAt, t)}</span>
+        <span className="text-[11px] text-text-tertiary">
+          {t("reading.ago", { age: formatRelative(s.reportedAt, t) })}
+        </span>
       )}
     </div>
   );

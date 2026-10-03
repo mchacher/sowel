@@ -1070,11 +1070,13 @@ describe("EquipmentManager", () => {
           { key: "chargingStatus", type: "enum", category: "ev_charging_state" },
           { key: "timestamp", type: "text", category: "ev_reported_at" },
           { key: "totalMileage", type: "number", category: "ev_mileage" },
+          { key: "socTarget", type: "number", category: "ev_charge_limit" },
           { key: "fuelAutonomy", type: "number", category: "generic" },
         ],
         orderKeys: [
           { key: "lights", type: "boolean", category: "ev_wake" },
           { key: "chargeStart", type: "boolean", category: "ev_charge_start" },
+          { key: "setSoc", type: "number", category: "set_ev_charge_limit" },
         ],
       });
       const eq = manager.createWithAutoBindings({
@@ -1092,11 +1094,36 @@ describe("EquipmentManager", () => {
         chargingStatus: "charging_state",
         timestamp: "reported_at",
         totalMileage: "mileage",
+        socTarget: "charge_limit",
         fuelAutonomy: "fuelAutonomy",
       });
       // The maker point named `range` could not take the alias from the contract.
       expect(data.range).toBeUndefined();
-      expect(orders).toEqual({ lights: "wake", chargeStart: "charge_start" });
+      // `charge_limit` is both a data and an order alias: separate tables.
+      expect(orders).toEqual({
+        lights: "wake",
+        chargeStart: "charge_start",
+        setSoc: "charge_limit",
+      });
+    });
+
+    it("never keeps an energy profile on an electric vehicle (spec 183 FR5)", () => {
+      const zone = zoneManager.create({ name: "Garage" });
+      const eq = manager.create({ name: "Borne", type: "ev_charger", zoneId: zone.id });
+      const profile = {
+        class: "deferrable" as const,
+        nominalPowerW: 1800,
+        minOnS: 600,
+        minOffS: 300,
+      };
+      manager.update(eq.id, { energyProfile: profile });
+      expect(manager.getById(eq.id)?.energyProfile).toBeTruthy();
+      // Re-typed as a car: the carried-over profile is cleared.
+      manager.update(eq.id, { type: "electric_vehicle" });
+      expect(manager.getById(eq.id)?.energyProfile ?? null).toBeNull();
+      // And a profile sent for a car is refused (cleared).
+      manager.update(eq.id, { energyProfile: profile });
+      expect(manager.getById(eq.id)?.energyProfile ?? null).toBeNull();
     });
 
     it("VMC speed order decomposes to break-before-make relay orders (spec 153)", async () => {

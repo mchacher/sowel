@@ -41,6 +41,7 @@ import { resolveFreshnessBudget } from "../shared/reading-freshness.js";
 import { RETRY_CHANNEL } from "./order-confirmation-tracker.js";
 import { EV_CHARGER_CATEGORY_ALIASES } from "../shared/ev-charger-contract.js";
 import { ELECTRIC_VEHICLE_CATEGORY_ALIASES } from "../shared/electric-vehicle-contract.js";
+import type { Device } from "../shared/types.js";
 
 /**
  * Equipment types whose contract binds points by category (specs 182, 183):
@@ -50,7 +51,6 @@ const CONTRACT_CATEGORY_ALIASES: Readonly<Record<string, Readonly<Record<string,
   ev_charger: EV_CHARGER_CATEGORY_ALIASES,
   electric_vehicle: ELECTRIC_VEHICLE_CATEGORY_ALIASES,
 };
-import type { Device } from "../shared/types.js";
 
 /** A function that returns computed data entries for a given equipment. */
 export type ComputedDataProvider = (equipmentId: string) => ComputedDataEntry[];
@@ -582,12 +582,16 @@ export class EquipmentManager {
       icon: input.icon !== undefined ? input.icon : existing.icon,
       description: input.description !== undefined ? input.description : existing.description,
       enabled: input.enabled !== undefined ? (input.enabled ? 1 : 0) : existing.enabled,
+      // Spec 183 FR5 — a vehicle is never a flexible load: the charger is.
+      // Any profile is cleared, including one carried over from another type.
       energyProfile:
-        input.energyProfile !== undefined
-          ? input.energyProfile === null
-            ? null
-            : JSON.stringify(input.energyProfile)
-          : existing.energy_profile,
+        (input.type ?? existing.type) === "electric_vehicle"
+          ? null
+          : input.energyProfile !== undefined
+            ? input.energyProfile === null
+              ? null
+              : JSON.stringify(input.energyProfile)
+            : existing.energy_profile,
       // Spec 174 — `null` clears it, an absent key keeps what is stored, the same
       // three-way read every JSON column here uses.
       timedCommand:

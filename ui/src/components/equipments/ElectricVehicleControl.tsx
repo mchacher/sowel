@@ -1,9 +1,10 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { BatteryCharging, Loader2, Minus, Plug, Plus, Zap } from "lucide-react";
 import type { EquipmentWithDetails } from "../../types";
 import { splitElectricVehicleExtras } from "../../lib/electric-vehicle-contract";
 import { formatRelative } from "../../lib/format-relative";
+import { useStalenessClock } from "../../hooks/useStalenessClock";
 import { humanizeAlias } from "../../lib/humanize-alias";
 import { formatValue } from "./useEquipmentState";
 import { electricVehicleStateOf, evBatteryTone, evChargingStateKey } from "./electricVehicleState";
@@ -20,7 +21,10 @@ export function EvBatteryBar({ level, limit }: { level: number; limit: number | 
     <div className="relative h-2 w-full rounded-full bg-border-light overflow-hidden">
       <div className={`h-full ${evBatteryTone(pct)}`} style={{ width: `${pct}%` }} />
       {limit !== null && (
-        <div className="absolute top-0 h-full w-0.5 bg-text-secondary" style={{ left: `${limit}%` }} />
+        <div
+          className="absolute top-0 h-full w-0.5 bg-text-secondary"
+          style={{ left: `${Math.max(0, Math.min(100, limit))}%` }}
+        />
       )}
     </div>
   );
@@ -34,36 +38,60 @@ export function EvBatteryBar({ level, limit }: { level: number; limit: number | 
  */
 export function ElectricVehicleControl({ equipment, onExecuteOrder }: ElectricVehicleControlProps) {
   const { t } = useTranslation();
-  const s = electricVehicleStateOf(equipment);
+  // Re-render on a clock: a sleeping car sends no event, and its age must grow.
+  const now = useStalenessClock();
+  const s = electricVehicleStateOf(equipment, now);
   const [busy, setBusy] = useState<string | null>(null);
   const [outcome, setOutcome] = useState<{ ok: boolean; text: string } | null>(null);
-  const [pendingLimit, setPendingLimit] = useState<number | null>(null);
+  // The limit sent, shown until the car's report confirms it: a car reports
+  // minutes after an order, and the old value must not flash back meanwhile.
+  const [sentLimit, setSentLimit] = useState<number | null>(null);
+  useEffect(() => {
+    if (sentLimit !== null && s.chargeLimit === sentLimit) setSentLimit(null);
+  }, [sentLimit, s.chargeLimit]);
   const usable = equipment.enabled && equipment.status !== "offline";
 
-  const send = async (key: string, alias: string, value: unknown, okText: string) => {
-    if (busy || !usable) return;
+  const send = async (
+    key: string,
+    alias: string,
+    value: unknown,
+    okText: string,
+  ): Promise<boolean> => {
+    if (busy || !usable) return false;
     setBusy(key);
     setOutcome(null);
     try {
       await onExecuteOrder(alias, value);
       setOutcome({ ok: true, text: okText });
+      return true;
     } catch (err) {
       setOutcome({ ok: false, text: err instanceof Error ? err.message : String(err) });
+      return false;
     } finally {
       setBusy(null);
     }
   };
 
   const order = s.chargeLimitOrder;
-  const shownLimit = pendingLimit ?? s.chargeLimit;
+  const shownLimit = sentLimit ?? s.chargeLimit;
   const stepLimit = async (delta: number) => {
     if (!order) return;
-    const base = shownLimit ?? order.max;
-    const target = Math.min(order.max, Math.max(order.min, Math.round((base + delta) / 5) * 5));
+    // From an unknown limit the first press proposes 80 %, the common choice,
+    // rather than silently sending an end of the range.
+    const target =
+      shownLimit === null
+        ? Math.min(order.max, Math.max(order.min, 80))
+        : Math.min(order.max, Math.max(order.min, Math.round((shownLimit + delta) / 5) * 5));
     if (target === shownLimit) return;
-    setPendingLimit(target);
-    await send("limit", order.alias, target, t("equipments.electricVehicle.limitSent", { value: target }));
-    setPendingLimit(null);
+    const previous = sentLimit;
+    setSentLimit(target);
+    const ok = await send(
+      "limit",
+      order.alias,
+      target,
+      t("equipments.electricVehicle.limitSent", { value: target }),
+    );
+    if (!ok) setSentLimit(previous);
   };
 
   const { extraData } = splitElectricVehicleExtras(equipment.dataBindings, equipment.orderBindings);
@@ -100,7 +128,9 @@ export function ElectricVehicleControl({ equipment, onExecuteOrder }: ElectricVe
         )}
         {s.atHome !== null && (
           <span className="px-2.5 py-0.5 rounded-full bg-border-light text-text-secondary">
-            {s.atHome ? t("equipments.electricVehicle.atHome") : t("equipments.electricVehicle.away")}
+            {s.atHome
+              ? t("equipments.electricVehicle.atHome")
+              : t("equipments.electricVehicle.away")}
           </span>
         )}
         {s.reportStale && s.reportedAt && (
@@ -116,7 +146,9 @@ export function ElectricVehicleControl({ equipment, onExecuteOrder }: ElectricVe
             <button
               type="button"
               disabled={!usable || !!busy}
-              onClick={() => void send("wake", s.wakeAlias!, null, t("equipments.electricVehicle.wakeSent"))}
+              onClick={() =>
+                void send("wake", s.wakeAlias!, null, t("equipments.electricVehicle.wakeSent"))
+              }
               className="flex items-center gap-1.5 px-3 py-1.5 rounded-[6px] text-[13px] font-medium bg-border-light text-text-secondary hover:bg-border disabled:opacity-50 cursor-pointer"
             >
               {busy === "wake" && <Loader2 size={13} className="animate-spin" />}
@@ -128,7 +160,12 @@ export function ElectricVehicleControl({ equipment, onExecuteOrder }: ElectricVe
               type="button"
               disabled={!usable || !!busy}
               onClick={() =>
-                void send("start", s.chargeStartAlias!, null, t("equipments.electricVehicle.startSent"))
+                void send(
+                  "start",
+                  s.chargeStartAlias!,
+                  null,
+                  t("equipments.electricVehicle.startSent"),
+                )
               }
               className="flex items-center gap-1.5 px-3 py-1.5 rounded-[6px] text-[13px] font-medium bg-primary text-white hover:bg-primary-hover disabled:opacity-50 cursor-pointer"
             >
@@ -145,7 +182,9 @@ export function ElectricVehicleControl({ equipment, onExecuteOrder }: ElectricVe
 
       {order && (
         <div className="flex items-center justify-between gap-3">
-          <span className="text-[13px] text-text-secondary">{t("equipments.electricVehicle.chargeLimit")}</span>
+          <span className="text-[13px] text-text-secondary">
+            {t("equipments.electricVehicle.chargeLimit")}
+          </span>
           <div className="flex items-center gap-2">
             <button
               type="button"
@@ -157,7 +196,13 @@ export function ElectricVehicleControl({ equipment, onExecuteOrder }: ElectricVe
               <Minus size={14} strokeWidth={1.5} />
             </button>
             <span className="min-w-[56px] text-center font-mono text-[16px] font-semibold text-text tabular-nums">
-              {busy === "limit" ? <Loader2 size={14} className="animate-spin inline" /> : shownLimit !== null ? `${shownLimit} %` : "—"}
+              {busy === "limit" ? (
+                <Loader2 size={14} className="animate-spin inline" />
+              ) : shownLimit !== null ? (
+                `${shownLimit} %`
+              ) : (
+                "—"
+              )}
             </span>
             <button
               type="button"
@@ -173,7 +218,9 @@ export function ElectricVehicleControl({ equipment, onExecuteOrder }: ElectricVe
       )}
 
       {outcome && (
-        <span className={`text-[12px] ${outcome.ok ? "text-success" : "text-error"}`}>{outcome.text}</span>
+        <span className={`text-[12px] ${outcome.ok ? "text-success" : "text-error"}`}>
+          {outcome.text}
+        </span>
       )}
 
       {(s.mileageKm !== null || extraData.length > 0) && (
@@ -181,13 +228,17 @@ export function ElectricVehicleControl({ equipment, onExecuteOrder }: ElectricVe
           {s.mileageKm !== null && (
             <div className="flex items-center justify-between gap-3 text-[13px]">
               <span className="text-text-secondary">{t("equipments.electricVehicle.mileage")}</span>
-              <span className="font-mono tabular-nums text-text">{Math.round(s.mileageKm).toLocaleString()} km</span>
+              <span className="font-mono tabular-nums text-text">
+                {Math.round(s.mileageKm).toLocaleString()} km
+              </span>
             </div>
           )}
           {extraData.map((b) => (
             <div key={b.alias} className="flex items-center justify-between gap-3 text-[13px]">
               <span className="text-text-secondary">{humanizeAlias(b.alias)}</span>
-              <span className="font-mono tabular-nums text-text">{formatValue(b.value, b.unit)}</span>
+              <span className="font-mono tabular-nums text-text">
+                {formatValue(b.value, b.unit)}
+              </span>
             </div>
           ))}
         </div>
