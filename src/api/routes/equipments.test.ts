@@ -367,6 +367,57 @@ describe("PUT /api/v1/equipments/:id — input validation (characterization)", (
     expect((await put({ energyProfile: null })).statusCode).toBe(200);
   });
 
+  it("keeps releaseDelayS when saving a profile (#631)", async () => {
+    let saved: unknown;
+    const local = Fastify({ logger: false, ajv: validationAjvOptions });
+    installValidationErrorHandler(local);
+    const manager = makeMutableManager() as unknown as Record<string, unknown>;
+    manager.update = (_id: string, input: { energyProfile?: unknown }) => {
+      saved = input.energyProfile;
+      return { id: "eq-1", name: "x", type: "water_heater", zoneId: "z1", enabled: true };
+    };
+    registerEquipmentRoutes(local, {
+      equipmentManager: manager as unknown as Parameters<
+        typeof registerEquipmentRoutes
+      >[1]["equipmentManager"],
+      logger: createLogger("silent").logger,
+    });
+    await local.ready();
+    const res = await local.inject({
+      method: "PUT",
+      url: "/api/v1/equipments/eq-1",
+      payload: {
+        energyProfile: {
+          class: "deferrable",
+          nominalPowerW: 1800,
+          minOnS: 600,
+          minOffS: 300,
+          releaseDelayS: 1800.4,
+        },
+      },
+    });
+    expect(res.statusCode).toBe(200);
+    expect(saved).toMatchObject({ releaseDelayS: 1800 });
+    expect(
+      (
+        await local.inject({
+          method: "PUT",
+          url: "/api/v1/equipments/eq-1",
+          payload: {
+            energyProfile: {
+              class: "deferrable",
+              nominalPowerW: 1800,
+              minOnS: 0,
+              minOffS: 0,
+              releaseDelayS: -5,
+            },
+          },
+        })
+      ).statusCode,
+    ).toBe(400);
+    await local.close();
+  });
+
   it("rejects a stringified number for nominalPowerW (strict types, no coercion)", async () => {
     const res = await put({
       energyProfile: { class: "comfort", nominalPowerW: "1000", minOnS: 0, minOffS: 0 },
