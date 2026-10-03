@@ -333,7 +333,7 @@ const RELEVANT_ORDER_CATEGORIES: Partial<Record<EquipmentType, OrderCategory[]>>
   // Spec 182 — start/stop and the charging current, whatever the plugin's keys.
   ev_charger: ["toggle_power", "light_toggle", "set_ev_charge_current"],
   // Spec 183 — wake, start a charge, set the car's charge limit.
-  electric_vehicle: ["ev_wake", "ev_charge_start", "set_ev_charge_limit"],
+  electric_vehicle: ["ev_wake", "ev_charge_start", "set_ev_charge_limit", "ev_refresh"],
 };
 
 /**

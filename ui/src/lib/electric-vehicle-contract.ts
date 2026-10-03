@@ -21,6 +21,7 @@ export {
   EV_REPORT_STALE_MS,
   EV_AT_HOME_CATEGORY,
   EV_WAKE_CATEGORY,
+  EV_REFRESH_CATEGORY,
   SET_EV_CHARGE_LIMIT_CATEGORY,
   isElectricVehicleDevice,
   isEvChargingState,

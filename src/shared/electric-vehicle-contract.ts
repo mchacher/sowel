@@ -48,6 +48,8 @@ export const ELECTRIC_VEHICLE_ALIASES = {
   chargeLimit: "charge_limit",
   wake: "wake",
   chargeStart: "charge_start",
+  /** Spec 184 — read the latest report now; never wakes the car. */
+  refresh: "refresh",
 } as const;
 
 export const EV_BATTERY_LEVEL_CATEGORY = "ev_battery_level";
@@ -61,6 +63,7 @@ export const EV_CHARGE_LIMIT_CATEGORY = "ev_charge_limit";
 export const EV_WAKE_CATEGORY = "ev_wake";
 export const EV_CHARGE_START_CATEGORY = "ev_charge_start";
 export const SET_EV_CHARGE_LIMIT_CATEGORY = "set_ev_charge_limit";
+export const EV_REFRESH_CATEGORY = "ev_refresh";
 
 /** Category → contract alias, data and orders alike (disjoint namespaces). */
 export const ELECTRIC_VEHICLE_CATEGORY_ALIASES: Readonly<Record<string, string>> = {
@@ -75,6 +78,7 @@ export const ELECTRIC_VEHICLE_CATEGORY_ALIASES: Readonly<Record<string, string>>
   [SET_EV_CHARGE_LIMIT_CATEGORY]: ELECTRIC_VEHICLE_ALIASES.chargeLimit,
   [EV_WAKE_CATEGORY]: ELECTRIC_VEHICLE_ALIASES.wake,
   [EV_CHARGE_START_CATEGORY]: ELECTRIC_VEHICLE_ALIASES.chargeStart,
+  [EV_REFRESH_CATEGORY]: ELECTRIC_VEHICLE_ALIASES.refresh,
 };
 
 export interface ElectricVehicleCoreEntry {
@@ -95,6 +99,7 @@ export const ELECTRIC_VEHICLE_CORE: readonly ElectricVehicleCoreEntry[] = [
   { alias: ELECTRIC_VEHICLE_ALIASES.chargeLimit, data: true, order: true },
   { alias: ELECTRIC_VEHICLE_ALIASES.wake, data: false, order: true },
   { alias: ELECTRIC_VEHICLE_ALIASES.chargeStart, data: false, order: true },
+  { alias: ELECTRIC_VEHICLE_ALIASES.refresh, data: false, order: true },
 ];
 
 const CORE_DATA_ALIASES: ReadonlySet<string> = new Set(

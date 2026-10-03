@@ -18,6 +18,7 @@ import {
   EV_MILEAGE_CATEGORY,
   EV_PLUGGED_CATEGORY,
   EV_RANGE_CATEGORY,
+  EV_REFRESH_CATEGORY,
   EV_REPORTED_AT_CATEGORY,
   EV_REPORT_STALE_MS,
   EV_WAKE_CATEGORY,
@@ -25,7 +26,11 @@ import {
   isEvChargingState,
   type EvChargingState,
 } from "../../lib/electric-vehicle-contract";
-import type { DataBindingWithValue, EquipmentWithDetails, OrderBindingWithDetails } from "../../types";
+import type {
+  DataBindingWithValue,
+  EquipmentWithDetails,
+  OrderBindingWithDetails,
+} from "../../types";
 
 export interface EvChargeLimitOrder {
   alias: string;
@@ -47,6 +52,8 @@ export interface ElectricVehicleState {
   reportStale: boolean;
   wakeAlias: string | null;
   chargeStartAlias: string | null;
+  /** Spec 184 — read the car's latest report now. */
+  refreshAlias: string | null;
   chargeLimitOrder: EvChargeLimitOrder | null;
 }
 
@@ -110,6 +117,7 @@ export function electricVehicleStateOf(
     reportStale: reportedAt !== null && now - Date.parse(reportedAt) > EV_REPORT_STALE_MS,
     wakeAlias: findOrder(orders, EV_WAKE_CATEGORY, A.wake)?.alias ?? null,
     chargeStartAlias: findOrder(orders, EV_CHARGE_START_CATEGORY, A.chargeStart)?.alias ?? null,
+    refreshAlias: findOrder(orders, EV_REFRESH_CATEGORY, A.refresh)?.alias ?? null,
     chargeLimitOrder:
       limitOrder && limitOrder.type === "number"
         ? {

@@ -133,6 +133,8 @@ export type OrderCategory =
   // value), and set the charge limit the car applies by itself (%).
   | "ev_wake"
   | "ev_charge_start"
+  // Spec 184 — read the car's latest report now (momentary, never wakes it).
+  | "ev_refresh"
   | "set_ev_charge_limit";
 
 // ============================================================

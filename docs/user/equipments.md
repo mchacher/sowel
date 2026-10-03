@@ -114,9 +114,9 @@ Buttons are inputs only — bind them to a [recipe](recipes.md) action or a [mod
 
 #### Electric vehicle
 
-An **electric vehicle** is a battery-electric or plug-in hybrid car, read from its maker's cloud. Its card shows the battery level (with the charge limit marked when the car exposes one), the electric range, the charging state (_Plugged in_, _Waiting for power_, _Charging_…) and, when the car's last report is more than 15 minutes old, how old it is: a sleeping car reports nothing, and an old battery level is not today's. Its detail page adds **Wake up** and **Start charging** buttons and a charge-limit setting when the car supports them; on mobile, a tap opens that sheet.
+An **electric vehicle** is a battery-electric or plug-in hybrid car, read from its maker's cloud. Its card shows the battery level (with the charge limit marked when the car exposes one), the electric range, the charging state (_Plugged in_, _Waiting for power_, _Charging_…) and, when the car's last report is more than 15 minutes old, how old it is: a sleeping car reports nothing, and an old battery level is not today's. Its detail page adds **Wake up** and **Start charging** buttons and a charge-limit setting when the car supports them, and a small refresh button that reads the car's latest report at once (it does not wake a sleeping car); on mobile, a tap opens that sheet.
 
-Sowel defines what a car carries, whatever the maker: battery level, range, plugged, charging state, last report time, at home (yes/no, no coordinates), mileage, charge limit, and the wake and start-charging commands. A car is not an energy meter nor a flexible load: the charger measures and is controlled. Fuel and climate values of a plug-in hybrid stay visible as extras.
+Sowel defines what a car carries, whatever the maker: battery level, range, plugged, charging state, last report time, at home (yes/no, no coordinates), mileage, charge limit, and the wake, start-charging and refresh commands. A car is not an energy meter nor a flexible load: the charger measures and is controlled. Fuel and climate values of a plug-in hybrid stay visible as extras.
 
 #### EV charger
 

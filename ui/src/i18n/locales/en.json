@@ -296,6 +296,8 @@
   "equipments.electricVehicle.reported": "Reported {{age}} ago",
   "equipments.electricVehicle.wake": "Wake up",
   "equipments.electricVehicle.wakeSent": "Wake-up sent",
+  "equipments.electricVehicle.refresh": "Read the car now",
+  "equipments.electricVehicle.refreshSent": "Reading requested",
   "equipments.electricVehicle.startCharging": "Start charging",
   "equipments.electricVehicle.startSent": "Charge start sent",
   "equipments.electricVehicle.chargeLimit": "Charge limit",

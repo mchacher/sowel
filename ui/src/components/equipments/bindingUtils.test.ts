@@ -838,6 +838,7 @@ describe("electric_vehicle auto-binding (spec 183)", () => {
     ],
     orders: [
       { id: "o1", key: "lights", category: "ev_wake", type: "boolean" },
+      { id: "o5", key: "readNow", category: "ev_refresh", type: "boolean" },
       { id: "o4", key: "chargeStart", category: "ev_charge_start", type: "boolean" },
       { id: "o2", key: "socTarget", category: "set_ev_charge_limit", type: "number", min: 50, max: 100 },
       { id: "o3", key: "horn", type: "boolean" },
@@ -858,7 +859,12 @@ describe("electric_vehicle auto-binding (spec 183)", () => {
       fuelAutonomy: "fuelAutonomy",
     });
     // The horn is not part of the contract: opt-in.
-    expect(orders).toEqual({ lights: "wake", chargeStart: "charge_start", socTarget: "charge_limit" });
+    expect(orders).toEqual({
+      lights: "wake",
+      readNow: "refresh",
+      chargeStart: "charge_start",
+      socTarget: "charge_limit",
+    });
   });
 
   it("leaves the EV charger plan unchanged", () => {
