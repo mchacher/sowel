@@ -312,12 +312,13 @@ L'objet `ctx` injecté dans `validate()` et `createInstance()` fournit :
 
 Les packages de recettes accèdent aux utilitaires partagés via `ctx.helpers` (interface `RecipeHelpers` dans `src/shared/types.ts`) :
 
-| Helper                                                                         | Rôle                                                |
-| ------------------------------------------------------------------------------ | --------------------------------------------------- |
-| `parseDuration(value)`, `formatDuration(ms)`                                   | Durées au format `"10m"` / `"30s"`                  |
-| `isAnyLightOn()`, `turnOnLights()`, `turnOffLights()`, `setLightsBrightness()` | Orchestration de lumières par ids d'équipements     |
-| `getSunlight()`                                                                | Programmation solaire (spec 126), voir ci-dessous   |
-| `getTariff()`                                                                  | Programmation tarifaire (spec 138), voir ci-dessous |
+| Helper                                                                         | Rôle                                                    |
+| ------------------------------------------------------------------------------ | ------------------------------------------------------- |
+| `parseDuration(value)`, `formatDuration(ms)`                                   | Durées au format `"10m"` / `"30s"`                      |
+| `isAnyLightOn()`, `turnOnLights()`, `turnOffLights()`, `setLightsBrightness()` | Orchestration de lumières par ids d'équipements         |
+| `getSunlight()`                                                                | Programmation solaire (spec 126), voir ci-dessous       |
+| `getTariff()`                                                                  | Programmation tarifaire (spec 138), voir ci-dessous     |
+| `energy.claimCapacity()` / `energy.getCapacityState()`                         | Demandes de surplus solaire (spec 140), voir ci-dessous |
 
 `getSunlight(): { sunrise, sunset, isDaylight }` retourne les heures de soleil courantes (`"HH:MM"`, offsets spec 023 appliqués). À coupler avec l'événement `sunlight.changed` pour se resynchroniser d'un jour à l'autre ; les champs sont `null` tant que les heures ne sont pas calculées ou sans coordonnées maison.
 
@@ -343,6 +344,70 @@ Trois propriétés sur lesquelles s'appuyer :
 - **Toujours une réponse pour le cas non configuré.** `configured` vaut `false` sur une instance neuve ou dont le propriétaire n'a jamais rempli la page tarif. Prévoir le repli sur les créneaux propres à la recette plutôt que de refuser de fonctionner.
 
 `offPeakToday` reflète le jour de semaine local courant : un planning qui ne couvre que les jours ouvrés donne une liste vide le dimanche. Relire la valeur plutôt que la mettre en cache au démarrage.
+
+### `energy` — demandes de capacité sur le surplus (spec 140)
+
+Une recette ne lit jamais le compteur réseau pour décider de consommer : un
+arbitre unique dans le core est le seul lecteur du compteur, tient les comptes
+de réservation et répartit le surplus dans l'ordre de priorité **choisi par
+l'utilisateur**. Une recette exprime un besoin et réagit aux rappels :
+
+```typescript
+const claim = ctx.helpers.energy?.claimCapacity({
+  equipmentId: pumpId,
+  watts: 600, // sert uniquement à décider du démarrage
+  // Ne pas passer `toleratedImportW` : depuis le core 1.50 (#550), la tolérance
+  // d'import est une propriété de l'équipement (« Import toléré (W) » de son
+  // profil énergie), réglée une fois par l'utilisateur et lue par l'arbitre.
+  // Ne la passer ici que pour surcharger le profil pour une demande précise.
+  slack: "none", // "some"/"high" descendent dans la liste de l'utilisateur, jamais l'inverse
+  note: "filtration sur surplus",
+  onGranted: () => pumpOn(),
+  onRevoked: (reason) => pumpOff(), // une recette de confort abandonne son bonus de surplus au lieu de couper
+});
+// plus tard : claim.release() quand le besoin disparaît
+```
+
+`claimCapacity` retourne un handle (`status()`, `deniedReason`, `release()`, `reportNeed()`).
+Les refus sont typés : `not-profiled`, `equipment-already-claimed`,
+`arbiter-disabled`, `override-active`. `energy.getCapacityState()` est un
+instantané en lecture seule (`enabled`, `availableSurplusW`, `grants`).
+`availableSurplusW` est le vrai solde réseau signé en watts (positif = export /
+surplus, négatif = import / déficit), pas un total de réservations : il baisse
+quand votre propre charge accordée consomme.
+
+Règles pour les auteurs (spec 140, tenues par convention et auditées par le core) :
+
+1. **Déclarer si votre charge a besoin de courant** (spec 166). Tant que votre
+   demande est accordée, appeler `claim.reportNeed(true | false)` à chaque
+   évaluation, et aussi depuis `onGranted`. C'est vous qui savez ce que votre
+   charge est censée faire ; l'arbitre ne devrait pas avoir à le deviner à partir
+   de l'électricité, et pour une charge sans mesure de puissance propre c'est la
+   seule façon pour la surface d'arbitrage de la montrer au repos plutôt que
+   « accordée » en permanence. La déclaration n'est consultée que pour un accord
+   qu'aucune mesure n'a jamais décrit : une mesure fraîche gagne toujours, car elle
+   dit ce que l'appareil FAIT quand vous dites ce que vous VOULEZ. Elle vaut pour
+   un seul accord : une révocation l'efface, et il faut la redéclarer après le
+   `onGranted` suivant.
+2. **Une demande est un bonus, jamais un plan.** Garder un repli autonome
+   (créneaux tarifaires, horaires, seuils) : c'est votre comportement sur les
+   cores plus anciens (`ctx.helpers.energy === undefined`), quand l'arbitre est
+   désactivé, après `meter-stale`, et dans les nombreuses maisons **sans
+   production solaire**, où le mode tarifaire seul est un mode complet, jamais
+   dégradé.
+3. **Agir immédiatement sur les rappels.** La réservation est libérée à la
+   révocation ; une révocation non suivie est détectée (`revoke-not-honored`) et
+   l'équipement est temporairement compté comme fond de consommation.
+4. **Ne jamais lire le compteur réseau** pour décider de consommer quand une
+   demande est possible : une logique de compteur privée réintroduit
+   l'oscillation que l'arbitre supprime.
+5. **`release()` quand le besoin disparaît** : les watts reviennent à la charge
+   suivante de la liste.
+6. **Charges à quota impératif** : quand votre échéance vous oblige à tourner
+   sans accord, tournez, mais gardez la demande ouverte pendant ce temps. Un
+   accord qui arrive sur une charge déjà en marche rend les comptes de l'arbitre
+   exacts, et le journal montre une entrée `unclaimed-run` au lieu d'un trou
+   inexpliqué dans le surplus.
 
 ## Événements de l'Event Bus
 
