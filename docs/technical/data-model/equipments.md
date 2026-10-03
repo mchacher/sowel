@@ -36,7 +36,8 @@ type EquipmentType =
   | "pool_cover"
   | "pool_heat_pump"
   | "vmc" // Spec 153 — 2-speed mechanical ventilation (OFF / V1 / V2)
-  | "ups"; // Spec 156 — uninterruptible power supply, read-only
+  | "ups" // Spec 156 — uninterruptible power supply, read-only
+  | "ev_charger"; // Spec 182 — EV charger (contract: src/shared/ev-charger-contract.ts)
 
 interface Equipment {
   id: string; // UUID v4
@@ -304,6 +305,29 @@ A `thermostat` equipment has a declared **core**, in `src/shared/thermostat-cont
 **Extras.** A thermostat auto-binds every order and every data point its device exposes: the core resolves to the aliases above, everything else binds under its own key. Those bindings are **extras**: they stay usable, vary per equipment, and define nothing — no core code path, no recipe contract and no card layout keys off them. The card renders them generically from the order's type (enum → buttons, boolean with a data mirror → toggle, boolean without → one-shot action, number → stepper; data without an order → read-only chip).
 
 Until issue #922 makes the plugins publish canonical names, `STANDARD_ALIASES.thermostat` in `bindingUtils.ts` still maps `targetTemperature → setpoint` and `insideTemperature → temperature`; it is the compatibility layer, not the contract.
+
+### 2e EV charger contract (spec 182)
+
+An `ev_charger` is defined by a contract module, `src/shared/ev-charger-contract.ts`, imported by the binding code, the type metadata and every charger surface (the spec 177 pattern). Each core point is identified by its **category**, never by a plugin key; auto-binding turns the category into the contract alias.
+
+| Alias            | Side         | Category                                      | Unit | Meaning                                                     |
+| ---------------- | ------------ | --------------------------------------------- | ---- | ----------------------------------------------------------- |
+| `state`          | data + order | `appliance_state` / `toggle_power`            | —    | Charging enabled; start / stop                              |
+| `vehicle`        | data         | `ev_vehicle_state`                            | —    | `disconnected`, `connected`, `charging` (IEC 61851 A/B/C)   |
+| `power`          | data         | `power`                                       | W    | Live power delivered                                        |
+| `energy`         | data         | `energy`                                      | Wh   | Additive increments, for the energy history                 |
+| `charge_current` | data + order | `ev_charge_current` / `set_ev_charge_current` | A    | Charging current setpoint; the order's `min`/`max` bound it |
+| `session_energy` | data         | `ev_session_energy`                           | kWh  | Energy since the vehicle was plugged in (resets)            |
+| `current`        | data         | `current`                                     | A    | Measured current                                            |
+| `voltage`        | data         | `voltage`                                     | V    | Measured voltage                                            |
+
+A device is offered for an `ev_charger` when it declares `ev_vehicle_state` data or a `set_ev_charge_current` order. Its temperature binds as `charger_temperature`, out of the zone average. Any other data point is an extra; configuration orders are opt-in. Three rules bind the plugin:
+
+- **`set_ev_charge_current` is not `set_setpoint`** — that is the thermostat identity; reusing it would offer the charger as a thermostat.
+- **`ev_session_energy` is not `energy`** — `energy` is an additive delta; a per-session counter there would be summed into nonsense. Publish increments under `energy`, the session total under `ev_session_energy`.
+- **Declare `valueOn` / `valueOff` on the start/stop order** — Sowel's on/off surfaces send `"ON"` / `"OFF"`, mapped to the device's wire values only when it declares them.
+
+For the arbiter, `ev_charger` defaults to **deferrable**, 10 min on / 5 min off; its `power` binding is the live draw and its `state` binding the on/off state.
 
 ### 3 Per-binding category override
 

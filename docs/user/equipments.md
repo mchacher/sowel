@@ -105,11 +105,20 @@ Buttons are inputs only — bind them to a [recipe](recipes.md) action or a [mod
 
 ### Energy
 
-| Type                        | Controls / Display                                    | Expected data                                    | Notes                                                                                                                  |
-| --------------------------- | ----------------------------------------------------- | ------------------------------------------------ | ---------------------------------------------------------------------------------------------------------------------- |
-| **Energy Meter**            | Power (W) and daily energy (Wh/kWh)                   | cumulative energy (Wh)                           | Submeter for a circuit (heat pump, pool, EV charger). Feeds the [by-usage breakdown](energy.md#total-by-usage-toggle). |
-| **Main Energy Meter**       | Same + drives the [Energy monitoring](energy.md) page | power, energy (with HP/HC tariff classification) | One allowed per system.                                                                                                |
-| **Energy Production Meter** | Production display + autoconsumption calculation      | production power, cumulative production          | One allowed per system.                                                                                                |
+| Type                        | Controls / Display                                                 | Expected data                                    | Notes                                                                                                                  |
+| --------------------------- | ------------------------------------------------------------------ | ------------------------------------------------ | ---------------------------------------------------------------------------------------------------------------------- |
+| **Energy Meter**            | Power (W) and daily energy (Wh/kWh)                                | cumulative energy (Wh)                           | Submeter for a circuit (heat pump, pool, EV charger). Feeds the [by-usage breakdown](energy.md#total-by-usage-toggle). |
+| **Main Energy Meter**       | Same + drives the [Energy monitoring](energy.md) page              | power, energy (with HP/HC tariff classification) | One allowed per system.                                                                                                |
+| **Energy Production Meter** | Production display + autoconsumption calculation                   | production power, cumulative production          | One allowed per system.                                                                                                |
+| **EV Charger**              | Start/stop, vehicle state, power, session energy, charging current | see below                                        | A controllable load and a submeter. Deferrable by default for the [energy arbiter](energy.md).                         |
+
+#### EV charger
+
+An **EV charger** (borne de recharge) is a charging station for an electric vehicle, portable or wall-mounted. Its card shows whether a car is plugged in (_Unplugged_, _Plugged in_, _Charging_), the live power while it charges and the energy delivered this session; its detail page adds a start/stop toggle and a charging-current stepper bounded by the charger's own range. On mobile, a tap opens the detail sheet: starting a charge is never a single accidental tap.
+
+Sowel defines what a charger carries, whatever the integration: start/stop (`state`), the vehicle state (`vehicle`), live power (`power`), energy history (`energy`), the charging current (`charge_current`), the session energy (`session_energy`), and the measured current and voltage. An integration that reports these provides a charger Sowel recognises on its own; the device picker offers it first. Anything else the charger reports (a status code, a temperature, the last session) stays visible as an extra.
+
+The first supported charger is the dé portable charger, through the [Tuya (local)](https://github.com/mchacher/sowel-plugin-tuya) integration. Charging from solar surplus or off-peak is a recipe's job, through the energy arbiter; the equipment only exposes and commands.
 
 ### Media
 

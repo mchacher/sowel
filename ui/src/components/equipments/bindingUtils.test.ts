@@ -720,3 +720,89 @@ describe("thermostat contract (spec 177) — the core is category-driven, the re
     expect(isRelevantOrder("nanoe", "light_onoff")).toBe(false);
   });
 });
+
+// Spec 182 — the EV charger contract: every core point binds under its
+// contract alias from its CATEGORY, whatever the plugin calls the key.
+describe("ev_charger auto-binding (spec 182)", () => {
+  const tuyaV2 = {
+    id: "dev-ev",
+    name: "dé EV Charger",
+    data: [
+      { id: "d1", key: "charge", category: "appliance_state", type: "boolean" },
+      { id: "d2", key: "vehicleState", category: "ev_vehicle_state", type: "enum" },
+      { id: "d3", key: "power", category: "power", type: "number" },
+      { id: "d4", key: "energy", category: "energy", type: "number" },
+      { id: "d5", key: "currentSetpoint", category: "ev_charge_current", type: "number" },
+      { id: "d6", key: "sessionEnergy", category: "ev_session_energy", type: "number" },
+      { id: "d7", key: "current", category: "current", type: "number" },
+      { id: "d8", key: "voltage", category: "voltage", type: "number" },
+      { id: "d9", key: "temperature", category: "temperature_device", type: "number" },
+      { id: "d10", key: "status", category: "generic", type: "enum" },
+      { id: "d11", key: "lastSessionEnergy", category: "generic", type: "number" },
+    ],
+    orders: [
+      { id: "o1", key: "charge", category: "toggle_power", type: "boolean" },
+      {
+        id: "o2",
+        key: "current",
+        category: "set_ev_charge_current",
+        type: "number",
+        min: 6,
+        max: 16,
+      },
+      { id: "o3", key: "plugInAction", type: "enum" },
+    ],
+  } as unknown as DeviceWithDetails;
+
+  it("binds the contract aliases from the categories, extras under their keys", () => {
+    const plan = computeBindingPlan([tuyaV2], "ev_charger");
+    const data = Object.fromEntries(
+      plan.filter((p) => p.kind === "data").map((p) => [p.key, p.alias]),
+    );
+    const orders = Object.fromEntries(
+      plan.filter((p) => p.kind === "order").map((p) => [p.key, p.alias]),
+    );
+    expect(data).toEqual({
+      charge: "state",
+      vehicleState: "vehicle",
+      power: "power",
+      energy: "energy",
+      currentSetpoint: "charge_current",
+      sessionEnergy: "session_energy",
+      current: "current",
+      voltage: "voltage",
+      temperature: "charger_temperature",
+      status: "status",
+      lastSessionEnergy: "lastSessionEnergy",
+    });
+    // Start/stop and the current by category; configuration orders are opt-in.
+    expect(orders).toEqual({ charge: "state", current: "charge_current" });
+  });
+
+  it("leaves a v0.1.0-style device's generic points as extras", () => {
+    const v1 = {
+      id: "dev-ev1",
+      name: "Charger",
+      data: [
+        { id: "d1", key: "vehicle", category: "generic", type: "enum" },
+        { id: "d2", key: "currentSetpoint", category: "generic", type: "number" },
+      ],
+      orders: [{ id: "o1", key: "current", type: "number" }],
+    } as unknown as DeviceWithDetails;
+    const plan = computeBindingPlan([v1], "ev_charger");
+    expect(plan.map((p) => `${p.kind}:${p.key}→${p.alias}`)).toEqual([
+      "data:vehicle→vehicle",
+      "data:currentSetpoint→currentSetpoint",
+    ]);
+  });
+
+  it("does not change the other types' aliases", () => {
+    expect(resolveAlias("temperature", "water_heater", undefined, "temperature")).toBe(
+      "water_temperature",
+    );
+    expect(resolveAlias("power", "thermostat", ORDER_CATEGORY_ALIASES, "toggle_power")).toBe(
+      "power",
+    );
+    expect(resolveAlias("relay_1", "gate", ORDER_CATEGORY_ALIASES, "light_toggle")).toBe("command");
+  });
+});

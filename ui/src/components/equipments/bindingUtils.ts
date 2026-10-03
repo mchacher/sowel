@@ -20,6 +20,7 @@ import {
   THERMOSTAT_STATE_ALIAS,
   computeBindingCandidates,
 } from "../../lib/binding-candidates";
+import { EV_CHARGER_CATEGORY_ALIASES } from "../../lib/ev-charger-contract";
 import { resolveHistorize } from "../../lib/history-defaults";
 
 // ============================================================
@@ -154,6 +155,23 @@ const RELEVANT_DATA: Record<string, string[]> = {
   // temperature (aliased water_temperature so it stays out of the zone room
   // average) + optional power/energy when the relay meters consumption.
   water_heater: ["light_state", "temperature", "power", "energy"],
+  // Spec 182 — the EV charger contract's data categories, the charger's own
+  // temperature (aliased charger_temperature, out of the zone average) and
+  // `generic`, so the plugin's extras (status, last session…) bind too.
+  ev_charger: [
+    "appliance_state",
+    "light_state",
+    "ev_vehicle_state",
+    "power",
+    "energy",
+    "ev_charge_current",
+    "ev_session_energy",
+    "current",
+    "voltage",
+    "temperature",
+    "temperature_device",
+    "generic",
+  ],
   energy_meter: ["energy", "power"],
   main_energy_meter: ["energy", "power"],
   energy_production_meter: ["energy", "power"],
@@ -270,6 +288,9 @@ const RELEVANT_ORDERS: Record<string, string[]> = {
   // empty entry documents the intent, rather than leaving the type to fall
   // through the lookup as an accident.
   ups: [],
+  // Spec 182 — key fallback for a plain relay modelled as a charger; a real
+  // charger's orders bind by category (RELEVANT_ORDER_CATEGORIES).
+  ev_charger: ["state"],
 };
 
 /**
@@ -293,6 +314,8 @@ const BIND_ALL_ORDER_TYPES: ReadonlySet<EquipmentType> = new Set<EquipmentType>(
  */
 const RELEVANT_ORDER_CATEGORIES: Partial<Record<EquipmentType, OrderCategory[]>> = {
   camera: ["set_camera_monitoring"],
+  // Spec 182 — start/stop and the charging current, whatever the plugin's keys.
+  ev_charger: ["toggle_power", "light_toggle", "set_ev_charge_current"],
 };
 
 /**
@@ -413,6 +436,8 @@ const TYPE_CATEGORY_ALIASES: Partial<Record<EquipmentType, Record<string, string
   // would alias a toggle_power order `state` and leave a freshly bound TV
   // with no power button.
   media_player: { toggle_power: "power" },
+  // Spec 182 — the EV charger contract, declared once in the shared module.
+  ev_charger: EV_CHARGER_CATEGORY_ALIASES,
 };
 
 /**

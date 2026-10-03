@@ -379,6 +379,19 @@ describe("computeBindingCandidates", () => {
     expect(computeBindingCandidates("ups", [], [])).toHaveLength(0);
   });
 
+  // Spec 182 — one device, one charger: the default "all" candidate.
+  it("ev_charger → one all-data, all-orders candidate", () => {
+    const datas = [
+      data("charge", "boolean", { category: "appliance_state" }),
+      data("vehicle", "enum", { category: "ev_vehicle_state" }),
+      data("power", "number", { category: "power" }),
+    ];
+    const result = computeBindingCandidates("ev_charger", datas, []);
+    expect(result).toHaveLength(1);
+    expect(result[0].id).toBe("all");
+    expect(result[0].dataKeys).toEqual(["charge", "vehicle", "power"]);
+  });
+
   // ── solar_panel (spec 125) — one candidate per inverter channel ──
 
   function inverterData(channels: number, withTemp = true): DeviceData[] {

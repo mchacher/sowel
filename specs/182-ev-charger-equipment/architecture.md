@@ -61,7 +61,7 @@ Not added to `STREAMING_CATEGORIES`: `power`, `energy`, `current`, `voltage` alr
   - `RELEVANT_DATA.ev_charger` = the contract's data categories plus `temperature`, `temperature_device` and `generic`, so the extras (status, last session) bind too.
   - `RELEVANT_ORDER_CATEGORIES.ev_charger` = `toggle_power`, `light_toggle`, `set_ev_charge_current`; `RELEVANT_ORDERS.ev_charger` = `["state"]` as the key fallback for a plain relay.
   - `TYPE_CATEGORY_ALIASES.ev_charger` = `EV_CHARGER_CATEGORY_ALIASES` (imported, not restated).
-- **Device picker**: `EQUIPMENT_TYPE_CATEGORIES.ev_charger` = the two identity categories plus `ev_session_energy` (`equipment-type-meta.tsx`), so identity-matching devices are offered first and the existing fallback applies.
+- **Device picker**: `DeviceSelector` filters with `isEvChargerDevice` (data OR order identity, like `isThermostatDevice`); `EQUIPMENT_TYPE_CATEGORIES.ev_charger` lists the contract data categories for the other readers of that map.
 
 ## Arbiter
 
@@ -78,7 +78,7 @@ No code change. `isPowerAlias` finds the `power`-category binding; `isStateAlias
 | Detail page       | `pages/EquipmentDetailPage.tsx`                                 | Controls block rendering `EvChargerControl` when `type === "ev_charger"`                                                                                                              |
 | Zone card         | `components/home/CompactEquipmentCard.tsx`                      | `TYPE_TINTS`, `isEvCharger` in `isKnownType`, `CompactEvCharger` row: badge + power + toggle                                                                                          |
 | Zone grouping     | `components/home/ZoneEquipmentsView.tsx`                        | `ev_charger` in the "power" group                                                                                                                                                     |
-| Desktop widget    | `components/dashboard/EquipmentWidget.tsx`                      | `EvChargerEquipmentWidget`: icon, badge, power, session energy; tap toggles (like the water heater widget)                                                                            |
+| Desktop widget    | `components/dashboard/EquipmentWidget.tsx`                      | `EvChargerEquipmentWidget`: icon, badge, power, session energy and an explicit start/stop toggle; no tap-to-toggle on the tile                                                        |
 | Mobile widget     | `components/dashboard/MobileWidgetCard.tsx`                     | State lines: badge text, power when charging                                                                                                                                          |
 | Mobile tap        | `components/dashboard/widget-utils.ts`, `WidgetDetailSheet.tsx` | `needsDetailSheet` += `ev_charger`; the sheet renders `EvChargerControl`                                                                                                              |
 | Widget icon       | `components/dashboard/widget-icons.ts`                          | `EvCharger` registered in `ICON_MAP` and the picker; `EQUIPMENT_DEFAULT_ICONS.ev_charger`                                                                                             |

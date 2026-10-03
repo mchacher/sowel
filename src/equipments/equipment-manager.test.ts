@@ -1006,6 +1006,13 @@ describe("EquipmentManager", () => {
       ).toThrow(/Invalid equipment type/);
     });
 
+    it("accepts the ev_charger type (spec 182)", () => {
+      const zone = zoneManager.create({ name: "Garage" });
+      const eq = manager.create({ name: "Borne", type: "ev_charger", zoneId: zone.id });
+      expect(eq.type).toBe("ev_charger");
+      expect(manager.getById(eq.id)?.type).toBe("ev_charger");
+    });
+
     it("VMC speed order decomposes to break-before-make relay orders (spec 153)", async () => {
       const zone = zoneManager.create({ name: "Buanderie" });
       const eq = manager.create({ name: "VMC", type: "vmc", zoneId: zone.id });

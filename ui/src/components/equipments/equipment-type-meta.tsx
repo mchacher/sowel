@@ -5,6 +5,7 @@ import {
   CloudSun,
   DoorOpen,
   Droplets,
+  EvCharger,
   Fan,
   Gauge,
   Heater,
@@ -100,6 +101,9 @@ export const EQUIPMENT_TYPE_CATEGORIES: Partial<Record<EquipmentType, DataCatego
   // Spec 156 — UPS. Only the three UPS-specific categories discriminate:
   // `battery` and `voltage` would match every Zigbee sensor in the house.
   ups: ["ups_status", "battery_runtime", "ups_load"],
+  // Spec 182 — identity is decided by isEvChargerDevice (data OR order); this
+  // list only feeds the data-category filters that read this map.
+  ev_charger: ["ev_vehicle_state", "ev_charge_current", "ev_session_energy"],
 };
 
 export const TYPE_ICONS: Record<EquipmentType, React.ReactNode> = {
@@ -131,6 +135,7 @@ export const TYPE_ICONS: Record<EquipmentType, React.ReactNode> = {
   camera: <Camera size={18} strokeWidth={1.5} />,
   vmc: <Fan size={18} strokeWidth={1.5} />,
   ups: <BatteryCharging size={18} strokeWidth={1.5} />,
+  ev_charger: <EvCharger size={18} strokeWidth={1.5} />,
 };
 
 export const TYPE_LABELS: Record<EquipmentType, string> = {
@@ -162,4 +167,5 @@ export const TYPE_LABELS: Record<EquipmentType, string> = {
   camera: "equipments.type.camera",
   vmc: "equipments.type.vmc",
   ups: "equipments.type.ups",
+  ev_charger: "equipments.type.ev_charger",
 };

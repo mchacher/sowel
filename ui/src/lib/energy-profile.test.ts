@@ -1,5 +1,10 @@
 import { describe, it, expect } from "vitest";
-import { minutesToSeconds, secondsToMinutes } from "./energy-profile";
+import {
+  defaultEnergyClassFor,
+  defaultEnergyTimingsFor,
+  minutesToSeconds,
+  secondsToMinutes,
+} from "./energy-profile";
 
 // Issue #546 — the energy profile form edits minOn/minOff in minutes while
 // storage stays in seconds. The conversion pair must round-trip the values
@@ -38,5 +43,13 @@ describe("energy profile minutes/seconds conversion", () => {
     for (const s of [300, 600, 900, 1800, 3600]) {
       expect(minutesToSeconds(secondsToMinutes(s))).toBe(s);
     }
+  });
+});
+
+// Spec 182 — the UI copy pre-fills the form; it must agree with the backend.
+describe("EV charger flexible-load defaults (UI copy)", () => {
+  it("is deferrable, 10 min on / 5 min off", () => {
+    expect(defaultEnergyClassFor("ev_charger")).toBe("deferrable");
+    expect(defaultEnergyTimingsFor("ev_charger")).toEqual({ minOnS: 600, minOffS: 300 });
   });
 });

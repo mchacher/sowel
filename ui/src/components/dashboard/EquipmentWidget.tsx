@@ -17,9 +17,13 @@ import {
   Camera,
   Fan,
   BatteryCharging,
+  EvCharger,
 } from "lucide-react";
 import type { EquipmentWithDetails } from "../../types";
 import { VmcControl } from "../equipments/VmcControl";
+import { EvVehicleBadge } from "../equipments/EvChargerControl";
+import { evChargerStateOf } from "../equipments/evChargerState";
+import { LightControl } from "../equipments/LightControl";
 import { vmcSpeedOf } from "../equipments/vmcSpeed";
 import {
   formatRuntime,
@@ -213,6 +217,16 @@ export function EquipmentWidget({
     );
   if (equipment.type === "ups")
     return <UpsEquipmentWidget label={label} sublabel={sublabel} equipment={equipment} />;
+  if (equipment.type === "ev_charger")
+    return (
+      <EvChargerEquipmentWidget
+        label={label}
+        sublabel={sublabel}
+        equipment={equipment}
+        onExecuteOrder={execOrder}
+        iconKey={widget.icon}
+      />
+    );
   if (equipment.type === "vmc")
     return (
       <VmcEquipmentWidget
@@ -1404,6 +1418,59 @@ function SolarPanelEquipmentWidget({
  * last, and how hard the unit is working. Rows the plugin does not report are
  * simply absent.
  */
+/**
+ * EV charger tile (spec 182). No tap-to-toggle on the tile: starting a charge
+ * is deliberate, so start/stop is the explicit toggle inside the tile.
+ */
+function EvChargerEquipmentWidget({
+  label,
+  sublabel,
+  equipment,
+  onExecuteOrder,
+  iconKey,
+}: {
+  label: string;
+  sublabel?: string;
+  equipment: EquipmentWithDetails;
+  onExecuteOrder: (alias: string, value: unknown) => Promise<void>;
+  iconKey?: string;
+}) {
+  const s = evChargerStateOf(equipment);
+  const watts = s.power.watts;
+  const charging = s.vehicle === "charging" || (watts !== null && watts > 0);
+  return (
+    <WidgetCard label={label} sublabel={sublabel}>
+      <div className="flex-1 flex flex-col items-center justify-center gap-2">
+        {renderWidgetStateIcon(
+          iconKey,
+          <EvCharger
+            strokeWidth={1.5}
+            className={`${charging ? "text-accent" : "text-text-tertiary"} w-[52px] h-[52px]`}
+          />,
+        )}
+        <EvVehicleBadge vehicle={s.vehicle} />
+        {watts !== null && watts > 0 && (
+          <span className="font-mono text-[15px] font-semibold text-text tabular-nums">
+            {watts >= 1000 ? (watts / 1000).toFixed(2) : Math.round(watts)}
+            <span className="text-[11px] text-text-tertiary font-normal ml-0.5">
+              {watts >= 1000 ? "kW" : "W"}
+            </span>
+          </span>
+        )}
+        {s.sessionEnergyKwh !== null && s.sessionEnergyKwh > 0 && (
+          <span className="font-mono text-[12px] text-text-secondary tabular-nums">
+            {s.sessionEnergyKwh.toFixed(1)}
+            <span className="text-[10px] text-text-tertiary font-normal ml-0.5">kWh</span>
+          </span>
+        )}
+        {s.canToggle && equipment.enabled && (
+          <LightControl equipment={equipment} onExecuteOrder={onExecuteOrder} compact />
+        )}
+      </div>
+    </WidgetCard>
+  );
+}
+
 function UpsEquipmentWidget({
   label,
   sublabel,

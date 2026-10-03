@@ -31,6 +31,7 @@ import {
   Power,
   Battery,
   BatteryCharging,
+  EvCharger,
   Signal,
   Wifi,
   Home,
@@ -309,6 +310,7 @@ export const ICON_MAP: Record<string, LucideIcon> = {
   Power,
   Battery,
   BatteryCharging,
+  EvCharger,
   Signal,
   Wifi,
   Home,
@@ -341,7 +343,7 @@ export const ICON_CATEGORIES: { label: string; icons: string[] }[] = [
   { label: "Security", icons: ["Shield", "ShieldCheck", "Camera", "Bell", "Eye", "AlertTriangle"] },
   {
     label: "Sensors",
-    icons: ["Gauge", "Activity", "Zap", "Power", "Battery", "BatteryCharging", "Signal", "Wifi"],
+    icons: ["Gauge", "Activity", "Zap", "Power", "Battery", "BatteryCharging", "EvCharger", "Signal", "Wifi"],
   },
   {
     label: "Rooms",
@@ -374,6 +376,7 @@ const EQUIPMENT_DEFAULT_ICONS: Partial<Record<EquipmentType, string>> = {
   display: "Monitor",
   vmc: "Fan",
   ups: "BatteryCharging",
+  ev_charger: "EvCharger",
 };
 
 const FAMILY_DEFAULT_ICONS: Record<WidgetFamily, string> = {

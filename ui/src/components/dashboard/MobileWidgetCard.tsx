@@ -39,7 +39,8 @@ import {
 } from "../equipments/weatherForecastUtils";
 import { findTempExtremes, findTempIndoor, findTempOutdoor } from "../equipments/weather-utils";
 import { TempExtremes } from "../TempExtremes";
-import { Cloud, WashingMachine, Camera, ShieldCheck, Fan, BatteryCharging } from "lucide-react";
+import { Cloud, WashingMachine, Camera, ShieldCheck, Fan, BatteryCharging, EvCharger } from "lucide-react";
+import { evChargerStateOf, evVehicleKey } from "../equipments/evChargerState";
 import { gateNeedsConfirm } from "./gate-confirm";
 import { ForecastConfidenceMark } from "./ForecastConfidenceMark";
 import { vmcSpeedOf } from "../equipments/vmcSpeed";
@@ -504,6 +505,33 @@ function useMobileState(
       stateLines: [
         status ? t(upsStatusKey(status)) : (raw ?? t(upsStatusKey(null))),
         ...(detail ? [detail] : []),
+      ],
+    };
+  }
+
+  if (equipment.type === "ev_charger") {
+    // Spec 182 — the vehicle, then the power while energy flows.
+    const s = evChargerStateOf(equipment);
+    const watts = s.power.watts;
+    const charging = s.vehicle === "charging" || (watts !== null && watts > 0);
+    const powerLine =
+      watts !== null && watts > 0
+        ? watts >= 1000
+          ? `${(watts / 1000).toFixed(2)} kW`
+          : `${Math.round(watts)} W`
+        : null;
+    return {
+      icon: renderWidgetStateIcon(
+        widget.icon,
+        <EvCharger
+          size={96}
+          strokeWidth={1.2}
+          className={charging ? "text-accent" : "text-text-tertiary"}
+        />,
+      ),
+      stateLines: [
+        s.vehicle ? t(evVehicleKey(s.vehicle)) : s.on ? "ON" : "OFF",
+        ...(powerLine ? [powerLine] : []),
       ],
     };
   }

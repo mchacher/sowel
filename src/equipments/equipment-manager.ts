@@ -80,6 +80,7 @@ const VALID_EQUIPMENT_TYPES: Set<string> = new Set([
   "camera",
   "vmc",
   "ups",
+  "ev_charger",
 ]);
 
 // ============================================================
