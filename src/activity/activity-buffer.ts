@@ -7,6 +7,7 @@ import type { ZoneManager } from "../zones/zone-manager.js";
 import type { SunlightManager } from "../zones/sunlight-manager.js";
 import { ACTIVITY_RETENTION_DAYS, type ActivityStore } from "./activity-store.js";
 import type { ActivityItem, ActivityCategory, ActivityMessage } from "../shared/types.js";
+import { EV_MOMENTARY_ORDER_CATEGORIES } from "../shared/electric-vehicle-contract.js";
 
 interface GetItemsOptions {
   zoneId?: string | null;
@@ -157,6 +158,7 @@ export class ActivityBuffer {
   }): void {
     const equipment = this.equipmentManager.getById(event.equipmentId);
     if (!equipment) return;
+    const momentary = this.momentaryCategory(event.equipmentId, event.orderAlias);
     this.push(
       "order",
       equipment.zoneId ?? null,
@@ -166,10 +168,23 @@ export class ActivityBuffer {
           equipmentName: equipment.name,
           alias: event.orderAlias,
           value: formatValue(event.value),
+          ...(momentary ? { momentary } : {}),
         },
       },
       { source: event.source },
     );
+  }
+
+  /** The category of a momentary order (wake, refresh…), else undefined. */
+  private momentaryCategory(equipmentId: string, alias: string): string | undefined {
+    try {
+      const category = this.equipmentManager
+        .getOrderBindingsWithDetails(equipmentId)
+        .find((b) => b.alias === alias)?.category;
+      return category && EV_MOMENTARY_ORDER_CATEGORIES.has(category) ? category : undefined;
+    } catch {
+      return undefined;
+    }
   }
 
   private onDataChanged(event: { equipmentId: string; alias: string; value: unknown }): void {
@@ -209,7 +224,7 @@ export class ActivityBuffer {
     if (!meta) return;
     this.push("recipe", meta.zoneId, {
       template: "recipe.started",
-      params: { recipeName: meta.recipeName },
+      params: { recipeName: meta.recipeName, recipeId: meta.recipeId },
     });
   }
 
@@ -218,7 +233,7 @@ export class ActivityBuffer {
     if (!meta) return;
     this.push("recipe", meta.zoneId, {
       template: "recipe.stopped",
-      params: { recipeName: meta.recipeName },
+      params: { recipeName: meta.recipeName, recipeId: meta.recipeId },
     });
   }
 
@@ -227,7 +242,7 @@ export class ActivityBuffer {
     if (!meta) return;
     this.push("alarm", meta.zoneId, {
       template: "recipe.error",
-      params: { recipeName: meta.recipeName, error: event.error },
+      params: { recipeName: meta.recipeName, error: event.error, recipeId: meta.recipeId },
     });
   }
 

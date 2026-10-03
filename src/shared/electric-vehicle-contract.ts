@@ -65,6 +65,13 @@ export const EV_CHARGE_START_CATEGORY = "ev_charge_start";
 export const SET_EV_CHARGE_LIMIT_CATEGORY = "set_ev_charge_limit";
 export const EV_REFRESH_CATEGORY = "ev_refresh";
 
+/** Momentary orders: no value to show, only the action (activity feed). */
+export const EV_MOMENTARY_ORDER_CATEGORIES: ReadonlySet<string> = new Set([
+  EV_WAKE_CATEGORY,
+  EV_CHARGE_START_CATEGORY,
+  EV_REFRESH_CATEGORY,
+]);
+
 /** Category → contract alias, data and orders alike (disjoint namespaces). */
 export const ELECTRIC_VEHICLE_CATEGORY_ALIASES: Readonly<Record<string, string>> = {
   [EV_BATTERY_LEVEL_CATEGORY]: ELECTRIC_VEHICLE_ALIASES.batteryLevel,
