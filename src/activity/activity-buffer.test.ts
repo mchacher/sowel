@@ -23,6 +23,7 @@ function buildHarness() {
   const bus = new EventBus(logger);
   const equipments = new Map<string, Equipment>();
   const bindings = new Map<string, { alias: string; category: string }[]>();
+  const orderBindings = new Map<string, { alias: string; category: string }[]>();
   const instances = new Map<
     string,
     { recipeId: string; recipeName: string; zoneId: string | null }
@@ -33,6 +34,7 @@ function buildHarness() {
   const equipmentManager = {
     getById: (id: string) => equipments.get(id) ?? null,
     getDataBindingsWithValues: (id: string) => bindings.get(id) ?? [],
+    getOrderBindingsWithDetails: (id: string) => orderBindings.get(id) ?? [],
   } as unknown as ConstructorParameters<typeof ActivityBuffer>[1];
 
   const recipeManager = {
@@ -61,6 +63,8 @@ function buildHarness() {
     bus,
     buffer,
     addEquipment: (eq: Equipment) => equipments.set(eq.id, eq),
+    addOrderBindings: (id: string, list: { alias: string; category: string }[]) =>
+      orderBindings.set(id, list),
     setBindings: (eqId: string, bs: { alias: string; category: string }[]) =>
       bindings.set(eqId, bs),
     addInstance: (
@@ -101,6 +105,35 @@ describe("ActivityBuffer", () => {
         recipeName: "Motion Light",
       });
       expect(items[0].message.template).toBe("order.executed");
+    });
+
+    it("flags a momentary order (wake) so the UI names the action, not ON", () => {
+      h.addEquipment(mkEquipment("car", "Rafale", "zone-garage"));
+      h.addOrderBindings("car", [
+        { alias: "wake", category: "ev_wake" },
+        { alias: "charge_limit", category: "set_ev_charge_limit" },
+      ]);
+      h.bus.emit({
+        type: "equipment.order.executed",
+        equipmentId: "car",
+        orderAlias: "wake",
+        value: true,
+      });
+      h.bus.emit({
+        type: "equipment.order.executed",
+        equipmentId: "car",
+        orderAlias: "charge_limit",
+        value: 80,
+      });
+      const messages = h.buffer.getItems().map((i) => i.message);
+      const wake = messages.find(
+        (m) => m.template === "order.executed" && m.params.alias === "wake",
+      )!;
+      const limit = messages.find(
+        (m) => m.template === "order.executed" && m.params.alias === "charge_limit",
+      )!;
+      expect(wake).toMatchObject({ template: "order.executed", params: { momentary: "ev_wake" } });
+      expect(limit.template === "order.executed" && limit.params.momentary).toBeFalsy();
     });
 
     it("records equipment.order.executed without source (source undefined)", () => {
@@ -264,7 +297,7 @@ describe("ActivityBuffer", () => {
       expect(items[0].zoneId).toBe("zone-A");
       expect(items[0].message).toEqual({
         template: "recipe.started",
-        params: { recipeName: "Motion Light" },
+        params: { recipeName: "Motion Light", recipeId: "r1" },
       });
     });
 

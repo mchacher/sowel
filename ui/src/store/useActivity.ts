@@ -149,6 +149,7 @@ export function coalesce(prev: ActivityItem | undefined, next: ActivityItem): Ac
           count: 2,
           alias: nextMsg.params.alias,
           value: nextMsg.params.value,
+          ...(nextMsg.params.momentary ? { momentary: nextMsg.params.momentary } : {}),
         },
       },
     };
@@ -167,6 +168,7 @@ export function coalesce(prev: ActivityItem | undefined, next: ActivityItem): Ac
           count: prevMsg.params.count + 1,
           alias: nextMsg.params.alias,
           value: nextMsg.params.value,
+          ...(nextMsg.params.momentary ? { momentary: nextMsg.params.momentary } : {}),
         },
       } as ActivityMessage,
     };

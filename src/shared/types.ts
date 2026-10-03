@@ -1437,7 +1437,7 @@ export interface MfaChallenge {
 // ============================================================
 
 export type OrderSource =
-  | { kind: "recipe"; instanceId: string; recipeName: string }
+  | { kind: "recipe"; instanceId: string; recipeName: string; recipeId?: string }
   | { kind: "mode"; modeId: string; modeName: string }
   | { kind: "manual"; userId: string; userName?: string }
   | { kind: "button"; buttonId: string; buttonLabel?: string }
@@ -1620,15 +1620,26 @@ export interface SharedAccessPhoneView {
 export type ActivityCategory = "recipe" | "mode" | "motion" | "order" | "sunlight" | "alarm";
 
 export type ActivityMessage =
-  | { template: "order.executed"; params: { equipmentName: string; alias: string; value: string } }
+  | {
+      template: "order.executed";
+      /** `momentary`: the order category of a momentary order (wake, refresh…):
+       *  the UI names the action instead of the resolved value ("ON"). */
+      params: { equipmentName: string; alias: string; value: string; momentary?: string };
+    }
   | {
       template: "order.executed.multi";
-      params: { equipmentNames: string[]; count: number; alias: string; value: string };
+      params: {
+        equipmentNames: string[];
+        count: number;
+        alias: string;
+        value: string;
+        momentary?: string;
+      };
     }
   | { template: "motion.detected"; params: { equipmentName: string } }
-  | { template: "recipe.started"; params: { recipeName: string } }
-  | { template: "recipe.stopped"; params: { recipeName: string } }
-  | { template: "recipe.error"; params: { recipeName: string; error: string } }
+  | { template: "recipe.started"; params: { recipeName: string; recipeId?: string } }
+  | { template: "recipe.stopped"; params: { recipeName: string; recipeId?: string } }
+  | { template: "recipe.error"; params: { recipeName: string; error: string; recipeId?: string } }
   | { template: "mode.activated"; params: { modeName: string } }
   | { template: "mode.deactivated"; params: { modeName: string } }
   | { template: "sunlight.sunrise"; params: Record<string, never> }

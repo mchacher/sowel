@@ -690,7 +690,7 @@ export class RecipeManager {
     };
     const stateStore = new RecipeStateStore(this.db, instanceId, onChanged);
     const recipeName = this.registry.get(recipeId)?.info.name ?? recipeId;
-    const orderSource: OrderSource = { kind: "recipe", instanceId, recipeName };
+    const orderSource: OrderSource = { kind: "recipe", instanceId, recipeName, recipeId };
     return {
       eventBus: this.eventBus,
       equipmentManager: this.equipmentManager,
