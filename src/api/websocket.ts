@@ -263,6 +263,8 @@ function getDedupKey(event: EngineEvent): string | null {
       return `z:${event.zoneId}`;
     case "energy.arbiter.status":
       return "ea:status"; // spec 140 — keep only the latest status per batch
+    case "energy.capacity.budget":
+      return `eb:${event.equipmentId}`; // spec 185 — the latest budget per load
     default:
       return null;
   }

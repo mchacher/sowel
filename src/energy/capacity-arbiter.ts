@@ -36,6 +36,7 @@ import type {
   CapacityClaimHandle,
   CapacityClaimRequest,
   CapacityDenyReason,
+  CapacityModulation,
   CapacityRevokeReason,
   CapacitySlack,
   EnergyLoadProfile,
@@ -91,6 +92,13 @@ interface ArbiterConfig {
   staleAfterS: number;
   divergenceConfirmS: number;
   meterEquipmentId: string | null;
+  /** Spec 185 — a raise waits for the target to hold this long. */
+  modulationRaiseHoldS: number;
+  /** Spec 185 — after a budget change, the meter and the load settle. */
+  modulationSettleS: number;
+  /** Spec 185 — journal coalescing for `budget-changed`. */
+  budgetJournalStepW: number;
+  budgetJournalMinS: number;
 }
 
 interface ClaimRecord {
@@ -108,6 +116,27 @@ interface ClaimRecord {
   divergenceJournaled: boolean;
   onGranted: () => void;
   onRevoked: (reason: CapacityRevokeReason) => void;
+  /** Spec 185 — present only on a modulating claim; every branch that
+   *  serves modulation tests it, so a binary claim takes the pre-185 path. */
+  mod?: ModulationState;
+}
+
+/** Spec 185 — the runtime of a modulating claim. `watts` on the record is
+ *  `range.minW`, so the binary engage/waiting/shortfall paths size it on the
+ *  minimum without a branch of their own. */
+interface ModulationState {
+  range: CapacityModulation;
+  onBudget?: (watts: number) => void;
+  /** 0 while not granted. */
+  budgetW: number;
+  changedAt: number | null;
+  /** Export when the budget last moved down: a second decrease inside the
+   *  settle window needs the export to have worsened by a step (the meter EMA
+   *  lags, so the first decrease has not shown yet). */
+  exportAtDecrease: number | null;
+  raiseSince: number | null;
+  journaledW: number | null;
+  journaledAt: number | null;
 }
 
 interface RevokeWatchdog {
@@ -115,6 +144,8 @@ interface RevokeWatchdog {
   at: number;
   expectedW: number;
   exportAtRevoke: number;
+  /** Spec 185 — set on a budget-decrease watchdog (the claim stays granted). */
+  budgetW?: number;
 }
 
 function isOnLike(value: unknown): boolean {
@@ -141,6 +172,25 @@ function isBooleanState(value: unknown): boolean {
     value === "off" ||
     value === "OFF"
   );
+}
+
+/** Spec 185 — a usable range: positive, ordered, finite. */
+function isValidModulation(m: CapacityModulation): boolean {
+  return (
+    Number.isFinite(m.minW) &&
+    Number.isFinite(m.maxW) &&
+    Number.isFinite(m.stepW) &&
+    m.minW > 0 &&
+    m.maxW >= m.minW &&
+    m.stepW > 0
+  );
+}
+
+/** Spec 185 — a budget on the range's grid: minW + k·stepW, clamped. */
+export function budgetOnGrid(m: CapacityModulation, watts: number): number {
+  if (!(watts >= m.minW)) return m.minW;
+  const steps = Math.floor((Math.min(watts, m.maxW) - m.minW) / m.stepW + 1e-9);
+  return m.minW + steps * m.stepW;
 }
 
 /** Trimmed median: drop the top/bottom quarter, take the middle value. */
@@ -181,6 +231,9 @@ export class CapacityArbiter {
   private lastRevokedAt = new Map<string, number>();
   private overridesUntil = new Map<string, number>();
   private unresponsiveUntil = new Map<string, number>();
+  /** Spec 185 — a modulating load that did not follow a budget decrease: its
+   *  excess over the budget is background until this time. */
+  private budgetExcuseUntil = new Map<string, number>();
   private runSamples = new Map<string, number[]>();
   private unclaimedRunning = new Set<string>();
   private recipeWantsOn = new Map<string, boolean>();
@@ -352,6 +405,10 @@ export class CapacityArbiter {
       overrideTtlS: num("overrideTtlS", 7200),
       staleAfterS: num("staleAfterS", 300),
       divergenceConfirmS: num("divergenceConfirmS", 60),
+      modulationRaiseHoldS: num("modulationRaiseHoldS", 60),
+      modulationSettleS: num("modulationSettleS", 90),
+      budgetJournalStepW: num("budgetJournalStepW", 1000),
+      budgetJournalMinS: num("budgetJournalMinS", 900),
       meterEquipmentId: this.settings.get(SETTING_PREFIX + "meterEquipmentId") ?? null,
     };
   }
@@ -454,8 +511,11 @@ export class CapacityArbiter {
         const alpha = 1 - Math.exp(-dt / LIVE_DRAW_TAU_S);
         this.liveDraw.set(equipmentId, { ema: prev.ema + alpha * (value - prev.ema), at: now });
       }
+      const granted = this.grantedClaimFor(equipmentId);
+      // Spec 185 — a modulating load draws what its budget says: a median of
+      // that is not a rating, and would feed the roster and watts-divergence.
       const running =
-        this.grantedClaimFor(equipmentId) !== undefined || this.unclaimedRunning.has(equipmentId);
+        (granted !== undefined && !granted.mod) || this.unclaimedRunning.has(equipmentId);
       // Sub-threshold samples are excluded (review decision 17): a thermostatic
       // load cycling to zero must not teach the learner its off periods.
       if (running && value >= profile.nominalPowerW * LEARN_SAMPLE_FLOOR) {
@@ -733,6 +793,7 @@ export class CapacityArbiter {
     this.lastRevokedAt.delete(equipmentId);
     this.overridesUntil.delete(equipmentId);
     this.unresponsiveUntil.delete(equipmentId);
+    this.budgetExcuseUntil.delete(equipmentId);
     this.runSamples.delete(equipmentId);
     this.unclaimedRunning.delete(equipmentId);
     this.recipeWantsOn.delete(equipmentId);
@@ -760,10 +821,14 @@ export class CapacityArbiter {
         deniedReason: reason,
         release: () => {},
         reportNeed: () => {},
+        budgetW: () => null,
       };
     };
 
     if (!this.config.enabled) return denied("arbiter-disabled");
+    if (req.modulation !== undefined && !isValidModulation(req.modulation)) {
+      return denied("invalid-modulation");
+    }
     const profile = this.profileOf(req.equipmentId);
     if (!profile) return denied("not-profiled");
     if (this.isSuspended(req.equipmentId)) return denied("override-active");
@@ -794,6 +859,20 @@ export class CapacityArbiter {
       onGranted: req.onGranted,
       onRevoked: req.onRevoked,
     };
+    if (req.modulation) {
+      // Spec 185 — sized on the minimum for every binary-shaped path.
+      record.watts = req.modulation.minW;
+      record.mod = {
+        range: { ...req.modulation },
+        onBudget: req.onBudget,
+        budgetW: 0,
+        changedAt: null,
+        exportAtDecrease: null,
+        raiseSince: null,
+        journaledW: null,
+        journaledAt: null,
+      };
+    }
     this.claims.set(record.id, record);
     this.evaluate();
 
@@ -817,6 +896,7 @@ export class CapacityArbiter {
         if (record.status !== "granted") return;
         this.declaredNeed.set(record.equipmentId, need);
       },
+      budgetW: () => (record.status === "granted" && record.mod ? record.mod.budgetW : null),
     };
   }
 
@@ -1051,6 +1131,10 @@ export class CapacityArbiter {
         info.sinceIso = new Date(grantedClaim?.grantedAt ?? Date.now()).toISOString();
         info.instanceId = grantedClaim?.instanceId;
         info.note = grantedClaim?.note;
+        if (grantedClaim?.mod) {
+          info.budgetW = grantedClaim.mod.budgetW;
+          info.modulation = { ...grantedClaim.mod.range };
+        }
       } else if (state === "suspended") {
         info.untilIso = new Date(this.overridesUntil.get(id) ?? Date.now()).toISOString();
       } else if (pendingClaim && state === "pending") {
@@ -1058,6 +1142,7 @@ export class CapacityArbiter {
         info.shortfallW = shortfalls.get(id) ?? 0;
         info.reasonWaiting = this.pendingReason(pendingClaim, headroomW);
         info.instanceId = pendingClaim.instanceId;
+        if (pendingClaim.mod) info.modulation = { ...pendingClaim.mod.range };
       } else if (this.unclaimedRunning.has(id)) {
         info.watts = Math.round(this.drawEstimate(id));
       } else if (pendingClaim) {
@@ -1120,7 +1205,8 @@ export class CapacityArbiter {
     for (const { claim } of ordered) {
       const eq = claim.equipmentId;
       const ownDrawW = this.freshLiveDraw(eq) ?? 0;
-      const shortfallW = this.engageNeedW(claim) - running - ownDrawW;
+      // Spec 185 FR17 — mirrors the grant pass: lower modulating grants yield.
+      const shortfallW = this.engageNeedW(claim) - running - ownDrawW - this.yieldableBelow(eq);
       out.set(eq, Math.max(0, Math.round(shortfallW)));
       // Blocked by something other than surplus: `evaluate` skips the claim
       // without spending headroom, so the ones behind it still see it all.
@@ -1151,6 +1237,7 @@ export class CapacityArbiter {
         watts: Math.round(this.effectiveWatts(c)),
         sinceIso: new Date(c.grantedAt ?? now).toISOString(),
         note: c.note,
+        ...(c.mod ? { budgetW: c.mod.budgetW, modulation: { ...c.mod.range } } : {}),
       }));
     const suspensions = [...this.overridesUntil.entries()]
       .filter(([, until]) => until > now)
@@ -1309,6 +1396,9 @@ export class CapacityArbiter {
     for (const [eq, until] of this.unresponsiveUntil) {
       if (until <= now) this.unresponsiveUntil.delete(eq);
     }
+    for (const [eq, until] of this.budgetExcuseUntil) {
+      if (until <= now) this.budgetExcuseUntil.delete(eq);
+    }
 
     // Stale meter → revoke everything, degrade, wait for data (FR-7).
     if (this.lastMeterAt === null || now - this.lastMeterAt > this.config.staleAfterS * 1000) {
@@ -1335,12 +1425,23 @@ export class CapacityArbiter {
       (s, eq) => s + this.drawEstimate(eq),
       0,
     );
-    const deficitW = signedGridW - toleratedSum - unresponsiveDraw;
+    const deficitW = signedGridW - toleratedSum - unresponsiveDraw - this.budgetExcessW();
     if (deficitW > 0 && this.hasGrants()) {
       this.deficitSince ??= now;
       if (now - this.deficitSince >= this.config.releaseHoldS * 1000) {
         let remaining = deficitW;
         let revokedAny = false;
+        // Spec 185 FR6 — lower modulating budgets (lowest priority first)
+        // before shedding anyone. No modulating grant: nothing happens here.
+        for (const claim of this.grantedBottomUp()) {
+          if (remaining <= 0) break;
+          if (!claim.mod || claim.status !== "granted") continue;
+          const freed = this.lowerBudgetBy(claim, remaining, now, exportW);
+          if (freed > 0) {
+            remaining -= freed;
+            revokedAny = true;
+          }
+        }
         for (const claim of this.grantedBottomUp()) {
           if (remaining <= 0) break;
           if (claim.status !== "granted") continue; // a callback released it mid-loop
@@ -1383,11 +1484,34 @@ export class CapacityArbiter {
       // which is the whole point of the tolerance (FR-3). Flooring needW would
       // silently refuse it during any import.
       const needW = this.engageNeedW(claim);
-      if (headroomW + ownDrawW >= needW) {
+      // Spec 185 FR9 — what lower-priority modulating grants hold above their
+      // minimum is available to this claim. 0 without modulating grants.
+      const yieldableW = this.yieldableBelow(eq);
+      if (headroomW + ownDrawW + yieldableW >= needW) {
         claim.engageSince ??= now;
         if (now - claim.engageSince >= this.config.engageHoldS * 1000) {
-          this.grant(claim);
-          headroomW -= Math.max(0, claim.watts - ownDrawW);
+          const missingW = needW - headroomW - ownDrawW;
+          if (missingW > 0) {
+            // Baseline for the decrease watchdogs: the export once this
+            // claim draws what it is granted.
+            headroomW += this.yieldBelow(
+              eq,
+              missingW,
+              now,
+              exportW - Math.max(0, claim.watts - ownDrawW),
+            );
+          }
+          if (claim.mod) {
+            const initial = budgetOnGrid(
+              claim.mod.range,
+              headroomW + ownDrawW + claim.toleratedImportW - this.config.engageMarginW,
+            );
+            this.grant(claim, initial);
+            headroomW -= Math.max(0, initial - ownDrawW);
+          } else {
+            this.grant(claim);
+            headroomW -= Math.max(0, claim.watts - ownDrawW);
+          }
         }
       } else {
         claim.engageSince = null;
@@ -1399,7 +1523,7 @@ export class CapacityArbiter {
           const below = this.grantedBottomUp().filter(
             (g) => this.priorityRank(g.equipmentId) > myRank,
           );
-          const shortfallW = needW - headroomW - ownDrawW;
+          const shortfallW = needW - headroomW - ownDrawW - yieldableW;
           const revocable = below.filter(
             (g) =>
               !(g.grantedAt !== null && now - g.grantedAt < this.minOnMs(g.equipmentId)) &&
@@ -1419,12 +1543,34 @@ export class CapacityArbiter {
       }
     }
 
+    // Spec 185 — budgets of the granted modulating claims, priority order.
+    this.budgetPass(headroomW, exportW, now);
+
     // watts-divergence (FR-9): transparency when reality disagrees with the
     // declared nominal — the books already follow the measurement.
     for (const claim of this.grantedClaims()) {
       if (claim.divergenceJournaled) continue;
       const profile = this.profileOf(claim.equipmentId);
       if (!profile) continue;
+      // Spec 185 FR11 — a modulating load is compared with its budget, once it
+      // has had the settle window to follow it.
+      if (claim.mod) {
+        const live = this.freshLiveDraw(claim.equipmentId);
+        const settling =
+          claim.mod.changedAt !== null &&
+          now - claim.mod.changedAt < this.config.modulationSettleS * 1000;
+        if (live === null || settling) continue;
+        if (live > claim.mod.budgetW * (1 + DIVERGENCE_RATIO)) {
+          claim.divergenceJournaled = true;
+          this.journal({
+            kind: "watts-divergence",
+            equipmentId: claim.equipmentId,
+            watts: Math.round(live),
+            reason: `budget ${claim.mod.budgetW} W`,
+          });
+        }
+        continue;
+      }
       const basis = this.freshLiveDraw(claim.equipmentId) ?? profile.learned?.watts;
       if (basis === undefined) continue;
       if (Math.abs(basis - profile.nominalPowerW) > DIVERGENCE_RATIO * profile.nominalPowerW) {
@@ -1479,6 +1625,8 @@ export class CapacityArbiter {
   private effectiveWatts(claim: ClaimRecord): number {
     const live = this.freshLiveDraw(claim.equipmentId);
     if (live !== null && live !== undefined) return live;
+    // Spec 185 FR11 — a granted modulating load is booked at its budget.
+    if (claim.mod && claim.mod.budgetW > 0) return claim.mod.budgetW;
     const learned = this.profileOf(claim.equipmentId)?.learned?.watts;
     if (learned !== undefined) return learned;
     return claim.watts;
@@ -1487,6 +1635,8 @@ export class CapacityArbiter {
   private drawEstimate(equipmentId: string): number {
     const live = this.freshLiveDraw(equipmentId);
     if (live !== null && live !== undefined) return live;
+    const granted = this.grantedClaimFor(equipmentId);
+    if (granted?.mod && granted.mod.budgetW > 0) return granted.mod.budgetW;
     const profile = this.profileOf(equipmentId);
     return profile?.learned?.watts ?? profile?.nominalPowerW ?? 0;
   }
@@ -1545,26 +1695,41 @@ export class CapacityArbiter {
 
   // ── Grant / revoke / release ────────────────────────────────
 
-  private grant(claim: ClaimRecord): void {
+  private grant(claim: ClaimRecord, initialBudgetW?: number): void {
     if (claim.status !== "pending") return; // released/denied by a re-entrant callback
     claim.status = "granted";
     claim.grantedAt = Date.now();
     claim.engageSince = null;
     claim.divergenceJournaled = false;
+    const mod = claim.mod;
+    const watts = mod ? (initialBudgetW ?? mod.range.minW) : claim.watts;
+    if (mod) {
+      mod.budgetW = watts;
+      mod.changedAt = claim.grantedAt;
+      mod.raiseSince = null;
+      mod.exportAtDecrease = null;
+      mod.journaledW = watts;
+      mod.journaledAt = claim.grantedAt;
+    }
     this.journal({
       kind: "granted",
       equipmentId: claim.equipmentId,
-      watts: claim.watts,
+      watts,
       note: claim.note,
     });
     this.emitEvent({
       type: "energy.capacity.granted",
       equipmentId: claim.equipmentId,
       instanceId: claim.instanceId,
-      watts: claim.watts,
+      watts,
       note: claim.note,
     });
     this.guarded(claim.onGranted, claim, "onGranted");
+    // Spec 185 — the first budget, right after the grant (FR1).
+    if (mod?.onBudget && claim.status === "granted") {
+      const onBudget = mod.onBudget;
+      this.guarded(() => onBudget(watts), claim, "onBudget");
+    }
   }
 
   private revoke(claim: ClaimRecord, reason: CapacityRevokeReason): void {
@@ -1573,6 +1738,7 @@ export class CapacityArbiter {
     claim.status = "pending";
     claim.grantedAt = null;
     claim.engageSince = null;
+    this.resetModulation(claim);
     this.clearDrawState(claim.equipmentId);
     this.lastRevokedAt.set(claim.equipmentId, Date.now());
     this.finishLearnerRun(claim.equipmentId);
@@ -1629,6 +1795,7 @@ export class CapacityArbiter {
     const wasGranted = claim.status === "granted";
     const wasPending = claim.status === "pending";
     claim.status = "released";
+    this.resetModulation(claim);
     if (wasGranted) {
       this.finishLearnerRun(claim.equipmentId);
       this.clearDrawState(claim.equipmentId);
@@ -1679,6 +1846,227 @@ export class CapacityArbiter {
     this.forceStatusEmit();
   }
 
+  // ── Modulation (spec 185) ───────────────────────────────────
+
+  private resetModulation(claim: ClaimRecord): void {
+    if (!claim.mod) return;
+    claim.mod.budgetW = 0;
+    claim.mod.changedAt = null;
+    claim.mod.raiseSince = null;
+    claim.mod.exportAtDecrease = null;
+    claim.mod.journaledW = null;
+    claim.mod.journaledAt = null;
+    this.budgetExcuseUntil.delete(claim.equipmentId);
+  }
+
+  /** Granted modulating claims, highest priority first. */
+  private modulatingTopDown(): ClaimRecord[] {
+    return this.grantedBottomUp()
+      .filter((c) => c.mod !== undefined)
+      .reverse();
+  }
+
+  /** FR12 — the excess of loads that did not follow a budget decrease. */
+  private budgetExcessW(): number {
+    let sum = 0;
+    for (const eq of this.budgetExcuseUntil.keys()) {
+      const claim = this.grantedClaimFor(eq);
+      if (!claim?.mod) continue;
+      const draw = this.freshLiveDraw(eq) ?? claim.mod.budgetW;
+      sum += Math.max(0, draw - claim.mod.budgetW);
+    }
+    return sum;
+  }
+
+  /** FR9 — what modulating grants ranked below `equipmentId` hold above their minimum. */
+  private yieldableBelow(equipmentId: string): number {
+    const rank = this.priorityRank(equipmentId);
+    let sum = 0;
+    for (const g of this.grantedClaims()) {
+      if (!g.mod || g.equipmentId === equipmentId) continue;
+      if (this.priorityRank(g.equipmentId) <= rank) continue;
+      // What it really holds: a load drawing less than its budget (a car
+      // tapering) cannot give back what the export already shows (review).
+      const holds = Math.min(g.mod.budgetW, this.freshLiveDraw(g.equipmentId) ?? g.mod.budgetW);
+      sum += Math.max(0, holds - g.mod.range.minW);
+    }
+    return sum;
+  }
+
+  /** FR9 — lower modulating grants ranked below `equipmentId`, lowest first,
+   *  until `neededW` is freed. Returns what was freed. */
+  private yieldBelow(equipmentId: string, neededW: number, now: number, exportW: number): number {
+    const rank = this.priorityRank(equipmentId);
+    let freed = 0;
+    for (const g of this.grantedBottomUp()) {
+      if (freed >= neededW) break;
+      if (!g.mod || g.equipmentId === equipmentId) continue;
+      if (this.priorityRank(g.equipmentId) <= rank) continue;
+      freed += this.lowerBudgetBy(g, neededW - freed, now, exportW);
+    }
+    return freed;
+  }
+
+  /** Lower a modulating budget by at least `watts` (on its grid), not below
+   *  minW. Returns what was freed. */
+  private lowerBudgetBy(claim: ClaimRecord, watts: number, now: number, exportW: number): number {
+    const mod = claim.mod;
+    if (!mod || claim.status !== "granted") return 0;
+    const room = mod.budgetW - mod.range.minW;
+    if (room <= 0 || watts <= 0) return 0;
+    const steps = Math.ceil(Math.min(watts, room) / mod.range.stepW);
+    const next = Math.max(mod.range.minW, mod.budgetW - steps * mod.range.stepW);
+    const freed = mod.budgetW - next;
+    this.setBudget(claim, next, now, exportW);
+    return freed;
+  }
+
+  /**
+   * FR3–FR7 — follow the surplus. `headroomW` is what the grant pass left;
+   * each claim's own draw is added back so it never reads as surplus gone.
+   *
+   * Raise slowly: the target must hold a step above for `modulationRaiseHoldS`
+   * and the previous change must have settled. Lower fast, with one guard: the
+   * meter is an EMA, so right after a decrease the export still shows the old
+   * draw; a second decrease inside the settle window needs the export to have
+   * worsened by a step, or the same deficit would be paid twice.
+   */
+  private budgetPass(headroomW: number, exportW: number, now: number): void {
+    const settleMs = this.config.modulationSettleS * 1000;
+    const holdMs = this.config.modulationRaiseHoldS * 1000;
+    let headroom = headroomW;
+    for (const claim of this.modulatingTopDown()) {
+      const mod = claim.mod;
+      if (!mod || claim.status !== "granted") continue;
+      const budget = mod.budgetW;
+      const step = mod.range.stepW;
+      const settling = mod.changedAt !== null && now - mod.changedAt < settleMs;
+      // While a change settles, the load (and the meter's EMA) has not caught
+      // up: book it at its budget, which is also what the grant pass took off
+      // the headroom. Once settled, what it really draws.
+      const draw = settling ? budget : (this.freshLiveDraw(claim.equipmentId) ?? budget);
+      // Unfloored: the hysteresis below is measured on it, not on the grid.
+      const ideal = draw + headroom + claim.toleratedImportW - this.config.engageMarginW;
+      let next = budget;
+      // Hysteresis of half a step each way (review): with a floored target the
+      // budget sat on the opposite threshold after every change and toggled a
+      // step every few minutes on a steady surplus.
+      if (ideal < budget - step / 2) {
+        mod.raiseSince = null;
+        const repeated =
+          settling && mod.exportAtDecrease !== null && exportW >= mod.exportAtDecrease - step;
+        if (!repeated) next = budgetOnGrid(mod.range, ideal);
+      } else if (ideal >= budget + step + step / 2 && budget < mod.range.maxW) {
+        // The hold only counts once the previous change has settled: counted
+        // during it, the meter EMA still shows part of the last step as
+        // surplus, and the raise overshot and came back (review).
+        if (settling) mod.raiseSince = null;
+        else {
+          mod.raiseSince ??= now;
+          if (now - mod.raiseSince >= holdMs) next = budgetOnGrid(mod.range, ideal);
+        }
+      } else {
+        mod.raiseSince = null;
+      }
+      if (next !== budget) this.setBudget(claim, next, now, exportW);
+      else this.journalSettledBudget(claim, now);
+      headroom -= mod.budgetW - draw;
+    }
+  }
+
+  /** FR14 — the last value of a run of small changes reaches the journal once
+   *  the coalescing window has passed, not only on the next change. */
+  private journalSettledBudget(claim: ClaimRecord, now: number): void {
+    const mod = claim.mod;
+    if (!mod || mod.journaledW === null || mod.journaledW === mod.budgetW) return;
+    if (mod.journaledAt !== null && now - mod.journaledAt < this.config.budgetJournalMinS * 1000) {
+      return;
+    }
+    mod.journaledW = mod.budgetW;
+    mod.journaledAt = now;
+    this.journal({ kind: "budget-changed", equipmentId: claim.equipmentId, watts: mod.budgetW });
+  }
+
+  private setBudget(claim: ClaimRecord, watts: number, now: number, exportW: number): void {
+    const mod = claim.mod;
+    if (!mod || claim.status !== "granted" || watts === mod.budgetW) return;
+    const previous = mod.budgetW;
+    mod.budgetW = watts;
+    mod.changedAt = now;
+    mod.raiseSince = null;
+    if (watts < previous) {
+      mod.exportAtDecrease = exportW;
+      // FR12 — watch the decrease, unless the load already draws within it.
+      this.watchdogs = this.watchdogs.filter(
+        (w) => !(w.budgetW !== undefined && w.equipmentId === claim.equipmentId),
+      );
+      const live = this.freshLiveDraw(claim.equipmentId);
+      if (live === null || live > watts + mod.range.stepW / 2) {
+        this.watchdogs.push({
+          equipmentId: claim.equipmentId,
+          at: now,
+          expectedW: previous - watts,
+          exportAtRevoke: exportW,
+          budgetW: watts,
+        });
+      }
+    } else {
+      mod.exportAtDecrease = null;
+    }
+    this.emitEvent({
+      type: "energy.capacity.budget",
+      equipmentId: claim.equipmentId,
+      instanceId: claim.instanceId,
+      watts,
+    });
+    // FR14 — coalesced: a step change per minute would flush the 200-entry
+    // ring and the decision table.
+    const moved =
+      mod.journaledW === null || Math.abs(watts - mod.journaledW) >= this.config.budgetJournalStepW;
+    const aged =
+      mod.journaledAt === null || now - mod.journaledAt >= this.config.budgetJournalMinS * 1000;
+    if (moved || aged) {
+      mod.journaledW = watts;
+      mod.journaledAt = now;
+      this.journal({ kind: "budget-changed", equipmentId: claim.equipmentId, watts });
+    }
+    if (mod.onBudget) {
+      const onBudget = mod.onBudget;
+      this.guarded(() => onBudget(watts), claim, "onBudget");
+    }
+  }
+
+  /** FR12 — a budget decrease: honoured when the load draws within it, or
+   *  the export recovered by half the decrease; otherwise its excess becomes
+   *  background after `releaseHoldS`, so the next load is not shed for it. */
+  private checkBudgetWatchdog(
+    w: RevokeWatchdog,
+    now: number,
+    exportNow: number,
+    holdMs: number,
+  ): boolean {
+    const claim = this.grantedClaimFor(w.equipmentId);
+    if (!claim?.mod || w.budgetW === undefined) return false;
+    if (claim.mod.budgetW > w.budgetW) return false; // raised since: moot
+    const live = this.freshLiveDraw(w.equipmentId);
+    if (live !== null && live <= w.budgetW + claim.mod.range.stepW / 2) {
+      this.budgetExcuseUntil.delete(w.equipmentId);
+      return false;
+    }
+    if (exportNow - w.exportAtRevoke >= 0.5 * w.expectedW) return false;
+    if (now - w.at >= holdMs) {
+      this.budgetExcuseUntil.set(w.equipmentId, now + 2 * holdMs);
+      this.journal({
+        kind: "budget-not-honored",
+        equipmentId: w.equipmentId,
+        watts: w.budgetW,
+        reason: "export did not recover after a budget decrease",
+      });
+      return false;
+    }
+    return true;
+  }
+
   // ── Watchdogs & divergence ──────────────────────────────────
 
   private checkWatchdogs(now: number): void {
@@ -1702,6 +2090,7 @@ export class CapacityArbiter {
     const holdMs = this.config.releaseHoldS * 1000;
     const exportNow = -(this.emaPowerW ?? 0);
     this.watchdogs = this.watchdogs.filter((w) => {
+      if (w.budgetW !== undefined) return this.checkBudgetWatchdog(w, now, exportNow, holdMs);
       if (this.grantedClaimFor(w.equipmentId)) return false; // re-granted, moot
       // Honored, by direct evidence (#732): the load's own measurement (or, for
       // a load declaring no inertia, its reported state) says it has stopped.

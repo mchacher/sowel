@@ -906,7 +906,19 @@ export type CapacityRevokeReason =
   | "disabled";
 
 export type CapacityDenyReason =
-  "not-profiled" | "equipment-already-claimed" | "arbiter-disabled" | "override-active";
+  | "not-profiled"
+  | "equipment-already-claimed"
+  | "arbiter-disabled"
+  | "override-active"
+  /** Spec 185 — `modulation` with minW ≤ 0, maxW < minW or stepW ≤ 0. */
+  | "invalid-modulation";
+
+/** Spec 185 — the power range a modulating load can follow. */
+export interface CapacityModulation {
+  minW: number;
+  maxW: number;
+  stepW: number;
+}
 
 export interface CapacityClaimRequest {
   equipmentId: string;
@@ -920,6 +932,16 @@ export interface CapacityClaimRequest {
   note?: string;
   onGranted: () => void;
   onRevoked: (reason: CapacityRevokeReason) => void;
+  /**
+   * Spec 185 — a load that can follow a budget. When present, the claim
+   * engages and releases at `minW`, and once granted the arbiter assigns it a
+   * budget in [minW, maxW] (a multiple of stepW from minW) that follows the
+   * surplus. `watts` is then ignored. Absent: a binary claim, exactly as before.
+   */
+  modulation?: CapacityModulation;
+  /** Spec 185 — each new budget (W), first right after `onGranted`. Apply it
+   *  promptly and never draw above it (author rule 7). */
+  onBudget?: (watts: number) => void;
 }
 
 export interface CapacityClaimHandle {
@@ -949,6 +971,8 @@ export interface CapacityClaimHandle {
    * Ignored unless the claim is granted. Never throws.
    */
   reportNeed(need: boolean): void;
+  /** Spec 185 — the current budget of a granted modulating claim, else null. */
+  budgetW?(): number | null;
 }
 
 export interface RecipeEnergyHelpers {
@@ -956,7 +980,7 @@ export interface RecipeEnergyHelpers {
   getCapacityState(): {
     enabled: boolean;
     availableSurplusW: number | null; // null while degraded/stale
-    grants: Array<{ equipmentId: string; watts: number; sinceIso: string }>;
+    grants: Array<{ equipmentId: string; watts: number; sinceIso: string; budgetW?: number }>;
   };
 }
 
@@ -1000,7 +1024,13 @@ export type ArbiterDecisionKind =
    *  longer has a live claim, so the timeline replay closes the span at the
    *  restart boundary instead of painting a phantom "granted"/"pending" ribbon
    *  forward to now. */
-  | "reset";
+  | "reset"
+  /** Spec 185 — a modulating grant's budget moved (coalesced: ≥ 1 kW or
+   *  15 min with a change). `watts` is the new budget. Not a state change. */
+  | "budget-changed"
+  /** Spec 185 — after a budget decrease the export did not recover: the
+   *  load's excess over its budget is counted as background. */
+  | "budget-not-honored";
 
 /** One line of the decision journal (FR-8/FR-9). Bounded ring buffer. */
 export interface ArbiterDecision {
@@ -1026,6 +1056,9 @@ export interface ArbiterGrantInfo {
   watts: number;
   sinceIso: string;
   note?: string;
+  /** Spec 185 — modulating grants: the current budget and the range. */
+  budgetW?: number;
+  modulation?: CapacityModulation;
 }
 
 export interface ArbiterPendingInfo {
@@ -1141,6 +1174,10 @@ export interface ArbiterLoadInfo {
   /** Granted / pending: the claiming recipe instance. */
   instanceId?: string;
   note?: string;
+  /** Spec 185 — a modulating claim's range (granted or pending). */
+  modulation?: CapacityModulation;
+  /** Spec 185 — granted modulating: the budget the arbiter assigned. */
+  budgetW?: number;
 }
 
 /** Read model of the arbiter for the API route and the UI (FR-10). */
@@ -1887,6 +1924,8 @@ export type EngineEvent =
       reason: CapacityDenyReason;
     }
   | { type: "energy.capacity.released"; equipmentId: string; instanceId: string }
+  /** Spec 185 — a modulating grant's budget changed. */
+  | { type: "energy.capacity.budget"; equipmentId: string; instanceId: string; watts: number }
   | {
       type: "energy.arbiter.status";
       state: ArbiterRunState;

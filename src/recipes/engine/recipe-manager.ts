@@ -622,6 +622,7 @@ export class RecipeManager {
             // its declaration current is a no-op rather than a special case it
             // has to guard against.
             reportNeed: () => {},
+            budgetW: () => null,
           };
         }
         return this.capacityArbiter.claim(instanceId, req);
@@ -638,6 +639,7 @@ export class RecipeManager {
             equipmentId: g.equipmentId,
             watts: g.watts,
             sinceIso: g.sinceIso,
+            ...(g.budgetW !== undefined ? { budgetW: g.budgetW } : {}),
           })),
         };
       },

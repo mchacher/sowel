@@ -78,6 +78,8 @@ Le surplus de l'arbitre est **l'échange réseau signé mesuré au compteur prin
 3. **Retire** la charge accordée la moins prioritaire si le déficit a dépassé l'_import toléré_ de la charge pendant la _tenue avant retrait_ (600 s par défaut). L'asymétrie est voulue : arriver tard ne coûte rien, partir tôt coûte un démarrage de compresseur.
 4. **Protège** chaque charge accordée par sa _marche mini_ et chaque charge au repos par son _arrêt mini_ : des planchers anti-cycles-courts qui priment sur l'arithmétique du surplus. Un nuage plus court que la tenue de retrait plus la marche mini n'atteint tout simplement jamais le matériel.
 
+**Les charges qui suivent un budget** (spec 185) : une borne de recharge peut tirer n'importe quel courant entre 6 et 16 A. Sa recette déclare cette plage plutôt qu'une puissance : elle démarre au minimum, puis l'arbitre monte son budget quand un surplus supplémentaire a tenu une minute et le baisse aussitôt que le surplus chute, et la recette règle le courant de charge en conséquence. En cas de déficit, une telle charge est baissée avant que quoi que ce soit ne soit éteint, et une charge placée au-dessus d'elle peut prendre ce qu'elle tient au-delà de son minimum.
+
 La priorité est stricte et vôtre : la liste des Réglages, le haut d'abord pour les octrois, le bas d'abord pour les délestages. Deux classes de charge précisent ce qu'un octroi veut dire : une charge **reportable** (pompe de piscine, chauffe-eau) est allumée et éteinte franchement ; une charge **confort** (une PAC qui tourne déjà pour le foyer) n'est jamais éteinte par l'arbitre : un octroi ne fait que la _booster_, et un retrait la ramène à sa consigne normale.
 
 ### Chaque réglage, documenté

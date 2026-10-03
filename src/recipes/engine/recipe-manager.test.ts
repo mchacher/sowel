@@ -704,6 +704,58 @@ describe("RecipeManager × CapacityArbiter (spec 140)", () => {
     expect(arbiter.getPublicState().pending).toHaveLength(0);
   });
 
+  it("passes a modulating claim through and exposes budgetW() (spec 185)", () => {
+    setup({ withArbiter: true });
+    let budgetOf: (() => number | null) | undefined;
+    manager.registerExternal({
+      id: "modulator",
+      name: "modulator",
+      description: "modulating claim",
+      slots: [],
+      validate: () => {},
+      createInstance: (_params, ctx) => {
+        const handle = ctx.helpers.energy.claimCapacity({
+          equipmentId: pumpId,
+          modulation: { minW: 300, maxW: 600, stepW: 100 },
+          onGranted: () => {},
+          onRevoked: () => {},
+          onBudget: () => {},
+        });
+        budgetOf = handle.budgetW;
+        return { stop: () => {} };
+      },
+    } satisfies RecipeDefinition);
+    manager.createInstance("modulator", {});
+    const pending = arbiter.getPublicState().loads.find((l) => l.equipmentId === pumpId);
+    expect(pending?.modulation).toEqual({ minW: 300, maxW: 600, stepW: 100 });
+    expect(budgetOf?.()).toBeNull(); // pending: no budget yet
+  });
+
+  it("the no-arbiter stub answers budgetW() with null", () => {
+    setup({ withArbiter: false });
+    let budget: number | null | undefined = 0;
+    manager.registerExternal({
+      id: "modulator-null",
+      name: "modulator-null",
+      description: "modulating claim without arbiter",
+      slots: [],
+      validate: () => {},
+      createInstance: (_params, ctx) => {
+        budget = ctx.helpers.energy
+          .claimCapacity({
+            equipmentId: pumpId,
+            modulation: { minW: 300, maxW: 600, stepW: 100 },
+            onGranted: () => {},
+            onRevoked: () => {},
+          })
+          .budgetW?.();
+        return { stop: () => {} };
+      },
+    } satisfies RecipeDefinition);
+    manager.createInstance("modulator-null", {});
+    expect(budget).toBeNull();
+  });
+
   it("denies the claim with arbiter-disabled when no arbiter is wired", () => {
     setup({ withArbiter: false });
     let denied: string | undefined = "unset";
