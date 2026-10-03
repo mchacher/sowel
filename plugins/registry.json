@@ -625,7 +625,7 @@
     "icon": "PlugZap",
     "author": "mchacher",
     "repo": "mchacher/sowel-plugin-tuya",
-    "version": "0.1.0",
+    "version": "0.2.0",
     "tags": ["tuya", "local", "ev", "ev-charger", "charger", "energy"],
     "i18n": {
       "fr": {
@@ -635,6 +635,6 @@
     },
     "sowelVersion": ">=1.71.0",
     "owner": "mchacher",
-    "sha256": "4ca6f6c0e945f20f431445762f8bd35fc73269b76065d20c598c515ea7ac2b8f"
+    "sha256": "70a8e8f9898d79bb84e9e211ef50a0f3fcab26f4a3f57c582e41a49bf7cc217f"
   }
 ]
