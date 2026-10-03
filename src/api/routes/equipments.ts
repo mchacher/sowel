@@ -63,6 +63,8 @@ const updateEquipmentBodySchema = {
         minOnS: { type: "number", minimum: 0 },
         minOffS: { type: "number", minimum: 0 },
         toleratedImportW: { type: "number", minimum: 0, maximum: 30000 },
+        // #631 — shutdown inertia; one day is far beyond any real load.
+        releaseDelayS: { type: "number", minimum: 0, maximum: 86400 },
       },
     },
     requireConfirmation: { type: "boolean" },
@@ -341,6 +343,9 @@ export function registerEquipmentRoutes(app: FastifyInstance, deps: EquipmentsDe
           minOffS: Math.round(p.minOffS),
           toleratedImportW:
             p.toleratedImportW !== undefined ? Math.round(p.toleratedImportW) : undefined,
+          // The UI sends it (#631); the rebuild used to drop it, so a saved
+          // shutdown inertia never reached the arbiter.
+          releaseDelayS: p.releaseDelayS !== undefined ? Math.round(p.releaseDelayS) : undefined,
           learned: existing?.energyProfile?.learned,
         };
       }
