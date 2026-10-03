@@ -1077,6 +1077,7 @@ describe("EquipmentManager", () => {
           { key: "lights", type: "boolean", category: "ev_wake" },
           { key: "chargeStart", type: "boolean", category: "ev_charge_start" },
           { key: "setSoc", type: "number", category: "set_ev_charge_limit" },
+          { key: "readNow", type: "boolean", category: "ev_refresh" },
         ],
       });
       const eq = manager.createWithAutoBindings({
@@ -1104,6 +1105,7 @@ describe("EquipmentManager", () => {
         lights: "wake",
         chargeStart: "charge_start",
         setSoc: "charge_limit",
+        readNow: "refresh",
       });
     });
 

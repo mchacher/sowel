@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
-import { BatteryCharging, Loader2, Minus, Plug, Plus, Zap } from "lucide-react";
+import { BatteryCharging, Loader2, Minus, Plug, Plus, RefreshCw, Zap } from "lucide-react";
 import type { EquipmentWithDetails } from "../../types";
 import { splitElectricVehicleExtras } from "../../lib/electric-vehicle-contract";
 import { formatRelative } from "../../lib/format-relative";
@@ -137,6 +137,29 @@ export function ElectricVehicleControl({ equipment, onExecuteOrder }: ElectricVe
           <span className="text-text-tertiary">
             {t("equipments.electricVehicle.reported", { age: formatRelative(s.reportedAt, t) })}
           </span>
+        )}
+        {s.refreshAlias && (
+          <button
+            type="button"
+            aria-label={t("equipments.electricVehicle.refresh")}
+            title={t("equipments.electricVehicle.refresh")}
+            disabled={!usable || !!busy}
+            onClick={() =>
+              void send(
+                "refresh",
+                s.refreshAlias!,
+                null,
+                t("equipments.electricVehicle.refreshSent"),
+              )
+            }
+            className="p-1 rounded-[6px] text-text-tertiary hover:text-text-secondary hover:bg-border-light disabled:opacity-40 cursor-pointer"
+          >
+            <RefreshCw
+              size={13}
+              strokeWidth={1.5}
+              className={busy === "refresh" ? "animate-spin" : ""}
+            />
+          </button>
         )}
       </div>
 

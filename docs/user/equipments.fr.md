@@ -196,9 +196,9 @@ Panneau solaire ou autre source de production. Un seul autorisé par système.
 
 #### Véhicule électrique
 
-Un **véhicule électrique** est une voiture électrique ou hybride rechargeable, lue depuis le cloud du constructeur. Sa carte affiche le niveau de batterie (avec la limite de charge marquée quand la voiture l'expose), l'autonomie électrique, l'état de charge (_Branché_, _En attente de courant_, _En charge_…) et, quand le dernier relevé de la voiture a plus de 15 minutes, son ancienneté : une voiture endormie ne remonte rien, et un niveau de batterie ancien n'est pas celui d'aujourd'hui. Sa fiche ajoute les boutons **Réveiller** et **Démarrer la charge** et un réglage de la limite de charge quand la voiture le permet ; sur mobile, un appui ouvre cette fiche.
+Un **véhicule électrique** est une voiture électrique ou hybride rechargeable, lue depuis le cloud du constructeur. Sa carte affiche le niveau de batterie (avec la limite de charge marquée quand la voiture l'expose), l'autonomie électrique, l'état de charge (_Branché_, _En attente de courant_, _En charge_…) et, quand le dernier relevé de la voiture a plus de 15 minutes, son ancienneté : une voiture endormie ne remonte rien, et un niveau de batterie ancien n'est pas celui d'aujourd'hui. Sa fiche ajoute les boutons **Réveiller** et **Démarrer la charge** et un réglage de la limite de charge quand la voiture le permet, ainsi qu'un petit bouton de relecture qui lit aussitôt le dernier relevé de la voiture (il ne réveille pas une voiture endormie) ; sur mobile, un appui ouvre cette fiche.
 
-- **Contrôles :** Réveiller, démarrer la charge, limite de charge (selon la voiture)
+- **Contrôles :** Réveiller, démarrer la charge, limite de charge, relecture (selon la voiture)
 - **Données attendues :** niveau de batterie, autonomie, branché, état de charge, heure du dernier relevé, à la maison (oui/non, sans coordonnées), kilométrage, limite de charge
 
 Ce n'est ni un compteur d'énergie ni une charge pilotable : c'est la borne qui mesure et qui est pilotée. Le carburant et la climatisation d'une hybride restent visibles en extra.

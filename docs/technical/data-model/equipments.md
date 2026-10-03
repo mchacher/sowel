@@ -346,6 +346,7 @@ An `electric_vehicle` (battery-electric or plug-in hybrid) is defined by `src/sh
 | `charge_limit`   | data + order | `ev_charge_limit` / `set_ev_charge_limit` | %    | The limit the car applies by itself; set it where allowed                     |
 | `wake`           | order        | `ev_wake`                                 | —    | Wake the car (momentary); the plugin chooses the means                        |
 | `charge_start`   | order        | `ev_charge_start`                         | —    | Start a charge (momentary), where the maker allows it                         |
+| `refresh`        | order        | `ev_refresh`                              | —    | Read the car's latest report now (momentary, spec 184); never wakes the car   |
 
 A device is offered for an `electric_vehicle` when it declares `ev_battery_level`. A vehicle is never a submeter (`NON_SUBMETER_TYPES`), never a flexible load and never carries a timed command: the charger (spec 182) measures and is the load. Fuel and climate values of a plug-in hybrid are extras.
 

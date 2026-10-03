@@ -32,6 +32,7 @@ const rafale = car(
   [
     { alias: "wake", category: "ev_wake", type: "boolean" },
     { alias: "charge_start", category: "ev_charge_start", type: "boolean" },
+    { alias: "refresh", category: "ev_refresh", type: "boolean" },
     { alias: "charge_limit", category: "set_ev_charge_limit", type: "number", min: 60, max: 100 },
   ],
 );
@@ -51,6 +52,7 @@ describe("electricVehicleStateOf (spec 183)", () => {
       reportStale: false,
       wakeAlias: "wake",
       chargeStartAlias: "charge_start",
+      refreshAlias: "refresh",
       chargeLimitOrder: { alias: "charge_limit", min: 60, max: 100 },
     });
   });
@@ -65,7 +67,14 @@ describe("electricVehicleStateOf (spec 183)", () => {
 
   it("falls back to the binding's own update time without reported_at", () => {
     const s = electricVehicleStateOf(
-      car([{ alias: "battery_level", category: "ev_battery_level", value: 50, lastUpdated: "2026-10-03T16:59:00Z" }]),
+      car([
+        {
+          alias: "battery_level",
+          category: "ev_battery_level",
+          value: 50,
+          lastUpdated: "2026-10-03T16:59:00Z",
+        },
+      ]),
       NOW,
     );
     expect(s.reportedAt).toBe("2026-10-03T16:59:00Z");
@@ -83,6 +92,8 @@ describe("electricVehicleStateOf (spec 183)", () => {
     expect(s.batteryLevel).toBeNull();
     expect(s.chargingState).toBeNull();
     expect(s.wakeAlias).toBeNull();
+    // Spec 184 AC3 — a car without the order shows no refresh button.
+    expect(s.refreshAlias).toBeNull();
     expect(s.chargeLimitOrder).toBeNull();
   });
 

@@ -21,7 +21,7 @@ describe("electric vehicle contract (spec 183)", () => {
       "mileage",
       "charge_limit",
     ]);
-    expect(orders).toEqual(["charge_limit", "wake", "charge_start"]);
+    expect(orders).toEqual(["charge_limit", "wake", "charge_start", "refresh"]);
   });
 
   it("maps every contract category to its alias", () => {
@@ -37,6 +37,7 @@ describe("electric vehicle contract (spec 183)", () => {
       set_ev_charge_limit: "charge_limit",
       ev_wake: "wake",
       ev_charge_start: "charge_start",
+      ev_refresh: "refresh",
     });
   });
 

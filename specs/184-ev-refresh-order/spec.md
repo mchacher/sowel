@@ -1,6 +1,6 @@
 # Spec 184 — Electric vehicle: `refresh` order
 
-- **Status**: Draft
+- **Status**: Implemented
 - **Date**: 2026-10-03
 - **Related**: spec 183 (electric vehicle contract — amended here), spec 182 (EV charger), `sowel-recipe-ev-charge-smart` spec 001 (the first caller), `sowel-plugin-renault` spec 001 (the first plugin)
 
@@ -25,15 +25,15 @@ The one who knows that something just changed is the charging recipe: it has jus
 
 - **FR1** New `OrderCategory` `ev_refresh` (backend and UI mirror). Core alias `refresh` in `ELECTRIC_VEHICLE_ALIASES`, mapped in `ELECTRIC_VEHICLE_CATEGORY_ALIASES` (`ev_refresh` → `refresh`). Momentary like `wake`: the UI and recipes send `null`.
 - **FR2** Contract-first auto-binding binds it as `refresh` (UI plan and API `createWithAutoBindings`), like the other contract orders; `RELEVANT_ORDER_CATEGORIES.electric_vehicle` lists it.
-- **FR3** `ElectricVehicleControl`: when `refresh` is bound, a small refresh icon button sits after the report age (always shown when bound, not only when stale); it spins while the order runs and shows the outcome line like the other orders.
+- **FR3** `ElectricVehicleControl`: when `refresh` is bound, a small refresh icon button sits at the end of the status line, after the report age when that is shown (the button is always shown when bound, the age only when stale); it spins while the order runs and shows the outcome line like the other orders.
 - **FR4** Docs: the contract table in `docs/technical/data-model/equipments.md` and the vehicle section of `docs/user/equipments.md` (EN/FR) gain the order.
 
 ## Acceptance criteria
 
-- [ ] AC1 — A device publishing an `ev_refresh` order gets it bound as `refresh` through the UI plan and through the API auto-bind.
-- [ ] AC2 — The detail control shows the refresh button only when `refresh` is bound; pressing it sends `null` to `refresh`.
-- [ ] AC3 — Existing equipments without the order are unchanged (no button, no error).
-- [ ] AC4 — `npm run validate` green; docs parity and specs index checks pass.
+- [x] AC1 — A device publishing an `ev_refresh` order gets it bound as `refresh` through the UI plan and through the API auto-bind.
+- [x] AC2 — The detail control shows the refresh button only when `refresh` is bound; pressing it sends `null` to `refresh`.
+- [x] AC3 — Existing equipments without the order are unchanged (no button, no error).
+- [x] AC4 — `npm run validate` green; docs parity and specs index checks pass.
 
 ## Edge cases
 

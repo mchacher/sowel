@@ -2,9 +2,9 @@
 
 ## Steps
 
-- [ ] 1. Types and contract (`ev_refresh`, alias `refresh`).
-- [ ] 2. UI binding relevance, state helper, control button, i18n.
-- [ ] 3. Tests (below), docs, specs index rows.
+- [x] 1. Types and contract (`ev_refresh`, alias `refresh`).
+- [x] 2. UI binding relevance, state helper, control button, i18n.
+- [x] 3. Tests (below), docs, specs index rows.
 - [ ] 4. Validate, agent review, PR.
 
 ## Test plan

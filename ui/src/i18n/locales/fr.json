@@ -296,6 +296,8 @@
   "equipments.electricVehicle.reported": "Relevé il y a {{age}}",
   "equipments.electricVehicle.wake": "Réveiller",
   "equipments.electricVehicle.wakeSent": "Réveil envoyé",
+  "equipments.electricVehicle.refresh": "Relire la voiture",
+  "equipments.electricVehicle.refreshSent": "Relecture demandée",
   "equipments.electricVehicle.startCharging": "Démarrer la charge",
   "equipments.electricVehicle.startSent": "Démarrage de charge envoyé",
   "equipments.electricVehicle.chargeLimit": "Limite de charge",
