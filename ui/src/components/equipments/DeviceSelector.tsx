@@ -10,6 +10,7 @@ import {
 } from "../../lib/binding-candidates";
 import { freeCandidates } from "../../lib/binding-utils";
 import { EQUIPMENT_TYPE_CATEGORIES } from "./equipment-type-meta";
+import { isEvChargerDevice } from "../../lib/ev-charger-contract";
 import { isThermostatDevice } from "../../lib/thermostat-contract";
 
 
@@ -131,7 +132,10 @@ export function DeviceSelector({
     ? availableDevices.filter((d) => (candidatesByDevice.get(d.id)?.length ?? 0) > 0)
     : equipmentType === "thermostat"
       ? availableDevices.filter((d) => isThermostatDevice(d.data, d.orders ?? []))
-      : requiredKeys
+      : // Spec 182 — a charger is identified by its contract categories.
+        equipmentType === "ev_charger"
+        ? availableDevices.filter((d) => isEvChargerDevice(d.data, d.orders ?? []))
+        : requiredKeys
         ? availableDevices.filter((device) =>
             device.data.some((d) => requiredKeys.includes(d.key)),
           )

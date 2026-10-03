@@ -1,5 +1,10 @@
 import { describe, it, expect } from "vitest";
-import { hasMeteringBinding, isMeteringSwitch, isSubmeterEquipment } from "./metering.js";
+import {
+  METERING_RELAY_TYPES,
+  hasMeteringBinding,
+  isMeteringSwitch,
+  isSubmeterEquipment,
+} from "./metering.js";
 
 const power = [{ alias: "power", category: "power", type: "number" }];
 const energy = [{ alias: "energy", category: "energy", type: "number" }];
@@ -75,6 +80,11 @@ describe("metering helpers (spec 129 / #523)", () => {
     // But `ups` is deliberately NOT blocklisted: a metering plug placed
     // upstream of a UPS is a real measured load and should enrol.
     expect(isSubmeterEquipment("ups", power)).toBe(true);
+
+    // Spec 182 — a charger with its live power is a submeter, and a metering
+    // relay type (its cards show the live power).
+    expect(isSubmeterEquipment("ev_charger", power)).toBe(true);
+    expect(METERING_RELAY_TYPES.has("ev_charger")).toBe(true);
 
     // The three exclusions: house total + production must never be submeters.
     expect(isSubmeterEquipment("main_energy_meter", power)).toBe(false);

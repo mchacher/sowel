@@ -194,6 +194,17 @@ Panneau solaire ou autre source de production. Un seul autorisé par système.
 - **Contrôles :** Affichage de la production avec calcul d'autoconsommation
 - **Données attendues :** puissance de production, production cumulée
 
+#### Borne de recharge
+
+Une **borne de recharge** pour véhicule électrique, portable ou murale. Sa carte indique si une voiture est branchée (_Débranchée_, _Branchée_, _En charge_), la puissance pendant la charge et l'énergie délivrée sur la session ; sa fiche ajoute la marche/arrêt et un réglage du courant de charge, borné par la plage de la borne. Sur mobile, un appui ouvre la fiche : lancer une charge ne se fait jamais d'un appui accidentel.
+
+- **Contrôles :** Marche/arrêt, état du véhicule, puissance, énergie de la session, courant de charge
+- **Données attendues :** marche/arrêt (`state`), état du véhicule (`vehicle`), puissance (`power`), historique d'énergie (`energy`), courant de charge (`charge_current`), énergie de la session (`session_energy`), courant et tension mesurés
+
+Sowel définit ce que porte une borne, quelle que soit l'intégration : une intégration qui publie ces données fournit une borne que Sowel reconnaît seul, et le sélecteur de devices la propose en premier. Le reste (code d'état, température, dernière session) reste visible en extra. C'est une charge pilotable et un sous-compteur, **reportable** par défaut pour l'[arbitre énergétique](energy.md).
+
+La première borne prise en charge est la borne portable dé, via l'intégration [Tuya (local)](https://github.com/mchacher/sowel-plugin-tuya) à partir de sa version 0.2.0 (les versions antérieures publient la borne sans ces catégories). Charger sur le surplus solaire ou en heures creuses est le rôle d'une recette, via l'arbitre ; l'équipement ne fait qu'exposer et commander.
+
 ---
 
 ### Multimédia

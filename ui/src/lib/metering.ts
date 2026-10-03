@@ -17,7 +17,11 @@ export const METERING_CATEGORIES: ReadonlySet<string> = new Set([
  * spec 129/#521). Mirror of METERING_RELAY_TYPES in src/equipments/metering.ts.
  * Since #523, submeter enrolment keys off NON_SUBMETER_TYPES below, not this list.
  */
-export const METERING_RELAY_TYPES: ReadonlySet<string> = new Set(["switch", "water_heater"]);
+export const METERING_RELAY_TYPES: ReadonlySet<string> = new Set([
+  "switch",
+  "water_heater",
+  "ev_charger",
+]);
 
 /**
  * Types that carry a power/energy channel but must never count as a consumption

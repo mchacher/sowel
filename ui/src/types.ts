@@ -72,6 +72,13 @@ export type DataCategory =
   // fan, plus `off` for units whose mode carries the stop. A pellet stove's
   // programme (`profile`) is NOT a mode: it stays an extra.
   | "operation_mode"
+  // Spec 182 — EV charger. `ev_vehicle_state` is a closed enum
+  // (EV_VEHICLE_STATE_VALUES: IEC 61851 A/B/C); the charging current the
+  // charger is set to (A, not a measurement); energy since the vehicle was
+  // plugged in (kWh, resets each session — NOT the additive `energy`).
+  | "ev_vehicle_state"
+  | "ev_charge_current"
+  | "ev_session_energy"
   | "generic";
 
 export type OrderCategory =
@@ -106,7 +113,10 @@ export type OrderCategory =
   | "trigger_camera_siren"
   // Spec 152 — solar force command channel (dedicated on/off, distinct from the
   // main on/off; driven by the surplus arbiter recipe).
-  | "solar_toggle";
+  | "solar_toggle"
+  // Spec 182 — set an EV charger's charging current (A, bounded by the
+  // order's min/max). Not `set_setpoint`: that is the thermostat identity.
+  | "set_ev_charge_current";
 
 // ============================================================
 // Device
@@ -291,7 +301,9 @@ export type EquipmentType =
   // Spec 153 — mechanical ventilation (VMC), 2-speed: OFF / V1 / V2.
   | "vmc"
   // Spec 156 — uninterruptible power supply, read-only.
-  | "ups";
+  | "ups"
+  // Spec 182 — EV charger; its contract is src/shared/ev-charger-contract.ts.
+  | "ev_charger";
 
 /** Spec 160 — one coplanar group of panels. */
 export interface SolarPlane {

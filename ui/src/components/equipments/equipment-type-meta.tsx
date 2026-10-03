@@ -5,6 +5,7 @@ import {
   CloudSun,
   DoorOpen,
   Droplets,
+  EvCharger,
   Fan,
   Gauge,
   Heater,
@@ -131,6 +132,7 @@ export const TYPE_ICONS: Record<EquipmentType, React.ReactNode> = {
   camera: <Camera size={18} strokeWidth={1.5} />,
   vmc: <Fan size={18} strokeWidth={1.5} />,
   ups: <BatteryCharging size={18} strokeWidth={1.5} />,
+  ev_charger: <EvCharger size={18} strokeWidth={1.5} />,
 };
 
 export const TYPE_LABELS: Record<EquipmentType, string> = {
@@ -162,4 +164,5 @@ export const TYPE_LABELS: Record<EquipmentType, string> = {
   camera: "equipments.type.camera",
   vmc: "equipments.type.vmc",
   ups: "equipments.type.ups",
+  ev_charger: "equipments.type.ev_charger",
 };

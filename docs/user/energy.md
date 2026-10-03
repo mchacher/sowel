@@ -202,7 +202,7 @@ It is **off by default** and changes nothing until you enable it. On a home with
 
 ### Declaring a flexible load
 
-On an equipment whose type is a controllable load (pool pump, water heater, water valve, heater or thermostat), open its page and turn on **Energy management**. You set:
+On an equipment whose type is a controllable load (pool pump, water heater, water valve, VMC, EV charger, heater or thermostat), open its page and turn on **Energy management**. You set:
 
 - **Nominal power** — pre-filled from the equipment's own measurement when a clamp is bound.
 - **Tolerated import (W)** — how much grid import this load will accept to start on a **partial surplus**. The arbiter engages it once the surplus covers "nominal power + margin − tolerated import". At `0` (default) it waits for a full surplus; raising it makes the load start sooner, accepting to buy a little grid. It is the load's comfort / economy dial, set once here and honoured by whatever automation drives it.
@@ -211,7 +211,7 @@ On an equipment whose type is a controllable load (pool pump, water heater, wate
 
 How the arbiter treats the load is **derived from its type**, so there is nothing to pick:
 
-- a **relay** whose on/off is a command (pool pump, water heater) can be switched off and run later on the surplus, and an unexpected on/off is read as you taking manual control;
+- a **relay** whose on/off is a command (pool pump, water heater, EV charger) can be switched off and run later on the surplus, and an unexpected on/off is read as you taking manual control;
 - a **self-regulating** load (a thermostat or air conditioner) has its normal operation only complemented by the surplus, and the arbiter does not read its own on/off cycling as an action from you.
 
 An equipment type with no energy behaviour (a plain light or a generic switch) cannot be declared a flexible load.

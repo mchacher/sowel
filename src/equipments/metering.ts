@@ -26,6 +26,8 @@ export { METERING_CATEGORIES };
 export const METERING_RELAY_TYPES: ReadonlySet<EquipmentType> = new Set<EquipmentType>([
   "switch",
   "water_heater",
+  // Spec 182 — a charger shows its live power on its card like a metered relay.
+  "ev_charger",
 ]);
 
 /**

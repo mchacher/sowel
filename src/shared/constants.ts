@@ -154,6 +154,10 @@ export const CATEGORY_EXPECTED_TYPE: Partial<Record<DataCategory, DataType>> = {
   // violations, not to force one wire type onto a categorical value.
   battery_runtime: "number",
   ups_load: "number",
+  // Spec 182 — EV charger. `ev_vehicle_state` is absent for the same reason as
+  // `ups_status`: a closed set a plugin may carry as `enum` or `text`.
+  ev_charge_current: "number",
+  ev_session_energy: "number",
   power: "number",
   energy: "number",
   voltage: "number",
@@ -245,8 +249,8 @@ export const WIDGET_FAMILY_TYPES: Record<WidgetFamily, EquipmentType[]> = {
   displays: ["display"],
   // Spec 153 — mechanical ventilation (VMC).
   ventilation: ["vmc"],
-  // Spec 156 — power protection (UPS).
-  power: ["ups"],
+  // Spec 156 — power protection (UPS). Spec 182 — EV chargers.
+  power: ["ups", "ev_charger"],
 };
 
 // ============================================================
@@ -451,6 +455,7 @@ export function defaultEnergyClassFor(type: EquipmentType): EnergyLoadClass | nu
     case "pool_heat_pump":
     case "water_valve":
     case "vmc":
+    case "ev_charger": // Spec 182 — the archetypal deferrable load (spec 140)
       return "deferrable";
     case "thermostat":
     case "heater":
@@ -472,6 +477,10 @@ export function defaultEnergyTimingsFor(type: EquipmentType): { minOnS: number; 
     case "vmc":
       // A fan restarts for free; a short floor avoids relay chatter only.
       return { minOnS: 60, minOffS: 30 };
+    case "ev_charger":
+      // Spec 182 — an on-board charger negotiates for seconds at each start,
+      // and a car toggled every few minutes is a charge nobody trusts.
+      return { minOnS: 600, minOffS: 300 };
     case "pool_heat_pump":
     case "thermostat":
     case "heater":

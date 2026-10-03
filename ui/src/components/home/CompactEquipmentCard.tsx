@@ -22,6 +22,8 @@ import { TimedCommandControl } from "../equipments/TimedCommandControl";
 import { HeaterControl } from "../equipments/HeaterControl";
 import { WaterValveControl } from "../equipments/WaterValveControl";
 import { VmcControl } from "../equipments/VmcControl";
+import { EvVehicleBadge } from "../equipments/EvChargerControl";
+import { evChargerStateOf } from "../equipments/evChargerState";
 import { PoolHeatPumpControl } from "../equipments/PoolHeatPumpControl";
 import { Cloud, Timer } from "lucide-react";
 import { parseForecastDays, CONDITION_ICONS, CONDITION_COLORS } from "../equipments/weatherForecastUtils";
@@ -79,6 +81,7 @@ const TYPE_TINTS: Record<EquipmentType, Tint> = {
   // "info-only" tint, like sensors and displays. Its own status badge carries
   // the alarm colour, so the tile itself stays quiet.
   ups:                     { bg: "bg-sensor-50",    text: "text-sensor-500" },
+  ev_charger:              { bg: "bg-accent-light",  text: "text-accent" },
 };
 
 export function CompactEquipmentCard({ equipment, onExecuteOrder, zoneName }: CompactEquipmentCardProps) {
@@ -113,13 +116,14 @@ export function CompactEquipmentCard({ equipment, onExecuteOrder, zoneName }: Co
   const isCamera = equipment.type === "camera";
   const isVmc = equipment.type === "vmc";
   const isUps = equipment.type === "ups";
+  const isEvCharger = equipment.type === "ev_charger";
 
   // Find primary data value for generic equipments
   const isKnownType =
     isLight || isSwitch || isWaterHeater || isSensor || isShutterFamily || isThermostat || isHeater || isGate ||
     isEnergyMeter || isWeatherForecast || isMediaPlayer || isAppliance ||
     isWaterValve || isPoolPump || isPoolCover || isPoolHeatPump || isSolar || isCamera || isVmc ||
-    isUps;
+    isUps || isEvCharger;
 
   const hasCameraSnapshot =
     isCamera && equipment.dataBindings.some((b) => b.category === "camera_snapshot_url");
@@ -386,6 +390,14 @@ export function CompactEquipmentCard({ equipment, onExecuteOrder, zoneName }: Co
           />
         )}
 
+        {/* EV charger (spec 182): the vehicle, the power while charging, start/stop. */}
+        {isEvCharger && (
+          <CompactEvCharger
+            equipment={equipment}
+            onExecuteOrder={(alias, value) => onExecuteOrder(equipment.id, alias, value)}
+          />
+        )}
+
         {/* VMC: OFF/V1/V2 speed selector (spec 153) */}
         {isVmc && equipment.enabled && (
           <VmcControl
@@ -604,6 +616,35 @@ function PoolPumpRuntime({ equipment }: { equipment: EquipmentWithDetails }) {
     <span className="text-[11px] text-text-tertiary tabular-nums font-mono flex-shrink-0">
       {runtimeStr}
     </span>
+  );
+}
+
+/**
+ * EV charger compact row (spec 182) — the vehicle badge, the live power only
+ * while it is worth reading (energy actually flowing), and the start/stop
+ * toggle when the order is bound.
+ */
+function CompactEvCharger({
+  equipment,
+  onExecuteOrder,
+}: {
+  equipment: EquipmentWithDetails;
+  onExecuteOrder: (alias: string, value: unknown) => Promise<void>;
+}) {
+  const s = evChargerStateOf(equipment);
+  const watts = s.power.watts;
+  return (
+    <div className="flex items-center gap-2 flex-shrink-0">
+      <EvVehicleBadge vehicle={s.vehicle} />
+      {watts !== null && watts > 0 && (
+        <span className="text-[13px] font-semibold text-accent tabular-nums font-mono">
+          {watts >= 1000 ? `${(watts / 1000).toFixed(2)} kW` : `${Math.round(watts)} W`}
+        </span>
+      )}
+      {s.canToggle && equipment.enabled && (
+        <LightControl equipment={equipment} onExecuteOrder={onExecuteOrder} compact />
+      )}
+    </div>
   );
 }
 
