@@ -1,6 +1,6 @@
 # Spec 182 — EV charger equipment type
 
-- **Status**: Implemented — awaiting review (PR); AC6/AC7 visual check pending
+- **Status**: Implemented — merged (PR #1005); AC6/AC7 visual check pending, first device `sowel-plugin-tuya` v0.2.0
 - **Date**: 2026-10-03
 - **Related**: spec 140 (energy capacity arbiter), spec 177 (thermostat contract — the pattern for an equipment contract in code), spec 176 (`appliance_state` for an on/off run state), spec 156 (UPS — the precedent for new data categories with a closed enum), spec 135 (water heater — controllable load with metering)
 - **First device**: [`sowel-plugin-tuya`](https://github.com/mchacher/sowel-plugin-tuya) v0.1.0, the dé portable EV charger
