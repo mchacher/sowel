@@ -1,6 +1,6 @@
 # Spec 182 — EV charger equipment type
 
-- **Status**: Draft
+- **Status**: Implemented — awaiting review (PR); AC6/AC7 visual check pending
 - **Date**: 2026-10-03
 - **Related**: spec 140 (energy capacity arbiter), spec 177 (thermostat contract — the pattern for an equipment contract in code), spec 176 (`appliance_state` for an on/off run state), spec 156 (UPS — the precedent for new data categories with a closed enum), spec 135 (water heater — controllable load with metering)
 - **First device**: [`sowel-plugin-tuya`](https://github.com/mchacher/sowel-plugin-tuya) v0.1.0, the dé portable EV charger
@@ -74,7 +74,7 @@ A device is offered for an `ev_charger` when it declares a data point of categor
 - **FR1 — Type.** `ev_charger` is a valid `EquipmentType`: creatable from the form and the API, persisted, exported and restored. No SQLite migration (equipment types are not CHECK-constrained).
 - **FR2 — Contract module.** `src/shared/ev-charger-contract.ts` declares the core table above, the identity rule, `EV_VEHICLE_STATE_VALUES`, and a helper splitting core bindings from extras. Binding, UI and tests import it; nothing restates it.
 - **FR3 — Categories.** The four new categories join `DataCategory` / `OrderCategory` (backend and the UI mirror), with their expected value types, and the UI labels them in English and French.
-- **FR4 — Auto-binding.** Creating an `ev_charger` from a device binds each core point under its contract alias, resolved from its **category**, whatever the plugin calls the key (`toggle_power` → `state`, `ev_vehicle_state` → `vehicle`, `set_ev_charge_current` → `charge_current`, …). A device's `temperature` / `temperature_device` reading is aliased `charger_temperature`, so it never joins the zone's room-temperature average. Every other data point binds as an extra under its own key; orders outside the contract (charger configuration) are opt-in, added by hand.
+- **FR4 — Auto-binding.** Creating an `ev_charger` from a device binds each core point under its contract alias, resolved from its **category**, whatever the plugin calls the key (`toggle_power` → `state`, `ev_vehicle_state` → `vehicle`, `set_ev_charge_current` → `charge_current`, …). A device's `temperature` / `temperature_device` reading is aliased `charger_temperature`, so it never joins the zone's room-temperature average. Every other `generic` data point binds as an extra under its own key; other categorised points and orders outside the contract (charger configuration) are opt-in, added by hand. Contract points bind first, so a vendor key that happens to equal a contract alias cannot take it. The same rules apply when the equipment is created through the API with `deviceIds`.
 - **FR5 — Device picker.** The picker offers the devices that match the identity rule; its existing "show all devices" switch reaches any other device, as for the other types.
 - **FR6 — Energy arbiter.** `ev_charger` defaults to class **deferrable**, with `minOnS` 600 and `minOffS` 300: an on-board charger negotiates for several seconds at each start, and a car toggled every few minutes is a car whose charge the user stops trusting. Both values stay editable per equipment. The arbiter reads the `power` binding as the load's live draw and the `state` binding as its on/off state — no arbiter code change.
 - **FR7 — Metering.** A charger with a `power` or `energy` binding is a submeter, as any equipment is (spec 091); it is also a metering relay type, so its cards show live power and it ranks in the submeter list like a metered switch or water heater.
@@ -85,15 +85,15 @@ A device is offered for an `ev_charger` when it declares a data point of categor
 
 ## Acceptance criteria
 
-- [ ] AC1 — `ev_charger` is creatable (form, API), persisted, exported and restored; existing types unchanged.
-- [ ] AC2 — The contract module is the single declaration: binding, UI and tests import it.
-- [ ] AC3 — A device publishing the contract categories auto-binds `state` (data + order), `vehicle`, `power`, `energy`, `charge_current` (data + order), `session_energy`, `current`, `voltage` under those aliases, whatever its keys; its temperature binds as `charger_temperature`; any other data point binds as an extra under its key; configuration orders are not auto-bound.
-- [ ] AC4 — The picker offers identity-matching devices first.
-- [ ] AC5 — A new `ev_charger` pre-fills the energy profile as deferrable, 10 min on / 5 min off.
+- [x] AC1 — `ev_charger` is creatable (form, API), persisted, exported and restored; existing types unchanged.
+- [x] AC2 — The contract module is the single declaration: binding, UI and tests import it.
+- [x] AC3 — A device publishing the contract categories auto-binds `state` (data + order), `vehicle`, `power`, `energy`, `charge_current` (data + order), `session_energy`, `current`, `voltage` under those aliases, whatever its keys; its temperature binds as `charger_temperature`; any other data point binds as an extra under its key; configuration orders are not auto-bound.
+- [x] AC4 — The picker offers identity-matching devices first.
+- [x] AC5 — A new `ev_charger` pre-fills the energy profile as deferrable, 10 min on / 5 min off.
 - [ ] AC6 — Zone card, desktop widget and mobile widget show the icon, the vehicle badge, the power and the toggle; the mobile tap opens the sheet.
 - [ ] AC7 — The detail page starts and stops the charge and sets the current within the order's range.
-- [ ] AC8 — The charger counts as a submeter on the Energy page.
-- [ ] AC9 — `tsc` (backend, tests, UI), the whole test suite and lint pass; docs parity and impact checks pass.
+- [x] AC8 — The charger counts as a submeter on the Energy page.
+- [x] AC9 — `tsc` (backend, tests, UI), the whole test suite and lint pass; docs parity and impact checks pass.
 
 ## Edge cases
 
@@ -102,8 +102,9 @@ A device is offered for an `ev_charger` when it declares a data point of categor
 | Only `state` bound (a relay modelled as a charger)                       | Toggle works; no vehicle badge, no power, no stepper                                                                                                                                                                                                                             |
 | `vehicle` bound, value null or outside the enum                          | Badge hidden                                                                                                                                                                                                                                                                     |
 | `charge_current` order without `min` / `max`                             | Stepper bounded 6 to 32 A (the IEC 61851 floor, the common single-phase ceiling)                                                                                                                                                                                                 |
+| `charge_current` order bound, no setpoint reading                        | The stepper starts at the minimum on the first press and shows the last value the charger accepted                                                                                                                                                                               |
 | `charge_current` data bound, order not bound                             | Current shown read-only                                                                                                                                                                                                                                                          |
-| Charger offline                                                          | Equipment degraded/offline per spec 116; the toggle and stepper are disabled                                                                                                                                                                                                     |
+| Charger offline                                                          | Equipment degraded/offline per spec 116; the start/stop toggle is hidden on every surface and the stepper disabled                                                                                                                                                               |
 | Device's `temperature` reading                                           | Aliased `charger_temperature`, never folded into the zone temperature average                                                                                                                                                                                                    |
 | A second `power`-category point (e.g. per-phase power)                   | First by binding order wins today (the arbiter's `isPowerAlias`); per-phase points are extras — documented, not solved here                                                                                                                                                      |
 | Plugin still publishing `generic` for vehicle and setpoint (tuya v0.1.0) | Bound as extras under their keys. Surfaces read category first, then the contract alias, so a key that happens to equal an alias (v0.1.0's `vehicle`) still shows; the setpoint (`currentSetpoint`) and its order stay hidden until the plugin publishes the contract categories |

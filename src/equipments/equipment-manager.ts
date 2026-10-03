@@ -39,6 +39,7 @@ import {
 import { deriveEquipmentStatus, isStaleBinding } from "./equipment-status.js";
 import { resolveFreshnessBudget } from "../shared/reading-freshness.js";
 import { RETRY_CHANNEL } from "./order-confirmation-tracker.js";
+import { EV_CHARGER_CATEGORY_ALIASES } from "../shared/ev-charger-contract.js";
 import type { Device } from "../shared/types.js";
 
 /** A function that returns computed data entries for a given equipment. */
@@ -418,23 +419,48 @@ export class EquipmentManager {
           });
       }
 
-      // Bind all device data (sensors/state)
-      for (const data of device.data) {
+      // Spec 182 — an EV charger binds its contract points under the contract
+      // alias derived from their category, the API path included, and binds
+      // them first so a vendor key that happens to equal an alias cannot take
+      // it. A point whose contract alias is already taken keeps its own key.
+      const contract = input.type === "ev_charger" ? EV_CHARGER_CATEGORY_ALIASES : null;
+      const contractAlias = (category: string | undefined): string | undefined =>
+        contract && category ? contract[category] : undefined;
+      const contractFirst = <T extends { category?: string }>(items: readonly T[]): T[] =>
+        contract
+          ? [
+              ...items.filter((i) => contractAlias(i.category)),
+              ...items.filter((i) => !contractAlias(i.category)),
+            ]
+          : [...items];
+      const bindWithFallback = (bind: (alias: string) => void, alias: string, key: string) => {
         try {
-          this.addDataBinding(equipment.id, data.id, vmcAlias[data.key] ?? data.key);
+          bind(alias);
         } catch {
-          // Skip if alias conflict (same key from multiple devices)
+          // Alias conflict (same key from multiple devices, or a contract alias
+          // already taken): fall back to the key, then skip.
+          if (alias === key) return;
+          try {
+            bind(key);
+          } catch {
+            // already bound under its key too
+          }
         }
+      };
+
+      // Bind all device data (sensors/state)
+      for (const data of contractFirst(device.data)) {
+        const alias = vmcAlias[data.key] ?? contractAlias(data.category) ?? data.key;
+        bindWithFallback((a) => this.addDataBinding(equipment.id, data.id, a), alias, data.key);
       }
 
       // Bind all device orders (commands)
-      for (const order of device.orders) {
-        const alias = input.type === "gate" ? "command" : (vmcAlias[order.key] ?? order.key);
-        try {
-          this.addOrderBinding(equipment.id, order.id, alias);
-        } catch {
-          // Skip if already bound
-        }
+      for (const order of contractFirst(device.orders)) {
+        const alias =
+          input.type === "gate"
+            ? "command"
+            : (vmcAlias[order.key] ?? contractAlias(order.category) ?? order.key);
+        bindWithFallback((a) => this.addOrderBinding(equipment.id, order.id, a), alias, order.key);
       }
     }
 

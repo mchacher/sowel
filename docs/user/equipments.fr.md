@@ -203,7 +203,7 @@ Une **borne de recharge** pour véhicule électrique, portable ou murale. Sa car
 
 Sowel définit ce que porte une borne, quelle que soit l'intégration : une intégration qui publie ces données fournit une borne que Sowel reconnaît seul, et le sélecteur de devices la propose en premier. Le reste (code d'état, température, dernière session) reste visible en extra. C'est une charge pilotable et un sous-compteur, **reportable** par défaut pour l'[arbitre énergétique](energy.md).
 
-La première borne prise en charge est la borne portable dé, via l'intégration [Tuya (local)](https://github.com/mchacher/sowel-plugin-tuya). Charger sur le surplus solaire ou en heures creuses est le rôle d'une recette, via l'arbitre ; l'équipement ne fait qu'exposer et commander.
+La première borne prise en charge est la borne portable dé, via l'intégration [Tuya (local)](https://github.com/mchacher/sowel-plugin-tuya) à partir de sa version 0.2.0 (les versions antérieures publient la borne sans ces catégories). Charger sur le surplus solaire ou en heures creuses est le rôle d'une recette, via l'arbitre ; l'équipement ne fait qu'exposer et commander.
 
 ---
 

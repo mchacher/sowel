@@ -343,7 +343,17 @@ export const ICON_CATEGORIES: { label: string; icons: string[] }[] = [
   { label: "Security", icons: ["Shield", "ShieldCheck", "Camera", "Bell", "Eye", "AlertTriangle"] },
   {
     label: "Sensors",
-    icons: ["Gauge", "Activity", "Zap", "Power", "Battery", "BatteryCharging", "EvCharger", "Signal", "Wifi"],
+    icons: [
+      "Gauge",
+      "Activity",
+      "Zap",
+      "Power",
+      "Battery",
+      "BatteryCharging",
+      "EvCharger",
+      "Signal",
+      "Wifi",
+    ],
   },
   {
     label: "Rooms",

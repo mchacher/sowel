@@ -101,9 +101,6 @@ export const EQUIPMENT_TYPE_CATEGORIES: Partial<Record<EquipmentType, DataCatego
   // Spec 156 — UPS. Only the three UPS-specific categories discriminate:
   // `battery` and `voltage` would match every Zigbee sensor in the house.
   ups: ["ups_status", "battery_runtime", "ups_load"],
-  // Spec 182 — identity is decided by isEvChargerDevice (data OR order); this
-  // list only feeds the data-category filters that read this map.
-  ev_charger: ["ev_vehicle_state", "ev_charge_current", "ev_session_energy"],
 };
 
 export const TYPE_ICONS: Record<EquipmentType, React.ReactNode> = {

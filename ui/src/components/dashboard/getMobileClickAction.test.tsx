@@ -208,3 +208,24 @@ describe("getMobileClickAction", () => {
     });
   });
 });
+
+// Spec 182 — starting a charge is never a single tap: the charger tile opens
+// its sheet, and nothing is sent.
+describe("ev_charger mobile tap", () => {
+  it("opens the detail sheet and sends no order", () => {
+    const widget = { id: "w-ev", type: "equipment", equipmentId: "sw-1" } as DashboardWidget;
+    const onExecuteOrder = vi.fn();
+    const onOpenDetail = vi.fn();
+    const action = getMobileClickAction(
+      widget,
+      makeSwitch({ type: "ev_charger" }),
+      t,
+      onExecuteOrder,
+      onOpenDetail,
+    );
+    expect(action).toBe(onOpenDetail);
+    action?.();
+    expect(onOpenDetail).toHaveBeenCalledTimes(1);
+    expect(onExecuteOrder).not.toHaveBeenCalled();
+  });
+});

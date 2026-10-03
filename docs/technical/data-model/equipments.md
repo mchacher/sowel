@@ -310,18 +310,18 @@ Until issue #922 makes the plugins publish canonical names, `STANDARD_ALIASES.th
 
 An `ev_charger` is defined by a contract module, `src/shared/ev-charger-contract.ts`, imported by the binding code, the type metadata and every charger surface (the spec 177 pattern). Each core point is identified by its **category**, never by a plugin key; auto-binding turns the category into the contract alias.
 
-| Alias            | Side         | Category                                      | Unit | Meaning                                                     |
-| ---------------- | ------------ | --------------------------------------------- | ---- | ----------------------------------------------------------- |
-| `state`          | data + order | `appliance_state` / `toggle_power`            | —    | Charging enabled; start / stop                              |
-| `vehicle`        | data         | `ev_vehicle_state`                            | —    | `disconnected`, `connected`, `charging` (IEC 61851 A/B/C)   |
-| `power`          | data         | `power`                                       | W    | Live power delivered                                        |
-| `energy`         | data         | `energy`                                      | Wh   | Additive increments, for the energy history                 |
-| `charge_current` | data + order | `ev_charge_current` / `set_ev_charge_current` | A    | Charging current setpoint; the order's `min`/`max` bound it |
-| `session_energy` | data         | `ev_session_energy`                           | kWh  | Energy since the vehicle was plugged in (resets)            |
-| `current`        | data         | `current`                                     | A    | Measured current                                            |
-| `voltage`        | data         | `voltage`                                     | V    | Measured voltage                                            |
+| Alias            | Side         | Category                                                                  | Unit | Meaning                                                     |
+| ---------------- | ------------ | ------------------------------------------------------------------------- | ---- | ----------------------------------------------------------- |
+| `state`          | data + order | `appliance_state` (or `light_state`) / `toggle_power` (or `light_toggle`) | —    | Charging enabled; start / stop                              |
+| `vehicle`        | data         | `ev_vehicle_state`                                                        | —    | `disconnected`, `connected`, `charging` (IEC 61851 A/B/C)   |
+| `power`          | data         | `power`                                                                   | W    | Live power delivered                                        |
+| `energy`         | data         | `energy`                                                                  | Wh   | Additive increments, for the energy history                 |
+| `charge_current` | data + order | `ev_charge_current` / `set_ev_charge_current`                             | A    | Charging current setpoint; the order's `min`/`max` bound it |
+| `session_energy` | data         | `ev_session_energy`                                                       | kWh  | Energy since the vehicle was plugged in (resets)            |
+| `current`        | data         | `current`                                                                 | A    | Measured current                                            |
+| `voltage`        | data         | `voltage`                                                                 | V    | Measured voltage                                            |
 
-A device is offered for an `ev_charger` when it declares `ev_vehicle_state` data or a `set_ev_charge_current` order. Its temperature binds as `charger_temperature`, out of the zone average. Any other data point is an extra; configuration orders are opt-in. Three rules bind the plugin:
+A device is offered for an `ev_charger` when it declares `ev_vehicle_state` data or a `set_ev_charge_current` order. Both creation paths — the UI and `POST /api/v1/equipments` with `deviceIds` (`createWithAutoBindings`) — bind the contract points first, under their contract alias; a vendor point whose key equals a contract alias cannot take it. The charger's temperature binds as `charger_temperature`, out of the zone average. `generic` data points bind as extras, shown on the detail page; other categorised points and configuration orders are opt-in. Three rules bind the plugin:
 
 - **`set_ev_charge_current` is not `set_setpoint`** — that is the thermostat identity; reusing it would offer the charger as a thermostat.
 - **`ev_session_energy` is not `energy`** — `energy` is an additive delta; a per-session counter there would be summed into nonsense. Publish increments under `energy`, the session total under `ev_session_energy`.

@@ -1013,6 +1013,50 @@ describe("EquipmentManager", () => {
       expect(manager.getById(eq.id)?.type).toBe("ev_charger");
     });
 
+    it("binds an EV charger under its contract aliases through the API path (spec 182)", () => {
+      const zone = zoneManager.create({ name: "Garage" });
+      const { deviceId } = seedDevice(db, {
+        name: "dé charger",
+        dataKeys: [
+          // A vendor point whose key equals a contract alias, listed first:
+          // the contract point must still win the alias.
+          { key: "vehicle", type: "text", category: "generic" },
+          { key: "charge", type: "boolean", category: "appliance_state" },
+          { key: "vehicleState", type: "enum", category: "ev_vehicle_state" },
+          { key: "watts", type: "number", category: "power" },
+          { key: "temperature", type: "number", category: "temperature" },
+          { key: "status", type: "text", category: "generic" },
+        ],
+        orderKeys: [
+          { key: "charge", type: "boolean", category: "toggle_power" },
+          { key: "current", type: "number", category: "set_ev_charge_current" },
+          { key: "plugInAction", type: "enum" },
+        ],
+      });
+      const eq = manager.createWithAutoBindings({
+        name: "Borne",
+        type: "ev_charger",
+        zoneId: zone.id,
+        deviceIds: [deviceId],
+      });
+      const data = Object.fromEntries(eq.dataBindings.map((b) => [b.key, b.alias]));
+      const orders = Object.fromEntries(eq.orderBindings.map((b) => [b.key, b.alias]));
+      expect(data.charge).toBe("state");
+      expect(data.vehicleState).toBe("vehicle");
+      expect(data.watts).toBe("power");
+      // Out of the zone room average.
+      expect(data.temperature).toBe("charger_temperature");
+      expect(data.status).toBe("status");
+      // The vendor point named `vehicle` cannot take the alias from the
+      // contract point; its own key is that alias, so it is left unbound.
+      expect(data.vehicle).toBeUndefined();
+      expect(orders).toEqual({
+        charge: "state",
+        current: "charge_current",
+        plugInAction: "plugInAction",
+      });
+    });
+
     it("VMC speed order decomposes to break-before-make relay orders (spec 153)", async () => {
       const zone = zoneManager.create({ name: "Buanderie" });
       const eq = manager.create({ name: "VMC", type: "vmc", zoneId: zone.id });

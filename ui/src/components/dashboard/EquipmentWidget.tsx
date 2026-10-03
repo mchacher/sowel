@@ -1409,15 +1409,9 @@ function SolarPanelEquipmentWidget({
 }
 
 // ============================================================
-// UPS widget (spec 156)
+// EV charger widget (spec 182)
 // ============================================================
 
-/**
- * Read-only by design — the type has no order surface. The layout answers, in
- * order: what is powering the load, how full the battery is, how long it would
- * last, and how hard the unit is working. Rows the plugin does not report are
- * simply absent.
- */
 /**
  * EV charger tile (spec 182). No tap-to-toggle on the tile: starting a charge
  * is deliberate, so start/stop is the explicit toggle inside the tile.
@@ -1436,6 +1430,8 @@ function EvChargerEquipmentWidget({
   iconKey?: string;
 }) {
   const s = evChargerStateOf(equipment);
+  // An offline charger offers no toggle: the order would only fail.
+  const usable = equipment.enabled && equipment.status !== "offline";
   const watts = s.power.watts;
   const charging = s.vehicle === "charging" || (watts !== null && watts > 0);
   return (
@@ -1463,7 +1459,7 @@ function EvChargerEquipmentWidget({
             <span className="text-[10px] text-text-tertiary font-normal ml-0.5">kWh</span>
           </span>
         )}
-        {s.canToggle && equipment.enabled && (
+        {s.canToggle && usable && (
           <LightControl equipment={equipment} onExecuteOrder={onExecuteOrder} compact />
         )}
       </div>
@@ -1471,6 +1467,16 @@ function EvChargerEquipmentWidget({
   );
 }
 
+// ============================================================
+// UPS widget (spec 156)
+// ============================================================
+
+/**
+ * Read-only by design — the type has no order surface. The layout answers, in
+ * order: what is powering the load, how full the battery is, how long it would
+ * last, and how hard the unit is working. Rows the plugin does not report are
+ * simply absent.
+ */
 function UpsEquipmentWidget({
   label,
   sublabel,

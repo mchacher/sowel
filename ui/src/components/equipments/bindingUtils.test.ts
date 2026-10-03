@@ -796,6 +796,21 @@ describe("ev_charger auto-binding (spec 182)", () => {
     ]);
   });
 
+  it("gives the contract point its alias even when a vendor key equal to it comes first", () => {
+    const device = {
+      id: "dev-ev2",
+      name: "Charger",
+      data: [
+        { id: "d1", key: "vehicle", category: "generic", type: "text" },
+        { id: "d2", key: "vehicleState", category: "ev_vehicle_state", type: "enum" },
+      ],
+      orders: [],
+    } as unknown as DeviceWithDetails;
+    const plan = computeBindingPlan([device], "ev_charger");
+    const byKey = Object.fromEntries(plan.map((p) => [p.key, p.alias]));
+    expect(byKey).toEqual({ vehicleState: "vehicle", vehicle: "vehicle_2" });
+  });
+
   it("does not change the other types' aliases", () => {
     expect(resolveAlias("temperature", "water_heater", undefined, "temperature")).toBe(
       "water_temperature",

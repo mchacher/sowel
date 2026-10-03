@@ -132,9 +132,9 @@ export function DeviceSelector({
     ? availableDevices.filter((d) => (candidatesByDevice.get(d.id)?.length ?? 0) > 0)
     : equipmentType === "thermostat"
       ? availableDevices.filter((d) => isThermostatDevice(d.data, d.orders ?? []))
-      : equipmentType === "ev_charger"
-        ? // Spec 182 — a charger is identified by its contract categories.
-          availableDevices.filter((d) => isEvChargerDevice(d.data, d.orders ?? []))
+      : // Spec 182 — a charger is identified by its contract categories.
+        equipmentType === "ev_charger"
+        ? availableDevices.filter((d) => isEvChargerDevice(d.data, d.orders ?? []))
         : requiredKeys
         ? availableDevices.filter((device) =>
             device.data.some((d) => requiredKeys.includes(d.key)),

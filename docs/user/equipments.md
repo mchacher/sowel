@@ -118,7 +118,7 @@ An **EV charger** (borne de recharge) is a charging station for an electric vehi
 
 Sowel defines what a charger carries, whatever the integration: start/stop (`state`), the vehicle state (`vehicle`), live power (`power`), energy history (`energy`), the charging current (`charge_current`), the session energy (`session_energy`), and the measured current and voltage. An integration that reports these provides a charger Sowel recognises on its own; the device picker offers it first. Anything else the charger reports (a status code, a temperature, the last session) stays visible as an extra.
 
-The first supported charger is the dé portable charger, through the [Tuya (local)](https://github.com/mchacher/sowel-plugin-tuya) integration. Charging from solar surplus or off-peak is a recipe's job, through the energy arbiter; the equipment only exposes and commands.
+The first supported charger is the dé portable charger, through the [Tuya (local)](https://github.com/mchacher/sowel-plugin-tuya) integration from its version 0.2.0 (earlier versions publish the charger without these categories). Charging from solar surplus or off-peak is a recipe's job, through the energy arbiter; the equipment only exposes and commands.
 
 ### Media
 

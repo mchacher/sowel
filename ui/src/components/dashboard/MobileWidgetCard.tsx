@@ -39,7 +39,15 @@ import {
 } from "../equipments/weatherForecastUtils";
 import { findTempExtremes, findTempIndoor, findTempOutdoor } from "../equipments/weather-utils";
 import { TempExtremes } from "../TempExtremes";
-import { Cloud, WashingMachine, Camera, ShieldCheck, Fan, BatteryCharging, EvCharger } from "lucide-react";
+import {
+  Cloud,
+  WashingMachine,
+  Camera,
+  ShieldCheck,
+  Fan,
+  BatteryCharging,
+  EvCharger,
+} from "lucide-react";
 import { evChargerStateOf, evVehicleKey } from "../equipments/evChargerState";
 import { gateNeedsConfirm } from "./gate-confirm";
 import { ForecastConfidenceMark } from "./ForecastConfidenceMark";
@@ -530,7 +538,7 @@ function useMobileState(
         />,
       ),
       stateLines: [
-        s.vehicle ? t(evVehicleKey(s.vehicle)) : s.on ? "ON" : "OFF",
+        s.vehicle ? t(evVehicleKey(s.vehicle)) : s.on === null ? "—" : s.on ? "ON" : "OFF",
         ...(powerLine ? [powerLine] : []),
       ],
     };

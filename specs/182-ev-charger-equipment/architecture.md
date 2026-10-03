@@ -56,12 +56,13 @@ Not added to `STREAMING_CATEGORIES`: `power`, `energy`, `current`, `voltage` alr
 
 ## Binding
 
+- **Backend API path** (`createWithAutoBindings`, `POST /equipments` with `deviceIds`): for `ev_charger`, data and orders whose category is in `EV_CHARGER_CATEGORY_ALIASES` bind first under the contract alias; on an alias conflict a point falls back to its key, then is skipped.
 - **Backend `binding-candidates.ts`**: no case for `ev_charger` — the `default` branch returns the single "all data / all orders" candidate, which is right for a charger (one device, one charger). Not in `CANDIDATE_BASED_TYPES`.
 - **UI `bindingUtils.ts`**:
   - `RELEVANT_DATA.ev_charger` = the contract's data categories plus `temperature`, `temperature_device` and `generic`, so the extras (status, last session) bind too.
   - `RELEVANT_ORDER_CATEGORIES.ev_charger` = `toggle_power`, `light_toggle`, `set_ev_charge_current`; `RELEVANT_ORDERS.ev_charger` = `["state"]` as the key fallback for a plain relay.
   - `TYPE_CATEGORY_ALIASES.ev_charger` = `EV_CHARGER_CATEGORY_ALIASES` (imported, not restated).
-- **Device picker**: `DeviceSelector` filters with `isEvChargerDevice` (data OR order identity, like `isThermostatDevice`); `EQUIPMENT_TYPE_CATEGORIES.ev_charger` lists the contract data categories for the other readers of that map.
+- **Device picker**: `DeviceSelector` filters with `isEvChargerDevice` (data OR order identity, like `isThermostatDevice`).
 
 ## Arbiter
 
@@ -69,20 +70,20 @@ No code change. `isPowerAlias` finds the `power`-category binding; `isStateAlias
 
 ## UI
 
-| Surface           | File                                                            | Change                                                                                                                                                                                |
-| ----------------- | --------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Type meta         | `components/equipments/equipment-type-meta.tsx`                 | `TYPE_ICONS.ev_charger` (Lucide `EvCharger`), `TYPE_LABELS`, `EQUIPMENT_TYPE_CATEGORIES`                                                                                              |
-| Type picker       | `components/equipments/EquipmentForm.tsx`                       | Entry after `water_heater`                                                                                                                                                            |
-| Shared read model | `components/equipments/evChargerState.ts` (new)                 | `evChargerStateOf(equipment)`: on, vehicle, power (via `resolvePowerReading`), session energy, setpoint, setpoint order with its bounds — one reader for every surface                |
-| Control           | `components/equipments/EvChargerControl.tsx` (new)              | Start/stop (`LightControl`), vehicle badge, power, session energy, current stepper (`set_ev_charge_current`), measured current/voltage — used by the detail page and the mobile sheet |
-| Detail page       | `pages/EquipmentDetailPage.tsx`                                 | Controls block rendering `EvChargerControl` when `type === "ev_charger"`                                                                                                              |
-| Zone card         | `components/home/CompactEquipmentCard.tsx`                      | `TYPE_TINTS`, `isEvCharger` in `isKnownType`, `CompactEvCharger` row: badge + power + toggle                                                                                          |
-| Zone grouping     | `components/home/ZoneEquipmentsView.tsx`                        | `ev_charger` in the "power" group                                                                                                                                                     |
-| Desktop widget    | `components/dashboard/EquipmentWidget.tsx`                      | `EvChargerEquipmentWidget`: icon, badge, power, session energy and an explicit start/stop toggle; no tap-to-toggle on the tile                                                        |
-| Mobile widget     | `components/dashboard/MobileWidgetCard.tsx`                     | State lines: badge text, power when charging                                                                                                                                          |
-| Mobile tap        | `components/dashboard/widget-utils.ts`, `WidgetDetailSheet.tsx` | `needsDetailSheet` += `ev_charger`; the sheet renders `EvChargerControl`                                                                                                              |
-| Widget icon       | `components/dashboard/widget-icons.ts`                          | `EvCharger` registered in `ICON_MAP` and the picker; `EQUIPMENT_DEFAULT_ICONS.ev_charger`                                                                                             |
-| i18n              | `i18n/locales/{en,fr}.json`                                     | `equipments.type.ev_charger`, `equipments.evCharger.*` (vehicle states, session, current), `category.*` for the four categories                                                       |
+| Surface           | File                                                            | Change                                                                                                                                                                                                                         |
+| ----------------- | --------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| Type meta         | `components/equipments/equipment-type-meta.tsx`                 | `TYPE_ICONS.ev_charger` (Lucide `EvCharger`), `TYPE_LABELS`                                                                                                                                                                    |
+| Type picker       | `components/equipments/EquipmentForm.tsx`                       | Entry after `water_heater`                                                                                                                                                                                                     |
+| Shared read model | `components/equipments/evChargerState.ts` (new)                 | `evChargerStateOf(equipment)`: on, vehicle, power (via `resolvePowerReading`), session energy, setpoint, setpoint order with its bounds — one reader for every surface                                                         |
+| Control           | `components/equipments/EvChargerControl.tsx` (new)              | Start/stop (`LightControl`), vehicle badge, power, session energy, current stepper (`set_ev_charge_current`), measured current/voltage, and the extras (`splitEvChargerExtras`) — used by the detail page and the mobile sheet |
+| Detail page       | `pages/EquipmentDetailPage.tsx`                                 | Controls block rendering `EvChargerControl` when `type === "ev_charger"`                                                                                                                                                       |
+| Zone card         | `components/home/CompactEquipmentCard.tsx`                      | `TYPE_TINTS`, `isEvCharger` in `isKnownType`, `CompactEvCharger` row: badge + power + toggle                                                                                                                                   |
+| Zone grouping     | `components/home/ZoneEquipmentsView.tsx`                        | `ev_charger` in the "power" group                                                                                                                                                                                              |
+| Desktop widget    | `components/dashboard/EquipmentWidget.tsx`                      | `EvChargerEquipmentWidget`: icon, badge, power, session energy and an explicit start/stop toggle; no tap-to-toggle on the tile                                                                                                 |
+| Mobile widget     | `components/dashboard/MobileWidgetCard.tsx`                     | State lines: badge text, power when charging                                                                                                                                                                                   |
+| Mobile tap        | `components/dashboard/widget-utils.ts`, `WidgetDetailSheet.tsx` | `needsDetailSheet` += `ev_charger`; the sheet renders `EvChargerControl`                                                                                                                                                       |
+| Widget icon       | `components/dashboard/widget-icons.ts`                          | `EvCharger` registered in `ICON_MAP` and the picker; `EQUIPMENT_DEFAULT_ICONS.ev_charger`                                                                                                                                      |
+| i18n              | `i18n/locales/{en,fr}.json`                                     | `equipments.type.ev_charger`, `equipments.evCharger.*` (vehicle states, session, current), `category.*` for the four categories                                                                                                |
 
 The badge colours follow the existing pills: `charging` → accent (energy flowing), `connected` → primary, `disconnected` → neutral.
 

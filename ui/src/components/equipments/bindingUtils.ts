@@ -650,7 +650,16 @@ export function computeBindingPlan(
 
     // Legacy path for all other equipment types — bind everything that
     // matches the RELEVANT_DATA / RELEVANT_ORDERS whitelists.
-    for (const data of device.data) {
+    // Spec 182 — on an EV charger the contract points go first, so a vendor
+    // key that happens to equal a contract alias cannot take it from them.
+    const contractFirst = <T extends { category?: string }>(items: readonly T[]): T[] =>
+      equipmentType === "ev_charger"
+        ? [
+            ...items.filter((i) => i.category && EV_CHARGER_CATEGORY_ALIASES[i.category]),
+            ...items.filter((i) => !(i.category && EV_CHARGER_CATEGORY_ALIASES[i.category])),
+          ]
+        : [...items];
+    for (const data of contractFirst(device.data)) {
       if (!isRelevantData(data.category, equipmentType)) continue;
       pushData(
         device,
@@ -658,7 +667,7 @@ export function computeBindingPlan(
         resolveAlias(data.key, equipmentType, DATA_CATEGORY_ALIASES, data.category, data.type),
       );
     }
-    for (const order of device.orders) {
+    for (const order of contractFirst(device.orders)) {
       if (!isRelevantOrder(order.key, equipmentType, order.category)) continue;
       pushOrder(
         device,

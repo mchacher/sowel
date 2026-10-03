@@ -2,15 +2,15 @@
 
 ## Steps
 
-- [ ] 1. Contract module `src/shared/ev-charger-contract.ts` and its tests.
-- [ ] 2. Types: `EquipmentType`, `DataCategory`, `OrderCategory` (backend + UI mirror).
-- [ ] 3. Constants: `CATEGORY_EXPECTED_TYPE`, `WIDGET_FAMILY_TYPES.power`, `defaultEnergyClassFor` / `defaultEnergyTimingsFor` (backend + `ui/src/lib/energy-profile.ts`), `METERING_RELAY_TYPES` (backend + UI), `VALID_EQUIPMENT_TYPES`.
-- [ ] 4. UI binding: `bindingUtils.ts` (`RELEVANT_DATA`, `RELEVANT_ORDERS`, `RELEVANT_ORDER_CATEGORIES`, `TYPE_CATEGORY_ALIASES`), `equipment-type-meta.tsx` (icon, label, picker categories), `EquipmentForm.tsx`.
-- [ ] 5. UI read model `evChargerState.ts` and its tests; `EvChargerControl.tsx`.
-- [ ] 6. Surfaces: detail page, compact card + zone group, desktop widget, mobile widget + sheet + `needsDetailSheet`, widget icon registry.
-- [ ] 7. i18n EN/FR.
-- [ ] 8. Docs EN/FR, specs index EN/FR.
-- [ ] 9. Validate: backend `tsc`, `typecheck:tests`, UI `tsc -b`, vitest (backend + UI), eslint (backend + UI), docs checks.
+- [x] 1. Contract module `src/shared/ev-charger-contract.ts` and its tests.
+- [x] 2. Types: `EquipmentType`, `DataCategory`, `OrderCategory` (backend + UI mirror).
+- [x] 3. Constants: `CATEGORY_EXPECTED_TYPE`, `WIDGET_FAMILY_TYPES.power`, `defaultEnergyClassFor` / `defaultEnergyTimingsFor` (backend + `ui/src/lib/energy-profile.ts`), `METERING_RELAY_TYPES` (backend + UI), `VALID_EQUIPMENT_TYPES`.
+- [x] 4. UI binding: `bindingUtils.ts` (`RELEVANT_DATA`, `RELEVANT_ORDERS`, `RELEVANT_ORDER_CATEGORIES`, `TYPE_CATEGORY_ALIASES`), `equipment-type-meta.tsx` (icon, label, picker categories), `EquipmentForm.tsx`.
+- [x] 5. UI read model `evChargerState.ts` and its tests; `EvChargerControl.tsx`.
+- [x] 6. Surfaces: detail page, compact card + zone group, desktop widget, mobile widget + sheet + `needsDetailSheet`, widget icon registry.
+- [x] 7. i18n EN/FR.
+- [x] 8. Docs EN/FR, specs index EN/FR.
+- [x] 9. Validate: backend `tsc`, `typecheck:tests`, UI `tsc -b`, vitest (backend + UI), eslint (backend + UI), docs checks.
 
 ## Test plan
 
