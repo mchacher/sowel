@@ -5,7 +5,6 @@ description: |
   - User asks to "create a feature", "implement X" for Sowel
   - User says "créer une feature", "ajouter une fonctionnalité", "implémenter"
   Specific to Sowel project: MQTT, devices, equipments, zones, recipes, modes, plugins.
-disable-model-invocation: true
 argument-hint: "[description de la feature]"
 ---
 
