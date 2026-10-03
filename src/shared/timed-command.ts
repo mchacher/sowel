@@ -43,7 +43,17 @@ interface BindingLike {
   category?: string | null;
 }
 
+/**
+ * Spec 182 — equipment types a timed command is never offered on, whatever
+ * their bindings. An EV charger's charge is driven by a recipe and the energy
+ * arbiter; a generic "send, then send back after N minutes" would cut a charge
+ * in the middle, or arm the charging current, which carries no state at all.
+ */
+export const TIMED_EXCLUDED_TYPES: ReadonlySet<string> = new Set(["ev_charger"]);
+
 interface EquipmentLike {
+  /** The equipment type; absent on callers that do not know it (never excluded then). */
+  type?: string | null;
   orderBindings: readonly BindingLike[];
   dataBindings: readonly BindingLike[];
   timedCommand?: { alias: string } | null;
@@ -58,6 +68,7 @@ interface EquipmentLike {
  * the answer is false.
  */
 export function isTimedCommandEligible(equipment: EquipmentLike, alias?: string): boolean {
+  if (equipment.type && TIMED_EXCLUDED_TYPES.has(equipment.type)) return false;
   const target = alias ?? equipment.timedCommand?.alias;
   if (!target) return false;
   if (!equipment.orderBindings.some((b) => b.alias === target)) return false;

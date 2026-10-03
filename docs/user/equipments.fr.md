@@ -196,7 +196,7 @@ Panneau solaire ou autre source de production. Un seul autorisé par système.
 
 #### Borne de recharge
 
-Une **borne de recharge** pour véhicule électrique, portable ou murale. Sa carte indique si une voiture est branchée (_Débranchée_, _Branchée_, _En charge_), la puissance pendant la charge et l'énergie délivrée sur la session ; sa fiche ajoute la marche/arrêt et un réglage du courant de charge, borné par la plage de la borne. Sur mobile, un appui ouvre la fiche : lancer une charge ne se fait jamais d'un appui accidentel.
+Une **borne de recharge** pour véhicule électrique, portable ou murale. Sa carte indique si une voiture est branchée (_Débranchée_, _Branchée_, _En charge_), la puissance pendant la charge et l'énergie délivrée sur la session ; sa fiche ajoute la marche/arrêt et un réglage du courant de charge, borné par la plage de la borne. Sur mobile, un appui ouvre la fiche : lancer une charge ne se fait jamais d'un appui accidentel. Une borne ne propose pas de commande temporisée : sa charge est pilotée par une recette et l'arbitre énergétique.
 
 - **Contrôles :** Marche/arrêt, état du véhicule, puissance, énergie de la session, courant de charge
 - **Données attendues :** marche/arrêt (`state`), état du véhicule (`vehicle`), puissance (`power`), historique d'énergie (`energy`), courant de charge (`charge_current`), énergie de la session (`session_energy`), courant et tension mesurés

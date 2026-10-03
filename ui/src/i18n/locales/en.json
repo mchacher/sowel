@@ -482,7 +482,7 @@
   "sensors.battery": "Battery",
   "category.motion": "Motion",
   "category.temperature": "Temperature",
-  "category.temperature_device": "Inverter temperature",
+  "category.temperature_device": "Device temperature",
   "category.power": "Power",
   "category.energy": "Energy",
   "category.voltage": "Voltage",

@@ -10,9 +10,11 @@ interface LightControlProps {
   equipment: EquipmentWithDetails;
   onExecuteOrder: (alias: string, value: unknown) => Promise<void>;
   compact?: boolean;
+  /** Compact only: the separator before the toggle (off where nothing precedes it). */
+  divider?: boolean;
 }
 
-export function LightControl({ equipment, onExecuteOrder, compact }: LightControlProps) {
+export function LightControl({ equipment, onExecuteOrder, compact, divider = true }: LightControlProps) {
   const { t } = useTranslation();
   const [executing, setExecuting] = useState(false);
   const slider = useSliderOverride();
@@ -98,7 +100,7 @@ export function LightControl({ equipment, onExecuteOrder, compact }: LightContro
             </span>
           </div>
         )}
-        <div className="w-px h-5 bg-border" />
+        {divider && <div className="w-px h-5 bg-border" />}
         <button
           onClick={handleToggle}
           disabled={executing || !hasToggle}

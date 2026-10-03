@@ -576,7 +576,10 @@ export function EquipmentDetailPage() {
       {/* Live electrical measures — P/U/I/PF when bound (issue #376, #521) */}
       {(equipment.type === "main_energy_meter" ||
         equipment.type === "energy_production_meter" ||
-        isSubmeterEquipment(equipment)) && (
+        isSubmeterEquipment(equipment)) &&
+        // Spec 182 — a charger's control block already shows power, current
+        // and voltage; the metering panel would only repeat them.
+        equipment.type !== "ev_charger" && (
         <ElectricalMeteringPanel equipment={equipment} />
       )}
 
