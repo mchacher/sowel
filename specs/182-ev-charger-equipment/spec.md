@@ -1,6 +1,6 @@
 # Spec 182 — EV charger equipment type
 
-- **Status**: Implemented — merged (PR #1005); AC6/AC7 visual check pending, first device `sowel-plugin-tuya` v0.2.0
+- **Status**: Implemented — merged (PR #1005), amended after the 2026-10-03 test run; first device `sowel-plugin-tuya` v0.2.0
 - **Date**: 2026-10-03
 - **Related**: spec 140 (energy capacity arbiter), spec 177 (thermostat contract — the pattern for an equipment contract in code), spec 176 (`appliance_state` for an on/off run state), spec 156 (UPS — the precedent for new data categories with a closed enum), spec 135 (water heater — controllable load with metering)
 - **First device**: [`sowel-plugin-tuya`](https://github.com/mchacher/sowel-plugin-tuya) v0.1.0, the dé portable EV charger
@@ -80,6 +80,8 @@ A device is offered for an `ev_charger` when it declares a data point of categor
 - **FR7 — Metering.** A charger with a `power` or `energy` binding is a submeter, as any equipment is (spec 091); it is also a metering relay type, so its cards show live power and it ranks in the submeter list like a metered switch or water heater.
 - **FR8 — Zone card and dashboard widget** (desktop and mobile): the charger icon, a vehicle badge (`Débranchée` / `Branchée` / `En charge`), live power when charging, and the start/stop toggle (an explicit toggle, never a tap on the whole tile). On mobile, a tap opens the detail sheet rather than toggling: starting a charge is not a light switch.
 - **FR9 — Detail page.** A charger panel: start/stop, the vehicle state, live power, session energy, and — when a `charge_current` order is bound — a current stepper bounded by the order's `min` / `max`, with 1 A steps, sending `set_ev_charge_current`. Measured current and voltage when bound. Extras below, in the generic list. The energy-management panel (spec 140) is available as for any controllable load.
+- **FR12 — No timed command.** The timed command (spec 174) is never offered on an `ev_charger`, on any surface or through the API (`TIMED_EXCLUDED_TYPES`): the charge is driven by a recipe and the arbiter, a generic "send, then send back" would cut a charge midway, and the charging current carries no state for it to watch. _(Amendment after the 2026-10-03 test run.)_
+- **FR13 — No duplicated measurements.** The detail page shows the charger's power, current and voltage in its control block; the generic electrical-measurements panel is not shown on an `ev_charger`. The energy-consumption panel (hour, day, month, year) stays. _(Amendment after the 2026-10-03 test run.)_
 - **FR10 — Zone grouping.** Chargers appear in the zone view's "Énergie / Power" group, next to UPS units.
 - **FR11 — Documentation.** The user guide (EN/FR) gains an EV charger section with its contract table; the data model lists the type and the categories; the energy guide (EN/FR) lists `ev_charger` among the flexible-load types.
 
@@ -90,8 +92,8 @@ A device is offered for an `ev_charger` when it declares a data point of categor
 - [x] AC3 — A device publishing the contract categories auto-binds `state` (data + order), `vehicle`, `power`, `energy`, `charge_current` (data + order), `session_energy`, `current`, `voltage` under those aliases, whatever its keys; its temperature binds as `charger_temperature`; any other data point binds as an extra under its key; configuration orders are not auto-bound.
 - [x] AC4 — The picker offers identity-matching devices first.
 - [x] AC5 — A new `ev_charger` pre-fills the energy profile as deferrable, 10 min on / 5 min off.
-- [ ] AC6 — Zone card, desktop widget and mobile widget show the icon, the vehicle badge, the power and the toggle; the mobile tap opens the sheet.
-- [ ] AC7 — The detail page starts and stops the charge and sets the current within the order's range.
+- [x] AC6 — Zone card, desktop widget and mobile widget show the icon, the vehicle badge, the power and the toggle; the mobile tap opens the sheet.
+- [x] AC7 — The detail page starts and stops the charge and sets the current within the order's range.
 - [x] AC8 — The charger counts as a submeter on the Energy page.
 - [x] AC9 — `tsc` (backend, tests, UI), the whole test suite and lint pass; docs parity and impact checks pass.
 
@@ -123,3 +125,14 @@ The maintainer asked for this feature to run autonomously up to the pull request
 3. Default timings 10 min on / 5 min off.
 4. Mobile tap opens the sheet instead of toggling.
 5. The "Power" zone group rather than a new "Mobility" group.
+
+## Test run on a candidate instance (2026-10-03)
+
+A local instance built from `main` (the v1.72.0 runtime with this code), a fresh database and only `sowel-plugin-tuya` 0.2.0, driven with Playwright against the owner's charger, desktop and mobile:
+
+- API and UI creation bind the contract aliases; the device picker offers only the charger; configuration orders are opt-in.
+- Zone card, detail page (badge, start/stop, session, current, voltage, stepper 8 → 9 → 8 A applied by the charger, extras), desktop widget and mobile widget render; a mobile tap opens the sheet and sends no order.
+- The energy panel offers the charger as a flexible load, 10 min on / 5 min off.
+- A start request while the car does not ask for current (pilot 9.6 V, IEC state B) is reported as not reflected: correct, the car decides.
+
+Fixed from that run: the timed command was offered (FR12), the electrical-measurements panel repeated the control block (FR13), the device-temperature label read "inverter temperature" on every device, and the desktop tile's toggle carried a stray separator.

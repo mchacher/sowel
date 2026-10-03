@@ -114,7 +114,7 @@ Buttons are inputs only — bind them to a [recipe](recipes.md) action or a [mod
 
 #### EV charger
 
-An **EV charger** (borne de recharge) is a charging station for an electric vehicle, portable or wall-mounted. Its card shows whether a car is plugged in (_Unplugged_, _Plugged in_, _Charging_), the live power while it charges and the energy delivered this session; its detail page adds a start/stop toggle and a charging-current stepper bounded by the charger's own range. On mobile, a tap opens the detail sheet: starting a charge is never a single accidental tap.
+An **EV charger** (borne de recharge) is a charging station for an electric vehicle, portable or wall-mounted. Its card shows whether a car is plugged in (_Unplugged_, _Plugged in_, _Charging_), the live power while it charges and the energy delivered this session; its detail page adds a start/stop toggle and a charging-current stepper bounded by the charger's own range. On mobile, a tap opens the detail sheet: starting a charge is never a single accidental tap. A charger offers no timed command: its charge is driven by a recipe and the energy arbiter.
 
 Sowel defines what a charger carries, whatever the integration: start/stop (`state`), the vehicle state (`vehicle`), live power (`power`), energy history (`energy`), the charging current (`charge_current`), the session energy (`session_energy`), and the measured current and voltage. An integration that reports these provides a charger Sowel recognises on its own; the device picker offers it first. Anything else the charger reports (a status code, a temperature, the last session) stays visible as an extra.
 

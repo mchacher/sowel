@@ -1460,7 +1460,12 @@ function EvChargerEquipmentWidget({
           </span>
         )}
         {s.canToggle && usable && (
-          <LightControl equipment={equipment} onExecuteOrder={onExecuteOrder} compact />
+          <LightControl
+            equipment={equipment}
+            onExecuteOrder={onExecuteOrder}
+            compact
+            divider={false}
+          />
         )}
       </div>
     </WidgetCard>

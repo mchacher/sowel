@@ -55,6 +55,23 @@ describe("isTimedCommandEligible (spec 174 FR-11)", () => {
   });
 });
 
+describe("timed command on an EV charger (spec 182)", () => {
+  const charger = {
+    type: "ev_charger",
+    ...equipment(["state", "charge_current"], [{ alias: "state", category: "appliance_state" }]),
+  };
+
+  it("is never offered, whatever the bindings", () => {
+    expect(isTimedCommandEligible(charger, "state")).toBe(false);
+    expect(isTimedCommandEligible(charger, "charge_current")).toBe(false);
+    expect(hasTimedCommandCandidate(charger)).toBe(false);
+  });
+
+  it("still applies to the same bindings on a switch", () => {
+    expect(isTimedCommandEligible({ ...charger, type: "switch" }, "state")).toBe(true);
+  });
+});
+
 describe("hasTimedCommandCandidate", () => {
   it("is what a surface asks before any configuration exists", () => {
     // isTimedCommandEligible answers about ONE named order and would say no on

@@ -482,7 +482,7 @@
   "sensors.battery": "Batterie",
   "category.motion": "Mouvement",
   "category.temperature": "Température",
-  "category.temperature_device": "Température onduleur",
+  "category.temperature_device": "Température de l'appareil",
   "category.power": "Puissance",
   "category.energy": "Énergie",
   "category.voltage": "Tension",
