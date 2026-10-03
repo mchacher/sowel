@@ -472,7 +472,11 @@ export type ArbiterDecisionKind =
    *  consuming the surplus (`draw-started` = consuming again). */
   | "draw-stopped"
   | "draw-started"
-  | "reset";
+  | "reset"
+  /** Spec 185 — a modulating grant's budget moved (coalesced). */
+  | "budget-changed"
+  /** Spec 185 — the load did not follow a budget decrease. */
+  | "budget-not-honored";
 
 export interface ArbiterDecision {
   atIso: string;
@@ -521,6 +525,9 @@ export interface ArbiterLoadInfo {
   untilIso?: string;
   instanceId?: string;
   note?: string;
+  /** Spec 185 — a modulating claim's range, and its budget while granted. */
+  modulation?: { minW: number; maxW: number; stepW: number };
+  budgetW?: number;
 }
 
 export interface ArbiterPublicState {
@@ -1117,6 +1124,7 @@ export type EngineEvent =
     }
   | { type: "energy.capacity.denied"; equipmentId: string; instanceId: string; reason: string }
   | { type: "energy.capacity.released"; equipmentId: string; instanceId: string }
+  | { type: "energy.capacity.budget"; equipmentId: string; instanceId: string; watts: number }
   | { type: "energy.arbiter.status"; state: ArbiterRunState; availableSurplusW: number | null }
   | { type: "shared_access.changed" }
   | { type: "shared_access.opened"; accessId: string; label: string; equipmentId: string }

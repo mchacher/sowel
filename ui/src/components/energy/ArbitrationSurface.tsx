@@ -267,6 +267,16 @@ export function ArbitrationSurface() {
                         </td>
                         <td className="hidden lg:table-cell text-right py-2.5 px-3 font-mono text-text-secondary whitespace-nowrap">
                           {fmtW(r.state === "suspended" ? null : r.watts)}
+                          {/* Spec 185 — a modulating load: the budget the
+                              arbiter assigned, out of its maximum. */}
+                          {r.modulation && r.budgetW !== undefined && r.state !== "suspended" && (
+                            <div className="text-[11px] text-text-tertiary">
+                              {t("arbiter.budget", {
+                                budget: fmtW(r.budgetW),
+                                max: fmtW(r.modulation.maxW),
+                              })}
+                            </div>
+                          )}
                         </td>
                         <td className="hidden lg:table-cell text-right py-2.5 px-3 font-mono text-text-secondary whitespace-nowrap">
                           {fmtW(r.state === "suspended" ? null : r.toleratedImportW)}

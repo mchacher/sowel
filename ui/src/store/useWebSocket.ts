@@ -447,6 +447,7 @@ function handleEvent(event: EngineEvent): void {
     case "energy.capacity.revoked":
     case "energy.capacity.denied":
     case "energy.capacity.released":
+    case "energy.capacity.budget":
       useArbiter.getState().refreshSoon();
       break;
     // Spec 181 — admin-only events on the `system` topic: the lines, their

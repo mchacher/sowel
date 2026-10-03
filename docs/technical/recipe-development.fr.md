@@ -408,6 +408,28 @@ Règles pour les auteurs (spec 140, tenues par convention et auditées par le co
    accord qui arrive sur une charge déjà en marche rend les comptes de l'arbitre
    exacts, et le journal montre une entrée `unclaimed-run` au lieu d'un trou
    inexpliqué dans le surplus.
+7. **Les charges modulables suivent leur budget** (spec 185). Une charge qui
+   peut tirer n'importe quelle puissance dans une plage (une borne : 6 à 16 A)
+   déclare cette plage plutôt qu'une puissance, applique chaque budget
+   rapidement (dans `modulationSettleS`) et ne tire jamais au-delà :
+
+   ```typescript
+   const claim = ctx.helpers.energy?.claimCapacity({
+     equipmentId: chargerId,
+     watts: 1380, // lu par les cores plus anciens, qui ignorent `modulation`
+     modulation: { minW: 1380, maxW: 3680, stepW: 230 },
+     onGranted: () => start(),
+     onRevoked: () => stop(),
+     onBudget: (w) => setCurrent(Math.floor(w / 230)), // premier appel juste après onGranted
+   });
+   claim?.budgetW?.(); // le budget courant tant que la demande est accordée, sinon null
+   ```
+
+   La demande démarre et s'arrête à `minW` ; le budget monte lentement
+   (l'objectif doit tenir, le changement précédent doit être absorbé) et baisse
+   vite. Une plage avec `minW` ≤ 0, `maxW` < `minW` ou `stepW` ≤ 0 est refusée
+   `invalid-modulation`. Une baisse que la charge ne suit pas est journalisée
+   `budget-not-honored`.
 
 ## Événements de l'Event Bus
 

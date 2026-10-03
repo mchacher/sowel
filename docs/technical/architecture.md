@@ -328,6 +328,17 @@ between declared flexible loads. Key invariants:
   of past runs, sub-threshold samples excluded), else the declared profile.
 - **User-owned priority**: one ordered list (settings) read top-down to grant,
   bottom-up to revoke. Claims may self-demote (`slack`) but can never step up.
+- **Modulating claims** (spec 185): a claim may declare a range
+  (`minW`, `maxW`, `stepW`). It engages and releases at `minW`; once granted,
+  a budget pass after the grant pass assigns it a budget that follows the
+  surplus — raised only once the target has held a step above for
+  `modulationRaiseHoldS` and the previous change has settled
+  (`modulationSettleS`), lowered at the next evaluation (a second decrease
+  inside the settle window needs the export to have worsened by a step, since
+  the meter EMA still shows the first). On a deficit, modulating budgets are
+  lowered (lowest priority first) before any load is shed; a pending claim
+  counts what lower-priority modulating grants hold above their minimum. A
+  claim without `modulation` takes the binary path unchanged.
 - **The arbiter issues no orders** in phase 1: recipes act through
   `ctx.helpers.energy.claimCapacity()` callbacks; grants are runtime-only and
   rebuilt after a restart. Manual orders and wall-switch state divergences

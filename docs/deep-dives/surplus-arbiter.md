@@ -78,6 +78,8 @@ Every meter tick, the arbiter:
 3. **Revokes** the lowest-priority granted load if the deficit has persisted beyond the load's _tolerated import_ for the _release hold_ (default 600 s). The asymmetry is intentional: joining late is cheap, quitting early costs a compressor start.
 4. **Shields** every granted load by its _min run_ and every idle load by its _min rest_: anti-short-cycle floors that outrank the surplus arithmetic. A cloud that lasts less than the release hold plus the min-run shield simply never reaches the hardware.
 
+**Loads that can follow a budget** (spec 185) — an EV charger can draw anywhere between 6 and 16 A. Its recipe declares that range instead of one power: it starts at the minimum, then the arbiter raises its budget when more surplus has held for a minute and lowers it at once when the surplus drops, and the recipe sets the charging current to match. On a deficit such a load is turned down before anything is switched off, and a load ranked above it can take what it holds above its minimum.
+
 Priority is strict and yours: the list in Settings, top first for grants, bottom first for sheds. Two load classes refine what a grant means: a **deferrable** load (pool pump, water heater) is switched on and off outright; a **comfort** load (a heat pump already running for the household) is never switched off by the arbiter: a grant only _boosts_ it, and a revoke returns it to its normal setpoint.
 
 ### Every setting, documented

@@ -410,6 +410,28 @@ Rules for authors (spec 140, enforced socially and audited by the core):
    grant, run — but keep the claim open while you do. A grant landing on an
    already-running load makes the arbiter's books exact, and the journal
    shows an `unclaimed-run` entry instead of a mystery hole in the surplus.
+7. **Modulating loads follow their budget** (spec 185). A load that can draw
+   anywhere in a range (an EV charger: 6–16 A) declares it instead of one
+   power, and applies each budget promptly — within `modulationSettleS` — and
+   never draws above it:
+
+   ```typescript
+   const claim = ctx.helpers.energy?.claimCapacity({
+     equipmentId: chargerId,
+     watts: 1380, // read by older cores, which ignore `modulation`
+     modulation: { minW: 1380, maxW: 3680, stepW: 230 },
+     onGranted: () => start(),
+     onRevoked: () => stop(),
+     onBudget: (w) => setCurrent(Math.floor(w / 230)), // first call right after onGranted
+   });
+   claim?.budgetW?.(); // the current budget while granted, else null
+   ```
+
+   The claim engages and releases at `minW`; the budget rises slowly (the
+   target must hold, the previous change must settle) and falls fast. A range
+   with `minW` ≤ 0, `maxW` < `minW` or `stepW` ≤ 0 is denied
+   `invalid-modulation`. A decrease the load does not follow is journaled
+   `budget-not-honored`.
 
 ## Event Bus Events
 

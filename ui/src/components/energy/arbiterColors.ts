@@ -106,7 +106,11 @@ export function journalDotColor(kind: ArbiterDecision["kind"]): string {
       return "var(--color-solar-auto)"; // accordé (auto-conso)
     case "revoked":
     case "revoke-not-honored":
+    case "budget-not-honored":
       return "var(--color-error)"; // surplus retiré
+    // Spec 185 — a budget move happens INSIDE a grant: the grant's colour.
+    case "budget-changed":
+      return "var(--color-solar-auto)";
     // #960 — the row that EXPLAINS a manual-control cell must not be painted
     // as something else: a cell click scrolls the journal to it.
     case "suspended":
