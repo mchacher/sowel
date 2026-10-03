@@ -30,6 +30,7 @@ import { solarWidgetState } from "./solarWidget";
 import { resolvePowerReading } from "../../lib/power-reading";
 import { pickLivePowerBinding } from "../../lib/energy-meter-display";
 import { formatRelative } from "../../lib/format-relative";
+import { useStalenessClock } from "../../hooks/useStalenessClock";
 import { brightnessPercent, brightnessScale } from "../../lib/brightness";
 import { findOrderByCategory } from "../equipments/bindingUtils";
 import {
@@ -47,8 +48,10 @@ import {
   Fan,
   BatteryCharging,
   EvCharger,
+  Car,
 } from "lucide-react";
 import { evChargerStateOf, evVehicleKey } from "../equipments/evChargerState";
+import { electricVehicleStateOf, evChargingStateKey } from "../equipments/electricVehicleState";
 import { gateNeedsConfirm } from "./gate-confirm";
 import { ForecastConfidenceMark } from "./ForecastConfidenceMark";
 import { vmcSpeedOf } from "../equipments/vmcSpeed";
@@ -139,6 +142,8 @@ function useMobileState(
   equipment: EquipmentWithDetails,
   t: TFunction,
 ): { icon: React.ReactNode; stateLines: string[]; footer?: React.ReactNode } {
+  // Spec 183 — a sleeping car sends no event; the clock ages its report.
+  const now = useStalenessClock();
   const {
     isLight,
     isShutter,
@@ -513,6 +518,35 @@ function useMobileState(
       stateLines: [
         status ? t(upsStatusKey(status)) : (raw ?? t(upsStatusKey(null))),
         ...(detail ? [detail] : []),
+      ],
+    };
+  }
+
+  if (equipment.type === "electric_vehicle") {
+    // Spec 183 — battery first, then range and state.
+    const s = electricVehicleStateOf(equipment, now);
+    return {
+      icon: renderWidgetStateIcon(
+        widget.icon,
+        <Car
+          size={96}
+          strokeWidth={1.2}
+          className={s.chargingState === "charging" ? "text-accent" : "text-primary"}
+        />,
+      ),
+      stateLines: [
+        s.batteryLevel !== null ? `${Math.round(s.batteryLevel)} %` : "—",
+        ...[
+          [
+            s.rangeKm !== null ? `${Math.round(s.rangeKm)} km` : null,
+            s.chargingState ? t(evChargingStateKey(s.chargingState)) : null,
+          ]
+            .filter(Boolean)
+            .join(" · "),
+        ].filter((l) => l !== ""),
+        ...(s.reportStale && s.reportedAt
+          ? [t("reading.ago", { age: formatRelative(s.reportedAt, t) })]
+          : []),
       ],
     };
   }

@@ -72,6 +72,16 @@ describe("timed command on an EV charger (spec 182)", () => {
   });
 });
 
+describe("timed command on an electric vehicle (spec 183)", () => {
+  it("is never offered", () => {
+    const vehicle = {
+      type: "electric_vehicle",
+      ...equipment(["wake"], [{ alias: "plugged", category: "appliance_state" }]),
+    };
+    expect(hasTimedCommandCandidate(vehicle)).toBe(false);
+  });
+});
+
 describe("hasTimedCommandCandidate", () => {
   it("is what a surface asks before any configuration exists", () => {
     // isTimedCommandEligible answers about ONE named order and would say no on

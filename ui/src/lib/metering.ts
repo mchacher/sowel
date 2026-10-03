@@ -32,6 +32,7 @@ export const NON_SUBMETER_TYPES: ReadonlySet<string> = new Set([
   "main_energy_meter",
   "energy_production_meter",
   "solar_panel",
+  "electric_vehicle",
 ]);
 
 /** A meaningful, NUMERIC power/energy channel (#523): a boolean on/off reading

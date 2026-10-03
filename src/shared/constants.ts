@@ -158,6 +158,14 @@ export const CATEGORY_EXPECTED_TYPE: Partial<Record<DataCategory, DataType>> = {
   // `ups_status`: a closed set a plugin may carry as `enum` or `text`.
   ev_charge_current: "number",
   ev_session_energy: "number",
+  // Spec 183 — electric vehicle (`ev_charging_state` and `ev_reported_at`
+  // left out: a closed set and a timestamp a plugin may carry as text).
+  ev_battery_level: "number",
+  ev_range: "number",
+  ev_plugged: "boolean",
+  ev_at_home: "boolean",
+  ev_mileage: "number",
+  ev_charge_limit: "number",
   power: "number",
   energy: "number",
   voltage: "number",

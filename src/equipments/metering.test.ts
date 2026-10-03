@@ -86,6 +86,10 @@ describe("metering helpers (spec 129 / #523)", () => {
     expect(isSubmeterEquipment("ev_charger", power)).toBe(true);
     expect(METERING_RELAY_TYPES.has("ev_charger")).toBe(true);
 
+    // Spec 183 — a car never counts, even if a plugin publishes its power:
+    // the charger measures that energy.
+    expect(isSubmeterEquipment("electric_vehicle", power)).toBe(false);
+
     // The three exclusions: house total + production must never be submeters.
     expect(isSubmeterEquipment("main_energy_meter", power)).toBe(false);
     expect(isSubmeterEquipment("energy_production_meter", power)).toBe(false);

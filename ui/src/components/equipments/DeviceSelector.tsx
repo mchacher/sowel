@@ -11,6 +11,7 @@ import {
 import { freeCandidates } from "../../lib/binding-utils";
 import { EQUIPMENT_TYPE_CATEGORIES } from "./equipment-type-meta";
 import { isEvChargerDevice } from "../../lib/ev-charger-contract";
+import { isElectricVehicleDevice } from "../../lib/electric-vehicle-contract";
 import { isThermostatDevice } from "../../lib/thermostat-contract";
 
 
@@ -135,7 +136,10 @@ export function DeviceSelector({
       : // Spec 182 — a charger is identified by its contract categories.
         equipmentType === "ev_charger"
         ? availableDevices.filter((d) => isEvChargerDevice(d.data, d.orders ?? []))
-        : requiredKeys
+        : // Spec 183 — a car is identified by its traction-battery level.
+          equipmentType === "electric_vehicle"
+          ? availableDevices.filter((d) => isElectricVehicleDevice(d.data, d.orders ?? []))
+          : requiredKeys
         ? availableDevices.filter((device) =>
             device.data.some((d) => requiredKeys.includes(d.key)),
           )

@@ -194,6 +194,15 @@ Panneau solaire ou autre source de production. Un seul autorisé par système.
 - **Contrôles :** Affichage de la production avec calcul d'autoconsommation
 - **Données attendues :** puissance de production, production cumulée
 
+#### Véhicule électrique
+
+Un **véhicule électrique** est une voiture électrique ou hybride rechargeable, lue depuis le cloud du constructeur. Sa carte affiche le niveau de batterie (avec la limite de charge marquée quand la voiture l'expose), l'autonomie électrique, l'état de charge (_Branché_, _En attente de courant_, _En charge_…) et, quand le dernier relevé de la voiture a plus de 15 minutes, son ancienneté : une voiture endormie ne remonte rien, et un niveau de batterie ancien n'est pas celui d'aujourd'hui. Sa fiche ajoute les boutons **Réveiller** et **Démarrer la charge** et un réglage de la limite de charge quand la voiture le permet ; sur mobile, un appui ouvre cette fiche.
+
+- **Contrôles :** Réveiller, démarrer la charge, limite de charge (selon la voiture)
+- **Données attendues :** niveau de batterie, autonomie, branché, état de charge, heure du dernier relevé, à la maison (oui/non, sans coordonnées), kilométrage, limite de charge
+
+Ce n'est ni un compteur d'énergie ni une charge pilotable : c'est la borne qui mesure et qui est pilotée. Le carburant et la climatisation d'une hybride restent visibles en extra.
+
 #### Borne de recharge
 
 Une **borne de recharge** pour véhicule électrique, portable ou murale. Sa carte indique si une voiture est branchée (_Débranchée_, _Branchée_, _En charge_), la puissance pendant la charge et l'énergie délivrée sur la session ; sa fiche ajoute la marche/arrêt et un réglage du courant de charge, borné par la plage de la borne. Sur mobile, un appui ouvre la fiche : lancer une charge ne se fait jamais d'un appui accidentel. Une borne ne propose pas de commande temporisée : sa charge est pilotée par une recette et l'arbitre énergétique.

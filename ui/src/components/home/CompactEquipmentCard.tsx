@@ -24,6 +24,7 @@ import { WaterValveControl } from "../equipments/WaterValveControl";
 import { VmcControl } from "../equipments/VmcControl";
 import { EvVehicleBadge } from "../equipments/EvChargerControl";
 import { evChargerStateOf } from "../equipments/evChargerState";
+import { electricVehicleStateOf, evChargingStateKey } from "../equipments/electricVehicleState";
 import { PoolHeatPumpControl } from "../equipments/PoolHeatPumpControl";
 import { Cloud, Timer } from "lucide-react";
 import { parseForecastDays, CONDITION_ICONS, CONDITION_COLORS } from "../equipments/weatherForecastUtils";
@@ -32,6 +33,7 @@ import { EquipmentStatusBadge } from "../equipments/EquipmentStatusBadge";
 import { pickLivePowerBinding, formatWatts } from "../../lib/energy-meter-display";
 import { resolvePowerReading } from "../../lib/power-reading";
 import { formatRelative } from "../../lib/format-relative";
+import { useStalenessClock } from "../../hooks/useStalenessClock";
 import type { DataBindingWithValue } from "../../types";
 
 interface CompactEquipmentCardProps {
@@ -82,6 +84,7 @@ const TYPE_TINTS: Record<EquipmentType, Tint> = {
   // the alarm colour, so the tile itself stays quiet.
   ups:                     { bg: "bg-sensor-50",    text: "text-sensor-500" },
   ev_charger:              { bg: "bg-accent-light",  text: "text-accent" },
+  electric_vehicle:        { bg: "bg-primary-light",text: "text-primary" },
 };
 
 export function CompactEquipmentCard({ equipment, onExecuteOrder, zoneName }: CompactEquipmentCardProps) {
@@ -117,13 +120,14 @@ export function CompactEquipmentCard({ equipment, onExecuteOrder, zoneName }: Co
   const isVmc = equipment.type === "vmc";
   const isUps = equipment.type === "ups";
   const isEvCharger = equipment.type === "ev_charger";
+  const isElectricVehicle = equipment.type === "electric_vehicle";
 
   // Find primary data value for generic equipments
   const isKnownType =
     isLight || isSwitch || isWaterHeater || isSensor || isShutterFamily || isThermostat || isHeater || isGate ||
     isEnergyMeter || isWeatherForecast || isMediaPlayer || isAppliance ||
     isWaterValve || isPoolPump || isPoolCover || isPoolHeatPump || isSolar || isCamera || isVmc ||
-    isUps || isEvCharger;
+    isUps || isEvCharger || isElectricVehicle;
 
   const hasCameraSnapshot =
     isCamera && equipment.dataBindings.some((b) => b.category === "camera_snapshot_url");
@@ -390,6 +394,9 @@ export function CompactEquipmentCard({ equipment, onExecuteOrder, zoneName }: Co
           />
         )}
 
+        {/* Electric vehicle (spec 183): battery, range, state, report age. */}
+        {isElectricVehicle && <CompactElectricVehicle equipment={equipment} />}
+
         {/* EV charger (spec 182): the vehicle, the power while charging, start/stop. */}
         {isEvCharger && (
           <CompactEvCharger
@@ -616,6 +623,39 @@ function PoolPumpRuntime({ equipment }: { equipment: EquipmentWithDetails }) {
     <span className="text-[11px] text-text-tertiary tabular-nums font-mono flex-shrink-0">
       {runtimeStr}
     </span>
+  );
+}
+
+/**
+ * Electric vehicle compact row (spec 183) — the battery level first (the only
+ * number a glance at a car needs), the range, the charging state, and the age
+ * of the car's own report when it is old: a sleeping car reports nothing.
+ */
+function CompactElectricVehicle({ equipment }: { equipment: EquipmentWithDetails }) {
+  const { t } = useTranslation();
+  const now = useStalenessClock();
+  const s = electricVehicleStateOf(equipment, now);
+  return (
+    <div className="flex items-center gap-2 flex-shrink-0">
+      {s.chargingState && (
+        <span className="text-[11px] font-medium px-1.5 py-0.5 rounded-full bg-primary/10 text-primary">
+          {t(evChargingStateKey(s.chargingState))}
+        </span>
+      )}
+      {s.rangeKm !== null && (
+        <span className="text-[11px] text-text-secondary tabular-nums">{Math.round(s.rangeKm)} km</span>
+      )}
+      {s.batteryLevel !== null && (
+        <span className="text-[13px] font-semibold text-text tabular-nums font-mono">
+          {Math.round(s.batteryLevel)}%
+        </span>
+      )}
+      {s.reportStale && s.reportedAt && (
+        <span className="text-[11px] text-text-tertiary">
+          {t("reading.ago", { age: formatRelative(s.reportedAt, t) })}
+        </span>
+      )}
+    </div>
   );
 }
 

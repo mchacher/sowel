@@ -87,6 +87,18 @@ export type DataCategory =
   | "ev_vehicle_state"
   | "ev_charge_current"
   | "ev_session_energy"
+  // Spec 183 — electric vehicle. `ev_battery_level` is the TRACTION battery
+  // (%), deliberately not `battery` (a device battery, spec 143).
+  // `ev_charging_state` is a closed enum (EV_CHARGING_STATE_VALUES);
+  // `ev_reported_at` is when the car itself last reported (ISO string).
+  | "ev_battery_level"
+  | "ev_range"
+  | "ev_plugged"
+  | "ev_charging_state"
+  | "ev_reported_at"
+  | "ev_at_home"
+  | "ev_mileage"
+  | "ev_charge_limit"
   | "generic";
 
 export type OrderCategory =
@@ -126,7 +138,12 @@ export type OrderCategory =
   | "solar_toggle"
   // Spec 182 — set an EV charger's charging current (A, bounded by the
   // order's min/max). Not `set_setpoint`: that is the thermostat identity.
-  | "set_ev_charge_current";
+  | "set_ev_charge_current"
+  // Spec 183 — electric vehicle: wake it and start a charge (momentary, no
+  // value), and set the charge limit the car applies by itself (%).
+  | "ev_wake"
+  | "ev_charge_start"
+  | "set_ev_charge_limit";
 
 // ============================================================
 // Device
@@ -345,7 +362,10 @@ export type EquipmentType =
   // Spec 156 — uninterruptible power supply, read-only.
   | "ups"
   // Spec 182 — EV charger; its contract is src/shared/ev-charger-contract.ts.
-  | "ev_charger";
+  | "ev_charger"
+  // Spec 183 — electric vehicle (BEV and PHEV); contract in
+  // src/shared/electric-vehicle-contract.ts.
+  | "electric_vehicle";
 
 /**
  * One coplanar group of panels (spec 160).

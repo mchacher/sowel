@@ -18,11 +18,14 @@ import {
   Fan,
   BatteryCharging,
   EvCharger,
+  Car,
 } from "lucide-react";
 import type { EquipmentWithDetails } from "../../types";
 import { VmcControl } from "../equipments/VmcControl";
 import { EvVehicleBadge } from "../equipments/EvChargerControl";
 import { evChargerStateOf } from "../equipments/evChargerState";
+import { electricVehicleStateOf, evChargingStateKey } from "../equipments/electricVehicleState";
+import { EvBatteryBar } from "../equipments/ElectricVehicleControl";
 import { LightControl } from "../equipments/LightControl";
 import { vmcSpeedOf } from "../equipments/vmcSpeed";
 import {
@@ -45,6 +48,7 @@ import { resolvePowerReading } from "../../lib/power-reading";
 import { pickLivePowerBinding } from "../../lib/energy-meter-display";
 import { thermostatPowerStateBinding } from "../../lib/thermostat-state";
 import { formatRelative } from "../../lib/format-relative";
+import { useStalenessClock } from "../../hooks/useStalenessClock";
 import { brightnessPercent, brightnessScale } from "../../lib/brightness";
 import {
   LightBulbIcon,
@@ -217,6 +221,8 @@ export function EquipmentWidget({
     );
   if (equipment.type === "ups")
     return <UpsEquipmentWidget label={label} sublabel={sublabel} equipment={equipment} />;
+  if (equipment.type === "electric_vehicle")
+    return <ElectricVehicleEquipmentWidget label={label} sublabel={sublabel} equipment={equipment} iconKey={widget.icon} />;
   if (equipment.type === "ev_charger")
     return (
       <EvChargerEquipmentWidget
@@ -1403,6 +1409,66 @@ function SolarPanelEquipmentWidget({
             </span>
           )}
         </div>
+      </div>
+    </WidgetCard>
+  );
+}
+
+// ============================================================
+// Electric vehicle widget (spec 183)
+// ============================================================
+
+/** Battery first, with the car's limit marked; range, state, report age. */
+function ElectricVehicleEquipmentWidget({
+  label,
+  sublabel,
+  equipment,
+  iconKey,
+}: {
+  label: string;
+  sublabel?: string;
+  equipment: EquipmentWithDetails;
+  iconKey?: string;
+}) {
+  const { t } = useTranslation();
+  const now = useStalenessClock();
+  const s = electricVehicleStateOf(equipment, now);
+  return (
+    <WidgetCard label={label} sublabel={sublabel}>
+      <div className="flex-1 flex flex-col items-center justify-center gap-2 px-2">
+        {renderWidgetStateIcon(
+          iconKey,
+          <Car
+            strokeWidth={1.5}
+            className={`${s.chargingState === "charging" ? "text-accent" : "text-primary"} w-[44px] h-[44px]`}
+          />,
+        )}
+        {s.batteryLevel !== null ? (
+          <>
+            <span className="font-mono text-[20px] font-semibold text-text tabular-nums">
+              {Math.round(s.batteryLevel)}
+              <span className="text-[12px] text-text-tertiary font-normal ml-0.5">%</span>
+            </span>
+            <div className="w-[70%]">
+              <EvBatteryBar level={s.batteryLevel} limit={s.chargeLimit} />
+            </div>
+          </>
+        ) : (
+          <span className="font-mono text-[20px] text-text-tertiary">—</span>
+        )}
+        <span className="text-[12px] text-text-secondary">
+          {[
+            s.rangeKm !== null ? `${Math.round(s.rangeKm)} km` : null,
+            s.chargingState ? t(evChargingStateKey(s.chargingState)) : null,
+          ]
+            .filter(Boolean)
+            .join(" · ")}
+        </span>
+        {s.reportStale && s.reportedAt && (
+          <span className="text-[10px] text-text-tertiary">
+            {t("reading.ago", { age: formatRelative(s.reportedAt, t) })}
+          </span>
+        )}
       </div>
     </WidgetCard>
   );

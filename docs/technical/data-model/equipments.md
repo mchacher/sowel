@@ -37,7 +37,8 @@ type EquipmentType =
   | "pool_heat_pump"
   | "vmc" // Spec 153 — 2-speed mechanical ventilation (OFF / V1 / V2)
   | "ups" // Spec 156 — uninterruptible power supply, read-only
-  | "ev_charger"; // Spec 182 — EV charger (contract: src/shared/ev-charger-contract.ts)
+  | "ev_charger" // Spec 182 — EV charger (contract: src/shared/ev-charger-contract.ts)
+  | "electric_vehicle"; // Spec 183 — electric or plug-in hybrid car (contract: src/shared/electric-vehicle-contract.ts)
 
 interface Equipment {
   id: string; // UUID v4
@@ -328,6 +329,25 @@ A device is offered for an `ev_charger` when it declares `ev_vehicle_state` data
 - **Declare `valueOn` / `valueOff` on the start/stop order** — Sowel's on/off surfaces send `"ON"` / `"OFF"`, mapped to the device's wire values only when it declares them.
 
 For the arbiter, `ev_charger` defaults to **deferrable**, 10 min on / 5 min off; its `power` binding is the live draw and its `state` binding the on/off state.
+
+### 2f Electric vehicle contract (spec 183)
+
+An `electric_vehicle` (battery-electric or plug-in hybrid) is defined by `src/shared/electric-vehicle-contract.ts`. Every core point is identified by its category; both creation paths bind contract points first, under their contract alias.
+
+| Alias            | Side         | Category                                  | Unit | Meaning                                                                       |
+| ---------------- | ------------ | ----------------------------------------- | ---- | ----------------------------------------------------------------------------- |
+| `battery_level`  | data         | `ev_battery_level`                        | %    | Traction battery (not `battery`, the device-battery category)                 |
+| `range`          | data         | `ev_range`                                | km   | Electric range                                                                |
+| `plugged`        | data         | `ev_plugged`                              | —    | A cable is connected to the car                                               |
+| `charging_state` | data         | `ev_charging_state`                       | —    | `unplugged`, `idle`, `scheduled`, `waiting`, `charging`, `completed`, `error` |
+| `reported_at`    | data         | `ev_reported_at`                          | ISO  | When the car itself last reported                                             |
+| `at_home`        | data         | `ev_at_home`                              | —    | At the home location (no coordinates are ever published)                      |
+| `mileage`        | data         | `ev_mileage`                              | km   | Odometer                                                                      |
+| `charge_limit`   | data + order | `ev_charge_limit` / `set_ev_charge_limit` | %    | The limit the car applies by itself; set it where allowed                     |
+| `wake`           | order        | `ev_wake`                                 | —    | Wake the car (momentary); the plugin chooses the means                        |
+| `charge_start`   | order        | `ev_charge_start`                         | —    | Start a charge (momentary), where the maker allows it                         |
+
+A device is offered for an `electric_vehicle` when it declares `ev_battery_level`. A vehicle is never a submeter (`NON_SUBMETER_TYPES`), never a flexible load and never carries a timed command: the charger (spec 182) measures and is the load. Fuel and climate values of a plug-in hybrid are extras.
 
 ### 3 Per-binding category override
 

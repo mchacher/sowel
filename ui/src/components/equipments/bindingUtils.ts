@@ -21,6 +21,7 @@ import {
   computeBindingCandidates,
 } from "../../lib/binding-candidates";
 import { EV_CHARGER_CATEGORY_ALIASES } from "../../lib/ev-charger-contract";
+import { ELECTRIC_VEHICLE_CATEGORY_ALIASES } from "../../lib/electric-vehicle-contract";
 import { resolveHistorize } from "../../lib/history-defaults";
 
 // ============================================================
@@ -172,6 +173,19 @@ const RELEVANT_DATA: Record<string, string[]> = {
     "temperature_device",
     "generic",
   ],
+  // Spec 183 — the electric vehicle contract's data categories, and
+  // `generic` for the maker's extras (fuel, climate, raw codes).
+  electric_vehicle: [
+    "ev_battery_level",
+    "ev_range",
+    "ev_plugged",
+    "ev_charging_state",
+    "ev_reported_at",
+    "ev_at_home",
+    "ev_mileage",
+    "ev_charge_limit",
+    "generic",
+  ],
   energy_meter: ["energy", "power"],
   main_energy_meter: ["energy", "power"],
   energy_production_meter: ["energy", "power"],
@@ -291,6 +305,8 @@ const RELEVANT_ORDERS: Record<string, string[]> = {
   // Spec 182 — key fallback for a plain relay modelled as a charger; a real
   // charger's orders bind by category (RELEVANT_ORDER_CATEGORIES).
   ev_charger: ["state"],
+  // Spec 183 — a vehicle's orders bind by category only.
+  electric_vehicle: [],
 };
 
 /**
@@ -316,6 +332,8 @@ const RELEVANT_ORDER_CATEGORIES: Partial<Record<EquipmentType, OrderCategory[]>>
   camera: ["set_camera_monitoring"],
   // Spec 182 — start/stop and the charging current, whatever the plugin's keys.
   ev_charger: ["toggle_power", "light_toggle", "set_ev_charge_current"],
+  // Spec 183 — wake, start a charge, set the car's charge limit.
+  electric_vehicle: ["ev_wake", "ev_charge_start", "set_ev_charge_limit"],
 };
 
 /**
@@ -438,6 +456,14 @@ const TYPE_CATEGORY_ALIASES: Partial<Record<EquipmentType, Record<string, string
   media_player: { toggle_power: "power" },
   // Spec 182 — the EV charger contract, declared once in the shared module.
   ev_charger: EV_CHARGER_CATEGORY_ALIASES,
+  // Spec 183 — the electric vehicle contract.
+  electric_vehicle: ELECTRIC_VEHICLE_CATEGORY_ALIASES,
+};
+
+/** Types whose contract points bind first (specs 182, 183). */
+const CONTRACT_FIRST_TYPES: Readonly<Record<string, Readonly<Record<string, string>>>> = {
+  ev_charger: EV_CHARGER_CATEGORY_ALIASES,
+  electric_vehicle: ELECTRIC_VEHICLE_CATEGORY_ALIASES,
 };
 
 /**
@@ -650,13 +676,15 @@ export function computeBindingPlan(
 
     // Legacy path for all other equipment types — bind everything that
     // matches the RELEVANT_DATA / RELEVANT_ORDERS whitelists.
-    // Spec 182 — on an EV charger the contract points go first, so a vendor
-    // key that happens to equal a contract alias cannot take it from them.
+    // Specs 182, 183 — on a type with a contract the contract points go
+    // first, so a vendor key that happens to equal a contract alias cannot
+    // take it from them.
+    const contractMap = CONTRACT_FIRST_TYPES[equipmentType];
     const contractFirst = <T extends { category?: string }>(items: readonly T[]): T[] =>
-      equipmentType === "ev_charger"
+      contractMap
         ? [
-            ...items.filter((i) => i.category && EV_CHARGER_CATEGORY_ALIASES[i.category]),
-            ...items.filter((i) => !(i.category && EV_CHARGER_CATEGORY_ALIASES[i.category])),
+            ...items.filter((i) => i.category && contractMap[i.category]),
+            ...items.filter((i) => !(i.category && contractMap[i.category])),
           ]
         : [...items];
     for (const data of contractFirst(device.data)) {
