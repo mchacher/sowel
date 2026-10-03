@@ -1,6 +1,6 @@
 # Spec 183 — Electric vehicle equipment type
 
-- **Status**: Implemented — AC6 (surfaces) to verify on a candidate instance with the Renault plugin
+- **Status**: Implemented — verified on a candidate instance with the Renault plugin (2026-10-03)
 - **Date**: 2026-10-03
 - **Related**: spec 182 (EV charger — the other half of a charge), spec 177 (thermostat contract — the pattern for an equipment contract in code), spec 156 (UPS — new categories with a closed enum), spec 143 (low-battery monitor — why the car's battery is not `battery`)
 - **First plugin**: `sowel-plugin-renault` (MyRenault account; Renault Rafale E-Tech plug-in hybrid now, a Megane E-Tech soon)
@@ -102,7 +102,7 @@ A device is offered for an `electric_vehicle` when it declares `ev_battery_level
 - [x] AC3 — A device publishing the contract categories auto-binds the contract aliases on both paths; extras under their keys.
 - [x] AC4 — The device picker offers devices with `ev_battery_level`.
 - [x] AC5 — No energy profile, no metering panel, no timed command on a vehicle; not counted as a submeter.
-- [ ] AC6 — Card, widgets and sheet show battery, range, plug/charge state and the age when old; Wake and Start charging send their orders and show the outcome.
+- [x] AC6 — Card, widgets and sheet show battery, range, plug/charge state and the age when old; Wake and Start charging send their orders and show the outcome. _(Candidate instance, real Rafale: detail, zone card, dashboard widget, mobile sheet; Wake sent from the UI resumed the charge on the dé; the charge-limit stepper 100 → 95 → 100 read back. Start charging not exercised: the Rafale forbids it, so the plugin does not declare it.)_
 - [x] AC7 — `tsc`, tests and lint green (backend, tests, UI); docs checks green.
 
 ## Edge cases
