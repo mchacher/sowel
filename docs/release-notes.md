@@ -11,6 +11,31 @@ This page summarises every published version, newest first. For the full diff be
 
 ---
 
+## 1.73.x: The charger, the car, and a surplus that varies
+
+### v1.73.0 — 2026-10-04 { #v1-73-0 }
+
+Sowel learns to charge an electric car. Two new equipment types (the charger and the car), the arbiter learns to hand a load a power that follows the surplus instead of all or nothing, and three packages built on them: the dé charger over local Tuya, Renault cars through MyRenault, and a smart charging recipe. Everything was checked on a real dé charger and a Renault Rafale, including waking a car that had fallen asleep with its charge paused.
+
+- Feat (equipments): **EV charger equipment type** (spec 182, #1005, polish #1007). An `ev_charger` carries start/stop, the vehicle state (`disconnected` / `connected` / `charging`), live power, energy, session energy and the charging current. Its plugin publishes the categories and Sowel binds it on its own. Its card shows the state and the power; it is a submeter and a flexible load (deferrable by default). The timed command is not offered on it.
+- Feat (equipments): **electric vehicle equipment type** (spec 183, #1008). An `electric_vehicle` carries the battery level, range, plugged and charging state, the car's own report time, at home (yes/no, no coordinate), mileage and its charge limit. It also has a `wake` order, because a car whose charge pauses falls asleep and ignores the charger, and a `charge_start` order where the maker allows it. Its card says how old the car's report is. A car is neither a meter nor a flexible load: the charger is.
+- Feat (equipments): **`refresh` order on a car** (spec 184, #1009). It reads the car's latest report now, without waking it. A charging recipe uses it right after a start; the car's page has a small refresh button.
+- Feat (energy): **modulating capacity claims** (spec 185, #1014). A load that can draw anywhere in a range declares that range (an EV charger: 6–16 A).
+  - **Behaviour.** It starts at the minimum. The arbiter then raises its budget once more surplus has held for a minute and lowers it as soon as the surplus drops, with half a step of hysteresis each way.
+  - **On a deficit.** Such a load is turned down before anything is switched off, and a load ranked above it can take what it holds above its minimum.
+  - **What you see.** The arbitration table shows "budget X / max".
+  - **Unchanged for other loads.** Claims without a range behave exactly as before.
+- Fix (ui): **the activity names momentary orders and shows recipes in your language** (#1010). A wake read "Rafale → ON"; it now reads "Rafale → wake-up". A recipe that starts or acts shows its translated name.
+- Fix (api): **saving an energy profile keeps its shutdown inertia** (#1012). The equipment form sent `releaseDelayS` and the API dropped it, so an inertial load (a thermodynamic water heater) could be flagged unresponsive.
+- Docs: the French recipe guide gains the arbiter section (#1013); the arbiter deep-dive and the recipe guide describe modulating claims.
+- Maintenance (core): the agent may invoke the `sowel-feature` skill (#1004).
+- Plugins and recipes (registry):
+  - **`tuya` 0.1.0 → 0.2.1** (#1003, #1006): the dé portable charger over the local network; an idle charger stays fresh, and a refused start says why.
+  - **New: `renault` 0.1.0**: MyRenault cars as electric vehicles, with wake, refresh and charge limit.
+  - **New: `ev-charge-smart` 0.1.0** (recipe): charges from the surplus with a current that follows it, guarantees a minimum by departure, and wakes a sleeping car.
+
+---
+
 ## 1.72.x: A key to the gate, for a while
 
 ### v1.72.0 — 2026-10-01 { #v1-72-0 }

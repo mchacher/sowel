@@ -11,6 +11,31 @@ Cette page résume toutes les versions publiées, de la plus récente à la plus
 
 ---
 
+## 1.73.x : La borne, la voiture, et un surplus qui varie
+
+### v1.73.0 — 2026-10-04 { #v1-73-0 }
+
+Sowel apprend à recharger une voiture électrique. Deux nouveaux types d'équipement (la borne et la voiture), un arbitre qui sait attribuer à une charge une puissance qui suit le surplus plutôt que tout ou rien, et trois paquets qui s'appuient dessus : la borne dé en Tuya local, les voitures Renault via MyRenault, et une recette de recharge intelligente. Tout a été vérifié sur une vraie borne dé et une Renault Rafale, y compris le réveil d'une voiture endormie, charge en pause.
+
+- Nouveauté (équipements) : **type borne de recharge** (spec 182, #1005, finitions #1007). Une `ev_charger` porte la marche/arrêt, l'état du véhicule (`disconnected` / `connected` / `charging`), la puissance, l'énergie, l'énergie de session et le courant de charge. Son plugin publie les catégories et Sowel la lie tout seul. Sa carte montre l'état et la puissance ; c'est un sous-compteur et une charge pilotable (reportable par défaut). La commande temporisée ne lui est pas proposée.
+- Nouveauté (équipements) : **type véhicule électrique** (spec 183, #1008). Un `electric_vehicle` porte le niveau de batterie, l'autonomie, branché et l'état de charge, l'heure du dernier relevé de la voiture, à la maison (oui/non, sans coordonnées), le kilométrage et sa limite de charge. Il a aussi une commande `wake`, car une voiture dont la charge se met en pause s'endort et ignore la borne, et une commande `charge_start` là où le constructeur l'autorise. Sa carte indique l'âge du relevé. Une voiture n'est ni un compteur ni une charge pilotable : c'est la borne qui l'est.
+- Nouveauté (équipements) : **commande `refresh` sur la voiture** (spec 184, #1009). Elle relit tout de suite le dernier relevé de la voiture, sans la réveiller. Une recette de recharge l'utilise juste après un démarrage ; la fiche de la voiture a un petit bouton de relecture.
+- Nouveauté (énergie) : **demandes de capacité modulables** (spec 185, #1014). Une charge qui peut tirer n'importe quelle puissance dans une plage la déclare (une borne : 6 à 16 A).
+  - **Fonctionnement.** Elle démarre au minimum. L'arbitre monte ensuite son budget quand un surplus supplémentaire a tenu une minute, et le baisse dès que le surplus chute, avec une hystérésis d'un demi-pas dans chaque sens.
+  - **En cas de déficit.** Une telle charge est baissée avant que quoi que ce soit ne soit éteint, et une charge placée au-dessus d'elle peut prendre ce qu'elle tient au-delà de son minimum.
+  - **Ce que vous voyez.** Le tableau d'arbitrage affiche « budget X / max ».
+  - **Rien ne change pour les autres charges.** Une demande sans plage se comporte exactement comme avant.
+- Correction (ui) : **l'activité nomme les commandes ponctuelles et affiche les recettes dans votre langue** (#1010). Un réveil s'affichait « Rafale → ON » ; il s'affiche maintenant « Rafale → réveil ». Une recette qui démarre ou agit apparaît sous son nom traduit.
+- Correction (api) : **enregistrer un profil énergie garde son inertie d'arrêt** (#1012). Le formulaire envoyait `releaseDelayS` et l'API le perdait, si bien qu'une charge à inertie (un chauffe-eau thermodynamique) pouvait être déclarée non réactive.
+- Docs : le guide recette français gagne la section sur l'arbitre (#1013) ; l'article sur l'arbitre et le guide recette décrivent les demandes modulables.
+- Maintenance (core) : l'agent peut invoquer la skill `sowel-feature` (#1004).
+- Plugins et recettes (registre) :
+  - **`tuya` 0.1.0 → 0.2.1** (#1003, #1006) : la borne portable dé en réseau local ; une borne au repos reste à jour, et un démarrage refusé dit pourquoi.
+  - **Nouveau : `renault` 0.1.0** : les voitures MyRenault comme véhicules électriques, avec réveil, relecture et limite de charge.
+  - **Nouveau : `ev-charge-smart` 0.1.0** (recette) : recharge sur le surplus avec un courant qui le suit, garantit un minimum avant le départ, et réveille une voiture endormie.
+
+---
+
 ## 1.72.x : Une clé du portail, pour un temps
 
 ### v1.72.0 — 2026-10-01 { #v1-72-0 }
