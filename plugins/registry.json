@@ -584,6 +584,27 @@
     "sha256": "4500c9f5bbafc54bc3c0b9296c1bfedb605ea4b54fa406478facda27567e6805"
   },
   {
+    "id": "ev-charge-smart",
+    "type": "recipe",
+    "category": "energy",
+    "name": "Smart EV charging",
+    "description": "Charge an electric vehicle from the solar surplus up to a target (the current follows the surplus), guarantee a minimum by departure from off-peak hours, and wake a sleeping car when the charger refuses to start.",
+    "icon": "BatteryCharging",
+    "author": "mchacher",
+    "repo": "mchacher/sowel-recipe-ev-charge-smart",
+    "version": "0.1.0",
+    "tags": ["ev", "charging", "solar", "energy", "automation"],
+    "i18n": {
+      "fr": {
+        "name": "Recharge VE intelligente",
+        "description": "Recharge un véhicule électrique sur le surplus solaire jusqu'à une cible (le courant suit le surplus), garantit un minimum avant le départ en heures creuses, et réveille la voiture endormie quand la borne refuse de démarrer."
+      }
+    },
+    "sowelVersion": ">=1.73.0",
+    "owner": "mchacher",
+    "sha256": "5855df9c70df925b30494b9668e81daef6c7cfe054be2a1fd1f7abe19c8447a0"
+  },
+  {
     "id": "nut",
     "type": "integration",
     "name": "NUT (UPS)",
@@ -625,7 +646,7 @@
     "icon": "PlugZap",
     "author": "mchacher",
     "repo": "mchacher/sowel-plugin-tuya",
-    "version": "0.2.0",
+    "version": "0.2.1",
     "tags": ["tuya", "local", "ev", "ev-charger", "charger", "energy"],
     "i18n": {
       "fr": {
@@ -635,6 +656,26 @@
     },
     "sowelVersion": ">=1.71.0",
     "owner": "mchacher",
-    "sha256": "70a8e8f9898d79bb84e9e211ef50a0f3fcab26f4a3f57c582e41a49bf7cc217f"
+    "sha256": "f4e6343032204673f9db76b00c6f7e36e5d2f50ff04a48d122c8bdc84c9aa6b6"
+  },
+  {
+    "id": "renault",
+    "type": "integration",
+    "name": "Renault",
+    "description": "Renault cars through the MyRenault cloud: battery level, range, charging state, charge limit, and a remote wake to resume a paused charge",
+    "icon": "Car",
+    "author": "mchacher",
+    "repo": "mchacher/sowel-plugin-renault",
+    "version": "0.1.0",
+    "tags": ["renault", "ev", "electric-vehicle", "car", "cloud", "energy"],
+    "i18n": {
+      "fr": {
+        "name": "Renault",
+        "description": "Voitures Renault via le cloud MyRenault : niveau de batterie, autonomie, état de charge, limite de charge, et un réveil à distance pour relancer une charge en pause"
+      }
+    },
+    "sowelVersion": ">=1.73.0",
+    "owner": "mchacher",
+    "sha256": "bd1254f05239479bd8c7f437646893c460a87bfa15f5d7e5e45568fe5e0962e4"
   }
 ]
