@@ -284,8 +284,8 @@ describe("modulating claims (spec 185)", () => {
     expect(h.budgetW?.()).toBe(1840);
     p.plant.productionW = 4400; // 2100 W more
     p.run(40);
-    expect(h.budgetW?.()).toBe(1840); // holding
-    p.run(60);
+    expect(h.budgetW?.()).toBe(1840); // settling, then holding
+    p.run(140); // the hold counts only once the grant has settled (90 s + 60 s)
     const raised = h.budgetW?.() ?? 0;
     expect(raised).toBeGreaterThan(1840);
     const at = p.budgets.length;
@@ -372,24 +372,133 @@ describe("modulating claims (spec 185)", () => {
     expect(ev.budgetW?.()).toBeLessThan(3680);
   });
 
-  it("converges on a lagging, noisy plant without oscillating (AC5)", () => {
+  /** Budget moves that undo the previous one (a step up then down, or down then up). */
+  const reversals = (budgets: number[]) => {
+    let n = 0;
+    for (let k = 2; k < budgets.length; k++) {
+      const a = budgets[k - 1] - budgets[k - 2];
+      const b = budgets[k] - budgets[k - 1];
+      if (a * b < 0) n += 1;
+    }
+    return n;
+  };
+
+  for (const { productionW, noiseW } of [
+    { productionW: 3400, noiseW: 300 }, // surplus between two grid points
+    { productionW: 3150, noiseW: 500 },
+    { productionW: 2700, noiseW: 150 },
+  ]) {
+    it(`converges on a lagging, noisy plant without oscillating (AC5: ${productionW} W ± ${noiseW})`, () => {
+      const p = makePlant({ settings: { "energy.arbiter.smoothingS": "60" } });
+      p.plant.productionW = productionW;
+      p.plant.noiseW = noiseW;
+      p.run(60);
+      const h = p.claimEv();
+      p.run(600); // engage and settle
+      const settledAt = p.budgets.length;
+      p.run(7200);
+      expect(h.status()).toBe("granted");
+      const moves = p.budgets.slice(settledAt);
+      // Bounded movement over 2 h, and almost no back-and-forth.
+      expect(moves.length).toBeLessThanOrEqual(12);
+      expect(reversals(p.budgets.slice(Math.max(0, settledAt - 1)))).toBeLessThanOrEqual(4);
+      // Uses the surplus: within two steps of what is available.
+      const available = productionW - p.plant.baseW - 100;
+      expect(h.budgetW?.() ?? 0).toBeGreaterThanOrEqual(Math.min(3680, available) - 2 * 230 - 230);
+      // Import stays small.
+      expect(p.plant.importWs / p.plant.samples).toBeLessThan(250);
+    });
+  }
+
+  it("follows a 1 kW drop on a lagging meter without paying it twice (FR5)", () => {
     const p = makePlant({ settings: { "energy.arbiter.smoothingS": "60" } });
-    p.plant.productionW = 4300; // ~3700 surplus with the car off and the base
-    p.plant.noiseW = 500;
+    p.plant.productionW = 4300;
     p.run(60);
     const h = p.claimEv();
-    p.run(7200);
+    p.run(900);
+    expect(h.budgetW?.()).toBe(3680);
+    p.plant.productionW = 3300; // 1 kW less: the ideal budget is ~2900
+    p.run(600);
+    const b = h.budgetW?.() ?? 0;
+    expect(b).toBeGreaterThanOrEqual(2530); // not driven far below by the EMA lag
+    expect(b).toBeLessThanOrEqual(2990);
+  });
+
+  it("a slack-none claim above preempts on the modulating excess before revoking (FR10)", () => {
+    const p = makePlant({ priority: ["heater", "ev"] });
+    p.plant.productionW = 4400;
+    p.run(10);
+    const ev = p.claimEv();
+    p.run(700);
+    expect(ev.budgetW?.()).toBe(3680);
+    const heater = p.claimBinary("heater", { slack: "none" });
+    p.run(200);
+    // 2200 + margin needs the EV's excess (2300 W above its minimum): yielded, not revoked.
+    expect(heater.status()).toBe("granted");
+    expect(ev.status()).toBe("granted");
+    expect(ev.budgetW?.()).toBeLessThanOrEqual(1840);
+  });
+
+  it("a car drawing less than its budget cannot lend what it does not hold (review)", () => {
+    const p = makePlant({ priority: ["pump", "ev"] });
+    p.plant.productionW = 3600;
+    p.run(10);
+    const ev = p.claimEv();
+    p.run(700);
+    // The car tapers: it draws 1.5 kW whatever its budget.
+    p.plant.evIgnoresDecrease = false;
+    const realBudget = ev.budgetW?.() ?? 0;
+    expect(realBudget).toBeGreaterThan(1500);
+    const capped = { draw: 1500 };
+    const run = p.run;
+    const pump = p.claimBinary("pump");
+    // Force the car's draw to stay at 1.5 kW.
+    for (let i = 0; i < 20; i++) {
+      p.plant.evDrawW = capped.draw;
+      p.plant.evBudgetW = capped.draw;
+      run(10);
+    }
+    // Export already shows the unused part: the pump engages on it, without a
+    // phantom yield that would leave the home importing.
+    expect(pump.status()).toBe("granted");
+    expect(p.plant.importWs / p.plant.samples).toBeLessThan(150);
+  });
+
+  it("a stale meter revokes a modulating grant and resets its budget", () => {
+    const p = makePlant();
+    p.plant.productionW = 4400;
+    p.run(10);
+    const h = p.claimEv();
+    p.run(300);
     expect(h.status()).toBe("granted");
-    // Bounded movement: on average fewer than 12 changes per hour.
-    expect(p.budgets.length).toBeLessThanOrEqual(24);
-    // It uses most of the surplus.
-    expect(h.budgetW?.()).toBeGreaterThanOrEqual(2990);
-    // Average import and export over the run: the noise is ±500 W, so a
-    // regulator that follows it cannot do much better than a few hundred watts.
-    const avgImport = p.plant.importWs / p.plant.samples;
-    const avgExport = p.plant.exportWs / p.plant.samples;
-    expect(avgImport).toBeLessThan(250);
-    expect(avgExport).toBeLessThan(900);
+    vi.advanceTimersByTime(400_000); // no meter sample
+    expect(h.status()).toBe("pending");
+    expect(h.budgetW?.()).toBeNull();
+  });
+
+  it("a manual order on the charger suspends it like any load (FR13)", () => {
+    const p = makePlant();
+    p.plant.productionW = 4400;
+    p.run(10);
+    const h = p.claimEv();
+    p.run(300);
+    p.arbiter["onOrderExecuted"]("ev", 12, { kind: "manual", userId: "u" });
+    expect(h.status()).toBe("pending");
+    expect(p.kinds("suspended").length).toBe(1);
+  });
+
+  it("journals the last budget of a run of small changes once the window passes (FR14)", () => {
+    const p = makePlant({
+      settings: { "energy.arbiter.budgetJournalMinS": "120", "energy.arbiter.smoothingS": "1" },
+    });
+    p.plant.productionW = 2300;
+    p.run(10);
+    const h = p.claimEv();
+    p.run(130);
+    p.plant.productionW = 2600; // one small raise
+    p.run(400);
+    const last = p.kinds("budget-changed").at(-1) ?? p.kinds("granted").at(-1);
+    expect(last?.watts).toBe(h.budgetW?.());
   });
 
   it("a load ignoring a decrease is journaled and does not shed the next load (FR12)", () => {

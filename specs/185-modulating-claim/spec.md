@@ -1,6 +1,6 @@
 # Spec 185 — Modulating capacity claim
 
-- **Status**: Draft
+- **Status**: Implemented — AC9 (live, sunny day) pending
 - **Date**: 2026-10-03
 - **Related**: spec 140 (energy capacity arbiter — amended here), spec 166 (`reportNeed`), spec 182 (EV charger: "modulation is a separate core spec"), spec 183 (electric vehicle); `sowel-recipe-ev-charge-smart` spec 001 (first consumer, binary claim at a fixed current today)
 - **Measured context**: dé charger, single phase, 6–16 A in 1 A steps (≈ 1.38–3.68 kW, 230 W per step); the setpoint is confirmed in 1–8 s; the car follows a current change in seconds without pausing.
@@ -57,15 +57,15 @@ interface CapacityClaimHandle {
 ### Budget
 
 - **FR3 — Target.** For a granted modulating claim: `target = clamp(floorToStep(effectiveDraw + exportW + toleratedImportW − engageMarginW), minW, maxW)`, where `effectiveDraw` is the load's fresh measured draw, else its current budget. Its own draw is never read as surplus gone.
-- **FR4 — Raise slowly.** The budget rises to the target only when the target has stayed at least one step above the budget for `modulationRaiseHoldS` (default 60 s), and not within `modulationSettleS` (default 90 s) of the previous change. It rises straight to the held target (not one step at a time).
-- **FR5 — Lower fast.** When the target falls at least one step below the budget, the budget drops to it at the next evaluation, with no hold and no settle wait. Dead band: one step.
+- **FR4 — Raise slowly.** The budget rises only when the unfloored target has stayed at least 1.5 steps above it for `modulationRaiseHoldS` (default 60 s), the hold counting only once the previous change has settled (`modulationSettleS`, default 90 s — counted during it, the meter EMA still shows part of the last step as surplus and the raise overshoots). It rises straight to the held target, floored on the grid.
+- **FR5 — Lower fast.** When the unfloored target falls more than half a step below the budget, the budget drops to it (floored) at the next evaluation, with no hold. A second decrease inside the settle window needs the export to have worsened by a step since the first (the meter EMA still shows the first). The half-step margins each way are the hysteresis: with a floored target and no margin, the budget toggled a step every few minutes on a steady surplus.
 - **FR6 — Deficit order.** On a deficit, modulating loads are lowered first, lowest priority first, each down to `minW`; binary loads are revoked (existing rules) only when no modulating load can give more.
 - **FR7 — Cadence.** Budgets are recomputed on the existing evaluation (meter sample + 10 s tick), but `onBudget` is called only when the budget changes, so at most once per `modulationSettleS` upward.
 
 ### Priority with binary claims
 
 - **FR8 — Modulating above a pending binary.** It takes the headroom up to `maxW` first; the binary load below engages only on what is left.
-- **FR9 — Modulating below a pending binary.** Its excess over `minW` counts as available to the higher binary claim's engage check (like a pending claim's own draw does today). When that claim engages, the modulating budget is lowered in the same pass by what the grant needs, down to `minW`.
+- **FR9 — Modulating below a pending binary.** Its excess over `minW` — of what it really draws, when it draws less than its budget — counts as available to the higher binary claim's engage check (like a pending claim's own draw does today). When that claim engages, the modulating budget is lowered in the same pass by what the grant needs, down to `minW`.
 - **FR10 — Preemption.** A `slack: "none"` claim short of headroom first lowers lower-priority modulating budgets to `minW`, then revokes lower-priority loads (existing preemption).
 
 ### Accounting and audits
@@ -76,7 +76,7 @@ interface CapacityClaimHandle {
 
 ### Visibility
 
-- **FR14 — Journal, coalesced.** Grant (with the initial budget) and revoke are journaled as today. Budget changes are journaled as `budget-changed` only when the budget moved by at least `budgetJournalStepW` (1000 W) since the last journaled value, or `budgetJournalMinS` (900 s) has passed with a change — the 200-entry ring and the decision table are not flooded.
+- **FR14 — Journal, coalesced.** Grant (with the initial budget) and revoke are journaled as today. Budget changes are journaled as `budget-changed` only when the budget moved by at least `budgetJournalStepW` (1000 W) since the last journaled value, or `budgetJournalMinS` (900 s) has passed with a change; a value left unjournaled is written once that window passes, so the journal ends on the real budget.
 - **FR15 — Event.** `energy.capacity.budget { equipmentId, instanceId, watts }` on every applied change; deduplicated per equipment on the WebSocket topic.
 - **FR16 — Read model.** `ArbiterLoadInfo` gains `modulation` and `budgetW`; the arbitration surface shows "budget / max" (e.g. "2.3 / 3.7 kW") for a modulating load. Journal kind labelled EN/FR.
 - **FR17 — Shortfall simulation** (`simulateShortfalls`, #807) mirrors the new pass, so the roster never contradicts the engine.
@@ -87,14 +87,14 @@ interface CapacityClaimHandle {
 
 ## Acceptance criteria
 
-- [ ] AC1 — With no `modulation`, every existing arbiter test passes unchanged and the behaviour is identical.
-- [ ] AC2 — A modulating claim engages at `minW` and follows a rising surplus up to `maxW`, rising only after the hold and the settle window.
-- [ ] AC3 — A surplus drop lowers the budget at the next evaluation; a modulating load is revoked only at `minW` after `releaseHoldS`.
-- [ ] AC4 — With a binary claim ranked above, a lower modulating load yields its excess so the binary one engages; ranked below, the binary load engages only on what the modulating one leaves.
-- [ ] AC5 — On a simulated plant with meter lag, a 3.7 kW surplus with ±500 W noise converges without oscillation (budget changes bounded per hour).
-- [ ] AC6 — A budget decrease not followed is journaled `budget-not-honored` and does not shed the next load.
-- [ ] AC7 — The journal holds at most one `budget-changed` per 15 min unless the budget moved ≥ 1 kW.
-- [ ] AC8 — The arbitration surface shows budget / max for the charger.
+- [x] AC1 — With no `modulation`, every existing arbiter test passes unchanged and the behaviour is identical.
+- [x] AC2 — A modulating claim engages at `minW` and follows a rising surplus up to `maxW`, rising only after the hold and the settle window.
+- [x] AC3 — A surplus drop lowers the budget at the next evaluation; a modulating load is revoked only at `minW` after `releaseHoldS`.
+- [x] AC4 — With a binary claim ranked above, a lower modulating load yields its excess so the binary one engages; ranked below, the binary load engages only on what the modulating one leaves.
+- [x] AC5 — On a simulated plant with meter lag, a 3.7 kW surplus with ±500 W noise converges without oscillation (budget changes bounded per hour).
+- [x] AC6 — A budget decrease not followed is journaled `budget-not-honored` and does not shed the next load.
+- [x] AC7 — The journal holds at most one `budget-changed` per 15 min unless the budget moved ≥ 1 kW.
+- [x] AC8 — The arbitration surface shows budget / max for the charger.
 - [ ] AC9 — Live (owner's installation, sunny day): the EV recipe in modulating mode follows the surplus with grid import no worse than the binary mode, and no load starved.
 
 ## Edge cases

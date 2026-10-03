@@ -331,9 +331,10 @@ between declared flexible loads. Key invariants:
 - **Modulating claims** (spec 185): a claim may declare a range
   (`minW`, `maxW`, `stepW`). It engages and releases at `minW`; once granted,
   a budget pass after the grant pass assigns it a budget that follows the
-  surplus — raised only once the target has held a step above for
-  `modulationRaiseHoldS` and the previous change has settled
-  (`modulationSettleS`), lowered at the next evaluation (a second decrease
+  surplus — raised only once the target has held 1.5 steps above for
+  `modulationRaiseHoldS` after the previous change settled
+  (`modulationSettleS`), lowered at the next evaluation once half a step below
+  (a half-step hysteresis each way; a second decrease
   inside the settle window needs the export to have worsened by a step, since
   the meter EMA still shows the first). On a deficit, modulating budgets are
   lowered (lowest priority first) before any load is shed; a pending claim

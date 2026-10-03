@@ -1492,7 +1492,14 @@ export class CapacityArbiter {
         if (now - claim.engageSince >= this.config.engageHoldS * 1000) {
           const missingW = needW - headroomW - ownDrawW;
           if (missingW > 0) {
-            headroomW += this.yieldBelow(eq, missingW, now, exportW - claim.watts);
+            // Baseline for the decrease watchdogs: the export once this
+            // claim draws what it is granted.
+            headroomW += this.yieldBelow(
+              eq,
+              missingW,
+              now,
+              exportW - Math.max(0, claim.watts - ownDrawW),
+            );
           }
           if (claim.mod) {
             const initial = budgetOnGrid(
@@ -1878,7 +1885,10 @@ export class CapacityArbiter {
     for (const g of this.grantedClaims()) {
       if (!g.mod || g.equipmentId === equipmentId) continue;
       if (this.priorityRank(g.equipmentId) <= rank) continue;
-      sum += Math.max(0, g.mod.budgetW - g.mod.range.minW);
+      // What it really holds: a load drawing less than its budget (a car
+      // tapering) cannot give back what the export already shows (review).
+      const holds = Math.min(g.mod.budgetW, this.freshLiveDraw(g.equipmentId) ?? g.mod.budgetW);
+      sum += Math.max(0, holds - g.mod.range.minW);
     }
     return sum;
   }
@@ -1929,32 +1939,52 @@ export class CapacityArbiter {
       const mod = claim.mod;
       if (!mod || claim.status !== "granted") continue;
       const budget = mod.budgetW;
+      const step = mod.range.stepW;
       const settling = mod.changedAt !== null && now - mod.changedAt < settleMs;
       // While a change settles, the load (and the meter's EMA) has not caught
       // up: book it at its budget, which is also what the grant pass took off
       // the headroom. Once settled, what it really draws.
       const draw = settling ? budget : (this.freshLiveDraw(claim.equipmentId) ?? budget);
-      const target = budgetOnGrid(
-        mod.range,
-        draw + headroom + claim.toleratedImportW - this.config.engageMarginW,
-      );
+      // Unfloored: the hysteresis below is measured on it, not on the grid.
+      const ideal = draw + headroom + claim.toleratedImportW - this.config.engageMarginW;
       let next = budget;
-      if (target <= budget - mod.range.stepW) {
+      // Hysteresis of half a step each way (review): with a floored target the
+      // budget sat on the opposite threshold after every change and toggled a
+      // step every few minutes on a steady surplus.
+      if (ideal < budget - step / 2) {
         mod.raiseSince = null;
         const repeated =
-          settling &&
-          mod.exportAtDecrease !== null &&
-          exportW >= mod.exportAtDecrease - mod.range.stepW;
-        if (!repeated) next = target;
-      } else if (target >= budget + mod.range.stepW) {
-        mod.raiseSince ??= now;
-        if (now - mod.raiseSince >= holdMs && !settling) next = target;
+          settling && mod.exportAtDecrease !== null && exportW >= mod.exportAtDecrease - step;
+        if (!repeated) next = budgetOnGrid(mod.range, ideal);
+      } else if (ideal >= budget + step + step / 2 && budget < mod.range.maxW) {
+        // The hold only counts once the previous change has settled: counted
+        // during it, the meter EMA still shows part of the last step as
+        // surplus, and the raise overshot and came back (review).
+        if (settling) mod.raiseSince = null;
+        else {
+          mod.raiseSince ??= now;
+          if (now - mod.raiseSince >= holdMs) next = budgetOnGrid(mod.range, ideal);
+        }
       } else {
         mod.raiseSince = null;
       }
       if (next !== budget) this.setBudget(claim, next, now, exportW);
+      else this.journalSettledBudget(claim, now);
       headroom -= mod.budgetW - draw;
     }
+  }
+
+  /** FR14 — the last value of a run of small changes reaches the journal once
+   *  the coalescing window has passed, not only on the next change. */
+  private journalSettledBudget(claim: ClaimRecord, now: number): void {
+    const mod = claim.mod;
+    if (!mod || mod.journaledW === null || mod.journaledW === mod.budgetW) return;
+    if (mod.journaledAt !== null && now - mod.journaledAt < this.config.budgetJournalMinS * 1000) {
+      return;
+    }
+    mod.journaledW = mod.budgetW;
+    mod.journaledAt = now;
+    this.journal({ kind: "budget-changed", equipmentId: claim.equipmentId, watts: mod.budgetW });
   }
 
   private setBudget(claim: ClaimRecord, watts: number, now: number, exportW: number): void {
