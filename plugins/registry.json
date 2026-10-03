@@ -616,5 +616,25 @@
     "sowelVersion": ">=1.68.0",
     "owner": "mchacher",
     "sha256": "51f4b1fccb5c87c5bb1648fd8322cdddd551c3e72d56d7a55111b689fe1c3c5b"
+  },
+  {
+    "id": "tuya",
+    "type": "integration",
+    "name": "Tuya (local)",
+    "description": "Tuya devices over the local network, no cloud at runtime. First supported product: the dé portable EV charger (3.7 kW)",
+    "icon": "PlugZap",
+    "author": "mchacher",
+    "repo": "mchacher/sowel-plugin-tuya",
+    "version": "0.1.0",
+    "tags": ["tuya", "local", "ev", "ev-charger", "charger", "energy"],
+    "i18n": {
+      "fr": {
+        "name": "Tuya (local)",
+        "description": "Appareils Tuya en réseau local, sans cloud en fonctionnement. Premier produit pris en charge : la borne de recharge portable dé (3,7 kW)"
+      }
+    },
+    "sowelVersion": ">=1.71.0",
+    "owner": "mchacher",
+    "sha256": "4ca6f6c0e945f20f431445762f8bd35fc73269b76065d20c598c515ea7ac2b8f"
   }
 ]
