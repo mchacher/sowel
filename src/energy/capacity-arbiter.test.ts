@@ -807,6 +807,23 @@ describe("capacity arbiter", () => {
     expect(suspended?.running).toBe(false);
   });
 
+  it("an EV charger reading off after a recipe start is the car, not a wall switch", () => {
+    const h = makeHarness();
+    // The pump stands in for a charger: its `state` follows the car's draw.
+    (h.equipments.get("pump") as { type: string }).type = "ev_charger";
+    const handle = h.claim("i1", { equipmentId: "pump" });
+    h.run(-1000, 150);
+    expect(handle.status()).toBe("granted");
+    h.order("pump", true, { kind: "recipe", instanceId: "i1" });
+    h.feedState("pump", false); // the car sleeps: the charger keeps reading off
+    h.run(-400, 300); // well past divergenceConfirmS
+    expect(h.arbiter.getPublicState().journal.some((j) => j.kind === "suspended")).toBe(false);
+    expect(handle.status()).toBe("granted");
+    // A person's order still suspends it.
+    h.order("pump", false, { kind: "manual" });
+    expect(h.arbiter.getPublicState().journal.some((j) => j.kind === "suspended")).toBe(true);
+  });
+
   it("suspension TTL expiry journals a resumed hand-back with the load state", () => {
     const h = makeHarness({ settings: { "energy.arbiter.overrideTtlS": "60" } });
     h.feedState("pump", false);

@@ -2247,6 +2247,16 @@ export class CapacityArbiter {
       // arbiter's book is regulation, not a human at a wall switch. Its state
       // is still OBSERVED above for #535 (unclaimed-run end, `running`).
       if (this.profileOf(equipmentId)?.class !== "deferrable") continue;
+      // An EV charger's on/off reading follows the CAR, not a hand at a wall
+      // switch: a sleeping car keeps a charger that was switched on reading
+      // off (the dé reports "drawing", not its own switch). Read as a wall
+      // event, that suspended the charger for two hours right after a recipe
+      // started it (owner's installation, 2026-10-04). People's orders still
+      // suspend it through onOrderExecuted.
+      if (this.equipments.getById(equipmentId)?.type === "ev_charger") {
+        this.divergenceSince.delete(equipmentId);
+        continue;
+      }
       if (this.isSuspended(equipmentId)) {
         this.divergenceSince.delete(equipmentId);
         continue;
