@@ -553,6 +553,28 @@ describe("modulating claims (spec 185)", () => {
     expect(p.arbiter.getPublicState().grants[0]).toMatchObject({ budgetW: h.budgetW?.() });
   });
 
+  it("tolerated import buys the start and the minimum, not a budget that imports (FR3b)", () => {
+    const p = makePlant();
+    p.plant.productionW = 1600; // export 1300 at rest: short of 1380 + 100 without tolerance
+    p.run(10);
+    const h = p.claimEv({ toleratedImportW: 400 });
+    p.run(200);
+    expect(h.status()).toBe("granted"); // engaged thanks to the tolerance
+    expect(h.budgetW?.()).toBe(1380); // at the minimum, importing a little
+    // More surplus: the budget follows the surplus only, so the home does not import.
+    p.plant.productionW = 3600;
+    p.plant.samples = 0;
+    p.plant.importWs = 0;
+    p.run(900);
+    expect(h.budgetW?.()).toBe(2990); // 3600 − 300 − 100 = 3200, floored on the grid
+    expect(p.plant.importWs / p.plant.samples).toBeLessThan(30);
+    // A dip within the tolerance keeps it running at the minimum.
+    p.plant.productionW = 1500; // ~180 W import at 1380 W
+    p.run(1200);
+    expect(h.status()).toBe("granted");
+    expect(h.budgetW?.()).toBe(1380);
+  });
+
   it("a release resets the budget; the handle reads null", () => {
     const p = makePlant();
     p.plant.productionW = 3000;

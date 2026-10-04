@@ -1504,7 +1504,10 @@ export class CapacityArbiter {
           if (claim.mod) {
             const initial = budgetOnGrid(
               claim.mod.range,
-              headroomW + ownDrawW + claim.toleratedImportW - this.config.engageMarginW,
+              // No tolerance above the minimum (spec 185 FR3b): the import a
+              // load tolerates buys its start and its stay at minW, not a
+              // budget that imports all along.
+              headroomW + ownDrawW - this.config.engageMarginW,
             );
             this.grant(claim, initial);
             headroomW -= Math.max(0, initial - ownDrawW);
@@ -1946,7 +1949,10 @@ export class CapacityArbiter {
       // the headroom. Once settled, what it really draws.
       const draw = settling ? budget : (this.freshLiveDraw(claim.equipmentId) ?? budget);
       // Unfloored: the hysteresis below is measured on it, not on the grid.
-      const ideal = draw + headroom + claim.toleratedImportW - this.config.engageMarginW;
+      // FR3b — the tolerated import is spent at the minimum only: it lets the
+      // load start (engage need) and stay at minW through a dip (release
+      // pass), but the budget above minW follows the real surplus.
+      const ideal = draw + headroom - this.config.engageMarginW;
       let next = budget;
       // Hysteresis of half a step each way (review): with a floored target the
       // budget sat on the opposite threshold after every change and toggled a
