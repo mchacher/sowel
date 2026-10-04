@@ -49,6 +49,7 @@ const METRIC_LABELS: Record<string, string> = {
   rain: "weather.rainCurrent",
   sum_rain_1: "weather.rain1h",
   sum_rain_24: "weather.rain24h",
+  rain_today: "weather.rainToday",
   rain_1h: "weather.rain1h",
   rain_24h: "weather.rain24h",
 };

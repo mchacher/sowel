@@ -559,6 +559,7 @@
   "weather.rainCurrent": "Current rain",
   "weather.rain1h": "Rain 1h",
   "weather.rain24h": "Rain 24h",
+  "weather.rainToday": "Rain today",
   "aggregation.motion": "Motion",
   "aggregation.calm": "Calm",
   "aggregation.status": "Status",

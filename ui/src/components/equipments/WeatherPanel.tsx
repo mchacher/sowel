@@ -27,6 +27,7 @@ const KEY_LABELS: Record<string, string> = {
   rain: "weather.rainCurrent",
   sum_rain_1: "weather.rain1h",
   sum_rain_24: "weather.rain24h",
+  rain_today: "weather.rainToday",
   temperature: "category.temperature",
   humidity: "category.humidity",
   pressure: "category.pressure",
@@ -44,7 +45,7 @@ const PRIMARY_KEY: Record<string, string> = {
 /** Display order for keys within each device type. */
 const KEY_ORDER: Record<string, string[]> = {
   wind: ["wind_strength", "wind_angle", "gust_strength", "gust_angle"],
-  rain: ["sum_rain_24", "sum_rain_1", "rain"],
+  rain: ["sum_rain_24", "rain_today", "sum_rain_1", "rain"],
 };
 
 /**
