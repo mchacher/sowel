@@ -187,9 +187,18 @@ Gère les devices découverts par votre plugin. Deux méthodes principales sont 
 | Méthode               | Signature                                                                                   | Description                                           |
 | --------------------- | ------------------------------------------------------------------------------------------- | ----------------------------------------------------- |
 | `upsertFromDiscovery` | `(integrationId: string, source: string, discovered: DiscoveredDevice) => void`             | Crée ou met à jour un device depuis la découverte     |
-| `updateDeviceData`    | `(integrationId: string, sourceDeviceId: string, payload: Record<string, unknown>) => void` | Pousse de nouvelles valeurs de données pour un device |
+| `updateDeviceData`    | `(integrationId: string, sourceDeviceId: string, payload: Record<string, unknown>, sourceTimestamp?: number) => void` | Pousse de nouvelles valeurs de données pour un device. `sourceTimestamp` (epoch en **secondes**) quand la valeur ne vaut pas pour maintenant — voir ci-dessous |
 
 Voir [Découverte de devices](#decouverte-de-devices) et [Mises à jour de données device](#mises-a-jour-de-donnees-device) pour l'usage détaillé.
+
+`sourceTimestamp` est en **secondes** depuis l'epoch, pas en millisecondes : InfluxDB est écrit
+avec la précision `"s"` (`src/core/influx-client.ts`), et un `Date.now()` tomberait des milliers
+d'années plus loin. Il s'applique à toutes les clés du payload : envoyez les clés horodatées dans
+un appel à part. Une valeur horodatée échappe à la déduplication de l'historique, et une seconde
+écriture avec le même alias et le même horodatage remplace la première : c'est ainsi qu'un plugin
+garde un seul point par période et le met à jour tant qu'elle est ouverte
+(`sowel-plugin-legrand-energy` pour l'énergie par demi-heure, `sowel-plugin-rain-gauge` pour la
+pluie par heure).
 
 !!! warning "Une nouvelle donnée n'atteint pas toute seule les équipements existants"
 Ajouter une clé dans `DiscoveredDevice.data` crée bien la ligne `device_data`
