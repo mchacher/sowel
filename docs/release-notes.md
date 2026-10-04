@@ -13,6 +13,13 @@ This page summarises every published version, newest first. For the full diff be
 
 ## 1.73.x: The charger, the car, and a surplus that varies
 
+### v1.73.1 — 2026-10-04 { #v1-73-1 }
+
+The first night and morning on the owner's installation.
+
+- Fix (energy): **a modulating load's tolerated import buys its start, not its budget** (spec 185 FR3b, #1019). With an import tolerance on the EV charger, the arbiter added it to the charging budget, so the car would have drawn about 300 W from the grid for the whole solar charge. The tolerance now only lets the charge start with less surplus and hold its minimum through a cloud; above the minimum the car takes the real surplus only.
+- Plugins and recipes (registry): **`ev-charge-smart` 0.1.1** (#1018) — switching the charger off by hand hands it back to the recipe at once; it used to stay out until the car was unplugged, which skipped a night's guaranteed minimum.
+
 ### v1.73.0 — 2026-10-04 { #v1-73-0 }
 
 Sowel learns to charge an electric car. Two new equipment types (the charger and the car), the arbiter learns to hand a load a power that follows the surplus instead of all or nothing, and three packages built on them: the dé charger over local Tuya, Renault cars through MyRenault, and a smart charging recipe. Everything was checked on a real dé charger and a Renault Rafale, including waking a car that had fallen asleep with its charge paused.

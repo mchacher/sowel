@@ -13,6 +13,13 @@ Cette page résume toutes les versions publiées, de la plus récente à la plus
 
 ## 1.73.x : La borne, la voiture, et un surplus qui varie
 
+### v1.73.1 — 2026-10-04 { #v1-73-1 }
+
+La première nuit et la première matinée sur l'installation du mainteneur.
+
+- Correction (énergie) : **l'import toléré d'une charge modulable sert à démarrer, pas à fixer son budget** (spec 185 FR3b, #1019). Avec une tolérance d'import sur la borne, l'arbitre l'ajoutait au budget de charge, si bien que la voiture aurait tiré environ 300 W du réseau pendant toute la charge solaire. La tolérance ne sert plus qu'à démarrer avec moins de surplus et à tenir le minimum au passage d'un nuage ; au-dessus du minimum, la voiture ne prend que le vrai surplus.
+- Plugins et recettes (registre) : **`ev-charge-smart` 0.1.1** (#1018) — éteindre la borne à la main lui rend la main tout de suite ; avant, la recette restait en retrait jusqu'au débranchement, ce qui a fait sauter le minimum garanti d'une nuit.
+
 ### v1.73.0 — 2026-10-04 { #v1-73-0 }
 
 Sowel apprend à recharger une voiture électrique. Deux nouveaux types d'équipement (la borne et la voiture), un arbitre qui sait attribuer à une charge une puissance qui suit le surplus plutôt que tout ou rien, et trois paquets qui s'appuient dessus : la borne dé en Tuya local, les voitures Renault via MyRenault, et une recette de recharge intelligente. Tout a été vérifié sur une vraie borne dé et une Renault Rafale, y compris le réveil d'une voiture endormie, charge en pause.
