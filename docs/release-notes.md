@@ -13,6 +13,11 @@ This page summarises every published version, newest first. For the full diff be
 
 ## 1.73.x: The charger, the car, and a surplus that varies
 
+### v1.73.2 — 2026-10-04 { #v1-73-2 }
+
+- Fix (energy): **an EV charger reading off is the car, not a wall switch** (#1022). The dé charger reports whether the car draws, not its own switch. A sleeping car after a recipe start therefore read as a charger switched off at the wall, and the arbiter put it in manual control for two hours. EV chargers are now left out of that detection; your own orders still take the charger back.
+- Plugins and recipes (registry): **`ev-charge-smart` 0.1.2** — the arbiter taking the charger back no longer puts the recipe in manual mode; only your ON order does.
+
 ### v1.73.1 — 2026-10-04 { #v1-73-1 }
 
 The first night and morning on the owner's installation.

@@ -13,6 +13,11 @@ Cette page résume toutes les versions publiées, de la plus récente à la plus
 
 ## 1.73.x : La borne, la voiture, et un surplus qui varie
 
+### v1.73.2 — 2026-10-04 { #v1-73-2 }
+
+- Correction (énergie) : **une borne qui se lit éteinte, c'est la voiture, pas un interrupteur** (#1022). La borne dé indique si la voiture tire du courant, pas l'état de son propre interrupteur. Une voiture endormie après un démarrage par la recette se lisait donc comme une borne coupée à la main, et l'arbitre la passait en pilotage manuel pour deux heures. Les bornes de recharge sont désormais exclues de cette détection ; vos propres ordres reprennent toujours la main.
+- Plugins et recettes (registre) : **`ev-charge-smart` 0.1.2** — une reprise en main par l'arbitre ne met plus la recette en mode manuel ; seul votre ordre ON le fait.
+
 ### v1.73.1 — 2026-10-04 { #v1-73-1 }
 
 La première nuit et la première matinée sur l'installation du mainteneur.
