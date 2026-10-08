@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from "vitest";
-import { InfluxClient } from "./influx-client.js";
+import { InfluxClient, buildRainSumDailyFlux } from "./influx-client.js";
 import { createLogger } from "./logger.js";
 
 /**
@@ -124,5 +124,48 @@ describe("InfluxClient connect after a previous connection", () => {
     expect(client.getConfig()?.bucket).toBe("other");
     // And no writer bound to the previous client is carried over.
     expect(inner.energyHourlyWriteApi).toBeNull();
+  });
+});
+
+// Spec 186 — one rain total per local day, kept a year.
+describe("buildRainSumDailyFlux", () => {
+  const params = {
+    hourlyBucket: "sowel-hourly",
+    rainDailyBucket: "sowel-rain-daily",
+    org: "sowel-org",
+    timezone: "Europe/Paris",
+  };
+
+  it("schedules a daily task over the last 3 days", () => {
+    const flux = buildRainSumDailyFlux({ ...params, task: true });
+    expect(flux).toContain('option task = {name: "sowel-rain-sum-daily", every: 1d');
+    expect(flux).toContain("date.sub(d: 3d, from: now())");
+    // imports must precede the task option
+    expect(flux.indexOf('import "date"')).toBeLessThan(flux.indexOf("option task"));
+  });
+
+  it("backfills without a task option", () => {
+    const flux = buildRainSumDailyFlux({ ...params, lookbackDays: 90 });
+    expect(flux).not.toContain("option task");
+    expect(flux).toContain("date.sub(d: 90d, from: now())");
+  });
+
+  it("starts one second after a local midnight so no partial day overwrites a full one", () => {
+    const flux = buildRainSumDailyFlux({ ...params, task: true });
+    expect(flux).toContain('loc = timezone.location(name: "Europe/Paris")');
+    expect(flux).toContain("date.add(d: 1s, to: date.truncate(");
+    expect(flux).toContain("unit: 1d, location: loc");
+  });
+
+  it("shifts end-stamped hours back, sums per local day, writes the sum field", () => {
+    const flux = buildRainSumDailyFlux({ ...params, task: true });
+    expect(flux).toContain('r.category == "rain"');
+    expect(flux).toContain('r._field == "mean"');
+    expect(flux.indexOf("timeShift(duration: -1h)")).toBeLessThan(flux.indexOf("aggregateWindow"));
+    expect(flux).toContain(
+      'aggregateWindow(every: 1d, fn: sum, createEmpty: false, timeSrc: "_start", location: loc)',
+    );
+    expect(flux).toContain('set(key: "_field", value: "sum")');
+    expect(flux).toContain('to(bucket: "sowel-rain-daily", org: "sowel-org")');
   });
 });

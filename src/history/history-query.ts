@@ -13,6 +13,32 @@ function isRainLike(category?: string): boolean {
 }
 
 /**
+ * Spec 186 — how far back a daily rain query keeps reading the hourly bucket
+ * (kept 90 days). Older days come from the rain-daily bucket (kept a year).
+ */
+export const RAIN_HOURLY_SAFE_DAYS = 80;
+
+/**
+ * How a daily rain window [from, to] is read. The Flux cutoff is a local
+ * midnight between now - 81 d and now - 80 d, so one day of margin on each
+ * side keeps `from` before it (union) and `to` after it (union) or before it
+ * (rain-daily alone) whatever the zone.
+ */
+export function rainDailyMode(
+  from: Date,
+  to: Date,
+  now: number = Date.now(),
+): "hourly" | "union" | "daily" {
+  const day = 86_400_000;
+  if (from.getTime() >= now - (RAIN_HOURLY_SAFE_DAYS + 1) * day) return "hourly";
+  if (to.getTime() <= now - (RAIN_HOURLY_SAFE_DAYS + 1) * day) return "daily";
+  if (to.getTime() >= now - (RAIN_HOURLY_SAFE_DAYS - 1) * day) return "union";
+  // `to` within a day of the cutoff: the union's recent half could be empty or
+  // inverted. The rain-daily bucket holds those days too.
+  return "daily";
+}
+
+/**
  * The house's time zone, so a rain day is cut at local midnight like the energy
  * views (spec 119). Same source and fallback as the energy routes.
  */
@@ -100,6 +126,14 @@ export function buildFluxQuery(params: {
   isDownsampled?: boolean;
   /** IANA zone the rain windows are cut in. Defaults to the server's. */
   timezone?: string;
+  /**
+   * Spec 186 — rain-daily bucket holding one total per local day for a year.
+   * Set for a daily rain query reaching past the hourly retention: days older
+   * than {@link RAIN_HOURLY_SAFE_DAYS} are read there, the rest as before.
+   */
+  rainDailyBucket?: string;
+  /** With `rainDailyBucket`: the whole window is older than the cutoff, read it there alone. */
+  rainDailyOnly?: boolean;
 }): string {
   const { bucket, equipmentId, alias, from, to, resolution, isDiscrete, category, isDownsampled } =
     params;
@@ -123,6 +157,55 @@ export function buildFluxQuery(params: {
     // to the hour it fell in, then cut the days at local midnight, not UTC, as
     // the energy views do (spec 119). Without both, a 00:00-01:00 shower in
     // summer landed on the previous day.
+    if (
+      isRainLike(category) &&
+      resolution === "1d" &&
+      params.rainDailyBucket &&
+      params.rainDailyOnly
+    ) {
+      return `from(bucket: "${params.rainDailyBucket}")
+  |> range(start: ${fromStr}, stop: ${toStr})
+  |> filter(fn: (r) => r._measurement == "equipment_data")
+  |> filter(fn: (r) => r.equipmentId == "${equipmentId}")
+  |> filter(fn: (r) => r.alias == "${alias}")
+  |> filter(fn: (r) => r._field == "sum")
+  |> keep(columns: ["_time", "_value"])
+  |> sort(columns: ["_time"])
+  |> limit(n: 500)`;
+    }
+    if (isRainLike(category) && resolution === "1d" && params.rainDailyBucket) {
+      // Both halves keep only _time/_value so their tables union cleanly. The
+      // recent half starts one second after the cutoff midnight: the hourly
+      // point stamped exactly there is the previous day's last hour, already
+      // counted in the older half.
+      return `import "timezone"
+import "date"
+
+loc = timezone.location(name: "${tz}")
+cutoff = date.truncate(t: date.sub(d: ${RAIN_HOURLY_SAFE_DAYS}d, from: now()), unit: 1d, location: loc)
+
+older = from(bucket: "${params.rainDailyBucket}")
+  |> range(start: ${fromStr}, stop: cutoff)
+  |> filter(fn: (r) => r._measurement == "equipment_data")
+  |> filter(fn: (r) => r.equipmentId == "${equipmentId}")
+  |> filter(fn: (r) => r.alias == "${alias}")
+  |> filter(fn: (r) => r._field == "sum")
+  |> keep(columns: ["_time", "_value"])
+
+recent = from(bucket: "${bucket}")
+  |> range(start: date.add(d: 1s, to: cutoff), stop: ${toStr})
+  |> filter(fn: (r) => r._measurement == "equipment_data")
+  |> filter(fn: (r) => r.equipmentId == "${equipmentId}")
+  |> filter(fn: (r) => r.alias == "${alias}")
+  |> filter(fn: (r) => r._field == "mean")
+  |> timeShift(duration: -1h)
+  |> aggregateWindow(every: 1d, fn: sum, createEmpty: false, timeSrc: "_start", location: loc)
+  |> keep(columns: ["_time", "_value"])
+
+union(tables: [older, recent])
+  |> sort(columns: ["_time"])
+  |> limit(n: 500)`;
+    }
     if (isRainLike(category)) {
       const every = resolution === "1h" ? "1h" : "1d";
       return `import "timezone"
@@ -409,7 +492,7 @@ export async function queryHistory(
       // Cumulative categories (energy, rain): read the pre-aggregated mean field directly
       // from the downsampled bucket. The bucket already stores one point per resolution
       // period (1h or 1d) with the mean/min/max fields populated.
-      const flux = buildFluxQuery({
+      const baseParams = {
         bucket: targetBucket,
         equipmentId: params.equipmentId,
         alias: params.alias,
@@ -418,15 +501,44 @@ export async function queryHistory(
         resolution,
         category: params.category,
         isDownsampled: targetBucket !== config.bucket,
-      });
-
-      for await (const { values, tableMeta } of queryApi.iterateRows(flux)) {
-        const o = tableMeta.toObject(values);
-        const time = o._time as string | undefined;
-        const value = o._value as number | undefined;
-        if (time && typeof value === "number") {
-          points.push({ time, value });
+      };
+      const collect = async (flux: string) => {
+        for await (const { values, tableMeta } of queryApi.iterateRows(flux)) {
+          const o = tableMeta.toObject(values);
+          const time = o._time as string | undefined;
+          const value = o._value as number | undefined;
+          if (time && typeof value === "number") {
+            points.push({ time, value });
+          }
         }
+      };
+
+      // Spec 186 — a daily rain range older than the hourly retention reads its
+      // old days from the rain-daily bucket. Should that bucket be missing (its
+      // setup failed), fall back to the hourly-only read rather than nothing.
+      const mode =
+        isRainLike(params.category) && resolution === "1d" && baseParams.isDownsampled
+          ? rainDailyMode(fromDate, toDate)
+          : "hourly";
+      if (mode !== "hourly") {
+        try {
+          await collect(
+            buildFluxQuery({
+              ...baseParams,
+              rainDailyBucket: `${config.bucket}-rain-daily`,
+              rainDailyOnly: mode === "daily",
+            }),
+          );
+        } catch (err) {
+          logger.warn(
+            { err, equipmentId: params.equipmentId, alias: params.alias },
+            "Rain-daily read failed, falling back to the hourly bucket",
+          );
+          points.length = 0;
+          await collect(buildFluxQuery(baseParams));
+        }
+      } else {
+        await collect(buildFluxQuery(baseParams));
       }
 
       // Fallback: cumulative bucket has no data → try raw bucket with on-the-fly aggregation

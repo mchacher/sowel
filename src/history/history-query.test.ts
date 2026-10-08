@@ -7,6 +7,7 @@ import {
   querySparkline,
   queryZoneSparkline,
   queryHistorizedAliases,
+  rainDailyMode,
 } from "./history-query.js";
 import type { HistoryPoint } from "../shared/types.js";
 import { createLogger } from "../core/logger.js";
@@ -36,13 +37,22 @@ function makeInflux(options: {
   capture?: string[];
   configured?: boolean;
   throwOnQuery?: boolean;
+  /** Throw only for the queries this predicate matches (e.g. a missing bucket). */
+  throwWhen?: (flux: string) => boolean;
 }): InfluxClient {
-  const { rows = [], lastRows, capture, configured = true, throwOnQuery = false } = options;
+  const {
+    rows = [],
+    lastRows,
+    capture,
+    configured = true,
+    throwOnQuery = false,
+    throwWhen,
+  } = options;
 
   const queryApi = {
     iterateRows(flux: string) {
       capture?.push(flux);
-      if (throwOnQuery) throw new Error("influx boom");
+      if (throwOnQuery || throwWhen?.(flux)) throw new Error("influx boom");
       const out = lastRows && flux.includes("|> last()") ? lastRows : rows;
       return {
         async *[Symbol.asyncIterator]() {
@@ -537,5 +547,171 @@ describe("queryHistory — discrete boundaries (#498)", () => {
       logger,
     );
     expect(capture.some((q) => q.includes("|> last()"))).toBe(false);
+  });
+});
+
+// Spec 186 — rain kept a year as daily totals. The hourly bucket rain is summed
+// from keeps 90 days; past that, the old days come from the rain-daily bucket.
+describe("rain-daily bucket (spec 186)", () => {
+  const rainParams = {
+    ...baseParams,
+    alias: "rain",
+    bucket: "sowel-hourly",
+    category: "rain",
+    isDownsampled: true,
+    timezone: "Europe/Paris",
+  } as const;
+
+  it("unions the rain-daily totals with the recent hourly sums", () => {
+    const flux = buildFluxQuery({
+      ...rainParams,
+      resolution: "1d",
+      rainDailyBucket: "sowel-rain-daily",
+    });
+    expect(flux).toContain('from(bucket: "sowel-rain-daily")');
+    expect(flux).toContain('r._field == "sum"');
+    expect(flux).toContain("date.sub(d: 80d, from: now())");
+    expect(flux).toContain("location: loc)");
+    // the hourly point stamped exactly at the cutoff is the previous day's last hour
+    expect(flux).toContain("range(start: date.add(d: 1s, to: cutoff)");
+    expect(flux).toContain("union(tables: [older, recent])");
+    expect(flux.indexOf("timeShift(duration: -1h)")).toBeGreaterThan(flux.indexOf("recent ="));
+  });
+
+  it("ignores the rain-daily bucket for hourly resolution", () => {
+    const flux = buildFluxQuery({
+      ...rainParams,
+      resolution: "1h",
+      rainDailyBucket: "sowel-rain-daily",
+    });
+    expect(flux).not.toContain("rain-daily");
+  });
+
+  const daysAgo = (n: number) => new Date(Date.now() - n * 86_400_000).toISOString();
+
+  it("reads a 6-month daily rain range through the rain-daily bucket", async () => {
+    const capture: string[] = [];
+    await queryHistory(
+      makeInflux({ rows: [{ _time: "2026-05-01T22:00:00Z", _value: 4 }], capture }),
+      {
+        equipmentId: "eq-1",
+        alias: "rain",
+        from: daysAgo(183),
+        aggregation: "1d",
+        category: "rain",
+      },
+      logger,
+    );
+    expect(capture[0]).toContain('from(bucket: "sowel-rain-daily")');
+  });
+
+  it("keeps the hourly-only read for a range within the hourly retention", async () => {
+    const capture: string[] = [];
+    await queryHistory(
+      makeInflux({ rows: [{ _time: "2026-05-01T22:00:00Z", _value: 4 }], capture }),
+      {
+        equipmentId: "eq-1",
+        alias: "rain",
+        from: daysAgo(30),
+        aggregation: "1d",
+        category: "rain",
+      },
+      logger,
+    );
+    expect(capture[0]).not.toContain("rain-daily");
+  });
+
+  it("never touches the rain-daily bucket for other categories", async () => {
+    const capture: string[] = [];
+    await queryHistory(
+      makeInflux({ rows: [], capture }),
+      {
+        equipmentId: "eq-1",
+        alias: "temperature",
+        from: daysAgo(183),
+        aggregation: "1d",
+        category: "temperature",
+      },
+      logger,
+    );
+    expect(capture.join("\n")).not.toContain("rain-daily");
+  });
+
+  it("reads a window wholly older than the cutoff from the rain-daily bucket alone", async () => {
+    const capture: string[] = [];
+    await queryHistory(
+      makeInflux({ rows: [{ _time: "2026-05-01T22:00:00Z", _value: 4 }], capture }),
+      {
+        equipmentId: "eq-1",
+        alias: "rain",
+        from: daysAgo(160),
+        to: daysAgo(130),
+        aggregation: "1d",
+        category: "rain",
+      },
+      logger,
+    );
+    expect(capture[0]).toContain('from(bucket: "sowel-rain-daily")');
+    expect(capture[0]).not.toContain("sowel-hourly");
+    expect(capture[0]).toContain(`stop: ${new Date(Date.parse(daysAgo(130))).toISOString()}`);
+  });
+
+  it("still falls back to the raw bucket when the rain read returns nothing", async () => {
+    const capture: string[] = [];
+    await queryHistory(
+      makeInflux({ rows: [], capture }),
+      {
+        equipmentId: "eq-1",
+        alias: "rain",
+        from: daysAgo(183),
+        aggregation: "1d",
+        category: "rain",
+      },
+      logger,
+    );
+    expect(capture).toHaveLength(2);
+    expect(capture[1]).toContain('from(bucket: "sowel")');
+  });
+
+  it("falls back to the hourly read when the rain-daily bucket cannot be read", async () => {
+    const capture: string[] = [];
+    const res = await queryHistory(
+      makeInflux({
+        rows: [{ _time: "2026-09-01T22:00:00Z", _value: 2.1 }],
+        capture,
+        throwWhen: (flux) => flux.includes("rain-daily"),
+      }),
+      {
+        equipmentId: "eq-1",
+        alias: "rain",
+        from: daysAgo(183),
+        aggregation: "1d",
+        category: "rain",
+      },
+      logger,
+    );
+    expect(capture).toHaveLength(2);
+    expect(capture[1]).not.toContain("rain-daily");
+    expect(res.points).toEqual([{ time: "2026-09-01T22:00:00Z", value: 2.1 }]);
+  });
+});
+
+describe("rainDailyMode (spec 186)", () => {
+  const now = Date.parse("2026-10-08T10:00:00Z");
+  const ago = (d: number) => new Date(now - d * 86_400_000);
+
+  it("keeps the hourly read while the window starts within 81 days", () => {
+    expect(rainDailyMode(ago(80.5), ago(0), now)).toBe("hourly");
+    expect(rainDailyMode(ago(30), ago(0), now)).toBe("hourly");
+  });
+
+  it("unions when the window spans the cutoff", () => {
+    expect(rainDailyMode(ago(183), ago(0), now)).toBe("union");
+    expect(rainDailyMode(ago(183), ago(79), now)).toBe("union");
+  });
+
+  it("reads rain-daily alone when the window ends before or around the cutoff", () => {
+    expect(rainDailyMode(ago(160), ago(130), now)).toBe("daily");
+    expect(rainDailyMode(ago(183), ago(80), now)).toBe("daily");
   });
 });

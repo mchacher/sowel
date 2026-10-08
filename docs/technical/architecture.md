@@ -291,6 +291,17 @@ sowel-energy-daily       -- 10-year retention -- daily sums
 
 Additional downsampled buckets (`sowel-hourly`, `sowel-daily`) exist for non-energy time-series data.
 
+Rain is summed from `sowel-hourly` (the daily bucket only stores means), which keeps 90 days. To look rain up further back (spec 186), a dedicated bucket keeps one total per local day:
+
+```
+sowel-hourly             -- 90-day retention -- hourly means (rain: mm per hour)
+  | task: sowel-rain-sum-daily (every: 1d, lookback: last 3 local days)
+  | + backfill of the last 90 days on every start (idempotent)
+sowel-rain-daily         -- 1-year retention -- daily rain totals (field `sum`, local midnight)
+```
+
+A daily rain query starting more than 81 days ago reads days older than 80 days from `sowel-rain-daily` and the rest from `sowel-hourly`; if `sowel-rain-daily` cannot be read it falls back to `sowel-hourly` alone. The task's time zone is fixed when it is created (`TZ`): changing `TZ` later needs the task deleted so it is recreated.
+
 InfluxDB is optional -- a failed connection is logged and the engine keeps running, with history and energy aggregation degraded. When it does connect, Sowel auto-creates buckets, downsampling tasks, and energy aggregation tasks.
 
 #### Energy deltas are accumulated, never sampled
@@ -523,6 +534,7 @@ A backup ZIP contains:
 | `influx-hourly.lp`        | Downsampled hourly data (last 90 days)                                                                                                                                                                |
 | `influx-daily.lp`         | Downsampled daily data (last 5 years)                                                                                                                                                                 |
 | `influx-energy-hourly.lp` | Energy hourly sums (last 2 years)                                                                                                                                                                     |
+| `influx-rain-daily.lp`    | Rain daily totals (last year)                                                                                                                                                                         |
 | `influx-energy-daily.lp`  | Energy daily sums (last 10 years)                                                                                                                                                                     |
 | `data/*`                  | All non-DB files from `data/` (token secrets, etc.), dynamically scanned against the restore whitelist, excluding `.db`, `.pid`, `.log` files and the `.instance-id` / `.shadow-target` local markers |
 

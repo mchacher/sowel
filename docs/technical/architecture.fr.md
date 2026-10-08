@@ -267,6 +267,17 @@ sowel-energy-daily       -- 10-year retention -- daily sums
 
 Des buckets downsamplés supplémentaires (`sowel-hourly`, `sowel-daily`) existent pour les séries temporelles non énergétiques.
 
+La pluie est sommée depuis `sowel-hourly` (le bucket journalier ne stocke que des moyennes), conservé 90 jours. Pour remonter plus loin (spec 186), un bucket dédié garde un total par jour local :
+
+```
+sowel-hourly             -- rétention 90 jours -- moyennes horaires (pluie : mm par heure)
+  | tâche : sowel-rain-sum-daily (every: 1d, 3 derniers jours locaux)
+  | + rattrapage des 90 derniers jours à chaque démarrage (idempotent)
+sowel-rain-daily         -- rétention 1 an -- totaux de pluie par jour (champ `sum`, minuit local)
+```
+
+Une requête de pluie par jour qui commence il y a plus de 81 jours lit les jours de plus de 80 jours dans `sowel-rain-daily` et le reste dans `sowel-hourly` ; si `sowel-rain-daily` est illisible, elle se rabat sur `sowel-hourly` seul. Le fuseau de la tâche est figé à sa création (`TZ`) : changer `TZ` ensuite demande de supprimer la tâche pour qu'elle soit recréée.
+
 InfluxDB est obligatoire : Sowel se connecte au démarrage et auto-crée les buckets, les tâches de downsampling, et les tâches d'agrégation énergétique.
 
 #### Où l'effet d'un ordre est observé
@@ -400,6 +411,7 @@ Un ZIP de backup contient :
 | `influx-hourly.lp`        | Données horaires downsamplées (90 derniers jours)                                                                                                                                                                         |
 | `influx-daily.lp`         | Données journalières downsamplées (5 dernières années)                                                                                                                                                                    |
 | `influx-energy-hourly.lp` | Sommes énergétiques horaires (2 dernières années)                                                                                                                                                                         |
+| `influx-rain-daily.lp`    | Totaux de pluie par jour (dernière année)                                                                                                                                                                                 |
 | `influx-energy-daily.lp`  | Sommes énergétiques journalières (10 dernières années)                                                                                                                                                                    |
 | `data/*`                  | Tous les fichiers non DB de `data/` (secrets de tokens, etc.), scannés dynamiquement au regard de la liste blanche de restauration, hors `.db`, `.pid`, `.log` et hors marqueurs locaux `.instance-id` / `.shadow-target` |
 

@@ -196,6 +196,7 @@ const INFLUX_BUCKETS: InfluxBucketDef[] = [
   { filename: "influx-daily.lp", bucketSuffix: "-daily", range: "-5y" },
   { filename: "influx-energy-hourly.lp", bucketSuffix: "-energy-hourly", range: "-2y" },
   { filename: "influx-energy-daily.lp", bucketSuffix: "-energy-daily", range: "-10y" },
+  { filename: "influx-rain-daily.lp", bucketSuffix: "-rain-daily", range: "-1y" },
 ];
 
 export interface LocalBackup {
@@ -522,6 +523,9 @@ export class BackupManager {
       try {
         await this.influxClient.ensureBuckets();
         await this.influxClient.ensureEnergyBuckets();
+        // No backfill here: it would sum the pre-restore hourly data. The
+        // restart that follows a restore re-sums the restored one.
+        await this.influxClient.ensureRainBuckets({ backfill: false });
       } catch (err) {
         this.logger.warn({ err }, "Failed to ensure InfluxDB buckets before restore");
       }
