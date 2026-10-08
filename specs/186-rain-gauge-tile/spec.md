@@ -42,14 +42,14 @@ Totals come from the existing history API
 one request of 183 daily points per sheet opening.
 
 **Retention.** The API sums rain from the hourly bucket, kept 90 days. Until
-the follow-up backend change (daily rain totals kept one year, phase 2) lands,
+the follow-up backend change (daily rain totals kept one year, phase 2, #1027) lands,
 the sheet sees at most 90 days back and says so ("Aucune depuis le …").
 
 ## Out of scope
 
 - Weather stations that also carry temperatures: tile and sheet unchanged.
 - Rain alerts, plugin changes.
-- Backend retention change: phase 2, separate PR stacked on #1024.
+- Backend retention change: phase 2, #1027 (stacked on #1024).
 
 ## Edge cases
 
