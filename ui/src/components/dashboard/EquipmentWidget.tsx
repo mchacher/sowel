@@ -39,6 +39,8 @@ import { useEquipmentState, formatValue } from "../equipments/useEquipmentState"
 import { useCameraSnapshot } from "../../hooks/useCameraSnapshot";
 import { findOrderByCategory } from "../equipments/bindingUtils";
 import { findTempExtremes, findTempIndoor, findTempOutdoor } from "../equipments/weather-utils";
+import { isRainOnlyWeather } from "../equipments/rain-summary";
+import { RainTileBody } from "./RainGauge";
 import { TempExtremes } from "../TempExtremes";
 import { useSliderOverride } from "../../hooks/useSliderOverride";
 import { SensorValues } from "../equipments/SensorValues";
@@ -1188,6 +1190,15 @@ function WeatherStationWidget({
   const clickClass = onOpenDetail
     ? "cursor-pointer transition-colors hover:bg-primary-light/30"
     : "";
+
+  // Spec 186 — a rain gauge has no temperature: show its rain, not `— °C`.
+  if (isRainOnlyWeather(equipment)) {
+    return (
+      <WidgetCard label={label} sublabel={sublabel} onClick={onOpenDetail} className={clickClass}>
+        <RainTileBody equipment={equipment} />
+      </WidgetCard>
+    );
+  }
 
   // Both bound → side by side with explicit labels.
   // Only one bound → keep the explicit label (outdoor or indoor) so the user

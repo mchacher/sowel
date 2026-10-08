@@ -39,6 +39,8 @@ import {
   CONDITION_COLORS,
 } from "../equipments/weatherForecastUtils";
 import { findTempExtremes, findTempIndoor, findTempOutdoor } from "../equipments/weather-utils";
+import { formatMm, isRainOnlyWeather, rainHeadline } from "../equipments/rain-summary";
+import { dateLocale } from "../../lib/locale";
 import { TempExtremes } from "../TempExtremes";
 import {
   Cloud,
@@ -142,6 +144,7 @@ function useMobileState(
   equipment: EquipmentWithDetails,
   t: TFunction,
 ): { icon: React.ReactNode; stateLines: string[]; footer?: React.ReactNode } {
+  const { i18n } = useTranslation();
   // Spec 183 — a sleeping car sends no event; the clock ages its report.
   const now = useStalenessClock();
   const {
@@ -279,6 +282,32 @@ function useMobileState(
     return {
       icon: renderWidgetStateIcon(widget.icon, <HeaterWidgetIcon comfort={isComfort} />),
       stateLines: [isComfort ? t("controls.heater.comfort") : t("controls.heater.eco")],
+    };
+  }
+
+  // Spec 186 — rain gauge: today's rain in the icon slot, 24 h as the state line.
+  if (equipment.type === "weather" && isRainOnlyWeather(equipment)) {
+    const locale = dateLocale(i18n.language);
+    const { live, hasToday, value, raining } = rainHeadline(equipment);
+    const line =
+      hasToday && live.last24h !== null
+        ? t("weather.rainOver24h", { value: formatMm(live.last24h, locale) })
+        : raining
+          ? t("weather.rainFalling")
+          : null;
+    return {
+      icon: (
+        <div className="flex flex-col items-center gap-1 leading-none whitespace-nowrap">
+          <span className="text-[18px] uppercase tracking-wide text-text-tertiary font-medium">
+            {hasToday ? t("weather.todayShort") : t("weather.rain24hShort")}
+          </span>
+          <span className="font-mono font-bold text-[56px] text-text tabular-nums leading-none">
+            {formatMm(value, locale)}
+            <span className="text-text-tertiary font-medium text-[28px] ml-1">mm</span>
+          </span>
+        </div>
+      ),
+      stateLines: line ? [raining && hasToday ? `● ${line}` : line] : [],
     };
   }
 

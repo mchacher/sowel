@@ -58,6 +58,8 @@ import { BottomSheet } from "./BottomSheet";
 import { EQUIPMENT_ZONE_SEPARATOR } from "../../lib/zone-path";
 import { brightnessPercent, brightnessScale } from "../../lib/brightness";
 import { ForecastDetailContent } from "./ForecastDetailContent";
+import { RainDetailContent } from "./RainGauge";
+import { isRainOnlyWeather } from "../equipments/rain-summary";
 
 // ============================================================
 // Equipment detail sheets
@@ -181,7 +183,11 @@ export function EquipmentDetailSheet({ widget, equipment, equipmentZone, onExecu
       <BottomSheet open onClose={onClose} title={label}
         icon={customIcon}
       >
-        <WeatherDetailContent equipment={equipment} />
+        {isRainOnlyWeather(equipment) ? (
+          <RainDetailContent equipment={equipment} />
+        ) : (
+          <WeatherDetailContent equipment={equipment} />
+        )}
       </BottomSheet>
     );
   }
