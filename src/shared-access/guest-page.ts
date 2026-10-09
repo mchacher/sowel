@@ -101,7 +101,10 @@ export const guestHtml = (b: GuestBranding) => `<!doctype html>
         <div class="share" id="share" hidden>
           <p id="shareHint"></p>
           <img class="qr" id="qr" alt="">
-          <button class="btn" id="copy" type="button"></button>
+          <div class="acts">
+            <button class="btn" id="send" type="button" hidden></button>
+            <button class="btn" id="copy" type="button"></button>
+          </div>
         </div>
         <p class="refuse" id="shareErr" role="status"></p>
       </div>
@@ -213,6 +216,8 @@ body{margin:0;background:var(--night);color:var(--ink);overflow:hidden;
 .qr{width:190px;height:190px;background:#fff;border-radius:12px;display:block}
 .btn{border:1px solid rgba(232,150,60,.45);background:rgba(232,150,60,.10);color:var(--glow2);border-radius:12px;
   padding:10px 18px;min-height:44px;font:inherit;font-size:14px;font-weight:600;cursor:pointer}
+.acts{display:flex;flex-wrap:wrap;justify-content:center;gap:8px}
+.btn .k{display:inline-block;width:16px;height:16px;vertical-align:-3px;margin-right:6px}
 .btn:focus-visible{outline:2px solid var(--glow2);outline-offset:2px}
 .refuse{margin:0;font-size:14px;color:var(--bad);text-align:center}
 .refuse:empty{display:none}
@@ -272,7 +277,7 @@ export const GUEST_JS = `(function () {
     open: "OPEN", pull: "pull upward", release: "release", sent: "SENT", enterAgain: "Enter again to open",
     ready: "Ready", commandSent: "Command sent", refused: "Command refused", journal: "Your commands",
     settings: "Settings", close: "Close", share: "Share this access", shareHint: "For the person coming with you to scan.",
-    qr: "QR code of this access", copyLink: "Copy the link", copied: "Link copied", shareEnded: "This access has ended: there is nothing left to share.",
+    qr: "QR code of this access", send: "Share", sendText: "Open this link on your phone to get this access.", copyLink: "Copy the link", copied: "Link copied", shareEnded: "This access has ended: there is nothing left to share.",
     shareNoUrl: "The house has no public address yet: ask your host.", noCommands: "No command from this phone yet.",
     lastAt: "Last opening requested at ", lastOn: "Last opening requested ", today: "today", yesterday: "yesterday",
     asked: "Opening requested", notYet: "Opens on ", nextAt: "Next opening at ", suspended: "Access on hold",
@@ -297,7 +302,7 @@ export const GUEST_JS = `(function () {
     open: "OUVRIR", pull: "tirer vers le haut", release: "relâcher", sent: "ENVOYÉ", enterAgain: "Entrée pour ouvrir",
     ready: "Prêt", commandSent: "Commande envoyée", refused: "Commande refusée", journal: "Vos commandes",
     settings: "Réglages", close: "Fermer", share: "Partager cet accès", shareHint: "À scanner par la personne qui vient avec vous.",
-    qr: "QR code de cet accès", copyLink: "Copier le lien", copied: "Lien copié", shareEnded: "Cet accès est terminé : il n'y a plus rien à partager.",
+    qr: "QR code de cet accès", send: "Partager", sendText: "Ouvrez ce lien sur votre téléphone pour avoir cet accès.", copyLink: "Copier le lien", copied: "Lien copié", shareEnded: "Cet accès est terminé : il n'y a plus rien à partager.",
     shareNoUrl: "La maison n'a pas encore d'adresse publique : demandez à votre hôte.", noCommands: "Aucune commande depuis ce téléphone.",
     lastAt: "Dernière ouverture demandée à ", lastOn: "Dernière ouverture demandée ", today: "aujourd'hui", yesterday: "hier",
     asked: "Ouverture demandée", notYet: "Ouvre le ", nextAt: "Prochaine ouverture à ", suspended: "Accès suspendu",
@@ -641,6 +646,11 @@ export const GUEST_JS = `(function () {
   $("shareHint").textContent = T.shareHint;
   $("qr").alt = T.qr;
   $("copy").textContent = T.copyLink;
+  // The phone's own share sheet (Messages, WhatsApp, mail…), where the browser offers one.
+  var CAN_SEND = typeof navigator.share === "function";
+  $("send").hidden = !CAN_SEND;
+  $("send").innerHTML = SHARE_ICON;
+  $("send").appendChild(document.createTextNode(T.send));
   $("installClose").setAttribute("aria-label", T.close);
   $("installClose").addEventListener("click", function () {
     try { sessionStorage.setItem(HINT_OFF, "1"); } catch (e) { /* private mode */ }
@@ -663,6 +673,12 @@ export const GUEST_JS = `(function () {
     var b = $("copy");
     var done = function () { b.textContent = T.copied; setTimeout(function () { b.textContent = T.copyLink; }, 1500); };
     try { navigator.clipboard.writeText(shareUrl).then(done, function () { /* no clipboard */ }); } catch (x) { /* no clipboard */ }
+  });
+
+  $("send").addEventListener("click", function () {
+    if (!shareUrl || !CAN_SEND) return;
+    // A dismissed sheet rejects with AbortError: nothing to say.
+    try { navigator.share({ title: document.title, text: T.sendText, url: shareUrl }).then(null, function () { /* dismissed */ }); } catch (x) { /* not allowed */ }
   });
 
   // ── Boot ─────────────────────────────────────────────────

@@ -171,7 +171,10 @@ R9 (see _Consumers_).
     will not move, and then it says why. **The page holds on one screen and never scrolls**; a
     short screen shrinks the disc. A gear opens **Réglages**: « Vos commandes » — this phone's last
     eight presses, the ones it made itself — and **« Partager cet accès »**, the invitation link as
-    a QR code for a companion to scan, with « Copier le lien ». No code is shown on the page. The
+    a QR code for a companion to scan, with « Partager » — the phone's own share sheet (Web Share
+    API) carrying the same link, shown only where the browser offers one — and « Copier le lien ».
+    The link is the invitation itself, its key in the fragment: a companion who opens it sets up a
+    second phone on the same access. No code is shown on the page. The
     QR code is drawn by the core (`GET …/public/share`, with the backend's existing `qrcode`
     dependency), so the page carries no library; it is refused once the access has ended, and
     while the house has no public address.
