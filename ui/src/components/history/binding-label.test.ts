@@ -22,6 +22,7 @@ const t = ((key: string) =>
     "weather.rainCurrent": "Pluie actuelle",
     "weather.rain1h": "Pluie 1h",
     "weather.rain24h": "Pluie 24h",
+    "weather.rainToday": "Pluie aujourd'hui",
   })[key] ?? key) as unknown as Parameters<typeof humanBindingLabel>[2];
 
 /** Build a HistoryBindingState quickly. */
@@ -58,6 +59,7 @@ describe("humanBindingLabel — Netatmo weather station full set", () => {
     b("rain", "rain", "Pluviomètre"),
     b("sum_rain_1", "rain", "Pluviomètre"),
     b("sum_rain_24", "rain", "Pluviomètre"),
+    b("rain_today", "rain", "Pluviomètre"),
     b("battery", "battery", "Module Extérieur"),
     b("battery_2", "battery", "Anémomètre"),
     b("battery_3", "battery", "Pluviomètre"),
@@ -86,6 +88,7 @@ describe("humanBindingLabel — Netatmo weather station full set", () => {
     expect(labelOf("rain")).toBe("Pluie actuelle");
     expect(labelOf("sum_rain_1")).toBe("Pluie 1h");
     expect(labelOf("sum_rain_24")).toBe("Pluie 24h");
+    expect(labelOf("rain_today")).toBe("Pluie aujourd'hui");
   });
 
   it("falls back to the plain category label for unambiguous single bindings", () => {

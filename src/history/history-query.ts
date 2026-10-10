@@ -7,6 +7,19 @@ type Resolution = "raw" | "1h" | "1d";
 /** Categories where values are cumulative totals (sum per period, not mean). */
 const CUMULATIVE_CATEGORIES = new Set(["rain", "energy"]);
 
+/** Rain, the one cumulative category that does not have energy's dedicated buckets. */
+function isRainLike(category?: string): boolean {
+  return CUMULATIVE_CATEGORIES.has(category ?? "") && category !== "energy";
+}
+
+/**
+ * The house's time zone, so a rain day is cut at local midnight like the energy
+ * views (spec 119). Same source and fallback as the energy routes.
+ */
+function getServerTz(): string {
+  return process.env.TZ ?? "Europe/Paris";
+}
+
 /**
  * Auto-select resolution based on time range and category.
  * Default: ≤6h → raw, ≤7d → 1h, >7d → 1d
@@ -85,9 +98,12 @@ export function buildFluxQuery(params: {
   isDiscrete?: boolean;
   category?: string;
   isDownsampled?: boolean;
+  /** IANA zone the rain windows are cut in. Defaults to the server's. */
+  timezone?: string;
 }): string {
   const { bucket, equipmentId, alias, from, to, resolution, isDiscrete, category, isDownsampled } =
     params;
+  const tz = params.timezone ?? getServerTz();
 
   const fromStr = from.toISOString();
   const toStr = to.toISOString();
@@ -101,15 +117,23 @@ export function buildFluxQuery(params: {
     // hourly-mean bucket (see resolveBucket). Sum the hourly means into the
     // target window so a day's total is the *sum*, not the mean (~total/24).
     // Energy uses its own pre-summed buckets and keeps the direct mean read.
-    if (CUMULATIVE_CATEGORIES.has(category ?? "") && category !== "energy") {
+    //
+    // The hourly downsample task stamps each hour at its END (aggregateWindow's
+    // default timeSrc "_stop"): the 13:00-14:00 rain sits at 14:00. Shift it back
+    // to the hour it fell in, then cut the days at local midnight, not UTC, as
+    // the energy views do (spec 119). Without both, a 00:00-01:00 shower in
+    // summer landed on the previous day.
+    if (isRainLike(category)) {
       const every = resolution === "1h" ? "1h" : "1d";
-      return `from(bucket: "${bucket}")
+      return `import "timezone"
+from(bucket: "${bucket}")
   |> range(start: ${fromStr}, stop: ${toStr})
   |> filter(fn: (r) => r._measurement == "equipment_data")
   |> filter(fn: (r) => r.equipmentId == "${equipmentId}")
   |> filter(fn: (r) => r.alias == "${alias}")
   |> filter(fn: (r) => r._field == "mean")
-  |> aggregateWindow(every: ${every}, fn: sum, createEmpty: false, timeSrc: "_start")
+  |> timeShift(duration: -1h)
+  |> aggregateWindow(every: ${every}, fn: sum, createEmpty: false, timeSrc: "_start", location: timezone.location(name: "${tz}"))
   |> sort(columns: ["_time"])
   |> limit(n: 500)`;
     }
@@ -137,6 +161,16 @@ export function buildFluxQuery(params: {
     query += `
   |> sort(columns: ["_time"])
   |> limit(n: ${limit})`;
+  } else if (isRainLike(category)) {
+    // Raw-bucket fallback for rain: raw points carry the time the rain fell, so
+    // only the window labelling needs fixing — stamp each window at its start,
+    // cut at local midnight (see the downsampled branch above).
+    const every = resolution === "1h" ? "1h" : "1d";
+    query = `import "timezone"
+${query}
+  |> aggregateWindow(every: ${every}, fn: sum, createEmpty: false, timeSrc: "_start", location: timezone.location(name: "${tz}"))
+  |> sort(columns: ["_time"])
+  |> limit(n: 500)`;
   } else {
     // Raw-bucket fallback for aggregated resolution — sum (cumulative) or mean (continuous)
     const every = resolution === "1h" ? "1h" : "1d";

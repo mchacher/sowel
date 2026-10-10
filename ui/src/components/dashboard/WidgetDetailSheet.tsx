@@ -257,6 +257,8 @@ const WEATHER_KEY_LABELS: Record<string, string> = {
   rain: "weather.rainCurrent",
   sum_rain_1: "weather.rain1h",
   sum_rain_24: "weather.rain24h",
+  // Rain since local midnight, reset at 00:00 (e.g. sowel-plugin-rain-gauge).
+  rain_today: "weather.rainToday",
   // Sowel-computed cumulative rain (alias differs from the Netatmo native bindings).
   rain_1h: "weather.rain1h",
   rain_24h: "weather.rain24h",
@@ -271,6 +273,7 @@ const WEATHER_KEY_ORDER = [
   "rain_24h",
   "rain_1h",
   "sum_rain_24",
+  "rain_today",
   "sum_rain_1",
   "wind_strength",
   "gust_strength",

@@ -576,6 +576,7 @@
   "weather.rainNotMeasured": "not measured yet",
   "weather.rainDayValue": "{{day}}: {{value}}",
   "weather.rainHistoryError": "History unavailable",
+  "weather.rainToday": "Rain today",
   "aggregation.motion": "Motion",
   "aggregation.calm": "Calm",
   "aggregation.status": "Status",

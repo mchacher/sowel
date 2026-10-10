@@ -241,4 +241,10 @@ describe("the public surface", () => {
   it("ships a script that parses", () => {
     expect(() => new Function(GUEST_JS)).not.toThrow();
   });
+
+  it("hands the invitation link to the phone's share sheet, only where there is one (R5.22)", () => {
+    expect(GUEST_JS).toContain('typeof navigator.share === "function"');
+    expect(GUEST_JS).toContain('$("send").hidden = !CAN_SEND');
+    expect(GUEST_JS).toContain("url: shareUrl");
+  });
 });
