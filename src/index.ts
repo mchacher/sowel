@@ -370,7 +370,7 @@ async function main() {
 
   // Setup downsampling buckets and tasks (fire-and-forget)
   Promise.all([
-    // Rain re-sums the hourly bucket, so it waits for that bucket to exist.
+    // Rain copies from the hourly bucket, so it waits for that bucket to exist.
     influxClient.ensureBuckets().then(() => influxClient.ensureRainBuckets()),
     influxClient.ensureDownsamplingTasks(),
     influxClient.ensureEnergyBuckets(),

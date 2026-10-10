@@ -448,7 +448,7 @@ docker run --rm -v /opt/sowel_sowel-data:/data alpine ls /data/backups/
 
 ### InfluxDB bucket missing after restore
 
-If you restore to a fresh machine, InfluxDB may not have buckets yet. The current restore flow (spec 059) calls `ensureBuckets()` and `ensureEnergyBuckets()` before writing data, so this should be automatic. If not, check `sowel-influxdb` logs.
+If you restore to a fresh machine, InfluxDB may not have buckets yet. The current restore flow (spec 059) calls `ensureBuckets()`, `ensureEnergyBuckets()` and `ensureRainBuckets()` before writing data, then copies the restored hourly rain into `sowel-rain-hourly` (spec 186), so this should be automatic. If not, check `sowel-influxdb` logs.
 
 ### Time-based logic broken (shutters at wrong time, HP/HC wrong)
 

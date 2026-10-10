@@ -271,7 +271,7 @@ La pluie est sommée depuis `sowel-hourly` (le bucket journalier ne stocke que d
 
 ```
 sowel-hourly             -- rétention 90 jours -- moyennes horaires (pluie : mm par heure)
-  | tâche : sowel-rain-copy-hourly (every: 1h, offset: 5m, 3 dernières heures, copiées telles quelles)
+  | tâche : sowel-rain-copy-hourly (every: 1h, offset: 5m, 24 dernières heures, copiées telles quelles)
   | + rattrapage de tout ce que contient sowel-hourly à chaque démarrage (idempotent)
 sowel-rain-hourly        -- rétention 1 an -- moyennes horaires de pluie, mêmes tags et horodatages
 ```

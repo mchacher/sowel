@@ -38,6 +38,8 @@ function makeInflux(options: {
   throwOnQuery?: boolean;
   /** Throw only for the queries this predicate matches (e.g. a missing bucket). */
   throwWhen?: (flux: string) => boolean;
+  /** Yield the first row, then throw, for the queries this predicate matches. */
+  failAfterFirstRowWhen?: (flux: string) => boolean;
 }): InfluxClient {
   const {
     rows = [],
@@ -46,6 +48,7 @@ function makeInflux(options: {
     configured = true,
     throwOnQuery = false,
     throwWhen,
+    failAfterFirstRowWhen,
   } = options;
 
   const queryApi = {
@@ -53,10 +56,12 @@ function makeInflux(options: {
       capture?.push(flux);
       if (throwOnQuery || throwWhen?.(flux)) throw new Error("influx boom");
       const out = lastRows && flux.includes("|> last()") ? lastRows : rows;
+      const failMidway = failAfterFirstRowWhen?.(flux) ?? false;
       return {
         async *[Symbol.asyncIterator]() {
           for (const row of out) {
             yield { values: row, tableMeta: { toObject: (v: unknown) => v } };
+            if (failMidway) throw new Error("influx boom mid-stream");
           }
         },
       };
@@ -561,25 +566,38 @@ describe("rain-hourly bucket (spec 186)", () => {
     timezone: "Europe/Paris",
   } as const;
 
-  it("reads both buckets, keeps one point per hour, then sums per local day", () => {
+  it("reads both buckets, keeps one point per hour and series, then sums per local day", () => {
     const flux = buildFluxQuery({
       ...rainParams,
       resolution: "1d",
       rainHourlyBucket: "sowel-rain-hourly",
     });
     expect(flux).toContain(
-      'union(tables: [rain(bucket: "sowel-rain-hourly"), rain(bucket: "sowel-hourly")])',
+      'union(tables: [rain(bucket: "sowel-rain-hourly", src: "1"), rain(bucket: "sowel-hourly", src: "0")])',
     );
     expect(flux).toContain('r._field == "mean"');
-    // copies are identical: dedupe on the timestamp before anything is summed
-    expect(flux.indexOf("|> group()")).toBeLessThan(flux.indexOf('unique(column: "_time")'));
-    expect(flux.indexOf('unique(column: "_time")')).toBeLessThan(
-      flux.indexOf("timeShift(duration: -1h)"),
-    );
-    expect(flux.indexOf("timeShift(duration: -1h)")).toBeLessThan(flux.indexOf("aggregateWindow"));
-    expect(flux).toContain(
+    const order = [
+      'group(columns: ["zoneId", "category", "type"])',
+      'sort(columns: ["_time", "src"])',
+      'unique(column: "_time")',
+      "|> group()",
+      'keep(columns: ["_time", "_value"])',
+      'timeShift(duration: -1h, columns: ["_time"])',
       'aggregateWindow(every: 1d, fn: sum, createEmpty: false, timeSrc: "_start", location: timezone.location(name: "Europe/Paris"))',
-    );
+    ].map((step) => flux.indexOf(step));
+    expect(order.every((i) => i >= 0)).toBe(true);
+    expect(order).toEqual([...order].sort((a, b) => a - b));
+  });
+
+  it("lets the hourly bucket win an hour both hold: a copy can only lag behind it", () => {
+    const flux = buildFluxQuery({
+      ...rainParams,
+      resolution: "1d",
+      rainHourlyBucket: "sowel-rain-hourly",
+    });
+    // unique() keeps the first row; "0" (hourly) sorts before "1" (rain-hourly)
+    expect(flux).toContain('rain(bucket: "sowel-hourly", src: "0")');
+    expect(flux).toContain('rain(bucket: "sowel-rain-hourly", src: "1")');
   });
 
   it("sums per hour on the hourly resolution", () => {
@@ -588,7 +606,7 @@ describe("rain-hourly bucket (spec 186)", () => {
       resolution: "1h",
       rainHourlyBucket: "sowel-rain-hourly",
     });
-    expect(flux).toContain('rain(bucket: "sowel-rain-hourly")');
+    expect(flux).toContain('rain(bucket: "sowel-rain-hourly", src: "1")');
     expect(flux).toContain("aggregateWindow(every: 1h, fn: sum");
   });
 
@@ -618,8 +636,8 @@ describe("rain-hourly bucket (spec 186)", () => {
       logger,
     );
     expect(capture).toHaveLength(1);
-    expect(capture[0]).toContain('rain(bucket: "sowel-rain-hourly")');
-    expect(capture[0]).toContain('rain(bucket: "sowel-hourly")');
+    expect(capture[0]).toContain('rain(bucket: "sowel-rain-hourly", src: "1")');
+    expect(capture[0]).toContain('rain(bucket: "sowel-hourly", src: "0")');
   });
 
   it("never touches the rain-hourly bucket for other categories", async () => {
@@ -669,6 +687,27 @@ describe("rain-hourly bucket (spec 186)", () => {
     );
     expect(capture).toHaveLength(2);
     expect(capture[1]).toContain('from(bucket: "sowel")');
+  });
+
+  it("drops what a failed rain-hourly read had already returned", async () => {
+    const capture: string[] = [];
+    const res = await queryHistory(
+      makeInflux({
+        rows: [{ _time: "2026-09-01T22:00:00Z", _value: 2.1 }],
+        capture,
+        failAfterFirstRowWhen: (flux) => flux.includes("rain-hourly"),
+      }),
+      {
+        equipmentId: "eq-1",
+        alias: "rain",
+        from: daysAgo(183),
+        aggregation: "1d",
+        category: "rain",
+      },
+      logger,
+    );
+    expect(capture).toHaveLength(2);
+    expect(res.points).toEqual([{ time: "2026-09-01T22:00:00Z", value: 2.1 }]);
   });
 
   it("reads the hourly bucket alone when the rain-hourly bucket cannot be read", async () => {

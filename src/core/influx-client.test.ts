@@ -144,7 +144,7 @@ describe("buildRainCopyHourlyFlux", () => {
 
   it("reaches past the scheduled time, where the hour that just ended is stamped", () => {
     const flux = buildRainCopyHourlyFlux({ ...params, task: true });
-    expect(flux).toContain("range(start: -3h, stop: date.add(d: 1m, to: now()))");
+    expect(flux).toContain("range(start: -1d, stop: date.add(d: 1m, to: now()))");
   });
 
   it("backfills inside the retention, without a task option", () => {

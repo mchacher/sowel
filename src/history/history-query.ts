@@ -12,6 +12,9 @@ function isRainLike(category?: string): boolean {
   return CUMULATIVE_CATEGORIES.has(category ?? "") && category !== "energy";
 }
 
+/** Spec 186 — the first failed rain-hourly read warns, later ones log at debug. */
+let rainHourlyFailureWarned = false;
+
 /**
  * The house's time zone, so a rain day is cut at local midnight like the energy
  * views (spec 119). Same source and fallback as the energy routes.
@@ -132,23 +135,29 @@ export function buildFluxQuery(params: {
     if (isRainLike(category) && params.rainHourlyBucket) {
       // Spec 186 — the rain-hourly bucket holds copies of the hourly points,
       // kept a year; the hourly bucket also has the hours not copied yet. Read
-      // both and keep one point per hour (copies are identical) before summing.
+      // both and keep one point per hour and per series before summing. Where
+      // both buckets hold an hour, the hourly bucket wins (`src` "0" sorts
+      // first): it is the source, a copy can only lag behind it. Series stay
+      // apart until then, so an equipment moved to another zone mid-hour keeps
+      // both partial hours, as the single-bucket read always did.
       const every = resolution === "1h" ? "1h" : "1d";
       return `import "timezone"
 
-rain = (bucket) => from(bucket: bucket)
+rain = (bucket, src) => from(bucket: bucket)
   |> range(start: ${fromStr}, stop: ${toStr})
   |> filter(fn: (r) => r._measurement == "equipment_data")
   |> filter(fn: (r) => r.equipmentId == "${equipmentId}")
   |> filter(fn: (r) => r.alias == "${alias}")
   |> filter(fn: (r) => r._field == "mean")
-  |> keep(columns: ["_start", "_stop", "_time", "_value"])
+  |> set(key: "src", value: src)
 
-union(tables: [rain(bucket: "${params.rainHourlyBucket}"), rain(bucket: "${bucket}")])
-  |> group()
-  |> sort(columns: ["_time"])
+union(tables: [rain(bucket: "${params.rainHourlyBucket}", src: "1"), rain(bucket: "${bucket}", src: "0")])
+  |> group(columns: ["zoneId", "category", "type"])
+  |> sort(columns: ["_time", "src"])
   |> unique(column: "_time")
-  |> timeShift(duration: -1h)
+  |> group()
+  |> keep(columns: ["_time", "_value"])
+  |> timeShift(duration: -1h, columns: ["_time"])
   |> aggregateWindow(every: ${every}, fn: sum, createEmpty: false, timeSrc: "_start", location: timezone.location(name: "${tz}"))
   |> sort(columns: ["_time"])
   |> limit(n: 500)`;
@@ -469,7 +478,11 @@ export async function queryHistory(
             buildFluxQuery({ ...baseParams, rainHourlyBucket: `${config.bucket}-rain-hourly` }),
           );
         } catch (err) {
-          logger.debug(
+          // Warn once: a missing bucket fails every rain read the same way.
+          const log = rainHourlyFailureWarned ? logger.debug : logger.warn;
+          rainHourlyFailureWarned = true;
+          log.call(
+            logger,
             { err, equipmentId: params.equipmentId, alias: params.alias },
             "Rain-hourly read failed, reading the hourly bucket alone",
           );

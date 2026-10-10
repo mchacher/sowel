@@ -523,8 +523,8 @@ export class BackupManager {
       try {
         await this.influxClient.ensureBuckets();
         await this.influxClient.ensureEnergyBuckets();
-        // No backfill here: it would copy the pre-restore hourly data. The
-        // restart that follows a restore copies the restored one.
+        // The rain bucket must exist to take the backup's rain points; its
+        // backfill waits until the hourly ones are written too (below).
         await this.influxClient.ensureRainBuckets({ backfill: false });
       } catch (err) {
         this.logger.warn({ err }, "Failed to ensure InfluxDB buckets before restore");
@@ -571,6 +571,10 @@ export class BackupManager {
 
       if (influxPointsRestored > 0) {
         this.logger.info({ points: influxPointsRestored }, "InfluxDB data restored");
+        // Copy the restored hourly rain into the rain bucket now: a restore
+        // only reloads the page, and the next startup backfill may come after
+        // the hourly bucket has expired it. Never throws.
+        await this.influxClient.ensureRainBuckets();
       }
     } else {
       this.logger.warn("InfluxDB not connected — skipping time-series restore");

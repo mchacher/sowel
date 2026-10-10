@@ -295,7 +295,7 @@ Rain is summed from `sowel-hourly` (the daily bucket only stores means), which k
 
 ```
 sowel-hourly             -- 90-day retention -- hourly means (rain: mm per hour)
-  | task: sowel-rain-copy-hourly (every: 1h, offset: 5m, last 3 hours, copied unchanged)
+  | task: sowel-rain-copy-hourly (every: 1h, offset: 5m, last 24 hours, copied unchanged)
   | + backfill of everything sowel-hourly holds on every start (idempotent)
 sowel-rain-hourly        -- 1-year retention -- hourly rain means, same tags and timestamps
 ```

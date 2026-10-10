@@ -790,9 +790,10 @@ from(bucket: "${energyHourly}")
  * `task: true` builds the scheduled task. It runs 5 minutes after the hour, once
  * the hourly downsample has written the hour that just ended; that point is
  * stamped exactly at the scheduled time, which `range` would exclude as its
- * stop, hence the stop one minute later. Three hours of overlap absorb a
- * delayed or skipped run. Otherwise, a one-shot backfill of everything the
- * hourly bucket still holds.
+ * stop, hence the stop one minute later. A day of overlap absorbs skipped
+ * runs and a downsample that caught up late, for a few dozen points per rain
+ * series. Otherwise, a one-shot backfill of everything the hourly bucket still
+ * holds.
  */
 export function buildRainCopyHourlyFlux(params: {
   hourlyBucket: string;
@@ -808,7 +809,7 @@ option task = {name: "sowel-rain-copy-hourly", every: 1h, offset: 5m}
 `
     : "";
   const range = params.task
-    ? "range(start: -3h, stop: date.add(d: 1m, to: now()))"
+    ? "range(start: -1d, stop: date.add(d: 1m, to: now()))"
     : `range(start: -${RAIN_BACKFILL_DAYS}d)`;
   return `${head}from(bucket: "${params.hourlyBucket}")
   |> ${range}
