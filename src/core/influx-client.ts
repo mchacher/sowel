@@ -23,19 +23,19 @@ export const ENERGY_RETENTION = {
 } as const;
 
 /**
- * Daily rain totals (spec 186). The hourly bucket, where rain is summed from,
- * keeps 90 days; the daily bucket only stores means. A dedicated bucket keeps
- * each day's total for a year so "last rain" can be looked up 6 months back.
+ * Hourly rain kept for a year (spec 186). Rain is summed from the hourly
+ * bucket, which keeps 90 days (the daily bucket only stores means). A
+ * dedicated bucket keeps the same hourly points for a year so "last rain" can
+ * be looked up 6 months back. It stores hours, not days: days are cut at local
+ * midnight when queried, so nothing stored depends on the time zone.
  */
-export const RAIN_DAILY_RETENTION = 365 * 86_400;
+export const RAIN_HOURLY_RETENTION = 365 * 86_400;
 
 /**
- * Days the startup backfill re-sums from the hourly bucket. Kept two days short
- * of its 90-day retention: the oldest local day may already have lost its first
- * hour to an expired shard, and re-summing it would overwrite the complete
- * total the daily task wrote back then.
+ * How far back the startup backfill copies, one day inside the retention: a
+ * point older than the retention would be dropped and fail the write.
  */
-const RAIN_BACKFILL_DAYS = 88;
+const RAIN_BACKFILL_DAYS = 364;
 
 export interface RetentionStatus {
   buckets: {
@@ -407,10 +407,11 @@ export class InfluxClient {
   }
 
   /**
-   * Ensure the rain-daily bucket and its sum task exist, then re-sum the
-   * hourly bucket into it (spec 186). The backfill runs on every start: it is
-   * idempotent (same day, same timestamp, overwritten) and seeds the bucket on
-   * an instance that already has up to 90 days of hourly rain.
+   * Ensure the rain-hourly bucket and its copy task exist, then copy the
+   * hourly bucket's rain into it (spec 186). The backfill runs on every start:
+   * a copied point keeps its tags and timestamp, so copying it again rewrites
+   * the same point, and it seeds the bucket on an instance that already has up
+   * to 90 days of hourly rain.
    */
   async ensureRainBuckets(options: { backfill?: boolean } = {}): Promise<void> {
     if (!this.config || !this.client) return;
@@ -425,32 +426,28 @@ export class InfluxClient {
       const rawBucket = this.config.bucket;
       const params = {
         hourlyBucket: `${rawBucket}-hourly`,
-        rainDailyBucket: `${rawBucket}-rain-daily`,
+        rainHourlyBucket: `${rawBucket}-rain-hourly`,
         org: this.config.org,
-        timezone: getServerTz(),
       };
 
-      await this.ensureBucket(params.rainDailyBucket, RAIN_DAILY_RETENTION, orgId);
+      await this.ensureBucket(params.rainHourlyBucket, RAIN_HOURLY_RETENTION, orgId);
       await this.ensureTask(
-        "sowel-rain-sum-daily",
-        buildRainSumDailyFlux({ ...params, task: true }),
+        "sowel-rain-copy-hourly",
+        buildRainCopyHourlyFlux({ ...params, task: true }),
         orgId,
       );
 
       if (options.backfill === false) {
-        this.logger.info("Rain daily totals bucket configured");
+        this.logger.info("Rain hourly bucket configured");
         return;
       }
-      const backfill = buildRainSumDailyFlux({ ...params, lookbackDays: RAIN_BACKFILL_DAYS });
+      const backfill = buildRainCopyHourlyFlux(params);
       const rows = await this.client.getQueryApi(this.config.org).collectRows(backfill);
-      this.logger.info(
-        { points: rows.length, timezone: params.timezone },
-        "Rain daily totals bucket configured and backfilled",
-      );
+      this.logger.info({ points: rows.length }, "Rain hourly bucket configured and backfilled");
     } catch (err) {
       this.logger.warn(
         { err },
-        "Failed to ensure rain daily totals — rain history stays at 90 days",
+        "Failed to ensure rain hourly bucket — rain history stays at 90 days",
       );
     }
   }
@@ -782,54 +779,43 @@ from(bucket: "${energyHourly}")
 }
 
 // ============================================================
-// Rain daily totals (spec 186)
+// Rain hourly copy (spec 186)
 // ============================================================
 
-/** The house's time zone, so a rain day is cut at local midnight (same source as the energy routes). */
-function getServerTz(): string {
-  return process.env.TZ ?? "Europe/Paris";
-}
-
 /**
- * Sum the hourly rain means into one point per LOCAL day, written to the
- * rain-daily bucket as field `sum`, stamped at the day's local midnight.
+ * Copy the hourly bucket's rain means, unchanged, into the rain-hourly bucket.
+ * Same tags, same timestamps: copying a point twice rewrites it, so overlapping
+ * runs are harmless and nothing here depends on the time zone.
  *
- * The hourly task stamps each hour at its END, so the hour is shifted back
- * before summing (same as the rain query, #1024). The range starts one second
- * after a local midnight: the point stamped exactly at that midnight is the
- * previous day's last hour, and a partial first day must never overwrite a
- * complete one.
- *
- * `task: true` builds the scheduled task (last 3 days, every day); otherwise a
- * one-shot backfill over `lookbackDays`.
+ * `task: true` builds the scheduled task. It runs 5 minutes after the hour, once
+ * the hourly downsample has written the hour that just ended; that point is
+ * stamped exactly at the scheduled time, which `range` would exclude as its
+ * stop, hence the stop one minute later. Three hours of overlap absorb a
+ * delayed or skipped run. Otherwise, a one-shot backfill of everything the
+ * hourly bucket still holds.
  */
-export function buildRainSumDailyFlux(params: {
+export function buildRainCopyHourlyFlux(params: {
   hourlyBucket: string;
-  rainDailyBucket: string;
+  rainHourlyBucket: string;
   org: string;
-  timezone: string;
   task?: boolean;
-  lookbackDays?: number;
 }): string {
-  const days = params.task ? 3 : (params.lookbackDays ?? RAIN_BACKFILL_DAYS);
-  const header = params.task
-    ? `\noption task = {name: "sowel-rain-sum-daily", every: 1d, offset: 5m}\n`
-    : "";
-  return `import "timezone"
-import "date"
-${header}
-loc = timezone.location(name: "${params.timezone}")
-start = date.add(d: 1s, to: date.truncate(t: date.sub(d: ${days}d, from: now()), unit: 1d, location: loc))
+  const head = params.task
+    ? `import "date"
 
-from(bucket: "${params.hourlyBucket}")
-  |> range(start: start)
+option task = {name: "sowel-rain-copy-hourly", every: 1h, offset: 5m}
+
+`
+    : "";
+  const range = params.task
+    ? "range(start: -3h, stop: date.add(d: 1m, to: now()))"
+    : `range(start: -${RAIN_BACKFILL_DAYS}d)`;
+  return `${head}from(bucket: "${params.hourlyBucket}")
+  |> ${range}
   |> filter(fn: (r) => r._measurement == "equipment_data")
   |> filter(fn: (r) => r.category == "rain")
   |> filter(fn: (r) => r._field == "mean")
-  |> timeShift(duration: -1h)
-  |> aggregateWindow(every: 1d, fn: sum, createEmpty: false, timeSrc: "_start", location: loc)
-  |> set(key: "_field", value: "sum")
-  |> to(bucket: "${params.rainDailyBucket}", org: "${params.org}")`;
+  |> to(bucket: "${params.rainHourlyBucket}", org: "${params.org}")`;
 }
 
 // Re-export Point for convenience

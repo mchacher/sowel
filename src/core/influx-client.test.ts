@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from "vitest";
-import { InfluxClient, buildRainSumDailyFlux } from "./influx-client.js";
+import { InfluxClient, RAIN_HOURLY_RETENTION, buildRainCopyHourlyFlux } from "./influx-client.js";
 import { createLogger } from "./logger.js";
 
 /**
@@ -127,45 +127,102 @@ describe("InfluxClient connect after a previous connection", () => {
   });
 });
 
-// Spec 186 — one rain total per local day, kept a year.
-describe("buildRainSumDailyFlux", () => {
+// Spec 186 — the hourly rain points, copied unchanged into a bucket kept a year.
+describe("buildRainCopyHourlyFlux", () => {
   const params = {
     hourlyBucket: "sowel-hourly",
-    rainDailyBucket: "sowel-rain-daily",
+    rainHourlyBucket: "sowel-rain-hourly",
     org: "sowel-org",
-    timezone: "Europe/Paris",
   };
 
-  it("schedules a daily task over the last 3 days", () => {
-    const flux = buildRainSumDailyFlux({ ...params, task: true });
-    expect(flux).toContain('option task = {name: "sowel-rain-sum-daily", every: 1d');
-    expect(flux).toContain("date.sub(d: 3d, from: now())");
+  it("schedules an hourly task after the hourly downsample has run", () => {
+    const flux = buildRainCopyHourlyFlux({ ...params, task: true });
+    expect(flux).toContain('option task = {name: "sowel-rain-copy-hourly", every: 1h, offset: 5m}');
     // imports must precede the task option
     expect(flux.indexOf('import "date"')).toBeLessThan(flux.indexOf("option task"));
   });
 
-  it("backfills without a task option", () => {
-    const flux = buildRainSumDailyFlux({ ...params, lookbackDays: 90 });
+  it("reaches past the scheduled time, where the hour that just ended is stamped", () => {
+    const flux = buildRainCopyHourlyFlux({ ...params, task: true });
+    expect(flux).toContain("range(start: -3h, stop: date.add(d: 1m, to: now()))");
+  });
+
+  it("backfills inside the retention, without a task option", () => {
+    const flux = buildRainCopyHourlyFlux(params);
     expect(flux).not.toContain("option task");
-    expect(flux).toContain("date.sub(d: 90d, from: now())");
+    expect(flux).toContain("range(start: -364d)");
+    expect(364 * 86_400).toBeLessThan(RAIN_HOURLY_RETENTION);
   });
 
-  it("starts one second after a local midnight so no partial day overwrites a full one", () => {
-    const flux = buildRainSumDailyFlux({ ...params, task: true });
-    expect(flux).toContain('loc = timezone.location(name: "Europe/Paris")');
-    expect(flux).toContain("date.add(d: 1s, to: date.truncate(");
-    expect(flux).toContain("unit: 1d, location: loc");
+  it("copies the rain means as they are, with nothing zone-dependent", () => {
+    for (const flux of [
+      buildRainCopyHourlyFlux({ ...params, task: true }),
+      buildRainCopyHourlyFlux(params),
+    ]) {
+      expect(flux).toContain('r.category == "rain"');
+      expect(flux).toContain('r._field == "mean"');
+      expect(flux).toContain('to(bucket: "sowel-rain-hourly", org: "sowel-org")');
+      expect(flux).not.toContain("timezone");
+      expect(flux).not.toContain("aggregateWindow");
+      expect(flux).not.toContain("timeShift");
+    }
   });
+});
 
-  it("shifts end-stamped hours back, sums per local day, writes the sum field", () => {
-    const flux = buildRainSumDailyFlux({ ...params, task: true });
-    expect(flux).toContain('r.category == "rain"');
-    expect(flux).toContain('r._field == "mean"');
-    expect(flux.indexOf("timeShift(duration: -1h)")).toBeLessThan(flux.indexOf("aggregateWindow"));
-    expect(flux).toContain(
-      'aggregateWindow(every: 1d, fn: sum, createEmpty: false, timeSrc: "_start", location: loc)',
+describe("InfluxClient.ensureRainBuckets", () => {
+  const logger = createLogger("silent").logger;
+
+  function primed(opts: { orgId?: string | null; queryFails?: boolean } = {}) {
+    const client = new InfluxClient(logger);
+    const collectRows = vi.fn(() =>
+      opts.queryFails ? Promise.reject(new Error("influx down")) : Promise.resolve([{}, {}]),
     );
-    expect(flux).toContain('set(key: "_field", value: "sum")');
-    expect(flux).toContain('to(bucket: "sowel-rain-daily", org: "sowel-org")');
+    const inner = client as unknown as {
+      client: unknown;
+      config: unknown;
+      getOrgId: () => Promise<string | null>;
+      ensureBucket: (name: string, retention: number, orgId: string) => Promise<void>;
+      ensureTask: (name: string, flux: string, orgId: string) => Promise<void>;
+    };
+    inner.client = { getQueryApi: () => ({ collectRows }) };
+    inner.config = { url: "http://x", org: "o", bucket: "sowel", token: "t" };
+    inner.getOrgId = vi.fn().mockResolvedValue(opts.orgId === undefined ? "org-1" : opts.orgId);
+    const ensureBucket = vi.fn().mockResolvedValue(undefined);
+    const ensureTask = vi.fn().mockResolvedValue(undefined);
+    inner.ensureBucket = ensureBucket;
+    inner.ensureTask = ensureTask;
+    return { client, ensureBucket, ensureTask, collectRows };
+  }
+
+  it("creates the bucket and the copy task, then backfills", async () => {
+    const { client, ensureBucket, ensureTask, collectRows } = primed();
+    await client.ensureRainBuckets();
+    expect(ensureBucket).toHaveBeenCalledWith("sowel-rain-hourly", RAIN_HOURLY_RETENTION, "org-1");
+    expect(ensureTask).toHaveBeenCalledWith(
+      "sowel-rain-copy-hourly",
+      expect.stringContaining('from(bucket: "sowel-hourly")'),
+      "org-1",
+    );
+    expect(collectRows).toHaveBeenCalledOnce();
+    expect(collectRows.mock.calls[0]).toEqual([expect.stringContaining("range(start: -364d)")]);
+  });
+
+  it("skips the backfill when asked (before a restore)", async () => {
+    const { client, ensureBucket, collectRows } = primed();
+    await client.ensureRainBuckets({ backfill: false });
+    expect(ensureBucket).toHaveBeenCalledOnce();
+    expect(collectRows).not.toHaveBeenCalled();
+  });
+
+  it("does nothing without an org", async () => {
+    const { client, ensureBucket, ensureTask } = primed({ orgId: null });
+    await client.ensureRainBuckets();
+    expect(ensureBucket).not.toHaveBeenCalled();
+    expect(ensureTask).not.toHaveBeenCalled();
+  });
+
+  it("never throws when the backfill fails", async () => {
+    const { client } = primed({ queryFails: true });
+    await expect(client.ensureRainBuckets()).resolves.toBeUndefined();
   });
 });
