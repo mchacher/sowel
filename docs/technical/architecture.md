@@ -302,6 +302,8 @@ sowel-rain-hourly        -- 1-year retention -- hourly rain means, same tags and
 
 A rain query reads both buckets, keeps one point per hour, then sums per hour or per local day at query time. It stores hours, not days, so nothing stored depends on the time zone: changing `TZ` or the home location re-cuts the days on the next read. If `sowel-rain-hourly` cannot be read, the query falls back to `sowel-hourly` alone.
 
+A rain hour that arrives once it is over (a plugin's late poll or backfill, `sourceTimestamp` before the current hour) is written by the history writer straight to `sowel-hourly` and `sowel-rain-hourly`, each within its retention, stamped at the hour end like the downsample (#1036); past the raw retention it skips the raw bucket.
+
 InfluxDB is optional -- a failed connection is logged and the engine keeps running, with history and energy aggregation degraded. When it does connect, Sowel auto-creates buckets, downsampling tasks, and energy aggregation tasks.
 
 #### Energy deltas are accumulated, never sampled

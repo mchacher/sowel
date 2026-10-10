@@ -6,7 +6,7 @@ import type { EquipmentManager } from "../equipments/equipment-manager.js";
 import type { DataCategory } from "../shared/types.js";
 import { TariffClassifier } from "../energy/tariff-classifier.js";
 import type { InfluxClient } from "../core/influx-client.js";
-import { Point } from "../core/influx-client.js";
+import { DEFAULT_RETENTION, Point } from "../core/influx-client.js";
 import { resolveHistorize } from "../shared/history-defaults.js";
 
 // ============================================================
@@ -328,6 +328,17 @@ export class HistoryWriter {
       if (!this.shouldWrite(bindingId, meta, value, previous)) return;
     }
 
+    // #1036 — a rain hour stamped before the current hour came after the hourly
+    // downsample passed it. Past the raw retention, only its hourly form is kept.
+    if (
+      sourceTimestamp !== undefined &&
+      meta.category === "rain" &&
+      typeof value === "number" &&
+      this.writeLateRainHour(equipmentId, alias, meta, value, sourceTimestamp)
+    ) {
+      return;
+    }
+
     // Build and write point
     const point = new Point("equipment_data")
       .tag("equipmentId", equipmentId)
@@ -367,6 +378,45 @@ export class HistoryWriter {
 
     // Update last written
     this.lastWritten.set(bindingId, { value, timestamp: Date.now() });
+  }
+
+  /**
+   * #1036 — rain follows the per-hour contract: one total per clock hour,
+   * stamped at the hour start (`sourceTimestamp`). When that hour is already
+   * over, the downsample has read it (or never will), so its hourly form —
+   * the total as `mean`/`min`/`max`, stamped at the hour end like the
+   * downsample stamps it — is written to the hourly buckets directly. The
+   * current hour is left to the downsample, as before.
+   *
+   * Returns true when the raw write must be skipped: the point is older than
+   * the raw bucket's retention, where the write would fail.
+   */
+  private writeLateRainHour(
+    equipmentId: string,
+    alias: string,
+    meta: BindingMeta,
+    value: number,
+    sourceTimestamp: number,
+  ): boolean {
+    const nowS = Date.now() / 1000;
+    const hourStart = Math.floor(sourceTimestamp / 3600) * 3600;
+    if (hourStart >= Math.floor(nowS / 3600) * 3600) return false;
+
+    const hourEnd = hourStart + 3600;
+    const hourly = new Point("equipment_data")
+      .tag("equipmentId", equipmentId)
+      .tag("alias", alias)
+      .tag("category", meta.category)
+      .tag("zoneId", meta.zoneId)
+      .tag("type", meta.type)
+      .floatField("mean", value)
+      .floatField("min", value)
+      .floatField("max", value)
+      .timestamp(hourEnd);
+    this.influxClient.writeLateRainHour(hourly, hourEnd);
+
+    // One hour of margin, as for the hourly buckets.
+    return nowS - sourceTimestamp >= DEFAULT_RETENTION.raw - 3600;
   }
 
   /** Get the TariffClassifier instance (for API routes). */
