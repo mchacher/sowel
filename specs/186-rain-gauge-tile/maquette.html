@@ -1,0 +1,243 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Tuile pluviomètre</title>
+<style>
+:root{
+  --bg:#f4f5f7;--card:#fff;--text:#1d2330;--text2:#5b6474;--text3:#8a93a3;--border:#e3e6eb;
+  --primary:#2f6fde;--primary-l:#e6eefc;--rain:#2f8fd6;--rain-l:#dcecf9;--warn:#b26a00;--warn-l:#fff3dd;
+  --ok:#1f8a4c;--shadow:0 1px 2px rgba(0,0,0,.06),0 2px 8px rgba(0,0,0,.04);
+}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){
+  --bg:#12151b;--card:#1b2029;--text:#e8ebf0;--text2:#a7afbd;--text3:#7b8494;--border:#2b313c;
+  --primary:#6b9cf0;--primary-l:#1f2c45;--rain:#5fb0ec;--rain-l:#1a3044;--warn:#f0b04a;--warn-l:#3a2c12;--ok:#4cc27e;
+}}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--text);font:15px/1.45 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif}
+main{max-width:980px;margin:0 auto;padding:24px 16px 60px}
+h1{font-size:22px;margin:0 0 4px}
+h2{font-size:15px;margin:28px 0 10px;color:var(--text2);text-transform:uppercase;letter-spacing:.04em}
+.lead{color:var(--text2);margin:0 0 16px}
+ul.sum{margin:0;padding-left:20px}ul.sum li{margin:3px 0}
+.box{background:var(--card);border:1px solid var(--border);border-radius:12px;padding:14px 16px;box-shadow:var(--shadow)}
+.scen{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:6px}
+.chip{border:1px solid var(--border);background:var(--card);color:var(--text);border-radius:999px;padding:6px 12px;font:inherit;font-size:13px;cursor:pointer}
+.chip[aria-pressed="true"]{background:var(--primary);border-color:var(--primary);color:#fff}
+.hint{font-size:13px;color:var(--text3)}
+.stage{display:grid;grid-template-columns:1fr 1fr;gap:20px;align-items:start}
+@media (max-width:720px){.stage{grid-template-columns:1fr}}
+.col-title{font-size:12px;color:var(--text3);margin:0 0 8px;text-transform:uppercase;letter-spacing:.05em}
+/* desktop tile */
+.tile{width:240px;height:170px;background:var(--card);border:1px solid var(--border);border-radius:14px;box-shadow:var(--shadow);
+  padding:12px 14px;display:flex;flex-direction:column;cursor:pointer;transition:background .15s}
+.tile:hover{background:var(--primary-l)}
+.tile .lbl{font-weight:600;font-size:14px}.tile .sub{font-size:12px;color:var(--text3)}
+.tile .body{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px}
+.cap{font-size:11px;text-transform:uppercase;letter-spacing:.05em;color:var(--text3);font-weight:600}
+.big{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-weight:700;font-size:34px;line-height:1;font-variant-numeric:tabular-nums}
+.unit{font-size:15px;color:var(--text3);font-weight:500;margin-left:3px}
+.line2{font-size:12px;color:var(--text2)}
+.drop{display:inline-block;width:8px;height:8px;border-radius:50%;background:var(--rain);margin-right:5px;animation:p 1.6s infinite}
+@keyframes p{50%{opacity:.25}}
+/* mobile card */
+.phone{width:340px;max-width:100%;background:var(--bg);border:1px solid var(--border);border-radius:22px;padding:14px;position:relative;min-height:470px;overflow:hidden}
+.mcard{background:var(--card);border:1px solid var(--border);border-radius:14px;padding:12px;display:flex;gap:12px;align-items:center;cursor:pointer;box-shadow:var(--shadow)}
+.mcard .ico{width:96px;display:flex;justify-content:center}
+.mcard .big{font-size:28px}
+.mcard .name{font-weight:600}.mcard .st{font-size:13px;color:var(--text2)}
+.ghost{background:var(--card);border:1px solid var(--border);border-radius:14px;height:64px;margin-top:10px;opacity:.5}
+/* sheet */
+.sheet-bg{position:absolute;inset:0;background:rgba(0,0,0,.35);opacity:0;pointer-events:none;transition:opacity .2s}
+.sheet{position:absolute;left:0;right:0;bottom:0;background:var(--card);border-radius:18px 18px 0 0;padding:10px 16px 18px;transform:translateY(105%);transition:transform .25s}
+.open .sheet-bg{opacity:1;pointer-events:auto}.open .sheet{transform:none}
+.grab{width:40px;height:4px;border-radius:2px;background:var(--border);margin:0 auto 10px}
+.sh-title{font-weight:700;font-size:16px;text-align:center}
+.sh-sub{font-size:12px;color:var(--text3);text-align:center;margin-bottom:12px}
+.grid{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.stat{background:var(--bg);border-radius:10px;padding:9px 10px}
+.stat .k{font-size:12px;color:var(--text2)}
+.stat .v{font-family:ui-monospace,Menlo,monospace;font-weight:700;font-size:20px;font-variant-numeric:tabular-nums}
+.stat .v small{font-size:12px;color:var(--text3);font-weight:500}
+.stat .n{font-size:11px;color:var(--warn)}
+.last{margin-top:8px;background:var(--rain-l);border-radius:10px;padding:10px 12px;display:flex;justify-content:space-between;align-items:center;gap:8px}
+.last .k{font-size:12px;color:var(--text2)}.last .d{font-weight:600}
+.last .v{font-family:ui-monospace,Menlo,monospace;font-weight:700;font-size:20px;white-space:nowrap}
+.bars{display:flex;align-items:flex-end;gap:2px;height:56px;margin-top:12px;border-bottom:1px solid var(--border)}
+.bars i{flex:1;background:var(--rain);border-radius:2px 2px 0 0;min-height:1px;position:relative}
+.bars i.none{background:transparent;border-bottom:1px dashed var(--border)}
+.bars i.zero{background:var(--border);height:1px!important}
+.bars i:hover{outline:2px solid var(--primary)}
+.axis{display:flex;justify-content:space-between;font-size:11px;color:var(--text3);margin-top:3px}
+.tip{font-size:12px;color:var(--text2);min-height:18px;text-align:center;margin-top:4px}
+.bat{font-size:12px;color:var(--text3);text-align:center;margin-top:10px}
+.close{position:absolute;top:8px;right:12px;border:0;background:none;font-size:20px;color:var(--text3);cursor:pointer}
+.arb{display:flex;flex-direction:column;gap:10px}
+.arb label{display:flex;gap:8px;align-items:flex-start;cursor:pointer}
+.arb .q{font-weight:600}
+code{font-size:13px;background:var(--bg);padding:1px 4px;border-radius:4px;overflow-wrap:anywhere}
+</style>
+</head>
+<body>
+<main>
+<h1>Tuile du pluviomètre</h1>
+<p class="lead">Spec 186 — maquette à valider avant de coder.</p>
+
+<div class="box">
+<ul class="sum">
+  <li><b>Constat :</b> la tuile « météo » n'affiche que des températures. Ton pluviomètre n'en a pas → « — », alors que les données sont là (5,3 mm aujourd'hui).</li>
+  <li><b>Proposé :</b> si l'équipement n'a que de la pluie, la tuile montre la pluie du jour + 24 h. Au clic : 7 j, 30 j, histogramme 30 j, et la dernière pluie <b>cherchée sur 6 mois</b>.</li>
+  <li><b>Hors champ :</b> station avec températures + pluie (inchangée), alertes de pluie.</li>
+  <li><b>Calcul :</b> cumuls par jour tirés de l'historique <code>rain</code> (horaire, gardé 90 jours, puis un an avec la phase 2). Pas de changement du plugin.</li>
+</ul>
+</div>
+
+<h2>Essaie les situations</h2>
+<div class="scen" id="scen"></div>
+<p class="hint">Clique sur la tuile ou sur la carte mobile pour ouvrir le détail. Survole les barres.</p>
+
+<div class="stage">
+  <div>
+    <p class="col-title">Ordinateur — tableau de bord</p>
+    <div class="tile" id="tile" role="button" tabindex="0"></div>
+    <p class="col-title" style="margin-top:22px">Avant (aujourd'hui)</p>
+    <div class="tile" style="cursor:default">
+      <div class="lbl">Pluviomètre</div><div class="sub">Extérieur</div>
+      <div class="body"><div class="big">—<span class="unit">°C</span></div></div>
+    </div>
+  </div>
+  <div>
+    <p class="col-title">Téléphone</p>
+    <div class="phone" id="phone">
+      <div class="mcard" id="mcard" role="button" tabindex="0"></div>
+      <div class="ghost"></div><div class="ghost"></div><div class="ghost"></div>
+      <div class="sheet-bg" id="bg"></div>
+      <div class="sheet" id="sheet"></div>
+    </div>
+  </div>
+</div>
+
+<h2>Validé le 08/10</h2>
+<div class="box">
+<ul class="sum">
+  <li>« Dernière pluie » peut être aujourd'hui.</li>
+  <li>Histogramme des 30 jours dans le détail.</li>
+  <li>« 24 h glissantes » gardé sur la tuile.</li>
+  <li>Dernière pluie cherchée sur <b>6 mois</b>.</li>
+</ul>
+</div>
+</main>
+
+<script>
+const TODAY = new Date(2026, 9, 8); // jeudi 8 octobre 2026
+const DAYS = ["dim.","lun.","mar.","mer.","jeu.","ven.","sam."];
+const MONTHS = ["janv.","févr.","mars","avr.","mai","juin","juil.","août","sept.","oct.","nov.","déc."];
+
+// 30 values, index 0 = J-29 ... 29 = aujourd'hui. null = pas encore mesuré.
+const z = n => Array(n).fill(0);
+const SCEN = {
+  rain:   {name:"Il pleut", raining:true, h24:7.4,
+           d:[...z(8),3.2,11.6,0.5,...z(6),1.1,0,0,4.7,...z(5),0.5,0,2.1,5.3]},
+  old:    {name:"Dernière pluie il y a 47 jours", raining:false, h24:0, d:z(30), older:{ago:47, mm:9.5}},
+  dry:    {name:"Sec depuis 4 jours", raining:false, h24:0,
+           d:[...z(10),6.3,12.6,2.1,...z(4),0.5,0,8.4,3.7,...z(4),1.6,...z(4)]},
+  never:  {name:"Rien depuis 6 mois", raining:false, h24:0, d:z(30)},
+  fresh:  {name:"Mesures depuis 2 jours", raining:true, h24:7.4,
+           d:[...Array(28).fill(null),2.1,5.3]},
+};
+let cur = "fresh";
+
+const fmt = v => v.toLocaleString("fr-FR",{minimumFractionDigits:1,maximumFractionDigits:1});
+const agoLabel = (ago) => {
+  if (ago === 0) return "Aujourd'hui";
+  if (ago === 1) return "Hier";
+  const d = new Date(TODAY); d.setDate(d.getDate() - ago);
+  return `${DAYS[d.getDay()]} ${d.getDate()} ${MONTHS[d.getMonth()]}`;
+};
+const dlabel = i => agoLabel(29 - i);
+
+function compute(s){
+  const d = s.d;
+  const sum = n => d.slice(30-n).reduce((a,v)=>a+(v??0),0);
+  const measured = n => d.slice(30-n).filter(v=>v!==null).length;
+  // Dernière pluie : cherchée sur 6 mois (≈ 183 j), pas seulement les 30 j affichés.
+  let last = null;
+  for (let i = 29; i >= 0; i--) if ((d[i]??0) > 0) { last = {ago:29-i, mm:d[i]}; break; }
+  if (!last && s.older) last = s.older;
+  return {today:d[29]??0, h24:s.h24, s7:sum(7), s30:sum(30), m7:measured(7), m30:measured(30), last,
+          start: d.findIndex(v=>v!==null)};
+}
+
+function render(){
+  const s = SCEN[cur], c = compute(s);
+  const show24 = true;
+  const dot = s.raining ? '<span class="drop" title="pluie dans l\'heure"></span>' : "";
+  const line2 = show24 ? `<div class="line2">${dot}${fmt(c.h24)} mm sur 24 h</div>` : (dot?`<div class="line2">${dot}il pleut</div>`:"");
+
+  document.getElementById("tile").innerHTML =
+    `<div class="lbl">Pluviomètre</div><div class="sub">Extérieur</div>
+     <div class="body"><span class="cap">Aujourd'hui</span>
+     <div class="big">${fmt(c.today)}<span class="unit">mm</span></div>${line2}</div>`;
+
+  document.getElementById("mcard").innerHTML =
+    `<div class="ico"><div style="text-align:center"><div class="cap">Auj.</div>
+       <div class="big">${fmt(c.today)}<span class="unit">mm</span></div></div></div>
+     <div><div class="name">Pluviomètre</div><div class="st">${show24?`${dot}${fmt(c.h24)} mm sur 24 h`:(dot?dot+"il pleut":"Extérieur")}</div></div>`;
+
+  const partial = (m,n) => m < n ? `<div class="n">mesuré sur ${m} j seulement</div>` : "";
+  let lastHtml;
+  if (!c.last) {
+    lastHtml = `<div class="last"><div><div class="k">Dernière pluie</div><div class="d">Aucune depuis 6 mois</div></div><div class="v">—</div></div>`;
+  } else {
+    const ago = c.last.ago;
+    const since = ago >= 2 ? ` · il y a ${ago} j` : "";
+    lastHtml = `<div class="last"><div><div class="k">Dernière pluie</div><div class="d">${agoLabel(ago)}${since}</div></div>
+      <div class="v">${fmt(c.last.mm)} <small style="font-size:12px;font-weight:500">mm</small></div></div>`;
+  }
+
+  let bars = "";
+  {
+    const max = Math.max(1, ...s.d.map(v=>v??0));
+    bars = `<div class="bars" id="bars">${s.d.map((v,i)=>{
+      const cls = v===null?"none":(v===0?"zero":"");
+      return `<i class="${cls}" data-i="${i}" style="height:${v?Math.max(4,v/max*100):0}%"></i>`;}).join("")}</div>
+      <div class="axis"><span>${dlabel(0)}</span><span>Aujourd'hui</span></div>
+      <div class="tip" id="tip">&nbsp;</div>`;
+  }
+
+  document.getElementById("sheet").innerHTML =
+    `<button class="close" aria-label="Fermer" id="x">×</button><div class="grab"></div>
+     <div class="sh-title">Pluviomètre</div><div class="sh-sub">Extérieur</div>
+     <div class="grid">
+       <div class="stat"><div class="k">Aujourd'hui</div><div class="v">${fmt(c.today)} <small>mm</small></div></div>
+       <div class="stat"><div class="k">24 h glissantes</div><div class="v">${fmt(c.h24)} <small>mm</small></div></div>
+       <div class="stat"><div class="k">7 derniers jours</div><div class="v">${fmt(c.s7)} <small>mm</small></div>${partial(c.m7,7)}</div>
+       <div class="stat"><div class="k">30 derniers jours</div><div class="v">${fmt(c.s30)} <small>mm</small></div>${partial(c.m30,30)}</div>
+     </div>${lastHtml}${bars}
+     <div class="bat">Pile 100 %</div>`;
+
+  document.getElementById("x").onclick = close;
+  const b = document.getElementById("bars");
+  if (b) b.querySelectorAll("i").forEach(el=>{
+    el.onmouseenter = el.onclick = () => {
+      const i = +el.dataset.i, v = s.d[i];
+      document.getElementById("tip").textContent = `${dlabel(i)} : ${v===null?"pas encore mesuré":fmt(v)+" mm"}`;
+    };
+  });
+
+  document.getElementById("scen").innerHTML = Object.entries(SCEN).map(([k,v]) =>
+    `<button class="chip" aria-pressed="${k===cur}" data-k="${k}">${v.name}</button>`).join("");
+  document.querySelectorAll("#scen .chip").forEach(b=>b.onclick=()=>{cur=b.dataset.k;render();});
+}
+
+const phone = document.getElementById("phone");
+const open = () => phone.classList.add("open");
+const close = () => phone.classList.remove("open");
+document.getElementById("mcard").onclick = open;
+document.getElementById("tile").onclick = () => { open(); phone.scrollIntoView({behavior:"smooth",block:"center"}); };
+document.getElementById("bg").onclick = close;
+render();
+</script>
+</body>
+</html>

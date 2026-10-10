@@ -39,6 +39,8 @@ import {
   CONDITION_COLORS,
 } from "../equipments/weatherForecastUtils";
 import { findTempExtremes, findTempIndoor, findTempOutdoor } from "../equipments/weather-utils";
+import { isRainOnlyWeather } from "../equipments/rain-summary";
+import { RainLine, RainMobileHeadline } from "./RainGauge";
 import { TempExtremes } from "../TempExtremes";
 import {
   Cloud,
@@ -282,6 +284,18 @@ function useMobileState(
     };
   }
 
+  // Spec 186 — rain gauge: today's rain in the icon slot, 24 h as the state
+  // line, set as the footer so it can carry the same raining dot as desktop.
+  if (isRainOnlyWeather(equipment)) {
+    return {
+      icon: <RainMobileHeadline equipment={equipment} />,
+      stateLines: [],
+      footer: (
+        <RainLine equipment={equipment} className="max-w-full text-[11px] text-text-secondary" />
+      ),
+    };
+  }
+
   if (equipment.type === "weather") {
     const outdoor = findTempOutdoor(equipment.dataBindings);
     const indoor = findTempIndoor(equipment.dataBindings);
@@ -451,7 +465,10 @@ function useMobileState(
       // Say why the tile is blank, or it reads as night rather than as an
       // inverter that stopped reporting (#839).
       stateLines: outdatedSince
-        ? [...lines, `${t("reading.outdated")} · ${t("reading.ago", { age: formatRelative(outdatedSince, t) })}`]
+        ? [
+            ...lines,
+            `${t("reading.outdated")} · ${t("reading.ago", { age: formatRelative(outdatedSince, t) })}`,
+          ]
         : lines,
     };
   }
