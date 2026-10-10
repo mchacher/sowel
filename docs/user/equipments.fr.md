@@ -154,6 +154,7 @@ Capteur météo extérieur qui fournit les conditions actuelles.
 - **Contrôles :** Affichage multi-valeurs
 - **Données typiques :** température, humidité, pression, pluie, vent, bruit, batterie
 - Les températures (extérieure et intérieure) affichent en dessous le minimum et le maximum mesurés depuis minuit, sur le widget du dashboard comme sur la page de détail. Fonctionne avec toute station qui remonte une température, sans configuration.
+- Une station qui ne mesure que la pluie (un pluviomètre seul) a sa propre tuile sur le tableau de bord : pluie du jour, cumul sur 24 h, et au clic les 7 et 30 derniers jours et la dernière pluie. Voir [Tableau de bord](dashboard.md#widget-dequipement).
 
 #### Prévision météo
 

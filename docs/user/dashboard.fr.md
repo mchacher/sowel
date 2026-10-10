@@ -28,6 +28,8 @@ La tuile **prévisions météo** affiche demain, et indique à quel point les mo
 
 La fiabilité est publiée par le plugin météo à partir de la version 2.0. Avec un plugin plus ancien, la tuile n'affiche aucune fiabilité et le panneau n'affiche aucune pastille : un jour non qualifié ne doit jamais ressembler à un jour fiable.
 
+Un **pluviomètre** -- un équipement météo qui ne mesure que la pluie, comme un pluviomètre à augets ou un module pluie Netatmo seul -- a sa propre tuile : la pluie tombée aujourd'hui en grand, le cumul sur 24 h glissantes en dessous, et un point qui pulse s'il a plu dans l'heure. Si le pluviomètre ne remonte pas le cumul du jour, la tuile affiche le cumul sur 24 h à la place. Cliquez ou touchez la tuile pour ouvrir un panneau qui reprend la pluie du jour et les 24 h glissantes, ajoute les 7 et 30 derniers jours, le dernier jour de pluie (cherché sur six mois) et 30 barres, une par jour ; survolez ou touchez une barre pour lire le cumul de ce jour-là. Ces chiffres viennent de l'historique du capteur de pluie : un pluviomètre installé depuis peu indique sur combien de jours il a mesuré, et n'affirme jamais « aucune pluie » au-delà de son premier jour de mesure. Une station qui mesure aussi la température, le vent ou l'humidité garde sa tuile habituelle.
+
 ### Widget de zone
 
 Affiche les données agrégées d'une zone entière. Vous choisissez quelle **famille** de données afficher :

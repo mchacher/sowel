@@ -28,6 +28,8 @@ The **weather forecast** tile shows tomorrow, and says how much the models agree
 
 Reliability is published by the weather plugin from version 2.0 onwards. With an older plugin the tile shows no reliability at all and the panel shows no badge, because an unqualified day must never look like a reliable one.
 
+A **rain gauge** -- a weather equipment that measures only rain, such as a tipping-bucket gauge or a lone Netatmo rain module -- gets its own tile: today's rain in large figures, the rolling 24-hour total underneath, and a pulsing dot while it has rained in the last hour. A gauge that does not report today's total shows the 24-hour total instead. Click or tap the tile to open a panel with today, the rolling 24 hours, the last 7 and 30 days, the last day it rained (looked up over six months) and 30 bars, one per day; hover or tap a bar to read that day's total. These figures come from the rain sensor's history, so a gauge that started recording recently says how many days it has measured, and never claims "no rain" further back than its first measured day. A station that also measures temperature, wind or humidity keeps its usual tile.
+
 ### Zone widget
 
 Displays aggregated data for an entire zone. You choose which **family** of data to show:
