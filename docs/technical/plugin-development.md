@@ -211,6 +211,20 @@ reads a past hour again: a plugin can backfill rain up to a year back (`sowel-pl
 from Netatmo's own hourly totals). Do not publish a raw sample (rain over the last few minutes) as `rain`:
 the history would take it for the hour's total.
 
+The other rain keys are live values, never historized (`history-defaults.ts`), and each has one meaning
+whatever the source:
+
+| Key           | Meaning                                              | Used by                                                               |
+| ------------- | ---------------------------------------------------- | --------------------------------------------------------------------- |
+| `sum_rain_1`  | Rain over the rolling last hour                      | `rain_1h`, the weather panel                                          |
+| `sum_rain_24` | Rain over the **rolling** last 24 hours              | `rain_24h` (which `auto-watering` skips on), "Rolling 24 h" in the UI |
+| `rain_today`  | Rain since **local midnight**, back to 0 at midnight | "Rain today", the rain gauge tile's headline                          |
+
+Map your source's fields to these meanings, not to their names: Netatmo's `sum_rain_24` is the rain since
+midnight, so the Netatmo plugin publishes it as `rain_today` and sums its hourly totals into `sum_rain_24`
+(#1037). Leave a key out rather than fill it with a different meaning: without `sum_rain_1` / `sum_rain_24`,
+Sowel computes `rain_1h` / `rain_24h` from the hourly `rain` series.
+
 !!! warning "A new data point does not reach existing equipments on its own"
 Adding a key to `DiscoveredDevice.data` creates the `device_data` row at the
 next discovery, but auto-binding only ever runs when an **equipment is
