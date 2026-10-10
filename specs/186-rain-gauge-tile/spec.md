@@ -14,9 +14,12 @@ Clicking it opens the generic weather sheet, which lists `Pluie 1h` /
 
 ## Scope
 
-A **rain-only weather equipment** is a `weather` equipment with no
-`temperature` / `temperature_outdoor` binding and at least one `rain`-category
-binding or computed `rain_24h`.
+A **rain-only weather equipment** is a `weather` equipment with at least one
+`rain`-category binding or computed `rain_24h`, and no binding in any other
+category the generic weather sheet lists (temperature, but also wind, humidity,
+pressure, noise, CO2…; the battery does not count). The rain tile and sheet
+replace the generic ones, so a station with rain and wind keeps the generic
+sheet rather than losing its wind rows.
 
 For those equipments only:
 
@@ -39,11 +42,20 @@ For those equipments only:
 
 Totals come from the existing history API
 (`GET /history/:equipmentId/:alias?aggregation=1d`) on the `rain` binding,
-one request of 183 daily points per sheet opening.
+one request of daily points per sheet opening (183 days, plus one so the oldest
+day comes back whole). Days are cut in the home time zone
+(`GET /system/timezone`, already loaded by the app shell), like the server cuts
+them, not in the viewer's.
+
+The hourly history only writes an hour once it has ended, so it lags behind the
+live `rain_today`. When the plugin publishes it, that live value takes today's
+slot before the 7 d / 30 d sums, the bars and the last rain are computed: every
+figure of the sheet agrees with "Aujourd'hui".
 
 **Retention.** The API sums rain from the hourly bucket, kept 90 days. Until
-the follow-up backend change (daily rain totals kept one year, phase 2, #1027) lands,
-the sheet sees at most 90 days back and says so ("Aucune depuis le …").
+the follow-up backend change lands (phase 2, #1027: a dedicated
+`sowel-rain-hourly` bucket keeping the hourly rain points for one year), the
+sheet sees at most 90 days back and says so ("Aucune depuis le …").
 
 ## Out of scope
 
@@ -63,7 +75,9 @@ the sheet sees at most 90 days back and says so ("Aucune depuis le …").
 | Day with no point after the first one                                     | Counted as 0 mm                                                  |
 | Daily buckets stamped at UTC midnight (before PR #1024) vs local midnight | Both map to the right local day                                  |
 | No `rain` binding to query                                                | Live values only, history rows `—`, no error line                |
-| Rain between 00:00 and 02:00 local before PR #1024                        | Counted on the previous day (UTC day buckets); fixed by #1024    |
+| Rain in the 00:00–01:00 local hour, before PR #1024 (UTC day buckets)     | Previous day in summer only: hours are stamped at their end      |
+| Rain in the current hour (not in the hourly history yet)                  | Live `rain_today` takes today's slot; every figure agrees        |
+| Viewer in another time zone than the home                                 | Days cut in the home zone (the viewer's until it has loaded)     |
 
 ## Acceptance criteria
 

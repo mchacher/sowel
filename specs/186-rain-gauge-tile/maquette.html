@@ -124,7 +124,7 @@ code{font-size:13px;background:var(--bg);padding:1px 4px;border-radius:4px;overf
   <li>« Dernière pluie » peut être aujourd'hui.</li>
   <li>Histogramme des 30 jours dans le détail.</li>
   <li>« 24 h glissantes » gardé sur la tuile.</li>
-  <li>Dernière pluie cherchée sur <b>6 mois</b> ; au-delà : « Aucune depuis 6 mois ».</li>
+  <li>Dernière pluie cherchée sur <b>6 mois</b>.</li>
 </ul>
 </div>
 </main>
@@ -143,7 +143,7 @@ const SCEN = {
   dry:    {name:"Sec depuis 4 jours", raining:false, h24:0,
            d:[...z(10),6.3,12.6,2.1,...z(4),0.5,0,8.4,3.7,...z(4),1.6,...z(4)]},
   never:  {name:"Rien depuis 6 mois", raining:false, h24:0, d:z(30)},
-  fresh:  {name:"Mesures depuis 2 jours (ton cas)", raining:true, h24:7.4,
+  fresh:  {name:"Mesures depuis 2 jours", raining:true, h24:7.4,
            d:[...Array(28).fill(null),2.1,5.3]},
 };
 let cur = "fresh";
