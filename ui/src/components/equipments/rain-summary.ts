@@ -260,8 +260,8 @@ export function summarizeRainHistory(
 }
 
 /**
- * Headline of the tile: today's rain, or the rolling 24 h when the plugin
- * publishes no `rain_today` (a Netatmo rain module).
+ * Headline of the tile: today's rain, or the rolling 24 h when no `rain_today`
+ * is bound (an equipment created before its plugin published one).
  */
 export function rainHeadline(equipment: EquipmentWithDetails) {
   const live = readRainLive(equipment);

@@ -476,8 +476,7 @@ export function CompactEquipmentCard({ equipment, onExecuteOrder, zoneName }: Co
  * temperature, humidity, 24h rain, wind strength — in that exact order.
  *
  * Falls back to `computedData.rain_24h` when the cumulative `sum_rain_24`
- * binding isn't attached (typical of the Netatmo plugin which auto-binds only
- * the bare `rain` device-side).
+ * binding isn't attached (an equipment bound before its plugin published it).
  */
 function buildWeatherCompactBindings(
   equipment: EquipmentWithDetails,

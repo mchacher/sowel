@@ -209,6 +209,21 @@ arrière (`sowel-plugin-netatmo-weather` le fait, à partir des totaux horaires 
 échantillon brut (la pluie des dernières minutes) comme `rain` : l'historique le prendrait pour le total de
 l'heure.
 
+Les autres clés de pluie sont des valeurs live, non historisées par défaut (`history-defaults.ts`), et chacune a un
+seul sens quelle que soit la source :
+
+| Clé           | Sens                                                      | Utilisée par                                                                                    |
+| ------------- | --------------------------------------------------------- | ----------------------------------------------------------------------------------------------- |
+| `sum_rain_1`  | Pluie sur la dernière heure glissante                     | `rain_1h`, le panneau météo                                                                     |
+| `sum_rain_24` | Pluie sur les 24 dernières heures **glissantes**          | `rain_24h` (sur lequel `auto-watering` saute un arrosage), « 24 h glissantes » dans l'interface |
+| `rain_today`  | Pluie depuis **minuit heure locale**, remise à 0 à minuit | « Pluie aujourd'hui », le chiffre principal de la tuile pluviomètre                             |
+
+Faites correspondre les champs de votre source à ces sens, pas à leurs noms : le `sum_rain_24` de Netatmo est
+la pluie depuis minuit, donc le plugin Netatmo le publie comme `rain_today` et additionne ses totaux horaires
+dans `sum_rain_24` (#1037). Omettez une clé plutôt que de lui donner un autre sens : sans `sum_rain_24`,
+Sowel additionne la série horaire `rain` des 24 dernières heures dans `rain_24h`. Sans `sum_rain_1`, `rain_1h`
+n'est que la pluie depuis le début de l'heure : publiez une vraie heure glissante si votre source en a une.
+
 !!! warning "Une nouvelle donnée n'atteint pas toute seule les équipements existants"
 Ajouter une clé dans `DiscoveredDevice.data` crée bien la ligne `device_data`
 à la découverte suivante, mais la liaison automatique ne tourne qu'à la
