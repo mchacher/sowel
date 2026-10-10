@@ -48,13 +48,15 @@ export const ALIAS_DEFAULTS_ON: ReadonlySet<string> = new Set(["setpoint", "powe
  * the rain chart plot a flat rolling total ("11.9 mm every hour") and makes
  * any `category == "rain"` |> sum() (WeatherAggregator) a sum-of-cumuls. The
  * incremental `rain` alias stays historized; the live rolling totals are read
- * from the equipment binding, not InfluxDB. */
+ * from the equipment binding, not InfluxDB. `rain_today` (rain since local
+ * midnight, reset at 00:00) is a running total of the same kind. */
 export const ALIAS_DEFAULTS_OFF: ReadonlySet<string> = new Set([
   "demand_30min",
   "energy_forward",
   "energy_reverse",
   "sum_rain_1",
   "sum_rain_24",
+  "rain_today",
   "wind_angle",
   "gust_strength",
   "gust_angle",

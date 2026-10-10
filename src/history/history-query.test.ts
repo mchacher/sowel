@@ -83,6 +83,35 @@ describe("buildFluxQuery", () => {
       expect(flux).toContain("aggregateWindow(every: 1d, fn: sum");
     });
 
+    it("stamps raw rain windows at their start and cuts days at local midnight", () => {
+      const flux = buildFluxQuery({
+        ...baseParams,
+        bucket: "sowel",
+        resolution: "1d",
+        category: "rain",
+        isDownsampled: false,
+        timezone: "Europe/Paris",
+      });
+      expect(flux.startsWith('import "timezone"')).toBe(true);
+      expect(flux).toContain('timeSrc: "_start"');
+      expect(flux).toContain('location: timezone.location(name: "Europe/Paris")');
+      // raw points already carry the time the rain fell: no shift
+      expect(flux).not.toContain("timeShift");
+    });
+
+    it("leaves the raw fallback of continuous categories alone", () => {
+      const flux = buildFluxQuery({
+        ...baseParams,
+        bucket: "sowel",
+        alias: "temperature",
+        resolution: "1d",
+        category: "temperature",
+        isDownsampled: false,
+        timezone: "Europe/Paris",
+      });
+      expect(flux).not.toContain("timezone");
+    });
+
     it("aggregates with mean on raw bucket for continuous categories", () => {
       const flux = buildFluxQuery({
         ...baseParams,
@@ -125,6 +154,39 @@ describe("buildFluxQuery", () => {
       });
       expect(flux).toContain('_field == "mean"');
       expect(flux).toContain("aggregateWindow(every: 1h, fn: sum");
+    });
+
+    // The hourly task stamps each hour at its end: 13:00-14:00 rain sits at 14:00.
+    it("shifts rain hours back to their start before re-summing", () => {
+      const flux = buildFluxQuery({
+        ...baseParams,
+        bucket: "sowel-hourly",
+        resolution: "1d",
+        category: "rain",
+        isDownsampled: true,
+      });
+      const shift = flux.indexOf("timeShift(duration: -1h)");
+      expect(shift).toBeGreaterThan(flux.indexOf('_field == "mean"'));
+      expect(shift).toBeLessThan(flux.indexOf("aggregateWindow"));
+    });
+
+    it("cuts rain days at local midnight, in the server zone by default", () => {
+      const prev = process.env.TZ;
+      process.env.TZ = "America/New_York";
+      try {
+        const flux = buildFluxQuery({
+          ...baseParams,
+          bucket: "sowel-hourly",
+          resolution: "1d",
+          category: "rain",
+          isDownsampled: true,
+        });
+        expect(flux.startsWith('import "timezone"')).toBe(true);
+        expect(flux).toContain('location: timezone.location(name: "America/New_York")');
+      } finally {
+        if (prev === undefined) delete process.env.TZ;
+        else process.env.TZ = prev;
+      }
     });
 
     it("reads the mean field directly for continuous categories (no re-aggregation)", () => {

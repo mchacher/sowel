@@ -153,6 +153,7 @@ Capteur météo extérieur qui fournit les conditions actuelles.
 
 - **Contrôles :** Affichage multi-valeurs
 - **Données typiques :** température, humidité, pression, pluie, vent, bruit, batterie
+- La pluie s'affiche en cumul sur 24 h et sur 1 h, plus « Pluie aujourd'hui » (depuis minuit) quand la station la remonte. Son historique se lit en barres, par heure ou par jour, chaque jour coupé à minuit heure locale.
 - Les températures (extérieure et intérieure) affichent en dessous le minimum et le maximum mesurés depuis minuit, sur le widget du dashboard comme sur la page de détail. Fonctionne avec toute station qui remonte une température, sans configuration.
 
 #### Prévision météo

@@ -559,6 +559,7 @@
   "weather.rainCurrent": "Pluie actuelle",
   "weather.rain1h": "Pluie 1h",
   "weather.rain24h": "Pluie 24h",
+  "weather.rainToday": "Pluie aujourd'hui",
   "aggregation.motion": "Mouvement",
   "aggregation.calm": "Calme",
   "aggregation.status": "Statut",

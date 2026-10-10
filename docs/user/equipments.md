@@ -92,12 +92,12 @@ A gate can be driven by any on/off relay — a Zigbee dry-contact module (e.g. S
 
 ### Sensors
 
-| Type                 | Controls / Display                          | Expected data                                                                                                |
-| -------------------- | ------------------------------------------- | ------------------------------------------------------------------------------------------------------------ |
-| **Sensor**           | Read-only multi-value display, auto-adapted | temperature, humidity, pressure, CO2, VOC, luminosity, noise, battery, motion, contact, water leak, smoke    |
-| **Weather Station**  | Multi-value display                         | temperature (with today's measured min/max shown underneath), humidity, pressure, rain, wind, noise, battery |
-| **Weather Forecast** | Day-by-day forecast cards (J+1 to J+5)      | weather condition, temperature min/max, rain probability, wind gusts                                         |
-| **Button / Remote**  | Not directly controlled (used as trigger)   | action events (single press, double press, long press)                                                       |
+| Type                 | Controls / Display                          | Expected data                                                                                                                                                                                                                                                       |
+| -------------------- | ------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **Sensor**           | Read-only multi-value display, auto-adapted | temperature, humidity, pressure, CO2, VOC, luminosity, noise, battery, motion, contact, water leak, smoke                                                                                                                                                           |
+| **Weather Station**  | Multi-value display                         | temperature (with today's measured min/max shown underneath), humidity, pressure, rain (1 h and 24 h totals, plus _Rain today_ since midnight when the station reports it; history bars per hour and per day, each day cut at local midnight), wind, noise, battery |
+| **Weather Forecast** | Day-by-day forecast cards (J+1 to J+5)      | weather condition, temperature min/max, rain probability, wind gusts                                                                                                                                                                                                |
+| **Button / Remote**  | Not directly controlled (used as trigger)   | action events (single press, double press, long press)                                                                                                                                                                                                              |
 
 The generic **Sensor** type adapts its display automatically. Boolean sensors (motion, contact, water leak, smoke) get appropriate badges; numeric sensors get values with the right unit and icon.
 

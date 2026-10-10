@@ -106,6 +106,8 @@ describe("HistoryWriter.resolveHistorize", () => {
     // plot a flat cumulative and sum-of-cumuls the WeatherAggregator.
     expect(HistoryWriter.resolveHistorize(null, "sum_rain_1", "rain")).toBe(false);
     expect(HistoryWriter.resolveHistorize(null, "sum_rain_24", "rain")).toBe(false);
+    // rain since local midnight: a running total too (sowel-plugin-rain-gauge)
+    expect(HistoryWriter.resolveHistorize(null, "rain_today", "rain")).toBe(false);
     // The incremental per-period rain stays historized.
     expect(HistoryWriter.resolveHistorize(null, "rain", "rain")).toBe(true);
   });
