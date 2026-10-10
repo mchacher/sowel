@@ -971,3 +971,106 @@ describe("restoreFromBuffer — InfluxDB connected (spec 186)", () => {
     expect(calls).not.toContain("rain backfill");
   });
 });
+
+// A restore read each line protocol entry whole — one buffer, one string, one
+// array of lines — and went past 650 MB on a real instance's backup. Entries
+// are now inflated and written batch by batch.
+describe("restoreFromBuffer — InfluxDB entries are streamed", () => {
+  let tmpDir: string;
+  let db: Database.Database;
+
+  beforeEach(() => {
+    tmpDir = mkdtempSync(resolve(tmpdir(), "sowel-restore-stream-test-"));
+    db = createTestDb();
+  });
+
+  afterEach(() => {
+    vi.unstubAllGlobals();
+    db.close();
+    rmSync(tmpDir, { recursive: true, force: true });
+  });
+
+  function lp(from: number, to: number): string[] {
+    const out: string[] = [];
+    for (let i = from; i < to; i++)
+      out.push(`equipment_data,equipmentId=e,alias=power value=${i} ${i}`);
+    return out;
+  }
+
+  function zipWith(entries: Record<string, string>, stored: string[] = []): Buffer {
+    const zip = new AdmZip();
+    const tables = Object.fromEntries(BACKUP_TABLES.map((t) => [t, []]));
+    zip.addFile(
+      "sowel-backup.json",
+      Buffer.from(JSON.stringify({ version: 2, exportedAt: new Date().toISOString(), tables })),
+    );
+    for (const [name, content] of Object.entries(entries)) {
+      zip.addFile(name, Buffer.from(content));
+      if (stored.includes(name)) zip.getEntry(name)!.header.method = 0;
+    }
+    return zip.toBuffer();
+  }
+
+  function restore(buffer: Buffer) {
+    const writes: { bucket: string; body: string }[] = [];
+    const influx = {
+      isConnected: () => true,
+      getConfig: () => ({ url: "http://influx", org: "o", bucket: "sowel", token: "t" }),
+      getClient: () => null,
+      ensureBuckets: async () => {},
+      ensureEnergyBuckets: async () => {},
+      ensureRainBuckets: async () => {},
+    } as unknown as InfluxClient;
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async (url: string, init: { body: string }) => {
+        writes.push({ bucket: new URL(url).searchParams.get("bucket")!, body: init.body });
+        return new Response(null, { status: 204 });
+      }),
+    );
+    const manager = new BackupManager({ db, influxClient: influx, logger, dataDir: tmpDir });
+    return { writes, done: manager.restoreFromBuffer(buffer) };
+  }
+
+  it("writes every line in batches of 5000, whatever the chunking", async () => {
+    const lines = lp(0, 12001);
+    const { writes, done } = restore(zipWith({ "influx-raw.lp": lines.join("\n") }));
+    const result = await done;
+
+    expect(writes.map((w) => w.body.split("\n").length)).toEqual([5000, 5000, 2001]);
+    expect(writes.flatMap((w) => w.body.split("\n"))).toEqual(lines);
+    expect(result.influxPointsRestored).toBe(12001);
+  });
+
+  it("ignores blank lines and writes nothing for an entry with no line", async () => {
+    const { writes, done } = restore(
+      zipWith({
+        "influx-raw.lp": `\n${lp(0, 2).join("\n")}\n\n`,
+        "influx-hourly.lp": "\n  \n",
+      }),
+    );
+    const result = await done;
+
+    expect(writes).toEqual([{ bucket: "sowel", body: lp(0, 2).join("\n") }]);
+    expect(result.influxPointsRestored).toBe(2);
+  });
+
+  it("reads a stored (uncompressed) entry too", async () => {
+    const { writes, done } = restore(
+      zipWith({ "influx-daily.lp": lp(0, 3).join("\n") }, ["influx-daily.lp"]),
+    );
+    await done;
+
+    expect(writes).toEqual([{ bucket: "sowel-daily", body: lp(0, 3).join("\n") }]);
+  });
+
+  it("refuses an entry whose crc-32 is wrong before writing any of it", async () => {
+    const buffer = zipWith({ "influx-daily.lp": lp(0, 3).join("\n") }, ["influx-daily.lp"]);
+    const at = buffer.indexOf("value=1 1");
+    buffer.write("value=7 1", at);
+    const { writes, done } = restore(buffer);
+
+    await expect(done).rejects.toThrow("CRC32 checksum failed influx-daily.lp");
+    expect(writes).toEqual([]);
+  });
+});
