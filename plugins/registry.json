@@ -21,11 +21,11 @@
     "icon": "Radio",
     "author": "mchacher",
     "repo": "mchacher/sowel-plugin-lora2mqtt",
-    "version": "2.1.2",
+    "version": "2.2.0",
     "tags": ["lora", "mqtt", "iot", "sensors"],
     "sowelVersion": ">=1.2.12",
     "owner": "mchacher",
-    "sha256": "2a6adf0037098adba19c538c0dfb80677ad66b66994bb92dfe90fbda5d60af1f"
+    "sha256": "1e5733c5174e5d4ac74b1a00995de9f2d2aef9294bba43f40a20b6d630d10fcb"
   },
   {
     "id": "tasmota",
