@@ -105,11 +105,11 @@
     "icon": "CloudSun",
     "author": "mchacher",
     "repo": "mchacher/sowel-plugin-netatmo-weather",
-    "version": "2.1.0",
+    "version": "2.2.0",
     "tags": ["weather", "netatmo", "temperature", "humidity", "rain", "wind"],
-    "sowelVersion": ">=1.2.11",
+    "sowelVersion": ">=1.74.0",
     "owner": "mchacher",
-    "sha256": "a6183b43ecca41b2ebf554410a9665082154be1067e9c7f27c18879b11de9a71"
+    "sha256": "c7442dc4ce842f872a48dce18be8d96f466f8eff3f5934a008e9dbf962d2ab15"
   },
   {
     "id": "weather-forecast",
