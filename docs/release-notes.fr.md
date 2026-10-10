@@ -11,6 +11,24 @@ Cette page résume toutes les versions publiées, de la plus récente à la plus
 
 ---
 
+## 1.74.x : La pluie, comptée juste et gardée un an
+
+### v1.74.0 — 2026-10-10 { #v1-74-0 }
+
+Un pluviomètre a sa propre tuile, l'historique de pluie remonte à un an, et un module pluie Netatmo affiche enfin la pluie tombée : son historique était quatre à huit fois trop bas. Le travail sur la pluie est en grande partie celui d'Adrien Jouve, relu et complété avant d'être fusionné. Également dans cette version : un bouton de partage sur la page visiteur, et une série de mises à jour de dépendances qui ferme une alerte de sécurité haute.
+
+- Nouveauté (ui) : **une tuile pluviomètre et sa fiche** (spec 186, #1026). Un équipement météo qui ne mesure que la pluie (pluviomètre à augets, module pluie Netatmo seul) n'affiche plus `— °C` : sa tuile montre la pluie du jour, le cumul sur 24 h glissantes et un point qui pulse quand il pleut. Sa fiche ajoute les 7 et 30 derniers jours, le dernier jour de pluie (cherché sur six mois) et 30 barres journalières. Les jours sont coupés dans le fuseau de la maison, et « aujourd'hui » concorde avec tous les chiffres en dessous. Une station qui mesure aussi la température, le vent ou l'humidité garde sa tuile habituelle.
+- Nouveauté (historique) : **l'historique de pluie gardé un an** (spec 186 phase 2, #1027). Un nouveau bucket `sowel-rain-hourly` conserve les points de pluie horaires pendant un an (le bucket horaire commun en garde 90 jours). Il stocke des heures, pas des jours : rien de ce qui est stocké ne dépend du fuseau, les jours sont coupés à la lecture. Il est sauvegardé et restauré avec les autres.
+- Correction (historique) : **une journée de pluie commence à minuit heure locale** (#1024). La pluie journalière était coupée à minuit UTC : une averse entre minuit et 1 h en été tombait la veille. Elle suit désormais minuit heure locale, comme les vues énergie.
+- Correction (historique) : **une heure de pluie en retard atteint l'historique** (#1036, #1038). Une heure de pluie qui arrive une fois terminée (relevé en retard, total corrigé, rattrapage) restait dans le bucket brut de 7 jours. Elle est maintenant écrite directement dans l'historique horaire, et une heure n'est comptée qu'une fois, même si l'équipement a changé de zone.
+- Nouveauté (accès partagé) : **partager l'invitation depuis le téléphone du visiteur** (#1032). Réglages › « Partager cet accès » gagne un bouton Partager qui ouvre le menu de partage du téléphone (Messages, WhatsApp, e-mail) avec le lien d'invitation, pour une personne qui n'est pas là pour scanner le QR code. Il n'apparaît que si le téléphone propose un menu de partage.
+- Doc (plugins) : **`sourceTimestamp` est en secondes** (#1025), et le contrat horaire que doit suivre un plugin qui publie la pluie est écrit dans le guide plugin.
+- Plugins et recettes (registre) : **`netatmo_weather` 2.2.0** (#1039, exige cette version). Le plugin publiait la mesure de pluie sur 5 minutes du tableau de bord Netatmo, lue deux fois ou pas du tout selon le relevé, et l'historique la prenait pour un total horaire : sur la station du propriétaire, 3,2 mm pour une journée qui en a vu entre 12 et 23. Il publie désormais les totaux horaires de Netatmo, et après la mise à jour il réécrit l'année d'historique de pluie en 45 minutes environ, les semaines les plus récentes d'abord.
+- Sécurité (dépendances) : **`@fastify/busboy` 3.2.2** (#1017) ferme deux alertes hautes de déni de service sur l'analyse multipart ; dans Sowel, seule la restauration d'une sauvegarde par un admin analyse du multipart. Aussi `fast-copy` 4.1.2 (#1035) et `source-map-js` 1.2.2 (build uniquement, #1033).
+- Maintenance (dépendances) : `dotenv` 18 (#1001), et les mises à jour hebdomadaires des bibliothèques, de l'outillage et des GitHub Actions (#1028, #1029, #1030, #1031, #1002).
+
+---
+
 ## 1.73.x : La borne, la voiture, et un surplus qui varie
 
 ### v1.73.2 — 2026-10-04 { #v1-73-2 }
