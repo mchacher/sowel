@@ -8,6 +8,8 @@ import {
   unlinkSync,
 } from "node:fs";
 import { resolve, dirname, basename, sep } from "node:path";
+import { Readable } from "node:stream";
+import { createInflateRaw, crc32 } from "node:zlib";
 import { ZipArchive } from "archiver";
 import type { Archiver } from "archiver";
 import AdmZip from "adm-zip";
@@ -533,16 +535,14 @@ export class BackupManager {
         const entry = zip.getEntry(bucketDef.filename);
         if (!entry) continue;
 
-        const lp = entry.getData().toString("utf-8").trim();
-        if (!lp) continue;
+        // Fails the restore on a corrupt entry before a single point of it is
+        // written, as reading the entry whole used to.
+        await verifyEntryCrc(entry);
 
         const bucket = `${influxConfig.bucket}${bucketDef.bucketSuffix}`;
         try {
-          const lines = lp.split("\n");
-          // Write in batches of 5000 lines via HTTP API
-          const batchSize = 5000;
-          for (let i = 0; i < lines.length; i += batchSize) {
-            const batch = lines.slice(i, i + batchSize).join("\n");
+          let lines = 0;
+          for await (const batch of lineBatches(entryLines(entry), RESTORE_BATCH_LINES)) {
             const resp = await fetch(
               `${influxConfig.url}/api/v2/write?org=${encodeURIComponent(influxConfig.org)}&bucket=${encodeURIComponent(bucket)}&precision=ns`,
               {
@@ -551,7 +551,7 @@ export class BackupManager {
                   Authorization: `Token ${influxConfig.token}`,
                   "Content-Type": "text/plain",
                 },
-                body: batch,
+                body: batch.join("\n"),
               },
             );
             if (!resp.ok) {
@@ -561,9 +561,11 @@ export class BackupManager {
                 "InfluxDB write batch failed",
               );
             }
+            lines += batch.length;
           }
-          influxPointsRestored += lines.length;
-          this.logger.debug({ bucket, lines: lines.length }, "InfluxDB bucket restored");
+          if (lines === 0) continue;
+          influxPointsRestored += lines;
+          this.logger.debug({ bucket, lines }, "InfluxDB bucket restored");
         } catch (err) {
           this.logger.warn({ err, bucket }, "Failed to restore InfluxDB bucket");
         }
@@ -835,6 +837,58 @@ function scanDataFiles(dataDir: string): { files: string[]; skipped: string[] } 
     files.push(entry.name);
   }
   return { files, skipped };
+}
+
+/** Line protocol lines written to InfluxDB per request on restore. */
+const RESTORE_BATCH_LINES = 5000;
+
+/**
+ * The entry's uncompressed bytes as a stream, inflated on the fly.
+ *
+ * A bucket is never decompressed whole: reading the hourly bucket as one
+ * buffer, then one string, then one array of lines took a restore past
+ * 650 MB on a real instance. The compressed bytes are already in memory with
+ * the rest of the ZIP, and are small.
+ */
+function entryStream(entry: AdmZip.IZipEntry): Readable {
+  const compressed = Readable.from([entry.getCompressedData()]);
+  if (entry.header.method === 0) return compressed;
+  if (entry.header.method === 8) return compressed.pipe(createInflateRaw());
+  throw new Error(`Unsupported compression method ${entry.header.method} for ${entry.entryName}`);
+}
+
+/** Throws the way adm-zip's getData() does when the entry's crc-32 is wrong. */
+async function verifyEntryCrc(entry: AdmZip.IZipEntry): Promise<void> {
+  let crc = 0;
+  for await (const chunk of entryStream(entry)) crc = crc32(chunk as Buffer, crc);
+  if (crc >>> 0 !== entry.header.crc >>> 0) {
+    throw new Error(`CRC32 checksum failed ${entry.entryName}`);
+  }
+}
+
+/** The entry's non-blank lines, read chunk by chunk. */
+async function* entryLines(entry: AdmZip.IZipEntry): AsyncGenerator<string> {
+  const stream = entryStream(entry);
+  stream.setEncoding("utf-8");
+  let rest = "";
+  for await (const chunk of stream) {
+    const parts = (rest + (chunk as string)).split("\n");
+    rest = parts.pop() ?? "";
+    for (const line of parts) if (line.trim()) yield line;
+  }
+  if (rest.trim()) yield rest;
+}
+
+async function* lineBatches(lines: AsyncIterable<string>, size: number): AsyncGenerator<string[]> {
+  let batch: string[] = [];
+  for await (const line of lines) {
+    batch.push(line);
+    if (batch.length === size) {
+      yield batch;
+      batch = [];
+    }
+  }
+  if (batch.length > 0) yield batch;
 }
 
 /**
