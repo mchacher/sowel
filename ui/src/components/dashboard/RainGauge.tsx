@@ -116,7 +116,9 @@ type HistoryState =
   | { status: "ready"; points: HistoryPoint[] };
 
 function useRainHistory(equipmentId: string, alias: string | null): HistoryState {
-  const [state, setState] = useState<HistoryState>({ status: "loading" });
+  const [state, setState] = useState<HistoryState>(() =>
+    alias ? { status: "loading" } : { status: "none" },
+  );
   useEffect(() => {
     if (!alias) {
       setState({ status: "none" });
@@ -186,6 +188,7 @@ function RainBars({ bars, locale, t }: { bars: RainDay[]; locale: string; t: TFu
               type="button"
               aria-label={describe(i)}
               onMouseEnter={() => setPicked(i)}
+              onFocus={() => setPicked(i)}
               onClick={() => setPicked(i)}
               className="flex-1 h-full flex items-end cursor-pointer"
             >
@@ -226,9 +229,13 @@ export function RainDetailContent({ equipment }: { equipment: EquipmentWithDetai
   const summary: RainSummary | null = useMemo(
     () =>
       history.status === "ready"
-        ? summarizeRainHistory(history.points, new Date(), { liveToday: live.today, timeZone })
+        ? summarizeRainHistory(history.points, new Date(), {
+            liveToday: live.today,
+            liveTodayAt: live.todayAt,
+            timeZone,
+          })
         : null,
-    [history, live.today, timeZone],
+    [history, live.today, live.todayAt, timeZone],
   );
 
   const pending = history.status === "loading" ? "…" : "—";
@@ -236,7 +243,8 @@ export function RainDetailContent({ equipment }: { equipment: EquipmentWithDetai
     summary && measured > 0 && measured < days
       ? t("weather.rainPartial", { count: measured })
       : null;
-  const today = live.today ?? summary?.today ?? null;
+  // The summary has already weighed the live total against the history (stale, lower).
+  const today = summary ? summary.today : live.today;
 
   let lastRainText: string;
   let lastRainValue = "—";

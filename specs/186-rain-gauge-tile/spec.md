@@ -50,7 +50,9 @@ them, not in the viewer's.
 The hourly history only writes an hour once it has ended, so it lags behind the
 live `rain_today`. When the plugin publishes it, that live value takes today's
 slot before the 7 d / 30 d sums, the bars and the last rain are computed: every
-figure of the sheet agrees with "Aujourd'hui".
+figure of the sheet agrees with "Aujourd'hui". It only counts if it was
+published on the house's today (a stopped plugin leaves yesterday's total in
+the binding), and it never lowers today below what the history already holds.
 
 **Retention.** The API sums rain from the hourly bucket, kept 90 days. Until
 the follow-up backend change lands (phase 2, #1027: a dedicated
@@ -65,19 +67,20 @@ sheet sees at most 90 days back and says so ("Aucune depuis le …").
 
 ## Edge cases
 
-| Case                                                                      | Behaviour                                                        |
-| ------------------------------------------------------------------------- | ---------------------------------------------------------------- |
-| Request fails (HTTP / network)                                            | 7 d, 30 d, last rain `—`, no bars, "Historique indisponible"     |
-| No history point at all (also InfluxDB down: the route answers `200 []`)  | 7 d, 30 d, last rain `—`, empty bars                             |
-| History shorter than 6 months                                             | "Aucune depuis le <first day>" instead of "Aucune depuis 6 mois" |
-| History started 2 days ago                                                | Totals over the days measured, "mesuré sur 2 j seulement"        |
-| Days before the first point                                               | Empty bars (dashed), not zero                                    |
-| Day with no point after the first one                                     | Counted as 0 mm                                                  |
-| Daily buckets stamped at UTC midnight (before PR #1024) vs local midnight | Both map to the right local day                                  |
-| No `rain` binding to query                                                | Live values only, history rows `—`, no error line                |
-| Rain in the 00:00–01:00 local hour, before PR #1024 (UTC day buckets)     | Previous day in summer only: hours are stamped at their end      |
-| Rain in the current hour (not in the hourly history yet)                  | Live `rain_today` takes today's slot; every figure agrees        |
-| Viewer in another time zone than the home                                 | Days cut in the home zone (the viewer's until it has loaded)     |
+| Case                                                                      | Behaviour                                                                                                                                   |
+| ------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------- |
+| Request fails (HTTP / network)                                            | 7 d, 30 d, last rain `—`, no bars, "Historique indisponible"                                                                                |
+| No history point at all (also InfluxDB down: the route answers `200 []`)  | 7 d, 30 d, last rain `—`, empty bars; with a live `rain_today` published today, today alone counts as measured ("mesuré sur 1 j seulement") |
+| History shorter than 6 months                                             | "Aucune depuis le <first day>" instead of "Aucune depuis 6 mois"                                                                            |
+| History started 2 days ago                                                | Totals over the days measured, "mesuré sur 2 j seulement"                                                                                   |
+| Days before the first point                                               | Empty bars (dashed), not zero                                                                                                               |
+| Day with no point after the first one                                     | Counted as 0 mm                                                                                                                             |
+| Daily buckets stamped at UTC midnight (before PR #1024) vs local midnight | Both map to the right local day                                                                                                             |
+| No `rain` binding to query                                                | Live values only, history rows `—`, no error line                                                                                           |
+| Rain in the 00:00–01:00 local hour, before PR #1024 (UTC day buckets)     | Previous day in summer only: hours are stamped at their end                                                                                 |
+| Rain in the current hour (not in the hourly history yet)                  | Live `rain_today` takes today's slot; every figure agrees                                                                                   |
+| `rain_today` last published before today, negative, or below the history  | Ignored for the summary: the history's today stands                                                                                         |
+| Viewer in another time zone than the home                                 | Days cut in the home zone (the viewer's until it has loaded)                                                                                |
 
 ## Acceptance criteria
 

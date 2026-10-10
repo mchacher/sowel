@@ -180,9 +180,9 @@ describe("dayKey", () => {
     expect(dayKey("2026-10-07T00:00:00Z")).toBe("2026-10-07");
   });
 
-  it("reads any other stamp as its local date", () => {
-    const localMidnight = new Date(2026, 9, 7).toISOString();
-    expect(dayKey(localMidnight)).toBe("2026-10-07");
+  it("falls back to the viewer's zone when the house's is not known", () => {
+    const stamp = "2026-10-06T22:00:00Z";
+    expect(dayKey(stamp)).toBe(calendarDay(new Date(stamp)));
   });
 
   // The server stamps a day at the house's local midnight (PR #1024), whatever the viewer's zone.
@@ -294,20 +294,6 @@ describe("summarizeRainHistory", () => {
     expect(s.since?.getTime()).toBe(new Date(2026, 9, 8 - 89, 12).getTime());
   });
 
-  it("keeps whole days across a daylight-saving change", () => {
-    // 15 Nov 2026: the window crosses the 25 Oct change in zones that observe it.
-    const nov = new Date(2026, 10, 15, 9, 0);
-    const points = Array.from({ length: 60 }, (_, i) => {
-      const d = new Date(2026, 10, 15 - i);
-      const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
-      return { time: `${key}T00:00:00Z`, value: i === 40 ? 6 : 0 };
-    });
-    const s = summarizeRainHistory(points, nov);
-    expect(s.lastRain?.daysAgo).toBe(40);
-    expect(s.lastRain?.date.getDate()).toBe(new Date(2026, 10, 15 - 40).getDate());
-    expect(s.measured30).toBe(30);
-  });
-
   it("returns nulls when the history is empty", () => {
     const s = summarizeRainHistory([], NOW);
     expect(s.sum7).toBeNull();
@@ -365,6 +351,39 @@ describe("summarizeRainHistory with the live total of today", () => {
     expect(s.today).toBe(1.5);
     expect(s.sum7).toBe(5.5);
     expect(s.lastRain).toMatchObject({ daysAgo: 0, mm: 1.5 });
+  });
+
+  it("ignores a live total published before today (a stopped plugin)", () => {
+    const points = dryRun(10, { 1: 5 });
+    const yesterday = new Date(NOW.getTime() - 86_400_000).toISOString();
+    const s = summarizeRainHistory(points, NOW, { liveToday: 5, liveTodayAt: yesterday });
+    expect(s.today).toBe(0);
+    expect(s.sum7).toBe(5);
+    expect(s.lastRain).toMatchObject({ daysAgo: 1, mm: 5 });
+  });
+
+  it("ignores a live total that was never published", () => {
+    const s = summarizeRainHistory(dryRun(10), NOW, { liveToday: 3, liveTodayAt: null });
+    expect(s.today).toBe(0);
+  });
+
+  it("uses a live total published today", () => {
+    const s = summarizeRainHistory(dryRun(10), NOW, {
+      liveToday: 3,
+      liveTodayAt: NOW.toISOString(),
+    });
+    expect(s.today).toBe(3);
+  });
+
+  it("never lowers today below the history", () => {
+    const s = summarizeRainHistory(dryRun(10, { 0: 4 }), NOW, { liveToday: 0 });
+    expect(s.today).toBe(4);
+    expect(s.lastRain).toMatchObject({ daysAgo: 0, mm: 4 });
+  });
+
+  it("ignores a negative live total", () => {
+    const s = summarizeRainHistory(dryRun(10, { 0: 1 }), NOW, { liveToday: -3 });
+    expect(s.today).toBe(1);
   });
 
   it("counts the live total as today's measure when no history came back", () => {

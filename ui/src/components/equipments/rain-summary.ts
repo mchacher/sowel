@@ -41,6 +41,8 @@ export function isRainOnlyWeather(equipment: EquipmentWithDetails): boolean {
 export interface RainLive {
   /** Since local midnight (`rain_today`), null when the plugin does not publish it. */
   today: number | null;
+  /** When `rain_today` was last published (ISO), null if never. */
+  todayAt: string | null;
   /** Rolling 24 h (`sum_rain_24`, else computed `rain_24h`). */
   last24h: number | null;
   /** Rolling 1 h (`sum_rain_1`, else computed `rain_1h`). */
@@ -70,6 +72,7 @@ export function readRainLive(equipment: EquipmentWithDetails): RainLive {
   const rainSeries = equipment.dataBindings.find((b) => b.key === "rain" && b.category === "rain");
   return {
     today: num(byKey("rain_today")?.value),
+    todayAt: byKey("rain_today")?.lastUpdated ?? null,
     last24h: bindingOr("sum_rain_24", "rain_24h"),
     lastHour: bindingOr("sum_rain_1", "rain_1h"),
     historyAlias: rainSeries?.alias ?? null,
@@ -182,6 +185,12 @@ export interface RainSummaryOptions {
    * replaces today's slot before the sums, the bars and the last rain.
    */
   liveToday?: number | null;
+  /**
+   * When the live total was published (`lastUpdated`). Given, the total only
+   * counts if it was published on the house's today: a plugin that stopped
+   * leaves yesterday's total in the binding. Omitted, it is not checked.
+   */
+  liveTodayAt?: string | null;
   /** House time zone the days are cut in (`GET /system/timezone`); the viewer's when undefined. */
   timeZone?: string;
 }
@@ -194,7 +203,7 @@ export interface RainSummaryOptions {
 export function summarizeRainHistory(
   points: readonly HistoryPoint[],
   now: Date,
-  { liveToday = null, timeZone }: RainSummaryOptions = {},
+  { liveToday = null, liveTodayAt, timeZone }: RainSummaryOptions = {},
 ): RainSummary {
   const totals = new Map<string, number>();
   for (const p of points) {
@@ -205,7 +214,14 @@ export function summarizeRainHistory(
 
   const n = RAIN_LOOKBACK_DAYS;
   const days = lastDays(now, n, timeZone);
-  if (liveToday !== null && Number.isFinite(liveToday)) totals.set(days[n - 1].key, liveToday);
+  const todayKey = days[n - 1].key;
+  const liveIsToday =
+    liveTodayAt === undefined ||
+    (liveTodayAt !== null && calendarDay(new Date(liveTodayAt), timeZone) === todayKey);
+  if (liveToday !== null && Number.isFinite(liveToday) && liveToday >= 0 && liveIsToday) {
+    // Never below the history: the live total can only be ahead of it.
+    totals.set(todayKey, Math.max(liveToday, totals.get(todayKey) ?? 0));
+  }
 
   const first = days.findIndex((d) => totals.has(d.key));
   const values = days.map((d, i) => (first === -1 || i < first ? null : (totals.get(d.key) ?? 0)));
