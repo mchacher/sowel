@@ -5,6 +5,7 @@ import { CloudRain } from "lucide-react";
 import type { EquipmentWithDetails, HistoryPoint } from "../../types";
 import { getHistoryData } from "../../api";
 import { dateLocale } from "../../lib/locale";
+import { useTimezone } from "../../store/useTimezone";
 import { getBatteryColor, getBatteryIcon } from "../equipments/sensorUtils";
 import {
   formatMm,
@@ -12,22 +13,63 @@ import {
   rainHistoryFrom,
   readRainLive,
   summarizeRainHistory,
+  RAIN_LOOKBACK_MONTHS,
   type RainDay,
   type RainSummary,
 } from "../equipments/rain-summary";
 
 // Spec 186 — tile body and detail sheet of a rain-only weather equipment.
 
-/** The pulsing dot shown while it rained during the last hour. */
-export function RainingDot({ className = "" }: { className?: string }) {
-  return <span className={`inline-block w-2 h-2 rounded-full bg-primary animate-pulse ${className}`} />;
+/**
+ * The pulsing dot shown while it rained during the last hour. It says so to
+ * screen readers, unless the text next to it already does (`decorative`).
+ */
+export function RainingDot({ decorative = false }: { decorative?: boolean }) {
+  const { t } = useTranslation();
+  return (
+    <span className="inline-flex shrink-0">
+      <span
+        aria-hidden="true"
+        className="w-2 h-2 rounded-full bg-primary animate-pulse motion-reduce:animate-none"
+      />
+      {!decorative && <span className="sr-only">{t("weather.rainFalling")}</span>}
+    </span>
+  );
+}
+
+/**
+ * Line under the headline, desktop tile and mobile card alike: the rolling
+ * 24 h total when the headline is today's rain, else "Raining" while it rains.
+ */
+export function RainLine({
+  equipment,
+  className,
+}: {
+  equipment: EquipmentWithDetails;
+  className: string;
+}) {
+  const { t, i18n } = useTranslation();
+  const locale = dateLocale(i18n.language);
+  const { live, hasToday, raining } = rainHeadline(equipment);
+  const over24h = hasToday && live.last24h !== null;
+  if (!over24h && !raining) return null;
+  return (
+    <span className={`flex items-center gap-1.5 min-w-0 ${className}`}>
+      {raining && <RainingDot decorative={!over24h} />}
+      <span className="truncate">
+        {over24h
+          ? t("weather.rainOver24h", { value: formatMm(live.last24h, locale) })
+          : t("weather.rainFalling")}
+      </span>
+    </span>
+  );
 }
 
 /** Desktop tile content (the WidgetCard shell is the caller's). */
 export function RainTileBody({ equipment }: { equipment: EquipmentWithDetails }) {
   const { t, i18n } = useTranslation();
   const locale = dateLocale(i18n.language);
-  const { live, hasToday, value, raining } = rainHeadline(equipment);
+  const { hasToday, value } = rainHeadline(equipment);
   return (
     <div className="flex flex-col items-center justify-center gap-1 flex-1 min-h-0">
       <span className="text-[11px] uppercase tracking-wide text-text-tertiary font-medium">
@@ -37,21 +79,32 @@ export function RainTileBody({ equipment }: { equipment: EquipmentWithDetails })
         <span className="font-mono font-bold text-[32px] sm:text-[36px] text-text tabular-nums leading-none">
           {formatMm(value, locale)}
         </span>
-        <span className="text-text-tertiary font-medium text-[14px] sm:text-[16px] leading-none ml-1">mm</span>
-      </div>
-      {hasToday && live.last24h !== null ? (
-        <span className="flex items-center gap-1.5 text-[12px] text-text-secondary">
-          {raining && <RainingDot />}
-          {t("weather.rainOver24h", { value: formatMm(live.last24h, locale) })}
+        <span className="text-text-tertiary font-medium text-[14px] sm:text-[16px] leading-none ml-1">
+          mm
         </span>
-      ) : (
-        raining && (
-          <span className="flex items-center gap-1.5 text-[12px] text-text-secondary">
-            <RainingDot />
-            {t("weather.rainFalling")}
-          </span>
-        )
-      )}
+      </div>
+      <RainLine equipment={equipment} className="max-w-full text-[12px] text-text-secondary" />
+    </div>
+  );
+}
+
+/**
+ * Mobile card headline, in its icon slot. The card scales that slot to 50%,
+ * hence the doubled sizes.
+ */
+export function RainMobileHeadline({ equipment }: { equipment: EquipmentWithDetails }) {
+  const { t, i18n } = useTranslation();
+  const locale = dateLocale(i18n.language);
+  const { hasToday, value } = rainHeadline(equipment);
+  return (
+    <div className="flex flex-col items-center gap-1 leading-none whitespace-nowrap">
+      <span className="text-[18px] uppercase tracking-wide text-text-tertiary font-medium">
+        {hasToday ? t("weather.todayShort") : t("weather.rain24hShort")}
+      </span>
+      <span className="font-mono font-bold text-[56px] text-text tabular-nums leading-none">
+        {formatMm(value, locale)}
+        <span className="text-text-tertiary font-medium text-[28px] ml-1">mm</span>
+      </span>
     </div>
   );
 }
@@ -115,7 +168,12 @@ function RainBars({ bars, locale, t }: { bars: RainDay[]; locale: string; t: TFu
   const [picked, setPicked] = useState<number | null>(null);
   const max = Math.max(1, ...bars.map((b) => b.mm ?? 0));
   const last = bars.length - 1;
-  const pickedBar = picked !== null ? bars[picked] : null;
+  const describe = (i: number) =>
+    t("weather.rainDayValue", {
+      day: dayLabel(bars[i].date, last - i, locale, t),
+      value:
+        bars[i].mm === null ? t("weather.rainNotMeasured") : `${formatMm(bars[i].mm, locale)} mm`,
+    });
   return (
     <div>
       <div className="flex items-end gap-[2px] h-14 border-b border-border">
@@ -124,9 +182,9 @@ function RainBars({ bars, locale, t }: { bars: RainDay[]; locale: string; t: TFu
           const height = mm ? Math.max(4, (mm / max) * 100) : 0;
           return (
             <button
-              key={b.date.getTime()}
+              key={b.key}
               type="button"
-              aria-label={`${dayLabel(b.date, last - i, locale, t)} : ${mm === null ? t("weather.rainNotMeasured") : `${formatMm(mm, locale)} mm`}`}
+              aria-label={describe(i)}
               onMouseEnter={() => setPicked(i)}
               onClick={() => setPicked(i)}
               className="flex-1 h-full flex items-end cursor-pointer"
@@ -150,10 +208,7 @@ function RainBars({ bars, locale, t }: { bars: RainDay[]; locale: string; t: TFu
         <span>{t("weather.today")}</span>
       </div>
       <div className="text-[12px] text-text-secondary text-center min-h-[18px] mt-1">
-        {pickedBar &&
-          `${dayLabel(pickedBar.date, last - (picked ?? 0), locale, t)} : ${
-            pickedBar.mm === null ? t("weather.rainNotMeasured") : `${formatMm(pickedBar.mm, locale)} mm`
-          }`}
+        {picked !== null && describe(picked)}
       </div>
     </div>
   );
@@ -164,14 +219,23 @@ export function RainDetailContent({ equipment }: { equipment: EquipmentWithDetai
   const locale = dateLocale(i18n.language);
   const live = readRainLive(equipment);
   const history = useRainHistory(equipment.id, live.historyAlias);
+  // Days are cut in the house's zone, like the server cuts them; the viewer's until it is known.
+  const timeZone = useTimezone((s) => (s.loaded ? s.tz : undefined));
+  // The live total is ahead of the hourly history (the current hour is not in
+  // it yet): it takes today's slot, so every figure below agrees with "Today".
   const summary: RainSummary | null = useMemo(
-    () => (history.status === "ready" ? summarizeRainHistory(history.points, new Date()) : null),
-    [history],
+    () =>
+      history.status === "ready"
+        ? summarizeRainHistory(history.points, new Date(), { liveToday: live.today, timeZone })
+        : null,
+    [history, live.today, timeZone],
   );
 
   const pending = history.status === "loading" ? "…" : "—";
   const partial = (measured: number, days: number) =>
-    summary && measured > 0 && measured < days ? t("weather.rainPartial", { count: measured }) : null;
+    summary && measured > 0 && measured < days
+      ? t("weather.rainPartial", { count: measured })
+      : null;
   const today = live.today ?? summary?.today ?? null;
 
   let lastRainText: string;
@@ -185,7 +249,7 @@ export function RainDetailContent({ equipment }: { equipment: EquipmentWithDetai
         ? t("weather.rainNoneSince", {
             date: summary.since.toLocaleDateString(locale, { day: "numeric", month: "short" }),
           })
-        : t("weather.rainNone");
+        : t("weather.rainNone", { months: RAIN_LOOKBACK_MONTHS });
   } else {
     const { date, daysAgo, mm } = summary.lastRain;
     lastRainText = dayLabel(date, daysAgo, locale, t);
@@ -201,7 +265,10 @@ export function RainDetailContent({ equipment }: { equipment: EquipmentWithDetai
         </div>
       </div>
       <div className="grid grid-cols-2 gap-2">
-        <Stat label={t("weather.today")} value={today !== null ? formatMm(today, locale) : pending} />
+        <Stat
+          label={t("weather.today")}
+          value={today !== null ? formatMm(today, locale) : pending}
+        />
         <Stat label={t("weather.rainRolling24h")} value={formatMm(live.last24h, locale)} />
         <Stat
           label={t("weather.rain7d")}
@@ -221,15 +288,21 @@ export function RainDetailContent({ equipment }: { equipment: EquipmentWithDetai
         </div>
         <div className="font-mono font-bold text-[20px] text-text tabular-nums whitespace-nowrap">
           {lastRainValue}
-          {lastRainValue !== "—" && <span className="text-text-tertiary font-normal text-[12px] ml-1">mm</span>}
+          {lastRainValue !== "—" && (
+            <span className="text-text-tertiary font-normal text-[12px] ml-1">mm</span>
+          )}
         </div>
       </div>
       {summary && <RainBars bars={summary.bars} locale={locale} t={t} />}
       {history.status === "error" && (
-        <div className="text-[12px] text-text-tertiary text-center">{t("weather.rainHistoryError")}</div>
+        <div className="text-[12px] text-text-tertiary text-center">
+          {t("weather.rainHistoryError")}
+        </div>
       )}
       {live.battery !== null && (
-        <div className={`flex items-center justify-center gap-1 text-[12px] ${getBatteryColor(live.battery)}`}>
+        <div
+          className={`flex items-center justify-center gap-1 text-[12px] ${getBatteryColor(live.battery)}`}
+        >
           {getBatteryIcon(live.battery, 13, 1.5)}
           <span className="tabular-nums">{live.battery}%</span>
         </div>

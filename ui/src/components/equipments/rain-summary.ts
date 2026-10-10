@@ -1,4 +1,5 @@
 import type { DataBindingWithValue, EquipmentWithDetails, HistoryPoint } from "../../types";
+import { SENSOR_DATA_CATEGORIES } from "./sensorUtils";
 
 /**
  * Spec 186 — rain-only weather equipments (a tipping-bucket gauge, a lone
@@ -6,23 +7,35 @@ import type { DataBindingWithValue, EquipmentWithDetails, HistoryPoint } from ".
  * it showed `— °C` while rain data was live.
  */
 
-/** How far back "last rain" is looked up, in days (today included). */
-export const RAIN_LOOKBACK_DAYS = 183;
+/** How far back "last rain" is looked up, in months — what the sheet says. */
+export const RAIN_LOOKBACK_MONTHS = 6;
+/** The same lookback in days, today included (183 for six months). */
+export const RAIN_LOOKBACK_DAYS = Math.ceil(RAIN_LOOKBACK_MONTHS * 30.5);
 /** Number of daily bars in the detail sheet. */
 export const RAIN_BAR_DAYS = 30;
 
-const TEMPERATURE_CATEGORIES = new Set(["temperature", "temperature_outdoor"]);
+/**
+ * Categories the generic weather sheet (`WeatherDetailContent`) lists as rows:
+ * every sensor category but the battery, which it shows as a badge.
+ */
+const WEATHER_SHEET_CATEGORIES = new Set<string>(
+  SENSOR_DATA_CATEGORIES.filter((c) => c !== "battery"),
+);
 
 function hasComputed(equipment: EquipmentWithDetails, alias: string): boolean {
   return !!equipment.computedData?.some((c) => c.alias === alias);
 }
 
-/** A `weather` equipment that measures rain and no temperature. */
+/**
+ * A `weather` equipment whose only measurement the generic weather sheet would
+ * list is rain. Not just "no temperature": the rain tile and sheet replace the
+ * generic ones, so a wind, humidity or pressure reading would vanish with them.
+ */
 export function isRainOnlyWeather(equipment: EquipmentWithDetails): boolean {
   if (equipment.type !== "weather") return false;
-  const bindings = equipment.dataBindings;
-  if (bindings.some((b) => TEMPERATURE_CATEGORIES.has(b.category))) return false;
-  return bindings.some((b) => b.category === "rain") || hasComputed(equipment, "rain_24h");
+  const shown = equipment.dataBindings.filter((b) => WEATHER_SHEET_CATEGORIES.has(b.category));
+  if (shown.some((b) => b.category !== "rain")) return false;
+  return shown.length > 0 || hasComputed(equipment, "rain_24h");
 }
 
 export interface RainLive {
@@ -65,32 +78,80 @@ export function readRainLive(equipment: EquipmentWithDetails): RainLive {
 }
 
 const pad = (n: number) => String(n).padStart(2, "0");
-const localKey = (d: Date) => `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
+const utcKey = (d: Date) =>
+  `${d.getUTCFullYear()}-${pad(d.getUTCMonth() + 1)}-${pad(d.getUTCDate())}`;
 
-/**
- * Calendar day a daily history point belongs to. Daily buckets start on UTC
- * midnight until the core sums rain per local day (PR #1024), on local midnight
- * after. A point exactly on `00:00:00Z` is therefore read in UTC, any other in
- * local time — both name the intended day.
- */
-export function dayKey(iso: string): string {
-  const d = new Date(iso);
-  const utcMidnight =
-    d.getUTCHours() === 0 && d.getUTCMinutes() === 0 && d.getUTCSeconds() === 0 && d.getUTCMilliseconds() === 0;
-  if (utcMidnight) return `${d.getUTCFullYear()}-${pad(d.getUTCMonth() + 1)}-${pad(d.getUTCDate())}`;
-  return localKey(d);
+const calendarFormats = new Map<string, Intl.DateTimeFormat>();
+
+/** Calendar formatter for `timeZone`; the runtime's own zone when undefined or unknown. */
+function calendarFormat(timeZone: string | undefined): Intl.DateTimeFormat {
+  const id = timeZone ?? "";
+  let format = calendarFormats.get(id);
+  if (!format) {
+    const opts = { year: "numeric", month: "2-digit", day: "2-digit" } as const;
+    try {
+      format = new Intl.DateTimeFormat("en-CA", { ...opts, timeZone });
+    } catch {
+      format = new Intl.DateTimeFormat("en-CA", opts);
+    }
+    calendarFormats.set(id, format);
+  }
+  return format;
 }
 
-/** Local midnight `days - 1` days before `now`: start of the history request. */
+/** `YYYY-MM-DD` of an instant on the calendar of `timeZone` (the viewer's when undefined). */
+export function calendarDay(d: Date, timeZone?: string): string {
+  const parts = calendarFormat(timeZone).formatToParts(d);
+  const get = (type: string) => parts.find((p) => p.type === type)?.value ?? "";
+  return `${get("year")}-${get("month")}-${get("day")}`;
+}
+
+/**
+ * Calendar day a daily history point belongs to, in the house's time zone.
+ * Daily buckets start on UTC midnight until the core sums rain per local day
+ * (PR #1024), on the server's local midnight after — and the server runs in the
+ * house's zone (spec 061). A point exactly on `00:00:00Z` is therefore read in
+ * UTC, any other in `timeZone`: both name the intended day.
+ */
+export function dayKey(iso: string, timeZone?: string): string {
+  const d = new Date(iso);
+  const utcMidnight =
+    d.getUTCHours() === 0 &&
+    d.getUTCMinutes() === 0 &&
+    d.getUTCSeconds() === 0 &&
+    d.getUTCMilliseconds() === 0;
+  return utcMidnight ? utcKey(d) : calendarDay(d, timeZone);
+}
+
+/**
+ * Start of the history request: one day more than the window, so its oldest
+ * day comes back whole whatever the time zone. The summary drops the extra,
+ * partial day.
+ */
 export function rainHistoryFrom(now: Date, days: number = RAIN_LOOKBACK_DAYS): Date {
-  return new Date(now.getFullYear(), now.getMonth(), now.getDate() - (days - 1));
+  return new Date(now.getTime() - (days + 1) * 86_400_000);
 }
 
 export interface RainDay {
-  /** Local midnight of the day. */
+  /** `YYYY-MM-DD` in the house's time zone. */
+  key: string;
+  /** Noon of that day in the viewer's zone: `toLocaleDateString` names the same day. */
   date: Date;
   /** Total in mm, null before the history starts. */
   mm: number | null;
+}
+
+/** The `n` calendar days ending today in `timeZone`, oldest first. */
+function lastDays(now: Date, n: number, timeZone?: string): Omit<RainDay, "mm">[] {
+  const [y, m, d] = calendarDay(now, timeZone).split("-").map(Number);
+  return Array.from({ length: n }, (_, i) => {
+    // Calendar arithmetic in UTC: a day is a day, whatever DST does.
+    const u = new Date(Date.UTC(y, m - 1, d - (n - 1 - i)));
+    return {
+      key: utcKey(u),
+      date: new Date(u.getUTCFullYear(), u.getUTCMonth(), u.getUTCDate(), 12),
+    };
+  });
 }
 
 export interface RainSummary {
@@ -110,8 +171,19 @@ export interface RainSummary {
    * claimed since that day — the hourly rain history keeps 90 days.
    */
   since: Date | null;
-  /** True when no point at all came back. */
+  /** True when neither the history nor the live total gave a single value. */
   empty: boolean;
+}
+
+export interface RainSummaryOptions {
+  /**
+   * Live total since midnight (`rain_today`). The hourly history only writes an
+   * hour once it has ended, so today lags behind it: when known, this value
+   * replaces today's slot before the sums, the bars and the last rain.
+   */
+  liveToday?: number | null;
+  /** House time zone the days are cut in (`GET /system/timezone`); the viewer's when undefined. */
+  timeZone?: string;
 }
 
 /**
@@ -119,24 +191,27 @@ export interface RainSummary {
  * point are "not measured" (null); days after it with no point are dry (0) —
  * the gauge plugins write a 0 for every dry hour, so a gap is not a blind spot.
  */
-export function summarizeRainHistory(points: readonly HistoryPoint[], now: Date): RainSummary {
+export function summarizeRainHistory(
+  points: readonly HistoryPoint[],
+  now: Date,
+  { liveToday = null, timeZone }: RainSummaryOptions = {},
+): RainSummary {
   const totals = new Map<string, number>();
   for (const p of points) {
     if (!Number.isFinite(p.value)) continue;
-    const k = dayKey(p.time);
+    const k = dayKey(p.time, timeZone);
     totals.set(k, (totals.get(k) ?? 0) + p.value);
   }
 
   const n = RAIN_LOOKBACK_DAYS;
-  const dates = Array.from(
-    { length: n },
-    (_, i) => new Date(now.getFullYear(), now.getMonth(), now.getDate() - (n - 1 - i)),
-  );
-  const first = dates.findIndex((d) => totals.has(localKey(d)));
-  const values = dates.map((d, i) => (first === -1 || i < first ? null : (totals.get(localKey(d)) ?? 0)));
+  const days = lastDays(now, n, timeZone);
+  if (liveToday !== null && Number.isFinite(liveToday)) totals.set(days[n - 1].key, liveToday);
 
-  const window = (days: number) => {
-    const slice = values.slice(n - days);
+  const first = days.findIndex((d) => totals.has(d.key));
+  const values = days.map((d, i) => (first === -1 || i < first ? null : (totals.get(d.key) ?? 0)));
+
+  const window = (size: number) => {
+    const slice = values.slice(n - size);
     const measured = slice.filter((v) => v !== null).length;
     const sum = slice.reduce<number>((acc, v) => acc + (v ?? 0), 0);
     return { measured, sum: measured > 0 ? sum : null };
@@ -148,20 +223,22 @@ export function summarizeRainHistory(points: readonly HistoryPoint[], now: Date)
   for (let i = n - 1; i >= 0; i--) {
     const v = values[i];
     if (v !== null && v > 0) {
-      lastRain = { date: dates[i], daysAgo: n - 1 - i, mm: v };
+      lastRain = { date: days[i].date, daysAgo: n - 1 - i, mm: v };
       break;
     }
   }
 
   return {
-    bars: dates.slice(n - RAIN_BAR_DAYS).map((date, i) => ({ date, mm: values[n - RAIN_BAR_DAYS + i] })),
+    bars: days
+      .slice(n - RAIN_BAR_DAYS)
+      .map((d, i) => ({ ...d, mm: values[n - RAIN_BAR_DAYS + i] })),
     today: values[n - 1],
     sum7: w7.sum,
     sum30: w30.sum,
     measured7: w7.measured,
     measured30: w30.measured,
     lastRain,
-    since: first > 0 ? dates[first] : null,
+    since: first > 0 ? days[first].date : null,
     empty: first === -1,
   };
 }
