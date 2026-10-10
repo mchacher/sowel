@@ -896,3 +896,78 @@ describe("escapeFieldString", () => {
     expect(escapeFieldString('a\\"b')).toBe('a\\\\\\"b');
   });
 });
+
+// Spec 186 — the rain bucket takes the backup's rain points, then copies the
+// restored hourly rain: a restore only reloads the page, no restart follows.
+describe("restoreFromBuffer — InfluxDB connected (spec 186)", () => {
+  let tmpDir: string;
+  let db: Database.Database;
+
+  beforeEach(() => {
+    tmpDir = mkdtempSync(resolve(tmpdir(), "sowel-backup-influx-test-"));
+    db = createTestDb();
+  });
+
+  afterEach(() => {
+    vi.unstubAllGlobals();
+    db.close();
+    rmSync(tmpDir, { recursive: true, force: true });
+  });
+
+  function zipWith(entries: Record<string, string>): Buffer {
+    const zip = new AdmZip();
+    const tables = Object.fromEntries(BACKUP_TABLES.map((t) => [t, []]));
+    zip.addFile(
+      "sowel-backup.json",
+      Buffer.from(JSON.stringify({ version: 2, exportedAt: new Date().toISOString(), tables })),
+    );
+    for (const [name, content] of Object.entries(entries)) zip.addFile(name, Buffer.from(content));
+    return zip.toBuffer();
+  }
+
+  function restoreWith(entries: Record<string, string>) {
+    const calls: string[] = [];
+    const influx = {
+      isConnected: () => true,
+      getConfig: () => ({ url: "http://influx", org: "o", bucket: "sowel", token: "t" }),
+      getClient: () => null,
+      ensureBuckets: async () => void calls.push("ensureBuckets"),
+      ensureEnergyBuckets: async () => void calls.push("ensureEnergyBuckets"),
+      ensureRainBuckets: async (opts?: { backfill?: boolean }) =>
+        void calls.push(opts?.backfill === false ? "rain bucket" : "rain backfill"),
+    } as unknown as InfluxClient;
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async (url: string) => {
+        calls.push(`write ${new URL(url).searchParams.get("bucket")}`);
+        return new Response(null, { status: 204 });
+      }),
+    );
+    const manager = new BackupManager({ db, influxClient: influx, logger, dataDir: tmpDir });
+    return { calls, done: manager.restoreFromBuffer(zipWith(entries)) };
+  }
+
+  it("creates the rain bucket before writing and backfills it after", async () => {
+    const { calls, done } = restoreWith({
+      "influx-hourly.lp":
+        "equipment_data,equipmentId=e,alias=rain,category=rain mean=1 1790000000000000000",
+      "influx-rain-hourly.lp":
+        "equipment_data,equipmentId=e,alias=rain,category=rain mean=1 1760000000000000000",
+    });
+    await done;
+    expect(calls).toEqual([
+      "ensureBuckets",
+      "ensureEnergyBuckets",
+      "rain bucket",
+      "write sowel-hourly",
+      "write sowel-rain-hourly",
+      "rain backfill",
+    ]);
+  });
+
+  it("does not backfill when the backup had no time series", async () => {
+    const { calls, done } = restoreWith({});
+    await done;
+    expect(calls).not.toContain("rain backfill");
+  });
+});

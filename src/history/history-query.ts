@@ -12,6 +12,9 @@ function isRainLike(category?: string): boolean {
   return CUMULATIVE_CATEGORIES.has(category ?? "") && category !== "energy";
 }
 
+/** Spec 186 — the first failed rain-hourly read warns, later ones log at debug. */
+let rainHourlyFailureWarned = false;
+
 /**
  * The house's time zone, so a rain day is cut at local midnight like the energy
  * views (spec 119). Same source and fallback as the energy routes.
@@ -100,6 +103,12 @@ export function buildFluxQuery(params: {
   isDownsampled?: boolean;
   /** IANA zone the rain windows are cut in. Defaults to the server's. */
   timezone?: string;
+  /**
+   * Spec 186 — rain-hourly bucket, the same hourly rain points kept a year.
+   * When set, a rain query reads it together with `bucket`, so it reaches past
+   * the hourly bucket's 90 days and still sees the hours not copied yet.
+   */
+  rainHourlyBucket?: string;
 }): string {
   const { bucket, equipmentId, alias, from, to, resolution, isDiscrete, category, isDownsampled } =
     params;
@@ -123,6 +132,36 @@ export function buildFluxQuery(params: {
     // to the hour it fell in, then cut the days at local midnight, not UTC, as
     // the energy views do (spec 119). Without both, a 00:00-01:00 shower in
     // summer landed on the previous day.
+    if (isRainLike(category) && params.rainHourlyBucket) {
+      // Spec 186 — the rain-hourly bucket holds copies of the hourly points,
+      // kept a year; the hourly bucket also has the hours not copied yet. Read
+      // both and keep one point per hour and per series before summing. Where
+      // both buckets hold an hour, the hourly bucket wins (`src` "0" sorts
+      // first): it is the source, a copy can only lag behind it. Series stay
+      // apart until then, so an equipment moved to another zone mid-hour keeps
+      // both partial hours, as the single-bucket read always did.
+      const every = resolution === "1h" ? "1h" : "1d";
+      return `import "timezone"
+
+rain = (bucket, src) => from(bucket: bucket)
+  |> range(start: ${fromStr}, stop: ${toStr})
+  |> filter(fn: (r) => r._measurement == "equipment_data")
+  |> filter(fn: (r) => r.equipmentId == "${equipmentId}")
+  |> filter(fn: (r) => r.alias == "${alias}")
+  |> filter(fn: (r) => r._field == "mean")
+  |> set(key: "src", value: src)
+
+union(tables: [rain(bucket: "${params.rainHourlyBucket}", src: "1"), rain(bucket: "${bucket}", src: "0")])
+  |> group(columns: ["zoneId", "category", "type"])
+  |> sort(columns: ["_time", "src"])
+  |> unique(column: "_time")
+  |> group()
+  |> keep(columns: ["_time", "_value"])
+  |> timeShift(duration: -1h, columns: ["_time"])
+  |> aggregateWindow(every: ${every}, fn: sum, createEmpty: false, timeSrc: "_start", location: timezone.location(name: "${tz}"))
+  |> sort(columns: ["_time"])
+  |> limit(n: 500)`;
+    }
     if (isRainLike(category)) {
       const every = resolution === "1h" ? "1h" : "1d";
       return `import "timezone"
@@ -409,7 +448,7 @@ export async function queryHistory(
       // Cumulative categories (energy, rain): read the pre-aggregated mean field directly
       // from the downsampled bucket. The bucket already stores one point per resolution
       // period (1h or 1d) with the mean/min/max fields populated.
-      const flux = buildFluxQuery({
+      const baseParams = {
         bucket: targetBucket,
         equipmentId: params.equipmentId,
         alias: params.alias,
@@ -418,15 +457,40 @@ export async function queryHistory(
         resolution,
         category: params.category,
         isDownsampled: targetBucket !== config.bucket,
-      });
-
-      for await (const { values, tableMeta } of queryApi.iterateRows(flux)) {
-        const o = tableMeta.toObject(values);
-        const time = o._time as string | undefined;
-        const value = o._value as number | undefined;
-        if (time && typeof value === "number") {
-          points.push({ time, value });
+      };
+      const collect = async (flux: string) => {
+        for await (const { values, tableMeta } of queryApi.iterateRows(flux)) {
+          const o = tableMeta.toObject(values);
+          const time = o._time as string | undefined;
+          const value = o._value as number | undefined;
+          if (time && typeof value === "number") {
+            points.push({ time, value });
+          }
         }
+      };
+
+      // Spec 186 — rain also reads the rain-hourly bucket, kept a year. Should
+      // that bucket be missing (its setup failed and warned at startup), read
+      // the hourly bucket alone rather than nothing.
+      if (isRainLike(params.category) && baseParams.isDownsampled) {
+        try {
+          await collect(
+            buildFluxQuery({ ...baseParams, rainHourlyBucket: `${config.bucket}-rain-hourly` }),
+          );
+        } catch (err) {
+          // Warn once: a missing bucket fails every rain read the same way.
+          const log = rainHourlyFailureWarned ? logger.debug : logger.warn;
+          rainHourlyFailureWarned = true;
+          log.call(
+            logger,
+            { err, equipmentId: params.equipmentId, alias: params.alias },
+            "Rain-hourly read failed, reading the hourly bucket alone",
+          );
+          points.length = 0;
+          await collect(buildFluxQuery(baseParams));
+        }
+      } else {
+        await collect(buildFluxQuery(baseParams));
       }
 
       // Fallback: cumulative bucket has no data → try raw bucket with on-the-fly aggregation

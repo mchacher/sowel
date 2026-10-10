@@ -267,6 +267,17 @@ sowel-energy-daily       -- 10-year retention -- daily sums
 
 Des buckets downsamplés supplémentaires (`sowel-hourly`, `sowel-daily`) existent pour les séries temporelles non énergétiques.
 
+La pluie est sommée depuis `sowel-hourly` (le bucket journalier ne stocke que des moyennes), conservé 90 jours. Pour remonter plus loin (spec 186), un bucket dédié garde les mêmes points horaires pendant un an :
+
+```
+sowel-hourly             -- rétention 90 jours -- moyennes horaires (pluie : mm par heure)
+  | tâche : sowel-rain-copy-hourly (every: 1h, offset: 5m, 24 dernières heures, copiées telles quelles)
+  | + rattrapage de tout ce que contient sowel-hourly à chaque démarrage (idempotent)
+sowel-rain-hourly        -- rétention 1 an -- moyennes horaires de pluie, mêmes tags et horodatages
+```
+
+Une requête de pluie lit les deux buckets, garde un point par heure, puis somme par heure ou par jour local au moment de la requête. On stocke des heures et non des jours : rien de ce qui est stocké ne dépend du fuseau, et changer `TZ` ou l'emplacement de la maison redécoupe les jours à la lecture suivante. Si `sowel-rain-hourly` est illisible, la requête se rabat sur `sowel-hourly` seul.
+
 InfluxDB est obligatoire : Sowel se connecte au démarrage et auto-crée les buckets, les tâches de downsampling, et les tâches d'agrégation énergétique.
 
 #### Où l'effet d'un ordre est observé
@@ -401,6 +412,7 @@ Un ZIP de backup contient :
 | `influx-daily.lp`         | Données journalières downsamplées (5 dernières années)                                                                                                                                                                    |
 | `influx-energy-hourly.lp` | Sommes énergétiques horaires (2 dernières années)                                                                                                                                                                         |
 | `influx-energy-daily.lp`  | Sommes énergétiques journalières (10 dernières années)                                                                                                                                                                    |
+| `influx-rain-hourly.lp`   | Pluie horaire (dernière année)                                                                                                                                                                                            |
 | `data/*`                  | Tous les fichiers non DB de `data/` (secrets de tokens, etc.), scannés dynamiquement au regard de la liste blanche de restauration, hors `.db`, `.pid`, `.log` et hors marqueurs locaux `.instance-id` / `.shadow-target` |
 
 L'export JSON SQLite couvre une liste sélectionnée de tables (constante `BACKUP_TABLES` dans `backup-manager.ts`) dans l'ordre des dépendances (parents d'abord pour la restauration).

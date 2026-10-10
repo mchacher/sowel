@@ -196,6 +196,7 @@ const INFLUX_BUCKETS: InfluxBucketDef[] = [
   { filename: "influx-daily.lp", bucketSuffix: "-daily", range: "-5y" },
   { filename: "influx-energy-hourly.lp", bucketSuffix: "-energy-hourly", range: "-2y" },
   { filename: "influx-energy-daily.lp", bucketSuffix: "-energy-daily", range: "-10y" },
+  { filename: "influx-rain-hourly.lp", bucketSuffix: "-rain-hourly", range: "-1y" },
 ];
 
 export interface LocalBackup {
@@ -522,6 +523,9 @@ export class BackupManager {
       try {
         await this.influxClient.ensureBuckets();
         await this.influxClient.ensureEnergyBuckets();
+        // The rain bucket must exist to take the backup's rain points; its
+        // backfill waits until the hourly ones are written too (below).
+        await this.influxClient.ensureRainBuckets({ backfill: false });
       } catch (err) {
         this.logger.warn({ err }, "Failed to ensure InfluxDB buckets before restore");
       }
@@ -567,6 +571,10 @@ export class BackupManager {
 
       if (influxPointsRestored > 0) {
         this.logger.info({ points: influxPointsRestored }, "InfluxDB data restored");
+        // Copy the restored hourly rain into the rain bucket now: a restore
+        // only reloads the page, and the next startup backfill may come after
+        // the hourly bucket has expired it. Never throws.
+        await this.influxClient.ensureRainBuckets();
       }
     } else {
       this.logger.warn("InfluxDB not connected — skipping time-series restore");
