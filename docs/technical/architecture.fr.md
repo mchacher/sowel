@@ -278,6 +278,8 @@ sowel-rain-hourly        -- rétention 1 an -- moyennes horaires de pluie, même
 
 Une requête de pluie lit les deux buckets, garde un point par heure, puis somme par heure ou par jour local au moment de la requête. On stocke des heures et non des jours : rien de ce qui est stocké ne dépend du fuseau, et changer `TZ` ou l'emplacement de la maison redécoupe les jours à la lecture suivante. Si `sowel-rain-hourly` est illisible, la requête se rabat sur `sowel-hourly` seul.
 
+Une heure de pluie qui arrive une fois terminée (relevé en retard ou rattrapage d'un plugin, `sourceTimestamp` antérieur à l'heure en cours) est écrite par le writer d'historique directement dans `sowel-hourly` et `sowel-rain-hourly`, chacun dans sa rétention, horodatée à la fin de l'heure comme le downsampling (#1036) ; au-delà de la rétention du bucket brut, elle n'y est pas écrite.
+
 InfluxDB est obligatoire : Sowel se connecte au démarrage et auto-crée les buckets, les tâches de downsampling, et les tâches d'agrégation énergétique.
 
 #### Où l'effet d'un ordre est observé

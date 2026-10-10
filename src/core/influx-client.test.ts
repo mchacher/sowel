@@ -226,3 +226,60 @@ describe("InfluxClient.ensureRainBuckets", () => {
     await expect(client.ensureRainBuckets()).resolves.toBeUndefined();
   });
 });
+
+// #1036 — a late rain hour goes straight to the hourly buckets, each within its retention.
+describe("InfluxClient.writeLateRainHour", () => {
+  const logger = createLogger("silent").logger;
+  const NOW_MS = Date.UTC(2026, 9, 10, 10, 20);
+
+  function primed() {
+    const client = new InfluxClient(logger);
+    const writers = new Map<
+      string,
+      { writePoint: ReturnType<typeof vi.fn>; close: ReturnType<typeof vi.fn> }
+    >();
+    const inner = client as unknown as { client: unknown; config: unknown; _connected: boolean };
+    inner.client = {
+      getWriteApi: (_org: string, bucket: string) => {
+        const w = { writePoint: vi.fn(), close: vi.fn().mockResolvedValue(undefined) };
+        writers.set(bucket, w);
+        return w;
+      },
+    };
+    inner.config = { url: "http://x", org: "o", bucket: "sowel", token: "t" };
+    inner._connected = true;
+    return { client, writers };
+  }
+
+  const point = {} as never;
+  const daysAgo = (d: number) => NOW_MS / 1000 - d * 86_400;
+
+  it("writes a recent hour to both the hourly and the rain-hourly bucket", () => {
+    const { client, writers } = primed();
+    client.writeLateRainHour(point, daysAgo(1), NOW_MS);
+    expect(writers.get("sowel-hourly")?.writePoint).toHaveBeenCalledWith(point);
+    expect(writers.get("sowel-rain-hourly")?.writePoint).toHaveBeenCalledWith(point);
+  });
+
+  it("writes an hour past the hourly retention to the rain-hourly bucket only", () => {
+    const { client, writers } = primed();
+    client.writeLateRainHour(point, daysAgo(120), NOW_MS);
+    expect(writers.get("sowel-hourly")?.writePoint).not.toHaveBeenCalled();
+    expect(writers.get("sowel-rain-hourly")?.writePoint).toHaveBeenCalledWith(point);
+  });
+
+  it("drops an hour older than both retentions", () => {
+    const { client, writers } = primed();
+    client.writeLateRainHour(point, daysAgo(400), NOW_MS);
+    expect(writers.get("sowel-hourly")?.writePoint).not.toHaveBeenCalled();
+    expect(writers.get("sowel-rain-hourly")?.writePoint).not.toHaveBeenCalled();
+  });
+
+  it("closes both writers on disconnect", async () => {
+    const { client, writers } = primed();
+    client.writeLateRainHour(point, daysAgo(1), NOW_MS);
+    await client.disconnect();
+    expect(writers.get("sowel-hourly")?.close).toHaveBeenCalledOnce();
+    expect(writers.get("sowel-rain-hourly")?.close).toHaveBeenCalledOnce();
+  });
+});

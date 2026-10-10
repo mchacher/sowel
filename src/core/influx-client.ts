@@ -60,6 +60,8 @@ export class InfluxClient {
   private writeApi: WriteApi | null = null;
   /** Long-lived writer for the energy-hourly bucket (spec 160). */
   private energyHourlyWriteApi: WriteApi | null = null;
+  /** Writers for late rain hours, hourly then rain-hourly bucket (#1036). */
+  private rainHourWriteApis: [WriteApi, WriteApi] | null = null;
   private config: InfluxConfig | null = null;
   private _connected = false;
 
@@ -95,6 +97,7 @@ export class InfluxClient {
     // Never inherit a writer bound to the previous client, whatever happened on
     // the way out of it.
     this.energyHourlyWriteApi = null;
+    this.rainHourWriteApis = null;
 
     this._connected = true;
     this.logger.info(
@@ -114,9 +117,16 @@ export class InfluxClient {
     const pending: Array<[WriteApi, string]> = [];
     if (this.writeApi) pending.push([this.writeApi, "default"]);
     if (this.energyHourlyWriteApi) pending.push([this.energyHourlyWriteApi, "energy-hourly"]);
+    if (this.rainHourWriteApis) {
+      pending.push(
+        [this.rainHourWriteApis[0], "hourly"],
+        [this.rainHourWriteApis[1], "rain-hourly"],
+      );
+    }
 
     this.writeApi = null;
     this.energyHourlyWriteApi = null;
+    this.rainHourWriteApis = null;
     this.client = null;
     this._connected = false;
     this.config = null;
@@ -475,6 +485,47 @@ export class InfluxClient {
     } catch (err) {
       this.tickError();
       this.logger.warn({ err }, "Error buffering InfluxDB energy-hourly point");
+    }
+  }
+
+  /**
+   * Write a rain hour that arrived after the hourly downsample passed it
+   * (#1036): a late hour, a corrected one, a plugin's backfill. The downsample
+   * only ever reads the hour that just ended, so such an hour would otherwise
+   * stay in the raw bucket and never reach the history. `point` is the hour's
+   * downsampled form (fields `mean`/`min`/`max`), stamped at the hour's END like
+   * the downsample stamps it. It goes to the hourly and the rain-hourly bucket,
+   * each only within its retention: an older point would fail the write.
+   */
+  writeLateRainHour(point: Point, hourEndSeconds: number, nowMs: number = Date.now()): void {
+    if (!this.client || !this.config) return;
+    if (!this.rainHourWriteApis) {
+      const writer = (bucket: string) =>
+        this.client!.getWriteApi(this.config!.org, bucket, "s", {
+          batchSize: 500,
+          flushInterval: 5000,
+          maxRetries: 3,
+        });
+      this.rainHourWriteApis = [
+        writer(`${this.config.bucket}-hourly`),
+        writer(`${this.config.bucket}-rain-hourly`),
+      ];
+    }
+    // One hour of margin: a point right at the edge may expire before the flush.
+    const ageSeconds = nowMs / 1000 - hourEndSeconds;
+    const [hourly, rainHourly] = this.rainHourWriteApis;
+    try {
+      if (ageSeconds < DEFAULT_RETENTION.hourly - 3600) {
+        hourly.writePoint(point);
+        this.tickPointWritten();
+      }
+      if (ageSeconds < RAIN_HOURLY_RETENTION - 3600) {
+        rainHourly.writePoint(point);
+        this.tickPointWritten();
+      }
+    } catch (err) {
+      this.tickError();
+      this.logger.warn({ err }, "Error buffering a late rain hour");
     }
   }
 

@@ -566,7 +566,7 @@ describe("rain-hourly bucket (spec 186)", () => {
     timezone: "Europe/Paris",
   } as const;
 
-  it("reads both buckets, keeps one point per hour and series, then sums per local day", () => {
+  it("reads both buckets, keeps one point per hour across series, then sums per local day", () => {
     const flux = buildFluxQuery({
       ...rainParams,
       resolution: "1d",
@@ -577,10 +577,10 @@ describe("rain-hourly bucket (spec 186)", () => {
     );
     expect(flux).toContain('r._field == "mean"');
     const order = [
-      'group(columns: ["zoneId", "category", "type"])',
-      'sort(columns: ["_time", "src"])',
-      'unique(column: "_time")',
       "|> group()",
+      "map(fn: (r) => ({r with rank: -r._value}))",
+      'sort(columns: ["_time", "src", "rank"])',
+      'unique(column: "_time")',
       'keep(columns: ["_time", "_value"])',
       'timeShift(duration: -1h, columns: ["_time"])',
       'aggregateWindow(every: 1d, fn: sum, createEmpty: false, timeSrc: "_start", location: timezone.location(name: "Europe/Paris"))',
@@ -598,6 +598,18 @@ describe("rain-hourly bucket (spec 186)", () => {
     // unique() keeps the first row; "0" (hourly) sorts before "1" (rain-hourly)
     expect(flux).toContain('rain(bucket: "sowel-hourly", src: "0")');
     expect(flux).toContain('rain(bucket: "sowel-rain-hourly", src: "1")');
+  });
+
+  it("keeps the largest total of an hour held by several series (#1036: zone change)", () => {
+    const flux = buildFluxQuery({
+      ...rainParams,
+      resolution: "1d",
+      rainHourlyBucket: "sowel-rain-hourly",
+    });
+    // series are merged before the dedupe, and the largest value sorts first
+    expect(flux).not.toContain("group(columns:");
+    expect(flux.indexOf("|> group()")).toBeLessThan(flux.indexOf('unique(column: "_time")'));
+    expect(flux).toContain('sort(columns: ["_time", "src", "rank"])');
   });
 
   it("sums per hour on the hourly resolution", () => {

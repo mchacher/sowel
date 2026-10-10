@@ -184,9 +184,9 @@ deps.settingsManager.set("integration.weather-forecast.last_poll", Date.now().to
 
 Gère les devices découverts par votre plugin. Deux méthodes principales sont utilisées :
 
-| Méthode               | Signature                                                                                   | Description                                           |
-| --------------------- | ------------------------------------------------------------------------------------------- | ----------------------------------------------------- |
-| `upsertFromDiscovery` | `(integrationId: string, source: string, discovered: DiscoveredDevice) => void`             | Crée ou met à jour un device depuis la découverte     |
+| Méthode               | Signature                                                                                                             | Description                                                                                                                                                    |
+| --------------------- | --------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `upsertFromDiscovery` | `(integrationId: string, source: string, discovered: DiscoveredDevice) => void`                                       | Crée ou met à jour un device depuis la découverte                                                                                                              |
 | `updateDeviceData`    | `(integrationId: string, sourceDeviceId: string, payload: Record<string, unknown>, sourceTimestamp?: number) => void` | Pousse de nouvelles valeurs de données pour un device. `sourceTimestamp` (epoch en **secondes**) quand la valeur ne vaut pas pour maintenant — voir ci-dessous |
 
 Voir [Découverte de devices](#decouverte-de-devices) et [Mises à jour de données device](#mises-a-jour-de-donnees-device) pour l'usage détaillé.
@@ -199,6 +199,15 @@ un appel à part. Une valeur horodatée échappe à la déduplication de l'histo
 garde un seul point par période et le met à jour tant qu'elle est ouverte
 (`sowel-plugin-legrand-energy` pour l'énergie par demi-heure, `sowel-plugin-rain-gauge` pour la
 pluie par heure).
+
+**La pluie suit ce contrat horaire.** Une donnée `rain` (catégorie `rain`), comme toute donnée horodatée de
+la catégorie `rain`, est le total d'une heure pleine, envoyé avec `sourceTimestamp` = le début de cette heure, et renvoyé tant que l'heure est ouverte.
+L'historique additionne ces heures par heure ou par jour local. Le point d'une heure déjà terminée (un
+relevé en retard, un total corrigé, un rattrapage) est écrit directement dans les buckets horaires, car le
+downsampling horaire ne relit jamais une heure passée : un plugin peut rattraper la pluie jusqu'à un an en
+arrière (`sowel-plugin-netatmo-weather` le fait, à partir des totaux horaires de Netatmo). Ne publiez pas un
+échantillon brut (la pluie des dernières minutes) comme `rain` : l'historique le prendrait pour le total de
+l'heure.
 
 !!! warning "Une nouvelle donnée n'atteint pas toute seule les équipements existants"
 Ajouter une clé dans `DiscoveredDevice.data` crée bien la ligne `device_data`

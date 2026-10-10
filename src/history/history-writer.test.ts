@@ -470,3 +470,135 @@ describe("HistoryWriter — enum state charting (#434)", () => {
     expect(states.map((p) => p.value)).toEqual([1, 0]); // ON=1, OFF=0 → chartable step
   });
 });
+
+// ============================================================
+// Late rain hours (#1036)
+// ============================================================
+
+/**
+ * Rain follows the per-hour contract (one total per clock hour, stamped at the
+ * hour start). An hour that is already over when it arrives — a late poll, a
+ * corrected total, a plugin's backfill — must reach the hourly buckets: the
+ * downsample only ever reads the hour that just ended.
+ */
+describe("HistoryWriter — late rain hours (#1036)", () => {
+  const logger = createLogger("silent").logger;
+  const RAIN_ID = "rain-uuid";
+  /** 10:20 UTC: the current hour starts at 10:00. */
+  const NOW_MS = Date.UTC(2026, 9, 10, 10, 20);
+  const hour = (h: number) => Date.UTC(2026, 9, 10, h) / 1000;
+
+  class LateRainStub extends StubInfluxClient {
+    late: Array<{
+      fields: Record<string, string>;
+      tags: Record<string, string>;
+      hourEnd: number;
+      time?: string;
+    }> = [];
+    writeLateRainHour(point: Point, hourEnd: number): void {
+      const p = point as unknown as {
+        tags: Record<string, string>;
+        fields: Record<string, string>;
+        time?: string;
+      };
+      this.late.push({ fields: p.fields, tags: p.tags, hourEnd, time: p.time });
+    }
+  }
+
+  let bus: EventBus;
+  let influx: LateRainStub;
+  let writer: HistoryWriter;
+
+  function emit(alias: string, value: number, sourceTimestamp?: number): void {
+    bus.emit({
+      type: "equipment.data.changed",
+      equipmentId: RAIN_ID,
+      alias,
+      value,
+      previous: null,
+      ...(sourceTimestamp !== undefined ? { sourceTimestamp } : {}),
+    } as never);
+  }
+
+  beforeEach(() => {
+    vi.useFakeTimers();
+    vi.setSystemTime(NOW_MS);
+    bus = new EventBus(logger);
+    influx = new LateRainStub();
+    const equipmentManager = {
+      getAll: () => [{ id: RAIN_ID, enabled: true, zoneId: ZONE_ID }],
+      getDataBindingsWithValues: () => [
+        { id: "rain-binding", alias: "rain", category: "rain", type: "number", historize: null },
+        {
+          id: "temp-binding",
+          alias: "temperature",
+          category: "temperature",
+          type: "number",
+          historize: null,
+        },
+      ],
+    } as unknown as EquipmentManager;
+    writer = new HistoryWriter(
+      {} as Database.Database,
+      bus,
+      { get: () => undefined } as unknown as SettingsManager,
+      equipmentManager,
+      influx as unknown as InfluxClient,
+      logger,
+    );
+    writer.init();
+  });
+
+  afterEach(() => {
+    writer.destroy();
+    vi.useRealTimers();
+  });
+
+  it("leaves the current hour to the downsample", () => {
+    emit("rain", 0.4, hour(10));
+    expect(influx.written).toEqual([{ alias: "rain", value: 0.4, timestamp: hour(10) }]);
+    expect(influx.late).toHaveLength(0);
+  });
+
+  it("writes a past hour's hourly form, stamped at the hour end, and keeps the raw point", () => {
+    emit("rain", 1.2, hour(9));
+    expect(influx.written).toEqual([{ alias: "rain", value: 1.2, timestamp: hour(9) }]);
+    expect(influx.late).toHaveLength(1);
+    const [late] = influx.late;
+    expect(late.hourEnd).toBe(hour(10));
+    expect(Number(late.time)).toBe(hour(10));
+    expect(late.fields).toEqual({ mean: "1.2", min: "1.2", max: "1.2" });
+    expect(late.tags).toMatchObject({
+      equipmentId: RAIN_ID,
+      alias: "rain",
+      category: "rain",
+      zoneId: ZONE_ID,
+      type: "number",
+    });
+  });
+
+  it("aligns a timestamp inside the hour on the hour", () => {
+    emit("rain", 0.2, hour(8) + 1800);
+    expect(influx.late[0]?.hourEnd).toBe(hour(9));
+  });
+
+  it("skips the raw bucket for an hour older than its retention", () => {
+    const tenDaysAgo = hour(9) - 10 * 86_400;
+    emit("rain", 3, tenDaysAgo);
+    expect(influx.written).toHaveLength(0);
+    expect(influx.late).toHaveLength(1);
+    expect(influx.late[0].hourEnd).toBe(tenDaysAgo + 3600);
+  });
+
+  it("leaves other categories alone, timestamped or not", () => {
+    emit("temperature", 18, hour(9));
+    expect(influx.late).toHaveLength(0);
+    expect(influx.written).toHaveLength(1);
+  });
+
+  it("leaves untimestamped rain on the usual path", () => {
+    emit("rain", 0.1);
+    expect(influx.late).toHaveLength(0);
+    expect(influx.written).toHaveLength(1);
+  });
+});
