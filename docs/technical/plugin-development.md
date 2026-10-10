@@ -190,10 +190,18 @@ Manage devices discovered by your plugin. Three main methods are used:
 | Method                | Signature                                                                                | Description                                                                                                         |
 | --------------------- | ---------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------- |
 | `upsertFromDiscovery` | `(integrationId: string, source: string, discovered: DiscoveredDevice) => void`          | Create or update a device from discovery data                                                                       |
-| `updateDeviceData`    | `(integrationId, sourceDeviceId, payload, sourceTimestamp?) => void`                     | Push new data values. Pass `sourceTimestamp` (ms) when the reading is older than now.                               |
+| `updateDeviceData`    | `(integrationId, sourceDeviceId, payload, sourceTimestamp?) => void`                     | Push new data values. Pass `sourceTimestamp` (epoch **seconds**) when the reading is not for now — see below.       |
 | `updateDeviceStatus`  | `(integrationId: string, sourceDeviceId: string, status: "online" \| "offline") => void` | Reflect device availability (mandatory, see [Device availability contract](#device-availability-contract-spec-116)) |
 
 See [Device Discovery](#device-discovery) and [Device Data Updates](#device-data-updates) for detailed usage.
+
+`sourceTimestamp` is in **seconds** since the epoch, not milliseconds: InfluxDB is written with
+precision `"s"` (`src/core/influx-client.ts`), so `Date.now()` lands thousands of years away. It
+applies to every key of the payload, so send timestamped keys in their own call. A timestamped
+value skips the history writer's deduplication, and a second write with the same alias and
+timestamp overwrites the first: this is how a plugin keeps one point per period and updates it
+while the period is open (`sowel-plugin-legrand-energy` for 30-minute energy windows,
+`sowel-plugin-rain-gauge` for hourly rain).
 
 !!! warning "A new data point does not reach existing equipments on its own"
 Adding a key to `DiscoveredDevice.data` creates the `device_data` row at the
