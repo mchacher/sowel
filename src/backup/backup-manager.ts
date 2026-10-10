@@ -6,11 +6,20 @@ import {
   readdirSync,
   statSync,
   unlinkSync,
+  mkdtempSync,
+  rmSync,
+  openSync,
+  createReadStream,
+  createWriteStream,
 } from "node:fs";
+import type { ReadStream } from "node:fs";
 import { resolve, dirname, basename, sep } from "node:path";
+import { tmpdir } from "node:os";
+import { pipeline } from "node:stream/promises";
 import { ZipArchive } from "archiver";
 import type { Archiver } from "archiver";
 import AdmZip from "adm-zip";
+import type { QueryApi, Row } from "@influxdata/influxdb-client";
 import type Database from "better-sqlite3";
 import type { Logger } from "../core/logger.js";
 import type { InfluxClient } from "../core/influx-client.js";
@@ -290,33 +299,37 @@ export class BackupManager {
       if (client) {
         const queryApi = client.getQueryApi(influxConfig.org);
 
-        for (const bucketDef of INFLUX_BUCKETS) {
-          try {
-            const bucket = `${influxConfig.bucket}${bucketDef.bucketSuffix}`;
-            const flux = `from(bucket: "${bucket}") |> range(start: ${bucketDef.range})`;
-
-            const rows = await queryApi.collectRows<Record<string, unknown>>(flux);
-            if (rows.length === 0) continue;
-
-            const lines: string[] = [];
-            for (const row of rows) {
-              const line = rowToLineProtocol(row);
-              if (line) lines.push(line);
-            }
-
-            if (lines.length > 0) {
-              archive.append(lines.join("\n"), { name: bucketDef.filename });
-              this.logger.debug(
-                { bucket, lines: lines.length },
-                "InfluxDB bucket exported as line protocol",
+        // Every bucket is copied to its own file first, so no query ever waits
+        // on archiver or on whoever reads the archive. The files are unlinked
+        // once opened: archiver reads them through their descriptors.
+        const spoolDir = mkdtempSync(resolve(tmpdir(), "sowel-backup-"));
+        const sources = new Set<ReadStream>();
+        // A download dropped mid-way destroys the archive: release the files
+        // it will never read.
+        archive.once("close", () => {
+          for (const source of sources) source.destroy();
+        });
+        try {
+          for (const bucketDef of INFLUX_BUCKETS) {
+            if (archive.destroyed) {
+              this.logger.warn(
+                "Backup export stopped — the archive was closed before it was complete",
               );
+              return;
             }
-          } catch (err) {
-            this.logger.warn(
-              { err, filename: bucketDef.filename },
-              "Failed to export InfluxDB bucket",
-            );
+            const bucket = `${influxConfig.bucket}${bucketDef.bucketSuffix}`;
+            const source = await this.spoolInfluxBucket(queryApi, bucket, bucketDef, spoolDir);
+            if (!source) continue;
+            if (archive.destroyed) {
+              source.destroy();
+              continue;
+            }
+            sources.add(source);
+            source.once("close", () => sources.delete(source));
+            archive.append(source, { name: bucketDef.filename });
           }
+        } finally {
+          rmSync(spoolDir, { recursive: true, force: true });
         }
       }
     }
@@ -346,6 +359,76 @@ export class BackupManager {
   }
 
   /**
+   * Copy one bucket to a file as line protocol, row by row, and return the
+   * file opened for reading — or `null` when there is nothing to put in the
+   * archive.
+   *
+   * The bucket is never held in memory: reading the raw bucket whole took
+   * more than 1 GB on a 2 GB host and got Sowel killed by the kernel in the
+   * middle of the pre-update backup. Nor is it streamed straight into the
+   * archive: a reader stalling for longer than the InfluxDB client's socket
+   * timeout (a slow download) would cut the bucket short, and a dropped one
+   * would leave the query hanging.
+   */
+  private async spoolInfluxBucket(
+    queryApi: QueryApi,
+    bucket: string,
+    bucketDef: InfluxBucketDef,
+    spoolDir: string,
+  ): Promise<ReadStream | null> {
+    const flux = `from(bucket: "${bucket}") |> range(start: ${bucketDef.range})`;
+    const lines = lineProtocolLines(queryApi.iterateRows(flux));
+    let count = 0;
+    let queryError: unknown = null;
+    async function* chunks(): AsyncGenerator<string> {
+      let chunk = "";
+      try {
+        for await (const line of lines) {
+          count++;
+          chunk += `${line}\n`;
+          if (chunk.length >= LINE_PROTOCOL_CHUNK) {
+            yield chunk;
+            chunk = "";
+          }
+        }
+      } catch (err) {
+        // Kept apart from a failed write: what the query gave is whole lines.
+        queryError = err;
+      }
+      if (chunk) yield chunk;
+    }
+
+    const path = resolve(spoolDir, bucketDef.filename);
+    try {
+      await pipeline(chunks(), createWriteStream(path));
+    } catch (err) {
+      this.logger.warn({ err, filename: bucketDef.filename }, "Failed to export InfluxDB bucket");
+      return null;
+    }
+
+    if (queryError) {
+      // A query refused up front skips the bucket, as before. Cut short
+      // mid-way, it keeps what was read.
+      if (count === 0) {
+        this.logger.warn(
+          { err: queryError, filename: bucketDef.filename },
+          "Failed to export InfluxDB bucket",
+        );
+        return null;
+      }
+      this.logger.warn(
+        { err: queryError, filename: bucketDef.filename, lines: count },
+        "InfluxDB bucket export cut short — the file in the backup is partial",
+      );
+    }
+    // An empty bucket gets no file, as before.
+    if (count === 0) return null;
+
+    this.logger.debug({ bucket, lines: count }, "InfluxDB bucket exported as line protocol");
+    return createReadStream(path, { fd: openSync(path, "r") });
+  }
+
+  /**
    * Export the full backup to a file in `data/backups/`.
    * Used by UpdateManager (auto backup before update) and future cron backups.
    */
@@ -356,7 +439,6 @@ export class BackupManager {
     const fullPath = resolve(backupsDir, filename);
 
     const archive = new ZipArchive({ zlib: { level: 6 } });
-    const { createWriteStream } = await import("node:fs");
     const output = createWriteStream(fullPath);
 
     const finished = new Promise<void>((resolvePromise, rejectPromise) => {
@@ -366,9 +448,24 @@ export class BackupManager {
     });
 
     archive.pipe(output);
-    await this.buildArchive(archive);
-    await archive.finalize();
-    await finished;
+    try {
+      // Awaited together: a write that fails (a full disk) rejects here
+      // instead of escaping as an unhandled rejection that restarts Sowel.
+      await Promise.all([
+        (async () => {
+          await this.buildArchive(archive);
+          await archive.finalize();
+        })(),
+        finished,
+      ]);
+    } catch (err) {
+      archive.abort();
+      output.destroy();
+      // A truncated archive would count as a backup for the rotation and
+      // push out a good one.
+      rmSync(fullPath, { force: true });
+      throw err;
+    }
 
     const size = statSync(fullPath).size;
     this.logger.info({ filename, size }, "Backup exported to local file");
@@ -835,6 +932,16 @@ function scanDataFiles(dataDir: string): { files: string[]; skipped: string[] } 
     files.push(entry.name);
   }
   return { files, skipped };
+}
+
+/** Characters of line protocol handed to archiver at a time. */
+const LINE_PROTOCOL_CHUNK = 64 * 1024;
+
+async function* lineProtocolLines(rows: AsyncIterable<Row>): AsyncGenerator<string> {
+  for await (const { values, tableMeta } of rows) {
+    const line = rowToLineProtocol(tableMeta.toObject(values));
+    if (line) yield line;
+  }
 }
 
 /**
