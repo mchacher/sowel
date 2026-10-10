@@ -11,6 +11,24 @@ This page summarises every published version, newest first. For the full diff be
 
 ---
 
+## 1.74.x: Rain, counted right and kept for a year
+
+### v1.74.0 — 2026-10-10 { #v1-74-0 }
+
+A rain gauge gets its own tile, rain history reaches back a year, and a Netatmo rain module finally shows the rain that fell: its history was four to eight times too low. The rain work is largely Adrien Jouve's, reviewed and completed before it was merged. Also in this release: a share button on the visitor page, and a round of dependency updates that closes a high-severity advisory.
+
+- Feat (ui): **a rain gauge tile and its summary sheet** (spec 186, #1026). A weather equipment that measures only rain (a tipping-bucket gauge, a lone Netatmo rain module) no longer shows `— °C`: its tile shows today's rain, the rolling 24 h and a dot that pulses while it rains. Its sheet adds the last 7 and 30 days, the last rainy day (looked up six months back) and 30 daily bars. Days are cut in the home's time zone, and "today" agrees with every figure below it. A station that also measures temperature, wind or humidity keeps its usual tile.
+- Feat (history): **rain history kept for a year** (spec 186 phase 2, #1027). A new `sowel-rain-hourly` bucket keeps the hourly rain points for a year (the shared hourly bucket keeps 90 days). It stores hours, not days, so nothing stored depends on the time zone; days are cut when you look. It is backed up and restored with the others.
+- Fix (history): **a rain day starts at local midnight** (#1024). Daily rain was cut at UTC midnight, so a shower between midnight and 1 am in summer landed on the previous day. It now follows local midnight, like the energy views.
+- Fix (history): **a late rain hour reaches the history** (#1036, #1038). An hour of rain that arrives once it is over (a late poll, a corrected total, a backfill) used to stay in the 7-day raw bucket. It is now written straight to the hourly history, and an hour is counted once even if the equipment changed zone.
+- Feat (shared access): **share the invitation from the visitor's phone** (#1032). Settings › "Share this access" gains a Share button that opens the phone's share sheet (Messages, WhatsApp, email) with the invitation link, for a companion who is not there to scan the QR code. It only appears where the phone offers a share sheet.
+- Docs (plugins): **`sourceTimestamp` is in seconds** (#1025), and the per-hour rain contract a plugin must follow is written down in the plugin guide.
+- Plugins and recipes (registry): **`netatmo_weather` 2.2.0** (#1039, requires this version). The plugin published the dashboard's 5-minute rain reading, read twice or not at all depending on the poll, and the history took it for an hourly total: on the owner's station, 3.2 mm for a day that saw between 12 and 23. It now publishes Netatmo's own hourly totals, and after the update it rewrites the past year of rain history in about 45 minutes, the most recent weeks first.
+- Security (deps): **`@fastify/busboy` 3.2.2** (#1017) closes two high-severity denial-of-service advisories on multipart parsing; in Sowel only the admin backup restore parses multipart. Also `fast-copy` 4.1.2 (#1035) and `source-map-js` 1.2.2 (build only, #1033).
+- Maintenance (deps): `dotenv` 18 (#1001), and the weekly library, toolchain and GitHub Actions updates (#1028, #1029, #1030, #1031, #1002).
+
+---
+
 ## 1.73.x: The charger, the car, and a surplus that varies
 
 ### v1.73.2 — 2026-10-04 { #v1-73-2 }
