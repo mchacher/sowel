@@ -8,9 +8,11 @@ import {
   unlinkSync,
 } from "node:fs";
 import { resolve, dirname, basename, sep } from "node:path";
+import { Readable } from "node:stream";
 import { ZipArchive } from "archiver";
 import type { Archiver } from "archiver";
 import AdmZip from "adm-zip";
+import type { QueryApi, Row } from "@influxdata/influxdb-client";
 import type Database from "better-sqlite3";
 import type { Logger } from "../core/logger.js";
 import type { InfluxClient } from "../core/influx-client.js";
@@ -291,32 +293,9 @@ export class BackupManager {
         const queryApi = client.getQueryApi(influxConfig.org);
 
         for (const bucketDef of INFLUX_BUCKETS) {
-          try {
-            const bucket = `${influxConfig.bucket}${bucketDef.bucketSuffix}`;
-            const flux = `from(bucket: "${bucket}") |> range(start: ${bucketDef.range})`;
-
-            const rows = await queryApi.collectRows<Record<string, unknown>>(flux);
-            if (rows.length === 0) continue;
-
-            const lines: string[] = [];
-            for (const row of rows) {
-              const line = rowToLineProtocol(row);
-              if (line) lines.push(line);
-            }
-
-            if (lines.length > 0) {
-              archive.append(lines.join("\n"), { name: bucketDef.filename });
-              this.logger.debug(
-                { bucket, lines: lines.length },
-                "InfluxDB bucket exported as line protocol",
-              );
-            }
-          } catch (err) {
-            this.logger.warn(
-              { err, filename: bucketDef.filename },
-              "Failed to export InfluxDB bucket",
-            );
-          }
+          const bucket = `${influxConfig.bucket}${bucketDef.bucketSuffix}`;
+          const archiveOpen = await this.appendInfluxBucket(archive, queryApi, bucket, bucketDef);
+          if (!archiveOpen) return;
         }
       }
     }
@@ -343,6 +322,72 @@ export class BackupManager {
     }
 
     this.logger.info("Backup export completed — ZIP archive ready");
+  }
+
+  /**
+   * Stream one bucket into the archive as line protocol, row by row.
+   *
+   * The bucket is never held in memory: reading the raw bucket whole took
+   * more than 1 GB on a 2 GB host and got Sowel killed by the kernel in the
+   * middle of the pre-update backup. Buckets go in one after the other —
+   * archiver starts reading a stream as soon as it is appended, and a query
+   * left paused behind another entry would hit the client's socket timeout.
+   *
+   * Resolves `false` when the archive closed before the entry was written
+   * (a client that dropped the download), so the caller stops querying.
+   */
+  private async appendInfluxBucket(
+    archive: Archiver,
+    queryApi: QueryApi,
+    bucket: string,
+    bucketDef: InfluxBucketDef,
+  ): Promise<boolean> {
+    const flux = `from(bucket: "${bucket}") |> range(start: ${bucketDef.range})`;
+    const lines = lineProtocolLines(queryApi.iterateRows(flux));
+
+    // An empty bucket gets no file, and a query refused up front skips the
+    // bucket — both as before.
+    let first: IteratorResult<string>;
+    try {
+      first = await lines.next();
+    } catch (err) {
+      this.logger.warn({ err, filename: bucketDef.filename }, "Failed to export InfluxDB bucket");
+      return true;
+    }
+    if (first.done) return true;
+
+    let count = 1;
+    const logger = this.logger;
+    async function* chunks(): AsyncGenerator<string> {
+      let chunk = `${first.value}\n`;
+      try {
+        for await (const line of lines) {
+          count++;
+          chunk += `${line}\n`;
+          if (chunk.length >= LINE_PROTOCOL_CHUNK) {
+            yield chunk;
+            chunk = "";
+          }
+        }
+      } catch (err) {
+        // Mid-stream, the entry is already in the ZIP: keep what was read.
+        logger.warn(
+          { err, filename: bucketDef.filename, lines: count },
+          "InfluxDB bucket export cut short — the file in the backup is partial",
+        );
+      }
+      if (chunk) yield chunk;
+    }
+
+    const source = Readable.from(chunks());
+    archive.append(source, { name: bucketDef.filename });
+    const written = await entryWritten(archive, bucketDef.filename);
+    if (!written) {
+      source.destroy();
+      return false;
+    }
+    this.logger.debug({ bucket, lines: count }, "InfluxDB bucket exported as line protocol");
+    return true;
   }
 
   /**
@@ -835,6 +880,40 @@ function scanDataFiles(dataDir: string): { files: string[]; skipped: string[] } 
     files.push(entry.name);
   }
   return { files, skipped };
+}
+
+/** Characters of line protocol handed to archiver at a time. */
+const LINE_PROTOCOL_CHUNK = 64 * 1024;
+
+async function* lineProtocolLines(rows: AsyncIterable<Row>): AsyncGenerator<string> {
+  for await (const { values, tableMeta } of rows) {
+    const line = rowToLineProtocol(tableMeta.toObject(values));
+    if (line) yield line;
+  }
+}
+
+/**
+ * Resolves `true` once archiver has written the entry named `name`, `false`
+ * if the archive closes, ends or fails first.
+ */
+function entryWritten(archive: Archiver, name: string): Promise<boolean> {
+  return new Promise((resolvePromise) => {
+    const onEntry = (entry: { name: string }) => {
+      if (entry.name === name) settle(true);
+    };
+    const onGone = () => settle(false);
+    function settle(written: boolean) {
+      archive.off("entry", onEntry);
+      archive.off("close", onGone);
+      archive.off("end", onGone);
+      archive.off("error", onGone);
+      resolvePromise(written);
+    }
+    archive.on("entry", onEntry);
+    archive.once("close", onGone);
+    archive.once("end", onGone);
+    archive.once("error", onGone);
+  });
 }
 
 /**

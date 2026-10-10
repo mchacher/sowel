@@ -971,3 +971,144 @@ describe("restoreFromBuffer — InfluxDB connected (spec 186)", () => {
     expect(calls).not.toContain("rain backfill");
   });
 });
+
+// The pre-update backup read every bucket whole with collectRows: on a 2 GB
+// host the raw bucket alone took Sowel past 1 GB and the kernel killed it in
+// the middle of the backup. The export now streams, one bucket at a time.
+describe("exportToFile — InfluxDB buckets are streamed", () => {
+  let tmpDir: string;
+  let db: Database.Database;
+
+  beforeEach(() => {
+    tmpDir = mkdtempSync(resolve(tmpdir(), "sowel-backup-stream-test-"));
+    db = createTestDb();
+  });
+
+  afterEach(() => {
+    db.close();
+    rmSync(tmpDir, { recursive: true, force: true });
+  });
+
+  type FakeRow = Record<string, unknown>;
+
+  function point(i: number): FakeRow {
+    return {
+      result: "_result",
+      table: 0,
+      _start: "2026-10-03T00:00:00Z",
+      _stop: "2026-10-10T00:00:00Z",
+      _measurement: "equipment_data",
+      _field: "value",
+      _value: i,
+      _time: new Date(Date.UTC(2026, 9, 9) + i * 1000).toISOString(),
+      equipmentId: "e",
+      alias: "power",
+    };
+  }
+
+  /**
+   * A query API whose buckets are generators: `events` records when each
+   * bucket's query is first read and when it is exhausted.
+   */
+  function managerWith(buckets: Record<string, () => AsyncGenerator<FakeRow>>) {
+    const events: string[] = [];
+    const queryApi = {
+      iterateRows: (flux: string) => {
+        const bucket = /from\(bucket: "([^"]+)"\)/.exec(flux)![1];
+        const rows = buckets[bucket] ?? async function* () {};
+        return (async function* () {
+          events.push(`read ${bucket}`);
+          for await (const row of rows()) {
+            yield { values: [], tableMeta: { toObject: () => row } };
+          }
+          events.push(`done ${bucket}`);
+        })();
+      },
+    };
+    const influx = {
+      isConnected: () => true,
+      getConfig: () => ({ url: "http://influx", org: "o", bucket: "sowel", token: "t" }),
+      getClient: () => ({ getQueryApi: () => queryApi }),
+    } as unknown as InfluxClient;
+    const manager = new BackupManager({ db, influxClient: influx, logger, dataDir: tmpDir });
+    return { manager, events };
+  }
+
+  async function exportZip(manager: BackupManager): Promise<AdmZip> {
+    const { path } = await manager.exportToFile("stream.zip");
+    return new AdmZip(path);
+  }
+
+  function lines(zip: AdmZip, name: string): string[] {
+    return zip.readAsText(name).trim().split("\n");
+  }
+
+  it("writes every row of a bucket larger than one chunk, and no file for an empty one", async () => {
+    const { manager } = managerWith({
+      sowel: async function* () {
+        for (let i = 0; i < 5000; i++) yield point(i);
+      },
+    });
+    const zip = await exportZip(manager);
+
+    const raw = lines(zip, "influx-raw.lp");
+    expect(raw).toHaveLength(5000);
+    expect(raw[0]).toBe(
+      `equipment_data,equipmentId=e,alias=power value=0 ${Date.UTC(2026, 9, 9) * 1_000_000}`,
+    );
+    expect(raw[4999]).toMatch(/^equipment_data,equipmentId=e,alias=power value=4999 \d+$/);
+    expect(zip.getEntry("influx-hourly.lp")).toBeNull();
+    expect(zip.getEntry("sowel-backup.json")).not.toBeNull();
+  });
+
+  it("starts a bucket's query only once the previous bucket is written", async () => {
+    const two = async function* () {
+      yield point(1);
+      yield point(2);
+    };
+    const { manager, events } = managerWith({ sowel: two, "sowel-hourly": two });
+    await exportZip(manager);
+
+    expect(events.slice(0, 4)).toEqual([
+      "read sowel",
+      "done sowel",
+      "read sowel-hourly",
+      "done sowel-hourly",
+    ]);
+  });
+
+  it("keeps the rows read when a query fails mid-stream, and the rest of the backup", async () => {
+    writeFileSync(resolve(tmpDir, ".jwt-secret"), "s3cr3t");
+    const { manager } = managerWith({
+      sowel: async function* () {
+        yield point(1);
+        yield point(2);
+        throw new Error("socket timeout");
+      },
+      "sowel-hourly": async function* () {
+        yield point(3);
+      },
+    });
+    const zip = await exportZip(manager);
+
+    expect(lines(zip, "influx-raw.lp")).toHaveLength(2);
+    expect(lines(zip, "influx-hourly.lp")).toHaveLength(1);
+    expect(zip.getEntry("data/.jwt-secret")).not.toBeNull();
+  });
+
+  it("skips a bucket whose query is refused up front", async () => {
+    const { manager } = managerWith({
+      // eslint-disable-next-line require-yield -- refused before any row
+      sowel: async function* () {
+        throw new Error("bucket not found");
+      },
+      "sowel-daily": async function* () {
+        yield point(1);
+      },
+    });
+    const zip = await exportZip(manager);
+
+    expect(zip.getEntry("influx-raw.lp")).toBeNull();
+    expect(lines(zip, "influx-daily.lp")).toHaveLength(1);
+  });
+});
