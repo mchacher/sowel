@@ -135,11 +135,14 @@ export function buildFluxQuery(params: {
     if (isRainLike(category) && params.rainHourlyBucket) {
       // Spec 186 — the rain-hourly bucket holds copies of the hourly points,
       // kept a year; the hourly bucket also has the hours not copied yet. Read
-      // both and keep one point per hour and per series before summing. Where
-      // both buckets hold an hour, the hourly bucket wins (`src` "0" sorts
-      // first): it is the source, a copy can only lag behind it. Series stay
-      // apart until then, so an equipment moved to another zone mid-hour keeps
-      // both partial hours, as the single-bucket read always did.
+      // both and keep ONE point per hour before summing:
+      // - the hourly bucket wins (`src` "0" sorts first): it is the source, a
+      //   copy can only lag behind it;
+      // - across series, the largest total wins. Rain is one total per clock
+      //   hour (#1036), and a zone change starts a new series (zoneId is a
+      //   tag): a late or backfilled hour written under today's zone, or the
+      //   rest of an hour after a move, would otherwise be added to the point
+      //   the old series already holds for that hour.
       const every = resolution === "1h" ? "1h" : "1d";
       return `import "timezone"
 
@@ -152,10 +155,10 @@ rain = (bucket, src) => from(bucket: bucket)
   |> set(key: "src", value: src)
 
 union(tables: [rain(bucket: "${params.rainHourlyBucket}", src: "1"), rain(bucket: "${bucket}", src: "0")])
-  |> group(columns: ["zoneId", "category", "type"])
-  |> sort(columns: ["_time", "src"])
-  |> unique(column: "_time")
   |> group()
+  |> map(fn: (r) => ({r with rank: -r._value}))
+  |> sort(columns: ["_time", "src", "rank"])
+  |> unique(column: "_time")
   |> keep(columns: ["_time", "_value"])
   |> timeShift(duration: -1h, columns: ["_time"])
   |> aggregateWindow(every: ${every}, fn: sum, createEmpty: false, timeSrc: "_start", location: timezone.location(name: "${tz}"))

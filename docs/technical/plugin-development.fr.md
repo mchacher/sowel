@@ -200,8 +200,8 @@ garde un seul point par période et le met à jour tant qu'elle est ouverte
 (`sowel-plugin-legrand-energy` pour l'énergie par demi-heure, `sowel-plugin-rain-gauge` pour la
 pluie par heure).
 
-**La pluie suit ce contrat horaire.** Une donnée `rain` (catégorie `rain`) est le total d'une heure
-pleine, envoyé avec `sourceTimestamp` = le début de cette heure, et renvoyé tant que l'heure est ouverte.
+**La pluie suit ce contrat horaire.** Une donnée `rain` (catégorie `rain`), comme toute donnée horodatée de
+la catégorie `rain`, est le total d'une heure pleine, envoyé avec `sourceTimestamp` = le début de cette heure, et renvoyé tant que l'heure est ouverte.
 L'historique additionne ces heures par heure ou par jour local. Le point d'une heure déjà terminée (un
 relevé en retard, un total corrigé, un rattrapage) est écrit directement dans les buckets horaires, car le
 downsampling horaire ne relit jamais une heure passée : un plugin peut rattraper la pluie jusqu'à un an en

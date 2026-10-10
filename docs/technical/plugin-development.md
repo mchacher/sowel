@@ -203,8 +203,8 @@ timestamp overwrites the first: this is how a plugin keeps one point per period 
 while the period is open (`sowel-plugin-legrand-energy` for 30-minute energy windows,
 `sowel-plugin-rain-gauge` for hourly rain).
 
-**Rain follows this per-hour contract.** A `rain` data point (category `rain`) is the total of one clock
-hour, sent with `sourceTimestamp` = the start of that hour, and resent while the hour is open. The history
+**Rain follows this per-hour contract.** A `rain` data point (category `rain`), and any timestamped point of
+the `rain` category, is the total of one clock hour, sent with `sourceTimestamp` = the start of that hour, and resent while the hour is open. The history
 sums those hours per hour or per local day. A point for an hour that is already over (a late poll, a
 corrected total, a backfill) is written straight to the hourly buckets, since the hourly downsample never
 reads a past hour again: a plugin can backfill rain up to a year back (`sowel-plugin-netatmo-weather` does,

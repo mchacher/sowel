@@ -334,7 +334,7 @@ export class HistoryWriter {
       sourceTimestamp !== undefined &&
       meta.category === "rain" &&
       typeof value === "number" &&
-      this.writeLateRainHour(equipmentId, alias, meta, value, sourceTimestamp)
+      this.writeLateRainHour(equipmentId, alias, meta, value, sourceTimestamp) === "skip-raw"
     ) {
       return;
     }
@@ -388,8 +388,8 @@ export class HistoryWriter {
    * downsample stamps it — is written to the hourly buckets directly. The
    * current hour is left to the downsample, as before.
    *
-   * Returns true when the raw write must be skipped: the point is older than
-   * the raw bucket's retention, where the write would fail.
+   * Says "skip-raw" when the point is older than the raw bucket's retention,
+   * where the raw write would fail.
    */
   private writeLateRainHour(
     equipmentId: string,
@@ -397,10 +397,10 @@ export class HistoryWriter {
     meta: BindingMeta,
     value: number,
     sourceTimestamp: number,
-  ): boolean {
+  ): "skip-raw" | "write-raw" {
     const nowS = Date.now() / 1000;
     const hourStart = Math.floor(sourceTimestamp / 3600) * 3600;
-    if (hourStart >= Math.floor(nowS / 3600) * 3600) return false;
+    if (hourStart >= Math.floor(nowS / 3600) * 3600) return "write-raw";
 
     const hourEnd = hourStart + 3600;
     const hourly = new Point("equipment_data")
@@ -416,7 +416,7 @@ export class HistoryWriter {
     this.influxClient.writeLateRainHour(hourly, hourEnd);
 
     // One hour of margin, as for the hourly buckets.
-    return nowS - sourceTimestamp >= DEFAULT_RETENTION.raw - 3600;
+    return nowS - sourceTimestamp >= DEFAULT_RETENTION.raw - 3600 ? "skip-raw" : "write-raw";
   }
 
   /** Get the TariffClassifier instance (for API routes). */
