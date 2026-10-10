@@ -101,7 +101,8 @@ valid, on hold, revoked — and then it says why.
 The page is in French on a phone set to French, and in English on any other phone. It fits on one
 screen. The gear at the top right opens **Settings**: the phone's last
 commands, and a **QR code** the visitor can have a companion scan to set up a second phone on the
-same access. No code is shown there.
+same access. When the companion is not there, **Share** sends the same link through the phone's
+share sheet (Messages, WhatsApp, email…), and **Copy the link** copies it. No code is shown there.
 
 While the page is not on the home screen, a small card explains how to put it there, **for the
 phone in hand**: on an iPhone, "Share" then "Add to Home Screen"; on Android, the browser's

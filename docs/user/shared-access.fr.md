@@ -104,7 +104,9 @@ encore valable, suspendu, révoqué — et dit alors pourquoi.
 La page est en français sur un téléphone réglé en français, et en anglais sur tous les autres.
 Elle tient sur un seul écran. La roue dentée en haut à droite ouvre **Réglages** : les
 dernières commandes du téléphone, et un **QR code** que le visiteur fait scanner à la personne qui
-l'accompagne pour installer un second téléphone sur le même accès. Aucun code n'y est affiché.
+l'accompagne pour installer un second téléphone sur le même accès. Quand cette personne n'est pas
+là, **Partager** envoie le même lien par le menu de partage du téléphone (Messages, WhatsApp,
+e-mail…), et **Copier le lien** le copie. Aucun code n'y est affiché.
 
 Tant que la page n'est pas sur l'écran d'accueil, un encadré explique comment l'y mettre, **selon
 le téléphone** : sur iPhone, « Partager » puis « Sur l'écran d'accueil » ; sur Android, le bouton
