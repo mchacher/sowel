@@ -6,9 +6,16 @@ import {
   readdirSync,
   statSync,
   unlinkSync,
+  mkdtempSync,
+  rmSync,
+  openSync,
+  createReadStream,
+  createWriteStream,
 } from "node:fs";
+import type { ReadStream } from "node:fs";
 import { resolve, dirname, basename, sep } from "node:path";
-import { Readable } from "node:stream";
+import { tmpdir } from "node:os";
+import { pipeline } from "node:stream/promises";
 import { ZipArchive } from "archiver";
 import type { Archiver } from "archiver";
 import AdmZip from "adm-zip";
@@ -292,10 +299,37 @@ export class BackupManager {
       if (client) {
         const queryApi = client.getQueryApi(influxConfig.org);
 
-        for (const bucketDef of INFLUX_BUCKETS) {
-          const bucket = `${influxConfig.bucket}${bucketDef.bucketSuffix}`;
-          const archiveOpen = await this.appendInfluxBucket(archive, queryApi, bucket, bucketDef);
-          if (!archiveOpen) return;
+        // Every bucket is copied to its own file first, so no query ever waits
+        // on archiver or on whoever reads the archive. The files are unlinked
+        // once opened: archiver reads them through their descriptors.
+        const spoolDir = mkdtempSync(resolve(tmpdir(), "sowel-backup-"));
+        const sources = new Set<ReadStream>();
+        // A download dropped mid-way destroys the archive: release the files
+        // it will never read.
+        archive.once("close", () => {
+          for (const source of sources) source.destroy();
+        });
+        try {
+          for (const bucketDef of INFLUX_BUCKETS) {
+            if (archive.destroyed) {
+              this.logger.warn(
+                "Backup export stopped — the archive was closed before it was complete",
+              );
+              return;
+            }
+            const bucket = `${influxConfig.bucket}${bucketDef.bucketSuffix}`;
+            const source = await this.spoolInfluxBucket(queryApi, bucket, bucketDef, spoolDir);
+            if (!source) continue;
+            if (archive.destroyed) {
+              source.destroy();
+              continue;
+            }
+            sources.add(source);
+            source.once("close", () => sources.delete(source));
+            archive.append(source, { name: bucketDef.filename });
+          }
+        } finally {
+          rmSync(spoolDir, { recursive: true, force: true });
         }
       }
     }
@@ -325,41 +359,29 @@ export class BackupManager {
   }
 
   /**
-   * Stream one bucket into the archive as line protocol, row by row.
+   * Copy one bucket to a file as line protocol, row by row, and return the
+   * file opened for reading — or `null` when there is nothing to put in the
+   * archive.
    *
    * The bucket is never held in memory: reading the raw bucket whole took
    * more than 1 GB on a 2 GB host and got Sowel killed by the kernel in the
-   * middle of the pre-update backup. Buckets go in one after the other —
-   * archiver starts reading a stream as soon as it is appended, and a query
-   * left paused behind another entry would hit the client's socket timeout.
-   *
-   * Resolves `false` when the archive closed before the entry was written
-   * (a client that dropped the download), so the caller stops querying.
+   * middle of the pre-update backup. Nor is it streamed straight into the
+   * archive: a reader stalling for longer than the InfluxDB client's socket
+   * timeout (a slow download) would cut the bucket short, and a dropped one
+   * would leave the query hanging.
    */
-  private async appendInfluxBucket(
-    archive: Archiver,
+  private async spoolInfluxBucket(
     queryApi: QueryApi,
     bucket: string,
     bucketDef: InfluxBucketDef,
-  ): Promise<boolean> {
+    spoolDir: string,
+  ): Promise<ReadStream | null> {
     const flux = `from(bucket: "${bucket}") |> range(start: ${bucketDef.range})`;
     const lines = lineProtocolLines(queryApi.iterateRows(flux));
-
-    // An empty bucket gets no file, and a query refused up front skips the
-    // bucket — both as before.
-    let first: IteratorResult<string>;
-    try {
-      first = await lines.next();
-    } catch (err) {
-      this.logger.warn({ err, filename: bucketDef.filename }, "Failed to export InfluxDB bucket");
-      return true;
-    }
-    if (first.done) return true;
-
-    let count = 1;
-    const logger = this.logger;
+    let count = 0;
+    let queryError: unknown = null;
     async function* chunks(): AsyncGenerator<string> {
-      let chunk = `${first.value}\n`;
+      let chunk = "";
       try {
         for await (const line of lines) {
           count++;
@@ -370,24 +392,40 @@ export class BackupManager {
           }
         }
       } catch (err) {
-        // Mid-stream, the entry is already in the ZIP: keep what was read.
-        logger.warn(
-          { err, filename: bucketDef.filename, lines: count },
-          "InfluxDB bucket export cut short — the file in the backup is partial",
-        );
+        // Kept apart from a failed write: what the query gave is whole lines.
+        queryError = err;
       }
       if (chunk) yield chunk;
     }
 
-    const source = Readable.from(chunks());
-    archive.append(source, { name: bucketDef.filename });
-    const written = await entryWritten(archive, bucketDef.filename);
-    if (!written) {
-      source.destroy();
-      return false;
+    const path = resolve(spoolDir, bucketDef.filename);
+    try {
+      await pipeline(chunks(), createWriteStream(path));
+    } catch (err) {
+      this.logger.warn({ err, filename: bucketDef.filename }, "Failed to export InfluxDB bucket");
+      return null;
     }
+
+    if (queryError) {
+      // A query refused up front skips the bucket, as before. Cut short
+      // mid-way, it keeps what was read.
+      if (count === 0) {
+        this.logger.warn(
+          { err: queryError, filename: bucketDef.filename },
+          "Failed to export InfluxDB bucket",
+        );
+        return null;
+      }
+      this.logger.warn(
+        { err: queryError, filename: bucketDef.filename, lines: count },
+        "InfluxDB bucket export cut short — the file in the backup is partial",
+      );
+    }
+    // An empty bucket gets no file, as before.
+    if (count === 0) return null;
+
     this.logger.debug({ bucket, lines: count }, "InfluxDB bucket exported as line protocol");
-    return true;
+    return createReadStream(path, { fd: openSync(path, "r") });
   }
 
   /**
@@ -401,7 +439,6 @@ export class BackupManager {
     const fullPath = resolve(backupsDir, filename);
 
     const archive = new ZipArchive({ zlib: { level: 6 } });
-    const { createWriteStream } = await import("node:fs");
     const output = createWriteStream(fullPath);
 
     const finished = new Promise<void>((resolvePromise, rejectPromise) => {
@@ -411,9 +448,24 @@ export class BackupManager {
     });
 
     archive.pipe(output);
-    await this.buildArchive(archive);
-    await archive.finalize();
-    await finished;
+    try {
+      // Awaited together: a write that fails (a full disk) rejects here
+      // instead of escaping as an unhandled rejection that restarts Sowel.
+      await Promise.all([
+        (async () => {
+          await this.buildArchive(archive);
+          await archive.finalize();
+        })(),
+        finished,
+      ]);
+    } catch (err) {
+      archive.abort();
+      output.destroy();
+      // A truncated archive would count as a backup for the rotation and
+      // push out a good one.
+      rmSync(fullPath, { force: true });
+      throw err;
+    }
 
     const size = statSync(fullPath).size;
     this.logger.info({ filename, size }, "Backup exported to local file");
@@ -890,30 +942,6 @@ async function* lineProtocolLines(rows: AsyncIterable<Row>): AsyncGenerator<stri
     const line = rowToLineProtocol(tableMeta.toObject(values));
     if (line) yield line;
   }
-}
-
-/**
- * Resolves `true` once archiver has written the entry named `name`, `false`
- * if the archive closes, ends or fails first.
- */
-function entryWritten(archive: Archiver, name: string): Promise<boolean> {
-  return new Promise((resolvePromise) => {
-    const onEntry = (entry: { name: string }) => {
-      if (entry.name === name) settle(true);
-    };
-    const onGone = () => settle(false);
-    function settle(written: boolean) {
-      archive.off("entry", onEntry);
-      archive.off("close", onGone);
-      archive.off("end", onGone);
-      archive.off("error", onGone);
-      resolvePromise(written);
-    }
-    archive.on("entry", onEntry);
-    archive.once("close", onGone);
-    archive.once("end", onGone);
-    archive.once("error", onGone);
-  });
 }
 
 /**

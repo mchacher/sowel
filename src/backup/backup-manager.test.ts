@@ -4,6 +4,7 @@ import { mkdirSync, mkdtempSync, rmSync, writeFileSync, readFileSync, existsSync
 import { resolve } from "node:path";
 import { tmpdir } from "node:os";
 import AdmZip from "adm-zip";
+import { ZipArchive } from "archiver";
 import {
   ALLOWED_RESTORE_EXTENSIONS,
   escapeFieldString,
@@ -1061,20 +1062,41 @@ describe("exportToFile — InfluxDB buckets are streamed", () => {
     expect(zip.getEntry("sowel-backup.json")).not.toBeNull();
   });
 
-  it("starts a bucket's query only once the previous bucket is written", async () => {
-    const two = async function* () {
-      yield point(1);
-      yield point(2);
+  it("reads every bucket to the end even while nobody reads the archive", async () => {
+    // A download stalled for longer than the client's socket timeout used to
+    // cut the bucket being streamed. The queries no longer wait on the reader:
+    // this bucket compresses to far more than archiver buffers, and nothing
+    // reads the archive.
+    const big = async function* () {
+      for (let i = 0; i < 200_000; i++) yield { ...point(i), _value: Math.random() };
     };
-    const { manager, events } = managerWith({ sowel: two, "sowel-hourly": two });
-    await exportZip(manager);
+    const { manager, events } = managerWith({ sowel: big, "sowel-hourly": big });
+    const archive = new ZipArchive({ zlib: { level: 6 } });
+    await manager.buildArchive(archive);
 
-    expect(events.slice(0, 4)).toEqual([
-      "read sowel",
-      "done sowel",
-      "read sowel-hourly",
-      "done sowel-hourly",
-    ]);
+    expect(events).toContain("done sowel");
+    expect(events).toContain("done sowel-hourly");
+    archive.destroy();
+  });
+
+  it("stops querying once the archive is destroyed, without hanging", async () => {
+    // A dropped download destroys the archive (fastify does on disconnect).
+    const archive = new ZipArchive({ zlib: { level: 6 } });
+    const { manager, events } = managerWith({
+      sowel: async function* () {
+        // Before the bucket's first row: nothing listens to the archive yet.
+        archive.destroy();
+        await new Promise((resolveTimer) => setTimeout(resolveTimer, 20));
+        yield point(1);
+        yield point(2);
+      },
+      "sowel-hourly": async function* () {
+        yield point(3);
+      },
+    });
+    await manager.buildArchive(archive);
+
+    expect(events).not.toContain("read sowel-hourly");
   });
 
   it("keeps the rows read when a query fails mid-stream, and the rest of the backup", async () => {
@@ -1110,5 +1132,28 @@ describe("exportToFile — InfluxDB buckets are streamed", () => {
 
     expect(zip.getEntry("influx-raw.lp")).toBeNull();
     expect(lines(zip, "influx-daily.lp")).toHaveLength(1);
+  });
+  it("rejects on a failed write instead of crashing the process", async () => {
+    // The output is a directory: the write stream errors. This used to escape
+    // as an unhandled rejection, which exits Sowel.
+    mkdirSync(resolve(tmpDir, "backups", "stream.zip"), { recursive: true });
+    const { manager } = managerWith({});
+
+    await expect(manager.exportToFile("stream.zip")).rejects.toThrow();
+  });
+
+  it("leaves no truncated archive behind when the export fails", async () => {
+    // A truncated ZIP counts as a backup for the rotation.
+    const influx = {
+      isConnected: () => true,
+      getConfig: () => ({ url: "http://influx", org: "o", bucket: "sowel", token: "t" }),
+      getClient: () => {
+        throw new Error("boom");
+      },
+    } as unknown as InfluxClient;
+    const manager = new BackupManager({ db, influxClient: influx, logger, dataDir: tmpDir });
+
+    await expect(manager.exportToFile("stream.zip")).rejects.toThrow("boom");
+    expect(existsSync(resolve(tmpDir, "backups", "stream.zip"))).toBe(false);
   });
 });
