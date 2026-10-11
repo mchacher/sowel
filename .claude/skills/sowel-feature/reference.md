@@ -81,37 +81,9 @@ Quick reference for the `sowel-feature` skill. For the full workflow, see [SKILL
 | Types                | `ui/src/types.ts`                  |
 | i18n locales         | `ui/src/i18n/locales/{en,fr}.json` |
 
-## Commands
+## Commands, reactive pipeline, commit scopes
 
-| Action             | Command                           |
-| ------------------ | --------------------------------- |
-| Start engine (dev) | `npm run dev`                     |
-| Start UI (dev)     | `cd ui && npm run dev`            |
-| Type check backend | `npx tsc --noEmit`                |
-| Type check UI      | `cd ui && npx tsc -b --noEmit`    |
-| Run tests          | `npx vitest run`                  |
-| Run single test    | `npx vitest run <file>`           |
-| Lint backend       | `npx eslint src/ --ext .ts`       |
-| Lint UI            | `cd ui && npx eslint .`           |
-| Full validate      | `npm run validate`                |
-| Reset DB           | `rm data/sowel.db && npm run dev` |
-| Release            | `scripts/release.sh <version>`    |
-
-## Reactive pipeline
-
-```
-Integration message (MQTT, cloud API poll, etc.)
-  → Integration Plugin (receives + parses)
-    → Device Manager (updates DeviceData)
-      → Event Bus: "device.data.updated"
-        → Equipment Manager (re-evaluates bindings + computed Data)
-          → Event Bus: "equipment.data.changed"
-            → Zone Manager (re-evaluates aggregations)
-              → Event Bus: "zone.data.changed"
-                → Recipe Engine (evaluates triggers → conditions → actions)
-                  → Actions may emit Orders → Integration Plugin → device
-            → WebSocket pushes to UI clients
-```
+In `CLAUDE.md` ("Build & run commands", "Reactive pipeline", "Git workflow"). Not repeated here.
 
 ## Spec templates
 
@@ -147,6 +119,17 @@ Description, behavior, data flow.
 ## Edge Cases
 
 - Edge case 1
+
+## Docs Delta
+
+| Page (EN and FR)                      | Change                    |
+| ------------------------------------- | ------------------------- |
+| `docs/user/<page>.md` + `.fr.md`      | What the reader now sees  |
+| `docs/technical/<page>.md` + `.fr.md` | New endpoint, field, flow |
+
+Screenshots to retake: ...
+
+Or: `Docs-Impact: none — <why nothing a reader can observe changed>`
 ```
 
 ### architecture.md
@@ -190,15 +173,17 @@ Description.
 
 - B.1 — Implement Z
 
+## Test Plan
+
+| Module | Scenario | Expected |
+| ------ | -------- | -------- |
+
 ## Validation Plan
 
-- Typecheck, lint, tests
+- `npm run validate`
+- Docs and spec checks (skill, Phase 4)
 - Manual tests
 ```
-
-## Commit scopes
-
-`mqtt`, `devices`, `equipments`, `zones`, `recipes`, `modes`, `api`, `ws`, `ui`, `auth`, `db`, `core`, `plugins`, `packages`, `backup`, `self-update`, `energy`, `logging`, `docs`.
 
 ## Production deployment
 

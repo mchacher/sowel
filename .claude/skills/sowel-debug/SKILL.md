@@ -183,15 +183,18 @@ git checkout -b fix/<short-description>
 ### 5.3 Run ALL Checks
 
 ```bash
-npx tsc --noEmit                                              # Backend
-cd ui && npx tsc --noEmit                                     # Frontend (if UI changes)
-cd "$(git rev-parse --show-toplevel)" && npx vitest run          # Tests (from repo root)
-npx eslint src/ --ext .ts                                     # Lint
+npm run validate                    # the CI set: typecheck (backend, tests, UI), lint, format, tests
+bash scripts/check-docs-impact.sh   # a fix touching src/ or ui/src/: docs changed, or a Docs-Impact line in the PR
+bash scripts/check-docs-parity.sh   # if a docs page changed: EN and FR together
 ```
 
-**ALL must pass with ZERO errors.**
+`npm run validate` must be green. A docs check failure is either fixed or answered by the PR line of 6.2.
 
-> **GATE 5**: TypeScript compiles, all tests pass, lint has zero errors, and the bug is confirmed fixed. Do NOT proceed if any check fails.
+### 5.4 Agent Review
+
+Spawn the `sowel-reviewer` agent (Agent tool, `subagent_type: sowel-reviewer`) on the branch, with the diagnosis of Phase 4. Fix every blocking finding, re-run 5.3 if code changed, and summarize the review to the user.
+
+> **GATE 5**: `npm run validate` green, docs checks green or answered, the bug confirmed fixed, `sowel-reviewer` ran and its blocking findings are fixed. Do NOT proceed otherwise.
 
 ---
 
@@ -213,6 +216,8 @@ git push -u origin fix/<short-description>
 gh pr create --title "fix(<scope>): <short description>" --body "..."
 ```
 
+PR body: root cause, fix, regression test, review outcome, and when no doc changed `Docs-Impact: none — <reason>` (the reason is required).
+
 ### 6.3 Wait for Merge Approval
 
 **CRITICAL: Do NOT merge without explicit user confirmation.**
@@ -226,6 +231,7 @@ PR créée: [URL]. Voulez-vous que je merge dans main ?
 ### 6.4 Merge
 
 ```bash
-gh pr merge <number> --merge --delete-branch
+gh pr checks <number> --watch
+gh pr merge <number> --squash --delete-branch
 git checkout main && git pull
 ```
