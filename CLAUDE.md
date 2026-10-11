@@ -57,47 +57,11 @@ Guiding principle: **a Device is what's on the network. An Equipment is what's i
 - **Frontend**: React 19, TypeScript, Vite 8, Tailwind CSS 4 (config-less), Zustand, Lucide React
 - **Infra**: Docker + docker-compose, GitHub Actions release to ghcr.io
 
-## Project structure (current, spec 053+)
+## Project structure
 
-```
-sowel/
-├── src/
-│   ├── index.ts                 # Entry point
-│   ├── config.ts                # Env config loading
-│   ├── core/                    # event-bus, database, influx-client, logger, settings-manager,
-│   │                            # version-checker, update-manager
-│   ├── backup/                  # BackupManager (export/restore, local backups)
-│   ├── packages/                # PackageManager (GitHub-based plugin distribution)
-│   ├── plugins/                 # PluginLoader (integration plugins lifecycle)
-│   ├── integrations/            # IntegrationRegistry (runtime registry — plugins register here)
-│   ├── recipes/                 # RecipeLoader + engine/recipe-manager.ts
-│   ├── devices/                 # Device manager, category inference
-│   ├── equipments/              # Equipment manager, bindings, computed engine, order dispatcher
-│   ├── zones/                   # Zone manager, zone-aggregator, sunlight-manager
-│   ├── modes/                   # Mode manager, calendar manager (croner)
-│   ├── energy/                  # Energy aggregator, HP/HC tariff classifier
-│   ├── buttons/                 # Button action bindings (Zigbee button → mode/order)
-│   ├── charts/                  # Saved chart configurations
-│   ├── history/                 # InfluxDB history writer
-│   ├── mqtt-publishers/         # Outbound MQTT (broker + publisher managers)
-│   ├── notifications/           # Telegram/webhook/FCM/ntfy notification publishers
-│   ├── auth/                    # JWT + API tokens, MFA, middleware, user manager, first-run setup
-│   ├── shared-access/           # Shared access (spec 181): codes/links opening a gate, public page
-│   ├── api/                     # Fastify server, WebSocket, route files
-│   └── shared/                  # types.ts (all interfaces), constants.ts, plugin-api.ts
-├── ui/                          # React frontend (separate Vite project)
-├── plugins/
-│   └── registry.json            # Official plugin registry (fetched remotely with local fallback)
-├── migrations/                  # SQLite migration SQL files (runs on startup)
-├── specs/XXX-name/              # Per-feature specs (spec.md + architecture.md + plan.md)
-├── docs/                        # MkDocs Material — see "Where to find context" above
-└── scripts/
-    ├── release.sh               # Release script (versioning + tag + push)
-    ├── energy/                  # InfluxDB energy backfill, diagnostic
-    └── logs/fetch-logs.py       # Log retrieval helper
-```
+Full tree and the role of each folder: [docs/technical/architecture.md](docs/technical/architecture.md#project-structure). In short: backend in `src/` (one folder per domain, all interfaces in `src/shared/types.ts`), React UI in `ui/` (separate Vite project), SQLite migrations in `migrations/`, specs in `specs/NNN-name/`, MkDocs in `docs/`, scripts in `scripts/`.
 
-**Not in src/ anymore**: no more built-in integrations or recipes. Each has its own GitHub repo (e.g. `sowel-plugin-zigbee2mqtt`). See `plugins/registry.json` for the current list.
+**No built-in integration or recipe** (spec 053): each has its own GitHub repo (e.g. `sowel-plugin-zigbee2mqtt`); the official list is `plugins/registry.json`.
 
 ## Build & run commands
 
@@ -124,8 +88,8 @@ cd ui && npx tsc -b --noEmit # UI (its tests are already covered)
 npx eslint src/ --ext .ts
 cd ui && npx eslint .
 
-# Full validate
-npm run validate             # Runs all checks (backend + UI)
+# Full validate — THE verdict, the CI set in one command (also run by the husky pre-push hook)
+npm run validate
 
 # Docker
 docker compose up -d         # Local docker deployment
@@ -135,9 +99,9 @@ docker compose up -d         # Local docker deployment
 
 - **Feature branches required** for any non-trivial change. Prefixes: `feat/`, `fix/`, `refactor/`, `docs/`.
 - Small isolated fixes (typo, single-line) may go on `main` directly.
-- **Never merge a PR without explicit user approval**. Present the PR, wait for "oui" / "merge" / "go".
+- **Never merge a PR without explicit user approval**. Present the PR, wait for "oui" / "merge" / "go". Main is protected (PR required, linear history): merge with `gh pr merge --squash` once the checks are green.
 - **Never add `Co-Authored-By: Claude` lines** in commit messages or PR bodies.
-- Conventional commits. Scopes: `mqtt`, `devices`, `equipments`, `zones`, `recipes`, `modes`, `api`, `ws`, `ui`, `auth`, `db`, `core`, `plugins`, `packages`, `backup`, `self-update`, `energy`, `logging`.
+- Conventional commits. Scopes: `mqtt`, `devices`, `equipments`, `zones`, `recipes`, `modes`, `api`, `ws`, `ui`, `auth`, `db`, `core`, `plugins`, `packages`, `backup`, `self-update`, `energy`, `logging`, `docs`, `registry`.
 
 ## Implementation conventions
 
@@ -164,105 +128,36 @@ docker compose up -d         # Local docker deployment
 - All message/event handlers must never throw — wrap in try/catch with structured log
 - Missing plugins on disk are **auto-downloaded** on startup (spec 058)
 
-### Plugin supply chain security (spec 089 — MANDATORY for AI agents)
+### Plugin registry (spec 089 — MANDATORY for AI agents)
 
-Every entry in `plugins/registry.json` MUST carry `sha256` (64 hex chars) and `owner` (GitHub login). The install flow refuses any entry missing either field and refuses any tarball whose hash does not match.
+Every `plugins/registry.json` entry carries `sha256` and `owner`; installs refuse anything else. A plugin release is always followed by `node scripts/backfill-registry-sha256.mjs` and a `chore(registry): bump <plugin> to <version>` PR, checked by `bash scripts/check-registry-bump.sh` (locally and in CI). A hash mismatch is fixed by re-running the backfill, **never** by removing the field or bypassing the check. `OFFICIAL_OWNERS` (`src/packages/registry-types.ts`) changes only through the maintainer. Procedure: the `sowel-plugin-dev` skill.
 
-**Whenever a plugin release is published, the registry MUST be updated.** Workflow:
+### Release notes (spec 108 — MANDATORY for AI agents)
 
-1. Plugin author publishes a new GitHub release (tag + `sowel-plugin-<id>-<version>.tar.gz` asset).
-2. Run `node scripts/backfill-registry-sha256.mjs` in this repo — the script fetches the latest release asset for every entry and writes the SHA256 in place. Idempotent unless `FORCE=1`.
-3. Commit `plugins/registry.json` with a `chore(registry): bump <plugin> to <version>` message.
-4. Open a PR. Merge propagates the new hash to all Sowel instances within ~1h (CDN cache).
-
-**Do NOT publish a release without updating the registry hash** — installs of the new version will fail with `ChecksumMismatchError` until the registry catches up.
-
-**Official vs community owners**: `OFFICIAL_OWNERS = ["mchacher"]` in `src/packages/registry-types.ts` is the hard-coded whitelist. Plugins from any other owner are flagged community in the UI and require an explicit user confirmation modal at install. The `OFFICIAL_OWNERS` list grows by review (not by PR — a PR adding to it must be reviewed by the Sowel maintainer).
-
-**The `Registry bump integrity` job checks this on every PR** (`scripts/check-registry-bump.sh`, issue #892). For each entry whose `version` or `sha256` changed it downloads the release asset, compares the hash, and reads the `manifest.json` inside the tarball to confirm the entry points at the release it claims. It also refuses any entry in the file missing `sha256`, `owner`, `repo`, `version` or `type`. Run it locally before pushing:
-
-```bash
-bash scripts/check-registry-bump.sh
-```
-
-If it fails on a SHA256 mismatch, the fix is always to re-run `backfill-registry-sha256.mjs`, never to remove the field or bypass the check. If it fails because the release does not exist, the bump is simply ahead of the publish: tag the plugin first.
-
-### Release notes are mandatory (spec 108 — MANDATORY for AI agents)
-
-Every Sowel release MUST have a matching entry in **both** `docs/release-notes.md` and `docs/release-notes.fr.md` before the version tag is pushed. The in-app `UpdatesSheet` (spec 107) links to `https://docs.sowel.org/release-notes/#v<x>-<y>-<z>` from the core update row — missing entries break that link.
-
-Workflow when cutting a release (`vX.Y.Z`):
-
-1. Add a `### vX.Y.Z — YYYY-MM-DD { #vX-Y-Z }` block under the matching minor section in **both** `docs/release-notes.md` and `docs/release-notes.fr.md`. The explicit `{ #vX-Y-Z }` anchor is required — without it, MkDocs slugifies the heading into `vXYZ-YYYY-MM-DD` and the in-app link 404s.
-2. Stage and commit the docs together with the version bump in `package.json` / `ui/package.json` (single `release: vX.Y.Z` commit).
-3. Tag and push as usual via `scripts/release.sh`.
-
-The `verify-release-notes` job in `.github/workflows/release.yml` greps the tagged commit for `{ #vX-Y-Z }` in both files and fails the workflow (before any Docker layer is built) if either is missing. Recovery: add the entries, amend the commit, `git tag -f vX.Y.Z && git push --force origin vX.Y.Z`.
-
-**Do NOT bypass this check** by editing the workflow or skipping the grep — it is the contract that keeps `docs.sowel.org/release-notes` aligned with what is actually shipped.
+Every release has a `### vX.Y.Z — YYYY-MM-DD { #vX-Y-Z }` entry in **both** `docs/release-notes.md` and `docs/release-notes.fr.md` before the tag: the in-app UpdatesSheet links to that anchor, and the `verify-release-notes` job fails the release without it. Do NOT bypass it. Procedure: the `sowel-release` skill.
 
 ### Documentation currency (spec 167 — MANDATORY for AI agents)
 
-Three CI checks run on every pull request. All three run locally, and running them before
-pushing is cheaper than reading a red check:
+Three checks run on every pull request; run them locally before pushing:
 
 ```bash
-bash scripts/check-docs-parity.sh
-bash scripts/check-docs-impact.sh
-bash scripts/check-specs-index.sh folders
+bash scripts/check-docs-parity.sh        # EN/FR pairs (x.md / x.fr.md) change together
+bash scripts/check-docs-impact.sh        # a feat/fix touching src/ or ui/src/ changes docs/
+bash scripts/check-specs-index.sh folders  # every specs/NNN-*/ has a row in both specs indexes
 ```
 
-**EN/FR parity.** Most pages under `docs/` exist as a pair, `x.md` and `x.fr.md`. Touch one and
-you must touch the other. If that is genuinely not wanted, name the untouched file and say why:
-
-```
-Docs-Parity: docs/technical/api-reference.fr.md — typo fix in the EN copy only
-```
-
-The check is silent when the counterpart does not exist, so creating a page in one language is
-allowed and translating it is a separate decision.
-
-**Documentation impact.** A `feat` or `fix` pull request that touches `src/` or `ui/src/` must
-either change something under `docs/`, or carry:
+Waivers are PR-body lines, and **the reason is required** (a bare `none` fails on purpose):
 
 ```
 Docs-Impact: none — <why nothing a reader can observe changed>
+Docs-Parity: docs/technical/api-reference.fr.md — typo fix in the EN copy only
 ```
 
-**The reason is required.** A bare `Docs-Impact: none` fails on purpose: a checkbox gets ticked
-without thought, a sentence does not. `chore`, `refactor`, `test`, `docs`, `style`, `ci`,
-`build` and `perf` are not gated at all.
-
-**Specs index.** Every `specs/NNN-name/` folder needs a row in `docs/specs-index.md` **and** in
-`docs/specs-index.fr.md`. The check names both files and prints the row to paste. It has no
-waiver: the row is one line, and the alternative is a blocked release (issue #872). The other
-half of the same script, `check-specs-index.sh released`, stays at the tag because it needs the
-release notes to have been written.
-
-The check also prints the pages your change probably affects, from the map in
-`scripts/docs-impact-map.sh`. That part never fails a build — it is there to turn "did you think
-about the docs" into "this page needs a look". When you find drift in an area the map misses,
-add a row; it is data, not logic.
-
-**Why this exists.** The 2026-08-29 audit (`docs/audit/2026-08-29-documentation.md`) found three
-months of drift, including a plugin guide teaching an `executeOrder` signature that migration
-004 removed. In the same repository, `docs/release-notes.md` and `.fr.md` carry 158 version
-anchors, identical in both files, with no divergence at all — because spec 108 fails the release
-workflow on a missing anchor. Same authors, same pace; the difference is the gate. Do not weaken
-these checks to get a pull request through: update the page, or write the sentence.
+The specs index has no waiver. `scripts/docs-impact-map.sh` prints the pages a change probably affects; when you find drift it misses, add a row. Why: the 2026-08-29 audit (`docs/audit/2026-08-29-documentation.md`) found three months of drift where nothing was gated, and none at all in the release notes, which are. Do not weaken these checks: update the page, or write the sentence. Details: `specs/167-documentation-currency/`.
 
 ### Plugin soft isolation (spec 111)
 
-Every integration plugin runs with scoped Proxies on its `PluginDeps`. There is no opt-out: the isolation is unconditional since v1.11.0. The contract is enforced by `src/plugins/scoped-deps.ts`:
-
-- **Settings**: a plugin can only read/write `integration.<own-id>.*`. The exceptions are listed in `GLOBAL_READABLE_KEYS` (currently `home.latitude`, `home.longitude`, `home.timezone`). Reads on foreign keys return `undefined`; writes throw.
-- **Events**: a plugin can only emit types in `ALLOWED_EMIT_TYPES` (`system.integration.{connected,disconnected}`, `system.alarm.{raised,resolved}`). Events with a mismatched `integrationId` are dropped.
-- **Devices**: every `DeviceManager` mutation (`updateDeviceData`, `upsertFromDiscovery`, etc.) checks `integrationId === pluginId`. Admin methods (`update`, `delete`) throw for plugins.
-- **Errors**: `wrapPluginMethods` swallows throws from `refresh`, `getStatus`, etc. (degraded fallback) and rethrows from `start`, `stop`, `executeOrder`, `handleOAuthCallback` (callers need the error).
-
-When reviewing a plugin PR or adding a new event type/global setting, **extend the allowlists in `scoped-deps.ts` rather than weakening the gates**. Every denial logs `"Plugin denied …"` with `pluginId` context — that line is the audit trail.
-
-The Proxy does NOT protect against direct `require("better-sqlite3")`, `process.env` reads, infinite loops, prototype pollution, arbitrary `fetch`, or `process.exit`. Those would require worker_thread isolation (spec 111b, hypothetical).
+Every integration plugin runs with scoped Proxies on its `PluginDeps` (`src/plugins/scoped-deps.ts`, unconditional): it reads and writes only `integration.<own-id>.*` settings (plus `GLOBAL_READABLE_KEYS`), emits only `ALLOWED_EMIT_TYPES`, and mutates only its own devices. **Extend the allowlists, never weaken the gates.** Every denial logs `"Plugin denied …"`. It is not a sandbox (no protection against `require`, `process.env`, `fetch`, loops). Details: `specs/111-plugin-soft-isolation/`.
 
 ### Event Bus
 
@@ -272,10 +167,7 @@ The Proxy does NOT protect against direct `require("better-sqlite3")`, `process.
 
 ### Authentication
 
-- Passwords: bcrypt cost 12. JWT HS256 via `jsonwebtoken`.
-- Access token TTL 15 min, refresh token TTL 30 days
-- API tokens: `swl_` prefix, SHA-256 hash stored, `crypto.randomBytes(32)`
-- Roles: `admin` > `standard` (`UserRole` in `src/shared/types.ts`)
+- Roles: `admin` > `standard` (`UserRole` in `src/shared/types.ts`). Passwords, JWT, API tokens, MFA: [architecture.md](docs/technical/architecture.md) (Authentication).
 
 ### Frontend
 
@@ -293,18 +185,9 @@ The Proxy does NOT protect against direct `require("better-sqlite3")`, `process.
 - Error logs must include `{ err }`: `logger.error({ err }, "Poll failed")`
 - Sensitive fields (password, token, secret, apiKey) are auto-redacted by config
 
-### Log levels
+### Log levels and files
 
-| Level   | When                                                          |
-| ------- | ------------------------------------------------------------- |
-| `fatal` | Process crash imminent                                        |
-| `error` | Operation failed, engine continues                            |
-| `warn`  | Self-recovering degradation (reconnect, retry, stale data)    |
-| `info`  | Significant business events — one per operation, not per item |
-| `debug` | Developer troubleshooting detail                              |
-| `trace` | High-volume hot path (off in production)                      |
-
-Production logs go to both stdout (captured by Docker) and `data/logs/sowel.<yyyy-MM-dd>.N.log` (daily rotation, 14 days kept, one predictable file per calendar day). **File logs survive container recreation**, crucial for post-incident investigation.
+`fatal` crash imminent, `error` operation failed, `warn` self-recovering degradation, `info` one per business operation, `debug` troubleshooting, `trace` hot path (off in production). Guidance and log file location (`data/logs/`, daily rotation, kept 14 days): [architecture.md](docs/technical/architecture.md) (Logging).
 
 ## Design system
 
@@ -373,6 +256,8 @@ The repo ships Claude Code skills under `.claude/skills/`:
 | `sowel-recipe-dev` | Developing a personal recipe as an external package: scaffold, createRecipe factory, release, personal-source install loop (spec 136). |
 | `sowel-docs`       | Updating MkDocs pages when features change.                                                                                            |
 | `sowel-issue`      | Handling a GitHub issue end-to-end: qualify, rewrite, implement, PR, close on merge.                                                   |
+
+And one agent under `.claude/agents/`: **`sowel-reviewer`**, the read-only review of a branch diff before its PR, called by `sowel-feature`, `sowel-issue` and `sowel-debug`. It holds the review checklist.
 
 ## Energy monitoring notes
 
