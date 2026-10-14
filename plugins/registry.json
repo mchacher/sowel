@@ -267,7 +267,7 @@
     "icon": "Bell",
     "author": "mchacher",
     "repo": "mchacher/sowel-recipe-state-trigger-light",
-    "version": "0.2.2",
+    "version": "0.2.3",
     "tags": ["automation", "state", "trigger", "light"],
     "i18n": {
       "fr": {
@@ -277,7 +277,7 @@
     },
     "sowelVersion": ">=1.5.8",
     "owner": "mchacher",
-    "sha256": "39d3a07fcf188ccb79aa9fa58813ad98787fa64183d33c4ed29f6cc16b1b7a6e"
+    "sha256": "2edb095d5bd8045860d4f7ed12bb058d1a1eab412410387ebcaa5c5b2e534ee2"
   },
   {
     "id": "motion-light-dimmable",
