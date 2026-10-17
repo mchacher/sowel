@@ -29,7 +29,7 @@ Before starting, read these IN ORDER:
 | Document                                         | Purpose                                                   |
 | ------------------------------------------------ | --------------------------------------------------------- |
 | `CLAUDE.md`                                      | AI agent entry point — conventions, rules, refs           |
-| `docs/specs-index.md`                            | Scan for related specs — there may already be a design    |
+| `docs/specs-index.md`                            | Grep it for related specs — there may already be a design |
 | `docs/technical/architecture.md`                 | The sections of the domains the feature touches           |
 | `src/shared/types.ts`, `src/shared/constants.ts` | The types and constants of those domains only (grep them) |
 
@@ -67,7 +67,7 @@ Search the codebase for similar patterns before designing the solution.
 
 > **GATE 1 — Checklist** (verify ALL before proceeding):
 >
-> - [ ] 1.1 Done — I read CLAUDE.md, specs-index.md, the relevant architecture sections and types; I searched the issues
+> - [ ] 1.1 Done — I read CLAUDE.md, grepped specs-index.md, read the relevant architecture sections and types; I searched the issues
 > - [ ] 1.2 Done — I asked clarifying questions and got answers (or requirements were already explicit)
 > - [ ] 1.3 Done — I searched for similar patterns in the codebase
 >
@@ -137,6 +137,8 @@ For each module, list:
 ### 2.5 Specs Index
 
 Add the spec's row to **both** `docs/specs-index.md` and `docs/specs-index.fr.md`, in its theme section, ending with `Unreleased.` (the release replaces it with `Shipped in vX.Y.Z.`). `scripts/check-specs-index.sh folders` fails the PR otherwise.
+
+The summary is **one sentence of at most 250 characters**, the trailing `Unreleased.` / `Shipped in vX.Y.Z.` not counted: what the spec delivers, plus the words someone would grep for (issue number, amended spec, type or module name). The story and the detail belong in the spec folder; agents grep the index, they do not read it whole. The same script refuses a longer summary.
 
 ### 2.6 Present Summary to User
 

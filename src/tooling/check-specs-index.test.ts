@@ -112,6 +112,35 @@ describe("scripts/check-specs-index.sh (spec 167 R4, issue #872)", () => {
     expect(res.out).toContain("docs/specs-index.fr.md lists the same spec more than once: 175");
   });
 
+  it("refuses a summary longer than one sentence, counting characters not bytes", () => {
+    // 250 accented characters is ~500 bytes: a byte count would refuse it.
+    const atLimit = "é".repeat(250);
+    seed({
+      specs: ["175-a-thing", "176-another"],
+      en: HEADER + row("175", "x".repeat(251)) + row("176"),
+      fr: HEADER + row("175", atLimit) + row("176"),
+    });
+
+    const res = run(dir, "folders");
+
+    expect(res.status).toBe(1);
+    expect(res.out).toContain("docs/specs-index.md has summaries over 250 characters: 175(251)");
+    expect(res.out).not.toContain("docs/specs-index.fr.md has summaries");
+  });
+
+  it("does not count the release status, so the release rewrite cannot push a row over", () => {
+    const full = "x".repeat(250);
+    seed({
+      specs: ["175-a-thing"],
+      en: HEADER + row("175", `${full} Shipped in v1.12.0.`),
+      fr: HEADER + row("175", `${full} Livrée en v1.12.0.`),
+    });
+
+    const res = run(dir, "folders");
+
+    expect(res.status).toBe(0);
+  });
+
   it("does not block a tag on a missing row — that is the pull request's job", () => {
     seed({
       specs: ["175-a-thing", "176-another"],

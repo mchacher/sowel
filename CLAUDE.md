@@ -275,7 +275,7 @@ Long prose belongs in the spec, the PR body or the release notes, never in the t
 
 ## When in doubt
 
-1. **Read `docs/specs-index.md` first** to see if there's already a spec for what you're about to do
+1. **Grep `docs/specs-index.md` first** (one row per spec) for the topic, to see if there's already a spec for what you're about to do — then open only the matching `specs/NNN-*/` folders. Don't read the whole index
 2. **Read the relevant architecture section** in `docs/technical/architecture.md`
 3. **Grep for similar patterns** in the codebase before inventing
 4. **Ask the user** if requirements are unclear — never assume
