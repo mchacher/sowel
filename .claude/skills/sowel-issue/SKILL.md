@@ -29,7 +29,7 @@ gh issue list --state open --limit 30    # if no number was given: pick with the
 ### 1.2 Understand and verify
 
 - Classify: **bug / feature request / docs / question / invalid**.
-- For a bug: try to reproduce or at least locate the failing path in the code. Read the relevant module and check `docs/specs-index.md` for the spec that shipped the behavior.
+- For a bug: try to reproduce or at least locate the failing path in the code. Read the relevant module and grep `docs/specs-index.md` for the spec that shipped the behavior.
 - For a feature: check whether a spec or a rejected/parked idea already covers it.
 - Check duplicates: `gh issue list --state all --search "<keywords>"`.
 - Identify what is missing from the report: version, logs, steps, expected vs actual, hardware/integration involved.

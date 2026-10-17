@@ -9,7 +9,8 @@
 # Two assertions, and they do NOT need the same context (issue #872):
 #
 #   folders  — every specs/NNN-*/ folder has exactly one row in each index,
-#              EN and FR. Depends on the repository contents alone, so it runs
+#              EN and FR, whose summary fits in one sentence (SUMMARY_MAX).
+#              Depends on the repository contents alone, so it runs
 #              on the pull request, where the fix is one table row typed by the
 #              author who already has the context.
 #   released — nothing cited in release-notes.md still reads "Unreleased" in
@@ -53,8 +54,10 @@ ROW="^\| [0-9]{3}[a-z]? \|"
 INDEX_EN="docs/specs-index.md"
 INDEX_FR="docs/specs-index.fr.md"
 NOTES="docs/release-notes.md"
+SUMMARY_MAX=250
 
 failed=0
+rows_failed=0
 
 # A wrong cwd used to produce a grep error, a nonsense list of every spec, and
 # the exit code reserved for a usage error.
@@ -120,7 +123,7 @@ if [ "${MODE}" = "all" ] || [ "${MODE}" = "folders" ]; then
           echo "   | ${num} | <title> | ✅     | Shipped. See \`specs/${slug}/\`. |"
         fi
       done
-      failed=1
+      failed=1 rows_failed=1
     fi
 
     # A row pasted twice is invisible to the membership test above, and it is
@@ -128,6 +131,30 @@ if [ "${MODE}" = "all" ] || [ "${MODE}" = "folders" ]; then
     duplicated="$(echo "${listed}" | sort | uniq -d | tr '\n' ' ')"
     if [ -n "${duplicated}" ]; then
       echo "❌ ${index} lists the same spec more than once: ${duplicated}"
+      failed=1 rows_failed=1
+    fi
+
+    # The index is grepped by agents to find a spec folder, not read. It had
+    # grown to 150 KB because summaries carried whole stories (up to 2 KB a
+    # row), so one "read the index first" cost ~40k tokens. One sentence of
+    # at most SUMMARY_MAX characters; the detail lives in specs/NNN-*/.
+    # The trailing release status is not counted: the release turns
+    # "Unreleased." into "Shipped in vX.Y.Z.", and a row that passed on its
+    # pull request must not fail on the release one.
+    # perl, not awk: characters, not bytes (the French index is accented);
+    # -Mutf8 so the "Livrée" literal below is characters too.
+    too_long="$(perl -CSD -Mutf8 -ne '
+      next unless /^\| ([0-9]{3}[a-z]?) \|/;
+      my $num = $1;
+      my @cells = split /(?<!\\)\|/, $_;
+      my $summary = $cells[4] // "";
+      $summary =~ s/^\s+|\s+$//g;
+      $summary =~ s/\s*(?:(?:Shipped|Livrée)(?: (?:in|en|alongside|avec la) v\d+\.\d+\.\d+)?|Unreleased|Non publiée)\.$//;
+      print "$num(" . length($summary) . ") " if length($summary) > '"${SUMMARY_MAX}"';
+    ' "${index}")"
+    if [ -n "${too_long}" ]; then
+      echo "❌ ${index} has summaries over ${SUMMARY_MAX} characters: ${too_long}"
+      echo "   One sentence, plus the words someone would grep for; the detail goes in the spec folder."
       failed=1
     fi
   done
@@ -160,15 +187,18 @@ if [ "${MODE}" = "all" ] || [ "${MODE}" = "released" ]; then
 
   if [ -n "${stale}" ]; then
     echo "❌ shipped but still marked Unreleased in ${INDEX_EN}:${stale}"
-    failed=1
+    failed=1 rows_failed=1
   fi
 fi
 
 if [ "${failed}" -ne 0 ]; then
-  echo
-  echo "Add the missing rows to BOTH indexes, and replace 'Unreleased' with the"
-  echo "version that shipped the spec. The oldest release-notes entry citing it"
-  echo "is the one."
+  # A summary that is only too long already printed its own advice.
+  if [ "${rows_failed}" -ne 0 ]; then
+    echo
+    echo "Add the missing rows to BOTH indexes, and replace 'Unreleased' with the"
+    echo "version that shipped the spec. The oldest release-notes entry citing it"
+    echo "is the one."
+  fi
   exit 1
 fi
 
