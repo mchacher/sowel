@@ -1,9 +1,20 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from "vitest";
 import Database from "better-sqlite3";
-import { mkdirSync, mkdtempSync, rmSync, writeFileSync, readFileSync, existsSync } from "node:fs";
+import {
+  mkdirSync,
+  mkdtempSync,
+  rmSync,
+  writeFileSync,
+  readFileSync,
+  existsSync,
+  readdirSync,
+  utimesSync,
+} from "node:fs";
+import { Readable, Writable } from "node:stream";
 import { resolve } from "node:path";
 import { tmpdir } from "node:os";
 import AdmZip from "adm-zip";
+import { ZipArchive } from "archiver";
 import {
   ALLOWED_RESTORE_EXTENSIONS,
   escapeFieldString,
@@ -22,6 +33,46 @@ import {
 import { SettingsManager } from "../core/settings-manager.js";
 import { applyMigrations } from "../test-helpers/migrations.js";
 import type { InfluxClient } from "../core/influx-client.js";
+
+// Disk failures the export must survive, switched on per test. Off, node:fs
+// is untouched.
+const fsFaults = vi.hoisted(() => ({
+  /** A write to the backup ZIP fails with ENOSPC. */
+  failArchiveWrite: false,
+  /** A write to a bucket's spool file fails with ENOSPC. */
+  failSpoolWrite: false,
+  /** Reading a spool file back fails with EIO. */
+  failSpoolRead: false,
+}));
+
+vi.mock("node:fs", async (importOriginal) => {
+  const fs = await importOriginal<typeof import("node:fs")>();
+  const fault = (code: string) => Object.assign(new Error(code), { code });
+  const isSpool = (path: unknown) => /sowel-backup-[^/]+\/influx-[a-z]+\.lp$/.test(String(path));
+  return {
+    ...fs,
+    createWriteStream: (...args: Parameters<typeof fs.createWriteStream>) => {
+      const path = String(args[0]);
+      if (
+        (fsFaults.failArchiveWrite && path.endsWith(".zip")) ||
+        (fsFaults.failSpoolWrite && isSpool(path))
+      ) {
+        return new Writable({ write: (_chunk, _enc, cb) => cb(fault("ENOSPC")) });
+      }
+      return fs.createWriteStream(...args);
+    },
+    createReadStream: (...args: Parameters<typeof fs.createReadStream>) => {
+      if (fsFaults.failSpoolRead && isSpool(args[0])) {
+        return new Readable({
+          read() {
+            this.destroy(fault("EIO"));
+          },
+        });
+      }
+      return fs.createReadStream(...args);
+    },
+  };
+});
 
 function createTestDb(): Database.Database {
   const db = new Database(":memory:");
@@ -969,5 +1020,278 @@ describe("restoreFromBuffer — InfluxDB connected (spec 186)", () => {
     const { calls, done } = restoreWith({});
     await done;
     expect(calls).not.toContain("rain backfill");
+  });
+});
+
+// The pre-update backup read every bucket whole with collectRows: on a 2 GB
+// host the raw bucket alone took Sowel past 1 GB and the kernel killed it in
+// the middle of the backup. The export now streams, one bucket at a time.
+describe("exportToFile — InfluxDB buckets are streamed", () => {
+  let tmpDir: string;
+  let db: Database.Database;
+
+  beforeEach(() => {
+    tmpDir = mkdtempSync(resolve(tmpdir(), "sowel-backup-stream-test-"));
+    db = createTestDb();
+  });
+
+  afterEach(() => {
+    fsFaults.failArchiveWrite = false;
+    fsFaults.failSpoolWrite = false;
+    fsFaults.failSpoolRead = false;
+    vi.unstubAllEnvs();
+    db.close();
+    rmSync(tmpDir, { recursive: true, force: true });
+  });
+
+  type FakeRow = Record<string, unknown>;
+
+  function point(i: number): FakeRow {
+    return {
+      result: "_result",
+      table: 0,
+      _start: "2026-10-03T00:00:00Z",
+      _stop: "2026-10-10T00:00:00Z",
+      _measurement: "equipment_data",
+      _field: "value",
+      _value: i,
+      _time: new Date(Date.UTC(2026, 9, 9) + i * 1000).toISOString(),
+      equipmentId: "e",
+      alias: "power",
+    };
+  }
+
+  /**
+   * A query API whose buckets are generators: `events` records when each
+   * bucket's query is first read and when it is exhausted.
+   */
+  function managerWith(buckets: Record<string, () => AsyncGenerator<FakeRow>>) {
+    const events: string[] = [];
+    const queryApi = {
+      iterateRows: (flux: string) => {
+        const bucket = /from\(bucket: "([^"]+)"\)/.exec(flux)![1];
+        const rows = buckets[bucket] ?? async function* () {};
+        return (async function* () {
+          events.push(`read ${bucket}`);
+          try {
+            for await (const row of rows()) {
+              yield { values: [], tableMeta: { toObject: () => row } };
+            }
+            events.push(`done ${bucket}`);
+          } finally {
+            events.push(`closed ${bucket}`);
+          }
+        })();
+      },
+    };
+    const influx = {
+      isConnected: () => true,
+      getConfig: () => ({ url: "http://influx", org: "o", bucket: "sowel", token: "t" }),
+      getClient: () => ({ getQueryApi: () => queryApi }),
+    } as unknown as InfluxClient;
+    const manager = new BackupManager({ db, influxClient: influx, logger, dataDir: tmpDir });
+    return { manager, events };
+  }
+
+  async function exportZip(manager: BackupManager): Promise<AdmZip> {
+    const { path } = await manager.exportToFile("stream.zip");
+    return new AdmZip(path);
+  }
+
+  function lines(zip: AdmZip, name: string): string[] {
+    return zip.readAsText(name).trim().split("\n");
+  }
+
+  it("writes every row of a bucket larger than one chunk, and no file for an empty one", async () => {
+    const { manager } = managerWith({
+      sowel: async function* () {
+        for (let i = 0; i < 5000; i++) yield point(i);
+      },
+    });
+    const zip = await exportZip(manager);
+
+    const raw = lines(zip, "influx-raw.lp");
+    expect(raw).toHaveLength(5000);
+    expect(raw[0]).toBe(
+      `equipment_data,equipmentId=e,alias=power value=0 ${Date.UTC(2026, 9, 9) * 1_000_000}`,
+    );
+    expect(raw[4999]).toMatch(/^equipment_data,equipmentId=e,alias=power value=4999 \d+$/);
+    expect(zip.getEntry("influx-hourly.lp")).toBeNull();
+    expect(zip.getEntry("sowel-backup.json")).not.toBeNull();
+  });
+
+  it("reads every bucket to the end even while nobody reads the archive", async () => {
+    // A download stalled for longer than the client's socket timeout used to
+    // cut the bucket being streamed. The queries no longer wait on the reader:
+    // this bucket compresses to far more than archiver buffers, and nothing
+    // reads the archive.
+    const big = async function* () {
+      for (let i = 0; i < 200_000; i++) yield { ...point(i), _value: Math.random() };
+    };
+    const { manager, events } = managerWith({ sowel: big, "sowel-hourly": big });
+    const archive = new ZipArchive({ zlib: { level: 6 } });
+    await manager.buildArchive(archive);
+
+    expect(events).toContain("done sowel");
+    expect(events).toContain("done sowel-hourly");
+    archive.destroy();
+  });
+
+  it("stops querying once the archive is destroyed, without hanging", async () => {
+    // A dropped download destroys the archive (fastify does on disconnect).
+    const archive = new ZipArchive({ zlib: { level: 6 } });
+    const { manager, events } = managerWith({
+      sowel: async function* () {
+        // Before the bucket's first row: nothing listens to the archive yet.
+        archive.destroy();
+        await new Promise((resolveTimer) => setTimeout(resolveTimer, 20));
+        yield point(1);
+        yield point(2);
+      },
+      "sowel-hourly": async function* () {
+        yield point(3);
+      },
+    });
+    await manager.buildArchive(archive);
+
+    expect(events).not.toContain("read sowel-hourly");
+  });
+
+  it("keeps the rows read when a query fails mid-stream, and the rest of the backup", async () => {
+    writeFileSync(resolve(tmpDir, ".jwt-secret"), "s3cr3t");
+    const { manager } = managerWith({
+      sowel: async function* () {
+        yield point(1);
+        yield point(2);
+        throw new Error("socket timeout");
+      },
+      "sowel-hourly": async function* () {
+        yield point(3);
+      },
+    });
+    const zip = await exportZip(manager);
+
+    expect(lines(zip, "influx-raw.lp")).toHaveLength(2);
+    expect(lines(zip, "influx-hourly.lp")).toHaveLength(1);
+    expect(zip.getEntry("data/.jwt-secret")).not.toBeNull();
+  });
+
+  it("skips a bucket whose query is refused up front", async () => {
+    const { manager } = managerWith({
+      // eslint-disable-next-line require-yield -- refused before any row
+      sowel: async function* () {
+        throw new Error("bucket not found");
+      },
+      "sowel-daily": async function* () {
+        yield point(1);
+      },
+    });
+    const zip = await exportZip(manager);
+
+    expect(zip.getEntry("influx-raw.lp")).toBeNull();
+    expect(lines(zip, "influx-daily.lp")).toHaveLength(1);
+  });
+  it("rejects on a failed write instead of crashing the process", async () => {
+    // The output is a directory: the write stream errors. This used to escape
+    // as an unhandled rejection, which exits Sowel.
+    mkdirSync(resolve(tmpDir, "backups", "stream.zip"), { recursive: true });
+    const { manager } = managerWith({});
+
+    await expect(manager.exportToFile("stream.zip")).rejects.toThrow();
+  });
+
+  it("leaves no truncated archive behind when the export fails", async () => {
+    // A truncated ZIP counts as a backup for the rotation.
+    const influx = {
+      isConnected: () => true,
+      getConfig: () => ({ url: "http://influx", org: "o", bucket: "sowel", token: "t" }),
+      getClient: () => {
+        throw new Error("boom");
+      },
+    } as unknown as InfluxClient;
+    const manager = new BackupManager({ db, influxClient: influx, logger, dataDir: tmpDir });
+
+    await expect(manager.exportToFile("stream.zip")).rejects.toThrow("boom");
+    expect(existsSync(resolve(tmpDir, "backups", "stream.zip"))).toBe(false);
+  });
+
+  const many = (n: number) =>
+    async function* () {
+      for (let i = 0; i < n; i++) yield point(i);
+    };
+
+  /** File descriptors this process has open. */
+  const openFds = () => readdirSync("/dev/fd").length;
+
+  it("stops and releases its files when the archive write fails mid-export", async () => {
+    // A full data/ volume during the pre-update backup. The export used to
+    // reject but carry on in the background: every remaining bucket queried,
+    // spooled and held open, deleted, on a disk already full.
+    fsFaults.failArchiveWrite = true;
+    const { manager, events } = managerWith({
+      sowel: many(50_000),
+      "sowel-hourly": many(10),
+      "sowel-daily": many(10),
+    });
+    const fdsBefore = openFds();
+
+    await expect(manager.exportToFile("stream.zip")).rejects.toThrow("ENOSPC");
+    await vi.waitFor(() => expect(events).toContain("closed sowel"));
+    await new Promise((resolveTimer) => setTimeout(resolveTimer, 50));
+
+    expect(events).not.toContain("done sowel");
+    expect(events).not.toContain("read sowel-hourly");
+    expect(openFds()).toBeLessThanOrEqual(fdsBefore);
+    expect(existsSync(resolve(tmpDir, "backups", "stream.zip"))).toBe(false);
+  });
+
+  it("fails the export when a bucket cannot be written to the temporary directory", async () => {
+    // Skipping it would let the pre-update backup pass without the energy
+    // history, and the update go ahead.
+    fsFaults.failSpoolWrite = true;
+    const { manager, events } = managerWith({ sowel: many(10), "sowel-hourly": many(10) });
+
+    await expect(manager.exportToFile("stream.zip")).rejects.toThrow("ENOSPC");
+    expect(events).not.toContain("read sowel-hourly");
+    expect(existsSync(resolve(tmpDir, "backups", "stream.zip"))).toBe(false);
+  });
+
+  it("fails the export, without crashing, when a spooled bucket cannot be read back", async () => {
+    // archiver does not forward the errors of a stream it is given: unheard,
+    // this one was an uncaught exception.
+    fsFaults.failSpoolRead = true;
+    const { manager } = managerWith({ sowel: many(10) });
+
+    await expect(manager.exportToFile("stream.zip")).rejects.toThrow("EIO");
+    expect(existsSync(resolve(tmpDir, "backups", "stream.zip"))).toBe(false);
+  });
+
+  it("removes the spool directories an unfinished export left behind, and only old ones", async () => {
+    const spoolRoot = resolve(tmpDir, "tmp");
+    mkdirSync(spoolRoot);
+    vi.stubEnv("TMPDIR", spoolRoot);
+    const stale = resolve(spoolRoot, "sowel-backup-spool-stale");
+    const recent = resolve(spoolRoot, "sowel-backup-spool-recent");
+    const unrelated = resolve(spoolRoot, "something-else");
+    // A downloaded backup someone parked in /tmp: same name start, not ours.
+    const download = resolve(spoolRoot, "sowel-backup-2026-10-01.zip");
+    for (const dir of [stale, recent, unrelated]) mkdirSync(dir);
+    writeFileSync(download, "zip");
+    const twoDaysAgo = new Date(Date.now() - 2 * 24 * 60 * 60 * 1000);
+    for (const old of [stale, unrelated, download]) utimesSync(old, twoDaysAgo, twoDaysAgo);
+    const { manager } = managerWith({ sowel: many(10) });
+
+    await exportZip(manager);
+
+    expect(existsSync(stale)).toBe(false);
+    expect(existsSync(recent)).toBe(true);
+    expect(existsSync(unrelated)).toBe(true);
+    expect(existsSync(download)).toBe(true);
+    // Its own spool directory is gone too.
+    expect(readdirSync(spoolRoot).sort()).toEqual([
+      "something-else",
+      "sowel-backup-2026-10-01.zip",
+      "sowel-backup-spool-recent",
+    ]);
   });
 });

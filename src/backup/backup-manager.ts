@@ -6,11 +6,20 @@ import {
   readdirSync,
   statSync,
   unlinkSync,
+  mkdtempSync,
+  rmSync,
+  openSync,
+  createReadStream,
+  createWriteStream,
 } from "node:fs";
+import type { ReadStream } from "node:fs";
 import { resolve, dirname, basename, sep } from "node:path";
+import { tmpdir } from "node:os";
+import { pipeline } from "node:stream/promises";
 import { ZipArchive } from "archiver";
 import type { Archiver } from "archiver";
 import AdmZip from "adm-zip";
+import type { QueryApi, Row } from "@influxdata/influxdb-client";
 import type Database from "better-sqlite3";
 import type { Logger } from "../core/logger.js";
 import type { InfluxClient } from "../core/influx-client.js";
@@ -290,35 +299,60 @@ export class BackupManager {
       if (client) {
         const queryApi = client.getQueryApi(influxConfig.org);
 
-        for (const bucketDef of INFLUX_BUCKETS) {
-          try {
-            const bucket = `${influxConfig.bucket}${bucketDef.bucketSuffix}`;
-            const flux = `from(bucket: "${bucket}") |> range(start: ${bucketDef.range})`;
-
-            const rows = await queryApi.collectRows<Record<string, unknown>>(flux);
-            if (rows.length === 0) continue;
-
-            const lines: string[] = [];
-            for (const row of rows) {
-              const line = rowToLineProtocol(row);
-              if (line) lines.push(line);
-            }
-
-            if (lines.length > 0) {
-              archive.append(lines.join("\n"), { name: bucketDef.filename });
-              this.logger.debug(
-                { bucket, lines: lines.length },
-                "InfluxDB bucket exported as line protocol",
+        // Every bucket is copied to its own file first, so no query ever waits
+        // on archiver or on whoever reads the archive. The files are unlinked
+        // once opened: archiver reads them through their descriptors.
+        sweepStaleSpoolDirs(this.logger);
+        const spoolDir = mkdtempSync(resolve(tmpdir(), SPOOL_DIR_PREFIX));
+        const sources = new Set<ReadStream>();
+        // A download dropped mid-way destroys the archive: release the files
+        // it will never read.
+        archive.once("close", () => {
+          for (const source of sources) source.destroy();
+        });
+        try {
+          for (const bucketDef of INFLUX_BUCKETS) {
+            if (archive.destroyed) {
+              this.logger.warn(
+                "Backup export stopped — the archive was closed before it was complete",
               );
+              return;
             }
-          } catch (err) {
-            this.logger.warn(
-              { err, filename: bucketDef.filename },
-              "Failed to export InfluxDB bucket",
+            const bucket = `${influxConfig.bucket}${bucketDef.bucketSuffix}`;
+            const source = await this.spoolInfluxBucket(
+              queryApi,
+              bucket,
+              bucketDef,
+              spoolDir,
+              () => archive.destroyed,
             );
+            if (!source) continue;
+            if (archive.destroyed) {
+              source.destroy();
+              continue;
+            }
+            sources.add(source);
+            source.once("close", () => sources.delete(source));
+            // archiver pipes the file without forwarding its errors: unheard,
+            // a read error on it would be an uncaught exception.
+            source.once("error", (err) => {
+              this.logger.error(
+                { err, filename: bucketDef.filename },
+                "Backup export failed — could not read back an InfluxDB bucket",
+              );
+              archive.destroy(err);
+            });
+            archive.append(source, { name: bucketDef.filename });
           }
+        } finally {
+          rmSync(spoolDir, { recursive: true, force: true });
         }
       }
+    }
+
+    if (archive.destroyed) {
+      this.logger.warn("Backup export stopped — the archive was closed before it was complete");
+      return;
     }
 
     // 4. Append data files (tokens, JWT secret — dynamically scanned)
@@ -346,6 +380,91 @@ export class BackupManager {
   }
 
   /**
+   * Copy one bucket to a file as line protocol, row by row, and return the
+   * file opened for reading — or `null` when there is nothing to put in the
+   * archive.
+   *
+   * The bucket is never held in memory: reading the raw bucket whole took
+   * more than 1 GB on a 2 GB host and got Sowel killed by the kernel in the
+   * middle of the pre-update backup. Nor is it streamed straight into the
+   * archive: a reader stalling for longer than the InfluxDB client's socket
+   * timeout (a slow download) would cut the bucket short, and a dropped one
+   * would leave the query hanging.
+   */
+  private async spoolInfluxBucket(
+    queryApi: QueryApi,
+    bucket: string,
+    bucketDef: InfluxBucketDef,
+    spoolDir: string,
+    cancelled: () => boolean,
+  ): Promise<ReadStream | null> {
+    const flux = `from(bucket: "${bucket}") |> range(start: ${bucketDef.range})`;
+    const lines = lineProtocolLines(queryApi.iterateRows(flux));
+    let count = 0;
+    let queryError: unknown = null;
+    let stopped = false;
+    async function* chunks(): AsyncGenerator<string> {
+      let chunk = "";
+      try {
+        for await (const line of lines) {
+          // Leaving the loop closes the query: a cancelled export does not
+          // read the rest of the bucket.
+          if (cancelled()) {
+            stopped = true;
+            return;
+          }
+          count++;
+          chunk += `${line}\n`;
+          if (chunk.length >= LINE_PROTOCOL_CHUNK) {
+            yield chunk;
+            chunk = "";
+          }
+        }
+      } catch (err) {
+        // Kept apart from a failed write: what the query gave is whole lines.
+        queryError = err;
+      }
+      if (chunk) yield chunk;
+    }
+
+    const path = resolve(spoolDir, bucketDef.filename);
+    try {
+      await pipeline(chunks(), createWriteStream(path));
+    } catch (err) {
+      // A local disk failure (full, read-only), not an InfluxDB one: skipping
+      // the bucket would let the pre-update backup pass without the energy
+      // history, so the whole export fails instead.
+      this.logger.error(
+        { err, filename: bucketDef.filename },
+        "Backup export failed — could not write an InfluxDB bucket to the temporary directory",
+      );
+      throw err;
+    }
+    if (stopped) return null;
+
+    if (queryError) {
+      // A query refused up front skips the bucket, as before. Cut short
+      // mid-way, it keeps what was read.
+      if (count === 0) {
+        this.logger.warn(
+          { err: queryError, filename: bucketDef.filename },
+          "Failed to export InfluxDB bucket",
+        );
+        return null;
+      }
+      this.logger.warn(
+        { err: queryError, filename: bucketDef.filename, lines: count },
+        "InfluxDB bucket export cut short — the file in the backup is partial",
+      );
+    }
+    // An empty bucket gets no file, as before.
+    if (count === 0) return null;
+
+    this.logger.debug({ bucket, lines: count }, "InfluxDB bucket exported as line protocol");
+    return createReadStream(path, { fd: openSync(path, "r") });
+  }
+
+  /**
    * Export the full backup to a file in `data/backups/`.
    * Used by UpdateManager (auto backup before update) and future cron backups.
    */
@@ -356,7 +475,6 @@ export class BackupManager {
     const fullPath = resolve(backupsDir, filename);
 
     const archive = new ZipArchive({ zlib: { level: 6 } });
-    const { createWriteStream } = await import("node:fs");
     const output = createWriteStream(fullPath);
 
     const finished = new Promise<void>((resolvePromise, rejectPromise) => {
@@ -366,9 +484,28 @@ export class BackupManager {
     });
 
     archive.pipe(output);
-    await this.buildArchive(archive);
-    await archive.finalize();
-    await finished;
+    try {
+      // Awaited together: a write that fails (a full disk) rejects here
+      // instead of escaping as an unhandled rejection that restarts Sowel.
+      await Promise.all([
+        (async () => {
+          await this.buildArchive(archive);
+          await archive.finalize();
+        })(),
+        finished,
+      ]);
+    } catch (err) {
+      // abort() alone neither closes the archive nor releases the files it
+      // was given: destroy() does both, and stops buildArchive at its next
+      // check.
+      archive.abort();
+      archive.destroy();
+      output.destroy();
+      // A truncated archive would count as a backup for the rotation and
+      // push out a good one.
+      rmSync(fullPath, { force: true });
+      throw err;
+    }
 
     const size = statSync(fullPath).size;
     this.logger.info({ filename, size }, "Backup exported to local file");
@@ -835,6 +972,54 @@ function scanDataFiles(dataDir: string): { files: string[]; skipped: string[] } 
     files.push(entry.name);
   }
   return { files, skipped };
+}
+
+/** Prefix of the temporary directory each export spools its buckets to. */
+const SPOOL_DIR_PREFIX = "sowel-backup-spool-";
+
+/** A spool directory older than this was left by an export that never finished. */
+const STALE_SPOOL_DIR_MS = 24 * 60 * 60 * 1000;
+
+/**
+ * Remove the spool directories of exports that never finished.
+ *
+ * An export removes its own directory as soon as its files are open, but a
+ * process killed mid-export (the kernel, a crash) leaves it behind, in the
+ * container's writable layer until the container is recreated. Only old ones
+ * go: a directory of a few minutes may belong to an export running now.
+ */
+function sweepStaleSpoolDirs(logger: Logger): void {
+  let names: string[];
+  try {
+    names = readdirSync(tmpdir());
+  } catch (err) {
+    logger.warn({ err }, "Backup export: could not sweep old spool directories");
+    return;
+  }
+  const now = Date.now();
+  for (const name of names) {
+    if (!name.startsWith(SPOOL_DIR_PREFIX)) continue;
+    const dir = resolve(tmpdir(), name);
+    try {
+      // Only directories: a backup ZIP someone left in /tmp is not ours.
+      const stat = statSync(dir);
+      if (!stat.isDirectory() || now - stat.mtimeMs < STALE_SPOOL_DIR_MS) continue;
+      rmSync(dir, { recursive: true, force: true });
+      logger.info({ dir }, "Backup export: removed a spool directory left by an unfinished export");
+    } catch (err) {
+      logger.warn({ err, dir }, "Backup export: could not remove an old spool directory");
+    }
+  }
+}
+
+/** Characters of line protocol handed to archiver at a time. */
+const LINE_PROTOCOL_CHUNK = 64 * 1024;
+
+async function* lineProtocolLines(rows: AsyncIterable<Row>): AsyncGenerator<string> {
+  for await (const { values, tableMeta } of rows) {
+    const line = rowToLineProtocol(tableMeta.toObject(values));
+    if (line) yield line;
+  }
 }
 
 /**

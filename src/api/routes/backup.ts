@@ -50,13 +50,17 @@ export function registerBackupRoutes(app: FastifyInstance, deps: BackupRouteDeps
     const archive = new ZipArchive({ zlib: { level: 6 } });
 
     // Build archive — append + finalize handled by BackupManager
-    backupManager.buildArchive(archive).then(
-      () => archive.finalize(),
-      (err) => {
+    backupManager
+      .buildArchive(archive)
+      // A client that dropped the download destroyed the archive: nothing
+      // left to finalize.
+      .then(() => (archive.destroyed ? undefined : archive.finalize()))
+      .catch((err: unknown) => {
         logger.error({ err }, "Backup export failed");
+        // destroy() also releases the files the archive was given.
         archive.abort();
-      },
-    );
+        archive.destroy();
+      });
 
     auditLogger.log({
       ...buildActor(request, userManager),
