@@ -3,7 +3,9 @@ import Database from "better-sqlite3";
 import { mkdirSync, mkdtempSync, rmSync, writeFileSync, readFileSync, existsSync } from "node:fs";
 import { resolve } from "node:path";
 import { tmpdir } from "node:os";
+import { Readable } from "node:stream";
 import AdmZip from "adm-zip";
+import { ZipArchive } from "archiver";
 import {
   ALLOWED_RESTORE_EXTENSIONS,
   escapeFieldString,
@@ -1072,5 +1074,87 @@ describe("restoreFromBuffer — InfluxDB entries are streamed", () => {
 
     await expect(done).rejects.toThrow("CRC32 checksum failed influx-daily.lp");
     expect(writes).toEqual([]);
+  });
+
+  /**
+   * A backup as the export writes it: archiver, every entry streamed, so each
+   * carries a data descriptor and a zero crc in its local header.
+   */
+  async function archiverZip(entries: Record<string, string[]>): Promise<Buffer> {
+    const archive = new ZipArchive({ zlib: { level: 6 } });
+    const chunks: Buffer[] = [];
+    archive.on("data", (chunk: Buffer) => chunks.push(chunk));
+    const ended = new Promise((resolveEnd) => archive.on("end", resolveEnd));
+    const tables = Object.fromEntries(BACKUP_TABLES.map((t) => [t, []]));
+    archive.append(JSON.stringify({ version: 2, exportedAt: new Date().toISOString(), tables }), {
+      name: "sowel-backup.json",
+    });
+    for (const [name, lines] of Object.entries(entries)) {
+      // Odd-sized pieces, so multi-byte characters straddle chunk boundaries.
+      const text = Buffer.from(lines.map((line) => `${line}\n`).join(""));
+      const pieces: Buffer[] = [];
+      for (let i = 0; i < text.length; i += 7777) pieces.push(text.subarray(i, i + 7777));
+      archive.append(Readable.from(pieces), { name });
+    }
+    await archive.finalize();
+    await ended;
+    return Buffer.concat(chunks);
+  }
+
+  /** Overwrite one entry's central-directory field (uncompressed size or crc). */
+  function patchCentralHeader(buffer: Buffer, name: string, field: "size" | "crc", value: number) {
+    const offset = { crc: 16, size: 24 }[field];
+    for (
+      let at = buffer.indexOf("PK\x01\x02");
+      at !== -1;
+      at = buffer.indexOf("PK\x01\x02", at + 4)
+    ) {
+      const nameLength = buffer.readUInt16LE(at + 28);
+      if (buffer.toString("utf-8", at + 46, at + 46 + nameLength) === name) {
+        buffer.writeUInt32LE(value >>> 0, at + offset);
+        return;
+      }
+    }
+    throw new Error(`No central header for ${name}`);
+  }
+
+  it("restores a backup written by the export, multi-byte characters included", async () => {
+    const lines = lp(0, 20_000).map((line, i) =>
+      i % 3 === 0 ? line.replace("value=", 'label="é€😀ü",value=') : line,
+    );
+    const { writes, done } = restore(await archiverZip({ "influx-hourly.lp": lines }));
+    const result = await done;
+
+    expect(writes.flatMap((w) => w.body.split("\n"))).toEqual(lines);
+    expect(result.influxPointsRestored).toBe(20_000);
+  });
+
+  it("refuses a deflated entry whose crc-32 is wrong before writing any of it", async () => {
+    const buffer = await archiverZip({ "influx-raw.lp": lp(0, 10) });
+    patchCentralHeader(buffer, "influx-raw.lp", "crc", 0x12345678);
+    const { writes, done } = restore(buffer);
+
+    await expect(done).rejects.toThrow("CRC32 checksum failed influx-raw.lp");
+    expect(writes).toEqual([]);
+  });
+
+  it("refuses an entry that expands past its declared size, before writing any of it", async () => {
+    // A few KB that declare 100 bytes and inflate to megabytes: getData()
+    // could never expand past the declared size, the stream must not either.
+    const lines = Array.from({ length: 200_000 }, () => "m v=1 1");
+    const buffer = await archiverZip({ "influx-raw.lp": lines });
+    patchCentralHeader(buffer, "influx-raw.lp", "size", 100);
+    const { writes, done } = restore(buffer);
+
+    await expect(done).rejects.toThrow("expands past its declared size of 100 bytes");
+    expect(writes).toEqual([]);
+  });
+
+  it("keeps a line spread over many chunks whole", async () => {
+    const long = `m,${"t=x,".repeat(50_000)}u=y v=1 1`;
+    const { writes, done } = restore(await archiverZip({ "influx-daily.lp": [long, "m v=2 2"] }));
+    await done;
+
+    expect(writes).toEqual([{ bucket: "sowel-daily", body: `${long}\nm v=2 2` }]);
   });
 });

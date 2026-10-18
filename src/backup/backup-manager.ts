@@ -8,7 +8,7 @@ import {
   unlinkSync,
 } from "node:fs";
 import { resolve, dirname, basename, sep } from "node:path";
-import { Readable } from "node:stream";
+import { Readable, Transform } from "node:stream";
 import { createInflateRaw, crc32 } from "node:zlib";
 import { ZipArchive } from "archiver";
 import type { Archiver } from "archiver";
@@ -852,9 +852,41 @@ const RESTORE_BATCH_LINES = 5000;
  */
 function entryStream(entry: AdmZip.IZipEntry): Readable {
   const compressed = Readable.from([entry.getCompressedData()]);
-  if (entry.header.method === 0) return compressed;
-  if (entry.header.method === 8) return compressed.pipe(createInflateRaw());
+  if (entry.header.method === 0) return compressed.pipe(capAtDeclaredSize(entry));
+  if (entry.header.method === 8) {
+    const inflate = createInflateRaw();
+    const capped = compressed.pipe(inflate).pipe(capAtDeclaredSize(entry));
+    // pipe() does not forward errors: a corrupt deflate stream must reach
+    // whoever reads the entry.
+    inflate.once("error", (err) => capped.destroy(err));
+    return capped;
+  }
   throw new Error(`Unsupported compression method ${entry.header.method} for ${entry.entryName}`);
+}
+
+/**
+ * Fails the stream once it goes past the size the entry declares.
+ *
+ * getData() inflated into a buffer of the declared size, so an entry could
+ * never expand past it (adm-zip's fix for GHSA-rcw4-f5rp-g42v). Inflated on
+ * the fly, nothing else bounds it: a few KB that declare 100 bytes and expand
+ * to gigabytes of points would all reach InfluxDB.
+ */
+function capAtDeclaredSize(entry: AdmZip.IZipEntry): Transform {
+  const declared = entry.header.size;
+  let bytes = 0;
+  return new Transform({
+    transform(chunk: Buffer, _encoding, callback) {
+      bytes += chunk.length;
+      if (bytes > declared) {
+        callback(
+          new Error(`Entry ${entry.entryName} expands past its declared size of ${declared} bytes`),
+        );
+        return;
+      }
+      callback(null, chunk);
+    },
+  });
 }
 
 /** Throws the way adm-zip's getData() does when the entry's crc-32 is wrong. */
@@ -872,8 +904,16 @@ async function* entryLines(entry: AdmZip.IZipEntry): AsyncGenerator<string> {
   stream.setEncoding("utf-8");
   let rest = "";
   for await (const chunk of stream) {
-    const parts = (rest + (chunk as string)).split("\n");
-    rest = parts.pop() ?? "";
+    const text = chunk as string;
+    // Only a chunk that ends a line is split: re-splitting the whole pending
+    // line on every chunk made one very long line cost quadratic time.
+    const lastNewline = text.lastIndexOf("\n");
+    if (lastNewline === -1) {
+      rest += text;
+      continue;
+    }
+    const parts = (rest + text.slice(0, lastNewline)).split("\n");
+    rest = text.slice(lastNewline + 1);
     for (const line of parts) if (line.trim()) yield line;
   }
   if (rest.trim()) yield rest;
