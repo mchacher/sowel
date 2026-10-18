@@ -57,8 +57,10 @@ export function registerBackupRoutes(app: FastifyInstance, deps: BackupRouteDeps
       .then(() => (archive.destroyed ? undefined : archive.finalize()))
       .catch((err: unknown) => {
         logger.error({ err }, "Backup export failed");
-        // destroy() also releases the files the archive was given.
-        archive.abort();
+        // destroy() alone: abort() ends the archive cleanly when its queue is
+        // idle, and the client then gets a 200 and a ZIP with no central
+        // directory. Destroyed, the download is cut off, and the files the
+        // archive was given are released.
         archive.destroy();
       });
 
