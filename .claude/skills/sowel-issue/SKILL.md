@@ -29,7 +29,7 @@ gh issue list --state open --limit 30    # if no number was given: pick with the
 ### 1.2 Understand and verify
 
 - Classify: **bug / feature request / docs / question / invalid**.
-- For a bug: try to reproduce or at least locate the failing path in the code. Read the relevant module and check `docs/specs-index.md` for the spec that shipped the behavior.
+- For a bug: try to reproduce or at least locate the failing path in the code. Read the relevant module and grep `docs/specs-index.md` for the spec that shipped the behavior.
 - For a feature: check whether a spec or a rejected/parked idea already covers it.
 - Check duplicates: `gh issue list --state all --search "<keywords>"`.
 - Identify what is missing from the report: version, logs, steps, expected vs actual, hardware/integration involved.
@@ -93,7 +93,7 @@ git checkout -b fix/issue-<n>-<slug>     # or feat/issue-<n>-<slug>
 - Follow every convention in `CLAUDE.md` (types, logging, migrations order, UI rules).
 - **Tests are mandatory** for every fix and feature — a bug fix gets a regression test that fails before the fix.
 - Reference the issue in the commit message body, e.g. `fix(zones): skip offline equipments in humidity aggregation (#<n>)`.
-- Run the full validation: `npx tsc --noEmit`, `npx eslint src/ --ext .ts`, `npx vitest run`, and the UI checks if the UI changed.
+- Run the full validation: `npm run validate` (the CI set), then `bash scripts/check-docs-impact.sh` and `bash scripts/check-docs-parity.sh`. A docs check failure is fixed, or answered by the PR line of Phase 6.
 
 > **GATE 4**: All checks pass. Verify the branch with `git branch --show-current` right before committing.
 
@@ -103,7 +103,7 @@ git checkout -b fix/issue-<n>-<slug>     # or feat/issue-<n>-<slug>
 
 Before opening the PR, get an **independent agent** to review the change. A second pass catches correctness bugs, altitude problems (band-aid vs root fix), test gaps, and i18n/convention slips the implementer is blind to.
 
-- Launch a `general-purpose` agent (or run the `code-review` skill) on the branch diff (`git diff main...HEAD`). Give it the issue and the change, and ask it to review for: **correctness** (edge cases, races, inverted conditions, null/await), **altitude** (right depth or a band-aid over a deeper cause), **test soundness** (does the test actually fail without the fix), and **convention/i18n slips** (CLAUDE.md rules, mixed-language strings).
+- Spawn the `sowel-reviewer` agent (Agent tool, `subagent_type: sowel-reviewer`) on the branch, with the issue number. It holds the checklist (correctness, altitude, test soundness, conventions, docs) and only reports.
 - Prefer **empirical** verification when the change has a runtime surface the agent can exercise (drive the component, spin the container, run the flow) over reading alone.
 - Triage the findings: apply the confirmed ones on the branch as a follow-up commit; explicitly note anything deliberately deferred and why.
 - Re-run the Phase 4 validation after applying fixes.
@@ -120,7 +120,7 @@ gh pr create --title "<conventional title> (#<n>)" --body "...
 Closes #<n>"
 ```
 
-- The body must explain the root cause (for a bug) or the design (for a feature), list the tests added, and contain the `Closes #<n>` line so the merge auto-closes the issue.
+- The body must explain the root cause (for a bug) or the design (for a feature), list the tests added, and contain the `Closes #<n>` line so the merge auto-closes the issue. When no doc changed on a `fix` / `feat` touching code, add `Docs-Impact: none — <reason>` (the reason is required).
 - Present the PR to the user and **wait for explicit approval before merging**. Never merge on your own.
 
 > **GATE 6**: PR presented; user has explicitly approved the merge ("oui", "merge", "go").

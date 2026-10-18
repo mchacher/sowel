@@ -14,7 +14,9 @@ Feature request: $ARGUMENTS
 
 Follow EVERY phase below IN ORDER. Each phase has a GATE — a condition that MUST be met before proceeding. Do NOT skip gates. Do NOT combine phases.
 
-All conventions (logging, implementation rules, design system) are in `CLAUDE.md` — read it, do not duplicate here. For key files and commands, see [reference.md](reference.md).
+All conventions (commands, scopes, logging, implementation rules, design system) are in `CLAUDE.md` — read it, do not duplicate here. Key files and spec templates: [reference.md](reference.md).
+
+**One feature per conversation.** A new idea that comes up on the way becomes a GitHub issue (`gh issue create`, with the user's go), never an addition to the feature in progress.
 
 ---
 
@@ -22,25 +24,28 @@ All conventions (logging, implementation rules, design system) are in `CLAUDE.md
 
 ### 1.1 Read Essential Documentation
 
-Before starting, read these files IN ORDER:
+Before starting, read these IN ORDER:
 
-| Document                         | Purpose                                                      |
-| -------------------------------- | ------------------------------------------------------------ |
-| `CLAUDE.md`                      | AI agent entry point — conventions, rules, refs              |
-| `docs/technical/architecture.md` | Current architecture (plugin V2, self-update, backup, CI/CD) |
-| `docs/specs-index.md`            | Scan for related specs — there may already be a design       |
-| `src/shared/types.ts`            | All TypeScript interfaces                                    |
-| `src/shared/constants.ts`        | DataCategory, EquipmentType, etc.                            |
+| Document                                         | Purpose                                                   |
+| ------------------------------------------------ | --------------------------------------------------------- |
+| `CLAUDE.md`                                      | AI agent entry point — conventions, rules, refs           |
+| `docs/specs-index.md`                            | Grep it for related specs — there may already be a design |
+| `docs/technical/architecture.md`                 | The sections of the domains the feature touches           |
+| `src/shared/types.ts`, `src/shared/constants.ts` | The types and constants of those domains only (grep them) |
 
 **Do NOT read `docs/sowel-spec.md`** — it's legacy and outdated.
 
-If the feature involves a specific domain, also read the relevant source files (see [reference.md](reference.md) for the full list). When in doubt about history, check the spec files in `specs/XXX-*/` for the relevant feature.
+Check the issue tracker for a related or duplicate request:
+
+```bash
+gh issue list --state all --search "<keywords>"
+```
+
+If the feature involves a specific domain, also read the relevant source files (see [reference.md](reference.md)). When in doubt about history, check the spec files in `specs/XXX-*/` for the relevant feature.
 
 ### 1.2 Deep-Dive Requirements
 
-**Do not assume. Ask clarifying questions until requirements are crystal clear.**
-
-Ask the user about:
+**Do not assume.** Go through the topics below and ask about whatever is unclear, **at most three questions per message**, each with your recommended answer when you have one.
 
 | Topic          | Questions to ask                                                         |
 | -------------- | ------------------------------------------------------------------------ |
@@ -53,7 +58,7 @@ Ask the user about:
 | **UI**         | New pages? New components? Changes to existing views?                    |
 | **Edge cases** | What happens with null data? Device offline? Empty zones?                |
 
-**Continue asking until you can write a complete spec without assumptions.**
+**Continue until you can write a complete spec without assumptions.**
 Ask user if they have any other inputs. If yes, ask more questions.
 
 ### 1.3 Check Existing Patterns
@@ -62,7 +67,7 @@ Search the codebase for similar patterns before designing the solution.
 
 > **GATE 1 — Checklist** (verify ALL before proceeding):
 >
-> - [ ] 1.1 Done — I read CLAUDE.md, architecture.md, specs-index.md, types.ts, constants.ts
+> - [ ] 1.1 Done — I read CLAUDE.md, grepped specs-index.md, read the relevant architecture sections and types; I searched the issues
 > - [ ] 1.2 Done — I asked clarifying questions and got answers (or requirements were already explicit)
 > - [ ] 1.3 Done — I searched for similar patterns in the codebase
 >
@@ -85,15 +90,21 @@ Convention: `XXX-<feature-name>` — sequential 3-digit number + kebab-case name
 
 ### 2.2 Write Spec Files
 
-| File              | Content                                              |
-| ----------------- | ---------------------------------------------------- |
-| `spec.md`         | Requirements, acceptance criteria, scope, edge cases |
-| `architecture.md` | Data model, event flow, API contracts, file changes  |
-| `plan.md`         | Implementation steps, task breakdown, **test plan**  |
+| File              | Content                                                              |
+| ----------------- | -------------------------------------------------------------------- |
+| `spec.md`         | Requirements, acceptance criteria, scope, edge cases, **docs delta** |
+| `architecture.md` | Data model, event flow, API contracts, file changes                  |
+| `plan.md`         | Implementation steps, task breakdown, **test plan**                  |
 
-Use the templates in [reference.md](reference.md).
+Use the templates in [reference.md](reference.md). `scripts/check-specs-complete.sh` fails a PR whose new spec folder lacks one of the three.
 
-### 2.3 Write Test Plan (in `plan.md`)
+### 2.3 Docs Delta (in `spec.md`)
+
+List, page by page, what the feature changes in `docs/technical/` and `docs/user/`, **EN and FR pages together**, and the screenshots to retake. Start from the pages `scripts/docs-impact-map.sh` maps to the files you will touch.
+
+If nothing a reader can observe changes, write the sentence that will become the PR's `Docs-Impact: none — <reason>` line.
+
+### 2.4 Write Test Plan (in `plan.md`)
 
 The test plan is written BEFORE implementation, as a dedicated section in `plan.md`. It forces you to think about what to verify before writing code.
 
@@ -123,7 +134,13 @@ For each module, list:
 
 **Do NOT skip this step.** Every feature must have a test plan before implementation begins.
 
-### 2.4 Present Summary to User
+### 2.5 Specs Index
+
+Add the spec's row to **both** `docs/specs-index.md` and `docs/specs-index.fr.md`, in its theme section, ending with `Unreleased.` (the release replaces it with `Shipped in vX.Y.Z.`). `scripts/check-specs-index.sh folders` fails the PR otherwise.
+
+The summary is **one sentence of at most 250 characters**, the trailing `Unreleased.` / `Shipped in vX.Y.Z.` not counted: what the spec delivers, plus the words someone would grep for (issue number, amended spec, type or module name). The story and the detail belong in the spec folder; agents grep the index, they do not read it whole. The same script refuses a longer summary.
+
+### 2.6 Present Summary to User
 
 After writing the spec, present a summary:
 
@@ -135,6 +152,7 @@ After writing the spec, present a summary:
 **Data Model**: [New tables/fields]
 **API**: [New endpoints]
 **UI**: [New/changed views]
+**Docs**: [Pages EN/FR to update, or "none — reason"]
 **Tests**: [Modules to test + number of scenarios]
 
 Voulez-vous que j'implémente cette feature ?
@@ -143,11 +161,11 @@ Voulez-vous que j'implémente cette feature ?
 > **GATE 2 — Checklist** (verify ALL before proceeding):
 >
 > - [ ] 2.1 Done — Spec folder exists in `specs/XXX-name/`
-> - [ ] 2.2 Done — `spec.md` written (requirements, acceptance criteria, scope)
-> - [ ] 2.2 Done — `architecture.md` written (data model, file changes, event flow)
-> - [ ] 2.2 Done — `plan.md` written (implementation steps, task breakdown)
-> - [ ] 2.3 Done — Test plan written in `plan.md` (modules, scenarios table)
-> - [ ] 2.4 Done — Summary presented to user in the exact format
+> - [ ] 2.2 Done — `spec.md`, `architecture.md`, `plan.md` written
+> - [ ] 2.3 Done — Docs delta written (pages EN/FR, or the "none" reason)
+> - [ ] 2.4 Done — Test plan written in `plan.md` (modules, scenarios table)
+> - [ ] 2.5 Done — Row added to `docs/specs-index.md` and `docs/specs-index.fr.md`
+> - [ ] 2.6 Done — Summary presented to user in the exact format
 > - [ ] User has explicitly approved ("oui", "yes", "go")
 >
 > Do NOT proceed to implementation without explicit approval. If user has questions → update spec and re-present.
@@ -166,8 +184,6 @@ git pull
 git checkout -b feat/<feature-name>
 ```
 
-Prefixes: `feat/`, `fix/`, `refactor/`, `docs/`
-
 ### 3.2 Implement in Order
 
 Follow this strict order to avoid broken dependencies:
@@ -180,10 +196,17 @@ Follow this strict order to avoid broken dependencies:
 6. **API routes** — `src/api/routes/`, register in `src/api/server.ts`
 7. **WebSocket** — broadcast new events
 8. **UI** — stores, components, pages
+9. **Docs** — apply the docs delta of 2.3, EN and FR together (`/sowel-docs` for screenshots and navigation)
+
+**Do only what the spec says.** No unrelated refactor, no extra option. If the spec turns out wrong or incomplete, stop, tell the user, update the spec and get their approval again.
+
+### 3.3 Rules
+
+All implementation rules are in `CLAUDE.md` (conventions section). Read them there; the review agent checks them in Phase 5.
 
 ### 3.4 Tests (MANDATORY — never skip)
 
-Implement the test plan written in Phase 2.3. Every scenario from the plan must have a corresponding test.
+Implement the test plan written in Phase 2.4. Every scenario from the plan must have a corresponding test.
 
 - **Follow the plan**: implement each scenario listed in `specs/XXX/plan.md` test plan
 - **Look at existing tests first**: find `*.test.ts` files in the same domain directory and follow the same patterns (mocking strategy, test structure, assertions)
@@ -191,6 +214,7 @@ Implement the test plan written in Phase 2.3. Every scenario from the plan must 
 - **What NOT to test**: simple CRUD wrappers, direct DB queries, UI components (no React tests in this project)
 - **Test file location**: same directory as the source file, named `<module>.test.ts`
 - **Framework**: Vitest (already configured)
+- **A test must fail when the code is wrong**: for the core scenario, break the code once on purpose, see the test fail, restore the code
 - **Verify coverage**: after writing tests, check that every scenario from the plan is covered. If a scenario is missing, add it before proceeding.
 
 ```bash
@@ -198,60 +222,42 @@ Implement the test plan written in Phase 2.3. Every scenario from the plan must 
 npx vitest run src/<domain>/<module>.test.ts
 ```
 
-### 3.3 Rules
-
-All implementation rules are defined in `CLAUDE.md`. Key non-negotiables:
-
-- TypeScript strict, no `any`
-- UUID v4 for all IDs
-- Pino logger only (never `console.*`)
-- All handlers wrapped in try/catch
-- Tailwind only, Lucide icons
-
 > **GATE 3 — Checklist** (verify ALL before proceeding):
 >
 > - [ ] 3.1 Done — Feature branch created (NOT main). Verify: `git branch --show-current`
-> - [ ] 3.2 Done — Implementation follows the order (types → DB → core → logic → tests → API → WS → UI)
-> - [ ] 3.4 Done — Every scenario from the test plan has a corresponding test
-> - [ ] 3.3 Done — All rules respected (strict TS, no any, pino logger, try/catch)
+> - [ ] 3.2 Done — Implementation follows the order (types → DB → core → logic → tests → API → WS → UI → docs), nothing outside the spec
+> - [ ] 3.4 Done — Every scenario from the test plan has a corresponding test; the core test seen failing on broken code
 
 ---
 
-## Phase 4: Test & Validate (MANDATORY)
+## Phase 4: Validate (MANDATORY)
 
 **Do NOT commit without passing ALL checks.**
 
-### 4.1 TypeScript Compilation
-
 ```bash
-npx tsc --noEmit                    # Backend
-cd ui && npx tsc --noEmit           # Frontend (if UI changes)
+npm run validate
 ```
 
-**ZERO errors required.**
+`validate` is the CI set in one command (backend and UI typecheck, `typecheck:tests`, lint, `format:check`, tests). Never run a hand-picked subset instead.
 
-### 4.2 Run Tests
-
-```bash
-cd "$(git rev-parse --show-toplevel)" && npx vitest run
-```
-
-**ALL tests must pass.** If tests fail, fix them before proceeding.
-
-### 4.3 Lint
+Then the documentation and spec checks the CI runs on every pull request:
 
 ```bash
-npx eslint src/ --ext .ts
+bash scripts/check-specs-complete.sh
+bash scripts/check-specs-index.sh folders
+bash scripts/check-docs-parity.sh
+bash scripts/check-docs-impact.sh
 ```
 
-**ZERO errors required** (warnings are acceptable).
+Locally the last two do not see the PR body, so they run in the strict case: a failure that the PR's `Docs-Parity:` or `Docs-Impact:` line (Phase 6) answers is expected. Any other failure is fixed, never bypassed.
+
+Show the user the commands and the last lines of their output, never just "it passes".
 
 > **GATE 4 — Checklist** (verify ALL before proceeding):
 >
-> - [ ] 4.1 Done — `npx tsc --noEmit` passes with ZERO errors
-> - [ ] 4.1 Done — `cd ui && npx tsc -b --noEmit` passes (if UI changes)
-> - [ ] 4.2 Done — `npx vitest run` — ALL tests pass
-> - [ ] 4.3 Done — `npx eslint src/ --ext .ts` — ZERO errors
+> - [ ] `npm run validate` green
+> - [ ] `check-specs-complete` and `check-specs-index folders` green
+> - [ ] `check-docs-parity` and `check-docs-impact` green, or every failure answered by a PR line written in Phase 6
 >
 > Do NOT proceed if any check fails. Fix the issues first.
 
@@ -259,46 +265,27 @@ npx eslint src/ --ext .ts
 
 ## Phase 5: Agent Code Review (before PR)
 
-**Before committing/opening the PR, the branch diff MUST be reviewed by a
-dedicated review agent.** This catches correctness bugs, convention violations,
-and scope creep while they are still cheap to fix.
+**Before committing/opening the PR, the branch diff MUST be reviewed by the `sowel-reviewer` agent** (`.claude/agents/sowel-reviewer.md`: read-only, holds the review checklist). This catches correctness bugs, convention violations, missing docs and scope creep while they are still cheap to fix.
 
 ### 5.1 Launch the review agent
 
-Spawn a subagent (Agent tool — prefer the `code-reviewer` type if available,
-else `general-purpose`) scoped to the working diff. Give it:
+Spawn it with the Agent tool (`subagent_type: sowel-reviewer`). Give it:
 
-- the diff to review: `git diff main...HEAD` (or the uncommitted working tree if
-  not yet committed);
-- the feature intent: point it at `specs/XXX-<name>/spec.md`;
-- the review checklist below.
+- the branch and the spec folder `specs/XXX-<name>/`;
+- anything you want looked at closely (a tricky edge case, a risky area).
 
-The agent must report findings ranked by severity, each with a `file:line`
-pointer and a concrete failure scenario — not vague style notes.
-
-Review checklist (the agent verifies):
-
-- **Correctness**: logic bugs, unhandled null/offline/empty cases, edge cases
-  from the spec's "Edge cases" section.
-- **Conventions** (`CLAUDE.md`): strict TS (no `any`), UUID v4, pino logger (no
-  `console.*`), handlers wrapped in try/catch, Tailwind-only + Lucide, migration
-  numbering, event-bus discriminated unions.
-- **Scope**: the diff does only what the spec says — no unrelated refactors, no
-  feature creep, no silent behavior change on unrelated surfaces.
-- **Tests**: every scenario in the plan's Test Plan has a matching test; the
-  regression/nominal cases actually exercise the new logic.
-- **Security/safety**: no secret leakage, no weakened auth/isolation gates.
+It reports findings ranked by severity, each with a `file:line` pointer and a concrete failure scenario.
 
 ### 5.2 Triage and fix
 
-- Fix every **blocking** finding (correctness, convention breach, missing test).
+- Fix every **blocking** finding (correctness, convention breach, missing test, missing doc).
 - For non-blocking suggestions, either apply them or note explicitly why not.
-- If code changed, **re-run Phase 4** (tsc + tests + lint) before proceeding.
+- If code changed, **re-run Phase 4** before proceeding.
 - Summarize the review outcome to the user (what was found, what was fixed).
 
 > **GATE 5 — Checklist** (verify ALL before proceeding):
 >
-> - [ ] 5.1 Done — Review agent ran on the branch diff with the checklist
+> - [ ] 5.1 Done — `sowel-reviewer` ran on the branch diff
 > - [ ] 5.2 Done — All blocking findings fixed (or explicitly deferred with the user's agreement)
 > - [ ] 5.2 Done — Phase 4 checks re-run and green if code changed after review
 > - [ ] Review outcome summarized to the user
@@ -307,26 +294,16 @@ Review checklist (the agent verifies):
 
 ---
 
-## Phase 6: Documentation & Commit
+## Phase 6: Close the Spec & Commit
 
-### 6.1 Update Documentation (if applicable)
-
-If the feature adds or changes user-facing behavior, API endpoints, or architecture, update the documentation using `/sowel-docs`. Common triggers:
-
-- New API endpoint → `docs/technical/api-reference.md`
-- New equipment type → `docs/user/equipments.md` + `docs/technical/data-model.md`
-- Architecture change → `docs/technical/architecture.md`
-- New UI feature → relevant `docs/user/*.md` page
-- Schema change → `docs/technical/data-model.md`
-
-Also update the spec files:
+### 6.1 Close the spec
 
 - Mark acceptance criteria as `[x]` in `specs/XXX/spec.md`
 - Mark tasks as `[x]` in `specs/XXX/plan.md`
 
 ### 6.2 Commit
 
-Use conventional commits. Do NOT add Co-Authored-By lines.
+Conventional commit, scopes from `CLAUDE.md`. Do NOT add Co-Authored-By lines.
 
 ```bash
 git add <specific files>
@@ -335,23 +312,27 @@ git commit -m "feat(scope): description
 Explanation of what and why."
 ```
 
-Scopes: `mqtt`, `devices`, `equipments`, `zones`, `recipes`, `modes`, `api`, `ws`, `ui`, `auth`, `db`, `core`, `plugins`, `packages`, `backup`, `self-update`, `energy`, `logging`
-
 ### 6.3 Push & Create PR
 
 ```bash
 git push -u origin feat/<feature-name>
-gh pr create --title "feat: description" --body "..."
+gh pr create --title "feat(scope): description (spec XXX)" --body "..."
 ```
 
-PR body must include: Summary, Changes, Test plan (with checkboxes for typecheck, tests, manual verification), and a note that the branch passed the Phase 5 agent review.
+PR body must include:
+
+- Summary, Changes, Test plan (validate output, checks, manual verification);
+- Docs: the pages updated, EN and FR;
+- the review outcome (Phase 5);
+- when needed, the lines the CI reads, the reason being required:
+  - `Docs-Impact: none — <why nothing a reader can observe changed>`
+  - `Docs-Parity: <untouched file> — <why only one language changed>`
 
 > **GATE 6 — Checklist** (verify ALL before proceeding):
 >
-> - [ ] 6.1 Done — Specs updated: acceptance criteria `[x]` in `spec.md`, tasks `[x]` in `plan.md`
-> - [ ] 6.1 Done — Documentation updated (if applicable)
+> - [ ] 6.1 Done — Acceptance criteria `[x]` in `spec.md`, tasks `[x]` in `plan.md`
 > - [ ] 6.2 Done — Changes committed on feature branch (conventional commit, no Co-Authored-By)
-> - [ ] 6.3 Done — Branch pushed, PR created with Summary + Changes + Test plan
+> - [ ] 6.3 Done — Branch pushed, PR created with the body above
 > - [ ] PR URL shared with user
 
 ---
@@ -372,30 +353,34 @@ PR créée: [URL]. Voulez-vous que je merge dans main ?
 
 ### 7.1 Merge & Cleanup
 
-Only after explicit user approval:
+Only after explicit user approval, and once the PR checks are green:
 
 ```bash
-gh pr merge <number> --merge --delete-branch
+gh pr checks <number> --watch
+gh pr merge <number> --squash --delete-branch
 git checkout main
 git pull
 ```
+
+New needs raised during the feature: list them to the user and open an issue for each one they want kept.
 
 > **GATE 7 — Checklist** (verify ALL before proceeding):
 >
 > - [ ] User has explicitly approved the merge ("oui", "merge", "go")
 > - [ ] PR merged, branch deleted
 > - [ ] On main branch, pulled latest
+> - [ ] New needs turned into issues, or none
 
 ---
 
 ## Gate Summary
 
-| Gate  | Condition                      | What happens if skipped     |
-| ----- | ------------------------------ | --------------------------- |
-| **1** | Requirements clear             | Wrong feature built         |
-| **2** | User approved spec             | Wasted implementation       |
-| **3** | Code on feature branch         | Direct commits to main      |
-| **4** | TypeScript + tests + lint pass | Broken code merged          |
-| **5** | Agent review, blockers fixed   | Avoidable bugs reach the PR |
-| **6** | PR created                     | No human review possible    |
-| **7** | User approved merge            | Unauthorized merge          |
+| Gate  | Condition                             | What happens if skipped     |
+| ----- | ------------------------------------- | --------------------------- |
+| **1** | Requirements clear                    | Wrong feature built         |
+| **2** | User approved spec, docs delta, tests | Wasted implementation       |
+| **3** | Code on feature branch, in scope      | Direct commits to main      |
+| **4** | Validate + docs and spec checks pass  | Broken code or docs merged  |
+| **5** | `sowel-reviewer` ran, blockers fixed  | Avoidable bugs reach the PR |
+| **6** | PR created with docs and CI lines     | No human review, red CI     |
+| **7** | User approved merge                   | Unauthorized merge          |
