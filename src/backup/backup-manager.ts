@@ -859,6 +859,9 @@ function entryStream(entry: AdmZip.IZipEntry): Readable {
     // pipe() does not forward errors: a corrupt deflate stream must reach
     // whoever reads the entry.
     inflate.once("error", (err) => capped.destroy(err));
+    // Nor does it destroy upstream: a reader that stops early, or the size
+    // cap, would leave the zlib handle to the garbage collector.
+    capped.once("close", () => inflate.destroy());
     return capped;
   }
   throw new Error(`Unsupported compression method ${entry.header.method} for ${entry.entryName}`);
