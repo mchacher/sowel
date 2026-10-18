@@ -16,6 +16,8 @@ import type { ReadStream } from "node:fs";
 import { resolve, dirname, basename, sep } from "node:path";
 import { tmpdir } from "node:os";
 import { pipeline } from "node:stream/promises";
+import { Readable, Transform } from "node:stream";
+import { createInflateRaw, crc32 } from "node:zlib";
 import { ZipArchive } from "archiver";
 import type { Archiver } from "archiver";
 import AdmZip from "adm-zip";
@@ -670,16 +672,14 @@ export class BackupManager {
         const entry = zip.getEntry(bucketDef.filename);
         if (!entry) continue;
 
-        const lp = entry.getData().toString("utf-8").trim();
-        if (!lp) continue;
+        // Fails the restore on a corrupt entry before a single point of it is
+        // written, as reading the entry whole used to.
+        await verifyEntryCrc(entry);
 
         const bucket = `${influxConfig.bucket}${bucketDef.bucketSuffix}`;
         try {
-          const lines = lp.split("\n");
-          // Write in batches of 5000 lines via HTTP API
-          const batchSize = 5000;
-          for (let i = 0; i < lines.length; i += batchSize) {
-            const batch = lines.slice(i, i + batchSize).join("\n");
+          let lines = 0;
+          for await (const batch of lineBatches(entryLines(entry), RESTORE_BATCH_LINES)) {
             const resp = await fetch(
               `${influxConfig.url}/api/v2/write?org=${encodeURIComponent(influxConfig.org)}&bucket=${encodeURIComponent(bucket)}&precision=ns`,
               {
@@ -688,7 +688,7 @@ export class BackupManager {
                   Authorization: `Token ${influxConfig.token}`,
                   "Content-Type": "text/plain",
                 },
-                body: batch,
+                body: batch.join("\n"),
               },
             );
             if (!resp.ok) {
@@ -698,9 +698,11 @@ export class BackupManager {
                 "InfluxDB write batch failed",
               );
             }
+            lines += batch.length;
           }
-          influxPointsRestored += lines.length;
-          this.logger.debug({ bucket, lines: lines.length }, "InfluxDB bucket restored");
+          if (lines === 0) continue;
+          influxPointsRestored += lines;
+          this.logger.debug({ bucket, lines }, "InfluxDB bucket restored");
         } catch (err) {
           this.logger.warn({ err, bucket }, "Failed to restore InfluxDB bucket");
         }
@@ -972,6 +974,101 @@ function scanDataFiles(dataDir: string): { files: string[]; skipped: string[] } 
     files.push(entry.name);
   }
   return { files, skipped };
+}
+
+/** Line protocol lines written to InfluxDB per request on restore. */
+const RESTORE_BATCH_LINES = 5000;
+
+/**
+ * The entry's uncompressed bytes as a stream, inflated on the fly.
+ *
+ * A bucket is never decompressed whole: reading the hourly bucket as one
+ * buffer, then one string, then one array of lines took a restore past
+ * 650 MB on a real instance. The compressed bytes are already in memory with
+ * the rest of the ZIP, and are small.
+ */
+function entryStream(entry: AdmZip.IZipEntry): Readable {
+  const compressed = Readable.from([entry.getCompressedData()]);
+  if (entry.header.method === 0) return compressed.pipe(capAtDeclaredSize(entry));
+  if (entry.header.method === 8) {
+    const inflate = createInflateRaw();
+    const capped = compressed.pipe(inflate).pipe(capAtDeclaredSize(entry));
+    // pipe() does not forward errors: a corrupt deflate stream must reach
+    // whoever reads the entry.
+    inflate.once("error", (err) => capped.destroy(err));
+    // Nor does it destroy upstream: a reader that stops early, or the size
+    // cap, would leave the zlib handle to the garbage collector.
+    capped.once("close", () => inflate.destroy());
+    return capped;
+  }
+  throw new Error(`Unsupported compression method ${entry.header.method} for ${entry.entryName}`);
+}
+
+/**
+ * Fails the stream once it goes past the size the entry declares.
+ *
+ * getData() inflated into a buffer of the declared size, so an entry could
+ * never expand past it (adm-zip's fix for GHSA-rcw4-f5rp-g42v). Inflated on
+ * the fly, nothing else bounds it: a few KB that declare 100 bytes and expand
+ * to gigabytes of points would all reach InfluxDB.
+ */
+function capAtDeclaredSize(entry: AdmZip.IZipEntry): Transform {
+  const declared = entry.header.size;
+  let bytes = 0;
+  return new Transform({
+    transform(chunk: Buffer, _encoding, callback) {
+      bytes += chunk.length;
+      if (bytes > declared) {
+        callback(
+          new Error(`Entry ${entry.entryName} expands past its declared size of ${declared} bytes`),
+        );
+        return;
+      }
+      callback(null, chunk);
+    },
+  });
+}
+
+/** Throws the way adm-zip's getData() does when the entry's crc-32 is wrong. */
+async function verifyEntryCrc(entry: AdmZip.IZipEntry): Promise<void> {
+  let crc = 0;
+  for await (const chunk of entryStream(entry)) crc = crc32(chunk as Buffer, crc);
+  if (crc >>> 0 !== entry.header.crc >>> 0) {
+    throw new Error(`CRC32 checksum failed ${entry.entryName}`);
+  }
+}
+
+/** The entry's non-blank lines, read chunk by chunk. */
+async function* entryLines(entry: AdmZip.IZipEntry): AsyncGenerator<string> {
+  const stream = entryStream(entry);
+  stream.setEncoding("utf-8");
+  let rest = "";
+  for await (const chunk of stream) {
+    const text = chunk as string;
+    // Only a chunk that ends a line is split: re-splitting the whole pending
+    // line on every chunk made one very long line cost quadratic time.
+    const lastNewline = text.lastIndexOf("\n");
+    if (lastNewline === -1) {
+      rest += text;
+      continue;
+    }
+    const parts = (rest + text.slice(0, lastNewline)).split("\n");
+    rest = text.slice(lastNewline + 1);
+    for (const line of parts) if (line.trim()) yield line;
+  }
+  if (rest.trim()) yield rest;
+}
+
+async function* lineBatches(lines: AsyncIterable<string>, size: number): AsyncGenerator<string[]> {
+  let batch: string[] = [];
+  for await (const line of lines) {
+    batch.push(line);
+    if (batch.length === size) {
+      yield batch;
+      batch = [];
+    }
+  }
+  if (batch.length > 0) yield batch;
 }
 
 /** Prefix of the temporary directory each export spools its buckets to. */
