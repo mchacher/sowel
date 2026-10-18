@@ -13,6 +13,20 @@ Cette page résume toutes les versions publiées, de la plus récente à la plus
 
 ## 1.74.x : La pluie, comptée juste et gardée un an
 
+### v1.74.1 — 2026-10-18 { #v1-74-1 }
+
+La sauvegarde prise avant une mise à jour ne fait plus manquer de mémoire un petit serveur. Sur un hôte de 2 Go, elle dépassait 1 Go, le noyau tuait Sowel en pleine sauvegarde, et la mise à jour vers 1.74.0 n'avait jamais lieu. Restaurer une sauvegarde demande moins de la moitié de la mémoire d'avant.
+
+- Correction (sauvegarde) : **la sauvegarde lit l'historique au fil de l'eau au lieu de le charger** (#1045). Chaque bucket InfluxDB est écrit ligne à ligne dans un fichier temporaire, puis ajouté à l'archive. Sur une vraie instance, le pic de mémoire passe de 1045 Mo à 147 Mo, pour la même archive. Les fichiers temporaires occupent à peu près la taille de l'historique décompressé (environ 150 Mo dans ce cas) et sont supprimés dès qu'ils sont dans l'archive.
+- Correction (sauvegarde) : **une sauvegarde qui ne peut pas aller au bout échoue, et le dit** (#1045). Avant, un disque plein pendant la sauvegarde d'avant mise à jour faisait planter Sowel. Désormais, la mise à jour est annulée, l'archive tronquée est supprimée pour ne pas évincer une bonne sauvegarde de la rotation, et l'export s'arrête au lieu de continuer en arrière-plan. Si un bucket ne peut pas être écrit dans le dossier temporaire, la sauvegarde échoue aussi : avant, le bucket était ignoré, et une mise à jour pouvait partir sur une sauvegarde sans son historique énergie. Un téléchargement qui échoue côté serveur est maintenant interrompu, au lieu d'être livré comme un ZIP tronqué.
+- Correction (sauvegarde) : **une restauration lit l'historique en même temps qu'elle l'écrit** (#1046). Elle ne décompresse plus chaque bucket en entier avant de l'écrire : restaurer la même sauvegarde passe de 675 Mo à 262 Mo. Une entrée corrompue arrête toujours la restauration avant qu'aucun de ses points ne soit écrit. Une entrée qui se décompresse au-delà de sa taille déclarée est refusée, comme avant.
+- Plugins et recettes (registre) :
+  - **`netatmo_weather` 2.3.0** (#1043) : le cumul de pluie sur 24 h glissantes est maintenant calculé à partir des totaux horaires. Le chiffre de Netatmo compte depuis minuit, et il est publié comme pluie du jour. Le guide plugin donne désormais un seul sens à chaque clé de pluie (#1042).
+  - **`lora2mqtt` 2.2.0** (#1044, par Adrien Jouve) : une tuile LoRa affiche `20°C` et non `20` quand la passerelle déclare l'unité.
+  - **`state-trigger-light` 0.2.3** (#1048) : un rapport OFF périmé, arrivé avant que les lampes confirment ON, annulait la minuterie d'extinction, et les lampes restaient allumées indéfiniment.
+  - **`ev-charge-smart` 0.1.3 et 0.1.4** (#1041, #1056) : le minimum garanti prend le surplus quand le surplus est plus grand. Une charge que la borne démarre d'elle-même est reprise. La garantie de nuit en heures creuses charge au courant maximal.
+- Maintenance (dépendances) : les mises à jour hebdomadaires des bibliothèques, de l'outillage et des GitHub Actions (#1049, #1050, #1051, #1052, #1054), et `vite-plugin-pwa` 2.0 (#1053), qui produit un build identique à celui d'avant.
+
 ### v1.74.0 — 2026-10-10 { #v1-74-0 }
 
 Un pluviomètre a sa propre tuile, l'historique de pluie remonte à un an, et un module pluie Netatmo affiche enfin la pluie tombée : son historique était quatre à huit fois trop bas. Le travail sur la pluie est en grande partie celui d'Adrien Jouve, relu et complété avant d'être fusionné. Également dans cette version : un bouton de partage sur la page visiteur, et une série de mises à jour de dépendances qui ferme une alerte de sécurité haute.
