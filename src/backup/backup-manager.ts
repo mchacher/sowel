@@ -975,7 +975,7 @@ function scanDataFiles(dataDir: string): { files: string[]; skipped: string[] } 
 }
 
 /** Prefix of the temporary directory each export spools its buckets to. */
-const SPOOL_DIR_PREFIX = "sowel-backup-";
+const SPOOL_DIR_PREFIX = "sowel-backup-spool-";
 
 /** A spool directory older than this was left by an export that never finished. */
 const STALE_SPOOL_DIR_MS = 24 * 60 * 60 * 1000;
@@ -989,17 +989,26 @@ const STALE_SPOOL_DIR_MS = 24 * 60 * 60 * 1000;
  * go: a directory of a few minutes may belong to an export running now.
  */
 function sweepStaleSpoolDirs(logger: Logger): void {
+  let names: string[];
   try {
-    const now = Date.now();
-    for (const name of readdirSync(tmpdir())) {
-      if (!name.startsWith(SPOOL_DIR_PREFIX)) continue;
-      const dir = resolve(tmpdir(), name);
-      if (now - statSync(dir).mtimeMs < STALE_SPOOL_DIR_MS) continue;
-      rmSync(dir, { recursive: true, force: true });
-      logger.info({ dir }, "Backup export: removed a spool directory left by an unfinished export");
-    }
+    names = readdirSync(tmpdir());
   } catch (err) {
     logger.warn({ err }, "Backup export: could not sweep old spool directories");
+    return;
+  }
+  const now = Date.now();
+  for (const name of names) {
+    if (!name.startsWith(SPOOL_DIR_PREFIX)) continue;
+    const dir = resolve(tmpdir(), name);
+    try {
+      // Only directories: a backup ZIP someone left in /tmp is not ours.
+      const stat = statSync(dir);
+      if (!stat.isDirectory() || now - stat.mtimeMs < STALE_SPOOL_DIR_MS) continue;
+      rmSync(dir, { recursive: true, force: true });
+      logger.info({ dir }, "Backup export: removed a spool directory left by an unfinished export");
+    } catch (err) {
+      logger.warn({ err, dir }, "Backup export: could not remove an old spool directory");
+    }
   }
 }
 

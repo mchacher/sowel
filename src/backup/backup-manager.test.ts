@@ -1270,13 +1270,15 @@ describe("exportToFile — InfluxDB buckets are streamed", () => {
     const spoolRoot = resolve(tmpDir, "tmp");
     mkdirSync(spoolRoot);
     vi.stubEnv("TMPDIR", spoolRoot);
-    const stale = resolve(spoolRoot, "sowel-backup-stale");
-    const recent = resolve(spoolRoot, "sowel-backup-recent");
+    const stale = resolve(spoolRoot, "sowel-backup-spool-stale");
+    const recent = resolve(spoolRoot, "sowel-backup-spool-recent");
     const unrelated = resolve(spoolRoot, "something-else");
+    // A downloaded backup someone parked in /tmp: same name start, not ours.
+    const download = resolve(spoolRoot, "sowel-backup-2026-10-01.zip");
     for (const dir of [stale, recent, unrelated]) mkdirSync(dir);
+    writeFileSync(download, "zip");
     const twoDaysAgo = new Date(Date.now() - 2 * 24 * 60 * 60 * 1000);
-    utimesSync(stale, twoDaysAgo, twoDaysAgo);
-    utimesSync(unrelated, twoDaysAgo, twoDaysAgo);
+    for (const old of [stale, unrelated, download]) utimesSync(old, twoDaysAgo, twoDaysAgo);
     const { manager } = managerWith({ sowel: many(10) });
 
     await exportZip(manager);
@@ -1284,7 +1286,12 @@ describe("exportToFile — InfluxDB buckets are streamed", () => {
     expect(existsSync(stale)).toBe(false);
     expect(existsSync(recent)).toBe(true);
     expect(existsSync(unrelated)).toBe(true);
+    expect(existsSync(download)).toBe(true);
     // Its own spool directory is gone too.
-    expect(readdirSync(spoolRoot).sort()).toEqual(["something-else", "sowel-backup-recent"]);
+    expect(readdirSync(spoolRoot).sort()).toEqual([
+      "something-else",
+      "sowel-backup-2026-10-01.zip",
+      "sowel-backup-spool-recent",
+    ]);
   });
 });
