@@ -503,6 +503,9 @@ export class BackupManager {
       archive.abort();
       archive.destroy();
       output.destroy();
+      // An export that fails fast can get here while the file is still
+      // opening: removed now, it would be created again just after.
+      if (!output.closed) await new Promise((resolveClose) => output.once("close", resolveClose));
       // A truncated archive would count as a backup for the rotation and
       // push out a good one.
       rmSync(fullPath, { force: true });
