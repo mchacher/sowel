@@ -57,7 +57,9 @@ export function registerBackupRoutes(app: FastifyInstance, deps: BackupRouteDeps
       .then(() => (archive.destroyed ? undefined : archive.finalize()))
       .catch((err: unknown) => {
         logger.error({ err }, "Backup export failed");
+        // destroy() also releases the files the archive was given.
         archive.abort();
+        archive.destroy();
       });
 
     auditLogger.log({

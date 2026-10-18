@@ -1,6 +1,16 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from "vitest";
 import Database from "better-sqlite3";
-import { mkdirSync, mkdtempSync, rmSync, writeFileSync, readFileSync, existsSync } from "node:fs";
+import {
+  mkdirSync,
+  mkdtempSync,
+  rmSync,
+  writeFileSync,
+  readFileSync,
+  existsSync,
+  readdirSync,
+  utimesSync,
+} from "node:fs";
+import { Readable, Writable } from "node:stream";
 import { resolve } from "node:path";
 import { tmpdir } from "node:os";
 import AdmZip from "adm-zip";
@@ -23,6 +33,46 @@ import {
 import { SettingsManager } from "../core/settings-manager.js";
 import { applyMigrations } from "../test-helpers/migrations.js";
 import type { InfluxClient } from "../core/influx-client.js";
+
+// Disk failures the export must survive, switched on per test. Off, node:fs
+// is untouched.
+const fsFaults = vi.hoisted(() => ({
+  /** A write to the backup ZIP fails with ENOSPC. */
+  failArchiveWrite: false,
+  /** A write to a bucket's spool file fails with ENOSPC. */
+  failSpoolWrite: false,
+  /** Reading a spool file back fails with EIO. */
+  failSpoolRead: false,
+}));
+
+vi.mock("node:fs", async (importOriginal) => {
+  const fs = await importOriginal<typeof import("node:fs")>();
+  const fault = (code: string) => Object.assign(new Error(code), { code });
+  const isSpool = (path: unknown) => /sowel-backup-[^/]+\/influx-[a-z]+\.lp$/.test(String(path));
+  return {
+    ...fs,
+    createWriteStream: (...args: Parameters<typeof fs.createWriteStream>) => {
+      const path = String(args[0]);
+      if (
+        (fsFaults.failArchiveWrite && path.endsWith(".zip")) ||
+        (fsFaults.failSpoolWrite && isSpool(path))
+      ) {
+        return new Writable({ write: (_chunk, _enc, cb) => cb(fault("ENOSPC")) });
+      }
+      return fs.createWriteStream(...args);
+    },
+    createReadStream: (...args: Parameters<typeof fs.createReadStream>) => {
+      if (fsFaults.failSpoolRead && isSpool(args[0])) {
+        return new Readable({
+          read() {
+            this.destroy(fault("EIO"));
+          },
+        });
+      }
+      return fs.createReadStream(...args);
+    },
+  };
+});
 
 function createTestDb(): Database.Database {
   const db = new Database(":memory:");
@@ -986,6 +1036,10 @@ describe("exportToFile — InfluxDB buckets are streamed", () => {
   });
 
   afterEach(() => {
+    fsFaults.failArchiveWrite = false;
+    fsFaults.failSpoolWrite = false;
+    fsFaults.failSpoolRead = false;
+    vi.unstubAllEnvs();
     db.close();
     rmSync(tmpDir, { recursive: true, force: true });
   });
@@ -1019,10 +1073,14 @@ describe("exportToFile — InfluxDB buckets are streamed", () => {
         const rows = buckets[bucket] ?? async function* () {};
         return (async function* () {
           events.push(`read ${bucket}`);
-          for await (const row of rows()) {
-            yield { values: [], tableMeta: { toObject: () => row } };
+          try {
+            for await (const row of rows()) {
+              yield { values: [], tableMeta: { toObject: () => row } };
+            }
+            events.push(`done ${bucket}`);
+          } finally {
+            events.push(`closed ${bucket}`);
           }
-          events.push(`done ${bucket}`);
         })();
       },
     };
@@ -1155,5 +1213,78 @@ describe("exportToFile — InfluxDB buckets are streamed", () => {
 
     await expect(manager.exportToFile("stream.zip")).rejects.toThrow("boom");
     expect(existsSync(resolve(tmpDir, "backups", "stream.zip"))).toBe(false);
+  });
+
+  const many = (n: number) =>
+    async function* () {
+      for (let i = 0; i < n; i++) yield point(i);
+    };
+
+  /** File descriptors this process has open. */
+  const openFds = () => readdirSync("/dev/fd").length;
+
+  it("stops and releases its files when the archive write fails mid-export", async () => {
+    // A full data/ volume during the pre-update backup. The export used to
+    // reject but carry on in the background: every remaining bucket queried,
+    // spooled and held open, deleted, on a disk already full.
+    fsFaults.failArchiveWrite = true;
+    const { manager, events } = managerWith({
+      sowel: many(50_000),
+      "sowel-hourly": many(10),
+      "sowel-daily": many(10),
+    });
+    const fdsBefore = openFds();
+
+    await expect(manager.exportToFile("stream.zip")).rejects.toThrow("ENOSPC");
+    await vi.waitFor(() => expect(events).toContain("closed sowel"));
+    await new Promise((resolveTimer) => setTimeout(resolveTimer, 50));
+
+    expect(events).not.toContain("done sowel");
+    expect(events).not.toContain("read sowel-hourly");
+    expect(openFds()).toBeLessThanOrEqual(fdsBefore);
+    expect(existsSync(resolve(tmpDir, "backups", "stream.zip"))).toBe(false);
+  });
+
+  it("fails the export when a bucket cannot be written to the temporary directory", async () => {
+    // Skipping it would let the pre-update backup pass without the energy
+    // history, and the update go ahead.
+    fsFaults.failSpoolWrite = true;
+    const { manager, events } = managerWith({ sowel: many(10), "sowel-hourly": many(10) });
+
+    await expect(manager.exportToFile("stream.zip")).rejects.toThrow("ENOSPC");
+    expect(events).not.toContain("read sowel-hourly");
+    expect(existsSync(resolve(tmpDir, "backups", "stream.zip"))).toBe(false);
+  });
+
+  it("fails the export, without crashing, when a spooled bucket cannot be read back", async () => {
+    // archiver does not forward the errors of a stream it is given: unheard,
+    // this one was an uncaught exception.
+    fsFaults.failSpoolRead = true;
+    const { manager } = managerWith({ sowel: many(10) });
+
+    await expect(manager.exportToFile("stream.zip")).rejects.toThrow("EIO");
+    expect(existsSync(resolve(tmpDir, "backups", "stream.zip"))).toBe(false);
+  });
+
+  it("removes the spool directories an unfinished export left behind, and only old ones", async () => {
+    const spoolRoot = resolve(tmpDir, "tmp");
+    mkdirSync(spoolRoot);
+    vi.stubEnv("TMPDIR", spoolRoot);
+    const stale = resolve(spoolRoot, "sowel-backup-stale");
+    const recent = resolve(spoolRoot, "sowel-backup-recent");
+    const unrelated = resolve(spoolRoot, "something-else");
+    for (const dir of [stale, recent, unrelated]) mkdirSync(dir);
+    const twoDaysAgo = new Date(Date.now() - 2 * 24 * 60 * 60 * 1000);
+    utimesSync(stale, twoDaysAgo, twoDaysAgo);
+    utimesSync(unrelated, twoDaysAgo, twoDaysAgo);
+    const { manager } = managerWith({ sowel: many(10) });
+
+    await exportZip(manager);
+
+    expect(existsSync(stale)).toBe(false);
+    expect(existsSync(recent)).toBe(true);
+    expect(existsSync(unrelated)).toBe(true);
+    // Its own spool directory is gone too.
+    expect(readdirSync(spoolRoot).sort()).toEqual(["something-else", "sowel-backup-recent"]);
   });
 });

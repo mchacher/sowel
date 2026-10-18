@@ -302,7 +302,8 @@ export class BackupManager {
         // Every bucket is copied to its own file first, so no query ever waits
         // on archiver or on whoever reads the archive. The files are unlinked
         // once opened: archiver reads them through their descriptors.
-        const spoolDir = mkdtempSync(resolve(tmpdir(), "sowel-backup-"));
+        sweepStaleSpoolDirs(this.logger);
+        const spoolDir = mkdtempSync(resolve(tmpdir(), SPOOL_DIR_PREFIX));
         const sources = new Set<ReadStream>();
         // A download dropped mid-way destroys the archive: release the files
         // it will never read.
@@ -318,7 +319,13 @@ export class BackupManager {
               return;
             }
             const bucket = `${influxConfig.bucket}${bucketDef.bucketSuffix}`;
-            const source = await this.spoolInfluxBucket(queryApi, bucket, bucketDef, spoolDir);
+            const source = await this.spoolInfluxBucket(
+              queryApi,
+              bucket,
+              bucketDef,
+              spoolDir,
+              () => archive.destroyed,
+            );
             if (!source) continue;
             if (archive.destroyed) {
               source.destroy();
@@ -326,12 +333,26 @@ export class BackupManager {
             }
             sources.add(source);
             source.once("close", () => sources.delete(source));
+            // archiver pipes the file without forwarding its errors: unheard,
+            // a read error on it would be an uncaught exception.
+            source.once("error", (err) => {
+              this.logger.error(
+                { err, filename: bucketDef.filename },
+                "Backup export failed — could not read back an InfluxDB bucket",
+              );
+              archive.destroy(err);
+            });
             archive.append(source, { name: bucketDef.filename });
           }
         } finally {
           rmSync(spoolDir, { recursive: true, force: true });
         }
       }
+    }
+
+    if (archive.destroyed) {
+      this.logger.warn("Backup export stopped — the archive was closed before it was complete");
+      return;
     }
 
     // 4. Append data files (tokens, JWT secret — dynamically scanned)
@@ -375,15 +396,23 @@ export class BackupManager {
     bucket: string,
     bucketDef: InfluxBucketDef,
     spoolDir: string,
+    cancelled: () => boolean,
   ): Promise<ReadStream | null> {
     const flux = `from(bucket: "${bucket}") |> range(start: ${bucketDef.range})`;
     const lines = lineProtocolLines(queryApi.iterateRows(flux));
     let count = 0;
     let queryError: unknown = null;
+    let stopped = false;
     async function* chunks(): AsyncGenerator<string> {
       let chunk = "";
       try {
         for await (const line of lines) {
+          // Leaving the loop closes the query: a cancelled export does not
+          // read the rest of the bucket.
+          if (cancelled()) {
+            stopped = true;
+            return;
+          }
           count++;
           chunk += `${line}\n`;
           if (chunk.length >= LINE_PROTOCOL_CHUNK) {
@@ -402,9 +431,16 @@ export class BackupManager {
     try {
       await pipeline(chunks(), createWriteStream(path));
     } catch (err) {
-      this.logger.warn({ err, filename: bucketDef.filename }, "Failed to export InfluxDB bucket");
-      return null;
+      // A local disk failure (full, read-only), not an InfluxDB one: skipping
+      // the bucket would let the pre-update backup pass without the energy
+      // history, so the whole export fails instead.
+      this.logger.error(
+        { err, filename: bucketDef.filename },
+        "Backup export failed — could not write an InfluxDB bucket to the temporary directory",
+      );
+      throw err;
     }
+    if (stopped) return null;
 
     if (queryError) {
       // A query refused up front skips the bucket, as before. Cut short
@@ -459,7 +495,11 @@ export class BackupManager {
         finished,
       ]);
     } catch (err) {
+      // abort() alone neither closes the archive nor releases the files it
+      // was given: destroy() does both, and stops buildArchive at its next
+      // check.
       archive.abort();
+      archive.destroy();
       output.destroy();
       // A truncated archive would count as a backup for the rotation and
       // push out a good one.
@@ -932,6 +972,35 @@ function scanDataFiles(dataDir: string): { files: string[]; skipped: string[] } 
     files.push(entry.name);
   }
   return { files, skipped };
+}
+
+/** Prefix of the temporary directory each export spools its buckets to. */
+const SPOOL_DIR_PREFIX = "sowel-backup-";
+
+/** A spool directory older than this was left by an export that never finished. */
+const STALE_SPOOL_DIR_MS = 24 * 60 * 60 * 1000;
+
+/**
+ * Remove the spool directories of exports that never finished.
+ *
+ * An export removes its own directory as soon as its files are open, but a
+ * process killed mid-export (the kernel, a crash) leaves it behind, in the
+ * container's writable layer until the container is recreated. Only old ones
+ * go: a directory of a few minutes may belong to an export running now.
+ */
+function sweepStaleSpoolDirs(logger: Logger): void {
+  try {
+    const now = Date.now();
+    for (const name of readdirSync(tmpdir())) {
+      if (!name.startsWith(SPOOL_DIR_PREFIX)) continue;
+      const dir = resolve(tmpdir(), name);
+      if (now - statSync(dir).mtimeMs < STALE_SPOOL_DIR_MS) continue;
+      rmSync(dir, { recursive: true, force: true });
+      logger.info({ dir }, "Backup export: removed a spool directory left by an unfinished export");
+    }
+  } catch (err) {
+    logger.warn({ err }, "Backup export: could not sweep old spool directories");
+  }
 }
 
 /** Characters of line protocol handed to archiver at a time. */
