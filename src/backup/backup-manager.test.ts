@@ -43,6 +43,8 @@ const fsFaults = vi.hoisted(() => ({
   failSpoolWrite: false,
   /** Reading a spool file back fails with EIO. */
   failSpoolRead: false,
+  /** The backup ZIP takes a while to open, as on a slow disk. */
+  slowArchiveOpen: false,
 }));
 
 vi.mock("node:fs", async (importOriginal) => {
@@ -58,6 +60,19 @@ vi.mock("node:fs", async (importOriginal) => {
         (fsFaults.failSpoolWrite && isSpool(path))
       ) {
         return new Writable({ write: (_chunk, _enc, cb) => cb(fault("ENOSPC")) });
+      }
+      if (fsFaults.slowArchiveOpen && path.endsWith(".zip")) {
+        // Like fs.WriteStream, the file comes into being when the open ends,
+        // and a destroy() waits for it.
+        return new Writable({
+          construct(cb) {
+            setTimeout(() => {
+              fs.writeFileSync(path, "");
+              cb();
+            }, 30);
+          },
+          write: (_chunk, _enc, cb) => cb(),
+        });
       }
       return fs.createWriteStream(...args);
     },
@@ -1039,6 +1054,7 @@ describe("exportToFile — InfluxDB buckets are streamed", () => {
     fsFaults.failArchiveWrite = false;
     fsFaults.failSpoolWrite = false;
     fsFaults.failSpoolRead = false;
+    fsFaults.slowArchiveOpen = false;
     vi.unstubAllEnvs();
     db.close();
     rmSync(tmpDir, { recursive: true, force: true });
@@ -1253,6 +1269,19 @@ describe("exportToFile — InfluxDB buckets are streamed", () => {
 
     await expect(manager.exportToFile("stream.zip")).rejects.toThrow("ENOSPC");
     expect(events).not.toContain("read sowel-hourly");
+    expect(existsSync(resolve(tmpDir, "backups", "stream.zip"))).toBe(false);
+  });
+
+  it("leaves no archive behind when it fails before the archive has finished opening", async () => {
+    // Removed while still opening, the file was created again just after:
+    // an empty ZIP left in backups/, counted by the rotation.
+    fsFaults.slowArchiveOpen = true;
+    fsFaults.failSpoolWrite = true;
+    const { manager } = managerWith({ sowel: many(10) });
+
+    await expect(manager.exportToFile("stream.zip")).rejects.toThrow("ENOSPC");
+    // Past the open: the file must not have come back.
+    await new Promise((resolveTimer) => setTimeout(resolveTimer, 100));
     expect(existsSync(resolve(tmpDir, "backups", "stream.zip"))).toBe(false);
   });
 
