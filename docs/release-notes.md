@@ -13,6 +13,13 @@ This page summarises every published version, newest first. For the full diff be
 
 ## 1.74.x: Rain, counted right and kept for a year
 
+### v1.74.3 — 2026-10-21 { #v1-74-3 }
+
+The electric vehicle card gets a car drawn like the rest of the dashboard, and the desktop card opens the same detail as the mobile one.
+
+- Fix (ui): **the vehicle icon follows the dashboard style** (#1064). The car drawn in 1.74.2 was a solid shape with black wheels; it now uses the thin strokes and soft fills of the other icons, and is brightened in dark mode like them. The battery rises in the body the way the water rises in the water heater, red under 20 %. A charging post and its cable appear only while the car is plugged in.
+- Fix (ui): **the desktop vehicle card uses the same drawing, and a click opens its detail** (#1064), as on mobile. The charge limit, shown on the card until now, stays on the battery bar of the detail.
+
 ### v1.74.2 — 2026-10-21 { #v1-74-2 }
 
 The electric vehicle tile is readable on a phone again. On a half-width card, battery, range, plug state and report age were joined into one line and cut off after the second item.
