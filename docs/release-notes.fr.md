@@ -13,6 +13,13 @@ Cette page résume toutes les versions publiées, de la plus récente à la plus
 
 ## 1.74.x : La pluie, comptée juste et gardée un an
 
+### v1.74.3 — 2026-10-21 { #v1-74-3 }
+
+La carte du véhicule électrique a désormais une voiture dessinée comme le reste du dashboard, et sur ordinateur elle ouvre le même détail que sur mobile.
+
+- Correctif (ui) : **l'icône du véhicule suit le style du dashboard** (#1064). La voiture de la 1.74.2 était un aplat plein avec des roues noires ; elle reprend maintenant les traits fins et les remplissages doux des autres icônes, et s'éclaircit comme elles en mode sombre. La batterie monte dans la carrosserie comme l'eau dans le chauffe-eau, en rouge sous 20 %. Une borne et son câble n'apparaissent que lorsque la voiture est branchée.
+- Correctif (ui) : **sur ordinateur, la carte du véhicule reprend le même dessin et un clic ouvre son détail** (#1064), comme sur mobile. La limite de charge, jusqu'ici affichée sur la carte, reste sur la barre de batterie du détail.
+
 ### v1.74.2 — 2026-10-21 { #v1-74-2 }
 
 La tuile du véhicule électrique est de nouveau lisible sur téléphone. Sur une carte en demi-largeur, la batterie, l'autonomie, l'état de branchement et l'âge de la mesure étaient réunis sur une seule ligne, coupée après le deuxième élément.
