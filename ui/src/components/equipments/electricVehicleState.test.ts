@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { electricVehicleStateOf, evChargingStateKey } from "./electricVehicleState";
+import { electricVehicleStateOf, evChargingStateKey, evGaugeTone } from "./electricVehicleState";
 import type { EquipmentWithDetails } from "../../types";
 
 const NOW = Date.parse("2026-10-03T17:00:00Z");
@@ -107,5 +107,18 @@ describe("electricVehicleStateOf (spec 183)", () => {
 
   it("keys the charging states", () => {
     expect(evChargingStateKey("waiting")).toBe("equipments.electricVehicle.state.waiting");
+  });
+});
+
+describe("evGaugeTone", () => {
+  it("charging wins over a low battery", () => {
+    expect(evGaugeTone(9, true)).toBe("charging");
+  });
+  it("is low under 20 %, ok from 20 %", () => {
+    expect(evGaugeTone(19, false)).toBe("low");
+    expect(evGaugeTone(20, false)).toBe("ok");
+  });
+  it("is ok when the level is unknown", () => {
+    expect(evGaugeTone(null, false)).toBe("ok");
   });
 });
