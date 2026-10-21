@@ -1,5 +1,10 @@
 import { describe, expect, it } from "vitest";
-import { electricVehicleStateOf, evChargingStateKey, evGaugeTone } from "./electricVehicleState";
+import {
+  electricVehicleStateOf,
+  evChargingStateKey,
+  evGaugeTone,
+  evIsPlugged,
+} from "./electricVehicleState";
 import type { EquipmentWithDetails } from "../../types";
 
 const NOW = Date.parse("2026-10-03T17:00:00Z");
@@ -120,5 +125,19 @@ describe("evGaugeTone", () => {
   });
   it("is ok when the level is unknown", () => {
     expect(evGaugeTone(null, false)).toBe("ok");
+  });
+});
+
+describe("evIsPlugged", () => {
+  it("trusts the plug sensor over the charging state", () => {
+    expect(evIsPlugged({ plugged: false, chargingState: "charging" })).toBe(false);
+    expect(evIsPlugged({ plugged: true, chargingState: "unplugged" })).toBe(true);
+  });
+  it("falls back on the charging state", () => {
+    expect(evIsPlugged({ plugged: null, chargingState: "unplugged" })).toBe(false);
+    expect(evIsPlugged({ plugged: null, chargingState: "completed" })).toBe(true);
+  });
+  it("is null when nothing is known", () => {
+    expect(evIsPlugged({ plugged: null, chargingState: null })).toBeNull();
   });
 });

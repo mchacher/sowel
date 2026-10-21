@@ -18,14 +18,18 @@ import {
   Fan,
   BatteryCharging,
   EvCharger,
-  Car,
 } from "lucide-react";
 import type { EquipmentWithDetails } from "../../types";
 import { VmcControl } from "../equipments/VmcControl";
 import { EvVehicleBadge } from "../equipments/EvChargerControl";
 import { evChargerStateOf } from "../equipments/evChargerState";
-import { electricVehicleStateOf, evChargingStateKey } from "../equipments/electricVehicleState";
-import { EvBatteryBar } from "../equipments/ElectricVehicleControl";
+import {
+  electricVehicleStateOf,
+  evChargingStateKey,
+  evGaugeTone,
+  evIsPlugged,
+} from "../equipments/electricVehicleState";
+import { EvCarGauge } from "../icons/EvCarGauge";
 import { LightControl } from "../equipments/LightControl";
 import { vmcSpeedOf } from "../equipments/vmcSpeed";
 import {
@@ -224,7 +228,15 @@ export function EquipmentWidget({
   if (equipment.type === "ups")
     return <UpsEquipmentWidget label={label} sublabel={sublabel} equipment={equipment} />;
   if (equipment.type === "electric_vehicle")
-    return <ElectricVehicleEquipmentWidget label={label} sublabel={sublabel} equipment={equipment} iconKey={widget.icon} />;
+    return (
+      <ElectricVehicleEquipmentWidget
+        label={label}
+        sublabel={sublabel}
+        equipment={equipment}
+        iconKey={widget.icon}
+        onOpenDetail={onOpenDetail}
+      />
+    );
   if (equipment.type === "ev_charger")
     return (
       <EvChargerEquipmentWidget
@@ -1429,44 +1441,57 @@ function SolarPanelEquipmentWidget({
 // Electric vehicle widget (spec 183)
 // ============================================================
 
-/** Battery first, with the car's limit marked; range, state, report age. */
+/**
+ * The car as its battery gauge, beside its charging post while plugged in, as
+ * on the mobile card; then range, state and report age. The click opens the
+ * same detail sheet as on mobile, where the charge limit and orders live.
+ */
 function ElectricVehicleEquipmentWidget({
   label,
   sublabel,
   equipment,
   iconKey,
+  onOpenDetail,
 }: {
   label: string;
   sublabel?: string;
   equipment: EquipmentWithDetails;
   iconKey?: string;
+  onOpenDetail?: () => void;
 }) {
   const { t } = useTranslation();
   const now = useStalenessClock();
   const s = electricVehicleStateOf(equipment, now);
+  const tone = evGaugeTone(s.batteryLevel, s.chargingState === "charging");
+  const clickClass = onOpenDetail
+    ? "cursor-pointer transition-colors hover:bg-primary-light/30"
+    : "";
   return (
-    <WidgetCard label={label} sublabel={sublabel}>
-      <div className="flex-1 flex flex-col items-center justify-center gap-2 px-2">
+    <WidgetCard label={label} sublabel={sublabel} onClick={onOpenDetail} className={clickClass}>
+      <div className="flex-1 flex flex-col items-center justify-center gap-1.5 px-2 min-h-0">
         {renderWidgetStateIcon(
           iconKey,
-          <Car
-            strokeWidth={1.5}
-            className={`${s.chargingState === "charging" ? "text-accent" : "text-primary"} w-[44px] h-[44px]`}
+          <EvCarGauge
+            level={s.batteryLevel}
+            tone={tone}
+            plugged={evIsPlugged(s) === true}
+            width={150}
           />,
         )}
-        {s.batteryLevel !== null ? (
-          <>
-            <span className="font-mono text-[20px] font-semibold text-text tabular-nums">
-              {Math.round(s.batteryLevel)}
-              <span className="text-[12px] text-text-tertiary font-normal ml-0.5">%</span>
-            </span>
-            <div className="w-[70%]">
-              <EvBatteryBar level={s.batteryLevel} limit={s.chargeLimit} />
-            </div>
-          </>
-        ) : (
-          <span className="font-mono text-[20px] text-text-tertiary">—</span>
-        )}
+        <span
+          className={`font-mono text-[20px] font-semibold tabular-nums ${
+            s.batteryLevel === null
+              ? "text-text-tertiary"
+              : tone === "low"
+                ? "text-error"
+                : "text-text"
+          }`}
+        >
+          {s.batteryLevel !== null ? Math.round(s.batteryLevel) : "—"}
+          {s.batteryLevel !== null && (
+            <span className="text-[12px] text-text-tertiary font-normal ml-0.5">%</span>
+          )}
+        </span>
         <span className="text-[12px] text-text-secondary">
           {[
             s.rangeKm !== null ? `${Math.round(s.rangeKm)} km` : null,
