@@ -666,7 +666,7 @@
     "icon": "Car",
     "author": "mchacher",
     "repo": "mchacher/sowel-plugin-renault",
-    "version": "0.1.0",
+    "version": "0.2.0",
     "tags": ["renault", "ev", "electric-vehicle", "car", "cloud", "energy"],
     "i18n": {
       "fr": {
@@ -676,6 +676,6 @@
     },
     "sowelVersion": ">=1.73.0",
     "owner": "mchacher",
-    "sha256": "bd1254f05239479bd8c7f437646893c460a87bfa15f5d7e5e45568fe5e0962e4"
+    "sha256": "f98db217bddcc856257b29772e80f451b740fdb4c982113dd62fe242b15db5a6"
   }
 ]
