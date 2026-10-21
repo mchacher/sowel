@@ -26,6 +26,7 @@ import {
 import { resolveWidgetPresentation } from "./presentation/resolveWidgetPresentation";
 import { renderWidgetStateIcon, shutterLevel } from "./widget-icons";
 import { SolarPanelIcon } from "../icons/SolarPanelIcon";
+import { EvCarGauge } from "../icons/EvCarGauge";
 import { solarWidgetState } from "./solarWidget";
 import { resolvePowerReading } from "../../lib/power-reading";
 import { pickLivePowerBinding } from "../../lib/energy-meter-display";
@@ -50,10 +51,14 @@ import {
   Fan,
   BatteryCharging,
   EvCharger,
-  Car,
+  Clock,
 } from "lucide-react";
 import { evChargerStateOf, evVehicleKey } from "../equipments/evChargerState";
-import { electricVehicleStateOf, evChargingStateKey } from "../equipments/electricVehicleState";
+import {
+  electricVehicleStateOf,
+  evChargingStateKey,
+  evGaugeTone,
+} from "../equipments/electricVehicleState";
 import { gateNeedsConfirm } from "./gate-confirm";
 import { ForecastConfidenceMark } from "./ForecastConfidenceMark";
 import { vmcSpeedOf } from "../equipments/vmcSpeed";
@@ -540,31 +545,45 @@ function useMobileState(
   }
 
   if (equipment.type === "electric_vehicle") {
-    // Spec 183 — battery first, then range and state.
+    // Spec 183 — the car is its own battery gauge; two short lines under it
+    // (a single joined line was cut off on a half-width card), and the age of
+    // a stale report in the corner.
     const s = electricVehicleStateOf(equipment, now);
+    const charging = s.chargingState === "charging";
+    const tone = evGaugeTone(s.batteryLevel, charging);
+    const toneClass =
+      tone === "charging" ? "text-accent" : tone === "low" ? "text-error" : "text-primary";
+    const detail = [
+      s.rangeKm !== null ? `${Math.round(s.rangeKm)} km` : null,
+      s.chargingState ? t(evChargingStateKey(s.chargingState)) : null,
+    ].filter(Boolean);
     return {
+      // The icon slot is scaled to 50%: drawn at twice the visible size.
       icon: renderWidgetStateIcon(
         widget.icon,
-        <Car
-          size={96}
-          strokeWidth={1.2}
-          className={s.chargingState === "charging" ? "text-accent" : "text-primary"}
-        />,
+        <EvCarGauge level={s.batteryLevel} charging={charging} width={176} className={toneClass} />,
       ),
-      stateLines: [
-        s.batteryLevel !== null ? `${Math.round(s.batteryLevel)} %` : "—",
-        ...[
-          [
-            s.rangeKm !== null ? `${Math.round(s.rangeKm)} km` : null,
-            s.chargingState ? t(evChargingStateKey(s.chargingState)) : null,
-          ]
-            .filter(Boolean)
-            .join(" · "),
-        ].filter((l) => l !== ""),
-        ...(s.reportStale && s.reportedAt
-          ? [t("reading.ago", { age: formatRelative(s.reportedAt, t) })]
-          : []),
-      ],
+      stateLines: [],
+      footer: (
+        <>
+          {s.reportStale && s.reportedAt && (
+            <span className="absolute top-1.5 right-1.5 flex items-center gap-0.5 font-mono text-[9.5px] text-text-tertiary">
+              <Clock size={10} strokeWidth={2} aria-hidden="true" />
+              {formatRelative(s.reportedAt, t)}
+            </span>
+          )}
+          <span className="font-mono text-[12px] font-bold text-text tabular-nums">
+            <span className={tone === "low" ? "text-error" : undefined}>
+              {s.batteryLevel !== null ? `${Math.round(s.batteryLevel)} %` : "—"}
+            </span>
+          </span>
+          {detail.length > 0 && (
+            <span className="text-[11px] text-text-secondary truncate max-w-full">
+              {detail.join(" · ")}
+            </span>
+          )}
+        </>
+      ),
     };
   }
 

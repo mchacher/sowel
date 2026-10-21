@@ -138,3 +138,9 @@ export function evChargingStateKey(state: EvChargingState): string {
 export function evBatteryTone(level: number): string {
   return level < 20 ? "bg-error" : level < 50 ? "bg-accent" : "bg-success";
 }
+
+/** Colour of the vehicle gauge: charging wins, then a low battery, else the primary. */
+export function evGaugeTone(level: number | null, charging: boolean): "charging" | "low" | "ok" {
+  if (charging) return "charging";
+  return level !== null && level < 20 ? "low" : "ok";
+}

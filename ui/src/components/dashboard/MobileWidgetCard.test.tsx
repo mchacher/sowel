@@ -82,9 +82,7 @@ describe("MobileWidgetCard", () => {
         stateDataBinding({ equipmentId: "sw-1", value: true }),
       ] as EquipmentWithDetails["dataBindings"],
     });
-    render(
-      <MobileWidgetCard widget={{ ...widget, equipmentId: "sw-1" }} equipment={plug} />,
-    );
+    render(<MobileWidgetCard widget={{ ...widget, equipmentId: "sw-1" }} equipment={plug} />);
     expect(screen.getByText("ON")).toBeTruthy();
   });
 
@@ -98,13 +96,9 @@ describe("MobileWidgetCard", () => {
       dataBindings: [
         stateDataBinding({ equipmentId: "pp-1", value: true }),
       ] as EquipmentWithDetails["dataBindings"],
-      computedData: [
-        { alias: "runtime_daily", value: 5400, lastUpdated: "2026-01-01T00:00:00Z" },
-      ],
+      computedData: [{ alias: "runtime_daily", value: 5400, lastUpdated: "2026-01-01T00:00:00Z" }],
     });
-    render(
-      <MobileWidgetCard widget={{ ...widget, equipmentId: "pp-1" }} equipment={pump} />,
-    );
+    render(<MobileWidgetCard widget={{ ...widget, equipmentId: "pp-1" }} equipment={pump} />);
     expect(screen.getByText(/ON/)).toBeTruthy();
     expect(screen.getByText(/1h 30m/)).toBeTruthy();
   });
@@ -135,9 +129,7 @@ describe("MobileWidgetCard", () => {
         },
       ] as EquipmentWithDetails["dataBindings"],
     });
-    render(
-      <MobileWidgetCard widget={{ ...widget, equipmentId: "se-1" }} equipment={door} />,
-    );
+    render(<MobileWidgetCard widget={{ ...widget, equipmentId: "se-1" }} equipment={door} />);
     // "OFF" on a contact means open — the localized label, never the raw string.
     expect(screen.getByText(i18n.t("controls.opened") as string)).toBeTruthy();
     expect(screen.queryByText("OFF")).toBeNull();
@@ -166,9 +158,7 @@ describe("MobileWidgetCard", () => {
         },
       ] as EquipmentWithDetails["dataBindings"],
     });
-    render(
-      <MobileWidgetCard widget={{ ...widget, equipmentId: "se-2" }} equipment={door} />,
-    );
+    render(<MobileWidgetCard widget={{ ...widget, equipmentId: "se-2" }} equipment={door} />);
     expect(screen.getByText(i18n.t("controls.opened") as string)).toBeTruthy();
     expect(screen.queryByText("OPEN")).toBeNull();
   });
@@ -209,7 +199,6 @@ function stateDataBinding(over: Record<string, unknown>) {
   };
 }
 
-
 describe("MobileWidgetCard — stale power readings (#839)", () => {
   it("withholds an aged meter power while keeping today's consumption", () => {
     const eq = makeEnergyMeter();
@@ -232,5 +221,29 @@ describe("MobileWidgetCard — stale power readings (#839)", () => {
     render(<MobileWidgetCard widget={widget} equipment={eq} />);
 
     expect(screen.getByText(/800 W/)).toBeTruthy();
+  });
+
+  // A joined single line cut the range and state off on a half-width card:
+  // battery and "range · state" are now two separate lines.
+  it("renders an electric_vehicle's battery and range/state on separate lines", () => {
+    const car = makeEquipment({
+      id: "ev-1",
+      name: "Rafale",
+      type: "electric_vehicle",
+      dataBindings: [
+        { alias: "battery_level", category: "ev_battery_level", value: 9, lastUpdated: agoIso(60) },
+        { alias: "range", category: "ev_range", value: 1, lastUpdated: agoIso(60) },
+        {
+          alias: "charging_state",
+          category: "ev_charging_state",
+          value: "unplugged",
+          lastUpdated: agoIso(60),
+        },
+      ] as unknown as EquipmentWithDetails["dataBindings"],
+    });
+    render(<MobileWidgetCard widget={{ ...widget, equipmentId: "ev-1" }} equipment={car} />);
+    expect(screen.getByText("9 %")).toBeTruthy();
+    expect(screen.getByText(/1 km/)).toBeTruthy();
+    expect(screen.getByText(/Débranché|Unplugged/)).toBeTruthy();
   });
 });
