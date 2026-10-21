@@ -63,11 +63,11 @@
     "icon": "Flame",
     "author": "mchacher",
     "repo": "mchacher/sowel-plugin-mcz-maestro",
-    "version": "2.1.0",
+    "version": "2.2.0",
     "tags": ["mcz", "pellet", "stove", "heating"],
     "sowelVersion": ">=1.2.12",
     "owner": "mchacher",
-    "sha256": "02bf1c16cb22cf9e73c25f6f4b90990eff0c4d24ef64cf5499936fbd7c3f279f"
+    "sha256": "a91329646dddc5200268cb226a8b4edc508ea5c9998151e42b1a637667961986"
   },
   {
     "id": "legrand_energy",
