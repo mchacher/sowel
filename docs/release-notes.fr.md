@@ -13,6 +13,14 @@ Cette page résume toutes les versions publiées, de la plus récente à la plus
 
 ## 1.74.x : La pluie, comptée juste et gardée un an
 
+### v1.74.2 — 2026-10-21 { #v1-74-2 }
+
+La tuile du véhicule électrique est de nouveau lisible sur téléphone. Sur une carte en demi-largeur, la batterie, l'autonomie, l'état de branchement et l'âge de la mesure étaient réunis sur une seule ligne, coupée après le deuxième élément.
+
+- Correctif (ui) : **la carte du véhicule sur mobile dessine la voiture comme sa propre jauge de batterie** (#1062). La carrosserie se remplit avec le niveau : bleue au repos, ambre avec un éclair pendant la charge, rouge sous 20 %. La batterie tient sur une ligne, l'autonomie et l'état sur une seconde, et l'âge d'une mesure ancienne passe dans le coin de la carte. La tuile desktop et la fiche de détail ne changent pas.
+- Plugins et recettes (registre) : **`renault` 0.2.0** (#1061) : plusieurs comptes MyRenault sur un même Sowel.
+- Plugins et recettes (registre) : **`mcz_maestro` 2.2.0** (#1060) : deux réglages optionnels, `startup_profile` et `startup_eco_mode`, remettent le poêle dans le profil et le mode éco choisis à chaque démarrage depuis l'arrêt ou une alarme.
+
 ### v1.74.1 — 2026-10-18 { #v1-74-1 }
 
 La sauvegarde prise avant une mise à jour ne fait plus manquer de mémoire un petit serveur. Sur un hôte de 2 Go, elle dépassait 1 Go, le noyau tuait Sowel en pleine sauvegarde, et la mise à jour vers 1.74.0 n'avait jamais lieu. Restaurer une sauvegarde demande moins de la moitié de la mémoire d'avant.

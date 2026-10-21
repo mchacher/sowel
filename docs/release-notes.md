@@ -13,6 +13,14 @@ This page summarises every published version, newest first. For the full diff be
 
 ## 1.74.x: Rain, counted right and kept for a year
 
+### v1.74.2 — 2026-10-21 { #v1-74-2 }
+
+The electric vehicle tile is readable on a phone again. On a half-width card, battery, range, plug state and report age were joined into one line and cut off after the second item.
+
+- Fix (ui): **the vehicle card on mobile draws the car as its battery gauge** (#1062). The body fills with the battery level: blue at rest, amber with a bolt while charging, red under 20 %. The battery sits on one line, the range and state on a second, and the age of a stale report moves to the corner of the card. The desktop tile and the detail sheet are unchanged.
+- Plugins and recipes (registry): **`renault` 0.2.0** (#1061): several MyRenault accounts on one Sowel.
+- Plugins and recipes (registry): **`mcz_maestro` 2.2.0** (#1060): two optional settings, `startup_profile` and `startup_eco_mode`, put the stove back in the chosen profile and eco mode each time it starts from off or from an alarm.
+
 ### v1.74.1 — 2026-10-18 { #v1-74-1 }
 
 The backup taken before an update no longer runs a small host out of memory. On a 2 GB host it reached past 1 GB, the kernel killed Sowel mid-backup, and the update to 1.74.0 never happened. Restoring a backup costs less than half the memory it used to.
