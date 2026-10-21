@@ -637,4 +637,30 @@ describe("EquipmentWidget — stale power readings (#839)", () => {
     expect(screen.getByText("Standby")).toBeTruthy();
     expect(screen.queryByText(/reading outdated/)).toBeNull();
   });
+
+  // The desktop vehicle tile opens the same detail sheet as the mobile card.
+  it("opens the detail of an electric_vehicle on click, its post drawn while plugged", async () => {
+    const onOpenDetail = vi.fn();
+    const car = makeEquipment({
+      id: "ev-1",
+      name: "Rafale",
+      type: "electric_vehicle",
+      dataBindings: [
+        { alias: "battery_level", category: "ev_battery_level", value: 62 },
+        { alias: "charging_state", category: "ev_charging_state", value: "charging" },
+      ] as unknown as EquipmentWithDetails["dataBindings"],
+      orderBindings: [],
+    });
+    render(
+      <EquipmentWidget
+        widget={makeWidget()}
+        equipment={car}
+        onExecuteOrder={vi.fn()}
+        onOpenDetail={onOpenDetail}
+      />,
+    );
+    expect(screen.getByTestId("ev-charging-post")).toBeTruthy();
+    await userEvent.click(screen.getByText("Rafale"));
+    expect(onOpenDetail).toHaveBeenCalledOnce();
+  });
 });

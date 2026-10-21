@@ -144,3 +144,15 @@ export function evGaugeTone(level: number | null, charging: boolean): "charging"
   if (charging) return "charging";
   return level !== null && level < 20 ? "low" : "ok";
 }
+
+/**
+ * Whether the car is plugged in: the plug sensor when there is one, else the
+ * charging state (any state but `unplugged` needs a cable). Null when neither
+ * is known.
+ */
+export function evIsPlugged(
+  s: Pick<ElectricVehicleState, "plugged" | "chargingState">,
+): boolean | null {
+  if (s.plugged !== null) return s.plugged;
+  return s.chargingState === null ? null : s.chargingState !== "unplugged";
+}

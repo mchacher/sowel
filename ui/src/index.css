@@ -77,7 +77,8 @@
    Dark mode widget SVG boost (production-specific, kept outside @theme)
    ============================================================ */
 
-.dark svg[viewBox="0 0 56 56"] {
+.dark svg[viewBox="0 0 56 56"],
+.dark svg.widget-icon {
   filter: brightness(1.6);
 }
 

@@ -58,6 +58,7 @@ import {
   electricVehicleStateOf,
   evChargingStateKey,
   evGaugeTone,
+  evIsPlugged,
 } from "../equipments/electricVehicleState";
 import { gateNeedsConfirm } from "./gate-confirm";
 import { ForecastConfidenceMark } from "./ForecastConfidenceMark";
@@ -545,14 +546,11 @@ function useMobileState(
   }
 
   if (equipment.type === "electric_vehicle") {
-    // Spec 183 — the car is its own battery gauge; two short lines under it
-    // (a single joined line was cut off on a half-width card), and the age of
-    // a stale report in the corner.
+    // Spec 183 — the car is its own battery gauge, next to its charging post
+    // while plugged in; two short lines under it (a single joined line was cut
+    // off on a half-width card), and the age of a stale report in the corner.
     const s = electricVehicleStateOf(equipment, now);
-    const charging = s.chargingState === "charging";
-    const tone = evGaugeTone(s.batteryLevel, charging);
-    const toneClass =
-      tone === "charging" ? "text-accent" : tone === "low" ? "text-error" : "text-primary";
+    const tone = evGaugeTone(s.batteryLevel, s.chargingState === "charging");
     const detail = [
       s.rangeKm !== null ? `${Math.round(s.rangeKm)} km` : null,
       s.chargingState ? t(evChargingStateKey(s.chargingState)) : null,
@@ -561,7 +559,7 @@ function useMobileState(
       // The icon slot is scaled to 50%: drawn at twice the visible size.
       icon: renderWidgetStateIcon(
         widget.icon,
-        <EvCarGauge level={s.batteryLevel} charging={charging} width={176} className={toneClass} />,
+        <EvCarGauge level={s.batteryLevel} tone={tone} plugged={evIsPlugged(s) === true} />,
       ),
       stateLines: [],
       footer: (
