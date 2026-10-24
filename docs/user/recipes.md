@@ -24,19 +24,19 @@ Behind the scenes, a recipe instance is a small running program that listens to 
 
 Sowel ships several recipes through the official plugin registry. New ones land regularly.
 
-| Recipe                      | What it does                                                                                                                                    |
-| --------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------- |
-| **Motion Light**            | Turns lights on for a fixed duration when motion is detected                                                                                    |
-| **Motion Light (Dimmable)** | Same, with brightness that adapts to time of day (3 brightness slots: day / evening / night)                                                    |
-| **Switch Light**            | Lights follow manual button presses -- toggle on/off, with optional max-on failsafe                                                             |
-| **State-Triggered Light**   | Turns lights on when a watched equipment hits a target state (e.g. gate opens at night)                                                         |
-| **Presence Heater**         | Switches pilot-wire heaters to comfort on motion and to eco after a timeout, with an optional night window                                      |
-| **Smart Socket Heating**    | Heats a room through a smart socket from a temperature sensor: comfort on presence, eco after a timeout, optional night setpoint, cuts at 25 °C |
-| **Presence Thermostat**     | Same idea, for thermostats with a writable target temperature                                                                                   |
-| **Auto Watering**           | Schedules irrigation by zone, with rain skip and weather-aware reduction                                                                        |
-| **Freecooling**             | Opens shutters or windows when outside is cooler than inside (and no rain in forecast)                                                          |
-| **Pool Pump Schedule**      | Runs the pool pump for a daily duration tied to water temperature                                                                               |
-| **State Watch**             | Monitors a data point and raises an alarm when it stays in a watched state too long                                                             |
+| Recipe                      | What it does                                                                                                                                                                            |
+| --------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **Motion Light**            | Turns lights on for a fixed duration when motion is detected                                                                                                                            |
+| **Motion Light (Dimmable)** | Same, with brightness that adapts to time of day (3 brightness slots: day / evening / night)                                                                                            |
+| **Switch Light**            | Lights follow manual button presses -- toggle on/off, with optional max-on failsafe                                                                                                     |
+| **State-Triggered Light**   | Turns lights on when a watched equipment hits a target state (e.g. gate opens at night)                                                                                                 |
+| **Presence Heater**         | Switches pilot-wire heaters to comfort on motion and to eco after a timeout, with an optional night window                                                                              |
+| **Socket Heating**          | Heats a room through a smart socket from a temperature sensor: comfort on presence, eco after a timeout, optional night setpoint, cocoon boost from the tile or a button, cuts at 25 °C |
+| **Presence Thermostat**     | Same idea, for thermostats with a writable target temperature                                                                                                                           |
+| **Auto Watering**           | Schedules irrigation by zone, with rain skip and weather-aware reduction                                                                                                                |
+| **Freecooling**             | Opens shutters or windows when outside is cooler than inside (and no rain in forecast)                                                                                                  |
+| **Pool Pump Schedule**      | Runs the pool pump for a daily duration tied to water temperature                                                                                                                       |
+| **State Watch**             | Monitors a data point and raises an alarm when it stays in a watched state too long                                                                                                     |
 
 Browse the full list in **Administration > Plugins > Recipe**.
 
