@@ -687,7 +687,7 @@
     "icon": "Flame",
     "author": "mchacher",
     "repo": "mchacher/sowel-recipe-smart-socket-heating",
-    "version": "0.3.1",
+    "version": "0.4.0",
     "tags": ["heating", "presence", "thermostat", "socket", "cocoon", "automation"],
     "i18n": {
       "fr": {
@@ -697,6 +697,6 @@
     },
     "sowelVersion": ">=1.74.0",
     "owner": "mchacher",
-    "sha256": "4b102923b49a974311195ff328aedd1402605fa53ef33fe0306b683262cec5bf"
+    "sha256": "63e727ff9afb9f5aa832de4f9e8a2d3361ab7970e9287f77e29d12c2a233707b"
   }
 ]
