@@ -669,6 +669,8 @@
   "recipes.actions.set_mode.comfort": "Comfort",
   "recipes.actions.set_mode.cocoon": "Cocoon",
   "recipes.actions.set_mode.night": "Night",
+  "recipes.actions.set_mode.auto": "Auto",
+  "recipes.actions.set_mode.off": "Off",
   "setup.home.title": "Welcome to Sowel",
   "setup.home.subtitle": "One more step before you start",
   "setup.home.body": "Tell Sowel where your home is. The name shows up across the app; latitude and longitude are used to compute sunrise/sunset and to derive your timezone.",

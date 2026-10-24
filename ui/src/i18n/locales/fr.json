@@ -669,6 +669,8 @@
   "recipes.actions.set_mode.comfort": "Confort",
   "recipes.actions.set_mode.cocoon": "Cocoon",
   "recipes.actions.set_mode.night": "Nuit",
+  "recipes.actions.set_mode.auto": "Auto",
+  "recipes.actions.set_mode.off": "Arrêt",
   "setup.home.title": "Bienvenue sur Sowel",
   "setup.home.subtitle": "Une dernière étape avant de commencer",
   "setup.home.body": "Indiquez à Sowel où se trouve votre maison. Le nom apparaît partout dans l'app ; la latitude et la longitude servent à calculer le lever et le coucher du soleil et à déterminer le fuseau horaire.",
