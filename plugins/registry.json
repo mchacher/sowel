@@ -683,20 +683,20 @@
     "type": "recipe",
     "category": "climate",
     "name": "Socket Heating",
-    "description": "Heats a room through smart sockets from the room's temperature: comfort when someone is there, eco after an absence, an optional night setpoint, a cocoon boost from the tile or a button. Cuts at 25 °C and when the sensor goes silent.",
+    "description": "Heats a room through smart sockets from the room's temperature: comfort when someone is there, eco after an absence, an optional night setpoint, a cocoon boost from the tile or a button. Cuts at 28 °C and when the sensor goes silent.",
     "icon": "Flame",
     "author": "mchacher",
     "repo": "mchacher/sowel-recipe-smart-socket-heating",
-    "version": "0.3.0",
+    "version": "0.3.1",
     "tags": ["heating", "presence", "thermostat", "socket", "cocoon", "automation"],
     "i18n": {
       "fr": {
         "name": "Chauffage sur prise",
-        "description": "Chauffe une pièce par ses prises connectées à partir de sa température : confort quand quelqu'un est là, eco après une absence, une consigne de nuit en option, un cocoon depuis la tuile ou un bouton. Coupe à 25 °C et quand le capteur se tait."
+        "description": "Chauffe une pièce par ses prises connectées à partir de sa température : confort quand quelqu'un est là, eco après une absence, une consigne de nuit en option, un cocoon depuis la tuile ou un bouton. Coupe à 28 °C et quand le capteur se tait."
       }
     },
     "sowelVersion": ">=1.74.0",
     "owner": "mchacher",
-    "sha256": "675235dcd4abf0de4884f0e6a02126183a22af1586f3cbdba5014d0243ab334f"
+    "sha256": "4b102923b49a974311195ff328aedd1402605fa53ef33fe0306b683262cec5bf"
   }
 ]
