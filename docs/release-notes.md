@@ -11,6 +11,22 @@ This page summarises every published version, newest first. For the full diff be
 
 ---
 
+## 1.75.x: Shared access by weekday, recipes that update whole
+
+### v1.75.0 — 2026-10-25 { #v1-75-0 }
+
+A shared access can now open on chosen days only, a recipe update no longer needs a restart to take full effect, and a new heating recipe joins the registry. Also in this release: security updates for two libraries the server uses.
+
+- Feat (shared access): **a time window can name its days** (spec 187, #1084). « Every Friday 18:00–22:00 » can now be said. In the editor, each window folds its days behind « Choose days », with All / Weekdays / Weekend shortcuts. A window with no days still means every day, so existing accesses are unchanged and nothing is migrated. The visitor page names the weekday of the next opening (« Next opening: Friday 18:00 »).
+- Fix (recipes): **a recipe update reloads all of its code** (#1073, #1085). Only the recipe's entry file was reloaded; the files it imports came back from the cache, so an updated recipe ran its new entry against the old version of the rest until Sowel restarted. Recipes now load from a fresh copy of their files, as plugins do, and a recipe no longer needs to be bundled into a single file for an update to apply.
+- Fix (plugins, recipes): **a package loads even when its folder holds copies from a clock that ran ahead** (#1085). With such copies, for instance after moving the data volume from a host whose clock was ahead, the copy just made was deleted before it could be loaded, and the package failed at every start.
+- Plugins and recipes (registry): **`smart-socket-heating`, new, 0.1.0 to 0.4.0** (#1071, #1072, #1074, #1075, #1076). Heats a room through smart sockets that feed electric radiators, from the room's own temperature: comfort when someone is there, eco after an absence, an optional night setpoint, and a cocoon boost from the tile or a button. It cuts at 28 °C and when the sensors go silent. From 0.4.0, a lone detection no longer heats an empty room, and the heating stops as soon as the room is empty.
+- Security (deps): **`fast-uri` 3.1.9 and 4.2.3** (#1079) close several medium-severity advisories on URI parsing (scheme spoofing, host confusion); the server uses it through Fastify. **`ip-address` 10.7.5** (#1083) closes a medium-severity advisory where one long IPv6 string could stall the process. Also `fast-uri` (#1081) and `serialize-javascript` (#1080) in the UI build tooling.
+- Docs (specs): **the state of Netatmo's API for its newer cameras** (#1078). The Indoor Camera Advance and the new outdoor camera are still invisible to third-party apps; Netatmo plans the fix in a firmware release at the end of October.
+- Maintenance (deps): the weekly library, toolchain and GitHub Actions updates (#1066, #1067, #1068, #1069, #1070), and a UI test that failed on the day the clocks change (#1077).
+
+---
+
 ## 1.74.x: Rain, counted right and kept for a year
 
 ### v1.74.3 — 2026-10-21 { #v1-74-3 }

@@ -11,6 +11,22 @@ Cette page résume toutes les versions publiées, de la plus récente à la plus
 
 ---
 
+## 1.75.x : Des accès partagés par jour, des recettes mises à jour en entier
+
+### v1.75.0 — 2026-10-25 { #v1-75-0 }
+
+Un accès partagé peut s'ouvrir certains jours seulement, la mise à jour d'une recette s'applique en entier sans redémarrage, et une nouvelle recette de chauffage arrive au registre. Également dans cette version : des mises à jour de sécurité pour deux bibliothèques utilisées par le serveur.
+
+- Nouveauté (accès partagé) : **une plage horaire peut nommer ses jours** (spec 187, #1084). « Tous les vendredis 18:00–22:00 » peut maintenant se dire. Dans l'éditeur, chaque plage replie ses jours derrière « Choisir les jours », avec les raccourcis Tous / Semaine / Week-end. Une plage sans jours veut toujours dire tous les jours : les accès existants ne changent pas et rien n'est migré. La page de l'invité dit le jour de la prochaine ouverture (« Prochaine ouverture : vendredi 18:00 »).
+- Correction (recettes) : **la mise à jour d'une recette recharge tout son code** (#1073, #1085). Seul le fichier d'entrée de la recette était rechargé ; les fichiers qu'il importe revenaient du cache, si bien qu'une recette mise à jour exécutait sa nouvelle entrée avec l'ancienne version du reste, jusqu'au redémarrage de Sowel. Les recettes se chargent désormais depuis une copie neuve de leurs fichiers, comme les plugins, et une recette n'a plus besoin d'être regroupée en un seul fichier pour qu'une mise à jour s'applique.
+- Correction (plugins, recettes) : **un paquet se charge même quand son dossier contient des copies datées par une horloge en avance** (#1085). Avec de telles copies, par exemple après avoir déplacé le volume de données depuis un hôte dont l'horloge avançait, la copie qui venait d'être faite était supprimée avant d'être chargée, et le paquet échouait à chaque démarrage.
+- Plugins et recettes (registre) : **`smart-socket-heating`, nouvelle, de 0.1.0 à 0.4.0** (#1071, #1072, #1074, #1075, #1076). Chauffe une pièce par des prises connectées qui alimentent des radiateurs électriques, à partir de la température de la pièce elle-même : confort quand quelqu'un est là, éco après une absence, une consigne de nuit optionnelle, et un mode cocon depuis la tuile ou un bouton. Elle coupe à 28 °C et quand les capteurs se taisent. Depuis la 0.4.0, une détection isolée ne chauffe plus une pièce vide, et le chauffage s'arrête dès que la pièce est vide.
+- Sécurité (dépendances) : **`fast-uri` 3.1.9 et 4.2.3** (#1079) ferment plusieurs alertes moyennes sur l'analyse des URI (usurpation de schéma, confusion d'hôte) ; le serveur l'utilise via Fastify. **`ip-address` 10.7.5** (#1083) ferme une alerte moyenne où une seule longue chaîne IPv6 pouvait bloquer le processus. Aussi `fast-uri` (#1081) et `serialize-javascript` (#1080) dans l'outillage de build de l'UI.
+- Doc (specs) : **l'état de l'API Netatmo pour ses caméras récentes** (#1078). L'Indoor Camera Advance et la nouvelle caméra extérieure restent invisibles pour les applications tierces ; Netatmo prévoit le correctif dans une version de firmware fin octobre.
+- Maintenance (dépendances) : les mises à jour hebdomadaires des bibliothèques, de l'outillage et des GitHub Actions (#1066, #1067, #1068, #1069, #1070), et un test de l'UI qui échouait le jour du changement d'heure (#1077).
+
+---
+
 ## 1.74.x : La pluie, comptée juste et gardée un an
 
 ### v1.74.3 — 2026-10-21 { #v1-74-3 }
