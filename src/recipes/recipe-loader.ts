@@ -3,6 +3,7 @@ import { pathToFileURL } from "node:url";
 import { existsSync } from "node:fs";
 import type { Logger } from "../core/logger.js";
 import type { PackageManager, InstallOptions } from "../packages/package-manager.js";
+import { hotCopyDist } from "../packages/hot-copy.js";
 import type { RecipeManager } from "./engine/recipe-manager.js";
 import type { RecipeDefinition } from "../shared/types.js";
 
@@ -130,8 +131,10 @@ export class RecipeLoader {
       throw new Error(`Recipe entry point not found: ${entryPath}`);
     }
 
-    // Cache-bust: append timestamp to force fresh import after reinstall
-    const mod = (await import(`${pathToFileURL(entryPath).href}?t=${Date.now()}`)) as {
+    // Import from a fresh copy of dist/ so an update also reloads every file
+    // the entry imports, not just the entry (#1073, see hotCopyDist).
+    const hotEntryPath = resolve(hotCopyDist(pkgDir, this.logger), "index.js");
+    const mod = (await import(pathToFileURL(hotEntryPath).href)) as {
       createRecipe?: RecipeFactory;
       default?: { createRecipe?: RecipeFactory };
     };

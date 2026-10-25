@@ -443,11 +443,11 @@ Règles pour les auteurs (spec 140, tenues par convention et auditées par le co
 
 ## Cycle de vie
 
-1. **Chargement** : `RecipeLoader.loadAll()` importe chaque package installé et activé (`dist/index.js`) et enregistre la définition de `createRecipe()` via `RecipeManager.registerExternal()`
+1. **Chargement** : `RecipeLoader.loadAll()` importe chaque package installé et activé et enregistre la définition de `createRecipe()` via `RecipeManager.registerExternal()`. Comme pour les plugins, le loader copie `dist/` dans un nouveau `.hot/<timestamp>/` à chaque chargement (les deux derniers sont gardés) et importe `index.js` depuis cette copie : un `dist/` de plusieurs fichiers est rechargé en entier (issue #1073). Les fichiers hors de `dist/` ne sont pas copiés : un fichier qu'une recette lit à l'exécution doit être livré dans `dist/` et atteint relativement à `import.meta.url`
 2. **Instanciation** : l'utilisateur crée via l'API → `validate()` → persisté en SQLite → `createInstance()`
 3. **Restauration** : au redémarrage moteur, les instances activées sont chargées depuis la DB et `createInstance()` est appelé
 4. **Mise à jour des params** : `stop()` → mise à jour des params en DB → `validate()` → `createInstance()` avec les nouveaux params
-5. **Mise à jour de la recette** : nouvelle version du package installée → définition ré-enregistrée → les instances en cours sont redémarrées pour exécuter la nouvelle version (issue #349)
+5. **Mise à jour de la recette** : nouvelle version du package installée → définition ré-enregistrée depuis une nouvelle copie de `dist/`, tous fichiers compris → les instances en cours sont redémarrées pour exécuter la nouvelle version (issue #349). Inutile de redémarrer Sowel, et inutile de bundler la recette en un seul fichier pour cela
 6. **Suppression** : `stop()` → retiré de la DB (cascade sur state + logs)
 
 ## Recettes existantes
