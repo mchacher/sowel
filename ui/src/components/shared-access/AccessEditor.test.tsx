@@ -237,6 +237,17 @@ describe("AccessEditor", () => {
     expect(api.createSharedAccess).not.toHaveBeenCalled();
   });
 
+  it("flags an emptied time field and refuses to save", async () => {
+    renderEditor({ kind: "create", gateIds: ["entree"] });
+    await userEvent.type(screen.getByLabelText("Name"), "Léa");
+    await userEvent.click(screen.getByRole("button", { name: "Time windows" }));
+    const from = screen.getByLabelText("Window start");
+    await userEvent.clear(from);
+    await userEvent.click(screen.getByRole("button", { name: "Save" }));
+    expect(screen.getByRole("alert")).toBeTruthy();
+    expect(api.createSharedAccess).not.toHaveBeenCalled();
+  });
+
   it("refuses a window crossing midnight inline", async () => {
     renderEditor({ kind: "create", gateIds: ["entree"] });
     await userEvent.type(screen.getByLabelText("Name"), "Léa");
