@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { PvForecastPoint } from "../../types";
 import { sumKwh, dailyTicks, mergeTimeline } from "./pvForecastUtils";
 
@@ -14,6 +14,15 @@ function curve(dayOffset: number, watts: number, hours = 24): PvForecastPoint[] 
 }
 
 describe("sumKwh", () => {
+  // Every case below assumes a 24-hour local day. On a DST changeover the
+  // real clock gives 23 or 25 hours and the arithmetic breaks, so pin a plain
+  // mid-June noon.
+  beforeEach(() => {
+    vi.useFakeTimers({ toFake: ["Date"] });
+    vi.setSystemTime(new Date(2026, 5, 15, 12));
+  });
+  afterEach(() => vi.useRealTimers());
+
   it("sums one local day, in kWh", () => {
     // 24 hours at 1000 W is 24 kWh.
     expect(sumKwh(curve(0, 1000), 0)).toBeCloseTo(24, 6);
