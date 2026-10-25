@@ -1,4 +1,4 @@
-import type { ReactNode } from "react";
+import { useState, type ReactNode } from "react";
 import { useTranslation } from "react-i18next";
 import { Plus, X } from "lucide-react";
 import {
@@ -6,7 +6,12 @@ import {
   addMinutes,
   moveStart,
   parseHm,
+  windowDays,
+  withDays,
+  ALL_DAYS,
 } from "../../lib/shared-access-period";
+import type { SharedAccessTimeWindow } from "../../types";
+import { useSaFormat } from "./useSaFormat";
 import { DateTimePicker } from "./DateTimePicker";
 import { btnSecondary, iconBtn, inputBadCls, inputCls, Refusal, Segmented } from "./ui";
 
@@ -25,13 +30,111 @@ function Group({ title, children }: { title: string; children: ReactNode }) {
  * A bound the server does not hold (an access « from » or « until » a date
  * only): said as such, and set only when the owner asks for it.
  */
-function MissingBound({ text, action, onSet }: { text: string; action: string; onSet: () => void }) {
+function MissingBound({
+  text,
+  action,
+  onSet,
+}: {
+  text: string;
+  action: string;
+  onSet: () => void;
+}) {
   return (
     <div className="flex items-center gap-2 flex-wrap">
       <span className="text-text-tertiary">{text}</span>
       <button type="button" className={btnSecondary} onClick={onSet}>
         {action}
       </button>
+    </div>
+  );
+}
+
+/**
+ * The days of one window, folded: most accesses want every day, so the seven
+ * buttons are shown only when asked for — or when none is left, which the owner
+ * must see to fix.
+ */
+function WindowDays({
+  window: w,
+  open,
+  onToggle,
+  onChange,
+}: {
+  window: SharedAccessTimeWindow;
+  open: boolean;
+  onToggle: () => void;
+  onChange: (days: readonly number[]) => void;
+}) {
+  const { t } = useTranslation();
+  const { dayName, daysSentence } = useSaFormat();
+  const days = windowDays(w);
+  const shown = open || days.length === 0;
+  const quick: Array<[string, readonly number[]]> = [
+    [t("sharedAccess.validity.daysAll"), ALL_DAYS],
+    [t("sharedAccess.validity.daysWeek"), [1, 2, 3, 4, 5]],
+    [t("sharedAccess.validity.daysWeekend"), [6, 7]],
+  ];
+  return (
+    <div className="flex flex-col gap-1.5">
+      <div className="flex items-center justify-between gap-2 flex-wrap">
+        <span
+          className={`text-[13px] font-medium ${days.length === 0 ? "text-error" : "text-text"}`}
+        >
+          {daysSentence(w)}
+        </span>
+        {/* With no day left the buttons stay open until one is ticked: folding them would hide the error. */}
+        {days.length > 0 && (
+          <button
+            type="button"
+            className="text-[13px] text-primary hover:underline cursor-pointer"
+            aria-expanded={shown}
+            onClick={onToggle}
+          >
+            {shown ? t("sharedAccess.validity.hideDays") : t("sharedAccess.validity.chooseDays")}
+          </button>
+        )}
+      </div>
+      {shown && (
+        <div className="flex flex-col gap-1.5 pt-2 border-t border-dashed border-border">
+          <div
+            role="group"
+            aria-label={t("sharedAccess.validity.daysGroup")}
+            className="grid grid-cols-7 gap-1.5"
+          >
+            {ALL_DAYS.map((d) => {
+              const on = days.includes(d);
+              return (
+                <button
+                  key={d}
+                  type="button"
+                  aria-pressed={on}
+                  aria-label={dayName(d)}
+                  onClick={() => onChange(on ? days.filter((x) => x !== d) : [...days, d])}
+                  className={`min-h-[40px] rounded-[6px] border text-[13px] font-semibold uppercase transition-colors cursor-pointer ${
+                    on
+                      ? "bg-primary border-primary text-white"
+                      : "bg-surface border-border text-text-secondary hover:bg-border-light"
+                  }`}
+                >
+                  {dayName(d, "narrow")}
+                </button>
+              );
+            })}
+          </div>
+          <div className="flex gap-3 flex-wrap">
+            {quick.map(([label, set]) => (
+              <button
+                key={label}
+                type="button"
+                className="text-[13px] text-primary hover:underline cursor-pointer"
+                onClick={() => onChange(set)}
+              >
+                {label}
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
     </div>
   );
 }
@@ -57,6 +160,8 @@ export function ValidityGroups({
 }) {
   const { t } = useTranslation();
   const set = (patch: Partial<ValidityDraft>) => onChange({ ...value, ...patch });
+  // Which windows have their days unfolded, by position.
+  const [unfolded, setUnfolded] = useState<ReadonlySet<number>>(new Set());
 
   const setWindow = (i: number, key: "from" | "to", v: string) =>
     set({ windows: value.windows.map((w, j) => (j === i ? { ...w, [key]: v } : w)) });
@@ -132,7 +237,9 @@ export function ValidityGroups({
               v === "ranges"
                 ? {
                     ranges: true,
-                    windows: value.windows.length ? value.windows : [{ from: "08:00", to: "20:00" }],
+                    windows: value.windows.length
+                      ? value.windows
+                      : [{ from: "08:00", to: "20:00" }],
                   }
                 : { ranges: false },
             )
@@ -141,35 +248,58 @@ export function ValidityGroups({
         {value.ranges && (
           <div className="mt-2.5 flex flex-col gap-1.5">
             {value.windows.map((w, i) => (
-              <div key={i} className="flex items-center gap-1.5">
-                <input
-                  className={`${parseHm(w.from) === null ? inputBadCls : inputCls} w-[84px] font-mono`}
-                  value={w.from}
-                  inputMode="numeric"
-                  placeholder="08:00"
-                  aria-label={t("sharedAccess.validity.windowFrom")}
-                  onChange={(e) => setWindow(i, "from", e.target.value)}
+              <div key={i} className="flex flex-col gap-2 border border-border rounded-[8px] p-2.5">
+                <div className="flex items-center gap-1.5">
+                  <input
+                    className={`${parseHm(w.from) === null ? inputBadCls : inputCls} w-[84px] font-mono`}
+                    value={w.from}
+                    inputMode="numeric"
+                    placeholder="08:00"
+                    aria-label={t("sharedAccess.validity.windowFrom")}
+                    onChange={(e) => setWindow(i, "from", e.target.value)}
+                  />
+                  <span className="text-text-tertiary">–</span>
+                  <input
+                    className={`${parseHm(w.to) === null ? inputBadCls : inputCls} w-[84px] font-mono`}
+                    value={w.to}
+                    inputMode="numeric"
+                    placeholder="20:00"
+                    aria-label={t("sharedAccess.validity.windowTo")}
+                    onChange={(e) => setWindow(i, "to", e.target.value)}
+                  />
+                  <button
+                    type="button"
+                    className={iconBtn}
+                    aria-label={t("common.remove")}
+                    onClick={() => {
+                      const windows = value.windows.filter((_, j) => j !== i);
+                      // The windows after this one move up: their unfolded state goes with them.
+                      setUnfolded(
+                        new Set(
+                          [...unfolded].filter((j) => j !== i).map((j) => (j > i ? j - 1 : j)),
+                        ),
+                      );
+                      set({ windows, ranges: windows.length > 0 });
+                    }}
+                  >
+                    <X size={16} strokeWidth={1.5} />
+                  </button>
+                </div>
+                <WindowDays
+                  window={w}
+                  open={unfolded.has(i)}
+                  onToggle={() =>
+                    setUnfolded((cur) => {
+                      const next = new Set(cur);
+                      if (next.has(i)) next.delete(i);
+                      else next.add(i);
+                      return next;
+                    })
+                  }
+                  onChange={(days) =>
+                    set({ windows: value.windows.map((x, j) => (j === i ? withDays(x, days) : x)) })
+                  }
                 />
-                <span className="text-text-tertiary">–</span>
-                <input
-                  className={`${parseHm(w.to) === null ? inputBadCls : inputCls} w-[84px] font-mono`}
-                  value={w.to}
-                  inputMode="numeric"
-                  placeholder="20:00"
-                  aria-label={t("sharedAccess.validity.windowTo")}
-                  onChange={(e) => setWindow(i, "to", e.target.value)}
-                />
-                <button
-                  type="button"
-                  className={iconBtn}
-                  aria-label={t("common.remove")}
-                  onClick={() => {
-                    const windows = value.windows.filter((_, j) => j !== i);
-                    set({ windows, ranges: windows.length > 0 });
-                  }}
-                >
-                  <X size={16} strokeWidth={1.5} />
-                </button>
               </div>
             ))}
             <div>

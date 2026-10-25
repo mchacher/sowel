@@ -102,7 +102,8 @@ R9 (see _Consumers_).
 10. **Validity is two separate groups**, on the house's wall clock (`home.timezone`, spec 061):
     - **Dates**: « Tout le temps » — no date is shown or stored — or « Du … au … » (from, until).
     - **Heures**: « Toute la journée » — no hour is shown or stored — or « Par plages », one or
-      more time windows every day (`08:00–20:00`), not crossing midnight, not overlapping.
+      more time windows (`08:00–20:00`), not crossing midnight, not overlapping — every day, or on
+      the days a window names (spec 187).
 
     The same two groups are used on accesses and on profiles (R9). An external access carries its
     source's dates; the owner may **widen** them only — open earlier, extend later.
@@ -324,7 +325,7 @@ And what is seen before a code is known: ![](screenshots/visitor-code.png)
 - Equipment types other than `gate` (locks, doors): the model does not depend on the type, the
   offer does.
 - SMS or email sending by the core, guest accounts. (The QR codes of R5.22 and R7.27 are in scope.)
-- Days of the week on time windows.
+- Days of the week on time windows — added by spec 187.
 
 ## Acceptance criteria
 

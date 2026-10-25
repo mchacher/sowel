@@ -280,7 +280,7 @@ export const GUEST_JS = `(function () {
     qr: "QR code of this access", send: "Share", sendText: "Open this link on your phone to get this access.", copyLink: "Copy the link", copied: "Link copied", shareEnded: "This access has ended: there is nothing left to share.",
     shareNoUrl: "The house has no public address yet: ask your host.", noCommands: "No command from this phone yet.",
     lastAt: "Last opening requested at ", lastOn: "Last opening requested ", today: "today", yesterday: "yesterday",
-    asked: "Opening requested", notYet: "Opens on ", nextAt: "Next opening at ", suspended: "Access on hold",
+    asked: "Opening requested", notYet: "Opens on ", nextAt: "Next opening: ", suspended: "Access on hold",
     revoked: "This access was revoked.", endedLong: "This access has ended.", noGate: "No gate on this access.",
     installIos: "Put this access on your home screen: tap Share ~SHARE~ (under ⋯ if you do not see it), then “Add to Home Screen”.", installIosOther: " If the option is missing, open this page in Safari.",
     installAndroid: "Put this access on your home screen: open the menu ⋮, then “Add to Home screen” or “Install app”.",
@@ -305,7 +305,7 @@ export const GUEST_JS = `(function () {
     qr: "QR code de cet accès", send: "Partager", sendText: "Ouvrez ce lien sur votre téléphone pour avoir cet accès.", copyLink: "Copier le lien", copied: "Lien copié", shareEnded: "Cet accès est terminé : il n'y a plus rien à partager.",
     shareNoUrl: "La maison n'a pas encore d'adresse publique : demandez à votre hôte.", noCommands: "Aucune commande depuis ce téléphone.",
     lastAt: "Dernière ouverture demandée à ", lastOn: "Dernière ouverture demandée ", today: "aujourd'hui", yesterday: "hier",
-    asked: "Ouverture demandée", notYet: "Ouvre le ", nextAt: "Prochaine ouverture à ", suspended: "Accès suspendu",
+    asked: "Ouverture demandée", notYet: "Ouvre le ", nextAt: "Prochaine ouverture : ", suspended: "Accès suspendu",
     revoked: "Cet accès a été révoqué.", endedLong: "Cet accès est terminé.", noGate: "Aucun portail sur cet accès.",
     installIos: "Mettez cet accès sur votre écran d'accueil : touchez Partager ~SHARE~ (sous ⋯ si vous ne le voyez pas), puis « Sur l'écran d'accueil ».", installIosOther: " Si l'option manque, ouvrez cette page dans Safari.",
     installAndroid: "Mettez cet accès sur votre écran d'accueil : ouvrez le menu ⋮, puis « Ajouter à l'écran d'accueil » ou « Installer l'application ».",
@@ -404,6 +404,17 @@ export const GUEST_JS = `(function () {
     var d = new Date(iso);
     return String(d.getHours()).padStart(2, "0") + ":" + String(d.getMinutes()).padStart(2, "0");
   }
+  // « 18:00 » when it is later today, « Friday 18:00 » otherwise: with days of
+  // the week the next opening is often not tomorrow.
+  function nextWhen(iso) {
+    var d = new Date(iso);
+    var now = new Date();
+    if (sameDay(d, now)) return hhmm(iso);
+    // The same weekday a week on would read as « tonight »: give its date.
+    var days = Math.round((new Date(d.getFullYear(), d.getMonth(), d.getDate()) - new Date(now.getFullYear(), now.getMonth(), now.getDate())) / 86400000);
+    if (days >= 7) return dayTime(iso);
+    return d.toLocaleDateString(EN ? "en-GB" : "fr-FR", { weekday: "long" }) + " " + hhmm(iso);
+  }
   function dayTime(iso) {
     var d = new Date(iso);
     return d.toLocaleDateString(EN ? "en-GB" : "fr-FR", { day: "numeric", month: "long" }) + " " + hhmm(iso);
@@ -445,7 +456,7 @@ export const GUEST_JS = `(function () {
     var s = session.status;
     if (s === "live") setPill("idle", T.ready);
     else if (s === "not_yet" && session.activeAt) setPill("bad", T.notYet + dayTime(session.activeAt));
-    else if (s === "outside_hours") setPill("bad", session.nextOpeningAt ? T.nextAt + hhmm(session.nextOpeningAt) : T.reasons.outside_hours);
+    else if (s === "outside_hours") setPill("bad", session.nextOpeningAt ? T.nextAt + nextWhen(session.nextOpeningAt) : T.reasons.outside_hours);
     else if (s === "suspended") setPill("bad", T.suspended);
     else if (s === "revoked") setPill("bad", T.revoked);
     else if (s === "ended") setPill("bad", T.endedLong);
@@ -581,7 +592,7 @@ export const GUEST_JS = `(function () {
       var reason = (r.body && r.body.reason) || "gate_error";
       var text = T.reasons[reason] || T.refused;
       if (reason === "not_yet" && r.body.activeAt) text = T.notYet + dayTime(r.body.activeAt);
-      if (reason === "outside_hours" && r.body.nextOpeningAt) text += " " + T.nextAt + hhmm(r.body.nextOpeningAt) + ".";
+      if (reason === "outside_hours" && r.body.nextOpeningAt) text += " " + T.nextAt + nextWhen(r.body.nextOpeningAt) + ".";
       refused(text, rest);
       refresh();
     }, function () { refused(T.network, rest); });

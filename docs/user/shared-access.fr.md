@@ -80,8 +80,10 @@ appuyer sur **Créer un accès** dans son panneau **Accès partagés**. Puis :
 - **Portails** — ceux qu'il ouvre. Seuls les équipements `gate` peuvent être listés. Quand la
   commande d'un portail a plusieurs valeurs (ouvrir / fermer / stop), choisissez celle qui ouvre.
 - **Dates** — **Tout le temps**, ou **Du … au …**. La fin ne peut pas précéder le début.
-- **Heures** — **Toute la journée**, ou **Par plages**, une ou plusieurs chaque jour (`08:00–20:00`).
-  Une plage ne traverse pas minuit, et deux plages ne se chevauchent pas.
+- **Heures** — **Toute la journée**, ou **Par plages**, une ou plusieurs (`08:00–20:00`). Une plage ne
+  traverse pas minuit. Chaque plage vaut **tous les jours**, sauf si vous cliquez sur **Choisir les
+  jours** pour en retenir quelques-uns — « tous les vendredis, 18:00–22:00 ». Deux plages ne se
+  chevauchent pas un jour qu'elles partagent.
 - **Avec un code** — coché par défaut. Le code fait huit caractères, affichés `4K7M-9QT2`, pour être
   dicté au téléphone ou affiché dans une entrée. Décochez-le pour quelqu'un qui ne fera que cliquer
   le lien : le lien porte un jeton à lui, impossible à deviner.
