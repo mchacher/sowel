@@ -89,7 +89,8 @@ describe("AccessEditor", () => {
     // The end's day is later: no hour is disabled on it.
     const endHour = screen.getByRole("combobox", { name: "To — hour" }) as HTMLSelectElement;
     expect([...endHour.options].some((o) => o.disabled)).toBe(false);
-    expect(within(dialog).getByDisplayValue("08:00")).toBeTruthy();
+    // A native time input: on a phone it opens the OS wheel instead of a numeric keypad with no ":".
+    expect((within(dialog).getByDisplayValue("08:00") as HTMLInputElement).type).toBe("time");
     expect(within(dialog).getByText("4K7M-9QT2")).toBeTruthy();
   });
 
