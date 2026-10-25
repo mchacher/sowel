@@ -12,6 +12,8 @@ export function useValidityText(): (p: ValidityProblem) => string {
         return t("sharedAccess.check.invalidHours", { from: p.window.from, to: p.window.to });
       case "window_crosses_midnight":
         return t("sharedAccess.check.crossesMidnight", { from: p.window.from, to: p.window.to });
+      case "invalid_days":
+        return t("sharedAccess.check.noDay", { from: p.window.from, to: p.window.to });
       case "windows_overlap":
         return t("sharedAccess.check.overlap", {
           a: `${p.window.from}–${p.window.to}`,

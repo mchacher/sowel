@@ -445,33 +445,34 @@ de la maison dont dérivent les jetons de lien, `sharedAccess.linkSecret`, n'est
 
 ### Routes du propriétaire (admin uniquement, lectures comprises)
 
-| Méthode  | Chemin                                                       | Description                                                                                                                                                                  |
-| -------- | ------------------------------------------------------------ | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `GET`    | `/api/v1/shared-access/state`                                | `SharedAccessState` : les accès (codes en clair, liens d'invitation), les portails et leur interrupteur armé, les profils, les plugins auxquels un profil peut être accordé. |
-| `GET`    | `/api/v1/shared-access/journal?accessId=&limit=`             | Ouvertures, refus et modifications, du plus récent au plus ancien. Gardés un an, 50 000 lignes au plus.                                                                      |
-| `POST`   | `/api/v1/shared-access/accesses`                             | `{ label, gates: [{ equipmentId, value? }], withCode?, validFrom?, validUntil?, timeWindows? }`. `201` avec l'accès.                                                         |
-| `PATCH`  | `/api/v1/shared-access/accesses/:id`                         | Mêmes champs. Sur un accès créé par un plugin : `label`, `gates`, `timeWindows`, et `earlyOpenAt` / `extendedUntil`, qui ne peuvent qu'élargir ses dates.                    |
-| `POST`   | `/api/v1/shared-access/accesses/:id/{suspend,resume,revoke}` | Suspendre, reprendre, révoquer.                                                                                                                                              |
-| `POST`   | `/api/v1/shared-access/accesses/:id/code`                    | `{ cutPhones }` — un nouveau code (s'il en a un) et un nouveau lien ; les téléphones gardés ou coupés.                                                                       |
-| `GET`    | `/api/v1/shared-access/accesses/:id/phones`                  | `{ phones: [{ id, platform, tag, firstSeenAt, lastSeenAt }] }` — `platform` vaut `iphone`, `ipad`, `android`, `mac`, `windows` ou `other`.                                   |
-| `DELETE` | `/api/v1/shared-access/accesses/:id/phones/:phoneId`         | `204` — coupe ce téléphone seulement. `404 unknown_phone`.                                                                                                                   |
-| `DELETE` | `/api/v1/shared-access/accesses/:id`                         | `204`. `422 still_live` s'il n'est ni révoqué ni terminé.                                                                                                                    |
-| `GET`    | `/api/v1/shared-access/equipment/:id`                        | `{ armed, people }` pour le panneau d'un portail.                                                                                                                            |
-| `PUT`    | `/api/v1/shared-access/equipment/:id`                        | `{ armed }` — l'interrupteur armé du portail.                                                                                                                                |
-| `GET`    | `/api/v1/shared-access/profiles`                             | `{ profiles }`.                                                                                                                                                              |
-| `POST`   | `/api/v1/shared-access/profiles`                             | `{ name, gates?, validFrom?, validUntil?, timeWindows?, withCode?, pluginId? }`.                                                                                             |
-| `PATCH`  | `/api/v1/shared-access/profiles/:id`                         | Mêmes champs.                                                                                                                                                                |
-| `DELETE` | `/api/v1/shared-access/profiles/:id`                         | `204`. `422 default_profile` pour le profil par défaut. Les accès créés depuis ce profil gardent leurs portails.                                                             |
-| `GET`    | `/api/v1/shared-access/app`                                  | `{ name, customIcon, version }` — la page du visiteur sur un écran d'accueil.                                                                                                |
-| `PUT`    | `/api/v1/shared-access/app`                                  | `{ name?, icons?: { "180", "192", "512": PNG en base64 } \| null }` — `400 invalid_app` sauf si chacune est un PNG de sa taille, 256 Kio au plus.                            |
+| Méthode  | Chemin                                                       | Description                                                                                                                                                                                               |
+| -------- | ------------------------------------------------------------ | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `GET`    | `/api/v1/shared-access/state`                                | `SharedAccessState` : les accès (codes en clair, liens d'invitation), les portails et leur interrupteur armé, les profils, les plugins auxquels un profil peut être accordé.                              |
+| `GET`    | `/api/v1/shared-access/journal?accessId=&limit=`             | Ouvertures, refus et modifications, du plus récent au plus ancien. Gardés un an, 50 000 lignes au plus.                                                                                                   |
+| `POST`   | `/api/v1/shared-access/accesses`                             | `{ label, gates: [{ equipmentId, value? }], withCode?, validFrom?, validUntil?, timeWindows? }` ; une plage est `{ from, to, days? }`, `days` = jours ISO 1–7, sans = tous les jours. `201` avec l'accès. |
+| `PATCH`  | `/api/v1/shared-access/accesses/:id`                         | Mêmes champs. Sur un accès créé par un plugin : `label`, `gates`, `timeWindows`, et `earlyOpenAt` / `extendedUntil`, qui ne peuvent qu'élargir ses dates.                                                 |
+| `POST`   | `/api/v1/shared-access/accesses/:id/{suspend,resume,revoke}` | Suspendre, reprendre, révoquer.                                                                                                                                                                           |
+| `POST`   | `/api/v1/shared-access/accesses/:id/code`                    | `{ cutPhones }` — un nouveau code (s'il en a un) et un nouveau lien ; les téléphones gardés ou coupés.                                                                                                    |
+| `GET`    | `/api/v1/shared-access/accesses/:id/phones`                  | `{ phones: [{ id, platform, tag, firstSeenAt, lastSeenAt }] }` — `platform` vaut `iphone`, `ipad`, `android`, `mac`, `windows` ou `other`.                                                                |
+| `DELETE` | `/api/v1/shared-access/accesses/:id/phones/:phoneId`         | `204` — coupe ce téléphone seulement. `404 unknown_phone`.                                                                                                                                                |
+| `DELETE` | `/api/v1/shared-access/accesses/:id`                         | `204`. `422 still_live` s'il n'est ni révoqué ni terminé.                                                                                                                                                 |
+| `GET`    | `/api/v1/shared-access/equipment/:id`                        | `{ armed, people }` pour le panneau d'un portail.                                                                                                                                                         |
+| `PUT`    | `/api/v1/shared-access/equipment/:id`                        | `{ armed }` — l'interrupteur armé du portail.                                                                                                                                                             |
+| `GET`    | `/api/v1/shared-access/profiles`                             | `{ profiles }`.                                                                                                                                                                                           |
+| `POST`   | `/api/v1/shared-access/profiles`                             | `{ name, gates?, validFrom?, validUntil?, timeWindows?, withCode?, pluginId? }`.                                                                                                                          |
+| `PATCH`  | `/api/v1/shared-access/profiles/:id`                         | Mêmes champs.                                                                                                                                                                                             |
+| `DELETE` | `/api/v1/shared-access/profiles/:id`                         | `204`. `422 default_profile` pour le profil par défaut. Les accès créés depuis ce profil gardent leurs portails.                                                                                          |
+| `GET`    | `/api/v1/shared-access/app`                                  | `{ name, customIcon, version }` — la page du visiteur sur un écran d'accueil.                                                                                                                             |
+| `PUT`    | `/api/v1/shared-access/app`                                  | `{ name?, icons?: { "180", "192", "512": PNG en base64 } \| null }` — `400 invalid_app` sauf si chacune est un PNG de sa taille, 256 Kio au plus.                                                         |
 
 Les dates sont en ISO 8601, ou `YYYY-MM-DDTHH:MM` lu sur l'horloge de la maison ; `null` efface. Les
 plages horaires s'écrivent `[{ "from": "08:00", "to": "20:00" }]`, sans traverser minuit ni se
-chevaucher.
+chevaucher un jour qu'elles partagent. Une plage peut ajouter `"days": [5]` (jours ISO, 1 = lundi … 7 =
+dimanche) ; sans cela, elle vaut tous les jours.
 
 Les erreurs sont `{ "error": "<code>", "message": "..." }` : `no_gate`, `unknown_gate` (404),
 `unsupported_equipment` (422, pas un `gate`), `no_command`, `invalid_value`, `label_required`,
-`end_before_start`, `window_crosses_midnight`, `windows_overlap`, `shorten_refused`, `still_live`,
+`end_before_start`, `window_crosses_midnight`, `windows_overlap`, `invalid_days`, `shorten_refused`, `still_live`,
 `revoked` (409), `default_profile`, `not_found` (404).
 
 ### Routes publiques (le téléphone du visiteur)

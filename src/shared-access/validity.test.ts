@@ -138,3 +138,97 @@ describe("the decision (R4.12)", () => {
     expect(accessStatus(facts({ gateIds: [] }), at(3, 12))).toBe("no_gate");
   });
 });
+
+describe("days of the week on the windows (spec 187)", () => {
+  // October 2026: the 2nd is a Friday, the 3rd a Saturday, the 5th a Monday.
+  const friday = [{ from: "18:00", to: "22:00", days: [5] }];
+
+  it("is inside on the named day only", () => {
+    expect(inTimeWindows(friday, at(2, 19))).toBe(true);
+    expect(inTimeWindows(friday, at(1, 19))).toBe(false); // Thursday
+    expect(inTimeWindows(friday, at(3, 19))).toBe(false); // Saturday
+  });
+
+  it("reads a window with no days as every day, as before", () => {
+    const w = [{ from: "08:00", to: "20:00" }];
+    for (const day of [1, 2, 3, 4, 5, 6, 7]) expect(inTimeWindows(w, at(day, 9))).toBe(true);
+  });
+
+  it("opens next on the named day, today after now, a week on when today's has passed", () => {
+    expect(nextWindowOpening(friday, at(2, 17))).toBe(at(2, 18)); // Friday before
+    expect(nextWindowOpening(friday, at(1, 20))).toBe(at(2, 18)); // Thursday evening
+    expect(nextWindowOpening(friday, at(3, 10))).toBe(at(9, 18)); // Saturday → next Friday
+    expect(nextWindowOpening(friday, at(2, 23))).toBe(at(9, 18)); // Friday past the end
+  });
+
+  it("picks the earliest start among the windows of the coming days", () => {
+    const w = [
+      { from: "18:00", to: "22:00", days: [5] },
+      { from: "08:00", to: "12:00", days: [6] },
+    ];
+    expect(nextWindowOpening(w, at(2, 23))).toBe(at(3, 8));
+  });
+
+  it("refuses an empty, unreal or unlisted days value rather than reading it as every day", () => {
+    for (const days of [[], [0], [8], [1.5], "5", [null]]) {
+      expect(() => validateTimeWindows([{ from: "08:00", to: "12:00", days }])).toThrow(/day/);
+    }
+  });
+
+  it("lets two windows overlap in hours when they share no day, and refuses it when they do", () => {
+    expect(
+      validateTimeWindows([
+        { from: "08:00", to: "12:00", days: [2] },
+        { from: "10:00", to: "14:00", days: [5] },
+      ]),
+    ).toHaveLength(2);
+    expect(() =>
+      validateTimeWindows([
+        { from: "08:00", to: "12:00", days: [2, 5] },
+        { from: "10:00", to: "14:00", days: [5] },
+      ]),
+    ).toThrow(/overlap/);
+    expect(() =>
+      validateTimeWindows([
+        { from: "08:00", to: "12:00" },
+        { from: "10:00", to: "14:00", days: [3] },
+      ]),
+    ).toThrow(/overlap/);
+  });
+
+  it("stores the days sorted and unique, and all seven as none", () => {
+    expect(validateTimeWindows([{ from: "18:00", to: "22:00", days: [7, 5, 5] }])).toEqual([
+      { from: "18:00", to: "22:00", days: [5, 7] },
+    ]);
+    expect(
+      validateTimeWindows([{ from: "08:00", to: "20:00", days: [1, 2, 3, 4, 5, 6, 7] }]),
+    ).toEqual([{ from: "08:00", to: "20:00" }]);
+  });
+
+  it("refuses a press outside the day and names the next opening", () => {
+    const f = facts({ timeWindows: friday });
+    expect(decide(f, "g1", at(1, 19), armed)).toEqual({
+      ok: false,
+      reason: "outside_hours",
+      nextOpeningAt: at(2, 18),
+    });
+    expect(decide(f, "g1", at(2, 19), armed)).toEqual({ ok: true });
+    expect(accessStatus(f, at(3, 19))).toBe("outside_hours");
+  });
+
+  it("fails shut on a stored row whose days are not a list of days", () => {
+    // A restored backup or a hand-edited row: never « every day ».
+    for (const days of [[], "5", null, { 0: 5 }, [0], ["5"]]) {
+      const w = [{ from: "18:00", to: "22:00", days }] as unknown as Array<{
+        from: string;
+        to: string;
+      }>;
+      expect(inTimeWindows(w, at(1, 19))).toBe(false);
+    }
+  });
+
+  it("does not promise an opening past the end of the access", () => {
+    const f = facts({ timeWindows: friday, validUntil: at(8, 0) });
+    expect(decide(f, "g1", at(3, 19), armed)).toEqual({ ok: false, reason: "outside_hours" });
+  });
+});

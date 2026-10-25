@@ -314,6 +314,7 @@ Les specs sont regroupées par thème et annotées d'un statut :
 | 184 | Commande `refresh` du véhicule électrique                             | ✅     | Amende la spec 183 : commande ponctuelle optionnelle `refresh` (catégorie `ev_refresh`) demandant au plugin de relire le dernier relevé de la voiture sans la réveiller.                                                                                   |
 | 185 | Demande de capacité modulable                                         | ✅     | Amende la spec 140 : une demande de capacité peut déclarer une plage (`minW`, `maxW`, `stepW`) et reçoit un budget qui suit le surplus via `onBudget` ; premier utilisateur : la recette de recharge VE.                                                   |
 | 186 | Tuile du pluviomètre                                                  | ✅     | Un équipement `weather` qui ne mesure que la pluie affiche la pluie du jour et sur 24 h sur sa tuile, cumuls 7/30 jours et histogramme dans sa fiche ; la phase 2 garde la pluie horaire un an dans `sowel-rain-hourly`. Livrée en v1.74.0.                |
+| 187 | Accès partagés : jours de la semaine                                  | ✅     | Une plage horaire d’un accès partagé peut nommer ses jours (« tous les vendredis 18:00–22:00 ») ; sans jours, tous les jours, donc rien à migrer. L’éditeur replie les jours ; la page de l’invité dit le jour de la prochaine ouverture.                  |
 
 ---
 

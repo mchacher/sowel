@@ -77,8 +77,9 @@ for the gate first. You can also open a gate's page and press **Create an access
 - **Gates** — the gates it opens. Only `gate` equipments can be listed. When a gate's command has
   several values (open / close / stop), choose the one that opens.
 - **Dates** — **All the time**, or **From … to …**. The end cannot be before the start.
-- **Hours** — **All day**, or **By time windows**, one or more every day (`08:00–20:00`). A window
-  does not cross midnight, and two windows do not overlap.
+- **Hours** — **All day**, or **By time windows**, one or more (`08:00–20:00`). A window does not
+  cross midnight. Each window is **every day** unless you click **Choose days** and pick some — « every
+  Friday, 18:00–22:00 ». Two windows may not overlap on a day they share.
 - **With a code** — on by default. The code is eight characters, shown `4K7M-9QT2`, meant to be
   read out over the phone or shown on a sign. Untick it for someone who will only ever tap the link:
   the link carries a token of its own that cannot be guessed.

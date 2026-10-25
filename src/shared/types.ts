@@ -1487,10 +1487,16 @@ export type OrderSource =
 // Shared access (spec 181)
 // ============================================================
 
-/** A daily time window on the house's clock, `HH:MM`, not crossing midnight. */
+/**
+ * A time window on the house's clock, `HH:MM`, not crossing midnight. It
+ * applies on the days it names (ISO weekdays, 1 = Monday … 7 = Sunday), and
+ * every day when `days` is absent — which is how every window written before
+ * days existed reads, and how « all seven » is stored.
+ */
 export interface SharedAccessTimeWindow {
   from: string;
   to: string;
+  days?: number[];
 }
 
 /** A gate listed on an access or a profile, with what a press sends (R2.5). */

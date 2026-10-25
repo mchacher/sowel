@@ -17,6 +17,7 @@ const FIELDS: Record<string, RefusalField> = {
   invalid_hours: "hours",
   window_crosses_midnight: "hours",
   windows_overlap: "hours",
+  invalid_days: "hours",
 };
 
 export function refusalField(code: string): RefusalField {

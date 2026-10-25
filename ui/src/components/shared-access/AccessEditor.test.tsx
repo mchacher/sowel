@@ -247,6 +247,54 @@ describe("AccessEditor", () => {
     expect(screen.getByRole("alert").textContent).toMatch(/crosses midnight/);
   });
 
+  it("keeps the days of a window folded, opens them on request, and sends the ones picked", async () => {
+    vi.mocked(api.createSharedAccess).mockResolvedValueOnce({
+      ...withPeriod,
+      label: "Léa",
+      validFrom: null,
+      validUntil: null,
+      timeWindows: [{ from: "08:00", to: "20:00", days: [7] }],
+    });
+    renderEditor({ kind: "create", gateIds: ["entree"] });
+    await userEvent.type(screen.getByLabelText("Name"), "Léa");
+    await userEvent.click(screen.getByRole("button", { name: "Time windows" }));
+
+    // Folded: every day, said in words, no day button in sight.
+    expect(screen.getByText("Every day")).toBeTruthy();
+    expect(screen.queryByRole("button", { name: "Friday" })).toBeNull();
+
+    await userEvent.click(screen.getByRole("button", { name: "Choose days" }));
+    expect(screen.getByRole("button", { name: "Friday" }).getAttribute("aria-pressed")).toBe("true");
+    await userEvent.click(screen.getByRole("button", { name: "Weekend" }));
+    await userEvent.click(screen.getByRole("button", { name: "Saturday" })); // leaves Sunday
+    expect(screen.getByText("Every Sunday")).toBeTruthy();
+
+    await userEvent.click(screen.getByRole("button", { name: "Save" }));
+    await waitFor(() => expect(api.createSharedAccess).toHaveBeenCalled());
+    expect(vi.mocked(api.createSharedAccess).mock.calls.at(-1)?.[0]).toMatchObject({
+      timeWindows: [{ from: "08:00", to: "20:00", days: [7] }],
+    });
+  });
+
+  it("opens the days by itself when none is left, and refuses the save", async () => {
+    renderEditor({ kind: "create", gateIds: ["entree"] });
+    await userEvent.type(screen.getByLabelText("Name"), "Léa");
+    await userEvent.click(screen.getByRole("button", { name: "Time windows" }));
+    await userEvent.click(screen.getByRole("button", { name: "Choose days" }));
+    await userEvent.click(screen.getByRole("button", { name: "Weekend" }));
+    await userEvent.click(screen.getByRole("button", { name: "Saturday" }));
+    await userEvent.click(screen.getByRole("button", { name: "Sunday" })); // none left
+    // No way to fold it: the buttons stay until a day is ticked.
+    expect(screen.queryByRole("button", { name: "Hide days" })).toBeNull();
+    expect(screen.getByText("No day")).toBeTruthy();
+    await userEvent.click(screen.getByRole("button", { name: "Save" }));
+    expect(screen.getByRole("alert").textContent).toMatch(/at least one day/);
+    // Ticking a day does not fold them under the owner's finger.
+    await userEvent.click(screen.getByRole("button", { name: "Monday" }));
+    expect(screen.getByRole("button", { name: "Tuesday" })).toBeTruthy();
+    expect(screen.getByRole("button", { name: "Hide days" })).toBeTruthy();
+  });
+
   it("shows a server refusal translated, and the invitation once created", async () => {
     vi.mocked(api.createSharedAccess).mockRejectedValueOnce(new Error("no_command"));
     renderEditor({ kind: "create", gateIds: ["entree"] });

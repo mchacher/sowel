@@ -219,6 +219,78 @@ describe("the two validity groups", () => {
   });
 });
 
+describe("days of the week on the windows (spec 187)", () => {
+  const base: ValidityDraft = {
+    period: false,
+    from: start,
+    until: null,
+    ranges: true,
+    windows: [],
+  };
+
+  it("lets two windows overlap in hours when they share no day, as the server does", () => {
+    expect(
+      checkValidity({
+        ...base,
+        windows: [
+          { from: "08:00", to: "12:00", days: [2] },
+          { from: "10:00", to: "14:00", days: [5] },
+        ],
+      }),
+    ).toBeNull();
+    expect(
+      checkValidity({
+        ...base,
+        windows: [
+          { from: "08:00", to: "12:00", days: [2, 5] },
+          { from: "10:00", to: "14:00", days: [5] },
+        ],
+      })?.code,
+    ).toBe("windows_overlap");
+    // A window with no days is every day, so it shares one with any other.
+    expect(
+      checkValidity({
+        ...base,
+        windows: [
+          { from: "08:00", to: "12:00" },
+          { from: "10:00", to: "14:00", days: [3] },
+        ],
+      })?.code,
+    ).toBe("windows_overlap");
+  });
+
+  it("refuses a window with every day unticked, rather than sending it", () => {
+    expect(checkValidity({ ...base, windows: [{ from: "08:00", to: "12:00", days: [] }] })?.code).toBe(
+      "invalid_days",
+    );
+  });
+
+  it("sends the days sorted, and all seven as none", () => {
+    expect(
+      validityBody({
+        ...base,
+        windows: [
+          { from: "18:00", to: "22:00", days: [7, 5] },
+          { from: "08:00", to: "10:00", days: [1, 2, 3, 4, 5, 6, 7] },
+          { from: "11:00", to: "12:00" },
+        ],
+      }).timeWindows,
+    ).toEqual([
+      { from: "18:00", to: "22:00", days: [5, 7] },
+      { from: "08:00", to: "10:00" },
+      { from: "11:00", to: "12:00" },
+    ]);
+  });
+
+  it("keeps the days an access already has when its editor opens", () => {
+    const v = validityFromView(
+      { validFrom: null, validUntil: null, timeWindows: [{ from: "18:00", to: "22:00", days: [5] }] },
+      "Europe/Paris",
+    );
+    expect(v.windows).toEqual([{ from: "18:00", to: "22:00", days: [5] }]);
+  });
+});
+
 describe("the house's clock", () => {
   it("reads an instant on the house's wall clock", () => {
     expect(isoToWall("2026-10-03T14:20:00.000Z", "Europe/Paris")).toEqual(start);

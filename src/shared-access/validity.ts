@@ -31,16 +31,37 @@ export function parseHm(value: string): number | null {
   return m ? Number(m[1]) * 60 + Number(m[2]) : null;
 }
 
+const EVERY_DAY = [1, 2, 3, 4, 5, 6, 7];
+
+/**
+ * The days a window applies on. Absent is every day (every window written before
+ * days existed). Anything else that is not a list of days — a restored backup, a
+ * hand-edited row — opens on no day at all: a gate fails shut.
+ */
+function daysOf(w: SharedAccessTimeWindow): number[] {
+  if (w.days === undefined) return EVERY_DAY;
+  return Array.isArray(w.days) ? w.days : [];
+}
+
+/** ISO weekday of an instant on the house's clock: 1 = Monday … 7 = Sunday. */
+function weekdayOf(ts: number): number {
+  return new Date(ts).getDay() || 7;
+}
+
 /**
  * The time windows as the owner or a profile wrote them: each `HH:MM`, not
- * crossing midnight, not overlapping. Returned sorted. Throws otherwise.
+ * crossing midnight, and not overlapping **on a day they share** (Tuesday
+ * morning and Friday evening may overlap in hours). `days` is optional; when
+ * written it names at least one real ISO weekday. Returned sorted by start,
+ * days sorted and unique, and « all seven » written as no days at all so an
+ * unrestricted window looks as it always did. Throws otherwise.
  */
 export function validateTimeWindows(input: unknown): SharedAccessTimeWindow[] {
   if (input === undefined || input === null) return [];
   if (!Array.isArray(input))
     throw new SharedAccessError("invalid_hours", "timeWindows must be a list");
   const parsed = input.map((w: unknown) => {
-    const win = w as { from?: unknown; to?: unknown };
+    const win = w as { from?: unknown; to?: unknown; days?: unknown };
     const from = typeof win?.from === "string" ? parseHm(win.from) : null;
     const to = typeof win?.to === "string" ? parseHm(win.to) : null;
     if (from === null || to === null) {
@@ -52,15 +73,38 @@ export function validateTimeWindows(input: unknown): SharedAccessTimeWindow[] {
         `${String(win.from)}–${String(win.to)} crosses midnight or is empty`,
       );
     }
-    return { from: win.from as string, to: win.to as string, a: from, b: to };
+    let days: number[] = EVERY_DAY;
+    if (win.days !== undefined) {
+      // An empty list is refused rather than read as « every day », which is
+      // the opposite of what an owner who unticked every day meant.
+      const real =
+        Array.isArray(win.days) &&
+        win.days.length > 0 &&
+        win.days.every((d) => Number.isInteger(d) && d >= 1 && d <= 7);
+      if (!real) {
+        throw new SharedAccessError(
+          "invalid_days",
+          "A time window names at least one day, from 1 (Monday) to 7 (Sunday)",
+        );
+      }
+      days = [...new Set(win.days as number[])].sort((x, y) => x - y);
+    }
+    return { from: win.from as string, to: win.to as string, a: from, b: to, days };
   });
   parsed.sort((x, y) => x.a - y.a);
-  for (let i = 1; i < parsed.length; i++) {
-    if (parsed[i].a < parsed[i - 1].b) {
-      throw new SharedAccessError("windows_overlap", "Two time windows overlap");
+  for (let i = 0; i < parsed.length; i++) {
+    for (let j = i + 1; j < parsed.length; j++) {
+      // Sorted by start: once one starts after this one ends, so do the rest.
+      if (parsed[j].a >= parsed[i].b) break;
+      const shareADay = parsed[i].days.some((d) => parsed[j].days.includes(d));
+      if (shareADay && parsed[j].a < parsed[i].b) {
+        throw new SharedAccessError("windows_overlap", "Two time windows overlap");
+      }
     }
   }
-  return parsed.map(({ from, to }) => ({ from, to }));
+  return parsed.map(({ from, to, days }) =>
+    days.length === 7 ? { from, to } : { from, to, days },
+  );
 }
 
 /** A date given as ISO or as the house's `YYYY-MM-DDTHH:MM`, to epoch ms. */
@@ -106,24 +150,35 @@ function atMinute(ts: number, minute: number, dayOffset = 0): number {
 export function inTimeWindows(windows: SharedAccessTimeWindow[], ts: number): boolean {
   if (windows.length === 0) return true;
   const m = minuteOfDay(ts);
+  const day = weekdayOf(ts);
   return windows.some((w) => {
     const a = parseHm(w.from);
     const b = parseHm(w.to);
-    return a !== null && b !== null && m >= a && m < b;
+    return a !== null && b !== null && daysOf(w).includes(day) && m >= a && m < b;
   });
 }
 
-/** When the next window opens after `ts`, today or tomorrow. Null without windows. */
+/**
+ * When the next window opens after `ts`: later today, then each following day
+ * up to the same weekday next week. Null without windows, or when none of them
+ * can ever open.
+ */
 export function nextWindowOpening(windows: SharedAccessTimeWindow[], ts: number): number | null {
   if (windows.length === 0) return null;
-  const starts = windows
-    .map((w) => parseHm(w.from))
-    .filter((m): m is number => m !== null)
-    .sort((a, b) => a - b);
-  if (starts.length === 0) return null;
+  const parsed = windows
+    .map((w) => ({ from: parseHm(w.from), days: daysOf(w) }))
+    .filter((w): w is { from: number; days: number[] } => w.from !== null);
   const m = minuteOfDay(ts);
-  const today = starts.find((s) => s > m);
-  return today !== undefined ? atMinute(ts, today) : atMinute(ts, starts[0], 1);
+  const today = weekdayOf(ts);
+  for (let ahead = 0; ahead <= 7; ahead++) {
+    const day = ((today - 1 + ahead) % 7) + 1;
+    const starts = parsed
+      .filter((w) => w.days.includes(day) && (ahead > 0 || w.from > m))
+      .map((w) => w.from)
+      .sort((x, y) => x - y);
+    if (starts.length > 0) return atMinute(ts, starts[0], ahead);
+  }
+  return null;
 }
 
 /** What the decision needs to know of an access. */

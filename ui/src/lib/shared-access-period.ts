@@ -206,8 +206,29 @@ export function parseHm(value: string): number | null {
   return m ? Number(m[1]) * 60 + Number(m[2]) : null;
 }
 
+/** ISO weekdays, 1 = Monday … 7 = Sunday. */
+export const ALL_DAYS: readonly number[] = [1, 2, 3, 4, 5, 6, 7];
+
+/**
+ * The days a draft window applies on. Absent is every day — the same reading as
+ * the server's — but an empty list stays empty: it is the owner having unticked
+ * every day, which is refused (`invalid_days`), not « every day ».
+ */
+export function windowDays(w: SharedAccessTimeWindow): readonly number[] {
+  return w.days ?? ALL_DAYS;
+}
+
+/** A window with these days: all seven are written as none, the rest sorted. */
+export function withDays(w: SharedAccessTimeWindow, days: readonly number[]): SharedAccessTimeWindow {
+  const { days: _was, ...rest } = w;
+  void _was;
+  const unique = [...new Set(days)].sort((a, b) => a - b);
+  return unique.length === 7 ? rest : { ...rest, days: unique };
+}
+
 export type ValidityProblem =
   | { code: "end_before_start"; group: "dates" }
+  | { code: "invalid_days"; group: "hours"; window: SharedAccessTimeWindow }
   | { code: "invalid_hours"; group: "hours"; window: SharedAccessTimeWindow }
   | { code: "window_crosses_midnight"; group: "hours"; window: SharedAccessTimeWindow }
   | {
@@ -228,15 +249,21 @@ export function checkValidity(v: ValidityDraft): ValidityProblem | null {
     if (bad) return { code: "invalid_hours", group: "hours", window: bad.w };
     const cross = parsed.find((p) => (p.b as number) <= (p.a as number));
     if (cross) return { code: "window_crosses_midnight", group: "hours", window: cross.w };
+    const noDay = parsed.find((p) => windowDays(p.w).length === 0);
+    if (noDay) return { code: "invalid_days", group: "hours", window: noDay.w };
     const sorted = [...parsed].sort((x, y) => (x.a as number) - (y.a as number));
-    for (let i = 1; i < sorted.length; i++) {
-      if ((sorted[i].a as number) < (sorted[i - 1].b as number)) {
-        return {
-          code: "windows_overlap",
-          group: "hours",
-          window: sorted[i - 1].w,
-          other: sorted[i].w,
-        };
+    for (let i = 0; i < sorted.length; i++) {
+      for (let j = i + 1; j < sorted.length; j++) {
+        // Overlapping hours only matter on a day the two windows share.
+        const shared = windowDays(sorted[i].w).some((d) => windowDays(sorted[j].w).includes(d));
+        if (shared && (sorted[j].a as number) < (sorted[i].b as number)) {
+          return {
+            code: "windows_overlap",
+            group: "hours",
+            window: sorted[i].w,
+            other: sorted[j].w,
+          };
+        }
       }
     }
   }
@@ -268,7 +295,9 @@ export function validityBody(
   const now = boundsOf(v);
   const was = initial ? boundsOf(initial) : null;
   const body: { validFrom?: string | null; validUntil?: string | null; timeWindows: SharedAccessTimeWindow[] } = {
-    timeWindows: v.ranges ? v.windows.map((w) => ({ from: w.from.trim(), to: w.to.trim() })) : [],
+    timeWindows: v.ranges
+      ? v.windows.map((w) => withDays({ from: w.from.trim(), to: w.to.trim() }, windowDays(w)))
+      : [],
   };
   if (!was || was.validFrom !== now.validFrom) body.validFrom = now.validFrom;
   if (!was || was.validUntil !== now.validUntil) body.validUntil = now.validUntil;

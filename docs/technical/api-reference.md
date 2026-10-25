@@ -517,32 +517,33 @@ secret the link tokens are derived from, `sharedAccess.linkSecret`, is never ret
 
 ### Owner routes (admin only, reads included)
 
-| Method   | Path                                                         | Description                                                                                                                                       |
-| -------- | ------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `GET`    | `/api/v1/shared-access/state`                                | `SharedAccessState`: accesses (codes in clear, invitation links), gates with their armed switch, profiles, plugins a profile can be granted to.   |
-| `GET`    | `/api/v1/shared-access/journal?accessId=&limit=`             | Openings, refusals and changes, newest first. Kept a year, at most 50 000 lines.                                                                  |
-| `POST`   | `/api/v1/shared-access/accesses`                             | `{ label, gates: [{ equipmentId, value? }], withCode?, validFrom?, validUntil?, timeWindows? }`. `201` with the access.                           |
-| `PATCH`  | `/api/v1/shared-access/accesses/:id`                         | Same fields. On an access made by a plugin: `label`, `gates`, `timeWindows`, and `earlyOpenAt` / `extendedUntil`, which may only widen its dates. |
-| `POST`   | `/api/v1/shared-access/accesses/:id/{suspend,resume,revoke}` | Hold, resume, revoke.                                                                                                                             |
-| `POST`   | `/api/v1/shared-access/accesses/:id/code`                    | `{ cutPhones }` — a new code (when it has one) and a new link; the phones kept or cut off.                                                        |
-| `GET`    | `/api/v1/shared-access/accesses/:id/phones`                  | `{ phones: [{ id, platform, tag, firstSeenAt, lastSeenAt }] }` — `platform` is `iphone`, `ipad`, `android`, `mac`, `windows` or `other`.          |
-| `DELETE` | `/api/v1/shared-access/accesses/:id/phones/:phoneId`         | `204` — cuts that phone only. `404 unknown_phone`.                                                                                                |
-| `DELETE` | `/api/v1/shared-access/accesses/:id`                         | `204`. `422 still_live` unless revoked or ended.                                                                                                  |
-| `GET`    | `/api/v1/shared-access/equipment/:id`                        | `{ armed, people }` for a gate's panel.                                                                                                           |
-| `PUT`    | `/api/v1/shared-access/equipment/:id`                        | `{ armed }` — the gate's armed switch.                                                                                                            |
-| `GET`    | `/api/v1/shared-access/profiles`                             | `{ profiles }`.                                                                                                                                   |
-| `POST`   | `/api/v1/shared-access/profiles`                             | `{ name, gates?, validFrom?, validUntil?, timeWindows?, withCode?, pluginId? }`.                                                                  |
-| `PATCH`  | `/api/v1/shared-access/profiles/:id`                         | Same fields.                                                                                                                                      |
-| `DELETE` | `/api/v1/shared-access/profiles/:id`                         | `204`. `422 default_profile` for the default one. The accesses made from it keep their gates.                                                     |
-| `GET`    | `/api/v1/shared-access/app`                                  | `{ name, customIcon, version }` — the visitor's page on a home screen.                                                                            |
-| `PUT`    | `/api/v1/shared-access/app`                                  | `{ name?, icons?: { "180", "192", "512": base64 PNG } \| null }` — `400 invalid_app` unless each is a PNG of its size, 256 KiB at most.           |
+| Method   | Path                                                         | Description                                                                                                                                                                                           |
+| -------- | ------------------------------------------------------------ | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `GET`    | `/api/v1/shared-access/state`                                | `SharedAccessState`: accesses (codes in clear, invitation links), gates with their armed switch, profiles, plugins a profile can be granted to.                                                       |
+| `GET`    | `/api/v1/shared-access/journal?accessId=&limit=`             | Openings, refusals and changes, newest first. Kept a year, at most 50 000 lines.                                                                                                                      |
+| `POST`   | `/api/v1/shared-access/accesses`                             | `{ label, gates: [{ equipmentId, value? }], withCode?, validFrom?, validUntil?, timeWindows? }`; a window is `{ from, to, days? }`, `days` ISO weekdays 1–7, none = every day. `201` with the access. |
+| `PATCH`  | `/api/v1/shared-access/accesses/:id`                         | Same fields. On an access made by a plugin: `label`, `gates`, `timeWindows`, and `earlyOpenAt` / `extendedUntil`, which may only widen its dates.                                                     |
+| `POST`   | `/api/v1/shared-access/accesses/:id/{suspend,resume,revoke}` | Hold, resume, revoke.                                                                                                                                                                                 |
+| `POST`   | `/api/v1/shared-access/accesses/:id/code`                    | `{ cutPhones }` — a new code (when it has one) and a new link; the phones kept or cut off.                                                                                                            |
+| `GET`    | `/api/v1/shared-access/accesses/:id/phones`                  | `{ phones: [{ id, platform, tag, firstSeenAt, lastSeenAt }] }` — `platform` is `iphone`, `ipad`, `android`, `mac`, `windows` or `other`.                                                              |
+| `DELETE` | `/api/v1/shared-access/accesses/:id/phones/:phoneId`         | `204` — cuts that phone only. `404 unknown_phone`.                                                                                                                                                    |
+| `DELETE` | `/api/v1/shared-access/accesses/:id`                         | `204`. `422 still_live` unless revoked or ended.                                                                                                                                                      |
+| `GET`    | `/api/v1/shared-access/equipment/:id`                        | `{ armed, people }` for a gate's panel.                                                                                                                                                               |
+| `PUT`    | `/api/v1/shared-access/equipment/:id`                        | `{ armed }` — the gate's armed switch.                                                                                                                                                                |
+| `GET`    | `/api/v1/shared-access/profiles`                             | `{ profiles }`.                                                                                                                                                                                       |
+| `POST`   | `/api/v1/shared-access/profiles`                             | `{ name, gates?, validFrom?, validUntil?, timeWindows?, withCode?, pluginId? }`.                                                                                                                      |
+| `PATCH`  | `/api/v1/shared-access/profiles/:id`                         | Same fields.                                                                                                                                                                                          |
+| `DELETE` | `/api/v1/shared-access/profiles/:id`                         | `204`. `422 default_profile` for the default one. The accesses made from it keep their gates.                                                                                                         |
+| `GET`    | `/api/v1/shared-access/app`                                  | `{ name, customIcon, version }` — the visitor's page on a home screen.                                                                                                                                |
+| `PUT`    | `/api/v1/shared-access/app`                                  | `{ name?, icons?: { "180", "192", "512": base64 PNG } \| null }` — `400 invalid_app` unless each is a PNG of its size, 256 KiB at most.                                                               |
 
 Dates are ISO 8601, or `YYYY-MM-DDTHH:MM` read on the house's clock; `null` clears. Time windows are
-`[{ "from": "08:00", "to": "20:00" }]`, not crossing midnight, not overlapping.
+`[{ "from": "08:00", "to": "20:00" }]`, not crossing midnight, not overlapping on a day they share. A
+window may add `"days": [5]` (ISO weekdays, 1 = Monday … 7 = Sunday); without it, it is every day.
 
 Errors are `{ "error": "<code>", "message": "..." }`: `no_gate`, `unknown_gate` (404),
 `unsupported_equipment` (422, not a `gate`), `no_command`, `invalid_value`, `label_required`,
-`end_before_start`, `window_crosses_midnight`, `windows_overlap`, `shorten_refused`, `still_live`,
+`end_before_start`, `window_crosses_midnight`, `windows_overlap`, `invalid_days`, `shorten_refused`, `still_live`,
 `revoked` (409), `default_profile`, `not_found` (404).
 
 ### Public routes (the visitor's phone)
