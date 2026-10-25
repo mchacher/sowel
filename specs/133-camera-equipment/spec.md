@@ -250,3 +250,9 @@ different default.
 - Whether `camera_stream_url`'s `unit` field is the cleanest way to signal
   stream kind (`"hls"` vs `"mjpeg"`) vs. a dedicated field — flagged for a
   second look once a plugin actually needs it, in the follow-up plugin spec.
+
+## See also
+
+- [netatmo-api-status.md](netatmo-api-status.md): dated log of what the
+  Netatmo API exposes for the newer models (Indoor Camera Advance `NPC`,
+  outdoor `NOC2`), not yet visible to third-party apps.
