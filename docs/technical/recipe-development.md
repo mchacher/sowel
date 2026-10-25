@@ -445,11 +445,11 @@ Key events recipes typically subscribe to:
 
 ## Lifecycle
 
-1. **Load**: `RecipeLoader.loadAll()` imports each installed, enabled recipe package (`dist/index.js`) and registers `createRecipe()`'s definition with `RecipeManager.registerExternal()`
+1. **Load**: `RecipeLoader.loadAll()` imports each installed, enabled recipe package and registers `createRecipe()`'s definition with `RecipeManager.registerExternal()`. Like plugins, the loader copies `dist/` to a fresh `.hot/<timestamp>/` on every load (keeping the last two) and imports `index.js` from there, so a multi-file `dist/` is reloaded whole (issue #1073). Files outside `dist/` are not copied, so an asset a recipe reads at runtime must ship inside `dist/` and be reached relative to `import.meta.url`
 2. **Instantiation**: user creates via API -> `validate()` -> persisted to SQLite -> `createInstance()`
 3. **Restore**: on engine restart, enabled instances are loaded from DB and `createInstance()` is called
 4. **Param update**: `stop()` -> update params in DB -> `validate()` -> `createInstance()` with new params
-5. **Recipe update**: new package version installed -> definition re-registered -> running instances are restarted so they execute the new version (issue #349)
+5. **Recipe update**: new package version installed -> definition re-registered from a fresh copy of `dist/`, every file included -> running instances are restarted so they execute the new version (issue #349). No restart of Sowel is needed, and a recipe need not be bundled into a single file for it
 6. **Delete**: `stop()` -> removed from DB (cascades to state + logs)
 
 ## Existing Recipes

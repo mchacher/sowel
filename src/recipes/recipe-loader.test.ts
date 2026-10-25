@@ -141,6 +141,44 @@ describe("RecipeLoader", () => {
       await expect(loader.update("ghost")).resolves.toBeUndefined();
       expect(rm.restartInstancesOfRecipe).not.toHaveBeenCalled();
     });
+
+    it("reloads the files the entry imports, not only the entry (#1073)", async () => {
+      // Version 2 changes only ./i18n.js. Cache-busting the entry alone
+      // brought i18n.js back from Node's ESM cache: the version 1 name.
+      const dir = mkdtempSync(resolve(tmpdir(), "sowel-recipe-"));
+      tmpDirs.push(dir);
+      mkdirSync(resolve(dir, "dist"), { recursive: true });
+      writeFileSync(
+        resolve(dir, "dist/index.js"),
+        `import { NAME } from "./i18n.js";
+export function createRecipe() { return { id: "temp-recipe", name: NAME }; }`,
+      );
+      const writeName = (name: string) =>
+        writeFileSync(resolve(dir, "dist/i18n.js"), `export const NAME = ${JSON.stringify(name)};`);
+      writeName("Version 1");
+      const pm = makePackageManager({
+        installFromGitHub: vi.fn(async () => ({ id: "temp-recipe", type: "recipe" })),
+        updateFiles: vi.fn(async () => {
+          writeName("Version 2");
+          return { id: "temp-recipe", version: "2.0.0" };
+        }),
+        getPackageDir: vi.fn(() => dir),
+      });
+      const rm = makeRecipeManager();
+      const loader = new RecipeLoader(pm, rm, logger);
+
+      await loader.install("owner/repo");
+      await loader.update("temp-recipe");
+
+      expect(rm.registerExternal).toHaveBeenNthCalledWith(1, {
+        id: "temp-recipe",
+        name: "Version 1",
+      });
+      expect(rm.registerExternal).toHaveBeenNthCalledWith(2, {
+        id: "temp-recipe",
+        name: "Version 2",
+      });
+    });
   });
 
   describe("loadAll", () => {
