@@ -557,14 +557,17 @@ phone's token is sent as `Authorization: Bearer <token>`.
 | ------ | ---------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `POST` | `/enrol`   | `{ code }` or `{ link }` → `{ token, session }`. `401 unknown_code`, `410 ended`, `429 too_many`, `409 too_many_phones` (50 phones already set up on the access). |
 | `GET`  | `/session` | `{ label, status, gates, activeAt, nextOpeningAt, validUntil, travelS, presses }` — never the gate's state; `presses` are this phone's own. `401` when unknown.   |
-| `POST` | `/open`    | `{ gate }` → `{ ok: true, outcome?, expected? }`, or `409 { ok: false, reason, activeAt?, nextOpeningAt? }`.                                                      |
+| `POST` | `/open`    | `{ gate }` → `{ ok: true, outcome?, expected?, windowS? }`, or `409 { ok: false, reason, activeAt?, nextOpeningAt? }`.                                            |
 | `GET`  | `/share`   | `{ url, qr }` — the invitation link and its QR code as a `data:image/svg+xml` URI. `409 ended`, `409 no_public_url`, `401` when unknown.                          |
 
 **Outcome (spec 188).** When the gate's state is known at the press, `open` returns
-`outcome: "pending"` and `expected: "open" | "close"`, and that press in `session.presses` then
-carries `outcome` — `pending`, `confirmed` or `unconfirmed` — and `expected`. The page reads the
-session every 2 s for at most 70 s until it is `confirmed`. The owner's journal entries carry the
-same `outcome` and `outcomeExpected` (`null` when the press was not tracked).
+`outcome: "pending"`, `expected: "open" | "close"` and `windowS` (how long the core waits for the
+proof: 15 from closed, 60 from open), and that press in `session.presses` then carries `outcome` —
+`pending`, `confirmed` or `unconfirmed` — and `expected`. The page reads the session every 2 s for
+at most 70 s until it is `confirmed`, and keeps the disc locked over the longer of `travelS` and
+`windowS`, and while the outcome is pending. A late report still confirms a press up to 5 min
+after its window. The owner's journal entries carry the same `outcome` and `outcomeExpected`
+(`null` when the press was not tracked, or was replaced by a newer tracked order on the gate).
 
 A refusal `reason` is one of `revoked`, `suspended`, `not_yet`, `expired`, `outside_hours`,
 `no_gate`, `not_this_gate`, `refused_by_house` (the gate is disarmed), `too_many_opens` (12 per hour

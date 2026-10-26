@@ -105,9 +105,10 @@ encore valable, suspendu, révoqué — et dit alors pourquoi.
 
 ### Quand l'état du portail confirme { #gate-outcome }
 
-Quand Sowel connaît l'état du portail au moment de l'appui (son contact), la page suit alors **son
-propre appui**, et rien d'autre — jamais le poulailler ni aucun autre équipement. Pendant 70 s au
-plus, elle lit ce qu'il est devenu, pendant que la barre de course continue.
+Quand la commande du portail est une impulsion (`pulse`) et que Sowel connaît l'état du portail au
+moment de l'appui (son capteur de position), la page suit alors **son propre appui**, et rien
+d'autre — jamais le poulailler ni aucun autre équipement. Pendant 70 s au plus, elle lit ce qu'il
+est devenu, pendant que la barre de course continue.
 
 | Le portail…                                | La page dit                                                                              |
 | ------------------------------------------ | ---------------------------------------------------------------------------------------- |
@@ -115,12 +116,21 @@ plus, elle lit ce qu'il est devenu, pendant que la barre de course continue.
 | n'a pas bougé dans la fenêtre              | « Sans confirmation » — _Regardez le portail avant de réessayer : il a peut-être bougé._ |
 | état inconnu à l'appui                     | « Commande envoyée », comme avant                                                        |
 
-La barre de course continue quoi qu'il arrive, et la sphère ne peut être tirée de nouveau qu'à sa
-fin. La page n'invite jamais le visiteur à réappuyer, et rien n'est jamais renvoyé : une impulsion
-envoyée deux fois inverserait le portail. Une confirmation qui arrive en retard transforme encore
-« Sans confirmation » en ouverture confirmée. Le journal du téléphone et celui de l'accès montrent
-le même résultat à côté de chaque ouverture. Une ouverture compte dans les plafonds dès qu'elle est
-envoyée, quoi que fasse le portail.
+La sphère reste verrouillée tant que le résultat de l'appui est en attente. La barre de course
+court sur la plus longue de la course (30 s) et du temps que Sowel attend la preuve (15 s depuis
+fermé, 60 s depuis ouvert) : depuis un portail ouvert, la sphère n'est pas reproposée à 30 s alors
+que la première impulsion n'est pas encore prouvée. Une fermeture confirmée une fois la course
+écoulée termine la barre aussitôt.
+
+La page n'invite jamais le visiteur à réappuyer, et rien n'est jamais renvoyé : une impulsion
+envoyée deux fois inverserait le portail. Une confirmation qui arrive en retard — jusqu'à 5 minutes
+après la fenêtre (le battement suivant d'un portail dont le rapport s'est perdu en radio) —
+transforme encore « Sans confirmation » en ouverture confirmée ; un mouvement plus tardif est le
+fait de quelqu'un d'autre. Le journal du téléphone affiche « Ouverture demandée » ou « Fermeture
+demandée » (le sens attendu par Sowel), puis le résultat ; celui de l'accès montre le même résultat
+à côté de chaque ouverture. Si la commande n'est pas passée, la page dit « Pas de réponse du
+portail : regardez-le avant de réessayer, il a peut-être bougé. » Une ouverture compte dans les
+plafonds dès qu'elle est envoyée, quoi que fasse le portail.
 
 La page est en français sur un téléphone réglé en français, et en anglais sur tous les autres.
 Elle tient sur un seul écran. La roue dentée en haut à droite ouvre **Réglages** : les

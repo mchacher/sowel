@@ -58,8 +58,24 @@ window elapsed → unconfirmed → alarm (existing markUnconfirmed, new message 
   « câblage ») and shows unknown ones raw.
 - **`fault` vs. alarm**: `fault` calls `markUnconfirmed` with a new reason `device_fault`, so the
   alarm, its supersession and its resolution are spec 141's code paths.
-- **No replay (O9)**: `retried = true` at creation; `handleOrderFailed` gives a `transition`
-  order `retried = true` as well, so `handleIntegrationConnected` skips it.
+- **No replay (O9)**: `retried = true` at creation. `handleOrderFailed` does not hold a gate
+  pulse (state known or not), a cover order `classify` would track, or any order while a tracked
+  one is open on the same key: nothing is replayed, nothing is surfaced, the pending entry is
+  left untouched.
+- **Exempt supersession (O7)**: an exempt order on a key with a tracked entry keeps a
+  `transition` entry (window, timer, alarm); an `end_state` entry still `pending` / `moving`
+  and without an alarm ends as `unconfirmed` at once, with no alarm (a STOP).
+- **Alarm wording (O6)**: `raiseAlarm` stores the raised wording (key + params) on the entry;
+  a tracked entry re-raises the same alarm id when its wording changes (inherited alarm, late
+  fault reason). A FAULT's alarm is raised after `FAULT_REASON_SETTLE_MS` (1 s). `message` is
+  the English text of the same key. `why = NONE` is no detail.
+- **Push language (O6)**: `src/equipments/order-outcome-messages.ts` holds the EN + FR
+  `alarms.orderOutcome.*` strings (a test compares them with `ui/src/i18n/locales/*.json`). The
+  notification service attaches `localized: { en, fr }` to an `order-confirmation` alarm; the
+  Web Push channel picks the subscription owner's `preferences.language` (resolver injected
+  from `UserManager`), Telegram keeps the English `message`. The Activity feed keeps
+  `messageKey` / `messageParams` for that source only; `scoped-deps` strips both from
+  plugin-emitted alarms.
 
 ## Files
 
@@ -83,7 +99,8 @@ the `device.order.receipt` handling in `src/plugins/scoped-deps.ts`, the dispatc
 
 ## API
 
-- `POST /p/…/api/open` (guest): response gains `outcome?: "pending"`, `expected?: "open" | "close"`.
+- `POST /p/…/api/open` (guest): response gains `outcome?: "pending"`, `expected?: "open" | "close"`,
+  `windowS?` (the core's window for that press: 15 or 60).
 - Guest `session.presses[]`: each gains `outcome?`, `expected?`.
 - Admin journal endpoint: rows gain `outcome`, `expected`.
 - WebSocket: new `equipment.order.outcome` message. No new route.
