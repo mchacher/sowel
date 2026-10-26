@@ -1922,5 +1922,8 @@
   "sharedAccess.journal.receipt.delivered": "confirmed by the gate",
   "sharedAccess.journal.receipt.refused": "refused by the gate",
   "sharedAccess.journal.receipt.not_received": "not received by the gate",
-  "sharedAccess.journal.receipt.unconfirmed": "no confirmation"
+  "sharedAccess.journal.receipt.unconfirmed": "no confirmation",
+  "alarms.orderReceipt.refused": "{{equipment}}: order refused by the device",
+  "alarms.orderReceipt.not_received": "{{equipment}}: order not received by the device",
+  "alarms.orderReceipt.unconfirmed": "{{equipment}}: order not confirmed by the device"
 }

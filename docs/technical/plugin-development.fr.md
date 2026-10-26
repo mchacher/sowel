@@ -378,7 +378,9 @@ deps.eventBus.emit({
 
 - Émettez `pending` **depuis `executeOrder`**, puis rendez la main tout de suite : n'attendez pas l'appareil (le cœur relance un envoi trop long). C'est `pending` qui dit à Sowel que l'appareil répond ; un appareil qui n'en reçoit jamais se comporte exactement comme avant.
 - Émettez ensuite `received` (le lien l'a acquitté), puis l'un de `delivered` (appliqué, ou déjà dans cet état), `refused` (compris et refusé), `not_received` (le lien a abandonné), `unconfirmed` (pas de réponse à temps — à émettre vous-même après votre propre délai).
-- Un accusé arrivé après `not_received` / `unconfirmed` peut encore le faire passer à `delivered` ou `refused` ; mettez-y `late: true`.
+- Un accusé arrivé après `not_received` / `unconfirmed` peut encore le faire passer à `delivered` ou `refused` ; mettez-y `late: true`. Un accusé final `late` est pris comme la réponse à l'ordre en cours sur cet appareil et cette clé.
+- **Vous DEVEZ écarter les accusés d'un ordre qu'un ordre plus récent a remplacé** (suivez votre propre id d'ordre, par exemple le `#id` LoRa). Le cœur ne rattache que par `(deviceId, orderKey)` et ne peut pas distinguer deux ordres.
+- Si vous envoyez `pending` puis rien de final en 60 s, le cœur inscrit lui-même l'ordre `unconfirmed`.
 - Sowel le rattache par `(deviceId, orderKey)` au dernier ordre envoyé là, dans les 2 minutes ; un ordre plus récent remplace le précédent. L'appareil doit appartenir à votre intégration. Un `status` inconnu est refusé avec un `warn`.
 - Sowel affiche le résultat sur la tuile de l'équipement, lève une alarme `warning` sur `refused` / `not_received` / `unconfirmed` (résolue par un `delivered` ultérieur), et l'inscrit pour un appui d'accès partagé. Il **ne renvoie jamais** un ordre à cause d'un accusé.
 

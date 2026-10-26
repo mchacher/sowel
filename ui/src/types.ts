@@ -1118,6 +1118,9 @@ export type EngineEvent =
       level: "warning" | "error";
       source: string;
       message: string;
+      /** Spec 188 — the engine's i18n key for the banner; `message` is the English fallback. */
+      messageKey?: string;
+      messageParams?: Record<string, string | number>;
     }
   | { type: "system.alarm.resolved"; alarmId: string; source: string; message: string }
   | { type: "system.update.available"; current: string; latest: string; releaseUrl: string }

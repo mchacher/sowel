@@ -26,6 +26,7 @@ import { IconPicker } from "./IconPicker";
 import { BindingsPicker } from "./BindingsPicker";
 import { MobileWidgetCard } from "./MobileWidgetCard";
 import { TimedEquipmentWidget } from "./TimedEquipmentWidget";
+import { TileEquipmentContext } from "../equipments/order-receipt";
 import { RecipeTile } from "./RecipeTile";
 import { LightBulbIcon, ShutterWidgetIcon, AwningWidgetIcon, ThermometerIcon, MultiSensorIcon } from "./WidgetIcons";
 import { shutterLevel } from "./widget-icons";
@@ -456,13 +457,16 @@ function WidgetRenderer({
     // actuate WITHOUT a deadline, which is worse than not offering the tile:
     // the gate would open and stay open.
     if (widget.config?.timed) {
+      // Spec 188 — the context lets its WidgetCard draw the order receipt line.
       return (
-        <TimedEquipmentWidget
-          label={widget.label || equipment.name}
-          sublabel={widget.label ? undefined : equipmentZone}
-          equipment={equipment}
-          editMode={editMode}
-        />
+        <TileEquipmentContext.Provider value={equipment.id}>
+          <TimedEquipmentWidget
+            label={widget.label || equipment.name}
+            sublabel={widget.label ? undefined : equipmentZone}
+            equipment={equipment}
+            editMode={editMode}
+          />
+        </TileEquipmentContext.Provider>
       );
     }
 

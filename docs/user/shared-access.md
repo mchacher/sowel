@@ -105,12 +105,12 @@ Some gates answer each command — a LoRa gate does. For those, the page then fo
 press**, and nothing else: within about twenty seconds it says what the gate made of it, while the
 travel bar keeps running.
 
-| The gate…               | The page says                                                               |
-| ----------------------- | --------------------------------------------------------------------------- |
-| applied it              | the disc reads **RECEIVED**, "Opening confirmed"                            |
-| refused it              | "Command refused" — _The gate refused the command._                         |
-| never got it            | _The gate did not receive the command. You can try again._                  |
-| did not confirm in time | _No confirmation: look at the gate before trying again, it may have moved._ |
+| The gate…                    | The page says                                                                                        |
+| ---------------------------- | ---------------------------------------------------------------------------------------------------- |
+| applied it                   | the disc reads **RECEIVED**, "Opening confirmed"                                                     |
+| refused it                   | "Command refused" — _The gate refused the command._                                                  |
+| did not confirm receiving it | _The gate did not confirm receiving the command: look at it before trying again, it may have moved._ |
+| did not confirm in time      | _No confirmation: look at the gate before trying again, it may have moved._                          |
 
 The travel bar keeps running whatever the gate answers, and the disc can be pulled again once it
 ends: a command reported "not received" may still have reached the gate. Nothing is ever resent on its own: an impulse sent twice would reverse the gate. The

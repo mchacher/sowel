@@ -409,7 +409,9 @@ deps.eventBus.emit({
 
 - Emit `pending` **from inside `executeOrder`**, then return at once: do not wait for the device (the core retries a dispatch that takes too long). `pending` is what tells Sowel the device answers; a device that never gets one behaves exactly as before.
 - Then emit `received` (the link acknowledged it), and one of `delivered` (applied, or already in that state), `refused` (understood and refused), `not_received` (the link gave up), `unconfirmed` (no answer in time — emit it yourself after your own timeout).
-- A receipt arriving after `not_received` / `unconfirmed` may still upgrade it to `delivered` or `refused`; set `late: true` on it.
+- A receipt arriving after `not_received` / `unconfirmed` may still upgrade it to `delivered` or `refused`; set `late: true` on it. A `late` final receipt is taken as the answer to the order currently in flight on that device/key.
+- **You MUST discard the receipts of an order a newer order superseded** (track your own order id, e.g. LoRa's `#id`). The core correlates by `(deviceId, orderKey)` only and cannot tell two orders apart.
+- If you send `pending` and then nothing final within 60 s, the core records the order `unconfirmed` itself.
 - Sowel correlates by `(deviceId, orderKey)` with the last order dispatched there, within 2 minutes; a newer order replaces the older one. The device must belong to your integration. An unknown `status` is dropped with a `warn`.
 - Sowel shows the outcome on the equipment's tile, raises a warning alarm on `refused` / `not_received` / `unconfirmed` (resolved by a later `delivered`), and records it for a shared-access press. It **never resends** an order because of a receipt.
 

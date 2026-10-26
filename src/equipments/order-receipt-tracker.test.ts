@@ -1,6 +1,10 @@
-import { describe, it, expect, beforeEach, afterEach } from "vitest";
+import { describe, it, expect, beforeEach, afterEach, vi } from "vitest";
 import Database from "better-sqlite3";
-import { OrderReceiptTracker, RECEIPT_WINDOW_MS } from "./order-receipt-tracker.js";
+import {
+  OrderReceiptTracker,
+  RECEIPT_GUARD_MS,
+  RECEIPT_WINDOW_MS,
+} from "./order-receipt-tracker.js";
 import { EquipmentManager } from "./equipment-manager.js";
 import { DeviceManager } from "../devices/device-manager.js";
 import { ZoneManager } from "../zones/zone-manager.js";
@@ -76,7 +80,10 @@ describe("OrderReceiptTracker", () => {
     );
     tracker.init();
   });
-  afterEach(() => tracker.destroy());
+  afterEach(() => {
+    tracker.destroy();
+    vi.useRealTimers();
+  });
 
   it("re-emits pending then delivered per equipment, without an alarm", () => {
     const source: OrderSource = { kind: "manual", userId: "u1" };
@@ -120,6 +127,11 @@ describe("OrderReceiptTracker", () => {
     expect(raised[0].message).toContain("Portail");
     expect(raised[0].message).toContain("open");
     expect(raised[0].message).toContain("not confirmed");
+    // The banner words it in the viewer's language.
+    expect(raised[0]).toMatchObject({
+      messageKey: "alarms.orderReceipt.unconfirmed",
+      messageParams: { equipment: "Portail" },
+    });
   });
 
   it("resolves the alarm on a late delivered, flagged late", () => {
@@ -160,15 +172,54 @@ describe("OrderReceiptTracker", () => {
     expect(ofType("system.alarm.resolved")).toHaveLength(1);
   });
 
-  it("drops the first order's late receipt once a second order replaced it", () => {
+  // The integration discards a superseded order's receipts, so a late final
+  // answer reaching an order in flight is that order's own.
+  it("takes a late final receipt on an order in flight as its answer", () => {
     dispatch({ value: "open" });
     receipt("pending");
-    dispatch({ value: "close" });
-    receipt("pending");
-    // The first order's answer, arriving late: the second is still in flight.
+    receipt("received");
     receipt("delivered", { late: true });
+    expect(ofType("equipment.order.receipt").map((e) => [e.status, e.late])).toEqual([
+      ["pending", undefined],
+      ["received", undefined],
+      ["delivered", true],
+    ]);
+    // A late non-final status is still nothing to act on.
+    dispatch();
+    receipt("pending");
+    receipt("received", { late: true });
+    expect(ofType("equipment.order.receipt").at(-1)).toMatchObject({ status: "pending" });
+  });
 
-    expect(ofType("equipment.order.receipt").map((e) => e.status)).toEqual(["pending", "pending"]);
+  it("turns an order still pending 60 s after dispatch into unconfirmed, once", () => {
+    vi.useFakeTimers({ toFake: ["setTimeout", "clearTimeout"] });
+    dispatch();
+    receipt("pending");
+    receipt("received");
+    vi.advanceTimersByTime(RECEIPT_GUARD_MS - 1);
+    expect(ofType("system.alarm.raised")).toHaveLength(0);
+    vi.advanceTimersByTime(1);
+    expect(ofType("equipment.order.receipt").at(-1)).toMatchObject({ status: "unconfirmed" });
+    expect(ofType("system.alarm.raised")).toHaveLength(1);
+    // The integration's own late answer still upgrades it.
+    receipt("delivered", { late: true });
+    expect(ofType("system.alarm.resolved")).toHaveLength(1);
+  });
+
+  it("leaves the guard idle when the answer came, or a newer order took over", () => {
+    vi.useFakeTimers({ toFake: ["setTimeout", "clearTimeout"] });
+    dispatch();
+    receipt("pending");
+    receipt("delivered");
+    dispatch({ equipment: COOP, deviceId: "dev-coop" });
+    receipt("pending", { deviceId: "dev-coop" });
+    dispatch({ equipment: COOP, deviceId: "dev-coop" });
+    vi.advanceTimersByTime(RECEIPT_GUARD_MS * 2);
+    expect(ofType("equipment.order.receipt").map((e) => e.status)).toEqual([
+      "pending",
+      "delivered",
+      "pending",
+    ]);
   });
 
   it("drops a receipt reaching a dispatch whose device has not answered pending yet", () => {

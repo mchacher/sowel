@@ -66,9 +66,16 @@ never emits it behaves exactly as today.
 The core remembers, per `(deviceId, orderKey)`, the last order it dispatched: equipment,
 alias, value, source, time, and — for a shared-access press — the journal row. A receipt
 updates that order. A receipt for a device/key with no order dispatched in the last 2 minutes
-is ignored (debug log). A second order on the same device/key replaces the first; the first's
-late receipts are then dropped. The shared-access gate queue already serialises presses per
-gate, so the guest case never overlaps.
+is ignored (debug log). A second order on the same device/key replaces the first. The core
+correlates by device and key only, so **an integration emitting receipts MUST discard those of an
+order a newer one superseded** (lora2mqtt tracks its `#id`); a `late` final receipt reaching an
+order still `pending` / `received` is therefore that order's own answer, and is accepted. Nothing
+is accepted before `pending`. The shared-access gate queue already serialises presses per gate,
+so the guest case never overlaps.
+
+The core keeps its own guard: an order still `pending` / `received` 60 s after its `pending` is
+recorded `unconfirmed` (as if the integration had said so), so no tile or guest page waits for
+ever when the integration's final message is lost.
 
 The core re-emits it as `equipment.order.receipt { equipmentId, orderAlias, status, late?,
 source }` and broadcasts it on the WebSocket.
@@ -76,15 +83,18 @@ source }` and broadcasts it on the WebSocket.
 ### R3 — Alarm
 
 `refused`, `not_received` and `unconfirmed` raise `order-receipt:<equipmentId>:<alias>`
-(level `warning`), e.g. « Portail : commande « ouvrir » sans confirmation du portail ». The
-existing pipeline pushes it. A later `delivered` on the same equipment/alias resolves it —
+(level `warning`). The banner words it in the viewer's language from `messageKey` /
+`messageParams` (`alarms.orderReceipt.<status>`, e.g. « Portail : commande non confirmée par
+l'appareil »), like the battery alarms; `message` stays the English text for logs, push and
+the Activity feed. The existing pipeline pushes it. A later `delivered` on the same equipment/alias resolves it —
 including a late receipt for the same order. A new order that gets `pending` does not
 resolve it (same rule as spec 141's supersession).
 
 ### R4 — Tile and detail
 
-The equipment's last order shows a status line on its dashboard tile (desktop and mobile)
-and on its detail page, for equipments whose device answered `pending`:
+The equipment's last order shows a status line on its dashboard tile (desktop, mobile and timed
+tiles) and on its detail page, for equipments whose device answered `pending`. On the mobile card
+it comes in addition to the state summary (a gate still reads Ouvert / Fermé):
 
 | Status       | Line                       | Lasts                 |
 | ------------ | -------------------------- | --------------------- |
@@ -96,7 +106,8 @@ and on its detail page, for equipments whose device answered `pending`:
 | unconfirmed  | « Sans confirmation »      | until the next order  |
 
 The line is live state, held in the UI store from the WebSocket event; a page reload shows
-nothing until the next order.
+nothing until the next order. A spinner with no final status is dropped after 60 s and on a
+WebSocket reconnect, so a missed final event never leaves it spinning.
 
 ### R5 — Shared access
 
@@ -112,7 +123,10 @@ nothing until the next order.
   receipt is pending:
   - `delivered` → orb « REÇU », pill « Ouverture confirmée », journal « Ouverture confirmée »;
   - `refused` → pill « Commande refusée », message « Le portail a refusé la commande. »;
-  - `not_received` → « Le portail n'a pas reçu la commande. Vous pouvez réessayer. »;
+  - `not_received` → « Le portail n'a pas confirmé la réception : regardez-le avant de réessayer,
+    il a peut-être bougé. » — never an invitation to press again: a `not_received` can be a
+    command the gate applied with every radio acknowledgement lost, and a second impulse reverses
+    the gate. The same holds for every outcome but `delivered`;
   - `unconfirmed` → « Pas de confirmation : regardez le portail avant de réessayer, il a
     peut-être bougé. »
     The travel bar keeps running from the press, as today.
@@ -136,18 +150,18 @@ nothing until the next order.
   « ✓ Confirmée », alarm resolved, guest journal row upgraded.
 - Two orders on one gate within a second (two admins): the second replaces the first in the
   correlation; the first's outcome is not shown.
-- Two orders on one device/key in quick succession, the first's receipt arriving (not `late`)
-  after the second's `pending`: with no order id on the wire it is credited to the second. The
-  core only drops what it can tell apart (a `late` receipt, or one before `pending`). Closing this
-  needs an order reference carried by the receipt — not done here.
+- Two orders on one device/key in quick succession: the integration drops the first's receipts
+  (it knows its own order ids); the core, which has none on the wire, only drops a receipt
+  arriving before the second order's `pending`.
 - A press whose gate never answers within the 2-minute window (another order took its place, or
   the bridge said nothing) is recorded `unconfirmed`; so are presses left `pending` by a restart.
 - The guest page keeps the travel bar running and the disc locked whatever the answer, even on
   `refused` / `not_received`: a `not_received` can be a command the gate applied with every
   acknowledgement lost, and a second impulse would reverse it.
 - Core restart with orders pending: lost, nothing shown.
-- The gate refused a bad signature: the node stays silent by design, so this reads
-  « Sans confirmation », never « Refusée ».
+- The gate refused a bad signature: the node stays silent by design — no radio acknowledgement
+  at all — so the link gives up and this reads « Non reçue » (`not_received`), never « Refusée »
+  (as `domotique-lora/specs/command-receipt.md` has it).
 
 ## Acceptance criteria
 

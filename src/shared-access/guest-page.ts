@@ -301,7 +301,7 @@ export const GUEST_JS = `(function () {
     received: "RECEIVED", confirmed: "Opening confirmed", notReceived: "Command not received", noConfirm: "No confirmation",
     outcomes: {
       refused: "The gate refused the command.",
-      not_received: "The gate did not receive the command. You can try again.",
+      not_received: "The gate did not confirm receiving the command: look at it before trying again, it may have moved.",
       unconfirmed: "No confirmation: look at the gate before trying again, it may have moved."
     },
     receipts: { pending: "Opening requested", delivered: "Opening confirmed", refused: "Refused by the gate", not_received: "Not received by the gate", unconfirmed: "Opening requested · no confirmation" }
@@ -334,7 +334,7 @@ export const GUEST_JS = `(function () {
     received: "REÇU", confirmed: "Ouverture confirmée", notReceived: "Commande non reçue", noConfirm: "Sans confirmation",
     outcomes: {
       refused: "Le portail a refusé la commande.",
-      not_received: "Le portail n'a pas reçu la commande. Vous pouvez réessayer.",
+      not_received: "Le portail n'a pas confirmé la réception : regardez-le avant de réessayer, il a peut-être bougé.",
       unconfirmed: "Pas de confirmation : regardez le portail avant de réessayer, il a peut-être bougé."
     },
     receipts: { pending: "Ouverture demandée", delivered: "Ouverture confirmée", refused: "Refusée par le portail", not_received: "Non reçue par le portail", unconfirmed: "Ouverture demandée · sans confirmation" }

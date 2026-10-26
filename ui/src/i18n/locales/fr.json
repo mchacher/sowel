@@ -1922,5 +1922,8 @@
   "sharedAccess.journal.receipt.delivered": "confirmée par le portail",
   "sharedAccess.journal.receipt.refused": "refusée par le portail",
   "sharedAccess.journal.receipt.not_received": "non reçue par le portail",
-  "sharedAccess.journal.receipt.unconfirmed": "sans confirmation"
+  "sharedAccess.journal.receipt.unconfirmed": "sans confirmation",
+  "alarms.orderReceipt.refused": "{{equipment}} : commande refusée par l'appareil",
+  "alarms.orderReceipt.not_received": "{{equipment}} : commande non reçue par l'appareil",
+  "alarms.orderReceipt.unconfirmed": "{{equipment}} : commande non confirmée par l'appareil"
 }

@@ -3,7 +3,13 @@ import { act, render, screen } from "../../test-utils";
 import i18n from "../../i18n";
 import { EquipmentWidget } from "../dashboard/EquipmentWidget";
 import { MobileWidgetCard } from "../dashboard/MobileWidgetCard";
-import { DELIVERED_SHOWN_MS, useOrderReceipts } from "../../store/useOrderReceipts";
+import { TimedEquipmentWidget } from "../dashboard/TimedEquipmentWidget";
+import { TileEquipmentContext } from "./order-receipt";
+import {
+  DELIVERED_SHOWN_MS,
+  IN_FLIGHT_SHOWN_MS,
+  useOrderReceipts,
+} from "../../store/useOrderReceipts";
 import type { DashboardWidget, EquipmentWithDetails, OrderReceiptStatus } from "../../types";
 
 // Spec 188 R4 — the status line of an equipment's last order, on the tile
@@ -18,7 +24,23 @@ const gate = {
   createdAt: "2026-01-01T00:00:00Z",
   updatedAt: "2026-01-01T00:00:00Z",
   status: "online",
-  dataBindings: [],
+  dataBindings: [
+    {
+      id: "db-1",
+      equipmentId: "eq-gate",
+      deviceDataId: "dd-1",
+      alias: "state",
+      deviceId: "dev-1",
+      deviceName: "portail",
+      key: "state",
+      type: "enum",
+      category: "gate_state",
+      value: "closed",
+      lastUpdated: "2026-01-01T00:00:00Z",
+      lastChanged: "2026-01-01T00:00:00Z",
+      stale: false,
+    },
+  ],
   orderBindings: [
     {
       id: "ob-1",
@@ -115,5 +137,48 @@ describe("order receipt status line", () => {
     receive("pending");
     act(() => vi.advanceTimersByTime(DELIVERED_SHOWN_MS));
     expect(screen.getByRole("status").textContent).toBe("Sent…");
+  });
+
+  it("keeps the gate's state on the phone card beside the receipt line", async () => {
+    await i18n.changeLanguage("en");
+    render(<MobileWidgetCard widget={widget} equipment={gate} />);
+    const closed = screen.getByText(/closed/i).textContent;
+    receive("pending");
+    expect(screen.getByRole("status").textContent).toBe("Sent…");
+    expect(screen.getByText(/closed/i).textContent).toBe(closed);
+  });
+
+  it("draws the line on a timed tile too", async () => {
+    await i18n.changeLanguage("en");
+    const timed = {
+      ...gate,
+      timedCommand: { alias: "command", value: null, revertValue: null, durationMs: 900_000 },
+    } as unknown as EquipmentWithDetails;
+    render(
+      <TileEquipmentContext.Provider value="eq-gate">
+        <TimedEquipmentWidget label="Portail" equipment={timed} />
+      </TileEquipmentContext.Provider>,
+    );
+    receive("unconfirmed");
+    expect(screen.getByRole("status").textContent).toBe("No confirmation");
+  });
+
+  it("drops a spinner after 60 s, and every spinner on a reconnect", async () => {
+    await i18n.changeLanguage("en");
+    vi.useFakeTimers();
+    render(<EquipmentWidget widget={widget} equipment={gate} onExecuteOrder={vi.fn()} />);
+    receive("received");
+    act(() => vi.advanceTimersByTime(IN_FLIGHT_SHOWN_MS - 1));
+    expect(screen.getByRole("status").textContent).toBe("Received…");
+    act(() => vi.advanceTimersByTime(1));
+    expect(screen.queryByRole("status")).toBeNull();
+
+    receive("pending");
+    act(() => useOrderReceipts.getState().expireInFlight());
+    expect(screen.queryByRole("status")).toBeNull();
+    // A final status survives the reconnect.
+    receive("refused");
+    act(() => useOrderReceipts.getState().expireInFlight());
+    expect(screen.getByRole("status").textContent).toBe("Refused by the device");
   });
 });

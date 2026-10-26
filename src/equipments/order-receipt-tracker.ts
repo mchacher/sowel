@@ -28,12 +28,27 @@ const FAILURES: ReadonlySet<OrderReceiptStatus> = new Set([
   "not_received",
   "unconfirmed",
 ]);
+const TERMINAL: ReadonlySet<OrderReceiptStatus> = new Set([
+  "delivered",
+  "refused",
+  "not_received",
+  "unconfirmed",
+]);
+/**
+ * The core's own guard: an order its device said it would answer, still
+ * without a final answer this long after dispatch, is `unconfirmed`. The
+ * integration normally says so itself; this covers its message being lost, so
+ * a tile or a guest page never waits for ever.
+ */
+export const RECEIPT_GUARD_MS = 60_000;
 const UPGRADABLE: ReadonlySet<OrderReceiptStatus> = new Set(["not_received", "unconfirmed"]);
 
 interface DispatchRecord extends OrderDispatch {
   at: number;
   /** Null until the device answers `pending` for THIS dispatch. */
   status: OrderReceiptStatus | null;
+  /** The core's guard, armed on `pending`, cleared on a final answer. */
+  guard: NodeJS.Timeout | null;
 }
 
 /**
@@ -43,8 +58,9 @@ interface DispatchRecord extends OrderDispatch {
  * - nothing before `pending`: a receipt reaching a dispatch whose device has
  *   not yet said it would answer belongs to the order this one replaced, or
  *   comes from a device that never answers;
- * - a `late` receipt only upgrades a `not_received` / `unconfirmed`: on an
- *   order still in flight it can only be the previous order's;
+ * - a `late` receipt is the current order's: the integration discards the
+ *   receipts of an order another one superseded, so on an order still in
+ *   flight a late final answer is simply that answer;
  * - `delivered` and `refused` are final; `not_received` and `unconfirmed` can
  *   still become `delivered` or `refused`.
  */
@@ -55,7 +71,7 @@ function accepts(
 ): boolean {
   if (current === null) return next === "pending";
   if (current === "pending" || current === "received") {
-    if (late) return false;
+    if (late) return TERMINAL.has(next);
     return next !== "pending" && next !== current;
   }
   if (UPGRADABLE.has(current)) return next === "delivered" || next === "refused";
@@ -99,6 +115,7 @@ export class OrderReceiptTracker {
   destroy(): void {
     this.unsubscribe?.();
     this.unsubscribe = null;
+    for (const rec of this.orders.values()) if (rec.guard) clearTimeout(rec.guard);
     this.orders.clear();
     this.raised.clear();
   }
@@ -109,14 +126,16 @@ export class OrderReceiptTracker {
    */
   recordDispatch(dispatch: OrderDispatch): void {
     const now = this.now();
-    this.orders.set(`${dispatch.deviceId}:${dispatch.orderKey}`, {
-      ...dispatch,
-      at: now,
-      status: null,
-    });
+    const key = `${dispatch.deviceId}:${dispatch.orderKey}`;
+    const previous = this.orders.get(key);
+    if (previous?.guard) clearTimeout(previous.guard);
+    this.orders.set(key, { ...dispatch, at: now, status: null, guard: null });
     // Keep the table to what can still be answered.
-    for (const [key, rec] of this.orders) {
-      if (now - rec.at > RECEIPT_WINDOW_MS) this.orders.delete(key);
+    for (const [k, rec] of this.orders) {
+      if (now - rec.at > RECEIPT_WINDOW_MS) {
+        if (rec.guard) clearTimeout(rec.guard);
+        this.orders.delete(k);
+      }
     }
   }
 
@@ -153,9 +172,20 @@ export class OrderReceiptTracker {
       return;
     }
 
+    this.apply(rec, status, late);
+  }
+
+  private apply(rec: DispatchRecord, status: OrderReceiptStatus, late: boolean): void {
     const upgraded = rec.status !== null && UPGRADABLE.has(rec.status);
+    const first = rec.status === null;
     rec.status = status;
     const isLate = late || upgraded;
+
+    if (first) this.armGuard(rec);
+    else if (TERMINAL.has(status) && rec.guard) {
+      clearTimeout(rec.guard);
+      rec.guard = null;
+    }
 
     const level = FAILURES.has(status) ? "warn" : "info";
     if (status !== "pending" && status !== "received") {
@@ -181,6 +211,22 @@ export class OrderReceiptTracker {
     });
 
     this.updateAlarm(rec, status);
+  }
+
+  private armGuard(rec: DispatchRecord): void {
+    const timer = setTimeout(() => {
+      rec.guard = null;
+      const key = `${rec.deviceId}:${rec.orderKey}`;
+      if (this.orders.get(key) !== rec) return; // superseded meanwhile
+      if (rec.status !== "pending" && rec.status !== "received") return;
+      this.logger.warn(
+        { equipmentId: rec.equipmentId, alias: rec.alias, deviceId: rec.deviceId },
+        "No final order receipt from the integration in time — unconfirmed",
+      );
+      this.apply(rec, "unconfirmed", false);
+    }, RECEIPT_GUARD_MS);
+    timer.unref?.();
+    rec.guard = timer;
   }
 
   /**
@@ -212,6 +258,10 @@ export class OrderReceiptTracker {
         level: "warning",
         source: ALARM_SOURCE,
         message: `${name}: ${what} ${outcome}`,
+        // Worded by the UI in the viewer's language; `message` stays the
+        // English text for logs and publishers.
+        messageKey: `alarms.orderReceipt.${status}`,
+        messageParams: { equipment: name },
         zoneId,
       });
     } else if (status === "delivered" && this.raised.has(id)) {

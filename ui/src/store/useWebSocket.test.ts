@@ -420,6 +420,35 @@ describe("connect", () => {
     expect(alarm?.message).toBe("Order dispatch failed: Volet salon open");
     expect(alarm?.messageKey).toBeUndefined();
   });
+
+  // Spec 188 — the order receipt alarm carries its own key, worded by the UI.
+  it("words an engine-keyed alarm from its key, and falls back to its text for an unknown key", () => {
+    const ws = connect();
+    ws.simulateMessage({
+      type: "system.alarm.raised",
+      alarmId: "order-receipt:eq-1:command",
+      level: "warning",
+      source: "order-receipt",
+      message: 'Portail: order "command" not confirmed by the device',
+      messageKey: "alarms.orderReceipt.unconfirmed",
+      messageParams: { equipment: "Portail" },
+    });
+    const keyed = useWebSocket.getState().alarms.get("order-receipt:eq-1:command");
+    expect(keyed?.messageKey).toBe("alarms.orderReceipt.unconfirmed");
+    expect(keyed?.messageParams).toEqual({ equipment: "Portail" });
+
+    ws.simulateMessage({
+      type: "system.alarm.raised",
+      alarmId: "order-receipt:eq-2:command",
+      level: "warning",
+      source: "order-receipt",
+      message: "Portail: something newer",
+      messageKey: "alarms.orderReceipt.notInThisBuild",
+    });
+    const fallback = useWebSocket.getState().alarms.get("order-receipt:eq-2:command");
+    expect(fallback?.message).toBe("Portail: something newer");
+    expect(fallback?.messageKey).toBeUndefined();
+  });
 });
 
 describe("handleEvent dispatch", () => {

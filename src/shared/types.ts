@@ -1926,6 +1926,10 @@ export type EngineEvent =
       level: "warning" | "error";
       source: string;
       message: string;
+      /** Optional i18n key and parameters the UI words the alarm from (spec 188);
+       *  `message` stays the English fallback for logs and publishers. */
+      messageKey?: string;
+      messageParams?: Record<string, string | number>;
       /** Zone the alarm belongs to, so the activity feed can scope it. Absent
        *  or null = a global alarm shown in every zone (spec 143/#472). */
       zoneId?: string | null;

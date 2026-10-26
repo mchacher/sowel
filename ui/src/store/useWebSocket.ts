@@ -1,4 +1,5 @@
 import { create } from "zustand";
+import i18n from "../i18n";
 import type { BatteryAlert, EngineEvent } from "../types";
 import { getBatteryAlerts, getHealth, getPvHealthAlerts, type PvHealthAlert } from "../api";
 import { dayParam, type AlarmWording } from "../lib/alarm-message";
@@ -146,6 +147,8 @@ function alarmFromEvent(event: {
   level: "warning" | "error";
   source: string;
   message: string;
+  messageKey?: string;
+  messageParams?: Record<string, string | number>;
 }): SystemAlarm {
   if (event.alarmId.startsWith(POLL_FAIL_ALARM_PREFIX)) {
     return {
@@ -153,6 +156,18 @@ function alarmFromEvent(event: {
       level: event.level,
       source: event.alarmId.slice(POLL_FAIL_ALARM_PREFIX.length),
       messageKey: "alarms.integration.error",
+    };
+  }
+  // An alarm the engine keyed (spec 188, order receipts) is worded in the
+  // viewer's language; its English `message` stays as the fallback for a key
+  // this build of the UI does not know.
+  if (event.messageKey && i18n.exists(event.messageKey)) {
+    return {
+      alarmId: event.alarmId,
+      level: event.level,
+      source: event.source,
+      messageKey: event.messageKey,
+      ...(event.messageParams ? { messageParams: event.messageParams } : {}),
     };
   }
   return {
@@ -511,6 +526,9 @@ export const useWebSocket = create<WebSocketState>((set) => ({
       // `energy.*` / `activity.added` events after their mount fetch, so a
       // reconnect would otherwise leave them frozen until the panel remounts.
       recoverLiveOnlyStores();
+      // Spec 188 — a final order status sent while the socket was down is lost:
+      // no spinner may outlive the connection that should have stopped it.
+      useOrderReceipts.getState().expireInFlight();
 
       // Rebuild the alarm banner from server state: integration health, plus
       // the low-battery alerts (spec 143), which outlive both a page reload and

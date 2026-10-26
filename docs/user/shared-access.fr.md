@@ -109,12 +109,12 @@ Certains portails répondent à chaque commande — un portail LoRa le fait. Pou
 suit alors **son propre appui**, et rien d'autre : en une vingtaine de secondes au plus, elle dit ce
 que le portail en a fait, pendant que la barre de course continue.
 
-| Le portail…              | La page dit                                                                           |
-| ------------------------ | ------------------------------------------------------------------------------------- |
-| l'a appliquée            | la sphère affiche **REÇU**, « Ouverture confirmée »                                   |
-| l'a refusée              | « Commande refusée » — _Le portail a refusé la commande._                             |
-| ne l'a pas reçue         | _Le portail n'a pas reçu la commande. Vous pouvez réessayer._                         |
-| n'a pas confirmé à temps | _Pas de confirmation : regardez le portail avant de réessayer, il a peut-être bougé._ |
+| Le portail…                   | La page dit                                                                                        |
+| ----------------------------- | -------------------------------------------------------------------------------------------------- |
+| l'a appliquée                 | la sphère affiche **REÇU**, « Ouverture confirmée »                                                |
+| l'a refusée                   | « Commande refusée » — _Le portail a refusé la commande._                                          |
+| n'a pas confirmé la réception | _Le portail n'a pas confirmé la réception : regardez-le avant de réessayer, il a peut-être bougé._ |
+| n'a pas confirmé à temps      | _Pas de confirmation : regardez le portail avant de réessayer, il a peut-être bougé._              |
 
 La barre de course continue quoi que réponde le portail, et la sphère peut être tirée de nouveau
 quand elle se termine : une commande dite « non reçue » a pu atteindre le portail quand même. Rien
