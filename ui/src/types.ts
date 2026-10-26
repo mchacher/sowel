@@ -828,13 +828,7 @@ export type SharedAccessRefusal =
   | "gate_error";
 
 export type SharedAccessStatus =
-  | "live"
-  | "outside_hours"
-  | "not_yet"
-  | "ended"
-  | "suspended"
-  | "revoked"
-  | "no_gate";
+  "live" | "outside_hours" | "not_yet" | "ended" | "suspended" | "revoked" | "no_gate";
 
 export interface SharedAccessGateView {
   equipmentId: string;
@@ -982,8 +976,16 @@ export type ActivityMessage =
   | { template: "mode.deactivated"; params: { modeName: string } }
   | { template: "sunlight.sunrise"; params: Record<string, never> }
   | { template: "sunlight.sunset"; params: Record<string, never> }
-  | { template: "alarm.raised"; params: { source: string; message: string } }
-  | { template: "alarm.resolved"; params: { source: string; message: string } };
+  | { template: "alarm.raised"; params: AlarmActivityParams }
+  | { template: "alarm.resolved"; params: AlarmActivityParams };
+
+/** An alarm in the activity feed; an order-outcome alarm (spec 188) also carries its i18n key. */
+export interface AlarmActivityParams {
+  source: string;
+  message: string;
+  messageKey?: string;
+  messageParams?: Record<string, string | number>;
+}
 
 export interface ActivityItem {
   id: string;
@@ -1124,7 +1126,14 @@ export type EngineEvent =
       messageKey?: string;
       messageParams?: Record<string, string | number>;
     }
-  | { type: "system.alarm.resolved"; alarmId: string; source: string; message: string }
+  | {
+      type: "system.alarm.resolved";
+      alarmId: string;
+      source: string;
+      message: string;
+      messageKey?: string;
+      messageParams?: Record<string, string | number>;
+    }
   | { type: "system.update.available"; current: string; latest: string; releaseUrl: string }
   | { type: "system.update.progress"; step: string; message: string }
   | { type: "system.update.error"; error: string; operation: "update" | "restart" }

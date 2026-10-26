@@ -261,6 +261,9 @@ function makeAlarmService(publishers: PublisherSpec[]) {
         message: "Low battery: 12%",
       });
     },
+    emit(event: EngineEvent) {
+      handler?.(event);
+    },
   };
 }
 
@@ -281,6 +284,59 @@ describe("system alarm broadcast (spec 143)", () => {
     expect(telegramSend).toHaveBeenCalledTimes(1);
     expect(webPushSend).toHaveBeenCalledTimes(1);
     expect(webPushSend.mock.calls[0][1]).toEqual({ title: "⚠️ Capteur porte : Low battery: 12%" });
+    h.svc.destroy();
+  });
+
+  it("words an order-outcome alarm per language for the push (spec 188 O6)", () => {
+    const h = makeAlarmService([
+      { id: "pub-tg", channelType: "telegram", enabled: true },
+      { id: "pub-wp", channelType: "web-push", enabled: true },
+    ]);
+    h.emit({
+      type: "system.alarm.raised",
+      alarmId: "order-unconfirmed:eq-1:command",
+      level: "warning",
+      source: "order-confirmation",
+      message: "Portail: still open after the command — lost or stopped on the way",
+      messageKey: "alarms.orderOutcome.unconfirmedStillOpen",
+      messageParams: { equipment: "Portail" },
+    });
+    expect(webPushSend.mock.calls[0][1]).toEqual({
+      title:
+        "⚠️ order-confirmation : Portail: still open after the command — lost or stopped on the way",
+      localized: {
+        en: { title: "⚠️ Portail: still open after the command — lost or stopped on the way" },
+        fr: {
+          title: "⚠️ Portail : toujours ouvert après la commande — perdue ou arrêtée en route",
+        },
+      },
+    });
+    h.emit({
+      type: "system.alarm.resolved",
+      alarmId: "order-unconfirmed:eq-1:command",
+      source: "order-confirmation",
+      message: "Portail: the expected state arrived after all",
+      messageKey: "alarms.orderOutcome.recovered",
+      messageParams: { equipment: "Portail" },
+    });
+    expect(webPushSend.mock.calls[1][1]).toMatchObject({
+      localized: { fr: { title: "✅ Portail : l'état attendu est finalement arrivé" } },
+    });
+    h.svc.destroy();
+  });
+
+  it("ignores a message key from any other source (a plugin's alarm)", () => {
+    const h = makeAlarmService([{ id: "pub-wp", channelType: "web-push", enabled: true }]);
+    h.emit({
+      type: "system.alarm.raised",
+      alarmId: "plugin:x",
+      level: "warning",
+      source: "some-plugin",
+      message: "Something",
+      messageKey: "alarms.orderOutcome.fault",
+      messageParams: { equipment: "Portail" },
+    });
+    expect(webPushSend.mock.calls[0][1]).toEqual({ title: "⚠️ some-plugin : Something" });
     h.svc.destroy();
   });
 

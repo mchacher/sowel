@@ -11,6 +11,8 @@ import {
 import { Trans, useTranslation } from "react-i18next";
 import type { ActivityItem, ActivityCategory, OrderSource } from "../../types";
 import { useRecipes } from "../../store/useRecipes";
+import i18n from "../../i18n";
+import { ORDER_OUTCOME_ALARM_SOURCE } from "../../lib/alarm-message";
 
 /** A recipe's name in the UI language, from its manifest i18n; else the name the server sent. */
 type RecipeLabel = (recipeId: string | undefined, fallback: string) => string;
@@ -95,9 +97,21 @@ function interpolation(
     case "motion.detected":
     case "mode.activated":
     case "mode.deactivated":
-    case "alarm.raised":
-    case "alarm.resolved":
       return m.params as unknown as Record<string, string | number>;
+    case "alarm.raised":
+    case "alarm.resolved": {
+      const { source, message, messageKey, messageParams } = m.params;
+      // Spec 188 — an order-outcome alarm is worded in the viewer's language;
+      // a key from any other source, or one this build does not know, is not.
+      const keyed =
+        source === ORDER_OUTCOME_ALARM_SOURCE &&
+        messageKey !== undefined &&
+        i18n.exists(messageKey);
+      return {
+        source,
+        message: keyed ? t(messageKey, { ...messageParams }) : message,
+      };
+    }
     case "sunlight.sunrise":
     case "sunlight.sunset":
       return {};

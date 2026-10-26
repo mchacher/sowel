@@ -16,6 +16,9 @@ import i18n from "../i18n";
 import { dateLocale } from "./locale";
 import { localDayToDate } from "./local-date";
 
+/** The only alarm source whose `messageKey` the UI honours (spec 188 order outcomes). */
+export const ORDER_OUTCOME_ALARM_SOURCE = "order-confirmation";
+
 /** A local calendar day (`YYYY-MM-DD`), rendered in the viewer's locale. */
 export interface DayParam {
   kind: "day";

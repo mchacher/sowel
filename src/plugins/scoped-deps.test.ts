@@ -180,6 +180,27 @@ describe("EventBusProxy", () => {
     expect(inner.emit).toHaveBeenCalled();
   });
 
+  it("strips an i18n key from a plugin's alarm: its own message words it (spec 188)", () => {
+    const inner = makeMockEventBus();
+    const proxy = makeEventBusProxy("zigbee2mqtt", inner, logger);
+    proxy.emit({
+      type: "system.alarm.raised",
+      alarmId: "x",
+      level: "warning",
+      source: "order-confirmation",
+      message: "boom",
+      messageKey: "alarms.orderOutcome.fault",
+      messageParams: { equipment: "Portail" },
+    });
+    expect(inner.emit).toHaveBeenCalledWith({
+      type: "system.alarm.raised",
+      alarmId: "x",
+      level: "warning",
+      source: "order-confirmation",
+      message: "boom",
+    });
+  });
+
   it("drops non-whitelisted event types silently", () => {
     const inner = makeMockEventBus();
     const proxy = makeEventBusProxy("zigbee2mqtt", inner, logger);
