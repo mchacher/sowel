@@ -162,5 +162,5 @@ revient reçoit un nouveau lien et un nouveau code.
   qui détient un backup peut reconstruire les liens en cours. Gardez vos backups comme une clé.
   **Changer le code** tue l'ancien lien d'un accès.
 - Les codes sont effacés sept jours après la fin de leur accès.
-- Les accès créés par une plateforme de réservation sont supprimés sept jours après leur fin ; le
-  journal les garde un an.
+- Les accès créés par une plateforme de réservation sont supprimés sept jours après leur fin ; leur
+  journal est gardé un an.

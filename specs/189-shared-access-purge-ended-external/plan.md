@@ -24,4 +24,4 @@
 | manager.purge | External access extended by the owner                        | kept until 7 days after the extension, then gone              |
 | manager.purge | External access with a raised phone alarm, deleted           | `system.alarm.resolved` emitted for it                        |
 | manager.purge | Two ended externals in one run                               | both gone, `changed` notified once                            |
-| manager.purge | Nothing to delete                                            | no `changed` notification, no deletion log                    |
+| manager.purge | Nothing to delete                                            | no `changed` notification                                     |

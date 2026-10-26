@@ -4,13 +4,12 @@ No schema change, no new event, no API change.
 
 ## Store (`src/shared-access/shared-access-store.ts`)
 
-- New prepared statement `endedExternals`: `SELECT * FROM shared_accesses WHERE kind = 'external'
-AND ((valid_until IS NOT NULL AND valid_until < @before) OR (revoked_at IS NOT NULL AND
-revoked_at < @before))` — the predicate of `nullEndedCodes`, restricted to external accesses.
-  `valid_until` is the date in force, so an owner's extension already moves it.
-- `purge(opts)` is unchanged. Add a separate reader `endedExternalAccesses(before: number):
-AccessRow[]`; the manager deletes through the existing `deleteAccess` / `addTombstone` store
-  methods, so the journal and tombstone logic stays in one place.
+- New prepared statement `endedExternals`: the predicate of `nullEndedCodes` (ended or revoked
+  before `@before`), restricted to `kind = 'external'`. `valid_until` is the date in force, so an
+  owner's extension already moves it.
+- `purge(opts)` is unchanged. A separate reader `endedExternalAccesses(before)` returns the rows;
+  the manager deletes through the existing `deleteAccess` / `addTombstone` store methods, so the
+  journal and tombstone logic stays in one place.
 
 ## Manager (`src/shared-access/shared-access-manager.ts`)
 
