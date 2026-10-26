@@ -449,6 +449,7 @@ describe("the outcome of a press (spec 188 O8)", () => {
       ok: true,
       outcome: "pending",
       expected: "open",
+      windowS: 15,
     });
     expect(openedRows()).toEqual([
       expect.objectContaining({ outcome: "pending", outcomeExpected: "open" }),
@@ -541,9 +542,29 @@ describe("the outcome of a press (spec 188 O8)", () => {
       expected: "close",
       source: { kind: "manual", userId: "admin" },
     });
-    // The first press's window was cancelled; nothing of it is shown again.
+    // The first press's window was cancelled: its row stops reading pending
+    // (NULL, a press that was not followed), and nothing of it is shown again.
+    expect(openedRows()[0].outcome).toBeNull();
     outcomeFor(press, "confirmed");
-    expect(openedRows()[0].outcome).toBe("pending");
+    expect(openedRows()[0].outcome).toBeNull();
+  });
+
+  it("an exempt press after it does not end the wait: its late outcome still lands on its row (#1088 review)", async () => {
+    h = buildSharedAccessHarness();
+    h.manager.start();
+    trackedGate();
+    const { token } = await withPhone();
+    await h.manager.open(token, h.gates.entree);
+    const first = h.dispatches[0];
+    // The gate state reads "unknown" after the first pulse: the core does not
+    // follow the second one, and keeps following the first.
+    h.setDuringDispatch(null);
+    h.clock.now += 20_000;
+    expect(await h.manager.open(token, h.gates.entree)).toEqual({ ok: true });
+    outcomeFor(first, "confirmed");
+    const [second, firstRow] = openedRows();
+    expect(firstRow.outcome).toBe("confirmed");
+    expect(second.outcome).toBeNull();
   });
 
   it("keeps waiting when an earlier order's final status arrives (only a new order replaces it)", async () => {

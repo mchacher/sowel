@@ -383,7 +383,7 @@ export class SharedAccessStore {
     );
   }
   /** Spec 188 — what became of a press, on that press's own row. */
-  setOutcome(rowId: number, outcome: string): void {
+  setOutcome(rowId: number, outcome: string | null): void {
     this.stmts.setOutcome.run(outcome, rowId);
   }
   listJournal(accessId: string | null, limit: number): JournalRow[] {

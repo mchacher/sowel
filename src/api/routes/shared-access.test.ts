@@ -181,7 +181,12 @@ describe("shared access routes", () => {
       headers: auth,
       payload: { gate: h.gates.entree },
     });
-    expect(open.json()).toEqual({ ok: true, outcome: "pending", expected: "open" });
+    expect(open.json()).toEqual({
+      ok: true,
+      outcome: "pending",
+      expected: "open",
+      windowS: 15,
+    });
 
     const press = h.dispatches[0];
     h.eventBus.emit({
@@ -313,12 +318,8 @@ describe("the public surface", () => {
 
   // Spec 188 O8 — the page follows its own press only, words the three
   // endings as approved, and never invites the guest to press again.
-  it("follows only a tracked press, from its own row, every 2 s for 70 s", () => {
-    expect(GUEST_JS).toContain('if (r.body.outcome === "pending") follow(gate.id);');
-    expect(GUEST_JS).toContain("FOLLOW_EVERY_MS = 2000, FOLLOW_FOR_MS = 70000");
-    expect(GUEST_JS).toContain('p.result === "sent" && p.gateId === gateId');
-  });
-
+  // Its behaviour (polling, endings, disc lock) is tested on a DOM in
+  // src/shared-access/guest-page.test.ts.
   it("words confirmed and unconfirmed as approved, with no invitation to press again", () => {
     expect(GUEST_JS).toContain(
       'confirmed: { open: "Ouverture confirmée", close: "Fermeture confirmée" }',

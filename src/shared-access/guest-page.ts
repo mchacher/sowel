@@ -283,7 +283,7 @@ export const GUEST_JS = `(function () {
     qr: "QR code of this access", send: "Share", sendText: "Open this link on your phone to get this access.", copyLink: "Copy the link", copied: "Link copied", shareEnded: "This access has ended: there is nothing left to share.",
     shareNoUrl: "The house has no public address yet: ask your host.", noCommands: "No command from this phone yet.",
     lastAt: "Last opening requested at ", lastOn: "Last opening requested ", today: "today", yesterday: "yesterday",
-    asked: "Opening requested", notYet: "Opens on ", nextAt: "Next opening: ", suspended: "Access on hold",
+    asked: "Opening requested", askedClose: "Closing requested", notYet: "Opens on ", nextAt: "Next opening: ", suspended: "Access on hold",
     revoked: "This access was revoked.", endedLong: "This access has ended.", noGate: "No gate on this access.",
     installIos: "Put this access on your home screen: tap Share ~SHARE~ (under ⋯ if you do not see it), then “Add to Home Screen”.", installIosOther: " If the option is missing, open this page in Safari.",
     installAndroid: "Put this access on your home screen: open the menu ⋮, then “Add to Home screen” or “Install app”.",
@@ -296,7 +296,7 @@ export const GUEST_JS = `(function () {
       no_gate: "No gate on this access.", not_this_gate: "This access does not open this gate.",
       refused_by_house: "The house refused the command.", too_many_opens: "Too many openings in the last hour.",
       busy: "The gate is busy. Try again in a moment.",
-      gate_error: "The gate did not take the command. Try again."
+      gate_error: "No answer from the gate: look at it before trying again, it may have moved."
     },
     // Spec 188 O8 — what became of this phone's press. Never an invitation to press again.
     confirmed: { open: "Opening confirmed", close: "Closing confirmed" }, noConfirm: "No confirmation",
@@ -311,7 +311,7 @@ export const GUEST_JS = `(function () {
     qr: "QR code de cet accès", send: "Partager", sendText: "Ouvrez ce lien sur votre téléphone pour avoir cet accès.", copyLink: "Copier le lien", copied: "Lien copié", shareEnded: "Cet accès est terminé : il n'y a plus rien à partager.",
     shareNoUrl: "La maison n'a pas encore d'adresse publique : demandez à votre hôte.", noCommands: "Aucune commande depuis ce téléphone.",
     lastAt: "Dernière ouverture demandée à ", lastOn: "Dernière ouverture demandée ", today: "aujourd'hui", yesterday: "hier",
-    asked: "Ouverture demandée", notYet: "Ouvre le ", nextAt: "Prochaine ouverture : ", suspended: "Accès suspendu",
+    asked: "Ouverture demandée", askedClose: "Fermeture demandée", notYet: "Ouvre le ", nextAt: "Prochaine ouverture : ", suspended: "Accès suspendu",
     revoked: "Cet accès a été révoqué.", endedLong: "Cet accès est terminé.", noGate: "Aucun portail sur cet accès.",
     installIos: "Mettez cet accès sur votre écran d'accueil : touchez Partager ~SHARE~ (sous ⋯ si vous ne le voyez pas), puis « Sur l'écran d'accueil ».", installIosOther: " Si l'option manque, ouvrez cette page dans Safari.",
     installAndroid: "Mettez cet accès sur votre écran d'accueil : ouvrez le menu ⋮, puis « Ajouter à l'écran d'accueil » ou « Installer l'application ».",
@@ -324,7 +324,7 @@ export const GUEST_JS = `(function () {
       no_gate: "Aucun portail sur cet accès.", not_this_gate: "Cet accès n'ouvre pas ce portail.",
       refused_by_house: "La maison a refusé la commande.", too_many_opens: "Trop d'ouvertures dans l'heure.",
       busy: "Le portail est occupé. Réessayez dans un instant.",
-      gate_error: "Le portail n'a pas pris la commande. Réessayez."
+      gate_error: "Pas de réponse du portail : regardez-le avant de réessayer, il a peut-être bougé."
     },
     // Spec 188 O8 — ce qu'est devenu l'appui de ce téléphone. Jamais une invitation à réappuyer.
     confirmed: { open: "Ouverture confirmée", close: "Fermeture confirmée" }, noConfirm: "Sans confirmation",
@@ -346,6 +346,14 @@ export const GUEST_JS = `(function () {
   var pillTimer = null;
   // Spec 188 O8 — the press being followed: every 2 s for 70 s at most.
   var following = null;
+  // While its outcome is awaited the disc stays locked, even past the travel
+  // bar: a second pull could reverse the gate. \`awaiting\` is the press whose
+  // outcome is still open; \`afterOutcome\` unlocks the disc once it settles.
+  var awaiting = null, afterOutcome = null;
+  // The running travel bar (its start, the travel time and the span it runs).
+  var bar = null;
+  // An outcome pill is held this long before the resting pill comes back.
+  var pillUntil = 0;
   var FOLLOW_EVERY_MS = 2000, FOLLOW_FOR_MS = 70000;
 
   function saveToken(t) {
@@ -518,11 +526,13 @@ export const GUEST_JS = `(function () {
   }
 
   // Spec 188 O8 — a sent press reads as its outcome when the core followed it;
-  // a press still pending or not followed reads as today's « Opening requested ».
+  // a press still pending reads « Opening requested » or « Closing requested »
+  // (the direction the core expected), one it did not follow as before.
   function pressLabel(p) {
     if (p.outcome === "confirmed" && T.confirmed[p.expected]) return T.confirmed[p.expected];
-    if (p.outcome === "unconfirmed") return T.asked + " · " + T.noConfirm.toLowerCase();
-    return T.asked;
+    var asked = p.expected === "close" ? T.askedClose : T.asked;
+    if (p.outcome === "unconfirmed") return asked + " · " + T.noConfirm.toLowerCase();
+    return asked;
   }
 
   var ICON = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 21h8V5l-8 3z"></path><path d="M11 21h2V9l-2-1"></path><path d="M15 12h6"></path><path d="M18 9l3 3-3 3"></path></svg>';
@@ -605,13 +615,15 @@ export const GUEST_JS = `(function () {
     if (busy) return;
     busy = true;
     following = null; // a new press: the previous one's outcome is no longer this screen's
+    awaiting = null; afterOutcome = null;
     orb.classList.add("busy"); verb.textContent = T.sent; hint.textContent = ""; guide.classList.remove("on");
     setPill("run", T.commandSent);
     api("open", "POST", { gate: gate.id }).then(function (r) {
       if (r.status === 401) { saveToken(null); busy = false; showCode(); return; }
       if (r.status === 200 && r.body.ok) {
-        refresh(); runBar(rest);
-        if (r.body.outcome === "pending") follow(gate.id);
+        var tracked = r.body.outcome === "pending";
+        if (tracked) follow(gate.id);
+        refresh(); runBar(rest, tracked ? r.body.windowS : 0);
         return;
       }
       var reason = (r.body && r.body.reason) || "gate_error";
@@ -632,20 +644,43 @@ export const GUEST_JS = `(function () {
     pillTimer = setTimeout(function () { restingPill(); }, 4200);
   }
 
-  function runBar(rest) {
+  // The travel bar. A followed press runs it over the longer of the travel
+  // and the core's window for that press (O8): from an open gate the window
+  // is 60 s, and a disc re-armed at 30 s would invite a second pull while the
+  // first is still unproven. A confirmation once the travel has elapsed ends
+  // it at once; an outcome still awaited at its end holds the disc locked.
+  function runBar(rest, windowS) {
     var travel = (session && session.travelS) || 30;
     var prog = $("prog"), fill = $("barFill");
     prog.classList.add("on");
     $("progLeft").textContent = T.commandSent.toLowerCase();
     var t0 = performance.now();
-    (function step(now) {
-      var p = Math.min(1, (now - t0) / (travel * 1000));
-      fill.style.width = (p * 100) + "%";
-      $("progRight").textContent = ((1 - p) * travel).toFixed(0) + " s";
-      if (p < 1) { requestAnimationFrame(step); return; }
+    var mine = bar = { t0: t0, travel: travel, span: Math.max(travel, windowS || 0) };
+    function finish() {
+      if (bar !== mine) return;
+      bar = null;
       fill.style.width = "0%"; prog.classList.remove("on");
-      busy = false; rest(); restingPill();
+      busy = false; rest();
+      if (Date.now() >= pillUntil) restingPill();
+    }
+    (function step(now) {
+      var p = Math.min(1, (now - t0) / (mine.span * 1000));
+      fill.style.width = (p * 100) + "%";
+      $("progRight").textContent = ((1 - p) * mine.span).toFixed(0) + " s";
+      if (p < 1) { requestAnimationFrame(step); return; }
+      if (awaiting) { afterOutcome = finish; return; }
+      finish();
     })(t0);
+  }
+
+  // The followed press's outcome is final for the disc: unlock it if the bar
+  // was only waiting for that.
+  function settle(me) {
+    if (awaiting !== me) return;
+    awaiting = null;
+    var f = afterOutcome;
+    afterOutcome = null;
+    if (f) f();
   }
 
   // ── The outcome of this phone's press (spec 188 O8) ──────
@@ -653,7 +688,8 @@ export const GUEST_JS = `(function () {
   // session — this phone's presses, nothing else — read every 2 s for at most
   // 70 s, until it is confirmed (a late state turns an unconfirmed into a
   // confirmed). The travel bar runs on meanwhile, and the disc stays locked
-  // until it ends: whatever the outcome, a second impulse could reverse the gate.
+  // until it ends and the outcome is no longer pending: whatever the outcome,
+  // a second impulse could reverse the gate.
   function ownPress(gateId) {
     var list = (session && session.presses) || [];
     return list.filter(function (p) { return p.result === "sent" && p.gateId === gateId; })[0] || null;
@@ -662,23 +698,34 @@ export const GUEST_JS = `(function () {
   function follow(gateId) {
     var me = {};
     following = me;
+    awaiting = me;
     var t0 = Date.now(), shown = null;
+    function stop() {
+      if (following === me) following = null;
+      settle(me);
+    }
     function again() {
-      if (Date.now() - t0 >= FOLLOW_FOR_MS) { following = null; return; }
+      if (Date.now() - t0 >= FOLLOW_FOR_MS) { stop(); return; }
       setTimeout(poll, FOLLOW_EVERY_MS);
     }
     function poll() {
-      if (following !== me) return;
+      if (following !== me) { settle(me); return; }
       api("session", "GET").then(function (r) {
-        if (following !== me) return;
-        if (r.status === 401) { following = null; saveToken(null); showCode(); return; }
+        if (following !== me) { settle(me); return; }
+        if (r.status === 401) { stop(); saveToken(null); showCode(); return; }
         if (r.status === 200) { session = r.body; renderJournal(); }
         var p = ownPress(gateId);
         var status = p && p.outcome;
-        if (status === "confirmed") { following = null; showOutcome(p); return; }
-        if (status === "unconfirmed" && shown !== status) { shown = status; showOutcome(p); }
+        if (status === "confirmed") {
+          stop();
+          // Once the travel has elapsed, nothing is left to wait for.
+          if (bar) bar.span = Math.min(bar.span, Math.max(bar.travel, (performance.now() - bar.t0) / 1000));
+          showOutcome(p);
+          return;
+        }
+        if (status === "unconfirmed" && shown !== status) { shown = status; settle(me); showOutcome(p); }
         again();
-      }, function () { if (following === me) again(); });
+      }, function () { if (following === me) again(); else settle(me); });
     }
     setTimeout(poll, FOLLOW_EVERY_MS);
   }
@@ -694,8 +741,9 @@ export const GUEST_JS = `(function () {
       setPill("bad", T.noConfirm);
       $("msg").textContent = T.lookFirst;
     }
-    // While the bar runs, its end puts the resting pill back.
-    if (!busy) pillTimer = setTimeout(function () { if (!busy) restingPill(); }, 4200);
+    // Held a moment; while the bar runs, its end puts the resting pill back.
+    pillUntil = Date.now() + 4200;
+    pillTimer = setTimeout(function () { if (!busy) restingPill(); }, 4200);
   }
 
   function refresh() {
