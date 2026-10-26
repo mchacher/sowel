@@ -1481,25 +1481,27 @@ export type OrderSource =
   | { kind: "external"; channel: string }
   // Spec 181 — a press from someone holding a shared access. The label rides in
   // the source so the Activity feed still names the access once it is deleted.
-  // Spec 188 — `pressId` names this one press, so its delivery receipt finds
-  // its way back to the press it answers and to nothing else.
+  // Spec 188 — `pressId` names this one press, so its outcome finds its way
+  // back to the press it answers and to nothing else.
   | { kind: "shared_access"; accessId: string; label: string; pressId?: string };
 
 // ============================================================
-// Order delivery receipt (spec 188)
+// Order outcome from reported state (spec 188)
 // ============================================================
 
 /**
- * What a device made of one order, as its integration reports it.
+ * What became of a tracked order (a gate impulse, a cover OPEN / CLOSE), as
+ * read from the state the device reports.
  *
- * `pending` — sent, the device is expected to answer; `received` — the radio
- * link acknowledged it; `delivered` — the device applied it (or already had);
- * `refused` — the device understood it and refused it; `not_received` — the
- * radio link gave up; `unconfirmed` — no answer in time. The last two can still
- * be upgraded by a late receipt.
+ * `pending` — sent, the window is running; `moving` — the cover reports it is
+ * travelling toward the target; `confirmed` — the expected state was reported;
+ * `fault` — the device reported FAULT; `unconfirmed` — the window elapsed. A
+ * late expected state still resolves the alarm of the last two.
  */
-export type OrderReceiptStatus =
-  "pending" | "received" | "delivered" | "refused" | "not_received" | "unconfirmed";
+export type OrderOutcomeStatus = "pending" | "moving" | "confirmed" | "fault" | "unconfirmed";
+
+/** The movement a tracked order should cause. */
+export type OrderOutcomeExpected = "open" | "close";
 
 // ============================================================
 // Shared access (spec 181)
@@ -1629,8 +1631,10 @@ export interface SharedAccessJournalEntry {
   equipmentId: string | null;
   /** R5.19 — the phone's tag (`7K3F`) when a phone did it. */
   phoneTag: string | null;
-  /** Spec 188 — the gate's receipt for an `opened` row; null when its device does not answer. */
-  receipt: OrderReceiptStatus | null;
+  /** Spec 188 — the outcome of an `opened` row's press; null when the press was not tracked. */
+  outcome: Exclude<OrderOutcomeStatus, "moving" | "fault"> | null;
+  /** Spec 188 — the movement that press should cause; null when not tracked. */
+  outcomeExpected: OrderOutcomeExpected | null;
 }
 
 /** What a plugin gets back for a stay (spec 181 R9). */
@@ -1757,18 +1761,6 @@ export type EngineEvent =
       deviceId: string;
       timestamp: string;
     }
-  // Spec 188 — an integration reporting what a device made of an order.
-  // Emitted by plugins (scoped to their own integrationId).
-  | {
-      type: "device.order.receipt";
-      integrationId: string;
-      /** Sowel device id. */
-      deviceId: string;
-      orderKey: string;
-      status: OrderReceiptStatus;
-      /** A receipt that arrived after an `unconfirmed` / `not_received`. */
-      late?: boolean;
-    }
   // Zone events
   | { type: "zone.created"; zone: Zone }
   | { type: "zone.updated"; zone: Zone }
@@ -1810,16 +1802,20 @@ export type EngineEvent =
       value: unknown;
       // "integration_disconnected" (issue #702): the order never reached the
       // wire at all, the integration was unreachable when it was dispatched.
-      reason: "timeout" | "device_offline" | "integration_disconnected";
+      // "device_fault" (spec 188): the device answered FAULT to a cover order.
+      reason: "timeout" | "device_offline" | "integration_disconnected" | "device_fault";
       source?: OrderSource;
     }
-  // Spec 188 — the device's receipt for the equipment's last order.
+  // Spec 188 — a tracked order's outcome changed (gate impulse, cover OPEN / CLOSE).
   | {
-      type: "equipment.order.receipt";
+      type: "equipment.order.outcome";
       equipmentId: string;
       orderAlias: string;
-      status: OrderReceiptStatus;
-      late?: boolean;
+      value: unknown;
+      status: OrderOutcomeStatus;
+      expected?: OrderOutcomeExpected;
+      /** The device's reason for a `fault` (its `why` key, e.g. `BOTTOM`). */
+      detail?: string;
       source?: OrderSource;
     }
   // Spec 174 — a timed action: act now, revert at the deadline.

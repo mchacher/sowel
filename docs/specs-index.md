@@ -336,7 +336,7 @@ Specs are grouped by theme and annotated with status:
 | 185 | Modulating capacity claim                                               | ✅     | Amends spec 140: a capacity claim may declare a range (`minW`, `maxW`, `stepW`) and receives a surplus-following budget via `onBudget`; first consumer is the EV charging recipe.                                                             |
 | 186 | Rain gauge tile                                                         | ✅     | A rain-only `weather` equipment shows today's and 24 h rain on its tile, with 7/30-day totals and a histogram in its sheet; phase 2 keeps hourly rain a year in `sowel-rain-hourly`. Shipped in v1.74.0.                                      |
 | 187 | Shared access: days of the week                                         | ✅     | A time window of a shared access may name its days (« every Friday 18:00–22:00 »); no days means every day, so nothing is migrated. The editor folds the days; the visitor page names the weekday of the next opening.                        |
-| 188 | Order delivery receipt                                                  | ✅     | A device that answers its orders (LoRa) reports each one's outcome: a status line on the tile and detail page, an alarm when refused, lost or unconfirmed, and the guest page shows its own press's outcome. Never resends.                   |
+| 188 | Order outcome from reported state                                       | ✅     | Confirms a gate impulse from its contact flipping and a cover OPEN/CLOSE from its end state, in the spec 141 tracker; tile line, alarm, guest page follows its own press only. Never resends.                                                 |
 
 ---
 

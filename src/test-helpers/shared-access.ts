@@ -41,8 +41,8 @@ export interface SharedAccessHarness {
   /** The next dispatch waits until the returned function is called. */
   holdNextDispatch: () => () => void;
   /**
-   * Spec 188 — run while the order is being handed over, the way a plugin
-   * reports `pending` from inside `executeOrder`.
+   * Spec 188 — run while the order is being handed over, the way the order
+   * confirmation tracker emits `pending` from inside `executeOrder`.
    */
   setDuringDispatch: (fn: ((d: Dispatch) => void) | null) => void;
   /** A date and hour on the house's clock, to epoch ms. */

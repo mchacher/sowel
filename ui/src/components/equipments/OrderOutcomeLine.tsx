@@ -1,22 +1,22 @@
 import { useContext } from "react";
 import { useTranslation } from "react-i18next";
 import { Check, CircleAlert, Loader2 } from "lucide-react";
-import { TileEquipmentContext, useOrderReceipt } from "./order-receipt";
-import type { OrderReceiptStatus } from "../../types";
+import { TileEquipmentContext, outcomeText, useOrderOutcome } from "./order-outcome";
+import type { OrderOutcomeStatus } from "../../types";
 
-// Spec 188 R4 — one line saying what became of the equipment's last order,
-// for equipments whose device answers. Nothing at all otherwise.
+// Spec 188 O5 — one line saying what became of the equipment's last tracked
+// order (a gate impulse, a cover OPEN / CLOSE), read from the state the device
+// reported. Nothing at all for an order the engine does not track.
 
-const TONE: Record<OrderReceiptStatus, string> = {
+const TONE: Record<OrderOutcomeStatus, string> = {
   pending: "text-text-tertiary",
-  received: "text-text-tertiary",
-  delivered: "text-success",
-  refused: "text-error",
-  not_received: "text-warning",
+  moving: "text-text-tertiary",
+  confirmed: "text-success",
+  fault: "text-error",
   unconfirmed: "text-warning",
 };
 
-export function OrderReceiptLine({
+export function OrderOutcomeLine({
   equipmentId,
   size = "sm",
   className = "",
@@ -27,31 +27,33 @@ export function OrderReceiptLine({
   className?: string;
 }) {
   const { t } = useTranslation();
-  const receipt = useOrderReceipt(equipmentId);
-  if (!receipt) return null;
-  const { status } = receipt;
+  const outcome = useOrderOutcome(equipmentId);
+  if (!outcome) return null;
+  const { status } = outcome;
   const icon = size === "xs" ? 10 : 12;
   const text = size === "xs" ? "text-[10px]" : "text-[11px]";
+  const label = outcomeText(t, outcome);
   return (
     <span
       role="status"
       aria-live="polite"
+      title={label}
       className={`inline-flex items-center justify-center gap-1 max-w-full ${text} font-medium leading-tight ${TONE[status]} ${className}`}
     >
-      {status === "pending" || status === "received" ? (
+      {status === "pending" || status === "moving" ? (
         <Loader2 size={icon} strokeWidth={1.5} className="shrink-0 motion-safe:animate-spin" />
-      ) : status === "delivered" ? (
+      ) : status === "confirmed" ? (
         <Check size={icon} strokeWidth={2} className="shrink-0" />
       ) : (
         <CircleAlert size={icon} strokeWidth={1.5} className="shrink-0" />
       )}
-      <span className="truncate">{t(`orderReceipt.${status}`)}</span>
+      <span className="truncate">{label}</span>
     </span>
   );
 }
 
 /** The line inside a tile, read from the tile's own equipment. */
-export function TileOrderReceiptLine() {
+export function TileOrderOutcomeLine() {
   const equipmentId = useContext(TileEquipmentContext);
-  return <OrderReceiptLine equipmentId={equipmentId} className="w-full" />;
+  return <OrderOutcomeLine equipmentId={equipmentId} className="w-full" />;
 }

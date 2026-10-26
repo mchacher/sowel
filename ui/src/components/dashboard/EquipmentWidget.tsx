@@ -73,7 +73,7 @@ import {
 } from "./WidgetIcons";
 import { WeatherForecastWidget } from "./WeatherForecastWidget";
 import { WidgetCard } from "./WidgetCard";
-import { TileEquipmentContext } from "../equipments/order-receipt";
+import { TileEquipmentContext } from "../equipments/order-outcome";
 import { TimedEquipmentWidget } from "./TimedEquipmentWidget";
 import { renderWidgetStateIcon, shutterLevel } from "./widget-icons";
 import { resolveWidgetPresentation } from "./presentation/resolveWidgetPresentation";

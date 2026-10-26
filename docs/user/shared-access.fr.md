@@ -103,26 +103,24 @@ La page ne dit jamais si le portail est ouvert ou fermé. Elle ne montre que **l
 visiteur lui-même**, et ne parle en mots que quand le portail ne bougera pas — hors des heures, pas
 encore valable, suspendu, révoqué — et dit alors pourquoi.
 
-### Quand le portail confirme { #gate-receipt }
+### Quand l'état du portail confirme { #gate-outcome }
 
-Certains portails répondent à chaque commande — un portail LoRa le fait. Pour ceux-là, la page
-suit alors **son propre appui**, et rien d'autre : en une vingtaine de secondes au plus, elle dit ce
-que le portail en a fait, pendant que la barre de course continue.
+Quand Sowel connaît l'état du portail au moment de l'appui (son contact), la page suit alors **son
+propre appui**, et rien d'autre — jamais le poulailler ni aucun autre équipement. Pendant 70 s au
+plus, elle lit ce qu'il est devenu, pendant que la barre de course continue.
 
-| Le portail…                   | La page dit                                                                                        |
-| ----------------------------- | -------------------------------------------------------------------------------------------------- |
-| l'a appliquée                 | la sphère affiche **REÇU**, « Ouverture confirmée »                                                |
-| l'a refusée                   | « Commande refusée » — _Le portail a refusé la commande._                                          |
-| n'a pas confirmé la réception | _Le portail n'a pas confirmé la réception : regardez-le avant de réessayer, il a peut-être bougé._ |
-| n'a pas confirmé à temps      | _Pas de confirmation : regardez le portail avant de réessayer, il a peut-être bougé._              |
+| Le portail…                                | La page dit                                                                              |
+| ------------------------------------------ | ---------------------------------------------------------------------------------------- |
+| s'est ouvert (ou fermé, s'il était ouvert) | « Ouverture confirmée » (ou « Fermeture confirmée »)                                     |
+| n'a pas bougé dans la fenêtre              | « Sans confirmation » — _Regardez le portail avant de réessayer : il a peut-être bougé._ |
+| état inconnu à l'appui                     | « Commande envoyée », comme avant                                                        |
 
-La barre de course continue quoi que réponde le portail, et la sphère peut être tirée de nouveau
-quand elle se termine : une commande dite « non reçue » a pu atteindre le portail quand même. Rien
-n'est jamais renvoyé tout seul : une impulsion envoyée deux
-fois inverserait le portail. Le journal du téléphone et celui de l'accès montrent la même réponse à
-côté de chaque ouverture. Un portail qui ne répond pas se comporte comme avant : « Commande
-envoyée », rien de plus. Une ouverture compte dans les plafonds dès qu'elle est envoyée, quoi que
-le portail réponde.
+La barre de course continue quoi qu'il arrive, et la sphère ne peut être tirée de nouveau qu'à sa
+fin. La page n'invite jamais le visiteur à réappuyer, et rien n'est jamais renvoyé : une impulsion
+envoyée deux fois inverserait le portail. Une confirmation qui arrive en retard transforme encore
+« Sans confirmation » en ouverture confirmée. Le journal du téléphone et celui de l'accès montrent
+le même résultat à côté de chaque ouverture. Une ouverture compte dans les plafonds dès qu'elle est
+envoyée, quoi que fasse le portail.
 
 La page est en français sur un téléphone réglé en français, et en anglais sur tous les autres.
 Elle tient sur un seul écran. La roue dentée en haut à droite ouvre **Réglages** : les

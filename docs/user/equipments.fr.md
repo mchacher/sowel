@@ -352,6 +352,37 @@ De deux à six paliers, du plus court au plus long. Le premier est la durée, do
 !!! warning "Un contact qui ne certifie qu'un seul sens"
 Le contact d'un portail prouve en général qu'il est fermé et ne fait que suggérer qu'il est ouvert. Si vous fermez le portail à la main sans que le contact le voie, le créneau continue de courir et rouvrira le portail à l'échéance. Terminez le créneau depuis Sowel plutôt qu'à la main quand cela compte.
 
+### Résultat d'un ordre { #order-outcome }
+
+Pour deux sortes d'ordres, Sowel lit ce que l'appareil rapporte ensuite pour savoir si l'ordre a
+fait bouger quelque chose, et l'écrit en une ligne sous le nom de la tuile (bureau, téléphone et
+tuile temporisée) et sur la page de l'équipement :
+
+- **Une impulsion de portail**, quand l'état du portail est connu (son contact, `closed`, ou son
+  `state`). Fermé, le portail doit s'ouvrir en 15 s ; ouvert, il doit se fermer en 60 s (une
+  impulsion sur un portail ouvert peut l'arrêter ou l'inverser avant qu'il se ferme).
+- **Ouvrir ou Fermer sur un volet**, quand son état parle le vocabulaire de fin de course : il a
+  rapporté `CLOSED`, `OPENING`, `CLOSING` ou `FAULT` au moins une fois depuis le démarrage de Sowel,
+  comme la porte LoRa du poulailler. Il doit atteindre `OPEN` / `CLOSED` (ou la position 100 / 0) en
+  60 s. Un volet qui ne renvoie que `OPEN` / `CLOSE`, comme la plupart des volets Zigbee, reste comme
+  avant.
+
+| La ligne affiche                                                 | Quand                                                           |
+| ---------------------------------------------------------------- | --------------------------------------------------------------- |
+| « Envoyée… »                                                     | l'ordre est parti, la fenêtre court                             |
+| « En mouvement… »                                                | le volet rapporte qu'il va vers la cible                        |
+| « ✓ Ouverture confirmée » / « ✓ Fermeture confirmée »            | l'état attendu est arrivé (disparaît après 4 s)                 |
+| « Défaut : contact bas » / « Défaut : câblage »                  | l'appareil a rapporté `FAULT` (son `why` donne la raison)       |
+| « Pas de mouvement : commande perdue ou portail bloqué »         | une impulsion sur un portail fermé n'a rien vu en 15 s          |
+| « Toujours ouvert : commande perdue ou portail arrêté en route » | une impulsion sur un portail ouvert ne l'a pas vu fermé en 60 s |
+| « Sans confirmation »                                            | un ordre de volet n'a pas atteint sa fin de course en 60 s      |
+
+Un défaut ou une confirmation manquante lève aussi une alarme, envoyée comme les autres, qui se
+retire d'elle-même quand l'état attendu finit par arriver, même tard. **Rien n'est jamais renvoyé** :
+une deuxième impulsion inverserait le portail. L'état ne distingue pas une commande perdue d'une
+commande que le moteur n'a pas pu exécuter : les deux s'affichent pareil. La ligne est en direct :
+un rechargement n'affiche rien jusqu'au prochain ordre.
+
 ### Désactiver un équipement
 
 Un équipement désactivé :

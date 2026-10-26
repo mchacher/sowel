@@ -256,9 +256,17 @@ describe("connect", () => {
   });
 
   it("on open: restores a battery banner headlined by the equipment name (spec 143/#472)", async () => {
-    vi.stubGlobal("fetch", vi.fn(async () => ({ json: async () => ({}) })));
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async () => ({ json: async () => ({}) })),
+    );
     api.getBatteryAlerts.mockResolvedValue([
-      { deviceDataId: "dd-1", deviceName: "Capteur porte", value: "12", equipmentNames: ["Détecteur salon"] },
+      {
+        deviceDataId: "dd-1",
+        deviceName: "Capteur porte",
+        value: "12",
+        equipmentNames: ["Détecteur salon"],
+      },
       { deviceDataId: "dd-2", deviceName: "Capteur cave", value: "8", equipmentNames: [] },
     ]);
 
@@ -284,7 +292,10 @@ describe("connect", () => {
   });
 
   it("on open: words a battery flag without a percentage", async () => {
-    vi.stubGlobal("fetch", vi.fn(async () => ({ json: async () => ({}) })));
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async () => ({ json: async () => ({}) })),
+    );
     // A `battery_low` flag reports "true", not a level: there is no percentage
     // to show, so the alarm uses the plain key.
     api.getBatteryAlerts.mockResolvedValue([
@@ -303,7 +314,10 @@ describe("connect", () => {
   });
 
   it("on open: restores a standing PV health alarm from the snapshot (spec 162)", async () => {
-    vi.stubGlobal("fetch", vi.fn(async () => ({ json: async () => ({}) })));
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async () => ({ json: async () => ({}) })),
+    );
     // The raise event fires exactly once, server-side; a session opened after
     // it has no event to catch and rebuilds from this snapshot.
     api.getPvHealthAlerts.mockResolvedValue([
@@ -336,9 +350,17 @@ describe("connect", () => {
   });
 
   it("re-words a live battery raise from the snapshot instead of keeping the engine's English", async () => {
-    vi.stubGlobal("fetch", vi.fn(async () => ({ json: async () => ({}) })));
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async () => ({ json: async () => ({}) })),
+    );
     api.getBatteryAlerts.mockResolvedValue([
-      { deviceDataId: "dd-9", deviceName: "Capteur porte", value: "9", equipmentNames: ["Détecteur salon"] },
+      {
+        deviceDataId: "dd-9",
+        deviceName: "Capteur porte",
+        value: "9",
+        equipmentNames: ["Détecteur salon"],
+      },
     ]);
 
     const ws = connect();
@@ -365,7 +387,10 @@ describe("connect", () => {
   });
 
   it("does not resurrect a battery alarm that was just resolved", async () => {
-    vi.stubGlobal("fetch", vi.fn(async () => ({ json: async () => ({}) })));
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async () => ({ json: async () => ({}) })),
+    );
     // The snapshot can still list the alert when the resolve event overtakes it;
     // the re-wording must only touch alarms that are still standing.
     api.getBatteryAlerts.mockResolvedValue([
@@ -421,31 +446,31 @@ describe("connect", () => {
     expect(alarm?.messageKey).toBeUndefined();
   });
 
-  // Spec 188 — the order receipt alarm carries its own key, worded by the UI.
+  // Spec 188 — the order outcome alarm carries its own key, worded by the UI.
   it("words an engine-keyed alarm from its key, and falls back to its text for an unknown key", () => {
     const ws = connect();
     ws.simulateMessage({
       type: "system.alarm.raised",
-      alarmId: "order-receipt:eq-1:command",
+      alarmId: "order-unconfirmed:eq-1:command",
       level: "warning",
-      source: "order-receipt",
-      message: 'Portail: order "command" not confirmed by the device',
-      messageKey: "alarms.orderReceipt.unconfirmed",
+      source: "order-confirmation",
+      message: "Order not confirmed: Portail command → pulse (no state change within 15s)",
+      messageKey: "alarms.orderOutcome.unconfirmedNoMovement",
       messageParams: { equipment: "Portail" },
     });
-    const keyed = useWebSocket.getState().alarms.get("order-receipt:eq-1:command");
-    expect(keyed?.messageKey).toBe("alarms.orderReceipt.unconfirmed");
+    const keyed = useWebSocket.getState().alarms.get("order-unconfirmed:eq-1:command");
+    expect(keyed?.messageKey).toBe("alarms.orderOutcome.unconfirmedNoMovement");
     expect(keyed?.messageParams).toEqual({ equipment: "Portail" });
 
     ws.simulateMessage({
       type: "system.alarm.raised",
-      alarmId: "order-receipt:eq-2:command",
+      alarmId: "order-unconfirmed:eq-2:command",
       level: "warning",
-      source: "order-receipt",
+      source: "order-confirmation",
       message: "Portail: something newer",
-      messageKey: "alarms.orderReceipt.notInThisBuild",
+      messageKey: "alarms.orderOutcome.notInThisBuild",
     });
-    const fallback = useWebSocket.getState().alarms.get("order-receipt:eq-2:command");
+    const fallback = useWebSocket.getState().alarms.get("order-unconfirmed:eq-2:command");
     expect(fallback?.message).toBe("Portail: something newer");
     expect(fallback?.messageKey).toBeUndefined();
   });
@@ -471,7 +496,11 @@ describe("handleEvent dispatch", () => {
       alias: "temperature",
       value: 21.5,
     });
-    expect(S.equipments.handleEquipmentDataChanged).toHaveBeenCalledWith("eq-1", "temperature", 21.5);
+    expect(S.equipments.handleEquipmentDataChanged).toHaveBeenCalledWith(
+      "eq-1",
+      "temperature",
+      21.5,
+    );
   });
 
   it("routes zone.data.changed to the aggregation store", () => {
@@ -530,7 +559,11 @@ describe("handleEvent dispatch", () => {
     ws.simulateMessage({ type: "zone.removed", zoneId: "z1" });
     ws.simulateMessage({ type: "equipment.created" });
     ws.simulateMessage({ type: "equipment.removed" });
-    ws.simulateMessage({ type: "equipment.status.changed", equipmentId: "eq-1", newStatus: "offline" });
+    ws.simulateMessage({
+      type: "equipment.status.changed",
+      equipmentId: "eq-1",
+      newStatus: "offline",
+    });
     ws.simulateMessage({ type: "mode.created" });
     ws.simulateMessage({ type: "mode.deactivated", modeId: "m1" });
 

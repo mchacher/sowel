@@ -1,8 +1,9 @@
 /**
- * Spec 188 — migration 037 adds `receipt` to `shared_access_journal`.
+ * Spec 188 — migration 037 adds `outcome` / `outcome_expected` to
+ * `shared_access_journal`.
  *
- * Every row written before it was written without a receipt, and must read as
- * "no receipt expected" (NULL), not as a pending one the guest page would wait on.
+ * Every row written before it was written untracked, and must read as "not
+ * tracked" (NULL), not as a pending press the guest page would wait on.
  */
 
 import Database from "better-sqlite3";
@@ -11,7 +12,7 @@ import { readdirSync, readFileSync } from "node:fs";
 import { resolve } from "node:path";
 
 const MIGRATIONS_DIR = resolve(import.meta.dirname ?? ".", "../../migrations");
-const SUBJECT = "037_shared_access_receipt.sql";
+const SUBJECT = "037_shared_access_outcome.sql";
 
 function applyMigrationsBefore(db: Database.Database, file: string): void {
   for (const f of readdirSync(MIGRATIONS_DIR)
@@ -24,7 +25,7 @@ function applyMigrationsBefore(db: Database.Database, file: string): void {
 
 let db: Database.Database;
 
-describe("migration 037 — shared_access_journal.receipt", () => {
+describe("migration 037 — shared_access_journal.outcome", () => {
   beforeEach(() => {
     db = new Database(":memory:");
     db.pragma("foreign_keys = ON");
@@ -38,28 +39,27 @@ describe("migration 037 — shared_access_journal.receipt", () => {
   });
   afterEach(() => db.close());
 
-  it("keeps every existing row, with no receipt", () => {
+  it("keeps every existing row, untracked", () => {
     db.exec(readFileSync(resolve(MIGRATIONS_DIR, SUBJECT), "utf-8"));
     const rows = db
-      .prepare("SELECT kind, label, receipt FROM shared_access_journal ORDER BY at")
-      .all() as { kind: string; label: string; receipt: string | null }[];
+      .prepare(
+        "SELECT kind, label, outcome, outcome_expected FROM shared_access_journal ORDER BY at",
+      )
+      .all();
     expect(rows).toEqual([
-      { kind: "opened", label: "Plombier", receipt: null },
-      { kind: "refused", label: "Plombier", receipt: null },
+      { kind: "opened", label: "Plombier", outcome: null, outcome_expected: null },
+      { kind: "refused", label: "Plombier", outcome: null, outcome_expected: null },
     ]);
   });
 
-  it("stores a receipt on a new row", () => {
+  it("stores an outcome and its expected movement on a new row", () => {
     db.exec(readFileSync(resolve(MIGRATIONS_DIR, SUBJECT), "utf-8"));
     db.prepare(
-      `INSERT INTO shared_access_journal (at, label, kind, receipt) VALUES (3, 'X', 'opened', 'pending')`,
+      `INSERT INTO shared_access_journal (at, label, kind, outcome, outcome_expected)
+       VALUES (3, 'X', 'opened', 'pending', 'open')`,
     ).run();
     expect(
-      (
-        db.prepare("SELECT receipt FROM shared_access_journal WHERE at = 3").get() as {
-          receipt: string;
-        }
-      ).receipt,
-    ).toBe("pending");
+      db.prepare("SELECT outcome, outcome_expected FROM shared_access_journal WHERE at = 3").get(),
+    ).toEqual({ outcome: "pending", outcome_expected: "open" });
   });
 });

@@ -6,7 +6,8 @@ import type { EquipmentManager } from "../equipments/equipment-manager.js";
 import type {
   EngineEvent,
   Equipment,
-  OrderReceiptStatus,
+  OrderOutcomeExpected,
+  OrderOutcomeStatus,
   OrderSource,
   SharedAccessGateInput,
   SharedAccessGateSummary,
@@ -42,7 +43,6 @@ import {
   type ValidityFacts,
 } from "./validity.js";
 import { GuessingBudget } from "./guessing.js";
-import { RECEIPT_WINDOW_MS } from "../equipments/order-receipt-tracker.js";
 import { phonePlatform, phoneTag } from "./phones.js";
 import { GateBusyError, GateQueue, GateQueueClosedError, GateTimeoutError } from "./gate-queue.js";
 import {
@@ -161,8 +161,10 @@ export interface PublicSession {
     gateId: string | null;
     gateName: string;
     result: string;
-    /** Spec 188 — what the gate made of a sent press, when its device answers. */
-    receipt?: OrderReceiptStatus;
+    /** Spec 188 — what became of a sent press, when its gate state could prove it. */
+    outcome?: JournalOutcome;
+    /** Spec 188 — the movement that press should cause. */
+    expected?: OrderOutcomeExpected;
   }[];
 }
 
@@ -171,7 +173,7 @@ export type EnrolResult =
   | { ok: false; error: "unknown_code" | "too_many" | "ended" | "too_many_phones" };
 
 export type OpenResult =
-  | { ok: true; duplicate?: boolean; receipt?: OrderReceiptStatus }
+  | { ok: true; duplicate?: boolean; outcome?: "pending"; expected?: OrderOutcomeExpected }
   | {
       ok: false;
       reason: SharedAccessRefusal;
@@ -212,12 +214,18 @@ function parseValue(json: string | null): unknown {
 }
 
 /**
- * Spec 188 — what a journal row says of a press. `received` (the radio link
- * acknowledged it) is still waiting for the gate, so the row keeps `pending`.
+ * Spec 188 O8 — what a journal row says of a press: pending, confirmed or
+ * unconfirmed. A gate never reports `moving` or `fault` (cover statuses), and
+ * would they come, they read as still waiting and not confirmed.
  */
-type JournalReceipt = Exclude<OrderReceiptStatus, "received">;
-const journalReceipt = (s: OrderReceiptStatus): JournalReceipt =>
-  s === "received" ? "pending" : s;
+export type JournalOutcome = Exclude<OrderOutcomeStatus, "moving" | "fault">;
+const journalOutcome = (s: OrderOutcomeStatus): JournalOutcome =>
+  s === "moving" ? "pending" : s === "fault" ? "unconfirmed" : s;
+const JOURNAL_OUTCOMES = new Set<string>(["pending", "confirmed", "unconfirmed"]);
+const asJournalOutcome = (v: string | null): JournalOutcome | null =>
+  v !== null && JOURNAL_OUTCOMES.has(v) ? (v as JournalOutcome) : null;
+const asExpected = (v: string | null): OrderOutcomeExpected | null =>
+  v === "open" || v === "close" ? v : null;
 
 const minNullable = (a: number | null, b: number | null): number | null =>
   a === null || b === null ? null : Math.min(a, b);
@@ -243,15 +251,20 @@ export class SharedAccessManager {
   private readonly inFlight = new Map<string, number>();
   private readonly unsubscribes: (() => void)[] = [];
   /**
-   * Spec 188 — presses whose gate may still answer, by press id. The id rides
-   * in the order's source, so a receipt finds its own press and nothing else:
-   * a receipt for another equipment (the coop, a light) never matches one.
+   * Spec 188 O8 — the last press on each gate whose outcome may still come, by
+   * gate id. The press id rides in the order's source, so an outcome finds its
+   * own press and nothing else: an outcome for another equipment (the coop, a
+   * light) never matches a gate, and another order on the gate ends the wait.
    */
-  private readonly pressReceipts = new Map<
+  private readonly pressOutcomes = new Map<
     string,
-    { gateId: string; status: JournalReceipt | null; rowId: number | null; at: number }
+    {
+      pressId: string;
+      status: JournalOutcome | null;
+      expected: OrderOutcomeExpected | null;
+      rowId: number | null;
+    }
   >();
-  private readonly receiptTimers = new Set<NodeJS.Timeout>();
   private purgeTimer: NodeJS.Timeout | null = null;
   private pluginDirectory: () => { id: string; name: string }[] = () => [];
   /** R5.24 — the page's name and icon on the home screen. */
@@ -297,8 +310,8 @@ export class SharedAccessManager {
           if (event.type === "settings.changed" && event.keys.includes(SETTING_ENABLED)) {
             if (this.isEnabled()) this.ensureDefaultProfile();
             this.changed();
-          } else if (event.type === "equipment.order.receipt") {
-            this.handleReceipt(event);
+          } else if (event.type === "equipment.order.outcome") {
+            this.handleOutcome(event);
           } else if (event.type === "equipment.removed") {
             // The foreign keys already dropped the gate from every access and
             // profile (R2.6); the owner's page only needs to hear about it.
@@ -318,20 +331,13 @@ export class SharedAccessManager {
     this.purge();
     this.purgeTimer = setInterval(() => this.purge(), HOUR_MS);
     this.purgeTimer.unref?.();
-    // Spec 188 — a press still pending when the previous run stopped can no
-    // longer be answered: its row says so instead of waiting forever.
-    const lost = this.store.expirePendingReceipts();
-    if (lost > 0)
-      this.logger.info({ rows: lost }, "Shared access: pending receipts lost at restart");
   }
 
   stop(): void {
     if (this.purgeTimer) clearInterval(this.purgeTimer);
     this.purgeTimer = null;
     for (const unsubscribe of this.unsubscribes.splice(0)) unsubscribe();
-    for (const timer of this.receiptTimers) clearTimeout(timer);
-    this.receiptTimers.clear();
-    this.pressReceipts.clear();
+    this.pressOutcomes.clear();
     this.guessing.releaseAll();
     this.queue.close();
   }
@@ -630,7 +636,8 @@ export class SharedAccessManager {
       actor: r.actor,
       equipmentId: r.equipment_id,
       phoneTag: r.phone_id ? phoneTag(r.phone_id) : null,
-      receipt: (r.receipt as OrderReceiptStatus | null) ?? null,
+      outcome: r.kind === "opened" ? asJournalOutcome(r.outcome) : null,
+      outcomeExpected: r.kind === "opened" ? asExpected(r.outcome_expected) : null,
     }));
   }
 
@@ -680,7 +687,10 @@ export class SharedAccessManager {
     row: Pick<AccessRow, "id" | "label">,
     kind: string,
     extra: Partial<
-      Pick<JournalRow, "reason" | "actor" | "equipment_id" | "phone_id" | "receipt">
+      Pick<
+        JournalRow,
+        "reason" | "actor" | "equipment_id" | "phone_id" | "outcome" | "outcome_expected"
+      >
     > = {},
   ): number {
     return this.store.journal({
@@ -692,7 +702,8 @@ export class SharedAccessManager {
       actor: extra.actor ?? null,
       equipment_id: extra.equipment_id ?? null,
       phone_id: extra.phone_id ?? null,
-      receipt: extra.receipt ?? null,
+      outcome: extra.outcome ?? null,
+      outcome_expected: extra.outcome_expected ?? null,
     });
   }
 
@@ -1178,7 +1189,7 @@ export class SharedAccessManager {
         gateId: p.equipment_id,
         gateName: p.equipment_id ? (names.get(p.equipment_id) ?? "") : "",
         result: p.kind === "opened" ? "sent" : (p.reason ?? "refused"),
-        ...(p.kind === "opened" && p.receipt ? { receipt: p.receipt as OrderReceiptStatus } : {}),
+        ...(p.kind === "opened" ? this.pressOutcomeView(p) : {}),
       })),
     };
   }
@@ -1228,8 +1239,8 @@ export class SharedAccessManager {
       return { ok: true, duplicate: true };
     }
 
-    // Spec 188 — this press's own id, carried by the order so that its receipt,
-    // and only its receipt, comes back to it.
+    // Spec 188 — this press's own id, carried by the order so that its
+    // outcome, and only its outcome, comes back to it.
     const pressId = crypto.randomUUID();
     const source: OrderSource = {
       kind: "shared_access",
@@ -1237,7 +1248,7 @@ export class SharedAccessManager {
       label: access.label,
       pressId,
     };
-    let receipt: JournalReceipt | null = null;
+    let tracked: { expected: OrderOutcomeExpected } | null = null;
     let refusal: { reason: SharedAccessRefusal; activeAt?: number; nextOpeningAt?: number } | null =
       null;
     let error: string | null = null;
@@ -1262,7 +1273,7 @@ export class SharedAccessManager {
           return;
         }
         this.inFlight.set(access.id, (this.inFlight.get(access.id) ?? 0) + 1);
-        this.trackPress(pressId, gateId);
+        this.pressOutcomes.set(gateId, { pressId, status: null, expected: null, rowId: null });
         try {
           const outcome = await this.equipments.executeOrder(
             gateId,
@@ -1274,25 +1285,28 @@ export class SharedAccessManager {
             error = outcome.error ?? "dispatch failed";
             return;
           }
-          // The gate's device said it would answer (or already has) while the
-          // order was being handed over: the row starts with that receipt.
-          // Otherwise the gate does not answer, and the row says nothing.
-          const press = this.pressReceipts.get(pressId);
-          receipt = press?.status ?? null;
+          // The core started tracking the impulse while it was being handed
+          // over (the gate state was known): the row starts `pending`.
+          // Otherwise the press is exempt, and the row says nothing (O8).
+          const press = this.ownPress(gateId, pressId);
+          const status = press?.status ?? null;
+          const expected = press?.expected ?? null;
           const rowId = this.store.transaction(() => {
             this.store.countUse(access.id, this.now());
             return this.journal(fresh, "opened", {
               equipment_id: gateId,
               phone_id: phone.id,
-              receipt,
+              outcome: status,
+              outcome_expected: status !== null ? expected : null,
             });
           });
-          if (press && receipt !== null) {
+          if (press && status !== null && expected !== null) {
             press.rowId = rowId;
-            this.expireLater(pressId);
-          } else this.pressReceipts.delete(pressId);
+            tracked = { expected };
+            if (status === "confirmed") this.pressOutcomes.delete(gateId);
+          } else this.forgetPress(gateId, pressId);
         } catch (err) {
-          this.pressReceipts.delete(pressId);
+          this.forgetPress(gateId, pressId);
           throw err;
         } finally {
           const left = (this.inFlight.get(access.id) ?? 1) - 1;
@@ -1311,7 +1325,7 @@ export class SharedAccessManager {
       nextOpeningAt?: number;
     } | null;
     if (refused) {
-      this.pressReceipts.delete(pressId);
+      this.forgetPress(gateId, pressId);
       return this.refuse(access, phone.id, gateId, refused.reason, refused);
     }
     if (error !== null) {
@@ -1319,7 +1333,7 @@ export class SharedAccessManager {
         { accessId: access.id, gateId, error },
         "Shared access: gate command failed",
       );
-      this.pressReceipts.delete(pressId);
+      this.forgetPress(gateId, pressId);
       return this.refuse(access, phone.id, gateId, "gate_error");
     }
 
@@ -1331,56 +1345,54 @@ export class SharedAccessManager {
       equipmentId: gateId,
     });
     this.changed();
-    const sent = receipt as JournalReceipt | null;
-    return sent !== null ? { ok: true, receipt: sent } : { ok: true };
+    const sent = tracked as { expected: OrderOutcomeExpected } | null;
+    return sent !== null ? { ok: true, outcome: "pending", expected: sent.expected } : { ok: true };
   }
 
-  /** Spec 188 — remember a press until its gate can no longer answer it. */
-  private trackPress(pressId: string, gateId: string): void {
-    const now = this.now();
-    for (const [id, p] of this.pressReceipts) {
-      if (now - p.at > RECEIPT_WINDOW_MS) this.expirePress(id);
-    }
-    this.pressReceipts.set(pressId, { gateId, status: null, rowId: null, at: now });
+  /** Spec 188 — the gate's waiting press, when it is this one. */
+  private ownPress(gateId: string, pressId: string) {
+    const press = this.pressOutcomes.get(gateId);
+    return press && press.pressId === pressId ? press : undefined;
   }
 
-  /**
-   * Spec 188 — once its gate can no longer answer (the receipt window is over,
-   * or another order on that gate took its place), a press still pending is
-   * recorded `unconfirmed` rather than left pending in the journal for ever.
-   */
-  private expireLater(pressId: string): void {
-    const timer = setTimeout(() => {
-      this.receiptTimers.delete(timer);
-      this.expirePress(pressId);
-    }, RECEIPT_WINDOW_MS);
-    timer.unref?.();
-    this.receiptTimers.add(timer);
-  }
-
-  private expirePress(pressId: string): void {
-    const press = this.pressReceipts.get(pressId);
-    if (!press) return;
-    this.pressReceipts.delete(pressId);
-    if (press.rowId !== null && press.status === "pending") {
-      this.store.setReceipt(press.rowId, "unconfirmed");
-    }
+  private forgetPress(gateId: string, pressId: string): void {
+    if (this.ownPress(gateId, pressId)) this.pressOutcomes.delete(gateId);
   }
 
   /**
-   * Spec 188 R5 — a receipt reaches a press only through that press's id, and
-   * only from the gate it targeted. Anything else — another equipment's
-   * receipt, a receipt for an order someone else gave — leaves every press as
-   * it is.
+   * Spec 188 O8 — an outcome reaches a press only through that press's id, and
+   * only from the gate it targeted. Any other equipment's outcome (the coop, a
+   * light) finds no press. Another order on the gate (the owner's tile, a
+   * recipe) replaces the press in the tracker (O7): its outcome will never
+   * come, and the press stops waiting for one.
    */
-  private handleReceipt(event: Extract<EngineEvent, { type: "equipment.order.receipt" }>): void {
+  private handleOutcome(event: Extract<EngineEvent, { type: "equipment.order.outcome" }>): void {
+    const press = this.pressOutcomes.get(event.equipmentId);
+    if (!press || event.orderAlias !== "command") return;
     const source = event.source;
-    if (source?.kind !== "shared_access" || !source.pressId) return;
-    const press = this.pressReceipts.get(source.pressId);
-    if (!press || press.gateId !== event.equipmentId) return;
-    const status = journalReceipt(event.status);
-    press.status = status;
-    if (press.rowId !== null) this.store.setReceipt(press.rowId, status);
+    if (source?.kind !== "shared_access" || source.pressId !== press.pressId) {
+      this.pressOutcomes.delete(event.equipmentId);
+      return;
+    }
+    press.status = journalOutcome(event.status);
+    if (event.expected) press.expected = event.expected;
+    if (press.rowId !== null) {
+      this.store.setOutcome(press.rowId, press.status);
+      this.changed();
+    }
+    if (press.status === "confirmed" && press.rowId !== null) {
+      this.pressOutcomes.delete(event.equipmentId);
+    }
+  }
+
+  /** Spec 188 — what the guest's session says of one of its sent presses. */
+  private pressOutcomeView(p: JournalRow): {
+    outcome?: JournalOutcome;
+    expected?: OrderOutcomeExpected;
+  } {
+    const outcome = asJournalOutcome(p.outcome);
+    const expected = asExpected(p.outcome_expected);
+    return outcome && expected ? { outcome, expected } : {};
   }
 
   private refuse(

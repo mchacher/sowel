@@ -61,7 +61,7 @@ import {
   evIsPlugged,
 } from "../equipments/electricVehicleState";
 import { gateNeedsConfirm } from "./gate-confirm";
-import { OrderReceiptLine } from "../equipments/OrderReceiptLine";
+import { OrderOutcomeLine } from "../equipments/OrderOutcomeLine";
 import { ForecastConfidenceMark } from "./ForecastConfidenceMark";
 import { vmcSpeedOf } from "../equipments/vmcSpeed";
 import {
@@ -142,7 +142,7 @@ export function MobileWidgetCard({
       {/* Spec 188 — what became of the last order, under the state (a gate
           still reads Open / Closed). The icon gives up the room it needs, so
           the 120 px card never grows. */}
-      <OrderReceiptLine equipmentId={equipment.id} size="xs" className="w-full shrink-0" />
+      <OrderOutcomeLine equipmentId={equipment.id} size="xs" className="w-full shrink-0" />
 
       {/* Spec 168 — the forecast tile qualifies tomorrow on the phone too,
           which is the surface this dashboard is mostly read on. */}

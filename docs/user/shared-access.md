@@ -99,24 +99,23 @@ The page never says whether the gate is open or closed. It shows only **the visi
 commands**, and speaks in words only when the gate will not move — outside the hours, not yet
 valid, on hold, revoked — and then it says why.
 
-### When the gate confirms { #gate-receipt }
+### When the gate's state confirms { #gate-outcome }
 
-Some gates answer each command — a LoRa gate does. For those, the page then follows **its own
-press**, and nothing else: within about twenty seconds it says what the gate made of it, while the
-travel bar keeps running.
+When Sowel knows the gate's state at the press (its contact), the page then follows **its own
+press**, and nothing else — never the coop or any other equipment. For at most 70 s it reads what
+became of it, while the travel bar keeps running.
 
-| The gate…                    | The page says                                                                                        |
-| ---------------------------- | ---------------------------------------------------------------------------------------------------- |
-| applied it                   | the disc reads **RECEIVED**, "Opening confirmed"                                                     |
-| refused it                   | "Command refused" — _The gate refused the command._                                                  |
-| did not confirm receiving it | _The gate did not confirm receiving the command: look at it before trying again, it may have moved._ |
-| did not confirm in time      | _No confirmation: look at the gate before trying again, it may have moved._                          |
+| The gate…                          | The page says                                                                  |
+| ---------------------------------- | ------------------------------------------------------------------------------ |
+| opened (or closed, if it was open) | "Opening confirmed" (or "Closing confirmed")                                   |
+| did not move within the window     | "No confirmation" — _Look at the gate before trying again: it may have moved._ |
+| state unknown at the press         | "Command sent", as before                                                      |
 
-The travel bar keeps running whatever the gate answers, and the disc can be pulled again once it
-ends: a command reported "not received" may still have reached the gate. Nothing is ever resent on its own: an impulse sent twice would reverse the gate. The
-phone's journal and this access's journal show the same answer next to each opening. A gate that
-does not answer behaves as before: "Command sent", nothing more. An opening counts against the
-ceilings when it is sent, whatever the gate answers.
+The travel bar keeps running whatever happens, and the disc can be pulled again only once it ends.
+The page never invites the visitor to press again, and nothing is ever resent: an impulse sent
+twice would reverse the gate. A confirmation that arrives late still turns "No confirmation" into a
+confirmed opening. The phone's journal and this access's journal show the same outcome next to each
+opening. An opening counts against the ceilings when it is sent, whatever the gate does.
 
 The page is in French on a phone set to French, and in English on any other phone. It fits on one
 screen. The gear at the top right opens **Settings**: the phone's last

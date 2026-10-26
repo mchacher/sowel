@@ -58,18 +58,6 @@ export type ComputedDataProvider = (equipmentId: string) => ComputedDataEntry[];
 /** Spec 174 — supplies the revert an equipment owes, when a window is running. */
 export type TimedActionProvider = (equipmentId: string) => TimedAction | null;
 
-/** Spec 188 — one order about to be handed to the plugin of one device. */
-export interface OrderDispatch {
-  /** Sowel device id. */
-  deviceId: string;
-  orderKey: string;
-  equipmentId: string;
-  alias: string;
-  value: unknown;
-  source?: OrderSource;
-}
-export type OrderDispatchObserver = (dispatch: OrderDispatch) => void;
-
 // ============================================================
 // Valid EquipmentType values
 // ============================================================
@@ -158,8 +146,6 @@ export class EquipmentManager {
   /** Registered computed data providers (e.g. EnergyAggregator). */
   private computedDataProviders: ComputedDataProvider[] = [];
   private timedActionProvider: TimedActionProvider | null = null;
-  /** Spec 188 — told of each order about to reach a device (the receipt tracker). */
-  private orderDispatchObserver: OrderDispatchObserver | null = null;
 
   /** Gate equipments with a pending command — state is "unknown" until next sensor update */
   private pendingToggles = new Set<string>();
@@ -215,16 +201,6 @@ export class EquipmentManager {
    */
   registerTimedActionProvider(provider: TimedActionProvider): void {
     this.timedActionProvider = provider;
-  }
-
-  /**
-   * Register the observer told of each order about to be handed to a plugin
-   * (spec 188). It runs BEFORE `executeOrder`, because a plugin may report the
-   * order's first receipt from inside that call, and the receipt must find its
-   * order already recorded.
-   */
-  registerOrderDispatchObserver(observer: OrderDispatchObserver): void {
-    this.orderDispatchObserver = observer;
   }
 
   private getTimedAction(equipmentId: string): TimedAction | null {
@@ -1065,13 +1041,7 @@ export class EquipmentManager {
     let lastError: string | undefined;
     try {
       for (const binding of bindings) {
-        const outcome = await this.dispatchToBinding(
-          binding,
-          resolvedValue,
-          equipment,
-          alias,
-          source,
-        );
+        const outcome = await this.dispatchToBinding(binding, resolvedValue, equipment, alias);
         if (!outcome) continue; // device missing — binding skipped
         if (outcome.error !== undefined) lastError = outcome.error;
         if (outcome.dispatched) successes++;
@@ -1125,7 +1095,6 @@ export class EquipmentManager {
     resolvedValue: unknown,
     equipment: Equipment,
     alias: string,
-    source?: OrderSource,
   ): Promise<{ dispatched: boolean; error?: string } | null> {
     const device = this.deviceManager.getById(binding.device_id);
     if (!device) {
@@ -1149,25 +1118,6 @@ export class EquipmentManager {
       parseWireValue(binding.value_on),
       parseWireValue(binding.value_off),
     );
-
-    if (this.orderDispatchObserver) {
-      try {
-        this.orderDispatchObserver({
-          deviceId: device.id,
-          orderKey: binding.key,
-          equipmentId: equipment.id,
-          alias,
-          value: resolvedValue,
-          ...(source !== undefined ? { source } : {}),
-        });
-      } catch (err) {
-        // Observing an order must never stop it.
-        this.logger.error(
-          { err, equipmentId: equipment.id, alias },
-          "Order dispatch observer failed",
-        );
-      }
-    }
 
     const { dispatched, lastError } = await this.dispatchWithRetry(
       device,

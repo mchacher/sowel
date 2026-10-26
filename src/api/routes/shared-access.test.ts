@@ -149,18 +149,20 @@ describe("shared access routes", () => {
     expect(refused.json()).toMatchObject({ ok: false, reason: "not_this_gate" });
   });
 
-  // Spec 188 R5 — what the guest page follows after a press on a gate whose
-  // device answers: `open` says a receipt is coming, the session's press then
+  // Spec 188 O8 — what the guest page follows after a press on a gate whose
+  // state is known: `open` says an outcome is coming, the session's press then
   // carries it, and the owner's journal shows it next to the `opened` row.
-  it("answers receipt: pending on open, then carries the gate's receipt in the session and journal", async () => {
+  it("answers outcome: pending on open, then carries the outcome in the session and journal", async () => {
     app = await buildApp();
     h.manager.start();
     h.setDuringDispatch((d) =>
       h.eventBus.emit({
-        type: "equipment.order.receipt",
+        type: "equipment.order.outcome",
         equipmentId: d.equipmentId,
         orderAlias: d.alias,
+        value: d.value,
         status: "pending",
+        expected: "open",
         ...(d.source ? { source: d.source } : {}),
       }),
     );
@@ -179,14 +181,16 @@ describe("shared access routes", () => {
       headers: auth,
       payload: { gate: h.gates.entree },
     });
-    expect(open.json()).toEqual({ ok: true, receipt: "pending" });
+    expect(open.json()).toEqual({ ok: true, outcome: "pending", expected: "open" });
 
     const press = h.dispatches[0];
     h.eventBus.emit({
-      type: "equipment.order.receipt",
+      type: "equipment.order.outcome",
       equipmentId: press.equipmentId,
       orderAlias: press.alias,
-      status: "delivered",
+      value: press.value,
+      status: "confirmed",
+      expected: "open",
       ...(press.source ? { source: press.source } : {}),
     });
 
@@ -194,7 +198,8 @@ describe("shared access routes", () => {
     expect(session.json<{ presses: unknown[] }>().presses[0]).toMatchObject({
       gateId: h.gates.entree,
       result: "sent",
-      receipt: "delivered",
+      outcome: "confirmed",
+      expected: "open",
     });
     const journal = await app.inject({
       method: "GET",
@@ -202,9 +207,9 @@ describe("shared access routes", () => {
     });
     expect(
       journal
-        .json<{ entries: { kind: string; receipt: string | null }[] }>()
+        .json<{ entries: { kind: string; outcome: string | null }[] }>()
         .entries.find((e) => e.kind === "opened"),
-    ).toMatchObject({ receipt: "delivered" });
+    ).toMatchObject({ outcome: "confirmed", outcomeExpected: "open" });
   });
 
   it("gives an enrolled phone its link as a QR code, and lets the owner list and cut phones", async () => {
@@ -304,5 +309,28 @@ describe("the public surface", () => {
     expect(GUEST_JS).toContain('typeof navigator.share === "function"');
     expect(GUEST_JS).toContain('$("send").hidden = !CAN_SEND');
     expect(GUEST_JS).toContain("url: shareUrl");
+  });
+
+  // Spec 188 O8 — the page follows its own press only, words the three
+  // endings as approved, and never invites the guest to press again.
+  it("follows only a tracked press, from its own row, every 2 s for 70 s", () => {
+    expect(GUEST_JS).toContain('if (r.body.outcome === "pending") follow(gate.id);');
+    expect(GUEST_JS).toContain("FOLLOW_EVERY_MS = 2000, FOLLOW_FOR_MS = 70000");
+    expect(GUEST_JS).toContain('p.result === "sent" && p.gateId === gateId');
+  });
+
+  it("words confirmed and unconfirmed as approved, with no invitation to press again", () => {
+    expect(GUEST_JS).toContain(
+      'confirmed: { open: "Ouverture confirmée", close: "Fermeture confirmée" }',
+    );
+    expect(GUEST_JS).toContain('noConfirm: "Sans confirmation"');
+    expect(GUEST_JS).toContain(
+      'lookFirst: "Regardez le portail avant de réessayer : il a peut-être bougé."',
+    );
+    const outcomeCode = GUEST_JS.slice(
+      GUEST_JS.indexOf("// ── The outcome of this phone's press"),
+      GUEST_JS.indexOf("function refresh()"),
+    );
+    expect(outcomeCode).not.toMatch(/T\.reasons|Try again|Réessayez/);
   });
 });

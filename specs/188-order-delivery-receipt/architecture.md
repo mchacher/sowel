@@ -1,50 +1,89 @@
 # Spec 188 — Architecture
 
+## Approach
+
+This spec **extends the spec 141 `OrderConfirmationTracker`**; it adds no plugin event and no
+integration contract. The previous design's `device.order.receipt` plugin event, its
+`ALLOWED_EMIT_TYPES` entry, the `OrderReceiptTracker` and the lora2mqtt plugin change are
+**dropped**. Everything the tracker needs is already on the event bus:
+`equipment.order.executed`, `equipment.data.changed` and `device.data.updated`.
+
 ## Data model
 
 - `src/shared/types.ts`
-  - `OrderReceiptStatus` union (R1).
-  - Engine events `device.order.receipt` and `equipment.order.receipt`.
-- `migrations/037_shared_access_receipt.sql`
-  - `ALTER TABLE shared_access_journal ADD COLUMN receipt TEXT;` NULL = no receipt expected.
+  - `OrderOutcomeStatus = "pending" | "moving" | "confirmed" | "fault" | "unconfirmed"`.
+  - Engine event `equipment.order.outcome { equipmentId, orderAlias, value, status,
+expected?: "open" | "close", detail?: string, source? }`.
+  - `system.alarm.raised` keeps the optional `messageKey` / `messageParams`.
+- `migrations/0NN_shared_access_outcome.sql` (next free number)
+  - `ALTER TABLE shared_access_journal ADD COLUMN outcome TEXT;` — NULL = not tracked.
+  - `ALTER TABLE shared_access_journal ADD COLUMN outcome_expected TEXT;` — `open` / `close`.
+  - Replaces migration 037 `receipt` of the first version (never released).
 
-## Event flow
+## Tracker changes (`src/equipments/order-confirmation-tracker.ts`)
+
+`PendingOrder` gains:
+
+```ts
+kind: "mirror" | "transition" | "end_state"; // "mirror" = spec 141 as today
+expected?: "open" | "close";                 // transition and end_state
+lastStatus?: OrderOutcomeStatus;             // to emit on change only
+```
 
 ```
-plugin.executeOrder ──emit──▶ device.order.receipt{pending}
-        │                              │
-        ▼                              ▼
-  MQTT /set + #id            OrderReceiptTracker (new)
-        ⋮                     ├─ correlate (deviceId, orderKey) → last dispatched order
-  /receipt from bridge        ├─ emit equipment.order.receipt ──▶ WS broadcast ──▶ UI store
-        │                     ├─ raise / resolve alarm order-receipt:<eq>:<alias>
-        ▼                     └─ shared-access hook → journal.receipt
-plugin ──emit──▶ device.order.receipt{delivered|…}
+equipment.order.executed
+   │
+   ├─ classify(equipment, alias, value)
+   │    ├─ gate + "pulse" + state known ─────────▶ transition (15 s from closed / 60 s from open)
+   │    ├─ shutter + OPEN|CLOSE + vocabulary seen ▶ end_state (60 s)
+   │    └─ otherwise ─────────────────────────────▶ spec 141 path, unchanged
+   │
+   ├─ transition / end_state: retried = true (O9), emit outcome{pending}, arm window
+   │
+equipment.data.changed / device.data.updated
+   ├─ transition: first flip of `closed` / `state` → confirmed
+   ├─ end_state: target or position 0/100 → confirmed; OPENING/CLOSING → moving; FAULT → fault
+   └─ spec 141 confirm(), unchanged
+window elapsed → unconfirmed → alarm (existing markUnconfirmed, new message key)
 ```
+
+- **Vocabulary memory (O4)**: `Set<"deviceId:key">` filled from `device.data.updated` when the
+  value is one of `CLOSED`, `OPENING`, `CLOSING`, `FAULT` (case-insensitive). Read at dispatch
+  together with the mirror's current value. Cleared in `destroy()`.
+- **Mirror for `end_state`**: the one spec 141's `resolveMirror` already picks (binding with the
+  order alias, else the ordered device's own key — `door` on the coop). Position is read from
+  the equipment's `position` binding when there is one.
+- **Fault detail**: on `FAULT`, the tracker reads the same device's `why` key if present and
+  passes it as `detail`; the UI maps known values (`BOTTOM` → « contact bas », `WIRING` →
+  « câblage ») and shows unknown ones raw.
+- **`fault` vs. alarm**: `fault` calls `markUnconfirmed` with a new reason `device_fault`, so the
+  alarm, its supersession and its resolution are spec 141's code paths.
+- **No replay (O9)**: `retried = true` at creation; `handleOrderFailed` gives a `transition`
+  order `retried = true` as well, so `handleIntegrationConnected` skips it.
 
 ## Files
 
-| File                                                                                        | Change                                                                                                                                                  |
-| ------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `src/shared/types.ts`                                                                       | statuses, two events                                                                                                                                    |
-| `src/plugins/scoped-deps.ts`                                                                | allow `device.order.receipt`; reject a foreign `integrationId`                                                                                          |
-| `src/equipments/order-receipt-tracker.ts` (new)                                             | correlation table, alarm, re-emit                                                                                                                       |
-| `src/equipments/equipment-manager.ts`                                                       | record each dispatch `(deviceId, orderKey) → {equipmentId, alias, value, source, at}` for the tracker, in `dispatchToBinding` before calling the plugin |
-| `src/shared-access/shared-access-manager.ts`                                                | journal row id kept for the press; `open()` returns `receipt`; listener updates `receipt`                                                               |
-| `src/shared-access/shared-access-store.ts`                                                  | `setReceipt(rowId, status)`, `receipt` in press rows                                                                                                    |
-| `src/shared-access/guest-page.ts`                                                           | follow-up polling and the four outcomes (R5)                                                                                                            |
-| `src/api/websocket.ts`                                                                      | broadcast `equipment.order.receipt`                                                                                                                     |
-| `ui/src/store/`                                                                             | `lastReceipt` per equipment                                                                                                                             |
-| `ui/src/components/dashboard/EquipmentWidget.tsx`, `MobileWidgetCard.tsx`, equipment detail | status line (R4)                                                                                                                                        |
-| `ui/src/components/shared-access/`                                                          | receipt next to `opened` journal rows                                                                                                                   |
-| `ui/src/i18n/locales/{en,fr}.json`                                                          | strings                                                                                                                                                 |
-| `docs/user/shared-access{,.fr}.md`, `docs/technical/…`                                      | documentation                                                                                                                                           |
+| File                                                                                               | Change                                                                 |
+| -------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------- |
+| `src/shared/types.ts`                                                                              | `OrderOutcomeStatus`, `equipment.order.outcome`                        |
+| `src/equipments/order-confirmation-tracker.ts`                                                     | kinds, gate state read, vocabulary memory, outcome emission, no replay |
+| `src/shared-access/shared-access-manager.ts`                                                       | journal row id kept per press; `open()` returns outcome; listener      |
+| `src/shared-access/shared-access-store.ts`                                                         | `setOutcome(rowId, status)`, `outcome` in press rows                   |
+| `src/shared-access/guest-page.ts`                                                                  | follow-up polling, three endings (O8)                                  |
+| `src/api/websocket.ts`                                                                             | broadcast `equipment.order.outcome`; alarm i18n keys                   |
+| `ui/src/store/`                                                                                    | `lastOutcome` per equipment                                            |
+| `ui/src/components/dashboard/EquipmentWidget.tsx`, `MobileWidgetCard.tsx`, timed tile, detail      | status line (O5)                                                       |
+| `ui/src/components/shared-access/`                                                                 | outcome next to `opened` journal rows                                  |
+| `ui/src/i18n/locales/{en,fr}.json`                                                                 | strings                                                                |
+| `docs/user/shared-access{,.fr}.md`, `docs/technical/data-model{,.fr}.md`, `api-reference{,.fr}.md` | documentation                                                          |
 
-The plugin change lives in `mchacher/sowel-plugin-lora2mqtt` (one PR there).
+What the first version added and this one removes from PR #1088: `src/equipments/order-receipt-tracker.ts`,
+the `device.order.receipt` handling in `src/plugins/scoped-deps.ts`, the dispatch recording in
+`equipment-manager.ts`, migration 037 `receipt`.
 
 ## API
 
-- `POST /p/…/api/open` (guest): response gains `receipt?: "pending"`.
-- Guest `session.presses[]`: each gains `receipt?: OrderReceiptStatus`.
-- Admin journal endpoint: rows gain `receipt`.
-- No new route.
+- `POST /p/…/api/open` (guest): response gains `outcome?: "pending"`, `expected?: "open" | "close"`.
+- Guest `session.presses[]`: each gains `outcome?`, `expected?`.
+- Admin journal endpoint: rows gain `outcome`, `expected`.
+- WebSocket: new `equipment.order.outcome` message. No new route.

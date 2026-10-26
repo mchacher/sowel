@@ -7,10 +7,11 @@
 // `/access/` works without a second rule.
 //
 // What it shows of a command is the echo of this phone's own presses, never
-// the gate's state (R4.16, R5.22). When the gate's device answers (spec 188
-// R5), the echo includes what the gate made of the press — read from that
-// press's own journal row in the session, never from another equipment. The control is a movement: the disc is
-// pulled upward out of its socket (R5.20); the keyboard confirms with a second
+// the gate's state (R4.16, R5.22). When the core could follow the press from
+// the gate's own contact (spec 188 O8), the echo includes its outcome — read
+// from that press's own journal row in the session, never from another
+// equipment. The control is a movement: the disc is pulled upward out of its
+// socket (R5.20); the keyboard confirms with a second
 // Enter instead (R5.21). The screen never scrolls: the phone's journal and the
 // QR code to bring another phone in live behind the gear (R5.22).
 //
@@ -297,14 +298,9 @@ export const GUEST_JS = `(function () {
       busy: "The gate is busy. Try again in a moment.",
       gate_error: "The gate did not take the command. Try again."
     },
-    // Spec 188 R5 — what the gate made of this phone's press.
-    received: "RECEIVED", confirmed: "Opening confirmed", notReceived: "Command not received", noConfirm: "No confirmation",
-    outcomes: {
-      refused: "The gate refused the command.",
-      not_received: "The gate did not confirm receiving the command: look at it before trying again, it may have moved.",
-      unconfirmed: "No confirmation: look at the gate before trying again, it may have moved."
-    },
-    receipts: { pending: "Opening requested", delivered: "Opening confirmed", refused: "Refused by the gate", not_received: "Not received by the gate", unconfirmed: "Opening requested · no confirmation" }
+    // Spec 188 O8 — what became of this phone's press. Never an invitation to press again.
+    confirmed: { open: "Opening confirmed", close: "Closing confirmed" }, noConfirm: "No confirmation",
+    lookFirst: "Look at the gate before trying again: it may have moved."
   } : {
     access: "Accès", enterCode: "Entrez le code qu'on vous a communiqué.", validate: "Valider",
     unknown: "Ce code n'ouvre rien.", tooMany: "Trop d'essais. Réessayez dans un instant.",
@@ -330,14 +326,9 @@ export const GUEST_JS = `(function () {
       busy: "Le portail est occupé. Réessayez dans un instant.",
       gate_error: "Le portail n'a pas pris la commande. Réessayez."
     },
-    // Spec 188 R5 — ce que le portail a fait de l'appui de ce téléphone.
-    received: "REÇU", confirmed: "Ouverture confirmée", notReceived: "Commande non reçue", noConfirm: "Sans confirmation",
-    outcomes: {
-      refused: "Le portail a refusé la commande.",
-      not_received: "Le portail n'a pas confirmé la réception : regardez-le avant de réessayer, il a peut-être bougé.",
-      unconfirmed: "Pas de confirmation : regardez le portail avant de réessayer, il a peut-être bougé."
-    },
-    receipts: { pending: "Ouverture demandée", delivered: "Ouverture confirmée", refused: "Refusée par le portail", not_received: "Non reçue par le portail", unconfirmed: "Ouverture demandée · sans confirmation" }
+    // Spec 188 O8 — ce qu'est devenu l'appui de ce téléphone. Jamais une invitation à réappuyer.
+    confirmed: { open: "Ouverture confirmée", close: "Fermeture confirmée" }, noConfirm: "Sans confirmation",
+    lookFirst: "Regardez le portail avant de réessayer : il a peut-être bougé."
   };
 
   var token = null;
@@ -353,9 +344,9 @@ export const GUEST_JS = `(function () {
   var session = null;
   var busy = false;
   var pillTimer = null;
-  // Spec 188 — the press being followed.
+  // Spec 188 O8 — the press being followed: every 2 s for 70 s at most.
   var following = null;
-  var FOLLOW_EVERY_MS = 1000, FOLLOW_FOR_MS = 20000;
+  var FOLLOW_EVERY_MS = 2000, FOLLOW_FOR_MS = 70000;
 
   function saveToken(t) {
     token = t;
@@ -515,16 +506,23 @@ export const GUEST_JS = `(function () {
     var many = session && session.gates.length > 1;
     list.forEach(function (p) {
       var row = document.createElement("div");
-      var lost = p.receipt === "refused" || p.receipt === "not_received";
-      row.className = "jrow" + (p.result === "sent" && !lost ? "" : " bad");
+      row.className = "jrow" + (p.result === "sent" ? "" : " bad");
       var d = document.createElement("span"); d.className = "d";
       var l = document.createElement("span");
-      var label = p.result === "sent" ? ((p.receipt && T.receipts[p.receipt]) || T.asked) : (T.reasons[p.result] || T.refused);
+      var label = p.result === "sent" ? pressLabel(p) : (T.reasons[p.result] || T.refused);
       l.textContent = label + (many && p.gateName ? " · " + p.gateName : "");
       var t = document.createElement("span"); t.className = "t"; t.textContent = when(p.at);
       row.appendChild(d); row.appendChild(l); row.appendChild(t);
       rows.appendChild(row);
     });
+  }
+
+  // Spec 188 O8 — a sent press reads as its outcome when the core followed it;
+  // a press still pending or not followed reads as today's « Opening requested ».
+  function pressLabel(p) {
+    if (p.outcome === "confirmed" && T.confirmed[p.expected]) return T.confirmed[p.expected];
+    if (p.outcome === "unconfirmed") return T.asked + " · " + T.noConfirm.toLowerCase();
+    return T.asked;
   }
 
   var ICON = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 21h8V5l-8 3z"></path><path d="M11 21h2V9l-2-1"></path><path d="M15 12h6"></path><path d="M18 9l3 3-3 3"></path></svg>';
@@ -613,7 +611,7 @@ export const GUEST_JS = `(function () {
       if (r.status === 401) { saveToken(null); busy = false; showCode(); return; }
       if (r.status === 200 && r.body.ok) {
         refresh(); runBar(rest);
-        if (r.body.receipt) follow(gate.id, verb);
+        if (r.body.outcome === "pending") follow(gate.id);
         return;
       }
       var reason = (r.body && r.body.reason) || "gate_error";
@@ -650,21 +648,23 @@ export const GUEST_JS = `(function () {
     })(t0);
   }
 
-  // ── The gate's receipt (spec 188 R5) ─────────────────────
+  // ── The outcome of this phone's press (spec 188 O8) ──────
   // The page learns what became of ITS press from that press's own row in the
-  // session — this phone's presses, nothing else — read every second for at
-  // most 20 s while the receipt is pending. The travel bar runs on meanwhile.
+  // session — this phone's presses, nothing else — read every 2 s for at most
+  // 70 s, until it is confirmed (a late state turns an unconfirmed into a
+  // confirmed). The travel bar runs on meanwhile, and the disc stays locked
+  // until it ends: whatever the outcome, a second impulse could reverse the gate.
   function ownPress(gateId) {
     var list = (session && session.presses) || [];
     return list.filter(function (p) { return p.result === "sent" && p.gateId === gateId; })[0] || null;
   }
 
-  function follow(gateId, verb) {
+  function follow(gateId) {
     var me = {};
     following = me;
-    var t0 = Date.now();
+    var t0 = Date.now(), shown = null;
     function again() {
-      if (Date.now() - t0 >= FOLLOW_FOR_MS) { following = null; outcome("unconfirmed", verb); return; }
+      if (Date.now() - t0 >= FOLLOW_FOR_MS) { following = null; return; }
       setTimeout(poll, FOLLOW_EVERY_MS);
     }
     function poll() {
@@ -674,26 +674,25 @@ export const GUEST_JS = `(function () {
         if (r.status === 401) { following = null; saveToken(null); showCode(); return; }
         if (r.status === 200) { session = r.body; renderJournal(); }
         var p = ownPress(gateId);
-        var receipt = p && p.receipt;
-        if (receipt && receipt !== "pending") { following = null; outcome(receipt, verb); return; }
+        var status = p && p.outcome;
+        if (status === "confirmed") { following = null; showOutcome(p); return; }
+        if (status === "unconfirmed" && shown !== status) { shown = status; showOutcome(p); }
         again();
       }, function () { if (following === me) again(); });
     }
     setTimeout(poll, FOLLOW_EVERY_MS);
   }
 
-  // The travel bar keeps running whatever the answer, and the disc stays
-  // locked until it ends: a not_received can still be a command the gate
-  // applied (every acknowledgement lost), and a second impulse would reverse it.
-  function outcome(receipt, verb) {
+  function showOutcome(p) {
     clearTimeout(pillTimer);
-    if (receipt === "delivered") {
-      // The disc is still the press's own only while the bar runs.
-      if (busy) { verb.textContent = T.received; $("progLeft").textContent = T.confirmed.toLowerCase(); }
-      setPill("run", T.confirmed);
+    if (p.outcome === "confirmed") {
+      var label = T.confirmed[p.expected] || T.confirmed.open;
+      if (busy) $("progLeft").textContent = label.toLowerCase();
+      setPill("run", label);
+      $("msg").textContent = "";
     } else {
-      setPill("bad", receipt === "refused" ? T.refused : receipt === "not_received" ? T.notReceived : T.noConfirm);
-      $("msg").textContent = T.outcomes[receipt] || T.outcomes.unconfirmed;
+      setPill("bad", T.noConfirm);
+      $("msg").textContent = T.lookFirst;
     }
     // While the bar runs, its end puts the resting pill back.
     if (!busy) pillTimer = setTimeout(function () { if (!busy) restingPill(); }, 4200);

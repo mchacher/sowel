@@ -176,67 +176,8 @@ describe("EventBusProxy", () => {
         source: "z",
         message: "ok",
       });
-    } else if (eventType === "device.order.receipt") {
-      proxy.emit({
-        type: "device.order.receipt",
-        integrationId: "zigbee2mqtt",
-        deviceId: "d1",
-        orderKey: "command",
-        status: "pending",
-      });
     }
     expect(inner.emit).toHaveBeenCalled();
-  });
-
-  // Spec 188 — the receipt carries an integrationId and is correlated by device
-  // and key: a plugin reports for its own integration, with a known status.
-  it("forwards an order receipt for the plugin's own integration", () => {
-    const inner = makeMockEventBus();
-    const proxy = makeEventBusProxy("lora2mqtt", inner, logger);
-    const receipt = {
-      type: "device.order.receipt" as const,
-      integrationId: "lora2mqtt",
-      deviceId: "d1",
-      orderKey: "command",
-      status: "delivered" as const,
-      late: true,
-    };
-    proxy.emit(receipt);
-    expect(inner.emit).toHaveBeenCalledWith(receipt);
-  });
-
-  it("drops an order receipt claiming another plugin's integrationId", () => {
-    const inner = makeMockEventBus();
-    const proxy = makeEventBusProxy("lora2mqtt", inner, logger);
-    proxy.emit({
-      type: "device.order.receipt",
-      integrationId: "zigbee2mqtt",
-      deviceId: "d1",
-      orderKey: "command",
-      status: "refused",
-    });
-    expect(inner.emit).not.toHaveBeenCalled();
-    expectWarn(logger, { pluginId: "lora2mqtt", claimed: "zigbee2mqtt" });
-  });
-
-  it.each([
-    { status: "applied" },
-    { status: "delivered", deviceId: "" },
-    { status: "delivered", orderKey: 42 },
-    { status: "delivered", late: "yes" },
-    { status: "delivered", integrationId: undefined },
-  ])("drops a malformed order receipt %o", (fields) => {
-    const inner = makeMockEventBus();
-    const proxy = makeEventBusProxy("lora2mqtt", inner, logger);
-    proxy.emit({
-      type: "device.order.receipt",
-      integrationId: "lora2mqtt",
-      deviceId: "d1",
-      orderKey: "command",
-      ...fields,
-    } as unknown as Parameters<typeof proxy.emit>[0]);
-    expect(inner.emit).not.toHaveBeenCalled();
-    expectWarn(logger, { pluginId: "lora2mqtt", eventType: "device.order.receipt" });
   });
 
   it("drops non-whitelisted event types silently", () => {

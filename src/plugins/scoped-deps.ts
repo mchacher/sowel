@@ -4,7 +4,6 @@ import type { SettingsManager } from "../core/settings-manager.js";
 import type { DeviceManager } from "../devices/device-manager.js";
 import type { IntegrationPlugin } from "../integrations/integration-registry.js";
 import type { EngineEvent } from "../shared/types.js";
-import { ORDER_RECEIPT_STATUSES } from "../shared/constants.js";
 
 // Spec 111 — Plugin soft isolation via scoped Proxy.
 //
@@ -25,41 +24,16 @@ export const GLOBAL_READABLE_KEYS: ReadonlySet<string> = new Set([
 
 /**
  * Event types a plugin is allowed to emit. Derived from a code audit
- * of all 13 official plugins; the first four cover every observed
+ * of all 13 official plugins; the four below cover every observed
  * legitimate use case. Extending this set is a code change reviewed
  * at PR time.
- *
- * `device.order.receipt` (spec 188) lets an integration report what a device
- * made of an order. It carries an `integrationId`, so the impersonation gate
- * below applies to it, and its shape is checked by `isWellFormedReceipt`.
  */
 export const ALLOWED_EMIT_TYPES: ReadonlySet<EngineEvent["type"]> = new Set<EngineEvent["type"]>([
   "system.integration.connected",
   "system.integration.disconnected",
   "system.alarm.raised",
   "system.alarm.resolved",
-  "device.order.receipt",
 ]);
-
-/**
- * Spec 188 — a receipt the core can act on: a known status and the ids it is
- * correlated by. Anything else is dropped at the gate, so the tracker never
- * sees a status it has no rule for.
- */
-function isWellFormedReceipt(event: EngineEvent): boolean {
-  if (event.type !== "device.order.receipt") return true;
-  const e = event as unknown as Record<string, unknown>;
-  return (
-    typeof e.integrationId === "string" &&
-    typeof e.deviceId === "string" &&
-    e.deviceId !== "" &&
-    typeof e.orderKey === "string" &&
-    e.orderKey !== "" &&
-    typeof e.status === "string" &&
-    ORDER_RECEIPT_STATUSES.has(e.status as never) &&
-    (e.late === undefined || typeof e.late === "boolean")
-  );
-}
 
 /**
  * Methods on IntegrationPlugin whose errors must propagate back to the
@@ -169,13 +143,6 @@ export function makeEventBusProxy(pluginId: string, inner: EventBus, logger: Log
                   eventType: event.type,
                 },
                 "Plugin denied emit (integrationId impersonation)",
-              );
-              return;
-            }
-            if (!isWellFormedReceipt(event)) {
-              logger.warn(
-                { pluginId, eventType: event.type },
-                "Plugin denied emit (malformed order receipt)",
               );
               return;
             }

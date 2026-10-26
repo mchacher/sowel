@@ -784,14 +784,11 @@ export type OrderSource =
   | { kind: "external"; channel: string }
   | { kind: "shared_access"; accessId: string; label: string; pressId?: string };
 
-/** Spec 188 — what a device made of an order (mirrors src/shared/types.ts). */
-export type OrderReceiptStatus =
-  | "pending"
-  | "received"
-  | "delivered"
-  | "refused"
-  | "not_received"
-  | "unconfirmed";
+/** Spec 188 — what became of a tracked order (mirrors src/shared/types.ts). */
+export type OrderOutcomeStatus = "pending" | "moving" | "confirmed" | "fault" | "unconfirmed";
+
+/** Spec 188 — the movement a tracked order should cause. */
+export type OrderOutcomeExpected = "open" | "close";
 
 // ============================================================
 // Shared access (spec 181) — mirrors src/shared/types.ts
@@ -831,13 +828,7 @@ export type SharedAccessRefusal =
   | "gate_error";
 
 export type SharedAccessStatus =
-  | "live"
-  | "outside_hours"
-  | "not_yet"
-  | "ended"
-  | "suspended"
-  | "revoked"
-  | "no_gate";
+  "live" | "outside_hours" | "not_yet" | "ended" | "suspended" | "revoked" | "no_gate";
 
 export interface SharedAccessGateView {
   equipmentId: string;
@@ -918,8 +909,10 @@ export interface SharedAccessJournalEntry {
   actor: string | null;
   equipmentId: string | null;
   phoneTag: string | null;
-  /** Spec 188 — the gate's receipt for an `opened` row; null when its device does not answer. */
-  receipt: OrderReceiptStatus | null;
+  /** Spec 188 — the outcome of an `opened` row's press; null when it was not tracked. */
+  outcome: "pending" | "confirmed" | "unconfirmed" | null;
+  /** Spec 188 — the movement that press should cause; null when not tracked. */
+  outcomeExpected: OrderOutcomeExpected | null;
 }
 
 export interface SharedAccessPhoneView {
@@ -1040,13 +1033,16 @@ export type EngineEvent =
       oldStatus: EquipmentStatus;
       newStatus: EquipmentStatus;
     }
-  /* Spec 188 — the device's receipt for the equipment's last order. */
+  /* Spec 188 — a tracked order's outcome changed (gate impulse, cover OPEN / CLOSE). */
   | {
-      type: "equipment.order.receipt";
+      type: "equipment.order.outcome";
       equipmentId: string;
       orderAlias: string;
-      status: OrderReceiptStatus;
-      late?: boolean;
+      value: unknown;
+      status: OrderOutcomeStatus;
+      expected?: OrderOutcomeExpected;
+      /** The device's reason for a `fault` (e.g. `BOTTOM`). */
+      detail?: string;
       source?: OrderSource;
     }
   /* Spec 174 — a timed window opening, ending, or failing to end. The equipment

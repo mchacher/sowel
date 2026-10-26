@@ -3,7 +3,14 @@ import type { EventBus } from "../core/event-bus.js";
 import type { EquipmentManager } from "./equipment-manager.js";
 import type { DeviceManager } from "../devices/device-manager.js";
 import type { IntegrationRegistry } from "../integrations/integration-registry.js";
-import type { DataBindingWithValue, DataType, OrderSource } from "../shared/types.js";
+import type {
+  DataBindingWithValue,
+  DataType,
+  Equipment,
+  OrderOutcomeExpected,
+  OrderOutcomeStatus,
+  OrderSource,
+} from "../shared/types.js";
 
 // ============================================================
 // Spec 141 — order delivery confirmation
@@ -14,6 +21,13 @@ import type { DataBindingWithValue, DataType, OrderSource } from "../shared/type
 // delay, and otherwise raises a user-visible alarm (which the notification
 // pipeline forwards as a push). When the target device comes back online,
 // the last unconfirmed order is re-dispatched once within a bounded window.
+//
+// Spec 188 adds two tracking kinds for orders that have no mirror value:
+//   - `transition`: a gate impulse, proven by the gate state flipping;
+//   - `end_state`: a cover OPEN / CLOSE, proven by the end state it reaches,
+//     only once the device has shown it speaks that vocabulary (O4).
+// Both emit `equipment.order.outcome` on every status change and are never
+// re-dispatched (O9): a second impulse reverses a gate.
 // ============================================================
 
 /**
@@ -52,6 +66,30 @@ const DISCONNECTED_ALARM_GRACE_MS = 60_000;
  * shutdown left behind.
  */
 const STATUS_SETTLE_MS = 60_000;
+/**
+ * Spec 188 O2 — window for a gate impulse from closed: the reed opens within
+ * 1–2 s; 15 s covers the radio retries and a heartbeat-only report.
+ */
+export const GATE_OPEN_WINDOW_MS = 15_000;
+/**
+ * Spec 188 O2 — window for a gate impulse from open: the pulse may close, stop
+ * or reverse it; the travel is about 34 s and nothing is observable before
+ * `closed`, so 60 s covers a reversal followed by a full close.
+ */
+export const GATE_CLOSE_WINDOW_MS = 60_000;
+/** Spec 188 O3 — window for a cover OPEN / CLOSE (the coop motor cuts at 50 s). */
+export const END_STATE_WINDOW_MS = 60_000;
+/**
+ * Spec 188 O4 — words a cover state can carry that are never commands. A mirror
+ * that reported one of them speaks the end-state vocabulary, so CLOSE can be
+ * confirmed by CLOSED without false-alarming the covers that echo OPEN / CLOSE.
+ */
+const END_STATE_VOCABULARY = new Set(["CLOSED", "OPENING", "CLOSING", "FAULT"]);
+/** The device key a fault reason is read from (spec 188 O3). */
+const FAULT_REASON_KEY = "why";
+/** Fault reasons the UI words itself (spec 188 O6); others are shown raw. */
+const KNOWN_FAULT_REASONS = new Set(["BOTTOM", "WIRING"]);
+
 /** OrderSource channel identifying the tracker's own re-dispatches. */
 export const RETRY_CHANNEL = "delivery-retry";
 
@@ -98,7 +136,39 @@ interface PendingOrder {
    */
   deviceMirror?: { deviceId: string; key: string };
   source?: OrderSource | undefined;
+  /**
+   * Spec 188 — how this order is proven. `mirror` is spec 141's rule (the
+   * ordered value appears on the mirror); the two others are O1's kinds.
+   */
+  kind: "mirror" | "transition" | "end_state";
+  /** Spec 188 — the movement a `transition` / `end_state` order should cause. */
+  expected?: OrderOutcomeExpected;
+  /** Spec 188 — the equipment alias whose flip proves a `transition`. */
+  gateAlias?: "closed" | "state";
+  /** Spec 188 — the equipment alias of an `end_state` mirror binding. */
+  stateAlias?: string;
+  /** Spec 188 — the last outcome emitted, so only a change is emitted. */
+  lastStatus?: OrderOutcomeStatus;
+  /** Spec 188 — the device's fault reason, once it reported FAULT. */
+  detail?: string;
 }
+
+/** Spec 188 O1 — the tracking an order gets, when it is one of the new kinds. */
+type TrackedKind =
+  | {
+      kind: "transition";
+      expected: OrderOutcomeExpected;
+      gateAlias: "closed" | "state";
+      timeoutMs: number;
+    }
+  | {
+      kind: "end_state";
+      expected: OrderOutcomeExpected;
+      mirror?: DataBindingWithValue;
+      deviceMirror?: { deviceId: string; key: string };
+      /** The mirror (or the position) already reports the target. */
+      atTarget: boolean;
+    };
 
 /** Normalize a value for comparison: boolean-like strings → boolean, numeric strings → number. */
 function normalizeValue(v: unknown): unknown {
@@ -139,6 +209,19 @@ export function isConfirmableValue(ordered: unknown, enumValues?: string[]): boo
  * Narrow on purpose: boolean against number, both ways, and nothing else.
  * A boolean ordered against an ON/OFF enum is a real mirror, and stays one.
  */
+/** Spec 188 — a cover state word, upper-cased; null for anything else. */
+function stateWord(v: unknown): string | null {
+  return typeof v === "string" ? v.trim().toUpperCase() : null;
+}
+
+/** Spec 188 — a gate contact as a boolean "closed", null when it says nothing. */
+function closedFlag(v: unknown): boolean | null {
+  const n = normalizeValue(v);
+  if (typeof n === "boolean") return n;
+  if (n === 1 || n === 0) return n === 1;
+  return null;
+}
+
 export function mirrorCanReport(ordered: unknown, mirrorType: DataType | undefined): boolean {
   if (mirrorType === undefined) return true;
   const normalized = normalizeValue(ordered);
@@ -153,6 +236,11 @@ export class OrderConfirmationTracker {
   private readonly unsubs: Array<() => void> = [];
   /** Devices whose status we have observed since start — see offlineIsEvidence. */
   private readonly statusSeen: Set<string> = new Set();
+  /**
+   * Spec 188 O4 — `deviceId:key` mirrors that have reported an end-state word
+   * (CLOSED, OPENING, CLOSING, FAULT) since start.
+   */
+  private readonly endStateSpoken: Set<string> = new Set();
   private startedAt = 0;
 
   constructor(
@@ -233,6 +321,7 @@ export class OrderConfirmationTracker {
     }
     this.pending.clear();
     this.statusSeen.clear();
+    this.endStateSpoken.clear();
   }
 
   // ── Order dispatch ───────────────────────────────────────────
@@ -266,6 +355,30 @@ export class OrderConfirmationTracker {
 
     const { deviceIds, integrationIds, targets } = this.targetsFor(equipmentId, alias);
     const bindings = this.equipmentManager.getDataBindingsWithValues(equipmentId);
+
+    // Spec 188 O1 — a gate impulse or a cover OPEN / CLOSE is chosen before
+    // the confirmability test, which would exempt both.
+    const tracked = this.classify(
+      this.equipmentManager.getById(equipmentId),
+      alias,
+      value,
+      bindings,
+      deviceIds,
+      targets,
+    );
+    if (tracked) {
+      this.trackOutcome(tracked, {
+        equipmentId,
+        alias,
+        value,
+        previous,
+        deviceIds,
+        integrationIds,
+        source,
+      });
+      return;
+    }
+
     const { mirror, deviceMirror } = this.resolveMirror(bindings, alias, value, deviceIds, targets);
     // No observable effect (scenes, stateless orders), a cross-vocabulary enum
     // (cover CLOSE vs state CLOSED), or nothing that could ever report this
@@ -294,6 +407,7 @@ export class OrderConfirmationTracker {
       integrationIds,
       ...(deviceMirror !== undefined ? { deviceMirror } : {}),
       source,
+      kind: "mirror",
     };
 
     // Already in the ordered state (e.g. OFF ordered while already OFF):
@@ -315,6 +429,310 @@ export class OrderConfirmationTracker {
     }
 
     this.armTimer(entry);
+  }
+
+  // ── Spec 188 — outcome from reported state ───────────────────
+
+  /**
+   * O1 — whether this order is a gate impulse or a cover OPEN / CLOSE the
+   * reported state can prove. Null means spec 141's path, unchanged.
+   */
+  private classify(
+    equipment: Equipment | null | undefined,
+    alias: string,
+    value: unknown,
+    bindings: DataBindingWithValue[],
+    deviceIds: string[],
+    targets: { deviceId: string; key: string }[],
+  ): TrackedKind | null {
+    if (!equipment) return null;
+    const word = stateWord(value);
+    if (equipment.type === "gate" && word === "PULSE") {
+      const gate = this.readGateState(bindings);
+      if (!gate) return null; // O2 — state unknown: exempt, today's behaviour
+      return gate.closed
+        ? {
+            kind: "transition",
+            expected: "open",
+            gateAlias: gate.alias,
+            timeoutMs: GATE_OPEN_WINDOW_MS,
+          }
+        : {
+            kind: "transition",
+            expected: "close",
+            gateAlias: gate.alias,
+            timeoutMs: GATE_CLOSE_WINDOW_MS,
+          };
+    }
+    if (equipment.type === "shutter" && (word === "OPEN" || word === "CLOSE")) {
+      const { mirror, deviceMirror } = this.resolveMirror(
+        bindings,
+        alias,
+        value,
+        deviceIds,
+        targets,
+      );
+      const at = mirror
+        ? { deviceId: mirror.deviceId, key: mirror.key, current: mirror.value }
+        : deviceMirror
+          ? { ...deviceMirror, current: this.readDeviceValue(deviceMirror) }
+          : null;
+      if (!at) return null;
+      // O4 — only a mirror that has spoken the end-state vocabulary.
+      const current = stateWord(at.current);
+      const spoken =
+        (current !== null && END_STATE_VOCABULARY.has(current)) ||
+        (at.deviceId !== "" && this.endStateSpoken.has(`${at.deviceId}:${at.key}`));
+      if (!spoken) return null;
+      const expected: OrderOutcomeExpected = word === "OPEN" ? "open" : "close";
+      const position = bindings.find((b) => b.alias === "position")?.value;
+      const atTarget =
+        current === (expected === "open" ? "OPEN" : "CLOSED") ||
+        this.positionAtTarget(expected, position);
+      return {
+        kind: "end_state",
+        expected,
+        ...(mirror ? { mirror } : {}),
+        ...(deviceMirror && !mirror ? { deviceMirror } : {}),
+        atTarget,
+      };
+    }
+    return null;
+  }
+
+  /**
+   * O2 — the gate state at dispatch: its `closed` binding, else its `state`
+   * binding. Null when unknown: no value, or every device behind it offline.
+   */
+  private readGateState(
+    bindings: DataBindingWithValue[],
+  ): { closed: boolean; alias: "closed" | "state" } | null {
+    const closedBinding = bindings.find((b) => b.alias === "closed");
+    if (closedBinding) {
+      const closed = closedFlag(closedBinding.value);
+      if (closed === null || this.allTargetsOffline([closedBinding.deviceId])) return null;
+      return { closed, alias: "closed" };
+    }
+    const stateBinding = bindings.find((b) => b.alias === "state");
+    if (!stateBinding) return null;
+    const state = stateWord(stateBinding.value);
+    if (state !== "OPEN" && state !== "CLOSED") return null;
+    // The `state` of a gate is derived from its contact bindings: it is
+    // unknown when every device behind them is offline.
+    const behind = [
+      ...new Set(
+        [stateBinding, ...bindings.filter((b) => b !== stateBinding)]
+          .map((b) => b.deviceId)
+          .filter((id) => id !== ""),
+      ),
+    ];
+    if (behind.length > 0 && this.allTargetsOffline(behind)) return null;
+    return { closed: state === "CLOSED", alias: "state" };
+  }
+
+  private positionAtTarget(expected: OrderOutcomeExpected, position: unknown): boolean {
+    const n = normalizeValue(position);
+    if (typeof n !== "number") return false;
+    return expected === "open" ? n === 100 : n === 0;
+  }
+
+  /** Create the pending entry of a `transition` / `end_state` order. */
+  private trackOutcome(
+    tracked: TrackedKind,
+    ctx: {
+      equipmentId: string;
+      alias: string;
+      value: unknown;
+      previous: PendingOrder | undefined;
+      deviceIds: string[];
+      integrationIds: string[];
+      source: OrderSource | undefined;
+    },
+  ): void {
+    const { equipmentId, alias, value, previous, deviceIds, integrationIds, source } = ctx;
+    const entry: PendingOrder = {
+      equipmentId,
+      alias,
+      value,
+      orderedAt: Date.now(),
+      timer: null,
+      timeoutMs:
+        tracked.kind === "transition"
+          ? tracked.timeoutMs
+          : Math.max(END_STATE_WINDOW_MS, this.confirmationTimeoutFor(deviceIds)),
+      unconfirmed: false,
+      alarmRaised: previous?.alarmRaised ?? false,
+      // O9 — never re-dispatched, neither on a device reconnect nor on an
+      // integration connect: a second impulse reverses a gate.
+      retried: true,
+      offlineAtDispatch: this.allTargetsOffline(deviceIds),
+      redispatchTtlMs: REDISPATCH_TTL_MS,
+      neverDispatched: false,
+      confirmable: true,
+      deviceIds,
+      integrationIds,
+      source,
+      kind: tracked.kind,
+      expected: tracked.expected,
+      ...(tracked.kind === "transition" ? { gateAlias: tracked.gateAlias } : {}),
+      ...(tracked.kind === "end_state" && tracked.mirror
+        ? { stateAlias: tracked.mirror.alias }
+        : {}),
+      ...(tracked.kind === "end_state" && tracked.deviceMirror
+        ? { deviceMirror: tracked.deviceMirror }
+        : {}),
+    };
+
+    // O3 — already at the target: confirmed at once, as in spec 141.
+    if (tracked.kind === "end_state" && tracked.atTarget) {
+      this.emitOutcome(entry, "confirmed");
+      if (entry.alarmRaised) this.resolveAlarm(entry, "state finally confirmed");
+      return;
+    }
+
+    this.pending.set(`${equipmentId}:${alias}`, entry);
+    this.emitOutcome(entry, "pending");
+
+    if (entry.offlineAtDispatch && this.offlineIsEvidence(deviceIds)) {
+      this.markUnconfirmed(entry, "device_offline");
+      return;
+    }
+    this.armTimer(entry);
+  }
+
+  /**
+   * A reported value on a tracked order's equipment or mirror device. `via`
+   * says where it came from: an equipment alias, or the device mirror.
+   */
+  private observeTracked(
+    entry: PendingOrder,
+    via: { alias: string } | { deviceMirror: true },
+    value: unknown,
+  ): void {
+    if (entry.neverDispatched) return;
+    if (entry.kind === "transition") {
+      if (!("alias" in via) || via.alias !== entry.gateAlias) return;
+      const reached =
+        entry.gateAlias === "closed"
+          ? closedFlag(value) === (entry.expected === "close")
+          : stateWord(value) === (entry.expected === "open" ? "OPEN" : "CLOSED");
+      // O2 — only the first flip counts; the value at dispatch (a heartbeat)
+      // and "unknown" leave the window running.
+      if (reached) this.confirmTracked(entry, value);
+      return;
+    }
+    if (entry.kind !== "end_state") return;
+    if ("alias" in via && via.alias === "position") {
+      // O4 — position confirms only once the vocabulary enabled the mapping,
+      // which it did for this entry to exist.
+      if (this.positionAtTarget(entry.expected ?? "open", value)) this.confirmTracked(entry, value);
+      return;
+    }
+    const isMirror =
+      "deviceMirror" in via
+        ? entry.deviceMirror !== undefined
+        : entry.stateAlias !== undefined && via.alias === entry.stateAlias;
+    if (!isMirror) return;
+    const word = stateWord(value);
+    const open = entry.expected === "open";
+    if (word === (open ? "OPEN" : "CLOSED")) {
+      this.confirmTracked(entry, value);
+      return;
+    }
+    // After the window or a fault, only the target still matters (O6).
+    if (entry.unconfirmed) return;
+    if (word === (open ? "OPENING" : "CLOSING")) {
+      this.emitOutcome(entry, "moving");
+    } else if (word === "FAULT") {
+      const detail = this.readFaultReason(entry);
+      if (detail !== undefined) entry.detail = detail;
+      this.markUnconfirmed(entry, "device_fault");
+    }
+  }
+
+  /** O3 — the device's own reason for a FAULT, read from its `why` key. */
+  private readFaultReason(entry: PendingOrder): string | undefined {
+    const deviceId = entry.deviceMirror?.deviceId ?? this.endStateDeviceOf(entry);
+    if (!deviceId) return undefined;
+    const why = this.readDeviceValue({ deviceId, key: FAULT_REASON_KEY });
+    if (why === null || why === undefined || why === "") return undefined;
+    return String(why).trim().toUpperCase();
+  }
+
+  /** The device behind an `end_state` mirror binding. */
+  private endStateDeviceOf(entry: PendingOrder): string | undefined {
+    if (!entry.stateAlias) return undefined;
+    return this.equipmentManager
+      .getDataBindingsWithValues(entry.equipmentId)
+      .find((b) => b.alias === entry.stateAlias && b.deviceId !== "")?.deviceId;
+  }
+
+  private confirmTracked(entry: PendingOrder, value: unknown): void {
+    if (entry.timer) {
+      clearTimeout(entry.timer);
+      entry.timer = null;
+    }
+    this.emitOutcome(entry, "confirmed");
+    if (entry.alarmRaised) {
+      this.resolveAlarm(entry, "state finally confirmed");
+      this.logger.info(
+        { equipmentId: entry.equipmentId, alias: entry.alias, value },
+        "Unconfirmed order finally confirmed by equipment state",
+      );
+    }
+    this.pending.delete(`${entry.equipmentId}:${entry.alias}`);
+  }
+
+  /** O5 — emit a tracked order's outcome, on a change only. */
+  private emitOutcome(entry: PendingOrder, status: OrderOutcomeStatus, force = false): void {
+    if (entry.kind === "mirror") return;
+    if (!force && entry.lastStatus === status) return;
+    entry.lastStatus = status;
+    this.eventBus.emit({
+      type: "equipment.order.outcome",
+      equipmentId: entry.equipmentId,
+      orderAlias: entry.alias,
+      value: entry.value,
+      status,
+      ...(entry.expected !== undefined ? { expected: entry.expected } : {}),
+      ...(status === "fault" && entry.detail !== undefined ? { detail: entry.detail } : {}),
+      ...(entry.source !== undefined ? { source: entry.source } : {}),
+    });
+  }
+
+  /** O6 — the i18n key and parameters the UI words a tracked order's alarm from. */
+  private outcomeAlarmWording(
+    entry: PendingOrder,
+    name: string,
+    reason: "timeout" | "device_offline" | "integration_disconnected" | "device_fault",
+  ): { messageKey: string; messageParams: Record<string, string> } | null {
+    if (entry.kind === "mirror") return null;
+    if (reason === "device_fault") {
+      if (entry.detail === undefined) {
+        return { messageKey: "alarms.orderOutcome.fault", messageParams: { equipment: name } };
+      }
+      if (KNOWN_FAULT_REASONS.has(entry.detail)) {
+        const suffix = entry.detail.charAt(0) + entry.detail.slice(1).toLowerCase();
+        return {
+          messageKey: `alarms.orderOutcome.fault${suffix}`,
+          messageParams: { equipment: name },
+        };
+      }
+      return {
+        messageKey: "alarms.orderOutcome.faultDetail",
+        messageParams: { equipment: name, detail: entry.detail },
+      };
+    }
+    if (entry.kind === "transition") {
+      return {
+        messageKey:
+          entry.expected === "close"
+            ? "alarms.orderOutcome.unconfirmedStillOpen"
+            : "alarms.orderOutcome.unconfirmedNoMovement",
+        messageParams: { equipment: name },
+      };
+    }
+    return { messageKey: "alarms.orderOutcome.unconfirmed", messageParams: { equipment: name } };
   }
 
   /**
@@ -457,7 +875,7 @@ export class OrderConfirmationTracker {
 
   private markUnconfirmed(
     entry: PendingOrder,
-    reason: "timeout" | "device_offline" | "integration_disconnected",
+    reason: "timeout" | "device_offline" | "integration_disconnected" | "device_fault",
   ): void {
     if (entry.timer) {
       clearTimeout(entry.timer);
@@ -485,6 +903,8 @@ export class OrderConfirmationTracker {
       reason,
       ...(entry.source !== undefined ? { source: entry.source } : {}),
     });
+    // Spec 188 O5 — a tracked order's line reads fault or unconfirmed.
+    this.emitOutcome(entry, reason === "device_fault" ? "fault" : "unconfirmed");
 
     // A stateless order (a scene, a display wake) has nothing that could ever
     // report the ordered value, so an alarm on it could never resolve. It is
@@ -496,22 +916,38 @@ export class OrderConfirmationTracker {
           ? "device offline"
           : reason === "integration_disconnected"
             ? "integration unreachable"
-            : `no state change within ${Math.round(entry.timeoutMs / 1000)}s`;
+            : reason === "device_fault"
+              ? `device reported FAULT${entry.detail !== undefined ? ` (${entry.detail})` : ""}`
+              : `no state change within ${Math.round(entry.timeoutMs / 1000)}s`;
+      const wording = this.outcomeAlarmWording(entry, name, reason);
       this.eventBus.emit({
         type: "system.alarm.raised",
         alarmId: this.alarmId(entry),
         level: "warning",
         source: ALARM_SOURCE,
         message: `Order not confirmed: ${name} ${entry.alias} → ${String(entry.value)} (${detail})`,
+        ...(wording ?? {}),
       });
+    }
+
+    // Spec 188 O9 — a tracked order held because its integration was down is
+    // never replayed and nothing it sent can be proven: it ends here.
+    if (entry.kind !== "mirror" && entry.neverDispatched) {
+      this.pending.delete(`${entry.equipmentId}:${entry.alias}`);
     }
   }
 
   // ── Confirmation ─────────────────────────────────────────────
 
   private handleDataChanged(equipmentId: string, alias: string, value: unknown): void {
+    // Spec 188 — a tracked order is proven by another alias than its own
+    // (`closed`, `state`, `position`), so every one on this equipment looks.
+    for (const tracked of [...this.pending.values()]) {
+      if (tracked.kind === "mirror" || tracked.equipmentId !== equipmentId) continue;
+      this.observeTracked(tracked, { alias }, value);
+    }
     const entry = this.pending.get(`${equipmentId}:${alias}`);
-    if (!entry || entry.deviceMirror) return;
+    if (!entry || entry.kind !== "mirror" || entry.deviceMirror) return;
     this.confirm(entry, value);
   }
 
@@ -520,11 +956,34 @@ export class OrderConfirmationTracker {
    * equipment binding could mirror (issue #901).
    */
   private handleDeviceDataUpdated(deviceId: string, key: string, value: unknown): void {
-    for (const entry of this.pending.values()) {
+    // Spec 188 O4 — remember every mirror that spoke the end-state vocabulary.
+    const word = stateWord(value);
+    if (word !== null && END_STATE_VOCABULARY.has(word)) {
+      this.endStateSpoken.add(`${deviceId}:${key}`);
+    }
+    for (const entry of [...this.pending.values()]) {
+      if (key === FAULT_REASON_KEY && entry.lastStatus === "fault") {
+        this.refreshFaultReason(entry, deviceId, value);
+        continue;
+      }
       if (entry.deviceMirror?.deviceId !== deviceId) continue;
       if (entry.deviceMirror.key !== key) continue;
-      this.confirm(entry, value);
+      if (entry.kind === "mirror") this.confirm(entry, value);
+      else this.observeTracked(entry, { deviceMirror: true }, value);
     }
+  }
+
+  /**
+   * Spec 188 O3 — the reason may land after the FAULT itself (two keys of one
+   * report): the line then gains it. The alarm already raised keeps its text.
+   */
+  private refreshFaultReason(entry: PendingOrder, deviceId: string, value: unknown): void {
+    const owner = entry.deviceMirror?.deviceId ?? this.endStateDeviceOf(entry);
+    if (owner !== deviceId || value === null || value === undefined || value === "") return;
+    const detail = String(value).trim().toUpperCase();
+    if (detail === entry.detail) return;
+    entry.detail = detail;
+    this.emitOutcome(entry, "fault", true);
   }
 
   private confirm(entry: PendingOrder, value: unknown): void {
@@ -581,7 +1040,7 @@ export class OrderConfirmationTracker {
     // guarantee holds.
     if (source?.kind === "external" && source.channel === RETRY_CHANNEL) return;
 
-    const { deviceIds, integrationIds } = this.targetsFor(equipmentId, alias);
+    const { deviceIds, integrationIds, targets } = this.targetsFor(equipmentId, alias);
     const unreachable = integrationIds.filter(
       (id) => this.integrationRegistry.getById(id)?.getStatus() !== "connected",
     );
@@ -595,7 +1054,18 @@ export class OrderConfirmationTracker {
     }
 
     const bindings = this.equipmentManager.getDataBindingsWithValues(equipmentId);
-    const mirror = bindings.find((b) => b.alias === alias);
+    // Spec 188 O9 — a gate impulse or cover order the state could have proven
+    // is held like a stateless order (surfaced as unconfirmed, no alarm) but
+    // never replayed when its integration connects.
+    const tracked = this.classify(
+      this.equipmentManager.getById(equipmentId),
+      alias,
+      value,
+      bindings,
+      deviceIds,
+      targets,
+    );
+    const mirror = tracked ? undefined : bindings.find((b) => b.alias === alias);
     const confirmable = mirror !== undefined && isConfirmableValue(value, mirror.enumValues);
 
     // Already in the ordered state: the command being lost changes nothing.
@@ -621,7 +1091,7 @@ export class OrderConfirmationTracker {
       timeoutMs: this.confirmationTimeoutFor(deviceIds),
       unconfirmed: false,
       alarmRaised: confirmable ? (previous?.alarmRaised ?? false) : false,
-      retried: false,
+      retried: tracked !== null,
       offlineAtDispatch: false,
       redispatchTtlMs: DISCONNECTED_REDISPATCH_TTL_MS,
       neverDispatched: true,
@@ -629,6 +1099,8 @@ export class OrderConfirmationTracker {
       deviceIds,
       integrationIds,
       source,
+      kind: tracked?.kind ?? "mirror",
+      ...(tracked ? { expected: tracked.expected } : {}),
     };
     this.pending.set(key, entry);
 

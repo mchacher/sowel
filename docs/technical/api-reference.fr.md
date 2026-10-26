@@ -486,15 +486,14 @@ règle. Le jeton du téléphone passe en `Authorization: Bearer <jeton>`.
 | ------- | ---------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `POST`  | `/enrol`   | `{ code }` ou `{ link }` → `{ token, session }`. `401 unknown_code`, `410 ended`, `429 too_many`, `409 too_many_phones` (50 téléphones déjà installés sur l'accès).         |
 | `GET`   | `/session` | `{ label, status, gates, activeAt, nextOpeningAt, validUntil, travelS, presses }` — jamais l'état du portail ; `presses` sont ceux de ce téléphone. `401` s'il est inconnu. |
-| `POST`  | `/open`    | `{ gate }` → `{ ok: true, receipt? }`, ou `409 { ok: false, reason, activeAt?, nextOpeningAt? }`.                                                                           |
+| `POST`  | `/open`    | `{ gate }` → `{ ok: true, outcome?, expected? }`, ou `409 { ok: false, reason, activeAt?, nextOpeningAt? }`.                                                                |
 | `GET`   | `/share`   | `{ url, qr }` — le lien d'invitation et son QR code en URI `data:image/svg+xml`. `409 ended`, `409 no_public_url`, `401` si inconnu.                                        |
 
-**Accusés de réception (spec 188).** Quand l'appareil du portail répond à ses ordres, `open`
-renvoie `receipt: "pending"`, et cet appui dans `session.presses` porte ensuite `receipt` —
-`pending`, `delivered`, `refused`, `not_received` ou `unconfirmed`. La page relit la session chaque
-seconde, 20 s au plus, tant qu'il est `pending`. Les entrées du journal du propriétaire portent le
-même `receipt` (`null` quand aucun n'est attendu). Un portail dont l'appareil ne répond pas n'a de
-`receipt` nulle part.
+**Résultat (spec 188).** Quand l'état du portail est connu à l'appui, `open` renvoie
+`outcome: "pending"` et `expected: "open" | "close"`, et cet appui dans `session.presses` porte
+ensuite `outcome` — `pending`, `confirmed` ou `unconfirmed` — et `expected`. La page relit la
+session toutes les 2 s, 70 s au plus, jusqu'à `confirmed`. Les entrées du journal du propriétaire
+portent les mêmes `outcome` et `outcomeExpected` (`null` quand l'appui n'était pas suivi).
 
 La raison d'un refus est l'une de `revoked`, `suspended`, `not_yet`, `expired`, `outside_hours`,
 `no_gate`, `not_this_gate`, `refused_by_house` (le portail est désarmé), `too_many_opens` (12 par

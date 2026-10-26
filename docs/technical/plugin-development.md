@@ -387,33 +387,10 @@ You can only emit these types:
 
 - `system.integration.connected` / `system.integration.disconnected`
 - `system.alarm.raised` / `system.alarm.resolved`
-- `device.order.receipt` (spec 188) — see [Order delivery receipts](#order-delivery-receipts)
 
 Any other type is silently dropped with a `warn` log. Domain events (`device.data.updated`, `equipment.data.changed`, etc.) are emitted by Sowel's managers in reaction to your calls (`deviceManager.updateDeviceData`, etc.); you should never need to emit them directly.
 
-Additionally, if you set `integrationId` on an event (`system.integration.*`, `device.order.receipt`), it must match your own plugin id. Impersonation is dropped.
-
-#### Order delivery receipts
-
-`executeOrder` resolving tells Sowel the order reached your integration, nothing more. If your devices can say what they made of an order (spec 188), report it:
-
-```ts
-deps.eventBus.emit({
-  type: "device.order.receipt",
-  integrationId: INTEGRATION_ID, // your own id, or the event is dropped
-  deviceId: device.id, // the Sowel device id passed to executeOrder
-  orderKey, // the order key passed to executeOrder
-  status: "pending", // then received | delivered | refused | not_received | unconfirmed
-});
-```
-
-- Emit `pending` **from inside `executeOrder`**, then return at once: do not wait for the device (the core retries a dispatch that takes too long). `pending` is what tells Sowel the device answers; a device that never gets one behaves exactly as before.
-- Then emit `received` (the link acknowledged it), and one of `delivered` (applied, or already in that state), `refused` (understood and refused), `not_received` (the link gave up), `unconfirmed` (no answer in time — emit it yourself after your own timeout).
-- A receipt arriving after `not_received` / `unconfirmed` may still upgrade it to `delivered` or `refused`; set `late: true` on it. A `late` final receipt is taken as the answer to the order currently in flight on that device/key.
-- **You MUST discard the receipts of an order a newer order superseded** (track your own order id, e.g. LoRa's `#id`). The core correlates by `(deviceId, orderKey)` only and cannot tell two orders apart.
-- If you send `pending` and then nothing final within 60 s, the core records the order `unconfirmed` itself.
-- Sowel correlates by `(deviceId, orderKey)` with the last order dispatched there, within 2 minutes; a newer order replaces the older one. The device must belong to your integration. An unknown `status` is dropped with a `warn`.
-- Sowel shows the outcome on the equipment's tile, raises a warning alarm on `refused` / `not_received` / `unconfirmed` (resolved by a later `delivered`), and records it for a shared-access press. It **never resends** an order because of a receipt.
+Additionally, if you set `integrationId` on a `system.integration.*` event, it must match your own plugin id. Impersonation is dropped.
 
 ### 3. Device mutations are forced to your ownership
 

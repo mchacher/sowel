@@ -1,6 +1,6 @@
 import { type ReactNode } from "react";
 import { useCardPrimaryAction } from "./card-primary-action";
-import { TileOrderReceiptLine } from "../equipments/OrderReceiptLine";
+import { TileOrderOutcomeLine } from "../equipments/OrderOutcomeLine";
 
 interface WidgetCardProps {
   label: string;
@@ -57,9 +57,9 @@ export function WidgetCard({
         {sublabel && (
           <span className="block text-[11px] text-text-tertiary truncate">{sublabel}</span>
         )}
-        {/* Spec 188 — what became of the last order, when the device answers.
-            Renders nothing outside an equipment tile or without a receipt. */}
-        <TileOrderReceiptLine />
+        {/* Spec 188 — what became of the last tracked order (gate, cover).
+            Renders nothing outside an equipment tile or without a tracked order. */}
+        <TileOrderOutcomeLine />
       </div>
       {children}
     </div>
