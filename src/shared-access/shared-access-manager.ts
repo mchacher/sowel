@@ -251,6 +251,7 @@ export class SharedAccessManager {
     string,
     { gateId: string; status: JournalReceipt | null; rowId: number | null; at: number }
   >();
+  private readonly receiptTimers = new Set<NodeJS.Timeout>();
   private purgeTimer: NodeJS.Timeout | null = null;
   private pluginDirectory: () => { id: string; name: string }[] = () => [];
   /** R5.24 — the page's name and icon on the home screen. */
@@ -317,12 +318,19 @@ export class SharedAccessManager {
     this.purge();
     this.purgeTimer = setInterval(() => this.purge(), HOUR_MS);
     this.purgeTimer.unref?.();
+    // Spec 188 — a press still pending when the previous run stopped can no
+    // longer be answered: its row says so instead of waiting forever.
+    const lost = this.store.expirePendingReceipts();
+    if (lost > 0)
+      this.logger.info({ rows: lost }, "Shared access: pending receipts lost at restart");
   }
 
   stop(): void {
     if (this.purgeTimer) clearInterval(this.purgeTimer);
     this.purgeTimer = null;
     for (const unsubscribe of this.unsubscribes.splice(0)) unsubscribe();
+    for (const timer of this.receiptTimers) clearTimeout(timer);
+    this.receiptTimers.clear();
     this.pressReceipts.clear();
     this.guessing.releaseAll();
     this.queue.close();
@@ -1279,8 +1287,10 @@ export class SharedAccessManager {
               receipt,
             });
           });
-          if (press && receipt !== null) press.rowId = rowId;
-          else this.pressReceipts.delete(pressId);
+          if (press && receipt !== null) {
+            press.rowId = rowId;
+            this.expireLater(pressId);
+          } else this.pressReceipts.delete(pressId);
         } catch (err) {
           this.pressReceipts.delete(pressId);
           throw err;
@@ -1329,9 +1339,32 @@ export class SharedAccessManager {
   private trackPress(pressId: string, gateId: string): void {
     const now = this.now();
     for (const [id, p] of this.pressReceipts) {
-      if (now - p.at > RECEIPT_WINDOW_MS) this.pressReceipts.delete(id);
+      if (now - p.at > RECEIPT_WINDOW_MS) this.expirePress(id);
     }
     this.pressReceipts.set(pressId, { gateId, status: null, rowId: null, at: now });
+  }
+
+  /**
+   * Spec 188 — once its gate can no longer answer (the receipt window is over,
+   * or another order on that gate took its place), a press still pending is
+   * recorded `unconfirmed` rather than left pending in the journal for ever.
+   */
+  private expireLater(pressId: string): void {
+    const timer = setTimeout(() => {
+      this.receiptTimers.delete(timer);
+      this.expirePress(pressId);
+    }, RECEIPT_WINDOW_MS);
+    timer.unref?.();
+    this.receiptTimers.add(timer);
+  }
+
+  private expirePress(pressId: string): void {
+    const press = this.pressReceipts.get(pressId);
+    if (!press) return;
+    this.pressReceipts.delete(pressId);
+    if (press.rowId !== null && press.status === "pending") {
+      this.store.setReceipt(press.rowId, "unconfirmed");
+    }
   }
 
   /**

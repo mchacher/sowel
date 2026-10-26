@@ -112,8 +112,8 @@ travel bar keeps running.
 | never got it            | _The gate did not receive the command. You can try again._                  |
 | did not confirm in time | _No confirmation: look at the gate before trying again, it may have moved._ |
 
-When the gate refused or never got the command, the bar stops and the disc can be pulled again at
-once. Nothing is ever resent on its own: an impulse sent twice would reverse the gate. The
+The travel bar keeps running whatever the gate answers, and the disc can be pulled again once it
+ends: a command reported "not received" may still have reached the gate. Nothing is ever resent on its own: an impulse sent twice would reverse the gate. The
 phone's journal and this access's journal show the same answer next to each opening. A gate that
 does not answer behaves as before: "Command sent", nothing more. An opening counts against the
 ceilings when it is sent, whatever the gate answers.

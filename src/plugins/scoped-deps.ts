@@ -50,6 +50,7 @@ function isWellFormedReceipt(event: EngineEvent): boolean {
   if (event.type !== "device.order.receipt") return true;
   const e = event as unknown as Record<string, unknown>;
   return (
+    typeof e.integrationId === "string" &&
     typeof e.deviceId === "string" &&
     e.deviceId !== "" &&
     typeof e.orderKey === "string" &&

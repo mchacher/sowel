@@ -136,6 +136,15 @@ nothing until the next order.
   « ✓ Confirmée », alarm resolved, guest journal row upgraded.
 - Two orders on one gate within a second (two admins): the second replaces the first in the
   correlation; the first's outcome is not shown.
+- Two orders on one device/key in quick succession, the first's receipt arriving (not `late`)
+  after the second's `pending`: with no order id on the wire it is credited to the second. The
+  core only drops what it can tell apart (a `late` receipt, or one before `pending`). Closing this
+  needs an order reference carried by the receipt — not done here.
+- A press whose gate never answers within the 2-minute window (another order took its place, or
+  the bridge said nothing) is recorded `unconfirmed`; so are presses left `pending` by a restart.
+- The guest page keeps the travel bar running and the disc locked whatever the answer, even on
+  `refused` / `not_received`: a `not_received` can be a command the gate applied with every
+  acknowledgement lost, and a second impulse would reverse it.
 - Core restart with orders pending: lost, nothing shown.
 - The gate refused a bad signature: the node stays silent by design, so this reads
   « Sans confirmation », never « Refusée ».

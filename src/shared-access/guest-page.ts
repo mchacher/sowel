@@ -353,9 +353,8 @@ export const GUEST_JS = `(function () {
   var session = null;
   var busy = false;
   var pillTimer = null;
-  // Spec 188 — the press being followed, and how to stop the travel bar.
+  // Spec 188 — the press being followed.
   var following = null;
-  var stopBar = null;
   var FOLLOW_EVERY_MS = 1000, FOLLOW_FOR_MS = 20000;
 
   function saveToken(t) {
@@ -614,7 +613,7 @@ export const GUEST_JS = `(function () {
       if (r.status === 401) { saveToken(null); busy = false; showCode(); return; }
       if (r.status === 200 && r.body.ok) {
         refresh(); runBar(rest);
-        if (r.body.receipt) follow(gate.id, verb, rest);
+        if (r.body.receipt) follow(gate.id, verb);
         return;
       }
       var reason = (r.body && r.body.reason) || "gate_error";
@@ -641,16 +640,12 @@ export const GUEST_JS = `(function () {
     prog.classList.add("on");
     $("progLeft").textContent = T.commandSent.toLowerCase();
     var t0 = performance.now();
-    var stopped = false;
-    stopBar = function () { stopped = true; stopBar = null; fill.style.width = "0%"; prog.classList.remove("on"); };
     (function step(now) {
-      if (stopped) return;
       var p = Math.min(1, (now - t0) / (travel * 1000));
       fill.style.width = (p * 100) + "%";
       $("progRight").textContent = ((1 - p) * travel).toFixed(0) + " s";
       if (p < 1) { requestAnimationFrame(step); return; }
       fill.style.width = "0%"; prog.classList.remove("on");
-      stopBar = null;
       busy = false; rest(); restingPill();
     })(t0);
   }
@@ -664,12 +659,12 @@ export const GUEST_JS = `(function () {
     return list.filter(function (p) { return p.result === "sent" && p.gateId === gateId; })[0] || null;
   }
 
-  function follow(gateId, verb, rest) {
+  function follow(gateId, verb) {
     var me = {};
     following = me;
     var t0 = Date.now();
     function again() {
-      if (Date.now() - t0 >= FOLLOW_FOR_MS) { following = null; outcome("unconfirmed", verb, rest); return; }
+      if (Date.now() - t0 >= FOLLOW_FOR_MS) { following = null; outcome("unconfirmed", verb); return; }
       setTimeout(poll, FOLLOW_EVERY_MS);
     }
     function poll() {
@@ -680,31 +675,28 @@ export const GUEST_JS = `(function () {
         if (r.status === 200) { session = r.body; renderJournal(); }
         var p = ownPress(gateId);
         var receipt = p && p.receipt;
-        if (receipt && receipt !== "pending") { following = null; outcome(receipt, verb, rest); return; }
+        if (receipt && receipt !== "pending") { following = null; outcome(receipt, verb); return; }
         again();
       }, function () { if (following === me) again(); });
     }
     setTimeout(poll, FOLLOW_EVERY_MS);
   }
 
-  function outcome(receipt, verb, rest) {
-    if (receipt === "delivered") {
-      // The disc is still the press's only while the bar runs.
-      if (busy) { verb.textContent = T.received; setPill("run", T.confirmed); $("progLeft").textContent = T.confirmed.toLowerCase(); }
-      return;
-    }
-    if (receipt === "refused" || receipt === "not_received") {
-      // The gate is not moving: the bar stops and the disc can be pulled again.
-      if (stopBar) stopBar();
-      busy = false;
-      rest();
-      setPill("bad", receipt === "refused" ? T.refused : T.notReceived);
-    } else {
-      setPill("bad", T.noConfirm);
-    }
-    $("msg").textContent = T.outcomes[receipt] || T.outcomes.unconfirmed;
+  // The travel bar keeps running whatever the answer, and the disc stays
+  // locked until it ends: a not_received can still be a command the gate
+  // applied (every acknowledgement lost), and a second impulse would reverse it.
+  function outcome(receipt, verb) {
     clearTimeout(pillTimer);
-    pillTimer = setTimeout(function () { if (!busy) restingPill(); }, 4200);
+    if (receipt === "delivered") {
+      // The disc is still the press's own only while the bar runs.
+      if (busy) { verb.textContent = T.received; $("progLeft").textContent = T.confirmed.toLowerCase(); }
+      setPill("run", T.confirmed);
+    } else {
+      setPill("bad", receipt === "refused" ? T.refused : receipt === "not_received" ? T.notReceived : T.noConfirm);
+      $("msg").textContent = T.outcomes[receipt] || T.outcomes.unconfirmed;
+    }
+    // While the bar runs, its end puts the resting pill back.
+    if (!busy) pillTimer = setTimeout(function () { if (!busy) restingPill(); }, 4200);
   }
 
   function refresh() {

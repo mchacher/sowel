@@ -13,6 +13,7 @@ import {
 } from "./shared-access-manager.js";
 import { isAdminOnlyEvent } from "../api/websocket.js";
 import { deriveLinkToken } from "./codes.js";
+import { RECEIPT_WINDOW_MS } from "../equipments/order-receipt-tracker.js";
 import type { Dispatch } from "../test-helpers/shared-access.js";
 import type { EngineEvent } from "../shared/types.js";
 
@@ -519,6 +520,43 @@ describe("the gate's receipt for a press (spec 188 R5)", () => {
 
     expect(openedRows()[0].receipt).toBe("pending");
     expect(h.manager.session(token)!.presses[0]).toMatchObject({ receipt: "pending" });
+  });
+
+  it("records a press no receipt reached within 2 minutes as unconfirmed", async () => {
+    h = buildSharedAccessHarness();
+    h.manager.start();
+    answeringGate();
+    const { token } = await withPhone();
+    vi.useFakeTimers({ toFake: ["setTimeout", "clearTimeout"] });
+    await h.manager.open(token, h.gates.entree);
+    // Someone else's order on the gate took its place: nothing will answer it.
+    vi.advanceTimersByTime(RECEIPT_WINDOW_MS);
+    expect(openedRows()[0].receipt).toBe("unconfirmed");
+    receiptFor(h.dispatches[0], "delivered");
+    expect(openedRows()[0].receipt).toBe("unconfirmed");
+  });
+
+  it("leaves a confirmed press alone when the window ends", async () => {
+    h = buildSharedAccessHarness();
+    h.manager.start();
+    answeringGate();
+    const { token } = await withPhone();
+    vi.useFakeTimers({ toFake: ["setTimeout", "clearTimeout"] });
+    await h.manager.open(token, h.gates.entree);
+    receiptFor(h.dispatches[0], "delivered");
+    vi.advanceTimersByTime(RECEIPT_WINDOW_MS);
+    expect(openedRows()[0].receipt).toBe("delivered");
+  });
+
+  it("marks presses left pending by the previous run as unconfirmed at start", async () => {
+    h = buildSharedAccessHarness();
+    h.manager.start();
+    answeringGate();
+    const { token } = await withPhone();
+    await h.manager.open(token, h.gates.entree);
+    h.manager.stop();
+    h.manager.start();
+    expect(openedRows()[0].receipt).toBe("unconfirmed");
   });
 
   it("forgets a press whose order failed", async () => {

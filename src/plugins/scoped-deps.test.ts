@@ -224,6 +224,7 @@ describe("EventBusProxy", () => {
     { status: "delivered", deviceId: "" },
     { status: "delivered", orderKey: 42 },
     { status: "delivered", late: "yes" },
+    { status: "delivered", integrationId: undefined },
   ])("drops a malformed order receipt %o", (fields) => {
     const inner = makeMockEventBus();
     const proxy = makeEventBusProxy("lora2mqtt", inner, logger);

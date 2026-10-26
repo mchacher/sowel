@@ -116,8 +116,9 @@ que le portail en a fait, pendant que la barre de course continue.
 | ne l'a pas reçue         | _Le portail n'a pas reçu la commande. Vous pouvez réessayer._                         |
 | n'a pas confirmé à temps | _Pas de confirmation : regardez le portail avant de réessayer, il a peut-être bougé._ |
 
-Quand le portail a refusé ou n'a pas reçu la commande, la barre s'arrête et la sphère peut être
-tirée de nouveau tout de suite. Rien n'est jamais renvoyé tout seul : une impulsion envoyée deux
+La barre de course continue quoi que réponde le portail, et la sphère peut être tirée de nouveau
+quand elle se termine : une commande dite « non reçue » a pu atteindre le portail quand même. Rien
+n'est jamais renvoyé tout seul : une impulsion envoyée deux
 fois inverserait le portail. Le journal du téléphone et celui de l'accès montrent la même réponse à
 côté de chaque ouverture. Un portail qui ne répond pas se comporte comme avant : « Commande
 envoyée », rien de plus. Une ouverture compte dans les plafonds dès qu'elle est envoyée, quoi que

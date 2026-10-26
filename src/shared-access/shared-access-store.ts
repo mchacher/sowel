@@ -194,6 +194,9 @@ export class SharedAccessStore {
         `INSERT INTO shared_access_journal (at, access_id, label, kind, reason, actor, equipment_id, phone_id, receipt)
          VALUES (@at, @access_id, @label, @kind, @reason, @actor, @equipment_id, @phone_id, @receipt)`,
       ),
+      expirePendingReceipts: db.prepare(
+        `UPDATE shared_access_journal SET receipt = 'unconfirmed' WHERE receipt = 'pending'`,
+      ),
       setReceipt: db.prepare(
         `UPDATE shared_access_journal SET receipt = ? WHERE id = ? AND kind = 'opened'`,
       ),
@@ -376,6 +379,10 @@ export class SharedAccessStore {
   /** Spec 188 — what the gate made of a press, on that press's own row. */
   setReceipt(rowId: number, receipt: string): void {
     this.stmts.setReceipt.run(receipt, rowId);
+  }
+  /** Spec 188 — rows left pending by a previous run; returns how many. */
+  expirePendingReceipts(): number {
+    return this.stmts.expirePendingReceipts.run().changes;
   }
   listJournal(accessId: string | null, limit: number): JournalRow[] {
     return (
