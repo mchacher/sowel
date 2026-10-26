@@ -149,6 +149,74 @@ describe("shared access routes", () => {
     expect(refused.json()).toMatchObject({ ok: false, reason: "not_this_gate" });
   });
 
+  // Spec 188 O8 — what the guest page follows after a press on a gate whose
+  // state is known: `open` says an outcome is coming, the session's press then
+  // carries it, and the owner's journal shows it next to the `opened` row.
+  it("answers outcome: pending on open, then carries the outcome in the session and journal", async () => {
+    app = await buildApp();
+    h.manager.start();
+    h.setDuringDispatch((d) =>
+      h.eventBus.emit({
+        type: "equipment.order.outcome",
+        equipmentId: d.equipmentId,
+        orderAlias: d.alias,
+        value: d.value,
+        status: "pending",
+        expected: "open",
+        ...(d.source ? { source: d.source } : {}),
+      }),
+    );
+    const created = await app.inject({
+      method: "POST",
+      url: "/api/v1/shared-access/accesses",
+      payload: { label: "Gîte", gates: [{ equipmentId: h.gates.entree }] },
+    });
+    const { id, code } = created.json<{ id: string; code: string }>();
+    const enrol = await app.inject({ method: "POST", url: "/access/api/enrol", payload: { code } });
+    const auth = { authorization: `Bearer ${enrol.json<{ token: string }>().token}` };
+
+    const open = await app.inject({
+      method: "POST",
+      url: "/access/api/open",
+      headers: auth,
+      payload: { gate: h.gates.entree },
+    });
+    expect(open.json()).toEqual({
+      ok: true,
+      outcome: "pending",
+      expected: "open",
+      windowS: 15,
+    });
+
+    const press = h.dispatches[0];
+    h.eventBus.emit({
+      type: "equipment.order.outcome",
+      equipmentId: press.equipmentId,
+      orderAlias: press.alias,
+      value: press.value,
+      status: "confirmed",
+      expected: "open",
+      ...(press.source ? { source: press.source } : {}),
+    });
+
+    const session = await app.inject({ method: "GET", url: "/access/api/session", headers: auth });
+    expect(session.json<{ presses: unknown[] }>().presses[0]).toMatchObject({
+      gateId: h.gates.entree,
+      result: "sent",
+      outcome: "confirmed",
+      expected: "open",
+    });
+    const journal = await app.inject({
+      method: "GET",
+      url: `/api/v1/shared-access/journal?accessId=${id}`,
+    });
+    expect(
+      journal
+        .json<{ entries: { kind: string; outcome: string | null }[] }>()
+        .entries.find((e) => e.kind === "opened"),
+    ).toMatchObject({ outcome: "confirmed", outcomeExpected: "open" });
+  });
+
   it("gives an enrolled phone its link as a QR code, and lets the owner list and cut phones", async () => {
     app = await buildApp();
     const created = await app.inject({
@@ -246,5 +314,24 @@ describe("the public surface", () => {
     expect(GUEST_JS).toContain('typeof navigator.share === "function"');
     expect(GUEST_JS).toContain('$("send").hidden = !CAN_SEND');
     expect(GUEST_JS).toContain("url: shareUrl");
+  });
+
+  // Spec 188 O8 — the page follows its own press only, words the three
+  // endings as approved, and never invites the guest to press again.
+  // Its behaviour (polling, endings, disc lock) is tested on a DOM in
+  // src/shared-access/guest-page.test.ts.
+  it("words confirmed and unconfirmed as approved, with no invitation to press again", () => {
+    expect(GUEST_JS).toContain(
+      'confirmed: { open: "Ouverture confirmée", close: "Fermeture confirmée" }',
+    );
+    expect(GUEST_JS).toContain('noConfirm: "Sans confirmation"');
+    expect(GUEST_JS).toContain(
+      'lookFirst: "Regardez le portail avant de réessayer : il a peut-être bougé."',
+    );
+    const outcomeCode = GUEST_JS.slice(
+      GUEST_JS.indexOf("// ── The outcome of this phone's press"),
+      GUEST_JS.indexOf("function refresh()"),
+    );
+    expect(outcomeCode).not.toMatch(/T\.reasons|Try again|Réessayez/);
   });
 });

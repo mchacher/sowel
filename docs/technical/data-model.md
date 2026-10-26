@@ -203,18 +203,18 @@ All events are typed via `EngineEvent`, a TypeScript discriminated union. Handle
 
 ### System
 
-| Event                             | Payload                           |
-| --------------------------------- | --------------------------------- |
-| `system.started`                  | --                                |
-| `system.integration.connected`    | `integrationId`                   |
-| `system.integration.disconnected` | `integrationId`                   |
-| `system.error`                    | `error`                           |
-| `system.alarm.raised`             | `alarmId, level, source, message` |
-| `system.alarm.resolved`           | `alarmId, source, message`        |
-| `system.update.available`         | `current, latest, releaseUrl`     |
-| `system.update.progress`          | `step, message`                   |
-| `system.update.error`             | `error`                           |
-| `system.restart_required`         | `reason`                          |
+| Event                             | Payload                                                                 |
+| --------------------------------- | ----------------------------------------------------------------------- |
+| `system.started`                  | --                                                                      |
+| `system.integration.connected`    | `integrationId`                                                         |
+| `system.integration.disconnected` | `integrationId`                                                         |
+| `system.error`                    | `error`                                                                 |
+| `system.alarm.raised`             | `alarmId, level, source, message, messageKey?, messageParams?, zoneId?` |
+| `system.alarm.resolved`           | `alarmId, source, message, messageKey?, messageParams?, zoneId?`        |
+| `system.update.available`         | `current, latest, releaseUrl`                                           |
+| `system.update.progress`          | `step, message`                                                         |
+| `system.update.error`             | `error`                                                                 |
+| `system.restart_required`         | `reason`                                                                |
 
 ### Device
 
@@ -237,14 +237,17 @@ All events are typed via `EngineEvent`, a TypeScript discriminated union. Handle
 
 ### Equipment
 
-| Event                      | Payload                                                 |
-| -------------------------- | ------------------------------------------------------- |
-| `equipment.created`        | `equipment: Equipment`                                  |
-| `equipment.updated`        | `equipment: Equipment`                                  |
-| `equipment.removed`        | `equipmentId, equipmentName, zoneId`                    |
-| `equipment.data.changed`   | `equipmentId, alias, value, previous, sourceTimestamp?` |
-| `equipment.order.executed` | `equipmentId, orderAlias, value`                        |
-| `equipment.order.failed`   | `equipmentId, orderAlias, value, error`                 |
+| Event                      | Payload                                                               |
+| -------------------------- | --------------------------------------------------------------------- |
+| `equipment.created`        | `equipment: Equipment`                                                |
+| `equipment.updated`        | `equipment: Equipment`                                                |
+| `equipment.removed`        | `equipmentId, equipmentName, zoneId`                                  |
+| `equipment.data.changed`   | `equipmentId, alias, value, previous, sourceTimestamp?`               |
+| `equipment.order.executed` | `equipmentId, orderAlias, value`                                      |
+| `equipment.order.failed`   | `equipmentId, orderAlias, value, error`                               |
+| `equipment.order.outcome`  | `equipmentId, orderAlias, value, status, expected?, detail?, source?` |
+
+`equipment.order.outcome` (spec 188) is the outcome of a gate impulse or a shutter Open / Close, read by the spec 141 `OrderConfirmationTracker` from the state the device reports (`pending`, `moving`, `confirmed`, `fault`, `unconfirmed`), and broadcast on the `equipments` topic. Such orders are never re-dispatched. Their alarms (source `order-confirmation`) carry `messageKey` / `messageParams` (`alarms.orderOutcome.*`): the banner and the Activity feed word them in the viewer's language, Web Push in each recipient's `preferences.language`, and `message` is the same text in English (Telegram, logs). A key on any other source is ignored, and stripped from plugin-emitted alarms.
 
 ### Recipe
 
@@ -295,7 +298,7 @@ Tables (migrations `035_shared_access.sql` and `036_shared_access_tombstones.sql
 | `shared_access_profiles`      | What a plugin's accesses open: dates, time windows, code or not, the plugin it is granted to, `is_default`.                                                                |
 | `shared_access_profile_gates` | A profile's gates. Cascades from `equipments`.                                                                                                                             |
 | `shared_access_phones`        | Phones set up on an access: token hash, first and last seen.                                                                                                               |
-| `shared_access_journal`       | Openings, refusals and changes, with no foreign key so it outlives the access. A year, 50 000 lines at most.                                                               |
+| `shared_access_journal`       | Openings, refusals and changes, with no foreign key so it outlives the access. A year, 50 000 lines at most. `outcome`: what became of a press (spec 188).                 |
 | `shared_access_tombstones`    | The `(plugin, externalId)` of an external access the owner deleted, so a later upsert of that stay answers `revoked` (migration `036`). Purged after a year.               |
 
 All eight ride in the backup.

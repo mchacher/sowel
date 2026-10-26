@@ -6,7 +6,13 @@ import type { RecipeManager } from "../recipes/engine/recipe-manager.js";
 import type { ZoneManager } from "../zones/zone-manager.js";
 import type { SunlightManager } from "../zones/sunlight-manager.js";
 import { ACTIVITY_RETENTION_DAYS, type ActivityStore } from "./activity-store.js";
-import type { ActivityItem, ActivityCategory, ActivityMessage } from "../shared/types.js";
+import type {
+  ActivityItem,
+  ActivityCategory,
+  ActivityMessage,
+  AlarmActivityParams,
+} from "../shared/types.js";
+import { ORDER_OUTCOME_ALARM_SOURCE } from "../equipments/order-outcome-messages.js";
 import { EV_MOMENTARY_ORDER_CATEGORIES } from "../shared/electric-vehicle-contract.js";
 
 interface GetItemsOptions {
@@ -34,6 +40,26 @@ const TTL_MS = ACTIVITY_RETENTION_DAYS * 24 * 60 * 60 * 1000;
  *   SQLite and the recent history is reloaded on boot, so the feed survives a
  *   restart. Without a store it stays in-memory only (pre-147 behaviour).
  */
+/**
+ * An alarm as the feed keeps it. An order-outcome alarm (spec 188) keeps its
+ * i18n key too, so the feed words it in the viewer's language; a key on any
+ * other source is dropped, the English text stands.
+ */
+function alarmParams(event: {
+  source: string;
+  message: string;
+  messageKey?: string;
+  messageParams?: Record<string, string | number>;
+}): AlarmActivityParams {
+  const keyed = event.source === ORDER_OUTCOME_ALARM_SOURCE && event.messageKey !== undefined;
+  return {
+    source: event.source,
+    message: event.message,
+    ...(keyed ? { messageKey: event.messageKey } : {}),
+    ...(keyed && event.messageParams ? { messageParams: event.messageParams } : {}),
+  };
+}
+
 export class ActivityBuffer {
   private readonly items: ActivityItem[] = [];
   private readonly logger: Logger;
@@ -277,6 +303,8 @@ export class ActivityBuffer {
     alarmId: string;
     source: string;
     message: string;
+    messageKey?: string;
+    messageParams?: Record<string, string | number>;
     zoneId?: string | null;
   }): void {
     // A zone-scoped alarm (a battery alert bound to an equipment, spec 143/#472)
@@ -284,10 +312,7 @@ export class ActivityBuffer {
     // stays global and shows in every zone, as before.
     const zoneId = event.zoneId ?? null;
     this.rememberAlarmZone(event.alarmId, zoneId);
-    this.push("alarm", zoneId, {
-      template: "alarm.raised",
-      params: { source: event.source, message: event.message },
-    });
+    this.push("alarm", zoneId, { template: "alarm.raised", params: alarmParams(event) });
   }
 
   /**
@@ -301,15 +326,14 @@ export class ActivityBuffer {
     alarmId: string;
     source: string;
     message: string;
+    messageKey?: string;
+    messageParams?: Record<string, string | number>;
     zoneId?: string | null;
   }): void {
     const zoneId =
       event.zoneId !== undefined ? event.zoneId : (this.alarmZones.get(event.alarmId) ?? null);
     this.alarmZones.delete(event.alarmId);
-    this.push("alarm", zoneId, {
-      template: "alarm.resolved",
-      params: { source: event.source, message: event.message },
-    });
+    this.push("alarm", zoneId, { template: "alarm.resolved", params: alarmParams(event) });
   }
 
   /**

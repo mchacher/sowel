@@ -3,8 +3,16 @@ import type { EventBus } from "../core/event-bus.js";
 import type { SettingsManager } from "../core/settings-manager.js";
 import { AppBranding } from "./app-branding.js";
 import type { EquipmentManager } from "../equipments/equipment-manager.js";
+import {
+  GATE_CLOSE_WINDOW_MS,
+  GATE_OPEN_WINDOW_MS,
+  LATE_OUTCOME_GRACE_MS,
+} from "../equipments/order-confirmation-tracker.js";
 import type {
+  EngineEvent,
   Equipment,
+  OrderOutcomeExpected,
+  OrderOutcomeStatus,
   OrderSource,
   SharedAccessGateInput,
   SharedAccessGateSummary,
@@ -90,6 +98,8 @@ export const JOURNAL_MAX_ROWS = 50_000;
 export const DEFAULT_TRAVEL_S = 30;
 
 const HOUR_MS = 3_600_000;
+/** Spec 188 — past this, no outcome can still come for a press (window + late grace). */
+const PRESS_FOLLOW_MAX_MS = GATE_CLOSE_WINDOW_MS + LATE_OUTCOME_GRACE_MS + 60_000;
 const ALARM_SOURCE = "shared-access";
 const GUESSING_ALARM_ID = "shared-access:guessing";
 const DEFAULT_PROFILE_NAME = "Par défaut";
@@ -153,7 +163,16 @@ export interface PublicSession {
   validUntil: string | null;
   travelS: number;
   /** R5.22 — this phone's own presses, and nothing else. */
-  presses: { at: string; gateId: string | null; gateName: string; result: string }[];
+  presses: {
+    at: string;
+    gateId: string | null;
+    gateName: string;
+    result: string;
+    /** Spec 188 — what became of a sent press, when its gate state could prove it. */
+    outcome?: JournalOutcome;
+    /** Spec 188 — the movement that press should cause. */
+    expected?: OrderOutcomeExpected;
+  }[];
 }
 
 export type EnrolResult =
@@ -161,7 +180,14 @@ export type EnrolResult =
   | { ok: false; error: "unknown_code" | "too_many" | "ended" | "too_many_phones" };
 
 export type OpenResult =
-  | { ok: true; duplicate?: boolean }
+  | {
+      ok: true;
+      duplicate?: boolean;
+      outcome?: "pending";
+      expected?: OrderOutcomeExpected;
+      /** Spec 188 O8 — how long the core waits for this press's proof, in seconds. */
+      windowS?: number;
+    }
   | {
       ok: false;
       reason: SharedAccessRefusal;
@@ -201,6 +227,20 @@ function parseValue(json: string | null): unknown {
   }
 }
 
+/**
+ * Spec 188 O8 — what a journal row says of a press: pending, confirmed or
+ * unconfirmed. A gate never reports `moving` or `fault` (cover statuses), and
+ * would they come, they read as still waiting and not confirmed.
+ */
+export type JournalOutcome = Exclude<OrderOutcomeStatus, "moving" | "fault">;
+const journalOutcome = (s: OrderOutcomeStatus): JournalOutcome =>
+  s === "moving" ? "pending" : s === "fault" ? "unconfirmed" : s;
+const JOURNAL_OUTCOMES = new Set<string>(["pending", "confirmed", "unconfirmed"]);
+const asJournalOutcome = (v: string | null): JournalOutcome | null =>
+  v !== null && JOURNAL_OUTCOMES.has(v) ? (v as JournalOutcome) : null;
+const asExpected = (v: string | null): OrderOutcomeExpected | null =>
+  v === "open" || v === "close" ? v : null;
+
 const minNullable = (a: number | null, b: number | null): number | null =>
   a === null || b === null ? null : Math.min(a, b);
 const maxNullable = (a: number | null, b: number | null): number | null =>
@@ -224,6 +264,24 @@ export class SharedAccessManager {
    */
   private readonly inFlight = new Map<string, number>();
   private readonly unsubscribes: (() => void)[] = [];
+  /**
+   * Spec 188 O8 — the presses whose outcome may still come, by press id. The
+   * press id rides in the order's source, so an outcome finds its own press
+   * and nothing else: an outcome for another equipment (the coop, a light)
+   * never matches a gate. A newer tracked order on the gate ends the wait of
+   * every earlier press on it (the core dropped them, O7); an exempt one does
+   * not (the core keeps following the earlier press).
+   */
+  private readonly pressOutcomes = new Map<
+    string,
+    {
+      gateId: string;
+      at: number;
+      status: JournalOutcome | null;
+      expected: OrderOutcomeExpected | null;
+      rowId: number | null;
+    }
+  >();
   private purgeTimer: NodeJS.Timeout | null = null;
   private pluginDirectory: () => { id: string; name: string }[] = () => [];
   /** R5.24 — the page's name and icon on the home screen. */
@@ -269,6 +327,8 @@ export class SharedAccessManager {
           if (event.type === "settings.changed" && event.keys.includes(SETTING_ENABLED)) {
             if (this.isEnabled()) this.ensureDefaultProfile();
             this.changed();
+          } else if (event.type === "equipment.order.outcome") {
+            this.handleOutcome(event);
           } else if (event.type === "equipment.removed") {
             // The foreign keys already dropped the gate from every access and
             // profile (R2.6); the owner's page only needs to hear about it.
@@ -294,6 +354,7 @@ export class SharedAccessManager {
     if (this.purgeTimer) clearInterval(this.purgeTimer);
     this.purgeTimer = null;
     for (const unsubscribe of this.unsubscribes.splice(0)) unsubscribe();
+    this.pressOutcomes.clear();
     this.guessing.releaseAll();
     this.queue.close();
   }
@@ -592,6 +653,8 @@ export class SharedAccessManager {
       actor: r.actor,
       equipmentId: r.equipment_id,
       phoneTag: r.phone_id ? phoneTag(r.phone_id) : null,
+      outcome: r.kind === "opened" ? asJournalOutcome(r.outcome) : null,
+      outcomeExpected: r.kind === "opened" ? asExpected(r.outcome_expected) : null,
     }));
   }
 
@@ -640,9 +703,14 @@ export class SharedAccessManager {
   private journal(
     row: Pick<AccessRow, "id" | "label">,
     kind: string,
-    extra: Partial<Pick<JournalRow, "reason" | "actor" | "equipment_id" | "phone_id">> = {},
-  ): void {
-    this.store.journal({
+    extra: Partial<
+      Pick<
+        JournalRow,
+        "reason" | "actor" | "equipment_id" | "phone_id" | "outcome" | "outcome_expected"
+      >
+    > = {},
+  ): number {
+    return this.store.journal({
       at: this.now(),
       access_id: row.id,
       label: row.label,
@@ -651,6 +719,8 @@ export class SharedAccessManager {
       actor: extra.actor ?? null,
       equipment_id: extra.equipment_id ?? null,
       phone_id: extra.phone_id ?? null,
+      outcome: extra.outcome ?? null,
+      outcome_expected: extra.outcome_expected ?? null,
     });
   }
 
@@ -1136,6 +1206,7 @@ export class SharedAccessManager {
         gateId: p.equipment_id,
         gateName: p.equipment_id ? (names.get(p.equipment_id) ?? "") : "",
         result: p.kind === "opened" ? "sent" : (p.reason ?? "refused"),
+        ...(p.kind === "opened" ? this.pressOutcomeView(p) : {}),
       })),
     };
   }
@@ -1185,7 +1256,16 @@ export class SharedAccessManager {
       return { ok: true, duplicate: true };
     }
 
-    const source: OrderSource = { kind: "shared_access", accessId: access.id, label: access.label };
+    // Spec 188 — this press's own id, carried by the order so that its
+    // outcome, and only its outcome, comes back to it.
+    const pressId = crypto.randomUUID();
+    const source: OrderSource = {
+      kind: "shared_access",
+      accessId: access.id,
+      label: access.label,
+      pressId,
+    };
+    let tracked: { expected: OrderOutcomeExpected } | null = null;
     let refusal: { reason: SharedAccessRefusal; activeAt?: number; nextOpeningAt?: number } | null =
       null;
     let error: string | null = null;
@@ -1210,6 +1290,14 @@ export class SharedAccessManager {
           return;
         }
         this.inFlight.set(access.id, (this.inFlight.get(access.id) ?? 0) + 1);
+        this.prunePresses(this.now());
+        this.pressOutcomes.set(pressId, {
+          gateId,
+          at: this.now(),
+          status: null,
+          expected: null,
+          rowId: null,
+        });
         try {
           const outcome = await this.equipments.executeOrder(
             gateId,
@@ -1221,10 +1309,29 @@ export class SharedAccessManager {
             error = outcome.error ?? "dispatch failed";
             return;
           }
-          this.store.transaction(() => {
+          // The core started tracking the impulse while it was being handed
+          // over (the gate state was known): the row starts `pending`.
+          // Otherwise the press is exempt, and the row says nothing (O8).
+          const press = this.pressOutcomes.get(pressId);
+          const status = press?.status ?? null;
+          const expected = press?.expected ?? null;
+          const rowId = this.store.transaction(() => {
             this.store.countUse(access.id, this.now());
-            this.journal(fresh, "opened", { equipment_id: gateId, phone_id: phone.id });
+            return this.journal(fresh, "opened", {
+              equipment_id: gateId,
+              phone_id: phone.id,
+              outcome: status,
+              outcome_expected: status !== null ? expected : null,
+            });
           });
+          if (press && status !== null && expected !== null) {
+            press.rowId = rowId;
+            tracked = { expected };
+            if (status === "confirmed") this.pressOutcomes.delete(pressId);
+          } else this.pressOutcomes.delete(pressId);
+        } catch (err) {
+          this.pressOutcomes.delete(pressId);
+          throw err;
         } finally {
           const left = (this.inFlight.get(access.id) ?? 1) - 1;
           if (left > 0) this.inFlight.set(access.id, left);
@@ -1241,12 +1348,16 @@ export class SharedAccessManager {
       activeAt?: number;
       nextOpeningAt?: number;
     } | null;
-    if (refused) return this.refuse(access, phone.id, gateId, refused.reason, refused);
+    if (refused) {
+      this.pressOutcomes.delete(pressId);
+      return this.refuse(access, phone.id, gateId, refused.reason, refused);
+    }
     if (error !== null) {
       this.logger.warn(
         { accessId: access.id, gateId, error },
         "Shared access: gate command failed",
       );
+      this.pressOutcomes.delete(pressId);
       return this.refuse(access, phone.id, gateId, "gate_error");
     }
 
@@ -1258,7 +1369,79 @@ export class SharedAccessManager {
       equipmentId: gateId,
     });
     this.changed();
-    return { ok: true };
+    const sent = tracked as { expected: OrderOutcomeExpected } | null;
+    if (sent === null) return { ok: true };
+    const windowMs = sent.expected === "close" ? GATE_CLOSE_WINDOW_MS : GATE_OPEN_WINDOW_MS;
+    return { ok: true, outcome: "pending", expected: sent.expected, windowS: windowMs / 1000 };
+  }
+
+  /**
+   * Spec 188 — a press the core can no longer word: past its window and the
+   * late grace (the core's LATE_OUTCOME_GRACE_MS), nothing more will come.
+   */
+  private prunePresses(now: number): void {
+    for (const [id, p] of this.pressOutcomes) {
+      if (now - p.at > PRESS_FOLLOW_MAX_MS) this.pressOutcomes.delete(id);
+    }
+  }
+
+  /**
+   * Spec 188 O8 — an outcome reaches a press only through that press's id, and
+   * only from the gate it targeted. Any other equipment's outcome (the coop, a
+   * light) finds no press. Another order on the gate (the owner's tile, a
+   * recipe) replaces the press in the tracker (O7): its outcome will never
+   * come, and the press stops waiting for one.
+   */
+  private handleOutcome(event: Extract<EngineEvent, { type: "equipment.order.outcome" }>): void {
+    if (event.orderAlias !== "command") return;
+    const source = event.source;
+    const pressId = source?.kind === "shared_access" ? source.pressId : undefined;
+    // A new tracked order on the gate (its `pending`) replaced every earlier
+    // one in the core (O7): their outcome will never come.
+    let changed = event.status === "pending" && this.supersedePresses(event.equipmentId, pressId);
+    const press = pressId !== undefined ? this.pressOutcomes.get(pressId) : undefined;
+    if (press && press.gateId === event.equipmentId) {
+      press.status = journalOutcome(event.status);
+      if (event.expected) press.expected = event.expected;
+      if (press.rowId !== null) {
+        this.store.setOutcome(press.rowId, press.status);
+        changed = true;
+        if (press.status === "confirmed") this.pressOutcomes.delete(pressId!);
+      }
+    }
+    if (changed) this.changed();
+  }
+
+  /**
+   * Spec 188 O7 — every press on this gate but `keep` stops waiting: a row
+   * still pending reads as a press that was not followed (NULL), not as
+   * pending forever; one already unconfirmed keeps saying so. True when a
+   * row changed.
+   */
+  private supersedePresses(gateId: string, keep: string | undefined): boolean {
+    let changed = false;
+    for (const [id, p] of this.pressOutcomes) {
+      if (p.gateId !== gateId || id === keep) continue;
+      this.pressOutcomes.delete(id);
+      if (p.rowId !== null && p.status === "pending") {
+        this.store.setOutcome(p.rowId, null);
+        changed = true;
+      }
+    }
+    return changed;
+  }
+
+  /** Spec 188 — what the guest's session says of one of its sent presses. */
+  private pressOutcomeView(p: JournalRow): {
+    outcome?: JournalOutcome;
+    expected?: OrderOutcomeExpected;
+  } {
+    const outcome = asJournalOutcome(p.outcome);
+    const expected = asExpected(p.outcome_expected);
+    // A press replaced by a newer order (outcome back to NULL) keeps its
+    // direction, so the guest's journal still reads « Fermeture demandée ».
+    if (!expected) return {};
+    return outcome ? { outcome, expected } : { expected };
   }
 
   private refuse(

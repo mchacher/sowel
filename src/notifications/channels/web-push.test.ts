@@ -66,6 +66,33 @@ describe("WebPushChannel", () => {
     });
   });
 
+  it("words a localized notification in each subscription owner's language (spec 188 O6)", async () => {
+    const fr = { ...sub("https://push/fr"), userId: "adrien" };
+    const en = { ...sub("https://push/en"), userId: "guest" };
+    const unknown = { ...sub("https://push/x"), userId: "gone" };
+    const mgr = createMockManager([fr, en, unknown]);
+    sendNotification.mockResolvedValue({ statusCode: 201 });
+    const languages: Record<string, "en" | "fr"> = { adrien: "fr", guest: "en" };
+
+    const channel = new WebPushChannel(mgr, vapid, logger, (id) => languages[id]);
+    await channel.send(
+      {},
+      {
+        title: "⚠️ order-confirmation : Portail: fault",
+        localized: { en: { title: "⚠️ Portail: fault" }, fr: { title: "⚠️ Portail : défaut" } },
+      },
+    );
+
+    const titles = sendNotification.mock.calls.map(
+      (c) => (JSON.parse(c[1] as string) as { title: string }).title,
+    );
+    expect(titles).toEqual([
+      "⚠️ Portail : défaut",
+      "⚠️ Portail: fault",
+      "⚠️ order-confirmation : Portail: fault",
+    ]);
+  });
+
   it("does nothing when there are no subscriptions", async () => {
     const mgr = createMockManager([]);
     const channel = new WebPushChannel(mgr, vapid, logger);

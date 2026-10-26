@@ -103,6 +103,36 @@ La page ne dit jamais si le portail est ouvert ou fermé. Elle ne montre que **l
 visiteur lui-même**, et ne parle en mots que quand le portail ne bougera pas — hors des heures, pas
 encore valable, suspendu, révoqué — et dit alors pourquoi.
 
+### Quand l'état du portail confirme { #gate-outcome }
+
+Quand la commande du portail est une impulsion (`pulse`) et que Sowel connaît l'état du portail au
+moment de l'appui (son capteur de position), la page suit alors **son propre appui**, et rien
+d'autre — jamais le poulailler ni aucun autre équipement. Pendant 70 s au plus, elle lit ce qu'il
+est devenu, pendant que la barre de course continue.
+
+| Le portail…                                | La page dit                                                                              |
+| ------------------------------------------ | ---------------------------------------------------------------------------------------- |
+| s'est ouvert (ou fermé, s'il était ouvert) | « Ouverture confirmée » (ou « Fermeture confirmée »)                                     |
+| n'a pas bougé dans la fenêtre              | « Sans confirmation » — _Regardez le portail avant de réessayer : il a peut-être bougé._ |
+| état inconnu à l'appui                     | « Commande envoyée », comme avant                                                        |
+
+La sphère reste verrouillée tant que le résultat de l'appui est en attente. La barre de course
+court sur la plus longue de la course (30 s) et du temps que Sowel attend la preuve (15 s depuis
+fermé, 60 s depuis ouvert) : depuis un portail ouvert, la sphère n'est pas reproposée à 30 s alors
+que la première impulsion n'est pas encore prouvée. Une fermeture confirmée une fois la course
+écoulée termine la barre aussitôt.
+
+La page n'invite jamais le visiteur à réappuyer, et rien n'est jamais renvoyé : une impulsion
+envoyée deux fois inverserait le portail. Une confirmation qui arrive en retard — jusqu'à 5 minutes
+après la fenêtre (le battement suivant d'un portail dont le rapport s'est perdu en radio) —
+transforme encore « Sans confirmation » en ouverture ou fermeture confirmée : sur la page tant
+qu'elle suit l'appui (70 s), dans le journal ensuite. Un mouvement plus tardif est le fait de
+quelqu'un d'autre. Le journal du téléphone affiche « Ouverture demandée » ou « Fermeture
+demandée » (le sens attendu par Sowel), puis le résultat ; celui de l'accès montre le même résultat
+à côté de chaque ouverture. Si la commande n'est pas passée, la page dit « Pas de réponse du
+portail : regardez-le avant de réessayer, il a peut-être bougé. » Une ouverture compte dans les
+plafonds dès qu'elle est envoyée, quoi que fasse le portail.
+
 La page est en français sur un téléphone réglé en français, et en anglais sur tous les autres.
 Elle tient sur un seul écran. La roue dentée en haut à droite ouvre **Réglages** : les
 dernières commandes du téléphone, et un **QR code** que le visiteur fait scanner à la personne qui

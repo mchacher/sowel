@@ -1,10 +1,12 @@
 import { create } from "zustand";
+import i18n from "../i18n";
 import type { BatteryAlert, EngineEvent } from "../types";
 import { getBatteryAlerts, getHealth, getPvHealthAlerts, type PvHealthAlert } from "../api";
-import { dayParam, type AlarmWording } from "../lib/alarm-message";
+import { dayParam, ORDER_OUTCOME_ALARM_SOURCE, type AlarmWording } from "../lib/alarm-message";
 import { useDevices } from "./useDevices";
 import { useZones } from "./useZones";
 import { useEquipments } from "./useEquipments";
+import { useOrderOutcomes } from "./useOrderOutcomes";
 import { useZoneAggregation } from "./useZoneAggregation";
 import { useRecipes } from "./useRecipes";
 import { useModes } from "./useModes";
@@ -145,6 +147,8 @@ function alarmFromEvent(event: {
   level: "warning" | "error";
   source: string;
   message: string;
+  messageKey?: string;
+  messageParams?: Record<string, string | number>;
 }): SystemAlarm {
   if (event.alarmId.startsWith(POLL_FAIL_ALARM_PREFIX)) {
     return {
@@ -152,6 +156,24 @@ function alarmFromEvent(event: {
       level: event.level,
       source: event.alarmId.slice(POLL_FAIL_ALARM_PREFIX.length),
       messageKey: "alarms.integration.error",
+    };
+  }
+  // An alarm the engine keyed (spec 188, order outcomes) is worded in the
+  // viewer's language; its English `message` stays as the fallback for a key
+  // this build of the UI does not know. Only the core's order-confirmation
+  // alarms are keyed: a key on any other source (a plugin can emit alarms)
+  // is ignored, so it cannot borrow the wording of another alarm.
+  if (
+    event.source === ORDER_OUTCOME_ALARM_SOURCE &&
+    event.messageKey &&
+    i18n.exists(event.messageKey)
+  ) {
+    return {
+      alarmId: event.alarmId,
+      level: event.level,
+      source: event.source,
+      messageKey: event.messageKey,
+      ...(event.messageParams ? { messageParams: event.messageParams } : {}),
     };
   }
   return {
@@ -354,6 +376,16 @@ function handleEvent(event: EngineEvent): void {
     case "equipment.timed_action.failed":
       useEquipments.getState().handleEquipmentUpdated();
       break;
+    // Spec 188 — the status line of the equipment's last tracked order.
+    case "equipment.order.outcome":
+      useOrderOutcomes.getState().handleOutcome(event);
+      break;
+    // A new order ends the previous one's final line (« until the next order »).
+    case "equipment.order.executed":
+      useOrderOutcomes
+        .getState()
+        .handleOrderExecuted(event.equipmentId, event.orderAlias, event.value);
+      break;
     case "equipment.status.changed":
       useEquipments.getState().handleEquipmentStatusChanged(
         event.equipmentId,
@@ -504,6 +536,9 @@ export const useWebSocket = create<WebSocketState>((set) => ({
       // `energy.*` / `activity.added` events after their mount fetch, so a
       // reconnect would otherwise leave them frozen until the panel remounts.
       recoverLiveOnlyStores();
+      // Spec 188 — a final order status sent while the socket was down is lost:
+      // no spinner may outlive the connection that should have stopped it.
+      useOrderOutcomes.getState().expireInFlight();
 
       // Rebuild the alarm banner from server state: integration health, plus
       // the low-battery alerts (spec 143), which outlive both a page reload and

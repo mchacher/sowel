@@ -99,6 +99,34 @@ The page never says whether the gate is open or closed. It shows only **the visi
 commands**, and speaks in words only when the gate will not move — outside the hours, not yet
 valid, on hold, revoked — and then it says why.
 
+### When the gate's state confirms { #gate-outcome }
+
+When the gate's command is an impulse (`pulse`) and Sowel knows the gate's state at the press (its
+position sensor), the page then follows **its own press**, and nothing else — never the coop or
+any other equipment. For at most 70 s it reads what became of it, while the travel bar keeps
+running.
+
+| The gate…                          | The page says                                                                  |
+| ---------------------------------- | ------------------------------------------------------------------------------ |
+| opened (or closed, if it was open) | "Opening confirmed" (or "Closing confirmed")                                   |
+| did not move within the window     | "No confirmation" — _Look at the gate before trying again: it may have moved._ |
+| state unknown at the press         | "Command sent", as before                                                      |
+
+The disc stays locked as long as the press's outcome is pending. The travel bar runs over the
+longer of the travel (30 s) and the time Sowel waits for the proof (15 s from closed, 60 s from
+open): from an open gate the disc is not offered again at 30 s while the first impulse is still
+unproven. A closing confirmed once the travel has elapsed ends the bar at once.
+
+The page never invites the visitor to press again, and nothing is ever resent: an impulse sent
+twice would reverse the gate. A confirmation that arrives late — up to 5 minutes after the window
+(the next heartbeat of a gate whose report was lost on the radio) — still turns "No confirmation"
+into a confirmed opening or closing: on the page while it is still following the press (70 s),
+in the journal after that. A movement later than that is someone else's doing. The phone's journal
+reads "Opening requested" or "Closing requested" (the direction Sowel expected), then the outcome;
+this access's journal shows the same outcome next to each opening. If the command did not get
+through, the page says "No answer from the gate: look at it before trying again, it may have
+moved." An opening counts against the ceilings when it is sent, whatever the gate does.
+
 The page is in French on a phone set to French, and in English on any other phone. It fits on one
 screen. The gear at the top right opens **Settings**: the phone's last
 commands, and a **QR code** the visitor can have a companion scan to set up a second phone on the

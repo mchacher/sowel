@@ -782,7 +782,13 @@ export type OrderSource =
   | { kind: "manual"; userId: string; userName?: string }
   | { kind: "button"; buttonId: string; buttonLabel?: string }
   | { kind: "external"; channel: string }
-  | { kind: "shared_access"; accessId: string; label: string };
+  | { kind: "shared_access"; accessId: string; label: string; pressId?: string };
+
+/** Spec 188 — what became of a tracked order (mirrors src/shared/types.ts). */
+export type OrderOutcomeStatus = "pending" | "moving" | "confirmed" | "fault" | "unconfirmed";
+
+/** Spec 188 — the movement a tracked order should cause. */
+export type OrderOutcomeExpected = "open" | "close";
 
 // ============================================================
 // Shared access (spec 181) — mirrors src/shared/types.ts
@@ -909,6 +915,10 @@ export interface SharedAccessJournalEntry {
   actor: string | null;
   equipmentId: string | null;
   phoneTag: string | null;
+  /** Spec 188 — the outcome of an `opened` row's press; null when it was not tracked. */
+  outcome: "pending" | "confirmed" | "unconfirmed" | null;
+  /** Spec 188 — the movement that press should cause; null when not tracked. */
+  outcomeExpected: OrderOutcomeExpected | null;
 }
 
 export interface SharedAccessPhoneView {
@@ -972,8 +982,16 @@ export type ActivityMessage =
   | { template: "mode.deactivated"; params: { modeName: string } }
   | { template: "sunlight.sunrise"; params: Record<string, never> }
   | { template: "sunlight.sunset"; params: Record<string, never> }
-  | { template: "alarm.raised"; params: { source: string; message: string } }
-  | { template: "alarm.resolved"; params: { source: string; message: string } };
+  | { template: "alarm.raised"; params: AlarmActivityParams }
+  | { template: "alarm.resolved"; params: AlarmActivityParams };
+
+/** An alarm in the activity feed; an order-outcome alarm (spec 188) also carries its i18n key. */
+export interface AlarmActivityParams {
+  source: string;
+  message: string;
+  messageKey?: string;
+  messageParams?: Record<string, string | number>;
+}
 
 export interface ActivityItem {
   id: string;
@@ -1028,6 +1046,18 @@ export type EngineEvent =
       equipmentName: string;
       oldStatus: EquipmentStatus;
       newStatus: EquipmentStatus;
+    }
+  /* Spec 188 — a tracked order's outcome changed (gate impulse, cover OPEN / CLOSE). */
+  | {
+      type: "equipment.order.outcome";
+      equipmentId: string;
+      orderAlias: string;
+      value: unknown;
+      status: OrderOutcomeStatus;
+      expected?: OrderOutcomeExpected;
+      /** The device's reason for a `fault` (e.g. `BOTTOM`). */
+      detail?: string;
+      source?: OrderSource;
     }
   /* Spec 174 — a timed window opening, ending, or failing to end. The equipment
      row itself is untouched, so these are not `equipment.updated`. */
@@ -1098,8 +1128,18 @@ export type EngineEvent =
       level: "warning" | "error";
       source: string;
       message: string;
+      /** Spec 188 — the engine's i18n key for the banner; `message` is the English fallback. */
+      messageKey?: string;
+      messageParams?: Record<string, string | number>;
     }
-  | { type: "system.alarm.resolved"; alarmId: string; source: string; message: string }
+  | {
+      type: "system.alarm.resolved";
+      alarmId: string;
+      source: string;
+      message: string;
+      messageKey?: string;
+      messageParams?: Record<string, string | number>;
+    }
   | { type: "system.update.available"; current: string; latest: string; releaseUrl: string }
   | { type: "system.update.progress"; step: string; message: string }
   | { type: "system.update.error"; error: string; operation: "update" | "restart" }

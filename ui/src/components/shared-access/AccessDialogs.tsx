@@ -136,6 +136,26 @@ export function ChangeCodeDialog({
   );
 }
 
+/**
+ * Spec 188 O8 — the i18n key of an opening's outcome, or null for none. A
+ * press still `pending` long after its window can no longer be answered (the
+ * engine restarted, or another order took its place): it reads as a plain
+ * opening, as on the guest page.
+ */
+const OUTCOME_PENDING_SHOWN_MS = 70_000;
+function journalOutcomeKey(e: SharedAccessJournalEntry): string | null {
+  if (e.outcome === "confirmed") {
+    return e.outcomeExpected === "close"
+      ? "sharedAccess.journal.outcome.confirmedClose"
+      : "sharedAccess.journal.outcome.confirmedOpen";
+  }
+  if (e.outcome === "unconfirmed") return "sharedAccess.journal.outcome.unconfirmed";
+  if (e.outcome === "pending" && Date.now() - Date.parse(e.at) < OUTCOME_PENDING_SHOWN_MS) {
+    return "sharedAccess.journal.outcome.pending";
+  }
+  return null;
+}
+
 /** This access's journal (R7.28) — what happened, newest first. */
 export function JournalDialog({
   access,
@@ -176,6 +196,7 @@ export function JournalDialog({
         <ul className="divide-y divide-border-light max-h-[60vh] overflow-y-auto -mx-1">
           {entries.map((e) => {
             const gate = gateName(e.equipmentId);
+            const outcomeKey = e.kind === "opened" ? journalOutcomeKey(e) : null;
             return (
               <li key={e.id} className="flex items-baseline gap-3 px-1 py-2 text-[13px]">
                 <span className="font-mono text-[12px] text-text-tertiary tabular-nums shrink-0 w-[112px]">
@@ -201,6 +222,21 @@ export function JournalDialog({
                           defaultValue: e.reason,
                         }),
                       })}
+                    </span>
+                  )}
+                  {/* Spec 188 O8 — what became of an opening, when the gate state could tell. */}
+                  {outcomeKey && (
+                    <span
+                      className={
+                        e.outcome === "confirmed"
+                          ? "text-success"
+                          : e.outcome === "unconfirmed"
+                            ? "text-warning"
+                            : "text-text-secondary"
+                      }
+                    >
+                      {" "}
+                      — {t(outcomeKey)}
                     </span>
                   )}
                   {e.actor && <span className="text-text-tertiary"> · {e.actor}</span>}

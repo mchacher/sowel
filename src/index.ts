@@ -452,6 +452,7 @@ async function main() {
   // Spec 127 — Web Push: per-user subscriptions + server-global VAPID keys.
   const pushSubscriptionManager = new PushSubscriptionManager(db, logger);
   const vapidKeys = ensureVapidKeys(settingsManager, logger);
+  const userManager = new UserManager(db, logger);
   const notificationPublishService = new NotificationPublishService(
     eventBus,
     notificationPublisherManager,
@@ -461,6 +462,8 @@ async function main() {
     pushSubscriptionManager,
     vapidKeys,
     logger,
+    // Spec 188 O6 — a push is worded in its recipient's language preference.
+    (userId) => userManager.getById(userId)?.preferences.language,
   );
 
   // 12c. Create MQTT Publish Service (needs RecipeManager)
@@ -502,8 +505,8 @@ async function main() {
     logger,
   );
 
-  // 13. Create Auth modules
-  const userManager = new UserManager(db, logger);
+  // 13. Create Auth modules (the user manager is created with the notification
+  // service above, which words a push in its recipient's language)
   const mfaService = new MfaService(db, userManager, logger);
   const authService = new AuthService(db, userManager, mfaService, config.jwt, logger);
 

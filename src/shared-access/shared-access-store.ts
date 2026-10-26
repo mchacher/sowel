@@ -68,9 +68,16 @@ export interface JournalRow {
   actor: string | null;
   equipment_id: string | null;
   phone_id: string | null;
+  /** Spec 188 — the outcome of an `opened` row's press; NULL when it was not tracked. */
+  outcome: string | null;
+  /** Spec 188 — `open` / `close`, the movement that press should cause. */
+  outcome_expected: string | null;
 }
 
-export type JournalInput = Omit<JournalRow, "id">;
+export type JournalInput = Omit<JournalRow, "id" | "outcome" | "outcome_expected"> & {
+  outcome?: string | null;
+  outcome_expected?: string | null;
+};
 
 /** Columns of `shared_accesses` a caller may change after creation. */
 const ACCESS_MUTABLE = new Set<keyof AccessRow>([
@@ -189,8 +196,11 @@ export class SharedAccessStore {
       deletePhone: db.prepare(`DELETE FROM shared_access_phones WHERE id = ? AND access_id = ?`),
 
       insertJournal: db.prepare(
-        `INSERT INTO shared_access_journal (at, access_id, label, kind, reason, actor, equipment_id, phone_id)
-         VALUES (@at, @access_id, @label, @kind, @reason, @actor, @equipment_id, @phone_id)`,
+        `INSERT INTO shared_access_journal (at, access_id, label, kind, reason, actor, equipment_id, phone_id, outcome, outcome_expected)
+         VALUES (@at, @access_id, @label, @kind, @reason, @actor, @equipment_id, @phone_id, @outcome, @outcome_expected)`,
+      ),
+      setOutcome: db.prepare(
+        `UPDATE shared_access_journal SET outcome = ? WHERE id = ? AND kind = 'opened'`,
       ),
       journalAll: db.prepare(
         `SELECT * FROM shared_access_journal ORDER BY at DESC, id DESC LIMIT ?`,
@@ -362,8 +372,19 @@ export class SharedAccessStore {
 
   // ── Journal ────────────────────────────────────────────────
 
-  journal(entry: JournalInput): void {
-    this.stmts.insertJournal.run(entry);
+  /** Returns the new row's id. */
+  journal(entry: JournalInput): number {
+    return Number(
+      this.stmts.insertJournal.run({
+        ...entry,
+        outcome: entry.outcome ?? null,
+        outcome_expected: entry.outcome_expected ?? null,
+      }).lastInsertRowid,
+    );
+  }
+  /** Spec 188 — what became of a press, on that press's own row. */
+  setOutcome(rowId: number, outcome: string | null): void {
+    this.stmts.setOutcome.run(outcome, rowId);
   }
   listJournal(accessId: string | null, limit: number): JournalRow[] {
     return (

@@ -13,6 +13,8 @@ import {
 } from "./shared-access-manager.js";
 import { isAdminOnlyEvent } from "../api/websocket.js";
 import { deriveLinkToken } from "./codes.js";
+import type { Dispatch } from "../test-helpers/shared-access.js";
+import type { EngineEvent } from "../shared/types.js";
 
 let h: SharedAccessHarness;
 
@@ -313,13 +315,23 @@ describe("pressing (R4)", () => {
         equipmentId: h.gates.entree,
         alias: "command",
         value: null,
-        source: { kind: "shared_access", accessId: access.id, label: "Plombier" },
+        source: {
+          kind: "shared_access",
+          accessId: access.id,
+          label: "Plombier",
+          pressId: expect.any(String),
+        },
       },
       {
         equipmentId: h.gates.garage,
         alias: "command",
         value: "open",
-        source: { kind: "shared_access", accessId: access.id, label: "Plombier" },
+        source: {
+          kind: "shared_access",
+          accessId: access.id,
+          label: "Plombier",
+          pressId: expect.any(String),
+        },
       },
     ]);
   });
@@ -398,6 +410,196 @@ describe("pressing (R4)", () => {
       (e) => e.type === "system.alarm.raised" && e.alarmId.startsWith("shared-access:phones:"),
     );
     expect(alarms).toHaveLength(1);
+  });
+});
+
+describe("the outcome of a press (spec 188 O8)", () => {
+  type Status = Extract<EngineEvent, { type: "equipment.order.outcome" }>["status"];
+
+  /** What the order confirmation tracker emits for the order this dispatch carried. */
+  function outcomeFor(
+    d: Dispatch,
+    status: Status,
+    opts: { equipmentId?: string; expected?: "open" | "close" } = {},
+  ): void {
+    h.eventBus.emit({
+      type: "equipment.order.outcome",
+      equipmentId: opts.equipmentId ?? d.equipmentId,
+      orderAlias: d.alias,
+      value: d.value,
+      status,
+      expected: opts.expected ?? "open",
+      ...(d.source ? { source: d.source } : {}),
+    });
+  }
+
+  /** A gate whose state is known: the tracker emits `pending` while the order is handed over. */
+  function trackedGate(expected: "open" | "close" = "open"): void {
+    h.setDuringDispatch((d) => outcomeFor(d, "pending", { expected }));
+  }
+
+  const openedRows = () => h.manager.listJournal(null).filter((e) => e.kind === "opened");
+
+  it("answers pending with the expected movement on a tracked gate, and the row starts pending", async () => {
+    h = buildSharedAccessHarness();
+    h.manager.start();
+    trackedGate("open");
+    const { token } = await withPhone();
+    expect(await h.manager.open(token, h.gates.entree)).toEqual({
+      ok: true,
+      outcome: "pending",
+      expected: "open",
+      windowS: 15,
+    });
+    expect(openedRows()).toEqual([
+      expect.objectContaining({ outcome: "pending", outcomeExpected: "open" }),
+    ]);
+    expect(h.manager.session(token)!.presses[0]).toMatchObject({
+      result: "sent",
+      outcome: "pending",
+      expected: "open",
+    });
+  });
+
+  it("writes confirmed on the press's row and in its session press", async () => {
+    h = buildSharedAccessHarness();
+    h.manager.start();
+    trackedGate("close");
+    const { token } = await withPhone();
+    await h.manager.open(token, h.gates.entree);
+    outcomeFor(h.dispatches[0], "confirmed", { expected: "close" });
+    expect(openedRows()[0]).toMatchObject({ outcome: "confirmed", outcomeExpected: "close" });
+    expect(h.manager.session(token)!.presses[0]).toMatchObject({
+      outcome: "confirmed",
+      expected: "close",
+    });
+  });
+
+  it("leaves outcome out when the gate state is unknown, and the row NULL", async () => {
+    h = buildSharedAccessHarness();
+    h.manager.start();
+    const { token } = await withPhone();
+    expect(await h.manager.open(token, h.gates.entree)).toEqual({ ok: true });
+    expect(openedRows()[0]).toMatchObject({ outcome: null, outcomeExpected: null });
+    expect(h.manager.session(token)!.presses[0]).not.toHaveProperty("outcome");
+    // An outcome arriving anyway finds no press to write on.
+    outcomeFor(h.dispatches[0], "confirmed");
+    expect(openedRows()[0].outcome).toBeNull();
+  });
+
+  it("records unconfirmed and still counts the use, then a late state confirms the row", async () => {
+    h = buildSharedAccessHarness();
+    h.manager.start();
+    trackedGate();
+    const { access, token } = await withPhone();
+    await h.manager.open(token, h.gates.entree);
+    outcomeFor(h.dispatches[0], "unconfirmed");
+    expect(openedRows()[0].outcome).toBe("unconfirmed");
+    expect(h.manager.getAccess(access.id).useCount).toBe(1);
+    outcomeFor(h.dispatches[0], "confirmed");
+    expect(openedRows()[0].outcome).toBe("confirmed");
+  });
+
+  it("never lets the coop's or anyone else's outcome touch a pending press", async () => {
+    h = buildSharedAccessHarness();
+    h.manager.start();
+    trackedGate();
+    const { token } = await withPhone();
+    await h.manager.open(token, h.gates.entree);
+    const press = h.dispatches[0];
+
+    // The coop door is tracked too: its outcomes carry its own order's source…
+    h.eventBus.emit({
+      type: "equipment.order.outcome",
+      equipmentId: h.gates.volet,
+      orderAlias: "command",
+      value: "CLOSE",
+      status: "fault",
+      detail: "BOTTOM",
+      source: { kind: "recipe", instanceId: "r1", recipeName: "Poulailler" },
+    });
+    // …and even one wearing this press's id is not from the gate it targeted.
+    outcomeFor(press, "unconfirmed", { equipmentId: h.gates.volet });
+
+    expect(openedRows()[0].outcome).toBe("pending");
+    expect(h.manager.session(token)!.presses[0]).toMatchObject({ outcome: "pending" });
+  });
+
+  it("stops waiting once another order on the gate replaced the press (O7)", async () => {
+    h = buildSharedAccessHarness();
+    h.manager.start();
+    trackedGate();
+    const { token } = await withPhone();
+    await h.manager.open(token, h.gates.entree);
+    const press = h.dispatches[0];
+    // The owner pulses the gate from the tile: the tracker follows that order.
+    h.eventBus.emit({
+      type: "equipment.order.outcome",
+      equipmentId: h.gates.entree,
+      orderAlias: "command",
+      value: "pulse",
+      status: "pending",
+      expected: "close",
+      source: { kind: "manual", userId: "admin" },
+    });
+    // The first press's window was cancelled: its row stops reading pending
+    // (NULL, a press that was not followed), and nothing of it is shown again.
+    expect(openedRows()[0].outcome).toBeNull();
+    outcomeFor(press, "confirmed");
+    expect(openedRows()[0].outcome).toBeNull();
+    // The guest's journal keeps the direction it asked for.
+    expect(h.manager.session(token)!.presses[0]).toEqual(
+      expect.objectContaining({ expected: "open" }),
+    );
+    expect(h.manager.session(token)!.presses[0]).not.toHaveProperty("outcome");
+  });
+
+  it("an exempt press after it does not end the wait: its late outcome still lands on its row (#1088 review)", async () => {
+    h = buildSharedAccessHarness();
+    h.manager.start();
+    trackedGate();
+    const { token } = await withPhone();
+    await h.manager.open(token, h.gates.entree);
+    const first = h.dispatches[0];
+    // The gate state reads "unknown" after the first pulse: the core does not
+    // follow the second one, and keeps following the first.
+    h.setDuringDispatch(null);
+    h.clock.now += 20_000;
+    expect(await h.manager.open(token, h.gates.entree)).toEqual({ ok: true });
+    outcomeFor(first, "confirmed");
+    const [second, firstRow] = openedRows();
+    expect(firstRow.outcome).toBe("confirmed");
+    expect(second.outcome).toBeNull();
+  });
+
+  it("keeps waiting when an earlier order's final status arrives (only a new order replaces it)", async () => {
+    h = buildSharedAccessHarness();
+    h.manager.start();
+    trackedGate();
+    const { token } = await withPhone();
+    await h.manager.open(token, h.gates.entree);
+    h.eventBus.emit({
+      type: "equipment.order.outcome",
+      equipmentId: h.gates.entree,
+      orderAlias: "command",
+      value: "pulse",
+      status: "confirmed",
+      expected: "close",
+      source: { kind: "manual", userId: "admin" },
+    });
+    outcomeFor(h.dispatches[0], "confirmed");
+    expect(openedRows()[0].outcome).toBe("confirmed");
+  });
+
+  it("forgets a press whose order failed", async () => {
+    h = buildSharedAccessHarness();
+    h.manager.start();
+    trackedGate();
+    h.setOutcome({ success: false, error: "radio down" });
+    const { token } = await withPhone();
+    expect(await h.manager.open(token, h.gates.entree)).toMatchObject({ reason: "gate_error" });
+    outcomeFor(h.dispatches[0], "confirmed");
+    expect(openedRows()).toHaveLength(0);
   });
 });
 

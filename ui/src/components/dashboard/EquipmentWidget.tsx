@@ -73,6 +73,7 @@ import {
 } from "./WidgetIcons";
 import { WeatherForecastWidget } from "./WeatherForecastWidget";
 import { WidgetCard } from "./WidgetCard";
+import { TileEquipmentContext } from "../equipments/order-outcome";
 import { TimedEquipmentWidget } from "./TimedEquipmentWidget";
 import { renderWidgetStateIcon, shutterLevel } from "./widget-icons";
 import { resolveWidgetPresentation } from "./presentation/resolveWidgetPresentation";
@@ -92,7 +93,19 @@ interface EquipmentWidgetProps {
   editMode?: boolean;
 }
 
-export function EquipmentWidget({
+/**
+ * Spec 188 — every tile names its equipment to the shared `WidgetCard` shell,
+ * which draws the status line of the equipment's last order under the title.
+ */
+export function EquipmentWidget(props: EquipmentWidgetProps) {
+  return (
+    <TileEquipmentContext.Provider value={props.equipment.id}>
+      <EquipmentWidgetBody {...props} />
+    </TileEquipmentContext.Provider>
+  );
+}
+
+function EquipmentWidgetBody({
   widget,
   equipment,
   equipmentZone,

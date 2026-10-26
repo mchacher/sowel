@@ -26,6 +26,7 @@ import { CameraPanel } from "../components/equipments/CameraPanel";
 import { UpsPanel } from "../components/equipments/UpsPanel";
 import { AddBindingModal } from "../components/equipments/AddBindingModal";
 import { EquipmentStatusBadge } from "../components/equipments/EquipmentStatusBadge";
+import { OrderOutcomeLine } from "../components/equipments/OrderOutcomeLine";
 import { DeviceSelector } from "../components/equipments/DeviceSelector";
 import { TYPE_LABELS } from "../components/equipments/equipment-type-meta";
 import { useEquipmentState } from "../components/equipments/useEquipmentState";
@@ -317,6 +318,8 @@ export function EquipmentDetailPage() {
                 <span className="text-warning ml-2">{t("common.disabled")}</span>
               )}
             </p>
+            {/* Spec 188 — what became of the last tracked order (gate, cover). */}
+            <OrderOutcomeLine equipmentId={equipment.id} className="mt-1" />
             {actionBinding && actionBinding.value != null && (
               <div className="flex items-center gap-1.5 mt-1 text-[12px] text-text-tertiary">
                 <Clock size={12} strokeWidth={1.5} />

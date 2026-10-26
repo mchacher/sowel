@@ -486,8 +486,18 @@ règle. Le jeton du téléphone passe en `Authorization: Bearer <jeton>`.
 | ------- | ---------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `POST`  | `/enrol`   | `{ code }` ou `{ link }` → `{ token, session }`. `401 unknown_code`, `410 ended`, `429 too_many`, `409 too_many_phones` (50 téléphones déjà installés sur l'accès).         |
 | `GET`   | `/session` | `{ label, status, gates, activeAt, nextOpeningAt, validUntil, travelS, presses }` — jamais l'état du portail ; `presses` sont ceux de ce téléphone. `401` s'il est inconnu. |
-| `POST`  | `/open`    | `{ gate }` → `{ ok: true }`, ou `409 { ok: false, reason, activeAt?, nextOpeningAt? }`.                                                                                     |
+| `POST`  | `/open`    | `{ gate }` → `{ ok: true, outcome?, expected?, windowS? }`, ou `409 { ok: false, reason, activeAt?, nextOpeningAt? }`.                                                      |
 | `GET`   | `/share`   | `{ url, qr }` — le lien d'invitation et son QR code en URI `data:image/svg+xml`. `409 ended`, `409 no_public_url`, `401` si inconnu.                                        |
+
+**Résultat (spec 188).** Quand l'état du portail est connu à l'appui, `open` renvoie
+`outcome: "pending"`, `expected: "open" | "close"` et `windowS` (le temps que le cœur attend la
+preuve : 15 depuis fermé, 60 depuis ouvert), et cet appui dans `session.presses` porte ensuite
+`outcome` — `pending`, `confirmed` ou `unconfirmed` — et `expected`. La page relit la session
+toutes les 2 s, 70 s au plus, jusqu'à `confirmed`, et garde la sphère verrouillée sur la plus
+longue de `travelS` et `windowS`, et tant que le résultat est en attente. Un rapport tardif
+confirme encore un appui jusqu'à 5 min après sa fenêtre. Les entrées du journal du propriétaire
+portent les mêmes `outcome` et `outcomeExpected` (`null` quand l'appui n'était pas suivi, ou qu'un
+ordre suivi plus récent sur le portail l'a remplacé).
 
 La raison d'un refus est l'une de `revoked`, `suspended`, `not_yet`, `expired`, `outside_hours`,
 `no_gate`, `not_this_gate`, `refused_by_house` (le portail est désarmé), `too_many_opens` (12 par
