@@ -61,6 +61,8 @@ import {
   evIsPlugged,
 } from "../equipments/electricVehicleState";
 import { gateNeedsConfirm } from "./gate-confirm";
+import { OrderReceiptLine } from "../equipments/OrderReceiptLine";
+import { useOrderReceipt } from "../equipments/order-receipt";
 import { ForecastConfidenceMark } from "./ForecastConfidenceMark";
 import { vmcSpeedOf } from "../equipments/vmcSpeed";
 import {
@@ -95,6 +97,7 @@ export function MobileWidgetCard({
   const { icon, stateLines, footer } = useMobileState(widget, equipment, t);
   // Spec 146 — a guarded gate shows a tiny shield so it reads as protected.
   const guarded = !editMode && gateNeedsConfirm(equipment);
+  const receipt = useOrderReceipt(equipment.id);
 
   return (
     <button
@@ -131,11 +134,16 @@ export function MobileWidgetCard({
         <div className="scale-50 origin-center">{icon}</div>
       </div>
 
-      {/* State summary */}
-      {stateLines.length > 0 && (
-        <span className="text-[11px] text-text-secondary truncate max-w-full">
-          {stateLines.join(" · ")}
-        </span>
+      {/* State summary — spec 188: while the last order has a receipt to
+          show, its line takes this slot, so the 120 px card never grows. */}
+      {receipt ? (
+        <OrderReceiptLine equipmentId={equipment.id} size="xs" className="w-full" />
+      ) : (
+        stateLines.length > 0 && (
+          <span className="text-[11px] text-text-secondary truncate max-w-full">
+            {stateLines.join(" · ")}
+          </span>
+        )
       )}
 
       {/* Spec 168 — the forecast tile qualifies tomorrow on the phone too,

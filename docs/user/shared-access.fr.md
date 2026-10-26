@@ -103,6 +103,26 @@ La page ne dit jamais si le portail est ouvert ou fermé. Elle ne montre que **l
 visiteur lui-même**, et ne parle en mots que quand le portail ne bougera pas — hors des heures, pas
 encore valable, suspendu, révoqué — et dit alors pourquoi.
 
+### Quand le portail confirme { #gate-receipt }
+
+Certains portails répondent à chaque commande — un portail LoRa le fait. Pour ceux-là, la page
+suit alors **son propre appui**, et rien d'autre : en une vingtaine de secondes au plus, elle dit ce
+que le portail en a fait, pendant que la barre de course continue.
+
+| Le portail…              | La page dit                                                                           |
+| ------------------------ | ------------------------------------------------------------------------------------- |
+| l'a appliquée            | la sphère affiche **REÇU**, « Ouverture confirmée »                                   |
+| l'a refusée              | « Commande refusée » — _Le portail a refusé la commande._                             |
+| ne l'a pas reçue         | _Le portail n'a pas reçu la commande. Vous pouvez réessayer._                         |
+| n'a pas confirmé à temps | _Pas de confirmation : regardez le portail avant de réessayer, il a peut-être bougé._ |
+
+Quand le portail a refusé ou n'a pas reçu la commande, la barre s'arrête et la sphère peut être
+tirée de nouveau tout de suite. Rien n'est jamais renvoyé tout seul : une impulsion envoyée deux
+fois inverserait le portail. Le journal du téléphone et celui de l'accès montrent la même réponse à
+côté de chaque ouverture. Un portail qui ne répond pas se comporte comme avant : « Commande
+envoyée », rien de plus. Une ouverture compte dans les plafonds dès qu'elle est envoyée, quoi que
+le portail réponde.
+
 La page est en français sur un téléphone réglé en français, et en anglais sur tous les autres.
 Elle tient sur un seul écran. La roue dentée en haut à droite ouvre **Réglages** : les
 dernières commandes du téléphone, et un **QR code** que le visiteur fait scanner à la personne qui

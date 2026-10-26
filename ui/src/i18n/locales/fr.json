@@ -1911,5 +1911,16 @@
   "sharedAccess.app.iconHelp": "Une image carrée d'au moins 512 px, de préférence sur fond plein : iOS remplit la transparence en noir. Elle est recadrée au centre.",
   "sharedAccess.app.iconUnreadable": "Refusé : cette image ne se lit pas.",
   "sharedAccess.app.saved": "✓ Enregistré.",
-  "sharedAccess.unreadable": "Impossible de lire l'état des accès partagés."
+  "sharedAccess.unreadable": "Impossible de lire l'état des accès partagés.",
+  "orderReceipt.pending": "Envoyée…",
+  "orderReceipt.received": "Reçue…",
+  "orderReceipt.delivered": "Confirmée",
+  "orderReceipt.refused": "Refusée par l'appareil",
+  "orderReceipt.not_received": "Non reçue",
+  "orderReceipt.unconfirmed": "Sans confirmation",
+  "sharedAccess.journal.receipt.pending": "en attente du portail",
+  "sharedAccess.journal.receipt.delivered": "confirmée par le portail",
+  "sharedAccess.journal.receipt.refused": "refusée par le portail",
+  "sharedAccess.journal.receipt.not_received": "non reçue par le portail",
+  "sharedAccess.journal.receipt.unconfirmed": "sans confirmation"
 }

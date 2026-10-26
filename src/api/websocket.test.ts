@@ -196,6 +196,25 @@ describe("websocket role authorization (S01)", () => {
       ).toBe(false);
     });
 
+    // Spec 188 — the tile's status line reads the receipt from the equipments
+    // stream, so every user who sees the tile hears it.
+    it("delivers an equipment order receipt to every user on the equipments topic", () => {
+      for (const role of ["standard", "admin"] as const) {
+        expect(
+          canReceiveEvent(ev("equipment.order.receipt"), {
+            role,
+            topics: new Set(["system", "equipments"]),
+          }),
+        ).toBe(true);
+      }
+      expect(
+        canReceiveEvent(ev("equipment.order.receipt"), {
+          role: "standard",
+          topics: new Set(["system"]),
+        }),
+      ).toBe(false);
+    });
+
     it("delivers mqtt-broker events to a subscribed admin", () => {
       expect(
         canReceiveEvent(ev("mqtt-broker.updated"), {

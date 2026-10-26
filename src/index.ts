@@ -14,6 +14,7 @@ import { ZoneManager } from "./zones/zone-manager.js";
 import { EquipmentManager } from "./equipments/equipment-manager.js";
 import { EquipmentStatusTracker } from "./equipments/equipment-status-tracker.js";
 import { OrderConfirmationTracker } from "./equipments/order-confirmation-tracker.js";
+import { OrderReceiptTracker } from "./equipments/order-receipt-tracker.js";
 import { BatteryMonitor } from "./devices/battery-monitor.js";
 import { PoolRuntimeTracker } from "./equipments/pool-runtime-tracker.js";
 import { TimedActionManager } from "./equipments/timed-action-manager.js";
@@ -334,6 +335,21 @@ async function main() {
     logger,
   );
   await runUnlessShadow("orderConfirmationTracker.init()", () => orderConfirmationTracker.init());
+
+  // 10c, continued. Order delivery receipt (spec 188) — ties a device's receipt back
+  // to the order dispatched on it, re-emits it per equipment and alarms on a
+  // refused, lost or unconfirmed order. It never resends. Inert in shadow mode,
+  // which dispatches nothing and must push no alarm.
+  const orderReceiptTracker = new OrderReceiptTracker(
+    eventBus,
+    equipmentManager,
+    deviceManager,
+    logger,
+  );
+  equipmentManager.registerOrderDispatchObserver((dispatch) =>
+    orderReceiptTracker.recordDispatch(dispatch),
+  );
+  await runUnlessShadow("orderReceiptTracker.init()", () => orderReceiptTracker.init());
 
   // 10c-bis. Timed actions (spec 174) — the engine's own "act now, revert after
   // N minutes". Created here so every equipment query carries the deadline that
@@ -839,6 +855,11 @@ async function main() {
       orderConfirmationTracker.destroy();
     } catch (err) {
       logger.error({ err }, "Error stopping order confirmation tracker");
+    }
+    try {
+      orderReceiptTracker.destroy();
+    } catch (err) {
+      logger.error({ err }, "Error stopping order receipt tracker");
     }
     try {
       timedActionManager.stop();

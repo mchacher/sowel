@@ -7,7 +7,9 @@
 // `/access/` works without a second rule.
 //
 // What it shows of a command is the echo of this phone's own presses, never
-// the gate's state (R4.16, R5.22). The control is a movement: the disc is
+// the gate's state (R4.16, R5.22). When the gate's device answers (spec 188
+// R5), the echo includes what the gate made of the press — read from that
+// press's own journal row in the session, never from another equipment. The control is a movement: the disc is
 // pulled upward out of its socket (R5.20); the keyboard confirms with a second
 // Enter instead (R5.21). The screen never scrolls: the phone's journal and the
 // QR code to bring another phone in live behind the gear (R5.22).
@@ -294,7 +296,15 @@ export const GUEST_JS = `(function () {
       refused_by_house: "The house refused the command.", too_many_opens: "Too many openings in the last hour.",
       busy: "The gate is busy. Try again in a moment.",
       gate_error: "The gate did not take the command. Try again."
-    }
+    },
+    // Spec 188 R5 — what the gate made of this phone's press.
+    received: "RECEIVED", confirmed: "Opening confirmed", notReceived: "Command not received", noConfirm: "No confirmation",
+    outcomes: {
+      refused: "The gate refused the command.",
+      not_received: "The gate did not receive the command. You can try again.",
+      unconfirmed: "No confirmation: look at the gate before trying again, it may have moved."
+    },
+    receipts: { pending: "Opening requested", delivered: "Opening confirmed", refused: "Refused by the gate", not_received: "Not received by the gate", unconfirmed: "Opening requested · no confirmation" }
   } : {
     access: "Accès", enterCode: "Entrez le code qu'on vous a communiqué.", validate: "Valider",
     unknown: "Ce code n'ouvre rien.", tooMany: "Trop d'essais. Réessayez dans un instant.",
@@ -319,7 +329,15 @@ export const GUEST_JS = `(function () {
       refused_by_house: "La maison a refusé la commande.", too_many_opens: "Trop d'ouvertures dans l'heure.",
       busy: "Le portail est occupé. Réessayez dans un instant.",
       gate_error: "Le portail n'a pas pris la commande. Réessayez."
-    }
+    },
+    // Spec 188 R5 — ce que le portail a fait de l'appui de ce téléphone.
+    received: "REÇU", confirmed: "Ouverture confirmée", notReceived: "Commande non reçue", noConfirm: "Sans confirmation",
+    outcomes: {
+      refused: "Le portail a refusé la commande.",
+      not_received: "Le portail n'a pas reçu la commande. Vous pouvez réessayer.",
+      unconfirmed: "Pas de confirmation : regardez le portail avant de réessayer, il a peut-être bougé."
+    },
+    receipts: { pending: "Ouverture demandée", delivered: "Ouverture confirmée", refused: "Refusée par le portail", not_received: "Non reçue par le portail", unconfirmed: "Ouverture demandée · sans confirmation" }
   };
 
   var token = null;
@@ -335,6 +353,10 @@ export const GUEST_JS = `(function () {
   var session = null;
   var busy = false;
   var pillTimer = null;
+  // Spec 188 — the press being followed, and how to stop the travel bar.
+  var following = null;
+  var stopBar = null;
+  var FOLLOW_EVERY_MS = 1000, FOLLOW_FOR_MS = 20000;
 
   function saveToken(t) {
     token = t;
@@ -494,10 +516,11 @@ export const GUEST_JS = `(function () {
     var many = session && session.gates.length > 1;
     list.forEach(function (p) {
       var row = document.createElement("div");
-      row.className = "jrow" + (p.result === "sent" ? "" : " bad");
+      var lost = p.receipt === "refused" || p.receipt === "not_received";
+      row.className = "jrow" + (p.result === "sent" && !lost ? "" : " bad");
       var d = document.createElement("span"); d.className = "d";
       var l = document.createElement("span");
-      var label = p.result === "sent" ? T.asked : (T.reasons[p.result] || T.refused);
+      var label = p.result === "sent" ? ((p.receipt && T.receipts[p.receipt]) || T.asked) : (T.reasons[p.result] || T.refused);
       l.textContent = label + (many && p.gateName ? " · " + p.gateName : "");
       var t = document.createElement("span"); t.className = "t"; t.textContent = when(p.at);
       row.appendChild(d); row.appendChild(l); row.appendChild(t);
@@ -584,11 +607,16 @@ export const GUEST_JS = `(function () {
   function fire(gate, orb, verb, hint, guide, rest) {
     if (busy) return;
     busy = true;
+    following = null; // a new press: the previous one's outcome is no longer this screen's
     orb.classList.add("busy"); verb.textContent = T.sent; hint.textContent = ""; guide.classList.remove("on");
     setPill("run", T.commandSent);
     api("open", "POST", { gate: gate.id }).then(function (r) {
       if (r.status === 401) { saveToken(null); busy = false; showCode(); return; }
-      if (r.status === 200 && r.body.ok) { refresh(); runBar(rest); return; }
+      if (r.status === 200 && r.body.ok) {
+        refresh(); runBar(rest);
+        if (r.body.receipt) follow(gate.id, verb, rest);
+        return;
+      }
       var reason = (r.body && r.body.reason) || "gate_error";
       var text = T.reasons[reason] || T.refused;
       if (reason === "not_yet" && r.body.activeAt) text = T.notYet + dayTime(r.body.activeAt);
@@ -613,14 +641,70 @@ export const GUEST_JS = `(function () {
     prog.classList.add("on");
     $("progLeft").textContent = T.commandSent.toLowerCase();
     var t0 = performance.now();
+    var stopped = false;
+    stopBar = function () { stopped = true; stopBar = null; fill.style.width = "0%"; prog.classList.remove("on"); };
     (function step(now) {
+      if (stopped) return;
       var p = Math.min(1, (now - t0) / (travel * 1000));
       fill.style.width = (p * 100) + "%";
       $("progRight").textContent = ((1 - p) * travel).toFixed(0) + " s";
       if (p < 1) { requestAnimationFrame(step); return; }
       fill.style.width = "0%"; prog.classList.remove("on");
+      stopBar = null;
       busy = false; rest(); restingPill();
     })(t0);
+  }
+
+  // ── The gate's receipt (spec 188 R5) ─────────────────────
+  // The page learns what became of ITS press from that press's own row in the
+  // session — this phone's presses, nothing else — read every second for at
+  // most 20 s while the receipt is pending. The travel bar runs on meanwhile.
+  function ownPress(gateId) {
+    var list = (session && session.presses) || [];
+    return list.filter(function (p) { return p.result === "sent" && p.gateId === gateId; })[0] || null;
+  }
+
+  function follow(gateId, verb, rest) {
+    var me = {};
+    following = me;
+    var t0 = Date.now();
+    function again() {
+      if (Date.now() - t0 >= FOLLOW_FOR_MS) { following = null; outcome("unconfirmed", verb, rest); return; }
+      setTimeout(poll, FOLLOW_EVERY_MS);
+    }
+    function poll() {
+      if (following !== me) return;
+      api("session", "GET").then(function (r) {
+        if (following !== me) return;
+        if (r.status === 401) { following = null; saveToken(null); showCode(); return; }
+        if (r.status === 200) { session = r.body; renderJournal(); }
+        var p = ownPress(gateId);
+        var receipt = p && p.receipt;
+        if (receipt && receipt !== "pending") { following = null; outcome(receipt, verb, rest); return; }
+        again();
+      }, function () { if (following === me) again(); });
+    }
+    setTimeout(poll, FOLLOW_EVERY_MS);
+  }
+
+  function outcome(receipt, verb, rest) {
+    if (receipt === "delivered") {
+      // The disc is still the press's only while the bar runs.
+      if (busy) { verb.textContent = T.received; setPill("run", T.confirmed); $("progLeft").textContent = T.confirmed.toLowerCase(); }
+      return;
+    }
+    if (receipt === "refused" || receipt === "not_received") {
+      // The gate is not moving: the bar stops and the disc can be pulled again.
+      if (stopBar) stopBar();
+      busy = false;
+      rest();
+      setPill("bad", receipt === "refused" ? T.refused : T.notReceived);
+    } else {
+      setPill("bad", T.noConfirm);
+    }
+    $("msg").textContent = T.outcomes[receipt] || T.outcomes.unconfirmed;
+    clearTimeout(pillTimer);
+    pillTimer = setTimeout(function () { if (!busy) restingPill(); }, 4200);
   }
 
   function refresh() {

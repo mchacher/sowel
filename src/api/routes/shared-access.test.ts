@@ -149,6 +149,64 @@ describe("shared access routes", () => {
     expect(refused.json()).toMatchObject({ ok: false, reason: "not_this_gate" });
   });
 
+  // Spec 188 R5 — what the guest page follows after a press on a gate whose
+  // device answers: `open` says a receipt is coming, the session's press then
+  // carries it, and the owner's journal shows it next to the `opened` row.
+  it("answers receipt: pending on open, then carries the gate's receipt in the session and journal", async () => {
+    app = await buildApp();
+    h.manager.start();
+    h.setDuringDispatch((d) =>
+      h.eventBus.emit({
+        type: "equipment.order.receipt",
+        equipmentId: d.equipmentId,
+        orderAlias: d.alias,
+        status: "pending",
+        ...(d.source ? { source: d.source } : {}),
+      }),
+    );
+    const created = await app.inject({
+      method: "POST",
+      url: "/api/v1/shared-access/accesses",
+      payload: { label: "Gîte", gates: [{ equipmentId: h.gates.entree }] },
+    });
+    const { id, code } = created.json<{ id: string; code: string }>();
+    const enrol = await app.inject({ method: "POST", url: "/access/api/enrol", payload: { code } });
+    const auth = { authorization: `Bearer ${enrol.json<{ token: string }>().token}` };
+
+    const open = await app.inject({
+      method: "POST",
+      url: "/access/api/open",
+      headers: auth,
+      payload: { gate: h.gates.entree },
+    });
+    expect(open.json()).toEqual({ ok: true, receipt: "pending" });
+
+    const press = h.dispatches[0];
+    h.eventBus.emit({
+      type: "equipment.order.receipt",
+      equipmentId: press.equipmentId,
+      orderAlias: press.alias,
+      status: "delivered",
+      ...(press.source ? { source: press.source } : {}),
+    });
+
+    const session = await app.inject({ method: "GET", url: "/access/api/session", headers: auth });
+    expect(session.json<{ presses: unknown[] }>().presses[0]).toMatchObject({
+      gateId: h.gates.entree,
+      result: "sent",
+      receipt: "delivered",
+    });
+    const journal = await app.inject({
+      method: "GET",
+      url: `/api/v1/shared-access/journal?accessId=${id}`,
+    });
+    expect(
+      journal
+        .json<{ entries: { kind: string; receipt: string | null }[] }>()
+        .entries.find((e) => e.kind === "opened"),
+    ).toMatchObject({ receipt: "delivered" });
+  });
+
   it("gives an enrolled phone its link as a QR code, and lets the owner list and cut phones", async () => {
     app = await buildApp();
     const created = await app.inject({

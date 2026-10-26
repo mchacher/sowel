@@ -225,6 +225,7 @@ All events are typed via `EngineEvent`, a TypeScript discriminated union. Handle
 | `device.status_changed` | `deviceId, deviceName, status`                                                    |
 | `device.data.updated`   | `deviceId, deviceName, dataId, key, value, previous, timestamp, sourceTimestamp?` |
 | `device.heartbeat`      | `deviceId, timestamp`                                                             |
+| `device.order.receipt`  | `integrationId, deviceId, orderKey, status, late?` (spec 188, from plugins)       |
 
 ### Zone
 
@@ -245,6 +246,9 @@ All events are typed via `EngineEvent`, a TypeScript discriminated union. Handle
 | `equipment.data.changed`   | `equipmentId, alias, value, previous, sourceTimestamp?` |
 | `equipment.order.executed` | `equipmentId, orderAlias, value`                        |
 | `equipment.order.failed`   | `equipmentId, orderAlias, value, error`                 |
+| `equipment.order.receipt`  | `equipmentId, orderAlias, status, late?, source?`       |
+
+`equipment.order.receipt` (spec 188) is the device's receipt for the equipment's last order, re-emitted by the `OrderReceiptTracker` from a plugin's `device.order.receipt` and broadcast on the `equipments` topic.
 
 ### Recipe
 
@@ -295,7 +299,7 @@ Tables (migrations `035_shared_access.sql` and `036_shared_access_tombstones.sql
 | `shared_access_profiles`      | What a plugin's accesses open: dates, time windows, code or not, the plugin it is granted to, `is_default`.                                                                |
 | `shared_access_profile_gates` | A profile's gates. Cascades from `equipments`.                                                                                                                             |
 | `shared_access_phones`        | Phones set up on an access: token hash, first and last seen.                                                                                                               |
-| `shared_access_journal`       | Openings, refusals and changes, with no foreign key so it outlives the access. A year, 50 000 lines at most.                                                               |
+| `shared_access_journal`       | Openings, refusals and changes, with no foreign key so it outlives the access. A year, 50 000 lines at most. `receipt`: the gate's answer (spec 188).                      |
 | `shared_access_tombstones`    | The `(plugin, externalId)` of an external access the owner deleted, so a later upsert of that stay answers `revoked` (migration `036`). Purged after a year.               |
 
 All eight ride in the backup.

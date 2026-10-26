@@ -40,6 +40,11 @@ export interface SharedAccessHarness {
   setThrows: (e: Error | null) => void;
   /** The next dispatch waits until the returned function is called. */
   holdNextDispatch: () => () => void;
+  /**
+   * Spec 188 — run while the order is being handed over, the way a plugin
+   * reports `pending` from inside `executeOrder`.
+   */
+  setDuringDispatch: (fn: ((d: Dispatch) => void) | null) => void;
   /** A date and hour on the house's clock, to epoch ms. */
   at: (y: number, m: number, d: number, h?: number, min?: number) => number;
 }
@@ -101,6 +106,7 @@ export function buildSharedAccessHarness(
   let outcome: { success: boolean; error?: string } = { success: true };
   let throws: Error | null = null;
   let hold: Promise<void> | null = null;
+  let duringDispatch: ((d: Dispatch) => void) | null = null;
   const equipmentManager = {
     getAll: () => equipments.getAll(),
     getById: (id: string) => equipments.getById(id),
@@ -117,6 +123,7 @@ export function buildSharedAccessHarness(
         await waiting;
       }
       dispatches.push({ equipmentId, alias, value, source });
+      duringDispatch?.({ equipmentId, alias, value, source });
       if (throws) throw throws;
       return outcome;
     },
@@ -150,6 +157,9 @@ export function buildSharedAccessHarness(
     },
     setThrows: (e: Error | null) => {
       throws = e;
+    },
+    setDuringDispatch: (fn) => {
+      duringDispatch = fn;
     },
     holdNextDispatch: () => {
       let release!: () => void;

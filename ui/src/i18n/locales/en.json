@@ -1911,5 +1911,16 @@
   "sharedAccess.app.iconHelp": "A square image of at least 512 px, preferably on a solid background: iOS fills transparency with black. It is cropped to its centre.",
   "sharedAccess.app.iconUnreadable": "Refused: this image cannot be read.",
   "sharedAccess.app.saved": "✓ Saved.",
-  "sharedAccess.unreadable": "Could not read the state of shared access."
+  "sharedAccess.unreadable": "Could not read the state of shared access.",
+  "orderReceipt.pending": "Sent…",
+  "orderReceipt.received": "Received…",
+  "orderReceipt.delivered": "Confirmed",
+  "orderReceipt.refused": "Refused by the device",
+  "orderReceipt.not_received": "Not received",
+  "orderReceipt.unconfirmed": "No confirmation",
+  "sharedAccess.journal.receipt.pending": "awaiting the gate",
+  "sharedAccess.journal.receipt.delivered": "confirmed by the gate",
+  "sharedAccess.journal.receipt.refused": "refused by the gate",
+  "sharedAccess.journal.receipt.not_received": "not received by the gate",
+  "sharedAccess.journal.receipt.unconfirmed": "no confirmation"
 }

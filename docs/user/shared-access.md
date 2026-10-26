@@ -99,6 +99,25 @@ The page never says whether the gate is open or closed. It shows only **the visi
 commands**, and speaks in words only when the gate will not move — outside the hours, not yet
 valid, on hold, revoked — and then it says why.
 
+### When the gate confirms { #gate-receipt }
+
+Some gates answer each command — a LoRa gate does. For those, the page then follows **its own
+press**, and nothing else: within about twenty seconds it says what the gate made of it, while the
+travel bar keeps running.
+
+| The gate…               | The page says                                                               |
+| ----------------------- | --------------------------------------------------------------------------- |
+| applied it              | the disc reads **RECEIVED**, "Opening confirmed"                            |
+| refused it              | "Command refused" — _The gate refused the command._                         |
+| never got it            | _The gate did not receive the command. You can try again._                  |
+| did not confirm in time | _No confirmation: look at the gate before trying again, it may have moved._ |
+
+When the gate refused or never got the command, the bar stops and the disc can be pulled again at
+once. Nothing is ever resent on its own: an impulse sent twice would reverse the gate. The
+phone's journal and this access's journal show the same answer next to each opening. A gate that
+does not answer behaves as before: "Command sent", nothing more. An opening counts against the
+ceilings when it is sent, whatever the gate answers.
+
 The page is in French on a phone set to French, and in English on any other phone. It fits on one
 screen. The gear at the top right opens **Settings**: the phone's last
 commands, and a **QR code** the visitor can have a companion scan to set up a second phone on the

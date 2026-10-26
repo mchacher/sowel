@@ -68,9 +68,11 @@ export interface JournalRow {
   actor: string | null;
   equipment_id: string | null;
   phone_id: string | null;
+  /** Spec 188 — the gate's receipt for an `opened` row; NULL when none is expected. */
+  receipt: string | null;
 }
 
-export type JournalInput = Omit<JournalRow, "id">;
+export type JournalInput = Omit<JournalRow, "id" | "receipt"> & { receipt?: string | null };
 
 /** Columns of `shared_accesses` a caller may change after creation. */
 const ACCESS_MUTABLE = new Set<keyof AccessRow>([
@@ -189,8 +191,11 @@ export class SharedAccessStore {
       deletePhone: db.prepare(`DELETE FROM shared_access_phones WHERE id = ? AND access_id = ?`),
 
       insertJournal: db.prepare(
-        `INSERT INTO shared_access_journal (at, access_id, label, kind, reason, actor, equipment_id, phone_id)
-         VALUES (@at, @access_id, @label, @kind, @reason, @actor, @equipment_id, @phone_id)`,
+        `INSERT INTO shared_access_journal (at, access_id, label, kind, reason, actor, equipment_id, phone_id, receipt)
+         VALUES (@at, @access_id, @label, @kind, @reason, @actor, @equipment_id, @phone_id, @receipt)`,
+      ),
+      setReceipt: db.prepare(
+        `UPDATE shared_access_journal SET receipt = ? WHERE id = ? AND kind = 'opened'`,
       ),
       journalAll: db.prepare(
         `SELECT * FROM shared_access_journal ORDER BY at DESC, id DESC LIMIT ?`,
@@ -362,8 +367,15 @@ export class SharedAccessStore {
 
   // ── Journal ────────────────────────────────────────────────
 
-  journal(entry: JournalInput): void {
-    this.stmts.insertJournal.run(entry);
+  /** Returns the new row's id. */
+  journal(entry: JournalInput): number {
+    return Number(
+      this.stmts.insertJournal.run({ ...entry, receipt: entry.receipt ?? null }).lastInsertRowid,
+    );
+  }
+  /** Spec 188 — what the gate made of a press, on that press's own row. */
+  setReceipt(rowId: number, receipt: string): void {
+    this.stmts.setReceipt.run(receipt, rowId);
   }
   listJournal(accessId: string | null, limit: number): JournalRow[] {
     return (

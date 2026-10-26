@@ -3,8 +3,23 @@ import type {
   DataType,
   EnergyLoadClass,
   EquipmentType,
+  OrderReceiptStatus,
   WidgetFamily,
 } from "./types.js";
+
+// ============================================================
+// Order delivery receipt (spec 188)
+// ============================================================
+
+/** Every status a plugin may report in `device.order.receipt`. */
+export const ORDER_RECEIPT_STATUSES: ReadonlySet<OrderReceiptStatus> = new Set<OrderReceiptStatus>([
+  "pending",
+  "received",
+  "delivered",
+  "refused",
+  "not_received",
+  "unconfirmed",
+]);
 
 // ============================================================
 // Root Zone — "Maison" is the root of the zone hierarchy

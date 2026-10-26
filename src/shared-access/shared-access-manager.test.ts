@@ -13,6 +13,8 @@ import {
 } from "./shared-access-manager.js";
 import { isAdminOnlyEvent } from "../api/websocket.js";
 import { deriveLinkToken } from "./codes.js";
+import type { Dispatch } from "../test-helpers/shared-access.js";
+import type { EngineEvent } from "../shared/types.js";
 
 let h: SharedAccessHarness;
 
@@ -313,13 +315,23 @@ describe("pressing (R4)", () => {
         equipmentId: h.gates.entree,
         alias: "command",
         value: null,
-        source: { kind: "shared_access", accessId: access.id, label: "Plombier" },
+        source: {
+          kind: "shared_access",
+          accessId: access.id,
+          label: "Plombier",
+          pressId: expect.any(String),
+        },
       },
       {
         equipmentId: h.gates.garage,
         alias: "command",
         value: "open",
-        source: { kind: "shared_access", accessId: access.id, label: "Plombier" },
+        source: {
+          kind: "shared_access",
+          accessId: access.id,
+          label: "Plombier",
+          pressId: expect.any(String),
+        },
       },
     ]);
   });
@@ -398,6 +410,126 @@ describe("pressing (R4)", () => {
       (e) => e.type === "system.alarm.raised" && e.alarmId.startsWith("shared-access:phones:"),
     );
     expect(alarms).toHaveLength(1);
+  });
+});
+
+describe("the gate's receipt for a press (spec 188 R5)", () => {
+  type Receipt = Extract<EngineEvent, { type: "equipment.order.receipt" }>["status"];
+
+  /** What the receipt tracker re-emits for the order this dispatch carried. */
+  function receiptFor(
+    d: Dispatch,
+    status: Receipt,
+    opts: { equipmentId?: string; late?: boolean } = {},
+  ): void {
+    h.eventBus.emit({
+      type: "equipment.order.receipt",
+      equipmentId: opts.equipmentId ?? d.equipmentId,
+      orderAlias: d.alias,
+      status,
+      ...(opts.late ? { late: true } : {}),
+      ...(d.source ? { source: d.source } : {}),
+    });
+  }
+
+  /** A gate whose device answers: `pending` is reported while the order is handed over. */
+  function answeringGate(): void {
+    h.setDuringDispatch((d) => receiptFor(d, "pending"));
+  }
+
+  const openedRows = () => h.manager.listJournal(null).filter((e) => e.kind === "opened");
+
+  it("answers pending for a gate whose device answers, and the row starts pending", async () => {
+    h = buildSharedAccessHarness();
+    h.manager.start();
+    answeringGate();
+    const { token } = await withPhone();
+    expect(await h.manager.open(token, h.gates.entree)).toEqual({ ok: true, receipt: "pending" });
+    expect(openedRows()).toEqual([expect.objectContaining({ receipt: "pending" })]);
+    expect(h.manager.session(token)!.presses[0]).toMatchObject({
+      result: "sent",
+      receipt: "pending",
+    });
+  });
+
+  it("writes delivered on the press's row and in its session press", async () => {
+    h = buildSharedAccessHarness();
+    h.manager.start();
+    answeringGate();
+    const { token } = await withPhone();
+    await h.manager.open(token, h.gates.entree);
+    receiptFor(h.dispatches[0], "received");
+    expect(openedRows()[0].receipt).toBe("pending");
+    receiptFor(h.dispatches[0], "delivered");
+    expect(openedRows()[0].receipt).toBe("delivered");
+    expect(h.manager.session(token)!.presses[0]).toMatchObject({ receipt: "delivered" });
+  });
+
+  it("leaves receipt out for a gate that does not answer, and the row NULL", async () => {
+    h = buildSharedAccessHarness();
+    h.manager.start();
+    const { token } = await withPhone();
+    expect(await h.manager.open(token, h.gates.entree)).toEqual({ ok: true });
+    expect(openedRows()[0].receipt).toBeNull();
+    expect(h.manager.session(token)!.presses[0]).not.toHaveProperty("receipt");
+    // A receipt arriving anyway finds no press to write on.
+    receiptFor(h.dispatches[0], "delivered");
+    expect(openedRows()[0].receipt).toBeNull();
+  });
+
+  it("records unconfirmed and still counts the use, then a late delivered upgrades the row", async () => {
+    h = buildSharedAccessHarness();
+    h.manager.start();
+    answeringGate();
+    const { access, token } = await withPhone();
+    await h.manager.open(token, h.gates.entree);
+    receiptFor(h.dispatches[0], "unconfirmed");
+    expect(openedRows()[0].receipt).toBe("unconfirmed");
+    expect(h.manager.getAccess(access.id).useCount).toBe(1);
+    receiptFor(h.dispatches[0], "delivered", { late: true });
+    expect(openedRows()[0].receipt).toBe("delivered");
+  });
+
+  it("never lets another equipment's receipt touch a pending press", async () => {
+    h = buildSharedAccessHarness();
+    h.manager.start();
+    answeringGate();
+    const { token } = await withPhone();
+    await h.manager.open(token, h.gates.entree);
+    const press = h.dispatches[0];
+
+    // The coop node answers too: its receipts carry its own order's source…
+    h.eventBus.emit({
+      type: "equipment.order.receipt",
+      equipmentId: h.gates.volet,
+      orderAlias: "command",
+      status: "refused",
+      source: { kind: "recipe", instanceId: "r1", recipeName: "Poulailler" },
+    });
+    // …and even one wearing this press's id is not from the gate it targeted.
+    receiptFor(press, "not_received", { equipmentId: h.gates.volet });
+    // Nor does a receipt for an order someone else gave on the same gate.
+    h.eventBus.emit({
+      type: "equipment.order.receipt",
+      equipmentId: h.gates.entree,
+      orderAlias: "command",
+      status: "refused",
+      source: { kind: "manual", userId: "admin" },
+    });
+
+    expect(openedRows()[0].receipt).toBe("pending");
+    expect(h.manager.session(token)!.presses[0]).toMatchObject({ receipt: "pending" });
+  });
+
+  it("forgets a press whose order failed", async () => {
+    h = buildSharedAccessHarness();
+    h.manager.start();
+    answeringGate();
+    h.setOutcome({ success: false, error: "radio down" });
+    const { token } = await withPhone();
+    expect(await h.manager.open(token, h.gates.entree)).toMatchObject({ reason: "gate_error" });
+    receiptFor(h.dispatches[0], "delivered");
+    expect(openedRows()).toHaveLength(0);
   });
 });
 

@@ -782,7 +782,16 @@ export type OrderSource =
   | { kind: "manual"; userId: string; userName?: string }
   | { kind: "button"; buttonId: string; buttonLabel?: string }
   | { kind: "external"; channel: string }
-  | { kind: "shared_access"; accessId: string; label: string };
+  | { kind: "shared_access"; accessId: string; label: string; pressId?: string };
+
+/** Spec 188 — what a device made of an order (mirrors src/shared/types.ts). */
+export type OrderReceiptStatus =
+  | "pending"
+  | "received"
+  | "delivered"
+  | "refused"
+  | "not_received"
+  | "unconfirmed";
 
 // ============================================================
 // Shared access (spec 181) — mirrors src/shared/types.ts
@@ -909,6 +918,8 @@ export interface SharedAccessJournalEntry {
   actor: string | null;
   equipmentId: string | null;
   phoneTag: string | null;
+  /** Spec 188 — the gate's receipt for an `opened` row; null when its device does not answer. */
+  receipt: OrderReceiptStatus | null;
 }
 
 export interface SharedAccessPhoneView {
@@ -1028,6 +1039,15 @@ export type EngineEvent =
       equipmentName: string;
       oldStatus: EquipmentStatus;
       newStatus: EquipmentStatus;
+    }
+  /* Spec 188 — the device's receipt for the equipment's last order. */
+  | {
+      type: "equipment.order.receipt";
+      equipmentId: string;
+      orderAlias: string;
+      status: OrderReceiptStatus;
+      late?: boolean;
+      source?: OrderSource;
     }
   /* Spec 174 — a timed window opening, ending, or failing to end. The equipment
      row itself is untouched, so these are not `equipment.updated`. */

@@ -5,6 +5,7 @@ import { dayParam, type AlarmWording } from "../lib/alarm-message";
 import { useDevices } from "./useDevices";
 import { useZones } from "./useZones";
 import { useEquipments } from "./useEquipments";
+import { useOrderReceipts } from "./useOrderReceipts";
 import { useZoneAggregation } from "./useZoneAggregation";
 import { useRecipes } from "./useRecipes";
 import { useModes } from "./useModes";
@@ -353,6 +354,12 @@ function handleEvent(event: EngineEvent): void {
     case "equipment.timed_action.disarmed":
     case "equipment.timed_action.failed":
       useEquipments.getState().handleEquipmentUpdated();
+      break;
+    // Spec 188 — the status line of the equipment's last order.
+    case "equipment.order.receipt":
+      useOrderReceipts
+        .getState()
+        .handleReceipt(event.equipmentId, event.orderAlias, event.status, event.late);
       break;
     case "equipment.status.changed":
       useEquipments.getState().handleEquipmentStatusChanged(

@@ -557,8 +557,14 @@ phone's token is sent as `Authorization: Bearer <token>`.
 | ------ | ---------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `POST` | `/enrol`   | `{ code }` or `{ link }` → `{ token, session }`. `401 unknown_code`, `410 ended`, `429 too_many`, `409 too_many_phones` (50 phones already set up on the access). |
 | `GET`  | `/session` | `{ label, status, gates, activeAt, nextOpeningAt, validUntil, travelS, presses }` — never the gate's state; `presses` are this phone's own. `401` when unknown.   |
-| `POST` | `/open`    | `{ gate }` → `{ ok: true }`, or `409 { ok: false, reason, activeAt?, nextOpeningAt? }`.                                                                           |
+| `POST` | `/open`    | `{ gate }` → `{ ok: true, receipt? }`, or `409 { ok: false, reason, activeAt?, nextOpeningAt? }`.                                                                 |
 | `GET`  | `/share`   | `{ url, qr }` — the invitation link and its QR code as a `data:image/svg+xml` URI. `409 ended`, `409 no_public_url`, `401` when unknown.                          |
+
+**Receipts (spec 188).** When the gate's device answers its orders, `open` returns
+`receipt: "pending"`, and that press in `session.presses` then carries `receipt` — `pending`,
+`delivered`, `refused`, `not_received` or `unconfirmed`. The page reads the session every second for
+at most 20 s while it is `pending`. The owner's journal entries carry the same `receipt` (`null` when
+none is expected). A gate whose device does not answer has no `receipt` anywhere.
 
 A refusal `reason` is one of `revoked`, `suspended`, `not_yet`, `expired`, `outside_hours`,
 `no_gate`, `not_this_gate`, `refused_by_house` (the gate is disarmed), `too_many_opens` (12 per hour

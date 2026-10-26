@@ -203,6 +203,21 @@ export function JournalDialog({
                       })}
                     </span>
                   )}
+                  {/* Spec 188 — what the gate made of an opening, when it answers. */}
+                  {e.kind === "opened" && e.receipt && (
+                    <span
+                      className={
+                        e.receipt === "refused" || e.receipt === "not_received"
+                          ? "text-error"
+                          : e.receipt === "delivered"
+                            ? "text-success"
+                            : "text-text-secondary"
+                      }
+                    >
+                      {" "}
+                      — {t(`sharedAccess.journal.receipt.${e.receipt}`)}
+                    </span>
+                  )}
                   {e.actor && <span className="text-text-tertiary"> · {e.actor}</span>}
                 </span>
               </li>
