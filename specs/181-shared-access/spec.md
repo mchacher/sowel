@@ -302,6 +302,8 @@ And what is seen before a code is known: ![](screenshots/visitor-code.png)
 
 36. Codes nulled seven days after the access ended; journal lines kept a year, and at most the
     latest 50 000; the tombstones of deleted external accesses (R9.34) kept a year.
+37. An external access is deleted by housekeeping seven days after it ended or was revoked, with a
+    journal line and a tombstone; manual accesses never are (spec 189).
 
 ## Consumers
 

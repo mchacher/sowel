@@ -154,3 +154,5 @@ guest who comes back gets a new link and a new code.
   holds a backup can rebuild the live links. Keep backups like a key. **Change the code** kills an
   access's old link.
 - Codes are erased seven days after their access ends.
+- Accesses created by a booking platform are deleted seven days after they end; the journal keeps
+  them for a year.
