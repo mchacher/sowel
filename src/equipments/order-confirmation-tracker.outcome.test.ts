@@ -23,6 +23,8 @@ import type { EngineEvent } from "../shared/types.js";
 // ============================================================
 
 const logger = createLogger("silent").logger;
+/** The tracker's hold on an undispatched order (DISCONNECTED_ALARM_GRACE_MS). */
+const DISCONNECTED_GRACE_MS = 60_000;
 
 type Outcome = Extract<EngineEvent, { type: "equipment.order.outcome" }>;
 
@@ -338,6 +340,10 @@ describe("OrderConfirmationTracker — spec 188 outcomes", () => {
       deviceReport("coop", "door", "FAULT");
       expect(statuses()).toEqual(["pending", "fault"]);
       expect(outcomes()[1].detail).toBe("BOTTOM");
+      // The alarm waits a moment for the reason, so that it is pushed once.
+      expect(alarmsRaised()).toHaveLength(0);
+      vi.advanceTimersByTime(1_000);
+      expect(alarmsRaised()).toHaveLength(1);
       expect(alarmsRaised()[0]).toMatchObject({
         messageKey: "alarms.orderOutcome.faultBottom",
         messageParams: { equipment: "Portail" },
@@ -463,7 +469,7 @@ describe("OrderConfirmationTracker — spec 188 outcomes", () => {
       expect(executeOrderCalls).toHaveLength(0);
     });
 
-    it("a pulse while the integration is down is not replayed when it connects; unconfirmed after the grace", () => {
+    it("a pulse while the integration is down is not held: never replayed, and no outcome worded as a lost command", () => {
       gate(true);
       integrationStatus = "disconnected";
       eventBus.emit({
@@ -483,11 +489,13 @@ describe("OrderConfirmationTracker — spec 188 outcomes", () => {
       });
       expect(executeOrderCalls).toHaveLength(0);
       vi.advanceTimersByTime(60_000);
-      expect(statuses()).toEqual(["unconfirmed"]);
-      // Held like a stateless order: no alarm, and nothing left pending.
+      // Never sent: no « no confirmation » line, which would read as a command
+      // lost on the way, and no alarm (the integration's own one stands).
+      expect(outcomes()).toHaveLength(0);
       expect(alarmsRaised()).toHaveLength(0);
+      expect(emitted.some((e) => e.type === "equipment.order.unconfirmed")).toBe(false);
       equipmentData("closed", false);
-      expect(statuses()).toEqual(["unconfirmed"]);
+      expect(outcomes()).toHaveLength(0);
     });
 
     it("a coop CLOSE while the integration is down is not replayed either", () => {
@@ -504,6 +512,197 @@ describe("OrderConfirmationTracker — spec 188 outcomes", () => {
       });
       eventBus.emit({ type: "system.integration.connected", integrationId: "lora" });
       expect(executeOrderCalls).toHaveLength(0);
+    });
+  });
+
+  // ── review findings (PR #1088) ──────────────────────────────
+
+  describe("an exempt order superseding a tracked one (O7)", () => {
+    /**
+     * A gate with no `closed` binding, read through its derived `state`. The
+     * engine sets that state to "unknown" on every pulse until the next sensor
+     * report (pendingToggles), so the mock does the same on each order.
+     */
+    function stateOnlyGate(state: "open" | "closed"): void {
+      equipmentType = "gate";
+      bindings = [{ alias: "state", value: state, deviceId: "", key: "gate_state", type: "enum" }];
+      orderBindings = [{ alias: "command", deviceId: "portail", key: "cmd" }];
+    }
+    function pulse(): void {
+      order("command", "pulse");
+      bindings[0].value = "unknown"; // trackGatePending
+    }
+
+    it("a second pulse while the state reads unknown keeps the first one's window: unconfirmed and alarmed", () => {
+      stateOnlyGate("closed");
+      pulse();
+      vi.advanceTimersByTime(3_000);
+      pulse(); // exempt: the state reads "unknown"
+      expect(statuses()).toEqual(["pending"]);
+      vi.advanceTimersByTime(GATE_OPEN_WINDOW_MS - 3_000);
+      expect(statuses()).toEqual(["pending", "unconfirmed"]);
+      expect(alarmsRaised()).toEqual([
+        expect.objectContaining({ messageKey: "alarms.orderOutcome.unconfirmedNoMovement" }),
+      ]);
+    });
+
+    it("a second pulse while the state reads unknown: the first one's outcome still comes", () => {
+      stateOnlyGate("closed");
+      pulse();
+      vi.advanceTimersByTime(3_000);
+      pulse();
+      vi.advanceTimersByTime(2_000);
+      equipmentData("state", "open");
+      expect(statuses()).toEqual(["pending", "confirmed"]);
+      expect(outcomes()[1].source).toEqual({ kind: "manual", userId: "u1" });
+      vi.advanceTimersByTime(GATE_CLOSE_WINDOW_MS);
+      expect(alarmsRaised()).toHaveLength(0);
+    });
+
+    it("a STOP while the coop door travels ends its CLOSE as unconfirmed at once, without an alarm", () => {
+      coop("OPEN", 100);
+      deviceReport("coop", "door", "CLOSED");
+      deviceReport("coop", "door", "OPEN");
+      order("state", "CLOSE");
+      deviceReport("coop", "door", "CLOSING");
+      order("state", "STOP");
+      expect(statuses()).toEqual(["pending", "moving", "unconfirmed"]);
+      vi.advanceTimersByTime(END_STATE_WINDOW_MS * 2);
+      expect(statuses()).toEqual(["pending", "moving", "unconfirmed"]);
+      expect(alarmsRaised()).toHaveLength(0);
+    });
+  });
+
+  describe("a held order superseding a tracked one", () => {
+    it("does not release the tracked order's alarm, which the expected state still resolves", () => {
+      gate(true);
+      order("command", "pulse");
+      vi.advanceTimersByTime(GATE_OPEN_WINDOW_MS);
+      expect(alarmsRaised()).toHaveLength(1);
+      integrationStatus = "disconnected";
+      eventBus.emit({
+        type: "equipment.order.failed",
+        equipmentId: "eq-1",
+        orderAlias: "command",
+        value: "pulse",
+        error: "integration disconnected",
+      });
+      expect(alarmsResolved()).toHaveLength(0);
+      vi.advanceTimersByTime(DISCONNECTED_GRACE_MS);
+      expect(alarmsResolved()).toHaveLength(0);
+      equipmentData("closed", false);
+      expect(alarmsResolved()).toHaveLength(1);
+    });
+
+    it("a held STOP does not release a coop CLOSE's alarm either", () => {
+      coop("OPEN", 100);
+      deviceReport("coop", "door", "CLOSED");
+      deviceReport("coop", "door", "OPEN");
+      order("state", "CLOSE");
+      vi.advanceTimersByTime(END_STATE_WINDOW_MS);
+      expect(alarmsRaised()).toHaveLength(1);
+      integrationStatus = "disconnected";
+      eventBus.emit({
+        type: "equipment.order.failed",
+        equipmentId: "eq-1",
+        orderAlias: "state",
+        value: "STOP",
+        error: "integration disconnected",
+      });
+      vi.advanceTimersByTime(DISCONNECTED_GRACE_MS);
+      expect(alarmsResolved()).toHaveLength(0);
+      deviceReport("coop", "door", "CLOSED");
+      expect(alarmsResolved()).toHaveLength(1);
+    });
+  });
+
+  describe("fault reason", () => {
+    it("why = NONE is no detail: the line and the alarm read a bare fault", () => {
+      coop("OPEN", 100);
+      deviceReport("coop", "door", "CLOSED");
+      deviceReport("coop", "door", "OPEN");
+      order("state", "CLOSE");
+      deviceData["coop:why"] = "NONE";
+      deviceReport("coop", "door", "FAULT");
+      expect(outcomes()[1]).toMatchObject({ status: "fault" });
+      expect(outcomes()[1].detail).toBeUndefined();
+      deviceReport("coop", "why", "NONE");
+      expect(statuses()).toEqual(["pending", "fault"]);
+      vi.advanceTimersByTime(1_000);
+      expect(alarmsRaised()).toEqual([
+        expect.objectContaining({
+          messageKey: "alarms.orderOutcome.fault",
+          message: "Portail: fault",
+        }),
+      ]);
+    });
+
+    it("a reason landing within the settle window is in the one alarm raised", () => {
+      coop("FAULT", 50);
+      order("state", "CLOSE");
+      deviceReport("coop", "door", "FAULT");
+      deviceReport("coop", "why", "WIRING");
+      vi.advanceTimersByTime(1_000);
+      expect(alarmsRaised()).toEqual([
+        expect.objectContaining({ messageKey: "alarms.orderOutcome.faultWiring" }),
+      ]);
+    });
+
+    it("a reason landing after the alarm re-words it, same alarm id", () => {
+      coop("FAULT", 50);
+      order("state", "CLOSE");
+      deviceReport("coop", "door", "FAULT");
+      vi.advanceTimersByTime(1_000);
+      deviceReport("coop", "why", "BOTTOM");
+      expect(alarmsRaised().map((a) => [a.alarmId, a.messageKey])).toEqual([
+        ["order-unconfirmed:eq-1:state", "alarms.orderOutcome.fault"],
+        ["order-unconfirmed:eq-1:state", "alarms.orderOutcome.faultBottom"],
+      ]);
+    });
+  });
+
+  describe("alarm wording", () => {
+    it("the English message says what the gate did, and the recovery is keyed", () => {
+      gate(false);
+      order("command", "pulse");
+      vi.advanceTimersByTime(GATE_CLOSE_WINDOW_MS);
+      expect(alarmsRaised()[0]).toMatchObject({
+        message: "Portail: still open after the command — lost or stopped on the way",
+        messageParams: { equipment: "Portail" },
+      });
+      equipmentData("closed", true);
+      expect(alarmsResolved()[0]).toMatchObject({
+        messageKey: "alarms.orderOutcome.recovered",
+        messageParams: { equipment: "Portail" },
+        message: "Portail: the expected state arrived after all",
+      });
+    });
+
+    it("an inherited alarm is re-worded when the new order faults", () => {
+      coop("OPEN", 100);
+      deviceReport("coop", "door", "CLOSED");
+      deviceReport("coop", "door", "OPEN");
+      order("state", "CLOSE");
+      vi.advanceTimersByTime(END_STATE_WINDOW_MS);
+      order("state", "CLOSE");
+      deviceData["coop:why"] = "BOTTOM";
+      deviceReport("coop", "door", "FAULT");
+      vi.advanceTimersByTime(1_000);
+      expect(alarmsRaised().map((a) => a.messageKey)).toEqual([
+        "alarms.orderOutcome.unconfirmed",
+        "alarms.orderOutcome.faultBottom",
+      ]);
+      expect(alarmsResolved()).toHaveLength(0);
+    });
+
+    it("an inherited alarm with the same wording is not raised again", () => {
+      gate(true);
+      order("command", "pulse");
+      vi.advanceTimersByTime(GATE_OPEN_WINDOW_MS);
+      order("command", "pulse");
+      vi.advanceTimersByTime(GATE_OPEN_WINDOW_MS);
+      expect(statuses()).toEqual(["pending", "unconfirmed", "pending", "unconfirmed"]);
+      expect(alarmsRaised()).toHaveLength(1);
     });
   });
 

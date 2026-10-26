@@ -1711,8 +1711,16 @@ export type ActivityMessage =
   | { template: "mode.deactivated"; params: { modeName: string } }
   | { template: "sunlight.sunrise"; params: Record<string, never> }
   | { template: "sunlight.sunset"; params: Record<string, never> }
-  | { template: "alarm.raised"; params: { source: string; message: string } }
-  | { template: "alarm.resolved"; params: { source: string; message: string } };
+  | { template: "alarm.raised"; params: AlarmActivityParams }
+  | { template: "alarm.resolved"; params: AlarmActivityParams };
+
+/** An alarm in the activity feed; an order-outcome alarm (spec 188) also carries its i18n key. */
+export interface AlarmActivityParams {
+  source: string;
+  message: string;
+  messageKey?: string;
+  messageParams?: Record<string, string | number>;
+}
 
 export interface ActivityItem {
   id: string;
@@ -1935,6 +1943,9 @@ export type EngineEvent =
       alarmId: string;
       source: string;
       message: string;
+      /** Optional i18n key and parameters, as on `system.alarm.raised` (spec 188). */
+      messageKey?: string;
+      messageParams?: Record<string, string | number>;
       /** Zone the resolved alarm belongs to, mirroring `system.alarm.raised`.
        *  Emitters that know the zone should send it: the activity feed then
        *  files the end of an incident where its start went, even across a

@@ -11,6 +11,7 @@ import type {
   OrderOutcomeStatus,
   OrderSource,
 } from "../shared/types.js";
+import { ORDER_OUTCOME_ALARM_SOURCE, wordOrderOutcomeAlarm } from "./order-outcome-messages.js";
 
 // ============================================================
 // Spec 141 — order delivery confirmation
@@ -67,8 +68,9 @@ const DISCONNECTED_ALARM_GRACE_MS = 60_000;
  */
 const STATUS_SETTLE_MS = 60_000;
 /**
- * Spec 188 O2 — window for a gate impulse from closed: the reed opens within
- * 1–2 s; 15 s covers the radio retries and a heartbeat-only report.
+ * Spec 188 O2 — window for a gate impulse from closed: the gate's contact
+ * reports it open within 1–2 s; 15 s covers the radio retries and a
+ * heartbeat-only report.
  */
 export const GATE_OPEN_WINDOW_MS = 15_000;
 /**
@@ -92,16 +94,31 @@ const END_STATE_VOCABULARY = new Set(["CLOSED", "OPENING", "CLOSING", "FAULT"]);
  * someone else's doing and must not read as this order's outcome. The alarm
  * itself is resolved by the expected state whenever it comes (O6).
  */
-const LATE_OUTCOME_GRACE_MS = 300_000;
+export const LATE_OUTCOME_GRACE_MS = 300_000;
 /** The device key a fault reason is read from (spec 188 O3). */
 const FAULT_REASON_KEY = "why";
 /** Fault reasons the UI words itself (spec 188 O6); others are shown raw. */
 const KNOWN_FAULT_REASONS = new Set(["BOTTOM", "WIRING"]);
+/** A `why` that says there is no reason: read as no detail at all. */
+const NO_FAULT_REASON = "NONE";
+/**
+ * Spec 188 O6 — how long a FAULT's alarm waits for the device's reason. The
+ * reason is another key of the same report and may land a moment after the
+ * FAULT itself; raising at once would push the alarm twice, bare then worded.
+ */
+const FAULT_REASON_SETTLE_MS = 1_000;
+
+/** Spec 188 O3 — a device's `why` as a fault detail; undefined when it gives none. */
+function faultReasonOf(v: unknown): string | undefined {
+  if (v === null || v === undefined) return undefined;
+  const reason = String(v).trim().toUpperCase();
+  return reason === "" || reason === NO_FAULT_REASON ? undefined : reason;
+}
 
 /** OrderSource channel identifying the tracker's own re-dispatches. */
 export const RETRY_CHANNEL = "delivery-retry";
 
-const ALARM_SOURCE = "order-confirmation";
+const ALARM_SOURCE = ORDER_OUTCOME_ALARM_SOURCE;
 
 interface PendingOrder {
   equipmentId: string;
@@ -159,6 +176,11 @@ interface PendingOrder {
   lastStatus?: OrderOutcomeStatus;
   /** Spec 188 — the device's fault reason, once it reported FAULT. */
   detail?: string;
+  /**
+   * Spec 188 O6 — what the raised alarm says (key and parameters), so that a
+   * tracked order re-words an alarm it inherited or whose reason came late.
+   */
+  alarmWording?: string;
 }
 
 /** Spec 188 O1 — the tracking an order gets, when it is one of the new kinds. */
@@ -356,10 +378,11 @@ export class OrderConfirmationTracker {
     // once more. Re-ordering every few minutes at an unreachable device would
     // otherwise push a recovery/failure pair per attempt.
     const previous = this.pending.get(key);
-    if (previous) {
+    const retirePrevious = (): void => {
+      if (!previous) return;
       if (previous.timer) clearTimeout(previous.timer);
       this.pending.delete(key);
-    }
+    };
 
     const { deviceIds, integrationIds, targets } = this.targetsFor(equipmentId, alias);
     const bindings = this.equipmentManager.getDataBindingsWithValues(equipmentId);
@@ -375,6 +398,7 @@ export class OrderConfirmationTracker {
       targets,
     );
     if (tracked) {
+      retirePrevious();
       this.trackOutcome(tracked, {
         equipmentId,
         alias,
@@ -393,12 +417,15 @@ export class OrderConfirmationTracker {
     // value — exempt. A carried-over alarm has nothing left to confirm it, so
     // it is released here.
     if ((!mirror && !deviceMirror) || !isConfirmableValue(value, mirror?.enumValues)) {
-      // Spec 188 O6 — a tracked order's alarm is never resolved by
-      // supersession: it stays, waiting for the expected state.
-      if (previous?.alarmRaised && previous.kind !== "mirror") this.pending.set(key, previous);
-      else if (previous?.alarmRaised) this.resolveAlarm(previous, "superseded by an exempt order");
+      if (previous && previous.kind !== "mirror") {
+        this.supersedeTrackedByExempt(previous);
+        return;
+      }
+      retirePrevious();
+      if (previous?.alarmRaised) this.resolveAlarm(previous, "superseded by an exempt order");
       return;
     }
+    retirePrevious();
 
     const entry: PendingOrder = {
       equipmentId,
@@ -409,6 +436,7 @@ export class OrderConfirmationTracker {
       timeoutMs: this.confirmationTimeoutFor(deviceIds),
       unconfirmed: false,
       alarmRaised: previous?.alarmRaised ?? false,
+      ...(previous?.alarmWording !== undefined ? { alarmWording: previous.alarmWording } : {}),
       retried: false,
       offlineAtDispatch: this.allTargetsOffline(deviceIds),
       redispatchTtlMs: REDISPATCH_TTL_MS,
@@ -443,6 +471,38 @@ export class OrderConfirmationTracker {
   }
 
   // ── Spec 188 — outcome from reported state ───────────────────
+
+  /**
+   * O7 — an exempt order (a pulse while the gate state reads "unknown", a
+   * STOP) on an equipment whose tracked order is still open. The exempt order
+   * can prove nothing, so it must not erase what the tracked one can still
+   * prove: a gate keeps its window, its timer and its alarm, and its outcome
+   * still comes. The engine marks a gate's `state` "unknown" from a pulse until
+   * the next report, so a second press inside the window is exactly this case.
+   *
+   * A cover order interrupted this way (a STOP while the door travels) can no
+   * longer reach its end state because of the person who stopped it: its line
+   * ends as unconfirmed at once, without an alarm. One that already has an
+   * alarm, or a final status, is kept as it is, waiting for the expected state.
+   */
+  private supersedeTrackedByExempt(previous: PendingOrder): void {
+    if (
+      previous.kind !== "end_state" ||
+      previous.alarmRaised ||
+      (previous.lastStatus !== "pending" && previous.lastStatus !== "moving")
+    ) {
+      return;
+    }
+    if (previous.timer) clearTimeout(previous.timer);
+    previous.timer = null;
+    this.pending.delete(`${previous.equipmentId}:${previous.alias}`);
+    this.emitOutcome(previous, "unconfirmed");
+  }
+
+  /** O9 — a gate impulse, whatever the gate state: never replayed. */
+  private isGatePulse(equipment: Equipment | null | undefined, value: unknown): boolean {
+    return equipment?.type === "gate" && stateWord(value) === "PULSE";
+  }
 
   /**
    * O1 — whether this order is a gate impulse or a cover OPEN / CLOSE the
@@ -579,6 +639,7 @@ export class OrderConfirmationTracker {
           : Math.max(END_STATE_WINDOW_MS, this.confirmationTimeoutFor(deviceIds)),
       unconfirmed: false,
       alarmRaised: previous?.alarmRaised ?? false,
+      ...(previous?.alarmWording !== undefined ? { alarmWording: previous.alarmWording } : {}),
       // O9 — never re-dispatched, neither on a device reconnect nor on an
       // integration connect: a second impulse reverses a gate.
       retried: true,
@@ -671,9 +732,7 @@ export class OrderConfirmationTracker {
   private readFaultReason(entry: PendingOrder): string | undefined {
     const deviceId = entry.deviceMirror?.deviceId ?? this.endStateDeviceOf(entry);
     if (!deviceId) return undefined;
-    const why = this.readDeviceValue({ deviceId, key: FAULT_REASON_KEY });
-    if (why === null || why === undefined || why === "") return undefined;
-    return String(why).trim().toUpperCase();
+    return faultReasonOf(this.readDeviceValue({ deviceId, key: FAULT_REASON_KEY }));
   }
 
   /** The device behind an `end_state` mirror binding. */
@@ -925,35 +984,64 @@ export class OrderConfirmationTracker {
     // Spec 188 O5 — a tracked order's line reads fault or unconfirmed.
     this.emitOutcome(entry, reason === "device_fault" ? "fault" : "unconfirmed");
 
-    // A stateless order (a scene, a display wake) has nothing that could ever
-    // report the ordered value, so an alarm on it could never resolve. It is
-    // still tracked and replayed — it just stays out of the alarm surface.
-    if (!entry.alarmRaised && entry.confirmable) {
-      entry.alarmRaised = true;
-      const detail =
-        reason === "device_offline"
-          ? "device offline"
-          : reason === "integration_disconnected"
-            ? "integration unreachable"
-            : reason === "device_fault"
-              ? `device reported FAULT${entry.detail !== undefined ? ` (${entry.detail})` : ""}`
-              : `no state change within ${Math.round(entry.timeoutMs / 1000)}s`;
-      const wording = this.outcomeAlarmWording(entry, name, reason);
-      this.eventBus.emit({
-        type: "system.alarm.raised",
-        alarmId: this.alarmId(entry),
-        level: "warning",
-        source: ALARM_SOURCE,
-        message: `Order not confirmed: ${name} ${entry.alias} → ${String(entry.value)} (${detail})`,
-        ...(wording ?? {}),
-      });
+    // Spec 188 O6 — a FAULT's alarm waits a moment for the device's reason,
+    // so that it is pushed once, worded with it.
+    if (reason === "device_fault") {
+      entry.timer = setTimeout(() => {
+        entry.timer = null;
+        if (this.pending.get(`${entry.equipmentId}:${entry.alias}`) !== entry) return;
+        this.raiseAlarm(entry, reason);
+      }, FAULT_REASON_SETTLE_MS);
+      return;
     }
+    this.raiseAlarm(entry, reason);
+  }
 
-    // Spec 188 O9 — a tracked order held because its integration was down is
-    // never replayed and nothing it sent can be proven: it ends here.
-    if (entry.kind !== "mirror" && entry.neverDispatched) {
-      this.pending.delete(`${entry.equipmentId}:${entry.alias}`);
-    }
+  /**
+   * Raise the order's alarm. A stateless order (a scene, a display wake) has
+   * nothing that could ever report the ordered value, so an alarm on it could
+   * never resolve: it stays out of the alarm surface.
+   *
+   * An alarm already standing is carried over as it is (spec 141), except that
+   * a tracked order re-raises it, same id, when its wording changed (spec 188
+   * O6): an alarm inherited from an earlier order, or a FAULT whose reason came
+   * late, must say what this order met.
+   */
+  private raiseAlarm(
+    entry: PendingOrder,
+    reason: "timeout" | "device_offline" | "integration_disconnected" | "device_fault",
+  ): void {
+    if (!entry.confirmable) return;
+    const name = this.equipmentManager.getById(entry.equipmentId)?.name ?? entry.equipmentId;
+    const wording = this.outcomeAlarmWording(entry, name, reason);
+    const signature = wording
+      ? `${wording.messageKey}(${JSON.stringify(wording.messageParams)})`
+      : undefined;
+    if (entry.alarmRaised && (signature === undefined || signature === entry.alarmWording)) return;
+
+    const detail =
+      reason === "device_offline"
+        ? "device offline"
+        : reason === "integration_disconnected"
+          ? "integration unreachable"
+          : reason === "device_fault"
+            ? `device reported FAULT${entry.detail !== undefined ? ` (${entry.detail})` : ""}`
+            : `no state change within ${Math.round(entry.timeoutMs / 1000)}s`;
+    // `message` stays English (logs, Telegram); a tracked order's says what the
+    // UI and the push say, in English.
+    const message =
+      (wording && wordOrderOutcomeAlarm(wording.messageKey, wording.messageParams, "en")) ??
+      `Order not confirmed: ${name} ${entry.alias} → ${String(entry.value)} (${detail})`;
+    entry.alarmRaised = true;
+    if (signature !== undefined) entry.alarmWording = signature;
+    this.eventBus.emit({
+      type: "system.alarm.raised",
+      alarmId: this.alarmId(entry),
+      level: "warning",
+      source: ALARM_SOURCE,
+      message,
+      ...(wording ?? {}),
+    });
   }
 
   // ── Confirmation ─────────────────────────────────────────────
@@ -994,15 +1082,15 @@ export class OrderConfirmationTracker {
 
   /**
    * Spec 188 O3 — the reason may land after the FAULT itself (two keys of one
-   * report): the line then gains it. The alarm already raised keeps its text.
+   * report): the line gains it, and so does the alarm once it is raised.
    */
   private refreshFaultReason(entry: PendingOrder, deviceId: string, value: unknown): void {
     const owner = entry.deviceMirror?.deviceId ?? this.endStateDeviceOf(entry);
-    if (owner !== deviceId || value === null || value === undefined || value === "") return;
-    const detail = String(value).trim().toUpperCase();
-    if (detail === entry.detail) return;
+    const detail = faultReasonOf(value);
+    if (owner !== deviceId || detail === undefined || detail === entry.detail) return;
     entry.detail = detail;
     this.emitOutcome(entry, "fault", true);
+    if (entry.alarmRaised) this.raiseAlarm(entry, "device_fault");
   }
 
   private confirm(entry: PendingOrder, value: unknown): void {
@@ -1021,11 +1109,23 @@ export class OrderConfirmationTracker {
 
   private resolveAlarm(entry: PendingOrder, why: string): void {
     const name = this.equipmentManager.getById(entry.equipmentId)?.name ?? entry.equipmentId;
+    // Spec 188 O6 — a tracked order's recovery is worded like its alarm.
+    const keyed =
+      entry.kind !== "mirror" && why === "state finally confirmed"
+        ? {
+            messageKey: "alarms.orderOutcome.recovered",
+            messageParams: { equipment: name },
+          }
+        : null;
     this.eventBus.emit({
       type: "system.alarm.resolved",
       alarmId: this.alarmId(entry),
       source: ALARM_SOURCE,
-      message: `Order confirmation recovered: ${name} ${entry.alias} (${why})`,
+      message: keyed
+        ? (wordOrderOutcomeAlarm(keyed.messageKey, keyed.messageParams, "en") ??
+          `Order confirmation recovered: ${name} ${entry.alias} (${why})`)
+        : `Order confirmation recovered: ${name} ${entry.alias} (${why})`,
+      ...(keyed ?? {}),
     });
   }
 
@@ -1067,24 +1167,34 @@ export class OrderConfirmationTracker {
 
     const key = `${equipmentId}:${alias}`;
     const previous = this.pending.get(key);
+
+    const bindings = this.equipmentManager.getDataBindingsWithValues(equipmentId);
+    const equipment = this.equipmentManager.getById(equipmentId);
+    // Spec 188 O9 — an order that never reached the wire changed nothing, and
+    // the ones this spec tracks are never replayed (a second impulse reverses
+    // a gate): a gate impulse, whatever the gate state, or a cover order the
+    // state could have proven, is not held at all. Its caller already got the
+    // dispatch error, and the integration's `order-fail` alarm stands. It is
+    // not surfaced as an outcome either: « no confirmation » would read as a
+    // command lost on the way, when it was never sent. Whatever was pending
+    // on the equipment — a tracked order still in its window, its alarm — is
+    // left exactly as it was, and so is any tracked order an exempt held one
+    // (a STOP) would otherwise replace.
+    const tracked = this.classify(equipment, alias, value, bindings, deviceIds, targets);
+    if (tracked || this.isGatePulse(equipment, value) || (previous && previous.kind !== "mirror")) {
+      this.logger.warn(
+        { equipmentId, alias, value, error, integrationIds: unreachable },
+        "Order could not be dispatched — not held: it is never replayed",
+      );
+      for (const id of unreachable) this.integrationRegistry.noteUnreachable(id);
+      return;
+    }
     if (previous) {
       if (previous.timer) clearTimeout(previous.timer);
       this.pending.delete(key);
     }
 
-    const bindings = this.equipmentManager.getDataBindingsWithValues(equipmentId);
-    // Spec 188 O9 — a gate impulse or cover order the state could have proven
-    // is held like a stateless order (surfaced as unconfirmed, no alarm) but
-    // never replayed when its integration connects.
-    const tracked = this.classify(
-      this.equipmentManager.getById(equipmentId),
-      alias,
-      value,
-      bindings,
-      deviceIds,
-      targets,
-    );
-    const mirror = tracked ? undefined : bindings.find((b) => b.alias === alias);
+    const mirror = bindings.find((b) => b.alias === alias);
     const confirmable = mirror !== undefined && isConfirmableValue(value, mirror.enumValues);
 
     // Already in the ordered state: the command being lost changes nothing.
@@ -1110,7 +1220,7 @@ export class OrderConfirmationTracker {
       timeoutMs: this.confirmationTimeoutFor(deviceIds),
       unconfirmed: false,
       alarmRaised: confirmable ? (previous?.alarmRaised ?? false) : false,
-      retried: tracked !== null,
+      retried: false,
       offlineAtDispatch: false,
       redispatchTtlMs: DISCONNECTED_REDISPATCH_TTL_MS,
       neverDispatched: true,
@@ -1118,8 +1228,7 @@ export class OrderConfirmationTracker {
       deviceIds,
       integrationIds,
       source,
-      kind: tracked?.kind ?? "mirror",
-      ...(tracked ? { expected: tracked.expected } : {}),
+      kind: "mirror",
     };
     this.pending.set(key, entry);
 

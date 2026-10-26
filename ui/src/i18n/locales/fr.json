@@ -1933,5 +1933,6 @@
   "alarms.orderOutcome.fault": "{{equipment}} : défaut",
   "alarms.orderOutcome.faultBottom": "{{equipment}} : défaut (contact bas)",
   "alarms.orderOutcome.faultWiring": "{{equipment}} : défaut (câblage)",
-  "alarms.orderOutcome.faultDetail": "{{equipment}} : défaut ({{detail}})"
+  "alarms.orderOutcome.faultDetail": "{{equipment}} : défaut ({{detail}})",
+  "alarms.orderOutcome.recovered": "{{equipment}} : l'état attendu est finalement arrivé"
 }

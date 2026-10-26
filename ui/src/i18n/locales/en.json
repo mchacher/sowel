@@ -1933,5 +1933,6 @@
   "alarms.orderOutcome.fault": "{{equipment}}: fault",
   "alarms.orderOutcome.faultBottom": "{{equipment}}: fault (bottom contact)",
   "alarms.orderOutcome.faultWiring": "{{equipment}}: fault (wiring)",
-  "alarms.orderOutcome.faultDetail": "{{equipment}}: fault ({{detail}})"
+  "alarms.orderOutcome.faultDetail": "{{equipment}}: fault ({{detail}})",
+  "alarms.orderOutcome.recovered": "{{equipment}}: the expected state arrived after all"
 }
