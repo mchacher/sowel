@@ -546,6 +546,25 @@ describe("the outcome of a press (spec 188 O8)", () => {
     expect(openedRows()[0].outcome).toBe("pending");
   });
 
+  it("keeps waiting when an earlier order's final status arrives (only a new order replaces it)", async () => {
+    h = buildSharedAccessHarness();
+    h.manager.start();
+    trackedGate();
+    const { token } = await withPhone();
+    await h.manager.open(token, h.gates.entree);
+    h.eventBus.emit({
+      type: "equipment.order.outcome",
+      equipmentId: h.gates.entree,
+      orderAlias: "command",
+      value: "pulse",
+      status: "confirmed",
+      expected: "close",
+      source: { kind: "manual", userId: "admin" },
+    });
+    outcomeFor(h.dispatches[0], "confirmed");
+    expect(openedRows()[0].outcome).toBe("confirmed");
+  });
+
   it("forgets a press whose order failed", async () => {
     h = buildSharedAccessHarness();
     h.manager.start();

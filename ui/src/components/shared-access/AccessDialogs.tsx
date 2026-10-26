@@ -136,7 +136,6 @@ export function ChangeCodeDialog({
   );
 }
 
-/** This access's journal (R7.28) — what happened, newest first. */
 /**
  * Spec 188 O8 — the i18n key of an opening's outcome, or null for none. A
  * press still `pending` long after its window can no longer be answered (the
@@ -157,6 +156,7 @@ function journalOutcomeKey(e: SharedAccessJournalEntry): string | null {
   return null;
 }
 
+/** This access's journal (R7.28) — what happened, newest first. */
 export function JournalDialog({
   access,
   state,

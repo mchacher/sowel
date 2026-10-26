@@ -30,6 +30,8 @@ export interface OrderOutcomeEntry {
    * unconfirmed line says what the gate state could not tell (O2).
    */
   gate: boolean;
+  /** The ordered value, to tell this order from the next one. */
+  value: unknown;
   /** Bumped on every outcome, so a stale clear timer leaves a newer one alone. */
   seq: number;
   /** The `seq` of the order this line belongs to (its `pending`), for the spinner bound. */
@@ -49,7 +51,7 @@ interface OrderOutcomesState {
   byEquipment: Record<string, OrderOutcomeEntry>;
   handleOutcome: (event: OrderOutcomeInput) => void;
   /** A new order on the equipment: a final line from the previous one goes. */
-  handleOrderExecuted: (equipmentId: string, orderAlias: string) => void;
+  handleOrderExecuted: (equipmentId: string, orderAlias: string, value: unknown) => void;
   clear: (equipmentId: string, seq: number) => void;
   /** Drop the line of an order still spinning (by its `orderSeq`). */
   clearInFlight: (equipmentId: string, orderSeq: number) => void;
@@ -78,6 +80,7 @@ export const useOrderOutcomes = create<OrderOutcomesState>((set, get) => ({
           ...(expected ? { expected } : {}),
           ...(detail ? { detail } : {}),
           gate: typeof value === "string" && value.trim().toLowerCase() === "pulse",
+          value,
           seq: mine,
           orderSeq,
         },
@@ -92,11 +95,13 @@ export const useOrderOutcomes = create<OrderOutcomesState>((set, get) => ({
     }
   },
 
-  handleOrderExecuted: (equipmentId, orderAlias) => {
+  handleOrderExecuted: (equipmentId, orderAlias, value) => {
     const current = get().byEquipment[equipmentId];
-    // A spinner already belongs to the new order (its outcome may arrive
-    // before or after this event); only a final line is from the last one.
-    if (!current || current.alias !== orderAlias || inFlight(current.status)) return;
+    if (!current || current.alias !== orderAlias) return;
+    // A spinner of the same value may already belong to this new order (its
+    // outcome can arrive before this event); a spinner of another value (a
+    // STOP after CLOSE) belongs to the order it cancels, and goes.
+    if (inFlight(current.status) && Object.is(current.value, value)) return;
     get().clear(equipmentId, current.seq);
   },
 

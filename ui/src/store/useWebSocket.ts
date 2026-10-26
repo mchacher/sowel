@@ -323,7 +323,12 @@ function handleEvent(event: EngineEvent): void {
       devices.updateDeviceStatus(event.deviceId, event.status);
       break;
     case "device.data.updated":
-      devices.updateDeviceDataValue(event.deviceId, event.key, event.value, event.timestamp);
+      devices.updateDeviceDataValue(
+        event.deviceId,
+        event.key,
+        event.value,
+        event.timestamp
+      );
       break;
     case "device.heartbeat":
       devices.updateDeviceHeartbeat(event.deviceId, event.timestamp);
@@ -350,9 +355,11 @@ function handleEvent(event: EngineEvent): void {
       useEquipments.getState().handleEquipmentRemoved();
       break;
     case "equipment.data.changed":
-      useEquipments
-        .getState()
-        .handleEquipmentDataChanged(event.equipmentId, event.alias, event.value);
+      useEquipments.getState().handleEquipmentDataChanged(
+        event.equipmentId,
+        event.alias,
+        event.value
+      );
       break;
     // Spec 174 — the window opening, closing or failing changes what every
     // surface must draw, and it is not an equipment.updated: the row is not
@@ -369,10 +376,15 @@ function handleEvent(event: EngineEvent): void {
       break;
     // A new order ends the previous one's final line (« until the next order »).
     case "equipment.order.executed":
-      useOrderOutcomes.getState().handleOrderExecuted(event.equipmentId, event.orderAlias);
+      useOrderOutcomes
+        .getState()
+        .handleOrderExecuted(event.equipmentId, event.orderAlias, event.value);
       break;
     case "equipment.status.changed":
-      useEquipments.getState().handleEquipmentStatusChanged(event.equipmentId, event.newStatus);
+      useEquipments.getState().handleEquipmentStatusChanged(
+        event.equipmentId,
+        event.newStatus
+      );
       break;
     case "recipe.instance.created":
     case "recipe.instance.removed":

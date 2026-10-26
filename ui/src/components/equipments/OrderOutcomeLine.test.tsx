@@ -85,8 +85,8 @@ const outcome = (
     }),
   );
 
-const executed = () =>
-  act(() => useOrderOutcomes.getState().handleOrderExecuted("eq-gate", "command"));
+const executed = (value: unknown = "pulse") =>
+  act(() => useOrderOutcomes.getState().handleOrderExecuted("eq-gate", "command", value));
 
 afterEach(async () => {
   vi.useRealTimers();
@@ -192,6 +192,14 @@ describe("order outcome status line", () => {
     outcome("pending");
     executed();
     expect(screen.getByRole("status").textContent).toBe("Sent…");
+  });
+
+  it("drops a spinner when another order (a STOP) cancels it", async () => {
+    await i18n.changeLanguage("en");
+    tile();
+    outcome("moving", { value: "CLOSE", expected: "close" });
+    executed("STOP");
+    expect(screen.queryByRole("status")).toBeNull();
   });
 
   it("does not let an old confirmation's timer clear a newer order's line", async () => {

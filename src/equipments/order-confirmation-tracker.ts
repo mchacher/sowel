@@ -85,6 +85,14 @@ export const END_STATE_WINDOW_MS = 60_000;
  * confirmed by CLOSED without false-alarming the covers that echo OPEN / CLOSE.
  */
 const END_STATE_VOCABULARY = new Set(["CLOSED", "OPENING", "CLOSING", "FAULT"]);
+/**
+ * Spec 188 — how long after its window a tracked order may still be shown as
+ * confirmed (the tile line, the guest's journal row). A gate report lost on
+ * the radio comes back with the next 60 s heartbeat; a flip hours later is
+ * someone else's doing and must not read as this order's outcome. The alarm
+ * itself is resolved by the expected state whenever it comes (O6).
+ */
+const LATE_OUTCOME_GRACE_MS = 300_000;
 /** The device key a fault reason is read from (spec 188 O3). */
 const FAULT_REASON_KEY = "why";
 /** Fault reasons the UI words itself (spec 188 O6); others are shown raw. */
@@ -385,7 +393,10 @@ export class OrderConfirmationTracker {
     // value — exempt. A carried-over alarm has nothing left to confirm it, so
     // it is released here.
     if ((!mirror && !deviceMirror) || !isConfirmableValue(value, mirror?.enumValues)) {
-      if (previous?.alarmRaised) this.resolveAlarm(previous, "superseded by an exempt order");
+      // Spec 188 O6 — a tracked order's alarm is never resolved by
+      // supersession: it stays, waiting for the expected state.
+      if (previous?.alarmRaised && previous.kind !== "mirror") this.pending.set(key, previous);
+      else if (previous?.alarmRaised) this.resolveAlarm(previous, "superseded by an exempt order");
       return;
     }
 
@@ -464,7 +475,13 @@ export class OrderConfirmationTracker {
             timeoutMs: GATE_CLOSE_WINDOW_MS,
           };
     }
-    if (equipment.type === "shutter" && (word === "OPEN" || word === "CLOSE")) {
+    // A shutter inverted in Sowel (spec 154) sends the opposite of what it
+    // reports, so its end state cannot prove the order: left to spec 141.
+    if (
+      equipment.type === "shutter" &&
+      !equipment.invertDirection &&
+      (word === "OPEN" || word === "CLOSE")
+    ) {
       const { mirror, deviceMirror } = this.resolveMirror(
         bindings,
         alias,
@@ -672,7 +689,9 @@ export class OrderConfirmationTracker {
       clearTimeout(entry.timer);
       entry.timer = null;
     }
-    this.emitOutcome(entry, "confirmed");
+    if (Date.now() - entry.orderedAt <= entry.timeoutMs + LATE_OUTCOME_GRACE_MS) {
+      this.emitOutcome(entry, "confirmed");
+    }
     if (entry.alarmRaised) {
       this.resolveAlarm(entry, "state finally confirmed");
       this.logger.info(

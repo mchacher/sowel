@@ -17,7 +17,7 @@ removed). Step 12 is done by hand on the instance after merge and release.
 9. [x] WS broadcast + UI store; tile (desktop, mobile, timed), detail, admin journal.
 10. [x] Guest page: polling, three endings, never a "press again" invitation.
 11. [x] i18n EN/FR, docs EN/FR, specs-index rows.
-12. [x] Live check on Adrien's instance: Portail from closed and from open, coop OPEN / CLOSE.
+12. [ ] Live check on Adrien's instance: Portail from closed and from open, coop OPEN / CLOSE.
 
 ## Test Plan
 

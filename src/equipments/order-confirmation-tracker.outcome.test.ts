@@ -40,6 +40,7 @@ describe("OrderConfirmationTracker — spec 188 outcomes", () => {
   let tracker: OrderConfirmationTracker;
   let emitted: EngineEvent[];
   let equipmentType: string;
+  let invertDirection: boolean;
   let bindings: Binding[];
   let orderBindings: { alias: string; deviceId: string; key: string }[];
   let deviceStatus: Record<string, "online" | "offline">;
@@ -48,7 +49,7 @@ describe("OrderConfirmationTracker — spec 188 outcomes", () => {
   let executeOrderCalls: unknown[];
 
   const equipmentManager = {
-    getById: (id: string) => ({ id, name: "Portail", type: equipmentType }),
+    getById: (id: string) => ({ id, name: "Portail", type: equipmentType, invertDirection }),
     getDataBindingsWithValues: () => bindings,
     getOrderBindingsWithDetails: () => orderBindings,
     executeOrder: vi.fn(async (...args: unknown[]) => {
@@ -150,6 +151,7 @@ describe("OrderConfirmationTracker — spec 188 outcomes", () => {
     emitted = [];
     deviceStatus = {};
     deviceData = {};
+    invertDirection = false;
     integrationStatus = "connected";
     executeOrderCalls = [];
     eventBus.on((e) => emitted.push(e));
@@ -227,6 +229,28 @@ describe("OrderConfirmationTracker — spec 188 outcomes", () => {
       vi.advanceTimersByTime(90_000);
       equipmentData("closed", true);
       expect(statuses()).toEqual(["pending", "unconfirmed", "confirmed"]);
+      expect(alarmsResolved()).toHaveLength(1);
+    });
+
+    it("a flip long after the window resolves the alarm but is not shown as this order's outcome", () => {
+      gate(true);
+      order("command", "pulse");
+      vi.advanceTimersByTime(3 * 3_600_000);
+      equipmentData("closed", false);
+      expect(statuses()).toEqual(["pending", "unconfirmed"]);
+      expect(alarmsResolved()).toHaveLength(1);
+    });
+
+    it("an exempt pulse (state unknown) does not resolve the previous pulse's alarm", () => {
+      gate(true);
+      order("command", "pulse");
+      vi.advanceTimersByTime(GATE_OPEN_WINDOW_MS);
+      expect(alarmsRaised()).toHaveLength(1);
+      bindings[0].value = null;
+      order("command", "pulse");
+      expect(alarmsResolved()).toHaveLength(0);
+      // The expected state still resolves it.
+      equipmentData("closed", false);
       expect(alarmsResolved()).toHaveLength(1);
     });
 
@@ -350,6 +374,15 @@ describe("OrderConfirmationTracker — spec 188 outcomes", () => {
       expect(statuses()).toEqual(["confirmed"]);
       vi.advanceTimersByTime(END_STATE_WINDOW_MS * 2);
       expect(alarmsRaised()).toHaveLength(0);
+    });
+
+    it("a shutter inverted in Sowel is left to spec 141", () => {
+      coop("CLOSED", 0);
+      deviceReport("coop", "door", "CLOSED");
+      invertDirection = true;
+      order("state", "OPEN");
+      vi.advanceTimersByTime(END_STATE_WINDOW_MS * 2);
+      expect(outcomes()).toHaveLength(0);
     });
 
     it("STOP: exempt", () => {

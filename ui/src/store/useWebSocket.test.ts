@@ -256,17 +256,9 @@ describe("connect", () => {
   });
 
   it("on open: restores a battery banner headlined by the equipment name (spec 143/#472)", async () => {
-    vi.stubGlobal(
-      "fetch",
-      vi.fn(async () => ({ json: async () => ({}) })),
-    );
+    vi.stubGlobal("fetch", vi.fn(async () => ({ json: async () => ({}) })));
     api.getBatteryAlerts.mockResolvedValue([
-      {
-        deviceDataId: "dd-1",
-        deviceName: "Capteur porte",
-        value: "12",
-        equipmentNames: ["Détecteur salon"],
-      },
+      { deviceDataId: "dd-1", deviceName: "Capteur porte", value: "12", equipmentNames: ["Détecteur salon"] },
       { deviceDataId: "dd-2", deviceName: "Capteur cave", value: "8", equipmentNames: [] },
     ]);
 
@@ -292,10 +284,7 @@ describe("connect", () => {
   });
 
   it("on open: words a battery flag without a percentage", async () => {
-    vi.stubGlobal(
-      "fetch",
-      vi.fn(async () => ({ json: async () => ({}) })),
-    );
+    vi.stubGlobal("fetch", vi.fn(async () => ({ json: async () => ({}) })));
     // A `battery_low` flag reports "true", not a level: there is no percentage
     // to show, so the alarm uses the plain key.
     api.getBatteryAlerts.mockResolvedValue([
@@ -314,10 +303,7 @@ describe("connect", () => {
   });
 
   it("on open: restores a standing PV health alarm from the snapshot (spec 162)", async () => {
-    vi.stubGlobal(
-      "fetch",
-      vi.fn(async () => ({ json: async () => ({}) })),
-    );
+    vi.stubGlobal("fetch", vi.fn(async () => ({ json: async () => ({}) })));
     // The raise event fires exactly once, server-side; a session opened after
     // it has no event to catch and rebuilds from this snapshot.
     api.getPvHealthAlerts.mockResolvedValue([
@@ -350,17 +336,9 @@ describe("connect", () => {
   });
 
   it("re-words a live battery raise from the snapshot instead of keeping the engine's English", async () => {
-    vi.stubGlobal(
-      "fetch",
-      vi.fn(async () => ({ json: async () => ({}) })),
-    );
+    vi.stubGlobal("fetch", vi.fn(async () => ({ json: async () => ({}) })));
     api.getBatteryAlerts.mockResolvedValue([
-      {
-        deviceDataId: "dd-9",
-        deviceName: "Capteur porte",
-        value: "9",
-        equipmentNames: ["Détecteur salon"],
-      },
+      { deviceDataId: "dd-9", deviceName: "Capteur porte", value: "9", equipmentNames: ["Détecteur salon"] },
     ]);
 
     const ws = connect();
@@ -387,10 +365,7 @@ describe("connect", () => {
   });
 
   it("does not resurrect a battery alarm that was just resolved", async () => {
-    vi.stubGlobal(
-      "fetch",
-      vi.fn(async () => ({ json: async () => ({}) })),
-    );
+    vi.stubGlobal("fetch", vi.fn(async () => ({ json: async () => ({}) })));
     // The snapshot can still list the alert when the resolve event overtakes it;
     // the re-wording must only touch alarms that are still standing.
     api.getBatteryAlerts.mockResolvedValue([

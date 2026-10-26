@@ -1371,7 +1371,9 @@ export class SharedAccessManager {
     if (!press || event.orderAlias !== "command") return;
     const source = event.source;
     if (source?.kind !== "shared_access" || source.pressId !== press.pressId) {
-      this.pressOutcomes.delete(event.equipmentId);
+      // Only a new order (its `pending`) replaces the press; the late final
+      // status of an earlier order on the gate leaves the press waiting.
+      if (event.status === "pending") this.pressOutcomes.delete(event.equipmentId);
       return;
     }
     press.status = journalOutcome(event.status);
