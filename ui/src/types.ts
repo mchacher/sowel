@@ -828,7 +828,13 @@ export type SharedAccessRefusal =
   | "gate_error";
 
 export type SharedAccessStatus =
-  "live" | "outside_hours" | "not_yet" | "ended" | "suspended" | "revoked" | "no_gate";
+  | "live"
+  | "outside_hours"
+  | "not_yet"
+  | "ended"
+  | "suspended"
+  | "revoked"
+  | "no_gate";
 
 export interface SharedAccessGateView {
   equipmentId: string;

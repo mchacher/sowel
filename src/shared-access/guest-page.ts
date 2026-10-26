@@ -632,7 +632,11 @@ export const GUEST_JS = `(function () {
       if (reason === "outside_hours" && r.body.nextOpeningAt) text += " " + T.nextAt + nextWhen(r.body.nextOpeningAt) + ".";
       refused(text, rest);
       refresh();
-    }, function () { refused(T.network, rest); });
+    }, function () {
+      // The request may have reached the house and the impulse gone out:
+      // never a plain « try again » after a press (spec 188 O8).
+      refused(T.reasons.gate_error, rest);
+    });
   }
 
   function refused(text, rest) {
@@ -704,28 +708,33 @@ export const GUEST_JS = `(function () {
       if (following === me) following = null;
       settle(me);
     }
+    // The disc must never stay locked on a read that never comes back (a
+    // network switch) or a render that throws: the follow ends at 70 s anyway.
+    setTimeout(function () { if (awaiting === me) stop(); }, FOLLOW_FOR_MS + FOLLOW_EVERY_MS);
     function again() {
       if (Date.now() - t0 >= FOLLOW_FOR_MS) { stop(); return; }
       setTimeout(poll, FOLLOW_EVERY_MS);
     }
     function poll() {
       if (following !== me) { settle(me); return; }
-      api("session", "GET").then(function (r) {
-        if (following !== me) { settle(me); return; }
-        if (r.status === 401) { stop(); saveToken(null); showCode(); return; }
-        if (r.status === 200) { session = r.body; renderJournal(); }
-        var p = ownPress(gateId);
-        var status = p && p.outcome;
-        if (status === "confirmed") {
-          stop();
-          // Once the travel has elapsed, nothing is left to wait for.
-          if (bar) bar.span = Math.min(bar.span, Math.max(bar.travel, (performance.now() - bar.t0) / 1000));
-          showOutcome(p);
-          return;
-        }
-        if (status === "unconfirmed" && shown !== status) { shown = status; settle(me); showOutcome(p); }
-        again();
-      }, function () { if (following === me) again(); else settle(me); });
+      // A render that throws ends the follow rather than leave the disc locked.
+      api("session", "GET").then(function (r) { try { read(r); } catch (e) { stop(); } }, function () { if (following === me) again(); else settle(me); });
+    }
+    function read(r) {
+      if (following !== me) { settle(me); return; }
+      if (r.status === 401) { stop(); saveToken(null); showCode(); return; }
+      if (r.status === 200) { session = r.body; renderJournal(); }
+      var p = ownPress(gateId);
+      var status = p && p.outcome;
+      if (status === "confirmed") {
+        stop();
+        // Once the travel has elapsed, nothing is left to wait for.
+        if (bar) bar.span = Math.min(bar.span, Math.max(bar.travel, (performance.now() - bar.t0) / 1000));
+        showOutcome(p);
+        return;
+      }
+      if (status === "unconfirmed" && shown !== status) { shown = status; settle(me); showOutcome(p); }
+      again();
     }
     setTimeout(poll, FOLLOW_EVERY_MS);
   }

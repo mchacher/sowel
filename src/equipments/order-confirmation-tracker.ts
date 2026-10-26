@@ -380,7 +380,13 @@ export class OrderConfirmationTracker {
     const previous = this.pending.get(key);
     const retirePrevious = (): void => {
       if (!previous) return;
+      // A FAULT still inside its reason settle window raises its alarm now,
+      // so that the order replacing it inherits it rather than lose it.
+      const faultSettling =
+        previous.lastStatus === "fault" && !previous.alarmRaised && previous.timer !== null;
       if (previous.timer) clearTimeout(previous.timer);
+      previous.timer = null;
+      if (faultSettling) this.raiseAlarm(previous, "device_fault");
       this.pending.delete(key);
     };
 

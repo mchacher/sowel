@@ -22,6 +22,10 @@ interface Options {
   /** This phone's presses as the session reads them `ms` after boot (newest first). */
   presses: (ms: number, sent: number) => Press[];
   travelS?: number;
+  /** From this many ms after boot, session reads never come back (a network switch). */
+  hangSessionFrom?: number;
+  /** The `POST open` request fails on the network. */
+  rejectOpen?: boolean;
 }
 
 function guestPage(opts: Options) {
@@ -84,6 +88,14 @@ function guestPage(opts: Options) {
     const path = url.replace(/^api\//, "");
     calls.push({ path, at: now - boot });
     let body: unknown = {};
+    if (path === "open" && opts.rejectOpen) return Promise.reject(new TypeError("network"));
+    if (
+      path === "session" &&
+      opts.hangSessionFrom !== undefined &&
+      now - boot >= opts.hangSessionFrom
+    ) {
+      return new Promise(() => {});
+    }
     if (path === "open") body = opts.opens[sent++] ?? { ok: true };
     else if (path === "session") body = sessionBody();
     return Promise.resolve({ status: 200, json: () => Promise.resolve(body) });
@@ -288,5 +300,32 @@ describe("guest page — the outcome of its own press (spec 188 O8)", () => {
     await page.at(100 + 37_000);
     expect(page.pill()).toBe("Fermeture confirmée");
     expect(page.verb()).toBe("OUVRIR");
+  });
+
+  it("a session read that never comes back does not lock the disc for good", async () => {
+    const page = guestPage({
+      opens: [PENDING_CLOSE, PENDING_CLOSE],
+      presses: timeline([[0, "pending"]], "close"),
+      hangSessionFrom: 5_000,
+    });
+    await page.at(100);
+    page.press();
+    await page.at(100 + 65_000);
+    expect(page.verb()).toBe("ENVOYÉ");
+    await page.at(100 + 73_000);
+    expect(page.verb()).toBe("OUVRIR");
+    page.press();
+    await page.at(100 + 73_500);
+    expect(page.opens()).toBe(2);
+  });
+
+  it("a press lost on the network never invites a plain retry", async () => {
+    const page = guestPage({ opens: [], presses: () => [], rejectOpen: true });
+    await page.at(100);
+    page.press();
+    await page.at(100 + 1_000);
+    expect(page.msg()).toBe(
+      "Pas de réponse du portail : regardez-le avant de réessayer, il a peut-être bougé.",
+    );
   });
 });

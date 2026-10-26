@@ -547,6 +547,11 @@ describe("the outcome of a press (spec 188 O8)", () => {
     expect(openedRows()[0].outcome).toBeNull();
     outcomeFor(press, "confirmed");
     expect(openedRows()[0].outcome).toBeNull();
+    // The guest's journal keeps the direction it asked for.
+    expect(h.manager.session(token)!.presses[0]).toEqual(
+      expect.objectContaining({ expected: "open" }),
+    );
+    expect(h.manager.session(token)!.presses[0]).not.toHaveProperty("outcome");
   });
 
   it("an exempt press after it does not end the wait: its late outcome still lands on its row (#1088 review)", async () => {

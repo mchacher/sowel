@@ -648,6 +648,21 @@ describe("OrderConfirmationTracker — spec 188 outcomes", () => {
       ]);
     });
 
+    it("a new order inside the settle window does not lose the FAULT's alarm: it inherits it", () => {
+      coop("OPEN", 100);
+      deviceReport("coop", "door", "CLOSED");
+      deviceReport("coop", "door", "OPEN");
+      order("state", "CLOSE");
+      deviceData["coop:why"] = "BOTTOM";
+      deviceReport("coop", "door", "FAULT");
+      order("state", "OPEN");
+      expect(alarmsRaised()).toEqual([
+        expect.objectContaining({ messageKey: "alarms.orderOutcome.faultBottom" }),
+      ]);
+      deviceReport("coop", "door", "OPEN");
+      expect(alarmsResolved()).toHaveLength(1);
+    });
+
     it("a reason landing after the alarm re-words it, same alarm id", () => {
       coop("FAULT", 50);
       order("state", "CLOSE");

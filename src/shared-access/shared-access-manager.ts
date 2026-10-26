@@ -1396,21 +1396,9 @@ export class SharedAccessManager {
     if (event.orderAlias !== "command") return;
     const source = event.source;
     const pressId = source?.kind === "shared_access" ? source.pressId : undefined;
-    let changed = false;
     // A new tracked order on the gate (its `pending`) replaced every earlier
-    // one in the core (O7): their outcome will never come. A row still
-    // waiting reads as a press that was not followed (NULL), not as pending
-    // forever; one already unconfirmed keeps saying so.
-    if (event.status === "pending") {
-      for (const [id, p] of this.pressOutcomes) {
-        if (p.gateId !== event.equipmentId || id === pressId) continue;
-        this.pressOutcomes.delete(id);
-        if (p.rowId !== null && p.status === "pending") {
-          this.store.setOutcome(p.rowId, null);
-          changed = true;
-        }
-      }
-    }
+    // one in the core (O7): their outcome will never come.
+    let changed = event.status === "pending" && this.supersedePresses(event.equipmentId, pressId);
     const press = pressId !== undefined ? this.pressOutcomes.get(pressId) : undefined;
     if (press && press.gateId === event.equipmentId) {
       press.status = journalOutcome(event.status);
@@ -1424,6 +1412,25 @@ export class SharedAccessManager {
     if (changed) this.changed();
   }
 
+  /**
+   * Spec 188 O7 — every press on this gate but `keep` stops waiting: a row
+   * still pending reads as a press that was not followed (NULL), not as
+   * pending forever; one already unconfirmed keeps saying so. True when a
+   * row changed.
+   */
+  private supersedePresses(gateId: string, keep: string | undefined): boolean {
+    let changed = false;
+    for (const [id, p] of this.pressOutcomes) {
+      if (p.gateId !== gateId || id === keep) continue;
+      this.pressOutcomes.delete(id);
+      if (p.rowId !== null && p.status === "pending") {
+        this.store.setOutcome(p.rowId, null);
+        changed = true;
+      }
+    }
+    return changed;
+  }
+
   /** Spec 188 — what the guest's session says of one of its sent presses. */
   private pressOutcomeView(p: JournalRow): {
     outcome?: JournalOutcome;
@@ -1431,7 +1438,10 @@ export class SharedAccessManager {
   } {
     const outcome = asJournalOutcome(p.outcome);
     const expected = asExpected(p.outcome_expected);
-    return outcome && expected ? { outcome, expected } : {};
+    // A press replaced by a newer order (outcome back to NULL) keeps its
+    // direction, so the guest's journal still reads « Fermeture demandée ».
+    if (!expected) return {};
+    return outcome ? { outcome, expected } : { expected };
   }
 
   private refuse(
