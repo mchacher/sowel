@@ -29,8 +29,9 @@ interface Options {
 }
 
 function guestPage(opts: Options) {
-  const html = guestHtml({ name: "Gîte", version: "1" }).replace(/<script[\s\S]*?<\/script>/g, "");
-  const dom = new JSDOM(html, {
+  // "outside-only": the page's own <script> tags never run; the script under
+  // test is evaluated below, against the fake clock and house.
+  const dom = new JSDOM(guestHtml({ name: "Gîte", version: "1" }), {
     url: "https://house.example/access/",
     runScripts: "outside-only",
     pretendToBeVisual: true,
