@@ -219,8 +219,9 @@ prove:
   longer of the travel (`travelS`, 30 s) and `windowS`, so from an open gate it runs 60 s and the
   disc is not re-armed at 30 s while the first impulse is still unproven. A confirmation that
   comes once the travel has elapsed ends the bar at once; an outcome still pending when the bar
-  ends keeps the disc locked until it comes (at most the 70 s follow).
-- A command that failed on the way (`gate_error`, the 15 s queue timeout included) reads « Pas
+  ends keeps the disc locked until it comes, and the disc is unlocked at the end of the 70 s
+  follow whatever happens (a session read that never comes back).
+- A command that failed on the way (`gate_error`, the 15 s queue timeout included, or the press lost on the network) reads « Pas
   de réponse du portail : regardez-le avant de réessayer, il a peut-être bougé. »: the impulse
   may have been dispatched, so the page never simply says « Réessayez ».
 - The admin journal shows the same outcome next to each `opened` row.

@@ -11,7 +11,8 @@ removed). Step 12 is done by hand on the instance after merge and release.
 3. [x] Tracker: `kind` on `PendingOrder`, classification (O1), gate state read (O2).
 4. [x] Tracker: `end_state` matching, `moving` / `fault` / position (O3) and vocabulary memory (O4).
 5. [x] Tracker: outcome emission on status change, alarm keys, `device_fault` reason (O5, O6).
-6. [x] Tracker: `retried = true` for both kinds, including held orders (O9).
+6. [x] Tracker: `retried = true` for both kinds; an undispatched gate pulse or trackable cover
+       order is not held at all (O9).
 7. [x] Migration: `shared_access_journal.outcome`, `outcome_expected`.
 8. [x] Shared access: row id per press, `open()` result, listener, session presses (O8).
 9. [x] WS broadcast + UI store; tile (desktop, mobile, timed), detail, admin journal.
@@ -30,7 +31,8 @@ removed). Step 12 is done by hand on the instance after merge and release.
 | tracker — transition  | unconfirmed, then gate closes at 90 s                            | alarm resolved                                                   |
 | tracker — transition  | gate state null / device offline                                 | exempt: nothing emitted, no alarm                                |
 | tracker — transition  | gate opens then closes inside the window                         | confirmed once, at the opening                                   |
-| tracker — transition  | second pulse during the window                                   | first window cancelled, new expectation from the current state   |
+| tracker — transition  | second pulse during the window, state known (`closed`)           | first window cancelled, new expectation from the current state   |
+| tracker — transition  | second pulse during the window, `state` reads unknown            | exempt: the first keeps its window, timer, alarm and outcome     |
 | tracker — end_state   | CLOSE, door OPEN, then CLOSING, CLOSED                           | `pending`, `moving`, `confirmed`                                 |
 | tracker — end_state   | OPEN, position 100 without `door` change                         | `confirmed`                                                      |
 | tracker — end_state   | CLOSE, then FAULT with `why` = BOTTOM                            | `fault`, detail `BOTTOM`, alarm raised                           |

@@ -120,7 +120,8 @@ unproven. A closing confirmed once the travel has elapsed ends the bar at once.
 The page never invites the visitor to press again, and nothing is ever resent: an impulse sent
 twice would reverse the gate. A confirmation that arrives late — up to 5 minutes after the window
 (the next heartbeat of a gate whose report was lost on the radio) — still turns "No confirmation"
-into a confirmed opening; a movement later than that is someone else's doing. The phone's journal
+into a confirmed opening or closing: on the page while it is still following the press (70 s),
+in the journal after that. A movement later than that is someone else's doing. The phone's journal
 reads "Opening requested" or "Closing requested" (the direction Sowel expected), then the outcome;
 this access's journal shows the same outcome next to each opening. If the command did not get
 through, the page says "No answer from the gate: look at it before trying again, it may have

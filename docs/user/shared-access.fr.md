@@ -125,8 +125,9 @@ que la première impulsion n'est pas encore prouvée. Une fermeture confirmée u
 La page n'invite jamais le visiteur à réappuyer, et rien n'est jamais renvoyé : une impulsion
 envoyée deux fois inverserait le portail. Une confirmation qui arrive en retard — jusqu'à 5 minutes
 après la fenêtre (le battement suivant d'un portail dont le rapport s'est perdu en radio) —
-transforme encore « Sans confirmation » en ouverture confirmée ; un mouvement plus tardif est le
-fait de quelqu'un d'autre. Le journal du téléphone affiche « Ouverture demandée » ou « Fermeture
+transforme encore « Sans confirmation » en ouverture ou fermeture confirmée : sur la page tant
+qu'elle suit l'appui (70 s), dans le journal ensuite. Un mouvement plus tardif est le fait de
+quelqu'un d'autre. Le journal du téléphone affiche « Ouverture demandée » ou « Fermeture
 demandée » (le sens attendu par Sowel), puis le résultat ; celui de l'accès montre le même résultat
 à côté de chaque ouverture. Si la commande n'est pas passée, la page dit « Pas de réponse du
 portail : regardez-le avant de réessayer, il a peut-être bougé. » Une ouverture compte dans les
