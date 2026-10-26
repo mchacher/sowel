@@ -84,7 +84,7 @@ Reported `door` / state value at the mirror, after the order:
 
 | Report                                                     | Status      | Line                                                           |
 | ---------------------------------------------------------- | ----------- | -------------------------------------------------------------- |
-| target (`OPEN` / `CLOSED`), or position 100 / 0            | `confirmed` | « Ouverte » / « Fermée » confirmée, then gone                  |
+| target (`OPEN` / `CLOSED`), or position 100 / 0            | `confirmed` | « Ouverture confirmée » / « Fermeture confirmée », then gone   |
 | the moving value toward the target (`OPENING` / `CLOSING`) | `moving`    | « En mouvement… »                                              |
 | `FAULT`                                                    | `fault`     | « Défaut » + reason from the `why` key when the device has one |
 | anything else (`UNKNOWN`, opposite end, heartbeat)         | unchanged   | the window keeps running                                       |
