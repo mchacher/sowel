@@ -31,16 +31,6 @@ const MAX_TRACKED_ALARM_ZONES = 500;
 const TTL_MS = ACTIVITY_RETENTION_DAYS * 24 * 60 * 60 * 1000;
 
 /**
- * Ring buffer of activity items fed by the engine event bus (spec 101).
- *
- * - Cap of 2000 items, 7-day TTL purged on every push (matches persistence).
- * - Filters and enriches engine events before storage, then re-emits
- *   `activity.added` on the bus so the WebSocket layer can broadcast.
- * - Spec 147: when an `ActivityStore` is injected, every item is persisted to
- *   SQLite and the recent history is reloaded on boot, so the feed survives a
- *   restart. Without a store it stays in-memory only (pre-147 behaviour).
- */
-/**
  * An alarm as the feed keeps it. An order-outcome alarm (spec 188) keeps its
  * i18n key too, so the feed words it in the viewer's language; a key on any
  * other source is dropped, the English text stands.
@@ -60,6 +50,16 @@ function alarmParams(event: {
   };
 }
 
+/**
+ * Ring buffer of activity items fed by the engine event bus (spec 101).
+ *
+ * - Cap of 2000 items, 7-day TTL purged on every push (matches persistence).
+ * - Filters and enriches engine events before storage, then re-emits
+ *   `activity.added` on the bus so the WebSocket layer can broadcast.
+ * - Spec 147: when an `ActivityStore` is injected, every item is persisted to
+ *   SQLite and the recent history is reloaded on boot, so the feed survives a
+ *   restart. Without a store it stays in-memory only (pre-147 behaviour).
+ */
 export class ActivityBuffer {
   private readonly items: ActivityItem[] = [];
   private readonly logger: Logger;

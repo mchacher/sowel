@@ -96,7 +96,8 @@ The link opens a dark page with one warm disc per gate. The visitor **pulls the 
 its socket to open; released too early, it falls back and nothing is sent. On a keyboard, **Enter**
 twice does the same. Without the link, the page asks for the code.
 
-The page never says whether the gate is open or closed. It shows only **the visitor's own
+The page never says whether the gate is open or closed, with one exception: the outcome of the
+visitor's own press when Sowel can confirm it (below). It shows only **the visitor's own
 commands**, and speaks in words only when the gate will not move — outside the hours, not yet
 valid, on hold, revoked — and then it says why.
 

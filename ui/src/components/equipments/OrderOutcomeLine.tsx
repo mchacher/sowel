@@ -1,6 +1,6 @@
 import { useContext } from "react";
 import { useTranslation } from "react-i18next";
-import { Check, CircleAlert, Loader2 } from "lucide-react";
+import { Check, CircleAlert, Loader2, Square } from "lucide-react";
 import { TileEquipmentContext, outcomeText, useOrderOutcome } from "./order-outcome";
 import type { OrderOutcomeStatus } from "../../types";
 
@@ -14,6 +14,7 @@ const TONE: Record<OrderOutcomeStatus, string> = {
   confirmed: "text-success",
   fault: "text-error",
   unconfirmed: "text-warning",
+  stopped: "text-text-tertiary",
 };
 
 export function OrderOutcomeLine({
@@ -44,6 +45,8 @@ export function OrderOutcomeLine({
         <Loader2 size={icon} strokeWidth={1.5} className="shrink-0 motion-safe:animate-spin" />
       ) : status === "confirmed" ? (
         <Check size={icon} strokeWidth={2} className="shrink-0" />
+      ) : status === "stopped" ? (
+        <Square size={icon - 2} strokeWidth={1.5} className="shrink-0" />
       ) : (
         <CircleAlert size={icon} strokeWidth={1.5} className="shrink-0" />
       )}

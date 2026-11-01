@@ -102,6 +102,11 @@ export const useOrderOutcomes = create<OrderOutcomesState>((set, get) => ({
     // outcome can arrive before this event); a spinner of another value (a
     // STOP after CLOSE) belongs to the order it cancels, and goes.
     if (inFlight(current.status) && Object.is(current.value, value)) return;
+    // Spec 188 O7 — « stopped » is the doing of the STOP being reported now:
+    // the tracker words it before this event arrives, so it stays.
+    if (current.status === "stopped" && typeof value === "string" && value.toUpperCase() === "STOP") {
+      return;
+    }
     get().clear(equipmentId, current.seq);
   },
 

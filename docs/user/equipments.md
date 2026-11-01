@@ -277,35 +277,40 @@ A gate's contact usually proves it is closed and only suggests it is open. If yo
 
 For two kinds of order, Sowel reads what the device reports afterwards to tell whether the order
 moved something, and says so in one line under the tile's name (desktop, phone and timed tile) and
-on the equipment page:
+on the equipment page. It is on by default for a **gate** and a **door**, off for a shutter or an
+awning; an admin switches it per equipment on the equipment page (« Follow order outcomes »).
 
 - **A gate impulse** — an order whose value is `pulse` on a gate — when the gate's state is known
   (its position sensor, `closed`, or its `state`). From closed, the gate must open within 15 s;
   from open, it must close within 60 s (a pulse on an open gate may stop or reverse it before it
   closes). Any other value sent to a gate is left as before.
-- **A shutter's Open or Close**, when its state speaks the end-state words — it has reported
-  `CLOSED`, `OPENING`, `CLOSING` or `FAULT` at least once since Sowel started, as the LoRa coop door
-  does. It must reach `OPEN` / `CLOSED` (or position 100 / 0) within 60 s. A shutter that only
-  echoes `OPEN` / `CLOSE`, as most Zigbee covers do, is left as before.
+- **A door's Open or Close** (or a shutter's or awning's, once switched on), when its state speaks
+  the end-state words — it has reported `CLOSED`, `OPENING`, `CLOSING` or `FAULT` at least once
+  since Sowel started, as the LoRa coop door does. It must reach `OPEN` / `CLOSED` (or position
+  100 / 0) within 60 s. A cover that only echoes `OPEN` / `CLOSE`, as most Zigbee covers do, stays
+  silent even when switched on.
 
-| The line reads                                            | When                                                                                        |
-| --------------------------------------------------------- | ------------------------------------------------------------------------------------------- |
-| « Sent… »                                                 | the order was sent, the window is running                                                   |
-| « Moving… »                                               | the shutter reports it is travelling toward the target                                      |
-| « ✓ Opening confirmed » / « ✓ Closing confirmed »         | the expected state was reported (gone after 4 s)                                            |
-| « Fault: bottom contact » / « Fault: wiring » / « Fault » | the device reported `FAULT` (its `why` gives the reason; `NONE` gives none)                 |
-| « No movement: command lost or gate blocked »             | a gate impulse from closed saw nothing within 15 s                                          |
-| « Still open: command lost or gate stopped on the way »   | a gate impulse from open did not see the gate close in 60 s                                 |
-| « No confirmation »                                       | a shutter order did not reach its end state within 60 s, or was stopped (`STOP`) on the way |
+| The line reads                                            | When                                                                        |
+| --------------------------------------------------------- | --------------------------------------------------------------------------- |
+| « Sent… »                                                 | the order was sent, the window is running                                   |
+| « Moving… »                                               | the door reports it is travelling toward the target                         |
+| « ✓ Opening confirmed » / « ✓ Closing confirmed »         | the expected state was reported (gone after 4 s)                            |
+| « Fault: bottom contact » / « Fault: wiring » / « Fault » | the device reported `FAULT` (its `why` gives the reason; `NONE` gives none) |
+| « No movement: command lost or gate blocked »             | a gate impulse from closed saw nothing within 15 s                          |
+| « Still open: command lost or gate stopped on the way »   | a gate impulse from open did not see the gate close in 60 s                 |
+| « No confirmation »                                       | a door order did not reach its end state within 60 s                        |
+| « Stopped »                                               | someone stopped the door on the way (`STOP`)                                |
 
 A fault or a missing confirmation also raises an alarm, pushed like the other alarms, and it clears
 itself when the expected state finally arrives, even late. The alarm says what the gate or door
 did (« Portail: still open after the command — lost or stopped on the way », « Coop door: fault
 (bottom contact) »): in your language in the banner and the activity feed, and in the push in the
 language of the user who turned push on (their **Language** preference). Telegram gets it in
-English. A stopped shutter (`STOP`) raises no alarm.
+English. A stopped door (`STOP`) raises no alarm.
 
-**Nothing is ever resent**: a second impulse would reverse the gate. A second impulse whose gate
+**A gate impulse is never resent**: a second impulse would reverse the gate. A door's Open or Close
+is absolute, so it is resent once if it was lost while the device or its integration was offline,
+as any other order (not after a fault: the door answered). A second impulse whose gate
 state Sowel cannot read yet (the state reads unknown until the next report) does not cancel the
 first one's follow-up: the first one's outcome still comes. An order that could not be sent at all
 (integration offline) shows no line: the error came back when it was given. The state cannot tell

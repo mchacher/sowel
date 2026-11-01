@@ -1,7 +1,10 @@
 # Spec 188: Order outcome from reported state
 
-**Status**: Approved (2026-10-26) — implemented on PR #1088
-**Depends on**: spec 141 (order confirmation tracker), spec 181 (shared access), spec 146 (gate)
+**Status**: Approved (2026-10-26) — implemented on PR #1088; amended 2026-11-01 by the maintainer's
+review (O1, O2, O7, O9, O10 and spec 181 R4.16 / R5.22)
+**Depends on**: spec 141 (order confirmation tracker), spec 181 (shared access), spec 146 (gate),
+spec 190 (door equipment type)
+**Amends**: spec 181 R4.16 / R5.22 (the guest learns the outcome of its own tracked press, O8)
 **System spec**: `domotique-lora/specs/command-confirmation.md` (what each LoRa node reports)
 **Replaces**: the first version of this spec (a `device.order.receipt` plugin event fed by new
 LoRa receipt frames). Rejected on 2026-10-26: it changed the nodes, the dongle, the bridge and the
@@ -35,9 +38,10 @@ coop's limit switches (`door`, `pos`). The core only has to read it.
 
 ## Non-goals
 
-- **No automatic resend, ever**, for the orders this spec tracks. A second impulse reverses a
-  gate. This also takes them out of spec 141's reconnect re-dispatch and out of the #702
-  integration-connect replay (O9).
+- **No automatic resend of a gate impulse**: a second impulse reverses a gate. This takes it out
+  of spec 141's reconnect re-dispatch and out of the #702 integration-connect replay (O9). A
+  cover OPEN / CLOSE is absolute and keeps spec 141's single replay. (The equipment manager's own
+  2 s retry of a dispatch that threw is out of scope here and unchanged.)
 - No distinction between "command lost" and "command applied but nothing moved": the state
   cannot tell them apart (see Limits).
 - No persistence across a restart: an outcome pending at restart is dropped, as in spec 141.
@@ -50,12 +54,13 @@ coop's limit switches (`door`, `pos`). The core only has to read it.
 The tracker today knows one kind: _mirror_ (the ordered value must appear on the mirror). It
 gains two, chosen at dispatch, before the existing confirmability test:
 
-| Kind         | Applies to                                                                           | Proof expected                                                    |
-| ------------ | ------------------------------------------------------------------------------------ | ----------------------------------------------------------------- |
-| `transition` | equipment type `gate`, order value `pulse` (case-insensitive), gate state known (O2) | the gate state flips: closed → open, or open → closed             |
-| `end_state`  | equipment type `shutter`, value `OPEN` or `CLOSE`, end-state vocabulary seen (O4)    | `OPEN` → `OPEN` or position 100; `CLOSE` → `CLOSED` or position 0 |
+| Kind         | Applies to                                                                                                                | Proof expected                                                    |
+| ------------ | ------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------- |
+| `transition` | equipment type `gate`, order value `pulse` (case-insensitive), gate state known (O2)                                      | the gate state flips: closed → open, or open → closed             |
+| `end_state`  | equipment type `door` (or `shutter` / `awning` switched on, O10), value `OPEN` or `CLOSE`, end-state vocabulary seen (O4) | `OPEN` → `OPEN` or position 100; `CLOSE` → `CLOSED` or position 0 |
 
-Any other order keeps spec 141's behaviour unchanged. An order that matches neither new kind and
+Only an equipment whose orders are followed (O10) gets either kind. Any other order keeps spec
+141's behaviour unchanged. An order that matches neither new kind and
 is exempt today stays exempt.
 
 ### O2 — Gate impulse (`transition`)
@@ -116,13 +121,14 @@ Consequences:
 The tracker emits `equipment.order.outcome { equipmentId, orderAlias, value, status, detail?,
 source }` on every status change of a tracked order (O1 kinds only), broadcast on the WebSocket.
 
-| Status        | When                               | Tile / detail line                                       | Lasts                 |
-| ------------- | ---------------------------------- | -------------------------------------------------------- | --------------------- |
-| `pending`     | dispatch                           | spinner « Envoyée… »                                     | until the next status |
-| `moving`      | `OPENING` / `CLOSING` (cover only) | spinner « En mouvement… »                                | until the next status |
-| `confirmed`   | O2 / O3 proof                      | « ✓ Ouverture confirmée » / « ✓ Fermeture confirmée »    | 4 s, then nothing     |
-| `fault`       | `FAULT` reported                   | « Défaut » (+ « : contact bas », « : câblage »…)         | until the next order  |
-| `unconfirmed` | window elapsed                     | gate: the O2 wording alone; cover: « Sans confirmation » | until the next order  |
+| Status        | When                                         | Tile / detail line                                       | Lasts                 |
+| ------------- | -------------------------------------------- | -------------------------------------------------------- | --------------------- |
+| `pending`     | dispatch                                     | spinner « Envoyée… »                                     | until the next status |
+| `moving`      | `OPENING` / `CLOSING` (cover only)           | spinner « En mouvement… »                                | until the next status |
+| `confirmed`   | O2 / O3 proof                                | « ✓ Ouverture confirmée » / « ✓ Fermeture confirmée »    | 4 s, then nothing     |
+| `fault`       | `FAULT` reported                             | « Défaut » (+ « : contact bas », « : câblage »…)         | until the next order  |
+| `unconfirmed` | window elapsed                               | gate: the O2 wording alone; cover: « Sans confirmation » | until the next order  |
+| `stopped`     | a `STOP` ended a travelling cover order (O7) | « Arrêté »                                               | until the next order  |
 
 For a gate the unconfirmed line is the O2 wording on its own (« Pas de mouvement : commande
 perdue ou portail bloqué » / « Toujours ouvert : commande perdue ou portail arrêté en route »),
@@ -191,8 +197,9 @@ prove:
   through `state`. The first order keeps its window, its timer and its alarm; its outcome still
   comes, and its guest row still gets it.
 - **cover** — a `STOP` while the door travels: the order it interrupted can no longer reach its
-  end state, because of the person who stopped it. Its line ends as `unconfirmed` at once,
-  **without** an alarm. One that already has an alarm, or a final status, is left as it is.
+  end state, because of the person who stopped it. Its line ends as `stopped` (« Arrêté ») at
+  once, **without** an alarm: nothing was lost. One that already has an alarm, or a final status,
+  is left as it is.
 
 ### O8 — Shared access
 
@@ -227,18 +234,53 @@ prove:
 - The admin journal shows the same outcome next to each `opened` row.
 - `countUse` is unchanged: a press counts when it is sent.
 
-### O9 — No replay for tracked orders
+### O9 — No replay for a gate impulse
 
-Orders of kind `transition` or `end_state` are created with `retried = true`, so neither spec
-141's reconnect re-dispatch nor #702's integration-connect replay can send them again.
+A `transition` order (a gate impulse) is created with `retried = true`, so neither spec 141's
+reconnect re-dispatch nor #702's integration-connect replay can send it again. A gate impulse that
+failed to reach its integration (#702) is **not held at all**, whatever the gate state: it is
+never replayed, and it is not surfaced as an outcome either (« no confirmation » 60 s later would
+read as a command lost on the way, when it was never sent). Its caller already got the dispatch
+error (the guest page shows `gate_error`), and the integration's `order-fail` alarm stands.
 
-An order that failed to reach its integration (#702) is **not held at all** when it is a gate
-impulse (whatever the gate state, known or not) or a cover order the state could have proven, or
-when a tracked order is still open on the same equipment and alias. It is never replayed, and it
-is not surfaced as an outcome either: « no confirmation » 60 s later would read as a command lost
-on the way, when it was never sent. Its caller already got the dispatch error (the guest page
-shows `gate_error`), and the integration's `order-fail` alarm stands. Whatever was pending on the
-equipment — a tracked order still in its window, its alarm — is left exactly as it was.
+_Amended 2026-11-01:_ an `end_state` order (a cover OPEN / CLOSE) is absolute, so replaying it is
+safe: it keeps spec 141's single replay, on a device reconnect and on an integration connect, so
+a radio outage at sunset does not leave the coop open all night. One exception: once the device
+answered `FAULT`, it is not replayed (it refused; resending cannot help).
+
+A failed order is not held either while a tracked order is still **inside its window** on the
+same equipment and alias, nor when it is an order that can neither confirm nor move the cover (a
+`STOP`) facing a tracked order: that order, its alarm included, is left exactly as it was. Past
+its window, a new `OPEN` / `CLOSE` takes over as in spec 141, so a stale entry never blocks every
+later hold.
+
+A door `OPEN` / `CLOSE` that never reached its integration is held as a tracked `end_state` order:
+it carries the alarm standing on the equipment, shows no line while it waits (it was never sent),
+and its window opens on the replay, so the device's answer to the replay is what confirms it.
+
+### O10 — Which equipments are followed
+
+Each equipment carries `trackOrderOutcome` (`equipments.track_order_outcome`, migration 038):
+`null` means the type's default, `true` / `false` the admin's choice.
+
+| Type                | Default | Switchable |
+| ------------------- | ------- | ---------- |
+| `gate`, `door`      | on      | yes (off)  |
+| `shutter`, `awning` | off     | yes (on)   |
+| any other           | off     | no         |
+
+The switch is on the equipment page (admin), « Suivre le résultat des ordres ». The O4 guard still
+applies to a switched-on cover: one that never speaks the end-state words stays silent.
+
+### O2 bis — A flip that lands before `equipment.order.executed`
+
+`equipment.order.executed` comes after every dispatch attempt (a 2 s retry included). It now
+carries `startedAt`, the moment the dispatch began. A gate reading (`closed` / `state`) reported
+since then already answers the impulse: the state before it was the opposite one, and the order
+is confirmed at once instead of waiting for a flip that already happened. Only a **change** of
+value counts: a heartbeat repeating the same reading during the dispatch is not a flip. Known
+limit: the very first reading the tracker sees for a gate after a restart is a baseline, not a
+change, so a first report landing inside the first press's dispatch is not taken as the flip.
 
 ## Limits (what the state cannot say)
 
@@ -274,6 +316,10 @@ equipment — a tracked order still in its window, its alarm — is left exactly
 - [x] Tile (desktop, mobile, timed) + detail status line per O5, EN + FR.
 - [x] Shared-access journal `outcome` column (migration), `open` returns it, guest page per O8,
       served page is the core's `src/shared-access/guest-page.ts`.
-- [x] O9: tracked orders never re-dispatched (device reconnect and integration connect).
+- [x] O9: gate impulses never re-dispatched (device reconnect and integration connect); a cover
+      OPEN / CLOSE keeps the single replay, except after a `FAULT`.
+- [x] O10: followed by default on gate and door, switchable on shutter and awning.
+- [x] O2 bis: a gate that flipped during the dispatch is confirmed at once.
+- [x] O7: a STOP ends a travelling cover order as `stopped`, without an alarm.
 - [x] No change in behaviour for any order outside O1 (spec 141 suite green unchanged).
 - [x] Tests per plan.md.

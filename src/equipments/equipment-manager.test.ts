@@ -497,6 +497,23 @@ describe("EquipmentManager", () => {
     });
   });
 
+  // Spec 188 O10 — null is the type's default; true / false the admin's choice.
+  describe("track order outcome", () => {
+    it("starts at the type's default and round-trips true, false and null", () => {
+      const zone = zoneManager.create({ name: "Cour" });
+      const eq = manager.create({ name: "Portail", type: "gate", zoneId: zone.id });
+      expect(manager.getById(eq.id)?.trackOrderOutcome).toBeNull();
+      manager.update(eq.id, { trackOrderOutcome: false });
+      expect(manager.getById(eq.id)?.trackOrderOutcome).toBe(false);
+      manager.update(eq.id, { name: "Portail entrée" });
+      expect(manager.getById(eq.id)?.trackOrderOutcome).toBe(false);
+      manager.update(eq.id, { trackOrderOutcome: true });
+      expect(manager.getById(eq.id)?.trackOrderOutcome).toBe(true);
+      manager.update(eq.id, { trackOrderOutcome: null });
+      expect(manager.getById(eq.id)?.trackOrderOutcome).toBeNull();
+    });
+  });
+
   describe("require confirmation", () => {
     it("defaults to false on a freshly created equipment", () => {
       const zone = zoneManager.create({ name: "Entrée" });

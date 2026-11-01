@@ -202,6 +202,16 @@ describe("order outcome status line", () => {
     expect(screen.queryByRole("status")).toBeNull();
   });
 
+  // Spec 188 O7 — the tracker words « stopped » before the STOP's executed event.
+  it("keeps « Stopped » when the STOP that caused it is reported after it", async () => {
+    await i18n.changeLanguage("en");
+    tile();
+    outcome("moving", { value: "CLOSE", expected: "close" });
+    outcome("stopped", { value: "CLOSE", expected: "close" });
+    executed("STOP");
+    expect(screen.getByRole("status").textContent).toBe("Stopped");
+  });
+
   it("does not let an old confirmation's timer clear a newer order's line", async () => {
     await i18n.changeLanguage("en");
     vi.useFakeTimers();

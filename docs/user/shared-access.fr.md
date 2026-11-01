@@ -100,9 +100,10 @@ Le lien ouvre une page sombre avec une sphère chaude par portail. Le visiteur *
 le haut**, hors de son socle, pour ouvrir ; relâchée trop tôt, elle retombe et rien n'est envoyé. Au
 clavier, **Entrée** deux fois fait la même chose. Sans le lien, la page demande le code.
 
-La page ne dit jamais si le portail est ouvert ou fermé. Elle ne montre que **les commandes du
-visiteur lui-même**, et ne parle en mots que quand le portail ne bougera pas — hors des heures, pas
-encore valable, suspendu, révoqué — et dit alors pourquoi.
+La page ne dit jamais si le portail est ouvert ou fermé, à une exception près : le résultat de
+l'appui du visiteur lui-même quand Sowel peut le confirmer (ci-dessous). Elle ne montre que **les
+commandes du visiteur lui-même**, et ne parle en mots que quand le portail ne bougera pas — hors des
+heures, pas encore valable, suspendu, révoqué — et dit alors pourquoi.
 
 ### Quand l'état du portail confirme { #gate-outcome }
 

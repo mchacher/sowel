@@ -45,5 +45,8 @@ export function outcomeText(
         );
       }
       return t("orderOutcome.unconfirmed");
+    case "stopped":
+      // O7 — a person stopped the cover on the way: nothing was lost.
+      return t("orderOutcome.stopped");
   }
 }

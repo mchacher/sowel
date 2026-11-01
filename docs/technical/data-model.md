@@ -288,7 +288,7 @@ An opening is an ordinary order, attributed with the `OrderSource` member
 deleted. The wrong-code alert and the phone count use `system.alarm.raised` under source
 `shared-access`.
 
-Tables (migrations `035_shared_access.sql` and `036_shared_access_tombstones.sql`), none of them a column on `equipments`:
+Tables (migrations `035_shared_access.sql`, `036_shared_access_tombstones.sql` and `037_shared_access_outcome.sql`), none of them a column on `equipments`:
 
 | Table                         | Holds                                                                                                                                                                      |
 | ----------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
@@ -298,7 +298,7 @@ Tables (migrations `035_shared_access.sql` and `036_shared_access_tombstones.sql
 | `shared_access_profiles`      | What a plugin's accesses open: dates, time windows, code or not, the plugin it is granted to, `is_default`.                                                                |
 | `shared_access_profile_gates` | A profile's gates. Cascades from `equipments`.                                                                                                                             |
 | `shared_access_phones`        | Phones set up on an access: token hash, first and last seen.                                                                                                               |
-| `shared_access_journal`       | Openings, refusals and changes, with no foreign key so it outlives the access. A year, 50 000 lines at most. `outcome`: what became of a press (spec 188).                 |
+| `shared_access_journal`       | Openings, refusals and changes, with no foreign key so it outlives the access. A year, 50 000 lines at most. `outcome` / `outcome_expected`: what became of a press (spec 188). |
 | `shared_access_tombstones`    | The `(plugin, externalId)` of an external access the owner deleted, so a later upsert of that stay answers `revoked` (migration `036`). Purged after a year.               |
 
 All eight ride in the backup.

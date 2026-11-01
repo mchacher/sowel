@@ -418,6 +418,9 @@ export interface Equipment {
   /** Spec 146 — opt-in confirmation before actuating on the mobile dashboard
    *  (gate equipments only in v1). */
   requireConfirmation?: boolean;
+  /** Spec 188 O10 — follow orders to their outcome. Absent / `null` = the
+   *  type's default (on for gate and door, off otherwise). */
+  trackOrderOutcome?: boolean | null;
   /** Spec 173 — id of the meter that already counts this equipment's
    *  consumption. The by-usage breakdown renders that parent net of its direct
    *  children. `null`/absent = counted nowhere else. */
@@ -790,7 +793,14 @@ export type OrderSource =
   | { kind: "shared_access"; accessId: string; label: string; pressId?: string };
 
 /** Spec 188 — what became of a tracked order (mirrors src/shared/types.ts). */
-export type OrderOutcomeStatus = "pending" | "moving" | "confirmed" | "fault" | "unconfirmed";
+export type OrderOutcomeStatus =
+  | "pending"
+  | "moving"
+  | "confirmed"
+  | "fault"
+  | "unconfirmed"
+  // Spec 188 O7 — a cover order a person stopped on the way with STOP.
+  | "stopped";
 
 /** Spec 188 — the movement a tracked order should cause. */
 export type OrderOutcomeExpected = "open" | "close";

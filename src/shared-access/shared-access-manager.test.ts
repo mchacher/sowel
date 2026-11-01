@@ -374,7 +374,9 @@ describe("pressing (R4)", () => {
     expect(refused.map((e) => e.reason)).toEqual(["gate_error", "gate_error"]);
   });
 
-  it("never gives the phone the gate's state, and shows only this phone's presses", async () => {
+  // Spec 181 R4.16 as amended by spec 188: an untracked press says nothing of
+  // the gate; a tracked one is covered in "the outcome of a press" below.
+  it("never gives the phone the gate's state on an untracked press, and shows only this phone's presses", async () => {
     h = buildSharedAccessHarness();
     const { access, token } = await withPhone();
     const other = await h.manager.enrol({ code: access.code! }, "other-phone");
@@ -385,7 +387,7 @@ describe("pressing (R4)", () => {
     expect(mine.presses).toHaveLength(1);
     expect(theirs.presses).toHaveLength(0);
     const json = JSON.stringify(mine);
-    expect(json).not.toMatch(/"(state|open|closed|gate_state)"/);
+    expect(json).not.toMatch(/"(state|open|close|closed|gate_state|expected|outcome)"/);
     expect(Object.keys(mine).sort()).toEqual(
       [
         "activeAt",
@@ -439,6 +441,24 @@ describe("the outcome of a press (spec 188 O8)", () => {
   }
 
   const openedRows = () => h.manager.listJournal(null).filter((e) => e.kind === "opened");
+
+  it("tells only the phone that pressed the outcome of its tracked press (spec 181 R4.16 as amended)", async () => {
+    h = buildSharedAccessHarness();
+    h.manager.start();
+    const { access, token } = await withPhone();
+    const other = await h.manager.enrol({ code: access.code! }, "other-phone");
+    if (!other.ok) throw new Error("second phone");
+    trackedGate("close");
+    await h.manager.open(token, h.gates.entree);
+    outcomeFor(h.dispatches[0], "confirmed", { expected: "close" });
+
+    expect(h.manager.session(token)!.presses[0]).toMatchObject({
+      outcome: "confirmed",
+      expected: "close",
+    });
+    const theirs = JSON.stringify(h.manager.session(other.token)!);
+    expect(theirs).not.toMatch(/"(state|open|close|closed|gate_state|expected|outcome)"/);
+  });
 
   it("answers pending with the expected movement on a tracked gate, and the row starts pending", async () => {
     h = buildSharedAccessHarness();

@@ -421,6 +421,9 @@ export interface Equipment {
   /** Spec 146 — opt-in confirmation before actuating on the mobile dashboard.
    *  `true` only when an admin enabled it. Gate equipments only in v1. */
   requireConfirmation?: boolean;
+  /** Spec 188 O10 — follow orders to their outcome. Absent / `null` = the
+   *  type's default (on for gate and door, off otherwise). */
+  trackOrderOutcome?: boolean | null;
   /** Spec 173 — id of the meter that already counts this equipment's
    *  consumption (a gîte clamp upstream of a water-heater clamp). The by-usage
    *  breakdown renders the parent net of its direct children, so nested clamps
@@ -1503,7 +1506,14 @@ export type OrderSource =
  * `fault` — the device reported FAULT; `unconfirmed` — the window elapsed. A
  * late expected state still resolves the alarm of the last two.
  */
-export type OrderOutcomeStatus = "pending" | "moving" | "confirmed" | "fault" | "unconfirmed";
+export type OrderOutcomeStatus =
+  | "pending"
+  | "moving"
+  | "confirmed"
+  | "fault"
+  | "unconfirmed"
+  // Spec 188 O7 — a cover order a person stopped on the way with STOP.
+  | "stopped";
 
 /** The movement a tracked order should cause. */
 export type OrderOutcomeExpected = "open" | "close";
@@ -1637,7 +1647,7 @@ export interface SharedAccessJournalEntry {
   /** R5.19 — the phone's tag (`7K3F`) when a phone did it. */
   phoneTag: string | null;
   /** Spec 188 — the outcome of an `opened` row's press; null when the press was not tracked. */
-  outcome: Exclude<OrderOutcomeStatus, "moving" | "fault"> | null;
+  outcome: Exclude<OrderOutcomeStatus, "moving" | "fault" | "stopped"> | null;
   /** Spec 188 — the movement that press should cause; null when not tracked. */
   outcomeExpected: OrderOutcomeExpected | null;
 }
@@ -1798,6 +1808,8 @@ export type EngineEvent =
       orderAlias: string;
       value: unknown;
       source?: OrderSource;
+      /** Spec 188 O2 — when the dispatch began (ms), before any retry. */
+      startedAt?: number;
     }
   | {
       type: "equipment.order.failed";

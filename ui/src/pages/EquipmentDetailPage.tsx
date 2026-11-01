@@ -41,6 +41,8 @@ import { ElectricalMeteringPanel } from "../components/equipments/ElectricalMete
 import { MeteringParentPanel } from "../components/equipments/MeteringParentPanel";
 import { EnergyManagementPanel } from "../components/equipments/EnergyManagementPanel";
 import { GateConfirmationPanel } from "../components/equipments/GateConfirmationPanel";
+import { OrderOutcomePanel } from "../components/equipments/OrderOutcomePanel";
+import { ORDER_OUTCOME_TYPES } from "../../../src/shared/order-outcome-tracking";
 import { SharedAccessPanel } from "../components/equipments/SharedAccessPanel";
 import { TimedCommandPanel } from "../components/equipments/TimedCommandPanel";
 import { TimedCommandControl } from "../components/equipments/TimedCommandControl";
@@ -451,6 +453,11 @@ export function EquipmentDetailPage() {
       {/* Gate — confirmation before action (spec 146), admin only */}
       {isGate && isAdmin && (
         <GateConfirmationPanel equipment={equipment} onUpdated={() => void fetchEquipments()} />
+      )}
+
+      {/* Gate, door, shutter, awning — follow orders to their outcome (spec 188 O10), admin only */}
+      {ORDER_OUTCOME_TYPES.includes(equipment.type) && isAdmin && (
+        <OrderOutcomePanel equipment={equipment} onUpdated={() => void fetchEquipments()} />
       )}
 
       {/* Gate — shared access (spec 181 R8), admin only, hidden while off */}

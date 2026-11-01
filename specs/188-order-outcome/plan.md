@@ -43,7 +43,14 @@ removed). Step 12 is done by hand on the instance after merge and release.
 | tracker — O4 guard    | Z2M-like cover reporting OPEN / CLOSE only, CLOSE ordered        | exempt, no alarm after 60 s                                      |
 | tracker — O4 guard    | device reported CLOSED once since start, now OPEN, CLOSE ordered | tracked                                                          |
 | tracker — O9          | transition unconfirmed, device comes back online                 | no re-dispatch                                                   |
-| tracker — O9          | pulse while integration disconnected, integration connects       | no replay; `unconfirmed` after the grace                         |
+| tracker — O9          | pulse while integration disconnected, integration connects       | not held, no replay, no outcome                                  |
+| tracker — O9          | coop CLOSE while integration disconnected, integration connects  | held and replayed once                                           |
+| tracker — O9          | unconfirmed coop CLOSE, coop back online / after FAULT           | replayed once / not replayed                                     |
+| tracker — O9          | stale unconfirmed OPEN, later CLOSE held                         | the CLOSE is held and replayed                                   |
+| tracker — O10         | shutter by default / switched on; gate and door switched off     | not followed / followed; not followed                            |
+| tracker — O2 bis      | gate flipped between dispatch start and executed                 | confirmed at once                                                |
+| tracker — O7          | STOP while the coop door travels                                 | `stopped`, no alarm                                              |
+| shared access — R4.16 | tracked press of one phone                                       | only that phone sees `expected` / `outcome`                      |
 | tracker — regression  | spec 141 suite                                                   | unchanged, green                                                 |
 | shared-access-manager | open on a closed tracked gate                                    | `{ok, outcome:"pending", expected:"open"}`, row `pending`        |
 | shared-access-manager | confirmed after open                                             | row `confirmed`, session press shows it                          |

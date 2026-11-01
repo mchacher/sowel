@@ -12,6 +12,7 @@ import type {
   OrderSource,
 } from "../shared/types.js";
 import { ORDER_OUTCOME_ALARM_SOURCE, wordOrderOutcomeAlarm } from "./order-outcome-messages.js";
+import { isOrderOutcomeTracked } from "../shared/order-outcome-tracking.js";
 
 // ============================================================
 // Spec 141 — order delivery confirmation
@@ -119,6 +120,8 @@ function faultReasonOf(v: unknown): string | undefined {
 export const RETRY_CHANNEL = "delivery-retry";
 
 const ALARM_SOURCE = ORDER_OUTCOME_ALARM_SOURCE;
+/** Spec 188 O1 — the types whose OPEN / CLOSE an end state can prove. */
+const COVER_TYPES: ReadonlySet<string> = new Set(["shutter", "awning", "door"]);
 
 interface PendingOrder {
   equipmentId: string;
@@ -190,6 +193,8 @@ type TrackedKind =
       expected: OrderOutcomeExpected;
       gateAlias: "closed" | "state";
       timeoutMs: number;
+      /** The gate already flipped while the order was being dispatched. */
+      atTarget: boolean;
     }
   | {
       kind: "end_state";
@@ -231,14 +236,6 @@ export function isConfirmableValue(ordered: unknown, enumValues?: string[]): boo
   return false;
 }
 
-/**
- * Whether a mirror could ever report the ordered value. An alias is not a
- * vocabulary: on a submetered thermostat `power` is a boolean order to the
- * cloud device and a wattage read from a clamp, so comparing them can only
- * ever be false and the watchdog would alarm on every order (issue #901).
- * Narrow on purpose: boolean against number, both ways, and nothing else.
- * A boolean ordered against an ON/OFF enum is a real mirror, and stays one.
- */
 /** Spec 188 — a cover state word, upper-cased; null for anything else. */
 function stateWord(v: unknown): string | null {
   return typeof v === "string" ? v.trim().toUpperCase() : null;
@@ -252,6 +249,14 @@ function closedFlag(v: unknown): boolean | null {
   return null;
 }
 
+/**
+ * Whether a mirror could ever report the ordered value. An alias is not a
+ * vocabulary: on a submetered thermostat `power` is a boolean order to the
+ * cloud device and a wattage read from a clamp, so comparing them can only
+ * ever be false and the watchdog would alarm on every order (issue #901).
+ * Narrow on purpose: boolean against number, both ways, and nothing else.
+ * A boolean ordered against an ON/OFF enum is a real mirror, and stays one.
+ */
 export function mirrorCanReport(ordered: unknown, mirrorType: DataType | undefined): boolean {
   if (mirrorType === undefined) return true;
   const normalized = normalizeValue(ordered);
@@ -271,6 +276,14 @@ export class OrderConfirmationTracker {
    * (CLOSED, OPENING, CLOSING, FAULT) since start.
    */
   private readonly endStateSpoken: Set<string> = new Set();
+  /**
+   * Spec 188 O2 bis — each gate state alias's last real reading and when it
+   * last CHANGED (`equipmentId:alias`). `equipment.order.executed` comes only
+   * after every dispatch attempt (a 2 s retry included): a change reported in
+   * between means the state read then is already the one the impulse caused.
+   * A heartbeat repeating the same value is not a change and moves nothing.
+   */
+  private readonly gateReadings: Map<string, { closed: boolean; changedAt: number }> = new Map();
   private startedAt = 0;
 
   constructor(
@@ -288,7 +301,13 @@ export class OrderConfirmationTracker {
     this.unsubs.push(
       this.eventBus.onType("equipment.order.executed", (event) => {
         try {
-          this.handleOrderExecuted(event.equipmentId, event.orderAlias, event.value, event.source);
+          this.handleOrderExecuted(
+            event.equipmentId,
+            event.orderAlias,
+            event.value,
+            event.source,
+            event.startedAt,
+          );
         } catch (err) {
           this.logger.error({ err }, "Order tracking failed");
         }
@@ -352,6 +371,7 @@ export class OrderConfirmationTracker {
     this.pending.clear();
     this.statusSeen.clear();
     this.endStateSpoken.clear();
+    this.gateReadings.clear();
   }
 
   // ── Order dispatch ───────────────────────────────────────────
@@ -361,6 +381,7 @@ export class OrderConfirmationTracker {
     alias: string,
     value: unknown,
     source?: OrderSource,
+    startedAt?: number,
   ): void {
     const key = `${equipmentId}:${alias}`;
 
@@ -368,7 +389,18 @@ export class OrderConfirmationTracker {
     // retried=true so only one retry can ever happen), never create a new one.
     if (source?.kind === "external" && source.channel === RETRY_CHANNEL) {
       const entry = this.pending.get(key);
-      if (entry) this.armTimer(entry);
+      if (!entry) return;
+      // Spec 188 O9 — a replayed door order starts a fresh window: the
+      // device's answer to this attempt counts, and the line shows it.
+      if (entry.kind !== "mirror") {
+        if (entry.timer) clearTimeout(entry.timer);
+        entry.timer = null;
+        entry.unconfirmed = false;
+        entry.neverDispatched = false;
+        entry.orderedAt = Date.now();
+        this.emitOutcome(entry, "pending");
+      }
+      this.armTimer(entry);
       return;
     }
 
@@ -402,6 +434,7 @@ export class OrderConfirmationTracker {
       bindings,
       deviceIds,
       targets,
+      startedAt,
     );
     if (tracked) {
       retirePrevious();
@@ -488,10 +521,20 @@ export class OrderConfirmationTracker {
    *
    * A cover order interrupted this way (a STOP while the door travels) can no
    * longer reach its end state because of the person who stopped it: its line
-   * ends as unconfirmed at once, without an alarm. One that already has an
+   * ends as « stopped » at once, without an alarm — nothing was lost. One that already has an
    * alarm, or a final status, is kept as it is, waiting for the expected state.
    */
   private supersedeTrackedByExempt(previous: PendingOrder): void {
+    // A held door order (never sent) is cancelled by the exempt order that
+    // went out after it: replaying it later would undo that STOP. Its alarm,
+    // which nothing could resolve any more, is released as spec 141 does.
+    if (previous.neverDispatched) {
+      if (previous.timer) clearTimeout(previous.timer);
+      previous.timer = null;
+      this.pending.delete(`${previous.equipmentId}:${previous.alias}`);
+      if (previous.alarmRaised) this.resolveAlarm(previous, "superseded by an exempt order");
+      return;
+    }
     if (
       previous.kind !== "end_state" ||
       previous.alarmRaised ||
@@ -502,7 +545,7 @@ export class OrderConfirmationTracker {
     if (previous.timer) clearTimeout(previous.timer);
     previous.timer = null;
     this.pending.delete(`${previous.equipmentId}:${previous.alias}`);
-    this.emitOutcome(previous, "unconfirmed");
+    this.emitOutcome(previous, "stopped");
   }
 
   /** O9 — a gate impulse, whatever the gate state: never replayed. */
@@ -521,30 +564,39 @@ export class OrderConfirmationTracker {
     bindings: DataBindingWithValue[],
     deviceIds: string[],
     targets: { deviceId: string; key: string }[],
+    startedAt?: number,
   ): TrackedKind | null {
-    if (!equipment) return null;
+    // O10 — only an equipment whose orders are followed (gate and door by default).
+    if (!equipment || !isOrderOutcomeTracked(equipment)) return null;
     const word = stateWord(value);
     if (equipment.type === "gate" && word === "PULSE") {
       const gate = this.readGateState(bindings);
       if (!gate) return null; // O2 — state unknown: exempt, today's behaviour
-      return gate.closed
+      // A reading reported since the dispatch began already answers the
+      // impulse: the state before it was the opposite one.
+      const changedAt = this.gateReadings.get(`${equipment.id}:${gate.alias}`)?.changedAt;
+      const flipped = startedAt !== undefined && changedAt !== undefined && changedAt >= startedAt;
+      const closedBefore = flipped ? !gate.closed : gate.closed;
+      return closedBefore
         ? {
             kind: "transition",
             expected: "open",
             gateAlias: gate.alias,
             timeoutMs: GATE_OPEN_WINDOW_MS,
+            atTarget: flipped,
           }
         : {
             kind: "transition",
             expected: "close",
             gateAlias: gate.alias,
             timeoutMs: GATE_CLOSE_WINDOW_MS,
+            atTarget: flipped,
           };
     }
-    // A shutter inverted in Sowel (spec 154) sends the opposite of what it
+    // A cover inverted in Sowel (spec 154) sends the opposite of what it
     // reports, so its end state cannot prove the order: left to spec 141.
     if (
-      equipment.type === "shutter" &&
+      COVER_TYPES.has(equipment.type) &&
       !equipment.invertDirection &&
       (word === "OPEN" || word === "CLOSE")
     ) {
@@ -646,9 +698,11 @@ export class OrderConfirmationTracker {
       unconfirmed: false,
       alarmRaised: previous?.alarmRaised ?? false,
       ...(previous?.alarmWording !== undefined ? { alarmWording: previous.alarmWording } : {}),
-      // O9 — never re-dispatched, neither on a device reconnect nor on an
-      // integration connect: a second impulse reverses a gate.
-      retried: true,
+      // O9 — a gate impulse is never re-dispatched, neither on a device
+      // reconnect nor on an integration connect: a second impulse reverses the
+      // gate. A cover OPEN / CLOSE is absolute, so it keeps spec 141's single
+      // replay, which is what brings a coop door shut after a radio outage.
+      retried: tracked.kind === "transition",
       offlineAtDispatch: this.allTargetsOffline(deviceIds),
       redispatchTtlMs: REDISPATCH_TTL_MS,
       neverDispatched: false,
@@ -667,8 +721,9 @@ export class OrderConfirmationTracker {
         : {}),
     };
 
-    // O3 — already at the target: confirmed at once, as in spec 141.
-    if (tracked.kind === "end_state" && tracked.atTarget) {
+    // O3 — already at the target (a cover there at dispatch, a gate that
+    // flipped while the order was being dispatched): confirmed at once.
+    if (tracked.atTarget) {
       this.emitOutcome(entry, "confirmed");
       if (entry.alarmRaised) this.resolveAlarm(entry, "state finally confirmed");
       return;
@@ -728,6 +783,8 @@ export class OrderConfirmationTracker {
     if (word === (open ? "OPENING" : "CLOSING")) {
       this.emitOutcome(entry, "moving");
     } else if (word === "FAULT") {
+      // The device answered and refused: replaying the order cannot help.
+      entry.retried = true;
       const detail = this.readFaultReason(entry);
       if (detail !== undefined) entry.detail = detail;
       this.markUnconfirmed(entry, "device_fault");
@@ -769,7 +826,8 @@ export class OrderConfirmationTracker {
 
   /** O5 — emit a tracked order's outcome, on a change only. */
   private emitOutcome(entry: PendingOrder, status: OrderOutcomeStatus, force = false): void {
-    if (entry.kind === "mirror") return;
+    // A held order was never sent: « no confirmation » would read as lost (O9).
+    if (entry.kind === "mirror" || entry.neverDispatched) return;
     if (!force && entry.lastStatus === status) return;
     entry.lastStatus = status;
     this.eventBus.emit({
@@ -790,7 +848,10 @@ export class OrderConfirmationTracker {
     name: string,
     reason: "timeout" | "device_offline" | "integration_disconnected" | "device_fault",
   ): { messageKey: string; messageParams: Record<string, string> } | null {
-    if (entry.kind === "mirror") return null;
+    // A held order never reached its integration: spec 141's English message,
+    // « (integration unreachable) », says so; an outcome wording would read
+    // as a command lost on the way (O9).
+    if (entry.kind === "mirror" || reason === "integration_disconnected") return null;
     if (reason === "device_fault") {
       if (entry.detail === undefined) {
         return { messageKey: "alarms.orderOutcome.fault", messageParams: { equipment: name } };
@@ -1053,6 +1114,21 @@ export class OrderConfirmationTracker {
   // ── Confirmation ─────────────────────────────────────────────
 
   private handleDataChanged(equipmentId: string, alias: string, value: unknown): void {
+    // O2 bis — remember when a gate state alias last changed value.
+    const closed =
+      alias === "closed"
+        ? closedFlag(value)
+        : alias === "state" && (stateWord(value) === "OPEN" || stateWord(value) === "CLOSED")
+          ? stateWord(value) === "CLOSED"
+          : null;
+    if (closed !== null) {
+      const key = `${equipmentId}:${alias}`;
+      const last = this.gateReadings.get(key);
+      // The first reading seen is no change: nothing says what came before.
+      if (!last) this.gateReadings.set(key, { closed, changedAt: 0 });
+      else if (last.closed !== closed)
+        this.gateReadings.set(key, { closed, changedAt: Date.now() });
+    }
     // Spec 188 — a tracked order is proven by another alias than its own
     // (`closed`, `state`, `position`), so every one on this equipment looks.
     for (const tracked of [...this.pending.values()]) {
@@ -1176,18 +1252,30 @@ export class OrderConfirmationTracker {
 
     const bindings = this.equipmentManager.getDataBindingsWithValues(equipmentId);
     const equipment = this.equipmentManager.getById(equipmentId);
-    // Spec 188 O9 — an order that never reached the wire changed nothing, and
-    // the ones this spec tracks are never replayed (a second impulse reverses
-    // a gate): a gate impulse, whatever the gate state, or a cover order the
-    // state could have proven, is not held at all. Its caller already got the
-    // dispatch error, and the integration's `order-fail` alarm stands. It is
-    // not surfaced as an outcome either: « no confirmation » would read as a
-    // command lost on the way, when it was never sent. Whatever was pending
-    // on the equipment — a tracked order still in its window, its alarm — is
-    // left exactly as it was, and so is any tracked order an exempt held one
-    // (a STOP) would otherwise replace.
-    const tracked = this.classify(equipment, alias, value, bindings, deviceIds, targets);
-    if (tracked || this.isGatePulse(equipment, value) || (previous && previous.kind !== "mirror")) {
+    // Spec 188 O9 — a gate impulse that never reached the wire changed
+    // nothing, and is never replayed (a second impulse reverses a gate): it is
+    // not held at all. Its caller already got the dispatch error, and the
+    // integration's `order-fail` alarm stands. It is not surfaced as an
+    // outcome either: « no confirmation » would read as a command lost on the
+    // way, when it was never sent. A cover OPEN / CLOSE is absolute: it is
+    // held and replayed like any other order, so a coop door still closes
+    // after a radio outage.
+    //
+    // A tracked order already on the equipment is left exactly as it was, its
+    // alarm included, while it is still inside its window, and always against
+    // an order that could neither confirm nor move the cover (a STOP). Past its
+    // window, a new OPEN / CLOSE takes over, as in spec 141: a stale entry must
+    // not block every later hold.
+    const mirror = bindings.find((b) => b.alias === alias);
+    const confirmable = mirror !== undefined && isConfirmableValue(value, mirror.enumValues);
+    const word = stateWord(value);
+    const coverMove = word === "OPEN" || word === "CLOSE";
+    if (
+      this.isGatePulse(equipment, value) ||
+      (previous &&
+        previous.kind !== "mirror" &&
+        (previous.timer !== null || (!confirmable && !coverMove)))
+    ) {
       this.logger.warn(
         { equipmentId, alias, value, error, integrationIds: unreachable },
         "Order could not be dispatched — not held: it is never replayed",
@@ -1195,13 +1283,37 @@ export class OrderConfirmationTracker {
       for (const id of unreachable) this.integrationRegistry.noteUnreachable(id);
       return;
     }
+    // A door OPEN / CLOSE the state can prove is held as what it is: a tracked
+    // order, confirmable by its end state, carrying the alarm standing on the
+    // equipment rather than releasing it. Its window opens on the replay.
+    const tracked = this.classify(equipment, alias, value, bindings, deviceIds, targets);
+    if (tracked?.kind === "end_state") {
+      if (previous) {
+        if (previous.timer) clearTimeout(previous.timer);
+        this.pending.delete(key);
+      }
+      if (tracked.atTarget) {
+        if (previous?.alarmRaised) this.resolveAlarm(previous, "state finally confirmed");
+        return;
+      }
+      this.holdTracked(tracked, {
+        equipmentId,
+        alias,
+        value,
+        previous,
+        deviceIds,
+        integrationIds,
+        source,
+        error,
+        unreachable,
+      });
+      return;
+    }
+
     if (previous) {
       if (previous.timer) clearTimeout(previous.timer);
       this.pending.delete(key);
     }
-
-    const mirror = bindings.find((b) => b.alias === alias);
-    const confirmable = mirror !== undefined && isConfirmableValue(value, mirror.enumValues);
 
     // Already in the ordered state: the command being lost changes nothing.
     if (confirmable && mirror && valuesMatch(value, mirror.value)) {
@@ -1251,6 +1363,57 @@ export class OrderConfirmationTracker {
     // No watchdog on the ordered value: nothing was sent, so there is no effect
     // to wait for. What is timed instead is how long the order stays held —
     // the alarm is for an integration that does not come back.
+    entry.timer = setTimeout(() => {
+      entry.timer = null;
+      this.markUnconfirmed(entry, "integration_disconnected");
+    }, DISCONNECTED_ALARM_GRACE_MS);
+  }
+
+  /** Spec 188 O9 — hold a door order that never reached its integration. */
+  private holdTracked(
+    tracked: Extract<TrackedKind, { kind: "end_state" }>,
+    ctx: {
+      equipmentId: string;
+      alias: string;
+      value: unknown;
+      previous: PendingOrder | undefined;
+      deviceIds: string[];
+      integrationIds: string[];
+      source: OrderSource | undefined;
+      error: string;
+      unreachable: string[];
+    },
+  ): void {
+    const { equipmentId, alias, value, previous, deviceIds, integrationIds, source } = ctx;
+    const entry: PendingOrder = {
+      equipmentId,
+      alias,
+      value,
+      orderedAt: Date.now(),
+      timer: null,
+      timeoutMs: Math.max(END_STATE_WINDOW_MS, this.confirmationTimeoutFor(deviceIds)),
+      unconfirmed: false,
+      alarmRaised: previous?.alarmRaised ?? false,
+      ...(previous?.alarmWording !== undefined ? { alarmWording: previous.alarmWording } : {}),
+      retried: false,
+      offlineAtDispatch: false,
+      redispatchTtlMs: DISCONNECTED_REDISPATCH_TTL_MS,
+      neverDispatched: true,
+      confirmable: true,
+      deviceIds,
+      integrationIds,
+      source,
+      kind: "end_state",
+      expected: tracked.expected,
+      ...(tracked.mirror ? { stateAlias: tracked.mirror.alias } : {}),
+      ...(tracked.deviceMirror ? { deviceMirror: tracked.deviceMirror } : {}),
+    };
+    this.pending.set(`${equipmentId}:${alias}`, entry);
+    this.logger.warn(
+      { equipmentId, alias, value, error: ctx.error, integrationIds: ctx.unreachable },
+      "Order could not be dispatched — holding it until the integration connects",
+    );
+    for (const id of ctx.unreachable) this.integrationRegistry.noteUnreachable(id);
     entry.timer = setTimeout(() => {
       entry.timer = null;
       this.markUnconfirmed(entry, "integration_disconnected");

@@ -233,9 +233,9 @@ function parseValue(json: string | null): unknown {
  * unconfirmed. A gate never reports `moving` or `fault` (cover statuses), and
  * would they come, they read as still waiting and not confirmed.
  */
-export type JournalOutcome = Exclude<OrderOutcomeStatus, "moving" | "fault">;
+export type JournalOutcome = Exclude<OrderOutcomeStatus, "moving" | "fault" | "stopped">;
 const journalOutcome = (s: OrderOutcomeStatus): JournalOutcome =>
-  s === "moving" ? "pending" : s === "fault" ? "unconfirmed" : s;
+  s === "moving" ? "pending" : s === "fault" || s === "stopped" ? "unconfirmed" : s;
 const JOURNAL_OUTCOMES = new Set<string>(["pending", "confirmed", "unconfirmed"]);
 const asJournalOutcome = (v: string | null): JournalOutcome | null =>
   v !== null && JOURNAL_OUTCOMES.has(v) ? (v as JournalOutcome) : null;

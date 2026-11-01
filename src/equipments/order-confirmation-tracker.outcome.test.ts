@@ -6,6 +6,7 @@ import {
   GATE_OPEN_WINDOW_MS,
   GATE_CLOSE_WINDOW_MS,
   END_STATE_WINDOW_MS,
+  RETRY_CHANNEL,
 } from "./order-confirmation-tracker.js";
 import type { EquipmentManager } from "./equipment-manager.js";
 import type { DeviceManager } from "../devices/device-manager.js";
@@ -43,6 +44,7 @@ describe("OrderConfirmationTracker — spec 188 outcomes", () => {
   let emitted: EngineEvent[];
   let equipmentType: string;
   let invertDirection: boolean;
+  let trackOrderOutcome: boolean | null;
   let bindings: Binding[];
   let orderBindings: { alias: string; deviceId: string; key: string }[];
   let deviceStatus: Record<string, "online" | "offline">;
@@ -51,7 +53,13 @@ describe("OrderConfirmationTracker — spec 188 outcomes", () => {
   let executeOrderCalls: unknown[];
 
   const equipmentManager = {
-    getById: (id: string) => ({ id, name: "Portail", type: equipmentType, invertDirection }),
+    getById: (id: string) => ({
+      id,
+      name: "Portail",
+      type: equipmentType,
+      invertDirection,
+      trackOrderOutcome,
+    }),
     getDataBindingsWithValues: () => bindings,
     getOrderBindingsWithDetails: () => orderBindings,
     executeOrder: vi.fn(async (...args: unknown[]) => {
@@ -137,7 +145,8 @@ describe("OrderConfirmationTracker — spec 188 outcomes", () => {
   }
 
   function coop(door: string, pos: number | null = null): void {
-    equipmentType = "shutter";
+    // Spec 190 — the coop is a door, followed by default (O10).
+    equipmentType = "door";
     bindings = [
       { alias: "door", value: door, deviceId: "coop", key: "door", type: "enum" },
       { alias: "position", value: pos, deviceId: "coop", key: "pos", type: "number" },
@@ -154,6 +163,7 @@ describe("OrderConfirmationTracker — spec 188 outcomes", () => {
     deviceStatus = {};
     deviceData = {};
     invertDirection = false;
+    trackOrderOutcome = null;
     integrationStatus = "connected";
     executeOrderCalls = [];
     eventBus.on((e) => emitted.push(e));
@@ -175,6 +185,106 @@ describe("OrderConfirmationTracker — spec 188 outcomes", () => {
   });
 
   // ── transition (O2) ─────────────────────────────────────────
+
+  // ── O10 — which equipments are followed ─────────────────────
+
+  describe("per-equipment switch (O10)", () => {
+    it("a shutter speaking the end-state words is not followed by default", () => {
+      coop("OPEN", 100);
+      equipmentType = "shutter";
+      deviceReport("coop", "door", "CLOSED");
+      deviceReport("coop", "door", "OPEN");
+      order("state", "CLOSE");
+      vi.advanceTimersByTime(END_STATE_WINDOW_MS * 2);
+      expect(outcomes()).toHaveLength(0);
+      expect(alarmsRaised()).toHaveLength(0);
+    });
+
+    it("a shutter the admin switched on is followed", () => {
+      coop("OPEN", 100);
+      equipmentType = "shutter";
+      trackOrderOutcome = true;
+      deviceReport("coop", "door", "CLOSED");
+      deviceReport("coop", "door", "OPEN");
+      order("state", "CLOSE");
+      expect(statuses()).toEqual(["pending"]);
+    });
+
+    it("a gate the admin switched off is not followed", () => {
+      gate(true);
+      trackOrderOutcome = false;
+      order("command", "pulse");
+      vi.advanceTimersByTime(GATE_CLOSE_WINDOW_MS * 2);
+      expect(outcomes()).toHaveLength(0);
+      expect(alarmsRaised()).toHaveLength(0);
+    });
+
+    it("a door switched off is not followed", () => {
+      coop("OPEN", 100);
+      trackOrderOutcome = false;
+      deviceReport("coop", "door", "CLOSED");
+      deviceReport("coop", "door", "OPEN");
+      order("state", "CLOSE");
+      expect(outcomes()).toHaveLength(0);
+    });
+  });
+
+  // ── O2 — a flip landing before equipment.order.executed ─────
+
+  describe("flip during the dispatch", () => {
+    it("a gate that flipped while the order was being dispatched is confirmed at once", () => {
+      gate(true);
+      equipmentData("closed", true); // seen closed before the press
+      const startedAt = Date.now();
+      vi.advanceTimersByTime(1_000);
+      equipmentData("closed", false); // the impulse worked during the 2 s retry
+      eventBus.emit({
+        type: "equipment.order.executed",
+        equipmentId: "eq-1",
+        orderAlias: "command",
+        value: "pulse",
+        source: { kind: "manual", userId: "u1" },
+        startedAt,
+      });
+      expect(outcomes().map((o) => [o.status, o.expected])).toEqual([["confirmed", "open"]]);
+      vi.advanceTimersByTime(GATE_CLOSE_WINDOW_MS * 2);
+      expect(alarmsRaised()).toHaveLength(0);
+    });
+
+    it("an unchanged heartbeat during the dispatch is no flip", () => {
+      gate(true);
+      equipmentData("closed", true);
+      const startedAt = Date.now();
+      vi.advanceTimersByTime(1_000);
+      equipmentData("closed", true); // the same value again: not a movement
+      eventBus.emit({
+        type: "equipment.order.executed",
+        equipmentId: "eq-1",
+        orderAlias: "command",
+        value: "pulse",
+        source: { kind: "manual", userId: "u1" },
+        startedAt,
+      });
+      expect(outcomes().map((o) => [o.status, o.expected])).toEqual([["pending", "open"]]);
+      vi.advanceTimersByTime(GATE_OPEN_WINDOW_MS);
+      expect(alarmsRaised()).toHaveLength(1);
+    });
+
+    it("a reading older than the dispatch does not count as the flip", () => {
+      gate(true);
+      equipmentData("closed", true); // a heartbeat before the press
+      vi.advanceTimersByTime(1_000);
+      eventBus.emit({
+        type: "equipment.order.executed",
+        equipmentId: "eq-1",
+        orderAlias: "command",
+        value: "pulse",
+        source: { kind: "manual", userId: "u1" },
+        startedAt: Date.now(),
+      });
+      expect(outcomes().map((o) => [o.status, o.expected])).toEqual([["pending", "open"]]);
+    });
+  });
 
   describe("gate impulse", () => {
     it("closed gate opening 2 s after the pulse: pending then confirmed, expected open, no alarm", () => {
@@ -498,7 +608,9 @@ describe("OrderConfirmationTracker — spec 188 outcomes", () => {
       expect(outcomes()).toHaveLength(0);
     });
 
-    it("a coop CLOSE while the integration is down is not replayed either", () => {
+    // O9 as amended — a cover OPEN / CLOSE is absolute, so it keeps the single
+    // replay: a radio outage at sunset must not leave the coop open all night.
+    it("a coop CLOSE while the integration is down is held and replayed once", () => {
       coop("OPEN", 100);
       deviceReport("coop", "door", "CLOSED");
       deviceReport("coop", "door", "OPEN");
@@ -510,7 +622,136 @@ describe("OrderConfirmationTracker — spec 188 outcomes", () => {
         value: "CLOSE",
         error: "integration disconnected",
       });
+      integrationStatus = "connected";
       eventBus.emit({ type: "system.integration.connected", integrationId: "lora" });
+      expect(executeOrderCalls).toHaveLength(1);
+      expect(executeOrderCalls[0]).toEqual(["eq-1", "state", "CLOSE", expect.anything()]);
+      eventBus.emit({ type: "system.integration.connected", integrationId: "lora" });
+      expect(executeOrderCalls).toHaveLength(1);
+    });
+
+    it("an unconfirmed coop CLOSE is re-dispatched once when the coop comes back online", () => {
+      coop("OPEN", 100);
+      deviceReport("coop", "door", "CLOSED");
+      deviceReport("coop", "door", "OPEN");
+      order("state", "CLOSE");
+      vi.advanceTimersByTime(END_STATE_WINDOW_MS);
+      const online = () =>
+        eventBus.emit({
+          type: "device.status_changed",
+          deviceId: "coop",
+          deviceName: "coop",
+          status: "online",
+        });
+      online();
+      online();
+      expect(executeOrderCalls).toHaveLength(1);
+    });
+
+    it("a door CLOSE lost to an outage is held as tracked: alarm kept, fresh window on the replay", () => {
+      coop("OPEN", 100);
+      deviceReport("coop", "door", "CLOSED");
+      deviceReport("coop", "door", "OPEN");
+      order("state", "CLOSE");
+      deviceReport("coop", "door", "UNKNOWN"); // stopped half way
+      vi.advanceTimersByTime(END_STATE_WINDOW_MS); // unconfirmed, alarm standing
+      expect(alarmsRaised()).toHaveLength(1);
+
+      integrationStatus = "disconnected";
+      eventBus.emit({
+        type: "equipment.order.failed",
+        equipmentId: "eq-1",
+        orderAlias: "state",
+        value: "CLOSE",
+        error: "integration disconnected",
+      });
+      expect(alarmsResolved()).toHaveLength(0); // the stale order's alarm is carried, not released
+
+      integrationStatus = "connected";
+      eventBus.emit({ type: "system.integration.connected", integrationId: "lora" });
+      expect(executeOrderCalls).toHaveLength(1);
+      expect(executeOrderCalls[0]).toEqual(["eq-1", "state", "CLOSE", expect.anything()]);
+
+      // The replay goes through executeOrder, which reports it executed.
+      eventBus.emit({
+        type: "equipment.order.executed",
+        equipmentId: "eq-1",
+        orderAlias: "state",
+        value: "CLOSE",
+        source: { kind: "external", channel: RETRY_CHANNEL },
+      });
+      expect(statuses().slice(-1)).toEqual(["pending"]);
+      deviceReport("coop", "door", "CLOSING");
+      deviceReport("coop", "door", "CLOSED");
+      expect(statuses().slice(-2)).toEqual(["moving", "confirmed"]);
+      expect(alarmsResolved()).toHaveLength(1);
+    });
+
+    it("a STOP sent after a held door CLOSE cancels it: no replay undoes the STOP", () => {
+      coop("OPEN", 100);
+      deviceReport("coop", "door", "CLOSED");
+      deviceReport("coop", "door", "OPEN");
+      integrationStatus = "disconnected";
+      eventBus.emit({
+        type: "equipment.order.failed",
+        equipmentId: "eq-1",
+        orderAlias: "state",
+        value: "CLOSE",
+        error: "integration disconnected",
+      });
+      integrationStatus = "connected";
+      order("state", "STOP"); // went out before the connect sweep
+      eventBus.emit({ type: "system.integration.connected", integrationId: "lora" });
+      expect(executeOrderCalls).toHaveLength(0);
+    });
+
+    it("a held door order's alarm says the integration was unreachable, not unconfirmed", () => {
+      coop("OPEN", 100);
+      deviceReport("coop", "door", "CLOSED");
+      deviceReport("coop", "door", "OPEN");
+      integrationStatus = "disconnected";
+      eventBus.emit({
+        type: "equipment.order.failed",
+        equipmentId: "eq-1",
+        orderAlias: "state",
+        value: "CLOSE",
+        error: "integration disconnected",
+      });
+      vi.advanceTimersByTime(120_000);
+      const alarm = alarmsRaised()[0] as { messageKey?: string; message: string };
+      expect(alarm.messageKey).toBeUndefined();
+      expect(alarm.message).toContain("integration unreachable");
+    });
+
+    it("a held door order shows no line while it waits", () => {
+      coop("OPEN", 100);
+      deviceReport("coop", "door", "CLOSED");
+      deviceReport("coop", "door", "OPEN");
+      integrationStatus = "disconnected";
+      eventBus.emit({
+        type: "equipment.order.failed",
+        equipmentId: "eq-1",
+        orderAlias: "state",
+        value: "CLOSE",
+        error: "integration disconnected",
+      });
+      vi.advanceTimersByTime(120_000);
+      expect(outcomes()).toHaveLength(0);
+    });
+
+    it("a coop that answered FAULT is not re-dispatched", () => {
+      coop("OPEN", 100);
+      deviceReport("coop", "door", "CLOSED");
+      deviceReport("coop", "door", "OPEN");
+      order("state", "CLOSE");
+      deviceReport("coop", "door", "FAULT");
+      vi.advanceTimersByTime(END_STATE_WINDOW_MS);
+      eventBus.emit({
+        type: "device.status_changed",
+        deviceId: "coop",
+        deviceName: "coop",
+        status: "online",
+      });
       expect(executeOrderCalls).toHaveLength(0);
     });
   });
@@ -559,16 +800,16 @@ describe("OrderConfirmationTracker — spec 188 outcomes", () => {
       expect(alarmsRaised()).toHaveLength(0);
     });
 
-    it("a STOP while the coop door travels ends its CLOSE as unconfirmed at once, without an alarm", () => {
+    it("a STOP while the coop door travels ends its CLOSE as stopped at once, without an alarm", () => {
       coop("OPEN", 100);
       deviceReport("coop", "door", "CLOSED");
       deviceReport("coop", "door", "OPEN");
       order("state", "CLOSE");
       deviceReport("coop", "door", "CLOSING");
       order("state", "STOP");
-      expect(statuses()).toEqual(["pending", "moving", "unconfirmed"]);
+      expect(statuses()).toEqual(["pending", "moving", "stopped"]);
       vi.advanceTimersByTime(END_STATE_WINDOW_MS * 2);
-      expect(statuses()).toEqual(["pending", "moving", "unconfirmed"]);
+      expect(statuses()).toEqual(["pending", "moving", "stopped"]);
       expect(alarmsRaised()).toHaveLength(0);
     });
   });
