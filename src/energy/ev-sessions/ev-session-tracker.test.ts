@@ -680,6 +680,104 @@ describe("metered charger (spec 193)", () => {
     expect(tracker.currentForVehicle("megane").map((x) => x.chargerId)).toContain("charger");
   });
 
+  it("counts a charging report the car made just before the session opened (#1105)", async () => {
+    // The car dates its report at 3 min before the first 500 W reading, and
+    // its plugin never publishes it again.
+    eqs.set("megane", "reported_at", new Date(now - 3 * MIN).toISOString());
+    eqs.set("megane", "charging_state", "charging");
+    meter(60, 3000);
+    meter(31, 0);
+    now += GRACE_MS;
+    tracker.tick();
+    expect(legrand()[0]).toMatchObject({ vehicleId: "megane", attributionReason: "single-match" });
+  });
+
+  /** A Renault-style report: its own time, then the value, in one burst. */
+  async function report(car: string, state: string, atMs: number) {
+    data(car, "reported_at", new Date(atMs).toISOString());
+    data(car, "charging_state", state);
+    await flush();
+  }
+
+  it("does not lend a car's report to the next charger when two cars come home (#1105)", async () => {
+    data("charger", "vehicle", "charging");
+    now += MIN;
+    const meganeAt = now;
+    await report("megane", "charging", meganeAt);
+    let rafaleAt = 0;
+    for (let i = 0; i < 60; i++) {
+      data("charger", "power", 2000);
+      if (i >= 4) data("legrand", "power", 3000);
+      if (i === 5) {
+        rafaleAt = now;
+        await report("rafale", "charging", rafaleAt);
+      }
+      if (i % 10 === 0) await report("megane", "charging", meganeAt); // repeats, same time
+      if (i > 5 && i % 10 === 0) await report("rafale", "charging", rafaleAt);
+      data("grid", "energy", 100);
+      tracker.tick();
+      now += MIN;
+    }
+    const ids = (v: string) => tracker.currentForVehicle(v).map((x) => x.chargerId);
+    expect(ids("megane")).toEqual(["charger"]);
+    expect(ids("rafale")).toEqual(["legrand"]);
+    data("charger", "vehicle", "disconnected");
+    meter(31, 0);
+    now += GRACE_MS;
+    tracker.tick();
+    expect(sessions()[0]).toMatchObject({ vehicleId: "megane", attributionReason: "single-match" });
+    expect(legrand()[0]).toMatchObject({ vehicleId: "rafale", attributionReason: "single-match" });
+  });
+
+  it("does not lend the previous car's report to the next session on a charger (#1105)", async () => {
+    data("charger", "vehicle", "charging");
+    run(30, 3000, 3000);
+    await report("megane", "charging", now);
+    run(2, 3000, 3000);
+    data("charger", "vehicle", "disconnected");
+    now += 8 * MIN;
+    data("charger", "vehicle", "charging");
+    await report("rafale", "charging", now);
+    run(30, 3000, 3000);
+    data("charger", "vehicle", "disconnected");
+    now += GRACE_MS;
+    tracker.tick();
+    const list = sessions().sort((a, b) => a.startedAt.localeCompare(b.startedAt));
+    expect(list.map((x) => x.vehicleId)).toEqual(["megane", "rafale"]);
+  });
+
+  it("does not read a car that charges away from home (#1105)", () => {
+    eqs.set("megane", "at_home", false, now - H);
+    eqs.set("megane", "charging_state", "charging", now - 5 * MIN);
+    meter(60, 3000);
+    meter(31, 0);
+    now += GRACE_MS;
+    tracker.tick();
+    expect(legrand()[0]).toMatchObject({ attribution: "unattributed" });
+  });
+
+  it("reads what a car reported while Sowel was down (#1105)", () => {
+    meter(10, 3000);
+    tracker.stop();
+    eqs.set("megane", "charging_state", "charging", now);
+    tracker = makeTracker();
+    meter(50, 3000);
+    meter(31, 0);
+    now += GRACE_MS;
+    tracker.tick();
+    expect(legrand()[0]).toMatchObject({ vehicleId: "megane" });
+  });
+
+  it("does not count a charging state reported long before the session opened", async () => {
+    eqs.set("megane", "reported_at", new Date(now - 3 * H).toISOString(), now - 3 * H);
+    eqs.set("megane", "charging_state", "charging", now - 3 * H);
+    meter(60, 3000);
+    meter(31, 0);
+    now += GRACE_MS;
+    tracker.tick();
+    expect(legrand()[0]).toMatchObject({ attribution: "unattributed" });
+  });
+
   it("shows each car its own session in progress", async () => {
     setUsual("legrand", "megane");
     data("charger", "vehicle", "charging");

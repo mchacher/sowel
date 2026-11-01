@@ -14,7 +14,7 @@ const H = 3_600_000;
 function fold(
   vehicleId: string,
   reports: Array<[ReportAlias, unknown, number]>,
-  session: { startMs: number; endMs: number | null } = { startMs: START, endMs: END },
+  session: Parameters<typeof foldReport>[2] = { startMs: START, endMs: END },
 ): VehicleEvidence {
   return reports.reduce(
     (ev, [alias, value, at]) =>
@@ -199,5 +199,35 @@ describe("foldReport", () => {
       { startMs: START, endMs: END },
     );
     expect(again).toBe(ev);
+  });
+
+  it("counts a charging or plugged report from the slack the tracker allows (#1105)", () => {
+    const session = { startMs: START, endMs: END, positiveFromMs: START - 15 * 60_000 };
+    const ev = fold(
+      "a",
+      [
+        ["charging_state", "charging", START - 3 * 60_000],
+        ["plugged", true, START - 10 * 60_000],
+      ],
+      session,
+    );
+    expect(ev).toMatchObject({ chargingSeen: true, pluggedSeen: true });
+    expect(
+      fold("a", [["charging_state", "charging", START - 20 * 60_000]], session).chargingSeen,
+    ).toBe(false);
+    // Without a slack from the tracker, the start is strict.
+    expect(fold("a", [["charging_state", "charging", START - 60_000]]).chargingSeen).toBe(false);
+  });
+
+  it("keeps the strict start for being away and the battery (#1105)", () => {
+    const ev = fold(
+      "a",
+      [
+        ["at_home", false, START - 5 * 60_000],
+        ["battery_level", 30, START - 5 * 60_000],
+      ],
+      { startMs: START, endMs: END, positiveFromMs: START - 15 * 60_000 },
+    );
+    expect(ev).toMatchObject({ awaySeen: false, firstBattery: null });
   });
 });
