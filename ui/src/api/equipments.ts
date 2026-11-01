@@ -59,6 +59,8 @@ export async function updateEquipment(
     meteringParentId?: string | null;
     /** Spec 179 — this meter is fed by a separate supply. */
     separateSupply?: boolean;
+    /** Spec 191 — this electric vehicle is a plug-in hybrid. */
+    plugInHybrid?: boolean;
     /** Spec 174 phase 2 — the timed command this equipment offers; null clears it. */
     timedCommand?: TimedCommand | null;
   },

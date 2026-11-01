@@ -149,6 +149,8 @@ Quand au moins un sous-compteur est configuré, un bouton **Total / Par usage** 
 
 Les sous-compteurs utilisent une palette de couleurs déterministe afin qu'un même circuit garde la même couleur d'un jour à l'autre. La pile "Autre" est bornée à zéro, donc un sous-compteur qui dépasserait brièvement le compteur principal (à cause d'un décalage d'échantillonnage) ne peut pas la rendre négative.
 
+En €, chaque sous-compteur est valorisé au prix moyen de la période. Une borne de recharge est l'exception à connaître : elle charge surtout en heures creuses ou sur le surplus solaire, son coût réel est donc plus bas. Son coût exact, réparti heures pleines / heures creuses / solaire et par voiture, est sur les fiches de la borne et de la voiture ([recharges](equipments.md#recharges-et-cout-par-voiture)).
+
 ##### Quand un compteur en alimente un autre
 
 Les tableaux électriques s'emboîtent : un gîte mesuré par une pince, et son chauffe-eau — alimenté depuis ce même tableau — par une seconde. Les deux sont des sous-compteurs, donc sans rien faire les kilowattheures du chauffe-eau seraient comptés deux fois, une par pile, et le résidu "Autre" en perdrait tout autant.

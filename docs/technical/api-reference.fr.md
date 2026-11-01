@@ -355,6 +355,22 @@ Le `PUT` n'a pas besoin de sa propre vérification admin : il est absent de la l
 
 ---
 
+## Recharges de véhicules électriques
+
+Spec 191. Une recharge par branchement sur une `ev_charger`, avec son énergie répartie en réseau heures pleines, réseau heures creuses et solaire (la voiture passe après la maison), son coût figé aux prix de chaque tranche de 5 minutes, et le véhicule auquel elle appartient. Tout rôle authentifié peut lire, et choisir l'attribution.
+
+| Méthode | Chemin                                | Description                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                           |
+| ------- | ------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `GET`   | `/api/v1/ev-sessions`                 | Les recharges d'un mois, de la plus récente à la plus ancienne. Paramètres : exactement un de `chargerId` (toutes les recharges de la borne) ou `vehicleId` (celles attribuées à la voiture), et `month=YYYY-MM` (local, ce mois par défaut). Renvoie `{ sessions: EvChargeSession[] }` : énergie, `gridHpWh` / `gridHcWh` / `solarWh`, `costHpEur` / `costHcEur` / `costEur` (`null` sans tarif), `attribution` (`pending`, `vehicle`, `unattributed`, `other`), `attributionSource` (`auto`, `manual`), `attributionReason`, et `candidates` (ce que chaque voiture a remonté pendant la recharge). |
+| `GET`   | `/api/v1/ev-sessions/summary`         | Le mois d'une voiture : `vehicleId` (obligatoire), `month`. Totaux et répartition, `homePriceEurPerKwh`, `kWhPer100km` (mesurée), `eurPer100km`, ou `eurPer100kmUnavailable` (`plug-in-hybrid`, `no-home-session`, `not-learned`, `too-few-km`).                                                                                                                                                                                                                                                                                                                                                      |
+| `PUT`   | `/api/v1/ev-sessions/:id/attribution` | Corps `{ "target": "vehicle", "vehicleId": "…" }`, `{ "target": "other" }` (un invité) ou `{ "target": "unattributed" }`. Définitif : l'attribution automatique ne le change plus. Ouvert aux utilisateurs `standard` (liste autorisée). 400 pour un véhicule qui n'est pas un `electric_vehicle`, 404 pour une recharge inconnue.                                                                                                                                                                                                                                                                    |
+
+Une voiture est déclarée hybride rechargeable (pas de coût aux 100 km) par `PUT /api/v1/equipments/:id` avec `{ "plugInHybrid": true }` (admin).
+
+Mises à jour en direct sur le topic WebSocket `energy` : `energy.ev_session.updated` (`{ session }`, au plus une fois par tranche de 5 minutes et par recharge en cours, puis à la fin et à l'attribution) et `energy.ev_session.deleted` (`{ sessionId, chargerId }`, une recharge de moins de 0,1 kWh supprimée à la fin).
+
+---
+
 ## History
 
 | Method | Path                                               | Description                                                                                                                    |
@@ -690,7 +706,7 @@ Envoyez un message JSON pour vous abonner à des topics supplémentaires :
 { "type": "subscribe", "topics": ["devices", "equipments", "zones", "modes", "recipes"] }
 ```
 
-**Topics disponibles** : `devices`, `equipments`, `zones`, `modes`, `recipes`, `calendar`, `mqtt-publishers`, `system`, `logs`, `activity`.
+**Topics disponibles** : `devices`, `equipments`, `zones`, `modes`, `recipes`, `calendar`, `mqtt-publishers`, `system`, `logs`, `activity`, `energy`.
 
 Le topic `system` est toujours inclus, indépendamment de l'abonnement.
 

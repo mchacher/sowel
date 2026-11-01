@@ -60,6 +60,7 @@ import { registerLogRoutes } from "./routes/logs.js";
 import { registerActivityRoutes } from "./routes/activity.js";
 import { registerHistoryRoutes } from "./routes/history.js";
 import { registerEnergyRoutes } from "./routes/energy.js";
+import { registerEvSessionRoutes } from "./routes/ev-sessions.js";
 import { registerChartRoutes } from "./routes/charts.js";
 import { registerMqttBrokerRoutes } from "./routes/mqtt-brokers.js";
 import { registerMqttPublisherRoutes } from "./routes/mqtt-publishers.js";
@@ -112,6 +113,8 @@ interface ServerDeps {
   // Spec 158 — arbiter daily metrics, read-only surface. Null in tests that
   // do not exercise it.
   arbiterMetricsStore: import("../energy/arbiter-metrics-store.js").ArbiterMetricsStore | null;
+  /** Spec 191 — EV charge sessions. Absent in harnesses that do not exercise them. */
+  evSessionTracker?: import("../energy/ev-sessions/ev-session-tracker.js").EvSessionTracker;
   pvForecaster: PvForecaster | null;
   backupManager: BackupManager;
   versionChecker: import("../core/version-checker.js").VersionChecker;
@@ -378,6 +381,9 @@ export async function createServer(deps: ServerDeps) {
     arbiterMetricsStore,
     logger,
   });
+  if (deps.evSessionTracker) {
+    registerEvSessionRoutes(app, { evSessionTracker: deps.evSessionTracker, logger });
+  }
   registerDashboardRoutes(app, { db, recipeManager });
   registerPluginRoutes(app, {
     packageManager,

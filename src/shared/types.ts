@@ -426,6 +426,9 @@ export interface Equipment {
    *  live donut, `other` residual, cost attribution) may count it. It is still
    *  a real measurement — historised and rendered apart. Default `false`. */
   separateSupply?: boolean;
+  /** Spec 191 — an electric vehicle that also runs on fuel: its cost per
+   *  100 km is not shown (part of its km are not electric). Default `false`. */
+  plugInHybrid?: boolean;
   /** Spec 160 — declared array geometry. Presence enables the PV production
    *  forecast; absence leaves the equipment untouched. */
   solarProfile?: SolarProfile;
@@ -1852,6 +1855,9 @@ export type EngineEvent =
       equipmentId: string | null;
       reason: SharedAccessRefusal;
     }
+  // Spec 191 — EV charge sessions (topic `energy`)
+  | { type: "energy.ev_session.updated"; session: EvChargeSession }
+  | { type: "energy.ev_session.deleted"; sessionId: string; chargerId: string }
   // Sunlight events
   | { type: "sunlight.changed" }
   // MQTT Broker events
@@ -2451,4 +2457,82 @@ export interface TariffConfig {
 export interface TariffSplit {
   hp: number; // Wh attributed to HP
   hc: number; // Wh attributed to HC
+}
+
+// ============================================================
+// Spec 191 — EV charge sessions
+// ============================================================
+
+/** Who a session belongs to: still identifying, a vehicle, nobody sure, a guest. */
+export type EvSessionAttribution = "pending" | "vehicle" | "unattributed" | "other";
+
+/** Why Sowel decided as it did (automatic attribution only). */
+export type EvSessionAttributionReason =
+  "single-match" | "only-vehicle" | "no-match" | "several-matches";
+
+/** One plug-in on one charger, with its energy split and its frozen cost. */
+export interface EvChargeSession {
+  id: string;
+  chargerId: string;
+  chargerName: string;
+  startedAt: string;
+  /** Null while the car is plugged. */
+  endedAt: string | null;
+  /** Automatic attribution is decided at this time (end + 2 h). */
+  graceUntil: string | null;
+  /** Energy the charger measured (Wh). */
+  energyWh: number;
+  gridHpWh: number;
+  gridHcWh: number;
+  solarWh: number;
+  /** € per part; null when no tariff was configured. */
+  costHpEur: number | null;
+  costHcEur: number | null;
+  costEur: number | null;
+  vehicleId: string | null;
+  vehicleName: string | null;
+  /** The vehicle was deleted since: the session keeps its name, counts nowhere. */
+  vehicleDeleted: boolean;
+  attribution: EvSessionAttribution;
+  /** `manual` is final: automatic attribution never changes it. */
+  attributionSource: "auto" | "manual" | null;
+  attributionReason: EvSessionAttributionReason | null;
+  /** Battery level at the start / highest seen, when the car reported it. */
+  batteryStart: number | null;
+  batteryEnd: number | null;
+  /** What each vehicle reported during the session, to help a person choose. */
+  candidates: EvSessionCandidate[];
+  updatedAt: string;
+}
+
+export interface EvSessionCandidate {
+  vehicleId: string;
+  chargingSeen: boolean;
+  batteryFrom: number | null;
+  batteryTo: number | null;
+}
+
+/** Why a vehicle's cost per 100 km cannot be shown this month. */
+export type EvPer100kmUnavailable =
+  "plug-in-hybrid" | "no-home-session" | "not-learned" | "too-few-km";
+
+/** A vehicle's home charging for one local month (spec 191 FR5). */
+export interface EvVehicleMonthSummary {
+  vehicleId: string;
+  /** `YYYY-MM`, local time. */
+  month: string;
+  sessions: number;
+  energyWh: number;
+  gridHpWh: number;
+  gridHcWh: number;
+  solarWh: number;
+  costHpEur: number | null;
+  costHcEur: number | null;
+  costEur: number | null;
+  /** Home cost ÷ home energy (solar included). */
+  homePriceEurPerKwh: number | null;
+  /** Measured consumption at the wall. */
+  kWhPer100km: number | null;
+  eurPer100km: number | null;
+  eurPer100kmUnavailable: EvPer100kmUnavailable | null;
 }

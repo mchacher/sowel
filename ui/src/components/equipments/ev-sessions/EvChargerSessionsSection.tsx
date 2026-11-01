@@ -1,0 +1,168 @@
+import { useEffect, useMemo, useState } from "react";
+import { useTranslation } from "react-i18next";
+import { getEvSessions } from "../../../api";
+import { useWsSubscription } from "../../../hooks/useWsSubscription";
+import { dateLocale } from "../../../lib/locale";
+import { useEquipments } from "../../../store/useEquipments";
+import { useEvSessions } from "../../../store/useEvSessions";
+import type { EvChargeSession } from "../../../types";
+import { formatEur } from "../../energy/format";
+import { EvMonthNav } from "./EvMonthNav";
+import { EvReassignSheet } from "./EvReassignSheet";
+import { dayLabel, kwh, monthOf, sessionChip, timeLabel } from "./evSessionsDisplay";
+
+/**
+ * Spec 191 FR7 — every session of a charger with the vehicle it belongs to.
+ * Any row opens the reassignment sheet; every role may use it (P8).
+ */
+export function EvChargerSessionsSection({ chargerId }: { chargerId: string }) {
+  const { t, i18n } = useTranslation();
+  const locale = dateLocale(i18n.language);
+  const rev = useEvSessions((s) => s.rev);
+  const equipments = useEquipments((s) => s.equipments);
+  useWsSubscription(["equipments", "energy"]);
+
+  const [month, setMonth] = useState(() => monthOf(new Date()));
+  const [sessions, setSessions] = useState<EvChargeSession[]>([]);
+  const [editing, setEditing] = useState<EvChargeSession | null>(null);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    let cancelled = false;
+    getEvSessions({ chargerId }, month)
+      .then((list) => {
+        if (cancelled) return;
+        setSessions(list);
+        setError(null);
+      })
+      .catch((err) => {
+        if (!cancelled) setError(err instanceof Error ? err.message : String(err));
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [chargerId, month, rev]);
+
+  const vehicles = useMemo(
+    () =>
+      equipments
+        .filter((e) => e.type === "electric_vehicle")
+        .map((e) => ({ id: e.id, name: e.name }))
+        .sort((a, b) => a.name.localeCompare(b.name)),
+    [equipments],
+  );
+  const todo = sessions.filter((s) => s.attribution === "unattributed").length;
+  const eur = (v: number | null) => (v === null ? "—" : formatEur(v, locale));
+
+  return (
+    <div className="bg-surface rounded-[10px] border border-border p-4 mb-6 flex flex-col gap-3">
+      <div className="flex items-center justify-between gap-2">
+        <h3 className="text-[14px] font-semibold text-text">
+          {t("equipments.evSessions.sessions")}
+        </h3>
+        <EvMonthNav month={month} onChange={setMonth} />
+      </div>
+
+      {error && <p className="text-[12px] text-error">{error}</p>}
+
+      {todo > 0 && (
+        <div className="flex items-center gap-2 bg-accent-light rounded-[8px] px-3 py-2.5 text-[13px] text-text">
+          <span className="w-2 h-2 rounded-full bg-accent-hover shrink-0" />
+          {t("equipments.evSessions.todoBanner", { count: todo })}
+        </div>
+      )}
+
+      {sessions.length === 0 ? (
+        <p className="text-[13px] text-text-tertiary">{t("equipments.evSessions.emptyCharger")}</p>
+      ) : (
+        <div className="flex flex-col border-t border-border-light">
+          {sessions.map((s) => {
+            const chip = sessionChip(s);
+            const solarPct = s.energyWh > 0 ? Math.round((s.solarWh / s.energyWh) * 100) : 0;
+            const chipClass =
+              chip.kind === "vehicle"
+                ? "bg-primary-light text-primary"
+                : chip.kind === "todo"
+                  ? "bg-accent-light text-text"
+                  : "bg-border-light text-text-secondary";
+            const chipText =
+              chip.kind === "vehicle"
+                ? chip.deleted
+                  ? t("equipments.evSessions.chip.deleted", { name: chip.name })
+                  : chip.name
+                : t(`equipments.evSessions.chip.${chip.kind}`);
+            const how =
+              s.attributionSource === "manual"
+                ? t("equipments.evSessions.how.manual")
+                : s.attribution === "unattributed" && s.attributionReason
+                  ? t(`equipments.evSessions.reason.${s.attributionReason}`)
+                  : s.attributionSource === "auto"
+                    ? t("equipments.evSessions.how.auto")
+                    : t("equipments.evSessions.solarShare", { pct: solarPct });
+            return (
+              <div key={s.id} className="flex flex-col gap-1.5 py-2.5 border-b border-border-light">
+                <button
+                  type="button"
+                  onClick={() => setEditing(s)}
+                  className="flex flex-col gap-1.5 text-left cursor-pointer rounded-[6px] hover:bg-border-light/50 -mx-1 px-1"
+                  aria-label={t("equipments.evSessions.edit", {
+                    day: dayLabel(s.startedAt, locale),
+                  })}
+                >
+                  <div className="flex justify-between gap-3 w-full">
+                    <span className="text-[14px] font-medium text-text">
+                      {dayLabel(s.startedAt, locale)}{" "}
+                      <span className="font-normal text-text-tertiary">
+                        · {timeLabel(s.startedAt, locale)} →{" "}
+                        {s.endedAt
+                          ? timeLabel(s.endedAt, locale)
+                          : t("equipments.evSessions.inProgress")}
+                      </span>
+                    </span>
+                    <span className="font-mono text-[14px] font-semibold text-text tabular-nums whitespace-nowrap">
+                      {eur(s.costEur)}
+                    </span>
+                  </div>
+                  <div className="flex items-center justify-between gap-2 w-full">
+                    <div className="flex items-center gap-2 min-w-0">
+                      <span
+                        className={`text-[12px] font-medium px-2.5 py-0.5 rounded-full whitespace-nowrap ${chipClass}`}
+                      >
+                        {chipText}
+                      </span>
+                      <span className="text-[12px] text-text-tertiary truncate">{how}</span>
+                    </div>
+                    <span className="font-mono text-[12px] text-text-secondary tabular-nums whitespace-nowrap">
+                      {kwh(s.energyWh, locale)} kWh
+                    </span>
+                  </div>
+                </button>
+                {chip.kind === "todo" && (
+                  <button
+                    type="button"
+                    onClick={() => setEditing(s)}
+                    className="self-start min-h-[44px] px-4 rounded-[8px] border border-primary text-primary text-[13px] font-medium hover:bg-primary-light cursor-pointer"
+                  >
+                    {t("equipments.evSessions.choose")}
+                  </button>
+                )}
+              </div>
+            );
+          })}
+        </div>
+      )}
+
+      {editing && (
+        <EvReassignSheet
+          session={editing}
+          vehicles={vehicles}
+          onClose={() => setEditing(null)}
+          onSaved={(updated) => {
+            setSessions((list) => list.map((s) => (s.id === updated.id ? updated : s)));
+            setEditing(null);
+          }}
+        />
+      )}
+    </div>
+  );
+}

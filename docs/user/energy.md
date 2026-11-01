@@ -147,6 +147,8 @@ When at least one submeter is configured, a **Total / By usage** toggle appears 
 
 Submeters use a deterministic color palette so the same circuit keeps the same color across days and views. The "Other" stack is clamped at zero, so a submeter that briefly overshoots the main meter (due to sampling skew) cannot make it negative.
 
+In €, every submeter is valued at the period's average price. An EV charger is the exception worth knowing: it charges mostly off-peak or on solar surplus, so its real cost is lower. Its exact cost, split peak / off-peak / solar and per car, is on the charger's and the vehicle's pages ([charging sessions](equipments.md#charging-sessions-and-cost-per-vehicle)).
+
 ##### When one meter is fed from another
 
 Switchboards nest: a gîte measured by one clamp, and its water heater — fed from that same board — by a second one. Both are submeters, so without help the heater's kilowatt-hours would be counted twice, once in each stack, and the "Other" residual would lose exactly as much.

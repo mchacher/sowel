@@ -10,6 +10,7 @@ import { useRecipes } from "./useRecipes";
 import { useModes } from "./useModes";
 import { useActivity } from "./useActivity";
 import { useArbiter } from "./useArbiter";
+import { useEvSessions } from "./useEvSessions";
 import { useSharedAccess } from "./useSharedAccess";
 
 export type WsTopic =
@@ -307,12 +308,7 @@ function handleEvent(event: EngineEvent): void {
       devices.updateDeviceStatus(event.deviceId, event.status);
       break;
     case "device.data.updated":
-      devices.updateDeviceDataValue(
-        event.deviceId,
-        event.key,
-        event.value,
-        event.timestamp
-      );
+      devices.updateDeviceDataValue(event.deviceId, event.key, event.value, event.timestamp);
       break;
     case "device.heartbeat":
       devices.updateDeviceHeartbeat(event.deviceId, event.timestamp);
@@ -339,11 +335,9 @@ function handleEvent(event: EngineEvent): void {
       useEquipments.getState().handleEquipmentRemoved();
       break;
     case "equipment.data.changed":
-      useEquipments.getState().handleEquipmentDataChanged(
-        event.equipmentId,
-        event.alias,
-        event.value
-      );
+      useEquipments
+        .getState()
+        .handleEquipmentDataChanged(event.equipmentId, event.alias, event.value);
       break;
     // Spec 174 — the window opening, closing or failing changes what every
     // surface must draw, and it is not an equipment.updated: the row is not
@@ -355,10 +349,7 @@ function handleEvent(event: EngineEvent): void {
       useEquipments.getState().handleEquipmentUpdated();
       break;
     case "equipment.status.changed":
-      useEquipments.getState().handleEquipmentStatusChanged(
-        event.equipmentId,
-        event.newStatus
-      );
+      useEquipments.getState().handleEquipmentStatusChanged(event.equipmentId, event.newStatus);
       break;
     case "recipe.instance.created":
     case "recipe.instance.removed":
@@ -449,6 +440,11 @@ function handleEvent(event: EngineEvent): void {
     case "energy.capacity.released":
     case "energy.capacity.budget":
       useArbiter.getState().refreshSoon();
+      break;
+    // Spec 191 — charge sessions: the mounted sections refetch their month.
+    case "energy.ev_session.updated":
+    case "energy.ev_session.deleted":
+      useEvSessions.getState().refreshSoon();
       break;
     // Spec 181 — admin-only events on the `system` topic: the lines, their
     // statuses and last uses moved; refetch once per burst.

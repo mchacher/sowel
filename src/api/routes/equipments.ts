@@ -73,6 +73,8 @@ const updateEquipmentBodySchema = {
     meteringParentId: { type: ["string", "null"], minLength: 1 },
     // Spec 179 — this meter is fed by a separate supply.
     separateSupply: { type: "boolean" },
+    // Spec 191 — this electric vehicle is a plug-in hybrid (no cost per 100 km).
+    plugInHybrid: { type: "boolean" },
     // Spec 174 phase 2 — the timed command this equipment offers, or null to
     // clear it. `value` and `revertValue` are deliberately unconstrained: an
     // order carries a boolean, an enum string, a number or nothing at all
@@ -322,6 +324,7 @@ export function registerEquipmentRoutes(app: FastifyInstance, deps: EquipmentsDe
       solarProfile?: SolarProfile | null;
       meteringParentId?: string | null;
       separateSupply?: boolean;
+      plugInHybrid?: boolean;
       timedCommand?: TimedCommand | null;
     };
   }>(
@@ -489,6 +492,7 @@ export function registerEquipmentRoutes(app: FastifyInstance, deps: EquipmentsDe
           invertDirection: body.invertDirection,
           meteringParentId: body.meteringParentId,
           separateSupply: body.separateSupply,
+          plugInHybrid: body.plugInHybrid,
           timedCommand: body.timedCommand,
         });
         if (!equipment) {

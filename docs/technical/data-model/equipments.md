@@ -49,6 +49,7 @@ interface Equipment {
   description?: string;
   enabled: boolean; // Disabled equipments are ignored by the engine
   energyProfile?: EnergyLoadProfile; // Spec 140 — flexible-load declaration (class, nominal W, min-on/off, tolerated import W, learned)
+  plugInHybrid?: boolean; // Spec 191 — electric_vehicle only: no cost per 100 km. Present only when true
   createdAt: string;
   updatedAt: string;
 }
@@ -124,6 +125,8 @@ CREATE TABLE equipments (
   energy_profile TEXT,            -- Spec 140: EnergyLoadProfile JSON, NULL = not claimable
   metering_parent_id TEXT REFERENCES equipments(id) ON DELETE SET NULL,
                                   -- Spec 173: this meter's consumption is already counted by that one
+  plug_in_hybrid INTEGER NOT NULL DEFAULT 0,
+                                  -- Spec 191: a plug-in hybrid shows no cost per 100 km
   created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
   updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
 );
@@ -348,7 +351,7 @@ An `electric_vehicle` (battery-electric or plug-in hybrid) is defined by `src/sh
 | `charge_start`   | order        | `ev_charge_start`                         | —    | Start a charge (momentary), where the maker allows it                         |
 | `refresh`        | order        | `ev_refresh`                              | —    | Read the car's latest report now (momentary, spec 184); never wakes the car   |
 
-A device is offered for an `electric_vehicle` when it declares `ev_battery_level`. A vehicle is never a submeter (`NON_SUBMETER_TYPES`), never a flexible load and never carries a timed command: the charger (spec 182) measures and is the load. Fuel and climate values of a plug-in hybrid are extras.
+Spec 191 builds charge sessions on these two contracts: the charger's `vehicle`, `power` and `energy`, and the car's `plugged`, `charging_state`, `battery_level`, `at_home`, `reported_at` and `mileage` (see the [data model index](../data-model.md#ev-charge-sessions-spec-191)). A device is offered for an `electric_vehicle` when it declares `ev_battery_level`. A vehicle is never a submeter (`NON_SUBMETER_TYPES`), never a flexible load and never carries a timed command: the charger (spec 182) measures and is the load. Fuel and climate values of a plug-in hybrid are extras.
 
 ### 3 Per-binding category override
 
