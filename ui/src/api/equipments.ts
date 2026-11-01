@@ -63,6 +63,8 @@ export async function updateEquipment(
     separateSupply?: boolean;
     /** Spec 191 — this electric vehicle is a plug-in hybrid. */
     plugInHybrid?: boolean;
+    /** Spec 193 — an EV charger's usual vehicle; null clears it. */
+    usualVehicleId?: string | null;
     /** Spec 174 phase 2 — the timed command this equipment offers; null clears it. */
     timedCommand?: TimedCommand | null;
   },

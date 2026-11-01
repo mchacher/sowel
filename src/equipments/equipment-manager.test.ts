@@ -697,6 +697,32 @@ describe("EquipmentManager", () => {
       expect(manager.update(eq.id, { name: "VE" })!.separateSupply).toBe(true);
       expect(manager.update(eq.id, { separateSupply: false })!.separateSupply).toBe(false);
     });
+
+    // Spec 193 — a charger's usual vehicle: a vehicle, on a charger only,
+    // kept on omission, cleared by null, by a type change and by the
+    // vehicle's removal.
+    it("sets, keeps, validates and clears a charger's usual vehicle", () => {
+      const zone = zoneManager.create({ name: "Garage" });
+      const charger = manager.create({ name: "Borne", type: "ev_charger", zoneId: zone.id });
+      const car = manager.create({ name: "Car", type: "electric_vehicle", zoneId: zone.id });
+      const lamp = manager.create({ name: "Lamp", type: "light_onoff", zoneId: zone.id });
+
+      expect(manager.update(charger.id, { usualVehicleId: car.id })!.usualVehicleId).toBe(car.id);
+      expect(manager.update(charger.id, { name: "Borne 2" })!.usualVehicleId).toBe(car.id);
+      expect(() => manager.update(charger.id, { usualVehicleId: lamp.id })).toThrow(EquipmentError);
+      expect(() => manager.update(lamp.id, { usualVehicleId: car.id })).toThrow(EquipmentError);
+      expect(manager.update(charger.id, { usualVehicleId: null })!.usualVehicleId).toBeUndefined();
+
+      manager.update(charger.id, { usualVehicleId: car.id });
+      events = [];
+      manager.delete(car.id);
+      expect(manager.getById(charger.id)!.usualVehicleId).toBeUndefined();
+      expect(events.some((e) => e.type === "equipment.updated")).toBe(true);
+
+      const other = manager.create({ name: "Car 2", type: "electric_vehicle", zoneId: zone.id });
+      manager.update(charger.id, { usualVehicleId: other.id });
+      expect(manager.update(charger.id, { type: "switch" })!.usualVehicleId).toBeUndefined();
+    });
   });
 
   describe("delete", () => {

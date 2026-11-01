@@ -119,6 +119,24 @@ export function isEvChargerDevice(
 }
 
 /**
+ * Spec 193 — a metered charger: a charger that reports nothing itself,
+ * followed through the energy meter on its supply line (a clamp, a DIN-rail
+ * meter). Any device with a `power` reading that is not a charger qualifies;
+ * an `ev_charger` bound without a vehicle state is metered.
+ */
+export function isMeteredChargerDevice(
+  data: readonly { category?: string | null }[],
+  orders: readonly { category?: string | null }[],
+): boolean {
+  return !isEvChargerDevice(data, orders) && data.some((d) => d.category === "power");
+}
+
+/** A metered charger draws for a car from this power on (spec 193 P2). */
+export const METERED_CHARGER_THRESHOLD_W = 500;
+/** A metered charger's session ends after this long under the threshold. */
+export const METERED_SESSION_END_MS = 30 * 60_000;
+
+/**
  * Bounds of a charging-current order that does not declare its own: the IEC
  * 61851 floor and the common single-phase ceiling.
  */

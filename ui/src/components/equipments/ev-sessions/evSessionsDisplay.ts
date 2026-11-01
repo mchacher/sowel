@@ -1,4 +1,4 @@
-import type { EvVehicleState } from "../../../lib/ev-charger-contract";
+import { METERED_CHARGER_THRESHOLD_W, type EvVehicleState } from "../../../lib/ev-charger-contract";
 import type { EvChargeSession } from "../../../types";
 
 /**
@@ -97,7 +97,8 @@ export interface LiveInputs {
 /** Spec 192 — what the charge in progress is doing now. */
 export type LiveState =
   | { kind: "charging"; powerW: number | null }
-  | { kind: "paused"; sinceIso: string | null; reason: PauseReason; battery: number | null }
+  /** `reason` null: a metered charger (spec 193) cannot tell why. */
+  | { kind: "paused"; sinceIso: string | null; reason: PauseReason | null; battery: number | null }
   /** The charger reads unplugged, the session not closed yet: nothing to show until it is. */
   | { kind: "unplugged" }
   | { kind: "ended" };
@@ -120,6 +121,12 @@ export function liveState(
 ): LiveState {
   if (session.endedAt !== null) return { kind: "ended" };
   if (live?.vehicle === "disconnected") return { kind: "unplugged" };
+  // Spec 193 — a metered charger has no vehicle state: its power tells.
+  if (live !== null && live.vehicle === null && live.powerW !== null) {
+    return live.powerW >= METERED_CHARGER_THRESHOLD_W
+      ? { kind: "charging", powerW: live.powerW }
+      : { kind: "paused", sinceIso: null, reason: null, battery: live.battery };
+  }
   if (live?.vehicle !== "connected") {
     return { kind: "charging", powerW: live?.vehicle === "charging" ? live.powerW : null };
   }

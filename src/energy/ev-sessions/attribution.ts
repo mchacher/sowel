@@ -108,20 +108,43 @@ export type AttributionResult =
   | { state: "vehicle"; vehicleId: string; reason: EvSessionAttributionReason }
   | { state: "unattributed"; reason: EvSessionAttributionReason };
 
+/** What a charger adds to the decision (spec 193). */
+export interface AttributionContext {
+  /** The charger's usual vehicle: only breaks a tie between matching cars. */
+  usualVehicleId?: string | null;
+  /** Cars an overlapping session on another charger gives: not candidates here. */
+  excluded?: ReadonlySet<string>;
+}
+
 /**
  * Decide at the end of the grace period. `vehicleIds` are every vehicle Sowel
- * knows (P9: all of them are candidates on every charger).
+ * knows (P9: all of them are candidates on every charger), minus the cars
+ * charging elsewhere at the same time (spec 193 P4). The charger's usual
+ * vehicle only breaks a tie between several matching cars.
  */
-export function attribute(evidence: VehicleEvidence[], vehicleIds: string[]): AttributionResult {
-  const known = new Set(vehicleIds);
+export function attribute(
+  evidence: VehicleEvidence[],
+  vehicleIds: string[],
+  context: AttributionContext = {},
+): AttributionResult {
+  const excluded = context.excluded ?? new Set<string>();
+  const usual = context.usualVehicleId ?? null;
+  const known = new Set(vehicleIds.filter((id) => !excluded.has(id)));
   const relevant = evidence.filter((e) => known.has(e.vehicleId));
   const matching = relevant.filter(matches);
   if (matching.length === 1) {
     return { state: "vehicle", vehicleId: matching[0].vehicleId, reason: "single-match" };
   }
-  if (matching.length > 1) return { state: "unattributed", reason: "several-matches" };
+  if (matching.length > 1) {
+    if (usual !== null && matching.some((e) => e.vehicleId === usual)) {
+      return { state: "vehicle", vehicleId: usual, reason: "usual-vehicle" };
+    }
+    return { state: "unattributed", reason: "several-matches" };
+  }
 
-  if (vehicleIds.length === 1) {
+  // "The only vehicle" means the only one Sowel knows, not the only one left
+  // once the others are charging elsewhere.
+  if (vehicleIds.length === 1 && known.has(vehicleIds[0])) {
     const only =
       relevant.find((e) => e.vehicleId === vehicleIds[0]) ?? emptyEvidence(vehicleIds[0]);
     if (!only.awaySeen) {

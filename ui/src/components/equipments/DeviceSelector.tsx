@@ -10,7 +10,7 @@ import {
 } from "../../lib/binding-candidates";
 import { freeCandidates } from "../../lib/binding-utils";
 import { EQUIPMENT_TYPE_CATEGORIES } from "./equipment-type-meta";
-import { isEvChargerDevice } from "../../lib/ev-charger-contract";
+import { isEvChargerDevice, isMeteredChargerDevice } from "../../lib/ev-charger-contract";
 import { isElectricVehicleDevice } from "../../lib/electric-vehicle-contract";
 import { isThermostatDevice } from "../../lib/thermostat-contract";
 
@@ -133,9 +133,13 @@ export function DeviceSelector({
     ? availableDevices.filter((d) => (candidatesByDevice.get(d.id)?.length ?? 0) > 0)
     : equipmentType === "thermostat"
       ? availableDevices.filter((d) => isThermostatDevice(d.data, d.orders ?? []))
-      : // Spec 182 — a charger is identified by its contract categories.
+      : // Spec 182 — a charger is identified by its contract categories; spec 193
+        // — then the energy meters, for a charger that reports nothing itself.
         equipmentType === "ev_charger"
-        ? availableDevices.filter((d) => isEvChargerDevice(d.data, d.orders ?? []))
+        ? [
+            ...availableDevices.filter((d) => isEvChargerDevice(d.data, d.orders ?? [])),
+            ...availableDevices.filter((d) => isMeteredChargerDevice(d.data, d.orders ?? [])),
+          ]
         : // Spec 183 — a car is identified by its traction-battery level.
           equipmentType === "electric_vehicle"
           ? availableDevices.filter((d) => isElectricVehicleDevice(d.data, d.orders ?? []))
@@ -281,6 +285,12 @@ export function DeviceSelector({
                     <span className={`text-[13px] font-medium ${isCompatible ? "text-text" : "text-text-secondary"}`}>
                       {device.name}
                     </span>
+                    {equipmentType === "ev_charger" &&
+                      isMeteredChargerDevice(device.data, device.orders ?? []) && (
+                        <span className="text-[11px] font-medium text-text-secondary bg-border-light rounded-full px-2 py-0.5 ml-2">
+                          {t("deviceSelector.meteredOnly")}
+                        </span>
+                      )}
                     {device.manufacturer && (
                       <span className="text-[11px] text-text-tertiary ml-2">
                         {device.manufacturer} {device.model ?? ""}

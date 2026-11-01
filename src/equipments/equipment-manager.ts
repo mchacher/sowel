@@ -131,6 +131,8 @@ interface UpdateEquipmentInput {
   separateSupply?: boolean;
   /** Spec 191 — this electric vehicle is a plug-in hybrid. */
   plugInHybrid?: boolean;
+  /** Spec 193 — an EV charger's usual vehicle. `null` clears it. */
+  usualVehicleId?: string | null;
   /** Spec 174 phase 2 — the timed command this equipment offers. `null` clears it. */
   timedCommand?: TimedCommand | null;
 }
@@ -257,13 +259,21 @@ export class EquipmentManager {
          invert_direction = @invertDirection, solar_profile = @solarProfile,
          track_order_outcome = @trackOrderOutcome,
          metering_parent_id = @meteringParentId, separate_supply = @separateSupply,
-         plug_in_hybrid = @plugInHybrid, timed_command = @timedCommand,
+         plug_in_hybrid = @plugInHybrid, usual_vehicle_id = @usualVehicleId,
+         timed_command = @timedCommand,
          updated_at = datetime('now') WHERE id = @id`,
       ),
       updateEquipmentEnergyProfile: this.db.prepare(
         `UPDATE equipments SET energy_profile = ?, updated_at = datetime('now') WHERE id = ?`,
       ),
       deleteEquipment: this.db.prepare("DELETE FROM equipments WHERE id = ?"),
+      clearUsualVehicle: this.db.prepare(
+        `UPDATE equipments SET usual_vehicle_id = NULL, updated_at = datetime('now')
+          WHERE usual_vehicle_id = ?`,
+      ),
+      chargersWithUsualVehicle: this.db.prepare(
+        "SELECT id FROM equipments WHERE usual_vehicle_id = ?",
+      ),
       countEquipmentsByZone: this.db.prepare(
         "SELECT COUNT(*) as count FROM equipments WHERE zone_id = ?",
       ),
@@ -580,6 +590,24 @@ export class EquipmentManager {
       throw new EquipmentError(`Zone not found: ${input.zoneId}`, 404);
     }
 
+    // Spec 193 — only a charger names a usual vehicle, and it is a vehicle.
+    // A type change away from charger clears it.
+    const newType = input.type ?? existing.type;
+    if (input.usualVehicleId !== undefined && input.usualVehicleId !== null) {
+      if (newType !== "ev_charger") {
+        throw new EquipmentError("Only an EV charger has a usual vehicle", 400);
+      }
+      if (this.getById(input.usualVehicleId)?.type !== "electric_vehicle") {
+        throw new EquipmentError(`Not an electric vehicle: ${input.usualVehicleId}`, 400);
+      }
+    }
+    const usualVehicleId =
+      newType !== "ev_charger"
+        ? null
+        : input.usualVehicleId !== undefined
+          ? input.usualVehicleId
+          : existing.usual_vehicle_id;
+
     this.stmts.updateEquipment.run({
       id,
       name: input.name ?? existing.name,
@@ -645,6 +673,7 @@ export class EquipmentManager {
           : existing.separate_supply,
       plugInHybrid:
         input.plugInHybrid !== undefined ? (input.plugInHybrid ? 1 : 0) : existing.plug_in_hybrid,
+      usualVehicleId,
     });
 
     const equipment = this.getById(id)!;
@@ -734,7 +763,12 @@ export class EquipmentManager {
       throw new EquipmentError("Equipment not found", 404);
     }
 
+    // Spec 193 — the chargers naming a removed vehicle lose it.
+    const chargers = (this.stmts.chargersWithUsualVehicle.all(id) as { id: string }[]).map(
+      (r) => r.id,
+    );
     this.stmts.deleteEquipment.run(id);
+    if (chargers.length > 0) this.stmts.clearUsualVehicle.run(id);
     this.logger.info({ equipmentId: id, name: existing.name }, "Equipment deleted");
     this.eventBus.emit({
       type: "equipment.removed",
@@ -742,6 +776,10 @@ export class EquipmentManager {
       equipmentName: existing.name,
       zoneId: existing.zoneId,
     });
+    for (const chargerId of chargers) {
+      const charger = this.getById(chargerId);
+      if (charger) this.eventBus.emit({ type: "equipment.updated", equipment: charger });
+    }
   }
 
   countByZone(zoneId: string): number {
@@ -1772,6 +1810,7 @@ interface EquipmentRow {
   metering_parent_id: string | null;
   separate_supply: number;
   plug_in_hybrid: number;
+  usual_vehicle_id: string | null;
   timed_command: string | null;
   created_at: string;
   updated_at: string;
@@ -1942,6 +1981,7 @@ function rowToEquipment(row: EquipmentRow): Equipment {
     meteringParentId: row.metering_parent_id ?? null,
     separateSupply: row.separate_supply === 1,
     ...(row.plug_in_hybrid === 1 && { plugInHybrid: true }),
+    ...(row.usual_vehicle_id !== null && { usualVehicleId: row.usual_vehicle_id }),
     timedCommand: parseTimedCommand(row.timed_command),
     createdAt: toISOUtc(row.created_at),
     updatedAt: toISOUtc(row.updated_at),

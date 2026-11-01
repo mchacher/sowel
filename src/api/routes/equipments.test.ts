@@ -736,6 +736,14 @@ describe("PUT /api/v1/equipments/:id — separate supply (spec 179)", () => {
     expect(received?.separateSupply).toBe(false);
   });
 
+  it("forwards a charger's usual vehicle and its clearing (spec 193)", async () => {
+    expect((await put("gite", { usualVehicleId: "car-1" })).statusCode).toBe(200);
+    expect(received?.usualVehicleId).toBe("car-1");
+    expect((await put("gite", { usualVehicleId: null })).statusCode).toBe(200);
+    expect(received?.usualVehicleId).toBeNull();
+    expect((await put("gite", { usualVehicleId: "" })).statusCode).toBe(400);
+  });
+
   it("leaves it untouched when the body does not mention it", async () => {
     const res = await put("gite", { name: "Gite" });
     expect(res.statusCode).toBe(200);

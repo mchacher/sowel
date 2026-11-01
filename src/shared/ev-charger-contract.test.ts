@@ -4,6 +4,7 @@ import {
   EV_CHARGER_CORE,
   isEvChargerDevice,
   isEvVehicleState,
+  isMeteredChargerDevice,
   splitEvChargerExtras,
 } from "./ev-charger-contract.js";
 
@@ -53,6 +54,13 @@ describe("EV charger contract (spec 182)", () => {
       ),
     ).toBe(false);
     expect(isEvChargerDevice([{ category: null }], [{}])).toBe(false);
+  });
+
+  it("offers an energy meter as a metered charger, never a real charger (spec 193)", () => {
+    const meter = [{ category: "power" }, { category: "energy" }, { category: "voltage" }];
+    expect(isMeteredChargerDevice(meter, [])).toBe(true);
+    expect(isMeteredChargerDevice([{ category: "ev_vehicle_state" }, ...meter], [])).toBe(false);
+    expect(isMeteredChargerDevice([{ category: "energy" }], [])).toBe(false);
   });
 
   it("accepts exactly the three vehicle states", () => {

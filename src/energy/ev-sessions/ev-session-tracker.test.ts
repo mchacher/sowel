@@ -524,6 +524,138 @@ describe("session in progress on the vehicle page (spec 192)", () => {
   });
 });
 
+describe("metered charger (spec 193)", () => {
+  beforeEach(() => {
+    tracker.stop();
+    eqs.add("legrand", "ev_charger", "Legrand"); // power only: no vehicle state
+    eqs.set("legrand", "power", 0);
+    eqs.set("charger", "vehicle", "disconnected"); // the other charger reports its plug
+    tracker = makeTracker();
+  });
+
+  const legrand = () => tracker.listByCharger("legrand", "2026-11")!;
+  const setUsual = (chargerId: string, vehicleId: string) => {
+    eqs.getById(chargerId)!.usualVehicleId = vehicleId;
+  };
+
+  /** The metered charger at `w`, the house importing as much, ticking each minute. */
+  function meter(minutes: number, w: number, also?: () => void): void {
+    for (let i = 0; i < minutes; i++) {
+      data("legrand", "power", w);
+      also?.();
+      data("grid", "energy", w / 60);
+      tracker.tick();
+      now += MIN;
+    }
+  }
+
+  it("opens at 500 W, keeps a short pause, ends 30 min after the last active reading", () => {
+    meter(60, 3000);
+    meter(20, 0);
+    meter(30, 3000);
+    const lastActive = now - MIN;
+    meter(31, 0);
+    const list = legrand();
+    expect(list).toHaveLength(1);
+    expect(list[0].startedAt).toBe(new Date(T0).toISOString());
+    expect(list[0].endedAt).toBe(new Date(lastActive).toISOString());
+    expect(list[0].graceUntil).toBe(new Date(lastActive + GRACE_MS).toISOString());
+  });
+
+  it("makes two sessions of a pause over 30 min", () => {
+    meter(30, 3000);
+    meter(45, 0);
+    meter(30, 3000);
+    meter(31, 0);
+    expect(legrand()).toHaveLength(2);
+  });
+
+  it("drops a short spike", () => {
+    meter(1, 600);
+    meter(31, 0);
+    expect(legrand()).toHaveLength(0);
+  });
+
+  it("closes after a restart at the time the power dropped", () => {
+    meter(30, 3000);
+    tracker.stop();
+    const droppedAt = now;
+    eqs.set("legrand", "power", 0, droppedAt);
+    now += 40 * MIN;
+    tracker = makeTracker();
+    tracker.tick();
+    expect(legrand()[0].endedAt).toBe(new Date(droppedAt).toISOString());
+  });
+
+  it("opens at start when the charger already draws", () => {
+    tracker.stop();
+    eqs.set("legrand", "power", 3000);
+    tracker = makeTracker();
+    expect(legrand()).toHaveLength(1);
+  });
+
+  it("never opens on the power of a charger that reports its plug state", () => {
+    data("charger", "power", 3000);
+    expect(sessions()).toHaveLength(0);
+  });
+
+  it("breaks a tie for the charger's usual vehicle", async () => {
+    setUsual("legrand", "megane");
+    meter(5, 3000);
+    data("rafale", "charging_state", "charging");
+    data("megane", "charging_state", "charging");
+    await flush();
+    meter(60, 3000);
+    meter(31, 0);
+    now += GRACE_MS;
+    tracker.tick();
+    expect(legrand()[0]).toMatchObject({ vehicleId: "megane", attributionReason: "usual-vehicle" });
+  });
+
+  /** Car A on the charger that reports its plug, car B on the metered one, at once. */
+  async function twoCarsAtOnce(legrandAfterUnplug: number) {
+    setUsual("legrand", "megane");
+    data("charger", "vehicle", "charging");
+    meter(2, 3000, () => data("charger", "power", 2000));
+    data("rafale", "charging_state", "charging");
+    data("megane", "charging_state", "charging");
+    await flush();
+    meter(60, 3000, () => data("charger", "power", 2000));
+    data("charger", "vehicle", "disconnected");
+    meter(legrandAfterUnplug, 3000);
+    meter(31, 0);
+  }
+
+  it("gives each car its own charger when both charge at once", async () => {
+    await twoCarsAtOnce(10);
+    now += GRACE_MS;
+    tracker.tick();
+    expect(sessions()[0]).toMatchObject({ vehicleId: "rafale", attributionReason: "single-match" });
+    expect(legrand()[0]).toMatchObject({ vehicleId: "megane" });
+  });
+
+  it("counts the other charger's provisional result while it still charges", async () => {
+    await twoCarsAtOnce(GRACE_MS / MIN + 10); // the plug-state charger is decided first
+    expect(sessions()[0]).toMatchObject({ vehicleId: "rafale" });
+    expect(legrand()[0].endedAt).not.toBeNull();
+    now += GRACE_MS;
+    tracker.tick();
+    expect(legrand()[0]).toMatchObject({ vehicleId: "megane" });
+  });
+
+  it("shows each car its own session in progress", async () => {
+    setUsual("legrand", "megane");
+    data("charger", "vehicle", "charging");
+    meter(2, 3000, () => data("charger", "power", 2000));
+    data("rafale", "charging_state", "charging");
+    data("megane", "charging_state", "charging");
+    await flush();
+    const ids = (v: string) => tracker.currentForVehicle(v).map((x) => x.chargerId);
+    expect(ids("megane")).toEqual(["legrand"]);
+    expect(ids("rafale")).toEqual(["charger"]);
+  });
+});
+
 describe("driving and the monthly summary", () => {
   it("measures legs and gives the cost per 100 km from home price × consumption", async () => {
     // Learn 600 Wh per point from one home session: 18 kWh for +30 points.

@@ -123,13 +123,26 @@ describe("liveState (spec 192)", () => {
     expect(liveState(open, live({ vehicle: "disconnected" }))).toEqual({ kind: "unplugged" });
   });
 
+  it("reads a metered charger by its power (spec 193)", () => {
+    expect(liveState(open, live({ vehicle: null, chargerOn: null, powerW: 3000 }))).toEqual({
+      kind: "charging",
+      powerW: 3000,
+    });
+    expect(liveState(open, live({ vehicle: null, chargerOn: null, powerW: 4 }))).toEqual({
+      kind: "paused",
+      sinceIso: null,
+      reason: null,
+      battery: 43,
+    });
+  });
+
   it("reads an ended session as ended", () => {
     expect(liveState({ endedAt: "2026-11-01T15:06:00Z" }, live({}))).toEqual({ kind: "ended" });
   });
 
   it("reads charging without a power when the charger is unknown", () => {
     expect(liveState(open, null)).toEqual({ kind: "charging", powerW: null });
-    expect(liveState(open, live({ vehicle: null, powerW: 1300 }))).toEqual({
+    expect(liveState(open, live({ vehicle: null, powerW: null }))).toEqual({
       kind: "charging",
       powerW: null,
     });
