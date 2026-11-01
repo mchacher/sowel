@@ -1013,24 +1013,35 @@ export class EvSessionTracker {
    */
   private resolve(record: SessionRecord): AttributionResult {
     const taken = this.takenElsewhere(record);
-    // Spec 194 review — this session and another claim the same car on their
-    // own evidence: it cannot be on both, and nothing says which. Both stay to
-    // attribute rather than each falling to the other car.
+    const excluded = new Set(taken.keys());
+    // Spec 194 review — this session claims a car another one claims too. Of
+    // the same strength (both sure, or both guesses, both automatic): it
+    // cannot be on both and nothing says which, so both stay to attribute
+    // rather than each falling to the other car. Otherwise the stronger claim
+    // keeps it: a choice by hand or a sure claim elsewhere takes it from a
+    // guess here (spec 193 FR4), a sure claim here keeps it from a guess there.
     const own = this.givenBy(record);
-    if (own !== null && taken.has(own.vehicleId) && own.reason !== null) {
-      return { state: "unattributed", reason: "several-matches" };
+    if (own !== null && own.reason !== null) {
+      const other = taken.get(own.vehicleId);
+      if (other && other.reason !== null && other.sure === own.sure) {
+        const oneCar = this.candidateVehicleIds().length === 1;
+        return { state: "unattributed", reason: oneCar ? "no-match" : "several-matches" };
+      }
+      if (other && own.sure && !other.sure) excluded.delete(own.vehicleId);
     }
     const result = attribute(record.evidence, this.candidateVehicleIds(), {
       usualVehicleId: this.usualVehicleOf(record.chargerId),
-      excluded: new Set(taken.keys()),
+      excluded,
       ...this.measures(record),
     });
     if (result.state === "vehicle" && result.reason === "single-match") {
       // A match that only stands because another session took the other car
       // says why that one did: a guess (audit A7), or a measure (spec 194).
       const reasons = [...taken]
-        .filter(([vehicleId]) =>
-          record.evidence.some((e) => e.vehicleId === vehicleId && matches(e)),
+        .filter(
+          ([vehicleId]) =>
+            excluded.has(vehicleId) &&
+            record.evidence.some((e) => e.vehicleId === vehicleId && matches(e)),
         )
         .map(([, claim]) => claim);
       if (reasons.some((c) => !c.sure)) return { ...result, reason: "usual-vehicle" };

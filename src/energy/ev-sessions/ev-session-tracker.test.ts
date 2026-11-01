@@ -1158,6 +1158,9 @@ describe("telling cars apart by measures (spec 194)", () => {
     tracker = makeTracker();
   });
   const legrand = () => tracker.listByCharger("legrand", "2026-11")!;
+  const setUsual = (chargerId: string, vehicleId: string) => {
+    eqs.getById(chargerId)!.usualVehicleId = vehicleId;
+  };
 
   /** A car's report: its own time, then each value, in one burst. */
   async function carReport(car: string, values: Record<string, unknown>) {
@@ -1348,6 +1351,43 @@ describe("telling cars apart by measures (spec 194)", () => {
     data("megane", "charge_power", 7000);
     await flush();
     expect(evidenceOf(legrand()[0].id, "megane")?.powerSamples ?? 0).toBe(0);
+  });
+
+  it("lets a choice by hand on one charger settle the other (second review P2)", async () => {
+    setUsual("legrand", "megane");
+    await bothAtOnce(async (i) => {
+      if (i === 2) {
+        await carReport("megane", { charging_state: "charging" });
+        await carReport("rafale", { charging_state: "charging" });
+        tracker.setAttribution(sessions()[0].id, { target: "vehicle", vehicleId: "megane" });
+      }
+    });
+    expect(sessions()[0]).toMatchObject({ vehicleId: "megane", attributionSource: "manual" });
+    expect(legrand()[0]).toMatchObject({ vehicleId: "rafale" });
+  });
+
+  it("lets a sure claim win over a usual-vehicle guess elsewhere (second review P1)", async () => {
+    setUsual("legrand", "megane");
+    data("charger", "vehicle", "charging"); // the Borne from 0 to 60 min
+    for (let i = 0; i < 150; i++) {
+      if (i < 60) data("charger", "power", 2000);
+      if (i === 60) data("charger", "vehicle", "disconnected");
+      if (i >= 30) data("legrand", "power", 7000); // the Legrand from 30 to 150 min
+      if (i === 40) await carReport("megane", { charging_state: "charging" });
+      if (i === 100) await carReport("rafale", { charging_state: "charging" });
+      tracker.tick();
+      now += MIN;
+      data("grid", "energy", 150);
+    }
+    for (let i = 0; i < 31; i++) {
+      data("legrand", "power", 0);
+      tracker.tick();
+      now += MIN;
+    }
+    now += GRACE_MS;
+    tracker.tick();
+    expect(sessions()[0]).toMatchObject({ vehicleId: "megane" });
+    expect(legrand()[0]).toMatchObject({ vehicleId: "rafale" });
   });
 
   it("leaves two cars at once to attribute without power or energy data", async () => {

@@ -28,7 +28,7 @@ While a session is open, each `charge_power` report of a car (above 100 W, timed
 
 - A car with at least two power samples on a session, fewer than 30 % of them agreeing, **disagrees**: it is no candidate for that session (P3).
 - When several cars match a session, exactly one of them agrees (at least one sample, 70 % or more agreeing), and every other one has its own samples and does not agree, it gets the session: reason `power-match`. A car without power data could be the one on this charger: it never loses to one that agrees.
-- When this session and another one claim the same car on their own evidence, both stay to attribute (it cannot be on both, nothing says which).
+- When this session and another one claim the same car with the same strength (both sure, or both guesses, both automatic), both stay to attribute (it cannot be on both, nothing says which). A choice by hand or a sure claim takes the car from a guess (spec 193 FR4).
 
 ### FR3 — Energy signal
 
