@@ -6,6 +6,7 @@ import {
   Sun,
   PersonStanding,
   Lightbulb,
+  DoorClosed,
   DoorOpen,
   SquareStack,
   Droplet,
@@ -148,6 +149,20 @@ export function ZoneAggregationPills({
       icon: <ShutterIcon size={14} strokeWidth={1.5} position={pos} />,
       label: `${data.shuttersOpen}/${data.shuttersTotal}${positionSuffix}${unavail("shutter_position")}`,
       variant: "default",
+      iconTint: "text-text-secondary",
+      valueTint: someOpen ? "text-text" : "text-text-tertiary",
+    });
+  }
+
+  // Spec 190 — motorised doors, apart from the shutters and from the door
+  // contact sensors (the `openDoors` alert below).
+  if (data.doorsTotal > 0) {
+    const someOpen = data.doorsOpen > 0;
+    counterPills.push({
+      key: "door-equipments",
+      icon: someOpen ? <DoorOpen size={14} strokeWidth={1.5} /> : <DoorClosed size={14} strokeWidth={1.5} />,
+      label: `${data.doorsOpen}/${data.doorsTotal}`,
+      variant: someOpen ? "active" : "default",
       iconTint: "text-text-secondary",
       valueTint: someOpen ? "text-text" : "text-text-tertiary",
     });

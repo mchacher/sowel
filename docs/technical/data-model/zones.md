@@ -69,6 +69,8 @@ interface ZoneAggregatedData {
   // zone level — their dashboard widgets compute their own counts locally.
   // Aggregating them here would surface phantom zone-level "all shutters"
   // commands on zones that contain only awnings or pool covers.
+  doorsOpen: number; // spec 190 — COUNT(type=door not proven closed: open, moving, fault)
+  doorsTotal: number; // spec 190 — COUNT(type=door), independent from openDoors (contacts)
   waterValvesOpen: number;
   waterValvesTotal: number;
   waterFlowTotal: number | null; // SUM of current water flow (when supported)

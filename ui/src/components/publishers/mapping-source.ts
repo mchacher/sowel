@@ -26,6 +26,8 @@ export const ZONE_AGG_KEYS = [
   "averageShutterPosition",
   "awningsDeployed",
   "awningsTotal",
+  "doorsOpen",
+  "doorsTotal",
   "isDaylight",
 ];
 

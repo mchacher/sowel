@@ -60,6 +60,8 @@ import { brightnessPercent, brightnessScale } from "../../lib/brightness";
 import { ForecastDetailContent } from "./ForecastDetailContent";
 import { RainDetailContent } from "./RainGauge";
 import { isRainOnlyWeather } from "../equipments/rain-summary";
+import { doorWordPill } from "../equipments/door-pill";
+import { doorState, isDoorOpenForCount } from "../../../../src/shared/door-state";
 
 // ============================================================
 // Equipment detail sheets
@@ -138,7 +140,7 @@ export function EquipmentDetailSheet({ widget, equipment, equipmentZone, onExecu
     );
   }
 
-  if (isShutter || isAwning || equipment.type === "pool_cover") {
+  if (isShutter || isAwning || equipment.type === "door" || equipment.type === "pool_cover") {
     return (
       <BottomSheet open onClose={onClose} title={label}
         icon={customIcon}
@@ -1120,6 +1122,10 @@ function ShutterDetailContent({
   const slider = useSliderOverride();
 
   const isAwning = equipment.type === "awning";
+  // Spec 190 — a door: garage-door picto, its word pill, the door wording.
+  const isDoor = equipment.type === "door";
+  const doorPill = doorWordPill(equipment);
+  const doorOpen = isDoor && isDoorOpenForCount(doorState(equipment.dataBindings));
 
   const positionBinding = equipment.dataBindings.find(
     (db) => db.category === "shutter_position",
@@ -1131,8 +1137,16 @@ function ShutterDetailContent({
   const level = position !== null ? shutterLevel(position) : null;
 
   // Awning vocabulary — mirrors ShutterControl + ShutterEquipmentWidget.
-  const labelHundred = isAwning ? t("controls.deployed") : t("controls.opened");
-  const labelZero = isAwning ? t("controls.retracted") : t("controls.closed");
+  const labelHundred = isAwning
+    ? t("controls.deployed")
+    : isDoor
+      ? t("controls.doorOpen")
+      : t("controls.opened");
+  const labelZero = isAwning
+    ? t("controls.retracted")
+    : isDoor
+      ? t("controls.doorClosed")
+      : t("controls.closed");
 
   // Resolve the move + position-set bindings by category first, falling back
   // to the conventional alias (`state`, `position`) and finally to any
@@ -1183,10 +1197,20 @@ function ShutterDetailContent({
           <PoolCoverIcon position={position} />
         ) : isAwning ? (
           <AwningWidgetIcon deployed={position !== null && position > 0} />
+        ) : isDoor ? (
+          <GarageDoorIcon open={doorOpen} />
         ) : (
           <ShutterWidgetIcon level={level} />
         )}
       </div>
+
+      {doorPill && (
+        <div className="flex justify-center">
+          <span className={`text-[15px] font-semibold px-3 py-1 rounded-full ${doorPill.className}`}>
+            {t(doorPill.key)}
+          </span>
+        </div>
+      )}
 
       {/* Position slider — full width horizontal */}
       {position !== null && hasPosition && (

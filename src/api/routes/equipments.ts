@@ -53,6 +53,9 @@ const updateEquipmentBodySchema = {
   type: "object",
   properties: {
     name: { type: "string", pattern: "\\S", maxLength: 100 },
+    // Declared so a client can see it (spec 190). The manager checks only that
+    // the type exists: specs 081 and 183 rely on changing it through the API.
+    type: { type: "string", minLength: 1 },
     description: { type: ["string", "null"], maxLength: 500 },
     energyProfile: {
       type: ["object", "null"],

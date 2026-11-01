@@ -213,6 +213,8 @@ Rules worth knowing before calling it:
 - **An empty body arms the equipment's own configuration** (`timedCommand`), so a surface does not have to restate three values it does not own: `POST /equipments/:id/timed-action` with `{}`. `409` when nothing is configured.
 - `GET /equipments` and `GET /equipments/:id` carry `timedAction` while a window is running, with `expiresAt` as an ISO-8601 instant, and `timedCommand` when one is configured.
 
+`PUT /api/v1/equipments/:id` accepts `type`. The server checks only that the type exists; the edit form offers a change only between `shutter`, `awning` and `door` (spec 190), whose bindings stay valid. Zone aggregated data carries `doorsOpen` / `doorsTotal` for `door` equipments (spec 190).
+
 `PUT /api/v1/equipments/:id` accepts `timedCommand` and validates it against the equipment's own bindings, so a configuration naming an order it does not carry is refused where it is written rather than where it is fired:
 
 ```json

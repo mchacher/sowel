@@ -180,6 +180,8 @@ Les règles à connaître avant d'appeler :
 - **Un corps vide arme la configuration de l'équipement** (`timedCommand`), pour qu'une surface n'ait pas à redire trois valeurs qui ne lui appartiennent pas : `POST /equipments/:id/timed-action` avec `{}`. `409` si rien n'est configuré.
 - `GET /equipments` et `GET /equipments/:id` portent `timedAction` pendant le créneau, avec `expiresAt` en ISO-8601, et `timedCommand` quand une commande est configurée.
 
+`PUT /api/v1/equipments/:id` accepte `type`. Le serveur vérifie seulement que le type existe ; le formulaire d'édition ne propose un changement qu'entre `shutter`, `awning` et `door` (spec 190), dont les liaisons restent valides. Les données agrégées de zone portent `doorsOpen` / `doorsTotal` pour les équipements `door` (spec 190).
+
 `PUT /api/v1/equipments/:id` accepte `timedCommand` et le valide contre les liaisons de l'équipement : une configuration qui nomme un ordre absent est refusée là où elle est écrite, pas là où elle serait déclenchée.
 
 ```json

@@ -1,12 +1,13 @@
 import { describe, it, expect } from "vitest";
-import { isRelevantData, isRelevantOrder, resolveAlias, ORDER_CATEGORY_ALIASES } from "./bindingUtils";
+import {
+  isRelevantData,
+  isRelevantOrder,
+  resolveAlias,
+  ORDER_CATEGORY_ALIASES,
+} from "./bindingUtils";
 import { findDataByCategory, findOrderByCategory } from "./bindingUtils";
 import { computeBindingPlan, computeMissingBindings } from "./bindingUtils";
-import type {
-  DataBindingWithValue,
-  DeviceWithDetails,
-  OrderBindingWithDetails,
-} from "../../types";
+import type { DataBindingWithValue, DeviceWithDetails, OrderBindingWithDetails } from "../../types";
 
 describe("findOrderByCategory", () => {
   it("matches the first binding by category", () => {
@@ -18,12 +19,8 @@ describe("findOrderByCategory", () => {
   });
 
   it("matches any of several categories (covers pool_cover_move + shutter_move)", () => {
-    const bindings = [
-      { alias: "shutter_state", category: "pool_cover_move" as const },
-    ];
-    expect(
-      findOrderByCategory(bindings, ["pool_cover_move", "shutter_move"]),
-    ).toEqual(bindings[0]);
+    const bindings = [{ alias: "shutter_state", category: "pool_cover_move" as const }];
+    expect(findOrderByCategory(bindings, ["pool_cover_move", "shutter_move"])).toEqual(bindings[0]);
   });
 
   it("returns the binding regardless of its alias when category matches", () => {
@@ -39,9 +36,7 @@ describe("findOrderByCategory", () => {
       { alias: "state", category: undefined },
       { alias: "brightness", category: undefined },
     ];
-    expect(
-      findOrderByCategory(bindings, ["pool_cover_move"], ["state"]),
-    ).toEqual(bindings[0]);
+    expect(findOrderByCategory(bindings, ["pool_cover_move"], ["state"])).toEqual(bindings[0]);
   });
 
   it("falls back to aliasPatterns when no category nor alias matches", () => {
@@ -50,12 +45,7 @@ describe("findOrderByCategory", () => {
       { alias: "brightness", category: undefined },
     ];
     expect(
-      findOrderByCategory(
-        bindings,
-        ["pool_cover_move"],
-        ["state"],
-        [/^shutter\d*_state$/],
-      ),
+      findOrderByCategory(bindings, ["pool_cover_move"], ["state"], [/^shutter\d*_state$/]),
     ).toEqual(bindings[0]);
   });
 
@@ -64,15 +54,11 @@ describe("findOrderByCategory", () => {
       { alias: "state", category: undefined },
       { alias: "shutter_state", category: "shutter_move" as const },
     ];
-    expect(
-      findOrderByCategory(bindings, ["shutter_move"], ["state"]),
-    ).toEqual(bindings[1]);
+    expect(findOrderByCategory(bindings, ["shutter_move"], ["state"])).toEqual(bindings[1]);
   });
 
   it("returns undefined when nothing matches", () => {
-    const bindings = [
-      { alias: "brightness", category: "set_brightness" as const },
-    ];
+    const bindings = [{ alias: "brightness", category: "set_brightness" as const }];
     expect(findOrderByCategory(bindings, ["pool_cover_move"], ["state"])).toBeUndefined();
   });
 
@@ -91,9 +77,7 @@ describe("findOrderByCategory", () => {
       { alias: "second", category: "toggle_power" as const },
       { alias: "third", category: "light_toggle" as const },
     ];
-    expect(
-      findOrderByCategory(bindings, ["toggle_power", "light_toggle"]),
-    ).toEqual(bindings[0]);
+    expect(findOrderByCategory(bindings, ["toggle_power", "light_toggle"])).toEqual(bindings[0]);
   });
 });
 
@@ -107,19 +91,13 @@ describe("findDataByCategory", () => {
   });
 
   it("falls back to alias when category is missing", () => {
-    const bindings = [
-      { alias: "position", category: undefined },
-    ];
-    expect(
-      findDataByCategory(bindings, ["shutter_position"], ["position"]),
-    ).toEqual(bindings[0]);
+    const bindings = [{ alias: "position", category: undefined }];
+    expect(findDataByCategory(bindings, ["shutter_position"], ["position"])).toEqual(bindings[0]);
   });
 
   it("returns the right binding when alias differs from convention but category matches", () => {
     // E.g. a manually re-bound pool_cover position data.
-    const bindings = [
-      { alias: "shutter_position", category: "shutter_position" as const },
-    ];
+    const bindings = [{ alias: "shutter_position", category: "shutter_position" as const }];
     const match = findDataByCategory(bindings, ["shutter_position"], ["position"]);
     expect(match?.alias).toBe("shutter_position");
   });
@@ -233,9 +211,9 @@ describe("gate equipment type relevance (blind single-button RTS gate)", () => {
   });
 
   it("auto binding (with category) also resolves to the command alias", () => {
-    expect(
-      resolveAlias("gate_trigger", "gate", { gate_trigger: "command" }, "gate_trigger"),
-    ).toBe("command");
+    expect(resolveAlias("gate_trigger", "gate", { gate_trigger: "command" }, "gate_trigger")).toBe(
+      "command",
+    );
   });
 
   it("ignores unrelated orders", () => {
@@ -329,6 +307,38 @@ describe("camera equipment type relevance (spec 133 default auto-binding split)"
 // Issue #707 — binding plan and missing bindings
 // ============================================================
 
+describe("computeBindingPlan — door (spec 190)", () => {
+  it("binds the door's end-state word under `state`, whatever its key", () => {
+    const coop = {
+      id: "coop",
+      name: "Coop",
+      data: [
+        {
+          id: "d1",
+          key: "door",
+          category: "generic",
+          type: "enum",
+          enumValues: ["OPEN", "CLOSED", "OPENING", "CLOSING", "FAULT"],
+        },
+      ],
+      orders: [
+        {
+          id: "o1",
+          key: "cmd",
+          category: "shutter_move",
+          type: "enum",
+          enumValues: ["OPEN", "CLOSE", "STOP"],
+        },
+      ],
+    } as unknown as DeviceWithDetails;
+    const plan = computeBindingPlan([coop], "door");
+    expect(plan.map((p) => [p.kind, p.key, p.alias])).toEqual([
+      ["data", "door", "state"],
+      ["order", "cmd", "state"],
+    ]);
+  });
+});
+
 describe("computeBindingPlan", () => {
   const weatherDevice = {
     id: "dev-1",
@@ -391,12 +401,7 @@ describe("computeMissingBindings", () => {
     }) as unknown as DataBindingWithValue;
 
   it("returns only what the equipment is not bound to yet", () => {
-    const missing = computeMissingBindings(
-      [device],
-      "weather",
-      [bound("d1", "temp_now")],
-      [],
-    );
+    const missing = computeMissingBindings([device], "weather", [bound("d1", "temp_now")], []);
 
     expect(missing.map((m) => m.key)).toEqual(["humidity_now"]);
   });
@@ -426,12 +431,7 @@ describe("computeMissingBindings", () => {
   });
 
   it("offers a free alias when the natural one is taken by another binding", () => {
-    const missing = computeMissingBindings(
-      [device],
-      "weather",
-      [bound("d1", "humidity_now")],
-      [],
-    );
+    const missing = computeMissingBindings([device], "weather", [bound("d1", "humidity_now")], []);
 
     expect(missing).toHaveLength(1);
     expect(missing[0].key).toBe("humidity_now");
@@ -450,8 +450,20 @@ describe("computeMissingBindings on a multi-channel device", () => {
       { id: "d2", key: "power2", category: "light_state", type: "enum", enumValues: ["ON", "OFF"] },
     ],
     orders: [
-      { id: "o1", key: "power1", category: "light_toggle", type: "enum", enumValues: ["ON", "OFF"] },
-      { id: "o2", key: "power2", category: "light_toggle", type: "enum", enumValues: ["ON", "OFF"] },
+      {
+        id: "o1",
+        key: "power1",
+        category: "light_toggle",
+        type: "enum",
+        enumValues: ["ON", "OFF"],
+      },
+      {
+        id: "o2",
+        key: "power2",
+        category: "light_toggle",
+        type: "enum",
+        enumValues: ["ON", "OFF"],
+      },
     ],
   } as unknown as DeviceWithDetails;
 
@@ -666,8 +678,12 @@ describe("thermostat contract (spec 177) — the core is category-driven, the re
 
   it("binds an unknown vendor's core under the canonical aliases and its extras under their keys", () => {
     const plan = computeBindingPlan([unknownVendor], "thermostat");
-    const data = Object.fromEntries(plan.filter((p) => p.kind === "data").map((p) => [p.key, p.alias]));
-    const orders = Object.fromEntries(plan.filter((p) => p.kind === "order").map((p) => [p.key, p.alias]));
+    const data = Object.fromEntries(
+      plan.filter((p) => p.kind === "data").map((p) => [p.key, p.alias]),
+    );
+    const orders = Object.fromEntries(
+      plan.filter((p) => p.kind === "order").map((p) => [p.key, p.alias]),
+    );
 
     expect(data).toEqual({
       room_temp: "temperature",
@@ -705,13 +721,21 @@ describe("thermostat contract (spec 177) — the core is category-driven, the re
   });
 
   it("resolves the operating mode from its category on a thermostat", () => {
-    expect(resolveAlias("mode", "thermostat", undefined, "operation_mode", "enum")).toBe("operationMode");
-    expect(resolveAlias("mode", "thermostat", undefined, "set_operation_mode", "enum")).toBe("operationMode");
+    expect(resolveAlias("mode", "thermostat", undefined, "operation_mode", "enum")).toBe(
+      "operationMode",
+    );
+    expect(resolveAlias("mode", "thermostat", undefined, "set_operation_mode", "enum")).toBe(
+      "operationMode",
+    );
   });
 
   it("scopes the room-temperature rule to thermostats", () => {
-    expect(resolveAlias("room_temp", "thermostat", undefined, "temperature", "number")).toBe("temperature");
-    expect(resolveAlias("room_temp", "sensor", undefined, "temperature", "number")).toBe("room_temp");
+    expect(resolveAlias("room_temp", "thermostat", undefined, "temperature", "number")).toBe(
+      "temperature",
+    );
+    expect(resolveAlias("room_temp", "sensor", undefined, "temperature", "number")).toBe(
+      "room_temp",
+    );
   });
 
   it("binds every order on a thermostat and only the whitelist elsewhere", () => {
@@ -840,15 +864,26 @@ describe("electric_vehicle auto-binding (spec 183)", () => {
       { id: "o1", key: "lights", category: "ev_wake", type: "boolean" },
       { id: "o5", key: "readNow", category: "ev_refresh", type: "boolean" },
       { id: "o4", key: "chargeStart", category: "ev_charge_start", type: "boolean" },
-      { id: "o2", key: "socTarget", category: "set_ev_charge_limit", type: "number", min: 50, max: 100 },
+      {
+        id: "o2",
+        key: "socTarget",
+        category: "set_ev_charge_limit",
+        type: "number",
+        min: 50,
+        max: 100,
+      },
       { id: "o3", key: "horn", type: "boolean" },
     ],
   } as unknown as DeviceWithDetails;
 
   it("binds the contract aliases, contract first, extras under their keys", () => {
     const plan = computeBindingPlan([renault], "electric_vehicle");
-    const data = Object.fromEntries(plan.filter((p) => p.kind === "data").map((p) => [p.key, p.alias]));
-    const orders = Object.fromEntries(plan.filter((p) => p.kind === "order").map((p) => [p.key, p.alias]));
+    const data = Object.fromEntries(
+      plan.filter((p) => p.kind === "data").map((p) => [p.key, p.alias]),
+    );
+    const orders = Object.fromEntries(
+      plan.filter((p) => p.kind === "order").map((p) => [p.key, p.alias]),
+    );
     expect(data).toEqual({
       batteryLevel: "battery_level",
       batteryAutonomy: "range",
@@ -868,6 +903,8 @@ describe("electric_vehicle auto-binding (spec 183)", () => {
   });
 
   it("leaves the EV charger plan unchanged", () => {
-    expect(resolveAlias("charge", "ev_charger", ORDER_CATEGORY_ALIASES, "toggle_power")).toBe("state");
+    expect(resolveAlias("charge", "ev_charger", ORDER_CATEGORY_ALIASES, "toggle_power")).toBe(
+      "state",
+    );
   });
 });

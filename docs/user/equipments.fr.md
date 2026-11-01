@@ -20,7 +20,7 @@ Allez dans **Administration > Équipements** et cliquez sur **Ajouter un équipe
 | Description | Non         | Une note pour vous-même                                                                 |
 
 !!! info "Le type ne peut pas être modifié après création"
-Choisissez le type avec soin, il détermine quels devices sont compatibles et comment l'équipement est affiché.
+Choisissez le type avec soin, il détermine quels devices sont compatibles et comment l'équipement est affiché. Seule exception : un volet, un store banne et une porte peuvent être changés l'un en l'autre depuis le formulaire **Modifier** de l'équipement, car ils se lient de la même façon (voir [Porte](#acces)).
 
 ### Étape 2 : Sélectionner les devices
 
@@ -134,6 +134,20 @@ Portail, portail coulissant, ou porte de garage.
 Vous pouvez choisir une icône spécifique pour les portails sur le tableau de bord : portail standard, portail coulissant, ou porte de garage.
 
 Un portail peut être piloté par n'importe quel relais on/off : un module contact sec Zigbee (par ex. SONOFF MINI-ZBD), un canal de relais LoRa, ou une télécommande Somfy RTS. Le bouton de commande agit en impulsion ; configurez le comportement d'impulsion (inching / auto-off) sur le module lui-même. Associez un capteur d'ouverture (par ex. SONOFF SNZB-04P) au même équipement pour obtenir l'état ouvert/fermé ; sans capteur, l'état s'affiche comme inconnu.
+
+#### Porte
+
+Porte motorisée qui reçoit des ordres explicites Ouvrir / Fermer / Stop et remonte sa position : porte de poulailler à fins de course, porte de garage pilotée par son propre protocole moteur.
+
+- **Contrôles :** Boutons Ouvrir / Stop / Fermer, pastille d'état, curseur si une position est liée
+- **Données attendues :** état de fin de course (ouverte, fermée, en ouverture, en fermeture, défaut) et/ou position (0 % = fermée)
+
+Elle se lie comme un volet sans en être un : elle a son propre groupe « Portes » dans la vue zone, son propre comptage de zone (« portes 1/2 »), et aucune commande « fermer tous les volets » ne l'atteint. Une porte de garage pilotée par une seule impulsion sur un contact sec reste un **portail**.
+
+La pastille lit d'abord le mot de la porte (Ouverte, Fermée, En mouvement, Défaut), et sa position quand elle n'envoie pas de mot. Dans le comptage de zone, une porte est ouverte tant qu'elle n'est pas prouvée fermée : en mouvement ou en défaut, elle compte comme ouverte ; un état inconnu ne compte pas.
+
+!!! tip "Passer un volet en porte"
+Un volet, un store banne et une porte peuvent être changés l'un en l'autre depuis le formulaire **Modifier** de l'équipement : le sélecteur de type propose ces trois-là. L'équipement garde ses liaisons, son historique, ses recettes et ses tuiles. Pour tout autre type, le sélecteur reste verrouillé. Une recette dont l'emplacement n'accepte que des volets continue de tourner, mais son sélecteur ne propose plus l'équipement la prochaine fois que vous la modifiez.
 
 ---
 

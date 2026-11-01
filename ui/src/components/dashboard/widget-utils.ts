@@ -5,6 +5,8 @@ export function needsDetailSheet(equipmentType: string): boolean {
     "light_color",
     "shutter",
     "awning",
+    // Spec 190 — a door has the shutter sheet (state, buttons, optional slider).
+    "door",
     "pool_cover",
     "thermostat",
     "pool_heat_pump",
