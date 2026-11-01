@@ -12,7 +12,7 @@
 
 ### Slice B — Sessions
 
-- [x] B.1 — Migration 038 and `ev-session-store.ts`
+- [x] B.1 — Migration 039 and `ev-session-store.ts`
 - [x] B.2 — `ev-session-tracker.ts` (lifecycle, window settlement, grace, restart, removals, driving) + tests over a real event bus and an in-memory database
 - [x] B.3 — Wiring in `src/index.ts`, shutdown
 

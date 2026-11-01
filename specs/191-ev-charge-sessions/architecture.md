@@ -81,7 +81,7 @@ better-sqlite3 prepared statements. The tracker saves a whole `SessionRecord` at
 - **Read surface**: `listByCharger`, `listByVehicle` (attributed, vehicle not deleted), `summary` (closed sessions only).
 - Every handler is wrapped in try/catch with a structured log.
 
-### Migration `038_ev_charge_sessions.sql`
+### Migration `039_ev_charge_sessions.sql`
 
 `ev_charge_sessions` (meter, window sums, cost per tariff, attribution with source and reason, battery start / end, evidence JSON), `ev_vehicle_daily_driving` (km total, km measured, battery drop per vehicle and local day), `ev_vehicle_leg_state` (the open leg of each vehicle), and `equipments.plug_in_hybrid`.
 
@@ -118,7 +118,7 @@ The attribution body is one flat schema rather than a `oneOf`: Fastify's validat
 | Domain | File                                                                                                                              | Change                                                    |
 | ------ | --------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------- |
 | Types  | `src/shared/types.ts`, `ui/src/types.ts`                                                                                          | Session types, summary, events, `plugInHybrid`            |
-| DB     | `migrations/038_ev_charge_sessions.sql`                                                                                           | Three tables, one column                                  |
+| DB     | `migrations/039_ev_charge_sessions.sql`                                                                                           | Three tables, one column                                  |
 | Energy | `src/energy/ev-sessions/*` (new)                                                                                                  | Accountant, attribution, driving, summary, store, tracker |
 | Equip. | `src/equipments/equipment-manager.ts`, `src/api/routes/equipments.ts`                                                             | `plugInHybrid` read / write                               |
 | Core   | `src/index.ts`                                                                                                                    | Construct, start, stop (shutdown) the tracker             |
