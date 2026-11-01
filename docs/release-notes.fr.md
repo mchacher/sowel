@@ -11,6 +11,20 @@ Cette page résume toutes les versions publiées, de la plus récente à la plus
 
 ---
 
+## 1.78.x : Une borne qui ne remonte rien, et deux voitures à la fois
+
+### v1.78.0 — 2026-11-01 { #v1-78-0 }
+
+Une borne qui ne remonte rien peut maintenant être suivie par le compteur d'énergie de sa ligne, et deux voitures qui chargent en même temps sur deux bornes ont chacune leur recharge.
+
+- Nouveauté (énergie) : **borne mesurée et voiture habituelle** (spec 193, #1103).
+  - **La créer.** Une wallbox sans connexion peut être suivie par le compteur d'énergie de sa ligne (une pince ampèremétrique, un compteur modulaire). Créez une borne de recharge et choisissez ce compteur : le sélecteur de devices liste maintenant les compteurs d'énergie après les bornes, marqués « mesure seule ».
+  - **Ses recharges suivent sa puissance.** Une recharge commence à 500 W et se termine après 30 minutes sous 500 W, datée de sa dernière minute de charge. Le coût, la part solaire, l'attribution à la voiture et la carte sur la fiche de la voiture fonctionnent comme pour toute borne.
+  - **Une voiture habituelle par borne.** Un administrateur la choisit sur la fiche de la borne. Quand plusieurs voitures ont pu charger pendant une recharge, la recharge lui revient. Elle ne prend jamais une recharge qu'aucune voiture ne revendique.
+  - **Une borne par voiture à la fois.** Une voiture déjà donnée à une recharge sur une borne n'est pas candidate pour une recharge au même moment sur une autre. Quand les deux voitures chargent la même nuit, chacune sur sa borne, les deux recharges sont attribuées.
+
+---
+
 ## 1.77.x : La recharge en cours, sur la voiture
 
 ### v1.77.0 — 2026-11-01 { #v1-77-0 }

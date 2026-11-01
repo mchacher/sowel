@@ -11,6 +11,20 @@ This page summarises every published version, newest first. For the full diff be
 
 ---
 
+## 1.78.x: A charger that reports nothing, and two cars at once
+
+### v1.78.0 — 2026-11-01 { #v1-78-0 }
+
+A charger that reports nothing can now be followed through the energy meter on its line, and two cars charging at once on two chargers are each given their own session.
+
+- Feat (energy): **metered charger and usual vehicle** (spec 193, #1103).
+  - **Creating it.** A wallbox with no connection can be followed through the energy meter on its supply line (a current clamp, a DIN-rail meter). Create an EV charger and pick that meter: the device picker now lists energy meters after the chargers, marked « metered only ».
+  - **Its sessions follow its power.** A session starts at 500 W and ends after 30 minutes under 500 W, dated at its last minute of charge. Cost, solar share, attribution to the car and the card on the car's page work as for any charger.
+  - **A usual vehicle per charger.** An administrator sets it on the charger's page. When several cars could have charged during a session, the session goes to it. It never takes a session that no car claims.
+  - **One charger per car at a time.** A car already given to a session on one charger is not a candidate for a session at the same time on another. When both cars charge the same night, each on its own charger, both sessions are attributed.
+
+---
+
 ## 1.77.x: The charge in progress, on the car
 
 ### v1.77.0 — 2026-11-01 { #v1-77-0 }
