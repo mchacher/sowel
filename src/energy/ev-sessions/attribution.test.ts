@@ -1,7 +1,9 @@
 import { describe, expect, it } from "vitest";
 import {
   attribute,
+  batteryRise,
   emptyEvidence,
+  matches,
   foldReport,
   type ReportAlias,
   type VehicleEvidence,
@@ -229,5 +231,47 @@ describe("foldReport", () => {
       { startMs: START, endMs: END, positiveFromMs: START - 15 * 60_000 },
     );
     expect(ev).toMatchObject({ awaySeen: false, firstBattery: null });
+  });
+
+  it("takes the latest level just before the start as the starting level (audit A4)", () => {
+    const session = { startMs: START, endMs: END, positiveFromMs: START - 15 * 60_000 };
+    const ev = fold(
+      "a",
+      [
+        ["battery_level", 38, START - 10 * 60_000],
+        ["battery_level", 40, START - 60_000],
+        ["battery_level", 55, START + H],
+      ],
+      session,
+    );
+    expect(ev).toMatchObject({ baseBattery: 40, firstBattery: 55, maxBattery: 55 });
+    expect(batteryRise(ev)).toBe(15);
+  });
+
+  it("raises the highest level from a report just after the end, never alone (audit A4)", () => {
+    const after = END + 5 * 60_000;
+    const ev = fold("a", [
+      ["battery_level", 40, START + H],
+      ["battery_level", 66, after],
+    ]);
+    expect(ev.maxBattery).toBe(66);
+    expect(fold("a", [["battery_level", 66, after]]).maxBattery).toBeNull();
+    expect(
+      fold("a", [
+        ["battery_level", 40, START + H],
+        ["battery_level", 90, END + H],
+      ]).maxBattery,
+    ).toBe(40);
+  });
+
+  it("needs a car away at the opening to be seen home before it matches (audit A5)", () => {
+    const away = { ...fold("a", [["charging_state", "charging", START + H]]), awayAtStart: true };
+    expect(matches(away)).toBe(false);
+    const home = foldReport(
+      away,
+      { alias: "at_home", value: true, reportedAtMs: null, receivedAtMs: START + 2 * H },
+      { startMs: START, endMs: END },
+    );
+    expect(matches(home)).toBe(true);
   });
 });

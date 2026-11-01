@@ -249,6 +249,15 @@ describe("session lifecycle", () => {
     expect(sessions()[0].energyWh).toBeCloseTo(1000, 0);
   });
 
+  it("shows the charger's current name, not the one it had at the start", () => {
+    data("charger", "vehicle", "charging");
+    run(10, 2000, 2000);
+    eqs.getById("charger")!.name = "Borne Tuya";
+    run(10, 2000, 2000);
+    data("charger", "vehicle", "disconnected");
+    expect(sessions()[0].chargerName).toBe("Borne Tuya");
+  });
+
   it("ignores aligned historical grid ticks", () => {
     data("charger", "vehicle", "charging");
     data("charger", "power", 1200);
@@ -634,7 +643,11 @@ describe("metered charger (spec 193)", () => {
     await twoCarsAtOnce(10);
     now += GRACE_MS;
     tracker.tick();
-    expect(sessions()[0]).toMatchObject({ vehicleId: "rafale", attributionReason: "single-match" });
+    // It rests on the Legrand's usual-vehicle guess: it says so (audit A7).
+    expect(sessions()[0]).toMatchObject({
+      vehicleId: "rafale",
+      attributionReason: "usual-vehicle",
+    });
     expect(legrand()[0]).toMatchObject({ vehicleId: "megane" });
   });
 
@@ -872,6 +885,128 @@ describe("metered charger (spec 193)", () => {
     expect(s.energyWh).toBe(3000);
     expect(s.gridHpWh + s.gridHcWh).toBeCloseTo(3000, 6);
     expect(s.costEur).toBeCloseTo(0.6, 6);
+  });
+
+  it("does not give a guest's session to a car charging away (audit A5)", async () => {
+    eqs.set("rafale", "at_home", false, now - 20 * MIN); // its last location poll
+    data("charger", "vehicle", "charging"); // a guest plugs in at home
+    for (let i = 0; i < 40; i++) {
+      data("charger", "power", 3000);
+      if (i === 10) {
+        await report("rafale", "charging", now - MIN);
+        data("rafale", "battery_level", 30);
+        await flush();
+      }
+      if (i === 30) {
+        data("rafale", "battery_level", 45);
+        await flush();
+      }
+      now += MIN;
+      data("grid", "energy", 50);
+    }
+    data("charger", "vehicle", "disconnected");
+    now += GRACE_MS;
+    tracker.tick();
+    expect(sessions()[0]).toMatchObject({ attribution: "unattributed" });
+  });
+
+  it("still gives the session to a car away at the opening once it is seen home (audit A5)", async () => {
+    eqs.set("megane", "at_home", false, now - 20 * MIN); // the location lags
+    data("charger", "vehicle", "charging");
+    run(10, 3000, 3000);
+    await report("megane", "charging", now);
+    data("megane", "at_home", true);
+    await flush();
+    run(30, 3000, 3000);
+    data("charger", "vehicle", "disconnected");
+    now += GRACE_MS;
+    tracker.tick();
+    expect(sessions()[0]).toMatchObject({ vehicleId: "megane" });
+  });
+
+  it("keeps the start slack for a car the other charger does not hold (audit A6)", async () => {
+    data("charger", "vehicle", "charging"); // the Rafale on the plug-state charger
+    await report("rafale", "charging", now);
+    run(60, 1300, 1300);
+    // The Megane's report is dated 3 min before the Legrand's first 500 W.
+    await report("megane", "charging", now - 3 * MIN);
+    meter(9, 7000, () => data("charger", "power", 1300));
+    meter(31, 0, () => data("charger", "power", 1300));
+    now += GRACE_MS;
+    tracker.tick();
+    expect(legrand()[0]).toMatchObject({ vehicleId: "megane", attributionReason: "single-match" });
+  });
+
+  it("says usual vehicle on both chargers when the cars are swapped (audit A7)", async () => {
+    setUsual("legrand", "megane");
+    data("charger", "vehicle", "charging"); // tonight: Megane on the plug-state, Rafale on the Legrand
+    for (let i = 0; i < 120; i++) {
+      data("charger", "power", 1300);
+      data("legrand", "power", 7000);
+      if (i === 5) {
+        await report("megane", "charging", now - 30_000);
+        await report("rafale", "charging", now - 30_000);
+      }
+      tracker.tick();
+      now += MIN;
+      data("grid", "energy", 140);
+    }
+    data("charger", "vehicle", "disconnected");
+    meter(31, 0);
+    now += GRACE_MS;
+    tracker.tick();
+    // Both are guesses from the usual vehicle, and say so.
+    expect(sessions()[0].attributionReason).toBe("usual-vehicle");
+    expect(legrand()[0].attributionReason).toBe("usual-vehicle");
+  });
+
+  it("measures the battery from just before the start to just after the end (audit A4)", async () => {
+    // 40 % reported 90 s before the first 500 W reading.
+    data("megane", "reported_at", new Date(now - 90_000).toISOString());
+    data("megane", "battery_level", 40);
+    data("megane", "charging_state", "charging");
+    await flush();
+    let level = 40;
+    for (let i = 0; i < 120; i++) {
+      data("legrand", "power", 7000);
+      if (i % 10 === 9) {
+        level += 2;
+        data("megane", "reported_at", new Date(now - 30_000).toISOString());
+        data("megane", "battery_level", level);
+        await flush();
+      }
+      tracker.tick();
+      now += MIN;
+      data("grid", "energy", 7000 / 60);
+    }
+    const lastActive = now - MIN;
+    for (let i = 0; i < 31; i++) {
+      data("legrand", "power", 3);
+      if (i === 3) {
+        // The final 66 %, reported 2 min after the charge stopped.
+        data("megane", "reported_at", new Date(lastActive + 2 * MIN).toISOString());
+        data("megane", "battery_level", 66);
+        await flush();
+      }
+      tracker.tick();
+      now += MIN;
+    }
+    now += GRACE_MS;
+    tracker.tick();
+    expect(legrand()[0]).toMatchObject({ vehicleId: "megane", batteryStart: 40, batteryEnd: 66 });
+  });
+
+  it("follows the battery of a session given by hand while open (audit A3)", async () => {
+    data("charger", "vehicle", "charging");
+    data("megane", "battery_level", 40);
+    await flush();
+    run(5, 7000, 7000);
+    tracker.setAttribution(sessions()[0].id, { target: "vehicle", vehicleId: "megane" });
+    run(20, 7000, 7000);
+    data("megane", "battery_level", 60);
+    await flush();
+    data("charger", "vehicle", "disconnected");
+    expect(sessions()[0]).toMatchObject({ batteryStart: 40, batteryEnd: 60 });
   });
 
   it("shows each car its own session in progress", async () => {

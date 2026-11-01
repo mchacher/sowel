@@ -12,7 +12,7 @@ import type {
   EvSessionAttribution,
   EvSessionAttributionReason,
 } from "../../shared/types.js";
-import type { VehicleEvidence } from "./attribution.js";
+import { type VehicleEvidence, startBattery } from "./attribution.js";
 import type { Leg, LegState } from "./driving.js";
 import { deriveEnergy } from "./summary.js";
 
@@ -141,7 +141,7 @@ export function toSession(r: SessionRecord): EvChargeSession {
     candidates: r.evidence.map((e) => ({
       vehicleId: e.vehicleId,
       chargingSeen: e.chargingSeen,
-      batteryFrom: e.firstBattery,
+      batteryFrom: startBattery(e),
       batteryTo: e.maxBattery,
     })),
     updatedAt: r.updatedAt,

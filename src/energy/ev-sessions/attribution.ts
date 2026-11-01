@@ -27,6 +27,14 @@ export const BATTERY_RISE_POINTS = 2;
  */
 export const START_SLACK_MS = 15 * 60_000;
 
+/**
+ * Audit A4 — a car's final battery level is often reported a few minutes after
+ * its charge stopped: a battery report up to this long after the session's end
+ * still raises its highest level (never its first, never a match on its own
+ * without a level during or just before the session).
+ */
+export const END_SLACK_MS = 15 * 60_000;
+
 export interface VehicleEvidence {
   vehicleId: string;
   pluggedSeen: boolean;
@@ -34,6 +42,26 @@ export interface VehicleEvidence {
   awaySeen: boolean;
   firstBattery: number | null;
   maxBattery: number | null;
+  /**
+   * Audit A4 — the latest level the car reported just before the session
+   * (within the start slack): its level at the real start. Absent on sessions
+   * saved before it existed.
+   */
+  baseBattery?: number | null;
+  baseBatteryAtMs?: number | null;
+  /**
+   * Audit A5 — the car's last known location said away when the session
+   * opened. It does not match until a report during the session says it is
+   * home: a car charging elsewhere must not take a session at home.
+   */
+  awayAtStart?: boolean;
+  homeSeen?: boolean;
+  /**
+   * From when this car's reports made before the session count, fixed when
+   * the session opened (issue #1105, audit A6): what went on just before the
+   * opening decides it, not what other sessions learn later.
+   */
+  slackFromMs?: number;
 }
 
 export function emptyEvidence(vehicleId: string): VehicleEvidence {
@@ -58,21 +86,19 @@ export interface VehicleReport {
   receivedAtMs: number;
 }
 
-/** Evidence FOR a car: it may come slightly before the session (issue #1105). */
-function isPositive(report: VehicleReport): boolean {
-  return (
-    (report.alias === "plugged" && report.value === true) ||
-    (report.alias === "charging_state" && report.value === "charging")
-  );
-}
-
 /**
- * Fold one report into the evidence; reports made outside the session are
- * ignored, except a « plugged » or « charging » made from `positiveFromMs`
- * (at most START_SLACK_MS before the start, set by the tracker; the start
- * when absent). Being away and the battery keep the strict window: a car
- * that comes home and plugs in within the slack is not seen away. Returns the
- * same object when the report adds nothing.
+ * Fold one report into the evidence. A report counts when the car made it
+ * during the session, with these exceptions:
+ * - a « plugged », a « charging » or a battery level made from
+ *   `positiveFromMs` (at most START_SLACK_MS before the start, never inside
+ *   another session holding this car; set by the tracker) counts too: the car
+ *   dates it from the real start, the session may open later (issue #1105). A
+ *   level made before the start is the session's starting level (audit A4);
+ * - a battery level up to END_SLACK_MS after the end raises the highest level
+ *   (audit A4).
+ * Being away keeps the strict window: a car that comes home and plugs in within
+ * the slack is not seen away. Returns the same object when the report adds
+ * nothing.
  */
 export function foldReport(
   evidence: VehicleEvidence,
@@ -80,29 +106,42 @@ export function foldReport(
   session: { startMs: number; endMs: number | null; positiveFromMs?: number },
 ): VehicleEvidence {
   const at = report.reportedAtMs ?? report.receivedAtMs;
-  const from = isPositive(report)
-    ? Math.min(session.startMs, session.positiveFromMs ?? session.startMs)
-    : session.startMs;
+  const from = Math.min(session.startMs, session.positiveFromMs ?? session.startMs);
+  const beforeStart = at < session.startMs;
+  const afterEnd = session.endMs !== null && at > session.endMs;
   if (at < from) return evidence;
-  if (session.endMs !== null && at > session.endMs) return evidence;
 
   const next = { ...evidence };
   switch (report.alias) {
     case "plugged":
-      if (report.value === true) next.pluggedSeen = true;
+      if (report.value === true && !afterEnd) next.pluggedSeen = true;
       break;
     case "charging_state":
-      if (report.value === "charging") next.chargingSeen = true;
+      if (report.value === "charging" && !afterEnd) next.chargingSeen = true;
       break;
     case "battery_level": {
       const level = typeof report.value === "number" ? report.value : Number.NaN;
       if (!Number.isFinite(level)) break;
-      if (next.firstBattery === null) next.firstBattery = level;
-      next.maxBattery = next.maxBattery === null ? level : Math.max(next.maxBattery, level);
+      if (beforeStart) {
+        if (next.baseBatteryAtMs == null || at >= next.baseBatteryAtMs) {
+          next.baseBattery = level;
+          next.baseBatteryAtMs = at;
+        }
+      } else if (afterEnd) {
+        const known = next.firstBattery !== null || next.baseBattery != null;
+        if (known && at <= session.endMs! + END_SLACK_MS) {
+          next.maxBattery = next.maxBattery === null ? level : Math.max(next.maxBattery, level);
+        }
+      } else {
+        if (next.firstBattery === null) next.firstBattery = level;
+        next.maxBattery = next.maxBattery === null ? level : Math.max(next.maxBattery, level);
+      }
       break;
     }
     case "at_home":
+      if (beforeStart || afterEnd) break;
       if (report.value === false) next.awaySeen = true;
+      if (report.value === true) next.homeSeen = true;
       break;
   }
   // The same object when nothing changed: the tracker saves and emits only on a change.
@@ -112,21 +151,35 @@ export function foldReport(
   return changed ? next : evidence;
 }
 
+/** The level when the charge started: just before the session, else its first (audit A4). */
+export function startBattery(evidence: VehicleEvidence): number | null {
+  return evidence.baseBattery ?? evidence.firstBattery;
+}
+
 export function batteryRise(evidence: VehicleEvidence): number {
-  if (evidence.firstBattery === null || evidence.maxBattery === null) return 0;
-  return evidence.maxBattery - evidence.firstBattery;
+  const start = startBattery(evidence);
+  if (start === null || evidence.maxBattery === null) return 0;
+  return evidence.maxBattery - start;
+}
+
+/** Charged during the session, whatever the location (audit A6: a car this session holds). */
+export function charged(evidence: VehicleEvidence): boolean {
+  return evidence.chargingSeen || batteryRise(evidence) >= BATTERY_RISE_POINTS;
 }
 
 /**
- * Charged during the session and never seen away. An unplug report is no
+ * Charged during the session and not seen away. An unplug report is no
  * evidence against a car: the car stamps its own unplug, often before the
  * charger reports it, so it falls inside the session of the very car that
  * charged. Being seen plugged is not required either: a car whose plug state
- * did not change during the session reports nothing about it.
+ * did not change during the session reports nothing about it. A car whose
+ * last known location was away when the session opened must be seen home
+ * during it (audit A5).
  */
 export function matches(evidence: VehicleEvidence): boolean {
   if (evidence.awaySeen) return false;
-  return evidence.chargingSeen || batteryRise(evidence) >= BATTERY_RISE_POINTS;
+  if (evidence.awayAtStart && !evidence.homeSeen) return false;
+  return charged(evidence);
 }
 
 export type AttributionResult =

@@ -36,6 +36,8 @@ import {
   START_SLACK_MS,
   attribute,
   emptyEvidence,
+  matches,
+  startBattery,
   foldReport,
   type ReportAlias,
   type VehicleEvidence,
@@ -165,6 +167,8 @@ export class EvSessionTracker {
   private readonly queue = new Map<number, Array<{ record: SessionRecord; window: CarWindow }>>();
   /** Sessions dropped at close (under 100 Wh): a late window must not save them back. */
   private readonly dropped = new Set<string>();
+  /** Metered chargers already warned about a negative power (one warning each). */
+  private readonly negativeWarned = new Set<string>();
   private unsubscribe: (() => void) | null = null;
   private timer: ReturnType<typeof setInterval> | null = null;
   private readonly now: () => number;
@@ -354,7 +358,9 @@ export class EvSessionTracker {
       }
     }
     // Issue #1105 — a car may have reported while Sowel was down.
-    for (const s of this.open.values()) if (this.seedEvidence(s.record)) this.persist(s.record);
+    for (const s of this.open.values()) {
+      if (this.seedEvidence(s.record, false)) this.persist(s.record);
+    }
     for (const record of this.store.listPending()) this.pending.set(record.id, record);
 
     // A charger already plugged (first start, or a missed event) opens now;
@@ -405,7 +411,7 @@ export class EvSessionTracker {
       active: true,
       tail: [],
     });
-    this.seedEvidence(record);
+    this.seedEvidence(record, true);
     this.persist(record);
     this.logger.info({ sessionId: record.id, chargerId }, "EV charge session opened");
   }
@@ -469,31 +475,29 @@ export class EvSessionTracker {
   }
 
   /**
-   * Issue #1105 — what each car already says: a « charging » or « plugged »
-   * it reported just before the session opened counts (from `positiveFrom`),
-   * even if its plugin never publishes it again. A car whose current location
-   * is away from home is not read (it charges elsewhere); its location is not
-   * held against it either, it may lag. Returns whether anything was added.
+   * Issue #1105 — what each car already says: a « charging », « plugged » or
+   * battery level it reported just before the session opened counts (from
+   * `positiveFrom`), even if its plugin never publishes it again. At the
+   * opening (`atOpen`), a car whose last known location is away is noted so
+   * (audit A5): it must be seen home during the session to match. Returns
+   * whether anything was added.
    */
-  private seedEvidence(record: SessionRecord): boolean {
+  private seedEvidence(record: SessionRecord, atOpen: boolean): boolean {
     const startMs = Date.parse(record.startedAt);
-    const window = {
-      startMs,
-      endMs: record.endedAt === null ? null : Date.parse(record.endedAt),
-      positiveFromMs: this.positiveFrom(record),
-    };
+    const endMs = record.endedAt === null ? null : Date.parse(record.endedAt);
     let changed = false;
     for (const vehicleId of this.candidateVehicleIds()) {
       const bindings = this.equipmentManager.getDataBindingsWithValues(vehicleId);
-      if (bindings.find((b) => b.alias === ELECTRIC_VEHICLE_ALIASES.atHome)?.value === false) {
-        continue;
-      }
       const index = record.evidence.findIndex((e) => e.vehicleId === vehicleId);
       const before = index >= 0 ? record.evidence[index] : emptyEvidence(vehicleId);
       let evidence = before;
+      const slackFromMs = before.slackFromMs ?? this.positiveFrom(record, vehicleId);
+      if (atOpen) evidence = { ...evidence, slackFromMs };
+      const window = { startMs, endMs, positiveFromMs: slackFromMs };
       for (const alias of [
         ELECTRIC_VEHICLE_ALIASES.chargingState,
         ELECTRIC_VEHICLE_ALIASES.plugged,
+        ELECTRIC_VEHICLE_ALIASES.batteryLevel,
       ] as const) {
         const binding = bindings.find((b) => b.alias === alias);
         const receivedAtMs = parseTimestamp(binding?.lastUpdated ?? null);
@@ -508,6 +512,9 @@ export class EvSessionTracker {
           window,
         );
       }
+      const away =
+        bindings.find((b) => b.alias === ELECTRIC_VEHICLE_ALIASES.atHome)?.value === false;
+      if (atOpen && away && !evidence.awayAtStart) evidence = { ...evidence, awayAtStart: true };
       if (evidence === before) continue;
       if (index >= 0) record.evidence[index] = evidence;
       else record.evidence.push(evidence);
@@ -517,12 +524,14 @@ export class EvSessionTracker {
   }
 
   /**
-   * Issue #1105 — from when a car's « charging » or « plugged » made before the
-   * session started still counts: START_SLACK_MS before it, but never inside
-   * another session (this charger's previous one, or one on another charger):
-   * a report made then belongs to that session.
+   * Issue #1105 — from when a car's report made before the session started
+   * still counts: START_SLACK_MS before it, but never inside another session
+   * that gives this car (this charger's previous one, or one on another
+   * charger; set or provisional, see `givenBy`): a report made then belongs to
+   * that session. A session that gives another car, or none, does not cut it
+   * (audit A6).
    */
-  private positiveFrom(record: SessionRecord): number {
+  private positiveFrom(record: SessionRecord, vehicleId: string): number {
     const startMs = Date.parse(record.startedAt);
     let from = startMs - START_SLACK_MS;
     for (const other of this.store.listMeeting(
@@ -530,6 +539,7 @@ export class EvSessionTracker {
       new Date(from).toISOString(),
       record.startedAt,
     )) {
+      if (this.givenBy(other)?.vehicleId !== vehicleId) continue;
       const end = other.endedAt === null ? startMs : Math.min(Date.parse(other.endedAt), startMs);
       from = Math.max(from, end);
     }
@@ -562,7 +572,7 @@ export class EvSessionTracker {
     record.vehicleId = vehicleId;
     record.vehicleName = name;
     record.vehicleDeleted = false;
-    record.batteryStart = evidence?.firstBattery ?? null;
+    record.batteryStart = evidence ? startBattery(evidence) : null;
     record.batteryEnd = evidence?.maxBattery ?? null;
   }
 
@@ -623,6 +633,19 @@ export class EvSessionTracker {
     }
     if (alias === EV_CHARGER_ALIASES.power && typeof value === "number") {
       const active = value >= METERED_CHARGER_THRESHOLD_W;
+      // A metered charger drawing « minus 7 kW » is a clamp mounted the wrong
+      // way: no session can open on it. Say so once.
+      if (
+        value <= -METERED_CHARGER_THRESHOLD_W &&
+        !this.negativeWarned.has(chargerId) &&
+        this.chargerIsMetered(chargerId)
+      ) {
+        this.negativeWarned.add(chargerId);
+        this.logger.warn(
+          { chargerId, chargerName, power: value },
+          "Metered charger reads a negative power: its meter may be mounted the wrong way",
+        );
+      }
       // Spec 193 — a metered charger opens on its power.
       if (active && enabled && !this.open.has(chargerId) && this.chargerIsMetered(chargerId)) {
         this.openSession(chargerId, chargerName, now);
@@ -684,11 +707,19 @@ export class EvSessionTracker {
     const after = foldReport(before, report, {
       startMs,
       endMs,
-      ...(at < startMs && { positiveFromMs: this.positiveFrom(record) }),
+      ...(at < startMs && {
+        positiveFromMs: before.slackFromMs ?? this.positiveFrom(record, vehicleId),
+      }),
     });
     if (after === before) return;
     if (index >= 0) record.evidence[index] = after;
     else record.evidence.push(after);
+    // Audit A3 — a session given to this car (by hand while open) follows its
+    // battery to the end, so it can teach the energy per point.
+    if (record.attribution === "vehicle" && record.vehicleId === vehicleId) {
+      record.batteryStart = startBattery(after);
+      record.batteryEnd = after.maxBattery;
+    }
     // Emitted: the vehicle page shows a session once a car matches (spec 192).
     this.persist(record);
   }
@@ -816,6 +847,9 @@ export class EvSessionTracker {
   // ============================================================
 
   private persist(record: SessionRecord): void {
+    // The charger's current name, not the one it had when the session opened.
+    const charger = this.equipmentManager.getById(record.chargerId);
+    if (charger) record.chargerName = charger.name;
     record.updatedAt = new Date(this.now()).toISOString();
     this.store.save(record);
     this.eventBus.emit({ type: "energy.ev_session.updated", session: toSession(record) });
@@ -829,35 +863,55 @@ export class EvSessionTracker {
   /**
    * The attribution of a session, now: its evidence, minus the cars that an
    * overlapping session on another charger gives (spec 193 P4), with its
-   * charger's usual vehicle to break a tie.
+   * charger's usual vehicle to break a tie. A single match that only stands
+   * because a usual-vehicle guess elsewhere took the other car is a guess too:
+   * it reads « usual vehicle », never « single match » (audit A7).
    */
   private resolve(record: SessionRecord): AttributionResult {
-    return attribute(record.evidence, this.candidateVehicleIds(), {
+    const taken = this.takenElsewhere(record);
+    const result = attribute(record.evidence, this.candidateVehicleIds(), {
       usualVehicleId: this.usualVehicleOf(record.chargerId),
-      excluded: this.takenElsewhere(record),
+      excluded: new Set(taken.keys()),
     });
+    if (result.state === "vehicle" && result.reason === "single-match") {
+      const onGuess = [...taken].some(
+        ([vehicleId, sure]) =>
+          !sure && record.evidence.some((e) => e.vehicleId === vehicleId && matches(e)),
+      );
+      if (onGuess) return { ...result, reason: "usual-vehicle" };
+    }
+    return result;
   }
 
   /**
-   * The car a session gives, without P4 (no cycle): by hand, as its single
-   * match or as its usual vehicle, set or provisional. "The only vehicle"
-   * rests on no evidence (a guest's car would do the same): it gives none.
+   * The car a session gives, without P4 (no cycle), and whether it is sure: by
+   * hand or as its single match (sure), or as its usual vehicle (a guess), set
+   * or provisional. "The only vehicle" rests on no evidence (a guest's car
+   * would do the same): it gives none.
    */
-  private givenBy(record: SessionRecord): string | null {
+  private givenBy(record: SessionRecord): { vehicleId: string; sure: boolean } | null {
     if (record.attribution === "vehicle") {
-      return record.attributionSource === "manual" || record.attributionReason !== "only-vehicle"
-        ? record.vehicleId
-        : null;
+      if (record.vehicleId === null) return null;
+      if (record.attributionSource === "manual") return { vehicleId: record.vehicleId, sure: true };
+      if (record.attributionReason === "only-vehicle") return null;
+      return {
+        vehicleId: record.vehicleId,
+        sure: record.attributionReason !== "usual-vehicle",
+      };
     }
     if (record.attribution !== "pending" || record.attributionSource === "manual") return null;
     const result = attribute(record.evidence, this.candidateVehicleIds(), {
       usualVehicleId: this.usualVehicleOf(record.chargerId),
     });
-    return result.state === "vehicle" && result.reason !== "only-vehicle" ? result.vehicleId : null;
+    if (result.state !== "vehicle" || result.reason === "only-vehicle") return null;
+    return { vehicleId: result.vehicleId, sure: result.reason !== "usual-vehicle" };
   }
 
-  /** Cars given by sessions on other chargers whose time range meets this one. */
-  private takenElsewhere(record: SessionRecord): Set<string> {
+  /**
+   * Cars given by sessions on other chargers whose time range meets this one,
+   * each with whether it is sure (a sure giving wins over a guess).
+   */
+  private takenElsewhere(record: SessionRecord): Map<string, boolean> {
     const from = record.startedAt;
     const to = record.endedAt;
     const overlaps = (other: SessionRecord) =>
@@ -869,10 +923,10 @@ export class EvSessionTracker {
       others.set(r.id, r);
     }
     for (const r of this.liveRecords()) if (overlaps(r)) others.set(r.id, r);
-    const taken = new Set<string>();
+    const taken = new Map<string, boolean>();
     for (const other of others.values()) {
-      const vehicleId = this.givenBy(other);
-      if (vehicleId !== null) taken.add(vehicleId);
+      const given = this.givenBy(other);
+      if (given !== null) taken.set(given.vehicleId, taken.get(given.vehicleId) || given.sure);
     }
     return taken;
   }
@@ -966,6 +1020,9 @@ export class EvSessionTracker {
    * location, hence `at_home`), which take the time Sowel received them.
    */
   private vehicleReportedAt(vehicleId: string, alias: string): number | null {
+    // The location comes from its own poll, even within 5 s of a battery read
+    // (both at the plugin's start): it never takes that report's time.
+    if (alias === ELECTRIC_VEHICLE_ALIASES.atHome) return null;
     const bindings = this.equipmentManager.getDataBindingsWithValues(vehicleId);
     const reportedAt = bindings.find((b) => b.alias === ELECTRIC_VEHICLE_ALIASES.reportedAt);
     const own = bindings.find((b) => b.alias === alias);
