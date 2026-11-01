@@ -129,20 +129,20 @@ For a vehicle and a month: cost (€), energy (kWh) with its split grid off-peak
 
 ## Acceptance Criteria
 
-- [ ] A plug-in on a charger reporting `vehicle` opens a session; the unplug closes it; pauses inside do not split it.
-- [ ] A session under 0.1 kWh disappears at close.
-- [ ] A window where the car draws 1.4 kW while the house imports 0.4 kW is counted 2/7 grid and 5/7 solar (P5).
-- [ ] A window in HC is priced at the HC price, in HP at the HP price; changing prices afterwards leaves closed sessions unchanged.
-- [ ] Without a main meter, a session is all grid; without a tariff, it has no cost and the UI shows "—".
-- [ ] A restart during a session loses at most one window of accounting; a restart after an unplug closes the session.
-- [ ] With the Rafale reporting plugged + charging during a session and the Megane unplugged, the session is attributed to the Rafale at the end of the grace period.
-- [ ] With both cars matching, or none, the session is "to attribute" with the reason.
-- [ ] A manual reassignment (standard user included) sticks, including to "Other vehicle", and moves the totals.
-- [ ] The vehicle summary shows cost, kWh split off-peak / peak / solar with € each, sessions and € per 100 km for the month.
-- [ ] € per 100 km = home €/kWh × measured consumption; a month where half the km were driven on energy charged elsewhere gives the same € per 100 km as a month charged only at home, at the same home price and consumption.
-- [ ] A driving leg during which the battery rose is left out of the consumption.
-- [ ] € per 100 km reads "not enough data yet" before the first qualifying home session or under 50 measured km, and never shows on a vehicle marked plug-in hybrid.
-- [ ] Both pages update live over WebSocket.
+- [x] A plug-in on a charger reporting `vehicle` opens a session; the unplug closes it; pauses inside do not split it.
+- [x] A session under 0.1 kWh disappears at close.
+- [x] A window where the car draws 1.4 kW while the house imports 0.4 kW is counted 2/7 grid and 5/7 solar (P5).
+- [x] A window in HC is priced at the HC price, in HP at the HP price; changing prices afterwards leaves closed sessions unchanged.
+- [x] Without a main meter, a session is all grid; without a tariff, it has no cost and the UI shows "—".
+- [x] A restart during a session loses at most one window of accounting; a restart after an unplug closes the session.
+- [x] With the Rafale reporting plugged + charging during a session and the Megane unplugged, the session is attributed to the Rafale at the end of the grace period.
+- [x] With both cars matching, or none, the session is "to attribute" with the reason.
+- [x] A manual reassignment (standard user included) sticks, including to "Other vehicle", and moves the totals.
+- [x] The vehicle summary shows cost, kWh split off-peak / peak / solar with € each, sessions and € per 100 km for the month.
+- [x] € per 100 km = home €/kWh × measured consumption; a month where half the km were driven on energy charged elsewhere gives the same € per 100 km as a month charged only at home, at the same home price and consumption.
+- [x] A driving leg during which the battery rose is left out of the consumption.
+- [x] € per 100 km reads "not enough data yet" before the first qualifying home session or under 50 measured km, and never shows on a vehicle marked plug-in hybrid.
+- [x] Both pages update live over WebSocket.
 - [ ] Verified on production for two weeks with both cars (historised car data enabled on 2026-11-01 serves as the reference).
 
 ## Edge Cases
