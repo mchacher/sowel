@@ -62,6 +62,8 @@ export interface VehicleEvidence {
    * opening decides it, not what other sessions learn later.
    */
   slackFromMs?: number;
+  /** When the car was first seen charging in this session (epoch ms). */
+  firstChargingAtMs?: number | null;
 }
 
 export function emptyEvidence(vehicleId: string): VehicleEvidence {
@@ -117,7 +119,12 @@ export function foldReport(
       if (report.value === true && !afterEnd) next.pluggedSeen = true;
       break;
     case "charging_state":
-      if (report.value === "charging" && !afterEnd) next.chargingSeen = true;
+      if (report.value === "charging" && !afterEnd) {
+        next.chargingSeen = true;
+        if (next.firstChargingAtMs == null || at < next.firstChargingAtMs) {
+          next.firstChargingAtMs = at;
+        }
+      }
       break;
     case "battery_level": {
       const level = typeof report.value === "number" ? report.value : Number.NaN;
@@ -139,7 +146,13 @@ export function foldReport(
       break;
     }
     case "at_home":
-      if (beforeStart || afterEnd) break;
+      if (beforeStart) break;
+      // Home just after the end still says it was home (a location poll lags);
+      // away just after the end says nothing (it may have left).
+      if (afterEnd) {
+        if (report.value === true && at <= session.endMs! + END_SLACK_MS) next.homeSeen = true;
+        break;
+      }
       if (report.value === false) next.awaySeen = true;
       if (report.value === true) next.homeSeen = true;
       break;

@@ -867,10 +867,10 @@ describe("metered charger (spec 193)", () => {
     data("charger", "vehicle", "disconnected");
     now += 4 * MIN;
     tracker.tick();
-    // 10 min before the restart, 10 after (held again), 15 more after the
-    // last reading (the hold limit): 35 min at 3.7 kW. Without holding the
-    // reading again at the restart: 25 min.
-    expect(sessions()[0].energyWh).toBeCloseTo((3700 * 35) / 60, -1);
+    // As without a restart: 15 min held after the first reading (the hold
+    // limit counts from the reading, not from the restart), then 15 after the
+    // second: 30 min at 3.7 kW. Without holding it again at the restart: 25.
+    expect(sessions()[0].energyWh).toBeCloseTo((3700 * 30) / 60, -1);
   });
 
   it("prices a session whose meter moved without any window (audit A8)", () => {
@@ -1019,6 +1019,100 @@ describe("metered charger (spec 193)", () => {
     const ids = (v: string) => tracker.currentForVehicle(v).map((x) => x.chargerId);
     expect(ids("megane")).toEqual(["legrand"]);
     expect(ids("rafale")).toEqual(["charger"]);
+  });
+});
+
+describe("audit review (fix/ev-cost-audit)", () => {
+  it("does not pass a late report of the previous car to a guest on the same charger", async () => {
+    // A car charges 11:00–11:20 and reports nothing during it; a guest plugs
+    // in at 11:22; the car's report, dated 11:18, arrives at 11:25.
+    data("charger", "vehicle", "charging");
+    run(20, 3000, 3000);
+    const reportedAt = now - 2 * MIN;
+    data("charger", "vehicle", "disconnected");
+    now += 2 * MIN;
+    data("charger", "vehicle", "charging");
+    run(3, 3000, 3000);
+    data("rafale", "reported_at", new Date(reportedAt).toISOString());
+    data("rafale", "charging_state", "charging");
+    await flush();
+    run(30, 3000, 3000);
+    data("charger", "vehicle", "disconnected");
+    now += GRACE_MS + 5 * MIN;
+    tracker.tick();
+    const [guest] = sessions(); // newest first
+    expect(guest.attribution).toBe("unattributed");
+  });
+
+  it("keeps the grid ledger small when no session is open", () => {
+    for (let i = 0; i < 24 * 60; i++) {
+      now += MIN;
+      data("grid", "energy", 10);
+    }
+    const ledger = (tracker as unknown as { ledger: { size: number } }).ledger;
+    expect(ledger.size).toBeLessThan(20);
+  });
+
+  it("does not bill the house's import before the plug-in to the car", () => {
+    // 6 kW imported for 3 min with no car; then the car at 3 kW on solar.
+    for (let i = 0; i < 3; i++) {
+      now += MIN;
+      data("grid", "energy", 100);
+    }
+    data("charger", "vehicle", "charging");
+    for (let i = 0; i < 30; i++) {
+      data("charger", "power", 3000);
+      now += MIN;
+      data("grid", "energy", 0);
+    }
+    data("charger", "vehicle", "disconnected");
+    now += 4 * MIN;
+    tracker.tick();
+    const [s] = sessions();
+    expect(s.gridHpWh + s.gridHcWh).toBeLessThan(1);
+  });
+
+  it("prices a closed session's last windows before a restart", () => {
+    eqs.values.set("charger", {}); // power only: no meter to fall back on
+    data("charger", "vehicle", "charging");
+    data("charger", "power", 7000);
+    now += 4 * MIN;
+    data("charger", "vehicle", "disconnected");
+    tracker.stop(); // a restart 30 s later
+    now += 30_000;
+    tracker = makeTracker();
+    expect(sessions()[0].energyWh).toBeCloseTo((7000 * 4) / 60, 0);
+  });
+
+  it("counts a window the meter stopped covering as all grid", () => {
+    data("charger", "vehicle", "charging");
+    data("charger", "power", 6000);
+    now += MIN;
+    data("grid", "energy", 100); // the last delta; the meter then goes silent
+    for (let i = 0; i < 20; i++) {
+      now += MIN;
+      data("charger", "power", 6000);
+      tracker.tick();
+    }
+    data("charger", "vehicle", "disconnected");
+    now += 10 * MIN;
+    tracker.tick();
+    expect(sessions()[0].solarWh).toBeLessThan(1);
+  });
+
+  it("follows the final battery of a session given by hand after its end", async () => {
+    data("charger", "vehicle", "charging");
+    data("megane", "battery_level", 40);
+    await flush();
+    run(5, 7000, 7000);
+    tracker.setAttribution(sessions()[0].id, { target: "vehicle", vehicleId: "megane" });
+    run(20, 7000, 7000);
+    data("charger", "vehicle", "disconnected");
+    now += 2 * MIN;
+    data("megane", "reported_at", new Date(now - MIN).toISOString());
+    data("megane", "battery_level", 62);
+    await flush();
+    expect(sessions()[0]).toMatchObject({ batteryStart: 40, batteryEnd: 62 });
   });
 });
 

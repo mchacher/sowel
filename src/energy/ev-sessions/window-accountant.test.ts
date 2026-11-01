@@ -152,14 +152,16 @@ describe("settleWindow", () => {
 describe("poolImport (audit A2)", () => {
   it("shares one import between the cars of a window, pro rata", () => {
     // Two cars draw 1300 and 7000 Wh while the house imports 5800 Wh.
-    const [a, b] = poolImport([1300, 7000], 5800) as number[];
+    const [a, b] = poolImport([1300, 7000], [5800, 5800], 5800) as number[];
     expect(a + b).toBeCloseTo(5800, 6);
     expect(a / b).toBeCloseTo(1300 / 7000, 6);
   });
 
-  it("never gives the cars more than they drew, and keeps no reading as no reading", () => {
-    expect(poolImport([100, 200], 900)).toEqual([100, 200]);
-    expect(poolImport([100], null)).toEqual([null]);
-    expect(poolImport([0, 0], 50)).toEqual([0, 0]);
+  it("never gives a car more than it drew or than was imported during its own part", () => {
+    expect(poolImport([100, 200], [900, 900], 900)).toEqual([100, 200]);
+    // A car plugged in for the last 2 min: the house's import before is not its.
+    expect(poolImport([100], [10], 300)).toEqual([10]);
+    expect(poolImport([100], [0], null)).toEqual([null]);
+    expect(poolImport([0, 0], [50, 50], 50)).toEqual([0, 0]);
   });
 });

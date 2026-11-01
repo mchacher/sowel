@@ -32,6 +32,9 @@ export interface CarWindow {
   lengthS: number;
   /** The car's draw (Wh). */
   carWh: number;
+  /** The part of the window the session covered (epoch ms): less in its first and last. */
+  fromMs: number;
+  toMs: number;
 }
 
 /** A window ready to price: the car's draw and its share of the house import. */
@@ -45,16 +48,25 @@ export interface WindowMeasure extends CarWindow {
  * cars together take `min(Σcar, import)` (served last by the sun, P5), split
  * pro rata of their draw. Null stays null (no reading: all grid).
  */
-export function poolImport(carsWh: readonly number[], importWh: number | null): (number | null)[] {
-  if (importWh === null) return carsWh.map(() => null);
+export function poolImport(
+  carsWh: readonly number[],
+  ownImports: readonly number[],
+  windowImportWh: number | null,
+): (number | null)[] {
+  if (windowImportWh === null) return carsWh.map(() => null);
   const total = carsWh.reduce((a, b) => a + b, 0);
   if (!(total > 0)) return carsWh.map(() => 0);
-  const grid = Math.min(total, Math.max(0, importWh));
-  return carsWh.map((c) => (grid * c) / total);
+  // Together the cars take at most what the house imported while any of them
+  // drew; each at most what it imported during its own part of the window
+  // (the house before the plug-in is not the car's, audit review).
+  const grid = Math.min(total, Math.max(0, windowImportWh));
+  return carsWh.map((c, i) => Math.min(c, (grid * c) / total, Math.max(0, ownImports[i] ?? 0)));
 }
 
 export class WindowAccountant {
   private windowStartS: number;
+  /** The session's start within its first window (later windows: their start). */
+  private coveredFromMs: number;
   private powerWh = 0;
   private energyWh = 0;
   private lastPowerW: number | null = null;
@@ -64,6 +76,18 @@ export class WindowAccountant {
 
   constructor(startMs: number) {
     this.windowStartS = Math.floor(startMs / 1000 / WINDOW_S) * WINDOW_S;
+    this.coveredFromMs = startMs;
+  }
+
+  /**
+   * After a restart: hold `watts` from `atMs` on, but count the hold limit
+   * from when the charger really reported (`reportedAtMs`).
+   */
+  resume(atMs: number, watts: number, reportedAtMs: number): void {
+    this.lastPowerW = Number.isFinite(watts) && watts > 0 ? watts : 0;
+    this.lastPowerAtMs = atMs;
+    this.sawPower = true;
+    this.lastReportAtMs = reportedAtMs;
   }
 
   /** A charger `power` reading (W). Closed windows are returned. */
@@ -96,9 +120,10 @@ export class WindowAccountant {
     while ((this.windowStartS + WINDOW_S) * 1000 <= atMs) {
       const endMs = (this.windowStartS + WINDOW_S) * 1000;
       this.integrateTo(endMs);
-      const m = this.take(WINDOW_S);
+      const m = this.take(WINDOW_S, endMs);
       if (m) closed.push(m);
       this.windowStartS += WINDOW_S;
+      this.coveredFromMs = this.windowStartS * 1000;
     }
     return closed;
   }
@@ -108,15 +133,21 @@ export class WindowAccountant {
     const closed = this.advance(atMs);
     this.integrateTo(atMs);
     const lengthS = Math.max(1, Math.round(atMs / 1000 - this.windowStartS));
-    const m = this.take(lengthS);
+    const m = this.take(lengthS, atMs);
     if (m) closed.push(m);
     this.lastPowerW = null;
     return closed;
   }
 
-  private take(lengthS: number): CarWindow | null {
+  private take(lengthS: number, endMs: number): CarWindow | null {
     const carWh = this.sawPower ? this.powerWh : this.energyWh;
-    const window: CarWindow = { startS: this.windowStartS, lengthS, carWh };
+    const window: CarWindow = {
+      startS: this.windowStartS,
+      lengthS,
+      carWh,
+      fromMs: this.coveredFromMs,
+      toMs: endMs,
+    };
     this.powerWh = 0;
     this.energyWh = 0;
     return carWh > 0 ? window : null;
