@@ -11,6 +11,22 @@ This page summarises every published version, newest first. For the full diff be
 
 ---
 
+## 1.76.x: Charging cost per car, doors, and orders that report back
+
+### v1.76.0 — 2026-11-01 { #v1-76-0 }
+
+Sowel now tells you what charging each car at home costs, a motorised door gets a type of its own, and a gate or door order says whether it really happened. Also in this release: ended shared accesses from a booking platform clean themselves up.
+
+- Feat (energy): **charging sessions and cost per vehicle** (spec 191, #1097). Every plug-in on an EV charger becomes a session, from plug-in to unplug. Each 5-minute window is priced at its own tariff, and solar is free: the car is served last by the sun, so it is charged only what the house had to buy from the grid because of it. The cost is frozen at the prices of the moment. Two hours after the unplug, Sowel gives the session to the car that reported charging or a battery rise during it; when it is not sure, the session stays « To attribute ». Anyone can set the car, or « Other vehicle » for a guest, on the charger's page, and that choice is final. The vehicle's page shows its month: cost, a bar split into grid off-peak, grid peak and solar, the sessions, and the **cost per 100 km**, computed from the home price and the car's measured consumption, so charging elsewhere does not distort it (hidden for a plug-in hybrid). Sessions start with this version.
+- Feat (equipments): **a door type** (spec 190, #1096). A motorised door driven by Open / Close / Stop (a chicken-coop door, a garage door) was created as a shutter, so it counted among the shutters and obeyed « close all shutters ». It now has its own controls, a state pill (Open, Closed, Moving, Fault) and its own count in the zone. An existing shutter, awning or door can switch type from its edit form, keeping its history, recipes and tiles.
+- Feat (equipments): **an order reports its outcome** (spec 188, #1088). Sowel confirms a gate impulse from its contact flipping, and a door Open / Close from its end state, without resending anything. The tile and the detail page say « confirmed », and an alarm is raised when the expected state never comes. On a shared-access page, the guest sees whether the opening was confirmed, and is told to look at the gate rather than press again.
+- Feat (shared access): **ended accesses from a booking platform are deleted after seven days** (spec 189, #1089). A gîte with one booking a week no longer piles up dead lines. The journal keeps a trace, and an access created by hand is never deleted.
+- Fix (shared access): **the hours of a time window can be typed on a phone** (#1087). The phone now opens its time wheel; before, the number pad had no « : ».
+- Plugins and recipes: **`renault`**: a car plugged in with its charging flap open no longer reads « Unplugged » (mchacher/sowel-plugin-renault#6). Coming with its next release.
+- Maintenance (deps): the weekly library, toolchain and GitHub Actions updates (#1090, #1091, #1092, #1094, #1095), and `croner` 11 (#1093), the scheduler behind the calendar, with steadier timing around clock changes.
+
+---
+
 ## 1.75.x: Shared access by weekday, recipes that update whole
 
 ### v1.75.0 — 2026-10-25 { #v1-75-0 }
