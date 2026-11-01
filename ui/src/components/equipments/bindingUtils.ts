@@ -19,6 +19,7 @@ import {
   CANDIDATE_BASED_TYPES,
   THERMOSTAT_STATE_ALIAS,
   computeBindingCandidates,
+  isDoorEndStateData,
 } from "../../lib/binding-candidates";
 import { EV_CHARGER_CATEGORY_ALIASES } from "../../lib/ev-charger-contract";
 import { ELECTRIC_VEHICLE_CATEGORY_ALIASES } from "../../lib/electric-vehicle-contract";
@@ -135,6 +136,8 @@ const RELEVANT_DATA: Record<string, string[]> = {
   light_color: ["light_state", "light_brightness", "light_color", "light_color_temp"],
   shutter: ["shutter_position"],
   awning: ["shutter_position"],
+  // Spec 190 — a door's end-state word (OPEN / CLOSED / …) arrives as a generic enum.
+  door: ["shutter_position", "generic"],
   switch: ["light_state"],
   sensor: ["temperature", "humidity", "pressure", "luminosity", "co2", "voc", "noise", "motion", "contact_door", "contact_window", "water_leak", "smoke", "battery"],
   button: ["action", "battery"],
@@ -243,6 +246,7 @@ const RELEVANT_ORDERS: Record<string, string[]> = {
   light_color: ["state", "on", "brightness", "color", "color_temp", "R1", "R2", "R3", "R4"],
   shutter: ["position", "state", "target_position"],
   awning: ["position", "state", "target_position"],
+  door: ["position", "state", "target_position"],
   switch: ["state", "on", "R1", "R2", "R3", "R4"],
   button: [],
   // thermostat: no entry on purpose — see BIND_ALL_ORDER_TYPES (spec 177).
@@ -655,11 +659,16 @@ export function computeBindingPlan(
 
       for (const data of device.data) {
         if (!allowedData.has(data.key)) continue;
+        // Spec 190 — a door's end-state word is read under `state`, whatever
+        // the device calls it (`door`, `status`…).
+        const doorWord = equipmentType === "door" && isDoorEndStateData(data, chosen.orderKeys);
         pushData(
           device,
           data,
           vmcAlias?.[data.key] ??
-            resolveAlias(data.key, equipmentType, DATA_CATEGORY_ALIASES, data.category, data.type),
+            (doorWord
+              ? "state"
+              : resolveAlias(data.key, equipmentType, DATA_CATEGORY_ALIASES, data.category, data.type)),
         );
       }
       for (const order of device.orders) {

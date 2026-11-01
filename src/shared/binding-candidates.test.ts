@@ -77,6 +77,46 @@ describe("computeBindingCandidates", () => {
     expect(result[0].dataKeys.sort()).toEqual(["shutter_position", "shutter_state"]);
   });
 
+  it("door binds its end-state word on a coop-shaped device (spec 190)", () => {
+    const orders = [
+      order("cmd", "enum", { category: "shutter_move", enumValues: ["OPEN", "CLOSE", "STOP"] }),
+    ];
+    // The UI's device data carries the enum (the backend DeviceData does not).
+    const datas = [
+      {
+        ...data("door", "enum", { category: "generic" }),
+        enumValues: ["OPEN", "CLOSED", "OPENING", "CLOSING", "FAULT"],
+      },
+      data("battery", "number", { category: "battery" }),
+    ];
+    const result = computeBindingCandidates("door", datas, orders);
+    expect(result).toHaveLength(1);
+    expect(result[0].dataKeys).toEqual(["door"]);
+    expect(result[0].orderKeys).toEqual(["cmd"]);
+    // A shutter on the same device does not take the word.
+    expect(computeBindingCandidates("shutter", datas, orders)[0].dataKeys).toEqual([]);
+  });
+
+  it("door binds a word without enum when it carries the move order's key (spec 190)", () => {
+    const orders = [
+      order("state", "enum", { category: "shutter_move", enumValues: ["OPEN", "CLOSE"] }),
+    ];
+    const datas = [data("state", "text", { category: "generic" })];
+    expect(computeBindingCandidates("door", datas, orders)[0].dataKeys).toEqual(["state"]);
+  });
+
+  it("door binds like a shutter (spec 190)", () => {
+    const orders = [
+      order("shutter_state", "enum", { enumValues: ["OPEN", "CLOSE", "STOP"] }),
+      order("shutter_position", "number", { min: 0, max: 100 }),
+    ];
+    const datas = [data("shutter_state", "enum"), data("shutter_position", "number")];
+    expect(computeBindingCandidates("door", datas, orders)).toEqual(
+      computeBindingCandidates("shutter", datas, orders),
+    );
+    expect(computeBindingCandidates("door", datas, orders)).toHaveLength(1);
+  });
+
   // Regression test for the bug found while setting up Bubendorff shutters
   // (sowel-plugin-legrand-control): that integration's device data/orders
   // are named current_position/target_position/state — NOT shutter_state/

@@ -83,7 +83,8 @@ appuyer sur **Créer un accès** dans son panneau **Accès partagés**. Puis :
 - **Heures** — **Toute la journée**, ou **Par plages**, une ou plusieurs (`08:00–20:00`). Une plage ne
   traverse pas minuit. Chaque plage vaut **tous les jours**, sauf si vous cliquez sur **Choisir les
   jours** pour en retenir quelques-uns — « tous les vendredis, 18:00–22:00 ». Deux plages ne se
-  chevauchent pas un jour qu'elles partagent.
+  chevauchent pas un jour qu'elles partagent. Le début et la fin se choisissent avec le sélecteur
+  d'heure de votre appareil (la molette sur un téléphone), en 12 h ou 24 h selon ses réglages.
 - **Avec un code** — coché par défaut. Le code fait huit caractères, affichés `4K7M-9QT2`, pour être
   dicté au téléphone ou affiché dans une entrée. Décochez-le pour quelqu'un qui ne fera que cliquer
   le lien : le lien porte un jeton à lui, impossible à deviner.
@@ -192,3 +193,5 @@ revient reçoit un nouveau lien et un nouveau code.
   qui détient un backup peut reconstruire les liens en cours. Gardez vos backups comme une clé.
   **Changer le code** tue l'ancien lien d'un accès.
 - Les codes sont effacés sept jours après la fin de leur accès.
+- Les accès créés par une plateforme de réservation sont supprimés sept jours après leur fin ; leur
+  journal est gardé un an.

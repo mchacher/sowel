@@ -62,6 +62,7 @@ C'est l'une des fonctionnalités les plus puissantes de Sowel. Chaque zone calcu
 | **Durée de mouvement**          | Temps écoulé depuis le dernier changement d'état | "Calme depuis 15 min"                      |
 | **Lumières allumées**           | Nombre de lumières actives                       | 2 / 5 lumières allumées                    |
 | **Volets ouverts**              | Nombre de volets ouverts                         | 1 / 3 volets ouverts                       |
+| **Portes motorisées ouvertes**  | Nombre de portes motorisées non fermées          | 1 / 2 portes ouvertes                      |
 | **Position moyenne des volets** | Position moyenne sur tous les volets             | 65 %                                       |
 | **Portes ouvertes**             | Nombre de contacts de porte ouverts              | 1 porte ouverte                            |
 | **Fenêtres ouvertes**           | Nombre de contacts de fenêtre ouverts            | 2 fenêtres ouvertes                        |
@@ -86,6 +87,7 @@ Dans la vue **Accueil**, chaque zone affiche un **bandeau d'état** avec les don
 - Pastille **Mouvement** avec durée ("Mouvement" ou "Calme 15 min")
 - Pastille de comptage **Lumières** (par ex. "2/5")
 - Pastille de comptage **Volets** (par ex. "1/3")
+- Pastille de comptage **Portes** pour les portes motorisées (par ex. "1/2"), distincte de l'alerte des capteurs d'ouverture
 - Pastilles **Alerte** pour portes/fenêtres ouvertes, fuites d'eau, fumée
 - Pastille **Puissance** (par ex. « 47 W », ou « 2.4 kW » au-dessus du kilowatt) dès que la zone possède au moins un compteur
 

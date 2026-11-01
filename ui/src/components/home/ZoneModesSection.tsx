@@ -358,7 +358,8 @@ function formatOrderLabel(
 ): React.ReactNode {
   const name = eq?.name ?? action.equipmentId;
 
-  if (eq?.type === "shutter") {
+  // Spec 190 — a door takes the same Open / Close orders as a shutter.
+  if (eq?.type === "shutter" || eq?.type === "door") {
     if (action.orderAlias === "state" && action.value === "OPEN")
       return <>{name} <ChevronUp size={10} strokeWidth={1.5} className="inline -mt-0.5" /> {t("controls.open")}</>;
     if (action.orderAlias === "state" && action.value === "CLOSE")
@@ -627,7 +628,8 @@ function SmartOrderPicker({
   const { t } = useTranslation();
 
   const orders = equipment.orderBindings;
-  const isShutter = equipment.type === "shutter";
+  // Spec 190 — a door takes the same Open / Close / position orders as a shutter.
+  const isShutter = equipment.type === "shutter" || equipment.type === "door";
   const isLight = equipment.type.startsWith("light_");
 
   const stateOrder = orders.find((o) => o.alias === "state");

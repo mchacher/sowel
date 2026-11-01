@@ -264,6 +264,9 @@ export interface ZoneAggregatedData {
   shuttersOpen: number;
   shuttersTotal: number;
   averageShutterPosition: number | null;
+  /** Spec 190 — `door` equipments not proven closed, and their total. */
+  doorsOpen: number;
+  doorsTotal: number;
   waterValvesOpen: number;
   waterValvesTotal: number;
   waterFlowTotal: number | null;
@@ -294,6 +297,8 @@ export type EquipmentType =
   | "light_color"
   | "shutter"
   | "awning"
+  // Spec 190 — a motorised door driven by OPEN / CLOSE / STOP (sibling of shutter).
+  | "door"
   | "switch"
   | "sensor"
   | "button"

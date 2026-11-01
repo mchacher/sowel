@@ -4,6 +4,7 @@ import { X } from "lucide-react";
 import type { EquipmentType, ZoneWithChildren } from "../../types";
 import { DeviceSelector } from "./DeviceSelector";
 import { getDevices, type DeviceWithData } from "../../api";
+import { typesOfferedOnEdit } from "../../../../src/shared/equipment-type-change";
 import { flattenZonesWithPath } from "../../lib/zone-path";
 
 const EQUIPMENT_TYPE_KEYS: { value: EquipmentType; labelKey: string }[] = [
@@ -12,6 +13,7 @@ const EQUIPMENT_TYPE_KEYS: { value: EquipmentType; labelKey: string }[] = [
   { value: "light_color", labelKey: "equipments.type.light_color" },
   { value: "shutter", labelKey: "equipments.type.shutter" },
   { value: "awning", labelKey: "equipments.type.awning" },
+  { value: "door", labelKey: "equipments.type.door" },
   { value: "switch", labelKey: "equipments.type.switch" },
   { value: "sensor", labelKey: "equipments.type.sensor" },
   { value: "button", labelKey: "equipments.type.button" },
@@ -101,9 +103,12 @@ export function EquipmentForm({ title, initial, defaultZoneId, zones, onSubmit, 
   const availableTypes = excludeTypes
     ? EQUIPMENT_TYPE_KEYS.filter((et) => !excludeTypes.has(et.value))
     : EQUIPMENT_TYPE_KEYS;
-  const sortedTypes = [...availableTypes].sort((a, b) =>
-    t(a.labelKey).localeCompare(t(b.labelKey)),
-  );
+  // Spec 190 — on edit, only a shutter / awning / door may change type, and only
+  // within those three: their bindings stay valid. Anything else stays locked.
+  const offeredOnEdit = initial ? typesOfferedOnEdit(initial.type) : null;
+  const sortedTypes = [...availableTypes]
+    .filter((et) => offeredOnEdit === null || offeredOnEdit.includes(et.value))
+    .sort((a, b) => t(a.labelKey).localeCompare(t(b.labelKey)));
 
   const handleCreate = async () => {
     if (!name.trim() || !zoneId || saving) return;
@@ -162,7 +167,7 @@ export function EquipmentForm({ title, initial, defaultZoneId, zones, onSubmit, 
                       setSelectedDeviceIds([]);
                     }}
                     className="w-full px-3 py-2 text-[14px] bg-surface border border-border rounded-[6px] outline-none focus:border-primary transition-colors duration-150"
-                    disabled={!!initial}
+                    disabled={offeredOnEdit !== null && offeredOnEdit.length < 2}
                   >
                     {sortedTypes.map((et) => (
                       <option key={et.value} value={et.value}>{t(et.labelKey)}</option>

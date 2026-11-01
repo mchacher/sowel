@@ -64,6 +64,7 @@ import { gateNeedsConfirm } from "./gate-confirm";
 import { OrderOutcomeLine } from "../equipments/OrderOutcomeLine";
 import { ForecastConfidenceMark } from "./ForecastConfidenceMark";
 import { vmcSpeedOf } from "../equipments/vmcSpeed";
+import { doorWordPill } from "../equipments/door-pill";
 import {
   formatRuntime,
   isOnBattery,
@@ -162,6 +163,8 @@ function useMobileState(
     isLight,
     isShutter,
     isAwning,
+    isDoor,
+    shutterIsOpen,
     isThermostat,
     isGate,
     isHeater,
@@ -238,6 +241,26 @@ function useMobileState(
         widget.icon,
         <AwningWidgetIcon deployed={position !== null && position > 0} />,
       ),
+      stateLines: text ? [text] : [],
+    };
+  }
+
+  // Spec 190 — the door's own word first, then its position.
+  if (isDoor) {
+    const pill = doorWordPill(equipment);
+    const pos = equipment.dataBindings.find((b) => b.category === "shutter_position");
+    const position = pos && typeof pos.value === "number" ? pos.value : null;
+    const text = pill
+      ? t(pill.key)
+      : position === 100
+        ? t("controls.doorOpen")
+        : position === 0
+          ? t("controls.doorClosed")
+          : position !== null
+            ? `${position}%`
+            : null;
+    return {
+      icon: renderWidgetStateIcon(widget.icon, <GarageDoorIcon open={shutterIsOpen} />),
       stateLines: text ? [text] : [],
     };
   }

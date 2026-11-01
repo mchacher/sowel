@@ -12,6 +12,7 @@ import type {
   Zone,
 } from "../shared/types.js";
 import { ROOT_ZONE_ID } from "../shared/constants.js";
+import { doorState, isDoorOpenForCount } from "../shared/door-state.js";
 import { isSubmeterEquipment } from "../equipments/metering.js";
 import {
   LIVE_POWER_ALIASES,
@@ -42,6 +43,8 @@ interface Accumulator {
   shutterPositionCount: number;
   shuttersOpen: number;
   shuttersTotal: number;
+  doorsOpen: number;
+  doorsTotal: number;
   waterValvesOpen: number;
   waterValvesTotal: number;
   waterFlowSum: number;
@@ -77,6 +80,8 @@ function emptyAccumulator(): Accumulator {
     shutterPositionCount: 0,
     shuttersOpen: 0,
     shuttersTotal: 0,
+    doorsOpen: 0,
+    doorsTotal: 0,
     waterValvesOpen: 0,
     waterValvesTotal: 0,
     waterFlowSum: 0,
@@ -120,6 +125,8 @@ function mergeAccumulators(a: Accumulator, b: Accumulator): Accumulator {
     shutterPositionCount: a.shutterPositionCount + b.shutterPositionCount,
     shuttersOpen: a.shuttersOpen + b.shuttersOpen,
     shuttersTotal: a.shuttersTotal + b.shuttersTotal,
+    doorsOpen: a.doorsOpen + b.doorsOpen,
+    doorsTotal: a.doorsTotal + b.doorsTotal,
     waterValvesOpen: a.waterValvesOpen + b.waterValvesOpen,
     waterValvesTotal: a.waterValvesTotal + b.waterValvesTotal,
     waterFlowSum: a.waterFlowSum + b.waterFlowSum,
@@ -157,6 +164,8 @@ function accumulatorToPublic(acc: Accumulator): ZoneAggregatedData {
       acc.shutterPositionCount > 0
         ? Math.round(acc.shutterPositionSum / acc.shutterPositionCount)
         : null,
+    doorsOpen: acc.doorsOpen,
+    doorsTotal: acc.doorsTotal,
     waterValvesOpen: acc.waterValvesOpen,
     waterValvesTotal: acc.waterValvesTotal,
     waterFlowTotal: acc.waterFlowHasData ? Math.round(acc.waterFlowSum * 100) / 100 : null,
@@ -195,6 +204,8 @@ function aggregatedDataEqual(a: ZoneAggregatedData, b: ZoneAggregatedData): bool
     a.shuttersOpen === b.shuttersOpen &&
     a.shuttersTotal === b.shuttersTotal &&
     a.averageShutterPosition === b.averageShutterPosition &&
+    a.doorsOpen === b.doorsOpen &&
+    a.doorsTotal === b.doorsTotal &&
     a.waterValvesOpen === b.waterValvesOpen &&
     a.waterValvesTotal === b.waterValvesTotal &&
     a.waterFlowTotal === b.waterFlowTotal &&
@@ -594,6 +605,7 @@ export class ZoneAggregator {
       if (equipment.type === "water_valve") {
         this.accumulateWaterValve(acc, bindings);
       } else {
+        if (equipment.type === "door") this.accumulateDoor(acc, bindings);
         this.accumulateBindings(acc, bindings, equipment.type);
       }
     }
@@ -667,6 +679,15 @@ export class ZoneAggregator {
     // question.)
     acc.powerSum += powerBinding.value;
     acc.powerHasData = true;
+  }
+
+  /**
+   * Spec 190 — count a door, and count it open unless it is proven closed. Its
+   * position never reaches the shutter counts: that branch reads `shutter` only.
+   */
+  private accumulateDoor(acc: Accumulator, bindings: DataBindingWithValue[]): void {
+    acc.doorsTotal += 1;
+    if (isDoorOpenForCount(doorState(bindings))) acc.doorsOpen += 1;
   }
 
   /**
