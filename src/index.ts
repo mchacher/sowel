@@ -67,6 +67,8 @@ import { EnergyAggregator } from "./energy/energy-aggregator.js";
 import { SelfConsumptionWriter } from "./energy/self-consumption-writer.js";
 import { HistoryWriter } from "./history/history-writer.js";
 import { PowerSubmeterIntegrator } from "./energy/power-submeter-integrator.js";
+import { EvSessionStore } from "./energy/ev-sessions/ev-session-store.js";
+import { EvSessionTracker } from "./energy/ev-sessions/ev-session-tracker.js";
 import { InfluxClient } from "./core/influx-client.js";
 import { ChartManager } from "./charts/chart-manager.js";
 import { MqttBrokerManager } from "./mqtt-publishers/mqtt-broker-manager.js";
@@ -597,7 +599,18 @@ async function main() {
     pvForecaster.getComputedDataForEquipment(eqId),
   );
 
+  // Spec 191 — EV charge sessions. Built before the API server (its routes
+  // read it); it only starts listening with the energy writers below.
+  const evSessionTracker = new EvSessionTracker(
+    eventBus,
+    equipmentManager,
+    historyWriter.getTariffClassifier(),
+    new EvSessionStore(db),
+    logger,
+  );
+
   const server = await createServer({
+    evSessionTracker,
     timedActionManager,
     sharedAccessManager,
     pvForecaster,
@@ -722,6 +735,14 @@ async function main() {
     logger,
   );
   selfConsumptionWriter.init();
+
+  // 18-ter. EV charge sessions (spec 191): live per-session accounting of the
+  // charger against the grid meter, and attribution to a vehicle.
+  try {
+    evSessionTracker.start();
+  } catch (err) {
+    logger.warn({ err }, "EV session tracker start failed");
+  }
 
   // 18a. Start Energy Aggregator
   const energyAggregator = new EnergyAggregator(equipmentManager, influxClient, eventBus, logger);
@@ -934,6 +955,11 @@ async function main() {
       powerSubmeterIntegrator.stop();
     } catch (err) {
       logger.error({ err }, "Error stopping power submeter integrator");
+    }
+    try {
+      evSessionTracker.stop();
+    } catch (err) {
+      logger.error({ err }, "Error stopping EV session tracker");
     }
     try {
       energyAggregator.stop();

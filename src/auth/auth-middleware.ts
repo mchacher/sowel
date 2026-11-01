@@ -131,6 +131,10 @@ const STANDARD_WRITE_ALLOWLIST: ReadonlyArray<{ method: string; re: RegExp }> = 
   // PUT on the equipment.
   { method: "POST", re: /^\/api\/v1\/equipments\/[^/]+\/timed-action$/ },
   { method: "DELETE", re: /^\/api\/v1\/equipments\/[^/]+\/timed-action$/ },
+  // Spec 191 — saying which car a charge session was is bookkeeping, not
+  // configuration: it drives nothing, and the household member who charged is
+  // often the one who knows. Every role may correct it.
+  { method: "PUT", re: /^\/api\/v1\/ev-sessions\/[^/]+\/attribution$/ },
   // Personal: own account, preferences, password, own API tokens
   { method: "PUT", re: /^\/api\/v1\/me$/ },
   { method: "PUT", re: /^\/api\/v1\/me\/preferences$/ },

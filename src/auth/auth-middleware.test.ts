@@ -269,6 +269,12 @@ describe("auth-middleware", () => {
       expect(isStandardWriteAllowed("POST", "/api/v1/modes/m1/apply-to-zone/z1")).toBe(true);
     });
 
+    it("allows a standard user to say which car a charge session was (spec 191)", () => {
+      expect(isStandardWriteAllowed("PUT", "/api/v1/ev-sessions/s1/attribution")).toBe(true);
+      expect(isStandardWriteAllowed("PUT", "/api/v1/ev-sessions/s1")).toBe(false);
+      expect(isStandardWriteAllowed("PUT", "/api/v1/equipments/v1")).toBe(false);
+    });
+
     it("still denies configuring what a mode is or does", () => {
       expect(isStandardWriteAllowed("POST", "/api/v1/modes")).toBe(false);
       expect(isStandardWriteAllowed("PUT", "/api/v1/modes/m1")).toBe(false);

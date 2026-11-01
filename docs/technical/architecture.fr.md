@@ -310,6 +310,16 @@ Deux conséquences à connaître :
 
 ---
 
+## Recharges de véhicules électriques (spec 191)
+
+`EvSessionTracker` (`src/energy/ev-sessions/`) fait de chaque branchement sur une `ev_charger` une recharge enregistrée, du moment où le `vehicle` de la borne quitte `disconnected` à celui où il y revient. Il n'écoute que les `equipment.data.changed` en direct, jamais InfluxDB : une recharge fonctionne sans InfluxDB et survit à la rétention du bucket brut.
+
+- **Comptage par tranches de 5 minutes.** Le tirage de la voiture est la `power` de la borne, maintenue entre deux relevés (au plus 15 minutes après le dernier relevé de la borne), ou ses deltas d'`energy` pour une borne sans puissance. Côté réseau, c'est le **delta signé en direct** du compteur principal (la même entrée que `SelfConsumptionWriter`). Chaque tranche impute à la voiture `min(tirage, import)` : elle passe après la maison pour le soleil. Une tranche sans aucun relevé réseau, ou une maison sans compteur principal, compte tout en réseau. La tranche fait 5 minutes et non 1 parce que les relevés à la minute du compteur réseau sont irréguliers : une tranche d'une minute n'en verrait souvent aucun et serait comptée tout réseau. La part réseau est répartie par le `TariffClassifier` et valorisée à la fermeture de la tranche : le coût est figé. L'énergie de la recharge est le compteur de la borne ; les tranches donnent les parts, mises à l'échelle à la lecture.
+- **Attribution.** Chaque relevé d'une voiture (`plugged`, `charging_state`, `battery_level`, `at_home`) fait pendant la recharge, d'après son `reported_at`, s'ajoute aux indices de cette voiture. Deux heures après le débranchement, une seule voiture vue en charge ou dont la batterie a monté d'au moins 2 points, et jamais vue absente, reçoit la recharge (le débranchement que la voiture signale elle-même ne compte pas contre elle : elle l'horodate avant que la borne ne le remonte) ; plusieurs ou aucune la laissent « à attribuer ». Le choix d'une personne (`PUT /api/v1/ev-sessions/:id/attribution`, tout rôle) est définitif.
+- **Coût aux 100 km** : prix maison du kWh × consommation mesurée, c'est-à-dire l'énergie au mur par point de batterie, apprise sur les recharges à la maison, multipliée par la batterie utilisée par km sur les trajets pendant lesquels la voiture n'a pas rechargé. Recharger ailleurs ne le fausse donc jamais.
+
+Chaque changement est enregistré en entier : un redémarrage perd au plus la tranche en cours ; un tick de 30 s ferme les tranches échues et tranche les recharges dont le délai de grâce est passé. Conception complète : `specs/191-ev-charge-sessions/`.
+
 ## Authentification et autorisation
 
 - **Mots de passe** : bcrypt (cost 12).

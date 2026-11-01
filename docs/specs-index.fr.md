@@ -318,6 +318,7 @@ Les specs sont regroupées par thème et annotées d'un statut :
 | 188 | Résultat d'un ordre lu dans l'état rapporté                           | ✅     | Confirme une impulsion de portail par la bascule de son contact et un ordre de porte par sa fin de course (suivi spec 141) ; actif par défaut sur portail/porte (`trackOrderOutcome`) ; amende la spec 181 R4.16. Unreleased.                              |
 | 189 | Accès partagés : suppression des accès externes terminés              | ✅     | Amende la spec 181 R10 : le ménage supprime un accès externe (plateforme de réservation) sept jours après sa fin ou sa révocation, avec une ligne de journal et une pierre tombale ; les accès manuels ne sont jamais supprimés.                           |
 | 190 | Type d'équipement Porte                                               | ✅     | Nouveau type `door`, frère de `shutter` (modèle de la spec 115) réutilisant `shutter_move`/`shutter_position`, `doorsOpen`/`doorsTotal` de zone ; le formulaire d'édition permet de passer entre volet, store et porte. Unreleased.                        |
+| 191 | Recharges et coût par voiture                                         | ✅     | Recharges sur `ev_charger` : part réseau/solaire par 5 min (la voiture passe après la maison), coût HP/HC figé, attribution à un `electric_vehicle` avec correction manuelle, bilan mensuel et coût aux 100 km mesuré. Unreleased.                         |
 
 ---
 

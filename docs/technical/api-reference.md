@@ -430,6 +430,22 @@ The `PUT` needs no admin check of its own because it is absent from the standard
 
 ---
 
+## EV charge sessions
+
+Spec 191. One session per plug-in on an `ev_charger`, with its energy split into grid peak, grid off-peak and solar (the car served last by the sun), its cost frozen at the prices of each 5-minute window, and the vehicle it belongs to. Every authenticated role may read, and may set the attribution.
+
+| Method | Path                                  | Description                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                              |
+| ------ | ------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `GET`  | `/api/v1/ev-sessions`                 | Sessions of one month, newest first. Query: exactly one of `chargerId` (every session of that charger) or `vehicleId` (the sessions attributed to that vehicle), and `month=YYYY-MM` (local, default this month). Returns `{ sessions: EvChargeSession[] }`: energy, `gridHpWh` / `gridHcWh` / `solarWh`, `costHpEur` / `costHcEur` / `costEur` (`null` without a tariff), `attribution` (`pending`, `vehicle`, `unattributed`, `other`), `attributionSource` (`auto`, `manual`), `attributionReason`, and `candidates` (what each vehicle reported during the session). |
+| `GET`  | `/api/v1/ev-sessions/summary`         | A vehicle's month: `vehicleId` (required), `month`. Totals and split, `homePriceEurPerKwh`, `kWhPer100km` (measured), `eurPer100km`, or `eurPer100kmUnavailable` (`plug-in-hybrid`, `no-home-session`, `not-learned`, `too-few-km`).                                                                                                                                                                                                                                                                                                                                     |
+| `PUT`  | `/api/v1/ev-sessions/:id/attribution` | Body `{ "target": "vehicle", "vehicleId": "…" }`, `{ "target": "other" }` (a guest) or `{ "target": "unattributed" }`. Final: automatic attribution never changes it again. Open to `standard` users (allowlisted). 400 for a vehicle that is not an `electric_vehicle`, 404 for an unknown session.                                                                                                                                                                                                                                                                     |
+
+A vehicle is marked plug-in hybrid (no cost per 100 km) with `PUT /api/v1/equipments/:id` and `{ "plugInHybrid": true }` (admin).
+
+Live updates on the `energy` WebSocket topic: `energy.ev_session.updated` (`{ session }`, at most once per 5-minute window per open session, and at close and attribution) and `energy.ev_session.deleted` (`{ sessionId, chargerId }`, a session under 0.1 kWh dropped at close).
+
+---
+
 ## History
 
 | Method | Path                                               | Description                                                                                                |
@@ -555,12 +571,12 @@ for the whole internet. Served twice, under `/api/v1/shared-access/public/*` and
 `/access/api/*`, so an alias host rewriting everything to `/access/` needs no second rule. The
 phone's token is sent as `Authorization: Bearer <token>`.
 
-| Method | Path       | Description                                                                                                                                                       |
-| ------ | ---------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `POST` | `/enrol`   | `{ code }` or `{ link }` → `{ token, session }`. `401 unknown_code`, `410 ended`, `429 too_many`, `409 too_many_phones` (50 phones already set up on the access). |
-| `GET`  | `/session` | `{ label, status, gates, activeAt, nextOpeningAt, validUntil, travelS, presses }` — never the gate's state, except the `expected` / `outcome` of this phone's own tracked press (spec 188, amends spec 181 R4.16); `presses` are this phone's own. `401` when unknown.   |
-| `POST` | `/open`    | `{ gate }` → `{ ok: true, outcome?, expected?, windowS? }`, or `409 { ok: false, reason, activeAt?, nextOpeningAt? }`.                                            |
-| `GET`  | `/share`   | `{ url, qr }` — the invitation link and its QR code as a `data:image/svg+xml` URI. `409 ended`, `409 no_public_url`, `401` when unknown.                          |
+| Method | Path       | Description                                                                                                                                                                                                                                                            |
+| ------ | ---------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `POST` | `/enrol`   | `{ code }` or `{ link }` → `{ token, session }`. `401 unknown_code`, `410 ended`, `429 too_many`, `409 too_many_phones` (50 phones already set up on the access).                                                                                                      |
+| `GET`  | `/session` | `{ label, status, gates, activeAt, nextOpeningAt, validUntil, travelS, presses }` — never the gate's state, except the `expected` / `outcome` of this phone's own tracked press (spec 188, amends spec 181 R4.16); `presses` are this phone's own. `401` when unknown. |
+| `POST` | `/open`    | `{ gate }` → `{ ok: true, outcome?, expected?, windowS? }`, or `409 { ok: false, reason, activeAt?, nextOpeningAt? }`.                                                                                                                                                 |
+| `GET`  | `/share`   | `{ url, qr }` — the invitation link and its QR code as a `data:image/svg+xml` URI. `409 ended`, `409 no_public_url`, `401` when unknown.                                                                                                                               |
 
 **Outcome (spec 188).** When the gate's state is known at the press, `open` returns
 `outcome: "pending"`, `expected: "open" | "close"` and `windowS` (how long the core waits for the
@@ -782,7 +798,7 @@ Send a JSON message to subscribe to additional topics:
 { "type": "subscribe", "topics": ["devices", "equipments", "zones", "modes", "recipes"] }
 ```
 
-**Available topics**: `devices`, `equipments`, `zones`, `modes`, `recipes`, `calendar`, `mqtt-publishers`, `system`, `logs`, `activity`.
+**Available topics**: `devices`, `equipments`, `zones`, `modes`, `recipes`, `calendar`, `mqtt-publishers`, `system`, `logs`, `activity`, `energy`.
 
 The `system` topic is always included regardless of subscription.
 

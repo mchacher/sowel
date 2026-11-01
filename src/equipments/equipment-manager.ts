@@ -129,6 +129,8 @@ interface UpdateEquipmentInput {
   meteringParentId?: string | null;
   /** Spec 179 — this meter is fed by a separate supply. */
   separateSupply?: boolean;
+  /** Spec 191 — this electric vehicle is a plug-in hybrid. */
+  plugInHybrid?: boolean;
   /** Spec 174 phase 2 — the timed command this equipment offers. `null` clears it. */
   timedCommand?: TimedCommand | null;
 }
@@ -255,7 +257,7 @@ export class EquipmentManager {
          invert_direction = @invertDirection, solar_profile = @solarProfile,
          track_order_outcome = @trackOrderOutcome,
          metering_parent_id = @meteringParentId, separate_supply = @separateSupply,
-         timed_command = @timedCommand,
+         plug_in_hybrid = @plugInHybrid, timed_command = @timedCommand,
          updated_at = datetime('now') WHERE id = @id`,
       ),
       updateEquipmentEnergyProfile: this.db.prepare(
@@ -641,6 +643,8 @@ export class EquipmentManager {
             ? 1
             : 0
           : existing.separate_supply,
+      plugInHybrid:
+        input.plugInHybrid !== undefined ? (input.plugInHybrid ? 1 : 0) : existing.plug_in_hybrid,
     });
 
     const equipment = this.getById(id)!;
@@ -1767,6 +1771,7 @@ interface EquipmentRow {
   track_order_outcome: number | null;
   metering_parent_id: string | null;
   separate_supply: number;
+  plug_in_hybrid: number;
   timed_command: string | null;
   created_at: string;
   updated_at: string;
@@ -1936,6 +1941,7 @@ function rowToEquipment(row: EquipmentRow): Equipment {
     trackOrderOutcome: row.track_order_outcome === null ? null : row.track_order_outcome === 1,
     meteringParentId: row.metering_parent_id ?? null,
     separateSupply: row.separate_supply === 1,
+    ...(row.plug_in_hybrid === 1 && { plugInHybrid: true }),
     timedCommand: parseTimedCommand(row.timed_command),
     createdAt: toISOUtc(row.created_at),
     updatedAt: toISOUtc(row.updated_at),

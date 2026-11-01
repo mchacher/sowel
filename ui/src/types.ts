@@ -429,6 +429,8 @@ export interface Equipment {
    *  flows through the main meter. Rendered apart from every reconciliation
    *  (by-usage partition, live donut, `other`, cost). Default false. */
   separateSupply?: boolean;
+  /** Spec 191 — a plug-in hybrid shows no cost per 100 km. */
+  plugInHybrid?: boolean;
   /** Spec 154 — invert shutter-family command direction (shutter_move
    *  OPEN<->CLOSE, set_shutter_position -> 100-value). Command-only; ignored for
    *  non-shutter-family types. */
@@ -1187,6 +1189,8 @@ export type EngineEvent =
   | { type: "energy.capacity.released"; equipmentId: string; instanceId: string }
   | { type: "energy.capacity.budget"; equipmentId: string; instanceId: string; watts: number }
   | { type: "energy.arbiter.status"; state: ArbiterRunState; availableSurplusW: number | null }
+  | { type: "energy.ev_session.updated"; session: EvChargeSession }
+  | { type: "energy.ev_session.deleted"; sessionId: string; chargerId: string }
   | { type: "shared_access.changed" }
   | { type: "shared_access.opened"; accessId: string; label: string; equipmentId: string }
   | {
@@ -1859,6 +1863,71 @@ export interface TariffPrices {
   hp: number;
   hc: number;
 }
+
+// ============================================================
+// Spec 191 — EV charge sessions (mirror of src/shared/types.ts)
+// ============================================================
+
+export type EvSessionAttribution = "pending" | "vehicle" | "unattributed" | "other";
+export type EvSessionAttributionReason =
+  "single-match" | "only-vehicle" | "no-match" | "several-matches";
+
+export interface EvChargeSession {
+  id: string;
+  chargerId: string;
+  chargerName: string;
+  startedAt: string;
+  endedAt: string | null;
+  graceUntil: string | null;
+  energyWh: number;
+  gridHpWh: number;
+  gridHcWh: number;
+  solarWh: number;
+  costHpEur: number | null;
+  costHcEur: number | null;
+  costEur: number | null;
+  vehicleId: string | null;
+  vehicleName: string | null;
+  vehicleDeleted: boolean;
+  attribution: EvSessionAttribution;
+  attributionSource: "auto" | "manual" | null;
+  attributionReason: EvSessionAttributionReason | null;
+  batteryStart: number | null;
+  batteryEnd: number | null;
+  /** What each vehicle reported during the session, to help a person choose. */
+  candidates: EvSessionCandidate[];
+  updatedAt: string;
+}
+
+export interface EvSessionCandidate {
+  vehicleId: string;
+  chargingSeen: boolean;
+  batteryFrom: number | null;
+  batteryTo: number | null;
+}
+
+export type EvPer100kmUnavailable =
+  "plug-in-hybrid" | "no-home-session" | "not-learned" | "too-few-km";
+
+export interface EvVehicleMonthSummary {
+  vehicleId: string;
+  month: string;
+  sessions: number;
+  energyWh: number;
+  gridHpWh: number;
+  gridHcWh: number;
+  solarWh: number;
+  costHpEur: number | null;
+  costHcEur: number | null;
+  costEur: number | null;
+  homePriceEurPerKwh: number | null;
+  kWhPer100km: number | null;
+  eurPer100km: number | null;
+  eurPer100kmUnavailable: EvPer100kmUnavailable | null;
+}
+
+export type EvAttributionChoice =
+  { target: "vehicle"; vehicleId: string } | { target: "other" } | { target: "unattributed" };
 
 export interface TariffConfig {
   schedules: DaySchedule[];

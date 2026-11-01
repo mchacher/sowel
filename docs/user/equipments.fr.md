@@ -230,6 +230,19 @@ Sowel définit ce que porte une borne, quelle que soit l'intégration : une int�
 
 La première borne prise en charge est la borne portable dé, via l'intégration [Tuya (local)](https://github.com/mchacher/sowel-plugin-tuya) à partir de sa version 0.2.0 (les versions antérieures publient la borne sans ces catégories). Charger sur le surplus solaire ou en heures creuses est le rôle d'une recette, via l'arbitre ; l'équipement ne fait qu'exposer et commander.
 
+#### Recharges et coût par voiture
+
+Chaque branchement sur une borne est une **recharge**, du branchement au débranchement : les pauses et reprises (surplus solaire, nuages, heures creuses) restent une seule recharge, et une recharge de moins de 0,1 kWh n'est pas gardée. Son énergie est celle que mesure la borne, pertes comprises, puisque c'est ce que vous payez. Chaque tranche de 5 minutes est comptée à son tarif (heures pleines ou creuses), et **le solaire est gratuit** : la voiture passe après la maison, elle ne paie que ce que la maison a dû acheter au réseau à cause d'elle. Le coût est figé au prix du moment : changer vos prix plus tard ne change pas les recharges passées.
+
+Sowel détermine ensuite **quelle voiture a chargé**, d'après ce que les voitures remontent par le cloud du constructeur : branchée, en charge, batterie qui monte, à la maison. Il attend deux heures après le débranchement, car le cloud d'une voiture remonte souvent en retard, et ne tranche que s'il est sûr ; sinon la recharge reste **À attribuer**. Toutes les voitures connues de Sowel sont candidates sur toutes les bornes.
+
+- **La fiche de la borne** liste ses recharges mois par mois, avec la voiture de chacune (_auto_, _corrigée_, ou _À attribuer_ avec la raison). Un appui sur une recharge permet de choisir la voiture, **Autre véhicule** pour un invité (compté pour aucune voiture), ou **À attribuer plus tard**. Tout utilisateur peut le faire, pas seulement un administrateur, et le choix est définitif : Sowel ne le modifie plus.
+- **La fiche de la voiture** a une section **Recharges à la maison** : le coût et l'énergie du mois, une barre réseau heures creuses / réseau heures pleines / solaire avec les kWh et les € de chaque part, le **coût aux 100 km**, et les recharges du mois.
+
+Le coût aux 100 km est le prix payé par kWh à la maison, multiplié par la consommation de la voiture, que Sowel mesure lui-même : la batterie utilisée par km en roulant, et le nombre de kWh d'un point de batterie, appris sur vos recharges à la maison. Recharger ailleurs (au travail, sur autoroute) ne le fausse pas : un trajet pendant lequel la batterie est montée est écarté. Il apparaît après une première recharge à la maison d'au moins 10 % et 50 km mesurés dans le mois. Pour une **hybride rechargeable** (case sur sa fiche, pour un administrateur), il n'est pas affiché : une partie de ses km se fait à l'essence.
+
+Les recharges commencent à l'installation de cette fonction : les mois précédents ne sont pas reconstitués. Énergie → Par usage montre toujours la borne au prix moyen du mois, son coût y diffère donc de la somme de ses recharges.
+
 ---
 
 ### Multimédia

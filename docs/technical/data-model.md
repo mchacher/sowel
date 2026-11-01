@@ -290,16 +290,16 @@ deleted. The wrong-code alert and the phone count use `system.alarm.raised` unde
 
 Tables (migrations `035_shared_access.sql`, `036_shared_access_tombstones.sql` and `037_shared_access_outcome.sql`), none of them a column on `equipments`:
 
-| Table                         | Holds                                                                                                                                                                      |
-| ----------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `shared_accesses`             | One access: label, code (clear, optional), link version and link-token hash, dates in force, source and owner widening for a plugin's access, time windows, hold / revoke. |
-| `shared_access_gates`         | The gates an access opens, with the command value when the gate's command has several. Cascades from `equipments`.                                                         |
-| `shared_access_disarmed`      | One row per disarmed gate.                                                                                                                                                 |
-| `shared_access_profiles`      | What a plugin's accesses open: dates, time windows, code or not, the plugin it is granted to, `is_default`.                                                                |
-| `shared_access_profile_gates` | A profile's gates. Cascades from `equipments`.                                                                                                                             |
-| `shared_access_phones`        | Phones set up on an access: token hash, first and last seen.                                                                                                               |
+| Table                         | Holds                                                                                                                                                                           |
+| ----------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `shared_accesses`             | One access: label, code (clear, optional), link version and link-token hash, dates in force, source and owner widening for a plugin's access, time windows, hold / revoke.      |
+| `shared_access_gates`         | The gates an access opens, with the command value when the gate's command has several. Cascades from `equipments`.                                                              |
+| `shared_access_disarmed`      | One row per disarmed gate.                                                                                                                                                      |
+| `shared_access_profiles`      | What a plugin's accesses open: dates, time windows, code or not, the plugin it is granted to, `is_default`.                                                                     |
+| `shared_access_profile_gates` | A profile's gates. Cascades from `equipments`.                                                                                                                                  |
+| `shared_access_phones`        | Phones set up on an access: token hash, first and last seen.                                                                                                                    |
 | `shared_access_journal`       | Openings, refusals and changes, with no foreign key so it outlives the access. A year, 50 000 lines at most. `outcome` / `outcome_expected`: what became of a press (spec 188). |
-| `shared_access_tombstones`    | The `(plugin, externalId)` of an external access the owner deleted, so a later upsert of that stay answers `revoked` (migration `036`). Purged after a year.               |
+| `shared_access_tombstones`    | The `(plugin, externalId)` of an external access the owner deleted, so a later upsert of that stay answers `revoked` (migration `036`). Purged after a year.                    |
 
 All eight ride in the backup.
 
@@ -314,6 +314,19 @@ the token and kills the old link.
 `settings` table. It is never returned by `GET /api/v1/settings`, cannot be written through
 `PUT /api/v1/settings`, and is out of every plugin's settings scope. It rides in the backup with the
 other settings, so **a backup can rebuild every live link**: keep backups like a key.
+
+### EV charge sessions (spec 191)
+
+| Event                       | Payload                    |
+| --------------------------- | -------------------------- |
+| `energy.ev_session.updated` | `session: EvChargeSession` |
+| `energy.ev_session.deleted` | `sessionId, chargerId`     |
+
+Both route to the `energy` WebSocket topic. A session is one plug-in on an `ev_charger` (`src/energy/ev-sessions/`). Three SQLite tables (migration 039):
+
+- `ev_charge_sessions`: the charger's meter (`energy_wh`), the 5-minute window sums (`est_car_wh`, `est_grid_hp_wh`, `est_grid_hc_wh`, `est_cost_hp_eur`, `est_cost_hc_eur`) scaled to the meter on read, `attribution` (`pending`, `vehicle`, `unattributed`, `other`) with `attribution_source` (`auto`, `manual`: final) and `attribution_reason`, the vehicle id and name (kept with `vehicle_deleted` when the car is deleted), `battery_start` / `battery_end`, and `evidence` (JSON: what each vehicle reported during the session).
+- `ev_vehicle_daily_driving`: per vehicle and local day, `km_total`, `km_measured` (legs with no charge on the way) and `battery_drop`, for the cost per 100 km.
+- `ev_vehicle_leg_state`: the open driving leg of each vehicle.
 
 ### MQTT / Notification publishers
 

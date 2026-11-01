@@ -39,6 +39,8 @@ import { ButtonActionsSection } from "../components/equipments/ButtonActionsSect
 import { EnergyDataPanel } from "../components/equipments/EnergyDataPanel";
 import { ElectricalMeteringPanel } from "../components/equipments/ElectricalMeteringPanel";
 import { MeteringParentPanel } from "../components/equipments/MeteringParentPanel";
+import { EvHomeChargingSection } from "../components/equipments/ev-sessions/EvHomeChargingSection";
+import { EvChargerSessionsSection } from "../components/equipments/ev-sessions/EvChargerSessionsSection";
 import { EnergyManagementPanel } from "../components/equipments/EnergyManagementPanel";
 import { GateConfirmationPanel } from "../components/equipments/GateConfirmationPanel";
 import { OrderOutcomePanel } from "../components/equipments/OrderOutcomePanel";
@@ -509,6 +511,15 @@ export function EquipmentDetailPage() {
         </div>
       )}
 
+      {/* Spec 191 — home charging of this vehicle: cost, split, per 100 km. */}
+      {equipment.type === "electric_vehicle" && (
+        <EvHomeChargingSection
+          equipment={equipment}
+          isAdmin={isAdmin}
+          onUpdated={() => void fetchEquipments()}
+        />
+      )}
+
       {/* EV charger (spec 182): start/stop, vehicle, power, session, current. */}
       {equipment.type === "ev_charger" && (
         <div className="bg-surface rounded-[10px] border border-border p-4 mb-6">
@@ -519,6 +530,9 @@ export function EquipmentDetailPage() {
           />
         </div>
       )}
+
+      {/* Spec 191 — the charge sessions of this charger and their vehicle. */}
+      {equipment.type === "ev_charger" && <EvChargerSessionsSection chargerId={equipment.id} />}
 
       {/* VMC speed controls (spec 153) */}
       {equipment.type === "vmc" && equipment.enabled && (

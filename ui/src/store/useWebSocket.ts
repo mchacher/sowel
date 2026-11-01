@@ -12,6 +12,7 @@ import { useRecipes } from "./useRecipes";
 import { useModes } from "./useModes";
 import { useActivity } from "./useActivity";
 import { useArbiter } from "./useArbiter";
+import { useEvSessions } from "./useEvSessions";
 import { useSharedAccess } from "./useSharedAccess";
 
 export type WsTopic =
@@ -481,6 +482,11 @@ function handleEvent(event: EngineEvent): void {
     case "energy.capacity.released":
     case "energy.capacity.budget":
       useArbiter.getState().refreshSoon();
+      break;
+    // Spec 191 — charge sessions: the mounted sections refetch their month.
+    case "energy.ev_session.updated":
+    case "energy.ev_session.deleted":
+      useEvSessions.getState().refreshSoon();
       break;
     // Spec 181 — admin-only events on the `system` topic: the lines, their
     // statuses and last uses moved; refetch once per burst.

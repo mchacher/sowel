@@ -339,6 +339,7 @@ Specs are grouped by theme and annotated with status:
 | 188 | Order outcome from reported state                                       | ✅     | Confirms a gate impulse from its contact flip and a door OPEN/CLOSE from its end state (spec 141 tracker); on by default for gate/door (`trackOrderOutcome`); amends spec 181 R4.16. Unreleased.                                              |
 | 189 | Shared access: delete ended external accesses                           | ✅     | Amends spec 181 R10: housekeeping deletes an external (booking-platform) access seven days after it ended or was revoked, with a journal line and a tombstone; manual accesses are never deleted.                                             |
 | 190 | Door equipment type                                                     | ✅     | New `door` EquipmentType, sibling of `shutter` (spec 115 pattern) reusing `shutter_move`/`shutter_position`, zone `doorsOpen`/`doorsTotal`; the edit form may switch a type within shutter/awning/door. Unreleased.                           |
+| 191 | EV charge sessions and cost per vehicle                                 | ✅     | Charge sessions on `ev_charger`: 5-min grid/solar split (car served last by the sun), frozen HP/HC cost, attribution to an `electric_vehicle` with manual override, monthly summary and measured cost per 100 km. Unreleased.                 |
 
 ---
 

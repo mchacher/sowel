@@ -265,6 +265,8 @@ function getDedupKey(event: EngineEvent): string | null {
       return "ea:status"; // spec 140 — keep only the latest status per batch
     case "energy.capacity.budget":
       return `eb:${event.equipmentId}`; // spec 185 — the latest budget per load
+    case "energy.ev_session.updated":
+      return `evs:${event.session.id}`; // spec 191 — the latest state per session
     default:
       return null;
   }

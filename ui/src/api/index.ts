@@ -13,3 +13,4 @@ export * from "./notifications";
 export * from "./dashboard";
 export * from "./energy";
 export * from "./sharedAccess";
+export * from "./evSessions";
