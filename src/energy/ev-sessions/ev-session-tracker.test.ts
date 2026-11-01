@@ -6,7 +6,7 @@ import type { EquipmentManager } from "../../equipments/equipment-manager.js";
 import type { EngineEvent, Equipment, EquipmentType } from "../../shared/types.js";
 import { createMigratedTestDb } from "../../test-helpers/migrations.js";
 import type { TariffClassifier } from "../tariff-classifier.js";
-import { EvSessionStore } from "./ev-session-store.js";
+import { EvSessionStore, type SessionRecord } from "./ev-session-store.js";
 import { EvSessionError, EvSessionTracker, GRACE_MS, monthRange } from "./ev-session-tracker.js";
 
 // Spec 191 — the tracker over a real event bus and an in-memory database, with
@@ -1147,6 +1147,139 @@ describe("audit review (fix/ev-cost-audit)", () => {
     data("megane", "battery_level", 62);
     await flush();
     expect(sessions()[0]).toMatchObject({ batteryStart: 40, batteryEnd: 62 });
+  });
+});
+
+describe("telling cars apart by measures (spec 194)", () => {
+  beforeEach(() => {
+    tracker.stop();
+    eqs.add("legrand", "ev_charger", "Legrand");
+    eqs.set("legrand", "power", 0);
+    tracker = makeTracker();
+  });
+  const legrand = () => tracker.listByCharger("legrand", "2026-11")!;
+
+  /** A car's report: its own time, then each value, in one burst. */
+  async function carReport(car: string, values: Record<string, unknown>) {
+    data(car, "reported_at", new Date(now - 30_000).toISOString());
+    for (const [alias, value] of Object.entries(values)) data(car, alias, value);
+    await flush();
+  }
+
+  /** Both cars charge at once: the Tuya at 1.3 kW, the Legrand at 7 kW, for an hour. */
+  async function bothAtOnce(each: (minute: number) => Promise<void>) {
+    data("charger", "vehicle", "charging");
+    for (let i = 0; i < 60; i++) {
+      data("charger", "power", 1300);
+      data("legrand", "power", 7000);
+      await each(i);
+      tracker.tick();
+      now += MIN;
+      data("grid", "energy", 8300 / 60);
+    }
+    data("charger", "vehicle", "disconnected");
+    for (let i = 0; i < 31; i++) {
+      data("legrand", "power", 0);
+      tracker.tick();
+      now += MIN;
+    }
+    now += GRACE_MS;
+    tracker.tick();
+  }
+
+  it("gives each car its charger by the power it says it charges at", async () => {
+    await bothAtOnce(async (i) => {
+      if (i === 2) {
+        await carReport("megane", { charging_state: "charging" });
+        await carReport("rafale", { charging_state: "charging" });
+      }
+      if (i % 15 === 5) {
+        await carReport("megane", { charge_power: 6900 });
+        await carReport("rafale", { charge_power: 1400 });
+      }
+    });
+    // The other charger claims the Megane for sure: the Rafale is left.
+    expect(sessions()[0]).toMatchObject({ vehicleId: "rafale" });
+    expect(legrand()[0]).toMatchObject({ vehicleId: "megane" });
+    expect([sessions()[0].attributionReason, legrand()[0].attributionReason]).toContain(
+      "power-match",
+    );
+  });
+
+  it("never gives a guest's session to a car charging elsewhere at another power", async () => {
+    data("charger", "vehicle", "charging"); // a guest at 3 kW
+    for (let i = 0; i < 60; i++) {
+      data("charger", "power", 3000);
+      if (i === 5) await carReport("rafale", { charging_state: "charging" });
+      if (i % 20 === 10) await carReport("rafale", { charge_power: 11000 });
+      now += MIN;
+      data("grid", "energy", 50);
+    }
+    data("charger", "vehicle", "disconnected");
+    now += GRACE_MS;
+    tracker.tick();
+    expect(sessions()[0].attribution).toBe("unattributed");
+  });
+
+  it("gives each car its charger by the energy its battery took", async () => {
+    // What each car learned at home before: Megane 500 Wh per point, Rafale 150.
+    const past = (car: string, wh: number, from: number, to: number, day: number) => {
+      const at = new Date(T0 - day * 24 * H).toISOString();
+      const record: SessionRecord = {
+        id: `past-${car}-${day}`,
+        chargerId: "charger",
+        chargerName: "Borne",
+        startedAt: at,
+        endedAt: at,
+        graceUntil: at,
+        energyWh: wh,
+        estCarWh: wh,
+        estGridHpWh: wh,
+        estGridHcWh: 0,
+        estCostHpEur: null,
+        estCostHcEur: null,
+        vehicleId: car,
+        vehicleName: car,
+        vehicleDeleted: false,
+        attribution: "vehicle",
+        attributionSource: "manual",
+        attributionReason: null,
+        batteryStart: from,
+        batteryEnd: to,
+        evidence: [],
+        updatedAt: at,
+      };
+      store.save(record);
+    };
+    past("megane", 10_000, 30, 50, 3);
+    past("rafale", 3_000, 20, 40, 4);
+    await bothAtOnce(async (i) => {
+      if (i === 2) {
+        await carReport("megane", { charging_state: "charging", battery_level: 40 });
+        await carReport("rafale", { charging_state: "charging", battery_level: 30 });
+      }
+      if (i === 58) {
+        await carReport("megane", { battery_level: 54 }); // 7 kWh / 500
+        await carReport("rafale", { battery_level: 39 }); // 1.3 kWh / 150
+      }
+    });
+    // The other charger claims the Megane for sure: the Rafale is left.
+    expect(sessions()[0]).toMatchObject({ vehicleId: "rafale" });
+    expect(legrand()[0]).toMatchObject({ vehicleId: "megane" });
+    expect([sessions()[0].attributionReason, legrand()[0].attributionReason]).toContain(
+      "energy-match",
+    );
+  });
+
+  it("leaves two cars at once to attribute without power or energy data", async () => {
+    await bothAtOnce(async (i) => {
+      if (i === 2) {
+        await carReport("megane", { charging_state: "charging" });
+        await carReport("rafale", { charging_state: "charging" });
+      }
+    });
+    expect(sessions()[0].attribution).toBe("unattributed");
+    expect(legrand()[0].attribution).toBe("unattributed");
   });
 });
 

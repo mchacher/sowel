@@ -31,7 +31,12 @@ import {
 } from "../../shared/ev-charger-contract.js";
 import { ELECTRIC_VEHICLE_ALIASES } from "../../shared/electric-vehicle-contract.js";
 import { localDateStr } from "../../shared/local-date.js";
-import type { EvChargeSession, EvVehicleMonthSummary, TariffPrices } from "../../shared/types.js";
+import type {
+  EvChargeSession,
+  EvSessionAttributionReason,
+  EvVehicleMonthSummary,
+  TariffPrices,
+} from "../../shared/types.js";
 import type { TariffClassifier } from "../tariff-classifier.js";
 import {
   type AttributionResult,
@@ -39,6 +44,7 @@ import {
   attribute,
   charged,
   emptyEvidence,
+  foldPower,
   matches,
   startBattery,
   foldReport,
@@ -91,13 +97,26 @@ const RELEVANT_ALIASES: ReadonlySet<string> = new Set([
   ...CHARGER_ALIASES,
   ...REPORT_ALIASES,
   ELECTRIC_VEHICLE_ALIASES.mileage,
+  ELECTRIC_VEHICLE_ALIASES.chargePower,
 ]);
+
+/** Spec 194 — a car's charging power under this is no charge (no sample). */
+const CAR_POWER_MIN_W = 100;
+/** Spec 194 — how far back a charger's power readings are kept, to compare late reports. */
+const POWER_LOG_MS = 3 * 3_600_000;
 
 /** SQLite timestamps use a space (`2026-11-01 10:49:35Z`); ISO uses a `T`. */
 function parseTimestamp(value: unknown): number | null {
   if (typeof value !== "string" || value === "") return null;
   const ms = Date.parse(value.includes("T") ? value : value.replace(" ", "T"));
   return Number.isNaN(ms) ? null : ms;
+}
+
+/** A car another session claims (spec 193 FR4): sure or a guess, and why. */
+interface Claim {
+  vehicleId: string;
+  sure: boolean;
+  reason: EvSessionAttributionReason | null;
 }
 
 /** What a user may set a session to (FR4). */
@@ -158,6 +177,8 @@ interface OpenSession {
    * charge must not be seen away during its own session.
    */
   tail: Array<{ vehicleId: string; report: Parameters<typeof foldReport>[1] }>;
+  /** Spec 194 — the charger's power readings (time, W), to compare a car's own power. */
+  powerLog: Array<{ atMs: number; watts: number }>;
 }
 
 export class EvSessionTracker {
@@ -346,6 +367,7 @@ export class EvSessionTracker {
         lastActiveMs: metered ? this.meteredLastActive(record, now) : now,
         active: !metered || this.chargerDraws(record.chargerId),
         tail: [],
+        powerLog: [],
       });
       // Audit A9 — a charger that reports its power only on change would
       // count nothing until its next change: hold its last reading again.
@@ -421,6 +443,7 @@ export class EvSessionTracker {
       lastActiveMs: now,
       active: true,
       tail: [],
+      powerLog: [],
     });
     this.seedEvidence(record, true);
     this.persist(record);
@@ -643,7 +666,11 @@ export class EvSessionTracker {
       for (const s of this.open.values()) this.enqueue(s.record, s.acc.advance(now));
       this.settleDue(now);
     } else if (eq.type === "electric_vehicle") {
-      if (REPORT_ALIASES.has(alias) || alias === ELECTRIC_VEHICLE_ALIASES.mileage) {
+      if (
+        REPORT_ALIASES.has(alias) ||
+        alias === ELECTRIC_VEHICLE_ALIASES.mileage ||
+        alias === ELECTRIC_VEHICLE_ALIASES.chargePower
+      ) {
         // A car's report arrives as several updates in one burst, `reported_at`
         // among them in any order: read it once the burst is over.
         queueMicrotask(() => {
@@ -693,6 +720,10 @@ export class EvSessionTracker {
       }
       const open = this.open.get(chargerId);
       if (!open) return;
+      open.powerLog.push({ atMs: now, watts: value });
+      while (open.powerLog.length > 0 && open.powerLog[0].atMs < now - POWER_LOG_MS) {
+        open.powerLog.shift();
+      }
       if (open.metered) {
         if (active) {
           open.lastActiveMs = now;
@@ -721,6 +752,10 @@ export class EvSessionTracker {
   }
 
   private onVehicle(vehicleId: string, alias: string, value: unknown, receivedAtMs: number): void {
+    if (alias === ELECTRIC_VEHICLE_ALIASES.chargePower) {
+      this.onCarPower(vehicleId, value, receivedAtMs);
+      return;
+    }
     if (REPORT_ALIASES.has(alias)) {
       const reportedAtMs = this.vehicleReportedAt(vehicleId, alias);
       const report = { alias: alias as ReportAlias, value, reportedAtMs, receivedAtMs };
@@ -733,6 +768,35 @@ export class EvSessionTracker {
       }
     }
     this.advanceLeg(vehicleId, alias, value, receivedAtMs);
+  }
+
+  /**
+   * Spec 194 — the car's own charging power, compared with each open session's
+   * charger at the time the car reported it. A report repeated with the same
+   * time (a plugin publishing again) is one sample.
+   */
+  private onCarPower(vehicleId: string, value: unknown, receivedAtMs: number): void {
+    if (typeof value !== "number" || !Number.isFinite(value) || value < CAR_POWER_MIN_W) return;
+    const atMs =
+      this.vehicleReportedAt(vehicleId, ELECTRIC_VEHICLE_ALIASES.chargePower) ?? receivedAtMs;
+    for (const s of this.open.values()) {
+      if (s.metered && !s.active) continue;
+      if (atMs < Date.parse(s.record.startedAt)) continue;
+      let chargerW: number | null = null;
+      for (const p of s.powerLog) {
+        if (p.atMs > atMs) break;
+        chargerW = p.watts;
+      }
+      if (chargerW === null) continue;
+      const record = s.record;
+      const index = record.evidence.findIndex((e) => e.vehicleId === vehicleId);
+      const before = index >= 0 ? record.evidence[index] : emptyEvidence(vehicleId);
+      if (before.powerSampledAtMs === atMs) continue;
+      const after = { ...foldPower(before, value, chargerW), powerSampledAtMs: atMs };
+      if (index >= 0) record.evidence[index] = after;
+      else record.evidence.push(after);
+      this.persist(record);
+    }
   }
 
   private foldInto(
@@ -922,13 +986,21 @@ export class EvSessionTracker {
     const result = attribute(record.evidence, this.candidateVehicleIds(), {
       usualVehicleId: this.usualVehicleOf(record.chargerId),
       excluded: new Set(taken.keys()),
+      ...this.measures(record),
     });
     if (result.state === "vehicle" && result.reason === "single-match") {
-      const onGuess = [...taken].some(
-        ([vehicleId, sure]) =>
-          !sure && record.evidence.some((e) => e.vehicleId === vehicleId && matches(e)),
+      // A match that only stands because another session took the other car
+      // says why that one did: a guess (audit A7), or a measure (spec 194).
+      const reasons = [...taken]
+        .filter(([vehicleId]) =>
+          record.evidence.some((e) => e.vehicleId === vehicleId && matches(e)),
+        )
+        .map(([, claim]) => claim);
+      if (reasons.some((c) => !c.sure)) return { ...result, reason: "usual-vehicle" };
+      const measured = reasons.find(
+        (c) => c.reason === "power-match" || c.reason === "energy-match",
       );
-      if (onGuess) return { ...result, reason: "usual-vehicle" };
+      if (measured?.reason) return { ...result, reason: measured.reason };
     }
     return result;
   }
@@ -941,24 +1013,29 @@ export class EvSessionTracker {
    * "The only vehicle" rests on no evidence (a guest's car would do the same):
    * it claims none.
    */
-  private givenBy(record: SessionRecord): { vehicleId: string; sure: boolean } | null {
+  private givenBy(record: SessionRecord): Claim | null {
     if (record.attributionSource === "manual") {
       return record.attribution === "vehicle" && record.vehicleId !== null
-        ? { vehicleId: record.vehicleId, sure: true }
+        ? { vehicleId: record.vehicleId, sure: true, reason: null }
         : null;
     }
     const result = attribute(record.evidence, this.candidateVehicleIds(), {
       usualVehicleId: this.usualVehicleOf(record.chargerId),
+      ...this.measures(record),
     });
     if (result.state !== "vehicle" || result.reason === "only-vehicle") return null;
-    return { vehicleId: result.vehicleId, sure: result.reason !== "usual-vehicle" };
+    return {
+      vehicleId: result.vehicleId,
+      sure: result.reason !== "usual-vehicle",
+      reason: result.reason,
+    };
   }
 
   /**
    * Cars claimed by sessions on other chargers whose time range meets this
    * one, each with whether it is sure (a sure claim wins over a guess).
    */
-  private takenElsewhere(record: SessionRecord): Map<string, boolean> {
+  private takenElsewhere(record: SessionRecord): Map<string, Claim> {
     const others = new Map<string, SessionRecord>();
     for (const r of this.store.listMeeting(
       record.id,
@@ -971,12 +1048,35 @@ export class EvSessionTracker {
     for (const r of this.liveRecords()) {
       if (r.id !== record.id && others.has(r.id)) others.set(r.id, r);
     }
-    const taken = new Map<string, boolean>();
+    const taken = new Map<string, Claim>();
     for (const other of others.values()) {
       const given = this.givenBy(other);
-      if (given !== null) taken.set(given.vehicleId, taken.get(given.vehicleId) || given.sure);
+      if (given === null) continue;
+      const held = taken.get(given.vehicleId);
+      if (!held || (!held.sure && given.sure)) taken.set(given.vehicleId, given);
     }
     return taken;
+  }
+
+  /**
+   * Spec 194 — what the energy signal needs: the session's energy and each car's
+   * learned energy per battery point (from its own sessions, this one left out).
+   */
+  private measures(record: SessionRecord): {
+    energyWh: number;
+    whPerPoint: Map<string, number>;
+  } {
+    const whPerPoint = new Map<string, number>();
+    for (const e of record.evidence) {
+      const learned = whPerBatteryPoint(
+        this.store
+          .listForLearning(e.vehicleId)
+          .filter((r) => r.id !== record.id)
+          .map(toSession),
+      );
+      if (learned !== null) whPerPoint.set(e.vehicleId, learned);
+    }
+    return { energyWh: toSession(record).energyWh, whPerPoint };
   }
 
   private usualVehicleOf(chargerId: string): string | null {

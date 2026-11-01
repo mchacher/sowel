@@ -99,6 +99,8 @@ export type DataCategory =
   | "ev_at_home"
   | "ev_mileage"
   | "ev_charge_limit"
+  // Spec 194 — the power the car says it charges at (W).
+  | "ev_charge_power"
   | "generic";
 
 export type OrderCategory =
@@ -2540,7 +2542,13 @@ export type EvSessionAttribution = "pending" | "vehicle" | "unattributed" | "oth
 
 /** Why Sowel decided as it did (automatic attribution only). */
 export type EvSessionAttributionReason =
-  "single-match" | "only-vehicle" | "no-match" | "several-matches" | "usual-vehicle";
+  | "single-match"
+  | "only-vehicle"
+  | "no-match"
+  | "several-matches"
+  | "usual-vehicle"
+  | "power-match"
+  | "energy-match";
 
 /** One plug-in on one charger, with its energy split and its frozen cost. */
 export interface EvChargeSession {

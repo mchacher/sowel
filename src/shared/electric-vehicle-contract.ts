@@ -50,6 +50,8 @@ export const ELECTRIC_VEHICLE_ALIASES = {
   chargeStart: "charge_start",
   /** Spec 184 — read the latest report now; never wakes the car. */
   refresh: "refresh",
+  /** Spec 194 — the power the car says it charges at (W), optional. */
+  chargePower: "charge_power",
 } as const;
 
 export const EV_BATTERY_LEVEL_CATEGORY = "ev_battery_level";
@@ -64,6 +66,7 @@ export const EV_WAKE_CATEGORY = "ev_wake";
 export const EV_CHARGE_START_CATEGORY = "ev_charge_start";
 export const SET_EV_CHARGE_LIMIT_CATEGORY = "set_ev_charge_limit";
 export const EV_REFRESH_CATEGORY = "ev_refresh";
+export const EV_CHARGE_POWER_CATEGORY = "ev_charge_power";
 
 /** Momentary orders: no value to show, only the action (activity feed). */
 export const EV_MOMENTARY_ORDER_CATEGORIES: ReadonlySet<string> = new Set([
@@ -86,6 +89,7 @@ export const ELECTRIC_VEHICLE_CATEGORY_ALIASES: Readonly<Record<string, string>>
   [EV_WAKE_CATEGORY]: ELECTRIC_VEHICLE_ALIASES.wake,
   [EV_CHARGE_START_CATEGORY]: ELECTRIC_VEHICLE_ALIASES.chargeStart,
   [EV_REFRESH_CATEGORY]: ELECTRIC_VEHICLE_ALIASES.refresh,
+  [EV_CHARGE_POWER_CATEGORY]: ELECTRIC_VEHICLE_ALIASES.chargePower,
 };
 
 export interface ElectricVehicleCoreEntry {
@@ -107,6 +111,7 @@ export const ELECTRIC_VEHICLE_CORE: readonly ElectricVehicleCoreEntry[] = [
   { alias: ELECTRIC_VEHICLE_ALIASES.wake, data: false, order: true },
   { alias: ELECTRIC_VEHICLE_ALIASES.chargeStart, data: false, order: true },
   { alias: ELECTRIC_VEHICLE_ALIASES.refresh, data: false, order: true },
+  { alias: ELECTRIC_VEHICLE_ALIASES.chargePower, data: true, order: false },
 ];
 
 const CORE_DATA_ALIASES: ReadonlySet<string> = new Set(

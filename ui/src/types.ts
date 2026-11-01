@@ -91,6 +91,8 @@ export type DataCategory =
   | "ev_at_home"
   | "ev_mileage"
   | "ev_charge_limit"
+  // Spec 194 — the power the car says it charges at (W).
+  | "ev_charge_power"
   | "generic";
 
 export type OrderCategory =
@@ -1873,7 +1875,7 @@ export interface TariffPrices {
 
 export type EvSessionAttribution = "pending" | "vehicle" | "unattributed" | "other";
 export type EvSessionAttributionReason =
-  "single-match" | "only-vehicle" | "no-match" | "several-matches" | "usual-vehicle";
+  "single-match" | "only-vehicle" | "no-match" | "several-matches" | "usual-vehicle" | "power-match" | "energy-match";
 
 export interface EvChargeSession {
   id: string;

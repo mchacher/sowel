@@ -340,19 +340,20 @@ For the arbiter, `ev_charger` defaults to **deferrable**, 10 min on / 5 min off;
 
 An `electric_vehicle` (battery-electric or plug-in hybrid) is defined by `src/shared/electric-vehicle-contract.ts`. Every core point is identified by its category; both creation paths bind contract points first, under their contract alias.
 
-| Alias            | Side         | Category                                  | Unit | Meaning                                                                       |
-| ---------------- | ------------ | ----------------------------------------- | ---- | ----------------------------------------------------------------------------- |
-| `battery_level`  | data         | `ev_battery_level`                        | %    | Traction battery (not `battery`, the device-battery category)                 |
-| `range`          | data         | `ev_range`                                | km   | Electric range                                                                |
-| `plugged`        | data         | `ev_plugged`                              | —    | A cable is connected to the car                                               |
-| `charging_state` | data         | `ev_charging_state`                       | —    | `unplugged`, `idle`, `scheduled`, `waiting`, `charging`, `completed`, `error` |
-| `reported_at`    | data         | `ev_reported_at`                          | ISO  | When the car itself last reported                                             |
-| `at_home`        | data         | `ev_at_home`                              | —    | At the home location (no coordinates are ever published)                      |
-| `mileage`        | data         | `ev_mileage`                              | km   | Odometer                                                                      |
-| `charge_limit`   | data + order | `ev_charge_limit` / `set_ev_charge_limit` | %    | The limit the car applies by itself; set it where allowed                     |
-| `wake`           | order        | `ev_wake`                                 | —    | Wake the car (momentary); the plugin chooses the means                        |
-| `charge_start`   | order        | `ev_charge_start`                         | —    | Start a charge (momentary), where the maker allows it                         |
-| `refresh`        | order        | `ev_refresh`                              | —    | Read the car's latest report now (momentary, spec 184); never wakes the car   |
+| Alias            | Side         | Category                                  | Unit | Meaning                                                                         |
+| ---------------- | ------------ | ----------------------------------------- | ---- | ------------------------------------------------------------------------------- |
+| `battery_level`  | data         | `ev_battery_level`                        | %    | Traction battery (not `battery`, the device-battery category)                   |
+| `range`          | data         | `ev_range`                                | km   | Electric range                                                                  |
+| `plugged`        | data         | `ev_plugged`                              | —    | A cable is connected to the car                                                 |
+| `charging_state` | data         | `ev_charging_state`                       | —    | `unplugged`, `idle`, `scheduled`, `waiting`, `charging`, `completed`, `error`   |
+| `reported_at`    | data         | `ev_reported_at`                          | ISO  | When the car itself last reported                                               |
+| `at_home`        | data         | `ev_at_home`                              | —    | At the home location (no coordinates are ever published)                        |
+| `mileage`        | data         | `ev_mileage`                              | km   | Odometer                                                                        |
+| `charge_limit`   | data + order | `ev_charge_limit` / `set_ev_charge_limit` | %    | The limit the car applies by itself; set it where allowed                       |
+| `wake`           | order        | `ev_wake`                                 | —    | Wake the car (momentary); the plugin chooses the means                          |
+| `charge_start`   | order        | `ev_charge_start`                         | —    | Start a charge (momentary), where the maker allows it                           |
+| `refresh`        | order        | `ev_refresh`                              | —    | Read the car's latest report now (momentary, spec 184); never wakes the car     |
+| `charge_power`   | data         | `ev_charge_power`                         | W    | The power the car says it charges at, optional (spec 194: tells two cars apart) |
 
 Spec 191 builds charge sessions on these two contracts: the charger's `vehicle`, `power` and `energy`, and the car's `plugged`, `charging_state`, `battery_level`, `at_home`, `reported_at` and `mileage` (see the [data model index](../data-model.md#ev-charge-sessions-spec-191)). A device is offered for an `electric_vehicle` when it declares `ev_battery_level`. A vehicle is never a submeter (`NON_SUBMETER_TYPES`), never a flexible load and never carries a timed command: the charger (spec 182) measures and is the load. Fuel and climate values of a plug-in hybrid are extras.
 

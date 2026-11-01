@@ -5,6 +5,8 @@
 - **Related**: spec 182 (EV charger — the other half of a charge), spec 177 (thermostat contract — the pattern for an equipment contract in code), spec 156 (UPS — new categories with a closed enum), spec 143 (low-battery monitor — why the car's battery is not `battery`)
 - **First plugin**: `sowel-plugin-renault` (MyRenault account; Renault Rafale E-Tech plug-in hybrid now, a Megane E-Tech soon)
 
+> **Amended by spec 194 (2026-11-01).** Optional `charge_power` on `electric_vehicle` (W, category `ev_charge_power`); several matching cars are told apart by their own charging power against the charger's, then by battery rise × learned energy per point against the session's energy, before any usual vehicle.
+
 ## Context
 
 Spec 182 gave Sowel the charger. The charger knows whether a car is plugged and drawing; it does not know the car's battery level, and it cannot make a sleeping car charge. Both were measured on the owner's installation:
