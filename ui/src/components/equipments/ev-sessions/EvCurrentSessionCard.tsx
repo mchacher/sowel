@@ -8,7 +8,31 @@ import { useEquipments } from "../../../store/useEquipments";
 import type { EquipmentWithDetails, EvChargeSession } from "../../../types";
 import { formatEur } from "../../energy/format";
 import { ShareBar } from "./EvShareBar";
-import { kw, kwh, liveState, timeLabel } from "./evSessionsDisplay";
+import { EV_CHARGER_ALIASES, EV_VEHICLE_STATE_CATEGORY } from "../../../lib/ev-charger-contract";
+import { electricVehicleStateOf } from "../electricVehicleState";
+import { evChargerStateOf } from "../evChargerState";
+import { kw, kwh, liveState, type LiveInputs, timeLabel } from "./evSessionsDisplay";
+
+/** The shared readers' view of the charger and the car, for `liveState`. */
+function liveInputs(
+  charger: EquipmentWithDetails | undefined,
+  vehicle: EquipmentWithDetails,
+): LiveInputs | null {
+  if (!charger) return null;
+  const c = evChargerStateOf(charger);
+  const v = electricVehicleStateOf(vehicle);
+  const vehicleBinding =
+    charger.dataBindings.find((b) => b.category === EV_VEHICLE_STATE_CATEGORY) ??
+    charger.dataBindings.find((b) => b.alias === EV_CHARGER_ALIASES.vehicle);
+  return {
+    chargerOn: c.on,
+    vehicle: c.vehicle,
+    vehicleChangedAt: vehicleBinding?.lastChanged ?? null,
+    powerW: c.power.watts,
+    battery: v.batteryLevel,
+    chargeLimit: v.chargeLimit,
+  };
+}
 
 /**
  * Spec 192 — the charge in progress on the vehicle page: charging, paused
@@ -30,7 +54,7 @@ export function EvCurrentSessionCard({
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const live = liveState(session, charger?.dataBindings, vehicle.dataBindings);
+  const live = liveState(session, liveInputs(charger, vehicle));
   const eur = (v: number | null) => (v === null ? "—" : formatEur(v, locale));
   const time = (iso: string) => timeLabel(iso, locale);
 
@@ -44,6 +68,8 @@ export function EvCurrentSessionCard({
       setSaving(false);
     }
   };
+
+  if (live.kind === "unplugged") return null;
 
   if (live.kind === "ended") {
     return (

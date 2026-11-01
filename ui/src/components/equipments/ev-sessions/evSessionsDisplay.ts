@@ -1,3 +1,4 @@
+import type { EvVehicleState } from "../../../lib/ev-charger-contract";
 import type { EvChargeSession } from "../../../types";
 
 /**
@@ -75,19 +76,30 @@ export function timeLabel(iso: string, locale: string): string {
   return new Date(iso).toLocaleTimeString(locale, { hour: "2-digit", minute: "2-digit" });
 }
 
-/** The live values a session card reads: a binding's alias, value and last change. */
-export interface LiveBinding {
-  alias: string;
-  value: unknown;
-  lastChanged: string | null;
-}
-
 export type PauseReason = "charger-off" | "charge-limit" | "waiting-vehicle";
+
+/**
+ * What a session card reads live, from the shared readers of the charger
+ * (`evChargerStateOf`) and of the car (`electricVehicleStateOf`).
+ */
+export interface LiveInputs {
+  /** Charging enabled on the charger; null when unbound or unreadable. */
+  chargerOn: boolean | null;
+  vehicle: EvVehicleState | null;
+  /** When the charger's vehicle state last changed (SQLite or ISO). */
+  vehicleChangedAt: string | null;
+  /** A current power reading only (null when stale or absent). */
+  powerW: number | null;
+  battery: number | null;
+  chargeLimit: number | null;
+}
 
 /** Spec 192 — what the charge in progress is doing now. */
 export type LiveState =
   | { kind: "charging"; powerW: number | null }
   | { kind: "paused"; sinceIso: string | null; reason: PauseReason; battery: number | null }
+  /** The charger reads unplugged, the session not closed yet: nothing to show until it is. */
+  | { kind: "unplugged" }
   | { kind: "ended" };
 
 /** SQLite timestamps use a space (`2026-11-01 14:06:05Z`); ISO uses a `T`. */
@@ -97,14 +109,6 @@ export function toIso(value: string | null): string | null {
   return Number.isNaN(d.getTime()) ? null : d.toISOString();
 }
 
-function binding(bindings: LiveBinding[] | undefined, alias: string): LiveBinding | undefined {
-  return bindings?.find((b) => b.alias === alias);
-}
-
-function num(b: LiveBinding | undefined): number | null {
-  return typeof b?.value === "number" && Number.isFinite(b.value) ? b.value : null;
-}
-
 /**
  * From the session and the live data of its charger and of the car: charging,
  * paused (with the reason the data tells), or ended. Without the charger's
@@ -112,24 +116,19 @@ function num(b: LiveBinding | undefined): number | null {
  */
 export function liveState(
   session: Pick<EvChargeSession, "endedAt">,
-  charger: LiveBinding[] | undefined,
-  vehicle: LiveBinding[] | undefined,
+  live: LiveInputs | null,
 ): LiveState {
   if (session.endedAt !== null) return { kind: "ended" };
-  const state = binding(charger, "vehicle");
-  if (state?.value !== "connected") {
-    return {
-      kind: "charging",
-      powerW: state?.value === "charging" ? num(binding(charger, "power")) : null,
-    };
+  if (live?.vehicle === "disconnected") return { kind: "unplugged" };
+  if (live?.vehicle !== "connected") {
+    return { kind: "charging", powerW: live?.vehicle === "charging" ? live.powerW : null };
   }
-  const sinceIso = toIso(state.lastChanged);
-  const battery = num(binding(vehicle, "battery_level"));
-  const limit = num(binding(vehicle, "charge_limit"));
   let reason: PauseReason = "waiting-vehicle";
-  if (binding(charger, "state")?.value === false) reason = "charger-off";
-  else if (battery !== null && limit !== null && battery >= limit) reason = "charge-limit";
-  return { kind: "paused", sinceIso, reason, battery };
+  if (live.chargerOn === false) reason = "charger-off";
+  else if (live.battery !== null && live.chargeLimit !== null && live.battery >= live.chargeLimit) {
+    reason = "charge-limit";
+  }
+  return { kind: "paused", sinceIso: toIso(live.vehicleChangedAt), reason, battery: live.battery };
 }
 
 export function kw(w: number, locale: string): string {

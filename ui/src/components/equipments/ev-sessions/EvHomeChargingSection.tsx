@@ -87,14 +87,15 @@ export function EvHomeChargingSection({
   return (
     <>
       {/* Spec 192 — the charge in progress, before it counts in the month. */}
-      {current.map((s) => (
-        <EvCurrentSessionCard
-          key={s.id}
-          session={s}
-          vehicle={equipment}
-          onAttributed={refreshSoon}
-        />
-      ))}
+      {month === monthOf(new Date()) &&
+        current.map((s) => (
+          <EvCurrentSessionCard
+            key={s.id}
+            session={s}
+            vehicle={equipment}
+            onAttributed={refreshSoon}
+          />
+        ))}
       <div className="bg-surface rounded-[10px] border border-border p-4 mb-6 flex flex-col gap-4">
         <div className="flex items-center justify-between gap-2">
           <h3 className="text-[14px] font-semibold text-text">

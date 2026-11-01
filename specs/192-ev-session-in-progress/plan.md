@@ -2,10 +2,10 @@
 
 ## Tasks
 
-- [ ] Tracker: `currentForVehicle`, shared vehicle-id helper, evidence change emits
-- [ ] Route `GET /api/v1/ev-sessions/current`
-- [ ] UI: client, `liveState`, `EvCurrentSessionCard`, section wiring, i18n FR/EN
-- [ ] Docs EN/FR, specs index
+- [x] Tracker: `currentForVehicle`, shared vehicle-id helper, evidence change emits
+- [x] Route `GET /api/v1/ev-sessions/current`
+- [x] UI: client, `liveState`, `EvCurrentSessionCard`, section wiring, i18n FR/EN
+- [x] Docs EN/FR, specs index
 
 ## Test Plan
 

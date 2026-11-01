@@ -1,6 +1,6 @@
 # Spec 192 — The charge in progress on the vehicle page
 
-- **Status**: Draft — design agreed with the maintainer on 2026-11-01 (three boards "in progress", "paused", "ended, waiting for attribution" added to the spec 191 design)
+- **Status**: Implemented — UI to check on production; design agreed with the maintainer on 2026-11-01 (three boards "in progress", "paused", "ended, waiting for attribution" added to the spec 191 design)
 - **Date**: 2026-11-01
 - **Issue**: #1100
 - **Amends**: spec 191 (EV charge sessions and charging cost per vehicle) — FR7, vehicle page
@@ -58,13 +58,17 @@ The card follows the charger and the car live (their data are already pushed to 
 
 ## Acceptance Criteria
 
-- [ ] An open session whose evidence matches one car is returned for that car and for no other.
-- [ ] An open session with no or several matching cars is returned for none; with a single known car, for it.
-- [ ] A closed session in its grace period is returned until it is decided, then no longer.
-- [ ] An open session attributed by hand is returned for its car only; a closed one attributed by hand is not.
-- [ ] A vehicle report that changes a session's evidence emits `energy.ev_session.updated`.
-- [ ] The vehicle page shows the charging, paused (each reason) and ended cards as on the agreed boards, FR and EN.
-- [ ] **That's <car>** attributes the session by hand; it then leaves the card for the month list.
+- [x] An open session whose evidence matches one car is returned for that car and for no other.
+- [x] An open session with no or several matching cars is returned for none; with a single known car, for it.
+- [x] A closed session in its grace period is returned until it is decided, then no longer.
+- [x] An open session attributed by hand is returned for its car only; a closed one attributed by hand is not.
+- [x] A vehicle report that changes a session's evidence emits `energy.ev_session.updated`.
+- [ ] (production) The vehicle page shows the charging, paused (each reason) and ended cards as on the agreed boards, FR and EN.
+- [ ] (production) **That's <car>** attributes the session by hand; it then leaves the card for the month list.
+
+## Side effect on `candidates`
+
+`foldReport()` now returns the same evidence when a report adds nothing, so the tracker saves and emits only on a change. A car whose reports during a session told nothing (not plugged, at home, not charging) no longer gets an empty entry in the session's `candidates`. Attribution is unchanged: `attribute()` already treats a missing car as an empty one.
 
 ## Edge Cases
 

@@ -3,8 +3,8 @@ import { create } from "zustand";
 /**
  * Spec 191 — live refresh of the charge-session views. The sections fetch
  * their own month; a session event bumps `rev` (debounced: a session updates
- * at most once per 5-minute window, a reassignment once), and every mounted
- * section refetches.
+ * once per 5-minute window, at an attribution, and when a car report adds
+ * evidence — spec 192), and every mounted section refetches.
  */
 interface EvSessionsStore {
   rev: number;
