@@ -26,6 +26,7 @@ import { CameraPanel } from "../components/equipments/CameraPanel";
 import { UpsPanel } from "../components/equipments/UpsPanel";
 import { AddBindingModal } from "../components/equipments/AddBindingModal";
 import { EquipmentStatusBadge } from "../components/equipments/EquipmentStatusBadge";
+import { OrderOutcomeLine } from "../components/equipments/OrderOutcomeLine";
 import { DeviceSelector } from "../components/equipments/DeviceSelector";
 import { TYPE_LABELS } from "../components/equipments/equipment-type-meta";
 import { useEquipmentState } from "../components/equipments/useEquipmentState";
@@ -40,6 +41,8 @@ import { ElectricalMeteringPanel } from "../components/equipments/ElectricalMete
 import { MeteringParentPanel } from "../components/equipments/MeteringParentPanel";
 import { EnergyManagementPanel } from "../components/equipments/EnergyManagementPanel";
 import { GateConfirmationPanel } from "../components/equipments/GateConfirmationPanel";
+import { OrderOutcomePanel } from "../components/equipments/OrderOutcomePanel";
+import { ORDER_OUTCOME_TYPES } from "../../../src/shared/order-outcome-tracking";
 import { SharedAccessPanel } from "../components/equipments/SharedAccessPanel";
 import { TimedCommandPanel } from "../components/equipments/TimedCommandPanel";
 import { TimedCommandControl } from "../components/equipments/TimedCommandControl";
@@ -317,6 +320,8 @@ export function EquipmentDetailPage() {
                 <span className="text-warning ml-2">{t("common.disabled")}</span>
               )}
             </p>
+            {/* Spec 188 — what became of the last tracked order (gate, cover). */}
+            <OrderOutcomeLine equipmentId={equipment.id} className="mt-1" />
             {actionBinding && actionBinding.value != null && (
               <div className="flex items-center gap-1.5 mt-1 text-[12px] text-text-tertiary">
                 <Clock size={12} strokeWidth={1.5} />
@@ -448,6 +453,11 @@ export function EquipmentDetailPage() {
       {/* Gate — confirmation before action (spec 146), admin only */}
       {isGate && isAdmin && (
         <GateConfirmationPanel equipment={equipment} onUpdated={() => void fetchEquipments()} />
+      )}
+
+      {/* Gate, door, shutter, awning — follow orders to their outcome (spec 188 O10), admin only */}
+      {ORDER_OUTCOME_TYPES.includes(equipment.type) && isAdmin && (
+        <OrderOutcomePanel equipment={equipment} onUpdated={() => void fetchEquipments()} />
       )}
 
       {/* Gate — shared access (spec 181 R8), admin only, hidden while off */}

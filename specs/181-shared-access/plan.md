@@ -52,7 +52,7 @@ routes (admin and public), `plugin-api`, `guest-page`, and in the UI `SharedAcce
 | press         | a sixth press waiting on one gate                       | `busy` at once, nothing dispatched                                  |
 | enrol         | a 51st phone on one access                              | `409 too_many_phones`                                               |
 | public routes | setting off                                             | 404 on page and owner API; 401 on public API, like an unknown route |
-| public routes | session payload                                         | never carries the gate's state                                      |
+| public routes | session payload                                         | no gate state, except its own tracked press's outcome (spec 188)    |
 | public routes | page headers                                            | CSP, noindex, no-store, no cookie                                   |
 | admin routes  | non-admin                                               | 403                                                                 |
 | plugin-api    | replayed upsert                                         | no new code, no duplicate                                           |

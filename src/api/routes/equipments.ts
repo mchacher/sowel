@@ -72,6 +72,8 @@ const updateEquipmentBodySchema = {
     },
     requireConfirmation: { type: "boolean" },
     invertDirection: { type: "boolean" },
+    // Spec 188 O10 — `null` hands the choice back to the type's default.
+    trackOrderOutcome: { type: ["boolean", "null"] },
     // Spec 173 — id of the meter that already counts this equipment, or null.
     meteringParentId: { type: ["string", "null"], minLength: 1 },
     // Spec 179 — this meter is fed by a separate supply.
@@ -322,6 +324,7 @@ export function registerEquipmentRoutes(app: FastifyInstance, deps: EquipmentsDe
       energyProfile?: EnergyLoadProfile | null;
       requireConfirmation?: boolean;
       invertDirection?: boolean;
+      trackOrderOutcome?: boolean | null;
       solarProfile?: SolarProfile | null;
       meteringParentId?: string | null;
       separateSupply?: boolean;
@@ -490,6 +493,7 @@ export function registerEquipmentRoutes(app: FastifyInstance, deps: EquipmentsDe
           solarProfile: body.solarProfile,
           requireConfirmation: body.requireConfirmation,
           invertDirection: body.invertDirection,
+          trackOrderOutcome: body.trackOrderOutcome,
           meteringParentId: body.meteringParentId,
           separateSupply: body.separateSupply,
           timedCommand: body.timedCommand,

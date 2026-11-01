@@ -366,6 +366,55 @@ De deux à six paliers, du plus court au plus long. Le premier est la durée, do
 !!! warning "Un contact qui ne certifie qu'un seul sens"
 Le contact d'un portail prouve en général qu'il est fermé et ne fait que suggérer qu'il est ouvert. Si vous fermez le portail à la main sans que le contact le voie, le créneau continue de courir et rouvrira le portail à l'échéance. Terminez le créneau depuis Sowel plutôt qu'à la main quand cela compte.
 
+### Résultat d'un ordre { #order-outcome }
+
+Pour deux sortes d'ordres, Sowel lit ce que l'appareil rapporte ensuite pour savoir si l'ordre a
+fait bouger quelque chose, et l'écrit en une ligne sous le nom de la tuile (bureau, téléphone et
+tuile temporisée) et sur la page de l'équipement. C'est actif par défaut sur un **portail** et une
+**porte**, inactif sur un volet ou un store ; un admin le règle équipement par équipement sur la
+page de l'équipement (« Suivre le résultat des ordres »).
+
+- **Une impulsion de portail** — un ordre de valeur `pulse` sur un portail — quand l'état du
+  portail est connu (son capteur de position, `closed`, ou son `state`). Fermé, le portail doit
+  s'ouvrir en 15 s ; ouvert, il doit se fermer en 60 s (une impulsion sur un portail ouvert peut
+  l'arrêter ou l'inverser avant qu'il se ferme). Toute autre valeur envoyée à un portail reste
+  comme avant.
+- **Ouvrir ou Fermer sur une porte** (ou sur un volet ou un store une fois activé), quand son état
+  parle le vocabulaire de fin de course : elle a rapporté `CLOSED`, `OPENING`, `CLOSING` ou `FAULT`
+  au moins une fois depuis le démarrage de Sowel, comme la porte LoRa du poulailler. Elle doit
+  atteindre `OPEN` / `CLOSED` (ou la position 100 / 0) en 60 s. Un volet qui ne renvoie que
+  `OPEN` / `CLOSE`, comme la plupart des volets Zigbee, reste silencieux même activé.
+
+| La ligne affiche                                                 | Quand                                                                                |
+| ---------------------------------------------------------------- | ------------------------------------------------------------------------------------ |
+| « Envoyée… »                                                     | l'ordre est parti, la fenêtre court                                                  |
+| « En mouvement… »                                                | la porte rapporte qu'elle va vers la cible                                           |
+| « ✓ Ouverture confirmée » / « ✓ Fermeture confirmée »            | l'état attendu est arrivé (disparaît après 4 s)                                      |
+| « Défaut : contact bas » / « Défaut : câblage » / « Défaut »     | l'appareil a rapporté `FAULT` (son `why` donne la raison ; `NONE` n'en donne aucune) |
+| « Pas de mouvement : commande perdue ou portail bloqué »         | une impulsion sur un portail fermé n'a rien vu en 15 s                               |
+| « Toujours ouvert : commande perdue ou portail arrêté en route » | une impulsion sur un portail ouvert ne l'a pas vu fermé en 60 s                      |
+| « Sans confirmation »                                            | un ordre de porte n'a pas atteint sa fin de course en 60 s                           |
+| « Arrêté »                                                       | quelqu'un a arrêté la porte en route (`STOP`)                                        |
+
+Un défaut ou une confirmation manquante lève aussi une alarme, envoyée comme les autres, qui se
+retire d'elle-même quand l'état attendu finit par arriver, même tard. L'alarme dit ce qu'a fait le
+portail ou la porte (« Portail : toujours ouvert après la commande — perdue ou arrêtée en route »,
+« Porte du poulailler : défaut (contact bas) ») : dans votre langue dans le bandeau et le fil
+d'activité, et dans la notification push dans la langue de l'utilisateur qui l'a activée (sa
+préférence **Langue**). Telegram la reçoit en anglais. Une porte arrêtée (`STOP`) ne lève pas
+d'alarme.
+
+**Une impulsion de portail n'est jamais renvoyée** : une deuxième impulsion inverserait le portail.
+Ouvrir ou Fermer sur une porte est absolu : l'ordre est renvoyé une fois s'il s'est perdu pendant
+que l'appareil ou son intégration était hors ligne, comme tout autre ordre (pas après un défaut :
+la porte a répondu). Une deuxième
+impulsion dont Sowel ne peut pas encore lire l'état du portail (l'état est inconnu jusqu'au rapport
+suivant) n'annule pas le suivi de la première : son résultat arrive quand même. Un ordre qui n'a pas
+pu partir du tout (intégration hors ligne) n'affiche aucune ligne : l'erreur est revenue quand il a
+été donné. L'état ne distingue pas une commande perdue d'une commande que le moteur n'a pas pu
+exécuter : les deux s'affichent pareil. La ligne est en direct : un rechargement n'affiche rien
+jusqu'au prochain ordre.
+
 ### Désactiver un équipement
 
 Un équipement désactivé :

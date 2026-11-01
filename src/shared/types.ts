@@ -421,6 +421,9 @@ export interface Equipment {
   /** Spec 146 — opt-in confirmation before actuating on the mobile dashboard.
    *  `true` only when an admin enabled it. Gate equipments only in v1. */
   requireConfirmation?: boolean;
+  /** Spec 188 O10 — follow orders to their outcome. Absent / `null` = the
+   *  type's default (on for gate and door, off otherwise). */
+  trackOrderOutcome?: boolean | null;
   /** Spec 173 — id of the meter that already counts this equipment's
    *  consumption (a gîte clamp upstream of a water-heater clamp). The by-usage
    *  breakdown renders the parent net of its direct children, so nested clamps
@@ -1486,7 +1489,34 @@ export type OrderSource =
   | { kind: "external"; channel: string }
   // Spec 181 — a press from someone holding a shared access. The label rides in
   // the source so the Activity feed still names the access once it is deleted.
-  | { kind: "shared_access"; accessId: string; label: string };
+  // Spec 188 — `pressId` names this one press, so its outcome finds its way
+  // back to the press it answers and to nothing else.
+  | { kind: "shared_access"; accessId: string; label: string; pressId?: string };
+
+// ============================================================
+// Order outcome from reported state (spec 188)
+// ============================================================
+
+/**
+ * What became of a tracked order (a gate impulse, a cover OPEN / CLOSE), as
+ * read from the state the device reports.
+ *
+ * `pending` — sent, the window is running; `moving` — the cover reports it is
+ * travelling toward the target; `confirmed` — the expected state was reported;
+ * `fault` — the device reported FAULT; `unconfirmed` — the window elapsed. A
+ * late expected state still resolves the alarm of the last two.
+ */
+export type OrderOutcomeStatus =
+  | "pending"
+  | "moving"
+  | "confirmed"
+  | "fault"
+  | "unconfirmed"
+  // Spec 188 O7 — a cover order a person stopped on the way with STOP.
+  | "stopped";
+
+/** The movement a tracked order should cause. */
+export type OrderOutcomeExpected = "open" | "close";
 
 // ============================================================
 // Shared access (spec 181)
@@ -1616,6 +1646,10 @@ export interface SharedAccessJournalEntry {
   equipmentId: string | null;
   /** R5.19 — the phone's tag (`7K3F`) when a phone did it. */
   phoneTag: string | null;
+  /** Spec 188 — the outcome of an `opened` row's press; null when the press was not tracked. */
+  outcome: Exclude<OrderOutcomeStatus, "moving" | "fault" | "stopped"> | null;
+  /** Spec 188 — the movement that press should cause; null when not tracked. */
+  outcomeExpected: OrderOutcomeExpected | null;
 }
 
 /** What a plugin gets back for a stay (spec 181 R9). */
@@ -1692,8 +1726,16 @@ export type ActivityMessage =
   | { template: "mode.deactivated"; params: { modeName: string } }
   | { template: "sunlight.sunrise"; params: Record<string, never> }
   | { template: "sunlight.sunset"; params: Record<string, never> }
-  | { template: "alarm.raised"; params: { source: string; message: string } }
-  | { template: "alarm.resolved"; params: { source: string; message: string } };
+  | { template: "alarm.raised"; params: AlarmActivityParams }
+  | { template: "alarm.resolved"; params: AlarmActivityParams };
+
+/** An alarm in the activity feed; an order-outcome alarm (spec 188) also carries its i18n key. */
+export interface AlarmActivityParams {
+  source: string;
+  message: string;
+  messageKey?: string;
+  messageParams?: Record<string, string | number>;
+}
 
 export interface ActivityItem {
   id: string;
@@ -1766,6 +1808,8 @@ export type EngineEvent =
       orderAlias: string;
       value: unknown;
       source?: OrderSource;
+      /** Spec 188 O2 — when the dispatch began (ms), before any retry. */
+      startedAt?: number;
     }
   | {
       type: "equipment.order.failed";
@@ -1783,7 +1827,20 @@ export type EngineEvent =
       value: unknown;
       // "integration_disconnected" (issue #702): the order never reached the
       // wire at all, the integration was unreachable when it was dispatched.
-      reason: "timeout" | "device_offline" | "integration_disconnected";
+      // "device_fault" (spec 188): the device answered FAULT to a cover order.
+      reason: "timeout" | "device_offline" | "integration_disconnected" | "device_fault";
+      source?: OrderSource;
+    }
+  // Spec 188 — a tracked order's outcome changed (gate impulse, cover OPEN / CLOSE).
+  | {
+      type: "equipment.order.outcome";
+      equipmentId: string;
+      orderAlias: string;
+      value: unknown;
+      status: OrderOutcomeStatus;
+      expected?: OrderOutcomeExpected;
+      /** The device's reason for a `fault` (its `why` key, e.g. `BOTTOM`). */
+      detail?: string;
       source?: OrderSource;
     }
   // Spec 174 — a timed action: act now, revert at the deadline.
@@ -1890,6 +1947,10 @@ export type EngineEvent =
       level: "warning" | "error";
       source: string;
       message: string;
+      /** Optional i18n key and parameters the UI words the alarm from (spec 188);
+       *  `message` stays the English fallback for logs and publishers. */
+      messageKey?: string;
+      messageParams?: Record<string, string | number>;
       /** Zone the alarm belongs to, so the activity feed can scope it. Absent
        *  or null = a global alarm shown in every zone (spec 143/#472). */
       zoneId?: string | null;
@@ -1899,6 +1960,9 @@ export type EngineEvent =
       alarmId: string;
       source: string;
       message: string;
+      /** Optional i18n key and parameters, as on `system.alarm.raised` (spec 188). */
+      messageKey?: string;
+      messageParams?: Record<string, string | number>;
       /** Zone the resolved alarm belongs to, mirroring `system.alarm.raised`.
        *  Emitters that know the zone should send it: the activity feed then
        *  files the end of an incident where its start went, even across a

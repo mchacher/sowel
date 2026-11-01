@@ -146,6 +146,18 @@ export function makeEventBusProxy(pluginId: string, inner: EventBus, logger: Log
               );
               return;
             }
+            // Spec 188 — an alarm's i18n key is the core's: a plugin's alarm
+            // is worded by its own `message`, never by a key it could borrow.
+            if (
+              (event.type === "system.alarm.raised" || event.type === "system.alarm.resolved") &&
+              ("messageKey" in event || "messageParams" in event)
+            ) {
+              const plain: Record<string, unknown> = { ...event };
+              delete plain.messageKey;
+              delete plain.messageParams;
+              target.emit(plain as EngineEvent);
+              return;
+            }
             target.emit(event);
           };
         default: {

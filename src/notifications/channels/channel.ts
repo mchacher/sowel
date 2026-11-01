@@ -11,6 +11,12 @@
 export interface NotificationContent {
   title: string;
   body?: string;
+  /**
+   * Spec 188 O6 — the same notification worded per language. A channel that
+   * knows its recipient's language (Web Push: each subscription belongs to a
+   * user) picks it; the others send `title` / `body`.
+   */
+  localized?: Partial<Record<"en" | "fr", { title: string; body?: string }>>;
 }
 
 export interface NotificationChannel {

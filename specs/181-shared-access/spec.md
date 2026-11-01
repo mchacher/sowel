@@ -131,6 +131,11 @@ R9 (see _Consumers_).
     in the Activity feed as « Accès partagé — <label> ».
 16. **The gate's state never reaches the phone.** The page is pollable by anyone holding a code; a
     button reading « Fermer » is a state display wearing a verb.
+    _Amended by spec 188 (2026-11-01, maintainer's decision):_ one exception, the outcome of the
+    phone's **own** press when the core tracks it (O8). That phone then learns the movement its press
+    was expected to cause (`expected`, hence the gate's state at the press) and whether it came
+    (`confirmed` / `unconfirmed`), for that press only, up to its window plus five minutes. Another
+    phone, an untracked press, and the page at rest still learn nothing of the gate.
 
 ### R5 — The public page
 
@@ -168,7 +173,8 @@ R9 (see _Consumers_).
     state of the gate.** After the disc is released: the disc dims, a pill reads « Commande
     envoyée », a thin bar runs for the gate's travel time (30 s: the core declares none for a
     gate), and one line under the disc reads « Dernière ouverture demandée à 18:42 ». The page never
-    says whether the gate is open, closed or moving (R4.16); it speaks in words only when the gate
+    says whether the gate is open, closed or moving (R4.16), except the outcome of its own tracked
+    press as amended by spec 188 (« Fermeture confirmée »); it speaks in words only when the gate
     will not move, and then it says why. **The page holds on one screen and never scrolls**; a
     short screen shrinks the disc. A gear opens **Réglages**: « Vos commandes » — this phone's last
     eight presses, the ones it made itself — and **« Partager cet accès »**, the invitation link as
@@ -341,7 +347,7 @@ And what is seen before a code is known: ![](screenshots/visitor-code.png)
 - [x] A press on a listed, armed gate inside the validity sends the gate's command through
       `executeOrder`; every refusal of R4.12 sends nothing and tells the phone why.
 - [x] The phone never receives the gate's state, and what it shows of a command is that
-      phone's own presses.
+      phone's own presses — with, since spec 188, the outcome of its own tracked press (R4.16).
 - [x] The disc released short of its socket sends nothing; the keyboard confirms instead.
 - [x] « Jusqu'au » cannot be picked before « À partir du »; the server refuses it too.
 - [x] A plugin's external access is idempotent, takes its gates from a profile granted to that
