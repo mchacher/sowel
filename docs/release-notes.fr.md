@@ -11,6 +11,22 @@ Cette page résume toutes les versions publiées, de la plus récente à la plus
 
 ---
 
+## 1.76.x : Le coût de recharge par voiture, les portes, et des ordres qui rendent compte
+
+### v1.76.0 — 2026-11-01 { #v1-76-0 }
+
+Sowel dit maintenant ce que coûte la recharge de chaque voiture à la maison, une porte motorisée a son propre type, et un ordre de portail ou de porte indique s'il a vraiment eu lieu. Également dans cette version : les accès partagés terminés venant d'une plateforme de réservation se nettoient seuls.
+
+- Nouveauté (énergie) : **recharges et coût par voiture** (spec 191, #1097). Chaque branchement sur une borne devient une recharge, du branchement au débranchement. Chaque tranche de 5 minutes est comptée à son tarif, et le solaire est gratuit : la voiture passe après la maison, elle ne paie que ce que la maison a dû acheter au réseau à cause d'elle. Le coût est figé au prix du moment. Deux heures après le débranchement, Sowel attribue la recharge à la voiture qui s'est dite en charge ou dont la batterie a monté ; s'il n'est pas sûr, elle reste « À attribuer ». Tout utilisateur peut choisir la voiture, ou « Autre véhicule » pour un invité, sur la fiche de la borne, et ce choix est définitif. La fiche de la voiture montre son mois : le coût, une barre réseau heures creuses / réseau heures pleines / solaire, les recharges, et le **coût aux 100 km**, calculé à partir du prix payé à la maison et de la consommation mesurée de la voiture : recharger ailleurs ne le fausse pas (masqué pour une hybride rechargeable). Les recharges commencent avec cette version.
+- Nouveauté (équipements) : **un type porte** (spec 190, #1096). Une porte motorisée pilotée par Ouvrir / Fermer / Stop (une porte de poulailler, une porte de garage) était créée comme volet : elle comptait parmi les volets et obéissait à « fermer tous les volets ». Elle a maintenant ses commandes, une pastille d'état (Ouverte, Fermée, En mouvement, Défaut) et son propre décompte dans la zone. Un volet, un store ou une porte existants peuvent changer de type depuis leur formulaire, en gardant historique, recettes et tuiles.
+- Nouveauté (équipements) : **un ordre rend compte de son résultat** (spec 188, #1088). Sowel confirme une impulsion de portail par le basculement de son contact, et un Ouvrir / Fermer de porte par son état final, sans rien renvoyer. La tuile et la fiche disent « confirmé », et une alarme est levée quand l'état attendu n'arrive pas. Sur la page d'un accès partagé, l'invité voit si l'ouverture a été confirmée, et on lui dit de regarder le portail plutôt que de rappuyer.
+- Nouveauté (accès partagé) : **les accès terminés d'une plateforme de réservation sont supprimés après sept jours** (spec 189, #1089). Un gîte avec une réservation par semaine n'accumule plus de lignes mortes. Le journal en garde la trace, et un accès créé à la main n'est jamais supprimé.
+- Correction (accès partagé) : **les heures d'une plage se saisissent sur téléphone** (#1087). Le téléphone ouvre maintenant sa roue des heures ; avant, le pavé numérique n'avait pas de « : ».
+- Plugins et recettes : **`renault`** : une voiture branchée trappe de charge ouverte ne se lit plus « Débranché » (mchacher/sowel-plugin-renault#6). Arrive avec sa prochaine version.
+- Maintenance (dépendances) : les mises à jour hebdomadaires des bibliothèques, de l'outillage et des GitHub Actions (#1090, #1091, #1092, #1094, #1095), et `croner` 11 (#1093), le planificateur du calendrier, plus régulier autour des changements d'heure.
+
+---
+
 ## 1.75.x : Des accès partagés par jour, des recettes mises à jour en entier
 
 ### v1.75.0 — 2026-10-25 { #v1-75-0 }
