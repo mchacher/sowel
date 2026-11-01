@@ -229,6 +229,12 @@ export class SharedAccessStore {
            AND ((valid_until IS NOT NULL AND valid_until < @before)
              OR (revoked_at IS NOT NULL AND revoked_at < @before))`,
       ),
+      endedExternals: db.prepare(
+        `SELECT * FROM shared_accesses
+         WHERE kind = 'external'
+           AND ((valid_until IS NOT NULL AND valid_until < @before)
+             OR (revoked_at IS NOT NULL AND revoked_at < @before))`,
+      ),
     };
   }
 
@@ -399,6 +405,11 @@ export class SharedAccessStore {
   }
 
   // ── Housekeeping (R10) ─────────────────────────────────────
+
+  /** R10.37 — external accesses that ended (or were revoked) before `before`. */
+  endedExternalAccesses(before: number): AccessRow[] {
+    return this.stmts.endedExternals.all({ before }) as AccessRow[];
+  }
 
   purge(opts: { codesEndedBefore: number; journalBefore: number; journalMax: number }): {
     codes: number;

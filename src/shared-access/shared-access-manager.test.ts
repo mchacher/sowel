@@ -418,6 +418,167 @@ describe("housekeeping (R10)", () => {
     h.manager.purge();
     expect(h.manager.listJournal(a.id)).toHaveLength(0);
   });
+
+  // R10.37 — ended external accesses are deleted seven days after their end.
+  function externalSetup() {
+    h = buildSharedAccessHarness();
+    h.manager.ensureDefaultProfile();
+    const def = h.manager.getState().profiles[0];
+    h.manager.updateProfile(def.id, {
+      pluginId: "guestflow",
+      gates: [{ equipmentId: h.gates.entree }],
+    });
+  }
+  const stay = (label: string, from: string, until: string) => ({ label, from, until });
+  const changedCount = () => h.events.filter((e) => e.type === "shared_access.changed").length;
+
+  it("deletes an external access seven days after it ended, not before", () => {
+    externalSetup();
+    const inv = h.manager.pluginUpsert(
+      "guestflow",
+      "s1",
+      stay("Martin", "2026-10-01T16:00", "2026-10-04T11:00"),
+    );
+    h.clock.now = h.at(2026, 10, 10, 11);
+    h.manager.purge();
+    expect(h.manager.getAccess(inv.id).id).toBe(inv.id);
+    h.clock.now = h.at(2026, 10, 11, 12);
+    h.manager.purge();
+    expect(h.manager.getState().accesses.map((a) => a.id)).not.toContain(inv.id);
+    expect(() => h.manager.getAccess(inv.id)).toThrow(
+      expect.objectContaining({ code: "not_found" }),
+    );
+  });
+
+  it("keeps the journal of a deleted external access and adds one housekeeping line", () => {
+    externalSetup();
+    const inv = h.manager.pluginUpsert(
+      "guestflow",
+      "s1",
+      stay("Martin", "2026-10-01T16:00", "2026-10-04T11:00"),
+    );
+    h.clock.now = h.at(2026, 10, 11, 12);
+    h.manager.purge();
+    const lines = h.manager.listJournal(inv.id);
+    expect(lines.map((l) => l.kind)).toEqual(["deleted", "created"]);
+    expect(lines[0].actor).toBe("housekeeping");
+  });
+
+  it("deletes a revoked external access whose stay is still ahead, and answers revoked after", () => {
+    externalSetup();
+    const inv = h.manager.pluginUpsert(
+      "guestflow",
+      "s1",
+      stay("Martin", "2026-11-20T16:00", "2026-11-25T11:00"),
+    );
+    h.manager.revoke(inv.id, "admin");
+    h.clock.now = h.at(2026, 10, 11, 12);
+    h.manager.purge();
+    expect(h.manager.getState().accesses.map((a) => a.id)).not.toContain(inv.id);
+    expect(() =>
+      h.manager.pluginUpsert(
+        "guestflow",
+        "s1",
+        stay("Martin", "2026-11-20T16:00", "2026-11-25T11:00"),
+      ),
+    ).toThrow(expect.objectContaining({ code: "revoked" }));
+  });
+
+  it("never deletes a manual access, only nulls its code", () => {
+    h = buildSharedAccessHarness();
+    const a = h.manager.createAccess(
+      { label: "X", gates: [{ equipmentId: h.gates.entree }], validUntil: "2026-10-04T00:00" },
+      "admin",
+    );
+    h.clock.now = h.at(2026, 11, 20, 0);
+    h.manager.purge();
+    expect(h.manager.getState().accesses.map((x) => x.id)).toContain(a.id);
+    expect(h.manager.getAccess(a.id).code).toBeNull();
+  });
+
+  it("leaves a live or not-yet external access alone, whatever its age", () => {
+    externalSetup();
+    const live = h.manager.pluginUpsert(
+      "guestflow",
+      "live",
+      stay("Live", "2026-10-01T16:00", "2026-12-31T11:00"),
+    );
+    const later = h.manager.pluginUpsert(
+      "guestflow",
+      "later",
+      stay("Later", "2026-12-01T16:00", "2026-12-05T11:00"),
+    );
+    h.clock.now = h.at(2026, 11, 20, 0);
+    h.manager.purge();
+    const ids = h.manager.getState().accesses.map((a) => a.id);
+    expect(ids).toContain(live.id);
+    expect(ids).toContain(later.id);
+  });
+
+  it("keeps an extended external access until seven days after the extension", () => {
+    externalSetup();
+    const inv = h.manager.pluginUpsert(
+      "guestflow",
+      "s1",
+      stay("Martin", "2026-10-01T16:00", "2026-10-04T11:00"),
+    );
+    h.manager.updateAccess(inv.id, { extendedUntil: "2026-10-09T11:00" }, "admin");
+    h.clock.now = h.at(2026, 10, 12, 12);
+    h.manager.purge();
+    expect(h.manager.getAccess(inv.id).id).toBe(inv.id);
+    h.clock.now = h.at(2026, 10, 16, 12);
+    h.manager.purge();
+    expect(h.manager.getState().accesses.map((a) => a.id)).not.toContain(inv.id);
+  });
+
+  it("resolves the phone alarm of a deleted external access", async () => {
+    externalSetup();
+    const inv = h.manager.pluginUpsert(
+      "guestflow",
+      "s1",
+      stay("Martin", "2026-10-01T16:00", "2026-10-04T11:00"),
+    );
+    h.clock.now = h.at(2026, 10, 2, 12);
+    for (let i = 0; i < 7; i++) await h.manager.enrol({ code: inv.code }, `phone-${i}`);
+    expect(h.events.some((e) => e.type === "system.alarm.raised")).toBe(true);
+    h.clock.now = h.at(2026, 10, 11, 12);
+    h.manager.purge();
+    expect(
+      h.events.some(
+        (e) => e.type === "system.alarm.resolved" && e.alarmId === `shared-access:phones:${inv.id}`,
+      ),
+    ).toBe(true);
+  });
+
+  it("deletes two ended externals in one run and notifies once", () => {
+    externalSetup();
+    const a = h.manager.pluginUpsert(
+      "guestflow",
+      "a",
+      stay("A", "2026-10-01T16:00", "2026-10-03T11:00"),
+    );
+    const b = h.manager.pluginUpsert(
+      "guestflow",
+      "b",
+      stay("B", "2026-10-02T16:00", "2026-10-04T11:00"),
+    );
+    h.clock.now = h.at(2026, 10, 12, 12);
+    const before = changedCount();
+    h.manager.purge();
+    const ids = h.manager.getState().accesses.map((x) => x.id);
+    expect(ids).not.toContain(a.id);
+    expect(ids).not.toContain(b.id);
+    expect(changedCount() - before).toBe(1);
+  });
+
+  it("stays silent when there is nothing to delete", () => {
+    externalSetup();
+    h.manager.pluginUpsert("guestflow", "a", stay("A", "2026-10-01T16:00", "2026-12-03T11:00"));
+    h.clock.now = h.at(2026, 10, 12, 12);
+    const before = changedCount();
+    h.manager.purge();
+    expect(changedCount()).toBe(before);
+  });
 });
 
 describe("the link token", () => {

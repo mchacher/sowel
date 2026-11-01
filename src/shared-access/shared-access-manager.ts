@@ -90,6 +90,7 @@ export const JOURNAL_MAX_ROWS = 50_000;
 export const DEFAULT_TRAVEL_S = 30;
 
 const HOUR_MS = 3_600_000;
+const HOUSEKEEPING_ACTOR = "housekeeping";
 const ALARM_SOURCE = "shared-access";
 const GUESSING_ALARM_ID = "shared-access:guessing";
 const DEFAULT_PROFILE_NAME = "Par défaut";
@@ -1497,14 +1498,29 @@ export class SharedAccessManager {
   purge(): void {
     try {
       const now = this.now();
+      // R10.37 — an external access is deleted seven days after it ended, like
+      // the owner's delete (R3.11). Before the purge below, so the fresh
+      // `deleted` journal line and tombstone are never swept in the same run.
+      const ended = this.store.endedExternalAccesses(now - CODE_KEPT_AFTER_END_MS);
+      this.store.transaction(() => {
+        for (const row of ended) {
+          this.journal(row, "deleted", { actor: HOUSEKEEPING_ACTOR });
+          if (row.source_plugin && row.external_id) {
+            this.store.addTombstone(row.source_plugin, row.external_id, now);
+          }
+          this.store.deleteAccess(row.id);
+        }
+      });
+      for (const row of ended) this.resolvePhoneAlarm(row);
       const result = this.store.purge({
         codesEndedBefore: now - CODE_KEPT_AFTER_END_MS,
         journalBefore: now - JOURNAL_KEPT_MS,
         journalMax: JOURNAL_MAX_ROWS,
       });
-      if (result.codes > 0 || result.journal > 0) {
-        this.logger.info(result, "Shared access housekeeping");
+      if (result.codes > 0 || result.journal > 0 || ended.length > 0) {
+        this.logger.info({ ...result, accesses: ended.length }, "Shared access housekeeping");
       }
+      if (ended.length > 0) this.changed();
     } catch (err) {
       this.logger.error({ err }, "Shared access housekeeping failed");
     }
