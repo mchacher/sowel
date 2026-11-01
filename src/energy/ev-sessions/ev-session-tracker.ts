@@ -33,6 +33,7 @@ import type { EvChargeSession, EvVehicleMonthSummary, TariffPrices } from "../..
 import type { TariffClassifier } from "../tariff-classifier.js";
 import {
   type AttributionResult,
+  START_SLACK_MS,
   attribute,
   emptyEvidence,
   foldReport,
@@ -324,6 +325,8 @@ export class EvSessionTracker {
         this.close(record.chargerId, at);
       }
     }
+    // Issue #1105 — a car may have reported while Sowel was down.
+    for (const s of this.open.values()) if (this.seedEvidence(s.record)) this.persist(s.record);
     for (const record of this.store.listPending()) this.pending.set(record.id, record);
 
     // A charger already plugged (first start, or a missed event) opens now;
@@ -383,38 +386,6 @@ export class EvSessionTracker {
    * `now` ends the accounting; `endedAtMs` dates the session (spec 193: a
    * metered session ends at its last active reading, noticed 30 min later).
    */
-  /**
-   * Issue #1105 — what each car already says when the session opens: a
-   * « charging » or « plugged » it reported just before counts (within the
-   * start slack of `foldReport`), even if its plugin never publishes it again.
-   */
-  private seedEvidence(record: SessionRecord): void {
-    const window = { startMs: Date.parse(record.startedAt), endMs: null };
-    for (const vehicleId of this.candidateVehicleIds()) {
-      const bindings = this.equipmentManager.getDataBindingsWithValues(vehicleId);
-      let evidence = emptyEvidence(vehicleId);
-      for (const alias of [
-        ELECTRIC_VEHICLE_ALIASES.chargingState,
-        ELECTRIC_VEHICLE_ALIASES.plugged,
-      ] as const) {
-        const binding = bindings.find((b) => b.alias === alias);
-        const receivedAtMs = parseTimestamp(binding?.lastUpdated ?? null);
-        if (!binding || receivedAtMs === null) continue;
-        evidence = foldReport(
-          evidence,
-          {
-            alias,
-            value: binding.value,
-            reportedAtMs: this.vehicleReportedAt(vehicleId, alias),
-            receivedAtMs,
-          },
-          window,
-        );
-      }
-      if (evidence.chargingSeen || evidence.pluggedSeen) record.evidence.push(evidence);
-    }
-  }
-
   private close(chargerId: string, now: number, endedAtMs: number = now): void {
     const s = this.open.get(chargerId);
     if (!s) return;
@@ -443,6 +414,74 @@ export class EvSessionTracker {
       { sessionId: record.id, chargerId, energyWh: Math.round(toSession(record).energyWh) },
       "EV charge session closed",
     );
+  }
+
+  /**
+   * Issue #1105 — what each car already says: a « charging » or « plugged »
+   * it reported just before the session opened counts (from `positiveFrom`),
+   * even if its plugin never publishes it again. A car whose current location
+   * is away from home is not read (it charges elsewhere); its location is not
+   * held against it either, it may lag. Returns whether anything was added.
+   */
+  private seedEvidence(record: SessionRecord): boolean {
+    const startMs = Date.parse(record.startedAt);
+    const window = {
+      startMs,
+      endMs: record.endedAt === null ? null : Date.parse(record.endedAt),
+      positiveFromMs: this.positiveFrom(record),
+    };
+    let changed = false;
+    for (const vehicleId of this.candidateVehicleIds()) {
+      const bindings = this.equipmentManager.getDataBindingsWithValues(vehicleId);
+      if (bindings.find((b) => b.alias === ELECTRIC_VEHICLE_ALIASES.atHome)?.value === false) {
+        continue;
+      }
+      const index = record.evidence.findIndex((e) => e.vehicleId === vehicleId);
+      const before = index >= 0 ? record.evidence[index] : emptyEvidence(vehicleId);
+      let evidence = before;
+      for (const alias of [
+        ELECTRIC_VEHICLE_ALIASES.chargingState,
+        ELECTRIC_VEHICLE_ALIASES.plugged,
+      ] as const) {
+        const binding = bindings.find((b) => b.alias === alias);
+        const receivedAtMs = parseTimestamp(binding?.lastUpdated ?? null);
+        if (!binding || receivedAtMs === null) continue;
+        // Read at the opening, so made before it, even within the same tick
+        // (for a restored session: whenever it was made, its own time holds).
+        const madeAt = this.vehicleReportedAt(vehicleId, alias) ?? receivedAtMs;
+        const at = record.endedAt === null && madeAt >= startMs ? startMs - 1 : madeAt;
+        evidence = foldReport(
+          evidence,
+          { alias, value: binding.value, reportedAtMs: at, receivedAtMs: at },
+          window,
+        );
+      }
+      if (evidence === before) continue;
+      if (index >= 0) record.evidence[index] = evidence;
+      else record.evidence.push(evidence);
+      changed = true;
+    }
+    return changed;
+  }
+
+  /**
+   * Issue #1105 — from when a car's « charging » or « plugged » made before the
+   * session started still counts: START_SLACK_MS before it, but never inside
+   * another session (this charger's previous one, or one on another charger):
+   * a report made then belongs to that session.
+   */
+  private positiveFrom(record: SessionRecord): number {
+    const startMs = Date.parse(record.startedAt);
+    let from = startMs - START_SLACK_MS;
+    for (const other of this.store.listMeeting(
+      record.id,
+      new Date(from).toISOString(),
+      record.startedAt,
+    )) {
+      const end = other.endedAt === null ? startMs : Math.min(Date.parse(other.endedAt), startMs);
+      from = Math.max(from, end);
+    }
+    return from;
   }
 
   /** FR3 — at the end of the grace period. */
@@ -584,7 +623,13 @@ export class EvSessionTracker {
   ): void {
     const index = record.evidence.findIndex((e) => e.vehicleId === vehicleId);
     const before: VehicleEvidence = index >= 0 ? record.evidence[index] : emptyEvidence(vehicleId);
-    const after = foldReport(before, report, { startMs: Date.parse(record.startedAt), endMs });
+    const startMs = Date.parse(record.startedAt);
+    const at = report.reportedAtMs ?? report.receivedAtMs;
+    const after = foldReport(before, report, {
+      startMs,
+      endMs,
+      ...(at < startMs && { positiveFromMs: this.positiveFrom(record) }),
+    });
     if (after === before) return;
     if (index >= 0) record.evidence[index] = after;
     else record.evidence.push(after);

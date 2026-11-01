@@ -19,9 +19,11 @@ export const BATTERY_RISE_POINTS = 2;
 
 /**
  * Issue #1105 — how long before the session's start a car's « plugged » or
- * « charging » still counts. The car dates its report from the real start;
+ * « charging » may still count. The car dates its report from the real start;
  * Sowel opens the session on the charger's own reading (a metered charger's
- * first 500 W), which can come later.
+ * first 500 W), which can come later. The tracker shortens it to the end of
+ * any other session that time falls in: a report made during another session
+ * belongs to that one.
  */
 export const START_SLACK_MS = 15 * 60_000;
 
@@ -66,18 +68,21 @@ function isPositive(report: VehicleReport): boolean {
 
 /**
  * Fold one report into the evidence; reports made outside the session are
- * ignored, except a « plugged » or « charging » made up to START_SLACK_MS
- * before it. Being away and the battery keep the strict window: a car that
- * comes home and plugs in within the slack is not seen away. Returns the same
- * object when the report adds nothing.
+ * ignored, except a « plugged » or « charging » made from `positiveFromMs`
+ * (at most START_SLACK_MS before the start, set by the tracker; the start
+ * when absent). Being away and the battery keep the strict window: a car
+ * that comes home and plugs in within the slack is not seen away. Returns the
+ * same object when the report adds nothing.
  */
 export function foldReport(
   evidence: VehicleEvidence,
   report: VehicleReport,
-  session: { startMs: number; endMs: number | null },
+  session: { startMs: number; endMs: number | null; positiveFromMs?: number },
 ): VehicleEvidence {
   const at = report.reportedAtMs ?? report.receivedAtMs;
-  const from = isPositive(report) ? session.startMs - START_SLACK_MS : session.startMs;
+  const from = isPositive(report)
+    ? Math.min(session.startMs, session.positiveFromMs ?? session.startMs)
+    : session.startMs;
   if (at < from) return evidence;
   if (session.endMs !== null && at > session.endMs) return evidence;
 

@@ -202,6 +202,10 @@ export class EvSessionStore {
           WHERE charger_id != ? AND attribution = 'vehicle' AND vehicle_id IS NOT NULL
             AND started_at < ? AND (ended_at IS NULL OR ended_at > ?)`,
       ),
+      meeting: this.db.prepare(
+        `SELECT * FROM ev_charge_sessions
+          WHERE id != ? AND started_at <= ? AND (ended_at IS NULL OR ended_at > ?)`,
+      ),
       learning: this.db.prepare(
         `SELECT * FROM ev_charge_sessions
           WHERE vehicle_id = ? AND attribution = 'vehicle' AND ended_at IS NOT NULL
@@ -287,6 +291,14 @@ export class EvSessionStore {
         fromIso,
       ) as SessionRow[]
     ).map(rowToRecord);
+  }
+
+  /**
+   * Issue #1105 — every other session, on any charger, whose time range meets
+   * [fromIso, toIso] (one that starts at `toIso` too: it was there first).
+   */
+  listMeeting(excludeId: string, fromIso: string, toIso: string): SessionRecord[] {
+    return (this.stmts.meeting.all(excludeId, toIso, fromIso) as SessionRow[]).map(rowToRecord);
   }
 
   /** The vehicle's sessions that may teach the energy per battery point, newest first. */
