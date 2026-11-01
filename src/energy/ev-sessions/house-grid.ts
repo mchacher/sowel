@@ -21,6 +21,8 @@ const MAX_SPAN_MS = 5 * 60_000;
 
 export class HouseGridLedger {
   private readonly buckets = new Map<number, number>();
+  /** How much of each bucket the deltas covered (ms): a silence leaves holes. */
+  private readonly coveredMs = new Map<number, number>();
   private lastAtMs: number | null = null;
 
   /** A live main-meter delta (Wh, positive = imported) received at `atMs`. */
@@ -37,22 +39,25 @@ export class HouseGridLedger {
       const overlap = Math.min(atMs, b + BUCKET_MS) - Math.max(fromMs, b);
       if (overlap <= 0) continue;
       this.buckets.set(b, (this.buckets.get(b) ?? 0) + (wh * overlap) / span);
+      this.coveredMs.set(b, Math.min(BUCKET_MS, (this.coveredMs.get(b) ?? 0) + overlap));
     }
   }
 
-  /** The import over [fromMs, toMs) (Wh); null when no delta touched it. */
+  /**
+   * The import over [fromMs, toMs) (Wh); null unless the deltas covered all of
+   * it (a meter silence inside it must not read as solar).
+   */
   importBetween(fromMs: number, toMs: number): number | null {
     let wh = 0;
-    let touched = false;
+    let covered = 0;
     for (let b = Math.floor(fromMs / BUCKET_MS) * BUCKET_MS; b < toMs; b += BUCKET_MS) {
-      const v = this.buckets.get(b);
-      if (v === undefined) continue;
       const overlap = Math.min(toMs, b + BUCKET_MS) - Math.max(fromMs, b);
       if (overlap <= 0) continue;
-      wh += (v * overlap) / BUCKET_MS;
-      touched = true;
+      wh += ((this.buckets.get(b) ?? 0) * overlap) / BUCKET_MS;
+      covered += (overlap * (this.coveredMs.get(b) ?? 0)) / BUCKET_MS;
     }
-    return touched ? wh : null;
+    // A few seconds of jitter between deltas are no silence.
+    return toMs > fromMs && covered >= (toMs - fromMs) * 0.97 ? wh : null;
   }
 
   /** The time up to which the deltas received cover the house. */
@@ -62,8 +67,11 @@ export class HouseGridLedger {
 
   /** Forget the import before `beforeMs`. */
   prune(beforeMs: number): void {
-    for (const key of this.buckets.keys())
-      if (key + BUCKET_MS <= beforeMs) this.buckets.delete(key);
+    for (const key of this.buckets.keys()) {
+      if (key + BUCKET_MS > beforeMs) continue;
+      this.buckets.delete(key);
+      this.coveredMs.delete(key);
+    }
   }
 
   /** Buckets held (tests: the ledger must not grow without sessions). */

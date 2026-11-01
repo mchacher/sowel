@@ -1116,6 +1116,96 @@ describe("audit review (fix/ev-cost-audit)", () => {
   });
 });
 
+describe("audit second review", () => {
+  beforeEach(() => {
+    tracker.stop();
+    eqs.add("legrand", "ev_charger", "Legrand");
+    eqs.set("legrand", "power", 0);
+    tracker = makeTracker();
+  });
+  const legrand = () => tracker.listByCharger("legrand", "2026-11")!;
+  async function report(car: string, state: string, atMs: number) {
+    data(car, "reported_at", new Date(atMs).toISOString());
+    data(car, "charging_state", state);
+    await flush();
+  }
+  function minute(also?: () => void) {
+    data("charger", "power", 2000);
+    also?.();
+    tracker.tick();
+    now += MIN;
+    data("grid", "energy", 200);
+  }
+
+  it("gives each car its charger when they plug in minutes apart and report late", async () => {
+    const t0 = now;
+    data("charger", "vehicle", "charging"); // the Rafale on A at T0
+    minute();
+    minute();
+    now += 30_000;
+    await report("megane", "charging", t0 + 2 * MIN); // only A is open yet
+    now = t0 + 3 * MIN;
+    minute(() => data("legrand", "power", 7000)); // B opens at T0+3
+    await report("rafale", "charging", t0 + MIN); // dated before B: nearer A's start
+    for (let i = 0; i < 60; i++) minute(() => data("legrand", "power", 7000));
+    data("charger", "vehicle", "disconnected");
+    for (let i = 0; i < 31; i++) {
+      data("legrand", "power", 0);
+      tracker.tick();
+      now += MIN;
+    }
+    now += GRACE_MS;
+    tracker.tick();
+    expect(sessions()[0]).toMatchObject({ vehicleId: "rafale" });
+    expect(legrand()[0]).toMatchObject({ vehicleId: "megane" });
+  });
+
+  it("keeps a guest's session to attribute when an away car reports home after its end", async () => {
+    eqs.set("rafale", "at_home", false, now - 20 * MIN);
+    data("charger", "vehicle", "charging"); // a guest
+    run(10, 3000, 3000);
+    await report("rafale", "charging", now - MIN); // charging elsewhere
+    run(20, 3000, 3000);
+    data("charger", "vehicle", "disconnected");
+    now += 10 * MIN;
+    data("rafale", "at_home", true); // it drove home after
+    await flush();
+    now += GRACE_MS;
+    tracker.tick();
+    expect(sessions()[0].attribution).toBe("unattributed");
+  });
+
+  it("counts a meter silence inside a window as all grid", () => {
+    data("charger", "vehicle", "charging");
+    for (let i = 0; i < 30; i++) {
+      data("charger", "power", 6000);
+      now += MIN;
+      // Silent from minute 11 to 17, then one cumulative delta.
+      if (i < 10 || i > 16) data("grid", "energy", i === 17 ? 700 : 100);
+      tracker.tick();
+    }
+    data("charger", "vehicle", "disconnected");
+    now += 5 * MIN;
+    tracker.tick();
+    expect(sessions()[0].solarWh).toBeLessThan(1);
+  });
+
+  it("follows the final battery of a session given by hand after its end", async () => {
+    data("charger", "vehicle", "charging");
+    data("megane", "battery_level", 40);
+    await flush();
+    run(30, 7000, 7000);
+    data("charger", "vehicle", "disconnected");
+    now += MIN;
+    tracker.setAttribution(sessions()[0].id, { target: "vehicle", vehicleId: "megane" });
+    now += 2 * MIN;
+    data("megane", "reported_at", new Date(now - 30_000).toISOString());
+    data("megane", "battery_level", 62);
+    await flush();
+    expect(sessions()[0]).toMatchObject({ batteryStart: 40, batteryEnd: 62 });
+  });
+});
+
 describe("driving and the monthly summary", () => {
   it("measures legs and gives the cost per 100 km from home price × consumption", async () => {
     // Learn 600 Wh per point from one home session: 18 kWh for +30 points.

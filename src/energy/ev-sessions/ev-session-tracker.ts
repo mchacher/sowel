@@ -320,7 +320,8 @@ export class EvSessionTracker {
     }
     record.attributionSource = "manual";
     record.attributionReason = null;
-    this.pending.delete(record.id);
+    // A closed session stays followed until its grace ends (its final battery
+    // level, audit A4); `decide` then leaves a manual choice alone.
     this.persist(record);
     this.logger.info(
       { sessionId, attribution: record.attribution, vehicleId: record.vehicleId },
@@ -369,7 +370,9 @@ export class EvSessionTracker {
     for (const s of this.open.values()) {
       if (this.seedEvidence(s.record, false)) this.persist(s.record);
     }
-    for (const record of this.store.listPending()) this.pending.set(record.id, record);
+    for (const record of this.store.listPending(new Date(now).toISOString())) {
+      this.pending.set(record.id, record);
+    }
 
     // A charger already plugged (first start, or a missed event) opens now;
     // a metered one already drawing too (spec 193).
@@ -517,6 +520,7 @@ export class EvSessionTracker {
         // (for a restored session: whenever it was made, its own time holds).
         const madeAt = this.vehicleReportedAt(vehicleId, alias) ?? receivedAtMs;
         const at = record.endedAt === null && madeAt >= startMs ? startMs - 1 : madeAt;
+        if (at < startMs && this.nearerElsewhere(record, at)) continue;
         evidence = foldReport(
           evidence,
           { alias, value: binding.value, reportedAtMs: at, receivedAtMs: at },
@@ -550,7 +554,7 @@ export class EvSessionTracker {
       new Date(slackStart).toISOString(),
       record.startedAt,
     )) {
-      if (!this.holds(other, record, vehicleId, slackStart)) continue;
+      if (!this.holds(other, record, vehicleId)) continue;
       const end = other.endedAt === null ? startMs : Math.min(Date.parse(other.endedAt), startMs);
       from = Math.max(from, end);
     }
@@ -558,25 +562,43 @@ export class EvSessionTracker {
   }
 
   /**
-   * Whether `other` may hold this car just before `record` opened: a session
-   * on the same charger always (a late report of its car must not pass to the
-   * next one); on another charger, when it gives this car, or gives none yet
-   * but this car was already charging there before the slack (`fromMs`): a
-   * car first seen there within the slack may well be the one that just
-   * plugged in here (audit A6 and its review).
+   * Whether `other` holds this car just before `record` opened, so that the
+   * car's reports made then belong to it: a session on the same charger always
+   * (a late report of its car must not pass to the next one); one given this
+   * car by hand; on another charger, one where this car was first seen
+   * charging nearer to that session's start than to this one's. A report made
+   * between two openings belongs to the nearer one: the car that plugged in
+   * there (audit A6 and its reviews: two cars arriving together, or a car
+   * charging an hour on one charger while another plugs in on the other).
+   * Evidence without a time (saved before) holds.
    */
-  private holds(
-    other: SessionRecord,
-    record: SessionRecord,
-    vehicleId: string,
-    fromMs: number,
-  ): boolean {
+  private holds(other: SessionRecord, record: SessionRecord, vehicleId: string): boolean {
     if (other.chargerId === record.chargerId) return true;
-    const given = this.givenBy(other);
-    if (given !== null) return given.vehicleId === vehicleId;
+    if (other.attributionSource === "manual") {
+      return other.attribution === "vehicle" && other.vehicleId === vehicleId;
+    }
     const e = other.evidence.find((x) => x.vehicleId === vehicleId);
     if (!e || !charged(e)) return false;
-    return e.firstChargingAtMs == null || e.firstChargingAtMs < fromMs;
+    if (e.firstChargingAtMs == null) return true;
+    const sinceOther = e.firstChargingAtMs - Date.parse(other.startedAt);
+    const beforeThis = Date.parse(record.startedAt) - e.firstChargingAtMs;
+    return sinceOther <= beforeThis;
+  }
+
+  /**
+   * A report made at `atMs`, before `record` opened, while a session on
+   * another charger was open that had started nearer to it: it belongs to that
+   * one (the car that just plugged in there), not to this one.
+   */
+  private nearerElsewhere(record: SessionRecord, atMs: number): boolean {
+    const iso = new Date(atMs).toISOString();
+    const beforeThis = Date.parse(record.startedAt) - atMs;
+    return this.store
+      .listMeeting(record.id, iso, iso)
+      .some(
+        (other) =>
+          other.chargerId !== record.chargerId && atMs - Date.parse(other.startedAt) < beforeThis,
+      );
   }
 
   /** FR3 — at the end of the grace period. */
@@ -737,6 +759,7 @@ export class EvSessionTracker {
     const before: VehicleEvidence = index >= 0 ? record.evidence[index] : emptyEvidence(vehicleId);
     const startMs = Date.parse(record.startedAt);
     const at = report.reportedAtMs ?? report.receivedAtMs;
+    if (at < startMs && this.nearerElsewhere(record, at)) return;
     const after = foldReport(before, report, {
       startMs,
       endMs,
@@ -836,10 +859,15 @@ export class EvSessionTracker {
       // minutes must not read as solar (never invent solar).
       const from = Math.min(...entries.map((e) => e.window.fromMs));
       const to = Math.max(...entries.map((e) => e.window.toMs));
+      const own = entries.map((e) => this.ledger.importBetween(e.window.fromMs, e.window.toMs));
+      const windowImport =
+        hasMainMeter && complete && own.every((v) => v !== null)
+          ? this.ledger.importBetween(from, to)
+          : null;
       const imports = poolImport(
         entries.map((e) => e.window.carWh),
-        entries.map((e) => this.ledger.importBetween(e.window.fromMs, e.window.toMs) ?? 0),
-        hasMainMeter && complete ? this.ledger.importBetween(from, to) : null,
+        own.map((v) => v ?? 0),
+        windowImport,
       );
       entries.forEach((e, i) => {
         this.price(e.record, { ...e.window, importWh: imports[i] }, hasMainMeter, prices);

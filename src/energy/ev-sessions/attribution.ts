@@ -146,13 +146,9 @@ export function foldReport(
       break;
     }
     case "at_home":
-      if (beforeStart) break;
-      // Home just after the end still says it was home (a location poll lags);
-      // away just after the end says nothing (it may have left).
-      if (afterEnd) {
-        if (report.value === true && at <= session.endMs! + END_SLACK_MS) next.homeSeen = true;
-        break;
-      }
+      // Strict window: home just after the end may be a car that drove back
+      // after charging elsewhere (P7: then it stays to attribute).
+      if (beforeStart || afterEnd) break;
       if (report.value === false) next.awaySeen = true;
       if (report.value === true) next.homeSeen = true;
       break;

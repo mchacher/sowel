@@ -59,8 +59,28 @@ export function poolImport(
   // Together the cars take at most what the house imported while any of them
   // drew; each at most what it imported during its own part of the window
   // (the house before the plug-in is not the car's, audit review).
-  const grid = Math.min(total, Math.max(0, windowImportWh));
-  return carsWh.map((c, i) => Math.min(c, (grid * c) / total, Math.max(0, ownImports[i] ?? 0)));
+  // A car capped by its own part hands what it cannot take back to the
+  // others (water-filling), so imported energy never reads as solar.
+  const caps = carsWh.map((c, i) => Math.min(c, Math.max(0, ownImports[i] ?? 0)));
+  const shares = carsWh.map(() => 0);
+  let left = Math.min(total, Math.max(0, windowImportWh));
+  let open = carsWh.map((_, i) => i).filter((i) => caps[i] > 0);
+  while (left > 1e-9 && open.length > 0) {
+    const weight = open.reduce((a, i) => a + carsWh[i], 0);
+    const capped: number[] = [];
+    let given = 0;
+    for (const i of open) {
+      const want = (left * carsWh[i]) / weight;
+      const take = Math.min(want, caps[i] - shares[i]);
+      shares[i] += take;
+      given += take;
+      if (caps[i] - shares[i] <= 1e-9) capped.push(i);
+    }
+    left -= given;
+    if (capped.length === 0) break;
+    open = open.filter((i) => !capped.includes(i));
+  }
+  return shares;
 }
 
 export class WindowAccountant {

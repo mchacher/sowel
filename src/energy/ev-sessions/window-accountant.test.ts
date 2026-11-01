@@ -164,4 +164,15 @@ describe("poolImport (audit A2)", () => {
     expect(poolImport([100], [0], null)).toEqual([null]);
     expect(poolImport([0, 0], [50, 50], 50)).toEqual([0, 0]);
   });
+
+  it("hands what a capped car cannot take to the others", () => {
+    // Car A could take all 800 Wh; car B drew only before the import.
+    const [a, b] = poolImport([1000, 200], [800, 0], 800) as number[];
+    expect(a).toBeCloseTo(800, 6);
+    expect(b).toBe(0);
+    // B partly capped: what it cannot take goes to A in a second pass.
+    const [c, d] = poolImport([1000, 400], [800, 50], 800) as number[];
+    expect(d).toBeCloseTo(50, 6);
+    expect(c + d).toBeCloseTo(800, 6);
+  });
 });

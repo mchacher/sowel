@@ -184,7 +184,8 @@ export class EvSessionStore {
       byId: this.db.prepare("SELECT * FROM ev_charge_sessions WHERE id = ?"),
       open: this.db.prepare("SELECT * FROM ev_charge_sessions WHERE ended_at IS NULL"),
       pending: this.db.prepare(
-        "SELECT * FROM ev_charge_sessions WHERE ended_at IS NOT NULL AND attribution = 'pending'",
+        `SELECT * FROM ev_charge_sessions WHERE ended_at IS NOT NULL
+          AND (attribution = 'pending' OR (attribution_source = 'manual' AND grace_until > ?))`,
       ),
       byCharger: this.db.prepare(
         `SELECT * FROM ev_charge_sessions
@@ -261,9 +262,12 @@ export class EvSessionStore {
     return (this.stmts.open.all() as SessionRow[]).map(rowToRecord);
   }
 
-  /** Closed sessions still waiting for their automatic attribution. */
-  listPending(): SessionRecord[] {
-    return (this.stmts.pending.all() as SessionRow[]).map(rowToRecord);
+  /**
+   * Closed sessions still in their grace period: waiting for their automatic
+   * attribution, or attributed by hand and still following the final battery.
+   */
+  listPending(nowIso: string): SessionRecord[] {
+    return (this.stmts.pending.all(nowIso) as SessionRow[]).map(rowToRecord);
   }
 
   listByCharger(chargerId: string, fromIso: string, toIso: string): SessionRecord[] {
