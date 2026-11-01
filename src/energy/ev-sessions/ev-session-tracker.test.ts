@@ -114,12 +114,16 @@ function data(equipmentId: string, alias: string, value: unknown, sourceTimestam
 /** Let the vehicle-report microtasks run. */
 const flush = () => new Promise((r) => setTimeout(r, 0));
 
-/** Car at `carW`, house importing `importW`, both reporting once a minute, for `minutes`. */
+/**
+ * Car at `carW`, house importing `importW`, for `minutes`: the charger reports
+ * its power at the start of each minute, the main meter the energy of the
+ * minute just past, at its end (as a real meter does).
+ */
 function run(minutes: number, carW: number, importW: number): void {
   for (let i = 0; i < minutes; i++) {
     data("charger", "power", carW);
-    data("grid", "energy", importW / 60);
     now += MIN;
+    data("grid", "energy", importW / 60);
   }
 }
 
@@ -243,6 +247,15 @@ describe("session lifecycle", () => {
     data("charger", "energy", 50_000); // PowerSubmeterIntegrator backlog
     data("charger", "vehicle", "disconnected");
     expect(sessions()[0].energyWh).toBeCloseTo(1000, 0);
+  });
+
+  it("shows the charger's current name, not the one it had at the start", () => {
+    data("charger", "vehicle", "charging");
+    run(10, 2000, 2000);
+    eqs.getById("charger")!.name = "Borne Tuya";
+    run(10, 2000, 2000);
+    data("charger", "vehicle", "disconnected");
+    expect(sessions()[0].chargerName).toBe("Borne Tuya");
   });
 
   it("ignores aligned historical grid ticks", () => {
@@ -630,7 +643,11 @@ describe("metered charger (spec 193)", () => {
     await twoCarsAtOnce(10);
     now += GRACE_MS;
     tracker.tick();
-    expect(sessions()[0]).toMatchObject({ vehicleId: "rafale", attributionReason: "single-match" });
+    // It rests on the Legrand's usual-vehicle guess: it says so (audit A7).
+    expect(sessions()[0]).toMatchObject({
+      vehicleId: "rafale",
+      attributionReason: "usual-vehicle",
+    });
     expect(legrand()[0]).toMatchObject({ vehicleId: "megane" });
   });
 
@@ -670,14 +687,34 @@ describe("metered charger (spec 193)", () => {
   });
 
   it("does not take a car from another charger on an only-vehicle guess", async () => {
-    // One car known, charging on the other charger; then a guest starts on
-    // the metered one, which the car's reports never reach.
+    // One car known, charging on the other charger; then, past the start
+    // slack, a guest starts on the metered one, which the car's reports never
+    // reach.
     eqs.equipments = eqs.equipments.filter((e) => e.id !== "rafale");
     data("charger", "vehicle", "charging");
     data("megane", "charging_state", "charging");
     await flush();
+    for (let i = 0; i < 20; i++) {
+      data("charger", "power", 2000);
+      now += MIN;
+    }
     meter(2, 3000, () => data("charger", "power", 2000));
-    expect(tracker.currentForVehicle("megane").map((x) => x.chargerId)).toContain("charger");
+    expect(tracker.currentForVehicle("megane").map((x) => x.chargerId)).toEqual(["charger"]);
+  });
+
+  it("never gives a guest who plugs in right after the car on the other charger to it", async () => {
+    // Within the start slack the car's report may belong to either session:
+    // neither takes it for sure (P7).
+    eqs.equipments = eqs.equipments.filter((e) => e.id !== "rafale");
+    data("charger", "vehicle", "charging");
+    data("megane", "charging_state", "charging");
+    await flush();
+    meter(60, 3000, () => data("charger", "power", 2000));
+    data("charger", "vehicle", "disconnected");
+    meter(31, 0);
+    now += GRACE_MS;
+    tracker.tick();
+    expect(legrand()[0].vehicleId).not.toBe("megane");
   });
 
   it("counts a charging report the car made just before the session opened (#1105)", async () => {
@@ -699,7 +736,8 @@ describe("metered charger (spec 193)", () => {
     await flush();
   }
 
-  it("does not lend a car's report to the next charger when two cars come home (#1105)", async () => {
+  /** Two cars come home together: Megane on the plug-state charger, Rafale on the Legrand 4 min later. */
+  async function twoCarsComeHome() {
     data("charger", "vehicle", "charging");
     now += MIN;
     const meganeAt = now;
@@ -718,15 +756,28 @@ describe("metered charger (spec 193)", () => {
       tracker.tick();
       now += MIN;
     }
-    const ids = (v: string) => tracker.currentForVehicle(v).map((x) => x.chargerId);
-    expect(ids("megane")).toEqual(["charger"]);
-    expect(ids("rafale")).toEqual(["legrand"]);
     data("charger", "vehicle", "disconnected");
     meter(31, 0);
     now += GRACE_MS;
     tracker.tick();
-    expect(sessions()[0]).toMatchObject({ vehicleId: "megane", attributionReason: "single-match" });
-    expect(legrand()[0]).toMatchObject({ vehicleId: "rafale", attributionReason: "single-match" });
+  }
+
+  it("never swaps two cars that come home together (#1105, audit reviews)", async () => {
+    await twoCarsComeHome();
+    // Both cars' reports reach both sessions: Sowel cannot tell, and says so.
+    expect(sessions()[0].vehicleId).not.toBe("rafale");
+    expect(legrand()[0].vehicleId).not.toBe("megane");
+  });
+
+  it("gives each car its charger by their usual vehicles, saying so (#1105)", async () => {
+    setUsual("charger", "megane");
+    setUsual("legrand", "rafale");
+    await twoCarsComeHome();
+    expect(sessions()[0]).toMatchObject({
+      vehicleId: "megane",
+      attributionReason: "usual-vehicle",
+    });
+    expect(legrand()[0]).toMatchObject({ vehicleId: "rafale", attributionReason: "usual-vehicle" });
   });
 
   it("does not lend the previous car's report to the next session on a charger (#1105)", async () => {
@@ -778,6 +829,220 @@ describe("metered charger (spec 193)", () => {
     expect(legrand()[0]).toMatchObject({ attribution: "unattributed" });
   });
 
+  it("shows no solar at night although the meter reports a minute late (audit A1)", () => {
+    // No PV. The meter sends, one second after each minute, the energy of the
+    // minute just past (car + a 850 W house); the car draws 6.9 kW from a
+    // start in the middle of a window.
+    const start = now + 6 * MIN + 55_000;
+    const stop = start + 38 * MIN;
+    const carWh = (a: number, b: number) =>
+      (6900 * Math.max(0, Math.min(b, stop) - Math.max(a, start))) / 3_600_000;
+    const t0 = now;
+    for (let t = t0 + 1000; t < stop + 40 * MIN; t += 1000) {
+      now = t;
+      if ((t - t0) % 30_000 === 0 || t === start || t === stop) {
+        data("legrand", "power", t >= start && t < stop ? 6900 : 3);
+      }
+      if ((t - 1000 - t0) % MIN === 0) {
+        const m = t - 1000;
+        data("grid", "energy", carWh(m - MIN, m) + 850 / 60);
+        data("legrand", "energy", carWh(m - MIN, m));
+      }
+      if ((t - t0) % 30_000 === 0) tracker.tick();
+    }
+    const [s] = legrand();
+    expect(s.endedAt).not.toBeNull();
+    expect(s.energyWh).toBeCloseTo((6900 * 38) / 60, -1);
+    expect(s.solarWh).toBeLessThan(5);
+  });
+
+  it("shares the import between two sessions on solar (audit A2)", () => {
+    // 1.3 kW and 7 kW, house 0.5 kW, PV 3 kW: the house imports 5.8 kW.
+    data("charger", "vehicle", "charging");
+    for (let i = 0; i < 60; i++) {
+      data("charger", "power", 1300);
+      data("legrand", "power", 7000);
+      tracker.tick();
+      now += MIN;
+      data("grid", "energy", 5800 / 60);
+    }
+    data("charger", "vehicle", "disconnected");
+    meter(31, 0);
+    const [a] = sessions();
+    const [b] = legrand();
+    const grid = a.gridHpWh + a.gridHcWh + b.gridHpWh + b.gridHcWh;
+    expect(grid).toBeLessThan(5800 * 1.03);
+    expect(grid).toBeGreaterThan(5800 * 0.95);
+    expect(a.solarWh + b.solarWh).toBeGreaterThan(2300);
+  });
+
+  it("keeps counting a power-only charger after a restart (audit A9)", () => {
+    eqs.values.set("charger", {}); // no energy meter: power only, reported on change
+    data("charger", "vehicle", "charging");
+    data("charger", "power", 3700);
+    for (let i = 0; i < 10; i++) {
+      now += MIN;
+      data("grid", "energy", 70);
+      tracker.tick();
+    }
+    tracker.stop();
+    tracker = makeTracker();
+    for (let i = 0; i < 10; i++) {
+      now += MIN;
+      data("grid", "energy", 70);
+      tracker.tick();
+    }
+    data("charger", "power", 3700); // keeps the held power alive past 15 min
+    for (let i = 0; i < 50; i++) {
+      now += MIN;
+      data("grid", "energy", 70);
+      tracker.tick();
+    }
+    data("charger", "vehicle", "disconnected");
+    now += 4 * MIN;
+    tracker.tick();
+    // As without a restart: 15 min held after the first reading (the hold
+    // limit counts from the reading, not from the restart), then 15 after the
+    // second: 30 min at 3.7 kW. Without holding it again at the restart: 25.
+    expect(sessions()[0].energyWh).toBeCloseTo((3700 * 30) / 60, -1);
+  });
+
+  it("prices a session whose meter moved without any window (audit A8)", () => {
+    data("charger", "vehicle", "charging");
+    for (let i = 0; i < 30; i++) {
+      data("charger", "power", 0); // a charger whose power reads 0 while it meters
+      data("charger", "energy", 100);
+      now += MIN;
+    }
+    data("charger", "vehicle", "disconnected");
+    const [s] = sessions();
+    expect(s.energyWh).toBe(3000);
+    expect(s.gridHpWh + s.gridHcWh).toBeCloseTo(3000, 6);
+    expect(s.costEur).toBeCloseTo(0.6, 6);
+  });
+
+  it("does not give a guest's session to a car charging away (audit A5)", async () => {
+    eqs.set("rafale", "at_home", false, now - 20 * MIN); // its last location poll
+    data("charger", "vehicle", "charging"); // a guest plugs in at home
+    for (let i = 0; i < 40; i++) {
+      data("charger", "power", 3000);
+      if (i === 10) {
+        await report("rafale", "charging", now - MIN);
+        data("rafale", "battery_level", 30);
+        await flush();
+      }
+      if (i === 30) {
+        data("rafale", "battery_level", 45);
+        await flush();
+      }
+      now += MIN;
+      data("grid", "energy", 50);
+    }
+    data("charger", "vehicle", "disconnected");
+    now += GRACE_MS;
+    tracker.tick();
+    expect(sessions()[0]).toMatchObject({ attribution: "unattributed" });
+  });
+
+  it("still gives the session to a car away at the opening once it is seen home (audit A5)", async () => {
+    eqs.set("megane", "at_home", false, now - 20 * MIN); // the location lags
+    data("charger", "vehicle", "charging");
+    run(10, 3000, 3000);
+    await report("megane", "charging", now);
+    data("megane", "at_home", true);
+    await flush();
+    run(30, 3000, 3000);
+    data("charger", "vehicle", "disconnected");
+    now += GRACE_MS;
+    tracker.tick();
+    expect(sessions()[0]).toMatchObject({ vehicleId: "megane" });
+  });
+
+  it("keeps the start slack for a car the other charger does not hold (audit A6)", async () => {
+    data("charger", "vehicle", "charging"); // the Rafale on the plug-state charger
+    await report("rafale", "charging", now);
+    run(60, 1300, 1300);
+    // The Megane's report is dated 3 min before the Legrand's first 500 W.
+    await report("megane", "charging", now - 3 * MIN);
+    meter(9, 7000, () => data("charger", "power", 1300));
+    meter(31, 0, () => data("charger", "power", 1300));
+    now += GRACE_MS;
+    tracker.tick();
+    expect(legrand()[0]).toMatchObject({ vehicleId: "megane", attributionReason: "single-match" });
+  });
+
+  it("says usual vehicle on both chargers when the cars are swapped (audit A7)", async () => {
+    setUsual("legrand", "megane");
+    data("charger", "vehicle", "charging"); // tonight: Megane on the plug-state, Rafale on the Legrand
+    for (let i = 0; i < 120; i++) {
+      data("charger", "power", 1300);
+      data("legrand", "power", 7000);
+      if (i === 5) {
+        await report("megane", "charging", now - 30_000);
+        await report("rafale", "charging", now - 30_000);
+      }
+      tracker.tick();
+      now += MIN;
+      data("grid", "energy", 140);
+    }
+    data("charger", "vehicle", "disconnected");
+    meter(31, 0);
+    now += GRACE_MS;
+    tracker.tick();
+    // Both are guesses from the usual vehicle, and say so.
+    expect(sessions()[0].attributionReason).toBe("usual-vehicle");
+    expect(legrand()[0].attributionReason).toBe("usual-vehicle");
+  });
+
+  it("measures the battery from just before the start to just after the end (audit A4)", async () => {
+    // 40 % reported 90 s before the first 500 W reading.
+    data("megane", "reported_at", new Date(now - 90_000).toISOString());
+    data("megane", "battery_level", 40);
+    data("megane", "charging_state", "charging");
+    await flush();
+    let level = 40;
+    for (let i = 0; i < 120; i++) {
+      data("legrand", "power", 7000);
+      if (i % 10 === 9) {
+        level += 2;
+        data("megane", "reported_at", new Date(now - 30_000).toISOString());
+        data("megane", "battery_level", level);
+        await flush();
+      }
+      tracker.tick();
+      now += MIN;
+      data("grid", "energy", 7000 / 60);
+    }
+    const lastActive = now - MIN;
+    for (let i = 0; i < 31; i++) {
+      data("legrand", "power", 3);
+      if (i === 3) {
+        // The final 66 %, reported 2 min after the charge stopped.
+        data("megane", "reported_at", new Date(lastActive + 2 * MIN).toISOString());
+        data("megane", "battery_level", 66);
+        await flush();
+      }
+      tracker.tick();
+      now += MIN;
+    }
+    now += GRACE_MS;
+    tracker.tick();
+    expect(legrand()[0]).toMatchObject({ vehicleId: "megane", batteryStart: 40, batteryEnd: 66 });
+  });
+
+  it("follows the battery of a session given by hand while open (audit A3)", async () => {
+    data("charger", "vehicle", "charging");
+    data("megane", "battery_level", 40);
+    await flush();
+    run(5, 7000, 7000);
+    tracker.setAttribution(sessions()[0].id, { target: "vehicle", vehicleId: "megane" });
+    run(20, 7000, 7000);
+    data("megane", "battery_level", 60);
+    await flush();
+    data("charger", "vehicle", "disconnected");
+    expect(sessions()[0]).toMatchObject({ batteryStart: 40, batteryEnd: 60 });
+  });
+
   it("shows each car its own session in progress", async () => {
     setUsual("legrand", "megane");
     data("charger", "vehicle", "charging");
@@ -788,6 +1053,221 @@ describe("metered charger (spec 193)", () => {
     const ids = (v: string) => tracker.currentForVehicle(v).map((x) => x.chargerId);
     expect(ids("megane")).toEqual(["legrand"]);
     expect(ids("rafale")).toEqual(["charger"]);
+  });
+});
+
+describe("audit review (fix/ev-cost-audit)", () => {
+  it("does not pass a late report of the previous car to a guest on the same charger", async () => {
+    // A car charges 11:00–11:20 and reports nothing during it; a guest plugs
+    // in at 11:22; the car's report, dated 11:18, arrives at 11:25.
+    data("charger", "vehicle", "charging");
+    run(20, 3000, 3000);
+    const reportedAt = now - 2 * MIN;
+    data("charger", "vehicle", "disconnected");
+    now += 2 * MIN;
+    data("charger", "vehicle", "charging");
+    run(3, 3000, 3000);
+    data("rafale", "reported_at", new Date(reportedAt).toISOString());
+    data("rafale", "charging_state", "charging");
+    await flush();
+    run(30, 3000, 3000);
+    data("charger", "vehicle", "disconnected");
+    now += GRACE_MS + 5 * MIN;
+    tracker.tick();
+    const [guest] = sessions(); // newest first
+    expect(guest.attribution).toBe("unattributed");
+  });
+
+  it("keeps the grid ledger small when no session is open", () => {
+    for (let i = 0; i < 24 * 60; i++) {
+      now += MIN;
+      data("grid", "energy", 10);
+    }
+    const ledger = (tracker as unknown as { ledger: { size: number } }).ledger;
+    expect(ledger.size).toBeLessThan(20);
+  });
+
+  it("does not bill the house's import before the plug-in to the car", () => {
+    // 6 kW imported for 3 min with no car; then the car at 3 kW on solar.
+    for (let i = 0; i < 3; i++) {
+      now += MIN;
+      data("grid", "energy", 100);
+    }
+    data("charger", "vehicle", "charging");
+    for (let i = 0; i < 30; i++) {
+      data("charger", "power", 3000);
+      now += MIN;
+      data("grid", "energy", 0);
+    }
+    data("charger", "vehicle", "disconnected");
+    now += 4 * MIN;
+    tracker.tick();
+    const [s] = sessions();
+    expect(s.gridHpWh + s.gridHcWh).toBeLessThan(1);
+  });
+
+  it("prices a closed session's last windows before a restart", () => {
+    eqs.values.set("charger", {}); // power only: no meter to fall back on
+    data("charger", "vehicle", "charging");
+    data("charger", "power", 7000);
+    now += 4 * MIN;
+    data("charger", "vehicle", "disconnected");
+    tracker.stop(); // a restart 30 s later
+    now += 30_000;
+    tracker = makeTracker();
+    expect(sessions()[0].energyWh).toBeCloseTo((7000 * 4) / 60, 0);
+  });
+
+  it("counts a window the meter stopped covering as all grid", () => {
+    data("charger", "vehicle", "charging");
+    data("charger", "power", 6000);
+    now += MIN;
+    data("grid", "energy", 100); // the last delta; the meter then goes silent
+    for (let i = 0; i < 20; i++) {
+      now += MIN;
+      data("charger", "power", 6000);
+      tracker.tick();
+    }
+    data("charger", "vehicle", "disconnected");
+    now += 10 * MIN;
+    tracker.tick();
+    expect(sessions()[0].solarWh).toBeLessThan(1);
+  });
+
+  it("follows the final battery of a session given by hand after its end", async () => {
+    data("charger", "vehicle", "charging");
+    data("megane", "battery_level", 40);
+    await flush();
+    run(5, 7000, 7000);
+    tracker.setAttribution(sessions()[0].id, { target: "vehicle", vehicleId: "megane" });
+    run(20, 7000, 7000);
+    data("charger", "vehicle", "disconnected");
+    now += 2 * MIN;
+    data("megane", "reported_at", new Date(now - MIN).toISOString());
+    data("megane", "battery_level", 62);
+    await flush();
+    expect(sessions()[0]).toMatchObject({ batteryStart: 40, batteryEnd: 62 });
+  });
+});
+
+describe("audit second review", () => {
+  beforeEach(() => {
+    tracker.stop();
+    eqs.add("legrand", "ev_charger", "Legrand");
+    eqs.set("legrand", "power", 0);
+    tracker = makeTracker();
+  });
+  const legrand = () => tracker.listByCharger("legrand", "2026-11")!;
+  async function report(car: string, state: string, atMs: number) {
+    data(car, "reported_at", new Date(atMs).toISOString());
+    data(car, "charging_state", state);
+    await flush();
+  }
+  function minute(also?: () => void) {
+    data("charger", "power", 2000);
+    also?.();
+    tracker.tick();
+    now += MIN;
+    data("grid", "energy", 200);
+  }
+
+  it("never swaps two cars that plug in minutes apart and report late", async () => {
+    const t0 = now;
+    data("charger", "vehicle", "charging"); // the Rafale on A at T0
+    minute();
+    minute();
+    now += 30_000;
+    await report("megane", "charging", t0 + 2 * MIN); // only A is open yet
+    now = t0 + 3 * MIN;
+    minute(() => data("legrand", "power", 7000)); // B opens at T0+3
+    await report("rafale", "charging", t0 + MIN); // dated before B: nearer A's start
+    for (let i = 0; i < 60; i++) minute(() => data("legrand", "power", 7000));
+    data("charger", "vehicle", "disconnected");
+    for (let i = 0; i < 31; i++) {
+      data("legrand", "power", 0);
+      tracker.tick();
+      now += MIN;
+    }
+    now += GRACE_MS;
+    tracker.tick();
+    // Never the two cars swapped and presented as sure.
+    expect(sessions()[0].vehicleId).not.toBe("megane");
+    expect(legrand()[0].vehicleId).not.toBe("rafale");
+  });
+
+  it("never swaps the cars when the metered charger opens minutes after its plug-in", async () => {
+    const t0 = now;
+    data("charger", "vehicle", "charging"); // the Rafale on A at T0
+    await report("rafale", "charging", t0);
+    now = t0 + 3 * MIN;
+    await report("megane", "charging", now); // plugged into B; B sees no power yet
+    while (now < t0 + 10 * MIN) minute();
+    let level = 30;
+    for (let i = 0; i < 60; i++) {
+      minute(() => data("legrand", "power", 7000)); // B opens at T0+10
+      if (i % 10 === 9) {
+        level += 3; // the Rafale's battery keeps rising
+        data("rafale", "reported_at", new Date(now - 30_000).toISOString());
+        data("rafale", "battery_level", level);
+        await flush();
+      }
+    }
+    data("charger", "vehicle", "disconnected");
+    for (let i = 0; i < 31; i++) {
+      data("legrand", "power", 0);
+      tracker.tick();
+      now += MIN;
+    }
+    now += GRACE_MS;
+    tracker.tick();
+    expect(sessions()[0].vehicleId).not.toBe("megane");
+    expect(legrand()[0].vehicleId).not.toBe("rafale");
+  });
+
+  it("keeps a guest's session to attribute when an away car reports home after its end", async () => {
+    eqs.set("rafale", "at_home", false, now - 20 * MIN);
+    data("charger", "vehicle", "charging"); // a guest
+    run(10, 3000, 3000);
+    await report("rafale", "charging", now - MIN); // charging elsewhere
+    run(20, 3000, 3000);
+    data("charger", "vehicle", "disconnected");
+    now += 10 * MIN;
+    data("rafale", "at_home", true); // it drove home after
+    await flush();
+    now += GRACE_MS;
+    tracker.tick();
+    expect(sessions()[0].attribution).toBe("unattributed");
+  });
+
+  it("counts a meter silence inside a window as all grid", () => {
+    data("charger", "vehicle", "charging");
+    for (let i = 0; i < 30; i++) {
+      data("charger", "power", 6000);
+      now += MIN;
+      // Silent for 13 min (longer than a delta may span), then a delta of its
+      // last minute only: the minutes between are a hole.
+      if (i < 5 || i > 17) data("grid", "energy", 100);
+      tracker.tick();
+    }
+    data("charger", "vehicle", "disconnected");
+    now += 5 * MIN;
+    tracker.tick();
+    expect(sessions()[0].solarWh).toBeLessThan(1);
+  });
+
+  it("follows the final battery of a session given by hand after its end", async () => {
+    data("charger", "vehicle", "charging");
+    data("megane", "battery_level", 40);
+    await flush();
+    run(30, 7000, 7000);
+    data("charger", "vehicle", "disconnected");
+    now += MIN;
+    tracker.setAttribution(sessions()[0].id, { target: "vehicle", vehicleId: "megane" });
+    now += 2 * MIN;
+    data("megane", "reported_at", new Date(now - 30_000).toISOString());
+    data("megane", "battery_level", 62);
+    await flush();
+    expect(sessions()[0]).toMatchObject({ batteryStart: 40, batteryEnd: 62 });
   });
 });
 

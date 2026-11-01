@@ -1,5 +1,11 @@
 import { describe, expect, it } from "vitest";
-import { HOLD_LIMIT_MS, WINDOW_S, WindowAccountant, settleWindow } from "./window-accountant.js";
+import {
+  HOLD_LIMIT_MS,
+  WINDOW_S,
+  WindowAccountant,
+  poolImport,
+  settleWindow,
+} from "./window-accountant.js";
 
 const T0 = Date.UTC(2026, 10, 1, 10, 0, 0); // a window boundary
 const MIN = 60_000;
@@ -8,15 +14,13 @@ describe("WindowAccountant", () => {
   it("integrates a held power over a whole window", () => {
     const acc = new WindowAccountant(T0);
     acc.power(T0, 1400);
-    acc.grid(T0 + MIN, 400 / 12); // 0.4 kW over 5 min in one tick
     const [w] = acc.advance(T0 + WINDOW_S * 1000);
     expect(w.carWh).toBeCloseTo(1400 / 12, 6);
-    expect(w.importWh).toBeCloseTo(400 / 12, 6);
   });
 
   it("returns nothing for a window where the car drew nothing", () => {
     const acc = new WindowAccountant(T0);
-    acc.grid(T0 + MIN, 50);
+    acc.power(T0, 0);
     expect(acc.advance(T0 + WINDOW_S * 1000)).toEqual([]);
   });
 
@@ -42,7 +46,6 @@ describe("WindowAccountant", () => {
     acc.carEnergy(T0 + 3 * MIN, 50);
     const [w] = acc.advance(T0 + WINDOW_S * 1000);
     expect(w.carWh).toBe(150);
-    expect(w.importWh).toBeNull();
   });
 
   it("measures by power alone once the charger reported one (no double count)", () => {
@@ -73,7 +76,7 @@ describe("WindowAccountant", () => {
 
 describe("settleWindow", () => {
   const prices = { hp: 0.2, hc: 0.1 };
-  const base = { startS: T0 / 1000, lengthS: WINDOW_S };
+  const base = { startS: T0 / 1000, lengthS: WINDOW_S, fromMs: T0, toMs: T0 + WINDOW_S * 1000 };
 
   it("charges the car only what the house imported (P5)", () => {
     const s = settleWindow(
@@ -143,5 +146,33 @@ describe("settleWindow", () => {
     );
     expect(s.costHpEur).toBeNull();
     expect(s.gridHpWh).toBe(40);
+  });
+});
+
+describe("poolImport (audit A2)", () => {
+  it("shares one import between the cars of a window, pro rata", () => {
+    // Two cars draw 1300 and 7000 Wh while the house imports 5800 Wh.
+    const [a, b] = poolImport([1300, 7000], [5800, 5800], 5800) as number[];
+    expect(a + b).toBeCloseTo(5800, 6);
+    expect(a / b).toBeCloseTo(1300 / 7000, 6);
+  });
+
+  it("never gives a car more than it drew or than was imported during its own part", () => {
+    expect(poolImport([100, 200], [900, 900], 900)).toEqual([100, 200]);
+    // A car plugged in for the last 2 min: the house's import before is not its.
+    expect(poolImport([100], [10], 300)).toEqual([10]);
+    expect(poolImport([100], [0], null)).toEqual([null]);
+    expect(poolImport([0, 0], [50, 50], 50)).toEqual([0, 0]);
+  });
+
+  it("hands what a capped car cannot take to the others", () => {
+    // Car A could take all 800 Wh; car B drew only before the import.
+    const [a, b] = poolImport([1000, 200], [800, 0], 800) as number[];
+    expect(a).toBeCloseTo(800, 6);
+    expect(b).toBe(0);
+    // B partly capped: what it cannot take goes to A in a second pass.
+    const [c, d] = poolImport([1000, 400], [800, 50], 800) as number[];
+    expect(d).toBeCloseTo(50, 6);
+    expect(c + d).toBeCloseTo(800, 6);
   });
 });

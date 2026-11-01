@@ -14,6 +14,8 @@ Three things stop Sowel from counting charges on such a charger per car:
 2. **No session would open.** Spec 191 opens and closes a session on the charger's `vehicle` state (FR1). A metered charger has none.
 3. **Two cars charging at once on two chargers stay unattributed.** Each session sees both cars report charging (`several-matches`), so neither is attributed.
 
+> **Amended by the charging-cost audit (2026-11-01, issue #1107).** Grid import spread over the time each meter delta measured and shared between concurrent sessions; a car last seen away must be seen home to match; the start slack is per car; the battery is measured from just before the start to just after the end; a single match resting on a usual-vehicle guess reads `usual-vehicle`. Details: `docs/technical/architecture.md` (EV charge sessions).
+
 ## Principles (agreed with the maintainer)
 
 | #   | Principle                                                                                                                                                                                                  |
