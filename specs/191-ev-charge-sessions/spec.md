@@ -16,6 +16,8 @@ Sowel already measures the charger's energy and splits it HP/HC at write time, a
 
 This spec adds a **charge session**: one plug-in on one charger, with its energy, its real cost and the vehicle it belongs to. Nothing in it is specific to a charger or car maker: it reads only the spec 182 and 183 contract categories.
 
+> **Amended by the charging-cost audit (2026-11-01, issue #1107).** Grid import spread over the time each meter delta measured and shared between concurrent sessions; a car last seen away must be seen home to match; the start slack is per car; the battery is measured from just before the start to just after the end; a single match resting on a usual-vehicle guess reads `usual-vehicle`. Details: `docs/technical/architecture.md` (EV charge sessions).
+
 ## Principles (agreed with the maintainer)
 
 | #   | Principle                                                                                                                                                         |
