@@ -38,6 +38,7 @@ describe("electric vehicle contract (spec 183)", () => {
       ev_wake: "wake",
       ev_charge_start: "charge_start",
       ev_refresh: "refresh",
+      ev_charge_power: "charge_power",
     });
   });
 

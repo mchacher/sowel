@@ -4,6 +4,8 @@
 - **Date**: 2026-11-01
 - **Amends**: spec 191 (EV charge sessions), spec 192 (the charge in progress on the vehicle page), spec 182 (EV charger)
 
+> **Amended by spec 194 (2026-11-01).** Optional `charge_power` on `electric_vehicle` (W, category `ev_charge_power`); several matching cars are told apart by their own charging power against the charger's, then by battery rise × learned energy per point against the session's energy, before any usual vehicle.
+
 ## Context
 
 Many home chargers cannot be controlled and report nothing: no plug state, no power. The only way to follow them is to measure their supply line with an energy meter (a current clamp, a DIN-rail meter) that Sowel already reads as a device with `power` and `energy`. The maintainer's installation has one, next to a charger that does report (spec 182), and two cars.

@@ -121,9 +121,13 @@ export function EvChargerSessionsSection({
                   ? t(`equipments.evSessions.reason.${s.attributionReason}`)
                   : s.attributionReason === "usual-vehicle"
                     ? t("equipments.evSessions.how.usual")
-                    : s.attributionSource === "auto"
-                      ? t("equipments.evSessions.how.auto")
-                      : t("equipments.evSessions.solarShare", { pct: solarPct });
+                    : s.attributionReason === "power-match"
+                      ? t("equipments.evSessions.how.power")
+                      : s.attributionReason === "energy-match"
+                        ? t("equipments.evSessions.how.energy")
+                        : s.attributionSource === "auto"
+                          ? t("equipments.evSessions.how.auto")
+                          : t("equipments.evSessions.solarShare", { pct: solarPct });
             return (
               <div key={s.id} className="flex flex-col gap-1.5 py-2.5 border-b border-border-light">
                 <button

@@ -166,6 +166,7 @@ export const CATEGORY_EXPECTED_TYPE: Partial<Record<DataCategory, DataType>> = {
   ev_at_home: "boolean",
   ev_mileage: "number",
   ev_charge_limit: "number",
+  ev_charge_power: "number",
   power: "number",
   energy: "number",
   voltage: "number",

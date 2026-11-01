@@ -187,6 +187,7 @@ const RELEVANT_DATA: Record<string, string[]> = {
     "ev_at_home",
     "ev_mileage",
     "ev_charge_limit",
+    "ev_charge_power",
     "generic",
   ],
   energy_meter: ["energy", "power"],

@@ -6,7 +6,7 @@ import type { EquipmentManager } from "../../equipments/equipment-manager.js";
 import type { EngineEvent, Equipment, EquipmentType } from "../../shared/types.js";
 import { createMigratedTestDb } from "../../test-helpers/migrations.js";
 import type { TariffClassifier } from "../tariff-classifier.js";
-import { EvSessionStore } from "./ev-session-store.js";
+import { EvSessionStore, type SessionRecord } from "./ev-session-store.js";
 import { EvSessionError, EvSessionTracker, GRACE_MS, monthRange } from "./ev-session-tracker.js";
 
 // Spec 191 — the tracker over a real event bus and an in-memory database, with
@@ -1147,6 +1147,258 @@ describe("audit review (fix/ev-cost-audit)", () => {
     data("megane", "battery_level", 62);
     await flush();
     expect(sessions()[0]).toMatchObject({ batteryStart: 40, batteryEnd: 62 });
+  });
+});
+
+describe("telling cars apart by measures (spec 194)", () => {
+  beforeEach(() => {
+    tracker.stop();
+    eqs.add("legrand", "ev_charger", "Legrand");
+    eqs.set("legrand", "power", 0);
+    tracker = makeTracker();
+  });
+  const legrand = () => tracker.listByCharger("legrand", "2026-11")!;
+  const setUsual = (chargerId: string, vehicleId: string) => {
+    eqs.getById(chargerId)!.usualVehicleId = vehicleId;
+  };
+
+  /** A car's report: its own time, then each value, in one burst. */
+  async function carReport(car: string, values: Record<string, unknown>) {
+    data(car, "reported_at", new Date(now - 30_000).toISOString());
+    for (const [alias, value] of Object.entries(values)) data(car, alias, value);
+    await flush();
+  }
+
+  /** Both cars charge at once: the Tuya at 1.3 kW, the Legrand at 7 kW, for an hour. */
+  async function bothAtOnce(each: (minute: number) => Promise<void>) {
+    data("charger", "vehicle", "charging");
+    for (let i = 0; i < 60; i++) {
+      data("charger", "power", 1300);
+      data("legrand", "power", 7000);
+      await each(i);
+      tracker.tick();
+      now += MIN;
+      data("grid", "energy", 8300 / 60);
+    }
+    data("charger", "vehicle", "disconnected");
+    for (let i = 0; i < 31; i++) {
+      data("legrand", "power", 0);
+      tracker.tick();
+      now += MIN;
+    }
+    now += GRACE_MS;
+    tracker.tick();
+  }
+
+  it("gives each car its charger by the power it says it charges at", async () => {
+    await bothAtOnce(async (i) => {
+      if (i === 2) {
+        await carReport("megane", { charging_state: "charging" });
+        await carReport("rafale", { charging_state: "charging" });
+      }
+      if (i % 15 === 5) {
+        await carReport("megane", { charge_power: 6900 });
+        await carReport("rafale", { charge_power: 1400 });
+      }
+    });
+    // The other charger claims the Megane for sure: the Rafale is left.
+    expect(sessions()[0]).toMatchObject({ vehicleId: "rafale" });
+    expect(legrand()[0]).toMatchObject({ vehicleId: "megane" });
+    expect([sessions()[0].attributionReason, legrand()[0].attributionReason]).toContain(
+      "power-match",
+    );
+  });
+
+  it("never gives a guest's session to a car charging elsewhere at another power", async () => {
+    data("charger", "vehicle", "charging"); // a guest at 3 kW
+    for (let i = 0; i < 60; i++) {
+      data("charger", "power", 3000);
+      if (i === 5) await carReport("rafale", { charging_state: "charging" });
+      if (i % 20 === 10) await carReport("rafale", { charge_power: 11000 });
+      now += MIN;
+      data("grid", "energy", 50);
+    }
+    data("charger", "vehicle", "disconnected");
+    now += GRACE_MS;
+    tracker.tick();
+    expect(sessions()[0].attribution).toBe("unattributed");
+  });
+
+  it("gives each car its charger by the energy its battery took", async () => {
+    // What each car learned at home before: Megane 500 Wh per point, Rafale 150.
+    const past = (car: string, wh: number, from: number, to: number, day: number) => {
+      const at = new Date(T0 - day * 24 * H).toISOString();
+      const record: SessionRecord = {
+        id: `past-${car}-${day}`,
+        chargerId: "charger",
+        chargerName: "Borne",
+        startedAt: at,
+        endedAt: at,
+        graceUntil: at,
+        energyWh: wh,
+        estCarWh: wh,
+        estGridHpWh: wh,
+        estGridHcWh: 0,
+        estCostHpEur: null,
+        estCostHcEur: null,
+        vehicleId: car,
+        vehicleName: car,
+        vehicleDeleted: false,
+        attribution: "vehicle",
+        attributionSource: "manual",
+        attributionReason: null,
+        batteryStart: from,
+        batteryEnd: to,
+        evidence: [],
+        updatedAt: at,
+      };
+      store.save(record);
+    };
+    past("megane", 10_000, 30, 50, 3);
+    past("rafale", 3_000, 20, 40, 4);
+    await bothAtOnce(async (i) => {
+      if (i === 2) {
+        await carReport("megane", { charging_state: "charging", battery_level: 40 });
+        await carReport("rafale", { charging_state: "charging", battery_level: 30 });
+      }
+      if (i === 58) {
+        await carReport("megane", { battery_level: 54 }); // 7 kWh / 500
+        await carReport("rafale", { battery_level: 39 }); // 1.3 kWh / 150
+      }
+    });
+    // The other charger claims the Megane for sure: the Rafale is left.
+    expect(sessions()[0]).toMatchObject({ vehicleId: "rafale" });
+    expect(legrand()[0]).toMatchObject({ vehicleId: "megane" });
+    expect([sessions()[0].attributionReason, legrand()[0].attributionReason]).toContain(
+      "energy-match",
+    );
+  });
+
+  const evidenceOf = (sessionId: string, car: string) =>
+    store.get(sessionId)!.evidence.find((e) => e.vehicleId === car);
+
+  it("never hands both sessions to the car without power data on two chargers alike", async () => {
+    // Both chargers at 7 kW; the Megane (on the Legrand) reports its power,
+    // the Rafale (on the other) does not.
+    data("charger", "vehicle", "charging");
+    for (let i = 0; i < 60; i++) {
+      data("charger", "power", 7000);
+      data("legrand", "power", 7000);
+      if (i === 2) {
+        await carReport("megane", { charging_state: "charging" });
+        await carReport("rafale", { charging_state: "charging" });
+      }
+      if (i % 15 === 5) await carReport("megane", { charge_power: 6900 });
+      tracker.tick();
+      now += MIN;
+      data("grid", "energy", 14000 / 60);
+    }
+    data("charger", "vehicle", "disconnected");
+    for (let i = 0; i < 31; i++) {
+      data("legrand", "power", 0);
+      tracker.tick();
+      now += MIN;
+    }
+    now += GRACE_MS;
+    tracker.tick();
+    expect(sessions()[0].vehicleId).not.toBe("megane");
+    expect(legrand()[0].vehicleId).not.toBe("rafale");
+  });
+
+  it("takes no power sample at a charge's start or stop", async () => {
+    // A guest's charger runs from minute 30 to 88; the car reports 7 kW just
+    // before the first 7 kW reading and just after the last.
+    data("charger", "vehicle", "connected");
+    for (let i = 0; i < 100; i++) {
+      const drawing = i >= 30 && i < 88;
+      data("charger", "power", drawing ? 7000 : 0);
+      if (i === 29) await carReport("rafale", { charge_power: 7000 });
+      if (i === 89) await carReport("rafale", { charge_power: 6800 });
+      now += MIN;
+    }
+    expect(evidenceOf(sessions()[0].id, "rafale")?.powerSamples ?? 0).toBe(0);
+  });
+
+  it("counts a report repeated with the same time as one sample", async () => {
+    data("charger", "vehicle", "charging");
+    for (let i = 0; i < 20; i++) {
+      data("charger", "power", 3000);
+      if (i === 10) {
+        await carReport("rafale", { charge_power: 3100 });
+        data("rafale", "charge_power", 3100); // published again, same report
+        await flush();
+      }
+      now += MIN;
+    }
+    expect(evidenceOf(sessions()[0].id, "rafale")?.powerSamples).toBe(1);
+  });
+
+  it("takes no sample from a late report dated in a metered pause", async () => {
+    for (let i = 0; i < 20; i++) {
+      data("legrand", "power", 7000);
+      now += MIN;
+    }
+    const inPause = now + 5 * MIN;
+    for (let i = 0; i < 20; i++) {
+      data("legrand", "power", 0);
+      now += MIN;
+    }
+    for (let i = 0; i < 5; i++) {
+      data("legrand", "power", 7000);
+      now += MIN;
+    }
+    data("megane", "reported_at", new Date(inPause).toISOString());
+    data("megane", "charge_power", 7000);
+    await flush();
+    expect(evidenceOf(legrand()[0].id, "megane")?.powerSamples ?? 0).toBe(0);
+  });
+
+  it("lets a choice by hand on one charger settle the other (second review P2)", async () => {
+    setUsual("legrand", "megane");
+    await bothAtOnce(async (i) => {
+      if (i === 2) {
+        await carReport("megane", { charging_state: "charging" });
+        await carReport("rafale", { charging_state: "charging" });
+        tracker.setAttribution(sessions()[0].id, { target: "vehicle", vehicleId: "megane" });
+      }
+    });
+    expect(sessions()[0]).toMatchObject({ vehicleId: "megane", attributionSource: "manual" });
+    expect(legrand()[0]).toMatchObject({ vehicleId: "rafale" });
+  });
+
+  it("lets a sure claim win over a usual-vehicle guess elsewhere (second review P1)", async () => {
+    setUsual("legrand", "megane");
+    data("charger", "vehicle", "charging"); // the Borne from 0 to 60 min
+    for (let i = 0; i < 150; i++) {
+      if (i < 60) data("charger", "power", 2000);
+      if (i === 60) data("charger", "vehicle", "disconnected");
+      if (i >= 30) data("legrand", "power", 7000); // the Legrand from 30 to 150 min
+      if (i === 40) await carReport("megane", { charging_state: "charging" });
+      if (i === 100) await carReport("rafale", { charging_state: "charging" });
+      tracker.tick();
+      now += MIN;
+      data("grid", "energy", 150);
+    }
+    for (let i = 0; i < 31; i++) {
+      data("legrand", "power", 0);
+      tracker.tick();
+      now += MIN;
+    }
+    now += GRACE_MS;
+    tracker.tick();
+    expect(sessions()[0]).toMatchObject({ vehicleId: "megane" });
+    expect(legrand()[0]).toMatchObject({ vehicleId: "rafale" });
+  });
+
+  it("leaves two cars at once to attribute without power or energy data", async () => {
+    await bothAtOnce(async (i) => {
+      if (i === 2) {
+        await carReport("megane", { charging_state: "charging" });
+        await carReport("rafale", { charging_state: "charging" });
+      }
+    });
+    expect(sessions()[0].attribution).toBe("unattributed");
+    expect(legrand()[0].attribution).toBe("unattributed");
   });
 });
 

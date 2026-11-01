@@ -5,6 +5,8 @@
 - **Amended by**: spec 192 (the charge in progress on the vehicle page)
 - **Related**: spec 182 (EV charger), spec 183 (electric vehicle — and its non-goal "no car↔charger link in the core", kept here), spec 123 (energy cost valuation, read-time blended rate), spec 126/138 (TariffClassifier), SelfConsumptionWriter (the same live grid deltas)
 
+> **Amended by spec 194 (2026-11-01).** Optional `charge_power` on `electric_vehicle` (W, category `ev_charge_power`); several matching cars are told apart by their own charging power against the charger's, then by battery rise × learned energy per point against the session's energy, before any usual vehicle.
+
 ## Context
 
 Two people, two cars (a Renault Rafale and a Renault Megane), one home charger. They want to know what charging each car at home costs.

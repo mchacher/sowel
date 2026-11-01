@@ -3,6 +3,7 @@ import {
   attribute,
   batteryRise,
   emptyEvidence,
+  foldPower,
   matches,
   foldReport,
   type ReportAlias,
@@ -273,5 +274,83 @@ describe("foldReport", () => {
       { startMs: START, endMs: END },
     );
     expect(matches(home)).toBe(true);
+  });
+});
+
+describe("telling cars apart by measures (spec 194)", () => {
+  const charging = (id: string, extra: Partial<VehicleEvidence> = {}): VehicleEvidence => ({
+    ...fold(id, [["charging_state", "charging", START + H]]),
+    ...extra,
+  });
+
+  it("samples the car's power against the charger's, within 30 % or 700 W", () => {
+    let e = emptyEvidence("a");
+    e = foldPower(e, 7000, 6800);
+    e = foldPower(e, 1500, 2100); // 600 W apart
+    e = foldPower(e, 7000, 1300);
+    expect(e).toMatchObject({ powerSamples: 3, powerAgreeing: 2 });
+  });
+
+  it("gives the session to the one car whose power agrees, the other's not agreeing", () => {
+    const a = charging("a", { powerSamples: 2, powerAgreeing: 2 });
+    const b = charging("b", { powerSamples: 1, powerAgreeing: 0 });
+    expect(attribute([a, b], ["a", "b"])).toEqual({
+      state: "vehicle",
+      vehicleId: "a",
+      reason: "power-match",
+    });
+  });
+
+  it("does not let a car without power data lose to one that agrees (review)", () => {
+    // Two chargers at the same power: the car reporting none may be this one.
+    const a = charging("a", { powerSamples: 2, powerAgreeing: 2 });
+    expect(attribute([a, charging("b")], ["a", "b"])).toMatchObject({
+      reason: "several-matches",
+    });
+  });
+
+  it("drops a car whose power keeps disagreeing: it charges elsewhere", () => {
+    const away = charging("a", { powerSamples: 2, powerAgreeing: 0 });
+    expect(matches(away)).toBe(false);
+    expect(matches(charging("a", { powerSamples: 1, powerAgreeing: 0 }))).toBe(true);
+    expect(attribute([away], ["a"])).toMatchObject({ reason: "no-match" });
+  });
+
+  it("gives the session to the one car whose battery rise fits its energy", () => {
+    const rise = (id: string, from: number, to: number) =>
+      fold(id, [
+        ["charging_state", "charging", START + H],
+        ["battery_level", from, START + H],
+        ["battery_level", to, START + 2 * H],
+      ]);
+    const wpp = new Map([
+      ["megane", 500],
+      ["rafale", 150],
+    ]);
+    const ev = [rise("megane", 40, 54), rise("rafale", 30, 39)];
+    expect(attribute(ev, ["megane", "rafale"], { energyWh: 7000, whPerPoint: wpp })).toEqual({
+      state: "vehicle",
+      vehicleId: "megane",
+      reason: "energy-match",
+    });
+    expect(attribute(ev, ["megane", "rafale"], { energyWh: 1300, whPerPoint: wpp })).toMatchObject({
+      vehicleId: "rafale",
+      reason: "energy-match",
+    });
+    // Both fit: not clear.
+    const close = new Map([
+      ["megane", 500],
+      ["rafale", 760],
+    ]);
+    expect(
+      attribute(ev, ["megane", "rafale"], { energyWh: 7000, whPerPoint: close }),
+    ).toMatchObject({ reason: "several-matches" });
+    // A car without a learned value: not told apart.
+    expect(
+      attribute(ev, ["megane", "rafale"], {
+        energyWh: 7000,
+        whPerPoint: new Map([["megane", 500]]),
+      }),
+    ).toMatchObject({ reason: "several-matches" });
   });
 });

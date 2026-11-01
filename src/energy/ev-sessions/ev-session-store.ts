@@ -206,6 +206,8 @@ export class EvSessionStore {
         `SELECT * FROM ev_charge_sessions
           WHERE vehicle_id = ? AND attribution = 'vehicle' AND ended_at IS NOT NULL
             AND battery_start IS NOT NULL AND battery_end IS NOT NULL
+            AND (attribution_source = 'manual'
+                 OR attribution_reason IN ('single-match', 'power-match', 'only-vehicle'))
           ORDER BY started_at DESC LIMIT 50`,
       ),
       markVehicleDeleted: this.db.prepare(
