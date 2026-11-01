@@ -76,7 +76,7 @@ describe("WindowAccountant", () => {
 
 describe("settleWindow", () => {
   const prices = { hp: 0.2, hc: 0.1 };
-  const base = { startS: T0 / 1000, lengthS: WINDOW_S };
+  const base = { startS: T0 / 1000, lengthS: WINDOW_S, fromMs: T0, toMs: T0 + WINDOW_S * 1000 };
 
   it("charges the car only what the house imported (P5)", () => {
     const s = settleWindow(
