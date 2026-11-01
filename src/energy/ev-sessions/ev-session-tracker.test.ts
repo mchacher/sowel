@@ -114,12 +114,16 @@ function data(equipmentId: string, alias: string, value: unknown, sourceTimestam
 /** Let the vehicle-report microtasks run. */
 const flush = () => new Promise((r) => setTimeout(r, 0));
 
-/** Car at `carW`, house importing `importW`, both reporting once a minute, for `minutes`. */
+/**
+ * Car at `carW`, house importing `importW`, for `minutes`: the charger reports
+ * its power at the start of each minute, the main meter the energy of the
+ * minute just past, at its end (as a real meter does).
+ */
 function run(minutes: number, carW: number, importW: number): void {
   for (let i = 0; i < minutes; i++) {
     data("charger", "power", carW);
-    data("grid", "energy", importW / 60);
     now += MIN;
+    data("grid", "energy", importW / 60);
   }
 }
 
@@ -776,6 +780,98 @@ describe("metered charger (spec 193)", () => {
     now += GRACE_MS;
     tracker.tick();
     expect(legrand()[0]).toMatchObject({ attribution: "unattributed" });
+  });
+
+  it("shows no solar at night although the meter reports a minute late (audit A1)", () => {
+    // No PV. The meter sends, one second after each minute, the energy of the
+    // minute just past (car + a 850 W house); the car draws 6.9 kW from a
+    // start in the middle of a window.
+    const start = now + 6 * MIN + 55_000;
+    const stop = start + 38 * MIN;
+    const carWh = (a: number, b: number) =>
+      (6900 * Math.max(0, Math.min(b, stop) - Math.max(a, start))) / 3_600_000;
+    const t0 = now;
+    for (let t = t0 + 1000; t < stop + 40 * MIN; t += 1000) {
+      now = t;
+      if ((t - t0) % 30_000 === 0 || t === start || t === stop) {
+        data("legrand", "power", t >= start && t < stop ? 6900 : 3);
+      }
+      if ((t - 1000 - t0) % MIN === 0) {
+        const m = t - 1000;
+        data("grid", "energy", carWh(m - MIN, m) + 850 / 60);
+        data("legrand", "energy", carWh(m - MIN, m));
+      }
+      if ((t - t0) % 30_000 === 0) tracker.tick();
+    }
+    const [s] = legrand();
+    expect(s.endedAt).not.toBeNull();
+    expect(s.energyWh).toBeCloseTo((6900 * 38) / 60, -1);
+    expect(s.solarWh).toBeLessThan(5);
+  });
+
+  it("shares the import between two sessions on solar (audit A2)", () => {
+    // 1.3 kW and 7 kW, house 0.5 kW, PV 3 kW: the house imports 5.8 kW.
+    data("charger", "vehicle", "charging");
+    for (let i = 0; i < 60; i++) {
+      data("charger", "power", 1300);
+      data("legrand", "power", 7000);
+      tracker.tick();
+      now += MIN;
+      data("grid", "energy", 5800 / 60);
+    }
+    data("charger", "vehicle", "disconnected");
+    meter(31, 0);
+    const [a] = sessions();
+    const [b] = legrand();
+    const grid = a.gridHpWh + a.gridHcWh + b.gridHpWh + b.gridHcWh;
+    expect(grid).toBeLessThan(5800 * 1.03);
+    expect(grid).toBeGreaterThan(5800 * 0.95);
+    expect(a.solarWh + b.solarWh).toBeGreaterThan(2300);
+  });
+
+  it("keeps counting a power-only charger after a restart (audit A9)", () => {
+    eqs.values.set("charger", {}); // no energy meter: power only, reported on change
+    data("charger", "vehicle", "charging");
+    data("charger", "power", 3700);
+    for (let i = 0; i < 10; i++) {
+      now += MIN;
+      data("grid", "energy", 70);
+      tracker.tick();
+    }
+    tracker.stop();
+    tracker = makeTracker();
+    for (let i = 0; i < 10; i++) {
+      now += MIN;
+      data("grid", "energy", 70);
+      tracker.tick();
+    }
+    data("charger", "power", 3700); // keeps the held power alive past 15 min
+    for (let i = 0; i < 50; i++) {
+      now += MIN;
+      data("grid", "energy", 70);
+      tracker.tick();
+    }
+    data("charger", "vehicle", "disconnected");
+    now += 4 * MIN;
+    tracker.tick();
+    // 10 min before the restart, 10 after (held again), 15 more after the
+    // last reading (the hold limit): 35 min at 3.7 kW. Without holding the
+    // reading again at the restart: 25 min.
+    expect(sessions()[0].energyWh).toBeCloseTo((3700 * 35) / 60, -1);
+  });
+
+  it("prices a session whose meter moved without any window (audit A8)", () => {
+    data("charger", "vehicle", "charging");
+    for (let i = 0; i < 30; i++) {
+      data("charger", "power", 0); // a charger whose power reads 0 while it meters
+      data("charger", "energy", 100);
+      now += MIN;
+    }
+    data("charger", "vehicle", "disconnected");
+    const [s] = sessions();
+    expect(s.energyWh).toBe(3000);
+    expect(s.gridHpWh + s.gridHcWh).toBeCloseTo(3000, 6);
+    expect(s.costEur).toBeCloseTo(0.6, 6);
   });
 
   it("shows each car its own session in progress", async () => {

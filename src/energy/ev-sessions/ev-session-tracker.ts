@@ -43,11 +43,26 @@ import {
 import { onBattery, onCharging, onMileage } from "./driving.js";
 import { type EvSessionStore, type SessionRecord, toSession } from "./ev-session-store.js";
 import { monthSummary, whPerBatteryPoint } from "./summary.js";
-import { WindowAccountant, type WindowMeasure, settleWindow } from "./window-accountant.js";
+import { HouseGridLedger } from "./house-grid.js";
+import {
+  type CarWindow,
+  HOLD_LIMIT_MS,
+  WINDOW_S,
+  WindowAccountant,
+  type WindowMeasure,
+  poolImport,
+  settleWindow,
+} from "./window-accountant.js";
 
 export const GRACE_MS = 2 * 3_600_000;
 export const MIN_SESSION_WH = 100;
 const TICK_MS = 30_000;
+/**
+ * Audit A1 — a window is priced once a grid delta covering its end has
+ * arrived, or this long after its end without one (the meter is silent: all
+ * grid, never invented solar).
+ */
+const GRID_WAIT_MS = 3 * 60_000;
 
 const REPORT_ALIASES: ReadonlySet<string> = new Set<ReportAlias>([
   "plugged",
@@ -144,6 +159,12 @@ export class EvSessionTracker {
   private readonly logger: Logger;
   private readonly open = new Map<string, OpenSession>();
   private readonly pending = new Map<string, SessionRecord>();
+  /** The house's import per window, from the main meter's live deltas. */
+  private readonly ledger = new HouseGridLedger();
+  /** Closed car windows waiting for the grid readings that cover them, by start. */
+  private readonly queue = new Map<number, Array<{ record: SessionRecord; window: CarWindow }>>();
+  /** Sessions dropped at close (under 100 Wh): a late window must not save them back. */
+  private readonly dropped = new Set<string>();
   private unsubscribe: (() => void) | null = null;
   private timer: ReturnType<typeof setInterval> | null = null;
   private readonly now: () => number;
@@ -194,7 +215,7 @@ export class EvSessionTracker {
   tick(): void {
     try {
       const now = this.now();
-      for (const s of this.open.values()) this.settle(s, s.acc.advance(now), true);
+      for (const s of this.open.values()) this.enqueue(s.record, s.acc.advance(now));
       // Spec 193 — a metered session ends 30 min after its last active reading,
       // dated at that reading.
       for (const [chargerId, s] of [...this.open]) {
@@ -202,6 +223,7 @@ export class EvSessionTracker {
           this.close(chargerId, now, s.lastActiveMs);
         }
       }
+      this.settleDue(now);
       for (const record of [...this.pending.values()]) {
         if (record.graceUntil !== null && Date.parse(record.graceUntil) <= now) {
           this.decide(record);
@@ -312,6 +334,12 @@ export class EvSessionTracker {
         active: !metered || this.chargerDraws(record.chargerId),
         tail: [],
       });
+      // Audit A9 — a charger that reports its power only on change would
+      // count nothing until its next change: hold its last reading again.
+      const reading = this.chargerPowerReading(record.chargerId);
+      if (reading && now - reading.atMs <= HOLD_LIMIT_MS) {
+        this.open.get(record.chargerId)!.acc.power(now, reading.watts);
+      }
       if (!this.equipmentManager.getById(record.chargerId)) {
         this.close(record.chargerId, now);
         continue;
@@ -390,15 +418,22 @@ export class EvSessionTracker {
     const s = this.open.get(chargerId);
     if (!s) return;
     this.open.delete(chargerId);
-    this.settle(s, s.acc.finish(now), false);
-
     const record = s.record;
+    this.enqueue(record, s.acc.finish(now));
     const endedAt = Math.max(Date.parse(record.startedAt), Math.min(endedAtMs, now));
     record.endedAt = new Date(endedAt).toISOString();
     record.graceUntil = new Date(endedAt + GRACE_MS).toISOString();
     for (const { vehicleId, report } of s.tail) this.foldInto(record, vehicleId, report, endedAt);
 
-    if (toSession(record).energyWh < MIN_SESSION_WH) {
+    const queuedCarWh = this.queuedCarWh(record);
+    const energyWh = record.energyWh > 0 ? record.energyWh : record.estCarWh + queuedCarWh;
+    if (energyWh < MIN_SESSION_WH) {
+      this.dropped.add(record.id);
+      for (const [startS, entries] of this.queue) {
+        const kept = entries.filter((e) => e.record !== record);
+        if (kept.length > 0) this.queue.set(startS, kept);
+        else this.queue.delete(startS);
+      }
       this.store.delete(record.id);
       this.eventBus.emit({
         type: "energy.ev_session.deleted",
@@ -408,8 +443,25 @@ export class EvSessionTracker {
       this.logger.info({ sessionId: record.id }, "EV charge session dropped (under 100 Wh)");
       return;
     }
+    // Audit A8 — the meter moved but no window measured the car (no power and
+    // no window left): price it all grid over the session rather than not at all.
+    if (record.energyWh > 0 && record.estCarWh + queuedCarWh <= 0) {
+      const startS = Math.floor(Date.parse(record.startedAt) / 1000);
+      this.price(
+        record,
+        {
+          startS,
+          lengthS: Math.max(1, Math.round(endedAt / 1000) - startS),
+          carWh: record.energyWh,
+          importWh: null,
+        },
+        this.hasMainMeter(),
+        this.prices(),
+      );
+    }
     if (record.attributionSource !== "manual") this.pending.set(record.id, record);
     this.persist(record);
+    this.settleDue(now);
     this.logger.info(
       { sessionId: record.id, chargerId, energyWh: Math.round(toSession(record).energyWh) },
       "EV charge session closed",
@@ -536,7 +588,9 @@ export class EvSessionTracker {
       // Live ticks only: an aligned historical window says nothing about now.
       if (!eq.enabled || alias !== "energy" || sourceTimestamp !== undefined) return;
       if (typeof value !== "number") return;
-      for (const s of this.open.values()) this.settle(s, s.acc.grid(now, value), true);
+      this.ledger.tick(now, value);
+      for (const s of this.open.values()) this.enqueue(s.record, s.acc.advance(now));
+      this.settleDue(now);
     } else if (eq.type === "electric_vehicle") {
       if (REPORT_ALIASES.has(alias) || alias === ELECTRIC_VEHICLE_ALIASES.mileage) {
         // A car's report arrives as several updates in one burst, `reported_at`
@@ -586,7 +640,8 @@ export class EvSessionTracker {
         }
         open.active = active;
       }
-      this.settle(open, open.acc.power(now, value), true);
+      this.enqueue(open.record, open.acc.power(now, value));
+      this.settleDue(now);
       return;
     }
     const s = this.open.get(chargerId);
@@ -594,7 +649,8 @@ export class EvSessionTracker {
     if (alias === EV_CHARGER_ALIASES.energy) {
       if (!s.hasEnergyMeter || typeof value !== "number") return;
       if (value > 0) s.record.energyWh += value;
-      this.settle(s, s.acc.carEnergy(now, value), true);
+      this.enqueue(s.record, s.acc.carEnergy(now, value));
+      this.settleDue(now);
     } else if (CHARGER_ALIASES.has(alias)) {
       s.acc.chargerReport(now);
     }
@@ -674,29 +730,79 @@ export class EvSessionTracker {
   // Accounting
   // ============================================================
 
-  /** Price closed windows into the session; `save` when it stays open. */
-  private settle(s: OpenSession, windows: WindowMeasure[], save: boolean): void {
-    if (windows.length === 0) return;
-    const hasMainMeter = this.equipmentManager
-      .getAll()
-      .some((e) => e.type === "main_energy_meter" && e.enabled);
-    const prices = this.prices();
-    const r = s.record;
-    for (const w of windows) {
-      const split = this.tariffClassifier.classify(1_000_000, w.startS, w.lengthS);
-      const total = split.hp + split.hc;
-      const settled = settleWindow(w, {
-        hasMainMeter,
-        hcShare: total > 0 ? split.hc / total : 0,
-        prices,
-      });
-      r.estCarWh += settled.carWh;
-      r.estGridHpWh += settled.gridHpWh;
-      r.estGridHcWh += settled.gridHcWh;
-      if (settled.costHpEur !== null) r.estCostHpEur = (r.estCostHpEur ?? 0) + settled.costHpEur;
-      if (settled.costHcEur !== null) r.estCostHcEur = (r.estCostHcEur ?? 0) + settled.costHcEur;
+  private enqueue(record: SessionRecord, windows: CarWindow[]): void {
+    for (const window of windows) {
+      const entries = this.queue.get(window.startS) ?? [];
+      entries.push({ record, window });
+      this.queue.set(window.startS, entries);
     }
-    if (save) this.persist(r);
+  }
+
+  private queuedCarWh(record: SessionRecord): number {
+    let wh = 0;
+    for (const entries of this.queue.values()) {
+      for (const e of entries) if (e.record === record) wh += e.window.carWh;
+    }
+    return wh;
+  }
+
+  /**
+   * Price the windows whose grid readings are in (audit A1), sharing each
+   * window's import between its sessions (audit A2), and save the sessions
+   * that changed.
+   */
+  private settleDue(now: number): void {
+    if (this.queue.size === 0) return;
+    const hasMainMeter = this.hasMainMeter();
+    const prices = this.prices();
+    const covered = this.ledger.coveredUntilMs;
+    const changed = new Set<SessionRecord>();
+    for (const startS of [...this.queue.keys()].sort((a, b) => a - b)) {
+      const endMs = (startS + WINDOW_S) * 1000;
+      const ready =
+        !hasMainMeter || (covered !== null && covered >= endMs) || now >= endMs + GRID_WAIT_MS;
+      if (!ready) break;
+      const entries = this.queue.get(startS)!;
+      this.queue.delete(startS);
+      const imports = poolImport(
+        entries.map((e) => e.window.carWh),
+        hasMainMeter ? this.ledger.importFor(startS) : null,
+      );
+      entries.forEach((e, i) => {
+        this.price(e.record, { ...e.window, importWh: imports[i] }, hasMainMeter, prices);
+        changed.add(e.record);
+      });
+    }
+    const oldest = Math.min(
+      ...this.queue.keys(),
+      Math.floor(now / 1000 / WINDOW_S) * WINDOW_S - WINDOW_S,
+    );
+    this.ledger.prune(oldest);
+    for (const record of changed) if (!this.dropped.has(record.id)) this.persist(record);
+  }
+
+  private price(
+    r: SessionRecord,
+    w: WindowMeasure,
+    hasMainMeter: boolean,
+    prices: TariffPrices | null,
+  ): void {
+    const split = this.tariffClassifier.classify(1_000_000, w.startS, w.lengthS);
+    const total = split.hp + split.hc;
+    const settled = settleWindow(w, {
+      hasMainMeter,
+      hcShare: total > 0 ? split.hc / total : 0,
+      prices,
+    });
+    r.estCarWh += settled.carWh;
+    r.estGridHpWh += settled.gridHpWh;
+    r.estGridHcWh += settled.gridHcWh;
+    if (settled.costHpEur !== null) r.estCostHpEur = (r.estCostHpEur ?? 0) + settled.costHpEur;
+    if (settled.costHcEur !== null) r.estCostHcEur = (r.estCostHcEur ?? 0) + settled.costHcEur;
+  }
+
+  private hasMainMeter(): boolean {
+    return this.equipmentManager.getAll().some((e) => e.type === "main_energy_meter" && e.enabled);
   }
 
   private prices(): TariffPrices | null {
@@ -801,6 +907,17 @@ export class EvSessionTracker {
     const changed = parseTimestamp(binding?.lastChanged ?? null);
     if (changed === null) return startMs;
     return Math.min(now, Math.max(startMs, changed));
+  }
+
+  private chargerPowerReading(chargerId: string): { watts: number; atMs: number } | null {
+    const binding = this.equipmentManager
+      .getDataBindingsWithValues(chargerId)
+      .find((b) => b.alias === EV_CHARGER_ALIASES.power);
+    const atMs = parseTimestamp(binding?.lastUpdated ?? null);
+    if (typeof binding?.value !== "number" || !Number.isFinite(binding.value) || atMs === null) {
+      return null;
+    }
+    return { watts: binding.value, atMs };
   }
 
   private chargerDraws(chargerId: string): boolean {
