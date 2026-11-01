@@ -11,6 +11,29 @@ Cette page résume toutes les versions publiées, de la plus récente à la plus
 
 ---
 
+## 1.79.x : Distinguer deux voitures, et le coût de recharge audité
+
+### v1.79.0 — 2026-11-01 { #v1-79-0 }
+
+Deux voitures électriques qui chargent en même temps sur deux bornes sont maintenant distinguées par ce qui est mesuré, et un audit complet du calcul du coût de recharge a été corrigé de bout en bout.
+
+- Nouveauté (énergie) : **distinguer deux voitures par leurs données de charge** (spec 194, #1109). Avec n'importe quelle voiture sur n'importe quelle borne, les recharges voient les relevés des deux voitures. Sowel compare maintenant la puissance à laquelle chaque voiture dit charger avec celle de chaque borne (une nouvelle donnée optionnelle `charge_power` sur le véhicule électrique, que le plugin Renault remplit à partir de sa prochaine version). Il compare ensuite l'énergie prise par la batterie de chaque voiture avec celle de chaque recharge. La liste affiche « auto · puissance » ou « auto · énergie ». Quand rien ne sépare nettement les voitures, la recharge reste « à attribuer ». La voiture habituelle ne sert plus qu'à une borne qui charge toujours la même voiture.
+- Correctif (énergie) : **audit du coût de recharge** (#1107, #1108).
+  - Plus de « solaire » la nuit : la mesure du compteur général arrive environ une minute en retard, et ce décalage était compté comme du solaire.
+  - Deux recharges en même temps se partagent l'import réseau de la maison au lieu de le compter chacune en entier.
+  - Un silence du compteur compte en réseau.
+  - Une voiture qui charge ailleurs ne prend plus la recharge d'un invité à la maison.
+  - Une supposition s'affiche comme telle, sur les deux bornes.
+  - Deux voitures ne sont jamais inversées en étant présentées comme sûres.
+  - La batterie est mesurée de juste avant à juste après la charge, ce qui corrige le coût aux 100 km.
+  - Une recharge attribuée à la main suit la batterie de sa voiture.
+  - Un redémarrage garde la puissance de la borne.
+  - Un compteur de borne monté à l'envers est signalé dans les journaux.
+  - La recharge affiche le nom actuel de la borne.
+- Correctif (énergie) : **le relevé « en charge » d'une voiture fait juste avant l'ouverture de la recharge compte** (#1105, #1106). C'est le cas d'une borne mesurée par un compteur d'énergie, qui ouvre la recharge à son premier 500 W.
+
+---
+
 ## 1.78.x : Une borne qui ne remonte rien, et deux voitures à la fois
 
 ### v1.78.0 — 2026-11-01 { #v1-78-0 }

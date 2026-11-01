@@ -342,7 +342,7 @@ Specs are grouped by theme and annotated with status:
 | 191 | EV charge sessions and cost per vehicle                                 | ✅     | Charge sessions on `ev_charger`: 5-min grid/solar split (car served last by the sun), frozen HP/HC cost, attribution to an `electric_vehicle` with manual override, monthly summary and measured cost per 100 km. Shipped in v1.76.0.         |
 | 192 | Charge in progress on the vehicle page                                  | ✅     | Vehicle page card for the EV charge session in progress (charging, paused with reason, ended awaiting attribution, confirm button); `GET /api/v1/ev-sessions/current`; amends spec 191, issue #1100. Shipped in v1.77.0.                      |
 | 193 | Metered charger and usual vehicle                                       | ✅     | EV charge sessions on an `ev_charger` that only meters power (an energy meter): sessions from power, usual vehicle tie-break, one charger per car at a time; amends specs 182, 191, 192. Shipped in v1.78.0.                                  |
-| 194 | Telling the cars apart from their charge data                           | ✅     | EV session attribution by measured signals: optional `charge_power` on `electric_vehicle` compared with the charger's power, then energy vs battery rise; generic, no maker logic; amends specs 183, 191, 193. Unreleased.                    |
+| 194 | Telling the cars apart from their charge data                           | ✅     | EV session attribution by measured signals: optional `charge_power` on `electric_vehicle` compared with the charger's power, then energy vs battery rise; generic, no maker logic; amends specs 183, 191, 193. Shipped in v1.79.0.            |
 
 ---
 

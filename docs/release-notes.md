@@ -11,6 +11,29 @@ This page summarises every published version, newest first. For the full diff be
 
 ---
 
+## 1.79.x: Telling two cars apart, and charging costs audited
+
+### v1.79.0 — 2026-11-01 { #v1-79-0 }
+
+Two electric cars charging at once on two chargers are now told apart by what is measured, and a full audit of the charging-cost calculation has been fixed throughout.
+
+- Feat (energy): **telling two cars apart from their charge data** (spec 194, #1109). With either car on either charger, the sessions see both cars' reports. Sowel now compares the power each car says it charges at with each charger's power (a new optional `charge_power` on the electric vehicle, which the Renault plugin fills from its next version). It then compares the energy each car's battery took with each session's energy. The list reads « auto · power » or « auto · energy ». When nothing separates the cars clearly, the session stays « to attribute ». The usual vehicle is now only for a charger that always serves the same car.
+- Fix (energy): **charging-cost audit** (#1107, #1108).
+  - No more « solar » at night: the main meter's reading arrives about a minute late, and that lag used to read as solar.
+  - Two sessions at the same time share the house's grid import instead of each counting all of it.
+  - A meter silence counts as grid.
+  - A car charging elsewhere no longer takes a guest's session at home.
+  - A guess is shown as one, on both chargers.
+  - Two cars are never swapped and presented as sure.
+  - The battery is measured from just before the charge to just after it, which corrects the cost per 100 km.
+  - A session attributed by hand keeps following its car's battery.
+  - A restart keeps the charger's power.
+  - A charger meter mounted the wrong way is logged.
+  - A session shows the charger's current name.
+- Fix (energy): **a car's « charging » reported just before the session opens counts** (#1105, #1106). This happens on a charger measured by an energy meter, which opens the session on its first 500 W.
+
+---
+
 ## 1.78.x: A charger that reports nothing, and two cars at once
 
 ### v1.78.0 — 2026-11-01 { #v1-78-0 }
