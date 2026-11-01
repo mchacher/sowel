@@ -17,6 +17,14 @@ import type { EvSessionAttributionReason } from "../../shared/types.js";
 /** A battery rise smaller than this is jitter, not a charge. */
 export const BATTERY_RISE_POINTS = 2;
 
+/**
+ * Issue #1105 — how long before the session's start a car's « plugged » or
+ * « charging » still counts. The car dates its report from the real start;
+ * Sowel opens the session on the charger's own reading (a metered charger's
+ * first 500 W), which can come later.
+ */
+export const START_SLACK_MS = 15 * 60_000;
+
 export interface VehicleEvidence {
   vehicleId: string;
   pluggedSeen: boolean;
@@ -48,9 +56,20 @@ export interface VehicleReport {
   receivedAtMs: number;
 }
 
+/** Evidence FOR a car: it may come slightly before the session (issue #1105). */
+function isPositive(report: VehicleReport): boolean {
+  return (
+    (report.alias === "plugged" && report.value === true) ||
+    (report.alias === "charging_state" && report.value === "charging")
+  );
+}
+
 /**
  * Fold one report into the evidence; reports made outside the session are
- * ignored. Returns the same object when the report adds nothing.
+ * ignored, except a « plugged » or « charging » made up to START_SLACK_MS
+ * before it. Being away and the battery keep the strict window: a car that
+ * comes home and plugs in within the slack is not seen away. Returns the same
+ * object when the report adds nothing.
  */
 export function foldReport(
   evidence: VehicleEvidence,
@@ -58,7 +77,8 @@ export function foldReport(
   session: { startMs: number; endMs: number | null },
 ): VehicleEvidence {
   const at = report.reportedAtMs ?? report.receivedAtMs;
-  if (at < session.startMs) return evidence;
+  const from = isPositive(report) ? session.startMs - START_SLACK_MS : session.startMs;
+  if (at < from) return evidence;
   if (session.endMs !== null && at > session.endMs) return evidence;
 
   const next = { ...evidence };

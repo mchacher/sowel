@@ -153,8 +153,8 @@ describe("attribute with a usual vehicle (spec 193)", () => {
 });
 
 describe("foldReport", () => {
-  it("ignores a report the car made before the session started", () => {
-    const ev = fold("a", [["charging_state", "charging", START - 60_000]]);
+  it("ignores a report the car made well before the session started", () => {
+    const ev = fold("a", [["charging_state", "charging", START - 2 * H]]);
     expect(ev.chargingSeen).toBe(false);
   });
 
@@ -199,5 +199,24 @@ describe("foldReport", () => {
       { startMs: START, endMs: END },
     );
     expect(again).toBe(ev);
+  });
+
+  it("counts a charging or plugged report made just before the start (#1105)", () => {
+    const ev = fold("a", [
+      ["charging_state", "charging", START - 3 * 60_000],
+      ["plugged", true, START - 10 * 60_000],
+    ]);
+    expect(ev).toMatchObject({ chargingSeen: true, pluggedSeen: true });
+    expect(fold("a", [["charging_state", "charging", START - 20 * 60_000]]).chargingSeen).toBe(
+      false,
+    );
+  });
+
+  it("keeps the strict start for being away and the battery (#1105)", () => {
+    const ev = fold("a", [
+      ["at_home", false, START - 5 * 60_000],
+      ["battery_level", 30, START - 5 * 60_000],
+    ]);
+    expect(ev).toMatchObject({ awaySeen: false, firstBattery: null });
   });
 });

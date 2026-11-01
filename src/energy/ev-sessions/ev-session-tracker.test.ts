@@ -670,14 +670,41 @@ describe("metered charger (spec 193)", () => {
   });
 
   it("does not take a car from another charger on an only-vehicle guess", async () => {
-    // One car known, charging on the other charger; then a guest starts on
-    // the metered one, which the car's reports never reach.
+    // One car known, charging on the other charger; then, past the start
+    // slack (#1105), a guest starts on the metered one, which the car's
+    // reports never reach.
     eqs.equipments = eqs.equipments.filter((e) => e.id !== "rafale");
     data("charger", "vehicle", "charging");
     data("megane", "charging_state", "charging");
     await flush();
+    for (let i = 0; i < 20; i++) {
+      data("charger", "power", 2000);
+      now += MIN;
+    }
     meter(2, 3000, () => data("charger", "power", 2000));
     expect(tracker.currentForVehicle("megane").map((x) => x.chargerId)).toContain("charger");
+  });
+
+  it("counts a charging report the car made just before the session opened (#1105)", async () => {
+    // The car dates its report at 3 min before the first 500 W reading, and
+    // its plugin never publishes it again.
+    eqs.set("megane", "reported_at", new Date(now - 3 * MIN).toISOString());
+    eqs.set("megane", "charging_state", "charging");
+    meter(60, 3000);
+    meter(31, 0);
+    now += GRACE_MS;
+    tracker.tick();
+    expect(legrand()[0]).toMatchObject({ vehicleId: "megane", attributionReason: "single-match" });
+  });
+
+  it("does not count a charging state reported long before the session opened", async () => {
+    eqs.set("megane", "reported_at", new Date(now - 3 * H).toISOString(), now - 3 * H);
+    eqs.set("megane", "charging_state", "charging", now - 3 * H);
+    meter(60, 3000);
+    meter(31, 0);
+    now += GRACE_MS;
+    tracker.tick();
+    expect(legrand()[0]).toMatchObject({ attribution: "unattributed" });
   });
 
   it("shows each car its own session in progress", async () => {

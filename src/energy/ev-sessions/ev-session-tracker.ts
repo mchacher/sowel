@@ -374,6 +374,7 @@ export class EvSessionTracker {
       active: true,
       tail: [],
     });
+    this.seedEvidence(record);
     this.persist(record);
     this.logger.info({ sessionId: record.id, chargerId }, "EV charge session opened");
   }
@@ -382,6 +383,38 @@ export class EvSessionTracker {
    * `now` ends the accounting; `endedAtMs` dates the session (spec 193: a
    * metered session ends at its last active reading, noticed 30 min later).
    */
+  /**
+   * Issue #1105 — what each car already says when the session opens: a
+   * « charging » or « plugged » it reported just before counts (within the
+   * start slack of `foldReport`), even if its plugin never publishes it again.
+   */
+  private seedEvidence(record: SessionRecord): void {
+    const window = { startMs: Date.parse(record.startedAt), endMs: null };
+    for (const vehicleId of this.candidateVehicleIds()) {
+      const bindings = this.equipmentManager.getDataBindingsWithValues(vehicleId);
+      let evidence = emptyEvidence(vehicleId);
+      for (const alias of [
+        ELECTRIC_VEHICLE_ALIASES.chargingState,
+        ELECTRIC_VEHICLE_ALIASES.plugged,
+      ] as const) {
+        const binding = bindings.find((b) => b.alias === alias);
+        const receivedAtMs = parseTimestamp(binding?.lastUpdated ?? null);
+        if (!binding || receivedAtMs === null) continue;
+        evidence = foldReport(
+          evidence,
+          {
+            alias,
+            value: binding.value,
+            reportedAtMs: this.vehicleReportedAt(vehicleId, alias),
+            receivedAtMs,
+          },
+          window,
+        );
+      }
+      if (evidence.chargingSeen || evidence.pluggedSeen) record.evidence.push(evidence);
+    }
+  }
+
   private close(chargerId: string, now: number, endedAtMs: number = now): void {
     const s = this.open.get(chargerId);
     if (!s) return;

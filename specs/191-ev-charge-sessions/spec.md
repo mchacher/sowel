@@ -87,6 +87,8 @@ While a session is open and for a **grace period of 2 hours after it closes** (t
 - battery rise (`battery_level` at least 2 points above the first value seen in the session),
 - away seen (`at_home = false`).
 
+> **Amended by issue #1105 (2026-11-01).** A `plugged = true` or `charging_state = charging` made up to 15 minutes before the session start counts too, and each car's current `plugged` / `charging_state` is folded in when a session opens. Being away and the battery keep the strict window. Reason: the car dates its report from the real start, and Sowel may open the session later (a metered charger's first 500 W reading, spec 193).
+
 A candidate **matches** when it was seen charging or its battery rose, and was never seen away. A car's own unplug report is no evidence against it: the car stamps its unplug when it happens, often before the charger reports it, so the report falls inside the session of the very car that charged. Being seen plugged is not required: a car whose plug state did not change during the session reports nothing about it.
 
 At the end of the grace period:
