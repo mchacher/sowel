@@ -11,6 +11,17 @@ This page summarises every published version, newest first. For the full diff be
 
 ---
 
+## 1.77.x: The charge in progress, on the car
+
+### v1.77.0 — 2026-11-01 { #v1-77-0 }
+
+A car's page now shows the charge in progress, instead of waiting two hours after the unplug.
+
+- Feat (energy): **the charge in progress on the vehicle page** (spec 192, #1101). Above the month, a card follows the session that is under way on the car Sowel would give it to. While the car charges, it shows the live power, the kWh and the cost so far. During a pause, it shows since when and why: the charger is switched off, the car has reached its charge limit, or the charger is waiting for the car. After the unplug, it shows when the session will be attributed, with a « That's … » button to attribute it now. A session still counts in the month only once it is attributed.
+- Plugins and recipes: **`renault` 0.2.1** (#1099). A car plugged in with its charging flap open no longer reads « Unplugged ».
+
+---
+
 ## 1.76.x: Charging cost per car, doors, and orders that report back
 
 ### v1.76.0 — 2026-11-01 { #v1-76-0 }

@@ -340,7 +340,7 @@ Specs are grouped by theme and annotated with status:
 | 189 | Shared access: delete ended external accesses                           | ✅     | Amends spec 181 R10: housekeeping deletes an external (booking-platform) access seven days after it ended or was revoked, with a journal line and a tombstone; manual accesses are never deleted.                                             |
 | 190 | Door equipment type                                                     | ✅     | New `door` EquipmentType, sibling of `shutter` (spec 115 pattern) reusing `shutter_move`/`shutter_position`, zone `doorsOpen`/`doorsTotal`; the edit form may switch a type within shutter/awning/door. Shipped in v1.76.0.                   |
 | 191 | EV charge sessions and cost per vehicle                                 | ✅     | Charge sessions on `ev_charger`: 5-min grid/solar split (car served last by the sun), frozen HP/HC cost, attribution to an `electric_vehicle` with manual override, monthly summary and measured cost per 100 km. Shipped in v1.76.0.         |
-| 192 | Charge in progress on the vehicle page                                  | ✅     | Vehicle page card for the EV charge session in progress (charging, paused with reason, ended awaiting attribution, confirm button); `GET /api/v1/ev-sessions/current`; amends spec 191, issue #1100. Unreleased.                              |
+| 192 | Charge in progress on the vehicle page                                  | ✅     | Vehicle page card for the EV charge session in progress (charging, paused with reason, ended awaiting attribution, confirm button); `GET /api/v1/ev-sessions/current`; amends spec 191, issue #1100. Shipped in v1.77.0.                      |
 
 ---
 
