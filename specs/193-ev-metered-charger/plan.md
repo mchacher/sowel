@@ -2,12 +2,12 @@
 
 ## Tasks
 
-- [ ] Contract constants and `isMeteredChargerDevice`; migration 040; types
-- [ ] `attribute()` usual-vehicle tie-break
-- [ ] Tracker: metered open / close / restore, `resolve()` with FR4, `listOverlapping`
-- [ ] `usualVehicleId` in the equipment manager and route; cleared on vehicle removal
-- [ ] UI: metered devices in the device selector, usual-vehicle select, reason label, live state without vehicle state
-- [ ] Docs EN/FR, data model, specs index
+- [x] Contract constants and `isMeteredChargerDevice`; migration 040; types
+- [x] `attribute()` usual-vehicle tie-break
+- [x] Tracker: metered open / close / restore, `resolve()` with FR4, `listOverlapping`
+- [x] `usualVehicleId` in the equipment manager and route; cleared on vehicle removal
+- [x] UI: metered devices in the device selector, usual-vehicle select, reason label, live state without vehicle state
+- [x] Docs EN/FR, data model, specs index
 
 ## Test Plan
 

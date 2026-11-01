@@ -643,6 +643,43 @@ describe("metered charger (spec 193)", () => {
     expect(legrand()[0]).toMatchObject({ vehicleId: "megane" });
   });
 
+  it("does not hold against a car what it reports after its charge ended", async () => {
+    meter(5, 3000);
+    data("megane", "charging_state", "charging");
+    await flush();
+    meter(55, 3000);
+    meter(5, 0);
+    data("megane", "at_home", false); // it leaves 5 min after its charge
+    await flush();
+    meter(26, 0);
+    now += GRACE_MS;
+    tracker.tick();
+    expect(legrand()[0]).toMatchObject({ vehicleId: "megane", attributionReason: "single-match" });
+  });
+
+  it("folds what a car reported during a pause when the charge resumes", async () => {
+    meter(30, 3000);
+    meter(10, 0);
+    data("megane", "charging_state", "charging");
+    await flush();
+    meter(30, 3000);
+    meter(31, 0);
+    now += GRACE_MS;
+    tracker.tick();
+    expect(legrand()[0]).toMatchObject({ vehicleId: "megane" });
+  });
+
+  it("does not take a car from another charger on an only-vehicle guess", async () => {
+    // One car known, charging on the other charger; then a guest starts on
+    // the metered one, which the car's reports never reach.
+    eqs.equipments = eqs.equipments.filter((e) => e.id !== "rafale");
+    data("charger", "vehicle", "charging");
+    data("megane", "charging_state", "charging");
+    await flush();
+    meter(2, 3000, () => data("charger", "power", 2000));
+    expect(tracker.currentForVehicle("megane").map((x) => x.chargerId)).toContain("charger");
+  });
+
   it("shows each car its own session in progress", async () => {
     setUsual("legrand", "megane");
     data("charger", "vehicle", "charging");

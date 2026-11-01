@@ -81,6 +81,7 @@ describe("liveState (spec 192)", () => {
     powerW: null,
     battery: 43,
     chargeLimit: 80,
+    metered: false,
     ...over,
   });
 
@@ -124,11 +125,15 @@ describe("liveState (spec 192)", () => {
   });
 
   it("reads a metered charger by its power (spec 193)", () => {
-    expect(liveState(open, live({ vehicle: null, chargerOn: null, powerW: 3000 }))).toEqual({
+    expect(
+      liveState(open, live({ vehicle: null, chargerOn: null, powerW: 3000, metered: true })),
+    ).toEqual({
       kind: "charging",
       powerW: 3000,
     });
-    expect(liveState(open, live({ vehicle: null, chargerOn: null, powerW: 4 }))).toEqual({
+    expect(
+      liveState(open, live({ vehicle: null, chargerOn: null, powerW: 4, metered: true })),
+    ).toEqual({
       kind: "paused",
       sinceIso: null,
       reason: null,
@@ -142,7 +147,7 @@ describe("liveState (spec 192)", () => {
 
   it("reads charging without a power when the charger is unknown", () => {
     expect(liveState(open, null)).toEqual({ kind: "charging", powerW: null });
-    expect(liveState(open, live({ vehicle: null, powerW: null }))).toEqual({
+    expect(liveState(open, live({ vehicle: null, powerW: 1300 }))).toEqual({
       kind: "charging",
       powerW: null,
     });

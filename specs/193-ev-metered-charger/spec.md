@@ -1,6 +1,6 @@
 # Spec 193 — Metered charger and usual vehicle
 
-- **Status**: Draft — needs agreed with the maintainer on 2026-11-01
+- **Status**: Implemented — needs agreed with the maintainer on 2026-11-01; production check pending
 - **Date**: 2026-11-01
 - **Amends**: spec 191 (EV charge sessions), spec 192 (the charge in progress on the vehicle page), spec 182 (EV charger)
 
@@ -52,8 +52,8 @@ For a metered charger only:
 
 - **Open**: the first `power` reading of 500 W or more, with no session open on that charger.
 - **Close**: the tracker tick sees no reading of 500 W or more for 30 minutes. `endedAt` is the time of the last reading of 500 W or more, not the time of that tick. The grace period and the attribution window start from that time.
-- Energy, windows, cost, minimum 100 Wh and evidence: as spec 191.
-- **Restart**: an open session is kept. Its last active time is now when the current power is 500 W or more, else the time the power binding last changed, never before `startedAt`. A charger at 500 W or more with no session opens one.
+- Energy, windows, cost, minimum 100 Wh and evidence: as spec 191. The car reports received while the power is under 500 W are held: folded at close against `endedAt`, or into the session if it resumes. A car that leaves just after its charge is never seen away during it.
+- **Restart**: an open session is kept. Its last active time is now when the current power is 500 W or more, else the time the power binding last changed, never before `startedAt`. That is an approximation (a later change of standby noise moves it), and the held reports are lost. A charger at 500 W or more with no session opens one.
 
 ### FR3 — Usual vehicle
 
@@ -70,6 +70,8 @@ When the tracker attributes a session (`decide()`, and `currentForVehicle()` for
 - the vehicle of that session, set by hand or decided; or
 - for a session not decided yet, the result of `attribute()` on its own evidence and usual vehicle, without this rule. This avoids a cycle.
 
+A car given only as "the only vehicle Sowel knows" counts as given by nobody: that rule rests on no evidence (a guest's car would do the same).
+
 ### FR5 — The live card on a metered charger (spec 192)
 
 Without a vehicle state, the card reads the power:
@@ -79,12 +81,12 @@ Without a vehicle state, the card reads the power:
 
 ## Acceptance Criteria
 
-- [ ] An energy meter device (power, energy) can be chosen as a charger and created; its page shows power and energy without controls.
-- [ ] On a metered charger: power at 500 W or more opens a session. Pauses under 30 minutes stay in it. 30 minutes under 500 W closes it at the last active reading.
-- [ ] A restart keeps an open metered session and closes it at the right time.
-- [ ] With both cars charging, the session goes to the charger's usual vehicle (reason `usual-vehicle`); without one, it stays to attribute.
-- [ ] Car A on a charger that reports its plug state and car B on a metered charger whose usual vehicle is B, the same night, both reporting charging: the metered session goes to B, the other to A.
-- [ ] A charger with a vehicle state behaves exactly as before.
+- [ ] (production) An energy meter device (power, energy) can be chosen as a charger and created; its page shows power and energy without controls.
+- [x] On a metered charger: power at 500 W or more opens a session. Pauses under 30 minutes stay in it. 30 minutes under 500 W closes it at the last active reading.
+- [x] A restart keeps an open metered session and closes it at the right time.
+- [x] With both cars charging, the session goes to the charger's usual vehicle (reason `usual-vehicle`); without one, it stays to attribute.
+- [x] Car A on a charger that reports its plug state and car B on a metered charger whose usual vehicle is B, the same night, both reporting charging: the metered session goes to B, the other to A.
+- [x] A charger with a vehicle state behaves exactly as before.
 - [ ] (production) A night charge on a metered charger is attributed to its car, and its energy matches the meter's.
 
 ## Edge Cases

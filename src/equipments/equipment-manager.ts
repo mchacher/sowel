@@ -676,6 +676,10 @@ export class EquipmentManager {
       usualVehicleId,
     });
 
+    // Spec 193 — a vehicle that stops being one is nobody's usual vehicle.
+    const leftVehicle = existing.type === "electric_vehicle" && newType !== "electric_vehicle";
+    const chargers = leftVehicle ? this.releaseUsualVehicle(id) : [];
+
     const equipment = this.getById(id)!;
 
     // If the equipment type changed, re-infer category overrides on all order bindings
@@ -687,7 +691,24 @@ export class EquipmentManager {
 
     this.logger.info({ equipmentId: id, name: equipment.name }, "Equipment updated");
     this.eventBus.emit({ type: "equipment.updated", equipment });
+    this.emitUpdated(chargers);
     return equipment;
+  }
+
+  /** Spec 193 — clear a vehicle from the chargers naming it; their ids. */
+  private releaseUsualVehicle(vehicleId: string): string[] {
+    const chargers = (this.stmts.chargersWithUsualVehicle.all(vehicleId) as { id: string }[]).map(
+      (r) => r.id,
+    );
+    if (chargers.length > 0) this.stmts.clearUsualVehicle.run(vehicleId);
+    return chargers;
+  }
+
+  private emitUpdated(ids: string[]): void {
+    for (const id of ids) {
+      const equipment = this.getById(id);
+      if (equipment) this.eventBus.emit({ type: "equipment.updated", equipment });
+    }
   }
 
   /**
@@ -763,12 +784,9 @@ export class EquipmentManager {
       throw new EquipmentError("Equipment not found", 404);
     }
 
-    // Spec 193 — the chargers naming a removed vehicle lose it.
-    const chargers = (this.stmts.chargersWithUsualVehicle.all(id) as { id: string }[]).map(
-      (r) => r.id,
-    );
     this.stmts.deleteEquipment.run(id);
-    if (chargers.length > 0) this.stmts.clearUsualVehicle.run(id);
+    // Spec 193 — the chargers naming a removed vehicle lose it.
+    const chargers = this.releaseUsualVehicle(id);
     this.logger.info({ equipmentId: id, name: existing.name }, "Equipment deleted");
     this.eventBus.emit({
       type: "equipment.removed",
@@ -776,10 +794,7 @@ export class EquipmentManager {
       equipmentName: existing.name,
       zoneId: existing.zoneId,
     });
-    for (const chargerId of chargers) {
-      const charger = this.getById(chargerId);
-      if (charger) this.eventBus.emit({ type: "equipment.updated", equipment: charger });
-    }
+    this.emitUpdated(chargers);
   }
 
   countByZone(zoneId: string): number {

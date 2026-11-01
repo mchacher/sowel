@@ -721,6 +721,11 @@ describe("EquipmentManager", () => {
 
       const other = manager.create({ name: "Car 2", type: "electric_vehicle", zoneId: zone.id });
       manager.update(charger.id, { usualVehicleId: other.id });
+      manager.update(other.id, { type: "switch" });
+      expect(manager.getById(charger.id)!.usualVehicleId).toBeUndefined();
+
+      const third = manager.create({ name: "Car 3", type: "electric_vehicle", zoneId: zone.id });
+      manager.update(charger.id, { usualVehicleId: third.id });
       expect(manager.update(charger.id, { type: "switch" })!.usualVehicleId).toBeUndefined();
     });
   });

@@ -31,6 +31,7 @@ function liveInputs(
     powerW: c.power.watts,
     battery: v.batteryLevel,
     chargeLimit: v.chargeLimit,
+    metered: vehicleBinding === undefined,
   };
 }
 

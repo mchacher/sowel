@@ -102,8 +102,8 @@ const CORE_ORDER_ALIASES: ReadonlySet<string> = new Set(
 /**
  * Identity. A device is an EV charger when it reports a vehicle state or
  * accepts a charging current — categories a plugin declares, never a vendor
- * key. A plain relay or a metered plug is not offered (it can still be bound
- * by hand).
+ * key. A plain relay or a metered plug is not a charger: it is offered after
+ * the chargers as the meter of a metered charger (spec 193).
  */
 export const EV_CHARGER_IDENTITY_DATA_CATEGORY = EV_VEHICLE_STATE_CATEGORY;
 export const EV_CHARGER_IDENTITY_ORDER_CATEGORY = SET_EV_CHARGE_CURRENT_CATEGORY;

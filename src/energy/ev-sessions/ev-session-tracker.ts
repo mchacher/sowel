@@ -127,6 +127,16 @@ interface OpenSession {
   metered: boolean;
   /** Metered only: the last reading at the threshold or above, epoch ms. */
   lastActiveMs: number;
+  /** Metered only: the last power reading was at the threshold or above. */
+  active: boolean;
+  /**
+   * Metered only: the car reports received while the power is under the
+   * threshold. The session may have ended at its last active reading (it is
+   * only known 30 min later), so they are folded at close against that end,
+   * or into the session if it resumes: a car that leaves right after its
+   * charge must not be seen away during its own session.
+   */
+  tail: Array<{ vehicleId: string; report: Parameters<typeof foldReport>[1] }>;
 }
 
 export class EvSessionTracker {
@@ -298,6 +308,8 @@ export class EvSessionTracker {
         hasEnergyMeter: this.chargerHasEnergyMeter(record.chargerId),
         metered,
         lastActiveMs: metered ? this.meteredLastActive(record, now) : now,
+        active: !metered || this.chargerDraws(record.chargerId),
+        tail: [],
       });
       if (!this.equipmentManager.getById(record.chargerId)) {
         this.close(record.chargerId, now);
@@ -319,10 +331,7 @@ export class EvSessionTracker {
     for (const eq of this.equipmentManager.getAll()) {
       if (eq.type !== "ev_charger" || !eq.enabled || this.open.has(eq.id)) continue;
       if (this.chargerIsMetered(eq.id)) {
-        const power = this.chargerNumber(eq.id, EV_CHARGER_ALIASES.power);
-        if (power !== null && power >= METERED_CHARGER_THRESHOLD_W) {
-          this.openSession(eq.id, eq.name, now);
-        }
+        if (this.chargerDraws(eq.id)) this.openSession(eq.id, eq.name, now);
         continue;
       }
       const { state } = this.chargerVehicleState(eq.id);
@@ -362,6 +371,8 @@ export class EvSessionTracker {
       hasEnergyMeter: this.chargerHasEnergyMeter(chargerId),
       metered: this.chargerIsMetered(chargerId),
       lastActiveMs: now,
+      active: true,
+      tail: [],
     });
     this.persist(record);
     this.logger.info({ sessionId: record.id, chargerId }, "EV charge session opened");
@@ -381,6 +392,7 @@ export class EvSessionTracker {
     const endedAt = Math.max(Date.parse(record.startedAt), Math.min(endedAtMs, now));
     record.endedAt = new Date(endedAt).toISOString();
     record.graceUntil = new Date(endedAt + GRACE_MS).toISOString();
+    for (const { vehicleId, report } of s.tail) this.foldInto(record, vehicleId, report, endedAt);
 
     if (toSession(record).energyWh < MIN_SESSION_WH) {
       this.store.delete(record.id);
@@ -491,15 +503,23 @@ export class EvSessionTracker {
       }
       const open = this.open.get(chargerId);
       if (!open) return;
-      if (open.metered && active) open.lastActiveMs = now;
+      if (open.metered) {
+        if (active) {
+          open.lastActiveMs = now;
+          // It resumed: what the cars said meanwhile belongs to the session.
+          for (const { vehicleId, report } of open.tail) {
+            this.foldInto(open.record, vehicleId, report, null);
+          }
+          open.tail = [];
+        }
+        open.active = active;
+      }
       this.settle(open, open.acc.power(now, value), true);
       return;
     }
     const s = this.open.get(chargerId);
     if (!s) return;
-    if (alias === EV_CHARGER_ALIASES.power) {
-      return;
-    } else if (alias === EV_CHARGER_ALIASES.energy) {
+    if (alias === EV_CHARGER_ALIASES.energy) {
       if (!s.hasEnergyMeter || typeof value !== "number") return;
       if (value > 0) s.record.energyWh += value;
       this.settle(s, s.acc.carEnergy(now, value), true);
@@ -512,7 +532,10 @@ export class EvSessionTracker {
     if (REPORT_ALIASES.has(alias)) {
       const reportedAtMs = this.vehicleReportedAt(vehicleId, alias);
       const report = { alias: alias as ReportAlias, value, reportedAtMs, receivedAtMs };
-      for (const s of this.open.values()) this.foldInto(s.record, vehicleId, report, null);
+      for (const s of this.open.values()) {
+        if (s.metered && !s.active) s.tail.push({ vehicleId, report });
+        else this.foldInto(s.record, vehicleId, report, null);
+      }
       for (const record of this.pending.values()) {
         this.foldInto(record, vehicleId, report, Date.parse(record.endedAt!));
       }
@@ -631,14 +654,22 @@ export class EvSessionTracker {
     });
   }
 
-  /** The car a session gives, without P4 (no cycle): set, or its provisional result. */
+  /**
+   * The car a session gives, without P4 (no cycle): by hand, as its single
+   * match or as its usual vehicle, set or provisional. "The only vehicle"
+   * rests on no evidence (a guest's car would do the same): it gives none.
+   */
   private givenBy(record: SessionRecord): string | null {
-    if (record.attribution === "vehicle") return record.vehicleId;
+    if (record.attribution === "vehicle") {
+      return record.attributionSource === "manual" || record.attributionReason !== "only-vehicle"
+        ? record.vehicleId
+        : null;
+    }
     if (record.attribution !== "pending" || record.attributionSource === "manual") return null;
     const result = attribute(record.evidence, this.candidateVehicleIds(), {
       usualVehicleId: this.usualVehicleOf(record.chargerId),
     });
-    return result.state === "vehicle" ? result.vehicleId : null;
+    return result.state === "vehicle" && result.reason !== "only-vehicle" ? result.vehicleId : null;
   }
 
   /** Cars given by sessions on other chargers whose time range meets this one. */
@@ -677,7 +708,9 @@ export class EvSessionTracker {
 
   /**
    * After a restart: now when the charger still draws, else when its power
-   * last changed (the drop), never before the session started.
+   * last changed, never before the session started. That is the drop, or a
+   * later change of standby noise: an approximation, the true last active
+   * reading is not stored (spec 193 edge cases).
    */
   private meteredLastActive(record: SessionRecord, now: number): number {
     const binding = this.equipmentManager
@@ -692,13 +725,11 @@ export class EvSessionTracker {
     return Math.min(now, Math.max(startMs, changed));
   }
 
-  private chargerNumber(chargerId: string, alias: string): number | null {
+  private chargerDraws(chargerId: string): boolean {
     const binding = this.equipmentManager
       .getDataBindingsWithValues(chargerId)
-      .find((b) => b.alias === alias);
-    return typeof binding?.value === "number" && Number.isFinite(binding.value)
-      ? binding.value
-      : null;
+      .find((b) => b.alias === EV_CHARGER_ALIASES.power);
+    return typeof binding?.value === "number" && binding.value >= METERED_CHARGER_THRESHOLD_W;
   }
 
   /** Every vehicle a session may go to (spec 191 P9): the enabled ones. */

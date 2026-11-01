@@ -92,6 +92,8 @@ export interface LiveInputs {
   powerW: number | null;
   battery: number | null;
   chargeLimit: number | null;
+  /** Spec 193 — the charger has no vehicle state at all: its power tells. */
+  metered: boolean;
 }
 
 /** Spec 192 — what the charge in progress is doing now. */
@@ -112,8 +114,9 @@ export function toIso(value: string | null): string | null {
 
 /**
  * From the session and the live data of its charger and of the car: charging,
- * paused (with the reason the data tells), or ended. Without the charger's
- * vehicle state it reads as charging, without a power.
+ * paused (with the reason the data tells), or ended. A metered charger reads
+ * by its power; a charger whose vehicle state is unreadable reads as
+ * charging, without a power.
  */
 export function liveState(
   session: Pick<EvChargeSession, "endedAt">,
@@ -122,7 +125,7 @@ export function liveState(
   if (session.endedAt !== null) return { kind: "ended" };
   if (live?.vehicle === "disconnected") return { kind: "unplugged" };
   // Spec 193 — a metered charger has no vehicle state: its power tells.
-  if (live !== null && live.vehicle === null && live.powerW !== null) {
+  if (live !== null && live.metered && live.powerW !== null) {
     return live.powerW >= METERED_CHARGER_THRESHOLD_W
       ? { kind: "charging", powerW: live.powerW }
       : { kind: "paused", sinceIso: null, reason: null, battery: live.battery };
