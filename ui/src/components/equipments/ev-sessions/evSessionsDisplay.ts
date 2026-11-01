@@ -74,3 +74,67 @@ export function dayLabel(iso: string, locale: string): string {
 export function timeLabel(iso: string, locale: string): string {
   return new Date(iso).toLocaleTimeString(locale, { hour: "2-digit", minute: "2-digit" });
 }
+
+/** The live values a session card reads: a binding's alias, value and last change. */
+export interface LiveBinding {
+  alias: string;
+  value: unknown;
+  lastChanged: string | null;
+}
+
+export type PauseReason = "charger-off" | "charge-limit" | "waiting-vehicle";
+
+/** Spec 192 — what the charge in progress is doing now. */
+export type LiveState =
+  | { kind: "charging"; powerW: number | null }
+  | { kind: "paused"; sinceIso: string | null; reason: PauseReason; battery: number | null }
+  | { kind: "ended" };
+
+/** SQLite timestamps use a space (`2026-11-01 14:06:05Z`); ISO uses a `T`. */
+export function toIso(value: string | null): string | null {
+  if (!value) return null;
+  const d = new Date(value.includes("T") ? value : value.replace(" ", "T"));
+  return Number.isNaN(d.getTime()) ? null : d.toISOString();
+}
+
+function binding(bindings: LiveBinding[] | undefined, alias: string): LiveBinding | undefined {
+  return bindings?.find((b) => b.alias === alias);
+}
+
+function num(b: LiveBinding | undefined): number | null {
+  return typeof b?.value === "number" && Number.isFinite(b.value) ? b.value : null;
+}
+
+/**
+ * From the session and the live data of its charger and of the car: charging,
+ * paused (with the reason the data tells), or ended. Without the charger's
+ * vehicle state it reads as charging, without a power.
+ */
+export function liveState(
+  session: Pick<EvChargeSession, "endedAt">,
+  charger: LiveBinding[] | undefined,
+  vehicle: LiveBinding[] | undefined,
+): LiveState {
+  if (session.endedAt !== null) return { kind: "ended" };
+  const state = binding(charger, "vehicle");
+  if (state?.value !== "connected") {
+    return {
+      kind: "charging",
+      powerW: state?.value === "charging" ? num(binding(charger, "power")) : null,
+    };
+  }
+  const sinceIso = toIso(state.lastChanged);
+  const battery = num(binding(vehicle, "battery_level"));
+  const limit = num(binding(vehicle, "charge_limit"));
+  let reason: PauseReason = "waiting-vehicle";
+  if (binding(charger, "state")?.value === false) reason = "charger-off";
+  else if (battery !== null && limit !== null && battery >= limit) reason = "charge-limit";
+  return { kind: "paused", sinceIso, reason, battery };
+}
+
+export function kw(w: number, locale: string): string {
+  return new Intl.NumberFormat(locale, {
+    minimumFractionDigits: 1,
+    maximumFractionDigits: 1,
+  }).format(w / 1000);
+}

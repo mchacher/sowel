@@ -1,6 +1,14 @@
 import { describe, expect, it } from "vitest";
 import type { EvChargeSession } from "../../../types";
-import { energyShares, monthLabel, sessionChip, shiftMonth } from "./evSessionsDisplay";
+import {
+  energyShares,
+  liveState,
+  type LiveBinding,
+  monthLabel,
+  sessionChip,
+  shiftMonth,
+  toIso,
+} from "./evSessionsDisplay";
 
 function session(over: Partial<EvChargeSession>): EvChargeSession {
   return {
@@ -61,5 +69,58 @@ describe("evSessionsDisplay (spec 191)", () => {
     expect(
       sessionChip(session({ attribution: "vehicle", vehicleName: "Megane", vehicleDeleted: true })),
     ).toEqual({ kind: "vehicle", name: "Megane", deleted: true });
+  });
+});
+
+describe("liveState (spec 192)", () => {
+  const open = { endedAt: null };
+  const b = (alias: string, value: unknown, lastChanged: string | null = null): LiveBinding => ({
+    alias,
+    value,
+    lastChanged,
+  });
+  const car = [b("battery_level", 43), b("charge_limit", 80)];
+
+  it("reads charging with the charger's power", () => {
+    const charger = [b("vehicle", "charging"), b("power", 1300), b("state", true)];
+    expect(liveState(open, charger, car)).toEqual({ kind: "charging", powerW: 1300 });
+  });
+
+  it("reads a switched-off charger as the pause reason, since the last change", () => {
+    const charger = [b("vehicle", "connected", "2026-11-01 14:06:05Z"), b("state", false)];
+    expect(liveState(open, charger, car)).toEqual({
+      kind: "paused",
+      sinceIso: "2026-11-01T14:06:05.000Z",
+      reason: "charger-off",
+      battery: 43,
+    });
+  });
+
+  it("reads the car at its charge limit", () => {
+    const charger = [b("vehicle", "connected"), b("state", true)];
+    const full = [b("battery_level", 80), b("charge_limit", 80)];
+    expect(liveState(open, charger, full)).toMatchObject({ reason: "charge-limit", battery: 80 });
+  });
+
+  it("waits for the car otherwise, or when its limit is unknown", () => {
+    const charger = [b("vehicle", "connected"), b("state", true)];
+    expect(liveState(open, charger, car)).toMatchObject({ reason: "waiting-vehicle" });
+    expect(liveState(open, charger, [b("battery_level", 90)])).toMatchObject({
+      reason: "waiting-vehicle",
+    });
+  });
+
+  it("reads an ended session as ended", () => {
+    expect(liveState({ endedAt: "2026-11-01T15:06:00Z" }, [], car)).toEqual({ kind: "ended" });
+  });
+
+  it("reads charging without a power when the charger is unknown", () => {
+    expect(liveState(open, undefined, car)).toEqual({ kind: "charging", powerW: null });
+  });
+
+  it("parses SQLite and ISO timestamps", () => {
+    expect(toIso("2026-11-01 14:06:05Z")).toBe("2026-11-01T14:06:05.000Z");
+    expect(toIso("2026-11-01T14:06:05.000Z")).toBe("2026-11-01T14:06:05.000Z");
+    expect(toIso(null)).toBeNull();
   });
 });

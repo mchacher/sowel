@@ -452,6 +452,78 @@ describe("attribution", () => {
   });
 });
 
+describe("session in progress on the vehicle page (spec 192)", () => {
+  const current = (v: string) => tracker.currentForVehicle(v).map((s) => s.id);
+
+  it("goes to the one car that matches, and to no other", async () => {
+    data("charger", "vehicle", "charging");
+    run(10, 2000, 2000);
+    expect(current("megane")).toEqual([]);
+    data("megane", "charging_state", "charging");
+    await flush();
+    const id = sessions()[0].id;
+    expect(current("megane")).toEqual([id]);
+    expect(current("rafale")).toEqual([]);
+  });
+
+  it("goes to no car when both match", async () => {
+    data("charger", "vehicle", "charging");
+    data("rafale", "charging_state", "charging");
+    data("megane", "charging_state", "charging");
+    await flush();
+    expect(current("rafale")).toEqual([]);
+    expect(current("megane")).toEqual([]);
+  });
+
+  it("goes to the only car Sowel knows, without any report", () => {
+    eqs.equipments = eqs.equipments.filter((e) => e.id !== "rafale");
+    data("charger", "vehicle", "charging");
+    run(10, 2000, 2000);
+    expect(current("megane")).toEqual([sessions()[0].id]);
+  });
+
+  it("stays through the grace period, then leaves once decided", async () => {
+    data("charger", "vehicle", "charging");
+    data("megane", "charging_state", "charging");
+    await flush();
+    run(30, 2000, 2000);
+    data("charger", "vehicle", "disconnected");
+    const [s] = tracker.currentForVehicle("megane");
+    expect(s.endedAt).not.toBeNull();
+    expect(s.graceUntil).not.toBeNull();
+    now += GRACE_MS;
+    tracker.tick();
+    expect(current("megane")).toEqual([]);
+    expect(tracker.listByVehicle("megane", "2026-11")!.map((x) => x.id)).toEqual([s.id]);
+  });
+
+  it("follows a choice made by hand while open, until the unplug", async () => {
+    data("charger", "vehicle", "charging");
+    data("megane", "charging_state", "charging");
+    await flush();
+    run(10, 2000, 2000);
+    const id = sessions()[0].id;
+    tracker.setAttribution(id, { target: "vehicle", vehicleId: "rafale" });
+    expect(current("rafale")).toEqual([id]);
+    expect(current("megane")).toEqual([]);
+    run(10, 2000, 2000);
+    data("charger", "vehicle", "disconnected");
+    expect(current("rafale")).toEqual([]);
+  });
+
+  it("emits the session when a car report changes its evidence", async () => {
+    data("charger", "vehicle", "connected");
+    events = [];
+    data("megane", "charging_state", "charging");
+    await flush();
+    expect(events.map((e) => e.type)).toContain("energy.ev_session.updated");
+    events = [];
+    data("megane", "charging_state", "charging"); // same evidence again
+    await flush();
+    expect(events).toEqual([]);
+  });
+});
+
 describe("driving and the monthly summary", () => {
   it("measures legs and gives the cost per 100 km from home price × consumption", async () => {
     // Learn 600 Wh per point from one home session: 18 kWh for +30 points.

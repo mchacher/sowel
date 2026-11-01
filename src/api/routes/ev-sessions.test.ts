@@ -16,6 +16,7 @@ describe("EV session routes (spec 191)", () => {
     listByCharger: ReturnType<typeof vi.fn>;
     listByVehicle: ReturnType<typeof vi.fn>;
     summary: ReturnType<typeof vi.fn>;
+    currentForVehicle: ReturnType<typeof vi.fn>;
     setAttribution: ReturnType<typeof vi.fn>;
   };
 
@@ -24,6 +25,7 @@ describe("EV session routes (spec 191)", () => {
       listByCharger: vi.fn(() => [{ id: "s1" }]),
       listByVehicle: vi.fn(() => [{ id: "s2" }]),
       summary: vi.fn(() => ({ vehicleId: "v1", month: "2026-11" })),
+      currentForVehicle: vi.fn(() => [{ id: "s3" }]),
       setAttribution: vi.fn((id: string) => ({ id, attribution: "vehicle" })),
     };
     app = Fastify({ logger: false, ajv: validationAjvOptions });
@@ -68,6 +70,14 @@ describe("EV session routes (spec 191)", () => {
     const res = await app.inject({ url: "/api/v1/ev-sessions/summary?vehicleId=v1&month=2026-11" });
     expect(res.statusCode).toBe(200);
     expect(tracker.summary).toHaveBeenCalledWith("v1", "2026-11");
+  });
+
+  it("serves a vehicle's sessions in progress (spec 192)", async () => {
+    const res = await app.inject({ url: "/api/v1/ev-sessions/current?vehicleId=v1" });
+    expect(res.statusCode).toBe(200);
+    expect(res.json()).toEqual({ sessions: [{ id: "s3" }] });
+    expect(tracker.currentForVehicle).toHaveBeenCalledWith("v1");
+    expect((await app.inject({ url: "/api/v1/ev-sessions/current" })).statusCode).toBe(400);
   });
 
   it("sets a session to a vehicle, to other, back to attribute", async () => {

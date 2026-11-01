@@ -16,6 +16,15 @@ export async function getEvSessions(
   return res.sessions;
 }
 
+/** Spec 192 — the sessions in progress that would go to this vehicle. */
+export async function getEvCurrentSessions(vehicleId: string): Promise<EvChargeSession[]> {
+  const params = new URLSearchParams({ vehicleId });
+  const res = await fetchJSON<{ sessions: EvChargeSession[] }>(
+    `${API_BASE}/ev-sessions/current?${params.toString()}`,
+  );
+  return res.sessions;
+}
+
 export async function getEvVehicleSummary(
   vehicleId: string,
   month: string,
