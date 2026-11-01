@@ -20,7 +20,6 @@ describe("electric vehicle contract (spec 183)", () => {
       "at_home",
       "mileage",
       "charge_limit",
-      "charge_power",
     ]);
     expect(orders).toEqual(["charge_limit", "wake", "charge_start", "refresh"]);
   });

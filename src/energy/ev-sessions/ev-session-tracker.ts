@@ -104,6 +104,8 @@ const RELEVANT_ALIASES: ReadonlySet<string> = new Set([
 const CAR_POWER_MIN_W = 100;
 /** Spec 194 — how far back a charger's power readings are kept, to compare late reports. */
 const POWER_LOG_MS = 3 * 3_600_000;
+/** Spec 194 — a car's report is compared with the charger's readings this close to it. */
+const POWER_NEAR_MS = 2 * 60_000;
 
 /** SQLite timestamps use a space (`2026-11-01 10:49:35Z`); ISO uses a `T`. */
 function parseTimestamp(value: unknown): number | null {
@@ -374,6 +376,9 @@ export class EvSessionTracker {
       const reading = this.chargerPowerReading(record.chargerId);
       if (reading && now - reading.atMs <= HOLD_LIMIT_MS) {
         this.open.get(record.chargerId)!.acc.resume(now, reading.watts, reading.atMs);
+        this.open
+          .get(record.chargerId)!
+          .powerLog.push({ atMs: reading.atMs, watts: reading.watts });
       }
       if (!this.equipmentManager.getById(record.chargerId)) {
         this.close(record.chargerId, now);
@@ -780,23 +785,48 @@ export class EvSessionTracker {
     const atMs =
       this.vehicleReportedAt(vehicleId, ELECTRIC_VEHICLE_ALIASES.chargePower) ?? receivedAtMs;
     for (const s of this.open.values()) {
-      if (s.metered && !s.active) continue;
       if (atMs < Date.parse(s.record.startedAt)) continue;
-      let chargerW: number | null = null;
-      for (const p of s.powerLog) {
-        if (p.atMs > atMs) break;
-        chargerW = p.watts;
-      }
-      if (chargerW === null) continue;
+      const near = this.chargerPowersNear(s, atMs);
+      if (near === null) continue;
       const record = s.record;
       const index = record.evidence.findIndex((e) => e.vehicleId === vehicleId);
       const before = index >= 0 ? record.evidence[index] : emptyEvidence(vehicleId);
       if (before.powerSampledAtMs === atMs) continue;
-      const after = { ...foldPower(before, value, chargerW), powerSampledAtMs: atMs };
+      // Agrees when any reading around the report does (a ramp, a surplus
+      // step, the car's clock): disagrees only when none does.
+      const sampled = near.map((w) => foldPower(before, value, w));
+      const after = {
+        ...(sampled.find((e) => (e.powerAgreeing ?? 0) > (before.powerAgreeing ?? 0)) ??
+          sampled[0]),
+        powerSampledAtMs: atMs,
+      };
       if (index >= 0) record.evidence[index] = after;
       else record.evidence.push(after);
       this.persist(record);
     }
+  }
+
+  /**
+   * The charger's readings within POWER_NEAR_MS of `atMs` (and the one held at
+   * its start), when it was drawing all along: none while it was under 500 W
+   * — a pause, a charge starting or stopping — where a car's report says
+   * nothing about where it charges.
+   */
+  private chargerPowersNear(s: OpenSession, atMs: number): number[] | null {
+    let held: number | null = null;
+    const near: number[] = [];
+    for (const p of s.powerLog) {
+      if (p.atMs < atMs - POWER_NEAR_MS) {
+        held = p.watts;
+        continue;
+      }
+      if (p.atMs > atMs + POWER_NEAR_MS) break;
+      near.push(p.watts);
+    }
+    const all = held === null ? near : [held, ...near];
+    if (all.length === 0) return null;
+    if (all.some((w) => w < METERED_CHARGER_THRESHOLD_W)) return null;
+    return all;
   }
 
   private foldInto(
@@ -983,6 +1013,13 @@ export class EvSessionTracker {
    */
   private resolve(record: SessionRecord): AttributionResult {
     const taken = this.takenElsewhere(record);
+    // Spec 194 review — this session and another claim the same car on their
+    // own evidence: it cannot be on both, and nothing says which. Both stay to
+    // attribute rather than each falling to the other car.
+    const own = this.givenBy(record);
+    if (own !== null && taken.has(own.vehicleId) && own.reason !== null) {
+      return { state: "unattributed", reason: "several-matches" };
+    }
     const result = attribute(record.evidence, this.candidateVehicleIds(), {
       usualVehicleId: this.usualVehicleOf(record.chargerId),
       excluded: new Set(taken.keys()),
@@ -1067,6 +1104,10 @@ export class EvSessionTracker {
     whPerPoint: Map<string, number>;
   } {
     const whPerPoint = new Map<string, number>();
+    // Only a tie needs them: skip the queries for the common single match.
+    if (record.evidence.filter(matches).length < 2) {
+      return { energyWh: 0, whPerPoint };
+    }
     for (const e of record.evidence) {
       const learned = whPerBatteryPoint(
         this.store

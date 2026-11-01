@@ -1271,6 +1271,85 @@ describe("telling cars apart by measures (spec 194)", () => {
     );
   });
 
+  const evidenceOf = (sessionId: string, car: string) =>
+    store.get(sessionId)!.evidence.find((e) => e.vehicleId === car);
+
+  it("never hands both sessions to the car without power data on two chargers alike", async () => {
+    // Both chargers at 7 kW; the Megane (on the Legrand) reports its power,
+    // the Rafale (on the other) does not.
+    data("charger", "vehicle", "charging");
+    for (let i = 0; i < 60; i++) {
+      data("charger", "power", 7000);
+      data("legrand", "power", 7000);
+      if (i === 2) {
+        await carReport("megane", { charging_state: "charging" });
+        await carReport("rafale", { charging_state: "charging" });
+      }
+      if (i % 15 === 5) await carReport("megane", { charge_power: 6900 });
+      tracker.tick();
+      now += MIN;
+      data("grid", "energy", 14000 / 60);
+    }
+    data("charger", "vehicle", "disconnected");
+    for (let i = 0; i < 31; i++) {
+      data("legrand", "power", 0);
+      tracker.tick();
+      now += MIN;
+    }
+    now += GRACE_MS;
+    tracker.tick();
+    expect(sessions()[0].vehicleId).not.toBe("megane");
+    expect(legrand()[0].vehicleId).not.toBe("rafale");
+  });
+
+  it("takes no power sample at a charge's start or stop", async () => {
+    // A guest's charger runs from minute 30 to 88; the car reports 7 kW just
+    // before the first 7 kW reading and just after the last.
+    data("charger", "vehicle", "connected");
+    for (let i = 0; i < 100; i++) {
+      const drawing = i >= 30 && i < 88;
+      data("charger", "power", drawing ? 7000 : 0);
+      if (i === 29) await carReport("rafale", { charge_power: 7000 });
+      if (i === 89) await carReport("rafale", { charge_power: 6800 });
+      now += MIN;
+    }
+    expect(evidenceOf(sessions()[0].id, "rafale")?.powerSamples ?? 0).toBe(0);
+  });
+
+  it("counts a report repeated with the same time as one sample", async () => {
+    data("charger", "vehicle", "charging");
+    for (let i = 0; i < 20; i++) {
+      data("charger", "power", 3000);
+      if (i === 10) {
+        await carReport("rafale", { charge_power: 3100 });
+        data("rafale", "charge_power", 3100); // published again, same report
+        await flush();
+      }
+      now += MIN;
+    }
+    expect(evidenceOf(sessions()[0].id, "rafale")?.powerSamples).toBe(1);
+  });
+
+  it("takes no sample from a late report dated in a metered pause", async () => {
+    for (let i = 0; i < 20; i++) {
+      data("legrand", "power", 7000);
+      now += MIN;
+    }
+    const inPause = now + 5 * MIN;
+    for (let i = 0; i < 20; i++) {
+      data("legrand", "power", 0);
+      now += MIN;
+    }
+    for (let i = 0; i < 5; i++) {
+      data("legrand", "power", 7000);
+      now += MIN;
+    }
+    data("megane", "reported_at", new Date(inPause).toISOString());
+    data("megane", "charge_power", 7000);
+    await flush();
+    expect(evidenceOf(legrand()[0].id, "megane")?.powerSamples ?? 0).toBe(0);
+  });
+
   it("leaves two cars at once to attribute without power or energy data", async () => {
     await bothAtOnce(async (i) => {
       if (i === 2) {

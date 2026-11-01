@@ -286,8 +286,13 @@ export function attribute(
   if (matching.length > 1) {
     // Spec 194 — measured signals first: the one car whose own power agrees
     // with the charger, then the one car whose battery rise fits the energy.
+    // Only when every other car has its own samples and they do not agree: a
+    // car that reports no power could be the one on this charger too.
     const byPower = matching.filter(powerAgrees);
-    if (byPower.length === 1) {
+    const othersDisagree = matching.every(
+      (e) => byPower.includes(e) || ((e.powerSamples ?? 0) >= 1 && !powerAgrees(e)),
+    );
+    if (byPower.length === 1 && othersDisagree) {
       return { state: "vehicle", vehicleId: byPower[0].vehicleId, reason: "power-match" };
     }
     const byEnergy = energyFit(matching, context.energyWh, context.whPerPoint);

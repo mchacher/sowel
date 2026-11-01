@@ -111,7 +111,9 @@ export const ELECTRIC_VEHICLE_CORE: readonly ElectricVehicleCoreEntry[] = [
   { alias: ELECTRIC_VEHICLE_ALIASES.wake, data: false, order: true },
   { alias: ELECTRIC_VEHICLE_ALIASES.chargeStart, data: false, order: true },
   { alias: ELECTRIC_VEHICLE_ALIASES.refresh, data: false, order: true },
-  { alias: ELECTRIC_VEHICLE_ALIASES.chargePower, data: true, order: false },
+  // `charge_power` (spec 194) binds under its contract alias but is left out
+  // of this list: the card has no place of its own for it, so it shows with
+  // the extras.
 ];
 
 const CORE_DATA_ALIASES: ReadonlySet<string> = new Set(

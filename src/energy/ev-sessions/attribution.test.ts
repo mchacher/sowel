@@ -291,13 +291,21 @@ describe("telling cars apart by measures (spec 194)", () => {
     expect(e).toMatchObject({ powerSamples: 3, powerAgreeing: 2 });
   });
 
-  it("gives the session to the one car whose power agrees", () => {
+  it("gives the session to the one car whose power agrees, the other's not agreeing", () => {
     const a = charging("a", { powerSamples: 2, powerAgreeing: 2 });
-    const b = charging("b");
+    const b = charging("b", { powerSamples: 1, powerAgreeing: 0 });
     expect(attribute([a, b], ["a", "b"])).toEqual({
       state: "vehicle",
       vehicleId: "a",
       reason: "power-match",
+    });
+  });
+
+  it("does not let a car without power data lose to one that agrees (review)", () => {
+    // Two chargers at the same power: the car reporting none may be this one.
+    const a = charging("a", { powerSamples: 2, powerAgreeing: 2 });
+    expect(attribute([a, charging("b")], ["a", "b"])).toMatchObject({
+      reason: "several-matches",
     });
   });
 

@@ -24,14 +24,15 @@ Two electric cars, two chargers, and either car on either charger. When both cha
 
 ### FR2 — Power signal
 
-While a session is open and drawing, each `charge_power` report of a car (above 100 W, timed by the car's `reported_at` like its other reports) is compared with the charger's power at that time (its last reading at or before it). It **agrees** when the two are within 30 % or 700 W of each other.
+While a session is open, each `charge_power` report of a car (above 100 W, timed by the car's `reported_at` like its other reports) is compared with the charger's readings within 2 minutes of it (and the one held at their start). No sample when any of them is under 500 W: a pause, a charge starting or stopping says nothing about where the car charges. It **agrees** when any of those readings is within 30 % or 700 W of the car's power (a ramp, a surplus step, the car's clock), and disagrees when none is. A report repeated with the same time is one sample.
 
 - A car with at least two power samples on a session, fewer than 30 % of them agreeing, **disagrees**: it is no candidate for that session (P3).
-- When several cars match a session, and exactly one of them agrees (at least one sample, 70 % or more agreeing), it gets the session: reason `power-match`.
+- When several cars match a session, exactly one of them agrees (at least one sample, 70 % or more agreeing), and every other one has its own samples and does not agree, it gets the session: reason `power-match`. A car without power data could be the one on this charger: it never loses to one that agrees.
+- When this session and another one claim the same car on their own evidence, both stay to attribute (it cannot be on both, nothing says which).
 
 ### FR3 — Energy signal
 
-When several cars still match and the power signal did not decide: for each matching car with a learned energy per battery point (spec 191) and a battery rise of at least 2 points on the session, the expected energy is rise × energy per point. If exactly one car's expected energy is within 25 % of the session's energy and every other matching car's is more than 50 % off, it gets the session: reason `energy-match`.
+When several cars still match and the power signal did not decide: for each matching car with a learned energy per battery point (spec 191; learned only from sessions attributed by hand, as a single match, by power or as the only vehicle — never from a guess or from this signal itself) and a battery rise of at least 2 points on the session, the expected energy is rise × energy per point. If exactly one car's expected energy is within 25 % of the session's energy and every other matching car's is more than 50 % off, it gets the session: reason `energy-match`.
 
 ### FR4 — Order
 
