@@ -30,6 +30,27 @@ import { METERING_CATEGORIES } from "./constants.js";
 export interface CandidateData {
   key: string;
   category: DataCategory;
+  type?: DataType;
+  enumValues?: string[] | null;
+}
+
+/** Words only a door's end-state reading speaks; never commands (spec 190). */
+const DOOR_END_STATE_WORDS = new Set(["CLOSED", "OPENING", "CLOSING", "FAULT"]);
+
+/**
+ * Spec 190 — whether a reading is a door's end state (OPEN / CLOSED / OPENING /
+ * CLOSING / FAULT). Its enum speaks one of the words a command never uses; or,
+ * when it declares no enum, it carries the move order's own key (the mirror
+ * spec 141 reads).
+ */
+export function isDoorEndStateData(data: CandidateData, moveOrderKeys: readonly string[]): boolean {
+  if (data.category === "shutter_position") return false;
+  if (data.enumValues && data.enumValues.length > 0) {
+    return data.enumValues.some(
+      (v) => typeof v === "string" && DOOR_END_STATE_WORDS.has(v.toUpperCase()),
+    );
+  }
+  return moveOrderKeys.includes(data.key);
 }
 
 /** Structural subset of a device_order row this module needs. */
@@ -72,6 +93,8 @@ export const CANDIDATE_BASED_TYPES: ReadonlySet<EquipmentType> = new Set<Equipme
   "water_heater",
   "shutter",
   "awning",
+  // Spec 190 — a door binds like a shutter.
+  "door",
   "solar_panel",
   // Spec 150 — gate joins the candidate-based types so an on/off relay
   // (Zigbee dry-contact like the SONOFF MINI-ZBD) is offered as a gate
@@ -260,6 +283,7 @@ export function computeBindingCandidates(
 
     case "pool_cover":
     case "awning":
+    case "door":
     case "shutter": {
       // Group orders by shutter index (e.g. shutter_state + shutter_position).
       // This key-name convention (Tasmota-style: shutter_state/shutterN_state)
@@ -301,6 +325,18 @@ export function computeBindingCandidates(
           .map((o) => o.key);
         if (orderKeys.length > 0) {
           byGroup.set("1", { dataKeys, orderKeys });
+        }
+      }
+
+      // Spec 190 — a door also binds its end-state word, which no shutter key
+      // convention names. Only on a single-channel device: with several
+      // channels nothing says which one the word belongs to.
+      if (equipmentType === "door" && byGroup.size === 1) {
+        const entry = [...byGroup.values()][0];
+        for (const d of deviceData) {
+          if (!entry.dataKeys.includes(d.key) && isDoorEndStateData(d, entry.orderKeys)) {
+            entry.dataKeys.push(d.key);
+          }
         }
       }
 

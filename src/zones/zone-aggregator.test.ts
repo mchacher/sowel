@@ -113,6 +113,8 @@ describe("ZoneAggregator", () => {
         shuttersOpen: 0,
         shuttersTotal: 0,
         averageShutterPosition: null,
+        doorsOpen: 0,
+        doorsTotal: 0,
         waterValvesOpen: 0,
         waterValvesTotal: 0,
         waterFlowTotal: null,
@@ -621,6 +623,72 @@ describe("ZoneAggregator", () => {
       expect(data?.waterValvesTotal).toBe(0);
       expect(data?.waterValvesOpen).toBe(0);
       expect(data?.waterFlowTotal).toBeNull();
+    });
+
+    // Spec 190 — doors are counted apart from shutters.
+    describe("doors (spec 190)", () => {
+      function seedDoor(
+        zoneId: string,
+        keys: { key: string; type: string; category: string; value: string }[],
+      ) {
+        const dev = seedDevice(db, { name: `Door-${crypto.randomUUID()}`, dataKeys: keys });
+        const eq = equipmentManager.create({ name: "Porte", type: "door", zoneId });
+        keys.forEach((k, i) => equipmentManager.addDataBinding(eq.id, dev.dataIds[i], k.key));
+        return eq;
+      }
+      const word = (v: string) => ({
+        key: "state",
+        type: "enum",
+        category: "generic",
+        value: JSON.stringify(v),
+      });
+      const position = (v: number) => ({
+        key: "position",
+        type: "number",
+        category: "shutter_position",
+        value: String(v),
+      });
+
+      it("counts a closed and an open door", () => {
+        const zone = zoneManager.create({ name: "Poulailler" });
+        seedDoor(zone.id, [word("CLOSED")]);
+        seedDoor(zone.id, [word("OPENING")]);
+        aggregator.computeAll();
+        const data = aggregator.getByZoneId(zone.id);
+        expect(data?.doorsTotal).toBe(2);
+        expect(data?.doorsOpen).toBe(1);
+      });
+
+      it("keeps a door's position out of the shutter counts", () => {
+        const zone = zoneManager.create({ name: "Garage" });
+        seedDoor(zone.id, [position(100)]);
+        aggregator.computeAll();
+        const data = aggregator.getByZoneId(zone.id);
+        expect(data?.doorsOpen).toBe(1);
+        expect(data?.shuttersTotal).toBe(0);
+        expect(data?.shuttersOpen).toBe(0);
+        expect(data?.averageShutterPosition).toBeNull();
+      });
+
+      it("counts a door with no state in the total only", () => {
+        const zone = zoneManager.create({ name: "Cellier" });
+        seedDoor(zone.id, [
+          { key: "state", type: "enum", category: "generic", value: JSON.stringify("UNKNOWN") },
+        ]);
+        aggregator.computeAll();
+        const data = aggregator.getByZoneId(zone.id);
+        expect(data?.doorsTotal).toBe(1);
+        expect(data?.doorsOpen).toBe(0);
+      });
+
+      it("counts a child zone's door in the parent", () => {
+        const parent = zoneManager.create({ name: "Extérieur" });
+        const child = zoneManager.create({ name: "Poulailler", parentId: parent.id });
+        seedDoor(child.id, [word("OPEN")]);
+        aggregator.computeAll();
+        expect(aggregator.getByZoneId(parent.id)?.doorsOpen).toBe(1);
+        expect(aggregator.getByZoneId(parent.id)?.doorsTotal).toBe(1);
+      });
     });
 
     it("counts lights on and total from light_state category", () => {

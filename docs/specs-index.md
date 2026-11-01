@@ -337,6 +337,7 @@ Specs are grouped by theme and annotated with status:
 | 186 | Rain gauge tile                                                         | ✅     | A rain-only `weather` equipment shows today's and 24 h rain on its tile, with 7/30-day totals and a histogram in its sheet; phase 2 keeps hourly rain a year in `sowel-rain-hourly`. Shipped in v1.74.0.                                      |
 | 187 | Shared access: days of the week                                         | ✅     | A time window of a shared access may name its days (« every Friday 18:00–22:00 »); no days means every day, so nothing is migrated. The editor folds the days; the visitor page names the weekday of the next opening.                        |
 | 189 | Shared access: delete ended external accesses                           | ✅     | Amends spec 181 R10: housekeeping deletes an external (booking-platform) access seven days after it ended or was revoked, with a journal line and a tombstone; manual accesses are never deleted.                                             |
+| 190 | Door equipment type                                                     | ✅     | New `door` EquipmentType, sibling of `shutter` (spec 115 pattern) reusing `shutter_move`/`shutter_position`, zone `doorsOpen`/`doorsTotal`; the edit form may switch a type within shutter/awning/door. Unreleased.                           |
 
 ---
 

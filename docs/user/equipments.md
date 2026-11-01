@@ -20,7 +20,7 @@ Go to **Administration > Equipments** and click **Add Equipment**.
 | Description | No       | A note for yourself                                                    |
 
 !!! info "Type cannot be changed after creation"
-Choose the type carefully -- it determines which devices are compatible and how the equipment is displayed.
+Choose the type carefully -- it determines which devices are compatible and how the equipment is displayed. The one exception: a shutter, an awning and a door can be switched into one another from the equipment's **Edit** form, since they bind the same way (see [Door](#access)).
 
 ### Step 2: Select devices
 
@@ -89,6 +89,17 @@ A water heater (and a switch) can also carry a dedicated **solar** on/off channe
 You can choose a specific icon for gates on the dashboard: standard gate, sliding gate, or garage door.
 
 A gate can be driven by any on/off relay — a Zigbee dry-contact module (e.g. SONOFF MINI-ZBD), a LoRa relay channel, or a Somfy RTS remote — and the command button triggers it as a momentary action. Configure the pulse behavior (inching / auto-off) on the device itself. Bind a door contact sensor (e.g. SONOFF SNZB-04P) to the same equipment to get the open/closed state; without one the state shows as unknown.
+
+| Type     | Controls                                                 | Expected data                                                                   |
+| -------- | -------------------------------------------------------- | ------------------------------------------------------------------------------- |
+| **Door** | Open / Stop / Close + state pill, slider with a position | end state (open, closed, opening, closing, fault) and/or position (0% = closed) |
+
+A **door** is a motorised door that takes explicit Open / Close / Stop orders and reports where it is: a chicken-coop door with limit switches, a garage door driven by its own motor protocol. It binds like a shutter, but it is not one: it has its own « Doors » group in the zone view, its own zone count (« doors 1/2 »), and no « close all shutters » command ever reaches it. A garage door driven by a single impulse on a dry contact stays a **gate**.
+
+The pill reads the door's own word first (Open, Closed, Moving, Fault), and its position when it reports no word. In a zone count, a door is open unless it is proven closed: moving or in fault counts as open, an unknown state does not.
+
+!!! tip "Turning a shutter into a door"
+A shutter, an awning and a door can be switched into one another from the equipment's **Edit** form: the type selector offers those three. The equipment keeps its bindings, history, recipes and dashboard tiles. For every other type the selector stays locked. A recipe whose slot only accepts shutters keeps running, but its picker no longer offers the equipment the next time you edit it.
 
 ### Sensors
 

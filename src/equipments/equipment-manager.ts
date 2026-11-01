@@ -68,6 +68,7 @@ const VALID_EQUIPMENT_TYPES: Set<string> = new Set([
   "light_color",
   "shutter",
   "awning",
+  "door",
   "switch",
   "sensor",
   "button",

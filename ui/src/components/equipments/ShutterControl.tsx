@@ -3,6 +3,7 @@ import { useTranslation } from "react-i18next";
 import { ChevronUp, ChevronDown, ChevronLeft, ChevronRight, Square } from "lucide-react";
 import type { EquipmentWithDetails } from "../../types";
 import { useSliderOverride } from "../../hooks/useSliderOverride";
+import { doorWordPill } from "./door-pill";
 
 interface ShutterControlProps {
   equipment: EquipmentWithDetails;
@@ -58,6 +59,8 @@ export function ShutterControl({ equipment, onExecuteOrder, compact }: ShutterCo
   // Pool covers slide horizontally → ←/→ arrows. Window shutters and awnings keep ↑/↓.
   const isHorizontal = equipment.type === "pool_cover";
   const isAwning = equipment.type === "awning";
+  const isDoor = equipment.type === "door";
+  const doorPill = doorWordPill(equipment);
   const OpenIcon = isHorizontal ? ChevronLeft : ChevronUp;
   const CloseIcon = isHorizontal ? ChevronRight : ChevronDown;
 
@@ -68,8 +71,8 @@ export function ShutterControl({ equipment, onExecuteOrder, compact }: ShutterCo
   // vocabulary changes.
   const openKey = isAwning ? "controls.retract" : "controls.open";
   const closeKey = isAwning ? "controls.extend" : "controls.close";
-  const pillAtZeroKey = isAwning ? "controls.retracted" : "controls.closed";
-  const pillAtHundredKey = isAwning ? "controls.deployed" : "controls.opened";
+  const pillAtZeroKey = isAwning ? "controls.retracted" : isDoor ? "controls.doorClosed" : "controls.closed";
+  const pillAtHundredKey = isAwning ? "controls.deployed" : isDoor ? "controls.doorOpen" : "controls.opened";
 
   const handleCommand = async (command: "OPEN" | "STOP" | "CLOSE", e?: React.MouseEvent) => {
     e?.preventDefault();
@@ -113,7 +116,11 @@ export function ShutterControl({ equipment, onExecuteOrder, compact }: ShutterCo
             style={{ "--fill-pct": `${position}%`, "--fill-color": "var(--shutter-500)" } as React.CSSProperties}
           />
         )}
-        {position !== null && (
+        {doorPill ? (
+          <span className={`text-[11px] font-semibold px-[7px] py-[1px] rounded-full ${doorPill.className}`}>
+            {t(doorPill.key)}
+          </span>
+        ) : position !== null && (
           position === 100 ? (
             <span className="text-[11px] font-semibold text-success px-[7px] py-[1px] rounded-full bg-success/10">
               {t(pillAtHundredKey)}
@@ -167,6 +174,14 @@ export function ShutterControl({ equipment, onExecuteOrder, compact }: ShutterCo
 
   return (
     <div className="space-y-3">
+      {doorPill && (
+        <div className="flex items-center gap-3">
+          <span className="text-[12px] text-text-tertiary w-16">{t("controls.state")}</span>
+          <span className={`text-[12px] font-semibold px-2 py-[1px] rounded-full ${doorPill.className}`}>
+            {t(doorPill.key)}
+          </span>
+        </div>
+      )}
       {/* Position slider or display */}
       {position !== null && (
         <div className="flex items-center gap-3">
