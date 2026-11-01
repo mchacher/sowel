@@ -106,6 +106,52 @@ describe("attribute", () => {
   });
 });
 
+describe("attribute with a usual vehicle (spec 193)", () => {
+  const charging = (id: string) => fold(id, [["charging_state", "charging", START + H]]);
+
+  it("breaks a tie for the usual vehicle", () => {
+    expect(attribute([charging("a"), charging("b")], ["a", "b"], { usualVehicleId: "b" })).toEqual({
+      state: "vehicle",
+      vehicleId: "b",
+      reason: "usual-vehicle",
+    });
+  });
+
+  it("leaves the tie when the usual vehicle is not among the matches", () => {
+    expect(
+      attribute([charging("a"), charging("b")], ["a", "b", "c"], { usualVehicleId: "c" }),
+    ).toEqual({
+      state: "unattributed",
+      reason: "several-matches",
+    });
+  });
+
+  it("never gives a session no car matches to the usual vehicle", () => {
+    expect(attribute([emptyEvidence("a")], ["a", "b"], { usualVehicleId: "b" })).toEqual({
+      state: "unattributed",
+      reason: "no-match",
+    });
+  });
+
+  it("drops the cars charging elsewhere, without making the rest the only vehicle", () => {
+    const excluded = new Set(["b"]);
+    expect(attribute([charging("a"), charging("b")], ["a", "b"], { excluded })).toMatchObject({
+      vehicleId: "a",
+      reason: "single-match",
+    });
+    expect(attribute([emptyEvidence("a")], ["a", "b"], { excluded })).toMatchObject({
+      reason: "no-match",
+    });
+    expect(attribute([], ["b"], { excluded })).toMatchObject({ reason: "no-match" });
+  });
+
+  it("lets a single match win over the usual vehicle", () => {
+    expect(attribute([charging("a")], ["a", "b"], { usualVehicleId: "b" })).toMatchObject({
+      vehicleId: "a",
+    });
+  });
+});
+
 describe("foldReport", () => {
   it("ignores a report the car made before the session started", () => {
     const ev = fold("a", [["charging_state", "charging", START - 60_000]]);

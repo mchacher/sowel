@@ -16,6 +16,8 @@ export {
   EV_VEHICLE_STATE_VALUES,
   SET_EV_CHARGE_CURRENT_CATEGORY,
   isEvChargerDevice,
+  isMeteredChargerDevice,
+  METERED_CHARGER_THRESHOLD_W,
   isEvVehicleState,
   splitEvChargerExtras,
   type EvChargerCoreEntry,

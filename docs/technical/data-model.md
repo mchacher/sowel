@@ -322,7 +322,7 @@ other settings, so **a backup can rebuild every live link**: keep backups like a
 | `energy.ev_session.updated` | `session: EvChargeSession` |
 | `energy.ev_session.deleted` | `sessionId, chargerId`     |
 
-Both route to the `energy` WebSocket topic. A session is one plug-in on an `ev_charger` (`src/energy/ev-sessions/`). Three SQLite tables (migration 039):
+Both route to the `energy` WebSocket topic. A session is one plug-in on an `ev_charger` (`src/energy/ev-sessions/`), or on a metered charger one stretch of power at 500 W or more (spec 193). Three SQLite tables (migration 039):
 
 - `ev_charge_sessions`: the charger's meter (`energy_wh`), the 5-minute window sums (`est_car_wh`, `est_grid_hp_wh`, `est_grid_hc_wh`, `est_cost_hp_eur`, `est_cost_hc_eur`) scaled to the meter on read, `attribution` (`pending`, `vehicle`, `unattributed`, `other`) with `attribution_source` (`auto`, `manual`: final) and `attribution_reason`, the vehicle id and name (kept with `vehicle_deleted` when the car is deleted), `battery_start` / `battery_end`, and `evidence` (JSON: what each vehicle reported during the session).
 - `ev_vehicle_daily_driving`: per vehicle and local day, `km_total`, `km_measured` (legs with no charge on the way) and `battery_drop`, for the cost per 100 km.

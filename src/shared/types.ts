@@ -437,6 +437,9 @@ export interface Equipment {
   /** Spec 191 — an electric vehicle that also runs on fuel: its cost per
    *  100 km is not shown (part of its km are not electric). Default `false`. */
   plugInHybrid?: boolean;
+  /** Spec 193 — an EV charger's usual vehicle: breaks a tie when several
+   *  cars could have charged during a session. Absent = none. */
+  usualVehicleId?: string;
   /** Spec 160 — declared array geometry. Presence enables the PV production
    *  forecast; absence leaves the equipment untouched. */
   solarProfile?: SolarProfile;
@@ -2537,7 +2540,7 @@ export type EvSessionAttribution = "pending" | "vehicle" | "unattributed" | "oth
 
 /** Why Sowel decided as it did (automatic attribution only). */
 export type EvSessionAttributionReason =
-  "single-match" | "only-vehicle" | "no-match" | "several-matches";
+  "single-match" | "only-vehicle" | "no-match" | "several-matches" | "usual-vehicle";
 
 /** One plug-in on one charger, with its energy split and its frozen cost. */
 export interface EvChargeSession {

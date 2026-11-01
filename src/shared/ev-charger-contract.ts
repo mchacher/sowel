@@ -102,8 +102,8 @@ const CORE_ORDER_ALIASES: ReadonlySet<string> = new Set(
 /**
  * Identity. A device is an EV charger when it reports a vehicle state or
  * accepts a charging current — categories a plugin declares, never a vendor
- * key. A plain relay or a metered plug is not offered (it can still be bound
- * by hand).
+ * key. A plain relay or a metered plug is not a charger: it is offered after
+ * the chargers as the meter of a metered charger (spec 193).
  */
 export const EV_CHARGER_IDENTITY_DATA_CATEGORY = EV_VEHICLE_STATE_CATEGORY;
 export const EV_CHARGER_IDENTITY_ORDER_CATEGORY = SET_EV_CHARGE_CURRENT_CATEGORY;
@@ -117,6 +117,24 @@ export function isEvChargerDevice(
     orders.some((o) => o.category === EV_CHARGER_IDENTITY_ORDER_CATEGORY)
   );
 }
+
+/**
+ * Spec 193 — a metered charger: a charger that reports nothing itself,
+ * followed through the energy meter on its supply line (a clamp, a DIN-rail
+ * meter). Any device with a `power` reading that is not a charger qualifies;
+ * an `ev_charger` bound without a vehicle state is metered.
+ */
+export function isMeteredChargerDevice(
+  data: readonly { category?: string | null }[],
+  orders: readonly { category?: string | null }[],
+): boolean {
+  return !isEvChargerDevice(data, orders) && data.some((d) => d.category === "power");
+}
+
+/** A metered charger draws for a car from this power on (spec 193 P2). */
+export const METERED_CHARGER_THRESHOLD_W = 500;
+/** A metered charger's session ends after this long under the threshold. */
+export const METERED_SESSION_END_MS = 30 * 60_000;
 
 /**
  * Bounds of a charging-current order that does not declare its own: the IEC

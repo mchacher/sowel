@@ -532,7 +532,14 @@ export function EquipmentDetailPage() {
       )}
 
       {/* Spec 191 — the charge sessions of this charger and their vehicle. */}
-      {equipment.type === "ev_charger" && <EvChargerSessionsSection chargerId={equipment.id} />}
+      {equipment.type === "ev_charger" && (
+        <EvChargerSessionsSection
+          chargerId={equipment.id}
+          usualVehicleId={equipment.usualVehicleId}
+          isAdmin={isAdmin}
+          onUpdated={() => void fetchEquipments()}
+        />
+      )}
 
       {/* VMC speed controls (spec 153) */}
       {equipment.type === "vmc" && equipment.enabled && (

@@ -31,6 +31,7 @@ function liveInputs(
     powerW: c.power.watts,
     battery: v.batteryLevel,
     chargeLimit: v.chargeLimit,
+    metered: vehicleBinding === undefined,
   };
 }
 
@@ -170,7 +171,7 @@ export function EvCurrentSessionCard({
         )}
       </span>
 
-      {live.kind === "paused" && (
+      {live.kind === "paused" && live.reason !== null && (
         <div className="flex gap-2.5 items-start bg-background rounded-[6px] px-3 py-2.5">
           {live.reason === "charger-off" ? (
             <Power size={16} strokeWidth={1.5} className="shrink-0 mt-px text-text-secondary" />

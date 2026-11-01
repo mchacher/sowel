@@ -80,6 +80,8 @@ const updateEquipmentBodySchema = {
     separateSupply: { type: "boolean" },
     // Spec 191 — this electric vehicle is a plug-in hybrid (no cost per 100 km).
     plugInHybrid: { type: "boolean" },
+    // Spec 193 — an EV charger's usual vehicle (an electric_vehicle id), or null.
+    usualVehicleId: { type: ["string", "null"], minLength: 1 },
     // Spec 174 phase 2 — the timed command this equipment offers, or null to
     // clear it. `value` and `revertValue` are deliberately unconstrained: an
     // order carries a boolean, an enum string, a number or nothing at all
@@ -331,6 +333,7 @@ export function registerEquipmentRoutes(app: FastifyInstance, deps: EquipmentsDe
       meteringParentId?: string | null;
       separateSupply?: boolean;
       plugInHybrid?: boolean;
+      usualVehicleId?: string | null;
       timedCommand?: TimedCommand | null;
     };
   }>(
@@ -500,6 +503,7 @@ export function registerEquipmentRoutes(app: FastifyInstance, deps: EquipmentsDe
           meteringParentId: body.meteringParentId,
           separateSupply: body.separateSupply,
           plugInHybrid: body.plugInHybrid,
+          usualVehicleId: body.usualVehicleId,
           timedCommand: body.timedCommand,
         });
         if (!equipment) {

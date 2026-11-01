@@ -431,6 +431,9 @@ export interface Equipment {
   separateSupply?: boolean;
   /** Spec 191 — a plug-in hybrid shows no cost per 100 km. */
   plugInHybrid?: boolean;
+  /** Spec 193 — an EV charger's usual vehicle: breaks a tie when several
+   *  cars could have charged during a session. Absent = none. */
+  usualVehicleId?: string;
   /** Spec 154 — invert shutter-family command direction (shutter_move
    *  OPEN<->CLOSE, set_shutter_position -> 100-value). Command-only; ignored for
    *  non-shutter-family types. */
@@ -1870,7 +1873,7 @@ export interface TariffPrices {
 
 export type EvSessionAttribution = "pending" | "vehicle" | "unattributed" | "other";
 export type EvSessionAttributionReason =
-  "single-match" | "only-vehicle" | "no-match" | "several-matches";
+  "single-match" | "only-vehicle" | "no-match" | "several-matches" | "usual-vehicle";
 
 export interface EvChargeSession {
   id: string;

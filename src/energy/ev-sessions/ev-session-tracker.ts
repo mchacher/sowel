@@ -5,6 +5,8 @@
  * bucket's retention never limits a long session.
  *
  *   ev_charger `vehicle`      → open / close (FR1)
+ *   metered charger `power`   → open at 500 W, close after 30 min under it
+ *                               (spec 193: a charger with no vehicle state)
  *   ev_charger `power`/`energy`, main meter live `energy`
  *                             → WindowAccountant → settleWindow (FR2)
  *   electric_vehicle reports  → evidence per candidate → attribute() after the
@@ -18,12 +20,19 @@ import { randomUUID } from "node:crypto";
 import type { EventBus } from "../../core/event-bus.js";
 import type { Logger } from "../../core/logger.js";
 import type { EquipmentManager } from "../../equipments/equipment-manager.js";
-import { EV_CHARGER_ALIASES, isEvVehicleState } from "../../shared/ev-charger-contract.js";
+import {
+  EV_CHARGER_ALIASES,
+  EV_VEHICLE_STATE_CATEGORY,
+  METERED_CHARGER_THRESHOLD_W,
+  METERED_SESSION_END_MS,
+  isEvVehicleState,
+} from "../../shared/ev-charger-contract.js";
 import { ELECTRIC_VEHICLE_ALIASES } from "../../shared/electric-vehicle-contract.js";
 import { localDateStr } from "../../shared/local-date.js";
 import type { EvChargeSession, EvVehicleMonthSummary, TariffPrices } from "../../shared/types.js";
 import type { TariffClassifier } from "../tariff-classifier.js";
 import {
+  type AttributionResult,
   attribute,
   emptyEvidence,
   foldReport,
@@ -114,6 +123,20 @@ interface OpenSession {
    * from a possibly stale power, flushed late): not a meter, ignored.
    */
   hasEnergyMeter: boolean;
+  /** Spec 193 — no vehicle state: the session follows the charger's power. */
+  metered: boolean;
+  /** Metered only: the last reading at the threshold or above, epoch ms. */
+  lastActiveMs: number;
+  /** Metered only: the last power reading was at the threshold or above. */
+  active: boolean;
+  /**
+   * Metered only: the car reports received while the power is under the
+   * threshold. The session may have ended at its last active reading (it is
+   * only known 30 min later), so they are folded at close against that end,
+   * or into the session if it resumes: a car that leaves right after its
+   * charge must not be seen away during its own session.
+   */
+  tail: Array<{ vehicleId: string; report: Parameters<typeof foldReport>[1] }>;
 }
 
 export class EvSessionTracker {
@@ -171,6 +194,13 @@ export class EvSessionTracker {
     try {
       const now = this.now();
       for (const s of this.open.values()) this.settle(s, s.acc.advance(now), true);
+      // Spec 193 — a metered session ends 30 min after its last active reading,
+      // dated at that reading.
+      for (const [chargerId, s] of [...this.open]) {
+        if (s.metered && now - s.lastActiveMs >= METERED_SESSION_END_MS) {
+          this.close(chargerId, now, s.lastActiveMs);
+        }
+      }
       for (const record of [...this.pending.values()]) {
         if (record.graceUntil !== null && Date.parse(record.graceUntil) <= now) {
           this.decide(record);
@@ -203,13 +233,12 @@ export class EvSessionTracker {
    * open, or that `attribute()` run now would give it. Newest first.
    */
   currentForVehicle(vehicleId: string): EvChargeSession[] {
-    const vehicleIds = this.candidateVehicleIds();
-    return [...[...this.open.values()].map((s) => s.record), ...this.pending.values()]
+    return this.liveRecords()
       .filter((record) => {
         if (record.attributionSource === "manual") {
           return record.endedAt === null && record.vehicleId === vehicleId;
         }
-        const result = attribute(record.evidence, vehicleIds);
+        const result = this.resolve(record);
         return result.state === "vehicle" && result.vehicleId === vehicleId;
       })
       .sort((a, b) => b.startedAt.localeCompare(a.startedAt))
@@ -272,10 +301,15 @@ export class EvSessionTracker {
   private restore(): void {
     const now = this.now();
     for (const record of this.store.listOpen()) {
+      const metered = this.chargerIsMetered(record.chargerId);
       this.open.set(record.chargerId, {
         record,
         acc: new WindowAccountant(now),
         hasEnergyMeter: this.chargerHasEnergyMeter(record.chargerId),
+        metered,
+        lastActiveMs: metered ? this.meteredLastActive(record, now) : now,
+        active: !metered || this.chargerDraws(record.chargerId),
+        tail: [],
       });
       if (!this.equipmentManager.getById(record.chargerId)) {
         this.close(record.chargerId, now);
@@ -292,9 +326,14 @@ export class EvSessionTracker {
     }
     for (const record of this.store.listPending()) this.pending.set(record.id, record);
 
-    // A charger already plugged (first start, or a missed event) opens now.
+    // A charger already plugged (first start, or a missed event) opens now;
+    // a metered one already drawing too (spec 193).
     for (const eq of this.equipmentManager.getAll()) {
       if (eq.type !== "ev_charger" || !eq.enabled || this.open.has(eq.id)) continue;
+      if (this.chargerIsMetered(eq.id)) {
+        if (this.chargerDraws(eq.id)) this.openSession(eq.id, eq.name, now);
+        continue;
+      }
       const { state } = this.chargerVehicleState(eq.id);
       if (state === "connected" || state === "charging") this.openSession(eq.id, eq.name, now);
     }
@@ -330,21 +369,30 @@ export class EvSessionTracker {
       record,
       acc: new WindowAccountant(now),
       hasEnergyMeter: this.chargerHasEnergyMeter(chargerId),
+      metered: this.chargerIsMetered(chargerId),
+      lastActiveMs: now,
+      active: true,
+      tail: [],
     });
     this.persist(record);
     this.logger.info({ sessionId: record.id, chargerId }, "EV charge session opened");
   }
 
-  private close(chargerId: string, now: number): void {
+  /**
+   * `now` ends the accounting; `endedAtMs` dates the session (spec 193: a
+   * metered session ends at its last active reading, noticed 30 min later).
+   */
+  private close(chargerId: string, now: number, endedAtMs: number = now): void {
     const s = this.open.get(chargerId);
     if (!s) return;
     this.open.delete(chargerId);
     this.settle(s, s.acc.finish(now), false);
 
     const record = s.record;
-    const nowIso = new Date(now).toISOString();
-    record.endedAt = nowIso;
-    record.graceUntil = new Date(now + GRACE_MS).toISOString();
+    const endedAt = Math.max(Date.parse(record.startedAt), Math.min(endedAtMs, now));
+    record.endedAt = new Date(endedAt).toISOString();
+    record.graceUntil = new Date(endedAt + GRACE_MS).toISOString();
+    for (const { vehicleId, report } of s.tail) this.foldInto(record, vehicleId, report, endedAt);
 
     if (toSession(record).energyWh < MIN_SESSION_WH) {
       this.store.delete(record.id);
@@ -368,7 +416,7 @@ export class EvSessionTracker {
   private decide(record: SessionRecord): void {
     this.pending.delete(record.id);
     if (record.attributionSource === "manual") return;
-    const result = attribute(record.evidence, this.candidateVehicleIds());
+    const result = this.resolve(record);
     if (result.state === "vehicle") {
       const name = this.equipmentManager.getById(result.vehicleId)?.name ?? null;
       this.assign(record, result.vehicleId, name);
@@ -447,11 +495,31 @@ export class EvSessionTracker {
       else this.open.get(chargerId)?.acc.chargerReport(now);
       return;
     }
+    if (alias === EV_CHARGER_ALIASES.power && typeof value === "number") {
+      const active = value >= METERED_CHARGER_THRESHOLD_W;
+      // Spec 193 — a metered charger opens on its power.
+      if (active && enabled && !this.open.has(chargerId) && this.chargerIsMetered(chargerId)) {
+        this.openSession(chargerId, chargerName, now);
+      }
+      const open = this.open.get(chargerId);
+      if (!open) return;
+      if (open.metered) {
+        if (active) {
+          open.lastActiveMs = now;
+          // It resumed: what the cars said meanwhile belongs to the session.
+          for (const { vehicleId, report } of open.tail) {
+            this.foldInto(open.record, vehicleId, report, null);
+          }
+          open.tail = [];
+        }
+        open.active = active;
+      }
+      this.settle(open, open.acc.power(now, value), true);
+      return;
+    }
     const s = this.open.get(chargerId);
     if (!s) return;
-    if (alias === EV_CHARGER_ALIASES.power && typeof value === "number") {
-      this.settle(s, s.acc.power(now, value), true);
-    } else if (alias === EV_CHARGER_ALIASES.energy) {
+    if (alias === EV_CHARGER_ALIASES.energy) {
       if (!s.hasEnergyMeter || typeof value !== "number") return;
       if (value > 0) s.record.energyWh += value;
       this.settle(s, s.acc.carEnergy(now, value), true);
@@ -464,7 +532,10 @@ export class EvSessionTracker {
     if (REPORT_ALIASES.has(alias)) {
       const reportedAtMs = this.vehicleReportedAt(vehicleId, alias);
       const report = { alias: alias as ReportAlias, value, reportedAtMs, receivedAtMs };
-      for (const s of this.open.values()) this.foldInto(s.record, vehicleId, report, null);
+      for (const s of this.open.values()) {
+        if (s.metered && !s.active) s.tail.push({ vehicleId, report });
+        else this.foldInto(s.record, vehicleId, report, null);
+      }
       for (const record of this.pending.values()) {
         this.foldInto(record, vehicleId, report, Date.parse(record.endedAt!));
       }
@@ -564,6 +635,101 @@ export class EvSessionTracker {
     record.updatedAt = new Date(this.now()).toISOString();
     this.store.save(record);
     this.eventBus.emit({ type: "energy.ev_session.updated", session: toSession(record) });
+  }
+
+  /** The open sessions and those still in their grace period. */
+  private liveRecords(): SessionRecord[] {
+    return [...[...this.open.values()].map((s) => s.record), ...this.pending.values()];
+  }
+
+  /**
+   * The attribution of a session, now: its evidence, minus the cars that an
+   * overlapping session on another charger gives (spec 193 P4), with its
+   * charger's usual vehicle to break a tie.
+   */
+  private resolve(record: SessionRecord): AttributionResult {
+    return attribute(record.evidence, this.candidateVehicleIds(), {
+      usualVehicleId: this.usualVehicleOf(record.chargerId),
+      excluded: this.takenElsewhere(record),
+    });
+  }
+
+  /**
+   * The car a session gives, without P4 (no cycle): by hand, as its single
+   * match or as its usual vehicle, set or provisional. "The only vehicle"
+   * rests on no evidence (a guest's car would do the same): it gives none.
+   */
+  private givenBy(record: SessionRecord): string | null {
+    if (record.attribution === "vehicle") {
+      return record.attributionSource === "manual" || record.attributionReason !== "only-vehicle"
+        ? record.vehicleId
+        : null;
+    }
+    if (record.attribution !== "pending" || record.attributionSource === "manual") return null;
+    const result = attribute(record.evidence, this.candidateVehicleIds(), {
+      usualVehicleId: this.usualVehicleOf(record.chargerId),
+    });
+    return result.state === "vehicle" && result.reason !== "only-vehicle" ? result.vehicleId : null;
+  }
+
+  /** Cars given by sessions on other chargers whose time range meets this one. */
+  private takenElsewhere(record: SessionRecord): Set<string> {
+    const from = record.startedAt;
+    const to = record.endedAt;
+    const overlaps = (other: SessionRecord) =>
+      other.chargerId !== record.chargerId &&
+      (to === null || other.startedAt < to) &&
+      (other.endedAt === null || other.endedAt > from);
+    const others = new Map<string, SessionRecord>();
+    for (const r of this.store.listAttributedOverlapping(record.chargerId, from, to)) {
+      others.set(r.id, r);
+    }
+    for (const r of this.liveRecords()) if (overlaps(r)) others.set(r.id, r);
+    const taken = new Set<string>();
+    for (const other of others.values()) {
+      const vehicleId = this.givenBy(other);
+      if (vehicleId !== null) taken.add(vehicleId);
+    }
+    return taken;
+  }
+
+  private usualVehicleOf(chargerId: string): string | null {
+    return this.equipmentManager.getById(chargerId)?.usualVehicleId ?? null;
+  }
+
+  /** Spec 193 — a charger without a vehicle state follows its power. */
+  private chargerIsMetered(chargerId: string): boolean {
+    return !this.equipmentManager
+      .getDataBindingsWithValues(chargerId)
+      .some(
+        (b) => b.alias === EV_CHARGER_ALIASES.vehicle || b.category === EV_VEHICLE_STATE_CATEGORY,
+      );
+  }
+
+  /**
+   * After a restart: now when the charger still draws, else when its power
+   * last changed, never before the session started. That is the drop, or a
+   * later change of standby noise: an approximation, the true last active
+   * reading is not stored (spec 193 edge cases).
+   */
+  private meteredLastActive(record: SessionRecord, now: number): number {
+    const binding = this.equipmentManager
+      .getDataBindingsWithValues(record.chargerId)
+      .find((b) => b.alias === EV_CHARGER_ALIASES.power);
+    const startMs = Date.parse(record.startedAt);
+    if (typeof binding?.value === "number" && binding.value >= METERED_CHARGER_THRESHOLD_W) {
+      return now;
+    }
+    const changed = parseTimestamp(binding?.lastChanged ?? null);
+    if (changed === null) return startMs;
+    return Math.min(now, Math.max(startMs, changed));
+  }
+
+  private chargerDraws(chargerId: string): boolean {
+    const binding = this.equipmentManager
+      .getDataBindingsWithValues(chargerId)
+      .find((b) => b.alias === EV_CHARGER_ALIASES.power);
+    return typeof binding?.value === "number" && binding.value >= METERED_CHARGER_THRESHOLD_W;
   }
 
   /** Every vehicle a session may go to (spec 191 P9): the enabled ones. */

@@ -51,6 +51,7 @@ interface Equipment {
   enabled: boolean; // Disabled equipments are ignored by the engine
   energyProfile?: EnergyLoadProfile; // Spec 140 — flexible-load declaration (class, nominal W, min-on/off, tolerated import W, learned)
   plugInHybrid?: boolean; // Spec 191 — electric_vehicle only: no cost per 100 km. Present only when true
+  usualVehicleId?: string; // Spec 193 — ev_charger only: breaks a tie between matching cars. Present only when set
   createdAt: string;
   updatedAt: string;
 }
@@ -128,6 +129,7 @@ CREATE TABLE equipments (
                                   -- Spec 173: this meter's consumption is already counted by that one
   plug_in_hybrid INTEGER NOT NULL DEFAULT 0,
                                   -- Spec 191: a plug-in hybrid shows no cost per 100 km
+  usual_vehicle_id TEXT,          -- Spec 193: an ev_charger's usual vehicle (cleared on its removal)
   created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
   updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
 );
@@ -326,7 +328,7 @@ An `ev_charger` is defined by a contract module, `src/shared/ev-charger-contract
 | `current`        | data         | `current`                                                                 | A    | Measured current                                            |
 | `voltage`        | data         | `voltage`                                                                 | V    | Measured voltage                                            |
 
-A device is offered for an `ev_charger` when it declares `ev_vehicle_state` data or a `set_ev_charge_current` order. Both creation paths — the UI and `POST /api/v1/equipments` with `deviceIds` (`createWithAutoBindings`) — bind the contract points first, under their contract alias; a vendor point whose key equals a contract alias cannot take it. The charger's temperature binds as `charger_temperature`, out of the zone average. `generic` data points bind as extras, shown on the detail page; other categorised points and configuration orders are opt-in. Three rules bind the plugin:
+A device is offered for an `ev_charger` when it declares `ev_vehicle_state` data or a `set_ev_charge_current` order; then, marked _metered only_, any other device with a `power` reading (spec 193, `isMeteredChargerDevice`). A charger bound without a `vehicle` point is a **metered charger**: its sessions follow its power (500 W, 30 minutes). Both creation paths — the UI and `POST /api/v1/equipments` with `deviceIds` (`createWithAutoBindings`) — bind the contract points first, under their contract alias; a vendor point whose key equals a contract alias cannot take it. The charger's temperature binds as `charger_temperature`, out of the zone average. `generic` data points bind as extras, shown on the detail page; other categorised points and configuration orders are opt-in. Three rules bind the plugin:
 
 - **`set_ev_charge_current` is not `set_setpoint`** — that is the thermostat identity; reusing it would offer the charger as a thermostat.
 - **`ev_session_energy` is not `energy`** — `energy` is an additive delta; a per-session counter there would be summed into nonsense. Publish increments under `energy`, the session total under `ev_session_energy`.

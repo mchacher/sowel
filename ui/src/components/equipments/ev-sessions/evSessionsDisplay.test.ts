@@ -81,6 +81,7 @@ describe("liveState (spec 192)", () => {
     powerW: null,
     battery: 43,
     chargeLimit: 80,
+    metered: false,
     ...over,
   });
 
@@ -121,6 +122,23 @@ describe("liveState (spec 192)", () => {
 
   it("shows nothing between the unplug and the session's close", () => {
     expect(liveState(open, live({ vehicle: "disconnected" }))).toEqual({ kind: "unplugged" });
+  });
+
+  it("reads a metered charger by its power (spec 193)", () => {
+    expect(
+      liveState(open, live({ vehicle: null, chargerOn: null, powerW: 3000, metered: true })),
+    ).toEqual({
+      kind: "charging",
+      powerW: 3000,
+    });
+    expect(
+      liveState(open, live({ vehicle: null, chargerOn: null, powerW: 4, metered: true })),
+    ).toEqual({
+      kind: "paused",
+      sinceIso: null,
+      reason: null,
+      battery: 43,
+    });
   });
 
   it("reads an ended session as ended", () => {
