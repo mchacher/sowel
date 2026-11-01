@@ -62,6 +62,7 @@ This is one of Sowel's most powerful features. Every zone automatically computes
 | **Motion duration**          | Time since last motion state change     | "Calm for 15 min"                    |
 | **Lights on**                | Count of active lights                  | 2 / 5 lights on                      |
 | **Shutters open**            | Count of open shutters                  | 1 / 3 shutters open                  |
+| **Motorised doors open**     | Count of motorised doors not shut       | 1 / 2 doors open                     |
 | **Average shutter position** | Average position across all shutters    | 65%                                  |
 | **Open doors**               | Count of open door contacts             | 1 door open                          |
 | **Open windows**             | Count of open window contacts           | 2 windows open                       |
@@ -86,6 +87,7 @@ In the **Home** view, each zone displays a **status header** with aggregated dat
 - **Motion** pill with duration ("Motion" or "Calm 15min")
 - **Lights** count pill (e.g., "2/5")
 - **Shutters** count pill (e.g., "1/3")
+- **Doors** count pill for motorised doors (e.g., "1/2"), apart from the door contact alert
 - **Alert** pills for open doors/windows, water leaks, smoke
 - **Power** pill (e.g., "47 W", or "2.4 kW" above the kilowatt) when the zone has at least one meter
 

@@ -10,6 +10,28 @@ import { TelegramChannel } from "./channels/telegram.js";
 import { WebPushChannel } from "./channels/web-push.js";
 import type { PushSubscriptionManager } from "./push-subscription-manager.js";
 import type { VapidKeys } from "./vapid.js";
+import {
+  ORDER_OUTCOME_ALARM_SOURCE,
+  wordOrderOutcomeAlarm,
+} from "../equipments/order-outcome-messages.js";
+
+/**
+ * Spec 188 O6 — an order-outcome alarm worded in each language, for a channel
+ * that knows its recipient's. Only the core's own order-confirmation alarms
+ * are keyed this way: a key on any other source is ignored, and so is one the
+ * server's catalogue does not hold. The equipment name leads the text, so the
+ * source is left out.
+ */
+function alarmLocalized(
+  mark: string,
+  event: { source: string; messageKey?: string; messageParams?: Record<string, string | number> },
+): NotificationContent["localized"] {
+  if (event.source !== ORDER_OUTCOME_ALARM_SOURCE || !event.messageKey) return undefined;
+  const en = wordOrderOutcomeAlarm(event.messageKey, event.messageParams, "en");
+  const fr = wordOrderOutcomeAlarm(event.messageKey, event.messageParams, "fr");
+  if (en === null || fr === null) return undefined;
+  return { en: { title: `${mark} ${en}` }, fr: { title: `${mark} ${fr}` } };
+}
 
 // ============================================================
 // Internal types
@@ -88,11 +110,13 @@ export class NotificationPublishService {
     pushSubscriptionManager: PushSubscriptionManager,
     vapid: VapidKeys,
     logger: Logger,
+    /** Spec 188 O6 — a user's language preference, to word a push for them. */
+    languageOf?: (userId: string) => "en" | "fr" | undefined,
   ) {
     this.logger = logger.child({ module: "notification-publish-service" });
     this.channels = {
       telegram: new TelegramChannel(),
-      "web-push": new WebPushChannel(pushSubscriptionManager, vapid, this.logger),
+      "web-push": new WebPushChannel(pushSubscriptionManager, vapid, this.logger, languageOf),
     };
   }
 
@@ -177,11 +201,17 @@ export class NotificationPublishService {
             break;
 
           case "system.alarm.raised":
-            this.sendSystemAlarm(`⚠️ ${event.source} : ${event.message}`);
+            this.sendSystemAlarm(
+              `⚠️ ${event.source} : ${event.message}`,
+              alarmLocalized("⚠️", event),
+            );
             break;
 
           case "system.alarm.resolved":
-            this.sendSystemAlarm(`✅ ${event.source} : ${event.message}`);
+            this.sendSystemAlarm(
+              `✅ ${event.source} : ${event.message}`,
+              alarmLocalized("✅", event),
+            );
             break;
         }
       } catch (err) {
@@ -427,7 +457,7 @@ export class NotificationPublishService {
    * 143 this only fed the first enabled Telegram publisher, which silently
    * dropped every system alarm on a web-push-only install.
    */
-  private sendSystemAlarm(text: string): void {
+  private sendSystemAlarm(text: string, localized?: NotificationContent["localized"]): void {
     let sent = 0;
     for (const publisher of this.publisherManager.getAllWithMappings()) {
       if (!publisher.enabled) continue;
@@ -443,12 +473,14 @@ export class NotificationPublishService {
 
       // Each send owns its failure: a dead Telegram bot must not swallow the
       // push that would have reached the user's phone.
-      channel.send(publisher.channelConfig, { title: text }).catch((err) => {
-        this.logger.error(
-          { err, publisherId: publisher.id, channelType: publisher.channelType },
-          "System alarm notification send failed",
-        );
-      });
+      channel
+        .send(publisher.channelConfig, { title: text, ...(localized ? { localized } : {}) })
+        .catch((err) => {
+          this.logger.error(
+            { err, publisherId: publisher.id, channelType: publisher.channelType },
+            "System alarm notification send failed",
+          );
+        });
       sent++;
     }
 

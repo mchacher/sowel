@@ -22,6 +22,8 @@ export class WebPushChannel implements NotificationChannel {
     private readonly subscriptions: PushSubscriptionManager,
     private readonly vapid: VapidKeys,
     logger: Logger,
+    /** Spec 188 O6 — the language a subscription's owner reads Sowel in. */
+    private readonly languageOf: (userId: string) => "en" | "fr" | undefined = () => undefined,
   ) {
     this.logger = logger.child({ module: "web-push-channel" });
   }
@@ -37,7 +39,11 @@ export class WebPushChannel implements NotificationChannel {
     // separate lines so the text stays readable instead of being crammed onto
     // one truncated line. We deliberately do NOT set a "Sowel" title: the
     // installed PWA already labels the notification with the app name.
-    const payload = JSON.stringify({ title: content.title, body: content.body ?? "" });
+    const payloadFor = (userId: string): string => {
+      const language = content.localized ? this.languageOf(userId) : undefined;
+      const worded = (language && content.localized?.[language]) || content;
+      return JSON.stringify({ title: worded.title, body: worded.body ?? "" });
+    };
     const vapidDetails = {
       subject: this.vapid.subject,
       publicKey: this.vapid.publicKey,
@@ -49,7 +55,7 @@ export class WebPushChannel implements NotificationChannel {
         try {
           await webpush.sendNotification(
             { endpoint: s.endpoint, keys: { p256dh: s.p256dh, auth: s.auth } },
-            payload,
+            payloadFor(s.userId),
             { vapidDetails },
           );
         } catch (err: unknown) {

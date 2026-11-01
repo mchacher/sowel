@@ -17,6 +17,7 @@ type EquipmentType =
   | "light_color"
   | "shutter"
   | "awning"
+  | "door" // spec 190 — binds like a shutter, counted apart
   | "switch"
   | "sensor"
   | "button"

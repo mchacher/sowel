@@ -55,6 +55,7 @@ const TYPE_TINTS: Record<EquipmentType, Tint> = {
   // already colored (primary blue + primary light) and harmonises with it.
   awning:                  { bg: "bg-primary-light",text: "text-primary" },
   pool_cover:              { bg: "bg-shutter-50",   text: "text-shutter-500" },
+  door:                    { bg: "bg-shutter-50",   text: "text-shutter-500" },
   sensor:                  { bg: "bg-sensor-50",    text: "text-sensor-500" },
   button:                  { bg: "bg-sensor-50",    text: "text-sensor-500" },
   switch:                  { bg: "bg-sensor-50",    text: "text-sensor-500" },

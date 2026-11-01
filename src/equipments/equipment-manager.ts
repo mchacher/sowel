@@ -68,6 +68,7 @@ const VALID_EQUIPMENT_TYPES: Set<string> = new Set([
   "light_color",
   "shutter",
   "awning",
+  "door",
   "switch",
   "sensor",
   "button",
@@ -122,6 +123,8 @@ interface UpdateEquipmentInput {
   requireConfirmation?: boolean;
   /** Spec 154 — invert shutter-family command direction. */
   invertDirection?: boolean;
+  /** Spec 188 O10 — follow orders to their outcome. `null` = the type's default. */
+  trackOrderOutcome?: boolean | null;
   /** Spec 173 — the meter that already counts this equipment. `null` clears it. */
   meteringParentId?: string | null;
   /** Spec 179 — this meter is fed by a separate supply. */
@@ -252,6 +255,7 @@ export class EquipmentManager {
          type = @type, icon = @icon, description = @description, enabled = @enabled,
          energy_profile = @energyProfile, require_confirmation = @requireConfirmation,
          invert_direction = @invertDirection, solar_profile = @solarProfile,
+         track_order_outcome = @trackOrderOutcome,
          metering_parent_id = @meteringParentId, separate_supply = @separateSupply,
          plug_in_hybrid = @plugInHybrid, timed_command = @timedCommand,
          updated_at = datetime('now') WHERE id = @id`,
@@ -620,6 +624,15 @@ export class EquipmentManager {
             ? 1
             : 0
           : existing.invert_direction,
+      // Spec 188 O10 — `null` hands the choice back to the type's default.
+      trackOrderOutcome:
+        input.trackOrderOutcome !== undefined
+          ? input.trackOrderOutcome === null
+            ? null
+            : input.trackOrderOutcome
+              ? 1
+              : 0
+          : existing.track_order_outcome,
       // Spec 173 — `null` is a value here ("counted nowhere else"), so only an
       // absent key falls back to what is stored.
       meteringParentId:
@@ -1040,7 +1053,10 @@ export class EquipmentManager {
       equipment.invertDirection && !isDeliveryRetry,
     );
 
-    // Dispatch to every bound device order via its integration plugin.
+    // Dispatch to every bound device order via its integration plugin. The
+    // start is carried on `equipment.order.executed`, which comes after every
+    // attempt: a gate that flipped in between already answered (spec 188 O2).
+    const startedAt = Date.now();
     let successes = 0;
     let lastError: string | undefined;
     try {
@@ -1067,6 +1083,7 @@ export class EquipmentManager {
         targets: bindings.length,
         lastError: err instanceof Error ? err.message : String(err),
         source,
+        startedAt,
       });
       throw err;
     }
@@ -1079,6 +1096,7 @@ export class EquipmentManager {
       targets: bindings.length,
       lastError,
       source,
+      startedAt,
     });
 
     if (successes === 0 && lastError) {
@@ -1155,8 +1173,10 @@ export class EquipmentManager {
     targets: number;
     lastError?: string;
     source?: OrderSource;
+    startedAt?: number;
   }): void {
-    const { equipment, alias, resolvedValue, successes, targets, lastError, source } = ctx;
+    const { equipment, alias, resolvedValue, successes, targets, lastError, source, startedAt } =
+      ctx;
     if (successes > 0) {
       this.logger.info(
         {
@@ -1174,6 +1194,7 @@ export class EquipmentManager {
         orderAlias: alias,
         value: resolvedValue,
         source,
+        ...(startedAt !== undefined ? { startedAt } : {}),
       });
       // Gate command: mark state as "unknown" until the next sensor update.
       this.trackGatePending(equipment, alias);
@@ -1747,6 +1768,7 @@ interface EquipmentRow {
   solar_profile: string | null;
   require_confirmation: number;
   invert_direction: number;
+  track_order_outcome: number | null;
   metering_parent_id: string | null;
   separate_supply: number;
   plug_in_hybrid: number;
@@ -1916,6 +1938,7 @@ function rowToEquipment(row: EquipmentRow): Equipment {
     solarProfile: parseSolarProfile(row.solar_profile),
     requireConfirmation: row.require_confirmation === 1,
     invertDirection: row.invert_direction === 1,
+    trackOrderOutcome: row.track_order_outcome === null ? null : row.track_order_outcome === 1,
     meteringParentId: row.metering_parent_id ?? null,
     separateSupply: row.separate_supply === 1,
     ...(row.plug_in_hybrid === 1 && { plugInHybrid: true }),

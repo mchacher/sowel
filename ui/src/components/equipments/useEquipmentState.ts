@@ -2,6 +2,9 @@ import type { EquipmentWithDetails } from "../../types";
 import { TYPE_ICONS } from "./equipment-type-meta";
 import { ShutterIcon } from "../icons/ShutterIcons";
 import { AwningIcon } from "../icons/AwningIcon";
+import { DoorClosed, DoorOpen } from "lucide-react";
+import { createElement } from "react";
+import { doorState as resolveDoorState, isDoorOpenForCount, type DoorState } from "../../../../src/shared/door-state";
 import {
   getSensorIcon,
   getSensorIconColor,
@@ -20,10 +23,12 @@ export function useEquipmentState(equipment: EquipmentWithDetails) {
     equipment.type === "light_color";
   const isShutter = equipment.type === "shutter";
   const isAwning = equipment.type === "awning";
+  // Spec 190 — a door is driven like a shutter; only its state and picto differ.
+  const isDoor = equipment.type === "door";
   // Shutter-family equipments share the same control surface (position +
   // open/stop/close). The vocabulary differs (extend/retract), but the wiring
   // is identical, so most existing logic gates on `isShutter || isAwning`.
-  const isShutterFamily = isShutter || isAwning;
+  const isShutterFamily = isShutter || isAwning || isDoor;
   const isWeatherForecast = equipment.type === "weather_forecast";
   const isSensor = equipment.type === "sensor" || equipment.type === "button" || equipment.type === "weather";
   const isEnergyMeter = equipment.type === "energy_meter" || equipment.type === "main_energy_meter" || equipment.type === "energy_production_meter";
@@ -88,7 +93,11 @@ export function useEquipmentState(equipment: EquipmentWithDetails) {
       ["state"],
       [/^shutter\d*_state$/],
     );
-  const shutterIsOpen = shutterPosition !== null && shutterPosition > 0;
+  const doorState: DoorState | null = isDoor ? resolveDoorState(equipment.dataBindings) : null;
+  const shutterIsOpen =
+    doorState !== null
+      ? isDoorOpenForCount(doorState)
+      : shutterPosition !== null && shutterPosition > 0;
 
   // Sensor / Button
   const sensorBindings = isSensor
@@ -123,7 +132,9 @@ export function useEquipmentState(equipment: EquipmentWithDetails) {
       ? ShutterIcon({ size: 18, strokeWidth: 1.5, position: shutterPosition })
       : isAwning
         ? AwningIcon({ size: 22, state: shutterIsOpen ? "open" : "closed" })
-        : TYPE_ICONS[equipment.type];
+        : isDoor
+          ? createElement(shutterIsOpen ? DoorOpen : DoorClosed, { size: 18, strokeWidth: 1.5 })
+          : TYPE_ICONS[equipment.type];
 
   // Gate state for icon color
   const gateStateBinding = isGate
@@ -169,6 +180,8 @@ export function useEquipmentState(equipment: EquipmentWithDetails) {
     isLight,
     isShutter,
     isAwning,
+    isDoor,
+    doorState,
     isShutterFamily,
     isSensor,
     isWeatherForecast,

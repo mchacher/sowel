@@ -14,6 +14,7 @@ export {
   computeBindingCandidates,
   hasFreeCandidates,
   inferBindingCategory,
+  isDoorEndStateData,
   type BindingCandidate,
   type CandidateData,
   type CandidateOrder,

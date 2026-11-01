@@ -467,6 +467,53 @@ describe("EquipmentManager", () => {
   // Require confirmation (spec 146)
   // ============================================================
 
+  // Spec 190 FR7 — the edit form switches a shutter to a door through update().
+  describe("type change", () => {
+    it("switches a shutter to a door, keeping its id and bindings", () => {
+      const zone = zoneManager.create({ name: "Poulailler" });
+      const eq = manager.create({ name: "Porte", type: "shutter", zoneId: zone.id });
+      const { orderIds } = seedDevice(db, {
+        name: "CoopDoor",
+        orderKeys: [
+          { key: "state", category: "shutter_move", enumValues: ["OPEN", "CLOSE", "STOP"] },
+        ],
+      });
+      manager.addOrderBinding(eq.id, orderIds[0], "state");
+
+      const updated = manager.update(eq.id, { type: "door" });
+      expect(updated?.id).toBe(eq.id);
+      expect(updated?.type).toBe("door");
+      expect(manager.getByIdWithDetails(eq.id)?.orderBindings.map((b) => b.alias)).toEqual([
+        "state",
+      ]);
+    });
+
+    it("accepts the current type, as the edit form always sends it", () => {
+      const zone = zoneManager.create({ name: "Cuisine" });
+      const eq = manager.create({ name: "Lampe", type: "light_onoff", zoneId: zone.id });
+      expect(manager.update(eq.id, { name: "Plafonnier", type: "light_onoff" })?.name).toBe(
+        "Plafonnier",
+      );
+    });
+  });
+
+  // Spec 188 O10 — null is the type's default; true / false the admin's choice.
+  describe("track order outcome", () => {
+    it("starts at the type's default and round-trips true, false and null", () => {
+      const zone = zoneManager.create({ name: "Cour" });
+      const eq = manager.create({ name: "Portail", type: "gate", zoneId: zone.id });
+      expect(manager.getById(eq.id)?.trackOrderOutcome).toBeNull();
+      manager.update(eq.id, { trackOrderOutcome: false });
+      expect(manager.getById(eq.id)?.trackOrderOutcome).toBe(false);
+      manager.update(eq.id, { name: "Portail entrée" });
+      expect(manager.getById(eq.id)?.trackOrderOutcome).toBe(false);
+      manager.update(eq.id, { trackOrderOutcome: true });
+      expect(manager.getById(eq.id)?.trackOrderOutcome).toBe(true);
+      manager.update(eq.id, { trackOrderOutcome: null });
+      expect(manager.getById(eq.id)?.trackOrderOutcome).toBeNull();
+    });
+  });
+
   describe("require confirmation", () => {
     it("defaults to false on a freshly created equipment", () => {
       const zone = zoneManager.create({ name: "Entrée" });
@@ -1553,6 +1600,30 @@ describe("EquipmentManager", () => {
       const shutterResult = await manager.executeZoneOrder([zone.id], "allShuttersOpen");
       expect(shutterResult.executed).toBe(1);
       expect(JSON.parse(mockPublished[0].payload)).toEqual({ state: "OPEN" });
+    });
+
+    it("allShuttersClose leaves the doors of the zone alone (spec 190)", async () => {
+      const zone = zoneManager.create({ name: "Cour" });
+      const shutter = manager.create({ name: "Volet", type: "shutter", zoneId: zone.id });
+      const door = manager.create({ name: "Porte", type: "door", zoneId: zone.id });
+      for (const [eq, name] of [
+        [shutter, "ZShutterD"],
+        [door, "ZDoorD"],
+      ] as const) {
+        const { orderIds } = seedDevice(db, {
+          name,
+          orderKeys: [
+            { key: "state", category: "shutter_move", enumValues: ["OPEN", "CLOSE", "STOP"] },
+          ],
+        });
+        manager.addOrderBinding(eq.id, orderIds[0], "state");
+      }
+
+      mockPublished.length = 0;
+      const result = await manager.executeZoneOrder([zone.id], "allShuttersClose");
+      expect(result.executed).toBe(1);
+      expect(mockPublished).toHaveLength(1);
+      expect(mockPublished[0].topic).toContain("ZShutterD");
     });
 
     it("allAwningsRetract maps to RF OPEN, allAwningsExtend to CLOSE", async () => {

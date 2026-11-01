@@ -53,6 +53,8 @@ export async function updateEquipment(
     requireConfirmation?: boolean;
     /** Spec 154 — invert shutter-family command direction. */
     invertDirection?: boolean;
+    /** Spec 188 O10 — follow orders to their outcome; null = the type's default. */
+    trackOrderOutcome?: boolean | null;
     /** Spec 160 — declared array geometry; null clears it. */
     solarProfile?: SolarProfile | null;
     /** Spec 173 — the meter that already counts this one; null clears it. */

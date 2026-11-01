@@ -53,6 +53,9 @@ const updateEquipmentBodySchema = {
   type: "object",
   properties: {
     name: { type: "string", pattern: "\\S", maxLength: 100 },
+    // Declared so a client can see it (spec 190). The manager checks only that
+    // the type exists: specs 081 and 183 rely on changing it through the API.
+    type: { type: "string", minLength: 1 },
     description: { type: ["string", "null"], maxLength: 500 },
     energyProfile: {
       type: ["object", "null"],
@@ -69,6 +72,8 @@ const updateEquipmentBodySchema = {
     },
     requireConfirmation: { type: "boolean" },
     invertDirection: { type: "boolean" },
+    // Spec 188 O10 — `null` hands the choice back to the type's default.
+    trackOrderOutcome: { type: ["boolean", "null"] },
     // Spec 173 — id of the meter that already counts this equipment, or null.
     meteringParentId: { type: ["string", "null"], minLength: 1 },
     // Spec 179 — this meter is fed by a separate supply.
@@ -321,6 +326,7 @@ export function registerEquipmentRoutes(app: FastifyInstance, deps: EquipmentsDe
       energyProfile?: EnergyLoadProfile | null;
       requireConfirmation?: boolean;
       invertDirection?: boolean;
+      trackOrderOutcome?: boolean | null;
       solarProfile?: SolarProfile | null;
       meteringParentId?: string | null;
       separateSupply?: boolean;
@@ -490,6 +496,7 @@ export function registerEquipmentRoutes(app: FastifyInstance, deps: EquipmentsDe
           solarProfile: body.solarProfile,
           requireConfirmation: body.requireConfirmation,
           invertDirection: body.invertDirection,
+          trackOrderOutcome: body.trackOrderOutcome,
           meteringParentId: body.meteringParentId,
           separateSupply: body.separateSupply,
           plugInHybrid: body.plugInHybrid,

@@ -180,6 +180,8 @@ Les règles à connaître avant d'appeler :
 - **Un corps vide arme la configuration de l'équipement** (`timedCommand`), pour qu'une surface n'ait pas à redire trois valeurs qui ne lui appartiennent pas : `POST /equipments/:id/timed-action` avec `{}`. `409` si rien n'est configuré.
 - `GET /equipments` et `GET /equipments/:id` portent `timedAction` pendant le créneau, avec `expiresAt` en ISO-8601, et `timedCommand` quand une commande est configurée.
 
+`PUT /api/v1/equipments/:id` accepte `trackOrderOutcome` (`true` / `false`, ou `null` pour le défaut du type : actif sur `gate` et `door`, inactif sur `shutter` et `awning` ; spec 188 O10, migration `038`). Il accepte `type`. Le serveur vérifie seulement que le type existe ; le formulaire d'édition ne propose un changement qu'entre `shutter`, `awning` et `door` (spec 190), dont les liaisons restent valides. Les données agrégées de zone portent `doorsOpen` / `doorsTotal` pour les équipements `door` (spec 190).
+
 `PUT /api/v1/equipments/:id` accepte `timedCommand` et le valide contre les liaisons de l'équipement : une configuration qui nomme un ordre absent est refusée là où elle est écrite, pas là où elle serait déclenchée.
 
 ```json
@@ -498,12 +500,22 @@ pour tout internet. Servies deux fois, sous `/api/v1/shared-access/public/*` et 
 `/access/api/*`, pour qu'un hôte alias qui réécrit tout vers `/access/` n'ait besoin d'aucune autre
 règle. Le jeton du téléphone passe en `Authorization: Bearer <jeton>`.
 
-| Méthode | Chemin     | Description                                                                                                                                                                 |
-| ------- | ---------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `POST`  | `/enrol`   | `{ code }` ou `{ link }` → `{ token, session }`. `401 unknown_code`, `410 ended`, `429 too_many`, `409 too_many_phones` (50 téléphones déjà installés sur l'accès).         |
-| `GET`   | `/session` | `{ label, status, gates, activeAt, nextOpeningAt, validUntil, travelS, presses }` — jamais l'état du portail ; `presses` sont ceux de ce téléphone. `401` s'il est inconnu. |
-| `POST`  | `/open`    | `{ gate }` → `{ ok: true }`, ou `409 { ok: false, reason, activeAt?, nextOpeningAt? }`.                                                                                     |
-| `GET`   | `/share`   | `{ url, qr }` — le lien d'invitation et son QR code en URI `data:image/svg+xml`. `409 ended`, `409 no_public_url`, `401` si inconnu.                                        |
+| Méthode | Chemin     | Description                                                                                                                                                                                                                                                                    |
+| ------- | ---------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `POST`  | `/enrol`   | `{ code }` ou `{ link }` → `{ token, session }`. `401 unknown_code`, `410 ended`, `429 too_many`, `409 too_many_phones` (50 téléphones déjà installés sur l'accès).                                                                                                            |
+| `GET`   | `/session` | `{ label, status, gates, activeAt, nextOpeningAt, validUntil, travelS, presses }` — jamais l'état du portail, sauf `expected` / `outcome` d'un appui suivi de ce téléphone (spec 188, amende la spec 181 R4.16) ; `presses` sont ceux de ce téléphone. `401` s'il est inconnu. |
+| `POST`  | `/open`    | `{ gate }` → `{ ok: true, outcome?, expected?, windowS? }`, ou `409 { ok: false, reason, activeAt?, nextOpeningAt? }`.                                                                                                                                                         |
+| `GET`   | `/share`   | `{ url, qr }` — le lien d'invitation et son QR code en URI `data:image/svg+xml`. `409 ended`, `409 no_public_url`, `401` si inconnu.                                                                                                                                           |
+
+**Résultat (spec 188).** Quand l'état du portail est connu à l'appui, `open` renvoie
+`outcome: "pending"`, `expected: "open" | "close"` et `windowS` (le temps que le cœur attend la
+preuve : 15 depuis fermé, 60 depuis ouvert), et cet appui dans `session.presses` porte ensuite
+`outcome` — `pending`, `confirmed` ou `unconfirmed` — et `expected`. La page relit la session
+toutes les 2 s, 70 s au plus, jusqu'à `confirmed`, et garde la sphère verrouillée sur la plus
+longue de `travelS` et `windowS`, et tant que le résultat est en attente. Un rapport tardif
+confirme encore un appui jusqu'à 5 min après sa fenêtre. Les entrées du journal du propriétaire
+portent les mêmes `outcome` et `outcomeExpected` (`null` quand l'appui n'était pas suivi, ou qu'un
+ordre suivi plus récent sur le portail l'a remplacé).
 
 La raison d'un refus est l'une de `revoked`, `suspended`, `not_yet`, `expired`, `outside_hours`,
 `no_gate`, `not_this_gate`, `refused_by_house` (le portail est désarmé), `too_many_opens` (12 par

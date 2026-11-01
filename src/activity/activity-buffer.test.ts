@@ -382,6 +382,40 @@ describe("ActivityBuffer", () => {
       });
     });
 
+    it("keeps an order-outcome alarm's i18n key, and drops a key from any other source (spec 188)", () => {
+      h.bus.emit({
+        type: "system.alarm.raised",
+        alarmId: "order-unconfirmed:eq-1:command",
+        level: "warning",
+        source: "order-confirmation",
+        message: "Portail: fault",
+        messageKey: "alarms.orderOutcome.fault",
+        messageParams: { equipment: "Portail" },
+      });
+      h.bus.emit({
+        type: "system.alarm.raised",
+        alarmId: "p1",
+        level: "warning",
+        source: "some-plugin",
+        message: "Something",
+        messageKey: "alarms.orderOutcome.fault",
+      });
+      const [plugin, outcome] = h.buffer.getItems();
+      expect(outcome.message).toEqual({
+        template: "alarm.raised",
+        params: {
+          source: "order-confirmation",
+          message: "Portail: fault",
+          messageKey: "alarms.orderOutcome.fault",
+          messageParams: { equipment: "Portail" },
+        },
+      });
+      expect(plugin.message).toEqual({
+        template: "alarm.raised",
+        params: { source: "some-plugin", message: "Something" },
+      });
+    });
+
     it("records system.alarm.resolved so the end of an incident is in the feed", () => {
       h.bus.emit({
         type: "system.alarm.resolved",

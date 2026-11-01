@@ -61,8 +61,10 @@ import {
   evIsPlugged,
 } from "../equipments/electricVehicleState";
 import { gateNeedsConfirm } from "./gate-confirm";
+import { OrderOutcomeLine } from "../equipments/OrderOutcomeLine";
 import { ForecastConfidenceMark } from "./ForecastConfidenceMark";
 import { vmcSpeedOf } from "../equipments/vmcSpeed";
+import { doorWordPill } from "../equipments/door-pill";
 import {
   formatRuntime,
   isOnBattery,
@@ -138,6 +140,11 @@ export function MobileWidgetCard({
         </span>
       )}
 
+      {/* Spec 188 — what became of the last order, under the state (a gate
+          still reads Open / Closed). The icon gives up the room it needs, so
+          the 120 px card never grows. */}
+      <OrderOutcomeLine equipmentId={equipment.id} size="xs" className="w-full shrink-0" />
+
       {/* Spec 168 — the forecast tile qualifies tomorrow on the phone too,
           which is the surface this dashboard is mostly read on. */}
       {footer}
@@ -156,6 +163,8 @@ function useMobileState(
     isLight,
     isShutter,
     isAwning,
+    isDoor,
+    shutterIsOpen,
     isThermostat,
     isGate,
     isHeater,
@@ -232,6 +241,26 @@ function useMobileState(
         widget.icon,
         <AwningWidgetIcon deployed={position !== null && position > 0} />,
       ),
+      stateLines: text ? [text] : [],
+    };
+  }
+
+  // Spec 190 — the door's own word first, then its position.
+  if (isDoor) {
+    const pill = doorWordPill(equipment);
+    const pos = equipment.dataBindings.find((b) => b.category === "shutter_position");
+    const position = pos && typeof pos.value === "number" ? pos.value : null;
+    const text = pill
+      ? t(pill.key)
+      : position === 100
+        ? t("controls.doorOpen")
+        : position === 0
+          ? t("controls.doorClosed")
+          : position !== null
+            ? `${position}%`
+            : null;
+    return {
+      icon: renderWidgetStateIcon(widget.icon, <GarageDoorIcon open={shutterIsOpen} />),
       stateLines: text ? [text] : [],
     };
   }

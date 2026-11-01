@@ -73,10 +73,13 @@ import {
 } from "./WidgetIcons";
 import { WeatherForecastWidget } from "./WeatherForecastWidget";
 import { WidgetCard } from "./WidgetCard";
+import { TileEquipmentContext } from "../equipments/order-outcome";
 import { TimedEquipmentWidget } from "./TimedEquipmentWidget";
 import { renderWidgetStateIcon, shutterLevel } from "./widget-icons";
 import { resolveWidgetPresentation } from "./presentation/resolveWidgetPresentation";
 import { PresentationWidget } from "./presentation/PresentationWidget";
+import { doorWordPill } from "../equipments/door-pill";
+import { doorState, isDoorOpenForCount } from "../../../../src/shared/door-state";
 
 interface EquipmentWidgetProps {
   widget: DashboardWidget;
@@ -92,7 +95,19 @@ interface EquipmentWidgetProps {
   editMode?: boolean;
 }
 
-export function EquipmentWidget({
+/**
+ * Spec 188 — every tile names its equipment to the shared `WidgetCard` shell,
+ * which draws the status line of the equipment's last order under the title.
+ */
+export function EquipmentWidget(props: EquipmentWidgetProps) {
+  return (
+    <TileEquipmentContext.Provider value={props.equipment.id}>
+      <EquipmentWidgetBody {...props} />
+    </TileEquipmentContext.Provider>
+  );
+}
+
+function EquipmentWidgetBody({
   widget,
   equipment,
   equipmentZone,
@@ -656,6 +671,10 @@ function ShutterEquipmentWidget({
   const slider = useSliderOverride();
 
   const isAwning = equipment.type === "awning";
+  // Spec 190 — a door draws the garage-door picto and its own state pill.
+  const isDoor = equipment.type === "door";
+  const doorPill = doorWordPill(equipment);
+  const doorOpen = isDoor && isDoorOpenForCount(doorState(equipment.dataBindings));
 
   const positionBinding = equipment.dataBindings.find((db) => db.category === "shutter_position");
   const devicePosition =
@@ -684,8 +703,16 @@ function ShutterEquipmentWidget({
   // Awning vocabulary swap (mirrors ShutterControl):
   //   OPEN (RF up) = retract  · CLOSE (RF down) = extend (deploy)
   //   pos 0  = retracted    · pos 100 = deployed
-  const pillAtHundred = isAwning ? t("controls.deployed") : t("controls.opened");
-  const pillAtZero = isAwning ? t("controls.retracted") : t("controls.closed");
+  const pillAtHundred = isAwning
+    ? t("controls.deployed")
+    : isDoor
+      ? t("controls.doorOpen")
+      : t("controls.opened");
+  const pillAtZero = isAwning
+    ? t("controls.retracted")
+    : isDoor
+      ? t("controls.doorClosed")
+      : t("controls.closed");
   const openTitle = isAwning ? t("controls.retract") : t("controls.open");
   const closeTitle = isAwning ? t("controls.extend") : t("controls.close");
 
@@ -709,12 +736,18 @@ function ShutterEquipmentWidget({
           iconKey,
           isAwning ? (
             <AwningWidgetIcon deployed={position !== null && position > 0} />
+          ) : isDoor ? (
+            <GarageDoorIcon open={doorOpen} />
           ) : (
             <ShutterWidgetIcon level={level} />
           ),
         )}
         <div className="pl-2">
-          {position === null ? (
+          {doorPill ? (
+            <span className={`text-[13px] font-medium px-2 py-0.5 rounded ${doorPill.className}`}>
+              {t(doorPill.key)}
+            </span>
+          ) : position === null ? (
             <span className="text-[16px] text-text-tertiary">{"\u2014"}</span>
           ) : position === 100 ? (
             <span className="text-[13px] font-medium text-success px-2 py-0.5 rounded bg-success/10">
