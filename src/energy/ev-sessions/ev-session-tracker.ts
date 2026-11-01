@@ -46,6 +46,30 @@ const REPORT_ALIASES: ReadonlySet<string> = new Set<ReportAlias>([
   "at_home",
 ]);
 
+/**
+ * What the charger itself reports. Only these keep its held power alive:
+ * computed data (`energy_hour`, `energy_day`… from the EnergyAggregator) is
+ * emitted on the charger too, hourly, and must not revive a stale reading.
+ */
+const CHARGER_ALIASES: ReadonlySet<string> = new Set(Object.values(EV_CHARGER_ALIASES));
+
+/** Two updates this close together came in the same report. */
+const SAME_REPORT_MS = 5_000;
+
+/** Every alias the tracker reads: anything else is dropped before any lookup. */
+const RELEVANT_ALIASES: ReadonlySet<string> = new Set([
+  ...CHARGER_ALIASES,
+  ...REPORT_ALIASES,
+  ELECTRIC_VEHICLE_ALIASES.mileage,
+]);
+
+/** SQLite timestamps use a space (`2026-11-01 10:49:35Z`); ISO uses a `T`. */
+function parseTimestamp(value: unknown): number | null {
+  if (typeof value !== "string" || value === "") return null;
+  const ms = Date.parse(value.includes("T") ? value : value.replace(" ", "T"));
+  return Number.isNaN(ms) ? null : ms;
+}
+
 /** What a user may set a session to (FR4). */
 export type AttributionTarget =
   { target: "vehicle"; vehicleId: string } | { target: "other" } | { target: "unattributed" };
@@ -84,6 +108,12 @@ export function monthRange(month: string): {
 interface OpenSession {
   record: SessionRecord;
   acc: WindowAccountant;
+  /**
+   * The charger has an `energy` binding of its own. Without one, an `energy`
+   * event on it is the PowerSubmeterIntegrator's synthetic delta (integrated
+   * from a possibly stale power, flushed late): not a meter, ignored.
+   */
+  hasEnergyMeter: boolean;
 }
 
 export class EvSessionTracker {
@@ -223,11 +253,22 @@ export class EvSessionTracker {
   private restore(): void {
     const now = this.now();
     for (const record of this.store.listOpen()) {
-      const s: OpenSession = { record, acc: new WindowAccountant(now) };
-      this.open.set(record.chargerId, s);
-      const state = this.chargerVehicleState(record.chargerId);
-      if (!this.equipmentManager.getById(record.chargerId) || state === "disconnected") {
+      this.open.set(record.chargerId, {
+        record,
+        acc: new WindowAccountant(now),
+        hasEnergyMeter: this.chargerHasEnergyMeter(record.chargerId),
+      });
+      if (!this.equipmentManager.getById(record.chargerId)) {
         this.close(record.chargerId, now);
+        continue;
+      }
+      const { state, changedAtMs } = this.chargerVehicleState(record.chargerId);
+      if (state === "disconnected") {
+        // Closed at the time of that reading (FR1), not at this start.
+        const startMs = Date.parse(record.startedAt);
+        const at =
+          changedAtMs !== null && changedAtMs >= startMs && changedAtMs <= now ? changedAtMs : now;
+        this.close(record.chargerId, at);
       }
     }
     for (const record of this.store.listPending()) this.pending.set(record.id, record);
@@ -235,7 +276,7 @@ export class EvSessionTracker {
     // A charger already plugged (first start, or a missed event) opens now.
     for (const eq of this.equipmentManager.getAll()) {
       if (eq.type !== "ev_charger" || !eq.enabled || this.open.has(eq.id)) continue;
-      const state = this.chargerVehicleState(eq.id);
+      const { state } = this.chargerVehicleState(eq.id);
       if (state === "connected" || state === "charging") this.openSession(eq.id, eq.name, now);
     }
   }
@@ -266,7 +307,11 @@ export class EvSessionTracker {
       evidence: [],
       updatedAt: nowIso,
     };
-    this.open.set(chargerId, { record, acc: new WindowAccountant(now) });
+    this.open.set(chargerId, {
+      record,
+      acc: new WindowAccountant(now),
+      hasEnergyMeter: this.chargerHasEnergyMeter(chargerId),
+    });
     this.persist(record);
     this.logger.info({ sessionId: record.id, chargerId }, "EV charge session opened");
   }
@@ -344,6 +389,8 @@ export class EvSessionTracker {
     value: unknown,
     sourceTimestamp: number | undefined,
   ): void {
+    // Most of the house's traffic is none of this: drop it before any lookup.
+    if (!RELEVANT_ALIASES.has(alias)) return;
     const eq = this.equipmentManager.getById(equipmentId);
     if (!eq) return;
     const now = this.now();
@@ -389,17 +436,18 @@ export class EvSessionTracker {
     if (!s) return;
     if (alias === EV_CHARGER_ALIASES.power && typeof value === "number") {
       this.settle(s, s.acc.power(now, value), true);
-    } else if (alias === EV_CHARGER_ALIASES.energy && typeof value === "number") {
+    } else if (alias === EV_CHARGER_ALIASES.energy) {
+      if (!s.hasEnergyMeter || typeof value !== "number") return;
       if (value > 0) s.record.energyWh += value;
       this.settle(s, s.acc.carEnergy(now, value), true);
-    } else {
+    } else if (CHARGER_ALIASES.has(alias)) {
       s.acc.chargerReport(now);
     }
   }
 
   private onVehicle(vehicleId: string, alias: string, value: unknown, receivedAtMs: number): void {
     if (REPORT_ALIASES.has(alias)) {
-      const reportedAtMs = this.vehicleReportedAt(vehicleId);
+      const reportedAtMs = this.vehicleReportedAt(vehicleId, alias);
       const report = { alias: alias as ReportAlias, value, reportedAtMs, receivedAtMs };
       for (const s of this.open.values()) this.foldInto(s.record, vehicleId, report, null);
       for (const record of this.pending.values()) {
@@ -445,7 +493,14 @@ export class EvSessionTracker {
   private onRemoved(equipmentId: string): void {
     const nowIso = new Date(this.now()).toISOString();
     if (this.open.has(equipmentId)) this.close(equipmentId, this.now());
-    // A vehicle: its sessions keep its name and count nowhere.
+    // A vehicle: its sessions keep its name and count nowhere. The records
+    // held in memory too, or their next save would write the flag back.
+    for (const record of [
+      ...[...this.open.values()].map((s) => s.record),
+      ...this.pending.values(),
+    ]) {
+      if (record.vehicleId === equipmentId) record.vehicleDeleted = true;
+    }
     this.store.markVehicleDeleted(equipmentId, nowIso);
     this.store.deleteLeg(equipmentId);
   }
@@ -500,20 +555,40 @@ export class EvSessionTracker {
     return this.pending.get(sessionId) ?? this.store.get(sessionId);
   }
 
-  private chargerVehicleState(chargerId: string): string | null {
+  private chargerVehicleState(chargerId: string): {
+    state: string | null;
+    changedAtMs: number | null;
+  } {
     const binding = this.equipmentManager
       .getDataBindingsWithValues(chargerId)
       .find((b) => b.alias === EV_CHARGER_ALIASES.vehicle);
-    return isEvVehicleState(binding?.value) ? binding.value : null;
+    return {
+      state: isEvVehicleState(binding?.value) ? binding.value : null,
+      changedAtMs: parseTimestamp(binding?.lastChanged ?? binding?.lastUpdated),
+    };
   }
 
-  private vehicleReportedAt(vehicleId: string): number | null {
-    const binding = this.equipmentManager
-      .getDataBindingsWithValues(vehicleId)
-      .find((b) => b.alias === ELECTRIC_VEHICLE_ALIASES.reportedAt);
-    if (typeof binding?.value !== "string") return null;
-    const ms = Date.parse(binding.value);
-    return Number.isNaN(ms) ? null : ms;
+  private chargerHasEnergyMeter(chargerId: string): boolean {
+    return this.equipmentManager
+      .getDataBindingsWithValues(chargerId)
+      .some((b) => b.alias === EV_CHARGER_ALIASES.energy);
+  }
+
+  /**
+   * The car's own report time for an update, when that update came with it:
+   * `reported_at` applies only to the values published in the same report
+   * (a Renault battery-status read), not to those of another poll (its
+   * location, hence `at_home`), which take the time Sowel received them.
+   */
+  private vehicleReportedAt(vehicleId: string, alias: string): number | null {
+    const bindings = this.equipmentManager.getDataBindingsWithValues(vehicleId);
+    const reportedAt = bindings.find((b) => b.alias === ELECTRIC_VEHICLE_ALIASES.reportedAt);
+    const own = bindings.find((b) => b.alias === alias);
+    const reportedUpdated = parseTimestamp(reportedAt?.lastUpdated);
+    const ownUpdated = parseTimestamp(own?.lastUpdated);
+    if (reportedUpdated === null || ownUpdated === null) return null;
+    if (Math.abs(reportedUpdated - ownUpdated) > SAME_REPORT_MS) return null;
+    return parseTimestamp(reportedAt?.value);
   }
 
   private vehicleNumber(vehicleId: string, alias: string): number | null {

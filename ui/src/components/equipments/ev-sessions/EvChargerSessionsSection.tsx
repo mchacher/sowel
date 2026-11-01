@@ -1,7 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { getEvSessions } from "../../../api";
-import { useWsSubscription } from "../../../hooks/useWsSubscription";
 import { dateLocale } from "../../../lib/locale";
 import { useEquipments } from "../../../store/useEquipments";
 import { useEvSessions } from "../../../store/useEvSessions";
@@ -20,7 +19,6 @@ export function EvChargerSessionsSection({ chargerId }: { chargerId: string }) {
   const locale = dateLocale(i18n.language);
   const rev = useEvSessions((s) => s.rev);
   const equipments = useEquipments((s) => s.equipments);
-  useWsSubscription(["equipments", "energy"]);
 
   const [month, setMonth] = useState(() => monthOf(new Date()));
   const [sessions, setSessions] = useState<EvChargeSession[]>([]);

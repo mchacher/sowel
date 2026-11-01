@@ -1,8 +1,8 @@
 # Spec 191 — EV charge sessions and charging cost per vehicle
 
-- **Status**: Draft — principles and UI agreed with the maintainer on 2026-11-01 (vehicle page variant B, charger list and reassignment sheet as proposed: https://claude.ai/artifact/KsnQ965nzfBxaPaSay6TXQ)
+- **Status**: Implemented — principles and UI agreed with the maintainer on 2026-11-01 (vehicle page variant B, charger list and reassignment sheet as proposed); production check pending
 - **Date**: 2026-11-01
-- **Related**: spec 182 (EV charger), spec 183 (electric vehicle — and its non-goal "no car↔charger link in the core", kept here), spec 123 (energy cost valuation, read-time blended rate), spec 126/138 (TariffClassifier), SelfConsumptionWriter (grid/solar per minute)
+- **Related**: spec 182 (EV charger), spec 183 (electric vehicle — and its non-goal "no car↔charger link in the core", kept here), spec 123 (energy cost valuation, read-time blended rate), spec 126/138 (TariffClassifier), SelfConsumptionWriter (the same live grid deltas)
 
 ## Context
 
@@ -66,7 +66,7 @@ This spec adds a **charge session**: one plug-in on one charger, with its energy
 
 The window is 5 minutes, not 1: the grid meter reports about once a minute with some jitter, so a 1-minute window would regularly hold no grid reading and be counted all grid by the rule below. For each window `m` of an open session:
 
-- `car(m)`: the charger's draw over the window, from its last `power` held until the next one (a charger may report only on change; held at most 15 minutes after its last report of any kind); without a `power` binding, from its `energy` deltas.
+- `car(m)`: the charger's draw over the window, from its last `power` held until the next one (a charger may report only on change; held at most 15 minutes after its last report of any kind); for a charger that reported no power in the session, from its `energy` deltas.
 - `import(m)`: the sum of `max(0, signed grid delta)` over the `main_energy_meter`'s live ticks in the window. Without a main meter, or for a window where the main meter reported nothing, `import(m) = car(m)` (all grid: never invent solar). Ticks carrying a source timestamp (aligned historical windows) are not live and are ignored.
 - `grid(m) = min(car(m), import(m))`, `solar(m) = car(m) − grid(m)` (P5).
 - `grid(m)` is split HP/HC by the `TariffClassifier` over that window, and priced at the prices in force when the window closes (P3, P6).
@@ -79,14 +79,14 @@ No tariff configured: the session has kWh and solar share, and no cost (shown as
 
 Candidates: every enabled `electric_vehicle` (P9).
 
-While a session is open and for a **grace period of 2 hours after it closes** (the maker's cloud reports late), Sowel records per candidate, from reports whose `reported_at` falls between the session start and the end of the grace period (the time of the update when the vehicle has no `reported_at`):
+While a session is open and for a **grace period of 2 hours after it closes** (the maker's cloud reports late), Sowel records per candidate the reports the car made **during** the session: their time is the car's `reported_at` when the value came in the same report as it, else the time Sowel received the value (a value from another poll, such as a location giving `at_home`, does not borrow the battery report's time):
 
-- plugged seen (`plugged = true`),
+- plugged seen (`plugged = true`, informative),
 - charging seen (`charging_state = charging`),
-- battery rise (`battery_level` above the first value seen in the window),
+- battery rise (`battery_level` at least 2 points above the first value seen in the session),
 - away seen (`at_home = false`).
 
-A candidate **matches** when it was seen plugged, was seen charging or its battery rose, and was never seen away.
+A candidate **matches** when it was seen charging or its battery rose, and was never seen away. A car's own unplug report is no evidence against it: the car stamps its unplug when it happens, often before the charger reports it, so the report falls inside the session of the very car that charged. Being seen plugged is not required: a car whose plug state did not change during the session reports nothing about it.
 
 At the end of the grace period:
 
@@ -174,6 +174,6 @@ For a vehicle and a month: cost (€), energy (kWh) with its split grid off-peak
 | `docs/user/energy.md` + `.fr.md`                                              | Why the charger's € on By usage differs from the sum of its sessions        |
 | `docs/technical/api-reference.md` + `.fr.md`                                  | Session endpoints and WebSocket events                                      |
 | `docs/technical/data-model.md` and `data-model/equipments.md` (EN only today) | Session and daily-mileage tables, session types and events                  |
-| `docs/technical/architecture.md` + `.fr.md`                                   | Session tracker in the energy section (per-minute grid/solar attribution)   |
+| `docs/technical/architecture.md` + `.fr.md`                                   | Session tracker (5-minute grid/solar attribution)                           |
 
 Screenshots to retake: vehicle detail, charger detail (once the UI is agreed).

@@ -49,8 +49,14 @@ describe("driving legs", () => {
     });
   });
 
-  it("ignores a mileage that goes backwards", () => {
-    const { next } = onMileage(null, 100, 50, T);
-    expect(onMileage(next, 90, 50, T + H).leg).toBeNull();
+  it("ignores a mileage that goes backwards, and keeps the leg", () => {
+    const { next } = onMileage(null, 23_000, 50, T);
+    const glitch = onMileage(next, 0, 50, T + H);
+    expect(glitch.leg).toBeNull();
+    expect(onMileage(glitch.next, 23_040, 45, T + 2 * H).leg).toEqual({
+      kmTotal: 40,
+      kmMeasured: 40,
+      batteryDrop: 5,
+    });
   });
 });

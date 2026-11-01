@@ -55,7 +55,9 @@ export function onMileage(
   const next = startLeg(mileageKm, battery, atMs);
   if (state === null) return { next, leg: null };
   const km = mileageKm - state.mileageKm;
-  if (!(km > 0)) return { next, leg: null };
+  // A mileage going backwards is a glitch: ignore the reading, keep the leg.
+  if (km < 0 || !Number.isFinite(km)) return { next: state, leg: null };
+  if (km === 0) return { next, leg: null };
 
   const measurable =
     !state.charged &&

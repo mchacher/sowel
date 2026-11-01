@@ -57,7 +57,7 @@
 | foldReport             | Report made before the start; made during but received 90 min after             | Ignored; counted                                        |
 | foldReport             | Away reported after the unplug; open session; no report time                    | Ignored; counted; received time used                    |
 | driving                | First reading; measured leg; leg with a rise; leg with charging                 | No leg; km + drop; km only; km only                     |
-| driving                | Parked charge between readings; no battery; mileage backwards                   | Next drive measured; km only; ignored                   |
+| driving                | Parked charge between readings; no battery; mileage backwards                   | Next drive measured; km only; ignored, leg kept         |
 | summary                | Scaling (meter 10 kWh, estimate 9 kWh, grid 3 kWh); no meter; no estimate       | 3.33 grid / 6.67 solar; energy = estimate; all grid     |
 | summary                | whPerBatteryPoint 18 kWh / +30 and 12 kWh / +20, +5 ignored; 10 most recent     | 600 Wh per point                                        |
 | summary                | Home 12.21 € / 118.4 kWh, 600 Wh/pt, 300 pts over 1 060 km                      | ≈ 17.0 kWh/100 km, ≈ 1.75 € per 100 km                  |
@@ -76,6 +76,13 @@
 | tracker                | Vehicle removed / charger removed                                               | Sessions keep the name, out of totals / closed and kept |
 | tracker                | Learn, then two legs (one charged on the way)                                   | Consumption from the measured leg only; € per 100 km    |
 | tracker                | Plug-in hybrid; malformed month                                                 | Reason plug-in-hybrid; null                             |
+| tracker                | Charger offline, only computed `energy_hour` events                             | Power held 15 min, never revived                        |
+| tracker                | Power-only charger receiving a synthetic `energy` backlog                       | Ignored                                                 |
+| tracker                | Restart after an unplug                                                         | Closed at the reading's time (`lastChanged`)            |
+| tracker                | The charging car reports its own unplug before the charger                      | Still attributed to it (review finding)                 |
+| tracker                | Battery update without a `reported_at` in the same report                       | Received time used, counted                             |
+| tracker                | Vehicle removed while a session attributed to it is open                        | `vehicleDeleted` survives the next save                 |
+| summary                | Month with an unpriced session                                                  | Home price over priced sessions only                    |
 | routes                 | List by charger / by vehicle (default month); neither or both; bad month        | 200; 200; 400; 400                                      |
 | routes                 | Summary                                                                         | 200                                                     |
 | routes                 | PUT vehicle / other / unattributed                                              | 200, body passed whole (`vehicleId` kept)               |

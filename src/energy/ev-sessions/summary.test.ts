@@ -130,6 +130,18 @@ describe("monthSummary", () => {
     expect(s.eurPer100kmUnavailable).toBeNull();
   });
 
+  it("computes the home price over priced sessions only", () => {
+    const s = monthSummary({
+      vehicleId: "megane",
+      month: "2026-11",
+      sessions: [...sessions, session({ energyWh: 50_000, costEur: null })],
+      plugInHybrid: false,
+      whPerPoint: 600,
+      driving: { kmMeasured: 1_060, batteryDrop: 300 },
+    });
+    expect(s.homePriceEurPerKwh).toBeCloseTo(0.1031, 4);
+  });
+
   it("is unchanged when half the km were driven on energy charged elsewhere", () => {
     const base = {
       vehicleId: "megane",

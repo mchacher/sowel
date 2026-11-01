@@ -112,7 +112,12 @@ export function monthSummary(input: {
   const costHcEur = sumNullable((s) => s.costHcEur);
   const costEur =
     costHpEur === null && costHcEur === null ? null : (costHpEur ?? 0) + (costHcEur ?? 0);
-  const homePrice = costEur !== null && energyWh > 0 ? costEur / (energyWh / 1000) : null;
+  // The home price counts only priced sessions: one without a cost (no tariff
+  // at the time) must not dilute it.
+  const priced = input.sessions.filter((s) => s.costEur !== null);
+  const pricedWh = priced.reduce((acc, s) => acc + s.energyWh, 0);
+  const pricedEur = priced.reduce((acc, s) => acc + (s.costEur ?? 0), 0);
+  const homePrice = priced.length > 0 && pricedWh > 0 ? pricedEur / (pricedWh / 1000) : null;
 
   let unavailable: EvPer100kmUnavailable | null = null;
   let kWhPer100km: number | null = null;

@@ -2,7 +2,6 @@ import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { Loader2 } from "lucide-react";
 import { getEvSessions, getEvVehicleSummary, updateEquipment } from "../../../api";
-import { useWsSubscription } from "../../../hooks/useWsSubscription";
 import { dateLocale } from "../../../lib/locale";
 import { useEvSessions } from "../../../store/useEvSessions";
 import type { EquipmentWithDetails, EvChargeSession, EvVehicleMonthSummary } from "../../../types";
@@ -53,7 +52,6 @@ export function EvHomeChargingSection({
   const { t, i18n } = useTranslation();
   const locale = dateLocale(i18n.language);
   const rev = useEvSessions((s) => s.rev);
-  useWsSubscription(["equipments", "energy"]);
 
   const [month, setMonth] = useState(() => monthOf(new Date()));
   const [summary, setSummary] = useState<EvVehicleMonthSummary | null>(null);
@@ -62,6 +60,7 @@ export function EvHomeChargingSection({
   const [error, setError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
 
+  // The plug-in hybrid switch changes the summary: it refetches on it too.
   useEffect(() => {
     let cancelled = false;
     Promise.all([
@@ -80,7 +79,7 @@ export function EvHomeChargingSection({
     return () => {
       cancelled = true;
     };
-  }, [equipment.id, month, rev]);
+  }, [equipment.id, equipment.plugInHybrid, month, rev]);
 
   const eur = (v: number | null) => (v === null ? "—" : formatEur(v, locale));
   const visible = showAll ? sessions : sessions.slice(0, VISIBLE_SESSIONS);

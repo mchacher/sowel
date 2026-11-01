@@ -14,6 +14,7 @@ import { EvSessionError, EvSessionTracker, GRACE_MS, monthRange } from "./ev-ses
 
 const T0 = new Date(2026, 10, 2, 12, 0, 0).getTime(); // local noon, a window boundary
 const MIN = 60_000;
+const H = 60 * MIN;
 
 function makeLogger(): Logger {
   const self = {
@@ -27,9 +28,15 @@ function makeLogger(): Logger {
   return self as unknown as Logger;
 }
 
+interface FakeBinding {
+  value: unknown;
+  lastUpdated: string;
+  lastChanged: string;
+}
+
 class FakeEquipments {
   equipments: Equipment[] = [];
-  values = new Map<string, Record<string, unknown>>();
+  values = new Map<string, Record<string, FakeBinding>>();
 
   add(id: string, type: EquipmentType, name = id, extra: Partial<Equipment> = {}): void {
     this.equipments.push({
@@ -44,8 +51,14 @@ class FakeEquipments {
     });
     this.values.set(id, {});
   }
-  set(id: string, alias: string, value: unknown): void {
-    this.values.get(id)![alias] = value;
+  set(id: string, alias: string, value: unknown, atMs: number = now): void {
+    const at = new Date(atMs).toISOString();
+    const previous = this.values.get(id)![alias];
+    this.values.get(id)![alias] = {
+      value,
+      lastUpdated: at,
+      lastChanged: previous && previous.value === value ? previous.lastChanged : at,
+    };
   }
   getById(id: string): Equipment | null {
     return this.equipments.find((e) => e.id === id) ?? null;
@@ -53,8 +66,8 @@ class FakeEquipments {
   getAll(): Equipment[] {
     return this.equipments;
   }
-  getDataBindingsWithValues(id: string): { alias: string; value: unknown }[] {
-    return Object.entries(this.values.get(id) ?? {}).map(([alias, value]) => ({ alias, value }));
+  getDataBindingsWithValues(id: string): ({ alias: string } & FakeBinding)[] {
+    return Object.entries(this.values.get(id) ?? {}).map(([alias, b]) => ({ alias, ...b }));
   }
 }
 
@@ -122,8 +135,9 @@ beforeEach(() => {
   eqs.add("grid", "main_energy_meter");
   eqs.add("rafale", "electric_vehicle", "Rafale");
   eqs.add("megane", "electric_vehicle", "Megane");
-  store = new EvSessionStore(db);
   now = T0;
+  eqs.set("charger", "energy", 0); // the charger has its own energy meter
+  store = new EvSessionStore(db);
   hcShare = 0;
   prices = { hp: 0.2, hc: 0.1 };
   events = [];
@@ -209,6 +223,28 @@ describe("session lifecycle", () => {
     expect(s.costEur).toBeNull();
   });
 
+  it("does not revive a stale power with the charger's computed data", () => {
+    data("charger", "vehicle", "charging");
+    data("charger", "power", 7000);
+    for (let i = 0; i < 6; i++) {
+      now += 10 * MIN; // offline: no report from the charger itself
+      data("charger", "energy_hour", 0);
+      data("grid", "energy", 0);
+    }
+    data("charger", "vehicle", "disconnected");
+    // 15 minutes held at most, never revived by energy_hour.
+    expect(sessions()[0].energyWh).toBeCloseTo((7000 * 15) / 60, 0);
+  });
+
+  it("ignores synthetic energy on a charger without an energy meter", () => {
+    eqs.values.set("charger", {});
+    data("charger", "vehicle", "charging");
+    run(30, 2000, 2000);
+    data("charger", "energy", 50_000); // PowerSubmeterIntegrator backlog
+    data("charger", "vehicle", "disconnected");
+    expect(sessions()[0].energyWh).toBeCloseTo(1000, 0);
+  });
+
   it("ignores aligned historical grid ticks", () => {
     data("charger", "vehicle", "charging");
     data("charger", "power", 1200);
@@ -235,14 +271,15 @@ describe("restart", () => {
     expect(list[0].energyWh).toBeCloseTo(2000, 0);
   });
 
-  it("closes a session whose charger was unplugged meanwhile", () => {
+  it("closes a session whose charger was unplugged meanwhile, at the reading's time", () => {
     data("charger", "vehicle", "charging");
     run(30, 2000, 2000);
     tracker.stop();
-    eqs.set("charger", "vehicle", "disconnected");
-    now += 10 * MIN;
+    const unpluggedAt = now + 5 * MIN;
+    eqs.set("charger", "vehicle", "disconnected", unpluggedAt);
+    now += 3 * H;
     tracker = makeTracker();
-    expect(sessions()[0].endedAt).toBe(new Date(now).toISOString());
+    expect(sessions()[0].endedAt).toBe(new Date(unpluggedAt).toISOString());
   });
 
   it("opens a session for a charger already plugged at start", () => {
@@ -307,6 +344,37 @@ describe("attribution", () => {
     expect(sessions()[0]).toMatchObject({ vehicleId: "megane", batteryStart: 40, batteryEnd: 60 });
   });
 
+  it("still attributes to the car that charged when it reports its own unplug first", async () => {
+    data("charger", "vehicle", "charging");
+    data("rafale", "charging_state", "charging");
+    await flush();
+    run(60, 2000, 2000);
+    // The car stamps its unplug before the charger reports it.
+    data("rafale", "reported_at", new Date(now - 30_000).toISOString());
+    data("rafale", "plugged", false);
+    await flush();
+    data("charger", "vehicle", "disconnected");
+    now += GRACE_MS;
+    tracker.tick();
+    expect(sessions()[0]).toMatchObject({ vehicleId: "rafale", attributionReason: "single-match" });
+  });
+
+  it("applies reported_at only to the values of the same report", async () => {
+    // A battery report made long before the session, then a location poll.
+    eqs.set("megane", "reported_at", new Date(T0 - 5 * H).toISOString(), T0 - 5 * H);
+    data("charger", "vehicle", "charging");
+    run(30, 2000, 2000);
+    data("megane", "battery_level", 40); // a later poll without reported_at
+    await flush();
+    run(30, 2000, 2000);
+    data("megane", "battery_level", 50);
+    await flush();
+    data("charger", "vehicle", "disconnected");
+    now += GRACE_MS;
+    tracker.tick();
+    expect(sessions()[0]).toMatchObject({ vehicleId: "megane", batteryStart: 40, batteryEnd: 50 });
+  });
+
   it("leaves the session to attribute when both cars match", async () => {
     await chargeWith([
       ["rafale", "charging_state", "charging"],
@@ -353,6 +421,22 @@ describe("attribution", () => {
     });
     expect(sessions()[0]).toMatchObject({ vehicleName: "Rafale", vehicleDeleted: true });
     expect(tracker.listByVehicle("rafale", "2026-11")).toEqual([]);
+  });
+
+  it("keeps the deletion of a vehicle on a session still open", async () => {
+    data("charger", "vehicle", "charging");
+    run(10, 2000, 2000);
+    const id = sessions()[0].id;
+    tracker.setAttribution(id, { target: "vehicle", vehicleId: "rafale" });
+    eqs.equipments = eqs.equipments.filter((e) => e.id !== "rafale");
+    bus.emit({
+      type: "equipment.removed",
+      equipmentId: "rafale",
+      equipmentName: "Rafale",
+      zoneId: "garage",
+    });
+    run(10, 2000, 2000); // the next window saves the open record again
+    expect(sessions()[0].vehicleDeleted).toBe(true);
   });
 
   it("closes the session of a deleted charger and keeps it", () => {

@@ -20,7 +20,6 @@ export const BATTERY_RISE_POINTS = 2;
 export interface VehicleEvidence {
   vehicleId: string;
   pluggedSeen: boolean;
-  unpluggedSeen: boolean;
   chargingSeen: boolean;
   awaySeen: boolean;
   firstBattery: number | null;
@@ -31,7 +30,6 @@ export function emptyEvidence(vehicleId: string): VehicleEvidence {
   return {
     vehicleId,
     pluggedSeen: false,
-    unpluggedSeen: false,
     chargingSeen: false,
     awaySeen: false,
     firstBattery: null,
@@ -64,7 +62,6 @@ export function foldReport(
   switch (report.alias) {
     case "plugged":
       if (report.value === true) next.pluggedSeen = true;
-      if (report.value === false) next.unpluggedSeen = true;
       break;
     case "charging_state":
       if (report.value === "charging") next.chargingSeen = true;
@@ -88,9 +85,15 @@ export function batteryRise(evidence: VehicleEvidence): number {
   return evidence.maxBattery - evidence.firstBattery;
 }
 
-/** Charged during the session, at home, and never said it was unplugged. */
+/**
+ * Charged during the session and never seen away. An unplug report is no
+ * evidence against a car: the car stamps its own unplug, often before the
+ * charger reports it, so it falls inside the session of the very car that
+ * charged. Being seen plugged is not required either: a car whose plug state
+ * did not change during the session reports nothing about it.
+ */
 export function matches(evidence: VehicleEvidence): boolean {
-  if (evidence.awaySeen || evidence.unpluggedSeen) return false;
+  if (evidence.awaySeen) return false;
   return evidence.chargingSeen || batteryRise(evidence) >= BATTERY_RISE_POINTS;
 }
 
@@ -114,7 +117,7 @@ export function attribute(evidence: VehicleEvidence[], vehicleIds: string[]): At
   if (vehicleIds.length === 1) {
     const only =
       relevant.find((e) => e.vehicleId === vehicleIds[0]) ?? emptyEvidence(vehicleIds[0]);
-    if (!only.awaySeen && !only.unpluggedSeen) {
+    if (!only.awaySeen) {
       return { state: "vehicle", vehicleId: only.vehicleId, reason: "only-vehicle" };
     }
   }

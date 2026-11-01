@@ -48,21 +48,21 @@ The tracker gets `hcShare` from `TariffClassifier.classify(1_000_000, startS, le
 
 ### `attribution.ts` (pure)
 
-`VehicleEvidence` per vehicle: `pluggedSeen`, `unpluggedSeen`, `chargingSeen`, `awaySeen`, `firstBattery`, `maxBattery`. `foldReport()` folds one report when the car made it **during** the session: its `reported_at` when it has one, else the time Sowel received it, must fall in `[start, end]` (end = ∞ while open). The grace period only gives late reports time to arrive.
+`VehicleEvidence` per vehicle: `pluggedSeen`, `chargingSeen`, `awaySeen`, `firstBattery`, `maxBattery`. `foldReport()` folds one report when the car made it **during** the session: its report time must fall in `[start, end]` (end = ∞ while open). The grace period only gives late reports time to arrive.
 
-`matches(e)`: never seen away nor unplugged, and seen charging or a battery rise of at least 2 points (`BATTERY_RISE_POINTS`, jitter below). `attribute(evidence, vehicleIds)`: one match → `vehicle` (`single-match`); several → `unattributed` (`several-matches`); none → the only vehicle when there is just one and it was not seen away or unplugged (`only-vehicle`), else `unattributed` (`no-match`). Evidence of a vehicle that no longer exists is ignored.
+`matches(e)`: never seen away, and seen charging or a battery rise of at least 2 points (`BATTERY_RISE_POINTS`, jitter below). An unplug report is not held against a car: it stamps its own unplug before the charger reports it, inside the session of the car that charged (found in review). `attribute(evidence, vehicleIds)`: one match → `vehicle` (`single-match`); several → `unattributed` (`several-matches`); none → the only vehicle when there is just one and it was not seen away (`only-vehicle`), else `unattributed` (`no-match`). Evidence of a vehicle that no longer exists is ignored.
 
-A car's report reaches Sowel as several updates in one burst, `reported_at` among them in any order: the tracker reads `reported_at` in a microtask, once the burst is over.
+The report time of a value is the car's `reported_at` only when both were updated in the same report (their bindings' `lastUpdated` within 5 s); otherwise the time Sowel received it. On Renault, `plugged`, `charging_state` and `battery_level` come with the battery report and its `reported_at`; `at_home` comes from the hourly location poll and takes its arrival time. The tracker reads it in a microtask, once the burst of updates is over.
 
 ### `driving.ts` (pure)
 
-A leg runs from one `mileage` reading to the next. `onBattery` tracks the lowest level and flags `charged` on a rise of 2 points or more; `onCharging` flags it when the car reports `charging`. `onMileage` closes the leg: `kmTotal`, and when the leg was not charged and the battery did not rise, `kmMeasured` and `batteryDrop`. A reading with no km starts a fresh leg, so a car parked and charged between two readings does not spoil the next drive. A mileage going backwards is ignored.
+A leg runs from one `mileage` reading to the next. `onBattery` tracks the lowest level and flags `charged` on a rise of 2 points or more; `onCharging` flags it when the car reports `charging`. `onMileage` closes the leg: `kmTotal`, and when the leg was not charged and the battery did not rise, `kmMeasured` and `batteryDrop`. A reading with no km starts a fresh leg, so a car parked and charged between two readings does not spoil the next drive. A mileage going backwards is ignored and the leg in progress kept, so a glitch never produces an odometer-sized leg.
 
 ### `summary.ts` (pure)
 
 - `deriveEnergy(sums)`: `k = energy_wh / est_car_wh` scales the window estimates to the meter (energy = estimate for a charger without an energy meter; all grid when the meter moved without any estimate).
 - `whPerBatteryPoint(sessions)`: Σ energy ÷ Σ battery rise over the 10 most recent attributed sessions that raised the battery by at least 10 points.
-- `monthSummary(...)`: totals, `homePriceEurPerKwh = cost ÷ energy`, `kWhPer100km = whPerPoint × Σ batteryDrop ÷ Σ kmMeasured ÷ 10`, `eurPer100km = homePrice × kWhPer100km`, or a reason: `plug-in-hybrid`, `no-home-session`, `not-learned`, `too-few-km` (< 50 measured km).
+- `monthSummary(...)`: totals, `homePriceEurPerKwh = cost ÷ energy` over the priced sessions only, `kWhPer100km = whPerPoint × Σ batteryDrop ÷ Σ kmMeasured ÷ 10`, `eurPer100km = homePrice × kWhPer100km`, or a reason: `plug-in-hybrid`, `no-home-session`, `not-learned`, `too-few-km` (< 50 measured km).
 
 ### `ev-session-store.ts`
 
@@ -71,10 +71,12 @@ better-sqlite3 prepared statements. The tracker saves a whole `SessionRecord` at
 ### `ev-session-tracker.ts`
 
 - **Open / close** on the charger's `vehicle` (category `ev_vehicle_state`). Offline is not unplugged.
+- **Filter first**: an update whose alias the tracker never reads is dropped before any equipment lookup (most of the house's traffic).
+- **Charger reports**: only the charger contract aliases keep its held power alive. The computed `energy_hour` / `energy_day`… that the EnergyAggregator emits on a charger every hour never do, or a charger gone offline would be revived for 15 minutes each hour. An `energy` event counts as the meter only when the charger has an `energy` binding of its own; on a power-only charger it is the PowerSubmeterIntegrator's synthetic delta and is ignored.
 - **Close**: `finish()` the accountant (the partial last window is priced over its real length), `endedAt`, `graceUntil = end + 2 h`; under 100 Wh the session is deleted (`energy.ev_session.deleted`); a manual attribution skips the grace period.
 - **Tick** every 30 s: close due windows (so a window is priced at the prices in force when it ended), decide sessions whose grace is over.
-- **Start**: open sessions are restored; one whose charger is gone or reads `disconnected` is closed now; one still plugged continues with a fresh accountant (the window in progress is the most a restart loses). Closed sessions still `pending` are restored with their evidence. A charger already plugged without a session opens one.
-- **`equipment.removed`**: a charger's open session is closed and kept; a vehicle's sessions are marked `vehicle_deleted` (they keep the name and count nowhere) and its leg state is dropped.
+- **Start**: open sessions are restored; one whose charger is gone is closed now, one whose charger reads `disconnected` is closed at the time of that reading (the binding's `lastChanged`); one still plugged continues with a fresh accountant (the window in progress is the most a restart loses). Closed sessions still `pending` are restored with their evidence. A charger already plugged without a session opens one.
+- **`equipment.removed`**: a charger's open session is closed and kept; a vehicle's sessions are marked `vehicle_deleted`, in the database and in the records held in memory (they keep the name and count nowhere), and its leg state is dropped.
 - **`setAttribution()`** (FR4): `vehicle` (must be an `electric_vehicle`), `other`, or `unattributed`, always `attribution_source = manual`, never changed again by FR3.
 - **Read surface**: `listByCharger`, `listByVehicle` (attributed, vehicle not deleted), `summary` (closed sessions only).
 - Every handler is wrapped in try/catch with a structured log.
@@ -108,7 +110,7 @@ The attribution body is one flat schema rather than a `oneOf`: Fastify's validat
 
 - `ui/src/api/evSessions.ts`, `ui/src/store/useEvSessions.ts` (a `rev` bumped, debounced, by the two WebSocket events), routing in `useWebSocket.ts`.
 - `ui/src/components/equipments/ev-sessions/`: `EvHomeChargingSection` (vehicle page, variant B: cost and kWh, off-peak / peak / solar bar with kWh and € per part, cost per 100 km with consumption and home price, sessions with mini bars, the admin "plug-in hybrid" switch), `EvChargerSessionsSection` (charger page: "to attribute" banner, sessions with their vehicle chip and how it was decided, every row opens the sheet), `EvReassignSheet` (bottom sheet on a phone, dialog on a wide screen; the reason Sowel could not decide; each car's battery during the session; vehicles, Other vehicle, Attribute later; the choice is final), `EvMonthNav`, `evSessionsDisplay.ts` (pure helpers).
-- Mounted in `EquipmentDetailPage.tsx` after the vehicle and charger controls. Both sections subscribe to `equipments` + `energy`.
+- Mounted in `EquipmentDetailPage.tsx` after the vehicle and charger controls. The page already subscribes to `energy`; the sections do not subscribe themselves (a subscription replaces the page's topics, and would drop `devices`).
 - i18n `equipments.evSessions.*`, FR and EN.
 
 ## Files changed

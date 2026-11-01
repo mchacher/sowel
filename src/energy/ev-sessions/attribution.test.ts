@@ -51,6 +51,17 @@ describe("attribute", () => {
     });
   });
 
+  it("does not hold a car's own unplug report against it", () => {
+    const rafale = fold("rafale", [
+      ["charging_state", "charging", START + H],
+      ["plugged", false, END - 30_000],
+    ]);
+    expect(attribute([rafale, emptyEvidence("megane")], ["rafale", "megane"])).toMatchObject({
+      vehicleId: "rafale",
+    });
+    expect(attribute([fold("solo", [["plugged", false, END]])], ["solo"]).state).toBe("vehicle");
+  });
+
   it("leaves the session to attribute when both cars match", () => {
     const a = fold("a", [["charging_state", "charging", START + H]]);
     const b = fold("b", [["charging_state", "charging", START + 2 * H]]);
