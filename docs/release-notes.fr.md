@@ -11,6 +11,17 @@ Cette page résume toutes les versions publiées, de la plus récente à la plus
 
 ---
 
+## 1.77.x : La recharge en cours, sur la voiture
+
+### v1.77.0 — 2026-11-01 { #v1-77-0 }
+
+La fiche d'une voiture montre maintenant la recharge en cours, sans attendre deux heures après le débranchement.
+
+- Nouveauté (énergie) : **la recharge en cours sur la fiche de la voiture** (spec 192, #1101). Au-dessus du bilan du mois, une carte suit la recharge en cours, sur la voiture à qui Sowel l'attribuerait. Pendant la charge, elle affiche la puissance en direct, les kWh et le coût jusqu'ici. Pendant une pause, elle indique depuis quand et pourquoi : la borne est coupée, la voiture a atteint sa limite de charge, ou la borne attend la voiture. Après le débranchement, elle indique l'heure de l'attribution, avec un bouton « C'est bien … » pour attribuer la recharge tout de suite. Une recharge ne compte toujours dans le mois qu'une fois attribuée.
+- Plugins et recettes : **`renault` 0.2.1** (#1099). Une voiture branchée avec la trappe de charge ouverte n'apparaît plus « Débranchée ».
+
+---
+
 ## 1.76.x : Le coût de recharge par voiture, les portes, et des ordres qui rendent compte
 
 ### v1.76.0 — 2026-11-01 { #v1-76-0 }
