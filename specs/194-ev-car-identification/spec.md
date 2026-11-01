@@ -54,14 +54,16 @@ Single match (unchanged) → power → energy → usual vehicle (spec 193) → �
 
 ## Edge Cases
 
-| Case                                       | Behaviour                                                                                     |
-| ------------------------------------------ | --------------------------------------------------------------------------------------------- |
-| Power ramping at the start of a charge     | one sample does not exclude; two disagreeing do                                               |
-| Car reports power after the session closed | not sampled (the charger draws nothing then)                                                  |
-| Metered charger paused                     | not sampled while under 500 W                                                                 |
-| No energy per point learned yet for a car  | energy signal skipped for that session                                                        |
-| Both cars fit the energy within 25 %       | not clear: next signal                                                                        |
-| Restart                                    | power samples already folded are kept (in the evidence); the charger's power history restarts |
+| Case                                                       | Behaviour                                                                                                           |
+| ---------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------- |
+| Power ramping at the start or end of a charge              | no sample while the charger reads under 500 W; readings within 2 min absorb a ramp                                  |
+| Car reports power after the session closed                 | not sampled (the charger draws nothing then)                                                                        |
+| Metered charger paused, or a late report dated in a pause  | not sampled (a reading under 500 W around it)                                                                       |
+| Two chargers at the same power, one car reporting no power | not decided by power                                                                                                |
+| No energy per point learned yet for a car                  | energy signal skipped for that session                                                                              |
+| Both cars fit the energy within 25 %                       | not clear: next signal                                                                                              |
+| Restart                                                    | power samples already folded are kept (in the evidence); the charger's power history restarts from its last reading |
+| A report received after the session closed                 | not sampled (the charger's history goes with the open session)                                                      |
 
 ## Docs Delta
 
