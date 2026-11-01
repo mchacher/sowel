@@ -48,7 +48,10 @@ export interface VehicleReport {
   receivedAtMs: number;
 }
 
-/** Fold one report into the evidence; reports made outside the session are ignored. */
+/**
+ * Fold one report into the evidence; reports made outside the session are
+ * ignored. Returns the same object when the report adds nothing.
+ */
 export function foldReport(
   evidence: VehicleEvidence,
   report: VehicleReport,
@@ -77,7 +80,11 @@ export function foldReport(
       if (report.value === false) next.awaySeen = true;
       break;
   }
-  return next;
+  // The same object when nothing changed: the tracker saves and emits only on a change.
+  const changed = (Object.keys(next) as (keyof VehicleEvidence)[]).some(
+    (k) => next[k] !== evidence[k],
+  );
+  return changed ? next : evidence;
 }
 
 export function batteryRise(evidence: VehicleEvidence): number {

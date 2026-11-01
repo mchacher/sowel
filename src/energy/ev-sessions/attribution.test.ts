@@ -144,4 +144,14 @@ describe("foldReport", () => {
     );
     expect(ev.pluggedSeen).toBe(true);
   });
+
+  it("returns the same evidence when a report adds nothing", () => {
+    const ev = fold("a", [["charging_state", "charging", START + H]]);
+    const again = foldReport(
+      ev,
+      { alias: "charging_state", value: "charging", reportedAtMs: START + 2 * H, receivedAtMs: 0 },
+      { startMs: START, endMs: END },
+    );
+    expect(again).toBe(ev);
+  });
 });

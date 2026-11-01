@@ -73,6 +73,25 @@ export function registerEvSessionRoutes(app: FastifyInstance, deps: EvSessionRou
     },
   );
 
+  // GET /api/v1/ev-sessions/current?vehicleId=… — spec 192: the sessions in
+  // progress (open, or in their grace period) that would go to this vehicle.
+  app.get<{ Querystring: { vehicleId: string } }>(
+    "/api/v1/ev-sessions/current",
+    {
+      schema: {
+        querystring: {
+          type: "object",
+          required: ["vehicleId"],
+          properties: { vehicleId: nonEmptyString },
+          additionalProperties: false,
+        },
+      },
+    },
+    async (request) => {
+      return { sessions: tracker.currentForVehicle(request.query.vehicleId) };
+    },
+  );
+
   // PUT /api/v1/ev-sessions/:id/attribution — any role (spec 191 P8); final.
   // One flat schema, not a `oneOf`: Fastify's validator strips additional
   // properties per branch, so a `oneOf` drops `vehicleId` before the handler.

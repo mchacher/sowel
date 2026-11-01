@@ -197,6 +197,25 @@ export class EvSessionTracker {
     return this.store.listByVehicle(vehicleId, range.fromIso, range.toIso).map(toSession);
   }
 
+  /**
+   * Spec 192 — the sessions in progress (open, or closed and in their grace
+   * period) that would go to this vehicle: attributed to it by hand while
+   * open, or that `attribute()` run now would give it. Newest first.
+   */
+  currentForVehicle(vehicleId: string): EvChargeSession[] {
+    const vehicleIds = this.candidateVehicleIds();
+    return [...[...this.open.values()].map((s) => s.record), ...this.pending.values()]
+      .filter((record) => {
+        if (record.attributionSource === "manual") {
+          return record.endedAt === null && record.vehicleId === vehicleId;
+        }
+        const result = attribute(record.evidence, vehicleIds);
+        return result.state === "vehicle" && result.vehicleId === vehicleId;
+      })
+      .sort((a, b) => b.startedAt.localeCompare(a.startedAt))
+      .map(toSession);
+  }
+
   summary(vehicleId: string, month: string): EvVehicleMonthSummary | null {
     const range = monthRange(month);
     if (!range) return null;
@@ -349,11 +368,7 @@ export class EvSessionTracker {
   private decide(record: SessionRecord): void {
     this.pending.delete(record.id);
     if (record.attributionSource === "manual") return;
-    const vehicleIds = this.equipmentManager
-      .getAll()
-      .filter((e) => e.type === "electric_vehicle" && e.enabled)
-      .map((e) => e.id);
-    const result = attribute(record.evidence, vehicleIds);
+    const result = attribute(record.evidence, this.candidateVehicleIds());
     if (result.state === "vehicle") {
       const name = this.equipmentManager.getById(result.vehicleId)?.name ?? null;
       this.assign(record, result.vehicleId, name);
@@ -469,7 +484,8 @@ export class EvSessionTracker {
     if (after === before) return;
     if (index >= 0) record.evidence[index] = after;
     else record.evidence.push(after);
-    this.store.save(record);
+    // Emitted: the vehicle page shows a session once a car matches (spec 192).
+    this.persist(record);
   }
 
   private advanceLeg(vehicleId: string, alias: string, value: unknown, atMs: number): void {
@@ -548,6 +564,14 @@ export class EvSessionTracker {
     record.updatedAt = new Date(this.now()).toISOString();
     this.store.save(record);
     this.eventBus.emit({ type: "energy.ev_session.updated", session: toSession(record) });
+  }
+
+  /** Every vehicle a session may go to (spec 191 P9): the enabled ones. */
+  private candidateVehicleIds(): string[] {
+    return this.equipmentManager
+      .getAll()
+      .filter((e) => e.type === "electric_vehicle" && e.enabled)
+      .map((e) => e.id);
   }
 
   private findRecord(sessionId: string): SessionRecord | null {

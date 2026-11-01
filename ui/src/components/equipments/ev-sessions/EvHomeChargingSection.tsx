@@ -1,40 +1,22 @@
 import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { Loader2 } from "lucide-react";
-import { getEvSessions, getEvVehicleSummary, updateEquipment } from "../../../api";
+import {
+  getEvCurrentSessions,
+  getEvSessions,
+  getEvVehicleSummary,
+  updateEquipment,
+} from "../../../api";
 import { dateLocale } from "../../../lib/locale";
 import { useEvSessions } from "../../../store/useEvSessions";
 import type { EquipmentWithDetails, EvChargeSession, EvVehicleMonthSummary } from "../../../types";
 import { formatEur } from "../../energy/format";
 import { EvMonthNav } from "./EvMonthNav";
-import { dayLabel, energyShares, kwh, monthOf, timeLabel } from "./evSessionsDisplay";
+import { EvCurrentSessionCard } from "./EvCurrentSessionCard";
+import { ShareBar } from "./EvShareBar";
+import { dayLabel, kwh, monthOf, timeLabel } from "./evSessionsDisplay";
 
 const VISIBLE_SESSIONS = 4;
-
-/** Off-peak / peak / solar bar (variant B agreed with the maintainer). */
-function ShareBar({
-  e,
-  height,
-  label,
-}: {
-  e: { gridHcWh: number; gridHpWh: number; solarWh: number };
-  height: string;
-  label?: string;
-}) {
-  const s = energyShares(e);
-  return (
-    <div
-      role={label ? "img" : undefined}
-      aria-label={label}
-      aria-hidden={label ? undefined : true}
-      className={`flex ${height} rounded-full overflow-hidden bg-border-light gap-[2px]`}
-    >
-      {s.hc > 0 && <div className="bg-energy-hc" style={{ width: `${s.hc}%` }} />}
-      {s.hp > 0 && <div className="bg-energy-hp" style={{ width: `${s.hp}%` }} />}
-      {s.solar > 0 && <div className="bg-solar-auto" style={{ width: `${s.solar}%` }} />}
-    </div>
-  );
-}
 
 /**
  * Spec 191 FR5 / FR7 — a vehicle's home charging for one month: cost, the
@@ -52,10 +34,12 @@ export function EvHomeChargingSection({
   const { t, i18n } = useTranslation();
   const locale = dateLocale(i18n.language);
   const rev = useEvSessions((s) => s.rev);
+  const refreshSoon = useEvSessions((s) => s.refreshSoon);
 
   const [month, setMonth] = useState(() => monthOf(new Date()));
   const [summary, setSummary] = useState<EvVehicleMonthSummary | null>(null);
   const [sessions, setSessions] = useState<EvChargeSession[]>([]);
+  const [current, setCurrent] = useState<EvChargeSession[]>([]);
   const [showAll, setShowAll] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
@@ -66,11 +50,13 @@ export function EvHomeChargingSection({
     Promise.all([
       getEvVehicleSummary(equipment.id, month),
       getEvSessions({ vehicleId: equipment.id }, month),
+      getEvCurrentSessions(equipment.id),
     ])
-      .then(([sum, list]) => {
+      .then(([sum, list, inProgress]) => {
         if (cancelled) return;
         setSummary(sum);
         setSessions(list);
+        setCurrent(inProgress);
         setError(null);
       })
       .catch((err) => {
@@ -82,7 +68,9 @@ export function EvHomeChargingSection({
   }, [equipment.id, equipment.plugInHybrid, month, rev]);
 
   const eur = (v: number | null) => (v === null ? "—" : formatEur(v, locale));
-  const visible = showAll ? sessions : sessions.slice(0, VISIBLE_SESSIONS);
+  // A session shown in its own card above is not repeated in the list (spec 192).
+  const listed = sessions.filter((s) => !current.some((c) => c.id === s.id));
+  const visible = showAll ? listed : listed.slice(0, VISIBLE_SESSIONS);
 
   const setHybrid = async (value: boolean) => {
     setSaving(true);
@@ -97,139 +85,153 @@ export function EvHomeChargingSection({
   };
 
   return (
-    <div className="bg-surface rounded-[10px] border border-border p-4 mb-6 flex flex-col gap-4">
-      <div className="flex items-center justify-between gap-2">
-        <h3 className="text-[14px] font-semibold text-text">
-          {t("equipments.evSessions.homeCharging")}
-        </h3>
-        <EvMonthNav month={month} onChange={setMonth} />
-      </div>
+    <>
+      {/* Spec 192 — the charge in progress, before it counts in the month. */}
+      {month === monthOf(new Date()) &&
+        current.map((s) => (
+          <EvCurrentSessionCard
+            key={s.id}
+            session={s}
+            vehicle={equipment}
+            onAttributed={refreshSoon}
+          />
+        ))}
+      <div className="bg-surface rounded-[10px] border border-border p-4 mb-6 flex flex-col gap-4">
+        <div className="flex items-center justify-between gap-2">
+          <h3 className="text-[14px] font-semibold text-text">
+            {t("equipments.evSessions.homeCharging")}
+          </h3>
+          <EvMonthNav month={month} onChange={setMonth} />
+        </div>
 
-      {error && <p className="text-[12px] text-error">{error}</p>}
+        {error && <p className="text-[12px] text-error">{error}</p>}
 
-      {summary && summary.sessions === 0 ? (
-        <p className="text-[13px] text-text-tertiary">{t("equipments.evSessions.emptyVehicle")}</p>
-      ) : (
-        summary && (
-          <>
-            <div className="flex items-end justify-between gap-3">
-              <div className="flex flex-col">
-                <span className="font-mono text-[28px] font-semibold text-text tabular-nums">
-                  {eur(summary.costEur)}
-                </span>
-                <span className="text-[13px] text-text-tertiary">
-                  {t("equipments.evSessions.addedToBill")}
-                </span>
+        {summary && summary.sessions === 0 ? (
+          <p className="text-[13px] text-text-tertiary">
+            {t("equipments.evSessions.emptyVehicle")}
+          </p>
+        ) : (
+          summary && (
+            <>
+              <div className="flex items-end justify-between gap-3">
+                <div className="flex flex-col">
+                  <span className="font-mono text-[28px] font-semibold text-text tabular-nums">
+                    {eur(summary.costEur)}
+                  </span>
+                  <span className="text-[13px] text-text-tertiary">
+                    {t("equipments.evSessions.addedToBill")}
+                  </span>
+                </div>
+                <div className="flex flex-col items-end">
+                  <span className="font-mono text-[18px] font-semibold text-text tabular-nums">
+                    {kwh(summary.energyWh, locale)} kWh
+                  </span>
+                  <span className="text-[13px] text-text-tertiary">
+                    {t("equipments.evSessions.sessionsCount", { count: summary.sessions })}
+                  </span>
+                </div>
               </div>
-              <div className="flex flex-col items-end">
-                <span className="font-mono text-[18px] font-semibold text-text tabular-nums">
-                  {kwh(summary.energyWh, locale)} kWh
-                </span>
-                <span className="text-[13px] text-text-tertiary">
-                  {t("equipments.evSessions.sessionsCount", { count: summary.sessions })}
-                </span>
-              </div>
-            </div>
 
-            <div className="flex flex-col gap-2.5">
-              <ShareBar
-                e={summary}
-                height="h-3.5"
-                label={t("equipments.evSessions.barLabel", {
-                  hc: kwh(summary.gridHcWh, locale),
-                  hp: kwh(summary.gridHpWh, locale),
-                  solar: kwh(summary.solarWh, locale),
-                })}
-              />
-              <div className="flex flex-col gap-1.5 text-[13px]">
-                {(
-                  [
-                    ["bg-energy-hc", "gridHc", summary.gridHcWh, eur(summary.costHcEur)],
-                    ["bg-energy-hp", "gridHp", summary.gridHpWh, eur(summary.costHpEur)],
-                    ["bg-solar-auto", "solar", summary.solarWh, null],
-                  ] as const
-                ).map(([swatch, key, wh, cost]) => (
-                  <div key={key} className="flex items-center gap-2">
-                    <span className={`w-2.5 h-2.5 rounded-[3px] shrink-0 ${swatch}`} />
-                    <span className="flex-1 text-text">{t(`equipments.evSessions.${key}`)}</span>
-                    <span className="font-mono text-text-secondary tabular-nums">
-                      {kwh(wh, locale)} kWh
-                    </span>
-                    <span
-                      className={`w-16 text-right ${cost === null ? "text-success" : "font-mono text-text tabular-nums"}`}
-                    >
-                      {cost ?? t("equipments.evSessions.free")}
-                    </span>
+              <div className="flex flex-col gap-2.5">
+                <ShareBar
+                  e={summary}
+                  height="h-3.5"
+                  label={t("equipments.evSessions.barLabel", {
+                    hc: kwh(summary.gridHcWh, locale),
+                    hp: kwh(summary.gridHpWh, locale),
+                    solar: kwh(summary.solarWh, locale),
+                  })}
+                />
+                <div className="flex flex-col gap-1.5 text-[13px]">
+                  {(
+                    [
+                      ["bg-energy-hc", "gridHc", summary.gridHcWh, eur(summary.costHcEur)],
+                      ["bg-energy-hp", "gridHp", summary.gridHpWh, eur(summary.costHpEur)],
+                      ["bg-solar-auto", "solar", summary.solarWh, null],
+                    ] as const
+                  ).map(([swatch, key, wh, cost]) => (
+                    <div key={key} className="flex items-center gap-2">
+                      <span className={`w-2.5 h-2.5 rounded-[3px] shrink-0 ${swatch}`} />
+                      <span className="flex-1 text-text">{t(`equipments.evSessions.${key}`)}</span>
+                      <span className="font-mono text-text-secondary tabular-nums">
+                        {kwh(wh, locale)} kWh
+                      </span>
+                      <span
+                        className={`w-16 text-right ${cost === null ? "text-success" : "font-mono text-text tabular-nums"}`}
+                      >
+                        {cost ?? t("equipments.evSessions.free")}
+                      </span>
+                    </div>
+                  ))}
+                </div>
+                <Per100km summary={summary} locale={locale} />
+              </div>
+
+              <div className="flex flex-col border-t border-border-light">
+                {visible.map((s) => (
+                  <div
+                    key={s.id}
+                    className="flex flex-col gap-1.5 py-2.5 border-b border-border-light"
+                  >
+                    <div className="flex justify-between gap-3">
+                      <span className="text-[14px] font-medium text-text">
+                        {dayLabel(s.startedAt, locale)}{" "}
+                        <span className="font-normal text-text-tertiary">
+                          · {timeLabel(s.startedAt, locale)} →{" "}
+                          {s.endedAt
+                            ? timeLabel(s.endedAt, locale)
+                            : t("equipments.evSessions.inProgress")}
+                        </span>
+                      </span>
+                      <span className="font-mono text-[14px] font-semibold text-text tabular-nums whitespace-nowrap">
+                        {eur(s.costEur)}
+                      </span>
+                    </div>
+                    <div className="flex items-center gap-2.5">
+                      <div className="flex-1">
+                        <ShareBar e={s} height="h-1.5" />
+                      </div>
+                      <span className="font-mono text-[12px] text-text-secondary tabular-nums whitespace-nowrap">
+                        {kwh(s.energyWh, locale)} kWh
+                      </span>
+                    </div>
                   </div>
                 ))}
               </div>
-              <Per100km summary={summary} locale={locale} />
-            </div>
-
-            <div className="flex flex-col border-t border-border-light">
-              {visible.map((s) => (
-                <div
-                  key={s.id}
-                  className="flex flex-col gap-1.5 py-2.5 border-b border-border-light"
+              {listed.length > VISIBLE_SESSIONS && (
+                <button
+                  type="button"
+                  onClick={() => setShowAll((v) => !v)}
+                  className="self-start min-h-[44px] text-[13px] font-medium text-primary hover:text-primary-hover cursor-pointer"
                 >
-                  <div className="flex justify-between gap-3">
-                    <span className="text-[14px] font-medium text-text">
-                      {dayLabel(s.startedAt, locale)}{" "}
-                      <span className="font-normal text-text-tertiary">
-                        · {timeLabel(s.startedAt, locale)} →{" "}
-                        {s.endedAt
-                          ? timeLabel(s.endedAt, locale)
-                          : t("equipments.evSessions.inProgress")}
-                      </span>
-                    </span>
-                    <span className="font-mono text-[14px] font-semibold text-text tabular-nums whitespace-nowrap">
-                      {eur(s.costEur)}
-                    </span>
-                  </div>
-                  <div className="flex items-center gap-2.5">
-                    <div className="flex-1">
-                      <ShareBar e={s} height="h-1.5" />
-                    </div>
-                    <span className="font-mono text-[12px] text-text-secondary tabular-nums whitespace-nowrap">
-                      {kwh(s.energyWh, locale)} kWh
-                    </span>
-                  </div>
-                </div>
-              ))}
-            </div>
-            {sessions.length > VISIBLE_SESSIONS && (
-              <button
-                type="button"
-                onClick={() => setShowAll((v) => !v)}
-                className="self-start min-h-[44px] text-[13px] font-medium text-primary hover:text-primary-hover cursor-pointer"
-              >
-                {showAll
-                  ? t("equipments.evSessions.showLess")
-                  : t("equipments.evSessions.seeAll", { count: sessions.length })}
-              </button>
-            )}
-          </>
-        )
-      )}
+                  {showAll
+                    ? t("equipments.evSessions.showLess")
+                    : t("equipments.evSessions.seeAll", { count: listed.length })}
+                </button>
+              )}
+            </>
+          )
+        )}
 
-      {isAdmin && (
-        <div className="pt-3 border-t border-border-light">
-          <label className="flex items-center gap-2 text-[13px] text-text cursor-pointer">
-            <input
-              type="checkbox"
-              checked={equipment.plugInHybrid === true}
-              disabled={saving}
-              onChange={(e) => void setHybrid(e.target.checked)}
-            />
-            <span className="font-semibold">{t("equipments.evSessions.plugInHybrid.title")}</span>
-            {saving && <Loader2 size={12} className="animate-spin text-text-tertiary" />}
-          </label>
-          <p className="text-[12px] text-text-tertiary mt-1">
-            {t("equipments.evSessions.plugInHybrid.hint")}
-          </p>
-        </div>
-      )}
-    </div>
+        {isAdmin && (
+          <div className="pt-3 border-t border-border-light">
+            <label className="flex items-center gap-2 text-[13px] text-text cursor-pointer">
+              <input
+                type="checkbox"
+                checked={equipment.plugInHybrid === true}
+                disabled={saving}
+                onChange={(e) => void setHybrid(e.target.checked)}
+              />
+              <span className="font-semibold">{t("equipments.evSessions.plugInHybrid.title")}</span>
+              {saving && <Loader2 size={12} className="animate-spin text-text-tertiary" />}
+            </label>
+            <p className="text-[12px] text-text-tertiary mt-1">
+              {t("equipments.evSessions.plugInHybrid.hint")}
+            </p>
+          </div>
+        )}
+      </div>
+    </>
   );
 }
 

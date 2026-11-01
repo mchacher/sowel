@@ -1,3 +1,4 @@
+import type { EvVehicleState } from "../../../lib/ev-charger-contract";
 import type { EvChargeSession } from "../../../types";
 
 /**
@@ -73,4 +74,66 @@ export function dayLabel(iso: string, locale: string): string {
 
 export function timeLabel(iso: string, locale: string): string {
   return new Date(iso).toLocaleTimeString(locale, { hour: "2-digit", minute: "2-digit" });
+}
+
+export type PauseReason = "charger-off" | "charge-limit" | "waiting-vehicle";
+
+/**
+ * What a session card reads live, from the shared readers of the charger
+ * (`evChargerStateOf`) and of the car (`electricVehicleStateOf`).
+ */
+export interface LiveInputs {
+  /** Charging enabled on the charger; null when unbound or unreadable. */
+  chargerOn: boolean | null;
+  vehicle: EvVehicleState | null;
+  /** When the charger's vehicle state last changed (SQLite or ISO). */
+  vehicleChangedAt: string | null;
+  /** A current power reading only (null when stale or absent). */
+  powerW: number | null;
+  battery: number | null;
+  chargeLimit: number | null;
+}
+
+/** Spec 192 — what the charge in progress is doing now. */
+export type LiveState =
+  | { kind: "charging"; powerW: number | null }
+  | { kind: "paused"; sinceIso: string | null; reason: PauseReason; battery: number | null }
+  /** The charger reads unplugged, the session not closed yet: nothing to show until it is. */
+  | { kind: "unplugged" }
+  | { kind: "ended" };
+
+/** SQLite timestamps use a space (`2026-11-01 14:06:05Z`); ISO uses a `T`. */
+export function toIso(value: string | null): string | null {
+  if (!value) return null;
+  const d = new Date(value.includes("T") ? value : value.replace(" ", "T"));
+  return Number.isNaN(d.getTime()) ? null : d.toISOString();
+}
+
+/**
+ * From the session and the live data of its charger and of the car: charging,
+ * paused (with the reason the data tells), or ended. Without the charger's
+ * vehicle state it reads as charging, without a power.
+ */
+export function liveState(
+  session: Pick<EvChargeSession, "endedAt">,
+  live: LiveInputs | null,
+): LiveState {
+  if (session.endedAt !== null) return { kind: "ended" };
+  if (live?.vehicle === "disconnected") return { kind: "unplugged" };
+  if (live?.vehicle !== "connected") {
+    return { kind: "charging", powerW: live?.vehicle === "charging" ? live.powerW : null };
+  }
+  let reason: PauseReason = "waiting-vehicle";
+  if (live.chargerOn === false) reason = "charger-off";
+  else if (live.battery !== null && live.chargeLimit !== null && live.battery >= live.chargeLimit) {
+    reason = "charge-limit";
+  }
+  return { kind: "paused", sinceIso: toIso(live.vehicleChangedAt), reason, battery: live.battery };
+}
+
+export function kw(w: number, locale: string): string {
+  return new Intl.NumberFormat(locale, {
+    minimumFractionDigits: 1,
+    maximumFractionDigits: 1,
+  }).format(w / 1000);
 }

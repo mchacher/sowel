@@ -2,6 +2,7 @@
 
 - **Status**: Implemented — principles and UI agreed with the maintainer on 2026-11-01 (vehicle page variant B, charger list and reassignment sheet as proposed); production check pending
 - **Date**: 2026-11-01
+- **Amended by**: spec 192 (the charge in progress on the vehicle page)
 - **Related**: spec 182 (EV charger), spec 183 (electric vehicle — and its non-goal "no car↔charger link in the core", kept here), spec 123 (energy cost valuation, read-time blended rate), spec 126/138 (TariffClassifier), SelfConsumptionWriter (the same live grid deltas)
 
 ## Context

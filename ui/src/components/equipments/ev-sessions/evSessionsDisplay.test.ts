@@ -1,6 +1,14 @@
 import { describe, expect, it } from "vitest";
 import type { EvChargeSession } from "../../../types";
-import { energyShares, monthLabel, sessionChip, shiftMonth } from "./evSessionsDisplay";
+import {
+  energyShares,
+  liveState,
+  type LiveInputs,
+  monthLabel,
+  sessionChip,
+  shiftMonth,
+  toIso,
+} from "./evSessionsDisplay";
 
 function session(over: Partial<EvChargeSession>): EvChargeSession {
   return {
@@ -61,5 +69,75 @@ describe("evSessionsDisplay (spec 191)", () => {
     expect(
       sessionChip(session({ attribution: "vehicle", vehicleName: "Megane", vehicleDeleted: true })),
     ).toEqual({ kind: "vehicle", name: "Megane", deleted: true });
+  });
+});
+
+describe("liveState (spec 192)", () => {
+  const open = { endedAt: null };
+  const live = (over: Partial<LiveInputs>): LiveInputs => ({
+    chargerOn: true,
+    vehicle: "connected",
+    vehicleChangedAt: null,
+    powerW: null,
+    battery: 43,
+    chargeLimit: 80,
+    ...over,
+  });
+
+  it("reads charging with the charger's power", () => {
+    expect(liveState(open, live({ vehicle: "charging", powerW: 1300 }))).toEqual({
+      kind: "charging",
+      powerW: 1300,
+    });
+  });
+
+  it("reads a switched-off charger as the pause reason, since the last change", () => {
+    expect(
+      liveState(open, live({ chargerOn: false, vehicleChangedAt: "2026-11-01 14:06:05Z" })),
+    ).toEqual({
+      kind: "paused",
+      sinceIso: "2026-11-01T14:06:05.000Z",
+      reason: "charger-off",
+      battery: 43,
+    });
+  });
+
+  it("reads the car at its charge limit", () => {
+    expect(liveState(open, live({ battery: 80 }))).toMatchObject({
+      reason: "charge-limit",
+      battery: 80,
+    });
+  });
+
+  it("waits for the car otherwise, or when its limit or the charger's state is unknown", () => {
+    expect(liveState(open, live({}))).toMatchObject({ reason: "waiting-vehicle" });
+    expect(liveState(open, live({ battery: 90, chargeLimit: null }))).toMatchObject({
+      reason: "waiting-vehicle",
+    });
+    expect(liveState(open, live({ chargerOn: null }))).toMatchObject({
+      reason: "waiting-vehicle",
+    });
+  });
+
+  it("shows nothing between the unplug and the session's close", () => {
+    expect(liveState(open, live({ vehicle: "disconnected" }))).toEqual({ kind: "unplugged" });
+  });
+
+  it("reads an ended session as ended", () => {
+    expect(liveState({ endedAt: "2026-11-01T15:06:00Z" }, live({}))).toEqual({ kind: "ended" });
+  });
+
+  it("reads charging without a power when the charger is unknown", () => {
+    expect(liveState(open, null)).toEqual({ kind: "charging", powerW: null });
+    expect(liveState(open, live({ vehicle: null, powerW: 1300 }))).toEqual({
+      kind: "charging",
+      powerW: null,
+    });
+  });
+
+  it("parses SQLite and ISO timestamps", () => {
+    expect(toIso("2026-11-01 14:06:05Z")).toBe("2026-11-01T14:06:05.000Z");
+    expect(toIso("2026-11-01T14:06:05.000Z")).toBe("2026-11-01T14:06:05.000Z");
+    expect(toIso(null)).toBeNull();
   });
 });
