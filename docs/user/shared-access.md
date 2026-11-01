@@ -79,7 +79,8 @@ for the gate first. You can also open a gate's page and press **Create an access
 - **Dates** — **All the time**, or **From … to …**. The end cannot be before the start.
 - **Hours** — **All day**, or **By time windows**, one or more (`08:00–20:00`). A window does not
   cross midnight. Each window is **every day** unless you click **Choose days** and pick some — « every
-  Friday, 18:00–22:00 ». Two windows may not overlap on a day they share.
+  Friday, 18:00–22:00 ». Two windows may not overlap on a day they share. Start and end are picked
+  with your device's own time picker (the wheel on a phone), shown in 12 h or 24 h per its settings.
 - **With a code** — on by default. The code is eight characters, shown `4K7M-9QT2`, meant to be
   read out over the phone or shown on a sign. Untick it for someone who will only ever tap the link:
   the link carries a token of its own that cannot be guessed.

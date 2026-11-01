@@ -251,19 +251,17 @@ export function ValidityGroups({
               <div key={i} className="flex flex-col gap-2 border border-border rounded-[8px] p-2.5">
                 <div className="flex items-center gap-1.5">
                   <input
-                    className={`${parseHm(w.from) === null ? inputBadCls : inputCls} w-[84px] font-mono`}
+                    className={`${parseHm(w.from) === null ? inputBadCls : inputCls} min-w-0 flex-1 tabular-nums`}
+                    type="time"
                     value={w.from}
-                    inputMode="numeric"
-                    placeholder="08:00"
                     aria-label={t("sharedAccess.validity.windowFrom")}
                     onChange={(e) => setWindow(i, "from", e.target.value)}
                   />
                   <span className="text-text-tertiary">–</span>
                   <input
-                    className={`${parseHm(w.to) === null ? inputBadCls : inputCls} w-[84px] font-mono`}
+                    className={`${parseHm(w.to) === null ? inputBadCls : inputCls} min-w-0 flex-1 tabular-nums`}
+                    type="time"
                     value={w.to}
-                    inputMode="numeric"
-                    placeholder="20:00"
                     aria-label={t("sharedAccess.validity.windowTo")}
                     onChange={(e) => setWindow(i, "to", e.target.value)}
                   />
