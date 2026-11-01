@@ -520,7 +520,6 @@ export class EvSessionTracker {
         // (for a restored session: whenever it was made, its own time holds).
         const madeAt = this.vehicleReportedAt(vehicleId, alias) ?? receivedAtMs;
         const at = record.endedAt === null && madeAt >= startMs ? startMs - 1 : madeAt;
-        if (at < startMs && this.nearerElsewhere(record, at)) continue;
         evidence = foldReport(
           evidence,
           { alias, value: binding.value, reportedAtMs: at, receivedAtMs: at },
@@ -554,7 +553,7 @@ export class EvSessionTracker {
       new Date(slackStart).toISOString(),
       record.startedAt,
     )) {
-      if (!this.holds(other, record, vehicleId)) continue;
+      if (!this.holds(other, record, vehicleId, slackStart)) continue;
       const end = other.endedAt === null ? startMs : Math.min(Date.parse(other.endedAt), startMs);
       from = Math.max(from, end);
     }
@@ -563,42 +562,29 @@ export class EvSessionTracker {
 
   /**
    * Whether `other` holds this car just before `record` opened, so that the
-   * car's reports made then belong to it: a session on the same charger always
-   * (a late report of its car must not pass to the next one); one given this
-   * car by hand; on another charger, one where this car was first seen
-   * charging nearer to that session's start than to this one's. A report made
-   * between two openings belongs to the nearer one: the car that plugged in
-   * there (audit A6 and its reviews: two cars arriving together, or a car
-   * charging an hour on one charger while another plugs in on the other).
-   * Evidence without a time (saved before) holds.
+   * car's reports made then belong to it and not to `record`: a session on the
+   * same charger always (a late report of its car must not pass to the next
+   * one); one given this car by hand; on another charger, one where this car
+   * was already charging before the slack (`slackStartMs`). A car first seen
+   * there within the slack may be the one that just plugged in here (a
+   * metered charger opens on its first 500 W, minutes after the plug-in): its
+   * report then counts for both, and the two sessions stay to attribute
+   * rather than one of them guessing (P7; audit A6 and its reviews). Evidence
+   * without a time (saved before) holds.
    */
-  private holds(other: SessionRecord, record: SessionRecord, vehicleId: string): boolean {
+  private holds(
+    other: SessionRecord,
+    record: SessionRecord,
+    vehicleId: string,
+    slackStartMs: number,
+  ): boolean {
     if (other.chargerId === record.chargerId) return true;
     if (other.attributionSource === "manual") {
       return other.attribution === "vehicle" && other.vehicleId === vehicleId;
     }
     const e = other.evidence.find((x) => x.vehicleId === vehicleId);
     if (!e || !charged(e)) return false;
-    if (e.firstChargingAtMs == null) return true;
-    const sinceOther = e.firstChargingAtMs - Date.parse(other.startedAt);
-    const beforeThis = Date.parse(record.startedAt) - e.firstChargingAtMs;
-    return sinceOther <= beforeThis;
-  }
-
-  /**
-   * A report made at `atMs`, before `record` opened, while a session on
-   * another charger was open that had started nearer to it: it belongs to that
-   * one (the car that just plugged in there), not to this one.
-   */
-  private nearerElsewhere(record: SessionRecord, atMs: number): boolean {
-    const iso = new Date(atMs).toISOString();
-    const beforeThis = Date.parse(record.startedAt) - atMs;
-    return this.store
-      .listMeeting(record.id, iso, iso)
-      .some(
-        (other) =>
-          other.chargerId !== record.chargerId && atMs - Date.parse(other.startedAt) < beforeThis,
-      );
+    return e.firstChargingAtMs == null || e.firstChargingAtMs < slackStartMs;
   }
 
   /** FR3 — at the end of the grace period. */
@@ -759,7 +745,6 @@ export class EvSessionTracker {
     const before: VehicleEvidence = index >= 0 ? record.evidence[index] : emptyEvidence(vehicleId);
     const startMs = Date.parse(record.startedAt);
     const at = report.reportedAtMs ?? report.receivedAtMs;
-    if (at < startMs && this.nearerElsewhere(record, at)) return;
     const after = foldReport(before, report, {
       startMs,
       endMs,
@@ -949,22 +934,19 @@ export class EvSessionTracker {
   }
 
   /**
-   * The car a session gives, without P4 (no cycle), and whether it is sure: by
-   * hand or as its single match (sure), or as its usual vehicle (a guess), set
-   * or provisional. "The only vehicle" rests on no evidence (a guest's car
-   * would do the same): it gives none.
+   * The car a session claims, without P4 (no cycle), and whether it is sure:
+   * by hand (sure), or what its own evidence gives — a single match (sure) or
+   * its usual vehicle (a guess) — whether it was decided yet or not, so that
+   * two sessions claiming one car exclude it from each other in any order.
+   * "The only vehicle" rests on no evidence (a guest's car would do the same):
+   * it claims none.
    */
   private givenBy(record: SessionRecord): { vehicleId: string; sure: boolean } | null {
-    if (record.attribution === "vehicle") {
-      if (record.vehicleId === null) return null;
-      if (record.attributionSource === "manual") return { vehicleId: record.vehicleId, sure: true };
-      if (record.attributionReason === "only-vehicle") return null;
-      return {
-        vehicleId: record.vehicleId,
-        sure: record.attributionReason !== "usual-vehicle",
-      };
+    if (record.attributionSource === "manual") {
+      return record.attribution === "vehicle" && record.vehicleId !== null
+        ? { vehicleId: record.vehicleId, sure: true }
+        : null;
     }
-    if (record.attribution !== "pending" || record.attributionSource === "manual") return null;
     const result = attribute(record.evidence, this.candidateVehicleIds(), {
       usualVehicleId: this.usualVehicleOf(record.chargerId),
     });
@@ -973,21 +955,22 @@ export class EvSessionTracker {
   }
 
   /**
-   * Cars given by sessions on other chargers whose time range meets this one,
-   * each with whether it is sure (a sure giving wins over a guess).
+   * Cars claimed by sessions on other chargers whose time range meets this
+   * one, each with whether it is sure (a sure claim wins over a guess).
    */
   private takenElsewhere(record: SessionRecord): Map<string, boolean> {
-    const from = record.startedAt;
-    const to = record.endedAt;
-    const overlaps = (other: SessionRecord) =>
-      other.chargerId !== record.chargerId &&
-      (to === null || other.startedAt < to) &&
-      (other.endedAt === null || other.endedAt > from);
     const others = new Map<string, SessionRecord>();
-    for (const r of this.store.listAttributedOverlapping(record.chargerId, from, to)) {
-      others.set(r.id, r);
+    for (const r of this.store.listMeeting(
+      record.id,
+      record.startedAt,
+      record.endedAt ?? "9999-12-31T23:59:59.999Z",
+    )) {
+      if (r.chargerId !== record.chargerId) others.set(r.id, r);
     }
-    for (const r of this.liveRecords()) if (overlaps(r)) others.set(r.id, r);
+    // In memory first: the freshest evidence.
+    for (const r of this.liveRecords()) {
+      if (r.id !== record.id && others.has(r.id)) others.set(r.id, r);
+    }
     const taken = new Map<string, boolean>();
     for (const other of others.values()) {
       const given = this.givenBy(other);

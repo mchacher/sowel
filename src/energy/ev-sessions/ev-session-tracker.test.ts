@@ -687,14 +687,34 @@ describe("metered charger (spec 193)", () => {
   });
 
   it("does not take a car from another charger on an only-vehicle guess", async () => {
-    // One car known, charging on the other charger; then a guest starts on
-    // the metered one, which the car's reports never reach.
+    // One car known, charging on the other charger; then, past the start
+    // slack, a guest starts on the metered one, which the car's reports never
+    // reach.
     eqs.equipments = eqs.equipments.filter((e) => e.id !== "rafale");
     data("charger", "vehicle", "charging");
     data("megane", "charging_state", "charging");
     await flush();
+    for (let i = 0; i < 20; i++) {
+      data("charger", "power", 2000);
+      now += MIN;
+    }
     meter(2, 3000, () => data("charger", "power", 2000));
-    expect(tracker.currentForVehicle("megane").map((x) => x.chargerId)).toContain("charger");
+    expect(tracker.currentForVehicle("megane").map((x) => x.chargerId)).toEqual(["charger"]);
+  });
+
+  it("never gives a guest who plugs in right after the car on the other charger to it", async () => {
+    // Within the start slack the car's report may belong to either session:
+    // neither takes it for sure (P7).
+    eqs.equipments = eqs.equipments.filter((e) => e.id !== "rafale");
+    data("charger", "vehicle", "charging");
+    data("megane", "charging_state", "charging");
+    await flush();
+    meter(60, 3000, () => data("charger", "power", 2000));
+    data("charger", "vehicle", "disconnected");
+    meter(31, 0);
+    now += GRACE_MS;
+    tracker.tick();
+    expect(legrand()[0].vehicleId).not.toBe("megane");
   });
 
   it("counts a charging report the car made just before the session opened (#1105)", async () => {
@@ -716,7 +736,8 @@ describe("metered charger (spec 193)", () => {
     await flush();
   }
 
-  it("does not lend a car's report to the next charger when two cars come home (#1105)", async () => {
+  /** Two cars come home together: Megane on the plug-state charger, Rafale on the Legrand 4 min later. */
+  async function twoCarsComeHome() {
     data("charger", "vehicle", "charging");
     now += MIN;
     const meganeAt = now;
@@ -735,15 +756,28 @@ describe("metered charger (spec 193)", () => {
       tracker.tick();
       now += MIN;
     }
-    const ids = (v: string) => tracker.currentForVehicle(v).map((x) => x.chargerId);
-    expect(ids("megane")).toEqual(["charger"]);
-    expect(ids("rafale")).toEqual(["legrand"]);
     data("charger", "vehicle", "disconnected");
     meter(31, 0);
     now += GRACE_MS;
     tracker.tick();
-    expect(sessions()[0]).toMatchObject({ vehicleId: "megane", attributionReason: "single-match" });
-    expect(legrand()[0]).toMatchObject({ vehicleId: "rafale", attributionReason: "single-match" });
+  }
+
+  it("never swaps two cars that come home together (#1105, audit reviews)", async () => {
+    await twoCarsComeHome();
+    // Both cars' reports reach both sessions: Sowel cannot tell, and says so.
+    expect(sessions()[0].vehicleId).not.toBe("rafale");
+    expect(legrand()[0].vehicleId).not.toBe("megane");
+  });
+
+  it("gives each car its charger by their usual vehicles, saying so (#1105)", async () => {
+    setUsual("charger", "megane");
+    setUsual("legrand", "rafale");
+    await twoCarsComeHome();
+    expect(sessions()[0]).toMatchObject({
+      vehicleId: "megane",
+      attributionReason: "usual-vehicle",
+    });
+    expect(legrand()[0]).toMatchObject({ vehicleId: "rafale", attributionReason: "usual-vehicle" });
   });
 
   it("does not lend the previous car's report to the next session on a charger (#1105)", async () => {
@@ -1137,7 +1171,7 @@ describe("audit second review", () => {
     data("grid", "energy", 200);
   }
 
-  it("gives each car its charger when they plug in minutes apart and report late", async () => {
+  it("never swaps two cars that plug in minutes apart and report late", async () => {
     const t0 = now;
     data("charger", "vehicle", "charging"); // the Rafale on A at T0
     minute();
@@ -1156,8 +1190,38 @@ describe("audit second review", () => {
     }
     now += GRACE_MS;
     tracker.tick();
-    expect(sessions()[0]).toMatchObject({ vehicleId: "rafale" });
-    expect(legrand()[0]).toMatchObject({ vehicleId: "megane" });
+    // Never the two cars swapped and presented as sure.
+    expect(sessions()[0].vehicleId).not.toBe("megane");
+    expect(legrand()[0].vehicleId).not.toBe("rafale");
+  });
+
+  it("never swaps the cars when the metered charger opens minutes after its plug-in", async () => {
+    const t0 = now;
+    data("charger", "vehicle", "charging"); // the Rafale on A at T0
+    await report("rafale", "charging", t0);
+    now = t0 + 3 * MIN;
+    await report("megane", "charging", now); // plugged into B; B sees no power yet
+    while (now < t0 + 10 * MIN) minute();
+    let level = 30;
+    for (let i = 0; i < 60; i++) {
+      minute(() => data("legrand", "power", 7000)); // B opens at T0+10
+      if (i % 10 === 9) {
+        level += 3; // the Rafale's battery keeps rising
+        data("rafale", "reported_at", new Date(now - 30_000).toISOString());
+        data("rafale", "battery_level", level);
+        await flush();
+      }
+    }
+    data("charger", "vehicle", "disconnected");
+    for (let i = 0; i < 31; i++) {
+      data("legrand", "power", 0);
+      tracker.tick();
+      now += MIN;
+    }
+    now += GRACE_MS;
+    tracker.tick();
+    expect(sessions()[0].vehicleId).not.toBe("megane");
+    expect(legrand()[0].vehicleId).not.toBe("rafale");
   });
 
   it("keeps a guest's session to attribute when an away car reports home after its end", async () => {
@@ -1180,8 +1244,9 @@ describe("audit second review", () => {
     for (let i = 0; i < 30; i++) {
       data("charger", "power", 6000);
       now += MIN;
-      // Silent from minute 11 to 17, then one cumulative delta.
-      if (i < 10 || i > 16) data("grid", "energy", i === 17 ? 700 : 100);
+      // Silent for 13 min (longer than a delta may span), then a delta of its
+      // last minute only: the minutes between are a hole.
+      if (i < 5 || i > 17) data("grid", "energy", 100);
       tracker.tick();
     }
     data("charger", "vehicle", "disconnected");

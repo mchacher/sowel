@@ -198,11 +198,6 @@ export class EvSessionStore {
             AND started_at >= ? AND started_at < ?
           ORDER BY started_at DESC`,
       ),
-      attributedOverlapping: this.db.prepare(
-        `SELECT * FROM ev_charge_sessions
-          WHERE charger_id != ? AND attribution = 'vehicle' AND vehicle_id IS NOT NULL
-            AND started_at < ? AND (ended_at IS NULL OR ended_at > ?)`,
-      ),
       meeting: this.db.prepare(
         `SELECT * FROM ev_charge_sessions
           WHERE id != ? AND started_at <= ? AND (ended_at IS NULL OR ended_at > ?)`,
@@ -277,24 +272,6 @@ export class EvSessionStore {
   /** A vehicle's attributed sessions (deleted vehicles count nowhere). */
   listByVehicle(vehicleId: string, fromIso: string, toIso: string): SessionRecord[] {
     return (this.stmts.byVehicle.all(vehicleId, fromIso, toIso) as SessionRow[]).map(rowToRecord);
-  }
-
-  /**
-   * Spec 193 FR4 — sessions on other chargers already given to a vehicle
-   * whose time range meets [fromIso, toIso) (`toIso` null: still open).
-   */
-  listAttributedOverlapping(
-    excludeChargerId: string,
-    fromIso: string,
-    toIso: string | null,
-  ): SessionRecord[] {
-    return (
-      this.stmts.attributedOverlapping.all(
-        excludeChargerId,
-        toIso ?? "9999-12-31T23:59:59.999Z",
-        fromIso,
-      ) as SessionRow[]
-    ).map(rowToRecord);
   }
 
   /**

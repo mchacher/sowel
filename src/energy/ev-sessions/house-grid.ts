@@ -16,8 +16,11 @@
 const BUCKET_MS = 60_000;
 /** A first delta, or one after a long silence, covers this much. */
 const DEFAULT_SPAN_MS = 60_000;
-/** A gap longer than this is a silence, not one long reading. */
-const MAX_SPAN_MS = 5 * 60_000;
+/**
+ * A gap longer than this is a silence, not one long reading. Above the
+ * slowest usual cadence: a meter polled from a cloud every 5 minutes.
+ */
+const MAX_SPAN_MS = 10 * 60_000;
 
 export class HouseGridLedger {
   private readonly buckets = new Map<number, number>();
