@@ -56,10 +56,8 @@ and read the sign accordingly on that meter only.
   not strip past production that the autoconso written at the time still holds.
 - Live: a flagged row shows `max(0, P)`; the Live diagram adds the negative part
   of flagged, current readings to solar.
-- Zone power sum counts `max(0, P)` for a flagged meter. **This amends #1116**,
-  which found the signed sum correct: the sum is the zone's loads, a net export
-  displayed as a negative load reads as a wiring fault, and the panel's output
-  now shows on the Live solar flow.
+- Zone power sum stays signed, flagged meter included (maintainer's choice,
+  2026-11-07): a zone at −412 W shows the panel behind the pool meter exporting.
 
 ## Out of scope
 

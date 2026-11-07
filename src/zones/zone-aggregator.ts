@@ -13,7 +13,7 @@ import type {
 } from "../shared/types.js";
 import { ROOT_ZONE_ID } from "../shared/constants.js";
 import { doorState, isDoorOpenForCount } from "../shared/door-state.js";
-import { countsLocalProduction, isSubmeterEquipment } from "../equipments/metering.js";
+import { isSubmeterEquipment } from "../equipments/metering.js";
 import {
   LIVE_POWER_ALIASES,
   classifyPowerReading,
@@ -601,13 +601,7 @@ export class ZoneAggregator {
       }
 
       const bindings = withDetails.dataBindings;
-      this.accumulateEquipmentPower(
-        acc,
-        equipment.type,
-        withDetails.status,
-        bindings,
-        countsLocalProduction(equipment, bindings),
-      );
+      this.accumulateEquipmentPower(acc, equipment.type, withDetails.status, bindings);
       if (equipment.type === "water_valve") {
         this.accumulateWaterValve(acc, bindings);
       } else {
@@ -649,7 +643,6 @@ export class ZoneAggregator {
     equipmentType: EquipmentType,
     status: EquipmentStatus,
     bindings: DataBindingWithValue[],
-    localProduction: boolean,
   ): void {
     if (!isSubmeterEquipment(equipmentType, bindings)) return;
 
@@ -683,13 +676,10 @@ export class ZoneAggregator {
     // backwards reports negative watts, and a negative total is a wiring fault
     // the user needs to see. (`PowerSubmeterIntegrator` integrates |P| for
     // energy per spec 091 — that protects a cumulative counter, a different
-    // question.) The one exception is a meter that counts local production
-    // (spec 195): its negative watts are a panel producing, not a load, and
-    // this sum is the zone's loads — the same positive part its by-usage
-    // slice keeps. This amends #1116, which found the signed sum correct: a
-    // net export shown as a negative load reads as a wiring fault, and the
-    // panel's output is on the Live page's solar flow instead.
-    acc.powerSum += localProduction ? Math.max(0, powerBinding.value) : powerBinding.value;
+    // question.) A meter seeing local production (spec 195) is no exception:
+    // a pool clamp at −412 W says the panel behind it is exporting, which is
+    // what the zone should show.
+    acc.powerSum += powerBinding.value;
     acc.powerHasData = true;
   }
 

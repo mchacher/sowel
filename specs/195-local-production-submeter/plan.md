@@ -8,7 +8,7 @@
    delta written and emitted at flush.
 4. `SelfConsumptionWriter`: role `solar` for `production` from a flagged meter.
 5. `/energy/history`: production query reads flagged meters' `production`.
-6. Zone aggregator: flagged meter contributes `max(0, P)`.
+6. Zone aggregator: unchanged, the signed sum already shows the export.
 7. UI: metering panel toggle + i18n, `readSubmeterReading` clamp,
    `localProductionW`, Live diagram solar.
 8. Tests on every step; user doc (energy EN/FR), API reference EN/FR, specs
