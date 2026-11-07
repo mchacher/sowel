@@ -300,6 +300,9 @@ export class OrderConfirmationTracker {
     this.startedAt = Date.now();
     this.unsubs.push(
       this.eventBus.onType("equipment.order.executed", (event) => {
+        // A composite order dispatched nothing itself; its steps came through
+        // here as ordinary orders and are the ones to confirm (#1122).
+        if (event.composite) return;
         try {
           this.handleOrderExecuted(
             event.equipmentId,

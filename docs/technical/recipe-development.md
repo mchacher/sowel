@@ -303,14 +303,17 @@ Declare `confirm` on a tile whose action opens something, and leave all three ou
 
 The `ctx` object injected into `validate()` and `createInstance()` provides:
 
-| Property           | Type               | Purpose                                                                   |
-| ------------------ | ------------------ | ------------------------------------------------------------------------- |
-| `eventBus`         | `EventBus`         | Subscribe to typed events                                                 |
-| `equipmentManager` | `EquipmentManager` | Query equipment state, execute orders                                     |
-| `zoneManager`      | `ZoneManager`      | Query zone definitions                                                    |
-| `zoneAggregator`   | `ZoneAggregator`   | Query aggregated zone data                                                |
-| `state`            | `RecipeStateStore` | Persist key-value state (survives restart, auto-notifies UI on mutations) |
-| `log(msg, level?)` | function           | Write to recipe execution log                                             |
+| Property                                   | Type               | Purpose                                                                                                                        |
+| ------------------------------------------ | ------------------ | ------------------------------------------------------------------------------------------------------------------------------ |
+| `eventBus`                                 | `EventBus`         | Subscribe to typed events                                                                                                      |
+| `equipmentManager`                         | `EquipmentManager` | Query equipment state                                                                                                          |
+| `zoneManager`                              | `ZoneManager`      | Query zone definitions                                                                                                         |
+| `zoneAggregator`                           | `ZoneAggregator`   | Query aggregated zone data                                                                                                     |
+| `state`                                    | `RecipeStateStore` | Persist key-value state (survives restart, auto-notifies UI on mutations)                                                      |
+| `log(msg, level?)`                         | function           | Write to recipe execution log                                                                                                  |
+| `dispatchOrder(equipmentId, alias, value)` | function           | Send an order attributed to this instance (resolves to `{ success, error? }`, rejects when the order cannot be sent: catch it) |
+
+Send orders with `ctx.dispatchOrder`, not `ctx.equipmentManager.executeOrder`: only the former tells Sowel which recipe sent the order, so the Activity feed can name it (issue #1122).
 
 ## Shared Helpers
 

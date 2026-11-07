@@ -107,6 +107,37 @@ describe("ActivityBuffer", () => {
       expect(items[0].message.template).toBe("order.executed");
     });
 
+    it("shows a composite order once and skips its steps (#1122)", () => {
+      h.addEquipment(mkEquipment("vmc", "VMC", "zone-laundry"));
+      const source = { kind: "recipe" as const, instanceId: "i-1", recipeName: "VMC hygro" };
+      for (const alias of ["high", "low"]) {
+        h.bus.emit({
+          type: "equipment.order.executed",
+          equipmentId: "vmc",
+          orderAlias: alias,
+          value: false,
+          source,
+          partOf: "speed",
+        });
+      }
+      h.bus.emit({
+        type: "equipment.order.executed",
+        equipmentId: "vmc",
+        orderAlias: "speed",
+        value: "off",
+        source,
+        composite: true,
+      });
+
+      const items = h.buffer.getItems();
+      expect(items).toHaveLength(1);
+      expect(items[0].message).toMatchObject({
+        template: "order.executed",
+        params: { equipmentName: "VMC", alias: "speed", value: "off" },
+      });
+      expect(items[0].source).toEqual(source);
+    });
+
     it("flags a momentary order (wake) so the UI names the action, not ON", () => {
       h.addEquipment(mkEquipment("car", "Rafale", "zone-garage"));
       h.addOrderBindings("car", [

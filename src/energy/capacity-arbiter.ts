@@ -335,6 +335,8 @@ export class CapacityArbiter {
         }
       }),
       this.eventBus.onType("equipment.order.executed", (e) => {
+        // The steps of a composite order already reached here (#1122).
+        if (e.composite) return;
         try {
           this.onOrderExecuted(e.equipmentId, e.value, e.source);
         } catch (err) {

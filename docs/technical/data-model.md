@@ -243,7 +243,7 @@ All events are typed via `EngineEvent`, a TypeScript discriminated union. Handle
 | `equipment.updated`        | `equipment: Equipment`                                                |
 | `equipment.removed`        | `equipmentId, equipmentName, zoneId`                                  |
 | `equipment.data.changed`   | `equipmentId, alias, value, previous, sourceTimestamp?`               |
-| `equipment.order.executed` | `equipmentId, orderAlias, value`                                      |
+| `equipment.order.executed` | `equipmentId, orderAlias, value, source?, partOf?, composite?`        |
 | `equipment.order.failed`   | `equipmentId, orderAlias, value, error`                               |
 | `equipment.order.outcome`  | `equipmentId, orderAlias, value, status, expected?, detail?, source?` |
 

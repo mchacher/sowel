@@ -84,23 +84,23 @@ Le bus d'événements est un `EventEmitter` typé qui utilise les unions discrim
 
 ### Types d'événements
 
-| Event                             | Payload                                              | Quand                                       |
-| --------------------------------- | ---------------------------------------------------- | ------------------------------------------- |
-| `device.discovered`               | `device: Device`                                     | Nouveau device trouvé                       |
-| `device.removed`                  | `deviceId, deviceName`                               | Device supprimé                             |
-| `device.status_changed`           | `deviceId, deviceName, status`                       | Online/offline                              |
-| `device.data.updated`             | `deviceId, deviceName, dataId, key, value, previous` | Changement de propriété                     |
-| `equipment.data.changed`          | `equipmentId, key, value, previous`                  | Donnée liée modifiée                        |
-| `equipment.order.executed`        | `equipmentId, orderAlias, value, source?`            | Ordre dispatché                             |
-| `zone.data.changed`               | `zoneId, key, value, previous`                       | Donnée agrégée modifiée                     |
-| `system.started`                  | --                                                   | Démarrage moteur terminé                    |
-| `system.integration.connected`    | `integrationId`                                      | Intégration connectée                       |
-| `system.integration.disconnected` | `integrationId`                                      | Intégration déconnectée                     |
-| `settings.changed`                | `keys`                                               | Réglages mis à jour                         |
-| `mode.activated`                  | mode details                                         | Mode activé                                 |
-| `mode.deactivated`                | mode details                                         | Mode désactivé                              |
-| `recipe.state_changed`            | instance details                                     | État de recette modifié                     |
-| `activity.added`                  | `item: ActivityItem`                                 | Nouvel item d'activité bufferisé (spec 101) |
+| Event                             | Payload                                                        | Quand                                       |
+| --------------------------------- | -------------------------------------------------------------- | ------------------------------------------- |
+| `device.discovered`               | `device: Device`                                               | Nouveau device trouvé                       |
+| `device.removed`                  | `deviceId, deviceName`                                         | Device supprimé                             |
+| `device.status_changed`           | `deviceId, deviceName, status`                                 | Online/offline                              |
+| `device.data.updated`             | `deviceId, deviceName, dataId, key, value, previous`           | Changement de propriété                     |
+| `equipment.data.changed`          | `equipmentId, key, value, previous`                            | Donnée liée modifiée                        |
+| `equipment.order.executed`        | `equipmentId, orderAlias, value, source?, partOf?, composite?` | Ordre dispatché                             |
+| `zone.data.changed`               | `zoneId, key, value, previous`                                 | Donnée agrégée modifiée                     |
+| `system.started`                  | --                                                             | Démarrage moteur terminé                    |
+| `system.integration.connected`    | `integrationId`                                                | Intégration connectée                       |
+| `system.integration.disconnected` | `integrationId`                                                | Intégration déconnectée                     |
+| `settings.changed`                | `keys`                                                         | Réglages mis à jour                         |
+| `mode.activated`                  | mode details                                                   | Mode activé                                 |
+| `mode.deactivated`                | mode details                                                   | Mode désactivé                              |
+| `recipe.state_changed`            | instance details                                               | État de recette modifié                     |
+| `activity.added`                  | `item: ActivityItem`                                           | Nouvel item d'activité bufferisé (spec 101) |
 
 ---
 
@@ -552,6 +552,7 @@ L'image runtime fait environ 950 Mo non compressée (environ 210 Mo de contenu).
 ### Flux d'événements
 
 1. Le buffer souscrit à un sous-ensemble curé d'`EngineEvent`s : `equipment.order.executed`, `equipment.data.changed` (filtré sur la catégorie de binding `motion`, `water_leak`, `smoke`), `recipe.instance.started/stopped/error`, `mode.activated/deactivated`, `sunlight.changed`, `system.alarm.raised`, `system.alarm.resolved`. Une résolution est classée dans la zone portée par son événement, à défaut dans celle de la levée vue par le buffer (globale s'il n'a ni l'une ni l'autre, par exemple une alarme levée avant un redémarrage).
+   Un ordre fait d'étapes (un changement de vitesse de VMC, spec 153, commuté en ordres de relais) lui arrive en étapes portant `partOf`, qu'il ignore, puis en un ordre `composite`, qu'il enregistre : une ligne par changement de vitesse. Le tracker de confirmation d'ordre et l'arbitre de capacité font l'inverse, puisque seules les étapes ont été dispatchées (issue #1122).
 2. Pour chaque événement, il résout le nom d'équipement / de recette et le `zoneId` pertinent via les managers (equipment, recipe, zone, sunlight), puis construit un `ActivityItem`.
 3. Il pousse l'item dans le ring buffer (cap par count, purge des entrées dépassant le TTL) et émet un événement `activity.added` sur le bus.
 4. La couche WebSocket diffuse cet événement aux clients abonnés au topic `activity`. Les clients bootstrapent également via `GET /api/v1/activity` au montage.

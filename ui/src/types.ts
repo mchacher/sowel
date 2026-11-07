@@ -1126,6 +1126,10 @@ export type EngineEvent =
       orderAlias: string;
       value: unknown;
       source?: OrderSource;
+      /** Issue #1122 — a step of this logical order (VMC `speed` → relays). */
+      partOf?: string;
+      /** Issue #1122 — a summary of steps already sent; nothing new dispatched. */
+      composite?: true;
     }
   // Recipe events
   | { type: "recipe.instance.created"; instanceId: string; recipeId: string }

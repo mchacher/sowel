@@ -1238,6 +1238,84 @@ describe("EquipmentManager", () => {
       expect(speedEvents.length).toBeGreaterThan(0);
     });
 
+    it("a VMC speed change reports its relay steps and one composite order (#1122)", async () => {
+      const zone = zoneManager.create({ name: "Buanderie" });
+      const eq = manager.create({ name: "VMC", type: "vmc", zoneId: zone.id });
+      const { orderIds } = seedDevice(db, {
+        name: "MiniDuo",
+        orderKeys: [{ key: "l1" }, { key: "l2" }],
+      });
+      manager.addOrderBinding(eq.id, orderIds[0], "low");
+      manager.addOrderBinding(eq.id, orderIds[1], "high");
+      const source = { kind: "recipe" as const, instanceId: "i-1", recipeName: "VMC" };
+      events.length = 0;
+
+      await manager.executeOrder(eq.id, "speed", "off", source);
+
+      const executed = events.flatMap((e) => (e.type === "equipment.order.executed" ? [e] : []));
+      expect(executed.map((e) => [e.orderAlias, e.partOf, e.composite])).toEqual([
+        ["high", "speed", undefined],
+        ["low", "speed", undefined],
+        ["speed", undefined, true],
+      ]);
+      expect(executed[2]).toMatchObject({ value: "off", source });
+    });
+
+    it("an aborted VMC speed change reports no composite order (#1122)", async () => {
+      vi.useFakeTimers();
+      try {
+        const zone = zoneManager.create({ name: "Cave" });
+        const eq = manager.create({ name: "VMC", type: "vmc", zoneId: zone.id });
+        const { orderIds } = seedDevice(db, {
+          name: "MiniDuo",
+          orderKeys: [{ key: "l1" }, { key: "l2" }],
+        });
+        manager.addOrderBinding(eq.id, orderIds[0], "low");
+        manager.addOrderBinding(eq.id, orderIds[1], "high");
+        failOrderKeys.add("l1");
+        events.length = 0;
+
+        const p = manager.executeOrder(eq.id, "speed", "v2");
+        await vi.advanceTimersByTimeAsync(5000);
+        await p;
+
+        expect(events.some((e) => e.type === "equipment.order.executed" && e.composite)).toBe(
+          false,
+        );
+      } finally {
+        vi.useRealTimers();
+      }
+    });
+
+    it("an aborted VMC speed change still reports the relays it switched (#1122)", async () => {
+      vi.useFakeTimers();
+      try {
+        const zone = zoneManager.create({ name: "Cave" });
+        const eq = manager.create({ name: "VMC", type: "vmc", zoneId: zone.id });
+        const { orderIds } = seedDevice(db, {
+          name: "MiniDuo",
+          orderKeys: [{ key: "l1" }, { key: "l2" }],
+        });
+        manager.addOrderBinding(eq.id, orderIds[0], "low");
+        manager.addOrderBinding(eq.id, orderIds[1], "high");
+        // V2 = break low (l1, succeeds), then make high (l2, fails).
+        failOrderKeys.add("l2");
+        events.length = 0;
+
+        const p = manager.executeOrder(eq.id, "speed", "v2");
+        await vi.advanceTimersByTimeAsync(5000);
+        const res = await p;
+
+        expect(res.success).toBe(false);
+        const summaries = events.flatMap((e) =>
+          e.type === "equipment.order.executed" && e.composite ? [[e.orderAlias, e.value]] : [],
+        );
+        expect(summaries).toEqual([["low", false]]);
+      } finally {
+        vi.useRealTimers();
+      }
+    });
+
     it("rejects V2 on a single-speed VMC (no high relay)", async () => {
       const zone = zoneManager.create({ name: "WC" });
       const eq = manager.create({ name: "Extracteur", type: "vmc", zoneId: zone.id });

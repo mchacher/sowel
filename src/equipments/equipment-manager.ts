@@ -1068,6 +1068,22 @@ export class EquipmentManager {
     value: unknown,
     source?: OrderSource,
   ): Promise<{ success: boolean; error?: string }> {
+    return this.runOrder(equipmentId, alias, value, source);
+  }
+
+  /**
+   * `partOf` names the logical order this one is a step of (a VMC `speed`
+   * decomposed into relay orders). It rides on the step's outcome event so
+   * the activity feed shows the logical order once instead of every step
+   * (issue #1122); everything else treats the step as an ordinary order.
+   */
+  private async runOrder(
+    equipmentId: string,
+    alias: string,
+    value: unknown,
+    source?: OrderSource,
+    partOf?: string,
+  ): Promise<{ success: boolean; error?: string }> {
     const equipment = this.getById(equipmentId);
     if (!equipment) {
       throw new EquipmentError("Equipment not found", 404);
@@ -1146,6 +1162,7 @@ export class EquipmentManager {
         lastError: err instanceof Error ? err.message : String(err),
         source,
         startedAt,
+        partOf,
       });
       throw err;
     }
@@ -1159,6 +1176,7 @@ export class EquipmentManager {
       lastError,
       source,
       startedAt,
+      partOf,
     });
 
     if (successes === 0 && lastError) {
@@ -1236,9 +1254,19 @@ export class EquipmentManager {
     lastError?: string;
     source?: OrderSource;
     startedAt?: number;
+    partOf?: string;
   }): void {
-    const { equipment, alias, resolvedValue, successes, targets, lastError, source, startedAt } =
-      ctx;
+    const {
+      equipment,
+      alias,
+      resolvedValue,
+      successes,
+      targets,
+      lastError,
+      source,
+      startedAt,
+      partOf,
+    } = ctx;
     if (successes > 0) {
       this.logger.info(
         {
@@ -1257,6 +1285,7 @@ export class EquipmentManager {
         value: resolvedValue,
         source,
         ...(startedAt !== undefined ? { startedAt } : {}),
+        ...(partOf !== undefined ? { partOf } : {}),
       });
       // Gate command: mark state as "unknown" until the next sensor update.
       this.trackGatePending(equipment, alias);
@@ -1461,8 +1490,34 @@ export class EquipmentManager {
       throw err;
     }
 
-    for (const step of steps) {
-      const res = await this.executeOrder(equipmentId, step.relay, step.value, source);
+    // Steps carry `partOf`, so the activity feed skips them and shows the
+    // logical order instead (issue #1122). `composite` on that summary tells
+    // the confirmation tracker and the capacity arbiter that the steps were
+    // the real dispatches and already reached them.
+    const summarize = (alias: string, summaryValue: unknown): void => {
+      this.eventBus.emit({
+        type: "equipment.order.executed",
+        equipmentId,
+        orderAlias: alias,
+        value: summaryValue,
+        source,
+        composite: true,
+      });
+    };
+    // An aborted transition did not reach the target speed, but the relays it
+    // already switched did change the motor: the feed shows those instead.
+    const summarizeDone = (done: typeof steps): void => {
+      for (const s of done) summarize(s.relay, s.value);
+    };
+
+    for (const [index, step] of steps.entries()) {
+      let res;
+      try {
+        res = await this.runOrder(equipmentId, step.relay, step.value, source, "speed");
+      } catch (err) {
+        summarizeDone(steps.slice(0, index));
+        throw err;
+      }
       if (!res.success) {
         // Stop on the first failing step. Because breaks come before makes, the
         // motor is left in a safe partial state (the target winding not energized).
@@ -1470,9 +1525,12 @@ export class EquipmentManager {
           { equipmentId, target, relay: step.relay, value: step.value, error: res.error },
           "VMC speed transition aborted on a failing relay step",
         );
+        summarizeDone(steps.slice(0, index));
         return res;
       }
     }
+
+    summarize("speed", target);
 
     // Optimistic reflection so the UI updates immediately, even when the relays
     // report no state feedback. The computed `speed` (from relay state) refines

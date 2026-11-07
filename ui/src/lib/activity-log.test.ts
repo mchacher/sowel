@@ -2,7 +2,13 @@ import { describe, expect, it } from "vitest";
 import en from "../i18n/locales/en.json";
 import fr from "../i18n/locales/fr.json";
 import type { ActivityItem } from "../types";
-import { dayPart, groupActivityLog, logPeriodLabel, logSpanLabel } from "./activity-log";
+import {
+  dayPart,
+  displayValue,
+  groupActivityLog,
+  logPeriodLabel,
+  logSpanLabel,
+} from "./activity-log";
 
 // Spec 196, slice 7c — the activity panel is one log, newest first, with a
 // separator label where it crosses into another part of the day.
@@ -156,5 +162,15 @@ describe("logSpanLabel", () => {
     expect(logSpanLabel([at("2026-10-28T07:30:00")], now, t, "fr-FR")).toBe(
       'activity.since.date|{"date":"28 octobre"}',
     );
+  });
+});
+
+describe("displayValue", () => {
+  const t = translator(fr as Record<string, string>);
+
+  it("writes a VMC speed as the equipment card does (#1122)", () => {
+    expect(displayValue("v1", "speed", t)).toBe("V1");
+    expect(displayValue("v2", "speed", t)).toBe("V2");
+    expect(displayValue("off", "speed", t)).toBe(fr["controls.off"]);
   });
 });
