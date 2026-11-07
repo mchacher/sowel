@@ -10,7 +10,7 @@ import {
 } from "../../lib/energy-meter-display";
 import { resolvePowerReading } from "../../lib/power-reading";
 import { formatRelative } from "../../lib/format-relative";
-import { formatNumber } from "../../lib/format";
+import { formatNumber, unitDecimals } from "../../lib/format";
 
 interface ElectricalMeteringPanelProps {
   equipment: EquipmentWithDetails;
@@ -81,7 +81,7 @@ export function ElectricalMeteringPanel({ equipment }: ElectricalMeteringPanelPr
       key: "voltage",
       labelKey: "category.voltage",
       icon: <PlugZap size={16} strokeWidth={1.5} />,
-      value: voltageAged ? "—" : voltageV !== null ? formatNumber(voltageV, { maxDecimals: 0 }) : null,
+      value: voltageAged ? "—" : voltageV !== null ? formatNumber(voltageV, { maxDecimals: unitDecimals("V", voltageV) }) : null,
       unit: voltageAged ? "" : "V",
       sublabel: voltageAged ? t("reading.outdated") : null,
     },
@@ -89,7 +89,7 @@ export function ElectricalMeteringPanel({ equipment }: ElectricalMeteringPanelPr
       key: "current",
       labelKey: "category.current",
       icon: <Activity size={16} strokeWidth={1.5} />,
-      value: currentAged ? "—" : currentA !== null ? formatNumber(currentA, { maxDecimals: 1 }) : null,
+      value: currentAged ? "—" : currentA !== null ? formatNumber(currentA, { maxDecimals: unitDecimals("A", currentA) }) : null,
       unit: currentAged ? "" : "A",
       sublabel: currentAged ? t("reading.outdated") : null,
     },

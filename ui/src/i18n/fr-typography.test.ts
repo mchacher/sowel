@@ -10,6 +10,9 @@ import fr from "./locales/fr.json";
 // - Straight apostrophe everywhere (decision pr2-apostrophe): one form, so a
 //   label never mixes a curly and a straight one.
 // - No "(s)" plural: use i18next _one / _other keys.
+// - No plain or no-break space before a unit. A value with its unit is passed
+//   already formatted (`{{power}}` from lib/format, never `{{watts}} W`); a unit
+//   written in the text itself (« 24 h », « {{count}} min ») sits after U+202F.
 // - A French value identical to its English one is a leak until proven
 //   otherwise: a proper noun, an acronym, or a word both languages share
 //   goes in SAME_AS_EN on purpose.
@@ -17,6 +20,9 @@ import fr from "./locales/fr.json";
 const fr_ = fr as Record<string, string>;
 const en_ = en as Record<string, string>;
 const NNBSP = "\u202f";
+
+/** A unit, as a whole word: « 4 min » is caught, « 4 minutes » and « 2 mois » are not. */
+const UNIT = String.raw`(?:kWh|Wh|kW|W|V|mA|A|%|°C|°|mm|km/h|km|m/s|lx|ppm|hPa|mbar|dBm|dB|€|ms|min|h|j|s|ko|Mo|Go)(?![\p{L}\d])`;
 
 function offenders(test: (value: string) => boolean): string[] {
   return Object.entries(fr_)
@@ -46,14 +52,12 @@ const SAME_AS_EN = new Set<string>([
   "equipments.type.thermostat",
   "equipments.type.vmc",
   "equipments.evSessions.how.auto",
-  "equipments.evCharger.range",
   "equipments.vmc.v1",
   "equipments.vmc.v2",
   "equipments.ups.absent",
   "equipments.ups.margins.position",
   "equipments.ups.field.beeper",
   "cameras.lightMode.auto",
-  "displays.card.brightness",
   "water.minutes",
   "water.status.normal_state",
   "equipments.group.ventilation",
@@ -71,7 +75,6 @@ const SAME_AS_EN = new Set<string>([
   "category.media_input",
   "category.rssi",
   "weather.windDirection",
-  "weather.rain24hShort",
   "time.min",
   "time.hour",
   "time.second",
@@ -123,7 +126,6 @@ const SAME_AS_EN = new Set<string>([
   "notifPublishers.zone",
   "notifPublishers.throttle",
   "notifPublishers.repeatMinutes",
-  "notifPublishers.throttleMinutes",
   "notifPublishers.test",
   "dashboard.tabZone",
   "dashboard.selectZone",
@@ -156,10 +158,6 @@ const SAME_AS_EN = new Set<string>([
   "equipments.solar.cardinal.S",
   "equipments.pv.accuracyValue",
   "equipments.pv.accuracyValueNoPct",
-  "equipments.timed.minutes_one",
-  "equipments.timed.minutes_other",
-  "dashboard.timed.idle_one",
-  "dashboard.timed.idle_other",
   "sharedAccess.journal.title",
   "sharedAccess.phones.platform.iphone",
   "sharedAccess.phones.platform.ipad",
@@ -197,6 +195,14 @@ describe("French typography (fr.json)", () => {
   it("writes no (s) plural", () => {
     // "(s)" glued to a word; "Lissage (s)" is a unit in seconds and stays.
     expect(offenders((v) => /\p{L}\(s\)/u.test(v))).toEqual([]);
+  });
+
+  it("passes a quantity formatted, never « {{x}} <unit> » with a plain space", () => {
+    expect(offenders((v) => new RegExp(String.raw`\}\}[ \u00a0]${UNIT}`, "u").test(v))).toEqual([]);
+  });
+
+  it("puts a narrow no-break space between a figure and its unit", () => {
+    expect(offenders((v) => new RegExp(String.raw`\d[ \u00a0]${UNIT}`, "u").test(v))).toEqual([]);
   });
 
   it("translates every value, except the ones listed as shared with English", () => {

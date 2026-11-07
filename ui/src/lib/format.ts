@@ -330,21 +330,30 @@ export function formatCurrency(
 
 /** Decimals per unit (zeros dropped). Units not listed here keep one decimal. */
 const UNIT_DECIMALS: Record<string, number> = {
-  V: 0,
-  A: 1,
   mbar: 0,
   hPa: 0,
   mm: 1,
   "mm/h": 1,
   "mm/24h": 1,
   "km/h": 0,
-  "m/s": 0,
+  "m/s": 1,
   dB: 0,
   lx: 0,
   ppm: 0,
   "µg/m³": 0,
   km: 0,
 };
+
+/**
+ * Decimals for a value in `unit`. Voltage and current depend on the magnitude: a 12 V
+ * supply reads « 12,6 V », the mains « 231 V »; a standby draw « 0,07 A », a heater « 6,5 A ».
+ */
+export function unitDecimals(unit: string, v: number): number {
+  const a = Math.abs(v);
+  if (unit === "V") return a < 100 ? 1 : 0;
+  if (unit === "A") return a < 1 ? 2 : 1;
+  return UNIT_DECIMALS[unit] ?? 1;
+}
 
 export interface UnitOptions {
   /** For °C only. Default « full ». */
@@ -387,7 +396,7 @@ export function formatWithUnit(
       return formatDuration(v, { locale });
     default: {
       const u = unit as string;
-      const n = formatNumber(v, { maxDecimals: UNIT_DECIMALS[u] ?? 1, signed, locale });
+      const n = isMissing(v) ? EMPTY : formatNumber(v, { maxDecimals: unitDecimals(u, v), signed, locale });
       return withUnit(n, u, resolve(locale));
     }
   }

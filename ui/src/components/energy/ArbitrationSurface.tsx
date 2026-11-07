@@ -294,7 +294,7 @@ export function ArbitrationSurface() {
                 three figures on a row look unrelated. Shown only where all three
                 columns are (≥ 1024 px). */}
             <p className="hidden lg:block mt-3 text-[11px] font-mono text-text-tertiary">
-              {t("arbiter.needFormula", { margin: state.engageMarginW })}
+              {t("arbiter.needFormula", { margin: formatPower(state.engageMarginW) })}
             </p>
           </div>
 

@@ -159,13 +159,15 @@ export function DashboardPage() {
     // bottom, content ends at 56 px): pb-20 keeps the last tile clear.
     <div className={isAdmin ? "p-4 pb-20 sm:p-6" : "p-4 sm:p-6"}>
       <div>
-        {/* Desktop header */}
+        {/* Header from 640 px. The title only from 1024 px: below, the compact top
+            bar already names the page (spec 196, pr1-tablette); tablets keep the
+            edit buttons here, phones use the FAB. */}
         <div className="hidden sm:flex items-center justify-between mb-5">
-          <h1>
+          <h1 className="hidden lg:block">
             {t("dashboard.title")}
           </h1>
           {isAdmin && (
-            <div className="flex items-center gap-2">
+            <div className="ml-auto flex items-center gap-2">
               {editMode && (
                 <button
                   onClick={() => setShowAddModal(true)}

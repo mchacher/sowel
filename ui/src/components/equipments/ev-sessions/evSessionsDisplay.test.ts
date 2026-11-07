@@ -1,10 +1,12 @@
 import { describe, expect, it } from "vitest";
 import type { EvChargeSession } from "../../../types";
 import {
+  energyLabel,
   energyShares,
   liveState,
   type LiveInputs,
   monthLabel,
+  powerLabel,
   sessionChip,
   shiftMonth,
   toIso,
@@ -157,5 +159,14 @@ describe("liveState (spec 192)", () => {
     expect(toIso("2026-11-01 14:06:05Z")).toBe("2026-11-01T14:06:05.000Z");
     expect(toIso("2026-11-01T14:06:05.000Z")).toBe("2026-11-01T14:06:05.000Z");
     expect(toIso(null)).toBeNull();
+  });
+});
+
+describe("energyLabel / powerLabel (spec 196): the unit after U+202F, never a plain space", () => {
+  it("formats a session's energy and power with their unit", () => {
+    expect(energyLabel(14_312, "fr-FR")).toBe("14,3\u202FkWh");
+    expect(energyLabel(700, "fr-FR")).toBe("0,7\u202FkWh");
+    expect(powerLabel(3680, "fr-FR")).toBe("3,7\u202FkW");
+    expect(energyLabel(14_312, "en-GB")).toBe("14.3\u00A0kWh");
   });
 });

@@ -164,9 +164,18 @@ describe("formatCurrency", () => {
 
 describe("formatWithUnit — the rule follows the unit", () => {
   table([
-    ["V", () => formatWithUnit(225.4, "V", fr), "225␣V"],
+    ["V mains, whole", () => formatWithUnit(225.4, "V", fr), "225␣V"],
+    ["V below 100, one decimal", () => formatWithUnit(12.64, "V", fr), "12,6␣V"],
+    ["V below 100 drops the zero", () => formatWithUnit(24.0, "V", fr), "24␣V"],
+    ["V 99.96 rounds to 100", () => formatWithUnit(99.96, "V", fr), "100␣V"],
     ["A drops the zero", () => formatWithUnit(0, "A", fr), "0␣A"],
     ["A keeps one decimal", () => formatWithUnit(12.5, "A", fr), "12,5␣A"],
+    ["A above 1, one decimal", () => formatWithUnit(6.54, "A", fr), "6,5␣A"],
+    ["A below 1, two decimals", () => formatWithUnit(0.074, "A", fr), "0,07␣A"],
+    ["A below 1 drops zeros", () => formatWithUnit(0.5, "A", fr), "0,5␣A"],
+    ["A null", () => formatWithUnit(null, "A", fr), "—"],
+    ["m/s one decimal", () => formatWithUnit(3.46, "m/s", fr), "3,5␣m/s"],
+    ["m/s drops the zero", () => formatWithUnit(4, "m/s", fr), "4␣m/s"],
     ["mbar", () => formatWithUnit(1021.7, "mbar", fr), "1␣022␣mbar"],
     ["hPa", () => formatWithUnit(1013.2, "hPa", fr), "1␣013␣hPa"],
     ["mm", () => formatWithUnit(0.4, "mm", fr), "0,4␣mm"],

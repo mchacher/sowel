@@ -36,35 +36,39 @@ Delivered as stacked pull requests, one per phase, one commit per slice so each 
 
 ## Test Plan
 
-| Module                | Scenario                                                 | Expected                                                 |
-| --------------------- | -------------------------------------------------------- | -------------------------------------------------------- |
-| `lib/chart-ticks`     | day period, 390 px vs 1440 px                            | interval 6 h on phone, 2 h on desktop                    |
-| `lib/chart-ticks`     | month and year periods on phone                          | labels never closer than the minimum gap                 |
-| `lib/format`          | `formatNumber(1234.5, fr)`                               | `1 234,5` with U+202F                                    |
-| `lib/format`          | negative value fr                                        | U+2212 sign; `-0` → `0`                                  |
-| `lib/format`          | `null`, `NaN`                                            | `—`                                                      |
-| `lib/format`          | `formatPower` 999.6 / 1000 / 3650 W                      | `1 000 W` boundary handled, `3,7 kW`                     |
-| `lib/format`          | `formatEnergy` 0.704, 7.09, 14.27, 983.66                | `0,7` `7,09` `14,3` `984` kWh                            |
-| `lib/format`          | `formatTemperature` 20, 20.5 compact and full            | `20,0°` `20,5°` `20,5 °C`                                |
-| `lib/format`          | `formatPercent` 39                                       | `39 %`                                                   |
-| `lib/format`          | `formatDuration` 59, 60, 132, 3599, 3900, 86400 s        | `59 s` `1 min` `2 min 12 s` `59 min 59 s` `1 h 05` `1 j` |
-| `lib/format`          | English locale                                           | dot decimal, no U+202F                                   |
-| `lib/format`          | unknown unit                                             | number formatted, unit verbatim                          |
-| i18n                  | every `category.*` used by equipment types has fr and en | no missing key                                           |
-| i18n                  | French typography lint over `fr.json`                    | no plain space before `: ; ! ?`                          |
-| i18n                  | plurals `devices.count` 1 / 2                            | « 1 appareil » / « 2 appareils »                         |
-| `lib/api-error`       | 429, 404, network, 500                                   | translated texts; 429 offers retry                       |
-| `EquipmentDetailPage` | background refresh returns 429                           | page keeps data, shows a non-blocking notice             |
-| colour roles          | every role text/background pair, light and dark          | ≥ 4.5:1 (text), ≥ 3:1 (graphic)                          |
-| `SetpointStepper`     | 4 taps within the delay                                  | one `onCommit` with the final value                      |
-| `SetpointStepper`     | unmount during the delay                                 | pending value committed                                  |
-| `setpointCommitDelay` | cloud vs local integration                               | ≈ 600 ms vs ≈ 150 ms                                     |
-| `mobile-click-action` | each equipment type                                      | action and glyph match the table in the slice            |
-| `useGuardedAction`    | gate requiring confirmation, pointer fine / coarse       | dialog / slide sheet; no order before confirm            |
-| `useGuardedAction`    | gate not requiring confirmation                          | order sent directly                                      |
-| gate texts            | open, closed, unknown                                    | « Fermer… », « Ouvrir… », « État inconnu »               |
-| energy palette        | neighbouring series in dark                              | ≥ 2:1 between neighbours, ≥ 3:1 against surface          |
-| `energy.ts` (backend) | by-usage response                                        | each series has `colorIndex`, `color` unchanged          |
+| Module                | Scenario                                                 | Expected                                            |
+| --------------------- | -------------------------------------------------------- | --------------------------------------------------- |
+| `lib/chart-ticks`     | day period, 390 px vs 1440 px                            | interval 6 h on phone, 2 h on desktop               |
+| `lib/chart-ticks`     | month and year periods on phone                          | labels never closer than the minimum gap            |
+| `lib/format`          | `formatNumber(1234.5, fr)`                               | `1 234,5` with U+202F                               |
+| `lib/format`          | negative value fr                                        | U+2212 sign; `-0` → `0`                             |
+| `lib/format`          | `null`, `NaN`                                            | `—`                                                 |
+| `lib/format`          | `formatPower` 999.6 / 1000 / 3650 W                      | `1 000 W` boundary handled, `3,7 kW`                |
+| `lib/format`          | `formatEnergy` 0.704, 7.09, 14.27, 983.66                | `0,7` `7,09` `14,3` `984` kWh                       |
+| `lib/format`          | `formatTemperature` 20, 20.5 compact and full            | `20,0°` `20,5°` `20,5 °C`                           |
+| `lib/format`          | `formatPercent` 39                                       | `39 %`                                              |
+| `lib/format`          | `formatDuration` 59, 60, 132, 3599, 3900, 86400 s        | `59 s` `1 min` `2 min 12 s` `59 min` `1 h 05` `1 j` |
+| `lib/format`          | English locale                                           | dot decimal, no U+202F                              |
+| `lib/format`          | unknown unit                                             | number formatted, unit verbatim                     |
+| i18n                  | every `category.*` used by equipment types has fr and en | no missing key                                      |
+| i18n                  | French typography lint over `fr.json`                    | no plain space before `: ; ! ?`                     |
+| i18n                  | plurals `devices.count` 1 / 2                            | « 1 appareil » / « 2 appareils »                    |
+| `lib/api-error`       | 429, 404, network, 500                                   | translated texts; 429 offers retry                  |
+| `EquipmentDetailPage` | fetch returns 429, equipment in the store                | page shows it from the store, no notice             |
+| `EquipmentDetailPage` | fetch returns 429, fetched copy only                     | page keeps it, shows a non-blocking notice          |
+| `EquipmentDetailPage` | A → B (both in the store), then B deleted                | B refetched, « not found »                          |
+| colour roles          | every role text/background pair, light and dark          | ≥ 4.5:1 (text), ≥ 3:1 (graphic)                     |
+| `SetpointStepper`     | 4 taps within the delay                                  | one `onCommit` with the final value                 |
+| `SetpointStepper`     | unmount during the delay                                 | pending value committed                             |
+| `setpointCommitDelay` | cloud vs local integration                               | ≈ 600 ms vs ≈ 150 ms                                |
+| `mobile-click-action` | each equipment type                                      | action and glyph match the table in the slice       |
+| `useGuardedAction`    | gate requiring confirmation, pointer fine / coarse       | dialog / slide sheet; no order before confirm       |
+| `useGuardedAction`    | gate not requiring confirmation                          | order sent directly                                 |
+| gate texts            | open, closed, unknown                                    | « Fermer… », « Ouvrir… », « État inconnu »          |
+| energy palette        | neighbouring series in dark                              | ≥ 2:1 between neighbours, ≥ 3:1 against surface     |
+| `energy.ts` (backend) | by-usage response                                        | each series has `colorIndex`, `color` unchanged     |
+
+`formatDuration` keeps the seconds below ten minutes only: 3599 s reads « 59 min », not « 59 min 59 s ».
 
 The core scenario of each new module (format, stepper, guarded action) is seen failing once on purpose before being fixed.
 

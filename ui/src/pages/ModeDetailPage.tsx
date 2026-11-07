@@ -134,7 +134,7 @@ export function ModeDetailPage() {
 
       {/* Header */}
       <div className="flex items-start justify-between mb-4 sm:mb-8 max-w-[720px]">
-        <div className="hidden sm:flex items-center gap-3 sm:gap-4 min-w-0">
+        <div className="hidden lg:flex items-center gap-3 sm:gap-4 min-w-0">
           <div
             className={`w-10 h-10 sm:w-12 sm:h-12 rounded-[8px] sm:rounded-[10px] flex items-center justify-center flex-shrink-0 ${
               mode.active ? "bg-primary/10" : "bg-border-light"

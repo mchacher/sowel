@@ -14,8 +14,8 @@ import { formatEur } from "../../energy/format";
 import { EvMonthNav } from "./EvMonthNav";
 import { EvCurrentSessionCard } from "./EvCurrentSessionCard";
 import { ShareBar } from "./EvShareBar";
-import { dayLabel, kwh, monthOf, timeLabel } from "./evSessionsDisplay";
-import { formatCurrency, formatNumber } from "../../../lib/format";
+import { dayLabel, energyLabel, monthOf, timeLabel } from "./evSessionsDisplay";
+import { formatCurrency, formatEnergy } from "../../../lib/format";
 
 const VISIBLE_SESSIONS = 4;
 
@@ -125,7 +125,7 @@ export function EvHomeChargingSection({
                 </div>
                 <div className="flex flex-col items-end">
                   <span className="font-mono text-[18px] font-semibold text-text tabular-nums">
-                    {kwh(summary.energyWh, locale)} kWh
+                    {energyLabel(summary.energyWh, locale)}
                   </span>
                   <span className="text-[13px] text-text-tertiary">
                     {t("equipments.evSessions.sessionsCount", { count: summary.sessions })}
@@ -138,9 +138,9 @@ export function EvHomeChargingSection({
                   e={summary}
                   height="h-3.5"
                   label={t("equipments.evSessions.barLabel", {
-                    hc: kwh(summary.gridHcWh, locale),
-                    hp: kwh(summary.gridHpWh, locale),
-                    solar: kwh(summary.solarWh, locale),
+                    hc: energyLabel(summary.gridHcWh, locale),
+                    hp: energyLabel(summary.gridHpWh, locale),
+                    solar: energyLabel(summary.solarWh, locale),
                   })}
                 />
                 <div className="flex flex-col gap-1.5 text-[13px]">
@@ -155,7 +155,7 @@ export function EvHomeChargingSection({
                       <span className={`w-2.5 h-2.5 rounded-[3px] shrink-0 ${swatch}`} />
                       <span className="flex-1 text-text">{t(`equipments.evSessions.${key}`)}</span>
                       <span className="font-mono text-text-secondary tabular-nums">
-                        {kwh(wh, locale)} kWh
+                        {energyLabel(wh, locale)}
                       </span>
                       <span
                         className={`w-16 text-right ${cost === null ? "text-success" : "font-mono text-text tabular-nums"}`}
@@ -193,7 +193,7 @@ export function EvHomeChargingSection({
                         <ShareBar e={s} height="h-1.5" />
                       </div>
                       <span className="font-mono text-[12px] text-text-secondary tabular-nums whitespace-nowrap">
-                        {kwh(s.energyWh, locale)} kWh
+                        {energyLabel(s.energyWh, locale)}
                       </span>
                     </div>
                   </div>
@@ -253,7 +253,7 @@ function Per100km({ summary, locale }: { summary: EvVehicleMonthSummary; locale:
     );
   }
   const price = formatCurrency(summary.homePriceEurPerKwh, { locale, decimals: 3 });
-  const consumption = formatNumber(summary.kWhPer100km, { decimals: 1, locale });
+  const consumption = formatEnergy(summary.kWhPer100km, { locale });
   return (
     <div className="flex flex-col gap-0.5 pt-1">
       <span className="text-[13px] text-text-secondary">

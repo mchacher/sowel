@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { Clock } from "lucide-react";
 import { useTimezone } from "../../store/useTimezone";
+import { currentLocale } from "../../lib/format";
 
 /**
  * Displays the current time in the **home** timezone (not the browser's local
@@ -53,9 +54,9 @@ function formatHomeTime(tz: string, withSeconds = true): string {
     hour12: false,
   };
   try {
-    return new Intl.DateTimeFormat(undefined, { timeZone: tz, ...opts }).format(new Date());
+    return new Intl.DateTimeFormat(currentLocale(), { timeZone: tz, ...opts }).format(new Date());
   } catch {
     // Invalid TZ — fall back to browser local
-    return new Intl.DateTimeFormat(undefined, opts).format(new Date());
+    return new Intl.DateTimeFormat(currentLocale(), opts).format(new Date());
   }
 }

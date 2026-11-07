@@ -715,7 +715,7 @@ function CompactUps({ equipment }: { equipment: EquipmentWithDetails }) {
         {status ? t(upsStatusKey(status)) : (raw ?? t(upsStatusKey(null)))}
       </span>
       {charge !== null && charge !== undefined && (
-        <span className="text-[11px] text-text-secondary tabular-nums">{String(charge)}%</span>
+        <span className="text-[11px] text-text-secondary tabular-nums">{formatPercent(Number(charge))}</span>
       )}
       {runtimeLabel && (
         <span className="flex items-center gap-0.5 text-[11px] text-text-secondary tabular-nums">
@@ -759,7 +759,7 @@ function CompactAppliance({ equipment }: { equipment: EquipmentWithDetails }) {
         </span>
       )}
       {isRunning && progress !== null && progress > 0 && (
-        <span className="text-[10px] text-text-tertiary tabular-nums">{progress}%</span>
+        <span className="text-[10px] text-text-tertiary tabular-nums">{formatPercent(progress)}</span>
       )}
     </div>
   );

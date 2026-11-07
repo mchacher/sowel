@@ -1,6 +1,7 @@
 import { describe, it, expect } from "vitest";
 import type { TFunction } from "i18next";
 import {
+  formatAxisTick,
   formatBarTooltip,
   formatSeriesTooltip,
   formatTooltipRow,
@@ -57,7 +58,15 @@ describe("formatTooltipRow (#498, point 4)", () => {
 
   it("appends the envelope band when the row carries min/max", () => {
     const row = formatTooltipRow(measurement, 20.5, { "eq1:temp:min": 19, "eq1:temp:max": 22 }, t);
-    expect(sp(row?.value)).toBe("20.5 °C (19.0 / 22.0)");
+    expect(sp(row?.value)).toBe("20.5 °C (19.0 / 22.0 °C)");
+  });
+
+  it("formats the band with the value's own unit and formatter", () => {
+    const power: TooltipSeries = { ...measurement, id: "eq3:p", alias: "power", category: "power" };
+    const kw = formatTooltipRow(power, 1100, { "eq3:p:min": 1050, "eq3:p:max": 1150 }, t);
+    expect(sp(kw?.value)).toBe("1.1 kW (1.1 / 1.2 kW)");
+    const mixed = formatTooltipRow(power, 1000, { "eq3:p:min": 950, "eq3:p:max": 1200 }, t);
+    expect(sp(mixed?.value)).toBe("1 kW (950 W / 1.2 kW)");
   });
 
   it("renders a boolean On/Off from the category tick labels", () => {
@@ -201,5 +210,31 @@ describe("formatSeriesTooltip (#681)", () => {
 describe("formatValueWithUnit", () => {
   it("renders a bare value when no unit is given", () => {
     expect(sp(formatValueWithUnit(20.5))).toBe("20.5");
+  });
+});
+
+describe("formatAxisTick (spec 196): one unit per axis", () => {
+  it("reads every tick of a power axis in kW once the axis reaches 1 kW", () => {
+    expect([0, 500, 1000, 1500].map((v) => sp(formatAxisTick(v, "W", 1500)))).toEqual([
+      "0 kW",
+      "0.5 kW",
+      "1 kW",
+      "1.5 kW",
+    ]);
+  });
+
+  it("keeps W when the axis stays under 1 kW", () => {
+    expect([0, 400, 800].map((v) => sp(formatAxisTick(v, "W", 800)))).toEqual(["0 W", "400 W", "800 W"]);
+  });
+
+  it("does the same for energy, and for a kW or Wh series", () => {
+    expect(sp(formatAxisTick(0.5, "kW", 2))).toBe("0.5 kW");
+    expect(sp(formatAxisTick(500, "Wh", 2000))).toBe("0.5 kWh");
+    expect(sp(formatAxisTick(500, "Wh", 800))).toBe("500 Wh");
+  });
+
+  it("leaves other units alone, and a unit-less axis bare", () => {
+    expect(sp(formatAxisTick(20, "°C", 25))).toBe("20.0 °C");
+    expect(sp(formatAxisTick(2500, "", 2500))).toBe("2,500");
   });
 });

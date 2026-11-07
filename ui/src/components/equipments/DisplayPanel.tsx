@@ -7,7 +7,7 @@ import type {
   DataCategory,
   OrderCategory,
 } from "../../types";
-import { formatPercent, formatWithUnit } from "../../lib/format";
+import { formatDuration, formatPercent, formatWithUnit } from "../../lib/format";
 
 /** Brightness slider behaviour:
  *  - commit immediately on `onPointerUp` (pointer release) so the
@@ -36,19 +36,6 @@ const ROW_ORDER: DataCategory[] = [
   "display_brightness",
 ];
 
-function formatUptime(secs: number): string {
-  if (secs < 60) return `${Math.floor(secs)} s`;
-  if (secs < 3600) return `${Math.floor(secs / 60)} min`;
-  if (secs < 86400) {
-    const h = Math.floor(secs / 3600);
-    const m = Math.floor((secs % 3600) / 60);
-    return m === 0 ? `${h} h` : `${h} h ${m} min`;
-  }
-  const d = Math.floor(secs / 86400);
-  const h = Math.floor((secs % 86400) / 3600);
-  return h === 0 ? `${d} j` : `${d} j ${h} h`;
-}
-
 function iconFor(category: DataCategory) {
   switch (category) {
     case "firmware_version":
@@ -70,7 +57,7 @@ function formatValue(category: DataCategory, value: unknown): string {
   if (value === null || value === undefined) return "—";
   switch (category) {
     case "uptime":
-      return typeof value === "number" ? formatUptime(value) : String(value);
+      return typeof value === "number" ? formatDuration(value) : String(value);
     case "rssi":
       return typeof value === "number" ? formatWithUnit(value, "dBm") : String(value);
     case "display_brightness":

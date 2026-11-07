@@ -1,6 +1,6 @@
 import { METERED_CHARGER_THRESHOLD_W, type EvVehicleState } from "../../../lib/ev-charger-contract";
 import type { EvChargeSession } from "../../../types";
-import { formatEnergyParts, formatPowerParts } from "../../../lib/format";
+import { formatEnergy, formatPower } from "../../../lib/format";
 
 /**
  * Spec 191 — pure helpers shared by the vehicle and charger session views.
@@ -62,9 +62,9 @@ export function sessionChip(s: EvChargeSession): SessionChip {
   }
 }
 
-/** Wh as a kWh figure, three significant digits (spec 196): « 0,7 », « 14,3 ». */
-export function kwh(wh: number, locale: string): string {
-  return formatEnergyParts(wh / 1000, { locale }).value;
+/** Wh in kWh, three significant digits, with the unit (spec 196): « 0,7 kWh », « 14,3 kWh ». */
+export function energyLabel(wh: number, locale: string): string {
+  return formatEnergy(wh / 1000, { locale });
 }
 
 export function dayLabel(iso: string, locale: string): string {
@@ -140,7 +140,7 @@ export function liveState(
   return { kind: "paused", sinceIso: toIso(live.vehicleChangedAt), reason, battery: live.battery };
 }
 
-/** W as a kW figure, one decimal: « 3,7 ». */
-export function kw(w: number, locale: string): string {
-  return formatPowerParts(w, { unit: "kW", locale }).value;
+/** W in kW, one decimal, with the unit: « 3,7 kW ». */
+export function powerLabel(w: number, locale: string): string {
+  return formatPower(w, { unit: "kW", locale });
 }

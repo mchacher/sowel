@@ -77,6 +77,18 @@ export default defineConfig([
           message:
             "A locale of undefined or [] follows the browser, not Sowel's language: pass currentLocale() from lib/format.",
         },
+        {
+          selector:
+            ":matches(NewExpression, CallExpression)[callee.object.name='Intl'][callee.property.name='DateTimeFormat'] > :matches(Identifier[name='undefined'], ArrayExpression[elements.length=0]).arguments:first-child",
+          message:
+            "Intl.DateTimeFormat(undefined | []) follows the browser, not Sowel's language: pass currentLocale() from lib/format.",
+        },
+        {
+          selector:
+            "NewExpression[callee.object.name='Intl'][callee.property.name='DateTimeFormat'][arguments.length=0]",
+          message:
+            "new Intl.DateTimeFormat() follows the browser, not Sowel's language: pass currentLocale() from lib/format.",
+        },
       ],
     },
   },

@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
-import { MemoryRouter, Route, Routes } from "react-router-dom";
+import { MemoryRouter, Route, Routes, useNavigate } from "react-router-dom";
 import { act, render, screen, userEvent, waitFor } from "../test-utils";
 import { EquipmentDetailPage } from "./EquipmentDetailPage";
 import { useEquipments } from "../store/useEquipments";
@@ -32,9 +32,21 @@ const sensor: EquipmentWithDetails = {
   orderBindings: [],
 };
 
+const other: EquipmentWithDetails = { ...sensor, id: "eq-2", name: "Capteur cuisine" };
+
+function GoTo({ to }: { to: string }) {
+  const navigate = useNavigate();
+  return (
+    <button type="button" onClick={() => navigate(to)}>
+      go
+    </button>
+  );
+}
+
 function renderPage() {
   return render(
     <MemoryRouter initialEntries={["/equipments/eq-1"]}>
+      <GoTo to="/equipments/eq-2" />
       <Routes>
         <Route path="/equipments/:id" element={<EquipmentDetailPage />} />
       </Routes>
@@ -48,16 +60,35 @@ describe("EquipmentDetailPage errors", () => {
     useEquipments.setState({ equipments: [] });
   });
 
-  it("keeps the page and shows a notice when a refresh is rate-limited", async () => {
+  it("shows the store's equipment with no notice when the first fetch is rate-limited", async () => {
     useEquipments.setState({ equipments: [sensor] });
     mockedGet.mockRejectedValue(new ApiError(429, "Too Many Requests"));
     renderPage();
+
+    await waitFor(() => expect(mockedGet).toHaveBeenCalledTimes(1));
+    await act(async () => {});
+    expect(screen.getByRole("heading", { level: 1 }).textContent).toBe("Capteur salon");
+    expect(screen.queryByRole("status")).toBeNull();
+    expect(screen.queryByText("Server busy")).toBeNull();
+    expect(screen.queryByText("Equipment not found")).toBeNull();
+    expect(screen.queryByText("Too Many Requests")).toBeNull();
+  });
+
+  it("keeps a fetched copy and shows a notice when a later fetch is rate-limited", async () => {
+    // Fetched, not in the store; the store then holds it and loses it again (deleted
+    // elsewhere?), and the check that follows is rate-limited.
+    mockedGet.mockResolvedValueOnce(sensor);
+    renderPage();
+    expect(await screen.findByRole("heading", { level: 1 })).toBeTruthy();
+    act(() => useEquipments.setState({ equipments: [sensor] }));
+
+    mockedGet.mockRejectedValueOnce(new ApiError(429, "Too Many Requests"));
+    act(() => useEquipments.setState({ equipments: [] }));
 
     expect(await screen.findByRole("status")).toBeTruthy();
     expect(screen.getByRole("heading", { level: 1 }).textContent).toBe("Capteur salon");
     expect(screen.getByText("Server busy")).toBeTruthy();
     expect(screen.queryByText("Equipment not found")).toBeNull();
-    expect(screen.queryByText("Too Many Requests")).toBeNull();
     expect(screen.getByRole("button", { name: "Retry" })).toBeTruthy();
   });
 
@@ -108,5 +139,23 @@ describe("EquipmentDetailPage errors", () => {
     act(() => useEquipments.setState({ equipments: [] }));
     expect(await screen.findByText("Equipment not found")).toBeTruthy();
     expect(mockedGet).toHaveBeenCalledTimes(2);
+  });
+
+  it("notices the second equipment leaving the store after moving A → B", async () => {
+    useEquipments.setState({ equipments: [sensor, other] });
+    mockedGet.mockImplementation(async (id: string) => (id === "eq-1" ? sensor : other));
+    renderPage();
+    await waitFor(() => expect(mockedGet).toHaveBeenCalledTimes(1));
+
+    await userEvent.click(screen.getByRole("button", { name: "go" }));
+    await waitFor(() => expect(mockedGet).toHaveBeenCalledTimes(2));
+    expect(mockedGet).toHaveBeenLastCalledWith("eq-2");
+    expect(screen.getByRole("heading", { level: 1 }).textContent).toBe("Capteur cuisine");
+
+    mockedGet.mockRejectedValueOnce(new ApiError(404, "Equipment not found"));
+    act(() => useEquipments.setState({ equipments: [sensor] }));
+    expect(await screen.findByText("Equipment not found")).toBeTruthy();
+    expect(mockedGet).toHaveBeenCalledTimes(3);
+    expect(mockedGet).toHaveBeenLastCalledWith("eq-2");
   });
 });

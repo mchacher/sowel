@@ -84,7 +84,7 @@ export function SensorValues({
           title={batteryTitle}
         >
           {getBatteryIcon(shownLevel, 14, 1.5)}
-          {shownLevel !== null && <span className="text-[11px] tabular-nums">{shownLevel}%</span>}
+          {shownLevel !== null && <span className="text-[11px] tabular-nums">{formatPercent(shownLevel)}</span>}
         </span>
       )}
 

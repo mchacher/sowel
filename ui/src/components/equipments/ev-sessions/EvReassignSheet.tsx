@@ -6,7 +6,7 @@ import { setEvSessionAttribution } from "../../../api";
 import { dateLocale } from "../../../lib/locale";
 import type { EvAttributionChoice, EvChargeSession } from "../../../types";
 import { formatEur } from "../../energy/format";
-import { dayLabel, kwh, timeLabel } from "./evSessionsDisplay";
+import { dayLabel, energyLabel, timeLabel } from "./evSessionsDisplay";
 
 type Choice = { kind: "vehicle"; id: string } | { kind: "other" } | { kind: "todo" };
 
@@ -137,7 +137,7 @@ export function EvReassignSheet({
               {session.endedAt
                 ? timeLabel(session.endedAt, locale)
                 : t("equipments.evSessions.inProgress")}{" "}
-              · <span className="font-mono">{kwh(session.energyWh, locale)} kWh</span>
+              · <span className="font-mono">{energyLabel(session.energyWh, locale)}</span>
               {session.costEur !== null && (
                 <>
                   {" "}
@@ -145,7 +145,7 @@ export function EvReassignSheet({
                 </>
               )}
               {session.solarWh > 0 &&
-                ` · ${t("equipments.evSessions.sheet.solarPart", { kwh: kwh(session.solarWh, locale) })}`}
+                ` · ${t("equipments.evSessions.sheet.solarPart", { energy: energyLabel(session.solarWh, locale) })}`}
             </span>
           </div>
           <button

@@ -21,12 +21,16 @@ export const e = new Date().toLocaleDateString();
 export const f = new Date().toLocaleTimeString([], { hour: "2-digit" });
 export const g = new Date().toLocaleString(undefined, { month: "short" });
 export const h = new Date().toLocaleDateString("fr-FR", { month: "short" });
+export const i = new Intl.DateTimeFormat(undefined, { hour: "2-digit" }).format(0);
+export const j = new Intl.DateTimeFormat([], { hour: "2-digit" }).format(0);
+export const k = new Intl.DateTimeFormat().format(0);
+export const l = new Intl.DateTimeFormat("fr-FR", { hour: "2-digit" }).format(0);
 `;
 
 describe("lint: numbers go through lib/format", () => {
   it("flags toFixed, Intl.NumberFormat and a bare toLocaleString in rendering code", async () => {
     const messages = await restricted(FIXTURE, "src/components/Fixture.tsx");
-    expect(messages).toHaveLength(6);
+    expect(messages).toHaveLength(9);
     expect(messages[0]).toMatch(/toFixed/);
     expect(messages[1]).toMatch(/lib\/format/);
     expect(messages[2]).toMatch(/toLocaleString/);
@@ -34,8 +38,9 @@ describe("lint: numbers go through lib/format", () => {
 
   it("flags a date formatted in the browser's language, not one given a locale", async () => {
     const messages = await restricted(FIXTURE, "src/components/Fixture.tsx");
-    // e (no argument), f ([]), g (undefined); h passes a locale and is fine.
-    expect(messages.slice(3)).toHaveLength(3);
+    // e (no argument), f ([]), g (undefined); h passes a locale and is fine. The same
+    // for Intl.DateTimeFormat: i (undefined), j ([]), k (none); l is fine.
+    expect(messages.slice(3)).toHaveLength(6);
     expect(messages.slice(3).every((m) => /currentLocale/.test(m))).toBe(true);
   }, 30_000);
 

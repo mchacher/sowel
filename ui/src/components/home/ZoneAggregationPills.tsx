@@ -141,9 +141,11 @@ export function ZoneAggregationPills({
   if (data.shuttersTotal > 0) {
     const someOpen = data.shuttersOpen > 0;
     const pos = data.averageShutterPosition;
+    // Compared once rounded, as shown: an average of 99.6 reads « Ouvert », not « 100 % ».
+    const shownPos = pos !== null ? Math.round(pos) : null;
     const positionSuffix =
-      pos !== null
-        ? ` · ${pos === 0 ? "Fermé" : pos === 100 ? "Ouvert" : formatPercent(pos)}`
+      shownPos !== null
+        ? ` · ${shownPos === 0 ? t("controls.closed") : shownPos === 100 ? t("controls.opened") : formatPercent(shownPos)}`
         : "";
     counterPills.push({
       key: "shutters",

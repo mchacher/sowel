@@ -7,6 +7,7 @@ import { getHistoryData } from "../../api";
 import { dateLocale } from "../../lib/locale";
 import { useTimezone } from "../../store/useTimezone";
 import { getBatteryColor, getBatteryIcon } from "../equipments/sensorUtils";
+import { formatPercent } from "../../lib/format";
 import {
   formatMm,
   rainHeadline,
@@ -312,7 +313,7 @@ export function RainDetailContent({ equipment }: { equipment: EquipmentWithDetai
           className={`flex items-center justify-center gap-1 text-[12px] ${getBatteryColor(live.battery)}`}
         >
           {getBatteryIcon(live.battery, 13, 1.5)}
-          <span className="tabular-nums">{live.battery}%</span>
+          <span className="tabular-nums">{formatPercent(live.battery)}</span>
         </div>
       )}
     </div>

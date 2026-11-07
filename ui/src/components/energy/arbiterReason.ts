@@ -5,6 +5,8 @@
 // and fall back to the raw string so an unknown or legacy reason still shows,
 // just untranslated.
 
+import { formatPower } from "../../lib/format";
+
 type Translate = (key: string, opts?: Record<string, unknown>) => string;
 
 // Backend reason string → i18n slug, for reasons that ADD information the kind
@@ -56,6 +58,6 @@ export function journalReasonLabel(reason: string | undefined, t: Translate): st
   const slug = REASON_SLUG[reason];
   if (slug) return t(`arbiter.reason.${slug}`);
   const m = DECLARED_W.exec(reason);
-  if (m) return t("arbiter.reason.watts-divergence", { watts: m[1] });
+  if (m) return t("arbiter.reason.watts-divergence", { power: formatPower(Number(m[1])) });
   return reason; // unknown / legacy → raw passthrough
 }

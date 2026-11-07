@@ -140,6 +140,8 @@ Today's look is kept (solar greens, HP dark blue / HC light blue). Only dark-the
 - Gate with several actions (open/close/stop): the confirmation names the action chosen.
 - Setpoint sheet closed during the debounce: the pending value is sent.
 - Device not reporting after a setpoint order: the stepper keeps the requested value until the next report or a timeout, then shows the reported one.
+- Weather forecasts show whole degrees (« 13° »): an exception to pr3-zero, a forecast carries no tenth.
+- Tablet keeps desktop content layouts (`useIsMobile` < 640 px) while the chrome is mobile up to 1024 px (pr1-tablette): page titles shown in the compact top bar are hidden from the page below `lg`.
 
 ## Docs Delta
 

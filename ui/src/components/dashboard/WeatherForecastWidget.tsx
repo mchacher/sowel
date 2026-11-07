@@ -85,14 +85,14 @@ export function WeatherForecastWidget({
 
           {/* Data */}
           <div className="flex flex-col items-center sm:items-start gap-0">
-            {/* Temperature */}
+            {/* Temperature, short form « 13° 8° ». Forecasts stay whole degrees: an
+                exception to pr3-zero (spec 196, Edge Cases), a forecast has no tenth. */}
             <div className="flex items-baseline gap-1">
               {tomorrow.tempMax !== null && (
                 <span className="text-[20px] sm:text-[28px] font-bold font-mono text-text tabular-nums leading-none">
-                  {formatNumber(tomorrow.tempMax, { decimals: 0 })}
+                  {formatNumber(tomorrow.tempMax, { decimals: 0 })}°
                 </span>
               )}
-              <span className="text-[12px] sm:text-[14px] text-text-tertiary">°C</span>
               {tomorrow.tempMin !== null && (
                 <span className="text-[12px] sm:text-[14px] font-mono text-text-tertiary tabular-nums ml-1">
                   {formatNumber(tomorrow.tempMin, { decimals: 0 })}°

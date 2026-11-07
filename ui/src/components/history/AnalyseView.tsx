@@ -62,8 +62,8 @@ import { fitYAxis } from "./y-axis";
 import { firstChartTarget } from "./analyse-nav";
 import { ChartTooltip } from "./ChartTooltip";
 import { mergeSeriesData } from "./chart-utils";
-import { seriesFullLabel, seriesMetricLabel } from "./tooltip-format";
-import { currentLocale, formatNumber, formatWithUnit } from "../../lib/format";
+import { formatAxisTick, seriesFullLabel, seriesMetricLabel } from "./tooltip-format";
+import { currentLocale, formatNumber } from "../../lib/format";
 
 // ============================================================
 // Types
@@ -123,12 +123,6 @@ function formatTime(iso: string, period: Period): string {
     case "year":
       return d.toLocaleDateString(currentLocale(), { month: "short" });
   }
-}
-
-/** Y axis tick label. The unit is appended only when the chart carries two
- *  scales — on a single-axis chart the legend and tooltip already say it. */
-function formatAxisTick(value: number, unit: string): string {
-  return formatWithUnit(value, unit);
 }
 
 // ============================================================
@@ -658,6 +652,27 @@ export function AnalyseView() {
     return { left: fitAxis("left"), right: fitAxis("right") };
   }, [yAxisFit, showYAxisFitToggle, series, chartData, showBand, axisIdOf]);
 
+  // The largest magnitude each axis shows, to give all its ticks one unit (W or kW):
+  // the fitted bounds when fitted, else the data.
+  const axisMax = useMemo(() => {
+    const peak = (target: "left" | "right"): number => {
+      const fitted = fittedAxes[target];
+      if (fitted) return Math.max(Math.abs(fitted.domain[0]), Math.abs(fitted.domain[1]));
+      let m = 0;
+      for (const s of series) {
+        if (axisIdOf(s.category) !== target) continue;
+        for (const row of chartData) {
+          for (const key of [s.id, `${s.id}:min`, `${s.id}:max`]) {
+            const v = row[key];
+            if (typeof v === "number" && Math.abs(v) > m) m = Math.abs(v);
+          }
+        }
+      }
+      return m;
+    };
+    return { left: peak("left"), right: peak("right") };
+  }, [fittedAxes, series, chartData, axisIdOf]);
+
   const familyLabel = useMemo(() => {
     if (series.length === 0) return "";
     if (hasStateSeries && hasMeasurementSeries) return t("analyse.family.mixed");
@@ -724,7 +739,7 @@ export function AnalyseView() {
           rather than squeezing the title onto two lines on a tablet (spec
           196, slice 1c). */}
       <div className="flex flex-col sm:flex-row sm:flex-wrap sm:items-center sm:justify-between gap-4">
-        <div className="hidden sm:flex items-center gap-3">
+        <div className="hidden lg:flex items-center gap-3">
           <BarChart3 size={20} strokeWidth={1.5} className="text-primary" />
           <h1>{title}</h1>
         </div>
@@ -1200,7 +1215,9 @@ export function AnalyseView() {
                       tickLine={false}
                       axisLine={false}
                       width={splitAxes ? 62 : 52}
-                      tickFormatter={(v: number) => formatAxisTick(v, splitAxes ? chartUnits[0] : "")}
+                      // The unit is appended only when the chart carries two scales — on a
+                      // single-axis chart the legend and tooltip already say it.
+                      tickFormatter={(v: number) => formatAxisTick(v, splitAxes ? chartUnits[0] : "", axisMax.left)}
                     />
                     {splitAxes && (
                       <YAxis
@@ -1213,7 +1230,7 @@ export function AnalyseView() {
                         tickLine={false}
                         axisLine={false}
                         width={62}
-                        tickFormatter={(v: number) => formatAxisTick(v, chartUnits[1])}
+                        tickFormatter={(v: number) => formatAxisTick(v, chartUnits[1], axisMax.right)}
                       />
                     )}
                     {hasStateSeries && (

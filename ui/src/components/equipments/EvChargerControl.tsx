@@ -12,7 +12,7 @@ import {
   evVehicleKey,
   evVehiclePillClass,
 } from "./evChargerState";
-import { formatEnergy, formatPower, formatWithUnit } from "../../lib/format";
+import { formatEnergy, formatNumber, formatPower, formatRange, formatWithUnit } from "../../lib/format";
 
 interface EvChargerControlProps {
   equipment: EquipmentWithDetails;
@@ -186,7 +186,7 @@ export function EvChargerControl({ equipment, onExecuteOrder }: EvChargerControl
       )}
       {order && (
         <span className="text-[11px] text-text-tertiary -mt-3 text-right">
-          {t("equipments.evCharger.range", { min: order.min, max: order.max })}
+          {formatRange(formatNumber(order.min, { maxDecimals: 1 }), formatWithUnit(order.max, "A"))}
         </span>
       )}
 

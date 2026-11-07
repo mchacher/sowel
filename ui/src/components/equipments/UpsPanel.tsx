@@ -32,7 +32,7 @@ import {
   upsStatusKey,
   type UpsReadings,
 } from "./upsStatus";
-import { formatNumber, formatPercent, formatRange, formatWithUnit } from "../../lib/format";
+import { formatNumber, formatPercent, formatPower, formatRange, formatWithUnit } from "../../lib/format";
 
 interface UpsPanelProps {
   dataBindings: DataBindingWithValue[];
@@ -152,14 +152,14 @@ export function UpsPanel({ dataBindings }: UpsPanelProps) {
 
   const ariaLabel = onBattery
     ? t("equipments.ups.aria.onBattery", {
-        charge: r.chargePct ?? "?",
+        charge: r.chargePct != null ? formatPercent(r.chargePct) : "?",
         runtime: runtimeLabel ?? "?",
-        load: r.loadW ?? "?",
+        power: r.loadW != null ? formatPower(r.loadW) : "?",
       })
     : t("equipments.ups.aria.onMains", {
-        volts: r.inputV ?? "?",
-        load: r.loadW ?? "?",
-        charge: r.chargePct ?? "?",
+        voltage: r.inputV != null ? formatWithUnit(r.inputV, "V") : "?",
+        power: r.loadW != null ? formatPower(r.loadW) : "?",
+        charge: r.chargePct != null ? formatPercent(r.chargePct) : "?",
       });
 
   const margin = upsMarginOf(r);

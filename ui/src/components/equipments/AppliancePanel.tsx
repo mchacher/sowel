@@ -1,7 +1,7 @@
 import { useTranslation } from "react-i18next";
 import { WashingMachine, Timer, Zap } from "lucide-react";
 import type { EquipmentWithDetails } from "../../types";
-import { formatEnergyParts } from "../../lib/format";
+import { formatDuration, formatEnergyParts, formatPercent } from "../../lib/format";
 
 interface AppliancePanelProps {
   equipment: EquipmentWithDetails;
@@ -69,7 +69,7 @@ export function AppliancePanel({ equipment }: AppliancePanelProps) {
             <div>
               <div className="flex items-center justify-between mb-1.5">
                 <span className="text-[12px] text-text-secondary">{t("common.progress")}</span>
-                <span className="text-[13px] font-mono tabular-nums font-semibold text-text">{progress}%</span>
+                <span className="text-[13px] font-mono tabular-nums font-semibold text-text">{formatPercent(progress)}</span>
               </div>
               <div className="h-2 bg-border-light rounded-full overflow-hidden">
                 <div
@@ -89,7 +89,7 @@ export function AppliancePanel({ equipment }: AppliancePanelProps) {
               </span>
               {remainingMin !== null && (
                 <span className="text-[12px] text-text-tertiary">
-                  ({remainingMin} min)
+                  ({formatDuration(remainingMin * 60)})
                 </span>
               )}
             </div>

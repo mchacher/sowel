@@ -4,6 +4,7 @@ import { Scale, ChevronDown, ChevronUp, ArrowUp, ArrowDown, Loader2 } from "luci
 import { getSettings, updateSettings } from "../../api";
 import { useEquipments } from "../../store/useEquipments";
 import { InfoTooltip } from "../InfoTooltip";
+import { formatPower } from "../../lib/format";
 
 /**
  * Spec 140 — arbiter card in Settings → Administration. Enable switch, the
@@ -165,7 +166,7 @@ export function ArbiterSettings() {
                     <span className="text-[11px] text-text-tertiary">
                       {t(`energyProfile.${eq.energyProfile?.class ?? "deferrable"}`)}
                       {" · "}
-                      <span className="font-mono">{eq.energyProfile?.nominalPowerW} W</span>
+                      <span className="font-mono">{formatPower(eq.energyProfile?.nominalPowerW)}</span>
                     </span>
                     <span className="ml-auto flex gap-1">
                       <button

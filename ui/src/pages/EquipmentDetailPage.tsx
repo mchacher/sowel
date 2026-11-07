@@ -101,7 +101,7 @@ export function EquipmentDetailPage() {
   const fetchZones = useZones((s) => s.fetchZones);
   const isAdmin = useAuth((s) => s.user?.role === "admin");
 
-  const { equipment, notFound, error: loadError, retry } = useEquipmentDetail(id);
+  const { equipment, fromStore, notFound, error: loadError, retry } = useEquipmentDetail(id);
   const [showEditForm, setShowEditForm] = useState(false);
   const [showAddDataBinding, setShowAddDataBinding] = useState(false);
   const [showAddOrderBinding, setShowAddOrderBinding] = useState(false);
@@ -269,8 +269,9 @@ export function EquipmentDetailPage() {
         </Link>
       )}
 
-      {/* A refresh failed: the last good data stays, with what went wrong and a retry. */}
-      {failure && (
+      {/* A refresh failed: the last good data stays, with what went wrong and a retry.
+          Not when the store holds the equipment: that copy is live, nothing is missing. */}
+      {failure && !fromStore && (
         <div
           role="status"
           className="flex flex-wrap items-center gap-x-3 gap-y-1 mb-4 px-3 py-2 rounded-[8px] border border-warning/30 bg-warning/10 text-[13px]"

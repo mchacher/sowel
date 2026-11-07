@@ -8,6 +8,7 @@ import { setModeImpact, removeModeImpact } from "../../api";
 import type { ModeWithDetails, ZoneModeImpactAction, EquipmentWithDetails, OrderBindingWithDetails } from "../../types";
 import { recipeName } from "../../lib/recipe-i18n";
 import { brightnessPercent, brightnessScale } from "../../lib/brightness";
+import { formatPercent, formatWithUnit } from "../../lib/format";
 
 interface ZoneModesSectionProps {
   zoneId: string;
@@ -365,7 +366,7 @@ function formatOrderLabel(
     if (action.orderAlias === "state" && action.value === "CLOSE")
       return <>{name} <ChevronDown size={10} strokeWidth={1.5} className="inline -mt-0.5" /> {t("controls.close")}</>;
     if (action.orderAlias === "position")
-      return <>{name} → {t("controls.position")} {action.value}%</>;
+      return <>{name} → {t("controls.position")} {formatPercent(Number(action.value))}</>;
   }
 
   if (eq?.type?.startsWith("light_")) {
@@ -377,7 +378,7 @@ function formatOrderLabel(
     }
     if (action.orderAlias === "brightness") {
       const scale = brightnessScale(eq.orderBindings.find((o) => o.alias === "brightness"));
-      return <>{name} → {t("controls.brightness")} {brightnessPercent(Number(action.value), scale)}%</>;
+      return <>{name} → {t("controls.brightness")} {formatPercent(brightnessPercent(Number(action.value), scale))}</>;
     }
   }
 
@@ -594,8 +595,8 @@ function OrderValueControl({
           onChange={(e) => onChange(e.target.value)}
           className="flex-1"
         />
-        <span className="text-[10px] text-text-secondary tabular-nums w-10 text-right">
-          {value || order.min}{order.unit ? ` ${order.unit}` : ""}
+        <span className="text-[10px] text-text-secondary tabular-nums min-w-10 text-right">
+          {formatWithUnit(Number(value || order.min), order.unit)}
         </span>
       </div>
     );
@@ -686,7 +687,7 @@ function SmartOrderPicker({
               onChange={(e) => onChangeValue(e.target.value)}
               className="flex-1"
             />
-            <span className="text-[10px] text-text-secondary tabular-nums w-7 text-right">{orderValue}%</span>
+            <span className="text-[10px] text-text-secondary tabular-nums min-w-7 text-right">{formatPercent(Number(orderValue) || 50)}</span>
           </div>
         )}
       </div>
@@ -725,8 +726,8 @@ function SmartOrderPicker({
               onChange={(e) => onChangeValue(e.target.value)}
               className="flex-1"
             />
-            <span className="text-[10px] text-text-secondary tabular-nums w-7 text-right">
-              {brightnessPercent(Number(orderValue), brightnessRange)}%
+            <span className="text-[10px] text-text-secondary tabular-nums min-w-7 text-right">
+              {formatPercent(brightnessPercent(Number(orderValue), brightnessRange))}
             </span>
           </div>
         )}

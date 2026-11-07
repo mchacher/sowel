@@ -2,7 +2,7 @@ import type { TFunction } from "i18next";
 import { CATEGORY_UNITS, booleanTickLabels, isBooleanCategory } from "./history-utils";
 import { humanBindingLabel } from "./binding-label";
 import { humanizeAlias } from "../../lib/humanize-alias";
-import { formatEnergy, formatNumber, formatPercent, formatPower, formatWithUnit } from "../../lib/format";
+import { NBSP, NNBSP, formatEnergy, formatPercent, formatPower, formatWithUnit } from "../../lib/format";
 
 /** The slice of a series the tooltip needs to render one row (#498, point 4). */
 export interface TooltipSeries {
@@ -24,9 +24,24 @@ export interface TooltipRow {
   color: string;
 }
 
-/** The bare number of a min/max band, at its unit's precision (temperatures keep one decimal). */
-const fmt = (x: number, unit?: string): string =>
-  formatNumber(x, unit === "°C" ? { decimals: 1 } : { maxDecimals: 1 });
+/** The unit at the end of a formatted value: what follows its last no-break space. */
+function unitSuffix(s: string): string | null {
+  const i = Math.max(s.lastIndexOf(NNBSP), s.lastIndexOf(NBSP));
+  return i < 0 ? null : s.slice(i);
+}
+
+/**
+ * The min/max band, by the value's own formatter: « (1 / 1,2 kW) », « (19,0 / 22,0 °C) ».
+ * The unit is said once when both ends share it, and on each end when they do not
+ * (« (950 W / 1,2 kW) »).
+ */
+export function formatBand(min: number, max: number, unit?: string): string {
+  const lo = formatWithUnit(min, unit);
+  const hi = formatWithUnit(max, unit);
+  const u = unitSuffix(hi);
+  if (u && unitSuffix(lo) === u) return `(${lo.slice(0, -u.length)} / ${hi})`;
+  return `(${lo} / ${hi})`;
+}
 
 type SeriesLabelInput = Pick<
   TooltipSeries,
@@ -86,7 +101,7 @@ export function formatTooltipRow(
     const min = rowData?.[`${s.id}:min`];
     const max = rowData?.[`${s.id}:max`];
     if (typeof min === "number" && typeof max === "number") {
-      valueText += ` (${fmt(min, unit)} / ${fmt(max, unit)})`;
+      valueText += ` ${formatBand(min, max, unit)}`;
     }
   }
 
@@ -135,6 +150,28 @@ export function formatValueWithUnit(value: number, unit?: string): string {
 
 function formatValue(v: number, unit?: string): string {
   return formatWithUnit(v, unit);
+}
+
+/**
+ * A Y axis tick: one unit for every tick of the axis, picked from the axis's largest
+ * magnitude. `formatWithUnit` alone picks per value, so a power axis read
+ * « 500 W, 1 kW, 1,5 kW ». Here it reads « 0,5 kW, 1 kW, 1,5 kW » when the axis reaches
+ * a kilowatt, « 200 W, 400 W » when it does not; the same for Wh / kWh. Other units
+ * have one unit already. `unit` empty: the bare number.
+ */
+export function formatAxisTick(value: number, unit: string, axisMax: number): string {
+  const peak = Math.abs(axisMax);
+  if (unit === "W" || unit === "kW") {
+    const watts = unit === "kW" ? value * 1000 : value;
+    const peakW = unit === "kW" ? peak * 1000 : peak;
+    return formatPower(watts, { unit: peakW >= 1000 ? "kW" : "W" });
+  }
+  if (unit === "Wh" || unit === "kWh") {
+    const kwh = unit === "Wh" ? value / 1000 : value;
+    const peakKwh = unit === "Wh" ? peak / 1000 : peak;
+    return formatEnergy(kwh, { unit: peakKwh >= 1 ? "kWh" : "Wh" });
+  }
+  return formatWithUnit(value, unit);
 }
 
 /** Bar chart tooltip row: the value with its unit, plus the fixed series label. */

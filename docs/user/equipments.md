@@ -233,7 +233,7 @@ Click on any equipment to see its detail page:
 - **History chart** -- data trends over time (if historization is enabled)
 - **Configuration** -- bound devices, data bindings, order bindings
 
-If the server is busy or cannot be reached, the page says so (« Server busy », « Cannot connect ») and offers **Retry**; « Equipment not found » means the equipment really does not exist. A page already on screen stays there when a later refresh fails: a notice above it says the last known values are shown.
+The page loads the equipment once, then follows its live values without asking the server again. Only that first load, or a **Retry**, can fail. If the server is busy or cannot be reached at that moment, the page says so (« Server busy », « Cannot connect ») and offers **Retry**, unless Sowel already has the equipment in hand: the page then shows it and keeps it live, with no message. « Equipment not found » means the equipment really does not exist.
 
 ### Changing the device
 

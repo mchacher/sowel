@@ -144,10 +144,11 @@ export function HomePage() {
         />
       )}
 
-      {/* Zone header — h1 + lead from 640 px. Below lg the zone tree opens from
-          the topbar burger (spec 196, decision pr1-tablette). */}
+      {/* Zone header — lead from 640 px, h1 from 1024 px: below lg the compact top
+          bar already names the zone, and the zone tree opens from its burger (spec
+          196, decision pr1-tablette). */}
       <div className="hidden sm:block max-w-[1200px] mb-3">
-        <h1>{currentZone.name}</h1>
+        <h1 className="hidden lg:block">{currentZone.name}</h1>
         <ZoneHeroLead zone={currentZone} aggData={aggData} />
       </div>
 

@@ -40,7 +40,7 @@ describe("journalReasonLabel (#518)", () => {
 
   it("interpolates the dynamic watts-divergence reason", () => {
     expect(journalReasonLabel("declared 2000 W", stub)).toBe(
-      'arbiter.reason.watts-divergence {"watts":"2000"}',
+      'arbiter.reason.watts-divergence {"power":"2\u00a0kW"}',
     );
   });
 

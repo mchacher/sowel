@@ -327,7 +327,7 @@ Cliquez sur n'importe quel équipement pour voir sa page de détail :
 - **Graphique d'historique** : tendances des données dans le temps (si l'historisation est activée)
 - **Configuration** : devices liés, liaisons de données, liaisons d'ordres
 
-Si le serveur est occupé ou injoignable, la page le dit (« Serveur occupé », « Connexion impossible ») et propose **Réessayer** ; « Équipement introuvable » veut dire que l'équipement n'existe vraiment pas. Une page déjà affichée reste là quand une mise à jour échoue : un bandeau au-dessus indique que les dernières valeurs connues restent affichées.
+La page charge l'équipement une fois, puis suit ses valeurs en direct sans redemander au serveur. Seul ce premier chargement, ou un **Réessayer**, peut échouer. Si le serveur est occupé ou injoignable à ce moment, la page le dit (« Serveur occupé », « Connexion impossible ») et propose **Réessayer**, sauf si Sowel a déjà l'équipement en main : la page l'affiche alors et le garde à jour, sans message. « Équipement introuvable » veut dire que l'équipement n'existe vraiment pas.
 
 ### Changer le device
 
