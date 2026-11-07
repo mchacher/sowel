@@ -2,21 +2,21 @@ import { useState, useRef, useEffect } from "react";
 import { useTranslation } from "react-i18next";
 import {
   Power,
-  ChevronUp,
-  ChevronDown,
   Snowflake,
   Sun,
   Droplets,
   Fan,
   Zap,
   Thermometer,
-  Crosshair,
 } from "lucide-react";
 import type { EquipmentWithDetails } from "../../types";
 import { thermostatPowerStateBinding } from "../../lib/thermostat-state";
 import { THERMOSTAT_STATE_ALIAS } from "../../lib/binding-candidates";
 import { ThermostatExtras } from "./ThermostatExtras";
 import { formatNumber, formatTemperature } from "../../lib/format";
+import { SetpointStepper } from "./SetpointStepper";
+import { resolveSetpoint } from "./setpoint";
+import { useSetpointCommitDelay } from "../../hooks/useSetpointCommit";
 
 /** How long an optimistic control value may outlive its confirmation. */
 const OPTIMISTIC_TTL_MS = 90_000;
@@ -132,7 +132,6 @@ export function ThermostatCard({ equipment, onExecuteOrder, compact }: Thermosta
   // and is rendered generically by <ThermostatExtras> below — no vendor alias
   // is read here.
   const modeBinding = equipment.dataBindings.find((b) => b.alias === "operationMode");
-  const targetTempBinding = equipment.dataBindings.find((b) => b.alias === "setpoint");
   const insideTempBinding = equipment.dataBindings.find((b) => b.alias === "temperature");
   const outsideTempBinding = equipment.dataBindings.find((b) => b.alias === "outsideTemperature");
 
@@ -147,16 +146,19 @@ export function ThermostatCard({ equipment, onExecuteOrder, compact }: Thermosta
   const currentMode = "operationMode" in optimistic
     ? (optimistic.operationMode as string | null)
     : typeof modeBinding?.value === "string" ? modeBinding.value : null;
-  const targetTemp = "setpoint" in optimistic
-    ? (optimistic.setpoint as number | null)
-    : typeof targetTempBinding?.value === "number" ? targetTempBinding.value : null;
+  // The setpoint has its own stepper (spec 196, slice 8a): one order after the
+  // last tap, the requested value held until the device reports.
+  const setpoint = resolveSetpoint(equipment);
+  const commitDelay = useSetpointCommitDelay(equipment);
+  const setpointOrder = setpoint.order;
+  const commitSetpoint = (v: number) =>
+    setpointOrder ? onExecuteOrder(setpointOrder, v) : Promise.resolve();
   const insideTemp = typeof insideTempBinding?.value === "number" ? insideTempBinding.value : null;
   const outsideTemp = typeof outsideTempBinding?.value === "number" ? outsideTempBinding.value : null;
 
   // Core order bindings (available controls)
   const hasPowerOrder = equipment.orderBindings.some((o) => o.alias === "power");
   const modeOrder = equipment.orderBindings.find((o) => o.alias === "operationMode");
-  const targetTempOrder = equipment.orderBindings.find((o) => o.alias === "setpoint");
 
   const availableModes = modeOrder?.enumValues ?? [];
 
@@ -190,14 +192,22 @@ export function ThermostatCard({ equipment, onExecuteOrder, compact }: Thermosta
       <CompactThermostat
         isOn={isOn}
         insideTemp={insideTemp}
-        targetTemp={targetTemp}
+        setpoint={setpointOrder && setpoint.value !== null ? (
+          <SetpointStepper
+            size="sm"
+            value={setpoint.value}
+            min={setpoint.min}
+            max={setpoint.max}
+            step={setpoint.step}
+            unit="°C"
+            label={t("thermostat.target")}
+            debounceMs={commitDelay}
+            onCommit={commitSetpoint}
+          />
+        ) : null}
         hasPowerOrder={hasPowerOrder}
-        hasTargetTempOrder={!!targetTempOrder}
-        targetMin={targetTempOrder?.min ?? 16}
-        targetMax={targetTempOrder?.max ?? 30}
         executing={executing}
         onTogglePower={() => exec("power", !isOn)}
-        onSetTarget={(v) => exec("setpoint", v)}
       />
     );
   }
@@ -237,31 +247,20 @@ export function ThermostatCard({ equipment, onExecuteOrder, compact }: Thermosta
       </div>
 
       {/* Target temperature control */}
-      {targetTempOrder && (
+      {setpointOrder && (
         <div className="flex items-center gap-3">
           <span className="text-caption text-text-tertiary">{t("thermostat.target")}</span>
-          <div className="hit-group flex items-center gap-1">
-            <button
-              onClick={() => targetTemp !== null && exec("setpoint", targetTemp - 0.5)}
-              aria-label={t("thermostat.setpointDown")}
-              disabled={executing === "setpoint" || targetTemp === null || targetTemp <= (targetTempOrder.min ?? 16)}
-              className="hit-44 p-1 rounded-sm bg-border-light text-text-secondary hover:bg-border hover:text-text transition-colors disabled:opacity-30 disabled:cursor-not-allowed cursor-pointer"
-            >
-              <ChevronDown size={14} strokeWidth={2} />
-            </button>
-            <span className="text-title font-semibold text-text tabular-nums min-w-[60px] text-center">
-              {formatNumber(targetTemp, { decimals: 1 })}
-              <span className="text-caption text-text-tertiary font-normal">°C</span>
-            </span>
-            <button
-              onClick={() => targetTemp !== null && exec("setpoint", targetTemp + 0.5)}
-              aria-label={t("thermostat.setpointUp")}
-              disabled={executing === "setpoint" || targetTemp === null || targetTemp >= (targetTempOrder.max ?? 30)}
-              className="hit-44 p-1 rounded-sm bg-border-light text-text-secondary hover:bg-border hover:text-text transition-colors disabled:opacity-30 disabled:cursor-not-allowed cursor-pointer"
-            >
-              <ChevronUp size={14} strokeWidth={2} />
-            </button>
-          </div>
+          <SetpointStepper
+            size="md"
+            value={setpoint.value}
+            min={setpoint.min}
+            max={setpoint.max}
+            step={setpoint.step}
+            unit="°C"
+            label={t("thermostat.target")}
+            debounceMs={commitDelay}
+            onCommit={commitSetpoint}
+          />
         </div>
       )}
 
@@ -299,34 +298,30 @@ export function ThermostatCard({ equipment, onExecuteOrder, compact }: Thermosta
         optimistic={optimistic}
         executing={executing}
         onExec={(alias, value) => void exec(alias, value)}
+        onCommitNumber={(alias, value) => onExecuteOrder(alias, value)}
+        commitDelayMs={commitDelay}
+        equipmentId={equipment.id}
       />
     </div>
   );
 }
 
-/** Compact inline thermostat for dashboard lists */
+/** Compact inline thermostat for the Maison rows and the equipment list */
 function CompactThermostat({
   isOn,
   insideTemp,
-  targetTemp,
+  setpoint,
   hasPowerOrder,
-  hasTargetTempOrder,
-  targetMin,
-  targetMax,
   executing,
   onTogglePower,
-  onSetTarget,
 }: {
   isOn: boolean;
   insideTemp: number | null;
-  targetTemp: number | null;
+  /** The inline setpoint stepper, null when there is none to show. */
+  setpoint: React.ReactNode;
   hasPowerOrder: boolean;
-  hasTargetTempOrder: boolean;
-  targetMin: number;
-  targetMax: number;
   executing: string | null;
   onTogglePower: () => void;
-  onSetTarget: (value: number) => void;
 }) {
   const { t } = useTranslation();
 
@@ -341,35 +336,10 @@ function CompactThermostat({
       )}
 
       {/* Separator */}
-      {hasTargetTempOrder && targetTemp !== null && insideTemp !== null && (
-        <div className="w-px h-4 bg-border" />
-      )}
+      {setpoint && insideTemp !== null && <div className="w-px h-4 bg-border" />}
 
-      {/* Target temp with +/- controls */}
-      {hasTargetTempOrder && targetTemp !== null && (
-        <div className="hit-group flex items-center gap-0.5 pointer-coarse:gap-2">
-          <button
-            onClick={(e) => { e.preventDefault(); e.stopPropagation(); onSetTarget(targetTemp - 0.5); }}
-            aria-label={t("thermostat.setpointDown")}
-            disabled={executing === "setpoint" || targetTemp <= targetMin}
-            className="hit-44 p-0.5 rounded-sm text-text-tertiary hover:bg-border-light hover:text-text transition-colors disabled:opacity-30 disabled:cursor-not-allowed cursor-pointer"
-          >
-            <ChevronDown size={12} strokeWidth={2} />
-          </button>
-          <span className="flex items-center gap-0.5 text-body font-semibold text-text tabular-nums">
-            <Crosshair size={11} strokeWidth={1.5} className="text-text-secondary" />
-            {formatTemperature(targetTemp, { style: "compact" })}
-          </span>
-          <button
-            onClick={(e) => { e.preventDefault(); e.stopPropagation(); onSetTarget(targetTemp + 0.5); }}
-            aria-label={t("thermostat.setpointUp")}
-            disabled={executing === "setpoint" || targetTemp >= targetMax}
-            className="hit-44 p-0.5 rounded-sm text-text-tertiary hover:bg-border-light hover:text-text transition-colors disabled:opacity-30 disabled:cursor-not-allowed cursor-pointer"
-          >
-            <ChevronUp size={12} strokeWidth={2} />
-          </button>
-        </div>
-      )}
+      {/* Target temp with − / + (spec 196, slice 8a: 44 px to the finger) */}
+      {setpoint}
 
       {/* Power toggle */}
       {hasPowerOrder && (

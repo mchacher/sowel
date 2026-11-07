@@ -10,6 +10,7 @@ import type { ButtonActionBinding, ButtonEffectType, ZoneWithChildren } from "..
 import { allSupportStop } from "../../lib/binding-utils";
 import { flattenZonesWithPath } from "../../lib/zone-path";
 import { FIELD_LABEL } from "../ui/text-roles";
+import { ConfigRow } from "./ConfigRow";
 
 const DEFAULT_BUTTON_ACTIONS = ["single", "double", "hold"];
 
@@ -52,9 +53,11 @@ function findZoneAndDescendantIds(tree: ZoneWithChildren[], zoneId: string): str
 
 interface ButtonActionsSectionProps {
   equipmentId: string;
+  /** Open on arrival; the equipment page keeps its Configuration rows closed. */
+  defaultOpen?: boolean;
 }
 
-export function ButtonActionsSection({ equipmentId }: ButtonActionsSectionProps) {
+export function ButtonActionsSection({ equipmentId, defaultOpen = false }: ButtonActionsSectionProps) {
   const { t } = useTranslation();
   const modes = useModes((s) => s.modes);
   const fetchModes = useModes((s) => s.fetchModes);
@@ -160,12 +163,13 @@ export function ButtonActionsSection({ equipmentId }: ButtonActionsSectionProps)
   };
 
   return (
-    <div className="card p-4 mb-6">
-      <div className="flex items-center justify-between mb-3">
-        <h3 className="text-body font-semibold text-text flex items-center gap-2">
-          <Zap size={16} strokeWidth={1.5} className="text-text-tertiary" />
-          {t("buttonActions.title")}
-        </h3>
+    <ConfigRow
+      icon={Zap}
+      title={t("buttonActions.title")}
+      summary={t("buttonActions.summary", { count: bindings.length })}
+      defaultOpen={defaultOpen}
+    >
+      <div className="flex items-center justify-end mb-3">
         <button
           onClick={() => setShowAddForm(!showAddForm)}
           className="flex items-center gap-1 px-2 py-1 text-micro font-medium text-primary border border-primary/30 rounded-sm hover:bg-primary-light transition-colors duration-150"
@@ -239,7 +243,7 @@ export function ButtonActionsSection({ equipmentId }: ButtonActionsSectionProps)
           onCancel={() => setShowAddForm(false)}
         />
       )}
-    </div>
+    </ConfigRow>
   );
 }
 

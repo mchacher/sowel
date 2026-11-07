@@ -4,6 +4,7 @@ import { Loader2, TimerReset, X } from "lucide-react";
 import { armTimedCommand, cancelTimedCommand } from "../../api";
 import { useEquipments } from "../../store/useEquipments";
 import { TimedCountdown } from "./TimedCountdown";
+import { useGuardedAction } from "../../hooks/useGuardedAction";
 import type { EquipmentWithDetails } from "../../types";
 
 /**
@@ -33,6 +34,9 @@ export function TimedCommandControl({
 }) {
   const { t } = useTranslation();
   const [busy, setBusy] = useState(false);
+  // Spec 196 — arming actuates the gate now, so a guarded gate asks first.
+  // Cancelling does not ask: it ends a window somebody already confirmed.
+  const { guardGate, element: confirmElement } = useGuardedAction();
 
   if (!equipment.timedCommand || !equipment.enabled) return null;
   const running = equipment.timedAction;
@@ -63,8 +67,13 @@ export function TimedCommandControl({
         onClick={(e) => {
           e.preventDefault();
           e.stopPropagation();
-          void run(() =>
-            running ? cancelTimedCommand(equipment.id, true) : armTimedCommand(equipment.id),
+          if (running) {
+            void run(() => cancelTimedCommand(equipment.id, true));
+            return;
+          }
+          const value = equipment.timedCommand?.value;
+          guardGate(equipment, typeof value === "string" ? value : null, () =>
+            void run(() => armTimedCommand(equipment.id)),
           );
         }}
         disabled={busy}
@@ -92,6 +101,7 @@ export function TimedCommandControl({
           </span>
         )}
       </button>
+      {confirmElement}
     </div>
   );
 }

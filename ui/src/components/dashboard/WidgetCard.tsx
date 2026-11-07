@@ -1,6 +1,11 @@
-import { type ReactNode } from "react";
+import { useContext, type ReactNode } from "react";
+import { Link, useInRouterContext } from "react-router-dom";
+import { useTranslation } from "react-i18next";
 import { useCardPrimaryAction } from "./card-primary-action";
 import { TileOrderOutcomeLine } from "../equipments/OrderOutcomeLine";
+import { TileEquipmentContext } from "../equipments/order-outcome";
+import { equipmentLinkState } from "../../lib/equipment-origin";
+import { useIsMobile } from "../../hooks/useIsMobile";
 
 interface WidgetCardProps {
   label: string;
@@ -10,6 +15,8 @@ interface WidgetCardProps {
   className?: string;
   /** Primary action, fired by a click anywhere on the tile that did not start on a nested control. */
   onClick?: () => void;
+  /** Absolutely placed in the top-right corner (the mobile tap glyph, spec 196). */
+  corner?: ReactNode;
   children: ReactNode;
 }
 
@@ -39,21 +46,42 @@ export function WidgetCard({
   sublabel,
   className = "",
   onClick,
+  corner,
   children,
 }: WidgetCardProps) {
   const cardAction = useCardPrimaryAction(onClick);
+  const { t } = useTranslation();
+  // Spec 196 (pr9-dashboard) — on an equipment tile the title opens the
+  // equipment page, from the desktop width only: on a phone the whole tile is
+  // its tap action and the page is reached from the sheet's footer. The card
+  // action ignores clicks that land on a link.
+  const equipmentId = useContext(TileEquipmentContext);
+  const isMobile = useIsMobile();
+  // A tile rendered outside a router (a picker preview, a test) keeps a plain title.
+  const inRouter = useInRouterContext();
+  const linkable = inRouter && equipmentId !== null && !isMobile;
 
   return (
     <div
-      className={`card p-3 flex flex-col h-[160px] sm:h-[240px] overflow-hidden ${
+      className={`card relative p-3 flex flex-col h-[160px] sm:h-[240px] overflow-hidden ${
         onClick ? "cursor-pointer active:scale-[0.98] transition-transform" : ""
       } ${className}`}
       {...cardAction}
     >
-      <div className="mb-2 text-center">
-        <span className="block text-lead font-semibold text-text truncate leading-tight">
-          {label}
-        </span>
+      <div className={`mb-2 text-center ${corner ? "px-4 sm:px-0" : ""}`}>
+        {linkable ? (
+          <Link
+            to={`/equipments/${equipmentId}`}
+            state={equipmentLinkState(t("nav.dashboard"), "/dashboard")}
+            className="block text-lead font-semibold text-text truncate leading-tight hover:text-primary hover:underline underline-offset-2"
+          >
+            {label}
+          </Link>
+        ) : (
+          <span className="block text-lead font-semibold text-text truncate leading-tight">
+            {label}
+          </span>
+        )}
         {sublabel && (
           <span className="block text-micro text-text-tertiary truncate">{sublabel}</span>
         )}
@@ -62,6 +90,7 @@ export function WidgetCard({
         <TileOrderOutcomeLine />
       </div>
       {children}
+      {corner}
     </div>
   );
 }

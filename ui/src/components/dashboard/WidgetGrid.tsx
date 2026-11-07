@@ -25,16 +25,17 @@ import { ZoneWidget } from "./ZoneWidget";
 import { IconPicker } from "./IconPicker";
 import { BindingsPicker } from "./BindingsPicker";
 import { MobileWidgetCard } from "./MobileWidgetCard";
+import { TapGlyph } from "./TapGlyph";
 import { TimedEquipmentWidget } from "./TimedEquipmentWidget";
 import { TileEquipmentContext } from "../equipments/order-outcome";
 import { RecipeTile } from "./RecipeTile";
 import { LightBulbIcon, ShutterWidgetIcon, AwningWidgetIcon, ThermometerIcon, MultiSensorIcon } from "./WidgetIcons";
 import { shutterLevel } from "./widget-icons";
 import { EquipmentDetailSheet, ZoneDetailSheet } from "./WidgetDetailSheet";
-import { GateConfirmSheet } from "./ConfirmActionSheet";
 import { getMobileClickAction } from "./mobile-click-action";
 import { useDashboard } from "../../store/useDashboard";
 import { useIsMobile } from "../../hooks/useIsMobile";
+import { useGuardedAction } from "../../hooks/useGuardedAction";
 import { getSensorBindings } from "../equipments/sensorUtils";
 import { EQUIPMENT_ZONE_SEPARATOR } from "../../lib/zone-path";
 import { thermostatPowerStateBinding } from "../../lib/thermostat-state";
@@ -69,8 +70,20 @@ export function WidgetGrid({
 }: WidgetGridProps) {
   const isMobile = useIsMobile();
   const [detailWidgetId, setDetailWidgetId] = useState<string | null>(null);
-  // Spec 146 — gate awaiting slide-to-confirm before actuating (mobile only).
-  const [confirmWidgetId, setConfirmWidgetId] = useState<string | null>(null);
+  // Spec 146 / 196 — a guarded gate asks before its tile actuates it.
+  const gateGuard = useGuardedAction();
+  const confirmGate = (equipmentId: string | undefined) => {
+    const equipment = equipmentId ? equipmentMap.get(equipmentId) : undefined;
+    if (!equipment) return;
+    const command = findOrderByCategory(equipment.orderBindings, ["gate_trigger"], ["command"]);
+    if (!command) return;
+    gateGuard.guardGate(
+      equipment,
+      null,
+      () => void onExecuteOrder(equipment.id, command.alias, null),
+      equipmentZones.get(equipment.id),
+    );
+  };
 
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 8 } }),
@@ -97,11 +110,6 @@ export function WidgetGrid({
 
   // Find the widget being shown in bottom sheet (auto-clears if widget was deleted)
   const detailWidget = detailWidgetId ? widgets.find((w) => w.id === detailWidgetId) ?? null : null;
-  const confirmWidget = confirmWidgetId ? widgets.find((w) => w.id === confirmWidgetId) ?? null : null;
-  const confirmEquipment =
-    confirmWidget?.type === "equipment" && confirmWidget.equipmentId
-      ? equipmentMap.get(confirmWidget.equipmentId)
-      : undefined;
 
   if (!editMode) {
     return (
@@ -119,7 +127,7 @@ export function WidgetGrid({
               onExecuteOrder={onExecuteOrder}
               isMobile={isMobile}
               onOpenDetail={() => setDetailWidgetId(widget.id)}
-              onConfirmAction={() => setConfirmWidgetId(widget.id)}
+              onConfirmAction={() => confirmGate(widget.equipmentId)}
             />
           ))}
         </div>
@@ -144,22 +152,8 @@ export function WidgetGrid({
           />
         )}
 
-        {/* Spec 146 — slide-to-confirm before actuating a guarded gate (mobile). */}
-        {confirmEquipment && (
-          <GateConfirmSheet
-            equipment={confirmEquipment}
-            zoneName={equipmentZones.get(confirmEquipment.id)}
-            onConfirm={() => {
-              const command = findOrderByCategory(
-                confirmEquipment.orderBindings,
-                ["gate_trigger"],
-                ["command"],
-              );
-              if (command) void onExecuteOrder(confirmEquipment.id, command.alias, null);
-            }}
-            onClose={() => setConfirmWidgetId(null)}
-          />
-        )}
+        {/* Spec 146 / 196 — the slide or the dialog before a guarded gate actuates. */}
+        {gateGuard.element}
       </>
     );
   }
@@ -479,7 +473,8 @@ function WidgetRenderer({
           widget={widget}
           equipment={equipment}
           equipmentZone={equipmentZone}
-          onClick={mobileClick}
+          onClick={mobileClick?.run}
+          tapKind={mobileClick?.kind}
           editMode={editMode}
         />
       );
@@ -544,8 +539,8 @@ function getDescendantZoneIds(zone: ZoneWithChildren): string[] {
   return ids;
 }
 
-// Compact zone card for mobile
-function MobileZoneCard({
+// Compact zone card for mobile (exported for its test)
+export function MobileZoneCard({
   widget,
   zone,
   zoneLabel,
@@ -636,16 +631,21 @@ function MobileZoneCard({
     return { icon: null, stateText: null };
   })();
 
+  // Spec 196 — a zone tile opens its sheet, and says so in the corner like
+  // the equipment cards.
+  const opens = !!onClick && !editMode;
   return (
     <button
+      type="button"
       onClick={onClick}
-      className={`card p-2 flex flex-col items-center h-[120px] overflow-hidden w-full text-left ${
-        editMode ? "" : "cursor-pointer active:scale-[0.98]"
+      className={`card relative p-2 flex flex-col items-center h-[120px] overflow-hidden w-full text-left ${
+        opens ? "cursor-pointer active:scale-[0.98]" : ""
       } transition-transform`}
     >
+      {opens && <TapGlyph kind="sheet" />}
       {/* Label */}
       <span className={`text-caption font-semibold text-text truncate w-full text-center ${
-        editMode ? "pl-5 pr-8" : ""
+        editMode ? "pl-5 pr-8" : opens ? "px-4" : ""
       }`}>
         {label}
       </span>
@@ -661,6 +661,8 @@ function MobileZoneCard({
           {stateText}
         </span>
       )}
+      {/* Named by its text (title, state), the gesture said after it. */}
+      {opens && <span className="sr-only">{`, ${t("dashboard.tap.sheet")}`}</span>}
     </button>
   );
 }

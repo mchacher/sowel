@@ -8,8 +8,6 @@ import {
   ChevronLeft,
   ChevronRight,
   Square,
-  Minus,
-  Plus,
   Flame,
   Snowflake,
   WashingMachine,
@@ -47,6 +45,9 @@ import { isRainOnlyWeather } from "../equipments/rain-summary";
 import { RainTileBody } from "./RainGauge";
 import { TempExtremes } from "../TempExtremes";
 import { useSliderOverride } from "../../hooks/useSliderOverride";
+import { useSetpointCommitDelay } from "../../hooks/useSetpointCommit";
+import { SetpointStepper } from "../equipments/SetpointStepper";
+import { resolveSetpoint, setpointLevel } from "../equipments/setpoint";
 import { SensorValues } from "../equipments/SensorValues";
 import { SolarPanelIcon } from "../icons/SolarPanelIcon";
 import { solarWidgetState } from "./solarWidget";
@@ -86,6 +87,8 @@ import { renderWidgetStateIcon, shutterLevel } from "./widget-icons";
 import { resolveWidgetPresentation } from "./presentation/resolveWidgetPresentation";
 import { PresentationWidget } from "./presentation/PresentationWidget";
 import { doorWordPill } from "../equipments/door-pill";
+import { useGuardedAction } from "../../hooks/useGuardedAction";
+import { gateActionOf, gateStateOf, gateValueLabel } from "./gate-confirm";
 import { doorState, isDoorOpenForCount } from "../../../../src/shared/door-state";
 
 interface EquipmentWidgetProps {
@@ -832,7 +835,11 @@ function ThermostatEquipmentWidget({
 }) {
   const { t } = useTranslation();
   const [executing, setExecuting] = useState<string | null>(null);
-  const setpointOverride = useSliderOverride(5000);
+  // Spec 196, slice 8a: the setpoint stepper sends one order after the last
+  // tap and holds the requested value; the thermometer follows what it shows.
+  const setpoint = resolveSetpoint(equipment);
+  const commitDelay = useSetpointCommitDelay(equipment);
+  const [shownSetpoint, setShownSetpoint] = useState<number | null>(null);
 
   const isPoolHeatPump = equipment.type === "pool_heat_pump";
 
@@ -841,7 +848,6 @@ function ThermostatEquipmentWidget({
   const effectiveWaterTemp = equipment.computedData?.find(
     (c) => c.alias === "effective_water_temperature",
   );
-  const targetTempBinding = equipment.dataBindings.find((b) => b.alias === "setpoint");
 
   const isOn = isPoolHeatPump
     ? typeof modeBinding?.value === "string" && modeBinding.value.toUpperCase() !== "OFF"
@@ -853,24 +859,12 @@ function ThermostatEquipmentWidget({
     : typeof insideTempBinding?.value === "number"
       ? insideTempBinding.value
       : null;
-  const deviceSetpoint =
-    typeof targetTempBinding?.value === "number" ? targetTempBinding.value : null;
-  const displaySetpoint = setpointOverride.displayValue(deviceSetpoint);
+  const displaySetpoint = shownSetpoint ?? setpoint.value;
 
   const hasPowerOrder = !isPoolHeatPump && equipment.orderBindings.some((o) => o.alias === "power");
-  const targetTempOrder = equipment.orderBindings.find((o) => o.alias === "setpoint");
-  const targetMin = targetTempOrder?.min ?? (isPoolHeatPump ? 10 : 16);
-  const targetMax = targetTempOrder?.max ?? 30;
-  const STEP = 0.5;
+  const setpointOrder = setpoint.order;
 
-  const thermometerLevel =
-    displaySetpoint !== null ? (displaySetpoint - targetMin) / (targetMax - targetMin) : undefined;
-
-  const handleSetpoint = (newValue: number) => {
-    setpointOverride.onStart();
-    setpointOverride.onChange(newValue);
-    setpointOverride.onCommit((v) => onExecuteOrder("setpoint", v));
-  };
+  const thermometerLevel = setpointLevel(displaySetpoint, setpoint.min, setpoint.max);
 
   const exec = async (alias: string, value: unknown) => {
     if (executing) return;
@@ -920,26 +914,20 @@ function ThermostatEquipmentWidget({
       </div>
 
       {/* Zone 3: Setpoint controls */}
-      {targetTempOrder && displaySetpoint !== null && (
-        <div className="flex items-center justify-center gap-2 mt-auto pt-1">
-          <button
-            onClick={() => handleSetpoint(Math.max(targetMin, displaySetpoint - STEP))}
-            disabled={displaySetpoint <= targetMin}
-            className="w-8 h-8 flex items-center justify-center rounded-sm transition-colors cursor-pointer border border-border bg-surface text-text-tertiary hover:bg-border-light hover:text-text-secondary active:scale-[0.97] disabled:opacity-30 disabled:cursor-not-allowed"
-          >
-            <Minus size={14} strokeWidth={2} />
-          </button>
-          <span className="text-caption font-medium text-text-secondary tabular-nums min-w-[42px] text-center">
-            {formatTemperature(displaySetpoint, { style: "compact" })}
-          </span>
-          <button
-            onClick={() => handleSetpoint(Math.min(targetMax, displaySetpoint + STEP))}
-            disabled={displaySetpoint >= targetMax}
-            className="w-8 h-8 flex items-center justify-center rounded-sm transition-colors cursor-pointer border border-border bg-surface text-text-tertiary hover:bg-border-light hover:text-text-secondary active:scale-[0.97] disabled:opacity-30 disabled:cursor-not-allowed"
-          >
-            <Plus size={14} strokeWidth={2} />
-          </button>
-        </div>
+      {setpointOrder && setpoint.value !== null && (
+        <SetpointStepper
+          size="md"
+          className="mt-auto pt-1"
+          value={setpoint.value}
+          min={setpoint.min}
+          max={setpoint.max}
+          step={setpoint.step}
+          unit="°C"
+          label={t("thermostat.target")}
+          debounceMs={commitDelay}
+          onCommit={(v) => onExecuteOrder(setpointOrder, v)}
+          onShownChange={setShownSetpoint}
+        />
       )}
     </WidgetCard>
   );
@@ -973,9 +961,10 @@ function GateEquipmentWidget({
 }) {
   const { t } = useTranslation();
   const [executing, setExecuting] = useState<string | null>(null);
+  // Spec 196 — a guarded gate asks first, by dialog or slide, from the card and its buttons.
+  const { guardGate, element: confirmElement } = useGuardedAction();
 
-  const stateBinding = equipment.dataBindings.find((db) => db.category === "gate_state");
-  const gateState = (stateBinding?.value as string) ?? "unknown";
+  const gateState = gateStateOf(equipment);
   const isOpen = gateState === "open";
 
   // Category-first resolver (spec 110). Matches WidgetGrid's mobile-direct
@@ -993,8 +982,8 @@ function GateEquipmentWidget({
   // (the mobile detail sheet had one button per enum action, the card none).
   const hasMultiAction = hasCommand && enumValues.length > 1 && equipment.enabled;
 
-  const handleCommand = async (value: string | null) => {
-    if (executing || !commandBinding) return;
+  const send = async (value: string | null) => {
+    if (!commandBinding) return;
     setExecuting(value ?? "command");
     try {
       await onExecuteOrder(commandBinding.alias, value);
@@ -1002,54 +991,75 @@ function GateEquipmentWidget({
       setExecuting(null);
     }
   };
+  const handleCommand = (value: string | null) => {
+    if (executing || !commandBinding) return;
+    guardGate(equipment, value, () => void send(value), sublabel);
+  };
 
   const IconComp = (iconKey && GATE_ICON_MAP[iconKey]) || GateWidgetIcon;
 
   return (
-    <WidgetCard
-      label={label}
-      sublabel={sublabel}
-      onClick={hasSingleAction && !editMode ? () => handleCommand(null) : undefined}
-    >
-      {/* Icon centered */}
-      <div className="flex-1 flex items-center justify-center">
-        {executing ? (
-          <Loader2 size={32} className="animate-spin text-text-tertiary" />
-        ) : (
-          <IconComp open={isOpen} />
-        )}
-      </div>
-
-      {/* State text */}
-      <div className="flex justify-center mt-auto pt-1">
-        <span
-          className={`text-caption font-medium px-2.5 py-0.5 rounded-full ${
-            // Open and closed are neutral (spec 196): the word says it.
-            isOpen || gateState === "closed"
-              ? "bg-border-light text-text-secondary"
-              : "bg-text-tertiary/10 text-text-tertiary"
-          }`}
-        >
-          {t(`controls.gate.${gateState}`)}
-        </span>
-      </div>
-
-      {/* Multi-action buttons — same actions as the mobile GateDetailContent */}
-      {hasMultiAction && (
-        <div className="flex justify-center flex-wrap gap-2 mt-1 pt-1">
-          {enumValues.map((val) => (
-            <button
-              key={val}
-              onClick={() => handleCommand(val)}
-              disabled={executing !== null}
-              className="h-8 px-2.5 flex items-center justify-center rounded-sm text-micro font-medium transition-all duration-150 cursor-pointer border border-border bg-surface text-text-secondary hover:border-primary/40 hover:text-primary hover:bg-primary/5 active:scale-[0.97] disabled:opacity-40 disabled:cursor-not-allowed"
-            >
-              {val}
-            </button>
-          ))}
+    <>
+      <WidgetCard
+        label={label}
+        sublabel={sublabel}
+        onClick={hasSingleAction && !editMode ? () => handleCommand(null) : undefined}
+      >
+        {/* Icon centered */}
+        <div className="flex-1 flex items-center justify-center">
+          {executing ? (
+            <Loader2 size={32} className="animate-spin text-text-tertiary" />
+          ) : (
+            <IconComp open={isOpen} />
+          )}
         </div>
-      )}
-    </WidgetCard>
+
+        {/* State text */}
+        <div className="flex justify-center mt-auto pt-1">
+          <span
+            className={`text-caption font-medium px-2.5 py-0.5 rounded-full ${
+              // Open and closed are neutral (spec 196): the word says it.
+              isOpen || gateState === "closed"
+                ? "bg-border-light text-text-secondary"
+                : "bg-text-tertiary/10 text-text-tertiary"
+            }`}
+          >
+            {t(`controls.gate.${gateState}`)}
+          </span>
+        </div>
+
+        {/* Spec 196 — the card acts on a click, but a visible button says what it does and
+            gives the keyboard a way in. */}
+        {hasSingleAction && !editMode && (
+          <div className="flex justify-center mt-1 pt-1">
+            <button
+              onClick={() => handleCommand(null)}
+              disabled={executing !== null}
+              className="h-8 px-3 flex items-center justify-center rounded-sm text-caption font-medium transition-all duration-150 cursor-pointer border border-border bg-surface text-text-secondary hover:border-primary/40 hover:text-primary hover:bg-primary/5 active:scale-[0.97] disabled:opacity-40 disabled:cursor-not-allowed"
+            >
+              {t(`controls.gate.action.${gateActionOf(null, gateState)}`)}
+            </button>
+          </div>
+        )}
+
+        {/* Multi-action buttons — same actions as the mobile GateDetailContent */}
+        {hasMultiAction && (
+          <div className="flex justify-center flex-wrap gap-2 mt-1 pt-1">
+            {enumValues.map((val) => (
+              <button
+                key={val}
+                onClick={() => handleCommand(val)}
+                disabled={executing !== null}
+                className="h-8 px-2.5 flex items-center justify-center rounded-sm text-micro font-medium transition-all duration-150 cursor-pointer border border-border bg-surface text-text-secondary hover:border-primary/40 hover:text-primary hover:bg-primary/5 active:scale-[0.97] disabled:opacity-40 disabled:cursor-not-allowed"
+              >
+                {gateValueLabel(val, t)}
+              </button>
+            ))}
+          </div>
+        )}
+      </WidgetCard>
+      {confirmElement}
+    </>
   );
 }
 

@@ -1,5 +1,6 @@
 import { useState, useMemo, useCallback, createElement } from "react";
 import { useTranslation } from "react-i18next";
+import { Link, useInRouterContext } from "react-router-dom";
 import {
   Power,
   Loader2,
@@ -8,8 +9,6 @@ import {
   ChevronLeft,
   ChevronRight,
   Square,
-  Minus,
-  Plus,
   Flame,
   Snowflake,
   Lightbulb,
@@ -25,6 +24,7 @@ import type {
   ZoneWithChildren,
 } from "../../types";
 import { executeZoneOrder } from "../../api";
+import { equipmentLinkState } from "../../lib/equipment-origin";
 import { useEquipmentState } from "../equipments/useEquipmentState";
 import { findOrderByCategory } from "../equipments/bindingUtils";
 import { VmcControl } from "../equipments/VmcControl";
@@ -33,6 +33,9 @@ import { ElectricVehicleControl } from "../equipments/ElectricVehicleControl";
 import { allSupportStop } from "../../lib/binding-utils";
 import { thermostatPowerStateBinding } from "../../lib/thermostat-state";
 import { useSliderOverride } from "../../hooks/useSliderOverride";
+import { useSetpointCommitDelay } from "../../hooks/useSetpointCommit";
+import { SetpointStepper } from "../equipments/SetpointStepper";
+import { resolveSetpoint, setpointLevel, zoneSetpointBounds } from "../equipments/setpoint";
 import { SensorValues } from "../equipments/SensorValues";
 import {
   formatSensorValue,
@@ -61,6 +64,8 @@ import { ForecastDetailContent } from "./ForecastDetailContent";
 import { RainDetailContent } from "./RainGauge";
 import { isRainOnlyWeather } from "../equipments/rain-summary";
 import { doorWordPill } from "../equipments/door-pill";
+import { useGuardedAction } from "../../hooks/useGuardedAction";
+import { gateStateOf, gateValueLabel } from "./gate-confirm";
 import { doorState, isDoorOpenForCount } from "../../../../src/shared/door-state";
 import { formatNumber, formatPercent, formatTemperature } from "../../lib/format";
 
@@ -97,6 +102,8 @@ export function EquipmentDetailSheet({ widget, equipment, equipmentZone, onExecu
   const label = widget.label
     || (equipmentZone ? `${equipment.name}${EQUIPMENT_ZONE_SEPARATOR}${equipmentZone}` : equipment.name);
   const execOrder = (alias: string, value: unknown) => onExecuteOrder(equipment.id, alias, value);
+  // Spec 196 (pr9-dashboard) — the sheet's way to the equipment page (history, settings).
+  const pageLink = <EquipmentPageLink equipmentId={equipment.id} />;
 
   // Sheet header icon — the hand-picked drawing only, rendered from the
   // equipment's live state like the tile it was opened from. Reading
@@ -120,7 +127,7 @@ export function EquipmentDetailSheet({ widget, equipment, equipmentZone, onExecu
 
   if (isLight && (equipment.type === "light_dimmable" || equipment.type === "light_color")) {
     return (
-      <BottomSheet open onClose={onClose} title={label}
+      <BottomSheet open onClose={onClose} title={label} footer={pageLink}
         icon={customIcon}
       >
         <LightDetailContent equipment={equipment} onExecuteOrder={execOrder} />
@@ -133,7 +140,7 @@ export function EquipmentDetailSheet({ widget, equipment, equipmentZone, onExecu
   // all and the sheet returned null, which is why the tile was not clickable.
   if (equipment.type === "weather_forecast") {
     return (
-      <BottomSheet open onClose={onClose} title={label}
+      <BottomSheet open onClose={onClose} title={label} footer={pageLink}
         icon={customIcon}
       >
         <ForecastDetailContent equipment={equipment} />
@@ -143,7 +150,7 @@ export function EquipmentDetailSheet({ widget, equipment, equipmentZone, onExecu
 
   if (isShutter || isAwning || equipment.type === "door" || equipment.type === "pool_cover") {
     return (
-      <BottomSheet open onClose={onClose} title={label}
+      <BottomSheet open onClose={onClose} title={label} footer={pageLink}
         icon={customIcon}
       >
         <ShutterDetailContent equipment={equipment} onExecuteOrder={execOrder} />
@@ -153,7 +160,7 @@ export function EquipmentDetailSheet({ widget, equipment, equipmentZone, onExecu
 
   if (isThermostat || isPoolHeatPump) {
     return (
-      <BottomSheet open onClose={onClose} title={label}
+      <BottomSheet open onClose={onClose} title={label} footer={pageLink}
         icon={customIcon}
       >
         <ThermostatDetailContent equipment={equipment} onExecuteOrder={execOrder} />
@@ -163,7 +170,7 @@ export function EquipmentDetailSheet({ widget, equipment, equipmentZone, onExecu
 
   if (isHeater) {
     return (
-      <BottomSheet open onClose={onClose} title={label}
+      <BottomSheet open onClose={onClose} title={label} footer={pageLink}
         icon={customIcon}
       >
         <HeaterDetailContent equipment={equipment} onExecuteOrder={execOrder} />
@@ -173,17 +180,17 @@ export function EquipmentDetailSheet({ widget, equipment, equipmentZone, onExecu
 
   if (isGate) {
     return (
-      <BottomSheet open onClose={onClose} title={label}
+      <BottomSheet open onClose={onClose} title={label} footer={pageLink}
         icon={customIcon}
       >
-        <GateDetailContent equipment={equipment} onExecuteOrder={execOrder} iconKey={widget.icon} />
+        <GateDetailContent equipment={equipment} onExecuteOrder={execOrder} iconKey={widget.icon} zoneName={equipmentZone} />
       </BottomSheet>
     );
   }
 
   if (equipment.type === "weather") {
     return (
-      <BottomSheet open onClose={onClose} title={label}
+      <BottomSheet open onClose={onClose} title={label} footer={pageLink}
         icon={customIcon}
       >
         {isRainOnlyWeather(equipment) ? (
@@ -197,7 +204,7 @@ export function EquipmentDetailSheet({ widget, equipment, equipmentZone, onExecu
 
   if (equipment.type === "electric_vehicle") {
     return (
-      <BottomSheet open onClose={onClose} title={label}
+      <BottomSheet open onClose={onClose} title={label} footer={pageLink}
         icon={customIcon}
       >
         <div className="p-4">
@@ -209,7 +216,7 @@ export function EquipmentDetailSheet({ widget, equipment, equipmentZone, onExecu
 
   if (equipment.type === "ev_charger") {
     return (
-      <BottomSheet open onClose={onClose} title={label}
+      <BottomSheet open onClose={onClose} title={label} footer={pageLink}
         icon={customIcon}
       >
         <div className="p-4">
@@ -221,7 +228,7 @@ export function EquipmentDetailSheet({ widget, equipment, equipmentZone, onExecu
 
   if (equipment.type === "vmc") {
     return (
-      <BottomSheet open onClose={onClose} title={label}
+      <BottomSheet open onClose={onClose} title={label} footer={pageLink}
         icon={customIcon}
       >
         <div className="p-4">
@@ -233,7 +240,7 @@ export function EquipmentDetailSheet({ widget, equipment, equipmentZone, onExecu
 
   if (isSensor) {
     return (
-      <BottomSheet open onClose={onClose} title={label}
+      <BottomSheet open onClose={onClose} title={label} footer={pageLink}
         icon={customIcon}
       >
         <SensorDetailContent equipment={equipment} visibleBindings={widget.config?.visibleBindings} />
@@ -531,8 +538,10 @@ export function ZoneDetailSheet({ widget, zone, zoneLabel, equipments, onClose }
     setCommandLoading(orderKey);
     try {
       await executeZoneOrder(widget.zoneId, orderKey, value);
-    } catch {
-      // silent — user sees result via live updates
+    } catch (err) {
+      // The setpoint stepper reverts and says « not applied » on a rejection;
+      // the other commands stay silent, the live updates tell the outcome.
+      if (orderKey === "allThermostatsSetpoint") throw err;
     } finally {
       setCommandLoading(null);
     }
@@ -848,13 +857,14 @@ function ZoneHeatingDetail({
 }: {
   equipments: EquipmentWithDetails[];
   commandLoading: string | null;
-  onCommand: (orderKey: string, value?: unknown) => void;
+  onCommand: (orderKey: string, value?: unknown) => void | Promise<void>;
 }) {
   const { t } = useTranslation();
-  const setpointOverride = useSliderOverride(5000);
-  const SETPOINT_MIN = 16;
-  const SETPOINT_MAX = 30;
-  const STEP = 0.5;
+  // Spec 196, slice 8a: bounds from the zone's thermostats, one order after
+  // the last tap, flushed if the sheet closes first.
+  const bounds = zoneSetpointBounds(equipments);
+  const commitDelay = useSetpointCommitDelay(equipments);
+  const [shownSetpoint, setShownSetpoint] = useState<number | null>(null);
 
   const { avgTemp, avgSetpoint, anyOn } = useMemo(() => {
     const temps: number[] = [];
@@ -873,18 +883,8 @@ function ZoneHeatingDetail({
     return { avgTemp: avg(temps), avgSetpoint: avg(setpoints), anyOn: on };
   }, [equipments]);
 
-  const displaySetpoint = setpointOverride.displayValue(avgSetpoint);
-  const thermometerLevel = displaySetpoint !== null
-    ? (displaySetpoint - SETPOINT_MIN) / (SETPOINT_MAX - SETPOINT_MIN)
-    : undefined;
-
-  const handleSetpoint = (newValue: number) => {
-    setpointOverride.onStart();
-    setpointOverride.onChange(newValue);
-    setpointOverride.onCommit(async (v) => {
-      onCommand("allThermostatsSetpoint", v);
-    });
-  };
+  const displaySetpoint = shownSetpoint ?? avgSetpoint;
+  const thermometerLevel = setpointLevel(displaySetpoint, bounds.min, bounds.max);
 
   if (equipments.length === 0) return null;
 
@@ -903,26 +903,21 @@ function ZoneHeatingDetail({
         </div>
       </div>
 
-      {displaySetpoint !== null && (
-        <div className="flex items-center justify-center gap-4">
-          <button
-            onClick={() => handleSetpoint(Math.max(SETPOINT_MIN, displaySetpoint - STEP))}
-            disabled={displaySetpoint <= SETPOINT_MIN}
-            className="w-14 h-14 flex items-center justify-center rounded-sm border border-border bg-surface text-text-secondary hover:bg-border-light transition-colors cursor-pointer active:scale-[0.95] disabled:opacity-30"
-          >
-            <Minus size={20} strokeWidth={2} />
-          </button>
-          <span className="text-display font-semibold text-text tabular-nums min-w-[80px] text-center">
-            {formatTemperature(displaySetpoint)}
-          </span>
-          <button
-            onClick={() => handleSetpoint(Math.min(SETPOINT_MAX, displaySetpoint + STEP))}
-            disabled={displaySetpoint >= SETPOINT_MAX}
-            className="w-14 h-14 flex items-center justify-center rounded-sm border border-border bg-surface text-text-secondary hover:bg-border-light transition-colors cursor-pointer active:scale-[0.95] disabled:opacity-30"
-          >
-            <Plus size={20} strokeWidth={2} />
-          </button>
-        </div>
+      {avgSetpoint !== null && (
+        <SetpointStepper
+          size="lg"
+          value={avgSetpoint}
+          min={bounds.min}
+          max={bounds.max}
+          unit="°C"
+          label={t("thermostat.target")}
+          debounceMs={commitDelay}
+          holdUntilReached
+          onCommit={async (v) => {
+            await onCommand("allThermostatsSetpoint", v);
+          }}
+          onShownChange={setShownSetpoint}
+        />
       )}
 
       <button
@@ -1285,7 +1280,11 @@ function ThermostatDetailContent({
 }) {
   const { t } = useTranslation();
   const [executing, setExecuting] = useState<string | null>(null);
-  const setpointOverride = useSliderOverride(5000);
+  // Spec 196, slice 8a: one order after the last tap, flushed if the sheet
+  // closes first; the thermometer follows the value the stepper shows.
+  const setpoint = resolveSetpoint(equipment);
+  const commitDelay = useSetpointCommitDelay(equipment);
+  const [shownSetpoint, setShownSetpoint] = useState<number | null>(null);
 
   const isPoolHeatPump = equipment.type === "pool_heat_pump";
 
@@ -1294,7 +1293,6 @@ function ThermostatDetailContent({
   const effectiveWaterTemp = equipment.computedData?.find(
     (c) => c.alias === "effective_water_temperature",
   );
-  const targetTempBinding = equipment.dataBindings.find((b) => b.alias === "setpoint");
 
   // pool_heat_pump has no power order; its "on" state is derived from `mode`.
   // The water temperature exposed is the computed `effective_water_temperature`
@@ -1309,24 +1307,12 @@ function ThermostatDetailContent({
     : typeof insideTempBinding?.value === "number"
       ? insideTempBinding.value
       : null;
-  const deviceSetpoint = typeof targetTempBinding?.value === "number" ? targetTempBinding.value : null;
-  const displaySetpoint = setpointOverride.displayValue(deviceSetpoint);
+  const displaySetpoint = shownSetpoint ?? setpoint.value;
 
   const hasPowerOrder = !isPoolHeatPump && equipment.orderBindings.some((o) => o.alias === "power");
-  const targetTempOrder = equipment.orderBindings.find((o) => o.alias === "setpoint");
-  const targetMin = targetTempOrder?.min ?? (isPoolHeatPump ? 10 : 16);
-  const targetMax = targetTempOrder?.max ?? 30;
-  const STEP = 0.5;
+  const setpointOrder = setpoint.order;
 
-  const thermometerLevel = displaySetpoint !== null
-    ? (displaySetpoint - targetMin) / (targetMax - targetMin)
-    : undefined;
-
-  const handleSetpoint = (newValue: number) => {
-    setpointOverride.onStart();
-    setpointOverride.onChange(newValue);
-    setpointOverride.onCommit((v) => onExecuteOrder("setpoint", v));
-  };
+  const thermometerLevel = setpointLevel(displaySetpoint, setpoint.min, setpoint.max);
 
   const exec = async (alias: string, value: unknown) => {
     if (executing) return;
@@ -1355,26 +1341,19 @@ function ThermostatDetailContent({
       </div>
 
       {/* Setpoint controls — large */}
-      {targetTempOrder && displaySetpoint !== null && (
-        <div className="flex items-center justify-center gap-4">
-          <button
-            onClick={() => handleSetpoint(Math.max(targetMin, displaySetpoint - STEP))}
-            disabled={displaySetpoint <= targetMin}
-            className="w-14 h-14 flex items-center justify-center rounded-sm border border-border bg-surface text-text-secondary hover:bg-border-light transition-colors cursor-pointer active:scale-[0.95] disabled:opacity-30"
-          >
-            <Minus size={20} strokeWidth={2} />
-          </button>
-          <span className="text-display font-semibold text-text tabular-nums min-w-[80px] text-center">
-            {formatTemperature(displaySetpoint)}
-          </span>
-          <button
-            onClick={() => handleSetpoint(Math.min(targetMax, displaySetpoint + STEP))}
-            disabled={displaySetpoint >= targetMax}
-            className="w-14 h-14 flex items-center justify-center rounded-sm border border-border bg-surface text-text-secondary hover:bg-border-light transition-colors cursor-pointer active:scale-[0.95] disabled:opacity-30"
-          >
-            <Plus size={20} strokeWidth={2} />
-          </button>
-        </div>
+      {setpointOrder && setpoint.value !== null && (
+        <SetpointStepper
+          size="lg"
+          value={setpoint.value}
+          min={setpoint.min}
+          max={setpoint.max}
+          step={setpoint.step}
+          unit="°C"
+          label={t("thermostat.target")}
+          debounceMs={commitDelay}
+          onCommit={(v) => onExecuteOrder(setpointOrder, v)}
+          onShownChange={setShownSetpoint}
+        />
       )}
 
       {/* Power toggle */}
@@ -1504,18 +1483,19 @@ function GateDetailContent({
   equipment,
   onExecuteOrder,
   iconKey,
+  zoneName,
 }: {
   equipment: EquipmentWithDetails;
   onExecuteOrder: (alias: string, value: unknown) => Promise<void>;
   iconKey?: string;
+  zoneName?: string;
 }) {
   const { t } = useTranslation();
   const [executing, setExecuting] = useState<string | null>(null);
+  // Spec 196 — these buttons actuate on one tap too: a guarded gate asks first.
+  const { guardGate, element: confirmElement } = useGuardedAction();
 
-  const stateBinding = equipment.dataBindings.find(
-    (db) => db.category === "gate_state",
-  );
-  const gateState = (stateBinding?.value as string) ?? "unknown";
+  const gateState = gateStateOf(equipment);
   const isOpen = gateState === "open";
 
   // Category-first resolver (spec 110). Aligns with WidgetGrid and
@@ -1527,15 +1507,18 @@ function GateDetailContent({
   );
   const enumValues = commandBinding?.enumValues ?? [];
 
-  const handleCommand = async (value: string | null) => {
-    if (executing || !commandBinding) return;
-    const key = value ?? "command";
-    setExecuting(key);
+  const send = async (value: string | null) => {
+    if (!commandBinding) return;
+    setExecuting(value ?? "command");
     try {
       await onExecuteOrder(commandBinding.alias, value);
     } finally {
       setExecuting(null);
     }
+  };
+  const handleCommand = (value: string | null) => {
+    if (executing || !commandBinding) return;
+    guardGate(equipment, value, () => void send(value), zoneName);
   };
 
   const IconComp = (iconKey && GATE_ICON_MAP[iconKey]) || GateWidgetIcon;
@@ -1573,7 +1556,7 @@ function GateDetailContent({
                 className="h-12 flex items-center justify-center gap-2 rounded-sm text-body font-medium transition-all cursor-pointer border border-border bg-surface text-text-secondary hover:border-primary/40 hover:text-primary hover:bg-primary/5 active:scale-[0.97] disabled:opacity-40"
               >
                 {executing === val ? <Loader2 size={18} className="animate-spin" /> : null}
-                {val}
+                {gateValueLabel(val, t)}
               </button>
             ))
           ) : (
@@ -1588,6 +1571,7 @@ function GateDetailContent({
           )}
         </div>
       )}
+      {confirmElement}
     </div>
   );
 }
@@ -1624,3 +1608,17 @@ function SensorDetailContent({
   );
 }
 
+/** « Voir la fiche › » at the foot of an equipment sheet (spec 196, pr9-dashboard). */
+function EquipmentPageLink({ equipmentId }: { equipmentId: string }) {
+  const { t } = useTranslation();
+  if (!useInRouterContext()) return null;
+  return (
+    <Link
+      to={`/equipments/${equipmentId}`}
+      state={equipmentLinkState(t("nav.dashboard"), "/dashboard")}
+      className="flex items-center justify-center min-h-[44px] text-small font-medium text-primary hover:text-primary-hover"
+    >
+      {t("equipments.openPage")} ›
+    </Link>
+  );
+}

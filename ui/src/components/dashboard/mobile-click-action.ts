@@ -6,9 +6,40 @@ import { needsDetailSheet } from "./widget-utils";
 import { resolveWidgetPresentation } from "./presentation/resolveWidgetPresentation";
 
 /**
+ * What a tap on a mobile tile does (spec 196, pr8-geste). The tile draws it as
+ * a corner glyph so a direct toggle never looks like a tile that opens a sheet:
+ * - `toggle`: flips an on/off equipment on the spot;
+ * - `now`: actuates at once, no state to flip (an unguarded gate impulse, a
+ *   recipe tile's single control, a timed tile);
+ * - `sheet`: opens the detail sheet;
+ * - `confirm`: asks for a slide before actuating (spec 146).
+ */
+export type MobileTapKind = "toggle" | "now" | "sheet" | "confirm";
+
+export interface MobileClickAction {
+  kind: MobileTapKind;
+  run: () => void;
+}
+
+/** The corner glyph each gesture is drawn with. */
+export type TapGlyphName = "power" | "chevron" | "shield";
+
+export function tapGlyphOf(kind: MobileTapKind): TapGlyphName {
+  if (kind === "sheet") return "chevron";
+  if (kind === "confirm") return "shield";
+  return "power";
+}
+
+function sheet(onOpenDetail: (() => void) | undefined): MobileClickAction | undefined {
+  // A tile must not advertise a tap that leads nowhere.
+  return onOpenDetail ? { kind: "sheet", run: onOpenDetail } : undefined;
+}
+
+/**
  * Determine the click action for a mobile equipment widget card:
  * detail sheet for complex types, direct toggle for simple on/off ones,
- * confirm sheet for guarded gates (spec 146), nothing otherwise.
+ * confirm sheet for guarded gates (spec 146), nothing otherwise. A disabled
+ * equipment never actuates on a tap (spec 196).
  */
 export function getMobileClickAction(
   widget: DashboardWidget,
@@ -17,11 +48,11 @@ export function getMobileClickAction(
   onExecuteOrder: (equipmentId: string, alias: string, value: unknown) => Promise<void>,
   onOpenDetail?: () => void,
   onConfirmAction?: () => void,
-): (() => void) | undefined {
+): MobileClickAction | undefined {
   const type = equipment.type;
 
   // Complex widgets → open detail sheet
-  if (needsDetailSheet(type)) return onOpenDetail;
+  if (needsDetailSheet(type)) return sheet(onOpenDetail);
 
   // Spec 149 — migrated types: the direct-tap toggle comes from the
   // presentation descriptor, the same source the desktop button uses, so the
@@ -30,8 +61,11 @@ export function getMobileClickAction(
   if (presentation) {
     const toggle = presentation.controls.find((c) => c.kind === "toggle");
     if (!toggle || !equipment.enabled) return undefined;
-    return () => {
-      void onExecuteOrder(equipment.id, toggle.alias, toggle.on ? toggle.offValue : toggle.onValue);
+    return {
+      kind: "toggle",
+      run: () => {
+        void onExecuteOrder(equipment.id, toggle.alias, toggle.on ? toggle.offValue : toggle.onValue);
+      },
     };
   }
 
@@ -48,10 +82,15 @@ export function getMobileClickAction(
       if (!equipment.enabled) return undefined;
       // Spec 146 — guarded gate: open the slide-to-confirm sheet instead of
       // actuating on a single tap (issue #320).
-      if (gateNeedsConfirm(equipment) && onConfirmAction) return onConfirmAction;
-      return () => { void onExecuteOrder(equipment.id, commandBinding.alias, null); };
+      if (gateNeedsConfirm(equipment) && onConfirmAction) {
+        return { kind: "confirm", run: onConfirmAction };
+      }
+      return {
+        kind: "now",
+        run: () => { void onExecuteOrder(equipment.id, commandBinding.alias, null); },
+      };
     }
-    return onOpenDetail;
+    return sheet(onOpenDetail);
   }
 
   // Simple on/off (light_onoff, water_heater, water_valve) → direct toggle
@@ -60,6 +99,9 @@ export function getMobileClickAction(
     type === "water_heater" ||
     type === "water_valve"
   ) {
+    // Spec 196 — the desktop tile already refuses a disabled light; the phone
+    // used to toggle it anyway.
+    if (!equipment.enabled) return undefined;
     const mainRaw = findOrderByCategory(
       equipment.orderBindings,
       ["light_toggle", "pool_pump_toggle", "valve_toggle", "toggle_power"],
@@ -81,10 +123,13 @@ export function getMobileClickAction(
       const isOn = dataBinding
         ? dataBinding.value === true || dataBinding.value === "ON" || dataBinding.value === 1
         : false;
-      return () => {
-        const onVal = stateBinding.enumValues?.find((v) => /^on$/i.test(v)) ?? "ON";
-        const offVal = stateBinding.enumValues?.find((v) => /^off$/i.test(v)) ?? "OFF";
-        void onExecuteOrder(equipment.id, stateBinding.alias, isOn ? offVal : onVal);
+      return {
+        kind: "toggle",
+        run: () => {
+          const onVal = stateBinding.enumValues?.find((v) => /^on$/i.test(v)) ?? "ON";
+          const offVal = stateBinding.enumValues?.find((v) => /^off$/i.test(v)) ?? "OFF";
+          void onExecuteOrder(equipment.id, stateBinding.alias, isOn ? offVal : onVal);
+        },
       };
     }
   }
@@ -93,7 +138,7 @@ export function getMobileClickAction(
   // Spec 168 adds the forecast: the tile qualifies tomorrow, the sheet shows
   // the five days as columns, each with its confidence.
   if (type === "sensor" || type === "weather" || type === "weather_forecast") {
-    return onOpenDetail;
+    return sheet(onOpenDetail);
   }
 
   return undefined;

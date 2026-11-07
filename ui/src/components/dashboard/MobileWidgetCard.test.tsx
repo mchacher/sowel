@@ -247,3 +247,113 @@ describe("MobileWidgetCard — stale power readings (#839)", () => {
     expect(screen.getByText(/Débranché|Unplugged/)).toBeTruthy();
   });
 });
+
+// Spec 196, slice 8a — the thermostat card shows its setpoint, not only the
+// level of its thermometer.
+describe("MobileWidgetCard — thermostat setpoint line", () => {
+  const thermostat = (state: boolean | null) =>
+    makeEquipment({
+      id: "th-1",
+      name: "PAC",
+      type: "thermostat",
+      dataBindings: [
+        { alias: "temperature", value: 21, lastUpdated: agoIso(60) },
+        { alias: "setpoint", value: 20, lastUpdated: agoIso(60) },
+        ...(state === null ? [] : [{ alias: "state", type: "boolean", value: state, lastUpdated: agoIso(60) }]),
+      ] as unknown as EquipmentWithDetails["dataBindings"],
+      orderBindings: [
+        { alias: "setpoint", deviceId: "dev-1", min: 16, max: 30 },
+      ] as unknown as EquipmentWithDetails["orderBindings"],
+    });
+
+  it("reads « temperature → setpoint » when running", () => {
+    render(<MobileWidgetCard widget={{ ...widget, equipmentId: "th-1" }} equipment={thermostat(true)} />);
+    expect(screen.getByText("21.0° → 20.0°")).toBeTruthy();
+  });
+
+  it("says off instead of the setpoint when the thermostat is off", () => {
+    render(<MobileWidgetCard widget={{ ...widget, equipmentId: "th-1" }} equipment={thermostat(false)} />);
+    expect(screen.getByText("21.0° · off")).toBeTruthy();
+  });
+
+  it("reads « — → setpoint » when the setpoint is known and the temperature not", () => {
+    const noTemp = makeEquipment({
+      id: "th-2",
+      name: "PAC",
+      type: "thermostat",
+      dataBindings: [
+        { alias: "setpoint", value: 20, lastUpdated: agoIso(60) },
+      ] as unknown as EquipmentWithDetails["dataBindings"],
+      orderBindings: [
+        { alias: "setpoint", deviceId: "dev-1", min: 20, max: 20 },
+      ] as unknown as EquipmentWithDetails["orderBindings"],
+    });
+    render(<MobileWidgetCard widget={{ ...widget, equipmentId: "th-2" }} equipment={noTemp} />);
+    expect(screen.getByText("\u2014 → 20.0°")).toBeTruthy();
+  });
+
+  it("does not take a thermostat without a run state for off", () => {
+    render(<MobileWidgetCard widget={{ ...widget, equipmentId: "th-1" }} equipment={thermostat(null)} />);
+    expect(screen.getByText("21.0° → 20.0°")).toBeTruthy();
+  });
+});
+
+describe("MobileWidgetCard — tap gesture (spec 196)", () => {
+  const meter = () => makeEnergyMeter();
+
+  it("renders a plain block, no glyph, when a tap does nothing", () => {
+    const { container } = render(<MobileWidgetCard widget={widget} equipment={meter()} />);
+    expect(container.querySelector("button")).toBeNull();
+    expect(container.querySelector(".active\\:scale-\\[0\\.98\\]")).toBeNull();
+    expect(container.querySelector("[data-tap-glyph]")).toBeNull();
+  });
+
+  it.each([
+    ["toggle", "power", "toggle"],
+    ["now", "power", "operate"],
+    ["sheet", "chevron", "open details"],
+    ["confirm", "shield", "operate with confirmation"],
+  ] as const)("%s → %s glyph, and a name that keeps the tile's text before the gesture", (kind, glyph, gesture) => {
+    const { container } = render(
+      <MobileWidgetCard widget={widget} equipment={meter()} onClick={() => {}} tapKind={kind} />,
+    );
+    expect(container.querySelector("[data-tap-glyph]")?.getAttribute("data-tap-glyph")).toBe(glyph);
+    expect(screen.getByRole("button").getAttribute("aria-label")).toBeNull();
+    // Title, state line, then the gesture, in that order.
+    expect(
+      screen.getByRole("button", { name: new RegExp(`^Main meter.*1\\.5\\s?kWh.*800\\s?W, ${gesture}$`) }),
+    ).toBeTruthy();
+  });
+
+  it("shows no glyph in edit mode", () => {
+    const { container } = render(
+      <MobileWidgetCard widget={widget} equipment={meter()} tapKind="sheet" editMode />,
+    );
+    expect(container.querySelector("[data-tap-glyph]")).toBeNull();
+  });
+});
+
+describe("MobileWidgetCard — vehicle report age (spec 196)", () => {
+  it("puts a stale report's age on the state line, not in the corner", () => {
+    const car = makeEquipment({
+      id: "ev-2",
+      name: "Megane",
+      type: "electric_vehicle",
+      dataBindings: [
+        { alias: "battery_level", category: "ev_battery_level", value: 39, lastUpdated: agoIso(7200) },
+        { alias: "range", category: "ev_range", value: 114, lastUpdated: agoIso(7200) },
+        {
+          alias: "charging_state",
+          category: "ev_charging_state",
+          value: "unplugged",
+          lastUpdated: agoIso(7200),
+        },
+      ] as unknown as EquipmentWithDetails["dataBindings"],
+    });
+    const { container } = render(
+      <MobileWidgetCard widget={{ ...widget, equipmentId: "ev-2" }} equipment={car} />,
+    );
+    expect(screen.getByText(/114 km · (Débranché|Unplugged) · 2 h/)).toBeTruthy();
+    expect(container.querySelector(".absolute")).toBeNull();
+  });
+});

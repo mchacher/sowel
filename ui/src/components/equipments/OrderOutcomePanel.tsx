@@ -3,6 +3,8 @@ import { useTranslation } from "react-i18next";
 import { ListChecks, Loader2 } from "lucide-react";
 import { updateEquipment } from "../../api";
 import type { EquipmentWithDetails } from "../../types";
+import { ConfigRow } from "./ConfigRow";
+import { InfoTooltip } from "../InfoTooltip";
 import { isOrderOutcomeTracked } from "../../../../src/shared/order-outcome-tracking";
 
 /**
@@ -13,9 +15,12 @@ import { isOrderOutcomeTracked } from "../../../../src/shared/order-outcome-trac
 export function OrderOutcomePanel({
   equipment,
   onUpdated,
+  defaultOpen = false,
 }: {
   equipment: EquipmentWithDetails;
   onUpdated: () => void;
+  /** Open on arrival; the equipment page keeps its Configuration rows closed. */
+  defaultOpen?: boolean;
 }) {
   const { t } = useTranslation();
   const [saving, setSaving] = useState(false);
@@ -36,11 +41,14 @@ export function OrderOutcomePanel({
   };
 
   return (
-    <div className="card mb-6 p-4">
-      <div className="flex items-center gap-2 mb-1">
-        <ListChecks size={16} strokeWidth={1.5} className="text-text-tertiary" />
-        <h3 className="text-body font-semibold text-text">{t("orderOutcome.setting.title")}</h3>
-        <label className="ml-auto flex items-center gap-2 text-caption text-text-secondary cursor-pointer">
+    <ConfigRow
+      icon={ListChecks}
+      title={t("orderOutcome.setting.title")}
+      summary={t(enabled ? "equipments.summary.enabled" : "equipments.summary.disabled")}
+      defaultOpen={defaultOpen}
+    >
+      <div className="flex items-center gap-2">
+        <label className="flex items-center gap-2 text-small text-text cursor-pointer">
           <input
             type="checkbox"
             checked={enabled}
@@ -49,12 +57,10 @@ export function OrderOutcomePanel({
           />
           {t("equipments.gateConfirm.enable")}
         </label>
-      </div>
-      <p className="text-caption text-text-tertiary flex items-center gap-1.5">
-        {t("orderOutcome.setting.hint")}
+        <InfoTooltip help align="start" text={t("orderOutcome.setting.hint")} label={t("common.help")} />
         {saving && <Loader2 size={12} className="animate-spin text-text-tertiary" />}
-      </p>
+      </div>
       {error && <p className="text-caption text-error mt-2">{error}</p>}
-    </div>
+    </ConfigRow>
   );
 }

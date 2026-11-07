@@ -95,13 +95,15 @@ Le store banne partage la surface de contrôle du volet (même binding `shutter_
 
 Contrôle de chauffage ou de climatisation : climatiseur, poêle à granulés, pompe à chaleur.
 
-- **Contrôles :** Affichage de la température, ajustement de la consigne (+/-), allumage/extinction, mode
+- **Contrôles :** Affichage de la température, consigne (− / +), allumage/extinction, mode
 - **Cœur :** température courante, consigne, état de marche, alimentation, mode de fonctionnement
 - **Extras** (selon le device) : tout le reste, vitesse du ventilateur, ioniseur, profil de poêle…
 
 Un thermostat a un **cœur** et des **extras**. Le cœur est le petit ensemble que tous les thermostats partagent et sur lequel toutes les surfaces de Sowel s'appuient : `temperature`, `setpoint`, `state`, `power`, `operationMode`, plus `outsideTemperature` quand l'unité a une sonde extérieure. Sowel reconnaît un device comme thermostat dès qu'on peut lui donner une consigne, quel que soit le nom de la clé chez le plugin. Tout ce que le device offre en plus (une vitesse de ventilation, un ioniseur, le programme et la remise à zéro d'alarme d'un poêle à granulés, un réglage d'un fabricant que Sowel n'a jamais rencontré) est lié aussi, mais comme **extra** : la carte mène avec le cœur et liste les extras dans une section secondaire, un contrôle par commande liée (des boutons pour un choix, un interrupteur pour un marche/arrêt, un bouton d'action pour un déclenchement, un pas à pas pour un nombre) et une puce par lecture. Les extras varient d'un thermostat à l'autre et ne définissent jamais le type. Le mode de fonctionnement utilise un vocabulaire commun : `auto`, `heat`, `cool`, `dry`, `fan`, et `off` sur les unités dont le mode porte l'arrêt.
 
 Sur un thermostat, l'état marche/arrêt rapporté par le device lui-même est lié sous l'alias `state`, le même alias marche/arrêt que les équipements à relais. C'est important sur un thermostat **sous-compté** (une pompe à chaleur mesurée par une pince) : l'alias `power` y porte la puissance instantanée, et un wattage ne dit pas à l'interface si l'unité est allumée ou en veille. Si la carte du thermostat ne passe jamais à « Marche », ouvrez le panneau des liaisons manquantes de l'équipement et ajoutez la donnée d'alimentation du device : elle est proposée sous `state`. Les thermostats existants dont le booléen est lié directement sous `power` continuent de fonctionner sans changement.
+
+La consigne a les mêmes boutons − / + sur la page de l'équipement, dans les lignes de Maison, sur l'Accueil et dans son panneau sur téléphone, comme les extras numériques d'un thermostat, le courant d'une borne et la limite de charge d'une voiture. La valeur suit chaque toucher tout de suite et un seul ordre part après le dernier : environ 0,6 s plus tard pour un appareil cloud, 0,15 s pour un appareil local. Voir [Accueil](dashboard.md#widget-dequipement).
 
 #### Radiateur
 
@@ -134,6 +136,8 @@ Portail, portail coulissant, ou porte de garage.
 Vous pouvez choisir une icône spécifique pour les portails sur l'Accueil : portail standard, portail coulissant, ou porte de garage.
 
 Un portail peut être piloté par n'importe quel relais on/off : un module contact sec Zigbee (par ex. SONOFF MINI-ZBD), un canal de relais LoRa, ou une télécommande Somfy RTS. Le bouton de commande agit en impulsion ; configurez le comportement d'impulsion (inching / auto-off) sur le module lui-même. Associez un capteur d'ouverture (par ex. SONOFF SNZB-04P) au même équipement pour obtenir l'état ouvert/fermé ; sans capteur, l'état s'affiche comme inconnu.
+
+Un administrateur peut activer la **Confirmation avant action** sur la page de l'équipement du portail. Chaque appui qui ferait bouger le portail demande alors d'abord — sur l'Accueil, dans la vue Maison, dans la liste des Équipements et sur la page de l'équipement, avec un curseur à glisser sur un écran tactile et une boîte de dialogue à la souris. **Arrêter** ne demande jamais rien : l'ordre part tout de suite. Voir [Portails qui demandent confirmation](dashboard.md#gate-confirmation).
 
 #### Porte
 
@@ -320,12 +324,13 @@ Simple interrupteur on/off ou prise connectée.
 
 ### Page de détail
 
-Cliquez sur n'importe quel équipement pour voir sa page de détail :
+Cliquez sur n'importe quel équipement pour voir sa page de détail. Elle met d'abord ce qui sert, et la configuration en dernier :
 
-- **Données live** : toutes les valeurs sont mises à jour en temps réel via WebSocket
-- **Contrôles** : contrôles interactifs adaptés au type d'équipement
-- **Graphique d'historique** : tendances des données dans le temps (si l'historisation est activée)
-- **Configuration** : devices liés, liaisons de données, liaisons d'ordres
+- **Usage** : l'en-tête donne le type et la pièce (« Thermostat · Salon »), puis viennent les contrôles adaptés au type (valeur, consigne, mode, boutons), la commande temporisée quand elle est réglée, les recharges d'une voiture ou d'une borne, et le **graphique d'historique**, ouvert sur la série principale des dernières 24 heures (température d'un thermostat, puissance d'une borne, position d'un volet, batterie d'une voiture). Les réglages fins restent repliés : les **Autres réglages** d'un thermostat (ouverts ou fermés, mémorisé par équipement), les **Détails de la borne**. Le graphique permet toujours de choisir une autre série ou une autre durée.
+- **Énergie** : sur un compteur ou un équipement mesuré, une seule carte avec les cumuls d'énergie et les mesures électriques en direct.
+- **Configuration** (administrateurs) : une carte en bas de page. Chaque réglage y est une ligne repliée qui dit où il en est (« Commande temporisée · Désactivée ») : confirmation avant action, suivi du résultat des ordres, accès partagés, commande temporisée, inversion du sens, déjà compté par, pilotage énergie, actions du bouton, puis les appareils, l'historique et les liaisons. Un **?** à côté d'un réglage l'explique. **Supprimer l'équipement** est au pied de cette carte ; **Modifier** reste dans l'en-tête.
+
+Le lien **Retour** ramène d'où l'on vient : la pièce, l'accueil, un mode, la liste des équipements. Ouverte depuis un lien direct, la page renvoie à la pièce de l'équipement (« Retour à Salon »). La barre latérale et le fil d'Ariane suivent la même règle : la page est rangée sous **Maison › pièce**, et sous Administration seulement quand on l'a ouverte depuis la liste des équipements ou des appareils.
 
 La page charge l'équipement une fois, puis suit ses valeurs en direct sans redemander au serveur. Seul ce premier chargement, ou un **Réessayer**, peut échouer. Si le serveur est occupé ou injoignable à ce moment, la page le dit (« Serveur occupé », « Connexion impossible ») et propose **Réessayer**, sauf si Sowel a déjà l'équipement en main : la page l'affiche alors et le garde à jour, sans message. « Équipement introuvable » veut dire que l'équipement n'existe vraiment pas.
 
@@ -449,7 +454,7 @@ Un équipement désactivé :
 
 ### Supprimer un équipement
 
-La suppression retire l'équipement de Sowel. Les devices sous-jacents ne sont **pas** affectés, ils restent disponibles pour de nouveaux équipements.
+**Supprimer l'équipement** se trouve au pied de la carte **Configuration** de la page de détail. La suppression retire l'équipement de Sowel. Les devices sous-jacents ne sont **pas** affectés, ils restent disponibles pour de nouveaux équipements.
 
 !!! warning
 Supprimer un équipement supprime également toutes les instances de recettes et impacts de mode qui le référencent.

@@ -12,6 +12,7 @@ import { WaterValveControl } from "./WaterValveControl";
 import { VmcControl } from "./VmcControl";
 import { useEquipmentState } from "./useEquipmentState";
 import { TYPE_LABELS } from "./equipment-type-meta";
+import { equipmentLinkState } from "../../lib/equipment-origin";
 
 
 
@@ -71,7 +72,11 @@ export function EquipmentCard({ equipment, onExecuteOrder }: EquipmentCardProps)
       </div>
 
       {/* Info */}
-      <Link to={`/equipments/${equipment.id}`} className="flex-1 min-w-0 hover:opacity-80">
+      <Link
+        to={`/equipments/${equipment.id}`}
+        state={equipmentLinkState(t("nav.equipments"), "/equipments")}
+        className="flex-1 min-w-0 hover:opacity-80"
+      >
         <div className="text-body font-medium text-text truncate">{equipment.name}</div>
         <div className="text-caption text-text-tertiary">
           {t(TYPE_LABELS[equipment.type])}
