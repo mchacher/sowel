@@ -467,7 +467,18 @@ export class RecipeManager {
       { instanceId, recipeId: row.recipe_id, recipeName: enabledRecipeName },
       "Recipe instance enabled",
     );
-    this.eventBus.emit({ type: "recipe.instance.started", instanceId, recipeId: row.recipe_id });
+    // startInstance already emitted `recipe.instance.started` when the runner
+    // came up; emitting it again put the start twice in the activity feed
+    // (#1122). A runner that did not come up (start threw, recipe not
+    // registered, shadow mode) still flipped the enabled flag, so clients are
+    // told to refresh without the feed claiming a start that did not happen.
+    if (!this.running.has(instanceId)) {
+      this.eventBus.emit({
+        type: "recipe.instance.state.changed",
+        instanceId,
+        recipeId: row.recipe_id,
+      });
+    }
   }
 
   disableInstance(instanceId: string): void {
@@ -475,6 +486,7 @@ export class RecipeManager {
     if (!row) throw new RecipeError("Instance not found", 404);
 
     // Always stop in-memory runner even if DB says disabled — prevents orphaned runners
+    const wasRunning = this.running.has(instanceId);
     this.stopInstance(instanceId);
 
     if (row.enabled === 0) return;
@@ -486,7 +498,15 @@ export class RecipeManager {
       { instanceId, recipeId: row.recipe_id, recipeName: disabledRecipeName },
       "Recipe instance disabled",
     );
-    this.eventBus.emit({ type: "recipe.instance.stopped", instanceId, recipeId: row.recipe_id });
+    // Same as enableInstance: stopInstance already emitted
+    // `recipe.instance.stopped` for a running instance (#1122).
+    if (!wasRunning) {
+      this.eventBus.emit({
+        type: "recipe.instance.state.changed",
+        instanceId,
+        recipeId: row.recipe_id,
+      });
+    }
   }
 
   updateInstanceParams(instanceId: string, params: Record<string, unknown>): void {

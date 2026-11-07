@@ -421,6 +421,62 @@ describe("RecipeManager", () => {
     expect(() => manager.createInstance("nonexistent", {})).toThrow("Recipe not found");
   });
 
+  // Issue #1122 — the activity feed showed every disable/enable twice.
+  it("disable then enable emits exactly one stopped and one started", () => {
+    manager.register(TestRecipe);
+    const instance = manager.createInstance("test-recipe", { value: 1 });
+    events.length = 0;
+
+    manager.disableInstance(instance.id);
+    manager.enableInstance(instance.id);
+
+    const lifecycle = events
+      .filter((e) => e.type === "recipe.instance.started" || e.type === "recipe.instance.stopped")
+      .map((e) => e.type);
+    expect(lifecycle).toEqual(["recipe.instance.stopped", "recipe.instance.started"]);
+  });
+
+  it("enabling an instance whose start throws announces a state change, not a start", () => {
+    let failing = false;
+    class FlakyRecipe extends TestRecipe {
+      override readonly id = "flaky-recipe";
+      override start(params: Record<string, unknown>): void {
+        if (failing) throw new Error("boom");
+        super.start(params);
+      }
+    }
+    manager.register(FlakyRecipe);
+    const instance = manager.createInstance("flaky-recipe", { value: 1 });
+    manager.disableInstance(instance.id);
+    failing = true;
+    events.length = 0;
+
+    manager.enableInstance(instance.id);
+
+    expect(events.some((e) => e.type === "recipe.instance.started")).toBe(false);
+    expect(
+      events.some(
+        (e) => e.type === "recipe.instance.state.changed" && e.instanceId === instance.id,
+      ),
+    ).toBe(true);
+  });
+
+  it("disabling an enabled instance that is not running announces a state change, not a stop", () => {
+    manager.register(TestRecipe);
+    const instance = manager.createInstance("test-recipe", { value: 1 });
+    manager.stopAll(); // runner gone, DB row still enabled
+    events.length = 0;
+
+    manager.disableInstance(instance.id);
+
+    expect(events.some((e) => e.type === "recipe.instance.stopped")).toBe(false);
+    expect(
+      events.some(
+        (e) => e.type === "recipe.instance.state.changed" && e.instanceId === instance.id,
+      ),
+    ).toBe(true);
+  });
+
   it("deletes an instance — stops and removes from DB", () => {
     manager.register(TestRecipe);
     const instance = manager.createInstance("test-recipe", { value: 42 });
