@@ -102,12 +102,12 @@ describe("splash gate (#976)", () => {
   });
 
   it("gives the splash its dark background before the bundle runs", () => {
-    expect(run(makeStorage(), { prefersDark: true }).background).toBe("rgb(27, 29, 36)");
+    expect(run(makeStorage(), { prefersDark: true }).background).toBe("rgb(14, 25, 31)"); // dark --n-50, #0E191F
     expect(document.documentElement.classList.contains("dark")).toBe(true);
   });
 
   it("follows an explicit light setting over a dark OS preference", () => {
     const result = run(makeStorage({ sowel_theme: "light" }), { prefersDark: true });
-    expect(result.background).toBe("rgb(250, 250, 250)");
+    expect(result.background).toBe("rgb(236, 242, 247)"); // light --n-50, #ECF2F7
   });
 });

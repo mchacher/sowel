@@ -72,8 +72,8 @@ Rules:
 
 Two themes are supported, both selected via `data-theme` on `<html>`:
 
-- **Hybrid** (`data-theme="hybrid"`, default) — neutral zinc base with Sowel amber accent. Daytime-first.
-- **Dark** (`data-theme="dark"`) — Linear-ish night. Same tokens, inverted neutrals, brighter primary/accent.
+- **Hybrid** (`data-theme="hybrid"`, default) — ocean-tinted neutrals (page `#ECF2F7`, white cards), Sowel amber for what is on. Daytime-first.
+- **Dark** (`data-theme="dark"`) — ocean night: the brand hue at night (page `#0E191F`, cards `#17232B`, lighter than the page). Same tokens, inverted neutrals, brighter primary ink.
 
 All component rules read tokens. **A component never branches on `data-theme`** unless absolutely necessary (e.g. dark-only override of an icon-on color contrast — see `eq__icon--light-on`). When such an override is unavoidable, the spec for that component documents it.
 

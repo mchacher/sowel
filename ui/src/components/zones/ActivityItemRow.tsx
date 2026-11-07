@@ -143,7 +143,7 @@ function CategoryIcon({
   }
   if (category === "motion") {
     return (
-      <div className="w-6 h-6 rounded-[4px] flex items-center justify-center flex-shrink-0 bg-[var(--info-50)] text-[var(--info-500)]">
+      <div className="w-6 h-6 rounded-[4px] flex items-center justify-center flex-shrink-0 bg-info/10 text-info">
         <PersonStanding size={12} strokeWidth={2} />
       </div>
     );

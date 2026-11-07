@@ -13,7 +13,7 @@ The Sowel signature color. Used for navigation active states, links, focus rings
 
 | Token            | Hybrid        | Dark          | Usage                                                          |
 | ---------------- | ------------- | ------------- | -------------------------------------------------------------- |
-| `--p-50`         | `#EEF5F8`     | `#1A2A38`     | sidebar item hover/active bg, panel head bg, focus halo        |
+| `--p-50`         | `#EEF5F8`     | `#1D303D`     | sidebar item hover/active bg, panel head bg, focus halo        |
 | `--p-100`        | `#D9E7EF`     | `#243B4E`     | panel head border-bottom, subtle separator                     |
 | `--p-500`        | **`#1A4F6E`** | **`#5BA5CC`** | ink: links, icons, selected text, logo                         |
 | `--p-600`        | `#144159`     | `#82BCDD`     | ink hover (`hover:text-primary-hover`)                         |
@@ -21,6 +21,7 @@ The Sowel signature color. Used for navigation active states, links, focus rings
 | `--p-fill`       | `#1A4F6E`     | **`#2B7299`** | fill: primary button, selected segment, checked box, switch on |
 | `--p-fill-hover` | `#144159`     | `#276B8F`     | fill hover                                                     |
 | `--p-on`         | `#FFFFFF`     | `#FFFFFF`     | text and icons on the fill                                     |
+| `--p-mid`        | `#7FB8D4`     | `#7FB8D4`     | logo mid-blue (smile, eyes), soft border of a selection header |
 
 **Fill and ink are two roles** (spec 196, slice 4b). In light they are the same ocean; in dark the ink turns light blue so links and icons read on the night surface, while the fill stays a deep ocean that white text reads on (5.29:1, 5.86:1 hovered; the light blue under white was 2.73:1). In components: `bg-primary-fill text-white hover:bg-primary-fill-hover` for anything that carries text or an icon, `border-primary-fill` on a checked box; `bg-primary` only for a dot, a bar or a line, never under text. `color-roles.test.ts` fails on `bg-primary` with `text-white` and on `bg-primary-hover`.
 
@@ -31,19 +32,19 @@ One colour, one meaning (spec 196). Use the Tailwind role, never a raw hue. Ever
 | Role (Tailwind) | Meaning                                            | Hybrid        | Dark          | Key ratios (hybrid / dark)                    |
 | --------------- | -------------------------------------------------- | ------------- | ------------- | --------------------------------------------- |
 | `active`        | on or running now: fill, icon in a tile            | **`#F2C035`** | **`#F2BC6E`** | never alone as text or icon on light (1.70)   |
-| `active-ink`    | the word or value of something on                  | `#8A6100`     | `#F2BC6E`     | 5.54 on white, 5.12 on `active-bg` / 10.30    |
+| `active-ink`    | the word or value of something on                  | `#8A6100`     | `#F2BC6E`     | 5.54 on white, 5.12 on `active-bg` / 9.30     |
 | `active-bg`     | tinted pill of something on                        | `#FFF6D6`     | `#332715`     | —                                             |
 | `on-active`     | content on an amber fill (never white)             | `#1C1A14`     | `#1C1A14`     | 10.24 / 10.10                                 |
-| `warning`       | needs attention: dot, fill, icon                   | `#E8730C`     | `#F99549`     | 3.05 on white / 7.96                          |
-| `warning-ink`   | needs attention, in words                          | `#A85500`     | `#F99549`     | 5.30 on white, 4.77 on `warning/10` / 7.96    |
-| `success`       | works as expected: connected, done, mode active    | `#13794A`     | `#3DDB89`     | 5.44 on white, 4.74 on `success/10` / 9.88    |
-| `error`         | fault, failure, offline, leak, destructive action  | `#B42318`     | `#F97066`     | 6.57 on white, 5.58 on `error/10` / 6.37      |
+| `warning`       | needs attention: dot, fill, icon                   | `#E8730C`     | `#F99549`     | 3.05 on white / 7.18                          |
+| `warning-ink`   | needs attention, in words                          | `#A85500`     | `#F99549`     | 5.30 on white, 4.77 on `warning/10` / 7.18    |
+| `success`       | works as expected: connected, done, mode active    | `#13794A`     | `#3DDB89`     | 5.44 on white, 4.74 on `success/10` / 8.91    |
+| `error`         | fault, failure, offline, leak, destructive action  | `#B42318`     | `#F97066`     | 6.57 on white, 5.58 on `error/10` / 5.75      |
 | `heat`          | heating now (alias of `error`, may diverge later)  | = `error`     | = `error`     | = `error`                                     |
-| `on-status`     | text on a `success`, `error` or `warning-ink` fill | `#FFFFFF`     | `#16181E`     | 5.30–6.57 / 6.37–9.88                         |
-| `info`          | informational: icon, fill                          | `#247EB5`     | `#5DA8F0`     | 4.44 on white (graphic) / 7.03                |
-| `info-ink`      | informational, in words: humidity, contacts        | `#1D6A9A`     | `#5DA8F0`     | 5.87 on white, 5.17 on `info/10` / 6.04       |
-| `primary-fill`  | primary button, selected segment, switch on        | `#1A4F6E`     | `#2B7299`     | white on it 8.80 / 5.29; 3.35 on dark surface |
-| `illu`          | dashboard illustration at rest                     | `#1A4F6E`     | `#7FB8D4`     | 8.80 / 8.20 on the surface                    |
+| `on-status`     | text on a `success`, `error` or `warning-ink` fill | `#FFFFFF`     | `#0E191F`     | 5.30–6.57 / 6.40–9.93                         |
+| `info`          | informational: icon, fill                          | `#247EB5`     | `#5DA8F0`     | 4.44 on white (graphic) / 6.35                |
+| `info-ink`      | informational, in words: humidity, contacts        | `#1D6A9A`     | `#5DA8F0`     | 5.87 on white, 5.17 on `info/10` / 5.37       |
+| `primary-fill`  | primary button, selected segment, switch on        | `#1A4F6E`     | `#2B7299`     | white on it 8.80 / 5.29; 3.03 on dark surface |
+| `illu`          | dashboard illustration at rest                     | `#1A4F6E`     | `#7FB8D4`     | 8.80 / 7.40 on the surface                    |
 
 Who may use what:
 
@@ -67,29 +68,41 @@ Raw amber scale (for fills and the tokens above; use the roles in components):
 | `--a-ink` | `#8A6100`     | `#F2BC6E`     | `active-ink`                                |
 | `--a-on`  | `#1C1A14`     | `#1C1A14`     | `on-active`                                 |
 
-Native controls (checkboxes, radios, selects, date pickers, scrollbars) follow the theme through `color-scheme` and `accent-color: var(--color-primary)` in `ui/src/index.css`; no `accent-*` class is needed. Switches use the shared `ui/src/components/ui/Switch.tsx`: off has a visible outline (`text-tertiary`, 4.83:1) and a grey thumb, on is a `primary-fill` track (white thumb 5.29:1 in dark).
+Native controls (checkboxes, radios, selects, date pickers, scrollbars) follow the theme through `color-scheme` and `accent-color: var(--color-primary)` in `ui/src/index.css`; no `accent-*` class is needed. Switches use the shared `ui/src/components/ui/Switch.tsx`: off has a visible outline (`text-tertiary`, 5.37:1) and a grey thumb, on is a `primary-fill` track (white thumb 5.29:1 in dark).
 
-### 1.3 Neutrals — zinc scale
+### 1.3 Neutrals — ocean-tinted
 
-The neutral scale carries 95% of the UI. It is calibrated so that:
+The neutral scale carries 95% of the UI (spec 196, slice 7a). It is generated in OKLCH on the brand hue (238.5°): each step keeps the lightness of the old Tailwind zinc step it replaces, so the contrasts stay where they were, and the chroma fades towards both ends. Light has a faint blue cast; dark is the **ocean night**, the same hue at night.
 
-- `--n-25` and `--n-50` look distinct against pure white (`--n-0`) for sub-cat headers
-- `--n-700` is the body text default
-- `--n-400`–`--n-500` are for secondary text / meta
+- The page is `--n-50` (`bg-background`), the cards are `--n-0` (`bg-surface`). Cards are lighter than the page in **both** themes (1.13:1 light, 1.11:1 dark): in dark the elevation is a lighter tone, not a shadow.
+- `--n-25` is a pale blue band inside a white card in light (Maison category headers); in dark it equals the page, so the same band reads as a well.
+- `--n-700` is the body text, `--n-600` the secondary text, `--n-400` the tertiary text.
 
 | Token     | Hybrid    | Dark      | Common usage                            |
 | --------- | --------- | --------- | --------------------------------------- |
-| `--n-0`   | `#FFFFFF` | `#16181E` | card backgrounds, modal body            |
-| `--n-25`  | `#FAFAFA` | `#1B1D24` | sub-cat header bg, hover row bg         |
-| `--n-50`  | `#F4F4F5` | `#1F2128` | page background, off-state icon bg      |
-| `--n-100` | `#E9E9EB` | `#262931` | slider track, off-state pill bg         |
-| `--n-200` | `#D4D4D8` | `#363941` | dividers between strip pills            |
-| `--n-300` | `#A1A1AA` | `#52565F` | inactive dot, expand chevron            |
-| `--n-400` | `#71717A` | `#8A8E97` | meta text, table column header          |
-| `--n-500` | `#52525B` | `#9CA0AA` | sidebar item text default, icon strokes |
-| `--n-600` | `#3F3F46` | `#C7C9CF` | hover text, button icon                 |
-| `--n-700` | `#27272A` | `#E2E3E7` | body text default                       |
-| `--n-800` | `#18181B` | `#F4F5F8` | titles, values, emphasis                |
+| `--n-0`   | `#FFFFFF` | `#17232B` | card surface, sidebar, top bar, modal   |
+| `--n-25`  | `#F6FAFC` | `#0E191F` | sub-cat header bg, hover row bg         |
+| `--n-50`  | `#ECF2F7` | `#0E191F` | page background, off-state icon bg      |
+| `--n-100` | `#E0E8ED` | `#212D35` | slider track, off-state pill bg         |
+| `--n-200` | `#CCD5DB` | `#303C45` | dividers between strip pills            |
+| `--n-300` | `#9AA4AB` | `#515D65` | inactive dot, expand chevron (no text)  |
+| `--n-400` | `#626C73` | `#939DA4` | tertiary text: meta, table column head  |
+| `--n-500` | `#4A545B` | `#A8B1B7` | sidebar item text default, icon strokes |
+| `--n-600` | `#394249` | `#C9CFD3` | secondary text, button icon             |
+| `--n-700` | `#21282D` | `#E4E8EB` | body text default                       |
+| `--n-800` | `#11171B` | `#F1F4F6` | titles, values, emphasis                |
+
+Text on the card surface and on the page, as checked by `color-roles.test.ts` (≥ 4.5:1 for all three):
+
+| Text                     | Hybrid surface / page | Dark surface / page |
+| ------------------------ | --------------------- | ------------------- |
+| `text` (`--n-700`)       | 14.94 / 13.24         | 12.99 / 14.47       |
+| `text-secondary` (n-600) | 10.25 / 9.08          | 10.18 / 11.34       |
+| `text-tertiary` (n-400)  | 5.37 / 4.76           | 5.79 / 6.45         |
+
+Before slice 7a the tertiary text failed on the page in both themes (4.40 light, 4.37 dark) and the dark cards (`#16181E`) were darker than the page. The selection tint `--p-50` moved to `#1D303D` in dark: the old `#1A2A38` was 1.09:1 on the new surface, invisible; the new one is 1.18:1, with the primary ink on it at 4.99:1. In light `--p-50` (`#EEF5F8`) is 1.10:1 on a card but 1.02:1 on the page, so a selection always sits on a card or the sidebar, never on the bare page.
+
+The PWA splash (`ui/index.html`), the dark `theme-color` and the manifest `background_color` (`ui/vite.config.ts`) take the page colour `--n-50` of each theme; the test checks they match.
 
 ### 1.4 Semantic colors
 
@@ -139,8 +152,8 @@ A part painted "white" in light (valve body, pipe) takes `var(--color-surface)`,
 
 | Token      | Hybrid               | Dark                    | Usage                                                     |
 | ---------- | -------------------- | ----------------------- | --------------------------------------------------------- |
-| `--line`   | `rgba(24,24,27,.08)` | `rgba(255,255,255,.06)` | row dividers, panel borders, dividers between strip pills |
-| `--line-2` | `rgba(24,24,27,.14)` | `rgba(255,255,255,.14)` | group dividers (stronger), modal section breaks           |
+| `--line`   | `rgba(17,23,27,.08)` | `rgba(255,255,255,.06)` | row dividers, panel borders, dividers between strip pills |
+| `--line-2` | `rgba(17,23,27,.14)` | `rgba(255,255,255,.14)` | group dividers (stronger), modal section breaks           |
 
 ---
 

@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
     <!-- Palette (spec 196, 4b): ocean bar in light, the night page in dark. -->
     <meta name="theme-color" content="#1A4F6E" media="(prefers-color-scheme: light)" />
-    <meta name="theme-color" content="#1B1D24" media="(prefers-color-scheme: dark)" />
+    <meta name="theme-color" content="#0E191F" media="(prefers-color-scheme: dark)" />
     <meta name="color-scheme" content="light dark" />
     <meta name="mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-capable" content="yes" />
@@ -20,10 +20,10 @@
     <!-- Decides before first paint whether this load gets the splash (#976) -->
     <script src="/splash.js"></script>
     <style>
-      /* Page colours of design-system/tokens.css (--n-25 light and dark) and the
-         logo blues: the dark splash draws the house in the dark primary ink. */
-      #splash{position:fixed;inset:0;display:flex;align-items:center;justify-content:center;background:#FAFAFA;z-index:9999;transition:opacity .4s ease-out}
-      .dark #splash{background:#1B1D24}
+      /* Page colours of design-system/tokens.css (--n-50 light and dark, slice 7a)
+         and the logo blues: the dark splash draws the house in the dark primary ink. */
+      #splash{position:fixed;inset:0;display:flex;align-items:center;justify-content:center;background:#ECF2F7;z-index:9999;transition:opacity .4s ease-out}
+      .dark #splash{background:#0E191F}
       .dark #splash .splash-ink{stroke:#5BA5CC}
       .dark #splash text.splash-ink{stroke:none;fill:#5BA5CC}
       .no-splash #splash{display:none}

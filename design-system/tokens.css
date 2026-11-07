@@ -17,6 +17,9 @@
      white (p-on). The two are the same ocean in light; in dark the ink goes
      light (#5BA5CC) and the fill stays a deep ocean that white text reads on. */
   --p-fill:#1A4F6E; --p-fill-hover:#144159; --p-on:#FFFFFF;
+  /* Logo mid-blue (the smile and eyes of SowelLogo), also a soft primary
+     border on a selection header. Same value in both themes. */
+  --p-mid:#7FB8D4;
 
   /* Amber — means "on or running right now" and nothing else (spec 196).
      a-500 is the fill and the icon colour; a-ink is the text variant (never
@@ -25,9 +28,12 @@
   --a-50:#FFF6D6;  --a-100:#FCE89A; --a-500:#F2C035; --a-600:#D4A41C;
   --a-ink:#8A6100; --a-on:#1C1A14;
 
-  /* Neutrals — zinc scale, drives backgrounds, borders, text */
-  --n-0:#FFFFFF;   --n-25:#FAFAFA;  --n-50:#F4F4F5;  --n-100:#E9E9EB; --n-200:#D4D4D8;
-  --n-300:#A1A1AA; --n-400:#71717A; --n-500:#52525B; --n-600:#3F3F46; --n-700:#27272A; --n-800:#18181B;
+  /* Neutrals — ocean-tinted (spec 196, slice 7a): generated in OKLCH on the
+     brand hue (238.5°), lightness of the old zinc steps, chroma fading at both
+     ends. n-0 is the card surface, n-50 the page, n-400 the tertiary text
+     (≥ 4.5:1 on both). Ratios: ui/src/lib/color-roles.test.ts. */
+  --n-0:#FFFFFF;   --n-25:#F6FAFC;  --n-50:#ECF2F7;  --n-100:#E0E8ED; --n-200:#CCD5DB;
+  --n-300:#9AA4AB; --n-400:#626C73; --n-500:#4A545B; --n-600:#394249; --n-700:#21282D; --n-800:#11171B;
 
   /* Semantic colors — one token each for success and error (a darkened green
      or red stays a good dot); orange keeps a bright fill (500) and a text
@@ -62,8 +68,8 @@
   --media-50:#EAE9F2;    --media-500:#5759A5;
 
   /* Borders / dividers */
-  --line:rgba(24,24,27,.08);
-  --line-2:rgba(24,24,27,.14);
+  --line:rgba(17,23,27,.08);
+  --line-2:rgba(17,23,27,.14);
 
   /* Shadows (elevation scale: 1=subtle, 2=card hover, 3=modal) */
   --sh-1: 0 1px 2px rgba(15,42,60,.04), 0 1px 3px rgba(15,42,60,.06);
@@ -71,16 +77,19 @@
   --sh-3: 0 24px 56px -16px rgba(15,42,60,.14);
 }
 
-/* ── Theme 2: DARK (Linear-ish night) ──
+/* ── Theme 2: DARK (ocean night, spec 196 slice 7a) ──
+   The same ocean hue as the light neutrals. Cards (n-0) are lighter than
+   the page (n-50): elevation reads as tone, not as a darker hole. n-25 is
+   the page colour too, so a band painted n-25 inside a card is a well.
    Note: also matches the `.dark` class for compatibility with apps that
    toggle dark mode via a class on <html> (e.g. ui/src/theme.ts). */
 [data-theme="dark"], .dark {
-  --p-50:#1A2A38;  --p-100:#243B4E; --p-500:#5BA5CC; --p-600:#82BCDD; --p-700:#A8CEE6;
+  --p-50:#1D303D;  --p-100:#243B4E; --p-500:#5BA5CC; --p-600:#82BCDD; --p-700:#A8CEE6;
   --p-fill:#2B7299; --p-fill-hover:#276B8F;
   --a-50:#332715;  --a-100:#5C3F1A; --a-500:#F2BC6E; --a-600:#FFCF8C;
   --a-ink:#F2BC6E; --a-on:#1C1A14;
-  --n-0:#16181E;   --n-25:#1B1D24;  --n-50:#1F2128;  --n-100:#262931; --n-200:#363941;
-  --n-300:#52565F; --n-400:#8A8E97; --n-500:#9CA0AA; --n-600:#C7C9CF; --n-700:#E2E3E7; --n-800:#F4F5F8;
+  --n-0:#17232B;   --n-25:#0E191F;  --n-50:#0E191F;  --n-100:#212D35; --n-200:#303C45;
+  --n-300:#515D65; --n-400:#939DA4; --n-500:#A8B1B7; --n-600:#C9CFD3; --n-700:#E4E8EB; --n-800:#F1F4F6;
   --green-50:#0F2A1E; --green-500:#3DDB89; --green-700:#9AF0C6;
   --info-50:#0F1F33;  --info-500:#5DA8F0; --info-700:#5DA8F0;
   /* Illustrations: logo blue strokes, night fills; no brightness filter. */
@@ -88,7 +97,7 @@
   --illu-water:#5DA8F0;
   --orange-50:#2D2422; --orange-500:#F99549; --orange-700:#F99549;
   --red-50:#2E1614;   --red-500:#F97066;
-  --on-status:#16181E;
+  --on-status:#0E191F;
   /* Energy palette (spec 148) — brightened for dark surfaces */
   --solar-injection:#3DA855; --solar-auto:#74C77F; --solar-production:#57BE6C;
   --energy-hp:#6E93EE; --energy-hc:#5E7FC0; --energy-grid:#7E93C0;

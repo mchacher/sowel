@@ -107,9 +107,19 @@ const PAIRS: [string, string, number][] = [
   // Off switch: its outline on the surface, its thumb on its track.
   ["text-tertiary", "surface", GRAPHIC],
   ["text-tertiary", "n-100", GRAPHIC],
-  // Tertiary text on the page (AppLayout paints n-25): 4.37:1 in dark before
-  // n-400 moved to #8A8E97 (slice 4b).
+  // Neutral text on the card surface and on the page (slice 7a). Tertiary
+  // was 4.40:1 on the light page and 4.37:1 on the dark one before.
+  ["text", "surface", TEXT],
+  ["text", "background", TEXT],
+  ["text-secondary", "surface", TEXT],
+  ["text-secondary", "background", TEXT],
+  ["text-tertiary", "surface", TEXT],
+  ["text-tertiary", "background", TEXT],
+  // n-25: the category band inside a Maison card.
   ["text-tertiary", "n-25", TEXT],
+  // Selection (primary-light, p-50): the sidebar entry, panel heads.
+  ["primary", "primary-light", TEXT],
+  ["text-tertiary", "primary-light", TEXT],
   // Informational (humidity, contacts): text on its tinted pill.
   ["info-ink", "surface", TEXT],
   ["info-ink", "background", TEXT],
@@ -169,7 +179,38 @@ describe("colour role tokens", () => {
     for (const token of ["--illu-ink-2", "--illu-fill", "--illu-fill-2", "--illu-water"]) {
       expect(hex("dark", token)).not.toBe(hex("light", token));
     }
-    expect(hex("dark", "--n-400")).toBe("#8A8E97");
+  });
+
+  it("binds the ocean neutrals (slice 7a)", () => {
+    expect(hex("light", "--n-50")).toBe("#ECF2F7");
+    expect(hex("light", "--n-400")).toBe("#626C73");
+    expect(hex("dark", "--n-0")).toBe("#17232B");
+    expect(hex("dark", "--n-50")).toBe("#0E191F");
+    expect(hex("dark", "--p-50")).toBe("#1D303D");
+    expect(themeColor("primary-mid")).toBe("--p-mid");
+  });
+
+  it.each(["light", "dark"] as Theme[])("lifts the cards off the page in %s", (theme) => {
+    const surface = resolve(theme, "surface");
+    const page = resolve(theme, "background");
+    expect(ratio(surface, page)).toBeGreaterThanOrEqual(1.1);
+    // Elevation reads as a lighter card in both themes; the dark cards were
+    // darker than the page before slice 7a.
+    expect(luminance(surface)).toBeGreaterThan(luminance(page));
+  });
+
+  it("keeps the dark selection visible on a card", () => {
+    // #1A2A38 was 1.09:1 on the new surface, the same colour to the eye.
+    expect(ratio(resolve("dark", "primary-light"), resolve("dark", "surface"))).toBeGreaterThanOrEqual(1.15);
+  });
+
+  it("paints the splash and the dark browser bar with the page colour", () => {
+    const html = readFileSync(new URL("../../index.html", import.meta.url), "utf8");
+    const vite = readFileSync(new URL("../../vite.config.ts", import.meta.url), "utf8");
+    expect(html).toContain(`#splash{position:fixed;inset:0;display:flex;align-items:center;justify-content:center;background:${hex("light", "--n-50")}`);
+    expect(html).toContain(`.dark #splash{background:${hex("dark", "--n-50")}}`);
+    expect(html).toContain(`<meta name="theme-color" content="${hex("dark", "--n-50")}" media="(prefers-color-scheme: dark)" />`);
+    expect(vite).toContain(`background_color: "${hex("light", "--n-50")}"`);
   });
 
   it("defines info as a role in both themes", () => {

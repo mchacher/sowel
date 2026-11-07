@@ -17,7 +17,7 @@
 @theme {
   /* Colors — resolved from design-system/tokens.css */
   --color-primary:        var(--p-500);
-  --color-primary-mid:    #7FB8D4; /* dedicated logo mid-blue (smile/eyes) — not in design-system scale */
+  --color-primary-mid:    var(--p-mid); /* logo mid-blue (smile/eyes), soft selection border */
   --color-primary-light:  var(--p-50);
   --color-primary-hover:  var(--p-600);
   /* Primary fill (spec 196, slice 4b): the background of a button, selected

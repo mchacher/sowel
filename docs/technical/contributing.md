@@ -254,7 +254,7 @@ When adding or modifying UI components, follow these design tokens:
 | **Monospace font** | JetBrains Mono: logs, JSON, identifiers, versions, code                        |
 | **Numbers**        | Inter with `tabular-nums` (fixed-width digits), not mono                       |
 | **Labels**         | Sentence case; uppercase only in table column headers                          |
-| **Primary color**  | `#1A4F6E` (ocean blue), hover: `#13405A`, light: `#E6F0F6`                     |
+| **Primary color**  | `#1A4F6E` (ocean blue), hover: `#144159`, light: `#EEF5F8`                     |
 | **Colour roles**   | Amber `#F2C035` = on or running only; others in `design-system/tokens.md` §1.2 |
 | **Spacing base**   | 4px                                                                            |
 | **Border radius**  | 6px (buttons), 10px (cards), 14px (modals)                                     |

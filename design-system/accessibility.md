@@ -61,14 +61,14 @@ Computed (WCAG 2.x relative luminance, sRGB), not read off a checker. Translucen
 
 | Text on background                                    | Ratio   | WCAG                                  |
 | ----------------------------------------------------- | ------- | ------------------------------------- |
-| `--n-700` (`#27272A`) on `--n-0` (`#FFFFFF`)          | 14.89:1 | AAA                                   |
-| `--n-700` on `--n-25` (`#FAFAFA`)                     | 14.27:1 | AAA                                   |
-| `--n-700` on `--n-50` (`#F4F4F5`)                     | 13.55:1 | AAA                                   |
-| `--n-600` (`#3F3F46`) on `--n-0`                      | 10.44:1 | AAA                                   |
-| `--n-500` (`#52525B`) on `--n-0`                      | 7.73:1  | AAA                                   |
-| `--n-400` (`#71717A`) on `--n-0`                      | 4.83:1  | AA                                    |
-| `--n-400` on `--n-25`                                 | 4.63:1  | AA                                    |
-| `--n-400` on `--n-50` (page background)               | 4.40:1  | ❌ **fail** — neutrals work, spec 196 |
+| `--n-700` (`#21282D`) on `--n-0` (`#FFFFFF`)          | 14.94:1 | AAA                                   |
+| `--n-700` on `--n-25` (`#F6FAFC`)                     | 14.22:1 | AAA                                   |
+| `--n-700` on `--n-50` (`#ECF2F7`, page background)    | 13.24:1 | AAA                                   |
+| `--n-600` (`#394249`) on `--n-0`                      | 10.25:1 | AAA                                   |
+| `--n-500` (`#4A545B`) on `--n-0`                      | 7.75:1  | AAA                                   |
+| `--n-400` (`#626C73`) on `--n-0`                      | 5.37:1  | AA                                    |
+| `--n-400` on `--n-25`                                 | 5.11:1  | AA                                    |
+| `--n-400` on `--n-50` (page background)               | 4.76:1  | AA (4.40:1 before spec 196, slice 7a) |
 | `--p-500` (`#1A4F6E`) on `--n-0`                      | 8.80:1  | AAA                                   |
 | `--p-500` on `--p-50` (`#EEF5F8`)                     | 7.98:1  | AAA                                   |
 | `--green-700` (`#0E6B3F`) on `--green-50` (`#E6F7EE`) | 5.92:1  | AA                                    |
@@ -88,13 +88,13 @@ The values before spec 196, for the record: `--red-500` `#C7522E` was 4.49:1 on 
 
 | Element                                         | Foreground | Background | Ratio  | Verdict                                              |
 | ----------------------------------------------- | ---------- | ---------- | ------ | ---------------------------------------------------- |
-| Icon strokes `--n-500` on `--n-0`               | `#52525B`  | `#FFFFFF`  | 7.73:1 | AAA                                                  |
-| Border `--line` (rgba(24,24,27,.08)) on `--n-0` | computed   | `#FFFFFF`  | ~1.2:1 | ❌ — but borders are decorative, not required for AA |
+| Icon strokes `--n-500` on `--n-0`               | `#4A545B`  | `#FFFFFF`  | 7.75:1 | AAA                                                  |
+| Border `--line` (rgba(17,23,27,.08)) on `--n-0` | computed   | `#FFFFFF`  | ~1.2:1 | ❌ — but borders are decorative, not required for AA |
 | Border `--line-2` on `--n-0`                    | computed   | `#FFFFFF`  | ~1.4:1 | ❌ — same caveat                                     |
-| Slider track `--n-100` on `--n-0`               | `#E9E9EB`  | `#FFFFFF`  | 1.21:1 | acceptable (decorative)                              |
+| Slider track `--n-100` on `--n-0`               | `#E0E8ED`  | `#FFFFFF`  | 1.24:1 | acceptable (decorative)                              |
 | `warning` dot or icon on `--n-0`                | `#E8730C`  | `#FFFFFF`  | 3.05:1 | AA (graphic)                                         |
-| Switch off: outline `--n-400` on `--n-0`        | `#71717A`  | `#FFFFFF`  | 4.83:1 | AA (graphic)                                         |
-| Switch off: thumb `--n-400` on track `--n-100`  | `#71717A`  | `#E9E9EB`  | 3.99:1 | AA (graphic); dark 3.78:1                            |
+| Switch off: outline `--n-400` on `--n-0`        | `#626C73`  | `#FFFFFF`  | 5.37:1 | AA (graphic)                                         |
+| Switch off: thumb `--n-400` on track `--n-100`  | `#626C73`  | `#E0E8ED`  | 4.33:1 | AA (graphic); dark 5.10:1                            |
 
 WCAG 1.4.11 applies to **meaningful** non-text elements. Decorative borders are exempt. If a border carries meaning (e.g. the green `.mode-row--active` left border), it meets 3:1 minimum.
 

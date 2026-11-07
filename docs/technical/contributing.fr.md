@@ -260,7 +260,7 @@ Quand vous ajoutez ou modifiez des composants UI, suivez ces design tokens :
 | **Police mono**           | JetBrains Mono : logs, JSON, identifiants, versions, code                                     |
 | **Nombres**               | Inter avec `tabular-nums` (chiffres à chasse fixe), pas mono                                  |
 | **Libellés**              | Casse de phrase ; majuscules seulement en tête de tableau                                     |
-| **Couleur primaire**      | `#1A4F6E` (ocean blue), hover : `#13405A`, light : `#E6F0F6`                                  |
+| **Couleur primaire**      | `#1A4F6E` (ocean blue), hover : `#144159`, light : `#EEF5F8`                                  |
 | **Rôles de couleur**      | Ambre `#F2C035` = allumé ou en marche seulement ; les autres : `design-system/tokens.md` §1.2 |
 | **Espacement de base**    | 4px                                                                                           |
 | **Border radius**         | 6px (boutons), 10px (cartes), 14px (modales)                                                  |

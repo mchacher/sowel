@@ -104,7 +104,7 @@ export function HomeSetupWizard() {
   };
 
   return (
-    <div className="fixed inset-0 z-[100] bg-[var(--n-25)] flex items-center justify-center p-4 overflow-y-auto">
+    <div className="fixed inset-0 z-[100] bg-background flex items-center justify-center p-4 overflow-y-auto">
       <div className="bg-surface rounded-[14px] border border-border max-w-md w-full p-6 my-auto shadow-lg">
         <div className="flex items-center gap-3 mb-4">
           <SowelLogo size={32} />

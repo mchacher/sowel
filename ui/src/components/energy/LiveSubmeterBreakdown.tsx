@@ -26,7 +26,7 @@ import { SectionHeader } from "./SectionHeader";
 import { useStalenessClock } from "../../hooks/useStalenessClock";
 
 const HOUSE_COLOR = "#4F7BE8"; // matches HP_COLOR in LiveEnergyPage
-const OTHER_COLOR = "#A1A1AA"; // var(--n-300), neutral grey
+const OTHER_COLOR = "#9AA4AB"; // light --n-300, neutral grey (one value for both themes)
 
 const RADIUS = 72;
 const STROKE = 22;
