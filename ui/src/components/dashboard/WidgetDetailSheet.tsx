@@ -8,8 +8,6 @@ import {
   ChevronLeft,
   ChevronRight,
   Square,
-  Minus,
-  Plus,
   Flame,
   Snowflake,
   Lightbulb,
@@ -33,6 +31,9 @@ import { ElectricVehicleControl } from "../equipments/ElectricVehicleControl";
 import { allSupportStop } from "../../lib/binding-utils";
 import { thermostatPowerStateBinding } from "../../lib/thermostat-state";
 import { useSliderOverride } from "../../hooks/useSliderOverride";
+import { useSetpointCommitDelay } from "../../hooks/useSetpointCommit";
+import { SetpointStepper } from "../equipments/SetpointStepper";
+import { resolveSetpoint, zoneSetpointBounds } from "../equipments/setpoint";
 import { SensorValues } from "../equipments/SensorValues";
 import {
   formatSensorValue,
@@ -848,13 +849,14 @@ function ZoneHeatingDetail({
 }: {
   equipments: EquipmentWithDetails[];
   commandLoading: string | null;
-  onCommand: (orderKey: string, value?: unknown) => void;
+  onCommand: (orderKey: string, value?: unknown) => void | Promise<void>;
 }) {
   const { t } = useTranslation();
-  const setpointOverride = useSliderOverride(5000);
-  const SETPOINT_MIN = 16;
-  const SETPOINT_MAX = 30;
-  const STEP = 0.5;
+  // Spec 196, slice 8a: bounds from the zone's thermostats, one order after
+  // the last tap, flushed if the sheet closes first.
+  const bounds = zoneSetpointBounds(equipments);
+  const commitDelay = useSetpointCommitDelay(equipments);
+  const [shownSetpoint, setShownSetpoint] = useState<number | null>(null);
 
   const { avgTemp, avgSetpoint, anyOn } = useMemo(() => {
     const temps: number[] = [];
@@ -873,18 +875,10 @@ function ZoneHeatingDetail({
     return { avgTemp: avg(temps), avgSetpoint: avg(setpoints), anyOn: on };
   }, [equipments]);
 
-  const displaySetpoint = setpointOverride.displayValue(avgSetpoint);
+  const displaySetpoint = shownSetpoint ?? avgSetpoint;
   const thermometerLevel = displaySetpoint !== null
-    ? (displaySetpoint - SETPOINT_MIN) / (SETPOINT_MAX - SETPOINT_MIN)
+    ? (displaySetpoint - bounds.min) / (bounds.max - bounds.min)
     : undefined;
-
-  const handleSetpoint = (newValue: number) => {
-    setpointOverride.onStart();
-    setpointOverride.onChange(newValue);
-    setpointOverride.onCommit(async (v) => {
-      onCommand("allThermostatsSetpoint", v);
-    });
-  };
 
   if (equipments.length === 0) return null;
 
@@ -903,26 +897,20 @@ function ZoneHeatingDetail({
         </div>
       </div>
 
-      {displaySetpoint !== null && (
-        <div className="flex items-center justify-center gap-4">
-          <button
-            onClick={() => handleSetpoint(Math.max(SETPOINT_MIN, displaySetpoint - STEP))}
-            disabled={displaySetpoint <= SETPOINT_MIN}
-            className="w-14 h-14 flex items-center justify-center rounded-sm border border-border bg-surface text-text-secondary hover:bg-border-light transition-colors cursor-pointer active:scale-[0.95] disabled:opacity-30"
-          >
-            <Minus size={20} strokeWidth={2} />
-          </button>
-          <span className="text-display font-semibold text-text tabular-nums min-w-[80px] text-center">
-            {formatTemperature(displaySetpoint)}
-          </span>
-          <button
-            onClick={() => handleSetpoint(Math.min(SETPOINT_MAX, displaySetpoint + STEP))}
-            disabled={displaySetpoint >= SETPOINT_MAX}
-            className="w-14 h-14 flex items-center justify-center rounded-sm border border-border bg-surface text-text-secondary hover:bg-border-light transition-colors cursor-pointer active:scale-[0.95] disabled:opacity-30"
-          >
-            <Plus size={20} strokeWidth={2} />
-          </button>
-        </div>
+      {avgSetpoint !== null && (
+        <SetpointStepper
+          size="lg"
+          value={avgSetpoint}
+          min={bounds.min}
+          max={bounds.max}
+          unit="°C"
+          label={t("thermostat.target")}
+          debounceMs={commitDelay}
+          onCommit={async (v) => {
+            await onCommand("allThermostatsSetpoint", v);
+          }}
+          onShownChange={setShownSetpoint}
+        />
       )}
 
       <button
@@ -1285,7 +1273,11 @@ function ThermostatDetailContent({
 }) {
   const { t } = useTranslation();
   const [executing, setExecuting] = useState<string | null>(null);
-  const setpointOverride = useSliderOverride(5000);
+  // Spec 196, slice 8a: one order after the last tap, flushed if the sheet
+  // closes first; the thermometer follows the value the stepper shows.
+  const setpoint = resolveSetpoint(equipment);
+  const commitDelay = useSetpointCommitDelay(equipment);
+  const [shownSetpoint, setShownSetpoint] = useState<number | null>(null);
 
   const isPoolHeatPump = equipment.type === "pool_heat_pump";
 
@@ -1294,7 +1286,6 @@ function ThermostatDetailContent({
   const effectiveWaterTemp = equipment.computedData?.find(
     (c) => c.alias === "effective_water_temperature",
   );
-  const targetTempBinding = equipment.dataBindings.find((b) => b.alias === "setpoint");
 
   // pool_heat_pump has no power order; its "on" state is derived from `mode`.
   // The water temperature exposed is the computed `effective_water_temperature`
@@ -1309,24 +1300,14 @@ function ThermostatDetailContent({
     : typeof insideTempBinding?.value === "number"
       ? insideTempBinding.value
       : null;
-  const deviceSetpoint = typeof targetTempBinding?.value === "number" ? targetTempBinding.value : null;
-  const displaySetpoint = setpointOverride.displayValue(deviceSetpoint);
+  const displaySetpoint = shownSetpoint ?? setpoint.value;
 
   const hasPowerOrder = !isPoolHeatPump && equipment.orderBindings.some((o) => o.alias === "power");
-  const targetTempOrder = equipment.orderBindings.find((o) => o.alias === "setpoint");
-  const targetMin = targetTempOrder?.min ?? (isPoolHeatPump ? 10 : 16);
-  const targetMax = targetTempOrder?.max ?? 30;
-  const STEP = 0.5;
+  const setpointOrder = setpoint.order;
 
   const thermometerLevel = displaySetpoint !== null
-    ? (displaySetpoint - targetMin) / (targetMax - targetMin)
+    ? (displaySetpoint - setpoint.min) / (setpoint.max - setpoint.min)
     : undefined;
-
-  const handleSetpoint = (newValue: number) => {
-    setpointOverride.onStart();
-    setpointOverride.onChange(newValue);
-    setpointOverride.onCommit((v) => onExecuteOrder("setpoint", v));
-  };
 
   const exec = async (alias: string, value: unknown) => {
     if (executing) return;
@@ -1355,26 +1336,19 @@ function ThermostatDetailContent({
       </div>
 
       {/* Setpoint controls — large */}
-      {targetTempOrder && displaySetpoint !== null && (
-        <div className="flex items-center justify-center gap-4">
-          <button
-            onClick={() => handleSetpoint(Math.max(targetMin, displaySetpoint - STEP))}
-            disabled={displaySetpoint <= targetMin}
-            className="w-14 h-14 flex items-center justify-center rounded-sm border border-border bg-surface text-text-secondary hover:bg-border-light transition-colors cursor-pointer active:scale-[0.95] disabled:opacity-30"
-          >
-            <Minus size={20} strokeWidth={2} />
-          </button>
-          <span className="text-display font-semibold text-text tabular-nums min-w-[80px] text-center">
-            {formatTemperature(displaySetpoint)}
-          </span>
-          <button
-            onClick={() => handleSetpoint(Math.min(targetMax, displaySetpoint + STEP))}
-            disabled={displaySetpoint >= targetMax}
-            className="w-14 h-14 flex items-center justify-center rounded-sm border border-border bg-surface text-text-secondary hover:bg-border-light transition-colors cursor-pointer active:scale-[0.95] disabled:opacity-30"
-          >
-            <Plus size={20} strokeWidth={2} />
-          </button>
-        </div>
+      {setpointOrder && setpoint.value !== null && (
+        <SetpointStepper
+          size="lg"
+          value={setpoint.value}
+          min={setpoint.min}
+          max={setpoint.max}
+          step={setpoint.step}
+          unit="°C"
+          label={t("thermostat.target")}
+          debounceMs={commitDelay}
+          onCommit={(v) => onExecuteOrder(setpointOrder, v)}
+          onShownChange={setShownSetpoint}
+        />
       )}
 
       {/* Power toggle */}

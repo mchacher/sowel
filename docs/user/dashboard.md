@@ -17,10 +17,14 @@ Displays a single equipment with its current state and quick controls.
 - **Lights**: toggle switch, brightness slider (for dimmable lights)
 - **Shutters**: position display with open/close controls
 - **Sensors**: current values with appropriate icons and units
-- **Thermostats**: temperature display with mode indicator
+- **Thermostats**: temperature display, setpoint with − / + buttons, power
 - **Switches**: on/off state badge
 
 On/off equipments (lights, switches, plugs, water heaters, water valves, heaters, pool pumps, media players, single-action gates) toggle when you click **anywhere on the tile**, not just the button under the icon. Tiles with several controls -- shutters, thermostats, pool covers, VMC -- keep their own buttons. In edit mode the tile stops acting, so you can drag and rename it safely.
+
+A **setpoint** is set the same way everywhere -- a thermostat, a pool heat pump, a zone's heating, an EV charger's current, a car's charge limit: − / + buttons, 44 px on a tile, 56 px in the phone panel. Tap as many times as you need: the value moves at once, shown in blue with a dot until the device confirms it, and **one** order leaves after your last tap -- about 0.6 s later for a device reached through its maker's cloud (Panasonic, MCZ, Legrand, Renault...), about 0.15 s for one on your network. Closing the panel right after the last tap still sends it. A cloud device only reports on its next poll, so the value you asked for stays on screen until it does (90 s at most) instead of jumping back meanwhile. If the order fails, the old value returns with « Setpoint not applied ».
+
+On a phone, the thermostat and pool heat pump cards show the setpoint next to the temperature: « 21.0° → 20.0° », or « 21.0° · off » when the unit is off.
 
 A tile that shows a **power draw** in watts -- a metering plug, a water heater, a solar panel, an energy meter -- only shows it while the reading is recent. Past that, the figure gives way to a dash and the tile says how old the last reading is, instead of presenting a value the house has no reason to doubt. The budget follows how often the source actually speaks: two minutes for a meter that reports continuously, ten for everything else, because several integrations poll on a five-minute cycle and a healthy appliance must not flicker on every poll. Readings that share a device age together -- a solar tile drops its current and voltage along with the power, and the live measures on an equipment page do the same -- because a silence that hid one figure hid them all. A panel that simply wound down for the night still reads **Standby**, not outdated: it stopped producing, it did not stop being heard from. This is the same rule as the consumption breakdown on the Energy page.
 

@@ -247,3 +247,37 @@ describe("MobileWidgetCard — stale power readings (#839)", () => {
     expect(screen.getByText(/Débranché|Unplugged/)).toBeTruthy();
   });
 });
+
+// Spec 196, slice 8a — the thermostat card shows its setpoint, not only the
+// level of its thermometer.
+describe("MobileWidgetCard — thermostat setpoint line", () => {
+  const thermostat = (state: boolean | null) =>
+    makeEquipment({
+      id: "th-1",
+      name: "PAC",
+      type: "thermostat",
+      dataBindings: [
+        { alias: "temperature", value: 21, lastUpdated: agoIso(60) },
+        { alias: "setpoint", value: 20, lastUpdated: agoIso(60) },
+        ...(state === null ? [] : [{ alias: "state", type: "boolean", value: state, lastUpdated: agoIso(60) }]),
+      ] as unknown as EquipmentWithDetails["dataBindings"],
+      orderBindings: [
+        { alias: "setpoint", deviceId: "dev-1", min: 16, max: 30 },
+      ] as unknown as EquipmentWithDetails["orderBindings"],
+    });
+
+  it("reads « temperature → setpoint » when running", () => {
+    render(<MobileWidgetCard widget={{ ...widget, equipmentId: "th-1" }} equipment={thermostat(true)} />);
+    expect(screen.getByText("21.0° → 20.0°")).toBeTruthy();
+  });
+
+  it("says off instead of the setpoint when the thermostat is off", () => {
+    render(<MobileWidgetCard widget={{ ...widget, equipmentId: "th-1" }} equipment={thermostat(false)} />);
+    expect(screen.getByText("21.0° · off")).toBeTruthy();
+  });
+
+  it("does not take a thermostat without a run state for off", () => {
+    render(<MobileWidgetCard widget={{ ...widget, equipmentId: "th-1" }} equipment={thermostat(null)} />);
+    expect(screen.getByText("21.0° → 20.0°")).toBeTruthy();
+  });
+});
