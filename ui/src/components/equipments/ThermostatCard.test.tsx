@@ -397,9 +397,11 @@ describe("ThermostatCard extras (spec 177)", () => {
     await userEvent.click(screen.getByRole("button", { name: "off" }));
     expect(exec).toHaveBeenCalledWith("swing", "off");
 
-    expect(screen.getByText("Fan level")).toBeTruthy();
-    await userEvent.click(screen.getByTitle("Fan level +"));
-    expect(exec).toHaveBeenCalledWith("fanLevel", 4);
+    expect(screen.getAllByText("Fan level").length).toBeGreaterThan(0);
+    // A numeric extra is a SetpointStepper (spec 196, slice 8a): one order
+    // after the last tap.
+    await userEvent.click(screen.getByRole("button", { name: "Fan level: increase" }));
+    await waitFor(() => expect(exec).toHaveBeenCalledWith("fanLevel", 4));
   });
 
   it("shows the optimistic value on an extra until its mirror re-reports", async () => {
@@ -470,14 +472,15 @@ describe("ThermostatCard extras — review follow-ups (spec 177)", () => {
 });
 
 // ============================================================
-// Spec 196, slice 1b — the setpoint chevrons are 16–22 px drawings. They carry
-// an accessible name and the `hit-44` touch area, and sit in a `hit-group` so a
-// neighbour's enlarged area never paints over them and takes their tap.
+// Spec 196, slice 1b, then 8a — the setpoint buttons are the SetpointStepper's:
+// 44 px drawn on the card; 28 px drawn with the `hit-44` touch area in the
+// Maison row, inside a `hit-group` so a neighbour's enlarged area never paints
+// over them and takes their tap. One order leaves after the last tap.
 // ============================================================
 
-describe("ThermostatCard setpoint chevrons", () => {
+describe("ThermostatCard setpoint buttons", () => {
   for (const compact of [false, true]) {
-    it(`are labelled, enlarged for touch and grouped${compact ? " (Maison row)" : " (card)"}`, async () => {
+    it(`are labelled, 44 px to the finger and grouped${compact ? " (Maison row)" : " (card)"}`, async () => {
       const exec = vi.fn().mockResolvedValue(undefined);
       render(
         <ThermostatCard
@@ -489,11 +492,14 @@ describe("ThermostatCard setpoint chevrons", () => {
       const down = screen.getByRole("button", { name: "Lower the setpoint" });
       const up = screen.getByRole("button", { name: "Raise the setpoint" });
       for (const button of [down, up]) {
-        expect(button.classList.contains("hit-44")).toBe(true);
+        if (compact) expect(button.classList.contains("hit-44")).toBe(true);
+        else expect(button.classList.contains("min-h-11")).toBe(true);
         expect(button.parentElement?.classList.contains("hit-group")).toBe(true);
       }
       await userEvent.click(up);
-      expect(exec).toHaveBeenCalledWith("setpoint", 25);
+      await userEvent.click(up);
+      await waitFor(() => expect(exec).toHaveBeenCalledWith("setpoint", 25.5));
+      expect(exec.mock.calls.filter(([alias]) => alias === "setpoint")).toHaveLength(1);
     });
   }
 });

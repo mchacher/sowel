@@ -7,8 +7,6 @@ import {
   ChevronUp,
   Square,
   ChevronDown,
-  Minus,
-  Plus,
   Power,
 } from "lucide-react";
 import type { DashboardWidget, EquipmentWithDetails, ZoneWithChildren, WidgetFamily } from "../../types";
@@ -17,6 +15,9 @@ import { findOrderByCategory } from "../equipments/bindingUtils";
 import { allSupportStop } from "../../lib/binding-utils";
 import { thermostatPowerStateBinding } from "../../lib/thermostat-state";
 import { useSliderOverride } from "../../hooks/useSliderOverride";
+import { useSetpointCommitDelay } from "../../hooks/useSetpointCommit";
+import { SetpointStepper } from "../equipments/SetpointStepper";
+import { zoneSetpointBounds } from "../equipments/setpoint";
 import {
   LightBulbIcon,
   ShutterWidgetIcon,
@@ -484,14 +485,14 @@ function ZoneHeatingWidget({
   label: string;
   filteredEquipments: EquipmentWithDetails[];
   commandLoading: string | null;
-  onCommand: (orderKey: string, value?: unknown) => void;
+  onCommand: (orderKey: string, value?: unknown) => void | Promise<void>;
 }) {
   const { t } = useTranslation();
-  const setpointOverride = useSliderOverride(5000);
-
-  const SETPOINT_MIN = 16;
-  const SETPOINT_MAX = 30;
-  const SETPOINT_STEP = 0.5;
+  // Spec 196, slice 8a: bounds from the zone's thermostats, one order after
+  // the last tap; the thermometer follows the value the stepper shows.
+  const bounds = zoneSetpointBounds(filteredEquipments);
+  const commitDelay = useSetpointCommitDelay(filteredEquipments);
+  const [shownSetpoint, setShownSetpoint] = useState<number | null>(null);
 
   const { avgTemp, avgSetpoint, anyOn } = useMemo(() => {
     const temps: number[] = [];
@@ -526,19 +527,11 @@ function ZoneHeatingWidget({
     return { avgTemp: avg(temps), avgSetpoint: avg(setpoints), anyOn: on };
   }, [filteredEquipments]);
 
-  const displaySetpoint = setpointOverride.displayValue(avgSetpoint);
+  const displaySetpoint = shownSetpoint ?? avgSetpoint;
 
   const thermometerLevel = displaySetpoint !== null
-    ? (displaySetpoint - SETPOINT_MIN) / (SETPOINT_MAX - SETPOINT_MIN)
+    ? (displaySetpoint - bounds.min) / (bounds.max - bounds.min)
     : undefined;
-
-  const handleSetpoint = (newValue: number) => {
-    setpointOverride.onStart();
-    setpointOverride.onChange(newValue);
-    setpointOverride.onCommit(async (v) => {
-      onCommand("allThermostatsSetpoint", v);
-    });
-  };
 
   return (
     <ZoneWidgetCard label={label} empty={filteredEquipments.length === 0}>
@@ -575,26 +568,21 @@ function ZoneHeatingWidget({
       </div>
 
       {/* Zone 3: Setpoint controls */}
-      {displaySetpoint !== null && (
-        <div className="flex items-center justify-center gap-2 mt-auto pt-1">
-          <button
-            onClick={() => handleSetpoint(Math.max(SETPOINT_MIN, displaySetpoint - SETPOINT_STEP))}
-            disabled={displaySetpoint <= SETPOINT_MIN}
-            className="w-8 h-8 flex items-center justify-center rounded-sm transition-colors cursor-pointer border border-border bg-surface text-text-tertiary hover:bg-border-light hover:text-text-secondary active:scale-[0.97] disabled:opacity-30 disabled:cursor-not-allowed"
-          >
-            <Minus size={14} strokeWidth={2} />
-          </button>
-          <span className="text-caption font-medium text-text-secondary tabular-nums min-w-[42px] text-center">
-            {formatTemperature(displaySetpoint, { style: "compact" })}
-          </span>
-          <button
-            onClick={() => handleSetpoint(Math.min(SETPOINT_MAX, displaySetpoint + SETPOINT_STEP))}
-            disabled={displaySetpoint >= SETPOINT_MAX}
-            className="w-8 h-8 flex items-center justify-center rounded-sm transition-colors cursor-pointer border border-border bg-surface text-text-tertiary hover:bg-border-light hover:text-text-secondary active:scale-[0.97] disabled:opacity-30 disabled:cursor-not-allowed"
-          >
-            <Plus size={14} strokeWidth={2} />
-          </button>
-        </div>
+      {avgSetpoint !== null && (
+        <SetpointStepper
+          size="md"
+          className="mt-auto pt-1"
+          value={avgSetpoint}
+          min={bounds.min}
+          max={bounds.max}
+          unit="°C"
+          label={t("thermostat.target")}
+          debounceMs={commitDelay}
+          onCommit={async (v) => {
+            await onCommand("allThermostatsSetpoint", v);
+          }}
+          onShownChange={setShownSetpoint}
+        />
       )}
     </ZoneWidgetCard>
   );

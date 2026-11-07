@@ -1,9 +1,10 @@
 import { useTranslation } from "react-i18next";
-import { ChevronDown, ChevronUp, SlidersHorizontal, Zap } from "lucide-react";
+import { SlidersHorizontal, Zap } from "lucide-react";
 import type { DataBindingWithValue, OrderBindingWithDetails } from "../../types";
 import { splitThermostatExtras } from "../../lib/thermostat-contract";
 import { humanizeAlias } from "../../lib/humanize-alias";
 import { formatWithUnit } from "../../lib/format";
+import { SetpointStepper } from "./SetpointStepper";
 
 /**
  * Spec 177 — everything bound on a thermostat that is not the core, rendered
@@ -16,7 +17,7 @@ import { formatWithUnit } from "../../lib/format";
  *   order `enum`                        → segmented buttons
  *   order `boolean` + same-alias data   → toggle
  *   order `boolean`, no data mirror     → momentary action button (sends true)
- *   order `number`                      → stepper bounded by min/max
+ *   order `number`                      → SetpointStepper bounded by min/max
  *   data with no same-alias order       → read-only chip
  */
 
@@ -27,6 +28,10 @@ interface ThermostatExtrasProps {
   optimistic: Record<string, unknown>;
   executing: string | null;
   onExec: (alias: string, value: unknown) => void;
+  /** A numeric extra goes through the setpoint stepper: one order after the last tap. */
+  onCommitNumber: (alias: string, value: number) => Promise<void>;
+  /** From `useSetpointCommitDelay`. */
+  commitDelayMs: number;
 }
 
 function isControllable(order: OrderBindingWithDetails): boolean {
@@ -48,6 +53,8 @@ export function ThermostatExtras({
   optimistic,
   executing,
   onExec,
+  onCommitNumber,
+  commitDelayMs,
 }: ThermostatExtrasProps) {
   const { t } = useTranslation();
 
@@ -146,32 +153,22 @@ export function ThermostatExtras({
 
         // number
         const n = typeof value === "number" ? value : null;
-        const min = order.min ?? Number.NEGATIVE_INFINITY;
-        const max = order.max ?? Number.POSITIVE_INFINITY;
         return (
           <div key={alias} className="flex items-center gap-3">
             <span className="text-caption text-text-tertiary">{label(alias)}</span>
-            <div className="flex items-center gap-1">
-              <button
-                onClick={() => n !== null && onExec(alias, n - 1)}
-                disabled={busy || n === null || n - 1 < min}
-                className="p-1 rounded-sm bg-border-light text-text-secondary hover:bg-border hover:text-text transition-colors disabled:opacity-30 disabled:cursor-not-allowed cursor-pointer"
-                title={`${label(alias)} −`}
-              >
-                <ChevronDown size={12} strokeWidth={2} />
-              </button>
-              <span className="text-small font-semibold text-text tabular-nums min-w-[40px] text-center">
-                {valueLabel(alias, n, order.unit)}
-              </span>
-              <button
-                onClick={() => n !== null && onExec(alias, n + 1)}
-                disabled={busy || n === null || n + 1 > max}
-                className="p-1 rounded-sm bg-border-light text-text-secondary hover:bg-border hover:text-text transition-colors disabled:opacity-30 disabled:cursor-not-allowed cursor-pointer"
-                title={`${label(alias)} +`}
-              >
-                <ChevronUp size={12} strokeWidth={2} />
-              </button>
-            </div>
+            <SetpointStepper
+              size="sm"
+              value={n}
+              min={order.min ?? Number.NEGATIVE_INFINITY}
+              max={order.max ?? Number.POSITIVE_INFINITY}
+              step={1}
+              unit={order.unit}
+              label={label(alias)}
+              decreaseLabel={t("setpoint.decreaseOf", { label: label(alias) })}
+              increaseLabel={t("setpoint.increaseOf", { label: label(alias) })}
+              debounceMs={commitDelayMs}
+              onCommit={(v) => onCommitNumber(alias, v)}
+            />
           </div>
         );
       })}

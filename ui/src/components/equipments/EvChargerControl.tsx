@@ -1,18 +1,18 @@
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { useTranslation } from "react-i18next";
-import { Loader2, Minus, Plus } from "lucide-react";
 import type { EquipmentWithDetails } from "../../types";
 import { splitEvChargerExtras, type EvVehicleState } from "../../lib/ev-charger-contract";
 import { extraLabel, extraTextValue } from "../../lib/extra-labels";
 import { formatValue } from "./useEquipmentState";
 import { LightControl } from "./LightControl";
 import {
-  clampChargeCurrent,
   evChargerStateOf,
   evVehicleKey,
   evVehiclePillClass,
 } from "./evChargerState";
 import { formatEnergy, formatNumber, formatPower, formatRange, formatWithUnit } from "../../lib/format";
+import { SetpointStepper } from "./SetpointStepper";
+import { useSetpointCommitDelay } from "../../hooks/useSetpointCommit";
 
 interface EvChargerControlProps {
   equipment: EquipmentWithDetails;
@@ -41,48 +41,17 @@ export function EvVehicleBadge({ vehicle }: { vehicle: EvVehicleState | null }) 
 export function EvChargerControl({ equipment, onExecuteOrder }: EvChargerControlProps) {
   const { t } = useTranslation();
   const s = evChargerStateOf(equipment);
-  const [sending, setSending] = useState(false);
-  // Optimistic target while the charger confirms its setpoint reading (a
-  // write takes ~1 s). Without a setpoint reading bound there is nothing to
-  // confirm against, so the last value the charger accepted is kept instead.
-  const [pendingA, setPendingA] = useState<number | null>(null);
+  // Spec 196, slice 8a: the current goes through the setpoint stepper, one
+  // order after the last tap, the requested value held until the charger
+  // reports it. Without a setpoint reading bound there is nothing to confirm
+  // against, so the last value the charger accepted is shown instead.
   const [lastSentA, setLastSentA] = useState<number | null>(null);
   const hasReading = s.chargeCurrentA !== null;
-
-  useEffect(() => {
-    if (pendingA === null || !hasReading) return;
-    if (s.chargeCurrentA === pendingA) {
-      setPendingA(null);
-      return;
-    }
-    const id = setTimeout(() => setPendingA(null), 10_000); // safety net
-    return () => clearTimeout(id);
-  }, [pendingA, s.chargeCurrentA, hasReading]);
+  const commitDelay = useSetpointCommitDelay(equipment);
 
   const usable = equipment.enabled && equipment.status !== "offline";
   const order = s.chargeCurrentOrder;
-  const shownA = pendingA ?? (hasReading ? s.chargeCurrentA : lastSentA);
-
-  const step = async (delta: number) => {
-    if (!order || sending || !usable) return;
-    // From an unknown setpoint the first press selects the minimum, so every
-    // value of the range is reachable.
-    const target = shownA === null ? order.min : clampChargeCurrent(shownA + delta, order);
-    if (target === shownA) return;
-    setSending(true);
-    setPendingA(target);
-    try {
-      await onExecuteOrder(order.alias, target);
-      if (!hasReading) {
-        setLastSentA(target);
-        setPendingA(null);
-      }
-    } catch {
-      setPendingA(null);
-    } finally {
-      setSending(false);
-    }
-  };
+  const deviceA = hasReading ? s.chargeCurrentA : lastSentA;
 
   // Everything bound beyond the contract (status, temperature, last session…).
   const { extraData } = splitEvChargerExtras(equipment.dataBindings, equipment.orderBindings);
@@ -149,39 +118,32 @@ export function EvChargerControl({ equipment, onExecuteOrder }: EvChargerControl
           <span className="text-small text-text-secondary">
             {t("equipments.evCharger.chargeCurrent")}
           </span>
-          <div className="hit-group flex items-center gap-2">
-            {order && (
-              <button
-                type="button"
-                aria-label={t("equipments.evCharger.decrease")}
-                onClick={() => void step(-1)}
-                disabled={!usable || sending || (shownA !== null && shownA <= order.min)}
-                className="hit-44 p-1.5 rounded-sm bg-border-light text-text-secondary hover:bg-border disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer"
-              >
-                <Minus size={14} strokeWidth={1.5} />
-              </button>
-            )}
+          {order ? (
+            <SetpointStepper
+              size="md"
+              value={deviceA}
+              min={order.min}
+              max={order.max}
+              step={1}
+              unit="A"
+              // From an unknown setpoint the first press selects the minimum,
+              // so every value of the range is reachable.
+              startValue={order.min}
+              disabled={!usable}
+              label={t("equipments.evCharger.chargeCurrent")}
+              decreaseLabel={t("equipments.evCharger.decrease")}
+              increaseLabel={t("equipments.evCharger.increase")}
+              debounceMs={commitDelay}
+              onCommit={async (v) => {
+                await onExecuteOrder(order.alias, v);
+                if (!hasReading) setLastSentA(v);
+              }}
+            />
+          ) : (
             <span className="min-w-[56px] text-center text-lead font-semibold text-text tabular-nums">
-              {sending ? (
-                <Loader2 size={14} className="animate-spin inline" />
-              ) : shownA !== null ? (
-                formatWithUnit(shownA, "A")
-              ) : (
-                "—"
-              )}
+              {formatWithUnit(s.chargeCurrentA, "A")}
             </span>
-            {order && (
-              <button
-                type="button"
-                aria-label={t("equipments.evCharger.increase")}
-                onClick={() => void step(1)}
-                disabled={!usable || sending || (shownA !== null && shownA >= order.max)}
-                className="hit-44 p-1.5 rounded-sm bg-border-light text-text-secondary hover:bg-border disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer"
-              >
-                <Plus size={14} strokeWidth={1.5} />
-              </button>
-            )}
-          </div>
+          )}
         </div>
       )}
       {order && (

@@ -42,6 +42,7 @@ import {
 import { useStalenessClock } from "../../hooks/useStalenessClock";
 import { brightnessPercent, brightnessScale } from "../../lib/brightness";
 import { findOrderByCategory } from "../equipments/bindingUtils";
+import { resolveSetpoint, setpointOwnerIsOff, setpointStateLine } from "../equipments/setpoint";
 import {
   parseForecastDays,
   CONDITION_ICONS,
@@ -278,19 +279,20 @@ function useMobileState(
     const computedTemp = isPoolHeatPump
       ? equipment.computedData?.find((c) => c.alias === "effective_water_temperature")
       : null;
-    const setpoint = equipment.dataBindings.find((b) => b.alias === "setpoint");
     const tempVal =
       isPoolHeatPump && typeof computedTemp?.value === "number"
         ? computedTemp.value
         : typeof temp?.value === "number"
           ? temp.value
           : null;
-    const spVal = typeof setpoint?.value === "number" ? setpoint.value : null;
-    const minBound = isPoolHeatPump ? 10 : 16;
-    const level = spVal !== null ? (spVal - minBound) / (30 - minBound) : undefined;
+    // Spec 196, slice 8a: the card shows the setpoint too, « 21,0° → 20,0° »,
+    // or « 21,0° · arrêt » when the thermostat is off.
+    const sp = resolveSetpoint(equipment);
+    const level = sp.value !== null ? (sp.value - sp.min) / (sp.max - sp.min) : undefined;
     return {
       icon: renderWidgetStateIcon(widget.icon, <ThermometerIcon warm={isOn} level={level} />),
-      stateLines: tempVal !== null ? [formatTemperature(tempVal, { style: "compact" })] : [],
+      stateLines:
+        tempVal !== null ? [setpointStateLine(tempVal, sp.value, setpointOwnerIsOff(equipment), t("controls.off"))] : [],
     };
   }
 

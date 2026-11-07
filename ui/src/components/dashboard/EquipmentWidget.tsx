@@ -8,8 +8,6 @@ import {
   ChevronLeft,
   ChevronRight,
   Square,
-  Minus,
-  Plus,
   Flame,
   Snowflake,
   WashingMachine,
@@ -47,6 +45,9 @@ import { isRainOnlyWeather } from "../equipments/rain-summary";
 import { RainTileBody } from "./RainGauge";
 import { TempExtremes } from "../TempExtremes";
 import { useSliderOverride } from "../../hooks/useSliderOverride";
+import { useSetpointCommitDelay } from "../../hooks/useSetpointCommit";
+import { SetpointStepper } from "../equipments/SetpointStepper";
+import { resolveSetpoint } from "../equipments/setpoint";
 import { SensorValues } from "../equipments/SensorValues";
 import { SolarPanelIcon } from "../icons/SolarPanelIcon";
 import { solarWidgetState } from "./solarWidget";
@@ -832,7 +833,11 @@ function ThermostatEquipmentWidget({
 }) {
   const { t } = useTranslation();
   const [executing, setExecuting] = useState<string | null>(null);
-  const setpointOverride = useSliderOverride(5000);
+  // Spec 196, slice 8a: the setpoint stepper sends one order after the last
+  // tap and holds the requested value; the thermometer follows what it shows.
+  const setpoint = resolveSetpoint(equipment);
+  const commitDelay = useSetpointCommitDelay(equipment);
+  const [shownSetpoint, setShownSetpoint] = useState<number | null>(null);
 
   const isPoolHeatPump = equipment.type === "pool_heat_pump";
 
@@ -841,7 +846,6 @@ function ThermostatEquipmentWidget({
   const effectiveWaterTemp = equipment.computedData?.find(
     (c) => c.alias === "effective_water_temperature",
   );
-  const targetTempBinding = equipment.dataBindings.find((b) => b.alias === "setpoint");
 
   const isOn = isPoolHeatPump
     ? typeof modeBinding?.value === "string" && modeBinding.value.toUpperCase() !== "OFF"
@@ -853,24 +857,15 @@ function ThermostatEquipmentWidget({
     : typeof insideTempBinding?.value === "number"
       ? insideTempBinding.value
       : null;
-  const deviceSetpoint =
-    typeof targetTempBinding?.value === "number" ? targetTempBinding.value : null;
-  const displaySetpoint = setpointOverride.displayValue(deviceSetpoint);
+  const displaySetpoint = shownSetpoint ?? setpoint.value;
 
   const hasPowerOrder = !isPoolHeatPump && equipment.orderBindings.some((o) => o.alias === "power");
-  const targetTempOrder = equipment.orderBindings.find((o) => o.alias === "setpoint");
-  const targetMin = targetTempOrder?.min ?? (isPoolHeatPump ? 10 : 16);
-  const targetMax = targetTempOrder?.max ?? 30;
-  const STEP = 0.5;
+  const setpointOrder = setpoint.order;
 
   const thermometerLevel =
-    displaySetpoint !== null ? (displaySetpoint - targetMin) / (targetMax - targetMin) : undefined;
-
-  const handleSetpoint = (newValue: number) => {
-    setpointOverride.onStart();
-    setpointOverride.onChange(newValue);
-    setpointOverride.onCommit((v) => onExecuteOrder("setpoint", v));
-  };
+    displaySetpoint !== null
+      ? (displaySetpoint - setpoint.min) / (setpoint.max - setpoint.min)
+      : undefined;
 
   const exec = async (alias: string, value: unknown) => {
     if (executing) return;
@@ -920,26 +915,20 @@ function ThermostatEquipmentWidget({
       </div>
 
       {/* Zone 3: Setpoint controls */}
-      {targetTempOrder && displaySetpoint !== null && (
-        <div className="flex items-center justify-center gap-2 mt-auto pt-1">
-          <button
-            onClick={() => handleSetpoint(Math.max(targetMin, displaySetpoint - STEP))}
-            disabled={displaySetpoint <= targetMin}
-            className="w-8 h-8 flex items-center justify-center rounded-sm transition-colors cursor-pointer border border-border bg-surface text-text-tertiary hover:bg-border-light hover:text-text-secondary active:scale-[0.97] disabled:opacity-30 disabled:cursor-not-allowed"
-          >
-            <Minus size={14} strokeWidth={2} />
-          </button>
-          <span className="text-caption font-medium text-text-secondary tabular-nums min-w-[42px] text-center">
-            {formatTemperature(displaySetpoint, { style: "compact" })}
-          </span>
-          <button
-            onClick={() => handleSetpoint(Math.min(targetMax, displaySetpoint + STEP))}
-            disabled={displaySetpoint >= targetMax}
-            className="w-8 h-8 flex items-center justify-center rounded-sm transition-colors cursor-pointer border border-border bg-surface text-text-tertiary hover:bg-border-light hover:text-text-secondary active:scale-[0.97] disabled:opacity-30 disabled:cursor-not-allowed"
-          >
-            <Plus size={14} strokeWidth={2} />
-          </button>
-        </div>
+      {setpointOrder && setpoint.value !== null && (
+        <SetpointStepper
+          size="md"
+          className="mt-auto pt-1"
+          value={setpoint.value}
+          min={setpoint.min}
+          max={setpoint.max}
+          step={setpoint.step}
+          unit="°C"
+          label={t("thermostat.target")}
+          debounceMs={commitDelay}
+          onCommit={(v) => onExecuteOrder(setpointOrder, v)}
+          onShownChange={setShownSetpoint}
+        />
       )}
     </WidgetCard>
   );

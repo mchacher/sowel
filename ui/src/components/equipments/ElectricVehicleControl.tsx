@@ -1,6 +1,6 @@
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { useTranslation } from "react-i18next";
-import { BatteryCharging, Loader2, Minus, Plug, Plus, RefreshCw, Zap } from "lucide-react";
+import { BatteryCharging, Loader2, Plug, RefreshCw, Zap } from "lucide-react";
 import type { EquipmentWithDetails } from "../../types";
 import { splitElectricVehicleExtras } from "../../lib/electric-vehicle-contract";
 import { formatRelative } from "../../lib/format-relative";
@@ -8,7 +8,12 @@ import { useStalenessClock } from "../../hooks/useStalenessClock";
 import { extraLabel, extraTextValue } from "../../lib/extra-labels";
 import { formatValue } from "./useEquipmentState";
 import { electricVehicleStateOf, evBatteryTone, evChargingStateKey } from "./electricVehicleState";
-import { formatPercent, formatWithUnit } from "../../lib/format";
+import { formatWithUnit } from "../../lib/format";
+import { SetpointStepper } from "./SetpointStepper";
+import { useSetpointCommitDelay } from "../../hooks/useSetpointCommit";
+
+/** A car reports minutes after an order: the sent limit is held this long at most. */
+const CHARGE_LIMIT_SETTLE_MS = 15 * 60_000;
 
 interface ElectricVehicleControlProps {
   equipment: EquipmentWithDetails;
@@ -44,12 +49,7 @@ export function ElectricVehicleControl({ equipment, onExecuteOrder }: ElectricVe
   const s = electricVehicleStateOf(equipment, now);
   const [busy, setBusy] = useState<string | null>(null);
   const [outcome, setOutcome] = useState<{ ok: boolean; text: string } | null>(null);
-  // The limit sent, shown until the car's report confirms it: a car reports
-  // minutes after an order, and the old value must not flash back meanwhile.
-  const [sentLimit, setSentLimit] = useState<number | null>(null);
-  useEffect(() => {
-    if (sentLimit !== null && s.chargeLimit === sentLimit) setSentLimit(null);
-  }, [sentLimit, s.chargeLimit]);
+  const commitDelay = useSetpointCommitDelay(equipment);
   const usable = equipment.enabled && equipment.status !== "offline";
 
   const send = async (
@@ -74,25 +74,18 @@ export function ElectricVehicleControl({ equipment, onExecuteOrder }: ElectricVe
   };
 
   const order = s.chargeLimitOrder;
-  const shownLimit = sentLimit ?? s.chargeLimit;
-  const stepLimit = async (delta: number) => {
+  // Spec 196, slice 8a: the limit goes through the setpoint stepper, which
+  // holds the sent value until the car's report confirms it (a car reports
+  // minutes after an order, and the old value must not flash back meanwhile).
+  const commitLimit = async (target: number) => {
     if (!order) return;
-    // From an unknown limit the first press proposes 80 %, the common choice,
-    // rather than silently sending an end of the range.
-    const target =
-      shownLimit === null
-        ? Math.min(order.max, Math.max(order.min, 80))
-        : Math.min(order.max, Math.max(order.min, Math.round((shownLimit + delta) / 5) * 5));
-    if (target === shownLimit) return;
-    const previous = sentLimit;
-    setSentLimit(target);
     const ok = await send(
       "limit",
       order.alias,
       target,
       t("equipments.electricVehicle.limitSent", { value: target }),
     );
-    if (!ok) setSentLimit(previous);
+    if (!ok) throw new Error("charge limit not applied");
   };
 
   const { extraData } = splitElectricVehicleExtras(equipment.dataBindings, equipment.orderBindings);
@@ -209,35 +202,24 @@ export function ElectricVehicleControl({ equipment, onExecuteOrder }: ElectricVe
           <span className="text-small text-text-secondary">
             {t("equipments.electricVehicle.chargeLimit")}
           </span>
-          <div className="flex items-center gap-2">
-            <button
-              type="button"
-              aria-label={t("equipments.electricVehicle.limitDown")}
-              disabled={!usable || !!busy || (shownLimit !== null && shownLimit <= order.min)}
-              onClick={() => void stepLimit(-5)}
-              className="p-1.5 rounded-sm bg-border-light text-text-secondary hover:bg-border disabled:opacity-40 cursor-pointer"
-            >
-              <Minus size={14} strokeWidth={1.5} />
-            </button>
-            <span className="min-w-[56px] text-center text-lead font-semibold text-text tabular-nums">
-              {busy === "limit" ? (
-                <Loader2 size={14} className="animate-spin inline" />
-              ) : shownLimit !== null ? (
-                formatPercent(shownLimit)
-              ) : (
-                "—"
-              )}
-            </span>
-            <button
-              type="button"
-              aria-label={t("equipments.electricVehicle.limitUp")}
-              disabled={!usable || !!busy || (shownLimit !== null && shownLimit >= order.max)}
-              onClick={() => void stepLimit(5)}
-              className="p-1.5 rounded-sm bg-border-light text-text-secondary hover:bg-border disabled:opacity-40 cursor-pointer"
-            >
-              <Plus size={14} strokeWidth={1.5} />
-            </button>
-          </div>
+          <SetpointStepper
+            size="md"
+            value={s.chargeLimit}
+            min={order.min}
+            max={order.max}
+            step={5}
+            unit="%"
+            // From an unknown limit the first press proposes 80 %, the common
+            // choice, rather than silently sending an end of the range.
+            startValue={Math.min(order.max, Math.max(order.min, 80))}
+            disabled={!usable || (busy !== null && busy !== "limit")}
+            label={t("equipments.electricVehicle.chargeLimit")}
+            decreaseLabel={t("equipments.electricVehicle.limitDown")}
+            increaseLabel={t("equipments.electricVehicle.limitUp")}
+            debounceMs={commitDelay}
+            settleMs={CHARGE_LIMIT_SETTLE_MS}
+            onCommit={commitLimit}
+          />
         </div>
       )}
 
