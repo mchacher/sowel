@@ -1830,9 +1830,10 @@ export type EngineEvent =
        */
       partOf?: string;
       /**
-       * Issue #1122 — the logical order whose steps were emitted above with
-       * `partOf`. Nothing was dispatched under this alias: it exists so the
-       * activity feed shows one line, and consumers of real dispatches skip it.
+       * Issue #1122 — a summary of steps already emitted with `partOf`: the
+       * logical order once every step went through, or the steps that did when
+       * the sequence aborted. Nothing new was dispatched: it exists for the
+       * activity feed, and consumers of real dispatches skip it.
        */
       composite?: true;
     }

@@ -1490,8 +1490,34 @@ export class EquipmentManager {
       throw err;
     }
 
-    for (const step of steps) {
-      const res = await this.runOrder(equipmentId, step.relay, step.value, source, "speed");
+    // Steps carry `partOf`, so the activity feed skips them and shows the
+    // logical order instead (issue #1122). `composite` on that summary tells
+    // the confirmation tracker and the capacity arbiter that the steps were
+    // the real dispatches and already reached them.
+    const summarize = (alias: string, summaryValue: unknown): void => {
+      this.eventBus.emit({
+        type: "equipment.order.executed",
+        equipmentId,
+        orderAlias: alias,
+        value: summaryValue,
+        source,
+        composite: true,
+      });
+    };
+    // An aborted transition did not reach the target speed, but the relays it
+    // already switched did change the motor: the feed shows those instead.
+    const summarizeDone = (done: typeof steps): void => {
+      for (const s of done) summarize(s.relay, s.value);
+    };
+
+    for (const [index, step] of steps.entries()) {
+      let res;
+      try {
+        res = await this.runOrder(equipmentId, step.relay, step.value, source, "speed");
+      } catch (err) {
+        summarizeDone(steps.slice(0, index));
+        throw err;
+      }
       if (!res.success) {
         // Stop on the first failing step. Because breaks come before makes, the
         // motor is left in a safe partial state (the target winding not energized).
@@ -1499,22 +1525,12 @@ export class EquipmentManager {
           { equipmentId, target, relay: step.relay, value: step.value, error: res.error },
           "VMC speed transition aborted on a failing relay step",
         );
+        summarizeDone(steps.slice(0, index));
         return res;
       }
     }
 
-    // The logical order itself, once every step went through: this is the one
-    // line the activity feed shows (issue #1122). `composite` tells the
-    // confirmation tracker and the capacity arbiter that the steps above were
-    // the real dispatches and already reached them.
-    this.eventBus.emit({
-      type: "equipment.order.executed",
-      equipmentId,
-      orderAlias: "speed",
-      value: target,
-      source,
-      composite: true,
-    });
+    summarize("speed", target);
 
     // Optimistic reflection so the UI updates immediately, even when the relays
     // report no state feedback. The computed `speed` (from relay state) refines

@@ -1287,6 +1287,35 @@ describe("EquipmentManager", () => {
       }
     });
 
+    it("an aborted VMC speed change still reports the relays it switched (#1122)", async () => {
+      vi.useFakeTimers();
+      try {
+        const zone = zoneManager.create({ name: "Cave" });
+        const eq = manager.create({ name: "VMC", type: "vmc", zoneId: zone.id });
+        const { orderIds } = seedDevice(db, {
+          name: "MiniDuo",
+          orderKeys: [{ key: "l1" }, { key: "l2" }],
+        });
+        manager.addOrderBinding(eq.id, orderIds[0], "low");
+        manager.addOrderBinding(eq.id, orderIds[1], "high");
+        // V2 = break low (l1, succeeds), then make high (l2, fails).
+        failOrderKeys.add("l2");
+        events.length = 0;
+
+        const p = manager.executeOrder(eq.id, "speed", "v2");
+        await vi.advanceTimersByTimeAsync(5000);
+        const res = await p;
+
+        expect(res.success).toBe(false);
+        const summaries = events.flatMap((e) =>
+          e.type === "equipment.order.executed" && e.composite ? [[e.orderAlias, e.value]] : [],
+        );
+        expect(summaries).toEqual([["low", false]]);
+      } finally {
+        vi.useRealTimers();
+      }
+    });
+
     it("rejects V2 on a single-speed VMC (no high relay)", async () => {
       const zone = zoneManager.create({ name: "WC" });
       const eq = manager.create({ name: "Extracteur", type: "vmc", zoneId: zone.id });

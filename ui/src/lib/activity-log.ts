@@ -134,6 +134,8 @@ export function displayValue(
   t: (key: string, opts?: Record<string, unknown>) => string,
 ): string {
   const v = raw.trim();
+  // A VMC speed change (issue #1122) reads « V1 / V2 », as on the equipment.
+  if (alias === "speed" && (v === "v1" || v === "v2")) return t(`equipments.vmc.${v}`);
   const upper = v.toUpperCase();
   if (upper === "ON" || upper === "TRUE") return t("controls.on");
   if (upper === "OFF" || upper === "FALSE") return t("controls.off");
