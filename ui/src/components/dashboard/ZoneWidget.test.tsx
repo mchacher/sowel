@@ -71,6 +71,12 @@ describe("zone heating setpoint", () => {
     expect(screen.getByText(/20\.0/)).toBeTruthy();
   });
 
+  it("tile: writes the setpoint in the tile form, « 20.0° » (#1129, pr3-degre)", () => {
+    render(<ZoneWidget widget={WIDGET} zone={ZONE} equipments={[thermostat("a", 20), thermostat("b", 20)]} />);
+    expect(screen.getByText("20.0°")).toBeTruthy();
+    expect(screen.queryByText("20.0 °C")).toBeNull();
+  });
+
   it("sheet: a refused order says « not applied » too", async () => {
     vi.mocked(api.executeZoneOrder).mockRejectedValue(new Error("502"));
     render(

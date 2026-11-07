@@ -61,17 +61,11 @@ The hero has no interactive state. Its appearance is driven by data:
 .hero {
   position: relative;
   padding: 2.1rem 1.5rem 1.25rem;
-  background:
-    radial-gradient(
-      120% 80% at 0% 0%,
-      color-mix(in srgb, var(--p-500) 6%, transparent),
-      transparent 55%
-    ),
-    radial-gradient(
-      80% 100% at 100% 0%,
-      color-mix(in srgb, var(--a-500) 4%, transparent),
-      transparent 60%
-    );
+  background: radial-gradient(
+    120% 80% at 0% 0%,
+    color-mix(in srgb, var(--p-500) 6%, transparent),
+    transparent 55%
+  );
 }
 
 .hero__head {
@@ -81,11 +75,11 @@ The hero has no interactive state. Its appearance is driven by data:
   min-width: 0;
 }
 .hero__title {
-  font-size: var(--fs-value);
+  font-size: var(--fs-display); /* a page title (tokens.md §2.2) */
   font-weight: 600;
   margin: 0 0 0.15rem;
   color: var(--n-800);
-  letter-spacing: -0.03em;
+  letter-spacing: -0.015em;
   line-height: 1;
 }
 .hero__lead {

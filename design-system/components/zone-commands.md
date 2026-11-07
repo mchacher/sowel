@@ -29,7 +29,7 @@ There are no variants. The bar contains 5 icon-only buttons grouped by category,
 | Element          | Default                         | Hover                                   |
 | ---------------- | ------------------------------- | --------------------------------------- |
 | Container        | white bg, line border, radius 6 | unchanged                               |
-| Light button     | transparent bg, `--n-600` icon  | bg `--a-50`, text `--a-ink`             |
+| Light button     | transparent bg, `--n-600` icon  | bg `--p-50`, text `--p-500`             |
 | Light-off button | transparent                     | bg `--n-100`, text `--n-700`            |
 | Shutter button   | transparent                     | bg `--shutter-50`, text `--shutter-500` |
 
@@ -113,8 +113,9 @@ The container holds **5 buttons** in this exact order:
   height: 16px;
 }
 .zcmds__btn[data-cat="light"]:hover {
-  background: var(--a-50);
-  color: var(--a-ink);
+  /* An action button: primary, not amber (amber means on or running). */
+  background: var(--p-50);
+  color: var(--p-500);
 }
 .zcmds__btn[data-cat="light-off"]:hover {
   background: var(--n-100);

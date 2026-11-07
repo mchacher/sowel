@@ -65,14 +65,14 @@ describe("lint: numbers go through lib/format", () => {
 // narrow no-break space French puts before « % » (« 66 % »). Text nodes only:
 // a CSS length such as `${pct}%` in a style is not a number for reading.
 describe("percentages go through formatPercent", () => {
-  it("writes no `{value}%` text in a component", () => {
+  it("writes no `{value}%` text in rendering code", () => {
     const srcRoot = fileURLToPath(new URL("..", import.meta.url));
-    const files = readdirSync(join(srcRoot, "components"), { recursive: true, encoding: "utf8" })
-      .filter((f) => f.endsWith(".tsx") && !f.endsWith(".test.tsx"))
-      .map((f) => join("components", f));
+    const files = readdirSync(srcRoot, { recursive: true, encoding: "utf8" }).filter(
+      (f) => f.endsWith(".tsx") && !f.endsWith(".test.tsx"),
+    );
     const hits = files.flatMap((f) => {
       const text = readFileSync(join(srcRoot, f), "utf8");
-      return [...text.matchAll(/(^|>)\s*\{[\w.?()]+\}\s*%\s*(?=<|$)/gm)].map(
+      return [...text.matchAll(/(^|>)\s*\{[^{}]+\}\s*%\s*(?=<|$)/gm)].map(
         (m) => `${f}:${text.slice(0, m.index).split("\n").length}`,
       );
     });

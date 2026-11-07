@@ -54,4 +54,18 @@ describe("ElectricVehicleControl — charge limit failure", () => {
     expect(onExecuteOrder).toHaveBeenCalledWith("charge_limit", 85);
     expect(screen.queryByText("Setpoint not applied")).toBeNull();
   });
+
+  it("sends a tap queued while the first order is in flight (review of #1129)", async () => {
+    // The stepper replays the queued tap through the closure of the first
+    // render, where `busy` is still "limit": the guard used to refuse it,
+    // silently once the stepper's own line was off.
+    const onExecuteOrder = vi.fn(() => new Promise<void>((r) => setTimeout(r, 1200)));
+    render(<ElectricVehicleControl equipment={vehicle()} onExecuteOrder={onExecuteOrder} />);
+    const up = () => screen.getByRole("button", { name: "Raise the charge limit" });
+    fireEvent.click(up());
+    await waitFor(() => expect(onExecuteOrder).toHaveBeenCalledTimes(1), { timeout: 3000 });
+    fireEvent.click(up());
+    await waitFor(() => expect(onExecuteOrder).toHaveBeenCalledTimes(2), { timeout: 5000 });
+    expect(onExecuteOrder.mock.calls.map((c) => (c as unknown[])[1])).toEqual([85, 90]);
+  }, 10_000);
 });

@@ -58,7 +58,10 @@ export function ElectricVehicleControl({ equipment, onExecuteOrder }: ElectricVe
     value: unknown,
     okText: string,
   ): Promise<boolean> => {
-    if (busy || !usable) return false;
+    // A charge-limit tap queued by the stepper replays while the first order
+    // is in flight: its own key must not block it. Before #1129 the stepper's
+    // generic line hid that refusal; now the outcome line is the only one.
+    if ((busy && busy !== key) || !usable) return false;
     setBusy(key);
     setOutcome(null);
     try {

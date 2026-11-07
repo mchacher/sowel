@@ -128,9 +128,9 @@ The topbar height (49 px) **exactly matches the sidebar logo height**. This ensu
 }
 
 .topbar__chip--sun {
-  background: color-mix(in srgb, var(--a-500) 10%, transparent);
-  color: var(--a-600);
-  border-color: color-mix(in srgb, var(--a-500) 22%, transparent);
+  /* The sun glyph is the one tolerated amber icon; its text stays neutral
+     (tokens.md §1.2). */
+  color: var(--n-600);
 }
 .topbar__chip--sun svg {
   color: var(--a-500);
@@ -139,7 +139,7 @@ The topbar height (49 px) **exactly matches the sidebar logo height**. This ensu
 .topbar__chip-tag {
   font-weight: 600;
   font-size: var(--fs-micro);
-  color: var(--orange-700); /* attention in words: warning-ink */
+  color: var(--n-500);
   margin-left: 0.25rem;
   text-transform: lowercase;
 }
@@ -214,7 +214,7 @@ The topbar height (49 px) **exactly matches the sidebar logo height**. This ensu
 The alarm pill is only rendered if `issues.length > 0`. Production logic (from `AppLayout.tsx:51`):
 
 - If any issue has level `'error'` → `--error` (red tone)
-- Otherwise → `--warning` (amber tone)
+- Otherwise → `--warning` (orange: attention, not a fault)
 
 Click opens the alarms sheet (production: `AlarmsSheet.tsx`).
 
@@ -238,7 +238,7 @@ Click opens the alarms sheet (production: `AlarmsSheet.tsx`).
 
 ✅ **Do**: keep the chips in the order time → sunlight → connection → alarms → avatar. The user must see status BEFORE personal context.
 ✅ **Do**: only show the alarms pill if alarms exist. Don't render an empty "0 alertes" pill.
-✅ **Do**: keep the sunlight chip's amber tint. It's the warm signal that says "this is about light cycles", paired with our amber accent.
+✅ **Do**: keep the sun glyph amber and the chip's text neutral. Amber means "on or running" everywhere else; the sun is its one tolerated decorative use.
 
 ❌ **Don't**: remove the spacer. Without it, all chips clump left and the breadcrumb loses focus.
 ❌ **Don't**: add a search input here. Search lives in a different surface (sidebar or dedicated overlay).

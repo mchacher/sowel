@@ -19,18 +19,18 @@
 | Variant        | Class                                          | Visual                                                                                                    |
 | -------------- | ---------------------------------------------- | --------------------------------------------------------------------------------------------------------- |
 | Off (default)  | `.power-btn`                                   | bg `--n-50`, icon `--n-400`                                                                               |
-| **On**         | `.power-btn--on`                               | bg `--a-500`, icon white. This is the **single accent moment** of the UI — reserved for "a light is on"   |
+| **On**         | `.power-btn--on`                               | bg `--a-500`, icon `--a-on`. Amber means "on or running now" (tokens.md §1.2)                             |
 | Shutter closed | `.power-btn--shutter-closed` (alternative use) | bg `--shutter-500`, icon white. Used in patterns where a power-btn substitutes for the shutter ↑■↓ group. |
 
 ---
 
 ## States
 
-| State   | Effect                                                                                        |
-| ------- | --------------------------------------------------------------------------------------------- |
-| Default | calm bg + muted icon                                                                          |
-| Hover   | (production may add subtle bg shift; mock doesn't have it)                                    |
-| **On**  | full amber bg + white icon; the parent `.eq__icon--light-on` may also have a `glow` animation |
+| State   | Effect                                                                                           |
+| ------- | ------------------------------------------------------------------------------------------------ |
+| Default | calm bg + muted icon                                                                             |
+| Hover   | (production may add subtle bg shift; mock doesn't have it)                                       |
+| **On**  | full amber bg + `--a-on` icon; the parent `.eq__icon--light-on` may also have a `glow` animation |
 
 ---
 
@@ -74,15 +74,12 @@
 }
 .power-btn--on {
   background: var(--a-500);
-  color: var(--n-0);
+  color: var(--a-on); /* on-active: never white on amber */
   border-color: var(--a-500);
-}
-[data-theme="dark"] .power-btn--on {
-  color: #18170f;
 }
 ```
 
-The dark-theme override exists because `--n-0` in dark theme is `#17232B` (a near-black ocean), which would be invisible on amber. Hardcode `#18170F` for legibility.
+Content on an amber fill is `--a-on` (`on-active`) in both themes: white on `#F2C035` is 1.7:1.
 
 ---
 
@@ -93,7 +90,7 @@ The dark-theme override exists because `--n-0` in dark theme is `#17232B` (a nea
 | Icon-only button | Requires `aria-label="Allumer …"` AND `title` for redundancy. |
 | State change | When toggled, the button must announce the new state. Use `aria-pressed="true             | false"`for true on/off semantics, or a`role="switch" aria-checked` if used in a switch context. |
 | Touch target | 32 × 26 is below 44 × 44. Mitigate via padding-based hit area expansion in production. |
-| Color contrast | White icon on amber `--a-500`: 8.4:1 — AAA. Off icon `--n-400` on `--n-50`: 4.8:1 — AA. |
+| Color contrast | `--a-on` icon on amber `--a-500`: 10.2:1. Off icon `--n-400` on `--n-50`: 4.8:1 — AA. |
 | Reduced motion | The on-state glow is on the parent icon, not the button. Honors `prefers-reduced-motion`. |
 
 ---
