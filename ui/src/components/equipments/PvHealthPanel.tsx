@@ -1,4 +1,4 @@
-import { CHART_TICK_FONT, CHART_TOOLTIP_FONT } from "../../lib/chart-font";
+import { CHART_TICK_FONT, CHART_TOOLTIP_FONT, CHART_TOOLTIP_ITEM_STYLE } from "../../lib/chart-font";
 import { memo, useEffect, useMemo, useState } from "react";
 import { Activity, AlertTriangle } from "lucide-react";
 import { useTranslation } from "react-i18next";
@@ -253,6 +253,7 @@ function RatioChart({
               formatPercent(((v as number) / anchor) * 100, { locale }),
               t("equipments.pvHealth.ofNormal"),
             ]}
+            itemStyle={CHART_TOOLTIP_ITEM_STYLE}
             contentStyle={{
               background: "var(--color-surface)",
               border: "1px solid var(--color-border)",

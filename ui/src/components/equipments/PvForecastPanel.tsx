@@ -1,4 +1,4 @@
-import { CHART_TICK_FONT, CHART_TOOLTIP_FONT } from "../../lib/chart-font";
+import { CHART_TICK_FONT, CHART_TOOLTIP_FONT, CHART_TOOLTIP_ITEM_STYLE } from "../../lib/chart-font";
 import { useCallback, useEffect, useState } from "react";
 import {
   Area,
@@ -319,6 +319,7 @@ export function PvForecastPanel({ equipmentId }: PvForecastPanelProps) {
                       })
                     }
                     formatter={(v, name) => [formatPower(v as number, { unit: "W", locale }), name]}
+                    itemStyle={CHART_TOOLTIP_ITEM_STYLE}
                     contentStyle={{
                       background: "var(--color-surface)",
                       border: "1px solid var(--color-border)",

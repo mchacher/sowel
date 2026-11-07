@@ -5,3 +5,9 @@
 export const CHART_TICK_FONT = 11;
 /** Tooltip body: `--text-caption`. */
 export const CHART_TOOLTIP_FONT = 12;
+/**
+ * A Recharts default tooltip writes each row in its series colour (#1126). The
+ * energy and series palettes are tuned to tell marks apart, not to be read as
+ * text, so rows take the text colour; the chart's legend says which is which.
+ */
+export const CHART_TOOLTIP_ITEM_STYLE = { color: "var(--color-text)" } as const;

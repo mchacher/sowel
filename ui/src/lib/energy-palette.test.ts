@@ -268,27 +268,37 @@ describe("words in the energy surfaces reach 4.5:1 (#1126)", () => {
     });
   }
 
-  it("measures the defect it fixes: the auto-consumption green is not a text colour", () => {
-    expect(ratio(hex("light", "--solar-auto"), hex("light", SURFACE))).toBeLessThan(3);
-    expect(ratio(hex("light", "--energy-hc"), hex("light", SURFACE))).toBeLessThan(3);
-  });
+  // A text colour set from a series constant or token, anywhere in a style
+  // object (several lines included). Fills, strokes, swatches and borders are
+  // what the palette is for. A colour passed through a local variable is not
+  // seen: the computed checks above and the component tests cover those.
+  const componentsRoot = fileURLToPath(new URL("../components", import.meta.url));
+  const scope = [
+    ...["energy", "flow", "history", "equipments/ev-sessions"].flatMap((dir) =>
+      readdirSync(join(componentsRoot, dir)).map((f) => join(dir, f)),
+    ),
+    "equipments/UpsPanel.tsx",
+    "equipments/PvForecastPanel.tsx",
+    "equipments/PvHealthPanel.tsx",
+  ]
+    .filter((f) => /\.tsx$/.test(f) && !/\.test\.tsx$/.test(f))
+    .map((f) => ({ f, text: readFileSync(join(componentsRoot, f), "utf8") }));
+  const lineOf = (text: string, index: number) => text.slice(0, index).split("\n").length;
 
   it("writes no word in an energy colour (tooltips, flow figures, totals)", () => {
-    // A text colour set straight from a series constant or token. Fills,
-    // strokes, swatches and borders are what the palette is for.
-    const root = fileURLToPath(new URL("../components", import.meta.url));
-    const files = [
-      ...["energy", "flow", "history", "equipments/ev-sessions"].flatMap((dir) =>
-        readdirSync(join(root, dir)).map((f) => join(dir, f)),
-      ),
-      "equipments/UpsPanel.tsx",
-      "equipments/PvForecastPanel.tsx",
-    ].filter((f) => /\.tsx$/.test(f) && !/\.test\.tsx$/.test(f));
-    const textInPalette = /style=\{\{\s*color:\s*(?:[A-Z_]+_COLOR\b|"var\(--color-(?:energy|solar|series|slate)[\w-]*\)")/;
-    const hits = files.flatMap((f) =>
-      readFileSync(join(root, f), "utf8")
-        .split("\n")
-        .flatMap((line, i) => (textInPalette.test(line) ? [`${f}:${i + 1}`] : [])),
+    const textInPalette =
+      /style=\{\{[^}]*?(?<![\w-])color:\s*(?:[A-Z_]+_COLOR\b|"var\(--color-(?:energy|solar|series|slate)[\w-]*\)")/g;
+    const hits = scope.flatMap(({ f, text }) => [...text.matchAll(textInPalette)].map((m) => `${f}:${lineOf(text, m.index)}`));
+    expect(hits).toEqual([]);
+  });
+
+  it("gives every Recharts default tooltip neutral rows", () => {
+    // Without `content` or `itemStyle`, Recharts writes each row in its
+    // series colour: the PV forecast's « Attendu » was 2.97:1 on a light card.
+    const hits = scope.flatMap(({ f, text }) =>
+      [...text.matchAll(/<Tooltip\b[\s\S]*?\/>/g)]
+        .filter((m) => !/\b(content|itemStyle)=/.test(m[0]))
+        .map((m) => `${f}:${lineOf(text, m.index)}`),
     );
     expect(hits).toEqual([]);
   });

@@ -25,6 +25,7 @@ export type FlowEdge = "leftToFocal" | "rightToFocal" | "rightToLeft" | "leftToR
  *   focal  top-0            h-[36%] w-[36%] → y   0..130, centre (270,  65)
  *   left   top-1/2 centred  h-[29%] w-[22%] → y 128..232, centre ( 60, 180)
  *   right  top-1/2 centred  h-[29%] w-[22%] → y 128..232, centre (480, 180)
+ * Below `sm` the satellites are 24 % wide from -1 %: same centres (#1129).
  */
 export const PATHS: Record<FlowEdge, string> = {
   leftToFocal: "M 60 180 V 75 Q 60 65 70 65 H 270",
@@ -49,8 +50,8 @@ export const PILL_POSITION: Record<FlowEdge, string> = {
 // measured in Chromium). Now the content box is 67 px at 360 px, 74 px at
 // 390 px. Below `sm` the box also steps 1 % outward so its centre stays at
 // 11 % / 89 %, where the routes of PATHS meet it (x = 60 and 480 of 540).
-// The focal box takes 8 px of side padding below `sm`: « Consommation »
-// (12 px) ran 2 px past its content box at 360 px with 12 px of padding.
+// The focal box takes 8 px of side padding below `sm`: « Consommation », set
+// at 12 px, ran 2 px past its content box at 360 px with 12 px of padding.
 export const SLOT_BOX: Record<FlowSlot, string> = {
   focal: "top-0 left-1/2 -translate-x-1/2 w-[36%] h-[36%] px-2 sm:px-3 py-2",
   left: "top-1/2 -translate-y-1/2 -left-[1%] sm:left-0 w-[24%] sm:w-[22%] h-[29%] px-0.5 sm:px-2 py-2",
