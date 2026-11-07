@@ -11,6 +11,37 @@ This page summarises every published version, newest first. For the full diff be
 
 ---
 
+## 1.80.x: A calmer, more consistent interface
+
+### v1.80.0 — 2026-11-07 { #v1-80-0 }
+
+The interface is refreshed without changing its identity (spec 196): it works on phones and tablets, reads as French in French, writes every number the same way, looks calmer, and the same gesture does the same thing everywhere. A submeter can now count a solar panel wired behind it as production.
+
+- Feat (ui): **repair on phones and tablets** (spec 196, phase 1, #1118).
+  - Pages that broke on a phone fit again (logs, page headers, the weather station, chart ticks), and tablets get the mobile chrome so the zone tree and the energy sub-pages are reachable.
+  - Touch targets are 44 px on touch screens.
+  - French UI: « Accueil », « En direct », « Marche / Arrêt », plurals, French typography.
+  - Every number goes through one formatter: decimal comma in French, a narrow space before units, one precision per quantity.
+  - Clearer errors (« Serveur occupé », network), and the equipment page no longer flips to « introuvable » on a failed refresh.
+- Feat (ui): **a calmer look** (spec 196, phase 2, #1119).
+  - Inter with one type scale and sentence case; numbers in Inter with tabular figures, mono kept for logs and ids.
+  - Colour roles: amber means on, orange attention, red fault, green ok.
+  - Greys tinted with the brand blue, and a dark theme in ocean night where cards stand out from the page again.
+  - The top bar shows the clock only when you are in another time zone, and the connection only when it is degraded.
+  - The Maison panels (equipments, automations, activity) share one layout; the activity becomes one continuous log grouped by part of the day.
+- Feat (ui): **the same gesture everywhere** (spec 196, phase 3, #1121).
+  - One setpoint control everywhere: every tap shows at once, one order leaves after the last tap, the requested value holds until the device reports, a failure reverts.
+  - Mobile tiles show what a tap does (act, open, or ask first).
+  - The equipment page puts use first and configuration last; back returns where you came from.
+  - With « Confirmation before action » on, every path that moves the gate asks first. Stop never asks.
+- Feat (energy): **energy colours told apart in the dark theme** (spec 196, #1120). The look is unchanged, but series that blended together in dark now separate, legends follow the theme, and sub-meter series use a themed palette. The `/energy/by-usage` API gains an additive `colorIndex`; `color` keeps its values.
+- Feat (energy): **a submeter that sees local production** (spec 195, #1116, #1117). Tick « Local production flows through this meter » on a power-only submeter with a panel wired behind it: its negative power is counted as production and added to solar in self-consumption, history and Live, instead of inflating that circuit's consumption.
+- Fix (recipes, equipments): **activity log without duplicates** (#1122, #1130). Enabling or disabling an automation shows one line, not two. A VMC speed change shows as one line (« VMC → V1 ») instead of one per relay.
+- Registry: Presence Thermostat 1.0.1 names itself as the source of its setpoints in the activity log (#1131).
+- Dependencies: backend, UI and GitHub Actions updates (#1111, #1112, #1113, #1114, #1115).
+
+---
+
 ## 1.79.x: Telling two cars apart, and charging costs audited
 
 ### v1.79.0 — 2026-11-01 { #v1-79-0 }

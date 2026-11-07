@@ -344,7 +344,7 @@ Specs are grouped by theme and annotated with status:
 | 193 | Metered charger and usual vehicle                                       | ✅     | EV charge sessions on an `ev_charger` that only meters power (an energy meter): sessions from power, usual vehicle tie-break, one charger per car at a time; amends specs 182, 191, 192. Shipped in v1.78.0.                                  |
 | 194 | Telling the cars apart from their charge data                           | ✅     | EV session attribution by measured signals: optional `charge_power` on `electric_vehicle` compared with the charger's power, then energy vs battery rise; generic, no maker logic; amends specs 183, 191, 193. Shipped in v1.79.0.            |
 | 195 | A submeter that sees local production                                   | ✅     | `Equipment.localProduction`: a power-only submeter with a panel wired behind it; its negative power becomes `production`, added to solar in the self-consumption split, history and Live; slice keeps the positive part (#1116, amends 091).  |
-| 196 | Incremental UI refresh                                                  | 🚧     | Mobile/tablet fixes, French copy, `lib/format`, sentence-case Inter type scale, colour roles, brand-tinted neutrals and ocean night, one setpoint stepper, gate confirmation everywhere (amends 146). Unreleased.                             |
+| 196 | Incremental UI refresh                                                  | ✅     | Mobile/tablet fixes, French copy, `lib/format`, sentence-case Inter type scale, colour roles, brand-tinted neutrals and ocean night, one setpoint stepper, gate confirmation everywhere (amends 146). Shipped in v1.80.0.                     |
 
 ---
 
