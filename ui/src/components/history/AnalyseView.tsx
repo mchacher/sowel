@@ -63,6 +63,7 @@ import { firstChartTarget } from "./analyse-nav";
 import { ChartTooltip } from "./ChartTooltip";
 import { mergeSeriesData } from "./chart-utils";
 import { seriesFullLabel, seriesMetricLabel } from "./tooltip-format";
+import { currentLocale, formatNumber, formatWithUnit } from "../../lib/format";
 
 // ============================================================
 // Types
@@ -114,21 +115,20 @@ function formatTime(iso: string, period: Period): string {
   const d = new Date(iso);
   switch (period) {
     case "day":
-      return d.toLocaleTimeString(undefined, { hour: "2-digit", minute: "2-digit" });
+      return d.toLocaleTimeString(currentLocale(), { hour: "2-digit", minute: "2-digit" });
     case "week":
-      return d.toLocaleDateString(undefined, { weekday: "short", day: "numeric", hour: "2-digit", minute: "2-digit" });
+      return d.toLocaleDateString(currentLocale(), { weekday: "short", day: "numeric", hour: "2-digit", minute: "2-digit" });
     case "month":
-      return d.toLocaleDateString(undefined, { day: "numeric", month: "short" });
+      return d.toLocaleDateString(currentLocale(), { day: "numeric", month: "short" });
     case "year":
-      return d.toLocaleDateString(undefined, { month: "short" });
+      return d.toLocaleDateString(currentLocale(), { month: "short" });
   }
 }
 
 /** Y axis tick label. The unit is appended only when the chart carries two
  *  scales — on a single-axis chart the legend and tooltip already say it. */
 function formatAxisTick(value: number, unit: string): string {
-  const formatted = Number.isInteger(value) ? String(value) : value.toFixed(1);
-  return unit ? `${formatted} ${unit}` : formatted;
+  return formatWithUnit(value, unit);
 }
 
 // ============================================================
@@ -1115,7 +1115,7 @@ export function AnalyseView() {
                         tickLine={false}
                         axisLine={false}
                         width={52}
-                        tickFormatter={(v: number) => (Number.isInteger(v) ? String(v) : v.toFixed(1))}
+                        tickFormatter={(v: number) => formatNumber(v, { maxDecimals: 1 })}
                       />
                       {tooltip}
                       {commonLegend}

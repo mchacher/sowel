@@ -7,6 +7,7 @@ import { equipmentCandidates } from "../../lib/recipe-slots";
 import { equipmentLabelMap, type ZoneOption } from "../../lib/zone-path";
 import { durationToMinutes } from "./recipe-slot-helpers";
 import { cycleOptionLabel, resolveCycle } from "./recipe-cycle";
+import { formatDuration } from "../../lib/format";
 
 /**
  * `<option>` list of an equipment dropdown (spec 139). Integrations name every
@@ -168,13 +169,7 @@ function computeRemaining(iso: string): number {
 }
 
 function formatCountdown(s: number): string {
-  if (s < 60) return `${s}s`;
-  const m = Math.floor(s / 60);
-  const sec = s % 60;
-  if (m < 60) return `${m}m${sec > 0 ? String(sec).padStart(2, "0") + "s" : ""}`;
-  const h = Math.floor(m / 60);
-  const rm = m % 60;
-  return `${h}h${String(rm).padStart(2, "0")}`;
+  return formatDuration(s);
 }
 
 // ============================================================

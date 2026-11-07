@@ -50,7 +50,7 @@ describe("ChartTooltip (#498, point 4)", () => {
 
   it("formats the measurement value with unit and band inline", () => {
     render(<ChartTooltip active payload={payload} series={[temp, state]} />);
-    expect(screen.getByText(/20\.5\s*°C\s*\(19 \/ 22\)/)).toBeTruthy();
+    expect(screen.getByText(/20\.5\s*°C\s*\(19\.0 \/ 22\.0\)/)).toBeTruthy();
     expect(screen.getByText(/Salon \/ Thermostat/)).toBeTruthy();
   });
 

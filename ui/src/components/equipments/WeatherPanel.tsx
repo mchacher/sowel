@@ -4,6 +4,7 @@ import type { ComputedDataEntry, DataBindingWithValue } from "../../types";
 import { getBatteryIcon, getBatteryColor, formatSensorValue } from "./sensorUtils";
 import { angleToCompass, syntheticBindingFromComputed } from "./weather-utils";
 import { TempExtremes } from "../TempExtremes";
+import { formatPercent } from "../../lib/format";
 
 interface WeatherPanelProps {
   bindings: DataBindingWithValue[];
@@ -257,7 +258,7 @@ function WeatherDeviceCard({
           >
             {getBatteryIcon(batteryLevel, 16, 1.5)}
             <span className="text-[12px] tabular-nums font-medium">
-              {batteryLevel !== null ? `${batteryLevel}%` : "?"}
+              {batteryLevel !== null ? formatPercent(batteryLevel) : "?"}
             </span>
           </span>
         )}

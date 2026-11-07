@@ -13,6 +13,7 @@ import {
 import type { HistoryPoint } from "../../types";
 import { rangeToDurationMs, type TimeRange } from "./history-utils";
 import { formatSeriesTooltip } from "./tooltip-format";
+import { currentLocale, formatDuration, formatNumber } from "../../lib/format";
 
 interface TimeSeriesChartProps {
   points: HistoryPoint[];
@@ -31,17 +32,17 @@ interface TimeSeriesChartProps {
 function formatTime(iso: string, range: TimeRange): string {
   const d = new Date(iso);
   if (range === "6h" || range === "24h") {
-    return d.toLocaleTimeString(undefined, { hour: "2-digit", minute: "2-digit" });
+    return d.toLocaleTimeString(currentLocale(), { hour: "2-digit", minute: "2-digit" });
   }
   if (range === "7d") {
-    return d.toLocaleDateString(undefined, { weekday: "short", day: "numeric", hour: "2-digit", minute: "2-digit" });
+    return d.toLocaleDateString(currentLocale(), { weekday: "short", day: "numeric", hour: "2-digit", minute: "2-digit" });
   }
-  return d.toLocaleDateString(undefined, { month: "short", day: "numeric" });
+  return d.toLocaleDateString(currentLocale(), { month: "short", day: "numeric" });
 }
 
 function formatTooltipTime(iso: string): string {
   const d = new Date(iso);
-  return d.toLocaleString(undefined, {
+  return d.toLocaleString(currentLocale(), {
     month: "short",
     day: "numeric",
     hour: "2-digit",
@@ -49,28 +50,11 @@ function formatTooltipTime(iso: string): string {
   });
 }
 
-/** Returns a human-readable relative time string, or null if gap < 5 minutes. */
-function formatRelativeTime(isoTime: string, now: number, tFn: (key: string) => string): string | null {
+/** How long the series has been silent, or null if the gap is under 5 minutes. */
+function formatRelativeTime(isoTime: string, now: number): string | null {
   const diffMs = now - new Date(isoTime).getTime();
   if (diffMs < 5 * 60_000) return null;
-
-  const minutes = Math.floor(diffMs / 60_000);
-  const hours = Math.floor(minutes / 60);
-  const days = Math.floor(hours / 24);
-
-  if (days > 0) {
-    const remH = hours % 24;
-    return remH > 0
-      ? `${days}${tFn("time.day")} ${remH}${tFn("time.hour")}`
-      : `${days}${tFn("time.day")}`;
-  }
-  if (hours > 0) {
-    const remM = minutes % 60;
-    return remM > 0
-      ? `${hours}${tFn("time.hour")} ${remM}${tFn("time.min")}`
-      : `${hours}${tFn("time.hour")}`;
-  }
-  return `${minutes}${tFn("time.min")}`;
+  return formatDuration(diffMs / 1000);
 }
 
 const POWER_COLOR = "#D4963F";
@@ -126,7 +110,7 @@ export function TimeSeriesChart({ points, range, resolution, unit, height = 200,
   }
 
   const hasMinMax = resolution !== "raw" && data.some((d) => d.min !== undefined);
-  const staleDuration = lastRealTime && fetchTime ? formatRelativeTime(lastRealTime, fetchTime, t) : null;
+  const staleDuration = lastRealTime && fetchTime ? formatRelativeTime(lastRealTime, fetchTime) : null;
 
   // Use CSS variables for chart colors — works in both light and dark mode
   const primaryColor = isPower ? POWER_COLOR : "var(--color-primary)";
@@ -169,8 +153,8 @@ export function TimeSeriesChart({ points, range, resolution, unit, height = 200,
           {...(isDiscrete
             ? { domain: [0, 1], ticks: [0, 1], tickFormatter: (v: number) => (v === 1 ? t("controls.on") : t("controls.off")) }
             : isPower
-              ? { tickFormatter: (v: number) => (v >= 1000 ? `${(v / 1000).toFixed(1)}k` : String(Math.round(v))) }
-              : { tickFormatter: (v: number) => (Number.isInteger(v) ? String(v) : v.toFixed(1)) }
+              ? { tickFormatter: (v: number) => (v >= 1000 ? `${formatNumber(v / 1000, { maxDecimals: 1 })}k` : formatNumber(v, { maxDecimals: 0 })) }
+              : { tickFormatter: (v: number) => formatNumber(v, { maxDecimals: 1 }) }
           )}
         />
         <Tooltip

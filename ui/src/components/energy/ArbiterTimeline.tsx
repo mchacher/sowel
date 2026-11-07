@@ -6,7 +6,7 @@ import { getArbiterTimeline } from "../../api";
 import { useArbiter } from "../../store/useArbiter";
 import { cellColor, journalDotColor } from "./arbiterColors";
 import { journalReasonLabel } from "./arbiterReason";
-import { formatPower, formatRange } from "../../lib/format";
+import { currentLocale, formatPower, formatRange } from "../../lib/format";
 
 // Spec 148 (Phase B) — the redesigned Energy → arbitrage timeline: a signed
 // surplus/deficit curve above per-load quarter-hour ribbons, paged back to 48h,
@@ -47,7 +47,7 @@ function useWindowHours(): number {
 }
 
 function hhmm(ms: number): string {
-  return new Date(ms).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
+  return new Date(ms).toLocaleTimeString(currentLocale(), { hour: "2-digit", minute: "2-digit" });
 }
 
 /** Spec 165 — the states the ribbon can paint, in reading order. `suspended`

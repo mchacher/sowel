@@ -79,6 +79,7 @@ import { useWsSubscription } from "../hooks/useWsSubscription";
 import { HistoryPanel } from "../components/history/HistoryPanel";
 import { useEquipmentDetail } from "../hooks/useEquipmentDetail";
 import { apiErrorMessage } from "../lib/api-error";
+import { formatNumber } from "../lib/format";
 
 export function EquipmentDetailPage() {
   useWsSubscription(["equipments", "devices", "energy"]);
@@ -750,7 +751,7 @@ export function EquipmentDetailPage() {
                         {cd.category && <span className="text-text-tertiary">({cd.category})</span>}
                         <span className="ml-auto font-mono text-text">
                           {cd.value !== null && cd.value !== undefined
-                            ? typeof cd.value === "number" ? (cd.value as number).toFixed(1) : String(cd.value)
+                            ? typeof cd.value === "number" ? formatNumber(cd.value, { maxDecimals: 1 }) : String(cd.value)
                             : "—"}
                           {cd.unit && <span className="text-text-tertiary ml-0.5">{cd.unit}</span>}
                         </span>

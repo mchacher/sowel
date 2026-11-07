@@ -1,6 +1,7 @@
 import { useTranslation } from "react-i18next";
 import { WashingMachine, Timer, Zap } from "lucide-react";
 import type { EquipmentWithDetails } from "../../types";
+import { formatEnergyParts } from "../../lib/format";
 
 interface AppliancePanelProps {
   equipment: EquipmentWithDetails;
@@ -99,8 +100,10 @@ export function AppliancePanel({ equipment }: AppliancePanelProps) {
             <div className="flex items-center gap-2 pt-2 border-t border-border-light">
               <Zap size={14} strokeWidth={1.5} className="text-accent" />
               <span className="text-[12px] text-text-secondary">
-                {energyWh >= 1000 ? (energyWh / 1000).toFixed(1) : Math.round(energyWh)}
-                <span className="text-text-tertiary ml-0.5">{energyWh >= 1000 ? "kWh" : "Wh"}</span>
+                {formatEnergyParts(energyWh / 1000, { unit: "auto" }).value}
+                <span className="text-text-tertiary ml-0.5">
+                  {formatEnergyParts(energyWh / 1000, { unit: "auto" }).unit}
+                </span>
               </span>
             </div>
           )}

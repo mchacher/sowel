@@ -32,6 +32,7 @@ import {
   upsStatusKey,
   type UpsReadings,
 } from "./upsStatus";
+import { formatNumber, formatPercent, formatRange, formatWithUnit } from "../../lib/format";
 
 interface UpsPanelProps {
   dataBindings: DataBindingWithValue[];
@@ -227,7 +228,7 @@ export function UpsPanel({ dataBindings }: UpsPanelProps) {
               {r.transferLow !== null && r.transferHigh !== null && (
                 <MarginRow
                   label={t("equipments.ups.margins.transfer")}
-                  setting={`${r.transferLow} – ${r.transferHigh} V`}
+                  setting={formatRange(formatNumber(r.transferLow), formatWithUnit(r.transferHigh, "V"))}
                 >
                   <RangeTrack
                     low={r.transferLow}
@@ -240,7 +241,7 @@ export function UpsPanel({ dataBindings }: UpsPanelProps) {
               {r.nominalW !== null && (
                 <MarginRow
                   label={t("equipments.ups.margins.capacity")}
-                  setting={`${r.nominalW} W`}
+                  setting={formatWithUnit(r.nominalW, "W")}
                 >
                   <FillTrack pct={r.loadPct} />
                 </MarginRow>
@@ -249,7 +250,7 @@ export function UpsPanel({ dataBindings }: UpsPanelProps) {
                 <MarginRow
                   label={t("equipments.ups.margins.shutdown")}
                   setting={[
-                    r.chargeLowPct !== null ? `${r.chargeLowPct} %` : null,
+                    r.chargeLowPct !== null ? formatPercent(r.chargeLowPct) : null,
                     r.runtimeLowS !== null ? formatRuntime(r.runtimeLowS) : null,
                   ]
                     .filter(Boolean)

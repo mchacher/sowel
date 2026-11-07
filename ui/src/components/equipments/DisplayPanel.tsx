@@ -7,6 +7,7 @@ import type {
   DataCategory,
   OrderCategory,
 } from "../../types";
+import { formatPercent, formatWithUnit } from "../../lib/format";
 
 /** Brightness slider behaviour:
  *  - commit immediately on `onPointerUp` (pointer release) so the
@@ -71,10 +72,10 @@ function formatValue(category: DataCategory, value: unknown): string {
     case "uptime":
       return typeof value === "number" ? formatUptime(value) : String(value);
     case "rssi":
-      return typeof value === "number" ? `${value} dBm` : String(value);
+      return typeof value === "number" ? formatWithUnit(value, "dBm") : String(value);
     case "display_brightness":
       if (typeof value !== "number") return String(value);
-      return value === 0 ? "Off" : `${value} %`;
+      return value === 0 ? "Off" : formatPercent(value);
     default:
       return String(value);
   }

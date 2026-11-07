@@ -18,6 +18,7 @@ import type { ModeWithDetails, EquipmentWithDetails, ZoneModeImpactAction, Calen
 import { useWsSubscription } from "../hooks/useWsSubscription";
 import { flattenZonesWithPath } from "../lib/zone-path";
 import { brightnessPercent, brightnessScale } from "../lib/brightness";
+import { formatPercent } from "../lib/format";
 
 export function ModeDetailPage() {
   useWsSubscription(["modes"]);
@@ -300,7 +301,7 @@ function ImpactActionRow({
       } else if (action.orderAlias === "state" && action.value === "CLOSE") {
         detail = t("controls.close");
       } else if (action.orderAlias === "position") {
-        detail = `${t("controls.position")} ${action.value}%`;
+        detail = `${t("controls.position")} ${formatPercent(Number(action.value))}`;
       }
     } else if (eq?.type?.startsWith("light_")) {
       icon = <Lightbulb size={12} strokeWidth={1.5} />;
@@ -310,7 +311,7 @@ function ImpactActionRow({
         detail = on ? t("controls.on") : t("controls.off");
       } else if (action.orderAlias === "brightness") {
         const scale = brightnessScale(eq.orderBindings.find((o) => o.alias === "brightness"));
-        detail = `${t("controls.brightness")} ${brightnessPercent(Number(action.value), scale)}%`;
+        detail = `${t("controls.brightness")} ${formatPercent(brightnessPercent(Number(action.value), scale))}`;
       }
     } else if (action.orderAlias === "state" && (action.value === "ON" || action.value === "OFF")) {
       detail = action.value === "ON" ? t("controls.on") : t("controls.off");

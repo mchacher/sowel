@@ -17,15 +17,35 @@ export const a = (v: number) => \`\${v.toFixed(1)} kWh\`;
 export const b = new Intl.NumberFormat("fr-FR").format(1);
 export const c = (1234).toLocaleString();
 export const d = (1234).toLocaleString("fr-FR");
+export const e = new Date().toLocaleDateString();
+export const f = new Date().toLocaleTimeString([], { hour: "2-digit" });
+export const g = new Date().toLocaleString(undefined, { month: "short" });
+export const h = new Date().toLocaleDateString("fr-FR", { month: "short" });
 `;
 
 describe("lint: numbers go through lib/format", () => {
   it("flags toFixed, Intl.NumberFormat and a bare toLocaleString in rendering code", async () => {
     const messages = await restricted(FIXTURE, "src/components/Fixture.tsx");
-    expect(messages).toHaveLength(3);
+    expect(messages).toHaveLength(6);
     expect(messages[0]).toMatch(/toFixed/);
     expect(messages[1]).toMatch(/lib\/format/);
     expect(messages[2]).toMatch(/toLocaleString/);
+  }, 30_000);
+
+  it("flags a date formatted in the browser's language, not one given a locale", async () => {
+    const messages = await restricted(FIXTURE, "src/components/Fixture.tsx");
+    // e (no argument), f ([]), g (undefined); h passes a locale and is fine.
+    expect(messages.slice(3)).toHaveLength(3);
+    expect(messages.slice(3).every((m) => /currentLocale/.test(m))).toBe(true);
+  }, 30_000);
+
+  it("is an error, not a warning, now that every screen is migrated", async () => {
+    const eslint = new ESLint({ cwd: uiRoot });
+    const [result] = await eslint.lintText(FIXTURE, { filePath: "src/components/Fixture.tsx" });
+    const severities = result.messages
+      .filter((m) => m.ruleId === "no-restricted-syntax")
+      .map((m) => m.severity);
+    expect(new Set(severities)).toEqual(new Set([2]));
   }, 30_000);
 
   it("leaves lib/format itself and tests alone", async () => {

@@ -1,5 +1,6 @@
 import { useTranslation } from "react-i18next";
 import { formatTooltipRow, type TooltipRow, type TooltipSeries } from "./tooltip-format";
+import { currentLocale } from "../../lib/format";
 
 interface PayloadEntry {
   name?: string | number;
@@ -17,7 +18,7 @@ interface ChartTooltipProps {
 }
 
 function formatHeaderTime(ts: number): string {
-  return new Date(ts).toLocaleString(undefined, {
+  return new Date(ts).toLocaleString(currentLocale(), {
     month: "short",
     day: "numeric",
     hour: "2-digit",

@@ -9,6 +9,7 @@ import {
 } from "../equipments/weatherForecastUtils";
 import { ForecastConfidenceMark } from "./ForecastConfidenceMark";
 import { WidgetCard } from "./WidgetCard";
+import { formatNumber, formatPercent, formatWithUnit } from "../../lib/format";
 
 interface WeatherForecastWidgetProps {
   label: string;
@@ -88,13 +89,13 @@ export function WeatherForecastWidget({
             <div className="flex items-baseline gap-1">
               {tomorrow.tempMax !== null && (
                 <span className="text-[20px] sm:text-[28px] font-bold font-mono text-text tabular-nums leading-none">
-                  {Math.round(tomorrow.tempMax)}
+                  {formatNumber(tomorrow.tempMax, { decimals: 0 })}
                 </span>
               )}
               <span className="text-[12px] sm:text-[14px] text-text-tertiary">°C</span>
               {tomorrow.tempMin !== null && (
                 <span className="text-[12px] sm:text-[14px] font-mono text-text-tertiary tabular-nums ml-1">
-                  {Math.round(tomorrow.tempMin)}°
+                  {formatNumber(tomorrow.tempMin, { decimals: 0 })}°
                 </span>
               )}
             </div>
@@ -110,7 +111,7 @@ export function WeatherForecastWidget({
                 <div className="flex items-center gap-0.5">
                   <Droplets size={10} strokeWidth={1.5} className="text-primary" />
                   <span className="text-[10px] sm:text-[12px] text-text-secondary font-mono tabular-nums">
-                    {Math.round(tomorrow.rainProb)}%
+                    {formatPercent(tomorrow.rainProb)}
                   </span>
                 </div>
               )}
@@ -118,7 +119,7 @@ export function WeatherForecastWidget({
                 <div className="flex items-center gap-0.5">
                   <Wind size={10} strokeWidth={1.5} className="text-text-tertiary" />
                   <span className="text-[10px] sm:text-[12px] text-text-secondary font-mono tabular-nums">
-                    {Math.round(tomorrow.windGusts)}km/h
+                    {formatWithUnit(tomorrow.windGusts, "km/h")}
                   </span>
                 </div>
               )}

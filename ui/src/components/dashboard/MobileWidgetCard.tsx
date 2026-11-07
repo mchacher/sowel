@@ -31,6 +31,14 @@ import { solarWidgetState } from "./solarWidget";
 import { resolvePowerReading } from "../../lib/power-reading";
 import { pickLivePowerBinding } from "../../lib/energy-meter-display";
 import { formatRelative } from "../../lib/format-relative";
+import {
+  formatEnergy,
+  formatNumber,
+  formatPercent,
+  formatPower,
+  formatTemperature,
+  formatWithUnit,
+} from "../../lib/format";
 import { useStalenessClock } from "../../hooks/useStalenessClock";
 import { brightnessPercent, brightnessScale } from "../../lib/brightness";
 import { findOrderByCategory } from "../equipments/bindingUtils";
@@ -203,7 +211,7 @@ function useMobileState(
     const isDimmable = equipment.type === "light_dimmable" || equipment.type === "light_color";
     return {
       icon: renderWidgetStateIcon(widget.icon, <LightBulbIcon on={isOn} />),
-      stateLines: [isDimmable && pct !== null ? `${pct}%` : isOn ? t("controls.on") : t("controls.off")],
+      stateLines: [isDimmable && pct !== null ? formatPercent(pct) : isOn ? t("controls.on") : t("controls.off")],
     };
   }
 
@@ -217,7 +225,7 @@ function useMobileState(
         : position === 0
           ? t("controls.closed")
           : position !== null
-            ? `${position}%`
+            ? formatPercent(position)
             : null;
     return {
       icon: renderWidgetStateIcon(widget.icon, <ShutterWidgetIcon level={level} />),
@@ -234,7 +242,7 @@ function useMobileState(
         : position === 0
           ? t("controls.retracted")
           : position !== null
-            ? `${position}%`
+            ? formatPercent(position)
             : null;
     return {
       icon: renderWidgetStateIcon(
@@ -257,7 +265,7 @@ function useMobileState(
         : position === 0
           ? t("controls.doorClosed")
           : position !== null
-            ? `${position}%`
+            ? formatPercent(position)
             : null;
     return {
       icon: renderWidgetStateIcon(widget.icon, <GarageDoorIcon open={shutterIsOpen} />),
@@ -282,7 +290,7 @@ function useMobileState(
     const level = spVal !== null ? (spVal - minBound) / (30 - minBound) : undefined;
     return {
       icon: renderWidgetStateIcon(widget.icon, <ThermometerIcon warm={isOn} level={level} />),
-      stateLines: tempVal !== null ? [`${tempVal.toFixed(1)}°C`] : [],
+      stateLines: tempVal !== null ? [formatTemperature(tempVal, { style: "compact" })] : [],
     };
   }
 
@@ -337,7 +345,7 @@ function useMobileState(
     const outdoorExtremes = findTempExtremes(equipment, "temperature_outdoor");
     const indoorExtremes = findTempExtremes(equipment, "temperature");
     const fmt = (b: typeof outdoor) =>
-      b && typeof b.value === "number" ? `${b.value.toFixed(1)}°` : "—";
+      formatTemperature(b && typeof b.value === "number" ? b.value : null, { style: "compact" });
     const both = !!outdoor && !!indoor;
     // Icon slot is scaled 50% by MobileWidgetCard, so we size text 2x what
     // we want visible. Both: temps side by side with short "Ext./Int."
@@ -438,12 +446,12 @@ function useMobileState(
         : "text-text-tertiary";
       const lines: string[] = [];
       if (tomorrow.tempMax !== null) {
-        let tempStr = `${Math.round(tomorrow.tempMax)}°`;
-        if (tomorrow.tempMin !== null) tempStr += ` / ${Math.round(tomorrow.tempMin)}°`;
+        let tempStr = `${formatNumber(tomorrow.tempMax, { decimals: 0 })}°`;
+        if (tomorrow.tempMin !== null) tempStr += ` / ${formatNumber(tomorrow.tempMin, { decimals: 0 })}°`;
         lines.push(tempStr);
       }
       if (tomorrow.rainProb !== null && tomorrow.rainProb > 0) {
-        lines.push(`💧${Math.round(tomorrow.rainProb)}%`);
+        lines.push(`💧${formatPercent(tomorrow.rainProb)}`);
       }
       return {
         icon: <ConditionIcon size={96} strokeWidth={1.2} className={conditionColor} />,
@@ -526,7 +534,7 @@ function useMobileState(
       icon: renderWidgetStateIcon(widget.icon, <WaterHeaterIcon on={heaterOn} />),
       stateLines: [
         heaterOn ? t("controls.on") : t("controls.off"),
-        ...(tempValue !== null ? [`${tempValue.toFixed(1)}°C`] : []),
+        ...(tempValue !== null ? [formatTemperature(tempValue, { style: "compact" })] : []),
       ],
     };
   }
@@ -556,11 +564,11 @@ function useMobileState(
     // Second line only while on battery: on mains the autonomy is trivia, and
     // the mobile card has room for one meaningful line, not two.
     const detail = isOnBattery(status)
-      ? [charge !== null && charge !== undefined ? `${String(charge)} %` : null, runtime]
+      ? [charge !== null && charge !== undefined ? formatPercent(Number(charge)) : null, runtime]
           .filter(Boolean)
           .join("  ·  ")
       : charge !== null && charge !== undefined
-        ? `${String(charge)} %`
+        ? formatPercent(Number(charge))
         : "";
     return {
       icon: renderWidgetStateIcon(
@@ -581,7 +589,7 @@ function useMobileState(
     const s = electricVehicleStateOf(equipment, now);
     const tone = evGaugeTone(s.batteryLevel, s.chargingState === "charging");
     const detail = [
-      s.rangeKm !== null ? `${Math.round(s.rangeKm)} km` : null,
+      s.rangeKm !== null ? formatWithUnit(s.rangeKm, "km") : null,
       s.chargingState ? t(evChargingStateKey(s.chargingState)) : null,
     ].filter(Boolean);
     return {
@@ -601,7 +609,7 @@ function useMobileState(
           )}
           <span className="font-mono text-[12px] font-bold text-text tabular-nums">
             <span className={tone === "low" ? "text-error" : undefined}>
-              {s.batteryLevel !== null ? `${Math.round(s.batteryLevel)} %` : "—"}
+              {formatPercent(s.batteryLevel)}
             </span>
           </span>
           {detail.length > 0 && (
@@ -620,11 +628,7 @@ function useMobileState(
     const watts = s.power.watts;
     const charging = s.vehicle === "charging" || (watts !== null && watts > 0);
     const powerLine =
-      watts !== null && watts > 0
-        ? watts >= 1000
-          ? `${(watts / 1000).toFixed(2)} kW`
-          : `${Math.round(watts)} W`
-        : null;
+      watts !== null && watts > 0 ? formatPower(watts) : null;
     return {
       icon: renderWidgetStateIcon(
         widget.icon,
@@ -674,7 +678,7 @@ function useMobileState(
         : position === 0
           ? t("controls.closed")
           : position !== null
-            ? `${position}%`
+            ? formatPercent(position)
             : null;
     return {
       icon: renderWidgetStateIcon(widget.icon, <PoolCoverIcon position={position} />),
@@ -709,16 +713,10 @@ function useMobileState(
     );
     const demandW = demandReading.watts;
     const fmtWh = (wh: unknown): string =>
-      typeof wh !== "number"
-        ? "—"
-        : wh >= 1000
-          ? `${(wh / 1000).toFixed(1)} kWh`
-          : `${Math.round(wh)} Wh`;
+      formatEnergy(typeof wh === "number" ? wh / 1000 : null, { unit: "auto" });
     const lines = [fmtWh(energyDay?.value)];
     if (demandW !== null) {
-      lines.push(
-        demandW >= 1000 ? `${(demandW / 1000).toFixed(1)} kW` : `${Math.round(demandW)} W`,
-      );
+      lines.push(formatPower(demandW));
     } else if (demandReading.verdict === "stale") {
       // The cumulative figure above is still valid; only the instantaneous
       // power is unknown, and it says so rather than going missing (#839).

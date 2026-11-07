@@ -10,6 +10,7 @@ import {
 } from "../../lib/energy-meter-display";
 import { resolvePowerReading } from "../../lib/power-reading";
 import { formatRelative } from "../../lib/format-relative";
+import { formatNumber } from "../../lib/format";
 
 interface ElectricalMeteringPanelProps {
   equipment: EquipmentWithDetails;
@@ -80,7 +81,7 @@ export function ElectricalMeteringPanel({ equipment }: ElectricalMeteringPanelPr
       key: "voltage",
       labelKey: "category.voltage",
       icon: <PlugZap size={16} strokeWidth={1.5} />,
-      value: voltageAged ? "—" : voltageV !== null ? voltageV.toFixed(1) : null,
+      value: voltageAged ? "—" : voltageV !== null ? formatNumber(voltageV, { maxDecimals: 0 }) : null,
       unit: voltageAged ? "" : "V",
       sublabel: voltageAged ? t("reading.outdated") : null,
     },
@@ -88,7 +89,7 @@ export function ElectricalMeteringPanel({ equipment }: ElectricalMeteringPanelPr
       key: "current",
       labelKey: "category.current",
       icon: <Activity size={16} strokeWidth={1.5} />,
-      value: currentAged ? "—" : currentA !== null ? currentA.toFixed(2) : null,
+      value: currentAged ? "—" : currentA !== null ? formatNumber(currentA, { maxDecimals: 1 }) : null,
       unit: currentAged ? "" : "A",
       sublabel: currentAged ? t("reading.outdated") : null,
     },
@@ -96,7 +97,7 @@ export function ElectricalMeteringPanel({ equipment }: ElectricalMeteringPanelPr
       key: "powerFactor",
       labelKey: "energy.powerFactor",
       icon: <Percent size={16} strokeWidth={1.5} />,
-      value: pfAged ? "—" : powerFactor !== null ? powerFactor.toFixed(2) : null,
+      value: pfAged ? "—" : powerFactor !== null ? formatNumber(powerFactor, { decimals: 2 }) : null,
       unit: "",
       sublabel: pfAged ? t("reading.outdated") : null,
     },

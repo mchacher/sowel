@@ -2,6 +2,7 @@ import type { TFunction } from "i18next";
 import { CATEGORY_UNITS, booleanTickLabels, isBooleanCategory } from "./history-utils";
 import { humanBindingLabel } from "./binding-label";
 import { humanizeAlias } from "../../lib/humanize-alias";
+import { formatEnergy, formatNumber, formatPercent, formatPower, formatWithUnit } from "../../lib/format";
 
 /** The slice of a series the tooltip needs to render one row (#498, point 4). */
 export interface TooltipSeries {
@@ -23,7 +24,9 @@ export interface TooltipRow {
   color: string;
 }
 
-const fmt = (x: number): string => (Number.isInteger(x) ? String(x) : x.toFixed(1));
+/** The bare number of a min/max band, at its unit's precision (temperatures keep one decimal). */
+const fmt = (x: number, unit?: string): string =>
+  formatNumber(x, unit === "°C" ? { decimals: 1 } : { maxDecimals: 1 });
 
 type SeriesLabelInput = Pick<
   TooltipSeries,
@@ -76,14 +79,14 @@ export function formatTooltipRow(
     const [offKey, onKey] = booleanTickLabels(s.category);
     if (num <= 0.05) valueText = t(offKey);
     else if (num >= 0.95) valueText = t(onKey);
-    else valueText = `${Math.round(num * 100)}% ${t(onKey)}`;
+    else valueText = `${formatPercent(num * 100)} ${t(onKey)}`;
   } else {
     const unit = CATEGORY_UNITS[s.category];
-    valueText = unit ? `${fmt(num)} ${unit}` : fmt(num);
+    valueText = formatWithUnit(num, unit);
     const min = rowData?.[`${s.id}:min`];
     const max = rowData?.[`${s.id}:max`];
     if (typeof min === "number" && typeof max === "number") {
-      valueText += ` (${fmt(min)} / ${fmt(max)})`;
+      valueText += ` (${fmt(min, unit)} / ${fmt(max, unit)})`;
     }
   }
 
@@ -123,26 +126,15 @@ export function formatValueWithUnit(value: number, unit?: string): string {
   // Energy: convert Wh to kWh when appropriate
   if (unit === "Wh" || unit === "kWh") {
     const kwh = unit === "kWh" ? value : value / 1000;
-    if (kwh >= 100) return `${Math.round(kwh)} kWh`;
-    if (kwh >= 10) return `${kwh.toFixed(1)} kWh`;
-    if (kwh >= 1) return `${kwh.toFixed(2)} kWh`;
-    const wh = unit === "kWh" ? value * 1000 : value;
-    return `${Math.round(wh)} Wh`;
+    return formatEnergy(kwh, { unit: "auto" });
   }
 
-  // Generic: show value with appropriate precision + unit
-  const formatted = Number.isInteger(value) ? String(value) : value.toFixed(1);
-  return unit ? `${formatted} ${unit}` : formatted;
+  // Generic: the unit's own precision (lib/format).
+  return formatWithUnit(value, unit);
 }
 
 function formatValue(v: number, unit?: string): string {
-  const formatted = Number.isInteger(v) ? String(v) : v.toFixed(1);
-  return unit ? `${formatted} ${unit}` : formatted;
-}
-
-function formatPower(w: number): string {
-  if (w >= 1000) return `${(w / 1000).toFixed(1)} kW`;
-  return `${Math.round(w)} W`;
+  return formatWithUnit(v, unit);
 }
 
 /** Bar chart tooltip row: the value with its unit, plus the fixed series label. */

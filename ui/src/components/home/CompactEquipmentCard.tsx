@@ -35,6 +35,15 @@ import { resolvePowerReading } from "../../lib/power-reading";
 import { formatRelative } from "../../lib/format-relative";
 import { useStalenessClock } from "../../hooks/useStalenessClock";
 import type { DataBindingWithValue } from "../../types";
+import {
+  formatDuration,
+  formatEnergyParts,
+  formatNumber,
+  formatPercent,
+  formatPower,
+  formatTemperature,
+  formatWithUnit,
+} from "../../lib/format";
 
 interface CompactEquipmentCardProps {
   equipment: EquipmentWithDetails;
@@ -256,11 +265,7 @@ export function CompactEquipmentCard({ equipment, onExecuteOrder, zoneName }: Co
                 solarPowerW === null ? "text-text-tertiary" : "text-success"
               }`}
             >
-              {solarPowerW === null
-                ? "—"
-                : solarPowerW >= 1000
-                  ? `${(solarPowerW / 1000).toFixed(2)} kW`
-                  : `${Math.round(solarPowerW)} W`}
+              {formatPower(solarPowerW)}
             </span>
             {powerReading.verdict === "stale" && (
               <span className="text-[11px] text-text-tertiary">
@@ -297,14 +302,12 @@ export function CompactEquipmentCard({ equipment, onExecuteOrder, zoneName }: Co
           <div className="flex items-center gap-2 flex-shrink-0">
             {waterHeaterTempC !== null && (
               <span className="text-[13px] font-semibold text-text-secondary tabular-nums font-mono">
-                {waterHeaterTempC.toFixed(1)}°C
+                {formatTemperature(waterHeaterTempC, { style: "compact" })}
               </span>
             )}
             {switchPowerW !== null && (
               <span className="text-[13px] font-semibold text-accent tabular-nums font-mono">
-                {switchPowerW >= 1000
-                  ? `${(switchPowerW / 1000).toFixed(2)} kW`
-                  : `${Math.round(switchPowerW)} W`}
+                {formatPower(switchPowerW)}
               </span>
             )}
             {/* The 52 px row has the width for the age inline, so no sub-label
@@ -321,11 +324,9 @@ export function CompactEquipmentCard({ equipment, onExecuteOrder, zoneName }: Co
             )}
             {waterHeaterDayWh !== null && (
               <span className="text-[13px] text-accent tabular-nums font-mono font-semibold">
-                {waterHeaterDayWh >= 1000
-                  ? (waterHeaterDayWh / 1000).toFixed(2)
-                  : Math.round(waterHeaterDayWh)}
+                {formatEnergyParts(waterHeaterDayWh / 1000, { unit: "auto" }).value}
                 <span className="text-[11px] font-normal text-text-tertiary ml-0.5">
-                  {waterHeaterDayWh >= 1000 ? "kWh" : "Wh"}
+                  {formatEnergyParts(waterHeaterDayWh / 1000, { unit: "auto" }).unit}
                 </span>
               </span>
             )}
@@ -515,7 +516,7 @@ function CompactForecast({ equipment }: { equipment: EquipmentWithDetails }) {
             <ConditionIcon size={14} strokeWidth={1.5} className={color} />
             {day.tempMax !== null && (
               <span className="text-[11px] font-mono tabular-nums text-text-secondary">
-                {Math.round(day.tempMax)}°
+                {formatNumber(day.tempMax, { decimals: 0 })}°
               </span>
             )}
           </div>
@@ -562,9 +563,9 @@ function CompactEnergyValues({ equipment }: { equipment: EquipmentWithDetails })
       )}
       {dayWh !== null && (
         <span className={`text-[13px] ${valueColor} tabular-nums font-mono font-semibold`}>
-          {dayWh >= 1000 ? (dayWh / 1000).toFixed(2) : Math.round(dayWh)}
+          {formatEnergyParts(dayWh / 1000, { unit: "auto" }).value}
           <span className="text-[11px] font-normal text-text-tertiary ml-0.5">
-            {dayWh >= 1000 ? "kWh" : "Wh"}
+            {formatEnergyParts(dayWh / 1000, { unit: "auto" }).unit}
           </span>
         </span>
       )}
@@ -615,11 +616,7 @@ function PoolPumpRuntime({ equipment }: { equipment: EquipmentWithDetails }) {
   const runtime = equipment.computedData?.find((c) => c.alias === "runtime_daily");
   const seconds = typeof runtime?.value === "number" ? runtime.value : 0;
   if (seconds === 0) return null;
-  const runtimeStr = seconds < 60
-    ? `${seconds}s`
-    : seconds < 3600
-      ? `${Math.floor(seconds / 60)}m`
-      : `${Math.floor(seconds / 3600)}h${String(Math.floor((seconds % 3600) / 60)).padStart(2, "0")}`;
+  const runtimeStr = formatDuration(seconds);
   return (
     <span className="text-[11px] text-text-tertiary tabular-nums font-mono flex-shrink-0">
       {runtimeStr}
@@ -644,11 +641,11 @@ function CompactElectricVehicle({ equipment }: { equipment: EquipmentWithDetails
         </span>
       )}
       {s.rangeKm !== null && (
-        <span className="text-[11px] text-text-secondary tabular-nums">{Math.round(s.rangeKm)} km</span>
+        <span className="text-[11px] text-text-secondary tabular-nums">{formatWithUnit(s.rangeKm, "km")}</span>
       )}
       {s.batteryLevel !== null && (
         <span className="text-[13px] font-semibold text-text tabular-nums font-mono">
-          {Math.round(s.batteryLevel)}%
+          {formatPercent(s.batteryLevel)}
         </span>
       )}
       {s.reportStale && s.reportedAt && (
@@ -679,7 +676,7 @@ function CompactEvCharger({
       <EvVehicleBadge vehicle={s.vehicle} />
       {watts !== null && watts > 0 && (
         <span className="text-[13px] font-semibold text-accent tabular-nums font-mono">
-          {watts >= 1000 ? `${(watts / 1000).toFixed(2)} kW` : `${Math.round(watts)} W`}
+          {formatPower(watts)}
         </span>
       )}
       {s.canToggle && equipment.enabled && (

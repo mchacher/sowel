@@ -43,14 +43,16 @@ export default defineConfig([
     // U+2212 minus) and keeps one precision per unit. `toFixed` ignores the
     // language, so « 14.16 kWh » sat beside « 0,7 % » on the same page.
     //
-    // At "warn" while the components outside the energy screens migrate
-    // (slice 3b), then "error". A non-display use (an SVG coordinate) rounds
-    // with Math.round instead, so the rule needs no exceptions.
+    // An error since slice 3b, when the last component migrated. A non-display
+    // use (an SVG coordinate) rounds with Math.round instead, so the rule needs
+    // no exceptions. Dates follow the same rule: `toLocale*String()` with no
+    // locale, `undefined` or `[]` follows the browser's language, not Sowel's —
+    // pass `currentLocale()` from lib/format.
     files: ["src/**/*.{ts,tsx}"],
     ignores: ["src/lib/format.ts", "**/*.test.{ts,tsx}"],
     rules: {
       "no-restricted-syntax": [
-        "warn",
+        "error",
         {
           selector: "CallExpression[callee.property.name='toFixed']",
           message: "toFixed ignores the language: use lib/format (formatNumber, formatWithUnit…).",
@@ -62,6 +64,18 @@ export default defineConfig([
         {
           selector: "CallExpression[callee.property.name='toLocaleString'][arguments.length=0]",
           message: "toLocaleString() without a locale follows the browser, not Sowel's language.",
+        },
+        {
+          selector:
+            "CallExpression[callee.property.name=/^toLocale(Date|Time)String$/][arguments.length=0]",
+          message:
+            "toLocaleDateString() without a locale follows the browser: pass currentLocale() from lib/format.",
+        },
+        {
+          selector:
+            "CallExpression[callee.property.name=/^toLocale(Date|Time)?String$/] > :matches(Identifier[name='undefined'], ArrayExpression[elements.length=0]).arguments:first-child",
+          message:
+            "A locale of undefined or [] follows the browser, not Sowel's language: pass currentLocale() from lib/format.",
         },
       ],
     },

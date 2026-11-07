@@ -9,6 +9,7 @@
 
 import { UPS_STATUS_VALUES, type UpsStatus } from "../../lib/ups";
 import { findDataByCategory } from "./bindingUtils";
+import { formatDuration } from "../../lib/format";
 import type { EquipmentWithDetails } from "../../types";
 
 /** How loudly a status should be rendered. */
@@ -68,9 +69,9 @@ export function isOnBattery(status: UpsStatus | null): boolean {
  *
  * UPS units report autonomy in seconds and the useful range spans two orders of
  * magnitude (a loaded rack: 90 s; an idle one: two hours), so a fixed unit is
- * wrong at one end or the other. Below an hour, minutes; above, `h min`.
- * Sub-minute values keep their seconds — that is the range where the number
- * actually matters.
+ * wrong at one end or the other. The shared duration rule (spec 196) keeps the
+ * seconds below ten minutes — the range where they matter — and drops them
+ * above.
  */
 export function formatRuntime(seconds: unknown): string | null {
   // `Number(null)` and `Number("")` are both 0, so an absent binding would
@@ -79,13 +80,7 @@ export function formatRuntime(seconds: unknown): string | null {
   if (seconds === null || seconds === undefined || seconds === "") return null;
   const n = typeof seconds === "number" ? seconds : Number(seconds);
   if (!Number.isFinite(n) || n < 0) return null;
-  const total = Math.round(n);
-  if (total < 60) return `${total} s`;
-  const minutes = Math.floor(total / 60);
-  if (minutes < 60) return `${minutes} min`;
-  const hours = Math.floor(minutes / 60);
-  const rest = minutes % 60;
-  return rest === 0 ? `${hours} h` : `${hours} h ${String(rest).padStart(2, "0")}`;
+  return formatDuration(n);
 }
 
 // ============================================================

@@ -55,6 +55,7 @@ import { SharedAccessSettings } from "../components/settings/SharedAccessSetting
 import { SolarInstallationSettings } from "../components/settings/SolarInstallationSettings";
 import { initialSettingsTab } from "../lib/settings-tab";
 import type { SettingsTab } from "../lib/settings-tab";
+import { currentLocale } from "../lib/format";
 
 export function SettingsPage() {
   const { t, i18n } = useTranslation();
@@ -1424,7 +1425,7 @@ function ApiTokensSection() {
                 <span className="text-[11px] text-text-tertiary ml-2">
                   {t("settings.lastUsed")}{t("common.colon")}
                   {token.lastUsedAt
-                    ? new Date(token.lastUsedAt).toLocaleDateString()
+                    ? new Date(token.lastUsedAt).toLocaleDateString(currentLocale())
                     : t("settings.never")}
                 </span>
               </div>

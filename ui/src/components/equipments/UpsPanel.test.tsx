@@ -101,7 +101,7 @@ describe("UpsPanel margins", () => {
     render(<UpsPanel dataBindings={bindings()} />);
     expect(screen.getByText("145 – 295 V")).toBeTruthy();
     expect(screen.getByText("520 W")).toBeTruthy();
-    expect(screen.getByText("10 % · 2 min")).toBeTruthy();
+    expect(screen.getByText(/^10\s?% · 2 min$/)).toBeTruthy();
   });
 
   it("summarises a healthy unit as comfortable", () => {

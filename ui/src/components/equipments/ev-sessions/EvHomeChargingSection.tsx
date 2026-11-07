@@ -15,6 +15,7 @@ import { EvMonthNav } from "./EvMonthNav";
 import { EvCurrentSessionCard } from "./EvCurrentSessionCard";
 import { ShareBar } from "./EvShareBar";
 import { dayLabel, kwh, monthOf, timeLabel } from "./evSessionsDisplay";
+import { formatCurrency, formatNumber } from "../../../lib/format";
 
 const VISIBLE_SESSIONS = 4;
 
@@ -251,16 +252,8 @@ function Per100km({ summary, locale }: { summary: EvVehicleMonthSummary; locale:
       </p>
     );
   }
-  const price = new Intl.NumberFormat(locale, {
-    style: "currency",
-    currency: "EUR",
-    minimumFractionDigits: 3,
-    maximumFractionDigits: 3,
-  }).format(summary.homePriceEurPerKwh);
-  const consumption = new Intl.NumberFormat(locale, {
-    minimumFractionDigits: 1,
-    maximumFractionDigits: 1,
-  }).format(summary.kWhPer100km);
+  const price = formatCurrency(summary.homePriceEurPerKwh, { locale, decimals: 3 });
+  const consumption = formatNumber(summary.kWhPer100km, { decimals: 1, locale });
   return (
     <div className="flex flex-col gap-0.5 pt-1">
       <span className="text-[13px] text-text-secondary">

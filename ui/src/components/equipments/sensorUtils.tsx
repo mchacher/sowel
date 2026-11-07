@@ -19,6 +19,7 @@ import {
   CircleDot,
 } from "lucide-react";
 import type { DataBindingWithValue, DataCategory } from "../../types";
+import { formatWithUnit } from "../../lib/format";
 
 /** Sensor data categories (excludes power, energy, etc.) */
 export const SENSOR_DATA_CATEGORIES: DataCategory[] = [
@@ -227,14 +228,11 @@ export function getSensorIconColor(bindings: DataBindingWithValue[]): string {
   return "bg-border-light text-text-tertiary";
 }
 
-/** Format a sensor value for compact display. */
+/** Format a sensor value for compact display (rows, tiles): « 16,5° », « 1 021 mbar ». */
 export function formatSensorValue(value: unknown, unit?: string, t?: TFunction): string {
   if (value === null || value === undefined) return "\u2014";
   if (typeof value === "boolean") return t ? (value ? t("common.yes") : t("common.no")) : (value ? "Oui" : "Non");
-  if (typeof value === "number") {
-    const formatted = Number.isInteger(value) ? String(value) : value.toFixed(1);
-    return unit ? `${formatted}${unit}` : formatted;
-  }
+  if (typeof value === "number") return formatWithUnit(value, unit, { style: "compact" });
   return String(value);
 }
 

@@ -83,7 +83,7 @@ export function ZoneSparkline({
     const points = values.map((v, i) => {
       const x = (i / (values.length - 1)) * width;
       const y = padding + usableHeight - ((v - min) / range) * usableHeight;
-      return `${x.toFixed(1)},${y.toFixed(1)}`;
+      return `${Math.round(x * 10) / 10},${Math.round(y * 10) / 10}`;
     });
 
     const linePath = `M${points.join(" L")}`;

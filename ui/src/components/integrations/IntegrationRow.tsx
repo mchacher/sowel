@@ -19,6 +19,7 @@ import {
   disablePlugin,
 } from "../../api";
 import type { IntegrationInfo } from "../../types";
+import { formatDuration } from "../../lib/format";
 
 interface IntegrationRowProps {
   integration: IntegrationInfo;
@@ -270,9 +271,7 @@ function PollCountdown({
     };
   }, [polling.lastPollAt, polling.intervalMs, onExpired]);
 
-  const min = Math.floor(remaining / 60);
-  const sec = remaining % 60;
-  const label = min > 0 ? `${min}m ${sec.toString().padStart(2, "0")}s` : `${sec}s`;
+  const label = formatDuration(remaining);
 
   return (
     <span className="inline-flex items-center gap-1 text-[11px] text-text-tertiary tabular-nums">

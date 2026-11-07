@@ -8,6 +8,7 @@ import { useStalenessClock } from "../../hooks/useStalenessClock";
 import { extraLabel, extraTextValue } from "../../lib/extra-labels";
 import { formatValue } from "./useEquipmentState";
 import { electricVehicleStateOf, evBatteryTone, evChargingStateKey } from "./electricVehicleState";
+import { formatPercent, formatWithUnit } from "../../lib/format";
 
 interface ElectricVehicleControlProps {
   equipment: EquipmentWithDetails;
@@ -106,7 +107,7 @@ export function ElectricVehicleControl({ equipment, onExecuteOrder }: ElectricVe
               <span className="text-[14px] text-text-tertiary font-normal ml-0.5">%</span>
             </span>
             <span className="text-[13px] text-text-secondary">
-              {s.rangeKm !== null && `${Math.round(s.rangeKm)} km`}
+              {s.rangeKm !== null && formatWithUnit(s.rangeKm, "km")}
               {s.chargeLimit !== null &&
                 ` · ${t("equipments.electricVehicle.limit", { value: Math.round(s.chargeLimit) })}`}
             </span>
@@ -222,7 +223,7 @@ export function ElectricVehicleControl({ equipment, onExecuteOrder }: ElectricVe
               {busy === "limit" ? (
                 <Loader2 size={14} className="animate-spin inline" />
               ) : shownLimit !== null ? (
-                `${shownLimit} %`
+                formatPercent(shownLimit)
               ) : (
                 "—"
               )}
@@ -252,7 +253,7 @@ export function ElectricVehicleControl({ equipment, onExecuteOrder }: ElectricVe
             <div className="flex items-center justify-between gap-3 text-[13px]">
               <span className="text-text-secondary">{t("equipments.electricVehicle.mileage")}</span>
               <span className="font-mono tabular-nums text-text">
-                {Math.round(s.mileageKm).toLocaleString()} km
+                {formatWithUnit(s.mileageKm, "km")}
               </span>
             </div>
           )}

@@ -10,6 +10,7 @@ import {
   getBatteryColor,
 } from "./sensorUtils";
 import { computeElapsed, formatElapsed } from "./useEquipmentState";
+import { formatPercent } from "../../lib/format";
 
 interface SensorValuesProps {
   sensorBindings: DataBindingWithValue[];
@@ -62,15 +63,15 @@ export function SensorValues({
   const batteryTooltip = batteryBindings
     .map((b) => {
       const lvl = typeof b.value === "number" ? b.value : null;
-      return `${b.deviceName}: ${lvl !== null ? `${lvl}%` : "?"}`;
+      return `${b.deviceName}: ${lvl !== null ? formatPercent(lvl) : "?"}`;
     })
     .join("\n");
 
   const batteryTitle = batteryAlert
-    ? `${batteryAlert.deviceName} — ${t("sensors.battery")}${shownLevel !== null ? ` : ${shownLevel}%` : ""}`
+    ? `${batteryAlert.deviceName} — ${t("sensors.battery")}${shownLevel !== null ? ` : ${formatPercent(shownLevel)}` : ""}`
     : batteryBindings.length > 1
       ? batteryTooltip
-      : `${t("sensors.battery")} : ${shownLevel}%`;
+      : `${t("sensors.battery")} : ${formatPercent(shownLevel)}`;
 
   return (
     <>

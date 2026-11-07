@@ -62,6 +62,7 @@ import { RainDetailContent } from "./RainGauge";
 import { isRainOnlyWeather } from "../equipments/rain-summary";
 import { doorWordPill } from "../equipments/door-pill";
 import { doorState, isDoorOpenForCount } from "../../../../src/shared/door-state";
+import { formatNumber, formatPercent, formatTemperature } from "../../lib/format";
 
 // ============================================================
 // Equipment detail sheets
@@ -442,7 +443,7 @@ function WeatherDetailContent({ equipment }: { equipment: EquipmentWithDetails }
                   >
                     {getBatteryIcon(batteryLevel, 13, 1.5)}
                     <span className="text-[11px] tabular-nums">
-                      {batteryLevel !== null ? `${batteryLevel}%` : "?"}
+                      {batteryLevel !== null ? formatPercent(batteryLevel) : "?"}
                     </span>
                   </span>
                 )}
@@ -727,7 +728,7 @@ function ZoneShuttersDetail({
             ? t("controls.opened")
             : avgPosition === 0
               ? t("controls.closed")
-              : `${avgPosition}%`}
+              : formatPercent(avgPosition)}
       </div>
 
       <div className="flex gap-3">
@@ -894,7 +895,7 @@ function ZoneHeatingDetail({
         <div className="flex flex-col items-center">
           {avgTemp !== null ? (
             <span className="text-[32px] font-semibold text-text tabular-nums font-mono leading-none">
-              {avgTemp.toFixed(1)}°C
+              {formatTemperature(avgTemp)}
             </span>
           ) : (
             <span className="text-[32px] text-text-tertiary">{"\u2014"}</span>
@@ -912,7 +913,7 @@ function ZoneHeatingDetail({
             <Minus size={20} strokeWidth={2} />
           </button>
           <span className="text-[24px] font-semibold text-text tabular-nums font-mono min-w-[80px] text-center">
-            {displaySetpoint.toFixed(1)}°C
+            {formatTemperature(displaySetpoint)}
           </span>
           <button
             onClick={() => handleSetpoint(Math.min(SETPOINT_MAX, displaySetpoint + STEP))}
@@ -972,7 +973,7 @@ function ZoneSensorsDetail({ equipments }: { equipments: EquipmentWithDetails[] 
         {aggregates.avgTemp !== null && (
           <div className="flex items-baseline gap-1">
             <span className="text-[28px] font-semibold text-text tabular-nums font-mono leading-none">
-              {aggregates.avgTemp.toFixed(1)}
+              {formatNumber(aggregates.avgTemp, { decimals: 1 })}
             </span>
             <span className="text-[14px] font-medium text-text-tertiary">°C</span>
           </div>
@@ -1228,7 +1229,7 @@ function ShutterDetailContent({
             className="flex-1 h-12"
           />
           <span className="text-[18px] font-semibold text-text tabular-nums min-w-[40px] text-right">
-            {position === 100 ? labelHundred : position === 0 ? labelZero : `${position}%`}
+            {position === 100 ? labelHundred : position === 0 ? labelZero : formatPercent(position)}
           </span>
         </div>
       )}
@@ -1345,7 +1346,7 @@ function ThermostatDetailContent({
         <div className="flex flex-col items-center">
           {insideTemp !== null ? (
             <span className="text-[32px] font-semibold text-text tabular-nums font-mono leading-none">
-              {insideTemp.toFixed(1)}°C
+              {formatTemperature(insideTemp)}
             </span>
           ) : (
             <span className="text-[32px] text-text-tertiary">{"\u2014"}</span>
@@ -1364,7 +1365,7 @@ function ThermostatDetailContent({
             <Minus size={20} strokeWidth={2} />
           </button>
           <span className="text-[24px] font-semibold text-text tabular-nums font-mono min-w-[80px] text-center">
-            {displaySetpoint.toFixed(1)}°C
+            {formatTemperature(displaySetpoint)}
           </span>
           <button
             onClick={() => handleSetpoint(Math.min(targetMax, displaySetpoint + STEP))}

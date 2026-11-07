@@ -17,6 +17,7 @@ import { ShutterIcon } from "../icons/ShutterIcons";
 import { WaterValveIcon } from "../icons/WaterValveIcon";
 import { ZoneSparkline } from "../history/ZoneSparkline";
 import type { ZoneAggregatedData } from "../../types";
+import { formatDuration, formatPercent, formatPower, formatTemperature, formatWithUnit } from "../../lib/format";
 
 type PillVariant = "default" | "active" | "calm" | "alert";
 
@@ -26,7 +27,7 @@ type PillVariant = "default" | "active" | "calm" | "alert";
  * translated, like the `m³/h` suffix on the water-valve pill.
  */
 function formatWatts(watts: number): string {
-  return Math.abs(watts) >= 1000 ? `${(watts / 1000).toFixed(1)} kW` : `${Math.round(watts)} W`;
+  return formatPower(watts);
 }
 
 interface ZoneAggregationPillsProps {
@@ -56,7 +57,7 @@ export function ZoneAggregationPills({
   historyEnabled,
 }: ZoneAggregationPillsProps) {
   const { t } = useTranslation();
-  const duration = useRelativeTime(data.motionSince, t);
+  const duration = useRelativeTime(data.motionSince);
 
   // Spec 116: append "(N unavailable)" hint when offline equipments of this
   // category were excluded from the aggregation.
@@ -76,7 +77,7 @@ export function ZoneAggregationPills({
     sensorPills.push({
       key: "temp",
       icon: <Thermometer size={14} strokeWidth={1.5} />,
-      label: `${data.temperature}°C${unavail("temperature")}`,
+      label: `${formatTemperature(data.temperature, { style: "compact" })}${unavail("temperature")}`,
       variant: "default",
       iconTint: "text-primary",
       valueTint: "text-text",
@@ -88,7 +89,7 @@ export function ZoneAggregationPills({
     sensorPills.push({
       key: "hum",
       icon: <Droplets size={14} strokeWidth={1.5} />,
-      label: `${data.humidity}%${unavail("humidity")}`,
+      label: `${formatPercent(data.humidity)}${unavail("humidity")}`,
       variant: "default",
       iconTint: "text-primary",
       valueTint: "text-text",
@@ -100,7 +101,7 @@ export function ZoneAggregationPills({
     sensorPills.push({
       key: "lux",
       icon: <Sun size={14} strokeWidth={1.5} />,
-      label: `${data.luminosity} lx${unavail("luminosity")}`,
+      label: `${formatWithUnit(data.luminosity, "lx")}${unavail("luminosity")}`,
       variant: "default",
       iconTint: "text-primary",
       valueTint: "text-text",
@@ -142,7 +143,7 @@ export function ZoneAggregationPills({
     const pos = data.averageShutterPosition;
     const positionSuffix =
       pos !== null
-        ? ` · ${pos === 0 ? "Fermé" : pos === 100 ? "Ouvert" : `${pos}%`}`
+        ? ` · ${pos === 0 ? "Fermé" : pos === 100 ? "Ouvert" : formatPercent(pos)}`
         : "";
     counterPills.push({
       key: "shutters",
@@ -345,10 +346,7 @@ function StripPill({ item, zoneId, historyEnabled }: StripPillProps) {
 // Relative time hook — refreshes every 30s, zero CPU when no timestamp
 // ============================================================
 
-function useRelativeTime(
-  since: string | null,
-  t: (key: string) => string,
-): string | null {
+function useRelativeTime(since: string | null): string | null {
   const [, tick] = useState(0);
 
   useEffect(() => {
@@ -358,25 +356,13 @@ function useRelativeTime(
   }, [since]);
 
   if (!since) return null;
-  return formatDuration(since, t);
+  return sinceDuration(since);
 }
 
-function formatDuration(
-  since: string,
-  t: (key: string) => string,
-): string | null {
-  const ms = Date.now() - new Date(since).getTime();
-  const seconds = Math.floor(ms / 1000);
+/** How long since `since`, whole minutes at least (« 24 min », « 2 h 05 »); null under a minute. */
+function sinceDuration(since: string): string | null {
+  const seconds = Math.floor((Date.now() - new Date(since).getTime()) / 1000);
   if (seconds < 60) return null;
-  const minutes = Math.floor(seconds / 60);
-  if (minutes < 60) return `${minutes} ${t("time.min")}`;
-  const hours = Math.floor(minutes / 60);
-  const remainMinutes = minutes % 60;
-  if (hours < 24) {
-    return remainMinutes > 0
-      ? `${hours}${t("time.hour")}${String(remainMinutes).padStart(2, "0")}`
-      : `${hours}${t("time.hour")}`;
-  }
-  const days = Math.floor(hours / 24);
-  return `${days}${t("time.day")}`;
+  // Whole minutes: the pill refreshes every 30 s, seconds would only flicker.
+  return formatDuration(seconds - (seconds % 60));
 }

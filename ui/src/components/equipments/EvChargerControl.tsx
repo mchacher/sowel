@@ -12,6 +12,7 @@ import {
   evVehicleKey,
   evVehiclePillClass,
 } from "./evChargerState";
+import { formatEnergy, formatPower, formatWithUnit } from "../../lib/format";
 
 interface EvChargerControlProps {
   equipment: EquipmentWithDetails;
@@ -30,9 +31,6 @@ export function EvVehicleBadge({ vehicle }: { vehicle: EvVehicleState | null }) 
   );
 }
 
-function formatPower(watts: number): string {
-  return watts >= 1000 ? `${(watts / 1000).toFixed(2)} kW` : `${Math.round(watts)} W`;
-}
 
 /**
  * Spec 182 — the EV charger control surface, shared by the detail page and the
@@ -101,21 +99,21 @@ export function EvChargerControl({ equipment, onExecuteOrder }: EvChargerControl
     metrics.push({
       key: "session",
       label: t("equipments.evCharger.session"),
-      value: `${s.sessionEnergyKwh.toFixed(1)} kWh`,
+      value: formatEnergy(s.sessionEnergyKwh),
     });
   }
   if (s.measuredCurrentA !== null) {
     metrics.push({
       key: "current",
       label: t("equipments.evCharger.measuredCurrent"),
-      value: `${s.measuredCurrentA.toFixed(1)} A`,
+      value: formatWithUnit(s.measuredCurrentA, "A"),
     });
   }
   if (s.voltageV !== null) {
     metrics.push({
       key: "voltage",
       label: t("equipments.evCharger.voltage"),
-      value: `${Math.round(s.voltageV)} V`,
+      value: formatWithUnit(s.voltageV, "V"),
     });
   }
 
@@ -167,7 +165,7 @@ export function EvChargerControl({ equipment, onExecuteOrder }: EvChargerControl
               {sending ? (
                 <Loader2 size={14} className="animate-spin inline" />
               ) : shownA !== null ? (
-                `${shownA} A`
+                formatWithUnit(shownA, "A")
               ) : (
                 "—"
               )}

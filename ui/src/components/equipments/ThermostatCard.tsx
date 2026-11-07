@@ -16,6 +16,7 @@ import type { EquipmentWithDetails } from "../../types";
 import { thermostatPowerStateBinding } from "../../lib/thermostat-state";
 import { THERMOSTAT_STATE_ALIAS } from "../../lib/binding-candidates";
 import { ThermostatExtras } from "./ThermostatExtras";
+import { formatNumber, formatTemperature } from "../../lib/format";
 
 /** How long an optimistic control value may outlive its confirmation. */
 const OPTIMISTIC_TTL_MS = 90_000;
@@ -207,12 +208,12 @@ export function ThermostatCard({ equipment, onExecuteOrder, compact }: Thermosta
       <div className="flex items-center justify-between">
         <div className="flex items-end gap-3">
           <div className="text-[36px] font-semibold text-text leading-none tabular-nums font-mono">
-            {insideTemp !== null ? insideTemp.toFixed(1) : "—"}
+            {formatNumber(insideTemp, { decimals: 1 })}
             <span className="text-[16px] text-text-tertiary font-normal">°C</span>
           </div>
           {outsideTemp !== null && (
             <div className="text-[13px] text-text-tertiary mb-1">
-              {t("thermostat.outside")}{t("common.colon")}{outsideTemp.toFixed(1)}°C
+              {t("thermostat.outside")}{t("common.colon")}{formatTemperature(outsideTemp)}
             </div>
           )}
         </div>
@@ -249,7 +250,7 @@ export function ThermostatCard({ equipment, onExecuteOrder, compact }: Thermosta
               <ChevronDown size={14} strokeWidth={2} />
             </button>
             <span className="text-[20px] font-semibold text-text tabular-nums font-mono min-w-[60px] text-center">
-              {targetTemp !== null ? targetTemp.toFixed(1) : "—"}
+              {formatNumber(targetTemp, { decimals: 1 })}
               <span className="text-[12px] text-text-tertiary font-normal">°C</span>
             </span>
             <button
@@ -335,7 +336,7 @@ function CompactThermostat({
       {insideTemp !== null && (
         <span className="flex items-center gap-0.5 text-[12px] text-text-tertiary tabular-nums">
           <Thermometer size={11} strokeWidth={1.5} />
-          {insideTemp.toFixed(1)}°
+          {formatTemperature(insideTemp, { style: "compact" })}
         </span>
       )}
 
@@ -357,7 +358,7 @@ function CompactThermostat({
           </button>
           <span className="flex items-center gap-0.5 text-[14px] font-semibold text-text tabular-nums font-mono">
             <Crosshair size={11} strokeWidth={1.5} className="text-text-secondary" />
-            {targetTemp.toFixed(1)}°
+            {formatTemperature(targetTemp, { style: "compact" })}
           </span>
           <button
             onClick={(e) => { e.preventDefault(); e.stopPropagation(); onSetTarget(targetTemp + 0.5); }}

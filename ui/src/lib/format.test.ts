@@ -1,7 +1,11 @@
-import { describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
+import i18n from "../i18n";
 import {
   displayedWatts,
+  formatBytes,
   formatCurrency,
+  formatDataValue,
+  formatRelativeTime,
   formatDuration,
   formatEnergy,
   formatEnergyParts,
@@ -195,7 +199,10 @@ describe("formatDuration", () => {
     ["59 s", () => formatDuration(59, fr), "59␣s"],
     ["60 s", () => formatDuration(60, fr), "1␣min"],
     ["132 s", () => formatDuration(132, fr), "2␣min␣12␣s"],
-    ["3 599 s", () => formatDuration(3599, fr), "59␣min␣59␣s"],
+    ["599 s keeps its seconds", () => formatDuration(599, fr), "9␣min␣59␣s"],
+    ["600 s", () => formatDuration(600, fr), "10␣min"],
+    ["2 104 s drops the seconds above ten minutes", () => formatDuration(2104, fr), "35␣min"],
+    ["3 599 s", () => formatDuration(3599, fr), "59␣min"],
     ["3 600 s", () => formatDuration(3600, fr), "1␣h"],
     ["3 900 s", () => formatDuration(3900, fr), "1␣h␣05"],
     ["15 h 19", () => formatDuration(15 * 3600 + 19 * 60 + 40, fr), "15␣h␣19"],
@@ -214,4 +221,78 @@ describe("formatRange", () => {
     ["fr", () => formatRange("07:22", "17:17", fr), "07:22␣–␣17:17"],
     ["en", () => formatRange("07:22", "17:17", en), "07:22 – 17:17"],
   ]);
+});
+
+describe("formatWithUnit — a duration in seconds (spec 196, slice 3b)", () => {
+  table([
+    ["6 353 s reads as a duration", () => formatWithUnit(6353, "s", fr), "1␣h␣45"],
+    ["45 s", () => formatWithUnit(45, "s", fr), "45␣s"],
+  ]);
+});
+
+describe("formatCurrency — fixed decimals", () => {
+  table([
+    ["price per kWh, three decimals", () => formatCurrency(0.2068, { ...fr, decimals: 3 }), "0,207␣€"],
+    ["default two decimals", () => formatCurrency(2.718, fr), "2,72␣€"],
+  ]);
+});
+
+describe("formatBytes — French units", () => {
+  table([
+    ["bytes", () => formatBytes(512, fr), "512␣o"],
+    ["5,9 Mo", () => formatBytes(5.9 * 1024 * 1024, fr), "5,9␣Mo"],
+    ["en MB", () => formatBytes(5.9 * 1024 * 1024, en), "5.9·MB"],
+    ["1 023,96 ko reads 1 Mo", () => formatBytes(1024 * 1024 - 40, fr), "1␣Mo"],
+    ["null", () => formatBytes(null, fr), "—"],
+  ]);
+});
+
+describe("formatDataValue — numbers by their unit's rule", () => {
+  afterEach(async () => {
+    await i18n.changeLanguage("en");
+  });
+
+  it("formats a weather station's readings the French way", async () => {
+    await i18n.changeLanguage("fr");
+    expect(show(formatDataValue(1020.7, "mbar"))).toBe("1␣021␣mbar");
+    expect(show(formatDataValue(0, "mm"))).toBe("0␣mm");
+    expect(show(formatDataValue(0.8, "kWh"))).toBe("0,8␣kWh");
+    expect(show(formatDataValue(6353, "s"))).toBe("1␣h␣45");
+  });
+
+  it("is a dash when missing", () => {
+    expect(formatDataValue(null)).toBe("—");
+  });
+});
+
+describe("formatRelativeTime — Sowel's language", () => {
+  const NOW = Date.parse("2026-11-07T12:00:00Z");
+  const ago = (s: number) => new Date(NOW - s * 1000).toISOString();
+
+  afterEach(async () => {
+    vi.useRealTimers();
+    await i18n.changeLanguage("en");
+  });
+
+  it("reads French in French", async () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(NOW);
+    await i18n.changeLanguage("fr");
+    expect(show(formatRelativeTime(ago(2)))).toBe("à l'instant");
+    expect(show(formatRelativeTime(ago(17)))).toBe("il y a 15␣s");
+    expect(show(formatRelativeTime(ago(12 * 60 + 30)))).toBe("il y a 12␣min");
+    expect(show(formatRelativeTime(ago(3 * 3600 + 5 * 60)))).toBe("il y a 3␣h␣05");
+  });
+
+  it("reads English in English", async () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(NOW);
+    await i18n.changeLanguage("en");
+    expect(show(formatRelativeTime(ago(2)))).toBe("just now");
+    expect(show(formatRelativeTime(ago(12 * 60)))).toBe("12·min ago");
+  });
+
+  it("is a dash without a timestamp", () => {
+    expect(formatRelativeTime(null)).toBe("—");
+  });
 });

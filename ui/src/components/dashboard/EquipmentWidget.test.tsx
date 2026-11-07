@@ -279,7 +279,7 @@ describe("EquipmentWidget", () => {
       />,
     );
     expect(screen.getByText("On")).toBeTruthy();
-    expect(screen.getByText("1h 30m")).toBeTruthy();
+    expect(screen.getByText(/^1\sh\s30$/)).toBeTruthy();
   });
 
   // Issue #325 — a multi-action gate exposed NO way to act on desktop (the
@@ -616,7 +616,7 @@ describe("EquipmentWidget — stale power readings (#839)", () => {
       <EquipmentWidget widget={makeWidget()} equipment={eq} onExecuteOrder={vi.fn()} />,
     );
 
-    expect(screen.queryByText(/1.24 kW/)).toBeNull();
+    expect(screen.queryByText(/1[.,]2\s?kW/)).toBeNull();
     expect(screen.queryByText("Standby")).toBeNull();
     expect(screen.getByText(/reading outdated/)).toBeTruthy();
   });

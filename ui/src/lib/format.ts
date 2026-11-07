@@ -48,6 +48,14 @@ function resolve(locale: Locale | undefined): Locale {
   return dateLocale(locale ?? i18n.language);
 }
 
+/**
+ * Sowel's language as a BCP 47 tag, for `toLocaleDateString` and friends:
+ * passing `undefined` or `[]` there follows the browser, not Sowel.
+ */
+export function currentLocale(): Locale {
+  return resolve(undefined);
+}
+
 function isFr(locale: Locale): boolean {
   return locale.startsWith("fr");
 }
@@ -292,23 +300,27 @@ const CURRENCY_FORMATTERS = new Map<string, Intl.NumberFormat>();
 /**
  * Euros, two decimals: « 2,72 € » / « €2.72 ». The tariff is in euros whatever
  * the language; only the number and the symbol's place follow the locale.
+ * `decimals` fixes another precision (a price per kWh reads « 0,207 € »).
  */
 export function formatCurrency(
   eur: number | null | undefined,
-  opts: { locale?: Locale } = {},
+  opts: { locale?: Locale; decimals?: number } = {},
 ): string {
   if (isMissing(eur)) return EMPTY;
   const locale = resolve(opts.locale);
-  let f = CURRENCY_FORMATTERS.get(locale);
+  const decimals = opts.decimals ?? 2;
+  const key = `${locale}|${decimals}`;
+  let f = CURRENCY_FORMATTERS.get(key);
   if (!f) {
     f = new Intl.NumberFormat(locale, {
       style: "currency",
       currency: "EUR",
-      maximumFractionDigits: 2,
+      minimumFractionDigits: decimals,
+      maximumFractionDigits: decimals,
     });
-    CURRENCY_FORMATTERS.set(locale, f);
+    CURRENCY_FORMATTERS.set(key, f);
   }
-  const r = roundTo(eur, 2);
+  const r = roundTo(eur, decimals);
   const body = f.format(Math.abs(r));
   if (r >= 0) return isFr(locale) ? frenchSpaces(body) : body;
   return isFr(locale) ? MINUS + frenchSpaces(body) : `-${body}`;
@@ -343,8 +355,8 @@ export interface UnitOptions {
 
 /**
  * A value with the unit it came with, by the unit's rule: W and kW as power,
- * Wh and kWh as energy, °C as temperature, % as percent, € as currency, and
- * the table above for the rest. A unit the table does not know (a plugin's
+ * Wh and kWh as energy, °C as temperature, % as percent, € as currency, s as a
+ * duration, and the table above for the rest. A unit the table does not know (a plugin's
  * own) is kept as given, after a number with one decimal at most.
  */
 export function formatWithUnit(
@@ -370,6 +382,9 @@ export function formatWithUnit(
       return formatEnergy(v, { signed, locale });
     case "€":
       return formatCurrency(v, { locale });
+    case "s":
+      // A plugin that reports a duration in seconds: « 1 h 45 », not « 6353 s ».
+      return formatDuration(v, { locale });
     default: {
       const u = unit as string;
       const n = formatNumber(v, { maxDecimals: UNIT_DECIMALS[u] ?? 1, signed, locale });
@@ -391,7 +406,10 @@ export interface DurationOptions {
   locale?: Locale;
 }
 
-/** A duration in seconds: « 35 s », « 2 min 12 s », « 1 h 05 », « 3 j 4 h ». */
+/**
+ * A duration in seconds: « 35 s », « 2 min 12 s », « 35 min », « 1 h 05 »,
+ * « 3 j 4 h ». Two units at most; the seconds go above ten minutes.
+ */
 export function formatDuration(
   seconds: number | null | undefined,
   opts: DurationOptions = {},
@@ -414,7 +432,8 @@ export function formatDuration(
   if (total < 3600) {
     const m = Math.floor(total / 60);
     const s = total % 60;
-    return s > 0 ? `${m}${sp}${u.min}${sp}${s}${sp}${u.s}` : `${m}${sp}${u.min}`;
+    // Seconds matter below ten minutes (« 2 min 12 s »), not above (« 35 min »).
+    return s > 0 && total < 600 ? `${m}${sp}${u.min}${sp}${s}${sp}${u.s}` : `${m}${sp}${u.min}`;
   }
   if (total < 86_400) {
     const h = Math.floor(total / 3600);
@@ -430,6 +449,30 @@ export function formatDuration(
 export function formatRange(from: string, to: string, opts: { locale?: Locale } = {}): string {
   const sp = isFr(resolve(opts.locale)) ? NNBSP : " ";
   return `${from}${sp}${RANGE_DASH}${sp}${to}`;
+}
+
+const BYTE_UNITS: Record<"fr" | "en", string[]> = {
+  fr: ["o", "ko", "Mo", "Go", "To"],
+  en: ["B", "KB", "MB", "GB", "TB"],
+};
+
+/** A size in bytes, 1 024-based, one decimal at most: « 5,9 Mo » / « 5.9 MB ». */
+export function formatBytes(bytes: number | null | undefined, opts: { locale?: Locale } = {}): string {
+  if (isMissing(bytes)) return EMPTY;
+  const locale = resolve(opts.locale);
+  const units = BYTE_UNITS[isFr(locale) ? "fr" : "en"];
+  let n = Math.abs(bytes);
+  let i = 0;
+  while (n >= 1024 && i < units.length - 1) {
+    n /= 1024;
+    i += 1;
+  }
+  // 1 023,96 ko rounds to « 1 024 ko »: show it as « 1 Mo » instead.
+  if (i < units.length - 1 && roundTo(n, i === 0 ? 0 : 1) >= 1024) {
+    n /= 1024;
+    i += 1;
+  }
+  return withUnit(formatNumber(n, { maxDecimals: i === 0 ? 0 : 1, locale }), units[i], locale);
 }
 
 // ============================================================
@@ -453,36 +496,28 @@ export function formatTime(iso: string | null): string {
 }
 
 /**
- * Format a timestamp as relative time ("2 min ago") or absolute ("Feb 16, 14:30").
- * Uses relative for timestamps less than 24h old, absolute otherwise.
+ * How long ago, in Sowel's language: « à l'instant », « il y a 15 s »,
+ * « il y a 12 min », « il y a 3 h 05 », then the date and time for anything
+ * older than a day. Seconds go by steps of five, as `RelativeTime` re-renders
+ * every five seconds.
  */
-export function formatRelativeTime(iso: string | null): string {
-  if (!iso) return "—";
+export function formatRelativeTime(iso: string | null, opts: { locale?: Locale } = {}): string {
+  if (!iso) return EMPTY;
 
   // SQLite timestamps lack timezone suffix — treat as UTC
   const normalized = iso.endsWith("Z") || iso.includes("+") ? iso : `${iso}Z`;
   const date = new Date(normalized);
-  const now = Date.now();
-  const diffMs = now - date.getTime();
-  const diffS = Math.floor(diffMs / 1000);
+  if (Number.isNaN(date.getTime())) return EMPTY;
+  const locale = resolve(opts.locale);
+  const diffS = Math.floor((Date.now() - date.getTime()) / 1000);
+  const t = i18n.getFixedT(isFr(locale) ? "fr" : "en");
 
-  if (diffS < 0) return "< 5s ago";
-  if (diffS < 5) return "< 5s ago";
-  if (diffS < 15) return "< 15s ago";
-  if (diffS < 30) return "< 30s ago";
-  if (diffS < 45) return "< 45s ago";
-  if (diffS < 60) return "< 1 min ago";
-  if (diffMs < 3_600_000) {
-    const mins = Math.floor(diffMs / 60_000);
-    return `${mins} min ago`;
+  if (diffS < 5) return t("time.justNow");
+  if (diffS < 86_400) {
+    const shown = diffS < 60 ? diffS - (diffS % 5) : diffS;
+    return t("reading.ago", { age: formatDuration(shown, { locale }) });
   }
-  if (diffMs < 86_400_000) {
-    const hours = Math.floor(diffMs / 3_600_000);
-    const mins = Math.floor((diffMs % 3_600_000) / 60_000);
-    return mins > 0 ? `${hours}h${mins.toString().padStart(2, "0")} ago` : `${hours}h ago`;
-  }
-
-  return date.toLocaleDateString("en-US", {
+  return date.toLocaleDateString(locale, {
     month: "short",
     day: "numeric",
     hour: "2-digit",
@@ -492,16 +527,13 @@ export function formatRelativeTime(iso: string | null): string {
 }
 
 /**
- * Format a data value for display.
- * Returns "—" for null/undefined, formats numbers, booleans, etc.
+ * Format a data value for display: numbers by their unit's rule
+ * (`formatWithUnit`), booleans as « Marche / Arrêt », « — » when missing.
  */
 export function formatDataValue(value: unknown, unit?: string): string {
-  if (value === null || value === undefined) return "—";
+  if (value === null || value === undefined) return EMPTY;
   if (typeof value === "boolean") return value ? i18n.t("controls.on") : i18n.t("controls.off");
-  if (typeof value === "number") {
-    const formatted = Number.isInteger(value) ? value.toString() : value.toFixed(1);
-    return unit ? `${formatted}${unit}` : formatted;
-  }
+  if (typeof value === "number") return formatWithUnit(value, unit);
   if (typeof value === "string") return value;
   return JSON.stringify(value);
 }

@@ -11,6 +11,7 @@ import {
   CONFIDENCE_STYLES,
   type ForecastDay,
 } from "../equipments/weatherForecastUtils";
+import { formatNumber, formatTemperature } from "../../lib/format";
 
 /**
  * The sheet is laid out for five columns and no more: the paddings, the type
@@ -101,7 +102,7 @@ function ForecastDayColumn({ day, locale }: { day: ForecastDay; locale: string }
 
       <span className="flex items-baseline gap-0.5">
         <span className="text-[17px] sm:text-[22px] font-bold font-mono text-text tabular-nums leading-none">
-          {day.tempMax !== null ? Math.round(day.tempMax) : "—"}
+          {formatNumber(day.tempMax, { decimals: 0 })}
         </span>
         <span className="text-[11px] sm:text-[13px] text-text-tertiary">°C</span>
       </span>
@@ -109,7 +110,7 @@ function ForecastDayColumn({ day, locale }: { day: ForecastDay; locale: string }
       {day.tempMin !== null && (
         <span className="flex items-baseline gap-0.5">
           <span className="text-[12px] sm:text-[15px] font-medium font-mono text-text-secondary tabular-nums leading-none">
-            {Math.round(day.tempMin)}
+            {formatNumber(day.tempMin, { decimals: 0 })}
           </span>
           <span className="text-[10px] sm:text-[11px] text-text-tertiary">°C</span>
         </span>
@@ -141,7 +142,7 @@ function ForecastDayColumn({ day, locale }: { day: ForecastDay; locale: string }
             }`}
             title={
               day.tempMaxSpread !== null && day.tempMaxSpread > 0
-                ? t("equipments.forecast.confidenceHint", { spread: day.tempMaxSpread.toFixed(1) })
+                ? t("equipments.forecast.confidenceHint", { spread: formatTemperature(day.tempMaxSpread) })
                 : undefined
             }
           >
