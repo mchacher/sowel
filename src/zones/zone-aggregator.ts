@@ -652,6 +652,9 @@ export class ZoneAggregator {
         continue;
       }
       if (binding.category === "shutter_position" && equipmentType !== "shutter") continue;
+      // Online, only the alias "temperature" feeds the zone temperature (not a
+      // setpoint, an outside or a water temperature): same here.
+      if (binding.category === "temperature" && binding.alias !== "temperature") continue;
       categories.add(binding.category);
     }
     return categories;

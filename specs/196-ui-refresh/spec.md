@@ -22,50 +22,50 @@ The maintainer rejected every radical redesign and chose an incremental path tha
 
 ## Decisions (maintainer, 2026-11-07)
 
-| Id                | Decision                                                                                             |
-| ----------------- | ---------------------------------------------------------------------------------------------------- |
-| pr1-tablette      | Mobile chrome up to `lg` (1024 px)                                                                   |
-| pr1-barre         | Mobile top bar: remove the clock only                                                                |
-| pr1-cibles        | 44 px invisible hit areas (`hit-44`), drawing unchanged                                              |
-| pr1-fab           | Bottom padding under the grid now; FAB removed in FR-6                                               |
-| pr2-onoff         | « Marche / Arrêt » everywhere                                                                        |
-| pr2-dashboard     | "Dashboard" becomes « Accueil » (docs FR updated)                                                    |
-| pr2-apostrophe    | Straight apostrophe kept                                                                             |
-| pr2-jargon        | Admin technical terms kept (broker, topic, plugin)                                                   |
-| pr3-degre         | « 20,5° » in tiles/rows/strips, « 20,5 °C » in pages, axes, tooltips                                 |
-| pr3-zero          | One fixed decimal for temperatures and setpoints; trailing zeros dropped elsewhere                   |
-| pr3-kwh           | kWh adaptive, 3 significant digits, at most 2 decimals                                               |
-| pr3-kw            | Whole W below 1 000 W, then kW with 1 decimal                                                        |
-| pr5-police        | Keep Inter, variable build                                                                           |
-| pr5-mono          | Mono only for logs, JSON, ids, versions, code fields                                                 |
-| pr5-codemod       | Script for sizes and bold, by hand for uppercase and mono                                            |
-| pr4-ambre         | Amber = something on or running now                                                                  |
-| pr4-ouvert        | Open/closed are neutral (word + icon)                                                                |
-| pr4-niveaux       | Three levels: amber (on), orange (attention), red (fault)                                            |
-| pr4bis-primaire   | Dark primary button: `#2B7299` fill, white text                                                      |
-| pr6-horloge       | Clock only when the browser time zone differs from the home's                                        |
-| pr6-soleil        | Sunrise/sunset as plain text in the top bar, every page (#1133: no longer root-zone strip on mobile) |
-| pr6-h1            | H1 = page name + optional one-line summary                                                           |
-| pr6-edition       | Dashboard edit: a button under the grid, sticky bar in edit mode                                     |
-| pr7-teinte        | Light brand tint in neutrals                                                                         |
-| pr7-bordures      | Cards without border (shadow in light, tone in dark)                                                 |
-| pr7-sombre        | Ocean-derived night base                                                                             |
-| pr7-rayons        | Radii 6 / 10 / 16                                                                                    |
-| pr7-panneaux      | Maison panels: slices under a detached lid (title 16 px), Activité as one log                        |
-| pr8-envoi         | One order after the last tap; delay per integration (cloud ~600 ms, local near-immediate)            |
-| pr8-perimetre     | Stepper also for EV current, charge limit, numeric extras                                            |
-| pr8-geste         | Corner glyph shows what a tap does                                                                   |
-| pr8-ligne         | Compact inline stepper in Maison rows                                                                |
-| pr9-config        | Configuration card at the bottom, rows collapsed                                                     |
-| pr9-retour        | Back goes to the equipment's room when origin unknown                                                |
-| pr9-dashboard     | Link to the page from the dashboard (sheet footer, tile title)                                       |
-| pr9-graphique     | 24 h chart open by default                                                                           |
-| portail-perimetre | Confirm on every UI path where one tap/click actuates a gate                                         |
-| portail-desktop   | Two-button dialog on desktop                                                                         |
-| portail-mode      | Mode activation does not confirm                                                                     |
-| energie-solaire   | Keep today's look: solar greens unchanged                                                            |
-| energie-index     | Server sends `colorIndex`; UI picks the themed colour                                                |
-| energie-hc        | Keep dark blue / light blue for HP/HC, no hatching; fix dark-theme values only                       |
+| Id                | Decision                                                                                  |
+| ----------------- | ----------------------------------------------------------------------------------------- |
+| pr1-tablette      | Mobile chrome up to `lg` (1024 px)                                                        |
+| pr1-barre         | Mobile top bar: remove the clock only                                                     |
+| pr1-cibles        | 44 px invisible hit areas (`hit-44`), drawing unchanged                                   |
+| pr1-fab           | Bottom padding under the grid now; FAB removed in FR-6                                    |
+| pr2-onoff         | « Marche / Arrêt » everywhere                                                             |
+| pr2-dashboard     | "Dashboard" becomes « Accueil » (docs FR updated)                                         |
+| pr2-apostrophe    | Straight apostrophe kept                                                                  |
+| pr2-jargon        | Admin technical terms kept (broker, topic, plugin)                                        |
+| pr3-degre         | « 20,5° » in tiles/rows/strips, « 20,5 °C » in pages, axes, tooltips                      |
+| pr3-zero          | One fixed decimal for temperatures and setpoints; trailing zeros dropped elsewhere        |
+| pr3-kwh           | kWh adaptive, 3 significant digits, at most 2 decimals                                    |
+| pr3-kw            | Whole W below 1 000 W, then kW with 1 decimal                                             |
+| pr5-police        | Keep Inter, variable build                                                                |
+| pr5-mono          | Mono only for logs, JSON, ids, versions, code fields                                      |
+| pr5-codemod       | Script for sizes and bold, by hand for uppercase and mono                                 |
+| pr4-ambre         | Amber = something on or running now                                                       |
+| pr4-ouvert        | Open/closed are neutral (word + icon)                                                     |
+| pr4-niveaux       | Three levels: amber (on), orange (attention), red (fault)                                 |
+| pr4bis-primaire   | Dark primary button: `#2B7299` fill, white text                                           |
+| pr6-horloge       | Clock only when the browser time zone differs from the home's                             |
+| pr6-soleil        | Sun times as plain text in the top bar, every page (#1133 dropped the mobile strip pill)  |
+| pr6-h1            | H1 = page name + optional one-line summary                                                |
+| pr6-edition       | Dashboard edit: a button under the grid, sticky bar in edit mode                          |
+| pr7-teinte        | Light brand tint in neutrals                                                              |
+| pr7-bordures      | Cards without border (shadow in light, tone in dark)                                      |
+| pr7-sombre        | Ocean-derived night base                                                                  |
+| pr7-rayons        | Radii 6 / 10 / 16                                                                         |
+| pr7-panneaux      | Maison panels: slices under a detached lid (title 16 px), Activité as one log             |
+| pr8-envoi         | One order after the last tap; delay per integration (cloud ~600 ms, local near-immediate) |
+| pr8-perimetre     | Stepper also for EV current, charge limit, numeric extras                                 |
+| pr8-geste         | Corner glyph shows what a tap does                                                        |
+| pr8-ligne         | Compact inline stepper in Maison rows                                                     |
+| pr9-config        | Configuration card at the bottom, rows collapsed                                          |
+| pr9-retour        | Back goes to the equipment's room when origin unknown                                     |
+| pr9-dashboard     | Link to the page from the dashboard (sheet footer, tile title)                            |
+| pr9-graphique     | 24 h chart open by default                                                                |
+| portail-perimetre | Confirm on every UI path where one tap/click actuates a gate                              |
+| portail-desktop   | Two-button dialog on desktop                                                              |
+| portail-mode      | Mode activation does not confirm                                                          |
+| energie-solaire   | Keep today's look: solar greens unchanged                                                 |
+| energie-index     | Server sends `colorIndex`; UI picks the themed colour                                     |
+| energie-hc        | Keep dark blue / light blue for HP/HC, no hatching; fix dark-theme values only            |
 
 ## Functional Requirements
 

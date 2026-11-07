@@ -95,6 +95,8 @@ Today's sunrise and sunset are not a zone pill: they sit in the top bar, on ever
 
 When an equipment is offline, it is left out of the pills it would feed, and those pills carry a small orange dot. Hover the pill to see which equipments are offline. A zone whose lights (or shutters) are all offline still shows the pill, greyed out with a dash, so you can follow the dot from the parent zone down to the room it comes from. Only real lights count: a pool pump whose state looks like a light's is not counted as an offline light.
 
+When an equipment is offline, it is left out of the pills it would feed, and those pills carry a small orange dot. On a computer, hover the pill to see which equipments are offline. A zone whose lights (or shutters) are all offline still shows the pill, greyed out with a dash, so you can follow the dot from the parent zone down to the room it comes from. Only real lights count: a pool pump whose state looks like a light's is not counted as an offline light.
+
 Below the header, equipments are grouped by type (Lights, Shutters, Sensors) with inline controls. Each panel (Equipments, Behaviors, Activity) has its title on a block of its own, with how many items it holds; each type of equipment is a block under it.
 
 ### Power aggregation

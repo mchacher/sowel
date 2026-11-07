@@ -223,30 +223,47 @@ describe("ZoneAggregator", () => {
       }
     });
 
-    it("tells apart two equal counts naming different offline equipments", () => {
+    it("emits zone.data.changed when an offline light is renamed, though the count is the same", () => {
       const zone = zoneManager.create({ name: "Salon" });
-      const devs = ["Lampe A", "Lampe B"].map((name) => {
-        const dev = seedDevice(db, {
-          name,
-          dataKeys: [{ key: "state", category: "light_state", value: "true" }],
-        });
-        const eq = equipmentManager.create({ name, type: "light_onoff", zoneId: zone.id });
-        equipmentManager.addDataBinding(eq.id, dev.dataIds[0], "state");
-        return dev;
+      const dev = seedDevice(db, {
+        name: "Lampe",
+        dataKeys: [{ key: "state", category: "light_state", value: "true" }],
       });
-      db.prepare("UPDATE devices SET status = 'offline' WHERE id = ?").run(devs[0].deviceId);
+      db.prepare("UPDATE devices SET status = 'offline' WHERE id = ?").run(dev.deviceId);
+      const eq = equipmentManager.create({ name: "Lampe A", type: "light_onoff", zoneId: zone.id });
+      equipmentManager.addDataBinding(eq.id, dev.dataIds[0], "state");
       aggregator.computeAll();
-      expect(aggregator.getByZoneId(zone.id)?.unavailableEquipmentNamesByCategory).toEqual({
-        light_state: ["Lampe A"],
-      });
+      events.length = 0;
 
-      // Same count, different equipment: still a change the tooltip must show.
-      db.prepare("UPDATE devices SET status = 'online' WHERE id = ?").run(devs[0].deviceId);
-      db.prepare("UPDATE devices SET status = 'offline' WHERE id = ?").run(devs[1].deviceId);
-      aggregator.computeAll();
-      expect(aggregator.getByZoneId(zone.id)?.unavailableEquipmentNamesByCategory).toEqual({
+      // Through the event bus: a count-only comparison would swallow this change
+      // and leave the tooltip naming « Lampe A ».
+      equipmentManager.update(eq.id, { name: "Lampe B" });
+
+      const changed = events.filter(
+        (e): e is Extract<EngineEvent, { type: "zone.data.changed" }> =>
+          e.type === "zone.data.changed" && e.zoneId === zone.id,
+      );
+      expect(changed).toHaveLength(1);
+      expect(changed[0].aggregatedData.unavailableEquipmentsByCategory).toEqual({ light_state: 1 });
+      expect(changed[0].aggregatedData.unavailableEquipmentNamesByCategory).toEqual({
         light_state: ["Lampe B"],
       });
+    });
+
+    it("flags the temperature pill only for a binding that would feed it online", () => {
+      const zone = zoneManager.create({ name: "Local technique" });
+      const dev = seedDevice(db, {
+        name: "PAC",
+        dataKeys: [{ key: "water_temp", type: "number", category: "temperature", value: "40" }],
+      });
+      db.prepare("UPDATE devices SET status = 'offline' WHERE id = ?").run(dev.deviceId);
+      const eq = equipmentManager.create({ name: "PAC", type: "pool_heat_pump", zoneId: zone.id });
+      equipmentManager.addDataBinding(eq.id, dev.dataIds[0], "water_temp");
+
+      aggregator.computeAll();
+      expect(
+        aggregator.getByZoneId(zone.id)?.unavailableEquipmentsByCategory.temperature,
+      ).toBeUndefined();
     });
 
     it("leaves unavailableEquipmentsByCategory empty when all equipments are online", () => {
