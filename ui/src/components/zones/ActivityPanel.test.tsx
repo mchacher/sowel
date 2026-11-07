@@ -43,7 +43,7 @@ describe("ActivityPanel", () => {
     render(<ActivityPanel zoneId="z1" />);
     const lid = screen.getByRole("heading", { level: 2, name: "Activité" }).parentElement!;
     expect(lid.className).toMatch(/\bpanel-lid\b/);
-    expect(within(lid).getByText("dernières 24 h")).toBeTruthy();
+    expect(within(lid).getByText("depuis 07:54")).toBeTruthy();
     expect(within(lid).getByText("en direct")).toBeTruthy();
 
     const log = screen.getByTestId("activity-log");

@@ -8,7 +8,7 @@ import { useIsMobile } from "../../hooks/useIsMobile";
 import type { ZoneWithChildren } from "../../types";
 import { ActivityItemRow } from "./ActivityItemRow";
 import { Panel } from "../home/Panel";
-import { groupActivityLog, logPeriodLabel } from "../../lib/activity-log";
+import { groupActivityLog, logPeriodLabel, logSpanLabel } from "../../lib/activity-log";
 import { currentLocale } from "../../lib/format";
 
 const MOBILE_CAP = 10;
@@ -35,10 +35,7 @@ export function ActivityPanel({ zoneId }: Props) {
   // Compute descendant zone IDs for the current zone (excluding the zone itself).
   // Keyed on the joined IDs so an unrelated zone-tree refresh (e.g. the refetch on every
   // WebSocket reconnect) doesn't hand back a new array identity and re-trigger the load.
-  const descendantKey = useMemo(
-    () => collectDescendantIds(tree, zoneId).join(","),
-    [tree, zoneId],
-  );
+  const descendantKey = useMemo(() => collectDescendantIds(tree, zoneId).join(","), [tree, zoneId]);
   const descendantIds = useMemo(
     () => (descendantKey === "" ? [] : descendantKey.split(",")),
     [descendantKey],
@@ -81,7 +78,7 @@ export function ActivityPanel({ zoneId }: Props) {
   return (
     <Panel
       title={t("activity.title")}
-      subtitle={t("activity.subtitle")}
+      subtitle={logSpanLabel(visibleItems, now, t, locale) ?? undefined}
       headerRight={
         <>
           {hasDescendants && (
@@ -127,9 +124,7 @@ export function ActivityPanel({ zoneId }: Props) {
         style={isMobile ? undefined : { maxHeight: DESKTOP_MAX_HEIGHT_PX }}
       >
         {status === "loading" && items.length === 0 && (
-          <div className="px-4 py-3 text-caption text-text-tertiary">
-            {t("activity.loading")}
-          </div>
+          <div className="px-4 py-3 text-caption text-text-tertiary">{t("activity.loading")}</div>
         )}
         {status === "error" && items.length === 0 && (
           <div className="px-4 py-3 flex items-center gap-2 text-caption text-error">
@@ -145,9 +140,7 @@ export function ActivityPanel({ zoneId }: Props) {
           </div>
         )}
         {status === "ready" && items.length === 0 && (
-          <div className="px-4 py-3 text-caption text-text-tertiary">
-            {t("activity.empty")}
-          </div>
+          <div className="px-4 py-3 text-caption text-text-tertiary">{t("activity.empty")}</div>
         )}
         {groups.length > 0 && (
           // The rail runs down the centre of the 20 px dot column:

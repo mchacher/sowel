@@ -97,6 +97,34 @@ export function logPeriodLabel(period: LogPeriod, t: Translate, locale: string):
 }
 
 /**
+ * How far back the shown log reaches, from its oldest visible item: « depuis 14:05 »,
+ * « depuis hier 18:12 », « depuis lundi 07:30 », « depuis le 2 novembre ». The log is a
+ * count of recent events (100 on desktop, 10 on a phone), not a time window, so a fixed
+ * « last 24 h » was wrong both ways. Null when there is nothing to show.
+ */
+export function logSpanLabel(
+  items: readonly ActivityItem[],
+  now: Date,
+  t: Translate,
+  locale: string,
+): string | null {
+  if (items.length === 0) return null;
+  const oldest = new Date(Math.min(...items.map((i) => i.timestamp)));
+  const time = new Intl.DateTimeFormat(locale, { hour: "2-digit", minute: "2-digit" }).format(
+    oldest,
+  );
+  const daysAgo = Math.max(0, daysBetween(oldest, now));
+  if (daysAgo === 0) return t("activity.since.today", { time });
+  if (daysAgo === 1) return t("activity.since.yesterday", { time });
+  if (daysAgo < 7) {
+    const weekday = new Intl.DateTimeFormat(locale, { weekday: "long" }).format(oldest);
+    return t("activity.since.weekday", { day: weekday, time });
+  }
+  const date = new Intl.DateTimeFormat(locale, { day: "numeric", month: "long" }).format(oldest);
+  return t("activity.since.date", { date });
+}
+
+/**
  * An order's raw value as the activity log shows it (spec 196): « Marche / Arrêt »
  * for ON/OFF, numbers through lib/format, a setpoint or temperature in degrees.
  */
