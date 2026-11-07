@@ -10,6 +10,8 @@ import {
   secondsToMinutes,
 } from "../../lib/energy-profile";
 import type { EnergyLoadClass, EnergyLoadProfile, EquipmentWithDetails } from "../../types";
+import { ConfigRow } from "./ConfigRow";
+import { InfoTooltip } from "../InfoTooltip";
 import { currentLocale, formatPower } from "../../lib/format";
 
 /**
@@ -29,9 +31,12 @@ import { currentLocale, formatPower } from "../../lib/format";
 export function EnergyManagementPanel({
   equipment,
   onUpdated,
+  defaultOpen = false,
 }: {
   equipment: EquipmentWithDetails;
   onUpdated: () => void;
+  /** Open on arrival; the equipment page keeps its Configuration rows closed. */
+  defaultOpen?: boolean;
 }) {
   const { t } = useTranslation();
   const profile = equipment.energyProfile;
@@ -166,24 +171,29 @@ export function EnergyManagementPanel({
   const inputCls =
     "w-24 px-2 py-1 border border-border rounded-sm text-small text-text bg-background";
 
+  // Spec 196 — a type with no energy semantics (a shutter, a gate) cannot be
+  // declared a flexible load: the panel said so behind a greyed-out box, on
+  // every such page. It now stays away. An existing profile keeps it (canEnable).
+  if (!canEnable) return null;
+
+  const summary = profile
+    ? `${t("energyProfile.enable")} · ${formatPower(profile.nominalPowerW)}`
+    : t("equipments.summary.disabled");
+
   return (
-    <div className="card mb-6 p-4">
-      <div className="flex items-center gap-2 mb-1">
-        <PlugZap size={16} strokeWidth={1.5} className="text-text-tertiary" />
-        <h3 className="text-body font-semibold text-text">{t("energyProfile.title")}</h3>
-        <label className="ml-auto flex items-center gap-2 text-caption text-text-secondary cursor-pointer">
+    <ConfigRow icon={PlugZap} title={t("energyProfile.title")} summary={summary} defaultOpen={defaultOpen}>
+      <div className="flex items-center gap-2 mb-3">
+        <label className="flex items-center gap-2 text-small text-text cursor-pointer">
           <input
             type="checkbox"
             checked={open}
-            disabled={saving || !canEnable}
+            disabled={saving}
             onChange={(e) => toggle(e.target.checked)}
           />
           {t("energyProfile.enable")}
         </label>
+        <InfoTooltip help align="start" text={t("energyProfile.hint")} label={t("common.help")} />
       </div>
-      <p className="text-caption text-text-tertiary mb-3">
-        {canEnable ? t("energyProfile.hint") : t("energyProfile.noClassForType")}
-      </p>
 
       {suspension && (
         <div className="flex items-center gap-2 mb-3 px-3 py-2 rounded-md bg-primary-light border border-primary/20 text-caption text-text-secondary">
@@ -314,7 +324,7 @@ export function EnergyManagementPanel({
       )}
 
       {error && <p className="text-caption text-error mt-2">{error}</p>}
-    </div>
+    </ConfigRow>
   );
 
   async function resume() {

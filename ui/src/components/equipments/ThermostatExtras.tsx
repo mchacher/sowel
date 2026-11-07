@@ -1,5 +1,6 @@
+import { useState } from "react";
 import { useTranslation } from "react-i18next";
-import { SlidersHorizontal, Zap } from "lucide-react";
+import { ChevronDown, ChevronRight, SlidersHorizontal, Zap } from "lucide-react";
 import type { DataBindingWithValue, OrderBindingWithDetails } from "../../types";
 import { splitThermostatExtras } from "../../lib/thermostat-contract";
 import { humanizeAlias } from "../../lib/humanize-alias";
@@ -32,6 +33,31 @@ interface ThermostatExtrasProps {
   onCommitNumber: (alias: string, value: number) => Promise<void>;
   /** From `useSetpointCommitDelay`. */
   commitDelayMs: number;
+  /**
+   * Spec 196 — with an equipment id the list folds, closed by default, and
+   * remembers per equipment whether it was left open. Without, it always shows.
+   */
+  equipmentId?: string;
+}
+
+const openKey = (id: string) => `sowel_thermostat_extras_open_${id}`;
+
+function readOpen(id: string | undefined): boolean {
+  if (!id) return true;
+  try {
+    return localStorage.getItem(openKey(id)) === "1";
+  } catch {
+    return false;
+  }
+}
+
+function writeOpen(id: string, open: boolean): void {
+  try {
+    if (open) localStorage.setItem(openKey(id), "1");
+    else localStorage.removeItem(openKey(id));
+  } catch {
+    // Private mode or blocked storage: the fold simply is not remembered.
+  }
 }
 
 function isControllable(order: OrderBindingWithDetails): boolean {
@@ -55,8 +81,10 @@ export function ThermostatExtras({
   onExec,
   onCommitNumber,
   commitDelayMs,
+  equipmentId,
 }: ThermostatExtrasProps) {
   const { t } = useTranslation();
+  const [open, setOpen] = useState(() => readOpen(equipmentId));
 
   const { extraData, extraOrders } = splitThermostatExtras(dataBindings, orderBindings);
   // A control's mirror is the data binding of the same alias, wherever it
@@ -85,10 +113,28 @@ export function ThermostatExtras({
 
   return (
     <div className="pt-3 border-t border-border space-y-2.5">
-      <span className="text-caption text-text-tertiary flex items-center gap-1">
-        <SlidersHorizontal size={12} strokeWidth={1.5} />
-        {t("thermostat.extras.title")}
-      </span>
+      {equipmentId ? (
+        <button
+          type="button"
+          aria-expanded={open}
+          onClick={() => {
+            setOpen(!open);
+            writeOpen(equipmentId, !open);
+          }}
+          className="text-caption text-text-tertiary hover:text-text-secondary flex items-center gap-1 cursor-pointer"
+        >
+          {open ? <ChevronDown size={12} strokeWidth={1.5} /> : <ChevronRight size={12} strokeWidth={1.5} />}
+          <SlidersHorizontal size={12} strokeWidth={1.5} />
+          {t("thermostat.extras.titleCount", { n: controls.length + readings.length })}
+        </button>
+      ) : (
+        <span className="text-caption text-text-tertiary flex items-center gap-1">
+          <SlidersHorizontal size={12} strokeWidth={1.5} />
+          {t("thermostat.extras.title")}
+        </span>
+      )}
+
+      {open && <>
 
       {controls.map((order) => {
         const alias = order.alias;
@@ -183,6 +229,7 @@ export function ThermostatExtras({
           ))}
         </div>
       )}
+      </>}
     </div>
   );
 }

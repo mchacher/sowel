@@ -1,5 +1,6 @@
 import { useState, useMemo, useCallback, createElement } from "react";
 import { useTranslation } from "react-i18next";
+import { Link, useInRouterContext } from "react-router-dom";
 import {
   Power,
   Loader2,
@@ -23,6 +24,7 @@ import type {
   ZoneWithChildren,
 } from "../../types";
 import { executeZoneOrder } from "../../api";
+import { equipmentLinkState } from "../../lib/equipment-origin";
 import { useEquipmentState } from "../equipments/useEquipmentState";
 import { findOrderByCategory } from "../equipments/bindingUtils";
 import { VmcControl } from "../equipments/VmcControl";
@@ -100,6 +102,8 @@ export function EquipmentDetailSheet({ widget, equipment, equipmentZone, onExecu
   const label = widget.label
     || (equipmentZone ? `${equipment.name}${EQUIPMENT_ZONE_SEPARATOR}${equipmentZone}` : equipment.name);
   const execOrder = (alias: string, value: unknown) => onExecuteOrder(equipment.id, alias, value);
+  // Spec 196 (pr9-dashboard) — the sheet's way to the equipment page (history, settings).
+  const pageLink = <EquipmentPageLink equipmentId={equipment.id} />;
 
   // Sheet header icon — the hand-picked drawing only, rendered from the
   // equipment's live state like the tile it was opened from. Reading
@@ -123,7 +127,7 @@ export function EquipmentDetailSheet({ widget, equipment, equipmentZone, onExecu
 
   if (isLight && (equipment.type === "light_dimmable" || equipment.type === "light_color")) {
     return (
-      <BottomSheet open onClose={onClose} title={label}
+      <BottomSheet open onClose={onClose} title={label} footer={pageLink}
         icon={customIcon}
       >
         <LightDetailContent equipment={equipment} onExecuteOrder={execOrder} />
@@ -136,7 +140,7 @@ export function EquipmentDetailSheet({ widget, equipment, equipmentZone, onExecu
   // all and the sheet returned null, which is why the tile was not clickable.
   if (equipment.type === "weather_forecast") {
     return (
-      <BottomSheet open onClose={onClose} title={label}
+      <BottomSheet open onClose={onClose} title={label} footer={pageLink}
         icon={customIcon}
       >
         <ForecastDetailContent equipment={equipment} />
@@ -146,7 +150,7 @@ export function EquipmentDetailSheet({ widget, equipment, equipmentZone, onExecu
 
   if (isShutter || isAwning || equipment.type === "door" || equipment.type === "pool_cover") {
     return (
-      <BottomSheet open onClose={onClose} title={label}
+      <BottomSheet open onClose={onClose} title={label} footer={pageLink}
         icon={customIcon}
       >
         <ShutterDetailContent equipment={equipment} onExecuteOrder={execOrder} />
@@ -156,7 +160,7 @@ export function EquipmentDetailSheet({ widget, equipment, equipmentZone, onExecu
 
   if (isThermostat || isPoolHeatPump) {
     return (
-      <BottomSheet open onClose={onClose} title={label}
+      <BottomSheet open onClose={onClose} title={label} footer={pageLink}
         icon={customIcon}
       >
         <ThermostatDetailContent equipment={equipment} onExecuteOrder={execOrder} />
@@ -166,7 +170,7 @@ export function EquipmentDetailSheet({ widget, equipment, equipmentZone, onExecu
 
   if (isHeater) {
     return (
-      <BottomSheet open onClose={onClose} title={label}
+      <BottomSheet open onClose={onClose} title={label} footer={pageLink}
         icon={customIcon}
       >
         <HeaterDetailContent equipment={equipment} onExecuteOrder={execOrder} />
@@ -176,7 +180,7 @@ export function EquipmentDetailSheet({ widget, equipment, equipmentZone, onExecu
 
   if (isGate) {
     return (
-      <BottomSheet open onClose={onClose} title={label}
+      <BottomSheet open onClose={onClose} title={label} footer={pageLink}
         icon={customIcon}
       >
         <GateDetailContent equipment={equipment} onExecuteOrder={execOrder} iconKey={widget.icon} zoneName={equipmentZone} />
@@ -186,7 +190,7 @@ export function EquipmentDetailSheet({ widget, equipment, equipmentZone, onExecu
 
   if (equipment.type === "weather") {
     return (
-      <BottomSheet open onClose={onClose} title={label}
+      <BottomSheet open onClose={onClose} title={label} footer={pageLink}
         icon={customIcon}
       >
         {isRainOnlyWeather(equipment) ? (
@@ -200,7 +204,7 @@ export function EquipmentDetailSheet({ widget, equipment, equipmentZone, onExecu
 
   if (equipment.type === "electric_vehicle") {
     return (
-      <BottomSheet open onClose={onClose} title={label}
+      <BottomSheet open onClose={onClose} title={label} footer={pageLink}
         icon={customIcon}
       >
         <div className="p-4">
@@ -212,7 +216,7 @@ export function EquipmentDetailSheet({ widget, equipment, equipmentZone, onExecu
 
   if (equipment.type === "ev_charger") {
     return (
-      <BottomSheet open onClose={onClose} title={label}
+      <BottomSheet open onClose={onClose} title={label} footer={pageLink}
         icon={customIcon}
       >
         <div className="p-4">
@@ -224,7 +228,7 @@ export function EquipmentDetailSheet({ widget, equipment, equipmentZone, onExecu
 
   if (equipment.type === "vmc") {
     return (
-      <BottomSheet open onClose={onClose} title={label}
+      <BottomSheet open onClose={onClose} title={label} footer={pageLink}
         icon={customIcon}
       >
         <div className="p-4">
@@ -236,7 +240,7 @@ export function EquipmentDetailSheet({ widget, equipment, equipmentZone, onExecu
 
   if (isSensor) {
     return (
-      <BottomSheet open onClose={onClose} title={label}
+      <BottomSheet open onClose={onClose} title={label} footer={pageLink}
         icon={customIcon}
       >
         <SensorDetailContent equipment={equipment} visibleBindings={widget.config?.visibleBindings} />
@@ -1605,3 +1609,17 @@ function SensorDetailContent({
   );
 }
 
+/** « Voir la fiche › » at the foot of an equipment sheet (spec 196, pr9-dashboard). */
+function EquipmentPageLink({ equipmentId }: { equipmentId: string }) {
+  const { t } = useTranslation();
+  if (!useInRouterContext()) return null;
+  return (
+    <Link
+      to={`/equipments/${equipmentId}`}
+      state={equipmentLinkState(t("nav.dashboard"), "/dashboard")}
+      className="flex items-center justify-center min-h-[44px] text-small font-medium text-primary hover:text-primary-hover"
+    >
+      {t("equipments.openPage")} ›
+    </Link>
+  );
+}

@@ -300,6 +300,7 @@ export function ThermostatCard({ equipment, onExecuteOrder, compact }: Thermosta
         onExec={(alias, value) => void exec(alias, value)}
         onCommitNumber={(alias, value) => onExecuteOrder(alias, value)}
         commitDelayMs={commitDelay}
+        equipmentId={equipment.id}
       />
     </div>
   );

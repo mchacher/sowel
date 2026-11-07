@@ -324,12 +324,13 @@ Simple interrupteur on/off ou prise connectée.
 
 ### Page de détail
 
-Cliquez sur n'importe quel équipement pour voir sa page de détail :
+Cliquez sur n'importe quel équipement pour voir sa page de détail. Elle met d'abord ce qui sert, et la configuration en dernier :
 
-- **Données live** : toutes les valeurs sont mises à jour en temps réel via WebSocket
-- **Contrôles** : contrôles interactifs adaptés au type d'équipement
-- **Graphique d'historique** : tendances des données dans le temps (si l'historisation est activée)
-- **Configuration** : devices liés, liaisons de données, liaisons d'ordres
+- **Usage** : l'en-tête donne le type et la pièce (« Thermostat · Salon »), puis viennent les contrôles adaptés au type (valeur, consigne, mode, boutons), la commande temporisée quand elle est réglée, les recharges d'une voiture ou d'une borne, et le **graphique d'historique**, ouvert sur la série principale des dernières 24 heures (température d'un thermostat, puissance d'une borne, position d'un volet, batterie d'une voiture). Les réglages fins restent repliés : les **Autres réglages** d'un thermostat (ouverts ou fermés, mémorisé par équipement), les **Détails de la borne**. Le graphique permet toujours de choisir une autre série ou une autre durée.
+- **Énergie** : sur un compteur ou un équipement mesuré, une seule carte avec les cumuls d'énergie et les mesures électriques en direct.
+- **Configuration** (administrateurs) : une carte en bas de page. Chaque réglage y est une ligne repliée qui dit où il en est (« Commande temporisée · Désactivée ») : confirmation avant action, suivi du résultat des ordres, accès partagés, commande temporisée, inversion du sens, déjà compté par, pilotage énergie, actions du bouton, puis les appareils, l'historique et les liaisons. Un **?** à côté d'un réglage l'explique. **Supprimer l'équipement** est au pied de cette carte ; **Modifier** reste dans l'en-tête.
+
+Le lien **Retour** ramène d'où l'on vient : la pièce, l'accueil, un mode, la liste des équipements. Ouverte depuis un lien direct, la page renvoie à la pièce de l'équipement (« Retour à Salon »). La barre latérale et le fil d'Ariane suivent la même règle : la page est rangée sous **Maison › pièce**, et sous Administration seulement quand on l'a ouverte depuis la liste des équipements ou des appareils.
 
 La page charge l'équipement une fois, puis suit ses valeurs en direct sans redemander au serveur. Seul ce premier chargement, ou un **Réessayer**, peut échouer. Si le serveur est occupé ou injoignable à ce moment, la page le dit (« Serveur occupé », « Connexion impossible ») et propose **Réessayer**, sauf si Sowel a déjà l'équipement en main : la page l'affiche alors et le garde à jour, sans message. « Équipement introuvable » veut dire que l'équipement n'existe vraiment pas.
 
@@ -453,7 +454,7 @@ Un équipement désactivé :
 
 ### Supprimer un équipement
 
-La suppression retire l'équipement de Sowel. Les devices sous-jacents ne sont **pas** affectés, ils restent disponibles pour de nouveaux équipements.
+**Supprimer l'équipement** se trouve au pied de la carte **Configuration** de la page de détail. La suppression retire l'équipement de Sowel. Les devices sous-jacents ne sont **pas** affectés, ils restent disponibles pour de nouveaux équipements.
 
 !!! warning
 Supprimer un équipement supprime également toutes les instances de recettes et impacts de mode qui le référencent.

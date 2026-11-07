@@ -20,6 +20,7 @@ import { useWsSubscription } from "../hooks/useWsSubscription";
 import { flattenZonesWithPath } from "../lib/zone-path";
 import { brightnessPercent, brightnessScale } from "../lib/brightness";
 import { formatPercent } from "../lib/format";
+import { equipmentLinkState } from "../lib/equipment-origin";
 
 export function ModeDetailPage() {
   useWsSubscription(["modes"]);
@@ -404,6 +405,7 @@ function ButtonTriggersSection({
             <Link
               key={binding.id}
               to={`/equipments/${binding.equipmentId}`}
+              state={equipmentLinkState(modes.find((m) => m.id === modeId)?.name ?? t("nav.modes"), `/modes/${modeId}`)}
               className="flex items-center gap-3 px-3 py-2 bg-background rounded-sm border border-border-light hover:border-primary/30 transition-colors"
             >
               <Zap size={14} strokeWidth={1.5} className="text-text-tertiary flex-shrink-0" />

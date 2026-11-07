@@ -5,6 +5,7 @@ import { KeyRound, Loader2 } from "lucide-react";
 import { getSharedAccessGatePanel, setSharedAccessArmed } from "../../api";
 import { useSharedAccess } from "../../store/useSharedAccess";
 import { Refusal, Switch, btnPrimary, errorCode, useRefusalText } from "../shared-access/ui";
+import { ConfigRow } from "./ConfigRow";
 
 /**
  * Spec 181 R8.31 — « Accès partagés » on a gate's own page, beside
@@ -13,7 +14,14 @@ import { Refusal, Switch, btnPrimary, errorCode, useRefusalText } from "../share
  * Admin-only, gate-only — the caller gates the mount; the panel itself stays
  * hidden while the feature is off.
  */
-export function SharedAccessPanel({ equipmentId }: { equipmentId: string }) {
+export function SharedAccessPanel({
+  equipmentId,
+  defaultOpen = false,
+}: {
+  equipmentId: string;
+  /** Open on arrival; the equipment page keeps its Configuration rows closed. */
+  defaultOpen?: boolean;
+}) {
   const { t } = useTranslation();
   const navigate = useNavigate();
   const enabled = useSharedAccess((s) => s.enabled);
@@ -52,20 +60,22 @@ export function SharedAccessPanel({ equipmentId }: { equipmentId: string }) {
   const people = panel?.people ?? 0;
   const armed = panel?.armed ?? true;
 
+  const summary = !panel
+    ? undefined
+    : !armed
+      ? t("sharedAccess.disarmed")
+      : people > 0
+        ? t("sharedAccess.panel.summary", { count: people })
+        : t("sharedAccess.panel.summaryNobody");
+
   return (
-    <div className="card mb-6 p-4">
-      <div className="flex items-center gap-2 mb-1">
-        <KeyRound size={16} strokeWidth={1.5} className="text-text-tertiary" />
-        <h3 className="text-body font-semibold text-text">{t("sharedAccess.title")}</h3>
-        {people > 0 && (
-          <Link
-            to={`/shared-access?gate=${encodeURIComponent(equipmentId)}`}
-            className="ml-auto text-caption font-semibold text-primary hover:underline"
-          >
-            {t("sharedAccess.panel.seeAccesses")}
-          </Link>
-        )}
-      </div>
+    <ConfigRow
+      icon={KeyRound}
+      title={t("sharedAccess.title")}
+      summary={summary}
+      summaryTone={panel && !armed ? "alert" : "muted"}
+      defaultOpen={defaultOpen}
+    >
       {!panel && !error ? (
         <Loader2 size={14} className="animate-spin text-text-tertiary" />
       ) : (
@@ -80,6 +90,17 @@ export function SharedAccessPanel({ equipmentId }: { equipmentId: string }) {
               t("sharedAccess.panel.people", { count: people })
             ) : (
               t("sharedAccess.panel.nobody")
+            )}
+            {people > 0 && (
+              <>
+                {" "}
+                <Link
+                  to={`/shared-access?gate=${encodeURIComponent(equipmentId)}`}
+                  className="font-semibold text-primary hover:underline"
+                >
+                  {t("sharedAccess.panel.seeAccesses")}
+                </Link>
+              </>
             )}
           </p>
           <div className="flex items-center gap-2.5 mt-3 flex-wrap">
@@ -104,6 +125,6 @@ export function SharedAccessPanel({ equipmentId }: { equipmentId: string }) {
         </>
       )}
       {error && <Refusal>{error}</Refusal>}
-    </div>
+    </ConfigRow>
   );
 }

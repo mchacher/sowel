@@ -8,9 +8,11 @@ interface BottomSheetProps {
   title: string;
   icon?: ReactNode;
   children: ReactNode;
+  /** Pinned under the scrolling content (spec 196: the link to the equipment page). */
+  footer?: ReactNode;
 }
 
-export function BottomSheet({ open, onClose, title, icon, children }: BottomSheetProps) {
+export function BottomSheet({ open, onClose, title, icon, children, footer }: BottomSheetProps) {
   const sheetRef = useRef<HTMLDivElement>(null);
   const dragStartY = useRef<number | null>(null);
   const dragCurrentY = useRef(0);
@@ -100,6 +102,8 @@ export function BottomSheet({ open, onClose, title, icon, children }: BottomShee
         <div className="flex-1 overflow-y-auto px-5 pb-6">
           {children}
         </div>
+
+        {footer && <div className="border-t border-border-light px-5 py-1">{footer}</div>}
       </div>
     </div>,
     document.body,

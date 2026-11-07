@@ -6,6 +6,8 @@ import { TimedCountdown } from "./TimedCountdown";
 import { humanizeAlias } from "../../lib/humanize-alias";
 import { isTimedCommandEligible } from "../../../../src/shared/timed-command";
 import type { EquipmentWithDetails } from "../../types";
+import { ConfigRow } from "./ConfigRow";
+import { InfoTooltip } from "../InfoTooltip";
 
 /**
  * Spec 174 phase 2 (FR-12) — configure the timed command an equipment offers.
@@ -34,9 +36,12 @@ const DURATIONS_MS = [
 export function TimedCommandPanel({
   equipment,
   onUpdated,
+  defaultOpen = false,
 }: {
   equipment: EquipmentWithDetails;
   onUpdated: () => void;
+  /** Open on arrival; the equipment page keeps its Configuration rows closed. */
+  defaultOpen?: boolean;
 }) {
   const { t } = useTranslation();
   const [saving, setSaving] = useState(false);
@@ -158,12 +163,15 @@ export function TimedCommandPanel({
   const selectClass =
     "px-2 py-1 text-caption bg-background border border-border rounded-sm text-text disabled:opacity-50";
 
+  // Spec 196 — the row's one-line summary: off, or which command for how long.
+  const summary = configured
+    ? `${orderLabel(configured.alias)} · ${t("equipments.timed.minutes", { count: Math.round(configured.durationMs / 60_000) })}`
+    : t("equipments.summary.disabledF");
+
   return (
-    <div className="card mb-6 p-4">
-      <div className="flex items-center gap-2 mb-1">
-        <TimerReset size={16} strokeWidth={1.5} className="text-text-tertiary" />
-        <h3 className="text-body font-semibold text-text">{t("equipments.timed.configTitle")}</h3>
-        <label className="ml-auto flex items-center gap-2 text-caption text-text-secondary cursor-pointer">
+    <ConfigRow icon={TimerReset} title={t("equipments.timed.title")} summary={summary} defaultOpen={defaultOpen}>
+      <div className="flex items-center gap-2">
+        <label className="flex items-center gap-2 text-small text-text cursor-pointer">
           <input
             type="checkbox"
             checked={enabled}
@@ -173,11 +181,9 @@ export function TimedCommandPanel({
           />
           {t("equipments.timed.enable")}
         </label>
-      </div>
-      <p className="text-caption text-text-tertiary flex items-center gap-1.5">
-        {t("equipments.timed.hint")}
+        <InfoTooltip help align="start" text={t("equipments.timed.hint")} label={t("common.help")} />
         {saving && <Loader2 size={12} className="animate-spin text-text-tertiary" />}
-      </p>
+      </div>
 
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 mt-4">
         <label className="flex flex-col gap-1">
@@ -289,6 +295,6 @@ export function TimedCommandPanel({
       )}
 
       {error && <p className="text-caption text-error mt-2">{error}</p>}
-    </div>
+    </ConfigRow>
   );
 }

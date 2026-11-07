@@ -14,6 +14,8 @@ import { formatNumber, unitDecimals } from "../../lib/format";
 
 interface ElectricalMeteringPanelProps {
   equipment: EquipmentWithDetails;
+  /** Spec 196 — a section of the page's « Énergie » card rather than a card of its own. */
+  section?: boolean;
 }
 
 interface LiveMeasure {
@@ -32,7 +34,7 @@ interface LiveMeasure {
  * data is bound; the panel disappears entirely when nothing is bound.
  * Values update live through the WS store like the rest of the page.
  */
-export function ElectricalMeteringPanel({ equipment }: ElectricalMeteringPanelProps) {
+export function ElectricalMeteringPanel({ equipment, section = false }: ElectricalMeteringPanelProps) {
   const { t } = useTranslation();
 
   const bindings = equipment.dataBindings;
@@ -106,12 +108,16 @@ export function ElectricalMeteringPanel({ equipment }: ElectricalMeteringPanelPr
   if (measures.every((m) => m.value === null)) return null;
 
   return (
-    <div className="card p-4 mb-6">
-      <div className="flex items-center justify-between mb-4">
-        <h3 className="text-body font-semibold text-text flex items-center gap-2">
-          <Gauge size={16} strokeWidth={1.5} className="text-text-tertiary" />
-          {t("energy.electricalMetering")}
-        </h3>
+    <div className={section ? "" : "card p-4 mb-6"} data-energy-section={section || undefined}>
+      <div className={`flex items-center justify-between ${section ? "mb-2" : "mb-4"}`}>
+        {section ? (
+          <h4 className="text-caption font-medium text-text-tertiary">{t("energy.electricalMetering")}</h4>
+        ) : (
+          <h3 className="text-body font-semibold text-text flex items-center gap-2">
+            <Gauge size={16} strokeWidth={1.5} className="text-text-tertiary" />
+            {t("energy.electricalMetering")}
+          </h3>
+        )}
       </div>
       <div className="grid grid-cols-2 gap-3">
         {measures.map((m) => {
