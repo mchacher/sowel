@@ -1,7 +1,5 @@
 # Topbar (`topbar`)
 
-> **Superseded in part by [tokens.md](../tokens.md) (spec 196).** Labels are sentence case and numbers Inter with tabular figures (§2), radii are 6 / 10 / 16 px (§4), and a card or panel has no border (§5.1). Where the CSS below disagrees, tokens.md wins.
-
 > Horizontal bar at the top of the desktop main area. Contains the breadcrumb, time/sunlight chips, connection status, alarms pill, and the avatar.
 
 ---
@@ -26,7 +24,7 @@ The topbar height (49 px) **exactly matches the sidebar logo height**. This ensu
 | ------------------------- | ---------------------------------------------------- | -------------------- |
 | Breadcrumb                | `.topbar__breadcrumb`                                | yes                  |
 | Spacer                    | `.topbar__spacer`                                    | yes                  |
-| Time chip                 | `.topbar__chip` (mono)                               | recommended          |
+| Time chip                 | `.topbar__chip` (tabular figures)                    | recommended          |
 | Sunlight chip             | `.topbar__chip topbar__chip--sun` (amber-tinted)     | recommended          |
 | Connection status         | `.topbar__conn topbar__conn--connected`              | yes                  |
 | Alarms pill (conditional) | `.topbar__alarm topbar__alarm--warning` or `--error` | only if alarms exist |
@@ -95,7 +93,7 @@ The topbar height (49 px) **exactly matches the sidebar logo height**. This ensu
 }
 
 .topbar__breadcrumb {
-  font-size: 0.82rem;
+  font-size: var(--fs-small);
   color: var(--n-400);
   font-weight: 500;
 }
@@ -117,11 +115,11 @@ The topbar height (49 px) **exactly matches the sidebar logo height**. This ensu
   gap: 0.4rem;
   padding: 0.3rem 0.65rem;
   background: var(--n-50);
-  border: 1px solid var(--line);
+  border: 1px solid var(--line-2);
   border-radius: var(--r-full);
-  font-size: 0.76rem;
+  font-size: var(--fs-caption);
   color: var(--n-500);
-  font-family: var(--font-mono);
+  font-feature-settings: "tnum" 1;
 }
 .topbar__chip svg {
   width: 12px;
@@ -139,10 +137,9 @@ The topbar height (49 px) **exactly matches the sidebar logo height**. This ensu
   opacity: 0.9;
 }
 .topbar__chip-tag {
-  font-family: var(--font-body);
   font-weight: 600;
-  font-size: 0.7rem;
-  color: color-mix(in srgb, var(--a-600) 80%, var(--n-700));
+  font-size: var(--fs-micro);
+  color: var(--orange-700); /* attention in words: warning-ink */
   margin-left: 0.25rem;
   text-transform: lowercase;
 }
@@ -153,7 +150,7 @@ The topbar height (49 px) **exactly matches the sidebar logo height**. This ensu
   gap: 0.5rem;
   padding: 0.3rem 0.8rem;
   border-radius: var(--r-full);
-  font-size: 0.76rem;
+  font-size: var(--fs-caption);
   font-weight: 500;
 }
 .topbar__conn--connected {
@@ -191,10 +188,10 @@ The topbar height (49 px) **exactly matches the sidebar logo height**. This ensu
   border-radius: var(--r-full);
   border: none;
   cursor: pointer;
-  font-size: 0.76rem;
+  font-size: var(--fs-caption);
   font-weight: 600;
-  background: color-mix(in srgb, var(--a-500) 14%, transparent);
-  color: var(--a-600);
+  background: color-mix(in srgb, var(--orange-500) 10%, transparent);
+  color: var(--orange-700); /* attention, not amber (spec 196) */
 }
 .topbar__alarm--error {
   background: color-mix(in srgb, var(--red-500) 12%, transparent);
@@ -206,7 +203,6 @@ The topbar height (49 px) **exactly matches the sidebar logo height**. This ensu
   flex: none;
 }
 .topbar__alarm-count {
-  font-family: var(--font-mono);
   font-feature-settings: "tnum" 1;
 }
 ```

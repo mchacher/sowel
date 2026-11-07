@@ -85,14 +85,11 @@ describe("cards", () => {
     // Floating layers are told by their class (absolute, fixed); a chart
     // tooltip is positioned by the chart library, so it is listed here.
     // Selectable options (a profile, a series chip) keep the border that shows
-    // their state. EvCurrentSessionCard is a bordered card the line-based 7b
-    // codemod could not see (its classes span three lines): listed until it is
-    // moved to `card`.
+    // their state. EvCurrentSessionCard, listed here until #1129, is a `card`.
     const KEEPS_BORDER = [
       "components/energy/EnergyByUsageChart.tsx",
       "components/shared-access/ProfilesTab.tsx",
       "components/history/AnalyseView.tsx",
-      "components/equipments/ev-sessions/EvCurrentSessionCard.tsx",
     ];
     const bordered = CLASSNAMES.filter(
       ({ where, cls }) =>

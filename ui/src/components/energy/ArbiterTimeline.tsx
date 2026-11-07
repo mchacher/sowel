@@ -467,8 +467,12 @@ export function ArbiterTimeline() {
                     className="w-2 h-2 rounded-full flex-none self-center"
                     style={{ backgroundColor: journalDotColor(e.kind) }}
                   />
-                  <span className="font-semibold text-text">{e.equipmentName ?? ""}</span>
-                  <span className="text-text-secondary truncate">
+                  {/* #1129 — the name holds its line (« Chauffe-eau » broke at
+                      its hyphen on a phone); the decision gives way, truncated. */}
+                  <span className="font-semibold text-text whitespace-nowrap flex-none max-w-[45%] truncate">
+                    {e.equipmentName ?? ""}
+                  </span>
+                  <span className="text-text-secondary truncate min-w-0">
                     {t(`arbiter.kind.${e.kind}`)}
                     {reasonLabel ? ` · ${reasonLabel}` : ""}
                   </span>

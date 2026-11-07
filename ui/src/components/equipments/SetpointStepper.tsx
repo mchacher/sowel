@@ -18,6 +18,13 @@ export interface SetpointStepperProps {
   unit?: string;
   /** sm: inline row (28 px drawn, 44 px to the finger); md: 44 px; lg: 56 px (sheet). */
   size: SetpointStepperSize;
+  /**
+   * « 20,5° » or « 20,5 °C » (decision pr3-degre: compact in tiles, rows and
+   * strips, full in pages). Defaults to compact for `sm`, full otherwise; a
+   * dashboard tile passes "compact" so its setpoint matches the temperature
+   * beside it (#1129).
+   */
+  valueStyle?: "compact" | "full";
   onCommit: (value: number) => Promise<void>;
   disabled?: boolean;
   /** What is set, for the accessible names: « Consigne », « Courant de charge ». */
@@ -35,6 +42,13 @@ export interface SetpointStepperProps {
   holdUntilReached?: boolean;
   /** First value proposed when the device has none yet; without it the buttons wait for one. */
   startValue?: number;
+  /**
+   * Whether a failure writes « Consigne non appliquée » under the control.
+   * Default: yes above `sm`. A parent that already writes the device's own
+   * reason passes false, so the failure is said once (#1129); the value still
+   * turns red.
+   */
+  errorLine?: boolean;
   /** Lets a parent draw the value being set elsewhere (a thermometer's level). */
   onShownChange?: (value: number | null) => void;
   className?: string;
@@ -66,6 +80,7 @@ export function SetpointStepper({
   step = 0.5,
   unit,
   size,
+  valueStyle = size === "sm" ? "compact" : "full",
   onCommit,
   disabled = false,
   label,
@@ -75,6 +90,7 @@ export function SetpointStepper({
   settleMs,
   holdUntilReached = false,
   startValue,
+  errorLine = size !== "sm",
   onShownChange,
   className = "",
 }: SetpointStepperProps) {
@@ -110,7 +126,7 @@ export function SetpointStepper({
 
   const buttonClass = `${BUTTON[size]} flex items-center justify-center transition-colors cursor-pointer active:scale-[0.97] disabled:opacity-30 disabled:cursor-not-allowed`;
   const text =
-    shown === null ? "—" : formatWithUnit(shown, unit, { style: size === "sm" ? "compact" : "full" });
+    shown === null ? "—" : formatWithUnit(shown, unit, { style: valueStyle });
 
   return (
     <div className={`flex flex-col items-center ${className}`}>
@@ -146,7 +162,7 @@ export function SetpointStepper({
         </button>
       </div>
       {/* The row (sm) has no room for a line: its value turns red, titled. */}
-      {error && size !== "sm" && (
+      {error && errorLine && (
         <span role="status" className="text-caption text-error mt-1">
           {t("setpoint.failed")}
         </span>

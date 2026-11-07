@@ -1,7 +1,5 @@
 # Recipe row (`recipe`)
 
-> **Superseded in part by [tokens.md](../tokens.md) (spec 196).** Labels are sentence case and numbers Inter with tabular figures (§2), radii are 6 / 10 / 16 px (§4), and a card or panel has no border (§5.1). Where the CSS below disagrees, tokens.md wins.
-
 > A row inside the Comportements panel's Recettes sub-category. Clickable to open the recipe edit modal, with an inline toggle and three small action buttons (logs, duplicate, delete).
 
 ---
@@ -150,12 +148,12 @@ There are no variants. The only state change is the toggle on/off via `.recipe__
 .recipe__open:focus-visible {
   outline: 2px solid var(--p-500);
   outline-offset: 2px;
-  border-radius: 2px;
+  border-radius: var(--r-sm);
 }
 
 .recipe__name {
   line-height: 1.2;
-  font-size: 0.88rem;
+  font-size: var(--fs-body);
   font-weight: 500;
   color: var(--n-800);
 }
@@ -178,7 +176,7 @@ There are no variants. The only state change is the toggle on/off via `.recipe__
   border: none;
   color: var(--n-400);
   cursor: pointer;
-  border-radius: var(--r-xs);
+  border-radius: var(--r-sm);
   display: inline-flex;
   align-items: center;
   justify-content: center;

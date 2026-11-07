@@ -1,7 +1,5 @@
 # Zone commands (`zcmds`)
 
-> **Superseded in part by [tokens.md](../tokens.md) (spec 196).** Labels are sentence case and numbers Inter with tabular figures (§2), radii are 6 / 10 / 16 px (§4), and a card or panel has no border (§5.1). Where the CSS below disagrees, tokens.md wins.
-
 > The mini-toolbar of global zone commands (lights on/off, shutters ↑■↓) that sits on its own line just below the strip.
 
 ---
@@ -30,7 +28,7 @@ There are no variants. The bar contains 5 icon-only buttons grouped by category,
 
 | Element          | Default                         | Hover                                   |
 | ---------------- | ------------------------------- | --------------------------------------- |
-| Container        | white bg, line border, radius 8 | unchanged                               |
+| Container        | white bg, line border, radius 6 | unchanged                               |
 | Light button     | transparent bg, `--n-600` icon  | bg `--a-50`, text `--a-ink`             |
 | Light-off button | transparent                     | bg `--n-100`, text `--n-700`            |
 | Shutter button   | transparent                     | bg `--shutter-50`, text `--shutter-500` |
@@ -80,8 +78,8 @@ The container holds **5 buttons** in this exact order:
   display: inline-flex;
   align-items: center;
   background: var(--n-0);
-  border: 1px solid var(--line);
-  border-radius: var(--r-md);
+  border: 1px solid var(--line-2); /* a group of controls keeps its border */
+  border-radius: var(--r-sm);
   padding: 0.25rem 0.35rem;
   margin-bottom: 0.25rem;
   gap: 1px;

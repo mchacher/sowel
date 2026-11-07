@@ -1,7 +1,5 @@
 # Sub-category header (`cat-head`)
 
-> **Superseded in part by [tokens.md](../tokens.md) (spec 196).** Labels are sentence case and numbers Inter with tabular figures (§2), radii are 6 / 10 / 16 px (§4), and a card or panel has no border (§5.1). Where the CSS below disagrees, tokens.md wins.
-
 > The thin band that visually groups rows of the same kind inside a [panel](panel.md). Examples: "Éclairages" / "Volets" / "Capteurs" inside Équipements, "Modes" / "Recettes" inside Comportements.
 
 ---
@@ -35,7 +33,7 @@ There are no visual variants. Two optional elements:
 
 | State          | Effect                                                       |
 | -------------- | ------------------------------------------------------------ |
-| Default        | bg `--n-25`, text `--n-500`, uppercase, letter-spacing .14em |
+| Default        | bg `--n-25`, text `--n-600`, sentence case, 13 px semibold   |
 | + button hover | `.cat-head__add:hover` → bg `--p-50`, color/border `--p-500` |
 
 The cat-head itself has no hover state — it's a label, not interactive.
@@ -71,10 +69,8 @@ The cat-head itself has no hover state — it's a label, not interactive.
   padding: 0.4rem 1.1rem;
   min-height: 36px;
   box-sizing: border-box;
-  font-size: 0.65rem;
-  text-transform: uppercase;
-  letter-spacing: 0.14em;
-  color: var(--n-500);
+  font-size: var(--fs-small);
+  color: var(--n-600);
   font-weight: 600;
   border-top: 1px solid var(--line);
   border-bottom: 1px solid var(--line);
@@ -91,8 +87,8 @@ The cat-head itself has no hover state — it's a label, not interactive.
   width: 22px;
   height: 22px;
   background: transparent;
-  border: 1px solid var(--n-200);
-  border-radius: var(--r-xs);
+  border: 1px solid var(--line-2);
+  border-radius: var(--r-sm);
   color: var(--n-500);
   cursor: pointer;
   display: inline-flex;

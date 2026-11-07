@@ -2,7 +2,7 @@ import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import { useNavigate, Link } from "react-router-dom";
 import type { Device, DeviceData } from "../../types";
-import { sourceLabel } from "../../lib/format";
+import { formatPercent, sourceLabel } from "../../lib/format";
 import { equipmentLinkState } from "../../lib/equipment-origin";
 import { RelativeTime } from "../RelativeTime";
 import {
@@ -348,7 +348,7 @@ function BatteryCell({ value }: { value: unknown }) {
   return (
     <span className={`inline-flex items-center gap-1 ${color}`}>
       <Icon size={14} strokeWidth={1.5} />
-      <span className="text-micro tabular-nums">{level}%</span>
+      <span className="text-micro tabular-nums whitespace-nowrap">{formatPercent(level)}</span>
     </span>
   );
 }

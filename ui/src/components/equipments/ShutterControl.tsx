@@ -132,7 +132,7 @@ export function ShutterControl({ equipment, onExecuteOrder, compact }: ShutterCo
             </span>
           ) : (
             <span className="text-micro text-text-tertiary tabular-nums w-8 text-right">
-              {position}%
+              {formatPercent(position)}
             </span>
           )
         )}

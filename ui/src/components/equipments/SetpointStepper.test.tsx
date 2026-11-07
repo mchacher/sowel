@@ -80,3 +80,27 @@ describe("SetpointStepper", () => {
     expect(screen.getByText("20.0 °C")).toBeTruthy();
   });
 });
+
+describe("SetpointStepper error line (#1129)", () => {
+  it("writes the failure under the control unless the parent says it", async () => {
+    const onCommit = vi.fn().mockRejectedValue(new Error("refused"));
+    const { unmount } = renderStepper({ onCommit });
+    fireEvent.click(up());
+    expect(await screen.findByText("Setpoint not applied")).toBeTruthy();
+    unmount();
+    renderStepper({ onCommit, errorLine: false });
+    fireEvent.click(up());
+    await waitFor(() => expect(onCommit).toHaveBeenCalledTimes(2));
+    expect(screen.queryByText("Setpoint not applied")).toBeNull();
+  });
+});
+
+describe("SetpointStepper value style (#1129, decision pr3-degre)", () => {
+  it("writes the full unit by default above sm, the tile form when asked", () => {
+    const { unmount } = renderStepper();
+    expect(screen.getByText("20.0 °C")).toBeTruthy();
+    unmount();
+    renderStepper({ valueStyle: "compact" });
+    expect(screen.getByText("20.0°")).toBeTruthy();
+  });
+});

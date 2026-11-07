@@ -94,7 +94,10 @@ export function EnergyDataPanel({ computedData, status, statusReason,
               key={c.alias}
               className="flex items-center gap-3 px-3 py-3 rounded-md bg-border-light/50"
             >
-              <div className="flex-shrink-0 w-10 h-10 rounded-sm flex items-center justify-center bg-primary-light text-primary">
+              {/* #1129 — decorative, and 52 px a phone's half-width tile cannot
+                  spare: « Heure en cours » wrapped and « 4 568 kWh » ran past
+                  the tile at 360 px. Shown from `sm`. */}
+              <div className="hidden sm:flex flex-shrink-0 w-10 h-10 rounded-sm items-center justify-center bg-primary-light text-primary">
                 {c.icon}
               </div>
               <div className="flex-1 min-w-0">

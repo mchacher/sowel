@@ -1,7 +1,5 @@
 # Mode row (`mode-row`)
 
-> **Superseded in part by [tokens.md](../tokens.md) (spec 196).** Labels are sentence case and numbers Inter with tabular figures (§2), radii are 6 / 10 / 16 px (§4), and a card or panel has no border (§5.1). Where the CSS below disagrees, tokens.md wins.
-
 > A row inside the Comportements panel's Modes sub-category. Displays one mode (Lumière jour, Lumière nuit, …) with its action count, last application time, and an Apply / Active state.
 
 ---
@@ -151,13 +149,13 @@ The icon uses **Layers** (Lucide) — same icon as the sidebar Modes nav item, t
 }
 
 .mode-row__name {
-  font-size: 0.88rem;
+  font-size: var(--fs-body);
   font-weight: 500;
   color: var(--n-800);
   line-height: 1.25;
 }
 .mode-row__meta {
-  font-size: 0.7rem;
+  font-size: var(--fs-micro);
   color: var(--n-400);
   line-height: 1.25;
   margin-top: 1px;
@@ -174,17 +172,17 @@ The icon uses **Layers** (Lucide) — same icon as the sidebar Modes nav item, t
 }
 .mode-row--active .mode-row__name {
   color: var(--green-700);
-  font-weight: 700;
+  font-weight: 600;
 }
 
 .mode-row__apply {
-  font-size: 0.72rem;
+  font-size: var(--fs-caption);
   font-weight: 600;
   color: var(--p-500);
   background: transparent;
-  border: 1px solid var(--line);
+  border: 1px solid var(--line-2);
   padding: 0.25rem 0.65rem;
-  border-radius: var(--r-xs);
+  border-radius: var(--r-sm);
   cursor: pointer;
 }
 .mode-row__apply:hover {
@@ -193,10 +191,8 @@ The icon uses **Layers** (Lucide) — same icon as the sidebar Modes nav item, t
 }
 
 .mode-row__badge {
-  font-size: 0.65rem;
-  font-weight: 700;
-  text-transform: uppercase;
-  letter-spacing: 0.1em;
+  font-size: var(--fs-caption);
+  font-weight: 500;
   color: var(--green-700);
   background: color-mix(in srgb, var(--green-500) 12%, transparent);
   padding: 2px 8px;

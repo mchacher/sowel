@@ -218,6 +218,9 @@ export function ElectricVehicleControl({ equipment, onExecuteOrder }: ElectricVe
             increaseLabel={t("equipments.electricVehicle.limitUp")}
             debounceMs={commitDelay}
             settleMs={CHARGE_LIMIT_SETTLE_MS}
+            // The outcome line below writes the car's own reason; the
+            // stepper's generic line would say the same failure twice (#1129).
+            errorLine={false}
             onCommit={commitLimit}
           />
         </div>

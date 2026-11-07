@@ -1,7 +1,5 @@
 # Sidebar navigation (`sb`)
 
-> **Superseded in part by [tokens.md](../tokens.md) (spec 196).** Labels are sentence case and numbers Inter with tabular figures (§2), radii are 6 / 10 / 16 px (§4), and a card or panel has no border (§5.1). Where the CSS below disagrees, tokens.md wins.
-
 > The vertical navigation rail on the left of the desktop view. Contains the Sowel logo, top-level nav items (Dashboard, Maison, Modes, Analyse, Énergie), the zone tree under Maison, and Administration/Réglages pinned at the bottom.
 
 ---
@@ -129,7 +127,7 @@ This pattern came from the user request "il faut les séparer mode analyse et en
 .sb {
   background: var(--n-0);
   border-right: 1px solid var(--line);
-  font-size: 0.85rem;
+  font-size: var(--fs-body);
   display: flex;
   flex-direction: column;
 }
@@ -150,10 +148,9 @@ This pattern came from the user request "il faut les séparer mode analyse et en
   flex: none;
 }
 .sb__logo b {
-  font-weight: 700;
-  letter-spacing: 0.04em;
+  font-weight: 600;
   color: var(--p-500);
-  font-size: 0.9rem;
+  font-size: var(--fs-body);
 }
 
 .sb__item {
@@ -162,10 +159,10 @@ This pattern came from the user request "il faut les séparer mode analyse et en
   gap: 0.55rem;
   margin: 1px 0.55rem;
   padding: 0.45rem 0.6rem;
-  border-radius: 6px;
+  border-radius: var(--r-sm);
   color: var(--n-600);
   font-weight: 500;
-  font-size: 0.82rem;
+  font-size: var(--fs-small);
   cursor: pointer;
   transition:
     background-color 140ms,
@@ -204,7 +201,7 @@ This pattern came from the user request "il faut les séparer mode analyse et en
 .sb__chev {
   margin-left: auto;
   opacity: 0.5;
-  font-size: 0.65rem;
+  font-size: var(--fs-micro);
 }
 
 .sb__sub {
@@ -214,7 +211,7 @@ This pattern came from the user request "il faut les séparer mode analyse et en
 }
 .sb__sub .sb__item {
   padding-left: 1.35rem;
-  font-size: 0.78rem;
+  font-size: var(--fs-caption);
 }
 .sb__sub-deeper .sb__item {
   padding-left: 1.6rem;
@@ -233,7 +230,7 @@ This pattern came from the user request "il faut les séparer mode analyse et en
   align-items: center;
   justify-content: center;
   color: var(--n-400);
-  font-size: 0.85rem;
+  font-size: var(--fs-body);
   transition: transform 160ms;
   flex: none;
 }

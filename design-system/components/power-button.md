@@ -1,7 +1,5 @@
 # Power button atom (`power-btn`)
 
-> **Superseded in part by [tokens.md](../tokens.md) (spec 196).** Labels are sentence case and numbers Inter with tabular figures (§2), radii are 6 / 10 / 16 px (§4), and a card or panel has no border (§5.1). Where the CSS below disagrees, tokens.md wins.
-
 > Rounded square 32×26 button used to toggle on/off the most common interactive equipment (lights, water valves, switches, gates).
 
 ---
@@ -64,7 +62,7 @@
   border-radius: var(--r-sm);
   background: var(--n-50);
   color: var(--n-400);
-  border: 1px solid var(--line);
+  border: 1px solid var(--line-2);
   display: flex;
   align-items: center;
   justify-content: center;

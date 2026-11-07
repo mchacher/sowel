@@ -668,3 +668,27 @@ describe("EquipmentWidget — stale power readings (#839)", () => {
     expect(onOpenDetail).toHaveBeenCalledOnce();
   });
 });
+
+// #1129 — decision pr3-degre: a tile writes « 20,5° ». The setpoint used the
+// page form (« 10,0 °C ») beside a temperature in the tile form (« 10,5° »).
+describe("EquipmentWidget — thermostat tile degrees", () => {
+  it("writes the setpoint in the tile form, like the temperature beside it", () => {
+    const base = makeEquipment().dataBindings[0];
+    const order = makeEquipment().orderBindings[0];
+    const equipment = makeEquipment({
+      type: "thermostat",
+      name: "Thermostat",
+      dataBindings: [
+        { ...base, id: "db-t", alias: "temperature", key: "temperature", type: "number", category: "temperature", value: 10.5, unit: "°C" },
+        { ...base, id: "db-s", alias: "setpoint", key: "setpoint", type: "number", category: "setpoint", value: 10, unit: "°C" },
+      ] as EquipmentWithDetails["dataBindings"],
+      orderBindings: [
+        { ...order, id: "ob-s", alias: "setpoint", key: "setpoint", type: "number", min: 5, max: 30 },
+      ] as EquipmentWithDetails["orderBindings"],
+    });
+    render(<EquipmentWidget widget={makeWidget()} equipment={equipment} onExecuteOrder={vi.fn()} />);
+    expect(screen.getByText("10.5°")).toBeTruthy();
+    expect(screen.getByText("10.0°")).toBeTruthy();
+    expect(screen.queryByText(/°C/)).toBeNull();
+  });
+});
