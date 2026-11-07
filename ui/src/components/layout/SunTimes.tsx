@@ -4,9 +4,9 @@ import type { ZoneAggregatedData } from "../../types";
 import { formatRange } from "../../lib/format";
 
 /**
- * Sunrise and sunset of the home, as plain text in the desktop top bar
- * (spec 196, decision pr6-soleil): a sun by day, a moon by night, and
- * « 07:22 – 17:17 ». Phones show it in the root-zone strip instead.
+ * Sunrise and sunset of the home, as plain text in the top bar on every page
+ * (spec 196, decision pr6-soleil, amended by #1133 for phones and tablets): a sun
+ * by day, a moon by night, and « 07:22 – 17:17 ».
  */
 export function SunTimes({ data }: { data: ZoneAggregatedData | undefined }) {
   const { t } = useTranslation();
@@ -29,6 +29,26 @@ export function SunTimes({ data }: { data: ZoneAggregatedData | undefined }) {
       )}
       <span className="sr-only">{t("header.sun")}</span>
       <span>{range}</span>
+    </div>
+  );
+}
+
+/**
+ * The sun in the top bar below lg, beside the pills (alarms, updates, restart). At
+ * 360 px the bar holds the title, the sun and one pill; with two or more the sun
+ * waits for sm, so the title does not shrink to a few letters and the bar never
+ * wraps (#1133).
+ */
+export function MobileSunTimes({
+  data,
+  headerPills,
+}: {
+  data: ZoneAggregatedData | undefined;
+  headerPills: number;
+}) {
+  return (
+    <div className={headerPills <= 1 ? "flex" : "hidden sm:flex"}>
+      <SunTimes data={data} />
     </div>
   );
 }

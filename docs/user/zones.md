@@ -90,7 +90,8 @@ In the **Home** view, each zone displays a **status header** with aggregated dat
 - **Doors** count pill for motorised doors (e.g., "1/2"), apart from the door contact alert
 - **Alert** pills for open doors/windows, water leaks, smoke
 - **Power** pill (e.g., "47 W", or "2.4 kW" above the kilowatt) when the zone has at least one meter
-- **Sun** pill on the root zone, on a phone or a tablet, with today's sunrise and sunset (e.g., "07:22 – 17:17"). On a computer they sit in the top bar instead, on every page.
+
+Today's sunrise and sunset are not a zone pill: they sit in the top bar, on every page (e.g., "07:22 – 17:17", a moon at night). On a phone they give way when two alert or update pills already share the bar.
 
 When an equipment is offline, it is left out of the pills it would feed, and those pills carry a small orange dot. Hover the pill to see which equipments are offline. A zone whose lights (or shutters) are all offline still shows the pill, greyed out with a dash, so you can follow the dot from the parent zone down to the room it comes from. Only real lights count: a pool pump whose state looks like a light's is not counted as an offline light.
 

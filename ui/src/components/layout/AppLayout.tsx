@@ -3,7 +3,7 @@ import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { Sidebar } from "./Sidebar";
 import { ConnectionStatus } from "./ConnectionStatus";
-import { SunTimes } from "./SunTimes";
+import { MobileSunTimes, SunTimes } from "./SunTimes";
 import { HomeTimeNote } from "./HomeTimeNote";
 import { useWebSocket } from "../../store/useWebSocket";
 import { useTimezone } from "../../store/useTimezone";
@@ -91,6 +91,8 @@ export function AppLayout() {
   // non-admins, but the core update flag is not role-scoped, so gate here.
   const totalUpdates =
     user?.role === "admin" ? pluginUpdateCount + (sowelUpdateAvailable ? 1 : 0) : 0;
+  // Pills sharing the bar with the title: the sun gives way to them on phones.
+  const headerPills = [issues.length > 0, totalUpdates > 0, restartRequired].filter(Boolean).length;
   // Alarms pill: red when at least one error, amber otherwise.
   const alarmTone = issues.some((i) => i.level === "error") ? "error" : "warning";
 
@@ -164,16 +166,18 @@ export function AppLayout() {
                 </div>
               </div>
 
-              {/* Right (spec 196, FR-6): the sun as plain text on desktop (phones see it in
-                the root-zone strip), the home time only when the browser is in another
-                time zone, the link only when degraded, then alerts, updates, avatar. */}
+              {/* Right (spec 196, FR-6): the sun as plain text on every page (on phones it
+                gives way to the pills when they crowd the bar, #1133), the home time only
+                when the browser is in another time zone, the link only when degraded,
+                then alerts, updates, avatar. */}
               <div className="hit-group flex items-center gap-2 flex-shrink-0">
                 <div className="hidden lg:flex items-center gap-3 mr-1">
                   <HomeTimeNote />
                   <SunTimes data={rootAgg} />
                 </div>
-                <div className="flex lg:hidden items-center">
+                <div className="flex lg:hidden items-center gap-2">
                   <HomeTimeNote compact />
+                  <MobileSunTimes data={rootAgg} headerPills={headerPills} />
                 </div>
                 <ConnectionStatus />
                 {issues.length > 0 && (
@@ -287,7 +291,10 @@ function TopbarBreadcrumb({ homeName }: { homeName: string | null }) {
   const path = zoneMatch
     ? buildZonePath(zoneMatch[1], tree)
     : usageEquipment
-      ? [...buildZonePath(usageEquipment.zoneId, tree), { id: usageEquipment.id, name: usageEquipment.name }]
+      ? [
+          ...buildZonePath(usageEquipment.zoneId, tree),
+          { id: usageEquipment.id, name: usageEquipment.name },
+        ]
       : null;
 
   const homeLabel = homeName === null ? <HomeNameSkeleton /> : homeName || t("nav.maison");
@@ -590,9 +597,7 @@ function MobileDrawer({ onClose }: { onClose: () => void }) {
         </div>
         {/* Close button */}
         <div className="flex items-center justify-between px-4 pb-2">
-          <span className="text-lead font-semibold text-text">
-            {t("nav.more", "Plus")}
-          </span>
+          <span className="text-lead font-semibold text-text">{t("nav.more", "Plus")}</span>
           <button
             onClick={onClose}
             className="p-1.5 rounded-sm text-text-tertiary hover:bg-border-light"

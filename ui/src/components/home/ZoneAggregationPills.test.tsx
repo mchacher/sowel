@@ -5,8 +5,8 @@ import { ZoneAggregationPills } from "./ZoneAggregationPills";
 import { ROOT_ZONE_ID } from "../../lib/constants";
 import type { ZoneAggregatedData } from "../../types";
 
-// Spec 196, decision pr6-soleil — phones have no room for sunrise and sunset in
-// the top bar any more; the root zone's strip carries them instead.
+// #1133 — the sun is back in the top bar on every page and every viewport, so
+// the root zone's strip no longer repeats it.
 
 const data: ZoneAggregatedData = {
   temperature: 20.5,
@@ -39,27 +39,15 @@ const data: ZoneAggregatedData = {
   unavailableEquipmentNamesByCategory: {},
 };
 
-describe("ZoneAggregationPills — sun", () => {
+describe("ZoneAggregationPills — sun and layout", () => {
   beforeEach(async () => {
     await i18n.changeLanguage("fr");
   });
 
-  it("shows sunrise and sunset in the root zone's strip below lg, named for screen readers", () => {
+  it("leaves sunrise and sunset to the top bar, root zone included", () => {
     render(<ZoneAggregationPills data={data} zoneId={ROOT_ZONE_ID} />);
-    const pill = screen.getByText(/^07:22\s–\s17:17$/).parentElement!;
-    expect(pill.textContent).toContain("Soleil");
-    // The desktop top bar already shows them: the strip does not repeat them there.
-    expect(pill.className).toContain("lg:hidden");
-  });
-
-  it("hides the separator before the sun along with it", () => {
-    const { container } = render(<ZoneAggregationPills data={data} zoneId={ROOT_ZONE_ID} />);
-    const pill = screen.getByText(/^07:22\s–\s17:17$/).parentElement!;
-    const separator = pill.previousElementSibling!;
-    expect(separator.className).toContain("w-px");
-    // Separators only show from lg, where the sun pill is gone: this one never does.
-    expect(separator.className.split(/\s+/)).toContain("hidden");
-    expect(container.querySelectorAll(".w-px.lg\\:block")).toHaveLength(0);
+    expect(screen.queryByText(/07:22/)).toBeNull();
+    expect(screen.queryByText("Soleil")).toBeNull();
   });
 
   it("wraps on phones and tablets, a single scrolling line only from lg", () => {
@@ -71,21 +59,6 @@ describe("ZoneAggregationPills — sun", () => {
     expect(classes).toContain("lg:flex-nowrap");
     expect(classes).not.toContain("sm:flex-nowrap");
     expect(classes).not.toContain("sm:overflow-x-auto");
-  });
-
-  it("leaves them out of any other zone's strip", () => {
-    render(<ZoneAggregationPills data={data} zoneId="zone-salon" />);
-    expect(screen.queryByText(/07:22/)).toBeNull();
-  });
-
-  it("leaves them out when the home has no sun times", () => {
-    render(
-      <ZoneAggregationPills
-        data={{ ...data, sunrise: null, sunset: null }}
-        zoneId={ROOT_ZONE_ID}
-      />,
-    );
-    expect(screen.queryByText("Soleil")).toBeNull();
   });
 });
 
