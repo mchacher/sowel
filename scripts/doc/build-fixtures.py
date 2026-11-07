@@ -91,14 +91,10 @@ MODE_TRANSLATE = {
     "Lumière nuit": "Night Lighting",
 }
 
-# Week profiles head the Calendar page, and saved charts are listed on the
-# Analyse page: both are named by the household, in French, and neither has
-# an accent to trip `assert_english` on its own (`Travail`, `Vacances`).
-CALENDAR_PROFILE_TRANSLATE = {
-    "Travail": "Work",
-    "Vacances": "Holidays",
-}
-
+# Saved charts are listed on the Analyse page and named by the household.
+# The two Calendar week profiles, `Travail` and `Vacances`, are not: they are
+# built-in rows seeded in French by migration 001, which every install shows
+# in every language, so the EN fixture keeps them as they are.
 CHART_TRANSLATE = {
     "Bureau T / HR": "Office T / RH",
     "T Extérieure": "Outdoor T",
@@ -279,7 +275,9 @@ def anonymize(backup: dict) -> dict:
     new_settings = []
     for s in t["settings"]:
         k = s["key"]
-        if k.startswith("integration.") or k.startswith("mqtt.") or k.startswith("z2m."):
+        # `history.influx.*` held the production InfluxDB URL and access
+        # token (pre-spec-053 settings that nothing reads any more).
+        if k.startswith(("integration.", "mqtt.", "z2m.", "history.influx.")):
             continue
         if k == "home.name":
             s = {**s, "value": NEUTRAL_HOME_NAME_FR}
@@ -337,9 +335,6 @@ def translate_to_en(backup: dict) -> dict:
     for m in t.get("modes", []):
         if m["name"] in MODE_TRANSLATE:
             m["name"] = MODE_TRANSLATE[m["name"]]
-    for p in t.get("calendar_profiles", []):
-        if p["name"] in CALENDAR_PROFILE_TRANSLATE:
-            p["name"] = CALENDAR_PROFILE_TRANSLATE[p["name"]]
     for c in t.get("chart_configs", []):
         if c["name"] in CHART_TRANSLATE:
             c["name"] = CHART_TRANSLATE[c["name"]]
@@ -392,7 +387,7 @@ def assert_english(backup: dict) -> None:
     """
     t = backup["tables"]
     offenders = []
-    for table in ("zones", "equipments", "modes", "calendar_profiles", "chart_configs"):
+    for table in ("zones", "equipments", "modes", "chart_configs"):
         for row in t.get(table, []):
             name = row.get("name") or ""
             if name in EN_ALLOWED_NON_ENGLISH:
@@ -405,7 +400,7 @@ def assert_english(backup: dict) -> None:
             print(f"    {o}", file=sys.stderr)
         print(
             "\nAdd them to ZONE_TRANSLATE / EQUIPMENT_TRANSLATE / MODE_TRANSLATE /\n"
-            "CALENDAR_PROFILE_TRANSLATE / CHART_TRANSLATE,\n"
+            "CHART_TRANSLATE,\n"
             "or to EN_ALLOWED_NON_ENGLISH if the name is deliberately kept.\n"
             "Then read the printed name lists: an unaccented French word such as\n"
             "`Store` passes this check and still has to be translated by hand.",
