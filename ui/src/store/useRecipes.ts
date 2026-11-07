@@ -12,6 +12,7 @@ import {
   sendRecipeInstanceAction,
 } from "../api";
 import { coalesceCalls } from "../lib/coalesce-calls";
+import { apiErrorText } from "../lib/api-error";
 
 interface RecipesState {
   recipes: RecipeInfo[];
@@ -61,7 +62,7 @@ export const useRecipes = create<RecipesState>((set, get) => ({
     } catch (err) {
       set({
         loading: false,
-        error: err instanceof Error ? err.message : "Failed to fetch recipe instances",
+        error: apiErrorText(err),
       });
     }
   },

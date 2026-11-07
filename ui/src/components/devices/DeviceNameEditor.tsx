@@ -1,6 +1,7 @@
 import { useState, useRef, useEffect } from "react";
 import { useTranslation } from "react-i18next";
 import { Pencil, Check, X } from "lucide-react";
+import { apiErrorStatus, apiErrorText } from "../../lib/api-error";
 
 interface DeviceNameEditorProps {
   name: string;
@@ -40,7 +41,7 @@ export function DeviceNameEditor({ name, onSave }: DeviceNameEditorProps) {
       await onSave(trimmed);
       setEditing(false);
     } catch (err) {
-      setError(err instanceof Error ? err.message : t("devices.saveFailed"));
+      setError(apiErrorStatus(err) === null ? t("devices.saveFailed") : apiErrorText(err, t));
       setValue(name);
     } finally {
       setSaving(false);

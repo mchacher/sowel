@@ -2,6 +2,7 @@ import { create } from "zustand";
 import type { EnergyHistoryResponse } from "../types";
 import { getEnergyHistory, getEnergyStatus } from "../api";
 import { localDateStr } from "../lib/local-date";
+import { apiErrorText } from "../lib/api-error";
 
 type Period = "day" | "week" | "month" | "year";
 
@@ -107,7 +108,7 @@ export const useEnergy = create<EnergyState>((set, get) => ({
       const history = await getEnergyHistory(period, date);
       set({ history, loading: false });
     } catch (err) {
-      set({ error: String(err), loading: false });
+      set({ error: apiErrorText(err), loading: false });
     }
   },
 

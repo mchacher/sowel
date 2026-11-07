@@ -75,7 +75,9 @@ export const useActivity = create<ActivityState>((set, get) => ({
     if (outcome.status === "ok") {
       set({ items: outcome.value.items.slice(0, CAPACITY), status: "ready" });
     } else if (outcome.status === "failed") {
-      console.error("Failed to load activity", outcome.error);
+      // A developer diagnostic, tagged like the other UI console lines; the user reads
+      // the translated `activity.loadError` from the panel.
+      console.error("[activity] load failed", outcome.error);
       set({ status: "error" });
     }
   },
