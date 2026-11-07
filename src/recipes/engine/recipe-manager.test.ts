@@ -439,14 +439,13 @@ describe("RecipeManager", () => {
   it("enabling an instance whose start throws announces a state change, not a start", () => {
     let failing = false;
     class FlakyRecipe extends TestRecipe {
-      override readonly id = "flaky-recipe";
       override start(params: Record<string, unknown>): void {
         if (failing) throw new Error("boom");
         super.start(params);
       }
     }
     manager.register(FlakyRecipe);
-    const instance = manager.createInstance("flaky-recipe", { value: 1 });
+    const instance = manager.createInstance("test-recipe", { value: 1 });
     manager.disableInstance(instance.id);
     failing = true;
     events.length = 0;
