@@ -7,6 +7,7 @@ import {
   deleteDashboardWidget as apiDelete,
   reorderDashboardWidgets as apiReorder,
 } from "../api";
+import { apiErrorText } from "../lib/api-error";
 
 interface DashboardState {
   widgets: DashboardWidget[];
@@ -40,7 +41,7 @@ export const useDashboard = create<DashboardState>((set, get) => ({
       const widgets = await getDashboardWidgets();
       set({ widgets, loading: false });
     } catch (err) {
-      set({ error: (err as Error).message, loading: false });
+      set({ error: apiErrorText(err), loading: false });
     }
   },
 

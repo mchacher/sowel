@@ -8,6 +8,7 @@ import {
   updateMode as apiUpdate,
   deleteMode as apiDelete,
 } from "../api";
+import { apiErrorText } from "../lib/api-error";
 
 interface ModesState {
   modes: ModeWithDetails[];
@@ -37,7 +38,7 @@ export const useModes = create<ModesState>((set, get) => ({
     } catch (err) {
       set({
         loading: false,
-        error: err instanceof Error ? err.message : "Failed to fetch modes",
+        error: apiErrorText(err),
       });
     }
   },

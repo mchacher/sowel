@@ -6,6 +6,7 @@ import {
   updateZone as apiUpdateZone,
   deleteZone as apiDeleteZone,
 } from "../api";
+import { apiErrorText } from "../lib/api-error";
 
 interface ZonesState {
   tree: ZoneWithChildren[];
@@ -37,7 +38,7 @@ export const useZones = create<ZonesState>((set, get) => ({
     } catch (err) {
       set({
         loading: false,
-        error: err instanceof Error ? err.message : "Failed to fetch zones",
+        error: apiErrorText(err),
       });
     }
   },

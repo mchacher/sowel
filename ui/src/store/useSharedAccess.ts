@@ -1,6 +1,7 @@
 import { create } from "zustand";
 import type { SharedAccessState } from "../types";
 import { getSettings, getSharedAccessState } from "../api";
+import { apiErrorText } from "../lib/api-error";
 
 export const SHARED_ACCESS_SETTING = "sharedAccess.enabled";
 
@@ -58,7 +59,7 @@ export const useSharedAccess = create<SharedAccessStore>((set, get) => ({
       const settings = await getSettings();
       on = settings[SHARED_ACCESS_SETTING] === "true";
     } catch (err) {
-      set({ loading: false, error: err instanceof Error ? err.message : String(err) });
+      set({ loading: false, error: apiErrorText(err) });
       return;
     }
     if (!on) {
@@ -79,7 +80,7 @@ export const useSharedAccess = create<SharedAccessStore>((set, get) => ({
       } else {
         // A transient failure (429, network): unknown, not "off". What was
         // known stays as it was.
-        set({ loading: false, error: err instanceof Error ? err.message : String(err) });
+        set({ loading: false, error: apiErrorText(err) });
       }
     }
   },

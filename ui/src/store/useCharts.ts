@@ -6,6 +6,7 @@ import {
   updateChart as apiUpdate,
   deleteChart as apiDelete,
 } from "../api";
+import { apiErrorText } from "../lib/api-error";
 
 interface ChartsState {
   charts: SavedChart[];
@@ -30,7 +31,7 @@ export const useCharts = create<ChartsState>((set, get) => ({
     } catch (err) {
       set({
         loading: false,
-        error: err instanceof Error ? err.message : "Failed to fetch charts",
+        error: apiErrorText(err),
       });
     }
   },

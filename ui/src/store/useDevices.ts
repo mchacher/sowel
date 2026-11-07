@@ -1,6 +1,7 @@
 import { create } from "zustand";
 import type { Device, DeviceData, DeviceStatus } from "../types";
 import { getDevices, updateDevice, type DeviceWithData } from "../api";
+import { apiErrorText } from "../lib/api-error";
 
 interface DevicesState {
   /** All devices indexed by id */
@@ -50,7 +51,7 @@ export const useDevices = create<DevicesState>((set, get) => ({
     } catch (err) {
       set({
         loading: false,
-        error: err instanceof Error ? err.message : "Failed to fetch devices",
+        error: apiErrorText(err),
       });
     }
   },
@@ -127,12 +128,13 @@ export const useDevices = create<DevicesState>((set, get) => ({
 
     try {
       await updateDevice(deviceId, { name });
-    } catch {
-      // Revert on failure
+    } catch (err) {
+      // Revert on failure, and hand the caller the original error: its status is what
+      // tells a busy server from a refused name (#1124).
       set((s) => ({
         devices: { ...s.devices, [deviceId]: device },
       }));
-      throw new Error("Failed to update device name");
+      throw err;
     }
   },
 }));
