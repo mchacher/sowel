@@ -292,7 +292,7 @@ La règle du milieu existe parce qu'un alias n'est pas un vocabulaire. Sur un ap
 
 Un binding `energy` porte un **delta additif** (Wh depuis le tick précédent), pas une mesure. La déduplication qui protège les autres catégories (deadband, intervalle minimum de 30 s) détruirait silencieusement de l'énergie : les compteurs ont des cadences très différentes — un Shelly EM émet un tick par minute, un Tuya PJ-1203A en émet ~30, dont un seul porte le saut de compteur de 10 Wh.
 
-Le `HistoryWriter` cumule donc les ticks `energy` temps réel sur la minute et écrit un point unique aligné sur le début de minute, découpage HP/HC compris. Le `SelfConsumptionWriter` cumule de la même façon la minute appairée Réseau + Solaire et en dérive `autoconso` / `injection` / consommation foyer.
+Le `HistoryWriter` cumule donc les ticks `energy` temps réel sur la minute et écrit un point unique aligné sur le début de minute, découpage HP/HC compris. Le `SelfConsumptionWriter` cumule de la même façon la minute appairée Réseau + Solaire et en dérive `autoconso` / `injection` / consommation foyer. Le solaire inclut les deltas `production` que le `PowerSubmeterIntegrator` écrit pour un sous-compteur à puissance seule marqué `localProduction` (spec 195 : un panneau raccordé derrière lui, vu par le compteur réseau mais pas par le compteur de production) ; une minute qui porte un tel delta sans tick réseau le reporte sur la minute écrite suivante au lieu de le perdre.
 
 #### Un seul écrivain par série
 

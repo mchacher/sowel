@@ -25,6 +25,7 @@ const stubTariff: TariffClassifier = {
 
 const GRID_ID = "grid-uuid";
 const SOLAR_ID = "solar-uuid";
+const POOL_ID = "pool-uuid";
 const ZONE_ID = "zone-uuid";
 
 interface CapturedPoint {
@@ -60,8 +61,25 @@ function makeStubEquipmentManager(opts: {
   solarEnabled?: boolean;
   hasGrid?: boolean;
   hasSolar?: boolean;
+  /** Spec 195 — a pool clamp, flagged as seeing local production or not. */
+  pool?: { localProduction: boolean };
 }): EquipmentManager {
-  const eqs: Array<{ id: string; type: string; enabled: boolean; zoneId: string }> = [];
+  const eqs: Array<{
+    id: string;
+    type: string;
+    enabled: boolean;
+    zoneId: string;
+    localProduction?: boolean;
+  }> = [];
+  if (opts.pool) {
+    eqs.push({
+      id: POOL_ID,
+      type: "energy_meter",
+      enabled: true,
+      zoneId: ZONE_ID,
+      localProduction: opts.pool.localProduction,
+    });
+  }
   if (opts.hasGrid !== false) {
     eqs.push({
       id: GRID_ID,
@@ -81,6 +99,9 @@ function makeStubEquipmentManager(opts: {
   return {
     getById: (id: string) => eqs.find((e) => e.id === id) ?? null,
     getAll: () => eqs,
+    // The pool clamp reports power only, like a Legrand GEM.
+    getDataBindingsWithValues: (id: string) =>
+      id === POOL_ID ? [{ alias: "power", category: "power", type: "number", value: -400 }] : [],
   } as unknown as EquipmentManager;
 }
 
@@ -94,11 +115,12 @@ function emitEnergyChange(
   equipmentId: string,
   value: number,
   sourceTimestamp?: number,
+  alias: "energy" | "production" = "energy",
 ): void {
   bus.emit({
     type: "equipment.data.changed",
     equipmentId,
-    alias: "energy",
+    alias,
     value,
     previous: null,
     ...(sourceTimestamp !== undefined ? { sourceTimestamp } : {}),
@@ -406,5 +428,91 @@ describe("SelfConsumptionWriter", () => {
     emitEnergyChange(bus, SOLAR_ID, 3);
     writer.flushPending(true);
     expect(influx.written).toHaveLength(0);
+  });
+
+  // ── Spec 195 — a submeter's local production ────────────────────────────
+
+  describe("local production (spec 195)", () => {
+    function value(alias: string, equipmentId: string): number | undefined {
+      return influx.written.find((p) => p.alias === alias && p.equipmentId === equipmentId)?.value;
+    }
+
+    it("adds a flagged submeter's production to the house's solar", () => {
+      makeWriter(makeStubEquipmentManager({ pool: { localProduction: true } }));
+
+      // Main PV 8 Wh, pool-house panel 2 Wh, house draws 7 → grid exports 3.
+      emitEnergyChange(bus, GRID_ID, -3);
+      emitEnergyChange(bus, SOLAR_ID, 8);
+      emitEnergyChange(bus, POOL_ID, 2, undefined, "production");
+      writer.flushPending(true);
+
+      expect(value("injection", SOLAR_ID)).toBe(3);
+      expect(value("autoconso", SOLAR_ID)).toBe(7); // (8 + 2) − 3
+      expect(value("energy", GRID_ID)).toBe(7); // household
+    });
+
+    it("counts local production when the house imports too", () => {
+      makeWriter(makeStubEquipmentManager({ pool: { localProduction: true } }));
+
+      // Without it the household would read 5 + 3 = 8 Wh, short of the panel's 1.
+      emitEnergyChange(bus, GRID_ID, 5);
+      emitEnergyChange(bus, SOLAR_ID, 3);
+      emitEnergyChange(bus, POOL_ID, 1, undefined, "production");
+      writer.flushPending(true);
+
+      expect(value("autoconso", SOLAR_ID)).toBe(4);
+      expect(value("energy", GRID_ID)).toBe(9);
+    });
+
+    it("ignores production from a meter that is not flagged", () => {
+      makeWriter(makeStubEquipmentManager({ pool: { localProduction: false } }));
+
+      emitEnergyChange(bus, GRID_ID, 5);
+      emitEnergyChange(bus, SOLAR_ID, 3);
+      emitEnergyChange(bus, POOL_ID, 1, undefined, "production");
+      writer.flushPending(true);
+
+      expect(value("autoconso", SOLAR_ID)).toBe(3);
+    });
+
+    it("pairs stamped production with the grid minute it belongs to", () => {
+      makeWriter(makeStubEquipmentManager({ pool: { localProduction: true } }));
+
+      // The integrator flushes at T0+65 s, stamped with minute T0+60.
+      at(61);
+      emitEnergyChange(bus, GRID_ID, 4);
+      emitEnergyChange(bus, SOLAR_ID, 0);
+      at(65);
+      emitEnergyChange(bus, POOL_ID, 2, T0 + 60, "production");
+      writer.flushPending(true);
+
+      expect(value("autoconso", SOLAR_ID)).toBe(2);
+    });
+
+    it("carries production of a grid-less minute into the next written one", () => {
+      makeWriter(makeStubEquipmentManager({ pool: { localProduction: true } }));
+
+      // Minute 0: only the integrator's delta, no grid tick — not dropped.
+      emitEnergyChange(bus, POOL_ID, 2, T0, "production");
+      at(60);
+      emitEnergyChange(bus, GRID_ID, 5);
+      emitEnergyChange(bus, SOLAR_ID, 0);
+      writer.flushPending(true);
+
+      expect(value("autoconso", SOLAR_ID)).toBe(2);
+      expect(value("energy", GRID_ID)).toBe(7);
+    });
+
+    it("never takes a flagged submeter's consumption for solar", () => {
+      makeWriter(makeStubEquipmentManager({ pool: { localProduction: true } }));
+
+      emitEnergyChange(bus, GRID_ID, 5);
+      emitEnergyChange(bus, SOLAR_ID, 3);
+      emitEnergyChange(bus, POOL_ID, 4); // `energy` = the pool's consumption
+      writer.flushPending(true);
+
+      expect(value("autoconso", SOLAR_ID)).toBe(3);
+      expect(value("energy", GRID_ID)).toBe(8);
+    });
   });
 });

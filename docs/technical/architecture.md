@@ -310,7 +310,7 @@ InfluxDB is optional -- a failed connection is logged and the engine keeps runni
 
 An `energy` binding carries an **additive delta** (Wh since the previous tick), not a measurement. The deduplication that protects the other categories (deadband, 30 s min-write interval) would silently destroy energy: meters differ wildly in cadence -- a Shelly EM emits one tick a minute, a Tuya PJ-1203A emits ~30, of which a single one carries the 10 Wh counter jump.
 
-So `HistoryWriter` accumulates live `energy` ticks per minute and writes one point aligned on the minute start, HP/HC split included. `SelfConsumptionWriter` accumulates the paired Grid + Solar minute the same way and derives `autoconso` / `injection` / household from the summed minute.
+So `HistoryWriter` accumulates live `energy` ticks per minute and writes one point aligned on the minute start, HP/HC split included. `SelfConsumptionWriter` accumulates the paired Grid + Solar minute the same way and derives `autoconso` / `injection` / household from the summed minute. Solar includes the `production` deltas that `PowerSubmeterIntegrator` writes for a power-only submeter flagged `localProduction` (spec 195: a panel wired behind it, seen by the grid meter but not by the production meter); a minute holding such a delta but no grid tick carries it into the next written minute instead of dropping it.
 
 #### One authority per series
 

@@ -229,6 +229,8 @@
   "equipments.metering.nesting.hint": "Pick the meter this circuit is fed from. The usage breakdown will show that meter net of this one, instead of counting the same kilowatt-hours twice. The card above keeps showing what this clamp measures.",
   "equipments.metering.separateSupply.title": "Fed by a separate supply",
   "equipments.metering.separateSupply.hint": "This circuit is fed by another utility meter: its consumption never flows through the main meter. It keeps its card and its history, but leaves the usage breakdown and the live donut, where it is shown apart, in kWh only — its tariff is not the main meter's.",
+  "equipments.metering.localProduction.title": "Local production flows through this meter",
+  "equipments.metering.localProduction.hint": "A solar panel is wired behind this meter: when it produces more than the circuit draws, the power goes negative. When checked, that negative part counts as the house's solar production (self-consumption, total production) instead of inflating this circuit's consumption. Unchecked, negative power is read as a clamp wired backwards. Applies from the moment it is checked, not to past history.",
   "equipments.gateConfirm.title": "Confirmation before action",
   "equipments.gateConfirm.enable": "Enable",
   "equipments.gateConfirm.hint": "On mobile, asks for a slide-to-confirm before actuating. Protects against accidental taps (phone in a pocket).",
