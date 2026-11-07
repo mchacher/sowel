@@ -133,6 +133,8 @@ Code couleur sur le graphique **Total** :
 | Bleu clair | Consommation réseau en heures creuses                        |
 | Vert       | Autoconsommation (uniquement avec un compteur de production) |
 
+La légende sous le graphique a une pastille par couleur, heures pleines et heures creuses comprises. Le thème sombre garde les mêmes significations avec ses propres nuances : les heures pleines restent le bleu vif et les heures creuses le bleu pâle, assez éloignés pour distinguer deux barres empilées.
+
 Sous le graphique, les totaux sont affichés en kWh : réseau (réparti HP / HC), autoconsommation, et total (avec le pourcentage d'autoconsommation).
 
 #### Bascule Wh / €
@@ -147,7 +149,7 @@ Quand au moins un sous-compteur est configuré, un bouton **Total / Par usage** 
 
 ![Répartition par usage](../screenshots/energy-consumption-by-usage-fr.png)
 
-Les sous-compteurs utilisent une palette de couleurs déterministe afin qu'un même circuit garde la même couleur d'un jour à l'autre. La pile "Autre" est bornée à zéro, donc un sous-compteur qui dépasserait brièvement le compteur principal (à cause d'un décalage d'échantillonnage) ne peut pas la rendre négative.
+Les sous-compteurs prennent leurs couleurs dans une palette de huit couleurs de séries, dans un ordre fixe (trié par équipement), afin qu'un même circuit garde la même couleur d'un jour à l'autre, d'une vue à l'autre et dans la répartition En direct. La palette n'a ni rouge, ni orange, ni ambre, ni vert solaire, couleurs qui ont un sens ailleurs, et chaque couleur a une variante claire et une variante sombre. La page Analyse utilise la même palette ; un graphique enregistré avec l'ancienne palette affiche la nouvelle couleur à la même position. La pile "Autre" est bornée à zéro, donc un sous-compteur qui dépasserait brièvement le compteur principal (à cause d'un décalage d'échantillonnage) ne peut pas la rendre négative.
 
 En €, chaque sous-compteur est valorisé au prix moyen de la période. Une borne de recharge est l'exception à connaître : elle charge surtout en heures creuses ou sur le surplus solaire, son coût réel est donc plus bas. Son coût exact, réparti heures pleines / heures creuses / solaire et par voiture, est sur les fiches de la borne et de la voiture ([recharges](equipments.md#recharges-et-cout-par-voiture)).
 

@@ -14,8 +14,11 @@ import type { EquipmentWithDetails } from "../../types";
 import { extractPhases, formatPhasePower } from "./phase-helpers";
 import { Columns3 } from "lucide-react";
 import { SectionHeader } from "./SectionHeader";
+import { SERIES_VARS } from "../../lib/series-palette";
 
-const PHASE_COLORS = ["#4F7BE8", "#6BCB77", "#F2A93B", "#E8677D"];
+// Spec 196 (FR-E) — the series palette: themed, and no amber or red, which
+// would read as "running" or "fault" on a phase that is merely loaded.
+const PHASE_COLORS = SERIES_VARS.slice(0, 4);
 
 interface Props {
   gridEquipments: EquipmentWithDetails[];

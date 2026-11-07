@@ -25,7 +25,9 @@ interface HistoryBarChartProps {
   height?: number;
 }
 
-const BAR_COLOR = "#4F7BE8";
+// Spec 196 (FR-E) — the consumption blue of the energy charts, per theme.
+const BAR_COLOR = "var(--color-energy-hp)";
+const BAR_HOVER_COLOR = "color-mix(in srgb, var(--color-energy-hp) 80%, var(--color-surface))";
 
 interface ChartDatum {
   /** First line of the X tick label. */
@@ -240,7 +242,7 @@ export function HistoryBarChart({ points, range, unit, height = 200 }: HistoryBa
         <Bar
           dataKey="value"
           fill={BAR_COLOR}
-          activeBar={{ fill: "#6B93F0" }}
+          activeBar={{ fill: BAR_HOVER_COLOR }}
           radius={[2, 2, 0, 0]}
           maxBarSize={40}
         />

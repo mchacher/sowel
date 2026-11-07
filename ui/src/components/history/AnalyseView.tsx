@@ -54,6 +54,7 @@ import {
   periodTodayStr,
   periodToWindow,
   SERIES_COLORS,
+  seriesPaint,
   type ChartFamily,
   type Period,
 } from "./history-utils";
@@ -95,7 +96,12 @@ interface SeriesConfig {
  * Spec 145 keeps the colour out of `SeriesConfig` on purpose: `series` is a
  * dependency of the history-fetch effect, so recolouring a series through it
  * would refetch every series from InfluxDB. */
-type StyledSeries = SeriesConfig & { color: string };
+type StyledSeries = SeriesConfig & {
+  /** What the chart paints: the themed palette entry, or a free colour. */
+  color: string;
+  /** What is stored and edited: a hex (spec 145; spec 196 FR-E for the split). */
+  storedColor: string;
+};
 
 /** Where the colour picker was opened from — see `colorPicker` state. */
 type ColorPickerAnchor =
@@ -418,10 +424,10 @@ export function AnalyseView() {
   // that renders reads this list; `series` stays the identity list.
   const styledSeries = useMemo<StyledSeries[]>(
     () =>
-      series.map((s, i) => ({
-        ...s,
-        color: seriesColors[s.id] ?? SERIES_COLORS[i % SERIES_COLORS.length],
-      })),
+      series.map((s, i) => {
+        const storedColor = seriesColors[s.id] ?? SERIES_COLORS[i % SERIES_COLORS.length];
+        return { ...s, storedColor, color: seriesPaint(storedColor) };
+      }),
     [series, seriesColors],
   );
 
@@ -459,7 +465,7 @@ export function AnalyseView() {
     series: styledSeries.map((s) => ({
       equipmentId: s.equipmentId,
       alias: s.alias,
-      color: s.color,
+      color: s.storedColor,
     })),
     period,
     date,
@@ -776,7 +782,7 @@ export function AnalyseView() {
               />
               {colorPicker?.kind === "pill" && colorPicker.id === s.id && (
                 <SeriesColorPicker
-                  color={s.color}
+                  color={s.storedColor}
                   onChange={(color) => setSeriesColors((prev) => ({ ...prev, [s.id]: color }))}
                   onClose={() => setColorPicker(null)}
                 />
@@ -1057,7 +1063,7 @@ export function AnalyseView() {
             <div className="absolute w-0 h-0" style={{ left: colorPicker.x, top: colorPicker.y }}>
               <SeriesColorPicker
                 color={
-                  styledSeries.find((s) => s.id === colorPicker.id)?.color ?? SERIES_COLORS[0]
+                  styledSeries.find((s) => s.id === colorPicker.id)?.storedColor ?? SERIES_COLORS[0]
                 }
                 placement="above"
                 onChange={(color) =>

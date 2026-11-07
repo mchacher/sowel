@@ -28,11 +28,30 @@ const HUE: Record<ArbiterQuarterState, string> = {
 };
 
 /**
+ * Spec 196 (FR-E) — the colour of a state's WORD (the roster pill's label).
+ * The hue above, except where the hue is a fill-only token: orange as text is
+ * 3.05:1 on a card, so "En attente" is written in `warning-ink`, the same
+ * orange darkened for text. The dot and the tint keep the hue.
+ */
+export function loadStateInk(s: ArbiterQuarterState): string {
+  return s === "pending" ? "var(--color-warning-ink)" : HUE[s];
+}
+
+/**
  * "En attente" cells are a tint rather than the solid orange, which read as too
  * aggressive on the ribbon (#617). Raised from 15% to 20% because the pale
- * version was hard to make out against the ribbon's background.
+ * version was hard to make out against the ribbon's background; spec 196
+ * (FR-E) measured that 20 % at 1.24:1 on a light card, so the tint went to 40 %
+ * and the cell gained a 1 px orange edge (3.05:1, see `cellEdge`): visible,
+ * still lighter than a solid cell.
  */
-export const PENDING_FILL = "color-mix(in srgb, var(--color-warning) 20%, transparent)";
+export const PENDING_FILL = "color-mix(in srgb, var(--color-warning) 40%, transparent)";
+
+/** Spec 196 (FR-E) — the inset edge of a ribbon cell, or none. Only "en
+ *  attente" has one: its tint alone is too close to the card. */
+export function cellEdge(s: ArbiterQuarterState): string | undefined {
+  return s === "pending" ? "inset 0 0 0 1px var(--color-warning)" : undefined;
+}
 
 /**
  * Spec 164 — the surplus was granted, and the load's own meter says nothing

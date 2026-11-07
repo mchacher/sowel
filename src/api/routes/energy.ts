@@ -408,6 +408,7 @@ export function registerEnergyRoutes(app: FastifyInstance, deps: EnergyDeps): vo
           id: eq.id,
           name: eq.name,
           color: pickPaletteColor(i),
+          colorIndex: i,
           points,
           cost: 0, // Spec 123 — filled below once blended rate is known.
           ...(rawTotal > total ? { netOfChildren: true } : {}),
@@ -519,6 +520,7 @@ export function registerEnergyRoutes(app: FastifyInstance, deps: EnergyDeps): vo
           id: eq.id,
           name: eq.name,
           color: pickPaletteColor(sortedSubmeters.length + i),
+          colorIndex: sortedSubmeters.length + i,
           points: bucketTimes.map((time) => ({ time, wh: byTime.get(time) ?? 0 })),
           cost: 0,
         });
@@ -1414,21 +1416,21 @@ from(bucket: "${bucket}")
   return points;
 }
 
-/** Deterministic pastel palette for submeter colors. Medium saturation,
- *  modern dashboard feel — readable on light background, comfortable
- *  next to the brighter HP/HC/autoconso bars of the total chart.
- *  Mirrored in `ui/src/components/energy/submeterPalette.ts` (spec 117)
- *  so the Live donut paints each submeter with the same color the
- *  historical By-usage chart assigns to it. Update both in lockstep. */
-const SUBMETER_PALETTE = [
-  "#60A5FA", // soft blue
-  "#34D399", // emerald
-  "#F87171", // soft red
-  "#A78BFA", // lavender
-  "#22D3EE", // cyan
-  "#FB7185", // coral pink
-  "#FBBF24", // soft amber
-  "#818CF8", // pale indigo
+/** Submeter colours: the light-theme values of the series palette
+ *  (`--series-1…8` in design-system/tokens.css, spec 196 FR-E), in order.
+ *  Each series also carries `colorIndex`, which the Sowel UI turns into the
+ *  themed variable, so the hex here only serves API clients. No red, orange,
+ *  amber or solar green: those carry a meaning elsewhere. A test checks this
+ *  list against tokens.css. */
+export const SUBMETER_PALETTE = [
+  "#1A4F6E", // ocean
+  "#6A7B27", // olive
+  "#00867A", // teal
+  "#7C61A8", // violet
+  "#006574", // petrol
+  "#A0557B", // raspberry
+  "#526FB2", // periwinkle
+  "#915A95", // orchid
 ];
 
 /** Spec 123 — local 4-decimal rounding mirror of cost-calculator. */

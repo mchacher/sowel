@@ -6,8 +6,9 @@ import { isTariffSaved } from "../../lib/tariff";
 import type { TariffConfig, TariffSlot } from "../../types";
 
 const ALL_DAYS = [0, 1, 2, 3, 4, 5, 6];
-const HP_COLOR = "#4F7BE8";
-const HC_COLOR = "#93B5F0";
+// Spec 196 (FR-E) — the energy chart tokens, so the tariff strip follows the theme.
+const HP_COLOR = "var(--color-energy-hp)";
+const HC_COLOR = "var(--color-energy-hc)";
 const TOTAL_MINUTES = 1440;
 
 function defaultSlots(): TariffSlot[] {

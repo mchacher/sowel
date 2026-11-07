@@ -1,6 +1,6 @@
 import { useEffect, useRef } from "react";
 import { useTranslation } from "react-i18next";
-import { SERIES_COLORS } from "./history-utils";
+import { SERIES_COLORS, seriesPaint } from "./history-utils";
 
 interface SeriesColorPickerProps {
   /** Current effective colour of the series (`#rrggbb`). */
@@ -62,9 +62,9 @@ export function SeriesColorPicker({
             title={c}
             className={`w-7 h-7 rounded-full border border-border transition-transform
               hover:scale-110 cursor-pointer ${
-                c.toLowerCase() === color.toLowerCase() ? "ring-2 ring-primary/40" : ""
+                seriesPaint(c) === seriesPaint(color) ? "ring-2 ring-primary/40" : ""
               }`}
-            style={{ backgroundColor: c }}
+            style={{ backgroundColor: seriesPaint(c) }}
           />
         ))}
       </div>

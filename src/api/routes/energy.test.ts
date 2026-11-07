@@ -1,7 +1,8 @@
 import Fastify from "fastify";
 import { describe, it, expect, beforeEach, afterEach } from "vitest";
 import { createLogger } from "../../core/logger.js";
-import { registerEnergyRoutes, trimToWindow } from "./energy.js";
+import { readFileSync } from "node:fs";
+import { registerEnergyRoutes, trimToWindow, SUBMETER_PALETTE } from "./energy.js";
 import { EMPTY_ACCURACY } from "../../energy/pv/pv-accuracy.js";
 import { installValidationErrorHandler, validationAjvOptions } from "../error-handler.js";
 import type {
@@ -424,6 +425,55 @@ describe("Spec 119 — /api/v1/energy/by-usage", () => {
     expect(body.resolution).toBe("1mo");
     expect(body.submeters[0].points).toHaveLength(12);
     expect(body.submeters[0].points.every((p: { wh: number }) => p.wh === 0)).toBe(true);
+  });
+});
+
+describe("Spec 196 (FR-E) — by-usage series carry a colorIndex", () => {
+  let app: Awaited<ReturnType<typeof buildApp>> | null = null;
+
+  beforeEach(() => {
+    process.env.TZ = "Europe/Paris";
+  });
+  afterEach(async () => {
+    if (app) await app.close();
+    app = null;
+  });
+
+  it("gives each series its sorted index, and keeps the light hex beside it", async () => {
+    app = await buildApp({
+      // Declared out of order: the index follows the id sort, then the
+      // separate-supply meters after the partition.
+      equipments: [
+        { id: "sub-C", name: "Garage", type: "energy_meter" },
+        { id: "sub-A", name: "Cuisine", type: "energy_meter" },
+        { id: "ev", name: "Borne", type: "energy_meter", separateSupply: true },
+        { id: "sub-B", name: "Salon", type: "energy_meter" },
+      ],
+    });
+    const body = (
+      await app.inject({
+        method: "GET",
+        url: "/api/v1/energy/by-usage?period=week&date=2026-05-30",
+      })
+    ).json();
+
+    const index = (list: { id: string; colorIndex: number; color: string }[]) =>
+      list.map((s) => [s.id, s.colorIndex, s.color]);
+    expect(index(body.submeters)).toEqual([
+      ["sub-A", 0, SUBMETER_PALETTE[0]],
+      ["sub-B", 1, SUBMETER_PALETTE[1]],
+      ["sub-C", 2, SUBMETER_PALETTE[2]],
+    ]);
+    expect(index(body.separateSupply)).toEqual([["ev", 3, SUBMETER_PALETTE[3]]]);
+  });
+
+  it("keeps the hex list in step with the light series tokens", () => {
+    // The UI paints from the tokens; API clients read `color`. The two must
+    // name the same colours, in the same order.
+    const css = readFileSync(new URL("../../../design-system/tokens.css", import.meta.url), "utf8");
+    const light = css.slice(0, css.indexOf('[data-theme="dark"]'));
+    const tokens = [...light.matchAll(/--series-(\d):(#[0-9A-Fa-f]{6})/g)].map((m) => m[2]);
+    expect(tokens).toEqual(SUBMETER_PALETTE);
   });
 });
 

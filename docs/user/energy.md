@@ -131,6 +131,8 @@ Color coding on the **Total** chart:
 | Light blue | Off-peak-hours grid consumption                          |
 | Green      | Autoconsumption (only when a production meter is set up) |
 
+The legend below the chart has one swatch per colour, peak and off-peak included. The dark theme keeps the same meanings with its own shades: peak stays the vivid blue and off-peak the pale one, far enough apart to tell two stacked bars from each other.
+
 Below the chart, totals are shown in kWh: grid (split into peak / off-peak), autoconsumption, and total (with the self-consumption share as a percentage).
 
 #### Wh / € unit toggle
@@ -145,7 +147,7 @@ When at least one submeter is configured, a **Total / By usage** toggle appears 
 
 ![By usage breakdown](../screenshots/energy-consumption-by-usage-en.png)
 
-Submeters use a deterministic color palette so the same circuit keeps the same color across days and views. The "Other" stack is clamped at zero, so a submeter that briefly overshoots the main meter (due to sampling skew) cannot make it negative.
+Submeters take their colors from an eight-color series palette, in a fixed order (sorted by equipment), so the same circuit keeps the same color across days, views and the Live breakdown. The palette has no red, orange, amber or solar green, since those colors carry a meaning elsewhere, and each color has a light and a dark variant. The Analyse page uses the same palette; a chart saved with the earlier palette shows the new color at the same position. The "Other" stack is clamped at zero, so a submeter that briefly overshoots the main meter (due to sampling skew) cannot make it negative.
 
 In €, every submeter is valued at the period's average price. An EV charger is the exception worth knowing: it charges mostly off-peak or on solar surplus, so its real cost is lower. Its exact cost, split peak / off-peak / solar and per car, is on the charger's and the vehicle's pages ([charging sessions](equipments.md#charging-sessions-and-cost-per-vehicle)).
 
