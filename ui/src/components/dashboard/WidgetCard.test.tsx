@@ -40,6 +40,33 @@ describe("dashboard link to the equipment page", () => {
     expect(onClick).not.toHaveBeenCalled();
   });
 
+  it("keeps a plain title on a phone, where the whole tile is the tap action", async () => {
+    const original = window.matchMedia;
+    window.matchMedia = ((query: string) => ({
+      matches: query.includes("max-width: 639px"),
+      media: query,
+      addEventListener: () => {},
+      removeEventListener: () => {},
+    })) as unknown as typeof window.matchMedia;
+    try {
+      const onClick = vi.fn();
+      render(
+        <MemoryRouter>
+          <TileEquipmentContext.Provider value="eq-1">
+            <WidgetCard label="Capteur salon" onClick={onClick}>
+              <p>body</p>
+            </WidgetCard>
+          </TileEquipmentContext.Provider>
+        </MemoryRouter>,
+      );
+      expect(screen.queryByRole("link")).toBeNull();
+      await userEvent.click(screen.getByText("Capteur salon"));
+      expect(onClick).toHaveBeenCalledTimes(1);
+    } finally {
+      window.matchMedia = original;
+    }
+  });
+
   it("keeps a plain title on a tile that is not an equipment", () => {
     render(
       <MemoryRouter>

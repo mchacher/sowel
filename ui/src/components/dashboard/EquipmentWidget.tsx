@@ -47,7 +47,7 @@ import { TempExtremes } from "../TempExtremes";
 import { useSliderOverride } from "../../hooks/useSliderOverride";
 import { useSetpointCommitDelay } from "../../hooks/useSetpointCommit";
 import { SetpointStepper } from "../equipments/SetpointStepper";
-import { resolveSetpoint } from "../equipments/setpoint";
+import { resolveSetpoint, setpointLevel } from "../equipments/setpoint";
 import { SensorValues } from "../equipments/SensorValues";
 import { SolarPanelIcon } from "../icons/SolarPanelIcon";
 import { solarWidgetState } from "./solarWidget";
@@ -864,10 +864,7 @@ function ThermostatEquipmentWidget({
   const hasPowerOrder = !isPoolHeatPump && equipment.orderBindings.some((o) => o.alias === "power");
   const setpointOrder = setpoint.order;
 
-  const thermometerLevel =
-    displaySetpoint !== null
-      ? (displaySetpoint - setpoint.min) / (setpoint.max - setpoint.min)
-      : undefined;
+  const thermometerLevel = setpointLevel(displaySetpoint, setpoint.min, setpoint.max);
 
   const exec = async (alias: string, value: unknown) => {
     if (executing) return;

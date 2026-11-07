@@ -42,7 +42,7 @@ import {
 import { useStalenessClock } from "../../hooks/useStalenessClock";
 import { brightnessPercent, brightnessScale } from "../../lib/brightness";
 import { findOrderByCategory } from "../equipments/bindingUtils";
-import { resolveSetpoint, setpointOwnerIsOff, setpointStateLine } from "../equipments/setpoint";
+import { resolveSetpoint, setpointLevel, setpointOwnerIsOff, setpointStateLine } from "../equipments/setpoint";
 import {
   parseForecastDays,
   CONDITION_ICONS,
@@ -151,16 +151,15 @@ export function MobileWidgetCard({
       {/* Spec 168 — the forecast tile qualifies tomorrow on the phone too,
           which is the surface this dashboard is mostly read on. */}
       {footer}
+
+      {/* The name is the tile's text (title, zone, state); the gesture the
+          corner glyph draws is said after it. */}
+      {gesture && <span className="sr-only">{`, ${t(`dashboard.tap.${gesture}`)}`}</span>}
     </>
   );
 
   return onClick ? (
-    <button
-      type="button"
-      onClick={onClick}
-      aria-label={gesture ? t(`dashboard.tap.${gesture}`, { name: label }) : undefined}
-      className={className}
-    >
+    <button type="button" onClick={onClick} className={className}>
       {body}
     </button>
   ) : (
@@ -295,11 +294,14 @@ function useMobileState(
     // Spec 196, slice 8a: the card shows the setpoint too, « 21,0° → 20,0° »,
     // or « 21,0° · arrêt » when the thermostat is off.
     const sp = resolveSetpoint(equipment);
-    const level = sp.value !== null ? (sp.value - sp.min) / (sp.max - sp.min) : undefined;
+    const level = setpointLevel(sp.value, sp.min, sp.max);
     return {
       icon: renderWidgetStateIcon(widget.icon, <ThermometerIcon warm={isOn} level={level} />),
+      // « — → 20,0° » when the setpoint is known before the temperature.
       stateLines:
-        tempVal !== null ? [setpointStateLine(tempVal, sp.value, setpointOwnerIsOff(equipment), t("controls.off"))] : [],
+        tempVal !== null || sp.value !== null
+          ? [setpointStateLine(tempVal, sp.value, setpointOwnerIsOff(equipment), t("controls.off"))]
+          : [],
     };
   }
 

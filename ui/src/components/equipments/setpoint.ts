@@ -52,17 +52,28 @@ export function resolveSetpoint(equipment: SetpointEquipment): ResolvedSetpoint 
 }
 
 /**
+ * How full a thermometer is drawn for this setpoint, 0 at the minimum and 1 at
+ * the maximum; nothing to draw without a value or with bounds that make no range
+ * (an order declaring min = max would divide by zero).
+ */
+export function setpointLevel(value: number | null, min: number, max: number): number | undefined {
+  if (value === null || !(max > min)) return undefined;
+  return (value - min) / (max - min);
+}
+
+/**
  * The mobile card's state line: « 21,0° → 20,0° » (temperature, then the
  * setpoint), « 21,0° · arrêt » when the thermostat is off, the temperature
- * alone when there is no setpoint.
+ * alone when there is no setpoint, « — → 20,0° » when the setpoint is known and
+ * the temperature not (yet).
  */
 export function setpointStateLine(
-  temperature: number,
+  temperature: number | null,
   setpoint: number | null,
   off: boolean,
   offLabel: string,
 ): string {
-  const temp = formatTemperature(temperature, { style: "compact" });
+  const temp = temperature === null ? "\u2014" : formatTemperature(temperature, { style: "compact" });
   if (off) return `${temp} · ${offLabel.toLocaleLowerCase(currentLocale())}`;
   if (setpoint === null) return temp;
   return `${temp} → ${formatTemperature(setpoint, { style: "compact" })}`;

@@ -132,9 +132,14 @@ confirms, Escape cancels.
 
 **Wording.** The title says what the press will do: for an impulse, from the state
 (open → « Fermer … ? », closed → « Ouvrir … ? », no state → « Actionner … ? »); for
-a multi-action gate, from the button pressed (OPEN, CLOSE, STOP → Ouvrir, Fermer,
-Arrêter; any other value → « Actionner », the value named in the subtitle). The
-multi-action buttons show the same words instead of the raw enum values.
+a multi-action gate, from the button pressed (OPEN, CLOSE → Ouvrir, Fermer; any
+other value → « Actionner », the value named in the subtitle). The multi-action
+buttons show the same words instead of the raw enum values (STOP reads « Arrêter »).
+
+**STOP never asks** (maintainer decision, phase 3 review). A stop is the one press
+that must not wait: delaying it defeats its purpose. On a guarded gate, open,
+close and operate (an impulse, or a value Sowel has no word for) ask; STOP is sent
+at once, on every path (`gatePressNeedsConfirm` in `gate-confirm.ts`).
 
 **Non-goals revised.** The first two non-goals above (desktop and non-dashboard
 surfaces; multi-action gates) are lifted, and `gateNeedsConfirm` no longer

@@ -14,7 +14,8 @@ import { findOrderByCategory } from "../equipments/bindingUtils";
  * Spec 146 v1 left multi-action gates out, because on the mobile dashboard they
  * open a detail sheet first. Spec 196 guards every UI path where one tap or click
  * actuates the gate, and the buttons of that sheet are such a path, so the answer
- * no longer depends on the shape of the command.
+ * no longer depends on the shape of the command. Which press asks is
+ * `gatePressNeedsConfirm`'s answer: never a STOP.
  *
  * Pure and side-effect free so it can be unit-tested without React.
  */
@@ -52,6 +53,18 @@ export function gateActionOf(value: string | null | undefined, gateState: GateSt
   if (/^close$/i.test(value)) return "close";
   if (/^stop$/i.test(value)) return "stop";
   return "operate";
+}
+
+/**
+ * Spec 196 (maintainer decision) — does THIS press ask first? Every press on a
+ * guarded gate does, except STOP: a stop that waits for a confirmation defeats
+ * its purpose, so open, close and operate are guarded and a stop leaves at once.
+ */
+export function gatePressNeedsConfirm(
+  equipment: EquipmentWithDetails,
+  value: string | null | undefined,
+): boolean {
+  return gateNeedsConfirm(equipment) && gateActionOf(value, gateStateOf(equipment)) !== "stop";
 }
 
 /** The label of a multi-action button: the translated verb, or the raw value when Sowel has no word for it. */

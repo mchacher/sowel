@@ -539,8 +539,8 @@ function getDescendantZoneIds(zone: ZoneWithChildren): string[] {
   return ids;
 }
 
-// Compact zone card for mobile
-function MobileZoneCard({
+// Compact zone card for mobile (exported for its test)
+export function MobileZoneCard({
   widget,
   zone,
   zoneLabel,
@@ -638,7 +638,6 @@ function MobileZoneCard({
     <button
       type="button"
       onClick={onClick}
-      aria-label={opens ? t("dashboard.tap.sheet", { name: label }) : undefined}
       className={`card relative p-2 flex flex-col items-center h-[120px] overflow-hidden w-full text-left ${
         opens ? "cursor-pointer active:scale-[0.98]" : ""
       } transition-transform`}
@@ -662,6 +661,8 @@ function MobileZoneCard({
           {stateText}
         </span>
       )}
+      {/* Named by its text (title, state), the gesture said after it. */}
+      {opens && <span className="sr-only">{`, ${t("dashboard.tap.sheet")}`}</span>}
     </button>
   );
 }

@@ -129,6 +129,30 @@ describe("useGuardedAction", () => {
     expect(run).not.toHaveBeenCalled();
   });
 
+  it("closes on Escape pressed on the focused button, through the wrapper that stops the clicks", async () => {
+    restorePointer = mockPointer("fine");
+    const run = vi.fn();
+    render(<Harness equipment={gate({ state: "open" })} run={run} />);
+
+    await userEvent.click(screen.getByText("press"));
+    const primary = screen.getByRole("button", { name: "Close" });
+    expect(document.activeElement).toBe(primary);
+    fireEvent.keyDown(document.activeElement!, { key: "Escape" });
+
+    expect(screen.queryByRole("alertdialog")).toBeNull();
+    expect(run).not.toHaveBeenCalled();
+  });
+
+  it("gives the focus back to the button that opened it", async () => {
+    restorePointer = mockPointer("fine");
+    render(<Harness equipment={gate()} run={vi.fn()} />);
+
+    await userEvent.click(screen.getByText("press"));
+    await userEvent.click(screen.getByRole("button", { name: "Cancel" }));
+
+    expect(document.activeElement).toBe(screen.getByText("press"));
+  });
+
   it("sends straight away on a gate that does not ask", async () => {
     restorePointer = mockPointer("fine");
     const run = vi.fn();
@@ -164,16 +188,31 @@ describe("every path through the guard", () => {
     render(
       <EquipmentWidget
         widget={WIDGET}
+        equipment={gate({ state: "closed", enumValues: ["OPEN", "CLOSE", "STOP"] })}
+        onExecuteOrder={onExecuteOrder}
+      />,
+    );
+
+    await userEvent.click(screen.getByRole("button", { name: "Close" }));
+    expect(screen.getByRole("alertdialog", { name: "Close Portail?" })).toBeTruthy();
+    expect(onExecuteOrder).not.toHaveBeenCalled();
+
+    await userEvent.click(within(screen.getByRole("alertdialog")).getByRole("button", { name: "Close" }));
+    expect(onExecuteOrder).toHaveBeenCalledWith("g1", "relay", "CLOSE");
+  });
+
+  it("desktop tile, several actions: STOP never asks, it leaves at once", async () => {
+    const onExecuteOrder = vi.fn().mockResolvedValue(undefined);
+    render(
+      <EquipmentWidget
+        widget={WIDGET}
         equipment={gate({ state: "open", enumValues: ["OPEN", "CLOSE", "STOP"] })}
         onExecuteOrder={onExecuteOrder}
       />,
     );
 
     await userEvent.click(screen.getByRole("button", { name: "Stop" }));
-    expect(screen.getByRole("alertdialog", { name: "Stop Portail?" })).toBeTruthy();
-    expect(onExecuteOrder).not.toHaveBeenCalled();
-
-    await userEvent.click(within(screen.getByRole("alertdialog")).getByRole("button", { name: "Stop" }));
+    expect(screen.queryByRole("alertdialog")).toBeNull();
     expect(onExecuteOrder).toHaveBeenCalledWith("g1", "relay", "STOP");
   });
 
@@ -238,6 +277,19 @@ describe("every path through the guard", () => {
       fireEvent.click(within(screen.getByRole("alertdialog")).getByRole("button", { name: "Open" }));
     });
     expect(api.armTimedCommand).toHaveBeenCalledWith("g1");
+  });
+
+  it("timed tile: the phone corner shows the shield on a guarded gate, power otherwise", () => {
+    const timedCommand = { alias: "relay", value: null, revertValue: null, durationMs: 900_000 };
+    const { container, rerender } = render(
+      <TimedEquipmentWidget label="Portail" equipment={gate({ timedCommand })} />,
+    );
+    expect(container.querySelector("[data-tap-glyph]")?.getAttribute("data-tap-glyph")).toBe("shield");
+
+    rerender(
+      <TimedEquipmentWidget label="Portail" equipment={gate({ timedCommand, requireConfirmation: false })} />,
+    );
+    expect(container.querySelector("[data-tap-glyph]")?.getAttribute("data-tap-glyph")).toBe("power");
   });
 
   it("timed control (Maison row, equipment page): arming asks, cancelling does not", async () => {

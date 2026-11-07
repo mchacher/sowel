@@ -6,7 +6,7 @@
  */
 
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
-import { act, fireEvent, render, screen } from "../../test-utils";
+import { act, createEvent, fireEvent, render, screen } from "../../test-utils";
 import { useTranslation } from "react-i18next";
 import { ConfirmActionDialog, ConfirmActionSheet } from "./ConfirmActionSheet";
 import { gatePrompt } from "./gate-confirm";
@@ -229,11 +229,60 @@ describe("ConfirmActionDialog", () => {
     expect(onClose).toHaveBeenCalledTimes(1);
   });
 
-  it("cancels on Cancel and on Escape without confirming", () => {
+  it("cancels on Cancel without confirming", () => {
     const { onConfirm, onClose } = open();
     fireEvent.click(screen.getByRole("button", { name: "Cancel" }));
-    fireEvent.keyDown(window, { key: "Escape" });
-    expect(onClose).toHaveBeenCalledTimes(2);
+    expect(onClose).toHaveBeenCalledTimes(1);
     expect(onConfirm).not.toHaveBeenCalled();
+  });
+
+  it("cancels on Escape pressed where the focus is, inside the dialog", () => {
+    const { onConfirm, onClose } = open();
+    fireEvent.keyDown(document.activeElement!, { key: "Escape" });
+    expect(onClose).toHaveBeenCalledTimes(1);
+    expect(onConfirm).not.toHaveBeenCalled();
+  });
+
+  it("is described by its subtitle", () => {
+    open();
+    const dialog = screen.getByRole("alertdialog", { description: "Closed" });
+    expect(dialog).toBeTruthy();
+  });
+
+  it("keeps Tab and Shift+Tab inside the dialog", () => {
+    open();
+    const cancel = screen.getByRole("button", { name: "Cancel" });
+    const primary = screen.getByRole("button", { name: "Close" });
+    expect(document.activeElement).toBe(primary);
+    fireEvent.keyDown(primary, { key: "Tab" });
+    expect(document.activeElement).toBe(cancel);
+    fireEvent.keyDown(cancel, { key: "Tab", shiftKey: true });
+    expect(document.activeElement).toBe(primary);
+  });
+
+  it("gives the focus back to what opened it", () => {
+    const opener = document.createElement("button");
+    document.body.appendChild(opener);
+    opener.focus();
+    const { unmount } = render(
+      <ConfirmActionDialog title="Close Portail?" confirmLabel="Close" onConfirm={vi.fn()} onClose={vi.fn()} />,
+    );
+    expect(document.activeElement).not.toBe(opener);
+    unmount();
+    expect(document.activeElement).toBe(opener);
+    opener.remove();
+  });
+
+  it("is not confirmed by the second click of a double click, nor by a held Enter", () => {
+    const { onConfirm } = open();
+    const primary = screen.getByRole("button", { name: "Close" });
+    fireEvent.click(primary, { detail: 2 });
+    expect(onConfirm).not.toHaveBeenCalled();
+    const held = createEvent.keyDown(primary, { key: "Enter", repeat: true });
+    fireEvent(primary, held);
+    expect(held.defaultPrevented).toBe(true);
+    const fresh = createEvent.keyDown(primary, { key: "Enter" });
+    fireEvent(primary, fresh);
+    expect(fresh.defaultPrevented).toBe(false);
   });
 });

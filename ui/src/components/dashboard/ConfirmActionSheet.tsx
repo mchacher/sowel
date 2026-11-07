@@ -1,4 +1,4 @@
-import { useEffect, useRef } from "react";
+import { useEffect, useId, useRef, useState, type KeyboardEvent as ReactKeyboardEvent } from "react";
 import { createPortal } from "react-dom";
 import { useTranslation } from "react-i18next";
 import { BottomSheet } from "./BottomSheet";
@@ -77,9 +77,18 @@ export function ConfirmActionSheet({
  * buttons, the action named on the primary one. Enter confirms (the primary
  * button has the focus), Escape and a click outside cancel.
  *
+ * A modal dialog for the keyboard too: Tab and Shift+Tab cycle inside it, the
+ * focus goes back to what opened it, the subtitle is its description. Escape is
+ * handled on the dialog itself, where the focus is: `useGuardedAction` stops the
+ * clicks of its portal from reaching the tile, and a key stopped on the way up
+ * would never reach a window listener (which stays, for a focus left outside).
+ *
+ * What opened it must not also confirm it: the second click of a double click
+ * and a held Enter (its auto-repeat) are ignored, only a fresh press confirms.
+ *
  * Rendered into `document.body`, like the other dialogs: a tile's opacity and
  * stacking must not reach it. Its events still bubble through the React tree,
- * which is why `useGuardedAction` wraps it in an element that stops them.
+ * which is why `useGuardedAction` wraps it in an element that stops the clicks.
  */
 export function ConfirmActionDialog({
   title,
@@ -95,6 +104,13 @@ export function ConfirmActionDialog({
   onClose: () => void;
 }) {
   const { t } = useTranslation();
+  const dialogRef = useRef<HTMLDivElement>(null);
+  const subtitleId = useId();
+  // Read while rendering: the primary button takes the focus at commit.
+  const [opener] = useState(() =>
+    typeof document !== "undefined" ? (document.activeElement as HTMLElement | null) : null,
+  );
+
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
       if (e.key === "Escape") onClose();
@@ -103,20 +119,61 @@ export function ConfirmActionDialog({
     return () => window.removeEventListener("keydown", onKey);
   }, [onClose]);
 
+  useEffect(
+    () => () => {
+      if (opener && opener !== document.body && opener.isConnected) opener.focus();
+    },
+    [opener],
+  );
+
+  const onKeyDown = (e: ReactKeyboardEvent<HTMLDivElement>) => {
+    // Nothing behind a modal dialog answers its keys (a sheet's own Escape included).
+    e.stopPropagation();
+    if (e.key === "Escape") {
+      e.preventDefault();
+      onClose();
+      return;
+    }
+    if (e.key !== "Tab" || !dialogRef.current) return;
+    const focusable = Array.from(
+      dialogRef.current.querySelectorAll<HTMLElement>("button:not([disabled]), [href], [tabindex]:not([tabindex='-1'])"),
+    );
+    if (focusable.length === 0) return;
+    const first = focusable[0];
+    const last = focusable[focusable.length - 1];
+    const active = document.activeElement;
+    if (e.shiftKey && (active === first || !focusable.includes(active as HTMLElement))) {
+      e.preventDefault();
+      last.focus();
+    } else if (!e.shiftKey && (active === last || !focusable.includes(active as HTMLElement))) {
+      e.preventDefault();
+      first.focus();
+    }
+  };
+
   return createPortal(
     <div
       className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4"
       onClick={onClose}
     >
       <div
+        ref={dialogRef}
         role="alertdialog"
         aria-modal="true"
         aria-label={title}
-        className="bg-surface rounded-lg p-5 w-full max-w-sm shadow-lg"
+        aria-describedby={subtitle ? subtitleId : undefined}
+        // A click on the text keeps the focus in the dialog, so its keys still land here.
+        tabIndex={-1}
+        className="bg-surface rounded-lg p-5 w-full max-w-sm shadow-lg outline-none"
         onClick={(e) => e.stopPropagation()}
+        onKeyDown={onKeyDown}
       >
         <h3 className="text-lead font-semibold text-text">{title}</h3>
-        {subtitle && <p className="text-caption text-text-tertiary mt-1">{subtitle}</p>}
+        {subtitle && (
+          <p id={subtitleId} className="text-caption text-text-tertiary mt-1">
+            {subtitle}
+          </p>
+        )}
         <div className="flex justify-end gap-2 mt-5">
           <button
             type="button"
@@ -128,7 +185,13 @@ export function ConfirmActionDialog({
           <button
             type="button"
             autoFocus
-            onClick={() => {
+            onKeyDown={(e) => {
+              // A held Enter repeats: the press that opened the dialog must not confirm it.
+              if (e.key === "Enter" && e.repeat) e.preventDefault();
+            }}
+            onClick={(e) => {
+              // The second click of a double click lands here as well.
+              if (e.detail > 1) return;
               onClose();
               onConfirm();
             }}

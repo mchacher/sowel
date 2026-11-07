@@ -93,9 +93,12 @@ export function MeteringParentPanel({
   };
 
   const parentName = equipments.find((eq) => eq.id === current)?.name;
-  const summary = separate
+  const base = separate
     ? t("equipments.metering.separateSupply.title")
     : (parentName ?? t("equipments.metering.nesting.none"));
+  // Spec 195 — the folded row says the third declaration too.
+  const summary =
+    localProduction && !separate ? `${base} · ${t("equipments.metering.localProduction.summary")}` : base;
 
   return (
     <ConfigRow

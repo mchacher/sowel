@@ -5,6 +5,7 @@ import {
   LOCAL_COMMIT_DELAY_MS,
   resolveSetpoint,
   setpointCommitDelay,
+  setpointLevel,
   setpointOwnerIsOff,
   setpointStateLine,
   zoneSetpointBounds,
@@ -100,6 +101,17 @@ describe("resolveSetpoint", () => {
   });
 });
 
+describe("setpointLevel (thermometer)", () => {
+  it("places the setpoint between the bounds", () => {
+    expect(setpointLevel(23, 16, 30)).toBe(0.5);
+  });
+  it("draws nothing without a value or without a range", () => {
+    expect(setpointLevel(null, 16, 30)).toBeUndefined();
+    expect(setpointLevel(20, 20, 20)).toBeUndefined();
+    expect(setpointLevel(20, 30, 16)).toBeUndefined();
+  });
+});
+
 describe("setpointStateLine (mobile card)", () => {
   it("shows the temperature, then the setpoint", () => {
     expect(setpointStateLine(21, 20, false, "Off")).toBe("21.0° → 20.0°");
@@ -109,6 +121,9 @@ describe("setpointStateLine (mobile card)", () => {
   });
   it("shows the temperature alone without a setpoint", () => {
     expect(setpointStateLine(21, null, false, "Off")).toBe("21.0°");
+  });
+  it("shows a dash for a temperature not reported yet", () => {
+    expect(setpointStateLine(null, 20, false, "Off")).toBe("\u2014 → 20.0°");
   });
   it("takes off only from a reported run state", () => {
     expect(setpointOwnerIsOff(eq({ data: [{ alias: "state", value: false }] }))).toBe(true);

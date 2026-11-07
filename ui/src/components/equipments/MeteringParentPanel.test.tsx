@@ -70,6 +70,12 @@ describe("MeteringParentPanel", () => {
     expect((screen.getByRole("combobox") as HTMLSelectElement).value).toBe("gite");
   });
 
+  it("says local production in the folded row's summary", () => {
+    const solar = meter({ id: "pv", name: "Garage", meteringParentId: "gite", localProduction: true });
+    render(<MeteringParentPanel equipment={solar} equipments={[...ALL, solar]} onUpdated={() => {}} />);
+    expect(screen.getByText("· ConsommationGite · local production")).toBeTruthy();
+  });
+
   it("keeps showing a declared parent that stopped being a meter", () => {
     // The gîte clamp lost its power binding: it is no longer offered as a new
     // parent, but the declaration on the water heater is still live, and a

@@ -276,6 +276,22 @@ describe("MobileWidgetCard — thermostat setpoint line", () => {
     expect(screen.getByText("21.0° · off")).toBeTruthy();
   });
 
+  it("reads « — → setpoint » when the setpoint is known and the temperature not", () => {
+    const noTemp = makeEquipment({
+      id: "th-2",
+      name: "PAC",
+      type: "thermostat",
+      dataBindings: [
+        { alias: "setpoint", value: 20, lastUpdated: agoIso(60) },
+      ] as unknown as EquipmentWithDetails["dataBindings"],
+      orderBindings: [
+        { alias: "setpoint", deviceId: "dev-1", min: 20, max: 20 },
+      ] as unknown as EquipmentWithDetails["orderBindings"],
+    });
+    render(<MobileWidgetCard widget={{ ...widget, equipmentId: "th-2" }} equipment={noTemp} />);
+    expect(screen.getByText("\u2014 → 20.0°")).toBeTruthy();
+  });
+
   it("does not take a thermostat without a run state for off", () => {
     render(<MobileWidgetCard widget={{ ...widget, equipmentId: "th-1" }} equipment={thermostat(null)} />);
     expect(screen.getByText("21.0° → 20.0°")).toBeTruthy();
@@ -293,16 +309,20 @@ describe("MobileWidgetCard — tap gesture (spec 196)", () => {
   });
 
   it.each([
-    ["toggle", "power", "Main meter, toggle"],
-    ["now", "power", "Main meter, operate"],
-    ["sheet", "chevron", "Main meter, open details"],
-    ["confirm", "shield", "Main meter, operate with confirmation"],
-  ] as const)("%s → %s glyph and a spoken gesture", (kind, glyph, label) => {
+    ["toggle", "power", "toggle"],
+    ["now", "power", "operate"],
+    ["sheet", "chevron", "open details"],
+    ["confirm", "shield", "operate with confirmation"],
+  ] as const)("%s → %s glyph, and a name that keeps the tile's text before the gesture", (kind, glyph, gesture) => {
     const { container } = render(
       <MobileWidgetCard widget={widget} equipment={meter()} onClick={() => {}} tapKind={kind} />,
     );
     expect(container.querySelector("[data-tap-glyph]")?.getAttribute("data-tap-glyph")).toBe(glyph);
-    expect(screen.getByRole("button").getAttribute("aria-label")).toBe(label);
+    expect(screen.getByRole("button").getAttribute("aria-label")).toBeNull();
+    // Title, state line, then the gesture, in that order.
+    expect(
+      screen.getByRole("button", { name: new RegExp(`^Main meter.*1\\.5\\s?kWh.*800\\s?W, ${gesture}$`) }),
+    ).toBeTruthy();
   });
 
   it("shows no glyph in edit mode", () => {

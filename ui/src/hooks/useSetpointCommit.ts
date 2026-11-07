@@ -21,6 +21,14 @@ export interface SetpointCommitOptions {
   debounceMs: number;
   /** Longest the requested value is kept while the device stays silent. */
   settleMs?: number;
+  /**
+   * Hold the requested value until a report comes closer than this to it,
+   * instead of releasing it on the first report. For an aggregate (a zone's
+   * average setpoint), whose first report after the order is one thermostat of
+   * several: it would make the value jump back half way. `settleMs` still ends
+   * the hold.
+   */
+  settleTolerance?: number;
 }
 
 export interface SetpointCommit {
@@ -41,7 +49,8 @@ export interface SetpointCommit {
  * - a value requested while an order is in flight leaves right after it;
  * - the requested value stays on screen until the device reports again (which
  *   confirms it or tells the truth), or `settleMs` at most, so a cloud device
- *   that reports on its next poll does not make the value jump back meanwhile;
+ *   that reports on its next poll does not make the value jump back meanwhile
+ *   (an average, `settleTolerance`, waits for a report that reaches the value);
  * - an error reverts to the device's value and raises `error`;
  * - a value still waiting when the surface unmounts (sheet closed right after
  *   the last tap) is sent at once.
@@ -51,6 +60,7 @@ export function useSetpointCommit({
   onCommit,
   debounceMs,
   settleMs = SETPOINT_SETTLE_MS,
+  settleTolerance,
 }: SetpointCommitOptions): SetpointCommit {
   const [requested, setRequested] = useState<number | null>(null);
   const [error, setError] = useState(false);
@@ -87,13 +97,25 @@ export function useSetpointCommit({
     if (mountedRef.current) setRequested(null);
   }, []);
 
+  /** Is this report the one that ends the hold of `sent`? */
+  const reached = useCallback(
+    (current: number | null, sent: number | null) => {
+      if (settleTolerance === undefined) return true;
+      // Strictly inside: with two thermostats, the first report of a one-step
+      // change puts the average exactly half a step away, still half way.
+      return current !== null && sent !== null && Math.abs(current - sent) < settleTolerance;
+    },
+    [settleTolerance],
+  );
+
   // A report from the device once the order is out: it confirms the value or
   // says what the device actually took. Reports during the wait or the send
-  // are older than the order and are ignored.
+  // are older than the order and are ignored. With a tolerance, only a report
+  // that reaches the value sent ends the hold (or the timeout).
   useEffect(() => {
     valueRef.current = value;
-    if (phaseRef.current === "settling") settle();
-  }, [value, settle]);
+    if (phaseRef.current === "settling" && reached(value, outstandingRef.current)) settle();
+  }, [value, settle, reached]);
 
   const flushRef = useRef<() => void>(() => {});
 
@@ -128,7 +150,8 @@ export function useSetpointCommit({
           return;
         }
         const current = valueRef.current;
-        if (current !== null && Math.abs(current - v) < ECHO_EPSILON) {
+        const within = settleTolerance ?? ECHO_EPSILON;
+        if (current !== null && Math.abs(current - v) < within) {
           // Already reported while the request was in flight.
           settle();
           return;
@@ -144,7 +167,7 @@ export function useSetpointCommit({
           () => done(false),
         );
     },
-    [settle, settleMs],
+    [settle, settleMs, settleTolerance],
   );
 
   const flush = useCallback(() => {
@@ -198,6 +221,9 @@ export function useSetpointCommit({
       queuedRef.current = false;
       const v = requestedRef.current;
       if (!waiting || v === null) return;
+      // Tapped back to where the device already is (the same check as `flush`).
+      const current = valueRef.current;
+      if (outstandingRef.current === null && current !== null && Math.abs(current - v) < ECHO_EPSILON) return;
       const commit = onCommitRef.current;
       const after = inflightRef.current ?? Promise.resolve();
       void after.then(() => commit(v)).catch(() => {

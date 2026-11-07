@@ -28,6 +28,11 @@ export interface SetpointStepperProps {
   /** From `useSetpointCommitDelay`: ~600 ms for a cloud device, ~150 ms local. */
   debounceMs?: number;
   settleMs?: number;
+  /**
+   * For an average (a zone): keep the requested value until the value reaches it
+   * (± half a step) or the timeout, not just until the first report.
+   */
+  holdUntilReached?: boolean;
   /** First value proposed when the device has none yet; without it the buttons wait for one. */
   startValue?: number;
   /** Lets a parent draw the value being set elsewhere (a thermometer's level). */
@@ -68,12 +73,19 @@ export function SetpointStepper({
   increaseLabel,
   debounceMs = CLOUD_COMMIT_DELAY_MS,
   settleMs,
+  holdUntilReached = false,
   startValue,
   onShownChange,
   className = "",
 }: SetpointStepperProps) {
   const { t } = useTranslation();
-  const { shown, pending, error, request } = useSetpointCommit({ value, onCommit, debounceMs, settleMs });
+  const { shown, pending, error, request } = useSetpointCommit({
+    value,
+    onCommit,
+    debounceMs,
+    settleMs,
+    settleTolerance: holdUntilReached ? step / 2 : undefined,
+  });
 
   useEffect(() => {
     onShownChange?.(shown);

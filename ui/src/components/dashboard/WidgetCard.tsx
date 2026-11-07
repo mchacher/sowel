@@ -5,6 +5,7 @@ import { useCardPrimaryAction } from "./card-primary-action";
 import { TileOrderOutcomeLine } from "../equipments/OrderOutcomeLine";
 import { TileEquipmentContext } from "../equipments/order-outcome";
 import { equipmentLinkState } from "../../lib/equipment-origin";
+import { useIsMobile } from "../../hooks/useIsMobile";
 
 interface WidgetCardProps {
   label: string;
@@ -51,10 +52,14 @@ export function WidgetCard({
   const cardAction = useCardPrimaryAction(onClick);
   const { t } = useTranslation();
   // Spec 196 (pr9-dashboard) — on an equipment tile the title opens the
-  // equipment page. The card action ignores clicks that land on a link.
+  // equipment page, from the desktop width only: on a phone the whole tile is
+  // its tap action and the page is reached from the sheet's footer. The card
+  // action ignores clicks that land on a link.
   const equipmentId = useContext(TileEquipmentContext);
+  const isMobile = useIsMobile();
   // A tile rendered outside a router (a picker preview, a test) keeps a plain title.
-  const linkable = useInRouterContext() && equipmentId !== null;
+  const inRouter = useInRouterContext();
+  const linkable = inRouter && equipmentId !== null && !isMobile;
 
   return (
     <div

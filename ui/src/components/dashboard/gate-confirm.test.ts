@@ -4,6 +4,7 @@ import {
   gateActionOf,
   gateConfirmTexts,
   gateNeedsConfirm,
+  gatePressNeedsConfirm,
   gatePrompt,
   gateStateOf,
   gateValueLabel,
@@ -73,6 +74,28 @@ describe("gateNeedsConfirm", () => {
 
   it("is false for a non-gate equipment even with the flag on", () => {
     expect(gateNeedsConfirm(equip({ requireConfirmation: true, type: "switch" }))).toBe(false);
+  });
+});
+
+// Spec 196 (maintainer decision) — a stop that waits for a confirmation
+// defeats its purpose: open, close and operate ask, STOP never does.
+describe("gatePressNeedsConfirm", () => {
+  const guarded = equip({ requireConfirmation: true, command: { enumValues: ["OPEN", "CLOSE", "STOP"] } });
+
+  it("asks for open, close, a raw value and an impulse", () => {
+    expect(gatePressNeedsConfirm(guarded, "OPEN")).toBe(true);
+    expect(gatePressNeedsConfirm(guarded, "CLOSE")).toBe(true);
+    expect(gatePressNeedsConfirm(guarded, "PEDESTRIAN")).toBe(true);
+    expect(gatePressNeedsConfirm(equip({ requireConfirmation: true }), null)).toBe(true);
+  });
+
+  it("never asks for STOP, whatever its case", () => {
+    expect(gatePressNeedsConfirm(guarded, "STOP")).toBe(false);
+    expect(gatePressNeedsConfirm(guarded, "stop")).toBe(false);
+  });
+
+  it("does not ask on a gate that is not guarded", () => {
+    expect(gatePressNeedsConfirm(equip({ requireConfirmation: false }), "OPEN")).toBe(false);
   });
 });
 

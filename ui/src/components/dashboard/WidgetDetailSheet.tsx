@@ -35,7 +35,7 @@ import { thermostatPowerStateBinding } from "../../lib/thermostat-state";
 import { useSliderOverride } from "../../hooks/useSliderOverride";
 import { useSetpointCommitDelay } from "../../hooks/useSetpointCommit";
 import { SetpointStepper } from "../equipments/SetpointStepper";
-import { resolveSetpoint, zoneSetpointBounds } from "../equipments/setpoint";
+import { resolveSetpoint, setpointLevel, zoneSetpointBounds } from "../equipments/setpoint";
 import { SensorValues } from "../equipments/SensorValues";
 import {
   formatSensorValue,
@@ -538,8 +538,10 @@ export function ZoneDetailSheet({ widget, zone, zoneLabel, equipments, onClose }
     setCommandLoading(orderKey);
     try {
       await executeZoneOrder(widget.zoneId, orderKey, value);
-    } catch {
-      // silent — user sees result via live updates
+    } catch (err) {
+      // The setpoint stepper reverts and says « not applied » on a rejection;
+      // the other commands stay silent, the live updates tell the outcome.
+      if (orderKey === "allThermostatsSetpoint") throw err;
     } finally {
       setCommandLoading(null);
     }
@@ -882,9 +884,7 @@ function ZoneHeatingDetail({
   }, [equipments]);
 
   const displaySetpoint = shownSetpoint ?? avgSetpoint;
-  const thermometerLevel = displaySetpoint !== null
-    ? (displaySetpoint - bounds.min) / (bounds.max - bounds.min)
-    : undefined;
+  const thermometerLevel = setpointLevel(displaySetpoint, bounds.min, bounds.max);
 
   if (equipments.length === 0) return null;
 
@@ -912,6 +912,7 @@ function ZoneHeatingDetail({
           unit="°C"
           label={t("thermostat.target")}
           debounceMs={commitDelay}
+          holdUntilReached
           onCommit={async (v) => {
             await onCommand("allThermostatsSetpoint", v);
           }}
@@ -1311,9 +1312,7 @@ function ThermostatDetailContent({
   const hasPowerOrder = !isPoolHeatPump && equipment.orderBindings.some((o) => o.alias === "power");
   const setpointOrder = setpoint.order;
 
-  const thermometerLevel = displaySetpoint !== null
-    ? (displaySetpoint - setpoint.min) / (setpoint.max - setpoint.min)
-    : undefined;
+  const thermometerLevel = setpointLevel(displaySetpoint, setpoint.min, setpoint.max);
 
   const exec = async (alias: string, value: unknown) => {
     if (executing) return;

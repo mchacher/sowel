@@ -17,7 +17,7 @@ import { thermostatPowerStateBinding } from "../../lib/thermostat-state";
 import { useSliderOverride } from "../../hooks/useSliderOverride";
 import { useSetpointCommitDelay } from "../../hooks/useSetpointCommit";
 import { SetpointStepper } from "../equipments/SetpointStepper";
-import { zoneSetpointBounds } from "../equipments/setpoint";
+import { setpointLevel, zoneSetpointBounds } from "../equipments/setpoint";
 import {
   LightBulbIcon,
   ShutterWidgetIcon,
@@ -86,8 +86,10 @@ export function ZoneWidget({ widget, zone, zoneLabel, equipments }: ZoneWidgetPr
     setCommandLoading(orderKey);
     try {
       await executeZoneOrder(widget.zoneId, orderKey, value);
-    } catch {
-      // silent — user sees result via live updates
+    } catch (err) {
+      // The setpoint stepper reverts and says « not applied » on a rejection;
+      // the other commands stay silent, the live updates tell the outcome.
+      if (orderKey === "allThermostatsSetpoint") throw err;
     } finally {
       setCommandLoading(null);
     }
@@ -529,9 +531,7 @@ function ZoneHeatingWidget({
 
   const displaySetpoint = shownSetpoint ?? avgSetpoint;
 
-  const thermometerLevel = displaySetpoint !== null
-    ? (displaySetpoint - bounds.min) / (bounds.max - bounds.min)
-    : undefined;
+  const thermometerLevel = setpointLevel(displaySetpoint, bounds.min, bounds.max);
 
   return (
     <ZoneWidgetCard label={label} empty={filteredEquipments.length === 0}>
@@ -578,6 +578,7 @@ function ZoneHeatingWidget({
           unit="°C"
           label={t("thermostat.target")}
           debounceMs={commitDelay}
+          holdUntilReached
           onCommit={async (v) => {
             await onCommand("allThermostatsSetpoint", v);
           }}

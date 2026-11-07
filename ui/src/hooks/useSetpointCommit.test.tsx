@@ -144,4 +144,49 @@ describe("useSetpointCommit", () => {
     expect(onCommit).not.toHaveBeenCalled();
     expect(result.current.pending).toBe(false);
   });
+
+  it("sends nothing on unmount when the waiting value is back to the device's", async () => {
+    const { result, unmount, onCommit } = setup(20);
+    act(() => result.current.request(20.5));
+    act(() => result.current.request(20));
+    unmount();
+    await flushPromises();
+    expect(onCommit).not.toHaveBeenCalled();
+  });
+
+  it("with a tolerance (a zone's average), holds the value until a report reaches it", async () => {
+    const onCommit = vi.fn().mockResolvedValue(undefined);
+    const { result, rerender } = renderHook(
+      ({ value }: { value: number | null }) =>
+        useSetpointCommit({ value, onCommit, debounceMs: DELAY, settleTolerance: 0.25 }),
+      { initialProps: { value: 20 as number | null } },
+    );
+    act(() => result.current.request(22));
+    act(() => vi.advanceTimersByTime(DELAY));
+    await flushPromises();
+    // One thermostat of two reported: the average is half way, the value stays.
+    rerender({ value: 21 });
+    expect(result.current.shown).toBe(22);
+    expect(result.current.pending).toBe(true);
+    // The second one: the average reaches it.
+    rerender({ value: 22 });
+    expect(result.current.shown).toBe(22);
+    expect(result.current.pending).toBe(false);
+  });
+
+  it("with a tolerance, still lets go at the timeout", async () => {
+    const onCommit = vi.fn().mockResolvedValue(undefined);
+    const { result, rerender } = renderHook(
+      ({ value }: { value: number | null }) =>
+        useSetpointCommit({ value, onCommit, debounceMs: DELAY, settleMs: 90_000, settleTolerance: 0.25 }),
+      { initialProps: { value: 20 as number | null } },
+    );
+    act(() => result.current.request(22));
+    act(() => vi.advanceTimersByTime(DELAY));
+    await flushPromises();
+    rerender({ value: 21 });
+    act(() => vi.advanceTimersByTime(90_000));
+    expect(result.current.shown).toBe(21);
+    expect(result.current.pending).toBe(false);
+  });
 });

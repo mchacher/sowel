@@ -137,9 +137,9 @@ Today's look is kept (solar greens, HP dark blue / HC light blue). Only dark-the
 - `null` / `NaN` values: « — ».
 - English UI: numbers keep the dot; plural keys exist in both locales.
 - Browser and home in the same time zone: no clock anywhere; different zone: home time shown with its zone.
-- Gate with several actions (open/close/stop): the confirmation names the action chosen.
+- Gate with several actions (open/close/stop): the confirmation names the action chosen; STOP never asks (maintainer decision, phase 3 review: delaying a stop defeats it).
 - Setpoint sheet closed during the debounce: the pending value is sent.
-- Device not reporting after a setpoint order: the stepper keeps the requested value until the next report or a timeout, then shows the reported one.
+- Device not reporting after a setpoint order: the stepper keeps the requested value until the next report or a timeout, then shows the reported one. A zone keeps it until its average reaches the value (± half a step) or the timeout: its first report is one thermostat of several.
 - Weather forecasts show whole degrees (« 13° »): an exception to pr3-zero, a forecast carries no tenth.
 - Tablet keeps desktop content layouts (`useIsMobile` < 640 px) while the chrome is mobile up to 1024 px (pr1-tablette): page titles shown in the compact top bar are hidden from the page below `lg`.
 

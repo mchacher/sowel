@@ -6,7 +6,7 @@ const ICONS = { power: Power, chevron: ChevronRight, shield: ShieldCheck } as co
 /**
  * Spec 196 (pr8-geste) — the corner glyph telling what a tap on a mobile tile
  * does: power for a direct action, › for a sheet, a shield for a guarded one.
- * Decorative: the card's own `aria-label` says the same in words. 14 px in
+ * Decorative: the card says the same in words, after its text. 14 px in
  * secondary ink so it clears 3:1 on the card, where the old 11 px shield at
  * 70 % tertiary did not.
  */

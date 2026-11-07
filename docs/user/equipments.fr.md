@@ -137,7 +137,7 @@ Vous pouvez choisir une icône spécifique pour les portails sur l'Accueil : por
 
 Un portail peut être piloté par n'importe quel relais on/off : un module contact sec Zigbee (par ex. SONOFF MINI-ZBD), un canal de relais LoRa, ou une télécommande Somfy RTS. Le bouton de commande agit en impulsion ; configurez le comportement d'impulsion (inching / auto-off) sur le module lui-même. Associez un capteur d'ouverture (par ex. SONOFF SNZB-04P) au même équipement pour obtenir l'état ouvert/fermé ; sans capteur, l'état s'affiche comme inconnu.
 
-Un administrateur peut activer la **Confirmation avant action** sur la page de l'équipement du portail. Chaque appui qui ferait bouger le portail demande alors d'abord — sur l'Accueil, dans la vue Maison, dans la liste des Équipements et sur la page de l'équipement, avec un curseur à glisser sur un écran tactile et une boîte de dialogue à la souris. Voir [Portails qui demandent confirmation](dashboard.md#gate-confirmation).
+Un administrateur peut activer la **Confirmation avant action** sur la page de l'équipement du portail. Chaque appui qui ferait bouger le portail demande alors d'abord — sur l'Accueil, dans la vue Maison, dans la liste des Équipements et sur la page de l'équipement, avec un curseur à glisser sur un écran tactile et une boîte de dialogue à la souris. **Arrêter** ne demande jamais rien : l'ordre part tout de suite. Voir [Portails qui demandent confirmation](dashboard.md#gate-confirmation).
 
 #### Porte
 

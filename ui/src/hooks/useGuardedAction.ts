@@ -6,7 +6,7 @@ import {
   ConfirmActionSheet,
 } from "../components/dashboard/ConfirmActionSheet";
 import {
-  gateNeedsConfirm,
+  gatePressNeedsConfirm,
   gatePrompt,
   type ConfirmPrompt,
 } from "../components/dashboard/gate-confirm";
@@ -30,7 +30,11 @@ interface Pending {
   slide: boolean;
 }
 
-/** The confirmation is portaled, but React still bubbles its events to the caller's tile or row. */
+/**
+ * The confirmation is portaled, but React still bubbles its events to the caller's
+ * tile or row. Only the clicks are stopped here: the keys belong to the dialog,
+ * which handles its own Escape where the focus is.
+ */
 const stop = (e: SyntheticEvent) => e.stopPropagation();
 
 /**
@@ -42,14 +46,15 @@ const stop = (e: SyntheticEvent) => e.stopPropagation();
  * equipment list and page, the timed controls. It asks first — the slide sheet
  * on a touch screen, a two-button dialog with a pointer — and runs the order
  * only once confirmed. An unguarded gate runs it straight away. Modes, recipes'
- * automations and the guest page do not come through here (portail-mode).
+ * automations and the guest page do not come through here (portail-mode). A STOP
+ * never asks: delaying a stop defeats it (maintainer decision).
  *
  * `guard` is the same thing for a caller that decides on its own whether to ask
  * (the recipe tile reads the gate its recipe drives, spec 171).
  *
  * The prompt is taken when the press happens: it names what that press asked for.
  * Render `element` next to the control, outside any clickable ancestor if
- * possible; its events are stopped from bubbling either way.
+ * possible; its clicks are stopped from bubbling either way.
  */
 export function useGuardedAction(): {
   guard: (needsConfirm: boolean, prompt: () => ConfirmPrompt, run: () => void) => void;
@@ -77,7 +82,7 @@ export function useGuardedAction(): {
 
   const guardGate = useCallback(
     (equipment: EquipmentWithDetails, value: string | null, run: () => void, zoneName?: string) =>
-      guard(gateNeedsConfirm(equipment), () => gatePrompt(equipment, value, t, zoneName), run),
+      guard(gatePressNeedsConfirm(equipment, value), () => gatePrompt(equipment, value, t, zoneName), run),
     [guard, t],
   );
 
@@ -108,7 +113,6 @@ export function useGuardedAction(): {
         className: "contents",
         onClick: stop,
         onPointerDown: stop,
-        onKeyDown: stop,
       },
       inner,
     );

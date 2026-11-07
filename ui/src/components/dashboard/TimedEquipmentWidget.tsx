@@ -7,6 +7,7 @@ import { armTimedCommand, cancelTimedCommand } from "../../api";
 import { TimedCountdown } from "../equipments/TimedCountdown";
 import { useEquipments } from "../../store/useEquipments";
 import { useGuardedAction } from "../../hooks/useGuardedAction";
+import { gatePressNeedsConfirm } from "./gate-confirm";
 import type { EquipmentWithDetails } from "../../types";
 
 /**
@@ -106,10 +107,20 @@ export function TimedEquipmentWidget({
           sublabel ?? (configured ? t("dashboard.timed.sublabel", { count: minutes }) : undefined)
         }
         onClick={!running && !editMode && !inert ? arm : undefined}
-        // Spec 196 — on a phone the corner says a tap acts at once; the desktop
-        // tile keeps its explicit arm button as the only cue.
+        // Spec 196 — on a phone the corner says what a tap does: at once, or
+        // after a confirmation on a guarded gate. The desktop tile keeps its
+        // explicit arm button as the only cue.
         corner={
-          !running && !editMode && !inert ? <TapGlyph kind="now" className="sm:hidden" /> : undefined
+          !running && !editMode && !inert ? (
+            <TapGlyph
+              kind={
+                gatePressNeedsConfirm(equipment, typeof configured?.value === "string" ? configured.value : null)
+                  ? "confirm"
+                  : "now"
+              }
+              className="sm:hidden"
+            />
+          ) : undefined
         }
       >
         {/* Four things do not fit in the shell's 160 px on a phone. Of title,
