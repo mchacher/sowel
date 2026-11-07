@@ -1,9 +1,16 @@
-import { readFileSync } from "node:fs";
+import { readdirSync, readFileSync } from "node:fs";
+import { join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { ESLint } from "eslint";
 import { describe, expect, it } from "vitest";
 import { SERIES_COLORS, seriesDrawnHex, seriesPaint } from "./series-palette";
 import { byUsageSeriesColor, pickSubmeterColor, seriesColor } from "../components/energy/submeterPalette";
+import {
+  loadStateInk,
+  loadStatePillBg,
+  surplusStickerColor,
+  surplusStickerInk,
+} from "../components/energy/arbiterColors";
 
 // Spec 196 (FR-E, AC-11) — the energy palette, computed from
 // design-system/tokens.css so a token change that breaks a pair fails here:
@@ -206,6 +213,84 @@ describe("sub-meter colours", () => {
   it("follow the server's colorIndex, and fall back on its hex without one", () => {
     expect(byUsageSeriesColor({ color: "#60A5FA", colorIndex: 3 })).toBe("var(--color-series-4)");
     expect(byUsageSeriesColor({ color: "#60A5FA" })).toBe("#60A5FA");
+  });
+});
+
+// #1126 — the energy palette tells marks apart; it is not a text colour. Words
+// take a text colour, computed here on the background they sit on.
+const indexCss = readFileSync(new URL("../index.css", import.meta.url), "utf8");
+
+/** `--color-x` (index.css) → the token it aliases. */
+function alias(name: string): string {
+  const m = indexCss.match(new RegExp(`--color-${name}:\\s*var\\((--[\\w-]+)\\)`));
+  if (!m) throw new Error(`--color-${name} is not a token alias in index.css`);
+  return m[1];
+}
+
+function mixHex(fg: string, bg: string, alpha: number): string {
+  const [f, b] = [rgb(fg), rgb(bg)];
+  return "#" + f.map((c, i) => Math.round((c * alpha + b[i] * (1 - alpha)) * 255).toString(16).padStart(2, "0")).join("");
+}
+
+/** What the browser paints for a CSS colour the components write: a
+ *  `var(--color-x)`, or a `color-mix(in srgb, A p%, B)` where a transparent B
+ *  is the card it sits on. */
+function paint(theme: Theme, css: string): string {
+  const v = /^var\(--color-([\w-]+)\)$/.exec(css);
+  if (v) return hex(theme, alias(v[1]));
+  const m = /^color-mix\(in srgb, (.+) (\d+)%, (.+)\)$/.exec(css);
+  if (m) {
+    const under = m[3] === "transparent" ? hex(theme, SURFACE) : paint(theme, m[3]);
+    return mixHex(paint(theme, m[1]), under, Number(m[2]) / 100);
+  }
+  throw new Error(`cannot resolve ${css}`);
+}
+
+describe("words in the energy surfaces reach 4.5:1 (#1126)", () => {
+  const STATES = ["granted", "granted-idle", "pending", "revoked", "unmanaged", "suspended", "idle"] as const;
+
+  for (const theme of ["light", "dark"] as const) {
+    it.each(STATES)(`${theme}: the arbiter pill « %s » reads on its tint`, (s) => {
+      const [ink, bg] = [paint(theme, loadStateInk(s)), paint(theme, loadStatePillBg(s))];
+      expect(ratio(ink, bg), `${ink} on ${bg}`).toBeGreaterThanOrEqual(4.5);
+    });
+
+    it.each([
+      [300, false],
+      [-200, false],
+      [null, false],
+      [null, true],
+    ] as const)(`${theme}: the surplus sticker (%s W, night %s) reads on its tint`, (w, dormant) => {
+      const hue = dormant ? "var(--color-slate)" : surplusStickerColor(w);
+      const ink = paint(theme, surplusStickerInk(w, dormant));
+      const bg = paint(theme, `color-mix(in srgb, ${hue} 12%, transparent)`);
+      expect(ratio(ink, bg), `${ink} on ${bg}`).toBeGreaterThanOrEqual(4.5);
+    });
+  }
+
+  it("measures the defect it fixes: the auto-consumption green is not a text colour", () => {
+    expect(ratio(hex("light", "--solar-auto"), hex("light", SURFACE))).toBeLessThan(3);
+    expect(ratio(hex("light", "--energy-hc"), hex("light", SURFACE))).toBeLessThan(3);
+  });
+
+  it("writes no word in an energy colour (tooltips, flow figures, totals)", () => {
+    // A text colour set straight from a series constant or token. Fills,
+    // strokes, swatches and borders are what the palette is for.
+    const root = fileURLToPath(new URL("../components", import.meta.url));
+    const files = [
+      ...["energy", "flow", "history", "equipments/ev-sessions"].flatMap((dir) =>
+        readdirSync(join(root, dir)).map((f) => join(dir, f)),
+      ),
+      "equipments/UpsPanel.tsx",
+      "equipments/PvForecastPanel.tsx",
+    ].filter((f) => /\.tsx$/.test(f) && !/\.test\.tsx$/.test(f));
+    const textInPalette = /style=\{\{\s*color:\s*(?:[A-Z_]+_COLOR\b|"var\(--color-(?:energy|solar|series|slate)[\w-]*\)")/;
+    const hits = files.flatMap((f) =>
+      readFileSync(join(root, f), "utf8")
+        .split("\n")
+        .flatMap((line, i) => (textInPalette.test(line) ? [`${f}:${i + 1}`] : [])),
+    );
+    expect(hits).toEqual([]);
   });
 });
 

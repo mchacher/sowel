@@ -276,6 +276,8 @@ const RETIRED: [RegExp, string][] = [
   [/\b(text|bg|border)-(red|green|amber|yellow|orange|emerald)-\d/, "raw Tailwind colours bypass the theme"],
   [/\b(bg|text)-light-(50|500)\b/, "a light off is neutral; the light tint is gone"],
   [/--color-(accent-light|accent-hover|success-light)\b/, "token removed or never defined"],
+  // #1126 — the last user, the PV forecast curve, took the solar green.
+  [/--color-accent\b/, "amber means on or running: --color-active; a chart takes the energy palette"],
   [/#(dcfce7|ede9fe|7c3aed)\b/i, "mode badges take tokens"],
   [/\bbg-primary(?![-/\w])[^"`]*\btext-white\b|\btext-white\b[^"`]*\bbg-primary(?![-/\w])/, "text sits on bg-primary-fill, not on the ink"],
   [/\bbg-primary-hover\b/, "a filled control hovers to bg-primary-fill-hover"],

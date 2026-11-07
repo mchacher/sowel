@@ -95,7 +95,7 @@ La vue En direct affiche ce qui se passe en temps réel — valeurs de puissance
 
 ![Flux énergétique en temps réel](../screenshots/energy-live-fr.png)
 
-Le diagramme montre trois cases (Réseau, Consommation, Production) avec des flèches indiquant le sens du flux. Quand la production solaire dépasse la consommation maison, un indicateur "Surplus solaire" apparaît et la part de solaire qui part au réseau versus celle qui alimente la maison s'affiche sur les flèches.
+Le diagramme montre trois cases (Réseau, Consommation, Production) avec des flèches indiquant le sens du flux. Quand la production solaire dépasse la consommation maison, un indicateur "Surplus solaire" apparaît et la part de solaire qui part au réseau versus celle qui alimente la maison s'affiche sur les flèches. Les couleurs des flux sont portées par les icônes, les flèches et le contour des pourcentages ; les valeurs elles-mêmes sont dans la couleur du texte, pour rester lisibles dans les deux thèmes.
 
 Les cases sont masquées quand l'équipement correspondant n'est pas configuré : sans compteur de production, seules Réseau et Consommation sont affichées.
 
@@ -133,7 +133,7 @@ Code couleur sur le graphique **Total** :
 | Bleu clair | Consommation réseau en heures creuses                        |
 | Vert       | Autoconsommation (uniquement avec un compteur de production) |
 
-La légende sous le graphique a une pastille par couleur, heures pleines et heures creuses comprises. Le thème sombre garde les mêmes significations avec ses propres nuances : les heures pleines restent le bleu vif et les heures creuses le bleu pâle, assez éloignés pour distinguer deux barres empilées.
+La légende sous le graphique a une pastille par couleur, heures pleines et heures creuses comprises. Le thème sombre garde les mêmes significations avec ses propres nuances : les heures pleines restent le bleu vif et les heures creuses le bleu pâle, assez éloignés pour distinguer deux barres empilées. Le survol d'une barre ouvre une infobulle avec les mêmes pastilles ; ses libellés et ses valeurs sont dans la couleur du texte, ce que le bleu pâle ne permettrait pas de lire.
 
 Sous le graphique, les totaux sont affichés en kWh : réseau (réparti HP / HC), autoconsommation, et total (avec le pourcentage d'autoconsommation).
 
@@ -201,7 +201,7 @@ La page Production regroupe tout ce qui concerne vos panneaux. Elle affiche l'hi
 
 Depuis la v1.57.0 elle porte aussi deux panneaux, tous deux nourris par votre propre installation plutôt que par un modèle générique :
 
-- **Prévision**, une courbe horaire de production attendue jusqu'à cinq jours, apprise sur votre historique. Elle réclame le plugin `weather-forecast` en 2.3.0 ou plus, et environ six semaines de production avant que le modèle ne se stabilise. En attendant, Sowel affiche une estimation ciel clair provisoire et le dit.
+- **Prévision**, une courbe horaire de production attendue jusqu'à cinq jours (en vert, la production mesurée en bleu), apprise sur votre historique. Elle réclame le plugin `weather-forecast` en 2.3.0 ou plus, et environ six semaines de production avant que le modèle ne se stabilise. En attendant, Sowel affiche une estimation ciel clair provisoire et le dit.
 - **Santé**, qui signale quand les panneaux cessent de produire ce que votre propre historique laisse attendre. Déclarer un nouveau pan de toiture, ou changer la puissance crête, ré-estime le gain sur les jours qui suivent au lieu d'attendre que la fenêtre glisse.
 
 Les deux sont détaillés dans [Suivre sa production solaire](../deep-dives/pv-health.md).

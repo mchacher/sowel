@@ -95,7 +95,7 @@ The Live view shows what is happening right now — power values updated in real
 
 ![Live energy flow](../screenshots/energy-live-en.png)
 
-The diagram shows three boxes (Grid, Consumption, Production) with arrows indicating the direction of energy flow. When solar production exceeds in-house consumption, a "Solar surplus" indicator appears, and the share of solar going to the grid versus to the house is shown on the arrows.
+The diagram shows three boxes (Grid, Consumption, Production) with arrows indicating the direction of energy flow. When solar production exceeds in-house consumption, a "Solar surplus" indicator appears, and the share of solar going to the grid versus to the house is shown on the arrows. The colours of the flows sit on the icons, the arrows and the outline of the percentages; the figures themselves are in the text colour, so they stay legible in both themes.
 
 Tiles are hidden when their underlying equipment is not configured: with no production meter, only Grid and Consumption are shown.
 
@@ -131,7 +131,7 @@ Color coding on the **Total** chart:
 | Light blue | Off-peak-hours grid consumption                          |
 | Green      | Autoconsumption (only when a production meter is set up) |
 
-The legend below the chart has one swatch per colour, peak and off-peak included. The dark theme keeps the same meanings with its own shades: peak stays the vivid blue and off-peak the pale one, far enough apart to tell two stacked bars from each other.
+The legend below the chart has one swatch per colour, peak and off-peak included. The dark theme keeps the same meanings with its own shades: peak stays the vivid blue and off-peak the pale one, far enough apart to tell two stacked bars from each other. Hovering a bar opens a tooltip with the same swatches; its labels and figures are in the text colour, which the pale blue would not be legible as.
 
 Below the chart, totals are shown in kWh: grid (split into peak / off-peak), autoconsumption, and total (with the self-consumption share as a percentage).
 
@@ -199,7 +199,7 @@ The Production page is the home of everything about your panels. It shows the pr
 
 Since v1.57.0 it also carries two panels, both driven by your own installation rather than by a generic model:
 
-- **Forecast**, an hourly expected-production curve out to five days, learned from your history. It needs the `weather-forecast` plugin at 2.3.0 or later, and about six weeks of production before the model settles. Before that, Sowel shows a provisional clear-sky estimate and says so.
+- **Forecast**, an hourly expected-production curve out to five days (in green, the measured production in blue), learned from your history. It needs the `weather-forecast` plugin at 2.3.0 or later, and about six weeks of production before the model settles. Before that, Sowel shows a provisional clear-sky estimate and says so.
 - **Health**, which tells you when the panels stop performing against what your own history says they should. Declaring a new array, or changing the peak power, re-estimates the gain from the days that follow rather than waiting for the window to drift.
 
 Both are described at length in [Following your solar production](../deep-dives/pv-health.md).

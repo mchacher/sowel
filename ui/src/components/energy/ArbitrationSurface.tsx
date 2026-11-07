@@ -4,7 +4,14 @@ import { useTranslation } from "react-i18next";
 import { Scale, Moon } from "lucide-react";
 import { SectionHeader } from "./SectionHeader";
 import { ArbiterTimeline } from "./ArbiterTimeline";
-import { surplusStickerColor, loadStateColor, loadStateInk, displayState } from "./arbiterColors";
+import {
+  surplusStickerColor,
+  surplusStickerInk,
+  loadStateColor,
+  loadStateInk,
+  loadStatePillBg,
+  displayState,
+} from "./arbiterColors";
 import { useArbiter } from "../../store/useArbiter";
 import { useZoneAggregation } from "../../store/useZoneAggregation";
 import { ROOT_ZONE_ID } from "../../lib/constants";
@@ -67,7 +74,7 @@ function StatePill({ state }: { state: ArbiterLoadState }) {
   return (
     <span
       className="inline-flex items-center gap-1.5 text-micro font-semibold px-2 py-0.5 rounded-full whitespace-nowrap"
-      style={{ color: loadStateInk(state), background: `color-mix(in srgb, ${color} 15%, transparent)` }}
+      style={{ color: loadStateInk(state), background: loadStatePillBg(state) }}
     >
       <span className="w-2 h-2 rounded-full flex-none" style={{ backgroundColor: color }} />
       {shortLabel === null ? (
@@ -129,6 +136,7 @@ export function ArbitrationSurface() {
   // engine now decides this (spec 165) so the ribbon reads it the same way.
   const dormant = state.dormant;
   const stickerColor = dormant ? "var(--color-slate)" : surplusStickerColor(available);
+  const stickerInk = surplusStickerInk(available, dormant);
 
   // Spec 165 — the roster is the read model's `loads`, already resolved and
   // already in priority order (#616). The only presentation rule left here is
@@ -163,7 +171,7 @@ export function ArbitrationSurface() {
           <span
             className="ml-auto flex items-center gap-1 text-micro font-semibold px-1.5 py-0.5 rounded-full whitespace-nowrap"
             style={{
-              color: stickerColor,
+              color: stickerInk,
               background: `color-mix(in srgb, ${stickerColor} 12%, transparent)`,
             }}
             title={state.state === "degraded" ? t("arbiter.degradedReason") : undefined}
@@ -316,7 +324,7 @@ export function ArbitrationSurface() {
                   </div>
                   <div
                     className="tabular-nums text-title leading-tight mt-0.5"
-                    style={{ color: surplusStickerColor(available) }}
+                    style={{ color: surplusStickerInk(available) }}
                   >
                     {formatPower(available)}
                   </div>

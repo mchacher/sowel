@@ -17,6 +17,7 @@ import {
 import type { EnergyPoint } from "../../types";
 import type { EnergyUnit } from "../../store/useUiState";
 import { formatEur, formatKwhTick, formatKwhTooltip } from "./format";
+import { TooltipSeriesRow } from "./TooltipSeriesRow";
 
 interface EnergyBarChartProps {
   points: EnergyPoint[];
@@ -336,18 +337,22 @@ export function EnergyBarChart({ points, period, date, height = 300, unit = "wh"
                   {t("energy.consumption")}{t("common.colon")}
                   {isEur ? formatEur(costTotal, locale) : formatKwhTooltip(consoTotal, locale)}
                 </div>
-                <div style={{ color: HP_COLOR }}>
-                  {t("energy.peakHours")}{t("common.colon")}
-                  {isEur ? formatEur(datum.cost_hp, locale) : formatKwhTooltip(hpGrid, locale)}
-                </div>
-                <div style={{ color: HC_COLOR }}>
-                  {t("energy.offPeakHours")}{t("common.colon")}
-                  {isEur ? formatEur(datum.cost_hc, locale) : formatKwhTooltip(hcGrid, locale)}
-                </div>
+                <TooltipSeriesRow
+                  color={HP_COLOR}
+                  label={t("energy.peakHours")}
+                  value={isEur ? formatEur(datum.cost_hp, locale) : formatKwhTooltip(hpGrid, locale)}
+                />
+                <TooltipSeriesRow
+                  color={HC_COLOR}
+                  label={t("energy.offPeakHours")}
+                  value={isEur ? formatEur(datum.cost_hc, locale) : formatKwhTooltip(hcGrid, locale)}
+                />
                 {!isEur && datum.autoconso > 0 && (
-                  <div style={{ color: AUTOCONSO_COLOR }}>
-                    {t("energy.autoconsumption")}{t("common.colon")}{formatKwhTooltip(datum.autoconso, locale)}
-                  </div>
+                  <TooltipSeriesRow
+                    color={AUTOCONSO_COLOR}
+                    label={t("energy.autoconsumption")}
+                    value={formatKwhTooltip(datum.autoconso, locale)}
+                  />
                 )}
               </div>
             );

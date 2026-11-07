@@ -28,8 +28,6 @@
   --color-on-primary:         var(--p-on);
   /* Dashboard illustrations at rest (WidgetIcons, EvCarGauge). */
   --color-illu:           var(--illu-ink);
-  /* Kept for the PV forecast curve only, until the energy palette work. */
-  --color-accent:         var(--a-500);
   --color-background:     var(--n-50);
   --color-surface:        var(--n-0);
   --color-surface-raised: var(--n-0);

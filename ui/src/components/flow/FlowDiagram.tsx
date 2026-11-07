@@ -33,7 +33,8 @@ import {
   type FlowNodeSpec,
 } from "./flow-geometry";
 
-/** Small pill drawn on top of a flow route. */
+/** Small pill drawn on top of a flow route. The route's colour is on its
+ *  border; the figure is in ink (#1126: the solar green as text was 2.01:1). */
 function Pill({
   children,
   className,
@@ -45,24 +46,23 @@ function Pill({
 }) {
   return (
     <div
-      className={`absolute tabular-nums text-micro font-semibold px-2 py-0.5 rounded-full bg-surface border z-20 ${className ?? ""}`}
-      style={{ color, borderColor: color }}
+      className={`absolute tabular-nums text-micro font-semibold px-2 py-0.5 rounded-full bg-surface border text-text z-20 ${className ?? ""}`}
+      style={{ borderColor: color }}
     >
       {children}
     </div>
   );
 }
 
+/**
+ * One node. Its colour goes to the icon only: the value is in ink, the label
+ * and unit in the tertiary grey (#1126). A value in the node's colour put the
+ * solar green on the well at 1.78:1.
+ */
 function FlowNode({ node }: { node: FlowNodeSpec }) {
-  const unitClass =
-    node.slot === "focal"
-      ? "text-micro font-semibold opacity-60"
-      : "text-micro text-text-tertiary font-semibold";
-
   return (
     <div
       className={`absolute flex items-center justify-center bg-background rounded-md z-10 ${SLOT_BOX[node.slot]}`}
-      style={{ color: node.color }}
     >
       <div
         className={`flex flex-col items-center justify-center gap-1 ${node.dimmed ? "opacity-40" : ""}`}
@@ -70,13 +70,15 @@ function FlowNode({ node }: { node: FlowNodeSpec }) {
         <div className={`font-medium text-text-tertiary leading-tight whitespace-nowrap ${SLOT_LABEL[node.slot]}`}>
           {node.label}
         </div>
-        {node.icon}
+        <span className="flex" data-testid="flow-node-icon" style={{ color: node.color }}>
+          {node.icon}
+        </span>
         <div
-          className={`tabular-nums font-semibold leading-none flex items-baseline whitespace-nowrap ${SLOT_VALUE[node.slot]}`}
+          className={`tabular-nums font-semibold leading-none flex items-baseline whitespace-nowrap text-text ${SLOT_VALUE[node.slot]}`}
         >
           {node.valuePrefix}
           <span>{node.value}</span>
-          {node.unit && <span className={unitClass}>{node.unit}</span>}
+          {node.unit && <span className="text-micro text-text-tertiary font-semibold">{node.unit}</span>}
         </div>
         {node.sub && (
           <div className="text-micro text-text-tertiary leading-none">{node.sub}</div>
@@ -173,7 +175,7 @@ export function FlowDiagram({ nodes, links, tag, ariaLabel }: FlowDiagramProps) 
         <span
           className="absolute left-1/2 -translate-x-1/2 bottom-[8%] text-caption font-semibold px-3 py-1 rounded-full z-10"
           style={{
-            color: tag.color,
+            color: tag.ink ?? tag.color,
             background: `color-mix(in srgb, ${tag.color} 12%, transparent)`,
           }}
         >
