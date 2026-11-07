@@ -1,5 +1,6 @@
 import type { ReactNode } from "react";
 import type { LucideIcon } from "lucide-react";
+import { TOP_LEVEL_H1 } from "./page-title";
 
 interface PageHeaderProps {
   title: ReactNode;
@@ -12,15 +13,17 @@ interface PageHeaderProps {
 /**
  * Shared page header (spec 196, FR-1): title and optional subtitle on the left,
  * actions on the right. The row wraps, so on a phone the actions drop under the
- * title instead of pushing past the screen edge.
+ * title instead of pushing past the screen edge. Pages using it are top-level:
+ * below lg the title is visually hidden, the compact top bar names the page
+ * (FR-6). Without a subtitle the left block then takes no room at all.
  */
 export function PageHeader({ title, subtitle, actions, className = "mb-6" }: PageHeaderProps) {
   return (
     <div className={`flex flex-wrap items-center justify-between gap-3 ${className}`}>
-      <div className="min-w-0">
-        <h1>{title}</h1>
+      <div className={subtitle !== undefined && subtitle !== null ? "min-w-0" : "min-w-0 max-lg:contents"}>
+        <h1 className={TOP_LEVEL_H1}>{title}</h1>
         {subtitle !== undefined && subtitle !== null && (
-          <p className="text-[13px] text-text-secondary mt-0.5">{subtitle}</p>
+          <p className="text-small text-text-secondary mt-0.5">{subtitle}</p>
         )}
       </div>
       {actions && <div className="flex grow sm:grow-0 items-center justify-end gap-3">{actions}</div>}
@@ -44,7 +47,7 @@ export function PageHeaderButton({ icon: Icon, label, onClick }: PageHeaderButto
       type="button"
       onClick={onClick}
       aria-label={label}
-      className="flex items-center justify-center gap-2 w-10 h-10 sm:w-auto sm:h-auto sm:px-4 sm:py-2 shrink-0 text-[13px] font-medium text-white bg-primary rounded-[6px] hover:bg-primary-hover transition-colors duration-150"
+      className="flex items-center justify-center gap-2 w-10 h-10 sm:w-auto sm:h-auto sm:px-4 sm:py-2 shrink-0 text-small font-medium text-white bg-primary-fill rounded-sm hover:bg-primary-fill-hover transition-colors duration-150"
     >
       <Icon size={16} strokeWidth={1.5} />
       <span className="hidden sm:inline">{label}</span>

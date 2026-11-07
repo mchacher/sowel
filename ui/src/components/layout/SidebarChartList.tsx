@@ -23,8 +23,8 @@ export function SidebarChartList({ collapsed }: { collapsed: boolean }) {
       to="/analyse?new"
       end
       className={({ isActive }) => `
-        flex items-center gap-2 px-3 py-1.5 rounded-[6px] min-w-0
-        text-[13px] transition-colors duration-150 ease-out
+        flex items-center gap-2 px-3 py-1.5 rounded-sm min-w-0
+        text-small transition-colors duration-150 ease-out
         ${isActive
           ? "bg-primary-light text-primary font-medium"
           : "text-text-secondary hover:bg-border-light hover:text-text"
@@ -42,7 +42,7 @@ export function SidebarChartList({ collapsed }: { collapsed: boolean }) {
     return (
       <div className="space-y-0.5 pl-2">
         {newChartLink}
-        <p className="px-3 py-1.5 text-[11px] text-text-tertiary leading-tight">
+        <p className="px-3 py-1.5 text-caption text-text-tertiary leading-tight">
           {t("analyse.noSavedCharts")}
         </p>
       </div>
@@ -59,8 +59,8 @@ export function SidebarChartList({ collapsed }: { collapsed: boolean }) {
             key={chart.id}
             to={`/analyse/${chart.id}`}
             className={`
-              flex items-center gap-2 px-3 py-1.5 rounded-[6px] min-w-0
-              text-[13px] transition-colors duration-150 ease-out
+              flex items-center gap-2 px-3 py-1.5 rounded-sm min-w-0
+              text-small transition-colors duration-150 ease-out
               ${isActive
                 ? "bg-primary-light text-primary font-medium"
                 : "text-text-secondary hover:bg-border-light hover:text-text"

@@ -2,7 +2,7 @@ import { useState, useRef, useEffect } from "react";
 import { ChevronUp, ChevronDown } from "lucide-react";
 import type { EquipmentWithDetails } from "../../types";
 import { findDataByCategory, findOrderByCategory } from "./bindingUtils";
-import { formatNumber, formatTemperature } from "../../lib/format";
+import { formatTemperature } from "../../lib/format";
 
 interface Props {
   equipment: EquipmentWithDetails;
@@ -102,14 +102,13 @@ export function PoolHeatPumpControl({ equipment, onExecuteOrder, compact }: Prop
   return (
     <div className={`flex items-center gap-2 ${compact ? "" : "py-1"}`}>
       <div className="flex items-baseline gap-0.5">
-        <span className="text-[13px] font-semibold text-text tabular-nums leading-none font-mono">
-          {formatNumber(water, { decimals: 1 })}
+        <span className="text-small font-semibold text-text tabular-nums leading-none">
+          {formatTemperature(water, { style: compact ? "compact" : "full" })}
         </span>
-        <span className="text-[10px] font-medium text-text-tertiary">{compact ? "°" : "°C"}</span>
       </div>
       {mode && (
         <span
-          className={`text-[10px] font-medium px-1.5 py-0.5 rounded-full ${
+          className={`text-micro font-medium px-1.5 py-0.5 rounded-full ${
             mode.toUpperCase() === "OFF"
               ? "bg-border-light text-text-tertiary"
               : "bg-error/10 text-error"
@@ -124,18 +123,18 @@ export function PoolHeatPumpControl({ equipment, onExecuteOrder, compact }: Prop
             type="button"
             onClick={() => bumpSetpoint(Math.max(targetMin, setpoint - STEP))}
             disabled={setpoint <= targetMin}
-            className="w-6 h-6 flex items-center justify-center rounded-[4px] border border-border bg-surface text-text-secondary hover:border-primary/40 hover:text-primary disabled:opacity-40 disabled:cursor-not-allowed"
+            className="w-6 h-6 flex items-center justify-center rounded-sm border border-border bg-surface text-text-secondary hover:border-primary/40 hover:text-primary disabled:opacity-40 disabled:cursor-not-allowed"
           >
             <ChevronDown size={12} strokeWidth={2} />
           </button>
-          <span className="text-[11px] tabular-nums font-mono text-text-secondary min-w-[34px] text-center">
+          <span className="text-micro tabular-nums text-text-secondary min-w-[34px] text-center">
             {formatTemperature(setpoint, { style: compact ? "compact" : "full" })}
           </span>
           <button
             type="button"
             onClick={() => bumpSetpoint(Math.min(targetMax, setpoint + STEP))}
             disabled={setpoint >= targetMax}
-            className="w-6 h-6 flex items-center justify-center rounded-[4px] border border-border bg-surface text-text-secondary hover:border-primary/40 hover:text-primary disabled:opacity-40 disabled:cursor-not-allowed"
+            className="w-6 h-6 flex items-center justify-center rounded-sm border border-border bg-surface text-text-secondary hover:border-primary/40 hover:text-primary disabled:opacity-40 disabled:cursor-not-allowed"
           >
             <ChevronUp size={12} strokeWidth={2} />
           </button>

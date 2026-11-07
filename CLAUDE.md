@@ -191,11 +191,13 @@ Every integration plugin runs with scoped Proxies on its `PluginDeps` (`src/plug
 
 ## Design system
 
-- **Fonts**: Inter (body), JetBrains Mono (values, logs)
-- **Primary**: `#1A4F6E` (ocean blue), hover `#144159`, light `#EEF5F8`
-- **Accent**: `#F2C035` (amber), hover `#D4A41C`
-- **Spacing**: 4px base; radii 6px / 8px / 12px (`--radius-sm/md/lg`)
-- **Font sizes**: 14px body, 28px data values
+- **Fonts**: Inter (body and numbers, with `tabular-nums`), JetBrains Mono (logs, JSON, ids, versions, code only)
+- **Labels**: sentence case; uppercase only in table column headers (lint)
+- **Primary**: `#1A4F6E` (ocean blue), hover `#144159`, light `#EEF5F8`. Fill vs ink: `bg-primary-fill` carries text (white); `bg-primary` is the ink (links, icons, outlines; light in dark) and never carries text
+- **Amber** `#F2C035`: on or running now only. State roles (orange attention, red fault, green OK, open/closed neutral) in `design-system/tokens.md` §1.2, contrast checked by `ui/src/lib/color-roles.test.ts`
+- **Spacing**: 4px base; radii 6px controls / 10px cards / 16px sheets (`rounded-sm/md/lg`); cards are the `card` class, no border
+- **Font sizes**: eight steps, `text-micro` 11, `caption` 12, `small` 13, `body` 14, `lead` 16, `title` 20, `display` 28, `value` 40 px; an arbitrary size (`text-[13px]`) is rejected by lint
+- **Controls**: fields, selects, secondary buttons, steppers and segmented controls keep `border border-border`; `shadow-lg` is for modals, sheets and popovers only (`ui/src/lib/shapes.test.ts`)
 
 ## Installation-specific context (private companion repo)
 

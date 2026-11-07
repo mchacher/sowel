@@ -44,11 +44,11 @@ A recipe without a category -- for example one installed from a personal source 
 
 Every store entry belongs to one of three trust levels, so you always know whose code you are about to run:
 
-| Level         | Badge               | Who publishes it                   | What Sowel checks                                                                         |
-| ------------- | ------------------- | ---------------------------------- | ----------------------------------------------------------------------------------------- |
-| **Official**  | none                | The Sowel maintainer               | Integrity hash pinned in the official catalogue, code maintained with Sowel itself        |
-| **Community** | amber **Community** | A third-party developer            | Integrity hash pinned in the official catalogue; the code itself is not reviewed by Sowel |
-| **Personal**  | blue **Personal**   | You (your own GitHub repositories) | Integrity hash you approve yourself at install, then pinned (see below)                   |
+| Level         | Badge              | Who publishes it                   | What Sowel checks                                                                         |
+| ------------- | ------------------ | ---------------------------------- | ----------------------------------------------------------------------------------------- |
+| **Official**  | none               | The Sowel maintainer               | Integrity hash pinned in the official catalogue, code maintained with Sowel itself        |
+| **Community** | grey **Community** | A third-party developer            | Integrity hash pinned in the official catalogue; the code itself is not reviewed by Sowel |
+| **Personal**  | blue **Personal**  | You (your own GitHub repositories) | Integrity hash you approve yourself at install, then pinned (see below)                   |
 
 Installing a community plugin asks for a one-time confirmation. Installing or updating a personal plugin always asks for confirmation, showing exactly what you are about to run.
 

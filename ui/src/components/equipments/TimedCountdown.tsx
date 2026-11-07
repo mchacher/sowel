@@ -83,7 +83,7 @@ export function TimedCountdown({ action, size = 18, now }: TimedCountdownProps) 
           transform={`rotate(-90 ${size / 2} ${size / 2})`}
         />
       </svg>
-      <span className="font-mono tabular-nums">{formatRemaining(left)}</span>
+      <span className="tabular-nums">{formatRemaining(left)}</span>
     </span>
   );
 }

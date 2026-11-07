@@ -88,7 +88,7 @@ export function MeteringParentPanel({
   };
 
   return (
-    <div className="bg-surface rounded-[10px] border border-border mb-6 p-4">
+    <div className="card mb-6 p-4">
       {/* Spec 179 — a separate-supply meter is outside the partition, so a
           containment declaration would sit there unused: the select yields to
           the toggle rather than offering a choice that does nothing. */}
@@ -96,7 +96,7 @@ export function MeteringParentPanel({
         <>
           <div className="flex items-center gap-2 mb-1">
             <GitMerge size={16} strokeWidth={1.5} className="text-text-tertiary" />
-            <h3 className="text-[14px] font-semibold text-text">{t("equipments.metering.nesting.title")}</h3>
+            <h3 className="text-body font-semibold text-text">{t("equipments.metering.nesting.title")}</h3>
             <div className="ml-auto flex items-center gap-2">
               {saving && <Loader2 size={12} className="animate-spin text-text-tertiary" />}
               <select
@@ -106,7 +106,7 @@ export function MeteringParentPanel({
                   void save({ meteringParentId: e.target.value === "" ? null : e.target.value })
                 }
                 aria-label={t("equipments.metering.nesting.title")}
-                className="px-2 py-1 text-[12px] bg-background border border-border rounded-[6px] text-text max-w-[220px]"
+                className="px-2 py-1 text-caption bg-background border border-border rounded-sm text-text max-w-[220px]"
               >
                 <option value="">{t("equipments.metering.nesting.none")}</option>
                 {candidates.map((eq) => (
@@ -117,13 +117,13 @@ export function MeteringParentPanel({
               </select>
             </div>
           </div>
-          <p className="text-[12px] text-text-tertiary">{t("equipments.metering.nesting.hint")}</p>
+          <p className="text-caption text-text-tertiary">{t("equipments.metering.nesting.hint")}</p>
         </>
       )}
 
       {/* Spec 179 — declare the meter fed by a separate supply. */}
       <label
-        className={`flex items-center gap-2 text-[13px] text-text cursor-pointer ${separate ? "" : "mt-3 pt-3 border-t border-border"}`}
+        className={`flex items-center gap-2 text-small text-text cursor-pointer ${separate ? "" : "mt-3 pt-3 border-t border-border"}`}
       >
         <input
           type="checkbox"
@@ -136,7 +136,7 @@ export function MeteringParentPanel({
         <span className="font-semibold">{t("equipments.metering.separateSupply.title")}</span>
         {separate && saving && <Loader2 size={12} className="animate-spin text-text-tertiary" />}
       </label>
-      <p className="text-[12px] text-text-tertiary mt-1">
+      <p className="text-caption text-text-tertiary mt-1">
         {t("equipments.metering.separateSupply.hint")}
       </p>
 
@@ -145,7 +145,7 @@ export function MeteringParentPanel({
           pair), so the toggle yields to the separate-supply one. */}
       {!separate && offerLocalProduction && (
         <>
-          <label className="flex items-center gap-2 text-[13px] text-text cursor-pointer mt-3 pt-3 border-t border-border">
+          <label className="flex items-center gap-2 text-small text-text cursor-pointer mt-3 pt-3 border-t border-border">
             <input
               type="checkbox"
               checked={localProduction}
@@ -154,12 +154,12 @@ export function MeteringParentPanel({
             />
             <span className="font-semibold">{t("equipments.metering.localProduction.title")}</span>
           </label>
-          <p className="text-[12px] text-text-tertiary mt-1">
+          <p className="text-caption text-text-tertiary mt-1">
             {t("equipments.metering.localProduction.hint")}
           </p>
         </>
       )}
-      {error && <p className="text-[12px] text-error mt-2">{error}</p>}
+      {error && <p className="text-caption text-error mt-2">{error}</p>}
     </div>
   );
 }

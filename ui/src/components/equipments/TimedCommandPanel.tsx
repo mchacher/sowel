@@ -156,14 +156,14 @@ export function TimedCommandPanel({
   };
 
   const selectClass =
-    "px-2 py-1 text-[12px] bg-background border border-border rounded-[6px] text-text disabled:opacity-50";
+    "px-2 py-1 text-caption bg-background border border-border rounded-sm text-text disabled:opacity-50";
 
   return (
-    <div className="bg-surface rounded-[10px] border border-border mb-6 p-4">
+    <div className="card mb-6 p-4">
       <div className="flex items-center gap-2 mb-1">
         <TimerReset size={16} strokeWidth={1.5} className="text-text-tertiary" />
-        <h3 className="text-[14px] font-semibold text-text">{t("equipments.timed.configTitle")}</h3>
-        <label className="ml-auto flex items-center gap-2 text-[12px] text-text-secondary cursor-pointer">
+        <h3 className="text-body font-semibold text-text">{t("equipments.timed.configTitle")}</h3>
+        <label className="ml-auto flex items-center gap-2 text-caption text-text-secondary cursor-pointer">
           <input
             type="checkbox"
             checked={enabled}
@@ -174,14 +174,14 @@ export function TimedCommandPanel({
           {t("equipments.timed.enable")}
         </label>
       </div>
-      <p className="text-[12px] text-text-tertiary flex items-center gap-1.5">
+      <p className="text-caption text-text-tertiary flex items-center gap-1.5">
         {t("equipments.timed.hint")}
         {saving && <Loader2 size={12} className="animate-spin text-text-tertiary" />}
       </p>
 
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 mt-4">
         <label className="flex flex-col gap-1">
-          <span className="text-[11px] text-text-tertiary">{t("equipments.timed.command")}</span>
+          <span className="text-micro text-text-tertiary">{t("equipments.timed.command")}</span>
           <select
             className={selectClass}
             value={alias}
@@ -197,7 +197,7 @@ export function TimedCommandPanel({
         </label>
 
         <label className="flex flex-col gap-1">
-          <span className="text-[11px] text-text-tertiary">{t("equipments.timed.revert")}</span>
+          <span className="text-micro text-text-tertiary">{t("equipments.timed.revert")}</span>
           <select
             className={selectClass}
             value={String(configured?.revertValue ?? "")}
@@ -219,7 +219,7 @@ export function TimedCommandPanel({
         </label>
 
         <label className="flex flex-col gap-1">
-          <span className="text-[11px] text-text-tertiary">{t("equipments.timed.duration")}</span>
+          <span className="text-micro text-text-tertiary">{t("equipments.timed.duration")}</span>
           <select
             className={selectClass}
             value={String(durationMs)}
@@ -240,7 +240,7 @@ export function TimedCommandPanel({
       {/* Spec 178 — the ladder a further press walks up. */}
       {enabled && (
         <div className="mt-4 pt-3 border-t border-border">
-          <label className="flex items-center gap-2 text-[13px] text-text cursor-pointer">
+          <label className="flex items-center gap-2 text-small text-text cursor-pointer">
             <input
               type="checkbox"
               checked={laddered}
@@ -250,7 +250,7 @@ export function TimedCommandPanel({
             />
             <span className="font-semibold">{t("equipments.timed.ladder")}</span>
           </label>
-          <p className="text-[12px] text-text-tertiary mt-1">{t("equipments.timed.ladderHint")}</p>
+          <p className="text-caption text-text-tertiary mt-1">{t("equipments.timed.ladderHint")}</p>
 
           {laddered && (
             <div className="flex flex-wrap gap-2 mt-3">
@@ -263,13 +263,13 @@ export function TimedCommandPanel({
                     type="button"
                     onClick={() => toggleStep(ms)}
                     disabled={saving}
-                    className={`px-2.5 py-1 text-[12px] font-medium rounded-full border transition-colors duration-150 cursor-pointer disabled:opacity-50 ${
+                    className={`px-2.5 py-1 text-caption font-medium rounded-full border transition-colors duration-150 cursor-pointer disabled:opacity-50 ${
                       on
                         ? "border-primary/40 bg-primary/10 text-primary"
                         : "border-border bg-surface text-text-tertiary hover:border-primary/30"
                     }`}
                   >
-                    {on && <span className="font-mono mr-1">{rung}.</span>}
+                    {on && <span className="tabular-nums mr-1">{rung}.</span>}
                     {t("equipments.timed.minutes", { count: Math.round(ms / 60_000) })}
                   </button>
                 );
@@ -280,15 +280,15 @@ export function TimedCommandPanel({
       )}
 
       {equipment.timedAction && (
-        <div className="mt-4 flex items-center gap-2 text-[12px] text-text-secondary bg-active/10 border border-active/30 rounded-[8px] px-3 py-2">
-          <span className="text-active-text">
+        <div className="mt-4 flex items-center gap-2 text-caption text-text-secondary bg-active-bg border border-active rounded-md px-3 py-2">
+          <span className="text-active-ink">
             <TimedCountdown action={equipment.timedAction} />
           </span>
           {t("equipments.timed.running")}
         </div>
       )}
 
-      {error && <p className="text-[12px] text-error mt-2">{error}</p>}
+      {error && <p className="text-caption text-error mt-2">{error}</p>}
     </div>
   );
 }

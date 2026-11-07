@@ -44,11 +44,11 @@ Une recette sans catégorie -- par exemple installée depuis une source personne
 
 Chaque entrée du store appartient à l'un des trois niveaux de confiance, pour que vous sachiez toujours quel code vous vous apprêtez à exécuter :
 
-| Niveau            | Badge               | Qui le publie                    | Ce que Sowel vérifie                                                                                  |
-| ----------------- | ------------------- | -------------------------------- | ----------------------------------------------------------------------------------------------------- |
-| **Officiel**      | aucun               | Le mainteneur de Sowel           | Empreinte d'intégrité épinglée dans le catalogue officiel, code maintenu avec Sowel                   |
-| **Communautaire** | **Community** ambre | Un développeur tiers             | Empreinte d'intégrité épinglée dans le catalogue officiel ; le code lui-même n'est pas revu par Sowel |
-| **Personnel**     | **Perso** bleu      | Vous (vos propres dépôts GitHub) | Empreinte que vous approuvez vous-même à l'installation, puis épinglée (voir plus bas)                |
+| Niveau            | Badge              | Qui le publie                    | Ce que Sowel vérifie                                                                                  |
+| ----------------- | ------------------ | -------------------------------- | ----------------------------------------------------------------------------------------------------- |
+| **Officiel**      | aucun              | Le mainteneur de Sowel           | Empreinte d'intégrité épinglée dans le catalogue officiel, code maintenu avec Sowel                   |
+| **Communautaire** | **Community** gris | Un développeur tiers             | Empreinte d'intégrité épinglée dans le catalogue officiel ; le code lui-même n'est pas revu par Sowel |
+| **Personnel**     | **Perso** bleu     | Vous (vos propres dépôts GitHub) | Empreinte que vous approuvez vous-même à l'installation, puis épinglée (voir plus bas)                |
 
 Installer un plugin communautaire demande une confirmation unique. Installer ou mettre à jour un plugin personnel demande toujours une confirmation, en montrant exactement ce que vous allez exécuter.
 

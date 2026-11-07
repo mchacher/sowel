@@ -28,6 +28,8 @@ import {
   disablePlugin,
 } from "../../api";
 import type { IntegrationInfo, IntegrationSettingDef } from "../../types";
+import { FIELD_LABEL } from "../ui/text-roles";
+import { Switch } from "../ui/Switch";
 
 interface IntegrationDrawerProps {
   integration: IntegrationInfo | null;
@@ -180,17 +182,17 @@ export function IntegrationDrawer({ integration, onClose, onRefresh }: Integrati
         {/* Header */}
         <div className="flex items-center justify-between p-5 border-b border-border">
           <div className="flex items-center gap-3">
-            <div className="w-9 h-9 bg-accent/10 rounded-[8px] flex items-center justify-center">
-              <IconComponent size={18} className="text-accent" />
+            <div className="w-9 h-9 bg-border-light rounded-md flex items-center justify-center">
+              <IconComponent size={18} className="text-text-secondary" />
             </div>
             <div>
-              <h2 className="text-[16px] font-semibold text-text">{integration.name}</h2>
-              <p className="text-[12px] text-text-tertiary">{integration.description}</p>
+              <h2 className="text-lead font-semibold text-text">{integration.name}</h2>
+              <p className="text-caption text-text-tertiary">{integration.description}</p>
             </div>
           </div>
           <button
             onClick={onClose}
-            className="w-8 h-8 flex items-center justify-center rounded-[6px] hover:bg-border-light transition-colors cursor-pointer"
+            className="w-8 h-8 flex items-center justify-center rounded-sm hover:bg-border-light transition-colors cursor-pointer"
           >
             <X size={18} className="text-text-secondary" />
           </button>
@@ -200,7 +202,7 @@ export function IntegrationDrawer({ integration, onClose, onRefresh }: Integrati
         <div className="flex-1 overflow-y-auto p-5 space-y-6">
           {/* Status cards */}
           <div className="grid grid-cols-3 gap-3">
-            <div className="bg-background rounded-[8px] p-3 text-center">
+            <div className="bg-background rounded-md p-3 text-center">
               <div className="flex items-center justify-center gap-1.5 mb-1">
                 {isDisabled ? (
                   <Power size={14} className="text-text-tertiary" />
@@ -213,7 +215,7 @@ export function IntegrationDrawer({ integration, onClose, onRefresh }: Integrati
                 )}
               </div>
               <div
-                className={`text-[13px] font-medium ${isDisabled ? "text-text-tertiary" : isConnected ? "text-success" : isError ? "text-error" : "text-text-tertiary"}`}
+                className={`text-small font-medium ${isDisabled ? "text-text-tertiary" : isConnected ? "text-success" : isError ? "text-error" : "text-text-tertiary"}`}
               >
                 {isDisabled
                   ? t("integrations.disabledStatus")
@@ -222,32 +224,32 @@ export function IntegrationDrawer({ integration, onClose, onRefresh }: Integrati
                     )}
               </div>
             </div>
-            <div className="bg-background rounded-[8px] p-3 text-center">
-              <div className="text-[20px] font-semibold text-text tabular-nums">
+            <div className="bg-background rounded-md p-3 text-center">
+              <div className="text-title font-semibold text-text tabular-nums">
                 {integration.deviceCount}
               </div>
-              <div className="text-[11px] text-text-tertiary">
+              <div className="text-micro text-text-tertiary">
                 {t("integrations.devices")}
                 {integration.offlineDeviceCount > 0 && (
-                  <span className="text-warning ml-1">
+                  <span className="text-warning-ink ml-1">
                     ({integration.offlineDeviceCount} off)
                   </span>
                 )}
               </div>
             </div>
-            <div className="bg-background rounded-[8px] p-3 text-center">
+            <div className="bg-background rounded-md p-3 text-center">
               {integration.polling ? (
                 <>
-                  <div className="flex items-center justify-center gap-1 text-[13px] font-medium text-text tabular-nums">
+                  <div className="flex items-center justify-center gap-1 text-small font-medium text-text tabular-nums">
                     <Timer size={12} className="text-text-tertiary" />
                     {Math.round(integration.polling.intervalMs / 1000)}s
                   </div>
-                  <div className="text-[11px] text-text-tertiary">{t("integrations.polling")}</div>
+                  <div className="text-micro text-text-tertiary">{t("integrations.polling")}</div>
                 </>
               ) : (
                 <>
-                  <div className="text-[13px] font-medium text-text-tertiary">—</div>
-                  <div className="text-[11px] text-text-tertiary">{t("integrations.realtime")}</div>
+                  <div className="text-small font-medium text-text-tertiary">—</div>
+                  <div className="text-micro text-text-tertiary">{t("integrations.realtime")}</div>
                 </>
               )}
             </div>
@@ -255,7 +257,7 @@ export function IntegrationDrawer({ integration, onClose, onRefresh }: Integrati
 
           {/* Actions */}
           <div>
-            <h3 className="text-[12px] font-medium text-text-tertiary uppercase tracking-widest mb-3">
+            <h3 className="text-lead font-semibold text-text mb-3">
               {t("integrations.actions")}
             </h3>
             <div className="flex flex-wrap gap-2">
@@ -320,7 +322,7 @@ export function IntegrationDrawer({ integration, onClose, onRefresh }: Integrati
           {/* Message */}
           {message && (
             <p
-              className={`text-[13px] ${message.type === "success" ? "text-success" : "text-error"}`}
+              className={`text-small ${message.type === "success" ? "text-success" : "text-error"}`}
             >
               {message.text}
             </p>
@@ -328,7 +330,7 @@ export function IntegrationDrawer({ integration, onClose, onRefresh }: Integrati
 
           {/* Configuration */}
           <div>
-            <h3 className="text-[12px] font-medium text-text-tertiary uppercase tracking-widest mb-3">
+            <h3 className="text-lead font-semibold text-text mb-3">
               {t("integrations.configuration")}
             </h3>
             <div className="space-y-3">
@@ -346,19 +348,19 @@ export function IntegrationDrawer({ integration, onClose, onRefresh }: Integrati
           {/* OAuth Authorization */}
           {integration.supportsOAuth && (
             <div>
-              <h3 className="text-[12px] font-medium text-text-tertiary uppercase tracking-widest mb-3">
+              <h3 className="text-lead font-semibold text-text mb-3">
                 {t("integrations.authorization")}
               </h3>
               {isConnected ? (
-                <div className="flex items-center justify-between bg-success/10 border border-success/20 rounded-[8px] px-4 py-3">
-                  <div className="flex items-center gap-2 text-success text-[13px] font-medium">
+                <div className="flex items-center justify-between bg-success/10 border border-success/20 rounded-md px-4 py-3">
+                  <div className="flex items-center gap-2 text-success text-small font-medium">
                     <CheckCircle size={15} />
                     {t("integrations.oauthConnected")}
                   </div>
                   <button
                     onClick={handleOAuthConnect}
                     disabled={oauthLoading}
-                    className="text-[12px] text-text-tertiary hover:text-text underline cursor-pointer disabled:opacity-50"
+                    className="text-caption text-text-tertiary hover:text-text underline cursor-pointer disabled:opacity-50"
                   >
                     {t("integrations.oauthReconnect")}
                   </button>
@@ -367,7 +369,7 @@ export function IntegrationDrawer({ integration, onClose, onRefresh }: Integrati
                 <button
                   onClick={handleOAuthConnect}
                   disabled={oauthLoading || hasRequiredEmpty}
-                  className="w-full flex items-center justify-center gap-2 px-4 py-3 text-[14px] font-medium bg-primary text-white rounded-[8px] hover:bg-primary-hover transition-colors disabled:opacity-50 cursor-pointer disabled:cursor-default"
+                  className="w-full flex items-center justify-center gap-2 px-4 py-3 text-body font-medium bg-primary-fill text-white rounded-sm hover:bg-primary-fill-hover transition-colors disabled:opacity-50 cursor-pointer disabled:cursor-default"
                 >
                   {oauthLoading ? (
                     <Loader2 size={15} className="animate-spin" />
@@ -378,7 +380,7 @@ export function IntegrationDrawer({ integration, onClose, onRefresh }: Integrati
                 </button>
               )}
               {hasRequiredEmpty && !isConnected && (
-                <p className="text-[12px] text-text-tertiary mt-2">
+                <p className="text-caption text-text-tertiary mt-2">
                   {t("integrations.oauthFillFirst")}
                 </p>
               )}
@@ -391,7 +393,7 @@ export function IntegrationDrawer({ integration, onClose, onRefresh }: Integrati
           <button
             onClick={handleSave}
             disabled={saving || !dirty}
-            className="w-full px-4 py-2.5 text-[14px] font-medium bg-primary text-white rounded-[6px] hover:bg-primary-hover transition-colors disabled:opacity-50 cursor-pointer disabled:cursor-default"
+            className="w-full px-4 py-2.5 text-body font-medium bg-primary-fill text-white rounded-sm hover:bg-primary-fill-hover transition-colors disabled:opacity-50 cursor-pointer disabled:cursor-default"
           >
             {saving ? (
               <span className="flex items-center justify-center gap-2">
@@ -427,9 +429,9 @@ function ActionButton({
     <button
       onClick={onClick}
       disabled={loading || disabled}
-      className={`flex items-center gap-1.5 px-3 py-2 text-[13px] font-medium rounded-[6px] transition-colors disabled:opacity-50 cursor-pointer disabled:cursor-default ${
+      className={`flex items-center gap-1.5 px-3 py-2 text-small font-medium rounded-sm transition-colors disabled:opacity-50 cursor-pointer disabled:cursor-default ${
         primary
-          ? "bg-primary text-white hover:bg-primary-hover"
+          ? "bg-primary-fill text-white hover:bg-primary-fill-hover"
           : "text-text-secondary border border-border hover:bg-border-light"
       }`}
     >
@@ -452,29 +454,19 @@ function SettingField({
     const checked = value === "true";
     return (
       <div className="flex items-center gap-3 py-1">
-        <button
-          type="button"
-          role="switch"
-          aria-checked={checked}
-          onClick={() => onChange(checked ? "false" : "true")}
-          className={`relative inline-flex h-5 w-9 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ${
-            checked ? "bg-primary" : "bg-border"
-          }`}
-        >
-          <span
-            className={`pointer-events-none inline-block h-4 w-4 transform rounded-full bg-white shadow transition-transform duration-200 ${
-              checked ? "translate-x-4" : "translate-x-0"
-            }`}
-          />
-        </button>
-        <span className="text-[13px] text-text">{setting.label}</span>
+        <Switch
+          checked={checked}
+          onChange={(next) => onChange(next ? "true" : "false")}
+          label={setting.label}
+        />
+        <span className="text-small text-text">{setting.label}</span>
       </div>
     );
   }
 
   return (
     <div>
-      <label className="block text-[12px] text-text-tertiary uppercase tracking-widest mb-1">
+      <label className={FIELD_LABEL}>
         {setting.label}
         {setting.required ? <span className="text-error ml-0.5">*</span> : <span className="text-text-tertiary ml-1">(opt.)</span>}
       </label>
@@ -483,7 +475,7 @@ function SettingField({
         value={value}
         onChange={(e) => onChange(e.target.value)}
         placeholder={setting.placeholder ?? ""}
-        className="w-full px-3 py-2 text-[14px] bg-background border border-border rounded-[6px] text-text placeholder:text-text-tertiary focus:outline-none focus:border-primary"
+        className="w-full px-3 py-2 text-body bg-background border border-border rounded-sm text-text placeholder:text-text-tertiary focus:outline-none focus:border-primary"
       />
     </div>
   );

@@ -11,7 +11,9 @@ import { WidgetGrid } from "../components/dashboard/WidgetGrid";
 import { AddWidgetModal } from "../components/dashboard/AddWidgetModal";
 import type { EquipmentWithDetails, ZoneWithChildren, WidgetFamily } from "../types";
 import { equipmentZoneQualifiers, flattenZonesWithPath, zoneChainMap } from "../lib/zone-path";
-import { MOBILE_FAB_BOTTOM } from "../lib/mobile-fab";
+import { ZoneHeroLead } from "../components/home/ZoneHeroLead";
+import { useZoneAggregation } from "../store/useZoneAggregation";
+import { ROOT_ZONE_ID } from "../lib/constants";
 
 export function DashboardPage() {
   // Spec 169 — "recipes" joins the subscription so a pinned tile's countdown
@@ -34,6 +36,7 @@ export function DashboardPage() {
   const fetchInstances = useRecipes((s) => s.fetchInstances);
   const user = useAuth((s) => s.user);
   const isAdmin = user?.role === "admin";
+  const rootAgg = useZoneAggregation((s) => s.data[ROOT_ZONE_ID]);
 
   const [editMode, setEditMode] = useState(false);
   const [showAddModal, setShowAddModal] = useState(false);
@@ -126,14 +129,14 @@ export function DashboardPage() {
           <div className="w-16 h-16 rounded-full bg-border-light flex items-center justify-center mb-4">
             <LayoutDashboard size={28} strokeWidth={1.5} className="text-text-tertiary" />
           </div>
-          <h3 className="text-[16px] font-medium text-text mb-1">{t("dashboard.emptyTitle")}</h3>
-          <p className="text-[13px] text-text-secondary max-w-[320px] mb-4">
+          <h3 className="text-lead font-medium text-text mb-1">{t("dashboard.emptyTitle")}</h3>
+          <p className="text-small text-text-secondary max-w-[320px] mb-4">
             {isAdmin ? t("dashboard.emptyDescAdmin") : t("dashboard.emptyDesc")}
           </p>
           {isAdmin && (
             <button
               onClick={() => setShowAddModal(true)}
-              className="inline-flex items-center gap-2 px-4 py-2.5 bg-primary text-white text-[13px] font-medium rounded-[6px] hover:bg-primary-hover transition-colors cursor-pointer"
+              className="inline-flex items-center gap-2 px-4 py-2.5 bg-primary-fill text-white text-small font-medium rounded-sm hover:bg-primary-fill-hover transition-colors cursor-pointer"
             >
               <Plus size={16} strokeWidth={1.5} />
               {t("dashboard.addFirstWidget")}
@@ -154,24 +157,25 @@ export function DashboardPage() {
     );
   }
 
+  const rootZone = zoneMap.get(ROOT_ZONE_ID);
+
   return (
-    // Room under the grid for the mobile edit button (72–116 px from the
-    // bottom, content ends at 56 px): pb-20 keeps the last tile clear.
-    <div className={isAdmin ? "p-4 pb-20 sm:p-6" : "p-4 sm:p-6"}>
+    <div className="p-4 sm:p-6">
       <div>
-        {/* Header from 640 px. The title only from 1024 px: below, the compact top
-            bar already names the page (spec 196, pr1-tablette); tablets keep the
-            edit buttons here, phones use the FAB. */}
-        <div className="hidden sm:flex items-center justify-between mb-5">
-          <h1 className="hidden lg:block">
-            {t("dashboard.title")}
-          </h1>
+        {/* Desktop header: the page name, the home in one line under it, and the
+            edit buttons. Below lg the compact top bar names the page, and editing
+            starts from the button under the grid (spec 196, FR-6). */}
+        <div className="hidden lg:flex items-start justify-between gap-4 mb-5">
+          <div className="min-w-0">
+            <h1>{t("dashboard.title")}</h1>
+            {rootZone && <ZoneHeroLead zone={rootZone} aggData={rootAgg} />}
+          </div>
           {isAdmin && (
-            <div className="ml-auto flex items-center gap-2">
+            <div className="flex items-center gap-2 flex-shrink-0">
               {editMode && (
                 <button
                   onClick={() => setShowAddModal(true)}
-                  className="inline-flex items-center gap-1.5 px-3 py-1.5 text-[13px] font-medium text-primary bg-primary-light border border-primary/20 rounded-[6px] hover:bg-primary/15 transition-colors cursor-pointer"
+                  className="inline-flex items-center gap-1.5 px-3 py-1.5 text-small font-medium text-primary bg-primary-light border border-primary/20 rounded-sm hover:bg-primary/15 transition-colors cursor-pointer"
                 >
                   <Plus size={14} strokeWidth={1.5} />
                   {t("dashboard.addWidget")}
@@ -179,10 +183,10 @@ export function DashboardPage() {
               )}
               <button
                 onClick={() => setEditMode(!editMode)}
-                className={`inline-flex items-center gap-1.5 px-3 py-1.5 text-[13px] font-medium rounded-[6px] transition-colors cursor-pointer ${
+                className={`inline-flex items-center gap-1.5 px-3 py-1.5 text-small font-medium rounded-sm transition-colors cursor-pointer ${
                   editMode
-                    ? "text-white bg-primary hover:bg-primary-hover"
-                    : "text-text-secondary bg-surface border border-border hover:bg-border-light"
+                    ? "text-white bg-primary-fill hover:bg-primary-fill-hover"
+                    : "text-text-secondary border border-border bg-surface hover:bg-border-light"
                 }`}
               >
                 {editMode ? (
@@ -201,35 +205,6 @@ export function DashboardPage() {
           )}
         </div>
 
-        {/* Mobile FAB — bottom right, above bottom nav (safe-area aware, #496) */}
-        {isAdmin && (
-          <div
-            className="sm:hidden fixed right-4 z-30 flex flex-col items-end gap-2"
-            style={{ bottom: MOBILE_FAB_BOTTOM }}
-          >
-            {editMode && (
-              <button
-                onClick={() => setShowAddModal(true)}
-                aria-label={t("dashboard.addWidget")}
-                className="w-11 h-11 flex items-center justify-center rounded-full bg-primary-light text-primary border border-primary/20 shadow-lg active:scale-95 transition-transform"
-              >
-                <Plus size={18} strokeWidth={1.5} />
-              </button>
-            )}
-            <button
-              onClick={() => setEditMode(!editMode)}
-              aria-label={editMode ? t("dashboard.done") : t("dashboard.edit")}
-              className={`w-11 h-11 flex items-center justify-center rounded-full shadow-lg active:scale-95 transition-transform ${
-                editMode
-                  ? "bg-primary text-white"
-                  : "bg-surface text-text-secondary border border-border"
-              }`}
-            >
-              {editMode ? <Check size={18} strokeWidth={1.5} /> : <Pencil size={18} strokeWidth={1.5} />}
-            </button>
-          </div>
-        )}
-
         {/* Widget grid */}
         <WidgetGrid
           widgets={widgets}
@@ -243,7 +218,46 @@ export function DashboardPage() {
           onReorder={handleReorder}
           onDelete={handleDelete}
         />
+
+        {/* Below lg: editing is rare, so it starts from a quiet button under the
+            last tile instead of a floating one over the grid (pr6-edition). */}
+        {isAdmin && !editMode && (
+          <button
+            type="button"
+            onClick={() => setEditMode(true)}
+            className="lg:hidden mt-4 w-full flex items-center justify-center gap-2 min-h-11 rounded-sm text-small font-medium text-text-secondary hover:bg-border-light transition-colors duration-150"
+          >
+            <Pencil size={16} strokeWidth={1.5} aria-hidden="true" />
+            {t("dashboard.customize")}
+          </button>
+        )}
       </div>
+
+      {/* While editing, below lg: a bar that stays at the bottom of the page,
+          just above the bottom navigation (the page scrolls inside <main>). */}
+      {isAdmin && editMode && (
+        <div
+          data-testid="dashboard-edit-bar"
+          className="lg:hidden sticky bottom-0 z-30 -mx-4 sm:-mx-6 -mb-4 sm:-mb-6 mt-4 flex items-center gap-2 px-4 sm:px-6 py-2 bg-surface border-t border-border-light"
+        >
+          <button
+            type="button"
+            onClick={() => setShowAddModal(true)}
+            className="flex-1 inline-flex items-center justify-center gap-1.5 min-h-11 px-3 text-small font-medium text-primary bg-primary-light border border-primary/20 rounded-sm hover:bg-primary/15 transition-colors"
+          >
+            <Plus size={16} strokeWidth={1.5} aria-hidden="true" />
+            {t("dashboard.addWidget")}
+          </button>
+          <button
+            type="button"
+            onClick={() => setEditMode(false)}
+            className="flex-1 inline-flex items-center justify-center gap-1.5 min-h-11 px-3 text-small font-medium text-white bg-primary-fill rounded-sm hover:bg-primary-fill-hover transition-colors"
+          >
+            <Check size={16} strokeWidth={1.5} aria-hidden="true" />
+            {t("dashboard.done")}
+          </button>
+        </div>
+      )}
 
       {showAddModal && (
         <AddWidgetModal

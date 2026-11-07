@@ -1,5 +1,7 @@
 # Recipe row (`recipe`)
 
+> **Superseded in part by [tokens.md](../tokens.md) (spec 196).** Labels are sentence case and numbers Inter with tabular figures (§2), radii are 6 / 10 / 16 px (§4), and a card or panel has no border (§5.1). Where the CSS below disagrees, tokens.md wins.
+
 > A row inside the Comportements panel's Recettes sub-category. Clickable to open the recipe edit modal, with an inline toggle and three small action buttons (logs, duplicate, delete).
 
 ---
@@ -221,15 +223,15 @@ In production this maps to a wrapping container that does NOT capture clicks its
 
 ## Accessibility
 
-| Concern                      | Implementation                                                                                                                                                                                                                                         |
+| Concern | Implementation |
 | ---------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | --------------------------------------------------------------------------- |
-| Open recipe (primary action) | `<button class="recipe__open" title="…">` — keyboard accessible, focusable, focus-visible style                                                                                                                                                        |
-| Toggle                       | `role="switch" aria-checked="true                                                                                                                                                                                                                      | false"`+`tabindex="0"`— production must implement keyboard`Space` to toggle |
-| Action buttons               | Each has `aria-label` distinct from the title (icon-only buttons need both for screen readers)                                                                                                                                                         |
-| Visual order vs DOM order    | DOM order is icon → open → toggle → actions. Visual row 2 (actions) appears AFTER row 1 visually but is fine because grid placement doesn't change DOM.                                                                                                |
-| Color contrast               | `.recipe__action--danger` red-500 on red-50 hover: AAA. `.recipe__action--primary` blue-500 on blue-50: AAA.                                                                                                                                           |
-| Touch targets                | Action buttons are 22 × 20 px. Below Apple HIG 44 × 44 — acceptable in a dense list context, but on mobile we **hide row 2** entirely (`.recipe__actions { display: none }` on mobile in production). Mobile users access these actions via the modal. |
-| Focus indicator              | `.recipe__open:focus-visible` shows a 2 px primary outline. Action buttons rely on default browser focus ring (production may override).                                                                                                               |
+| Open recipe (primary action) | `<button class="recipe__open" title="…">` — keyboard accessible, focusable, focus-visible style |
+| Toggle | `role="switch" aria-checked="true                                                                                                                                                                                                                      | false"`+`tabindex="0"`— production must implement keyboard`Space` to toggle |
+| Action buttons | Each has `aria-label` distinct from the title (icon-only buttons need both for screen readers) |
+| Visual order vs DOM order | DOM order is icon → open → toggle → actions. Visual row 2 (actions) appears AFTER row 1 visually but is fine because grid placement doesn't change DOM. |
+| Color contrast | `.recipe__action--danger` red-500 on red-50 hover: AAA. `.recipe__action--primary` blue-500 on blue-50: AAA. |
+| Touch targets | Action buttons are 22 × 20 px. Below Apple HIG 44 × 44 — acceptable in a dense list context, but on mobile we **hide row 2** entirely (`.recipe__actions { display: none }` on mobile in production). Mobile users access these actions via the modal. |
+| Focus indicator | `.recipe__open:focus-visible` shows a 2 px primary outline. Action buttons rely on default browser focus ring (production may override). |
 
 ---
 

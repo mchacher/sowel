@@ -107,12 +107,12 @@ export function DisplayPanel({
   const visibleRows = ROW_ORDER.filter((c) => dataByCategory.has(c));
   if (visibleRows.length === 0) {
     return (
-      <div className="bg-surface rounded-[10px] border border-border p-4 mb-6">
-        <h3 className="text-[14px] font-semibold text-text flex items-center gap-2 mb-2">
+      <div className="card p-4 mb-6">
+        <h3 className="text-body font-semibold text-text flex items-center gap-2 mb-2">
           <Monitor size={16} strokeWidth={1.5} className="text-text-tertiary" />
           {t("displays.panel.title")}
         </h3>
-        <p className="text-[13px] text-text-tertiary">{t("displays.panel.noData")}</p>
+        <p className="text-small text-text-tertiary">{t("displays.panel.noData")}</p>
       </div>
     );
   }
@@ -143,8 +143,8 @@ export function DisplayPanel({
   };
 
   return (
-    <div className="bg-surface rounded-[10px] border border-border p-4 mb-6">
-      <h3 className="text-[14px] font-semibold text-text flex items-center gap-2 mb-4">
+    <div className="card p-4 mb-6">
+      <h3 className="text-body font-semibold text-text flex items-center gap-2 mb-4">
         <Monitor size={16} strokeWidth={1.5} className="text-text-tertiary" />
         {t("displays.panel.title")}
       </h3>
@@ -163,17 +163,17 @@ export function DisplayPanel({
               className="flex items-center gap-3 py-2 first:pt-0 last:pb-0"
             >
               {iconFor(category)}
-              <span className="flex-1 text-[13px] text-text">
+              <span className="flex-1 text-small text-text">
                 {t(`displays.fields.${category}`)}
               </span>
               {!isInteractive && (
-                <span className="text-[13px] font-mono text-text-secondary">
+                <span className="text-small tabular-nums text-text-secondary">
                   {formatValue(category, binding.value)}
                 </span>
               )}
               {category === "language" && languageBinding && languageOrder && (
                 <select
-                  className="text-[13px] bg-bg border border-border rounded-[6px] px-2 py-1"
+                  className="text-small bg-bg border border-border rounded-sm px-2 py-1"
                   value={String(languageBinding.value ?? "")}
                   onChange={(e) =>
                     onExecuteOrder(languageOrder.alias, e.target.value)
@@ -210,7 +210,7 @@ export function DisplayPanel({
                       }}
                       className="w-24"
                     />
-                    <span className="text-[13px] font-mono text-text-secondary w-12 text-right">
+                    <span className="text-small tabular-nums text-text-secondary w-12 text-right">
                       {formatValue(category, draftBrightness ?? brightnessBinding.value)}
                     </span>
                   </div>

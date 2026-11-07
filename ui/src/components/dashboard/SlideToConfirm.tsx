@@ -83,26 +83,26 @@ export function SlideToConfirm({
   return (
     <div
       ref={trackRef}
-      className={`relative mx-auto w-full max-w-[260px] h-[58px] rounded-[12px] border overflow-hidden select-none touch-none ${
+      className={`relative mx-auto w-full max-w-[260px] h-[58px] rounded-lg border overflow-hidden select-none touch-none ${
         done ? "border-success/40" : "border-border"
       } bg-border-light`}
     >
       {/* progress fill */}
       <div
-        className={`absolute inset-y-0 left-0 rounded-[12px] ${done ? "bg-success/20" : "bg-warning/15"}`}
+        className={`absolute inset-y-0 left-0 rounded-lg ${done ? "bg-success/20" : "bg-warning/10"}`}
         style={{ width: `${KNOB + x}px`, transition }}
       />
       {/* Label, in whichever half the knob is not occupying: to its right at
           rest, to its left once the slide is done. On a capped track a label
           centred across the whole width would start under the knob. */}
       <div
-        className={`absolute inset-y-0 flex items-center justify-center gap-2 px-2 text-[13px] font-medium whitespace-nowrap pointer-events-none ${
+        className={`absolute inset-y-0 flex items-center justify-center gap-2 px-2 text-small font-medium whitespace-nowrap pointer-events-none ${
           done ? "text-success" : "text-text-secondary"
         }`}
         style={done ? { left: 0, right: `${KNOB_SPAN}px` } : { left: `${KNOB_SPAN}px`, right: 0 }}
       >
         {done ? confirmedLabel : label}
-        {!done && <ChevronsRight size={16} strokeWidth={2} className="text-warning" />}
+        {!done && <ChevronsRight size={16} strokeWidth={2} className="text-warning-ink" />}
       </div>
       {/* knob */}
       <div
@@ -112,7 +112,7 @@ export function SlideToConfirm({
         onPointerMove={onPointerMove}
         onPointerUp={onPointerUp}
         onPointerCancel={onPointerUp}
-        className={`absolute top-[4px] h-[50px] w-[50px] rounded-[9px] flex items-center justify-center text-white shadow-md z-[2] ${
+        className={`absolute top-[4px] h-[50px] w-[50px] rounded-md flex items-center justify-center text-on-status shadow-md z-[2] ${
           done ? "bg-success cursor-default" : "bg-warning cursor-grab active:cursor-grabbing"
         }`}
         style={{ left: `${PAD + x}px`, transition }}

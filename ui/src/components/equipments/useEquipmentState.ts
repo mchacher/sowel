@@ -149,19 +149,19 @@ export function useEquipmentState(equipment: EquipmentWithDetails) {
       : "bg-border-light text-text-tertiary"
     : isAppliance
     ? isOn
-      ? "bg-accent/10 text-accent"
+      ? "bg-active-bg text-active-ink"
       : "bg-border-light text-text-tertiary"
     : isEnergyMeter
-    ? "bg-accent/10 text-accent"
+    ? "bg-primary/10 text-primary"
     : isSensor
     ? getSensorIconColor(equipment.dataBindings)
     : isThermostat || isPoolHeatPump
       ? isOn
-        ? "bg-error/10 text-error"
+        ? "bg-heat/10 text-heat"
         : "bg-border-light text-text-tertiary"
       : isHeater
         ? !isOn // fil pilote: relay OFF = comfort (warm)
-          ? "bg-error/10 text-error"
+          ? "bg-heat/10 text-heat"
           : "bg-border-light text-text-tertiary"
       : isShutterFamily
         ? shutterIsOpen
@@ -172,7 +172,7 @@ export function useEquipmentState(equipment: EquipmentWithDetails) {
             ? "bg-primary/10 text-primary"
             : "bg-border-light text-text-tertiary"
           : isLight && isOn
-            ? "bg-active/15 text-active-text"
+            ? "bg-active-bg text-active-ink"
             : isOn
               ? "bg-primary/10 text-primary"
               : "bg-border-light text-text-tertiary";

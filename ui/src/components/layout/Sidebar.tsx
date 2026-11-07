@@ -99,7 +99,7 @@ export function Sidebar() {
           <SowelLogo size={40} className="flex-shrink-0" />
           {!collapsed && (
             <span
-              className="font-extrabold text-[18px] tracking-[0.18em] text-primary ml-2.5 mt-1"
+              className="font-extrabold text-title tracking-[0.18em] text-primary ml-2.5 mt-1"
               style={{ fontFamily: "Nunito, sans-serif" }}
             >
               SOWEL
@@ -289,7 +289,7 @@ export function Sidebar() {
                         }
                         badge={
                           showBadge ? (
-                            <span className="text-[10px] font-medium text-error bg-error/10 px-1.5 py-0.5 rounded-full">
+                            <span className="text-micro font-medium text-error bg-error/10 px-1.5 py-0.5 rounded-full">
                               {pluginUpdateCount}
                             </span>
                           ) : undefined
@@ -326,7 +326,7 @@ export function Sidebar() {
       <div className="border-t border-border-light p-2">
         <button
           onClick={() => setCollapsed(!collapsed)}
-          className="flex items-center justify-center w-full py-2 rounded-[6px] text-text-tertiary hover:text-text-secondary hover:bg-background transition-colors duration-150 ease-out cursor-pointer"
+          className="flex items-center justify-center w-full py-2 rounded-sm text-text-tertiary hover:text-text-secondary hover:bg-background transition-colors duration-150 ease-out cursor-pointer"
         >
           {collapsed ? (
             <ChevronRight size={16} strokeWidth={1.5} />

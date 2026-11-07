@@ -19,7 +19,7 @@ export function SidebarZoneTree({ collapsed }: { collapsed: boolean }) {
   if (tree.length === 0) {
     return (
       <div className="px-3 py-2">
-        <p className="text-[11px] text-text-tertiary leading-tight">
+        <p className="text-caption text-text-tertiary leading-tight">
           {t("zones.noZonesSidebar")}
         </p>
       </div>
@@ -60,12 +60,12 @@ function SidebarZoneNode({ zone, depth }: { zone: ZoneWithChildren; depth: numbe
       <div>
         <NavLink
           to={`/home/${zone.id}`}
-          className={({ isActive: linkActive }) => `flex items-center gap-2 px-3 py-1.5 min-w-0 rounded-[6px] mx-1 group transition-colors duration-150 ${linkActive ? "bg-primary-light" : ""}`}
+          className={({ isActive: linkActive }) => `flex items-center gap-2 px-3 py-1.5 min-w-0 rounded-sm mx-1 group transition-colors duration-150 ${linkActive ? "bg-primary-light" : ""}`}
         >
           {({ isActive: linkActive }) => (
             <>
               <Home size={14} strokeWidth={1.5} className={`flex-shrink-0 transition-colors ${linkActive ? "text-primary" : "text-text group-hover:text-primary"}`} />
-              <span className={`text-[11px] font-semibold uppercase tracking-widest transition-colors truncate ${linkActive ? "text-primary" : "text-text group-hover:text-primary"}`}>
+              <span className={`text-body font-medium transition-colors truncate ${linkActive ? "text-primary" : "text-text group-hover:text-primary"}`}>
                 {zone.name}
               </span>
             </>
@@ -96,7 +96,7 @@ function SidebarZoneNode({ zone, depth }: { zone: ZoneWithChildren; depth: numbe
             e.stopPropagation();
             if (hasChildren) setExpanded(!expanded);
           }}
-          className={`flex-shrink-0 w-4 h-4 flex items-center justify-center rounded ${
+          className={`flex-shrink-0 w-4 h-4 flex items-center justify-center rounded-sm ${
             hasChildren
               ? "text-text-tertiary hover:text-text-secondary"
               : "text-transparent"
@@ -114,8 +114,8 @@ function SidebarZoneNode({ zone, depth }: { zone: ZoneWithChildren; depth: numbe
         <NavLink
           to={`/home/${zone.id}`}
           className={`
-            flex-1 flex items-center gap-2 px-2 py-1.5 rounded-[6px] min-w-0
-            text-[13px] transition-colors duration-150 ease-out
+            flex-1 flex items-center gap-2 px-2 py-1.5 rounded-sm min-w-0
+            text-small transition-colors duration-150 ease-out
             ${isActive
               ? "bg-primary-light text-primary font-medium"
               : "text-text-secondary hover:bg-border-light hover:text-text"

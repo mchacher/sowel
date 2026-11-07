@@ -58,17 +58,17 @@ export function AccessRow({
   const src = access.kind === "external" ? access.source : null;
 
   return (
-    <li className="bg-surface border border-border rounded-[10px] px-3 py-2.5">
+    <li className="card px-3 py-2.5">
       <div className="flex items-start gap-2">
         {/* Faded when revoked or ended — the content only: an opacity on the
             <li> would fade the « ⋯ » menu too and give it a stacking context
             a later row paints over. */}
         <div className={`min-w-0 flex-1 ${revoked || ended ? "opacity-70" : ""}`}>
           <div className="flex items-center gap-2 flex-wrap">
-            <span className="text-[14px] font-semibold text-text truncate">{access.label}</span>
+            <span className="text-body font-semibold text-text truncate">{access.label}</span>
             <StatusBadge status={access.status} />
             {src && (
-              <span className="inline-flex items-center gap-1 text-[11.5px] rounded-full px-2 py-0.5 bg-primary-light text-primary">
+              <span className="inline-flex items-center gap-1 text-caption rounded-full px-2 py-0.5 bg-primary-light text-primary">
                 <Plug size={11} strokeWidth={1.5} />
                 {src.profileName
                   ? t("sharedAccess.line.sourceWithProfile", {
@@ -79,10 +79,10 @@ export function AccessRow({
               </span>
             )}
           </div>
-          <div className="text-[12px] text-text-secondary mt-1 flex flex-wrap gap-x-2 gap-y-0.5">
+          <div className="text-caption text-text-secondary mt-1 flex flex-wrap gap-x-2 gap-y-0.5">
             {access.code ? (
               <span className="inline-flex items-center gap-0.5">
-                <span className="font-mono font-semibold tracking-[0.06em] text-text">
+                <span className="font-mono tracking-[0.06em] text-text">
                   {access.code}
                 </span>
                 <CopyButton text={access.code} label={t("sharedAccess.actions.copyCode")} />
@@ -191,7 +191,7 @@ export function AccessRow({
               <div className="fixed inset-0 z-30" onClick={() => setOpen(null)} />
               <div
                 role="menu"
-                className="absolute right-0 top-full mt-1 z-40 min-w-[210px] bg-surface border border-border rounded-[10px] shadow-lg py-1 text-[13px]"
+                className="absolute right-0 top-full mt-1 z-40 min-w-[210px] bg-surface border border-border rounded-md shadow-lg py-1 text-small"
               >
                 {!revoked && (
                   <MenuItem onClick={() => setOpen("code")}>

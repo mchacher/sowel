@@ -5,7 +5,8 @@ import { doorState, type DoorState } from "../../../../src/shared/door-state";
 // CLOSED / OPENING / …) says more than the position, so it wins when the door
 // rule knows it; otherwise the caller falls back to the position, as a shutter.
 const DOOR_STATE_PILL: Record<Exclude<DoorState, "unknown">, DoorPill> = {
-  open: { key: "controls.doorOpen", className: "text-success bg-success/10" },
+  // Open is a position, not a success: neutral, the word says it (spec 196).
+  open: { key: "controls.doorOpen", className: "text-text-secondary bg-border-light" },
   closed: { key: "controls.doorClosed", className: "text-shutter-500 bg-shutter-50" },
   moving: { key: "controls.doorMoving", className: "text-text-secondary bg-border-light" },
   fault: { key: "controls.doorFault", className: "text-error bg-error/10" },

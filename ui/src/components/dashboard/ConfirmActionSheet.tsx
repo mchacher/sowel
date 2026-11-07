@@ -53,7 +53,7 @@ export function ConfirmActionSheet({
           them once, which is why a test now pins them. */}
       <div className="flex flex-col gap-6 pt-2 pb-8">
         {subtitle && (
-          <p className="text-[12px] text-text-tertiary text-center -mt-1">{subtitle}</p>
+          <p className="text-caption text-text-tertiary text-center -mt-1">{subtitle}</p>
         )}
         <SlideToConfirm
           label={slideLabel}
@@ -62,7 +62,7 @@ export function ConfirmActionSheet({
         />
         <button
           onClick={onClose}
-          className="w-[150px] mx-auto mt-4 text-center text-[13px] text-text-secondary border border-border rounded-[9px] py-2 hover:bg-border-light cursor-pointer"
+          className="w-[150px] mx-auto mt-4 text-center text-small text-text-secondary border border-border rounded-sm py-2 hover:bg-border-light cursor-pointer"
         >
           {t("common.cancel")}
         </button>

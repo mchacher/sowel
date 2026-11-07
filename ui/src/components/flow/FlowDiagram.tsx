@@ -26,6 +26,7 @@ import {
   PATHS,
   PILL_POSITION,
   SLOT_BOX,
+  SLOT_LABEL,
   SLOT_VALUE,
   flowDuration,
   type FlowDiagramProps,
@@ -44,7 +45,7 @@ function Pill({
 }) {
   return (
     <div
-      className={`absolute font-mono text-[11px] font-bold px-2 py-0.5 rounded-full bg-surface border z-20 ${className ?? ""}`}
+      className={`absolute tabular-nums text-micro font-semibold px-2 py-0.5 rounded-full bg-surface border z-20 ${className ?? ""}`}
       style={{ color, borderColor: color }}
     >
       {children}
@@ -55,30 +56,30 @@ function Pill({
 function FlowNode({ node }: { node: FlowNodeSpec }) {
   const unitClass =
     node.slot === "focal"
-      ? "text-[11px] font-semibold opacity-60"
-      : "text-[11px] text-text-tertiary font-semibold";
+      ? "text-micro font-semibold opacity-60"
+      : "text-micro text-text-tertiary font-semibold";
 
   return (
     <div
-      className={`absolute flex items-center justify-center bg-surface border border-border rounded-[14px] z-10 ${SLOT_BOX[node.slot]}`}
+      className={`absolute flex items-center justify-center bg-background rounded-md z-10 ${SLOT_BOX[node.slot]}`}
       style={{ color: node.color }}
     >
       <div
         className={`flex flex-col items-center justify-center gap-1 ${node.dimmed ? "opacity-40" : ""}`}
       >
-        <div className="text-[9px] sm:text-[10px] font-semibold uppercase tracking-widest text-text-tertiary">
+        <div className={`font-medium text-text-tertiary leading-tight whitespace-nowrap ${SLOT_LABEL[node.slot]}`}>
           {node.label}
         </div>
         {node.icon}
         <div
-          className={`font-mono font-bold leading-none tracking-tight flex items-baseline gap-1 ${SLOT_VALUE[node.slot]}`}
+          className={`tabular-nums font-semibold leading-none flex items-baseline whitespace-nowrap ${SLOT_VALUE[node.slot]}`}
         >
           {node.valuePrefix}
           <span>{node.value}</span>
           {node.unit && <span className={unitClass}>{node.unit}</span>}
         </div>
         {node.sub && (
-          <div className="font-mono text-[10px] text-text-tertiary leading-none">{node.sub}</div>
+          <div className="text-micro text-text-tertiary leading-none">{node.sub}</div>
         )}
       </div>
     </div>
@@ -170,7 +171,7 @@ export function FlowDiagram({ nodes, links, tag, ariaLabel }: FlowDiagramProps) 
 
       {tag && (
         <span
-          className="absolute left-1/2 -translate-x-1/2 bottom-[8%] font-mono text-[12px] font-bold px-3 py-1 rounded-full z-10"
+          className="absolute left-1/2 -translate-x-1/2 bottom-[8%] text-caption font-semibold px-3 py-1 rounded-full z-10"
           style={{
             color: tag.color,
             background: `color-mix(in srgb, ${tag.color} 12%, transparent)`,

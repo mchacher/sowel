@@ -1,5 +1,7 @@
 # Toggle atom (`recipe__toggle`)
 
+> **Superseded in part by [tokens.md](../tokens.md) (spec 196).** Labels are sentence case and numbers Inter with tabular figures (§2), radii are 6 / 10 / 16 px (§4), and a card or panel has no border (§5.1). Where the CSS below disagrees, tokens.md wins.
+
 > Pill switch (30×18) for binary enable/disable. Used exclusively on recipe rows to toggle a recipe on/off.
 
 ---
@@ -69,14 +71,14 @@ Mobile equivalent `.mob__toggle` is identical (same 30×18 size).
 
 ## Accessibility
 
-| Concern             | Implementation                                                                                                                        |
+| Concern | Implementation |
 | ------------------- | ------------------------------------------------------------------------------------------------------------------------------------- | ---------------------- |
-| Switch role         | `role="switch" aria-checked="true                                                                                                     | false"`+`tabindex="0"` |
-| Keyboard activation | **Space** toggles the switch (production must wire this)                                                                              |
-| Click vs row click  | The toggle must `event.stopPropagation()` when used inside a clickable row (e.g. recipe row that opens a modal on click)              |
-| Visible label       | The toggle has no visible label. The row's name acts as the label. Production must add `aria-labelledby` pointing to the recipe name. |
-| Touch target        | 30 × 18 is below 44 × 44. Mitigate via padding hit area.                                                                              |
-| Color contrast      | Green bg on white parent: 4.1:1 (AA for UI). Thumb white on green: 8.4:1 (AAA).                                                       |
+| Switch role | `role="switch" aria-checked="true                                                                                                     | false"`+`tabindex="0"` |
+| Keyboard activation | **Space** toggles the switch (production must wire this) |
+| Click vs row click | The toggle must `event.stopPropagation()` when used inside a clickable row (e.g. recipe row that opens a modal on click) |
+| Visible label | The toggle has no visible label. The row's name acts as the label. Production must add `aria-labelledby` pointing to the recipe name. |
+| Touch target | 30 × 18 is below 44 × 44. Mitigate via padding hit area. |
+| Color contrast | Green bg on white parent: 4.1:1 (AA for UI). Thumb white on green: 8.4:1 (AAA). |
 
 ---
 

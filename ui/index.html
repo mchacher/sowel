@@ -3,7 +3,10 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
-    <meta name="theme-color" content="#1A4F6E" />
+    <!-- Palette (spec 196, 4b): ocean bar in light, the night page in dark. -->
+    <meta name="theme-color" content="#1A4F6E" media="(prefers-color-scheme: light)" />
+    <meta name="theme-color" content="#0E191F" media="(prefers-color-scheme: dark)" />
+    <meta name="color-scheme" content="light dark" />
     <meta name="mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
@@ -17,8 +20,12 @@
     <!-- Decides before first paint whether this load gets the splash (#976) -->
     <script src="/splash.js"></script>
     <style>
-      #splash{position:fixed;inset:0;display:flex;align-items:center;justify-content:center;background:#F8F9FA;z-index:9999;transition:opacity .4s ease-out}
-      .dark #splash{background:#1a1a2e}
+      /* Page colours of design-system/tokens.css (--n-50 light and dark, slice 7a)
+         and the logo blues: the dark splash draws the house in the dark primary ink. */
+      #splash{position:fixed;inset:0;display:flex;align-items:center;justify-content:center;background:#ECF2F7;z-index:9999;transition:opacity .4s ease-out}
+      .dark #splash{background:#0E191F}
+      .dark #splash .splash-ink{stroke:#5BA5CC}
+      .dark #splash text.splash-ink{stroke:none;fill:#5BA5CC}
       .no-splash #splash{display:none}
     </style>
   </head>
@@ -28,14 +35,14 @@
     <!-- Splash screen — first landing or long absence only, see public/splash.js -->
     <div id="splash">
       <svg xmlns="http://www.w3.org/2000/svg" viewBox="25 15 150 190" width="180" height="234" fill="none">
-        <path d="M100 30 L160 90 Q165 95 160 100 L160 150 Q160 158 152 158 L48 158 Q40 158 40 150 L40 100 Q35 95 40 90 Z" fill="none" stroke="#1A4F6E" stroke-width="8" stroke-linejoin="round" stroke-linecap="round"/>
+        <path class="splash-ink" d="M100 30 L160 90 Q165 95 160 100 L160 150 Q160 158 152 158 L48 158 Q40 158 40 150 L40 100 Q35 95 40 90 Z" fill="none" stroke="#1A4F6E" stroke-width="8" stroke-linejoin="round" stroke-linecap="round"/>
         <path d="M75 115 Q100 140 125 115" fill="none" stroke="#7FB8D4" stroke-width="6" stroke-linecap="round"/>
         <path d="M78 95 Q83 87 88 95" fill="none" stroke="#7FB8D4" stroke-width="5" stroke-linecap="round"/>
         <g transform="translate(117, 91)">
           <animateTransform attributeName="transform" additive="sum" type="scale" values="1 1; 1 1; 1 0.1; 1 1; 1 1" keyTimes="0; 0.35; 0.42; 0.49; 1" dur="1.2s" repeatCount="indefinite"/>
           <path d="M-5 4 Q0 -4 5 4" fill="none" stroke="#7FB8D4" stroke-width="5" stroke-linecap="round"/>
         </g>
-        <text x="100" y="195" text-anchor="middle" font-family="Nunito,sans-serif" font-weight="800" font-size="24" fill="#1A4F6E" letter-spacing="4">SOWEL</text>
+        <text class="splash-ink" x="100" y="195" text-anchor="middle" font-family="Nunito,sans-serif" font-weight="800" font-size="24" fill="#1A4F6E" letter-spacing="4">SOWEL</text>
       </svg>
     </div>
 

@@ -205,12 +205,12 @@ export function EquipmentDetailPage() {
     return (
       <div className="p-4 sm:p-6">
         {fromZone ? (
-          <button onClick={() => navigate(-1)} className="inline-flex items-center gap-1.5 text-[13px] text-text-secondary hover:text-text mb-4">
+          <button onClick={() => navigate(-1)} className="inline-flex items-center gap-1.5 text-small text-text-secondary hover:text-text mb-4">
             <ArrowLeft size={14} strokeWidth={1.5} />
             {t("equipments.backToZone", { name: fromZone })}
           </button>
         ) : (
-          <Link to="/equipments" className="inline-flex items-center gap-1.5 text-[13px] text-text-secondary hover:text-text mb-4">
+          <Link to="/equipments" className="inline-flex items-center gap-1.5 text-small text-text-secondary hover:text-text mb-4">
             <ArrowLeft size={14} strokeWidth={1.5} />
             {t("equipments.backToEquipments")}
           </Link>
@@ -219,17 +219,17 @@ export function EquipmentDetailPage() {
           <div className="w-16 h-16 rounded-full bg-error/10 flex items-center justify-center mb-4">
             <Box size={28} strokeWidth={1.5} className="text-error" />
           </div>
-          <h3 className="text-[16px] font-medium text-text mb-1">
+          <h3 className="text-lead font-medium text-text mb-1">
             {notFound || !failure ? t("equipments.notFound.title") : failure.title}
           </h3>
-          <p className="text-[13px] text-text-secondary">
+          <p className="text-small text-text-secondary">
             {notFound || !failure ? t("equipments.notFound.message") : failure.message}
           </p>
           {!notFound && failure && (
             <button
               type="button"
               onClick={retry}
-              className="mt-4 inline-flex items-center gap-1.5 px-3 py-2 text-[13px] font-medium text-text-secondary border border-border rounded-[6px] hover:bg-border-light transition-colors duration-150 cursor-pointer"
+              className="mt-4 inline-flex items-center gap-1.5 px-3 py-2 text-small font-medium text-text-secondary border border-border rounded-sm hover:bg-border-light transition-colors duration-150 cursor-pointer"
             >
               <RefreshCw size={14} strokeWidth={1.5} />
               {t("common.retry")}
@@ -258,12 +258,12 @@ export function EquipmentDetailPage() {
     <div className="p-4 sm:p-6">
       {/* Back link */}
       {fromZone ? (
-        <button onClick={() => navigate(-1)} className="inline-flex items-center gap-1.5 text-[13px] text-text-secondary hover:text-text mb-4">
+        <button onClick={() => navigate(-1)} className="inline-flex items-center gap-1.5 text-small text-text-secondary hover:text-text mb-4">
           <ArrowLeft size={14} strokeWidth={1.5} />
           {t("equipments.backToZone", { name: fromZone })}
         </button>
       ) : (
-        <Link to="/equipments" className="inline-flex items-center gap-1.5 text-[13px] text-text-secondary hover:text-text mb-4">
+        <Link to="/equipments" className="inline-flex items-center gap-1.5 text-small text-text-secondary hover:text-text mb-4">
           <ArrowLeft size={14} strokeWidth={1.5} />
           {t("equipments.backToEquipments")}
         </Link>
@@ -274,7 +274,7 @@ export function EquipmentDetailPage() {
       {failure && !fromStore && (
         <div
           role="status"
-          className="flex flex-wrap items-center gap-x-3 gap-y-1 mb-4 px-3 py-2 rounded-[8px] border border-warning/30 bg-warning/10 text-[13px]"
+          className="flex flex-wrap items-center gap-x-3 gap-y-1 mb-4 px-3 py-2 rounded-md border border-warning/30 bg-warning/10 text-small"
         >
           <span className="font-medium text-text">{failure.title}</span>
           <span className="text-text-secondary">{t("equipments.keptData")}</span>
@@ -294,7 +294,7 @@ export function EquipmentDetailPage() {
           (issue #950) wraps instead of widening the page on a phone. */}
       <div className="flex items-start justify-between gap-3 mb-4 sm:mb-8">
         <div className="flex items-center gap-3 min-w-0">
-          <div className="w-10 h-10 shrink-0 rounded-[8px] bg-primary-light flex items-center justify-center text-primary">
+          <div className="w-10 h-10 shrink-0 rounded-md bg-primary-light flex items-center justify-center text-primary">
             {equipmentState.iconElement}
           </div>
           <div className="min-w-0">
@@ -309,17 +309,17 @@ export function EquipmentDetailPage() {
                 size="md"
               />
             </div>
-            <p className="text-[13px] text-text-secondary wrap-anywhere">
+            <p className="text-small text-text-secondary wrap-anywhere">
               {t(TYPE_LABELS[equipment.type])}
               {equipment.description && ` · ${equipment.description}`}
               {!equipment.enabled && (
-                <span className="text-warning ml-2">{t("common.disabled")}</span>
+                <span className="text-warning-ink ml-2">{t("common.disabled")}</span>
               )}
             </p>
             {/* Spec 188 — what became of the last tracked order (gate, cover). */}
             <OrderOutcomeLine equipmentId={equipment.id} className="mt-1" />
             {actionBinding && actionBinding.value != null && (
-              <div className="flex items-center gap-1.5 mt-1 text-[12px] text-text-tertiary">
+              <div className="flex items-center gap-1.5 mt-1 text-caption text-text-tertiary">
                 <Clock size={12} strokeWidth={1.5} />
                 <span className="font-mono font-medium text-text-secondary min-w-0 wrap-anywhere">{String(actionBinding.value)}</span>
                 {actionBinding.lastUpdated && (
@@ -333,7 +333,7 @@ export function EquipmentDetailPage() {
         <div className="flex items-center gap-2 shrink-0">
           <button
             onClick={() => setShowEditForm(true)}
-            className="flex items-center gap-1.5 p-2 sm:px-3 sm:py-2 text-[13px] font-medium text-text-secondary border border-border rounded-[6px] hover:bg-border-light transition-colors duration-150 cursor-pointer"
+            className="flex items-center gap-1.5 p-2 sm:px-3 sm:py-2 text-small font-medium text-text-secondary border border-border rounded-sm hover:bg-border-light transition-colors duration-150 cursor-pointer"
             title={t("common.edit")}
           >
             <Pencil size={14} strokeWidth={1.5} />
@@ -342,7 +342,7 @@ export function EquipmentDetailPage() {
           <button
             onClick={handleDelete}
             disabled={deleting}
-            className="flex items-center gap-1.5 p-2 sm:px-3 sm:py-2 text-[13px] font-medium text-error border border-error/30 rounded-[6px] hover:bg-error/10 transition-colors duration-150 disabled:opacity-50 cursor-pointer"
+            className="flex items-center gap-1.5 p-2 sm:px-3 sm:py-2 text-small font-medium text-error border border-error/30 rounded-sm hover:bg-error/10 transition-colors duration-150 disabled:opacity-50 cursor-pointer"
             title={t("common.delete")}
           >
             <Trash2 size={14} strokeWidth={1.5} />
@@ -360,8 +360,8 @@ export function EquipmentDetailPage() {
         equipment.enabled &&
         (!!findMainOnOffOrder(equipment.orderBindings) ||
           !!findOrderByCategory(equipment.orderBindings, ["solar_toggle"], ["solar"])) && (
-          <div className="bg-surface rounded-[10px] border border-border p-4 mb-6">
-            <h3 className="text-[14px] font-semibold text-text mb-3">{t("equipments.controls")}</h3>
+          <div className="card p-4 mb-6">
+            <h3 className="text-body font-semibold text-text mb-3">{t("equipments.controls")}</h3>
             <div className="flex flex-wrap items-center gap-3">
               {!!findMainOnOffOrder(equipment.orderBindings) && (
                 <LightControl
@@ -381,8 +381,8 @@ export function EquipmentDetailPage() {
           covers both shutters and awnings — ShutterControl handles the
           vocabulary swap (extend/retract) when type === "awning". */}
       {(isShutterFamily || equipment.type === "pool_cover") && equipment.enabled && (
-        <div className="bg-surface rounded-[10px] border border-border p-4 mb-6">
-          <h3 className="text-[14px] font-semibold text-text mb-3">{t("equipments.controls")}</h3>
+        <div className="card p-4 mb-6">
+          <h3 className="text-body font-semibold text-text mb-3">{t("equipments.controls")}</h3>
           <ShutterControl
             equipment={equipment}
             onExecuteOrder={(alias, value) => executeOrder(equipment.id, alias, value)}
@@ -392,8 +392,8 @@ export function EquipmentDetailPage() {
 
       {/* Pool pump controls — ON/OFF toggle via LightControl */}
       {equipment.type === "pool_pump" && equipment.enabled && (
-        <div className="bg-surface rounded-[10px] border border-border p-4 mb-6">
-          <h3 className="text-[14px] font-semibold text-text mb-3">{t("equipments.controls")}</h3>
+        <div className="card p-4 mb-6">
+          <h3 className="text-body font-semibold text-text mb-3">{t("equipments.controls")}</h3>
           <LightControl
             equipment={equipment}
             onExecuteOrder={(alias, value) => executeOrder(equipment.id, alias, value)}
@@ -403,8 +403,8 @@ export function EquipmentDetailPage() {
 
       {/* Pool heat pump controls — water temp + setpoint slider */}
       {equipment.type === "pool_heat_pump" && (
-        <div className="bg-surface rounded-[10px] border border-border p-4 mb-6">
-          <h3 className="text-[14px] font-semibold text-text mb-3">{t("equipments.controls")}</h3>
+        <div className="card p-4 mb-6">
+          <h3 className="text-body font-semibold text-text mb-3">{t("equipments.controls")}</h3>
           <PoolHeatPumpControl
             equipment={equipment}
             onExecuteOrder={(alias, value) => executeOrder(equipment.id, alias, value)}
@@ -414,8 +414,8 @@ export function EquipmentDetailPage() {
 
       {/* Thermostat controls */}
       {isThermostat && equipment.enabled && (
-        <div className="bg-surface rounded-[10px] border border-border p-4 mb-6">
-          <h3 className="text-[14px] font-semibold text-text mb-3">{t("equipments.controls")}</h3>
+        <div className="card p-4 mb-6">
+          <h3 className="text-body font-semibold text-text mb-3">{t("equipments.controls")}</h3>
           <ThermostatCard
             equipment={equipment}
             onExecuteOrder={(alias, value) => executeOrder(equipment.id, alias, value)}
@@ -425,8 +425,8 @@ export function EquipmentDetailPage() {
 
       {/* Gate controls */}
       {isGate && equipment.enabled && (
-        <div className="bg-surface rounded-[10px] border border-border p-4 mb-6">
-          <h3 className="text-[14px] font-semibold text-text mb-3">{t("equipments.controls")}</h3>
+        <div className="card p-4 mb-6">
+          <h3 className="text-body font-semibold text-text mb-3">{t("equipments.controls")}</h3>
           <GateControl
             equipment={equipment}
             onExecuteOrder={(alias, value) => executeOrder(equipment.id, alias, value)}
@@ -440,8 +440,8 @@ export function EquipmentDetailPage() {
           rather than two icons to guess between. The admin panel further down
           configures it; this one fires it. */}
       {equipment.timedCommand && equipment.enabled && (
-        <div className="bg-surface rounded-[10px] border border-border p-4 mb-6">
-          <h3 className="text-[14px] font-semibold text-text mb-3">{t("equipments.timed.title")}</h3>
+        <div className="card p-4 mb-6">
+          <h3 className="text-body font-semibold text-text mb-3">{t("equipments.timed.title")}</h3>
           <TimedCommandControl equipment={equipment} labelled />
         </div>
       )}
@@ -474,8 +474,8 @@ export function EquipmentDetailPage() {
 
       {/* Water valve controls */}
       {equipment.type === "water_valve" && equipment.enabled && (
-        <div className="bg-surface rounded-[10px] border border-border p-4 mb-6">
-          <h3 className="text-[14px] font-semibold text-text mb-3">{t("equipments.controls")}</h3>
+        <div className="card p-4 mb-6">
+          <h3 className="text-body font-semibold text-text mb-3">{t("equipments.controls")}</h3>
           <WaterValveControl
             equipment={equipment}
             onExecuteOrder={(alias, value) => executeOrder(equipment.id, alias, value)}
@@ -485,8 +485,8 @@ export function EquipmentDetailPage() {
 
       {/* Heater controls */}
       {isHeater && equipment.enabled && (
-        <div className="bg-surface rounded-[10px] border border-border p-4 mb-6">
-          <h3 className="text-[14px] font-semibold text-text mb-3">{t("equipments.controls")}</h3>
+        <div className="card p-4 mb-6">
+          <h3 className="text-body font-semibold text-text mb-3">{t("equipments.controls")}</h3>
           <HeaterControl
             equipment={equipment}
             onExecuteOrder={(alias, value) => executeOrder(equipment.id, alias, value)}
@@ -496,8 +496,8 @@ export function EquipmentDetailPage() {
 
       {/* Electric vehicle (spec 183): battery, range, state, wake, charge limit. */}
       {equipment.type === "electric_vehicle" && (
-        <div className="bg-surface rounded-[10px] border border-border p-4 mb-6">
-          <h3 className="text-[14px] font-semibold text-text mb-3">{t("equipments.controls")}</h3>
+        <div className="card p-4 mb-6">
+          <h3 className="text-body font-semibold text-text mb-3">{t("equipments.controls")}</h3>
           <ElectricVehicleControl
             equipment={equipment}
             onExecuteOrder={(alias, value) => executeOrder(equipment.id, alias, value)}
@@ -516,8 +516,8 @@ export function EquipmentDetailPage() {
 
       {/* EV charger (spec 182): start/stop, vehicle, power, session, current. */}
       {equipment.type === "ev_charger" && (
-        <div className="bg-surface rounded-[10px] border border-border p-4 mb-6">
-          <h3 className="text-[14px] font-semibold text-text mb-3">{t("equipments.controls")}</h3>
+        <div className="card p-4 mb-6">
+          <h3 className="text-body font-semibold text-text mb-3">{t("equipments.controls")}</h3>
           <EvChargerControl
             equipment={equipment}
             onExecuteOrder={(alias, value) => executeOrder(equipment.id, alias, value)}
@@ -537,8 +537,8 @@ export function EquipmentDetailPage() {
 
       {/* VMC speed controls (spec 153) */}
       {equipment.type === "vmc" && equipment.enabled && (
-        <div className="bg-surface rounded-[10px] border border-border p-4 mb-6">
-          <h3 className="text-[14px] font-semibold text-text mb-3">{t("equipments.controls")}</h3>
+        <div className="card p-4 mb-6">
+          <h3 className="text-body font-semibold text-text mb-3">{t("equipments.controls")}</h3>
           <VmcControl
             equipment={equipment}
             onExecuteOrder={(alias, value) => executeOrder(equipment.id, alias, value)}
@@ -645,10 +645,10 @@ export function EquipmentDetailPage() {
 
       {/* Configuration — admin only (bindings, devices, history config) */}
       {isAdmin && (
-      <div className="bg-surface rounded-[10px] border border-border mb-6 divide-y divide-border-light">
+      <div className="card mb-6 divide-y divide-border-light">
         <div className="flex items-center gap-2 p-4">
           <Settings size={16} strokeWidth={1.5} className="text-text-tertiary" />
-          <h3 className="text-[14px] font-semibold text-text">{t("equipments.configuration")}</h3>
+          <h3 className="text-body font-semibold text-text">{t("equipments.configuration")}</h3>
         </div>
 
         <DevicesSection equipment={equipment} onChangeDevice={() => setShowChangeDevice(true)} />
@@ -669,8 +669,8 @@ export function EquipmentDetailPage() {
               : <ChevronRight size={14} strokeWidth={1.5} className="text-text-tertiary" />
             }
             <Link2 size={14} strokeWidth={1.5} className="text-text-tertiary" />
-            <span className="text-[13px] font-medium text-text-secondary">{t("equipments.bindings")}</span>
-            <span className="text-[11px] text-text-tertiary">
+            <span className="text-small font-medium text-text-secondary">{t("equipments.bindings")}</span>
+            <span className="text-micro text-text-tertiary">
               {t("equipments.bindingCount", { count: equipment.dataBindings.length + equipment.orderBindings.length })}
             </span>
           </button>
@@ -683,14 +683,14 @@ export function EquipmentDetailPage() {
                   would wipe custom aliases and historization, so this offers
                   the missing ones additively. */}
               {missingBindingCount !== null && missingBindingCount > 0 && (
-                <div className="flex items-center gap-2 px-3 py-2.5 rounded-[6px] bg-primary-light border border-primary/20">
+                <div className="flex items-center gap-2 px-3 py-2.5 rounded-sm bg-primary-light border border-primary/20">
                   <Sparkles size={14} strokeWidth={1.5} className="text-primary flex-shrink-0" />
-                  <span className="flex-1 text-[12px] text-text-secondary">
+                  <span className="flex-1 text-caption text-text-secondary">
                     {t("binding.missingAvailable", { count: missingBindingCount })}
                   </span>
                   <button
                     onClick={() => setShowMissingBindings(true)}
-                    className="px-2 py-1 text-[11px] font-medium text-white bg-primary hover:bg-primary-hover rounded-[4px] transition-colors duration-150 flex-shrink-0"
+                    className="px-2 py-1 text-micro font-medium text-white bg-primary-fill hover:bg-primary-fill-hover rounded-sm transition-colors duration-150 flex-shrink-0"
                   >
                     {t("binding.missingReview")}
                   </button>
@@ -700,34 +700,34 @@ export function EquipmentDetailPage() {
               {/* Data Bindings */}
               <div>
                 <div className="flex items-center justify-between mb-2">
-                  <h4 className="text-[12px] font-medium text-text-tertiary flex items-center gap-1.5">
+                  <h4 className="text-caption font-medium text-text-tertiary flex items-center gap-1.5">
                     <Link2 size={13} strokeWidth={1.5} />
                     {t("equipments.dataBindings")}
                   </h4>
                   <button
                     onClick={() => setShowAddDataBinding(true)}
-                    className="flex items-center gap-1 px-2 py-1 text-[11px] font-medium text-primary border border-primary/30 rounded-[4px] hover:bg-primary-light transition-colors duration-150"
+                    className="flex items-center gap-1 px-2 py-1 text-micro font-medium text-primary border border-primary/30 rounded-sm hover:bg-primary-light transition-colors duration-150"
                   >
                     <Plus size={11} strokeWidth={1.5} />
                     {t("common.add")}
                   </button>
                 </div>
                 {equipment.dataBindings.length === 0 ? (
-                  <p className="text-[12px] text-text-tertiary">{t("common.none")}</p>
+                  <p className="text-caption text-text-tertiary">{t("common.none")}</p>
                 ) : (
                   <div className="space-y-1">
                     {equipment.dataBindings.map((binding) => (
-                      <div key={binding.id} className="flex items-center gap-2 px-2.5 py-1.5 rounded-[4px] bg-border-light/50 text-[12px] group">
+                      <div key={binding.id} className="flex items-center gap-2 px-2.5 py-1.5 rounded-sm bg-border-light/50 text-caption group">
                         <span className="font-mono font-medium text-primary">{binding.alias}</span>
                         <span className="text-text-tertiary">({binding.category})</span>
                         <span className="text-text-tertiary">· {binding.deviceName} · {binding.key}</span>
-                        <span className="ml-auto font-mono text-text">
+                        <span className="ml-auto tabular-nums text-text">
                           {binding.value !== null && binding.value !== undefined ? String(binding.value) : "—"}
                           {binding.unit && <span className="text-text-tertiary ml-0.5">{binding.unit}</span>}
                         </span>
                         <button
                           onClick={() => removeDataBinding(equipment.id, binding.id)}
-                          className="p-1 text-text-tertiary hover:text-error rounded-[3px] hover:bg-error/10 opacity-0 group-hover:opacity-100 transition-opacity"
+                          className="p-1 text-text-tertiary hover:text-error rounded-sm hover:bg-error/10 opacity-0 group-hover:opacity-100 transition-opacity"
                           title={t("common.remove")}
                         >
                           <Unlink size={11} strokeWidth={1.5} />
@@ -741,16 +741,16 @@ export function EquipmentDetailPage() {
               {/* Computed Data (e.g. energy cumuls) */}
               {equipment.computedData && equipment.computedData.length > 0 && (
                 <div>
-                  <h4 className="text-[12px] font-medium text-text-tertiary flex items-center gap-1.5 mb-2">
+                  <h4 className="text-caption font-medium text-text-tertiary flex items-center gap-1.5 mb-2">
                     <Activity size={13} strokeWidth={1.5} />
                     {t("equipments.computedData", "Computed Data")}
                   </h4>
                   <div className="space-y-1">
                     {equipment.computedData.map((cd) => (
-                      <div key={cd.alias} className="flex items-center gap-2 px-2.5 py-1.5 rounded-[4px] bg-accent/5 border border-accent/15 text-[12px]">
-                        <span className="font-mono font-medium text-accent">{cd.alias}</span>
+                      <div key={cd.alias} className="flex items-center gap-2 px-2.5 py-1.5 rounded-sm bg-border-light border border-border text-caption">
+                        <span className="font-mono font-medium text-text-secondary">{cd.alias}</span>
                         {cd.category && <span className="text-text-tertiary">({cd.category})</span>}
-                        <span className="ml-auto font-mono text-text">
+                        <span className="ml-auto tabular-nums text-text">
                           {cd.value !== null && cd.value !== undefined
                             ? typeof cd.value === "number" ? formatNumber(cd.value, { maxDecimals: 1 }) : String(cd.value)
                             : "—"}
@@ -765,30 +765,30 @@ export function EquipmentDetailPage() {
               {/* Order Bindings */}
               <div>
                 <div className="flex items-center justify-between mb-2">
-                  <h4 className="text-[12px] font-medium text-text-tertiary flex items-center gap-1.5">
+                  <h4 className="text-caption font-medium text-text-tertiary flex items-center gap-1.5">
                     <Zap size={13} strokeWidth={1.5} />
                     {t("equipments.orderBindings")}
                   </h4>
                   <button
                     onClick={() => setShowAddOrderBinding(true)}
-                    className="flex items-center gap-1 px-2 py-1 text-[11px] font-medium text-primary border border-primary/30 rounded-[4px] hover:bg-primary-light transition-colors duration-150"
+                    className="flex items-center gap-1 px-2 py-1 text-micro font-medium text-primary border border-primary/30 rounded-sm hover:bg-primary-light transition-colors duration-150"
                   >
                     <Plus size={11} strokeWidth={1.5} />
                     {t("common.add")}
                   </button>
                 </div>
                 {equipment.orderBindings.length === 0 ? (
-                  <p className="text-[12px] text-text-tertiary">{t("common.none")}</p>
+                  <p className="text-caption text-text-tertiary">{t("common.none")}</p>
                 ) : (
                   <div className="space-y-1">
                     {equipment.orderBindings.map((binding) => (
-                      <div key={binding.id} className="flex items-center gap-2 px-2.5 py-1.5 rounded-[4px] bg-border-light/50 text-[12px] group">
-                        <span className="font-mono font-medium text-accent">{binding.alias}</span>
+                      <div key={binding.id} className="flex items-center gap-2 px-2.5 py-1.5 rounded-sm bg-border-light/50 text-caption group">
+                        <span className="font-mono font-medium text-text-secondary">{binding.alias}</span>
                         <span className="text-text-tertiary">({binding.type})</span>
                         <span className="text-text-tertiary">· {binding.deviceName} · {binding.key}</span>
                         <button
                           onClick={() => removeOrderBinding(equipment.id, binding.id)}
-                          className="ml-auto p-1 text-text-tertiary hover:text-error rounded-[3px] hover:bg-error/10 opacity-0 group-hover:opacity-100 transition-opacity"
+                          className="ml-auto p-1 text-text-tertiary hover:text-error rounded-sm hover:bg-error/10 opacity-0 group-hover:opacity-100 transition-opacity"
                           title={t("common.remove")}
                         >
                           <Unlink size={11} strokeWidth={1.5} />
@@ -915,7 +915,7 @@ function HistorySection({ equipmentId, bindings, onBindingsChanged }: { equipmen
           : <ChevronRight size={14} strokeWidth={1.5} className="text-text-tertiary" />
         }
         <Database size={14} strokeWidth={1.5} className="text-text-tertiary" />
-        <span className="text-[13px] font-medium text-text-secondary">{t("history.title")}</span>
+        <span className="text-small font-medium text-text-secondary">{t("history.title")}</span>
       </button>
 
       {open && (
@@ -924,14 +924,14 @@ function HistorySection({ equipmentId, bindings, onBindingsChanged }: { equipmen
             {bindings.map((b) => (
               <div
                 key={b.bindingId}
-                className="flex items-center justify-between px-2.5 py-1.5 rounded-[4px] bg-border-light/50 text-[12px]"
+                className="flex items-center justify-between px-2.5 py-1.5 rounded-sm bg-border-light/50 text-caption"
               >
                 <div className="flex items-center gap-2">
                   <span className="font-mono font-medium text-primary">{b.alias}</span>
                   <span className="text-text-tertiary">({b.category})</span>
                 </div>
                 <div className="flex items-center gap-2">
-                  <span className="text-[11px] text-text-tertiary">
+                  <span className="text-micro text-text-tertiary">
                     {b.historize === null
                       ? `(${t("history.default")})`
                       : `(${t("history.override")})`
@@ -939,7 +939,7 @@ function HistorySection({ equipmentId, bindings, onBindingsChanged }: { equipmen
                   </span>
                   <button
                     onClick={() => handleToggle(b)}
-                    className={`px-2 py-0.5 rounded text-[11px] font-medium cursor-pointer transition-colors ${
+                    className={`px-2 py-0.5 rounded-sm text-micro font-medium cursor-pointer transition-colors ${
                       b.effectiveOn
                         ? "bg-success/10 text-success hover:bg-success/20"
                         : "bg-border-light text-text-tertiary hover:bg-border"
@@ -994,13 +994,13 @@ function DevicesSection({ equipment, onChangeDevice }: { equipment: EquipmentWit
           : <ChevronRight size={14} strokeWidth={1.5} className="text-text-tertiary" />
         }
         <Cpu size={14} strokeWidth={1.5} className="text-text-tertiary" />
-        <span className="text-[13px] font-medium text-text-secondary">{t("equipments.devices")}</span>
-        <span className="text-[11px] text-text-tertiary">{devices.length}</span>
+        <span className="text-small font-medium text-text-secondary">{t("equipments.devices")}</span>
+        <span className="text-micro text-text-tertiary">{devices.length}</span>
         {open && (
           <div className="ml-auto" onClick={(e) => e.stopPropagation()}>
             <button
               onClick={onChangeDevice}
-              className="flex items-center gap-1 px-2 py-1 text-[11px] font-medium text-primary border border-primary/30 rounded-[4px] hover:bg-primary-light transition-colors duration-150"
+              className="flex items-center gap-1 px-2 py-1 text-micro font-medium text-primary border border-primary/30 rounded-sm hover:bg-primary-light transition-colors duration-150"
             >
               {devices.length > 0
                 ? <><RefreshCw size={11} strokeWidth={1.5} /> {t("equipments.changeDevice")}</>
@@ -1014,23 +1014,23 @@ function DevicesSection({ equipment, onChangeDevice }: { equipment: EquipmentWit
       {open && (
         <div className="px-4 pb-4">
           {devices.length === 0 ? (
-            <p className="text-[13px] text-text-tertiary">{t("equipments.noDevice")}</p>
+            <p className="text-small text-text-tertiary">{t("equipments.noDevice")}</p>
           ) : (
             <div className="space-y-2">
               {devices.map((dev) => {
                 const storeDevice = devicesStore[dev.deviceId];
                 const lastSeen = storeDevice?.lastSeen ?? null;
                 return (
-                  <div key={dev.deviceId} className="flex items-center gap-3 px-3 py-2.5 rounded-[6px] bg-border-light/50">
+                  <div key={dev.deviceId} className="flex items-center gap-3 px-3 py-2.5 rounded-sm bg-border-light/50">
                     <Cpu size={14} strokeWidth={1.5} className="text-text-tertiary flex-shrink-0" />
                     <div className="flex-1 min-w-0">
-                      <div className="text-[13px] font-medium text-text">{dev.deviceName}</div>
-                      <div className="flex items-center gap-1 text-[11px] text-text-tertiary mt-0.5">
+                      <div className="text-small font-medium text-text">{dev.deviceName}</div>
+                      <div className="flex items-center gap-1 text-micro text-text-tertiary mt-0.5">
                         <Clock size={10} strokeWidth={1.5} />
                         <span><RelativeTime iso={lastSeen} /></span>
                       </div>
                     </div>
-                    <span className="text-[11px] text-text-tertiary flex-shrink-0">
+                    <span className="text-micro text-text-tertiary flex-shrink-0">
                       {dev.dataKeys.length > 0 && t("equipments.dataCount", { count: dev.dataKeys.length })}
                       {dev.dataKeys.length > 0 && dev.orderKeys.length > 0 && " · "}
                       {dev.orderKeys.length > 0 && t("equipments.orderCount", { count: dev.orderKeys.length })}
@@ -1081,12 +1081,12 @@ function ChangeDeviceModal({
   return (
     <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50" onClick={onClose}>
       <div
-        className="bg-surface rounded-[14px] border border-border shadow-xl w-full max-w-[520px] mx-4 max-h-[90vh] flex flex-col"
+        className="bg-surface rounded-lg w-full max-w-[520px] mx-4 max-h-[90vh] flex flex-col shadow-lg"
         onClick={(e) => e.stopPropagation()}
       >
         {/* Header */}
         <div className="flex items-center justify-between px-6 py-4 border-b border-border-light flex-shrink-0">
-          <h2 className="text-[16px] font-semibold text-text">{t("equipments.changeDevice")}</h2>
+          <h2 className="text-lead font-semibold text-text">{t("equipments.changeDevice")}</h2>
           <button onClick={onClose} className="text-text-tertiary hover:text-text-secondary transition-colors">
             <X size={18} strokeWidth={1.5} />
           </button>
@@ -1094,7 +1094,7 @@ function ChangeDeviceModal({
 
         {/* Content */}
         <div className="p-6 overflow-y-auto flex-1">
-          <p className="text-[13px] text-text-secondary mb-4">
+          <p className="text-small text-text-secondary mb-4">
             {t("equipments.changeDeviceDescription")}
           </p>
           <DeviceSelector
@@ -1103,7 +1103,7 @@ function ChangeDeviceModal({
             onSelectionChange={setSelectedDeviceIds}
             onCandidateChange={setCandidateByDevice}
           />
-          {error && <p className="text-[13px] text-error mt-3">{error}</p>}
+          {error && <p className="text-small text-error mt-3">{error}</p>}
         </div>
 
         {/* Actions */}
@@ -1111,7 +1111,7 @@ function ChangeDeviceModal({
           <button
             type="button"
             onClick={onClose}
-            className="px-4 py-2 text-[13px] font-medium text-text-secondary hover:text-text border border-border rounded-[6px] hover:bg-border-light transition-colors duration-150"
+            className="px-4 py-2 text-small font-medium text-text-secondary hover:text-text border border-border rounded-sm hover:bg-border-light transition-colors duration-150"
           >
             {t("common.cancel")}
           </button>
@@ -1119,7 +1119,7 @@ function ChangeDeviceModal({
             type="button"
             onClick={handleConfirm}
             disabled={selectedDeviceIds.length === 0 || saving}
-            className="px-4 py-2 text-[13px] font-medium text-white bg-primary rounded-[6px] hover:bg-primary-hover transition-colors duration-150 disabled:opacity-50 disabled:cursor-not-allowed"
+            className="px-4 py-2 text-small font-medium text-white bg-primary-fill rounded-sm hover:bg-primary-fill-hover transition-colors duration-150 disabled:opacity-50 disabled:cursor-not-allowed"
           >
             {saving ? t("common.saving") : t("common.save")}
           </button>

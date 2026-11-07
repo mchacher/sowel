@@ -30,7 +30,7 @@ interface ZoneCommandsProps {
 }
 
 const CATEGORY_HOVER: Record<Category, string> = {
-  light: "hover:bg-active/8 hover:text-active-text",
+  light: "hover:bg-active/8 hover:text-active-ink",
   "light-off": "hover:bg-border-light hover:text-text",
   shutter: "hover:bg-primary/8 hover:text-primary",
 };
@@ -52,7 +52,7 @@ function ZCmdsBtn({ cat, title, loading, disabled, onClick, children }: ZCmdsBtn
       aria-label={title}
       onClick={onClick}
       disabled={disabled}
-      className={`hit-44 inline-flex items-center justify-center w-9 h-[34px] rounded-[6px] text-text-secondary transition-colors duration-150 disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer ${CATEGORY_HOVER[cat]}`}
+      className={`hit-44 inline-flex items-center justify-center w-9 h-[34px] rounded-sm text-text-secondary transition-colors duration-150 disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer ${CATEGORY_HOVER[cat]}`}
     >
       {loading ? (
         <Loader2 size={16} strokeWidth={1.5} className="animate-spin" />
@@ -79,7 +79,7 @@ export function ZoneCommands({
     <div
       role="toolbar"
       aria-label={t("zones.commands.toolbarLabel", { defaultValue: "Commandes globales" })}
-      className="hit-group inline-flex items-center gap-px bg-surface border border-border-light rounded-[8px] px-1.5 py-1"
+      className="hit-group inline-flex items-center gap-px border border-border-light bg-surface rounded-sm px-1.5 py-1"
     >
       {hasLights && (
         <>

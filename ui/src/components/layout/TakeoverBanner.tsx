@@ -34,14 +34,14 @@ export function TakeoverBanner() {
   return (
     <div
       role="alert"
-      className="bg-red-600 text-white text-[12px] sm:text-[13px] font-medium px-4 py-1.5 text-center sticky top-0 z-50 shadow-sm flex items-center justify-center gap-3 flex-wrap"
+      className="bg-error text-on-status text-caption sm:text-small font-medium px-4 py-1.5 text-center sticky top-0 z-50 shadow-sm flex items-center justify-center gap-3 flex-wrap"
     >
       <span>{state === "restarting" ? t("takeover.restarting") : t("takeover.banner")}</span>
       {role === "admin" && state !== "restarting" && (
         <button
           onClick={onConfirm}
           disabled={state === "confirming"}
-          className="bg-white text-red-700 rounded-md px-2.5 py-0.5 text-[12px] font-semibold hover:bg-red-50 disabled:opacity-60"
+          className="bg-surface text-error rounded-sm px-2.5 py-0.5 text-caption font-semibold hover:bg-background disabled:opacity-60"
         >
           {state === "confirming" ? t("takeover.confirming") : t("takeover.confirm")}
         </button>

@@ -25,7 +25,7 @@ export function TempExtremes({
   // The large (mobile 2x) variant must fit "↓17.4° ↑32.6°" inside a narrow
   // scaled icon slot: smaller arrows/text and minimal gaps, decimals kept.
   const arrow = large ? 14 : 11;
-  const text = large ? "text-[18px]" : "text-[12px]";
+  const text = large ? "text-title" : "text-caption";
   return (
     <div
       className={`flex items-center justify-center leading-none ${large ? "gap-1.5" : "gap-2"} ${className}`}
@@ -35,7 +35,7 @@ export function TempExtremes({
         aria-label={t("weather.minToday")}
       >
         <ArrowDown size={arrow} strokeWidth={2} className="text-primary/70 shrink-0" />
-        <span className={`font-mono ${text} font-medium tabular-nums text-text-tertiary`}>
+        <span className={`${text} font-medium tabular-nums text-text-tertiary`}>
           {formatTemperature(min, { style: "compact" })}
         </span>
       </span>
@@ -43,8 +43,8 @@ export function TempExtremes({
         className={`flex items-center ${large ? "" : "gap-0.5"}`}
         aria-label={t("weather.maxToday")}
       >
-        <ArrowUp size={arrow} strokeWidth={2} className="text-accent shrink-0" />
-        <span className={`font-mono ${text} font-medium tabular-nums text-text-tertiary`}>
+        <ArrowUp size={arrow} strokeWidth={2} className="text-heat shrink-0" />
+        <span className={`${text} font-medium tabular-nums text-text-tertiary`}>
           {formatTemperature(max, { style: "compact" })}
         </span>
       </span>

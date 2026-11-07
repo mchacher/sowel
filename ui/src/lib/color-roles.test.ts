@@ -1,0 +1,345 @@
+import { readdirSync, readFileSync } from "node:fs";
+import { join } from "node:path";
+import { fileURLToPath } from "node:url";
+import { describe, expect, it } from "vitest";
+import { THEME_COLOR } from "../theme";
+import { classNames } from "./classname-scan";
+
+// Spec 196, FR-4 (slice 4) — colour roles. The ratios are computed from
+// design-system/tokens.css at test time, so a token change that breaks a
+// pair fails here instead of in a hand-written table (the old one in
+// design-system/accessibility.md was wrong by up to 6:1).
+const tokensCss = readFileSync(new URL("../../../design-system/tokens.css", import.meta.url), "utf8");
+const indexCss = readFileSync(new URL("../index.css", import.meta.url), "utf8");
+const srcRoot = fileURLToPath(new URL("..", import.meta.url));
+
+type Theme = "light" | "dark";
+
+/** The custom properties of one theme block, light inheriting nothing. */
+function themeVars(theme: Theme): Record<string, string> {
+  const selector = theme === "light" ? /:root,\s*\[data-theme="hybrid"\]\s*\{/ : /\[data-theme="dark"\],\s*\.dark\s*\{/;
+  const start = tokensCss.search(selector);
+  if (start < 0) throw new Error(`no ${theme} block in tokens.css`);
+  const body = tokensCss.slice(tokensCss.indexOf("{", start) + 1, tokensCss.indexOf("\n}", start));
+  const vars: Record<string, string> = {};
+  for (const m of body.replace(/\/\*[\s\S]*?\*\//g, "").matchAll(/(--[\w-]+)\s*:\s*([^;]+);/g)) {
+    vars[m[1]] = m[2].trim();
+  }
+  return vars;
+}
+
+const LIGHT = themeVars("light");
+const DARK = { ...LIGHT, ...themeVars("dark") };
+const VARS: Record<Theme, Record<string, string>> = { light: LIGHT, dark: DARK };
+
+/** Tailwind colour name → the token it points at (`active-ink` → `--a-ink`). */
+function themeColor(name: string): string {
+  const m = indexCss.match(new RegExp(`--color-${name}:\\s*var\\((--[\\w-]+)\\)`));
+  if (!m) throw new Error(`--color-${name} is not a token alias in index.css`);
+  return m[1];
+}
+
+function hex(theme: Theme, token: string): string {
+  const v = VARS[theme][token];
+  if (!v || !/^#[0-9a-f]{6}$/i.test(v)) throw new Error(`${token} in ${theme} is not a #rrggbb colour: ${v}`);
+  return v;
+}
+
+function rgb(h: string): [number, number, number] {
+  return [1, 3, 5].map((i) => parseInt(h.slice(i, i + 2), 16) / 255) as [number, number, number];
+}
+
+function luminance(h: string): number {
+  const [r, g, b] = rgb(h).map((c) => (c <= 0.04045 ? c / 12.92 : ((c + 0.055) / 1.055) ** 2.4));
+  return 0.2126 * r + 0.7152 * g + 0.0722 * b;
+}
+
+function ratio(a: string, b: string): number {
+  const [hi, lo] = [luminance(a), luminance(b)].sort((x, y) => y - x);
+  return (hi + 0.05) / (lo + 0.05);
+}
+
+/** `bg-x/10` composed on the surface, as the browser paints it. */
+function mix(fg: string, bg: string, alpha: number): string {
+  const f = rgb(fg);
+  const b = rgb(bg);
+  return (
+    "#" +
+    f
+      .map((c, i) => Math.round((c * alpha + b[i] * (1 - alpha)) * 255))
+      .map((n) => n.toString(16).padStart(2, "0"))
+      .join("")
+  );
+}
+
+/** A colour named the way a class names it: `warning-ink`, `warning/10`, `n-100`. */
+function resolve(theme: Theme, spec: string): string {
+  const [name, pct] = spec.split("/");
+  const color = name.startsWith("n-") ? hex(theme, `--${name}`) : hex(theme, themeColor(name));
+  return pct ? mix(color, resolve(theme, "surface"), Number(pct) / 100) : color;
+}
+
+const TEXT = 4.5;
+const GRAPHIC = 3;
+
+// [foreground, background, minimum]. Backgrounds: the card surface, the page
+// background, the tinted pill of the role. Every text pair in table A of the
+// colour sheet, plus the off switch (graphic).
+const PAIRS: [string, string, number][] = [
+  ["active-ink", "surface", TEXT],
+  ["active-ink", "background", TEXT],
+  ["active-ink", "active-bg", TEXT],
+  ["on-active", "active", TEXT],
+  ["warning", "surface", GRAPHIC],
+  ["warning-ink", "surface", TEXT],
+  ["warning-ink", "background", TEXT],
+  ["warning-ink", "warning/10", TEXT],
+  ["on-status", "warning-ink", TEXT],
+  ["success", "surface", TEXT],
+  ["success", "background", TEXT],
+  ["success", "success/10", TEXT],
+  ["on-status", "success", TEXT],
+  ["error", "surface", TEXT],
+  ["error", "background", TEXT],
+  ["error", "error/10", TEXT],
+  ["on-status", "error", TEXT],
+  ["heat", "heat/10", TEXT],
+  ["primary", "primary/10", TEXT],
+  ["text-secondary", "border-light-solid", TEXT],
+  // Off switch: its outline on the surface, its thumb on its track.
+  ["text-tertiary", "surface", GRAPHIC],
+  ["text-tertiary", "n-100", GRAPHIC],
+  // Neutral text on the card surface and on the page (slice 7a). Tertiary
+  // was 4.40:1 on the light page and 4.37:1 on the dark one before.
+  ["text", "surface", TEXT],
+  ["text", "background", TEXT],
+  ["text-secondary", "surface", TEXT],
+  ["text-secondary", "background", TEXT],
+  ["text-tertiary", "surface", TEXT],
+  ["text-tertiary", "background", TEXT],
+  // n-25: the category band inside a Maison card.
+  ["text-tertiary", "n-25", TEXT],
+  // Selection (primary-light, p-50): the sidebar entry, panel heads.
+  ["primary", "primary-light", TEXT],
+  ["text-tertiary", "primary-light", TEXT],
+  // Informational (humidity, contacts): text on its tinted pill.
+  ["info-ink", "surface", TEXT],
+  ["info-ink", "background", TEXT],
+  ["info-ink", "info/10", TEXT],
+  ["info", "surface", GRAPHIC],
+  // Slice 4b — primary fill carries white text; primary ink is text itself.
+  ["on-primary", "primary-fill", TEXT],
+  ["on-primary", "primary-fill-hover", TEXT],
+  ["primary-fill", "surface", GRAPHIC],
+  ["primary", "surface", TEXT],
+  ["primary", "background", TEXT],
+  // Illustrations at rest, without any brightness filter.
+  ["illu", "surface", GRAPHIC],
+];
+
+describe.each(["light", "dark"] as Theme[])("colour roles, %s theme", (theme) => {
+  it.each(PAIRS)("%s on %s reaches %d:1", (fg, bg, min) => {
+    // `border-light` is translucent (--line); the pill it backs is drawn on
+    // the surface, which is close enough to the n-50 step to stand for it.
+    const back = bg === "border-light-solid" ? hex(theme, "--n-50") : resolve(theme, bg);
+    expect(ratio(resolve(theme, fg), back)).toBeGreaterThanOrEqual(min);
+  });
+
+  it("keeps attention and fault apart (orange is not red)", () => {
+    // Hue alone carries it, so check the two are not the same colour.
+    expect(resolve(theme, "warning")).not.toBe(resolve(theme, "error"));
+    expect(resolve(theme, "warning-ink")).not.toBe(resolve(theme, "error"));
+  });
+});
+
+describe("colour role tokens", () => {
+  it("binds the values the spec decided", () => {
+    expect(hex("light", "--a-500")).toBe("#F2C035");
+    expect(hex("light", "--a-ink")).toBe("#8A6100");
+    expect(hex("light", "--orange-500")).toBe("#E8730C");
+    expect(hex("light", "--orange-700")).toBe("#A85500");
+    expect(hex("light", "--red-500")).toBe("#B42318");
+    expect(hex("light", "--green-500")).toBe("#13794A");
+  });
+
+  it("separates the primary fill from the primary ink in dark (slice 4b)", () => {
+    expect(hex("light", "--p-fill")).toBe("#1A4F6E");
+    expect(hex("light", "--p-fill-hover")).toBe("#144159");
+    expect(hex("dark", "--p-fill")).toBe("#2B7299");
+    expect(hex("dark", "--p-fill-hover")).toBe("#276B8F");
+    expect(hex("dark", "--p-on")).toBe("#FFFFFF");
+    // The light blue stays the ink of links and icons in dark.
+    expect(hex("dark", "--p-500")).toBe("#5BA5CC");
+    expect(themeColor("primary-fill")).toBe("--p-fill");
+    expect(themeColor("on-primary")).toBe("--p-on");
+  });
+
+  it("gives the illustrations theme colours (slice 4b)", () => {
+    expect(themeColor("illu")).toBe("--illu-ink");
+    expect(hex("light", "--illu-ink")).toBe("#1A4F6E");
+    expect(hex("dark", "--illu-ink")).toBe("#7FB8D4");
+    for (const token of ["--illu-ink-2", "--illu-fill", "--illu-fill-2", "--illu-water"]) {
+      expect(hex("dark", token)).not.toBe(hex("light", token));
+    }
+  });
+
+  it("binds the ocean neutrals (slice 7a)", () => {
+    expect(hex("light", "--n-50")).toBe("#ECF2F7");
+    expect(hex("light", "--n-400")).toBe("#626C73");
+    expect(hex("dark", "--n-0")).toBe("#17232B");
+    expect(hex("dark", "--n-50")).toBe("#0E191F");
+    expect(hex("dark", "--p-50")).toBe("#1D303D");
+    expect(themeColor("primary-mid")).toBe("--p-mid");
+  });
+
+  it.each(["light", "dark"] as Theme[])("lifts the cards off the page in %s", (theme) => {
+    const surface = resolve(theme, "surface");
+    const page = resolve(theme, "background");
+    expect(ratio(surface, page)).toBeGreaterThanOrEqual(1.1);
+    // Elevation reads as a lighter card in both themes; the dark cards were
+    // darker than the page before slice 7a.
+    expect(luminance(surface)).toBeGreaterThan(luminance(page));
+  });
+
+  it.each(["shutter", "sensor", "media"])("draws the %s icon square on the theme's card (slice 7b)", (cat) => {
+    for (const theme of ["light", "dark"] as Theme[]) {
+      expect(ratio(hex(theme, `--${cat}-500`), hex(theme, `--${cat}-50`))).toBeGreaterThanOrEqual(GRAPHIC);
+    }
+    // The dark tints were calibrated for the old #16181E card, on which the
+    // new one painted them 1.00:1 to 1.04:1: an icon with no square.
+    expect(ratio(hex("dark", `--${cat}-50`), resolve("dark", "surface"))).toBeGreaterThanOrEqual(1.1);
+  });
+
+  it("gives dark illustrations ocean night fills that read on a card (slice 7b)", () => {
+    expect(ratio(hex("dark", "--illu-fill"), resolve("dark", "surface"))).toBeGreaterThanOrEqual(1.15);
+    expect(luminance(hex("dark", "--illu-fill-2"))).toBeGreaterThan(luminance(hex("dark", "--illu-fill")));
+  });
+
+  it("gives the live breakdown's « other » a colour per theme (slice 7b)", () => {
+    expect(hex("dark", "--energy-other")).not.toBe(hex("light", "--energy-other"));
+    // Subdued, yet a visible wedge on the night card.
+    expect(ratio(hex("dark", "--energy-other"), resolve("dark", "surface"))).toBeGreaterThanOrEqual(GRAPHIC);
+  });
+
+  it("keeps the dark selection visible on a card", () => {
+    // #1A2A38 was 1.09:1 on the new surface, the same colour to the eye.
+    expect(ratio(resolve("dark", "primary-light"), resolve("dark", "surface"))).toBeGreaterThanOrEqual(1.15);
+  });
+
+  it("paints the splash and the dark browser bar with the page colour", () => {
+    const html = readFileSync(new URL("../../index.html", import.meta.url), "utf8");
+    const vite = readFileSync(new URL("../../vite.config.ts", import.meta.url), "utf8");
+    expect(html).toContain(`#splash{position:fixed;inset:0;display:flex;align-items:center;justify-content:center;background:${hex("light", "--n-50")}`);
+    expect(html).toContain(`.dark #splash{background:${hex("dark", "--n-50")}}`);
+    expect(html).toContain(`<meta name="theme-color" content="${hex("dark", "--n-50")}" media="(prefers-color-scheme: dark)" />`);
+    expect(vite).toContain(`background_color: "${hex("light", "--n-50")}"`);
+    // theme.ts repaints both metas with the app's own theme.
+    expect(THEME_COLOR).toEqual({ light: hex("light", "--p-500"), dark: hex("dark", "--n-50") });
+  });
+
+  it("defines info as a role in both themes", () => {
+    expect(themeColor("info")).toBe("--info-500");
+    expect(themeColor("info-ink")).toBe("--info-700");
+  });
+
+  it("makes warning orange, no longer amber", () => {
+    expect(themeColor("warning")).toBe("--orange-500");
+    expect(themeColor("active")).toBe("--a-500");
+  });
+
+  it("follows the theme for native controls", () => {
+    expect(indexCss).toMatch(/:root\s*\{[^}]*color-scheme:\s*light;[^}]*accent-color:\s*var\(--color-primary-fill\);/);
+    expect(indexCss).toMatch(/\.dark\s*\{[^}]*color-scheme:\s*dark;/);
+  });
+});
+
+// ── Non-regression ─────────────────────────────────────────────
+// Tailwind 4 emits nothing for an unknown class: a class renamed here but
+// forgotten in a component does not fail the build, it just disappears. So
+// the retired names are searched for in the sources.
+
+function sources(dir: string): string[] {
+  return readdirSync(dir, { withFileTypes: true }).flatMap((e) => {
+    const p = join(dir, e.name);
+    if (e.isDirectory()) return sources(p);
+    return /\.(ts|tsx|css)$/.test(e.name) && !/\.test\.tsx?$/.test(e.name) ? [p] : [];
+  });
+}
+
+const FILES = sources(srcRoot).map((path) => ({ path: path.slice(srcRoot.length), text: readFileSync(path, "utf8") }));
+
+const RETIRED: [RegExp, string][] = [
+  [/\b(text|bg|border|fill|stroke|ring)-accent\b/, "amber means on or running: active, active-ink or active-bg"],
+  [/\bactive-text\b/, "renamed active-ink"],
+  [/\btext-warning(?![-\w])/, "orange as text is warning-ink"],
+  [/\b(bg|border)-(success|warning|error|active)\/15\b/, "tinted status backgrounds stop at /10"],
+  [/\b(text|bg|border)-(red|green|amber|yellow|orange|emerald)-\d/, "raw Tailwind colours bypass the theme"],
+  [/\b(bg|text)-light-(50|500)\b/, "a light off is neutral; the light tint is gone"],
+  [/--color-(accent-light|accent-hover|success-light)\b/, "token removed or never defined"],
+  [/#(dcfce7|ede9fe|7c3aed)\b/i, "mode badges take tokens"],
+  [/\bbg-primary(?![-/\w])[^"`]*\btext-white\b|\btext-white\b[^"`]*\bbg-primary(?![-/\w])/, "text sits on bg-primary-fill, not on the ink"],
+  [/\bbg-primary-hover\b/, "a filled control hovers to bg-primary-fill-hover"],
+  [/\bwidget-icon\b|brightness\(1\.6\)/, "illustrations take --illu-* tokens, no brightness filter"],
+];
+
+describe("illustrations follow the theme", () => {
+  it.each(["components/dashboard/WidgetIcons.tsx", "components/icons/AwningIcon.tsx", "components/icons/EvCarGauge.tsx"])(
+    "%s has no hard-coded colour",
+    (file) => {
+      const text = readFileSync(join(srcRoot, file), "utf8").replace(/\/\*[\s\S]*?\*\/|\/\/.*$/gm, "");
+      expect(text.match(/#[0-9a-f]{3,6}\b|"white"|"black"/gi) ?? []).toEqual([]);
+    },
+  );
+
+  it("drops the dark-mode brightness filter", () => {
+    expect(indexCss).not.toMatch(/filter:\s*brightness/);
+  });
+});
+
+describe("no retired colour class in ui/src", () => {
+  it.each(RETIRED)("%s", (pattern, why) => {
+    const hits = FILES.flatMap(({ path, text }) =>
+      text.split("\n").flatMap((line, i) => (pattern.test(line) ? [`${path}:${i + 1}`] : [])),
+    );
+    expect(hits, why).toEqual([]);
+  });
+
+  it("puts no white text on bg-primary, even when the className spans several lines", () => {
+    // bg-primary is the ink (light in dark): text sits on bg-primary-fill. A
+    // line-by-line search misses `bg-primary ${on ? "text-white" : …}` split
+    // over lines, so each className is read whole.
+    const bare = /(^|[\s"'`])bg-primary(?=[\s"'`]|$)/;
+    const white = /(^|[\s"'`])text-white(?=[\s"'`]|$)/;
+    const hits = FILES.flatMap(({ path, text }) =>
+      classNames(text)
+        .filter(({ cls }) => bare.test(cls) && white.test(cls))
+        .map(({ line }) => `${path}:${line}`),
+    );
+    expect(hits).toEqual([]);
+  });
+
+  it("references only custom properties that are defined", () => {
+    // A chart stroke of var(--border) (instead of --color-border) drew nothing.
+    // Properties set inline (style={{ "--fill-pct": … }}) count as defined.
+    const defined = new Set(
+      [tokensCss, indexCss, ...FILES.map((f) => f.text)].flatMap((t) => [...t.matchAll(/["']?(--[\w-]+)["']?\s*:/g)].map((m) => m[1])),
+    );
+    const missing = FILES.flatMap(({ path, text }) =>
+      [...text.matchAll(/var\((--[\w-]+)/g)].filter((m) => !defined.has(m[1])).map((m) => `${path}: ${m[1]}`),
+    );
+    expect(missing).toEqual([]);
+  });
+
+  it("uses only role colours that exist in the theme", () => {
+    // A typo such as text-warning-text would also vanish silently.
+    const defined = new Set([...indexCss.matchAll(/--color-([\w-]+):/g)].map((m) => m[1]));
+    const used = new Set(
+      FILES.flatMap(({ text }) =>
+        [...text.matchAll(/\b(?:text|bg|border|fill|stroke)-((?:active|warning|success|error|heat|info|illu|on-status|on-active|on-primary|primary-fill)[\w-]*)/g)].map(
+          (m) => m[1],
+        ),
+      ),
+    );
+    expect([...used].filter((c) => !defined.has(c))).toEqual([]);
+  });
+});

@@ -56,9 +56,9 @@ export function HeaterControl({ equipment, onExecuteOrder, compact }: HeaterCont
         {/* State badge */}
         <span
           className={`
-            text-[11px] font-medium px-2 py-0.5 rounded-full flex-shrink-0
+            text-micro font-medium px-2 py-0.5 rounded-full flex-shrink-0
             ${isComfort
-              ? "bg-error/10 text-error"
+              ? "bg-heat/10 text-heat"
               : "bg-primary/10 text-primary"
             }
           `}
@@ -72,9 +72,9 @@ export function HeaterControl({ equipment, onExecuteOrder, compact }: HeaterCont
             onClick={handleToggle}
             disabled={executing}
             className={`
-              p-1.5 rounded-[6px] transition-colors duration-150 cursor-pointer
+              p-1.5 rounded-sm transition-colors duration-150 cursor-pointer
               ${isComfort
-                ? "bg-error/10 text-error hover:bg-error/20"
+                ? "bg-heat/10 text-heat hover:bg-heat/20"
                 : "bg-primary/10 text-primary hover:bg-primary/20"
               }
               disabled:opacity-50 disabled:cursor-not-allowed
@@ -100,9 +100,9 @@ export function HeaterControl({ equipment, onExecuteOrder, compact }: HeaterCont
       <div className="flex items-center gap-3">
         <div
           className={`
-            w-10 h-10 rounded-[8px] flex items-center justify-center
+            w-10 h-10 rounded-md flex items-center justify-center
             ${isComfort
-              ? "bg-error/10 text-error"
+              ? "bg-heat/10 text-heat"
               : "bg-primary/10 text-primary"
             }
           `}
@@ -113,10 +113,10 @@ export function HeaterControl({ equipment, onExecuteOrder, compact }: HeaterCont
           }
         </div>
         <div>
-          <div className="text-[16px] font-medium text-text">
+          <div className="text-lead font-medium text-text">
             {isComfort ? t("controls.heater.comfort") : t("controls.heater.eco")}
           </div>
-          <div className="text-[12px] text-text-tertiary">
+          <div className="text-caption text-text-tertiary">
             {isOn ? t("controls.heater.relayOn") : t("controls.heater.relayOff")}
           </div>
         </div>
@@ -128,11 +128,11 @@ export function HeaterControl({ equipment, onExecuteOrder, compact }: HeaterCont
           onClick={handleToggle}
           disabled={executing}
           className={`
-            flex items-center gap-2 px-4 py-2 rounded-[6px] text-[13px] font-medium
+            flex items-center gap-2 px-4 py-2 rounded-sm text-small font-medium
             transition-colors duration-150
             ${isComfort
               ? "bg-primary/10 text-primary hover:bg-primary/20"
-              : "bg-error/10 text-error hover:bg-error/20"
+              : "bg-heat/10 text-heat hover:bg-heat/20"
             }
             disabled:opacity-50
           `}

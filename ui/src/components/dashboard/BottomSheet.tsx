@@ -72,7 +72,7 @@ export function BottomSheet({ open, onClose, title, icon, children }: BottomShee
       {/* Sheet */}
       <div
         ref={sheetRef}
-        className="absolute bottom-0 left-0 right-0 bg-surface rounded-t-[14px] shadow-xl max-h-[60vh] flex flex-col animate-slide-up"
+        className="absolute bottom-0 left-0 right-0 bg-surface rounded-t-lg shadow-lg max-h-[60vh] flex flex-col animate-slide-up"
         onTouchStart={handleTouchStart}
         onTouchMove={handleTouchMove}
         onTouchEnd={handleTouchEnd}
@@ -86,11 +86,11 @@ export function BottomSheet({ open, onClose, title, icon, children }: BottomShee
         <div className="flex items-center justify-between px-5 pb-3">
           <div className="flex items-center gap-3">
             {icon && <div className="w-8 h-8 flex items-center justify-center">{icon}</div>}
-            <h2 className="text-[16px] font-semibold text-text">{title}</h2>
+            <h2 className="text-lead font-semibold text-text">{title}</h2>
           </div>
           <button
             onClick={onClose}
-            className="p-1.5 rounded-[6px] text-text-tertiary hover:text-text-secondary hover:bg-border-light transition-colors cursor-pointer"
+            className="p-1.5 rounded-sm text-text-tertiary hover:text-text-secondary hover:bg-border-light transition-colors cursor-pointer"
           >
             <X size={18} strokeWidth={1.5} />
           </button>

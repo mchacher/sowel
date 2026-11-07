@@ -30,7 +30,7 @@ export function PhaseBreakdown({ gridEquipments }: Props) {
   const maxPower = Math.max(1, ...phases.map((p) => Math.abs(p.power)));
 
   return (
-    <div className="bg-surface border border-border rounded-[10px] p-4 sm:p-6 mt-4">
+    <div className="card p-4 sm:p-6 mt-4">
       <SectionHeader icon={Columns3} title={t("energy.live.phases.title")} />
       <div className="flex flex-col gap-3 max-w-[600px]">
         {phases.map((p, i) => {
@@ -39,7 +39,7 @@ export function PhaseBreakdown({ gridEquipments }: Props) {
           const color = PHASE_COLORS[i % PHASE_COLORS.length];
           return (
             <div key={p.n} className="flex items-center gap-3">
-              <span className="text-[12px] font-semibold text-text-tertiary w-14 shrink-0">
+              <span className="text-caption font-semibold text-text-tertiary w-14 shrink-0">
                 {t("energy.live.phases.phase", { n: p.n })}
               </span>
               <div className="flex-1 h-2 rounded-full bg-border overflow-hidden">
@@ -48,7 +48,7 @@ export function PhaseBreakdown({ gridEquipments }: Props) {
                   style={{ width: `${pct}%`, background: color }}
                 />
               </div>
-              <span className="font-mono text-[13px] font-medium text-text-secondary w-16 text-right shrink-0">
+              <span className="tabular-nums text-small font-medium text-text-secondary w-16 text-right shrink-0">
                 {f}
               </span>
             </div>

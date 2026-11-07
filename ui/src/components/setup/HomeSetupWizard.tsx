@@ -4,6 +4,7 @@ import { Home, Loader2 } from "lucide-react";
 import { getSettings, updateSettings, triggerSystemRestart } from "../../api";
 import { useAuth } from "../../store/useAuth";
 import { SowelLogo } from "../layout/SowelLogo";
+import { FIELD_LABEL } from "../ui/text-roles";
 
 /**
  * First-login Home setup wizard. Blocks the app when:
@@ -103,21 +104,21 @@ export function HomeSetupWizard() {
   };
 
   return (
-    <div className="fixed inset-0 z-[100] bg-[var(--n-25)] flex items-center justify-center p-4 overflow-y-auto">
-      <div className="bg-surface rounded-[14px] border border-border max-w-md w-full p-6 my-auto shadow-lg">
+    <div className="fixed inset-0 z-[100] bg-background flex items-center justify-center p-4 overflow-y-auto">
+      <div className="bg-surface rounded-lg max-w-md w-full p-6 my-auto shadow-lg">
         <div className="flex items-center gap-3 mb-4">
           <SowelLogo size={32} />
           <div className="min-w-0">
-            <h1 className="text-[18px] font-bold text-text leading-tight">
+            <h1 className="text-title font-semibold text-text leading-tight">
               {t("setup.home.title", "Bienvenue sur Sowel")}
             </h1>
-            <p className="text-[12px] text-text-tertiary mt-0.5">
+            <p className="text-caption text-text-tertiary mt-0.5">
               {t("setup.home.subtitle", "Une dernière étape avant de commencer")}
             </p>
           </div>
         </div>
 
-        <p className="text-[13px] text-text-secondary mb-5">
+        <p className="text-small text-text-secondary mb-5">
           {t(
             "setup.home.body",
             "Indiquez le nom et la position de votre maison. Sowel s'en sert pour calculer le lever et le coucher du soleil et pour déterminer votre fuseau horaire.",
@@ -126,7 +127,7 @@ export function HomeSetupWizard() {
 
         <form onSubmit={handleSubmit} className="space-y-4">
           <div>
-            <label className="block text-[12px] text-text-tertiary uppercase tracking-widest mb-1">
+            <label className={FIELD_LABEL}>
               <Home size={12} className="inline mr-1 -mt-0.5" />
               {t("setup.home.name", "Nom de la maison")}
             </label>
@@ -135,7 +136,7 @@ export function HomeSetupWizard() {
               value={homeName}
               onChange={(e) => setHomeName(e.target.value)}
               placeholder={t("setup.home.namePlaceholder", "Ma maison, Studio Paris...")}
-              className="w-full px-3 py-2 text-[14px] bg-background border border-border rounded-[6px] text-text placeholder:text-text-tertiary focus:outline-none focus:border-primary"
+              className="w-full px-3 py-2 text-body bg-background border border-border rounded-sm text-text placeholder:text-text-tertiary focus:outline-none focus:border-primary"
               autoFocus
               required
             />
@@ -143,7 +144,7 @@ export function HomeSetupWizard() {
 
           <div className="grid grid-cols-2 gap-3">
             <div>
-              <label className="block text-[12px] text-text-tertiary uppercase tracking-widest mb-1">
+              <label className={FIELD_LABEL}>
                 {t("setup.home.latitude", "Latitude")}
               </label>
               <input
@@ -152,12 +153,12 @@ export function HomeSetupWizard() {
                 value={latitude}
                 onChange={(e) => setLatitude(e.target.value.replace(",", "."))}
                 placeholder="48.8566"
-                className="w-full px-3 py-2 text-[14px] bg-background border border-border rounded-[6px] text-text placeholder:text-text-tertiary focus:outline-none focus:border-primary"
+                className="w-full px-3 py-2 text-body bg-background border border-border rounded-sm text-text placeholder:text-text-tertiary focus:outline-none focus:border-primary"
                 required
               />
             </div>
             <div>
-              <label className="block text-[12px] text-text-tertiary uppercase tracking-widest mb-1">
+              <label className={FIELD_LABEL}>
                 {t("setup.home.longitude", "Longitude")}
               </label>
               <input
@@ -166,13 +167,13 @@ export function HomeSetupWizard() {
                 value={longitude}
                 onChange={(e) => setLongitude(e.target.value.replace(",", "."))}
                 placeholder="2.3522"
-                className="w-full px-3 py-2 text-[14px] bg-background border border-border rounded-[6px] text-text placeholder:text-text-tertiary focus:outline-none focus:border-primary"
+                className="w-full px-3 py-2 text-body bg-background border border-border rounded-sm text-text placeholder:text-text-tertiary focus:outline-none focus:border-primary"
                 required
               />
             </div>
           </div>
 
-          <p className="text-[11px] text-text-tertiary">
+          <p className="text-caption text-text-tertiary">
             {t(
               "setup.home.hint",
               "Astuce: ouvrez Google Maps sur l'emplacement de votre maison, clic droit → les deux nombres affichés sont la latitude et la longitude.",
@@ -180,7 +181,7 @@ export function HomeSetupWizard() {
           </p>
 
           {error && (
-            <div className="text-[12px] text-error bg-error/10 px-3 py-2 rounded-[6px]">
+            <div className="text-caption text-error bg-error/10 px-3 py-2 rounded-sm">
               {error}
             </div>
           )}
@@ -188,7 +189,7 @@ export function HomeSetupWizard() {
           <button
             type="submit"
             disabled={!canSubmit}
-            className="w-full px-4 py-2.5 text-[14px] font-semibold text-white bg-primary hover:bg-primary-hover disabled:opacity-40 disabled:cursor-not-allowed rounded-[6px] transition-colors inline-flex items-center justify-center gap-2"
+            className="w-full px-4 py-2.5 text-body font-semibold text-white bg-primary-fill hover:bg-primary-fill-hover disabled:opacity-40 disabled:cursor-not-allowed rounded-sm transition-colors inline-flex items-center justify-center gap-2"
           >
             {saving ? <Loader2 size={16} className="animate-spin" /> : null}
             {t("setup.home.submit", "Continuer")}

@@ -96,7 +96,7 @@ export function ShutterControl({ equipment, onExecuteOrder, compact }: ShutterCo
   if (compact) {
     // Layout: slider (80px) → state pill → 3 bordered 24×24 buttons (.shutter-btn).
     const sttClass =
-      "w-[24px] h-[24px] inline-flex items-center justify-center border border-border-light bg-surface text-text-tertiary rounded-[4px] transition-colors duration-150 cursor-pointer hover:bg-shutter-50 hover:text-shutter-500 hover:border-shutter-500 disabled:opacity-50 disabled:cursor-not-allowed";
+      "w-[24px] h-[24px] inline-flex items-center justify-center border border-border-light bg-surface text-text-tertiary rounded-sm transition-colors duration-150 cursor-pointer hover:bg-shutter-50 hover:text-shutter-500 hover:border-shutter-500 disabled:opacity-50 disabled:cursor-not-allowed";
     return (
       <div
         className="flex items-center gap-2 flex-shrink-0"
@@ -118,20 +118,20 @@ export function ShutterControl({ equipment, onExecuteOrder, compact }: ShutterCo
           />
         )}
         {doorPill ? (
-          <span className={`text-[11px] font-semibold px-[7px] py-[1px] rounded-full ${doorPill.className}`}>
+          <span className={`text-micro font-semibold px-[7px] py-[1px] rounded-full ${doorPill.className}`}>
             {t(doorPill.key)}
           </span>
         ) : position !== null && (
           position === 100 ? (
-            <span className="text-[11px] font-semibold text-success px-[7px] py-[1px] rounded-full bg-success/10">
+            <span className="text-micro font-semibold text-text-secondary px-[7px] py-[1px] rounded-full bg-border-light">
               {t(pillAtHundredKey)}
             </span>
           ) : position === 0 ? (
-            <span className="text-[11px] font-semibold text-shutter-500 px-[7px] py-[1px] rounded-full bg-shutter-50">
+            <span className="text-micro font-semibold text-shutter-500 px-[7px] py-[1px] rounded-full bg-shutter-50">
               {t(pillAtZeroKey)}
             </span>
           ) : (
-            <span className="text-[11px] text-text-tertiary tabular-nums w-8 text-right">
+            <span className="text-micro text-text-tertiary tabular-nums w-8 text-right">
               {position}%
             </span>
           )
@@ -177,8 +177,8 @@ export function ShutterControl({ equipment, onExecuteOrder, compact }: ShutterCo
     <div className="space-y-3">
       {doorPill && (
         <div className="flex items-center gap-3">
-          <span className="text-[12px] text-text-tertiary w-16">{t("controls.state")}</span>
-          <span className={`text-[12px] font-semibold px-2 py-[1px] rounded-full ${doorPill.className}`}>
+          <span className="text-caption text-text-tertiary w-16">{t("controls.state")}</span>
+          <span className={`text-caption font-semibold px-2 py-[1px] rounded-full ${doorPill.className}`}>
             {t(doorPill.key)}
           </span>
         </div>
@@ -186,7 +186,7 @@ export function ShutterControl({ equipment, onExecuteOrder, compact }: ShutterCo
       {/* Position slider or display */}
       {position !== null && (
         <div className="flex items-center gap-3">
-          <span className="text-[12px] text-text-tertiary w-16">{t("controls.position")}</span>
+          <span className="text-caption text-text-tertiary w-16">{t("controls.position")}</span>
           {hasPositionOrder ? (
             <input
               type="range"
@@ -208,7 +208,7 @@ export function ShutterControl({ equipment, onExecuteOrder, compact }: ShutterCo
               />
             </div>
           )}
-          <span className="text-[12px] text-text-secondary w-auto text-right tabular-nums">
+          <span className="text-caption text-text-secondary w-auto text-right tabular-nums">
             {position === 0 ? t(pillAtZeroKey) : position === 100 ? t(pillAtHundredKey) : formatPercent(position)}
           </span>
         </div>
@@ -220,7 +220,7 @@ export function ShutterControl({ equipment, onExecuteOrder, compact }: ShutterCo
           <button
             onClick={() => handleCommand("OPEN")}
             disabled={executing}
-            className="flex items-center gap-2 px-4 py-2 rounded-[6px] text-[13px] font-medium transition-colors duration-150 bg-border-light text-text-secondary hover:bg-border hover:text-text disabled:opacity-50"
+            className="flex items-center gap-2 px-4 py-2 rounded-sm text-small font-medium transition-colors duration-150 bg-border-light text-text-secondary hover:bg-border hover:text-text disabled:opacity-50"
           >
             <OpenIcon size={16} strokeWidth={1.5} />
             {t(openKey)}
@@ -229,7 +229,7 @@ export function ShutterControl({ equipment, onExecuteOrder, compact }: ShutterCo
             <button
               onClick={() => handleCommand("STOP")}
               disabled={executing}
-              className="flex items-center gap-2 px-4 py-2 rounded-[6px] text-[13px] font-medium transition-colors duration-150 bg-border-light text-text-secondary hover:bg-border hover:text-text disabled:opacity-50"
+              className="flex items-center gap-2 px-4 py-2 rounded-sm text-small font-medium transition-colors duration-150 bg-border-light text-text-secondary hover:bg-border hover:text-text disabled:opacity-50"
             >
               <Square size={12} strokeWidth={2} />
               {t("controls.stop")}
@@ -238,7 +238,7 @@ export function ShutterControl({ equipment, onExecuteOrder, compact }: ShutterCo
           <button
             onClick={() => handleCommand("CLOSE")}
             disabled={executing}
-            className="flex items-center gap-2 px-4 py-2 rounded-[6px] text-[13px] font-medium transition-colors duration-150 bg-border-light text-text-secondary hover:bg-border hover:text-text disabled:opacity-50"
+            className="flex items-center gap-2 px-4 py-2 rounded-sm text-small font-medium transition-colors duration-150 bg-border-light text-text-secondary hover:bg-border hover:text-text disabled:opacity-50"
           >
             <CloseIcon size={16} strokeWidth={1.5} />
             {t(closeKey)}

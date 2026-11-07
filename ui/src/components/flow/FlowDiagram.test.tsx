@@ -97,7 +97,7 @@ describe("FlowDiagram nodes", () => {
 
   it("dims the contents but never the box, so the skeleton cannot show through", () => {
     const { container } = render(<FlowDiagram nodes={[node({ dimmed: true })]} links={[]} />);
-    const box = container.querySelector(".rounded-\\[14px\\]") as HTMLElement;
+    const box = container.querySelector(".rounded-md") as HTMLElement;
     expect(box.className).not.toContain("opacity-40");
     expect((box.firstElementChild as HTMLElement).className).toContain("opacity-40");
   });
@@ -105,6 +105,30 @@ describe("FlowDiagram nodes", () => {
   it("renders a value prefix when the caller supplies one", () => {
     render(<FlowDiagram nodes={[node({ valuePrefix: <span>↑</span> })]} links={[]} />);
     expect(screen.getByText("↑")).toBeTruthy();
+  });
+
+  // Spec 196, slice 5b — a satellite is about 70 px wide on a 390 px phone.
+  // In tracked capitals « PRODUCTION » ran past its border; the label is now
+  // sentence case and the satellite steps down a size below `sm`.
+  it("writes the node label in sentence case, smaller in a satellite on a phone", () => {
+    render(
+      <FlowDiagram
+        nodes={[node({ label: "Consommation" }), node({ slot: "right", label: "Production", value: "745", unit: "W" })]}
+        links={[]}
+      />,
+    );
+    const focal = screen.getByText("Consommation");
+    const satellite = screen.getByText("Production");
+    for (const label of [focal, satellite]) {
+      expect(label.className).not.toMatch(/uppercase|tracking-widest/);
+      expect(label.className).toContain("whitespace-nowrap");
+    }
+    expect(satellite.className).toMatch(/(^|\s)text-micro(\s|$)/);
+    expect(focal.className).not.toMatch(/(^|\s)text-micro(\s|$)/);
+    const value = screen.getByText("745").parentElement as HTMLElement;
+    expect(value.className).toContain("text-body");
+    expect(value.className).not.toContain("font-mono");
+    expect(value.className).toContain("tabular-nums");
   });
 });
 

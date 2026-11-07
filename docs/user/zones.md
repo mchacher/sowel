@@ -90,8 +90,9 @@ In the **Home** view, each zone displays a **status header** with aggregated dat
 - **Doors** count pill for motorised doors (e.g., "1/2"), apart from the door contact alert
 - **Alert** pills for open doors/windows, water leaks, smoke
 - **Power** pill (e.g., "47 W", or "2.4 kW" above the kilowatt) when the zone has at least one meter
+- **Sun** pill on the root zone, on a phone or a tablet, with today's sunrise and sunset (e.g., "07:22 – 17:17"). On a computer they sit in the top bar instead, on every page.
 
-Below the header, equipments are grouped by type (Lights, Shutters, Sensors) with inline controls.
+Below the header, equipments are grouped by type (Lights, Shutters, Sensors) with inline controls. Each panel (Equipments, Behaviors, Activity) has its title on a block of its own, with how many items it holds; each type of equipment is a block under it.
 
 ### Power aggregation
 
@@ -110,7 +111,9 @@ If a zone holds both a meter on a circuit and a meter on a load fed by that circ
 
 Each zone has a live **Activity** panel on the right side of the Home view. It is a glance widget that shows what just happened in the zone: orders dispatched, motion detected, recipes started, mode changes, sunrise/sunset, alarms.
 
-The panel groups events by hour. The most recent bucket is labeled `HH:00 → now`, older buckets are labeled `HH:00`.
+The panel reads as one log, newest first: one line per event, its time on the left, a thin line linking the events. When the log crosses into another part of the day, a small label marks it: "This morning", "Overnight", "Yesterday evening", "Monday afternoon". The part of the day you are in carries no label. Parts of the day follow local time: overnight before 6:00, morning until noon, afternoon until 18:00, evening after.
+
+The log holds the most recent events, not a fixed period: the last 100 on a computer, the last 10 on a phone, never older than 7 days. The subtitle next to the title says how far back it reaches, from the oldest event shown: "since 14:05", "since yesterday 18:12", "since Monday 07:30". In a busy house a hundred events can cover only a few hours. An order's value reads as everywhere else in the app: "On" / "Off", "20.5°" for a setpoint.
 
 ![Zone view showing the Activity panel in the right column](../screenshots/activity-zone-view-en.png)
 
@@ -118,7 +121,7 @@ The panel groups events by hour. The most recent bucket is labeled `HH:00 → no
 
 | Category            | Triggered by                                                                        | Example                                                      |
 | ------------------- | ----------------------------------------------------------------------------------- | ------------------------------------------------------------ |
-| **Order**           | Any equipment order dispatched by a recipe, mode, button, manual API call           | `Lumière → ON manuel`, `Lumière → OFF par Motion Light`      |
+| **Order**           | Any equipment order dispatched by a recipe, mode, button, manual API call           | `Lumière → On manual`, `Lumière → Off by Motion Light`       |
 | **Motion**          | Motion sensor rising edge (binding category `motion`)                               | `Motion detected on PIR Living Room`                         |
 | **Recipe**          | Recipe instance start / stop                                                        | `Recipe Motion Light started`                                |
 | **Mode**            | Mode activation / deactivation                                                      | `Mode Night activated`                                       |
@@ -130,7 +133,7 @@ Each item shows **who triggered it**: a recipe name, a mode name, "manual" for d
 
 ### Coalescing
 
-When a recipe dispatches multiple identical orders in a quick burst (e.g., Motion Light turns off three appliques at the same time), the feed merges them into a single row with a count: `Applique x 1 ×3 → OFF par Motion Light`. The window is 500 ms; the same alias, value, and source are required for merging.
+When a recipe dispatches multiple identical orders in a quick burst (e.g., Motion Light turns off three appliques at the same time), the feed merges them into a single row with a count: `Applique x 1 ×3 → Off by Motion Light`. The window is 500 ms; the same alias, value, and source are required for merging.
 
 ### Sub-zones toggle
 

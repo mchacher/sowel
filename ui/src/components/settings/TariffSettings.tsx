@@ -111,7 +111,7 @@ function TariffTimeline({ slots }: { slots: TariffSlot[] }) {
         {aboveLabels.map((label, i) => (
           <span
             key={i}
-            className="absolute text-[10px] text-text-secondary -translate-x-1/2 bottom-0"
+            className="absolute text-micro text-text-secondary -translate-x-1/2 bottom-0"
             style={{ left: `${(label.min / TOTAL_MINUTES) * 100}%` }}
           >
             {label.text}
@@ -120,11 +120,11 @@ function TariffTimeline({ slots }: { slots: TariffSlot[] }) {
       </div>
 
       {/* Bar */}
-      <div className="flex h-7 rounded-md overflow-hidden">
+      <div className="flex h-7 rounded-sm overflow-hidden">
         {segments.map((seg, i) => {
           const widthPct = ((seg.endMin - seg.startMin) / TOTAL_MINUTES) * 100;
           const color =
-            seg.tariff === "hp" ? HP_COLOR : seg.tariff === "hc" ? HC_COLOR : "#e5e7eb";
+            seg.tariff === "hp" ? HP_COLOR : seg.tariff === "hc" ? HC_COLOR : "var(--color-border)";
           return (
             <div
               key={i}
@@ -140,7 +140,7 @@ function TariffTimeline({ slots }: { slots: TariffSlot[] }) {
         {belowLabels.map((label, i) => (
           <span
             key={i}
-            className="absolute text-[10px] text-text-secondary -translate-x-1/2 top-0"
+            className="absolute text-micro text-text-secondary -translate-x-1/2 top-0"
             style={{ left: `${(label.min / TOTAL_MINUTES) * 100}%` }}
           >
             {label.text}
@@ -149,7 +149,7 @@ function TariffTimeline({ slots }: { slots: TariffSlot[] }) {
       </div>
 
       {/* Legend */}
-      <div className="flex items-center gap-4 mt-2 text-[12px] text-text-secondary">
+      <div className="flex items-center gap-4 mt-2 text-caption text-text-secondary">
         <span className="flex items-center gap-1.5">
           <span className="inline-block w-3 h-3 rounded-sm" style={{ backgroundColor: HP_COLOR }} />
           {t("energy.peakHours")}
@@ -241,8 +241,8 @@ export function TariffSettings() {
 
   if (loading) {
     return (
-      <div className="bg-surface border border-border rounded-[10px] p-5">
-        <div className="flex items-center gap-2 text-text-secondary text-[13px]">
+      <div className="card p-5">
+        <div className="flex items-center gap-2 text-text-secondary text-small">
           <Loader2 size={14} className="animate-spin" />
           {t("common.loading")}
         </div>
@@ -251,10 +251,10 @@ export function TariffSettings() {
   }
 
   return (
-    <div className="bg-surface border border-border rounded-[10px] p-5">
+    <div className="card p-5">
       <div className="flex items-center gap-2 mb-4">
         <Zap size={18} strokeWidth={1.5} className="text-text-secondary" />
-        <h2 className="text-[15px] font-semibold text-text">{t("tariff.title")}</h2>
+        <h2 className="text-lead font-semibold text-text">{t("tariff.title")}</h2>
       </div>
 
       {/* Issue #384 — the form is pre-filled with the standard schedule as a
@@ -263,9 +263,9 @@ export function TariffSettings() {
       {!configured && (
         <div
           role="status"
-          className="flex items-start gap-2 mb-4 px-3 py-2 rounded-md bg-accent/10 border border-accent/20 text-[12px] text-text-secondary"
+          className="flex items-start gap-2 mb-4 px-3 py-2 rounded-md bg-primary-light border border-primary/20 text-caption text-text-secondary"
         >
-          <Info size={14} strokeWidth={1.5} className="mt-0.5 flex-shrink-0 text-accent" />
+          <Info size={14} strokeWidth={1.5} className="mt-0.5 flex-shrink-0 text-primary" />
           <span>{t("tariff.unsavedBanner")}</span>
         </div>
       )}
@@ -273,7 +273,7 @@ export function TariffSettings() {
       {/* Prices */}
       <div className="grid grid-cols-2 gap-4 mb-5">
         <div>
-          <label className="block text-[12px] text-text-secondary mb-1">
+          <label className="block text-caption text-text-secondary mb-1">
             {t("tariff.priceHp")}
           </label>
           <input
@@ -287,11 +287,11 @@ export function TariffSettings() {
                 prices: { ...prev.prices, hp: parseFloat(e.target.value) || 0 },
               }))
             }
-            className="w-full px-3 py-1.5 border border-border rounded-md text-[13px] text-text bg-background"
+            className="w-full px-3 py-1.5 border border-border rounded-sm text-small text-text bg-background"
           />
         </div>
         <div>
-          <label className="block text-[12px] text-text-secondary mb-1">
+          <label className="block text-caption text-text-secondary mb-1">
             {t("tariff.priceHc")}
           </label>
           <input
@@ -305,7 +305,7 @@ export function TariffSettings() {
                 prices: { ...prev.prices, hc: parseFloat(e.target.value) || 0 },
               }))
             }
-            className="w-full px-3 py-1.5 border border-border rounded-md text-[13px] text-text bg-background"
+            className="w-full px-3 py-1.5 border border-border rounded-sm text-small text-text bg-background"
           />
         </div>
       </div>
@@ -313,7 +313,7 @@ export function TariffSettings() {
       {/* Spec 123 — costs are applied to all historical data when the
           Energy page is displayed in €; this hint warns the user that
           changing prices retroactively re-values past consumption. */}
-      <p className="text-[12px] text-text-tertiary -mt-2 mb-5">
+      <p className="text-caption text-text-tertiary -mt-2 mb-5">
         {t("tariff.priceRetroactiveHint")}
       </p>
 
@@ -321,8 +321,8 @@ export function TariffSettings() {
       <TariffTimeline slots={slots} />
 
       {/* Time slots */}
-      <div className="mb-5 border border-border-light rounded-lg p-4">
-        <h3 className="text-[13px] font-medium text-text mb-3">
+      <div className="mb-5 bg-background rounded-md p-4">
+        <h3 className="text-small font-medium text-text mb-3">
           {t("tariff.timeSlots")}
         </h3>
 
@@ -338,22 +338,22 @@ export function TariffSettings() {
                 step="60"
                 value={slot.start}
                 onChange={(e) => updateSlot(slotIdx, { start: e.target.value })}
-                className="px-2 py-1 border border-border rounded text-[13px] text-text bg-background"
+                className="px-2 py-1 border border-border rounded-sm text-small text-text bg-background"
               />
-              <span className="text-text-tertiary text-[12px]">→</span>
+              <span className="text-text-tertiary text-caption">→</span>
               <input
                 type="time"
                 step="60"
                 value={slot.end}
                 onChange={(e) => updateSlot(slotIdx, { end: e.target.value })}
-                className="px-2 py-1 border border-border rounded text-[13px] text-text bg-background"
+                className="px-2 py-1 border border-border rounded-sm text-small text-text bg-background"
               />
               <select
                 value={slot.tariff}
                 onChange={(e) =>
                   updateSlot(slotIdx, { tariff: e.target.value as "hp" | "hc" })
                 }
-                className="px-2 py-1 border border-border rounded text-[13px] text-text bg-background"
+                className="px-2 py-1 border border-border rounded-sm text-small text-text bg-background"
               >
                 <option value="hp">{t("energy.peakHours")}</option>
                 <option value="hc">{t("energy.offPeakHours")}</option>
@@ -361,7 +361,7 @@ export function TariffSettings() {
               {slots.length > 1 && (
                 <button
                   onClick={() => removeSlot(slotIdx)}
-                  className="p-1 text-text-tertiary hover:text-red-500 transition-colors"
+                  className="p-1 text-text-tertiary hover:text-error transition-colors"
                   title={t("tariff.delete")}
                 >
                   <Trash2 size={14} />
@@ -373,7 +373,7 @@ export function TariffSettings() {
 
         <button
           onClick={addSlot}
-          className="mt-2 flex items-center gap-1 text-[12px] text-primary hover:text-primary-hover transition-colors"
+          className="mt-2 flex items-center gap-1 text-caption text-primary hover:text-primary-hover transition-colors"
         >
           <Plus size={14} />
           {t("tariff.addSlot")}
@@ -385,7 +385,7 @@ export function TariffSettings() {
         <button
           onClick={handleSave}
           disabled={saving}
-          className="px-4 py-1.5 bg-primary text-white text-[13px] font-medium rounded-md hover:bg-primary-hover disabled:opacity-50 transition-colors"
+          className="px-4 py-1.5 bg-primary-fill text-white text-small font-medium rounded-sm hover:bg-primary-fill-hover disabled:opacity-50 transition-colors"
         >
           {saving ? (
             <span className="flex items-center gap-1.5">
@@ -397,10 +397,10 @@ export function TariffSettings() {
           )}
         </button>
         {saved && (
-          <span className="text-[12px] text-green-600">{t("tariff.saved")}</span>
+          <span className="text-caption text-success">{t("tariff.saved")}</span>
         )}
         {error && (
-          <span className="text-[12px] text-red-500">{error}</span>
+          <span className="text-caption text-error">{error}</span>
         )}
       </div>
     </div>

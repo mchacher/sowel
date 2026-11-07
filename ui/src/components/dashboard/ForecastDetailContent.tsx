@@ -49,7 +49,7 @@ export function ForecastDetailContent({ equipment }: { equipment: EquipmentWithD
     : modelUsed && modelLabel(modelUsed);
 
   if (days.length === 0) {
-    return <p className="text-[13px] text-text-tertiary py-4">{t("dashboard.forecast.empty")}</p>;
+    return <p className="text-small text-text-tertiary py-4">{t("dashboard.forecast.empty")}</p>;
   }
 
   return (
@@ -60,7 +60,7 @@ export function ForecastDetailContent({ equipment }: { equipment: EquipmentWithD
         ))}
       </div>
       {modelUsed && (
-        <p className="mt-3 text-[12px] text-text-tertiary">
+        <p className="mt-3 text-caption text-text-tertiary">
           {t("equipments.forecast.source", { model: sourceLabel })}
         </p>
       )}
@@ -85,8 +85,8 @@ function ForecastDayColumn({ day, locale }: { day: ForecastDay; locale: string }
     : undefined;
 
   return (
-    <div className="flex-1 min-w-0 flex flex-col items-center gap-1.5 rounded-[10px] border border-border bg-surface px-1 py-2.5 sm:px-3 sm:py-4">
-      <span className="text-[11px] sm:text-[13px] font-semibold text-text truncate max-w-full">
+    <div className="flex-1 min-w-0 flex flex-col items-center gap-1.5 rounded-md bg-background px-1 py-2.5 sm:px-3 sm:py-4">
+      <span className="text-micro sm:text-small font-semibold text-text truncate max-w-full">
         <span className="sm:hidden">{shortName}</span>
         <span className="hidden sm:inline">{longName}</span>
       </span>
@@ -101,23 +101,23 @@ function ForecastDayColumn({ day, locale }: { day: ForecastDay; locale: string }
       </span>
 
       <span className="flex items-baseline gap-0.5">
-        <span className="text-[17px] sm:text-[22px] font-bold font-mono text-text tabular-nums leading-none">
+        <span className="text-lead sm:text-title font-semibold text-text tabular-nums leading-none">
           {formatNumber(day.tempMax, { decimals: 0 })}
         </span>
-        <span className="text-[11px] sm:text-[13px] text-text-tertiary">°C</span>
+        <span className="text-micro sm:text-small text-text-tertiary">°C</span>
       </span>
 
       {day.tempMin !== null && (
         <span className="flex items-baseline gap-0.5">
-          <span className="text-[12px] sm:text-[15px] font-medium font-mono text-text-secondary tabular-nums leading-none">
+          <span className="text-caption sm:text-lead font-medium text-text-secondary tabular-nums leading-none">
             {formatNumber(day.tempMin, { decimals: 0 })}
           </span>
-          <span className="text-[10px] sm:text-[11px] text-text-tertiary">°C</span>
+          <span className="text-micro text-text-tertiary">°C</span>
         </span>
       )}
 
       {day.windGusts !== null && (
-        <span className="flex items-center gap-0.5 sm:gap-1 text-[10px] sm:text-[12px] text-text-secondary font-mono tabular-nums">
+        <span className="flex items-center gap-0.5 sm:gap-1 text-micro sm:text-caption text-text-secondary tabular-nums">
           <Wind size={11} strokeWidth={1.5} className="text-text-tertiary shrink-0 sm:hidden" />
           <Wind
             size={13}
@@ -132,12 +132,13 @@ function ForecastDayColumn({ day, locale }: { day: ForecastDay; locale: string }
       {/* The pill of the equipment page, at the foot of the column and behind
           the same rule, so the two surfaces say a day's confidence the same
           way. It wraps to two lines on a 68px column rather than shrinking
-          below a readable size; the slot is reserved whether or not there is
-          a pill, so the five columns end on one line. */}
-      <span className="mt-auto w-full border-t border-border-light pt-2 flex justify-center items-start min-h-[30px] sm:min-h-[24px]">
+          below a readable size (11 px: two lines and the padding need 36 px);
+          the slot is reserved whether or not there is a pill, so the five
+          columns end on one line. */}
+      <span className="mt-auto w-full border-t border-border-light pt-2 flex justify-center items-start min-h-[36px] sm:min-h-[24px]">
         {day.confidence && (
           <span
-            className={`rounded-full border px-1.5 sm:px-2 py-0.5 text-[9px] sm:text-[10px] font-semibold text-center leading-[1.25] ${
+            className={`rounded-full border px-1.5 sm:px-2 py-0.5 text-micro font-semibold text-center leading-[1.25] ${
               CONFIDENCE_STYLES[day.confidence]
             }`}
             title={

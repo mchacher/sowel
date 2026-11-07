@@ -18,7 +18,7 @@ interface SidebarItemProps {
 
 function itemClasses(isActive: boolean, collapsed: boolean): string {
   const base =
-    "flex items-center gap-3 px-3 py-1.5 rounded-[6px] min-w-0 transition-colors duration-150 ease-out";
+    "flex items-center gap-3 px-3 py-1.5 rounded-sm min-w-0 transition-colors duration-150 ease-out";
   const layout = collapsed ? "justify-center" : "";
   const state = isActive
     ? "bg-primary-light text-primary font-medium"
@@ -49,7 +49,7 @@ export function SidebarItem({
     >
       <span className="flex-shrink-0 relative">{icon}</span>
       {!collapsed && (
-        <span className="text-[13px] font-medium truncate">{label}</span>
+        <span className="text-small font-medium truncate">{label}</span>
       )}
       {!collapsed && badge !== undefined && (
         <span className="ml-auto flex-shrink-0">{badge}</span>

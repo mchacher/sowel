@@ -68,10 +68,10 @@ export function InvitationQr({ link }: { link: string }) {
       <div
         role="img"
         aria-label={t("sharedAccess.invitation.qrLabel")}
-        className="w-[132px] h-[132px] rounded-[6px] overflow-hidden bg-white [&>svg]:w-full [&>svg]:h-full"
+        className="w-[132px] h-[132px] rounded-sm overflow-hidden bg-white [&>svg]:w-full [&>svg]:h-full"
         dangerouslySetInnerHTML={{ __html: svg }}
       />
-      <figcaption className="text-[11.5px] text-text-tertiary text-center max-w-[132px]">
+      <figcaption className="text-caption text-text-tertiary text-center max-w-[132px]">
         {t("sharedAccess.invitation.qrHint")}
       </figcaption>
     </figure>
@@ -82,8 +82,8 @@ export function InvitationQr({ link }: { link: string }) {
 export function Invitation({ link, code }: { link: string | null; code: string | null }) {
   const { t } = useTranslation();
   return (
-    <div className="mt-3 border border-dashed border-border rounded-[10px] px-3 py-2.5 text-[13px]">
-      <div className="text-[11px] font-semibold text-text-tertiary uppercase tracking-widest mb-1.5">
+    <div className="mt-3 border border-dashed border-border rounded-md px-3 py-2.5 text-small">
+      <div className="text-small font-semibold text-text-secondary mb-1.5">
         {t("sharedAccess.invitation.title")}
       </div>
       <div className="flex flex-wrap items-start gap-x-4 gap-y-3">
@@ -94,11 +94,11 @@ export function Invitation({ link, code }: { link: string | null; code: string |
             </span>
             {link ? (
               <>
-                <code className="font-mono text-[12px] text-text break-all min-w-0">{link}</code>
+                <code className="font-mono text-caption text-text break-all min-w-0">{link}</code>
                 <CopyButton text={link} label={t("sharedAccess.actions.copyLink")} />
               </>
             ) : (
-              <span className="text-warning">
+              <span className="text-warning-ink">
                 {t("sharedAccess.header.noPublicUrl")}{" "}
                 <Link to="/settings?tab=general" className="text-primary hover:underline">
                   {t("sharedAccess.header.setIt")}
@@ -110,7 +110,7 @@ export function Invitation({ link, code }: { link: string | null; code: string |
             <span className="text-text-secondary">{t("sharedAccess.invitation.code")}</span>
             {code ? (
               <>
-                <span className="font-mono font-semibold text-[17px] tracking-[0.08em] text-text">
+                <span className="font-mono text-lead tracking-[0.08em] text-text">
                   {code}
                 </span>
                 <CopyButton text={code} label={t("sharedAccess.actions.copyCode")} />

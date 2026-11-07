@@ -127,17 +127,17 @@ export function WaterValveControl({ equipment, onExecuteOrder, compact }: WaterV
       <div className="flex items-center gap-2" onClick={(e) => e.stopPropagation()}>
         {flow !== null && isOn && (
           <div className="flex items-baseline gap-0.5 text-text-secondary">
-            <span className="text-[13px] font-medium tabular-nums font-mono">{flow}</span>
-            <span className="text-[10px] text-text-tertiary">m³/h</span>
+            <span className="text-small font-medium tabular-nums">{flow}</span>
+            <span className="text-micro text-text-tertiary">m³/h</span>
           </div>
         )}
         <button
           onClick={handleToggle}
           disabled={executing || !equipment.enabled}
           className={`
-            p-2 rounded-[6px] transition-colors duration-150 cursor-pointer
+            p-2 rounded-sm transition-colors duration-150 cursor-pointer
             ${isOn
-              ? "bg-active text-white hover:bg-active/80"
+              ? "bg-active text-on-active hover:bg-active/80"
               : "bg-border-light text-text-tertiary hover:bg-border hover:text-text-secondary"}
             disabled:opacity-50 disabled:cursor-not-allowed
           `}
@@ -161,10 +161,10 @@ export function WaterValveControl({ equipment, onExecuteOrder, compact }: WaterV
             onClick={handleToggle}
             disabled={executing}
             className={`
-              flex items-center gap-2 px-4 py-2 rounded-[6px] text-[13px] font-medium
+              flex items-center gap-2 px-4 py-2 rounded-sm text-small font-medium
               transition-colors duration-150
               ${isOn
-                ? "bg-active text-white hover:bg-active/80"
+                ? "bg-active text-on-active hover:bg-active/80"
                 : "bg-border-light text-text-secondary hover:bg-border hover:text-text"}
               disabled:opacity-50
             `}
@@ -181,8 +181,8 @@ export function WaterValveControl({ equipment, onExecuteOrder, compact }: WaterV
           {flow !== null && isOn && (
             <div className="flex items-center gap-1.5 text-text-secondary">
               <Droplets size={14} strokeWidth={1.5} />
-              <span className="text-[14px] font-semibold tabular-nums font-mono">{flow}</span>
-              <span className="text-[12px] text-text-tertiary">m³/h</span>
+              <span className="text-body font-semibold tabular-nums">{flow}</span>
+              <span className="text-caption text-text-tertiary">m³/h</span>
             </div>
           )}
         </div>
@@ -213,20 +213,20 @@ export function WaterValveControl({ equipment, onExecuteOrder, compact }: WaterV
       {/* Timed watering — single row, all grouped on the left */}
       {hasTimedWatering && (
         <div className="flex items-center gap-2 flex-wrap pt-1">
-          <span className="text-[12px] text-text-tertiary">{t("water.duration")}</span>
+          <span className="text-caption text-text-tertiary">{t("water.duration")}</span>
           <input
             type="number"
             min={1}
             max={120}
             value={duration}
             onChange={(e) => setDuration(Math.max(1, Math.min(120, Number(e.target.value) || 1)))}
-            className="w-14 px-2 py-1 text-[13px] tabular-nums border border-border rounded-[6px] outline-none focus:border-primary"
+            className="w-14 px-2 py-1 text-small tabular-nums border border-border rounded-sm outline-none focus:border-primary"
           />
-          <span className="text-[12px] text-text-tertiary mr-1">{t("water.minutes")}</span>
+          <span className="text-caption text-text-tertiary mr-1">{t("water.minutes")}</span>
           <button
             onClick={handleWaterNow}
             disabled={watering || !equipment.enabled}
-            className="flex items-center gap-1.5 px-3 py-1.5 text-[12px] font-medium rounded-[6px] bg-primary text-white hover:bg-primary-hover transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+            className="flex items-center gap-1.5 px-3 py-1.5 text-caption font-medium rounded-sm bg-primary-fill text-white hover:bg-primary-fill-hover transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
           >
             {watering ? (
               <Loader2 size={13} className="animate-spin" />
@@ -241,7 +241,7 @@ export function WaterValveControl({ equipment, onExecuteOrder, compact }: WaterV
   );
 }
 
-// Small inline indicator pill — only shows accent color when in alert state
+// Small inline indicator pill — only shows a status colour when in alert state
 function Indicator({
   icon,
   label,
@@ -256,7 +256,7 @@ function Indicator({
   return (
     <div
       className={`
-        inline-flex items-center gap-1.5 px-2.5 py-1 rounded-[6px] border text-[12px]
+        inline-flex items-center gap-1.5 px-2.5 py-1 rounded-sm border text-caption
         ${alert ? "border-error/30 bg-error/5 text-error" : "border-border bg-surface text-text-secondary"}
       `}
       title={label}

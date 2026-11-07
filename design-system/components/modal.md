@@ -1,5 +1,7 @@
 # Modal (recipe edit)
 
+> **Superseded in part by [tokens.md](../tokens.md) (spec 196).** Labels are sentence case and numbers Inter with tabular figures (§2), radii are 6 / 10 / 16 px (§4), and a card or panel has no border (§5.1). Where the CSS below disagrees, tokens.md wins.
+
 > Centered overlay card used to edit a recipe's parameters. Contains the recipe's full configuration in one screen — including our value-add over production: per-mode overrides.
 
 ---

@@ -163,7 +163,7 @@ export function ArbiterTimeline() {
 
   if (failed && !data)
     return (
-      <p className="mt-4 text-[12px] text-text-tertiary">{t("arbiter.timeline.unavailable")}</p>
+      <p className="mt-4 text-caption text-text-tertiary">{t("arbiter.timeline.unavailable")}</p>
     );
   if (!data || !geom) return null;
   const { start, stepMs, n } = geom;
@@ -231,13 +231,13 @@ export function ArbiterTimeline() {
     <div className="mt-4">
       {/* header */}
       <div className="flex items-center gap-2 mb-2">
-        <h3 className="text-[13px] font-semibold text-text">{t("arbiter.timeline.title")}</h3>
-        <span className="ml-auto text-[11px] text-text-tertiary font-mono">{rangeLabel}</span>
+        <h3 className="text-small font-semibold text-text">{t("arbiter.timeline.title")}</h3>
+        <span className="ml-auto text-micro text-text-tertiary tabular-nums">{rangeLabel}</span>
         <div className="flex gap-1">
           <button
             onClick={() => setOffset((o) => Math.min(maxOffset, o + 1))}
             disabled={pageOffset >= maxOffset}
-            className="w-6 h-6 flex items-center justify-center border border-border rounded-[6px] text-text-secondary hover:bg-border-light disabled:opacity-35 disabled:cursor-not-allowed"
+            className="w-6 h-6 flex items-center justify-center border border-border rounded-sm text-text-secondary hover:bg-border-light disabled:opacity-35 disabled:cursor-not-allowed"
             aria-label={t("arbiter.timeline.earlier", { h: windowHours })}
           >
             <ChevronLeft size={16} strokeWidth={2} />
@@ -245,7 +245,7 @@ export function ArbiterTimeline() {
           <button
             onClick={() => setOffset((o) => Math.max(0, o - 1))}
             disabled={pageOffset === 0}
-            className="w-6 h-6 flex items-center justify-center border border-border rounded-[6px] text-text-secondary hover:bg-border-light disabled:opacity-35 disabled:cursor-not-allowed"
+            className="w-6 h-6 flex items-center justify-center border border-border rounded-sm text-text-secondary hover:bg-border-light disabled:opacity-35 disabled:cursor-not-allowed"
             aria-label={t("arbiter.timeline.later", { h: windowHours })}
           >
             <ChevronRight size={16} strokeWidth={2} />
@@ -254,7 +254,7 @@ export function ArbiterTimeline() {
       </div>
 
       {/* chart title */}
-      <div className="text-[11px] font-medium text-text-secondary mb-1">
+      <div className="text-micro font-medium text-text-secondary mb-1">
         {t("arbiter.legend.surplusDeficit")}
       </div>
 
@@ -292,18 +292,20 @@ export function ArbiterTimeline() {
         {/* surplus / deficit curve with kW scale */}
         <div className="flex items-stretch gap-2 mt-1 mb-3">
           <div className="relative w-[80px] flex-none">
-            <span className="absolute right-0 top-[2px] text-[8px] font-mono text-text-tertiary">
+            {/* leading-none: an 11 px label in the 20 px body line sat 5 px
+                below the level it names; each one is now centred on it. */}
+            <span className="absolute right-0 top-0 text-micro leading-none tabular-nums text-text-tertiary">
               {scaleTop}
             </span>
             <span
-              className="absolute right-0 text-[8px] font-mono text-text-tertiary"
-              style={{ top: `${y0 - 4}px` }}
+              className="absolute right-0 text-micro leading-none tabular-nums text-text-tertiary"
+              style={{ top: `${y0 - 5}px` }}
             >
               0
             </span>
             <span
-              className="absolute right-0 text-[8px] font-mono text-text-tertiary"
-              style={{ top: `${H - 10}px` }}
+              className="absolute right-0 text-micro leading-none tabular-nums text-text-tertiary"
+              style={{ top: `${H - 11}px` }}
             >
               {scaleBottom}
             </span>
@@ -375,7 +377,7 @@ export function ArbiterTimeline() {
         {/* per-load ribbons */}
         {data.loads.map((load) => (
           <div key={load.equipmentId} className="flex items-center gap-2 my-[3px]">
-            <span className="w-[80px] flex-none text-right text-[10px] text-text-secondary truncate">
+            <span className="w-[80px] flex-none text-right text-micro text-text-secondary truncate">
               {load.name}
             </span>
             {/* Cells positioned by exact percentage (not flexbox) so a boundary
@@ -389,7 +391,7 @@ export function ArbiterTimeline() {
                     key={i}
                     onClick={() => onCell(cellTime)}
                     title={`${hhmm(cellTime)} · ${t(`arbiter.loadState.${s}`)}`}
-                    className="absolute top-0 h-[20px] rounded-[1px] focus:outline-none"
+                    className="absolute top-0 h-[20px] rounded-xs focus:outline-none"
                     style={{
                       left: `calc(${(i / n) * 100}% + 1px)`,
                       width: `calc(${(1 / n) * 100}% - 2px)`,
@@ -408,7 +410,7 @@ export function ArbiterTimeline() {
         {hourLabels.map((m, k) => (
           <span
             key={k}
-            className="absolute top-0 text-[9px] text-text-tertiary whitespace-nowrap"
+            className="absolute top-0 text-micro leading-none text-text-tertiary whitespace-nowrap"
             style={{
               left: `${m.f * 100}%`,
               transform:
@@ -426,7 +428,7 @@ export function ArbiterTimeline() {
 
       {/* legend — spec 165: one word and one colour per state, the same two the
           roster pill uses, so the halves of the surface cannot drift apart. */}
-      <div className="flex flex-wrap gap-x-3 gap-y-1 text-[11px] text-text-secondary mt-2 items-center">
+      <div className="flex flex-wrap gap-x-3 gap-y-1 text-micro text-text-secondary mt-2 items-center">
         {LEGEND_STATES.map((s) => (
           <span key={s} className="flex items-center gap-1.5">
             <span
@@ -440,10 +442,10 @@ export function ArbiterTimeline() {
 
       {/* journal, linked to the cell click */}
       <div className="mt-3">
-        <div className="text-[12px] font-semibold text-text mb-1">{t("arbiter.journalTitle")}</div>
+        <div className="text-caption font-semibold text-text mb-1">{t("arbiter.journalTitle")}</div>
         <div ref={jscrollRef} className="max-h-[180px] overflow-y-auto">
           {data.journal.length === 0 ? (
-            <p className="text-[12px] text-text-tertiary py-2">
+            <p className="text-caption text-text-tertiary py-2">
               {t("arbiter.timeline.noDecisions")}
             </p>
           ) : (
@@ -455,9 +457,9 @@ export function ArbiterTimeline() {
                 <div
                   key={i}
                   data-hl={hl ? "1" : undefined}
-                  className={`flex items-baseline gap-2.5 py-1.5 px-1.5 text-[12.5px] border-t border-border-light first:border-t-0 rounded-[4px] ${hl ? "bg-primary/10" : ""}`}
+                  className={`flex items-baseline gap-2.5 py-1.5 px-1.5 text-caption border-t border-border-light first:border-t-0 rounded-sm ${hl ? "bg-primary/10" : ""}`}
                 >
-                  <span className="font-mono text-[11px] text-text-tertiary w-11 flex-none">
+                  <span className="tabular-nums text-micro text-text-tertiary w-11 flex-none">
                     {hhmm(at)}
                   </span>
                   <span

@@ -116,8 +116,8 @@ export function ArbiterSettings() {
 
   if (settings === null) {
     return (
-      <div className="bg-surface border border-border rounded-[10px] p-4">
-        <div className="flex items-center gap-2 text-text-secondary text-[13px]">
+      <div className="card p-4">
+        <div className="flex items-center gap-2 text-text-secondary text-small">
           <Loader2 size={14} className="animate-spin" />
           {t("common.loading")}
         </div>
@@ -126,12 +126,12 @@ export function ArbiterSettings() {
   }
 
   return (
-    <div className="bg-surface border border-border rounded-[10px] p-4">
+    <div className="card p-4">
       <div className="flex items-center gap-2 mb-1">
         <Scale size={18} strokeWidth={1.5} className="text-text-secondary" />
-        <h2 className="text-[15px] font-semibold text-text">{t("arbiter.title")}</h2>
+        <h2 className="text-lead font-semibold text-text">{t("arbiter.title")}</h2>
         {hasGridMeter && (
-          <label className="ml-auto flex items-center gap-2 text-[12px] text-text-secondary cursor-pointer">
+          <label className="ml-auto flex items-center gap-2 text-caption text-text-secondary cursor-pointer">
             <input
               type="checkbox"
               checked={enabled}
@@ -142,15 +142,15 @@ export function ArbiterSettings() {
           </label>
         )}
       </div>
-      <p className="text-[12px] text-text-tertiary mb-4">{t("arbiter.hint")}</p>
+      <p className="text-caption text-text-tertiary mb-4">{t("arbiter.hint")}</p>
 
       {!hasGridMeter ? (
-        <p className="text-[13px] text-text-secondary">{t("arbiter.noGridMeter")}</p>
+        <p className="text-small text-text-secondary">{t("arbiter.noGridMeter")}</p>
       ) : (
         <>
-          <h3 className="text-[13px] font-medium text-text mb-2">{t("arbiter.priorityTitle")}</h3>
+          <h3 className="text-small font-medium text-text mb-2">{t("arbiter.priorityTitle")}</h3>
           {profiled.length === 0 ? (
-            <p className="text-[12px] text-text-tertiary mb-3">{t("arbiter.noProfiles")}</p>
+            <p className="text-caption text-text-tertiary mb-3">{t("arbiter.noProfiles")}</p>
           ) : (
             <ul className="mb-3 space-y-1">
               {priority.map((id, i) => {
@@ -159,20 +159,20 @@ export function ArbiterSettings() {
                 return (
                   <li
                     key={id}
-                    className="flex items-center gap-2 px-3 py-1.5 border border-border-light rounded-md text-[13px] text-text"
+                    className="flex items-center gap-2 px-3 py-1.5 border border-border-light rounded-md text-small text-text"
                   >
-                    <span className="text-text-tertiary text-[12px] w-4">{i + 1}.</span>
+                    <span className="text-text-tertiary text-caption w-4">{i + 1}.</span>
                     <span className="truncate">{eq.name}</span>
-                    <span className="text-[11px] text-text-tertiary">
+                    <span className="text-micro text-text-tertiary">
                       {t(`energyProfile.${eq.energyProfile?.class ?? "deferrable"}`)}
                       {" · "}
-                      <span className="font-mono">{formatPower(eq.energyProfile?.nominalPowerW)}</span>
+                      <span className="tabular-nums">{formatPower(eq.energyProfile?.nominalPowerW)}</span>
                     </span>
                     <span className="ml-auto flex gap-1">
                       <button
                         onClick={() => move(i, -1)}
                         disabled={i === 0 || saving}
-                        className="h-9 w-9 flex items-center justify-center text-text-tertiary hover:text-text disabled:opacity-30 focus-visible:outline focus-visible:outline-2 focus-visible:outline-primary rounded-[6px]"
+                        className="h-9 w-9 flex items-center justify-center text-text-tertiary hover:text-text disabled:opacity-30 focus-visible:outline focus-visible:outline-2 focus-visible:outline-primary rounded-sm"
                         aria-label={t("arbiter.moveUpNamed", { name: eq.name })}
                       >
                         <ArrowUp size={16} />
@@ -180,7 +180,7 @@ export function ArbiterSettings() {
                       <button
                         onClick={() => move(i, 1)}
                         disabled={i === priority.length - 1 || saving}
-                        className="h-9 w-9 flex items-center justify-center text-text-tertiary hover:text-text disabled:opacity-30 focus-visible:outline focus-visible:outline-2 focus-visible:outline-primary rounded-[6px]"
+                        className="h-9 w-9 flex items-center justify-center text-text-tertiary hover:text-text disabled:opacity-30 focus-visible:outline focus-visible:outline-2 focus-visible:outline-primary rounded-sm"
                         aria-label={t("arbiter.moveDownNamed", { name: eq.name })}
                       >
                         <ArrowDown size={16} />
@@ -194,7 +194,7 @@ export function ArbiterSettings() {
 
           <button
             onClick={() => setShowAdvanced((v) => !v)}
-            className="flex items-center gap-1 text-[12px] text-primary hover:text-primary-hover"
+            className="flex items-center gap-1 text-caption text-primary hover:text-primary-hover"
           >
             {showAdvanced ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
             {t("arbiter.advanced")}
@@ -204,7 +204,7 @@ export function ArbiterSettings() {
               {ADVANCED.map(({ key, fallback, min }) => (
                 <div key={key}>
                   <div className="flex items-center gap-1 mb-1">
-                    <label className="text-[11px] text-text-tertiary" htmlFor={`arb-${key}`}>
+                    <label className="text-micro text-text-tertiary" htmlFor={`arb-${key}`}>
                       {t(`arbiter.settings.${key}`)}
                     </label>
                     <InfoTooltip
@@ -218,7 +218,7 @@ export function ArbiterSettings() {
                     min={min}
                     defaultValue={Number(settings[PREFIX + key] ?? fallback)}
                     onBlur={(e) => commitThreshold(key, min, fallback, e.target)}
-                    className="w-full px-2 py-1 border border-border rounded text-[13px] text-text bg-background"
+                    className="w-full px-2 py-1 border border-border rounded-sm text-small text-text bg-background"
                   />
                 </div>
               ))}
@@ -227,7 +227,7 @@ export function ArbiterSettings() {
         </>
       )}
 
-      {error && <p className="text-[12px] text-error mt-2">{error}</p>}
+      {error && <p className="text-caption text-error mt-2">{error}</p>}
     </div>
   );
 }

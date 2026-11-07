@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect, useCallback } from "react";
 import { useTranslation } from "react-i18next";
-import { DatabaseBackup, Download, Upload, Loader2, RotateCcw, HardDrive } from "lucide-react";
+import { Download, Upload, Loader2, RotateCcw, HardDrive } from "lucide-react";
 import {
   exportBackup,
   importBackup,
@@ -10,6 +10,7 @@ import {
 import type { LocalBackup } from "../api";
 import { localDateStr } from "../lib/local-date";
 import { currentLocale, formatBytes } from "../lib/format";
+import { TOP_LEVEL_H1 } from "../components/layout/page-title";
 
 export function BackupPage() {
   const { t } = useTranslation();
@@ -106,28 +107,25 @@ export function BackupPage() {
     <div className="p-4 sm:p-6">
       {/* Page header */}
       <div className="mb-6">
-        <div className="flex items-center gap-2.5 mb-1">
-          <DatabaseBackup size={22} strokeWidth={1.5} className="text-text-secondary" />
-          <h1>
-            {t("backup.title")}
-          </h1>
-        </div>
-        <p className="text-[13px] text-text-tertiary mt-1">{t("backup.description")}</p>
+        <h1 className={TOP_LEVEL_H1}>
+          {t("backup.title")}
+        </h1>
+        <p className="text-small text-text-tertiary mt-1">{t("backup.description")}</p>
       </div>
 
       <div className="max-w-xl space-y-6">
         {/* Manual export / import */}
-        <section className="bg-surface rounded-[10px] border border-border p-5">
-          <h2 className="text-[14px] font-semibold text-text mb-4">{t("backup.title")}</h2>
+        <section className="card p-5">
+          <h2 className="text-body font-semibold text-text mb-4">{t("backup.title")}</h2>
 
           {error && (
-            <div className="mb-4 p-3 bg-error/10 border border-error/30 rounded-[6px]">
-              <p className="text-[13px] text-error">{error}</p>
+            <div className="mb-4 p-3 bg-error/10 border border-error/30 rounded-sm">
+              <p className="text-small text-error">{error}</p>
             </div>
           )}
           {success && (
-            <div className="mb-4 p-3 bg-success/10 border border-success/30 rounded-[6px]">
-              <p className="text-[13px] text-success">{success}</p>
+            <div className="mb-4 p-3 bg-success/10 border border-success/30 rounded-sm">
+              <p className="text-small text-success">{success}</p>
             </div>
           )}
 
@@ -135,7 +133,7 @@ export function BackupPage() {
             <button
               onClick={handleExport}
               disabled={exporting}
-              className="flex items-center gap-1.5 px-4 py-2 text-[13px] font-medium bg-primary text-white rounded-[6px] hover:bg-primary-hover transition-colors disabled:opacity-50 cursor-pointer disabled:cursor-default"
+              className="flex items-center gap-1.5 px-4 py-2 text-small font-medium bg-primary-fill text-white rounded-sm hover:bg-primary-fill-hover transition-colors disabled:opacity-50 cursor-pointer disabled:cursor-default"
             >
               {exporting ? <Loader2 size={14} className="animate-spin" /> : <Download size={14} />}
               {t("backup.export")}
@@ -143,7 +141,7 @@ export function BackupPage() {
             <button
               onClick={() => fileInputRef.current?.click()}
               disabled={importing}
-              className="flex items-center gap-1.5 px-4 py-2 text-[13px] font-medium text-text-secondary border border-border rounded-[6px] hover:bg-border-light transition-colors disabled:opacity-50 cursor-pointer disabled:cursor-default"
+              className="flex items-center gap-1.5 px-4 py-2 text-small font-medium text-text-secondary border border-border rounded-sm hover:bg-border-light transition-colors disabled:opacity-50 cursor-pointer disabled:cursor-default"
             >
               {importing ? <Loader2 size={14} className="animate-spin" /> : <Upload size={14} />}
               {t("backup.import")}
@@ -159,19 +157,19 @@ export function BackupPage() {
         </section>
 
         {/* Local backups (auto-created before updates) */}
-        <section className="bg-surface rounded-[10px] border border-border p-5">
+        <section className="card p-5">
           <div className="flex items-center gap-2 mb-1">
             <HardDrive size={16} className="text-text-secondary" />
-            <h2 className="text-[14px] font-semibold text-text">{t("backup.localTitle")}</h2>
+            <h2 className="text-body font-semibold text-text">{t("backup.localTitle")}</h2>
           </div>
-          <p className="text-[12px] text-text-tertiary mb-4">{t("backup.localDescription")}</p>
+          <p className="text-caption text-text-tertiary mb-4">{t("backup.localDescription")}</p>
 
           {loadingLocal ? (
             <div className="py-4 text-center">
               <Loader2 size={18} className="animate-spin mx-auto text-text-tertiary" />
             </div>
           ) : localBackups.length === 0 ? (
-            <p className="text-[13px] text-text-tertiary py-3 text-center">
+            <p className="text-small text-text-tertiary py-3 text-center">
               {t("backup.localEmpty")}
             </p>
           ) : (
@@ -179,23 +177,23 @@ export function BackupPage() {
               {localBackups.map((backup) => (
                 <li
                   key={backup.filename}
-                  className="flex items-center justify-between gap-3 p-3 bg-background rounded-[6px] border border-border"
+                  className="flex items-center justify-between gap-3 p-3 bg-background rounded-md"
                 >
                   <div className="min-w-0 flex-1">
                     <div
-                      className="text-[13px] font-mono text-text truncate"
+                      className="text-small font-mono text-text truncate"
                       title={backup.filename}
                     >
                       {backup.filename}
                     </div>
-                    <div className="text-[11px] text-text-tertiary mt-0.5">
+                    <div className="text-micro text-text-tertiary mt-0.5">
                       {formatDate(backup.createdAt)} • {formatSize(backup.size)}
                     </div>
                   </div>
                   <button
                     onClick={() => setConfirmRestore(backup)}
                     disabled={restoringLocal !== null}
-                    className="flex items-center gap-1 px-3 py-1.5 text-[12px] font-medium text-accent border border-accent/30 rounded-[6px] hover:bg-accent/10 transition-colors disabled:opacity-50 cursor-pointer disabled:cursor-default"
+                    className="flex items-center gap-1 px-3 py-1.5 text-caption font-medium text-error border border-error/40 rounded-sm hover:bg-error/10 transition-colors disabled:opacity-50 cursor-pointer disabled:cursor-default"
                   >
                     {restoringLocal === backup.filename ? (
                       <Loader2 size={12} className="animate-spin" />
@@ -218,27 +216,27 @@ export function BackupPage() {
           onClick={() => restoringLocal === null && setConfirmRestore(null)}
         >
           <div
-            className="bg-surface rounded-[14px] border border-border p-6 max-w-md w-full"
+            className="bg-surface rounded-lg p-6 max-w-md w-full shadow-lg"
             onClick={(e) => e.stopPropagation()}
           >
-            <h3 className="text-[16px] font-semibold text-text mb-2">
+            <h3 className="text-lead font-semibold text-text mb-2">
               {t("backup.confirmRestoreTitle")}
             </h3>
-            <p className="text-[13px] text-text-secondary mb-4">
+            <p className="text-small text-text-secondary mb-4">
               {t("backup.confirmRestoreMessage", { filename: confirmRestore.filename })}
             </p>
             <div className="flex gap-2 justify-end">
               <button
                 onClick={() => setConfirmRestore(null)}
                 disabled={restoringLocal !== null}
-                className="px-4 py-2 text-[13px] font-medium text-text-secondary border border-border rounded-[6px] hover:bg-border-light transition-colors disabled:opacity-50 cursor-pointer disabled:cursor-default"
+                className="px-4 py-2 text-small font-medium text-text-secondary border border-border rounded-sm hover:bg-border-light transition-colors disabled:opacity-50 cursor-pointer disabled:cursor-default"
               >
                 {t("common.cancel")}
               </button>
               <button
                 onClick={() => handleRestoreLocal(confirmRestore)}
                 disabled={restoringLocal !== null}
-                className="flex items-center gap-1.5 px-4 py-2 text-[13px] font-medium bg-accent text-white rounded-[6px] hover:bg-accent-hover transition-colors disabled:opacity-50 cursor-pointer disabled:cursor-default"
+                className="flex items-center gap-1.5 px-4 py-2 text-small font-medium bg-error text-on-status rounded-sm hover:bg-error/80 transition-colors disabled:opacity-50 cursor-pointer disabled:cursor-default"
               >
                 {restoringLocal !== null && <Loader2 size={14} className="animate-spin" />}
                 {t("backup.restore")}

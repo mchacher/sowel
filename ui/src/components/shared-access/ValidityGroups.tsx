@@ -17,8 +17,8 @@ import { btnSecondary, iconBtn, inputBadCls, inputCls, Refusal, Segmented } from
 
 function Group({ title, children }: { title: string; children: ReactNode }) {
   return (
-    <fieldset className="mt-3 border border-border rounded-[10px] px-3 py-2.5">
-      <legend className="text-[11px] font-semibold text-text-tertiary uppercase tracking-widest px-1">
+    <fieldset className="mt-3 border border-border rounded-md px-3 py-2.5">
+      <legend className="text-small font-semibold text-text-secondary px-1">
         {title}
       </legend>
       {children}
@@ -78,7 +78,7 @@ function WindowDays({
     <div className="flex flex-col gap-1.5">
       <div className="flex items-center justify-between gap-2 flex-wrap">
         <span
-          className={`text-[13px] font-medium ${days.length === 0 ? "text-error" : "text-text"}`}
+          className={`text-small font-medium ${days.length === 0 ? "text-error" : "text-text"}`}
         >
           {daysSentence(w)}
         </span>
@@ -86,7 +86,7 @@ function WindowDays({
         {days.length > 0 && (
           <button
             type="button"
-            className="text-[13px] text-primary hover:underline cursor-pointer"
+            className="text-small text-primary hover:underline cursor-pointer"
             aria-expanded={shown}
             onClick={onToggle}
           >
@@ -110,9 +110,9 @@ function WindowDays({
                   aria-pressed={on}
                   aria-label={dayName(d)}
                   onClick={() => onChange(on ? days.filter((x) => x !== d) : [...days, d])}
-                  className={`min-h-[40px] rounded-[6px] border text-[13px] font-semibold uppercase transition-colors cursor-pointer ${
+                  className={`min-h-[40px] rounded-sm border text-small font-semibold transition-colors cursor-pointer ${
                     on
-                      ? "bg-primary border-primary text-white"
+                      ? "bg-primary-fill border-primary-fill text-white"
                       : "bg-surface border-border text-text-secondary hover:bg-border-light"
                   }`}
                 >
@@ -126,7 +126,7 @@ function WindowDays({
               <button
                 key={label}
                 type="button"
-                className="text-[13px] text-primary hover:underline cursor-pointer"
+                className="text-small text-primary hover:underline cursor-pointer"
                 onClick={() => onChange(set)}
               >
                 {label}
@@ -180,7 +180,7 @@ export function ValidityGroups({
               onChange={(v) => set({ period: v === "period" })}
             />
             {value.period && (
-              <div className="mt-2.5 grid gap-2 text-[13px] text-text-secondary">
+              <div className="mt-2.5 grid gap-2 text-small text-text-secondary">
                 <div className="flex flex-col gap-1">
                   <span>{t("sharedAccess.validity.from")}</span>
                   {value.from ? (
@@ -248,7 +248,7 @@ export function ValidityGroups({
         {value.ranges && (
           <div className="mt-2.5 flex flex-col gap-1.5">
             {value.windows.map((w, i) => (
-              <div key={i} className="flex flex-col gap-2 border border-border rounded-[8px] p-2.5">
+              <div key={i} className="flex flex-col gap-2 border border-border rounded-md p-2.5">
                 <div className="flex items-center gap-1.5">
                   <input
                     className={`${parseHm(w.from) === null ? inputBadCls : inputCls} min-w-0 flex-1 tabular-nums`}

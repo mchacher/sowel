@@ -90,14 +90,14 @@ export function DeviceDetailPage() {
       <div className="p-4 sm:p-6">
         <button
           onClick={() => navigate(-1)}
-          className="flex items-center gap-1.5 text-[13px] text-text-secondary hover:text-text transition-colors duration-150 ease-out mb-6"
+          className="flex items-center gap-1.5 text-small text-text-secondary hover:text-text transition-colors duration-150 ease-out mb-6"
         >
           <ArrowLeft size={16} strokeWidth={1.5} />
           {t("devices.backToDevices")}
         </button>
         <div className="flex flex-col items-center justify-center py-20 text-center">
-          <h3 className="text-[16px] font-medium text-text mb-1">{t("devices.notFound.title")}</h3>
-          <p className="text-[13px] text-text-secondary">{error ?? t("devices.notFound.message")}</p>
+          <h3 className="text-lead font-medium text-text mb-1">{t("devices.notFound.title")}</h3>
+          <p className="text-small text-text-secondary">{error ?? t("devices.notFound.message")}</p>
         </div>
       </div>
     );
@@ -111,7 +111,7 @@ export function DeviceDetailPage() {
       {/* Back navigation */}
       <button
         onClick={() => navigate(-1)}
-        className="flex items-center gap-1.5 text-[13px] text-text-secondary hover:text-text transition-colors duration-150 ease-out mb-6"
+        className="flex items-center gap-1.5 text-small text-text-secondary hover:text-text transition-colors duration-150 ease-out mb-6"
       >
         <ArrowLeft size={16} strokeWidth={1.5} />
         {t("devices.backToDevices")}
@@ -120,7 +120,7 @@ export function DeviceDetailPage() {
       {/* Device header */}
       <div className="flex items-start justify-between mb-8">
         <div className="flex items-start gap-4">
-          <div className="flex-shrink-0 w-12 h-12 rounded-[10px] bg-primary-light flex items-center justify-center">
+          <div className="flex-shrink-0 w-12 h-12 rounded-md bg-primary-light flex items-center justify-center">
             <Radio size={24} strokeWidth={1.5} className="text-primary" />
           </div>
           <div>
@@ -130,15 +130,15 @@ export function DeviceDetailPage() {
                 onSave={(name) => updateDeviceName(device.id, name)}
               />
             ) : (
-              <div className="text-[18px] font-semibold text-text">{device.name}</div>
+              <div className="text-title font-semibold text-text">{device.name}</div>
             )}
             <div className="flex items-center gap-3 mt-1.5">
               <StatusBadge status={device.status} />
-              <span className="inline-flex items-center px-2 py-0.5 rounded-full bg-border-light text-[11px] font-medium text-text-secondary">
+              <span className="inline-flex items-center px-2 py-0.5 rounded-full bg-border-light text-micro font-medium text-text-secondary">
                 {sourceLabel(device.source)}
               </span>
               {device.manufacturer && (
-                <span className="text-[12px] text-text-tertiary">
+                <span className="text-caption text-text-tertiary">
                   {device.manufacturer}{device.model ? ` · ${device.model}` : ""}
                 </span>
               )}
@@ -149,7 +149,7 @@ export function DeviceDetailPage() {
         <button
           onClick={handleDelete}
           disabled={deleting}
-          className="flex items-center gap-1.5 px-3 py-1.5 rounded-[6px] text-[12px] font-medium text-error hover:bg-error/10 transition-colors duration-150 cursor-pointer disabled:opacity-50"
+          className="flex items-center gap-1.5 px-3 py-1.5 rounded-sm text-caption font-medium text-error hover:bg-error/10 transition-colors duration-150 cursor-pointer disabled:opacity-50"
         >
           <Trash2 size={14} strokeWidth={1.5} />
           {deleting ? t("common.deleting") : t("common.delete")}
@@ -158,7 +158,7 @@ export function DeviceDetailPage() {
       </div>
 
       {/* Info bar */}
-      <div className="flex flex-wrap gap-4 mb-8 p-4 bg-surface rounded-[10px] border border-border">
+      <div className="card flex flex-wrap gap-4 mb-8 p-4">
         <InfoItem label={t("devices.sourceId")} value={device.sourceDeviceId} mono />
         {!!device.ieeeAddress && (
           <InfoItem label={t("devices.ieeeAddress")} value={device.ieeeAddress} mono />
@@ -169,10 +169,10 @@ export function DeviceDetailPage() {
 
       {/* Data section */}
       <section className="mb-8">
-        <h2 className="text-[20px] font-semibold text-text leading-[28px] mb-4">
+        <h2 className="text-title font-semibold text-text leading-[28px] mb-4">
           {t("devices.data")}
         </h2>
-        <div className="bg-surface rounded-[10px] border border-border overflow-hidden">
+        <div className="card overflow-hidden">
           <DeviceDataTable data={mergedData} />
         </div>
       </section>
@@ -180,10 +180,10 @@ export function DeviceDetailPage() {
       {/* Orders section */}
       {detail.orders.length > 0 && (
         <section className="mb-8">
-          <h2 className="text-[20px] font-semibold text-text leading-[28px] mb-4">
+          <h2 className="text-title font-semibold text-text leading-[28px] mb-4">
             {t("devices.orders")}
           </h2>
-          <div className="bg-surface rounded-[10px] border border-border overflow-hidden">
+          <div className="card overflow-hidden">
             <OrdersTable orders={detail.orders} />
           </div>
         </section>
@@ -194,7 +194,7 @@ export function DeviceDetailPage() {
         <section className="mb-8">
           <button
             onClick={() => setShowRaw(!showRaw)}
-            className="flex items-center gap-2 text-[16px] font-medium text-text-secondary hover:text-text transition-colors duration-150 ease-out mb-3"
+            className="flex items-center gap-2 text-lead font-medium text-text-secondary hover:text-text transition-colors duration-150 ease-out mb-3"
           >
             {showRaw ? (
               <ChevronDown size={18} strokeWidth={1.5} />
@@ -204,8 +204,8 @@ export function DeviceDetailPage() {
             {t("devices.rawExpose")}
           </button>
           {showRaw && (
-            <div className="bg-surface rounded-[10px] border border-border p-4 overflow-x-auto">
-              <pre className="font-mono text-[12px] text-text-secondary leading-[18px] whitespace-pre-wrap">
+            <div className="card p-4 overflow-x-auto">
+              <pre className="font-mono text-caption text-text-secondary leading-[18px] whitespace-pre-wrap">
                 {JSON.stringify(rawExpose, null, 2)}
               </pre>
             </div>
@@ -225,7 +225,7 @@ function StatusBadge({ status }: { status: string }) {
   }[status] ?? { color: "bg-border-light text-text-tertiary", dot: "bg-text-tertiary", label: status };
 
   return (
-    <span className={`inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[11px] font-semibold ${config.color}`}>
+    <span className={`inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-micro font-semibold ${config.color}`}>
       <span className={`w-1.5 h-1.5 rounded-full ${config.dot}`} />
       {config.label}
     </span>
@@ -235,10 +235,10 @@ function StatusBadge({ status }: { status: string }) {
 function InfoItem({ label, value, mono }: { label: string; value: React.ReactNode; mono?: boolean }) {
   return (
     <div className="flex flex-col gap-0.5 min-w-[120px]">
-      <span className="text-[11px] font-medium text-text-tertiary uppercase tracking-widest">
+      <span className="text-caption text-text-tertiary">
         {label}
       </span>
-      <span className={`text-[13px] text-text ${mono ? "font-mono" : ""}`}>
+      <span className={`text-small text-text ${mono ? "font-mono" : ""}`}>
         {value}
       </span>
     </div>
@@ -251,16 +251,16 @@ function OrdersTable({ orders }: { orders: DeviceOrder[] }) {
     <table className="w-full">
       <thead>
         <tr className="border-b border-border">
-          <th className="text-left py-2.5 px-3 text-[12px] font-medium text-text-secondary uppercase tracking-widest">
+          <th className="text-left py-2.5 px-3 text-caption font-semibold uppercase tracking-[0.04em] text-text-tertiary">
             {t("devices.col.key")}
           </th>
-          <th className="text-left py-2.5 px-3 text-[12px] font-medium text-text-secondary uppercase tracking-widest">
+          <th className="text-left py-2.5 px-3 text-caption font-semibold uppercase tracking-[0.04em] text-text-tertiary">
             {t("common.type")}
           </th>
-          <th className="text-left py-2.5 px-3 text-[12px] font-medium text-text-secondary uppercase tracking-widest">
+          <th className="text-left py-2.5 px-3 text-caption font-semibold uppercase tracking-[0.04em] text-text-tertiary">
             {t("devices.col.range")}
           </th>
-          <th className="text-left py-2.5 px-3 text-[12px] font-medium text-text-secondary uppercase tracking-widest">
+          <th className="text-left py-2.5 px-3 text-caption font-semibold uppercase tracking-[0.04em] text-text-tertiary">
             {t("devices.col.category")}
           </th>
         </tr>
@@ -273,18 +273,18 @@ function OrdersTable({ orders }: { orders: DeviceOrder[] }) {
           >
             <td className="py-2.5 px-3">
               <div className="flex items-center gap-1.5">
-                <Zap size={14} strokeWidth={1.5} className="text-accent" />
-                <span className="font-mono text-[13px] text-text">{order.key}</span>
+                <Zap size={14} strokeWidth={1.5} className="text-text-tertiary" />
+                <span className="font-mono text-small text-text">{order.key}</span>
               </div>
             </td>
             <td className="py-2.5 px-3">
-              <span className="text-[12px] text-text-secondary">{order.type}</span>
+              <span className="text-caption text-text-secondary">{order.type}</span>
             </td>
             <td className="py-2.5 px-3">
               <OrderRange order={order} />
             </td>
             <td className="py-2.5 px-3">
-              <span className="text-[11px] text-text-tertiary">
+              <span className="text-micro text-text-tertiary">
                 {order.category ?? "—"}
               </span>
             </td>
@@ -302,7 +302,7 @@ function OrderRange({ order }: { order: DeviceOrder }) {
         {order.enumValues.map((v) => (
           <span
             key={v}
-            className="px-1.5 py-0.5 rounded bg-border-light text-[11px] font-mono text-text-secondary"
+            className="px-1.5 py-0.5 rounded-sm bg-border-light text-micro font-mono text-text-secondary"
           >
             {v}
           </span>
@@ -313,12 +313,12 @@ function OrderRange({ order }: { order: DeviceOrder }) {
 
   if (order.min !== undefined || order.max !== undefined) {
     return (
-      <span className="font-mono text-[12px] text-text-secondary">
+      <span className="tabular-nums text-caption text-text-secondary">
         {order.min ?? "—"} … {order.max ?? "—"}
         {order.unit ? ` ${order.unit}` : ""}
       </span>
     );
   }
 
-  return <span className="text-[12px] text-text-tertiary">—</span>;
+  return <span className="text-caption text-text-tertiary">—</span>;
 }

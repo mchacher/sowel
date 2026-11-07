@@ -55,6 +55,7 @@ import {
   localizedDescription as getLocalizedDescription,
   type RecipeCategoryId,
 } from "../lib/plugin-categories";
+import { TOP_LEVEL_H1 } from "../components/layout/page-title";
 
 type Tab = "installed" | "store";
 type CategoryFilter = "integration" | "recipe";
@@ -152,19 +153,16 @@ export function PluginsPage() {
         {/* Header */}
         <div className="mb-5 flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
           <div>
-            <div className="flex items-center gap-2.5 mb-1">
-              <Package size={22} strokeWidth={1.5} className="text-text-secondary" />
-              <h1>
-                {t("plugins.title")}
-              </h1>
-            </div>
-            <p className="text-[13px] text-text-secondary mt-1">{t("plugins.subtitle")}</p>
+            <h1 className={TOP_LEVEL_H1}>
+              {t("plugins.title")}
+            </h1>
+            <p className="text-small text-text-secondary mt-1">{t("plugins.subtitle")}</p>
           </div>
           <button
             type="button"
             onClick={handleRefresh}
             disabled={refreshing}
-            className="inline-flex items-center gap-1.5 self-start shrink-0 px-3 py-1.5 text-[12px] font-medium text-text-secondary border border-border rounded-[6px] hover:bg-border-light hover:text-text transition-colors duration-150 disabled:opacity-50 disabled:cursor-not-allowed"
+            className="inline-flex items-center gap-1.5 self-start shrink-0 px-3 py-1.5 text-caption font-medium text-text-secondary border border-border rounded-sm hover:bg-border-light hover:text-text transition-colors duration-150 disabled:opacity-50 disabled:cursor-not-allowed"
             title={t("plugins.refreshRegistryTitle")}
           >
             {refreshing ? (
@@ -222,14 +220,14 @@ export function PluginsPage() {
             onChange={(e) => setQuery(e.target.value)}
             placeholder={t("plugins.search.placeholder")}
             spellCheck={false}
-            className="w-full pl-9 pr-9 py-2 text-[13px] text-text bg-surface border border-border rounded-[6px] placeholder:text-text-tertiary focus:outline-none focus:border-primary transition-colors"
+            className="w-full pl-9 pr-9 py-2 text-small text-text border border-border bg-surface rounded-sm placeholder:text-text-tertiary focus:outline-none focus:border-primary transition-colors"
           />
           {searching && (
             <button
               type="button"
               onClick={() => setQuery("")}
               title={t("common.clear")}
-              className="absolute right-2 top-1/2 -translate-y-1/2 p-1 text-text-tertiary hover:text-text rounded-[4px] transition-colors cursor-pointer"
+              className="absolute right-2 top-1/2 -translate-y-1/2 p-1 text-text-tertiary hover:text-text rounded-sm transition-colors cursor-pointer"
             >
               <X size={14} strokeWidth={1.5} />
             </button>
@@ -283,9 +281,9 @@ function CategorySection({
   const { t } = useTranslation();
   return (
     <section>
-      <h3 className="flex items-baseline gap-1.5 text-[12px] font-semibold text-text-secondary uppercase tracking-widest mb-2">
+      <h3 className="flex items-baseline gap-1.5 text-lead font-semibold text-text mb-2">
         {t(`plugins.category.${category}`)}
-        <span className="font-normal text-text-tertiary tabular-nums normal-case tracking-normal">
+        <span className="text-small font-normal text-text-tertiary tabular-nums">
           {count}
         </span>
       </h3>
@@ -299,7 +297,7 @@ function CategorySection({
 function NoResults({ query }: { query: string }) {
   const { t } = useTranslation();
   return (
-    <div className="text-center py-16 text-text-tertiary text-[14px]">
+    <div className="text-center py-16 text-text-tertiary text-body">
       <SearchX size={40} strokeWidth={1} className="mx-auto mb-3 text-text-tertiary/50" />
       {t("plugins.search.noResults", { query: query.trim() })}
     </div>
@@ -323,16 +321,16 @@ function TabButton({
     <button
       onClick={onClick}
       className={`
-        px-4 py-2 text-[13px] font-medium rounded-[6px] transition-colors cursor-pointer
+        px-4 py-2 text-small font-medium rounded-sm transition-colors cursor-pointer
         ${active
-          ? "bg-primary text-white"
-          : "bg-surface border border-border text-text-secondary hover:bg-border-light hover:text-text"
+          ? "bg-primary-fill text-white"
+          : "border border-border bg-surface text-text-secondary hover:bg-border-light hover:text-text"
         }
       `}
     >
       {label}
       <span
-        className={`ml-1.5 text-[11px] ${active ? "text-white/70" : "text-text-tertiary"}`}
+        className={`ml-1.5 text-micro ${active ? "text-white/70" : "text-text-tertiary"}`}
       >
         {count}
       </span>
@@ -357,7 +355,7 @@ function CategoryTab({
     <button
       onClick={onClick}
       className={`
-        px-3 py-2 text-[13px] font-medium transition-colors duration-150
+        px-3 py-2 text-small font-medium transition-colors duration-150
         border-b-2 -mb-px cursor-pointer
         ${
           active
@@ -368,7 +366,7 @@ function CategoryTab({
     >
       {label}
       <span
-        className={`ml-1.5 text-[11px] tabular-nums ${active ? "text-primary/70" : "text-text-tertiary"}`}
+        className={`ml-1.5 text-micro tabular-nums ${active ? "text-primary/70" : "text-text-tertiary"}`}
       >
         {count}
       </span>
@@ -398,7 +396,7 @@ function InstalledTab({
   if (plugins.length === 0) {
     if (searching) return <NoResults query={query} />;
     return (
-      <div className="text-center py-16 text-text-tertiary text-[14px]">
+      <div className="text-center py-16 text-text-tertiary text-body">
         <Package size={40} strokeWidth={1} className="mx-auto mb-3 text-text-tertiary/50" />
         {t("plugins.noPlugins")}
       </div>
@@ -546,7 +544,7 @@ function PluginRow({
 
   return (
     <div
-      className={`flex flex-wrap items-center bg-surface border border-border rounded-[10px] ${
+      className={`card flex flex-wrap items-center ${
         plugin.enabled ? "" : "opacity-70"
       }`}
     >
@@ -556,34 +554,34 @@ function PluginRow({
         type="button"
         onClick={() => setSheetOpen(true)}
         title={t("plugins.openDetails", { name })}
-        className="flex items-center gap-3 min-w-0 flex-1 px-4 py-3 text-left rounded-l-[10px] hover:bg-border-light/40 transition-colors cursor-pointer"
+        className="flex items-center gap-3 min-w-0 flex-1 px-4 py-3 text-left rounded-l-md hover:bg-border-light/40 transition-colors cursor-pointer"
       >
-        <div className="w-9 h-9 bg-accent/10 rounded-[8px] flex items-center justify-center shrink-0">
-          <IconComponent size={18} className="text-accent" />
+        <div className="w-9 h-9 bg-border-light rounded-md flex items-center justify-center shrink-0">
+          <IconComponent size={18} className="text-text-secondary" />
         </div>
         <div className="min-w-0 flex-1">
           <div className="flex items-center gap-2 min-w-0 flex-wrap">
-            <span className="text-[14px] font-semibold text-text truncate">{name}</span>
+            <span className="text-body font-semibold text-text truncate">{name}</span>
             {isPersonal && <PersonalBadge />}
           </div>
           <div className="mt-0.5 flex items-center gap-2 min-w-0">
             {!isRecipe ? (
               <>
                 <StatusBadge status={plugin.status} />
-                <span className="text-[11px] text-text-tertiary truncate">
+                <span className="text-micro text-text-tertiary truncate">
                   {t("integrations.deviceCount", { count: plugin.deviceCount })}
                   {plugin.offlineDeviceCount > 0 && (
-                    <span className="text-warning ml-1">{t("integrations.offlineCount", { count: plugin.offlineDeviceCount })}</span>
+                    <span className="text-warning-ink ml-1">{t("integrations.offlineCount", { count: plugin.offlineDeviceCount })}</span>
                   )}
                 </span>
               </>
             ) : (
-              <span className="text-[11px] text-text-tertiary truncate">
+              <span className="text-micro text-text-tertiary truncate">
                 {t("plugins.version")} <span className="font-mono">{plugin.manifest.version}</span>
               </span>
             )}
             {!plugin.enabled && (
-              <span className="text-[10px] px-1.5 py-0.5 bg-border-light rounded-[4px] text-text-tertiary shrink-0">
+              <span className="text-micro px-1.5 py-0.5 bg-border-light rounded-sm text-text-tertiary shrink-0">
                 {t("plugins.disabledBadge")}
               </span>
             )}
@@ -595,7 +593,7 @@ function PluginRow({
           it used to sit 8px from the enable/disable toggle. */}
       <div className="flex items-center gap-1 shrink-0 pr-2 sm:pr-3">
         {hasUpdate && (
-          <span className="text-[10px] px-1.5 py-0.5 bg-error/10 rounded-[4px] text-error font-mono shrink-0 flex items-center gap-0.5">
+          <span className="text-micro px-1.5 py-0.5 bg-error/10 rounded-sm text-error font-mono shrink-0 flex items-center gap-0.5">
             <ArrowUpCircle size={10} />
             {plugin.latestVersion}
           </span>
@@ -606,7 +604,7 @@ function PluginRow({
             <button
               onClick={handleUpdate}
               disabled={actionLoading !== null}
-              className="flex items-center gap-1 px-2.5 py-1 text-[11px] font-medium rounded-[5px] transition-colors cursor-pointer disabled:opacity-50 text-error hover:bg-error/10"
+              className="flex items-center gap-1 px-2.5 py-1 text-micro font-medium rounded-sm transition-colors cursor-pointer disabled:opacity-50 text-error hover:bg-error/10"
             >
               {actionLoading === "update" ? (
                 <Loader2 size={14} className="animate-spin" />
@@ -622,7 +620,7 @@ function PluginRow({
             onClick={handleToggle}
             disabled={actionLoading !== null}
             className={`
-              px-2.5 py-1 text-[11px] font-medium rounded-[5px] transition-colors cursor-pointer disabled:opacity-50
+              px-2.5 py-1 text-micro font-medium rounded-sm transition-colors cursor-pointer disabled:opacity-50
               ${plugin.enabled
                 ? "text-text-tertiary hover:bg-border-light hover:text-text-secondary"
                 : "text-success/70 hover:bg-success/10 hover:text-success"
@@ -645,7 +643,7 @@ function PluginRow({
       {/* A refused action used to leave the row exactly as it was, which reads
           as "nothing happened" rather than "the server said no". */}
       {actionError && (
-        <p role="alert" className="basis-full px-4 pb-3 -mt-1 text-[12px] text-error break-words">
+        <p role="alert" className="basis-full px-4 pb-3 -mt-1 text-caption text-error break-words">
           {actionError}
         </p>
       )}
@@ -655,7 +653,7 @@ function PluginRow({
         onClose={closeSheet}
         name={name}
         description={getLocalizedDescription(plugin.manifest, lang)}
-        icon={<IconComponent size={18} className="text-accent" />}
+        icon={<IconComponent size={18} className="text-text-secondary" />}
         type={isRecipe ? "recipe" : "integration"}
         installedVersion={plugin.manifest.version}
         latestVersion={plugin.latestVersion}
@@ -728,7 +726,7 @@ function StoreTab({
         searching ? (
           <NoResults query={query} />
         ) : (
-          <div className="text-center py-10 text-text-tertiary text-[14px]">
+          <div className="text-center py-10 text-text-tertiary text-body">
             <Package size={40} strokeWidth={1} className="mx-auto mb-3 text-text-tertiary/50" />
             {t("plugins.noPlugins")}
           </div>
@@ -811,22 +809,22 @@ function StoreRow({
   const handleInstall = () => doInstall(false);
 
   return (
-    <div className="flex flex-col gap-3 px-4 py-3 bg-surface border border-border rounded-[10px] sm:flex-row sm:flex-wrap sm:items-center">
+    <div className="card flex flex-col gap-3 px-4 py-3 sm:flex-row sm:flex-wrap sm:items-center">
       <div className="flex items-start gap-3 min-w-0 flex-1">
         {/* Icon */}
-        <div className="w-9 h-9 bg-accent/10 rounded-[8px] flex items-center justify-center shrink-0">
-          <IconComponent size={18} className="text-accent" />
+        <div className="w-9 h-9 bg-border-light rounded-md flex items-center justify-center shrink-0">
+          <IconComponent size={18} className="text-text-secondary" />
         </div>
 
         {/* Name + description */}
         <div className="min-w-0 flex-1">
         {/* Wrapping, so the badges push down instead of crushing the name (#749). */}
         <div className="flex items-center gap-2 flex-wrap">
-          <span className="text-[14px] font-semibold text-text truncate">
+          <span className="text-body font-semibold text-text truncate">
             {getLocalizedName(manifest, lang)}
           </span>
           {manifest.version && (
-            <span className="text-[10px] px-1.5 py-0.5 bg-border-light rounded-[4px] text-text-tertiary font-mono shrink-0">
+            <span className="text-micro px-1.5 py-0.5 bg-border-light rounded-sm text-text-tertiary font-mono shrink-0">
               {manifest.version}
             </span>
           )}
@@ -836,7 +834,7 @@ function StoreRow({
               in the install confirmation modal, where caution is the point. */}
           {tier === "community" && (
             <span
-              className="text-[10px] px-1.5 py-0.5 bg-warning/10 text-warning rounded-[4px] font-medium shrink-0 inline-flex items-center gap-1"
+              className="text-micro px-1.5 py-0.5 bg-border-light text-text-secondary rounded-sm font-medium shrink-0 inline-flex items-center gap-1"
               title={t("plugins.community.badge.tooltip")}
             >
               <Users size={10} strokeWidth={2} />
@@ -846,11 +844,11 @@ function StoreRow({
           {/* Personal badge — user-added source (spec 136) */}
           {tier === "personal" && <PersonalBadge />}
         </div>
-        <p className="text-[12px] text-text-secondary mt-0.5 line-clamp-2 sm:line-clamp-1">
+        <p className="text-caption text-text-secondary mt-0.5 line-clamp-2 sm:line-clamp-1">
           {getLocalizedDescription(manifest, lang)}
         </p>
         {manifest.author && (
-          <span className="text-[11px] text-text-tertiary">
+          <span className="text-micro text-text-tertiary">
             {t("plugins.author")}{t("common.colon")}{manifest.author}
           </span>
         )}
@@ -860,14 +858,14 @@ function StoreRow({
       {/* Install button or installed badge */}
       <div className="shrink-0 self-end sm:self-auto">
         {installed ? (
-          <span className="px-3 py-1.5 text-[12px] font-medium text-success bg-success/10 rounded-[6px]">
+          <span className="px-3 py-1.5 text-caption font-medium text-success bg-success/10 rounded-sm">
             {t("plugins.installed_badge")}
           </span>
         ) : compatible ? (
           <button
             onClick={handleInstall}
             disabled={installing}
-            className="flex items-center gap-1.5 px-3 py-1.5 text-[12px] font-medium text-white bg-primary hover:bg-primary-hover rounded-[6px] transition-colors cursor-pointer disabled:opacity-50"
+            className="flex items-center gap-1.5 px-3 py-1.5 text-caption font-medium text-white bg-primary-fill hover:bg-primary-fill-hover rounded-sm transition-colors cursor-pointer disabled:opacity-50"
           >
             {installing ? (
               <>
@@ -882,7 +880,7 @@ function StoreRow({
             )}
           </button>
         ) : (
-          <span className="px-3 py-1.5 text-[11px] font-medium text-text-tertiary bg-border-light rounded-[6px]" title={manifest.compatReason}>
+          <span className="px-3 py-1.5 text-micro font-medium text-text-tertiary bg-border-light rounded-sm" title={manifest.compatReason}>
             {manifest.compatReason ?? t("plugins.incompatible")}
           </span>
         )}
@@ -902,16 +900,16 @@ function StoreRow({
       {/* Community plugin confirm modal (spec 089 C1) */}
       {confirmCommunity && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
-          <div className="bg-surface rounded-[14px] max-w-md w-full p-6 space-y-4 shadow-lg">
+          <div className="bg-surface rounded-lg max-w-md w-full p-6 space-y-4 shadow-lg">
             <div className="flex items-start gap-3">
               <div className="w-10 h-10 rounded-full bg-warning/10 flex items-center justify-center shrink-0">
-                <AlertTriangle size={20} className="text-warning" strokeWidth={2} />
+                <AlertTriangle size={20} className="text-warning-ink" strokeWidth={2} />
               </div>
               <div className="min-w-0">
-                <h3 className="text-[16px] font-semibold text-text">
+                <h3 className="text-lead font-semibold text-text">
                   {t("plugins.community.modal.title")}
                 </h3>
-                <p className="text-[13px] text-text-secondary mt-1">
+                <p className="text-small text-text-secondary mt-1">
                   {t("plugins.community.modal.body", { owner: confirmCommunity.owner })}
                 </p>
               </div>
@@ -920,14 +918,14 @@ function StoreRow({
               <button
                 onClick={() => setConfirmCommunity(null)}
                 disabled={installing}
-                className="px-4 py-2 text-[13px] font-medium text-text-secondary hover:bg-border-light rounded-[6px] transition-colors disabled:opacity-50"
+                className="px-4 py-2 text-small font-medium text-text-secondary hover:bg-border-light rounded-sm transition-colors disabled:opacity-50"
               >
                 {t("common.cancel")}
               </button>
               <button
                 onClick={() => doInstall(true)}
                 disabled={installing}
-                className="px-4 py-2 text-[13px] font-medium text-white bg-warning hover:opacity-90 rounded-[6px] transition-colors disabled:opacity-50 inline-flex items-center gap-1.5"
+                className="px-4 py-2 text-small font-medium text-on-status bg-warning-ink hover:opacity-90 rounded-sm transition-colors disabled:opacity-50 inline-flex items-center gap-1.5"
               >
                 {installing ? <Loader2 size={14} className="animate-spin" /> : <Download size={14} />}
                 {t("plugins.community.modal.confirm")}
@@ -938,7 +936,7 @@ function StoreRow({
       )}
 
       {installError && (
-        <p role="alert" className="basis-full text-[12px] text-error break-words">
+        <p role="alert" className="basis-full text-caption text-error break-words">
           {installError}
         </p>
       )}
@@ -979,13 +977,13 @@ function PersonalSourcesSection({
   };
 
   return (
-    <section className="bg-surface border border-border rounded-[10px]">
+    <section className="card">
       {/* Header */}
       <div className="flex items-start gap-2.5 px-4 py-3">
         <FolderGit2 size={16} strokeWidth={1.5} className="text-text-secondary mt-0.5 shrink-0" />
         <div className="min-w-0">
-          <h2 className="text-[13px] font-semibold text-text">{t("plugins.sources.title")}</h2>
-          <p className="text-[12px] text-text-secondary mt-0.5">{t("plugins.sources.subtitle")}</p>
+          <h2 className="text-small font-semibold text-text">{t("plugins.sources.title")}</h2>
+          <p className="text-caption text-text-secondary mt-0.5">{t("plugins.sources.subtitle")}</p>
         </div>
       </div>
 
@@ -1012,12 +1010,12 @@ function PersonalSourcesSection({
           placeholder={t("plugins.sources.placeholder")}
           spellCheck={false}
           autoCapitalize="none"
-          className="flex-1 min-w-0 px-3 py-1.5 text-[13px] font-mono text-text bg-background border border-border rounded-[6px] placeholder:text-text-tertiary placeholder:font-mono focus:outline-none focus:border-primary transition-colors"
+          className="flex-1 min-w-0 px-3 py-1.5 text-small font-mono text-text bg-background border border-border rounded-sm placeholder:text-text-tertiary placeholder:font-mono focus:outline-none focus:border-primary transition-colors"
         />
         <button
           type="submit"
           disabled={adding || !repoInput.trim()}
-          className="inline-flex items-center gap-1.5 px-3 py-1.5 text-[12px] font-medium text-white bg-primary hover:bg-primary-hover rounded-[6px] transition-colors cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed shrink-0"
+          className="inline-flex items-center gap-1.5 px-3 py-1.5 text-caption font-medium text-white bg-primary-fill hover:bg-primary-fill-hover rounded-sm transition-colors cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed shrink-0"
         >
           {adding ? (
             <Loader2 size={14} className="animate-spin" />
@@ -1027,7 +1025,7 @@ function PersonalSourcesSection({
           {t("plugins.sources.add")}
         </button>
       </form>
-      {error && <p className="px-4 pb-3 -mt-1 text-[12px] text-error">{error}</p>}
+      {error && <p className="px-4 pb-3 -mt-1 text-caption text-error">{error}</p>}
     </section>
   );
 }
@@ -1056,13 +1054,13 @@ function SourceRow({ source, onRefresh }: { source: PluginSource; onRefresh: () 
 
   return (
     <li className="flex items-center gap-3 px-4 py-2.5">
-      <span className="flex-1 min-w-0 text-[13px] font-mono text-text truncate">{source.repo}</span>
+      <span className="flex-1 min-w-0 text-small font-mono text-text truncate">{source.repo}</span>
       {source.latestVersion ? (
-        <span className="text-[10px] px-1.5 py-0.5 bg-border-light rounded-[4px] text-text-tertiary font-mono shrink-0">
+        <span className="text-micro px-1.5 py-0.5 bg-border-light rounded-sm text-text-tertiary font-mono shrink-0">
           {source.latestVersion}
         </span>
       ) : (
-        <span className="text-[11px] text-text-tertiary shrink-0">
+        <span className="text-micro text-text-tertiary shrink-0">
           {t("plugins.sources.noRelease")}
         </span>
       )}
@@ -1072,9 +1070,9 @@ function SourceRow({ source, onRefresh }: { source: PluginSource; onRefresh: () 
         disabled={removing}
         title={t("plugins.sources.removeHint")}
         className={`
-          flex items-center gap-1 rounded-[5px] transition-colors cursor-pointer disabled:opacity-50 shrink-0
+          flex items-center gap-1 rounded-sm transition-colors cursor-pointer disabled:opacity-50 shrink-0
           ${confirmRemove
-            ? "text-error bg-error/10 px-2 py-1 text-xs font-medium"
+            ? "text-error bg-error/10 px-2 py-1 text-caption font-medium"
             : "p-1.5 text-text-tertiary hover:bg-border-light hover:text-error"
           }
         `}
@@ -1107,7 +1105,7 @@ function StatusBadge({ status }: { status: IntegrationStatus }) {
   const label = status === "not_configured" ? "disconnected" : status;
 
   return (
-    <span className={`inline-flex items-center gap-1.5 text-[11px] ${text} mt-0.5`}>
+    <span className={`inline-flex items-center gap-1.5 text-micro ${text} mt-0.5`}>
       <span className={`w-1.5 h-1.5 rounded-full ${dot}`} />
       {t(`status.${label}`)}
     </span>

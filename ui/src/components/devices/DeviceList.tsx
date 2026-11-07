@@ -121,7 +121,7 @@ export function DeviceList({ devices, deviceData, activeTab, deviceEquipmentMap 
   );
 
   return (
-    <div className="bg-surface rounded-[10px] border border-border overflow-hidden">
+    <div className="card overflow-hidden">
       <table className="w-full">
         <thead>
           <tr className="border-b border-border bg-border-light/40">
@@ -160,7 +160,7 @@ export function DeviceList({ devices, deviceData, activeTab, deviceEquipmentMap 
               className="hidden md:table-cell"
             />
             <th className="py-2 px-3 text-left hidden md:table-cell">
-              <span className="text-[11px] font-semibold uppercase tracking-widest text-text-tertiary">
+              <span className="text-caption font-semibold uppercase tracking-[0.04em] text-text-tertiary">
                 {t("devices.col.equipment")}
               </span>
             </th>
@@ -232,15 +232,15 @@ export function DeviceList({ devices, deviceData, activeTab, deviceEquipmentMap 
                   />
                 </td>
                 <td className="py-2.5 px-3">
-                  <span className="text-[13px] font-medium text-text">{device.name}</span>
+                  <span className="text-small font-medium text-text">{device.name}</span>
                 </td>
                 <td className="py-2.5 px-3 hidden lg:table-cell">
-                  <span className="text-[12px] text-text-secondary truncate block max-w-[160px]">
+                  <span className="text-caption text-text-secondary truncate block max-w-[160px]">
                     {device.manufacturer ?? "—"}
                   </span>
                 </td>
                 <td className="py-2.5 px-3 hidden md:table-cell">
-                  <span className="text-[12px] text-text-secondary truncate block max-w-[180px]">
+                  <span className="text-caption text-text-secondary truncate block max-w-[180px]">
                     {device.model ?? "—"}
                   </span>
                 </td>
@@ -249,7 +249,7 @@ export function DeviceList({ devices, deviceData, activeTab, deviceEquipmentMap 
                 </td>
                 {showSource && (
                   <td className="py-2.5 px-3 hidden sm:table-cell">
-                    <span className="inline-flex items-center px-1.5 py-0.5 rounded bg-border-light text-[10px] font-semibold text-text-secondary uppercase tracking-wide">
+                    <span className="inline-flex items-center px-1.5 py-0.5 rounded-sm bg-border-light text-caption font-medium text-text-secondary">
                       {sourceLabel(device.source)}
                     </span>
                   </td>
@@ -265,7 +265,7 @@ export function DeviceList({ devices, deviceData, activeTab, deviceEquipmentMap 
                   </td>
                 )}
                 <td className="py-2.5 px-3 text-right hidden sm:table-cell">
-                  <span className="text-[11px] text-text-tertiary">
+                  <span className="text-micro text-text-tertiary">
                     <RelativeTime iso={device.lastSeen} />
                   </span>
                 </td>
@@ -310,7 +310,7 @@ function SortHeader({
     >
       <span className={`inline-flex items-center gap-1 ${alignClass}`}>
         <span
-          className={`text-[11px] font-semibold uppercase tracking-widest ${
+          className={`text-caption font-semibold uppercase tracking-[0.04em] ${
             isActive ? "text-primary" : "text-text-tertiary group-hover:text-text-secondary"
           } transition-colors duration-100`}
         >
@@ -330,61 +330,61 @@ function SortHeader({
 
 function BatteryCell({ value }: { value: unknown }) {
   if (value === null || value === undefined) {
-    return <span className="text-[11px] text-text-tertiary">—</span>;
+    return <span className="text-micro text-text-tertiary">—</span>;
   }
 
   const level = typeof value === "number" ? value : Number(value);
-  if (isNaN(level)) return <span className="text-[11px] text-text-tertiary">—</span>;
+  if (isNaN(level)) return <span className="text-micro text-text-tertiary">—</span>;
 
   const Icon = level <= 15 ? BatteryLow : level <= 30 ? BatteryWarning : Battery;
   const color =
     level <= 15
       ? "text-error"
       : level <= 30
-        ? "text-warning"
+        ? "text-warning-ink"
         : "text-text-secondary";
 
   return (
     <span className={`inline-flex items-center gap-1 ${color}`}>
       <Icon size={14} strokeWidth={1.5} />
-      <span className="text-[11px] font-mono">{level}%</span>
+      <span className="text-micro tabular-nums">{level}%</span>
     </span>
   );
 }
 
 function LqiCell({ value }: { value: unknown }) {
   if (value === null || value === undefined) {
-    return <span className="text-[11px] text-text-tertiary">—</span>;
+    return <span className="text-micro text-text-tertiary">—</span>;
   }
 
   const lqi = typeof value === "number" ? value : Number(value);
-  if (isNaN(lqi)) return <span className="text-[11px] text-text-tertiary">—</span>;
+  if (isNaN(lqi)) return <span className="text-micro text-text-tertiary">—</span>;
 
   // Zigbee LQI range: 0–255. <75 = poor, <150 = fair, ≥150 = good
   const color =
     lqi < 75
       ? "text-error"
       : lqi < 150
-        ? "text-warning"
+        ? "text-warning-ink"
         : "text-text-secondary";
 
   return (
     <span className={`inline-flex items-center gap-1 ${color}`}>
       <Signal size={13} strokeWidth={1.5} />
-      <span className="text-[11px] font-mono">{lqi}</span>
+      <span className="text-micro tabular-nums">{lqi}</span>
     </span>
   );
 }
 
 function EquipmentCell({ equipments }: { equipments?: { id: string; name: string; zoneName?: string; zoneId?: string }[] }) {
   if (!equipments || equipments.length === 0) {
-    return <span className="text-[11px] text-text-tertiary">—</span>;
+    return <span className="text-micro text-text-tertiary">—</span>;
   }
 
   return (
     <span className="flex flex-col gap-0.5">
       {equipments.map((eq) => (
-        <span key={eq.id} className="text-[12px] truncate max-w-[220px]">
+        <span key={eq.id} className="text-caption truncate max-w-[220px]">
           {eq.zoneName && eq.zoneId && (
             <>
               <Link
@@ -417,8 +417,8 @@ function EmptyState() {
       <div className="w-16 h-16 rounded-full bg-border-light flex items-center justify-center mb-4">
         <Radio size={28} strokeWidth={1.5} className="text-text-tertiary" />
       </div>
-      <h3 className="text-[16px] font-medium text-text mb-1">{t("devices.empty.title")}</h3>
-      <p className="text-[13px] text-text-secondary max-w-[320px]">
+      <h3 className="text-lead font-medium text-text mb-1">{t("devices.empty.title")}</h3>
+      <p className="text-small text-text-secondary max-w-[320px]">
         {t("devices.empty.message")}
       </p>
     </div>

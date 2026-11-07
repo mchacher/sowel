@@ -164,14 +164,14 @@ export function EnergyManagementPanel({
   };
 
   const inputCls =
-    "w-24 px-2 py-1 border border-border rounded text-[13px] text-text bg-background";
+    "w-24 px-2 py-1 border border-border rounded-sm text-small text-text bg-background";
 
   return (
-    <div className="bg-surface rounded-[10px] border border-border mb-6 p-4">
+    <div className="card mb-6 p-4">
       <div className="flex items-center gap-2 mb-1">
         <PlugZap size={16} strokeWidth={1.5} className="text-text-tertiary" />
-        <h3 className="text-[14px] font-semibold text-text">{t("energyProfile.title")}</h3>
-        <label className="ml-auto flex items-center gap-2 text-[12px] text-text-secondary cursor-pointer">
+        <h3 className="text-body font-semibold text-text">{t("energyProfile.title")}</h3>
+        <label className="ml-auto flex items-center gap-2 text-caption text-text-secondary cursor-pointer">
           <input
             type="checkbox"
             checked={open}
@@ -181,12 +181,12 @@ export function EnergyManagementPanel({
           {t("energyProfile.enable")}
         </label>
       </div>
-      <p className="text-[12px] text-text-tertiary mb-3">
+      <p className="text-caption text-text-tertiary mb-3">
         {canEnable ? t("energyProfile.hint") : t("energyProfile.noClassForType")}
       </p>
 
       {suspension && (
-        <div className="flex items-center gap-2 mb-3 px-3 py-2 rounded-md bg-accent/10 border border-accent/20 text-[12px] text-text-secondary">
+        <div className="flex items-center gap-2 mb-3 px-3 py-2 rounded-md bg-primary-light border border-primary/20 text-caption text-text-secondary">
           <span>
             {t("energyProfile.manualUntil", {
               time: new Date(suspension.untilIso).toLocaleTimeString(currentLocale(), {
@@ -197,7 +197,7 @@ export function EnergyManagementPanel({
           </span>
           <button
             onClick={() => void resume()}
-            className="ml-auto text-[12px] font-medium text-primary hover:text-primary-hover focus-visible:outline focus-visible:outline-2 focus-visible:outline-primary rounded"
+            className="ml-auto text-caption font-medium text-primary hover:text-primary-hover focus-visible:outline focus-visible:outline-2 focus-visible:outline-primary rounded-sm"
           >
             {t("energyProfile.resumeNow")}
           </button>
@@ -208,7 +208,7 @@ export function EnergyManagementPanel({
         <>
           <div className="flex flex-wrap items-end gap-4">
             <div>
-              <label htmlFor="ep-watts" className="block text-[12px] text-text-secondary mb-1">
+              <label htmlFor="ep-watts" className="block text-caption text-text-secondary mb-1">
                 {t("energyProfile.nominalW")}
               </label>
               <input
@@ -222,7 +222,7 @@ export function EnergyManagementPanel({
               />
             </div>
             <div>
-              <label htmlFor="ep-tolimport" className="block text-[12px] text-text-secondary mb-1">
+              <label htmlFor="ep-tolimport" className="block text-caption text-text-secondary mb-1">
                 {t("energyProfile.toleratedImport")}
               </label>
               <input
@@ -236,7 +236,7 @@ export function EnergyManagementPanel({
               />
             </div>
             <div>
-              <label htmlFor="ep-minon" className="block text-[12px] text-text-secondary mb-1">
+              <label htmlFor="ep-minon" className="block text-caption text-text-secondary mb-1">
                 {t("energyProfile.minOn")}
               </label>
               <input
@@ -251,7 +251,7 @@ export function EnergyManagementPanel({
               />
             </div>
             <div>
-              <label htmlFor="ep-minoff" className="block text-[12px] text-text-secondary mb-1">
+              <label htmlFor="ep-minoff" className="block text-caption text-text-secondary mb-1">
                 {t("energyProfile.minOff")}
               </label>
               <input
@@ -268,7 +268,7 @@ export function EnergyManagementPanel({
             <div>
               <label
                 htmlFor="ep-releasedelay"
-                className="block text-[12px] text-text-secondary mb-1"
+                className="block text-caption text-text-secondary mb-1"
                 title={t("energyProfile.releaseDelayHint")}
               >
                 {t("energyProfile.releaseDelay")}
@@ -286,7 +286,7 @@ export function EnergyManagementPanel({
               />
             </div>
             {profile?.learned && (
-              <div className="text-[12px] text-text-tertiary pb-1">
+              <div className="text-caption text-text-tertiary pb-1">
                 {t("energyProfile.learned", {
                   power: formatPower(profile.learned.watts),
                   runs: profile.learned.runs,
@@ -303,17 +303,17 @@ export function EnergyManagementPanel({
                   void commit({ cls, watts, toleratedImportW, minOnS, minOffS, releaseDelayS })
                 }
                 disabled={saving}
-                className="mt-3 px-3 py-1.5 bg-primary text-white text-[13px] font-medium rounded-md hover:bg-primary-hover disabled:opacity-50"
+                className="mt-3 px-3 py-1.5 bg-primary-fill text-white text-small font-medium rounded-sm hover:bg-primary-fill-hover disabled:opacity-50"
               >
                 {t("energyProfile.save")}
               </button>
             ) : (
-              <p className="text-[12px] text-text-tertiary mt-2">{t("energyProfile.completeToEnable")}</p>
+              <p className="text-caption text-text-tertiary mt-2">{t("energyProfile.completeToEnable")}</p>
             ))}
         </>
       )}
 
-      {error && <p className="text-[12px] text-red-500 mt-2">{error}</p>}
+      {error && <p className="text-caption text-error mt-2">{error}</p>}
     </div>
   );
 

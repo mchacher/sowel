@@ -12,14 +12,16 @@ import {
   Droplet,
   Flame,
   Zap,
+  Moon,
 } from "lucide-react";
 import { ShutterIcon } from "../icons/ShutterIcons";
 import { WaterValveIcon } from "../icons/WaterValveIcon";
 import { ZoneSparkline } from "../history/ZoneSparkline";
 import type { ZoneAggregatedData } from "../../types";
-import { formatDuration, formatPercent, formatPower, formatTemperature, formatWithUnit } from "../../lib/format";
+import { formatDuration, formatPercent, formatPower, formatRange, formatTemperature, formatWithUnit } from "../../lib/format";
+import { ROOT_ZONE_ID } from "../../lib/constants";
 
-type PillVariant = "default" | "active" | "calm" | "alert";
+type PillVariant = "default" | "active" | "info" | "calm" | "alert";
 
 /**
  * Spec 170 — watts below the kilowatt, kilowatts above, so a house drawing four
@@ -49,6 +51,10 @@ interface StatusItem {
   valueTint?: string;
   /** If set, show a sparkline for this category (sensor pills only). */
   sparklineCategory?: string;
+  /** Name read before the value by screen readers and shown on hover, when the icon alone says it. */
+  name?: string;
+  /** Shown below lg only: the desktop top bar already carries it. */
+  compactOnly?: boolean;
 }
 
 export function ZoneAggregationPills({
@@ -109,6 +115,25 @@ export function ZoneAggregationPills({
     });
   }
 
+  // Spec 196, pr6-soleil — sunrise and sunset of the home. The desktop top bar
+  // shows them on every page; phones and tablets have no room there, so the
+  // root zone's strip carries them below lg (on desktop it would only repeat
+  // the bar and push the strip into a sideways scroll).
+  if (zoneId === ROOT_ZONE_ID && data.sunrise !== null && data.sunset !== null) {
+    const isDay = data.isDaylight === true;
+    sensorPills.push({
+      key: "sun",
+      icon: isDay ? <Sun size={14} strokeWidth={1.5} /> : <Moon size={14} strokeWidth={1.5} />,
+      label: formatRange(data.sunrise, data.sunset),
+      name: t("header.sun"),
+      variant: "default",
+      // The sun glyph is the one tolerated amber outside "on" (spec 196).
+      iconTint: isDay ? "text-active" : "text-text-tertiary",
+      valueTint: "text-text-secondary",
+      compactOnly: true,
+    });
+  }
+
   // ── Cluster 2: Counters / states (active devices) ───────────
   const counterPills: StatusItem[] = [];
 
@@ -122,7 +147,8 @@ export function ZoneAggregationPills({
       // Mobile: when motion is active, drop the "Mouvement" word but keep the duration.
       // The icon color signals motion; the word is redundant. Calm stays verbatim.
       mobileLabel: data.motion ? (duration ?? "") : `${label}${suffix}`,
-      variant: data.motion ? "active" : "calm",
+      // Motion is activity, not something switched on: primary, not amber.
+      variant: data.motion ? "info" : "calm",
     });
   }
 
@@ -165,7 +191,8 @@ export function ZoneAggregationPills({
       key: "door-equipments",
       icon: someOpen ? <DoorOpen size={14} strokeWidth={1.5} /> : <DoorClosed size={14} strokeWidth={1.5} />,
       label: `${data.doorsOpen}/${data.doorsTotal}`,
-      variant: someOpen ? "active" : "default",
+      // Open/closed is neutral (spec 196): the word and the icon say it.
+      variant: "default",
       iconTint: "text-text-secondary",
       valueTint: someOpen ? "text-text" : "text-text-tertiary",
     });
@@ -195,9 +222,10 @@ export function ZoneAggregationPills({
       key: "power",
       icon: <Zap size={14} strokeWidth={1.5} />,
       label: formatWatts(data.powerTotal),
-      variant: data.powerTotal > 0 ? "active" : "default",
+      // Energy is not "on": a neutral value, never amber.
+      variant: "default",
       iconTint: "text-text-tertiary",
-      valueTint: "text-text-tertiary",
+      valueTint: data.powerTotal > 0 ? "text-text" : "text-text-tertiary",
     });
   }
 
@@ -210,8 +238,8 @@ export function ZoneAggregationPills({
       icon: <DoorOpen size={14} strokeWidth={1.5} />,
       label: t("aggregation.open", { count: data.openDoors }),
       variant: "default",
-      iconTint: "text-active-text",
-      valueTint: "text-active-text",
+      iconTint: "text-text-secondary",
+      valueTint: "text-text",
     });
   }
 
@@ -221,8 +249,8 @@ export function ZoneAggregationPills({
       icon: <SquareStack size={14} strokeWidth={1.5} />,
       label: t("aggregation.open", { count: data.openWindows }),
       variant: "default",
-      iconTint: "text-active-text",
-      valueTint: "text-active-text",
+      iconTint: "text-text-secondary",
+      valueTint: "text-text",
     });
   }
 
@@ -250,19 +278,31 @@ export function ZoneAggregationPills({
 
   if (clusters.length === 0) return null;
 
-  // On phones the strip wraps instead of scrolling sideways (spec 196): the
-  // separators would dangle at line ends there, so the gap replaces them.
+  // Below lg (phones and tablets) the strip wraps instead of scrolling
+  // sideways (spec 196): the separators would dangle at line ends there, so
+  // the gap replaces them. A separator next to a compact-only pill (hidden
+  // from lg) never shows.
   return (
-    <div className="flex flex-wrap sm:flex-nowrap items-center gap-x-2 gap-y-1 sm:gap-x-0 rounded-[8px] border border-border bg-surface px-1 py-1 sm:overflow-x-auto">
+    <div className="card flex flex-wrap lg:flex-nowrap items-center gap-x-2 gap-y-1 lg:gap-x-0 px-1 py-1 lg:overflow-x-auto">
       {clusters.map((cluster, ci) => (
         <Fragment key={ci}>
           {ci > 0 && (
-            <div className="hidden sm:block w-px h-5 bg-border mx-2 flex-shrink-0" />
+            <div
+              className={`w-px h-5 bg-border mx-2 flex-shrink-0 ${
+                cluster.every(isCompactOnly) || clusters.slice(0, ci).flat().every(isCompactOnly)
+                  ? "hidden"
+                  : "hidden lg:block"
+              }`}
+            />
           )}
           {cluster.map((item, ii) => (
             <Fragment key={item.key}>
               {ii > 0 && (
-                <div className="hidden sm:block w-px h-4 bg-border-light mx-1 flex-shrink-0" />
+                <div
+                  className={`w-px h-4 bg-border-light mx-1 flex-shrink-0 ${
+                    item.compactOnly || cluster.slice(0, ii).every(isCompactOnly) ? "hidden" : "hidden lg:block"
+                  }`}
+                />
               )}
               <StripPill
                 item={item}
@@ -275,6 +315,11 @@ export function ZoneAggregationPills({
       ))}
     </div>
   );
+}
+
+/** A separator next to pills hidden from lg is hidden with them, so none dangles. */
+function isCompactOnly(item: StatusItem): boolean {
+  return item.compactOnly === true;
 }
 
 // ============================================================
@@ -300,10 +345,17 @@ function variantClasses(variant: PillVariant): {
         value: "text-error",
       };
     case "active":
+      // Something on or running now: lights on, water flowing.
       return {
         pill: "",
-        icon: "text-active-text",
-        value: "text-active-text",
+        icon: "text-active-ink",
+        value: "text-active-ink",
+      };
+    case "info":
+      return {
+        pill: "",
+        icon: "text-primary",
+        value: "text-primary",
       };
     case "calm":
       return {
@@ -324,9 +376,13 @@ function StripPill({ item, zoneId, historyEnabled }: StripPillProps) {
 
   return (
     <div
-      className={`flex items-center gap-1.5 px-2 py-0.5 rounded-[5px] text-[13px] font-medium tabular-nums whitespace-nowrap ${v.pill}`}
+      className={`flex items-center gap-1.5 px-2 py-0.5 rounded-sm text-small font-medium tabular-nums whitespace-nowrap ${v.pill} ${
+        item.compactOnly ? "lg:hidden" : ""
+      }`}
+      title={item.name}
     >
       <span className={`flex-shrink-0 ${iconClass}`}>{item.icon}</span>
+      {item.name && <span className="sr-only">{item.name}</span>}
       {hasMobileOverride ? (
         <>
           {item.mobileLabel && <span className={`sm:hidden ${valueClass}`}>{item.mobileLabel}</span>}

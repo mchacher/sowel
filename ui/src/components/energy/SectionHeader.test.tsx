@@ -67,7 +67,7 @@ describe("Live page section headings (#818)", () => {
 
     for (const h of headings) {
       // One size for all of them. 14px and 15px used to coexist.
-      expect(h.className, `"${h.textContent}" is not the shared size`).toContain("text-[15px]");
+      expect(h.className, `"${h.textContent}" is not the shared size`).toContain("text-lead");
       // And each sits beside an icon, which only the arbitration card had.
       const header = h.closest("div")?.parentElement;
       expect(header?.querySelector("svg"), `"${h.textContent}" has no icon`).toBeTruthy();

@@ -4,7 +4,7 @@ The Dashboard is your personalized home screen -- a customizable grid of widgets
 
 ## Overview
 
-Unlike the Home view (which is organized by zones), the Dashboard lets you pick exactly what you want to see, regardless of room or equipment type. You might put your living room lights next to your outdoor temperature and your garage gate, all on one screen.
+Unlike the Home view (which is organized by zones), the Dashboard lets you pick exactly what you want to see, regardless of room or equipment type. You might put your living room lights next to your outdoor temperature and your garage gate, all on one screen. On a computer, a line under the title sums up the whole home: how many lights are on, which shutters are open.
 
 ![Dashboard with a mix of equipment and zone widgets](../screenshots/dashboard-overview-en.png)
 
@@ -24,7 +24,7 @@ On/off equipments (lights, switches, plugs, water heaters, water valves, heaters
 
 A tile that shows a **power draw** in watts -- a metering plug, a water heater, a solar panel, an energy meter -- only shows it while the reading is recent. Past that, the figure gives way to a dash and the tile says how old the last reading is, instead of presenting a value the house has no reason to doubt. The budget follows how often the source actually speaks: two minutes for a meter that reports continuously, ten for everything else, because several integrations poll on a five-minute cycle and a healthy appliance must not flicker on every poll. Readings that share a device age together -- a solar tile drops its current and voltage along with the power, and the live measures on an equipment page do the same -- because a silence that hid one figure hid them all. A panel that simply wound down for the night still reads **Standby**, not outdated: it stopped producing, it did not stop being heard from. This is the same rule as the consumption breakdown on the Energy page.
 
-The **weather forecast** tile shows tomorrow, and says how much the models agree on it: a badge at the foot of the tile (green reliable, amber fairly reliable, red unreliable). Click or tap the tile, on a computer as well as on a phone, to open a panel showing the five forecast days side by side, each with its condition, maximum, minimum, wind and a reliability badge, plus the model the forecast came from. It is the same badge as on the equipment page.
+The **weather forecast** tile shows tomorrow, and says how much the models agree on it: a badge at the foot of the tile (green reliable, orange fairly reliable, red unreliable). Click or tap the tile, on a computer as well as on a phone, to open a panel showing the five forecast days side by side, each with its condition, maximum, minimum, wind and a reliability badge, plus the model the forecast came from. It is the same badge as on the equipment page.
 
 Reliability is published by the weather plugin from version 2.0 onwards. With an older plugin the tile shows no reliability at all and the panel shows no badge, because an unqualified day must never look like a reliable one.
 
@@ -63,8 +63,8 @@ A tile whose recipe instance is disabled is greyed out and keeps its place, so a
 
 ## Adding widgets
 
-1. Enter **edit mode** by clicking the pencil icon in the top-right corner of the Dashboard
-2. Click the **+** button that appears
+1. Enter **edit mode**: on a computer, click **Edit** in the top-right corner of the Dashboard; on a phone or a tablet, tap **Edit the dashboard** under the last tile
+2. Click **Add a widget**
 3. In the modal, choose between:
    - **Equipment** -- browse and select any equipment
    - **Zone** -- select a zone and a data family
@@ -96,12 +96,12 @@ In edit mode, click the delete button on any widget to remove it from the dashbo
 
 ## Edit mode
 
-Edit mode is toggled with the pencil icon in the dashboard header. When active:
+Edit mode is an administrator action. On a computer it is toggled with the **Edit** button in the dashboard header. On a phone or a tablet, the **Edit the dashboard** button sits under the last tile, out of the way of the tiles you use every day. When active:
 
-- A **+** button appears to add new widgets
+- An **Add a widget** button appears: in the header on a computer, in a bar that stays at the bottom of the screen on a phone or a tablet
 - Each widget shows a **delete** button
 - Widgets can be **dragged** to reorder
-- Click the **checkmark** to exit edit mode and save
+- Click **Done** (next to **Add a widget**) to exit edit mode; changes are already saved
 
 ![Dashboard in edit mode — drag handles, delete buttons, Add widget action](../screenshots/dashboard-edit-en.png)
 

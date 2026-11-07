@@ -55,6 +55,7 @@ import {
   useChannelOptionLabel,
 } from "../components/publishers/notification-channels";
 import { ChannelConfigFields } from "../components/publishers/ChannelConfigFields";
+import { TOP_LEVEL_H1 } from "../components/layout/page-title";
 
 const DEFAULT_THROTTLE_MS = 300_000; // 5 min
 
@@ -67,22 +68,22 @@ function PushEnableCard() {
   let action: React.ReactNode;
   if (!supported) {
     action = (
-      <span className="text-[12px] text-text-tertiary">{t("notifPublishers.pushUnsupported")}</span>
+      <span className="text-caption text-text-tertiary">{t("notifPublishers.pushUnsupported")}</span>
     );
   } else if (status === "insecure") {
     action = (
-      <span className="text-[12px] text-text-tertiary">{t("notifPublishers.pushInsecure")}</span>
+      <span className="text-caption text-text-tertiary">{t("notifPublishers.pushInsecure")}</span>
     );
   } else if (status === "denied") {
     action = (
-      <span className="text-[12px] text-text-tertiary">{t("notifPublishers.pushDenied")}</span>
+      <span className="text-caption text-text-tertiary">{t("notifPublishers.pushDenied")}</span>
     );
   } else if (status === "subscribed") {
     action = (
       <button
         onClick={() => void unsubscribe()}
         disabled={busy}
-        className="flex items-center gap-1.5 px-3 py-1.5 text-[13px] rounded-[6px] border border-border text-text-secondary hover:text-text disabled:opacity-50"
+        className="flex items-center gap-1.5 px-3 py-1.5 text-small rounded-sm border border-border text-text-secondary hover:text-text disabled:opacity-50"
       >
         {busy ? <Loader2 size={14} className="animate-spin" /> : <BellOff size={14} />}
         {t("notifPublishers.pushDisable")}
@@ -93,7 +94,7 @@ function PushEnableCard() {
       <button
         onClick={() => void subscribe()}
         disabled={busy}
-        className="flex items-center gap-1.5 px-3 py-1.5 bg-primary text-white text-[13px] rounded-[6px] hover:bg-primary-hover disabled:opacity-50"
+        className="flex items-center gap-1.5 px-3 py-1.5 bg-primary-fill text-white text-small rounded-sm hover:bg-primary-fill-hover disabled:opacity-50"
       >
         {busy ? <Loader2 size={14} className="animate-spin" /> : <Bell size={14} />}
         {t("notifPublishers.pushEnable")}
@@ -102,17 +103,17 @@ function PushEnableCard() {
   }
 
   return (
-    <div className="mb-4 p-4 bg-surface rounded-[10px] border border-border max-w-lg">
+    <div className="card mb-4 p-4 max-w-lg">
       <div className="flex items-center justify-between gap-3">
         <div>
-          <div className="text-[13px] font-medium text-text">{t("notifPublishers.pushTitle")}</div>
-          <div className="text-[12px] text-text-secondary">
+          <div className="text-small font-medium text-text">{t("notifPublishers.pushTitle")}</div>
+          <div className="text-caption text-text-secondary">
             {status === "subscribed" ? t("notifPublishers.pushOn") : t("notifPublishers.pushOff")}
           </div>
         </div>
         {action}
       </div>
-      {error && <div className="text-[11px] text-red-500 mt-2">{error}</div>}
+      {error && <div className="text-micro text-error mt-2">{error}</div>}
     </div>
   );
 }
@@ -163,11 +164,8 @@ export function NotificationPublishersPage() {
   return (
     <div className="p-4 sm:p-6">
       <div className="mb-6">
-        <div className="flex items-center gap-2.5 mb-1">
-          <Bell size={22} strokeWidth={1.5} className="text-text-secondary" />
-          <h1>{t("notifPublishers.title")}</h1>
-        </div>
-        <p className="text-[13px] text-text-secondary mt-1">{t("notifPublishers.subtitle")}</p>
+        <h1 className={TOP_LEVEL_H1}>{t("notifPublishers.title")}</h1>
+        <p className="text-small text-text-secondary mt-1">{t("notifPublishers.subtitle")}</p>
       </div>
 
       {/* Web Push — enable on this device (spec 127) */}
@@ -177,7 +175,7 @@ export function NotificationPublishersPage() {
       <div className="flex items-center gap-3 mb-4">
         <button
           onClick={() => setShowCreate(true)}
-          className="flex items-center gap-1.5 px-3 py-1.5 bg-primary text-white text-[13px] rounded-[6px] hover:bg-primary-hover transition-colors"
+          className="flex items-center gap-1.5 px-3 py-1.5 bg-primary-fill text-white text-small rounded-sm hover:bg-primary-fill-hover transition-colors"
         >
           <Plus size={14} />
           {t("notifPublishers.newPublisher")}
@@ -197,7 +195,7 @@ export function NotificationPublishersPage() {
 
       {/* Publisher cards */}
       {publishers.length === 0 ? (
-        <div className="text-[13px] text-text-tertiary py-10 text-center">
+        <div className="text-small text-text-tertiary py-10 text-center">
           {t("notifPublishers.empty")}
         </div>
       ) : (
@@ -279,11 +277,11 @@ function PublisherForm({
   return (
     <form
       onSubmit={handleSubmit}
-      className="mb-4 p-4 bg-surface rounded-[10px] border border-border max-w-lg"
+      className="card mb-4 p-4 max-w-lg"
     >
       <div className="space-y-3">
         <div>
-          <label className="block text-[12px] text-text-secondary mb-1">
+          <label className="block text-caption text-text-secondary mb-1">
             {t("notifPublishers.name")}
           </label>
           <input
@@ -291,18 +289,18 @@ function PublisherForm({
             value={name}
             onChange={(e) => setName(e.target.value)}
             placeholder={t("notifPublishers.namePlaceholder")}
-            className="w-full px-3 py-1.5 text-[13px] bg-bg border border-border rounded-[6px] text-text placeholder:text-text-tertiary"
+            className="w-full px-3 py-1.5 text-small bg-bg border border-border rounded-sm text-text placeholder:text-text-tertiary"
             autoFocus
           />
         </div>
         <div>
-          <label className="block text-[12px] text-text-secondary mb-1">
+          <label className="block text-caption text-text-secondary mb-1">
             {t("notifPublishers.channelType")}
           </label>
           <select
             value={channelType}
             onChange={(e) => handleChannelChange(e.target.value as NotificationChannelType)}
-            className="w-full px-3 py-1.5 text-[13px] bg-bg border border-border rounded-[6px] text-text"
+            className="w-full px-3 py-1.5 text-small bg-bg border border-border rounded-sm text-text"
           >
             {NOTIFICATION_CHANNELS.map((c) => (
               <option key={c.type} value={c.type}>
@@ -316,12 +314,12 @@ function PublisherForm({
           values={config}
           onChange={(key, value) => setConfig((prev) => ({ ...prev, [key]: value }))}
         />
-        {error && <div className="text-[11px] text-red-500">{error}</div>}
+        {error && <div className="text-micro text-error">{error}</div>}
         <div className="flex items-center gap-2">
           <button
             type="submit"
             disabled={saving || !canSubmit}
-            className="px-4 py-1.5 bg-primary text-white text-[13px] rounded-[6px] hover:bg-primary-hover disabled:opacity-50"
+            className="px-4 py-1.5 bg-primary-fill text-white text-small rounded-sm hover:bg-primary-fill-hover disabled:opacity-50"
           >
             {saving ? (
               <Loader2 size={14} className="animate-spin" />
@@ -334,7 +332,7 @@ function PublisherForm({
           <button
             type="button"
             onClick={onCancel}
-            className="px-4 py-1.5 text-[13px] text-text-secondary hover:text-text transition-colors"
+            className="px-4 py-1.5 text-small text-text-secondary hover:text-text transition-colors"
           >
             {t("common.cancel")}
           </button>
@@ -466,7 +464,7 @@ function PublisherCard({
 
   return (
     <div
-      className={`p-4 bg-surface rounded-[10px] border ${publisher.enabled ? "border-border" : "border-border opacity-60"}`}
+      className={`card p-4 ${publisher.enabled ? "" : "opacity-60"}`}
     >
       {/* Header — stacks on mobile so the name stays readable and the
           actions sit on their own row instead of crushing into the title. */}
@@ -474,25 +472,25 @@ function PublisherCard({
         <div className="flex items-center gap-3 min-w-0">
           <Bell size={18} strokeWidth={1.5} className="text-text-secondary shrink-0" />
           <div className="min-w-0">
-            <h3 className="text-[14px] font-medium text-text truncate">{publisher.name}</h3>
-            <span className="text-[12px] text-text-tertiary">
+            <h3 className="text-body font-medium text-text truncate">{publisher.name}</h3>
+            <span className="text-caption text-text-tertiary">
               {channelLabel(publisher.channelType)}
             </span>
           </div>
         </div>
         <div className="flex items-center gap-1 flex-wrap justify-end self-end sm:self-auto">
           {testChannelOk && (
-            <span className="text-[11px] text-green-500">{t("notifPublishers.testChannelOk")}</span>
+            <span className="text-caption text-success">{t("notifPublishers.testChannelOk")}</span>
           )}
           {testResult !== null && (
-            <span className="text-[11px] text-green-500">
+            <span className="text-micro text-success">
               {t("notifPublishers.testResult", { count: testResult })}
             </span>
           )}
           <button
             onClick={handleTestChannel}
             disabled={testingChannel}
-            className="flex items-center gap-1 px-2 py-1 text-[11px] rounded-[6px] hover:bg-bg transition-colors text-text-secondary hover:text-accent disabled:opacity-40"
+            className="flex items-center gap-1 px-2 py-1 text-micro rounded-sm hover:bg-bg transition-colors text-text-secondary hover:text-primary disabled:opacity-40"
             title={t("notifPublishers.testChannelHint")}
           >
             {testingChannel ? (
@@ -505,7 +503,7 @@ function PublisherCard({
           <button
             onClick={handleTestPublisher}
             disabled={testingPub || publisher.mappings.length === 0}
-            className="flex items-center gap-1 px-2 py-1 text-[11px] rounded-[6px] hover:bg-bg transition-colors text-text-secondary hover:text-accent disabled:opacity-40"
+            className="flex items-center gap-1 px-2 py-1 text-micro rounded-sm hover:bg-bg transition-colors text-text-secondary hover:text-primary disabled:opacity-40"
             title={t("notifPublishers.testPublisherHint")}
           >
             {testingPub ? <Loader2 size={13} className="animate-spin" /> : <Zap size={13} />}
@@ -513,7 +511,7 @@ function PublisherCard({
           </button>
           <button
             onClick={() => setEditing(true)}
-            className="p-1.5 rounded-[6px] hover:bg-bg transition-colors text-text-tertiary hover:text-text"
+            className="p-1.5 rounded-sm hover:bg-bg transition-colors text-text-tertiary hover:text-text"
             title={t("common.edit")}
           >
             <Pencil size={16} />
@@ -521,11 +519,11 @@ function PublisherCard({
           <button
             onClick={handleToggle}
             disabled={toggling}
-            className="p-1.5 rounded-[6px] hover:bg-bg transition-colors"
+            className="p-1.5 rounded-sm hover:bg-bg transition-colors"
             title={publisher.enabled ? t("common.disable") : t("common.enable")}
           >
             {publisher.enabled ? (
-              <Power size={16} className="text-green-500" />
+              <Power size={16} className="text-success" />
             ) : (
               <PowerOff size={16} className="text-text-tertiary" />
             )}
@@ -533,7 +531,7 @@ function PublisherCard({
           <button
             onClick={handleDelete}
             disabled={deleting}
-            className="p-1.5 rounded-[6px] hover:bg-bg transition-colors text-text-tertiary hover:text-red-500"
+            className="p-1.5 rounded-sm hover:bg-bg transition-colors text-text-tertiary hover:text-error"
             title={t("common.delete")}
           >
             <Trash2 size={16} />
@@ -543,11 +541,11 @@ function PublisherCard({
 
       {/* Mappings */}
       <div className="mb-3">
-        <div className="text-[12px] text-text-secondary mb-2">
+        <div className="text-caption text-text-secondary mb-2">
           {t("notifPublishers.mappings")} ({publisher.mappings.length})
         </div>
         {publisher.mappings.length === 0 ? (
-          <div className="text-[12px] text-text-tertiary italic">
+          <div className="text-caption text-text-tertiary italic">
             {t("notifPublishers.noMappings")}
           </div>
         ) : (
@@ -586,7 +584,7 @@ function PublisherCard({
       ) : (
         <button
           onClick={() => setShowAddMapping(true)}
-          className="flex items-center gap-1.5 text-[12px] text-primary hover:text-primary-hover transition-colors"
+          className="flex items-center gap-1.5 text-caption text-primary hover:text-primary-hover transition-colors"
         >
           <Plus size={13} />
           {t("notifPublishers.addMapping")}
@@ -612,23 +610,23 @@ function RepeatControl({
 }) {
   const { t } = useTranslation();
   const inputCls =
-    "w-16 px-2 py-1 text-[12px] bg-surface border border-border rounded-[4px] text-text";
+    "w-16 px-2 py-1 text-caption border border-border bg-surface rounded-sm text-text";
   return (
     <div>
-      <label className="block text-[11px] text-text-secondary mb-1">
+      <label className="block text-micro text-text-secondary mb-1">
         {t("notifPublishers.repeat")}
       </label>
       <select
         value={mode}
         onChange={(e) => onChange({ mode: e.target.value as RepeatMode, intervalMin, maxCount })}
-        className="w-full px-2 py-1 text-[12px] bg-surface border border-border rounded-[4px] text-text"
+        className="w-full px-2 py-1 text-caption border border-border bg-surface rounded-sm text-text"
       >
         <option value="none">{t("notifPublishers.repeatNone")}</option>
         <option value="forever">{t("notifPublishers.repeatForever")}</option>
         <option value="limited">{t("notifPublishers.repeatLimited")}</option>
       </select>
       {mode !== "none" && (
-        <div className="flex flex-wrap items-center gap-1.5 mt-1.5 text-[11px] text-text-secondary">
+        <div className="flex flex-wrap items-center gap-1.5 mt-1.5 text-micro text-text-secondary">
           <span>{t("notifPublishers.repeatEvery")}</span>
           <input
             type="number"
@@ -744,17 +742,17 @@ function MappingRow({
 
   if (editing) {
     return (
-      <form onSubmit={handleSave} className="p-3 bg-bg rounded-[6px] border border-border">
+      <form onSubmit={handleSave} className="p-3 bg-background rounded-md">
         <div className="grid grid-cols-2 gap-3">
           <div className="col-span-2">
-            <label className="block text-[11px] text-text-secondary mb-1">
+            <label className="block text-micro text-text-secondary mb-1">
               {t("notifPublishers.message")}
             </label>
             <input
               type="text"
               value={message}
               onChange={(e) => setMessage(e.target.value)}
-              className="w-full px-2 py-1 text-[12px] bg-surface border border-border rounded-[4px] text-text"
+              className="w-full px-2 py-1 text-caption border border-border bg-surface rounded-sm text-text"
               autoFocus
             />
           </div>
@@ -776,7 +774,7 @@ function MappingRow({
           />
 
           <div>
-            <label className="block text-[11px] text-text-secondary mb-1">
+            <label className="block text-micro text-text-secondary mb-1">
               {t("notifPublishers.throttle")}
             </label>
             <input
@@ -785,7 +783,7 @@ function MappingRow({
               onChange={(e) => setThrottleMs(Number(e.target.value) * 60000)}
               min={0}
               step={1}
-              className="w-full px-2 py-1 text-[12px] bg-surface border border-border rounded-[4px] text-text font-mono"
+              className="w-full px-2 py-1 text-caption border border-border bg-surface rounded-sm text-text font-mono"
             />
           </div>
         </div>
@@ -801,19 +799,19 @@ function MappingRow({
             }}
           />
         </div>
-        {error && <div className="mt-2 text-[11px] text-red-500">{error}</div>}
+        {error && <div className="mt-2 text-micro text-error">{error}</div>}
         <div className="flex items-center gap-2 mt-3">
           <button
             type="submit"
             disabled={saving || !message.trim() || !sourceId || !sourceKey}
-            className="px-3 py-1 bg-primary text-white text-[12px] rounded-[4px] hover:bg-primary-hover disabled:opacity-50"
+            className="px-3 py-1 bg-primary-fill text-white text-caption rounded-sm hover:bg-primary-fill-hover disabled:opacity-50"
           >
             {saving ? <Loader2 size={12} className="animate-spin" /> : t("common.save")}
           </button>
           <button
             type="button"
             onClick={handleCancel}
-            className="px-3 py-1 text-[12px] text-text-secondary hover:text-text transition-colors"
+            className="px-3 py-1 text-caption text-text-secondary hover:text-text transition-colors"
           >
             {t("common.cancel")}
           </button>
@@ -823,17 +821,17 @@ function MappingRow({
   }
 
   return (
-    <div className="flex items-start justify-between gap-2 px-3 py-2 bg-bg rounded-[4px]">
+    <div className="flex items-start justify-between gap-2 px-3 py-2 bg-bg rounded-sm">
       <div className="flex flex-col gap-0.5 min-w-0 sm:flex-row sm:items-center sm:gap-3">
-        <span className="text-[12px] text-text font-medium truncate sm:max-w-[200px] sm:shrink-0">
+        <span className="text-caption text-text font-medium truncate sm:max-w-[200px] sm:shrink-0">
           {mapping.message}
         </span>
         <div className="flex items-center gap-1.5 min-w-0">
-          <span className="text-[11px] text-text-tertiary shrink-0">←</span>
-          <span className="text-[11px] text-text-secondary truncate">
+          <span className="text-micro text-text-tertiary shrink-0">←</span>
+          <span className="text-micro text-text-secondary truncate">
             [{mapping.sourceType}] {label}
           </span>
-          <span className="text-[10px] text-text-tertiary shrink-0">
+          <span className="text-micro text-text-tertiary shrink-0">
             {t("notifPublishers.throttleMinutes", {
               minutes: Math.round(mapping.throttleMs / 60000),
             })}
@@ -848,13 +846,13 @@ function MappingRow({
             setFilterZoneId(deriveSourceZoneFilter(mapping, equipments, recipeInstances));
             setEditing(true);
           }}
-          className="p-1 rounded hover:bg-surface transition-colors text-text-tertiary hover:text-text"
+          className="p-1 rounded-sm hover:bg-surface transition-colors text-text-tertiary hover:text-text"
         >
           <Pencil size={12} />
         </button>
         <button
           onClick={handleDelete}
-          className="p-1 rounded hover:bg-surface transition-colors text-text-tertiary hover:text-red-500"
+          className="p-1 rounded-sm hover:bg-surface transition-colors text-text-tertiary hover:text-error"
         >
           <Trash2 size={12} />
         </button>
@@ -920,10 +918,10 @@ function AddMappingForm({
   };
 
   return (
-    <form onSubmit={handleSubmit} className="p-3 bg-bg rounded-[6px] border border-border">
+    <form onSubmit={handleSubmit} className="p-3 bg-background rounded-md">
       <div className="grid grid-cols-2 gap-3">
         <div className="col-span-2">
-          <label className="block text-[11px] text-text-secondary mb-1">
+          <label className="block text-micro text-text-secondary mb-1">
             {t("notifPublishers.message")}
           </label>
           <input
@@ -931,7 +929,7 @@ function AddMappingForm({
             value={message}
             onChange={(e) => setMessage(e.target.value)}
             placeholder={t("notifPublishers.messagePlaceholder")}
-            className="w-full px-2 py-1 text-[12px] bg-surface border border-border rounded-[4px] text-text placeholder:text-text-tertiary"
+            className="w-full px-2 py-1 text-caption border border-border bg-surface rounded-sm text-text placeholder:text-text-tertiary"
             autoFocus
           />
         </div>
@@ -953,7 +951,7 @@ function AddMappingForm({
         />
 
         <div>
-          <label className="block text-[11px] text-text-secondary mb-1">
+          <label className="block text-micro text-text-secondary mb-1">
             {t("notifPublishers.throttle")}
           </label>
           <input
@@ -962,7 +960,7 @@ function AddMappingForm({
             onChange={(e) => setThrottleMs(Number(e.target.value) * 60000)}
             min={0}
             step={1}
-            className="w-full px-2 py-1 text-[12px] bg-surface border border-border rounded-[4px] text-text font-mono"
+            className="w-full px-2 py-1 text-caption border border-border bg-surface rounded-sm text-text font-mono"
           />
         </div>
       </div>
@@ -978,19 +976,19 @@ function AddMappingForm({
           }}
         />
       </div>
-      {error && <div className="mt-2 text-[11px] text-red-500">{error}</div>}
+      {error && <div className="mt-2 text-micro text-error">{error}</div>}
       <div className="flex items-center gap-2 mt-3">
         <button
           type="submit"
           disabled={saving || !message.trim() || !sourceId || !sourceKey}
-          className="px-3 py-1 bg-primary text-white text-[12px] rounded-[4px] hover:bg-primary-hover disabled:opacity-50"
+          className="px-3 py-1 bg-primary-fill text-white text-caption rounded-sm hover:bg-primary-fill-hover disabled:opacity-50"
         >
           {t("notifPublishers.addMapping")}
         </button>
         <button
           type="button"
           onClick={onCancel}
-          className="px-3 py-1 text-[12px] text-text-secondary hover:text-text transition-colors"
+          className="px-3 py-1 text-caption text-text-secondary hover:text-text transition-colors"
         >
           {t("common.cancel")}
         </button>

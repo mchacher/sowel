@@ -1,5 +1,7 @@
 # Dashboard widget (`dashboard-widget`)
 
+> **Superseded in part by [tokens.md](../tokens.md) (spec 196).** Labels are sentence case and numbers Inter with tabular figures (§2), radii are 6 / 10 / 16 px (§4), and a card or panel has no border (§5.1). Where the CSS below disagrees, tokens.md wins.
+
 > Large card used on the Dashboard page. One widget = one equipment. Different layout from `eq-row` because the Dashboard is a glance-first surface, not a list.
 
 ---
@@ -47,7 +49,7 @@ Each widget has a distinct **SVG illustration** + a specific footer layout. The 
 
 | State                 | Class                            | Effect                                                         |
 | --------------------- | -------------------------------- | -------------------------------------------------------------- |
-| Default               | `.widget`                        | white bg, line-2 border, 10 px radius                          |
+| Default               | `.widget`                        | white bg, no border, card shadow (none in dark), 10 px radius  |
 | Hover                 | `.widget:hover`                  | (production uses subtle bg shift; mock unspecified)            |
 | **Edit mode**         | parent has `.dashboard--editing` | each widget gets edit chrome overlay (drag, customize, delete) |
 | Drag (during reorder) | `.widget.is-dragging`            | reduced opacity + cursor grabbing                              |
@@ -147,8 +149,8 @@ When the dashboard is in edit mode, each widget gets four small icon controls at
 ```css
 .widget {
   background: var(--n-0);
-  border: 1px solid var(--line-2);
-  border-radius: var(--r-md); /* 8px — aligned with design system in spec 098 */
+  border-radius: var(--r-md); /* 10 px; no border: box-shadow var(--sh-card) (spec 196) */
+  box-shadow: var(--sh-card);
   padding: 12px;
   display: flex;
   flex-direction: column;

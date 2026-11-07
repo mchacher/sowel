@@ -171,10 +171,10 @@ export function AccessEditor({
   if (created) {
     return (
       <Dialog title={title} onClose={onClose} wide>
-        <p className="text-[13px] text-success">
+        <p className="text-small text-success">
           {t("sharedAccess.editor.created", { label: created.label })}
         </p>
-        <p className="text-[12.5px] text-text-secondary mt-1">
+        <p className="text-caption text-text-secondary mt-1">
           {created.gates.map((g) => g.name).join(", ")} · {fmt.period(created.validFrom, created.validUntil)} ·{" "}
           {fmt.hours(created.timeWindows)}
         </p>
@@ -189,7 +189,7 @@ export function AccessEditor({
   }
 
   const externalDates = external && (
-    <div className="text-[13px] text-text-secondary space-y-2.5">
+    <div className="text-small text-text-secondary space-y-2.5">
       <p>
         {t("sharedAccess.editor.sourceDates", {
           plugin: pluginName(state, source?.pluginId),
@@ -274,12 +274,12 @@ export function AccessEditor({
             return (
               <div
                 key={g.equipmentId}
-                className="flex items-center gap-2 flex-wrap bg-background border border-border rounded-[6px] px-2.5 py-1.5"
+                className="flex items-center gap-2 flex-wrap bg-background border border-border rounded-sm px-2.5 py-1.5"
               >
-                <span className="text-[13.5px] font-semibold text-text">{name}</span>
+                <span className="text-small font-semibold text-text">{name}</span>
                 {summary && summary.commandValues.length > 1 ? (
                   <>
-                    <span className="text-[12px] text-text-tertiary">{t("sharedAccess.editor.sends")}</span>
+                    <span className="text-caption text-text-tertiary">{t("sharedAccess.editor.sends")}</span>
                     <select
                       className={`${inputCls} py-1`}
                       value={g.value ?? ""}
@@ -300,7 +300,7 @@ export function AccessEditor({
                     </select>
                   </>
                 ) : (
-                  <span className="text-[12px] text-text-tertiary">{t("sharedAccess.editor.impulse")}</span>
+                  <span className="text-caption text-text-tertiary">{t("sharedAccess.editor.impulse")}</span>
                 )}
                 <button
                   type="button"
@@ -314,7 +314,7 @@ export function AccessEditor({
             );
           })}
           {gates.length === 0 && (
-            <p className="text-[12.5px] text-text-tertiary">{t("sharedAccess.editor.noGateYet")}</p>
+            <p className="text-caption text-text-tertiary">{t("sharedAccess.editor.noGateYet")}</p>
           )}
         </div>
         <div className="flex items-center gap-2 mt-2 flex-wrap">
@@ -378,17 +378,17 @@ export function AccessEditor({
       />
 
       {!external && (
-        <label className="flex items-center gap-2 mt-3 text-[13.5px] text-text cursor-pointer">
+        <label className="flex items-center gap-2 mt-3 text-small text-text cursor-pointer">
           <input type="checkbox" checked={withCode} onChange={(e) => setWithCode(e.target.checked)} />
           {t("sharedAccess.editor.withCode")}
-          <span className="text-[12.5px] text-text-tertiary">{t("sharedAccess.editor.withCodeHint")}</span>
+          <span className="text-caption text-text-tertiary">{t("sharedAccess.editor.withCodeHint")}</span>
         </label>
       )}
 
       {editing ? (
         <Invitation link={editing.invitationUrl} code={withCode ? editing.code : null} />
       ) : (
-        <p className="mt-3 text-[12.5px] text-text-tertiary">
+        <p className="mt-3 text-caption text-text-tertiary">
           {withCode ? t("sharedAccess.editor.invitationLater") : t("sharedAccess.invitation.noCode")}
         </p>
       )}

@@ -133,13 +133,13 @@ function SidePanel({
         <div className="flex items-start gap-3 px-5 pt-5 pb-4">
           <div className="shrink-0">{icon}</div>
           <div className="min-w-0 flex-1">
-            <h2 className="text-[16px] font-semibold text-text truncate">{title}</h2>
+            <h2 className="text-lead font-semibold text-text truncate">{title}</h2>
             {subtitle}
           </div>
           <button
             onClick={onClose}
             title={t("common.close")}
-            className="p-1.5 rounded-[6px] text-text-tertiary hover:text-text-secondary hover:bg-border-light transition-colors cursor-pointer shrink-0"
+            className="p-1.5 rounded-sm text-text-tertiary hover:text-text-secondary hover:bg-border-light transition-colors cursor-pointer shrink-0"
           >
             <X size={18} strokeWidth={1.5} />
           </button>
@@ -156,7 +156,7 @@ function SidePanel({
 function Subtitle({ type }: { type: PackageType }) {
   const { t } = useTranslation();
   return (
-    <p className="text-[12px] text-text-tertiary mt-0.5">
+    <p className="text-caption text-text-tertiary mt-0.5">
       {t(type === "recipe" ? "plugins.recipe_badge" : "plugins.integration_badge")}
     </p>
   );
@@ -185,7 +185,7 @@ function DetailBody({
 
   return (
     <div className="space-y-4">
-      {description && <p className="text-[13px] text-text-secondary">{description}</p>}
+      {description && <p className="text-small text-text-secondary">{description}</p>}
 
       <dl className="border-y border-border-light divide-y divide-border-light">
         <IdentityRow label={t("plugins.detail.installedVersion")} value={installedVersion} mono />
@@ -227,7 +227,7 @@ function DetailBody({
       {actionError && (
         <p
           role="alert"
-          className="px-3 py-2 text-[12px] text-error bg-error/10 rounded-[8px] break-words"
+          className="px-3 py-2 text-caption text-error bg-error/10 rounded-md break-words"
         >
           {actionError}
         </p>
@@ -238,7 +238,7 @@ function DetailBody({
           <button
             onClick={onUpdate}
             disabled={busy}
-            className="inline-flex items-center justify-center gap-2 w-full min-h-[44px] px-4 text-[13px] font-medium text-white bg-primary hover:bg-primary-hover rounded-[8px] transition-colors cursor-pointer disabled:opacity-50"
+            className="inline-flex items-center justify-center gap-2 w-full min-h-[44px] px-4 text-small font-medium text-white bg-primary-fill hover:bg-primary-fill-hover rounded-sm transition-colors cursor-pointer disabled:opacity-50"
           >
             {actionLoading === "update" ? (
               <Loader2 size={15} className="animate-spin" />
@@ -252,7 +252,7 @@ function DetailBody({
         <button
           onClick={onToggle}
           disabled={busy}
-          className="inline-flex items-center justify-center gap-2 w-full min-h-[44px] px-4 text-[13px] font-medium text-text-secondary border border-border rounded-[8px] hover:bg-border-light hover:text-text transition-colors cursor-pointer disabled:opacity-50"
+          className="inline-flex items-center justify-center gap-2 w-full min-h-[44px] px-4 text-small font-medium text-text-secondary border border-border rounded-sm hover:bg-border-light hover:text-text transition-colors cursor-pointer disabled:opacity-50"
         >
           {actionLoading === "enable" || actionLoading === "disable" ? (
             <Loader2 size={15} className="animate-spin" />
@@ -268,8 +268,8 @@ function DetailBody({
           disabled={busy}
           className={`
             inline-flex items-center justify-center gap-2 w-full min-h-[44px] px-4 mt-2
-            text-[13px] font-medium rounded-[8px] transition-colors cursor-pointer disabled:opacity-50
-            ${confirmUninstall ? "text-white bg-error" : "text-error hover:bg-error/10"}
+            text-small font-medium rounded-sm transition-colors cursor-pointer disabled:opacity-50
+            ${confirmUninstall ? "text-on-status bg-error" : "text-error hover:bg-error/10"}
           `}
         >
           {actionLoading === "uninstall" ? (
@@ -301,9 +301,9 @@ function IdentityRow({
 }) {
   return (
     <div className="flex items-baseline justify-between gap-3 py-2">
-      <dt className="text-[12px] text-text-tertiary shrink-0">{label}</dt>
+      <dt className="text-caption text-text-tertiary shrink-0">{label}</dt>
       <dd
-        className={`text-[12px] text-right min-w-0 truncate ${mono ? "font-mono" : ""} ${
+        className={`text-caption text-right min-w-0 truncate ${mono ? "font-mono" : ""} ${
           accent ? "text-error" : "text-text"
         }`}
         title={value}

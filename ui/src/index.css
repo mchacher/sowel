@@ -1,7 +1,9 @@
 @import "tailwindcss";
-@import "@fontsource/inter/400.css";
-@import "@fontsource/inter/500.css";
-@import "@fontsource/inter/600.css";
+/* Inter variable: every weight, so no synthetic bold, plus the optical-size
+   axis that gives large values the display cut. JetBrains Mono stays at 400,
+   the only weight it keeps once it is reserved for logs, ids and code.
+   Spec 196, slice 5a. */
+@import "@fontsource-variable/inter/opsz.css";
 @import "@fontsource/jetbrains-mono/400.css";
 @import "../../design-system/tokens.css";
 
@@ -15,12 +17,19 @@
 @theme {
   /* Colors — resolved from design-system/tokens.css */
   --color-primary:        var(--p-500);
-  --color-primary-mid:    #7FB8D4; /* dedicated logo mid-blue (smile/eyes) — not in design-system scale */
+  --color-primary-mid:    var(--p-mid); /* logo mid-blue (smile/eyes), soft selection border */
   --color-primary-light:  var(--p-50);
   --color-primary-hover:  var(--p-600);
+  /* Primary fill (spec 196, slice 4b): the background of a button, selected
+     segment, checked box or switch. bg-primary is the ink (dots, bars, the
+     light blue of dark links) and never carries text. */
+  --color-primary-fill:       var(--p-fill);
+  --color-primary-fill-hover: var(--p-fill-hover);
+  --color-on-primary:         var(--p-on);
+  /* Dashboard illustrations at rest (WidgetIcons, EvCarGauge). */
+  --color-illu:           var(--illu-ink);
+  /* Kept for the PV forecast curve only, until the energy palette work. */
   --color-accent:         var(--a-500);
-  --color-accent-hover:   var(--a-600);
-  --color-accent-light:   var(--a-50);
   --color-background:     var(--n-50);
   --color-surface:        var(--n-0);
   --color-surface-raised: var(--n-0);
@@ -29,11 +38,21 @@
   --color-text-tertiary:  var(--n-400);
   --color-border:         var(--line-2);
   --color-border-light:   var(--line);
-  --color-active:         var(--a-500);
-  --color-active-text:    var(--a-600);
-  --color-success:        var(--green-500);
-  --color-warning:        var(--a-500);
-  --color-error:          var(--red-500);
+  /* Colour roles (spec 196) — one meaning each, see design-system/tokens.md
+     §1.2. Contrast of every text/background pair: lib/color-roles.test.ts. */
+  --color-active:         var(--a-500);   /* on or running now: fill, icon */
+  --color-active-ink:     var(--a-ink);   /* on or running now: text */
+  --color-active-bg:      var(--a-50);    /* on or running now: tinted pill */
+  --color-on-active:      var(--a-on);    /* content on an amber fill */
+  --color-warning:        var(--orange-500); /* needs attention: dot, fill, icon */
+  --color-warning-ink:    var(--orange-700); /* needs attention: text */
+  --color-warning-bg:     var(--orange-50);
+  --color-success:        var(--green-500);  /* works as expected */
+  --color-error:          var(--red-500);    /* fault, failure, destructive */
+  --color-info:           var(--info-500);   /* informational: icon, fill */
+  --color-info-ink:       var(--info-700);   /* informational: text */
+  --color-heat:           var(--red-500);    /* heating now (alias of error) */
+  --color-on-status:      var(--on-status);  /* text on a success/error/warning-ink fill */
 
   /* Energy palette (spec 148) — shared by energy/production charts + arbiter */
   --color-solar-injection: var(--solar-injection);
@@ -48,14 +67,28 @@
   --font-sans: var(--font-body);
   --font-mono: var(--font-mono);
 
-  /* Font sizes — Sowel specific (no design-system equivalent yet) */
-  --font-size-data-lg: 28px;
-  --font-size-data-md: 20px;
+  /* Type scale — resolved from design-system/tokens.css (spec 196). Use these
+     text-* utilities; arbitrary sizes (text-[13px]) are rejected by eslint. */
+  --text-micro: var(--fs-micro);
+  --text-caption: var(--fs-caption);
+  --text-small: var(--fs-small);
+  --text-body: var(--fs-body);
+  --text-lead: var(--fs-lead);
+  --text-title: var(--fs-title);
+  --text-display: var(--fs-display);
+  --text-value: var(--fs-value);
 
-  /* Border radius — aligned with design-system tokens */
-  --radius-sm: 6px;
-  --radius-md: 8px;
-  --radius-lg: 12px;
+  /* Border radius (spec 196, decision pr7-rayons): three steps and full.
+     sm 6 px = controls (buttons, fields, chips, icon buttons), md 10 px =
+     cards, tiles, rows, panels, popovers, lg 16 px = modals and bottom
+     sheets. xs 2 px is for chart bars and legend swatches only. Tailwind's
+     other steps are removed, and eslint rejects rounded-[Npx]. */
+  --radius-*: initial;
+  --radius-xs: var(--r-xs);
+  --radius-sm: var(--r-sm);
+  --radius-md: var(--r-md);
+  --radius-lg: var(--r-lg);
+  --radius: var(--r-sm);
 
   /* Shadows — resolved from design-system tokens (auto-darken in dark mode) */
   --shadow-sm: var(--sh-1);
@@ -63,8 +96,6 @@
   --shadow-lg: var(--sh-3);
 
   /* Equipment category tints — from design-system/tokens.css (spec 099) */
-  --color-light-50: var(--light-50);
-  --color-light-500: var(--light-500);
   --color-shutter-50: var(--shutter-50);
   --color-shutter-500: var(--shutter-500);
   --color-sensor-50: var(--sensor-50);
@@ -73,13 +104,75 @@
   --color-media-500: var(--media-500);
 }
 
-/* ============================================================
-   Dark mode widget SVG boost (production-specific, kept outside @theme)
-   ============================================================ */
+/* A card (spec 196, decision pr7-bordures): a surface without a border. In
+   light it floats on the tinted page with a soft shadow (sh-1); in dark the
+   tone alone lifts it (the surface is lighter than the page, --sh-card is
+   none). One class: `card`, plus padding and layout. A group inside a card
+   is a sunken well (bg-background, no border, rounded-md), never a second
+   bordered card. Fields and secondary buttons keep their border. */
+@utility card {
+  background-color: var(--color-surface);
+  border-radius: var(--radius-md);
+  box-shadow: var(--sh-card);
+}
 
-.dark svg[viewBox="0 0 56 56"],
-.dark svg.widget-icon {
-  filter: brightness(1.6);
+/* A Maison panel cut into slices (spec 196, slice 7c, decision pr7-panneaux,
+   « Couvercle »). The hierarchy reads from the gaps alone: 12 px of page
+   between the lid and the body, 4 px between two slices of the body, an inset
+   hairline between two rows of a slice.
+   - `panel-lid`: the detached title slice (title, count, the panel's actions).
+   - `slices`: the body. Each direct child is a slice: surface and card shadow,
+     4 px inner corners, the 10 px outer radius on the body's own outer corners.
+   - `slice-rows`: a list of rows inside a slice, separated by a hairline from
+     the name column (row padding + 32 px icon + gap) to the right edge, none
+     above the first row.
+   Dark needs nothing: the slices are n-0 on n-50, and --sh-card is none. */
+@utility panel-lid {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 48px;
+  padding: 8px 12px 8px 16px;
+  background-color: var(--color-surface);
+  border-radius: var(--radius-md);
+  box-shadow: var(--sh-card);
+}
+@utility slices {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+
+  & > * {
+    background-color: var(--color-surface);
+    border-radius: 4px;
+    box-shadow: var(--sh-card);
+    min-width: 0;
+  }
+  & > :first-child {
+    border-top-left-radius: var(--radius-md);
+    border-top-right-radius: var(--radius-md);
+  }
+  & > :last-child {
+    border-bottom-left-radius: var(--radius-md);
+    border-bottom-right-radius: var(--radius-md);
+  }
+}
+@utility slice-rows {
+  padding-bottom: 4px;
+
+  & > * + * {
+    position: relative;
+  }
+  & > * + *::before {
+    content: "";
+    position: absolute;
+    top: 0;
+    left: calc(1.1rem + 32px + 0.85rem);
+    right: 1.1rem;
+    height: 1px;
+    background-color: var(--color-border-light);
+    pointer-events: none;
+  }
 }
 
 /* All JetBrains Mono containers get tabular numbers by default —
@@ -99,9 +192,21 @@
    Base styles
    ============================================================ */
 
+/* Native controls follow the theme: checkboxes, radios, selects, date and
+   time pickers and scrollbars take the primary colour and go dark with the
+   .dark class (spec 196). A checked box is a fill carrying a white tick, so it
+   takes the fill token, not the ink (which goes light in dark). */
+:root {
+  color-scheme: light;
+  accent-color: var(--color-primary-fill);
+}
+.dark {
+  color-scheme: dark;
+}
+
 body {
   font-family: var(--font-sans);
-  font-size: 14px;
+  font-size: var(--text-body);
   line-height: 20px;
   color: var(--color-text);
   background-color: var(--color-background);
@@ -110,19 +215,31 @@ body {
   -moz-osx-font-smoothing: grayscale;
 }
 
-/* Page hero title — every page H1 gets the same look automatically.
- * 28px on mobile, 42px from sm:. Utility classes on the element can
- * still override (Tailwind layers ship after this base rule). */
+/* Page title (spec 196, decision pr6-h1): the page name, weight 600, no icon
+ * before it. 28 px (text-display) from lg, 22 px below — where only detail
+ * pages show it, the top-level ones leaving their name to the compact top bar.
+ * `text-h1` gives the same look to what edits or stands beside a title (the
+ * device name input). Utility classes on the element still override this
+ * base rule (Tailwind layers ship after it). */
 h1 {
-  font-size: 28px;
-  font-weight: 700;
+  font-size: 22px;
+  font-weight: 600;
   color: var(--color-text);
-  line-height: 1.1;
-  letter-spacing: -0.025em;
+  line-height: 1.2;
+  letter-spacing: -0.015em;
 }
-@media (min-width: 640px) {
+@media (min-width: 1024px) {
   h1 {
-    font-size: 42px;
+    font-size: var(--text-display);
+  }
+}
+@utility text-h1 {
+  font-size: 22px;
+  font-weight: 600;
+  line-height: 1.2;
+  letter-spacing: -0.015em;
+  @media (min-width: 1024px) {
+    font-size: var(--text-display);
   }
 }
 
@@ -135,13 +252,20 @@ h1 {
   );
 }
 
-/* Form inputs — clean focus ring */
+/* Form inputs — the border turns primary on focus, and a ring in the primary
+   ink marks the field without relying on that colour change alone (WCAG
+   2.4.7). Unlayered, so it beats an `outline-none` utility on the element. */
 input, select, textarea {
   outline: none;
 }
 
 input:focus, select:focus, textarea:focus {
   border-color: var(--color-primary);
+}
+
+input:focus-visible, select:focus-visible, textarea:focus-visible {
+  outline: 2px solid var(--color-primary);
+  outline-offset: 1px;
 }
 
 /* Scrollbar styling */
@@ -361,15 +485,6 @@ input:focus, select:focus, textarea:focus {
       z-index: -1;
     }
   }
-}
-
-/* ============================================================
-   Native time/date picker — adapt icons to dark mode
-   ============================================================ */
-
-.dark input[type="time"]::-webkit-calendar-picker-indicator,
-.dark input[type="date"]::-webkit-calendar-picker-indicator {
-  filter: invert(1);
 }
 
 /* ============================================================

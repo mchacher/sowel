@@ -211,12 +211,12 @@ export function DeviceSelector({
   };
 
   if (loading) {
-    return <p className="text-[13px] text-text-tertiary py-4">{t("deviceSelector.loading")}</p>;
+    return <p className="text-small text-text-tertiary py-4">{t("deviceSelector.loading")}</p>;
   }
 
   if (allDevices.length === 0) {
     return (
-      <p className="text-[13px] text-text-tertiary py-4">
+      <p className="text-small text-text-tertiary py-4">
         {t("deviceSelector.noDevices")}
       </p>
     );
@@ -227,13 +227,13 @@ export function DeviceSelector({
       {/* Show all toggle when filter is active and hides some devices */}
       {compatible.length < availableDevices.length && (
         <div className="flex items-center justify-between mb-2">
-          <span className="text-[12px] text-text-tertiary">
+          <span className="text-caption text-text-tertiary">
             {t("deviceSelector.compatible", { count: compatible.length, total: availableDevices.length })}
           </span>
           <button
             type="button"
             onClick={() => setShowAll(!showAll)}
-            className="text-[12px] text-primary hover:underline"
+            className="text-caption text-primary hover:underline"
           >
             {showAll ? t("deviceSelector.showCompatible") : t("deviceSelector.showAll")}
           </button>
@@ -248,12 +248,12 @@ export function DeviceSelector({
           value={filter}
           onChange={(e) => setFilter(e.target.value)}
           placeholder={t("devices.filterPlaceholder")}
-          className="w-full pl-8 pr-3 py-1.5 text-[12px] bg-surface border border-border rounded-[6px] outline-none placeholder:text-text-tertiary focus:border-primary transition-colors duration-150"
+          className="w-full pl-8 pr-3 py-1.5 text-caption border border-border bg-surface rounded-sm outline-none placeholder:text-text-tertiary focus:border-primary transition-colors duration-150"
         />
       </div>
 
       {devices.length === 0 ? (
-        <p className="text-[13px] text-text-tertiary py-4">
+        <p className="text-small text-text-tertiary py-4">
           {t("deviceSelector.noCompatible")}
         </p>
       ) : (
@@ -267,7 +267,7 @@ export function DeviceSelector({
               <div key={device.id}>
                 <div
                   className={`
-                    flex items-center gap-3 px-3 py-2.5 rounded-[6px] cursor-pointer
+                    flex items-center gap-3 px-3 py-2.5 rounded-sm cursor-pointer
                     transition-colors duration-150
                     ${isSelected ? "bg-primary-light border border-primary/30" : "bg-border-light/50 hover:bg-border-light border border-transparent"}
                   `}
@@ -275,25 +275,25 @@ export function DeviceSelector({
                 >
                   <div
                     className={`
-                      flex-shrink-0 w-5 h-5 rounded-[4px] border flex items-center justify-center
-                      ${isSelected ? "bg-primary border-primary text-white" : "border-border bg-surface"}
+                      flex-shrink-0 w-5 h-5 rounded-sm border flex items-center justify-center
+                      ${isSelected ? "bg-primary-fill border-primary-fill text-white" : "border-border bg-surface"}
                     `}
                   >
                     {isSelected && <Check size={12} strokeWidth={2} />}
                   </div>
                   <Radio size={16} strokeWidth={1.5} className="text-text-tertiary flex-shrink-0" />
                   <div className="flex-1 min-w-0">
-                    <span className={`text-[13px] font-medium ${isCompatible ? "text-text" : "text-text-secondary"}`}>
+                    <span className={`text-small font-medium ${isCompatible ? "text-text" : "text-text-secondary"}`}>
                       {device.name}
                     </span>
                     {equipmentType === "ev_charger" &&
                       isMeteredChargerDevice(device.data, device.orders ?? []) && (
-                        <span className="text-[11px] font-medium text-text-secondary bg-border-light rounded-full px-2 py-0.5 ml-2">
+                        <span className="text-micro font-medium text-text-secondary bg-border-light rounded-full px-2 py-0.5 ml-2">
                           {t("deviceSelector.meteredOnly")}
                         </span>
                       )}
                     {device.manufacturer && (
-                      <span className="text-[11px] text-text-tertiary ml-2">
+                      <span className="text-micro text-text-tertiary ml-2">
                         {device.manufacturer} {device.model ?? ""}
                       </span>
                     )}
@@ -323,7 +323,7 @@ export function DeviceSelector({
                   const picked = candidateByDevice[device.id];
                   return (
                     <div className="ml-11 mt-1 mb-2 space-y-1">
-                      <div className="text-[11px] font-medium text-text-secondary uppercase tracking-widest mb-1">
+                      <div className="text-small font-medium text-text-secondary mb-1">
                         {t("deviceSelector.pickChannel")}
                       </div>
                       {cs.map((c) => {
@@ -339,7 +339,7 @@ export function DeviceSelector({
                         return (
                           <label
                             key={c.id}
-                            className={`flex items-center gap-2 px-2 py-1.5 rounded-[5px] cursor-pointer text-[12px] ${
+                            className={`flex items-center gap-2 px-2 py-1.5 rounded-sm cursor-pointer text-caption ${
                               isPicked
                                 ? "bg-primary/10 text-text"
                                 : "hover:bg-border-light/40 text-text-secondary"
@@ -350,7 +350,6 @@ export function DeviceSelector({
                               name={`candidate-${device.id}`}
                               checked={isPicked}
                               onChange={() => pickCandidate(device.id, c.id)}
-                              className="accent-primary"
                             />
                             {chMatch ? (
                               <>
@@ -358,16 +357,16 @@ export function DeviceSelector({
                                   {t("deviceSelector.channel", { n: chMatch[1] })}
                                 </span>
                                 {typeof chPower === "number" && (
-                                  <span className="text-text-tertiary text-[11px] tabular-nums">
+                                  <span className="text-text-tertiary text-micro tabular-nums">
                                     · {formatPower(chPower)}
                                   </span>
                                 )}
                               </>
                             ) : (
                               <>
-                                <span className="font-mono">{c.label}</span>
+                                <span>{c.label}</span>
                                 {c.dataKeys.length + c.orderKeys.length > 0 && (
-                                  <span className="text-text-tertiary text-[11px]">
+                                  <span className="text-text-tertiary text-micro">
                                     ({[...new Set([...c.dataKeys, ...c.orderKeys])].join(", ")})
                                   </span>
                                 )}
@@ -382,7 +381,7 @@ export function DeviceSelector({
 
                 {/* Device data details */}
                 {isExpanded && (
-                  <div className="ml-11 mt-1 mb-2 text-[11px] text-text-tertiary space-y-0.5">
+                  <div className="ml-11 mt-1 mb-2 text-micro text-text-tertiary space-y-0.5">
                     {device.data.map((d) => (
                       <div key={d.id} className="flex items-center gap-2">
                         <span className="font-mono">{d.key}</span>

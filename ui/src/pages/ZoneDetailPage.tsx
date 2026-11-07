@@ -23,10 +23,12 @@ import { cycleOptionLabel } from "../components/recipes/recipe-cycle";
 // ── Mode pill colors ────────────────────────────────────
 
 const MODE_COLORS: Record<string, { bg: string; text: string }> = {
-  eco: { bg: "var(--color-success-light, #dcfce7)", text: "var(--color-success, #16a34a)" },
+  // Tokens only, so the pills follow the theme (spec 196). Cocoon and night
+  // stay neutral until the series palette gives them a hue of their own.
+  eco: { bg: "color-mix(in srgb, var(--color-success) 10%, transparent)", text: "var(--color-success)" },
   comfort: { bg: "var(--color-primary-light)", text: "var(--color-primary)" },
-  cocoon: { bg: "var(--color-accent-light)", text: "var(--color-accent)" },
-  night: { bg: "#ede9fe", text: "#7c3aed" },
+  cocoon: { bg: "var(--color-border-light)", text: "var(--color-text-secondary)" },
+  night: { bg: "var(--color-border-light)", text: "var(--color-text-secondary)" },
 };
 
 const DEFAULT_PILL_COLOR = { bg: "var(--color-border-light)", text: "var(--color-text-secondary)" };
@@ -86,7 +88,7 @@ export function RecipeModePill({
     <button
       onClick={handleClick}
       disabled={sending || !instance.enabled}
-      className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[11px] font-semibold transition-all duration-150 cursor-pointer disabled:opacity-50 disabled:cursor-default hover:brightness-95 active:scale-95"
+      className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-micro font-semibold transition-all duration-150 cursor-pointer disabled:opacity-50 disabled:cursor-default hover:brightness-95 active:scale-95"
       style={{ backgroundColor: colors.bg, color: colors.text }}
       title={t("recipes.actions.cycleTo", { mode: nextLabel })}
     >
@@ -156,7 +158,7 @@ export function ZoneDetailPage() {
   if (error || !zone) {
     return (
       <div className="p-4 sm:p-6">
-        <Link to="/zones" className="inline-flex items-center gap-1.5 text-[13px] text-text-secondary hover:text-text mb-4">
+        <Link to="/zones" className="inline-flex items-center gap-1.5 text-small text-text-secondary hover:text-text mb-4">
           <ArrowLeft size={14} strokeWidth={1.5} />
           {t("zones.backToZones")}
         </Link>
@@ -164,8 +166,8 @@ export function ZoneDetailPage() {
           <div className="w-16 h-16 rounded-full bg-error/10 flex items-center justify-center mb-4">
             <Map size={28} strokeWidth={1.5} className="text-error" />
           </div>
-          <h3 className="text-[16px] font-medium text-text mb-1">{t("zones.notFound.title")}</h3>
-          <p className="text-[13px] text-text-secondary">{error ?? t("zones.notFound.message")}</p>
+          <h3 className="text-lead font-medium text-text mb-1">{t("zones.notFound.title")}</h3>
+          <p className="text-small text-text-secondary">{error ?? t("zones.notFound.message")}</p>
         </div>
       </div>
     );
@@ -189,7 +191,7 @@ export function ZoneDetailPage() {
   return (
     <div className="p-4 sm:p-6">
       {/* Breadcrumb */}
-      <div className="flex items-center gap-1.5 text-[13px] text-text-secondary mb-4">
+      <div className="flex items-center gap-1.5 text-small text-text-secondary mb-4">
         <Link to="/zones" className="hover:text-text transition-colors">{t("zones.title")}</Link>
         {breadcrumb.map((item) => (
           <span key={item.id} className="flex items-center gap-1.5">
@@ -231,14 +233,14 @@ export function ZoneDetailPage() {
               })}
           </div>
           {zone.description && (
-            <p className="text-[14px] text-text-secondary mt-1">{zone.description}</p>
+            <p className="text-body text-text-secondary mt-1">{zone.description}</p>
           )}
         </div>
         {isAdmin && (
         <div className="flex items-center gap-2">
           <button
             onClick={() => setShowEditForm(true)}
-            className="p-2 sm:px-3 sm:py-2 text-[13px] font-medium text-text-secondary border border-border rounded-[6px] hover:bg-border-light transition-colors duration-150"
+            className="p-2 sm:px-3 sm:py-2 text-small font-medium text-text-secondary border border-border rounded-sm hover:bg-border-light transition-colors duration-150"
             title={t("common.edit")}
           >
             <Pencil size={14} strokeWidth={1.5} />
@@ -248,7 +250,7 @@ export function ZoneDetailPage() {
             <button
               onClick={handleDelete}
               disabled={deleting}
-              className="p-2 sm:px-3 sm:py-2 text-[13px] font-medium text-error border border-error/30 rounded-[6px] hover:bg-error/10 transition-colors duration-150 disabled:opacity-50"
+              className="p-2 sm:px-3 sm:py-2 text-small font-medium text-error border border-error/30 rounded-sm hover:bg-error/10 transition-colors duration-150 disabled:opacity-50"
               title={t("common.delete")}
             >
               <Trash2 size={14} strokeWidth={1.5} />
@@ -262,8 +264,8 @@ export function ZoneDetailPage() {
       {/* Child zones section */}
       {zone.children.length > 0 && (
         <div className="mb-8">
-          <h3 className="text-[14px] font-semibold text-text mb-3">{t("zones.childZones")}</h3>
-          <div className="bg-surface rounded-[10px] border border-border overflow-hidden divide-y divide-border-light">
+          <h3 className="text-body font-semibold text-text mb-3">{t("zones.childZones")}</h3>
+          <div className="card overflow-hidden divide-y divide-border-light">
             {zone.children.map((child) => (
               <Link
                 key={child.id}
@@ -272,14 +274,14 @@ export function ZoneDetailPage() {
               >
                 <FolderOpen size={18} strokeWidth={1.5} className="text-text-secondary flex-shrink-0" />
                 <div className="flex-1 min-w-0">
-                  <span className="text-[14px] font-medium text-text">{child.name}</span>
+                  <span className="text-body font-medium text-text">{child.name}</span>
                   {child.description && (
-                    <span className="text-[12px] text-text-tertiary ml-2">{child.description}</span>
+                    <span className="text-caption text-text-tertiary ml-2">{child.description}</span>
                   )}
                 </div>
                 <div className="flex items-center gap-2 flex-shrink-0">
                   {child.children.length > 0 && (
-                    <span className="text-[11px] text-text-tertiary bg-border-light px-2 py-0.5 rounded-full">
+                    <span className="text-micro text-text-tertiary bg-border-light px-2 py-0.5 rounded-full">
                       {t("zones.childCount", { count: child.children.length })}
                     </span>
                   )}

@@ -417,7 +417,7 @@ function WeatherDetailContent({ equipment }: { equipment: EquipmentWithDetails }
   return (
     <div className="flex flex-col gap-4">
       <div className="flex justify-center">
-        <div className="w-12 h-12 rounded-[10px] flex items-center justify-center bg-primary-light text-primary">
+        <div className="w-12 h-12 rounded-md flex items-center justify-center bg-primary-light text-primary">
           <CloudRain size={28} strokeWidth={1.5} />
         </div>
       </div>
@@ -430,11 +430,11 @@ function WeatherDetailContent({ equipment }: { equipment: EquipmentWithDetails }
           return (
             <div
               key={dev.id}
-              className="rounded-[8px] border border-border-light overflow-hidden"
+              className="rounded-md border border-border-light overflow-hidden"
             >
               <div className="bg-border-light/40 px-3 py-2 flex items-center gap-2">
                 <span className="text-text-tertiary">{getKindIcon(dev.kind)}</span>
-                <span className="text-[12px] font-semibold uppercase tracking-wide text-text-secondary flex-1 min-w-0 truncate">
+                <span className="text-small font-semibold text-text-secondary flex-1 min-w-0 truncate">
                   {dev.deviceName}
                 </span>
                 {dev.battery && (
@@ -442,7 +442,7 @@ function WeatherDetailContent({ equipment }: { equipment: EquipmentWithDetails }
                     className={`flex items-center gap-1 flex-shrink-0 ${getBatteryColor(batteryLevel)}`}
                   >
                     {getBatteryIcon(batteryLevel, 13, 1.5)}
-                    <span className="text-[11px] tabular-nums">
+                    <span className="text-micro tabular-nums">
                       {batteryLevel !== null ? formatPercent(batteryLevel) : "?"}
                     </span>
                   </span>
@@ -454,13 +454,13 @@ function WeatherDetailContent({ equipment }: { equipment: EquipmentWithDetails }
                     key={b.id}
                     className="flex items-baseline justify-between px-3 py-2"
                   >
-                    <span className="text-[13px] text-text-secondary">
+                    <span className="text-small text-text-secondary">
                       {WEATHER_KEY_LABELS[b.key] ? t(WEATHER_KEY_LABELS[b.key]) : b.key}
                     </span>
-                    <span className="text-[14px] font-mono font-semibold text-text tabular-nums">
+                    <span className="text-body font-semibold text-text tabular-nums">
                       {formatSensorValue(b.value, undefined, t)}
                       {b.unit && (
-                        <span className="text-text-tertiary font-normal text-[12px] ml-1">
+                        <span className="text-text-tertiary font-normal text-caption ml-1">
                           {b.unit}
                         </span>
                       )}
@@ -572,7 +572,7 @@ export function ZoneDetailSheet({ widget, zone, zoneLabel, equipments, onClose }
         <ZoneSensorsDetail equipments={filteredEquipments} />
       )}
       {filteredEquipments.length === 0 && (
-        <p className="text-[13px] text-text-tertiary text-center py-4">
+        <p className="text-small text-text-tertiary text-center py-4">
           {t("dashboard.noEquipments")}
         </p>
       )}
@@ -640,7 +640,7 @@ function ZoneLightsDetail({
         <LightBulbIcon on={anyOn} />
       </div>
 
-      <div className="text-center text-[13px] text-text-secondary">
+      <div className="text-center text-small text-text-secondary">
         {onCount}/{equipments.length} {t("dashboard.family.lights").toLowerCase()}
       </div>
 
@@ -657,7 +657,7 @@ function ZoneLightsDetail({
             onTouchEnd={handleBrightnessCommit}
             className="flex-1 h-12 slider-active"
           />
-          <span className="text-[18px] font-semibold text-text tabular-nums min-w-[40px] text-right">
+          <span className="text-title font-semibold text-text tabular-nums min-w-[40px] text-right">
             {brightnessPct}%
           </span>
         </div>
@@ -667,7 +667,7 @@ function ZoneLightsDetail({
         <button
           onClick={() => onCommand("allLightsOn")}
           disabled={commandLoading !== null}
-          className="flex-1 h-12 flex items-center justify-center gap-2 rounded-[6px] border border-border bg-surface text-text-secondary hover:bg-border-light transition-colors cursor-pointer active:scale-[0.97]"
+          className="flex-1 h-12 flex items-center justify-center gap-2 rounded-sm border border-border bg-surface text-text-secondary hover:bg-border-light transition-colors cursor-pointer active:scale-[0.97]"
         >
           {commandLoading === "allLightsOn" ? <Loader2 size={18} className="animate-spin" /> : <Lightbulb size={18} strokeWidth={1.5} />}
           {t("zones.commands.allLightsOn")}
@@ -675,7 +675,7 @@ function ZoneLightsDetail({
         <button
           onClick={() => onCommand("allLightsOff")}
           disabled={commandLoading !== null}
-          className="flex-1 h-12 flex items-center justify-center gap-2 rounded-[6px] border border-border bg-surface text-text-secondary hover:bg-border-light transition-colors cursor-pointer active:scale-[0.97]"
+          className="flex-1 h-12 flex items-center justify-center gap-2 rounded-sm border border-border bg-surface text-text-secondary hover:bg-border-light transition-colors cursor-pointer active:scale-[0.97]"
         >
           {commandLoading === "allLightsOff" ? <Loader2 size={18} className="animate-spin" /> : <LightbulbOff size={18} strokeWidth={1.5} />}
           {t("zones.commands.allLightsOff")}
@@ -721,7 +721,7 @@ function ZoneShuttersDetail({
         <ShutterWidgetIcon level={level} />
       </div>
 
-      <div className="text-center text-[14px] font-medium text-text">
+      <div className="text-center text-body font-medium text-text">
         {avgPosition === null
           ? "\u2014"
           : avgPosition === 100
@@ -735,7 +735,7 @@ function ZoneShuttersDetail({
         <button
           onClick={() => onCommand("allShuttersOpen")}
           disabled={commandLoading !== null}
-          className="flex-1 h-12 flex items-center justify-center rounded-[6px] border border-border bg-surface text-text-secondary hover:bg-border-light transition-colors cursor-pointer active:scale-[0.97]"
+          className="flex-1 h-12 flex items-center justify-center rounded-sm border border-border bg-surface text-text-secondary hover:bg-border-light transition-colors cursor-pointer active:scale-[0.97]"
           title={t("zones.commands.allShuttersOpen")}
         >
           {commandLoading === "allShuttersOpen" ? <Loader2 size={18} className="animate-spin" /> : <ChevronUp size={20} strokeWidth={2} />}
@@ -744,7 +744,7 @@ function ZoneShuttersDetail({
           <button
             onClick={() => onCommand("allShuttersStop")}
             disabled={commandLoading !== null}
-            className="flex-1 h-12 flex items-center justify-center rounded-[6px] border border-border bg-surface text-text-secondary hover:bg-border-light transition-colors cursor-pointer active:scale-[0.97]"
+            className="flex-1 h-12 flex items-center justify-center rounded-sm border border-border bg-surface text-text-secondary hover:bg-border-light transition-colors cursor-pointer active:scale-[0.97]"
             title={t("zones.commands.allShuttersStop")}
           >
             {commandLoading === "allShuttersStop" ? <Loader2 size={18} className="animate-spin" /> : <Square size={14} strokeWidth={2.5} />}
@@ -753,7 +753,7 @@ function ZoneShuttersDetail({
         <button
           onClick={() => onCommand("allShuttersClose")}
           disabled={commandLoading !== null}
-          className="flex-1 h-12 flex items-center justify-center rounded-[6px] border border-border bg-surface text-text-secondary hover:bg-border-light transition-colors cursor-pointer active:scale-[0.97]"
+          className="flex-1 h-12 flex items-center justify-center rounded-sm border border-border bg-surface text-text-secondary hover:bg-border-light transition-colors cursor-pointer active:scale-[0.97]"
           title={t("zones.commands.allShuttersClose")}
         >
           {commandLoading === "allShuttersClose" ? <Loader2 size={18} className="animate-spin" /> : <ChevronDown size={20} strokeWidth={2} />}
@@ -803,13 +803,13 @@ function ZoneAwningsDetail({
         <AwningWidgetIcon deployed={deployedCount > 0} />
       </div>
 
-      <div className="text-center text-[14px] font-medium text-text">{stateText}</div>
+      <div className="text-center text-body font-medium text-text">{stateText}</div>
 
       <div className="flex gap-3">
         <button
           onClick={() => onCommand("allAwningsRetract")}
           disabled={commandLoading !== null}
-          className="flex-1 h-12 flex items-center justify-center rounded-[6px] border border-border bg-surface text-text-secondary hover:bg-border-light transition-colors cursor-pointer active:scale-[0.97]"
+          className="flex-1 h-12 flex items-center justify-center rounded-sm border border-border bg-surface text-text-secondary hover:bg-border-light transition-colors cursor-pointer active:scale-[0.97]"
           title={t("zones.commands.allAwningsRetract")}
         >
           {commandLoading === "allAwningsRetract" ? <Loader2 size={18} className="animate-spin" /> : <ChevronUp size={20} strokeWidth={2} />}
@@ -818,7 +818,7 @@ function ZoneAwningsDetail({
           <button
             onClick={() => onCommand("allAwningsStop")}
             disabled={commandLoading !== null}
-            className="flex-1 h-12 flex items-center justify-center rounded-[6px] border border-border bg-surface text-text-secondary hover:bg-border-light transition-colors cursor-pointer active:scale-[0.97]"
+            className="flex-1 h-12 flex items-center justify-center rounded-sm border border-border bg-surface text-text-secondary hover:bg-border-light transition-colors cursor-pointer active:scale-[0.97]"
             title={t("zones.commands.allAwningsStop")}
           >
             {commandLoading === "allAwningsStop" ? <Loader2 size={18} className="animate-spin" /> : <Square size={14} strokeWidth={2.5} />}
@@ -827,7 +827,7 @@ function ZoneAwningsDetail({
         <button
           onClick={() => onCommand("allAwningsExtend")}
           disabled={commandLoading !== null}
-          className="flex-1 h-12 flex items-center justify-center rounded-[6px] border border-border bg-surface text-text-secondary hover:bg-border-light transition-colors cursor-pointer active:scale-[0.97]"
+          className="flex-1 h-12 flex items-center justify-center rounded-sm border border-border bg-surface text-text-secondary hover:bg-border-light transition-colors cursor-pointer active:scale-[0.97]"
           title={t("zones.commands.allAwningsExtend")}
         >
           {commandLoading === "allAwningsExtend" ? <Loader2 size={18} className="animate-spin" /> : <ChevronDown size={20} strokeWidth={2} />}
@@ -894,11 +894,11 @@ function ZoneHeatingDetail({
         <ThermometerIcon warm={anyOn} level={thermometerLevel} />
         <div className="flex flex-col items-center">
           {avgTemp !== null ? (
-            <span className="text-[32px] font-semibold text-text tabular-nums font-mono leading-none">
+            <span className="text-value font-semibold text-text tabular-nums leading-none">
               {formatTemperature(avgTemp)}
             </span>
           ) : (
-            <span className="text-[32px] text-text-tertiary">{"\u2014"}</span>
+            <span className="text-value text-text-tertiary">{"\u2014"}</span>
           )}
         </div>
       </div>
@@ -908,17 +908,17 @@ function ZoneHeatingDetail({
           <button
             onClick={() => handleSetpoint(Math.max(SETPOINT_MIN, displaySetpoint - STEP))}
             disabled={displaySetpoint <= SETPOINT_MIN}
-            className="w-14 h-14 flex items-center justify-center rounded-[8px] border border-border bg-surface text-text-secondary hover:bg-border-light transition-colors cursor-pointer active:scale-[0.95] disabled:opacity-30"
+            className="w-14 h-14 flex items-center justify-center rounded-sm border border-border bg-surface text-text-secondary hover:bg-border-light transition-colors cursor-pointer active:scale-[0.95] disabled:opacity-30"
           >
             <Minus size={20} strokeWidth={2} />
           </button>
-          <span className="text-[24px] font-semibold text-text tabular-nums font-mono min-w-[80px] text-center">
+          <span className="text-display font-semibold text-text tabular-nums min-w-[80px] text-center">
             {formatTemperature(displaySetpoint)}
           </span>
           <button
             onClick={() => handleSetpoint(Math.min(SETPOINT_MAX, displaySetpoint + STEP))}
             disabled={displaySetpoint >= SETPOINT_MAX}
-            className="w-14 h-14 flex items-center justify-center rounded-[8px] border border-border bg-surface text-text-secondary hover:bg-border-light transition-colors cursor-pointer active:scale-[0.95] disabled:opacity-30"
+            className="w-14 h-14 flex items-center justify-center rounded-sm border border-border bg-surface text-text-secondary hover:bg-border-light transition-colors cursor-pointer active:scale-[0.95] disabled:opacity-30"
           >
             <Plus size={20} strokeWidth={2} />
           </button>
@@ -928,9 +928,9 @@ function ZoneHeatingDetail({
       <button
         onClick={() => onCommand(anyOn ? "allThermostatsPowerOff" : "allThermostatsPowerOn")}
         disabled={commandLoading !== null}
-        className={`h-12 flex items-center justify-center gap-2 rounded-[6px] text-[14px] font-medium transition-all cursor-pointer ${
+        className={`h-12 flex items-center justify-center gap-2 rounded-sm text-body font-medium transition-all cursor-pointer ${
           anyOn
-            ? "bg-error/10 text-error border border-error/30 hover:bg-error/20"
+            ? "bg-heat/10 text-heat border border-heat/30 hover:bg-heat/20"
             : "bg-primary/10 text-primary border border-primary/30 hover:bg-primary/20"
         }`}
       >
@@ -972,22 +972,22 @@ function ZoneSensorsDetail({ equipments }: { equipments: EquipmentWithDetails[] 
       <div className="flex flex-col items-center gap-2">
         {aggregates.avgTemp !== null && (
           <div className="flex items-baseline gap-1">
-            <span className="text-[28px] font-semibold text-text tabular-nums font-mono leading-none">
+            <span className="text-display font-semibold text-text tabular-nums leading-none">
               {formatNumber(aggregates.avgTemp, { decimals: 1 })}
             </span>
-            <span className="text-[14px] font-medium text-text-tertiary">°C</span>
+            <span className="text-body font-medium text-text-tertiary">°C</span>
           </div>
         )}
         {aggregates.avgHumidity !== null && (
           <div className="flex items-baseline gap-1">
-            <span className="text-[22px] font-semibold text-text tabular-nums font-mono leading-none">
+            <span className="text-title font-semibold text-text tabular-nums leading-none">
               {Math.round(aggregates.avgHumidity)}
             </span>
-            <span className="text-[14px] font-medium text-text-tertiary">%</span>
+            <span className="text-body font-medium text-text-tertiary">%</span>
           </div>
         )}
         {aggregates.avgTemp === null && aggregates.avgHumidity === null && (
-          <span className="text-[18px] text-text-tertiary">{"\u2014"}</span>
+          <span className="text-title text-text-tertiary">{"\u2014"}</span>
         )}
       </div>
     </div>
@@ -1081,7 +1081,7 @@ function LightDetailContent({
             onTouchEnd={handleBrightnessCommit}
             className="flex-1 h-12 slider-active"
           />
-          <span className="text-[18px] font-semibold text-text tabular-nums min-w-[40px] text-right">
+          <span className="text-title font-semibold text-text tabular-nums min-w-[40px] text-right">
             {brightnessPct}%
           </span>
         </div>
@@ -1093,9 +1093,9 @@ function LightDetailContent({
           <button
             onClick={handleToggle}
             disabled={executing}
-            className={`flex-1 h-12 flex items-center justify-center gap-2 rounded-[6px] transition-all text-[14px] font-medium cursor-pointer ${
+            className={`flex-1 h-12 flex items-center justify-center gap-2 rounded-sm transition-all text-body font-medium cursor-pointer ${
               isOn
-                ? "bg-active/10 text-active-text border border-active/30"
+                ? "bg-active-bg text-active-ink border border-active"
                 : "bg-border-light text-text-secondary border border-border hover:bg-border"
             }`}
           >
@@ -1208,7 +1208,7 @@ function ShutterDetailContent({
 
       {doorPill && (
         <div className="flex justify-center">
-          <span className={`text-[15px] font-semibold px-3 py-1 rounded-full ${doorPill.className}`}>
+          <span className={`text-lead font-semibold px-3 py-1 rounded-full ${doorPill.className}`}>
             {t(doorPill.key)}
           </span>
         </div>
@@ -1228,7 +1228,7 @@ function ShutterDetailContent({
             onTouchEnd={handlePositionCommit}
             className="flex-1 h-12"
           />
-          <span className="text-[18px] font-semibold text-text tabular-nums min-w-[40px] text-right">
+          <span className="text-title font-semibold text-text tabular-nums min-w-[40px] text-right">
             {position === 100 ? labelHundred : position === 0 ? labelZero : formatPercent(position)}
           </span>
         </div>
@@ -1245,7 +1245,7 @@ function ShutterDetailContent({
             <button
               onClick={() => handleCommand("OPEN")}
               disabled={executing}
-              className="flex-1 h-12 flex items-center justify-center rounded-[6px] border border-border bg-surface text-text-secondary hover:bg-border-light transition-colors cursor-pointer active:scale-[0.97]"
+              className="flex-1 h-12 flex items-center justify-center rounded-sm border border-border bg-surface text-text-secondary hover:bg-border-light transition-colors cursor-pointer active:scale-[0.97]"
             >
               <OpenIcon size={20} strokeWidth={2} />
             </button>
@@ -1253,7 +1253,7 @@ function ShutterDetailContent({
               <button
                 onClick={() => handleCommand("STOP")}
                 disabled={executing}
-                className="flex-1 h-12 flex items-center justify-center rounded-[6px] border border-border bg-surface text-text-secondary hover:bg-border-light transition-colors cursor-pointer active:scale-[0.97]"
+                className="flex-1 h-12 flex items-center justify-center rounded-sm border border-border bg-surface text-text-secondary hover:bg-border-light transition-colors cursor-pointer active:scale-[0.97]"
               >
                 <Square size={14} strokeWidth={2.5} />
               </button>
@@ -1261,7 +1261,7 @@ function ShutterDetailContent({
             <button
               onClick={() => handleCommand("CLOSE")}
               disabled={executing}
-              className="flex-1 h-12 flex items-center justify-center rounded-[6px] border border-border bg-surface text-text-secondary hover:bg-border-light transition-colors cursor-pointer active:scale-[0.97]"
+              className="flex-1 h-12 flex items-center justify-center rounded-sm border border-border bg-surface text-text-secondary hover:bg-border-light transition-colors cursor-pointer active:scale-[0.97]"
             >
               <CloseIcon size={20} strokeWidth={2} />
             </button>
@@ -1345,11 +1345,11 @@ function ThermostatDetailContent({
         <ThermometerIcon warm={isOn} level={thermometerLevel} />
         <div className="flex flex-col items-center">
           {insideTemp !== null ? (
-            <span className="text-[32px] font-semibold text-text tabular-nums font-mono leading-none">
+            <span className="text-value font-semibold text-text tabular-nums leading-none">
               {formatTemperature(insideTemp)}
             </span>
           ) : (
-            <span className="text-[32px] text-text-tertiary">{"\u2014"}</span>
+            <span className="text-value text-text-tertiary">{"\u2014"}</span>
           )}
         </div>
       </div>
@@ -1360,17 +1360,17 @@ function ThermostatDetailContent({
           <button
             onClick={() => handleSetpoint(Math.max(targetMin, displaySetpoint - STEP))}
             disabled={displaySetpoint <= targetMin}
-            className="w-14 h-14 flex items-center justify-center rounded-[8px] border border-border bg-surface text-text-secondary hover:bg-border-light transition-colors cursor-pointer active:scale-[0.95] disabled:opacity-30"
+            className="w-14 h-14 flex items-center justify-center rounded-sm border border-border bg-surface text-text-secondary hover:bg-border-light transition-colors cursor-pointer active:scale-[0.95] disabled:opacity-30"
           >
             <Minus size={20} strokeWidth={2} />
           </button>
-          <span className="text-[24px] font-semibold text-text tabular-nums font-mono min-w-[80px] text-center">
+          <span className="text-display font-semibold text-text tabular-nums min-w-[80px] text-center">
             {formatTemperature(displaySetpoint)}
           </span>
           <button
             onClick={() => handleSetpoint(Math.min(targetMax, displaySetpoint + STEP))}
             disabled={displaySetpoint >= targetMax}
-            className="w-14 h-14 flex items-center justify-center rounded-[8px] border border-border bg-surface text-text-secondary hover:bg-border-light transition-colors cursor-pointer active:scale-[0.95] disabled:opacity-30"
+            className="w-14 h-14 flex items-center justify-center rounded-sm border border-border bg-surface text-text-secondary hover:bg-border-light transition-colors cursor-pointer active:scale-[0.95] disabled:opacity-30"
           >
             <Plus size={20} strokeWidth={2} />
           </button>
@@ -1382,9 +1382,9 @@ function ThermostatDetailContent({
         <button
           onClick={() => exec("power", !isOn)}
           disabled={executing === "power"}
-          className={`h-12 flex items-center justify-center gap-2 rounded-[6px] text-[14px] font-medium transition-all cursor-pointer ${
+          className={`h-12 flex items-center justify-center gap-2 rounded-sm text-body font-medium transition-all cursor-pointer ${
             isOn
-              ? "bg-error/10 text-error border border-error/30 hover:bg-error/20"
+              ? "bg-heat/10 text-heat border border-heat/30 hover:bg-heat/20"
               : "bg-primary/10 text-primary border border-primary/30 hover:bg-primary/20"
           }`}
         >
@@ -1457,9 +1457,9 @@ function HeaterDetailContent({
       {/* Mode display */}
       <div className="flex justify-center">
         <span
-          className={`text-[14px] font-medium px-4 py-2 rounded-full ${
+          className={`text-body font-medium px-4 py-2 rounded-full ${
             isComfort
-              ? "bg-error/10 text-error"
+              ? "bg-heat/10 text-heat"
               : "bg-primary/10 text-primary"
           }`}
         >
@@ -1472,10 +1472,10 @@ function HeaterDetailContent({
         <button
           onClick={handleToggle}
           disabled={executing}
-          className={`h-12 flex items-center justify-center gap-2 rounded-[6px] text-[14px] font-medium transition-all cursor-pointer border ${
+          className={`h-12 flex items-center justify-center gap-2 rounded-sm text-body font-medium transition-all cursor-pointer border ${
             isComfort
               ? "bg-primary/10 text-primary border-primary/30 hover:bg-primary/20"
-              : "bg-error/10 text-error border-error/30 hover:bg-error/20"
+              : "bg-heat/10 text-heat border-heat/30 hover:bg-heat/20"
           }`}
         >
           {executing
@@ -1550,12 +1550,11 @@ function GateDetailContent({
       {/* State */}
       <div className="flex justify-center">
         <span
-          className={`text-[14px] font-medium px-4 py-2 rounded-full ${
-            isOpen
-              ? "bg-warning/10 text-warning"
-              : gateState === "closed"
-                ? "bg-success/10 text-success"
-                : "bg-text-tertiary/10 text-text-tertiary"
+          className={`text-body font-medium px-4 py-2 rounded-full ${
+            // Open and closed are neutral (spec 196): the word says it.
+            isOpen || gateState === "closed"
+              ? "bg-border-light text-text-secondary"
+              : "bg-text-tertiary/10 text-text-tertiary"
           }`}
         >
           {t(`controls.gate.${gateState}`)}
@@ -1571,7 +1570,7 @@ function GateDetailContent({
                 key={val}
                 onClick={() => handleCommand(val)}
                 disabled={executing !== null}
-                className="h-12 flex items-center justify-center gap-2 rounded-[6px] text-[14px] font-medium transition-all cursor-pointer border border-border bg-surface text-text-secondary hover:border-primary/40 hover:text-primary hover:bg-primary/5 active:scale-[0.97] disabled:opacity-40"
+                className="h-12 flex items-center justify-center gap-2 rounded-sm text-body font-medium transition-all cursor-pointer border border-border bg-surface text-text-secondary hover:border-primary/40 hover:text-primary hover:bg-primary/5 active:scale-[0.97] disabled:opacity-40"
               >
                 {executing === val ? <Loader2 size={18} className="animate-spin" /> : null}
                 {val}
@@ -1581,7 +1580,7 @@ function GateDetailContent({
             <button
               onClick={() => handleCommand(null)}
               disabled={executing !== null}
-              className="h-12 flex items-center justify-center gap-2 rounded-[6px] text-[14px] font-medium transition-all cursor-pointer border border-border bg-surface text-text-secondary hover:border-primary/40 hover:text-primary hover:bg-primary/5 active:scale-[0.97] disabled:opacity-40"
+              className="h-12 flex items-center justify-center gap-2 rounded-sm text-body font-medium transition-all cursor-pointer border border-border bg-surface text-text-secondary hover:border-primary/40 hover:text-primary hover:bg-primary/5 active:scale-[0.97] disabled:opacity-40"
             >
               {executing ? <Loader2 size={18} className="animate-spin" /> : null}
               {t("controls.gate.command")}

@@ -4,6 +4,7 @@ import reactHooks from "eslint-plugin-react-hooks";
 import reactRefresh from "eslint-plugin-react-refresh";
 import tseslint from "typescript-eslint";
 import { defineConfig, globalIgnores } from "eslint/config";
+import designClasses from "./eslint/design-classes.js";
 
 export default defineConfig([
   globalIgnores(["dist", "dev-dist"]),
@@ -90,6 +91,20 @@ export default defineConfig([
             "new Intl.DateTimeFormat() follows the browser, not Sowel's language: pass currentLocale() from lib/format.",
         },
       ],
+    },
+  },
+  {
+    // Spec 196, FR-5 and decision pr7-rayons — the type scale, sentence case
+    // and the radius scale, judged on class tokens (variants and `!` included)
+    // by eslint/design-classes.js. Separate rules, so an exception disables
+    // one of them and leaves the formatting rules above on.
+    files: ["src/**/*.{ts,tsx}"],
+    ignores: ["**/*.test.{ts,tsx}"],
+    plugins: { sowel: designClasses },
+    rules: {
+      "sowel/type-scale": "error",
+      "sowel/sentence-case": "error",
+      "sowel/radius-scale": "error",
     },
   },
 ]);

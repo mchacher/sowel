@@ -90,7 +90,7 @@ const pills = (c: HTMLElement) =>
     .filter((s) => s.className.includes("rounded-full") && s.className.includes("border"))
     .map(
       (s) =>
-        [...s.classList].find((k) => /^text-(success|warning|error)$/.test(k)) ?? "",
+        [...s.classList].find((k) => /^text-(success|warning-ink|error)$/.test(k)) ?? "",
     );
 
 describe("ForecastDetailContent (spec 168)", () => {
@@ -104,7 +104,7 @@ describe("ForecastDetailContent (spec 168)", () => {
 
   it("gives every qualified column the pill of the equipment page", () => {
     const { container } = render(<ForecastDetailContent equipment={equipmentWith(fiveDays())} />);
-    expect(pills(container)).toEqual(Array(5).fill("text-warning"));
+    expect(pills(container)).toEqual(Array(5).fill("text-warning-ink"));
     expect(screen.getAllByText("fairly reliable")).toHaveLength(5);
   });
 

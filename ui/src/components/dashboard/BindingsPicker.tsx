@@ -82,17 +82,17 @@ export function BindingsPicker({ bindings, visibleAliases, onUpdate, onClose, mo
   const renderRow = (b: DataBindingWithValue, canReorder: boolean, index: number, total: number) => (
     <div
       key={b.alias}
-      className="flex items-center gap-1.5 px-1 py-0.5 rounded hover:bg-border-light"
+      className="flex items-center gap-1.5 px-1 py-0.5 rounded-sm hover:bg-border-light"
     >
       <label className="flex items-center gap-2 flex-1 min-w-0 cursor-pointer">
         <input
           type="checkbox"
           checked={isChecked(b.alias)}
           onChange={() => handleToggle(b.alias)}
-          className="accent-primary w-3.5 h-3.5 flex-shrink-0"
+          className="w-3.5 h-3.5 flex-shrink-0"
         />
-        <span className="text-[12px] text-text flex-1 truncate">{b.alias}</span>
-        <span className="text-[11px] text-text-tertiary tabular-nums flex-shrink-0">
+        <span className="text-caption text-text flex-1 truncate">{b.alias}</span>
+        <span className="text-micro text-text-tertiary tabular-nums flex-shrink-0">
           {formatSensorValue(b.value, b.unit, t)}
         </span>
       </label>
@@ -120,13 +120,13 @@ export function BindingsPicker({ bindings, visibleAliases, onUpdate, onClose, mo
   return (
     <div
       ref={ref}
-      className={`bg-surface border border-border rounded-[10px] shadow-lg p-3 ${
+      className={`bg-surface border border-border rounded-md shadow-lg p-3 ${
         mobile
           ? "relative z-50 w-[280px] max-h-[60vh] overflow-y-auto"
           : "absolute z-20 top-full left-1/2 -translate-x-1/2 mt-1 w-[260px]"
       }`}
     >
-      <h3 className="text-[12px] font-medium text-text-secondary mb-2">{t("dashboard.visibleData")}</h3>
+      <h3 className="text-caption font-medium text-text-secondary mb-2">{t("dashboard.visibleData")}</h3>
       <div className="flex flex-col gap-0.5">
         {checked.map((b, i) => renderRow(b, checked.length > 1, i, checked.length))}
         {unchecked.length > 0 && checked.length > 0 && (

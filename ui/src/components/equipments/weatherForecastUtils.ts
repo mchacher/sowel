@@ -23,8 +23,9 @@ export const CONDITION_ICONS: Record<string, LucideIcon> = {
 
 /** Map weather condition strings to Tailwind color classes. */
 export const CONDITION_COLORS: Record<string, string> = {
-  sunny: "text-amber-500",
-  partly_cloudy: "text-amber-400",
+  // The sun glyph is the one tolerated amber outside "on" (spec 196).
+  sunny: "text-active",
+  partly_cloudy: "text-active",
   cloudy: "text-text-tertiary",
   foggy: "text-text-tertiary",
   rainy: "text-primary",
@@ -39,16 +40,15 @@ export type ForecastConfidence = "high" | "medium" | "low";
  * How a confidence looks, once.
  *
  * Traffic-light coding: green reads "act on it", red "do not build on this
- * day". The amber middle is a deliberate call by the maintainer, even though
- * the accent is otherwise reserved for "a light is on right now", so the same
- * hue carries two meanings across the app. Lifted out of WeatherForecastPanel by spec 168:
+ * day", and the middle is the orange "needs attention" role (spec 196), with
+ * its darker text variant so the word stays readable. Lifted out of WeatherForecastPanel by spec 168:
  * the dashboard tile and the detail sheet render the same three bands, and
  * three copies of "what a fairly reliable day looks like" is the shape of drift this
  * codebase keeps having to undo.
  */
 export const CONFIDENCE_STYLES: Record<ForecastConfidence, string> = {
   high: "border-success text-success bg-success/10",
-  medium: "border-warning text-warning bg-warning/10",
+  medium: "border-warning text-warning-ink bg-warning/10",
   low: "border-error text-error bg-error/10",
 };
 

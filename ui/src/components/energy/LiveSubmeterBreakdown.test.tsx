@@ -196,7 +196,7 @@ describe("Live consumption breakdown — stale parts (#744)", () => {
     render(<LiveEnergyPage />, { wrapper: MemoryRouter });
 
     // The flow diagram above shows the same house figure, so scope to the card.
-    const card = screen.getByText("Consumption breakdown").closest(".bg-surface");
+    const card = screen.getByText("Consumption breakdown").closest(".card");
     if (!card) throw new Error("breakdown card not found");
     expect(within(card as HTMLElement).getByText("35")).toBeTruthy(); // donut centre
     expect(within(row("PAC")).getByText("29%")).toBeTruthy(); // 10 of 35

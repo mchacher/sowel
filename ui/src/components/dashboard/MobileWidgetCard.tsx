@@ -109,7 +109,7 @@ export function MobileWidgetCard({
   return (
     <button
       onClick={onClick}
-      className={`relative bg-surface border border-border rounded-[8px] p-2 flex flex-col items-center h-[120px] overflow-hidden w-full text-left ${
+      className={`card relative p-2 flex flex-col items-center h-[120px] overflow-hidden w-full text-left ${
         editMode ? "" : "cursor-pointer active:scale-[0.98]"
       } transition-transform`}
     >
@@ -124,14 +124,14 @@ export function MobileWidgetCard({
 
       {/* Label */}
       <span
-        className={`text-[12px] font-semibold text-text truncate w-full text-center ${
+        className={`text-caption font-semibold text-text truncate w-full text-center ${
           editMode ? "pl-5 pr-8" : ""
         }`}
       >
         {label}
       </span>
       {zone && (
-        <span className="text-[10px] text-text-tertiary truncate w-full text-center leading-tight">
+        <span className="text-micro text-text-tertiary truncate w-full text-center leading-tight">
           {zone}
         </span>
       )}
@@ -143,7 +143,7 @@ export function MobileWidgetCard({
 
       {/* State summary */}
       {stateLines.length > 0 && (
-        <span className="text-[11px] text-text-secondary truncate max-w-full">
+        <span className="text-micro text-text-secondary truncate max-w-full">
           {stateLines.join(" · ")}
         </span>
       )}
@@ -334,7 +334,7 @@ function useMobileState(
       icon: <RainMobileHeadline equipment={equipment} />,
       stateLines: [],
       footer: (
-        <RainLine equipment={equipment} className="max-w-full text-[11px] text-text-secondary" />
+        <RainLine equipment={equipment} className="max-w-full text-micro text-text-secondary" />
       ),
     };
   }
@@ -358,10 +358,10 @@ function useMobileState(
       extremes: { min: number; max: number } | null,
     ) => (
       <div className="flex flex-col items-center gap-1 leading-none whitespace-nowrap">
-        <span className="text-[18px] uppercase tracking-wide text-text-tertiary font-medium">
+        <span className="text-display text-text-tertiary font-medium">
           {t(captionKey)}
         </span>
-        <span className="font-mono font-bold text-[56px] text-text tabular-nums leading-none">
+        <span className="font-semibold text-value text-text tabular-nums leading-none">
           {fmt(b)}
         </span>
         {extremes && <TempExtremes min={extremes.min} max={extremes.max} large />}
@@ -371,10 +371,10 @@ function useMobileState(
       icon: both ? (
         <div className="flex items-end gap-3 leading-none whitespace-nowrap">
           <div className="flex flex-col items-center gap-1">
-            <span className="text-[18px] uppercase tracking-wide text-text-tertiary font-medium">
+            <span className="text-display text-text-tertiary font-medium">
               {t("weather.outdoorShort")}
             </span>
-            <span className="font-mono font-bold text-[48px] text-text tabular-nums leading-none">
+            <span className="font-semibold text-value text-text tabular-nums leading-none">
               {fmt(outdoor)}
             </span>
             {outdoorExtremes && (
@@ -383,10 +383,10 @@ function useMobileState(
           </div>
           <div className="w-px self-stretch bg-border" />
           <div className="flex flex-col items-center gap-1">
-            <span className="text-[18px] uppercase tracking-wide text-text-tertiary font-medium">
+            <span className="text-display text-text-tertiary font-medium">
               {t("weather.indoorShort")}
             </span>
-            <span className="font-mono font-bold text-[48px] text-text tabular-nums leading-none">
+            <span className="font-semibold text-value text-text tabular-nums leading-none">
               {fmt(indoor)}
             </span>
             {indoorExtremes && (
@@ -400,7 +400,7 @@ function useMobileState(
         singleColumn(indoor, "weather.indoorShort", indoorExtremes)
       ) : (
         <div className="flex flex-col items-center gap-1 leading-none whitespace-nowrap">
-          <span className="font-mono font-bold text-[56px] text-text tabular-nums">—</span>
+          <span className="font-semibold text-value text-text tabular-nums">—</span>
         </div>
       ),
       stateLines: [],
@@ -488,7 +488,7 @@ function useMobileState(
         <WashingMachine
           size={96}
           strokeWidth={1}
-          className={isRunning ? "text-accent" : "text-text-tertiary"}
+          className={isRunning ? "text-active" : "text-text-tertiary"}
         />
       ),
       stateLines: lines,
@@ -553,7 +553,7 @@ function useMobileState(
       severity === "ok"
         ? "text-success"
         : severity === "warning"
-          ? "text-warning"
+          ? "text-warning-ink"
           : severity === "error"
             ? "text-error"
             : "text-text-tertiary";
@@ -602,18 +602,18 @@ function useMobileState(
       footer: (
         <>
           {s.reportStale && s.reportedAt && (
-            <span className="absolute top-1.5 right-1.5 flex items-center gap-0.5 font-mono text-[9.5px] text-text-tertiary">
+            <span className="absolute top-1.5 right-1.5 flex items-center gap-0.5 tabular-nums text-micro text-text-tertiary">
               <Clock size={10} strokeWidth={2} aria-hidden="true" />
               {formatRelative(s.reportedAt, t)}
             </span>
           )}
-          <span className="font-mono text-[12px] font-bold text-text tabular-nums">
+          <span className="text-caption font-semibold text-text tabular-nums">
             <span className={tone === "low" ? "text-error" : undefined}>
               {formatPercent(s.batteryLevel)}
             </span>
           </span>
           {detail.length > 0 && (
-            <span className="text-[11px] text-text-secondary truncate max-w-full">
+            <span className="text-micro text-text-secondary truncate max-w-full">
               {detail.join(" · ")}
             </span>
           )}
@@ -635,7 +635,7 @@ function useMobileState(
         <EvCharger
           size={96}
           strokeWidth={1.2}
-          className={charging ? "text-accent" : "text-text-tertiary"}
+          className={charging ? "text-active" : "text-text-tertiary"}
         />,
       ),
       stateLines: [

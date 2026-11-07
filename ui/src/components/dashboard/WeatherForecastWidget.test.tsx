@@ -64,7 +64,7 @@ const FIVE: Array<[number | null, string | null]> = [
 const pillOf = (c: HTMLElement) =>
   [...c.querySelectorAll("span")]
     .filter((s) => s.className.includes("rounded-full") && s.className.includes("border"))
-    .map((s) => [...s.classList].find((k) => /^text-(success|warning|error)$/.test(k)) ?? "");
+    .map((s) => [...s.classList].find((k) => /^text-(success|warning-ink|error)$/.test(k)) ?? "");
 
 describe("WeatherForecastWidget — tomorrow's confidence (spec 168)", () => {
   it("names tomorrow's confidence at the foot of the card", () => {

@@ -13,7 +13,7 @@ const TONE: Record<OrderOutcomeStatus, string> = {
   moving: "text-text-tertiary",
   confirmed: "text-success",
   fault: "text-error",
-  unconfirmed: "text-warning",
+  unconfirmed: "text-warning-ink",
   stopped: "text-text-tertiary",
 };
 
@@ -32,7 +32,7 @@ export function OrderOutcomeLine({
   if (!outcome) return null;
   const { status } = outcome;
   const icon = size === "xs" ? 10 : 12;
-  const text = size === "xs" ? "text-[10px]" : "text-[11px]";
+  const text = size === "xs" ? "text-micro" : "text-micro";
   const label = outcomeText(t, outcome);
   return (
     <span

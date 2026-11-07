@@ -98,24 +98,24 @@ export function SolarInstallationSettings() {
   }
 
   return (
-    <div className="bg-surface border border-border rounded-[10px] p-5">
+    <div className="card p-5">
       <div className="flex items-center gap-2 mb-1">
         <Sun size={18} strokeWidth={1.5} className="text-text-secondary" />
-        <h2 className="text-[15px] font-semibold text-text">{t("equipments.solar.title")}</h2>
+        <h2 className="text-lead font-semibold text-text">{t("equipments.solar.title")}</h2>
       </div>
-      <p className="text-[12px] text-text-secondary mb-4">{t("equipments.solar.help")}</p>
+      <p className="text-caption text-text-secondary mb-4">{t("equipments.solar.help")}</p>
 
       {meters.length === 0 ? (
-        <p className="text-[13px] text-text-secondary">{t("settings.solar.noMeter")}</p>
+        <p className="text-small text-text-secondary">{t("settings.solar.noMeter")}</p>
       ) : (
         <>
           {meters.length > 1 && (
-            <label className="flex items-center gap-2 mb-4 text-[13px] text-text-secondary">
+            <label className="flex items-center gap-2 mb-4 text-small text-text-secondary">
               {t("settings.solar.meter")}
               <select
                 value={effectiveId ?? ""}
                 onChange={(e) => setSelectedId(e.target.value)}
-                className="px-2 py-1.5 rounded-[6px] border border-border bg-surface text-[13px] text-text"
+                className="px-2 py-1.5 rounded-sm border border-border bg-surface text-small text-text"
               >
                 {meters.map((m) => (
                   <option key={m.id} value={m.id}>
@@ -131,11 +131,11 @@ export function SolarInstallationSettings() {
               stored. Say what happened and offer a retry instead. */}
           {failed ? (
             <div>
-              <p className="text-[13px] text-text-secondary">{t("equipments.pv.loadFailed")}</p>
+              <p className="text-small text-text-secondary">{t("equipments.pv.loadFailed")}</p>
               <button
                 type="button"
                 onClick={() => void load()}
-                className="mt-3 px-3 py-1.5 rounded-[6px] border border-border text-[12px] text-text-secondary hover:border-primary"
+                className="mt-3 px-3 py-1.5 rounded-sm border border-border text-caption text-text-secondary hover:border-primary"
               >
                 {t("common.retry")}
               </button>
@@ -158,15 +158,15 @@ export function SolarInstallationSettings() {
                     type="button"
                     onClick={() => void backfill()}
                     disabled={busy}
-                    className="flex items-center gap-1.5 px-3 py-1.5 rounded-[6px] border border-border text-[13px] text-text-secondary hover:border-primary disabled:opacity-50"
+                    className="flex items-center gap-1.5 px-3 py-1.5 rounded-sm border border-border text-small text-text-secondary hover:border-primary disabled:opacity-50"
                   >
                     <History size={14} strokeWidth={1.5} />
                     {t("equipments.pv.backfill")}
                   </button>
-                  <span className="text-[11px] text-text-tertiary">
+                  <span className="text-caption text-text-tertiary">
                     {t("equipments.pv.backfillHint")}
                   </span>
-                  {notice && <span className="text-[12px] text-text-secondary">{notice}</span>}
+                  {notice && <span className="text-caption text-text-secondary">{notice}</span>}
                 </div>
               )}
             </>

@@ -16,8 +16,20 @@ function prefersDark(): boolean {
   return window.matchMedia("(prefers-color-scheme: dark)").matches;
 }
 
+/**
+ * Browser bar colour per theme (spec 196, 4b): the ocean ink in light, the
+ * night page in dark — design-system/tokens.css --p-500 light and --n-50 dark,
+ * checked by lib/color-roles.test.ts. index.html ships one meta per OS scheme;
+ * once the app knows its own theme, both carry that theme's colour, so a user
+ * who picked dark on a light OS gets a dark bar.
+ */
+export const THEME_COLOR = { light: "#1A4F6E", dark: "#0E191F" } as const;
+
 function setDarkClass(dark: boolean): void {
   document.documentElement.classList.toggle("dark", dark);
+  for (const meta of document.querySelectorAll<HTMLMetaElement>('meta[name="theme-color"]')) {
+    meta.content = dark ? THEME_COLOR.dark : THEME_COLOR.light;
+  }
 }
 
 /**

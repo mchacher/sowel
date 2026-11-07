@@ -34,9 +34,9 @@ function isControllable(order: OrderBindingWithDetails): boolean {
   return order.type === "boolean" || order.type === "number";
 }
 
-const chip = "inline-flex items-center gap-1.5 px-2.5 py-1 rounded-[6px] text-[12px] bg-border-light text-text-secondary";
+const chip = "inline-flex items-center gap-1.5 px-2.5 py-1 rounded-sm text-caption bg-border-light text-text-secondary";
 const segment = (selected: boolean) =>
-  `px-2.5 py-1 rounded-[6px] text-[11px] font-medium border transition-colors duration-150 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed ${
+  `px-2.5 py-1 rounded-sm text-micro font-medium border transition-colors duration-150 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed ${
     selected
       ? "bg-primary/10 text-primary border-primary/30"
       : "bg-surface text-text-tertiary border-border hover:text-text-secondary"
@@ -78,7 +78,7 @@ export function ThermostatExtras({
 
   return (
     <div className="pt-3 border-t border-border space-y-2.5">
-      <span className="text-[12px] text-text-tertiary flex items-center gap-1">
+      <span className="text-caption text-text-tertiary flex items-center gap-1">
         <SlidersHorizontal size={12} strokeWidth={1.5} />
         {t("thermostat.extras.title")}
       </span>
@@ -91,7 +91,7 @@ export function ThermostatExtras({
         if (order.type === "enum") {
           return (
             <div key={alias} className="space-y-1.5">
-              <span className="text-[12px] text-text-tertiary">{label(alias)}</span>
+              <span className="text-caption text-text-tertiary">{label(alias)}</span>
               <div className="flex gap-1.5 flex-wrap">
                 {(order.enumValues ?? []).map((v) => (
                   <button
@@ -113,7 +113,7 @@ export function ThermostatExtras({
           if (!mirror) {
             return (
               <div key={alias} className="flex items-center gap-3">
-                <span className="text-[12px] text-text-tertiary">{label(alias)}</span>
+                <span className="text-caption text-text-tertiary">{label(alias)}</span>
                 <button
                   onClick={() => onExec(alias, true)}
                   disabled={busy}
@@ -131,7 +131,7 @@ export function ThermostatExtras({
           const on = value === true;
           return (
             <div key={alias} className="flex items-center gap-3">
-              <span className="text-[12px] text-text-tertiary">{label(alias)}</span>
+              <span className="text-caption text-text-tertiary">{label(alias)}</span>
               <button
                 onClick={() => onExec(alias, !on)}
                 disabled={busy}
@@ -150,23 +150,23 @@ export function ThermostatExtras({
         const max = order.max ?? Number.POSITIVE_INFINITY;
         return (
           <div key={alias} className="flex items-center gap-3">
-            <span className="text-[12px] text-text-tertiary">{label(alias)}</span>
+            <span className="text-caption text-text-tertiary">{label(alias)}</span>
             <div className="flex items-center gap-1">
               <button
                 onClick={() => n !== null && onExec(alias, n - 1)}
                 disabled={busy || n === null || n - 1 < min}
-                className="p-1 rounded-[4px] bg-border-light text-text-secondary hover:bg-border hover:text-text transition-colors disabled:opacity-30 disabled:cursor-not-allowed cursor-pointer"
+                className="p-1 rounded-sm bg-border-light text-text-secondary hover:bg-border hover:text-text transition-colors disabled:opacity-30 disabled:cursor-not-allowed cursor-pointer"
                 title={`${label(alias)} −`}
               >
                 <ChevronDown size={12} strokeWidth={2} />
               </button>
-              <span className="text-[13px] font-semibold text-text tabular-nums font-mono min-w-[40px] text-center">
+              <span className="text-small font-semibold text-text tabular-nums min-w-[40px] text-center">
                 {valueLabel(alias, n, order.unit)}
               </span>
               <button
                 onClick={() => n !== null && onExec(alias, n + 1)}
                 disabled={busy || n === null || n + 1 > max}
-                className="p-1 rounded-[4px] bg-border-light text-text-secondary hover:bg-border hover:text-text transition-colors disabled:opacity-30 disabled:cursor-not-allowed cursor-pointer"
+                className="p-1 rounded-sm bg-border-light text-text-secondary hover:bg-border hover:text-text transition-colors disabled:opacity-30 disabled:cursor-not-allowed cursor-pointer"
                 title={`${label(alias)} +`}
               >
                 <ChevronUp size={12} strokeWidth={2} />

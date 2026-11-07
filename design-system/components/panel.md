@@ -1,5 +1,7 @@
 # Panel
 
+> **Superseded in part by [tokens.md](../tokens.md) (spec 196).** Labels are sentence case and numbers Inter with tabular figures (§2), radii are 6 / 10 / 16 px (§4), and a card or panel has no border (§5.1). Where the CSS below disagrees, tokens.md wins.
+
 > The top-level container of a section in the zone view. Three panels exist on a zone page: **Équipements**, **Comportements**, **Activité**.
 
 ---
@@ -37,10 +39,10 @@
 
 ## States
 
-| State                                | Class                                      | Effect                                   |
-| ------------------------------------ | ------------------------------------------ | ---------------------------------------- |
-| Default                              | `.panel`                                   | white bg, 1 px line border, 12 px radius |
-| Live indicator (Activity panel only) | `.panel__count` with inline style override | shows `● live` green badge in header     |
+| State                                | Class                                      | Effect                                  |
+| ------------------------------------ | ------------------------------------------ | --------------------------------------- |
+| Default                              | `.panel`                                   | white bg, no border, card shadow, 10 px |
+| Live indicator (Activity panel only) | `.panel__count` with inline style override | shows `● live` green badge in header    |
 
 The panel itself has no hover/active state. Interactivity lives on its rows.
 
@@ -92,8 +94,8 @@ The **panel\_\_head** has one optional element: a `+` button (`.panel__add`) for
 ```css
 .panel {
   background: var(--n-0);
-  border: 1px solid var(--line);
-  border-radius: var(--r-lg);
+  border-radius: var(--r-md); /* 10 px, the card radius (spec 196) */
+  box-shadow: var(--sh-card); /* no border: a card */
   overflow: hidden;
 }
 

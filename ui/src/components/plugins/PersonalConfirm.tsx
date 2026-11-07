@@ -24,7 +24,7 @@ export function PersonalBadge() {
   const { t } = useTranslation();
   return (
     <span
-      className="text-[10px] px-1.5 py-0.5 bg-primary/10 text-primary rounded-[4px] font-medium shrink-0 inline-flex items-center gap-1"
+      className="text-micro px-1.5 py-0.5 bg-primary/10 text-primary rounded-sm font-medium shrink-0 inline-flex items-center gap-1"
       title={t("plugins.personal.badge.tooltip")}
     >
       <UserRound size={10} strokeWidth={2} />
@@ -36,8 +36,8 @@ export function PersonalBadge() {
 function IdentityRow({ label, value, title }: { label: string; value: string; title?: string }) {
   return (
     <div className="flex items-baseline justify-between gap-3">
-      <span className="text-[12px] text-text-tertiary shrink-0">{label}</span>
-      <span className="text-[12px] font-mono text-text truncate" title={title ?? value}>
+      <span className="text-caption text-text-tertiary shrink-0">{label}</span>
+      <span className="text-caption font-mono text-text truncate" title={title ?? value}>
         {value}
       </span>
     </div>
@@ -64,16 +64,16 @@ export function PersonalConfirmModal({
   // confirmation must never render behind the surface that triggered it.
   return createPortal(
     <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/40 p-4">
-      <div className="bg-surface rounded-[14px] max-w-md w-full p-6 space-y-4 shadow-lg">
+      <div className="bg-surface rounded-lg max-w-md w-full p-6 space-y-4 shadow-lg">
         <div className="flex items-start gap-3">
           <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center shrink-0">
             <ShieldAlert size={20} className="text-primary" strokeWidth={1.5} />
           </div>
           <div className="min-w-0">
-            <h3 className="text-[16px] font-semibold text-text">
+            <h3 className="text-lead font-semibold text-text">
               {t("plugins.personal.modal.title")}
             </h3>
-            <p className="text-[13px] text-text-secondary mt-1">
+            <p className="text-small text-text-secondary mt-1">
               {t(
                 isInstall ? "plugins.personal.modal.body" : "plugins.personal.modal.updateBody",
                 { repo: info.repo },
@@ -83,7 +83,7 @@ export function PersonalConfirmModal({
         </div>
 
         {/* Identity of what will be installed — version + pinned fingerprint */}
-        <div className="bg-background border border-border rounded-[10px] px-4 py-3 space-y-2">
+        <div className="bg-background rounded-md px-4 py-3 space-y-2">
           <IdentityRow label={t("plugins.personal.modal.repository")} value={info.repo} />
           <IdentityRow label={t("plugins.personal.modal.version")} value={info.version} />
           <IdentityRow
@@ -97,14 +97,14 @@ export function PersonalConfirmModal({
           <button
             onClick={onCancel}
             disabled={busy}
-            className="px-4 py-2 text-[13px] font-medium text-text-secondary hover:bg-border-light rounded-[6px] transition-colors disabled:opacity-50"
+            className="px-4 py-2 text-small font-medium text-text-secondary hover:bg-border-light rounded-sm transition-colors disabled:opacity-50"
           >
             {t("common.cancel")}
           </button>
           <button
             onClick={onConfirm}
             disabled={busy}
-            className="px-4 py-2 text-[13px] font-medium text-white bg-primary hover:bg-primary-hover rounded-[6px] transition-colors disabled:opacity-50 inline-flex items-center gap-1.5"
+            className="px-4 py-2 text-small font-medium text-white bg-primary-fill hover:bg-primary-fill-hover rounded-sm transition-colors disabled:opacity-50 inline-flex items-center gap-1.5"
           >
             {busy ? (
               <Loader2 size={14} className="animate-spin" />

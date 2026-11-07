@@ -57,15 +57,13 @@ export function EquipmentCard({ equipment, onExecuteOrder }: EquipmentCardProps)
   return (
     <div
       className={`
-        flex flex-wrap sm:flex-nowrap items-center gap-x-3 gap-y-2 px-4 py-3 bg-surface rounded-[10px] border
-        transition-colors duration-150
-        border-border
+        card flex flex-wrap sm:flex-nowrap items-center gap-x-3 gap-y-2 px-4 py-3
       `}
     >
       {/* Icon */}
       <div
         className={`
-          flex-shrink-0 w-9 h-9 rounded-[6px] flex items-center justify-center
+          flex-shrink-0 w-9 h-9 rounded-sm flex items-center justify-center
           ${iconColor}
         `}
       >
@@ -74,8 +72,8 @@ export function EquipmentCard({ equipment, onExecuteOrder }: EquipmentCardProps)
 
       {/* Info */}
       <Link to={`/equipments/${equipment.id}`} className="flex-1 min-w-0 hover:opacity-80">
-        <div className="text-[14px] font-medium text-text truncate">{equipment.name}</div>
-        <div className="text-[12px] text-text-tertiary">
+        <div className="text-body font-medium text-text truncate">{equipment.name}</div>
+        <div className="text-caption text-text-tertiary">
           {t(TYPE_LABELS[equipment.type])}
           {equipment.dataBindings.length === 0 && ` · ${t("equipments.noBindings")}`}
           {!equipment.enabled && ` · ${t("common.disabled")}`}

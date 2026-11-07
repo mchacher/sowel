@@ -72,7 +72,7 @@ export function ProfilesTab({ state }: { state: SharedAccessState }) {
                 type="button"
                 aria-current={p.id === selected}
                 onClick={() => pick(p.id)}
-                className={`w-full text-left bg-surface border rounded-[10px] px-3 py-2.5 cursor-pointer transition-colors ${
+                className={`w-full text-left bg-surface border rounded-md px-3 py-2.5 cursor-pointer transition-colors ${
                   p.id === selected ? "border-primary" : "border-border hover:border-text-tertiary"
                 }`}
               >
@@ -81,22 +81,22 @@ export function ProfilesTab({ state }: { state: SharedAccessState }) {
                     <Star
                       size={14}
                       strokeWidth={1.5}
-                      className="text-warning"
+                      className="text-primary"
                       role="img"
                       aria-label={t("sharedAccess.profiles.defaultTitle")}
                     >
                       <title>{t("sharedAccess.profiles.defaultTitle")}</title>
                     </Star>
                   )}
-                  <span className="text-[14px] font-semibold text-text">{p.name}</span>
+                  <span className="text-body font-semibold text-text">{p.name}</span>
 
                   {p.gates.length === 0 && (
-                    <span className="text-[11.5px] rounded-full px-2 py-0.5 bg-warning/15 text-warning">
+                    <span className="text-caption rounded-full px-2 py-0.5 bg-warning/10 text-warning-ink">
                       {t("sharedAccess.profiles.noGate")}
                     </span>
                   )}
                   <span
-                    className={`text-[11.5px] rounded-full px-2 py-0.5 ${
+                    className={`text-caption rounded-full px-2 py-0.5 ${
                       p.pluginId ? "bg-primary-light text-primary" : "bg-border-light text-text-tertiary"
                     }`}
                   >
@@ -105,7 +105,7 @@ export function ProfilesTab({ state }: { state: SharedAccessState }) {
                       : t("sharedAccess.profiles.noPlugin")}
                   </span>
                 </div>
-                <div className="text-[12px] text-text-secondary mt-1">
+                <div className="text-caption text-text-secondary mt-1">
                   {p.gates.length
                     ? p.gates.map((g) => g.name).join(", ")
                     : t("sharedAccess.profiles.opensNothing")}{" "}
@@ -128,7 +128,7 @@ export function ProfilesTab({ state }: { state: SharedAccessState }) {
         </div>
       </div>
 
-      <div className="bg-surface border border-border rounded-[10px] p-4">
+      <div className="card p-4">
         {selected === NEW || current ? (
           <ProfileEditor
             key={editorKey}
@@ -141,9 +141,9 @@ export function ProfilesTab({ state }: { state: SharedAccessState }) {
             }}
           />
         ) : notice ? (
-          <p className="text-[13px] text-success">{notice}</p>
+          <p className="text-small text-success">{notice}</p>
         ) : (
-          <p className="text-[13px] text-text-tertiary">{t("sharedAccess.profiles.pick")}</p>
+          <p className="text-small text-text-tertiary">{t("sharedAccess.profiles.pick")}</p>
         )}
       </div>
     </div>
@@ -273,7 +273,7 @@ function ProfileEditor({
 
   return (
     <div>
-      <h3 className="text-[14px] font-semibold text-text mb-3">
+      <h3 className="text-body font-semibold text-text mb-3">
         {!profile
           ? t("sharedAccess.profiles.newTitle")
           : profile.isDefault
@@ -301,7 +301,7 @@ function ProfileEditor({
             return (
               <div
                 key={g.equipmentId}
-                className="flex items-center gap-2 flex-wrap bg-background border border-border rounded-[6px] px-2.5 py-1.5"
+                className="flex items-center gap-2 flex-wrap bg-background border border-border rounded-sm px-2.5 py-1.5"
               >
                 <label className="flex items-center gap-2 cursor-pointer">
                   <input
@@ -310,14 +310,14 @@ function ProfileEditor({
                     disabled={!g.hasCommand}
                     onChange={(e) => toggleGate(g.equipmentId, e.target.checked)}
                   />
-                  <span className="text-[13.5px] font-semibold text-text">{g.name}</span>
+                  <span className="text-small font-semibold text-text">{g.name}</span>
                 </label>
                 {!g.hasCommand && (
-                  <span className="text-[12px] text-text-tertiary">{t("sharedAccess.editor.noCommand")}</span>
+                  <span className="text-caption text-text-tertiary">{t("sharedAccess.editor.noCommand")}</span>
                 )}
                 {draft && g.commandValues.length > 1 && (
                   <>
-                    <span className="text-[12px] text-text-tertiary">{t("sharedAccess.editor.sends")}</span>
+                    <span className="text-caption text-text-tertiary">{t("sharedAccess.editor.sends")}</span>
                     <select
                       className={`${inputCls} py-1`}
                       value={draft.value ?? ""}
@@ -342,7 +342,7 @@ function ProfileEditor({
             );
           })}
           {state.gates.length === 0 && (
-            <p className="text-[12.5px] text-text-tertiary">{t("sharedAccess.profiles.noGateInHouse")}</p>
+            <p className="text-caption text-text-tertiary">{t("sharedAccess.profiles.noGateInHouse")}</p>
           )}
         </div>
         {errorFor("gates") && <Refusal>{errorFor("gates")}</Refusal>}
@@ -355,7 +355,7 @@ function ProfileEditor({
         hoursError={errorFor("hours")}
       />
 
-      <label className="flex items-center gap-2 mt-3 text-[13.5px] text-text cursor-pointer">
+      <label className="flex items-center gap-2 mt-3 text-small text-text cursor-pointer">
         <input type="checkbox" checked={withCode} onChange={(e) => setWithCode(e.target.checked)} />
         {t("sharedAccess.profiles.withCode")}
       </label>
@@ -382,11 +382,11 @@ function ProfileEditor({
         </select>
       </div>
 
-      {message && message.ok && <p className="text-[13px] text-success mt-3">{message.text}</p>}
+      {message && message.ok && <p className="text-small text-success mt-3">{message.text}</p>}
       {errorFor("other") && <Refusal>{errorFor("other")}</Refusal>}
 
       {confirmDelete && profile && (
-        <div className="mt-3 bg-error/10 rounded-[6px] px-3 py-2.5 text-[13px] text-error">
+        <div className="mt-3 bg-error/10 rounded-sm px-3 py-2.5 text-small text-error">
           {t("sharedAccess.profiles.deleteConfirm", { name: profile.name })}
           <div className="flex gap-2 mt-2">
             <button type="button" className={btnDanger} disabled={saving} onClick={() => void remove()}>

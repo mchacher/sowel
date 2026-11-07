@@ -24,7 +24,7 @@ export function EvVehicleBadge({ vehicle }: { vehicle: EvVehicleState | null }) 
   if (!vehicle) return null;
   return (
     <span
-      className={`text-[12px] font-medium px-2.5 py-0.5 rounded-full ${evVehiclePillClass(vehicle)}`}
+      className={`text-caption font-medium px-2.5 py-0.5 rounded-full ${evVehiclePillClass(vehicle)}`}
     >
       {t(evVehicleKey(vehicle))}
     </span>
@@ -123,7 +123,7 @@ export function EvChargerControl({ equipment, onExecuteOrder }: EvChargerControl
         <EvVehicleBadge vehicle={s.vehicle} />
         {s.canToggle && usable && (
           <div className="flex items-center gap-2">
-            <span className="text-[13px] text-text-secondary">
+            <span className="text-small text-text-secondary">
               {t("equipments.evCharger.charge")}
             </span>
             <LightControl equipment={equipment} onExecuteOrder={onExecuteOrder} />
@@ -135,8 +135,8 @@ export function EvChargerControl({ equipment, onExecuteOrder }: EvChargerControl
         <div className="grid grid-cols-2 gap-3">
           {metrics.map((m) => (
             <div key={m.key} className="flex flex-col">
-              <span className="text-[12px] text-text-tertiary">{m.label}</span>
-              <span className="font-mono text-[16px] font-semibold text-text tabular-nums">
+              <span className="text-caption text-text-tertiary">{m.label}</span>
+              <span className="text-lead font-semibold text-text tabular-nums">
                 {m.value}
               </span>
             </div>
@@ -146,7 +146,7 @@ export function EvChargerControl({ equipment, onExecuteOrder }: EvChargerControl
 
       {(order || s.chargeCurrentA !== null) && (
         <div className="flex items-center justify-between gap-3">
-          <span className="text-[13px] text-text-secondary">
+          <span className="text-small text-text-secondary">
             {t("equipments.evCharger.chargeCurrent")}
           </span>
           <div className="hit-group flex items-center gap-2">
@@ -156,12 +156,12 @@ export function EvChargerControl({ equipment, onExecuteOrder }: EvChargerControl
                 aria-label={t("equipments.evCharger.decrease")}
                 onClick={() => void step(-1)}
                 disabled={!usable || sending || (shownA !== null && shownA <= order.min)}
-                className="hit-44 p-1.5 rounded-[6px] bg-border-light text-text-secondary hover:bg-border disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer"
+                className="hit-44 p-1.5 rounded-sm bg-border-light text-text-secondary hover:bg-border disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer"
               >
                 <Minus size={14} strokeWidth={1.5} />
               </button>
             )}
-            <span className="min-w-[56px] text-center font-mono text-[16px] font-semibold text-text tabular-nums">
+            <span className="min-w-[56px] text-center text-lead font-semibold text-text tabular-nums">
               {sending ? (
                 <Loader2 size={14} className="animate-spin inline" />
               ) : shownA !== null ? (
@@ -176,7 +176,7 @@ export function EvChargerControl({ equipment, onExecuteOrder }: EvChargerControl
                 aria-label={t("equipments.evCharger.increase")}
                 onClick={() => void step(1)}
                 disabled={!usable || sending || (shownA !== null && shownA >= order.max)}
-                className="hit-44 p-1.5 rounded-[6px] bg-border-light text-text-secondary hover:bg-border disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer"
+                className="hit-44 p-1.5 rounded-sm bg-border-light text-text-secondary hover:bg-border disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer"
               >
                 <Plus size={14} strokeWidth={1.5} />
               </button>
@@ -185,7 +185,7 @@ export function EvChargerControl({ equipment, onExecuteOrder }: EvChargerControl
         </div>
       )}
       {order && (
-        <span className="text-[11px] text-text-tertiary -mt-3 text-right">
+        <span className="text-micro text-text-tertiary -mt-3 text-right">
           {formatRange(formatNumber(order.min, { maxDecimals: 1 }), formatWithUnit(order.max, "A"))}
         </span>
       )}
@@ -193,9 +193,9 @@ export function EvChargerControl({ equipment, onExecuteOrder }: EvChargerControl
       {extraData.length > 0 && (
         <div className="flex flex-col gap-1 pt-3 border-t border-border-light">
           {extraData.map((b) => (
-            <div key={b.alias} className="flex items-center justify-between gap-3 text-[13px]">
+            <div key={b.alias} className="flex items-center justify-between gap-3 text-small">
               <span className="text-text-secondary">{extraLabel("equipments.evCharger", b.alias, t)}</span>
-              <span className="font-mono tabular-nums text-text">{typeof b.value === "string"
+              <span className="tabular-nums text-text">{typeof b.value === "string"
                   ? extraTextValue("equipments.evCharger", b.alias, b.value, t)
                   : formatValue(b.value, b.unit)}</span>
             </div>

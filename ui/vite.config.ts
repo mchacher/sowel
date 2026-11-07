@@ -15,7 +15,8 @@ export default defineConfig({
         short_name: "Sowel",
         description: "Home automation — So well",
         theme_color: "#1A4F6E",
-        background_color: "#F8F9FA",
+        // Light page colour (--n-50); a manifest has one value for both themes.
+        background_color: "#ECF2F7",
         display: "standalone",
         orientation: "portrait",
         scope: "/",

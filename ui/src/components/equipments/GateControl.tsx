@@ -39,12 +39,10 @@ export function GateControl({ equipment, onExecuteOrder, compact }: GateControlP
         {/* State badge */}
         <span
           className={`
-            text-[11px] font-medium px-2 py-0.5 rounded-full flex-shrink-0
-            ${gateState === "open"
-              ? "bg-warning/10 text-warning"
-              : gateState === "closed"
-                ? "bg-success/10 text-success"
-                : "bg-text-tertiary/10 text-text-tertiary"
+            text-micro font-medium px-2 py-0.5 rounded-full flex-shrink-0
+            ${gateState === "open" || gateState === "closed"
+              ? "bg-border-light text-text-secondary"
+              : "bg-text-tertiary/10 text-text-tertiary"
             }
           `}
         >
@@ -57,7 +55,7 @@ export function GateControl({ equipment, onExecuteOrder, compact }: GateControlP
             onClick={(e) => { e.preventDefault(); e.stopPropagation(); handleCommand(); }}
             disabled={executing}
             className={`
-              p-2 rounded-[6px] transition-colors duration-150 cursor-pointer
+              p-2 rounded-sm transition-colors duration-150 cursor-pointer
               bg-border-light text-text-tertiary hover:bg-border hover:text-text-secondary
               disabled:opacity-50 disabled:cursor-not-allowed
             `}
@@ -80,12 +78,10 @@ export function GateControl({ equipment, onExecuteOrder, compact }: GateControlP
       <div className="flex items-center gap-3">
         <div
           className={`
-            w-10 h-10 rounded-[8px] flex items-center justify-center
-            ${gateState === "open"
-              ? "bg-warning/10 text-warning"
-              : gateState === "closed"
-                ? "bg-success/10 text-success"
-                : "bg-text-tertiary/10 text-text-tertiary"
+            w-10 h-10 rounded-md flex items-center justify-center
+            ${gateState === "open" || gateState === "closed"
+              ? "bg-border-light text-text-secondary"
+              : "bg-text-tertiary/10 text-text-tertiary"
             }
           `}
         >
@@ -96,7 +92,7 @@ export function GateControl({ equipment, onExecuteOrder, compact }: GateControlP
               : <HelpCircle size={22} strokeWidth={1.5} />
           }
         </div>
-        <div className="text-[16px] font-medium text-text">
+        <div className="text-lead font-medium text-text">
           {t(`controls.gate.${gateState}`)}
         </div>
       </div>
@@ -112,7 +108,7 @@ export function GateControl({ equipment, onExecuteOrder, compact }: GateControlP
                 onClick={() => handleCommand(val)}
                 disabled={executing}
                 className={`
-                  flex items-center gap-2 px-4 py-2 rounded-[6px] text-[13px] font-medium
+                  flex items-center gap-2 px-4 py-2 rounded-sm text-small font-medium
                   transition-colors duration-150
                   bg-border-light text-text-secondary hover:bg-border hover:text-text
                   disabled:opacity-50
@@ -128,7 +124,7 @@ export function GateControl({ equipment, onExecuteOrder, compact }: GateControlP
               onClick={() => handleCommand()}
               disabled={executing}
               className={`
-                flex items-center gap-2 px-4 py-2 rounded-[6px] text-[13px] font-medium
+                flex items-center gap-2 px-4 py-2 rounded-sm text-small font-medium
                 transition-colors duration-150
                 bg-border-light text-text-secondary hover:bg-border hover:text-text
                 disabled:opacity-50

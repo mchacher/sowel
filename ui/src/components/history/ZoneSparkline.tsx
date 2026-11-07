@@ -97,7 +97,7 @@ export function ZoneSparkline({
     return (
       <div
         ref={ref}
-        className={`flex-shrink-0 rounded-[3px] animate-pulse bg-border-light ${className}`}
+        className={`flex-shrink-0 rounded-sm animate-pulse bg-border-light ${className}`}
         style={{ width, height }}
       />
     );

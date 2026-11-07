@@ -20,7 +20,7 @@ export function UnitToggle({ enabled }: UnitToggleProps) {
   return (
     <div
       className={
-        "inline-flex border border-border rounded-[6px] overflow-hidden text-[12px]" +
+        "inline-flex border border-border rounded-sm overflow-hidden text-caption" +
         (enabled ? "" : " opacity-50 cursor-not-allowed")
       }
       title={tooltip}
@@ -31,7 +31,7 @@ export function UnitToggle({ enabled }: UnitToggleProps) {
         onClick={() => enabled && setUnit("wh")}
         className={
           effectiveUnit === "wh"
-            ? "px-3 py-1 bg-primary text-white"
+            ? "px-3 py-1 bg-primary-fill text-white"
             : "px-3 py-1 text-text-secondary hover:bg-bg disabled:hover:bg-transparent"
         }
       >
@@ -43,7 +43,7 @@ export function UnitToggle({ enabled }: UnitToggleProps) {
         onClick={() => enabled && setUnit("eur")}
         className={
           effectiveUnit === "eur"
-            ? "px-3 py-1 bg-primary text-white"
+            ? "px-3 py-1 bg-primary-fill text-white"
             : "px-3 py-1 text-text-secondary hover:bg-bg disabled:hover:bg-transparent"
         }
       >

@@ -15,9 +15,13 @@ import { useEquipments } from "../store/useEquipments";
 import { useAuth } from "../store/useAuth";
 import { useZoneAggregation } from "../store/useZoneAggregation";
 import { useUiState } from "../store/useUiState";
+import { useRecipes } from "../store/useRecipes";
+import { useModes } from "../store/useModes";
+import { Panel } from "../components/home/Panel";
 import { executeZoneOrder, getHistoryStatus } from "../api";
 import { ZoneEquipmentsView } from "../components/home/ZoneEquipmentsView";
 import { ZoneAggregationPills } from "../components/home/ZoneAggregationPills";
+import { ZoneHeroLead } from "../components/home/ZoneHeroLead";
 import { ZoneCommands, type ZoneOrder } from "../components/home/ZoneCommands";
 import { ZoneRecipesSection } from "../components/recipes/ZoneRecipesSection";
 import { ZoneModesSection } from "../components/home/ZoneModesSection";
@@ -26,7 +30,7 @@ import { EquipmentForm } from "../components/equipments/EquipmentForm";
 import { autoCreateBindings } from "../components/equipments/bindingUtils";
 import { buildBoundOrderKeysByDevice, buildBoundDataKeysByDevice, allSupportStop } from "../lib/binding-utils";
 import { useWsSubscription } from "../hooks/useWsSubscription";
-import type { EquipmentType, ZoneAggregatedData, ZoneWithChildren } from "../types";
+import type { EquipmentType, ZoneWithChildren } from "../types";
 
 export function HomePage() {
   useWsSubscription(["zones", "equipments", "modes", "recipes", "activity"]);
@@ -82,6 +86,19 @@ export function HomePage() {
   }, [equipments, zoneId]);
 
   const aggData = zoneId ? aggregationData[zoneId] : undefined;
+
+  // The Comportements lid counts what its body lists: the zone's recipes, plus
+  // the modes configured for it where the modes slice is shown (admin only).
+  const recipeInstances = useRecipes((s) => s.instances);
+  const modes = useModes((s) => s.modes);
+  const behaviorCount = useMemo(() => {
+    if (!zoneId) return undefined;
+    const recipes = recipeInstances.filter((inst) => inst.params.zone === zoneId).length;
+    const zoneModes = isAdmin
+      ? modes.filter((m) => m.impacts.some((imp) => imp.zoneId === zoneId)).length
+      : 0;
+    return recipes + zoneModes > 0 ? recipes + zoneModes : undefined;
+  }, [recipeInstances, modes, zoneId, isAdmin]);
 
   // Bulk zone commands (allShuttersOpen/Stop/Close) act on the whole subtree
   // (see collectZoneAndDescendantIds) — the Stop button must be hidden if
@@ -177,14 +194,16 @@ export function HomePage() {
         {/* Left column — Équipements */}
         <Panel
           title={t("equipments.title")}
-          className="min-w-0"
+          count={zoneEquipments.length > 0 ? zoneEquipments.length : undefined}
           headerRight={isAdmin ? (
             <button
+              type="button"
               onClick={() => setShowEquipmentForm(true)}
-              className="w-[26px] h-[26px] inline-flex items-center justify-center rounded-[4px] border border-[var(--p-100)] bg-transparent text-primary hover:bg-surface hover:border-primary transition-colors duration-150"
+              className="w-8 h-8 inline-flex items-center justify-center rounded-sm border border-border bg-surface text-text-secondary hover:text-primary hover:border-primary transition-colors duration-150"
               title={t("equipments.createEquipment")}
+              aria-label={t("equipments.createEquipment")}
             >
-              <Plus size={13} strokeWidth={1.5} />
+              <Plus size={16} strokeWidth={1.5} />
             </button>
           ) : undefined}
         >
@@ -199,7 +218,7 @@ export function HomePage() {
         {/* Right column — Comportements + future Activity feed (spec 101 slot) */}
         <div className="space-y-6 min-w-0">
           {zoneId && (
-            <Panel title={t("behaviors.title")}>
+            <Panel title={t("behaviors.title")} count={behaviorCount}>
               {/* Configuring a zone's mode impacts is admin-only (activation is not, see #912);
                   hide the whole management block from standard users. Recipes
                   stay visible read-only, gated per-button inside the section. */}
@@ -255,8 +274,8 @@ function NoZonesState() {
       <div className="w-16 h-16 rounded-full bg-border-light flex items-center justify-center mb-4">
         <Home size={28} strokeWidth={1.5} className="text-text-tertiary" />
       </div>
-      <h3 className="text-[16px] font-medium text-text mb-1">{t("home.welcome")}</h3>
-      <p className="text-[13px] text-text-secondary max-w-[320px]">
+      <h3 className="text-lead font-medium text-text mb-1">{t("home.welcome")}</h3>
+      <p className="text-small text-text-secondary max-w-[320px]">
         {t("home.noZones")}
       </p>
     </div>
@@ -272,99 +291,17 @@ function ZoneNotFound() {
       <div className="w-16 h-16 rounded-full bg-error/10 flex items-center justify-center mb-4">
         <Home size={28} strokeWidth={1.5} className="text-error" />
       </div>
-      <h3 className="text-[16px] font-medium text-text mb-1">{t("home.zoneNotFound")}</h3>
-      <p className="text-[13px] text-text-secondary max-w-[320px] mb-4">
+      <h3 className="text-lead font-medium text-text mb-1">{t("home.zoneNotFound")}</h3>
+      <p className="text-small text-text-secondary max-w-[320px] mb-4">
         {t("home.zoneDeleted")}
       </p>
       <button
         onClick={() => navigate("/home")}
-        className="px-4 py-2 bg-primary text-white text-[13px] font-medium rounded-[6px] hover:bg-primary-hover transition-colors duration-150"
+        className="px-4 py-2 bg-primary-fill text-white text-small font-medium rounded-sm hover:bg-primary-fill-hover transition-colors duration-150"
       >
         {t("home.backToHome")}
       </button>
     </div>
-  );
-}
-
-function ZoneHeroLead({
-  zone,
-  aggData,
-}: {
-  zone: ZoneWithChildren;
-  aggData: ZoneAggregatedData | undefined;
-}) {
-  const { t } = useTranslation();
-  // Compose lead segments: description (if set) + dynamic lights / shutters summary.
-  const segments: string[] = [];
-
-  if (zone.description) segments.push(zone.description);
-
-  if (aggData) {
-    if (aggData.lightsTotal > 0) {
-      if (aggData.lightsOn > 0) {
-        segments.push(t("zone.lead.lightsOn", { defaultValue: "{{count}} lumière allumée", count: aggData.lightsOn }));
-      } else if (aggData.lightsTotal > 1) {
-        segments.push(t("zone.lead.allLightsOff", { defaultValue: "toutes les lumières éteintes" }));
-      } else {
-        segments.push(t("zone.lead.lightOff", { defaultValue: "lumière éteinte" }));
-      }
-    }
-    if (aggData.shuttersTotal > 0) {
-      if (aggData.shuttersOpen === aggData.shuttersTotal) {
-        if (aggData.shuttersTotal > 1) {
-          segments.push(t("zone.lead.allShuttersOpen", { defaultValue: "tous les volets ouverts" }));
-        } else {
-          segments.push(t("zone.lead.shutterOpen", { defaultValue: "volet ouvert" }));
-        }
-      } else if (aggData.shuttersOpen > 0) {
-        segments.push(t("zone.lead.shuttersOpen", { defaultValue: "{{count}} volet ouvert", count: aggData.shuttersOpen }));
-      } else if (aggData.shuttersTotal > 1) {
-        segments.push(t("zone.lead.allShuttersClosed", { defaultValue: "tous les volets fermés" }));
-      } else {
-        segments.push(t("zone.lead.shutterClosed", { defaultValue: "volet fermé" }));
-      }
-    }
-  }
-
-  if (segments.length === 0) return null;
-
-  return (
-    <div
-      className="flex items-center gap-[0.6rem] mt-[0.55rem] text-[0.85rem] text-text-tertiary tabular-nums flex-wrap"
-      aria-label={t("zone.lead.aria", { defaultValue: "Résumé de la zone" })}
-    >
-      {segments.map((seg, i) => (
-        <span key={i} className="flex items-center gap-[0.6rem]">
-          {i > 0 && <span className="w-1 h-1 rounded-full bg-text-tertiary/50 flex-shrink-0" />}
-          <span>{seg}</span>
-        </span>
-      ))}
-    </div>
-  );
-}
-
-function Panel({
-  title,
-  headerRight,
-  className = "",
-  children,
-}: {
-  title: string;
-  headerRight?: React.ReactNode;
-  className?: string;
-  children: React.ReactNode;
-}) {
-  return (
-    <section className={`bg-surface border border-border-light rounded-lg ${className}`}>
-      {/* Panel head — strict alignment with design-system .panel__head (spec 100) */}
-      <div className="flex items-center gap-[0.55rem] px-[1.1rem] py-[0.55rem] min-h-[44px] bg-primary-light border-b border-primary-mid">
-        <h2 className="text-[11.5px] font-bold text-primary uppercase tracking-[0.12em]">
-          {title}
-        </h2>
-        {headerRight && <div className="ml-auto flex-shrink-0">{headerRight}</div>}
-      </div>
-      {children}
-    </section>
   );
 }
 
@@ -390,11 +327,11 @@ function MobileZoneDrawer({
         <div className="flex items-center justify-between px-4 py-3 border-b border-border">
           <div className="flex items-center gap-2">
             <Home size={18} strokeWidth={1.5} className="text-primary" />
-            <span className="text-[15px] font-semibold text-text">{t("nav.maison")}</span>
+            <span className="text-lead font-semibold text-text">{t("nav.maison")}</span>
           </div>
           <button
             onClick={onClose}
-            className="p-1.5 rounded-[6px] text-text-tertiary hover:text-text-secondary hover:bg-border-light transition-colors"
+            className="p-1.5 rounded-sm text-text-tertiary hover:text-text-secondary hover:bg-border-light transition-colors"
           >
             <X size={18} strokeWidth={1.5} />
           </button>
@@ -456,7 +393,7 @@ function ZoneTreeItem({
         )}
         {!hasChildren && <span className="w-[14px] flex-shrink-0" />}
         <Icon size={16} strokeWidth={1.5} className={isActive ? "text-primary" : "text-text-tertiary"} />
-        <span className="text-[14px] truncate">{zone.name}</span>
+        <span className="text-body truncate">{zone.name}</span>
       </button>
       {hasChildren && expanded && (
         <div>

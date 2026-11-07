@@ -58,14 +58,14 @@ export function PresentationWidget({
         {presentation.icon({ surface: "desktop" })}
         <div className="flex flex-col items-start gap-1 pl-2">
           <span
-            className={`text-[12px] font-medium px-2.5 py-0.5 rounded-full ${
-              isActive ? "bg-active/10 text-active" : "bg-border-light text-text-tertiary"
+            className={`text-caption font-medium px-2.5 py-0.5 rounded-full ${
+              isActive ? "bg-active-bg text-active-ink" : "bg-border-light text-text-tertiary"
             }`}
           >
             {state.primary}
           </span>
           {state.secondary?.map((line) => (
-            <span key={line} className="text-[11px] text-text-tertiary tabular-nums font-mono">
+            <span key={line} className="text-micro text-text-tertiary tabular-nums">
               {line}
             </span>
           ))}
@@ -78,8 +78,8 @@ export function PresentationWidget({
           <button
             onClick={handleToggle}
             disabled={executing}
-            className={`w-10 h-10 flex items-center justify-center rounded-[6px] transition-all duration-150 cursor-pointer border border-border bg-surface text-text-secondary hover:border-primary/40 hover:text-primary hover:bg-primary/5 active:scale-[0.97] disabled:opacity-40 disabled:cursor-not-allowed ${
-              toggle.on ? "!border-active/40 !text-active !bg-active/5" : ""
+            className={`w-10 h-10 flex items-center justify-center rounded-sm transition-all duration-150 cursor-pointer border border-border bg-surface text-text-secondary hover:border-primary/40 hover:text-primary hover:bg-primary/5 active:scale-[0.97] disabled:opacity-40 disabled:cursor-not-allowed ${
+              toggle.on ? "!border-active !text-active-ink !bg-active-bg" : ""
             }`}
             title={toggle.on ? t("controls.turnOff") : t("controls.turnOn")}
           >

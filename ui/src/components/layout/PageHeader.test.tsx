@@ -19,6 +19,13 @@ describe("PageHeader", () => {
     expect(container.firstElementChild?.className).toContain("flex-wrap");
   });
 
+  it("hides the title visually below lg, where the top bar names the page", () => {
+    // Spec 196, decision pr6-h1 — still the page heading for screen readers.
+    render(<PageHeader title="Équipements" actions={<button>Filtrer</button>} />);
+    const title = screen.getByRole("heading", { level: 1, name: "Équipements" });
+    expect(title.className).toBe("sr-only lg:not-sr-only");
+  });
+
   it("renders no actions row when there are none", () => {
     const { container } = render(<PageHeader title="Logs" />);
     expect(container.firstElementChild?.childElementCount).toBe(1);

@@ -6,6 +6,7 @@ import { useModes } from "../store/useModes";
 import { useAuth } from "../store/useAuth";
 import { getActiveCalendar } from "../api";
 import { ModeForm } from "../components/modes/ModeForm";
+import { Switch } from "../components/ui/Switch";
 import type { ModeWithDetails, CalendarSlot } from "../types";
 import { useWsSubscription } from "../hooks/useWsSubscription";
 
@@ -51,11 +52,11 @@ export function ModesPage() {
           <div className="w-16 h-16 rounded-full bg-error/10 flex items-center justify-center mb-4">
             <AlertCircle size={28} strokeWidth={1.5} className="text-error" />
           </div>
-          <h3 className="text-[16px] font-medium text-text mb-1">{t("common.error")}</h3>
-          <p className="text-[13px] text-text-secondary max-w-[320px] mb-4">{error}</p>
+          <h3 className="text-lead font-medium text-text mb-1">{t("common.error")}</h3>
+          <p className="text-small text-text-secondary max-w-[320px] mb-4">{error}</p>
           <button
             onClick={() => { setError(null); fetchModes(); }}
-            className="px-4 py-2 bg-primary text-white text-[13px] font-medium rounded-[6px] hover:bg-primary-hover transition-colors duration-150"
+            className="px-4 py-2 bg-primary-fill text-white text-small font-medium rounded-sm hover:bg-primary-fill-hover transition-colors duration-150"
           >
             {t("common.retry")}
           </button>
@@ -72,7 +73,7 @@ export function ModesPage() {
           <h1>
             {t("modes.title")}
           </h1>
-          <p className="text-[13px] text-text-secondary mt-0.5">
+          <p className="text-small text-text-secondary mt-0.5">
             {t("modes.subtitle")}
           </p>
         </div>
@@ -80,13 +81,13 @@ export function ModesPage() {
           {isAdmin && (
           <button
             onClick={() => setShowForm(true)}
-            className="flex items-center gap-1.5 sm:gap-2 px-3 sm:px-4 py-2 bg-primary text-white text-[13px] font-medium rounded-[6px] hover:bg-primary-hover transition-colors duration-150"
+            className="flex items-center gap-1.5 sm:gap-2 px-3 sm:px-4 py-2 bg-primary-fill text-white text-small font-medium rounded-sm hover:bg-primary-fill-hover transition-colors duration-150"
           >
             <Plus size={16} strokeWidth={1.5} />
             <span className="hidden sm:inline">{t("modes.addMode")}</span>
           </button>
           )}
-          <span className="text-[13px] font-medium text-primary bg-primary-light px-3 py-1.5 rounded-[6px] tabular-nums">
+          <span className="text-small font-medium text-primary bg-primary-light px-3 py-1.5 rounded-sm tabular-nums">
             {modes.length}
           </span>
         </div>
@@ -98,8 +99,8 @@ export function ModesPage() {
           <div className="w-16 h-16 rounded-full bg-border-light flex items-center justify-center mb-4">
             <Layers size={28} strokeWidth={1.5} className="text-text-tertiary" />
           </div>
-          <h3 className="text-[16px] font-medium text-text mb-1">{t("modes.noModes")}</h3>
-          <p className="text-[13px] text-text-secondary max-w-[320px]">
+          <h3 className="text-lead font-medium text-text mb-1">{t("modes.noModes")}</h3>
+          <p className="text-small text-text-secondary max-w-[320px]">
             {t("modes.noModesMessage")}
           </p>
         </div>
@@ -157,10 +158,10 @@ function ModeCard({ mode, calendarSlots, onClick }: { mode: ModeWithDetails; cal
   return (
     <div
       onClick={onClick}
-      className="w-full flex items-center gap-4 px-4 py-3 bg-surface rounded-[10px] border border-border hover:border-primary/30 transition-colors duration-150 text-left cursor-pointer group"
+      className="card w-full flex items-center gap-4 px-4 py-3 hover:shadow-md transition-shadow duration-150 text-left cursor-pointer group"
     >
       <div
-        className={`w-10 h-10 rounded-[8px] flex items-center justify-center flex-shrink-0 ${
+        className={`w-10 h-10 rounded-md flex items-center justify-center flex-shrink-0 ${
           mode.active ? "bg-primary/10" : "bg-border-light"
         }`}
       >
@@ -171,13 +172,13 @@ function ModeCard({ mode, calendarSlots, onClick }: { mode: ModeWithDetails; cal
         )}
       </div>
       <div className="flex-1 min-w-0">
-        <div className="text-[14px] font-medium text-text truncate">
+        <div className="text-body font-medium text-text truncate">
           {mode.name}
         </div>
         {mode.description && (
-          <div className="text-[12px] text-text-secondary truncate">{mode.description}</div>
+          <div className="text-caption text-text-secondary truncate">{mode.description}</div>
         )}
-        <div className="text-[11px] text-text-tertiary truncate">
+        <div className="text-micro text-text-tertiary truncate">
           {summary ?? t("modes.noImpacts")}
           {nextSlot && (
             <span className="ml-1.5">
@@ -189,20 +190,13 @@ function ModeCard({ mode, calendarSlots, onClick }: { mode: ModeWithDetails; cal
       {/* Issue #912 — switching which mode is on is usage, not configuration,
           so every authenticated user gets this switch. Creating, editing and
           deleting a mode stay behind `isAdmin`. */}
-      <button
-        onClick={handleToggle}
+      <Switch
+        checked={mode.active}
+        onChange={(_, e) => void handleToggle(e)}
         disabled={toggling}
-        className="hit-44 relative w-9 h-5 rounded-full transition-colors duration-200 disabled:opacity-50 flex-shrink-0 cursor-pointer disabled:cursor-default"
-        style={{ backgroundColor: mode.active ? "var(--color-primary)" : "var(--color-border)" }}
         title={mode.active ? t("modes.deactivate") : t("modes.activate")}
-        role="switch"
-        aria-checked={mode.active}
-      >
-        <span
-          className="absolute top-[3px] left-[3px] w-[14px] h-[14px] bg-white rounded-full shadow-sm transition-transform duration-200"
-          style={{ transform: mode.active ? "translateX(16px)" : "translateX(0)" }}
-        />
-      </button>
+        label={mode.name}
+      />
     </div>
   );
 }

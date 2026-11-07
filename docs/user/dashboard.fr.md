@@ -4,7 +4,7 @@ L'Accueil est la page qui s'ouvre au lancement de Sowel, votre écran personnali
 
 ## Vue d'ensemble
 
-Contrairement à la vue Maison (organisée par zones), l'Accueil vous laisse choisir exactement ce que vous voulez voir, peu importe la pièce ou le type d'équipement. Vous pouvez placer les lumières de votre cuisine à côté de la température extérieure et du portail de garage, le tout sur un même écran.
+Contrairement à la vue Maison (organisée par zones), l'Accueil vous laisse choisir exactement ce que vous voulez voir, peu importe la pièce ou le type d'équipement. Vous pouvez placer les lumières de votre cuisine à côté de la température extérieure et du portail de garage, le tout sur un même écran. Sur ordinateur, une ligne sous le titre résume toute la maison : combien de lumières sont allumées, quels volets sont ouverts.
 
 ![Accueil avec un mélange de widgets équipement et zone](../screenshots/dashboard-overview-fr.png)
 
@@ -24,7 +24,7 @@ Les équipements on/off (lumières, interrupteurs, prises, chauffe-eau, vannes, 
 
 Une tuile qui affiche une **puissance** en watts (prise avec mesure, chauffe-eau, panneau solaire, compteur) ne l'affiche que tant que la mesure est récente. Au-delà, le chiffre laisse place à un tiret et la tuile indique l'âge de la dernière mesure, plutôt que de présenter une valeur que la maison n'a aucune raison de mettre en doute. Le délai suit la cadence réelle de la source : deux minutes pour un compteur qui remonte en continu, dix pour tout le reste, car plusieurs intégrations interrogent leur source toutes les cinq minutes et un appareil en bon état ne doit pas clignoter à chaque interrogation. Les mesures qui partagent un appareil vieillissent ensemble : une tuile solaire retire le courant et la tension avec la puissance, et le panneau de mesures d'une page d'équipement fait de même, car le silence qui a masqué un chiffre les a tous masqués. Un panneau qui s'est simplement arrêté pour la nuit affiche toujours **Veille**, pas une mesure ancienne : il a cessé de produire, il n'a pas cessé de donner de ses nouvelles. C'est la même règle que la décomposition de consommation de la page Énergie.
 
-La tuile **prévisions météo** affiche demain, et indique à quel point les modèles s'accordent sur cette journée : une pastille en pied de tuile (vert fiable, ambre assez fiable, rouge peu fiable). Cliquez ou touchez la tuile, sur ordinateur comme sur téléphone, pour ouvrir un panneau qui montre les cinq jours de prévision côte à côte, chacun avec sa condition, son maximum, son minimum, son vent et une pastille de fiabilité, ainsi que le modèle d'où vient la prévision. C'est la même pastille que sur la page de l'équipement.
+La tuile **prévisions météo** affiche demain, et indique à quel point les modèles s'accordent sur cette journée : une pastille en pied de tuile (vert fiable, orange assez fiable, rouge peu fiable). Cliquez ou touchez la tuile, sur ordinateur comme sur téléphone, pour ouvrir un panneau qui montre les cinq jours de prévision côte à côte, chacun avec sa condition, son maximum, son minimum, son vent et une pastille de fiabilité, ainsi que le modèle d'où vient la prévision. C'est la même pastille que sur la page de l'équipement.
 
 La fiabilité est publiée par le plugin météo à partir de la version 2.0. Avec un plugin plus ancien, la tuile n'affiche aucune fiabilité et le panneau n'affiche aucune pastille : un jour non qualifié ne doit jamais ressembler à un jour fiable.
 
@@ -63,8 +63,8 @@ Une tuile dont l'instance est désactivée s'affiche grisée et garde sa place :
 
 ## Ajouter des widgets
 
-1. Entrez en **mode édition** en cliquant sur l'icône crayon en haut à droite de l'Accueil
-2. Cliquez sur le bouton **+** qui apparaît
+1. Entrez en **mode édition** : sur ordinateur, cliquez sur **Modifier** en haut à droite de l'Accueil ; sur téléphone ou tablette, touchez **Modifier l'accueil** sous la dernière tuile
+2. Cliquez sur **Ajouter un widget**
 3. Dans la fenêtre, choisissez entre :
    - **Équipement** : parcourez et sélectionnez n'importe quel équipement
    - **Zone** : sélectionnez une zone et une famille de données
@@ -96,12 +96,12 @@ En mode édition, cliquez sur le bouton de suppression d'un widget pour le retir
 
 ## Mode édition
 
-Le mode édition se bascule avec l'icône crayon dans l'en-tête de l'Accueil. Quand il est actif :
+Le mode édition est réservé aux administrateurs. Sur ordinateur, il se bascule avec le bouton **Modifier** de l'en-tête de l'Accueil. Sur téléphone ou tablette, le bouton **Modifier l'accueil** se trouve sous la dernière tuile, à l'écart des tuiles dont vous vous servez chaque jour. Quand il est actif :
 
-- Un bouton **+** apparaît pour ajouter de nouveaux widgets
+- Un bouton **Ajouter un widget** apparaît : dans l'en-tête sur ordinateur, dans une barre qui reste en bas de l'écran sur téléphone ou tablette
 - Chaque widget affiche un bouton **suppression**
 - Les widgets peuvent être **glissés** pour être réordonnés
-- Cliquez sur la **coche** pour quitter le mode édition et enregistrer
+- Cliquez sur **Terminé** (à côté de **Ajouter un widget**) pour quitter le mode édition ; les changements sont déjà enregistrés
 
 ![Accueil en mode édition : poignées de glisser-déposer, boutons supprimer, action Ajouter](../screenshots/dashboard-edit-fr.png)
 

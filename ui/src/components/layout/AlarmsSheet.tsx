@@ -37,7 +37,7 @@ export function AlarmsSheet({ open, onClose }: AlarmsSheetProps) {
       icon={<AlertTriangle size={18} strokeWidth={1.5} className="text-error" />}
     >
       {active.length === 0 && acknowledged.length === 0 ? (
-        <div className="text-center text-text-tertiary text-[13px] py-6">{t("alarms.empty")}</div>
+        <div className="text-center text-text-tertiary text-small py-6">{t("alarms.empty")}</div>
       ) : (
         <div className="flex flex-col gap-3">
           {active.length > 0 && (
@@ -54,7 +54,7 @@ export function AlarmsSheet({ open, onClose }: AlarmsSheetProps) {
 
           {acknowledged.length > 0 && (
             <div className="flex flex-col gap-2">
-              <div className="text-[11px] font-semibold uppercase text-text-tertiary px-1">
+              <div className="text-small font-semibold text-text-secondary px-1">
                 {t("alarms.acknowledgedSection")}
               </div>
               <ul className="flex flex-col gap-2">
@@ -89,7 +89,7 @@ function IssueRow({
   const { t } = useTranslation();
   const isError = issue.level === "error";
   const Icon = isError ? AlertOctagon : AlertTriangle;
-  const tone = isError ? "text-error" : "text-warning";
+  const tone = isError ? "text-error" : "text-warning-ink";
   const sourceLabel = INTEGRATION_LABELS[issue.source] ?? issue.source;
 
   // An issue the UI knows how to word carries an i18n key and its parameters,
@@ -100,23 +100,23 @@ function IssueRow({
 
   return (
     <li
-      className={`flex items-start gap-3 px-3 py-2.5 rounded-[8px] bg-border-light/50 ${
+      className={`flex items-start gap-3 px-3 py-2.5 rounded-md bg-border-light/50 ${
         acknowledged ? "opacity-60" : ""
       }`}
     >
       <Icon size={16} strokeWidth={1.5} className={`mt-0.5 flex-shrink-0 ${tone}`} />
       <div className="flex-1 min-w-0">
-        <div className="flex items-center gap-2 text-[12px] font-semibold text-text">
+        <div className="flex items-center gap-2 text-caption font-semibold text-text">
           <span>{sourceLabel}</span>
           <span
-            className={`text-[10px] px-1.5 py-0.5 rounded uppercase ${
-              isError ? "bg-error/10 text-error" : "bg-warning/10 text-warning"
+            className={`text-caption font-medium px-1.5 py-0.5 rounded-sm ${
+              isError ? "bg-error/10 text-error" : "bg-warning/10 text-warning-ink"
             }`}
           >
             {isError ? t("alarms.level.error") : t("alarms.level.warning")}
           </span>
         </div>
-        <div className="text-[12px] text-text-secondary mt-0.5 break-words">{message}</div>
+        <div className="text-caption text-text-secondary mt-0.5 break-words">{message}</div>
       </div>
       {acknowledged ? (
         <button

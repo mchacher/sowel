@@ -45,17 +45,17 @@ export function WidgetCard({
 
   return (
     <div
-      className={`bg-surface border border-border rounded-md p-3 flex flex-col h-[160px] sm:h-[240px] overflow-hidden ${
+      className={`card p-3 flex flex-col h-[160px] sm:h-[240px] overflow-hidden ${
         onClick ? "cursor-pointer active:scale-[0.98] transition-transform" : ""
       } ${className}`}
       {...cardAction}
     >
       <div className="mb-2 text-center">
-        <span className="block text-[17px] font-semibold text-text truncate leading-tight">
+        <span className="block text-lead font-semibold text-text truncate leading-tight">
           {label}
         </span>
         {sublabel && (
-          <span className="block text-[11px] text-text-tertiary truncate">{sublabel}</span>
+          <span className="block text-micro text-text-tertiary truncate">{sublabel}</span>
         )}
         {/* Spec 188 — what became of the last tracked order (gate, cover).
             Renders nothing outside an equipment tile or without a tracked order. */}

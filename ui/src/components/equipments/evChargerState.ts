@@ -133,7 +133,7 @@ export function evVehicleKey(vehicle: EvVehicleState): string {
 /** Pill tone per vehicle state: energy flowing, plugged in, nothing there. */
 export function evVehiclePillClass(vehicle: EvVehicleState): string {
   return vehicle === "charging"
-    ? "bg-accent/15 text-accent-hover"
+    ? "bg-active-bg text-active-ink"
     : vehicle === "connected"
       ? "bg-primary/10 text-primary"
       : "bg-border-light text-text-tertiary";

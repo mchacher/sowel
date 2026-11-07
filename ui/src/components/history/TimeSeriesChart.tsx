@@ -1,3 +1,4 @@
+import { CHART_TICK_FONT, CHART_TOOLTIP_FONT } from "../../lib/chart-font";
 import { useMemo } from "react";
 import { useTranslation } from "react-i18next";
 import {
@@ -103,7 +104,7 @@ export function TimeSeriesChart({ points, range, resolution, unit, height = 200,
 
   if (data.length === 0) {
     return (
-      <div className="flex items-center justify-center text-[12px] text-text-tertiary" style={{ height }}>
+      <div className="flex items-center justify-center text-caption text-text-tertiary" style={{ height }}>
         {t("history.noData")}
       </div>
     );
@@ -140,13 +141,13 @@ export function TimeSeriesChart({ points, range, resolution, unit, height = 200,
           scale="time"
           domain={domain ?? ["dataMin", "dataMax"]}
           tickFormatter={(ts: number) => formatTime(new Date(ts).toISOString(), range)}
-          tick={{ fontSize: 10, fill: textTertiary }}
+          tick={{ fontSize: CHART_TICK_FONT, fill: textTertiary }}
           tickLine={false}
           axisLine={{ stroke: borderColor }}
           minTickGap={40}
         />
         <YAxis
-          tick={{ fontSize: 10, fill: textTertiary }}
+          tick={{ fontSize: CHART_TICK_FONT, fill: textTertiary }}
           tickLine={false}
           axisLine={false}
           width={48}
@@ -162,7 +163,7 @@ export function TimeSeriesChart({ points, range, resolution, unit, height = 200,
             backgroundColor: "var(--color-surface)",
             border: `1px solid var(--color-border)`,
             borderRadius: "6px",
-            fontSize: "12px",
+            fontSize: CHART_TOOLTIP_FONT,
             color: "var(--color-text)",
           }}
           labelFormatter={(_, payload) => {
@@ -237,7 +238,7 @@ export function TimeSeriesChart({ points, range, resolution, unit, height = 200,
       </ComposedChart>
     </ResponsiveContainer>
     {staleDuration && (
-      <div className="text-[10px] text-accent text-right mt-1">
+      <div className="text-caption text-warning-ink text-right mt-1">
         {t("history.lastMeasurement", { duration: staleDuration })}
       </div>
     )}

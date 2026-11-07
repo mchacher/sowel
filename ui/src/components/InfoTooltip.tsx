@@ -24,7 +24,7 @@ export function InfoTooltip({ text, label }: { text: string; label?: string }) {
         onKeyDown={(e) => {
           if (e.key === "Escape") setOpen(false);
         }}
-        className="text-text-tertiary hover:text-text-secondary focus-visible:outline focus-visible:outline-2 focus-visible:outline-primary rounded"
+        className="text-text-tertiary hover:text-text-secondary focus-visible:outline focus-visible:outline-2 focus-visible:outline-primary rounded-sm"
       >
         <Info size={13} strokeWidth={1.5} />
       </button>
@@ -32,7 +32,7 @@ export function InfoTooltip({ text, label }: { text: string; label?: string }) {
         <span
           role="tooltip"
           id={id}
-          className="absolute bottom-full left-1/2 z-20 mb-1.5 w-52 -translate-x-1/2 rounded-md bg-text px-2.5 py-1.5 text-[11px] font-normal leading-snug text-background shadow-lg"
+          className="absolute bottom-full left-1/2 z-20 mb-1.5 w-52 -translate-x-1/2 rounded-md bg-text px-2.5 py-1.5 text-micro font-normal leading-snug text-background shadow-lg"
         >
           {text}
         </span>

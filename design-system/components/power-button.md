@@ -1,5 +1,7 @@
 # Power button atom (`power-btn`)
 
+> **Superseded in part by [tokens.md](../tokens.md) (spec 196).** Labels are sentence case and numbers Inter with tabular figures (§2), radii are 6 / 10 / 16 px (§4), and a card or panel has no border (§5.1). Where the CSS below disagrees, tokens.md wins.
+
 > Rounded square 32×26 button used to toggle on/off the most common interactive equipment (lights, water valves, switches, gates).
 
 ---
@@ -82,19 +84,19 @@
 }
 ```
 
-The dark-theme override exists because `--n-0` in dark theme is `#16181E` (almost black), which would be invisible on amber. Hardcode `#18170F` for legibility.
+The dark-theme override exists because `--n-0` in dark theme is `#17232B` (a near-black ocean), which would be invisible on amber. Hardcode `#18170F` for legibility.
 
 ---
 
 ## Accessibility
 
-| Concern          | Implementation                                                                            |
+| Concern | Implementation |
 | ---------------- | ----------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------- |
-| Icon-only button | Requires `aria-label="Allumer …"` AND `title` for redundancy.                             |
-| State change     | When toggled, the button must announce the new state. Use `aria-pressed="true             | false"`for true on/off semantics, or a`role="switch" aria-checked` if used in a switch context. |
-| Touch target     | 32 × 26 is below 44 × 44. Mitigate via padding-based hit area expansion in production.    |
-| Color contrast   | White icon on amber `--a-500`: 8.4:1 — AAA. Off icon `--n-400` on `--n-50`: 4.8:1 — AA.   |
-| Reduced motion   | The on-state glow is on the parent icon, not the button. Honors `prefers-reduced-motion`. |
+| Icon-only button | Requires `aria-label="Allumer …"` AND `title` for redundancy. |
+| State change | When toggled, the button must announce the new state. Use `aria-pressed="true             | false"`for true on/off semantics, or a`role="switch" aria-checked` if used in a switch context. |
+| Touch target | 32 × 26 is below 44 × 44. Mitigate via padding-based hit area expansion in production. |
+| Color contrast | White icon on amber `--a-500`: 8.4:1 — AAA. Off icon `--n-400` on `--n-50`: 4.8:1 — AA. |
+| Reduced motion | The on-state glow is on the parent icon, not the button. Honors `prefers-reduced-motion`. |
 
 ---
 

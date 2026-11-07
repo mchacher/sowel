@@ -97,18 +97,18 @@ export function EvHomeChargingSection({
             onAttributed={refreshSoon}
           />
         ))}
-      <div className="bg-surface rounded-[10px] border border-border p-4 mb-6 flex flex-col gap-4">
+      <div className="card p-4 mb-6 flex flex-col gap-4">
         <div className="flex items-center justify-between gap-2">
-          <h3 className="text-[14px] font-semibold text-text">
+          <h3 className="text-body font-semibold text-text">
             {t("equipments.evSessions.homeCharging")}
           </h3>
           <EvMonthNav month={month} onChange={setMonth} />
         </div>
 
-        {error && <p className="text-[12px] text-error">{error}</p>}
+        {error && <p className="text-caption text-error">{error}</p>}
 
         {summary && summary.sessions === 0 ? (
-          <p className="text-[13px] text-text-tertiary">
+          <p className="text-small text-text-tertiary">
             {t("equipments.evSessions.emptyVehicle")}
           </p>
         ) : (
@@ -116,18 +116,18 @@ export function EvHomeChargingSection({
             <>
               <div className="flex items-end justify-between gap-3">
                 <div className="flex flex-col">
-                  <span className="font-mono text-[28px] font-semibold text-text tabular-nums">
+                  <span className="text-display font-semibold text-text tabular-nums">
                     {eur(summary.costEur)}
                   </span>
-                  <span className="text-[13px] text-text-tertiary">
+                  <span className="text-small text-text-tertiary">
                     {t("equipments.evSessions.addedToBill")}
                   </span>
                 </div>
                 <div className="flex flex-col items-end">
-                  <span className="font-mono text-[18px] font-semibold text-text tabular-nums">
+                  <span className="text-title font-semibold text-text tabular-nums">
                     {energyLabel(summary.energyWh, locale)}
                   </span>
-                  <span className="text-[13px] text-text-tertiary">
+                  <span className="text-small text-text-tertiary">
                     {t("equipments.evSessions.sessionsCount", { count: summary.sessions })}
                   </span>
                 </div>
@@ -143,7 +143,7 @@ export function EvHomeChargingSection({
                     solar: energyLabel(summary.solarWh, locale),
                   })}
                 />
-                <div className="flex flex-col gap-1.5 text-[13px]">
+                <div className="flex flex-col gap-1.5 text-small">
                   {(
                     [
                       ["bg-energy-hc", "gridHc", summary.gridHcWh, eur(summary.costHcEur)],
@@ -152,13 +152,13 @@ export function EvHomeChargingSection({
                     ] as const
                   ).map(([swatch, key, wh, cost]) => (
                     <div key={key} className="flex items-center gap-2">
-                      <span className={`w-2.5 h-2.5 rounded-[3px] shrink-0 ${swatch}`} />
+                      <span className={`w-2.5 h-2.5 rounded-sm shrink-0 ${swatch}`} />
                       <span className="flex-1 text-text">{t(`equipments.evSessions.${key}`)}</span>
-                      <span className="font-mono text-text-secondary tabular-nums">
+                      <span className="text-text-secondary tabular-nums">
                         {energyLabel(wh, locale)}
                       </span>
                       <span
-                        className={`w-16 text-right ${cost === null ? "text-success" : "font-mono text-text tabular-nums"}`}
+                        className={`w-16 text-right ${cost === null ? "text-success" : "text-text tabular-nums"}`}
                       >
                         {cost ?? t("equipments.evSessions.free")}
                       </span>
@@ -175,7 +175,7 @@ export function EvHomeChargingSection({
                     className="flex flex-col gap-1.5 py-2.5 border-b border-border-light"
                   >
                     <div className="flex justify-between gap-3">
-                      <span className="text-[14px] font-medium text-text">
+                      <span className="text-body font-medium text-text">
                         {dayLabel(s.startedAt, locale)}{" "}
                         <span className="font-normal text-text-tertiary">
                           · {timeLabel(s.startedAt, locale)} →{" "}
@@ -184,7 +184,7 @@ export function EvHomeChargingSection({
                             : t("equipments.evSessions.inProgress")}
                         </span>
                       </span>
-                      <span className="font-mono text-[14px] font-semibold text-text tabular-nums whitespace-nowrap">
+                      <span className="text-body font-semibold text-text tabular-nums whitespace-nowrap">
                         {eur(s.costEur)}
                       </span>
                     </div>
@@ -192,7 +192,7 @@ export function EvHomeChargingSection({
                       <div className="flex-1">
                         <ShareBar e={s} height="h-1.5" />
                       </div>
-                      <span className="font-mono text-[12px] text-text-secondary tabular-nums whitespace-nowrap">
+                      <span className="text-caption text-text-secondary tabular-nums whitespace-nowrap">
                         {energyLabel(s.energyWh, locale)}
                       </span>
                     </div>
@@ -203,7 +203,7 @@ export function EvHomeChargingSection({
                 <button
                   type="button"
                   onClick={() => setShowAll((v) => !v)}
-                  className="self-start min-h-[44px] text-[13px] font-medium text-primary hover:text-primary-hover cursor-pointer"
+                  className="self-start min-h-[44px] text-small font-medium text-primary hover:text-primary-hover cursor-pointer"
                 >
                   {showAll
                     ? t("equipments.evSessions.showLess")
@@ -216,7 +216,7 @@ export function EvHomeChargingSection({
 
         {isAdmin && (
           <div className="pt-3 border-t border-border-light">
-            <label className="flex items-center gap-2 text-[13px] text-text cursor-pointer">
+            <label className="flex items-center gap-2 text-small text-text cursor-pointer">
               <input
                 type="checkbox"
                 checked={equipment.plugInHybrid === true}
@@ -226,7 +226,7 @@ export function EvHomeChargingSection({
               <span className="font-semibold">{t("equipments.evSessions.plugInHybrid.title")}</span>
               {saving && <Loader2 size={12} className="animate-spin text-text-tertiary" />}
             </label>
-            <p className="text-[12px] text-text-tertiary mt-1">
+            <p className="text-caption text-text-tertiary mt-1">
               {t("equipments.evSessions.plugInHybrid.hint")}
             </p>
           </div>
@@ -245,7 +245,7 @@ function Per100km({ summary, locale }: { summary: EvVehicleMonthSummary; locale:
     summary.homePriceEurPerKwh === null
   ) {
     return (
-      <p className="text-[12px] text-text-tertiary pt-1">
+      <p className="text-caption text-text-tertiary pt-1">
         {t(
           `equipments.evSessions.per100Unavailable.${summary.eurPer100kmUnavailable ?? "not-learned"}`,
         )}
@@ -256,13 +256,13 @@ function Per100km({ summary, locale }: { summary: EvVehicleMonthSummary; locale:
   const consumption = formatEnergy(summary.kWhPer100km, { locale });
   return (
     <div className="flex flex-col gap-0.5 pt-1">
-      <span className="text-[13px] text-text-secondary">
-        <span className="font-mono font-semibold text-text tabular-nums">
+      <span className="text-small text-text-secondary">
+        <span className="font-semibold text-text tabular-nums">
           {formatEur(summary.eurPer100km, locale)}
         </span>{" "}
         {t("equipments.evSessions.per100")}
       </span>
-      <span className="text-[12px] text-text-tertiary">
+      <span className="text-caption text-text-tertiary">
         {t("equipments.evSessions.per100Detail", { consumption, price })}
       </span>
     </div>

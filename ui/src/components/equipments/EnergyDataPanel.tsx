@@ -69,10 +69,10 @@ export function EnergyDataPanel({ computedData, status, statusReason,
   const isDegraded = status === "degraded" || status === "offline";
 
   return (
-    <div className="bg-surface rounded-[10px] border border-border p-4 mb-6">
+    <div className="card p-4 mb-6">
       <div className="flex items-center justify-between mb-4">
-        <h3 className="text-[14px] font-semibold text-text flex items-center gap-2">
-          <Zap size={16} strokeWidth={1.5} className="text-accent" />
+        <h3 className="text-body font-semibold text-text flex items-center gap-2">
+          <Zap size={16} strokeWidth={1.5} className="text-text-tertiary" />
           {t(isProduction ? "energy.cumulsProduction" : "energy.cumuls")}
         </h3>
         {status && <EquipmentStatusBadge status={status} reason={statusReason} size="sm" />}
@@ -84,18 +84,18 @@ export function EnergyDataPanel({ computedData, status, statusReason,
           return (
             <div
               key={c.alias}
-              className="flex items-center gap-3 px-3 py-3 rounded-[8px] bg-border-light/50"
+              className="flex items-center gap-3 px-3 py-3 rounded-md bg-border-light/50"
             >
-              <div className="flex-shrink-0 w-10 h-10 rounded-[6px] flex items-center justify-center bg-accent/10 text-accent">
+              <div className="flex-shrink-0 w-10 h-10 rounded-sm flex items-center justify-center bg-primary-light text-primary">
                 {c.icon}
               </div>
               <div className="flex-1 min-w-0">
-                <div className="text-[12px] font-medium text-text-tertiary">{t(c.labelKey)}</div>
+                <div className="text-caption font-medium text-text-tertiary">{t(c.labelKey)}</div>
                 <div className="flex items-baseline gap-1">
-                  <span className="text-[20px] font-semibold text-text font-mono leading-none">
+                  <span className="text-title font-semibold text-text tabular-nums leading-none">
                     {formatted.value}
                   </span>
-                  <span className="text-[12px] text-text-tertiary">{formatted.unit}</span>
+                  <span className="text-caption text-text-tertiary">{formatted.unit}</span>
                 </div>
               </div>
             </div>
@@ -104,7 +104,7 @@ export function EnergyDataPanel({ computedData, status, statusReason,
       </div>
       {isDegraded && statusReason?.offlineSince && (
         <div
-          className={`mt-3 text-center text-[11px] font-mono ${status === "offline" ? "text-error" : "text-text-tertiary"}`}
+          className={`mt-3 text-center text-caption ${status === "offline" ? "text-error" : "text-text-tertiary"}`}
         >
           {status === "offline"
             ? t("energy.cumul.offlineSince", { when: formatRelative(statusReason.offlineSince) })

@@ -14,6 +14,7 @@ import { useZones } from "../store/useZones";
 import { useRecipes } from "../store/useRecipes";
 import { useAuth } from "../store/useAuth";
 import { ModeForm } from "../components/modes/ModeForm";
+import { Switch } from "../components/ui/Switch";
 import type { ModeWithDetails, EquipmentWithDetails, ZoneModeImpactAction, CalendarSlot, ButtonActionBinding } from "../types";
 import { useWsSubscription } from "../hooks/useWsSubscription";
 import { flattenZonesWithPath } from "../lib/zone-path";
@@ -105,13 +106,13 @@ export function ModeDetailPage() {
       <div className="p-4 sm:p-6">
         <Link
           to="/modes"
-          className="inline-flex items-center gap-1.5 text-[13px] text-text-secondary hover:text-text transition-colors mb-4"
+          className="inline-flex items-center gap-1.5 text-small text-text-secondary hover:text-text transition-colors mb-4"
         >
           <ArrowLeft size={14} strokeWidth={1.5} />
           {t("modes.backToModes")}
         </Link>
         <div className="flex flex-col items-center justify-center py-20 text-center">
-          <h3 className="text-[16px] font-medium text-text mb-1">{t("modes.notFound")}</h3>
+          <h3 className="text-lead font-medium text-text mb-1">{t("modes.notFound")}</h3>
         </div>
       </div>
     );
@@ -126,7 +127,7 @@ export function ModeDetailPage() {
       {/* Back link */}
       <Link
         to="/modes"
-        className="inline-flex items-center gap-1.5 text-[13px] text-text-secondary hover:text-text transition-colors mb-4"
+        className="inline-flex items-center gap-1.5 text-small text-text-secondary hover:text-text transition-colors mb-4"
       >
         <ArrowLeft size={14} strokeWidth={1.5} />
         {t("modes.backToModes")}
@@ -136,7 +137,7 @@ export function ModeDetailPage() {
       <div className="flex items-start justify-between mb-4 sm:mb-8 max-w-[720px]">
         <div className="hidden lg:flex items-center gap-3 sm:gap-4 min-w-0">
           <div
-            className={`w-10 h-10 sm:w-12 sm:h-12 rounded-[8px] sm:rounded-[10px] flex items-center justify-center flex-shrink-0 ${
+            className={`w-10 h-10 sm:w-12 sm:h-12 rounded-md flex items-center justify-center flex-shrink-0 ${
               mode.active ? "bg-primary/10" : "bg-border-light"
             }`}
           >
@@ -151,7 +152,7 @@ export function ModeDetailPage() {
               {mode.name}
             </h1>
             {mode.description && (
-              <p className="text-[13px] text-text-secondary mt-0.5 truncate">{mode.description}</p>
+              <p className="text-small text-text-secondary mt-0.5 truncate">{mode.description}</p>
             )}
           </div>
         </div>
@@ -159,31 +160,24 @@ export function ModeDetailPage() {
           {/* Issue #912 — switching which mode is on is usage, not
               configuration, so the switch renders for every authenticated
               user. Edit and delete below stay behind `isAdmin`. */}
-          <button
-            onClick={handleToggle}
-            className="relative w-10 h-[22px] rounded-full transition-colors duration-200 flex-shrink-0 cursor-pointer"
-            style={{ backgroundColor: mode.active ? "var(--color-primary)" : "var(--color-border)" }}
+          <Switch
+            checked={mode.active}
+            onChange={() => void handleToggle()}
             title={mode.active ? t("modes.deactivate") : t("modes.activate")}
-            role="switch"
-            aria-checked={mode.active}
-          >
-            <span
-              className="absolute top-[3px] left-[3px] w-4 h-4 bg-white rounded-full shadow-sm transition-transform duration-200"
-              style={{ transform: mode.active ? "translateX(18px)" : "translateX(0)" }}
-            />
-          </button>
+            label={mode.name}
+          />
           {isAdmin && (
             <>
               <button
                 onClick={() => setShowEditForm(true)}
-                className="p-2 text-text-secondary border border-border rounded-[6px] hover:bg-border-light transition-colors duration-150"
+                className="p-2 text-text-secondary border border-border rounded-sm hover:bg-border-light transition-colors duration-150"
                 title={t("common.edit")}
               >
                 <Pencil size={14} strokeWidth={1.5} />
               </button>
               <button
                 onClick={handleDelete}
-                className="p-2 text-error border border-error/30 rounded-[6px] hover:bg-error/10 transition-colors duration-150"
+                className="p-2 text-error border border-error/30 rounded-sm hover:bg-error/10 transition-colors duration-150"
                 title={t("common.delete")}
               >
                 <Trash2 size={14} strokeWidth={1.5} />
@@ -212,14 +206,14 @@ export function ModeDetailPage() {
         />
 
         {/* Zone impacts section */}
-        <section className="bg-surface rounded-[10px] border border-border p-3 sm:p-5">
-          <h2 className="text-[14px] font-semibold text-text flex items-center gap-2 mb-4">
+        <section className="card p-3 sm:p-5">
+          <h2 className="text-body font-semibold text-text flex items-center gap-2 mb-4">
             <MapPin size={16} strokeWidth={1.5} className="text-primary" />
             {t("modes.impacts")}
           </h2>
 
           {mode.impacts.length === 0 ? (
-            <p className="text-[13px] text-text-tertiary">{t("modes.noImpactsGlobal")}</p>
+            <p className="text-small text-text-tertiary">{t("modes.noImpactsGlobal")}</p>
           ) : (
             <div className="space-y-4">
               {mode.impacts.map((impact) => (
@@ -228,13 +222,13 @@ export function ModeDetailPage() {
                   <div className="flex items-center justify-between mb-2">
                     <div className="flex items-center gap-2">
                       <MapPin size={14} strokeWidth={1.5} className="text-text-tertiary" />
-                      <span className="text-[13px] font-medium text-text">
+                      <span className="text-small font-medium text-text">
                         {findZoneName(impact.zoneId)}
                       </span>
                     </div>
                     <Link
                       to={`/home/${impact.zoneId}`}
-                      className="text-[11px] text-primary hover:text-primary-hover transition-colors"
+                      className="text-micro text-primary hover:text-primary-hover transition-colors"
                     >
                       {t("modes.configureInBehaviors")}
                     </Link>
@@ -318,11 +312,11 @@ function ImpactActionRow({
     }
 
     return (
-      <div className="flex items-center gap-2 px-3 py-1.5 bg-background rounded-[4px] border border-border-light">
+      <div className="flex items-center gap-2 px-3 py-1.5 bg-background rounded-sm border border-border-light">
         <span className="text-text-tertiary flex-shrink-0">{icon}</span>
-        <span className="text-[12px] text-text font-medium">{name}</span>
-        <span className="text-[12px] text-text-secondary">→</span>
-        <span className="text-[12px] text-text-secondary">{detail}</span>
+        <span className="text-caption text-text font-medium">{name}</span>
+        <span className="text-caption text-text-secondary">→</span>
+        <span className="text-caption text-text-secondary">{detail}</span>
       </div>
     );
   }
@@ -330,11 +324,11 @@ function ImpactActionRow({
   if (action.type === "recipe_toggle") {
     const inst = instances.find((i) => i.id === action.instanceId);
     return (
-      <div className="flex items-center gap-2 px-3 py-1.5 bg-background rounded-[4px] border border-border-light">
+      <div className="flex items-center gap-2 px-3 py-1.5 bg-background rounded-sm border border-border-light">
         <span className="text-text-tertiary flex-shrink-0"><Layers size={12} strokeWidth={1.5} /></span>
-        <span className="text-[12px] text-text font-medium">{inst?.recipeId ?? action.instanceId}</span>
-        <span className="text-[12px] text-text-secondary">→</span>
-        <span className={`text-[12px] font-medium ${action.enabled ? "text-success" : "text-text-tertiary"}`}>
+        <span className="text-caption text-text font-medium">{inst?.recipeId ?? action.instanceId}</span>
+        <span className="text-caption text-text-secondary">→</span>
+        <span className={`text-caption font-medium ${action.enabled ? "text-success" : "text-text-tertiary"}`}>
           {action.enabled ? t("common.on") : t("common.off")}
         </span>
       </div>
@@ -344,11 +338,11 @@ function ImpactActionRow({
   if (action.type === "recipe_params") {
     const inst = instances.find((i) => i.id === action.instanceId);
     return (
-      <div className="flex items-center gap-2 px-3 py-1.5 bg-background rounded-[4px] border border-border-light">
+      <div className="flex items-center gap-2 px-3 py-1.5 bg-background rounded-sm border border-border-light">
         <span className="text-text-tertiary flex-shrink-0"><Layers size={12} strokeWidth={1.5} /></span>
-        <span className="text-[12px] text-text font-medium">{inst?.recipeId ?? action.instanceId}</span>
-        <span className="text-[12px] text-text-secondary">→</span>
-        <span className="text-[12px] text-text-secondary font-mono">{JSON.stringify(action.params)}</span>
+        <span className="text-caption text-text font-medium">{inst?.recipeId ?? action.instanceId}</span>
+        <span className="text-caption text-text-secondary">→</span>
+        <span className="text-caption text-text-secondary font-mono">{JSON.stringify(action.params)}</span>
       </div>
     );
   }
@@ -374,9 +368,9 @@ function ButtonTriggersSection({
   if (triggers.length === 0) return null;
 
   return (
-    <section className="bg-surface rounded-[10px] border border-border p-3 sm:p-5">
-      <h2 className="text-[14px] font-semibold text-text flex items-center gap-2 mb-4">
-        <Zap size={16} strokeWidth={1.5} className="text-accent" />
+    <section className="card p-3 sm:p-5">
+      <h2 className="text-body font-semibold text-text flex items-center gap-2 mb-4">
+        <Zap size={16} strokeWidth={1.5} className="text-text-tertiary" />
         {t("modes.triggers")}
       </h2>
 
@@ -410,17 +404,17 @@ function ButtonTriggersSection({
             <Link
               key={binding.id}
               to={`/equipments/${binding.equipmentId}`}
-              className="flex items-center gap-3 px-3 py-2 bg-background rounded-[6px] border border-border-light hover:border-primary/30 transition-colors"
+              className="flex items-center gap-3 px-3 py-2 bg-background rounded-sm border border-border-light hover:border-primary/30 transition-colors"
             >
-              <Zap size={14} strokeWidth={1.5} className="text-accent flex-shrink-0" />
+              <Zap size={14} strokeWidth={1.5} className="text-text-tertiary flex-shrink-0" />
               <div className="flex-1 min-w-0">
-                <div className="text-[13px] font-medium text-text">
+                <div className="text-small font-medium text-text">
                   {eqName}
                   {zoneName && (
                     <span className="text-text-tertiary font-normal"> · {zoneName}</span>
                   )}
                 </div>
-                <div className="text-[11px] text-text-tertiary">
+                <div className="text-micro text-text-tertiary">
                   {actionLabel}
                   {effectLabel && <span> · {effectLabel}</span>}
                 </div>
@@ -468,9 +462,9 @@ function CalendarScheduleSection({
   };
 
   return (
-    <section className="bg-surface rounded-[10px] border border-border p-3 sm:p-5">
-      <h2 className="text-[14px] font-semibold text-text flex items-center gap-2 mb-4">
-        <Clock size={16} strokeWidth={1.5} className="text-accent" />
+    <section className="card p-3 sm:p-5">
+      <h2 className="text-body font-semibold text-text flex items-center gap-2 mb-4">
+        <Clock size={16} strokeWidth={1.5} className="text-text-tertiary" />
         {t("modes.schedule")}
       </h2>
 
@@ -480,19 +474,19 @@ function CalendarScheduleSection({
           return (
             <div
               key={slot.id}
-              className="flex items-center gap-3 px-3 py-2 bg-background rounded-[6px] border border-border-light"
+              className="flex items-center gap-3 px-3 py-2 bg-background rounded-sm border border-border-light"
             >
-              <span className={`text-[11px] font-semibold uppercase px-1.5 py-0.5 rounded ${
+              <span className={`text-caption font-medium px-1.5 py-0.5 rounded-sm ${
                 action === "on"
                   ? "bg-success/10 text-success"
                   : "bg-error/10 text-error"
               }`}>
                 {action === "on" ? t("common.on") : t("common.off")}
               </span>
-              <span className="text-[28px] sm:text-[42px] font-bold text-text leading-[1.1] tracking-tight tabular-nums font-mono">
+              <span className="text-h1 text-text tabular-nums">
                 {slot.time}
               </span>
-              <span className="text-[13px] text-text-secondary">
+              <span className="text-small text-text-secondary">
                 {formatDays(slot.days)}
               </span>
             </div>
@@ -502,7 +496,7 @@ function CalendarScheduleSection({
 
       <Link
         to="/calendar"
-        className="inline-block mt-3 text-[11px] text-primary hover:text-primary-hover transition-colors"
+        className="inline-block mt-3 text-micro text-primary hover:text-primary-hover transition-colors"
       >
         {t("modes.editSchedule")}
       </Link>

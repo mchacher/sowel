@@ -13,7 +13,7 @@ The Sowel design system codifies the visual language that emerged from the `spec
 **Three rules, in order**:
 
 1. **The interface synthesizes, it does not inventory.** A zone view tells you _what is happening_ before it lists what could happen. Pills, badges, and aggregate counts are designed to be glanceable in under one second.
-2. **One accent, one rhythm.** The amber `--a-500` is reserved for "a light is on right now" and nothing else. The orchestrated `rise` cascade on first paint is the only motion that touches multiple elements at once.
+2. **One meaning per colour, one rhythm.** Amber means: on or running right now (a light, a plug, a water heater heating, a pump, a charger charging) and nothing else. Orange asks for attention, red reports a fault, green says it works, and open/closed stays neutral. The full role table is in [tokens.md §1.2](tokens.md#12-colour-roles). The orchestrated `rise` cascade on first paint is the only motion that touches multiple elements at once.
 3. **Match the production pattern, then refine.** When the design diverges from `app.sowel.org`, the divergence is intentional and named in the relevant component spec.
 
 These rules echo the [Anthropic frontend-design skill](https://github.com/anthropics/skills/tree/main/skills/frontend-design): _"choice is intentionality, not intensity."_ The system commits to refined minimalism, executes it precisely, and does not chase trends.
@@ -72,8 +72,8 @@ Rules:
 
 Two themes are supported, both selected via `data-theme` on `<html>`:
 
-- **Hybrid** (`data-theme="hybrid"`, default) — neutral zinc base with Sowel amber accent. Daytime-first.
-- **Dark** (`data-theme="dark"`) — Linear-ish night. Same tokens, inverted neutrals, brighter primary/accent.
+- **Hybrid** (`data-theme="hybrid"`, default) — ocean-tinted neutrals (page `#ECF2F7`, white cards), Sowel amber for what is on. Daytime-first.
+- **Dark** (`data-theme="dark"`) — ocean night: the brand hue at night (page `#0E191F`, cards `#17232B`, lighter than the page). Same tokens, inverted neutrals, brighter primary ink.
 
 All component rules read tokens. **A component never branches on `data-theme`** unless absolutely necessary (e.g. dark-only override of an icon-on color contrast — see `eq__icon--light-on`). When such an override is unavoidable, the spec for that component documents it.
 
@@ -105,8 +105,8 @@ The system is designed for incremental adoption: nothing forces a big-bang refac
 
 These are deferred to a future revision:
 
-- **Inter** is used as body font. The Anthropic frontend-design skill discourages it as generic. We accept it for legibility and production parity, but should periodically re-evaluate against pairs like Geist + Roboto Mono, or Söhne + JetBrains Mono.
+- **Inter** is used as body font, in its variable build. Spec 196 kept it: what read as generic was the tracked uppercase labels and the monospace numbers, not Inter. Since then labels are sentence case (uppercase only in table column headers) and numbers are Inter with tabular figures; JetBrains Mono is kept for logs, JSON, identifiers, versions and code ([tokens.md](tokens.md) §2.1). Component specs written before spec 196 (`panel.md`, `cat-head.md`, `activity-item.md`, `mode-row.md`, `strip.md`, `topbar.md`, `dashboard-widget.md`, `modal.md` and the others under `components/`) still show uppercase titles, mono values, bordered cards and the old radii in their CSS: tokens.md wins where they disagree.
 - **No dedicated component for charts** — energy bar/line charts use the current production conventions. A future spec should formalize axis, gridlines, legend.
 - **No formal token versioning** — when token semantics change, add a row in `tokens.md` change log and bump the file header date.
 - **Illustration system** is partially documented (note in `components/dashboard-widget.md`) but the line-art SVGs used in Dashboard widgets are not yet formalized as their own spec. Proposed for v1.1 if the illustration set grows beyond the current dashboard scope.
-- **Dashboard widget radius** is `10 px` in production (arbitrary). Design system targets `--r-md` 8 px. Tolerated divergence — to align in the next dashboard refactor.
+- **Radii and cards** are settled since spec 196 (slice 7b): 6 / 10 / 16 px and full, and a card has no border (a shadow in light, its tone in dark) — [tokens.md](tokens.md) §4 and §5.1. The dashboard tile is a `card` at 10 px like every other card.

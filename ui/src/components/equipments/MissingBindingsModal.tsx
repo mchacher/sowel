@@ -116,13 +116,13 @@ export function MissingBindingsModal({
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40">
-      <div className="bg-surface rounded-[14px] border border-border shadow-xl w-full max-w-[520px] mx-4 max-h-[85vh] flex flex-col">
+      <div className="bg-surface rounded-lg w-full max-w-[520px] mx-4 max-h-[85vh] flex flex-col shadow-lg">
         {/* Header */}
         <div className="flex items-center justify-between px-5 py-4 border-b border-border-light">
-          <h2 className="text-[16px] font-semibold text-text">{t("binding.missingTitle")}</h2>
+          <h2 className="text-lead font-semibold text-text">{t("binding.missingTitle")}</h2>
           <button
             onClick={onClose}
-            className="p-1.5 text-text-tertiary hover:text-text-secondary rounded-[4px] hover:bg-border-light"
+            className="p-1.5 text-text-tertiary hover:text-text-secondary rounded-sm hover:bg-border-light"
           >
             <X size={16} strokeWidth={1.5} />
           </button>
@@ -135,45 +135,44 @@ export function MissingBindingsModal({
               <Loader2 size={20} className="animate-spin text-text-tertiary" />
             </div>
           ) : missing.length === 0 ? (
-            <p className="text-[13px] text-text-secondary py-4">{t("binding.missingNone")}</p>
+            <p className="text-small text-text-secondary py-4">{t("binding.missingNone")}</p>
           ) : (
             <>
-              <p className="text-[13px] text-text-secondary">
+              <p className="text-small text-text-secondary">
                 {t("binding.missingIntro", { count: missing.length })}
               </p>
               <div className="space-y-1">
                 {missing.map((item) => (
                   <label
                     key={item.sourceId}
-                    className="flex items-center gap-2.5 px-2.5 py-2 rounded-[6px] bg-border-light/50 hover:bg-border-light transition-colors duration-150 cursor-pointer"
+                    className="flex items-center gap-2.5 px-2.5 py-2 rounded-sm bg-border-light/50 hover:bg-border-light transition-colors duration-150 cursor-pointer"
                   >
                     <input
                       type="checkbox"
                       checked={selected.has(item.sourceId)}
                       onChange={() => toggle(item.sourceId)}
-                      className="accent-primary"
                     />
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center gap-2">
                         <span
-                          className={`font-mono text-[12px] font-medium ${
-                            item.kind === "data" ? "text-primary" : "text-accent"
+                          className={`font-mono text-caption font-medium ${
+                            item.kind === "data" ? "text-primary" : "text-text-secondary"
                           }`}
                         >
                           {item.alias}
                         </span>
                         {item.category && (
-                          <span className="text-[11px] text-text-tertiary">({item.category})</span>
+                          <span className="text-micro text-text-tertiary">({item.category})</span>
                         )}
                       </div>
-                      <div className="text-[11px] text-text-tertiary truncate">
+                      <div className="text-micro text-text-tertiary truncate">
                         {item.deviceName} · {item.key}
                       </div>
                     </div>
                     {item.historized && (
                       <span
                         title={t("binding.missingHistorizedHint")}
-                        className="flex items-center gap-1 text-[11px] text-text-tertiary flex-shrink-0"
+                        className="flex items-center gap-1 text-micro text-text-tertiary flex-shrink-0"
                       >
                         <LineChart size={12} strokeWidth={1.5} />
                       </span>
@@ -182,28 +181,28 @@ export function MissingBindingsModal({
                 ))}
               </div>
               {historizedCount > 0 && (
-                <p className="flex items-start gap-1.5 text-[12px] text-text-tertiary">
+                <p className="flex items-start gap-1.5 text-caption text-text-tertiary">
                   <LineChart size={13} strokeWidth={1.5} className="mt-0.5 flex-shrink-0" />
                   {t("binding.missingHistorized", { count: historizedCount })}
                 </p>
               )}
             </>
           )}
-          {error && <p className="text-[13px] text-error">{error}</p>}
+          {error && <p className="text-small text-error">{error}</p>}
         </div>
 
         {/* Footer */}
         <div className="flex items-center justify-end gap-2 px-5 py-4 border-t border-border-light">
           <button
             onClick={onClose}
-            className="px-3 py-1.5 text-[13px] text-text-secondary hover:text-text rounded-[6px] hover:bg-border-light"
+            className="px-3 py-1.5 text-small text-text-secondary hover:text-text rounded-sm hover:bg-border-light"
           >
             {t("common.cancel")}
           </button>
           <button
             onClick={handleConfirm}
             disabled={submitting || chosen.length === 0}
-            className="px-3 py-1.5 text-[13px] font-medium text-white bg-primary hover:bg-primary-hover rounded-[6px] disabled:opacity-40 disabled:cursor-not-allowed"
+            className="px-3 py-1.5 text-small font-medium text-white bg-primary-fill hover:bg-primary-fill-hover rounded-sm disabled:opacity-40 disabled:cursor-not-allowed"
           >
             {submitting ? (
               <Loader2 size={14} className="animate-spin" />

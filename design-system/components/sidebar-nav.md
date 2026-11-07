@@ -1,5 +1,7 @@
 # Sidebar navigation (`sb`)
 
+> **Superseded in part by [tokens.md](../tokens.md) (spec 196).** Labels are sentence case and numbers Inter with tabular figures (§2), radii are 6 / 10 / 16 px (§4), and a card or panel has no border (§5.1). Where the CSS below disagrees, tokens.md wins.
+
 > The vertical navigation rail on the left of the desktop view. Contains the Sowel logo, top-level nav items (Dashboard, Maison, Modes, Analyse, Énergie), the zone tree under Maison, and Administration/Réglages pinned at the bottom.
 
 ---
@@ -264,14 +266,14 @@ This pattern came from the user request "il faut les séparer mode analyse et en
 
 ## Accessibility
 
-| Concern             | Implementation                                                                                                                                                                                                                           |
+| Concern | Implementation |
 | ------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------- |
-| Nav landmark        | The sidebar should be a `<nav aria-label="Navigation principale">` in production. The mock uses `<aside>` for visual demo.                                                                                                               |
-| Active item         | Production must set `aria-current="page"` on the active sb**item. The CSS targets `.sb**item--active`, but `aria-current` is the accessible signal.                                                                                      |
-| Keyboard navigation | Each `sb__item` must be focusable. Production wraps the content in a `<Link>` or `<button>`. The mock uses `<div>` purely visual.                                                                                                        |
-| Chevron expand      | The expand chevron should be inside a `<button aria-expanded="true                                                                                                                                                                       | false" aria-controls="…">` for keyboard expand/collapse. |
-| Color contrast      | `--n-600` on `--n-0`: 11.6:1 (AAA). `--n-800` (active text) on `--p-50`: AAA.                                                                                                                                                            |
-| Touch target        | Items are 30 px tall (incl. margin). Below Apple HIG 44 px for touch. **The desktop sidebar is mouse-driven**, so this is acceptable. The mobile equivalent uses a 56 px-tall bottom tab bar (see [mobile-tabbar.md](mobile-tabbar.md)). |
+| Nav landmark | The sidebar should be a `<nav aria-label="Navigation principale">` in production. The mock uses `<aside>` for visual demo. |
+| Active item | Production must set `aria-current="page"` on the active sb**item. The CSS targets `.sb**item--active`, but `aria-current` is the accessible signal. |
+| Keyboard navigation | Each `sb__item` must be focusable. Production wraps the content in a `<Link>` or `<button>`. The mock uses `<div>` purely visual. |
+| Chevron expand | The expand chevron should be inside a `<button aria-expanded="true                                                                                                                                                                       | false" aria-controls="…">` for keyboard expand/collapse. |
+| Color contrast | `--n-600` on `--n-0`: 11.6:1 (AAA). `--n-800` (active text) on `--p-50`: AAA. |
+| Touch target | Items are 30 px tall (incl. margin). Below Apple HIG 44 px for touch. **The desktop sidebar is mouse-driven**, so this is acceptable. The mobile equivalent uses a 56 px-tall bottom tab bar (see [mobile-tabbar.md](mobile-tabbar.md)). |
 
 ---
 

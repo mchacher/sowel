@@ -48,22 +48,22 @@ export function SolarPanelDataPanel({ bindings, status, statusReason }: SolarPan
   }).filter((r): r is { key: DataCategory; label: string; display: string } => r !== null);
 
   return (
-    <div className="bg-surface rounded-[10px] border border-border p-4 mb-6">
+    <div className="card p-4 mb-6">
       <div className="flex items-center justify-between mb-4">
-        <h3 className="text-[14px] font-semibold text-text flex items-center gap-2">
+        <h3 className="text-body font-semibold text-text flex items-center gap-2">
           <SolarPanelIcon size={16} strokeWidth={1.5} className="text-primary" />
           {t("solar.title")}
         </h3>
         <EquipmentStatusBadge status={status} reason={statusReason} size="sm" />
       </div>
       {rows.length === 0 ? (
-        <p className="text-[13px] text-text-tertiary">{t("sensors.noData")}</p>
+        <p className="text-small text-text-tertiary">{t("sensors.noData")}</p>
       ) : (
         <div className="space-y-2">
           {rows.map((r) => (
             <div key={r.key} className="flex items-center justify-between">
-              <span className="text-[13px] text-text-secondary">{r.label}</span>
-              <span className="text-[14px] font-semibold text-text tabular-nums font-mono">
+              <span className="text-small text-text-secondary">{r.label}</span>
+              <span className="text-body font-semibold text-text tabular-nums">
                 {r.display}
               </span>
             </div>
