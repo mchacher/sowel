@@ -702,6 +702,17 @@ describe("PUT /api/v1/equipments/:id — separate supply (spec 179)", () => {
       separateSupply: false,
       localProduction: true,
     },
+    // A meter with its own energy counter: Sowel does not integrate it.
+    {
+      id: "linky-annexe",
+      name: "Annexe",
+      type: "energy_meter",
+      separateSupply: false,
+      bindings: [
+        { alias: "power", category: "power", type: "number" },
+        { alias: "energy", category: "energy", type: "number" },
+      ],
+    },
   ];
 
   beforeEach(async () => {
@@ -716,7 +727,10 @@ describe("PUT /api/v1/equipments/:id — separate supply (spec 179)", () => {
           if (!eq) return null;
           return {
             ...eq,
-            dataBindings: [{ alias: "power", category: "power", type: "number" }],
+            dataBindings:
+              "bindings" in eq
+                ? eq.bindings
+                : [{ alias: "power", category: "power", type: "number" }],
           };
         },
         getAll: () => graph,
@@ -832,6 +846,15 @@ describe("PUT /api/v1/equipments/:id — separate supply (spec 179)", () => {
     const separateFlagged = await put("piscine", { separateSupply: true });
     expect(separateFlagged.statusCode).toBe(400);
     expect(separateFlagged.json().error).toBe("LocalProductionNotApplicable");
+    expect(received).toBeNull();
+  });
+
+  it("refuses local production on a meter with its own energy counter", async () => {
+    // Its history is not integrated by Sowel, so only the Live page would
+    // ever read the sign: two surfaces, two stories.
+    const res = await put("linky-annexe", { localProduction: true });
+    expect(res.statusCode).toBe(400);
+    expect(res.json().error).toBe("LocalProductionNotPowerOnly");
     expect(received).toBeNull();
   });
 

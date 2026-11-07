@@ -99,6 +99,9 @@ function makeStubEquipmentManager(opts: {
   return {
     getById: (id: string) => eqs.find((e) => e.id === id) ?? null,
     getAll: () => eqs,
+    // The pool clamp reports power only, like a Legrand GEM.
+    getDataBindingsWithValues: (id: string) =>
+      id === POOL_ID ? [{ alias: "power", category: "power", type: "number", value: -400 }] : [],
   } as unknown as EquipmentManager;
 }
 
@@ -470,6 +473,34 @@ describe("SelfConsumptionWriter", () => {
       writer.flushPending(true);
 
       expect(value("autoconso", SOLAR_ID)).toBe(3);
+    });
+
+    it("pairs stamped production with the grid minute it belongs to", () => {
+      makeWriter(makeStubEquipmentManager({ pool: { localProduction: true } }));
+
+      // The integrator flushes at T0+65 s, stamped with minute T0+60.
+      at(61);
+      emitEnergyChange(bus, GRID_ID, 4);
+      emitEnergyChange(bus, SOLAR_ID, 0);
+      at(65);
+      emitEnergyChange(bus, POOL_ID, 2, T0 + 60, "production");
+      writer.flushPending(true);
+
+      expect(value("autoconso", SOLAR_ID)).toBe(2);
+    });
+
+    it("carries production of a grid-less minute into the next written one", () => {
+      makeWriter(makeStubEquipmentManager({ pool: { localProduction: true } }));
+
+      // Minute 0: only the integrator's delta, no grid tick — not dropped.
+      emitEnergyChange(bus, POOL_ID, 2, T0, "production");
+      at(60);
+      emitEnergyChange(bus, GRID_ID, 5);
+      emitEnergyChange(bus, SOLAR_ID, 0);
+      writer.flushPending(true);
+
+      expect(value("autoconso", SOLAR_ID)).toBe(2);
+      expect(value("energy", GRID_ID)).toBe(7);
     });
 
     it("never takes a flagged submeter's consumption for solar", () => {

@@ -4,6 +4,7 @@ import type { EquipmentManager } from "../equipments/equipment-manager.js";
 import type { InfluxClient } from "../core/influx-client.js";
 import type { TariffClassifier } from "./tariff-classifier.js";
 import { Point } from "../core/influx-client.js";
+import { countsLocalProduction } from "../equipments/metering.js";
 
 /** How often a bucket left open by a silent stream is swept out (ms). */
 const FLUSH_INTERVAL_MS = 60_000;
@@ -29,6 +30,8 @@ interface MinuteBucket {
   minuteS: number;
   gridWh: number;
   solarWh: number;
+  /** Spec 195 — production of submeters with a panel wired behind them. */
+  localWh: number;
   hasGrid: boolean;
   hasSolar: boolean;
   /**
@@ -108,6 +111,15 @@ export class SelfConsumptionWriter {
 
   /** The minute currently being accumulated, or null before the first tick. */
   private bucket: MinuteBucket | null = null;
+
+  /**
+   * Spec 195 — local production of minutes that closed without a grid tick.
+   * The integrator flushes once a minute on its own clock, so its delta can
+   * land in a minute the grid meter skipped. Unlike the production meter's
+   * solar-only minutes, which stay dropped, it is carried into the next minute
+   * that is written: the grid meter did see that energy, just not then.
+   */
+  private carriedLocalWh = 0;
 
   private unsubscribe: (() => void) | null = null;
   private flushTimer: ReturnType<typeof setInterval> | null = null;
@@ -194,19 +206,30 @@ export class SelfConsumptionWriter {
   private resolveEquipmentRole(
     equipmentId: string,
     alias: "energy" | "production",
-  ): "grid" | "solar" | null {
+  ): "grid" | "solar" | "local" | null {
     const eq = this.equipmentManager.getById(equipmentId);
     if (!eq?.enabled) return null;
     // Spec 195 — a submeter's local production is solar the production meter
     // never saw. Its `energy` is the submeter's consumption and stays out.
-    if (alias === "production") return eq.localProduction === true ? "solar" : null;
+    // Power-derived only: that is where the integrator writes `production`,
+    // so a device binding that happens to carry the name is never read here.
+    if (alias === "production") {
+      return countsLocalProduction(eq, this.equipmentManager.getDataBindingsWithValues(equipmentId))
+        ? "local"
+        : null;
+    }
     if (eq.type === "main_energy_meter") return "grid";
     if (eq.type === "energy_production_meter") return "solar";
     return null;
   }
 
   /** Fold one tick into the open minute, closing the previous one first. */
-  private accumulate(role: "grid" | "solar", value: number, t: number, aligned: boolean): void {
+  private accumulate(
+    role: "grid" | "solar" | "local",
+    value: number,
+    t: number,
+    aligned: boolean,
+  ): void {
     const minuteS = Math.floor(t / 60) * 60;
     const windowS = aligned ? ALIGNED_WINDOW_S : LIVE_WINDOW_S;
 
@@ -219,10 +242,21 @@ export class SelfConsumptionWriter {
     // folds into the open one: misattributing a few Wh across a minute
     // boundary beats dropping them.
     if (!this.bucket) {
-      this.bucket = { minuteS, gridWh: 0, solarWh: 0, hasGrid: false, hasSolar: false, windowS };
+      this.bucket = {
+        minuteS,
+        gridWh: 0,
+        solarWh: 0,
+        localWh: this.carriedLocalWh,
+        hasGrid: false,
+        hasSolar: false,
+        windowS,
+      };
+      this.carriedLocalWh = 0;
     }
 
-    if (role === "grid") {
+    if (role === "local") {
+      this.bucket.localWh += value;
+    } else if (role === "grid") {
       this.bucket.gridWh += value;
       this.bucket.hasGrid = true;
       // HP/HC is classified on the household total, whose window is the grid
@@ -241,6 +275,7 @@ export class SelfConsumptionWriter {
     // A solar-only minute stays undefined — injection needs the grid side —
     // so it is dropped rather than guessed.
     if (!bucket.hasGrid) {
+      this.carriedLocalWh += bucket.localWh;
       this.logger.debug(
         { minuteS: bucket.minuteS, hasSolar: bucket.hasSolar },
         "Energy minute without grid tick — no self-consumption split written",
@@ -249,7 +284,7 @@ export class SelfConsumptionWriter {
     }
 
     const injection = Math.max(0, -bucket.gridWh);
-    const autoconso = Math.max(0, bucket.solarWh - injection);
+    const autoconso = Math.max(0, bucket.solarWh + bucket.localWh - injection);
     const household = Math.max(0, bucket.gridWh) + autoconso;
 
     this.writePoints({

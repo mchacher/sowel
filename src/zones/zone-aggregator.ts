@@ -13,7 +13,7 @@ import type {
 } from "../shared/types.js";
 import { ROOT_ZONE_ID } from "../shared/constants.js";
 import { doorState, isDoorOpenForCount } from "../shared/door-state.js";
-import { isSubmeterEquipment } from "../equipments/metering.js";
+import { countsLocalProduction, isSubmeterEquipment } from "../equipments/metering.js";
 import {
   LIVE_POWER_ALIASES,
   classifyPowerReading,
@@ -606,7 +606,7 @@ export class ZoneAggregator {
         equipment.type,
         withDetails.status,
         bindings,
-        equipment.localProduction === true,
+        countsLocalProduction(equipment, bindings),
       );
       if (equipment.type === "water_valve") {
         this.accumulateWaterValve(acc, bindings);
@@ -683,10 +683,12 @@ export class ZoneAggregator {
     // backwards reports negative watts, and a negative total is a wiring fault
     // the user needs to see. (`PowerSubmeterIntegrator` integrates |P| for
     // energy per spec 091 — that protects a cumulative counter, a different
-    // question.) The one exception is a meter flagged `localProduction`
+    // question.) The one exception is a meter that counts local production
     // (spec 195): its negative watts are a panel producing, not a load, and
     // this sum is the zone's loads — the same positive part its by-usage
-    // slice keeps.
+    // slice keeps. This amends #1116, which found the signed sum correct: a
+    // net export shown as a negative load reads as a wiring fault, and the
+    // panel's output is on the Live page's solar flow instead.
     acc.powerSum += localProduction ? Math.max(0, powerBinding.value) : powerBinding.value;
     acc.powerHasData = true;
   }

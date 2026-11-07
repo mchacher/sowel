@@ -4,7 +4,7 @@ import type { EventBus } from "../core/event-bus.js";
 import type { Logger } from "../core/logger.js";
 import type { EquipmentManager } from "../equipments/equipment-manager.js";
 import type { InfluxClient } from "../core/influx-client.js";
-import { isSubmeterEquipment, NON_SUBMETER_TYPES } from "../equipments/metering.js";
+import { derivesEnergyFromPower, NON_SUBMETER_TYPES } from "../equipments/metering.js";
 
 /**
  * Power-only submeter integration.
@@ -211,13 +211,12 @@ export class PowerSubmeterIntegrator {
   private isPowerOnlySubmeter(equipmentId: string): boolean {
     const eq = this.equipmentManager.getById(equipmentId);
     if (!eq || !eq.enabled) return false;
-    const bindings = this.equipmentManager.getDataBindingsWithValues(equipmentId);
     // A dedicated energy_meter or a metering switch (spec 129) that reports
     // power but not energy — derive its energy from power.
-    if (!isSubmeterEquipment(eq.type, bindings)) return false;
-    const hasPower = bindings.some((b) => b.alias === "power" || b.category === "power");
-    const hasEnergy = bindings.some((b) => b.alias === "energy" || b.category === "energy");
-    return hasPower && !hasEnergy;
+    return derivesEnergyFromPower(
+      eq.type,
+      this.equipmentManager.getDataBindingsWithValues(equipmentId),
+    );
   }
 
   private handleEvent(equipmentId: string, alias: string, value: unknown): void {
@@ -237,7 +236,10 @@ export class PowerSubmeterIntegrator {
     };
 
     const currentW = value;
-    const localProduction = this.equipmentManager.getById(equipmentId)?.localProduction === true;
+    // Only reached for a power-only submeter, so the declaration and the
+    // supply are all that is left of `countsLocalProduction` to check.
+    const eq = this.equipmentManager.getById(equipmentId);
+    const localProduction = eq?.localProduction === true && eq.separateSupply !== true;
     let absW = currentW;
     if (currentW < 0 && !localProduction) {
       if (!state.warnedNegative) {
@@ -326,12 +328,17 @@ export class PowerSubmeterIntegrator {
       "Submeter delta written",
     );
 
+    // Production is stamped with the same minute as its point, so the
+    // SelfConsumptionWriter pairs it with the grid minute it belongs to rather
+    // than whichever is open. Consumption keeps its unstamped event, which its
+    // listeners (EnergyAggregator) only use as a trigger.
     this.eventBus.emit({
       type: "equipment.data.changed",
       equipmentId: eq.id,
       alias,
       value: deltaWh,
       previous: null,
+      ...(alias === "production" && { sourceTimestamp: Math.floor(minuteEpochMs / 1000) }),
     });
   }
 

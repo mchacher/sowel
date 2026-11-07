@@ -55,6 +55,8 @@ interface BuildOpts {
   }>;
   /** Every Flux query the route ran, in order. */
   fluxLog?: string[];
+  /** Bindings per equipment id; the rest get one numeric `power` binding. */
+  bindingsById?: Record<string, Array<{ alias: string; category: string; type: string }>>;
   envTz?: string | undefined;
   /** Spec 160/161 — a stand-in forecaster, for the routes that need one. */
   pvForecaster?: unknown;
@@ -124,9 +126,8 @@ async function buildApp(opts: BuildOpts = {}) {
   const equipmentManager = {
     getAll: () => equipments,
     getById: (id: string) => equipments.find((e) => e.id === id),
-    getDataBindingsWithValues: () => [
-      { alias: "power", category: "power", type: "number", value: 0 },
-    ],
+    getDataBindingsWithValues: (id: string) =>
+      opts.bindingsById?.[id] ?? [{ alias: "power", category: "power", type: "number", value: 0 }],
   } as never;
 
   // tariffClassifier returns the injected config (spec 123 — used for cost wiring).
@@ -210,9 +211,26 @@ describe("Spec 195 — /api/v1/energy/history counts local production", () => {
     expect(prodFlux).toContain('(r.equipmentId == "piscine" and r.alias == "production")');
   });
 
-  it("does not read an unflagged submeter", async () => {
+  it("keeps reading past production once the flag is removed", async () => {
+    // The autoconso written while it was ticked still holds that production;
+    // dropping the series would leave the past with autoconso > production.
     const fluxLog: string[] = [];
     app = await buildApp({ equipments: equipments(false), fluxLog });
+
+    await app.inject({ method: "GET", url: "/api/v1/energy/history?period=day&date=2026-05-30" });
+    const prodFlux = fluxLog.find((f) => f.includes('r.alias == "autoconso"'));
+    expect(prodFlux).toContain('(r.equipmentId == "piscine" and r.alias == "production")');
+  });
+
+  it("never reads a device series that happens to be named `production`", async () => {
+    const fluxLog: string[] = [];
+    app = await buildApp({
+      equipments: equipments(true),
+      fluxLog,
+      bindingsById: {
+        piscine: [{ alias: "production", category: "energy", type: "number" }],
+      },
+    });
 
     await app.inject({ method: "GET", url: "/api/v1/energy/history?period=day&date=2026-05-30" });
     const prodFlux = fluxLog.find((f) => f.includes('r.alias == "autoconso"'));

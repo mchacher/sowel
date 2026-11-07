@@ -7,7 +7,11 @@ import {
   MIN_DURATION_MS,
   TimedActionError,
 } from "../../equipments/timed-action-manager.js";
-import { isSubmeterEquipment, METERING_RELAY_TYPES } from "../../equipments/metering.js";
+import {
+  derivesEnergyFromPower,
+  isSubmeterEquipment,
+  METERING_RELAY_TYPES,
+} from "../../equipments/metering.js";
 import { isTimedCommandEligible, validateDurationSteps } from "../../shared/timed-command.js";
 import type {
   EnergyLoadProfile,
@@ -471,6 +475,18 @@ export function registerEquipmentRoutes(app: FastifyInstance, deps: EquipmentsDe
               ? `${current.name} is fed by a separate supply — its production never reaches the house`
               : `${current.name} is the house total or a production meter — it cannot also carry local production`,
           });
+        }
+        // Only a meter whose energy Sowel derives from power can be split by
+        // sign. One with its own energy counter would keep its history
+        // unchanged while the Live page read its sign: two surfaces, two stories.
+        if (body.localProduction === true) {
+          const details = equipmentManager.getByIdWithDetails(request.params.id);
+          if (!details || !derivesEnergyFromPower(resultingType, details.dataBindings)) {
+            return reply.status(400).send({
+              error: "LocalProductionNotPowerOnly",
+              message: `${current.name} reports its own energy counter — local production applies to a meter that reports power only`,
+            });
+          }
         }
       }
 

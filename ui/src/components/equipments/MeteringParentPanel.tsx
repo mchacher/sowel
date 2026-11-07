@@ -2,7 +2,7 @@ import { useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { GitMerge, Loader2 } from "lucide-react";
 import { updateEquipment } from "../../api";
-import { isSubmeterEquipment } from "../../lib/metering";
+import { derivesEnergyFromPower, isSubmeterEquipment } from "../../lib/metering";
 import type { EquipmentWithDetails } from "../../types";
 
 /**
@@ -66,6 +66,9 @@ export function MeteringParentPanel({
   const current = equipment.meteringParentId ?? "";
   const separate = equipment.separateSupply === true;
   const localProduction = equipment.localProduction === true;
+  // Spec 195 — only a power-only meter is split by sign (the API refuses the
+  // rest). A flag already set stays visible so it can be withdrawn.
+  const offerLocalProduction = localProduction || derivesEnergyFromPower(equipment);
 
   const save = async (patch: {
     meteringParentId?: string | null;
@@ -125,7 +128,9 @@ export function MeteringParentPanel({
         <input
           type="checkbox"
           checked={separate}
-          disabled={saving}
+          // Spec 195 — a panel's output on another supply never reaches the
+          // house: the API refuses the pair, so the box waits for the other.
+          disabled={saving || localProduction}
           onChange={(e) => void save({ separateSupply: e.target.checked })}
         />
         <span className="font-semibold">{t("equipments.metering.separateSupply.title")}</span>
@@ -138,7 +143,7 @@ export function MeteringParentPanel({
       {/* Spec 195 — a panel wired behind this meter: its negative power is
           production. Meaningless off the house supply (the API refuses the
           pair), so the toggle yields to the separate-supply one. */}
-      {!separate && (
+      {!separate && offerLocalProduction && (
         <>
           <label className="flex items-center gap-2 text-[13px] text-text cursor-pointer mt-3 pt-3 border-t border-border">
             <input

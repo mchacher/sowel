@@ -471,6 +471,61 @@ describe("PowerSubmeterIntegrator", () => {
       integ.stop();
     });
 
+    it("stamps the production event with the minute of its point", () => {
+      const { equipmentManager, influxClient } = makeStubs({
+        isPowerOnly: true,
+        localProduction: true,
+      });
+      const stamps: Array<number | undefined> = [];
+      bus.on((e) => {
+        if (e.type === "equipment.data.changed" && e.alias === "production") {
+          stamps.push(e.sourceTimestamp);
+        }
+      });
+      let now = 1_700_000_000_000;
+      const integ = new PowerSubmeterIntegrator(db, bus, equipmentManager, influxClient, logger, {
+        now: () => now,
+      });
+      integ.init();
+      integ.start();
+      emitPower(bus, "eq-pac", -600);
+      now += 60_000;
+      emitPower(bus, "eq-pac", -600);
+      integ.flushAll();
+
+      expect(stamps).toEqual([Math.floor(now / 60_000) * 60]);
+      integ.stop();
+    });
+
+    it("pending production survives a restart", () => {
+      const { equipmentManager, influxClient } = makeStubs({
+        isPowerOnly: true,
+        localProduction: true,
+        influxConnected: false,
+      });
+      let now = 1_700_000_000_000;
+      const first = new PowerSubmeterIntegrator(db, bus, equipmentManager, influxClient, logger, {
+        now: () => now,
+      });
+      first.init();
+      first.start();
+      emitPower(bus, "eq-pac", -600);
+      now += 60_000;
+      emitPower(bus, "eq-pac", -600);
+      first.stop();
+
+      const writePoint = vi.fn();
+      const connected = { isConnected: () => true, writePoint } as unknown as InfluxClient;
+      const second = new PowerSubmeterIntegrator(db, bus, equipmentManager, connected, logger, {
+        now: () => now,
+      });
+      second.init();
+      second.flushAll();
+
+      const point = writePoint.mock.calls.map(pointOf).find((p) => p.alias === "production");
+      expect(point?.value).toBeCloseTo(10, 5); // 600 W × 60 s
+    });
+
     it("an unflagged meter keeps reading negative power as a backwards clamp (spec 091)", () => {
       const { equipmentManager, influxClient, writePoint } = makeStubs();
       let now = 1_700_000_000_000;

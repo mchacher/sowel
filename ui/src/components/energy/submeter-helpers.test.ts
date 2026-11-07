@@ -624,6 +624,13 @@ describe("local production (spec 195)", () => {
     expect(localProductionW(eqs, NOW)).toBe(512);
   });
 
+  it("ignores the flag on a meter with its own energy counter, as the history does", () => {
+    const eq = makeEquipment("p", "Annexe", { power: -300, localProduction: true });
+    eq.dataBindings.push(makeBinding({ alias: "energy", category: "energy", value: 12_000 }));
+    expect(readSubmeterReading(eq, NOW).power).toBe(300);
+    expect(localProductionW([eq], NOW)).toBeNull();
+  });
+
   it("is null when nothing is producing, so solar stays the production meter's", () => {
     const drawing = makeEquipment("p", "Piscine", { power: 300, localProduction: true });
     expect(localProductionW([drawing], NOW)).toBeNull();

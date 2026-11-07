@@ -6,7 +6,7 @@
 
 import type { EquipmentStatus, EquipmentWithDetails } from "../../types";
 import { pickSubmeterColor } from "./submeterPalette";
-import { isSubmeterEquipment } from "../../lib/metering";
+import { countsLocalProduction, isSubmeterEquipment } from "../../lib/metering";
 import {
   BUDGET_LEARNING_MS,
   classifyPowerReading,
@@ -85,7 +85,7 @@ export function readSubmeterReading(
   });
   if (verdict === "current") {
     const value = binding!.value as number;
-    const power = eq.localProduction ? Math.max(0, value) : Math.abs(value);
+    const power = countsLocalProduction(eq) ? Math.max(0, value) : Math.abs(value);
     return { power, unknown: null, lastUpdated: binding!.lastUpdated };
   }
   return {
@@ -111,7 +111,7 @@ export function localProductionW(
   let total = 0;
   let any = false;
   for (const eq of equipments) {
-    if (!eq.localProduction || eq.separateSupply || !isSubmeterEquipment(eq)) continue;
+    if (!countsLocalProduction(eq)) continue;
     const binding = eq.dataBindings.find((b) => b.alias === "power");
     const verdict = classifyPowerReading({
       status: eq.status,

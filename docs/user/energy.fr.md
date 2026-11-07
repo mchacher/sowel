@@ -177,11 +177,13 @@ Un petit panneau peut être raccordé derrière un sous-compteur plutôt que via
 
 Dites-le sur le compteur : ouvrez sa page d'équipement et cochez **Une production locale passe par ce compteur**. À partir de là :
 
-- la part du circuit ne garde que ce qu'il consomme (la partie positive) ;
+- la part du circuit garde la partie positive de sa mesure. La pince mesure le circuit **net du panneau** : tant que le panneau couvre une partie de la consommation de la pompe, cette part n'apparaît ni en consommation ni en production ;
 - la partie négative compte comme **production solaire** de la maison : elle s'ajoute à la production totale, à l'autoconsommation et à la consommation de la maison qui en est déduite ;
 - sur la page en direct, la ligne du circuit n'affiche que sa consommation et la production du panneau rejoint le flux solaire.
 
-Cela s'applique à partir du moment où la case est cochée — l'historique n'est pas réécrit. Il faut qu'un équipement **Compteur d'Énergie (production)** soit configuré, puisque c'est là que l'autoconsommation est enregistrée. Ce n'est pas combinable avec **Alimenté par un autre compteur** : la production de ce panneau n'atteint jamais votre compteur principal.
+Cela fonctionne que le circuit consomme ou produise à un instant donné : chaque intervalle entre deux mesures est découpé au point où la puissance passe par zéro. Cela s'applique à partir du moment où la case est cochée — l'historique n'est pas réécrit ; la décocher plus tard garde ce qui a déjà été compté. Il faut qu'un équipement **Compteur d'Énergie (production)** soit configuré, puisque c'est là que l'autoconsommation est enregistrée.
+
+La case n'est proposée que sur un compteur qui remonte une puissance seule (Sowel en calcule l'énergie) : un compteur doté de son propre index d'énergie ne peut pas être découpé par le signe. Ce n'est pas combinable avec **Alimenté par un autre compteur** : la production de ce panneau n'atteint jamais votre compteur principal. Si le compteur est déclaré dans un autre (**Déjà compté par**), la pince englobante voit aussi le panneau et n'est pas découpée : cochez la case sur le compteur le plus interne, celui qui porte seul le panneau.
 
 Les totaux (HP / HC, autoconsommation) restent identiques entre les deux modes.
 
@@ -304,4 +306,4 @@ Les données antérieures à 7 jours ne vivent que dans les buckets horaire et j
 
 Cela veut dire que vos sous-compteurs ne couvrent pas la majorité de la consommation du compteur principal, ce qui est normal : le compteur principal voit tout ce qui consomme dans la maison, alors que les sous-compteurs ne couvrent typiquement que des circuits dédiés à forte puissance. Le résidu correspond aux "autres circuits".
 
-Si le résidu est **négatif** (borné à zéro dans le graphique), c'est qu'un de vos sous-compteurs remonte plus que ce que voit le compteur principal, généralement une pince câblée à l'envers ou un défaut de calibration. L'intégrateur borne les deltas négatifs à zéro et logue un WARN à la première occurrence.
+Si le résidu est **négatif** (borné à zéro dans le graphique), c'est qu'un de vos sous-compteurs remonte plus que ce que voit le compteur principal, généralement une pince câblée à l'envers ou un défaut de calibration. Une pince à puissance seule qui lit une valeur négative est intégrée en valeur absolue, avec un WARN logué une fois — sauf si elle est déclarée comme [voyant une production locale](#quand-un-panneau-solaire-est-raccorde-derriere-un-sous-compteur).

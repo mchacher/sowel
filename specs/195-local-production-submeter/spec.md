@@ -35,18 +35,31 @@ and read the sign accordingly on that meter only.
 
 - `Equipment.localProduction` (migration `041`), editable in the metering panel,
   refused on the house total / production types and with `separateSupply`
-  (that panel's output never reaches the main meter). Checked on the resulting
-  state, like spec 179.
+  (that panel's output never reaches the main meter), checked on the resulting
+  state like spec 179; refused on a meter with its own energy counter
+  (`LocalProductionNotPowerOnly`), since only power-derived energy can be split
+  by sign. Every surface reads it through `countsLocalProduction` (declared, on
+  the house supply, power-only), mirrored in the UI.
 - Integrator, flagged meters only: each trapezoid is split at its zero crossing.
   The positive area stays `energy` (the slice, the computed cumuls); the
   negative area is written as a separate `production` delta on the submeter and
-  emitted on the event bus.
+  emitted on the event bus, stamped with the minute of its point. A meter that
+  alternates between drawing and producing is split interval by interval.
 - `SelfConsumptionWriter`: a flagged meter's `production` delta is added to the
   minute's solar. `autoconso`, `injection` and `household` follow from the
-  existing arithmetic; `autoconso + injection ≤ solar` still holds.
-- `/energy/history`: `prod` adds the `production` series of flagged meters.
+  existing arithmetic; `autoconso + injection ≤ solar` still holds. A minute
+  holding local production but no grid tick carries it into the next written
+  minute (the integrator flushes on its own clock); the production meter's own
+  solar-only minutes are still dropped, as before.
+- `/energy/history`: `prod` adds the `production` series of every submeter
+  without a binding of that name, whatever its current flag — unticking must
+  not strip past production that the autoconso written at the time still holds.
 - Live: a flagged row shows `max(0, P)`; the Live diagram adds the negative part
-  of flagged, current readings to solar; the zone power sum counts `max(0, P)`.
+  of flagged, current readings to solar.
+- Zone power sum counts `max(0, P)` for a flagged meter. **This amends #1116**,
+  which found the signed sum correct: the sum is the zone's loads, a net export
+  displayed as a negative load reads as a wiring fault, and the panel's output
+  now shows on the Live solar flow.
 
 ## Out of scope
 
@@ -60,6 +73,17 @@ and read the sign accordingly on that meter only.
   meter): per-equipment, unchanged.
 - **PV forecast / health**: they model the declared array, which this panel is
   not part of.
+- **The energy display feed** (`GET /equipments?role=submeter`) still serves the
+  raw signed power; the display firmware keeps its own reading. Follow-up.
+- **Nested meters.** A parent clamp (spec 173) also sees the panel and is not
+  split; the flag belongs on the innermost meter carrying the panel. Documented,
+  not enforced.
+- **A clamp measures net.** While the panel covers part of the circuit's draw,
+  that part is in neither the slice nor production. Only a clamp on the panel
+  itself could see it.
+- **A main meter posting aligned 30-minute windows** (Netatmo / Legrand): the
+  per-minute pairing is approximate there; the carry-over keeps the energy, not
+  its exact minute.
 
 ## Acceptance criteria
 

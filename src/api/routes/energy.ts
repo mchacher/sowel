@@ -253,11 +253,20 @@ export function registerEnergyRoutes(app: FastifyInstance, deps: EnergyDeps): vo
       // `-energy-hourly`. Fall back to it when the primary bucket is empty.
       const prodMap = new Map<string, { prod: number; autoconso: number; injection: number }>();
       if (productionEquipmentId) {
-        // Spec 195 — what the submeters flagged `localProduction` produced is
-        // production too, and already inside autoconso / injection.
+        // Spec 195 — what a submeter's local production produced is production
+        // too, and already inside autoconso / injection. Read from every
+        // submeter, whatever its flag says TODAY: unticking it must not strip
+        // past production while the autoconso written at the time keeps it.
+        // `production` is the integrator's alias; a meter carrying a binding of
+        // that name is left out so a device series is never mistaken for it.
         const localProducerIds = equipmentManager
           .getAll()
-          .filter((eq) => eq.localProduction === true)
+          .filter((eq) => !NON_SUBMETER_TYPES.has(eq.type))
+          .filter((eq) =>
+            equipmentManager
+              .getDataBindingsWithValues(eq.id)
+              .every((b) => b.alias !== "production"),
+          )
           .map((eq) => eq.id);
         for (const b of buckets) {
           const prodPoints = await queryProductionPoints(
