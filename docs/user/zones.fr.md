@@ -113,13 +113,15 @@ Chaque zone dispose d'un panneau **Activité** en direct sur le côté droit de 
 
 Le panneau se lit comme un journal, du plus récent au plus ancien : une ligne par événement, son heure à gauche, un fil discret qui relie les événements. Quand le journal passe à un autre moment de la journée, un petit repère l'indique : « Ce matin », « Cette nuit », « Hier soir », « Lundi après-midi ». Le moment de la journée en cours n'en porte pas. Les moments suivent l'heure locale : la nuit avant 6 h, le matin jusqu'à midi, l'après-midi jusqu'à 18 h, le soir ensuite.
 
+Le journal garde les événements les plus récents, pas une durée fixe : les 100 derniers sur ordinateur, les 10 derniers sur téléphone, jamais plus vieux que 7 jours. Le sous-titre à côté du titre dit jusqu'où il remonte, d'après le plus ancien événement affiché : « depuis 14:05 », « depuis hier 18:12 », « depuis lundi 07:30 ». Dans une maison active, cent événements peuvent ne couvrir que quelques heures. La valeur d'un ordre s'écrit comme partout ailleurs dans l'app : « Marche » / « Arrêt », « 20,5° » pour une consigne.
+
 ![Vue zone avec le panneau Activité dans la colonne droite](../screenshots/activity-zone-view-fr.png)
 
 ### Ce qui est tracé
 
 | Catégorie        | Déclencheur                                                                               | Exemple                                                       |
 | ---------------- | ----------------------------------------------------------------------------------------- | ------------------------------------------------------------- |
-| **Ordre**        | Tout ordre dispatché sur un équipement par une recette, un mode, un bouton, l'API         | `Lumière → ON manuel`, `Lumière → OFF par Motion Light`       |
+| **Ordre**        | Tout ordre dispatché sur un équipement par une recette, un mode, un bouton, l'API         | `Lumière → Marche manuel`, `Lumière → Arrêt par Motion Light` |
 | **Mouvement**    | Front montant d'un capteur de présence (catégorie binding `motion`)                       | `Mouvement détecté sur PIR Salon`                             |
 | **Recette**      | Démarrage ou arrêt d'une instance de recette                                              | `Recette Motion Light démarrée`                               |
 | **Mode**         | Activation ou désactivation d'un mode                                                     | `Mode Nuit activé`                                            |
@@ -131,7 +133,7 @@ Chaque ligne indique **qui a déclenché l'événement** : nom de la recette, no
 
 ### Fusion des ordres simultanés
 
-Quand une recette dispatche plusieurs ordres identiques en rafale (par exemple Motion Light qui éteint trois appliques au même instant), le fil regroupe le tout en une seule ligne avec un compteur : `Applique x 1 ×3 → OFF par Motion Light`. La fenêtre est de 500 ms ; même alias, même valeur et même source sont requis pour la fusion.
+Quand une recette dispatche plusieurs ordres identiques en rafale (par exemple Motion Light qui éteint trois appliques au même instant), le fil regroupe le tout en une seule ligne avec un compteur : `Applique x 1 ×3 → Arrêt par Motion Light`. La fenêtre est de 500 ms ; même alias, même valeur et même source sont requis pour la fusion.
 
 ### Basculer l'activité des sous-zones
 
