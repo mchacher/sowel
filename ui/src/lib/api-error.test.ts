@@ -81,4 +81,10 @@ describe("apiErrorText", () => {
     expect(apiErrorText("boom")).toBe("Une erreur est survenue");
     expect(apiErrorText(new Error(""))).toBe("Une erreur est survenue");
   });
+
+  it("never shows the raw text of an error that did not come from the API", async () => {
+    await i18n.changeLanguage("fr");
+    const parse = new SyntaxError(`Unexpected token '<', "<!doctype "... is not valid JSON`);
+    expect(apiErrorText(parse)).toBe("Une erreur est survenue");
+  });
 });

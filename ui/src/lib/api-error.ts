@@ -50,10 +50,14 @@ export function apiErrorMessage(err: unknown, t: TFunction): ApiErrorText {
  * components, so `t` defaults to the app's i18next instance; the text is in the language
  * of the moment of the failure. Same distinctions as `apiErrorMessage` (429, no answer,
  * 5xx, 404 each have their words; a 4xx keeps the server's own message), and the generic
- * « Une erreur est survenue » when nothing meaningful is left — never an English
- * « Failed to … ».
+ * « Une erreur est survenue » for everything else — never an English « Failed to … ».
+ * Unlike `apiErrorMessage`, an error that did not come from the API (a JSON parse of an
+ * HTML page, a TypeError) does not show its raw English text: only the server writes
+ * for the user.
  */
 export function apiErrorText(err: unknown, t: TFunction = i18n.t.bind(i18n)): string {
+  const status = apiErrorStatus(err);
+  if (status === null) return t("common.error");
   const { title, message } = apiErrorMessage(err, t);
   return message || title;
 }

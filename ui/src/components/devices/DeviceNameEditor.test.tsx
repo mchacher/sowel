@@ -37,7 +37,7 @@ describe("DeviceNameEditor failure (#1124)", () => {
 
   it("falls back to the translated save failure", async () => {
     await i18n.changeLanguage("fr");
-    await renameTo(vi.fn().mockRejectedValue("boom"));
+    await renameTo(vi.fn().mockRejectedValue(new TypeError("Cannot read properties of undefined")));
     expect(await screen.findByText("Échec de la sauvegarde")).toBeTruthy();
   });
 });

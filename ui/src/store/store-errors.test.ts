@@ -126,6 +126,12 @@ describe.each(listStores)("$name load failure", ({ apiFn, load, error }) => {
     expect(error()).toBe("Sowel ne répond pas. Vérifiez la connexion puis réessayez.");
   });
 
+  it("calls a 5xx a server error, never the server's raw text", async () => {
+    mocked(apiFn).mockRejectedValueOnce(new ApiError(500, "SqliteError: database is locked"));
+    await load();
+    expect(error()).toBe("Le serveur n'a pas pu traiter la demande. Réessayez dans un moment.");
+  });
+
   it("calls a 404 not found", async () => {
     mocked(apiFn).mockRejectedValueOnce(new ApiError(404, "Not Found"));
     await load();
