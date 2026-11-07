@@ -99,10 +99,20 @@ The maps are static and the installation is not, so the script **refuses to writ
 
 ```js
 await page.addStyleTag({
-  content: '.bg-amber-500[role="status"][aria-live="polite"]{display:none!important}',
+  content: 'div.bg-warning-ink[role="status"][aria-live="polite"]{display:none!important}',
 });
 // then assert it is gone rather than trusting the injection
 ```
+
+The selector follows `ShadowBanner.tsx`; spec 196 renamed its class (it was `.bg-amber-500`), so check the component before trusting this line. The instance `docker-compose.docs.yml` starts is not a shadow anyway (no `SOWEL_SHADOW_MODE`), so the banner only matters on one.
+
+**Gotchas met while shooting the spec 196 set (issue #1127):**
+
+- **Offline badges.** Since spec 116 the Home rows flag an equipment whose devices are offline, and the fixture marks every device offline: every row of the Home view carries a red "Disconnected". For the structural shots, restore a scratch copy of the fixture with `devices.status = 'online'`, `last_seen` and `device_data.last_updated` set a few minutes ahead of now (a power reading goes stale after 2 minutes). Never commit that copy.
+- **Order-confirmation alarms.** The restored recipes send orders at start; with no integration behind them, each one raises an "Order not confirmed (integration unreachable)" alarm 60 s later, which lands in the Activity panel. Shoot the Activity views in the first minute after the restart.
+- **Plugins.** After a restore the instance downloads every package from GitHub, which needs `NODE_EXTRA_CA_CERTS` behind a TLS proxy (a compose override kept outside the repo) and spends the unauthenticated GitHub API quota (60 calls an hour): keep the `docs-plugins` volume between resets (`docker volume rm` the data and InfluxDB volumes rather than `down -v`) until the session ends. The fixture's package versions are old, so the top bar advertises pending updates; update them once and restore with that `plugins` table.
+- **Logins.** The login endpoint is rate-limited, and the UI rotates its refresh token: seed the tokens in `localStorage` once per browser context, not on every navigation, or the second page lands on the login screen.
+- **Page height.** The app scrolls inside `<main>`, so `fullPage: true` normally returns the viewport. A stray absolutely-positioned `.sr-only` span can stretch the document (the Equipments page did, to 2,826 px of empty background): check every image's size.
 
 **2. Deploy fixture locally + shoot (per language)**
 

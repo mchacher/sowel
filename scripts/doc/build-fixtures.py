@@ -91,6 +91,15 @@ MODE_TRANSLATE = {
     "Lumière nuit": "Night Lighting",
 }
 
+# Saved charts are listed on the Analyse page and named by the household.
+# The two Calendar week profiles, `Travail` and `Vacances`, are not: they are
+# built-in rows seeded in French by migration 001, which every install shows
+# in every language, so the EN fixture keeps them as they are.
+CHART_TRANSLATE = {
+    "Bureau T / HR": "Office T / RH",
+    "T Extérieure": "Outdoor T",
+}
+
 # Names that may legitimately stay as they are in the EN fixture: acronyms,
 # model codes, product names. Everything else carrying a French accent is a
 # map that has not caught up.
@@ -266,7 +275,9 @@ def anonymize(backup: dict) -> dict:
     new_settings = []
     for s in t["settings"]:
         k = s["key"]
-        if k.startswith("integration.") or k.startswith("mqtt.") or k.startswith("z2m."):
+        # `history.influx.*` held the production InfluxDB URL and access
+        # token (pre-spec-053 settings that nothing reads any more).
+        if k.startswith(("integration.", "mqtt.", "z2m.", "history.influx.")):
             continue
         if k == "home.name":
             s = {**s, "value": NEUTRAL_HOME_NAME_FR}
@@ -324,6 +335,9 @@ def translate_to_en(backup: dict) -> dict:
     for m in t.get("modes", []):
         if m["name"] in MODE_TRANSLATE:
             m["name"] = MODE_TRANSLATE[m["name"]]
+    for c in t.get("chart_configs", []):
+        if c["name"] in CHART_TRANSLATE:
+            c["name"] = CHART_TRANSLATE[c["name"]]
     for s in t["settings"]:
         if s["key"] == "home.name":
             s["value"] = HOME_NAME_EN
@@ -373,7 +387,7 @@ def assert_english(backup: dict) -> None:
     """
     t = backup["tables"]
     offenders = []
-    for table in ("zones", "equipments", "modes"):
+    for table in ("zones", "equipments", "modes", "chart_configs"):
         for row in t.get(table, []):
             name = row.get("name") or ""
             if name in EN_ALLOWED_NON_ENGLISH:
@@ -385,7 +399,8 @@ def assert_english(backup: dict) -> None:
         for o in sorted(set(offenders)):
             print(f"    {o}", file=sys.stderr)
         print(
-            "\nAdd them to ZONE_TRANSLATE / EQUIPMENT_TRANSLATE / MODE_TRANSLATE,\n"
+            "\nAdd them to ZONE_TRANSLATE / EQUIPMENT_TRANSLATE / MODE_TRANSLATE /\n"
+            "CHART_TRANSLATE,\n"
             "or to EN_ALLOWED_NON_ENGLISH if the name is deliberately kept.\n"
             "Then read the printed name lists: an unaccented French word such as\n"
             "`Store` passes this check and still has to be translated by hand.",
@@ -443,7 +458,7 @@ def main() -> None:
     print("\n--- EN fixture summary ---")
     _summary(en)
     print("\n--- EN names, read these: an unaccented French word passes every check ---")
-    for table in ("zones", "equipments", "modes"):
+    for table in ("zones", "equipments", "modes", "calendar_profiles", "chart_configs"):
         names = sorted({r["name"] for r in en["tables"].get(table, [])})
         print(f"  {table}: {names}")
 

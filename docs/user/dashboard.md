@@ -135,4 +135,10 @@ The dashboard is personal -- each user has their own widget layout. Admin and re
 - **Keep it focused**: The dashboard works best with 6--12 widgets. Too many widgets reduce the at-a-glance value.
 - **Use zone widgets for overview**: A zone "Sensors" widget for each floor gives you whole-house temperature at a glance.
 - **Use equipment widgets for control**: Put your most-used lights and shutters on the dashboard for one-tap access.
-- **Mobile-friendly**: On mobile, widgets stack in a single column. Put your most important widgets at the top.
+- **Mobile-friendly**: On a phone, widgets become compact tiles, two per row; a tablet shows three per row. Put your most important widgets at the top.
+
+![Dashboard on a phone: compact tiles, two per row](../screenshots/dashboard-mobile-en.png)
+
+The dashboard follows the theme chosen in **Settings → Theme**: Light, Dark, or System (the one your device uses).
+
+![Dashboard in the dark theme](../screenshots/dashboard-dark-en.png)
