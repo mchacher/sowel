@@ -1,5 +1,6 @@
 import type { TFunction } from "i18next";
 import { ApiError } from "../api/client";
+import i18n from "../i18n";
 
 /** What to tell the user about a failed request. */
 export interface ApiErrorText {
@@ -42,4 +43,17 @@ export function apiErrorMessage(err: unknown, t: TFunction): ApiErrorText {
   }
   const raw = err instanceof Error ? err.message : "";
   return { title: t("common.error"), message: raw, retryable: false };
+}
+
+/**
+ * Issue #1124 — the one line a Zustand store keeps in its `error` field. Stores are not
+ * components, so `t` defaults to the app's i18next instance; the text is in the language
+ * of the moment of the failure. Same distinctions as `apiErrorMessage` (429, no answer,
+ * 5xx, 404 each have their words; a 4xx keeps the server's own message), and the generic
+ * « Une erreur est survenue » when nothing meaningful is left — never an English
+ * « Failed to … ».
+ */
+export function apiErrorText(err: unknown, t: TFunction = i18n.t.bind(i18n)): string {
+  const { title, message } = apiErrorMessage(err, t);
+  return message || title;
 }

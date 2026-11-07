@@ -18,6 +18,7 @@ import {
 } from "../api";
 import { useOrderTiming } from "./useOrderTiming";
 import { coalesceCalls } from "../lib/coalesce-calls";
+import { apiErrorText } from "../lib/api-error";
 
 interface EquipmentsState {
   equipments: EquipmentWithDetails[];
@@ -77,7 +78,7 @@ export const useEquipments = create<EquipmentsState>((set, get) => ({
     } catch (err) {
       set({
         loading: false,
-        error: err instanceof Error ? err.message : "Failed to fetch equipments",
+        error: apiErrorText(err),
       });
     }
   },

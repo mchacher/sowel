@@ -1,6 +1,7 @@
 import { create } from "zustand";
 import type { ZoneAggregatedData } from "../types";
 import { getZoneAggregation } from "../api";
+import { apiErrorText } from "../lib/api-error";
 
 interface ZoneAggregationState {
   data: Record<string, ZoneAggregatedData>;
@@ -24,7 +25,7 @@ export const useZoneAggregation = create<ZoneAggregationState>((set) => ({
     } catch (err) {
       set({
         loading: false,
-        error: err instanceof Error ? err.message : "Failed to fetch zone aggregation",
+        error: apiErrorText(err),
       });
     }
   },

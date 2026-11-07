@@ -1,7 +1,7 @@
 import { describe, it, expect, afterEach } from "vitest";
 import i18n from "../i18n";
 import { ApiError } from "../api/client";
-import { apiErrorMessage, apiErrorStatus } from "./api-error";
+import { apiErrorMessage, apiErrorStatus, apiErrorText } from "./api-error";
 
 // Spec 196, slice 2b — a 429 used to reach the user as « Équipement introuvable »
 // over the server's raw « Too Many Requests ». Each kind of failure now has its words.
@@ -52,5 +52,33 @@ describe("apiErrorMessage", () => {
   it("knows no status for an error that did not come from the API", () => {
     expect(apiErrorStatus(new Error("boom"))).toBeNull();
     expect(apiErrorMessage(new Error("boom"), t).message).toBe("boom");
+  });
+});
+
+// Issue #1124 — the one line a store keeps, with no `t` at hand.
+describe("apiErrorText", () => {
+  afterEach(async () => {
+    await i18n.changeLanguage("en");
+  });
+
+  it("uses the app's i18next instance and the language of the moment", async () => {
+    await i18n.changeLanguage("fr");
+    expect(apiErrorText(new ApiError(429, "Too Many Requests"))).toBe(
+      "Trop de demandes en peu de temps. Réessayez dans quelques secondes.",
+    );
+    await i18n.changeLanguage("en");
+    expect(apiErrorText(new ApiError(429, "Too Many Requests"))).toBe(
+      "Too many requests in a short time. Try again in a few seconds.",
+    );
+  });
+
+  it("keeps the server's message for a refused request", () => {
+    expect(apiErrorText(new ApiError(409, "Name already taken"))).toBe("Name already taken");
+  });
+
+  it("falls back to the generic translated line when no message is left", async () => {
+    await i18n.changeLanguage("fr");
+    expect(apiErrorText("boom")).toBe("Une erreur est survenue");
+    expect(apiErrorText(new Error(""))).toBe("Une erreur est survenue");
   });
 });
