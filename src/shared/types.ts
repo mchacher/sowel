@@ -1824,6 +1824,17 @@ export type EngineEvent =
       source?: OrderSource;
       /** Spec 188 O2 — when the dispatch began (ms), before any retry. */
       startedAt?: number;
+      /**
+       * Issue #1122 — this order is one step of a logical order (a VMC `speed`
+       * decomposed into relay orders), named here. A real dispatch otherwise.
+       */
+      partOf?: string;
+      /**
+       * Issue #1122 — the logical order whose steps were emitted above with
+       * `partOf`. Nothing was dispatched under this alias: it exists so the
+       * activity feed shows one line, and consumers of real dispatches skip it.
+       */
+      composite?: true;
     }
   | {
       type: "equipment.order.failed";

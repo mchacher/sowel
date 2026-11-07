@@ -1068,6 +1068,22 @@ export class EquipmentManager {
     value: unknown,
     source?: OrderSource,
   ): Promise<{ success: boolean; error?: string }> {
+    return this.runOrder(equipmentId, alias, value, source);
+  }
+
+  /**
+   * `partOf` names the logical order this one is a step of (a VMC `speed`
+   * decomposed into relay orders). It rides on the step's outcome event so
+   * the activity feed shows the logical order once instead of every step
+   * (issue #1122); everything else treats the step as an ordinary order.
+   */
+  private async runOrder(
+    equipmentId: string,
+    alias: string,
+    value: unknown,
+    source?: OrderSource,
+    partOf?: string,
+  ): Promise<{ success: boolean; error?: string }> {
     const equipment = this.getById(equipmentId);
     if (!equipment) {
       throw new EquipmentError("Equipment not found", 404);
@@ -1146,6 +1162,7 @@ export class EquipmentManager {
         lastError: err instanceof Error ? err.message : String(err),
         source,
         startedAt,
+        partOf,
       });
       throw err;
     }
@@ -1159,6 +1176,7 @@ export class EquipmentManager {
       lastError,
       source,
       startedAt,
+      partOf,
     });
 
     if (successes === 0 && lastError) {
@@ -1236,9 +1254,19 @@ export class EquipmentManager {
     lastError?: string;
     source?: OrderSource;
     startedAt?: number;
+    partOf?: string;
   }): void {
-    const { equipment, alias, resolvedValue, successes, targets, lastError, source, startedAt } =
-      ctx;
+    const {
+      equipment,
+      alias,
+      resolvedValue,
+      successes,
+      targets,
+      lastError,
+      source,
+      startedAt,
+      partOf,
+    } = ctx;
     if (successes > 0) {
       this.logger.info(
         {
@@ -1257,6 +1285,7 @@ export class EquipmentManager {
         value: resolvedValue,
         source,
         ...(startedAt !== undefined ? { startedAt } : {}),
+        ...(partOf !== undefined ? { partOf } : {}),
       });
       // Gate command: mark state as "unknown" until the next sensor update.
       this.trackGatePending(equipment, alias);
@@ -1462,7 +1491,7 @@ export class EquipmentManager {
     }
 
     for (const step of steps) {
-      const res = await this.executeOrder(equipmentId, step.relay, step.value, source);
+      const res = await this.runOrder(equipmentId, step.relay, step.value, source, "speed");
       if (!res.success) {
         // Stop on the first failing step. Because breaks come before makes, the
         // motor is left in a safe partial state (the target winding not energized).
@@ -1473,6 +1502,19 @@ export class EquipmentManager {
         return res;
       }
     }
+
+    // The logical order itself, once every step went through: this is the one
+    // line the activity feed shows (issue #1122). `composite` tells the
+    // confirmation tracker and the capacity arbiter that the steps above were
+    // the real dispatches and already reached them.
+    this.eventBus.emit({
+      type: "equipment.order.executed",
+      equipmentId,
+      orderAlias: "speed",
+      value: target,
+      source,
+      composite: true,
+    });
 
     // Optimistic reflection so the UI updates immediately, even when the relays
     // report no state feedback. The computed `speed` (from relay state) refines

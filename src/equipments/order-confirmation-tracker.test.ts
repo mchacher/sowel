@@ -200,6 +200,20 @@ describe("OrderConfirmationTracker", () => {
     expect(alarmsRaised().length).toBe(0);
   });
 
+  it("ignores a composite order: its steps are what gets confirmed (#1122)", () => {
+    eventBus.emit({
+      type: "equipment.order.executed",
+      equipmentId: "eq-1",
+      orderAlias: "state",
+      value: "ON",
+      composite: true,
+    });
+    vi.advanceTimersByTime(60_000);
+
+    expect(unconfirmedEvents().length).toBe(0);
+    expect(alarmsRaised().length).toBe(0);
+  });
+
   it("confirms immediately when the state already holds the ordered value", () => {
     bindingValue = "OFF";
     emitOrder("OFF");

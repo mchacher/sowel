@@ -181,7 +181,12 @@ export class ActivityBuffer {
     orderAlias: string;
     value: unknown;
     source?: ActivityItem["source"];
+    partOf?: string;
   }): void {
+    // A step of a logical order (a VMC relay switched for a `speed` change):
+    // the logical order gets its own line, the steps would read as duplicates
+    // of it (issue #1122).
+    if (event.partOf !== undefined) return;
     const equipment = this.equipmentManager.getById(event.equipmentId);
     if (!equipment) return;
     const momentary = this.momentaryCategory(event.equipmentId, event.orderAlias);
