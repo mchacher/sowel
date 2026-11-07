@@ -1,7 +1,7 @@
 import { describe, it, expect } from "vitest";
 import { render, screen } from "../../test-utils";
 import { FlowDiagram } from "./FlowDiagram";
-import { flowDuration, type FlowLinkSpec, type FlowNodeSpec } from "./flow-geometry";
+import { SLOT_BOX, flowDuration, type FlowLinkSpec, type FlowNodeSpec } from "./flow-geometry";
 
 const node = (over: Partial<FlowNodeSpec> = {}): FlowNodeSpec => ({
   slot: "focal",
@@ -129,6 +129,66 @@ describe("FlowDiagram nodes", () => {
     expect(value.className).toContain("text-body");
     expect(value.className).not.toContain("font-mono");
     expect(value.className).toContain("tabular-nums");
+  });
+});
+
+// #1126 — the node's colour is on its icon only. A value in the node colour put
+// the solar green on the well at under 2:1.
+describe("FlowDiagram colours: values in ink, colour on the node", () => {
+  it("paints the icon in the node colour and the value in ink", () => {
+    render(<FlowDiagram nodes={[node({ color: "var(--color-solar-auto)", value: "745", unit: "W" })]} links={[]} />);
+    expect(screen.getByTestId("flow-node-icon").style.color).toBe("var(--color-solar-auto)");
+    const value = screen.getByText("745").parentElement as HTMLElement;
+    expect(value.className).toMatch(/(^|\s)text-text(\s|$)/);
+    expect(value.style.color).toBe("");
+    for (let el: HTMLElement | null = value; el && el.tagName !== "BODY"; el = el.parentElement) {
+      expect(el.style.color, el.className).toBe("");
+    }
+    expect(screen.getByText("W").className).toContain("text-text-tertiary");
+  });
+
+  it("borders a pill in the link colour and writes its figure in ink", () => {
+    render(<FlowDiagram nodes={[]} links={[link({ pill: { text: "90 %", color: "var(--color-solar-auto)" } })]} />);
+    const pill = screen.getByText("90 %");
+    expect(pill.style.borderColor).toBe("var(--color-solar-auto)");
+    expect(pill.style.color).toBe("");
+    expect(pill.className).toMatch(/(^|\s)text-text(\s|$)/);
+  });
+
+  it("tints the tag with its colour and writes it in its ink, the colour by default", () => {
+    const { rerender } = render(
+      <FlowDiagram nodes={[]} links={[]} tag={{ text: "Autonome", color: "var(--color-solar-auto)", ink: "var(--color-text)" }} />,
+    );
+    const tag = screen.getByText("Autonome");
+    expect(tag.style.color).toBe("var(--color-text)");
+    expect(tag.style.background).toContain("--color-solar-auto");
+    rerender(<FlowDiagram nodes={[]} links={[]} tag={{ text: "Autonome", color: "var(--color-error)" }} />);
+    expect(screen.getByText("Autonome").style.color).toBe("var(--color-error)");
+  });
+});
+
+// #1129 — at 22 % with 4 px of padding, « ↑ 10,5 kW » ran past a satellite at
+// 360 and 390 px. Below `sm` the satellites widen to 24 % and step 1 % outward,
+// and their centre must stay where the routes meet them.
+describe("FlowDiagram satellite geometry", () => {
+  const pct = (cls: string, prop: string, prefix = "") => {
+    const m = cls.match(new RegExp(`(?:^|\\s)${prefix}(-?)${prop}-\\[(\\d+)%\\]`));
+    if (m) return (m[1] ? -1 : 1) * Number(m[2]);
+    return new RegExp(`(?:^|\\s)${prefix}${prop}-0(\\s|$)`).test(cls) ? 0 : null;
+  };
+  // x of the vertical leg of each satellite's routes, as a % of the 540 viewBox.
+  const ROUTE_X = { left: (60 / 540) * 100, right: 100 - (480 / 540) * 100 };
+
+  it.each(["left", "right"] as const)("keeps the %s satellite centred on its route, phone and wider", (slot) => {
+    const cls = SLOT_BOX[slot];
+    for (const prefix of ["", "sm:"]) {
+      const offset = pct(cls, slot, prefix);
+      const width = pct(cls, "w", prefix);
+      expect(offset, `${prefix}${slot}`).not.toBeNull();
+      expect(width, `${prefix}w`).not.toBeNull();
+      expect(Math.abs(offset! + width! / 2 - ROUTE_X[slot]), `${prefix} centre`).toBeLessThan(1);
+    }
+    expect(pct(cls, "w")).toBe(24);
   });
 });
 

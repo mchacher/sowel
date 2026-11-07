@@ -1,4 +1,4 @@
-import { CHART_TICK_FONT, CHART_TOOLTIP_FONT } from "../../lib/chart-font";
+import { CHART_TICK_FONT, CHART_TOOLTIP_FONT, CHART_TOOLTIP_ITEM_STYLE } from "../../lib/chart-font";
 import { useCallback, useEffect, useState } from "react";
 import {
   Area,
@@ -33,6 +33,13 @@ import { sumKwh, dailyTicks, mergeTimeline } from "./pvForecastUtils";
  * has to be visible where it does the damage — for admins it links to the
  * settings section where the declaration is corrected.
  */
+
+/**
+ * The « Attendu » curve: the solar production green of the energy palette
+ * (#1126). It was the amber accent, which spec 196 reserves for something on
+ * or running now. The measured line stays the primary ink.
+ */
+const EXPECTED_COLOR = "var(--color-solar-production)";
 
 interface PvForecastPanelProps {
   equipmentId: string;
@@ -230,7 +237,7 @@ export function PvForecastPanel({ equipmentId }: PvForecastPanelProps) {
                   <span
                     aria-hidden
                     className="inline-block w-3 h-[2px] rounded-full"
-                    style={{ background: "var(--color-accent)" }}
+                    style={{ background: EXPECTED_COLOR }}
                   />
                   {t("equipments.pv.expected")}
                 </span>
@@ -274,8 +281,8 @@ export function PvForecastPanel({ equipmentId }: PvForecastPanelProps) {
                         renders one panel per declared meter, and duplicate
                         SVG ids are invalid HTML. */}
                     <linearGradient id={`pvFill-${equipmentId}`} x1="0" y1="0" x2="0" y2="1">
-                      <stop offset="0%" stopColor="var(--color-accent)" stopOpacity={0.35} />
-                      <stop offset="100%" stopColor="var(--color-accent)" stopOpacity={0.02} />
+                      <stop offset="0%" stopColor={EXPECTED_COLOR} stopOpacity={0.35} />
+                      <stop offset="100%" stopColor={EXPECTED_COLOR} stopOpacity={0.02} />
                     </linearGradient>
                   </defs>
                   <CartesianGrid strokeDasharray="3 3" stroke="var(--color-border-light)" />
@@ -312,6 +319,7 @@ export function PvForecastPanel({ equipmentId }: PvForecastPanelProps) {
                       })
                     }
                     formatter={(v, name) => [formatPower(v as number, { unit: "W", locale }), name]}
+                    itemStyle={CHART_TOOLTIP_ITEM_STYLE}
                     contentStyle={{
                       background: "var(--color-surface)",
                       border: "1px solid var(--color-border)",
@@ -335,7 +343,7 @@ export function PvForecastPanel({ equipmentId }: PvForecastPanelProps) {
                     type="monotone"
                     dataKey="forecastW"
                     name={t("equipments.pv.expected")}
-                    stroke="var(--color-accent)"
+                    stroke={EXPECTED_COLOR}
                     strokeWidth={1.5}
                     fill={`url(#pvFill-${equipmentId})`}
                     connectNulls

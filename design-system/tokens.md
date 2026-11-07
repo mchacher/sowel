@@ -162,6 +162,8 @@ The energy charts, the Live diagram and the arbiter paint from these tokens (`--
 - Every series against "Other": at least 1.5:1 **and** 30° of hue. Other is a near-grey, so a hue gap alone means little; it is a warm grey because the palette's blues sit on the cool side.
 - Every mark stands on the dark card (at least 3:1).
 
+**The energy palette paints marks, not words** (#1126). The off-peak blue is 2.08:1 on a light card and the auto-consumption green 2.01:1, so a word or a figure never takes an energy or series colour: a tooltip row is a swatch beside neutral text (`TooltipSeriesRow`), a Live diagram node puts its colour on the icon and its value in ink, a flow pill puts it on its border, and the arbiter pill writes « Accordé » in `success`. A Recharts default tooltip takes `itemStyle={CHART_TOOLTIP_ITEM_STYLE}` (`ui/src/lib/chart-font.ts`), otherwise it writes each row in its series colour. The PV forecast's « Attendu » curve is `--solar-production`, not amber. `energy-palette.test.ts` computes the arbiter pill and sticker words on their tint, and scans the energy components for a style `color` set from an energy constant or token and for a default tooltip without neutral rows; a colour passed through a variable escapes the scan.
+
 | Token                | Hybrid    | Dark      | Usage                                                  |
 | -------------------- | --------- | --------- | ------------------------------------------------------ |
 | `--energy-hp`        | `#4F7BE8` | `#5681E9` | house consumption, peak hours, power curves            |
@@ -169,7 +171,7 @@ The energy charts, the Live diagram and the arbiter paint from these tokens (`--
 | `--energy-grid`      | `#405682` | `#BDC8DF` | grid import (Live diagram, UPS)                        |
 | `--solar-auto`       | `#6BCB77` | `#74C77F` | autoconsumption, arbiter "granted"                     |
 | `--solar-injection`  | `#2D8F3E` | `#2C8C3C` | injection                                              |
-| `--solar-production` | `#4CA85C` | `#57BE6C` | production when not split                              |
+| `--solar-production` | `#4CA85C` | `#57BE6C` | production when not split, PV forecast « Attendu »     |
 | `--slate-neutral`    | `#6E7C88` | `#7C8B98` | arbiter "on, outside arbitration" (also a text colour) |
 | `--energy-other`     | `#A69E96` | `#78726B` | "Other": consumption no sub-meter accounts for         |
 

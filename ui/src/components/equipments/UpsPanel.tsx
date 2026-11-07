@@ -69,12 +69,13 @@ const SHOWN_IN_MARGINS = new Set([
 ]);
 
 /** `ink`: the colour for words (the status tag), where orange takes its
- *  darker text variant; otherwise the fill colour for strokes (spec 196). */
+ *  darker text variant and "on mains" is plain ink, the grid blue being an
+ *  energy colour (#1126); otherwise the fill colour for strokes (spec 196). */
 function severityColor(r: UpsReadings, ink = false): string {
   const s = upsSeverityOf(r.status);
   if (s === "error") return "var(--color-error)";
   if (s === "warning") return ink ? "var(--color-warning-ink)" : "var(--color-warning)";
-  if (s === "ok") return GRID_COLOR;
+  if (s === "ok") return ink ? "var(--color-text)" : GRID_COLOR;
   return IDLE_COLOR;
 }
 

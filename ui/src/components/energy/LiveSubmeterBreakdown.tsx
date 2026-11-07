@@ -25,7 +25,6 @@ import { ChartPie } from "lucide-react";
 import { SectionHeader } from "./SectionHeader";
 import { useStalenessClock } from "../../hooks/useStalenessClock";
 
-const HOUSE_COLOR = "var(--color-energy-hp)"; // matches HP_COLOR in LiveEnergyPage
 const OTHER_COLOR = "var(--color-energy-other)"; // neutral grey, one value per theme (tokens.css)
 
 const RADIUS = 72;
@@ -243,8 +242,8 @@ function Donut({
         ) : (
           <>
             <span
-              className="tabular-nums font-semibold text-display leading-none flex items-baseline gap-1"
-              style={{ color: HOUSE_COLOR }}
+              // In ink, like the flow diagram's figures (#1126).
+              className="tabular-nums font-semibold text-display leading-none flex items-baseline gap-1 text-text"
             >
               <span>{totalLabel}</span>
               {totalUnit && (

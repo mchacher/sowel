@@ -250,7 +250,8 @@ function LiveDiagram({
     <div className="card p-4 sm:p-6">
       <SectionHeader icon={Waypoints} title={t("energy.live.diagram.title")} />
       <FlowDiagram
-        tag={{ text: t(`energy.live.status.${status}`), color: statusColor }}
+        // The energy colours tint the tag; its words are in ink (#1126).
+        tag={{ text: t(`energy.live.status.${status}`), color: statusColor, ink: "var(--color-text)" }}
         links={[
           {
             edge: "leftToFocal",

@@ -1,4 +1,4 @@
-import { CHART_TICK_FONT, CHART_TOOLTIP_FONT } from "../../lib/chart-font";
+import { CHART_TICK_FONT, CHART_TOOLTIP_FONT, CHART_TOOLTIP_ITEM_STYLE } from "../../lib/chart-font";
 import { useMemo } from "react";
 import { useTranslation } from "react-i18next";
 import {
@@ -161,6 +161,7 @@ export function TimeSeriesChart({ points, range, resolution, unit, height = 200,
           )}
         />
         <Tooltip
+          itemStyle={CHART_TOOLTIP_ITEM_STYLE}
           contentStyle={{
             backgroundColor: "var(--color-surface)",
             border: `1px solid var(--color-border)`,

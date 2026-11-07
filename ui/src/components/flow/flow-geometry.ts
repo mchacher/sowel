@@ -25,6 +25,7 @@ export type FlowEdge = "leftToFocal" | "rightToFocal" | "rightToLeft" | "leftToR
  *   focal  top-0            h-[36%] w-[36%] → y   0..130, centre (270,  65)
  *   left   top-1/2 centred  h-[29%] w-[22%] → y 128..232, centre ( 60, 180)
  *   right  top-1/2 centred  h-[29%] w-[22%] → y 128..232, centre (480, 180)
+ * Below `sm` the satellites are 24 % wide from -1 %: same centres (#1129).
  */
 export const PATHS: Record<FlowEdge, string> = {
   leftToFocal: "M 60 180 V 75 Q 60 65 70 65 H 270",
@@ -41,14 +42,20 @@ export const PILL_POSITION: Record<FlowEdge, string> = {
   leftToRight: "left-1/2 top-[75%] -translate-x-1/2 -translate-y-1/2",
 };
 
-// A satellite node is 22 % of the diagram: about 70 px wide on a 390 px phone.
-// Its padding, label and value are sized so « Production », « Batterie »,
-// « ↑ 745 W » and « ↑ 2,4 kW » fit inside it at that width (spec 196, slice 5b;
-// measured: 61 px available, « Production » 57 px, « ↑ 999 W » 55 px).
+// A satellite node is 22 % of the diagram from `sm`, 24 % below it with 2 px
+// of side padding. On a phone the diagram is the viewport less 64 px (page
+// and card padding). At 22 % with 4 px of padding the widest figure,
+// « ↑ 10,5 kW » (61 px), ran 3.8 px past the content box at 360 px and
+// 0.5 px at 390 px, and « Production » filled it to the pixel (#1129,
+// measured in Chromium). Now the content box is 67 px at 360 px, 74 px at
+// 390 px. Below `sm` the box also steps 1 % outward so its centre stays at
+// 11 % / 89 %, where the routes of PATHS meet it (x = 60 and 480 of 540).
+// The focal box takes 8 px of side padding below `sm`: « Consommation », set
+// at 12 px, ran 2 px past its content box at 360 px with 12 px of padding.
 export const SLOT_BOX: Record<FlowSlot, string> = {
-  focal: "top-0 left-1/2 -translate-x-1/2 w-[36%] h-[36%] px-3 py-2",
-  left: "top-1/2 -translate-y-1/2 left-0 w-[22%] h-[29%] px-1 sm:px-2 py-2",
-  right: "top-1/2 -translate-y-1/2 right-0 w-[22%] h-[29%] px-1 sm:px-2 py-2",
+  focal: "top-0 left-1/2 -translate-x-1/2 w-[36%] h-[36%] px-2 sm:px-3 py-2",
+  left: "top-1/2 -translate-y-1/2 -left-[1%] sm:left-0 w-[24%] sm:w-[22%] h-[29%] px-0.5 sm:px-2 py-2",
+  right: "top-1/2 -translate-y-1/2 -right-[1%] sm:right-0 w-[24%] sm:w-[22%] h-[29%] px-0.5 sm:px-2 py-2",
 };
 
 export const SLOT_LABEL: Record<FlowSlot, string> = {
@@ -75,6 +82,7 @@ export interface FlowNodeSpec {
   sub?: string;
   /** Glyph before the value — the grid node's ↑ / ↓ direction arrow. */
   valuePrefix?: ReactNode;
+  /** Paints the icon only; the value is always in ink (#1126). */
   color: string;
   /**
    * Idle. The box itself stays fully opaque on purpose: the skeleton routes
@@ -95,14 +103,20 @@ export interface FlowLinkSpec {
    * mid-range cadence.
    */
   magnitude?: number;
+  /** `color` draws the pill's border; its text is always in ink (#1126). */
   pill?: { text: string; color: string };
 }
 
 export interface FlowDiagramProps {
   nodes: FlowNodeSpec[];
   links: FlowLinkSpec[];
-  /** Qualitative one-word summary, in the empty band under the diagram. */
-  tag?: { text: string; color: string };
+  /**
+   * Qualitative one-word summary, in the empty band under the diagram. `color`
+   * tints its background; `ink` colours its words and defaults to `color`,
+   * for a caller whose colour is a status role that reads as text (the UPS).
+   * An energy-series colour is a fill: pass a text colour as `ink` (#1126).
+   */
+  tag?: { text: string; color: string; ink?: string };
   /** Sentence describing the whole flow for screen readers. */
   ariaLabel?: string;
 }

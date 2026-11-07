@@ -16,6 +16,7 @@ import {
 } from "recharts";
 import type { EnergyPoint } from "../../types";
 import { formatKwhTick, formatKwhTooltip } from "./format";
+import { TooltipSeriesRow } from "./TooltipSeriesRow";
 
 interface ProductionBarChartProps {
   points: EnergyPoint[];
@@ -255,9 +256,17 @@ export function ProductionBarChart({ points, period, date, height = 300 }: Produ
                 <div style={{ fontWeight: 600, marginBottom: hasSplit ? 4 : 0 }}>{t("energy.production")}{t("common.colon")}{formatKwhTooltip(total, locale)}</div>
                 {hasSplit && (
                   <>
-                    <div style={{ color: AUTOCONSO_COLOR }}>{t("energy.autoconsumption")}{t("common.colon")}{formatKwhTooltip(datum.autoconso, locale)}</div>
+                    <TooltipSeriesRow
+                      color={AUTOCONSO_COLOR}
+                      label={t("energy.autoconsumption")}
+                      value={formatKwhTooltip(datum.autoconso, locale)}
+                    />
                     {datum.injection > 0 && (
-                      <div style={{ color: INJECTION_COLOR }}>{t("energy.gridInjection")}{t("common.colon")}{formatKwhTooltip(datum.injection, locale)}</div>
+                      <TooltipSeriesRow
+                        color={INJECTION_COLOR}
+                        label={t("energy.gridInjection")}
+                        value={formatKwhTooltip(datum.injection, locale)}
+                      />
                     )}
                   </>
                 )}

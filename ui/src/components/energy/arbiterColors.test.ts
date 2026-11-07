@@ -3,6 +3,8 @@ import type { ArbiterQuarterState } from "../../types";
 import {
   journalDotColor,
   surplusStickerColor,
+  surplusStickerInk,
+  loadStatePillBg,
   cellColor,
   cellEdge,
   loadStateColor,
@@ -203,9 +205,37 @@ describe("loadStateInk (spec 196, FR-E)", () => {
     expect(loadStateColor("pending")).toBe("var(--color-warning)");
   });
 
-  it("keeps every other state's word in its hue", () => {
-    for (const s of ["granted", "granted-idle", "revoked", "unmanaged", "suspended", "idle"] as const) {
+  it("writes 'accordé' in the success text green, never the auto-consumption fill (#1126)", () => {
+    // var(--color-solar-auto) as text was 2.01:1 on a light card.
+    expect(loadStateInk("granted")).toBe("var(--color-success)");
+    expect(loadStateInk("granted-idle")).toContain("--color-success");
+    expect(loadStateColor("granted")).toBe("var(--color-solar-auto)");
+  });
+
+  it("writes the grey states in neutral text, the dot telling them apart (#1126)", () => {
+    expect(loadStateInk("unmanaged")).toBe("var(--color-text-secondary)");
+    expect(loadStateInk("idle")).toBe("var(--color-text-secondary)");
+  });
+
+  it("keeps the red and the blue states' words in their hue", () => {
+    for (const s of ["revoked", "suspended"] as const) {
       expect(loadStateInk(s)).toBe(loadStateColor(s));
     }
+  });
+
+  it("tints the pill with the hue, not the ink", () => {
+    expect(loadStatePillBg("granted")).toBe("color-mix(in srgb, var(--color-solar-auto) 15%, transparent)");
+  });
+});
+
+describe("surplusStickerInk (#1126)", () => {
+  it("writes a surplus in the success text green, a deficit in red", () => {
+    expect(surplusStickerInk(300)).toBe("var(--color-success)");
+    expect(surplusStickerInk(0)).toBe("var(--color-error)");
+  });
+
+  it("writes a degraded reading and the night sticker in neutral text", () => {
+    expect(surplusStickerInk(null)).toBe("var(--color-text-secondary)");
+    expect(surplusStickerInk(300, true)).toBe("var(--color-text-secondary)");
   });
 });

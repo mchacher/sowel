@@ -28,13 +28,34 @@ const HUE: Record<ArbiterQuarterState, string> = {
 };
 
 /**
- * Spec 196 (FR-E) — the colour of a state's WORD (the roster pill's label).
- * The hue above, except where the hue is a fill-only token: orange as text is
- * 3.05:1 on a card, so "En attente" is written in `warning-ink`, the same
- * orange darkened for text. The dot and the tint keep the hue.
+ * Spec 196 (FR-E, #1126) — the colour of a state's WORD (the roster pill's
+ * label). The dot and the 15 % tint keep the hue above; the word takes a text
+ * colour that reaches 4.5:1 on that tint in both themes
+ * (`energy-palette.test.ts` computes every pair):
+ * - "En attente": `warning-ink`, orange as text being 3.05:1 on a card.
+ * - "Accordé": the `success` text green. The auto-consumption green is a fill
+ *   (2.01:1 on a light card, 1.82:1 on its tint).
+ * - "Accordé (sans conso)": the same text green, dimmed the way the hue is.
+ * - "Hors pilotage" and "Au repos": neutral text. Slate on its tint was 3.58:1
+ *   and the tertiary grey 4.41:1; the dot says which grey state it is.
  */
+const INK: Record<ArbiterQuarterState, string> = {
+  granted: "var(--color-success)",
+  "granted-idle": "color-mix(in srgb, var(--color-success) 55%, var(--color-text-tertiary))",
+  pending: "var(--color-warning-ink)",
+  revoked: HUE.revoked,
+  unmanaged: "var(--color-text-secondary)",
+  suspended: HUE.suspended,
+  idle: "var(--color-text-secondary)",
+};
+
 export function loadStateInk(s: ArbiterQuarterState): string {
-  return s === "pending" ? "var(--color-warning-ink)" : HUE[s];
+  return INK[s];
+}
+
+/** The roster pill's background: its hue at 15 %, on the card. */
+export function loadStatePillBg(s: ArbiterQuarterState): string {
+  return `color-mix(in srgb, ${HUE[s]} 15%, transparent)`;
 }
 
 /**
@@ -150,4 +171,16 @@ export function journalDotColor(kind: ArbiterDecision["kind"]): string {
 export function surplusStickerColor(availableSurplusW: number | null): string {
   if (availableSurplusW === null) return "var(--color-text-tertiary)";
   return availableSurplusW > 0 ? "var(--color-solar-auto)" : "var(--color-error)";
+}
+
+/**
+ * #1126 — the colour of the sticker's WORDS and of the « disponible » figure:
+ * the hue above for the tint, a text colour for what is read. Surplus is the
+ * `success` text green (the auto-consumption green is 2.01:1 on a light card),
+ * a deficit stays red, a degraded reading and the night sticker are neutral
+ * (the tertiary grey and the slate on their own tint fall under 4.5:1).
+ */
+export function surplusStickerInk(availableSurplusW: number | null, dormant = false): string {
+  if (dormant || availableSurplusW === null) return "var(--color-text-secondary)";
+  return availableSurplusW > 0 ? "var(--color-success)" : "var(--color-error)";
 }
