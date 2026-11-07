@@ -601,7 +601,13 @@ export class ZoneAggregator {
       }
 
       const bindings = withDetails.dataBindings;
-      this.accumulateEquipmentPower(acc, equipment.type, withDetails.status, bindings);
+      this.accumulateEquipmentPower(
+        acc,
+        equipment.type,
+        withDetails.status,
+        bindings,
+        equipment.localProduction === true,
+      );
       if (equipment.type === "water_valve") {
         this.accumulateWaterValve(acc, bindings);
       } else {
@@ -643,6 +649,7 @@ export class ZoneAggregator {
     equipmentType: EquipmentType,
     status: EquipmentStatus,
     bindings: DataBindingWithValue[],
+    localProduction: boolean,
   ): void {
     if (!isSubmeterEquipment(equipmentType, bindings)) return;
 
@@ -676,8 +683,11 @@ export class ZoneAggregator {
     // backwards reports negative watts, and a negative total is a wiring fault
     // the user needs to see. (`PowerSubmeterIntegrator` integrates |P| for
     // energy per spec 091 — that protects a cumulative counter, a different
-    // question.)
-    acc.powerSum += powerBinding.value;
+    // question.) The one exception is a meter flagged `localProduction`
+    // (spec 195): its negative watts are a panel producing, not a load, and
+    // this sum is the zone's loads — the same positive part its by-usage
+    // slice keeps.
+    acc.powerSum += localProduction ? Math.max(0, powerBinding.value) : powerBinding.value;
     acc.powerHasData = true;
   }
 

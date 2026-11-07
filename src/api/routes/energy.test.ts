@@ -50,7 +50,11 @@ interface BuildOpts {
     meteringParentId?: string | null;
     /** Spec 179 — fed by a separate supply. */
     separateSupply?: boolean;
+    /** Spec 195 — negative power is local production. */
+    localProduction?: boolean;
   }>;
+  /** Every Flux query the route ran, in order. */
+  fluxLog?: string[];
   envTz?: string | undefined;
   /** Spec 160/161 — a stand-in forecaster, for the routes that need one. */
   pvForecaster?: unknown;
@@ -78,6 +82,7 @@ async function buildApp(opts: BuildOpts = {}) {
       ({
         getQueryApi: () => ({
           iterateRows: async function* (flux: string) {
+            opts.fluxLog?.push(flux);
             // Route by the alias filter the Flux query embeds.
             let rows: PreparedRow[] = [];
             if (
@@ -161,6 +166,60 @@ async function buildApp(opts: BuildOpts = {}) {
   await app.ready();
   return app;
 }
+
+describe("Spec 195 — /api/v1/energy/history counts local production", () => {
+  let app: Awaited<ReturnType<typeof buildApp>> | null = null;
+
+  beforeEach(() => {
+    process.env.TZ = "Europe/Paris";
+  });
+
+  afterEach(async () => {
+    if (app) await app.close();
+    app = null;
+  });
+
+  const equipments = (localProduction: boolean) => [
+    { id: "meter-1", name: "Compteur", type: "main_energy_meter" as const },
+    { id: "pv", name: "Solaire", type: "energy_production_meter" as const },
+    { id: "piscine", name: "Piscine", type: "energy_meter" as const, localProduction },
+  ];
+
+  it("adds a flagged submeter's `production` to the production total", async () => {
+    const fluxLog: string[] = [];
+    app = await buildApp({
+      equipments: equipments(true),
+      fluxLog,
+      productionRows: [
+        { _time: "2026-05-30T10:00:00Z", _value: 3000, alias: "energy" },
+        { _time: "2026-05-30T10:00:00Z", _value: 400, alias: "production" },
+        { _time: "2026-05-30T10:00:00Z", _value: 2900, alias: "autoconso" },
+        { _time: "2026-05-30T10:00:00Z", _value: 500, alias: "injection" },
+      ],
+    });
+
+    const res = await app.inject({
+      method: "GET",
+      url: "/api/v1/energy/history?period=day&date=2026-05-30",
+    });
+    expect(res.statusCode).toBe(200);
+    expect(res.json().totals.total_production).toBe(3400);
+    const prodFlux = fluxLog.find((f) => f.includes('r.alias == "autoconso"'));
+    // Only the flagged meter's `production` series — never its `energy`, which
+    // is the pool's consumption.
+    expect(prodFlux).toContain('(r.equipmentId == "piscine" and r.alias == "production")');
+  });
+
+  it("does not read an unflagged submeter", async () => {
+    const fluxLog: string[] = [];
+    app = await buildApp({ equipments: equipments(false), fluxLog });
+
+    await app.inject({ method: "GET", url: "/api/v1/energy/history?period=day&date=2026-05-30" });
+    const prodFlux = fluxLog.find((f) => f.includes('r.alias == "autoconso"'));
+    expect(prodFlux).toBeDefined();
+    expect(prodFlux).not.toContain("piscine");
+  });
+});
 
 describe("Spec 119 — /api/v1/energy/history", () => {
   let app: Awaited<ReturnType<typeof buildApp>> | null = null;

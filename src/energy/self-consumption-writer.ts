@@ -46,6 +46,9 @@ interface MinuteBucket {
  * Inputs (signed energy deltas, Wh, per minute):
  *   gridΔ  = main_energy_meter `energy`        (positive = imported, negative = exported)
  *   solarΔ = energy_production_meter `energy`  (≥ 0 in normal operation)
+ *          + `production` of every submeter flagged `localProduction` (spec 195:
+ *            a panel wired behind the pool meter, which the production meter
+ *            never sees but the grid meter does)
  *
  * Both are ADDITIVE deltas: a meter may emit one tick a minute (Shelly EM)
  * or thirty (Tuya PJ-1203A, where a single tick in the burst carries the
@@ -127,10 +130,10 @@ export class SelfConsumptionWriter {
     this.unsubscribe = this.eventBus.on((event) => {
       try {
         if (event.type !== "equipment.data.changed") return;
-        if (event.alias !== "energy") return;
+        if (event.alias !== "energy" && event.alias !== "production") return;
         if (typeof event.value !== "number") return;
 
-        const role = this.resolveEquipmentRole(event.equipmentId);
+        const role = this.resolveEquipmentRole(event.equipmentId, event.alias);
         if (!role) return;
 
         this.accumulate(
@@ -188,9 +191,15 @@ export class SelfConsumptionWriter {
    * fresh each time. Cheaper than maintaining a cache that has to track
    * `equipment.created/updated/removed` and the type-change edge case.
    */
-  private resolveEquipmentRole(equipmentId: string): "grid" | "solar" | null {
+  private resolveEquipmentRole(
+    equipmentId: string,
+    alias: "energy" | "production",
+  ): "grid" | "solar" | null {
     const eq = this.equipmentManager.getById(equipmentId);
     if (!eq?.enabled) return null;
+    // Spec 195 — a submeter's local production is solar the production meter
+    // never saw. Its `energy` is the submeter's consumption and stays out.
+    if (alias === "production") return eq.localProduction === true ? "solar" : null;
     if (eq.type === "main_energy_meter") return "grid";
     if (eq.type === "energy_production_meter") return "solar";
     return null;

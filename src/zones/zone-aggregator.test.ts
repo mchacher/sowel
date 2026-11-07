@@ -1342,6 +1342,18 @@ describe("ZoneAggregator", () => {
       expect(aggregator.getByZoneId(zone.id)?.powerTotal).toBe(-150);
     });
 
+    it("counts a meter flagged for local production as its load only (spec 195)", () => {
+      const zone = zoneManager.create({ name: "Piscine" });
+      const { eq } = seedMeter(zone.id, { name: "Piscine", watts: "-412" });
+      equipmentManager.update(eq.id, { localProduction: true });
+      seedMeter(zone.id, { name: "Spot", watts: "30" });
+
+      aggregator.computeAll();
+
+      // The panel producing behind the pool meter is not a negative load.
+      expect(aggregator.getByZoneId(zone.id)?.powerTotal).toBe(30);
+    });
+
     it("rounds the sum to whole watts", () => {
       const zone = zoneManager.create({ name: "Gite" });
       seedMeter(zone.id, { name: "A", watts: "39.4" });

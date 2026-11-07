@@ -78,6 +78,8 @@ const updateEquipmentBodySchema = {
     meteringParentId: { type: ["string", "null"], minLength: 1 },
     // Spec 179 — this meter is fed by a separate supply.
     separateSupply: { type: "boolean" },
+    // Spec 195 — negative power on this meter is local production.
+    localProduction: { type: "boolean" },
     // Spec 191 — this electric vehicle is a plug-in hybrid (no cost per 100 km).
     plugInHybrid: { type: "boolean" },
     // Spec 193 — an EV charger's usual vehicle (an electric_vehicle id), or null.
@@ -332,6 +334,7 @@ export function registerEquipmentRoutes(app: FastifyInstance, deps: EquipmentsDe
       solarProfile?: SolarProfile | null;
       meteringParentId?: string | null;
       separateSupply?: boolean;
+      localProduction?: boolean;
       plugInHybrid?: boolean;
       usualVehicleId?: string | null;
       timedCommand?: TimedCommand | null;
@@ -444,6 +447,33 @@ export function registerEquipmentRoutes(app: FastifyInstance, deps: EquipmentsDe
         }
       }
 
+      // Spec 195 — local production is read off a submeter's negative power and
+      // added to the house's solar. On the house total or a production meter it
+      // would count that meter twice; behind a separate supply it would credit
+      // the house with energy that never flowed through its main meter. Checked
+      // on the RESULTING (type, flags) triple, for the reason given just above.
+      if (
+        body.localProduction === true ||
+        body.separateSupply === true ||
+        body.type !== undefined
+      ) {
+        const current = equipmentManager.getById(request.params.id);
+        if (!current) {
+          return reply.status(404).send({ error: "Equipment not found" });
+        }
+        const resultingType = body.type ?? current.type;
+        const resultingFlag = body.localProduction ?? current.localProduction ?? false;
+        const resultingSeparate = body.separateSupply ?? current.separateSupply ?? false;
+        if (resultingFlag && (NON_SUBMETER_TYPES.has(resultingType) || resultingSeparate)) {
+          return reply.status(400).send({
+            error: "LocalProductionNotApplicable",
+            message: resultingSeparate
+              ? `${current.name} is fed by a separate supply — its production never reaches the house`
+              : `${current.name} is the house total or a production meter — it cannot also carry local production`,
+          });
+        }
+      }
+
       // Spec 174 phase 2 — a timed command is validated where it is WRITTEN, not
       // where it is fired: a configuration naming an order the equipment does not
       // carry would otherwise sit there until somebody pressed the control.
@@ -502,6 +532,7 @@ export function registerEquipmentRoutes(app: FastifyInstance, deps: EquipmentsDe
           trackOrderOutcome: body.trackOrderOutcome,
           meteringParentId: body.meteringParentId,
           separateSupply: body.separateSupply,
+          localProduction: body.localProduction,
           plugInHybrid: body.plugInHybrid,
           usualVehicleId: body.usualVehicleId,
           timedCommand: body.timedCommand,

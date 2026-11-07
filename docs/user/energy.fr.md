@@ -171,6 +171,18 @@ Dites-le sur le compteur : ouvrez sa page d'équipement et cochez **Alimenté pa
 
 Un compteur sur alimentation séparée ne peut pas être choisi sous **Déjà compté par** — rien de ce que la répartition affiche ne peut être « dans » un compteur d'un autre réseau.
 
+##### Quand un panneau solaire est raccordé derrière un sous-compteur
+
+Un petit panneau peut être raccordé derrière un sous-compteur plutôt que via le compteur de production : quelques modules sur le toit du local piscine, derrière la pince de la piscine. Quand le panneau produit plus que le circuit ne consomme, la pince lit une puissance **négative**. Par défaut, Sowel prend une valeur négative pour une pince montée à l'envers et en compte la valeur absolue comme consommation : la production du panneau gonflerait la part du circuit, réduirait d'autant "Autre", et n'apparaîtrait jamais comme production.
+
+Dites-le sur le compteur : ouvrez sa page d'équipement et cochez **Une production locale passe par ce compteur**. À partir de là :
+
+- la part du circuit ne garde que ce qu'il consomme (la partie positive) ;
+- la partie négative compte comme **production solaire** de la maison : elle s'ajoute à la production totale, à l'autoconsommation et à la consommation de la maison qui en est déduite ;
+- sur la page en direct, la ligne du circuit n'affiche que sa consommation et la production du panneau rejoint le flux solaire.
+
+Cela s'applique à partir du moment où la case est cochée — l'historique n'est pas réécrit. Il faut qu'un équipement **Compteur d'Énergie (production)** soit configuré, puisque c'est là que l'autoconsommation est enregistrée. Ce n'est pas combinable avec **Alimenté par un autre compteur** : la production de ce panneau n'atteint jamais votre compteur principal.
+
 Les totaux (HP / HC, autoconsommation) restent identiques entre les deux modes.
 
 #### Périodes plus longues

@@ -63,7 +63,10 @@ export interface SubmeterReading {
  * appliance is off", which is a perfectly plausible thing for it to be.
  *
  * Negative values are returned as their absolute value (clamp wired backwards,
- * same convention as the spec 091 backend integration).
+ * same convention as the spec 091 backend integration) — except on a meter
+ * flagged `localProduction` (spec 195), where they are a panel producing: the
+ * row keeps the load, `max(0, P)`, and `localProductionW` hands the rest to
+ * the solar side.
  */
 export function readSubmeterReading(
   eq: EquipmentWithDetails,
@@ -81,7 +84,9 @@ export function readSubmeterReading(
     budgetMs: binding?.freshnessBudgetMs ?? BUDGET_LEARNING_MS,
   });
   if (verdict === "current") {
-    return { power: Math.abs(binding!.value as number), unknown: null, lastUpdated: binding!.lastUpdated };
+    const value = binding!.value as number;
+    const power = eq.localProduction ? Math.max(0, value) : Math.abs(value);
+    return { power, unknown: null, lastUpdated: binding!.lastUpdated };
   }
   return {
     power: null,
@@ -90,6 +95,40 @@ export function readSubmeterReading(
     // offlineSince, and a missing one has nothing to date.
     lastUpdated: verdict === "stale" ? (binding?.lastUpdated ?? null) : null,
   };
+}
+
+/**
+ * Spec 195 — live production of the submeters flagged `localProduction`: the
+ * negative part of each current reading. Null when none is producing, so a
+ * house without such a meter keeps `solar` exactly as its production meter
+ * reports it. A reading that is not current contributes nothing, by the same
+ * rule as the rows.
+ */
+export function localProductionW(
+  equipments: EquipmentWithDetails[],
+  now: number = Date.now(),
+): number | null {
+  let total = 0;
+  let any = false;
+  for (const eq of equipments) {
+    if (!eq.localProduction || eq.separateSupply || !isSubmeterEquipment(eq)) continue;
+    const binding = eq.dataBindings.find((b) => b.alias === "power");
+    const verdict = classifyPowerReading({
+      status: eq.status,
+      value: binding?.value,
+      lastUpdated: binding?.lastUpdated,
+      equipmentType: eq.type,
+      now,
+      budgetMs: binding?.freshnessBudgetMs ?? BUDGET_LEARNING_MS,
+    });
+    if (verdict !== "current") continue;
+    const value = binding!.value as number;
+    if (value < 0) {
+      total += -value;
+      any = true;
+    }
+  }
+  return any ? total : null;
 }
 
 /**

@@ -9,6 +9,7 @@ import {
   buildSubmeterRows,
   computeOther,
   displayedPower,
+  localProductionW,
   readSubmeterReading,
   sharePercent,
 } from "./submeter-helpers";
@@ -65,6 +66,8 @@ function makeEquipment(
     meteringParentId?: string | null;
     /** Spec 179 — fed by a separate supply. */
     separateSupply?: boolean;
+    /** Spec 195 — negative power is local production. */
+    localProduction?: boolean;
     /** Spec 175 — the budget the engine resolved from the source's cadence. */
     freshnessBudgetMs?: number;
   } = {},
@@ -89,6 +92,7 @@ function makeEquipment(
     zoneId: "z",
     meteringParentId: opts.meteringParentId ?? null,
     ...(opts.separateSupply ? { separateSupply: true } : {}),
+    ...(opts.localProduction ? { localProduction: true } : {}),
     type: opts.type ?? "energy_meter",
     enabled: true,
     createdAt: "2026-05-01 00:00:00Z",
@@ -584,5 +588,45 @@ describe("separate-supply meters (spec 179)", () => {
     expect(ve?.separateSupply).toBe(true);
     expect(ve?.power).toBeNull();
     expect(ve?.unknown).toBe("stale");
+  });
+});
+
+describe("local production (spec 195)", () => {
+  it("a flagged meter's row keeps only its load: max(0, P)", () => {
+    const producing = makeEquipment("p", "Piscine", { power: -412, localProduction: true });
+    expect(readSubmeterReading(producing, NOW).power).toBe(0);
+    const drawing = makeEquipment("p", "Piscine", { power: 480, localProduction: true });
+    expect(readSubmeterReading(drawing, NOW).power).toBe(480);
+  });
+
+  it("an unflagged meter still reads negative as a backwards clamp", () => {
+    const eq = makeEquipment("p", "Piscine", { power: -412 });
+    expect(readSubmeterReading(eq, NOW).power).toBe(412);
+  });
+
+  it("sums the negative part of flagged, current readings only", () => {
+    const eqs = [
+      makeEquipment("p", "Piscine", { power: -412, localProduction: true }),
+      makeEquipment("c", "Cabane", { power: -100, localProduction: true }),
+      makeEquipment("d", "Drawing", { power: 300, localProduction: true }),
+      makeEquipment("u", "Unflagged", { power: -50 }),
+      makeEquipment("s", "Stale", {
+        power: -900,
+        localProduction: true,
+        readingAgeMs: 60 * 60 * 1000,
+      }),
+      makeEquipment("o", "Other supply", {
+        power: -70,
+        localProduction: true,
+        separateSupply: true,
+      }),
+    ];
+    expect(localProductionW(eqs, NOW)).toBe(512);
+  });
+
+  it("is null when nothing is producing, so solar stays the production meter's", () => {
+    const drawing = makeEquipment("p", "Piscine", { power: 300, localProduction: true });
+    expect(localProductionW([drawing], NOW)).toBeNull();
+    expect(localProductionW([], NOW)).toBeNull();
   });
 });

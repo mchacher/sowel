@@ -27,6 +27,13 @@ import { isSubmeterEquipment, NON_SUBMETER_TYPES } from "../equipments/metering.
  * Negative power: zigbee clamps sometimes report a negative reading when
  * wired backwards. Per spec 091 we integrate the absolute value, log
  * once, and continue. We never emit negative Wh deltas.
+ *
+ * Local production (spec 195): a meter flagged `localProduction` sits
+ * upstream of a generator (a solar panel behind the pool meter), so its
+ * negative power is production, not a wiring fault. Its samples are split at
+ * the zero crossing: the positive area stays `energy` (the by-usage slice),
+ * the negative area is written as a separate `production` delta and emitted
+ * for the SelfConsumptionWriter to add to the house's solar.
  */
 
 const STALE_THRESHOLD_S = 600; // 10 minutes
@@ -35,6 +42,8 @@ const MIN_WRITE_WH = 0.001; // skip writing absurdly small deltas
 
 interface IntegratorState {
   pendingWh: number;
+  /** Spec 195 — production Wh awaiting flush, flagged meters only. */
+  pendingProductionWh: number;
   /** Lifetime Wh integrated by Sowel for this submeter. Surfaced as
    *  computed data on the equipment so the user sees something growing. */
   cumulativeWh: number;
@@ -47,6 +56,7 @@ interface IntegratorState {
 interface StateRow {
   equipment_id: string;
   pending_wh: number;
+  pending_production_wh: number;
   cumulative_wh: number;
   last_sample_at: string | null;
   last_sample_w: number | null;
@@ -164,10 +174,11 @@ export class PowerSubmeterIntegrator {
     return {
       selectAll: this.db.prepare(`SELECT * FROM submeter_integrator_state`),
       upsert: this.db.prepare(
-        `INSERT INTO submeter_integrator_state (equipment_id, pending_wh, cumulative_wh, last_sample_at, last_sample_w, last_write_at, updated_at)
-         VALUES (@equipmentId, @pendingWh, @cumulativeWh, @lastSampleAt, @lastSampleW, @lastWriteAt, datetime('now'))
+        `INSERT INTO submeter_integrator_state (equipment_id, pending_wh, pending_production_wh, cumulative_wh, last_sample_at, last_sample_w, last_write_at, updated_at)
+         VALUES (@equipmentId, @pendingWh, @pendingProductionWh, @cumulativeWh, @lastSampleAt, @lastSampleW, @lastWriteAt, datetime('now'))
          ON CONFLICT(equipment_id) DO UPDATE SET
            pending_wh = excluded.pending_wh,
+           pending_production_wh = excluded.pending_production_wh,
            cumulative_wh = excluded.cumulative_wh,
            last_sample_at = excluded.last_sample_at,
            last_sample_w = excluded.last_sample_w,
@@ -182,6 +193,7 @@ export class PowerSubmeterIntegrator {
     for (const row of rows) {
       this.states.set(row.equipment_id, {
         pendingWh: row.pending_wh,
+        pendingProductionWh: row.pending_production_wh ?? 0,
         cumulativeWh: row.cumulative_wh,
         lastSampleAt: row.last_sample_at ? Math.floor(Date.parse(row.last_sample_at) / 1000) : null,
         lastSampleW: row.last_sample_w,
@@ -216,6 +228,7 @@ export class PowerSubmeterIntegrator {
     const nowS = Math.floor(this.now() / 1000);
     const state = this.states.get(equipmentId) ?? {
       pendingWh: 0,
+      pendingProductionWh: 0,
       cumulativeWh: 0,
       lastSampleAt: null,
       lastSampleW: null,
@@ -224,8 +237,9 @@ export class PowerSubmeterIntegrator {
     };
 
     const currentW = value;
+    const localProduction = this.equipmentManager.getById(equipmentId)?.localProduction === true;
     let absW = currentW;
-    if (currentW < 0) {
+    if (currentW < 0 && !localProduction) {
       if (!state.warnedNegative) {
         this.logger.warn(
           { equipmentId, sampleW: currentW },
@@ -238,7 +252,12 @@ export class PowerSubmeterIntegrator {
 
     if (state.lastSampleAt !== null && state.lastSampleW !== null) {
       const dtS = nowS - state.lastSampleAt;
-      if (dtS > 0 && dtS <= STALE_THRESHOLD_S) {
+      if (dtS > 0 && dtS <= STALE_THRESHOLD_S && localProduction) {
+        const { consumedWh, producedWh } = splitTrapezoidWh(state.lastSampleW, currentW, dtS);
+        state.pendingWh += consumedWh;
+        state.cumulativeWh += consumedWh;
+        state.pendingProductionWh += producedWh;
+      } else if (dtS > 0 && dtS <= STALE_THRESHOLD_S) {
         const prevAbsW = Math.abs(state.lastSampleW);
         const meanW = (prevAbsW + absW) / 2;
         const deltaWh = (meanW * dtS) / 3600;
@@ -256,7 +275,9 @@ export class PowerSubmeterIntegrator {
   }
 
   private flushOne(equipmentId: string, state: IntegratorState): void {
-    if (state.pendingWh < MIN_WRITE_WH) return;
+    const hasConsumption = state.pendingWh >= MIN_WRITE_WH;
+    const hasProduction = state.pendingProductionWh >= MIN_WRITE_WH;
+    if (!hasConsumption && !hasProduction) return;
     if (!this.influxClient.isConnected()) return;
 
     const eq = this.equipmentManager.getById(equipmentId);
@@ -265,37 +286,53 @@ export class PowerSubmeterIntegrator {
     // Align timestamp on minute boundary so points cleanly downsample.
     const minuteEpochMs = Math.floor(this.now() / 60_000) * 60_000;
 
+    // Emitting equipment.data.changed for alias=energy lets EnergyAggregator
+    // pick up this submeter and compute hour/day/month/year cumuls from
+    // InfluxDB, like it does for main_energy_meter. HistoryWriter ignores
+    // these events because no binding for either alias exists on the equipment.
+    if (hasConsumption) {
+      this.writeDelta(eq, "energy", state.pendingWh, minuteEpochMs);
+      state.pendingWh = 0;
+    }
+    // Spec 195 — the SelfConsumptionWriter adds this to the house's solar.
+    if (hasProduction) {
+      this.writeDelta(eq, "production", state.pendingProductionWh, minuteEpochMs);
+      state.pendingProductionWh = 0;
+    }
+
+    state.lastWriteAt = new Date(minuteEpochMs).toISOString();
+    this.persist(equipmentId, state);
+  }
+
+  private writeDelta(
+    eq: { id: string; zoneId: string },
+    alias: "energy" | "production",
+    deltaWh: number,
+    minuteEpochMs: number,
+  ): void {
     const point = new Point("equipment_data")
-      .tag("equipmentId", equipmentId)
-      .tag("alias", "energy")
+      .tag("equipmentId", eq.id)
+      .tag("alias", alias)
       .tag("category", "energy")
       .tag("zoneId", eq.zoneId)
       .tag("type", "number")
-      .floatField("value_number", state.pendingWh)
+      .floatField("value_number", deltaWh)
       .timestamp(Math.floor(minuteEpochMs / 1000));
 
     this.influxClient.writePoint(point);
 
     this.logger.trace(
-      { equipmentId, deltaWh: state.pendingWh, time: new Date(minuteEpochMs).toISOString() },
+      { equipmentId: eq.id, alias, deltaWh, time: new Date(minuteEpochMs).toISOString() },
       "Submeter delta written",
     );
 
-    // Emit equipment.data.changed for alias=energy so EnergyAggregator
-    // picks up this submeter and computes hour/day/month/year cumuls from
-    // InfluxDB, like it does for main_energy_meter. HistoryWriter ignores
-    // this event because no binding for `energy` exists on the equipment.
     this.eventBus.emit({
       type: "equipment.data.changed",
-      equipmentId,
-      alias: "energy",
-      value: state.pendingWh,
+      equipmentId: eq.id,
+      alias,
+      value: deltaWh,
       previous: null,
     });
-
-    state.pendingWh = 0;
-    state.lastWriteAt = new Date(minuteEpochMs).toISOString();
-    this.persist(equipmentId, state);
   }
 
   private persist(equipmentId: string, state: IntegratorState): void {
@@ -304,6 +341,7 @@ export class PowerSubmeterIntegrator {
     this.stmts.upsert.run({
       equipmentId,
       pendingWh: state.pendingWh,
+      pendingProductionWh: state.pendingProductionWh,
       cumulativeWh: state.cumulativeWh,
       lastSampleAt: lastSampleAtIso,
       lastSampleW: state.lastSampleW,
@@ -334,4 +372,32 @@ export class PowerSubmeterIntegrator {
       },
     ];
   }
+}
+
+/**
+ * Spec 195 — split one trapezoid of power samples at its zero crossing.
+ *
+ * Between samples `prevW` and `currW` power is taken as linear, the same
+ * assumption as the plain trapezoid. When both have one sign the whole area
+ * goes to that side; when they straddle zero, the crossing sits at
+ * `dt · |prev| / (|prev| + |curr|)` and each side gets its own triangle,
+ * rather than the whole interval landing on whichever side the mean falls.
+ */
+export function splitTrapezoidWh(
+  prevW: number,
+  currW: number,
+  dtS: number,
+): { consumedWh: number; producedWh: number } {
+  if (prevW >= 0 && currW >= 0)
+    return { consumedWh: ((prevW + currW) / 2) * (dtS / 3600), producedWh: 0 };
+  if (prevW <= 0 && currW <= 0)
+    return { consumedWh: 0, producedWh: (-(prevW + currW) / 2) * (dtS / 3600) };
+  const span = Math.abs(prevW) + Math.abs(currW);
+  const pos = Math.max(prevW, currW);
+  const neg = -Math.min(prevW, currW);
+  // Triangle area on each side: peak × (its share of dt) / 2 = peak² · dt / (2 · span).
+  return {
+    consumedWh: ((pos * pos) / (2 * span)) * (dtS / 3600),
+    producedWh: ((neg * neg) / (2 * span)) * (dtS / 3600),
+  };
 }

@@ -253,12 +253,19 @@ export function registerEnergyRoutes(app: FastifyInstance, deps: EnergyDeps): vo
       // `-energy-hourly`. Fall back to it when the primary bucket is empty.
       const prodMap = new Map<string, { prod: number; autoconso: number; injection: number }>();
       if (productionEquipmentId) {
+        // Spec 195 — what the submeters flagged `localProduction` produced is
+        // production too, and already inside autoconso / injection.
+        const localProducerIds = equipmentManager
+          .getAll()
+          .filter((eq) => eq.localProduction === true)
+          .map((eq) => eq.id);
         for (const b of buckets) {
           const prodPoints = await queryProductionPoints(
             client,
             config.org,
             b,
             productionEquipmentId,
+            localProducerIds,
             from,
             to,
             resolution,
@@ -1239,12 +1246,15 @@ async function sumConsumptionHpHc(
 /**
  * Query production energy points from InfluxDB.
  * Production Equipment stores 3 aliases: "energy" (total), "autoconso", "injection".
+ * Spec 195 — each local producer (a submeter flagged `localProduction`) adds its
+ * `production` alias to the total; its own `energy` is consumption and is not read.
  */
 async function queryProductionPoints(
   client: import("@influxdata/influxdb-client").InfluxDB,
   org: string,
   bucket: string,
   equipmentId: string,
+  localProducerIds: readonly string[],
   from: Date,
   to: Date,
   resolution: Resolution,
@@ -1254,12 +1264,14 @@ async function queryProductionPoints(
   const tz = getServerTz();
 
   const aliasFilter = `r.alias == "energy" or r.alias == "autoconso" or r.alias == "injection"`;
+  const localFilter = localProducerIds
+    .map((id) => ` or (r.equipmentId == "${id}" and r.alias == "production")`)
+    .join("");
   const flux = `import "timezone"
 from(bucket: "${bucket}")
   |> range(start: ${from.toISOString()}, stop: ${to.toISOString()})
   |> filter(fn: (r) => r._measurement == "equipment_data")
-  |> filter(fn: (r) => r.equipmentId == "${equipmentId}")
-  |> filter(fn: (r) => ${aliasFilter})
+  |> filter(fn: (r) => (r.equipmentId == "${equipmentId}" and (${aliasFilter}))${localFilter})
   |> filter(fn: (r) => r.category == "energy")
   |> filter(fn: (r) => r._field == "value_number")
   |> aggregateWindow(
@@ -1280,7 +1292,7 @@ from(bucket: "${bucket}")
     const row = tableMeta.toObject(values) as { _time: string; _value: number; alias: string };
     if (row._value == null) continue;
     const time = new Date(row._time).toISOString();
-    if (row.alias === "energy") {
+    if (row.alias === "energy" || row.alias === "production") {
       prodMap.set(time, (prodMap.get(time) ?? 0) + row._value);
     } else if (row.alias === "autoconso") {
       autoMap.set(time, (autoMap.get(time) ?? 0) + row._value);

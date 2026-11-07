@@ -694,6 +694,14 @@ describe("PUT /api/v1/equipments/:id — separate supply (spec 179)", () => {
     },
     { id: "edf", name: "EDF", type: "main_energy_meter", separateSupply: false },
     { id: "pv", name: "Solaire", type: "energy_production_meter", separateSupply: false },
+    // Spec 195 — a pool clamp with a panel wired behind it.
+    {
+      id: "piscine",
+      name: "Piscine",
+      type: "energy_meter",
+      separateSupply: false,
+      localProduction: true,
+    },
   ];
 
   beforeEach(async () => {
@@ -793,6 +801,45 @@ describe("PUT /api/v1/equipments/:id — separate supply (spec 179)", () => {
     expect(received).toBeNull();
     // Clearing the flag in the same request makes the retype honest again.
     const ok = await put("ve", { type: "main_energy_meter", separateSupply: false });
+    expect(ok.statusCode).toBe(200);
+  });
+
+  // ── Spec 195 — local production ──
+  it("forwards the local-production flag, and its withdrawal", async () => {
+    expect((await put("gite", { localProduction: true })).statusCode).toBe(200);
+    expect(received?.localProduction).toBe(true);
+    expect((await put("piscine", { localProduction: false })).statusCode).toBe(200);
+    expect(received?.localProduction).toBe(false);
+  });
+
+  it("refuses local production on the house total and on a production meter", async () => {
+    // Their power is already the reference or the production: counting it
+    // again as local production would count it twice.
+    for (const id of ["edf", "pv"]) {
+      const res = await put(id, { localProduction: true });
+      expect(res.statusCode).toBe(400);
+      expect(res.json().error).toBe("LocalProductionNotApplicable");
+    }
+    expect(received).toBeNull();
+  });
+
+  it("refuses local production behind a separate supply, from either side", async () => {
+    // That production never flows through the main meter, so crediting it to
+    // the house's self-consumption would invent energy.
+    const flagSeparate = await put("ve", { localProduction: true });
+    expect(flagSeparate.statusCode).toBe(400);
+    expect(flagSeparate.json().error).toBe("LocalProductionNotApplicable");
+    const separateFlagged = await put("piscine", { separateSupply: true });
+    expect(separateFlagged.statusCode).toBe(400);
+    expect(separateFlagged.json().error).toBe("LocalProductionNotApplicable");
+    expect(received).toBeNull();
+  });
+
+  it("refuses retyping a flagged meter into a production meter", async () => {
+    const res = await put("piscine", { type: "energy_production_meter" });
+    expect(res.statusCode).toBe(400);
+    expect(res.json().error).toBe("LocalProductionNotApplicable");
+    const ok = await put("piscine", { type: "energy_production_meter", localProduction: false });
     expect(ok.statusCode).toBe(200);
   });
 });

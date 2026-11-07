@@ -169,6 +169,18 @@ Say so on the meter: open its equipment page and tick **Fed by a separate supply
 
 A separate-supply meter cannot be picked under **Already counted by** — nothing the partition renders can be "inside" a meter on another supply.
 
+##### When a solar panel sits behind a submeter
+
+A small panel can be wired behind a submeter rather than through the production meter: a few modules on the pool house roof, behind the pool clamp. When the panel produces more than the circuit draws, the clamp reads **negative** watts. By default Sowel takes a negative reading for a clamp mounted backwards and counts its absolute value as consumption, so the panel's output would inflate the circuit's slice, shrink "Other" by as much, and never appear as production.
+
+Say so on the meter: open its equipment page and tick **Local production flows through this meter**. From then on:
+
+- the circuit's slice keeps only what it draws (the positive part);
+- the negative part counts as **solar production** of the house: it is added to the total production, to self-consumption, and to the household consumption that is rebuilt from them;
+- on the live page, the circuit's row shows its load only and the panel's output joins the solar flow.
+
+It applies from the moment the box is ticked — past history is not rewritten. It needs an **Energy Meter (production)** equipment to be configured, since that is where self-consumption is recorded. It cannot be combined with **Fed by a separate supply**: that panel's output never reaches your main meter.
+
 Totals widgets (peak / off-peak, autoconsumption) stay unchanged when you toggle modes.
 
 #### Longer periods
