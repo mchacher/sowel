@@ -324,10 +324,12 @@ export interface ZoneAggregatedData {
   /**
    * Per-DataCategory count of equipments in this zone (and descendants) that
    * were skipped from aggregation because their status === "offline" (spec 116).
-   * Missing keys mean zero. Lets UI render "(N unavailable)" hints next to the
-   * affected metric.
+   * Missing keys mean zero. Lets the UI mark the affected pill;
+   * the names are in `unavailableEquipmentNamesByCategory`.
    */
   unavailableEquipmentsByCategory: Partial<Record<DataCategory, number>>;
+  /** #1134 — names of those equipments, sorted, one entry per equipment (same keys). */
+  unavailableEquipmentNamesByCategory: Partial<Record<DataCategory, string[]>>;
 }
 
 // ============================================================

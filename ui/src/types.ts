@@ -284,9 +284,11 @@ export interface ZoneAggregatedData {
   displaysOnline: number;
   displaysTotal: number;
   /** Per-DataCategory count of equipments excluded from aggregation because
-   *  status === "offline" (spec 116). Used by the UI to render "(N unavailable)"
-   *  hints next to affected metrics. */
+   *  status === "offline" (spec 116). Kept for API clients; the UI marks
+   *  the affected pill from `unavailableEquipmentNamesByCategory`. */
   unavailableEquipmentsByCategory: Partial<Record<DataCategory, number>>;
+  /** #1134 — names of those equipments, sorted, one entry per equipment (same keys). */
+  unavailableEquipmentNamesByCategory: Partial<Record<DataCategory, string[]>>;
 }
 
 // ============================================================

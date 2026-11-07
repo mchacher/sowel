@@ -125,6 +125,7 @@ describe("ZoneAggregator", () => {
         displaysOnline: 0,
         displaysTotal: 0,
         unavailableEquipmentsByCategory: {},
+        unavailableEquipmentNamesByCategory: {},
       });
     });
 
@@ -182,6 +183,87 @@ describe("ZoneAggregator", () => {
       // Average uses only the online sensor (20°C), not the (20+22)/2 = 21.
       expect(data?.temperature).toBe(20);
       expect(data?.unavailableEquipmentsByCategory).toEqual({ temperature: 1 });
+      expect(data?.unavailableEquipmentNamesByCategory).toEqual({ temperature: ["Sensor 2"] });
+    });
+
+    // #1134 — the Piscine zone in production: everything offline.
+    it("counts an offline equipment as an unavailable light or shutter only if it would count online", () => {
+      const parent = zoneManager.create({ name: "Maison" });
+      const pool = zoneManager.create({ name: "Piscine", parentId: parent.id });
+      const offline = (name: string, type: EquipmentType, bindings: [string, string][]) => {
+        const dev = seedDevice(db, {
+          name,
+          dataKeys: bindings.map(([key, category]) => ({ key, category, value: "true" })),
+        });
+        db.prepare("UPDATE devices SET status = 'offline' WHERE id = ?").run(dev.deviceId);
+        const eq = equipmentManager.create({ name, type, zoneId: pool.id });
+        bindings.forEach(([key], i) => equipmentManager.addDataBinding(eq.id, dev.dataIds[i], key));
+      };
+      offline("Spot Piscine", "light_onoff", [["state", "light_state"]]);
+      // Two channels of one light: one unavailable light, not two.
+      offline("Guirlande", "light_onoff", [
+        ["state", "light_state"],
+        ["state_2", "light_state"],
+      ]);
+      offline("Pompe Piscine", "pool_pump", [["state", "light_state"]]);
+      offline("PAC Piscine", "pool_heat_pump", [["state", "light_state"]]);
+      offline("Volet Piscine", "pool_cover", [["position", "shutter_position"]]);
+
+      aggregator.computeAll();
+
+      for (const zoneId of [pool.id, parent.id]) {
+        const data = aggregator.getByZoneId(zoneId);
+        expect(data?.lightsTotal).toBe(0);
+        expect(data?.unavailableEquipmentsByCategory.light_state).toBe(2);
+        expect(data?.unavailableEquipmentNamesByCategory.light_state).toEqual([
+          "Guirlande",
+          "Spot Piscine",
+        ]);
+        expect(data?.unavailableEquipmentsByCategory.shutter_position).toBeUndefined();
+      }
+    });
+
+    it("emits zone.data.changed when an offline light is renamed, though the count is the same", () => {
+      const zone = zoneManager.create({ name: "Salon" });
+      const dev = seedDevice(db, {
+        name: "Lampe",
+        dataKeys: [{ key: "state", category: "light_state", value: "true" }],
+      });
+      db.prepare("UPDATE devices SET status = 'offline' WHERE id = ?").run(dev.deviceId);
+      const eq = equipmentManager.create({ name: "Lampe A", type: "light_onoff", zoneId: zone.id });
+      equipmentManager.addDataBinding(eq.id, dev.dataIds[0], "state");
+      aggregator.computeAll();
+      events.length = 0;
+
+      // Through the event bus: a count-only comparison would swallow this change
+      // and leave the tooltip naming « Lampe A ».
+      equipmentManager.update(eq.id, { name: "Lampe B" });
+
+      const changed = events.filter(
+        (e): e is Extract<EngineEvent, { type: "zone.data.changed" }> =>
+          e.type === "zone.data.changed" && e.zoneId === zone.id,
+      );
+      expect(changed).toHaveLength(1);
+      expect(changed[0].aggregatedData.unavailableEquipmentsByCategory).toEqual({ light_state: 1 });
+      expect(changed[0].aggregatedData.unavailableEquipmentNamesByCategory).toEqual({
+        light_state: ["Lampe B"],
+      });
+    });
+
+    it("flags the temperature pill only for a binding that would feed it online", () => {
+      const zone = zoneManager.create({ name: "Local technique" });
+      const dev = seedDevice(db, {
+        name: "PAC",
+        dataKeys: [{ key: "water_temp", type: "number", category: "temperature", value: "40" }],
+      });
+      db.prepare("UPDATE devices SET status = 'offline' WHERE id = ?").run(dev.deviceId);
+      const eq = equipmentManager.create({ name: "PAC", type: "pool_heat_pump", zoneId: zone.id });
+      equipmentManager.addDataBinding(eq.id, dev.dataIds[0], "water_temp");
+
+      aggregator.computeAll();
+      expect(
+        aggregator.getByZoneId(zone.id)?.unavailableEquipmentsByCategory.temperature,
+      ).toBeUndefined();
     });
 
     it("leaves unavailableEquipmentsByCategory empty when all equipments are online", () => {
