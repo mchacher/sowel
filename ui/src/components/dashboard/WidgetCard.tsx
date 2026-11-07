@@ -10,6 +10,8 @@ interface WidgetCardProps {
   className?: string;
   /** Primary action, fired by a click anywhere on the tile that did not start on a nested control. */
   onClick?: () => void;
+  /** Absolutely placed in the top-right corner (the mobile tap glyph, spec 196). */
+  corner?: ReactNode;
   children: ReactNode;
 }
 
@@ -39,18 +41,19 @@ export function WidgetCard({
   sublabel,
   className = "",
   onClick,
+  corner,
   children,
 }: WidgetCardProps) {
   const cardAction = useCardPrimaryAction(onClick);
 
   return (
     <div
-      className={`card p-3 flex flex-col h-[160px] sm:h-[240px] overflow-hidden ${
+      className={`card relative p-3 flex flex-col h-[160px] sm:h-[240px] overflow-hidden ${
         onClick ? "cursor-pointer active:scale-[0.98] transition-transform" : ""
       } ${className}`}
       {...cardAction}
     >
-      <div className="mb-2 text-center">
+      <div className={`mb-2 text-center ${corner ? "px-4 sm:px-0" : ""}`}>
         <span className="block text-lead font-semibold text-text truncate leading-tight">
           {label}
         </span>
@@ -62,6 +65,7 @@ export function WidgetCard({
         <TileOrderOutcomeLine />
       </div>
       {children}
+      {corner}
     </div>
   );
 }

@@ -25,6 +25,7 @@ import { ZoneWidget } from "./ZoneWidget";
 import { IconPicker } from "./IconPicker";
 import { BindingsPicker } from "./BindingsPicker";
 import { MobileWidgetCard } from "./MobileWidgetCard";
+import { TapGlyph } from "./TapGlyph";
 import { TimedEquipmentWidget } from "./TimedEquipmentWidget";
 import { TileEquipmentContext } from "../equipments/order-outcome";
 import { RecipeTile } from "./RecipeTile";
@@ -479,7 +480,8 @@ function WidgetRenderer({
           widget={widget}
           equipment={equipment}
           equipmentZone={equipmentZone}
-          onClick={mobileClick}
+          onClick={mobileClick?.run}
+          tapKind={mobileClick?.kind}
           editMode={editMode}
         />
       );
@@ -636,16 +638,22 @@ function MobileZoneCard({
     return { icon: null, stateText: null };
   })();
 
+  // Spec 196 — a zone tile opens its sheet, and says so in the corner like
+  // the equipment cards.
+  const opens = !!onClick && !editMode;
   return (
     <button
+      type="button"
       onClick={onClick}
-      className={`card p-2 flex flex-col items-center h-[120px] overflow-hidden w-full text-left ${
-        editMode ? "" : "cursor-pointer active:scale-[0.98]"
+      aria-label={opens ? t("dashboard.tap.sheet", { name: label }) : undefined}
+      className={`card relative p-2 flex flex-col items-center h-[120px] overflow-hidden w-full text-left ${
+        opens ? "cursor-pointer active:scale-[0.98]" : ""
       } transition-transform`}
     >
+      {opens && <TapGlyph kind="sheet" />}
       {/* Label */}
       <span className={`text-caption font-semibold text-text truncate w-full text-center ${
-        editMode ? "pl-5 pr-8" : ""
+        editMode ? "pl-5 pr-8" : opens ? "px-4" : ""
       }`}>
         {label}
       </span>

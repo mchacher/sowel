@@ -2,6 +2,7 @@ import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import { Loader2, TimerReset, X } from "lucide-react";
 import { WidgetCard } from "./WidgetCard";
+import { TapGlyph } from "./TapGlyph";
 import { armTimedCommand, cancelTimedCommand } from "../../api";
 import { TimedCountdown } from "../equipments/TimedCountdown";
 import { useEquipments } from "../../store/useEquipments";
@@ -94,6 +95,11 @@ export function TimedEquipmentWidget({
         sublabel ?? (configured ? t("dashboard.timed.sublabel", { count: minutes }) : undefined)
       }
       onClick={!running && !editMode && !inert ? arm : undefined}
+      // Spec 196 — on a phone the corner says a tap acts at once; the desktop
+      // tile keeps its explicit arm button as the only cue.
+      corner={
+        !running && !editMode && !inert ? <TapGlyph kind="now" className="sm:hidden" /> : undefined
+      }
     >
       {/* Four things do not fit in the shell's 160 px on a phone. Of title,
           state and controls, the title is truncated, the state is the answer
