@@ -11,6 +11,37 @@ Cette page résume toutes les versions publiées, de la plus récente à la plus
 
 ---
 
+## 1.80.x : Une interface plus calme et plus cohérente
+
+### v1.80.0 — 2026-11-07 { #v1-80-0 }
+
+L'interface est rafraîchie sans changer d'identité (spec 196) : elle fonctionne sur téléphone et tablette, parle français en français, écrit tous les nombres de la même façon, est plus calme, et le même geste fait la même chose partout. Un sous-compteur peut maintenant compter comme production un panneau solaire branché derrière lui.
+
+- Nouveauté (interface) : **réparée sur téléphone et tablette** (spec 196, phase 1, #1118).
+  - Les pages qui cassaient sur téléphone tiennent à nouveau (journaux, en-têtes de page, station météo, graduations des graphiques), et les tablettes passent à la navigation mobile : l'arbre des zones et les sous-pages Énergie redeviennent accessibles.
+  - Zones tactiles de 44 px sur les écrans tactiles.
+  - Interface en français : « Accueil », « En direct », « Marche / Arrêt », pluriels, typographie française.
+  - Tous les nombres passent par un seul formateur : virgule décimale en français, espace fine avant l'unité, une précision par grandeur.
+  - Erreurs plus claires (« Serveur occupé », réseau), et la page équipement ne bascule plus sur « introuvable » quand un rafraîchissement échoue.
+- Nouveauté (interface) : **un aspect plus calme** (spec 196, phase 2, #1119).
+  - Inter avec une seule échelle typographique, sans majuscules décoratives ; les nombres en Inter à chiffres tabulaires, la mono gardée pour les journaux et les identifiants.
+  - Rôles de couleur : l'ambre veut dire en marche, l'orange attention, le rouge défaut, le vert OK.
+  - Gris teintés du bleu de la marque, et un thème sombre « nuit océan » où les cartes se détachent à nouveau de la page.
+  - La barre supérieure n'affiche l'heure que si vous êtes dans un autre fuseau horaire, et la connexion que si elle est dégradée.
+  - Les panneaux de la vue Maison (équipements, comportements, activité) partagent une même présentation ; l'activité devient un journal continu groupé par moment de la journée.
+- Nouveauté (interface) : **le même geste partout** (spec 196, phase 3, #1121).
+  - Une seule commande de consigne partout : chaque appui s'affiche aussitôt, un seul ordre part après le dernier appui, la valeur demandée tient jusqu'au retour de l'appareil, un échec la rétablit.
+  - Les tuiles mobiles montrent ce que fait un appui (agir, ouvrir ou demander d'abord).
+  - La page équipement met l'usage en premier et la configuration en dernier ; le retour ramène d'où vous venez.
+  - Avec « Confirmation avant action », tout chemin qui actionne le portail demande d'abord. Stop ne demande jamais.
+- Nouveauté (énergie) : **les couleurs de l'énergie se distinguent en thème sombre** (spec 196, #1120). L'aspect ne change pas, mais les séries qui se confondaient en sombre se séparent, les légendes suivent le thème, et les sous-compteurs utilisent une palette adaptée au thème. L'API `/energy/by-usage` gagne un `colorIndex` additionnel ; `color` garde ses valeurs.
+- Nouveauté (énergie) : **un sous-compteur qui voit une production locale** (spec 195, #1116, #1117). Cochez « Une production locale passe par ce compteur » sur un sous-compteur à puissance seule avec un panneau branché derrière : sa puissance négative est comptée comme production et ajoutée au solaire (autoconsommation, historique, En direct) au lieu de gonfler la consommation de ce circuit.
+- Correction (recettes, équipements) : **journal d'activité sans doublons** (#1122, #1130). Activer ou désactiver un comportement donne une ligne, pas deux. Un changement de vitesse de VMC donne une seule ligne (« VMC → V1 ») au lieu d'une par relais.
+- Registre : Thermostat présence 1.0.1 se nomme comme source de ses consignes dans le journal d'activité (#1131).
+- Dépendances : mises à jour backend, interface et GitHub Actions (#1111, #1112, #1113, #1114, #1115).
+
+---
+
 ## 1.79.x : Distinguer deux voitures, et le coût de recharge audité
 
 ### v1.79.0 — 2026-11-01 { #v1-79-0 }
