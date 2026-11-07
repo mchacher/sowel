@@ -154,6 +154,7 @@ const SAME_AS_EN = new Set<string>([
   "equipments.solar.cardinal.E",
   "equipments.solar.cardinal.SE",
   "equipments.solar.cardinal.S",
+  "equipments.pv.accuracyValue",
   "equipments.pv.accuracyValueNoPct",
   "equipments.timed.minutes_one",
   "equipments.timed.minutes_other",

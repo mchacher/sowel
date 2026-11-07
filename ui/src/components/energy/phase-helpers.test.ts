@@ -95,10 +95,12 @@ describe("extractPhases", () => {
 
 describe("formatPhasePower", () => {
   it("rounds sub-1000W values to the nearest 5W", () => {
-    expect(formatPhasePower(268)).toEqual({ num: "270", unit: "W" });
+    expect(formatPhasePower(268, "en-US")).toBe("270\u00A0W");
+    expect(formatPhasePower(-268, "fr-FR")).toBe("270\u202FW");
   });
 
   it("formats >=1000W values in kW with one decimal", () => {
-    expect(formatPhasePower(1234)).toEqual({ num: "1.2", unit: "kW" });
+    expect(formatPhasePower(1234, "en-US")).toBe("1.2\u00A0kW");
+    expect(formatPhasePower(1234, "fr-FR")).toBe("1,2\u202FkW");
   });
 });

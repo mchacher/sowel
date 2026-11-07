@@ -28,6 +28,7 @@ import { useWsSubscription } from "../../hooks/useWsSubscription";
 import { ArbitrationSurface } from "./ArbitrationSurface";
 import { FlowDiagram } from "../flow/FlowDiagram";
 import { formatRelative } from "../../lib/format-relative";
+import { formatPercent, formatPowerParts, type QuantityParts } from "../../lib/format";
 import { detectLiveStaleness, type LiveStalenessEntry } from "./live-staleness";
 import { useStalenessClock } from "../../hooks/useStalenessClock";
 
@@ -54,18 +55,11 @@ function sumPower(equipments: EquipmentWithDetails[]): number | null {
   return any ? total : null;
 }
 
-/** Format a power value:
- *  - |value| < 1000 W → integer W rounded to the nearest 5 (smooth display)
- *  - |value| ≥ 1000 W → kW with one decimal
- */
-function formatPower(value: number | null): { num: string; unit: "W" | "kW" } {
-  if (value === null) return { num: "—", unit: "W" };
-  const a = Math.abs(value);
-  if (a < 1000) {
-    const rounded = Math.round(a / 5) * 5;
-    return { num: String(rounded), unit: "W" };
-  }
-  return { num: (a / 1000).toFixed(1), unit: "kW" };
+/** A node's figure: whole watts rounded to 5 below a kilowatt (a 1 Hz meter
+ *  would otherwise flicker the last digit), kW with one decimal above. The
+ *  direction is carried by the arrow beside it, so the figure is unsigned. */
+function nodePower(value: number | null): QuantityParts {
+  return formatPowerParts(value === null ? null : Math.abs(value), { step: 5 });
 }
 
 // ── Page ────────────────────────────────────────────────────────────────
@@ -150,7 +144,7 @@ function StalenessBanner({ entry }: { entry: LiveStalenessEntry }) {
   const source = t(
     entry.source === "grid" ? "energy.live.label.grid" : "energy.live.label.production",
   );
-  const when = formatRelative(entry.since);
+  const when = formatRelative(entry.since, t);
   const key =
     entry.mode === "offline"
       ? when === ""
@@ -241,9 +235,9 @@ function LiveDiagram({
     if (flowSolarToGrid > 0) pctSG = Math.round((flowSolarToGrid / solar) * 100);
   }
 
-  const houseValue = formatPower(gridPower !== null || solarPower !== null ? house : null);
-  const gridValue = formatPower(gridPower !== null ? grid : null);
-  const solarValue = formatPower(solarPower !== null ? solar : null);
+  const houseValue = nodePower(gridPower !== null || solarPower !== null ? house : null);
+  const gridValue = nodePower(gridPower !== null ? grid : null);
+  const solarValue = nodePower(solarPower !== null ? solar : null);
 
   return (
     <div className="bg-surface border border-border rounded-[10px] p-4 sm:p-6">
@@ -256,21 +250,21 @@ function LiveDiagram({
             color: gridColor,
             active: flowGridToHouse > 0,
             magnitude: flowGridToHouse,
-            ...(pctGH !== null ? { pill: { text: `${pctGH}%`, color: gridColor } } : {}),
+            ...(pctGH !== null ? { pill: { text: formatPercent(pctGH), color: gridColor } } : {}),
           },
           {
             edge: "rightToFocal",
             color: AUTO_COLOR,
             active: flowSolarToHouse > 0,
             magnitude: flowSolarToHouse,
-            ...(pctSH !== null ? { pill: { text: `${pctSH}%`, color: AUTO_COLOR } } : {}),
+            ...(pctSH !== null ? { pill: { text: formatPercent(pctSH), color: AUTO_COLOR } } : {}),
           },
           {
             edge: "rightToLeft",
             color: AUTO_COLOR,
             active: flowSolarToGrid > 0,
             magnitude: flowSolarToGrid,
-            ...(pctSG !== null ? { pill: { text: `${pctSG}%`, color: AUTO_COLOR } } : {}),
+            ...(pctSG !== null ? { pill: { text: formatPercent(pctSG), color: AUTO_COLOR } } : {}),
           },
         ]}
         nodes={[
@@ -278,7 +272,7 @@ function LiveDiagram({
             slot: "focal",
             label: t("energy.live.label.consumption"),
             color: HP_COLOR,
-            value: houseValue.num,
+            value: houseValue.value,
             unit: houseValue.unit,
             icon: (
               <svg
@@ -309,7 +303,7 @@ function LiveDiagram({
             label: t("energy.live.label.grid"),
             color: gridColor,
             dimmed: Math.abs(grid) < 5,
-            value: gridValue.num,
+            value: gridValue.value,
             unit: gridValue.unit,
             valuePrefix: <span className="text-[18px] font-bold">{exporting ? "↓" : "↑"}</span>,
             icon: <GridPylonIcon className="w-9 h-9 sm:w-10 sm:h-10" />,
@@ -319,7 +313,7 @@ function LiveDiagram({
             label: t("energy.live.label.production"),
             color: AUTO_COLOR,
             dimmed: solar < 5,
-            value: solarValue.num,
+            value: solarValue.value,
             unit: solarValue.unit,
             icon: <SolarPanelIcon className="w-9 h-9 sm:w-10 sm:h-10" strokeWidth={1.4} />,
           },

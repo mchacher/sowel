@@ -8,6 +8,7 @@ import { surplusStickerColor, loadStateColor, displayState } from "./arbiterColo
 import { useArbiter } from "../../store/useArbiter";
 import { useZoneAggregation } from "../../store/useZoneAggregation";
 import { ROOT_ZONE_ID } from "../../lib/constants";
+import { formatPower } from "../../lib/format";
 
 /**
  * Spec 140 / FR-10 — the arbitration surface on Energy → Live. Two stacked
@@ -23,13 +24,12 @@ import { ROOT_ZONE_ID } from "../../lib/constants";
  */
 
 /**
- * Thousands get a thin no-break space: `1850 W` reads slower than `1 850 W`.
  * The table stays in watts even above a kilowatt (#807) — the differences that
  * decide anything here are a few hundred watts, which kW rounding would erase.
+ * Thousands are grouped by `lib/format`: `1850 W` reads slower than `1 850 W`.
  */
 function fmtW(v: number | null): string {
-  if (v === null) return "—";
-  return `${String(v).replace(/\B(?=(\d{3})+(?!\d))/g, " ")} W`;
+  return formatPower(v, { unit: "W" });
 }
 
 /**
@@ -177,7 +177,7 @@ export function ArbitrationSurface() {
               <>
                 {t(`arbiter.state.${state.state}`)}
                 {available !== null && (
-                  <span className="font-mono">{(available / 1000).toFixed(1)} kW</span>
+                  <span className="font-mono">{formatPower(available)}</span>
                 )}
               </>
             )}
@@ -198,7 +198,7 @@ export function ArbitrationSurface() {
       )}
       {showDeficit && (
         <p className="text-[12px] text-text-tertiary mb-2">
-          {t("arbiter.deficitContext", { kw: (Math.abs(available) / 1000).toFixed(1) })}
+          {t("arbiter.deficitContext", { power: formatPower(Math.abs(available)) })}
         </p>
       )}
 
@@ -318,7 +318,7 @@ export function ArbitrationSurface() {
                     className="font-mono text-[22px] leading-tight mt-0.5"
                     style={{ color: surplusStickerColor(available) }}
                   >
-                    {(available / 1000).toFixed(1)} kW
+                    {formatPower(available)}
                   </div>
                   <div className="text-[11.5px] text-text-tertiary mt-1">
                     {t("arbiter.aside.availableHint")}

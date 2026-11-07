@@ -15,7 +15,7 @@ import {
 } from "recharts";
 import type { EnergyPoint } from "../../types";
 import type { EnergyUnit } from "../../store/useUiState";
-import { formatEur } from "./format";
+import { formatEur, formatKwhTick, formatKwhTooltip } from "./format";
 
 interface EnergyBarChartProps {
   points: EnergyPoint[];
@@ -216,23 +216,6 @@ function buildChartData(
 }
 
 // ============================================================
-// Formatters
-// ============================================================
-
-function formatKWh(kwh: number): string {
-  if (kwh >= 1) return `${kwh.toFixed(2)} kWh`;
-  if (kwh > 0) return `${Math.round(kwh * 1000)} Wh`;
-  return "0 Wh";
-}
-
-function formatYAxis(kwh: number): string {
-  if (kwh >= 100) return `${Math.round(kwh)} kWh`;
-  if (kwh >= 1) return `${kwh.toFixed(1)} kWh`;
-  if (kwh === 0) return "0";
-  return `${kwh.toFixed(2)} kWh`;
-}
-
-// ============================================================
 // SVG path helper: rectangle with only top corners rounded
 // ============================================================
 
@@ -312,7 +295,7 @@ export function EnergyBarChart({ points, period, date, height = 300, unit = "wh"
           tick={{ fontSize: 11, fill: "var(--color-text-tertiary)" }}
           tickLine={false}
           axisLine={false}
-          tickFormatter={isEur ? (eur: number) => formatEur(eur, locale) : formatYAxis}
+          tickFormatter={isEur ? (eur: number) => formatEur(eur, locale) : (kwh: number) => formatKwhTick(kwh, locale)}
           width={70}
           domain={isEur ? [0, "auto"] : [0, yTicks?.[yTicks.length - 1] ?? "dataMax"]}
           ticks={isEur ? undefined : yTicks}
@@ -350,19 +333,19 @@ export function EnergyBarChart({ points, period, date, height = 300, unit = "wh"
                 <div style={{ fontWeight: 600, marginBottom: 4 }}>{datum.tooltipLabel}</div>
                 <div style={{ fontWeight: 600, marginBottom: 4 }}>
                   {t("energy.consumption")}{t("common.colon")}
-                  {isEur ? formatEur(costTotal, locale) : formatKWh(consoTotal)}
+                  {isEur ? formatEur(costTotal, locale) : formatKwhTooltip(consoTotal, locale)}
                 </div>
                 <div style={{ color: HP_COLOR }}>
                   {t("energy.peakHours")}{t("common.colon")}
-                  {isEur ? formatEur(datum.cost_hp, locale) : formatKWh(hpGrid)}
+                  {isEur ? formatEur(datum.cost_hp, locale) : formatKwhTooltip(hpGrid, locale)}
                 </div>
                 <div style={{ color: HC_COLOR }}>
                   {t("energy.offPeakHours")}{t("common.colon")}
-                  {isEur ? formatEur(datum.cost_hc, locale) : formatKWh(hcGrid)}
+                  {isEur ? formatEur(datum.cost_hc, locale) : formatKwhTooltip(hcGrid, locale)}
                 </div>
                 {!isEur && datum.autoconso > 0 && (
                   <div style={{ color: AUTOCONSO_COLOR }}>
-                    {t("energy.autoconsumption")}{t("common.colon")}{formatKWh(datum.autoconso)}
+                    {t("energy.autoconsumption")}{t("common.colon")}{formatKwhTooltip(datum.autoconso, locale)}
                   </div>
                 )}
               </div>

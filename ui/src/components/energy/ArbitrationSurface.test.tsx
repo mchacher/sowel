@@ -107,7 +107,7 @@ describe("ArbitrationSurface roster (#561, spec 165)", () => {
     expect(screen.getByText("At rest")).toBeTruthy();
     // #807 - thousands are separated by a thin space in the DOM; testing-library
     // normalizes it back to a plain one, which is what the matcher sees.
-    expect(screen.getByText("1 500 W")).toBeTruthy();
+    expect(screen.getByText("1,500 W")).toBeTruthy();
   });
 
   it("shows a granted load consuming nothing as 'Granted (not consuming)' (spec 164/165)", () => {
@@ -289,7 +289,7 @@ describe("ArbitrationSurface need and gap columns (#807)", () => {
     expect(screen.getByText("700 W")).toBeTruthy();
   });
 
-  it("separates thousands with a thin space", () => {
+  it("separates thousands, by the language's rule (comma in English)", () => {
     seed({
       loads: [
         load({ equipmentId: "pacp", equipmentName: "PAC Piscine", watts: 1800, needW: 1850 }),
@@ -297,7 +297,7 @@ describe("ArbitrationSurface need and gap columns (#807)", () => {
     });
     render(<ArbitrationSurface />);
 
-    expect(screen.getByText("1 850 W")).toBeTruthy();
+    expect(screen.getByText("1,850 W")).toBeTruthy();
     expect(screen.queryByText("1850 W")).toBeNull();
   });
 
@@ -423,7 +423,7 @@ describe("ArbitrationSurface need and gap columns (#807)", () => {
     expect(screen.getByText("Next to switch")).toBeTruthy();
     // Once in its roster row, once in the panel.
     expect(screen.getAllByText("PAC Piscine")).toHaveLength(2);
-    expect(screen.getByText("Starts at 1 850 W, short by 650 W")).toBeTruthy();
+    expect(screen.getByText("Starts at 1,850 W, short by 650 W")).toBeTruthy();
   });
 
   it("states the arithmetic with the configured margin", () => {
@@ -474,7 +474,7 @@ describe("ArbitrationSurface need and gap columns (#807)", () => {
     render(<ArbitrationSurface />);
 
     expect(screen.getByText("Next to switch")).toBeTruthy();
-    expect(screen.getByText("Its 1 850 W need is covered, start being confirmed")).toBeTruthy();
+    expect(screen.getByText("Its 1,850 W need is covered, start being confirmed")).toBeTruthy();
   });
 
   it("keeps the context panel off the phone tier when it would be empty", () => {

@@ -10,6 +10,8 @@
  * follows the language.
  */
 
+import { formatRange } from "./format";
+
 const pad = (n: number): string => String(n).padStart(2, "0");
 
 const isFrench = (locale: string): boolean => locale.toLowerCase().startsWith("fr");
@@ -19,10 +21,10 @@ export function formatHourLabel(hour: number, locale: string): string {
   return isFrench(locale) ? `${pad(hour)}h` : `${pad(hour)}:00`;
 }
 
-/** The tooltip heading for one hour: "08h00 - 09h00" / "08:00 - 09:00". */
+/** The tooltip heading for one hour: "08h00 – 09h00" / "08:00 – 09:00". */
 export function formatHourRange(hour: number, locale: string): string {
   const next = (hour + 1) % 24;
   return isFrench(locale)
-    ? `${pad(hour)}h00 - ${pad(next)}h00`
-    : `${pad(hour)}:00 - ${pad(next)}:00`;
+    ? formatRange(`${pad(hour)}h00`, `${pad(next)}h00`, { locale })
+    : formatRange(`${pad(hour)}:00`, `${pad(next)}:00`, { locale });
 }

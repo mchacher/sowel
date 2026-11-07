@@ -8,7 +8,8 @@ import { EnergyBarChart } from "./EnergyBarChart";
 import { EnergyByUsageChart } from "./EnergyByUsageChart";
 import { EnergyMobileNav } from "./EnergyMobileNav";
 import { UnitToggle } from "./UnitToggle";
-import { formatEnergyOrCost, formatKWh } from "./format";
+import { formatEnergyOrCost, formatWh } from "./format";
+import { formatPercent } from "../../lib/format";
 import { dateLocale } from "../../lib/locale";
 import { getEnergyByUsage, getEquipments } from "../../api";
 import type { EnergyByUsageResponse, SubmeterSeries } from "../../types";
@@ -191,7 +192,7 @@ export function EnergyPage() {
                             />
                             {s.name}
                             {t("common.colon")}
-                            {`${formatKWh(s.points.reduce((acc, p) => acc + p.wh, 0), period)} kWh`}
+                            {formatWh(s.points.reduce((acc, p) => acc + p.wh, 0), locale)}
                           </span>
                         ))}
                       </div>
@@ -226,7 +227,6 @@ export function EnergyPage() {
                       history.totals.total_consumption,
                       history.totals.cost_total,
                       effectiveUnit,
-                      period,
                       locale,
                     )}
                   </span>
@@ -237,7 +237,6 @@ export function EnergyPage() {
                         history.totals.total_hp,
                         history.totals.cost_hp,
                         effectiveUnit,
-                        period,
                         locale,
                       )}{" "}
                       / {t("energy.offPeakHours")}{t("common.colon")}
@@ -245,7 +244,6 @@ export function EnergyPage() {
                         history.totals.total_hc,
                         history.totals.cost_hc,
                         effectiveUnit,
-                        period,
                         locale,
                       )})
                     </span>
@@ -253,7 +251,7 @@ export function EnergyPage() {
                   {hasProduction && history.totals.total_autoconso > 0 && (
                     <span className="flex items-center gap-1.5">
                       <span className="inline-block w-2.5 h-2.5 rounded-full" style={{ backgroundColor: AUTOCONSO_COLOR }} />
-                      {t("energy.autoconsumption")}{t("common.colon")}{formatKWh(history.totals.total_autoconso, period)} kWh
+                      {t("energy.autoconsumption")}{t("common.colon")}{formatWh(history.totals.total_autoconso, locale)}
                     </span>
                   )}
                 </div>
@@ -263,12 +261,11 @@ export function EnergyPage() {
                     history.totals.total_consumption + (history.totals.total_autoconso ?? 0),
                     history.totals.cost_total,
                     effectiveUnit,
-                    period,
                     locale,
                   )}
                   {hasProduction && history.totals.total_consumption > 0 && history.totals.total_autoconso > 0 && (
                     <span className="ml-2 font-normal text-text-secondary">
-                      ({Math.round(history.totals.total_autoconso / (history.totals.total_consumption + history.totals.total_autoconso) * 100)}% {t("energy.autoconsumption").toLowerCase()})
+                      ({formatPercent((history.totals.total_autoconso / (history.totals.total_consumption + history.totals.total_autoconso)) * 100, { locale })} {t("energy.autoconsumption").toLowerCase()})
                     </span>
                   )}
                 </div>

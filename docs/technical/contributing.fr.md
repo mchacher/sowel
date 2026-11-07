@@ -164,6 +164,25 @@ Tout texte visible est une clé de `ui/src/i18n/locales/fr.json` **et** de `en.j
 - **Catégories** : chaque `DataCategory` a un libellé `category.<nom>` dans les deux langues. `locale-completeness.test.ts` énumère l'union en entier : une catégorie ajoutée dans `ui/src/types.ts` sans libellé ne compile pas.
 - **Typographie française** (`fr-typography.test.ts`) : espace fine insécable (U+202F) avant `: ; ! ?` et à l'intérieur des « », le caractère `…` plutôt que `...`, l'apostrophe droite `'` seule. Une valeur française égale à sa valeur anglaise fait échouer le test, sauf si elle figure dans `SAME_AS_EN` (noms propres, sigles, mots communs aux deux langues, termes d'administration gardés exprès comme broker ou topic).
 
+#### Nombres et unités
+
+Tout nombre affiché passe par `ui/src/lib/format.ts`, jamais par `toFixed`, un `toLocaleString()` sans argument ou un `Intl.NumberFormat` fait main. Le module suit la langue de l'interface : en français, virgule décimale, espace fine insécable (U+202F) entre les milliers et avant l'unité (« 1 288 lx », « 14,3 kWh », « 39 % »), signe moins U+2212 et jamais « −0 » ; en anglais, le point, la virgule entre les milliers et « 39% ». `null`, `undefined` et `NaN` s'affichent « — ». Une règle ESLint (`no-restricted-syntax` dans `ui/eslint.config.js`, vérifiée par `format-lint.test.ts`) signale `toFixed`, `new Intl.NumberFormat` et `toLocaleString()` hors du module ; elle avertit le temps que les derniers écrans migrent, puis bloque. Une valeur qui n'est pas affichée (une coordonnée SVG) s'arrondit avec `Math.round`.
+
+| Grandeur                                        | Fonction            | Précision                                                                                                         | Exemple                                           |
+| ----------------------------------------------- | ------------------- | ----------------------------------------------------------------------------------------------------------------- | ------------------------------------------------- |
+| Température, consigne                           | `formatTemperature` | 1 décimale fixe ; `compact` dans les tuiles, lignes et bandeaux, `full` dans les pages, axes et infobulles        | « 20,0° », « 20,5 °C »                            |
+| Puissance                                       | `formatPower`       | W entiers sous 1 000 W, puis kW à 1 décimale ; `step: 5` sur la page En direct ; `unit: "W"` pour rester en watts | « 407 W », « 1,1 kW »                             |
+| Énergie (valeur en kWh)                         | `formatEnergy`      | 3 chiffres significatifs, au plus 2 décimales ; `unit: "auto"` pour des Wh sous 1 kWh                             | « 7,09 kWh », « 14,3 kWh », « 984 kWh »           |
+| Pourcentage (0–100)                             | `formatPercent`     | 0 décimale                                                                                                        | « 46 % »                                          |
+| Euros                                           | `formatCurrency`    | 2 décimales fixes                                                                                                 | « 2,72 € »                                        |
+| V, mbar, hPa, km/h, m/s, dB, lx, ppm, µg/m³, km | `formatWithUnit`    | 0 décimale                                                                                                        | « 1 022 mbar »                                    |
+| A, mm, mm/h                                     | `formatWithUnit`    | 1 décimale, zéro final retiré                                                                                     | « 0 A », « 0,4 mm »                               |
+| Unité absente de la table                       | `formatWithUnit`    | 1 décimale, zéro final retiré, unité gardée telle quelle                                                          | « 3,2 xyz »                                       |
+| Durée (secondes)                                | `formatDuration`    | deux unités au plus ; `clock` pour les comptes à rebours                                                          | « 35 s », « 2 min 12 s », « 1 h 05 », « 3 j 4 h » |
+| Plage                                           | `formatRange`       | tiret demi-cadratin                                                                                               | « 07:22 – 17:17 »                                 |
+
+Les zéros inutiles sont retirés partout sauf sur les températures (« 4 kWh », pas « 4,0 kWh »). Chaque fonction prend `locale` (par défaut `dateLocale(i18n.language)`), et les variantes `*Parts` rendent la valeur et l'unité séparément pour les mises en page qui les stylent différemment. Une phrase traduite qui contient une grandeur la reçoit déjà formatée, unité comprise (`{{power}}`, pas `{{kw}} kW`).
+
 ---
 
 ## Règles de logging

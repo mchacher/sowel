@@ -4,6 +4,7 @@ import { useTranslation } from "react-i18next";
 import { CartesianGrid, Line, LineChart, ReferenceLine, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
 import { getPvHealth, type PvHealthResponse } from "../../api";
 import { dateLocale } from "../../lib/locale";
+import { formatPercent } from "../../lib/format";
 import { dailyTicks } from "./pvForecastUtils";
 import { localDayToDate } from "../../lib/local-date";
 import { loadWithRetry } from "../../lib/load-with-retry";
@@ -146,7 +147,7 @@ export const PvHealthPanel = memo(function PvHealthPanel({
           <AlertTriangle size={16} strokeWidth={1.5} className="text-warning flex-shrink-0 mt-0.5" />
           <p className="text-[13px] text-text">
             {t("equipments.pvHealth.alert", {
-              pct: Math.round(data.alert.deficit * 100),
+              pct: formatPercent(data.alert.deficit * 100, { locale }),
               since: localDayToDate(data.alert.since).toLocaleDateString(locale, {
                 day: "numeric",
                 month: "long",
@@ -160,7 +161,7 @@ export const PvHealthPanel = memo(function PvHealthPanel({
         <p className="text-[13px] text-text-secondary mb-3">
           {t("equipments.pvHealth.normal", {
             date: latest ? localDayToDate(latest.day).toLocaleDateString(locale) : "",
-            pct: deviation === null ? 0 : Math.abs(Math.round(deviation)),
+            pct: formatPercent(deviation === null ? 0 : Math.abs(deviation), { locale }),
             direction: t(
               deviation !== null && deviation < 0
                 ? "equipments.pvHealth.below"
@@ -178,7 +179,7 @@ export const PvHealthPanel = memo(function PvHealthPanel({
           {t("equipments.pvHealth.speed", {
             clear: data.detection.qualifyingDays,
             window: data.detection.windowDays,
-            pct: Math.round(data.detection.minDetectableLoss * 100),
+            pct: formatPercent(data.detection.minDetectableLoss * 100, { locale }),
             days: data.detection.calendarDays,
           })}
         </p>
@@ -239,7 +240,7 @@ function RatioChart({
           <YAxis
             // Relative to the anchor, because the ratio's own scale means
             // nothing to a household. 100 % is "as usual".
-            tickFormatter={(r: number) => `${Math.round((r / anchor) * 100)} %`}
+            tickFormatter={(r: number) => formatPercent((r / anchor) * 100, { locale })}
             domain={["dataMin", "dataMax"]}
             tick={{ fontSize: 11, fill: "var(--color-text-tertiary)" }}
             stroke="var(--color-border)"
@@ -248,7 +249,7 @@ function RatioChart({
           <Tooltip
             labelFormatter={(ts) => new Date(ts as number).toLocaleDateString(locale)}
             formatter={(v) => [
-              `${Math.round(((v as number) / anchor) * 100)} %`,
+              formatPercent(((v as number) / anchor) * 100, { locale }),
               t("equipments.pvHealth.ofNormal"),
             ]}
             contentStyle={{

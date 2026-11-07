@@ -11,12 +11,7 @@ import { displayedProductionTotalWh, hasProductionSplit } from "./productionTota
 import { PvForecastPanel } from "../equipments/PvForecastPanel";
 import { PvHealthPanel } from "../equipments/PvHealthPanel";
 import { isActiveSolarProfile } from "../equipments/solarProfileValidation";
-
-function formatKWh(wh: number, period: string): string {
-  const kwh = wh / 1000;
-  if (period === "day") return kwh.toFixed(2);
-  return Math.round(kwh).toString();
-}
+import { formatWh } from "./format";
 
 const AUTOCONSO_COLOR = "#6BCB77";
 const INJECTION_COLOR = "#2D8F3E";
@@ -84,16 +79,16 @@ export function ProductionPage() {
                 <div className="flex items-center gap-4 text-[13px] text-text-secondary">
                   <span className="flex items-center gap-1.5">
                     <span className="inline-block w-2.5 h-2.5 rounded-full" style={{ backgroundColor: AUTOCONSO_COLOR }} />
-                    {t("energy.autoconsumption")}{t("common.colon")}{formatKWh(history.totals.total_autoconso, period)} kWh
+                    {t("energy.autoconsumption")}{t("common.colon")}{formatWh(history.totals.total_autoconso)}
                   </span>
                   <span className="flex items-center gap-1.5">
                     <span className="inline-block w-2.5 h-2.5 rounded-full" style={{ backgroundColor: INJECTION_COLOR }} />
-                    {t("energy.gridInjection")}{t("common.colon")}{formatKWh(history.totals.total_injection, period)} kWh
+                    {t("energy.gridInjection")}{t("common.colon")}{formatWh(history.totals.total_injection)}
                   </span>
                 </div>
               )}
               <div className="text-[15px] font-semibold text-text tabular-nums mt-1">
-                {t("energy.total")}{t("common.colon")}{formatKWh(displayedProductionTotalWh(history.totals), period)} kWh
+                {t("energy.total")}{t("common.colon")}{formatWh(displayedProductionTotalWh(history.totals))}
               </div>
             </div>
           )}
