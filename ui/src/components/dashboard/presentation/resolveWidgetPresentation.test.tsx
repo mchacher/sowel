@@ -94,7 +94,7 @@ describe("resolveWidgetPresentation", () => {
       const p = resolveWidgetPresentation(makeWidget(), makeEquipment(), t);
       expect(p).not.toBeNull();
       expect(p!.isActive).toBe(false);
-      expect(p!.state.primary).toBe("OFF");
+      expect(p!.state.primary).toBe("Off");
       expect(toggleOf(p)).toMatchObject({
         alias: "state",
         on: false,
@@ -110,7 +110,7 @@ describe("resolveWidgetPresentation", () => {
       });
       const p = resolveWidgetPresentation(makeWidget(), eq, t);
       expect(p!.isActive).toBe(true);
-      expect(p!.state.primary).toBe("ON");
+      expect(p!.state.primary).toBe("On");
       expect(toggleOf(p)).toMatchObject({ on: true, onValue: "on", offValue: "off" });
     });
 
@@ -186,11 +186,11 @@ describe("resolveWidgetPresentation", () => {
     it("falls back to ON when powered without a source, OFF otherwise", () => {
       const noSource = makeTv();
       noSource.dataBindings = noSource.dataBindings.filter((b) => b.alias !== "input_source");
-      expect(resolveWidgetPresentation(makeWidget(), noSource, t)!.state.primary).toBe("ON");
+      expect(resolveWidgetPresentation(makeWidget(), noSource, t)!.state.primary).toBe("On");
 
       const off = makeTv();
       off.dataBindings[0].value = false;
-      expect(resolveWidgetPresentation(makeWidget(), off, t)!.state.primary).toBe("OFF");
+      expect(resolveWidgetPresentation(makeWidget(), off, t)!.state.primary).toBe("Off");
     });
 
     it("finds the power order by category, so a TV bound under alias `state` keeps its toggle (#932)", () => {

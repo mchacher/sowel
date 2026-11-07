@@ -208,7 +208,7 @@ function BrokersSection({ brokers, onRefresh }: { brokers: MqttBroker[]; onRefre
               <div className="text-[12px] text-text-tertiary font-mono">{broker.url}</div>
               {broker.username && (
                 <div className="text-[11px] text-text-tertiary">
-                  {t("mqttPublishers.brokerUsername")}: {broker.username}
+                  {t("mqttPublishers.brokerUsername")}{t("common.colon")}{broker.username}
                 </div>
               )}
             </div>

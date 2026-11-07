@@ -141,25 +141,27 @@ export interface SeriesTooltipOptions {
   unit?: string;
   /** Power series render in W/kW and carry their own label. */
   isPower: boolean;
-  /** Boolean/enum series render as ON/OFF. */
+  /** Boolean/enum series render as on/off words. */
   isDiscrete: boolean;
+  /** Localizer for the power label and the on/off words. */
+  t: (key: string) => string;
 }
 
-/** Time series tooltip row: power, min/max envelope band, discrete ON/OFF, or
+/** Time series tooltip row: power, min/max envelope band, discrete on/off, or
  *  a plain value with its unit. */
 export function formatSeriesTooltip(
   value: unknown,
   name: unknown,
-  { unit, isPower, isDiscrete }: SeriesTooltipOptions,
+  { unit, isPower, isDiscrete, t }: SeriesTooltipOptions,
 ): [string, string] {
   const v = tooltipNumber(value);
   const key = tooltipName(name);
   const isBand = key === "min" || key === "max";
 
   if (isPower) {
-    return [formatPower(v), isBand ? key : "Puissance"];
+    return [formatPower(v), isBand ? key : t("category.power")];
   }
   if (isBand) return [formatValue(v, unit), key];
-  if (isDiscrete) return [v === 1 ? "ON" : "OFF", ""];
+  if (isDiscrete) return [v === 1 ? t("controls.on") : t("controls.off"), ""];
   return [formatValue(v, unit), ""];
 }

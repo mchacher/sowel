@@ -221,7 +221,7 @@ export function LogsPage() {
 
         {/* Engine level control */}
         <div className="flex items-center gap-1.5">
-          <span className="text-[12px] text-text-tertiary">{t("logs.engineLevel")}:</span>
+          <span className="text-[12px] text-text-tertiary">{t("logs.engineLevel")}{t("common.colon").trimEnd()}</span>
           <select
             value={currentLevel}
             onChange={(e) => handleLevelChange(e.target.value as LogLevel)}

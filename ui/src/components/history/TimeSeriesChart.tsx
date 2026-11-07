@@ -167,7 +167,7 @@ export function TimeSeriesChart({ points, range, resolution, unit, height = 200,
           axisLine={false}
           width={48}
           {...(isDiscrete
-            ? { domain: [0, 1], ticks: [0, 1], tickFormatter: (v: number) => (v === 1 ? "ON" : "OFF") }
+            ? { domain: [0, 1], ticks: [0, 1], tickFormatter: (v: number) => (v === 1 ? t("controls.on") : t("controls.off")) }
             : isPower
               ? { tickFormatter: (v: number) => (v >= 1000 ? `${(v / 1000).toFixed(1)}k` : String(Math.round(v))) }
               : { tickFormatter: (v: number) => (Number.isInteger(v) ? String(v) : v.toFixed(1)) }
@@ -188,7 +188,7 @@ export function TimeSeriesChart({ points, range, resolution, unit, height = 200,
             return "";
           }}
           formatter={(value: unknown, name: unknown) =>
-            formatSeriesTooltip(value, name, { unit, isPower, isDiscrete })
+            formatSeriesTooltip(value, name, { unit, isPower, isDiscrete, t })
           }
         />
 

@@ -212,7 +212,7 @@ export function ThermostatCard({ equipment, onExecuteOrder, compact }: Thermosta
           </div>
           {outsideTemp !== null && (
             <div className="text-[13px] text-text-tertiary mb-1">
-              {t("thermostat.outside")}: {outsideTemp.toFixed(1)}°C
+              {t("thermostat.outside")}{t("common.colon")}{outsideTemp.toFixed(1)}°C
             </div>
           )}
         </div>

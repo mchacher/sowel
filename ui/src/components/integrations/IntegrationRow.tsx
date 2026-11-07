@@ -83,7 +83,7 @@ export function IntegrationRow({ integration, onOpen, onRefresh }: IntegrationRo
         {/* Mobile stats — under the status, inside the name column */}
         <div className="flex sm:hidden items-center gap-1.5 text-[11px] text-text-tertiary mt-0.5 whitespace-nowrap">
           <span>
-            {integration.deviceCount} {t("integrations.devices")}
+            {t("integrations.deviceCount", { count: integration.deviceCount })}
           </span>
           {isConnected && integration.polling && (
             <>
@@ -97,9 +97,9 @@ export function IntegrationRow({ integration, onOpen, onRefresh }: IntegrationRo
       {/* Stats */}
       <div className="hidden sm:flex items-center gap-4 text-[12px] text-text-tertiary flex-1">
         <span>
-          {integration.deviceCount} {t("integrations.devices")}
+          {t("integrations.deviceCount", { count: integration.deviceCount })}
           {integration.offlineDeviceCount > 0 && (
-            <span className="text-warning ml-1">({integration.offlineDeviceCount} off)</span>
+            <span className="text-warning ml-1">{t("integrations.offlineCount", { count: integration.offlineDeviceCount })}</span>
           )}
         </span>
         {isConnected && integration.polling && (

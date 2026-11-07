@@ -373,7 +373,7 @@ function formatOrderLabel(
         (action.orderAlias === "turn_on" && typeof action.value === "boolean"))
     {
       const on = action.value === "ON" || action.value === true;
-      return <>{name} → {on ? "ON" : "OFF"}</>;
+      return <>{name} → {on ? t("controls.on") : t("controls.off")}</>;
     }
     if (action.orderAlias === "brightness") {
       const scale = brightnessScale(eq.orderBindings.find((o) => o.alias === "brightness"));
@@ -382,10 +382,10 @@ function formatOrderLabel(
   }
 
   if (action.orderAlias === "state" && (action.value === "ON" || action.value === "OFF")) {
-    return <>{name} → {action.value}</>;
+    return <>{name} → {action.value === "ON" ? t("controls.on") : t("controls.off")}</>;
   }
   if (action.orderAlias === "turn_on" && typeof action.value === "boolean") {
-    return <>{name} → {action.value ? "ON" : "OFF"}</>;
+    return <>{name} → {action.value ? t("controls.on") : t("controls.off")}</>;
   }
 
   return <>{name} → {action.orderAlias} = {JSON.stringify(action.value)}</>;
@@ -545,6 +545,7 @@ function OrderValueControl({
   value: string;
   onChange: (v: string) => void;
 }) {
+  const { t } = useTranslation();
   const seg = (active: boolean, pos: "first" | "mid" | "last" | "solo") => {
     const r = pos === "first" ? "rounded-l-[4px]" : pos === "last" ? "rounded-r-[4px]" : pos === "solo" ? "rounded-[4px]" : "";
     return `inline-flex items-center justify-center px-2 py-[3px] text-[10px] font-medium transition-all cursor-pointer border border-l-0 first:border-l border-border-light ${r} ${
@@ -552,13 +553,13 @@ function OrderValueControl({
     }`;
   };
 
-  // Boolean → ON/OFF
+  // Boolean → on/off
   if (order.type === "boolean") {
     return (
       <div className="inline-flex">
         {["true", "false"].map((v, i, arr) => (
           <button key={v} onClick={() => onChange(v)} className={seg(value === v, arr.length === 1 ? "solo" : i === 0 ? "first" : "last")}>
-            {v === "true" ? "ON" : "OFF"}
+            {v === "true" ? t("controls.on") : t("controls.off")}
           </button>
         ))}
       </div>
@@ -695,8 +696,8 @@ function SmartOrderPicker({
   if (isLight) {
     const lightOptions: { alias: string; val: string; label: string }[] = [];
     if (toggleAlias) {
-      lightOptions.push({ alias: toggleAlias, val: onVal, label: "ON" });
-      lightOptions.push({ alias: toggleAlias, val: offVal, label: "OFF" });
+      lightOptions.push({ alias: toggleAlias, val: onVal, label: t("controls.on") });
+      lightOptions.push({ alias: toggleAlias, val: offVal, label: t("controls.off") });
     }
     if (brightnessOrder) {
       lightOptions.push({ alias: "brightness", val: String(brightnessRange.max), label: t("controls.brightness") });

@@ -224,10 +224,10 @@ function SlotRow({
         <div className="text-[11px] text-text-tertiary truncate">
           {daysStr}
           {onModes.length > 0 && (
-            <span className="text-success"> &middot; {t("common.on")}: {onModes.join(", ")}</span>
+            <span className="text-success"> &middot; {t("calendar.modeOn")}{t("common.colon")}{onModes.join(", ")}</span>
           )}
           {offModes.length > 0 && (
-            <span className="text-error"> &middot; {t("common.off")}: {offModes.join(", ")}</span>
+            <span className="text-error"> &middot; {t("calendar.modeOff")}{t("common.colon")}{offModes.join(", ")}</span>
           )}
         </div>
       </div>
@@ -361,7 +361,7 @@ function SlotForm({
         />
       </div>
 
-      {/* Modes — tri-state: click cycles null → ON → OFF → null */}
+      {/* Modes — tri-state: click cycles null → on → off → null */}
       <div>
         <label className="block text-[11px] text-text-tertiary uppercase tracking-widest mb-1.5">
           {t("modes.title")}
@@ -384,8 +384,8 @@ function SlotForm({
                 {state === "on" && <Power size={10} />}
                 {state === "off" && <PowerOff size={10} />}
                 {mode.name}
-                {state === "on" && <span className="text-[9px] opacity-80">ON</span>}
-                {state === "off" && <span className="text-[9px] opacity-80">OFF</span>}
+                {state === "on" && <span className="text-[9px] opacity-80">{t("calendar.modeOn")}</span>}
+                {state === "off" && <span className="text-[9px] opacity-80">{t("calendar.modeOff")}</span>}
               </button>
             );
           })}

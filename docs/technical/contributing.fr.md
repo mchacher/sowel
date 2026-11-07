@@ -155,6 +155,15 @@ docs(api): update endpoint documentation
 - **Dark mode** via la stratégie `class` de Tailwind.
 - **Icônes** : Lucide React, stroke 1.5px.
 
+#### Traductions (i18n)
+
+Tout texte visible est une clé de `ui/src/i18n/locales/fr.json` **et** de `en.json` (les deux fichiers ont exactement les mêmes clés). Les tests de `ui/src/i18n/` font respecter les règles suivantes :
+
+- **Aucun mot écrit en dur.** Les états marche/arrêt lisent `controls.on` / `controls.off` (« Marche » / « Arrêt »), jamais un `"ON"` littéral ; les deux-points après un libellé passent par `t("common.colon")`, jamais par `": "`. Les valeurs envoyées aux appareils (`"ON"`, `true`) ne sont pas du texte affiché et ne changent pas.
+- **Pluriels** : clés de pluriel i18next `cle_one` et `cle_other`, appelées par `t("cle", { count })`. Ne jamais coller un nombre à un mot pluriel fixe (`{n} {t("devices")}`) ni écrire `(s)`. Une clé appelée avec `count` sans ses deux formes fait échouer `plurals.test.ts`, sauf si son texte ne peut pas varier avec le nombre (une unité abrégée, « 3 j ») : elle va alors dans la liste `INVARIANT` de ce test.
+- **Catégories** : chaque `DataCategory` a un libellé `category.<nom>` dans les deux langues. `locale-completeness.test.ts` énumère l'union en entier : une catégorie ajoutée dans `ui/src/types.ts` sans libellé ne compile pas.
+- **Typographie française** (`fr-typography.test.ts`) : espace fine insécable (U+202F) avant `: ; ! ?` et à l'intérieur des « », le caractère `…` plutôt que `...`, l'apostrophe droite `'` seule. Une valeur française égale à sa valeur anglaise fait échouer le test, sauf si elle figure dans `SAME_AS_EN` (noms propres, sigles, mots communs aux deux langues, termes d'administration gardés exprès comme broker ou topic).
+
 ---
 
 ## Règles de logging

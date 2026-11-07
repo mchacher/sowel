@@ -573,6 +573,7 @@ function CompactEnergyValues({ equipment }: { equipment: EquipmentWithDetails })
 }
 
 function CompactMediaPlayer({ equipment }: { equipment: EquipmentWithDetails }) {
+  const { t } = useTranslation();
   const powerBinding = equipment.dataBindings.find((b) => b.alias === "power");
   const sourceBinding = equipment.dataBindings.find((b) => b.alias === "input_source");
 
@@ -580,7 +581,7 @@ function CompactMediaPlayer({ equipment }: { equipment: EquipmentWithDetails }) 
   const source = typeof sourceBinding?.value === "string" ? sourceBinding.value : null;
 
   if (!isOn) {
-    return <span className="text-[11px] text-text-tertiary flex-shrink-0">OFF</span>;
+    return <span className="text-[11px] text-text-tertiary flex-shrink-0">{t("controls.off")}</span>;
   }
 
   return (
@@ -742,7 +743,7 @@ function CompactAppliance({ equipment }: { equipment: EquipmentWithDetails }) {
   const progress = typeof progressBinding?.value === "number" ? progressBinding.value : null;
 
   if (!isOn || state === "off") {
-    return <span className="text-[11px] text-text-tertiary flex-shrink-0">OFF</span>;
+    return <span className="text-[11px] text-text-tertiary flex-shrink-0">{t("controls.off")}</span>;
   }
 
   const isRunning = state === "running";

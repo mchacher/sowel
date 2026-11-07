@@ -1004,6 +1004,7 @@ function LightDetailContent({
   equipment: EquipmentWithDetails;
   onExecuteOrder: (alias: string, value: unknown) => Promise<void>;
 }) {
+  const { t } = useTranslation();
   const [executing, setExecuting] = useState(false);
   const slider = useSliderOverride();
 
@@ -1098,7 +1099,7 @@ function LightDetailContent({
             }`}
           >
             {executing ? <Loader2 size={18} className="animate-spin" /> : <Power size={18} strokeWidth={1.5} />}
-            {isOn ? "ON" : "OFF"}
+            {isOn ? t("controls.on") : t("controls.off")}
           </button>
         </div>
       )}

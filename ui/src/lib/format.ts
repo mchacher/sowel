@@ -1,3 +1,5 @@
+import i18n from "../i18n";
+
 /**
  * Format a timestamp as hh:mm:ss (24h local time).
  */
@@ -59,7 +61,7 @@ export function formatRelativeTime(iso: string | null): string {
  */
 export function formatDataValue(value: unknown, unit?: string): string {
   if (value === null || value === undefined) return "—";
-  if (typeof value === "boolean") return value ? "ON" : "OFF";
+  if (typeof value === "boolean") return value ? i18n.t("controls.on") : i18n.t("controls.off");
   if (typeof value === "number") {
     const formatted = Number.isInteger(value) ? value.toString() : value.toFixed(1);
     return unit ? `${formatted}${unit}` : formatted;
@@ -73,47 +75,12 @@ export function formatDataValue(value: unknown, unit?: string): string {
  */
 export function formatDataValueRaw(value: unknown): string {
   if (value === null || value === undefined) return "—";
-  if (typeof value === "boolean") return value ? "ON" : "OFF";
+  if (typeof value === "boolean") return value ? i18n.t("controls.on") : i18n.t("controls.off");
   if (typeof value === "number") {
     return Number.isInteger(value) ? value.toString() : value.toFixed(1);
   }
   if (typeof value === "string") return value;
   return JSON.stringify(value);
-}
-
-/**
- * Get display label for a DataCategory.
- */
-export function categoryLabel(category: string): string {
-  const labels: Record<string, string> = {
-    motion: "Motion",
-    temperature: "Temperature",
-    humidity: "Humidity",
-    pressure: "Pressure",
-    luminosity: "Luminosity",
-    contact_door: "Door",
-    contact_window: "Window",
-    light_state: "Light",
-    light_brightness: "Brightness",
-    light_color_temp: "Color Temp",
-    light_color: "Color",
-    shutter_position: "Shutter",
-    lock_state: "Lock",
-    battery: "Battery",
-    power: "Power",
-    energy: "Energy",
-    voltage: "Voltage",
-    current: "Current",
-    water_leak: "Water Leak",
-    smoke: "Smoke",
-    co2: "CO₂",
-    voc: "VOC",
-    noise: "Noise",
-    rain: "Rain",
-    wind: "Wind",
-    generic: "Generic",
-  };
-  return labels[category] ?? category;
 }
 
 /**

@@ -144,7 +144,14 @@ describe("formatBarTooltip (#681)", () => {
 });
 
 describe("formatSeriesTooltip (#681)", () => {
-  const plain = { unit: "°C", isPower: false, isDiscrete: false };
+  // French labels, as the UI shows them (spec 196 2a: no hard-coded words).
+  const frLabels: Record<string, string> = {
+    "category.power": "Puissance",
+    "controls.on": "Marche",
+    "controls.off": "Arrêt",
+  };
+  const t = (key: string) => frLabels[key] ?? key;
+  const plain = { unit: "°C", isPower: false, isDiscrete: false, t };
 
   it("formats a measurement with its unit and no row label", () => {
     expect(formatSeriesTooltip(20.5, "value", plain)).toEqual(["20.5 °C", ""]);
@@ -156,20 +163,20 @@ describe("formatSeriesTooltip (#681)", () => {
   });
 
   it("renders power in W below 1 kW and in kW above", () => {
-    const power = { unit: "W", isPower: true, isDiscrete: false };
+    const power = { unit: "W", isPower: true, isDiscrete: false, t };
     expect(formatSeriesTooltip(750, "value", power)).toEqual(["750 W", "Puissance"]);
     expect(formatSeriesTooltip(2500, "value", power)).toEqual(["2.5 kW", "Puissance"]);
   });
 
   it("keeps the envelope name on a power series", () => {
-    const power = { unit: "W", isPower: true, isDiscrete: false };
+    const power = { unit: "W", isPower: true, isDiscrete: false, t };
     expect(formatSeriesTooltip(2500, "max", power)).toEqual(["2.5 kW", "max"]);
   });
 
-  it("renders a discrete series as ON/OFF", () => {
-    const discrete = { unit: undefined, isPower: false, isDiscrete: true };
-    expect(formatSeriesTooltip(1, "value", discrete)).toEqual(["ON", ""]);
-    expect(formatSeriesTooltip(0, "value", discrete)).toEqual(["OFF", ""]);
+  it("renders a discrete series with the translated on/off words", () => {
+    const discrete = { unit: undefined, isPower: false, isDiscrete: true, t };
+    expect(formatSeriesTooltip(1, "value", discrete)).toEqual(["Marche", ""]);
+    expect(formatSeriesTooltip(0, "value", discrete)).toEqual(["Arrêt", ""]);
   });
 
   it("renders an undefined value as 0 instead of NaN", () => {

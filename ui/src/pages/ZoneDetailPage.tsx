@@ -18,6 +18,7 @@ import {
 import type { ZoneWithChildren, RecipeActionDef, RecipeInstance, RecipeInfo } from "../types";
 import { useWsSubscription } from "../hooks/useWsSubscription";
 import { ROOT_ZONE_ID } from "../lib/constants";
+import { cycleOptionLabel } from "../components/recipes/recipe-cycle";
 
 // ── Mode pill colors ────────────────────────────────────
 
@@ -32,7 +33,7 @@ const DEFAULT_PILL_COLOR = { bg: "var(--color-border-light)", text: "var(--color
 
 // ── Recipe mode pill ────────────────────────────────────
 
-function RecipeModePill({
+export function RecipeModePill({
   instance,
   recipe,
   action,
@@ -41,7 +42,7 @@ function RecipeModePill({
   recipe: RecipeInfo;
   action: RecipeActionDef;
 }) {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
   const sendAction = useRecipes((s) => s.sendAction);
   const [sending, setSending] = useState(false);
 
@@ -64,12 +65,10 @@ function RecipeModePill({
 
   const colors = MODE_COLORS[currentValue] ?? DEFAULT_PILL_COLOR;
 
-  // Resolve label with i18n
-  const lang = t("lang", { defaultValue: "" });
-  const i18nPack = lang && recipe.i18n?.[lang];
-  const displayLabel = i18nPack
-    ? t(`recipes.actions.${action.id}.${currentValue}`, { defaultValue: currentOption.label })
-    : currentOption.label;
+  // Resolve labels from the recipe's own i18n pack, in the UI language.
+  const lang = i18n.language.startsWith("fr") ? "fr" : "en";
+  const displayLabel = cycleOptionLabel(recipe, action, currentOption, lang, t);
+  const nextLabel = cycleOptionLabel(recipe, action, nextOption, lang, t);
 
   const handleClick = async () => {
     if (sending || !instance.enabled) return;
@@ -89,7 +88,7 @@ function RecipeModePill({
       disabled={sending || !instance.enabled}
       className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[11px] font-semibold transition-all duration-150 cursor-pointer disabled:opacity-50 disabled:cursor-default hover:brightness-95 active:scale-95"
       style={{ backgroundColor: colors.bg, color: colors.text }}
-      title={t("recipes.actions.cycleTo", { mode: nextOption.label, defaultValue: `Click to switch to ${nextOption.label}` })}
+      title={t("recipes.actions.cycleTo", { mode: nextLabel })}
     >
       {displayLabel}
     </button>

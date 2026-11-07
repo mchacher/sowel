@@ -1,12 +1,12 @@
-# Tableau de bord
+# Accueil
 
-Le Tableau de bord est votre écran d'accueil personnalisé : une grille de widgets configurable qui affiche les informations et les contrôles les plus importants pour vous.
+L'Accueil est la page qui s'ouvre au lancement de Sowel, votre écran personnalisé : une grille de widgets configurable qui affiche les informations et les contrôles les plus importants pour vous.
 
 ## Vue d'ensemble
 
-Contrairement à la vue Accueil (organisée par zones), le Tableau de bord vous laisse choisir exactement ce que vous voulez voir, peu importe la pièce ou le type d'équipement. Vous pouvez placer les lumières de votre cuisine à côté de la température extérieure et du portail de garage, le tout sur un même écran.
+Contrairement à la vue Maison (organisée par zones), l'Accueil vous laisse choisir exactement ce que vous voulez voir, peu importe la pièce ou le type d'équipement. Vous pouvez placer les lumières de votre cuisine à côté de la température extérieure et du portail de garage, le tout sur un même écran.
 
-![Tableau de bord avec un mélange de widgets équipement et zone](../screenshots/dashboard-overview-fr.png)
+![Accueil avec un mélange de widgets équipement et zone](../screenshots/dashboard-overview-fr.png)
 
 ## Types de widgets
 
@@ -51,7 +51,7 @@ Ce qu'affiche une tuile de recette est choisi par la recette elle-même, parmi t
 
 - une **ligne d'état** : ce que l'automatisation est en train de faire, en une phrase ;
 - un **décompte** : le moment où elle agira toute seule, qui descend à la seconde ;
-- un ou plusieurs **boutons** qui font défiler les modes de la recette, actionnables directement depuis le Tableau de bord.
+- un ou plusieurs **boutons** qui font défiler les modes de la recette, actionnables directement depuis l'Accueil.
 
 Quand une tuile ne porte qu'**un seul** bouton, inutile de le viser : un clic n'importe où sur la tuile fait la même chose. Une tuile qui en porte deux les garde comme seul point d'entrée — elle ne peut pas deviner lequel des deux vous vouliez. En mode édition, un clic ne déclenche rien.
 
@@ -63,7 +63,7 @@ Une tuile dont l'instance est désactivée s'affiche grisée et garde sa place :
 
 ## Ajouter des widgets
 
-1. Entrez en **mode édition** en cliquant sur l'icône crayon en haut à droite du Tableau de bord
+1. Entrez en **mode édition** en cliquant sur l'icône crayon en haut à droite de l'Accueil
 2. Cliquez sur le bouton **+** qui apparaît
 3. Dans la fenêtre, choisissez entre :
    - **Équipement** : parcourez et sélectionnez n'importe quel équipement
@@ -80,7 +80,7 @@ En mode édition, glissez-déposez les widgets pour les réorganiser. L'ordre es
 
 ### Étiquettes et icônes personnalisées
 
-Chaque widget peut avoir une étiquette et une icône personnalisées qui remplacent le nom par défaut de l'équipement ou de la zone. C'est utile pour mettre des noms plus courts sur le tableau de bord.
+Chaque widget peut avoir une étiquette et une icône personnalisées qui remplacent le nom par défaut de l'équipement ou de la zone. C'est utile pour mettre des noms plus courts sur l'Accueil.
 
 Le sélecteur d'icônes propose d'abord les icônes dessinées qui correspondent au type d'équipement, puis toutes les autres sous **Autres icônes** — une prise qui pilote un compresseur d'air ou une imprimante 3D peut donc porter la machine plutôt qu'une prise.
 
@@ -92,25 +92,25 @@ Pour les widgets d'équipements capteurs, vous pouvez choisir quelles liaisons d
 
 ### Supprimer des widgets
 
-En mode édition, cliquez sur le bouton de suppression d'un widget pour le retirer du tableau de bord.
+En mode édition, cliquez sur le bouton de suppression d'un widget pour le retirer de l'Accueil.
 
 ## Mode édition
 
-Le mode édition se bascule avec l'icône crayon dans l'en-tête du tableau de bord. Quand il est actif :
+Le mode édition se bascule avec l'icône crayon dans l'en-tête de l'Accueil. Quand il est actif :
 
 - Un bouton **+** apparaît pour ajouter de nouveaux widgets
 - Chaque widget affiche un bouton **suppression**
 - Les widgets peuvent être **glissés** pour être réordonnés
 - Cliquez sur la **coche** pour quitter le mode édition et enregistrer
 
-![Tableau de bord en mode édition : poignées de glisser-déposer, boutons supprimer, action Ajouter](../screenshots/dashboard-edit-fr.png)
+![Accueil en mode édition : poignées de glisser-déposer, boutons supprimer, action Ajouter](../screenshots/dashboard-edit-fr.png)
 
 !!! tip
-Le tableau de bord est personnel : chaque utilisateur a sa propre disposition de widgets. Les utilisateurs admin et les utilisateurs réguliers voient leur propre tableau de bord.
+L'Accueil est personnel : chaque utilisateur a sa propre disposition de widgets. Les utilisateurs admin et les utilisateurs réguliers voient chacun leur propre Accueil.
 
 ## Astuces
 
-- **Restez concentré** : le tableau de bord fonctionne mieux avec 6 à 12 widgets. Trop de widgets réduisent la valeur d'un coup d'œil.
+- **Restez concentré** : l'Accueil fonctionne mieux avec 6 à 12 widgets. Trop de widgets réduisent la valeur d'un coup d'œil.
 - **Utilisez les widgets de zone pour l'aperçu** : un widget "Capteurs" de zone pour chaque étage vous donne la température de toute la maison en un coup d'œil.
-- **Utilisez les widgets d'équipement pour le contrôle** : mettez les lumières et volets que vous utilisez le plus sur le tableau de bord pour un accès en un seul geste.
+- **Utilisez les widgets d'équipement pour le contrôle** : mettez les lumières et volets que vous utilisez le plus sur l'Accueil pour un accès en un seul geste.
 - **Adapté au mobile** : sur mobile, les widgets s'empilent en une seule colonne. Placez vos widgets les plus importants en haut.

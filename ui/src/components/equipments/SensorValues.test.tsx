@@ -1,5 +1,6 @@
-import { describe, it, expect } from "vitest";
+import { describe, it, expect, afterEach } from "vitest";
 import { render, screen } from "../../test-utils";
+import i18n from "../../i18n";
 import { SensorValues } from "./SensorValues";
 import type { DataBindingWithValue } from "../../types";
 
@@ -63,5 +64,26 @@ describe("SensorValues layout", () => {
   it("stacks the values with layout=\"column\"", () => {
     render(<SensorValues sensorBindings={bindings} batteryBindings={[]} layout="column" />);
     expect(valuesContainer().className).toContain("flex-col");
+  });
+});
+
+// Spec 196, slice 2a — a remote's last action read « single 35m04s »: the raw
+// action value instead of its label.
+describe("SensorValues button action", () => {
+  afterEach(async () => {
+    await i18n.changeLanguage("en");
+  });
+
+  it("names the action with its translated label", async () => {
+    await i18n.changeLanguage("fr");
+    render(<SensorValues sensorBindings={[binding("action", "action", "single")]} batteryBindings={[]} />);
+    expect(screen.getByText("Appui simple")).toBeTruthy();
+    expect(screen.queryByText("single")).toBeNull();
+  });
+
+  it("falls back to the raw value for an action it has no label for", async () => {
+    await i18n.changeLanguage("fr");
+    render(<SensorValues sensorBindings={[binding("action", "action", "brightness_step_up")]} batteryBindings={[]} />);
+    expect(screen.getByText("brightness_step_up")).toBeTruthy();
   });
 });

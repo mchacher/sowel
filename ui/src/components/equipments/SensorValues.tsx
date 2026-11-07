@@ -99,7 +99,7 @@ export function SensorValues({
                 </span>
               ) : b.category === "action" && b.value != null ? (
                 <span className="font-medium px-2 py-0.5 rounded-full text-[11px] bg-primary/10 text-primary inline-flex items-center gap-1">
-                  {String(b.value)}
+                  {t(`buttonActions.action.${String(b.value)}`, { defaultValue: String(b.value) })}
                   <ElapsedCounter origin={b.lastChanged ?? b.lastUpdated} />
                 </span>
               ) : isBooleanSensorCategory(b.category) ? (

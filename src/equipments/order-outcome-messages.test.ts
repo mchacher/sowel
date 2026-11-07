@@ -34,7 +34,7 @@ describe("order outcome alarm messages", () => {
         { equipment: "Porte du poulailler", detail: "TIMEOUT" },
         "fr",
       ),
-    ).toBe("Porte du poulailler : défaut (TIMEOUT)");
+    ).toBe("Porte du poulailler\u202f: défaut (TIMEOUT)");
   });
 
   it("returns null for a key it does not hold", () => {

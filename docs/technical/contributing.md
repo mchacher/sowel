@@ -149,6 +149,15 @@ docs(api): update endpoint documentation
 - **Dark mode** via Tailwind `class` strategy.
 - **Icons**: Lucide React, stroke 1.5px.
 
+#### Translations (i18n)
+
+Every visible string is a key in `ui/src/i18n/locales/fr.json` **and** `en.json` (the two files hold exactly the same keys). Tests in `ui/src/i18n/` enforce the rules below:
+
+- **No hard-coded word.** On/off states read `controls.on` / `controls.off` (« Marche » / « Arrêt »), never a literal `"ON"`; a colon after a label is `t("common.colon")`, never `": "`. Values sent to devices (`"ON"`, `true`) are not display text and stay as they are.
+- **Plurals** use i18next plural keys: `key_one` and `key_other`, called as `t("key", { count })`. Never glue a count to a fixed plural word (`{n} {t("devices")}`) and never write `(s)`. A key called with `count` without both forms fails `plurals.test.ts`, unless its text cannot change with the count (an abbreviated unit, « 3 j »): then it goes in that test's `INVARIANT` list.
+- **Categories**: every `DataCategory` has a `category.<name>` label in both languages. `locale-completeness.test.ts` lists the union exhaustively, so a category added to `ui/src/types.ts` without a label does not compile.
+- **French typography** (`fr-typography.test.ts`): a narrow no-break space (U+202F) before `: ; ! ?` and inside « », the ellipsis character `…` rather than `...`, the straight apostrophe `'` only. A French value equal to its English one fails the test unless it is listed in `SAME_AS_EN` (proper nouns, acronyms, words both languages share, admin terms kept on purpose such as broker or topic).
+
 ---
 
 ## Logging Rules

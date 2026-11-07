@@ -310,7 +310,7 @@ describe("ThermostatCard extras (spec 177)", () => {
     expect(exec).toHaveBeenCalledWith("profile", "overnight");
 
     // Boolean order with a data mirror → toggle, reads the mirror (off).
-    await userEvent.click(screen.getByRole("button", { name: "OFF" }));
+    await userEvent.click(screen.getByRole("button", { name: "Off" }));
     expect(exec).toHaveBeenCalledWith("ecoMode", true);
 
     // Boolean order without a mirror → momentary action.
@@ -451,7 +451,7 @@ describe("ThermostatCard extras — review follow-ups (spec 177)", () => {
       />,
     );
     expect(screen.queryByRole("button", { name: /Trigger/ })).toBeNull();
-    await userEvent.click(screen.getByRole("button", { name: "ON" }));
+    await userEvent.click(screen.getByRole("button", { name: "On" }));
     expect(exec).toHaveBeenCalledWith("state", false);
   });
 

@@ -23,16 +23,16 @@ export const ORDER_OUTCOME_ALARM_MESSAGES: Record<MessageLanguage, Record<string
     "alarms.orderOutcome.recovered": "{{equipment}}: the expected state arrived after all",
   },
   fr: {
-    "alarms.orderOutcome.unconfirmed": "{{equipment}} : commande non confirmée par son état",
+    "alarms.orderOutcome.unconfirmed": "{{equipment}}\u202f: commande non confirmée par son état",
     "alarms.orderOutcome.unconfirmedNoMovement":
-      "{{equipment}} : pas de mouvement après la commande — perdue ou portail bloqué",
+      "{{equipment}}\u202f: pas de mouvement après la commande — perdue ou portail bloqué",
     "alarms.orderOutcome.unconfirmedStillOpen":
-      "{{equipment}} : toujours ouvert après la commande — perdue ou arrêtée en route",
-    "alarms.orderOutcome.fault": "{{equipment}} : défaut",
-    "alarms.orderOutcome.faultBottom": "{{equipment}} : défaut (contact bas)",
-    "alarms.orderOutcome.faultWiring": "{{equipment}} : défaut (câblage)",
-    "alarms.orderOutcome.faultDetail": "{{equipment}} : défaut ({{detail}})",
-    "alarms.orderOutcome.recovered": "{{equipment}} : l'état attendu est finalement arrivé",
+      "{{equipment}}\u202f: toujours ouvert après la commande — perdue ou arrêtée en route",
+    "alarms.orderOutcome.fault": "{{equipment}}\u202f: défaut",
+    "alarms.orderOutcome.faultBottom": "{{equipment}}\u202f: défaut (contact bas)",
+    "alarms.orderOutcome.faultWiring": "{{equipment}}\u202f: défaut (câblage)",
+    "alarms.orderOutcome.faultDetail": "{{equipment}}\u202f: défaut ({{detail}})",
+    "alarms.orderOutcome.recovered": "{{equipment}}\u202f: l'état attendu est finalement arrivé",
   },
 };
 

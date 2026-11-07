@@ -233,7 +233,7 @@ export function HistoryPanel({ equipmentId, bindings }: HistoryPanelProps) {
                       )}
                       {chart?.resolution && (
                         <div className="text-[10px] text-text-tertiary text-right mt-1">
-                          {t("history.resolution")}: {t(RESOLUTION_I18N[chart.resolution])}
+                          {t("history.resolution")}{t("common.colon")}{t(RESOLUTION_I18N[chart.resolution])}
                         </div>
                       )}
                     </>

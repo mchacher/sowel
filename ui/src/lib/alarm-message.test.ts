@@ -17,7 +17,7 @@ describe("alarmText", () => {
     expect(alarmText(t, wording)).toBe("Low battery: 12% (Capteur porte)");
 
     await i18n.changeLanguage("fr");
-    expect(alarmText(t, wording)).toBe("Batterie faible : 12 % (Capteur porte)");
+    expect(alarmText(t, wording)).toBe("Batterie faible\u202f: 12 % (Capteur porte)");
   });
 
   it("formats a day parameter in the active locale", async () => {

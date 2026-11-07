@@ -45,7 +45,7 @@ export function AppliancePanel({ equipment }: AppliancePanelProps) {
       {!isOn || state === "off" ? (
         <div className="text-center py-6">
           <WashingMachine size={40} strokeWidth={1} className="mx-auto mb-2 text-text-tertiary/30" />
-          <span className="text-[14px] text-text-tertiary">OFF</span>
+          <span className="text-[14px] text-text-tertiary">{t("controls.off")}</span>
         </div>
       ) : (
         <div className="space-y-4">

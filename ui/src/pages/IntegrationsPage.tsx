@@ -37,7 +37,7 @@ export function IntegrationsPage() {
       setTimeout(() => setOauthMessage(null), 5000);
     } else if (params.has("oauth_error")) {
       const msg = params.get("oauth_error") ?? t("common.error");
-      setOauthMessage({ type: "error", text: `${t("integrations.oauthError")}: ${msg}` });
+      setOauthMessage({ type: "error", text: `${t("integrations.oauthError")}${t("common.colon")}${msg}` });
       window.history.replaceState({}, "", window.location.pathname);
       setTimeout(() => setOauthMessage(null), 7000);
     }

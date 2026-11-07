@@ -203,7 +203,7 @@ function useMobileState(
     const isDimmable = equipment.type === "light_dimmable" || equipment.type === "light_color";
     return {
       icon: renderWidgetStateIcon(widget.icon, <LightBulbIcon on={isOn} />),
-      stateLines: [isDimmable && pct !== null ? `${pct}%` : isOn ? "ON" : "OFF"],
+      stateLines: [isDimmable && pct !== null ? `${pct}%` : isOn ? t("controls.on") : t("controls.off")],
     };
   }
 
@@ -469,7 +469,7 @@ function useMobileState(
 
     const lines: string[] = [];
     if (!applianceOn || state === "off") {
-      lines.push("OFF");
+      lines.push(t("controls.off"));
     } else if (isRunning && remainingStr) {
       lines.push(remainingStr);
     } else {
@@ -525,7 +525,7 @@ function useMobileState(
     return {
       icon: renderWidgetStateIcon(widget.icon, <WaterHeaterIcon on={heaterOn} />),
       stateLines: [
-        heaterOn ? "ON" : "OFF",
+        heaterOn ? t("controls.on") : t("controls.off"),
         ...(tempValue !== null ? [`${tempValue.toFixed(1)}°C`] : []),
       ],
     };
@@ -635,7 +635,7 @@ function useMobileState(
         />,
       ),
       stateLines: [
-        s.vehicle ? t(evVehicleKey(s.vehicle)) : s.on === null ? "—" : s.on ? "ON" : "OFF",
+        s.vehicle ? t(evVehicleKey(s.vehicle)) : s.on === null ? "—" : s.on ? t("controls.on") : t("controls.off"),
         ...(powerLine ? [powerLine] : []),
       ],
     };

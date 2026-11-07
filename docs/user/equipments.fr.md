@@ -50,14 +50,14 @@ Un seul équipement peut se lier à **plusieurs devices**. C'est une des fonctio
 
 Contrôle simple on/off d'une lumière.
 
-- **Contrôles :** Bascule ON/OFF
+- **Contrôles :** Bascule Marche / Arrêt
 - **Données attendues :** état (on/off)
 
 #### Lumière (Variateur)
 
 Lumière à luminosité réglable.
 
-- **Contrôles :** Bascule ON/OFF + curseur de luminosité
+- **Contrôles :** Bascule Marche / Arrêt + curseur de luminosité
 - **Données attendues :** état, niveau de luminosité
 
 #### Lumière (Couleur)
@@ -101,7 +101,7 @@ Contrôle de chauffage ou de climatisation : climatiseur, poêle à granulés, p
 
 Un thermostat a un **cœur** et des **extras**. Le cœur est le petit ensemble que tous les thermostats partagent et sur lequel toutes les surfaces de Sowel s'appuient : `temperature`, `setpoint`, `state`, `power`, `operationMode`, plus `outsideTemperature` quand l'unité a une sonde extérieure. Sowel reconnaît un device comme thermostat dès qu'on peut lui donner une consigne, quel que soit le nom de la clé chez le plugin. Tout ce que le device offre en plus (une vitesse de ventilation, un ioniseur, le programme et la remise à zéro d'alarme d'un poêle à granulés, un réglage d'un fabricant que Sowel n'a jamais rencontré) est lié aussi, mais comme **extra** : la carte mène avec le cœur et liste les extras dans une section secondaire, un contrôle par commande liée (des boutons pour un choix, un interrupteur pour un marche/arrêt, un bouton d'action pour un déclenchement, un pas à pas pour un nombre) et une puce par lecture. Les extras varient d'un thermostat à l'autre et ne définissent jamais le type. Le mode de fonctionnement utilise un vocabulaire commun : `auto`, `heat`, `cool`, `dry`, `fan`, et `off` sur les unités dont le mode porte l'arrêt.
 
-Sur un thermostat, l'état marche/arrêt rapporté par le device lui-même est lié sous l'alias `state`, le même alias marche/arrêt que les équipements à relais. C'est important sur un thermostat **sous-compté** (une pompe à chaleur mesurée par une pince) : l'alias `power` y porte la puissance instantanée, et un wattage ne dit pas à l'interface si l'unité est allumée ou en veille. Si la carte du thermostat ne passe jamais à ON, ouvrez le panneau des liaisons manquantes de l'équipement et ajoutez la donnée d'alimentation du device : elle est proposée sous `state`. Les thermostats existants dont le booléen est lié directement sous `power` continuent de fonctionner sans changement.
+Sur un thermostat, l'état marche/arrêt rapporté par le device lui-même est lié sous l'alias `state`, le même alias marche/arrêt que les équipements à relais. C'est important sur un thermostat **sous-compté** (une pompe à chaleur mesurée par une pince) : l'alias `power` y porte la puissance instantanée, et un wattage ne dit pas à l'interface si l'unité est allumée ou en veille. Si la carte du thermostat ne passe jamais à « Marche », ouvrez le panneau des liaisons manquantes de l'équipement et ajoutez la donnée d'alimentation du device : elle est proposée sous `state`. Les thermostats existants dont le booléen est lié directement sous `power` continuent de fonctionner sans changement.
 
 #### Radiateur
 
@@ -130,8 +130,8 @@ Portail, portail coulissant, ou porte de garage.
 - **Contrôles :** Bouton Ouvrir/Fermer avec indicateur d'état
 - **Données attendues :** état du portail (ouvert, fermé, en ouverture, en fermeture)
 
-!!! tip "Icône du tableau de bord"
-Vous pouvez choisir une icône spécifique pour les portails sur le tableau de bord : portail standard, portail coulissant, ou porte de garage.
+!!! tip "Icône sur l'Accueil"
+Vous pouvez choisir une icône spécifique pour les portails sur l'Accueil : portail standard, portail coulissant, ou porte de garage.
 
 Un portail peut être piloté par n'importe quel relais on/off : un module contact sec Zigbee (par ex. SONOFF MINI-ZBD), un canal de relais LoRa, ou une télécommande Somfy RTS. Le bouton de commande agit en impulsion ; configurez le comportement d'impulsion (inching / auto-off) sur le module lui-même. Associez un capteur d'ouverture (par ex. SONOFF SNZB-04P) au même équipement pour obtenir l'état ouvert/fermé ; sans capteur, l'état s'affiche comme inconnu.
 
@@ -169,7 +169,7 @@ Capteur météo extérieur qui fournit les conditions actuelles.
 - **Données typiques :** température, humidité, pression, pluie, vent, bruit, batterie
 - La pluie s'affiche en cumul sur 24 h et sur 1 h, plus « Pluie aujourd'hui » (depuis minuit) quand la station la remonte. Son historique se lit en barres, par heure ou par jour, chaque jour coupé à minuit heure locale.
 - Les températures (extérieure et intérieure) affichent en dessous le minimum et le maximum mesurés depuis minuit, sur le widget du dashboard comme sur la page de détail. Fonctionne avec toute station qui remonte une température, sans configuration.
-- Une station qui ne mesure que la pluie (un pluviomètre seul) a sa propre tuile sur le tableau de bord : pluie du jour, cumul sur 24 h, et au clic les 7 et 30 derniers jours et la dernière pluie. Voir [Tableau de bord](dashboard.md#widget-dequipement).
+- Une station qui ne mesure que la pluie (un pluviomètre seul) a sa propre tuile sur l'Accueil : pluie du jour, cumul sur 24 h, et au clic les 7 et 30 derniers jours et la dernière pluie. Voir [Accueil](dashboard.md#widget-dequipement).
 
 #### Prévision météo
 
@@ -285,7 +285,7 @@ Utilisez une recette de surveillance d'état pour être notifié quand l'état d
 
 Vanne d'arrosage connectée pour le jardin. Conçue pour des devices comme la SONOFF SWV qui exposent `state`, `flow`, et les propriétés `irrigation_*`.
 
-- **Contrôles :** Bascule ON/OFF, action minutée "Arroser pendant X min" qui ouvre la vanne et laisse le firmware du device la refermer automatiquement après la durée configurée
+- **Contrôles :** Bascule Marche / Arrêt, action minutée "Arroser pendant X min" qui ouvre la vanne et laisse le firmware du device la refermer automatiquement après la durée configurée
 - **Métriques live affichées si liées :** débit (m³/h), batterie, statut device (normal / manque d'eau / fuite)
 - **Alias standards :** `state`, `flow`, `battery`, `status`, `duration`, `cycles`, `interval`, `capacity`, `autoCloseOnShortage`, seul `state` est requis, l'UI s'adapte à ce qui est lié
 - **Agrégation de zone :** compte les vannes ouvertes/totales et somme le débit live sur l'arbre des zones
@@ -311,7 +311,7 @@ L'aperçu et le flux en direct passent par le backend de Sowel — votre navigat
 
 Simple interrupteur on/off ou prise connectée.
 
-- **Contrôles :** Bascule ON/OFF avec badge d'état
+- **Contrôles :** Bascule Marche / Arrêt avec badge d'état
 - **Données attendues :** état (on/off)
 
 ---
@@ -367,8 +367,8 @@ Le panneau n'apparaît que sur un équipement qui remonte un état pour cette co
 
 Une fois activée, la commande apparaît à deux endroits :
 
-- Sur la vue **Accueil**, à côté de l'équipement sur sa ligne, avec le temps restant pendant le créneau.
-- Sur le **Dashboard**, sous forme de tuile que vous épinglez à côté de la tuile ordinaire, pour que « ouvrir » et « ouvrir quinze minutes » restent deux boutons distincts.
+- Sur la vue **Maison**, à côté de l'équipement sur sa ligne, avec le temps restant pendant le créneau.
+- Sur l'**Accueil**, sous forme de tuile que vous épinglez à côté de la tuile ordinaire, pour que « ouvrir » et « ouvrir quinze minutes » restent deux boutons distincts.
 
 Appuyer de nouveau sur la tuile pendant le créneau prolonge le délai au lieu d'agir deux fois. Annuler envoie tout de suite la commande de fermeture.
 
@@ -440,7 +440,7 @@ jusqu'au prochain ordre.
 
 Un équipement désactivé :
 
-- N'apparaît pas dans la vue Accueil
+- N'apparaît pas dans la vue Maison
 - Est exclu de l'[agrégation de zone](zones.md)
 - Ne déclenche pas les recettes ni les impacts de mode
 - Reste consultable et modifiable

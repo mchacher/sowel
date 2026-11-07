@@ -1,6 +1,6 @@
 import { useTranslation } from "react-i18next";
 import type { DeviceData } from "../../types";
-import { formatDataValue, categoryLabel } from "../../lib/format";
+import { formatDataValue } from "../../lib/format";
 import { RelativeTime } from "../RelativeTime";
 
 interface DeviceDataTableProps {
@@ -72,6 +72,7 @@ export function DeviceDataTable({ data }: DeviceDataTableProps) {
 }
 
 function CategoryBadge({ category }: { category: string }) {
+  const { t } = useTranslation();
   const colorClass = getCategoryColor(category);
 
   return (
@@ -81,7 +82,7 @@ function CategoryBadge({ category }: { category: string }) {
         ${colorClass}
       `}
     >
-      {categoryLabel(category)}
+      {t(`category.${category}`, { defaultValue: category })}
     </span>
   );
 }

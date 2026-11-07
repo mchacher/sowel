@@ -50,17 +50,17 @@ function toggleControlOf(
   return [{ kind: "toggle", alias: binding.alias, on, ...toggleValues(binding) }];
 }
 
-function resolveSwitch(equipment: EquipmentWithDetails): WidgetPresentation {
+function resolveSwitch(equipment: EquipmentWithDetails, t: TFunction): WidgetPresentation {
   const on = isOnFromStateBinding(equipment);
   return {
     icon: () => <PlugWidgetIcon on={on} />,
     isActive: on,
-    state: { primary: on ? "ON" : "OFF" },
+    state: { primary: on ? t("controls.on") : t("controls.off") },
     controls: toggleControlOf(equipment, on, ["light_toggle", "toggle_power"]),
   };
 }
 
-function resolveMediaPlayer(equipment: EquipmentWithDetails): WidgetPresentation {
+function resolveMediaPlayer(equipment: EquipmentWithDetails, t: TFunction): WidgetPresentation {
   const powerBinding = equipment.dataBindings.find((b) => b.alias === "power");
   const sourceBinding = equipment.dataBindings.find((b) => b.alias === "input_source");
   const on = powerBinding?.value === true;
@@ -76,14 +76,14 @@ function resolveMediaPlayer(equipment: EquipmentWithDetails): WidgetPresentation
       />
     ),
     isActive: on,
-    state: { primary: on ? (source ?? "ON") : "OFF" },
+    state: { primary: on ? (source ?? t("controls.on")) : t("controls.off") },
     controls: toggle
       ? [{ kind: "toggle", alias: toggle.alias, on, onValue: true, offValue: false }]
       : [],
   };
 }
 
-function resolvePoolPump(equipment: EquipmentWithDetails): WidgetPresentation {
+function resolvePoolPump(equipment: EquipmentWithDetails, t: TFunction): WidgetPresentation {
   const on = isOnFromStateBinding(equipment);
   const runtime = equipment.computedData?.find((c) => c.alias === "runtime_daily");
   const secondary =
@@ -91,7 +91,7 @@ function resolvePoolPump(equipment: EquipmentWithDetails): WidgetPresentation {
   return {
     icon: () => <PoolPumpIcon on={on} />,
     isActive: on,
-    state: { primary: on ? "ON" : "OFF", secondary },
+    state: { primary: on ? t("controls.on") : t("controls.off"), secondary },
     // Category-first incl. pool_pump_toggle so an unrelated boolean order on
     // multi-relay pumps (e.g. auto_mode) can't win over the real toggle.
     controls: toggleControlOf(equipment, on, [
@@ -110,24 +110,21 @@ function resolvePoolPump(equipment: EquipmentWithDetails): WidgetPresentation {
 export function resolveWidgetPresentation(
   widget: DashboardWidget,
   equipment: EquipmentWithDetails,
-  // Localizer for descriptor state text. The phase-1 types only emit
-  // locale-neutral strings (ON/OFF, source names, runtimes) but the signature
-  // takes it now so migrating a localized type never changes the call sites.
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
-  _t: TFunction,
+  // Localizer for descriptor state text (on/off words; spec 196 2a).
+  t: TFunction,
 ): WidgetPresentation | null {
-  const byType = resolveByType(equipment);
+  const byType = resolveByType(equipment, t);
   return byType && withCustomIcon(widget, byType);
 }
 
-function resolveByType(equipment: EquipmentWithDetails): WidgetPresentation | null {
+function resolveByType(equipment: EquipmentWithDetails, t: TFunction): WidgetPresentation | null {
   switch (equipment.type) {
     case "switch":
-      return resolveSwitch(equipment);
+      return resolveSwitch(equipment, t);
     case "media_player":
-      return resolveMediaPlayer(equipment);
+      return resolveMediaPlayer(equipment, t);
     case "pool_pump":
-      return resolvePoolPump(equipment);
+      return resolvePoolPump(equipment, t);
     default:
       return null;
   }

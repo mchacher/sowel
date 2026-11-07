@@ -1422,7 +1422,7 @@ function ApiTokensSection() {
               <div>
                 <span className="text-[13px] font-medium text-text">{token.name}</span>
                 <span className="text-[11px] text-text-tertiary ml-2">
-                  {t("settings.lastUsed")}:{" "}
+                  {t("settings.lastUsed")}{t("common.colon")}
                   {token.lastUsedAt
                     ? new Date(token.lastUsedAt).toLocaleDateString()
                     : t("settings.never")}

@@ -432,7 +432,7 @@ function LightEquipmentWidget({
                 isOn ? "bg-active/10 text-active" : "bg-border-light text-text-tertiary"
               }`}
             >
-              {isOn ? "ON" : "OFF"}
+              {isOn ? t("controls.on") : t("controls.off")}
             </span>
           )}
         </div>
@@ -543,7 +543,7 @@ function WaterHeaterEquipmentWidget({
               isOn ? "bg-active/10 text-active" : "bg-border-light text-text-tertiary"
             }`}
           >
-            {isOn ? "ON" : "OFF"}
+            {isOn ? t("controls.on") : t("controls.off")}
           </span>
           {tempValue !== null && (
             <span className="font-mono text-[13px] font-semibold text-text tabular-nums">
@@ -1725,7 +1725,7 @@ function ApplianceEquipmentWidget({
         />
 
         {!isOn || state === "off" ? (
-          <span className="text-[12px] text-text-tertiary">OFF</span>
+          <span className="text-[12px] text-text-tertiary">{t("controls.off")}</span>
         ) : isRunning ? (
           <div className="flex flex-col items-center gap-0.5">
             <span className="text-[12px] font-medium text-accent">{t("common.running")}</span>

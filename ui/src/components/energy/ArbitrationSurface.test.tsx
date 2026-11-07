@@ -433,7 +433,7 @@ describe("ArbitrationSurface need and gap columns (#807)", () => {
     });
     render(<ArbitrationSurface />);
 
-    expect(screen.getByText("Need = load + 250 W margin - tolerance")).toBeTruthy();
+    expect(screen.getByText("Need = load + 250 W margin \u2212 tolerance")).toBeTruthy();
   });
 
   it("drops the columns by tier so a phone never scrolls sideways", () => {

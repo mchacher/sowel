@@ -14,6 +14,7 @@ import {
 import { findDataByCategory, findOrderByCategory } from "./bindingUtils";
 import { thermostatPowerStateBinding } from "../../lib/thermostat-state";
 import { useWebSocket } from "../../store/useWebSocket";
+import i18n from "../../i18n";
 
 export function useEquipmentState(equipment: EquipmentWithDetails) {
   // Classification
@@ -237,7 +238,7 @@ export function formatElapsed(s: number): string {
 /** Format a data value for inline display. */
 export function formatValue(value: unknown, unit?: string): string {
   if (value === null || value === undefined) return "\u2014";
-  if (typeof value === "boolean") return value ? "ON" : "OFF";
+  if (typeof value === "boolean") return value ? i18n.t("controls.on") : i18n.t("controls.off");
   if (typeof value === "number") {
     const formatted = Number.isInteger(value) ? String(value) : value.toFixed(1);
     return unit ? `${formatted}${unit}` : formatted;

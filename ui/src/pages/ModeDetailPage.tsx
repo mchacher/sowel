@@ -307,13 +307,13 @@ function ImpactActionRow({
       if ((action.orderAlias === "state" && (action.value === "ON" || action.value === "OFF")) ||
           (action.orderAlias === "turn_on" && typeof action.value === "boolean")) {
         const on = action.value === "ON" || action.value === true;
-        detail = on ? "ON" : "OFF";
+        detail = on ? t("controls.on") : t("controls.off");
       } else if (action.orderAlias === "brightness") {
         const scale = brightnessScale(eq.orderBindings.find((o) => o.alias === "brightness"));
         detail = `${t("controls.brightness")} ${brightnessPercent(Number(action.value), scale)}%`;
       }
     } else if (action.orderAlias === "state" && (action.value === "ON" || action.value === "OFF")) {
-      detail = action.value as string;
+      detail = action.value === "ON" ? t("controls.on") : t("controls.off");
     }
 
     return (
