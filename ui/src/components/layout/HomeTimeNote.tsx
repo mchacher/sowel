@@ -1,22 +1,8 @@
 import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { Clock } from "lucide-react";
-import { useTimezone } from "../../store/useTimezone";
+import { useHomeTimeShown } from "../../hooks/useTopBarState";
 import { currentLocale } from "../../lib/format";
-
-/**
- * A time zone in its canonical spelling, or null when the runtime rejects it
- * or does not say. Both sides go through it, so another spelling of the
- * browser's zone (Etc/UTC for UTC, US/Pacific for America/Los_Angeles,
- * europe/paris) is not taken for another place.
- */
-function canonicalTimeZone(tz?: string): string | null {
-  try {
-    return Intl.DateTimeFormat(currentLocale(), tz ? { timeZone: tz } : undefined).resolvedOptions().timeZone ?? null;
-  } catch {
-    return null;
-  }
-}
 
 /**
  * The home's time, shown only when the browser sits in another time zone
@@ -28,12 +14,7 @@ function canonicalTimeZone(tz?: string): string | null {
  */
 export function HomeTimeNote({ compact = false }: { compact?: boolean }) {
   const { t } = useTranslation();
-  const tz = useTimezone((s) => s.tz);
-  const loaded = useTimezone((s) => s.loaded);
-  // Nothing until the home zone is known: the store starts on "UTC", which
-  // would otherwise flash a clock before the real zone arrives.
-  const home = loaded ? canonicalTimeZone(tz) : null;
-  const differs = home !== null && home !== canonicalTimeZone();
+  const { shown: differs, tz } = useHomeTimeShown();
   // A tick only re-renders; the time is formatted from the current zone at
   // render, so a zone change never shows the previous zone's time.
   const [, setTick] = useState(0);

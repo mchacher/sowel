@@ -146,9 +146,7 @@ export function UpdatesSheet({ open, onClose }: UpdatesSheetProps) {
       icon={<RefreshCw size={18} strokeWidth={1.5} className="text-error" />}
     >
       {plugins === null ? (
-        <div className="text-center text-text-tertiary text-small py-6">
-          {t("common.loading")}
-        </div>
+        <div className="text-center text-text-tertiary text-small py-6">{t("common.loading")}</div>
       ) : totalCount === 0 ? (
         <div className="text-center text-text-tertiary text-small py-6">
           {t("updates.sheet.empty")}

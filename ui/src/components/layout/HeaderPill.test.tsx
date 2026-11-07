@@ -12,7 +12,13 @@ describe("HeaderPill", () => {
   it("names the button after its title and gives it a 44 px touch area", async () => {
     const onClick = vi.fn();
     render(
-      <HeaderPill icon={<AlertTriangle size={14} />} count={2} tone="warning" title="2 alertes" onClick={onClick} />,
+      <HeaderPill
+        icon={<AlertTriangle size={14} />}
+        count={2}
+        tone="warning"
+        title="2 alertes"
+        onClick={onClick}
+      />,
     );
     const pill = screen.getByRole("button", { name: "2 alertes" });
     expect(pill.classList.contains("hit-44")).toBe(true);
@@ -25,7 +31,12 @@ describe("HeaderPill", () => {
     // whole app, and a dot that pulsed for as long as the restart was pending.
     render(
       <MemoryRouter>
-        <HeaderPill icon={<AlertTriangle size={14} />} tone="info" title="Redémarrage requis" href="/settings" />
+        <HeaderPill
+          icon={<AlertTriangle size={14} />}
+          tone="info"
+          title="Redémarrage requis"
+          href="/settings"
+        />
       </MemoryRouter>,
     );
     const pill = screen.getByRole("link", { name: "Redémarrage requis" });

@@ -51,8 +51,8 @@ export function Sidebar() {
   const sharedAccessEnabled = useSharedAccess((s) => s.enabled === true);
 
   // Auto-collapse: only one section expanded at a time
-  const [expandedSection, setExpandedSection] = useState<SidebarSection | null>(
-    () => getSectionForPath(location.pathname, location.state)
+  const [expandedSection, setExpandedSection] = useState<SidebarSection | null>(() =>
+    getSectionForPath(location.pathname, location.state),
   );
 
   // Auto-update expanded section when route changes (React recommended pattern)
@@ -77,10 +77,13 @@ export function Sidebar() {
     const eqId = usageEquipmentPage ? equipmentIdFromPath(location.pathname) : null;
     return eqId ? s.equipments.find((e) => e.id === eqId)?.zoneId : undefined;
   });
-  const adminActive = !usageEquipmentPage && ADMIN_ROUTES.some((r) => location.pathname.startsWith(r));
+  const adminActive =
+    !usageEquipmentPage && ADMIN_ROUTES.some((r) => location.pathname.startsWith(r));
   const energyActive = location.pathname.startsWith("/energy");
-  const modesSubActive = !collapsed && expandedSection === "modes" && location.pathname.startsWith("/modes/");
-  const analyseSubActive = !collapsed && expandedSection === "analyse" && location.pathname.startsWith("/analyse/");
+  const modesSubActive =
+    !collapsed && expandedSection === "modes" && location.pathname.startsWith("/modes/");
+  const analyseSubActive =
+    !collapsed && expandedSection === "analyse" && location.pathname.startsWith("/analyse/");
   const energySubActive = !collapsed && expandedSection === "energy" && energyActive;
   const adminSubActive = !collapsed && expandedSection === "admin" && adminActive;
 

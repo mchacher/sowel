@@ -24,8 +24,12 @@ function WinkAnimation() {
   );
 }
 
-
-export function SowelLogo({ size = 32, className = "", showText = false, animated = false }: SowelLogoProps) {
+export function SowelLogo({
+  size = 32,
+  className = "",
+  showText = false,
+  animated = false,
+}: SowelLogoProps) {
   if (showText) {
     return (
       <svg
@@ -44,13 +48,31 @@ export function SowelLogo({ size = 32, className = "", showText = false, animate
           strokeLinejoin="round"
           strokeLinecap="round"
         />
-        <path d="M75 115 Q100 140 125 115" fill="none" stroke={MID_BLUE} strokeWidth="6" strokeLinecap="round" />
+        <path
+          d="M75 115 Q100 140 125 115"
+          fill="none"
+          stroke={MID_BLUE}
+          strokeWidth="6"
+          strokeLinecap="round"
+        />
         {/* Left eye — static */}
-        <path d="M78 95 Q83 87 88 95" fill="none" stroke={MID_BLUE} strokeWidth="5" strokeLinecap="round" />
+        <path
+          d="M78 95 Q83 87 88 95"
+          fill="none"
+          stroke={MID_BLUE}
+          strokeWidth="5"
+          strokeLinecap="round"
+        />
         {/* Right eye — winks */}
         <g transform="translate(117, 91)">
           {animated && <WinkAnimation />}
-          <path d="M-5 4 Q0 -4 5 4" fill="none" stroke={MID_BLUE} strokeWidth="5" strokeLinecap="round" />
+          <path
+            d="M-5 4 Q0 -4 5 4"
+            fill="none"
+            stroke={MID_BLUE}
+            strokeWidth="5"
+            strokeLinecap="round"
+          />
         </g>
         <text
           x="100"
@@ -87,9 +109,21 @@ export function SowelLogo({ size = 32, className = "", showText = false, animate
         strokeLinejoin="round"
         strokeLinecap="round"
       />
-      <path d="M75 115 Q100 140 125 115" fill="none" stroke={MONO} strokeWidth="9" strokeLinecap="round" />
+      <path
+        d="M75 115 Q100 140 125 115"
+        fill="none"
+        stroke={MONO}
+        strokeWidth="9"
+        strokeLinecap="round"
+      />
       {/* Left eye — static */}
-      <path d="M78 95 Q83 87 88 95" fill="none" stroke={MONO} strokeWidth="8" strokeLinecap="round" />
+      <path
+        d="M78 95 Q83 87 88 95"
+        fill="none"
+        stroke={MONO}
+        strokeWidth="8"
+        strokeLinecap="round"
+      />
       {/* Right eye — winks */}
       <g transform="translate(117, 91)">
         {animated && <WinkAnimation />}

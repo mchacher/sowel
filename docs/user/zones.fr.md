@@ -90,7 +90,8 @@ Dans la vue **Maison**, chaque zone affiche un **bandeau d'état** avec les donn
 - Pastille de comptage **Portes** pour les portes motorisées (par ex. "1/2"), distincte de l'alerte des capteurs d'ouverture
 - Pastilles **Alerte** pour portes/fenêtres ouvertes, fuites d'eau, fumée
 - Pastille **Puissance** (par ex. « 47 W », ou « 2.4 kW » au-dessus du kilowatt) dès que la zone possède au moins un compteur
-- Pastille **Soleil** sur la zone racine, sur téléphone ou tablette, avec le lever et le coucher du jour (par ex. « 07:22 – 17:17 »). Sur ordinateur, ils figurent plutôt dans la barre du haut, sur toutes les pages.
+
+Le lever et le coucher du soleil ne sont pas une pastille de zone : ils figurent dans la barre du haut, sur toutes les pages (par ex. « 07:22 – 17:17 », une lune la nuit). Sur téléphone, ils s'effacent quand deux de ces éléments occupent déjà la barre : pastilles d'alerte, de mise à jour ou de redémarrage, heure de la maison (affichée quand vous êtes dans un autre fuseau), indicateur de connexion.
 
 Quand un équipement est hors ligne, il est retiré des pastilles qu'il alimente, et ces pastilles portent un petit point orange. Sur ordinateur, survolez la pastille pour voir quels équipements sont hors ligne. Une zone dont toutes les lumières (ou tous les volets) sont hors ligne garde la pastille, grisée avec un tiret, pour qu'on puisse suivre le point de la zone parente jusqu'à la pièce d'où il vient. Seules les vraies lumières comptent : une pompe de piscine dont l'état ressemble à celui d'une lumière n'est pas comptée comme lumière hors ligne.
 

@@ -12,7 +12,6 @@ import {
   Droplet,
   Flame,
   Zap,
-  Moon,
 } from "lucide-react";
 import { ShutterIcon } from "../icons/ShutterIcons";
 import { WaterValveIcon } from "../icons/WaterValveIcon";
@@ -22,11 +21,9 @@ import {
   formatDuration,
   formatPercent,
   formatPower,
-  formatRange,
   formatTemperature,
   formatWithUnit,
 } from "../../lib/format";
-import { ROOT_ZONE_ID } from "../../lib/constants";
 
 type PillVariant = "default" | "active" | "info" | "calm" | "alert";
 
@@ -60,8 +57,6 @@ interface StatusItem {
   sparklineCategory?: string;
   /** Name read before the value by screen readers and shown on hover, when the icon alone says it. */
   name?: string;
-  /** Shown below lg only: the desktop top bar already carries it. */
-  compactOnly?: boolean;
   /** Offline equipments left out of this pill (spec 116, #1134): a marker, named on hover. */
   unavailable?: string[];
 }
@@ -118,25 +113,6 @@ export function ZoneAggregationPills({ data, zoneId, historyEnabled }: ZoneAggre
       iconTint: "text-primary",
       valueTint: "text-text",
       sparklineCategory: "luminosity",
-    });
-  }
-
-  // Spec 196, pr6-soleil — sunrise and sunset of the home. The desktop top bar
-  // shows them on every page; phones and tablets have no room there, so the
-  // root zone's strip carries them below lg (on desktop it would only repeat
-  // the bar and push the strip into a sideways scroll).
-  if (zoneId === ROOT_ZONE_ID && data.sunrise !== null && data.sunset !== null) {
-    const isDay = data.isDaylight === true;
-    sensorPills.push({
-      key: "sun",
-      icon: isDay ? <Sun size={14} strokeWidth={1.5} /> : <Moon size={14} strokeWidth={1.5} />,
-      label: formatRange(data.sunrise, data.sunset),
-      name: t("header.sun"),
-      variant: "default",
-      // The sun glyph is the one tolerated amber outside "on" (spec 196).
-      iconTint: isDay ? "text-active" : "text-text-tertiary",
-      valueTint: "text-text-secondary",
-      compactOnly: true,
     });
   }
 
@@ -304,31 +280,16 @@ export function ZoneAggregationPills({ data, zoneId, historyEnabled }: ZoneAggre
 
   // Below lg (phones and tablets) the strip wraps instead of scrolling
   // sideways (spec 196): the separators would dangle at line ends there, so
-  // the gap replaces them. A separator next to a compact-only pill (hidden
-  // from lg) never shows.
+  // the gap replaces them.
   return (
     <div className="card flex flex-wrap lg:flex-nowrap items-center gap-x-2 gap-y-1 lg:gap-x-0 px-1 py-1 lg:overflow-x-auto">
       {clusters.map((cluster, ci) => (
         <Fragment key={ci}>
-          {ci > 0 && (
-            <div
-              className={`w-px h-5 bg-border mx-2 flex-shrink-0 ${
-                cluster.every(isCompactOnly) || clusters.slice(0, ci).flat().every(isCompactOnly)
-                  ? "hidden"
-                  : "hidden lg:block"
-              }`}
-            />
-          )}
+          {ci > 0 && <div className="w-px h-5 bg-border mx-2 flex-shrink-0 hidden lg:block" />}
           {cluster.map((item, ii) => (
             <Fragment key={item.key}>
               {ii > 0 && (
-                <div
-                  className={`w-px h-4 bg-border-light mx-1 flex-shrink-0 ${
-                    item.compactOnly || cluster.slice(0, ii).every(isCompactOnly)
-                      ? "hidden"
-                      : "hidden lg:block"
-                  }`}
-                />
+                <div className="w-px h-4 bg-border-light mx-1 flex-shrink-0 hidden lg:block" />
               )}
               <StripPill item={item} zoneId={zoneId} historyEnabled={historyEnabled} />
             </Fragment>
@@ -337,11 +298,6 @@ export function ZoneAggregationPills({ data, zoneId, historyEnabled }: ZoneAggre
       ))}
     </div>
   );
-}
-
-/** A separator next to pills hidden from lg is hidden with them, so none dangles. */
-function isCompactOnly(item: StatusItem): boolean {
-  return item.compactOnly === true;
 }
 
 // ============================================================
@@ -403,9 +359,7 @@ function StripPill({ item, zoneId, historyEnabled }: StripPillProps) {
 
   return (
     <div
-      className={`flex items-center gap-1.5 px-2 py-0.5 rounded-sm text-small font-medium tabular-nums whitespace-nowrap ${v.pill} ${
-        item.compactOnly ? "lg:hidden" : ""
-      }`}
+      className={`flex items-center gap-1.5 px-2 py-0.5 rounded-sm text-small font-medium tabular-nums whitespace-nowrap ${v.pill}`}
       title={title}
     >
       <span className={`flex-shrink-0 ${iconClass}`}>{item.icon}</span>

@@ -44,7 +44,12 @@ describe("HomeTimeNote", () => {
     expect(container.firstChild).toBeNull();
     // Every text the note ever showed, intermediate renders included.
     const observer = new MutationObserver(() => {});
-    observer.observe(container, { subtree: true, childList: true, characterData: true, characterDataOldValue: true });
+    observer.observe(container, {
+      subtree: true,
+      childList: true,
+      characterData: true,
+      characterDataOldValue: true,
+    });
     act(() => useTimezone.setState({ tz: otherTz, loaded: true }));
     const shown = observer
       .takeRecords()

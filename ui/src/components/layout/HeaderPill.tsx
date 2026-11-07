@@ -32,15 +32,7 @@ interface HeaderPillProps {
   href?: string;
 }
 
-export function HeaderPill({
-  icon,
-  count,
-  label,
-  tone,
-  title,
-  onClick,
-  href,
-}: HeaderPillProps) {
+export function HeaderPill({ icon, count, label, tone, title, onClick, href }: HeaderPillProps) {
   const content = (
     <span
       className={`flex items-center gap-1.5 px-2.5 py-1 rounded-full transition-colors text-caption font-semibold ${TONE_CLASS[tone]}`}
@@ -59,7 +51,13 @@ export function HeaderPill({
     );
   }
   return (
-    <button onClick={onClick} title={title} aria-label={title} type="button" className="hit-44 cursor-pointer">
+    <button
+      onClick={onClick}
+      title={title}
+      aria-label={title}
+      type="button"
+      className="hit-44 cursor-pointer"
+    >
       {content}
     </button>
   );

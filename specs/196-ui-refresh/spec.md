@@ -44,7 +44,7 @@ The maintainer rejected every radical redesign and chose an incremental path tha
 | pr4-niveaux       | Three levels: amber (on), orange (attention), red (fault)                                 |
 | pr4bis-primaire   | Dark primary button: `#2B7299` fill, white text                                           |
 | pr6-horloge       | Clock only when the browser time zone differs from the home's                             |
-| pr6-soleil        | Sunrise/sunset as plain text in the desktop bar, root-zone strip on mobile                |
+| pr6-soleil        | Sun times as plain text in the top bar, every page (#1133 dropped the mobile strip pill)  |
 | pr6-h1            | H1 = page name + optional one-line summary                                                |
 | pr6-edition       | Dashboard edit: a button under the grid, sticky bar in edit mode                          |
 | pr7-teinte        | Light brand tint in neutrals                                                              |
@@ -95,7 +95,7 @@ Inter variable (`@fontsource-variable/inter`, family "Inter Variable"); a 7-step
 
 ### FR-6 — Top bar and titles
 
-Clock shown only when time zones differ; the connection indicator only when degraded; sunrise/sunset as plain text (desktop) or in the root-zone strip (mobile); the updates pill is not error-red; H1 is 28 px desktop / 22 px mobile, weight 600, no icon, with an optional summary line; the Dashboard edit action is a button under the grid (sticky bar while editing) and the FAB is removed.
+Clock shown only when time zones differ; the connection indicator only when degraded; sunrise/sunset as plain text in the top bar on every page (amended by #1133: the root-zone strip on mobile left phones without it outside the Home root zone; on a phone the sun now gives way when two pills or more share the bar); the updates pill is not error-red; H1 is 28 px desktop / 22 px mobile, weight 600, no icon, with an optional summary line; the Dashboard edit action is a button under the grid (sticky bar while editing) and the FAB is removed.
 
 ### FR-7 — Neutrals and shapes
 
