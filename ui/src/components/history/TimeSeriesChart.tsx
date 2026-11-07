@@ -58,7 +58,9 @@ function formatRelativeTime(isoTime: string, now: number): string | null {
   return formatDuration(diffMs / 1000);
 }
 
-const POWER_COLOR = "#D4963F";
+// Spec 196 (FR-E) — power takes the consumption blue: amber now means "on or
+// running right now" and nothing else.
+const POWER_COLOR = "var(--color-energy-hp)";
 const POWER_GRADIENT_ID = "powerGradient";
 
 export function TimeSeriesChart({ points, range, resolution, unit, height = 200, fetchTime, dataType, category }: TimeSeriesChartProps) {

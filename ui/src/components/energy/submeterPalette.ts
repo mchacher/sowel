@@ -1,23 +1,31 @@
 /**
- * Submeter color palette — mirror of `SUBMETER_PALETTE` in
- * `src/api/routes/energy.ts` (spec 091). Keeping the hex codes and the
- * sort-by-id indexing identical here ensures the Live donut (spec 117)
- * paints each submeter with the same color the historical By-usage
- * chart assigns to it on the same instance.
+ * Sub-meter colours (spec 091, themed by spec 196 FR-E).
  *
- * If you change this list, update the backend constant in lockstep.
+ * A sub-meter takes the series palette entry at its sorted index (sort by id,
+ * then the meters on their own supply after the partition: a server rule, see
+ * `src/api/routes/energy.ts`). The by-usage API sends that index as
+ * `colorIndex`; the Live donut computes the same index from the same sort, so
+ * the two surfaces paint a meter alike. The colour itself is a CSS variable
+ * (`--color-series-N`, design-system/tokens.css), so it follows the theme. The
+ * server's `color` field keeps the pre-196 palette for external API clients;
+ * it is painted only when an older server sends no `colorIndex`.
  */
-export const SUBMETER_PALETTE = [
-  "#60A5FA",
-  "#34D399",
-  "#F87171",
-  "#A78BFA",
-  "#22D3EE",
-  "#FB7185",
-  "#FBBF24",
-  "#818CF8",
-];
+import { SERIES_VARS } from "../../lib/series-palette";
+
+/** The themed colour of series `index` (0-based, wraps after eight). */
+export function seriesColor(index: number): string {
+  const n = SERIES_VARS.length;
+  return SERIES_VARS[((index % n) + n) % n];
+}
+
+export const SUBMETER_PALETTE = SERIES_VARS;
 
 export function pickSubmeterColor(sortedIndex: number): string {
-  return SUBMETER_PALETTE[sortedIndex % SUBMETER_PALETTE.length];
+  return seriesColor(sortedIndex);
+}
+
+/** A by-usage series' colour: its themed palette entry when the server sent
+ *  `colorIndex`, its hex otherwise (an older server). */
+export function byUsageSeriesColor(s: { color: string; colorIndex?: number }): string {
+  return typeof s.colorIndex === "number" ? seriesColor(s.colorIndex) : s.color;
 }

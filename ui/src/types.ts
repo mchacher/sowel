@@ -1829,7 +1829,11 @@ export interface EnergyByUsagePoint {
 export interface SubmeterSeries {
   id: string;
   name: string;
+  /** Light-theme hex; the UI paints from `colorIndex` (spec 196, FR-E). */
   color: string;
+  /** Index in the series palette (`--color-series-N`). Absent from servers
+   *  older than spec 196, where `color` is used instead. */
+  colorIndex?: number;
   points: EnergyByUsagePoint[];
   cost: number; // € (spec 123)
   /** Spec 173 — shown net of the meters declared inside this one. */

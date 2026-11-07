@@ -150,6 +150,36 @@ The dashboard illustrations (`WidgetIcons.tsx`, `AwningIcon.tsx`, `EvCarGauge.ts
 
 A part painted "white" in light (valve body, pipe) takes `var(--color-surface)`, so it is the card colour in dark.
 
+### 1.5c Energy and series palettes
+
+The energy charts, the Live diagram and the arbiter paint from these tokens (`--color-*` aliases in the `@theme static` block of `ui/src/index.css`, always emitted). A hex, `rgb()` or `hsl()` literal in `ui/src/components/{energy,history}`, `TariffSettings.tsx`, `UpsPanel.tsx` or `equipments/ev-sessions` fails lint (`sowel-chart/no-hex-color`).
+
+`ui/src/lib/energy-palette.test.ts` checks every pair (spec 196, FR-E):
+
+- Same-family energy series that sit side by side on one chart (HP/HC, autoconsumption/injection, house/grid, grid/unmanaged) differ by lightness: at least 2:1 in dark, 1.5:1 in light. Hue does not count: they are all blues or all greens.
+- A blue next to a green (consumption next to autoconsumption, grid next to autoconsumption, unmanaged next to granted) differs by at least 30° of hue.
+- Series palette: neighbours, the last and the first included, differ by at least 2:1 **or** 30° of hue.
+- Every series against "Other": at least 1.5:1 **and** 30° of hue. Other is a near-grey, so a hue gap alone means little; it is a warm grey because the palette's blues sit on the cool side.
+- Every mark stands on the dark card (at least 3:1).
+
+| Token                | Hybrid    | Dark      | Usage                                                  |
+| -------------------- | --------- | --------- | ------------------------------------------------------ |
+| `--energy-hp`        | `#4F7BE8` | `#5681E9` | house consumption, peak hours, power curves            |
+| `--energy-hc`        | `#93B5F0` | `#A5C2F3` | off-peak hours (the paler blue in both themes)         |
+| `--energy-grid`      | `#405682` | `#BDC8DF` | grid import (Live diagram, UPS)                        |
+| `--solar-auto`       | `#6BCB77` | `#74C77F` | autoconsumption, arbiter "granted"                     |
+| `--solar-injection`  | `#2D8F3E` | `#2C8C3C` | injection                                              |
+| `--solar-production` | `#4CA85C` | `#57BE6C` | production when not split                              |
+| `--slate-neutral`    | `#6E7C88` | `#7C8B98` | arbiter "on, outside arbitration" (also a text colour) |
+| `--energy-other`     | `#A69E96` | `#78726B` | "Other": consumption no sub-meter accounts for         |
+
+`--series-1` … `--series-8` colour the sub-meters (by-usage chart, Live donut, by sorted index; the API sends it as `colorIndex`), the phases and the Analyse curves. No red, orange, amber or solar green; neighbours sit at least 70° of hue apart. The API's `color` field keeps the palette from before spec 196 for external clients; the UI paints from `colorIndex`.
+
+|        | 1         | 2         | 3         | 4         | 5         | 6         | 7         | 8         |
+| ------ | --------- | --------- | --------- | --------- | --------- | --------- | --------- | --------- |
+| Hybrid | `#1A4F6E` | `#6A7B27` | `#00867A` | `#7C61A8` | `#006574` | `#A0557B` | `#526FB2` | `#915A95` |
+| Dark   | `#7CC0E3` | `#ACBE74` | `#5FC9BC` | `#BEA6EB` | `#44A1B1` | `#E59ABD` | `#95B3F5` | `#D59ED8` |
+
 ### 1.6 Borders & lines
 
 | Token      | Hybrid               | Dark                    | Usage                                              |
@@ -347,3 +377,4 @@ See [migration.md](migration.md) for the broader strategy.
 | 2026-11-07 | Inter variable, type scale `text-micro` … `text-value`, no 700 (spec 196, slice 5a) |
 | 2026-11-07 | Colour roles: amber = on, orange = attention, red = fault; no light tint (slice 4)  |
 | 2026-11-07 | Radii 6 / 10 / 16, cards without border (`card`), wells, dark category tints (7b)   |
+| 2026-11-07 | Energy palette: dark values told apart, series palette `--series-1…8` (slice E)     |

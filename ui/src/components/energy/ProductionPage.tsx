@@ -13,8 +13,9 @@ import { PvHealthPanel } from "../equipments/PvHealthPanel";
 import { isActiveSolarProfile } from "../equipments/solarProfileValidation";
 import { formatWh } from "./format";
 
-const AUTOCONSO_COLOR = "#6BCB77";
-const INJECTION_COLOR = "#2D8F3E";
+// Spec 196 (FR-E) — the bars' own tokens, so the legend follows the theme.
+const AUTOCONSO_COLOR = "var(--color-solar-auto)";
+const INJECTION_COLOR = "var(--color-solar-injection)";
 
 export function ProductionPage() {
   const { t } = useTranslation();

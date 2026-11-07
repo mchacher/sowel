@@ -1,7 +1,7 @@
 import Fastify from "fastify";
 import { describe, it, expect, beforeEach, afterEach } from "vitest";
 import { createLogger } from "../../core/logger.js";
-import { registerEnergyRoutes, trimToWindow } from "./energy.js";
+import { registerEnergyRoutes, trimToWindow, SUBMETER_PALETTE } from "./energy.js";
 import { EMPTY_ACCURACY } from "../../energy/pv/pv-accuracy.js";
 import { installValidationErrorHandler, validationAjvOptions } from "../error-handler.js";
 import type {
@@ -501,6 +501,75 @@ describe("Spec 119 — /api/v1/energy/by-usage", () => {
     expect(body.resolution).toBe("1mo");
     expect(body.submeters[0].points).toHaveLength(12);
     expect(body.submeters[0].points.every((p: { wh: number }) => p.wh === 0)).toBe(true);
+  });
+});
+
+describe("Spec 196 (FR-E) — by-usage series carry a colorIndex", () => {
+  let app: Awaited<ReturnType<typeof buildApp>> | null = null;
+
+  beforeEach(() => {
+    process.env.TZ = "Europe/Paris";
+  });
+  afterEach(async () => {
+    if (app) await app.close();
+    app = null;
+  });
+
+  // The `color` every API client received before spec 196, by index. Spelled
+  // out rather than imported, so a change to the server list fails here.
+  const LEGACY_COLORS = [
+    "#60A5FA",
+    "#34D399",
+    "#F87171",
+    "#A78BFA",
+    "#22D3EE",
+    "#FB7185",
+    "#FBBF24",
+    "#818CF8",
+  ];
+
+  it("gives each series its sorted index, and keeps the pre-196 colour beside it", async () => {
+    app = await buildApp({
+      // Declared out of order: the index follows the id sort, then the
+      // separate-supply meters after the partition.
+      equipments: [
+        { id: "sub-C", name: "Garage", type: "energy_meter" },
+        { id: "sub-A", name: "Cuisine", type: "energy_meter" },
+        { id: "ev", name: "Borne", type: "energy_meter", separateSupply: true },
+        { id: "sub-B", name: "Salon", type: "energy_meter" },
+      ],
+    });
+    const body = (
+      await app.inject({
+        method: "GET",
+        url: "/api/v1/energy/by-usage?period=week&date=2026-05-30",
+      })
+    ).json();
+
+    const index = (list: { id: string; colorIndex: number; color: string }[]) =>
+      list.map((s) => [s.id, s.colorIndex, s.color]);
+    expect(index(body.submeters)).toEqual([
+      ["sub-A", 0, "#60A5FA"],
+      ["sub-B", 1, "#34D399"],
+      ["sub-C", 2, "#F87171"],
+    ]);
+    expect(index(body.separateSupply)).toEqual([["ev", 3, "#A78BFA"]]);
+  });
+
+  it("keeps `color` on the pre-196 palette, at the entry colorIndex names", async () => {
+    expect(SUBMETER_PALETTE).toEqual(LEGACY_COLORS);
+    // Ten meters: the index keeps counting, the colour wraps after eight.
+    const ids = Array.from({ length: 10 }, (_, i) => `m-${String(i).padStart(2, "0")}`);
+    app = await buildApp({ equipments: ids.map((id) => ({ id, name: id, type: "energy_meter" })) });
+    const body = (
+      await app.inject({
+        method: "GET",
+        url: "/api/v1/energy/by-usage?period=week&date=2026-05-30",
+      })
+    ).json();
+    const series = body.submeters as { id: string; colorIndex: number; color: string }[];
+    expect(series.map((s) => s.colorIndex)).toEqual(ids.map((_, i) => i));
+    for (const s of series) expect(s.color, s.id).toBe(LEGACY_COLORS[s.colorIndex % 8]);
   });
 });
 

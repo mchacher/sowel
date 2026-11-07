@@ -19,8 +19,13 @@ import {
   zoneChainMap,
 } from "../../lib/zone-path";
 import { isSubmeterEquipment } from "../../lib/metering";
+import { byUsageSeriesColor } from "./submeterPalette";
 
-const AUTOCONSO_COLOR = "#6BCB77";
+// Spec 196 (FR-E) — the legend takes the bars' own tokens, so it follows the
+// theme like the chart does.
+const HP_COLOR = "var(--color-energy-hp)";
+const HC_COLOR = "var(--color-energy-hc)";
+const AUTOCONSO_COLOR = "var(--color-solar-auto)";
 
 type ViewMode = "total" | "by-usage";
 
@@ -190,7 +195,7 @@ export function EnergyPage() {
                           <span key={s.id} className="flex items-center gap-1.5">
                             <span
                               className="inline-block w-2.5 h-2.5 rounded-sm"
-                              style={{ backgroundColor: s.color }}
+                              style={{ backgroundColor: byUsageSeriesColor(s) }}
                             />
                             {s.name}
                             {t("common.colon")}
@@ -223,7 +228,7 @@ export function EnergyPage() {
               <div className="flex flex-col items-center mt-3 gap-1">
                 <div className="flex items-center gap-4 text-small text-text-secondary flex-wrap justify-center">
                   <span className="flex items-center gap-1.5">
-                    <span className="inline-block w-2.5 h-2.5 rounded-full" style={{ backgroundColor: "#4F7BE8" }} />
+                    <span className="inline-block w-2.5 h-2.5 rounded-full" style={{ backgroundColor: HP_COLOR }} />
                     {t("energy.gridConsumption")}{t("common.colon")}
                     {formatEnergyOrCost(
                       history.totals.total_consumption,
@@ -233,21 +238,34 @@ export function EnergyPage() {
                     )}
                   </span>
                   {hasHpHc && (
-                    <span className="text-text-tertiary">
-                      ({t("energy.peakHours")}{t("common.colon")}
-                      {formatEnergyOrCost(
-                        history.totals.total_hp,
-                        history.totals.cost_hp,
-                        effectiveUnit,
-                        locale,
-                      )}{" "}
-                      / {t("energy.offPeakHours")}{t("common.colon")}
-                      {formatEnergyOrCost(
-                        history.totals.total_hc,
-                        history.totals.cost_hc,
-                        effectiveUnit,
-                        locale,
-                      )})
+                    // Spec 196 (FR-E) — one swatch per tariff, the colours of
+                    // the two stacked bars, instead of one swatch for both.
+                    <span className="flex items-center gap-1 text-text-tertiary">
+                      <span className="flex items-center gap-0.5">
+                        (
+                        <span className="inline-block w-2 h-2 rounded-full" style={{ backgroundColor: HP_COLOR }} />
+                      </span>
+                      <span>
+                        {t("energy.peakHours")}{t("common.colon")}
+                        {formatEnergyOrCost(
+                          history.totals.total_hp,
+                          history.totals.cost_hp,
+                          effectiveUnit,
+                          locale,
+                        )}
+                      </span>
+                      <span className="mx-0.5">/</span>
+                      <span className="inline-block w-2 h-2 rounded-full" style={{ backgroundColor: HC_COLOR }} />
+                      <span>
+                        {t("energy.offPeakHours")}{t("common.colon")}
+                        {formatEnergyOrCost(
+                          history.totals.total_hc,
+                          history.totals.cost_hc,
+                          effectiveUnit,
+                          locale,
+                        )}
+                        )
+                      </span>
                     </span>
                   )}
                   {hasProduction && history.totals.total_autoconso > 0 && (

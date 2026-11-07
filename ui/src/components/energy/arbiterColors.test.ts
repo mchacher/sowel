@@ -4,7 +4,9 @@ import {
   journalDotColor,
   surplusStickerColor,
   cellColor,
+  cellEdge,
   loadStateColor,
+  loadStateInk,
   displayState,
   PENDING_FILL,
   GRANTED_IDLE_FILL,
@@ -54,10 +56,18 @@ describe("journalDotColor (spec 148)", () => {
 describe("cellColor (timeline ribbon, #617)", () => {
   it("paints the 'en attente' cell with a muted tint, not the solid warning", () => {
     // #617 — the solid orange read as aggressive. The tint went from 15% to
-    // 20% because the paler version was hard to make out on the ribbon.
+    // 20% because the paler version was hard to make out on the ribbon, then
+    // to 40 % with an orange edge (spec 196: 20 % was 1.24:1 on a card).
     expect(cellColor("pending")).toBe(PENDING_FILL);
-    expect(PENDING_FILL).toBe("color-mix(in srgb, var(--color-warning) 20%, transparent)");
+    expect(PENDING_FILL).toBe("color-mix(in srgb, var(--color-warning) 40%, transparent)");
     expect(cellColor("pending")).not.toBe("var(--color-warning)");
+  });
+
+  it("edges the 'en attente' cell only (spec 196, FR-E)", () => {
+    expect(cellEdge("pending")).toBe("inset 0 0 0 1px var(--color-warning)");
+    for (const s of ["granted", "granted-idle", "revoked", "unmanaged", "suspended", "idle"] as const) {
+      expect(cellEdge(s)).toBeUndefined();
+    }
   });
 
   it("keeps the other states on their solid tokens", () => {
@@ -183,5 +193,19 @@ describe("#960 — 'pilotage manuel' is a state of its own", () => {
     // tell apart, and they sit next to each other in the legend.
     expect(cellColor("suspended")).toBe(loadStateColor("suspended"));
     expect(loadStateColor("suspended")).toContain("--color-primary");
+  });
+});
+
+describe("loadStateInk (spec 196, FR-E)", () => {
+  it("writes 'en attente' in the text orange, never the fill orange", () => {
+    // var(--color-warning) as text is 3.05:1 on a light card.
+    expect(loadStateInk("pending")).toBe("var(--color-warning-ink)");
+    expect(loadStateColor("pending")).toBe("var(--color-warning)");
+  });
+
+  it("keeps every other state's word in its hue", () => {
+    for (const s of ["granted", "granted-idle", "revoked", "unmanaged", "suspended", "idle"] as const) {
+      expect(loadStateInk(s)).toBe(loadStateColor(s));
+    }
   });
 });

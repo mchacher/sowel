@@ -54,15 +54,6 @@
   --color-heat:           var(--red-500);    /* heating now (alias of error) */
   --color-on-status:      var(--on-status);  /* text on a success/error/warning-ink fill */
 
-  /* Energy palette (spec 148) — shared by energy/production charts + arbiter */
-  --color-solar-injection: var(--solar-injection);
-  --color-solar-auto:      var(--solar-auto);
-  --color-solar-production: var(--solar-production);
-  --color-energy-hp:       var(--energy-hp);
-  --color-energy-hc:       var(--energy-hc);
-  --color-energy-grid:     var(--energy-grid);
-  --color-slate:           var(--slate-neutral);
-
   /* Typography */
   --font-sans: var(--font-body);
   --font-mono: var(--font-mono);
@@ -102,6 +93,32 @@
   --color-sensor-500: var(--sensor-500);
   --color-media-50: var(--media-50);
   --color-media-500: var(--media-500);
+}
+
+/* Energy and series palettes (spec 196, FR-E) — `static`, so Tailwind emits
+   every variable even when no utility class names it. The charts paint them
+   through inline styles and SVG attributes (`var(--color-series-5)`), which
+   Tailwind's scanner does not count as a use; a plain @theme would drop the
+   ones no class mentions. Checked by ui/src/theme-static.test.ts. */
+@theme static {
+  /* Energy palette (spec 148) — shared by energy/production charts + arbiter */
+  --color-solar-injection: var(--solar-injection);
+  --color-solar-auto:      var(--solar-auto);
+  --color-solar-production: var(--solar-production);
+  --color-energy-hp:       var(--energy-hp);
+  --color-energy-hc:       var(--energy-hc);
+  --color-energy-grid:     var(--energy-grid);
+  --color-slate:           var(--slate-neutral);
+  --color-energy-other:    var(--energy-other);
+  /* Series palette (spec 196, FR-E): sub-meters, phases, Analyse. */
+  --color-series-1: var(--series-1);
+  --color-series-2: var(--series-2);
+  --color-series-3: var(--series-3);
+  --color-series-4: var(--series-4);
+  --color-series-5: var(--series-5);
+  --color-series-6: var(--series-6);
+  --color-series-7: var(--series-7);
+  --color-series-8: var(--series-8);
 }
 
 /* A card (spec 196, decision pr7-bordures): a surface without a border. In

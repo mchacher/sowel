@@ -2478,7 +2478,14 @@ export interface EnergyByUsagePoint {
 export interface SubmeterSeries {
   id: string;
   name: string;
+  /** Hex from the pre-196 palette at `colorIndex % 8`, unchanged for API
+   *  clients. The Sowel UI paints from `colorIndex` so the colour follows the
+   *  theme, and falls back on this hex only against an older server. */
   color: string;
+  /** Spec 196 (FR-E) — the series' index in the 8-entry series palette
+   *  (`--series-N` in design-system/tokens.css, N = colorIndex % 8 + 1). Sort
+   *  by id for the partition, then the separate-supply meters after it. */
+  colorIndex: number;
   points: EnergyByUsagePoint[];
   cost: number; // € for the whole series (spec 123)
   /** Spec 173 — this series is the meter's own measurement MINUS the meters

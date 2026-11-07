@@ -16,6 +16,7 @@ import {
 import type { EnergyByUsageResponse } from "../../types";
 import type { EnergyUnit } from "../../store/useUiState";
 import { formatEur, formatKwhTick, formatKwhTooltip } from "./format";
+import { byUsageSeriesColor } from "./submeterPalette";
 
 interface Props {
   data: EnergyByUsageResponse;
@@ -26,7 +27,7 @@ interface Props {
   unit?: EnergyUnit;
 }
 
-const OTHER_COLOR = "#CBD5E1";
+const OTHER_COLOR = "var(--color-energy-other)"; // same grey as the Live donut
 const OTHER_KEY = "__other__";
 
 /** SVG path for a rectangle with only top corners rounded — same helper
@@ -148,7 +149,7 @@ function buildChart(
     ...data.submeters.map((s) => ({
       id: s.id,
       name: s.name,
-      color: s.color,
+      color: byUsageSeriesColor(s),
       netOfChildren: s.netOfChildren,
     })),
     { id: otherKey, name: "Other", color: OTHER_COLOR },
@@ -219,7 +220,7 @@ export function EnergyByUsageChart({ data, period, date, height = 300, unit = "w
             tick={{ fill: "var(--color-text-secondary)", fontSize: CHART_TICK_FONT }}
           />
           <Tooltip
-            cursor={{ fill: "rgba(0,0,0,0.03)" }}
+            cursor={{ fill: "var(--color-border-light)" }}
             content={({ active, payload, label }) => {
               if (!active || !payload || payload.length === 0) return null;
               const datum = payload[0].payload as Datum;

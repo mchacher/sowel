@@ -4,7 +4,7 @@ import { useTranslation } from "react-i18next";
 import { Scale, Moon } from "lucide-react";
 import { SectionHeader } from "./SectionHeader";
 import { ArbiterTimeline } from "./ArbiterTimeline";
-import { surplusStickerColor, loadStateColor, displayState } from "./arbiterColors";
+import { surplusStickerColor, loadStateColor, loadStateInk, displayState } from "./arbiterColors";
 import { useArbiter } from "../../store/useArbiter";
 import { useZoneAggregation } from "../../store/useZoneAggregation";
 import { ROOT_ZONE_ID } from "../../lib/constants";
@@ -67,7 +67,7 @@ function StatePill({ state }: { state: ArbiterLoadState }) {
   return (
     <span
       className="inline-flex items-center gap-1.5 text-micro font-semibold px-2 py-0.5 rounded-full whitespace-nowrap"
-      style={{ color, background: `color-mix(in srgb, ${color} 15%, transparent)` }}
+      style={{ color: loadStateInk(state), background: `color-mix(in srgb, ${color} 15%, transparent)` }}
     >
       <span className="w-2 h-2 rounded-full flex-none" style={{ backgroundColor: color }} />
       {shortLabel === null ? (

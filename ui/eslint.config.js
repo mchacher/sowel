@@ -5,6 +5,7 @@ import reactRefresh from "eslint-plugin-react-refresh";
 import tseslint from "typescript-eslint";
 import { defineConfig, globalIgnores } from "eslint/config";
 import designClasses from "./eslint/design-classes.js";
+import chartColors from "./eslint/chart-colors.js";
 
 export default defineConfig([
   globalIgnores(["dist", "dev-dist"]),
@@ -105,6 +106,24 @@ export default defineConfig([
       "sowel/type-scale": "error",
       "sowel/sentence-case": "error",
       "sowel/radius-scale": "error",
+    },
+  },
+  {
+    // Spec 196 (FR-E) — energy and history charts paint from theme tokens, so
+    // a legend cannot keep its light-theme colour in dark. eslint/chart-colors.js.
+    // Also the energy surfaces that live elsewhere: the tariff strip, the UPS
+    // panel and the EV sessions.
+    files: [
+      "src/components/energy/**/*.{ts,tsx}",
+      "src/components/history/**/*.{ts,tsx}",
+      "src/components/settings/TariffSettings.tsx",
+      "src/components/equipments/UpsPanel.tsx",
+      "src/components/equipments/ev-sessions/**/*.{ts,tsx}",
+    ],
+    ignores: ["**/*.test.{ts,tsx}"],
+    plugins: { "sowel-chart": chartColors },
+    rules: {
+      "sowel-chart/no-hex-color": "error",
     },
   },
 ]);

@@ -25,8 +25,8 @@ import { ChartPie } from "lucide-react";
 import { SectionHeader } from "./SectionHeader";
 import { useStalenessClock } from "../../hooks/useStalenessClock";
 
-const HOUSE_COLOR = "#4F7BE8"; // matches HP_COLOR in LiveEnergyPage
-const OTHER_COLOR = "var(--energy-other)"; // neutral grey, one value per theme (tokens.css)
+const HOUSE_COLOR = "var(--color-energy-hp)"; // matches HP_COLOR in LiveEnergyPage
+const OTHER_COLOR = "var(--color-energy-other)"; // neutral grey, one value per theme (tokens.css)
 
 const RADIUS = 72;
 const STROKE = 22;

@@ -424,6 +424,7 @@ export function registerEnergyRoutes(app: FastifyInstance, deps: EnergyDeps): vo
           id: eq.id,
           name: eq.name,
           color: pickPaletteColor(i),
+          colorIndex: i,
           points,
           cost: 0, // Spec 123 — filled below once blended rate is known.
           ...(rawTotal > total ? { netOfChildren: true } : {}),
@@ -535,6 +536,7 @@ export function registerEnergyRoutes(app: FastifyInstance, deps: EnergyDeps): vo
           id: eq.id,
           name: eq.name,
           color: pickPaletteColor(sortedSubmeters.length + i),
+          colorIndex: sortedSubmeters.length + i,
           points: bucketTimes.map((time) => ({ time, wh: byTime.get(time) ?? 0 })),
           cost: 0,
         });
@@ -1435,13 +1437,13 @@ from(bucket: "${bucket}")
   return points;
 }
 
-/** Deterministic pastel palette for submeter colors. Medium saturation,
- *  modern dashboard feel — readable on light background, comfortable
- *  next to the brighter HP/HC/autoconso bars of the total chart.
- *  Mirrored in `ui/src/components/energy/submeterPalette.ts` (spec 117)
- *  so the Live donut paints each submeter with the same color the
- *  historical By-usage chart assigns to it. Update both in lockstep. */
-const SUBMETER_PALETTE = [
+/** Submeter colours sent as `color` to API clients: the palette from before
+ *  spec 196, unchanged so an external client keeps drawing the same colours
+ *  (spec 196 FR-E: additive, `color` kept). Each series also carries
+ *  `colorIndex`, which the Sowel UI turns into the themed variable
+ *  (`--series-N` in design-system/tokens.css); this hex list no longer reaches
+ *  the Sowel UI except through an older server, where it is the fallback. */
+export const SUBMETER_PALETTE = [
   "#60A5FA", // soft blue
   "#34D399", // emerald
   "#F87171", // soft red
