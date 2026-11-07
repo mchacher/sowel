@@ -89,8 +89,9 @@ interface ZoneAggregatedData {
   displaysTotal: number;
   // Spec 116 / #1134 — offline equipments are left out of the values above and
   // listed here instead, once per equipment, keyed by the category they would
-  // have fed. Same rule as the totals: an offline pool pump with a light_state
-  // binding is not an unavailable light, a pool cover not a shutter.
+  // have fed. Same rule as the values: an offline pool pump with a light_state
+  // binding is not an unavailable light, a pool cover not a shutter, and only
+  // the alias "temperature" marks the temperature (not a water temperature).
   unavailableEquipmentsByCategory: Partial<Record<DataCategory, number>>;
   unavailableEquipmentNamesByCategory: Partial<Record<DataCategory, string[]>>; // sorted names
 }
