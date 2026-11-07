@@ -135,4 +135,10 @@ L'Accueil est personnel : chaque utilisateur a sa propre disposition de widgets.
 - **Restez concentré** : l'Accueil fonctionne mieux avec 6 à 12 widgets. Trop de widgets réduisent la valeur d'un coup d'œil.
 - **Utilisez les widgets de zone pour l'aperçu** : un widget "Capteurs" de zone pour chaque étage vous donne la température de toute la maison en un coup d'œil.
 - **Utilisez les widgets d'équipement pour le contrôle** : mettez les lumières et volets que vous utilisez le plus sur l'Accueil pour un accès en un seul geste.
-- **Adapté au mobile** : sur mobile, les widgets s'empilent en une seule colonne. Placez vos widgets les plus importants en haut.
+- **Adapté au mobile** : sur un téléphone, les widgets deviennent des tuiles compactes, deux par ligne (trois sur une tablette). Placez vos widgets les plus importants en haut.
+
+![L'Accueil sur un téléphone : tuiles compactes, deux par ligne](../screenshots/dashboard-mobile-fr.png)
+
+L'Accueil suit le thème choisi dans **Réglages → Thème** : Clair, Sombre ou Système (celui de votre appareil).
+
+![L'Accueil en thème sombre](../screenshots/dashboard-dark-fr.png)
