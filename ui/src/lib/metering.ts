@@ -58,3 +58,25 @@ export function isSubmeterEquipment(eq: EquipmentWithDetails): boolean {
   // A declared energy_meter qualifies on type alone (card renders at 0, #527).
   return eq.type === "energy_meter" || hasMeteringBinding(eq);
 }
+
+/**
+ * A submeter whose energy Sowel derives from power: watts but no cumulative
+ * energy (a Legrand GEM clamp). Mirrors `derivesEnergyFromPower` in
+ * src/equipments/metering.ts.
+ */
+export function derivesEnergyFromPower(eq: EquipmentWithDetails): boolean {
+  if (!isSubmeterEquipment(eq)) return false;
+  const bindings = eq.dataBindings;
+  const hasPower = bindings.some((b) => b.alias === "power" || b.category === "power");
+  const hasEnergy = bindings.some((b) => b.alias === "energy" || b.category === "energy");
+  return hasPower && !hasEnergy;
+}
+
+/**
+ * Spec 195 — does this equipment's negative power count as local production?
+ * Mirrors `countsLocalProduction` in src/equipments/metering.ts: declared, on
+ * the house supply, and power-derived, so Live and history agree.
+ */
+export function countsLocalProduction(eq: EquipmentWithDetails): boolean {
+  return eq.localProduction === true && eq.separateSupply !== true && derivesEnergyFromPower(eq);
+}

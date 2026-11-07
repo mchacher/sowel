@@ -23,6 +23,7 @@ import { useEquipments } from "../../store/useEquipments";
 import type { EquipmentWithDetails } from "../../types";
 import { EnergyMobileNav } from "./EnergyMobileNav";
 import { LiveSubmeterBreakdown } from "./LiveSubmeterBreakdown";
+import { localProductionW } from "./submeter-helpers";
 import { PhaseBreakdown } from "./PhaseBreakdown";
 import { useWsSubscription } from "../../hooks/useWsSubscription";
 import { ArbitrationSurface } from "./ArbitrationSurface";
@@ -92,12 +93,18 @@ export function LiveEnergyPage() {
     [equipments],
   );
 
-  const gridPower = sumPower(gridEqs);
-  const solarPower = sumPower(solarEqs);
-  const hasSources = gridEqs.length > 0 || solarEqs.length > 0;
   // A meter that goes silent sends no event, so nothing would re-render this
   // page at the moment its reading ages out — hence a clock of our own.
   const clock = useStalenessClock();
+  const gridPower = sumPower(gridEqs);
+  // Spec 195 — a panel wired behind a submeter is solar the production meter
+  // never sees, while the grid meter already does: leaving it out would put
+  // the house below what it really draws.
+  const localSolar = localProductionW(equipments, clock);
+  const meteredSolar = sumPower(solarEqs);
+  const solarPower =
+    meteredSolar === null && localSolar === null ? null : (meteredSolar ?? 0) + (localSolar ?? 0);
+  const hasSources = gridEqs.length > 0 || solarEqs.length > 0;
   const staleness = useMemo(
     () => detectLiveStaleness(gridEqs, solarEqs, clock),
     [gridEqs, solarEqs, clock],

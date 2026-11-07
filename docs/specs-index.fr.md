@@ -322,6 +322,7 @@ Les specs sont regroupées par thème et annotées d'un statut :
 | 192 | Recharge en cours sur la fiche voiture                                | ✅     | Carte de la recharge en cours sur la fiche voiture (en charge, en pause avec la raison, terminée en attente d'attribution, bouton de confirmation) ; `GET /api/v1/ev-sessions/current` ; complète la spec 191, issue #1100. Shipped in v1.77.0.            |
 | 193 | Borne mesurée et voiture habituelle                                   | ✅     | Recharges sur un `ev_charger` qui ne mesure que sa puissance (un compteur d'énergie) : recharges par la puissance, voiture habituelle pour départager, une borne par voiture à la fois ; complète les specs 182, 191, 192. Shipped in v1.78.0.             |
 | 194 | Distinguer les voitures par leurs données de charge                   | ✅     | Attribution des recharges par signaux mesurés : `charge_power` optionnel sur `electric_vehicle` comparé à la puissance de la borne, puis énergie et hausse de batterie ; générique ; complète les specs 183, 191, 193. Shipped in v1.79.0.                 |
+| 195 | Un sous-compteur qui voit une production locale                       | ✅     | `Equipment.localProduction` : sous-compteur à puissance seule avec un panneau derrière ; sa puissance négative devient `production`, ajoutée au solaire (autoconsommation, historique, Live) ; la part garde le positif (#1116, amende 091).               |
 
 ---
 

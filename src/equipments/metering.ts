@@ -92,3 +92,36 @@ export function isSubmeterEquipment(
   if (NON_SUBMETER_TYPES.has(type)) return false;
   return type === "energy_meter" || hasMeteringBinding(bindings);
 }
+
+/**
+ * A submeter whose energy Sowel derives from power (`PowerSubmeterIntegrator`):
+ * it reports watts but no cumulative energy (a Legrand GEM clamp). The single
+ * definition the integrator and the spec 195 checks share.
+ */
+export function derivesEnergyFromPower(
+  type: EquipmentType,
+  bindings: readonly BindingLike[],
+): boolean {
+  if (!isSubmeterEquipment(type, bindings)) return false;
+  const hasPower = bindings.some((b) => b.alias === "power" || b.category === "power");
+  const hasEnergy = bindings.some((b) => b.alias === "energy" || b.category === "energy");
+  return hasPower && !hasEnergy;
+}
+
+/**
+ * Spec 195 — does this equipment's negative power count as local production?
+ * Declared (`localProduction`), on the house supply (a separate supply never
+ * reaches the main meter), and power-derived: a meter with its own energy
+ * counter is not integrated by Sowel, so reading its sign live while its
+ * history ignores it would make the two surfaces disagree.
+ */
+export function countsLocalProduction(
+  eq: { type: EquipmentType; localProduction?: boolean; separateSupply?: boolean },
+  bindings: readonly BindingLike[],
+): boolean {
+  return (
+    eq.localProduction === true &&
+    eq.separateSupply !== true &&
+    derivesEnergyFromPower(eq.type, bindings)
+  );
+}
