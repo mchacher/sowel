@@ -82,10 +82,12 @@ function seedDays(
        (equipment_id, at, hour_local, poa, temp_c, watts, direct_fraction)
      VALUES (?, ?, ?, ?, ?, ?, ?)`,
   );
+  // Calendar days, not 24 h steps: across a DST change two 24 h steps can land on the
+  // same local date and collide on (equipment_id, at) late in the evening (#1125).
+  // The clock is read once, so midnight passing mid-loop cannot collide either.
+  const today = new Date();
   for (let d = days; d >= 1; d--) {
-    // Calendar days, not 24 h steps: across a DST change two 24 h steps can land on the
-    // same local date and collide on (equipment_id, at) late in the evening (#1125).
-    const base = new Date();
+    const base = new Date(today);
     base.setDate(base.getDate() - d);
     const faulty = d <= faultyTail;
     for (let h = 10; h <= 15; h++) {

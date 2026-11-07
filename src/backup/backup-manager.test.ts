@@ -195,14 +195,18 @@ describe("BackupManager", () => {
 
     it("breaks equal mtimes on the file name, whatever the readdir order", () => {
       mkdirSync(resolve(tmpDir, "backups"));
-      for (const name of ["b.zip", "c.zip", "a.zip"]) writeBackupAt(name, 1);
+      // Five names in a scrambled order: a filesystem that happens to list them
+      // sorted is a 1-in-120 chance, not 1 in 6.
+      for (const name of ["d.zip", "b.zip", "e.zip", "a.zip", "c.zip"]) writeBackupAt(name, 1);
 
       expect(manager.listLocalBackups().map((b) => b.filename)).toEqual([
+        "e.zip",
+        "d.zip",
         "c.zip",
         "b.zip",
         "a.zip",
       ]);
-      expect(manager.rotateLocalBackups(1).deleted).toEqual(["b.zip", "a.zip"]);
+      expect(manager.rotateLocalBackups(2).deleted).toEqual(["c.zip", "b.zip", "a.zip"]);
     });
 
     it("returns empty deleted when no backups exist", () => {
@@ -277,7 +281,6 @@ describe("BackupManager", () => {
 
     it("multiple exports create multiple files", async () => {
       await manager.exportToFile("a.zip");
-      await new Promise((r) => setTimeout(r, 10));
       await manager.exportToFile("b.zip");
 
       const backups = manager.listLocalBackups();
