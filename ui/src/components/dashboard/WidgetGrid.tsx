@@ -31,10 +31,10 @@ import { RecipeTile } from "./RecipeTile";
 import { LightBulbIcon, ShutterWidgetIcon, AwningWidgetIcon, ThermometerIcon, MultiSensorIcon } from "./WidgetIcons";
 import { shutterLevel } from "./widget-icons";
 import { EquipmentDetailSheet, ZoneDetailSheet } from "./WidgetDetailSheet";
-import { GateConfirmSheet } from "./ConfirmActionSheet";
 import { getMobileClickAction } from "./mobile-click-action";
 import { useDashboard } from "../../store/useDashboard";
 import { useIsMobile } from "../../hooks/useIsMobile";
+import { useGuardedAction } from "../../hooks/useGuardedAction";
 import { getSensorBindings } from "../equipments/sensorUtils";
 import { EQUIPMENT_ZONE_SEPARATOR } from "../../lib/zone-path";
 import { thermostatPowerStateBinding } from "../../lib/thermostat-state";
@@ -69,8 +69,20 @@ export function WidgetGrid({
 }: WidgetGridProps) {
   const isMobile = useIsMobile();
   const [detailWidgetId, setDetailWidgetId] = useState<string | null>(null);
-  // Spec 146 — gate awaiting slide-to-confirm before actuating (mobile only).
-  const [confirmWidgetId, setConfirmWidgetId] = useState<string | null>(null);
+  // Spec 146 / 196 — a guarded gate asks before its tile actuates it.
+  const gateGuard = useGuardedAction();
+  const confirmGate = (equipmentId: string | undefined) => {
+    const equipment = equipmentId ? equipmentMap.get(equipmentId) : undefined;
+    if (!equipment) return;
+    const command = findOrderByCategory(equipment.orderBindings, ["gate_trigger"], ["command"]);
+    if (!command) return;
+    gateGuard.guardGate(
+      equipment,
+      null,
+      () => void onExecuteOrder(equipment.id, command.alias, null),
+      equipmentZones.get(equipment.id),
+    );
+  };
 
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 8 } }),
@@ -97,11 +109,6 @@ export function WidgetGrid({
 
   // Find the widget being shown in bottom sheet (auto-clears if widget was deleted)
   const detailWidget = detailWidgetId ? widgets.find((w) => w.id === detailWidgetId) ?? null : null;
-  const confirmWidget = confirmWidgetId ? widgets.find((w) => w.id === confirmWidgetId) ?? null : null;
-  const confirmEquipment =
-    confirmWidget?.type === "equipment" && confirmWidget.equipmentId
-      ? equipmentMap.get(confirmWidget.equipmentId)
-      : undefined;
 
   if (!editMode) {
     return (
@@ -119,7 +126,7 @@ export function WidgetGrid({
               onExecuteOrder={onExecuteOrder}
               isMobile={isMobile}
               onOpenDetail={() => setDetailWidgetId(widget.id)}
-              onConfirmAction={() => setConfirmWidgetId(widget.id)}
+              onConfirmAction={() => confirmGate(widget.equipmentId)}
             />
           ))}
         </div>
@@ -144,22 +151,8 @@ export function WidgetGrid({
           />
         )}
 
-        {/* Spec 146 — slide-to-confirm before actuating a guarded gate (mobile). */}
-        {confirmEquipment && (
-          <GateConfirmSheet
-            equipment={confirmEquipment}
-            zoneName={equipmentZones.get(confirmEquipment.id)}
-            onConfirm={() => {
-              const command = findOrderByCategory(
-                confirmEquipment.orderBindings,
-                ["gate_trigger"],
-                ["command"],
-              );
-              if (command) void onExecuteOrder(confirmEquipment.id, command.alias, null);
-            }}
-            onClose={() => setConfirmWidgetId(null)}
-          />
-        )}
+        {/* Spec 146 / 196 — the slide or the dialog before a guarded gate actuates. */}
+        {gateGuard.element}
       </>
     );
   }

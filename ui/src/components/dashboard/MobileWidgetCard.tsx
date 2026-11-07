@@ -68,7 +68,7 @@ import {
   evGaugeTone,
   evIsPlugged,
 } from "../equipments/electricVehicleState";
-import { gateNeedsConfirm } from "./gate-confirm";
+import { gateNeedsConfirm, gateStateOf } from "./gate-confirm";
 import { OrderOutcomeLine } from "../equipments/OrderOutcomeLine";
 import { ForecastConfidenceMark } from "./ForecastConfidenceMark";
 import { vmcSpeedOf } from "../equipments/vmcSpeed";
@@ -295,10 +295,8 @@ function useMobileState(
   }
 
   if (isGate) {
-    const stateBinding = equipment.dataBindings.find(
-      (b) => b.alias === "state" && b.category === "gate_state",
-    );
-    const gateState = (stateBinding?.value as string) ?? "unknown";
+    // By category, like GateControl: a gate bound under another alias read « unknown ».
+    const gateState = gateStateOf(equipment);
     const isOpen = gateState === "open";
     const iconKey = widget.icon;
     const GateIcon =

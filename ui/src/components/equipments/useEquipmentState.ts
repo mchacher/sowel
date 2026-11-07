@@ -15,6 +15,7 @@ import { findDataByCategory, findOrderByCategory } from "./bindingUtils";
 import { thermostatPowerStateBinding } from "../../lib/thermostat-state";
 import { useWebSocket } from "../../store/useWebSocket";
 import { formatDataValue, formatDuration } from "../../lib/format";
+import { gateStateOf } from "../dashboard/gate-confirm";
 
 export function useEquipmentState(equipment: EquipmentWithDetails) {
   // Classification
@@ -137,11 +138,8 @@ export function useEquipmentState(equipment: EquipmentWithDetails) {
           ? createElement(shutterIsOpen ? DoorOpen : DoorClosed, { size: 18, strokeWidth: 1.5 })
           : TYPE_ICONS[equipment.type];
 
-  // Gate state for icon color
-  const gateStateBinding = isGate
-    ? equipment.dataBindings.find((db) => db.alias === "state" && db.category === "gate_state")
-    : null;
-  const gateIsOpen = gateStateBinding?.value === "open";
+  // Gate state for icon color — by category, like GateControl (spec 196).
+  const gateIsOpen = isGate && gateStateOf(equipment) === "open";
 
   const iconColor = isMediaPlayer
     ? isOn

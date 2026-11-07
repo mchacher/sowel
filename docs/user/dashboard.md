@@ -30,6 +30,14 @@ Reliability is published by the weather plugin from version 2.0 onwards. With an
 
 A **rain gauge** -- a weather equipment that measures only rain, such as a tipping-bucket gauge or a lone Netatmo rain module -- gets its own tile: today's rain in large figures, the rolling 24-hour total underneath, and a pulsing dot while it has rained in the last hour. A gauge that does not report today's total shows the 24-hour total instead. Click or tap the tile to open a panel with today, the rolling 24 hours, the last 7 and 30 days, the last day it rained (looked up over six months) and 30 bars, one per day; hover or tap a bar to read that day's total. These figures come from the rain sensor's history, so a gauge that started recording recently says how many days it has measured, and never claims "no rain" further back than its first measured day. A station that also measures temperature, wind or humidity keeps its usual tile.
 
+#### Gates that ask first { #gate-confirmation }
+
+On a tablet or a computer, a gate tile says what a click does: a button under the state reads **Open**, **Close** or **Operate** (when Sowel cannot see the gate's state), and a gate with several commands shows them in words — **Open**, **Close**, **Stop** — rather than as raw values.
+
+When an administrator turned on **Confirmation before action** on the gate's equipment page, every press that would move it asks first. On a phone or a tablet, a panel opens with a slide to confirm; with a mouse or a trackpad, a dialog asks with **Cancel** and a button naming the action (Enter confirms, Escape cancels). The question says what the press will do: _Close Portail?_ on an open gate, _Open Portail?_ on a closed one, _Operate Portail?_ when the state is unknown, and on a gate with several commands, the one you pressed. Nothing is sent until you confirm.
+
+This applies everywhere a single tap or click moves the gate: its Dashboard tile at every screen size and the panel it opens, the timed tile when it starts (cancelling a running countdown does not ask), the gate's row in the Home view, the Equipments list and the equipment page. On a phone, a small shield in the corner of the tile marks a gate that asks. A gate does not ask when a mode is activated, when a recipe's automation moves it, when a guest opens it from a shared access page, or when you press the small mode button of a recipe tile.
+
 ### Zone widget
 
 Displays aggregated data for an entire zone. You choose which **family** of data to show:
@@ -55,9 +63,9 @@ What a recipe tile shows is chosen by the recipe itself, out of three things:
 
 When a tile carries **one** button, you do not have to aim at it: a click anywhere on the tile does the same thing. A tile carrying two buttons keeps them as the only way in — the tile itself cannot know which of the two you meant. Nothing happens on a click while the Dashboard is in edit mode.
 
-A recipe that opens something physical — a gate, a door — asks before it acts: on a phone, tapping the tile opens a slide-to-confirm panel naming what it is about to do, so a pocket tap never opens the gate. On a computer the click acts straight away, and the small button always does, whatever the recipe.
+A recipe that opens something physical — a gate, a door — asks before it acts: on a phone or a tablet, tapping the tile opens a slide-to-confirm panel naming what it is about to do, so a pocket tap never opens the gate; with a mouse, a click on the tile opens a dialog asking the same question. The small button always acts straight away, whatever the recipe.
 
-You answer that question **once, on the equipment**. A recipe whose tile opens your gate reads that gate's own **Confirmation before action** setting: turn it on there and every way of opening the gate asks first, turn it off and none of them does. No recipe can quietly disagree with what you decided about your own gate. Only a recipe that acts on several equipments at once — or on none in particular — falls back to a setting of its own, next to the rest of the automation's parameters.
+You answer that question **once, on the equipment**. A recipe whose tile opens your gate reads that gate's own **Confirmation before action** setting: turn it on there and the tile asks, like every other tile, row and button that moves that gate ([Gates that ask first](#gate-confirmation)); turn it off and none of them does. No recipe can quietly disagree with what you decided about your own gate. Only a recipe that acts on several equipments at once — or on none in particular — falls back to a setting of its own, next to the rest of the automation's parameters.
 
 A tile whose recipe instance is disabled is greyed out and keeps its place, so a quiet tile is never a mystery. If a recipe stops offering a tile after an update, the widget says so instead of vanishing — remove it yourself if you no longer want it.
 

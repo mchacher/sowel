@@ -7,8 +7,38 @@
 
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import { act, fireEvent, render, screen } from "../../test-utils";
-import { ConfirmActionSheet, GateConfirmSheet } from "./ConfirmActionSheet";
+import { useTranslation } from "react-i18next";
+import { ConfirmActionDialog, ConfirmActionSheet } from "./ConfirmActionSheet";
+import { gatePrompt } from "./gate-confirm";
 import type { EquipmentWithDetails } from "../../types";
+
+/** The sheet as `useGuardedAction` words it for a gate (spec 146, spec 196). */
+function GateConfirmSheet({
+  equipment,
+  zoneName,
+  value = null,
+  onConfirm,
+  onClose,
+}: {
+  equipment: EquipmentWithDetails;
+  zoneName?: string;
+  value?: string | null;
+  onConfirm: () => void;
+  onClose: () => void;
+}) {
+  const { t } = useTranslation();
+  const prompt = gatePrompt(equipment, value, t, zoneName);
+  return (
+    <ConfirmActionSheet
+      title={prompt.title}
+      subtitle={prompt.subtitle}
+      slideLabel={prompt.slideLabel}
+      confirmedLabel={prompt.confirmedLabel}
+      onConfirm={onConfirm}
+      onClose={onClose}
+    />
+  );
+}
 
 function makeGate(gateState: string | null = "closed"): EquipmentWithDetails {
   return {
@@ -148,5 +178,62 @@ describe("ConfirmActionSheet", () => {
 
     expect(screen.getByText("Close Portail?")).toBeTruthy();
     expect(screen.getByRole("button", { name: "Slide to close" })).toBeTruthy();
+  });
+
+  // Spec 196 — a multi-action gate names the button pressed, not the state.
+  it("names the action of a multi-action button, and a raw value it has no word for", () => {
+    const { unmount } = render(
+      <GateConfirmSheet equipment={makeGate("open")} value="STOP" onConfirm={vi.fn()} onClose={vi.fn()} />,
+    );
+    expect(screen.getByText("Stop Portail?")).toBeTruthy();
+    expect(screen.getByRole("button", { name: "Slide to stop" })).toBeTruthy();
+    unmount();
+
+    render(
+      <GateConfirmSheet
+        equipment={makeGate("closed")}
+        value="PEDESTRIAN"
+        onConfirm={vi.fn()}
+        onClose={vi.fn()}
+      />,
+    );
+    expect(screen.getByText("Operate Portail?")).toBeTruthy();
+    expect(screen.getByText("PEDESTRIAN · Closed")).toBeTruthy();
+  });
+});
+
+// Spec 196 — the pointer form of the same question: two buttons, Enter confirms
+// (the primary button holds the focus), Escape and the backdrop cancel.
+describe("ConfirmActionDialog", () => {
+  function open() {
+    const onConfirm = vi.fn();
+    const onClose = vi.fn();
+    render(
+      <ConfirmActionDialog
+        title="Close Portail?"
+        subtitle="Closed"
+        confirmLabel="Close"
+        onConfirm={onConfirm}
+        onClose={onClose}
+      />,
+    );
+    return { onConfirm, onClose };
+  }
+
+  it("confirms on its primary button, which holds the focus", () => {
+    const { onConfirm, onClose } = open();
+    const primary = screen.getByRole("button", { name: "Close" });
+    expect(document.activeElement).toBe(primary);
+    fireEvent.click(primary);
+    expect(onConfirm).toHaveBeenCalledTimes(1);
+    expect(onClose).toHaveBeenCalledTimes(1);
+  });
+
+  it("cancels on Cancel and on Escape without confirming", () => {
+    const { onConfirm, onClose } = open();
+    fireEvent.click(screen.getByRole("button", { name: "Cancel" }));
+    fireEvent.keyDown(window, { key: "Escape" });
+    expect(onClose).toHaveBeenCalledTimes(2);
+    expect(onConfirm).not.toHaveBeenCalled();
   });
 });

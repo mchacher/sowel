@@ -90,6 +90,8 @@ You can choose a specific icon for gates on the dashboard: standard gate, slidin
 
 A gate can be driven by any on/off relay — a Zigbee dry-contact module (e.g. SONOFF MINI-ZBD), a LoRa relay channel, or a Somfy RTS remote — and the command button triggers it as a momentary action. Configure the pulse behavior (inching / auto-off) on the device itself. Bind a door contact sensor (e.g. SONOFF SNZB-04P) to the same equipment to get the open/closed state; without one the state shows as unknown.
 
+An administrator can turn on **Confirmation before action** on the gate's equipment page. Every press that would move the gate then asks first — on the Dashboard, in the Home view, in the Equipments list and on the equipment page, with a slide on a touch screen and a dialog with a mouse. See [Gates that ask first](dashboard.md#gate-confirmation).
+
 | Type     | Controls                                                 | Expected data                                                                   |
 | -------- | -------------------------------------------------------- | ------------------------------------------------------------------------------- |
 | **Door** | Open / Stop / Close + state pill, slider with a position | end state (open, closed, opening, closing, fault) and/or position (0% = closed) |
