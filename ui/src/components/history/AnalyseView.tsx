@@ -739,7 +739,9 @@ export function AnalyseView() {
           rather than squeezing the title onto two lines on a tablet (spec
           196, slice 1c). */}
       <div className="flex flex-col sm:flex-row sm:flex-wrap sm:items-center sm:justify-between gap-4">
-        <div className="hidden lg:flex items-center gap-3">
+        {/* A saved chart's name is not in the compact top bar, so it stays
+            visible on tablets; the bare « Analyse » title is hidden below lg. */}
+        <div className={`${currentChart ? "hidden sm:flex" : "hidden lg:flex"} items-center gap-3`}>
           <BarChart3 size={20} strokeWidth={1.5} className="text-primary" />
           <h1>{title}</h1>
         </div>

@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
+import i18n from "../../i18n";
 import { Monitor, Wifi, Tag, Clock, Languages, Sun } from "lucide-react";
 import type {
   DataBindingWithValue,
@@ -62,7 +63,7 @@ function formatValue(category: DataCategory, value: unknown): string {
       return typeof value === "number" ? formatWithUnit(value, "dBm") : String(value);
     case "display_brightness":
       if (typeof value !== "number") return String(value);
-      return value === 0 ? "Off" : formatPercent(value);
+      return value === 0 ? i18n.t("displays.card.off") : formatPercent(value);
     default:
       return String(value);
   }
