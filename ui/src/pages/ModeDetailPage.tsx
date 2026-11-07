@@ -101,7 +101,7 @@ export function ModeDetailPage() {
 
   if (!mode) {
     return (
-      <div className="p-6">
+      <div className="p-4 sm:p-6">
         <Link
           to="/modes"
           className="inline-flex items-center gap-1.5 text-[13px] text-text-secondary hover:text-text transition-colors mb-4"

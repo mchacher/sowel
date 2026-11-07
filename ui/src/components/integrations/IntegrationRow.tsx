@@ -68,7 +68,7 @@ export function IntegrationRow({ integration, onOpen, onRefresh }: IntegrationRo
       </div>
 
       {/* Name + status */}
-      <div className="min-w-0 w-[180px] sm:w-[220px] shrink-0">
+      <div className="min-w-0 flex-1 sm:flex-none sm:w-[220px] sm:shrink-0">
         <div className="flex items-center gap-2">
           <span className="text-[14px] font-semibold text-text truncate">
             {integration.name}
@@ -80,6 +80,18 @@ export function IntegrationRow({ integration, onOpen, onRefresh }: IntegrationRo
           )}
         </div>
         <StatusBadge status={integration.status} disabled={isDisabled} />
+        {/* Mobile stats — under the status, inside the name column */}
+        <div className="flex sm:hidden items-center gap-1.5 text-[11px] text-text-tertiary mt-0.5 whitespace-nowrap">
+          <span>
+            {integration.deviceCount} {t("integrations.devices")}
+          </span>
+          {isConnected && integration.polling && (
+            <>
+              <span aria-hidden="true">·</span>
+              <PollCountdown polling={integration.polling} onExpired={onRefresh} />
+            </>
+          )}
+        </div>
       </div>
 
       {/* Stats */}
@@ -95,16 +107,8 @@ export function IntegrationRow({ integration, onOpen, onRefresh }: IntegrationRo
         )}
       </div>
 
-      {/* Mobile stats */}
-      <div className="flex sm:hidden items-center gap-2 text-[11px] text-text-tertiary flex-1">
-        <span>{integration.deviceCount} dev</span>
-        {isConnected && integration.polling && (
-          <PollCountdown polling={integration.polling} onExpired={onRefresh} />
-        )}
-      </div>
-
-      {/* Quick actions — visible on hover (desktop), always visible (mobile) */}
-      <div className="flex items-center gap-0.5 shrink-0">
+      {/* Quick actions — desktop only; on phones they live in the drawer opened by a tap on the row */}
+      <div className="hidden sm:flex items-center gap-0.5 shrink-0">
         {isDisabled ? (
           <QuickAction
             icon={<Power size={14} />}

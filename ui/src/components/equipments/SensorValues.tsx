@@ -20,9 +20,18 @@ interface SensorValuesProps {
    * indicator cannot be derived from `batteryBindings` alone.
    */
   batteryAlert?: BatteryAlert | null;
-  /** "row" (default) = horizontal, "column" = stacked vertically */
-  layout?: "row" | "column";
+  /**
+   * "row" (default) = horizontal, "column" = stacked vertically,
+   * "wrap" = horizontal but values wrap onto further lines (equipment list on phones).
+   */
+  layout?: "row" | "column" | "wrap";
 }
+
+const VALUES_LAYOUT_CLASS: Record<NonNullable<SensorValuesProps["layout"]>, string> = {
+  row: "flex items-center gap-2 flex-shrink-0",
+  column: "flex flex-col gap-0.5",
+  wrap: "flex flex-wrap items-center gap-x-3 gap-y-1 min-w-0",
+};
 
 export function SensorValues({
   sensorBindings,
@@ -80,9 +89,9 @@ export function SensorValues({
 
       {/* Sensor values */}
       {sensorBindings.length > 0 && (
-        <div className={layout === "column" ? "flex flex-col gap-0.5" : "flex items-center gap-2 flex-shrink-0"}>
+        <div className={VALUES_LAYOUT_CLASS[layout]}>
           {sensorBindings.map((b) => (
-            <span key={b.id} className="text-[13px] tabular-nums flex-shrink-0">
+            <span key={b.id} className={layout === "wrap" ? "text-[13px] tabular-nums" : "text-[13px] tabular-nums flex-shrink-0"}>
               {b.category === "motion" && isBooleanActive(b.category, b.value) ? (
                 <span className="font-medium px-2 py-0.5 rounded-full text-[11px] bg-active/15 text-active-text inline-flex items-center gap-1">
                   {formatBooleanSensor(b.category, b.value, t)}

@@ -89,14 +89,14 @@ export function MqttPublishersPage() {
 
   if (loading) {
     return (
-      <div className="p-6 flex items-center justify-center py-20">
+      <div className="px-4 sm:px-6 flex items-center justify-center py-20">
         <Loader2 size={20} className="animate-spin text-text-tertiary" />
       </div>
     );
   }
 
   return (
-    <div className="p-6">
+    <div className="p-4 sm:p-6">
       <div className="mb-6">
         <div className="flex items-center gap-2.5 mb-1">
           <Send size={22} strokeWidth={1.5} className="text-text-secondary" />

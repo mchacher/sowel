@@ -1,8 +1,9 @@
-import { useMemo, useRef } from "react";
+import { useMemo, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { dateLocale } from "../../lib/locale";
 import { formatHourLabel, formatHourRange } from "../../lib/hour-label";
 import { localDateStr } from "../../lib/local-date";
+import { xTickInterval, ENERGY_CHART_Y_AXIS_PX } from "../../lib/chart-ticks";
 import {
   ResponsiveContainer,
   BarChart,
@@ -279,6 +280,9 @@ export function EnergyBarChart({ points, period, date, height = 300, unit = "wh"
 
   // Store HC bar baseline positions (bottom y of each HC bar = bottom of full stack)
   // Populated during HC shape render, consumed during HP shape render for autoconso overlay
+  // Measured chart width, for the X tick density (spec 196). 0 until measured.
+  const [chartWidth, setChartWidth] = useState(0);
+
   const hcBaselinesRef = useRef<Array<{ x: number; width: number; baseline: number }>>([]);
   const hcBaselines = hcBaselinesRef.current;
 
@@ -290,11 +294,11 @@ export function EnergyBarChart({ points, period, date, height = 300, unit = "wh"
     );
   }
 
-  const tickInterval = period === "day" ? Math.max(1, Math.floor(data.length / 12)) - 1 : 0;
+  const tickInterval = xTickInterval(period, data.length, chartWidth - ENERGY_CHART_Y_AXIS_PX);
   const maxBarSize = period === "day" ? 20 : 40;
 
   return (
-    <ResponsiveContainer width="100%" height={height}>
+    <ResponsiveContainer width="100%" height={height} onResize={(w) => setChartWidth(w)}>
       <BarChart data={data} margin={{ top: 5, right: 10, left: 0, bottom: 5 }}>
         <CartesianGrid strokeDasharray="3 3" stroke="var(--color-border-light)" vertical={false} />
         <XAxis

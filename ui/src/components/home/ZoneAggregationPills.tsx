@@ -247,17 +247,19 @@ export function ZoneAggregationPills({
 
   if (clusters.length === 0) return null;
 
+  // On phones the strip wraps instead of scrolling sideways (spec 196): the
+  // separators would dangle at line ends there, so the gap replaces them.
   return (
-    <div className="flex items-center rounded-[8px] border border-border bg-surface px-1 py-1 overflow-x-auto">
+    <div className="flex flex-wrap sm:flex-nowrap items-center gap-x-2 gap-y-1 sm:gap-x-0 rounded-[8px] border border-border bg-surface px-1 py-1 sm:overflow-x-auto">
       {clusters.map((cluster, ci) => (
         <Fragment key={ci}>
           {ci > 0 && (
-            <div className="w-px h-5 bg-border mx-2 flex-shrink-0" />
+            <div className="hidden sm:block w-px h-5 bg-border mx-2 flex-shrink-0" />
           )}
           {cluster.map((item, ii) => (
             <Fragment key={item.key}>
               {ii > 0 && (
-                <div className="w-px h-4 bg-border-light mx-1 flex-shrink-0" />
+                <div className="hidden sm:block w-px h-4 bg-border-light mx-1 flex-shrink-0" />
               )}
               <StripPill
                 item={item}

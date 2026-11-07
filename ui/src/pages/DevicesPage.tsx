@@ -9,6 +9,7 @@ import { flattenZonesWithPath } from "../lib/zone-path";
 import { Radio, Loader2, Search, X } from "lucide-react";
 import { useWsSubscription } from "../hooks/useWsSubscription";
 import { INTEGRATION_LABELS } from "../constants";
+import { PageHeader } from "../components/layout/PageHeader";
 
 const ALL_TAB = "__all__";
 
@@ -95,57 +96,54 @@ export function DevicesPage() {
   const onlineCount = tabFiltered.filter((d) => d.status === "online").length;
 
   return (
-    <div className="p-6">
-      {/* Page header */}
-      <div className="flex items-center justify-between mb-4">
-        <div>
-          <h1>
-            {t("devices.title")}
-          </h1>
-          <p className="text-[13px] text-text-secondary mt-0.5">
-            {tabFiltered.length === 0
-              ? t("devices.waitingDiscovery")
-              : t("devices.subtitle", { count: tabFiltered.length, online: onlineCount })}
-          </p>
-        </div>
+    <div className="p-4 sm:p-6">
+      <PageHeader
+        className="mb-4"
+        title={t("devices.title")}
+        subtitle={
+          tabFiltered.length === 0
+            ? t("devices.waitingDiscovery")
+            : t("devices.subtitle", { count: tabFiltered.length, online: onlineCount })
+        }
+        actions={
+          <>
+            {/* Filter input */}
+            <div className="relative flex-1 sm:flex-none">
+              <Search
+                size={14}
+                strokeWidth={1.5}
+                className="absolute left-2.5 top-1/2 -translate-y-1/2 text-text-tertiary pointer-events-none"
+              />
+              <input
+                type="text"
+                value={filter}
+                onChange={(e) => setFilter(e.target.value)}
+                placeholder={t("devices.filterPlaceholder")}
+                className="w-full sm:w-[200px] pl-8 pr-8 py-1.5 text-[13px] bg-surface border border-border rounded-[6px] outline-none placeholder:text-text-tertiary focus:border-primary transition-colors duration-150"
+              />
+              {filter && (
+                <button
+                  onClick={() => setFilter("")}
+                  className="absolute right-2 top-1/2 -translate-y-1/2 text-text-tertiary hover:text-text-secondary"
+                >
+                  <X size={14} strokeWidth={1.5} />
+                </button>
+              )}
+            </div>
 
-        <div className="flex items-center gap-3">
-          {/* Filter input */}
-          <div className="relative">
-            <Search
-              size={14}
-              strokeWidth={1.5}
-              className="absolute left-2.5 top-1/2 -translate-y-1/2 text-text-tertiary pointer-events-none"
-            />
-            <input
-              type="text"
-              value={filter}
-              onChange={(e) => setFilter(e.target.value)}
-              placeholder={t("devices.filterPlaceholder")}
-              className="w-[200px] pl-8 pr-8 py-1.5 text-[13px] bg-surface border border-border rounded-[6px] outline-none placeholder:text-text-tertiary focus:border-primary transition-colors duration-150"
-            />
-            {filter && (
-              <button
-                onClick={() => setFilter("")}
-                className="absolute right-2 top-1/2 -translate-y-1/2 text-text-tertiary hover:text-text-secondary"
-              >
-                <X size={14} strokeWidth={1.5} />
-              </button>
-            )}
-          </div>
-
-          <div className="flex items-center gap-2 px-3 py-1.5 rounded-[6px] bg-primary-light text-primary">
-            <Radio size={16} strokeWidth={1.5} />
-            <span className="text-[13px] font-medium">
-              {filter ? `${filtered.length}/${tabFiltered.length}` : tabFiltered.length}
-            </span>
-          </div>
-        </div>
-      </div>
+            <div className="hidden sm:flex items-center gap-2 px-3 py-1.5 rounded-[6px] bg-primary-light text-primary">
+              <Radio size={16} strokeWidth={1.5} />
+              <span className="text-[13px] font-medium">
+                {filter ? `${filtered.length}/${tabFiltered.length}` : tabFiltered.length}
+              </span>
+            </div>
+          </>
+        }
+      />
 
       {/* Integration tabs */}
       {tabs.length > 1 && (
-        <div className="flex items-center gap-1 mb-4 border-b border-border">
+        <div className="flex items-center gap-1 mb-4 border-b border-border overflow-x-auto whitespace-nowrap -mx-4 px-4 sm:mx-0 sm:px-0">
           <TabButton
             label={t("common.all")}
             count={deviceList.length}
@@ -201,7 +199,7 @@ function TabButton({
     <button
       onClick={onClick}
       className={`
-        px-3 py-2 text-[13px] font-medium transition-colors duration-150
+        shrink-0 px-3 py-2 text-[13px] font-medium transition-colors duration-150
         border-b-2 -mb-px cursor-pointer
         ${
           active

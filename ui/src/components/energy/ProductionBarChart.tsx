@@ -1,8 +1,9 @@
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { dateLocale } from "../../lib/locale";
 import { formatHourLabel, formatHourRange } from "../../lib/hour-label";
 import { localDateStr } from "../../lib/local-date";
+import { xTickInterval, ENERGY_CHART_Y_AXIS_PX } from "../../lib/chart-ticks";
 import {
   ResponsiveContainer,
   BarChart,
@@ -210,6 +211,9 @@ export function ProductionBarChart({ points, period, date, height = 300 }: Produ
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [data, period, hasSplit]);
 
+  // Measured chart width, for the X tick density (spec 196). 0 until measured.
+  const [chartWidth, setChartWidth] = useState(0);
+
   const hasData = data.some((d) => barTotal(d) > 0);
   if (!hasData) {
     return (
@@ -219,10 +223,10 @@ export function ProductionBarChart({ points, period, date, height = 300 }: Produ
     );
   }
 
-  const tickInterval = period === "day" ? Math.max(1, Math.floor(data.length / 12)) - 1 : 0;
+  const tickInterval = xTickInterval(period, data.length, chartWidth - ENERGY_CHART_Y_AXIS_PX);
 
   return (
-    <ResponsiveContainer width="100%" height={height}>
+    <ResponsiveContainer width="100%" height={height} onResize={(w) => setChartWidth(w)}>
       <BarChart data={data} margin={{ top: 5, right: 10, left: 0, bottom: 5 }}>
         <CartesianGrid strokeDasharray="3 3" stroke="var(--color-border-light)" vertical={false} />
         <XAxis

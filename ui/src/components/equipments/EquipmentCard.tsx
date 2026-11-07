@@ -57,7 +57,7 @@ export function EquipmentCard({ equipment, onExecuteOrder }: EquipmentCardProps)
   return (
     <div
       className={`
-        flex items-center gap-3 px-4 py-3 bg-surface rounded-[10px] border
+        flex flex-wrap sm:flex-nowrap items-center gap-x-3 gap-y-2 px-4 py-3 bg-surface rounded-[10px] border
         transition-colors duration-150
         border-border
       `}
@@ -85,12 +85,17 @@ export function EquipmentCard({ equipment, onExecuteOrder }: EquipmentCardProps)
       </Link>
 
       {/* Sensor / Button values */}
+      {/* On phones the values take a second line, aligned under the name
+          (36 px icon + 12 px gap = pl-12). */}
       {isSensor && (
-        <SensorValues
-          sensorBindings={sensorBindings}
-          batteryBindings={batteryBindings}
-          batteryAlert={batteryAlert}
-        />
+        <div className="flex flex-wrap items-center gap-x-3 gap-y-1 min-w-0 basis-full sm:basis-auto pl-12 sm:pl-0 empty:hidden">
+          <SensorValues
+            sensorBindings={sensorBindings}
+            batteryBindings={batteryBindings}
+            batteryAlert={batteryAlert}
+            layout="wrap"
+          />
+        </div>
       )}
 
       {/* Light / switch / water heater quick control (smart plug = ON/OFF relay,

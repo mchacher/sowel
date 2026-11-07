@@ -46,7 +46,7 @@ export function ModesPage() {
 
   if (error) {
     return (
-      <div className="p-6">
+      <div className="p-4 sm:p-6">
         <div className="flex flex-col items-center justify-center py-20 text-center">
           <div className="w-16 h-16 rounded-full bg-error/10 flex items-center justify-center mb-4">
             <AlertCircle size={28} strokeWidth={1.5} className="text-error" />

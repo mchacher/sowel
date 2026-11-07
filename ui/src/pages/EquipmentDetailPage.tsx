@@ -243,7 +243,7 @@ export function EquipmentDetailPage() {
 
   if (error || !equipment) {
     return (
-      <div className="p-6">
+      <div className="p-4 sm:p-6">
         {fromZone ? (
           <button onClick={() => navigate(-1)} className="inline-flex items-center gap-1.5 text-[13px] text-text-secondary hover:text-text mb-4">
             <ArrowLeft size={14} strokeWidth={1.5} />

@@ -162,10 +162,10 @@ export function AppLayout() {
                 <CurrentTimePill />
                 <SunlightBanner data={rootAgg} />
               </div>
-              {/* Time + sun — compact, space-saving variant on mobile (no seconds) */}
+              {/* Sun only on mobile — the phone already shows the time, and the
+                  home name needs the room (spec 196, decision pr1-barre). */}
               <div className="flex sm:hidden items-center gap-2">
                 <SunlightBanner data={rootAgg} compact />
-                <CurrentTimePill compact withSeconds={false} />
               </div>
               <ConnectionStatus />
               {issues.length > 0 && (

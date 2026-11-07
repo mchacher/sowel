@@ -161,7 +161,7 @@ export function LogsPage() {
   }, []);
 
   return (
-    <div className="p-6 h-full flex flex-col">
+    <div className="p-4 sm:p-6 h-full flex flex-col">
       {/* Header */}
       <div className="mb-4">
         <div className="flex items-center gap-2.5 mb-1">
@@ -280,7 +280,7 @@ export function LogsPage() {
               return (
                 <div key={idx}>
                   <div
-                    className={`flex items-start gap-2 px-2 py-0.5 rounded hover:bg-border-light/50 cursor-pointer ${levelClass}`}
+                    className={`flex flex-wrap sm:flex-nowrap items-start gap-x-2 px-2 py-0.5 rounded hover:bg-border-light/50 cursor-pointer ${levelClass}`}
                     onClick={() => extraKeys.length > 0 && toggleExpand(idx)}
                   >
                     {extraKeys.length > 0 ? (
@@ -298,10 +298,10 @@ export function LogsPage() {
                     <span className={`flex-shrink-0 w-[44px] ${levelClass}`}>
                       {formatLevel(entry.level)}
                     </span>
-                    <span className="text-primary/70 flex-shrink-0 w-[140px] truncate">
+                    <span className="text-primary/70 flex-1 min-w-0 sm:flex-none sm:w-[140px] truncate">
                       {entry.module ?? ""}
                     </span>
-                    <span className="text-text break-all">{entry.msg}</span>
+                    <span className="text-text basis-full sm:basis-auto min-w-0 break-words pl-5 sm:pl-0">{entry.msg}</span>
                   </div>
                   {isExpanded && extraKeys.length > 0 && (
                     <div className="ml-[22px] pl-4 py-1 mb-1 border-l border-border-light text-[11px] text-text-tertiary">
