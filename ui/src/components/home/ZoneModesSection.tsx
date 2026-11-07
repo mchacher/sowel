@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
-import { Layers, ToggleLeft, ToggleRight, Settings, Trash2, X, Pencil, Check, ChevronUp, ChevronDown, Plus } from "lucide-react";
+import { Layers, ToggleLeft, ToggleRight, Settings, Trash2, X, Pencil, Check, ChevronUp, ChevronDown } from "lucide-react";
 import { useModes } from "../../store/useModes";
 import { useEquipments } from "../../store/useEquipments";
 import { useRecipes } from "../../store/useRecipes";
@@ -9,6 +9,7 @@ import type { ModeWithDetails, ZoneModeImpactAction, EquipmentWithDetails, Order
 import { recipeName } from "../../lib/recipe-i18n";
 import { brightnessPercent, brightnessScale } from "../../lib/brightness";
 import { formatPercent, formatWithUnit } from "../../lib/format";
+import { SliceAddButton, SliceHeader } from "./Panel";
 
 interface ZoneModesSectionProps {
   zoneId: string;
@@ -71,51 +72,47 @@ export function ZoneModesSection({ zoneId }: ZoneModesSectionProps) {
 
   return (
     <div>
-      <div className="flex items-center gap-[0.55rem] px-[1.1rem] py-[0.4rem] min-h-[36px] bg-[var(--n-25)] border-t border-b border-border-light">
-        <span className="text-text-tertiary opacity-70 flex-shrink-0">
-          <Layers size={14} strokeWidth={1.5} />
-        </span>
-        <span className="text-small font-semibold text-text-secondary">
-          {t("modes.title")}
-        </span>
-        <span className="text-micro text-text-tertiary ml-auto tabular-nums">
-          {activeCount > 0
+      <SliceHeader
+        icon={<Layers size={16} strokeWidth={1.5} />}
+        label={t("modes.title")}
+        solo={configuredModes.length === 0 && !addingMode}
+        count={
+          activeCount > 0
             ? t("modes.activeCount", { count: activeCount })
-            : configuredModes.length}
-        </span>
-        {unconfiguredModes.length > 0 && !addingMode && (
-          <div className="relative ml-2" ref={selectorRef}>
-            <button
-              onClick={() => setShowModeSelector(!showModeSelector)}
-              className="w-[22px] h-[22px] inline-flex items-center justify-center rounded-sm border border-border-light text-text-tertiary hover:text-primary hover:bg-primary-light hover:border-primary-mid transition-colors duration-150"
-              title={t("modes.addMode", "Add mode")}
-            >
-              <Plus size={11} strokeWidth={2} />
-            </button>
-            {showModeSelector && (
-              <div className="absolute right-0 top-full mt-1 z-20 min-w-[160px] bg-surface border border-border rounded-md shadow-lg py-1">
-                {unconfiguredModes.map((m) => (
-                  <button
-                    key={m.id}
-                    onClick={() => handleSelectMode(m.id)}
-                    className="w-full text-left px-3 py-1.5 text-caption text-text hover:bg-border-light/60 transition-colors flex items-center gap-2"
-                  >
-                    {m.active ? (
-                      <ToggleRight size={12} strokeWidth={1.5} className="text-primary flex-shrink-0" />
-                    ) : (
-                      <ToggleLeft size={12} strokeWidth={1.5} className="text-text-tertiary flex-shrink-0" />
-                    )}
-                    {m.name}
-                  </button>
-                ))}
-              </div>
-            )}
-          </div>
-        )}
-      </div>
+            : configuredModes.length
+        }
+        action={
+          unconfiguredModes.length > 0 && !addingMode ? (
+            <div className="relative" ref={selectorRef}>
+              <SliceAddButton
+                onClick={() => setShowModeSelector(!showModeSelector)}
+                title={t("modes.addMode", "Add mode")}
+              />
+              {showModeSelector && (
+                <div className="absolute right-0 top-full mt-1 z-20 min-w-[160px] bg-surface border border-border rounded-md shadow-lg py-1">
+                  {unconfiguredModes.map((m) => (
+                    <button
+                      key={m.id}
+                      onClick={() => handleSelectMode(m.id)}
+                      className="w-full text-left px-3 py-1.5 text-caption text-text hover:bg-border-light/60 transition-colors flex items-center gap-2"
+                    >
+                      {m.active ? (
+                        <ToggleRight size={12} strokeWidth={1.5} className="text-primary flex-shrink-0" />
+                      ) : (
+                        <ToggleLeft size={12} strokeWidth={1.5} className="text-text-tertiary flex-shrink-0" />
+                      )}
+                      {m.name}
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
+          ) : undefined
+        }
+      />
 
       {(configuredModes.length > 0 || addingMode) && (
-        <div className="divide-y divide-border-light">
+        <div className="slice-rows">
           {configuredModes.map((mode) => (
             <ModeRow
               key={mode.id}
@@ -167,7 +164,7 @@ function ModeRow({
   return (
     <div>
       <div
-        className={`grid grid-cols-[32px_1fr_auto] gap-[0.85rem] items-center px-[1.1rem] py-[0.55rem] min-h-[52px] border-t border-border-light transition-colors duration-120 cursor-pointer ${
+        className={`grid grid-cols-[32px_1fr_auto] gap-[0.85rem] items-center px-[1.1rem] py-[0.55rem] min-h-[52px] transition-colors duration-120 cursor-pointer ${
           mode.active
             ? "bg-[color-mix(in_srgb,var(--green-500)_4%,var(--color-surface))] border-l-[3px] border-l-success pl-[calc(1.1rem-3px)]"
             : "hover:bg-[var(--n-25)]"

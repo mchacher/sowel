@@ -15,6 +15,9 @@ import { useEquipments } from "../store/useEquipments";
 import { useAuth } from "../store/useAuth";
 import { useZoneAggregation } from "../store/useZoneAggregation";
 import { useUiState } from "../store/useUiState";
+import { useRecipes } from "../store/useRecipes";
+import { useModes } from "../store/useModes";
+import { Panel } from "../components/home/Panel";
 import { executeZoneOrder, getHistoryStatus } from "../api";
 import { ZoneEquipmentsView } from "../components/home/ZoneEquipmentsView";
 import { ZoneAggregationPills } from "../components/home/ZoneAggregationPills";
@@ -83,6 +86,19 @@ export function HomePage() {
   }, [equipments, zoneId]);
 
   const aggData = zoneId ? aggregationData[zoneId] : undefined;
+
+  // The Comportements lid counts what its body lists: the zone's recipes, plus
+  // the modes configured for it where the modes slice is shown (admin only).
+  const recipeInstances = useRecipes((s) => s.instances);
+  const modes = useModes((s) => s.modes);
+  const behaviorCount = useMemo(() => {
+    if (!zoneId) return undefined;
+    const recipes = recipeInstances.filter((inst) => inst.params.zone === zoneId).length;
+    const zoneModes = isAdmin
+      ? modes.filter((m) => m.impacts.some((imp) => imp.zoneId === zoneId)).length
+      : 0;
+    return recipes + zoneModes > 0 ? recipes + zoneModes : undefined;
+  }, [recipeInstances, modes, zoneId, isAdmin]);
 
   // Bulk zone commands (allShuttersOpen/Stop/Close) act on the whole subtree
   // (see collectZoneAndDescendantIds) — the Stop button must be hidden if
@@ -178,14 +194,16 @@ export function HomePage() {
         {/* Left column — Équipements */}
         <Panel
           title={t("equipments.title")}
-          className="min-w-0"
+          count={zoneEquipments.length > 0 ? zoneEquipments.length : undefined}
           headerRight={isAdmin ? (
             <button
+              type="button"
               onClick={() => setShowEquipmentForm(true)}
-              className="w-[26px] h-[26px] inline-flex items-center justify-center rounded-sm border border-[var(--p-100)] bg-transparent text-primary hover:bg-surface hover:border-primary transition-colors duration-150"
+              className="w-8 h-8 inline-flex items-center justify-center rounded-sm border border-border bg-surface text-text-secondary hover:text-primary hover:border-primary transition-colors duration-150"
               title={t("equipments.createEquipment")}
+              aria-label={t("equipments.createEquipment")}
             >
-              <Plus size={13} strokeWidth={1.5} />
+              <Plus size={16} strokeWidth={1.5} />
             </button>
           ) : undefined}
         >
@@ -200,7 +218,7 @@ export function HomePage() {
         {/* Right column — Comportements + future Activity feed (spec 101 slot) */}
         <div className="space-y-6 min-w-0">
           {zoneId && (
-            <Panel title={t("behaviors.title")}>
+            <Panel title={t("behaviors.title")} count={behaviorCount}>
               {/* Configuring a zone's mode impacts is admin-only (activation is not, see #912);
                   hide the whole management block from standard users. Recipes
                   stay visible read-only, gated per-button inside the section. */}
@@ -284,31 +302,6 @@ function ZoneNotFound() {
         {t("home.backToHome")}
       </button>
     </div>
-  );
-}
-
-function Panel({
-  title,
-  headerRight,
-  className = "",
-  children,
-}: {
-  title: string;
-  headerRight?: React.ReactNode;
-  className?: string;
-  children: React.ReactNode;
-}) {
-  return (
-    <section className={`card ${className}`}>
-      {/* Panel head — strict alignment with design-system .panel__head (spec 100) */}
-      <div className="flex items-center gap-[0.55rem] px-[1.1rem] py-[0.55rem] min-h-[44px] bg-primary-light border-b border-primary-mid rounded-t-md">
-        <h2 className="text-lead font-semibold text-text">
-          {title}
-        </h2>
-        {headerRight && <div className="ml-auto flex-shrink-0">{headerRight}</div>}
-      </div>
-      {children}
-    </section>
   );
 }
 

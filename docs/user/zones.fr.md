@@ -92,7 +92,7 @@ Dans la vue **Maison**, chaque zone affiche un **bandeau d'état** avec les donn
 - Pastille **Puissance** (par ex. « 47 W », ou « 2.4 kW » au-dessus du kilowatt) dès que la zone possède au moins un compteur
 - Pastille **Soleil** sur la zone racine, sur téléphone ou tablette, avec le lever et le coucher du jour (par ex. « 07:22 – 17:17 »). Sur ordinateur, ils figurent plutôt dans la barre du haut, sur toutes les pages.
 
-Sous le bandeau, les équipements sont regroupés par type (Lumières, Volets, Capteurs) avec des contrôles intégrés.
+Sous le bandeau, les équipements sont regroupés par type (Lumières, Volets, Capteurs) avec des contrôles intégrés. Chaque panneau (Équipements, Comportements, Activité) porte son titre sur un bloc à part, avec le nombre d'éléments qu'il contient ; chaque type d'équipement forme un bloc en dessous.
 
 ### Agrégation de puissance
 
@@ -111,7 +111,7 @@ Si une zone contient à la fois un compteur sur un circuit et un compteur sur un
 
 Chaque zone dispose d'un panneau **Activité** en direct sur le côté droit de la vue Maison. C'est un widget de coup d'œil qui montre ce qui vient de se passer dans la zone : ordres dispatchés, mouvement détecté, recettes démarrées, changements de mode, lever/coucher de soleil, alarmes.
 
-Le panneau regroupe les événements par heure. Le bucket le plus récent porte le label `HH:00 → maintenant`, les buckets plus anciens portent simplement `HH:00`.
+Le panneau se lit comme un journal, du plus récent au plus ancien : une ligne par événement, son heure à gauche, un fil discret qui relie les événements. Quand le journal passe à un autre moment de la journée, un petit repère l'indique : « Ce matin », « Cette nuit », « Hier soir », « Lundi après-midi ». Le moment de la journée en cours n'en porte pas. Les moments suivent l'heure locale : la nuit avant 6 h, le matin jusqu'à midi, l'après-midi jusqu'à 18 h, le soir ensuite.
 
 ![Vue zone avec le panneau Activité dans la colonne droite](../screenshots/activity-zone-view-fr.png)
 
