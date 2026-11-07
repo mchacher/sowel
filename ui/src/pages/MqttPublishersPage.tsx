@@ -47,6 +47,7 @@ import {
   type ZoneOption,
 } from "../lib/zone-path";
 import { MappingSourceFields } from "../components/publishers/MappingSourceFields";
+import { TOP_LEVEL_H1 } from "../components/layout/page-title";
 
 export function MqttPublishersPage() {
   const { t } = useTranslation();
@@ -98,10 +99,7 @@ export function MqttPublishersPage() {
   return (
     <div className="p-4 sm:p-6">
       <div className="mb-6">
-        <div className="flex items-center gap-2.5 mb-1">
-          <Send size={22} strokeWidth={1.5} className="text-text-secondary" />
-          <h1>{t("mqttPublishers.title")}</h1>
-        </div>
+        <h1 className={TOP_LEVEL_H1}>{t("mqttPublishers.title")}</h1>
         <p className="text-small text-text-secondary mt-1">{t("mqttPublishers.subtitle")}</p>
       </div>
 

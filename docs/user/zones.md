@@ -90,6 +90,7 @@ In the **Home** view, each zone displays a **status header** with aggregated dat
 - **Doors** count pill for motorised doors (e.g., "1/2"), apart from the door contact alert
 - **Alert** pills for open doors/windows, water leaks, smoke
 - **Power** pill (e.g., "47 W", or "2.4 kW" above the kilowatt) when the zone has at least one meter
+- **Sun** pill on the root zone, on a phone or a tablet, with today's sunrise and sunset (e.g., "07:22 – 17:17"). On a computer they sit in the top bar instead, on every page.
 
 Below the header, equipments are grouped by type (Lights, Shutters, Sensors) with inline controls.
 

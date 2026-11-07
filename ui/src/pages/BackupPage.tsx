@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect, useCallback } from "react";
 import { useTranslation } from "react-i18next";
-import { DatabaseBackup, Download, Upload, Loader2, RotateCcw, HardDrive } from "lucide-react";
+import { Download, Upload, Loader2, RotateCcw, HardDrive } from "lucide-react";
 import {
   exportBackup,
   importBackup,
@@ -10,6 +10,7 @@ import {
 import type { LocalBackup } from "../api";
 import { localDateStr } from "../lib/local-date";
 import { currentLocale, formatBytes } from "../lib/format";
+import { TOP_LEVEL_H1 } from "../components/layout/page-title";
 
 export function BackupPage() {
   const { t } = useTranslation();
@@ -106,12 +107,9 @@ export function BackupPage() {
     <div className="p-4 sm:p-6">
       {/* Page header */}
       <div className="mb-6">
-        <div className="flex items-center gap-2.5 mb-1">
-          <DatabaseBackup size={22} strokeWidth={1.5} className="text-text-secondary" />
-          <h1>
-            {t("backup.title")}
-          </h1>
-        </div>
+        <h1 className={TOP_LEVEL_H1}>
+          {t("backup.title")}
+        </h1>
         <p className="text-small text-text-tertiary mt-1">{t("backup.description")}</p>
       </div>
 

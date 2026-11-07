@@ -136,19 +136,31 @@ body {
   -moz-osx-font-smoothing: grayscale;
 }
 
-/* Page hero title — every page H1 gets the same look automatically.
- * 28px on mobile, 42px from sm:. Utility classes on the element can
- * still override (Tailwind layers ship after this base rule). */
+/* Page title (spec 196, decision pr6-h1): the page name, weight 600, no icon
+ * before it. 28 px (text-display) from lg, 22 px below — where only detail
+ * pages show it, the top-level ones leaving their name to the compact top bar.
+ * `text-h1` gives the same look to what edits or stands beside a title (the
+ * device name input). Utility classes on the element still override this
+ * base rule (Tailwind layers ship after it). */
 h1 {
-  font-size: 28px;
-  font-weight: 700;
+  font-size: 22px;
+  font-weight: 600;
   color: var(--color-text);
-  line-height: 1.1;
-  letter-spacing: -0.025em;
+  line-height: 1.2;
+  letter-spacing: -0.015em;
 }
-@media (min-width: 640px) {
+@media (min-width: 1024px) {
   h1 {
-    font-size: 42px;
+    font-size: var(--text-display);
+  }
+}
+@utility text-h1 {
+  font-size: 22px;
+  font-weight: 600;
+  line-height: 1.2;
+  letter-spacing: -0.015em;
+  @media (min-width: 1024px) {
+    font-size: var(--text-display);
   }
 }
 

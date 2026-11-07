@@ -1,7 +1,6 @@
 import { useState, useEffect, useRef, useCallback } from "react";
 import { useTranslation } from "react-i18next";
 import {
-  ScrollText,
   Play,
   Pause,
   Trash2,
@@ -11,6 +10,7 @@ import {
 import { fetchLogs, setLogLevel } from "../api";
 import { useAuth } from "../store/useAuth";
 import type { LogEntry, LogLevel } from "../types";
+import { TOP_LEVEL_H1 } from "../components/layout/page-title";
 
 const LOG_LEVELS: LogLevel[] = ["debug", "info", "warn", "error", "fatal"];
 
@@ -164,12 +164,9 @@ export function LogsPage() {
     <div className="p-4 sm:p-6 h-full flex flex-col">
       {/* Header */}
       <div className="mb-4">
-        <div className="flex items-center gap-2.5 mb-1">
-          <ScrollText size={22} strokeWidth={1.5} className="text-text-secondary" />
-          <h1>
-            {t("logs.title")}
-          </h1>
-        </div>
+        <h1 className={TOP_LEVEL_H1}>
+          {t("logs.title")}
+        </h1>
         <p className="text-small text-text-tertiary">{t("logs.subtitle")}</p>
       </div>
 

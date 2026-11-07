@@ -1,10 +1,11 @@
 import { useState, useEffect, useCallback } from "react";
 import { useTranslation } from "react-i18next";
-import { Loader2, Plug } from "lucide-react";
+import { Loader2 } from "lucide-react";
 import { getIntegrations } from "../api";
 import type { IntegrationInfo } from "../types";
 import { IntegrationRow } from "../components/integrations/IntegrationRow";
 import { IntegrationDrawer } from "../components/integrations/IntegrationDrawer";
+import { TOP_LEVEL_H1 } from "../components/layout/page-title";
 
 export function IntegrationsPage() {
   const { t } = useTranslation();
@@ -56,12 +57,9 @@ export function IntegrationsPage() {
   return (
     <div className="p-4 sm:p-6">
       <div className="mb-5">
-        <div className="flex items-center gap-2.5 mb-1">
-          <Plug size={22} strokeWidth={1.5} className="text-text-secondary" />
-          <h1>
-            {t("integrations.title")}
-          </h1>
-        </div>
+        <h1 className={TOP_LEVEL_H1}>
+          {t("integrations.title")}
+        </h1>
         <p className="text-small text-text-secondary mt-1">{t("integrations.subtitle")}</p>
       </div>
 

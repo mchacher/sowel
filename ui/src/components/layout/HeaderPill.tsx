@@ -1,4 +1,5 @@
 import type { ReactNode } from "react";
+import { NavLink } from "react-router-dom";
 
 /**
  * Compact tappable pill in the top header. Carries an icon + optional
@@ -27,8 +28,8 @@ interface HeaderPillProps {
   tone: Tone;
   title?: string;
   onClick?: () => void;
+  /** In-app route: rendered as a NavLink, so it navigates without reloading the page. */
   href?: string;
-  pulse?: boolean;
 }
 
 export function HeaderPill({
@@ -39,33 +40,22 @@ export function HeaderPill({
   title,
   onClick,
   href,
-  pulse,
 }: HeaderPillProps) {
   const content = (
     <span
       className={`flex items-center gap-1.5 px-2.5 py-1 rounded-full transition-colors text-caption font-semibold ${TONE_CLASS[tone]}`}
     >
-      <span className="relative flex items-center">
-        {icon}
-        {pulse && (
-          <span
-            className={`absolute -top-0.5 -right-0.5 w-1.5 h-1.5 rounded-full ${
-              tone === "error" ? "bg-error" : tone === "warning" ? "bg-warning" : "bg-primary"
-            } animate-pulse`}
-          />
-        )}
-      </span>
+      <span className="flex items-center">{icon}</span>
       {count !== undefined && <span>{count}</span>}
       {label && <span className="hidden sm:inline">{label}</span>}
     </span>
   );
 
   if (href) {
-    // Use a regular anchor — kept dependency-free; callers can swap to NavLink if they need SPA routing.
     return (
-      <a href={href} title={title} aria-label={title} className="hit-44 cursor-pointer">
+      <NavLink to={href} title={title} aria-label={title} className="hit-44 cursor-pointer">
         {content}
-      </a>
+      </NavLink>
     );
   }
   return (

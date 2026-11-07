@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { Link, useSearchParams } from "react-router-dom";
-import { Globe, KeyRound, Loader2, Plus } from "lucide-react";
+import { Globe, Loader2, Plus } from "lucide-react";
 import { setSharedAccessArmed } from "../api";
 import type { SharedAccessState, SharedAccessView } from "../types";
 import { useSharedAccess } from "../store/useSharedAccess";
@@ -16,6 +16,7 @@ import {
   errorCode,
   useRefusalText,
 } from "../components/shared-access/ui";
+import { TOP_LEVEL_H1 } from "../components/layout/page-title";
 
 type Tab = string; // a gate's equipment id, "all" or "profiles"
 const ALL = "all";
@@ -48,10 +49,7 @@ export function SharedAccessPage() {
   return (
     <div className="p-4 sm:p-6">
       <div className="mb-5">
-        <div className="flex items-center gap-2.5 mb-1">
-          <KeyRound size={22} strokeWidth={1.5} className="text-text-secondary" />
-          <h1>{t("sharedAccess.title")}</h1>
-        </div>
+        <h1 className={TOP_LEVEL_H1}>{t("sharedAccess.title")}</h1>
         <p className="text-small text-text-secondary mt-1">{t("sharedAccess.subtitle")}</p>
       </div>
       {enabled === false ? (

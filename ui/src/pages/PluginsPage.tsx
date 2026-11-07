@@ -55,6 +55,7 @@ import {
   localizedDescription as getLocalizedDescription,
   type RecipeCategoryId,
 } from "../lib/plugin-categories";
+import { TOP_LEVEL_H1 } from "../components/layout/page-title";
 
 type Tab = "installed" | "store";
 type CategoryFilter = "integration" | "recipe";
@@ -152,12 +153,9 @@ export function PluginsPage() {
         {/* Header */}
         <div className="mb-5 flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
           <div>
-            <div className="flex items-center gap-2.5 mb-1">
-              <Package size={22} strokeWidth={1.5} className="text-text-secondary" />
-              <h1>
-                {t("plugins.title")}
-              </h1>
-            </div>
+            <h1 className={TOP_LEVEL_H1}>
+              {t("plugins.title")}
+            </h1>
             <p className="text-small text-text-secondary mt-1">{t("plugins.subtitle")}</p>
           </div>
           <button

@@ -201,6 +201,8 @@ Seven text steps and one value size (spec 196). Defined as `--fs-*` in `tokens.c
 | `text-display` | 28 px | Page title; a card's main value                                          |
 | `text-value`   | 40 px | Headline value: thermostat, mobile weather, battery                      |
 
+**Page title.** The `h1` element is styled once, in `ui/src/index.css`: 22 px below `lg`, 28 px (`--fs-display`) from `lg`, weight 600, `-0.015em`. It holds the page name only, with no icon before it, and an optional one-line summary under it (spec 196, decision pr6-h1). Top-level pages hide it visually below `lg` (`TOP_LEVEL_H1` in `ui/src/components/layout/page-title.ts`, `sr-only lg:not-sr-only`): the compact top bar names the page there. What edits or stands beside a title (the device name input) takes the same look with the `text-h1` utility.
+
 Charts take numbers, not classes: `CHART_TICK_FONT` (11) and `CHART_TOOLTIP_FONT` (12) in `ui/src/lib/chart-font.ts`.
 
 An ESLint rule (`ui/eslint.config.js`) rejects arbitrary sizes — `text-[13px]`, `text-[.82rem]`, `text-[clamp(…)]` — and a literal `fontSize` in a style or chart prop. A colour in brackets (`text-[var(--n-700)]`) is fine. SVG illustrations (`WidgetIcons.tsx`, the logo) keep their own `fontSize` attributes. The one fluid size (the dashboard weather tile, sized to its container) carries an explained `eslint-disable`.

@@ -483,7 +483,7 @@ function CalendarScheduleSection({
               }`}>
                 {action === "on" ? t("common.on") : t("common.off")}
               </span>
-              <span className="text-display sm:text-value font-semibold text-text leading-[1.1] tracking-tight tabular-nums">
+              <span className="text-h1 text-text tabular-nums">
                 {slot.time}
               </span>
               <span className="text-small text-text-secondary">

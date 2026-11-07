@@ -6,6 +6,7 @@ import { useModes } from "../store/useModes";
 import type { CalendarSlot, CalendarModeAction } from "../types";
 import { useWsSubscription } from "../hooks/useWsSubscription";
 import { FIELD_LABEL } from "../components/ui/text-roles";
+import { TOP_LEVEL_H1 } from "../components/layout/page-title";
 
 export function CalendarPage() {
   useWsSubscription(["calendar", "modes"]);
@@ -83,7 +84,7 @@ export function CalendarPage() {
     <div className="p-4 sm:p-6">
       {/* Header */}
       <div className="mb-6">
-        <h1>
+        <h1 className={TOP_LEVEL_H1}>
           {t("calendar.title")}
         </h1>
         <p className="text-small text-text-secondary mt-0.5">

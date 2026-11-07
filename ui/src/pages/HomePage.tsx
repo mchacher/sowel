@@ -18,6 +18,7 @@ import { useUiState } from "../store/useUiState";
 import { executeZoneOrder, getHistoryStatus } from "../api";
 import { ZoneEquipmentsView } from "../components/home/ZoneEquipmentsView";
 import { ZoneAggregationPills } from "../components/home/ZoneAggregationPills";
+import { ZoneHeroLead } from "../components/home/ZoneHeroLead";
 import { ZoneCommands, type ZoneOrder } from "../components/home/ZoneCommands";
 import { ZoneRecipesSection } from "../components/recipes/ZoneRecipesSection";
 import { ZoneModesSection } from "../components/home/ZoneModesSection";
@@ -26,7 +27,7 @@ import { EquipmentForm } from "../components/equipments/EquipmentForm";
 import { autoCreateBindings } from "../components/equipments/bindingUtils";
 import { buildBoundOrderKeysByDevice, buildBoundDataKeysByDevice, allSupportStop } from "../lib/binding-utils";
 import { useWsSubscription } from "../hooks/useWsSubscription";
-import type { EquipmentType, ZoneAggregatedData, ZoneWithChildren } from "../types";
+import type { EquipmentType, ZoneWithChildren } from "../types";
 
 export function HomePage() {
   useWsSubscription(["zones", "equipments", "modes", "recipes", "activity"]);
@@ -282,63 +283,6 @@ function ZoneNotFound() {
       >
         {t("home.backToHome")}
       </button>
-    </div>
-  );
-}
-
-function ZoneHeroLead({
-  zone,
-  aggData,
-}: {
-  zone: ZoneWithChildren;
-  aggData: ZoneAggregatedData | undefined;
-}) {
-  const { t } = useTranslation();
-  // Compose lead segments: description (if set) + dynamic lights / shutters summary.
-  const segments: string[] = [];
-
-  if (zone.description) segments.push(zone.description);
-
-  if (aggData) {
-    if (aggData.lightsTotal > 0) {
-      if (aggData.lightsOn > 0) {
-        segments.push(t("zone.lead.lightsOn", { defaultValue: "{{count}} lumière allumée", count: aggData.lightsOn }));
-      } else if (aggData.lightsTotal > 1) {
-        segments.push(t("zone.lead.allLightsOff", { defaultValue: "toutes les lumières éteintes" }));
-      } else {
-        segments.push(t("zone.lead.lightOff", { defaultValue: "lumière éteinte" }));
-      }
-    }
-    if (aggData.shuttersTotal > 0) {
-      if (aggData.shuttersOpen === aggData.shuttersTotal) {
-        if (aggData.shuttersTotal > 1) {
-          segments.push(t("zone.lead.allShuttersOpen", { defaultValue: "tous les volets ouverts" }));
-        } else {
-          segments.push(t("zone.lead.shutterOpen", { defaultValue: "volet ouvert" }));
-        }
-      } else if (aggData.shuttersOpen > 0) {
-        segments.push(t("zone.lead.shuttersOpen", { defaultValue: "{{count}} volet ouvert", count: aggData.shuttersOpen }));
-      } else if (aggData.shuttersTotal > 1) {
-        segments.push(t("zone.lead.allShuttersClosed", { defaultValue: "tous les volets fermés" }));
-      } else {
-        segments.push(t("zone.lead.shutterClosed", { defaultValue: "volet fermé" }));
-      }
-    }
-  }
-
-  if (segments.length === 0) return null;
-
-  return (
-    <div
-      className="flex items-center gap-[0.6rem] mt-[0.55rem] text-small text-text-tertiary tabular-nums flex-wrap"
-      aria-label={t("zone.lead.aria", { defaultValue: "Résumé de la zone" })}
-    >
-      {segments.map((seg, i) => (
-        <span key={i} className="flex items-center gap-[0.6rem]">
-          {i > 0 && <span className="w-1 h-1 rounded-full bg-text-tertiary/50 flex-shrink-0" />}
-          <span>{seg}</span>
-        </span>
-      ))}
     </div>
   );
 }

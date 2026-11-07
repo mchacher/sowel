@@ -85,7 +85,7 @@ export function DeviceNameEditor({ name, onSave }: DeviceNameEditorProps) {
           onChange={(e) => setValue(e.target.value)}
           onKeyDown={handleKeyDown}
           disabled={saving}
-          className="text-display sm:text-value font-semibold text-text leading-[1.1] tracking-tight bg-transparent border-b-2 border-primary outline-none px-0 py-0 w-auto min-w-[200px]"
+          className="text-h1 text-text bg-transparent border-b-2 border-primary outline-none px-0 py-0 w-auto min-w-[200px]"
         />
         <button
           onClick={handleSave}

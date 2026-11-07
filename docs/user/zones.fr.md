@@ -90,6 +90,7 @@ Dans la vue **Maison**, chaque zone affiche un **bandeau d'état** avec les donn
 - Pastille de comptage **Portes** pour les portes motorisées (par ex. "1/2"), distincte de l'alerte des capteurs d'ouverture
 - Pastilles **Alerte** pour portes/fenêtres ouvertes, fuites d'eau, fumée
 - Pastille **Puissance** (par ex. « 47 W », ou « 2.4 kW » au-dessus du kilowatt) dès que la zone possède au moins un compteur
+- Pastille **Soleil** sur la zone racine, sur téléphone ou tablette, avec le lever et le coucher du jour (par ex. « 07:22 – 17:17 »). Sur ordinateur, ils figurent plutôt dans la barre du haut, sur toutes les pages.
 
 Sous le bandeau, les équipements sont regroupés par type (Lumières, Volets, Capteurs) avec des contrôles intégrés.
 

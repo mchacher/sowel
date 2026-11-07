@@ -1,5 +1,6 @@
 import type { ReactNode } from "react";
 import type { LucideIcon } from "lucide-react";
+import { TOP_LEVEL_H1 } from "./page-title";
 
 interface PageHeaderProps {
   title: ReactNode;
@@ -12,13 +13,15 @@ interface PageHeaderProps {
 /**
  * Shared page header (spec 196, FR-1): title and optional subtitle on the left,
  * actions on the right. The row wraps, so on a phone the actions drop under the
- * title instead of pushing past the screen edge.
+ * title instead of pushing past the screen edge. Pages using it are top-level:
+ * below lg the title is visually hidden, the compact top bar names the page
+ * (FR-6). Without a subtitle the left block then takes no room at all.
  */
 export function PageHeader({ title, subtitle, actions, className = "mb-6" }: PageHeaderProps) {
   return (
     <div className={`flex flex-wrap items-center justify-between gap-3 ${className}`}>
-      <div className="min-w-0">
-        <h1>{title}</h1>
+      <div className={subtitle !== undefined && subtitle !== null ? "min-w-0" : "min-w-0 max-lg:contents"}>
+        <h1 className={TOP_LEVEL_H1}>{title}</h1>
         {subtitle !== undefined && subtitle !== null && (
           <p className="text-small text-text-secondary mt-0.5">{subtitle}</p>
         )}

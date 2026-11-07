@@ -3,8 +3,8 @@ import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { Sidebar } from "./Sidebar";
 import { ConnectionStatus } from "./ConnectionStatus";
-import { SunlightBanner } from "./SunlightBanner";
-import { CurrentTimePill } from "./CurrentTimePill";
+import { SunTimes } from "./SunTimes";
+import { HomeTimeNote } from "./HomeTimeNote";
 import { useWebSocket } from "../../store/useWebSocket";
 import { useTimezone } from "../../store/useTimezone";
 import { useShadowMode } from "../../store/useShadowMode";
@@ -72,7 +72,8 @@ export function AppLayout() {
   const logout = useAuth((s) => s.logout);
   const fetchAggregation = useZoneAggregation((s) => s.fetchAggregation);
   const rootAgg = useZoneAggregation((s) => s.data[ROOT_ZONE_ID]);
-  const [homeName, setHomeName] = useState("");
+  // null while the settings load: the top bar shows a placeholder, not « Maison ».
+  const [homeName, setHomeName] = useState<string | null>(null);
   const pluginUpdateCount = usePluginUpdates(user?.role === "admin");
   const sowelUpdateAvailable = useUpdateAvailable();
   const restartRequired = useWebSocket((s) => s.restartRequired);
@@ -102,7 +103,7 @@ export function AppLayout() {
     connect();
     getSettings()
       .then((s) => setHomeName(s["home.name"] ?? ""))
-      .catch(() => {});
+      .catch(() => setHomeName(""));
     return () => disconnect();
   }, [
     fetchDevices,
@@ -156,17 +157,16 @@ export function AppLayout() {
               </div>
             </div>
 
-            {/* Right: pills (mock order: time → sun → conn → alarm → updates → avatar). */}
+            {/* Right (spec 196, FR-6): the sun as plain text on desktop (phones see it in
+                the root-zone strip), the home time only when the browser is in another
+                time zone, the link only when degraded, then alerts, updates, avatar. */}
             <div className="hit-group flex items-center gap-2 flex-shrink-0">
-              {/* Time + sun — full pills on desktop */}
-              <div className="hidden lg:flex items-center gap-2">
-                <CurrentTimePill />
-                <SunlightBanner data={rootAgg} />
+              <div className="hidden lg:flex items-center gap-3 mr-1">
+                <HomeTimeNote />
+                <SunTimes data={rootAgg} />
               </div>
-              {/* Sun only below lg — the phone already shows the time, and the
-                  home name needs the room (spec 196, decision pr1-barre). */}
-              <div className="flex lg:hidden items-center gap-2">
-                <SunlightBanner data={rootAgg} compact />
+              <div className="flex lg:hidden items-center">
+                <HomeTimeNote compact />
               </div>
               <ConnectionStatus />
               {issues.length > 0 && (
@@ -188,7 +188,7 @@ export function AppLayout() {
                 <HeaderPill
                   icon={<RefreshCw size={14} strokeWidth={1.5} />}
                   count={totalUpdates}
-                  tone="error"
+                  tone="info"
                   title={t("updates.pill.title", { count: totalUpdates })}
                   onClick={() => setUpdatesOpen(true)}
                 />
@@ -198,23 +198,24 @@ export function AppLayout() {
                   icon={<Power size={14} strokeWidth={1.5} />}
                   tone="info"
                   title={t("restart.pill.title")}
-                  pulse
                   href="/settings"
                 />
               )}
-              {/* User avatar pill — desktop only (matches mock `.topbar__avatar`). */}
+              {/* User — desktop only; phones have it in the « Plus » drawer. */}
               {user && (
-                <div className="hidden lg:flex items-center gap-1.5 ml-1">
-                  <div className="flex items-center gap-1.5 pl-1 pr-2.5 py-[3px] rounded-full bg-[var(--n-50)] border border-border-light">
-                    <span className="w-[22px] h-[22px] rounded-full bg-primary-fill text-white flex items-center justify-center text-micro font-semibold leading-none">
-                      {getInitials(user.displayName)}
-                    </span>
-                    <span className="text-caption font-medium text-text">{user.displayName}</span>
-                  </div>
+                <div className="hidden lg:flex items-center gap-2 ml-1">
+                  <span
+                    aria-hidden="true"
+                    className="w-7 h-7 rounded-full bg-primary-fill text-white flex items-center justify-center text-caption font-semibold leading-none"
+                  >
+                    {getInitials(user.displayName)}
+                  </span>
+                  <span className="text-small text-text-secondary">{user.displayName}</span>
                   <button
                     onClick={() => logout()}
                     className="p-1.5 rounded-full text-text-tertiary hover:text-text-secondary hover:bg-border-light transition-colors duration-150 cursor-pointer"
                     title={t("auth.logout")}
+                    aria-label={t("auth.logout")}
                   >
                     <LogOut size={14} strokeWidth={1.5} />
                   </button>
@@ -259,7 +260,7 @@ export function AppLayout() {
 // Mock parity: text-small / n-400 / weight 500 for crumb, n-700 weight 600 for current.
 // On /home/:zoneId shows "Home › ... › CurrentZone" (root zone Maison is treated as implicit).
 // On other top-level routes shows the localized route name as the current crumb.
-function TopbarBreadcrumb({ homeName }: { homeName: string }) {
+function TopbarBreadcrumb({ homeName }: { homeName: string | null }) {
   const { t } = useTranslation();
   const location = useLocation();
   const tree = useZones((s) => s.tree);
@@ -267,7 +268,7 @@ function TopbarBreadcrumb({ homeName }: { homeName: string }) {
   const zoneMatch = location.pathname.match(/^\/home\/([^/]+)/);
   const path = zoneMatch ? buildZonePath(zoneMatch[1], tree) : null;
 
-  const homeLabel = homeName || t("nav.maison");
+  const homeLabel = homeName === null ? <HomeNameSkeleton /> : homeName || t("nav.maison");
 
   if (path && path.length > 0) {
     // Skip root zone "Maison" from crumb — it's redundant with home name.
@@ -358,15 +359,28 @@ function MobileTopbarBurger() {
   );
 }
 
+// Placeholder for the home name while the settings load: a generic « Maison »
+// would flash and then change (spec 196, FR-6).
+function HomeNameSkeleton() {
+  return (
+    <span
+      aria-hidden="true"
+      data-testid="home-name-skeleton"
+      className="inline-block align-middle w-24 h-3.5 rounded-[4px] bg-border-light"
+    />
+  );
+}
+
 // Mobile topbar title — home name big, current context small.
 // Title = home name (e.g. "Grange Neuve"), sub = zone path / mode name / route label (e.g. "RDC · Séjour", "Énergie").
-function MobileTopbarTitle({ homeName }: { homeName: string }) {
+// homeName is null while it loads. Exported for its test.
+export function MobileTopbarTitle({ homeName }: { homeName: string | null }) {
   const { t } = useTranslation();
   const location = useLocation();
   const tree = useZones((s) => s.tree);
   const modes = useModes((s) => s.modes);
 
-  const homeLabel = homeName || t("nav.maison");
+  const homeLabel = homeName === null ? <HomeNameSkeleton /> : homeName || t("nav.maison");
   let sub: string | null = null;
 
   const onHomeRoute = location.pathname === "/home" || location.pathname.startsWith("/home/");

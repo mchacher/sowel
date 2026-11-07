@@ -65,6 +65,7 @@ import { ChartTooltip } from "./ChartTooltip";
 import { mergeSeriesData } from "./chart-utils";
 import { formatAxisTick, seriesFullLabel, seriesMetricLabel } from "./tooltip-format";
 import { currentLocale, formatNumber } from "../../lib/format";
+import { TOP_LEVEL_H1 } from "../layout/page-title";
 
 // ============================================================
 // Types
@@ -741,11 +742,9 @@ export function AnalyseView() {
           196, slice 1c). */}
       <div className="flex flex-col sm:flex-row sm:flex-wrap sm:items-center sm:justify-between gap-4">
         {/* A saved chart's name is not in the compact top bar, so it stays
-            visible on tablets; the bare « Analyse » title is hidden below lg. */}
-        <div className={`${currentChart ? "hidden sm:flex" : "hidden lg:flex"} items-center gap-3`}>
-          <BarChart3 size={20} strokeWidth={1.5} className="text-primary" />
-          <h1>{title}</h1>
-        </div>
+            visible on tablets; the bare « Analyse » title is hidden below lg.
+            Hidden visually only: it stays the page heading for screen readers. */}
+        <h1 className={currentChart ? "sr-only sm:not-sr-only" : TOP_LEVEL_H1}>{title}</h1>
         <PeriodSelector
           period={period}
           date={date}

@@ -9,7 +9,6 @@ import {
   Check,
   Eye,
   EyeOff,
-  Settings,
   ArrowUpCircle,
   ExternalLink,
   RefreshCw,
@@ -57,6 +56,7 @@ import { initialSettingsTab } from "../lib/settings-tab";
 import type { SettingsTab } from "../lib/settings-tab";
 import { currentLocale } from "../lib/format";
 import { FIELD_LABEL } from "../components/ui/text-roles";
+import { TOP_LEVEL_H1 } from "../components/layout/page-title";
 
 export function SettingsPage() {
   const { t, i18n } = useTranslation();
@@ -81,13 +81,10 @@ export function SettingsPage() {
   return (
     <div className="p-4 sm:p-6">
       {/* Page header + version inline */}
-      <div className="flex items-center justify-between mb-5">
-        <div className="flex items-center gap-2 sm:gap-2.5">
-          <Settings size={22} strokeWidth={1.5} className="text-text-secondary" />
-          <h1>
-            {t("settings.title")}
-          </h1>
-        </div>
+      <div className="flex items-center justify-between mb-3 lg:mb-5">
+        <h1 className={TOP_LEVEL_H1}>
+          {t("settings.title")}
+        </h1>
         {isAdmin && <VersionBadge />}
       </div>
 

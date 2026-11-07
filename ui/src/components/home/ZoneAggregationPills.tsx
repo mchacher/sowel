@@ -12,12 +12,14 @@ import {
   Droplet,
   Flame,
   Zap,
+  Moon,
 } from "lucide-react";
 import { ShutterIcon } from "../icons/ShutterIcons";
 import { WaterValveIcon } from "../icons/WaterValveIcon";
 import { ZoneSparkline } from "../history/ZoneSparkline";
 import type { ZoneAggregatedData } from "../../types";
-import { formatDuration, formatPercent, formatPower, formatTemperature, formatWithUnit } from "../../lib/format";
+import { formatDuration, formatPercent, formatPower, formatRange, formatTemperature, formatWithUnit } from "../../lib/format";
+import { ROOT_ZONE_ID } from "../../lib/constants";
 
 type PillVariant = "default" | "active" | "info" | "calm" | "alert";
 
@@ -49,6 +51,10 @@ interface StatusItem {
   valueTint?: string;
   /** If set, show a sparkline for this category (sensor pills only). */
   sparklineCategory?: string;
+  /** Name read before the value by screen readers and shown on hover, when the icon alone says it. */
+  name?: string;
+  /** Shown below lg only: the desktop top bar already carries it. */
+  compactOnly?: boolean;
 }
 
 export function ZoneAggregationPills({
@@ -106,6 +112,25 @@ export function ZoneAggregationPills({
       iconTint: "text-primary",
       valueTint: "text-text",
       sparklineCategory: "luminosity",
+    });
+  }
+
+  // Spec 196, pr6-soleil — sunrise and sunset of the home. The desktop top bar
+  // shows them on every page; phones and tablets have no room there, so the
+  // root zone's strip carries them below lg (on desktop it would only repeat
+  // the bar and push the strip into a sideways scroll).
+  if (zoneId === ROOT_ZONE_ID && data.sunrise !== null && data.sunset !== null) {
+    const isDay = data.isDaylight === true;
+    sensorPills.push({
+      key: "sun",
+      icon: isDay ? <Sun size={14} strokeWidth={1.5} /> : <Moon size={14} strokeWidth={1.5} />,
+      label: formatRange(data.sunrise, data.sunset),
+      name: t("header.sun"),
+      variant: "default",
+      // The sun glyph is the one tolerated amber outside "on" (spec 196).
+      iconTint: isDay ? "text-active" : "text-text-tertiary",
+      valueTint: "text-text-secondary",
+      compactOnly: true,
     });
   }
 
@@ -260,12 +285,22 @@ export function ZoneAggregationPills({
       {clusters.map((cluster, ci) => (
         <Fragment key={ci}>
           {ci > 0 && (
-            <div className="hidden sm:block w-px h-5 bg-border mx-2 flex-shrink-0" />
+            <div
+              className={`hidden sm:block w-px h-5 bg-border mx-2 flex-shrink-0 ${
+                cluster.every(isCompactOnly) || clusters.slice(0, ci).flat().every(isCompactOnly)
+                  ? "lg:hidden"
+                  : ""
+              }`}
+            />
           )}
           {cluster.map((item, ii) => (
             <Fragment key={item.key}>
               {ii > 0 && (
-                <div className="hidden sm:block w-px h-4 bg-border-light mx-1 flex-shrink-0" />
+                <div
+                  className={`hidden sm:block w-px h-4 bg-border-light mx-1 flex-shrink-0 ${
+                    item.compactOnly || cluster.slice(0, ii).every(isCompactOnly) ? "lg:hidden" : ""
+                  }`}
+                />
               )}
               <StripPill
                 item={item}
@@ -278,6 +313,11 @@ export function ZoneAggregationPills({
       ))}
     </div>
   );
+}
+
+/** A separator next to pills hidden from lg is hidden with them, so none dangles. */
+function isCompactOnly(item: StatusItem): boolean {
+  return item.compactOnly === true;
 }
 
 // ============================================================
@@ -334,9 +374,13 @@ function StripPill({ item, zoneId, historyEnabled }: StripPillProps) {
 
   return (
     <div
-      className={`flex items-center gap-1.5 px-2 py-0.5 rounded-[5px] text-small font-medium tabular-nums whitespace-nowrap ${v.pill}`}
+      className={`flex items-center gap-1.5 px-2 py-0.5 rounded-[5px] text-small font-medium tabular-nums whitespace-nowrap ${v.pill} ${
+        item.compactOnly ? "lg:hidden" : ""
+      }`}
+      title={item.name}
     >
       <span className={`flex-shrink-0 ${iconClass}`}>{item.icon}</span>
+      {item.name && <span className="sr-only">{item.name}</span>}
       {hasMobileOverride ? (
         <>
           {item.mobileLabel && <span className={`sm:hidden ${valueClass}`}>{item.mobileLabel}</span>}

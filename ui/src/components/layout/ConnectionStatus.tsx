@@ -1,43 +1,52 @@
+import { useEffect, useState } from "react";
 import { useWebSocket } from "../../store/useWebSocket";
 import { Wifi, WifiOff } from "lucide-react";
 import { useTranslation } from "react-i18next";
 
+/** How long the link must stay down before the indicator shows (spec 196, FR-6). */
+export const DEGRADED_DELAY_MS = 3_000;
+
 /**
- * Discreet WebSocket connection indicator. Integration-level errors are
- * surfaced through the alarms pill (see AlarmsSheet) — this component
- * is now purely about the WS link to the backend.
+ * WebSocket link indicator, shown only when the link is degraded (spec 196,
+ * FR-6): nothing while connected, and nothing during the first 3 s of a
+ * reconnection either, so the routine disconnected → connecting → connected
+ * cycle (and the first render, before the socket opens) does not flash in the
+ * top bar. Integration-level errors go through the alarms pill (AlarmsSheet).
  */
 export function ConnectionStatus() {
   const { t } = useTranslation();
   const status = useWebSocket((s) => s.status);
+  const degraded = status !== "connected";
+  const [late, setLate] = useState(false);
 
-  if (status === "disconnected") {
-    return (
-      <div className="flex items-center gap-2 px-2 py-1 sm:px-3 sm:py-1.5 rounded-full bg-error/10 text-error">
-        <WifiOff size={14} strokeWidth={1.5} />
-        <span className="text-caption font-medium hidden sm:inline">{t("status.disconnected")}</span>
-      </div>
-    );
-  }
+  useEffect(() => {
+    if (!degraded) return;
+    const id = setTimeout(() => setLate(true), DEGRADED_DELAY_MS);
+    return () => {
+      clearTimeout(id);
+      setLate(false);
+    };
+  }, [degraded]);
 
-  if (status === "connecting") {
-    return (
-      <div className="flex items-center gap-2 px-2 py-1 sm:px-3 sm:py-1.5 rounded-full bg-warning/10 text-warning-ink">
-        <Wifi size={14} strokeWidth={1.5} className="animate-pulse" />
-        <span className="text-caption font-medium hidden sm:inline">{t("status.connecting")}</span>
-      </div>
-    );
-  }
+  if (!degraded || !late) return null;
 
-  // status === "connected" — mobile: just a green dot, desktop: dot + label.
+  const disconnected = status === "disconnected";
+  const label = disconnected ? t("status.disconnected") : t("status.connecting");
+  const Icon = disconnected ? WifiOff : Wifi;
+
+  // Icon only below lg, in a 44 px box; icon and word on desktop.
   return (
-    <div className="flex items-center gap-2 sm:px-3 sm:py-1.5 sm:rounded-full sm:bg-success/10">
-      <span className="relative flex h-2 w-2">
-        <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-success opacity-60" />
-        <span className="relative inline-flex rounded-full h-2 w-2 bg-success" />
-      </span>
-      <span className="text-caption font-medium text-success hidden sm:inline">
-        {t("status.connected")}
+    <div
+      role="status"
+      aria-label={label}
+      title={label}
+      className={`flex items-center justify-center gap-1.5 min-h-11 min-w-11 lg:min-h-0 lg:min-w-0 text-caption font-medium ${
+        disconnected ? "text-error" : "text-warning-ink"
+      }`}
+    >
+      <Icon size={16} strokeWidth={1.5} aria-hidden="true" />
+      <span className="hidden lg:inline" aria-hidden="true">
+        {label}
       </span>
     </div>
   );

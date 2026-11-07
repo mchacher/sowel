@@ -55,6 +55,7 @@ import {
   useChannelOptionLabel,
 } from "../components/publishers/notification-channels";
 import { ChannelConfigFields } from "../components/publishers/ChannelConfigFields";
+import { TOP_LEVEL_H1 } from "../components/layout/page-title";
 
 const DEFAULT_THROTTLE_MS = 300_000; // 5 min
 
@@ -163,10 +164,7 @@ export function NotificationPublishersPage() {
   return (
     <div className="p-4 sm:p-6">
       <div className="mb-6">
-        <div className="flex items-center gap-2.5 mb-1">
-          <Bell size={22} strokeWidth={1.5} className="text-text-secondary" />
-          <h1>{t("notifPublishers.title")}</h1>
-        </div>
+        <h1 className={TOP_LEVEL_H1}>{t("notifPublishers.title")}</h1>
         <p className="text-small text-text-secondary mt-1">{t("notifPublishers.subtitle")}</p>
       </div>
 
