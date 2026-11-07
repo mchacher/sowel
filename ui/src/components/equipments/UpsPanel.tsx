@@ -32,6 +32,7 @@ import {
   upsStatusKey,
   type UpsReadings,
 } from "./upsStatus";
+import { formatNumber, formatPercent, formatPower, formatRange, formatWithUnit } from "../../lib/format";
 
 interface UpsPanelProps {
   dataBindings: DataBindingWithValue[];
@@ -91,7 +92,7 @@ export function UpsPanel({ dataBindings }: UpsPanelProps) {
       slot: "focal",
       label: t("equipments.ups.node.load"),
       color: LOAD_COLOR,
-      value: r.loadW !== null ? String(Math.round(r.loadW)) : (r.loadPct !== null ? String(r.loadPct) : "—"),
+      value: r.loadW !== null ? formatNumber(r.loadW, { decimals: 0 }) : (r.loadPct !== null ? formatNumber(r.loadPct, { decimals: 0 }) : "—"),
       unit: r.loadW !== null ? "W" : r.loadPct !== null ? "%" : undefined,
       icon: <Server className="w-11 h-11 sm:w-14 sm:h-14" strokeWidth={1.5} />,
     },
@@ -100,7 +101,7 @@ export function UpsPanel({ dataBindings }: UpsPanelProps) {
       label: t("equipments.ups.node.mains"),
       color: onBattery ? IDLE_COLOR : GRID_COLOR,
       dimmed: onBattery,
-      value: onBattery ? t("equipments.ups.absent") : r.inputV !== null ? String(Math.round(r.inputV)) : "—",
+      value: onBattery ? t("equipments.ups.absent") : r.inputV !== null ? formatNumber(r.inputV, { decimals: 0 }) : "—",
       unit: onBattery || r.inputV === null ? undefined : "V",
       icon: <GridPylonIcon className="w-9 h-9 sm:w-10 sm:h-10" />,
     },
@@ -151,14 +152,14 @@ export function UpsPanel({ dataBindings }: UpsPanelProps) {
 
   const ariaLabel = onBattery
     ? t("equipments.ups.aria.onBattery", {
-        charge: r.chargePct ?? "?",
+        charge: r.chargePct != null ? formatPercent(r.chargePct) : "?",
         runtime: runtimeLabel ?? "?",
-        load: r.loadW ?? "?",
+        power: r.loadW != null ? formatPower(r.loadW) : "?",
       })
     : t("equipments.ups.aria.onMains", {
-        volts: r.inputV ?? "?",
-        load: r.loadW ?? "?",
-        charge: r.chargePct ?? "?",
+        voltage: r.inputV != null ? formatWithUnit(r.inputV, "V") : "?",
+        power: r.loadW != null ? formatPower(r.loadW) : "?",
+        charge: r.chargePct != null ? formatPercent(r.chargePct) : "?",
       });
 
   const margin = upsMarginOf(r);
@@ -227,7 +228,7 @@ export function UpsPanel({ dataBindings }: UpsPanelProps) {
               {r.transferLow !== null && r.transferHigh !== null && (
                 <MarginRow
                   label={t("equipments.ups.margins.transfer")}
-                  setting={`${r.transferLow} – ${r.transferHigh} V`}
+                  setting={formatRange(formatNumber(r.transferLow), formatWithUnit(r.transferHigh, "V"))}
                 >
                   <RangeTrack
                     low={r.transferLow}
@@ -240,7 +241,7 @@ export function UpsPanel({ dataBindings }: UpsPanelProps) {
               {r.nominalW !== null && (
                 <MarginRow
                   label={t("equipments.ups.margins.capacity")}
-                  setting={`${r.nominalW} W`}
+                  setting={formatWithUnit(r.nominalW, "W")}
                 >
                   <FillTrack pct={r.loadPct} />
                 </MarginRow>
@@ -249,7 +250,7 @@ export function UpsPanel({ dataBindings }: UpsPanelProps) {
                 <MarginRow
                   label={t("equipments.ups.margins.shutdown")}
                   setting={[
-                    r.chargeLowPct !== null ? `${r.chargeLowPct} %` : null,
+                    r.chargeLowPct !== null ? formatPercent(r.chargeLowPct) : null,
                     r.runtimeLowS !== null ? formatRuntime(r.runtimeLowS) : null,
                   ]
                     .filter(Boolean)

@@ -9,7 +9,7 @@ import type { EvChargeSession } from "../../../types";
 import { formatEur } from "../../energy/format";
 import { EvMonthNav } from "./EvMonthNav";
 import { EvReassignSheet } from "./EvReassignSheet";
-import { dayLabel, kwh, monthOf, sessionChip, timeLabel } from "./evSessionsDisplay";
+import { dayLabel, energyLabel, monthOf, sessionChip, timeLabel } from "./evSessionsDisplay";
 
 /**
  * Spec 191 FR7 — every session of a charger with the vehicle it belongs to.
@@ -162,7 +162,7 @@ export function EvChargerSessionsSection({
                       <span className="text-[12px] text-text-tertiary truncate">{how}</span>
                     </div>
                     <span className="font-mono text-[12px] text-text-secondary tabular-nums whitespace-nowrap">
-                      {kwh(s.energyWh, locale)} kWh
+                      {energyLabel(s.energyWh, locale)}
                     </span>
                   </div>
                 </button>

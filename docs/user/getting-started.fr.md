@@ -165,7 +165,7 @@ Home
     Garage
 ```
 
-Utilisez le bouton **+ Ajouter une zone** pour créer des zones, et les boutons fléchés pour les réordonner. Les zones peuvent être imbriquées sur n'importe quelle profondeur. L'arbre des zones apparaît dans la barre latérale Accueil pour la navigation quotidienne.
+Utilisez le bouton **+ Ajouter une zone** pour créer des zones, et les boutons fléchés pour les réordonner. Les zones peuvent être imbriquées sur n'importe quelle profondeur. L'arbre des zones apparaît dans la page Maison pour la navigation quotidienne.
 
 ### Étape 5 : Créer les équipements
 
@@ -182,9 +182,9 @@ Pour chaque unité fonctionnelle de votre maison :
 !!! tip
 Un seul équipement peut se lier à plusieurs devices. Par exemple, trois modules variateurs derrière le mur peuvent être regroupés en un seul équipement "Spots Cuisine". Un seul interrupteur les contrôle tous les trois.
 
-### Étape 6 : Profiter de la vue Accueil
+### Étape 6 : Profiter de la vue Maison
 
-Allez sur **Accueil** dans la barre latérale.
+Allez sur **Maison** dans la barre latérale.
 
 ![Vue Maison](../screenshots/getting-started-home-fr.png)
 
@@ -195,17 +195,17 @@ L'arbre des zones apparaît à gauche. Cliquez sur n'importe quelle zone pour vo
 - **Les cartes d'équipement** : groupées par type (Thermostat, Énergie, Météo, etc.) avec contrôles intégrés
 - **Les comportements** : recettes et modes configurés pour cette zone
 
-### Étape 7 : Personnaliser le tableau de bord
+### Étape 7 : Personnaliser l'Accueil
 
-Allez sur **Tableau de bord** et cliquez sur **Éditer**.
+Allez sur **Accueil** et cliquez sur **Éditer**.
 
-![Tableau de bord](../screenshots/getting-started-dashboard-fr.png)
+![Accueil](../screenshots/getting-started-dashboard-fr.png)
 
 Ajoutez des widgets pour les équipements et zones que vous utilisez le plus. Les widgets se mettent à jour en temps réel via WebSocket. Vous pouvez les réordonner par glisser-déposer, les renommer, et personnaliser leurs icônes.
 
 Votre maison est maintenant configurée. À partir de là, vous pouvez :
 
-- [Personnaliser votre tableau de bord](dashboard.md) avec plus de widgets
+- [Personnaliser votre Accueil](dashboard.md) avec plus de widgets
 - [Configurer des modes](modes.md) pour différents scénarios (Confort, Absence, Nuit)
 - [Suivre la consommation d'énergie](energy.md)
 

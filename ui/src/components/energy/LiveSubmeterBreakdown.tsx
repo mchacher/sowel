@@ -14,13 +14,13 @@ import { useZones } from "../../store/useZones";
 import {
   buildSubmeterRows,
   computeOther,
-  displayedPower,
   sharePercent,
   type SubmeterRow,
 } from "./submeter-helpers";
 import { isSubmeterEquipment } from "../../lib/metering";
 import { equipmentLabelMap, flattenZonesWithPath, zoneChainMap } from "../../lib/zone-path";
 import { formatRelative } from "../../lib/format-relative";
+import { formatPercent, formatPower, formatPowerParts } from "../../lib/format";
 import { ChartPie } from "lucide-react";
 import { SectionHeader } from "./SectionHeader";
 import { useStalenessClock } from "../../hooks/useStalenessClock";
@@ -43,15 +43,12 @@ interface Props {
   hasMainMeter: boolean;
 }
 
-function formatPower(value: number): { num: string; unit: "W" | "kW" } {
-  // One rounding, shared with sharePercent's denominator, so the figures on
-  // screen cannot contradict each other (#744).
-  const shown = displayedPower(value);
-  if (value < 1000) {
-    return { num: String(shown), unit: "W" };
-  }
-  return { num: (shown / 1000).toFixed(1), unit: "kW" };
-}
+/**
+ * Watts rounded to 5 below a kilowatt, kW with one decimal above: the one
+ * rounding `displayedPower` also uses for the shares, so the figures on screen
+ * cannot contradict each other (#744).
+ */
+const POWER = { step: 5 } as const;
 
 export function LiveSubmeterBreakdown({ house, hasMainMeter }: Props) {
   const { t } = useTranslation();
@@ -88,7 +85,7 @@ export function LiveSubmeterBreakdown({ house, hasMainMeter }: Props) {
   const isIdle = total < IDLE_THRESHOLD_W;
   const segments = isIdle ? [] : buildSegments(partitionRows, other, total);
 
-  const t_total = formatPower(total);
+  const t_total = formatPowerParts(total, POWER);
 
   return (
     <div className="bg-surface border border-border rounded-[10px] p-4 sm:p-6 mt-4">
@@ -97,7 +94,7 @@ export function LiveSubmeterBreakdown({ house, hasMainMeter }: Props) {
       <div className="flex flex-col sm:flex-row items-center sm:items-start gap-6 max-w-[600px]">
         <Donut
           segments={segments}
-          totalLabel={isIdle ? t("energy.live.breakdown.houseIdle") : t_total.num}
+          totalLabel={isIdle ? t("energy.live.breakdown.houseIdle") : t_total.value}
           totalUnit={isIdle ? null : t_total.unit}
           ariaLabel={buildAriaLabel(t, partitionRows, other, total, hasMainMeter)}
           idle={isIdle}
@@ -115,10 +112,10 @@ export function LiveSubmeterBreakdown({ house, hasMainMeter }: Props) {
               />
               <span className="text-text-secondary">{t("energy.live.breakdown.other")}</span>
               <span className="font-mono font-medium text-text-secondary min-w-[64px] text-right">
-                {formatPower(other).num} {formatPower(other).unit}
+                {formatPower(other, POWER)}
               </span>
               <span className="font-mono font-semibold text-text-tertiary min-w-[40px] text-right">
-                {sharePercent(other, total) !== null ? `${sharePercent(other, total)}%` : "—"}
+                {formatPercent(sharePercent(other, total))}
               </span>
             </div>
           )}
@@ -197,7 +194,7 @@ function Donut({
 }: {
   segments: DonutSegment[];
   totalLabel: string;
-  totalUnit: "W" | "kW" | null;
+  totalUnit: string | null;
   ariaLabel: string;
   idle: boolean;
 }) {
@@ -277,7 +274,6 @@ function LegendRow({
   const isOffline = row.status === "offline";
   const isStale = row.unknown === "stale";
   const pct = row.power !== null && total !== null ? sharePercent(row.power, total) : null;
-  const power = row.power !== null ? formatPower(row.power) : null;
 
   return (
     <div
@@ -298,7 +294,7 @@ function LegendRow({
         {isOffline && (
           <span className="text-[11px] text-text-tertiary">
             {t("energy.live.breakdown.offline")}
-            {row.offlineSince && ` · ${formatRelative(row.offlineSince)}`}
+            {row.offlineSince && ` · ${formatRelative(row.offlineSince, t)}`}
           </span>
         )}
         {/* Not "0 W": the row says the reading is old rather than presenting a
@@ -306,15 +302,15 @@ function LegendRow({
         {!isOffline && isStale && (
           <span className="text-[11px] text-text-tertiary">
             {t("energy.live.breakdown.stale")}
-            {row.staleSince && ` · ${formatRelative(row.staleSince)}`}
+            {row.staleSince && ` · ${formatRelative(row.staleSince, t)}`}
           </span>
         )}
       </div>
       <span className="font-mono font-medium text-text-secondary min-w-[64px] text-right">
-        {power ? `${power.num} ${power.unit}` : "—"}
+        {formatPower(row.power, POWER)}
       </span>
       <span className="font-mono font-semibold text-text-tertiary min-w-[40px] text-right">
-        {pct !== null ? `${pct}%` : ""}
+        {pct !== null ? formatPercent(pct) : ""}
       </span>
     </div>
   );
@@ -327,8 +323,7 @@ function buildAriaLabel(
   total: number,
   hasMainMeter: boolean,
 ): string {
-  const p = formatPower(total);
-  const parts = [`${p.num} ${p.unit}`];
+  const parts = [formatPower(total, POWER)];
   for (const r of rows) {
     if (r.power === null) {
       // A screen reader gets the same answer the sighted reader does: this row
@@ -342,11 +337,11 @@ function buildAriaLabel(
       if (why) parts.push(`${r.name} ${why}`);
       continue;
     }
-    parts.push(`${r.name} ${sharePercent(r.power, total) ?? 0}%`);
+    parts.push(`${r.name} ${formatPercent(sharePercent(r.power, total) ?? 0)}`);
   }
   if (hasMainMeter && other > 0) {
     const pct = sharePercent(other, total);
-    if (pct !== null) parts.push(`${t("energy.live.breakdown.other")} ${pct}%`);
+    if (pct !== null) parts.push(`${t("energy.live.breakdown.other")} ${formatPercent(pct)}`);
   }
   return parts.join(", ");
 }

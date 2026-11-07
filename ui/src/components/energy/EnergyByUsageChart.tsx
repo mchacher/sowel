@@ -14,7 +14,7 @@ import {
 } from "recharts";
 import type { EnergyByUsageResponse } from "../../types";
 import type { EnergyUnit } from "../../store/useUiState";
-import { formatEur } from "./format";
+import { formatEur, formatKwhTick, formatKwhTooltip } from "./format";
 
 interface Props {
   data: EnergyByUsageResponse;
@@ -181,19 +181,6 @@ function buildChart(
   return { data: datums, series };
 }
 
-function formatKWh(kwh: number): string {
-  if (kwh >= 1) return `${kwh.toFixed(2)} kWh`;
-  if (kwh > 0) return `${Math.round(kwh * 1000)} Wh`;
-  return "0 Wh";
-}
-
-function formatYAxis(kwh: number): string {
-  if (kwh >= 100) return `${Math.round(kwh)} kWh`;
-  if (kwh >= 1) return `${kwh.toFixed(1)} kWh`;
-  if (kwh === 0) return "0";
-  return `${kwh.toFixed(2)} kWh`;
-}
-
 export function EnergyByUsageChart({ data, period, date, height = 300, unit = "wh" }: Props) {
   const { t, i18n } = useTranslation();
   const locale = dateLocale(i18n.language);
@@ -218,7 +205,7 @@ export function EnergyByUsageChart({ data, period, date, height = 300, unit = "w
     return series.map((s) => (s.id === OTHER_KEY ? { ...s, name: t("energy.byUsage.other") } : s));
   }, [series, t]);
 
-  const formatValue = (kwh: number): string => (isEur ? formatEur(kwh * blendedRate, locale) : formatKWh(kwh));
+  const formatValue = (kwh: number): string => (isEur ? formatEur(kwh * blendedRate, locale) : formatKwhTooltip(kwh, locale));
 
   return (
     <div style={{ width: "100%", height }}>
@@ -227,7 +214,7 @@ export function EnergyByUsageChart({ data, period, date, height = 300, unit = "w
           <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="var(--border)" />
           <XAxis dataKey="label" tick={{ fill: "var(--text-secondary)", fontSize: 11 }} />
           <YAxis
-            tickFormatter={isEur ? (kwh: number) => formatEur(kwh * blendedRate, locale) : formatYAxis}
+            tickFormatter={isEur ? (kwh: number) => formatEur(kwh * blendedRate, locale) : (kwh: number) => formatKwhTick(kwh, locale)}
             tick={{ fill: "var(--text-secondary)", fontSize: 11 }}
           />
           <Tooltip

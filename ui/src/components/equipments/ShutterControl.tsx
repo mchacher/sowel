@@ -4,6 +4,7 @@ import { ChevronUp, ChevronDown, ChevronLeft, ChevronRight, Square } from "lucid
 import type { EquipmentWithDetails } from "../../types";
 import { useSliderOverride } from "../../hooks/useSliderOverride";
 import { doorWordPill } from "./door-pill";
+import { formatPercent } from "../../lib/format";
 
 interface ShutterControlProps {
   equipment: EquipmentWithDetails;
@@ -208,7 +209,7 @@ export function ShutterControl({ equipment, onExecuteOrder, compact }: ShutterCo
             </div>
           )}
           <span className="text-[12px] text-text-secondary w-auto text-right tabular-nums">
-            {position === 0 ? t(pillAtZeroKey) : position === 100 ? t(pillAtHundredKey) : `${position}%`}
+            {position === 0 ? t(pillAtZeroKey) : position === 100 ? t(pillAtHundredKey) : formatPercent(position)}
           </span>
         </div>
       )}

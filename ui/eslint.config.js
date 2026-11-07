@@ -37,4 +37,59 @@ export default defineConfig([
       "react-hooks/set-state-in-effect": "off",
     },
   },
+  {
+    // Spec 196, FR-3 — every displayed number goes through `src/lib/format.ts`,
+    // which writes French as French (decimal comma, U+202F before the unit,
+    // U+2212 minus) and keeps one precision per unit. `toFixed` ignores the
+    // language, so « 14.16 kWh » sat beside « 0,7 % » on the same page.
+    //
+    // An error since slice 3b, when the last component migrated. A non-display
+    // use (an SVG coordinate) rounds with Math.round instead, so the rule needs
+    // no exceptions. Dates follow the same rule: `toLocale*String()` with no
+    // locale, `undefined` or `[]` follows the browser's language, not Sowel's —
+    // pass `currentLocale()` from lib/format.
+    files: ["src/**/*.{ts,tsx}"],
+    ignores: ["src/lib/format.ts", "**/*.test.{ts,tsx}"],
+    rules: {
+      "no-restricted-syntax": [
+        "error",
+        {
+          selector: "CallExpression[callee.property.name='toFixed']",
+          message: "toFixed ignores the language: use lib/format (formatNumber, formatWithUnit…).",
+        },
+        {
+          selector: "NewExpression[callee.object.name='Intl'][callee.property.name='NumberFormat']",
+          message: "Number formatting goes through lib/format.",
+        },
+        {
+          selector: "CallExpression[callee.property.name='toLocaleString'][arguments.length=0]",
+          message: "toLocaleString() without a locale follows the browser, not Sowel's language.",
+        },
+        {
+          selector:
+            "CallExpression[callee.property.name=/^toLocale(Date|Time)String$/][arguments.length=0]",
+          message:
+            "toLocaleDateString() without a locale follows the browser: pass currentLocale() from lib/format.",
+        },
+        {
+          selector:
+            "CallExpression[callee.property.name=/^toLocale(Date|Time)?String$/] > :matches(Identifier[name='undefined'], ArrayExpression[elements.length=0]).arguments:first-child",
+          message:
+            "A locale of undefined or [] follows the browser, not Sowel's language: pass currentLocale() from lib/format.",
+        },
+        {
+          selector:
+            ":matches(NewExpression, CallExpression)[callee.object.name='Intl'][callee.property.name='DateTimeFormat'] > :matches(Identifier[name='undefined'], ArrayExpression[elements.length=0]).arguments:first-child",
+          message:
+            "Intl.DateTimeFormat(undefined | []) follows the browser, not Sowel's language: pass currentLocale() from lib/format.",
+        },
+        {
+          selector:
+            "NewExpression[callee.object.name='Intl'][callee.property.name='DateTimeFormat'][arguments.length=0]",
+          message:
+            "new Intl.DateTimeFormat() follows the browser, not Sowel's language: pass currentLocale() from lib/format.",
+        },
+      ],
+    },
+  },
 ]);

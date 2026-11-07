@@ -27,6 +27,7 @@ import {
 import { WaterValveIcon } from "../icons/WaterValveIcon";
 import { shutterLevel } from "./widget-icons";
 import { WidgetCard } from "./WidgetCard";
+import { formatNumber, formatTemperature } from "../../lib/format";
 
 
 const WIDGET_FAMILY_TYPES: Record<WidgetFamily, string[]> = {
@@ -250,7 +251,7 @@ function ZoneLightsWidget({
                 onChange={(e) => slider.onChange(Number(e.target.value))}
                 onMouseUp={handleBrightnessCommit}
                 onTouchEnd={handleBrightnessCommit}
-                className="h-[60px] slider-active slider-slim"
+                className="h-[60px] slider-active slider-slim slider-vertical"
                 style={{ writingMode: "vertical-lr", direction: "rtl" }}
               />
               <div className="flex items-baseline gap-0.5">
@@ -549,9 +550,9 @@ function ZoneHeatingWidget({
           {avgTemp !== null ? (
             <div className="flex items-baseline gap-0.5">
               <span className="text-[18px] font-semibold text-text tabular-nums leading-none font-mono">
-                {avgTemp.toFixed(1)}
+                {formatNumber(avgTemp, { decimals: 1 })}
               </span>
-              <span className="text-[12px] font-medium text-text-tertiary">°C</span>
+              <span className="text-[12px] font-medium text-text-tertiary">°</span>
             </div>
           ) : (
             <span className="text-[18px] text-text-tertiary">{"\u2014"}</span>
@@ -585,7 +586,7 @@ function ZoneHeatingWidget({
             <Minus size={14} strokeWidth={2} />
           </button>
           <span className="text-[12px] font-medium text-text-secondary tabular-nums font-mono min-w-[42px] text-center">
-            {displaySetpoint.toFixed(1)}°C
+            {formatTemperature(displaySetpoint, { style: "compact" })}
           </span>
           <button
             onClick={() => handleSetpoint(Math.min(SETPOINT_MAX, displaySetpoint + SETPOINT_STEP))}
@@ -647,9 +648,9 @@ function ZoneSensorsWidget({
           {aggregates.avgTemp !== null && (
             <div className="flex items-baseline gap-0.5">
               <span className="text-[18px] font-semibold text-text tabular-nums leading-none font-mono">
-                {aggregates.avgTemp.toFixed(1)}
+                {formatNumber(aggregates.avgTemp, { decimals: 1 })}
               </span>
-              <span className="text-[12px] font-medium text-text-tertiary">°C</span>
+              <span className="text-[12px] font-medium text-text-tertiary">°</span>
             </div>
           )}
           {aggregates.avgHumidity !== null && (

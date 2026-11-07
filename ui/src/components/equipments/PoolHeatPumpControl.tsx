@@ -2,6 +2,7 @@ import { useState, useRef, useEffect } from "react";
 import { ChevronUp, ChevronDown } from "lucide-react";
 import type { EquipmentWithDetails } from "../../types";
 import { findDataByCategory, findOrderByCategory } from "./bindingUtils";
+import { formatNumber, formatTemperature } from "../../lib/format";
 
 interface Props {
   equipment: EquipmentWithDetails;
@@ -102,9 +103,9 @@ export function PoolHeatPumpControl({ equipment, onExecuteOrder, compact }: Prop
     <div className={`flex items-center gap-2 ${compact ? "" : "py-1"}`}>
       <div className="flex items-baseline gap-0.5">
         <span className="text-[13px] font-semibold text-text tabular-nums leading-none font-mono">
-          {water !== null ? water.toFixed(1) : "—"}
+          {formatNumber(water, { decimals: 1 })}
         </span>
-        <span className="text-[10px] font-medium text-text-tertiary">°C</span>
+        <span className="text-[10px] font-medium text-text-tertiary">{compact ? "°" : "°C"}</span>
       </div>
       {mode && (
         <span
@@ -128,7 +129,7 @@ export function PoolHeatPumpControl({ equipment, onExecuteOrder, compact }: Prop
             <ChevronDown size={12} strokeWidth={2} />
           </button>
           <span className="text-[11px] tabular-nums font-mono text-text-secondary min-w-[34px] text-center">
-            {setpoint.toFixed(1)}°C
+            {formatTemperature(setpoint, { style: compact ? "compact" : "full" })}
           </span>
           <button
             type="button"

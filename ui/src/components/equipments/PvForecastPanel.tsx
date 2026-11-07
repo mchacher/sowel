@@ -14,6 +14,7 @@ import { Sun } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { Link } from "react-router-dom";
 import { dateLocale } from "../../lib/locale";
+import { formatEnergy, formatEnergyParts, formatPercent, formatPower, formatWithUnit } from "../../lib/format";
 import { useAuth } from "../../store/useAuth";
 import type { PvForecastResponse } from "../../types";
 import { getPvForecast } from "../../api";
@@ -138,11 +139,11 @@ export function PvForecastPanel({ equipmentId }: PvForecastPanelProps) {
             to="/settings?tab=energy"
             className="ml-auto text-[11px] text-text-tertiary tabular-nums font-mono hover:text-primary hover:underline"
           >
-            {t("equipments.pv.declared", { wc: data.declaredPeakWc })}
+            {t("equipments.pv.declared", { wc: formatWithUnit(data.declaredPeakWc, "Wc", { locale }) })}
           </Link>
         ) : (
           <span className="ml-auto text-[11px] text-text-tertiary tabular-nums font-mono">
-            {t("equipments.pv.declared", { wc: data.declaredPeakWc })}
+            {t("equipments.pv.declared", { wc: formatWithUnit(data.declaredPeakWc, "Wc", { locale }) })}
           </span>
         )}
       </div>
@@ -172,8 +173,8 @@ export function PvForecastPanel({ equipmentId }: PvForecastPanelProps) {
               (data.accuracy.today.forecastWh > 0 || data.accuracy.today.actualWh > 0) && (
               <p className="text-[11px] text-text-tertiary mb-3">
                 {t("equipments.pv.todaySoFar", {
-                  expected: (data.accuracy.today.forecastWh / 1000).toFixed(1),
-                  measured: (data.accuracy.today.actualWh / 1000).toFixed(1),
+                  expected: formatEnergy(data.accuracy.today.forecastWh / 1000, { locale }),
+                  measured: formatEnergy(data.accuracy.today.actualWh / 1000, { locale }),
                   count: data.accuracy.today.hours,
                 })}{" "}
                 <span
@@ -183,7 +184,7 @@ export function PvForecastPanel({ equipmentId }: PvForecastPanelProps) {
                       : "text-text-secondary"
                   }`}
                 >
-                  {formatDelta(data.accuracy.today)}
+                  {formatDelta(data.accuracy.today, locale)}
                 </span>
               </p>
             )}
@@ -204,11 +205,11 @@ export function PvForecastPanel({ equipmentId }: PvForecastPanelProps) {
                         at the one moment the figure has to shout. */}
                     {data.accuracy.dailyMaePct !== null
                       ? t("equipments.pv.accuracyValue", {
-                          kwh: (data.accuracy.dailyMaeWh / 1000).toFixed(2),
-                          pct: data.accuracy.dailyMaePct,
+                          energy: formatEnergy(data.accuracy.dailyMaeWh / 1000, { locale }),
+                          pct: formatPercent(data.accuracy.dailyMaePct, { decimals: 1, locale }),
                         })
                       : t("equipments.pv.accuracyValueNoPct", {
-                          kwh: (data.accuracy.dailyMaeWh / 1000).toFixed(2),
+                          energy: formatEnergy(data.accuracy.dailyMaeWh / 1000, { locale }),
                         })}
                   </span>
                   <span className="text-[11px] text-text-tertiary">
@@ -296,7 +297,7 @@ export function PvForecastPanel({ equipmentId }: PvForecastPanelProps) {
                     // kW, not W: four-digit watt labels do not fit this gutter
                     // and were clipped to their last three digits, so a 3800 W
                     // peak read "800".
-                    tickFormatter={(w: number) => (w > 0 ? `${(w / 1000).toFixed(1)} kW` : "0")}
+                    tickFormatter={(w: number) => (w > 0 ? formatPower(w, { unit: "kW", locale }) : "0")}
                     tick={{ fontSize: 11, fill: "var(--color-text-tertiary)" }}
                     stroke="var(--color-border)"
                     width={56}
@@ -309,7 +310,7 @@ export function PvForecastPanel({ equipmentId }: PvForecastPanelProps) {
                         hour: "2-digit",
                       })
                     }
-                    formatter={(v, name) => [`${Math.round(v as number)} W`, name]}
+                    formatter={(v, name) => [formatPower(v as number, { unit: "W", locale }), name]}
                     contentStyle={{
                       background: "var(--color-surface)",
                       border: "1px solid var(--color-border)",
@@ -377,21 +378,22 @@ export function PvForecastPanel({ equipmentId }: PvForecastPanelProps) {
  * signed percentage. Percent, not watt-hours: at 9am a 300 Wh gap means
  * something quite different than it does at 7pm, and the share does not.
  */
-function formatDelta(today: { forecastWh: number; actualWh: number }): string {
+function formatDelta(today: { forecastWh: number; actualWh: number }, locale: string): string {
   if (today.forecastWh <= 0) return "";
   const pct = (100 * (today.actualWh - today.forecastWh)) / today.forecastWh;
-  return `${pct >= 0 ? "+" : ""}${pct.toFixed(0)}%`;
+  return formatPercent(pct, { signed: true, locale });
 }
 
 function Figure({ label, value }: { label: string; value: number }) {
+  const energy = formatEnergyParts(value);
   return (
     <div>
       <div className="text-[11px] text-text-tertiary">{label}</div>
       <div className="flex items-baseline gap-1">
         <span className="text-[22px] font-bold font-mono tabular-nums text-text leading-none">
-          {value.toFixed(1)}
+          {energy.value}
         </span>
-        <span className="text-[12px] text-text-tertiary">kWh</span>
+        <span className="text-[12px] text-text-tertiary">{energy.unit}</span>
       </div>
     </div>
   );

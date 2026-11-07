@@ -3,6 +3,7 @@ import { useTranslation } from "react-i18next";
 import { Power, Loader2, Droplets, Battery, AlertTriangle, Play } from "lucide-react";
 import type { EquipmentWithDetails } from "../../types";
 import { findDataByCategory, findOrderByCategory } from "./bindingUtils";
+import { formatPercent } from "../../lib/format";
 
 interface WaterValveControlProps {
   equipment: EquipmentWithDetails;
@@ -194,7 +195,7 @@ export function WaterValveControl({ equipment, onExecuteOrder, compact }: WaterV
             <Indicator
               icon={<Battery size={13} strokeWidth={1.5} />}
               label={t("water.battery")}
-              value={`${battery}%`}
+              value={formatPercent(battery)}
               alert={battery < 20}
             />
           )}

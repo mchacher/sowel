@@ -89,6 +89,23 @@ describe("getMobileClickAction", () => {
     expect(getMobileClickAction(widget, eq, t, vi.fn())).toBeUndefined();
   });
 
+  // Spec 196 — a disabled gate no longer actuates on a tap, like a disabled light.
+  it("returns no action for a disabled single-action gate", () => {
+    const gate = makeSwitch({
+      type: "gate",
+      enabled: false,
+      dataBindings: [] as EquipmentWithDetails["dataBindings"],
+      orderBindings: [
+        { id: "ob-g", alias: "trigger", category: "gate_trigger" },
+      ] as EquipmentWithDetails["orderBindings"],
+    });
+    const onExecuteOrder = vi.fn();
+    expect(getMobileClickAction(widget, gate, t, onExecuteOrder)).toBeUndefined();
+    const enabled = { ...gate, enabled: true };
+    getMobileClickAction(widget, enabled, t, onExecuteOrder)!();
+    expect(onExecuteOrder).toHaveBeenCalledWith("sw-1", "trigger", null);
+  });
+
   it("still opens the detail sheet for complex (unmigrated) types", () => {
     const onOpenDetail = vi.fn();
     const eq = makeSwitch({ type: "thermostat" });

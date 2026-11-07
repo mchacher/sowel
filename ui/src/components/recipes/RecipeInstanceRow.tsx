@@ -361,7 +361,7 @@ export function RecipeInstanceRow({
         <button
           onClick={handleToggleEnabled}
           disabled={toggling}
-          className="col-start-3 row-start-1 relative w-8 h-[18px] rounded-full transition-colors duration-200 disabled:opacity-50 cursor-pointer disabled:cursor-default justify-self-end"
+          className="hit-44 col-start-3 row-start-1 relative w-8 h-[18px] rounded-full transition-colors duration-200 disabled:opacity-50 cursor-pointer disabled:cursor-default justify-self-end"
           style={{ backgroundColor: instance.enabled ? "var(--color-primary)" : "var(--color-border)" }}
           title={instance.enabled ? t("recipes.disable") : t("recipes.enable")}
           role="switch"

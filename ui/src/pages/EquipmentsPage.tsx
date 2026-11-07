@@ -15,6 +15,7 @@ import {
   ZONE_PATH_SEPARATOR,
 } from "../lib/zone-path";
 import { useWsSubscription } from "../hooks/useWsSubscription";
+import { PageHeader, PageHeaderButton } from "../components/layout/PageHeader";
 
 export function EquipmentsPage() {
   useWsSubscription(["equipments"]);
@@ -46,53 +47,43 @@ export function EquipmentsPage() {
   const byZone = groupEquipmentsByZone(filtered, zoneOptions);
 
   return (
-    <div className="p-6">
-      {/* Page header */}
-      <div className="flex items-center justify-between mb-6">
-        <div>
-          <h1>
-            {t("equipments.title")}
-          </h1>
-        </div>
+    <div className="p-4 sm:p-6">
+      <PageHeader
+        title={t("equipments.title")}
+        actions={
+          <>
+            {/* Filter */}
+            {equipments.length > 0 && (
+              <div className="relative flex-1 sm:flex-none">
+                <Search size={14} strokeWidth={1.5} className="absolute left-2.5 top-1/2 -translate-y-1/2 text-text-tertiary pointer-events-none" />
+                <input
+                  type="text"
+                  value={filter}
+                  onChange={(e) => setFilter(e.target.value)}
+                  placeholder={t("equipments.filterPlaceholder")}
+                  className="w-full sm:w-[180px] pl-8 pr-8 py-1.5 text-[13px] bg-surface border border-border rounded-[6px] outline-none placeholder:text-text-tertiary focus:border-primary transition-colors duration-150"
+                />
+                {filter && (
+                  <button onClick={() => setFilter("")} className="absolute right-2 top-1/2 -translate-y-1/2 text-text-tertiary hover:text-text-secondary">
+                    <X size={14} strokeWidth={1.5} />
+                  </button>
+                )}
+              </div>
+            )}
 
-        <div className="flex items-center gap-3">
-          {/* Filter */}
-          {equipments.length > 0 && (
-            <div className="relative">
-              <Search size={14} strokeWidth={1.5} className="absolute left-2.5 top-1/2 -translate-y-1/2 text-text-tertiary pointer-events-none" />
-              <input
-                type="text"
-                value={filter}
-                onChange={(e) => setFilter(e.target.value)}
-                placeholder={t("equipments.filterPlaceholder")}
-                className="w-[180px] pl-8 pr-8 py-1.5 text-[13px] bg-surface border border-border rounded-[6px] outline-none placeholder:text-text-tertiary focus:border-primary transition-colors duration-150"
-              />
-              {filter && (
-                <button onClick={() => setFilter("")} className="absolute right-2 top-1/2 -translate-y-1/2 text-text-tertiary hover:text-text-secondary">
-                  <X size={14} strokeWidth={1.5} />
-                </button>
-              )}
+            {isAdmin && (
+              <PageHeaderButton icon={Plus} label={t("equipments.addEquipment")} onClick={() => setShowForm(true)} />
+            )}
+
+            <div className="hidden sm:flex items-center gap-2 px-3 py-1.5 rounded-[6px] bg-primary-light text-primary">
+              <Box size={16} strokeWidth={1.5} />
+              <span className="text-[13px] font-medium">
+                {filter ? `${filtered.length}/${equipments.length}` : equipments.length}
+              </span>
             </div>
-          )}
-
-          {isAdmin && (
-          <button
-            onClick={() => setShowForm(true)}
-            className="flex items-center gap-2 px-4 py-2 text-[13px] font-medium text-white bg-primary rounded-[6px] hover:bg-primary-hover transition-colors duration-150"
-          >
-            <Plus size={16} strokeWidth={1.5} />
-            {t("equipments.addEquipment")}
-          </button>
-          )}
-
-          <div className="flex items-center gap-2 px-3 py-1.5 rounded-[6px] bg-primary-light text-primary">
-            <Box size={16} strokeWidth={1.5} />
-            <span className="text-[13px] font-medium">
-              {filter ? `${filtered.length}/${equipments.length}` : equipments.length}
-            </span>
-          </div>
-        </div>
-      </div>
+          </>
+        }
+      />
 
       {/* Content */}
       {loading ? (

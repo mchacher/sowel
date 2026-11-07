@@ -142,12 +142,13 @@ export function AppLayout() {
             className="header-tint flex-shrink-0"
             style={{ height: "env(safe-area-inset-top, 0px)" }}
           />
-          {/* Top bar — compact on mobile, full on desktop */}
-          <header className="flex items-center min-h-[56px] sm:min-h-[49px] px-3 sm:px-6 border-b border-border-light bg-surface gap-2">
+          {/* Top bar — compact on phones and tablets (below lg, spec 196 decision
+              pr1-tablette: one switch point with the sidebar and bottom bar), full on desktop */}
+          <header className="flex items-center min-h-[56px] lg:min-h-[49px] px-3 lg:px-6 border-b border-border-light bg-surface gap-2">
             {/* Left: mobile burger (on zone pages) + title+sub (mockup parity), desktop breadcrumb */}
             <div className="flex items-center gap-2 flex-1 min-w-0">
               <MobileTopbarBurger />
-              <div className="sm:hidden flex-1 min-w-0">
+              <div className="lg:hidden flex-1 min-w-0">
                 <MobileTopbarTitle homeName={homeName} />
               </div>
               <div className="hidden lg:flex items-center">
@@ -156,16 +157,16 @@ export function AppLayout() {
             </div>
 
             {/* Right: pills (mock order: time → sun → conn → alarm → updates → avatar). */}
-            <div className="flex items-center gap-2 flex-shrink-0">
+            <div className="hit-group flex items-center gap-2 flex-shrink-0">
               {/* Time + sun — full pills on desktop */}
-              <div className="hidden sm:flex items-center gap-2">
+              <div className="hidden lg:flex items-center gap-2">
                 <CurrentTimePill />
                 <SunlightBanner data={rootAgg} />
               </div>
-              {/* Time + sun — compact, space-saving variant on mobile (no seconds) */}
-              <div className="flex sm:hidden items-center gap-2">
+              {/* Sun only below lg — the phone already shows the time, and the
+                  home name needs the room (spec 196, decision pr1-barre). */}
+              <div className="flex lg:hidden items-center gap-2">
                 <SunlightBanner data={rootAgg} compact />
-                <CurrentTimePill compact withSeconds={false} />
               </div>
               <ConnectionStatus />
               {issues.length > 0 && (
@@ -203,7 +204,7 @@ export function AppLayout() {
               )}
               {/* User avatar pill — desktop only (matches mock `.topbar__avatar`). */}
               {user && (
-                <div className="hidden sm:flex items-center gap-1.5 ml-1">
+                <div className="hidden lg:flex items-center gap-1.5 ml-1">
                   <div className="flex items-center gap-1.5 pl-1 pr-2.5 py-[3px] rounded-full bg-[var(--n-50)] border border-border-light">
                     <span className="w-[22px] h-[22px] rounded-full bg-primary text-white flex items-center justify-center text-[10px] font-bold leading-none">
                       {getInitials(user.displayName)}
@@ -337,7 +338,7 @@ function MobileTopbarBurger() {
     return (
       <button
         onClick={onClick}
-        className="sm:hidden w-10 h-10 -ml-2 flex items-center justify-center rounded-[6px] text-text-secondary hover:bg-border-light/60 transition-colors duration-150"
+        className="lg:hidden w-10 h-10 -ml-2 flex items-center justify-center rounded-[6px] text-text-secondary hover:bg-border-light/60 transition-colors duration-150"
         aria-label={label}
       >
         <Menu size={20} strokeWidth={1.7} />
@@ -349,7 +350,7 @@ function MobileTopbarBurger() {
   return (
     <NavLink
       to="/home"
-      className="sm:hidden w-10 h-10 -ml-2 flex items-center justify-center rounded-[6px] hover:bg-border-light/60 transition-colors duration-150"
+      className="lg:hidden w-10 h-10 -ml-2 flex items-center justify-center rounded-[6px] hover:bg-border-light/60 transition-colors duration-150"
       aria-label="Sowel"
     >
       <SowelLogo size={24} />

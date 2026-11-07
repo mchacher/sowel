@@ -3,6 +3,7 @@ import type { DataBindingWithValue, DataCategory } from "../../types";
 import { SolarPanelIcon } from "../icons/SolarPanelIcon";
 import { EquipmentStatusBadge } from "./EquipmentStatusBadge";
 import type { EquipmentStatus, EquipmentStatusReason } from "../../types";
+import { formatEnergy, formatPower, formatTemperature, formatWithUnit } from "../../lib/format";
 
 /**
  * Solar panel detail panel (spec 125). Lists a PV panel's per-channel metrics
@@ -27,17 +28,10 @@ const METRIC_ORDER: { category: DataCategory; labelKey: string }[] = [
 
 function formatMetric(category: DataCategory, value: unknown, unit?: string): string {
   if (typeof value !== "number" || !Number.isFinite(value)) return "—";
-  if (category === "power") {
-    return value >= 1000 ? `${(value / 1000).toFixed(2)} kW` : `${Math.round(value)} W`;
-  }
-  if (category === "energy") {
-    return value >= 1000 ? `${(value / 1000).toFixed(2)} kWh` : `${Math.round(value)} Wh`;
-  }
-  if (category === "temperature_device") {
-    return `${value.toFixed(1)} °C`;
-  }
-  const rounded = Number.isInteger(value) ? String(value) : value.toFixed(1);
-  return unit ? `${rounded} ${unit}` : rounded;
+  if (category === "power") return formatPower(value);
+  if (category === "energy") return formatEnergy(value / 1000, { unit: "auto" });
+  if (category === "temperature_device") return formatTemperature(value);
+  return formatWithUnit(value, unit);
 }
 
 export function SolarPanelDataPanel({ bindings, status, statusReason }: SolarPanelDataPanelProps) {

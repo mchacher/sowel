@@ -18,6 +18,7 @@ import type { ModeWithDetails, EquipmentWithDetails, ZoneModeImpactAction, Calen
 import { useWsSubscription } from "../hooks/useWsSubscription";
 import { flattenZonesWithPath } from "../lib/zone-path";
 import { brightnessPercent, brightnessScale } from "../lib/brightness";
+import { formatPercent } from "../lib/format";
 
 export function ModeDetailPage() {
   useWsSubscription(["modes"]);
@@ -101,7 +102,7 @@ export function ModeDetailPage() {
 
   if (!mode) {
     return (
-      <div className="p-6">
+      <div className="p-4 sm:p-6">
         <Link
           to="/modes"
           className="inline-flex items-center gap-1.5 text-[13px] text-text-secondary hover:text-text transition-colors mb-4"
@@ -133,7 +134,7 @@ export function ModeDetailPage() {
 
       {/* Header */}
       <div className="flex items-start justify-between mb-4 sm:mb-8 max-w-[720px]">
-        <div className="hidden sm:flex items-center gap-3 sm:gap-4 min-w-0">
+        <div className="hidden lg:flex items-center gap-3 sm:gap-4 min-w-0">
           <div
             className={`w-10 h-10 sm:w-12 sm:h-12 rounded-[8px] sm:rounded-[10px] flex items-center justify-center flex-shrink-0 ${
               mode.active ? "bg-primary/10" : "bg-border-light"
@@ -300,20 +301,20 @@ function ImpactActionRow({
       } else if (action.orderAlias === "state" && action.value === "CLOSE") {
         detail = t("controls.close");
       } else if (action.orderAlias === "position") {
-        detail = `${t("controls.position")} ${action.value}%`;
+        detail = `${t("controls.position")} ${formatPercent(Number(action.value))}`;
       }
     } else if (eq?.type?.startsWith("light_")) {
       icon = <Lightbulb size={12} strokeWidth={1.5} />;
       if ((action.orderAlias === "state" && (action.value === "ON" || action.value === "OFF")) ||
           (action.orderAlias === "turn_on" && typeof action.value === "boolean")) {
         const on = action.value === "ON" || action.value === true;
-        detail = on ? "ON" : "OFF";
+        detail = on ? t("controls.on") : t("controls.off");
       } else if (action.orderAlias === "brightness") {
         const scale = brightnessScale(eq.orderBindings.find((o) => o.alias === "brightness"));
-        detail = `${t("controls.brightness")} ${brightnessPercent(Number(action.value), scale)}%`;
+        detail = `${t("controls.brightness")} ${formatPercent(brightnessPercent(Number(action.value), scale))}`;
       }
     } else if (action.orderAlias === "state" && (action.value === "ON" || action.value === "OFF")) {
-      detail = action.value as string;
+      detail = action.value === "ON" ? t("controls.on") : t("controls.off");
     }
 
     return (

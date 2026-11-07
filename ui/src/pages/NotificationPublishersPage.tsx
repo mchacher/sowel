@@ -154,7 +154,7 @@ export function NotificationPublishersPage() {
 
   if (loading) {
     return (
-      <div className="p-6 flex items-center justify-center py-20">
+      <div className="px-4 sm:px-6 flex items-center justify-center py-20">
         <Loader2 size={20} className="animate-spin text-text-tertiary" />
       </div>
     );

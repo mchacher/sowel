@@ -50,7 +50,7 @@ export function PeriodSelector({
   const locale = dateLocale(i18n.language);
 
   return (
-    <div className="flex flex-col sm:flex-row items-center gap-3">
+    <div className="flex flex-col sm:flex-row sm:flex-wrap items-center gap-3">
       {/* Period tabs */}
       <div className="flex rounded-[6px] border border-border overflow-hidden">
         {PERIODS.map((p) => (

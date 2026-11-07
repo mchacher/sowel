@@ -10,6 +10,7 @@ import {
   secondsToMinutes,
 } from "../../lib/energy-profile";
 import type { EnergyLoadClass, EnergyLoadProfile, EquipmentWithDetails } from "../../types";
+import { currentLocale, formatPower } from "../../lib/format";
 
 /**
  * Spec 140 — flexible-load declaration on an equipment (FR-1). Admin only,
@@ -188,7 +189,7 @@ export function EnergyManagementPanel({
         <div className="flex items-center gap-2 mb-3 px-3 py-2 rounded-md bg-accent/10 border border-accent/20 text-[12px] text-text-secondary">
           <span>
             {t("energyProfile.manualUntil", {
-              time: new Date(suspension.untilIso).toLocaleTimeString([], {
+              time: new Date(suspension.untilIso).toLocaleTimeString(currentLocale(), {
                 hour: "2-digit",
                 minute: "2-digit",
               }),
@@ -287,7 +288,7 @@ export function EnergyManagementPanel({
             {profile?.learned && (
               <div className="text-[12px] text-text-tertiary pb-1">
                 {t("energyProfile.learned", {
-                  watts: profile.learned.watts,
+                  power: formatPower(profile.learned.watts),
                   runs: profile.learned.runs,
                 })}
               </div>

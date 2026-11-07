@@ -18,7 +18,7 @@ Cette séparation vous permet de penser en termes de _pièces et de fonctions_, 
 | ----------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------ |
 | **Auto-découverte**     | Les devices apparaissent automatiquement depuis les intégrations configurées (Zigbee2MQTT, Panasonic CC, MCZ Maestro, Netatmo, et bien d'autres) |
 | **Agrégation de zones** | État de la pièce en temps réel : température, mouvement, nombre de lumières, position des volets, tout calculé automatiquement                   |
-| **Tableau de bord**     | Tableau de bord personnalisable basé sur des widgets pour l'usage quotidien                                                                      |
+| **Accueil**             | Page d'accueil personnalisable basée sur des widgets pour l'usage quotidien                                                                      |
 | **Recettes**            | Modèles d'automatisation prêts à l'emploi : choisissez une zone, choisissez une lumière, réglez un délai, c'est fini                             |
 | **Modes**               | Profils de fonctionnement nommés (Confort, Absence, Nuit) avec impacts par zone et planification calendaire                                      |
 | **Suivi énergétique**   | Suivez la consommation avec ventilation HP/HC et autoconsommation                                                                                |
@@ -40,7 +40,7 @@ Cette séparation vous permet de penser en termes de _pièces et de fonctions_, 
 
   Création et gestion des équipements, liaison aux devices, types d'équipements.
 
-- **[Tableau de bord](dashboard.md)**
+- **[Accueil](dashboard.md)**
 
   Widgets, personnalisation, mode édition.
 

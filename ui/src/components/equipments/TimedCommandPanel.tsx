@@ -3,6 +3,7 @@ import { useTranslation } from "react-i18next";
 import { TimerReset, Loader2 } from "lucide-react";
 import { updateEquipment } from "../../api";
 import { TimedCountdown } from "./TimedCountdown";
+import { humanizeAlias } from "../../lib/humanize-alias";
 import { isTimedCommandEligible } from "../../../../src/shared/timed-command";
 import type { EquipmentWithDetails } from "../../types";
 
@@ -71,6 +72,17 @@ export function TimedCommandPanel({
     : order?.type === "boolean"
       ? ["true", "false"]
       : [];
+
+  // Spec 196 — the selects showed raw aliases and values (« airSwingLR », « left »). A
+  // thermostat reuses the words of its « Autres réglages » list; a boolean order reads
+  // Marche / Arrêt. Anything else keeps the plugin's own words.
+  const isThermostat = equipment.type === "thermostat";
+  const orderLabel = (a: string): string =>
+    isThermostat ? t(`thermostat.extras.${a}`, { defaultValue: humanizeAlias(a) }) : a;
+  const choiceLabel = (v: string): string => {
+    if (order?.type === "boolean") return v === "true" ? t("controls.on") : t("controls.off");
+    return isThermostat ? t(`thermostat.values.${alias}.${v}`, { defaultValue: v }) : v;
+  };
 
   const save = async (next: typeof configured) => {
     setSaving(true);
@@ -178,7 +190,7 @@ export function TimedCommandPanel({
           >
             {orders.map((o) => (
               <option key={o.id} value={o.alias}>
-                {o.alias}
+                {orderLabel(o.alias)}
               </option>
             ))}
           </select>
@@ -199,7 +211,7 @@ export function TimedCommandPanel({
             ) : (
               choices.map((v) => (
                 <option key={v} value={v}>
-                  {v}
+                  {choiceLabel(v)}
                 </option>
               ))
             )}

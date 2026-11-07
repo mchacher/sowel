@@ -80,7 +80,7 @@ Cela signifie que vous pouvez jeter un œil à une zone d'étage et connaître l
 
 ### Comment cela apparaît dans l'UI
 
-Dans la vue **Accueil**, chaque zone affiche un **bandeau d'état** avec les données agrégées présentées sous forme de pastilles colorées :
+Dans la vue **Maison**, chaque zone affiche un **bandeau d'état** avec les données agrégées présentées sous forme de pastilles colorées :
 
 - Pastille **Température** (par ex. "21,5 °C")
 - Pastille **Humidité** (par ex. "45 %")
@@ -108,7 +108,7 @@ Si une zone contient à la fois un compteur sur un circuit et un compteur sur un
 
 ## Fil d'activité
 
-Chaque zone dispose d'un panneau **Activité** en direct sur le côté droit de la vue Accueil. C'est un widget de coup d'œil qui montre ce qui vient de se passer dans la zone : ordres dispatchés, mouvement détecté, recettes démarrées, changements de mode, lever/coucher de soleil, alarmes.
+Chaque zone dispose d'un panneau **Activité** en direct sur le côté droit de la vue Maison. C'est un widget de coup d'œil qui montre ce qui vient de se passer dans la zone : ordres dispatchés, mouvement détecté, recettes démarrées, changements de mode, lever/coucher de soleil, alarmes.
 
 Le panneau regroupe les événements par heure. Le bucket le plus récent porte le label `HH:00 → maintenant`, les buckets plus anciens portent simplement `HH:00`.
 
@@ -162,7 +162,7 @@ Chaque zone expose des ordres automatiques que vous pouvez utiliser depuis l'UI 
 | **Toutes lumières éteintes** | Éteint tous les équipements lumière de la zone                |
 | **Toutes lumières allumées** | Allume tous les équipements lumière de la zone                |
 
-Ils sont disponibles dans la vue Accueil, dans l'API, et comme actions dans les recettes et les modes.
+Ils sont disponibles dans la vue Maison, dans l'API, et comme actions dans les recettes et les modes.
 
 ## Astuces
 

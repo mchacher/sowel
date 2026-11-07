@@ -8,6 +8,7 @@ import { setModeImpact, removeModeImpact } from "../../api";
 import type { ModeWithDetails, ZoneModeImpactAction, EquipmentWithDetails, OrderBindingWithDetails } from "../../types";
 import { recipeName } from "../../lib/recipe-i18n";
 import { brightnessPercent, brightnessScale } from "../../lib/brightness";
+import { formatPercent, formatWithUnit } from "../../lib/format";
 
 interface ZoneModesSectionProps {
   zoneId: string;
@@ -365,7 +366,7 @@ function formatOrderLabel(
     if (action.orderAlias === "state" && action.value === "CLOSE")
       return <>{name} <ChevronDown size={10} strokeWidth={1.5} className="inline -mt-0.5" /> {t("controls.close")}</>;
     if (action.orderAlias === "position")
-      return <>{name} → {t("controls.position")} {action.value}%</>;
+      return <>{name} → {t("controls.position")} {formatPercent(Number(action.value))}</>;
   }
 
   if (eq?.type?.startsWith("light_")) {
@@ -373,19 +374,19 @@ function formatOrderLabel(
         (action.orderAlias === "turn_on" && typeof action.value === "boolean"))
     {
       const on = action.value === "ON" || action.value === true;
-      return <>{name} → {on ? "ON" : "OFF"}</>;
+      return <>{name} → {on ? t("controls.on") : t("controls.off")}</>;
     }
     if (action.orderAlias === "brightness") {
       const scale = brightnessScale(eq.orderBindings.find((o) => o.alias === "brightness"));
-      return <>{name} → {t("controls.brightness")} {brightnessPercent(Number(action.value), scale)}%</>;
+      return <>{name} → {t("controls.brightness")} {formatPercent(brightnessPercent(Number(action.value), scale))}</>;
     }
   }
 
   if (action.orderAlias === "state" && (action.value === "ON" || action.value === "OFF")) {
-    return <>{name} → {action.value}</>;
+    return <>{name} → {action.value === "ON" ? t("controls.on") : t("controls.off")}</>;
   }
   if (action.orderAlias === "turn_on" && typeof action.value === "boolean") {
-    return <>{name} → {action.value ? "ON" : "OFF"}</>;
+    return <>{name} → {action.value ? t("controls.on") : t("controls.off")}</>;
   }
 
   return <>{name} → {action.orderAlias} = {JSON.stringify(action.value)}</>;
@@ -545,6 +546,7 @@ function OrderValueControl({
   value: string;
   onChange: (v: string) => void;
 }) {
+  const { t } = useTranslation();
   const seg = (active: boolean, pos: "first" | "mid" | "last" | "solo") => {
     const r = pos === "first" ? "rounded-l-[4px]" : pos === "last" ? "rounded-r-[4px]" : pos === "solo" ? "rounded-[4px]" : "";
     return `inline-flex items-center justify-center px-2 py-[3px] text-[10px] font-medium transition-all cursor-pointer border border-l-0 first:border-l border-border-light ${r} ${
@@ -552,13 +554,13 @@ function OrderValueControl({
     }`;
   };
 
-  // Boolean → ON/OFF
+  // Boolean → on/off
   if (order.type === "boolean") {
     return (
       <div className="inline-flex">
         {["true", "false"].map((v, i, arr) => (
           <button key={v} onClick={() => onChange(v)} className={seg(value === v, arr.length === 1 ? "solo" : i === 0 ? "first" : "last")}>
-            {v === "true" ? "ON" : "OFF"}
+            {v === "true" ? t("controls.on") : t("controls.off")}
           </button>
         ))}
       </div>
@@ -593,8 +595,8 @@ function OrderValueControl({
           onChange={(e) => onChange(e.target.value)}
           className="flex-1"
         />
-        <span className="text-[10px] text-text-secondary tabular-nums w-10 text-right">
-          {value || order.min}{order.unit ? ` ${order.unit}` : ""}
+        <span className="text-[10px] text-text-secondary tabular-nums min-w-10 text-right">
+          {formatWithUnit(Number(value || order.min), order.unit)}
         </span>
       </div>
     );
@@ -685,7 +687,7 @@ function SmartOrderPicker({
               onChange={(e) => onChangeValue(e.target.value)}
               className="flex-1"
             />
-            <span className="text-[10px] text-text-secondary tabular-nums w-7 text-right">{orderValue}%</span>
+            <span className="text-[10px] text-text-secondary tabular-nums min-w-7 text-right">{formatPercent(Number(orderValue) || 50)}</span>
           </div>
         )}
       </div>
@@ -695,8 +697,8 @@ function SmartOrderPicker({
   if (isLight) {
     const lightOptions: { alias: string; val: string; label: string }[] = [];
     if (toggleAlias) {
-      lightOptions.push({ alias: toggleAlias, val: onVal, label: "ON" });
-      lightOptions.push({ alias: toggleAlias, val: offVal, label: "OFF" });
+      lightOptions.push({ alias: toggleAlias, val: onVal, label: t("controls.on") });
+      lightOptions.push({ alias: toggleAlias, val: offVal, label: t("controls.off") });
     }
     if (brightnessOrder) {
       lightOptions.push({ alias: "brightness", val: String(brightnessRange.max), label: t("controls.brightness") });
@@ -724,8 +726,8 @@ function SmartOrderPicker({
               onChange={(e) => onChangeValue(e.target.value)}
               className="flex-1"
             />
-            <span className="text-[10px] text-text-secondary tabular-nums w-7 text-right">
-              {brightnessPercent(Number(orderValue), brightnessRange)}%
+            <span className="text-[10px] text-text-secondary tabular-nums min-w-7 text-right">
+              {formatPercent(brightnessPercent(Number(orderValue), brightnessRange))}
             </span>
           </div>
         )}

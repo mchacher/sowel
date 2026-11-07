@@ -155,15 +155,19 @@ export function DashboardPage() {
   }
 
   return (
-    <div className="p-4 sm:p-6">
+    // Room under the grid for the mobile edit button (72–116 px from the
+    // bottom, content ends at 56 px): pb-20 keeps the last tile clear.
+    <div className={isAdmin ? "p-4 pb-20 sm:p-6" : "p-4 sm:p-6"}>
       <div>
-        {/* Desktop header */}
+        {/* Header from 640 px. The title only from 1024 px: below, the compact top
+            bar already names the page (spec 196, pr1-tablette); tablets keep the
+            edit buttons here, phones use the FAB. */}
         <div className="hidden sm:flex items-center justify-between mb-5">
-          <h1>
+          <h1 className="hidden lg:block">
             {t("dashboard.title")}
           </h1>
           {isAdmin && (
-            <div className="flex items-center gap-2">
+            <div className="ml-auto flex items-center gap-2">
               {editMode && (
                 <button
                   onClick={() => setShowAddModal(true)}
@@ -206,6 +210,7 @@ export function DashboardPage() {
             {editMode && (
               <button
                 onClick={() => setShowAddModal(true)}
+                aria-label={t("dashboard.addWidget")}
                 className="w-11 h-11 flex items-center justify-center rounded-full bg-primary-light text-primary border border-primary/20 shadow-lg active:scale-95 transition-transform"
               >
                 <Plus size={18} strokeWidth={1.5} />
@@ -213,6 +218,7 @@ export function DashboardPage() {
             )}
             <button
               onClick={() => setEditMode(!editMode)}
+              aria-label={editMode ? t("dashboard.done") : t("dashboard.edit")}
               className={`w-11 h-11 flex items-center justify-center rounded-full shadow-lg active:scale-95 transition-transform ${
                 editMode
                   ? "bg-primary text-white"

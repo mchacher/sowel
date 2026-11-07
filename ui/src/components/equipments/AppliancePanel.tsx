@@ -1,6 +1,7 @@
 import { useTranslation } from "react-i18next";
 import { WashingMachine, Timer, Zap } from "lucide-react";
 import type { EquipmentWithDetails } from "../../types";
+import { formatDuration, formatEnergyParts, formatPercent } from "../../lib/format";
 
 interface AppliancePanelProps {
   equipment: EquipmentWithDetails;
@@ -45,7 +46,7 @@ export function AppliancePanel({ equipment }: AppliancePanelProps) {
       {!isOn || state === "off" ? (
         <div className="text-center py-6">
           <WashingMachine size={40} strokeWidth={1} className="mx-auto mb-2 text-text-tertiary/30" />
-          <span className="text-[14px] text-text-tertiary">OFF</span>
+          <span className="text-[14px] text-text-tertiary">{t("controls.off")}</span>
         </div>
       ) : (
         <div className="space-y-4">
@@ -68,7 +69,7 @@ export function AppliancePanel({ equipment }: AppliancePanelProps) {
             <div>
               <div className="flex items-center justify-between mb-1.5">
                 <span className="text-[12px] text-text-secondary">{t("common.progress")}</span>
-                <span className="text-[13px] font-mono tabular-nums font-semibold text-text">{progress}%</span>
+                <span className="text-[13px] font-mono tabular-nums font-semibold text-text">{formatPercent(progress)}</span>
               </div>
               <div className="h-2 bg-border-light rounded-full overflow-hidden">
                 <div
@@ -88,7 +89,7 @@ export function AppliancePanel({ equipment }: AppliancePanelProps) {
               </span>
               {remainingMin !== null && (
                 <span className="text-[12px] text-text-tertiary">
-                  ({remainingMin} min)
+                  ({formatDuration(remainingMin * 60)})
                 </span>
               )}
             </div>
@@ -99,8 +100,10 @@ export function AppliancePanel({ equipment }: AppliancePanelProps) {
             <div className="flex items-center gap-2 pt-2 border-t border-border-light">
               <Zap size={14} strokeWidth={1.5} className="text-accent" />
               <span className="text-[12px] text-text-secondary">
-                {energyWh >= 1000 ? (energyWh / 1000).toFixed(1) : Math.round(energyWh)}
-                <span className="text-text-tertiary ml-0.5">{energyWh >= 1000 ? "kWh" : "Wh"}</span>
+                {formatEnergyParts(energyWh / 1000, { unit: "auto" }).value}
+                <span className="text-text-tertiary ml-0.5">
+                  {formatEnergyParts(energyWh / 1000, { unit: "auto" }).unit}
+                </span>
               </span>
             </div>
           )}

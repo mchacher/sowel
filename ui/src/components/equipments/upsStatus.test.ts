@@ -68,25 +68,29 @@ describe("isOnBattery", () => {
 });
 
 describe("formatRuntime", () => {
+  // The spaces are U+202F in French, U+00A0 in English: compare them as spaces.
+  const runtime = (v: unknown) => formatRuntime(v)?.replace(/[\u00A0\u202F]/g, " ");
+
   it("keeps seconds in the range where they matter", () => {
-    expect(formatRuntime(0)).toBe("0 s");
-    expect(formatRuntime(45)).toBe("45 s");
-    expect(formatRuntime(59)).toBe("59 s");
+    expect(runtime(0)).toBe("0 s");
+    expect(runtime(45)).toBe("45 s");
+    expect(runtime(59)).toBe("59 s");
+    expect(runtime(132)).toBe("2 min 12 s");
   });
 
-  it("switches to minutes below the hour", () => {
-    expect(formatRuntime(60)).toBe("1 min");
-    expect(formatRuntime(3599)).toBe("59 min");
+  it("drops the seconds above ten minutes", () => {
+    expect(runtime(60)).toBe("1 min");
+    expect(runtime(3599)).toBe("59 min");
   });
 
   it("switches to hours above, zero-padding the minutes", () => {
-    expect(formatRuntime(3600)).toBe("1 h");
-    expect(formatRuntime(3912)).toBe("1 h 05");
-    expect(formatRuntime(7800)).toBe("2 h 10");
+    expect(runtime(3600)).toBe("1 h");
+    expect(runtime(3912)).toBe("1 h 05");
+    expect(runtime(7800)).toBe("2 h 10");
   });
 
   it("accepts a numeric string, since bound values are untyped", () => {
-    expect(formatRuntime("3312")).toBe("55 min");
+    expect(runtime("3312")).toBe("55 min");
   });
 
   it("returns nothing for a value that is not a duration", () => {

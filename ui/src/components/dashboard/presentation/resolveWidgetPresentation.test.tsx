@@ -94,7 +94,7 @@ describe("resolveWidgetPresentation", () => {
       const p = resolveWidgetPresentation(makeWidget(), makeEquipment(), t);
       expect(p).not.toBeNull();
       expect(p!.isActive).toBe(false);
-      expect(p!.state.primary).toBe("OFF");
+      expect(p!.state.primary).toBe("Off");
       expect(toggleOf(p)).toMatchObject({
         alias: "state",
         on: false,
@@ -110,7 +110,7 @@ describe("resolveWidgetPresentation", () => {
       });
       const p = resolveWidgetPresentation(makeWidget(), eq, t);
       expect(p!.isActive).toBe(true);
-      expect(p!.state.primary).toBe("ON");
+      expect(p!.state.primary).toBe("On");
       expect(toggleOf(p)).toMatchObject({ on: true, onValue: "on", offValue: "off" });
     });
 
@@ -186,11 +186,11 @@ describe("resolveWidgetPresentation", () => {
     it("falls back to ON when powered without a source, OFF otherwise", () => {
       const noSource = makeTv();
       noSource.dataBindings = noSource.dataBindings.filter((b) => b.alias !== "input_source");
-      expect(resolveWidgetPresentation(makeWidget(), noSource, t)!.state.primary).toBe("ON");
+      expect(resolveWidgetPresentation(makeWidget(), noSource, t)!.state.primary).toBe("On");
 
       const off = makeTv();
       off.dataBindings[0].value = false;
-      expect(resolveWidgetPresentation(makeWidget(), off, t)!.state.primary).toBe("OFF");
+      expect(resolveWidgetPresentation(makeWidget(), off, t)!.state.primary).toBe("Off");
     });
 
     it("finds the power order by category, so a TV bound under alias `state` keeps its toggle (#932)", () => {
@@ -216,7 +216,7 @@ describe("resolveWidgetPresentation", () => {
         computedData: [{ alias: "runtime_daily", value: 5400, lastUpdated: "2026-01-01T00:00:00Z" }],
       });
       const p = resolveWidgetPresentation(makeWidget(), eq, t);
-      expect(p!.state.secondary).toEqual(["1h 30m"]);
+      expect(p!.state.secondary?.map((s) => s.replace(/[\u00A0\u202F]/g, " "))).toEqual(["1 h 30"]);
     });
 
     it("omits the runtime line when runtime_daily is absent", () => {
@@ -280,8 +280,9 @@ describe("resolveWidgetPresentation", () => {
 
 describe("formatRuntime", () => {
   it("formats seconds, minutes and hours compactly", () => {
-    expect(formatRuntime(45)).toBe("45s");
-    expect(formatRuntime(720)).toBe("12m");
-    expect(formatRuntime(5400)).toBe("1h 30m");
+    const runtime = (v: number) => formatRuntime(v).replace(/[\u00A0\u202F]/g, " ");
+    expect(runtime(45)).toBe("45 s");
+    expect(runtime(720)).toBe("12 min");
+    expect(runtime(5400)).toBe("1 h 30");
   });
 });

@@ -111,7 +111,7 @@ export function PluginsPage() {
 
   if (loading) {
     return (
-      <div className="p-6 flex items-center justify-center py-20">
+      <div className="px-4 sm:px-6 flex items-center justify-center py-20">
         <Loader2 size={20} className="animate-spin text-text-tertiary" />
       </div>
     );
@@ -571,9 +571,9 @@ function PluginRow({
               <>
                 <StatusBadge status={plugin.status} />
                 <span className="text-[11px] text-text-tertiary truncate">
-                  {plugin.deviceCount} {t("plugins.devices")}
+                  {t("integrations.deviceCount", { count: plugin.deviceCount })}
                   {plugin.offlineDeviceCount > 0 && (
-                    <span className="text-warning ml-1">({plugin.offlineDeviceCount} off)</span>
+                    <span className="text-warning ml-1">{t("integrations.offlineCount", { count: plugin.offlineDeviceCount })}</span>
                   )}
                 </span>
               </>
@@ -851,7 +851,7 @@ function StoreRow({
         </p>
         {manifest.author && (
           <span className="text-[11px] text-text-tertiary">
-            {t("plugins.author")}: {manifest.author}
+            {t("plugins.author")}{t("common.colon")}{manifest.author}
           </span>
         )}
         </div>

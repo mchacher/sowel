@@ -70,20 +70,20 @@ describe("PvForecastPanel (monitoring only, spec 163)", () => {
   it("renders the monitoring card with the declared peak power", async () => {
     await renderPanel(response());
     expect(await screen.findByText(/expected production/i)).toBeTruthy();
-    expect(screen.getByText(/4000 Wc declared/i)).toBeTruthy();
+    expect(screen.getByText(/4,000 Wc declared/i)).toBeTruthy();
   });
 
   it("links the declared figure to Settings -> Energy for admins", async () => {
     setRole("admin");
     await renderPanel(response());
-    const link = (await screen.findByText(/4000 Wc declared/i)).closest("a");
+    const link = (await screen.findByText(/4,000 Wc declared/i)).closest("a");
     expect(link).toBeTruthy();
     expect(link?.getAttribute("href")).toBe("/settings?tab=energy");
   });
 
   it("keeps the declared figure plain text for non-admins", async () => {
     await renderPanel(response());
-    const figure = await screen.findByText(/4000 Wc declared/i);
+    const figure = await screen.findByText(/4,000 Wc declared/i);
     expect(figure.closest("a")).toBeNull();
   });
 

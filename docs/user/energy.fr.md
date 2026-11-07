@@ -85,13 +85,13 @@ Dès qu'un sous-compteur est configuré, le bouton **Par usage** apparaît sur l
 
 La barre latérale regroupe les vues énergie sous **Énergie** :
 
-- **Live** : flux instantané entre réseau, production et consommation maison
+- **En direct** : flux instantané entre réseau, production et consommation maison
 - **Consommation** : consommation historique avec répartition HP/HC et autoconsommation
 - **Production** : production solaire historique avec répartition autoconsommation / injection
 
-### Vue Live
+### Vue En direct
 
-La vue Live affiche ce qui se passe en temps réel — valeurs de puissance mises à jour en continu via WebSocket.
+La vue En direct affiche ce qui se passe en temps réel — valeurs de puissance mises à jour en continu via WebSocket.
 
 ![Flux énergétique en temps réel](../screenshots/energy-live-fr.png)
 
@@ -269,7 +269,7 @@ La page Énergie choisit le bucket selon la période :
 - **Vue Jour** pour les jours plus anciens : interroge le bucket horaire
 - **Mois / Année** : interroge le bucket journalier pour des requêtes rapides sur longue plage
 
-L'agrégateur garde aussi en mémoire les cumuls (heure, jour, mois, année) que la vue Live et les widgets de la page Maison lisent directement, rafraîchis à chaque nouveau tick d'énergie.
+L'agrégateur garde aussi en mémoire les cumuls (heure, jour, mois, année) que la vue En direct et les widgets de la page Maison lisent directement, rafraîchis à chaque nouveau tick d'énergie.
 
 ## Dépannage
 

@@ -58,16 +58,16 @@ describe("ElectricalMeteringPanel — stale readings (#839)", () => {
     render(<ElectricalMeteringPanel equipment={meter(10)} />);
 
     expect(screen.getByText("1.2")).toBeTruthy();
-    expect(screen.getByText("231.0")).toBeTruthy();
-    expect(screen.getByText("5.40")).toBeTruthy();
+    expect(screen.getByText("231")).toBeTruthy();
+    expect(screen.getByText("5.4")).toBeTruthy();
   });
 
   it("blanks the whole group once the power reading has aged", () => {
     render(<ElectricalMeteringPanel equipment={meter(940)} />);
 
     expect(screen.queryByText("1.2")).toBeNull();
-    expect(screen.queryByText("231.0")).toBeNull();
-    expect(screen.queryByText("5.40")).toBeNull();
+    expect(screen.queryByText("231")).toBeNull();
+    expect(screen.queryByText("5.4")).toBeNull();
     expect(screen.getAllByText("—").length).toBe(3);
     expect(screen.getAllByText(/reading outdated/).length).toBe(3);
   });
@@ -84,7 +84,7 @@ describe("ElectricalMeteringPanel — stale readings (#839)", () => {
 
     render(<ElectricalMeteringPanel equipment={eq} />);
 
-    expect(screen.getByText("231.0")).toBeTruthy();
-    expect(screen.queryByText("5.40")).toBeNull();
+    expect(screen.getByText("231")).toBeTruthy();
+    expect(screen.queryByText("5.4")).toBeNull();
   });
 });

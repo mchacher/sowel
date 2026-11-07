@@ -8,6 +8,7 @@
  */
 
 import type { EquipmentWithDetails } from "../../types";
+import { formatPower } from "../../lib/format";
 
 export interface PhaseValue {
   n: number;
@@ -31,8 +32,7 @@ export function extractPhases(equipments: EquipmentWithDetails[]): PhaseValue[] 
     .map(([n, power]) => ({ n, power }));
 }
 
-export function formatPhasePower(value: number): { num: string; unit: "W" | "kW" } {
-  const a = Math.abs(value);
-  if (a < 1000) return { num: String(Math.round(a / 5) * 5), unit: "W" };
-  return { num: (a / 1000).toFixed(1), unit: "kW" };
+/** A phase's power, unsigned: « 270 W » (to the nearest 5), « 1,2 kW ». */
+export function formatPhasePower(value: number, locale?: string): string {
+  return formatPower(Math.abs(value), { step: 5, locale });
 }

@@ -6,6 +6,7 @@ import { ZoneTree } from "../components/zones/ZoneTree";
 import { ZoneForm, flattenZoneTree } from "../components/zones/ZoneForm";
 import { Home, Loader2, Plus } from "lucide-react";
 import { useWsSubscription } from "../hooks/useWsSubscription";
+import { PageHeader, PageHeaderButton } from "../components/layout/PageHeader";
 
 export function ZonesPage() {
   useWsSubscription(["zones"]);
@@ -26,37 +27,27 @@ export function ZonesPage() {
   const zoneCount = countZones(tree);
 
   return (
-    <div className="p-6">
-      {/* Page header */}
-      <div className="flex items-center justify-between mb-6">
-        <div>
-          <h1>
-            {t("zones.title")}
-          </h1>
-          <p className="text-[13px] text-text-secondary mt-0.5">
-            {zoneCount === 0
-              ? t("zones.subtitle")
-              : t("zones.count", { count: zoneCount })}
-          </p>
-        </div>
+    <div className="p-4 sm:p-6">
+      <PageHeader
+        title={t("zones.title")}
+        subtitle={zoneCount === 0 ? t("zones.subtitle") : t("zones.count", { count: zoneCount })}
+        actions={
+          <>
+            {isAdmin && (
+              <PageHeaderButton
+                icon={Plus}
+                label={t("zones.addZone")}
+                onClick={() => { setDefaultParentId(null); setShowForm(true); }}
+              />
+            )}
 
-        <div className="flex items-center gap-3">
-          {isAdmin && (
-          <button
-            onClick={() => { setDefaultParentId(null); setShowForm(true); }}
-            className="flex items-center gap-2 px-4 py-2 text-[13px] font-medium text-white bg-primary rounded-[6px] hover:bg-primary-hover transition-colors duration-150"
-          >
-            <Plus size={16} strokeWidth={1.5} />
-            {t("zones.addZone")}
-          </button>
-          )}
-
-          <div className="flex items-center gap-2 px-3 py-1.5 rounded-[6px] bg-primary-light text-primary">
-            <Home size={16} strokeWidth={1.5} />
-            <span className="text-[13px] font-medium">{zoneCount}</span>
-          </div>
-        </div>
-      </div>
+            <div className="hidden sm:flex items-center gap-2 px-3 py-1.5 rounded-[6px] bg-primary-light text-primary">
+              <Home size={16} strokeWidth={1.5} />
+              <span className="text-[13px] font-medium">{zoneCount}</span>
+            </div>
+          </>
+        }
+      />
 
       {/* Content */}
       {loading ? (

@@ -1,5 +1,6 @@
 import type { EquipmentWithDetails, OrderBindingWithDetails, OrderCategory } from "../../../types";
 import { findDataByCategory, findOrderByCategory } from "../../equipments/bindingUtils";
+import { formatDuration } from "../../../lib/format";
 
 // Spec 149 — shared binding lookups for the presentation resolvers.
 // These unify the 7 hand-rolled copies that had drifted across the desktop
@@ -54,11 +55,7 @@ export function isOnFromStateBinding(equipment: EquipmentWithDetails): boolean {
   );
 }
 
-/** Format a daily runtime in seconds as a compact string (45s, 12m, 1h 05m). */
+/** A daily runtime in seconds, by the shared duration rule (« 45 s », « 12 min », « 1 h 05 »). */
 export function formatRuntime(seconds: number): string {
-  if (seconds < 60) return `${seconds}s`;
-  if (seconds < 3600) return `${Math.floor(seconds / 60)}m`;
-  const h = Math.floor(seconds / 3600);
-  const m = Math.floor((seconds % 3600) / 60);
-  return `${h}h ${String(m).padStart(2, "0")}m`;
+  return formatDuration(seconds);
 }

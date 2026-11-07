@@ -3,6 +3,7 @@ import { Zap, Clock, Calendar, CalendarDays, CalendarRange } from "lucide-react"
 import type { ComputedDataEntry, EquipmentStatus, EquipmentStatusReason } from "../../types";
 import { EquipmentStatusBadge } from "./EquipmentStatusBadge";
 import { formatRelative } from "../../lib/format-relative";
+import { formatEnergyParts } from "../../lib/format";
 
 interface EnergyDataPanelProps {
   computedData: ComputedDataEntry[];
@@ -26,8 +27,7 @@ interface EnergyCumul {
 }
 
 function formatEnergy(wh: number): { value: string; unit: string } {
-  if (wh >= 1000) return { value: (wh / 1000).toFixed(2), unit: "kWh" };
-  return { value: String(Math.round(wh)), unit: "Wh" };
+  return formatEnergyParts(wh / 1000, { unit: "auto" });
 }
 
 

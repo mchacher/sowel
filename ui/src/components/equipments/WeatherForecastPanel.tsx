@@ -11,6 +11,7 @@ import {
   CONFIDENCE_STYLES,
   type ForecastDay,
 } from "./weatherForecastUtils";
+import { formatNumber, formatPercent, formatTemperature, formatWithUnit } from "../../lib/format";
 
 interface WeatherForecastPanelProps {
   bindings: DataBindingWithValue[];
@@ -80,7 +81,7 @@ function ForecastDayCard({ day, locale }: { day: ForecastDay; locale: string }) 
       {day.tempMax !== null && (
         <div className="flex items-baseline gap-0.5">
           <span className="text-[22px] font-bold font-mono text-text tabular-nums leading-none">
-            {Math.round(day.tempMax)}
+            {formatNumber(day.tempMax, { decimals: 0 })}
           </span>
           <span className="text-[13px] text-text-tertiary">&deg;C</span>
         </div>
@@ -90,7 +91,7 @@ function ForecastDayCard({ day, locale }: { day: ForecastDay; locale: string }) 
       {day.tempMin !== null && (
         <div className="flex items-baseline gap-0.5">
           <span className="text-[15px] font-medium font-mono text-text-secondary tabular-nums leading-none">
-            {Math.round(day.tempMin)}
+            {formatNumber(day.tempMin, { decimals: 0 })}
           </span>
           <span className="text-[11px] text-text-tertiary">&deg;C</span>
         </div>
@@ -101,7 +102,7 @@ function ForecastDayCard({ day, locale }: { day: ForecastDay; locale: string }) 
         <div className="flex items-center gap-1 mt-1">
           <Droplets size={13} strokeWidth={1.5} className="text-primary" />
           <span className="text-[12px] text-text-secondary tabular-nums font-mono">
-            {Math.round(day.rainProb)}%
+            {formatPercent(day.rainProb)}
           </span>
         </div>
       )}
@@ -111,7 +112,7 @@ function ForecastDayCard({ day, locale }: { day: ForecastDay; locale: string }) 
         <div className="flex items-center gap-1">
           <Wind size={13} strokeWidth={1.5} className="text-text-tertiary" />
           <span className="text-[12px] text-text-secondary tabular-nums font-mono">
-            {Math.round(day.windGusts)} km/h
+            {formatWithUnit(day.windGusts, "km/h")}
           </span>
         </div>
       )}
@@ -128,7 +129,7 @@ function ForecastDayCard({ day, locale }: { day: ForecastDay; locale: string }) 
             title={
               day.tempMaxSpread !== null && day.tempMaxSpread > 0
                 ? t("equipments.forecast.confidenceHint", {
-                    spread: day.tempMaxSpread.toFixed(1),
+                    spread: formatTemperature(day.tempMaxSpread),
                   })
                 : undefined
             }

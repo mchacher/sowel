@@ -46,7 +46,7 @@ export function ModesPage() {
 
   if (error) {
     return (
-      <div className="p-6">
+      <div className="p-4 sm:p-6">
         <div className="flex flex-col items-center justify-center py-20 text-center">
           <div className="w-16 h-16 rounded-full bg-error/10 flex items-center justify-center mb-4">
             <AlertCircle size={28} strokeWidth={1.5} className="text-error" />
@@ -68,7 +68,7 @@ export function ModesPage() {
     <div className="p-4 sm:p-6">
       {/* Header */}
       <div className="flex items-center justify-between mb-4 sm:mb-6">
-        <div className="hidden sm:block">
+        <div className="hidden lg:block">
           <h1>
             {t("modes.title")}
           </h1>
@@ -192,7 +192,7 @@ function ModeCard({ mode, calendarSlots, onClick }: { mode: ModeWithDetails; cal
       <button
         onClick={handleToggle}
         disabled={toggling}
-        className="relative w-9 h-5 rounded-full transition-colors duration-200 disabled:opacity-50 flex-shrink-0 cursor-pointer disabled:cursor-default"
+        className="hit-44 relative w-9 h-5 rounded-full transition-colors duration-200 disabled:opacity-50 flex-shrink-0 cursor-pointer disabled:cursor-default"
         style={{ backgroundColor: mode.active ? "var(--color-primary)" : "var(--color-border)" }}
         title={mode.active ? t("modes.deactivate") : t("modes.activate")}
         role="switch"

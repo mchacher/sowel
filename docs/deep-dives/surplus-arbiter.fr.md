@@ -16,7 +16,7 @@ La réponse de Sowel est un arbitre unique : l'**arbitre de surplus**. Les autom
 
 ### Ce que vous voyez
 
-La page Énergie › Live répond d'un coup d'œil à « qui reçoit le surplus en ce moment, et pourquoi » :
+La page Énergie › En direct répond d'un coup d'œil à « qui reçoit le surplus en ce moment, et pourquoi » :
 
 ![La carte d'arbitrage du surplus : états courants, frise du jour et journal des décisions](../screenshots/arbiter-live-fr.png)
 
@@ -63,7 +63,7 @@ compteur ──► surplus lissé ──► boucle de décision ──► octroi
    demandes (recettes, profils) ──────┘
 ```
 
-Les décisions sont des événements sur le bus du moteur, persistées dans la frise, poussées à l'UI par WebSocket, et journalisées. La carte Live est un pur modèle de lecture : tout ce qu'elle montre est ce que l'arbitre a réellement fait, pas une estimation parallèle.
+Les décisions sont des événements sur le bus du moteur, persistées dans la frise, poussées à l'UI par WebSocket, et journalisées. La carte En direct est un pur modèle de lecture : tout ce qu'elle montre est ce que l'arbitre a réellement fait, pas une estimation parallèle.
 
 ### Ce que « surplus » veut dire : un seul nombre, mesuré
 

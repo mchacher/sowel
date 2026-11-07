@@ -1,5 +1,6 @@
 import type { EquipmentWithDetails } from "../../types";
 import { resolvePowerReading } from "../../lib/power-reading";
+import { formatPower, formatWithUnit } from "../../lib/format";
 
 export interface SolarWidgetState {
   producing: boolean;
@@ -60,13 +61,11 @@ export function solarWidgetState(
     return { producing: false, lines: [t("solar.standby")], outdatedSince: null };
   }
 
-  const lines: string[] = [
-    powerW >= 1000 ? `${(powerW / 1000).toFixed(2)} kW` : `${Math.round(powerW)} W`,
-  ];
+  const lines: string[] = [formatPower(powerW)];
   const current = num("current");
-  if (current !== null) lines.push(`${current.toFixed(1)} A`);
+  if (current !== null) lines.push(formatWithUnit(current, "A"));
   const voltage = num("voltage");
-  if (voltage !== null) lines.push(`${voltage.toFixed(1)} V`);
+  if (voltage !== null) lines.push(formatWithUnit(voltage, "V"));
 
   return { producing: true, lines, outdatedSince: null };
 }
