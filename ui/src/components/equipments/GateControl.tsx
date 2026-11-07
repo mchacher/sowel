@@ -3,7 +3,8 @@ import { useTranslation } from "react-i18next";
 import { DoorOpen, DoorClosed, HelpCircle, Loader2 } from "lucide-react";
 import type { EquipmentWithDetails } from "../../types";
 import { findOrderByCategory } from "./bindingUtils";
-import { gateStateOf } from "../dashboard/gate-confirm";
+import { gateStateOf, gateValueLabel } from "../dashboard/gate-confirm";
+import { useGuardedAction } from "../../hooks/useGuardedAction";
 
 interface GateControlProps {
   equipment: EquipmentWithDetails;
@@ -14,6 +15,9 @@ interface GateControlProps {
 export function GateControl({ equipment, onExecuteOrder, compact }: GateControlProps) {
   const { t } = useTranslation();
   const [executing, setExecuting] = useState(false);
+  // Spec 196 — the Maison row, the equipment list and the equipment page actuate on
+  // one press too: a guarded gate asks first.
+  const { guardGate, element: confirmElement } = useGuardedAction();
 
   // Category first, like the dashboard tile and the mobile tap (spec 110): a gate
   // bound under another alias than `command` used to get a button on the dashboard
@@ -23,14 +27,18 @@ export function GateControl({ equipment, onExecuteOrder, compact }: GateControlP
   const enumValues = commandBinding?.enumValues ?? [];
   const gateState = gateStateOf(equipment);
 
-  const handleCommand = async (value?: string) => {
-    if (executing || !commandBinding) return;
+  const send = async (value: string | null) => {
+    if (!commandBinding) return;
     setExecuting(true);
     try {
-      await onExecuteOrder(commandBinding.alias, value ?? null);
+      await onExecuteOrder(commandBinding.alias, value);
     } finally {
       setExecuting(false);
     }
+  };
+  const handleCommand = (value?: string) => {
+    if (executing || !commandBinding) return;
+    guardGate(equipment, value ?? null, () => void send(value ?? null));
   };
 
   if (compact) {
@@ -67,6 +75,7 @@ export function GateControl({ equipment, onExecuteOrder, compact }: GateControlP
             }
           </button>
         )}
+        {confirmElement}
       </div>
     );
   }
@@ -115,7 +124,7 @@ export function GateControl({ equipment, onExecuteOrder, compact }: GateControlP
                 `}
               >
                 <DoorOpen size={16} strokeWidth={1.5} />
-                {executing ? "..." : val}
+                {executing ? "..." : gateValueLabel(val, t)}
               </button>
             ))
           ) : (
@@ -136,6 +145,7 @@ export function GateControl({ equipment, onExecuteOrder, compact }: GateControlP
           )}
         </div>
       )}
+      {confirmElement}
     </div>
   );
 }

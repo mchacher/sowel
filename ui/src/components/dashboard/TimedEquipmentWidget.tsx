@@ -6,6 +6,7 @@ import { TapGlyph } from "./TapGlyph";
 import { armTimedCommand, cancelTimedCommand } from "../../api";
 import { TimedCountdown } from "../equipments/TimedCountdown";
 import { useEquipments } from "../../store/useEquipments";
+import { useGuardedAction } from "../../hooks/useGuardedAction";
 import type { EquipmentWithDetails } from "../../types";
 
 /**
@@ -42,6 +43,10 @@ export function TimedEquipmentWidget({
   // arm a fresh window that re-opens it later. The tile says what just
   // happened until the next press.
   const [gaveUp, setGaveUp] = useState(false);
+  // Spec 196 — the first press actuates the gate, so a guarded gate asks first.
+  // Not the presses after it (they extend or stop the window, nothing is sent)
+  // nor the cancel: the confirmation precedes the arming, not its undoing.
+  const { guardGate, element: confirmElement } = useGuardedAction();
 
   const configured = equipment.timedCommand;
   const running = equipment.timedAction;
@@ -75,7 +80,12 @@ export function TimedEquipmentWidget({
 
   // A second press extends the window (FR-5, nothing dispatched), which is what
   // somebody standing in front of an open gate means by pressing again.
-  const arm = () => run(() => armTimedCommand(equipment.id));
+  const arm = () => {
+    const press = () => void run(() => armTimedCommand(equipment.id));
+    if (running || busy || editMode || inert) return press();
+    const value = configured?.value;
+    guardGate(equipment, typeof value === "string" ? value : null, press, sublabel);
+  };
   const cancel = () => run(() => cancelTimedCommand(equipment.id, true));
 
   // Spec 178 — what the NEXT press does, in words, because with a ladder the
@@ -89,78 +99,81 @@ export function TimedEquipmentWidget({
     : t("dashboard.timed.arm", { count: minutes });
 
   return (
-    <WidgetCard
-      label={label}
-      sublabel={
-        sublabel ?? (configured ? t("dashboard.timed.sublabel", { count: minutes }) : undefined)
-      }
-      onClick={!running && !editMode && !inert ? arm : undefined}
-      // Spec 196 — on a phone the corner says a tap acts at once; the desktop
-      // tile keeps its explicit arm button as the only cue.
-      corner={
-        !running && !editMode && !inert ? <TapGlyph kind="now" className="sm:hidden" /> : undefined
-      }
-    >
-      {/* Four things do not fit in the shell's 160 px on a phone. Of title,
-          state and controls, the title is truncated, the state is the answer
-          and the controls are the point — so the illustration is what goes,
-          and only at that width. Its row stays: flexible (`flex-1 min-h-0`),
-          it absorbs the slack on a 240 px desktop tile and collapses to a
-          gap on a phone, while the state and the controls never shrink.
-          Before this the icon held its 40 px, the stack overflowed, and the
-          shell's `overflow-hidden` cut the arm button in half. */}
-      <div className="flex-1 min-h-0 flex items-center justify-center overflow-hidden">
-        {busy ? (
-          <Loader2 size={32} className="hidden sm:block animate-spin text-text-tertiary" />
-        ) : (
-          <TimerReset
-            size={40}
-            strokeWidth={1.5}
-            className="hidden sm:block text-text-tertiary"
-          />
-        )}
-      </div>
+    <>
+      <WidgetCard
+        label={label}
+        sublabel={
+          sublabel ?? (configured ? t("dashboard.timed.sublabel", { count: minutes }) : undefined)
+        }
+        onClick={!running && !editMode && !inert ? arm : undefined}
+        // Spec 196 — on a phone the corner says a tap acts at once; the desktop
+        // tile keeps its explicit arm button as the only cue.
+        corner={
+          !running && !editMode && !inert ? <TapGlyph kind="now" className="sm:hidden" /> : undefined
+        }
+      >
+        {/* Four things do not fit in the shell's 160 px on a phone. Of title,
+            state and controls, the title is truncated, the state is the answer
+            and the controls are the point — so the illustration is what goes,
+            and only at that width. Its row stays: flexible (`flex-1 min-h-0`),
+            it absorbs the slack on a 240 px desktop tile and collapses to a
+            gap on a phone, while the state and the controls never shrink.
+            Before this the icon held its 40 px, the stack overflowed, and the
+            shell's `overflow-hidden` cut the arm button in half. */}
+        <div className="flex-1 min-h-0 flex items-center justify-center overflow-hidden">
+          {busy ? (
+            <Loader2 size={32} className="hidden sm:block animate-spin text-text-tertiary" />
+          ) : (
+            <TimerReset
+              size={40}
+              strokeWidth={1.5}
+              className="hidden sm:block text-text-tertiary"
+            />
+          )}
+        </div>
 
-      <div className="shrink-0 flex justify-center pt-1">
-        {running ? (
-          <span className="text-caption font-medium px-2.5 py-0.5 rounded-full bg-active-bg text-active-ink">
-            <TimedCountdown action={running} />
-          </span>
-        ) : (
-          <span className="text-caption font-medium px-2.5 py-0.5 rounded-full bg-border-light text-text-tertiary text-center">
-            {inert
-              ? t("dashboard.timed.unavailable")
-              : error
-                ? t("dashboard.timed.failed")
-                : gaveUp
-                  ? t("dashboard.timed.gaveUp")
-                  : t("dashboard.timed.idle", { count: minutes })}
-          </span>
-        )}
-      </div>
+        <div className="shrink-0 flex justify-center pt-1">
+          {running ? (
+            <span className="text-caption font-medium px-2.5 py-0.5 rounded-full bg-active-bg text-active-ink">
+              <TimedCountdown action={running} />
+            </span>
+          ) : (
+            <span className="text-caption font-medium px-2.5 py-0.5 rounded-full bg-border-light text-text-tertiary text-center">
+              {inert
+                ? t("dashboard.timed.unavailable")
+                : error
+                  ? t("dashboard.timed.failed")
+                  : gaveUp
+                    ? t("dashboard.timed.gaveUp")
+                    : t("dashboard.timed.idle", { count: minutes })}
+            </span>
+          )}
+        </div>
 
-      <div className="shrink-0 flex justify-center gap-3 pt-1">
-        <button
-          onClick={arm}
-          disabled={busy || editMode || inert}
-          title={nextPress}
-          className={`w-10 h-10 flex items-center justify-center rounded-sm transition-all duration-150 cursor-pointer border border-border bg-surface text-text-secondary hover:border-primary/40 hover:text-primary hover:bg-primary/5 active:scale-[0.97] disabled:opacity-40 disabled:cursor-not-allowed ${
-            running ? "!border-active !text-active-ink !bg-active-bg" : ""
-          }`}
-        >
-          <TimerReset size={16} strokeWidth={1.5} />
-        </button>
-        {running && (
+        <div className="shrink-0 flex justify-center gap-3 pt-1">
           <button
-            onClick={cancel}
-            disabled={busy || editMode}
-            title={t("dashboard.timed.cancel")}
-            className="w-10 h-10 flex items-center justify-center rounded-sm transition-all duration-150 cursor-pointer border border-border bg-surface text-text-secondary hover:border-primary/40 hover:text-primary hover:bg-primary/5 active:scale-[0.97] disabled:opacity-40 disabled:cursor-not-allowed"
+            onClick={arm}
+            disabled={busy || editMode || inert}
+            title={nextPress}
+            className={`w-10 h-10 flex items-center justify-center rounded-sm transition-all duration-150 cursor-pointer border border-border bg-surface text-text-secondary hover:border-primary/40 hover:text-primary hover:bg-primary/5 active:scale-[0.97] disabled:opacity-40 disabled:cursor-not-allowed ${
+              running ? "!border-active !text-active-ink !bg-active-bg" : ""
+            }`}
           >
-            <X size={16} strokeWidth={1.5} />
+            <TimerReset size={16} strokeWidth={1.5} />
           </button>
-        )}
-      </div>
-    </WidgetCard>
+          {running && (
+            <button
+              onClick={cancel}
+              disabled={busy || editMode}
+              title={t("dashboard.timed.cancel")}
+              className="w-10 h-10 flex items-center justify-center rounded-sm transition-all duration-150 cursor-pointer border border-border bg-surface text-text-secondary hover:border-primary/40 hover:text-primary hover:bg-primary/5 active:scale-[0.97] disabled:opacity-40 disabled:cursor-not-allowed"
+            >
+              <X size={16} strokeWidth={1.5} />
+            </button>
+          )}
+        </div>
+      </WidgetCard>
+      {confirmElement}
+    </>
   );
 }

@@ -1,9 +1,8 @@
 import { useEffect, useRef } from "react";
+import { createPortal } from "react-dom";
 import { useTranslation } from "react-i18next";
-import type { EquipmentWithDetails } from "../../types";
 import { BottomSheet } from "./BottomSheet";
 import { SlideToConfirm } from "./SlideToConfirm";
-import { gateConfirmTexts, gateStateOf } from "./gate-confirm";
 
 /**
  * Spec 146 — minimal confirmation sheet for a sensitive action on the mobile
@@ -12,7 +11,8 @@ import { gateConfirmTexts, gateStateOf } from "./gate-confirm";
  *
  * Presentational since spec 171: a recipe tile guards the same physical gate
  * with no equipment of its own to describe it, so the wording comes from the
- * caller. `GateConfirmSheet` below keeps the equipment-shaped call site.
+ * caller (`gatePrompt` words it for a gate). Since spec 196 it is the touch form
+ * of `useGuardedAction`; `ConfirmActionDialog` below is the pointer form.
  */
 export function ConfirmActionSheet({
   title,
@@ -71,33 +71,74 @@ export function ConfirmActionSheet({
   );
 }
 
-/** Spec 146 wording: the gate's name, its zone and the state it reads now; spec 196: the
- * title and the slide say what the tap will do from that state. */
-export function GateConfirmSheet({
-  equipment,
-  zoneName,
+/**
+ * Spec 196 (slice P) — the same question for a fine pointer: a slide is awkward
+ * with a mouse, and the second click is what stops an accidental first one. Two
+ * buttons, the action named on the primary one. Enter confirms (the primary
+ * button has the focus), Escape and a click outside cancel.
+ *
+ * Rendered into `document.body`, like the other dialogs: a tile's opacity and
+ * stacking must not reach it. Its events still bubble through the React tree,
+ * which is why `useGuardedAction` wraps it in an element that stops them.
+ */
+export function ConfirmActionDialog({
+  title,
+  subtitle,
+  confirmLabel,
   onConfirm,
   onClose,
 }: {
-  equipment: EquipmentWithDetails;
-  zoneName?: string;
+  title: string;
+  subtitle?: string;
+  confirmLabel: string;
   onConfirm: () => void;
   onClose: () => void;
 }) {
   const { t } = useTranslation();
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") onClose();
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [onClose]);
 
-  const gateState = gateStateOf(equipment);
-  const { title, slideLabel } = gateConfirmTexts(gateState, equipment.name, t);
-  const subtitleParts = [zoneName, t(`controls.gate.${gateState}`)].filter(Boolean);
-
-  return (
-    <ConfirmActionSheet
-      title={title}
-      subtitle={subtitleParts.length > 0 ? subtitleParts.join(" · ") : undefined}
-      slideLabel={slideLabel}
-      confirmedLabel={t("controls.gate.actuated")}
-      onConfirm={onConfirm}
-      onClose={onClose}
-    />
+  return createPortal(
+    <div
+      className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4"
+      onClick={onClose}
+    >
+      <div
+        role="alertdialog"
+        aria-modal="true"
+        aria-label={title}
+        className="bg-surface rounded-lg p-5 w-full max-w-sm shadow-lg"
+        onClick={(e) => e.stopPropagation()}
+      >
+        <h3 className="text-lead font-semibold text-text">{title}</h3>
+        {subtitle && <p className="text-caption text-text-tertiary mt-1">{subtitle}</p>}
+        <div className="flex justify-end gap-2 mt-5">
+          <button
+            type="button"
+            onClick={onClose}
+            className="px-3 py-2 text-small font-medium text-text-secondary border border-border rounded-sm hover:bg-border-light transition-colors cursor-pointer"
+          >
+            {t("common.cancel")}
+          </button>
+          <button
+            type="button"
+            autoFocus
+            onClick={() => {
+              onClose();
+              onConfirm();
+            }}
+            className="px-4 py-2 text-small font-medium bg-primary-fill text-white rounded-sm hover:bg-primary-fill-hover transition-colors cursor-pointer"
+          >
+            {confirmLabel}
+          </button>
+        </div>
+      </div>
+    </div>,
+    document.body,
   );
 }

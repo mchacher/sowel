@@ -7,7 +7,7 @@
  */
 
 import { describe, it, expect, vi, beforeEach, afterEach, type Mock } from "vitest";
-import { act, fireEvent, render, screen } from "../../test-utils";
+import { act, fireEvent, mockPointer, render, screen } from "../../test-utils";
 import { RecipeTile } from "./RecipeTile";
 import { useRecipes } from "../../store/useRecipes";
 import { useEquipments } from "../../store/useEquipments";
@@ -341,12 +341,18 @@ describe("RecipeTile — the whole card acts (spec 171)", () => {
   describe("with tile.confirm", () => {
     const CONFIRM_TILE = { icon: "Truck", actions: ["set_mode"], confirm: true };
     let widthSpy: ReturnType<typeof vi.spyOn>;
+    let restorePointer: () => void;
 
     beforeEach(() => {
       // jsdom lays nothing out; the slide track needs a width to have a travel.
       widthSpy = vi.spyOn(HTMLElement.prototype, "clientWidth", "get").mockReturnValue(260);
+      // A phone: the guard takes the form of the slide (spec 196, by pointer).
+      restorePointer = mockPointer("coarse");
     });
-    afterEach(() => widthSpy.mockRestore());
+    afterEach(() => {
+      widthSpy.mockRestore();
+      restorePointer();
+    });
 
     /** Drag the knob the full travel of a 260 px track. */
     function slide() {
@@ -462,14 +468,23 @@ describe("RecipeTile — the whole card acts (spec 171)", () => {
       expect(sendAction).not.toHaveBeenCalled();
     });
 
-    it("acts directly on desktop — a mouse click is deliberate", () => {
+    // Spec 196 — the desktop click acted straight away; with a mouse the card now
+    // asks in a two-button dialog, the second click being the deliberate one.
+    it("asks in a dialog on desktop, and acts on the second click", () => {
+      restorePointer();
+      restorePointer = mockPointer("fine");
       seed({ tile: CONFIRM_TILE, state: { mode: "idle" } });
       render(<RecipeTile widget={WIDGET} />);
 
       fireEvent.click(cardBody());
 
-      expect(screen.queryByText("Switch to “Livreur”?")).toBeNull();
+      expect(screen.getByRole("alertdialog", { name: "Switch to “Livreur”?" })).toBeTruthy();
+      expect(screen.queryByRole("button", { name: "Slide to confirm" })).toBeNull();
+      expect(sendAction).not.toHaveBeenCalled();
+
+      fireEvent.click(screen.getByRole("button", { name: "Confirm" }));
       expect(sendAction).toHaveBeenCalledWith("ri1", "set_mode", { mode: "short" });
+      expect(screen.queryByRole("alertdialog")).toBeNull();
     });
   });
 });

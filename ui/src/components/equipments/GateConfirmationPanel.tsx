@@ -6,8 +6,10 @@ import type { EquipmentWithDetails } from "../../types";
 
 /**
  * Spec 146 — opt-in "confirmation before action" toggle for a gate equipment.
- * Off by default. When on, the mobile dashboard requires a slide-to-confirm
- * before actuating (protects against an accidental one-tap, issue #320).
+ * Off by default. When on, every UI path that actuates the gate in one press
+ * asks first — a slide on touch, a dialog with a pointer (spec 196, which
+ * extended spec 146's mobile dashboard to every surface). Protects against an
+ * accidental one-tap, issue #320.
  * Admin-only, gate-only — the caller gates the mount.
  */
 export function GateConfirmationPanel({

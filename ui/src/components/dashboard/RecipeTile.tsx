@@ -18,7 +18,7 @@ import {
   type LucideIcon,
 } from "lucide-react";
 import { WidgetCard } from "./WidgetCard";
-import { ConfirmActionSheet } from "./ConfirmActionSheet";
+import { useGuardedAction } from "../../hooks/useGuardedAction";
 import { useCardPrimaryAction } from "./card-primary-action";
 import { tileNeedsConfirm } from "./recipe-tile-confirm";
 import { TapGlyph } from "./TapGlyph";
@@ -70,7 +70,8 @@ const TILE_ICONS: Record<string, LucideIcon> = {
  *
  * Spec 171 — when the tile renders exactly one control, the whole card fires
  * it, like every other widget on this Dashboard. A recipe that moves something
- * physical is guarded on mobile: the card asks for a slide before it acts. Who
+ * physical is guarded: the card asks before it acts — a slide on touch, a dialog
+ * with a pointer since spec 196 (it was mobile only before). Who
  * decides that is resolved by `tileNeedsConfirm` — the equipment named by
  * `tile.confirmFrom` first, so the answer is given once and every surface that
  * actuates that gate asks the same question, then the instance's own parameter
@@ -97,7 +98,8 @@ export function RecipeTile({
   const sendAction = useRecipes((s) => s.sendAction);
   // Above the early return: hooks cannot hide behind a condition.
   const [sending, setSending] = useState(false);
-  const [confirming, setConfirming] = useState(false);
+  // Spec 196 — the card asks at every width: the slide on touch, a dialog with a pointer.
+  const { guard, element: confirmElement } = useGuardedAction();
 
   const instance = instances.find((i) => i.id === widget.recipeInstanceId);
   const recipe = instance ? recipes.find((r) => r.id === instance.recipeId) : undefined;
@@ -200,29 +202,24 @@ export function RecipeTile({
   const primary =
     !cycle || editMode
       ? undefined
-      : () => {
-          const guarded =
-            isMobile &&
+      : () =>
+          guard(
             tileNeedsConfirm(tile, instance.params, (id) =>
               useEquipments.getState().equipments.find((e) => e.id === id),
-            );
-          if (guarded) setConfirming(true);
-          else fire();
-        };
-
-  const confirmSheet =
-    confirming && only && cycle ? (
-      <ConfirmActionSheet
-        title={t("dashboard.recipeTile.confirmTitle", {
-          mode: cycleOptionLabel(recipe, only, cycle.next, lang, t),
-        })}
-        subtitle={[title, typeof summary === "string" ? summary : ""].filter(Boolean).join(" · ")}
-        slideLabel={t("dashboard.recipeTile.slideToConfirm")}
-        confirmedLabel={t("dashboard.recipeTile.confirmed")}
-        onConfirm={fire}
-        onClose={() => setConfirming(false)}
-      />
-    ) : null;
+            ),
+            () => ({
+              title: t("dashboard.recipeTile.confirmTitle", {
+                mode: only ? cycleOptionLabel(recipe, only, cycle.next, lang, t) : "",
+              }),
+              subtitle:
+                [title, typeof summary === "string" ? summary : ""].filter(Boolean).join(" · ") ||
+                undefined,
+              slideLabel: t("dashboard.recipeTile.slideToConfirm"),
+              confirmLabel: t("common.confirm"),
+              confirmedLabel: t("dashboard.recipeTile.confirmed"),
+            }),
+            fire,
+          );
 
   const controls =
     actions.length > 0 ? (
@@ -260,20 +257,23 @@ export function RecipeTile({
           {summaryLine}
           {controls}
         </MobileShell>
-        {confirmSheet}
+        {confirmElement}
       </>
     );
   }
 
   return (
-    <WidgetCard label={title} className={dim} onClick={primary}>
-      <div className="flex-1 flex flex-col items-center justify-center gap-2 min-h-0">
-        {icon}
-        {countdown}
-        {summaryLine}
-      </div>
-      {controls}
-    </WidgetCard>
+    <>
+      <WidgetCard label={title} className={dim} onClick={primary}>
+        <div className="flex-1 flex flex-col items-center justify-center gap-2 min-h-0">
+          {icon}
+          {countdown}
+          {summaryLine}
+        </div>
+        {controls}
+      </WidgetCard>
+      {confirmElement}
+    </>
   );
 }
 

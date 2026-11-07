@@ -289,7 +289,7 @@ Specs are grouped by theme and annotated with status:
 | 144 | States and measurements on one Analyse chart   | ✅     | Analyse charts mix actuator states (`light_state`, `cover_state`…, now the `states` family) with measurements on a right-hand `[0, 1]` step axis; `familiesCompatible()` relaxes spec 118's F7 lock; UI-only. Shipped in v1.42.0. |
 | 145 | Series colours and Y axes on the Analyse chart | ✅     | Analyse charts get persisted series colours (`SavedChartSeriesConfig.color`), a fit-to-data Y axis toggle (`SavedChartConfig.yAxisFit`) and a split left/right axis by unit for two quantities; UI-only. Shipped in v1.43.0.      |
 
-| 146 | Confirmation before a sensitive gate action | ✅ | Shipped. See `specs/146-gate-action-confirmation/`. |
+| 146 | Confirmation before a sensitive gate action | ✅ | Shipped. See `specs/146-gate-action-confirmation/`. Amended by spec 196: every UI path that actuates the gate asks. |
 | 147 | Persist the activity feed and the arbiter decision journal | ✅ | Shipped. See `specs/147-persist-activity-arbiter-history/`. |
 | 148 | Energy arbiter UI polish (design-system + redesigned timeline) | ✅ | Shipped. See `specs/148-arbiter-ui-polish/`. |
 | 149 | Dashboard presentation resolver (phase 1) | ✅ | Shipped. See `specs/149-dashboard-presentation-resolver/`. |

@@ -62,6 +62,8 @@ import { ForecastDetailContent } from "./ForecastDetailContent";
 import { RainDetailContent } from "./RainGauge";
 import { isRainOnlyWeather } from "../equipments/rain-summary";
 import { doorWordPill } from "../equipments/door-pill";
+import { useGuardedAction } from "../../hooks/useGuardedAction";
+import { gateStateOf, gateValueLabel } from "./gate-confirm";
 import { doorState, isDoorOpenForCount } from "../../../../src/shared/door-state";
 import { formatNumber, formatPercent, formatTemperature } from "../../lib/format";
 
@@ -177,7 +179,7 @@ export function EquipmentDetailSheet({ widget, equipment, equipmentZone, onExecu
       <BottomSheet open onClose={onClose} title={label}
         icon={customIcon}
       >
-        <GateDetailContent equipment={equipment} onExecuteOrder={execOrder} iconKey={widget.icon} />
+        <GateDetailContent equipment={equipment} onExecuteOrder={execOrder} iconKey={widget.icon} zoneName={equipmentZone} />
       </BottomSheet>
     );
   }
@@ -1478,18 +1480,19 @@ function GateDetailContent({
   equipment,
   onExecuteOrder,
   iconKey,
+  zoneName,
 }: {
   equipment: EquipmentWithDetails;
   onExecuteOrder: (alias: string, value: unknown) => Promise<void>;
   iconKey?: string;
+  zoneName?: string;
 }) {
   const { t } = useTranslation();
   const [executing, setExecuting] = useState<string | null>(null);
+  // Spec 196 — these buttons actuate on one tap too: a guarded gate asks first.
+  const { guardGate, element: confirmElement } = useGuardedAction();
 
-  const stateBinding = equipment.dataBindings.find(
-    (db) => db.category === "gate_state",
-  );
-  const gateState = (stateBinding?.value as string) ?? "unknown";
+  const gateState = gateStateOf(equipment);
   const isOpen = gateState === "open";
 
   // Category-first resolver (spec 110). Aligns with WidgetGrid and
@@ -1501,15 +1504,18 @@ function GateDetailContent({
   );
   const enumValues = commandBinding?.enumValues ?? [];
 
-  const handleCommand = async (value: string | null) => {
-    if (executing || !commandBinding) return;
-    const key = value ?? "command";
-    setExecuting(key);
+  const send = async (value: string | null) => {
+    if (!commandBinding) return;
+    setExecuting(value ?? "command");
     try {
       await onExecuteOrder(commandBinding.alias, value);
     } finally {
       setExecuting(null);
     }
+  };
+  const handleCommand = (value: string | null) => {
+    if (executing || !commandBinding) return;
+    guardGate(equipment, value, () => void send(value), zoneName);
   };
 
   const IconComp = (iconKey && GATE_ICON_MAP[iconKey]) || GateWidgetIcon;
@@ -1547,7 +1553,7 @@ function GateDetailContent({
                 className="h-12 flex items-center justify-center gap-2 rounded-sm text-body font-medium transition-all cursor-pointer border border-border bg-surface text-text-secondary hover:border-primary/40 hover:text-primary hover:bg-primary/5 active:scale-[0.97] disabled:opacity-40"
               >
                 {executing === val ? <Loader2 size={18} className="animate-spin" /> : null}
-                {val}
+                {gateValueLabel(val, t)}
               </button>
             ))
           ) : (
@@ -1562,6 +1568,7 @@ function GateDetailContent({
           )}
         </div>
       )}
+      {confirmElement}
     </div>
   );
 }

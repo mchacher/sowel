@@ -87,6 +87,8 @@ import { renderWidgetStateIcon, shutterLevel } from "./widget-icons";
 import { resolveWidgetPresentation } from "./presentation/resolveWidgetPresentation";
 import { PresentationWidget } from "./presentation/PresentationWidget";
 import { doorWordPill } from "../equipments/door-pill";
+import { useGuardedAction } from "../../hooks/useGuardedAction";
+import { gateActionOf, gateStateOf, gateValueLabel } from "./gate-confirm";
 import { doorState, isDoorOpenForCount } from "../../../../src/shared/door-state";
 
 interface EquipmentWidgetProps {
@@ -962,9 +964,10 @@ function GateEquipmentWidget({
 }) {
   const { t } = useTranslation();
   const [executing, setExecuting] = useState<string | null>(null);
+  // Spec 196 — a guarded gate asks first, by dialog or slide, from the card and its buttons.
+  const { guardGate, element: confirmElement } = useGuardedAction();
 
-  const stateBinding = equipment.dataBindings.find((db) => db.category === "gate_state");
-  const gateState = (stateBinding?.value as string) ?? "unknown";
+  const gateState = gateStateOf(equipment);
   const isOpen = gateState === "open";
 
   // Category-first resolver (spec 110). Matches WidgetGrid's mobile-direct
@@ -982,8 +985,8 @@ function GateEquipmentWidget({
   // (the mobile detail sheet had one button per enum action, the card none).
   const hasMultiAction = hasCommand && enumValues.length > 1 && equipment.enabled;
 
-  const handleCommand = async (value: string | null) => {
-    if (executing || !commandBinding) return;
+  const send = async (value: string | null) => {
+    if (!commandBinding) return;
     setExecuting(value ?? "command");
     try {
       await onExecuteOrder(commandBinding.alias, value);
@@ -991,54 +994,75 @@ function GateEquipmentWidget({
       setExecuting(null);
     }
   };
+  const handleCommand = (value: string | null) => {
+    if (executing || !commandBinding) return;
+    guardGate(equipment, value, () => void send(value), sublabel);
+  };
 
   const IconComp = (iconKey && GATE_ICON_MAP[iconKey]) || GateWidgetIcon;
 
   return (
-    <WidgetCard
-      label={label}
-      sublabel={sublabel}
-      onClick={hasSingleAction && !editMode ? () => handleCommand(null) : undefined}
-    >
-      {/* Icon centered */}
-      <div className="flex-1 flex items-center justify-center">
-        {executing ? (
-          <Loader2 size={32} className="animate-spin text-text-tertiary" />
-        ) : (
-          <IconComp open={isOpen} />
-        )}
-      </div>
-
-      {/* State text */}
-      <div className="flex justify-center mt-auto pt-1">
-        <span
-          className={`text-caption font-medium px-2.5 py-0.5 rounded-full ${
-            // Open and closed are neutral (spec 196): the word says it.
-            isOpen || gateState === "closed"
-              ? "bg-border-light text-text-secondary"
-              : "bg-text-tertiary/10 text-text-tertiary"
-          }`}
-        >
-          {t(`controls.gate.${gateState}`)}
-        </span>
-      </div>
-
-      {/* Multi-action buttons — same actions as the mobile GateDetailContent */}
-      {hasMultiAction && (
-        <div className="flex justify-center flex-wrap gap-2 mt-1 pt-1">
-          {enumValues.map((val) => (
-            <button
-              key={val}
-              onClick={() => handleCommand(val)}
-              disabled={executing !== null}
-              className="h-8 px-2.5 flex items-center justify-center rounded-sm text-micro font-medium transition-all duration-150 cursor-pointer border border-border bg-surface text-text-secondary hover:border-primary/40 hover:text-primary hover:bg-primary/5 active:scale-[0.97] disabled:opacity-40 disabled:cursor-not-allowed"
-            >
-              {val}
-            </button>
-          ))}
+    <>
+      <WidgetCard
+        label={label}
+        sublabel={sublabel}
+        onClick={hasSingleAction && !editMode ? () => handleCommand(null) : undefined}
+      >
+        {/* Icon centered */}
+        <div className="flex-1 flex items-center justify-center">
+          {executing ? (
+            <Loader2 size={32} className="animate-spin text-text-tertiary" />
+          ) : (
+            <IconComp open={isOpen} />
+          )}
         </div>
-      )}
-    </WidgetCard>
+
+        {/* State text */}
+        <div className="flex justify-center mt-auto pt-1">
+          <span
+            className={`text-caption font-medium px-2.5 py-0.5 rounded-full ${
+              // Open and closed are neutral (spec 196): the word says it.
+              isOpen || gateState === "closed"
+                ? "bg-border-light text-text-secondary"
+                : "bg-text-tertiary/10 text-text-tertiary"
+            }`}
+          >
+            {t(`controls.gate.${gateState}`)}
+          </span>
+        </div>
+
+        {/* Spec 196 — the card acts on a click, but a visible button says what it does and
+            gives the keyboard a way in. */}
+        {hasSingleAction && !editMode && (
+          <div className="flex justify-center mt-1 pt-1">
+            <button
+              onClick={() => handleCommand(null)}
+              disabled={executing !== null}
+              className="h-8 px-3 flex items-center justify-center rounded-sm text-caption font-medium transition-all duration-150 cursor-pointer border border-border bg-surface text-text-secondary hover:border-primary/40 hover:text-primary hover:bg-primary/5 active:scale-[0.97] disabled:opacity-40 disabled:cursor-not-allowed"
+            >
+              {t(`controls.gate.action.${gateActionOf(null, gateState)}`)}
+            </button>
+          </div>
+        )}
+
+        {/* Multi-action buttons — same actions as the mobile GateDetailContent */}
+        {hasMultiAction && (
+          <div className="flex justify-center flex-wrap gap-2 mt-1 pt-1">
+            {enumValues.map((val) => (
+              <button
+                key={val}
+                onClick={() => handleCommand(val)}
+                disabled={executing !== null}
+                className="h-8 px-2.5 flex items-center justify-center rounded-sm text-micro font-medium transition-all duration-150 cursor-pointer border border-border bg-surface text-text-secondary hover:border-primary/40 hover:text-primary hover:bg-primary/5 active:scale-[0.97] disabled:opacity-40 disabled:cursor-not-allowed"
+              >
+                {gateValueLabel(val, t)}
+              </button>
+            ))}
+          </div>
+        )}
+      </WidgetCard>
+      {confirmElement}
+    </>
   );
 }
 
