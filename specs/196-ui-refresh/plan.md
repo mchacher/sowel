@@ -22,6 +22,7 @@ Delivered as stacked pull requests, one per phase, one commit per slice so each 
 - [ ] 7a — Neutrals and ocean night
 - [ ] 6 — Top bar, H1, Dashboard edit button
 - [ ] 7b — Radii, borderless cards
+- [ ] 7c — Maison panels as slices under a lid, Activité as a log
 
 ### PR C — Same gesture everywhere (phase 3)
 

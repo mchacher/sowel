@@ -51,6 +51,7 @@ The maintainer rejected every radical redesign and chose an incremental path tha
 | pr7-bordures      | Cards without border (shadow in light, tone in dark)                                      |
 | pr7-sombre        | Ocean-derived night base                                                                  |
 | pr7-rayons        | Radii 6 / 10 / 16                                                                         |
+| pr7-panneaux      | Maison panels: slices under a detached lid (title 16 px), Activité as one log             |
 | pr8-envoi         | One order after the last tap; delay per integration (cloud ~600 ms, local near-immediate) |
 | pr8-perimetre     | Stepper also for EV current, charge limit, numeric extras                                 |
 | pr8-geste         | Corner glyph shows what a tap does                                                        |
@@ -153,6 +154,7 @@ Today's look is kept (solar greens, HP dark blue / HC light blue). Only dark-the
 | ---------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------- |
 | `docs/user/dashboard.md` + `.fr.md`                                    | « Accueil » name (FR), edit button under the grid, tile corner glyphs, gate confirmation on every path, setpoint behaviour |
 | `docs/user/energy.md` + `.fr.md`                                       | « En direct » (FR), legend and colour notes                                                                                |
+| `docs/user/zones.md` + `.fr.md`                                        | Activity panel read as a log with part-of-day labels, panels as blocks under their title                                   |
 | `docs/user/equipments.md` + `.fr.md` (or the equipment page section)   | Usage-first equipment page, back to the room                                                                               |
 | `docs/user/*.fr.md` that say "Dashboard" or « vue Accueil » for Maison | Renamed consistently                                                                                                       |
 | `docs/technical/contributing.md` + `.fr.md`                            | Frontend rules: `lib/format`, i18n plurals and categories, type scale, colour roles, no arbitrary sizes                    |

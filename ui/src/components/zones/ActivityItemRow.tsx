@@ -2,8 +2,8 @@ import {
   ChefHat,
   Layers,
   PersonStanding,
-  Sun,
-  Moon,
+  Sunrise,
+  Sunset,
   AlertTriangle,
   CircleCheck,
   Circle,
@@ -13,6 +13,7 @@ import type { ActivityItem, ActivityCategory, OrderSource } from "../../types";
 import { useRecipes } from "../../store/useRecipes";
 import i18n from "../../i18n";
 import { ORDER_OUTCOME_ALARM_SOURCE } from "../../lib/alarm-message";
+import { displayValue } from "../../lib/activity-log";
 
 /** A recipe's name in the UI language, from its manifest i18n; else the name the server sent. */
 type RecipeLabel = (recipeId: string | undefined, fallback: string) => string;
@@ -31,25 +32,34 @@ interface Props {
   item: ActivityItem;
 }
 
+/**
+ * One row of the activity log (spec 196, slice 7c): the time in a right-aligned
+ * column, a 20 px dot on the panel's rail, then the text (actor bold, details
+ * tertiary). Rendered as a list item of the log.
+ */
 export function ActivityItemRow({ item }: Props) {
   const { t } = useTranslation();
   const recipeLabel = useRecipeLabel();
 
   return (
-    <div className="grid grid-cols-[24px_1fr_auto] gap-[0.55rem] items-start px-[1.1rem] py-[0.45rem]">
+    <li className="grid grid-cols-[44px_20px_minmax(0,1fr)] gap-x-2.5 items-start px-4 py-[5px] text-small leading-5">
+      <time
+        dateTime={new Date(item.timestamp).toISOString()}
+        className="text-caption leading-5 text-text-tertiary tabular-nums text-right"
+      >
+        {formatTime(item.timestamp)}
+      </time>
       <CategoryIcon category={item.category} template={item.message.template} />
-      <div className="text-caption text-text-secondary leading-[1.45] min-w-0 break-words">
+      <div className="text-text min-w-0 break-words">
         <Message item={item} recipeLabel={recipeLabel} />
         {item.source && (
-          <span className="text-micro text-text-tertiary ml-[0.15rem] whitespace-nowrap">
+          <span className="text-text-tertiary">
+            {" · "}
             {formatSource(item.source, t, recipeLabel)}
           </span>
         )}
       </div>
-      <span className="text-micro text-text-tertiary pt-[4px] leading-none tabular-nums">
-        {formatTime(item.timestamp)}
-      </span>
-    </div>
+    </li>
   );
 }
 
@@ -75,17 +85,21 @@ function interpolation(
 ): Record<string, string | number> {
   const m = item.message;
   // A momentary order (wake, refresh…) shows the action, not its resolved "ON".
-  const valueOf = (value: string, momentary?: string) =>
-    momentary ? t(`activity.momentary.${momentary}`, { defaultValue: value }) : value;
+  // Otherwise the raw value is shown the way the rest of the UI writes it
+  // (spec 196): « Marche / Arrêt », numbers through lib/format, a setpoint in degrees.
+  const valueOf = (value: string, alias: string, momentary?: string) =>
+    momentary
+      ? t(`activity.momentary.${momentary}`, { defaultValue: value })
+      : displayValue(value, alias, t);
   switch (m.template) {
     case "order.executed":
-      return { ...m.params, value: valueOf(m.params.value, m.params.momentary) };
+      return { ...m.params, value: valueOf(m.params.value, m.params.alias, m.params.momentary) };
     case "order.executed.multi":
       return {
         firstName: m.params.equipmentNames[0],
         count: m.params.count,
         alias: m.params.alias,
-        value: valueOf(m.params.value, m.params.momentary),
+        value: valueOf(m.params.value, m.params.alias, m.params.momentary),
       };
     case "recipe.started":
     case "recipe.stopped":
@@ -125,59 +139,32 @@ function CategoryIcon({
   category: ActivityCategory;
   template: ActivityItem["message"]["template"];
 }) {
-  // Each variant follows the polished.html .activity__item-icon--<variant> recipe:
-  //   24x24, rounded-sm, svg 12x12, distinctive bg + color
-  if (category === "recipe") {
-    return (
-      <div className="w-6 h-6 rounded-sm flex items-center justify-center flex-shrink-0 bg-primary-light text-primary">
-        <ChefHat size={12} strokeWidth={2} />
-      </div>
-    );
-  }
-  if (category === "mode") {
-    return (
-      <div className="w-6 h-6 rounded-sm flex items-center justify-center flex-shrink-0 bg-success/10 text-success">
-        <Layers size={12} strokeWidth={2} />
-      </div>
-    );
-  }
-  if (category === "motion") {
-    return (
-      <div className="w-6 h-6 rounded-sm flex items-center justify-center flex-shrink-0 bg-info/10 text-info">
-        <PersonStanding size={12} strokeWidth={2} />
-      </div>
-    );
-  }
-  if (category === "alarm") {
-    // A resolution is an alarm-category item, but the red triangle would read
-    // as a second failure. Green tick, same slot.
-    if (template === "alarm.resolved") {
-      return (
-        <div className="w-6 h-6 rounded-sm flex items-center justify-center flex-shrink-0 bg-success/10 text-success">
-          <CircleCheck size={12} strokeWidth={2} />
-        </div>
-      );
-    }
-    return (
-      <div className="w-6 h-6 rounded-sm flex items-center justify-center flex-shrink-0 bg-error/10 text-error">
-        <AlertTriangle size={12} strokeWidth={2} />
-      </div>
-    );
-  }
-  if (category === "sunlight") {
-    const Ico = template === "sunlight.sunrise" ? Sun : Moon;
-    return (
-      <div className="w-6 h-6 rounded-sm flex items-center justify-center flex-shrink-0 bg-background text-text-tertiary">
-        <Ico size={12} strokeWidth={2} />
-      </div>
-    );
-  }
-  // category === "order"
-  return (
-    <div className="w-6 h-6 rounded-sm flex items-center justify-center flex-shrink-0 bg-background text-text-tertiary">
-      <Circle size={12} strokeWidth={2} />
-    </div>
+  // A 20 px dot on the rail, the surface colour so the rail stops behind it.
+  // Neutral glyphs; only an alarm keeps its role colour (red raised, green
+  // cleared), so a fault still stands out in the log.
+  const dot = (Ico: typeof Circle, tone = "text-text-secondary") => (
+    <span
+      className={`relative z-[1] w-5 h-5 rounded-full bg-surface flex items-center justify-center ${tone}`}
+    >
+      <Ico size={12} strokeWidth={1.5} aria-hidden="true" />
+    </span>
   );
+  switch (category) {
+    case "recipe":
+      return dot(ChefHat);
+    case "mode":
+      return dot(Layers);
+    case "motion":
+      return dot(PersonStanding);
+    case "alarm":
+      return template === "alarm.resolved"
+        ? dot(CircleCheck, "text-success")
+        : dot(AlertTriangle, "text-error");
+    case "sunlight":
+      return dot(template === "sunlight.sunrise" ? Sunrise : Sunset);
+    default:
+      return dot(Circle);
+  }
 }
 
 function formatTime(timestamp: number): string {

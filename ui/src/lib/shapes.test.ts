@@ -107,6 +107,52 @@ describe("cards", () => {
   });
 });
 
+// Spec 196, slice 7c (decision pr7-panneaux, « Couvercle ») — a Maison panel
+// is a detached lid over a body of slices: 12 px under the lid, 4 px between
+// slices, 4 px inner corners and the 10 px outer radius at the body's ends.
+describe("panels as slices under a lid", () => {
+  /** The whole body of an @utility, nested rules included. */
+  function utility(name: string): string {
+    const start = indexCss.search(new RegExp(`@utility ${name}\\s*\\{`));
+    if (start < 0) return "";
+    let depth = 0;
+    for (let i = indexCss.indexOf("{", start); i < indexCss.length; i++) {
+      if (indexCss[i] === "{") depth++;
+      if (indexCss[i] === "}" && --depth === 0) return indexCss.slice(start, i + 1);
+    }
+    return "";
+  }
+
+  it("draws the lid as a card slice, at least 48 px high", () => {
+    const lid = utility("panel-lid");
+    expect(lid).toMatch(/background-color:\s*var\(--color-surface\)/);
+    expect(lid).toMatch(/border-radius:\s*var\(--radius-md\)/);
+    expect(lid).toMatch(/box-shadow:\s*var\(--sh-card\)/);
+    expect(lid).toMatch(/min-height:\s*48px/);
+  });
+
+  it("stacks the body's slices 4 px apart, 4 px inside and 10 px at the ends", () => {
+    const body = utility("slices");
+    expect(body).toMatch(/gap:\s*4px/);
+    expect(body).toMatch(/& > \*\s*\{[^}]*background-color:\s*var\(--color-surface\)[^}]*border-radius:\s*4px[^}]*box-shadow:\s*var\(--sh-card\)/);
+    expect(body).toMatch(/& > :first-child\s*\{[^}]*border-top-left-radius:\s*var\(--radius-md\)/);
+    expect(body).toMatch(/& > :last-child\s*\{[^}]*border-bottom-right-radius:\s*var\(--radius-md\)/);
+  });
+
+  it("separates rows by an inset hairline, none above the first", () => {
+    expect(utility("slice-rows")).toMatch(/& > \* \+ \*::before\s*\{[^}]*height:\s*1px/);
+  });
+
+  it("leaves no tinted panel band nor n-25 category band in ui/src", () => {
+    const band = CLASSNAMES.filter(
+      ({ cls }) =>
+        /\bbg-primary-light\b.*\bborder-b\b.*\bborder-(primary-mid|\[var\(--p-100\)\])/.test(cls) ||
+        /bg-\[var\(--n-25\)\]\s+border-t\s+border-b/.test(cls),
+    );
+    expect(band.map((h) => h.where)).toEqual([]);
+  });
+});
+
 // Review of phase 2: the 7b codemod took `border border-border` off ~140
 // fields, selects, steppers and secondary buttons and gave them `shadow-lg`, so
 // they lost their edge, their on-state border (`!border-active`) and their

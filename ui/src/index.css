@@ -133,6 +133,65 @@
   box-shadow: var(--sh-card);
 }
 
+/* A Maison panel cut into slices (spec 196, slice 7c, decision pr7-panneaux,
+   « Couvercle »). The hierarchy reads from the gaps alone: 12 px of page
+   between the lid and the body, 4 px between two slices of the body, an inset
+   hairline between two rows of a slice.
+   - `panel-lid`: the detached title slice (title, count, the panel's actions).
+   - `slices`: the body. Each direct child is a slice: surface and card shadow,
+     4 px inner corners, the 10 px outer radius on the body's own outer corners.
+   - `slice-rows`: a list of rows inside a slice, separated by a hairline from
+     the name column (row padding + 32 px icon + gap) to the right edge, none
+     above the first row.
+   Dark needs nothing: the slices are n-0 on n-50, and --sh-card is none. */
+@utility panel-lid {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 48px;
+  padding: 8px 12px 8px 16px;
+  background-color: var(--color-surface);
+  border-radius: var(--radius-md);
+  box-shadow: var(--sh-card);
+}
+@utility slices {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+
+  & > * {
+    background-color: var(--color-surface);
+    border-radius: 4px;
+    box-shadow: var(--sh-card);
+    min-width: 0;
+  }
+  & > :first-child {
+    border-top-left-radius: var(--radius-md);
+    border-top-right-radius: var(--radius-md);
+  }
+  & > :last-child {
+    border-bottom-left-radius: var(--radius-md);
+    border-bottom-right-radius: var(--radius-md);
+  }
+}
+@utility slice-rows {
+  padding-bottom: 4px;
+
+  & > * + * {
+    position: relative;
+  }
+  & > * + *::before {
+    content: "";
+    position: absolute;
+    top: 0;
+    left: calc(1.1rem + 32px + 0.85rem);
+    right: 1.1rem;
+    height: 1px;
+    background-color: var(--color-border-light);
+    pointer-events: none;
+  }
+}
+
 /* All JetBrains Mono containers get tabular numbers by default —
    keeps digits at the same width when values change (no layout jitter).
    See spec 095 (typography polish). */
