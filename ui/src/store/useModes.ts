@@ -15,8 +15,15 @@ interface ModesState {
   loading: boolean;
   error: string | null;
   fetchModes: () => Promise<void>;
-  createMode: (data: { name: string; icon?: string; description?: string }) => Promise<ModeWithDetails>;
-  updateMode: (id: string, data: { name?: string; icon?: string; description?: string }) => Promise<void>;
+  createMode: (data: {
+    name: string;
+    icon?: string;
+    description?: string;
+  }) => Promise<ModeWithDetails>;
+  updateMode: (
+    id: string,
+    data: { name?: string; icon?: string; description?: string },
+  ) => Promise<void>;
   deleteMode: (id: string) => Promise<void>;
   activateMode: (id: string) => Promise<void>;
   deactivateMode: (id: string) => Promise<void>;
@@ -73,17 +80,13 @@ export const useModes = create<ModesState>((set, get) => ({
 
   handleModeActivated: (modeId) => {
     set((state) => ({
-      modes: state.modes.map((m) =>
-        m.id === modeId ? { ...m, active: true } : m
-      ),
+      modes: state.modes.map((m) => (m.id === modeId ? { ...m, active: true } : m)),
     }));
   },
 
   handleModeDeactivated: (modeId) => {
     set((state) => ({
-      modes: state.modes.map((m) =>
-        m.id === modeId ? { ...m, active: false } : m
-      ),
+      modes: state.modes.map((m) => (m.id === modeId ? { ...m, active: false } : m)),
     }));
   },
 }));

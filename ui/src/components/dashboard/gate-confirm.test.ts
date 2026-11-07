@@ -80,7 +80,10 @@ describe("gateNeedsConfirm", () => {
 // Spec 196 (maintainer decision) — a stop that waits for a confirmation
 // defeats its purpose: open, close and operate ask, STOP never does.
 describe("gatePressNeedsConfirm", () => {
-  const guarded = equip({ requireConfirmation: true, command: { enumValues: ["OPEN", "CLOSE", "STOP"] } });
+  const guarded = equip({
+    requireConfirmation: true,
+    command: { enumValues: ["OPEN", "CLOSE", "STOP"] },
+  });
 
   it("asks for open, close, a raw value and an impulse", () => {
     expect(gatePressNeedsConfirm(guarded, "OPEN")).toBe(true);

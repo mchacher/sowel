@@ -81,34 +81,35 @@ export function RecipePickerPopover({
     });
   }, [recipes, equipments, zoneId, zoneAndDescendantIds, usedLightIds]);
 
-  const list = availableRecipes.length === 0 ? (
-    <div className="px-3 py-4 text-center text-caption text-text-tertiary">
-      {t("recipes.noRecipesAvailable")}
-    </div>
-  ) : (
-    availableRecipes.map((recipe) => (
-      <button
-        key={recipe.id}
-        onClick={() => onPick(recipe.id)}
-        className="w-full flex items-center gap-2.5 px-2.5 py-2 rounded-sm hover:bg-border-light/60 transition-colors duration-150 text-left"
-      >
-        <div className="w-7 h-7 rounded-sm bg-border-light text-text-secondary flex items-center justify-center flex-shrink-0">
-          <ChefHat size={14} strokeWidth={1.5} />
-        </div>
-        <div className="min-w-0 flex-1">
-          <div className="text-small font-medium text-text leading-tight">
-            {recipeName(recipe, lang)}
+  const list =
+    availableRecipes.length === 0 ? (
+      <div className="px-3 py-4 text-center text-caption text-text-tertiary">
+        {t("recipes.noRecipesAvailable")}
+      </div>
+    ) : (
+      availableRecipes.map((recipe) => (
+        <button
+          key={recipe.id}
+          onClick={() => onPick(recipe.id)}
+          className="w-full flex items-center gap-2.5 px-2.5 py-2 rounded-sm hover:bg-border-light/60 transition-colors duration-150 text-left"
+        >
+          <div className="w-7 h-7 rounded-sm bg-border-light text-text-secondary flex items-center justify-center flex-shrink-0">
+            <ChefHat size={14} strokeWidth={1.5} />
           </div>
-          <div
-            className="text-micro text-text-tertiary leading-snug mt-0.5 overflow-hidden"
-            style={{ display: "-webkit-box", WebkitLineClamp: 2, WebkitBoxOrient: "vertical" }}
-          >
-            {recipeDescription(recipe, lang)}
+          <div className="min-w-0 flex-1">
+            <div className="text-small font-medium text-text leading-tight">
+              {recipeName(recipe, lang)}
+            </div>
+            <div
+              className="text-micro text-text-tertiary leading-snug mt-0.5 overflow-hidden"
+              style={{ display: "-webkit-box", WebkitLineClamp: 2, WebkitBoxOrient: "vertical" }}
+            >
+              {recipeDescription(recipe, lang)}
+            </div>
           </div>
-        </div>
-      </button>
-    ))
-  );
+        </button>
+      ))
+    );
 
   return (
     <>

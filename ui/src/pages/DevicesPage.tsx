@@ -48,7 +48,10 @@ export function DevicesPage() {
 
   // Build map: deviceId → list of equipments that reference it via bindings
   const deviceEquipmentMap = useMemo(() => {
-    const map = new Map<string, { id: string; name: string; zoneName?: string; zoneId?: string }[]>();
+    const map = new Map<
+      string,
+      { id: string; name: string; zoneName?: string; zoneId?: string }[]
+    >();
     for (const eq of equipments) {
       const deviceIds = new Set<string>();
       for (const b of eq.dataBindings ?? []) {
@@ -175,7 +178,10 @@ export function DevicesPage() {
                 label={
                   integrationNames[integrationId] ??
                   INTEGRATION_LABELS[integrationId] ??
-                  integrationId.split(/[-_]/).map((w) => w.charAt(0).toUpperCase() + w.slice(1)).join(" ")
+                  integrationId
+                    .split(/[-_]/)
+                    .map((w) => w.charAt(0).toUpperCase() + w.slice(1))
+                    .join(" ")
                 }
                 count={count}
                 active={resolvedTab === integrationId}

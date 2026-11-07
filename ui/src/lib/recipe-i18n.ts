@@ -28,7 +28,11 @@ export function recipeSlotName(recipe: RecipeInfo, slot: RecipeSlotDef, lang: st
  * Resolve a slot's translated description for the given language.
  * Falls back to the English description embedded in the slot definition.
  */
-export function recipeSlotDescription(recipe: RecipeInfo, slot: RecipeSlotDef, lang: string): string {
+export function recipeSlotDescription(
+  recipe: RecipeInfo,
+  slot: RecipeSlotDef,
+  lang: string,
+): string {
   return recipe.i18n?.[lang]?.slots?.[slot.id]?.description ?? slot.description;
 }
 

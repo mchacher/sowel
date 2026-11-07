@@ -57,10 +57,7 @@ export function HeaterControl({ equipment, onExecuteOrder, compact }: HeaterCont
         <span
           className={`
             text-micro font-medium px-2 py-0.5 rounded-full flex-shrink-0
-            ${isComfort
-              ? "bg-heat/10 text-heat"
-              : "bg-primary/10 text-primary"
-            }
+            ${isComfort ? "bg-heat/10 text-heat" : "bg-primary/10 text-primary"}
           `}
         >
           {isComfort ? t("controls.heater.comfort") : t("controls.heater.eco")}
@@ -73,20 +70,22 @@ export function HeaterControl({ equipment, onExecuteOrder, compact }: HeaterCont
             disabled={executing}
             className={`
               p-1.5 rounded-sm transition-colors duration-150 cursor-pointer
-              ${isComfort
-                ? "bg-heat/10 text-heat hover:bg-heat/20"
-                : "bg-primary/10 text-primary hover:bg-primary/20"
+              ${
+                isComfort
+                  ? "bg-heat/10 text-heat hover:bg-heat/20"
+                  : "bg-primary/10 text-primary hover:bg-primary/20"
               }
               disabled:opacity-50 disabled:cursor-not-allowed
             `}
             title={isComfort ? t("controls.heater.switchEco") : t("controls.heater.switchComfort")}
           >
-            {executing
-              ? <Loader2 size={14} strokeWidth={1.5} className="animate-spin" />
-              : isComfort
-                ? <Flame size={14} strokeWidth={1.5} />
-                : <Snowflake size={14} strokeWidth={1.5} />
-            }
+            {executing ? (
+              <Loader2 size={14} strokeWidth={1.5} className="animate-spin" />
+            ) : isComfort ? (
+              <Flame size={14} strokeWidth={1.5} />
+            ) : (
+              <Snowflake size={14} strokeWidth={1.5} />
+            )}
           </button>
         )}
       </div>
@@ -101,16 +100,14 @@ export function HeaterControl({ equipment, onExecuteOrder, compact }: HeaterCont
         <div
           className={`
             w-10 h-10 rounded-md flex items-center justify-center
-            ${isComfort
-              ? "bg-heat/10 text-heat"
-              : "bg-primary/10 text-primary"
-            }
+            ${isComfort ? "bg-heat/10 text-heat" : "bg-primary/10 text-primary"}
           `}
         >
-          {isComfort
-            ? <Flame size={22} strokeWidth={1.5} />
-            : <Snowflake size={22} strokeWidth={1.5} />
-          }
+          {isComfort ? (
+            <Flame size={22} strokeWidth={1.5} />
+          ) : (
+            <Snowflake size={22} strokeWidth={1.5} />
+          )}
         </div>
         <div>
           <div className="text-lead font-medium text-text">
@@ -130,17 +127,23 @@ export function HeaterControl({ equipment, onExecuteOrder, compact }: HeaterCont
           className={`
             flex items-center gap-2 px-4 py-2 rounded-sm text-small font-medium
             transition-colors duration-150
-            ${isComfort
-              ? "bg-primary/10 text-primary hover:bg-primary/20"
-              : "bg-heat/10 text-heat hover:bg-heat/20"
+            ${
+              isComfort
+                ? "bg-primary/10 text-primary hover:bg-primary/20"
+                : "bg-heat/10 text-heat hover:bg-heat/20"
             }
             disabled:opacity-50
           `}
         >
-          {isComfort
-            ? <><Snowflake size={16} strokeWidth={1.5} /> {t("controls.heater.switchEco")}</>
-            : <><Flame size={16} strokeWidth={1.5} /> {t("controls.heater.switchComfort")}</>
-          }
+          {isComfort ? (
+            <>
+              <Snowflake size={16} strokeWidth={1.5} /> {t("controls.heater.switchEco")}
+            </>
+          ) : (
+            <>
+              <Flame size={16} strokeWidth={1.5} /> {t("controls.heater.switchComfort")}
+            </>
+          )}
         </button>
       )}
     </div>

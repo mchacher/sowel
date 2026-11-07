@@ -240,15 +240,10 @@ describe("mergeTimeline with a measured series and no forecast history", () => {
     // over an empty past while its own production sat in the database. The
     // measured line was fed from the comparison, which needs a forecast issued
     // the day before to exist at all.
-    const out = mergeTimeline(
-      [],
-      [{ at: at(2), watts: 1500 }],
-      NOW,
-      [
-        { at: at(-3), watts: 700 },
-        { at: at(-2), watts: 900 },
-      ],
-    );
+    const out = mergeTimeline([], [{ at: at(2), watts: 1500 }], NOW, [
+      { at: at(-3), watts: 700 },
+      { at: at(-2), watts: 900 },
+    ]);
     expect(out).toHaveLength(3);
     expect(out.filter((p) => p.actualW !== undefined)).toHaveLength(2);
     expect(out[0].actualW).toBe(700);
@@ -258,12 +253,9 @@ describe("mergeTimeline with a measured series and no forecast history", () => {
   it("lets the comparison win where both describe the same hour", () => {
     // `points.actualW` and `measured.watts` are the same reading; taking either
     // is fine, but the pair must not end up split across two entries.
-    const out = mergeTimeline(
-      [{ at: at(-2), forecastW: 950, actualW: 900 }],
-      [],
-      NOW,
-      [{ at: at(-2), watts: 900 }],
-    );
+    const out = mergeTimeline([{ at: at(-2), forecastW: 950, actualW: 900 }], [], NOW, [
+      { at: at(-2), watts: 900 },
+    ]);
     expect(out).toHaveLength(1);
     expect(out[0].forecastW).toBe(950);
     expect(out[0].actualW).toBe(900);
@@ -276,12 +268,10 @@ describe("mergeTimeline with a measured series and no forecast history", () => {
   });
 
   it("keeps measured hours ordered with the rest", () => {
-    const out = mergeTimeline(
-      [],
-      [{ at: at(1), watts: 100 }],
-      NOW,
-      [{ at: at(-1), watts: 200 }, { at: at(-5), watts: 300 }],
-    );
+    const out = mergeTimeline([], [{ at: at(1), watts: 100 }], NOW, [
+      { at: at(-1), watts: 200 },
+      { at: at(-5), watts: 300 },
+    ]);
     expect(out.map((p) => p.ts)).toEqual([...out.map((p) => p.ts)].sort((a, b) => a - b));
   });
 

@@ -51,9 +51,8 @@ export function EnergyManagementPanel({
     // Numeric guard: a thermostat's boolean run state must never shadow the
     // clamp reading (spec 176), same rule as pickLivePowerBinding.
     const binding =
-      equipment.dataBindings.find(
-        (b) => b.category === "power" && typeof b.value === "number",
-      ) ?? equipment.dataBindings.find((b) => b.alias === "power" && typeof b.value === "number");
+      equipment.dataBindings.find((b) => b.category === "power" && typeof b.value === "number") ??
+      equipment.dataBindings.find((b) => b.alias === "power" && typeof b.value === "number");
     const v = binding?.value;
     return typeof v === "number" && Number.isFinite(v) && v > 0 ? Math.round(v) : null;
   }, [equipment.dataBindings]);
@@ -181,7 +180,12 @@ export function EnergyManagementPanel({
     : t("equipments.summary.disabled");
 
   return (
-    <ConfigRow icon={PlugZap} title={t("energyProfile.title")} summary={summary} defaultOpen={defaultOpen}>
+    <ConfigRow
+      icon={PlugZap}
+      title={t("energyProfile.title")}
+      summary={summary}
+      defaultOpen={defaultOpen}
+    >
       <div className="flex items-center gap-2 mb-3">
         <label className="flex items-center gap-2 text-small text-text cursor-pointer">
           <input
@@ -318,7 +322,9 @@ export function EnergyManagementPanel({
                 {t("energyProfile.save")}
               </button>
             ) : (
-              <p className="text-caption text-text-tertiary mt-2">{t("energyProfile.completeToEnable")}</p>
+              <p className="text-caption text-text-tertiary mt-2">
+                {t("energyProfile.completeToEnable")}
+              </p>
             ))}
         </>
       )}

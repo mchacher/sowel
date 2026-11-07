@@ -11,7 +11,10 @@ import {
 
 describe("equipment origin", () => {
   it("reads back the origin a link sets, and nothing from a malformed state", () => {
-    expect(readEquipmentOrigin(equipmentLinkState("Salon", "/home/z1"))).toEqual({ label: "Salon", to: "/home/z1" });
+    expect(readEquipmentOrigin(equipmentLinkState("Salon", "/home/z1"))).toEqual({
+      label: "Salon",
+      to: "/home/z1",
+    });
     expect(readEquipmentOrigin(null)).toBeNull();
     expect(readEquipmentOrigin({ fromZone: "Salon" })).toBeNull();
     expect(readEquipmentOrigin({ from: { label: "", to: "/home" } })).toBeNull();
@@ -32,8 +35,12 @@ describe("equipment origin", () => {
     expect(equipmentIdFromPath("/equipments/eq-1")).toBe("eq-1");
     expect(equipmentIdFromPath("/equipments")).toBeNull();
     expect(isUsageEquipmentPage("/equipments/eq-1", null)).toBe(true);
-    expect(isUsageEquipmentPage("/equipments/eq-1", equipmentLinkState("Salon", "/home/z1"))).toBe(true);
-    expect(isUsageEquipmentPage("/equipments/eq-1", equipmentLinkState("Équipements", "/equipments"))).toBe(false);
+    expect(isUsageEquipmentPage("/equipments/eq-1", equipmentLinkState("Salon", "/home/z1"))).toBe(
+      true,
+    );
+    expect(
+      isUsageEquipmentPage("/equipments/eq-1", equipmentLinkState("Équipements", "/equipments")),
+    ).toBe(false);
     expect(isUsageEquipmentPage("/equipments", null)).toBe(false);
   });
 });

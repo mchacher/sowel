@@ -83,10 +83,12 @@ describe("PeriodSelector (#730)", () => {
     await i18n.changeLanguage("en");
     render(<PeriodSelector {...props({ canGoForward: false, isToday: true })} />);
 
-    expect((screen.getByRole("button", { name: "Next period" }) as HTMLButtonElement).disabled).toBe(
+    expect(
+      (screen.getByRole("button", { name: "Next period" }) as HTMLButtonElement).disabled,
+    ).toBe(true);
+    expect((screen.getByRole("button", { name: "Today" }) as HTMLButtonElement).disabled).toBe(
       true,
     );
-    expect((screen.getByRole("button", { name: "Today" }) as HTMLButtonElement).disabled).toBe(true);
   });
 });
 
@@ -107,7 +109,9 @@ describe("the page wrappers (#730)", () => {
     }
     expect(screen.queryByText("Aujourd'hui")).toBeNull();
     // The store starts on today, so the reset is already spent.
-    expect((screen.getByRole("button", { name: "Today" }) as HTMLButtonElement).disabled).toBe(true);
+    expect((screen.getByRole("button", { name: "Today" }) as HTMLButtonElement).disabled).toBe(
+      true,
+    );
   });
 
   it("the Analyse wrapper renders it too, and moves the date by one period", async () => {

@@ -7,9 +7,14 @@ import { SETPOINT_ERROR_MS, useSetpointCommit } from "./useSetpointCommit";
 
 const DELAY = 600;
 
-function setup(initial: number | null, onCommit = vi.fn().mockResolvedValue(undefined), settleMs?: number) {
+function setup(
+  initial: number | null,
+  onCommit = vi.fn().mockResolvedValue(undefined),
+  settleMs?: number,
+) {
   const hook = renderHook(
-    ({ value }: { value: number | null }) => useSetpointCommit({ value, onCommit, debounceMs: DELAY, settleMs }),
+    ({ value }: { value: number | null }) =>
+      useSetpointCommit({ value, onCommit, debounceMs: DELAY, settleMs }),
     { initialProps: { value: initial } },
   );
   return { ...hook, onCommit };
@@ -178,7 +183,13 @@ describe("useSetpointCommit", () => {
     const onCommit = vi.fn().mockResolvedValue(undefined);
     const { result, rerender } = renderHook(
       ({ value }: { value: number | null }) =>
-        useSetpointCommit({ value, onCommit, debounceMs: DELAY, settleMs: 90_000, settleTolerance: 0.25 }),
+        useSetpointCommit({
+          value,
+          onCommit,
+          debounceMs: DELAY,
+          settleMs: 90_000,
+          settleTolerance: 0.25,
+        }),
       { initialProps: { value: 20 as number | null } },
     );
     act(() => result.current.request(22));

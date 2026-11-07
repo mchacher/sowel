@@ -44,14 +44,9 @@ export function LoginPage() {
         {mfaChallenge ? (
           <MfaStep />
         ) : (
-          <form
-            onSubmit={handleSubmit}
-            className="card p-6"
-          >
+          <form onSubmit={handleSubmit} className="card p-6">
             <div className="mb-4">
-              <label className={FIELD_LABEL}>
-                {t("auth.username")}
-              </label>
+              <label className={FIELD_LABEL}>{t("auth.username")}</label>
               <input
                 type="text"
                 value={username}
@@ -63,9 +58,7 @@ export function LoginPage() {
             </div>
 
             <div className="mb-5">
-              <label className={FIELD_LABEL}>
-                {t("auth.password")}
-              </label>
+              <label className={FIELD_LABEL}>{t("auth.password")}</label>
               <input
                 type="password"
                 value={password}

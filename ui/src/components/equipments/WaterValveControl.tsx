@@ -15,12 +15,7 @@ interface WaterValveControlProps {
 function isAbnormalStatus(status: string): boolean {
   const s = status.toLowerCase();
   if (s.includes("normal")) return false;
-  return (
-    s.includes("shortage") ||
-    s.includes("leak") ||
-    s.includes("error") ||
-    s.includes("fault")
-  );
+  return s.includes("shortage") || s.includes("leak") || s.includes("error") || s.includes("fault");
 }
 
 export function WaterValveControl({ equipment, onExecuteOrder, compact }: WaterValveControlProps) {
@@ -32,27 +27,16 @@ export function WaterValveControl({ equipment, onExecuteOrder, compact }: WaterV
   // Category-first resolvers — alias falls back for legacy / manually-bound
   // valves (spec 110). SONOFF SWV exposes state under `light_state` due to a
   // z2m mis-classification; we accept it as fallback.
-  const stateBinding = findDataByCategory(
-    equipment.dataBindings,
-    ["light_state"],
-    ["state"],
-  );
+  const stateBinding = findDataByCategory(equipment.dataBindings, ["light_state"], ["state"]);
   const flowBinding = equipment.dataBindings.find((b) => b.alias === "flow");
-  const batteryBinding = findDataByCategory(
-    equipment.dataBindings,
-    ["battery"],
-    ["battery"],
-  );
+  const batteryBinding = findDataByCategory(equipment.dataBindings, ["battery"], ["battery"]);
   const statusBinding = equipment.dataBindings.find((b) => b.alias === "status");
 
   const isOn = stateBinding?.value === true || stateBinding?.value === "ON";
 
-  const flow =
-    flowBinding && typeof flowBinding.value === "number" ? flowBinding.value : null;
+  const flow = flowBinding && typeof flowBinding.value === "number" ? flowBinding.value : null;
   const battery =
-    batteryBinding && typeof batteryBinding.value === "number"
-      ? batteryBinding.value
-      : null;
+    batteryBinding && typeof batteryBinding.value === "number" ? batteryBinding.value : null;
   const statusRaw =
     statusBinding && typeof statusBinding.value === "string" ? statusBinding.value : null;
   const statusAbnormal = statusRaw !== null && isAbnormalStatus(statusRaw);
@@ -83,10 +67,8 @@ export function WaterValveControl({ equipment, onExecuteOrder, compact }: WaterV
    */
   const stateValue = (turnOn: boolean): unknown => {
     if (!stateOrderBinding) return turnOn ? "ON" : "OFF";
-    const onVal =
-      stateOrderBinding.enumValues?.find((v) => /^on$/i.test(v)) ?? "ON";
-    const offVal =
-      stateOrderBinding.enumValues?.find((v) => /^off$/i.test(v)) ?? "OFF";
+    const onVal = stateOrderBinding.enumValues?.find((v) => /^on$/i.test(v)) ?? "ON";
+    const offVal = stateOrderBinding.enumValues?.find((v) => /^off$/i.test(v)) ?? "OFF";
     return turnOn ? onVal : offVal;
   };
 
@@ -136,14 +118,20 @@ export function WaterValveControl({ equipment, onExecuteOrder, compact }: WaterV
           disabled={executing || !equipment.enabled}
           className={`
             p-2 rounded-sm transition-colors duration-150 cursor-pointer
-            ${isOn
-              ? "bg-active text-on-active hover:bg-active/80"
-              : "bg-border-light text-text-tertiary hover:bg-border hover:text-text-secondary"}
+            ${
+              isOn
+                ? "bg-active text-on-active hover:bg-active/80"
+                : "bg-border-light text-text-tertiary hover:bg-border hover:text-text-secondary"
+            }
             disabled:opacity-50 disabled:cursor-not-allowed
           `}
           title={isOn ? t("water.closed") : t("water.open")}
         >
-          {executing ? <Loader2 size={16} className="animate-spin" /> : <Power size={16} strokeWidth={1.5} />}
+          {executing ? (
+            <Loader2 size={16} className="animate-spin" />
+          ) : (
+            <Power size={16} strokeWidth={1.5} />
+          )}
         </button>
       </div>
     );
@@ -163,9 +151,11 @@ export function WaterValveControl({ equipment, onExecuteOrder, compact }: WaterV
             className={`
               flex items-center gap-2 px-4 py-2 rounded-sm text-small font-medium
               transition-colors duration-150
-              ${isOn
-                ? "bg-active text-on-active hover:bg-active/80"
-                : "bg-border-light text-text-secondary hover:bg-border hover:text-text"}
+              ${
+                isOn
+                  ? "bg-active text-on-active hover:bg-active/80"
+                  : "bg-border-light text-text-secondary hover:bg-border hover:text-text"
+              }
               disabled:opacity-50
             `}
           >

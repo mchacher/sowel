@@ -52,13 +52,20 @@ export function CalendarPage() {
     await setActiveProfile(selectedProfileId);
   };
 
-  const handleAddSlot = async (data: { days: number[]; time: string; modeActions: CalendarModeAction[] }) => {
+  const handleAddSlot = async (data: {
+    days: number[];
+    time: string;
+    modeActions: CalendarModeAction[];
+  }) => {
     if (!selectedProfileId) return;
     await addSlot(selectedProfileId, data);
     setShowAddSlot(false);
   };
 
-  const handleUpdateSlot = async (slotId: string, data: { days: number[]; time: string; modeActions: CalendarModeAction[] }) => {
+  const handleUpdateSlot = async (
+    slotId: string,
+    data: { days: number[]; time: string; modeActions: CalendarModeAction[] },
+  ) => {
     await updateSlot(slotId, data);
     setEditingSlotId(null);
   };
@@ -84,12 +91,8 @@ export function CalendarPage() {
     <div className="p-4 sm:p-6">
       {/* Header */}
       <div className="mb-6">
-        <h1 className={TOP_LEVEL_H1}>
-          {t("calendar.title")}
-        </h1>
-        <p className="text-small text-text-secondary mt-0.5">
-          {t("calendar.subtitle")}
-        </p>
+        <h1 className={TOP_LEVEL_H1}>{t("calendar.title")}</h1>
+        <p className="text-small text-text-secondary mt-0.5">{t("calendar.subtitle")}</p>
       </div>
 
       <div className="max-w-[720px] space-y-6">
@@ -138,10 +141,17 @@ export function CalendarPage() {
                 {t("calendar.slots")}
               </h2>
               <button
-                onClick={() => { setShowAddSlot(!showAddSlot); setEditingSlotId(null); }}
+                onClick={() => {
+                  setShowAddSlot(!showAddSlot);
+                  setEditingSlotId(null);
+                }}
                 className="p-1.5 rounded-sm text-text-tertiary hover:text-primary hover:bg-primary/5 transition-colors duration-150"
               >
-                {showAddSlot ? <X size={14} strokeWidth={1.5} /> : <Plus size={14} strokeWidth={1.5} />}
+                {showAddSlot ? (
+                  <X size={14} strokeWidth={1.5} />
+                ) : (
+                  <Plus size={14} strokeWidth={1.5} />
+                )}
               </button>
             </div>
 
@@ -168,10 +178,13 @@ export function CalendarPage() {
                       slot={slot}
                       dayLabels={dayLabels}
                       modeNames={modes}
-                      onEdit={() => { setEditingSlotId(slot.id); setShowAddSlot(false); }}
+                      onEdit={() => {
+                        setEditingSlotId(slot.id);
+                        setShowAddSlot(false);
+                      }}
                       onDelete={() => handleDeleteSlot(slot.id)}
                     />
-                  )
+                  ),
                 )}
               </div>
             )}
@@ -227,10 +240,20 @@ function SlotRow({
         <div className="text-micro text-text-tertiary sm:truncate">
           {daysStr}
           {onModes.length > 0 && (
-            <span className="text-success"> &middot; {t("calendar.modeOn")}{t("common.colon")}{onModes.join(", ")}</span>
+            <span className="text-success">
+              {" "}
+              &middot; {t("calendar.modeOn")}
+              {t("common.colon")}
+              {onModes.join(", ")}
+            </span>
           )}
           {offModes.length > 0 && (
-            <span className="text-error"> &middot; {t("calendar.modeOff")}{t("common.colon")}{offModes.join(", ")}</span>
+            <span className="text-error">
+              {" "}
+              &middot; {t("calendar.modeOff")}
+              {t("common.colon")}
+              {offModes.join(", ")}
+            </span>
           )}
         </div>
       </div>
@@ -265,7 +288,11 @@ function SlotForm({
   modes: { id: string; name: string }[];
   initialValues?: { days: number[]; time: string; modeActions: CalendarModeAction[] };
   submitLabel: string;
-  onSubmit: (data: { days: number[]; time: string; modeActions: CalendarModeAction[] }) => Promise<void>;
+  onSubmit: (data: {
+    days: number[];
+    time: string;
+    modeActions: CalendarModeAction[];
+  }) => Promise<void>;
   onCancel: () => void;
 }) {
   const { t } = useTranslation();
@@ -285,9 +312,7 @@ function SlotForm({
   });
 
   const toggleDay = (day: number) => {
-    setDays((prev) =>
-      prev.includes(day) ? prev.filter((d) => d !== day) : [...prev, day].sort()
-    );
+    setDays((prev) => (prev.includes(day) ? prev.filter((d) => d !== day) : [...prev, day].sort()));
   };
 
   /** Cycle: null → on → off → null */
@@ -331,9 +356,7 @@ function SlotForm({
     <div className="bg-background rounded-md p-3 space-y-3">
       {/* Days */}
       <div>
-        <label className={FIELD_LABEL}>
-          {t("calendar.days")}
-        </label>
+        <label className={FIELD_LABEL}>{t("calendar.days")}</label>
         <div className="flex gap-1">
           {dayLabels.map((day) => (
             <button
@@ -353,9 +376,7 @@ function SlotForm({
 
       {/* Time */}
       <div>
-        <label className={FIELD_LABEL}>
-          {t("calendar.time")}
-        </label>
+        <label className={FIELD_LABEL}>{t("calendar.time")}</label>
         <input
           type="time"
           value={time}
@@ -366,9 +387,7 @@ function SlotForm({
 
       {/* Modes — tri-state: click cycles null → on → off → null */}
       <div>
-        <label className={FIELD_LABEL}>
-          {t("modes.title")}
-        </label>
+        <label className={FIELD_LABEL}>{t("modes.title")}</label>
         <div className="flex flex-wrap gap-1.5">
           {modes.map((mode) => {
             const state = modeStates[mode.id] ?? null;
@@ -387,8 +406,12 @@ function SlotForm({
                 {state === "on" && <Power size={10} />}
                 {state === "off" && <PowerOff size={10} />}
                 {mode.name}
-                {state === "on" && <span className="text-micro opacity-80">{t("calendar.modeOn")}</span>}
-                {state === "off" && <span className="text-micro opacity-80">{t("calendar.modeOff")}</span>}
+                {state === "on" && (
+                  <span className="text-micro opacity-80">{t("calendar.modeOn")}</span>
+                )}
+                {state === "off" && (
+                  <span className="text-micro opacity-80">{t("calendar.modeOff")}</span>
+                )}
               </button>
             );
           })}

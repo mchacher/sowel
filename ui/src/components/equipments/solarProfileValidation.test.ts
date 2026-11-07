@@ -1,5 +1,9 @@
 import { describe, expect, it } from "vitest";
-import { CARDINAL_AZIMUTHS, isActiveSolarProfile, validateSolarProfile } from "./solarProfileValidation";
+import {
+  CARDINAL_AZIMUTHS,
+  isActiveSolarProfile,
+  validateSolarProfile,
+} from "./solarProfileValidation";
 
 const SOUTH = { tiltDeg: 35, azimuthDeg: 180, peakWc: 4000 };
 

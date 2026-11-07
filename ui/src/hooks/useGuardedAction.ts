@@ -82,7 +82,11 @@ export function useGuardedAction(): {
 
   const guardGate = useCallback(
     (equipment: EquipmentWithDetails, value: string | null, run: () => void, zoneName?: string) =>
-      guard(gatePressNeedsConfirm(equipment, value), () => gatePrompt(equipment, value, t, zoneName), run),
+      guard(
+        gatePressNeedsConfirm(equipment, value),
+        () => gatePrompt(equipment, value, t, zoneName),
+        run,
+      ),
     [guard, t],
   );
 

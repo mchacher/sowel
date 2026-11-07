@@ -275,7 +275,12 @@ describe("mobile tap table (spec 196)", () => {
     glyph?: "power" | "chevron" | "shield";
   }> = [
     { name: "switch", equipment: makeSwitch(), kind: "toggle", glyph: "power" },
-    { name: "pool_pump", equipment: makeSwitch({ type: "pool_pump" }), kind: "toggle", glyph: "power" },
+    {
+      name: "pool_pump",
+      equipment: makeSwitch({ type: "pool_pump" }),
+      kind: "toggle",
+      glyph: "power",
+    },
     ...(["light_onoff", "water_heater", "water_valve"] as const).map((type) => ({
       name: type,
       equipment: eq({ type, orderBindings: [lightOrder] }),

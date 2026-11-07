@@ -32,61 +32,131 @@ import { LiveEnergyPage } from "./components/energy/LiveEnergyPage";
 export default function App() {
   return (
     <ErrorBoundary>
-    <BrowserRouter>
-      <Routes>
-        {/* Public routes */}
-        <Route path="/login" element={<LoginPage />} />
-        <Route path="/setup" element={<SetupPage />} />
+      <BrowserRouter>
+        <Routes>
+          {/* Public routes */}
+          <Route path="/login" element={<LoginPage />} />
+          <Route path="/setup" element={<SetupPage />} />
 
-        {/* Protected routes — wrapped in AppLayout */}
-        <Route
-          element={
-            <ProtectedRoute>
-              <AppLayout />
-            </ProtectedRoute>
-          }
-        >
-          {/* Dashboard — default landing page */}
-          <Route path="/dashboard" element={<DashboardPage />} />
+          {/* Protected routes — wrapped in AppLayout */}
+          <Route
+            element={
+              <ProtectedRoute>
+                <AppLayout />
+              </ProtectedRoute>
+            }
+          >
+            {/* Dashboard — default landing page */}
+            <Route path="/dashboard" element={<DashboardPage />} />
 
-          {/* Maison — zone-based view */}
-          <Route path="/home" element={<HomePage />} />
-          <Route path="/home/:zoneId" element={<HomePage />} />
+            {/* Maison — zone-based view */}
+            <Route path="/home" element={<HomePage />} />
+            <Route path="/home/:zoneId" element={<HomePage />} />
 
-          {/* Settings pages */}
-          {/* Admin-only config pages are wrapped in AdminRoute (standard users
+            {/* Settings pages */}
+            {/* Admin-only config pages are wrapped in AdminRoute (standard users
               are redirected to the dashboard). Equipments/zones/modes stay
               reachable for consultation; their mutating controls are gated
               per-button instead, since standard users can still view them. */}
-          <Route path="/devices" element={<AdminRoute><DevicesPage /></AdminRoute>} />
-          <Route path="/devices/:id" element={<AdminRoute><DeviceDetailPage /></AdminRoute>} />
-          <Route path="/equipments" element={<EquipmentsPage />} />
-          <Route path="/equipments/:id" element={<EquipmentDetailPage />} />
-          <Route path="/zones" element={<ZonesPage />} />
-          <Route path="/zones/:id" element={<ZoneDetailPage />} />
-          <Route path="/modes" element={<ModesPage />} />
-          <Route path="/modes/:id" element={<ModeDetailPage />} />
-          <Route path="/calendar" element={<AdminRoute><CalendarPage /></AdminRoute>} />
-          <Route path="/energy" element={<Navigate to="/energy/live" replace />} />
-          <Route path="/energy/live" element={<LiveEnergyPage />} />
-          <Route path="/energy/consumption" element={<EnergyPage />} />
-          <Route path="/energy/production" element={<ProductionPage />} />
-          <Route path="/analyse" element={<AnalysePage />} />
-          <Route path="/analyse/:chartId" element={<AnalysePage />} />
-          <Route path="/shared-access" element={<AdminRoute><SharedAccessPage /></AdminRoute>} />
-          <Route path="/settings" element={<SettingsPage />} />
-          <Route path="/integrations" element={<AdminRoute><IntegrationsPage /></AdminRoute>} />
-          <Route path="/plugins" element={<AdminRoute><PluginsPage /></AdminRoute>} />
-          <Route path="/mqtt-publishers" element={<AdminRoute><MqttPublishersPage /></AdminRoute>} />
-          <Route path="/notification-publishers" element={<AdminRoute><NotificationPublishersPage /></AdminRoute>} />
-          <Route path="/logs" element={<AdminRoute><LogsPage /></AdminRoute>} />
-          <Route path="/backup" element={<AdminRoute><BackupPage /></AdminRoute>} />
+            <Route
+              path="/devices"
+              element={
+                <AdminRoute>
+                  <DevicesPage />
+                </AdminRoute>
+              }
+            />
+            <Route
+              path="/devices/:id"
+              element={
+                <AdminRoute>
+                  <DeviceDetailPage />
+                </AdminRoute>
+              }
+            />
+            <Route path="/equipments" element={<EquipmentsPage />} />
+            <Route path="/equipments/:id" element={<EquipmentDetailPage />} />
+            <Route path="/zones" element={<ZonesPage />} />
+            <Route path="/zones/:id" element={<ZoneDetailPage />} />
+            <Route path="/modes" element={<ModesPage />} />
+            <Route path="/modes/:id" element={<ModeDetailPage />} />
+            <Route
+              path="/calendar"
+              element={
+                <AdminRoute>
+                  <CalendarPage />
+                </AdminRoute>
+              }
+            />
+            <Route path="/energy" element={<Navigate to="/energy/live" replace />} />
+            <Route path="/energy/live" element={<LiveEnergyPage />} />
+            <Route path="/energy/consumption" element={<EnergyPage />} />
+            <Route path="/energy/production" element={<ProductionPage />} />
+            <Route path="/analyse" element={<AnalysePage />} />
+            <Route path="/analyse/:chartId" element={<AnalysePage />} />
+            <Route
+              path="/shared-access"
+              element={
+                <AdminRoute>
+                  <SharedAccessPage />
+                </AdminRoute>
+              }
+            />
+            <Route path="/settings" element={<SettingsPage />} />
+            <Route
+              path="/integrations"
+              element={
+                <AdminRoute>
+                  <IntegrationsPage />
+                </AdminRoute>
+              }
+            />
+            <Route
+              path="/plugins"
+              element={
+                <AdminRoute>
+                  <PluginsPage />
+                </AdminRoute>
+              }
+            />
+            <Route
+              path="/mqtt-publishers"
+              element={
+                <AdminRoute>
+                  <MqttPublishersPage />
+                </AdminRoute>
+              }
+            />
+            <Route
+              path="/notification-publishers"
+              element={
+                <AdminRoute>
+                  <NotificationPublishersPage />
+                </AdminRoute>
+              }
+            />
+            <Route
+              path="/logs"
+              element={
+                <AdminRoute>
+                  <LogsPage />
+                </AdminRoute>
+              }
+            />
+            <Route
+              path="/backup"
+              element={
+                <AdminRoute>
+                  <BackupPage />
+                </AdminRoute>
+              }
+            />
 
-          {/* Default redirect to Dashboard */}
-          <Route path="*" element={<Navigate to="/dashboard" replace />} />
-        </Route>
-      </Routes>
-    </BrowserRouter>
+            {/* Default redirect to Dashboard */}
+            <Route path="*" element={<Navigate to="/dashboard" replace />} />
+          </Route>
+        </Routes>
+      </BrowserRouter>
     </ErrorBoundary>
   );
 }

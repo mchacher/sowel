@@ -1,11 +1,5 @@
 import { describe, it, expect } from "vitest";
-import {
-  formatRuntime,
-  isOnBattery,
-  upsSeverityOf,
-  upsStatusKey,
-  upsStatusOf,
-} from "./upsStatus";
+import { formatRuntime, isOnBattery, upsSeverityOf, upsStatusKey, upsStatusOf } from "./upsStatus";
 import type { EquipmentWithDetails } from "../../types";
 
 function equipmentWith(bindings: { alias: string; category?: string; value?: unknown }[]) {

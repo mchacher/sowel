@@ -114,7 +114,10 @@ export function TimedEquipmentWidget({
           !running && !editMode && !inert ? (
             <TapGlyph
               kind={
-                gatePressNeedsConfirm(equipment, typeof configured?.value === "string" ? configured.value : null)
+                gatePressNeedsConfirm(
+                  equipment,
+                  typeof configured?.value === "string" ? configured.value : null,
+                )
                   ? "confirm"
                   : "now"
               }

@@ -51,9 +51,8 @@ export function SensorValues({
   }, null);
 
   // The alert's own level, for equipments that don't bind the battery data.
-  const alertLevel = batteryAlert && /^\d+$/.test(batteryAlert.value)
-    ? Number(batteryAlert.value)
-    : null;
+  const alertLevel =
+    batteryAlert && /^\d+$/.test(batteryAlert.value) ? Number(batteryAlert.value) : null;
   const shownLevel = minBattery ?? alertLevel;
 
   // Shown when low (< 30%) — informative — or whenever the engine raised an
@@ -85,7 +84,9 @@ export function SensorValues({
           title={batteryTitle}
         >
           {getBatteryIcon(shownLevel, 14, 1.5)}
-          {shownLevel !== null && <span className="text-micro tabular-nums">{formatPercent(shownLevel)}</span>}
+          {shownLevel !== null && (
+            <span className="text-micro tabular-nums">{formatPercent(shownLevel)}</span>
+          )}
         </span>
       )}
 
@@ -93,7 +94,14 @@ export function SensorValues({
       {sensorBindings.length > 0 && (
         <div className={VALUES_LAYOUT_CLASS[layout]}>
           {sensorBindings.map((b) => (
-            <span key={b.id} className={layout === "wrap" ? "text-small tabular-nums" : "text-small tabular-nums flex-shrink-0"}>
+            <span
+              key={b.id}
+              className={
+                layout === "wrap"
+                  ? "text-small tabular-nums"
+                  : "text-small tabular-nums flex-shrink-0"
+              }
+            >
               {b.category === "motion" && isBooleanActive(b.category, b.value) ? (
                 <span className="font-medium px-2 py-0.5 rounded-full text-micro bg-primary/10 text-primary inline-flex items-center gap-1">
                   {formatBooleanSensor(b.category, b.value, t)}
@@ -114,15 +122,12 @@ export function SensorValues({
                   {formatBooleanSensor(b.category, b.value, t)}
                 </span>
               ) : (
-                <span className="text-text-secondary">
-                  {formatSensorValue(b.value, b.unit, t)}
-                </span>
+                <span className="text-text-secondary">{formatSensorValue(b.value, b.unit, t)}</span>
               )}
             </span>
           ))}
         </div>
       )}
-
     </>
   );
 }
@@ -139,7 +144,5 @@ function ElapsedCounter({ origin }: { origin: string | null }) {
     return () => clearInterval(id);
   }, [origin]);
 
-  return (
-    <span className="tabular-nums opacity-80">{formatElapsed(computeElapsed(origin))}</span>
-  );
+  return <span className="tabular-nums opacity-80">{formatElapsed(computeElapsed(origin))}</span>;
 }

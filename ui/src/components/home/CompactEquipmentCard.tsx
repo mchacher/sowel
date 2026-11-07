@@ -27,7 +27,11 @@ import { evChargerStateOf } from "../equipments/evChargerState";
 import { electricVehicleStateOf, evChargingStateKey } from "../equipments/electricVehicleState";
 import { PoolHeatPumpControl } from "../equipments/PoolHeatPumpControl";
 import { Cloud, Timer } from "lucide-react";
-import { parseForecastDays, CONDITION_ICONS, CONDITION_COLORS } from "../equipments/weatherForecastUtils";
+import {
+  parseForecastDays,
+  CONDITION_ICONS,
+  CONDITION_COLORS,
+} from "../equipments/weatherForecastUtils";
 import { syntheticBindingFromComputed } from "../equipments/weather-utils";
 import { EquipmentStatusBadge } from "../equipments/EquipmentStatusBadge";
 import { equipmentLinkState } from "../../lib/equipment-origin";
@@ -58,48 +62,52 @@ type Tint = { bg: string; text: string };
 
 const TYPE_TINTS: Record<EquipmentType, Tint> = {
   // A light off is neutral: amber appears only while it is on (spec 196).
-  light_onoff:             { bg: "bg-border-light", text: "text-text-tertiary" },
-  light_dimmable:          { bg: "bg-border-light", text: "text-text-tertiary" },
-  light_color:             { bg: "bg-border-light", text: "text-text-tertiary" },
-  shutter:                 { bg: "bg-shutter-50",   text: "text-shutter-500" },
+  light_onoff: { bg: "bg-border-light", text: "text-text-tertiary" },
+  light_dimmable: { bg: "bg-border-light", text: "text-text-tertiary" },
+  light_color: { bg: "bg-border-light", text: "text-text-tertiary" },
+  shutter: { bg: "bg-shutter-50", text: "text-shutter-500" },
   // Awning uses the Sowel primary-light backdrop — the V3 illustration is
   // already colored (primary blue + primary light) and harmonises with it.
-  awning:                  { bg: "bg-primary-light",text: "text-primary" },
-  pool_cover:              { bg: "bg-shutter-50",   text: "text-shutter-500" },
-  door:                    { bg: "bg-shutter-50",   text: "text-shutter-500" },
-  sensor:                  { bg: "bg-sensor-50",    text: "text-sensor-500" },
-  button:                  { bg: "bg-sensor-50",    text: "text-sensor-500" },
-  switch:                  { bg: "bg-sensor-50",    text: "text-sensor-500" },
-  media_player:            { bg: "bg-media-50",     text: "text-media-500" },
-  thermostat:              { bg: "bg-primary-light",text: "text-primary" },
-  water_valve:             { bg: "bg-primary-light",text: "text-primary" },
-  weather:                 { bg: "bg-primary-light",text: "text-primary" },
-  weather_forecast:        { bg: "bg-primary-light",text: "text-primary" },
-  pool_pump:               { bg: "bg-primary-light",text: "text-primary" },
-  gate:                    { bg: "bg-shutter-50",   text: "text-shutter-500" },
-  energy_production_meter: { bg: "bg-success/10",   text: "text-success" },
-  solar_panel:             { bg: "bg-primary-light",  text: "text-primary" },
-  heater:                  { bg: "bg-heat/10",      text: "text-heat" },
-  water_heater:            { bg: "bg-primary-light",text: "text-primary" },
-  pool_heat_pump:          { bg: "bg-heat/10",      text: "text-heat" },
-  energy_meter:            { bg: "bg-primary-light",text: "text-primary" },
-  main_energy_meter:       { bg: "bg-primary-light",text: "text-primary" },
-  appliance:               { bg: "bg-border-light", text: "text-text-secondary" },
+  awning: { bg: "bg-primary-light", text: "text-primary" },
+  pool_cover: { bg: "bg-shutter-50", text: "text-shutter-500" },
+  door: { bg: "bg-shutter-50", text: "text-shutter-500" },
+  sensor: { bg: "bg-sensor-50", text: "text-sensor-500" },
+  button: { bg: "bg-sensor-50", text: "text-sensor-500" },
+  switch: { bg: "bg-sensor-50", text: "text-sensor-500" },
+  media_player: { bg: "bg-media-50", text: "text-media-500" },
+  thermostat: { bg: "bg-primary-light", text: "text-primary" },
+  water_valve: { bg: "bg-primary-light", text: "text-primary" },
+  weather: { bg: "bg-primary-light", text: "text-primary" },
+  weather_forecast: { bg: "bg-primary-light", text: "text-primary" },
+  pool_pump: { bg: "bg-primary-light", text: "text-primary" },
+  gate: { bg: "bg-shutter-50", text: "text-shutter-500" },
+  energy_production_meter: { bg: "bg-success/10", text: "text-success" },
+  solar_panel: { bg: "bg-primary-light", text: "text-primary" },
+  heater: { bg: "bg-heat/10", text: "text-heat" },
+  water_heater: { bg: "bg-primary-light", text: "text-primary" },
+  pool_heat_pump: { bg: "bg-heat/10", text: "text-heat" },
+  energy_meter: { bg: "bg-primary-light", text: "text-primary" },
+  main_energy_meter: { bg: "bg-primary-light", text: "text-primary" },
+  appliance: { bg: "bg-border-light", text: "text-text-secondary" },
   // Spec 120 — displays use the muted "info-only" tint, matching sensors.
-  display:                 { bg: "bg-sensor-50",    text: "text-sensor-500" },
+  display: { bg: "bg-sensor-50", text: "text-sensor-500" },
   // Spec 133 — cameras use the same muted "info-only" tint.
-  camera:                  { bg: "bg-sensor-50",    text: "text-sensor-500" },
+  camera: { bg: "bg-sensor-50", text: "text-sensor-500" },
   // Spec 153 — VMC uses the primary-light backdrop (air/comfort).
-  vmc:                     { bg: "bg-primary-light",text: "text-primary" },
+  vmc: { bg: "bg-primary-light", text: "text-primary" },
   // Spec 156 — a UPS is infrastructure, not an actuator: the muted
   // "info-only" tint, like sensors and displays. Its own status badge carries
   // the alarm colour, so the tile itself stays quiet.
-  ups:                     { bg: "bg-sensor-50",    text: "text-sensor-500" },
-  ev_charger:              { bg: "bg-primary-light",text: "text-primary" },
-  electric_vehicle:        { bg: "bg-primary-light",text: "text-primary" },
+  ups: { bg: "bg-sensor-50", text: "text-sensor-500" },
+  ev_charger: { bg: "bg-primary-light", text: "text-primary" },
+  electric_vehicle: { bg: "bg-primary-light", text: "text-primary" },
 };
 
-export function CompactEquipmentCard({ equipment, onExecuteOrder, zoneName }: CompactEquipmentCardProps) {
+export function CompactEquipmentCard({
+  equipment,
+  onExecuteOrder,
+  zoneName,
+}: CompactEquipmentCardProps) {
   const { t } = useTranslation();
 
   const {
@@ -136,10 +144,28 @@ export function CompactEquipmentCard({ equipment, onExecuteOrder, zoneName }: Co
 
   // Find primary data value for generic equipments
   const isKnownType =
-    isLight || isSwitch || isWaterHeater || isSensor || isShutterFamily || isThermostat || isHeater || isGate ||
-    isEnergyMeter || isWeatherForecast || isMediaPlayer || isAppliance ||
-    isWaterValve || isPoolPump || isPoolCover || isPoolHeatPump || isSolar || isCamera || isVmc ||
-    isUps || isEvCharger || isElectricVehicle;
+    isLight ||
+    isSwitch ||
+    isWaterHeater ||
+    isSensor ||
+    isShutterFamily ||
+    isThermostat ||
+    isHeater ||
+    isGate ||
+    isEnergyMeter ||
+    isWeatherForecast ||
+    isMediaPlayer ||
+    isAppliance ||
+    isWaterValve ||
+    isPoolPump ||
+    isPoolCover ||
+    isPoolHeatPump ||
+    isSolar ||
+    isCamera ||
+    isVmc ||
+    isUps ||
+    isEvCharger ||
+    isElectricVehicle;
 
   const hasCameraSnapshot =
     isCamera && equipment.dataBindings.some((b) => b.category === "camera_snapshot_url");
@@ -174,13 +200,14 @@ export function CompactEquipmentCard({ equipment, onExecuteOrder, zoneName }: Co
         return typeof e?.value === "number" ? e.value : null;
       })()
     : null;
-  const primaryBinding = !isKnownType
-    ? equipment.dataBindings[0] ?? null
-    : null;
+  const primaryBinding = !isKnownType ? (equipment.dataBindings[0] ?? null) : null;
 
   // Icon tinting — light-on overrides to amber + glow, everything else uses TYPE_TINTS.
   const isLightOn = isLight && isOn;
-  const baseTint = TYPE_TINTS[equipment.type] ?? { bg: "bg-border-light", text: "text-text-tertiary" };
+  const baseTint = TYPE_TINTS[equipment.type] ?? {
+    bg: "bg-border-light",
+    text: "text-text-tertiary",
+  };
   const iconBg = isLightOn ? "bg-active" : baseTint.bg;
   const iconText = isLightOn ? "text-on-active" : baseTint.text;
   const iconAnimation = isLightOn ? "animate-glow" : "";
@@ -190,7 +217,9 @@ export function CompactEquipmentCard({ equipment, onExecuteOrder, zoneName }: Co
   if (equipment.status === "offline") {
     return (
       <div className="grid grid-cols-[32px_1fr_auto] gap-[0.85rem] items-center px-[1.1rem] py-[0.55rem] min-h-[52px] transition-colors duration-150 hover:bg-border-light/40">
-        <div className={`w-8 h-8 rounded-md flex items-center justify-center flex-shrink-0 opacity-55 ${baseTint.bg} ${baseTint.text}`}>
+        <div
+          className={`w-8 h-8 rounded-md flex items-center justify-center flex-shrink-0 opacity-55 ${baseTint.bg} ${baseTint.text}`}
+        >
           {iconElement}
         </div>
         <Link
@@ -208,7 +237,9 @@ export function CompactEquipmentCard({ equipment, onExecuteOrder, zoneName }: Co
   return (
     <div className="grid grid-cols-[32px_1fr_auto] gap-[0.85rem] items-center px-[1.1rem] py-[0.55rem] min-h-[52px] transition-colors duration-150 hover:bg-border-light/40">
       {/* Slot 1: Icon */}
-      <div className={`w-8 h-8 rounded-md flex items-center justify-center flex-shrink-0 ${iconBg} ${iconText} ${iconAnimation}`}>
+      <div
+        className={`w-8 h-8 rounded-md flex items-center justify-center flex-shrink-0 ${iconBg} ${iconText} ${iconAnimation}`}
+      >
         {iconElement}
       </div>
 
@@ -237,7 +268,6 @@ export function CompactEquipmentCard({ equipment, onExecuteOrder, zoneName }: Co
           when it landed beside a gate's or a light's own control. Everything
           that belongs on the right now shares this cell and lines up in it. */}
       <div className="flex items-center gap-3 justify-self-end min-w-0">
-
         {/* Sensor / Button values — wrapped in a single grid cell to keep the row layout intact */}
         {isSensor && (
           <div className="flex items-center gap-2 flex-shrink-0">
@@ -316,9 +346,7 @@ export function CompactEquipmentCard({ equipment, onExecuteOrder, zoneName }: Co
                 is needed to say the number is gone on purpose (#839). */}
             {switchPowerStale && (
               <span className="flex items-baseline gap-1">
-                <span className="text-small font-medium text-text-tertiary tabular-nums">
-                  —
-                </span>
+                <span className="text-small font-medium text-text-tertiary tabular-nums">—</span>
                 <span className="text-micro text-text-tertiary">
                   {formatRelative(switchPowerStale, t)}
                 </span>
@@ -457,10 +485,7 @@ export function CompactEquipmentCard({ equipment, onExecuteOrder, zoneName }: Co
           <span
             className={`
               text-micro font-medium px-2 py-0.5 rounded-full flex-shrink-0
-              ${isOn
-                ? "bg-success/10 text-success"
-                : "bg-border-light text-text-tertiary"
-              }
+              ${isOn ? "bg-success/10 text-success" : "bg-border-light text-text-tertiary"}
             `}
           >
             {isOn ? t("common.on") : t("common.off")}
@@ -495,8 +520,9 @@ function buildWeatherCompactBindings(
   // (otherwise a bare "0 mm" looks like an instantaneous reading).
   const rainBindingFromData = byKey("sum_rain_24");
   const rainComputed = equipment.computedData?.find((c) => c.alias === "rain_24h");
-  const rainBase = rainBindingFromData
-    ?? (rainComputed
+  const rainBase =
+    rainBindingFromData ??
+    (rainComputed
       ? syntheticBindingFromComputed(equipment.id, rainComputed, { key: "sum_rain_24" })
       : undefined);
   const rain = rainBase ? { ...rainBase, unit: "mm/24h" } : null;
@@ -511,8 +537,10 @@ function CompactForecast({ equipment }: { equipment: EquipmentWithDetails }) {
   return (
     <div className="flex items-center gap-2 flex-shrink-0">
       {days.slice(0, 5).map((day) => {
-        const ConditionIcon = day.condition ? CONDITION_ICONS[day.condition] ?? Cloud : Cloud;
-        const color = day.condition ? (CONDITION_COLORS[day.condition] ?? "text-text-tertiary") : "text-text-tertiary";
+        const ConditionIcon = day.condition ? (CONDITION_ICONS[day.condition] ?? Cloud) : Cloud;
+        const color = day.condition
+          ? (CONDITION_COLORS[day.condition] ?? "text-text-tertiary")
+          : "text-text-tertiary";
         return (
           <div key={day.dayIndex} className="flex items-center gap-0.5">
             <ConditionIcon size={14} strokeWidth={1.5} className={color} />
@@ -534,10 +562,7 @@ function CompactEnergyValues({ equipment }: { equipment: EquipmentWithDetails })
   const energyDay = computed.find((c) => c.alias === "energy_day");
   // Live instantaneous power (issue #376), from the `power` binding. Updated
   // live via the WS store.
-  const liveReading = resolvePowerReading(
-    equipment,
-    pickLivePowerBinding(equipment.dataBindings),
-  );
+  const liveReading = resolvePowerReading(equipment, pickLivePowerBinding(equipment.dataBindings));
   const liveW = liveReading.watts;
 
   const dayWh = typeof energyDay?.value === "number" ? energyDay.value : null;
@@ -589,9 +614,7 @@ function CompactMediaPlayer({ equipment }: { equipment: EquipmentWithDetails }) 
 
   return (
     <div className="flex items-center gap-2 flex-shrink-0">
-      {source && (
-        <span className="text-caption text-text-secondary font-medium">{source}</span>
-      )}
+      {source && <span className="text-caption text-text-secondary font-medium">{source}</span>}
     </div>
   );
 }
@@ -620,9 +643,7 @@ function PoolPumpRuntime({ equipment }: { equipment: EquipmentWithDetails }) {
   if (seconds === 0) return null;
   const runtimeStr = formatDuration(seconds);
   return (
-    <span className="text-micro text-text-tertiary tabular-nums flex-shrink-0">
-      {runtimeStr}
-    </span>
+    <span className="text-micro text-text-tertiary tabular-nums flex-shrink-0">{runtimeStr}</span>
   );
 }
 
@@ -643,7 +664,9 @@ function CompactElectricVehicle({ equipment }: { equipment: EquipmentWithDetails
         </span>
       )}
       {s.rangeKm !== null && (
-        <span className="text-micro text-text-secondary tabular-nums">{formatWithUnit(s.rangeKm, "km")}</span>
+        <span className="text-micro text-text-secondary tabular-nums">
+          {formatWithUnit(s.rangeKm, "km")}
+        </span>
       )}
       {s.batteryLevel !== null && (
         <span className="text-small font-semibold text-text tabular-nums">
@@ -717,7 +740,9 @@ function CompactUps({ equipment }: { equipment: EquipmentWithDetails }) {
         {status ? t(upsStatusKey(status)) : (raw ?? t(upsStatusKey(null)))}
       </span>
       {charge !== null && charge !== undefined && (
-        <span className="text-micro text-text-secondary tabular-nums">{formatPercent(Number(charge))}</span>
+        <span className="text-micro text-text-secondary tabular-nums">
+          {formatPercent(Number(charge))}
+        </span>
       )}
       {runtimeLabel && (
         <span className="flex items-center gap-0.5 text-micro text-text-secondary tabular-nums">
@@ -749,10 +774,16 @@ function CompactAppliance({ equipment }: { equipment: EquipmentWithDetails }) {
 
   return (
     <div className="flex items-center gap-2 flex-shrink-0">
-      <span className={`text-micro font-medium px-1.5 py-0.5 rounded-full ${
-        isRunning ? "bg-active-bg text-active-ink" : "bg-border-light text-text-tertiary"
-      }`}>
-        {state === "running" ? t("common.running") : state === "paused" ? t("common.paused") : state ?? "—"}
+      <span
+        className={`text-micro font-medium px-1.5 py-0.5 rounded-full ${
+          isRunning ? "bg-active-bg text-active-ink" : "bg-border-light text-text-tertiary"
+        }`}
+      >
+        {state === "running"
+          ? t("common.running")
+          : state === "paused"
+            ? t("common.paused")
+            : (state ?? "—")}
       </span>
       {isRunning && remainingStr && (
         <span className="flex items-center gap-0.5 text-micro text-text-secondary tabular-nums">
@@ -761,7 +792,9 @@ function CompactAppliance({ equipment }: { equipment: EquipmentWithDetails }) {
         </span>
       )}
       {isRunning && progress !== null && progress > 0 && (
-        <span className="text-micro text-text-tertiary tabular-nums">{formatPercent(progress)}</span>
+        <span className="text-micro text-text-tertiary tabular-nums">
+          {formatPercent(progress)}
+        </span>
       )}
     </div>
   );

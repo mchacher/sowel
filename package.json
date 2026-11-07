@@ -17,8 +17,8 @@
     "typecheck:tests": "tsc -p tsconfig.test.json",
     "lint": "eslint src/",
     "lint:fix": "eslint src/ --fix",
-    "format": "prettier --write \"src/**/*.ts\" \"*.{json,md,js}\"",
-    "format:check": "prettier --check \"src/**/*.ts\" \"*.{json,md,js}\"",
+    "format": "prettier --write \"src/**/*.ts\" \"*.{json,md,js}\" \"ui/src/**/*.{ts,tsx,css}\" \"ui/*.{ts,js}\" \"design-system/**/*.{md,css}\"",
+    "format:check": "prettier --check \"src/**/*.ts\" \"*.{json,md,js}\" \"ui/src/**/*.{ts,tsx,css}\" \"ui/*.{ts,js}\" \"design-system/**/*.{md,css}\"",
     "validate": "npm run typecheck && npm run typecheck:tests && npm run lint && npm run format:check && npm run test && npm run validate:ui",
     "validate:ui": "cd ui && npm run lint && npm run typecheck && npm run test",
     "prepare": "husky"
@@ -83,6 +83,15 @@
       "prettier --write"
     ],
     "*.{json,md,js}": [
+      "prettier --write"
+    ],
+    "ui/src/**/*.{ts,tsx,css}": [
+      "prettier --write"
+    ],
+    "ui/*.ts": [
+      "prettier --write"
+    ],
+    "design-system/**/*.css": [
       "prettier --write"
     ]
   },

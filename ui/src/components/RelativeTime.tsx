@@ -12,7 +12,8 @@ export function RelativeTime({ iso }: { iso: string | null }) {
     if (!iso) return;
 
     const getInterval = () => {
-      const diffMs = Date.now() - new Date(iso.endsWith("Z") || iso.includes("+") ? iso : `${iso}Z`).getTime();
+      const diffMs =
+        Date.now() - new Date(iso.endsWith("Z") || iso.includes("+") ? iso : `${iso}Z`).getTime();
       if (diffMs < 60_000) return 5_000;
       if (diffMs < 3_600_000) return 30_000;
       return 60_000;

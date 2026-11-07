@@ -59,7 +59,13 @@ function setup(opts: { meters: EquipmentWithDetails[]; role: "admin" | "user" })
   useEnergy.setState({
     history: {
       points: [],
-      totals: { total_hp: 0, total_hc: 0, total_production: 0, total_autoconso: 0, total_injection: 0 },
+      totals: {
+        total_hp: 0,
+        total_hc: 0,
+        total_production: 0,
+        total_autoconso: 0,
+        total_injection: 0,
+      },
     } as unknown as EnergyHistoryResponse,
     loading: false,
     hasProduction: true,

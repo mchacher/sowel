@@ -1,8 +1,21 @@
-import { CHART_TICK_FONT, CHART_TOOLTIP_FONT, CHART_TOOLTIP_ITEM_STYLE } from "../../lib/chart-font";
+import {
+  CHART_TICK_FONT,
+  CHART_TOOLTIP_FONT,
+  CHART_TOOLTIP_ITEM_STYLE,
+} from "../../lib/chart-font";
 import { memo, useEffect, useMemo, useState } from "react";
 import { Activity, AlertTriangle } from "lucide-react";
 import { useTranslation } from "react-i18next";
-import { CartesianGrid, Line, LineChart, ReferenceLine, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
+import {
+  CartesianGrid,
+  Line,
+  LineChart,
+  ReferenceLine,
+  ResponsiveContainer,
+  Tooltip,
+  XAxis,
+  YAxis,
+} from "recharts";
 import { getPvHealth, type PvHealthResponse } from "../../api";
 import { dateLocale } from "../../lib/locale";
 import { formatPercent } from "../../lib/format";
@@ -22,11 +35,7 @@ import { loadWithRetry } from "../../lib/load-with-retry";
  * fast a fault would show *at the rate this installation is actually getting
  * clear days*, and it says it cannot name a panel.
  */
-export const PvHealthPanel = memo(function PvHealthPanel({
-  equipmentId,
-}: {
-  equipmentId: string;
-}) {
+export const PvHealthPanel = memo(function PvHealthPanel({ equipmentId }: { equipmentId: string }) {
   const { t, i18n } = useTranslation();
   const locale = dateLocale(i18n.language);
   const [data, setData] = useState<PvHealthResponse | null>(null);
@@ -134,7 +143,6 @@ export const PvHealthPanel = memo(function PvHealthPanel({
   // qualified in the observation fortnight.
   const blind = data.detection === null;
 
-
   const normal = data.normal;
   const latest = data.latest;
   const deviation = latest ? (latest.ratio / normal - 1) * 100 : null;
@@ -145,7 +153,11 @@ export const PvHealthPanel = memo(function PvHealthPanel({
 
       {data.alert ? (
         <div className="flex items-start gap-2 mb-3 p-3 rounded-md bg-warning/10 border border-warning/30">
-          <AlertTriangle size={16} strokeWidth={1.5} className="text-warning-ink flex-shrink-0 mt-0.5" />
+          <AlertTriangle
+            size={16}
+            strokeWidth={1.5}
+            className="text-warning-ink flex-shrink-0 mt-0.5"
+          />
           <p className="text-small text-text">
             {t("equipments.pvHealth.alert", {
               pct: formatPercent(data.alert.deficit * 100, { locale }),

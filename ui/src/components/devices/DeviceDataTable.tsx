@@ -11,11 +11,7 @@ export function DeviceDataTable({ data }: DeviceDataTableProps) {
   const { t } = useTranslation();
 
   if (data.length === 0) {
-    return (
-      <p className="text-small text-text-tertiary italic py-4">
-        {t("devices.noData")}
-      </p>
-    );
+    return <p className="text-small text-text-tertiary italic py-4">{t("devices.noData")}</p>;
   }
 
   // Sort by category, then by key
@@ -87,15 +83,7 @@ function CategoryBadge({ category }: { category: string }) {
   );
 }
 
-function DataValueCell({
-  value,
-  unit,
-  type,
-}: {
-  value: unknown;
-  unit?: string;
-  type: string;
-}) {
+function DataValueCell({ value, unit, type }: { value: unknown; unit?: string; type: string }) {
   const { t } = useTranslation();
 
   if (value === null || value === undefined) {
@@ -117,11 +105,7 @@ function DataValueCell({
     );
   }
 
-  return (
-    <span className="tabular-nums text-small text-text">
-      {formatDataValue(value, unit)}
-    </span>
-  );
+  return <span className="tabular-nums text-small text-text">{formatDataValue(value, unit)}</span>;
 }
 
 function getCategoryColor(category: string): string {

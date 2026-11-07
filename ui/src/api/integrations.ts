@@ -1,9 +1,4 @@
-import type {
-  IntegrationInfo,
-  PluginInfo,
-  PluginManifest,
-  PluginSource,
-} from "../types";
+import type { IntegrationInfo, PluginInfo, PluginManifest, PluginSource } from "../types";
 import { fetchJSON, API_BASE, getAccessToken } from "./client";
 
 // ============================================================

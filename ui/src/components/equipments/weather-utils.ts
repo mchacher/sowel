@@ -38,8 +38,22 @@ export function syntheticBindingFromComputed(
 
 /** 16-point compass abbreviations (FR). 0° = N, clockwise. */
 const COMPASS_FR = [
-  "N", "NNE", "NE", "ENE", "E", "ESE", "SE", "SSE",
-  "S", "SSO", "SO", "OSO", "O", "ONO", "NO", "NNO",
+  "N",
+  "NNE",
+  "NE",
+  "ENE",
+  "E",
+  "ESE",
+  "SE",
+  "SSE",
+  "S",
+  "SSO",
+  "SO",
+  "OSO",
+  "O",
+  "ONO",
+  "NO",
+  "NNO",
 ];
 
 /** Convert a meteorological wind angle (0 = North, clockwise) to a compass abbreviation. */
@@ -59,16 +73,22 @@ export function angleToCompass(angle: number): string {
  * deduplicates aliases (`temperature` / `temperature_2`) so the alias alone is
  * ambiguous about which is which — only the category is stable.
  */
-export function findTempOutdoor(bindings: DataBindingWithValue[]): DataBindingWithValue | undefined {
+export function findTempOutdoor(
+  bindings: DataBindingWithValue[],
+): DataBindingWithValue | undefined {
   return bindings.find((b) => b.category === "temperature_outdoor");
 }
 export function findTempIndoor(bindings: DataBindingWithValue[]): DataBindingWithValue | undefined {
   return bindings.find((b) => b.category === "temperature");
 }
-export function findHumidityOutdoor(bindings: DataBindingWithValue[]): DataBindingWithValue | undefined {
+export function findHumidityOutdoor(
+  bindings: DataBindingWithValue[],
+): DataBindingWithValue | undefined {
   return bindings.find((b) => b.category === "humidity_outdoor");
 }
-export function findHumidityIndoor(bindings: DataBindingWithValue[]): DataBindingWithValue | undefined {
+export function findHumidityIndoor(
+  bindings: DataBindingWithValue[],
+): DataBindingWithValue | undefined {
   return bindings.find((b) => b.category === "humidity");
 }
 

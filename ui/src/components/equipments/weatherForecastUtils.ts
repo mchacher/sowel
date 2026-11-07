@@ -1,12 +1,4 @@
-import {
-  Sun,
-  CloudSun,
-  Cloud,
-  CloudFog,
-  CloudRain,
-  Snowflake,
-  CloudLightning,
-} from "lucide-react";
+import { Sun, CloudSun, Cloud, CloudFog, CloudRain, Snowflake, CloudLightning } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 import type { DataBindingWithValue } from "../../types";
 

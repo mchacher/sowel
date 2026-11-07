@@ -178,7 +178,9 @@ describe("every path through the guard", () => {
     expect(screen.getByRole("alertdialog", { name: "Open Portail?" })).toBeTruthy();
     expect(onExecuteOrder).not.toHaveBeenCalled();
 
-    await userEvent.click(within(screen.getByRole("alertdialog")).getByRole("button", { name: "Open" }));
+    await userEvent.click(
+      within(screen.getByRole("alertdialog")).getByRole("button", { name: "Open" }),
+    );
     expect(onExecuteOrder).toHaveBeenCalledTimes(1);
     expect(onExecuteOrder).toHaveBeenCalledWith("g1", "relay", null);
   });
@@ -197,7 +199,9 @@ describe("every path through the guard", () => {
     expect(screen.getByRole("alertdialog", { name: "Close Portail?" })).toBeTruthy();
     expect(onExecuteOrder).not.toHaveBeenCalled();
 
-    await userEvent.click(within(screen.getByRole("alertdialog")).getByRole("button", { name: "Close" }));
+    await userEvent.click(
+      within(screen.getByRole("alertdialog")).getByRole("button", { name: "Close" }),
+    );
     expect(onExecuteOrder).toHaveBeenCalledWith("g1", "relay", "CLOSE");
   });
 
@@ -274,7 +278,9 @@ describe("every path through the guard", () => {
     expect(api.armTimedCommand).not.toHaveBeenCalled();
 
     await act(async () => {
-      fireEvent.click(within(screen.getByRole("alertdialog")).getByRole("button", { name: "Open" }));
+      fireEvent.click(
+        within(screen.getByRole("alertdialog")).getByRole("button", { name: "Open" }),
+      );
     });
     expect(api.armTimedCommand).toHaveBeenCalledWith("g1");
   });
@@ -284,12 +290,19 @@ describe("every path through the guard", () => {
     const { container, rerender } = render(
       <TimedEquipmentWidget label="Portail" equipment={gate({ timedCommand })} />,
     );
-    expect(container.querySelector("[data-tap-glyph]")?.getAttribute("data-tap-glyph")).toBe("shield");
+    expect(container.querySelector("[data-tap-glyph]")?.getAttribute("data-tap-glyph")).toBe(
+      "shield",
+    );
 
     rerender(
-      <TimedEquipmentWidget label="Portail" equipment={gate({ timedCommand, requireConfirmation: false })} />,
+      <TimedEquipmentWidget
+        label="Portail"
+        equipment={gate({ timedCommand, requireConfirmation: false })}
+      />,
     );
-    expect(container.querySelector("[data-tap-glyph]")?.getAttribute("data-tap-glyph")).toBe("power");
+    expect(container.querySelector("[data-tap-glyph]")?.getAttribute("data-tap-glyph")).toBe(
+      "power",
+    );
   });
 
   it("timed control (Maison row, equipment page): arming asks, cancelling does not", async () => {

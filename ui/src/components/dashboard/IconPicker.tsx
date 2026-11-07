@@ -11,7 +11,13 @@ interface IconPickerProps {
   mobile?: boolean;
 }
 
-export function IconPicker({ currentIcon, equipmentType, onSelect, onClose, mobile }: IconPickerProps) {
+export function IconPicker({
+  currentIcon,
+  equipmentType,
+  onSelect,
+  onClose,
+  mobile,
+}: IconPickerProps) {
   const { t } = useTranslation();
   const ref = useRef<HTMLDivElement>(null);
 
@@ -45,7 +51,9 @@ export function IconPicker({ currentIcon, equipmentType, onSelect, onClose, mobi
           : "absolute z-20 top-full left-1/2 -translate-x-1/2 mt-1 w-[280px]"
       }`}
     >
-      <h3 className="text-caption font-medium text-text-secondary mb-2">{t("dashboard.chooseIcon")}</h3>
+      <h3 className="text-caption font-medium text-text-secondary mb-2">
+        {t("dashboard.chooseIcon")}
+      </h3>
 
       {/* Relevant custom icons */}
       {relevantIcons.length > 0 && (

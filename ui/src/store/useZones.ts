@@ -15,8 +15,21 @@ interface ZonesState {
 
   // Actions
   fetchZones: () => Promise<void>;
-  createZone: (data: { name: string; parentId?: string | null; icon?: string; description?: string }) => Promise<Zone>;
-  updateZone: (id: string, updates: { name?: string; parentId?: string | null; icon?: string | null; description?: string | null }) => Promise<void>;
+  createZone: (data: {
+    name: string;
+    parentId?: string | null;
+    icon?: string;
+    description?: string;
+  }) => Promise<Zone>;
+  updateZone: (
+    id: string,
+    updates: {
+      name?: string;
+      parentId?: string | null;
+      icon?: string | null;
+      description?: string | null;
+    },
+  ) => Promise<void>;
   deleteZone: (id: string) => Promise<void>;
 
   // WebSocket handlers
@@ -61,7 +74,13 @@ export const useZones = create<ZonesState>((set, get) => ({
   },
 
   // WebSocket handlers — refetch tree on any change
-  handleZoneCreated: () => { get().fetchZones(); },
-  handleZoneUpdated: () => { get().fetchZones(); },
-  handleZoneRemoved: () => { get().fetchZones(); },
+  handleZoneCreated: () => {
+    get().fetchZones();
+  },
+  handleZoneUpdated: () => {
+    get().fetchZones();
+  },
+  handleZoneRemoved: () => {
+    get().fetchZones();
+  },
 }));

@@ -35,19 +35,14 @@ export const useOrderTiming = create<OrderTimingState>((set, get) => ({
 
   markSent: (equipmentId, alias) => {
     set((s) => ({
-      pending: [
-        ...s.pending,
-        { equipmentId, alias, startedAt: performance.now() },
-      ],
+      pending: [...s.pending, { equipmentId, alias, startedAt: performance.now() }],
     }));
   },
 
   markReceived: (equipmentId, alias) => {
     const { pending } = get();
     // Find the oldest matching pending order
-    const idx = pending.findIndex(
-      (p) => p.equipmentId === equipmentId && p.alias === alias,
-    );
+    const idx = pending.findIndex((p) => p.equipmentId === equipmentId && p.alias === alias);
     if (idx === -1) return;
 
     const order = pending[idx];

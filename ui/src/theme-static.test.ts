@@ -30,7 +30,8 @@ function blocks(source: string, header: RegExp): string[] {
   return out;
 }
 
-const declared = (body: string) => new Set([...body.matchAll(/(--color-[\w-]+)\s*:/g)].map((m) => m[1]));
+const declared = (body: string) =>
+  new Set([...body.matchAll(/(--color-[\w-]+)\s*:/g)].map((m) => m[1]));
 
 const staticVars = declared(blocks(css, /@theme\s+static\s*\{/).join("\n"));
 const plainVars = declared(blocks(css, /@theme\s*\{/).join("\n"));

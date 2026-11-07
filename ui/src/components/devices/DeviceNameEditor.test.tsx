@@ -25,7 +25,9 @@ describe("DeviceNameEditor failure (#1124)", () => {
     await i18n.changeLanguage("fr");
     await renameTo(vi.fn().mockRejectedValue(new ApiError(429, "Too Many Requests")));
     expect(
-      await screen.findByText("Trop de demandes en peu de temps. Réessayez dans quelques secondes."),
+      await screen.findByText(
+        "Trop de demandes en peu de temps. Réessayez dans quelques secondes.",
+      ),
     ).toBeTruthy();
   });
 

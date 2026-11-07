@@ -139,7 +139,21 @@ const RELEVANT_DATA: Record<string, string[]> = {
   // Spec 190 — a door's end-state word (OPEN / CLOSED / …) arrives as a generic enum.
   door: ["shutter_position", "generic"],
   switch: ["light_state"],
-  sensor: ["temperature", "humidity", "pressure", "luminosity", "co2", "voc", "noise", "motion", "contact_door", "contact_window", "water_leak", "smoke", "battery"],
+  sensor: [
+    "temperature",
+    "humidity",
+    "pressure",
+    "luminosity",
+    "co2",
+    "voc",
+    "noise",
+    "motion",
+    "contact_door",
+    "contact_window",
+    "water_leak",
+    "smoke",
+    "battery",
+  ],
   button: ["action", "battery"],
   // `power` / `setpoint` / `temperature_outdoor` are the spec 077 standardized
   // thermostat categories (a Panasonic or MCZ device reports its run state,
@@ -148,8 +162,25 @@ const RELEVANT_DATA: Record<string, string[]> = {
   // Spec 177 — `operation_mode` is the mode's own category; `generic` keeps
   // binding what a plugin publishes without one (Panasonic's operationMode
   // until #922, and every vendor extra).
-  thermostat: ["temperature", "temperature_outdoor", "setpoint", "power", "operation_mode", "generic"],
-  weather: ["temperature", "temperature_outdoor", "humidity", "humidity_outdoor", "pressure", "wind", "rain", "noise", "battery"],
+  thermostat: [
+    "temperature",
+    "temperature_outdoor",
+    "setpoint",
+    "power",
+    "operation_mode",
+    "generic",
+  ],
+  weather: [
+    "temperature",
+    "temperature_outdoor",
+    "humidity",
+    "humidity_outdoor",
+    "pressure",
+    "wind",
+    "rain",
+    "noise",
+    "battery",
+  ],
   weather_forecast: ["weather_condition", "temperature_outdoor", "rain", "wind"],
   // gate auto-binding is candidate-based (spec 150); this entry only feeds the
   // manual AddBindingModal suggestions.
@@ -212,14 +243,7 @@ const RELEVANT_DATA: Record<string, string[]> = {
   // Spec 120 — Sowel-supervised displays. `generic` catches the
   // hostname / ip_address informational fields surfaced by the
   // plugin alongside the canonical 5.
-  display: [
-    "firmware_version",
-    "uptime",
-    "rssi",
-    "language",
-    "display_brightness",
-    "generic",
-  ],
+  display: ["firmware_version", "uptime", "rssi", "language", "display_brightness", "generic"],
   // Spec 133 — cameras. Deliberately a SUBSET of the 5 camera categories:
   // snapshot/stream/monitoring are auto-bound (the "just show me the
   // camera" default), but camera_light_mode and camera_detection are
@@ -271,18 +295,7 @@ const RELEVANT_ORDERS: Record<string, string[]> = {
     "total_number",
     "auto_close_when_water_shortage",
   ],
-  pool_pump: [
-    "state",
-    "on",
-    "R1",
-    "R2",
-    "R3",
-    "R4",
-    "power1",
-    "power2",
-    "power3",
-    "power4",
-  ],
+  pool_pump: ["state", "on", "R1", "R2", "R3", "R4", "power1", "power2", "power3", "power4"],
   pool_cover: [
     "state",
     "position",
@@ -509,7 +522,11 @@ export function isRelevantData(category: string, equipmentType: string): boolean
   return RELEVANT_DATA[equipmentType]?.includes(category) ?? false;
 }
 
-export function isRelevantOrder(key: string, equipmentType: string, category?: OrderCategory): boolean {
+export function isRelevantOrder(
+  key: string,
+  equipmentType: string,
+  category?: OrderCategory,
+): boolean {
   if (BIND_ALL_ORDER_TYPES.has(equipmentType as EquipmentType)) return true;
   if (category && RELEVANT_ORDER_CATEGORIES[equipmentType as EquipmentType]?.includes(category)) {
     return true;
@@ -669,7 +686,13 @@ export function computeBindingPlan(
           vmcAlias?.[data.key] ??
             (doorWord
               ? "state"
-              : resolveAlias(data.key, equipmentType, DATA_CATEGORY_ALIASES, data.category, data.type)),
+              : resolveAlias(
+                  data.key,
+                  equipmentType,
+                  DATA_CATEGORY_ALIASES,
+                  data.category,
+                  data.type,
+                )),
         );
       }
       for (const order of device.orders) {
@@ -761,8 +784,7 @@ export function computeMissingBindings(
         device.orders,
       );
       const owned = candidates.find(
-        (c) =>
-          c.dataKeys.some((k) => keys.has(k)) || c.orderKeys.some((k) => keys.has(k)),
+        (c) => c.dataKeys.some((k) => keys.has(k)) || c.orderKeys.some((k) => keys.has(k)),
       );
       if (!owned) return false;
       candidateByDevice[device.id] = owned.id;

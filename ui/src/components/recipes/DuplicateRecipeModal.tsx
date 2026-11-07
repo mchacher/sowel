@@ -41,9 +41,7 @@ export function DuplicateRecipeModal({
 
   // Equipment slots that need remapping
   const equipmentSlots = useMemo(() => {
-    return recipe.slots.filter(
-      (s) => s.type === "equipment" && instance.params[s.id],
-    );
+    return recipe.slots.filter((s) => s.type === "equipment" && instance.params[s.id]);
   }, [recipe.slots, instance.params]);
 
   // Other zones (exclude current)
@@ -134,9 +132,7 @@ export function DuplicateRecipeModal({
       <div className="bg-surface rounded-lg w-full max-w-[400px] flex flex-col shadow-lg">
         {/* Header */}
         <div className="flex items-center justify-between px-5 py-4 border-b border-border-light">
-          <h2 className="text-lead font-semibold text-text">
-            {t("recipes.duplicateTitle")}
-          </h2>
+          <h2 className="text-lead font-semibold text-text">{t("recipes.duplicateTitle")}</h2>
           <button
             onClick={onClose}
             className="p-1.5 text-text-tertiary hover:text-text-secondary rounded-sm hover:bg-border-light"
@@ -148,15 +144,11 @@ export function DuplicateRecipeModal({
         {/* Body */}
         <div className="px-5 py-4 space-y-4">
           {/* Source summary */}
-          <div className="text-caption text-text-tertiary">
-            {recipeName(recipe, lang)}
-          </div>
+          <div className="text-caption text-text-tertiary">{recipeName(recipe, lang)}</div>
 
           {/* Target zone picker */}
           <div>
-            <label className={FIELD_LABEL}>
-              {t("recipes.targetZone")}
-            </label>
+            <label className={FIELD_LABEL}>{t("recipes.targetZone")}</label>
             <select
               value={targetZoneId}
               onChange={(e) => setTargetZoneId(e.target.value)}
@@ -164,34 +156,37 @@ export function DuplicateRecipeModal({
             >
               <option value="">{t("common.select")}</option>
               {otherZones.map((z) => (
-                <option key={z.id} value={z.id}>{z.label}</option>
+                <option key={z.id} value={z.id}>
+                  {z.label}
+                </option>
               ))}
             </select>
           </div>
 
           {/* Equipment mapping */}
-          {targetZoneId && equipmentSlots.map((slot) => {
-            const compatible = getCompatibleEquipments(slot.id);
-            return (
-              <div key={slot.id}>
-                <label className={FIELD_LABEL}>
-                  {recipeSlotName(recipe, slot, lang)}
-                </label>
-                {compatible.length === 0 ? (
-                  <p className="text-caption text-error">{t("recipes.noCompatibleEquipment")}</p>
-                ) : (
-                  <select
-                    value={equipmentMap[slot.id] ?? ""}
-                    onChange={(e) => setEquipmentMap({ ...equipmentMap, [slot.id]: e.target.value })}
-                    className="w-full px-3 py-1.5 text-small border border-border bg-surface rounded-sm text-text"
-                  >
-                    {compatible.length > 1 && <option value="">{t("common.select")}</option>}
-                    <EquipmentOptions equipments={compatible} zoneChains={zoneChains} />
-                  </select>
-                )}
-              </div>
-            );
-          })}
+          {targetZoneId &&
+            equipmentSlots.map((slot) => {
+              const compatible = getCompatibleEquipments(slot.id);
+              return (
+                <div key={slot.id}>
+                  <label className={FIELD_LABEL}>{recipeSlotName(recipe, slot, lang)}</label>
+                  {compatible.length === 0 ? (
+                    <p className="text-caption text-error">{t("recipes.noCompatibleEquipment")}</p>
+                  ) : (
+                    <select
+                      value={equipmentMap[slot.id] ?? ""}
+                      onChange={(e) =>
+                        setEquipmentMap({ ...equipmentMap, [slot.id]: e.target.value })
+                      }
+                      className="w-full px-3 py-1.5 text-small border border-border bg-surface rounded-sm text-text"
+                    >
+                      {compatible.length > 1 && <option value="">{t("common.select")}</option>}
+                      <EquipmentOptions equipments={compatible} zoneChains={zoneChains} />
+                    </select>
+                  )}
+                </div>
+              );
+            })}
 
           {error && <p className="text-caption text-error">{error}</p>}
         </div>

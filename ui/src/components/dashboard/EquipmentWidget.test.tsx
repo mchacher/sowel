@@ -266,9 +266,7 @@ describe("EquipmentWidget", () => {
       id: "pp-1",
       name: "Pool pump",
       type: "pool_pump",
-      computedData: [
-        { alias: "runtime_daily", value: 5400, lastUpdated: "2026-01-01T00:00:00Z" },
-      ],
+      computedData: [{ alias: "runtime_daily", value: 5400, lastUpdated: "2026-01-01T00:00:00Z" }],
     });
     pump.dataBindings[0].value = true;
     render(
@@ -503,7 +501,6 @@ describe("EquipmentWidget", () => {
   });
 });
 
-
 // ============================================================
 // Issue #839 — a stale wattage must not be drawn as a live measurement.
 // ============================================================
@@ -561,11 +558,7 @@ function waterHeater(over: Partial<EquipmentWithDetails> = {}): EquipmentWithDet
 describe("EquipmentWidget — stale power readings (#839)", () => {
   it("prints a fresh water heater draw", () => {
     render(
-      <EquipmentWidget
-        widget={makeWidget()}
-        equipment={waterHeater()}
-        onExecuteOrder={vi.fn()}
-      />,
+      <EquipmentWidget widget={makeWidget()} equipment={waterHeater()} onExecuteOrder={vi.fn()} />,
     );
 
     expect(screen.getByText("560")).toBeTruthy();
@@ -583,9 +576,7 @@ describe("EquipmentWidget — stale power readings (#839)", () => {
       stale: false,
     }) as EquipmentWithDetails["dataBindings"][number];
 
-    render(
-      <EquipmentWidget widget={makeWidget()} equipment={eq} onExecuteOrder={vi.fn()} />,
-    );
+    render(<EquipmentWidget widget={makeWidget()} equipment={eq} onExecuteOrder={vi.fn()} />);
 
     expect(screen.queryByText("0")).toBeNull();
     expect(screen.getByText("\u2014")).toBeTruthy();
@@ -600,9 +591,7 @@ describe("EquipmentWidget — stale power readings (#839)", () => {
       lastUpdated: agoIso(270),
     }) as EquipmentWithDetails["dataBindings"][number];
 
-    render(
-      <EquipmentWidget widget={makeWidget()} equipment={eq} onExecuteOrder={vi.fn()} />,
-    );
+    render(<EquipmentWidget widget={makeWidget()} equipment={eq} onExecuteOrder={vi.fn()} />);
 
     expect(screen.getByText("560")).toBeTruthy();
   });
@@ -616,9 +605,7 @@ describe("EquipmentWidget — stale power readings (#839)", () => {
       ] as EquipmentWithDetails["dataBindings"],
     });
 
-    render(
-      <EquipmentWidget widget={makeWidget()} equipment={eq} onExecuteOrder={vi.fn()} />,
-    );
+    render(<EquipmentWidget widget={makeWidget()} equipment={eq} onExecuteOrder={vi.fn()} />);
 
     expect(screen.queryByText(/1[.,]2\s?kW/)).toBeNull();
     expect(screen.queryByText("Standby")).toBeNull();
@@ -634,9 +621,7 @@ describe("EquipmentWidget — stale power readings (#839)", () => {
       ] as EquipmentWithDetails["dataBindings"],
     });
 
-    render(
-      <EquipmentWidget widget={makeWidget()} equipment={eq} onExecuteOrder={vi.fn()} />,
-    );
+    render(<EquipmentWidget widget={makeWidget()} equipment={eq} onExecuteOrder={vi.fn()} />);
 
     expect(screen.getByText("Standby")).toBeTruthy();
     expect(screen.queryByText(/reading outdated/)).toBeNull();
@@ -679,14 +664,42 @@ describe("EquipmentWidget — thermostat tile degrees", () => {
       type: "thermostat",
       name: "Thermostat",
       dataBindings: [
-        { ...base, id: "db-t", alias: "temperature", key: "temperature", type: "number", category: "temperature", value: 10.5, unit: "°C" },
-        { ...base, id: "db-s", alias: "setpoint", key: "setpoint", type: "number", category: "setpoint", value: 10, unit: "°C" },
+        {
+          ...base,
+          id: "db-t",
+          alias: "temperature",
+          key: "temperature",
+          type: "number",
+          category: "temperature",
+          value: 10.5,
+          unit: "°C",
+        },
+        {
+          ...base,
+          id: "db-s",
+          alias: "setpoint",
+          key: "setpoint",
+          type: "number",
+          category: "setpoint",
+          value: 10,
+          unit: "°C",
+        },
       ] as EquipmentWithDetails["dataBindings"],
       orderBindings: [
-        { ...order, id: "ob-s", alias: "setpoint", key: "setpoint", type: "number", min: 5, max: 30 },
+        {
+          ...order,
+          id: "ob-s",
+          alias: "setpoint",
+          key: "setpoint",
+          type: "number",
+          min: 5,
+          max: 30,
+        },
       ] as EquipmentWithDetails["orderBindings"],
     });
-    render(<EquipmentWidget widget={makeWidget()} equipment={equipment} onExecuteOrder={vi.fn()} />);
+    render(
+      <EquipmentWidget widget={makeWidget()} equipment={equipment} onExecuteOrder={vi.fn()} />,
+    );
     expect(screen.getByText("10.5°")).toBeTruthy();
     expect(screen.getByText("10.0°")).toBeTruthy();
     expect(screen.queryByText(/°C/)).toBeNull();

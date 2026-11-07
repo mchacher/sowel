@@ -95,9 +95,7 @@ export function IntegrationDrawer({ integration, onClose, onRefresh }: Integrati
   const isConnected = !isDisabled && integration.status === "connected";
   const isError = !isDisabled && integration.status === "error";
   const hasRefresh = !!integration.polling;
-  const hasRequiredEmpty = integration.settings.some(
-    (s) => s.required && !values[s.key]?.trim(),
-  );
+  const hasRequiredEmpty = integration.settings.some((s) => s.required && !values[s.key]?.trim());
 
   const IconComponent =
     (LucideIcons as unknown as Record<string, LucideIcons.LucideIcon>)[integration.icon] ?? Cpu;
@@ -257,9 +255,7 @@ export function IntegrationDrawer({ integration, onClose, onRefresh }: Integrati
 
           {/* Actions */}
           <div>
-            <h3 className="text-lead font-semibold text-text mb-3">
-              {t("integrations.actions")}
-            </h3>
+            <h3 className="text-lead font-semibold text-text mb-3">{t("integrations.actions")}</h3>
             <div className="flex flex-wrap gap-2">
               {isDisabled ? (
                 <ActionButton
@@ -302,7 +298,9 @@ export function IntegrationDrawer({ integration, onClose, onRefresh }: Integrati
                 <>
                   <ActionButton
                     icon={<Play size={14} />}
-                    label={hasRequiredEmpty ? t("integrations.fillRequired") : t("integrations.start")}
+                    label={
+                      hasRequiredEmpty ? t("integrations.fillRequired") : t("integrations.start")
+                    }
                     loading={actionLoading === "start"}
                     onClick={() => handleAction("start")}
                     primary
@@ -468,7 +466,11 @@ function SettingField({
     <div>
       <label className={FIELD_LABEL}>
         {setting.label}
-        {setting.required ? <span className="text-error ml-0.5">*</span> : <span className="text-text-tertiary ml-1">(opt.)</span>}
+        {setting.required ? (
+          <span className="text-error ml-0.5">*</span>
+        ) : (
+          <span className="text-text-tertiary ml-1">(opt.)</span>
+        )}
       </label>
       <input
         type={setting.type === "password" ? "password" : "text"}

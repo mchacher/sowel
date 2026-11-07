@@ -153,9 +153,7 @@ export function PluginsPage() {
         {/* Header */}
         <div className="mb-5 flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
           <div>
-            <h1 className={TOP_LEVEL_H1}>
-              {t("plugins.title")}
-            </h1>
+            <h1 className={TOP_LEVEL_H1}>{t("plugins.title")}</h1>
             <p className="text-small text-text-secondary mt-1">{t("plugins.subtitle")}</p>
           </div>
           <button
@@ -283,9 +281,7 @@ function CategorySection({
     <section>
       <h3 className="flex items-baseline gap-1.5 text-lead font-semibold text-text mb-2">
         {t(`plugins.category.${category}`)}
-        <span className="text-small font-normal text-text-tertiary tabular-nums">
-          {count}
-        </span>
+        <span className="text-small font-normal text-text-tertiary tabular-nums">{count}</span>
       </h3>
       <div className="space-y-2">{children}</div>
     </section>
@@ -322,16 +318,15 @@ function TabButton({
       onClick={onClick}
       className={`
         px-4 py-2 text-small font-medium rounded-sm transition-colors cursor-pointer
-        ${active
-          ? "bg-primary-fill text-white"
-          : "border border-border bg-surface text-text-secondary hover:bg-border-light hover:text-text"
+        ${
+          active
+            ? "bg-primary-fill text-white"
+            : "border border-border bg-surface text-text-secondary hover:bg-border-light hover:text-text"
         }
       `}
     >
       {label}
-      <span
-        className={`ml-1.5 text-micro ${active ? "text-white/70" : "text-text-tertiary"}`}
-      >
+      <span className={`ml-1.5 text-micro ${active ? "text-white/70" : "text-text-tertiary"}`}>
         {count}
       </span>
     </button>
@@ -543,11 +538,7 @@ function PluginRow({
   };
 
   return (
-    <div
-      className={`card flex flex-wrap items-center ${
-        plugin.enabled ? "" : "opacity-70"
-      }`}
-    >
+    <div className={`card flex flex-wrap items-center ${plugin.enabled ? "" : "opacity-70"}`}>
       {/* Identity. This is the only thing the row carries, so it cannot be
           crushed by the controls that used to sit next to it (#749). */}
       <button
@@ -571,7 +562,9 @@ function PluginRow({
                 <span className="text-micro text-text-tertiary truncate">
                   {t("integrations.deviceCount", { count: plugin.deviceCount })}
                   {plugin.offlineDeviceCount > 0 && (
-                    <span className="text-warning-ink ml-1">{t("integrations.offlineCount", { count: plugin.offlineDeviceCount })}</span>
+                    <span className="text-warning-ink ml-1">
+                      {t("integrations.offlineCount", { count: plugin.offlineDeviceCount })}
+                    </span>
                   )}
                 </span>
               </>
@@ -621,9 +614,10 @@ function PluginRow({
             disabled={actionLoading !== null}
             className={`
               px-2.5 py-1 text-micro font-medium rounded-sm transition-colors cursor-pointer disabled:opacity-50
-              ${plugin.enabled
-                ? "text-text-tertiary hover:bg-border-light hover:text-text-secondary"
-                : "text-success/70 hover:bg-success/10 hover:text-success"
+              ${
+                plugin.enabled
+                  ? "text-text-tertiary hover:bg-border-light hover:text-text-secondary"
+                  : "text-success/70 hover:bg-success/10 hover:text-success"
               }
             `}
           >
@@ -818,40 +812,42 @@ function StoreRow({
 
         {/* Name + description */}
         <div className="min-w-0 flex-1">
-        {/* Wrapping, so the badges push down instead of crushing the name (#749). */}
-        <div className="flex items-center gap-2 flex-wrap">
-          <span className="text-body font-semibold text-text truncate">
-            {getLocalizedName(manifest, lang)}
-          </span>
-          {manifest.version && (
-            <span className="text-micro px-1.5 py-0.5 bg-border-light rounded-sm text-text-tertiary font-mono shrink-0">
-              {manifest.version}
+          {/* Wrapping, so the badges push down instead of crushing the name (#749). */}
+          <div className="flex items-center gap-2 flex-wrap">
+            <span className="text-body font-semibold text-text truncate">
+              {getLocalizedName(manifest, lang)}
             </span>
-          )}
-          {/* Community badge — owner is not in OFFICIAL_OWNERS (spec 089 C1).
+            {manifest.version && (
+              <span className="text-micro px-1.5 py-0.5 bg-border-light rounded-sm text-text-tertiary font-mono shrink-0">
+                {manifest.version}
+              </span>
+            )}
+            {/* Community badge — owner is not in OFFICIAL_OWNERS (spec 089 C1).
               Users, not AlertTriangle: the tier means "third-party author,
               integrity verified", not "hazard" (#410). The caution icon lives
               in the install confirmation modal, where caution is the point. */}
-          {tier === "community" && (
-            <span
-              className="text-micro px-1.5 py-0.5 bg-border-light text-text-secondary rounded-sm font-medium shrink-0 inline-flex items-center gap-1"
-              title={t("plugins.community.badge.tooltip")}
-            >
-              <Users size={10} strokeWidth={2} />
-              {t("plugins.community.badge")}
+            {tier === "community" && (
+              <span
+                className="text-micro px-1.5 py-0.5 bg-border-light text-text-secondary rounded-sm font-medium shrink-0 inline-flex items-center gap-1"
+                title={t("plugins.community.badge.tooltip")}
+              >
+                <Users size={10} strokeWidth={2} />
+                {t("plugins.community.badge")}
+              </span>
+            )}
+            {/* Personal badge — user-added source (spec 136) */}
+            {tier === "personal" && <PersonalBadge />}
+          </div>
+          <p className="text-caption text-text-secondary mt-0.5 line-clamp-2 sm:line-clamp-1">
+            {getLocalizedDescription(manifest, lang)}
+          </p>
+          {manifest.author && (
+            <span className="text-micro text-text-tertiary">
+              {t("plugins.author")}
+              {t("common.colon")}
+              {manifest.author}
             </span>
           )}
-          {/* Personal badge — user-added source (spec 136) */}
-          {tier === "personal" && <PersonalBadge />}
-        </div>
-        <p className="text-caption text-text-secondary mt-0.5 line-clamp-2 sm:line-clamp-1">
-          {getLocalizedDescription(manifest, lang)}
-        </p>
-        {manifest.author && (
-          <span className="text-micro text-text-tertiary">
-            {t("plugins.author")}{t("common.colon")}{manifest.author}
-          </span>
-        )}
         </div>
       </div>
 
@@ -880,7 +876,10 @@ function StoreRow({
             )}
           </button>
         ) : (
-          <span className="px-3 py-1.5 text-micro font-medium text-text-tertiary bg-border-light rounded-sm" title={manifest.compatReason}>
+          <span
+            className="px-3 py-1.5 text-micro font-medium text-text-tertiary bg-border-light rounded-sm"
+            title={manifest.compatReason}
+          >
             {manifest.compatReason ?? t("plugins.incompatible")}
           </span>
         )}
@@ -927,7 +926,11 @@ function StoreRow({
                 disabled={installing}
                 className="px-4 py-2 text-small font-medium text-on-status bg-warning-ink hover:opacity-90 rounded-sm transition-colors disabled:opacity-50 inline-flex items-center gap-1.5"
               >
-                {installing ? <Loader2 size={14} className="animate-spin" /> : <Download size={14} />}
+                {installing ? (
+                  <Loader2 size={14} className="animate-spin" />
+                ) : (
+                  <Download size={14} />
+                )}
                 {t("plugins.community.modal.confirm")}
               </button>
             </div>
@@ -943,7 +946,6 @@ function StoreRow({
     </div>
   );
 }
-
 
 // ── Personal Sources Section (spec 136) ──────────────────────
 
@@ -1071,9 +1073,10 @@ function SourceRow({ source, onRefresh }: { source: PluginSource; onRefresh: () 
         title={t("plugins.sources.removeHint")}
         className={`
           flex items-center gap-1 rounded-sm transition-colors cursor-pointer disabled:opacity-50 shrink-0
-          ${confirmRemove
-            ? "text-error bg-error/10 px-2 py-1 text-caption font-medium"
-            : "p-1.5 text-text-tertiary hover:bg-border-light hover:text-error"
+          ${
+            confirmRemove
+              ? "text-error bg-error/10 px-2 py-1 text-caption font-medium"
+              : "p-1.5 text-text-tertiary hover:bg-border-light hover:text-error"
           }
         `}
       >

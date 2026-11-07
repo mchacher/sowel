@@ -12,7 +12,13 @@ interface BindingsPickerProps {
   mobile?: boolean;
 }
 
-export function BindingsPicker({ bindings, visibleAliases, onUpdate, onClose, mobile }: BindingsPickerProps) {
+export function BindingsPicker({
+  bindings,
+  visibleAliases,
+  onUpdate,
+  onClose,
+  mobile,
+}: BindingsPickerProps) {
   const { t } = useTranslation();
   const ref = useRef<HTMLDivElement>(null);
 
@@ -67,9 +73,7 @@ export function BindingsPicker({ bindings, visibleAliases, onUpdate, onClose, mo
   };
 
   const handleMove = (alias: string, direction: -1 | 1) => {
-    const current = allVisible
-      ? bindings.map((b) => b.alias)
-      : [...visibleAliases!];
+    const current = allVisible ? bindings.map((b) => b.alias) : [...visibleAliases!];
     const idx = current.indexOf(alias);
     const target = idx + direction;
     if (target < 0 || target >= current.length) return;
@@ -79,7 +83,12 @@ export function BindingsPicker({ bindings, visibleAliases, onUpdate, onClose, mo
 
   const isChecked = (alias: string) => allVisible || visibleAliases!.includes(alias);
 
-  const renderRow = (b: DataBindingWithValue, canReorder: boolean, index: number, total: number) => (
+  const renderRow = (
+    b: DataBindingWithValue,
+    canReorder: boolean,
+    index: number,
+    total: number,
+  ) => (
     <div
       key={b.alias}
       className="flex items-center gap-1.5 px-1 py-0.5 rounded-sm hover:bg-border-light"
@@ -126,7 +135,9 @@ export function BindingsPicker({ bindings, visibleAliases, onUpdate, onClose, mo
           : "absolute z-20 top-full left-1/2 -translate-x-1/2 mt-1 w-[260px]"
       }`}
     >
-      <h3 className="text-caption font-medium text-text-secondary mb-2">{t("dashboard.visibleData")}</h3>
+      <h3 className="text-caption font-medium text-text-secondary mb-2">
+        {t("dashboard.visibleData")}
+      </h3>
       <div className="flex flex-col gap-0.5">
         {checked.map((b, i) => renderRow(b, checked.length > 1, i, checked.length))}
         {unchecked.length > 0 && checked.length > 0 && (

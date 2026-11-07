@@ -2,9 +2,19 @@ import { useEffect, useState, useCallback } from "react";
 import { useTranslation } from "react-i18next";
 import { useParams, useNavigate, Link } from "react-router-dom";
 import {
-  ArrowLeft, Loader2, Layers, Trash2, Pencil,
-  ToggleRight, ToggleLeft, MapPin,
-  Lightbulb, Power, Clock, Zap, DoorClosed,
+  ArrowLeft,
+  Loader2,
+  Layers,
+  Trash2,
+  Pencil,
+  ToggleRight,
+  ToggleLeft,
+  MapPin,
+  Lightbulb,
+  Power,
+  Clock,
+  Zap,
+  DoorClosed,
 } from "lucide-react";
 import { ShutterClosedIcon } from "../components/icons/ShutterIcons";
 import { getMode, getActiveCalendar, getModeTriggers } from "../api";
@@ -15,7 +25,13 @@ import { useRecipes } from "../store/useRecipes";
 import { useAuth } from "../store/useAuth";
 import { ModeForm } from "../components/modes/ModeForm";
 import { Switch } from "../components/ui/Switch";
-import type { ModeWithDetails, EquipmentWithDetails, ZoneModeImpactAction, CalendarSlot, ButtonActionBinding } from "../types";
+import type {
+  ModeWithDetails,
+  EquipmentWithDetails,
+  ZoneModeImpactAction,
+  CalendarSlot,
+  ButtonActionBinding,
+} from "../types";
 import { useWsSubscription } from "../hooks/useWsSubscription";
 import { flattenZonesWithPath } from "../lib/zone-path";
 import { brightnessPercent, brightnessScale } from "../lib/brightness";
@@ -149,9 +165,7 @@ export function ModeDetailPage() {
             )}
           </div>
           <div className="min-w-0">
-            <h1 className="truncate">
-              {mode.name}
-            </h1>
+            <h1 className="truncate">{mode.name}</h1>
             {mode.description && (
               <p className="text-small text-text-secondary mt-0.5 truncate">{mode.description}</p>
             )}
@@ -190,11 +204,7 @@ export function ModeDetailPage() {
 
       <div className="space-y-6 max-w-[720px]">
         {/* Calendar schedule section */}
-        <CalendarScheduleSection
-          modeId={mode.id}
-          slots={calendarSlots}
-          t={t}
-        />
+        <CalendarScheduleSection modeId={mode.id} slots={calendarSlots} t={t} />
 
         {/* Button triggers section */}
         <ButtonTriggersSection
@@ -300,8 +310,10 @@ function ImpactActionRow({
       }
     } else if (eq?.type?.startsWith("light_")) {
       icon = <Lightbulb size={12} strokeWidth={1.5} />;
-      if ((action.orderAlias === "state" && (action.value === "ON" || action.value === "OFF")) ||
-          (action.orderAlias === "turn_on" && typeof action.value === "boolean")) {
+      if (
+        (action.orderAlias === "state" && (action.value === "ON" || action.value === "OFF")) ||
+        (action.orderAlias === "turn_on" && typeof action.value === "boolean")
+      ) {
         const on = action.value === "ON" || action.value === true;
         detail = on ? t("controls.on") : t("controls.off");
       } else if (action.orderAlias === "brightness") {
@@ -326,10 +338,16 @@ function ImpactActionRow({
     const inst = instances.find((i) => i.id === action.instanceId);
     return (
       <div className="flex items-center gap-2 px-3 py-1.5 bg-background rounded-sm border border-border-light">
-        <span className="text-text-tertiary flex-shrink-0"><Layers size={12} strokeWidth={1.5} /></span>
-        <span className="text-caption text-text font-medium">{inst?.recipeId ?? action.instanceId}</span>
+        <span className="text-text-tertiary flex-shrink-0">
+          <Layers size={12} strokeWidth={1.5} />
+        </span>
+        <span className="text-caption text-text font-medium">
+          {inst?.recipeId ?? action.instanceId}
+        </span>
         <span className="text-caption text-text-secondary">→</span>
-        <span className={`text-caption font-medium ${action.enabled ? "text-success" : "text-text-tertiary"}`}>
+        <span
+          className={`text-caption font-medium ${action.enabled ? "text-success" : "text-text-tertiary"}`}
+        >
           {action.enabled ? t("common.on") : t("common.off")}
         </span>
       </div>
@@ -340,10 +358,16 @@ function ImpactActionRow({
     const inst = instances.find((i) => i.id === action.instanceId);
     return (
       <div className="flex items-center gap-2 px-3 py-1.5 bg-background rounded-sm border border-border-light">
-        <span className="text-text-tertiary flex-shrink-0"><Layers size={12} strokeWidth={1.5} /></span>
-        <span className="text-caption text-text font-medium">{inst?.recipeId ?? action.instanceId}</span>
+        <span className="text-text-tertiary flex-shrink-0">
+          <Layers size={12} strokeWidth={1.5} />
+        </span>
+        <span className="text-caption text-text font-medium">
+          {inst?.recipeId ?? action.instanceId}
+        </span>
         <span className="text-caption text-text-secondary">→</span>
-        <span className="text-caption text-text-secondary font-mono">{JSON.stringify(action.params)}</span>
+        <span className="text-caption text-text-secondary font-mono">
+          {JSON.stringify(action.params)}
+        </span>
       </div>
     );
   }
@@ -384,7 +408,8 @@ function ButtonTriggersSection({
           // Resolve action label (single → "Appui simple", etc.)
           const actionKey = `buttonActions.action.${binding.actionValue}`;
           const actionTranslated = t(actionKey);
-          const actionLabel = actionTranslated !== actionKey ? actionTranslated : binding.actionValue;
+          const actionLabel =
+            actionTranslated !== actionKey ? actionTranslated : binding.actionValue;
 
           // Resolve effect label
           let effectLabel = "";
@@ -405,7 +430,10 @@ function ButtonTriggersSection({
             <Link
               key={binding.id}
               to={`/equipments/${binding.equipmentId}`}
-              state={equipmentLinkState(modes.find((m) => m.id === modeId)?.name ?? t("nav.modes"), `/modes/${modeId}`)}
+              state={equipmentLinkState(
+                modes.find((m) => m.id === modeId)?.name ?? t("nav.modes"),
+                `/modes/${modeId}`,
+              )}
               className="flex items-center gap-3 px-3 py-2 bg-background rounded-sm border border-border-light hover:border-primary/30 transition-colors"
             >
               <Zap size={14} strokeWidth={1.5} className="text-text-tertiary flex-shrink-0" />
@@ -446,17 +474,9 @@ function CalendarScheduleSection({
 
   const formatDays = (days: number[]) => {
     if (days.length === 7) return t("calendar.everyday");
-    if (
-      days.length === 5 &&
-      [1, 2, 3, 4, 5].every((d) => days.includes(d))
-    )
+    if (days.length === 5 && [1, 2, 3, 4, 5].every((d) => days.includes(d)))
       return t("calendar.weekdays");
-    if (
-      days.length === 2 &&
-      days.includes(0) &&
-      days.includes(6)
-    )
-      return t("calendar.weekend");
+    if (days.length === 2 && days.includes(0) && days.includes(6)) return t("calendar.weekend");
     return [...days]
       .sort((a, b) => ((a + 6) % 7) - ((b + 6) % 7))
       .map((d) => t(`calendar.days.${DAY_KEYS[d]}`))
@@ -478,19 +498,15 @@ function CalendarScheduleSection({
               key={slot.id}
               className="flex items-center gap-3 px-3 py-2 bg-background rounded-sm border border-border-light"
             >
-              <span className={`text-caption font-medium px-1.5 py-0.5 rounded-sm ${
-                action === "on"
-                  ? "bg-success/10 text-success"
-                  : "bg-error/10 text-error"
-              }`}>
+              <span
+                className={`text-caption font-medium px-1.5 py-0.5 rounded-sm ${
+                  action === "on" ? "bg-success/10 text-success" : "bg-error/10 text-error"
+                }`}
+              >
                 {action === "on" ? t("common.on") : t("common.off")}
               </span>
-              <span className="text-h1 text-text tabular-nums">
-                {slot.time}
-              </span>
-              <span className="text-small text-text-secondary">
-                {formatDays(slot.days)}
-              </span>
+              <span className="text-h1 text-text tabular-nums">{slot.time}</span>
+              <span className="text-small text-text-secondary">{formatDays(slot.days)}</span>
             </div>
           );
         })}

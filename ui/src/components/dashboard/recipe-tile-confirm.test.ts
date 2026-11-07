@@ -43,7 +43,9 @@ describe("tileNeedsConfirm", () => {
   it("lets the instance parameter overrule the declaration, both ways", () => {
     const tile = { confirm: true, confirmParam: "confirmFromDashboard" };
     expect(tileNeedsConfirm(tile, { confirmFromDashboard: false })).toBe(false);
-    expect(tileNeedsConfirm({ confirmParam: "confirmFromDashboard" }, { confirmFromDashboard: true })).toBe(true);
+    expect(
+      tileNeedsConfirm({ confirmParam: "confirmFromDashboard" }, { confirmFromDashboard: true }),
+    ).toBe(true);
   });
 
   it("reads a stringified boolean, as a hand-written param may carry", () => {
@@ -80,7 +82,11 @@ describe("tileNeedsConfirm", () => {
     const params = { gate: "eq-gate", ask: true };
     expect(tileNeedsConfirm(tile, params, lookup(gate(false)))).toBe(false);
     expect(
-      tileNeedsConfirm({ confirmFrom: "gate" }, { gate: "eq-gate", ask: false }, lookup(gate(true))),
+      tileNeedsConfirm(
+        { confirmFrom: "gate" },
+        { gate: "eq-gate", ask: false },
+        lookup(gate(true)),
+      ),
     ).toBe(true);
   });
 
@@ -89,7 +95,9 @@ describe("tileNeedsConfirm", () => {
     // a recipe that names no slot, a store that has not loaded, an equipment
     // deleted under the instance, and a slot the user has not filled in.
     const tile = { confirm: true, confirmParam: "ask", confirmFrom: "gate" };
-    expect(tileNeedsConfirm({ confirm: true }, { gate: "eq-gate" }, lookup(gate(false)))).toBe(true);
+    expect(tileNeedsConfirm({ confirm: true }, { gate: "eq-gate" }, lookup(gate(false)))).toBe(
+      true,
+    );
     expect(tileNeedsConfirm(tile, { gate: "eq-gate" })).toBe(true);
     expect(tileNeedsConfirm(tile, { gate: "eq-gate" }, lookup())).toBe(true);
     expect(tileNeedsConfirm(tile, { gate: "" }, lookup(gate(false)))).toBe(true);

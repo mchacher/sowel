@@ -108,9 +108,7 @@ export function EvHomeChargingSection({
         {error && <p className="text-caption text-error">{error}</p>}
 
         {summary && summary.sessions === 0 ? (
-          <p className="text-small text-text-tertiary">
-            {t("equipments.evSessions.emptyVehicle")}
-          </p>
+          <p className="text-small text-text-tertiary">{t("equipments.evSessions.emptyVehicle")}</p>
         ) : (
           summary && (
             <>

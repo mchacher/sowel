@@ -14,7 +14,10 @@ interface ChartsState {
   error: string | null;
   fetchCharts: () => Promise<void>;
   createChart: (name: string, config: SavedChartConfig) => Promise<SavedChart>;
-  updateChart: (id: string, data: { name?: string; config?: SavedChartConfig }) => Promise<SavedChart>;
+  updateChart: (
+    id: string,
+    data: { name?: string; config?: SavedChartConfig },
+  ) => Promise<SavedChart>;
   deleteChart: (id: string) => Promise<void>;
 }
 

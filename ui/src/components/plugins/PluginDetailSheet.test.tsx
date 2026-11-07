@@ -154,7 +154,8 @@ describe("action errors (#872)", () => {
     render(
       <PluginDetailSheet
         {...props({
-          actionError: 'Personal source "adn-dev-adrien/sowel-recipe-delivery-gate" has been removed',
+          actionError:
+            'Personal source "adn-dev-adrien/sowel-recipe-delivery-gate" has been removed',
         })}
       />,
     );

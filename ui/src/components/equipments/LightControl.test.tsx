@@ -18,7 +18,13 @@ function dimmer(brightness: number, order: { min?: number; max?: number }): Equi
     status: "online",
     dataBindings: [
       { id: "b-s", alias: "state", category: "light_state", type: "boolean", value: true },
-      { id: "b-b", alias: "brightness", category: "light_brightness", type: "number", value: brightness },
+      {
+        id: "b-b",
+        alias: "brightness",
+        category: "light_brightness",
+        type: "number",
+        value: brightness,
+      },
     ],
     orderBindings: [
       { id: "o-b", alias: "brightness", category: "set_brightness", type: "number", ...order },

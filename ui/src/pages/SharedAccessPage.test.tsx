@@ -62,8 +62,22 @@ const state: SharedAccessState = {
     }),
   ],
   gates: [
-    { equipmentId: "entree", name: "Portail d'entrée", armed: true, people: 1, commandValues: [], hasCommand: true },
-    { equipmentId: "garage", name: "Garage", armed: false, people: 1, commandValues: ["open", "close"], hasCommand: true },
+    {
+      equipmentId: "entree",
+      name: "Portail d'entrée",
+      armed: true,
+      people: 1,
+      commandValues: [],
+      hasCommand: true,
+    },
+    {
+      equipmentId: "garage",
+      name: "Garage",
+      armed: false,
+      people: 1,
+      commandValues: ["open", "close"],
+      hasCommand: true,
+    },
   ],
   profiles: [
     {
@@ -123,7 +137,9 @@ describe("SharedAccessPage", () => {
     expect(useSharedAccess.getState().enabled).toBe(true);
 
     // Once known on, a transient failure (settings or state) hides nothing.
-    vi.mocked(api.getSharedAccessState).mockRejectedValueOnce(new Error("HTTP 429: Too Many Requests"));
+    vi.mocked(api.getSharedAccessState).mockRejectedValueOnce(
+      new Error("HTTP 429: Too Many Requests"),
+    );
     await useSharedAccess.getState().refresh();
     expect(useSharedAccess.getState().enabled).toBe(true);
     expect(useSharedAccess.getState().state).not.toBeNull();
@@ -135,7 +151,12 @@ describe("SharedAccessPage", () => {
   it("has a tab per gate, « All » once there are two, « Profiles » last; ?gate= selects one", async () => {
     renderPage("/shared-access?gate=garage");
     const tabs = await screen.findAllByRole("tab");
-    expect(tabs.map((t) => t.textContent)).toEqual(["Portail d'entrée", "Garage", "All", "Profiles"]);
+    expect(tabs.map((t) => t.textContent)).toEqual([
+      "Portail d'entrée",
+      "Garage",
+      "All",
+      "Profiles",
+    ]);
     expect(screen.getByRole("tab", { name: "Garage" }).getAttribute("aria-selected")).toBe("true");
     // The Garage tab lists the external access with its source, and the gate is disarmed.
     expect(screen.getByText("Martin")).toBeTruthy();

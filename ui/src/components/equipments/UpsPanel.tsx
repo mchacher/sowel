@@ -18,7 +18,14 @@
  */
 
 import { useTranslation } from "react-i18next";
-import { Battery, BatteryFull, BatteryLow, BatteryMedium, BatteryWarning, Server } from "lucide-react";
+import {
+  Battery,
+  BatteryFull,
+  BatteryLow,
+  BatteryMedium,
+  BatteryWarning,
+  Server,
+} from "lucide-react";
 import { GridPylonIcon } from "../icons/GridPylonIcon";
 import type { DataBindingWithValue } from "../../types";
 import { FlowDiagram } from "../flow/FlowDiagram";
@@ -32,7 +39,13 @@ import {
   upsStatusKey,
   type UpsReadings,
 } from "./upsStatus";
-import { formatNumber, formatPercent, formatPower, formatRange, formatWithUnit } from "../../lib/format";
+import {
+  formatNumber,
+  formatPercent,
+  formatPower,
+  formatRange,
+  formatWithUnit,
+} from "../../lib/format";
 
 interface UpsPanelProps {
   dataBindings: DataBindingWithValue[];
@@ -95,7 +108,12 @@ export function UpsPanel({ dataBindings }: UpsPanelProps) {
       slot: "focal",
       label: t("equipments.ups.node.load"),
       color: LOAD_COLOR,
-      value: r.loadW !== null ? formatNumber(r.loadW, { decimals: 0 }) : (r.loadPct !== null ? formatNumber(r.loadPct, { decimals: 0 }) : "—"),
+      value:
+        r.loadW !== null
+          ? formatNumber(r.loadW, { decimals: 0 })
+          : r.loadPct !== null
+            ? formatNumber(r.loadPct, { decimals: 0 })
+            : "—",
       unit: r.loadW !== null ? "W" : r.loadPct !== null ? "%" : undefined,
       icon: <Server className="w-11 h-11 sm:w-14 sm:h-14" strokeWidth={1.5} />,
     },
@@ -104,7 +122,11 @@ export function UpsPanel({ dataBindings }: UpsPanelProps) {
       label: t("equipments.ups.node.mains"),
       color: onBattery ? IDLE_COLOR : GRID_COLOR,
       dimmed: onBattery,
-      value: onBattery ? t("equipments.ups.absent") : r.inputV !== null ? formatNumber(r.inputV, { decimals: 0 }) : "—",
+      value: onBattery
+        ? t("equipments.ups.absent")
+        : r.inputV !== null
+          ? formatNumber(r.inputV, { decimals: 0 })
+          : "—",
       unit: onBattery || r.inputV === null ? undefined : "V",
       icon: <GridPylonIcon className="w-9 h-9 sm:w-10 sm:h-10" />,
     },
@@ -117,9 +139,7 @@ export function UpsPanel({ dataBindings }: UpsPanelProps) {
       dimmed: !onBattery && !r.charging,
       value: r.chargePct !== null ? String(Math.round(r.chargePct)) : "—",
       unit: r.chargePct !== null ? "%" : undefined,
-      sub: onBattery
-        ? t("equipments.ups.discharging")
-        : (formatRuntime(r.runtimeS) ?? undefined),
+      sub: onBattery ? t("equipments.ups.discharging") : (formatRuntime(r.runtimeS) ?? undefined),
       icon: batteryIcon(r.chargePct),
     },
   ];
@@ -208,7 +228,10 @@ export function UpsPanel({ dataBindings }: UpsPanelProps) {
             </div>
             <span
               className="text-caption font-medium px-2.5 py-1 rounded-full shrink-0"
-              style={{ color: marginInk, background: `color-mix(in srgb, ${marginColor} 10%, transparent)` }}
+              style={{
+                color: marginInk,
+                background: `color-mix(in srgb, ${marginColor} 10%, transparent)`,
+              }}
             >
               {t(`equipments.ups.margins.${margin}`)}
             </span>
@@ -232,7 +255,10 @@ export function UpsPanel({ dataBindings }: UpsPanelProps) {
               {r.transferLow !== null && r.transferHigh !== null && (
                 <MarginRow
                   label={t("equipments.ups.margins.transfer")}
-                  setting={formatRange(formatNumber(r.transferLow), formatWithUnit(r.transferHigh, "V"))}
+                  setting={formatRange(
+                    formatNumber(r.transferLow),
+                    formatWithUnit(r.transferHigh, "V"),
+                  )}
                 >
                   <RangeTrack
                     low={r.transferLow}

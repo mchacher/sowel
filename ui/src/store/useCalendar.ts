@@ -19,8 +19,14 @@ interface CalendarState {
   fetchActive: () => Promise<void>;
   setActiveProfile: (profileId: string) => Promise<void>;
   fetchSlots: (profileId: string) => Promise<void>;
-  addSlot: (profileId: string, data: { days: number[]; time: string; modeActions: CalendarModeAction[] }) => Promise<void>;
-  updateSlot: (slotId: string, data: { days?: number[]; time?: string; modeActions?: CalendarModeAction[] }) => Promise<void>;
+  addSlot: (
+    profileId: string,
+    data: { days: number[]; time: string; modeActions: CalendarModeAction[] },
+  ) => Promise<void>;
+  updateSlot: (
+    slotId: string,
+    data: { days?: number[]; time?: string; modeActions?: CalendarModeAction[] },
+  ) => Promise<void>;
   deleteSlot: (slotId: string) => Promise<void>;
 }
 

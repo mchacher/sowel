@@ -1,14 +1,6 @@
 import { useState, useRef, useEffect } from "react";
 import { useTranslation } from "react-i18next";
-import {
-  Power,
-  Snowflake,
-  Sun,
-  Droplets,
-  Fan,
-  Zap,
-  Thermometer,
-} from "lucide-react";
+import { Power, Snowflake, Sun, Droplets, Fan, Zap, Thermometer } from "lucide-react";
 import type { EquipmentWithDetails } from "../../types";
 import { thermostatPowerStateBinding } from "../../lib/thermostat-state";
 import { THERMOSTAT_STATE_ALIAS } from "../../lib/binding-candidates";
@@ -97,7 +89,9 @@ export function ThermostatCard({ equipment, onExecuteOrder, compact }: Thermosta
         equipment.dataBindings
           .filter((b) => {
             const old = prev.find((p) => p.alias === b.alias);
-            return old !== undefined && (old.value !== b.value || old.lastUpdated !== b.lastUpdated);
+            return (
+              old !== undefined && (old.value !== b.value || old.lastUpdated !== b.lastUpdated)
+            );
           })
           .map((b) => b.alias),
       );
@@ -143,9 +137,12 @@ export function ThermostatCard({ equipment, onExecuteOrder, compact }: Thermosta
     "power" in optimistic
       ? optimistic.power === true
       : thermostatPowerStateBinding(equipment.dataBindings)?.value === true;
-  const currentMode = "operationMode" in optimistic
-    ? (optimistic.operationMode as string | null)
-    : typeof modeBinding?.value === "string" ? modeBinding.value : null;
+  const currentMode =
+    "operationMode" in optimistic
+      ? (optimistic.operationMode as string | null)
+      : typeof modeBinding?.value === "string"
+        ? modeBinding.value
+        : null;
   // The setpoint has its own stepper (spec 196, slice 8a): one order after the
   // last tap, the requested value held until the device reports.
   const setpoint = resolveSetpoint(equipment);
@@ -154,7 +151,8 @@ export function ThermostatCard({ equipment, onExecuteOrder, compact }: Thermosta
   const commitSetpoint = (v: number) =>
     setpointOrder ? onExecuteOrder(setpointOrder, v) : Promise.resolve();
   const insideTemp = typeof insideTempBinding?.value === "number" ? insideTempBinding.value : null;
-  const outsideTemp = typeof outsideTempBinding?.value === "number" ? outsideTempBinding.value : null;
+  const outsideTemp =
+    typeof outsideTempBinding?.value === "number" ? outsideTempBinding.value : null;
 
   // Core order bindings (available controls)
   const hasPowerOrder = equipment.orderBindings.some((o) => o.alias === "power");
@@ -192,19 +190,21 @@ export function ThermostatCard({ equipment, onExecuteOrder, compact }: Thermosta
       <CompactThermostat
         isOn={isOn}
         insideTemp={insideTemp}
-        setpoint={setpointOrder && setpoint.value !== null ? (
-          <SetpointStepper
-            size="sm"
-            value={setpoint.value}
-            min={setpoint.min}
-            max={setpoint.max}
-            step={setpoint.step}
-            unit="°C"
-            label={t("thermostat.target")}
-            debounceMs={commitDelay}
-            onCommit={commitSetpoint}
-          />
-        ) : null}
+        setpoint={
+          setpointOrder && setpoint.value !== null ? (
+            <SetpointStepper
+              size="sm"
+              value={setpoint.value}
+              min={setpoint.min}
+              max={setpoint.max}
+              step={setpoint.step}
+              unit="°C"
+              label={t("thermostat.target")}
+              debounceMs={commitDelay}
+              onCommit={commitSetpoint}
+            />
+          ) : null
+        }
         hasPowerOrder={hasPowerOrder}
         executing={executing}
         onTogglePower={() => exec("power", !isOn)}
@@ -223,7 +223,9 @@ export function ThermostatCard({ equipment, onExecuteOrder, compact }: Thermosta
           </div>
           {outsideTemp !== null && (
             <div className="text-small text-text-tertiary mb-1">
-              {t("thermostat.outside")}{t("common.colon")}{formatTemperature(outsideTemp)}
+              {t("thermostat.outside")}
+              {t("common.colon")}
+              {formatTemperature(outsideTemp)}
             </div>
           )}
         </div>
@@ -233,9 +235,10 @@ export function ThermostatCard({ equipment, onExecuteOrder, compact }: Thermosta
             disabled={executing === "power"}
             className={`
               p-2.5 rounded-sm transition-colors duration-150 cursor-pointer
-              ${isOn
-                ? "bg-primary-fill text-white hover:bg-primary-fill-hover"
-                : "bg-border-light text-text-tertiary hover:bg-border hover:text-text-secondary"
+              ${
+                isOn
+                  ? "bg-primary-fill text-white hover:bg-primary-fill-hover"
+                  : "bg-border-light text-text-tertiary hover:bg-border hover:text-text-secondary"
               }
               disabled:opacity-50 disabled:cursor-not-allowed
             `}
@@ -277,9 +280,10 @@ export function ThermostatCard({ equipment, onExecuteOrder, compact }: Thermosta
                 className={`
                   flex items-center gap-1 px-2.5 py-1.5 rounded-sm text-caption font-medium border
                   transition-colors duration-150 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed
-                  ${currentMode === mode
-                    ? MODE_COLORS[mode] ?? "bg-primary/10 text-primary border-primary/30"
-                    : "bg-surface text-text-tertiary border-border hover:border-border hover:text-text-secondary"
+                  ${
+                    currentMode === mode
+                      ? (MODE_COLORS[mode] ?? "bg-primary/10 text-primary border-primary/30")
+                      : "bg-surface text-text-tertiary border-border hover:border-border hover:text-text-secondary"
                   }
                 `}
               >
@@ -346,13 +350,18 @@ function CompactThermostat({
         <>
           <div className="w-px h-5 bg-border" />
           <button
-            onClick={(e) => { e.preventDefault(); e.stopPropagation(); onTogglePower(); }}
+            onClick={(e) => {
+              e.preventDefault();
+              e.stopPropagation();
+              onTogglePower();
+            }}
             disabled={executing === "power"}
             className={`
               p-1.5 rounded-sm transition-colors duration-150 cursor-pointer
-              ${isOn
-                ? "bg-primary-fill text-white hover:bg-primary-fill-hover"
-                : "bg-border-light text-text-tertiary hover:bg-border hover:text-text-secondary"
+              ${
+                isOn
+                  ? "bg-primary-fill text-white hover:bg-primary-fill-hover"
+                  : "bg-border-light text-text-tertiary hover:bg-border hover:text-text-secondary"
               }
               disabled:opacity-50 disabled:cursor-not-allowed
             `}

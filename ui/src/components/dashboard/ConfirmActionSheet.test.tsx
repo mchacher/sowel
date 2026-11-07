@@ -79,9 +79,7 @@ describe("ConfirmActionSheet", () => {
   afterEach(() => vi.useRealTimers());
 
   it("dismisses itself a beat after the slide, so the green state is seen", () => {
-    const widthSpy = vi
-      .spyOn(HTMLElement.prototype, "clientWidth", "get")
-      .mockReturnValue(260);
+    const widthSpy = vi.spyOn(HTMLElement.prototype, "clientWidth", "get").mockReturnValue(260);
     const onConfirm = vi.fn();
     const onClose = vi.fn();
     render(
@@ -183,7 +181,12 @@ describe("ConfirmActionSheet", () => {
   // Spec 196 — a multi-action gate names the button pressed, not the state.
   it("names the action of a multi-action button, and a raw value it has no word for", () => {
     const { unmount } = render(
-      <GateConfirmSheet equipment={makeGate("open")} value="STOP" onConfirm={vi.fn()} onClose={vi.fn()} />,
+      <GateConfirmSheet
+        equipment={makeGate("open")}
+        value="STOP"
+        onConfirm={vi.fn()}
+        onClose={vi.fn()}
+      />,
     );
     expect(screen.getByText("Stop Portail?")).toBeTruthy();
     expect(screen.getByRole("button", { name: "Slide to stop" })).toBeTruthy();
@@ -265,7 +268,12 @@ describe("ConfirmActionDialog", () => {
     document.body.appendChild(opener);
     opener.focus();
     const { unmount } = render(
-      <ConfirmActionDialog title="Close Portail?" confirmLabel="Close" onConfirm={vi.fn()} onClose={vi.fn()} />,
+      <ConfirmActionDialog
+        title="Close Portail?"
+        confirmLabel="Close"
+        onConfirm={vi.fn()}
+        onClose={vi.fn()}
+      />,
     );
     expect(document.activeElement).not.toBe(opener);
     unmount();

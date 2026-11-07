@@ -26,11 +26,7 @@ const t = ((key: string) =>
   })[key] ?? key) as unknown as Parameters<typeof humanBindingLabel>[2];
 
 /** Build a HistoryBindingState quickly. */
-function b(
-  alias: string,
-  category: string,
-  deviceName = "",
-): HistoryBindingState {
+function b(alias: string, category: string, deviceName = ""): HistoryBindingState {
   return {
     bindingId: alias,
     alias,
@@ -117,7 +113,11 @@ describe("humanBindingLabel — same-category disambiguation", () => {
     b("outsideTemperature", "temperature_outdoor", "PAC"),
   ];
   const labelOf = (alias: string) =>
-    humanBindingLabelFromList(all.find((x) => x.alias === alias)!, all, t);
+    humanBindingLabelFromList(
+      all.find((x) => x.alias === alias)!,
+      all,
+      t,
+    );
 
   it("appends the device name when two indoor temperatures coexist", () => {
     expect(labelOf("temperature_2")).toBe("Température intérieure (Weather Station)");
@@ -131,9 +131,7 @@ describe("humanBindingLabel — same-category disambiguation", () => {
 
   it("falls back to bare label when only one of the two exists (no ambiguity)", () => {
     const onlyOne: HistoryBindingState[] = [b("temperature_2", "temperature", "Weather Station")];
-    expect(
-      humanBindingLabelFromList(onlyOne[0], onlyOne, t),
-    ).toBe("Température intérieure");
+    expect(humanBindingLabelFromList(onlyOne[0], onlyOne, t)).toBe("Température intérieure");
   });
 });
 
@@ -157,13 +155,23 @@ describe("humanBindingLabel — fallback behaviour", () => {
   it("low-level humanBindingLabel accepts a pre-computed sameCategoryCount", () => {
     expect(
       humanBindingLabel(
-        { alias: "battery", category: "battery", deviceName: "Module Extérieur", sameCategoryCount: 3 },
+        {
+          alias: "battery",
+          category: "battery",
+          deviceName: "Module Extérieur",
+          sameCategoryCount: 3,
+        },
         t,
       ),
     ).toBe("Batterie Module Extérieur");
     expect(
       humanBindingLabel(
-        { alias: "battery", category: "battery", deviceName: "Module Extérieur", sameCategoryCount: 1 },
+        {
+          alias: "battery",
+          category: "battery",
+          deviceName: "Module Extérieur",
+          sameCategoryCount: 1,
+        },
         t,
       ),
     ).toBe("Batterie");

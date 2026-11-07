@@ -1,7 +1,17 @@
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import { useNavigate } from "react-router-dom";
-import { ChevronRight, ChevronDown, Building2, Layers, DoorOpen, Home, ArrowUp, ArrowDown, Plus } from "lucide-react";
+import {
+  ChevronRight,
+  ChevronDown,
+  Building2,
+  Layers,
+  DoorOpen,
+  Home,
+  ArrowUp,
+  ArrowDown,
+  Plus,
+} from "lucide-react";
 import type { ZoneWithChildren } from "../../types";
 import { reorderZones } from "../../api";
 
@@ -55,7 +65,15 @@ interface ZoneTreeNodeProps {
   onAddChild?: (parentId: string) => void;
 }
 
-function ZoneTreeNode({ zone, depth, index, siblingCount, onMove, onReordered, onAddChild }: ZoneTreeNodeProps) {
+function ZoneTreeNode({
+  zone,
+  depth,
+  index,
+  siblingCount,
+  onMove,
+  onReordered,
+  onAddChild,
+}: ZoneTreeNodeProps) {
   const { t } = useTranslation();
   const [expanded, setExpanded] = useState(depth < 2);
   const navigate = useNavigate();
@@ -115,9 +133,7 @@ function ZoneTreeNode({ zone, depth, index, siblingCount, onMove, onReordered, o
           </span>
 
           <div className="flex-1 min-w-0">
-            <span className="text-body font-medium text-text truncate block">
-              {zone.name}
-            </span>
+            <span className="text-body font-medium text-text truncate block">{zone.name}</span>
             {zone.description && (
               <span className="text-caption text-text-tertiary truncate block">
                 {zone.description}
@@ -139,7 +155,10 @@ function ZoneTreeNode({ zone, depth, index, siblingCount, onMove, onReordered, o
         <div className="flex items-center gap-0.5 opacity-0 group-hover/row:opacity-100 transition-opacity">
           {onAddChild && (
             <button
-              onClick={(e) => { e.stopPropagation(); onAddChild(zone.id); }}
+              onClick={(e) => {
+                e.stopPropagation();
+                onAddChild(zone.id);
+              }}
               className="p-1 rounded-sm text-text-tertiary hover:text-primary hover:bg-primary-light transition-colors cursor-pointer"
               title={t("zones.addSubZone")}
             >
@@ -149,7 +168,10 @@ function ZoneTreeNode({ zone, depth, index, siblingCount, onMove, onReordered, o
           {siblingCount > 1 && (
             <>
               <button
-                onClick={(e) => { e.stopPropagation(); onMove(index, "up"); }}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onMove(index, "up");
+                }}
                 disabled={isFirst}
                 className="p-1 rounded-sm text-text-tertiary hover:text-text hover:bg-border-light disabled:opacity-0 transition-colors cursor-pointer"
                 title={t("zones.moveUp")}
@@ -157,7 +179,10 @@ function ZoneTreeNode({ zone, depth, index, siblingCount, onMove, onReordered, o
                 <ArrowUp size={13} strokeWidth={1.5} />
               </button>
               <button
-                onClick={(e) => { e.stopPropagation(); onMove(index, "down"); }}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onMove(index, "down");
+                }}
                 disabled={isLast}
                 className="p-1 rounded-sm text-text-tertiary hover:text-text hover:bg-border-light disabled:opacity-0 transition-colors cursor-pointer"
                 title={t("zones.moveDown")}
@@ -199,9 +224,7 @@ function EmptyState() {
         <Home size={28} strokeWidth={1.5} className="text-text-tertiary" />
       </div>
       <h3 className="text-lead font-medium text-text mb-1">{t("zones.empty.title")}</h3>
-      <p className="text-small text-text-secondary max-w-[320px]">
-        {t("zones.empty.message")}
-      </p>
+      <p className="text-small text-text-secondary max-w-[320px]">{t("zones.empty.message")}</p>
     </div>
   );
 }

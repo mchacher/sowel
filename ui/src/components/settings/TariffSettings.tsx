@@ -225,7 +225,10 @@ export function TariffSettings() {
   const addSlot = () => {
     setConfig((prev) => {
       const schedules = [...prev.schedules];
-      const newSlots = [...schedules[0].slots, { start: "00:00", end: "00:00", tariff: "hp" as const }];
+      const newSlots = [
+        ...schedules[0].slots,
+        { start: "00:00", end: "00:00", tariff: "hp" as const },
+      ];
       schedules[0] = { ...schedules[0], slots: newSlots };
       return { ...prev, schedules };
     });
@@ -323,9 +326,7 @@ export function TariffSettings() {
 
       {/* Time slots */}
       <div className="mb-5 bg-background rounded-md p-4">
-        <h3 className="text-small font-medium text-text mb-3">
-          {t("tariff.timeSlots")}
-        </h3>
+        <h3 className="text-small font-medium text-text mb-3">{t("tariff.timeSlots")}</h3>
 
         <div className="space-y-2">
           {slots.map((slot, slotIdx) => (
@@ -351,9 +352,7 @@ export function TariffSettings() {
               />
               <select
                 value={slot.tariff}
-                onChange={(e) =>
-                  updateSlot(slotIdx, { tariff: e.target.value as "hp" | "hc" })
-                }
+                onChange={(e) => updateSlot(slotIdx, { tariff: e.target.value as "hp" | "hc" })}
                 className="px-2 py-1 border border-border rounded-sm text-small text-text bg-background"
               >
                 <option value="hp">{t("energy.peakHours")}</option>
@@ -397,12 +396,8 @@ export function TariffSettings() {
             t("tariff.save")
           )}
         </button>
-        {saved && (
-          <span className="text-caption text-success">{t("tariff.saved")}</span>
-        )}
-        {error && (
-          <span className="text-caption text-error">{error}</span>
-        )}
+        {saved && <span className="text-caption text-success">{t("tariff.saved")}</span>}
+        {error && <span className="text-caption text-error">{error}</span>}
       </div>
     </div>
   );

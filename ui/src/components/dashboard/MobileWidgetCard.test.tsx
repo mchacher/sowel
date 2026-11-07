@@ -259,7 +259,9 @@ describe("MobileWidgetCard — thermostat setpoint line", () => {
       dataBindings: [
         { alias: "temperature", value: 21, lastUpdated: agoIso(60) },
         { alias: "setpoint", value: 20, lastUpdated: agoIso(60) },
-        ...(state === null ? [] : [{ alias: "state", type: "boolean", value: state, lastUpdated: agoIso(60) }]),
+        ...(state === null
+          ? []
+          : [{ alias: "state", type: "boolean", value: state, lastUpdated: agoIso(60) }]),
       ] as unknown as EquipmentWithDetails["dataBindings"],
       orderBindings: [
         { alias: "setpoint", deviceId: "dev-1", min: 16, max: 30 },
@@ -267,12 +269,19 @@ describe("MobileWidgetCard — thermostat setpoint line", () => {
     });
 
   it("reads « temperature → setpoint » when running", () => {
-    render(<MobileWidgetCard widget={{ ...widget, equipmentId: "th-1" }} equipment={thermostat(true)} />);
+    render(
+      <MobileWidgetCard widget={{ ...widget, equipmentId: "th-1" }} equipment={thermostat(true)} />,
+    );
     expect(screen.getByText("21.0° → 20.0°")).toBeTruthy();
   });
 
   it("says off instead of the setpoint when the thermostat is off", () => {
-    render(<MobileWidgetCard widget={{ ...widget, equipmentId: "th-1" }} equipment={thermostat(false)} />);
+    render(
+      <MobileWidgetCard
+        widget={{ ...widget, equipmentId: "th-1" }}
+        equipment={thermostat(false)}
+      />,
+    );
     expect(screen.getByText("21.0° · off")).toBeTruthy();
   });
 
@@ -293,7 +302,9 @@ describe("MobileWidgetCard — thermostat setpoint line", () => {
   });
 
   it("does not take a thermostat without a run state for off", () => {
-    render(<MobileWidgetCard widget={{ ...widget, equipmentId: "th-1" }} equipment={thermostat(null)} />);
+    render(
+      <MobileWidgetCard widget={{ ...widget, equipmentId: "th-1" }} equipment={thermostat(null)} />,
+    );
     expect(screen.getByText("21.0° → 20.0°")).toBeTruthy();
   });
 });
@@ -313,17 +324,24 @@ describe("MobileWidgetCard — tap gesture (spec 196)", () => {
     ["now", "power", "operate"],
     ["sheet", "chevron", "open details"],
     ["confirm", "shield", "operate with confirmation"],
-  ] as const)("%s → %s glyph, and a name that keeps the tile's text before the gesture", (kind, glyph, gesture) => {
-    const { container } = render(
-      <MobileWidgetCard widget={widget} equipment={meter()} onClick={() => {}} tapKind={kind} />,
-    );
-    expect(container.querySelector("[data-tap-glyph]")?.getAttribute("data-tap-glyph")).toBe(glyph);
-    expect(screen.getByRole("button").getAttribute("aria-label")).toBeNull();
-    // Title, state line, then the gesture, in that order.
-    expect(
-      screen.getByRole("button", { name: new RegExp(`^Main meter.*1\\.5\\s?kWh.*800\\s?W, ${gesture}$`) }),
-    ).toBeTruthy();
-  });
+  ] as const)(
+    "%s → %s glyph, and a name that keeps the tile's text before the gesture",
+    (kind, glyph, gesture) => {
+      const { container } = render(
+        <MobileWidgetCard widget={widget} equipment={meter()} onClick={() => {}} tapKind={kind} />,
+      );
+      expect(container.querySelector("[data-tap-glyph]")?.getAttribute("data-tap-glyph")).toBe(
+        glyph,
+      );
+      expect(screen.getByRole("button").getAttribute("aria-label")).toBeNull();
+      // Title, state line, then the gesture, in that order.
+      expect(
+        screen.getByRole("button", {
+          name: new RegExp(`^Main meter.*1\\.5\\s?kWh.*800\\s?W, ${gesture}$`),
+        }),
+      ).toBeTruthy();
+    },
+  );
 
   it("shows no glyph in edit mode", () => {
     const { container } = render(
@@ -340,7 +358,12 @@ describe("MobileWidgetCard — vehicle report age (spec 196)", () => {
       name: "Megane",
       type: "electric_vehicle",
       dataBindings: [
-        { alias: "battery_level", category: "ev_battery_level", value: 39, lastUpdated: agoIso(7200) },
+        {
+          alias: "battery_level",
+          category: "ev_battery_level",
+          value: 39,
+          lastUpdated: agoIso(7200),
+        },
         { alias: "range", category: "ev_range", value: 114, lastUpdated: agoIso(7200) },
         {
           alias: "charging_state",

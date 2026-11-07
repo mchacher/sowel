@@ -59,7 +59,11 @@ describe("SetpointStepper", () => {
   });
 
   it("draws 28 px buttons with a 44 px touch area (sm), 44 px (md) and 56 px (lg)", () => {
-    const sizes = { sm: ["hit-44", "w-7", "h-7"], md: ["min-w-11", "min-h-11"], lg: ["w-14", "h-14"] } as const;
+    const sizes = {
+      sm: ["hit-44", "w-7", "h-7"],
+      md: ["min-w-11", "min-h-11"],
+      lg: ["w-14", "h-14"],
+    } as const;
     for (const [size, classes] of Object.entries(sizes)) {
       const { unmount } = renderStepper({ size: size as "sm" | "md" | "lg" });
       for (const c of classes) expect(up().classList.contains(c)).toBe(true);
@@ -69,7 +73,10 @@ describe("SetpointStepper", () => {
   });
 
   it("names its buttons from the given labels", () => {
-    renderStepper({ decreaseLabel: "Lower the charge current", increaseLabel: "Raise the charge current" });
+    renderStepper({
+      decreaseLabel: "Lower the charge current",
+      increaseLabel: "Raise the charge current",
+    });
     expect(screen.getByRole("button", { name: "Raise the charge current" })).toBeTruthy();
   });
 

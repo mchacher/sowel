@@ -4,15 +4,7 @@ import { useTranslation } from "react-i18next";
 import { dateLocale } from "../../lib/locale";
 import { formatHourLabel, formatHourRange } from "../../lib/hour-label";
 import { localDateStr } from "../../lib/local-date";
-import {
-  ResponsiveContainer,
-  BarChart,
-  Bar,
-  XAxis,
-  YAxis,
-  Tooltip,
-  CartesianGrid,
-} from "recharts";
+import { ResponsiveContainer, BarChart, Bar, XAxis, YAxis, Tooltip, CartesianGrid } from "recharts";
 import type { EnergyByUsageResponse } from "../../types";
 import type { EnergyUnit } from "../../store/useUiState";
 import { formatEur, formatKwhTick, formatKwhTooltip } from "./format";
@@ -72,7 +64,14 @@ function capitalizeFirst(s: string): string {
   return s.charAt(0).toUpperCase() + s.slice(1);
 }
 
-function makeBuckets(period: string, locale: string, dateStr?: string): { keyOf: (time: string) => string | null; buckets: { key: string; label: string; tooltipLabel: string }[] } {
+function makeBuckets(
+  period: string,
+  locale: string,
+  dateStr?: string,
+): {
+  keyOf: (time: string) => string | null;
+  buckets: { key: string; label: string; tooltipLabel: string }[];
+} {
   if (period === "day") {
     const buckets = Array.from({ length: 24 }, (_, hour) => ({
       key: String(hour),
@@ -96,8 +95,17 @@ function makeBuckets(period: string, locale: string, dateStr?: string): { keyOf:
       day.setDate(day.getDate() + i);
       return {
         key: localDateKey(day),
-        label: capitalizeFirst(day.toLocaleDateString(locale, { weekday: "short", day: "numeric" })),
-        tooltipLabel: capitalizeFirst(day.toLocaleDateString(locale, { weekday: "long", day: "numeric", month: "long", year: "numeric" })),
+        label: capitalizeFirst(
+          day.toLocaleDateString(locale, { weekday: "short", day: "numeric" }),
+        ),
+        tooltipLabel: capitalizeFirst(
+          day.toLocaleDateString(locale, {
+            weekday: "long",
+            day: "numeric",
+            month: "long",
+            year: "numeric",
+          }),
+        ),
       };
     });
     return { keyOf: (time) => localDateKey(new Date(time)), buckets };
@@ -113,7 +121,14 @@ function makeBuckets(period: string, locale: string, dateStr?: string): { keyOf:
       return {
         key: localDateKey(day),
         label: String(i + 1),
-        tooltipLabel: capitalizeFirst(day.toLocaleDateString(locale, { weekday: "long", day: "numeric", month: "long", year: "numeric" })),
+        tooltipLabel: capitalizeFirst(
+          day.toLocaleDateString(locale, {
+            weekday: "long",
+            day: "numeric",
+            month: "long",
+            year: "numeric",
+          }),
+        ),
       };
     });
     return { keyOf: (time) => localDateKey(new Date(time)), buckets };
@@ -127,7 +142,9 @@ function makeBuckets(period: string, locale: string, dateStr?: string): { keyOf:
     return {
       key: String(i),
       label: capitalizeFirst(d.toLocaleDateString(locale, { month: "short" })),
-      tooltipLabel: capitalizeFirst(d.toLocaleDateString(locale, { month: "long", year: "numeric" })),
+      tooltipLabel: capitalizeFirst(
+        d.toLocaleDateString(locale, { month: "long", year: "numeric" }),
+      ),
     };
   });
   return { keyOf: (time) => String(new Date(time).getMonth()), buckets };
@@ -207,16 +224,24 @@ export function EnergyByUsageChart({ data, period, date, height = 300, unit = "w
     return series.map((s) => (s.id === OTHER_KEY ? { ...s, name: t("energy.byUsage.other") } : s));
   }, [series, t]);
 
-  const formatValue = (kwh: number): string => (isEur ? formatEur(kwh * blendedRate, locale) : formatKwhTooltip(kwh, locale));
+  const formatValue = (kwh: number): string =>
+    isEur ? formatEur(kwh * blendedRate, locale) : formatKwhTooltip(kwh, locale);
 
   return (
     <div style={{ width: "100%", height }}>
       <ResponsiveContainer>
         <BarChart data={rows} margin={{ top: 10, right: 10, left: 0, bottom: 0 }}>
           <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="var(--color-border)" />
-          <XAxis dataKey="label" tick={{ fill: "var(--color-text-secondary)", fontSize: CHART_TICK_FONT }} />
+          <XAxis
+            dataKey="label"
+            tick={{ fill: "var(--color-text-secondary)", fontSize: CHART_TICK_FONT }}
+          />
           <YAxis
-            tickFormatter={isEur ? (kwh: number) => formatEur(kwh * blendedRate, locale) : (kwh: number) => formatKwhTick(kwh, locale)}
+            tickFormatter={
+              isEur
+                ? (kwh: number) => formatEur(kwh * blendedRate, locale)
+                : (kwh: number) => formatKwhTick(kwh, locale)
+            }
             tick={{ fill: "var(--color-text-secondary)", fontSize: CHART_TICK_FONT }}
           />
           <Tooltip
@@ -233,7 +258,10 @@ export function EnergyByUsageChart({ data, period, date, height = 300, unit = "w
                     if (v <= 0) return null;
                     return (
                       <div key={s.id} className="flex items-center gap-2 text-text-secondary">
-                        <span className="inline-block w-2.5 h-2.5 rounded-sm" style={{ backgroundColor: s.color }} />
+                        <span
+                          className="inline-block w-2.5 h-2.5 rounded-sm"
+                          style={{ backgroundColor: s.color }}
+                        />
                         <span>
                           {s.name}
                           {/* Spec 173 — this slice is smaller than the meter's
@@ -253,7 +281,9 @@ export function EnergyByUsageChart({ data, period, date, height = 300, unit = "w
                   {total > 0 && (
                     <div className="mt-1 pt-1 border-t border-border flex items-center text-text">
                       <span className="font-semibold">{t("energy.total")}</span>
-                      <span className="ml-auto tabular-nums font-semibold">{formatValue(total)}</span>
+                      <span className="ml-auto tabular-nums font-semibold">
+                        {formatValue(total)}
+                      </span>
                     </div>
                   )}
                 </div>
@@ -267,10 +297,18 @@ export function EnergyByUsageChart({ data, period, date, height = 300, unit = "w
               stackId="usage"
               fill={s.color}
               name={s.name}
-              shape={(props: { x?: number; y?: number; width?: number; height?: number; payload?: Datum }) => {
+              shape={(props: {
+                x?: number;
+                y?: number;
+                width?: number;
+                height?: number;
+                payload?: Datum;
+              }) => {
                 const { x = 0, y = 0, width: w = 0, height: h = 0, payload } = props;
                 if (h <= 0) return <g />;
-                const isTop = payload ? topmostSeriesIdInStack(payload, seriesWithI18n) === s.id : false;
+                const isTop = payload
+                  ? topmostSeriesIdInStack(payload, seriesWithI18n) === s.id
+                  : false;
                 if (isTop) return <path d={roundedTopRect(x, y, w, h, 4)} fill={s.color} />;
                 return <rect x={x} y={y} width={w} height={h} fill={s.color} />;
               }}

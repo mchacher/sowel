@@ -1,16 +1,12 @@
-import { CHART_TICK_FONT, CHART_TOOLTIP_FONT, CHART_TOOLTIP_ITEM_STYLE } from "../../lib/chart-font";
+import {
+  CHART_TICK_FONT,
+  CHART_TOOLTIP_FONT,
+  CHART_TOOLTIP_ITEM_STYLE,
+} from "../../lib/chart-font";
 import { useEffect, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { dateLocale } from "../../lib/locale";
-import {
-  ResponsiveContainer,
-  BarChart,
-  Bar,
-  XAxis,
-  YAxis,
-  Tooltip,
-  CartesianGrid,
-} from "recharts";
+import { ResponsiveContainer, BarChart, Bar, XAxis, YAxis, Tooltip, CartesianGrid } from "recharts";
 import type { HistoryPoint } from "../../types";
 import type { TimeRange } from "./history-utils";
 import { aggregateToBuckets, formatLabel, pickTickInterval } from "./chart-utils";
@@ -158,7 +154,10 @@ export function HistoryBarChart({ points, range, unit, height = 200 }: HistoryBa
 
   if (data.length === 0) {
     return (
-      <div className="flex items-center justify-center text-caption text-text-tertiary" style={{ height }}>
+      <div
+        className="flex items-center justify-center text-caption text-text-tertiary"
+        style={{ height }}
+      >
         {t("common.noData")}
       </div>
     );
@@ -186,11 +185,12 @@ export function HistoryBarChart({ points, range, unit, height = 200 }: HistoryBa
   }
 
   // Tooltip label adapts to unit
-  const tooltipLabel = unit === "Wh" || unit === "kWh"
-    ? t("energy.consumption")
-    : unit === "mm"
-      ? t("category.rain")
-      : t("common.value");
+  const tooltipLabel =
+    unit === "Wh" || unit === "kWh"
+      ? t("energy.consumption")
+      : unit === "mm"
+        ? t("category.rain")
+        : t("common.value");
 
   return (
     <ResponsiveContainer width="100%" height={chartHeight}>
@@ -209,11 +209,7 @@ export function HistoryBarChart({ points, range, unit, height = 200 }: HistoryBa
           axisLine={{ stroke: "var(--color-border)" }}
           height={xAxisHeight}
           tick={(tickProps: unknown) => (
-            <CustomTick
-              {...(tickProps as RechartsTick)}
-              fontSize={tickFontSize}
-              labels={labels}
-            />
+            <CustomTick {...(tickProps as RechartsTick)} fontSize={tickFontSize} labels={labels} />
           )}
         />
         <YAxis

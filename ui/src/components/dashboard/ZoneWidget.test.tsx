@@ -37,7 +37,13 @@ function thermostat(id: string, setpoint: number): EquipmentWithDetails {
 }
 
 const ZONE = { id: "z1", name: "Salon", children: [] } as unknown as ZoneWithChildren;
-const WIDGET = { id: "w1", type: "zone", zoneId: "z1", family: "heating", label: "" } as unknown as DashboardWidget;
+const WIDGET = {
+  id: "w1",
+  type: "zone",
+  zoneId: "z1",
+  family: "heating",
+  label: "",
+} as unknown as DashboardWidget;
 
 async function flushPromises() {
   await act(async () => {
@@ -62,7 +68,13 @@ describe("zone heating setpoint", () => {
 
   it("tile: a refused order reverts the value and says « not applied »", async () => {
     vi.mocked(api.executeZoneOrder).mockRejectedValue(new Error("502"));
-    render(<ZoneWidget widget={WIDGET} zone={ZONE} equipments={[thermostat("a", 20), thermostat("b", 20)]} />);
+    render(
+      <ZoneWidget
+        widget={WIDGET}
+        zone={ZONE}
+        equipments={[thermostat("a", 20), thermostat("b", 20)]}
+      />,
+    );
 
     await stepUp();
 
@@ -72,7 +84,13 @@ describe("zone heating setpoint", () => {
   });
 
   it("tile: writes the setpoint in the tile form, « 20.0° » (#1129, pr3-degre)", () => {
-    render(<ZoneWidget widget={WIDGET} zone={ZONE} equipments={[thermostat("a", 20), thermostat("b", 20)]} />);
+    render(
+      <ZoneWidget
+        widget={WIDGET}
+        zone={ZONE}
+        equipments={[thermostat("a", 20), thermostat("b", 20)]}
+      />,
+    );
     expect(screen.getByText("20.0°")).toBeTruthy();
     expect(screen.queryByText("20.0 °C")).toBeNull();
   });
@@ -96,19 +114,35 @@ describe("zone heating setpoint", () => {
   it("tile: holds the value asked for until the zone's average reaches it", async () => {
     vi.mocked(api.executeZoneOrder).mockResolvedValue(undefined as never);
     const { rerender } = render(
-      <ZoneWidget widget={WIDGET} zone={ZONE} equipments={[thermostat("a", 20), thermostat("b", 20)]} />,
+      <ZoneWidget
+        widget={WIDGET}
+        zone={ZONE}
+        equipments={[thermostat("a", 20), thermostat("b", 20)]}
+      />,
     );
 
     await stepUp();
     expect(screen.getByTestId("setpoint-pending")).toBeTruthy();
 
     // One thermostat reported: the average reads 20.25, the tile keeps 20.5.
-    rerender(<ZoneWidget widget={WIDGET} zone={ZONE} equipments={[thermostat("a", 20.5), thermostat("b", 20)]} />);
+    rerender(
+      <ZoneWidget
+        widget={WIDGET}
+        zone={ZONE}
+        equipments={[thermostat("a", 20.5), thermostat("b", 20)]}
+      />,
+    );
     expect(screen.getByTestId("setpoint-pending")).toBeTruthy();
     expect(screen.getByText(/20\.5/)).toBeTruthy();
 
     // Both did: the hold ends.
-    rerender(<ZoneWidget widget={WIDGET} zone={ZONE} equipments={[thermostat("a", 20.5), thermostat("b", 20.5)]} />);
+    rerender(
+      <ZoneWidget
+        widget={WIDGET}
+        zone={ZONE}
+        equipments={[thermostat("a", 20.5), thermostat("b", 20.5)]}
+      />,
+    );
     expect(screen.queryByTestId("setpoint-pending")).toBeNull();
   });
 });

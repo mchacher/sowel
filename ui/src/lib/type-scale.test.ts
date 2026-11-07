@@ -7,7 +7,10 @@ import { describe, expect, it } from "vitest";
 // rule that keeps arbitrary sizes out.
 const uiRoot = fileURLToPath(new URL("../..", import.meta.url));
 const indexCss = readFileSync(new URL("../index.css", import.meta.url), "utf8");
-const tokensCss = readFileSync(new URL("../../../design-system/tokens.css", import.meta.url), "utf8");
+const tokensCss = readFileSync(
+  new URL("../../../design-system/tokens.css", import.meta.url),
+  "utf8",
+);
 
 const SCALE: Record<string, number> = {
   micro: 11,
@@ -33,7 +36,9 @@ describe("fonts", () => {
   });
 
   it("loads JetBrains Mono at 400 only", () => {
-    const weights = [...indexCss.matchAll(/@fontsource\/jetbrains-mono\/(\d+)\.css/g)].map((m) => m[1]);
+    const weights = [...indexCss.matchAll(/@fontsource\/jetbrains-mono\/(\d+)\.css/g)].map(
+      (m) => m[1],
+    );
     expect(weights).toEqual(["400"]);
   });
 });
@@ -53,7 +58,11 @@ describe("type scale", () => {
   });
 });
 
-async function restricted(code: string, filePath: string, rule = "sowel/type-scale"): Promise<string[]> {
+async function restricted(
+  code: string,
+  filePath: string,
+  rule = "sowel/type-scale",
+): Promise<string[]> {
   const eslint = new ESLint({ cwd: uiRoot });
   const [result] = await eslint.lintText(code, { filePath });
   return result.messages.filter((m) => m.ruleId === rule).map((m) => m.message);
@@ -102,9 +111,15 @@ export const g = "lg:!text-[13px]";
 `;
 
   it("flags uppercase, radii and font sizes behind a variant or an important mark", async () => {
-    expect(await restricted(code, "src/components/Fixture.tsx", "sowel/sentence-case")).toHaveLength(2);
-    expect(await restricted(code, "src/components/Fixture.tsx", "sowel/radius-scale")).toHaveLength(3);
-    expect(await restricted(code, "src/components/Fixture.tsx", "sowel/type-scale")).toHaveLength(2);
+    expect(
+      await restricted(code, "src/components/Fixture.tsx", "sowel/sentence-case"),
+    ).toHaveLength(2);
+    expect(await restricted(code, "src/components/Fixture.tsx", "sowel/radius-scale")).toHaveLength(
+      3,
+    );
+    expect(await restricted(code, "src/components/Fixture.tsx", "sowel/type-scale")).toHaveLength(
+      2,
+    );
   }, 30_000);
 
   it("leaves prose, scale steps, table headers and a cut template token alone", async () => {
@@ -125,6 +140,8 @@ export const t = <table><thead><tr><th className="uppercase">A</th></tr></thead>
 export const a = (v: number) => [\`text-[clamp(22px,14cqw,36px)]\`, v.toFixed(1)];
 `;
     expect(await restricted(code, "src/components/Fixture.tsx")).toEqual([]);
-    expect(await restricted(code, "src/components/Fixture.tsx", "no-restricted-syntax")).toHaveLength(1);
+    expect(
+      await restricted(code, "src/components/Fixture.tsx", "no-restricted-syntax"),
+    ).toHaveLength(1);
   }, 30_000);
 });

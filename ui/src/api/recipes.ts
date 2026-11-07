@@ -1,8 +1,4 @@
-import type {
-  RecipeInfo,
-  RecipeInstance,
-  RecipeLogEntry,
-} from "../types";
+import type { RecipeInfo, RecipeInstance, RecipeLogEntry } from "../types";
 import { fetchJSON, API_BASE } from "./client";
 
 // ============================================================

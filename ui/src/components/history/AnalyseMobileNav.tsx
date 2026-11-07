@@ -42,7 +42,10 @@ export function AnalyseMobileNav() {
     <div className="fixed inset-0 z-50 lg:hidden">
       <div className="absolute inset-0 bg-black/40" onClick={close} />
       <div className="absolute top-0 left-0 bottom-0 w-[260px] bg-surface animate-slide-left shadow-xl overflow-y-auto">
-        <div className="bg-surface flex-shrink-0" style={{ height: "env(safe-area-inset-top, 0px)" }} />
+        <div
+          className="bg-surface flex-shrink-0"
+          style={{ height: "env(safe-area-inset-top, 0px)" }}
+        />
         <div className="px-3 pt-4 pb-4 space-y-1">
           <div className="px-2 pb-3">
             <span className="text-caption font-semibold text-text-secondary">
@@ -86,7 +89,9 @@ export function AnalyseMobileNav() {
                   <span className={active ? "text-primary" : "text-text-secondary"}>
                     <LineChart size={18} strokeWidth={1.5} />
                   </span>
-                  <span className={`text-body font-medium truncate ${active ? "text-primary" : ""}`}>
+                  <span
+                    className={`text-body font-medium truncate ${active ? "text-primary" : ""}`}
+                  >
                     {chart.name}
                   </span>
                 </button>

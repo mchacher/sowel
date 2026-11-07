@@ -129,9 +129,7 @@ export function WeatherPanel({ bindings, equipmentId, computedData }: WeatherPan
     const rainHostBinding = bindings.find((b) => b.category === "rain");
     const rainDeviceId = rainHostBinding?.deviceId ?? "computed-rain";
     const rainDeviceName = rainHostBinding?.deviceName ?? "Pluviomètre";
-    const existingKeys = new Set(
-      (byDevice.get(rainDeviceId)?.bindings ?? []).map((b) => b.key),
-    );
+    const existingKeys = new Set((byDevice.get(rainDeviceId)?.bindings ?? []).map((b) => b.key));
 
     for (const c of computedData) {
       const targetKey = COMPUTED_RAIN_TO_KEY[c.alias];
@@ -192,9 +190,7 @@ function WeatherDeviceCard({
 }) {
   const { t } = useTranslation();
   const batteryLevel =
-    batteryBinding && typeof batteryBinding.value === "number"
-      ? batteryBinding.value
-      : null;
+    batteryBinding && typeof batteryBinding.value === "number" ? batteryBinding.value : null;
 
   // Find the primary (hero) binding
   const primaryKey = PRIMARY_KEY[kind] ?? PRIMARY_KEY.default;
@@ -217,13 +213,9 @@ function WeatherDeviceCard({
 
   // For the wind module, surface direction next to the hero (arrow + compass label).
   const windAngleBinding =
-    kind === "wind"
-      ? sensorBindings.find((b) => b.key === "wind_angle")
-      : undefined;
+    kind === "wind" ? sensorBindings.find((b) => b.key === "wind_angle") : undefined;
   const windAngle =
-    windAngleBinding && typeof windAngleBinding.value === "number"
-      ? windAngleBinding.value
-      : null;
+    windAngleBinding && typeof windAngleBinding.value === "number" ? windAngleBinding.value : null;
 
   // Sort remaining bindings by defined order, primary excluded.
   // wind_angle is folded into the hero (arrow + compass) so we drop it from the secondary list.
@@ -248,9 +240,7 @@ function WeatherDeviceCard({
           {getKindIcon(kind)}
         </div>
         <div className="flex-1 min-w-0">
-          <div className="text-body font-semibold text-text truncate">
-            {deviceName}
-          </div>
+          <div className="text-body font-semibold text-text truncate">{deviceName}</div>
         </div>
         {batteryBinding && (
           <span
@@ -272,9 +262,7 @@ function WeatherDeviceCard({
               {formatSensorValue(primaryBinding.value, undefined, t)}
             </span>
             {primaryBinding.unit && (
-              <span className="text-lead text-text-tertiary">
-                {primaryBinding.unit}
-              </span>
+              <span className="text-lead text-text-tertiary">{primaryBinding.unit}</span>
             )}
             {kind === "wind" && windAngle !== null && (
               <span className="text-primary inline-flex items-center">
@@ -291,9 +279,7 @@ function WeatherDeviceCard({
             {KEY_LABELS[primaryBinding.key]
               ? t(KEY_LABELS[primaryBinding.key])
               : primaryBinding.key}
-            {kind === "wind" && windAngle !== null && (
-              <> · {angleToCompass(windAngle)}</>
-            )}
+            {kind === "wind" && windAngle !== null && <> · {angleToCompass(windAngle)}</>}
           </div>
         </div>
       )}

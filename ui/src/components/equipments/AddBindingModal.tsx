@@ -134,7 +134,11 @@ export function AddBindingModal({
                       onClick={() => handleSelectDevice(device.id)}
                       className="flex items-center gap-3 w-full px-3 py-2.5 rounded-sm bg-border-light/50 hover:bg-border-light transition-colors duration-150 text-left"
                     >
-                      <Radio size={16} strokeWidth={1.5} className="text-text-tertiary flex-shrink-0" />
+                      <Radio
+                        size={16}
+                        strokeWidth={1.5}
+                        className="text-text-tertiary flex-shrink-0"
+                      />
                       <div className="flex-1 min-w-0">
                         <span className="text-small font-medium text-text">{device.name}</span>
                         {device.manufacturer && (
@@ -178,7 +182,9 @@ export function AddBindingModal({
 
               {items.length === 0 ? (
                 <p className="text-small text-text-tertiary py-4">
-                  {t("binding.noProperties", { type: mode === "data" ? t("binding.dataProperties") : t("binding.orders") })}
+                  {t("binding.noProperties", {
+                    type: mode === "data" ? t("binding.dataProperties") : t("binding.orders"),
+                  })}
                 </p>
               ) : (
                 <div className="space-y-1 max-h-[250px] overflow-y-auto">
@@ -195,9 +201,10 @@ export function AddBindingModal({
                         className={`
                           flex items-center gap-3 w-full px-3 py-2.5 rounded-sm
                           transition-colors duration-150 text-left
-                          ${isSelected
-                            ? "bg-primary-light border border-primary/30"
-                            : "bg-border-light/50 hover:bg-border-light border border-transparent"
+                          ${
+                            isSelected
+                              ? "bg-primary-light border border-primary/30"
+                              : "bg-border-light/50 hover:bg-border-light border border-transparent"
                           }
                         `}
                       >
@@ -205,9 +212,7 @@ export function AddBindingModal({
                           <span className="text-small font-mono font-medium text-text">
                             {item.key}
                           </span>
-                          <span className="text-micro text-text-tertiary ml-2">
-                            ({item.type})
-                          </span>
+                          <span className="text-micro text-text-tertiary ml-2">({item.type})</span>
                           {dataItem && (
                             <span className="text-micro text-text-tertiary ml-1">
                               · {dataItem.category}
@@ -254,9 +259,7 @@ export function AddBindingModal({
           )}
 
           {/* Error */}
-          {error && (
-            <p className="text-caption text-error">{error}</p>
-          )}
+          {error && <p className="text-caption text-error">{error}</p>}
         </div>
 
         {/* Footer */}

@@ -19,7 +19,8 @@ export function MediaPlayerPanel({ equipment, onExecuteOrder }: MediaPlayerPanel
 
   const isOn = powerBinding?.value === true;
   const currentSource = typeof sourceBinding?.value === "string" ? sourceBinding.value : "—";
-  const pictureMode = typeof pictureModeBinding?.value === "string" ? pictureModeBinding.value : null;
+  const pictureMode =
+    typeof pictureModeBinding?.value === "string" ? pictureModeBinding.value : null;
 
   // Category first (#932): a TV bound while toggle_power was aliased `state`
   // keeps that alias, and must still get its power button.
@@ -67,7 +68,9 @@ export function MediaPlayerPanel({ equipment, onExecuteOrder }: MediaPlayerPanel
 
           <div className="flex-1">
             <div className="flex items-center gap-2">
-              <span className={`text-title font-semibold ${isOn ? "text-text" : "text-text-tertiary"}`}>
+              <span
+                className={`text-title font-semibold ${isOn ? "text-text" : "text-text-tertiary"}`}
+              >
                 {isOn ? currentSource : t("controls.off")}
               </span>
               {isOn && pictureMode && (

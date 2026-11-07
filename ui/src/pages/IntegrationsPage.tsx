@@ -12,7 +12,10 @@ export function IntegrationsPage() {
   const [integrations, setIntegrations] = useState<IntegrationInfo[]>([]);
   const [loading, setLoading] = useState(true);
   const [selectedId, setSelectedId] = useState<string | null>(null);
-  const [oauthMessage, setOauthMessage] = useState<{ type: "success" | "error"; text: string } | null>(null);
+  const [oauthMessage, setOauthMessage] = useState<{
+    type: "success" | "error";
+    text: string;
+  } | null>(null);
 
   const load = useCallback(async () => {
     try {
@@ -38,7 +41,10 @@ export function IntegrationsPage() {
       setTimeout(() => setOauthMessage(null), 5000);
     } else if (params.has("oauth_error")) {
       const msg = params.get("oauth_error") ?? t("common.error");
-      setOauthMessage({ type: "error", text: `${t("integrations.oauthError")}${t("common.colon")}${msg}` });
+      setOauthMessage({
+        type: "error",
+        text: `${t("integrations.oauthError")}${t("common.colon")}${msg}`,
+      });
       window.history.replaceState({}, "", window.location.pathname);
       setTimeout(() => setOauthMessage(null), 7000);
     }
@@ -57,9 +63,7 @@ export function IntegrationsPage() {
   return (
     <div className="p-4 sm:p-6">
       <div className="mb-5">
-        <h1 className={TOP_LEVEL_H1}>
-          {t("integrations.title")}
-        </h1>
+        <h1 className={TOP_LEVEL_H1}>{t("integrations.title")}</h1>
         <p className="text-small text-text-secondary mt-1">{t("integrations.subtitle")}</p>
       </div>
 

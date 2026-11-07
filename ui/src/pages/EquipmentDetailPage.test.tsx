@@ -165,7 +165,12 @@ describe("EquipmentDetailPage errors", () => {
 
 // Spec 196, slice 9 — use first, then configure; back to where the page came from.
 
-const shutter: EquipmentWithDetails = { ...sensor, id: "eq-s", name: "Volet salon", type: "shutter" };
+const shutter: EquipmentWithDetails = {
+  ...sensor,
+  id: "eq-s",
+  name: "Volet salon",
+  type: "shutter",
+};
 
 function renderAt(entry: { pathname: string; state?: unknown }) {
   return render(
@@ -185,7 +190,9 @@ describe("EquipmentDetailPage navigation and order", () => {
     useEquipments.setState({ equipments: [sensor, shutter] });
     mockedGet.mockImplementation(async (id: string) => (id === "eq-s" ? shutter : sensor));
     useZones.setState({
-      tree: [{ id: "z-1", name: "Salon", parentId: null, children: [] } as unknown as ZoneWithChildren],
+      tree: [
+        { id: "z-1", name: "Salon", parentId: null, children: [] } as unknown as ZoneWithChildren,
+      ],
       fetchZones: async () => {},
     });
     useAuth.setState({ user: null });
@@ -199,13 +206,19 @@ describe("EquipmentDetailPage navigation and order", () => {
   });
 
   it("goes back in history to the origin a link gave, under its name", async () => {
-    renderAt({ pathname: "/equipments/eq-1", state: equipmentLinkState("Living mode", "/modes/m-1") });
+    renderAt({
+      pathname: "/equipments/eq-1",
+      state: equipmentLinkState("Living mode", "/modes/m-1"),
+    });
     expect(await screen.findByRole("button", { name: "Back to Living mode" })).toBeTruthy();
     expect(screen.queryByRole("link", { name: "Back to Salon" })).toBeNull();
   });
 
   it("keeps « Back to equipments » for a page opened from the equipment list", async () => {
-    renderAt({ pathname: "/equipments/eq-1", state: equipmentLinkState("Equipments", "/equipments") });
+    renderAt({
+      pathname: "/equipments/eq-1",
+      state: equipmentLinkState("Equipments", "/equipments"),
+    });
     expect(await screen.findByRole("button", { name: "Back to equipments" })).toBeTruthy();
   });
 
@@ -217,7 +230,9 @@ describe("EquipmentDetailPage navigation and order", () => {
     const configuration = screen.getByRole("heading", { name: "Configuration" });
     const controls = screen.getByRole("heading", { name: "Controls" });
     // Usage above configuration.
-    expect(controls.compareDocumentPosition(configuration) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    expect(
+      controls.compareDocumentPosition(configuration) & Node.DOCUMENT_POSITION_FOLLOWING,
+    ).toBeTruthy();
 
     const invert = screen.getByRole("button", { name: /Invert open\/close direction/ });
     expect(invert.getAttribute("aria-expanded")).toBe("false");
@@ -229,6 +244,8 @@ describe("EquipmentDetailPage navigation and order", () => {
     // Delete left the header for the foot of the card.
     expect(screen.queryByRole("button", { name: "Delete" })).toBeNull();
     const del = screen.getByRole("button", { name: "Delete equipment" });
-    expect(configuration.compareDocumentPosition(del) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    expect(
+      configuration.compareDocumentPosition(del) & Node.DOCUMENT_POSITION_FOLLOWING,
+    ).toBeTruthy();
   });
 });

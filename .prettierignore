@@ -6,3 +6,8 @@ data
 *.db
 package-lock.json
 ui/package-lock.json
+
+# Token tables kept column-aligned by hand: the alignment is the readability,
+# and colour/type tests parse them as written (#1128).
+design-system/tokens.css
+ui/src/index.css

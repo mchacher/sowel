@@ -15,7 +15,6 @@ import { isElectricVehicleDevice } from "../../lib/electric-vehicle-contract";
 import { isThermostatDevice } from "../../lib/thermostat-contract";
 import { formatPower } from "../../lib/format";
 
-
 /** Maps EquipmentType to required data keys for filtering (when category alone is too broad). */
 const EQUIPMENT_TYPE_DATA_KEYS: Partial<Record<EquipmentType, string[]>> = {
   // thermostat: no entry — compatibility is the contract identity (spec 177),
@@ -117,7 +116,10 @@ export function DeviceSelector({
     const map = new Map<string, BindingCandidate[]>();
     for (const d of availableDevices) {
       const all = computeBindingCandidates(equipmentType, d.data, d.orders ?? []);
-      map.set(d.id, freeCandidates(all, boundOrderKeysByDevice?.[d.id], boundDataKeysByDevice?.[d.id]));
+      map.set(
+        d.id,
+        freeCandidates(all, boundOrderKeysByDevice?.[d.id], boundDataKeysByDevice?.[d.id]),
+      );
     }
     return map;
   }, [
@@ -145,14 +147,14 @@ export function DeviceSelector({
           equipmentType === "electric_vehicle"
           ? availableDevices.filter((d) => isElectricVehicleDevice(d.data, d.orders ?? []))
           : requiredKeys
-        ? availableDevices.filter((device) =>
-            device.data.some((d) => requiredKeys.includes(d.key)),
-          )
-        : categories && categories.length > 0
-          ? availableDevices.filter((device) =>
-              device.data.some((d) => categories.includes(d.category)),
-            )
-          : availableDevices;
+            ? availableDevices.filter((device) =>
+                device.data.some((d) => requiredKeys.includes(d.key)),
+              )
+            : categories && categories.length > 0
+              ? availableDevices.filter((device) =>
+                  device.data.some((d) => categories.includes(d.category)),
+                )
+              : availableDevices;
 
   // Spec 150 — gate is candidate-based: blind single-button gates (Somfy RTS
   // gate_trigger), LoRa R1..R4 relays, Zigbee on/off relays (SONOFF MINI-ZBD)
@@ -215,11 +217,7 @@ export function DeviceSelector({
   }
 
   if (allDevices.length === 0) {
-    return (
-      <p className="text-small text-text-tertiary py-4">
-        {t("deviceSelector.noDevices")}
-      </p>
-    );
+    return <p className="text-small text-text-tertiary py-4">{t("deviceSelector.noDevices")}</p>;
   }
 
   return (
@@ -228,7 +226,10 @@ export function DeviceSelector({
       {compatible.length < availableDevices.length && (
         <div className="flex items-center justify-between mb-2">
           <span className="text-caption text-text-tertiary">
-            {t("deviceSelector.compatible", { count: compatible.length, total: availableDevices.length })}
+            {t("deviceSelector.compatible", {
+              count: compatible.length,
+              total: availableDevices.length,
+            })}
           </span>
           <button
             type="button"
@@ -242,7 +243,11 @@ export function DeviceSelector({
 
       {/* Filter by name */}
       <div className="relative mb-2">
-        <Search size={14} strokeWidth={1.5} className="absolute left-2.5 top-1/2 -translate-y-1/2 text-text-tertiary" />
+        <Search
+          size={14}
+          strokeWidth={1.5}
+          className="absolute left-2.5 top-1/2 -translate-y-1/2 text-text-tertiary"
+        />
         <input
           type="text"
           value={filter}
@@ -253,9 +258,7 @@ export function DeviceSelector({
       </div>
 
       {devices.length === 0 ? (
-        <p className="text-small text-text-tertiary py-4">
-          {t("deviceSelector.noCompatible")}
-        </p>
+        <p className="text-small text-text-tertiary py-4">{t("deviceSelector.noCompatible")}</p>
       ) : (
         <div className="space-y-1 max-h-[300px] overflow-y-auto">
           {devices.map((device) => {
@@ -283,7 +286,9 @@ export function DeviceSelector({
                   </div>
                   <Radio size={16} strokeWidth={1.5} className="text-text-tertiary flex-shrink-0" />
                   <div className="flex-1 min-w-0">
-                    <span className={`text-small font-medium ${isCompatible ? "text-text" : "text-text-secondary"}`}>
+                    <span
+                      className={`text-small font-medium ${isCompatible ? "text-text" : "text-text-secondary"}`}
+                    >
                       {device.name}
                     </span>
                     {equipmentType === "ev_charger" &&
@@ -317,67 +322,68 @@ export function DeviceSelector({
 
                 {/* Candidate picker — only when selected and the device
                  * exposes multiple functional channels for this type. */}
-                {isSelected && (() => {
-                  const cs = candidatesByDevice.get(device.id) ?? [];
-                  if (cs.length <= 1) return null;
-                  const picked = candidateByDevice[device.id];
-                  return (
-                    <div className="ml-11 mt-1 mb-2 space-y-1">
-                      <div className="text-small font-medium text-text-secondary mb-1">
-                        {t("deviceSelector.pickChannel")}
+                {isSelected &&
+                  (() => {
+                    const cs = candidatesByDevice.get(device.id) ?? [];
+                    if (cs.length <= 1) return null;
+                    const picked = candidateByDevice[device.id];
+                    return (
+                      <div className="ml-11 mt-1 mb-2 space-y-1">
+                        <div className="text-small font-medium text-text-secondary mb-1">
+                          {t("deviceSelector.pickChannel")}
+                        </div>
+                        {cs.map((c) => {
+                          const isPicked = picked === c.id;
+                          // Solar panel: friendly "Canal N" label + the channel's
+                          // live power, so the user can tell which physical panel
+                          // is which. Other types keep the raw label + key list.
+                          const chMatch =
+                            equipmentType === "solar_panel" ? /^ch(\d+)$/.exec(c.id) : null;
+                          const chPower = chMatch
+                            ? device.data.find((x) => x.key === `ch${chMatch[1]}_power`)?.value
+                            : null;
+                          return (
+                            <label
+                              key={c.id}
+                              className={`flex items-center gap-2 px-2 py-1.5 rounded-sm cursor-pointer text-caption ${
+                                isPicked
+                                  ? "bg-primary/10 text-text"
+                                  : "hover:bg-border-light/40 text-text-secondary"
+                              }`}
+                            >
+                              <input
+                                type="radio"
+                                name={`candidate-${device.id}`}
+                                checked={isPicked}
+                                onChange={() => pickCandidate(device.id, c.id)}
+                              />
+                              {chMatch ? (
+                                <>
+                                  <span className="font-medium">
+                                    {t("deviceSelector.channel", { n: chMatch[1] })}
+                                  </span>
+                                  {typeof chPower === "number" && (
+                                    <span className="text-text-tertiary text-micro tabular-nums">
+                                      · {formatPower(chPower)}
+                                    </span>
+                                  )}
+                                </>
+                              ) : (
+                                <>
+                                  <span>{c.label}</span>
+                                  {c.dataKeys.length + c.orderKeys.length > 0 && (
+                                    <span className="text-text-tertiary text-micro">
+                                      ({[...new Set([...c.dataKeys, ...c.orderKeys])].join(", ")})
+                                    </span>
+                                  )}
+                                </>
+                              )}
+                            </label>
+                          );
+                        })}
                       </div>
-                      {cs.map((c) => {
-                        const isPicked = picked === c.id;
-                        // Solar panel: friendly "Canal N" label + the channel's
-                        // live power, so the user can tell which physical panel
-                        // is which. Other types keep the raw label + key list.
-                        const chMatch =
-                          equipmentType === "solar_panel" ? /^ch(\d+)$/.exec(c.id) : null;
-                        const chPower = chMatch
-                          ? device.data.find((x) => x.key === `ch${chMatch[1]}_power`)?.value
-                          : null;
-                        return (
-                          <label
-                            key={c.id}
-                            className={`flex items-center gap-2 px-2 py-1.5 rounded-sm cursor-pointer text-caption ${
-                              isPicked
-                                ? "bg-primary/10 text-text"
-                                : "hover:bg-border-light/40 text-text-secondary"
-                            }`}
-                          >
-                            <input
-                              type="radio"
-                              name={`candidate-${device.id}`}
-                              checked={isPicked}
-                              onChange={() => pickCandidate(device.id, c.id)}
-                            />
-                            {chMatch ? (
-                              <>
-                                <span className="font-medium">
-                                  {t("deviceSelector.channel", { n: chMatch[1] })}
-                                </span>
-                                {typeof chPower === "number" && (
-                                  <span className="text-text-tertiary text-micro tabular-nums">
-                                    · {formatPower(chPower)}
-                                  </span>
-                                )}
-                              </>
-                            ) : (
-                              <>
-                                <span>{c.label}</span>
-                                {c.dataKeys.length + c.orderKeys.length > 0 && (
-                                  <span className="text-text-tertiary text-micro">
-                                    ({[...new Set([...c.dataKeys, ...c.orderKeys])].join(", ")})
-                                  </span>
-                                )}
-                              </>
-                            )}
-                          </label>
-                        );
-                      })}
-                    </div>
-                  );
-                })()}
+                    );
+                  })()}
 
                 {/* Device data details */}
                 {isExpanded && (

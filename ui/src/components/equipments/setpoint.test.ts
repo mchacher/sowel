@@ -34,24 +34,24 @@ describe("setpointCommitDelay (spec 196, slice 8a)", () => {
   };
 
   it("waits ~600 ms for a cloud device and ~150 ms for a local one", () => {
-    expect(setpointCommitDelay(eq({ orders: [{ alias: "setpoint", deviceId: "dev-pac" }] }), devices)).toBe(
-      CLOUD_COMMIT_DELAY_MS,
-    );
-    expect(setpointCommitDelay(eq({ orders: [{ alias: "setpoint", deviceId: "dev-z2m" }] }), devices)).toBe(
-      LOCAL_COMMIT_DELAY_MS,
-    );
+    expect(
+      setpointCommitDelay(eq({ orders: [{ alias: "setpoint", deviceId: "dev-pac" }] }), devices),
+    ).toBe(CLOUD_COMMIT_DELAY_MS);
+    expect(
+      setpointCommitDelay(eq({ orders: [{ alias: "setpoint", deviceId: "dev-z2m" }] }), devices),
+    ).toBe(LOCAL_COMMIT_DELAY_MS);
     // Polling is not cloud: the Modbus pool heat pump is on the local network.
-    expect(setpointCommitDelay(eq({ orders: [{ alias: "setpoint", deviceId: "dev-modbus" }] }), devices)).toBe(
-      LOCAL_COMMIT_DELAY_MS,
-    );
+    expect(
+      setpointCommitDelay(eq({ orders: [{ alias: "setpoint", deviceId: "dev-modbus" }] }), devices),
+    ).toBe(LOCAL_COMMIT_DELAY_MS);
     expect(CLOUD_COMMIT_DELAY_MS).toBe(600);
     expect(LOCAL_COMMIT_DELAY_MS).toBe(150);
   });
 
   it("takes the cloud delay for a device it does not know yet", () => {
-    expect(setpointCommitDelay(eq({ orders: [{ alias: "setpoint", deviceId: "dev-?" }] }), devices)).toBe(
-      CLOUD_COMMIT_DELAY_MS,
-    );
+    expect(
+      setpointCommitDelay(eq({ orders: [{ alias: "setpoint", deviceId: "dev-?" }] }), devices),
+    ).toBe(CLOUD_COMMIT_DELAY_MS);
   });
 
   it("takes the cloud delay for a zone when one of its thermostats is cloud", () => {
@@ -65,14 +65,23 @@ describe("setpointCommitDelay (spec 196, slice 8a)", () => {
 describe("resolveSetpoint", () => {
   it("reads a thermostat's core alias with the order's bounds", () => {
     const s = resolveSetpoint(
-      eq({ data: [{ alias: "setpoint", value: 21 }], orders: [{ alias: "setpoint", min: 5, max: 35 }] }),
+      eq({
+        data: [{ alias: "setpoint", value: 21 }],
+        orders: [{ alias: "setpoint", min: 5, max: 35 }],
+      }),
     );
     expect(s).toEqual({ value: 21, order: "setpoint", min: 5, max: 35, step: 0.5 });
   });
 
   it("defaults a thermostat to 16–30 and a pool heat pump to 10–30", () => {
-    expect(resolveSetpoint(eq({ orders: [{ alias: "setpoint" }] }))).toMatchObject({ min: 16, max: 30, value: null });
-    expect(resolveSetpoint(eq({ type: "pool_heat_pump", orders: [{ alias: "setpoint" }] }))).toMatchObject({
+    expect(resolveSetpoint(eq({ orders: [{ alias: "setpoint" }] }))).toMatchObject({
+      min: 16,
+      max: 30,
+      value: null,
+    });
+    expect(
+      resolveSetpoint(eq({ type: "pool_heat_pump", orders: [{ alias: "setpoint" }] })),
+    ).toMatchObject({
       min: 10,
       max: 30,
     });
@@ -129,6 +138,8 @@ describe("setpointStateLine (mobile card)", () => {
     expect(setpointOwnerIsOff(eq({ data: [{ alias: "state", value: false }] }))).toBe(true);
     expect(setpointOwnerIsOff(eq({ data: [{ alias: "state", value: true }] }))).toBe(false);
     expect(setpointOwnerIsOff(eq({ data: [] }))).toBe(false);
-    expect(setpointOwnerIsOff(eq({ type: "pool_heat_pump", data: [{ alias: "mode", value: "OFF" }] }))).toBe(true);
+    expect(
+      setpointOwnerIsOff(eq({ type: "pool_heat_pump", data: [{ alias: "mode", value: "OFF" }] })),
+    ).toBe(true);
   });
 });

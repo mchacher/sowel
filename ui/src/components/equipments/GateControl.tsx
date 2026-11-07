@@ -22,7 +22,11 @@ export function GateControl({ equipment, onExecuteOrder, compact }: GateControlP
   // Category first, like the dashboard tile and the mobile tap (spec 110): a gate
   // bound under another alias than `command` used to get a button on the dashboard
   // and none here or in the Maison row.
-  const commandBinding = findOrderByCategory(equipment.orderBindings, ["gate_trigger"], ["command"]);
+  const commandBinding = findOrderByCategory(
+    equipment.orderBindings,
+    ["gate_trigger"],
+    ["command"],
+  );
   const hasCommand = !!commandBinding;
   const enumValues = commandBinding?.enumValues ?? [];
   const gateState = gateStateOf(equipment);
@@ -48,9 +52,10 @@ export function GateControl({ equipment, onExecuteOrder, compact }: GateControlP
         <span
           className={`
             text-micro font-medium px-2 py-0.5 rounded-full flex-shrink-0
-            ${gateState === "open" || gateState === "closed"
-              ? "bg-border-light text-text-secondary"
-              : "bg-text-tertiary/10 text-text-tertiary"
+            ${
+              gateState === "open" || gateState === "closed"
+                ? "bg-border-light text-text-secondary"
+                : "bg-text-tertiary/10 text-text-tertiary"
             }
           `}
         >
@@ -60,7 +65,11 @@ export function GateControl({ equipment, onExecuteOrder, compact }: GateControlP
         {/* Command button */}
         {hasCommand && (
           <button
-            onClick={(e) => { e.preventDefault(); e.stopPropagation(); handleCommand(); }}
+            onClick={(e) => {
+              e.preventDefault();
+              e.stopPropagation();
+              handleCommand();
+            }}
             disabled={executing}
             className={`
               p-2 rounded-sm transition-colors duration-150 cursor-pointer
@@ -69,10 +78,11 @@ export function GateControl({ equipment, onExecuteOrder, compact }: GateControlP
             `}
             title={t("controls.gate.command")}
           >
-            {executing
-              ? <Loader2 size={16} strokeWidth={1.5} className="animate-spin" />
-              : <DoorOpen size={16} strokeWidth={1.5} />
-            }
+            {executing ? (
+              <Loader2 size={16} strokeWidth={1.5} className="animate-spin" />
+            ) : (
+              <DoorOpen size={16} strokeWidth={1.5} />
+            )}
           </button>
         )}
         {confirmElement}
@@ -88,22 +98,22 @@ export function GateControl({ equipment, onExecuteOrder, compact }: GateControlP
         <div
           className={`
             w-10 h-10 rounded-md flex items-center justify-center
-            ${gateState === "open" || gateState === "closed"
-              ? "bg-border-light text-text-secondary"
-              : "bg-text-tertiary/10 text-text-tertiary"
+            ${
+              gateState === "open" || gateState === "closed"
+                ? "bg-border-light text-text-secondary"
+                : "bg-text-tertiary/10 text-text-tertiary"
             }
           `}
         >
-          {gateState === "open"
-            ? <DoorOpen size={22} strokeWidth={1.5} />
-            : gateState === "closed"
-              ? <DoorClosed size={22} strokeWidth={1.5} />
-              : <HelpCircle size={22} strokeWidth={1.5} />
-          }
+          {gateState === "open" ? (
+            <DoorOpen size={22} strokeWidth={1.5} />
+          ) : gateState === "closed" ? (
+            <DoorClosed size={22} strokeWidth={1.5} />
+          ) : (
+            <HelpCircle size={22} strokeWidth={1.5} />
+          )}
         </div>
-        <div className="text-lead font-medium text-text">
-          {t(`controls.gate.${gateState}`)}
-        </div>
+        <div className="text-lead font-medium text-text">{t(`controls.gate.${gateState}`)}</div>
       </div>
 
       {/* Command buttons */}

@@ -855,13 +855,7 @@ export type SharedAccessRefusal =
   | "gate_error";
 
 export type SharedAccessStatus =
-  | "live"
-  | "outside_hours"
-  | "not_yet"
-  | "ended"
-  | "suspended"
-  | "revoked"
-  | "no_gate";
+  "live" | "outside_hours" | "not_yet" | "ended" | "suspended" | "revoked" | "no_gate";
 
 export interface SharedAccessGateView {
   equipmentId: string;
@@ -1888,7 +1882,13 @@ export interface TariffPrices {
 
 export type EvSessionAttribution = "pending" | "vehicle" | "unattributed" | "other";
 export type EvSessionAttributionReason =
-  "single-match" | "only-vehicle" | "no-match" | "several-matches" | "usual-vehicle" | "power-match" | "energy-match";
+  | "single-match"
+  | "only-vehicle"
+  | "no-match"
+  | "several-matches"
+  | "usual-vehicle"
+  | "power-match"
+  | "energy-match";
 
 export interface EvChargeSession {
   id: string;

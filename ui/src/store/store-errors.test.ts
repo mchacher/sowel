@@ -166,7 +166,9 @@ describe("useSharedAccess refresh failure", () => {
     mocked("getSettings").mockResolvedValueOnce({ [SHARED_ACCESS_SETTING]: "true" });
     mocked("getSharedAccessState").mockRejectedValueOnce(new ApiError(0, "Failed to fetch"));
     await useSharedAccess.getState().refresh();
-    expect(useSharedAccess.getState().error).toBe("Sowel ne répond pas. Vérifiez la connexion puis réessayez.");
+    expect(useSharedAccess.getState().error).toBe(
+      "Sowel ne répond pas. Vérifiez la connexion puis réessayez.",
+    );
   });
 });
 

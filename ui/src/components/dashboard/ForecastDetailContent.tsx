@@ -143,7 +143,9 @@ function ForecastDayColumn({ day, locale }: { day: ForecastDay; locale: string }
             }`}
             title={
               day.tempMaxSpread !== null && day.tempMaxSpread > 0
-                ? t("equipments.forecast.confidenceHint", { spread: formatTemperature(day.tempMaxSpread) })
+                ? t("equipments.forecast.confidenceHint", {
+                    spread: formatTemperature(day.tempMaxSpread),
+                  })
                 : undefined
             }
           >

@@ -240,14 +240,14 @@ export function ElectricVehicleControl({ equipment, onExecuteOrder }: ElectricVe
           {s.mileageKm !== null && (
             <div className="flex items-center justify-between gap-3 text-small">
               <span className="text-text-secondary">{t("equipments.electricVehicle.mileage")}</span>
-              <span className="tabular-nums text-text">
-                {formatWithUnit(s.mileageKm, "km")}
-              </span>
+              <span className="tabular-nums text-text">{formatWithUnit(s.mileageKm, "km")}</span>
             </div>
           )}
           {extraData.map((b) => (
             <div key={b.alias} className="flex items-center justify-between gap-3 text-small">
-              <span className="text-text-secondary">{extraLabel("equipments.electricVehicle", b.alias, t)}</span>
+              <span className="text-text-secondary">
+                {extraLabel("equipments.electricVehicle", b.alias, t)}
+              </span>
               <span className="tabular-nums text-text">
                 {typeof b.value === "string"
                   ? extraTextValue("equipments.electricVehicle", b.alias, b.value, t)

@@ -1,15 +1,7 @@
 import { useParams, useNavigate } from "react-router-dom";
 import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
-import {
-  ArrowLeft,
-  Radio,
-  Loader2,
-  ChevronDown,
-  ChevronRight,
-  Zap,
-  Trash2,
-} from "lucide-react";
+import { ArrowLeft, Radio, Loader2, ChevronDown, ChevronRight, Zap, Trash2 } from "lucide-react";
 import type { DeviceOrder, DeviceWithDetails } from "../types";
 import { getDevice, getDeviceRawExpose, deleteDevice } from "../api";
 import { useDevices } from "../store/useDevices";
@@ -139,21 +131,22 @@ export function DeviceDetailPage() {
               </span>
               {device.manufacturer && (
                 <span className="text-caption text-text-tertiary">
-                  {device.manufacturer}{device.model ? ` · ${device.model}` : ""}
+                  {device.manufacturer}
+                  {device.model ? ` · ${device.model}` : ""}
                 </span>
               )}
             </div>
           </div>
         </div>
         {isAdmin && (
-        <button
-          onClick={handleDelete}
-          disabled={deleting}
-          className="flex items-center gap-1.5 px-3 py-1.5 rounded-sm text-caption font-medium text-error hover:bg-error/10 transition-colors duration-150 cursor-pointer disabled:opacity-50"
-        >
-          <Trash2 size={14} strokeWidth={1.5} />
-          {deleting ? t("common.deleting") : t("common.delete")}
-        </button>
+          <button
+            onClick={handleDelete}
+            disabled={deleting}
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded-sm text-caption font-medium text-error hover:bg-error/10 transition-colors duration-150 cursor-pointer disabled:opacity-50"
+          >
+            <Trash2 size={14} strokeWidth={1.5} />
+            {deleting ? t("common.deleting") : t("common.delete")}
+          </button>
         )}
       </div>
 
@@ -221,26 +214,40 @@ function StatusBadge({ status }: { status: string }) {
   const config = {
     online: { color: "bg-success/10 text-success", dot: "bg-success", label: t("status.online") },
     offline: { color: "bg-error/10 text-error", dot: "bg-error", label: t("status.offline") },
-    unknown: { color: "bg-border-light text-text-tertiary", dot: "bg-text-tertiary", label: t("status.unknown") },
-  }[status] ?? { color: "bg-border-light text-text-tertiary", dot: "bg-text-tertiary", label: status };
+    unknown: {
+      color: "bg-border-light text-text-tertiary",
+      dot: "bg-text-tertiary",
+      label: t("status.unknown"),
+    },
+  }[status] ?? {
+    color: "bg-border-light text-text-tertiary",
+    dot: "bg-text-tertiary",
+    label: status,
+  };
 
   return (
-    <span className={`inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-micro font-semibold ${config.color}`}>
+    <span
+      className={`inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-micro font-semibold ${config.color}`}
+    >
       <span className={`w-1.5 h-1.5 rounded-full ${config.dot}`} />
       {config.label}
     </span>
   );
 }
 
-function InfoItem({ label, value, mono }: { label: string; value: React.ReactNode; mono?: boolean }) {
+function InfoItem({
+  label,
+  value,
+  mono,
+}: {
+  label: string;
+  value: React.ReactNode;
+  mono?: boolean;
+}) {
   return (
     <div className="flex flex-col gap-0.5 min-w-[120px]">
-      <span className="text-caption text-text-tertiary">
-        {label}
-      </span>
-      <span className={`text-small text-text ${mono ? "font-mono" : ""}`}>
-        {value}
-      </span>
+      <span className="text-caption text-text-tertiary">{label}</span>
+      <span className={`text-small text-text ${mono ? "font-mono" : ""}`}>{value}</span>
     </div>
   );
 }
@@ -284,9 +291,7 @@ function OrdersTable({ orders }: { orders: DeviceOrder[] }) {
               <OrderRange order={order} />
             </td>
             <td className="py-2.5 px-3">
-              <span className="text-micro text-text-tertiary">
-                {order.category ?? "—"}
-              </span>
+              <span className="text-micro text-text-tertiary">{order.category ?? "—"}</span>
             </td>
           </tr>
         ))}

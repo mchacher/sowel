@@ -80,7 +80,12 @@ describe("dashboard link to the equipment page", () => {
   });
 
   it("ends the equipment sheet with « Open the page »", () => {
-    const widget = { id: "w-1", type: "equipment", equipmentId: "eq-1", label: "" } as unknown as DashboardWidget;
+    const widget = {
+      id: "w-1",
+      type: "equipment",
+      equipmentId: "eq-1",
+      label: "",
+    } as unknown as DashboardWidget;
     render(
       <MemoryRouter>
         <EquipmentDetailSheet

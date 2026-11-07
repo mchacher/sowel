@@ -1,8 +1,4 @@
-import type {
-  DashboardWidget,
-  WidgetConfig,
-  WidgetFamily,
-} from "../types";
+import type { DashboardWidget, WidgetConfig, WidgetFamily } from "../types";
 import { fetchJSON, API_BASE } from "./client";
 
 // ============================================================

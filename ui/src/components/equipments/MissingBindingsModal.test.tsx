@@ -173,8 +173,6 @@ describe("MissingBindingsModal (#707)", () => {
       />,
     );
 
-    await waitFor(() =>
-      expect(screen.getByText(/nothing to add/i)).toBeTruthy(),
-    );
+    await waitFor(() => expect(screen.getByText(/nothing to add/i)).toBeTruthy());
   });
 });

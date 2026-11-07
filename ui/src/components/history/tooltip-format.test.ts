@@ -96,7 +96,14 @@ describe("seriesFullLabel", () => {
   // Spec 196 — a saved chart outliving its equipment showed the equipment's UUID and
   // the raw alias.
   it("names a deleted equipment's series by what it measured, not by an id", () => {
-    const orphan = { ...measurement, alias: "humidity", category: "", equipmentName: "", zoneName: "", deleted: true };
+    const orphan = {
+      ...measurement,
+      alias: "humidity",
+      category: "",
+      equipmentName: "",
+      zoneName: "",
+      deleted: true,
+    };
     expect(seriesFullLabel(orphan, t)).toBe("analyse.series.deleted · category.humidity");
   });
 });
@@ -224,7 +231,11 @@ describe("formatAxisTick (spec 196): one unit per axis", () => {
   });
 
   it("keeps W when the axis stays under 1 kW", () => {
-    expect([0, 400, 800].map((v) => sp(formatAxisTick(v, "W", 800)))).toEqual(["0 W", "400 W", "800 W"]);
+    expect([0, 400, 800].map((v) => sp(formatAxisTick(v, "W", 800)))).toEqual([
+      "0 W",
+      "400 W",
+      "800 W",
+    ]);
   });
 
   it("does the same for energy, and for a kW or Wh series", () => {

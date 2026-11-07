@@ -64,7 +64,11 @@ export function getMobileClickAction(
     return {
       kind: "toggle",
       run: () => {
-        void onExecuteOrder(equipment.id, toggle.alias, toggle.on ? toggle.offValue : toggle.onValue);
+        void onExecuteOrder(
+          equipment.id,
+          toggle.alias,
+          toggle.on ? toggle.offValue : toggle.onValue,
+        );
       },
     };
   }
@@ -87,18 +91,16 @@ export function getMobileClickAction(
       }
       return {
         kind: "now",
-        run: () => { void onExecuteOrder(equipment.id, commandBinding.alias, null); },
+        run: () => {
+          void onExecuteOrder(equipment.id, commandBinding.alias, null);
+        },
       };
     }
     return sheet(onOpenDetail);
   }
 
   // Simple on/off (light_onoff, water_heater, water_valve) → direct toggle
-  if (
-    type === "light_onoff" ||
-    type === "water_heater" ||
-    type === "water_valve"
-  ) {
+  if (type === "light_onoff" || type === "water_heater" || type === "water_valve") {
     // Spec 196 — the desktop tile already refuses a disabled light; the phone
     // used to toggle it anyway.
     if (!equipment.enabled) return undefined;

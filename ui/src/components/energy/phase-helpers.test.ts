@@ -22,10 +22,7 @@ function makeBinding(
   };
 }
 
-function makeEquipment(
-  id: string,
-  bindings: DataBindingWithValue[],
-): EquipmentWithDetails {
+function makeEquipment(id: string, bindings: DataBindingWithValue[]): EquipmentWithDetails {
   return {
     id,
     name: id,

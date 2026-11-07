@@ -9,12 +9,7 @@ export type SettingsTab = "general" | "account" | "energy" | "admin";
  * rendering an empty pane.
  */
 export function initialSettingsTab(param: string | null, isAdmin: boolean): SettingsTab {
-  if (
-    param === "general" ||
-    param === "account" ||
-    param === "energy" ||
-    param === "admin"
-  ) {
+  if (param === "general" || param === "account" || param === "energy" || param === "admin") {
     if (param === "account" || isAdmin) return param;
   }
   return isAdmin ? "general" : "account";

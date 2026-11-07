@@ -26,11 +26,7 @@ export function PoolHeatPumpControl({ equipment, onExecuteOrder, compact }: Prop
   const computedWater = equipment.computedData?.find(
     (c) => c.alias === "effective_water_temperature",
   );
-  const modeBinding = findDataByCategory(
-    equipment.dataBindings,
-    ["appliance_state"],
-    ["mode"],
-  );
+  const modeBinding = findDataByCategory(equipment.dataBindings, ["appliance_state"], ["mode"]);
   const setpoint = resolveSetpoint(equipment);
   const commitDelay = useSetpointCommitDelay(equipment);
   const setpointOrder = setpoint.order;

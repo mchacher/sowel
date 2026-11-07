@@ -67,7 +67,14 @@ describe("cellColor (timeline ribbon, #617)", () => {
 
   it("edges the 'en attente' cell only (spec 196, FR-E)", () => {
     expect(cellEdge("pending")).toBe("inset 0 0 0 1px var(--color-warning)");
-    for (const s of ["granted", "granted-idle", "revoked", "unmanaged", "suspended", "idle"] as const) {
+    for (const s of [
+      "granted",
+      "granted-idle",
+      "revoked",
+      "unmanaged",
+      "suspended",
+      "idle",
+    ] as const) {
       expect(cellEdge(s)).toBeUndefined();
     }
   });
@@ -224,7 +231,9 @@ describe("loadStateInk (spec 196, FR-E)", () => {
   });
 
   it("tints the pill with the hue, not the ink", () => {
-    expect(loadStatePillBg("granted")).toBe("color-mix(in srgb, var(--color-solar-auto) 15%, transparent)");
+    expect(loadStatePillBg("granted")).toBe(
+      "color-mix(in srgb, var(--color-solar-auto) 15%, transparent)",
+    );
   });
 });
 

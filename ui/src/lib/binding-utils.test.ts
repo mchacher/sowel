@@ -25,15 +25,27 @@ describe("freeCandidates", () => {
   });
 
   it("channel 1 taken → only channel 2 offered (shared inverter_temp ignored)", () => {
-    const bound = new Set(["ch1_voltage", "ch1_current", "ch1_power", "ch1_energy", "inverter_temp"]);
+    const bound = new Set([
+      "ch1_voltage",
+      "ch1_current",
+      "ch1_power",
+      "ch1_energy",
+      "inverter_temp",
+    ]);
     const free = freeCandidates(SOLAR, undefined, bound);
     expect(free.map((c) => c.id)).toEqual(["ch2"]);
   });
 
   it("both channels taken → none offered", () => {
     const bound = new Set([
-      "ch1_voltage", "ch1_current", "ch1_power", "ch1_energy",
-      "ch2_voltage", "ch2_current", "ch2_power", "ch2_energy",
+      "ch1_voltage",
+      "ch1_current",
+      "ch1_power",
+      "ch1_energy",
+      "ch2_voltage",
+      "ch2_current",
+      "ch2_power",
+      "ch2_energy",
       "inverter_temp",
     ]);
     expect(freeCandidates(SOLAR, undefined, bound)).toHaveLength(0);
@@ -77,8 +89,16 @@ describe("allSupportStop", () => {
 
   it("true when every move order's enumValues includes STOP", () => {
     const equipments = [
-      { orderBindings: [{ alias: "state", category: "shutter_move", enumValues: ["OPEN", "CLOSE", "STOP"] }] },
-      { orderBindings: [{ alias: "state", category: "shutter_move", enumValues: ["OPEN", "CLOSE", "STOP"] }] },
+      {
+        orderBindings: [
+          { alias: "state", category: "shutter_move", enumValues: ["OPEN", "CLOSE", "STOP"] },
+        ],
+      },
+      {
+        orderBindings: [
+          { alias: "state", category: "shutter_move", enumValues: ["OPEN", "CLOSE", "STOP"] },
+        ],
+      },
     ] as unknown as EquipmentWithDetails[];
     expect(allSupportStop(equipments)).toBe(true);
   });
@@ -92,8 +112,16 @@ describe("allSupportStop", () => {
 
   it("false when at least one equipment's enumValues omits STOP (e.g. Bubendorff/NBR)", () => {
     const equipments = [
-      { orderBindings: [{ alias: "state", category: "shutter_move", enumValues: ["OPEN", "CLOSE", "STOP"] }] },
-      { orderBindings: [{ alias: "state", category: "shutter_move", enumValues: ["OPEN", "CLOSE"] }] },
+      {
+        orderBindings: [
+          { alias: "state", category: "shutter_move", enumValues: ["OPEN", "CLOSE", "STOP"] },
+        ],
+      },
+      {
+        orderBindings: [
+          { alias: "state", category: "shutter_move", enumValues: ["OPEN", "CLOSE"] },
+        ],
+      },
     ] as unknown as EquipmentWithDetails[];
     expect(allSupportStop(equipments)).toBe(false);
   });

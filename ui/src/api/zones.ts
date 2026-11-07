@@ -1,8 +1,4 @@
-import type {
-  ZoneWithChildren,
-  Zone,
-  ZoneAggregatedData,
-} from "../types";
+import type { ZoneWithChildren, Zone, ZoneAggregatedData } from "../types";
 import { fetchJSON, API_BASE } from "./client";
 
 // ============================================================

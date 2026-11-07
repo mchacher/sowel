@@ -54,20 +54,12 @@ export function MissingBindingsModal({
   useEffect(() => {
     let cancelled = false;
     const deviceIds = [
-      ...new Set([
-        ...dataBindings.map((b) => b.deviceId),
-        ...orderBindings.map((b) => b.deviceId),
-      ]),
+      ...new Set([...dataBindings.map((b) => b.deviceId), ...orderBindings.map((b) => b.deviceId)]),
     ];
     fetchDevices(deviceIds)
       .then((devices) => {
         if (cancelled) return;
-        const found = computeMissingBindings(
-          devices,
-          equipmentType,
-          dataBindings,
-          orderBindings,
-        );
+        const found = computeMissingBindings(devices, equipmentType, dataBindings, orderBindings);
         setMissing(found);
         setSelected(new Set(found.map((m) => m.sourceId)));
         setLoading(false);

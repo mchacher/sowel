@@ -9,11 +9,7 @@ import { Box, Loader2, Plus, Search, X } from "lucide-react";
 import type { EquipmentType, EquipmentWithDetails } from "../types";
 import { autoCreateBindings } from "../components/equipments/bindingUtils";
 import { buildBoundOrderKeysByDevice, buildBoundDataKeysByDevice } from "../lib/binding-utils";
-import {
-  flattenZonesWithPath,
-  groupEquipmentsByZone,
-  ZONE_PATH_SEPARATOR,
-} from "../lib/zone-path";
+import { flattenZonesWithPath, groupEquipmentsByZone, ZONE_PATH_SEPARATOR } from "../lib/zone-path";
 import { useWsSubscription } from "../hooks/useWsSubscription";
 import { PageHeader, PageHeaderButton } from "../components/layout/PageHeader";
 
@@ -55,7 +51,11 @@ export function EquipmentsPage() {
             {/* Filter */}
             {equipments.length > 0 && (
               <div className="relative flex-1 sm:flex-none">
-                <Search size={14} strokeWidth={1.5} className="absolute left-2.5 top-1/2 -translate-y-1/2 text-text-tertiary pointer-events-none" />
+                <Search
+                  size={14}
+                  strokeWidth={1.5}
+                  className="absolute left-2.5 top-1/2 -translate-y-1/2 text-text-tertiary pointer-events-none"
+                />
                 <input
                   type="text"
                   value={filter}
@@ -64,7 +64,10 @@ export function EquipmentsPage() {
                   className="w-full sm:w-[180px] pl-8 pr-8 py-1.5 text-small border border-border bg-surface rounded-sm outline-none placeholder:text-text-tertiary focus:border-primary transition-colors duration-150"
                 />
                 {filter && (
-                  <button onClick={() => setFilter("")} className="absolute right-2 top-1/2 -translate-y-1/2 text-text-tertiary hover:text-text-secondary">
+                  <button
+                    onClick={() => setFilter("")}
+                    className="absolute right-2 top-1/2 -translate-y-1/2 text-text-tertiary hover:text-text-secondary"
+                  >
                     <X size={14} strokeWidth={1.5} />
                   </button>
                 )}
@@ -72,7 +75,11 @@ export function EquipmentsPage() {
             )}
 
             {isAdmin && (
-              <PageHeaderButton icon={Plus} label={t("equipments.addEquipment")} onClick={() => setShowForm(true)} />
+              <PageHeaderButton
+                icon={Plus}
+                label={t("equipments.addEquipment")}
+                onClick={() => setShowForm(true)}
+              />
             )}
 
             <div className="hidden sm:flex items-center gap-2 px-3 py-1.5 rounded-sm bg-primary-light text-primary">
@@ -101,11 +108,7 @@ export function EquipmentsPage() {
               <ZoneHeading chain={zone?.chain} />
               <div className="space-y-1.5">
                 {zoneEquipments.map((eq) => (
-                  <EquipmentCard
-                    key={eq.id}
-                    equipment={eq}
-                    onExecuteOrder={executeOrder}
-                  />
+                  <EquipmentCard key={eq.id} equipment={eq} onExecuteOrder={executeOrder} />
                 ))}
               </div>
             </div>
@@ -156,7 +159,6 @@ function singletonExcludeTypes(equipments: EquipmentWithDetails[]): Set<Equipmen
   }
   return exclude;
 }
-
 
 /**
  * Group heading spelling out where the zone actually is: ancestors muted, the

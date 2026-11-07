@@ -40,10 +40,11 @@ export function upsStatusOf(equipment: EquipmentWithDetails): {
   status: UpsStatus | null;
   raw: string | null;
 } {
-  const binding = findDataByCategory(equipment.dataBindings, ["ups_status"], [
-    "status",
-    "ups_status",
-  ]);
+  const binding = findDataByCategory(
+    equipment.dataBindings,
+    ["ups_status"],
+    ["status", "ups_status"],
+  );
   const value = binding?.value;
   if (value === undefined || value === null || value === "") return { status: null, raw: null };
   const raw = String(value);
@@ -160,7 +161,8 @@ export function readUpsBindings(bindings: readonly MinimalBinding[]): UpsReading
     // The plugin pushes explicit booleans; the raw flag string is the fallback
     // for any other integration that only mirrors `ups.status`.
     charging: bool(byAlias(bindings, "charging")) || /\bCHRG\b/.test(String(flags ?? "")),
-    replaceBattery: bool(byAlias(bindings, "replace_battery")) || /\bRB\b/.test(String(flags ?? "")),
+    replaceBattery:
+      bool(byAlias(bindings, "replace_battery")) || /\bRB\b/.test(String(flags ?? "")),
   };
 }
 

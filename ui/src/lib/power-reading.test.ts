@@ -155,11 +155,7 @@ describe("resolvePowerReading", () => {
   });
 
   it("treats an unparseable timestamp as no evidence of age", () => {
-    const r = resolvePowerReading(
-      equipment("water_heater"),
-      binding({ lastUpdated: null }),
-      NOW,
-    );
+    const r = resolvePowerReading(equipment("water_heater"), binding({ lastUpdated: null }), NOW);
 
     expect(r.verdict).toBe("current");
     expect(r.watts).toBe(560);

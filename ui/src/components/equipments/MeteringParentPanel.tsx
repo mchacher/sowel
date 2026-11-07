@@ -44,7 +44,11 @@ export function MeteringParentPanel({
     while (grew) {
       grew = false;
       for (const eq of equipments) {
-        if (eq.meteringParentId && descendants.has(eq.meteringParentId) && !descendants.has(eq.id)) {
+        if (
+          eq.meteringParentId &&
+          descendants.has(eq.meteringParentId) &&
+          !descendants.has(eq.id)
+        ) {
           descendants.add(eq.id);
           grew = true;
         }
@@ -98,7 +102,9 @@ export function MeteringParentPanel({
     : (parentName ?? t("equipments.metering.nesting.none"));
   // Spec 195 — the folded row says the third declaration too.
   const summary =
-    localProduction && !separate ? `${base} · ${t("equipments.metering.localProduction.summary")}` : base;
+    localProduction && !separate
+      ? `${base} · ${t("equipments.metering.localProduction.summary")}`
+      : base;
 
   return (
     <ConfigRow
@@ -128,13 +134,20 @@ export function MeteringParentPanel({
               </option>
             ))}
           </select>
-          <InfoTooltip help align="start" text={t("equipments.metering.nesting.hint")} label={t("common.help")} />
+          <InfoTooltip
+            help
+            align="start"
+            text={t("equipments.metering.nesting.hint")}
+            label={t("common.help")}
+          />
           {saving && <Loader2 size={12} className="animate-spin text-text-tertiary" />}
         </div>
       )}
 
       {/* Spec 179 — declare the meter fed by a separate supply. */}
-      <div className={`flex items-center gap-2 ${separate ? "" : "mt-3 pt-3 border-t border-border-light"}`}>
+      <div
+        className={`flex items-center gap-2 ${separate ? "" : "mt-3 pt-3 border-t border-border-light"}`}
+      >
         <label className="flex items-center gap-2 text-small text-text cursor-pointer">
           <input
             type="checkbox"
@@ -146,7 +159,12 @@ export function MeteringParentPanel({
           />
           {t("equipments.metering.separateSupply.title")}
         </label>
-        <InfoTooltip help align="start" text={t("equipments.metering.separateSupply.hint")} label={t("common.help")} />
+        <InfoTooltip
+          help
+          align="start"
+          text={t("equipments.metering.separateSupply.hint")}
+          label={t("common.help")}
+        />
         {separate && saving && <Loader2 size={12} className="animate-spin text-text-tertiary" />}
       </div>
 
@@ -164,7 +182,12 @@ export function MeteringParentPanel({
             />
             {t("equipments.metering.localProduction.title")}
           </label>
-          <InfoTooltip help align="start" text={t("equipments.metering.localProduction.hint")} label={t("common.help")} />
+          <InfoTooltip
+            help
+            align="start"
+            text={t("equipments.metering.localProduction.hint")}
+            label={t("common.help")}
+          />
         </div>
       )}
       {error && <p className="text-caption text-error mt-2">{error}</p>}

@@ -9,9 +9,7 @@
  * point, so a superseded load stays silent instead of clobbering fresher state.
  */
 export type LoadOutcome<T> =
-  | { status: "ok"; value: T }
-  | { status: "failed"; error: unknown }
-  | { status: "superseded" };
+  { status: "ok"; value: T } | { status: "failed"; error: unknown } | { status: "superseded" };
 
 interface Options {
   /** Delay before each retry. Its length is the number of retries. */

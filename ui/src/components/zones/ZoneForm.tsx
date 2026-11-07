@@ -22,7 +22,14 @@ interface ZoneFormProps {
   title: string;
 }
 
-export function ZoneForm({ initial, parentZones, defaultParentId, onSubmit, onClose, title }: ZoneFormProps) {
+export function ZoneForm({
+  initial,
+  parentZones,
+  defaultParentId,
+  onSubmit,
+  onClose,
+  title,
+}: ZoneFormProps) {
   const { t } = useTranslation();
   const [name, setName] = useState(initial?.name ?? "");
   const [parentId, setParentId] = useState<string | null>(defaultParentId ?? null);
@@ -51,7 +58,10 @@ export function ZoneForm({ initial, parentZones, defaultParentId, onSubmit, onCl
   };
 
   return (
-    <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50" onClick={onClose}>
+    <div
+      className="fixed inset-0 bg-black/40 flex items-center justify-center z-50"
+      onClick={onClose}
+    >
       <div
         className="bg-surface rounded-lg w-full max-w-[440px] mx-4 shadow-lg"
         onClick={(e) => e.stopPropagation()}
@@ -71,9 +81,7 @@ export function ZoneForm({ initial, parentZones, defaultParentId, onSubmit, onCl
         <form onSubmit={handleSubmit} className="p-6 space-y-4">
           {/* Name */}
           <div>
-            <label className={FIELD_LABEL}>
-              {t("zones.form.name")}
-            </label>
+            <label className={FIELD_LABEL}>{t("zones.form.name")}</label>
             <input
               type="text"
               value={name}
@@ -87,9 +95,7 @@ export function ZoneForm({ initial, parentZones, defaultParentId, onSubmit, onCl
 
           {/* Parent zone */}
           <div>
-            <label className={FIELD_LABEL}>
-              {t("zones.form.parent")}
-            </label>
+            <label className={FIELD_LABEL}>{t("zones.form.parent")}</label>
             <select
               value={parentId ?? ""}
               onChange={(e) => setParentId(e.target.value || null)}
@@ -121,9 +127,7 @@ export function ZoneForm({ initial, parentZones, defaultParentId, onSubmit, onCl
           </div>
 
           {/* Error */}
-          {error && (
-            <p className="text-small text-error">{error}</p>
-          )}
+          {error && <p className="text-small text-error">{error}</p>}
 
           {/* Actions */}
           <div className="flex justify-end gap-3 pt-2">
@@ -153,10 +157,7 @@ export function ZoneForm({ initial, parentZones, defaultParentId, onSubmit, onCl
  *  subtree — a zone cannot become its own descendant. Labels are computed on
  *  the full tree, so they stay stable regardless of the exclusion. */
 // eslint-disable-next-line react-refresh/only-export-components -- utility co-located with ZoneForm
-export function flattenZoneTree(
-  zones: ZoneWithChildren[],
-  excludeId?: string
-): ZoneOption[] {
+export function flattenZoneTree(zones: ZoneWithChildren[], excludeId?: string): ZoneOption[] {
   const excluded = new Set<string>();
   if (excludeId) {
     const collect = (z: ZoneWithChildren) => {

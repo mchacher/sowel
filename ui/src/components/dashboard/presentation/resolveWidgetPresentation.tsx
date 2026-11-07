@@ -86,19 +86,14 @@ function resolveMediaPlayer(equipment: EquipmentWithDetails, t: TFunction): Widg
 function resolvePoolPump(equipment: EquipmentWithDetails, t: TFunction): WidgetPresentation {
   const on = isOnFromStateBinding(equipment);
   const runtime = equipment.computedData?.find((c) => c.alias === "runtime_daily");
-  const secondary =
-    typeof runtime?.value === "number" ? [formatRuntime(runtime.value)] : undefined;
+  const secondary = typeof runtime?.value === "number" ? [formatRuntime(runtime.value)] : undefined;
   return {
     icon: () => <PoolPumpIcon on={on} />,
     isActive: on,
     state: { primary: on ? t("controls.on") : t("controls.off"), secondary },
     // Category-first incl. pool_pump_toggle so an unrelated boolean order on
     // multi-relay pumps (e.g. auto_mode) can't win over the real toggle.
-    controls: toggleControlOf(equipment, on, [
-      "pool_pump_toggle",
-      "light_toggle",
-      "toggle_power",
-    ]),
+    controls: toggleControlOf(equipment, on, ["pool_pump_toggle", "light_toggle", "toggle_power"]),
   };
 }
 

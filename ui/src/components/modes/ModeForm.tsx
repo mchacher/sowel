@@ -37,7 +37,10 @@ export function ModeForm({ initial, onSubmit, onClose, title }: ModeFormProps) {
   };
 
   return (
-    <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50" onClick={onClose}>
+    <div
+      className="fixed inset-0 bg-black/40 flex items-center justify-center z-50"
+      onClick={onClose}
+    >
       <div
         className="bg-surface rounded-lg w-full max-w-[440px] mx-4 shadow-lg"
         onClick={(e) => e.stopPropagation()}
@@ -57,9 +60,7 @@ export function ModeForm({ initial, onSubmit, onClose, title }: ModeFormProps) {
         <form onSubmit={handleSubmit} className="p-6 space-y-4">
           {/* Name */}
           <div>
-            <label className={FIELD_LABEL}>
-              {t("modes.name")}
-            </label>
+            <label className={FIELD_LABEL}>{t("modes.name")}</label>
             <input
               type="text"
               value={name}
@@ -88,9 +89,7 @@ export function ModeForm({ initial, onSubmit, onClose, title }: ModeFormProps) {
           </div>
 
           {/* Error */}
-          {error && (
-            <p className="text-small text-error">{error}</p>
-          )}
+          {error && <p className="text-small text-error">{error}</p>}
 
           {/* Actions */}
           <div className="flex justify-end gap-3 pt-2">

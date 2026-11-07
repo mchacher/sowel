@@ -30,16 +30,32 @@ export function apiErrorStatus(err: unknown): number | null {
 export function apiErrorMessage(err: unknown, t: TFunction): ApiErrorText {
   const status = apiErrorStatus(err);
   if (status === 429) {
-    return { title: t("errors.rateLimited.title"), message: t("errors.rateLimited.message"), retryable: true };
+    return {
+      title: t("errors.rateLimited.title"),
+      message: t("errors.rateLimited.message"),
+      retryable: true,
+    };
   }
   if (status === 0) {
-    return { title: t("errors.network.title"), message: t("errors.network.message"), retryable: true };
+    return {
+      title: t("errors.network.title"),
+      message: t("errors.network.message"),
+      retryable: true,
+    };
   }
   if (status !== null && status >= 500) {
-    return { title: t("errors.server.title"), message: t("errors.server.message"), retryable: true };
+    return {
+      title: t("errors.server.title"),
+      message: t("errors.server.message"),
+      retryable: true,
+    };
   }
   if (status === 404) {
-    return { title: t("errors.notFound.title"), message: t("errors.notFound.message"), retryable: false };
+    return {
+      title: t("errors.notFound.title"),
+      message: t("errors.notFound.message"),
+      retryable: false,
+    };
   }
   const raw = err instanceof Error ? err.message : "";
   return { title: t("common.error"), message: raw, retryable: false };

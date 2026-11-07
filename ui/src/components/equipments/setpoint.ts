@@ -33,7 +33,11 @@ type SetpointEquipment = Pick<EquipmentWithDetails, "type" | "dataBindings" | "o
 export function resolveSetpoint(equipment: SetpointEquipment): ResolvedSetpoint {
   const isPool = equipment.type === "pool_heat_pump";
   const data = isPool
-    ? findDataByCategory(equipment.dataBindings, ["pool_temperature_setpoint", "setpoint"], ["setpoint"])
+    ? findDataByCategory(
+        equipment.dataBindings,
+        ["pool_temperature_setpoint", "setpoint"],
+        ["setpoint"],
+      )
     : equipment.dataBindings.find((b) => b.alias === "setpoint");
   const order = isPool
     ? findOrderByCategory(
@@ -73,7 +77,8 @@ export function setpointStateLine(
   off: boolean,
   offLabel: string,
 ): string {
-  const temp = temperature === null ? "\u2014" : formatTemperature(temperature, { style: "compact" });
+  const temp =
+    temperature === null ? "\u2014" : formatTemperature(temperature, { style: "compact" });
   if (off) return `${temp} · ${offLabel.toLocaleLowerCase(currentLocale())}`;
   if (setpoint === null) return temp;
   return `${temp} → ${formatTemperature(setpoint, { style: "compact" })}`;
@@ -98,7 +103,10 @@ export function setpointOwnerIsOff(
  * Bounds of a zone's "all thermostats" setpoint: the lowest minimum and the
  * highest maximum of the thermostats it drives.
  */
-export function zoneSetpointBounds(equipments: readonly SetpointEquipment[]): { min: number; max: number } {
+export function zoneSetpointBounds(equipments: readonly SetpointEquipment[]): {
+  min: number;
+  max: number;
+} {
   const resolved = equipments.map(resolveSetpoint).filter((s) => s.order !== null);
   if (resolved.length === 0) return { min: 16, max: 30 };
   return {

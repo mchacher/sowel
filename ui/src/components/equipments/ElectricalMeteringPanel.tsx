@@ -34,7 +34,10 @@ interface LiveMeasure {
  * data is bound; the panel disappears entirely when nothing is bound.
  * Values update live through the WS store like the rest of the page.
  */
-export function ElectricalMeteringPanel({ equipment, section = false }: ElectricalMeteringPanelProps) {
+export function ElectricalMeteringPanel({
+  equipment,
+  section = false,
+}: ElectricalMeteringPanelProps) {
   const { t } = useTranslation();
 
   const bindings = equipment.dataBindings;
@@ -83,7 +86,11 @@ export function ElectricalMeteringPanel({ equipment, section = false }: Electric
       key: "voltage",
       labelKey: "category.voltage",
       icon: <PlugZap size={16} strokeWidth={1.5} />,
-      value: voltageAged ? "—" : voltageV !== null ? formatNumber(voltageV, { maxDecimals: unitDecimals("V", voltageV) }) : null,
+      value: voltageAged
+        ? "—"
+        : voltageV !== null
+          ? formatNumber(voltageV, { maxDecimals: unitDecimals("V", voltageV) })
+          : null,
       unit: voltageAged ? "" : "V",
       sublabel: voltageAged ? t("reading.outdated") : null,
     },
@@ -91,7 +98,11 @@ export function ElectricalMeteringPanel({ equipment, section = false }: Electric
       key: "current",
       labelKey: "category.current",
       icon: <Activity size={16} strokeWidth={1.5} />,
-      value: currentAged ? "—" : currentA !== null ? formatNumber(currentA, { maxDecimals: unitDecimals("A", currentA) }) : null,
+      value: currentAged
+        ? "—"
+        : currentA !== null
+          ? formatNumber(currentA, { maxDecimals: unitDecimals("A", currentA) })
+          : null,
       unit: currentAged ? "" : "A",
       sublabel: currentAged ? t("reading.outdated") : null,
     },
@@ -99,7 +110,11 @@ export function ElectricalMeteringPanel({ equipment, section = false }: Electric
       key: "powerFactor",
       labelKey: "energy.powerFactor",
       icon: <Percent size={16} strokeWidth={1.5} />,
-      value: pfAged ? "—" : powerFactor !== null ? formatNumber(powerFactor, { decimals: 2 }) : null,
+      value: pfAged
+        ? "—"
+        : powerFactor !== null
+          ? formatNumber(powerFactor, { decimals: 2 })
+          : null,
       unit: "",
       sublabel: pfAged ? t("reading.outdated") : null,
     },
@@ -111,7 +126,9 @@ export function ElectricalMeteringPanel({ equipment, section = false }: Electric
     <div className={section ? "" : "card p-4 mb-6"} data-energy-section={section || undefined}>
       <div className={`flex items-center justify-between ${section ? "mb-2" : "mb-4"}`}>
         {section ? (
-          <h4 className="text-caption font-medium text-text-tertiary">{t("energy.electricalMetering")}</h4>
+          <h4 className="text-caption font-medium text-text-tertiary">
+            {t("energy.electricalMetering")}
+          </h4>
         ) : (
           <h3 className="text-body font-semibold text-text flex items-center gap-2">
             <Gauge size={16} strokeWidth={1.5} className="text-text-tertiary" />

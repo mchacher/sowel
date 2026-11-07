@@ -59,8 +59,7 @@ export function ProfilesTab({ state }: { state: SharedAccessState }) {
     setNotice(null);
   };
 
-  const current =
-    selected === NEW ? null : (state.profiles.find((p) => p.id === selected) ?? null);
+  const current = selected === NEW ? null : (state.profiles.find((p) => p.id === selected) ?? null);
 
   return (
     <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_minmax(0,1.3fr)]">
@@ -97,11 +96,15 @@ export function ProfilesTab({ state }: { state: SharedAccessState }) {
                   )}
                   <span
                     className={`text-caption rounded-full px-2 py-0.5 ${
-                      p.pluginId ? "bg-primary-light text-primary" : "bg-border-light text-text-tertiary"
+                      p.pluginId
+                        ? "bg-primary-light text-primary"
+                        : "bg-border-light text-text-tertiary"
                     }`}
                   >
                     {p.pluginId
-                      ? t("sharedAccess.profiles.grantedTo", { plugin: pluginName(state, p.pluginId) })
+                      ? t("sharedAccess.profiles.grantedTo", {
+                          plugin: pluginName(state, p.pluginId),
+                        })
                       : t("sharedAccess.profiles.noPlugin")}
                   </span>
                 </div>
@@ -110,7 +113,9 @@ export function ProfilesTab({ state }: { state: SharedAccessState }) {
                     ? p.gates.map((g) => g.name).join(", ")
                     : t("sharedAccess.profiles.opensNothing")}{" "}
                   · {fmt.period(p.validFrom, p.validUntil)} · {fmt.hours(p.timeWindows)} ·{" "}
-                  {p.withCode ? t("sharedAccess.profiles.withCodeShort") : t("sharedAccess.line.linkOnly")}
+                  {p.withCode
+                    ? t("sharedAccess.profiles.withCodeShort")
+                    : t("sharedAccess.line.linkOnly")}
                 </div>
               </button>
             </li>
@@ -313,11 +318,15 @@ function ProfileEditor({
                   <span className="text-small font-semibold text-text">{g.name}</span>
                 </label>
                 {!g.hasCommand && (
-                  <span className="text-caption text-text-tertiary">{t("sharedAccess.editor.noCommand")}</span>
+                  <span className="text-caption text-text-tertiary">
+                    {t("sharedAccess.editor.noCommand")}
+                  </span>
                 )}
                 {draft && g.commandValues.length > 1 && (
                   <>
-                    <span className="text-caption text-text-tertiary">{t("sharedAccess.editor.sends")}</span>
+                    <span className="text-caption text-text-tertiary">
+                      {t("sharedAccess.editor.sends")}
+                    </span>
                     <select
                       className={`${inputCls} py-1`}
                       value={draft.value ?? ""}
@@ -342,7 +351,9 @@ function ProfileEditor({
             );
           })}
           {state.gates.length === 0 && (
-            <p className="text-caption text-text-tertiary">{t("sharedAccess.profiles.noGateInHouse")}</p>
+            <p className="text-caption text-text-tertiary">
+              {t("sharedAccess.profiles.noGateInHouse")}
+            </p>
           )}
         </div>
         {errorFor("gates") && <Refusal>{errorFor("gates")}</Refusal>}
@@ -389,7 +400,12 @@ function ProfileEditor({
         <div className="mt-3 bg-error/10 rounded-sm px-3 py-2.5 text-small text-error">
           {t("sharedAccess.profiles.deleteConfirm", { name: profile.name })}
           <div className="flex gap-2 mt-2">
-            <button type="button" className={btnDanger} disabled={saving} onClick={() => void remove()}>
+            <button
+              type="button"
+              className={btnDanger}
+              disabled={saving}
+              onClick={() => void remove()}
+            >
               {t("common.delete")}
             </button>
             <button type="button" className={btnSecondary} onClick={() => setConfirmDelete(false)}>
@@ -408,7 +424,11 @@ function ProfileEditor({
             onClick={() => {
               if (profile.isDefault) {
                 setConfirmDelete(false);
-                setMessage({ ok: false, field: "other", text: t("sharedAccess.profiles.defaultRefused") });
+                setMessage({
+                  ok: false,
+                  field: "other",
+                  text: t("sharedAccess.profiles.defaultRefused"),
+                });
                 return;
               }
               setMessage(null);

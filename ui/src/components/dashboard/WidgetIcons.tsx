@@ -17,7 +17,13 @@ export function LightBulbIcon({ on }: { on: boolean }) {
   const baseGrad = `bulb-base-${id}`;
 
   return (
-    <svg width="120" height="120" viewBox="0 0 56 56" fill="none" className={on ? "text-active" : "text-illu"}>
+    <svg
+      width="120"
+      height="120"
+      viewBox="0 0 56 56"
+      fill="none"
+      className={on ? "text-active" : "text-illu"}
+    >
       <defs>
         <linearGradient id={glassGrad} x1="0" y1="0" x2="0" y2="1">
           <stop offset="0%" stopColor="currentColor" stopOpacity={on ? 0.4 : 0.08} />
@@ -29,9 +35,7 @@ export function LightBulbIcon({ on }: { on: boolean }) {
         </linearGradient>
       </defs>
 
-      {on && (
-        <circle cx="28" cy="20" r="18" fill="currentColor" opacity="0.08" />
-      )}
+      {on && <circle cx="28" cy="20" r="18" fill="currentColor" opacity="0.08" />}
 
       <path
         d="M28 4C21.4 4 16 9.4 16 16c0 4.2 2.1 7.9 5.3 10.1L22 28.5v4a2 2 0 002 2h8a2 2 0 002-2v-4l.7-2.4C37.9 23.9 40 20.2 40 16c0-6.6-5.4-12-12-12z"
@@ -49,8 +53,22 @@ export function LightBulbIcon({ on }: { on: boolean }) {
 
       {on && (
         <>
-          <path d="M25 18c0-1.8 1.5-3.2 3-3.2s3 1.4 3 3.2" stroke="currentColor" strokeWidth="0.8" strokeOpacity="0.45" fill="none" strokeLinecap="round" />
-          <path d="M25.5 20.5c0-1.2 1.2-2.2 2.5-2.2s2.5 1 2.5 2.2" stroke="currentColor" strokeWidth="0.7" strokeOpacity="0.3" fill="none" strokeLinecap="round" />
+          <path
+            d="M25 18c0-1.8 1.5-3.2 3-3.2s3 1.4 3 3.2"
+            stroke="currentColor"
+            strokeWidth="0.8"
+            strokeOpacity="0.45"
+            fill="none"
+            strokeLinecap="round"
+          />
+          <path
+            d="M25.5 20.5c0-1.2 1.2-2.2 2.5-2.2s2.5 1 2.5 2.2"
+            stroke="currentColor"
+            strokeWidth="0.7"
+            strokeOpacity="0.3"
+            fill="none"
+            strokeLinecap="round"
+          />
         </>
       )}
 
@@ -86,7 +104,13 @@ export function WaterHeaterIcon({ on }: { on: boolean }) {
   const waterGrad = `wh-water-${id}`;
 
   return (
-    <svg width="120" height="120" viewBox="0 0 56 56" fill="none" className={on ? "text-active" : "text-illu"}>
+    <svg
+      width="120"
+      height="120"
+      viewBox="0 0 56 56"
+      fill="none"
+      className={on ? "text-active" : "text-illu"}
+    >
       <defs>
         <linearGradient id={bodyGrad} x1="0" y1="0" x2="0" y2="1">
           <stop offset="0%" stopColor="currentColor" stopOpacity={on ? 0.22 : 0.1} />
@@ -107,14 +131,30 @@ export function WaterHeaterIcon({ on }: { on: boolean }) {
       </g>
 
       {/* Tank body */}
-      <rect x="16" y="9" width="24" height="39" rx="10" fill={`url(#${bodyGrad})`} stroke="currentColor" strokeWidth="1.4" strokeOpacity={on ? 0.65 : 0.4} />
+      <rect
+        x="16"
+        y="9"
+        width="24"
+        height="39"
+        rx="10"
+        fill={`url(#${bodyGrad})`}
+        stroke="currentColor"
+        strokeWidth="1.4"
+        strokeOpacity={on ? 0.65 : 0.4}
+      />
 
       {/* Water fill (lower ~55%) */}
       <path d="M16 27v11a10 10 0 0010 10h4a10 10 0 0010-10V27z" fill={`url(#${waterGrad})`} />
 
       {/* Heat waves (on) or gauge marks (off) */}
       {on ? (
-        <g stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" strokeOpacity="0.6" fill="none">
+        <g
+          stroke="currentColor"
+          strokeWidth="1.3"
+          strokeLinecap="round"
+          strokeOpacity="0.6"
+          fill="none"
+        >
           <path d="M24 36c0-2 2-2 2-4s-2-2-2-4" />
           <path d="M28 37c0-2 2-2 2-4s-2-2-2-4" />
           <path d="M32 36c0-2 2-2 2-4s-2-2-2-4" />
@@ -137,12 +177,18 @@ export function ShutterWidgetIcon({ level }: { level: number | null }) {
   const slatGradId = `shutter-slat-${id}`;
   const glassId = `shutter-glass-${id}`;
 
-  const slatCount = level === null ? 7
-    : level === 0 ? 7
-    : level === 25 ? 5
-    : level === 50 ? 4
-    : level === 75 ? 2
-    : 1;
+  const slatCount =
+    level === null
+      ? 7
+      : level === 0
+        ? 7
+        : level === 25
+          ? 5
+          : level === 50
+            ? 4
+            : level === 75
+              ? 2
+              : 1;
 
   const winX = 4;
   const winY = 10;
@@ -168,15 +214,45 @@ export function ShutterWidgetIcon({ level }: { level: number | null }) {
         </linearGradient>
       </defs>
 
-      <rect x={winX} y={winY - 5} width={winW} height="6" rx="3" fill="currentColor" opacity="0.2" />
-
       <rect
-        x={winX} y={winY} width={winW} height={winH}
-        rx="2" stroke="currentColor" strokeWidth="1.2" fill={`url(#${glassId})`}
+        x={winX}
+        y={winY - 5}
+        width={winW}
+        height="6"
+        rx="3"
+        fill="currentColor"
+        opacity="0.2"
       />
 
-      <line x1="28" y1={winY + 1} x2="28" y2={winY + winH - 1} stroke="currentColor" strokeWidth="0.6" opacity="0.1" />
-      <line x1={winX + 1} y1={winY + winH / 2} x2={winX + winW - 1} y2={winY + winH / 2} stroke="currentColor" strokeWidth="0.6" opacity="0.1" />
+      <rect
+        x={winX}
+        y={winY}
+        width={winW}
+        height={winH}
+        rx="2"
+        stroke="currentColor"
+        strokeWidth="1.2"
+        fill={`url(#${glassId})`}
+      />
+
+      <line
+        x1="28"
+        y1={winY + 1}
+        x2="28"
+        y2={winY + winH - 1}
+        stroke="currentColor"
+        strokeWidth="0.6"
+        opacity="0.1"
+      />
+      <line
+        x1={winX + 1}
+        y1={winY + winH / 2}
+        x2={winX + winW - 1}
+        y2={winY + winH / 2}
+        stroke="currentColor"
+        strokeWidth="0.6"
+        opacity="0.1"
+      />
 
       {Array.from({ length: slatCount }).map((_, i) => (
         <rect
@@ -220,7 +296,10 @@ export function AwningWidgetIcon({ deployed }: { deployed: boolean }) {
   const cassetteGradId = `awning-cass-${id}`;
   const glassId = `awning-glass-${id}`;
 
-  const winX = 4, winY = 10, winW = 48, winH = 42;
+  const winX = 4,
+    winY = 10,
+    winW = 48,
+    winH = 42;
 
   return (
     <svg width="120" height="120" viewBox="0 0 56 56" fill="none">
@@ -245,8 +324,14 @@ export function AwningWidgetIcon({ deployed }: { deployed: boolean }) {
 
       {/* Window — backdrop, drawn first so cassette + canopy overlay it */}
       <rect
-        x={winX} y={winY} width={winW} height={winH}
-        rx="2" stroke="var(--illu-ink)" strokeWidth="1.2" fill={`url(#${glassId})`}
+        x={winX}
+        y={winY}
+        width={winW}
+        height={winH}
+        rx="2"
+        stroke="var(--illu-ink)"
+        strokeWidth="1.2"
+        fill={`url(#${glassId})`}
       />
 
       {deployed ? (
@@ -257,16 +342,46 @@ export function AwningWidgetIcon({ deployed }: { deployed: boolean }) {
             Alternating dark blue / primary-light fills.
           */}
           <g stroke="none">
-            <path d="M 4    9 L 8.8  9 L 6.4  22 A 2.7 2.7 0 0 1 1    22 Z" fill={`url(#${darkGradId})`} />
-            <path d="M 8.8  9 L 13.6 9 L 11.8 22 A 2.7 2.7 0 0 1 6.4  22 Z" fill={`url(#${lightGradId})`} />
-            <path d="M 13.6 9 L 18.4 9 L 17.2 22 A 2.7 2.7 0 0 1 11.8 22 Z" fill={`url(#${darkGradId})`} />
-            <path d="M 18.4 9 L 23.2 9 L 22.6 22 A 2.7 2.7 0 0 1 17.2 22 Z" fill={`url(#${lightGradId})`} />
-            <path d="M 23.2 9 L 28   9 L 28   22 A 2.7 2.7 0 0 1 22.6 22 Z" fill={`url(#${darkGradId})`} />
-            <path d="M 28   9 L 32.8 9 L 33.4 22 A 2.7 2.7 0 0 1 28   22 Z" fill={`url(#${lightGradId})`} />
-            <path d="M 32.8 9 L 37.6 9 L 38.8 22 A 2.7 2.7 0 0 1 33.4 22 Z" fill={`url(#${darkGradId})`} />
-            <path d="M 37.6 9 L 42.4 9 L 44.2 22 A 2.7 2.7 0 0 1 38.8 22 Z" fill={`url(#${lightGradId})`} />
-            <path d="M 42.4 9 L 47.2 9 L 49.6 22 A 2.7 2.7 0 0 1 44.2 22 Z" fill={`url(#${darkGradId})`} />
-            <path d="M 47.2 9 L 52   9 L 55   22 A 2.7 2.7 0 0 1 49.6 22 Z" fill={`url(#${lightGradId})`} />
+            <path
+              d="M 4    9 L 8.8  9 L 6.4  22 A 2.7 2.7 0 0 1 1    22 Z"
+              fill={`url(#${darkGradId})`}
+            />
+            <path
+              d="M 8.8  9 L 13.6 9 L 11.8 22 A 2.7 2.7 0 0 1 6.4  22 Z"
+              fill={`url(#${lightGradId})`}
+            />
+            <path
+              d="M 13.6 9 L 18.4 9 L 17.2 22 A 2.7 2.7 0 0 1 11.8 22 Z"
+              fill={`url(#${darkGradId})`}
+            />
+            <path
+              d="M 18.4 9 L 23.2 9 L 22.6 22 A 2.7 2.7 0 0 1 17.2 22 Z"
+              fill={`url(#${lightGradId})`}
+            />
+            <path
+              d="M 23.2 9 L 28   9 L 28   22 A 2.7 2.7 0 0 1 22.6 22 Z"
+              fill={`url(#${darkGradId})`}
+            />
+            <path
+              d="M 28   9 L 32.8 9 L 33.4 22 A 2.7 2.7 0 0 1 28   22 Z"
+              fill={`url(#${lightGradId})`}
+            />
+            <path
+              d="M 32.8 9 L 37.6 9 L 38.8 22 A 2.7 2.7 0 0 1 33.4 22 Z"
+              fill={`url(#${darkGradId})`}
+            />
+            <path
+              d="M 37.6 9 L 42.4 9 L 44.2 22 A 2.7 2.7 0 0 1 38.8 22 Z"
+              fill={`url(#${lightGradId})`}
+            />
+            <path
+              d="M 42.4 9 L 47.2 9 L 49.6 22 A 2.7 2.7 0 0 1 44.2 22 Z"
+              fill={`url(#${darkGradId})`}
+            />
+            <path
+              d="M 47.2 9 L 52   9 L 55   22 A 2.7 2.7 0 0 1 49.6 22 Z"
+              fill={`url(#${lightGradId})`}
+            />
           </g>
 
           {/* Cassette — mounting bar above the canopy */}
@@ -276,14 +391,38 @@ export function AwningWidgetIcon({ deployed }: { deployed: boolean }) {
         <>
           {/* Small retracted fringe — 8 alternating scallops just below the cassette */}
           <g stroke="none">
-            <path d="M 4  13 L 10 13 L 10 13.5 A 3 3 0 0 1 4  13.5 Z" fill={`url(#${darkGradId})`} />
-            <path d="M 10 13 L 16 13 L 16 13.5 A 3 3 0 0 1 10 13.5 Z" fill={`url(#${lightGradId})`} />
-            <path d="M 16 13 L 22 13 L 22 13.5 A 3 3 0 0 1 16 13.5 Z" fill={`url(#${darkGradId})`} />
-            <path d="M 22 13 L 28 13 L 28 13.5 A 3 3 0 0 1 22 13.5 Z" fill={`url(#${lightGradId})`} />
-            <path d="M 28 13 L 34 13 L 34 13.5 A 3 3 0 0 1 28 13.5 Z" fill={`url(#${darkGradId})`} />
-            <path d="M 34 13 L 40 13 L 40 13.5 A 3 3 0 0 1 34 13.5 Z" fill={`url(#${lightGradId})`} />
-            <path d="M 40 13 L 46 13 L 46 13.5 A 3 3 0 0 1 40 13.5 Z" fill={`url(#${darkGradId})`} />
-            <path d="M 46 13 L 52 13 L 52 13.5 A 3 3 0 0 1 46 13.5 Z" fill={`url(#${lightGradId})`} />
+            <path
+              d="M 4  13 L 10 13 L 10 13.5 A 3 3 0 0 1 4  13.5 Z"
+              fill={`url(#${darkGradId})`}
+            />
+            <path
+              d="M 10 13 L 16 13 L 16 13.5 A 3 3 0 0 1 10 13.5 Z"
+              fill={`url(#${lightGradId})`}
+            />
+            <path
+              d="M 16 13 L 22 13 L 22 13.5 A 3 3 0 0 1 16 13.5 Z"
+              fill={`url(#${darkGradId})`}
+            />
+            <path
+              d="M 22 13 L 28 13 L 28 13.5 A 3 3 0 0 1 22 13.5 Z"
+              fill={`url(#${lightGradId})`}
+            />
+            <path
+              d="M 28 13 L 34 13 L 34 13.5 A 3 3 0 0 1 28 13.5 Z"
+              fill={`url(#${darkGradId})`}
+            />
+            <path
+              d="M 34 13 L 40 13 L 40 13.5 A 3 3 0 0 1 34 13.5 Z"
+              fill={`url(#${lightGradId})`}
+            />
+            <path
+              d="M 40 13 L 46 13 L 46 13.5 A 3 3 0 0 1 40 13.5 Z"
+              fill={`url(#${darkGradId})`}
+            />
+            <path
+              d="M 46 13 L 52 13 L 52 13.5 A 3 3 0 0 1 46 13.5 Z"
+              fill={`url(#${lightGradId})`}
+            />
           </g>
 
           {/* Cassette — rolled-up box covering the top of the window */}
@@ -306,9 +445,9 @@ export function ThermometerIcon({ warm, level }: { warm: boolean; level?: number
 
   // Geometry: narrow tube + bulb with explicit center
   const cx = 28;
-  const tubeHW = 3.5;       // tube half-width
+  const tubeHW = 3.5; // tube half-width
   const tubeTop = 6;
-  const bulbCy = 42;         // explicit bulb center
+  const bulbCy = 42; // explicit bulb center
   const bulbR = 9;
 
   // Junction Y: where tube sides meet the bulb circle
@@ -343,11 +482,17 @@ export function ThermometerIcon({ warm, level }: { warm: boolean; level?: number
   ].join(" ");
 
   // Mercury level
-  const clampedLevel = level != null ? Math.max(0, Math.min(1, level)) : (warm ? 0.6 : 0.3);
+  const clampedLevel = level != null ? Math.max(0, Math.min(1, level)) : warm ? 0.6 : 0.3;
   const fillTop = iJy - clampedLevel * (iJy - iTop - 2);
 
   return (
-    <svg width="120" height="120" viewBox="0 0 56 56" fill="none" className={warm ? "text-heat" : "text-illu"}>
+    <svg
+      width="120"
+      height="120"
+      viewBox="0 0 56 56"
+      fill="none"
+      className={warm ? "text-heat" : "text-illu"}
+    >
       <defs>
         <linearGradient id={tubeGrad} x1="0" y1="0" x2="0" y2="1">
           <stop offset="0%" stopColor="currentColor" stopOpacity="0.06" />
@@ -364,10 +509,23 @@ export function ThermometerIcon({ warm, level }: { warm: boolean; level?: number
       </defs>
 
       {/* Glass outline */}
-      <path d={outlinePath} fill={`url(#${tubeGrad})`} stroke="currentColor" strokeWidth="1.2" strokeOpacity="0.3" />
+      <path
+        d={outlinePath}
+        fill={`url(#${tubeGrad})`}
+        stroke="currentColor"
+        strokeWidth="1.2"
+        strokeOpacity="0.3"
+      />
 
       {/* Mercury: a full-width rect clipped to the outline — fills tube + bulb cleanly */}
-      <rect x="0" y={fillTop} width="56" height={56 - fillTop} fill={`url(#${fillGrad})`} clipPath={`url(#${clipId})`} />
+      <rect
+        x="0"
+        y={fillTop}
+        width="56"
+        height={56 - fillTop}
+        fill={`url(#${fillGrad})`}
+        clipPath={`url(#${clipId})`}
+      />
 
       {/* Tick marks */}
       <g stroke="currentColor" strokeWidth="0.8" strokeOpacity="0.15">
@@ -398,10 +556,29 @@ export function MultiSensorIcon() {
       </defs>
 
       {/* Sensor box body */}
-      <rect x="14" y="14" width="28" height="28" rx="6" fill={`url(#${bodyGrad})`} stroke="currentColor" strokeWidth="1.2" strokeOpacity="0.25" />
+      <rect
+        x="14"
+        y="14"
+        width="28"
+        height="28"
+        rx="6"
+        fill={`url(#${bodyGrad})`}
+        stroke="currentColor"
+        strokeWidth="1.2"
+        strokeOpacity="0.25"
+      />
 
       {/* Sensor eye / lens */}
-      <circle cx="28" cy="28" r="6" fill="currentColor" opacity="0.08" stroke="currentColor" strokeWidth="1" strokeOpacity="0.2" />
+      <circle
+        cx="28"
+        cy="28"
+        r="6"
+        fill="currentColor"
+        opacity="0.08"
+        stroke="currentColor"
+        strokeWidth="1"
+        strokeOpacity="0.2"
+      />
       <circle cx="28" cy="28" r="2.5" fill="currentColor" opacity="0.25" />
 
       {/* Signal waves (top-right) */}
@@ -451,10 +628,23 @@ export function HumiditySensorIcon() {
       />
 
       {/* Fill level line */}
-      <path d="M20 30 Q24 28 28 30 Q32 32 36 30" stroke="currentColor" strokeWidth="0.8" strokeOpacity="0.2" fill="none" />
+      <path
+        d="M20 30 Q24 28 28 30 Q32 32 36 30"
+        stroke="currentColor"
+        strokeWidth="0.8"
+        strokeOpacity="0.2"
+        fill="none"
+      />
 
       {/* Shine */}
-      <path d="M23 20 Q24 16 26 14" stroke="currentColor" strokeWidth="1" strokeOpacity="0.15" fill="none" strokeLinecap="round" />
+      <path
+        d="M23 20 Q24 16 26 14"
+        stroke="currentColor"
+        strokeWidth="1"
+        strokeOpacity="0.15"
+        fill="none"
+        strokeLinecap="round"
+      />
 
       {/* Percentage hint — small drops */}
       <circle cx="22" cy="44" r="2" fill="currentColor" opacity="0.12" />
@@ -472,7 +662,16 @@ export function LuminositySensorIcon() {
   return (
     <svg width="120" height="120" viewBox="0 0 56 56" fill="none" className="text-illu">
       {/* Sun body */}
-      <circle cx="28" cy="28" r="10" fill="currentColor" fillOpacity="0.12" stroke="currentColor" strokeWidth="1.2" strokeOpacity="0.3" />
+      <circle
+        cx="28"
+        cy="28"
+        r="10"
+        fill="currentColor"
+        fillOpacity="0.12"
+        stroke="currentColor"
+        strokeWidth="1.2"
+        strokeOpacity="0.3"
+      />
       <circle cx="28" cy="28" r="5" fill="currentColor" opacity="0.2" />
 
       {/* Rays */}
@@ -485,7 +684,10 @@ export function LuminositySensorIcon() {
         return (
           <line
             key={angle}
-            x1={x1} y1={y1} x2={x2} y2={y2}
+            x1={x1}
+            y1={y1}
+            x2={x2}
+            y2={y2}
             stroke="currentColor"
             strokeWidth={angle % 90 === 0 ? "1.5" : "1"}
             strokeOpacity={angle % 90 === 0 ? 0.3 : 0.18}
@@ -495,8 +697,20 @@ export function LuminositySensorIcon() {
       })}
 
       {/* Lux indicator — small arcs */}
-      <path d="M10 46 Q14 42 18 46" stroke="currentColor" strokeWidth="0.8" strokeOpacity="0.15" fill="none" />
-      <path d="M38 46 Q42 42 46 46" stroke="currentColor" strokeWidth="0.8" strokeOpacity="0.15" fill="none" />
+      <path
+        d="M10 46 Q14 42 18 46"
+        stroke="currentColor"
+        strokeWidth="0.8"
+        strokeOpacity="0.15"
+        fill="none"
+      />
+      <path
+        d="M38 46 Q42 42 46 46"
+        stroke="currentColor"
+        strokeWidth="0.8"
+        strokeOpacity="0.15"
+        fill="none"
+      />
     </svg>
   );
 }
@@ -509,11 +723,7 @@ export function WaterLeakSensorIcon() {
   return (
     <svg width="120" height="120" viewBox="0 0 56 56" fill="none" className="text-illu">
       {/* Falling drop */}
-      <path
-        d="M28 4 Q28 4 24 14 A5 5 0 0 0 32 14 Q28 4 28 4 Z"
-        fill="currentColor"
-        opacity="0.3"
-      />
+      <path d="M28 4 Q28 4 24 14 A5 5 0 0 0 32 14 Q28 4 28 4 Z" fill="currentColor" opacity="0.3" />
 
       {/* Splash drop */}
       <path
@@ -523,15 +733,55 @@ export function WaterLeakSensorIcon() {
       />
 
       {/* Puddle / water surface */}
-      <ellipse cx="28" cy="40" rx="18" ry="4" fill="currentColor" opacity="0.1" stroke="currentColor" strokeWidth="1" strokeOpacity="0.2" />
+      <ellipse
+        cx="28"
+        cy="40"
+        rx="18"
+        ry="4"
+        fill="currentColor"
+        opacity="0.1"
+        stroke="currentColor"
+        strokeWidth="1"
+        strokeOpacity="0.2"
+      />
 
       {/* Ripples */}
-      <ellipse cx="28" cy="40" rx="8" ry="2" fill="none" stroke="currentColor" strokeWidth="0.8" strokeOpacity="0.15" />
-      <ellipse cx="28" cy="40" rx="14" ry="3" fill="none" stroke="currentColor" strokeWidth="0.6" strokeOpacity="0.1" />
+      <ellipse
+        cx="28"
+        cy="40"
+        rx="8"
+        ry="2"
+        fill="none"
+        stroke="currentColor"
+        strokeWidth="0.8"
+        strokeOpacity="0.15"
+      />
+      <ellipse
+        cx="28"
+        cy="40"
+        rx="14"
+        ry="3"
+        fill="none"
+        stroke="currentColor"
+        strokeWidth="0.6"
+        strokeOpacity="0.1"
+      />
 
       {/* Warning splash lines */}
-      <path d="M22 34 L20 30" stroke="currentColor" strokeWidth="0.8" strokeOpacity="0.15" strokeLinecap="round" />
-      <path d="M34 34 L36 30" stroke="currentColor" strokeWidth="0.8" strokeOpacity="0.15" strokeLinecap="round" />
+      <path
+        d="M22 34 L20 30"
+        stroke="currentColor"
+        strokeWidth="0.8"
+        strokeOpacity="0.15"
+        strokeLinecap="round"
+      />
+      <path
+        d="M34 34 L36 30"
+        stroke="currentColor"
+        strokeWidth="0.8"
+        strokeOpacity="0.15"
+        strokeLinecap="round"
+      />
     </svg>
   );
 }
@@ -554,23 +804,69 @@ export function SmokeSensorIcon() {
       </defs>
 
       {/* Round detector body */}
-      <circle cx="28" cy="32" r="16" fill={`url(#${bodyGrad})`} stroke="currentColor" strokeWidth="1.2" strokeOpacity="0.25" />
+      <circle
+        cx="28"
+        cy="32"
+        r="16"
+        fill={`url(#${bodyGrad})`}
+        stroke="currentColor"
+        strokeWidth="1.2"
+        strokeOpacity="0.25"
+      />
 
       {/* Inner ring */}
-      <circle cx="28" cy="32" r="10" fill="none" stroke="currentColor" strokeWidth="0.8" strokeOpacity="0.12" />
+      <circle
+        cx="28"
+        cy="32"
+        r="10"
+        fill="none"
+        stroke="currentColor"
+        strokeWidth="0.8"
+        strokeOpacity="0.12"
+      />
 
       {/* Slots/vents */}
       {[-20, -10, 0, 10, 20].map((offset) => (
-        <line key={offset} x1={22 + offset * 0.1} y1={32 + offset * 0.3} x2={34 + offset * 0.1} y2={32 + offset * 0.3} stroke="currentColor" strokeWidth="0.6" strokeOpacity="0.1" />
+        <line
+          key={offset}
+          x1={22 + offset * 0.1}
+          y1={32 + offset * 0.3}
+          x2={34 + offset * 0.1}
+          y2={32 + offset * 0.3}
+          stroke="currentColor"
+          strokeWidth="0.6"
+          strokeOpacity="0.1"
+        />
       ))}
 
       {/* LED */}
       <circle cx="28" cy="38" r="1.5" fill="currentColor" opacity="0.25" />
 
       {/* Smoke wisps */}
-      <path d="M20 16 Q22 12 20 8" stroke="currentColor" strokeWidth="1.2" strokeOpacity="0.2" fill="none" strokeLinecap="round" />
-      <path d="M28 14 Q30 10 28 6" stroke="currentColor" strokeWidth="1.2" strokeOpacity="0.18" fill="none" strokeLinecap="round" />
-      <path d="M36 16 Q38 12 36 8" stroke="currentColor" strokeWidth="1.2" strokeOpacity="0.15" fill="none" strokeLinecap="round" />
+      <path
+        d="M20 16 Q22 12 20 8"
+        stroke="currentColor"
+        strokeWidth="1.2"
+        strokeOpacity="0.2"
+        fill="none"
+        strokeLinecap="round"
+      />
+      <path
+        d="M28 14 Q30 10 28 6"
+        stroke="currentColor"
+        strokeWidth="1.2"
+        strokeOpacity="0.18"
+        fill="none"
+        strokeLinecap="round"
+      />
+      <path
+        d="M36 16 Q38 12 36 8"
+        stroke="currentColor"
+        strokeWidth="1.2"
+        strokeOpacity="0.15"
+        fill="none"
+        strokeLinecap="round"
+      />
     </svg>
   );
 }
@@ -593,13 +889,36 @@ export function Co2SensorIcon() {
       />
 
       {/* CO₂ text */}
-      <text x="28" y="28" textAnchor="middle" fill="currentColor" opacity="0.4" fontSize="9" fontWeight="600" fontFamily="sans-serif">
+      <text
+        x="28"
+        y="28"
+        textAnchor="middle"
+        fill="currentColor"
+        opacity="0.4"
+        fontSize="9"
+        fontWeight="600"
+        fontFamily="sans-serif"
+      >
         CO₂
       </text>
 
       {/* Measurement waves below */}
-      <path d="M14 40 Q18 37 22 40 Q26 43 30 40 Q34 37 38 40 Q42 43 46 40" stroke="currentColor" strokeWidth="1" strokeOpacity="0.15" fill="none" strokeLinecap="round" />
-      <path d="M16 45 Q20 42 24 45 Q28 48 32 45 Q36 42 40 45" stroke="currentColor" strokeWidth="0.8" strokeOpacity="0.1" fill="none" strokeLinecap="round" />
+      <path
+        d="M14 40 Q18 37 22 40 Q26 43 30 40 Q34 37 38 40 Q42 43 46 40"
+        stroke="currentColor"
+        strokeWidth="1"
+        strokeOpacity="0.15"
+        fill="none"
+        strokeLinecap="round"
+      />
+      <path
+        d="M16 45 Q20 42 24 45 Q28 48 32 45 Q36 42 40 45"
+        stroke="currentColor"
+        strokeWidth="0.8"
+        strokeOpacity="0.1"
+        fill="none"
+        strokeLinecap="round"
+      />
     </svg>
   );
 }
@@ -622,7 +941,16 @@ export function PressureSensorIcon() {
       </defs>
 
       {/* Dial face */}
-      <circle cx="28" cy="28" r="22" fill="currentColor" fillOpacity="0.04" stroke="currentColor" strokeWidth="1.2" strokeOpacity="0.2" />
+      <circle
+        cx="28"
+        cy="28"
+        r="22"
+        fill="currentColor"
+        fillOpacity="0.04"
+        stroke="currentColor"
+        strokeWidth="1.2"
+        strokeOpacity="0.2"
+      />
 
       {/* Pressure arc (background) */}
       <path
@@ -651,19 +979,45 @@ export function PressureSensorIcon() {
         const x2 = 28 + Math.cos(rad) * 20;
         const y2 = 28 + Math.sin(rad) * 20;
         return (
-          <line key={angle} x1={x1} y1={y1} x2={x2} y2={y2} stroke="currentColor" strokeWidth="0.8" strokeOpacity="0.15" />
+          <line
+            key={angle}
+            x1={x1}
+            y1={y1}
+            x2={x2}
+            y2={y2}
+            stroke="currentColor"
+            strokeWidth="0.8"
+            strokeOpacity="0.15"
+          />
         );
       })}
 
       {/* Needle (pointing ~70% = about 330°) */}
-      <line x1="28" y1="28" x2="38" y2="16" stroke="currentColor" strokeWidth="1.5" strokeOpacity="0.4" strokeLinecap="round" />
+      <line
+        x1="28"
+        y1="28"
+        x2="38"
+        y2="16"
+        stroke="currentColor"
+        strokeWidth="1.5"
+        strokeOpacity="0.4"
+        strokeLinecap="round"
+      />
 
       {/* Center pivot */}
       <circle cx="28" cy="28" r="2.5" fill="currentColor" opacity="0.25" />
       <circle cx="28" cy="28" r="1.2" fill="currentColor" opacity="0.4" />
 
       {/* hPa label */}
-      <text x="28" y="42" textAnchor="middle" fill="currentColor" opacity="0.2" fontSize="6" fontFamily="sans-serif">
+      <text
+        x="28"
+        y="42"
+        textAnchor="middle"
+        fill="currentColor"
+        opacity="0.2"
+        fontSize="6"
+        fontFamily="sans-serif"
+      >
         hPa
       </text>
     </svg>
@@ -678,38 +1032,189 @@ export function GateWidgetIcon({ open }: { open: boolean }) {
   return (
     <svg width="120" height="120" viewBox="0 0 56 56" fill="none" className="text-illu">
       {/* Left pillar */}
-      <rect x="4" y="10" width="6" height="36" rx="3" stroke="currentColor" strokeWidth="2" strokeLinecap="round" fill="currentColor" fillOpacity="0.06" />
-      <circle cx="7" cy="10" r="3.5" fill="currentColor" fillOpacity="0.12" stroke="currentColor" strokeWidth="1.5" />
+      <rect
+        x="4"
+        y="10"
+        width="6"
+        height="36"
+        rx="3"
+        stroke="currentColor"
+        strokeWidth="2"
+        strokeLinecap="round"
+        fill="currentColor"
+        fillOpacity="0.06"
+      />
+      <circle
+        cx="7"
+        cy="10"
+        r="3.5"
+        fill="currentColor"
+        fillOpacity="0.12"
+        stroke="currentColor"
+        strokeWidth="1.5"
+      />
       {/* Right pillar */}
-      <rect x="46" y="10" width="6" height="36" rx="3" stroke="currentColor" strokeWidth="2" strokeLinecap="round" fill="currentColor" fillOpacity="0.06" />
-      <circle cx="49" cy="10" r="3.5" fill="currentColor" fillOpacity="0.12" stroke="currentColor" strokeWidth="1.5" />
+      <rect
+        x="46"
+        y="10"
+        width="6"
+        height="36"
+        rx="3"
+        stroke="currentColor"
+        strokeWidth="2"
+        strokeLinecap="round"
+        fill="currentColor"
+        fillOpacity="0.06"
+      />
+      <circle
+        cx="49"
+        cy="10"
+        r="3.5"
+        fill="currentColor"
+        fillOpacity="0.12"
+        stroke="currentColor"
+        strokeWidth="1.5"
+      />
 
       {open ? (
         <>
           {/* Left door (open — perspective) */}
-          <path d="M10 16 L16 20 L16 40 L10 44" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" fill="currentColor" fillOpacity="0.06" />
-          <line x1="13" y1="18" x2="13" y2="42" stroke="currentColor" strokeWidth="1" strokeOpacity="0.18" strokeLinecap="round" />
+          <path
+            d="M10 16 L16 20 L16 40 L10 44"
+            stroke="currentColor"
+            strokeWidth="1.8"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            fill="currentColor"
+            fillOpacity="0.06"
+          />
+          <line
+            x1="13"
+            y1="18"
+            x2="13"
+            y2="42"
+            stroke="currentColor"
+            strokeWidth="1"
+            strokeOpacity="0.18"
+            strokeLinecap="round"
+          />
           {/* Right door (open — perspective) */}
-          <path d="M46 16 L40 20 L40 40 L46 44" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" fill="currentColor" fillOpacity="0.06" />
-          <line x1="43" y1="18" x2="43" y2="42" stroke="currentColor" strokeWidth="1" strokeOpacity="0.18" strokeLinecap="round" />
+          <path
+            d="M46 16 L40 20 L40 40 L46 44"
+            stroke="currentColor"
+            strokeWidth="1.8"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            fill="currentColor"
+            fillOpacity="0.06"
+          />
+          <line
+            x1="43"
+            y1="18"
+            x2="43"
+            y2="42"
+            stroke="currentColor"
+            strokeWidth="1"
+            strokeOpacity="0.18"
+            strokeLinecap="round"
+          />
         </>
       ) : (
         <>
           {/* Left door */}
-          <path d="M10 16 L27 16 L27 44 L10 44" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" fill="currentColor" fillOpacity="0.04" />
-          <line x1="15" y1="16" x2="15" y2="44" stroke="currentColor" strokeWidth="1.2" strokeOpacity="0.2" strokeLinecap="round" />
-          <line x1="21" y1="16" x2="21" y2="44" stroke="currentColor" strokeWidth="1.2" strokeOpacity="0.2" strokeLinecap="round" />
-          <line x1="10" y1="30" x2="27" y2="30" stroke="currentColor" strokeWidth="1.2" strokeOpacity="0.18" strokeLinecap="round" />
+          <path
+            d="M10 16 L27 16 L27 44 L10 44"
+            stroke="currentColor"
+            strokeWidth="1.8"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            fill="currentColor"
+            fillOpacity="0.04"
+          />
+          <line
+            x1="15"
+            y1="16"
+            x2="15"
+            y2="44"
+            stroke="currentColor"
+            strokeWidth="1.2"
+            strokeOpacity="0.2"
+            strokeLinecap="round"
+          />
+          <line
+            x1="21"
+            y1="16"
+            x2="21"
+            y2="44"
+            stroke="currentColor"
+            strokeWidth="1.2"
+            strokeOpacity="0.2"
+            strokeLinecap="round"
+          />
+          <line
+            x1="10"
+            y1="30"
+            x2="27"
+            y2="30"
+            stroke="currentColor"
+            strokeWidth="1.2"
+            strokeOpacity="0.18"
+            strokeLinecap="round"
+          />
           {/* Right door */}
-          <path d="M29 16 L46 16 L46 44 L29 44" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" fill="currentColor" fillOpacity="0.04" />
-          <line x1="35" y1="16" x2="35" y2="44" stroke="currentColor" strokeWidth="1.2" strokeOpacity="0.2" strokeLinecap="round" />
-          <line x1="41" y1="16" x2="41" y2="44" stroke="currentColor" strokeWidth="1.2" strokeOpacity="0.2" strokeLinecap="round" />
-          <line x1="29" y1="30" x2="46" y2="30" stroke="currentColor" strokeWidth="1.2" strokeOpacity="0.18" strokeLinecap="round" />
+          <path
+            d="M29 16 L46 16 L46 44 L29 44"
+            stroke="currentColor"
+            strokeWidth="1.8"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            fill="currentColor"
+            fillOpacity="0.04"
+          />
+          <line
+            x1="35"
+            y1="16"
+            x2="35"
+            y2="44"
+            stroke="currentColor"
+            strokeWidth="1.2"
+            strokeOpacity="0.2"
+            strokeLinecap="round"
+          />
+          <line
+            x1="41"
+            y1="16"
+            x2="41"
+            y2="44"
+            stroke="currentColor"
+            strokeWidth="1.2"
+            strokeOpacity="0.2"
+            strokeLinecap="round"
+          />
+          <line
+            x1="29"
+            y1="30"
+            x2="46"
+            y2="30"
+            stroke="currentColor"
+            strokeWidth="1.2"
+            strokeOpacity="0.18"
+            strokeLinecap="round"
+          />
         </>
       )}
 
       {/* Ground */}
-      <line x1="2" y1="48" x2="54" y2="48" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeOpacity="0.1" />
+      <line
+        x1="2"
+        y1="48"
+        x2="54"
+        y2="48"
+        stroke="currentColor"
+        strokeWidth="1.5"
+        strokeLinecap="round"
+        strokeOpacity="0.1"
+      />
     </svg>
   );
 }
@@ -723,7 +1228,13 @@ export function HeaterWidgetIcon({ comfort }: { comfort: boolean }) {
   const finGrad = `heater-fin-${id}`;
 
   return (
-    <svg width="120" height="120" viewBox="0 0 56 56" fill="none" className={comfort ? "text-heat" : "text-illu"}>
+    <svg
+      width="120"
+      height="120"
+      viewBox="0 0 56 56"
+      fill="none"
+      className={comfort ? "text-heat" : "text-illu"}
+    >
       <defs>
         <linearGradient id={finGrad} x1="0" y1="0" x2="0" y2="1">
           <stop offset="0%" stopColor="currentColor" stopOpacity={comfort ? 0.4 : 0.15} />
@@ -734,15 +1245,7 @@ export function HeaterWidgetIcon({ comfort }: { comfort: boolean }) {
       <rect x="6" y="12" width="44" height="3" rx="1.5" fill="currentColor" opacity="0.25" />
 
       {[0, 1, 2, 3, 4, 5, 6].map((i) => (
-        <rect
-          key={i}
-          x={9 + i * 6}
-          y="16"
-          width="4"
-          height="24"
-          rx="1"
-          fill={`url(#${finGrad})`}
-        />
+        <rect key={i} x={9 + i * 6} y="16" width="4" height="24" rx="1" fill={`url(#${finGrad})`} />
       ))}
 
       <rect x="6" y="41" width="44" height="3" rx="1.5" fill="currentColor" opacity="0.25" />
@@ -769,39 +1272,189 @@ export function SlidingGateIcon({ open }: { open: boolean }) {
   return (
     <svg width="120" height="120" viewBox="0 0 56 56" fill="none" className="text-illu">
       {/* Left pillar */}
-      <rect x="3" y="10" width="5" height="34" rx="2.5" stroke="currentColor" strokeWidth="1.8" fill="currentColor" fillOpacity="0.08" />
+      <rect
+        x="3"
+        y="10"
+        width="5"
+        height="34"
+        rx="2.5"
+        stroke="currentColor"
+        strokeWidth="1.8"
+        fill="currentColor"
+        fillOpacity="0.08"
+      />
       {/* Right pillar */}
-      <rect x="48" y="10" width="5" height="34" rx="2.5" stroke="currentColor" strokeWidth="1.8" fill="currentColor" fillOpacity="0.08" />
+      <rect
+        x="48"
+        y="10"
+        width="5"
+        height="34"
+        rx="2.5"
+        stroke="currentColor"
+        strokeWidth="1.8"
+        fill="currentColor"
+        fillOpacity="0.08"
+      />
       {/* Rail */}
-      <line x1="8" y1="44" x2="48" y2="44" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeOpacity="0.2" />
+      <line
+        x1="8"
+        y1="44"
+        x2="48"
+        y2="44"
+        stroke="currentColor"
+        strokeWidth="2"
+        strokeLinecap="round"
+        strokeOpacity="0.2"
+      />
 
       {open ? (
         <>
           {/* Panel slid left */}
-          <rect x="8" y="14" width="16" height="29" rx="2" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" fill="currentColor" fillOpacity="0.06" />
-          <line x1="13" y1="16" x2="13" y2="41" stroke="currentColor" strokeWidth="1" strokeOpacity="0.15" strokeLinecap="round" />
-          <line x1="18" y1="16" x2="18" y2="41" stroke="currentColor" strokeWidth="1" strokeOpacity="0.15" strokeLinecap="round" />
+          <rect
+            x="8"
+            y="14"
+            width="16"
+            height="29"
+            rx="2"
+            stroke="currentColor"
+            strokeWidth="1.5"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            fill="currentColor"
+            fillOpacity="0.06"
+          />
+          <line
+            x1="13"
+            y1="16"
+            x2="13"
+            y2="41"
+            stroke="currentColor"
+            strokeWidth="1"
+            strokeOpacity="0.15"
+            strokeLinecap="round"
+          />
+          <line
+            x1="18"
+            y1="16"
+            x2="18"
+            y2="41"
+            stroke="currentColor"
+            strokeWidth="1"
+            strokeOpacity="0.15"
+            strokeLinecap="round"
+          />
           {/* Arrow hint */}
-          <path d="M32 28 L27 28 M29 25 L27 28 L29 31" stroke="currentColor" strokeWidth="1.5" strokeOpacity="0.25" strokeLinecap="round" strokeLinejoin="round" />
+          <path
+            d="M32 28 L27 28 M29 25 L27 28 L29 31"
+            stroke="currentColor"
+            strokeWidth="1.5"
+            strokeOpacity="0.25"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+          />
         </>
       ) : (
         <>
           {/* Full panel closed */}
-          <rect x="8" y="14" width="40" height="29" rx="2" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" fill="currentColor" fillOpacity="0.04" />
+          <rect
+            x="8"
+            y="14"
+            width="40"
+            height="29"
+            rx="2"
+            stroke="currentColor"
+            strokeWidth="1.8"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            fill="currentColor"
+            fillOpacity="0.04"
+          />
           {/* Vertical bars */}
-          <line x1="14" y1="16" x2="14" y2="41" stroke="currentColor" strokeWidth="1.2" strokeOpacity="0.18" strokeLinecap="round" />
-          <line x1="20" y1="16" x2="20" y2="41" stroke="currentColor" strokeWidth="1.2" strokeOpacity="0.18" strokeLinecap="round" />
-          <line x1="26" y1="16" x2="26" y2="41" stroke="currentColor" strokeWidth="1.2" strokeOpacity="0.18" strokeLinecap="round" />
-          <line x1="32" y1="16" x2="32" y2="41" stroke="currentColor" strokeWidth="1.2" strokeOpacity="0.18" strokeLinecap="round" />
-          <line x1="38" y1="16" x2="38" y2="41" stroke="currentColor" strokeWidth="1.2" strokeOpacity="0.18" strokeLinecap="round" />
-          <line x1="44" y1="16" x2="44" y2="41" stroke="currentColor" strokeWidth="1.2" strokeOpacity="0.18" strokeLinecap="round" />
+          <line
+            x1="14"
+            y1="16"
+            x2="14"
+            y2="41"
+            stroke="currentColor"
+            strokeWidth="1.2"
+            strokeOpacity="0.18"
+            strokeLinecap="round"
+          />
+          <line
+            x1="20"
+            y1="16"
+            x2="20"
+            y2="41"
+            stroke="currentColor"
+            strokeWidth="1.2"
+            strokeOpacity="0.18"
+            strokeLinecap="round"
+          />
+          <line
+            x1="26"
+            y1="16"
+            x2="26"
+            y2="41"
+            stroke="currentColor"
+            strokeWidth="1.2"
+            strokeOpacity="0.18"
+            strokeLinecap="round"
+          />
+          <line
+            x1="32"
+            y1="16"
+            x2="32"
+            y2="41"
+            stroke="currentColor"
+            strokeWidth="1.2"
+            strokeOpacity="0.18"
+            strokeLinecap="round"
+          />
+          <line
+            x1="38"
+            y1="16"
+            x2="38"
+            y2="41"
+            stroke="currentColor"
+            strokeWidth="1.2"
+            strokeOpacity="0.18"
+            strokeLinecap="round"
+          />
+          <line
+            x1="44"
+            y1="16"
+            x2="44"
+            y2="41"
+            stroke="currentColor"
+            strokeWidth="1.2"
+            strokeOpacity="0.18"
+            strokeLinecap="round"
+          />
           {/* Horizontal bar */}
-          <line x1="8" y1="28" x2="48" y2="28" stroke="currentColor" strokeWidth="1.2" strokeOpacity="0.15" strokeLinecap="round" />
+          <line
+            x1="8"
+            y1="28"
+            x2="48"
+            y2="28"
+            stroke="currentColor"
+            strokeWidth="1.2"
+            strokeOpacity="0.15"
+            strokeLinecap="round"
+          />
         </>
       )}
 
       {/* Ground */}
-      <line x1="2" y1="48" x2="54" y2="48" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeOpacity="0.1" />
+      <line
+        x1="2"
+        y1="48"
+        x2="54"
+        y2="48"
+        stroke="currentColor"
+        strokeWidth="1.5"
+        strokeLinecap="round"
+        strokeOpacity="0.1"
+      />
     </svg>
   );
 }
@@ -814,31 +1467,124 @@ export function GarageDoorIcon({ open }: { open: boolean }) {
   return (
     <svg width="120" height="120" viewBox="0 0 56 56" fill="none" className="text-illu">
       {/* Roof */}
-      <path d="M6 16 L28 6 L50 16" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" fill="none" />
+      <path
+        d="M6 16 L28 6 L50 16"
+        stroke="currentColor"
+        strokeWidth="2.5"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        fill="none"
+      />
       {/* Walls */}
-      <path d="M8 16 L8 48 L48 48 L48 16" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" fill="currentColor" fillOpacity="0.03" />
+      <path
+        d="M8 16 L8 48 L48 48 L48 16"
+        stroke="currentColor"
+        strokeWidth="2"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        fill="currentColor"
+        fillOpacity="0.03"
+      />
 
       {open ? (
         <>
           {/* Door rolled up */}
-          <rect x="13" y="19" width="30" height="7" rx="2" fill="currentColor" fillOpacity="0.1" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
-          <line x1="13" y1="22.5" x2="43" y2="22.5" stroke="currentColor" strokeWidth="0.8" strokeOpacity="0.18" strokeLinecap="round" />
+          <rect
+            x="13"
+            y="19"
+            width="30"
+            height="7"
+            rx="2"
+            fill="currentColor"
+            fillOpacity="0.1"
+            stroke="currentColor"
+            strokeWidth="1.5"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+          />
+          <line
+            x1="13"
+            y1="22.5"
+            x2="43"
+            y2="22.5"
+            stroke="currentColor"
+            strokeWidth="0.8"
+            strokeOpacity="0.18"
+            strokeLinecap="round"
+          />
         </>
       ) : (
         <>
           {/* Door closed */}
-          <rect x="13" y="20" width="30" height="26" rx="2" fill="currentColor" fillOpacity="0.08" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+          <rect
+            x="13"
+            y="20"
+            width="30"
+            height="26"
+            rx="2"
+            fill="currentColor"
+            fillOpacity="0.08"
+            stroke="currentColor"
+            strokeWidth="1.5"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+          />
           {/* Sections */}
-          <line x1="13" y1="26.5" x2="43" y2="26.5" stroke="currentColor" strokeWidth="1" strokeOpacity="0.18" strokeLinecap="round" />
-          <line x1="13" y1="33" x2="43" y2="33" stroke="currentColor" strokeWidth="1" strokeOpacity="0.18" strokeLinecap="round" />
-          <line x1="13" y1="39.5" x2="43" y2="39.5" stroke="currentColor" strokeWidth="1" strokeOpacity="0.18" strokeLinecap="round" />
+          <line
+            x1="13"
+            y1="26.5"
+            x2="43"
+            y2="26.5"
+            stroke="currentColor"
+            strokeWidth="1"
+            strokeOpacity="0.18"
+            strokeLinecap="round"
+          />
+          <line
+            x1="13"
+            y1="33"
+            x2="43"
+            y2="33"
+            stroke="currentColor"
+            strokeWidth="1"
+            strokeOpacity="0.18"
+            strokeLinecap="round"
+          />
+          <line
+            x1="13"
+            y1="39.5"
+            x2="43"
+            y2="39.5"
+            stroke="currentColor"
+            strokeWidth="1"
+            strokeOpacity="0.18"
+            strokeLinecap="round"
+          />
           {/* Handle */}
-          <line x1="26" y1="42" x2="30" y2="42" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeOpacity="0.3" />
+          <line
+            x1="26"
+            y1="42"
+            x2="30"
+            y2="42"
+            stroke="currentColor"
+            strokeWidth="2"
+            strokeLinecap="round"
+            strokeOpacity="0.3"
+          />
         </>
       )}
 
       {/* Ground */}
-      <line x1="4" y1="48" x2="52" y2="48" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeOpacity="0.12" />
+      <line
+        x1="4"
+        y1="48"
+        x2="52"
+        y2="48"
+        stroke="currentColor"
+        strokeWidth="1.5"
+        strokeLinecap="round"
+        strokeOpacity="0.12"
+      />
     </svg>
   );
 }
@@ -852,7 +1598,13 @@ export function GarageDoorIcon({ open }: { open: boolean }) {
 
 export function PlugWidgetIcon({ on }: { on: boolean }) {
   return (
-    <svg width="108" height="108" viewBox="0 0 24 24" fill="none" className={on ? "text-active" : "text-illu"}>
+    <svg
+      width="108"
+      height="108"
+      viewBox="0 0 24 24"
+      fill="none"
+      className={on ? "text-active" : "text-illu"}
+    >
       {/* Glow when powered */}
       {on && <circle cx="12" cy="12" r="11" fill="currentColor" opacity="0.08" />}
 
@@ -894,7 +1646,14 @@ export function MotionSensorIcon({ active }: { active: boolean }) {
     <svg width="120" height="120" viewBox="0 0 56 56" fill="none" className="text-illu">
       {/* Person silhouette; motion is activity, not "on": primary in both states (spec 196) */}
       <circle cx="22" cy="14" r="4" fill="currentColor" opacity="0.25" />
-      <path d="M22 18 L22 30 M16 23 L28 23 M22 30 L16 40 M22 30 L28 40" stroke="currentColor" strokeWidth="2" strokeOpacity="0.25" strokeLinecap="round" strokeLinejoin="round" />
+      <path
+        d="M22 18 L22 30 M16 23 L28 23 M22 30 L16 40 M22 30 L28 40"
+        stroke="currentColor"
+        strokeWidth="2"
+        strokeOpacity="0.25"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
       {/* Detection waves */}
       {[0, 1, 2].map((i) => (
         <path
@@ -934,13 +1693,42 @@ export function EnergyMeterIcon() {
       </defs>
 
       {/* Meter body */}
-      <rect x="10" y="8" width="36" height="40" rx="4" fill={`url(#${bodyGrad})`} stroke="currentColor" strokeWidth="1.2" strokeOpacity="0.25" />
+      <rect
+        x="10"
+        y="8"
+        width="36"
+        height="40"
+        rx="4"
+        fill={`url(#${bodyGrad})`}
+        stroke="currentColor"
+        strokeWidth="1.2"
+        strokeOpacity="0.25"
+      />
 
       {/* Display screen */}
-      <rect x="14" y="13" width="28" height="14" rx="2" fill={`url(#${screenGrad})`} stroke="currentColor" strokeWidth="0.8" strokeOpacity="0.15" />
+      <rect
+        x="14"
+        y="13"
+        width="28"
+        height="14"
+        rx="2"
+        fill={`url(#${screenGrad})`}
+        stroke="currentColor"
+        strokeWidth="0.8"
+        strokeOpacity="0.15"
+      />
 
       {/* kWh digits hint */}
-      <text x="28" y="24" textAnchor="middle" fill="currentColor" opacity="0.45" fontSize="8" fontWeight="700" fontFamily="monospace">
+      <text
+        x="28"
+        y="24"
+        textAnchor="middle"
+        fill="currentColor"
+        opacity="0.45"
+        fontSize="8"
+        fontWeight="700"
+        fontFamily="monospace"
+      >
         kWh
       </text>
 
@@ -978,21 +1766,49 @@ export function PoolPumpIcon({ on }: { on: boolean }) {
        * "water" core uses the same currentColor at higher opacity when ON,
        * invisible when OFF (hollow-pipe look). */}
       {(() => {
-        const d =
-          "M14 16 L14 11 L42 11 L42 20 " +
-          "M42 36 L42 49 L3 49 " +
-          "M14 45 L14 49";
+        const d = "M14 16 L14 11 L42 11 L42 20 " + "M42 36 L42 49 L3 49 " + "M14 45 L14 49";
         return (
           <>
-            <path d={d} stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" fill="none" />
-            <path d={d} stroke="currentColor" strokeOpacity={pipeWaterOpacity} strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" fill="none" />
+            <path
+              d={d}
+              stroke="currentColor"
+              strokeWidth="3"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              fill="none"
+            />
+            <path
+              d={d}
+              stroke="currentColor"
+              strokeOpacity={pipeWaterOpacity}
+              strokeWidth="1.5"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              fill="none"
+            />
           </>
         );
       })()}
 
       {/* MANOMETER — needle kept at one static angle */}
-      <circle cx="28" cy="10" r="5" stroke="currentColor" strokeWidth="1.6" fill="currentColor" fillOpacity="0.04" />
-      <line x1="28" y1="10" x2="30.5" y2="7.5" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" />
+      <circle
+        cx="28"
+        cy="10"
+        r="5"
+        stroke="currentColor"
+        strokeWidth="1.6"
+        fill="currentColor"
+        fillOpacity="0.04"
+      />
+      <line
+        x1="28"
+        y1="10"
+        x2="30.5"
+        y2="7.5"
+        stroke="currentColor"
+        strokeWidth="1.3"
+        strokeLinecap="round"
+      />
       <circle cx="28" cy="10" r="0.9" fill="currentColor" />
 
       {/* TANK (3-stages) — subtle currentColor tints throughout; the lower
@@ -1013,7 +1829,17 @@ export function PoolPumpIcon({ on }: { on: boolean }) {
         fillOpacity="0.04"
         strokeLinejoin="round"
       />
-      <rect x="4" y="28" width="20" height="3" rx="0.5" stroke="currentColor" strokeWidth="1.5" fill="currentColor" fillOpacity="0.06" />
+      <rect
+        x="4"
+        y="28"
+        width="20"
+        height="3"
+        rx="0.5"
+        stroke="currentColor"
+        strokeWidth="1.5"
+        fill="currentColor"
+        fillOpacity="0.06"
+      />
       <path
         d="M5 31 L5 41 Q5 45 10 45 L18 45 Q23 45 23 41 L23 31 Z"
         stroke="currentColor"
@@ -1022,10 +1848,26 @@ export function PoolPumpIcon({ on }: { on: boolean }) {
         fillOpacity={0.04 + tankWaterExtra}
         strokeLinejoin="round"
       />
-      <path d="M9 21 L9 25" stroke="currentColor" strokeWidth="0.6" strokeLinecap="round" opacity="0.5" />
+      <path
+        d="M9 21 L9 25"
+        stroke="currentColor"
+        strokeWidth="0.6"
+        strokeLinecap="round"
+        opacity="0.5"
+      />
 
       {/* JUNCTION BOX — transparent body + 4 screws */}
-      <rect x="34" y="20" width="16" height="16" rx="1" stroke="currentColor" strokeWidth="1.6" fill="currentColor" fillOpacity="0.04" />
+      <rect
+        x="34"
+        y="20"
+        width="16"
+        height="16"
+        rx="1"
+        stroke="currentColor"
+        strokeWidth="1.6"
+        fill="currentColor"
+        fillOpacity="0.04"
+      />
       <circle cx="37" cy="23" r="0.9" fill="currentColor" />
       <circle cx="47" cy="23" r="0.9" fill="currentColor" />
       <circle cx="37" cy="33" r="0.9" fill="currentColor" />
@@ -1114,46 +1956,55 @@ export function PoolCoverIcon({ position }: { position: number | null }) {
         strokeWidth="1.2"
         fill={`url(#${waterGrad})`}
       />
-      <line x1={POOL_X} y1={POOL_Y + POOL_H / 2} x2={POOL_X + POOL_W} y2={POOL_Y + POOL_H / 2} stroke="currentColor" strokeWidth="0.6" opacity="0.1" />
+      <line
+        x1={POOL_X}
+        y1={POOL_Y + POOL_H / 2}
+        x2={POOL_X + POOL_W}
+        y2={POOL_Y + POOL_H / 2}
+        stroke="currentColor"
+        strokeWidth="0.6"
+        opacity="0.1"
+      />
 
       {/* Water waves on the uncovered area — extend across the full width
        * and height of the pool when slats don't cover. */}
-      {slatCount < MAX_SLATS && (() => {
-        const waveEndX = POOL_X + POOL_W - 1.5;
-        const waveAvail = waveEndX - waveStartX;
-        if (waveAvail < 4) return null;
-        const WAVE_PITCH_X = 4; // crest period
-        const WAVE_ROW_PITCH = 5; // vertical spacing
-        const wavesTopY = POOL_Y + 4;
-        // Push the bottom row closer to the basin floor so a wave sits at the
-        // very bottom of the water area.
-        const wavesBottomY = POOL_Y + POOL_H - 2;
-        const rows: number[] = [];
-        for (let y = wavesTopY; y <= wavesBottomY; y += WAVE_ROW_PITCH) rows.push(y);
-        const crestCount = Math.floor(waveAvail / WAVE_PITCH_X);
-        return rows.map((y, rowIdx) => {
-          // Phase shift per row for a more natural look
-          const phase = rowIdx * 2;
-          let d = `M${waveStartX} ${y}`;
-          for (let i = 1; i <= crestCount; i++) {
-            const cx = waveStartX + (i - 0.5) * WAVE_PITCH_X;
-            const ex = waveStartX + i * WAVE_PITCH_X;
-            const cy = y + (i % 2 === 0 ? -1 : 1) * (1 - (phase % 2));
-            d += ` Q${cx} ${cy} ${ex} ${y}`;
-          }
-          return (
-            <path
-              key={rowIdx}
-              d={d}
-              stroke="currentColor"
-              strokeWidth="0.7"
-              strokeOpacity="0.35"
-              fill="none"
-              strokeLinecap="round"
-            />
-          );
-        });
-      })()}
+      {slatCount < MAX_SLATS &&
+        (() => {
+          const waveEndX = POOL_X + POOL_W - 1.5;
+          const waveAvail = waveEndX - waveStartX;
+          if (waveAvail < 4) return null;
+          const WAVE_PITCH_X = 4; // crest period
+          const WAVE_ROW_PITCH = 5; // vertical spacing
+          const wavesTopY = POOL_Y + 4;
+          // Push the bottom row closer to the basin floor so a wave sits at the
+          // very bottom of the water area.
+          const wavesBottomY = POOL_Y + POOL_H - 2;
+          const rows: number[] = [];
+          for (let y = wavesTopY; y <= wavesBottomY; y += WAVE_ROW_PITCH) rows.push(y);
+          const crestCount = Math.floor(waveAvail / WAVE_PITCH_X);
+          return rows.map((y, rowIdx) => {
+            // Phase shift per row for a more natural look
+            const phase = rowIdx * 2;
+            let d = `M${waveStartX} ${y}`;
+            for (let i = 1; i <= crestCount; i++) {
+              const cx = waveStartX + (i - 0.5) * WAVE_PITCH_X;
+              const ex = waveStartX + i * WAVE_PITCH_X;
+              const cy = y + (i % 2 === 0 ? -1 : 1) * (1 - (phase % 2));
+              d += ` Q${cx} ${cy} ${ex} ${y}`;
+            }
+            return (
+              <path
+                key={rowIdx}
+                d={d}
+                stroke="currentColor"
+                strokeWidth="0.7"
+                strokeOpacity="0.35"
+                fill="none"
+                strokeLinecap="round"
+              />
+            );
+          });
+        })()}
 
       {/* Cover slats — vertical, rolling out from the roller. */}
       {Array.from({ length: slatCount }).map((_, i) => (
@@ -1180,7 +2031,13 @@ export function WaterValveWidgetIcon({ open }: { open: boolean }) {
   // horizontal when OPEN, vertical when CLOSED. Water flow visible only
   // when OPEN.
   return (
-    <svg width="120" height="120" viewBox="0 0 56 56" fill="none" className={open ? "text-active" : "text-illu"}>
+    <svg
+      width="120"
+      height="120"
+      viewBox="0 0 56 56"
+      fill="none"
+      className={open ? "text-active" : "text-illu"}
+    >
       {/* Pipe (horizontal) */}
       <rect
         x="4"
@@ -1193,28 +2050,94 @@ export function WaterValveWidgetIcon({ open }: { open: boolean }) {
         fill="var(--color-surface)"
       />
       {/* Flanges */}
-      <line x1="9" y1="32" x2="9" y2="42" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" />
-      <line x1="47" y1="32" x2="47" y2="42" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" />
+      <line
+        x1="9"
+        y1="32"
+        x2="9"
+        y2="42"
+        stroke="currentColor"
+        strokeWidth="1.4"
+        strokeLinecap="round"
+      />
+      <line
+        x1="47"
+        y1="32"
+        x2="47"
+        y2="42"
+        stroke="currentColor"
+        strokeWidth="1.4"
+        strokeLinecap="round"
+      />
 
       {/* Water flow inside the pipe (only when open) */}
       {open && (
         <>
-          <path d="M12 37 Q16 35 20 37 T28 37 T36 37 T44 37" stroke="var(--illu-water)" strokeWidth="1.4" fill="none" strokeLinecap="round" />
-          <path d="M12 39.5 Q16 37.5 20 39.5 T28 39.5 T36 39.5 T44 39.5" stroke="var(--illu-water)" strokeWidth="1.0" fill="none" strokeLinecap="round" strokeOpacity="0.5" />
+          <path
+            d="M12 37 Q16 35 20 37 T28 37 T36 37 T44 37"
+            stroke="var(--illu-water)"
+            strokeWidth="1.4"
+            fill="none"
+            strokeLinecap="round"
+          />
+          <path
+            d="M12 39.5 Q16 37.5 20 39.5 T28 39.5 T36 39.5 T44 39.5"
+            stroke="var(--illu-water)"
+            strokeWidth="1.0"
+            fill="none"
+            strokeLinecap="round"
+            strokeOpacity="0.5"
+          />
         </>
       )}
 
       {/* Valve body (vertical extension) */}
-      <rect x="22" y="20" width="12" height="14" rx="1" stroke="currentColor" strokeWidth="1.6" fill="var(--color-surface)" />
+      <rect
+        x="22"
+        y="20"
+        width="12"
+        height="14"
+        rx="1"
+        stroke="currentColor"
+        strokeWidth="1.6"
+        fill="var(--color-surface)"
+      />
 
       {/* Stem */}
-      <line x1="28" y1="10" x2="28" y2="22" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" />
+      <line
+        x1="28"
+        y1="10"
+        x2="28"
+        y2="22"
+        stroke="currentColor"
+        strokeWidth="1.6"
+        strokeLinecap="round"
+      />
 
       {/* Handle: horizontal (open) / vertical (closed) */}
       {open ? (
-        <rect x="14" y="8" width="28" height="4" rx="2" stroke="currentColor" strokeWidth="1.6" fill="currentColor" fillOpacity="0.18" />
+        <rect
+          x="14"
+          y="8"
+          width="28"
+          height="4"
+          rx="2"
+          stroke="currentColor"
+          strokeWidth="1.6"
+          fill="currentColor"
+          fillOpacity="0.18"
+        />
       ) : (
-        <rect x="26" y="2" width="4" height="16" rx="2" stroke="currentColor" strokeWidth="1.6" fill="currentColor" fillOpacity="0.18" />
+        <rect
+          x="26"
+          y="2"
+          width="4"
+          height="16"
+          rx="2"
+          stroke="currentColor"
+          strokeWidth="1.6"
+          fill="currentColor"
+          fillOpacity="0.18"
+        />
       )}
     </svg>
   );
@@ -1228,9 +2151,31 @@ export function ContactSensorIcon({ open }: { open: boolean }) {
   return (
     <svg width="120" height="120" viewBox="0 0 56 56" fill="none" className="text-illu">
       {/* Door frame; open/closed is neutral, the drawing says it (spec 196) */}
-      <rect x="8" y="6" width="18" height="44" rx="2" fill="currentColor" fillOpacity="0.06" stroke="currentColor" strokeWidth="1" strokeOpacity="0.2" />
+      <rect
+        x="8"
+        y="6"
+        width="18"
+        height="44"
+        rx="2"
+        fill="currentColor"
+        fillOpacity="0.06"
+        stroke="currentColor"
+        strokeWidth="1"
+        strokeOpacity="0.2"
+      />
       {/* Door */}
-      <rect x={open ? "32" : "26"} y="6" width="18" height="44" rx="2" fill="currentColor" fillOpacity={open ? 0.08 : 0.1} stroke="currentColor" strokeWidth="1" strokeOpacity="0.25" />
+      <rect
+        x={open ? "32" : "26"}
+        y="6"
+        width="18"
+        height="44"
+        rx="2"
+        fill="currentColor"
+        fillOpacity={open ? 0.08 : 0.1}
+        stroke="currentColor"
+        strokeWidth="1"
+        strokeOpacity="0.25"
+      />
       {/* Handle */}
       <circle cx={open ? 35 : 29} cy="28" r="1.5" fill="currentColor" opacity="0.3" />
       {/* Sensor dots */}
@@ -1238,7 +2183,16 @@ export function ContactSensorIcon({ open }: { open: boolean }) {
       <circle cx={open ? 32 : 28} cy="18" r="2" fill="currentColor" opacity={open ? 0.15 : 0.3} />
       {/* Gap indicator when open */}
       {open && (
-        <line x1="28" y1="10" x2="28" y2="46" stroke="currentColor" strokeWidth="0.8" strokeOpacity="0.1" strokeDasharray="2 2" />
+        <line
+          x1="28"
+          y1="10"
+          x2="28"
+          y2="46"
+          stroke="currentColor"
+          strokeWidth="0.8"
+          strokeOpacity="0.1"
+          strokeDasharray="2 2"
+        />
       )}
     </svg>
   );
@@ -1252,11 +2206,28 @@ export function ContactSensorIcon({ open }: { open: boolean }) {
 
 export function AirCompressorIcon({ on }: { on: boolean }) {
   return (
-    <svg width="120" height="120" viewBox="0 0 56 56" fill="none" className={on ? "text-active" : "text-illu"}>
+    <svg
+      width="120"
+      height="120"
+      viewBox="0 0 56 56"
+      fill="none"
+      className={on ? "text-active" : "text-illu"}
+    >
       {on && <ellipse cx="28" cy="31" rx="25" ry="22" fill="currentColor" opacity="0.07" />}
 
       {/* Motor housing with cooling fins */}
-      <rect x="7" y="17" width="16" height="13" rx="2.5" fill="currentColor" fillOpacity="0.08" stroke="currentColor" strokeWidth="1.5" strokeOpacity="0.55" />
+      <rect
+        x="7"
+        y="17"
+        width="16"
+        height="13"
+        rx="2.5"
+        fill="currentColor"
+        fillOpacity="0.08"
+        stroke="currentColor"
+        strokeWidth="1.5"
+        strokeOpacity="0.55"
+      />
       <g stroke="currentColor" strokeWidth="1" strokeOpacity="0.32" strokeLinecap="round">
         <path d="M11 20v7" />
         <path d="M15 20v7" />
@@ -1264,23 +2235,79 @@ export function AirCompressorIcon({ on }: { on: boolean }) {
       </g>
 
       {/* Finned compression head, with its transfer tube down to the tank */}
-      <rect x="25" y="15" width="9" height="12" rx="1.5" fill="currentColor" fillOpacity="0.08" stroke="currentColor" strokeWidth="1.5" strokeOpacity="0.55" />
+      <rect
+        x="25"
+        y="15"
+        width="9"
+        height="12"
+        rx="1.5"
+        fill="currentColor"
+        fillOpacity="0.08"
+        stroke="currentColor"
+        strokeWidth="1.5"
+        strokeOpacity="0.55"
+      />
       <g stroke="currentColor" strokeWidth="0.9" strokeOpacity="0.3" strokeLinecap="round">
         <path d="M25.8 18.5h7.4" />
         <path d="M25.8 21.5h7.4" />
         <path d="M25.8 24.5h7.4" />
       </g>
-      <path d="M29.5 27v3" stroke="currentColor" strokeWidth="1.4" strokeOpacity="0.5" strokeLinecap="round" />
+      <path
+        d="M29.5 27v3"
+        stroke="currentColor"
+        strokeWidth="1.4"
+        strokeOpacity="0.5"
+        strokeLinecap="round"
+      />
 
       {/* Pressure gauge */}
-      <circle cx="42" cy="21" r="5" stroke="currentColor" strokeWidth="1.5" fill="currentColor" fillOpacity="0.05" />
-      <line x1="42" y1="21" x2="44.6" y2="18.4" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" />
+      <circle
+        cx="42"
+        cy="21"
+        r="5"
+        stroke="currentColor"
+        strokeWidth="1.5"
+        fill="currentColor"
+        fillOpacity="0.05"
+      />
+      <line
+        x1="42"
+        y1="21"
+        x2="44.6"
+        y2="18.4"
+        stroke="currentColor"
+        strokeWidth="1.3"
+        strokeLinecap="round"
+      />
       <circle cx="42" cy="21" r="0.9" fill="currentColor" />
-      <path d="M42 26v4" stroke="currentColor" strokeWidth="1.3" strokeOpacity="0.45" strokeLinecap="round" />
+      <path
+        d="M42 26v4"
+        stroke="currentColor"
+        strokeWidth="1.3"
+        strokeOpacity="0.45"
+        strokeLinecap="round"
+      />
 
       {/* Horizontal tank + welded end cap */}
-      <rect x="5" y="30" width="40" height="16" rx="8" fill="currentColor" fillOpacity="0.07" stroke="currentColor" strokeWidth="1.6" strokeOpacity="0.55" />
-      <path d="M37 30a8 8 0 010 16" stroke="currentColor" strokeWidth="1" strokeOpacity="0.3" fill="none" />
+      <rect
+        x="5"
+        y="30"
+        width="40"
+        height="16"
+        rx="8"
+        fill="currentColor"
+        fillOpacity="0.07"
+        stroke="currentColor"
+        strokeWidth="1.6"
+        strokeOpacity="0.55"
+      />
+      <path
+        d="M37 30a8 8 0 010 16"
+        stroke="currentColor"
+        strokeWidth="1"
+        strokeOpacity="0.3"
+        fill="none"
+      />
 
       {/* Feet */}
       <g stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeOpacity="0.5">
@@ -1291,7 +2318,13 @@ export function AirCompressorIcon({ on }: { on: boolean }) {
       </g>
 
       {/* Outlet — air only when running */}
-      <path d="M45 39h4" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeOpacity="0.5" />
+      <path
+        d="M45 39h4"
+        stroke="currentColor"
+        strokeWidth="1.6"
+        strokeLinecap="round"
+        strokeOpacity="0.5"
+      />
       {on && (
         <g stroke="currentColor" strokeLinecap="round" fill="none">
           <path d="M50 36q3 3 0 6" strokeWidth="1.3" strokeOpacity="0.55" />
@@ -1324,17 +2357,41 @@ export function Printer3DIcon({ state = "off" }: { state?: Printer3DState }) {
   const tone = error ? "text-error" : running ? "text-active" : "text-illu";
 
   return (
-    <svg width="120" height="120" viewBox="0 0 56 56" fill="none" className={tone} data-state={state}>
+    <svg
+      width="120"
+      height="120"
+      viewBox="0 0 56 56"
+      fill="none"
+      className={tone}
+      data-state={state}
+    >
       {printing && <ellipse cx="28" cy="28" rx="25" ry="25" fill="currentColor" opacity="0.07" />}
 
       {/* The frame is drawn 3 units low so the spool does not touch the top
           edge: the icon then sits optically centred beside its siblings. */}
       <g transform="translate(0 3)">
         {/* Filament spool */}
-        <circle cx="38" cy="5.5" r="4.5" fill="currentColor" fillOpacity="0.1" stroke="currentColor" strokeWidth="1.3" strokeOpacity="0.45" />
+        <circle
+          cx="38"
+          cy="5.5"
+          r="4.5"
+          fill="currentColor"
+          fillOpacity="0.1"
+          stroke="currentColor"
+          strokeWidth="1.3"
+          strokeOpacity="0.45"
+        />
         <circle cx="38" cy="5.5" r="1.4" fill="currentColor" fillOpacity="0.45" />
         {printing && (
-          <path d="M34 7q-6 6 -4 18" stroke="currentColor" strokeWidth="1.1" strokeOpacity="0.45" fill="none" strokeLinecap="round" data-part="filament" />
+          <path
+            d="M34 7q-6 6 -4 18"
+            stroke="currentColor"
+            strokeWidth="1.1"
+            strokeOpacity="0.45"
+            fill="none"
+            strokeLinecap="round"
+            data-part="filament"
+          />
         )}
 
         {/* Frame — uprights + top beam */}
@@ -1345,33 +2402,92 @@ export function Printer3DIcon({ state = "off" }: { state?: Printer3DState }) {
         </g>
 
         {/* Base */}
-        <rect x="6" y="42" width="44" height="6" rx="2" fill="currentColor" fillOpacity="0.08" stroke="currentColor" strokeWidth="1.4" strokeOpacity="0.45" />
+        <rect
+          x="6"
+          y="42"
+          width="44"
+          height="6"
+          rx="2"
+          fill="currentColor"
+          fillOpacity="0.08"
+          stroke="currentColor"
+          strokeWidth="1.4"
+          strokeOpacity="0.45"
+        />
 
         {/* X gantry */}
-        <rect x="9" y="21" width="38" height="4" rx="1.6" fill="currentColor" fillOpacity="0.12" stroke="currentColor" strokeWidth="1.2" strokeOpacity="0.5" />
+        <rect
+          x="9"
+          y="21"
+          width="38"
+          height="4"
+          rx="1.6"
+          fill="currentColor"
+          fillOpacity="0.12"
+          stroke="currentColor"
+          strokeWidth="1.2"
+          strokeOpacity="0.5"
+        />
 
         {/* Hotend + nozzle. The nozzle fills in once the machine is powered:
             that, and not the colour alone, is what separates `on` from `off`
             for anyone who cannot tell the two tones apart. */}
-        <rect x="24" y="25" width="8" height="4.5" rx="1" fill="currentColor" fillOpacity={running ? 0.3 : 0.14} stroke="currentColor" strokeWidth="1.1" strokeOpacity="0.5" />
+        <rect
+          x="24"
+          y="25"
+          width="8"
+          height="4.5"
+          rx="1"
+          fill="currentColor"
+          fillOpacity={running ? 0.3 : 0.14}
+          stroke="currentColor"
+          strokeWidth="1.1"
+          strokeOpacity="0.5"
+        />
         <path d="M26.6 29.5h2.8l-1 3h-.8z" fill="currentColor" fillOpacity={running ? 0.9 : 0.55} />
 
         {/* Part being printed, layer by layer */}
-        <path d="M23 38.5v-5.5h10v5.5z" fill="currentColor" fillOpacity="0.16" stroke="currentColor" strokeWidth="1.1" strokeOpacity="0.45" />
+        <path
+          d="M23 38.5v-5.5h10v5.5z"
+          fill="currentColor"
+          fillOpacity="0.16"
+          stroke="currentColor"
+          strokeWidth="1.1"
+          strokeOpacity="0.45"
+        />
         <g stroke="currentColor" strokeWidth="0.8" strokeOpacity="0.35">
           <path d="M23 35h10" />
           <path d="M23 36.8h10" />
         </g>
 
         {/* Bed */}
-        <rect x="15" y="38.5" width="26" height="3.5" rx="1.2" fill="currentColor" fillOpacity="0.14" stroke="currentColor" strokeWidth="1.2" strokeOpacity="0.5" />
+        <rect
+          x="15"
+          y="38.5"
+          width="26"
+          height="3.5"
+          rx="1.2"
+          fill="currentColor"
+          fillOpacity="0.14"
+          stroke="currentColor"
+          strokeWidth="1.2"
+          strokeOpacity="0.5"
+        />
       </g>
 
       {/* Fault badge — the state a workshop plug is watched for, so it reads
           as a shape and not only as a colour. */}
       {error && (
         <g data-part="error-badge">
-          <circle cx="49" cy="33" r="5.5" fill="currentColor" fillOpacity="0.12" stroke="currentColor" strokeWidth="1.4" />
+          <circle
+            cx="49"
+            cy="33"
+            r="5.5"
+            fill="currentColor"
+            fillOpacity="0.12"
+            stroke="currentColor"
+            strokeWidth="1.4"
+          />
           <path d="M49 30v3.6" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" />
           <circle cx="49" cy="36" r="0.95" fill="currentColor" />
         </g>

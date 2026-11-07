@@ -51,7 +51,9 @@ describe("MeteringParentPanel", () => {
   beforeEach(() => vi.clearAllMocks());
 
   it("offers the other meters, and never one that would close a loop", () => {
-    render(<MeteringParentPanel defaultOpen equipment={gite} equipments={ALL} onUpdated={() => {}} />);
+    render(
+      <MeteringParentPanel defaultOpen equipment={gite} equipments={ALL} onUpdated={() => {}} />,
+    );
     const shown = options();
 
     expect(shown).toContain("ConsommationPlaqueGite");
@@ -66,13 +68,22 @@ describe("MeteringParentPanel", () => {
   });
 
   it("shows the current declaration", () => {
-    render(<MeteringParentPanel defaultOpen equipment={ce} equipments={ALL} onUpdated={() => {}} />);
+    render(
+      <MeteringParentPanel defaultOpen equipment={ce} equipments={ALL} onUpdated={() => {}} />,
+    );
     expect((screen.getByRole("combobox") as HTMLSelectElement).value).toBe("gite");
   });
 
   it("says local production in the folded row's summary", () => {
-    const solar = meter({ id: "pv", name: "Garage", meteringParentId: "gite", localProduction: true });
-    render(<MeteringParentPanel equipment={solar} equipments={[...ALL, solar]} onUpdated={() => {}} />);
+    const solar = meter({
+      id: "pv",
+      name: "Garage",
+      meteringParentId: "gite",
+      localProduction: true,
+    });
+    render(
+      <MeteringParentPanel equipment={solar} equipments={[...ALL, solar]} onUpdated={() => {}} />,
+    );
     expect(screen.getByText("· ConsommationGite · local production")).toBeTruthy();
   });
 
@@ -82,7 +93,12 @@ describe("MeteringParentPanel", () => {
     // select matching no option would quietly read "counted nowhere else".
     const gone = meter({ id: "gite", name: "ConsommationGite", type: "light_onoff" });
     render(
-      <MeteringParentPanel defaultOpen equipment={ce} equipments={[gone, ce, plaque]} onUpdated={() => {}} />,
+      <MeteringParentPanel
+        defaultOpen
+        equipment={ce}
+        equipments={[gone, ce, plaque]}
+        onUpdated={() => {}}
+      />,
     );
 
     expect((screen.getByRole("combobox") as HTMLSelectElement).value).toBe("gite");
@@ -91,7 +107,9 @@ describe("MeteringParentPanel", () => {
 
   it("saves a chosen parent", async () => {
     const onUpdated = vi.fn();
-    render(<MeteringParentPanel defaultOpen equipment={plaque} equipments={ALL} onUpdated={onUpdated} />);
+    render(
+      <MeteringParentPanel defaultOpen equipment={plaque} equipments={ALL} onUpdated={onUpdated} />,
+    );
 
     await userEvent.selectOptions(screen.getByRole("combobox"), "gite");
 
@@ -100,7 +118,9 @@ describe("MeteringParentPanel", () => {
   });
 
   it("sends null when the declaration is withdrawn", async () => {
-    render(<MeteringParentPanel defaultOpen equipment={ce} equipments={ALL} onUpdated={() => {}} />);
+    render(
+      <MeteringParentPanel defaultOpen equipment={ce} equipments={ALL} onUpdated={() => {}} />,
+    );
 
     await userEvent.selectOptions(screen.getByRole("combobox"), "");
 
@@ -111,7 +131,9 @@ describe("MeteringParentPanel", () => {
 
   it("surfaces a refusal from the API instead of pretending it saved", async () => {
     vi.mocked(api.updateEquipment).mockRejectedValueOnce(new Error("MeteringParentCycle"));
-    render(<MeteringParentPanel defaultOpen equipment={plaque} equipments={ALL} onUpdated={() => {}} />);
+    render(
+      <MeteringParentPanel defaultOpen equipment={plaque} equipments={ALL} onUpdated={() => {}} />,
+    );
 
     await userEvent.selectOptions(screen.getByRole("combobox"), "gite");
 

@@ -262,9 +262,6 @@ export function sharePercent(part: number, whole: number): number | null {
  * we report 0 rather than a negative value.
  */
 export function computeOther(house: number, submeters: SubmeterRow[]): number {
-  const sum = submeters.reduce(
-    (acc, r) => acc + (r.power ?? 0),
-    0,
-  );
+  const sum = submeters.reduce((acc, r) => acc + (r.power ?? 0), 0);
   return Math.max(0, house - sum);
 }

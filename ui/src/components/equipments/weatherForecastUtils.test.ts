@@ -114,7 +114,10 @@ describe("parseForecastDays", () => {
 
 describe("parseModelUsed", () => {
   it("returns the published model id", () => {
-    const bindings = [...legacyBindings(), binding("model_used", "meteofrance_arome_france", "text")];
+    const bindings = [
+      ...legacyBindings(),
+      binding("model_used", "meteofrance_arome_france", "text"),
+    ];
     expect(parseModelUsed(bindings)).toBe("meteofrance_arome_france");
   });
 

@@ -57,7 +57,12 @@ export function OrderOutcomePanel({
           />
           {t("equipments.gateConfirm.enable")}
         </label>
-        <InfoTooltip help align="start" text={t("orderOutcome.setting.hint")} label={t("common.help")} />
+        <InfoTooltip
+          help
+          align="start"
+          text={t("orderOutcome.setting.hint")}
+          label={t("common.help")}
+        />
         {saving && <Loader2 size={12} className="animate-spin text-text-tertiary" />}
       </div>
       {error && <p className="text-caption text-error mt-2">{error}</p>}

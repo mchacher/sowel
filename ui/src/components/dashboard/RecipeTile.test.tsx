@@ -36,15 +36,17 @@ const ACTION = {
   ],
 };
 
-function seed(options: {
-  tile?: RecipeInfo["tile"];
-  state?: Record<string, unknown>;
-  enabled?: boolean;
-  recipe?: boolean;
-  actions?: RecipeInfo["actions"];
-  params?: Record<string, unknown>;
-  equipments?: EquipmentWithDetails[];
-} = {}) {
+function seed(
+  options: {
+    tile?: RecipeInfo["tile"];
+    state?: Record<string, unknown>;
+    enabled?: boolean;
+    recipe?: boolean;
+    actions?: RecipeInfo["actions"];
+    params?: Record<string, unknown>;
+    equipments?: EquipmentWithDetails[];
+  } = {},
+) {
   const recipe: RecipeInfo = {
     id: "delivery-gate",
     name: "Delivery Gate",

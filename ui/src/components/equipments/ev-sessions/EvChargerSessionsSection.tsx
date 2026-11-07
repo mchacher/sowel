@@ -80,9 +80,7 @@ export function EvChargerSessionsSection({
   return (
     <div className="card p-4 mb-6 flex flex-col gap-3">
       <div className="flex items-center justify-between gap-2">
-        <h3 className="text-body font-semibold text-text">
-          {t("equipments.evSessions.sessions")}
-        </h3>
+        <h3 className="text-body font-semibold text-text">{t("equipments.evSessions.sessions")}</h3>
         <EvMonthNav month={month} onChange={setMonth} />
       </div>
 

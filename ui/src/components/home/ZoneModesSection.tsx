@@ -1,11 +1,27 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
-import { Layers, ToggleLeft, ToggleRight, Settings, Trash2, X, Pencil, Check, ChevronUp, ChevronDown } from "lucide-react";
+import {
+  Layers,
+  ToggleLeft,
+  ToggleRight,
+  Settings,
+  Trash2,
+  X,
+  Pencil,
+  Check,
+  ChevronUp,
+  ChevronDown,
+} from "lucide-react";
 import { useModes } from "../../store/useModes";
 import { useEquipments } from "../../store/useEquipments";
 import { useRecipes } from "../../store/useRecipes";
 import { setModeImpact, removeModeImpact } from "../../api";
-import type { ModeWithDetails, ZoneModeImpactAction, EquipmentWithDetails, OrderBindingWithDetails } from "../../types";
+import type {
+  ModeWithDetails,
+  ZoneModeImpactAction,
+  EquipmentWithDetails,
+  OrderBindingWithDetails,
+} from "../../types";
 import { recipeName } from "../../lib/recipe-i18n";
 import { brightnessPercent, brightnessScale } from "../../lib/brightness";
 import { formatPercent, formatWithUnit } from "../../lib/format";
@@ -44,13 +60,13 @@ export function ZoneModesSection({ zoneId }: ZoneModesSectionProps) {
   // Only modes with impacts configured for this zone
   const configuredModes = useMemo(
     () => modes.filter((m) => m.impacts.some((imp) => imp.zoneId === zoneId)),
-    [modes, zoneId]
+    [modes, zoneId],
   );
 
   // Modes available to add (no impacts for this zone yet)
   const unconfiguredModes = useMemo(
     () => modes.filter((m) => !m.impacts.some((imp) => imp.zoneId === zoneId)),
-    [modes, zoneId]
+    [modes, zoneId],
   );
 
   const addingMode = addingModeId ? modes.find((m) => m.id === addingModeId) : null;
@@ -77,9 +93,7 @@ export function ZoneModesSection({ zoneId }: ZoneModesSectionProps) {
         label={t("modes.title")}
         solo={configuredModes.length === 0 && !addingMode}
         count={
-          activeCount > 0
-            ? t("modes.activeCount", { count: activeCount })
-            : configuredModes.length
+          activeCount > 0 ? t("modes.activeCount", { count: activeCount }) : configuredModes.length
         }
         action={
           unconfiguredModes.length > 0 && !addingMode ? (
@@ -97,9 +111,17 @@ export function ZoneModesSection({ zoneId }: ZoneModesSectionProps) {
                       className="w-full text-left px-3 py-1.5 text-caption text-text hover:bg-border-light/60 transition-colors flex items-center gap-2"
                     >
                       {m.active ? (
-                        <ToggleRight size={12} strokeWidth={1.5} className="text-primary flex-shrink-0" />
+                        <ToggleRight
+                          size={12}
+                          strokeWidth={1.5}
+                          className="text-primary flex-shrink-0"
+                        />
                       ) : (
-                        <ToggleLeft size={12} strokeWidth={1.5} className="text-text-tertiary flex-shrink-0" />
+                        <ToggleLeft
+                          size={12}
+                          strokeWidth={1.5}
+                          className="text-text-tertiary flex-shrink-0"
+                        />
                       )}
                       {m.name}
                     </button>
@@ -114,12 +136,7 @@ export function ZoneModesSection({ zoneId }: ZoneModesSectionProps) {
       {(configuredModes.length > 0 || addingMode) && (
         <div className="slice-rows">
           {configuredModes.map((mode) => (
-            <ModeRow
-              key={mode.id}
-              mode={mode}
-              zoneId={zoneId}
-              onRefresh={fetchModes}
-            />
+            <ModeRow key={mode.id} mode={mode} zoneId={zoneId} onRefresh={fetchModes} />
           ))}
           {addingMode && (
             <ModeRow
@@ -193,9 +210,7 @@ function ModeRow({
         <div className="min-w-0">
           <div
             className={`text-body leading-[1.25] truncate ${
-              mode.active
-                ? "font-semibold text-[var(--green-700)]"
-                : "font-medium text-text"
+              mode.active ? "font-semibold text-[var(--green-700)]" : "font-medium text-text"
             }`}
           >
             {mode.name}
@@ -204,9 +219,7 @@ function ModeRow({
             {actionCount > 0
               ? t("modes.actionCount", { count: actionCount })
               : t("modes.noImpacts")}
-            {mode.active && (
-              <span className="ml-1.5">· {t("modes.globallyActive")}</span>
-            )}
+            {mode.active && <span className="ml-1.5">· {t("modes.globallyActive")}</span>}
           </div>
         </div>
 
@@ -218,7 +231,7 @@ function ModeRow({
             </span>
           )}
           <button
-            onClick={() => editing ? handleClose() : setEditing(true)}
+            onClick={() => (editing ? handleClose() : setEditing(true))}
             className="p-1.5 rounded-sm text-text-tertiary hover:text-text hover:bg-border-light/60 transition-colors duration-150"
             title={t("modes.configure")}
           >
@@ -228,13 +241,7 @@ function ModeRow({
       </div>
 
       {/* Inline config panel */}
-      {editing && (
-        <ImpactEditor
-          mode={mode}
-          zoneId={zoneId}
-          onRefresh={onRefresh}
-        />
-      )}
+      {editing && <ImpactEditor mode={mode} zoneId={zoneId} onRefresh={onRefresh} />}
     </div>
   );
 }
@@ -260,12 +267,12 @@ function ImpactEditor({
 
   const zoneEquipments = useMemo(
     () => equipments.filter((eq) => eq.zoneId === zoneId),
-    [equipments, zoneId]
+    [equipments, zoneId],
   );
 
   const zoneInstances = useMemo(
     () => instances.filter((inst) => inst.params.zone === zoneId),
-    [instances, zoneId]
+    [instances, zoneId],
   );
 
   const resolveRecipeName = (recipeId: string): string => {
@@ -359,34 +366,70 @@ function formatOrderLabel(
   // Spec 190 — a door takes the same Open / Close orders as a shutter.
   if (eq?.type === "shutter" || eq?.type === "door") {
     if (action.orderAlias === "state" && action.value === "OPEN")
-      return <>{name} <ChevronUp size={10} strokeWidth={1.5} className="inline -mt-0.5" /> {t("controls.open")}</>;
+      return (
+        <>
+          {name} <ChevronUp size={10} strokeWidth={1.5} className="inline -mt-0.5" />{" "}
+          {t("controls.open")}
+        </>
+      );
     if (action.orderAlias === "state" && action.value === "CLOSE")
-      return <>{name} <ChevronDown size={10} strokeWidth={1.5} className="inline -mt-0.5" /> {t("controls.close")}</>;
+      return (
+        <>
+          {name} <ChevronDown size={10} strokeWidth={1.5} className="inline -mt-0.5" />{" "}
+          {t("controls.close")}
+        </>
+      );
     if (action.orderAlias === "position")
-      return <>{name} → {t("controls.position")} {formatPercent(Number(action.value))}</>;
+      return (
+        <>
+          {name} → {t("controls.position")} {formatPercent(Number(action.value))}
+        </>
+      );
   }
 
   if (eq?.type?.startsWith("light_")) {
-    if ((action.orderAlias === "state" && (action.value === "ON" || action.value === "OFF")) ||
-        (action.orderAlias === "turn_on" && typeof action.value === "boolean"))
-    {
+    if (
+      (action.orderAlias === "state" && (action.value === "ON" || action.value === "OFF")) ||
+      (action.orderAlias === "turn_on" && typeof action.value === "boolean")
+    ) {
       const on = action.value === "ON" || action.value === true;
-      return <>{name} → {on ? t("controls.on") : t("controls.off")}</>;
+      return (
+        <>
+          {name} → {on ? t("controls.on") : t("controls.off")}
+        </>
+      );
     }
     if (action.orderAlias === "brightness") {
       const scale = brightnessScale(eq.orderBindings.find((o) => o.alias === "brightness"));
-      return <>{name} → {t("controls.brightness")} {formatPercent(brightnessPercent(Number(action.value), scale))}</>;
+      return (
+        <>
+          {name} → {t("controls.brightness")}{" "}
+          {formatPercent(brightnessPercent(Number(action.value), scale))}
+        </>
+      );
     }
   }
 
   if (action.orderAlias === "state" && (action.value === "ON" || action.value === "OFF")) {
-    return <>{name} → {action.value === "ON" ? t("controls.on") : t("controls.off")}</>;
+    return (
+      <>
+        {name} → {action.value === "ON" ? t("controls.on") : t("controls.off")}
+      </>
+    );
   }
   if (action.orderAlias === "turn_on" && typeof action.value === "boolean") {
-    return <>{name} → {action.value ? t("controls.on") : t("controls.off")}</>;
+    return (
+      <>
+        {name} → {action.value ? t("controls.on") : t("controls.off")}
+      </>
+    );
   }
 
-  return <>{name} → {action.orderAlias} = {JSON.stringify(action.value)}</>;
+  return (
+    <>
+      {name} → {action.orderAlias} = {JSON.stringify(action.value)}
+    </>
+  );
 }
 
 function ActionRow({
@@ -410,9 +453,8 @@ function ActionRow({
   const [editValue, setEditValue] = useState("");
   const [editEnabled, setEditEnabled] = useState(true);
 
-  const eq = action.type === "order"
-    ? equipments.find((e) => e.id === action.equipmentId)
-    : undefined;
+  const eq =
+    action.type === "order" ? equipments.find((e) => e.id === action.equipmentId) : undefined;
 
   const startEdit = () => {
     if (action.type === "order") {
@@ -434,7 +476,11 @@ function ActionRow({
     if (!onUpdate) return;
     if (action.type === "order") {
       let parsedValue: unknown;
-      try { parsedValue = JSON.parse(editValue); } catch { parsedValue = editValue; }
+      try {
+        parsedValue = JSON.parse(editValue);
+      } catch {
+        parsedValue = editValue;
+      }
       onUpdate({ ...action, orderAlias: editAlias, value: parsedValue });
     } else if (action.type === "recipe_toggle") {
       onUpdate({ ...action, enabled: editEnabled });
@@ -460,15 +506,25 @@ function ActionRow({
       <div className="rounded-sm border border-primary/20 bg-primary/5 p-1.5 space-y-1.5">
         <div className="text-micro text-text-tertiary truncate">
           {action.type === "order"
-            ? eq?.name ?? action.equipmentId
-            : (() => { const inst = instances.find((i) => i.id === (action as { instanceId: string }).instanceId); return inst ? resolveRecipeName(inst.recipeId) : (action as { instanceId: string }).instanceId; })()}
+            ? (eq?.name ?? action.equipmentId)
+            : (() => {
+                const inst = instances.find(
+                  (i) => i.id === (action as { instanceId: string }).instanceId,
+                );
+                return inst
+                  ? resolveRecipeName(inst.recipeId)
+                  : (action as { instanceId: string }).instanceId;
+              })()}
         </div>
         {action.type === "order" && eq && (
           <SmartOrderPicker
             equipment={eq}
             orderAlias={editAlias}
             orderValue={editValue}
-            onSelect={(alias, value) => { setEditAlias(alias); setEditValue(value); }}
+            onSelect={(alias, value) => {
+              setEditAlias(alias);
+              setEditValue(value);
+            }}
             onChangeValue={setEditValue}
           />
         )}
@@ -485,7 +541,9 @@ function ActionRow({
             <button
               onClick={() => setEditEnabled(true)}
               className={`inline-flex items-center justify-center px-2 py-[3px] text-micro font-medium transition-all cursor-pointer border border-border-light rounded-l-sm ${
-                editEnabled ? "bg-primary/10 text-primary border-primary/30 z-10 relative" : "text-text-tertiary hover:text-text-secondary hover:bg-border-light/40"
+                editEnabled
+                  ? "bg-primary/10 text-primary border-primary/30 z-10 relative"
+                  : "text-text-tertiary hover:text-text-secondary hover:bg-border-light/40"
               }`}
             >
               {t("common.on")}
@@ -493,7 +551,9 @@ function ActionRow({
             <button
               onClick={() => setEditEnabled(false)}
               className={`inline-flex items-center justify-center px-2 py-[3px] text-micro font-medium transition-all cursor-pointer border border-l-0 border-border-light rounded-r-sm ${
-                !editEnabled ? "bg-primary/10 text-primary border-primary/30 z-10 relative" : "text-text-tertiary hover:text-text-secondary hover:bg-border-light/40"
+                !editEnabled
+                  ? "bg-primary/10 text-primary border-primary/30 z-10 relative"
+                  : "text-text-tertiary hover:text-text-secondary hover:bg-border-light/40"
               }`}
             >
               {t("common.off")}
@@ -545,9 +605,18 @@ function OrderValueControl({
 }) {
   const { t } = useTranslation();
   const seg = (active: boolean, pos: "first" | "mid" | "last" | "solo") => {
-    const r = pos === "first" ? "rounded-l-sm" : pos === "last" ? "rounded-r-sm" : pos === "solo" ? "rounded-sm" : "";
+    const r =
+      pos === "first"
+        ? "rounded-l-sm"
+        : pos === "last"
+          ? "rounded-r-sm"
+          : pos === "solo"
+            ? "rounded-sm"
+            : "";
     return `inline-flex items-center justify-center px-2 py-[3px] text-micro font-medium transition-all cursor-pointer border border-l-0 first:border-l border-border-light ${r} ${
-      active ? "bg-primary/10 text-primary border-primary/30 z-10 relative" : "text-text-tertiary hover:text-text-secondary hover:bg-border-light/40"
+      active
+        ? "bg-primary/10 text-primary border-primary/30 z-10 relative"
+        : "text-text-tertiary hover:text-text-secondary hover:bg-border-light/40"
     }`;
   };
 
@@ -556,7 +625,11 @@ function OrderValueControl({
     return (
       <div className="inline-flex">
         {["true", "false"].map((v, i, arr) => (
-          <button key={v} onClick={() => onChange(v)} className={seg(value === v, arr.length === 1 ? "solo" : i === 0 ? "first" : "last")}>
+          <button
+            key={v}
+            onClick={() => onChange(v)}
+            className={seg(value === v, arr.length === 1 ? "solo" : i === 0 ? "first" : "last")}
+          >
             {v === "true" ? t("controls.on") : t("controls.off")}
           </button>
         ))}
@@ -570,7 +643,14 @@ function OrderValueControl({
     return (
       <div className="inline-flex">
         {filteredEnumValues.map((v, i, arr) => (
-          <button key={v} onClick={() => onChange(JSON.stringify(v))} className={seg(value === JSON.stringify(v), arr.length === 1 ? "solo" : i === 0 ? "first" : i === arr.length - 1 ? "last" : "mid")}>
+          <button
+            key={v}
+            onClick={() => onChange(JSON.stringify(v))}
+            className={seg(
+              value === JSON.stringify(v),
+              arr.length === 1 ? "solo" : i === 0 ? "first" : i === arr.length - 1 ? "last" : "mid",
+            )}
+          >
             {v}
           </button>
         ))}
@@ -646,17 +726,42 @@ function SmartOrderPicker({
     orderAlias === alias && (val === undefined || orderValue === val);
 
   const seg = (active: boolean, pos: "first" | "mid" | "last" | "solo") => {
-    const r = pos === "first" ? "rounded-l-sm" : pos === "last" ? "rounded-r-sm" : pos === "solo" ? "rounded-sm" : "";
+    const r =
+      pos === "first"
+        ? "rounded-l-sm"
+        : pos === "last"
+          ? "rounded-r-sm"
+          : pos === "solo"
+            ? "rounded-sm"
+            : "";
     return `inline-flex items-center justify-center gap-0.5 px-2 py-[3px] text-micro font-medium transition-all cursor-pointer border border-l-0 first:border-l border-border-light ${r} ${
-      active ? "bg-primary/10 text-primary border-primary/30 z-10 relative" : "text-text-tertiary hover:text-text-secondary hover:bg-border-light/40"
+      active
+        ? "bg-primary/10 text-primary border-primary/30 z-10 relative"
+        : "text-text-tertiary hover:text-text-secondary hover:bg-border-light/40"
     }`;
   };
 
   if (isShutter) {
     const shutterOptions: { alias: string; val?: string; label: React.ReactNode }[] = [];
     if (stateOrder) {
-      shutterOptions.push({ alias: "state", val: '"OPEN"', label: <><ChevronUp size={10} strokeWidth={1.5} /> {t("controls.open")}</> });
-      shutterOptions.push({ alias: "state", val: '"CLOSE"', label: <><ChevronDown size={10} strokeWidth={1.5} /> {t("controls.close")}</> });
+      shutterOptions.push({
+        alias: "state",
+        val: '"OPEN"',
+        label: (
+          <>
+            <ChevronUp size={10} strokeWidth={1.5} /> {t("controls.open")}
+          </>
+        ),
+      });
+      shutterOptions.push({
+        alias: "state",
+        val: '"CLOSE"',
+        label: (
+          <>
+            <ChevronDown size={10} strokeWidth={1.5} /> {t("controls.close")}
+          </>
+        ),
+      });
     }
     if (positionOrder) {
       shutterOptions.push({ alias: "position", label: t("controls.position") });
@@ -668,7 +773,16 @@ function SmartOrderPicker({
             <button
               key={`${opt.alias}-${opt.val ?? ""}`}
               onClick={() => onSelect(opt.alias, opt.val ?? "50")}
-              className={seg(isActive(opt.alias, opt.val), shutterOptions.length === 1 ? "solo" : i === 0 ? "first" : i === shutterOptions.length - 1 ? "last" : "mid")}
+              className={seg(
+                isActive(opt.alias, opt.val),
+                shutterOptions.length === 1
+                  ? "solo"
+                  : i === 0
+                    ? "first"
+                    : i === shutterOptions.length - 1
+                      ? "last"
+                      : "mid",
+              )}
             >
               {opt.label}
             </button>
@@ -684,7 +798,9 @@ function SmartOrderPicker({
               onChange={(e) => onChangeValue(e.target.value)}
               className="flex-1"
             />
-            <span className="text-micro text-text-secondary tabular-nums min-w-7 text-right">{formatPercent(Number(orderValue) || 50)}</span>
+            <span className="text-micro text-text-secondary tabular-nums min-w-7 text-right">
+              {formatPercent(Number(orderValue) || 50)}
+            </span>
           </div>
         )}
       </div>
@@ -698,7 +814,11 @@ function SmartOrderPicker({
       lightOptions.push({ alias: toggleAlias, val: offVal, label: t("controls.off") });
     }
     if (brightnessOrder) {
-      lightOptions.push({ alias: "brightness", val: String(brightnessRange.max), label: t("controls.brightness") });
+      lightOptions.push({
+        alias: "brightness",
+        val: String(brightnessRange.max),
+        label: t("controls.brightness"),
+      });
     }
     return (
       <div className="space-y-1.5">
@@ -707,7 +827,16 @@ function SmartOrderPicker({
             <button
               key={`${opt.alias}-${opt.val}`}
               onClick={() => onSelect(opt.alias, opt.val)}
-              className={seg(isActive(opt.alias, opt.val), lightOptions.length === 1 ? "solo" : i === 0 ? "first" : i === lightOptions.length - 1 ? "last" : "mid")}
+              className={seg(
+                isActive(opt.alias, opt.val),
+                lightOptions.length === 1
+                  ? "solo"
+                  : i === 0
+                    ? "first"
+                    : i === lightOptions.length - 1
+                      ? "last"
+                      : "mid",
+              )}
             >
               {opt.label}
             </button>
@@ -735,10 +864,16 @@ function SmartOrderPicker({
   if (toggleAlias && orders.length <= 2) {
     return (
       <div className="inline-flex">
-        <button onClick={() => onSelect(toggleAlias, onVal)} className={seg(isActive(toggleAlias, onVal), "first")}>
+        <button
+          onClick={() => onSelect(toggleAlias, onVal)}
+          className={seg(isActive(toggleAlias, onVal), "first")}
+        >
           ON
         </button>
-        <button onClick={() => onSelect(toggleAlias, offVal)} className={seg(isActive(toggleAlias, offVal), "last")}>
+        <button
+          onClick={() => onSelect(toggleAlias, offVal)}
+          className={seg(isActive(toggleAlias, offVal), "last")}
+        >
           OFF
         </button>
       </div>
@@ -752,7 +887,16 @@ function SmartOrderPicker({
           <button
             key={order.alias}
             onClick={() => onSelect(order.alias, "")}
-            className={seg(isActive(order.alias), orders.length === 1 ? "solo" : i === 0 ? "first" : i === orders.length - 1 ? "last" : "mid")}
+            className={seg(
+              isActive(order.alias),
+              orders.length === 1
+                ? "solo"
+                : i === 0
+                  ? "first"
+                  : i === orders.length - 1
+                    ? "last"
+                    : "mid",
+            )}
           >
             {order.alias}
           </button>
@@ -794,7 +938,11 @@ function AddActionForm({
     try {
       if (actionType === "order") {
         let parsedValue: unknown;
-        try { parsedValue = JSON.parse(orderValue); } catch { parsedValue = orderValue; }
+        try {
+          parsedValue = JSON.parse(orderValue);
+        } catch {
+          parsedValue = orderValue;
+        }
         await onAdd({ type: "order", equipmentId, orderAlias, value: parsedValue });
         setOrderAlias("");
         setOrderValue("");
@@ -808,9 +956,7 @@ function AddActionForm({
     }
   };
 
-  const canAdd = actionType === "order"
-    ? equipmentId && orderAlias && orderValue
-    : instanceId;
+  const canAdd = actionType === "order" ? equipmentId && orderAlias && orderValue : instanceId;
 
   const tab = (active: boolean) =>
     `px-2 py-1 text-micro font-medium transition-colors border-b-2 ${
@@ -826,7 +972,10 @@ function AddActionForm({
         <button onClick={() => setActionType("order")} className={tab(actionType === "order")}>
           {t("modes.actionType.order")}
         </button>
-        <button onClick={() => setActionType("recipe_toggle")} className={tab(actionType === "recipe_toggle")}>
+        <button
+          onClick={() => setActionType("recipe_toggle")}
+          className={tab(actionType === "recipe_toggle")}
+        >
           {t("modes.actionType.recipe_toggle")}
         </button>
       </div>
@@ -836,20 +985,31 @@ function AddActionForm({
           <>
             <select
               value={equipmentId}
-              onChange={(e) => { setEquipmentId(e.target.value); setOrderAlias(""); setOrderValue(""); }}
+              onChange={(e) => {
+                setEquipmentId(e.target.value);
+                setOrderAlias("");
+                setOrderValue("");
+              }}
               className="w-full px-1.5 py-1 text-micro border border-border bg-surface rounded-sm text-text"
             >
               <option value="">{t("modes.form.selectEquipment")}</option>
-              {equipments.filter((eq) => eq.orderBindings.length > 0).map((eq) => (
-                <option key={eq.id} value={eq.id}>{eq.name}</option>
-              ))}
+              {equipments
+                .filter((eq) => eq.orderBindings.length > 0)
+                .map((eq) => (
+                  <option key={eq.id} value={eq.id}>
+                    {eq.name}
+                  </option>
+                ))}
             </select>
             {selectedEquipment && (
               <SmartOrderPicker
                 equipment={selectedEquipment}
                 orderAlias={orderAlias}
                 orderValue={orderValue}
-                onSelect={(alias, value) => { setOrderAlias(alias); setOrderValue(value); }}
+                onSelect={(alias, value) => {
+                  setOrderAlias(alias);
+                  setOrderValue(value);
+                }}
                 onChangeValue={setOrderValue}
               />
             )}
@@ -865,7 +1025,9 @@ function AddActionForm({
             >
               <option value="">{t("modes.form.selectRecipe")}</option>
               {instances.map((inst) => (
-                <option key={inst.id} value={inst.id}>{resolveRecipeName(inst.recipeId)}</option>
+                <option key={inst.id} value={inst.id}>
+                  {resolveRecipeName(inst.recipeId)}
+                </option>
               ))}
             </select>
             {instanceId && (
@@ -873,7 +1035,9 @@ function AddActionForm({
                 <button
                   onClick={() => setEnabled(true)}
                   className={`inline-flex items-center justify-center px-2 py-[3px] text-micro font-medium transition-all cursor-pointer border border-border-light rounded-l-sm ${
-                    enabled ? "bg-primary/10 text-primary border-primary/30 z-10 relative" : "text-text-tertiary hover:text-text-secondary hover:bg-border-light/40"
+                    enabled
+                      ? "bg-primary/10 text-primary border-primary/30 z-10 relative"
+                      : "text-text-tertiary hover:text-text-secondary hover:bg-border-light/40"
                   }`}
                 >
                   {t("common.on")}
@@ -881,7 +1045,9 @@ function AddActionForm({
                 <button
                   onClick={() => setEnabled(false)}
                   className={`inline-flex items-center justify-center px-2 py-[3px] text-micro font-medium transition-all cursor-pointer border border-l-0 border-border-light rounded-r-sm ${
-                    !enabled ? "bg-primary/10 text-primary border-primary/30 z-10 relative" : "text-text-tertiary hover:text-text-secondary hover:bg-border-light/40"
+                    !enabled
+                      ? "bg-primary/10 text-primary border-primary/30 z-10 relative"
+                      : "text-text-tertiary hover:text-text-secondary hover:bg-border-light/40"
                   }`}
                 >
                   {t("common.off")}
@@ -910,4 +1076,3 @@ function AddActionForm({
     </div>
   );
 }
-

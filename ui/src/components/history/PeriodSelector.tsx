@@ -1,9 +1,4 @@
-import {
-  canGoForwardPeriod,
-  periodTodayStr,
-  shiftPeriod,
-  type Period,
-} from "./history-utils";
+import { canGoForwardPeriod, periodTodayStr, shiftPeriod, type Period } from "./history-utils";
 import { PeriodSelector as SharedPeriodSelector } from "../PeriodSelector";
 
 interface PeriodSelectorProps {
@@ -18,7 +13,12 @@ interface PeriodSelectorProps {
  * selector (issue #730). The markup and the date formatting used to live here,
  * duplicated in an untranslated form under `energy/`.
  */
-export function PeriodSelector({ period, date, onPeriodChange, onDateChange }: PeriodSelectorProps) {
+export function PeriodSelector({
+  period,
+  date,
+  onPeriodChange,
+  onDateChange,
+}: PeriodSelectorProps) {
   const today = periodTodayStr();
 
   return (

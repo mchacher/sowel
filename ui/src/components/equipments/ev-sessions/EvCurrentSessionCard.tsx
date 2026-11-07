@@ -12,7 +12,13 @@ import { ShareBar } from "./EvShareBar";
 import { EV_CHARGER_ALIASES, EV_VEHICLE_STATE_CATEGORY } from "../../../lib/ev-charger-contract";
 import { electricVehicleStateOf } from "../electricVehicleState";
 import { evChargerStateOf } from "../evChargerState";
-import { powerLabel, energyLabel, liveState, type LiveInputs, timeLabel } from "./evSessionsDisplay";
+import {
+  powerLabel,
+  energyLabel,
+  liveState,
+  type LiveInputs,
+  timeLabel,
+} from "./evSessionsDisplay";
 
 /** The shared readers' view of the charger and the car, for `liveState`. */
 function liveInputs(

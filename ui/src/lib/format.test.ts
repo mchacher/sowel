@@ -241,7 +241,11 @@ describe("formatWithUnit — a duration in seconds (spec 196, slice 3b)", () => 
 
 describe("formatCurrency — fixed decimals", () => {
   table([
-    ["price per kWh, three decimals", () => formatCurrency(0.2068, { ...fr, decimals: 3 }), "0,207␣€"],
+    [
+      "price per kWh, three decimals",
+      () => formatCurrency(0.2068, { ...fr, decimals: 3 }),
+      "0,207␣€",
+    ],
     ["default two decimals", () => formatCurrency(2.718, fr), "2,72␣€"],
   ]);
 });

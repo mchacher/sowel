@@ -251,7 +251,11 @@ function LiveDiagram({
       <SectionHeader icon={Waypoints} title={t("energy.live.diagram.title")} />
       <FlowDiagram
         // The energy colours tint the tag; its words are in ink (#1126).
-        tag={{ text: t(`energy.live.status.${status}`), color: statusColor, ink: "var(--color-text)" }}
+        tag={{
+          text: t(`energy.live.status.${status}`),
+          color: statusColor,
+          ink: "var(--color-text)",
+        }}
         links={[
           {
             edge: "leftToFocal",
@@ -313,7 +317,9 @@ function LiveDiagram({
             dimmed: Math.abs(grid) < 5,
             value: gridValue.value,
             unit: gridValue.unit,
-            valuePrefix: <span className="text-body sm:text-title font-semibold">{exporting ? "↓" : "↑"}</span>,
+            valuePrefix: (
+              <span className="text-body sm:text-title font-semibold">{exporting ? "↓" : "↑"}</span>
+            ),
             icon: <GridPylonIcon className="w-9 h-9 sm:w-10 sm:h-10" />,
           },
           {

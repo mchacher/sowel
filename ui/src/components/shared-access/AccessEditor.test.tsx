@@ -25,7 +25,14 @@ const state: SharedAccessState = {
   publicUrl: "https://acces.example.org/access/",
   accesses: [],
   gates: [
-    { equipmentId: "entree", name: "Portail d'entrée", armed: true, people: 1, commandValues: [], hasCommand: true },
+    {
+      equipmentId: "entree",
+      name: "Portail d'entrée",
+      armed: true,
+      people: 1,
+      commandValues: [],
+      hasCommand: true,
+    },
     {
       equipmentId: "garage",
       name: "Garage",
@@ -119,7 +126,9 @@ describe("AccessEditor", () => {
     // 3 Oct 16:20 → 7 Oct 11:00; the start moves to 10 Oct.
     fireEvent.change(screen.getByLabelText("From — day"), { target: { value: "2026-10-10" } });
     expect(screen.getByDisplayValue("2026-10-14")).toBeTruthy();
-    expect((screen.getByRole("combobox", { name: "To — hour" }) as HTMLSelectElement).value).toBe("11");
+    expect((screen.getByRole("combobox", { name: "To — hour" }) as HTMLSelectElement).value).toBe(
+      "11",
+    );
   });
 
   describe("a period with one bound only (the API takes each bound on its own)", () => {
@@ -201,29 +210,51 @@ describe("AccessEditor", () => {
 
   it("lists the gate it was opened on, with « open » for a gate with values", () => {
     renderEditor({ kind: "create", gateIds: ["garage"] });
-    const select = screen.getByRole("combobox", { name: "What a press on Garage sends" }) as HTMLSelectElement;
+    const select = screen.getByRole("combobox", {
+      name: "What a press on Garage sends",
+    }) as HTMLSelectElement;
     expect(select.value).toBe("open");
-    expect((screen.getByRole("checkbox", { name: /With a code/ }) as HTMLInputElement).checked).toBe(true);
+    expect(
+      (screen.getByRole("checkbox", { name: /With a code/ }) as HTMLInputElement).checked,
+    ).toBe(true);
   });
 
-  it("offers no select for a single value (`[\"pulse\"]`) and sends no value", async () => {
+  it('offers no select for a single value (`["pulse"]`) and sends no value', async () => {
     useSharedAccess.setState({ enabled: true });
-    const pulse = { ...state, gates: [...state.gates, {
-      equipmentId: "portail", name: "Portail LoRa", armed: true, people: 0,
-      commandValues: ["pulse"], hasCommand: true,
-    }] };
+    const pulse = {
+      ...state,
+      gates: [
+        ...state.gates,
+        {
+          equipmentId: "portail",
+          name: "Portail LoRa",
+          armed: true,
+          people: 0,
+          commandValues: ["pulse"],
+          hasCommand: true,
+        },
+      ],
+    };
     vi.mocked(api.createSharedAccess).mockResolvedValueOnce({ ...withPeriod, label: "Léa" });
     render(
       <MemoryRouter>
-        <AccessEditor mode={{ kind: "create", gateIds: ["portail"] }} state={pulse} onClose={vi.fn()} />
+        <AccessEditor
+          mode={{ kind: "create", gateIds: ["portail"] }}
+          state={pulse}
+          onClose={vi.fn()}
+        />
       </MemoryRouter>,
     );
-    expect(screen.queryByRole("combobox", { name: /What a press on Portail LoRa sends/ })).toBeNull();
+    expect(
+      screen.queryByRole("combobox", { name: /What a press on Portail LoRa sends/ }),
+    ).toBeNull();
     expect(screen.getByText("impulse: what its own button sends")).toBeTruthy();
     await userEvent.type(screen.getByLabelText("Name"), "Léa");
     await userEvent.click(screen.getByRole("button", { name: "Save" }));
     await waitFor(() => expect(api.createSharedAccess).toHaveBeenCalled());
-    expect(vi.mocked(api.createSharedAccess).mock.calls[0][0].gates).toEqual([{ equipmentId: "portail" }]);
+    expect(vi.mocked(api.createSharedAccess).mock.calls[0][0].gates).toEqual([
+      { equipmentId: "portail" },
+    ]);
   });
 
   it("shows the refusal next to the control, before sending", async () => {
@@ -276,7 +307,9 @@ describe("AccessEditor", () => {
     expect(screen.queryByRole("button", { name: "Friday" })).toBeNull();
 
     await userEvent.click(screen.getByRole("button", { name: "Choose days" }));
-    expect(screen.getByRole("button", { name: "Friday" }).getAttribute("aria-pressed")).toBe("true");
+    expect(screen.getByRole("button", { name: "Friday" }).getAttribute("aria-pressed")).toBe(
+      "true",
+    );
     await userEvent.click(screen.getByRole("button", { name: "Weekend" }));
     await userEvent.click(screen.getByRole("button", { name: "Saturday" })); // leaves Sunday
     expect(screen.getByText("Every Sunday")).toBeTruthy();

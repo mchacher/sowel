@@ -110,7 +110,9 @@ export function gatePrompt(
   const gateState = gateStateOf(equipment);
   const action = gateActionOf(value, gateState);
   const rawValue = value && action === "operate" ? value : undefined;
-  const subtitle = [zoneName, rawValue, t(`controls.gate.${gateState}`)].filter(Boolean).join(" · ");
+  const subtitle = [zoneName, rawValue, t(`controls.gate.${gateState}`)]
+    .filter(Boolean)
+    .join(" · ");
   return {
     ...gateConfirmTexts(action, equipment.name, t),
     subtitle: subtitle || undefined,

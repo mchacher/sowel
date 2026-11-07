@@ -14,8 +14,6 @@ import { useEquipmentState } from "./useEquipmentState";
 import { TYPE_LABELS } from "./equipment-type-meta";
 import { equipmentLinkState } from "../../lib/equipment-origin";
 
-
-
 interface EquipmentCardProps {
   equipment: EquipmentWithDetails;
   onExecuteOrder: (equipmentId: string, alias: string, value: unknown) => Promise<void>;
@@ -82,7 +80,9 @@ export function EquipmentCard({ equipment, onExecuteOrder }: EquipmentCardProps)
           {t(TYPE_LABELS[equipment.type])}
           {equipment.dataBindings.length === 0 && ` · ${t("equipments.noBindings")}`}
           {!equipment.enabled && ` · ${t("common.disabled")}`}
-          {equipment.type === "display" && equipment.enabled && displayBrightnessSummary(equipment, t) &&
+          {equipment.type === "display" &&
+            equipment.enabled &&
+            displayBrightnessSummary(equipment, t) &&
             ` · ${displayBrightnessSummary(equipment, t)}`}
         </div>
       </Link>

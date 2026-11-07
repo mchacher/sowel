@@ -1,15 +1,7 @@
 import { useEffect, useMemo, useState, useCallback } from "react";
 import { useTranslation } from "react-i18next";
 import { useParams, useNavigate } from "react-router-dom";
-import {
-  Loader2,
-  Home,
-  ChevronRight,
-  Plus,
-  X,
-  Layers,
-  DoorOpen,
-} from "lucide-react";
+import { Loader2, Home, ChevronRight, Plus, X, Layers, DoorOpen } from "lucide-react";
 import { useZones } from "../store/useZones";
 import { useEquipments } from "../store/useEquipments";
 import { useAuth } from "../store/useAuth";
@@ -28,7 +20,11 @@ import { ZoneModesSection } from "../components/home/ZoneModesSection";
 import { ActivityPanel } from "../components/zones/ActivityPanel";
 import { EquipmentForm } from "../components/equipments/EquipmentForm";
 import { autoCreateBindings } from "../components/equipments/bindingUtils";
-import { buildBoundOrderKeysByDevice, buildBoundDataKeysByDevice, allSupportStop } from "../lib/binding-utils";
+import {
+  buildBoundOrderKeysByDevice,
+  buildBoundDataKeysByDevice,
+  allSupportStop,
+} from "../lib/binding-utils";
 import { useWsSubscription } from "../hooks/useWsSubscription";
 import type { EquipmentType, ZoneWithChildren } from "../types";
 
@@ -111,17 +107,20 @@ export function HomePage() {
   }, [currentZone, equipments]);
   const [commandLoading, setCommandLoading] = useState<ZoneOrder | null>(null);
 
-  const handleZoneCommand = useCallback(async (orderKey: ZoneOrder) => {
-    if (!zoneId) return;
-    setCommandLoading(orderKey);
-    try {
-      await executeZoneOrder(zoneId, orderKey);
-    } catch {
-      // Silently handle — the user sees the result via live updates
-    } finally {
-      setCommandLoading(null);
-    }
-  }, [zoneId]);
+  const handleZoneCommand = useCallback(
+    async (orderKey: ZoneOrder) => {
+      if (!zoneId) return;
+      setCommandLoading(orderKey);
+      try {
+        await executeZoneOrder(zoneId, orderKey);
+      } catch {
+        // Silently handle — the user sees the result via live updates
+      } finally {
+        setCommandLoading(null);
+      }
+    },
+    [zoneId],
+  );
 
   const drawerOpen = useUiState((s) => s.zoneDrawerOpen);
   const closeDrawer = useUiState((s) => s.closeZoneDrawer);
@@ -156,7 +155,10 @@ export function HomePage() {
         <MobileZoneDrawer
           tree={tree}
           currentZoneId={zoneId}
-          onSelect={(id) => { navigate(`/home/${id}`); closeDrawer(); }}
+          onSelect={(id) => {
+            navigate(`/home/${id}`);
+            closeDrawer();
+          }}
           onClose={closeDrawer}
         />
       )}
@@ -172,7 +174,11 @@ export function HomePage() {
       {/* Strip pills + zone commands — visible on both mobile and desktop */}
       <div className="max-w-[1200px] mb-5">
         {zoneId && aggregationData[zoneId] && (
-          <ZoneAggregationPills data={aggregationData[zoneId]} zoneId={zoneId} historyEnabled={historyEnabled} />
+          <ZoneAggregationPills
+            data={aggregationData[zoneId]}
+            zoneId={zoneId}
+            historyEnabled={historyEnabled}
+          />
         )}
         {aggData && (aggData.lightsTotal > 0 || aggData.shuttersTotal > 0) && (
           <div className="mt-3">
@@ -195,17 +201,19 @@ export function HomePage() {
         <Panel
           title={t("equipments.title")}
           count={zoneEquipments.length > 0 ? zoneEquipments.length : undefined}
-          headerRight={isAdmin ? (
-            <button
-              type="button"
-              onClick={() => setShowEquipmentForm(true)}
-              className="w-8 h-8 inline-flex items-center justify-center rounded-sm border border-border bg-surface text-text-secondary hover:text-primary hover:border-primary transition-colors duration-150"
-              title={t("equipments.createEquipment")}
-              aria-label={t("equipments.createEquipment")}
-            >
-              <Plus size={16} strokeWidth={1.5} />
-            </button>
-          ) : undefined}
+          headerRight={
+            isAdmin ? (
+              <button
+                type="button"
+                onClick={() => setShowEquipmentForm(true)}
+                className="w-8 h-8 inline-flex items-center justify-center rounded-sm border border-border bg-surface text-text-secondary hover:text-primary hover:border-primary transition-colors duration-150"
+                title={t("equipments.createEquipment")}
+                aria-label={t("equipments.createEquipment")}
+              >
+                <Plus size={16} strokeWidth={1.5} />
+              </button>
+            ) : undefined
+          }
         >
           <ZoneEquipmentsView
             zoneName={currentZone.name}
@@ -237,8 +245,10 @@ export function HomePage() {
           zones={tree}
           excludeTypes={(() => {
             const exclude = new Set<EquipmentType>();
-            if (equipments.some((eq) => eq.type === "main_energy_meter")) exclude.add("main_energy_meter");
-            if (equipments.some((eq) => eq.type === "energy_production_meter")) exclude.add("energy_production_meter");
+            if (equipments.some((eq) => eq.type === "main_energy_meter"))
+              exclude.add("main_energy_meter");
+            if (equipments.some((eq) => eq.type === "energy_production_meter"))
+              exclude.add("energy_production_meter");
             return exclude;
           })()}
           boundOrderKeysByDevice={buildBoundOrderKeysByDevice(equipments)}
@@ -275,9 +285,7 @@ function NoZonesState() {
         <Home size={28} strokeWidth={1.5} className="text-text-tertiary" />
       </div>
       <h3 className="text-lead font-medium text-text mb-1">{t("home.welcome")}</h3>
-      <p className="text-small text-text-secondary max-w-[320px]">
-        {t("home.noZones")}
-      </p>
+      <p className="text-small text-text-secondary max-w-[320px]">{t("home.noZones")}</p>
     </div>
   );
 }
@@ -292,9 +300,7 @@ function ZoneNotFound() {
         <Home size={28} strokeWidth={1.5} className="text-error" />
       </div>
       <h3 className="text-lead font-medium text-text mb-1">{t("home.zoneNotFound")}</h3>
-      <p className="text-small text-text-secondary max-w-[320px] mb-4">
-        {t("home.zoneDeleted")}
-      </p>
+      <p className="text-small text-text-secondary max-w-[320px] mb-4">{t("home.zoneDeleted")}</p>
       <button
         onClick={() => navigate("/home")}
         className="px-4 py-2 bg-primary-fill text-white text-small font-medium rounded-sm hover:bg-primary-fill-hover transition-colors duration-150"
@@ -378,9 +384,7 @@ function ZoneTreeItem({
           onSelect(zone.id);
         }}
         className={`w-full flex items-center gap-2 px-4 py-2.5 text-left transition-colors ${
-          isActive
-            ? "bg-primary/8 text-primary font-medium"
-            : "text-text hover:bg-border-light"
+          isActive ? "bg-primary/8 text-primary font-medium" : "text-text hover:bg-border-light"
         }`}
         style={{ paddingLeft: `${16 + depth * 16}px` }}
       >
@@ -392,7 +396,11 @@ function ZoneTreeItem({
           />
         )}
         {!hasChildren && <span className="w-[14px] flex-shrink-0" />}
-        <Icon size={16} strokeWidth={1.5} className={isActive ? "text-primary" : "text-text-tertiary"} />
+        <Icon
+          size={16}
+          strokeWidth={1.5}
+          className={isActive ? "text-primary" : "text-text-tertiary"}
+        />
         <span className="text-body truncate">{zone.name}</span>
       </button>
       {hasChildren && expanded && (

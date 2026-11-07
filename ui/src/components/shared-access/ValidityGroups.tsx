@@ -18,9 +18,7 @@ import { btnSecondary, iconBtn, inputBadCls, inputCls, Refusal, Segmented } from
 function Group({ title, children }: { title: string; children: ReactNode }) {
   return (
     <fieldset className="mt-3 border border-border rounded-md px-3 py-2.5">
-      <legend className="text-small font-semibold text-text-secondary px-1">
-        {title}
-      </legend>
+      <legend className="text-small font-semibold text-text-secondary px-1">{title}</legend>
       {children}
     </fieldset>
   );

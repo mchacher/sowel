@@ -68,7 +68,12 @@ export function CameraPanel({
   const detectionBinding = dataByCategory.get("camera_detection");
 
   const hasAnything =
-    hasSnapshot || hasStream || monitoringBinding || lightModeBinding || sirenOrder || detectionBinding;
+    hasSnapshot ||
+    hasStream ||
+    monitoringBinding ||
+    lightModeBinding ||
+    sirenOrder ||
+    detectionBinding;
 
   if (!hasAnything) {
     return (
@@ -146,7 +151,8 @@ export function CameraPanel({
 
       {detectionBinding && detectionBinding.value != null && (
         <p className="text-small text-text-secondary">
-          {t("cameras.lastDetection")}{": "}
+          {t("cameras.lastDetection")}
+          {": "}
           <span className="font-medium text-text">{String(detectionBinding.value)}</span>
           {detectionBinding.lastUpdated && (
             <>
@@ -281,7 +287,13 @@ function CameraView({ equipmentId, hasSnapshot, hasStream }: CameraViewProps) {
               </button>
             </div>
           ) : (
-            <video ref={videoRef} autoPlay muted playsInline className="w-full h-full object-contain" />
+            <video
+              ref={videoRef}
+              autoPlay
+              muted
+              playsInline
+              className="w-full h-full object-contain"
+            />
           )
         ) : snapshotUrl ? (
           <img src={snapshotUrl} alt="" className="w-full h-full object-contain" />
@@ -323,7 +335,11 @@ function CameraView({ equipmentId, hasSnapshot, hasStream }: CameraViewProps) {
                 : "bg-primary/10 text-primary border-primary/30"
             }`}
           >
-            {live ? <VideoOff size={14} strokeWidth={1.5} /> : <Video size={14} strokeWidth={1.5} />}
+            {live ? (
+              <VideoOff size={14} strokeWidth={1.5} />
+            ) : (
+              <Video size={14} strokeWidth={1.5} />
+            )}
             {live ? t("cameras.live.stop") : t("cameras.live.start")}
           </button>
         )}

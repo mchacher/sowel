@@ -72,7 +72,9 @@ export function DateTimePicker({
           value={hour}
           disabled={disabled}
           aria-label={t("sharedAccess.picker.hour", { label })}
-          onChange={(e) => onChange(snapInto(makeWall(value.date, Number(e.target.value), minute), bounds))}
+          onChange={(e) =>
+            onChange(snapInto(makeWall(value.date, Number(e.target.value), minute), bounds))
+          }
         >
           {hours.map((o) => (
             <option key={o.value} value={o.value} disabled={o.disabled}>

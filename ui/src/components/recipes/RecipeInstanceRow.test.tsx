@@ -6,7 +6,13 @@ import { useEquipments } from "../../store/useEquipments";
 import { useZones } from "../../store/useZones";
 import { useZoneAggregation } from "../../store/useZoneAggregation";
 import { useAuth } from "../../store/useAuth";
-import type { RecipeInfo, RecipeInstance, EquipmentWithDetails, ZoneWithChildren, User } from "../../types";
+import type {
+  RecipeInfo,
+  RecipeInstance,
+  EquipmentWithDetails,
+  ZoneWithChildren,
+  User,
+} from "../../types";
 
 // Component-test tier (issue #458). RecipeInstanceRow is the ~700-line row
 // extracted from ZoneRecipesSection (#456). These pin the highest-value paths:
@@ -16,7 +22,15 @@ import type { RecipeInfo, RecipeInstance, EquipmentWithDetails, ZoneWithChildren
 // read-only row (no toggle, no action buttons).
 
 function zone(id: string, name: string, children: ZoneWithChildren[] = []): ZoneWithChildren {
-  return { id, name, parentId: null, displayOrder: 0, createdAt: "2026-01-01T00:00:00Z", updatedAt: "2026-01-01T00:00:00Z", children };
+  return {
+    id,
+    name,
+    parentId: null,
+    displayOrder: 0,
+    createdAt: "2026-01-01T00:00:00Z",
+    updatedAt: "2026-01-01T00:00:00Z",
+    children,
+  };
 }
 
 function equipment(over: Partial<EquipmentWithDetails> = {}): EquipmentWithDetails {
@@ -41,8 +55,21 @@ const RECIPE: RecipeInfo = {
   description: "Turn the light on with motion",
   slots: [
     { id: "zone", name: "Zone", description: "", type: "zone", required: true },
-    { id: "light", name: "Light", description: "The light to drive", type: "equipment", required: true, constraints: { equipmentType: "light_onoff" } },
-    { id: "delay", name: "Delay", description: "Minutes before off", type: "number", required: false },
+    {
+      id: "light",
+      name: "Light",
+      description: "The light to drive",
+      type: "equipment",
+      required: true,
+      constraints: { equipmentType: "light_onoff" },
+    },
+    {
+      id: "delay",
+      name: "Delay",
+      description: "Minutes before off",
+      type: "number",
+      required: false,
+    },
   ],
 };
 
@@ -71,7 +98,10 @@ function adminUser(): User {
   };
 }
 
-function seedStores(instance: RecipeInstance, overrides: Partial<Parameters<typeof useRecipes.setState>[0]> = {}) {
+function seedStores(
+  instance: RecipeInstance,
+  overrides: Partial<Parameters<typeof useRecipes.setState>[0]> = {},
+) {
   useAuth.setState({ user: adminUser() });
   useZones.setState({ tree: [zone("z-salon", "Salon")] });
   useEquipments.setState({ equipments: [equipment()] });
@@ -125,7 +155,13 @@ describe("RecipeInstanceRow", () => {
   it("disables an enabled instance from the toggle", async () => {
     const disableInstance = vi.fn().mockResolvedValue(undefined);
     seedStores(makeInstance(), { disableInstance });
-    render(<RecipeInstanceRow instance={makeInstance({ enabled: true })} recipes={[RECIPE]} zoneId="z-salon" />);
+    render(
+      <RecipeInstanceRow
+        instance={makeInstance({ enabled: true })}
+        recipes={[RECIPE]}
+        zoneId="z-salon"
+      />,
+    );
 
     const toggle = screen.getByRole("switch");
     expect(toggle.getAttribute("aria-checked")).toBe("true");
@@ -136,7 +172,13 @@ describe("RecipeInstanceRow", () => {
   it("enables a disabled instance from the toggle", async () => {
     const enableInstance = vi.fn().mockResolvedValue(undefined);
     seedStores(makeInstance({ enabled: false }), { enableInstance });
-    render(<RecipeInstanceRow instance={makeInstance({ enabled: false })} recipes={[RECIPE]} zoneId="z-salon" />);
+    render(
+      <RecipeInstanceRow
+        instance={makeInstance({ enabled: false })}
+        recipes={[RECIPE]}
+        zoneId="z-salon"
+      />,
+    );
 
     await userEvent.click(screen.getByRole("switch"));
     expect(enableInstance).toHaveBeenCalledWith("ri-1");

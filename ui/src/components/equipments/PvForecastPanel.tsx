@@ -1,4 +1,8 @@
-import { CHART_TICK_FONT, CHART_TOOLTIP_FONT, CHART_TOOLTIP_ITEM_STYLE } from "../../lib/chart-font";
+import {
+  CHART_TICK_FONT,
+  CHART_TOOLTIP_FONT,
+  CHART_TOOLTIP_ITEM_STYLE,
+} from "../../lib/chart-font";
 import { useCallback, useEffect, useState } from "react";
 import {
   Area,
@@ -15,7 +19,13 @@ import { Sun } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { Link } from "react-router-dom";
 import { dateLocale } from "../../lib/locale";
-import { formatEnergy, formatEnergyParts, formatPercent, formatPower, formatWithUnit } from "../../lib/format";
+import {
+  formatEnergy,
+  formatEnergyParts,
+  formatPercent,
+  formatPower,
+  formatWithUnit,
+} from "../../lib/format";
 import { useAuth } from "../../store/useAuth";
 import type { PvForecastResponse } from "../../types";
 import { getPvForecast } from "../../api";
@@ -126,9 +136,7 @@ export function PvForecastPanel({ equipmentId }: PvForecastPanelProps) {
     spanDays > 14 ? { day: "numeric", month: "short" } : { weekday: "short", day: "numeric" };
 
   // FR5 — a curve nobody refreshed must not be drawn like a fresh one.
-  const ageHours = data.issuedAt
-    ? (loadedAt - Date.parse(data.issuedAt)) / 3_600_000
-    : null;
+  const ageHours = data.issuedAt ? (loadedAt - Date.parse(data.issuedAt)) / 3_600_000 : null;
   const stale = ageHours !== null && ageHours > 3;
   const staleHours = ageHours === null ? 0 : Math.round(ageHours);
 
@@ -147,38 +155,42 @@ export function PvForecastPanel({ equipmentId }: PvForecastPanelProps) {
             to="/settings?tab=energy"
             className="ml-auto text-micro text-text-tertiary tabular-nums hover:text-primary hover:underline"
           >
-            {t("equipments.pv.declared", { wc: formatWithUnit(data.declaredPeakWc, "Wc", { locale }) })}
+            {t("equipments.pv.declared", {
+              wc: formatWithUnit(data.declaredPeakWc, "Wc", { locale }),
+            })}
           </Link>
         ) : (
           <span className="ml-auto text-micro text-text-tertiary tabular-nums">
-            {t("equipments.pv.declared", { wc: formatWithUnit(data.declaredPeakWc, "Wc", { locale }) })}
+            {t("equipments.pv.declared", {
+              wc: formatWithUnit(data.declaredPeakWc, "Wc", { locale }),
+            })}
           </span>
         )}
       </div>
 
-        {/* An empty curve has two very different causes. Waiting for samples
+      {/* An empty curve has two very different causes. Waiting for samples
             resolves itself; a missing weather plugin never does, and saying
             "learning" there would leave the household waiting on nothing. */}
-        {data.curve.length === 0 && !data.weatherAvailable ? (
-          <p className="text-small text-warning-ink">{t("equipments.pv.noWeather")}</p>
-        ) : data.model === null && data.curve.length === 0 ? (
-          <p className="text-small text-text-secondary">{t("equipments.pv.learning")}</p>
-        ) : (
-          <>
-            <div className="flex gap-6 mb-4">
-              <Figure label={t("equipments.pv.today")} value={todayKwh} />
-              <Figure label={t("equipments.pv.tomorrow")} value={tomorrowKwh} />
-            </div>
+      {data.curve.length === 0 && !data.weatherAvailable ? (
+        <p className="text-small text-warning-ink">{t("equipments.pv.noWeather")}</p>
+      ) : data.model === null && data.curve.length === 0 ? (
+        <p className="text-small text-text-secondary">{t("equipments.pv.learning")}</p>
+      ) : (
+        <>
+          <div className="flex gap-6 mb-4">
+            <Figure label={t("equipments.pv.today")} value={todayKwh} />
+            <Figure label={t("equipments.pv.tomorrow")} value={tomorrowKwh} />
+          </div>
 
-            {/* Is today on track. The aggregate score cannot say — it only
+          {/* Is today on track. The aggregate score cannot say — it only
                 counts finished days — and the running day compared against a
                 whole day's forecast would read as a collapse, so both sides
                 are summed over the hours that have actually happened (#907). */}
-            {/* Gated on production, not on hours: `hours > 0` held from the
+          {/* Gated on production, not on hours: `hours > 0` held from the
                 first paired hour after midnight, so the line sat at "0.0 kWh
                 forecast, 0.0 kWh measured" all night with a dangling delta. */}
-            {data.accuracy.today !== null &&
-              (data.accuracy.today.forecastWh > 0 || data.accuracy.today.actualWh > 0) && (
+          {data.accuracy.today !== null &&
+            (data.accuracy.today.forecastWh > 0 || data.accuracy.today.actualWh > 0) && (
               <p className="text-caption text-text-tertiary mb-3">
                 {t("equipments.pv.todaySoFar", {
                   expected: formatEnergy(data.accuracy.today.forecastWh / 1000, { locale }),
@@ -197,187 +209,187 @@ export function PvForecastPanel({ equipmentId }: PvForecastPanelProps) {
               </p>
             )}
 
-            {/* One chart, not two. The comparison and the forecast are the
+          {/* One chart, not two. The comparison and the forecast are the
                 same quantity in the same unit on adjacent stretches of time;
                 split apart, the reader had to join them up by eye. */}
-            <div className="flex items-baseline gap-2 flex-wrap mb-2">
-              <span className="text-caption text-text-secondary">
-                {t("equipments.pv.accuracy")}
-              </span>
-              {data.accuracy.dailyMaeWh !== null ? (
-                <>
-                  <span className="text-small font-semibold tabular-nums text-text">
-                    {/* No percentage when nothing was produced to take a share
+          <div className="flex items-baseline gap-2 flex-wrap mb-2">
+            <span className="text-caption text-text-secondary">{t("equipments.pv.accuracy")}</span>
+            {data.accuracy.dailyMaeWh !== null ? (
+              <>
+                <span className="text-small font-semibold tabular-nums text-text">
+                  {/* No percentage when nothing was produced to take a share
                         of: `?? 0` printed "(0%)" over a real error, so a dead
                         inverter under a live forecast read as a perfect score
                         at the one moment the figure has to shout. */}
-                    {data.accuracy.dailyMaePct !== null
-                      ? t("equipments.pv.accuracyValue", {
-                          energy: formatEnergy(data.accuracy.dailyMaeWh / 1000, { locale }),
-                          pct: formatPercent(data.accuracy.dailyMaePct, { decimals: 1, locale }),
-                        })
-                      : t("equipments.pv.accuracyValueNoPct", {
-                          energy: formatEnergy(data.accuracy.dailyMaeWh / 1000, { locale }),
-                        })}
-                  </span>
-                  <span className="text-micro text-text-tertiary">
-                    {t("equipments.pv.accuracySamples", { count: data.accuracy.dailyDays })}
-                  </span>
-                </>
-              ) : (
-                <span className="text-caption text-text-tertiary">
-                  {t("equipments.pv.accuracyPending")}
+                  {data.accuracy.dailyMaePct !== null
+                    ? t("equipments.pv.accuracyValue", {
+                        energy: formatEnergy(data.accuracy.dailyMaeWh / 1000, { locale }),
+                        pct: formatPercent(data.accuracy.dailyMaePct, { decimals: 1, locale }),
+                      })
+                    : t("equipments.pv.accuracyValueNoPct", {
+                        energy: formatEnergy(data.accuracy.dailyMaeWh / 1000, { locale }),
+                      })}
                 </span>
-              )}
+                <span className="text-micro text-text-tertiary">
+                  {t("equipments.pv.accuracySamples", { count: data.accuracy.dailyDays })}
+                </span>
+              </>
+            ) : (
+              <span className="text-caption text-text-tertiary">
+                {t("equipments.pv.accuracyPending")}
+              </span>
+            )}
 
-              {/* Which line is which. Two series in two colours and nothing
+            {/* Which line is which. Two series in two colours and nothing
                   else saying so is the question this panel exists to answer. */}
-              <span className="flex items-center gap-3 ml-2">
+            <span className="flex items-center gap-3 ml-2">
+              <span className="flex items-center gap-1 text-micro text-text-secondary">
+                <span
+                  aria-hidden
+                  className="inline-block w-3 h-[2px] rounded-full"
+                  style={{ background: EXPECTED_COLOR }}
+                />
+                {t("equipments.pv.expected")}
+              </span>
+              {chart.some((p) => p.actualW !== undefined) && (
                 <span className="flex items-center gap-1 text-micro text-text-secondary">
                   <span
                     aria-hidden
                     className="inline-block w-3 h-[2px] rounded-full"
-                    style={{ background: EXPECTED_COLOR }}
+                    style={{ background: "var(--color-primary)" }}
                   />
-                  {t("equipments.pv.expected")}
+                  {t("equipments.pv.actual")}
                 </span>
-                {chart.some((p) => p.actualW !== undefined) && (
-                  <span className="flex items-center gap-1 text-micro text-text-secondary">
-                    <span
-                      aria-hidden
-                      className="inline-block w-3 h-[2px] rounded-full"
-                      style={{ background: "var(--color-primary)" }}
-                    />
-                    {t("equipments.pv.actual")}
-                  </span>
-                )}
-              </span>
+              )}
+            </span>
 
-              {/* How far back. Bounded server-side by how long the measured
+            {/* How far back. Bounded server-side by how long the measured
                   series is retained, so 90 days is the honest maximum. */}
-              <span className="ml-auto flex items-center gap-1">
-                {[1, 3, 7, 30, 90].map((d) => (
-                  <button
-                    key={d}
-                    type="button"
-                    onClick={() => setAccuracyDays(d)}
-                    className={`px-2 py-0.5 rounded-sm text-micro font-medium border ${
-                      accuracyDays === d
-                        ? "border-primary bg-primary-light text-primary"
-                        : "border-border text-text-secondary hover:border-primary"
-                    }`}
-                  >
-                    {t("equipments.pv.lastDays", { n: d })}
-                  </button>
-                ))}
-              </span>
-            </div>
+            <span className="ml-auto flex items-center gap-1">
+              {[1, 3, 7, 30, 90].map((d) => (
+                <button
+                  key={d}
+                  type="button"
+                  onClick={() => setAccuracyDays(d)}
+                  className={`px-2 py-0.5 rounded-sm text-micro font-medium border ${
+                    accuracyDays === d
+                      ? "border-primary bg-primary-light text-primary"
+                      : "border-border text-text-secondary hover:border-primary"
+                  }`}
+                >
+                  {t("equipments.pv.lastDays", { n: d })}
+                </button>
+              ))}
+            </span>
+          </div>
 
-            <div className="h-56">
-              <ResponsiveContainer width="100%" height="100%">
-                <ComposedChart data={chart} margin={{ top: 4, right: 4, bottom: 0, left: 0 }}>
-                  <defs>
-                    {/* Suffixed with the equipment id: the Production page
+          <div className="h-56">
+            <ResponsiveContainer width="100%" height="100%">
+              <ComposedChart data={chart} margin={{ top: 4, right: 4, bottom: 0, left: 0 }}>
+                <defs>
+                  {/* Suffixed with the equipment id: the Production page
                         renders one panel per declared meter, and duplicate
                         SVG ids are invalid HTML. */}
-                    <linearGradient id={`pvFill-${equipmentId}`} x1="0" y1="0" x2="0" y2="1">
-                      <stop offset="0%" stopColor={EXPECTED_COLOR} stopOpacity={0.35} />
-                      <stop offset="100%" stopColor={EXPECTED_COLOR} stopOpacity={0.02} />
-                    </linearGradient>
-                  </defs>
-                  <CartesianGrid strokeDasharray="3 3" stroke="var(--color-border-light)" />
-                  <XAxis
-                    dataKey="ts"
-                    type="number"
-                    scale="time"
-                    domain={["dataMin", "dataMax"]}
-                    // One tick per local day, thinned on a long window. Left to
-                    // itself Recharts put one every few hourly points, and
-                    // formatted as weekday names that read "Tue Tue Tue Wed".
-                    ticks={dailyTicks(chart.map((p) => p.ts))}
-                    tickFormatter={(ts: number) =>
-                      new Date(ts).toLocaleDateString(locale, tickFormat)
-                    }
-                    tick={{ fontSize: CHART_TICK_FONT, fill: "var(--color-text-tertiary)" }}
-                    stroke="var(--color-border)"
-                  />
-                  <YAxis
-                    // kW, not W: four-digit watt labels do not fit this gutter
-                    // and were clipped to their last three digits, so a 3800 W
-                    // peak read "800".
-                    tickFormatter={(w: number) => (w > 0 ? formatPower(w, { unit: "kW", locale }) : "0")}
-                    tick={{ fontSize: CHART_TICK_FONT, fill: "var(--color-text-tertiary)" }}
-                    stroke="var(--color-border)"
-                    width={56}
-                  />
-                  <Tooltip
-                    labelFormatter={(ts) =>
-                      new Date(ts as number).toLocaleString(locale, {
-                        weekday: "short",
-                        day: "numeric",
-                        hour: "2-digit",
-                      })
-                    }
-                    formatter={(v, name) => [formatPower(v as number, { unit: "W", locale }), name]}
-                    itemStyle={CHART_TOOLTIP_ITEM_STYLE}
-                    contentStyle={{
-                      background: "var(--color-surface)",
-                      border: "1px solid var(--color-border)",
-                      borderRadius: 6,
-                      fontSize: CHART_TOOLTIP_FONT,
-                    }}
-                  />
-                  {/* Where the record stops and the promise starts. */}
-                  <ReferenceLine
-                    x={now}
-                    stroke="var(--color-text-tertiary)"
-                    strokeDasharray="2 3"
-                    label={{
-                      value: t("equipments.pv.now"),
-                      position: "insideTopRight",
-                      fontSize: CHART_TICK_FONT,
-                      fill: "var(--color-text-tertiary)",
-                    }}
-                  />
-                  <Area
-                    type="monotone"
-                    dataKey="forecastW"
-                    name={t("equipments.pv.expected")}
-                    stroke={EXPECTED_COLOR}
-                    strokeWidth={1.5}
-                    fill={`url(#pvFill-${equipmentId})`}
-                    connectNulls
-                  />
-                  <Line
-                    type="monotone"
-                    dataKey="actualW"
-                    name={t("equipments.pv.actual")}
-                    stroke="var(--color-primary)"
-                    strokeWidth={1.5}
-                    dot={false}
-                    // Not connected: a gap is an hour the meter did not report,
-                    // and drawing straight through it would invent production.
-                    connectNulls={false}
-                  />
-                </ComposedChart>
-              </ResponsiveContainer>
-            </div>
+                  <linearGradient id={`pvFill-${equipmentId}`} x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="0%" stopColor={EXPECTED_COLOR} stopOpacity={0.35} />
+                    <stop offset="100%" stopColor={EXPECTED_COLOR} stopOpacity={0.02} />
+                  </linearGradient>
+                </defs>
+                <CartesianGrid strokeDasharray="3 3" stroke="var(--color-border-light)" />
+                <XAxis
+                  dataKey="ts"
+                  type="number"
+                  scale="time"
+                  domain={["dataMin", "dataMax"]}
+                  // One tick per local day, thinned on a long window. Left to
+                  // itself Recharts put one every few hourly points, and
+                  // formatted as weekday names that read "Tue Tue Tue Wed".
+                  ticks={dailyTicks(chart.map((p) => p.ts))}
+                  tickFormatter={(ts: number) =>
+                    new Date(ts).toLocaleDateString(locale, tickFormat)
+                  }
+                  tick={{ fontSize: CHART_TICK_FONT, fill: "var(--color-text-tertiary)" }}
+                  stroke="var(--color-border)"
+                />
+                <YAxis
+                  // kW, not W: four-digit watt labels do not fit this gutter
+                  // and were clipped to their last three digits, so a 3800 W
+                  // peak read "800".
+                  tickFormatter={(w: number) =>
+                    w > 0 ? formatPower(w, { unit: "kW", locale }) : "0"
+                  }
+                  tick={{ fontSize: CHART_TICK_FONT, fill: "var(--color-text-tertiary)" }}
+                  stroke="var(--color-border)"
+                  width={56}
+                />
+                <Tooltip
+                  labelFormatter={(ts) =>
+                    new Date(ts as number).toLocaleString(locale, {
+                      weekday: "short",
+                      day: "numeric",
+                      hour: "2-digit",
+                    })
+                  }
+                  formatter={(v, name) => [formatPower(v as number, { unit: "W", locale }), name]}
+                  itemStyle={CHART_TOOLTIP_ITEM_STYLE}
+                  contentStyle={{
+                    background: "var(--color-surface)",
+                    border: "1px solid var(--color-border)",
+                    borderRadius: 6,
+                    fontSize: CHART_TOOLTIP_FONT,
+                  }}
+                />
+                {/* Where the record stops and the promise starts. */}
+                <ReferenceLine
+                  x={now}
+                  stroke="var(--color-text-tertiary)"
+                  strokeDasharray="2 3"
+                  label={{
+                    value: t("equipments.pv.now"),
+                    position: "insideTopRight",
+                    fontSize: CHART_TICK_FONT,
+                    fill: "var(--color-text-tertiary)",
+                  }}
+                />
+                <Area
+                  type="monotone"
+                  dataKey="forecastW"
+                  name={t("equipments.pv.expected")}
+                  stroke={EXPECTED_COLOR}
+                  strokeWidth={1.5}
+                  fill={`url(#pvFill-${equipmentId})`}
+                  connectNulls
+                />
+                <Line
+                  type="monotone"
+                  dataKey="actualW"
+                  name={t("equipments.pv.actual")}
+                  stroke="var(--color-primary)"
+                  strokeWidth={1.5}
+                  dot={false}
+                  // Not connected: a gap is an hour the meter did not report,
+                  // and drawing straight through it would invent production.
+                  connectNulls={false}
+                />
+              </ComposedChart>
+            </ResponsiveContainer>
+          </div>
 
-            {data.model === null && (
-              <p className="mt-3 text-caption text-warning-ink">{t("equipments.pv.provisional")}</p>
-            )}
+          {data.model === null && (
+            <p className="mt-3 text-caption text-warning-ink">{t("equipments.pv.provisional")}</p>
+          )}
 
-            <p className="mt-3 text-caption text-text-tertiary">
-              {data.model === null
-                ? t("equipments.pv.learning")
-                : t("equipments.pv.provenance", {
-                    samples: data.model.samples,
-                    date: new Date(data.model.fittedAt).toLocaleDateString(locale),
-                  })}
-              {stale && ` — ${t("equipments.pv.stale", { hours: staleHours })}`}
-            </p>
-          </>
-        )}
+          <p className="mt-3 text-caption text-text-tertiary">
+            {data.model === null
+              ? t("equipments.pv.learning")
+              : t("equipments.pv.provenance", {
+                  samples: data.model.samples,
+                  date: new Date(data.model.fittedAt).toLocaleDateString(locale),
+                })}
+            {stale && ` — ${t("equipments.pv.stale", { hours: staleHours })}`}
+          </p>
+        </>
+      )}
     </div>
   );
 }
