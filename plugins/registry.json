@@ -204,7 +204,7 @@
     "icon": "Heater",
     "author": "mchacher",
     "repo": "mchacher/sowel-recipe-presence-heater",
-    "version": "1.0.0",
+    "version": "1.0.1",
     "tags": ["automation", "heating", "presence", "heater"],
     "i18n": {
       "fr": {
@@ -212,9 +212,9 @@
         "description": "Passe les radiateurs en confort sur détection de mouvement, éco après un délai sans présence."
       }
     },
-    "sowelVersion": ">=0.10.0",
+    "sowelVersion": ">=1.8.0",
     "owner": "mchacher",
-    "sha256": "19de2af9a071b4a5db4b7b24d5a8f178ffdf27175e714192ad9e11add56d7eac"
+    "sha256": "7423f9f073523ff997483ae9a4a6bcf1c5e3ba15b3a935276ea1152cad9b8a42"
   },
   {
     "id": "presence-thermostat",
@@ -309,7 +309,7 @@
     "icon": "Droplets",
     "author": "mchacher",
     "repo": "mchacher/sowel-recipe-auto-watering",
-    "version": "1.2.0",
+    "version": "1.2.1",
     "tags": ["watering", "irrigation", "garden", "rain", "automation"],
     "i18n": {
       "fr": {
@@ -317,9 +317,9 @@
         "description": "Arrosage programmé avec créneaux horaires, durées par vanne et gestion intelligente de la pluie."
       }
     },
-    "sowelVersion": ">=1.1.0",
+    "sowelVersion": ">=1.8.0",
     "owner": "mchacher",
-    "sha256": "8f05013245c7faaecc03c230bedf5da07d351613df6782f99fd094679c7c8603"
+    "sha256": "f2886a226a700f5c5697e1a606789dda58f59833ae745dd0cebf2dd279c52415"
   },
   {
     "id": "pool-pump-schedule",
@@ -330,7 +330,7 @@
     "icon": "Waves",
     "author": "mchacher",
     "repo": "mchacher/sowel-recipe-pool-pump-schedule",
-    "version": "1.9.0",
+    "version": "1.9.1",
     "tags": ["pool", "pump", "heating", "schedule", "automation", "temperature", "solar", "energy"],
     "i18n": {
       "fr": {
@@ -340,7 +340,7 @@
     },
     "sowelVersion": ">=1.52.0",
     "owner": "mchacher",
-    "sha256": "164ca5447454163e323f4758434a7441ffc3c4ff8a68444c4889425108cd749f"
+    "sha256": "db647c7c78ee17e633cf5a064fcba52e7a85848cfc6859e239202434f8bac18c"
   },
   {
     "id": "freecooling",
@@ -351,7 +351,7 @@
     "icon": "Moon",
     "author": "mchacher",
     "repo": "mchacher/sowel-recipe-freecooling",
-    "version": "1.0.1",
+    "version": "1.0.2",
     "tags": ["shutters", "sunrise", "sleep", "freecooling", "automation"],
     "i18n": {
       "fr": {
@@ -359,9 +359,9 @@
         "description": "Ferme automatiquement les volets avant le lever du soleil."
       }
     },
-    "sowelVersion": ">=1.1.0",
+    "sowelVersion": ">=1.8.0",
     "owner": "mchacher",
-    "sha256": "d4981c8111792d3594f9b601ef42073c1c9ff693cbe134ec0289b21931571493"
+    "sha256": "75dd04f6ff970fbb23a8663a200413c43dda2308a91141f071ea1593d5c0264d"
   },
   {
     "id": "shelly_mqtt",
@@ -432,7 +432,7 @@
     "icon": "Monitor",
     "author": "mchacher",
     "repo": "mchacher/sowel-recipe-presence-display",
-    "version": "0.2.1",
+    "version": "0.2.2",
     "tags": ["automation", "display", "motion", "presence", "sleep", "energy"],
     "i18n": {
       "fr": {
@@ -442,7 +442,7 @@
     },
     "sowelVersion": ">=1.19.0",
     "owner": "mchacher",
-    "sha256": "3f6749e6d2328f91feccc52d5fb297afcee9a90f40c7838663a1ed8a23f9265f"
+    "sha256": "3c5145d699c21ae697e83d5cc0d726573a7f1011a42cd817c5002b9effb98428"
   },
   {
     "id": "apsystems",
@@ -473,7 +473,7 @@
     "icon": "CalendarClock",
     "author": "mchacher",
     "repo": "mchacher/sowel-recipe-schedule-on-off",
-    "version": "2.0.1",
+    "version": "2.0.2",
     "tags": ["schedule", "timer", "on-off", "sunrise", "sunset", "automation"],
     "i18n": {
       "fr": {
@@ -483,7 +483,7 @@
     },
     "sowelVersion": ">=1.23.0",
     "owner": "mchacher",
-    "sha256": "086862005bcf1555bbd284ddf8cfeab90acd31a9dc4802b8cb6cbca4c7491ffc"
+    "sha256": "6f6f3b6d955860935e4d01d285863c54b408af3b871a8025d095b95eef9accea"
   },
   {
     "id": "runtime-guard",
