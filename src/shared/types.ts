@@ -436,6 +436,12 @@ export interface Equipment {
    *  live donut, `other` residual, cost attribution) may count it. It is still
    *  a real measurement — historised and rendered apart. Default `false`. */
   separateSupply?: boolean;
+  /** Spec 195 — this power-only meter can see local production (a solar panel
+   *  wired behind it): its negative power is production, not consumption. The
+   *  by-usage slice keeps the positive part; the negative part is historised as
+   *  `production` and added to the house's solar in the self-consumption split.
+   *  Default `false` — a negative reading stays a clamp wired backwards. */
+  localProduction?: boolean;
   /** Spec 191 — an electric vehicle that also runs on fuel: its cost per
    *  100 km is not shown (part of its km are not electric). Default `false`. */
   plugInHybrid?: boolean;

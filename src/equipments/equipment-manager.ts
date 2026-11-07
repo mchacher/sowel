@@ -129,6 +129,8 @@ interface UpdateEquipmentInput {
   meteringParentId?: string | null;
   /** Spec 179 — this meter is fed by a separate supply. */
   separateSupply?: boolean;
+  /** Spec 195 — negative power on this meter is local production. */
+  localProduction?: boolean;
   /** Spec 191 — this electric vehicle is a plug-in hybrid. */
   plugInHybrid?: boolean;
   /** Spec 193 — an EV charger's usual vehicle. `null` clears it. */
@@ -259,6 +261,7 @@ export class EquipmentManager {
          invert_direction = @invertDirection, solar_profile = @solarProfile,
          track_order_outcome = @trackOrderOutcome,
          metering_parent_id = @meteringParentId, separate_supply = @separateSupply,
+         local_production = @localProduction,
          plug_in_hybrid = @plugInHybrid, usual_vehicle_id = @usualVehicleId,
          timed_command = @timedCommand,
          updated_at = datetime('now') WHERE id = @id`,
@@ -671,6 +674,12 @@ export class EquipmentManager {
             ? 1
             : 0
           : existing.separate_supply,
+      localProduction:
+        input.localProduction !== undefined
+          ? input.localProduction
+            ? 1
+            : 0
+          : existing.local_production,
       plugInHybrid:
         input.plugInHybrid !== undefined ? (input.plugInHybrid ? 1 : 0) : existing.plug_in_hybrid,
       usualVehicleId,
@@ -1824,6 +1833,7 @@ interface EquipmentRow {
   track_order_outcome: number | null;
   metering_parent_id: string | null;
   separate_supply: number;
+  local_production: number;
   plug_in_hybrid: number;
   usual_vehicle_id: string | null;
   timed_command: string | null;
@@ -1995,6 +2005,7 @@ function rowToEquipment(row: EquipmentRow): Equipment {
     trackOrderOutcome: row.track_order_outcome === null ? null : row.track_order_outcome === 1,
     meteringParentId: row.metering_parent_id ?? null,
     separateSupply: row.separate_supply === 1,
+    ...(row.local_production === 1 && { localProduction: true }),
     ...(row.plug_in_hybrid === 1 && { plugInHybrid: true }),
     ...(row.usual_vehicle_id !== null && { usualVehicleId: row.usual_vehicle_id }),
     timedCommand: parseTimedCommand(row.timed_command),

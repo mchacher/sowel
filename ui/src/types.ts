@@ -431,6 +431,9 @@ export interface Equipment {
    *  flows through the main meter. Rendered apart from every reconciliation
    *  (by-usage partition, live donut, `other`, cost). Default false. */
   separateSupply?: boolean;
+  /** Spec 195 — negative power on this meter is local production (a panel
+   *  wired behind it), not consumption. Default false. */
+  localProduction?: boolean;
   /** Spec 191 — a plug-in hybrid shows no cost per 100 km. */
   plugInHybrid?: boolean;
   /** Spec 193 — an EV charger's usual vehicle: breaks a tie when several
