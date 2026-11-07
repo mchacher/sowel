@@ -915,7 +915,9 @@ export class BackupManager {
           mtime: stat.mtimeMs,
         };
       })
-      .sort((a, b) => b.mtime - a.mtime)
+      // Newest first. Equal mtimes (coarse filesystem timestamps) fall back to the
+      // name, so the order — and which file rotation deletes — never depends on readdir.
+      .sort((a, b) => b.mtime - a.mtime || b.filename.localeCompare(a.filename))
       .map(({ filename, size, createdAt }) => ({ filename, size, createdAt }));
 
     return files;

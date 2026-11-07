@@ -83,7 +83,10 @@ function seedDays(
      VALUES (?, ?, ?, ?, ?, ?, ?)`,
   );
   for (let d = days; d >= 1; d--) {
-    const base = new Date(Date.now() - d * 86_400_000);
+    // Calendar days, not 24 h steps: across a DST change two 24 h steps can land on the
+    // same local date and collide on (equipment_id, at) late in the evening (#1125).
+    const base = new Date();
+    base.setDate(base.getDate() - d);
     const faulty = d <= faultyTail;
     for (let h = 10; h <= 15; h++) {
       const at = new Date(base);
@@ -148,7 +151,8 @@ function appendDay(db: Database.Database, watts: number): void {
   const newest = (
     db.prepare("SELECT max(at) AS a FROM pv_forecast_sample").get() as { a: string | null }
   ).a;
-  const base = newest ? new Date(Date.parse(newest) + 86_400_000) : new Date();
+  const base = newest ? new Date(newest) : new Date();
+  if (newest) base.setDate(base.getDate() + 1);
   const insert = db.prepare(
     `INSERT INTO pv_forecast_sample
        (equipment_id, at, hour_local, poa, temp_c, watts, direct_fraction)

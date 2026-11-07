@@ -128,6 +128,14 @@ describe("BackupManager", () => {
     rmSync(tmpDir, { recursive: true, force: true });
   });
 
+  /** Writes a backup whose mtime is `minute` minutes past a fixed date (no timer races, #1125). */
+  function writeBackupAt(filename: string, minute: number): void {
+    const path = resolve(tmpDir, "backups", filename);
+    writeFileSync(path, "x");
+    const at = new Date(Date.UTC(2026, 0, 1, 0, minute));
+    utimesSync(path, at, at);
+  }
+
   describe("listLocalBackups", () => {
     it("returns empty array when backups dir does not exist", () => {
       expect(manager.listLocalBackups()).toEqual([]);
@@ -147,11 +155,9 @@ describe("BackupManager", () => {
     it("returns zip files sorted by mtime DESC", async () => {
       mkdirSync(resolve(tmpDir, "backups"));
       // Create 3 files with different mtimes
-      writeFileSync(resolve(tmpDir, "backups", "old.zip"), "x");
-      await new Promise((r) => setTimeout(r, 10));
-      writeFileSync(resolve(tmpDir, "backups", "middle.zip"), "x");
-      await new Promise((r) => setTimeout(r, 10));
-      writeFileSync(resolve(tmpDir, "backups", "new.zip"), "x");
+      writeBackupAt("old.zip", 1);
+      writeBackupAt("middle.zip", 2);
+      writeBackupAt("new.zip", 3);
 
       const backups = manager.listLocalBackups();
       expect(backups).toHaveLength(3);
@@ -164,9 +170,8 @@ describe("BackupManager", () => {
   describe("rotateLocalBackups", () => {
     it("does nothing when count <= keep", async () => {
       mkdirSync(resolve(tmpDir, "backups"));
-      writeFileSync(resolve(tmpDir, "backups", "a.zip"), "x");
-      await new Promise((r) => setTimeout(r, 5));
-      writeFileSync(resolve(tmpDir, "backups", "b.zip"), "x");
+      writeBackupAt("a.zip", 1);
+      writeBackupAt("b.zip", 2);
 
       const result = manager.rotateLocalBackups(3);
       expect(result.deleted).toEqual([]);
@@ -175,15 +180,8 @@ describe("BackupManager", () => {
 
     it("deletes oldest backups, keeping N newest", async () => {
       mkdirSync(resolve(tmpDir, "backups"));
-      writeFileSync(resolve(tmpDir, "backups", "1.zip"), "x");
-      await new Promise((r) => setTimeout(r, 10));
-      writeFileSync(resolve(tmpDir, "backups", "2.zip"), "x");
-      await new Promise((r) => setTimeout(r, 10));
-      writeFileSync(resolve(tmpDir, "backups", "3.zip"), "x");
-      await new Promise((r) => setTimeout(r, 10));
-      writeFileSync(resolve(tmpDir, "backups", "4.zip"), "x");
-      await new Promise((r) => setTimeout(r, 10));
-      writeFileSync(resolve(tmpDir, "backups", "5.zip"), "x");
+      // Written newest first, so readdir order cannot be what makes it pass.
+      for (const n of [5, 4, 3, 2, 1]) writeBackupAt(`${n}.zip`, n);
 
       const result = manager.rotateLocalBackups(3);
       expect(result.deleted).toHaveLength(2);
@@ -193,6 +191,18 @@ describe("BackupManager", () => {
       const remaining = manager.listLocalBackups();
       expect(remaining).toHaveLength(3);
       expect(remaining.map((b) => b.filename).sort()).toEqual(["3.zip", "4.zip", "5.zip"]);
+    });
+
+    it("breaks equal mtimes on the file name, whatever the readdir order", () => {
+      mkdirSync(resolve(tmpDir, "backups"));
+      for (const name of ["b.zip", "c.zip", "a.zip"]) writeBackupAt(name, 1);
+
+      expect(manager.listLocalBackups().map((b) => b.filename)).toEqual([
+        "c.zip",
+        "b.zip",
+        "a.zip",
+      ]);
+      expect(manager.rotateLocalBackups(1).deleted).toEqual(["b.zip", "a.zip"]);
     });
 
     it("returns empty deleted when no backups exist", () => {
