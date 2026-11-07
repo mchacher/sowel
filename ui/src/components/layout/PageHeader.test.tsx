@@ -8,14 +8,22 @@ import { PageHeader, PageHeaderButton } from "./PageHeader";
 
 describe("PageHeader", () => {
   it("renders the title, the subtitle and the actions", () => {
-    render(<PageHeader title="Équipements" subtitle="12 équipements" actions={<button>Filtrer</button>} />);
+    render(
+      <PageHeader
+        title="Équipements"
+        subtitle="12 équipements"
+        actions={<button>Filtrer</button>}
+      />,
+    );
     expect(screen.getByRole("heading", { level: 1, name: "Équipements" })).toBeTruthy();
     expect(screen.getByText("12 équipements")).toBeTruthy();
     expect(screen.getByRole("button", { name: "Filtrer" })).toBeTruthy();
   });
 
   it("lets the row wrap so the actions drop under the title on a phone", () => {
-    const { container } = render(<PageHeader title="Topologie" actions={<button>Ajouter</button>} />);
+    const { container } = render(
+      <PageHeader title="Topologie" actions={<button>Ajouter</button>} />,
+    );
     expect(container.firstElementChild?.className).toContain("flex-wrap");
   });
 

@@ -2,7 +2,8 @@ import { describe, it, expect, beforeEach, afterEach, vi } from "vitest";
 import { act, render, screen } from "../../test-utils";
 import i18n from "../../i18n";
 import { useWebSocket } from "../../store/useWebSocket";
-import { ConnectionStatus, DEGRADED_DELAY_MS } from "./ConnectionStatus";
+import { ConnectionStatus } from "./ConnectionStatus";
+import { DEGRADED_DELAY_MS } from "../../hooks/useTopBarState";
 
 // Spec 196, FR-6 — the link indicator shows only when the link is degraded:
 // no « Connecté » pill and no permanent ping while all is well, and no flash

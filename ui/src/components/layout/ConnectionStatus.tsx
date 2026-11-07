@@ -1,10 +1,6 @@
-import { useEffect, useState } from "react";
-import { useWebSocket } from "../../store/useWebSocket";
+import { useLinkDegraded } from "../../hooks/useTopBarState";
 import { Wifi, WifiOff } from "lucide-react";
 import { useTranslation } from "react-i18next";
-
-/** How long the link must stay down before the indicator shows (spec 196, FR-6). */
-export const DEGRADED_DELAY_MS = 3_000;
 
 /**
  * WebSocket link indicator, shown only when the link is degraded (spec 196,
@@ -15,22 +11,10 @@ export const DEGRADED_DELAY_MS = 3_000;
  */
 export function ConnectionStatus() {
   const { t } = useTranslation();
-  const status = useWebSocket((s) => s.status);
-  const degraded = status !== "connected";
-  const [late, setLate] = useState(false);
+  const { shown, disconnected } = useLinkDegraded();
 
-  useEffect(() => {
-    if (!degraded) return;
-    const id = setTimeout(() => setLate(true), DEGRADED_DELAY_MS);
-    return () => {
-      clearTimeout(id);
-      setLate(false);
-    };
-  }, [degraded]);
+  if (!shown) return null;
 
-  if (!degraded || !late) return null;
-
-  const disconnected = status === "disconnected";
   const label = disconnected ? t("status.disconnected") : t("status.connecting");
   const Icon = disconnected ? WifiOff : Wifi;
 

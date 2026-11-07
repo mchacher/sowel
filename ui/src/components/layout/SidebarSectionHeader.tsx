@@ -27,25 +27,16 @@ interface SidebarSectionHeaderProps {
   onClick?: (e: MouseEvent<HTMLAnchorElement | HTMLButtonElement>) => void;
 }
 
-function headerClasses(
-  isInSection: boolean,
-  isLeaf: boolean,
-  collapsed: boolean,
-): string {
+function headerClasses(isInSection: boolean, isLeaf: boolean, collapsed: boolean): string {
   const base =
     "flex items-center gap-2 px-3 py-1.5 w-full rounded-sm transition-colors duration-150 ease-out";
   const layout = collapsed ? "justify-center" : "";
-  const state = isLeaf
-    ? "bg-primary-light"
-    : isInSection
-      ? ""
-      : "hover:bg-background";
+  const state = isLeaf ? "bg-primary-light" : isInSection ? "" : "hover:bg-background";
   return `${base} ${layout} ${state}`.trim();
 }
 
 function labelClasses(isInSection: boolean): string {
-  const base =
-    "text-body font-medium transition-colors";
+  const base = "text-body font-medium transition-colors";
   return `${base} ${isInSection ? "text-primary" : "text-text-secondary"}`;
 }
 
@@ -62,36 +53,19 @@ interface ContentProps {
   badge?: ReactNode;
 }
 
-function HeaderContent({
-  isInSection,
-  collapsed,
-  label,
-  icon,
-  expanded,
-  badge,
-}: ContentProps) {
+function HeaderContent({ isInSection, collapsed, label, icon, expanded, badge }: ContentProps) {
   return (
     <>
-      <span className={`flex-shrink-0 relative ${iconColorClass(isInSection)}`}>
-        {icon}
-      </span>
+      <span className={`flex-shrink-0 relative ${iconColorClass(isInSection)}`}>{icon}</span>
       {!collapsed && <span className={labelClasses(isInSection)}>{label}</span>}
       {!collapsed && (badge !== undefined || expanded !== undefined) && (
         <span className="ml-auto flex items-center gap-1 flex-shrink-0">
           {badge}
           {expanded !== undefined &&
             (expanded ? (
-              <ChevronDown
-                size={12}
-                strokeWidth={1.5}
-                className="text-text-tertiary"
-              />
+              <ChevronDown size={12} strokeWidth={1.5} className="text-text-tertiary" />
             ) : (
-              <ChevronRight
-                size={12}
-                strokeWidth={1.5}
-                className="text-text-tertiary"
-              />
+              <ChevronRight size={12} strokeWidth={1.5} className="text-text-tertiary" />
             ))}
         </span>
       )}

@@ -4,6 +4,7 @@ import { useTranslation } from "react-i18next";
 import { Sidebar } from "./Sidebar";
 import { ConnectionStatus } from "./ConnectionStatus";
 import { MobileSunTimes, SunTimes } from "./SunTimes";
+import { useHomeTimeShown, useLinkDegraded } from "../../hooks/useTopBarState";
 import { HomeTimeNote } from "./HomeTimeNote";
 import { useWebSocket } from "../../store/useWebSocket";
 import { useTimezone } from "../../store/useTimezone";
@@ -91,8 +92,17 @@ export function AppLayout() {
   // non-admins, but the core update flag is not role-scoped, so gate here.
   const totalUpdates =
     user?.role === "admin" ? pluginUpdateCount + (sowelUpdateAvailable ? 1 : 0) : 0;
-  // Pills sharing the bar with the title: the sun gives way to them on phones.
-  const headerPills = [issues.length > 0, totalUpdates > 0, restartRequired].filter(Boolean).length;
+  // What shares the bar with the title below lg: the sun gives way to it on
+  // phones (#1133). The home time and the link indicator count too.
+  const homeTime = useHomeTimeShown().shown;
+  const linkDegraded = useLinkDegraded().shown;
+  const headerPills = [
+    issues.length > 0,
+    totalUpdates > 0,
+    restartRequired,
+    homeTime,
+    linkDegraded,
+  ].filter(Boolean).length;
   // Alarms pill: red when at least one error, amber otherwise.
   const alarmTone = issues.some((i) => i.level === "error") ? "error" : "warning";
 

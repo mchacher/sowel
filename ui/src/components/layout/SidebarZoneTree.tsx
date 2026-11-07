@@ -26,9 +26,7 @@ export function SidebarZoneTree({
   if (tree.length === 0) {
     return (
       <div className="px-3 py-2">
-        <p className="text-caption text-text-tertiary leading-tight">
-          {t("zones.noZonesSidebar")}
-        </p>
+        <p className="text-caption text-text-tertiary leading-tight">{t("zones.noZonesSidebar")}</p>
       </div>
     );
   }
@@ -64,11 +62,14 @@ function SidebarZoneNode({
     }
   }, [zoneId, zone]);
 
-  const icon = depth === 0
-    ? <Home size={depth === 0 ? 14 : 15} strokeWidth={1.5} />
-    : hasChildren
-      ? <Layers size={15} strokeWidth={1.5} />
-      : <DoorOpen size={15} strokeWidth={1.5} />;
+  const icon =
+    depth === 0 ? (
+      <Home size={depth === 0 ? 14 : 15} strokeWidth={1.5} />
+    ) : hasChildren ? (
+      <Layers size={15} strokeWidth={1.5} />
+    ) : (
+      <DoorOpen size={15} strokeWidth={1.5} />
+    );
 
   // Root zones: section header style, always expanded, not collapsable
   if (depth === 0) {
@@ -76,17 +77,25 @@ function SidebarZoneNode({
       <div>
         <NavLink
           to={`/home/${zone.id}`}
-          className={({ isActive: linkActive }) => `flex items-center gap-2 px-3 py-1.5 min-w-0 rounded-sm mx-1 group transition-colors duration-150 ${linkActive || isActive ? "bg-primary-light" : ""}`}
+          className={({ isActive: linkActive }) =>
+            `flex items-center gap-2 px-3 py-1.5 min-w-0 rounded-sm mx-1 group transition-colors duration-150 ${linkActive || isActive ? "bg-primary-light" : ""}`
+          }
         >
           {({ isActive: routeActive }) => {
             const linkActive = routeActive || isActive;
             return (
-            <>
-              <Home size={14} strokeWidth={1.5} className={`flex-shrink-0 transition-colors ${linkActive ? "text-primary" : "text-text group-hover:text-primary"}`} />
-              <span className={`text-body font-medium transition-colors truncate ${linkActive ? "text-primary" : "text-text group-hover:text-primary"}`}>
-                {zone.name}
-              </span>
-            </>
+              <>
+                <Home
+                  size={14}
+                  strokeWidth={1.5}
+                  className={`flex-shrink-0 transition-colors ${linkActive ? "text-primary" : "text-text group-hover:text-primary"}`}
+                />
+                <span
+                  className={`text-body font-medium transition-colors truncate ${linkActive ? "text-primary" : "text-text group-hover:text-primary"}`}
+                >
+                  {zone.name}
+                </span>
+              </>
             );
           }}
         </NavLink>
@@ -94,7 +103,12 @@ function SidebarZoneNode({
         {hasChildren && (
           <div>
             {zone.children.map((child) => (
-              <SidebarZoneNode key={child.id} zone={child} depth={depth + 1} activeZoneId={activeZoneId} />
+              <SidebarZoneNode
+                key={child.id}
+                zone={child}
+                depth={depth + 1}
+                activeZoneId={activeZoneId}
+              />
             ))}
           </div>
         )}
@@ -104,10 +118,7 @@ function SidebarZoneNode({
 
   return (
     <div>
-      <div
-        className="flex items-center gap-1"
-        style={{ paddingLeft: `${8 + depth * 12}px` }}
-      >
+      <div className="flex items-center gap-1" style={{ paddingLeft: `${8 + depth * 12}px` }}>
         {/* Expand/collapse */}
         <button
           onClick={(e) => {
@@ -116,9 +127,7 @@ function SidebarZoneNode({
             if (hasChildren) setExpanded(!expanded);
           }}
           className={`flex-shrink-0 w-4 h-4 flex items-center justify-center rounded-sm ${
-            hasChildren
-              ? "text-text-tertiary hover:text-text-secondary"
-              : "text-transparent"
+            hasChildren ? "text-text-tertiary hover:text-text-secondary" : "text-transparent"
           }`}
         >
           {hasChildren &&
@@ -135,9 +144,10 @@ function SidebarZoneNode({
           className={`
             flex-1 flex items-center gap-2 px-2 py-1.5 rounded-sm min-w-0
             text-small transition-colors duration-150 ease-out
-            ${isActive
-              ? "bg-primary-light text-primary font-medium"
-              : "text-text-secondary hover:bg-border-light hover:text-text"
+            ${
+              isActive
+                ? "bg-primary-light text-primary font-medium"
+                : "text-text-secondary hover:bg-border-light hover:text-text"
             }
           `}
         >
@@ -150,7 +160,12 @@ function SidebarZoneNode({
       {expanded && hasChildren && (
         <div>
           {zone.children.map((child) => (
-            <SidebarZoneNode key={child.id} zone={child} depth={depth + 1} activeZoneId={activeZoneId} />
+            <SidebarZoneNode
+              key={child.id}
+              zone={child}
+              depth={depth + 1}
+              activeZoneId={activeZoneId}
+            />
           ))}
         </div>
       )}

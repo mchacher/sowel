@@ -34,10 +34,10 @@ export function SunTimes({ data }: { data: ZoneAggregatedData | undefined }) {
 }
 
 /**
- * The sun in the top bar below lg, beside the pills (alarms, updates, restart). At
- * 360 px the bar holds the title, the sun and one pill; with two or more the sun
- * waits for sm, so the title does not shrink to a few letters and the bar never
- * wraps (#1133).
+ * The sun in the top bar below lg, beside what else shares it (alarms, updates,
+ * restart pills, the home time, the link indicator). At 360 px the bar holds the
+ * title, the sun and one of them; with two or more the sun waits for sm, so the
+ * title does not shrink to a few letters and the bar never wraps (#1133).
  */
 export function MobileSunTimes({
   data,

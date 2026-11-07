@@ -20,13 +20,19 @@ interface PageHeaderProps {
 export function PageHeader({ title, subtitle, actions, className = "mb-6" }: PageHeaderProps) {
   return (
     <div className={`flex flex-wrap items-center justify-between gap-3 ${className}`}>
-      <div className={subtitle !== undefined && subtitle !== null ? "min-w-0" : "min-w-0 max-lg:contents"}>
+      <div
+        className={
+          subtitle !== undefined && subtitle !== null ? "min-w-0" : "min-w-0 max-lg:contents"
+        }
+      >
         <h1 className={TOP_LEVEL_H1}>{title}</h1>
         {subtitle !== undefined && subtitle !== null && (
           <p className="text-small text-text-secondary mt-0.5">{subtitle}</p>
         )}
       </div>
-      {actions && <div className="flex grow sm:grow-0 items-center justify-end gap-3">{actions}</div>}
+      {actions && (
+        <div className="flex grow sm:grow-0 items-center justify-end gap-3">{actions}</div>
+      )}
     </div>
   );
 }
