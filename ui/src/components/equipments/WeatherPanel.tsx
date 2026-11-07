@@ -102,7 +102,7 @@ function getKindColor(kind: DeviceKind): string {
     case "rain":
       return "text-primary bg-primary/10";
     default:
-      return "text-accent bg-accent/10";
+      return "text-text-secondary bg-border-light";
   }
 }
 

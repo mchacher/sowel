@@ -40,11 +40,9 @@ export function GateControl({ equipment, onExecuteOrder, compact }: GateControlP
         <span
           className={`
             text-micro font-medium px-2 py-0.5 rounded-full flex-shrink-0
-            ${gateState === "open"
-              ? "bg-warning/10 text-warning"
-              : gateState === "closed"
-                ? "bg-success/10 text-success"
-                : "bg-text-tertiary/10 text-text-tertiary"
+            ${gateState === "open" || gateState === "closed"
+              ? "bg-border-light text-text-secondary"
+              : "bg-text-tertiary/10 text-text-tertiary"
             }
           `}
         >
@@ -81,11 +79,9 @@ export function GateControl({ equipment, onExecuteOrder, compact }: GateControlP
         <div
           className={`
             w-10 h-10 rounded-[8px] flex items-center justify-center
-            ${gateState === "open"
-              ? "bg-warning/10 text-warning"
-              : gateState === "closed"
-                ? "bg-success/10 text-success"
-                : "bg-text-tertiary/10 text-text-tertiary"
+            ${gateState === "open" || gateState === "closed"
+              ? "bg-border-light text-text-secondary"
+              : "bg-text-tertiary/10 text-text-tertiary"
             }
           `}
         >

@@ -19,11 +19,11 @@ export function SunlightBanner({ data, compact }: SunlightBannerProps) {
     return (
       <div
         className={`flex items-center gap-1 text-micro font-medium tabular-nums ${
-          isDay ? "text-accent" : "text-primary"
+          isDay ? "text-text-secondary" : "text-primary"
         }`}
       >
         {isDay
-          ? <Sunrise size={12} strokeWidth={1.5} />
+          ? <Sunrise size={12} strokeWidth={1.5} className="text-active" />
           : <Moon size={12} strokeWidth={1.5} />
         }
         <span>{formatRange(data.sunrise, data.sunset)}</span>
@@ -37,13 +37,14 @@ export function SunlightBanner({ data, compact }: SunlightBannerProps) {
         flex items-center gap-1.5 px-2.5 py-1 rounded-full border
         text-caption font-medium tabular-nums
         ${isDay
-          ? "bg-accent/10 text-accent border-accent/20"
+          ? "bg-border-light text-text-secondary border-border"
           : "bg-primary/10 text-primary border-primary/20"
         }
       `}
     >
       {isDay
-        ? <Sunrise size={13} strokeWidth={1.5} />
+        // The sun glyph is the one tolerated amber outside "on" (spec 196).
+        ? <Sunrise size={13} strokeWidth={1.5} className="text-active" />
         : <Moon size={13} strokeWidth={1.5} />
       }
       <span>{formatRange(data.sunrise, data.sunset)}</span>

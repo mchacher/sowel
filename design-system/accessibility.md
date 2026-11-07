@@ -55,51 +55,52 @@ The system targets **WCAG 2.2 AA** as a hard minimum, **AAA** wherever it costs 
 
 ## 3. Color contrast measurements
 
-Measured with WebAIM contrast checker against the Hybrid theme.
+Computed (WCAG 2.x relative luminance, sRGB), not read off a checker. Translucent backgrounds such as `bg-success/10` are composed on the surface first. The colour-role pairs are not listed by hand any more: `ui/src/lib/color-roles.test.ts` computes them from `tokens.css` in both themes and fails under 4.5:1 for text and 3:1 for graphics. The role table, with its key ratios, is in [tokens.md §1.2](tokens.md#12-colour-roles).
 
-### Text colors
+### Text colors (Hybrid)
 
-| Text on background                                    | Ratio  | WCAG                    |
-| ----------------------------------------------------- | ------ | ----------------------- |
-| `--n-700` (`#27272A`) on `--n-0` (`#FFFFFF`)          | 15.6:1 | AAA                     |
-| `--n-700` on `--n-25` (`#FAFAFA`)                     | 15.0:1 | AAA                     |
-| `--n-700` on `--n-50` (`#F4F4F5`)                     | 14.0:1 | AAA                     |
-| `--n-600` (`#3F3F46`) on `--n-0`                      | 11.6:1 | AAA                     |
-| `--n-500` (`#52525B`) on `--n-0`                      | 8.7:1  | AAA                     |
-| `--n-400` (`#71717A`) on `--n-0`                      | 5.6:1  | AA (AAA at large text)  |
-| `--n-400` on `--n-25`                                 | 5.4:1  | AA                      |
-| `--p-500` (`#1A4F6E`) on `--n-0`                      | 9.8:1  | AAA                     |
-| `--p-500` on `--p-50` (`#EEF5F8`)                     | 9.1:1  | AAA                     |
-| `--green-700` (`#0E6B3F`) on `--green-50` (`#E6F7EE`) | 8.4:1  | AAA                     |
-| `--red-500` (`#C7522E`) on `--n-0`                    | 4.9:1  | AA                      |
-| `--red-500` on `--red-50` (`#FBE9E1`)                 | 4.5:1  | AA (borderline)         |
-| `--a-600` (`#D4A41C`) on `--n-0`                      | 2.4:1  | ❌ **fail** — see § 3.1 |
+| Text on background                                    | Ratio   | WCAG                                  |
+| ----------------------------------------------------- | ------- | ------------------------------------- |
+| `--n-700` (`#27272A`) on `--n-0` (`#FFFFFF`)          | 14.89:1 | AAA                                   |
+| `--n-700` on `--n-25` (`#FAFAFA`)                     | 14.27:1 | AAA                                   |
+| `--n-700` on `--n-50` (`#F4F4F5`)                     | 13.55:1 | AAA                                   |
+| `--n-600` (`#3F3F46`) on `--n-0`                      | 10.44:1 | AAA                                   |
+| `--n-500` (`#52525B`) on `--n-0`                      | 7.73:1  | AAA                                   |
+| `--n-400` (`#71717A`) on `--n-0`                      | 4.83:1  | AA                                    |
+| `--n-400` on `--n-25`                                 | 4.63:1  | AA                                    |
+| `--n-400` on `--n-50` (page background)               | 4.40:1  | ❌ **fail** — neutrals work, spec 196 |
+| `--p-500` (`#1A4F6E`) on `--n-0`                      | 8.80:1  | AAA                                   |
+| `--p-500` on `--p-50` (`#EEF5F8`)                     | 7.98:1  | AAA                                   |
+| `--green-700` (`#0E6B3F`) on `--green-50` (`#E6F7EE`) | 5.92:1  | AA                                    |
+| `active-ink` (`#8A6100`) on `--n-0`                   | 5.54:1  | AA                                    |
+| `warning-ink` (`#A85500`) on `--n-0`                  | 5.30:1  | AA                                    |
+| `success` (`#13794A`) on `--n-0`                      | 5.44:1  | AA                                    |
+| `error` (`#B42318`) on `--n-0`                        | 6.57:1  | AA                                    |
+| `error` on `--red-50` (`#FBE9E1`)                     | 5.59:1  | AA                                    |
 
-### 3.1 Known contrast issue: amber on white
+### 3.1 Amber is never text, and never under white
 
-`--a-600` (the dimmer value text color used for "4 %" on `.eq__value--on`) is **2.4:1 on white**. This is below WCAG AA.
+`--a-500` (`#F2C035`) is 1.70:1 on white, and white on it is 1.70:1 too; `--a-600` (`#D4A41C`) is 2.30:1. Neither carries a word. The amber of something on is drawn as a fill, a glow or an icon in its tile; its word or value takes `active-ink` (`#8A6100`, 5.54:1), and content placed on an amber fill takes `on-active` (`#1C1A14`, 10.24:1). Before spec 196 this section measured these pairs at 2.4:1 and 8.4:1 and shipped them anyway; the real values were 2.30:1 and 1.70:1.
 
-**Why we ship it anyway**: the amber `4 %` value is paired with the amber on-state icon AND the amber slider knob AND the amber power button. The user has multiple redundant cues that the light is on. The text contrast is a secondary cue.
-
-**Production mitigation**: production should add `font-weight: 700` on `.eq__value--on` (already done) AND increase the font-size to 0.85rem minimum so the WCAG large-text threshold (3:1) applies.
-
-Alternative: use `--a-500` (`#F2C035`, 1.9:1) for backgrounds and `--n-800` for text. This is the convention in production where the `.power-btn--on` background is `--a-500` but the icon is white (on the amber bg) — 8.4:1.
+The values before spec 196, for the record: `--red-500` `#C7522E` was 4.49:1 on white (it was listed as 4.9, AA: it failed), `--green-500` `#1FA260` 3.28:1, amber as text 1.61–1.70:1.
 
 ### Non-text contrast
 
 | Element                                         | Foreground | Background | Ratio  | Verdict                                              |
 | ----------------------------------------------- | ---------- | ---------- | ------ | ---------------------------------------------------- |
-| Icon strokes `--n-500` on `--n-0`               | `#52525B`  | `#FFFFFF`  | 8.7:1  | AAA                                                  |
-| Border `--line` (rgba(24,24,27,.08)) on `--n-0` | computed   | `#FFFFFF`  | ~1.4:1 | ❌ — but borders are decorative, not required for AA |
-| Border `--line-2` on `--n-0`                    | computed   | `#FFFFFF`  | ~2.0:1 | ❌ — same caveat                                     |
-| Slider track `--n-100` on `--n-0`               | `#E9E9EB`  | `#FFFFFF`  | 1.05:1 | acceptable (decorative)                              |
+| Icon strokes `--n-500` on `--n-0`               | `#52525B`  | `#FFFFFF`  | 7.73:1 | AAA                                                  |
+| Border `--line` (rgba(24,24,27,.08)) on `--n-0` | computed   | `#FFFFFF`  | ~1.2:1 | ❌ — but borders are decorative, not required for AA |
+| Border `--line-2` on `--n-0`                    | computed   | `#FFFFFF`  | ~1.4:1 | ❌ — same caveat                                     |
+| Slider track `--n-100` on `--n-0`               | `#E9E9EB`  | `#FFFFFF`  | 1.21:1 | acceptable (decorative)                              |
+| `warning` dot or icon on `--n-0`                | `#E8730C`  | `#FFFFFF`  | 3.05:1 | AA (graphic)                                         |
+| Switch off: outline `--n-400` on `--n-0`        | `#71717A`  | `#FFFFFF`  | 4.83:1 | AA (graphic)                                         |
+| Switch off: thumb `--n-400` on track `--n-100`  | `#71717A`  | `#E9E9EB`  | 3.99:1 | AA (graphic); dark 3.78:1                            |
 
 WCAG 1.4.11 applies to **meaningful** non-text elements. Decorative borders are exempt. If a border carries meaning (e.g. the green `.mode-row--active` left border), it meets 3:1 minimum.
 
-| Meaningful border                                        | Ratio | Verdict                                                                                                     |
-| -------------------------------------------------------- | ----- | ----------------------------------------------------------------------------------------------------------- |
-| `.mode-row--active` left border `--green-500` on `--n-0` | 4.1:1 | AA                                                                                                          |
-| `.msec--enhance` left border `--a-500` on `--n-0`        | 1.9:1 | ❌ **fail** — paired with the "amélioration UX" text badge, so meaning is conveyed redundantly. Acceptable. |
+| Meaningful border                                        | Ratio  | Verdict |
+| -------------------------------------------------------- | ------ | ------- |
+| `.mode-row--active` left border `--green-500` on `--n-0` | 5.44:1 | AA      |
 
 ---
 
@@ -155,17 +156,17 @@ The modal must trap focus (focus stays inside while open).
 
 ## 6. ARIA conventions
 
-| Pattern                        | ARIA                                                                       |
+| Pattern | ARIA |
 | ------------------------------ | -------------------------------------------------------------------------- | ------------------------------- |
-| Panel head as section heading  | `<h2 class="panel__title">` (or `role="heading" aria-level="2"`)           |
-| Toggle switch                  | `<button role="switch" aria-checked="true                                  | false">`                        |
-| Modal dialog                   | `<div role="dialog" aria-modal="true" aria-labelledby="modal-title">`      |
-| Tabs in modal (none currently) | `role="tablist"` + `role="tab"` if added                                   |
-| Expand chevron in sidebar      | `<button aria-expanded="true                                               | false" aria-controls="sub-id">` |
-| Icon-only button               | `aria-label="…"` describing the action                                     |
-| Loading state                  | `aria-busy="true"` on the affected region                                  |
-| Alert (urgent)                 | `role="alert"` for the alert pill, or `aria-live="polite"` for less urgent |
-| Active nav item                | `aria-current="page"` on `.sb__item--active`                               |
+| Panel head as section heading | `<h2 class="panel__title">` (or `role="heading" aria-level="2"`) |
+| Toggle switch | `<button role="switch" aria-checked="true                                  | false">` |
+| Modal dialog | `<div role="dialog" aria-modal="true" aria-labelledby="modal-title">` |
+| Tabs in modal (none currently) | `role="tablist"` + `role="tab"` if added |
+| Expand chevron in sidebar | `<button aria-expanded="true                                               | false" aria-controls="sub-id">` |
+| Icon-only button | `aria-label="…"` describing the action |
+| Loading state | `aria-busy="true"` on the affected region |
+| Alert (urgent) | `role="alert"` for the alert pill, or `aria-live="polite"` for less urgent |
+| Active nav item | `aria-current="page"` on `.sb__item--active` |
 
 ---
 

@@ -111,36 +111,8 @@ export function Dialog({
   );
 }
 
-/** The on/off switch Sowel uses for modes. */
-export function Switch({
-  checked,
-  onChange,
-  disabled,
-  label,
-}: {
-  checked: boolean;
-  onChange: (next: boolean) => void;
-  disabled?: boolean;
-  label: string;
-}) {
-  return (
-    <button
-      type="button"
-      onClick={() => onChange(!checked)}
-      disabled={disabled}
-      className="relative w-9 h-5 rounded-full transition-colors duration-200 disabled:opacity-50 flex-shrink-0 cursor-pointer disabled:cursor-default"
-      style={{ backgroundColor: checked ? "var(--color-success)" : "var(--color-border)" }}
-      role="switch"
-      aria-checked={checked}
-      aria-label={label}
-    >
-      <span
-        className="absolute top-[3px] left-[3px] w-[14px] h-[14px] bg-white rounded-full shadow-sm transition-transform duration-200"
-        style={{ transform: checked ? "translateX(16px)" : "translateX(0)" }}
-      />
-    </button>
-  );
-}
+/** The app-wide on/off switch (spec 196: one drawing, primary when on). */
+export { Switch } from "../ui/Switch";
 
 /** Two choices side by side (« Tout le temps » / « Du … au … »). */
 export function Segmented<T extends string>({
@@ -179,11 +151,11 @@ export function Segmented<T extends string>({
 }
 
 const STATUS_CLS: Record<SharedAccessStatus, string> = {
-  live: "bg-success/15 text-success",
-  outside_hours: "bg-warning/15 text-warning",
+  live: "bg-success/10 text-success",
+  outside_hours: "bg-warning/10 text-warning-ink",
   not_yet: "bg-primary-light text-primary",
   ended: "bg-border-light text-text-tertiary",
-  suspended: "bg-warning/15 text-warning",
+  suspended: "bg-warning/10 text-warning-ink",
   revoked: "bg-border-light text-text-tertiary",
   no_gate: "bg-error/10 text-error",
 };

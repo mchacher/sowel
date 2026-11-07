@@ -107,7 +107,7 @@ export function LightControl({ equipment, onExecuteOrder, compact, divider = tru
           className={`
             p-2 rounded-[6px] transition-colors duration-150 cursor-pointer
             ${isOn
-              ? "bg-active text-white hover:bg-active/80"
+              ? "bg-active text-on-active hover:bg-active/80"
               : "bg-border-light text-text-tertiary hover:bg-border hover:text-text-secondary"
             }
             disabled:opacity-50 disabled:cursor-not-allowed
@@ -131,7 +131,7 @@ export function LightControl({ equipment, onExecuteOrder, compact, divider = tru
             flex items-center gap-2 px-4 py-2 rounded-[6px] text-small font-medium
             transition-colors duration-150
             ${isOn
-              ? "bg-active text-white hover:bg-active/80"
+              ? "bg-active text-on-active hover:bg-active/80"
               : "bg-border-light text-text-secondary hover:bg-border hover:text-text"
             }
             disabled:opacity-50

@@ -4,6 +4,7 @@ import type { BatteryAlert, DataBindingWithValue } from "../../types";
 import {
   isBooleanSensorCategory,
   isBooleanActive,
+  booleanSensorTone,
   formatBooleanSensor,
   formatSensorValue,
   getBatteryIcon,
@@ -94,7 +95,7 @@ export function SensorValues({
           {sensorBindings.map((b) => (
             <span key={b.id} className={layout === "wrap" ? "text-small tabular-nums" : "text-small tabular-nums flex-shrink-0"}>
               {b.category === "motion" && isBooleanActive(b.category, b.value) ? (
-                <span className="font-medium px-2 py-0.5 rounded-full text-micro bg-active/15 text-active-text inline-flex items-center gap-1">
+                <span className="font-medium px-2 py-0.5 rounded-full text-micro bg-primary/10 text-primary inline-flex items-center gap-1">
                   {formatBooleanSensor(b.category, b.value, t)}
                   <ElapsedCounter origin={b.lastChanged ?? b.lastUpdated} />
                 </span>
@@ -107,10 +108,7 @@ export function SensorValues({
                 <span
                   className={`
                     font-medium px-2 py-0.5 rounded-full text-micro
-                    ${isBooleanActive(b.category, b.value)
-                      ? "bg-active/15 text-active-text"
-                      : "bg-border-light text-text-tertiary"
-                    }
+                    ${booleanSensorTone(b.category, isBooleanActive(b.category, b.value)).pill}
                   `}
                 >
                   {formatBooleanSensor(b.category, b.value, t)}

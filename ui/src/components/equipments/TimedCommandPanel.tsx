@@ -280,8 +280,8 @@ export function TimedCommandPanel({
       )}
 
       {equipment.timedAction && (
-        <div className="mt-4 flex items-center gap-2 text-caption text-text-secondary bg-active/10 border border-active/30 rounded-[8px] px-3 py-2">
-          <span className="text-active-text">
+        <div className="mt-4 flex items-center gap-2 text-caption text-text-secondary bg-active-bg border border-active rounded-[8px] px-3 py-2">
+          <span className="text-active-ink">
             <TimedCountdown action={equipment.timedAction} />
           </span>
           {t("equipments.timed.running")}

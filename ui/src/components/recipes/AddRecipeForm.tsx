@@ -208,7 +208,7 @@ export function AddRecipeForm({
                     if (!visibleGroups.has(chunk.group)) return null;
                     const groupKey = chunk.group;
                     return (
-                      <div key={groupKey} className="mb-2.5 pl-2 border-l-2 border-accent/40">
+                      <div key={groupKey} className="mb-2.5 pl-2 border-l-2 border-border">
                         <div className="flex items-center justify-between mb-1">
                           <span className="text-small font-medium text-text-secondary">{recipeGroupLabel(selectedRecipe, groupKey, lang)}</span>
                           {!isGroupRequired(groupKey, selectedRecipe.slots) && <button
@@ -343,7 +343,6 @@ export function AddRecipeForm({
                             type="checkbox"
                             checked={params[slot.id] === "true"}
                             onChange={(e) => setParams({ ...params, [slot.id]: e.target.checked ? "true" : "false" })}
-                            className="accent-primary"
                           />
                           {recipeSlotName(selectedRecipe, slot, lang)}
                         </label>
@@ -458,7 +457,7 @@ export function AddRecipeForm({
                         onClick={() => {
                           setVisibleGroups((prev) => new Set([...prev, gk]));
                         }}
-                        className="flex items-center gap-1.5 text-caption text-accent hover:text-accent-hover transition-colors duration-150"
+                        className="flex items-center gap-1.5 text-caption text-primary hover:text-primary-hover transition-colors duration-150"
                       >
                         <Plus size={14} strokeWidth={1.5} />
                         {recipeGroupLabel(selectedRecipe, gk, lang)}

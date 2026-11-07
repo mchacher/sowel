@@ -117,7 +117,7 @@ export function TimedEquipmentWidget({
 
       <div className="shrink-0 flex justify-center pt-1">
         {running ? (
-          <span className="text-caption font-medium px-2.5 py-0.5 rounded-full bg-active/10 text-active-text">
+          <span className="text-caption font-medium px-2.5 py-0.5 rounded-full bg-active-bg text-active-ink">
             <TimedCountdown action={running} />
           </span>
         ) : (
@@ -139,7 +139,7 @@ export function TimedEquipmentWidget({
           disabled={busy || editMode || inert}
           title={nextPress}
           className={`w-10 h-10 flex items-center justify-center rounded-[6px] transition-all duration-150 cursor-pointer border border-border bg-surface text-text-secondary hover:border-primary/40 hover:text-primary hover:bg-primary/5 active:scale-[0.97] disabled:opacity-40 disabled:cursor-not-allowed ${
-            running ? "!border-active/40 !text-active !bg-active/5" : ""
+            running ? "!border-active !text-active-ink !bg-active-bg" : ""
           }`}
         >
           <TimerReset size={16} strokeWidth={1.5} />

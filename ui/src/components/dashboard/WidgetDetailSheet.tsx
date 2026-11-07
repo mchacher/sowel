@@ -930,7 +930,7 @@ function ZoneHeatingDetail({
         disabled={commandLoading !== null}
         className={`h-12 flex items-center justify-center gap-2 rounded-[6px] text-body font-medium transition-all cursor-pointer ${
           anyOn
-            ? "bg-error/10 text-error border border-error/30 hover:bg-error/20"
+            ? "bg-heat/10 text-heat border border-heat/30 hover:bg-heat/20"
             : "bg-primary/10 text-primary border border-primary/30 hover:bg-primary/20"
         }`}
       >
@@ -1095,7 +1095,7 @@ function LightDetailContent({
             disabled={executing}
             className={`flex-1 h-12 flex items-center justify-center gap-2 rounded-[6px] transition-all text-body font-medium cursor-pointer ${
               isOn
-                ? "bg-active/10 text-active-text border border-active/30"
+                ? "bg-active-bg text-active-ink border border-active"
                 : "bg-border-light text-text-secondary border border-border hover:bg-border"
             }`}
           >
@@ -1384,7 +1384,7 @@ function ThermostatDetailContent({
           disabled={executing === "power"}
           className={`h-12 flex items-center justify-center gap-2 rounded-[6px] text-body font-medium transition-all cursor-pointer ${
             isOn
-              ? "bg-error/10 text-error border border-error/30 hover:bg-error/20"
+              ? "bg-heat/10 text-heat border border-heat/30 hover:bg-heat/20"
               : "bg-primary/10 text-primary border border-primary/30 hover:bg-primary/20"
           }`}
         >
@@ -1459,7 +1459,7 @@ function HeaterDetailContent({
         <span
           className={`text-body font-medium px-4 py-2 rounded-full ${
             isComfort
-              ? "bg-error/10 text-error"
+              ? "bg-heat/10 text-heat"
               : "bg-primary/10 text-primary"
           }`}
         >
@@ -1475,7 +1475,7 @@ function HeaterDetailContent({
           className={`h-12 flex items-center justify-center gap-2 rounded-[6px] text-body font-medium transition-all cursor-pointer border ${
             isComfort
               ? "bg-primary/10 text-primary border-primary/30 hover:bg-primary/20"
-              : "bg-error/10 text-error border-error/30 hover:bg-error/20"
+              : "bg-heat/10 text-heat border-heat/30 hover:bg-heat/20"
           }`}
         >
           {executing
@@ -1551,11 +1551,10 @@ function GateDetailContent({
       <div className="flex justify-center">
         <span
           className={`text-body font-medium px-4 py-2 rounded-full ${
-            isOpen
-              ? "bg-warning/10 text-warning"
-              : gateState === "closed"
-                ? "bg-success/10 text-success"
-                : "bg-text-tertiary/10 text-text-tertiary"
+            // Open and closed are neutral (spec 196): the word says it.
+            isOpen || gateState === "closed"
+              ? "bg-border-light text-text-secondary"
+              : "bg-text-tertiary/10 text-text-tertiary"
           }`}
         >
           {t(`controls.gate.${gateState}`)}

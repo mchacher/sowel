@@ -133,7 +133,7 @@ export function CalendarPage() {
           <section className="bg-surface rounded-[10px] border border-border p-5">
             <div className="flex items-center justify-between mb-4">
               <h2 className="text-body font-semibold text-text flex items-center gap-2">
-                <Clock size={16} strokeWidth={1.5} className="text-accent" />
+                <Clock size={16} strokeWidth={1.5} className="text-text-tertiary" />
                 {t("calendar.slots")}
               </h2>
               <button
@@ -219,7 +219,7 @@ function SlotRow({
 
   return (
     <div className="flex items-center gap-3 px-3 py-2.5 bg-background rounded-[6px] border border-border">
-      <Clock size={14} strokeWidth={1.5} className="text-accent flex-shrink-0" />
+      <Clock size={14} strokeWidth={1.5} className="text-text-tertiary flex-shrink-0" />
       <div className="flex-1 min-w-0">
         <div className="text-small font-medium text-text tabular-nums">{slot.time}</div>
         <div className="text-micro text-text-tertiary truncate">
@@ -376,9 +376,9 @@ function SlotForm({
                 onClick={() => cycleMode(mode.id)}
                 className={`inline-flex items-center gap-1 px-2.5 py-1 text-micro font-medium rounded-[4px] transition-colors duration-150 ${
                   state === "on"
-                    ? "bg-success text-white"
+                    ? "bg-success text-on-status"
                     : state === "off"
-                      ? "bg-error text-white"
+                      ? "bg-error text-on-status"
                       : "bg-border-light text-text-tertiary hover:bg-border"
                 }`}
               >

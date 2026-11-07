@@ -58,7 +58,7 @@ export function HeaterControl({ equipment, onExecuteOrder, compact }: HeaterCont
           className={`
             text-micro font-medium px-2 py-0.5 rounded-full flex-shrink-0
             ${isComfort
-              ? "bg-error/10 text-error"
+              ? "bg-heat/10 text-heat"
               : "bg-primary/10 text-primary"
             }
           `}
@@ -74,7 +74,7 @@ export function HeaterControl({ equipment, onExecuteOrder, compact }: HeaterCont
             className={`
               p-1.5 rounded-[6px] transition-colors duration-150 cursor-pointer
               ${isComfort
-                ? "bg-error/10 text-error hover:bg-error/20"
+                ? "bg-heat/10 text-heat hover:bg-heat/20"
                 : "bg-primary/10 text-primary hover:bg-primary/20"
               }
               disabled:opacity-50 disabled:cursor-not-allowed
@@ -102,7 +102,7 @@ export function HeaterControl({ equipment, onExecuteOrder, compact }: HeaterCont
           className={`
             w-10 h-10 rounded-[8px] flex items-center justify-center
             ${isComfort
-              ? "bg-error/10 text-error"
+              ? "bg-heat/10 text-heat"
               : "bg-primary/10 text-primary"
             }
           `}
@@ -132,7 +132,7 @@ export function HeaterControl({ equipment, onExecuteOrder, compact }: HeaterCont
             transition-colors duration-150
             ${isComfort
               ? "bg-primary/10 text-primary hover:bg-primary/20"
-              : "bg-error/10 text-error hover:bg-error/20"
+              : "bg-heat/10 text-heat hover:bg-heat/20"
             }
             disabled:opacity-50
           `}

@@ -303,7 +303,7 @@ function HeaderLine({ state }: { state: SharedAccessState }) {
             <code className="font-mono text-caption text-text">{state.publicUrl}</code>
           </span>
         ) : (
-          <span className="text-warning">
+          <span className="text-warning-ink">
             {t("sharedAccess.header.noPublicUrl")}{" "}
             <Link to="/settings?tab=general" className="text-primary hover:underline">
               {t("sharedAccess.header.setIt")}
@@ -315,7 +315,7 @@ function HeaderLine({ state }: { state: SharedAccessState }) {
         <span
           key={g.equipmentId}
           className={`rounded-full px-2 py-0.5 ${
-            g.armed ? "bg-success/15 text-success" : "bg-error/10 text-error"
+            g.armed ? "bg-success/10 text-success" : "bg-error/10 text-error"
           }`}
         >
           {g.name} · {g.armed ? t("sharedAccess.armed") : t("sharedAccess.disarmed")}

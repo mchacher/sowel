@@ -347,7 +347,7 @@ export function ThermometerIcon({ warm, level }: { warm: boolean; level?: number
   const fillTop = iJy - clampedLevel * (iJy - iTop - 2);
 
   return (
-    <svg width="120" height="120" viewBox="0 0 56 56" fill="none" className={warm ? "text-error" : "text-primary"}>
+    <svg width="120" height="120" viewBox="0 0 56 56" fill="none" className={warm ? "text-heat" : "text-primary"}>
       <defs>
         <linearGradient id={tubeGrad} x1="0" y1="0" x2="0" y2="1">
           <stop offset="0%" stopColor="currentColor" stopOpacity="0.06" />
@@ -723,7 +723,7 @@ export function HeaterWidgetIcon({ comfort }: { comfort: boolean }) {
   const finGrad = `heater-fin-${id}`;
 
   return (
-    <svg width="120" height="120" viewBox="0 0 56 56" fill="none" className={comfort ? "text-error" : "text-primary"}>
+    <svg width="120" height="120" viewBox="0 0 56 56" fill="none" className={comfort ? "text-heat" : "text-primary"}>
       <defs>
         <linearGradient id={finGrad} x1="0" y1="0" x2="0" y2="1">
           <stop offset="0%" stopColor="currentColor" stopOpacity={comfort ? 0.4 : 0.15} />
@@ -891,8 +891,8 @@ export function PlugWidgetIcon({ on }: { on: boolean }) {
 
 export function MotionSensorIcon({ active }: { active: boolean }) {
   return (
-    <svg width="120" height="120" viewBox="0 0 56 56" fill="none" className={active ? "text-warning" : "text-primary"}>
-      {/* Person silhouette */}
+    <svg width="120" height="120" viewBox="0 0 56 56" fill="none" className="text-primary">
+      {/* Person silhouette; motion is activity, not "on": primary in both states (spec 196) */}
       <circle cx="22" cy="14" r="4" fill="currentColor" opacity="0.25" />
       <path d="M22 18 L22 30 M16 23 L28 23 M22 30 L16 40 M22 30 L28 40" stroke="currentColor" strokeWidth="2" strokeOpacity="0.25" strokeLinecap="round" strokeLinejoin="round" />
       {/* Detection waves */}
@@ -921,7 +921,7 @@ export function EnergyMeterIcon() {
   const screenGrad = `energy-screen-${id}`;
 
   return (
-    <svg width="120" height="120" viewBox="0 0 56 56" fill="none" className="text-accent">
+    <svg width="120" height="120" viewBox="0 0 56 56" fill="none" className="text-primary">
       <defs>
         <linearGradient id={bodyGrad} x1="0" y1="0" x2="0" y2="1">
           <stop offset="0%" stopColor="currentColor" stopOpacity="0.12" />
@@ -1226,8 +1226,8 @@ export function WaterValveWidgetIcon({ open }: { open: boolean }) {
 
 export function ContactSensorIcon({ open }: { open: boolean }) {
   return (
-    <svg width="120" height="120" viewBox="0 0 56 56" fill="none" className={open ? "text-warning" : "text-primary"}>
-      {/* Door frame */}
+    <svg width="120" height="120" viewBox="0 0 56 56" fill="none" className="text-primary">
+      {/* Door frame; open/closed is neutral, the drawing says it (spec 196) */}
       <rect x="8" y="6" width="18" height="44" rx="2" fill="currentColor" fillOpacity="0.06" stroke="currentColor" strokeWidth="1" strokeOpacity="0.2" />
       {/* Door */}
       <rect x={open ? "32" : "26"} y="6" width="18" height="44" rx="2" fill="currentColor" fillOpacity={open ? 0.08 : 0.1} stroke="currentColor" strokeWidth="1" strokeOpacity="0.25" />

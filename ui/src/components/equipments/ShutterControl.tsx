@@ -123,7 +123,7 @@ export function ShutterControl({ equipment, onExecuteOrder, compact }: ShutterCo
           </span>
         ) : position !== null && (
           position === 100 ? (
-            <span className="text-micro font-semibold text-success px-[7px] py-[1px] rounded-full bg-success/10">
+            <span className="text-micro font-semibold text-text-secondary px-[7px] py-[1px] rounded-full bg-border-light">
               {t(pillAtHundredKey)}
             </span>
           ) : position === 0 ? (

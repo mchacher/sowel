@@ -63,7 +63,7 @@ export function SolarControl({ equipment, onExecuteOrder, compact }: SolarContro
           p-2 rounded-[6px] transition-colors duration-150 cursor-pointer
           ${
             isOn
-              ? "bg-accent text-white hover:bg-accent-hover"
+              ? "bg-active text-on-active hover:bg-active/80"
               : "bg-border-light text-text-tertiary hover:bg-border hover:text-text-secondary"
           }
           disabled:opacity-50 disabled:cursor-not-allowed
@@ -84,7 +84,7 @@ export function SolarControl({ equipment, onExecuteOrder, compact }: SolarContro
         transition-colors duration-150
         ${
           isOn
-            ? "bg-accent text-white hover:bg-accent-hover"
+            ? "bg-active text-on-active hover:bg-active/80"
             : "bg-border-light text-text-secondary hover:bg-border hover:text-text"
         }
         disabled:opacity-50

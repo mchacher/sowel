@@ -92,7 +92,7 @@ export function RecipePickerPopover({
         onClick={() => onPick(recipe.id)}
         className="w-full flex items-center gap-2.5 px-2.5 py-2 rounded-[6px] hover:bg-border-light/60 transition-colors duration-150 text-left"
       >
-        <div className="w-7 h-7 rounded-[6px] bg-accent/10 text-accent flex items-center justify-center flex-shrink-0">
+        <div className="w-7 h-7 rounded-[6px] bg-border-light text-text-secondary flex items-center justify-center flex-shrink-0">
           <ChefHat size={14} strokeWidth={1.5} />
         </div>
         <div className="min-w-0 flex-1">

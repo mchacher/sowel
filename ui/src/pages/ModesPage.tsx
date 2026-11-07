@@ -6,6 +6,7 @@ import { useModes } from "../store/useModes";
 import { useAuth } from "../store/useAuth";
 import { getActiveCalendar } from "../api";
 import { ModeForm } from "../components/modes/ModeForm";
+import { Switch } from "../components/ui/Switch";
 import type { ModeWithDetails, CalendarSlot } from "../types";
 import { useWsSubscription } from "../hooks/useWsSubscription";
 
@@ -189,20 +190,13 @@ function ModeCard({ mode, calendarSlots, onClick }: { mode: ModeWithDetails; cal
       {/* Issue #912 — switching which mode is on is usage, not configuration,
           so every authenticated user gets this switch. Creating, editing and
           deleting a mode stay behind `isAdmin`. */}
-      <button
-        onClick={handleToggle}
+      <Switch
+        checked={mode.active}
+        onChange={(_, e) => void handleToggle(e)}
         disabled={toggling}
-        className="hit-44 relative w-9 h-5 rounded-full transition-colors duration-200 disabled:opacity-50 flex-shrink-0 cursor-pointer disabled:cursor-default"
-        style={{ backgroundColor: mode.active ? "var(--color-primary)" : "var(--color-border)" }}
         title={mode.active ? t("modes.deactivate") : t("modes.activate")}
-        role="switch"
-        aria-checked={mode.active}
-      >
-        <span
-          className="absolute top-[3px] left-[3px] w-[14px] h-[14px] bg-white rounded-full shadow-sm transition-transform duration-200"
-          style={{ transform: mode.active ? "translateX(16px)" : "translateX(0)" }}
-        />
-      </button>
+        label={mode.name}
+      />
     </div>
   );
 }

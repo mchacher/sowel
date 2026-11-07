@@ -23,10 +23,12 @@ import { cycleOptionLabel } from "../components/recipes/recipe-cycle";
 // ── Mode pill colors ────────────────────────────────────
 
 const MODE_COLORS: Record<string, { bg: string; text: string }> = {
-  eco: { bg: "var(--color-success-light, #dcfce7)", text: "var(--color-success, #16a34a)" },
+  // Tokens only, so the pills follow the theme (spec 196). Cocoon and night
+  // stay neutral until the series palette gives them a hue of their own.
+  eco: { bg: "color-mix(in srgb, var(--color-success) 10%, transparent)", text: "var(--color-success)" },
   comfort: { bg: "var(--color-primary-light)", text: "var(--color-primary)" },
-  cocoon: { bg: "var(--color-accent-light)", text: "var(--color-accent)" },
-  night: { bg: "#ede9fe", text: "#7c3aed" },
+  cocoon: { bg: "var(--color-border-light)", text: "var(--color-text-secondary)" },
+  night: { bg: "var(--color-border-light)", text: "var(--color-text-secondary)" },
 };
 
 const DEFAULT_PILL_COLOR = { bg: "var(--color-border-light)", text: "var(--color-text-secondary)" };

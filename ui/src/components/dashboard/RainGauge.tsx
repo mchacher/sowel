@@ -162,7 +162,7 @@ function Stat({ label, value, note }: { label: string; value: string; note?: str
           <span className="text-text-tertiary font-normal text-caption ml-1">mm</span>
         )}
       </div>
-      {note && <div className="text-micro text-warning">{note}</div>}
+      {note && <div className="text-micro text-warning-ink">{note}</div>}
     </div>
   );
 }

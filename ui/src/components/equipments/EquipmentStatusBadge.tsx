@@ -71,7 +71,7 @@ export function EquipmentStatusBadge({
   const colorClasses =
     status === "offline"
       ? "bg-error/10 text-error"
-      : "bg-warning/10 text-warning";
+      : "bg-warning/10 text-warning-ink";
 
   const labelKey = status === "offline" ? "equipment.status.offline" : "equipment.status.degraded";
   const tooltip = buildTooltip(status, reason, t);

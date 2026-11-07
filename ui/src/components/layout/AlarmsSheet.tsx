@@ -89,7 +89,7 @@ function IssueRow({
   const { t } = useTranslation();
   const isError = issue.level === "error";
   const Icon = isError ? AlertOctagon : AlertTriangle;
-  const tone = isError ? "text-error" : "text-warning";
+  const tone = isError ? "text-error" : "text-warning-ink";
   const sourceLabel = INTEGRATION_LABELS[issue.source] ?? issue.source;
 
   // An issue the UI knows how to word carries an i18n key and its parameters,
@@ -110,7 +110,7 @@ function IssueRow({
           <span>{sourceLabel}</span>
           <span
             className={`text-caption font-medium px-1.5 py-0.5 rounded ${
-              isError ? "bg-error/10 text-error" : "bg-warning/10 text-warning"
+              isError ? "bg-error/10 text-error" : "bg-warning/10 text-warning-ink"
             }`}
           >
             {isError ? t("alarms.level.error") : t("alarms.level.warning")}

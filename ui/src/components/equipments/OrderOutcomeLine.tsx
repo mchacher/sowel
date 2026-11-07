@@ -13,7 +13,7 @@ const TONE: Record<OrderOutcomeStatus, string> = {
   moving: "text-text-tertiary",
   confirmed: "text-success",
   fault: "text-error",
-  unconfirmed: "text-warning",
+  unconfirmed: "text-warning-ink",
   stopped: "text-text-tertiary",
 };
 

@@ -15,7 +15,7 @@ type Tone = "error" | "warning" | "info" | "neutral";
 
 const TONE_CLASS: Record<Tone, string> = {
   error: "bg-error/10 text-error hover:bg-error/20",
-  warning: "bg-warning/10 text-warning hover:bg-warning/20",
+  warning: "bg-warning/10 text-warning-ink hover:bg-warning/20",
   info: "bg-primary/10 text-primary hover:bg-primary/20",
   neutral: "bg-border-light text-text-secondary hover:bg-border",
 };

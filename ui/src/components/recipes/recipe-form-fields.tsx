@@ -88,10 +88,12 @@ export function MultiSelectChips({
 // ============================================================
 
 const MODE_PILL_COLORS: Record<string, { bg: string; text: string }> = {
-  eco: { bg: "var(--color-success-light, #dcfce7)", text: "var(--color-success, #16a34a)" },
+  // Tokens only, so the pills follow the theme (spec 196). Cocoon and night
+  // stay neutral until the series palette gives them a hue of their own.
+  eco: { bg: "color-mix(in srgb, var(--color-success) 10%, transparent)", text: "var(--color-success)" },
   comfort: { bg: "var(--color-primary-light)", text: "var(--color-primary)" },
-  cocoon: { bg: "var(--color-accent-light)", text: "var(--color-accent)" },
-  night: { bg: "#ede9fe", text: "#7c3aed" },
+  cocoon: { bg: "var(--color-border-light)", text: "var(--color-text-secondary)" },
+  night: { bg: "var(--color-border-light)", text: "var(--color-text-secondary)" },
 };
 const DEFAULT_PILL = { bg: "var(--color-border-light)", text: "var(--color-text-secondary)" };
 
@@ -158,7 +160,7 @@ export function CountdownTimer({ expiresAt }: { expiresAt: string }) {
   if (remaining <= 0) return null;
 
   return (
-    <span className="flex items-center gap-1 text-micro font-medium text-accent tabular-nums flex-shrink-0">
+    <span className="flex items-center gap-1 text-micro font-medium text-active-ink tabular-nums flex-shrink-0">
       <Timer size={12} strokeWidth={1.5} />
       {formatCountdown(remaining)}
     </span>
@@ -475,7 +477,6 @@ export function EquipmentCheckboxList({
                   (checked ? selected.filter((id) => id !== eq.id) : [...selected, eq.id]).join(","),
                 )
               }
-              className="accent-primary"
             />
             <span className="truncate">{eq.name}</span>
             {zone && (

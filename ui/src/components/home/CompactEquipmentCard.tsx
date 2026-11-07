@@ -56,9 +56,10 @@ interface CompactEquipmentCardProps {
 type Tint = { bg: string; text: string };
 
 const TYPE_TINTS: Record<EquipmentType, Tint> = {
-  light_onoff:             { bg: "bg-light-50",     text: "text-light-500" },
-  light_dimmable:          { bg: "bg-light-50",     text: "text-light-500" },
-  light_color:             { bg: "bg-light-50",     text: "text-light-500" },
+  // A light off is neutral: amber appears only while it is on (spec 196).
+  light_onoff:             { bg: "bg-border-light", text: "text-text-tertiary" },
+  light_dimmable:          { bg: "bg-border-light", text: "text-text-tertiary" },
+  light_color:             { bg: "bg-border-light", text: "text-text-tertiary" },
   shutter:                 { bg: "bg-shutter-50",   text: "text-shutter-500" },
   // Awning uses the Sowel primary-light backdrop — the V3 illustration is
   // already colored (primary blue + primary light) and harmonises with it.
@@ -74,14 +75,14 @@ const TYPE_TINTS: Record<EquipmentType, Tint> = {
   weather:                 { bg: "bg-primary-light",text: "text-primary" },
   weather_forecast:        { bg: "bg-primary-light",text: "text-primary" },
   pool_pump:               { bg: "bg-primary-light",text: "text-primary" },
-  gate:                    { bg: "bg-success/10",   text: "text-success" },
+  gate:                    { bg: "bg-shutter-50",   text: "text-shutter-500" },
   energy_production_meter: { bg: "bg-success/10",   text: "text-success" },
   solar_panel:             { bg: "bg-primary-light",  text: "text-primary" },
-  heater:                  { bg: "bg-error/10",     text: "text-error" },
-  water_heater:            { bg: "bg-accent-light",  text: "text-accent" },
-  pool_heat_pump:          { bg: "bg-error/10",     text: "text-error" },
-  energy_meter:            { bg: "bg-accent-light", text: "text-accent" },
-  main_energy_meter:       { bg: "bg-accent-light", text: "text-accent" },
+  heater:                  { bg: "bg-heat/10",      text: "text-heat" },
+  water_heater:            { bg: "bg-primary-light",text: "text-primary" },
+  pool_heat_pump:          { bg: "bg-heat/10",      text: "text-heat" },
+  energy_meter:            { bg: "bg-primary-light",text: "text-primary" },
+  main_energy_meter:       { bg: "bg-primary-light",text: "text-primary" },
   appliance:               { bg: "bg-border-light", text: "text-text-secondary" },
   // Spec 120 — displays use the muted "info-only" tint, matching sensors.
   display:                 { bg: "bg-sensor-50",    text: "text-sensor-500" },
@@ -93,7 +94,7 @@ const TYPE_TINTS: Record<EquipmentType, Tint> = {
   // "info-only" tint, like sensors and displays. Its own status badge carries
   // the alarm colour, so the tile itself stays quiet.
   ups:                     { bg: "bg-sensor-50",    text: "text-sensor-500" },
-  ev_charger:              { bg: "bg-accent-light",  text: "text-accent" },
+  ev_charger:              { bg: "bg-primary-light",text: "text-primary" },
   electric_vehicle:        { bg: "bg-primary-light",text: "text-primary" },
 };
 
@@ -179,8 +180,8 @@ export function CompactEquipmentCard({ equipment, onExecuteOrder, zoneName }: Co
   // Icon tinting — light-on overrides to amber + glow, everything else uses TYPE_TINTS.
   const isLightOn = isLight && isOn;
   const baseTint = TYPE_TINTS[equipment.type] ?? { bg: "bg-border-light", text: "text-text-tertiary" };
-  const iconBg = isLightOn ? "bg-accent" : baseTint.bg;
-  const iconText = isLightOn ? "text-white" : baseTint.text;
+  const iconBg = isLightOn ? "bg-active" : baseTint.bg;
+  const iconText = isLightOn ? "text-on-active" : baseTint.text;
   const iconAnimation = isLightOn ? "animate-glow" : "";
 
   // Spec 116: when the equipment is fully offline, render a minimal row —
@@ -297,7 +298,7 @@ export function CompactEquipmentCard({ equipment, onExecuteOrder, zoneName }: Co
         )}
 
         {/* Light / switch controls (smart plug = ON/OFF relay, same surface).
-         * Metering plug (spec 129): show live power (amber) next to the toggle. */}
+         * Metering plug (spec 129): show live power next to the toggle. */}
         {(isLight || isSwitch || isWaterHeater) && equipment.enabled && (
           <div className="flex items-center gap-2 flex-shrink-0">
             {waterHeaterTempC !== null && (
@@ -306,7 +307,7 @@ export function CompactEquipmentCard({ equipment, onExecuteOrder, zoneName }: Co
               </span>
             )}
             {switchPowerW !== null && (
-              <span className="text-small font-semibold text-accent tabular-nums">
+              <span className="text-small font-semibold text-text tabular-nums">
                 {formatPower(switchPowerW)}
               </span>
             )}
@@ -323,7 +324,7 @@ export function CompactEquipmentCard({ equipment, onExecuteOrder, zoneName }: Co
               </span>
             )}
             {waterHeaterDayWh !== null && (
-              <span className="text-small text-accent tabular-nums font-semibold">
+              <span className="text-small text-text tabular-nums font-semibold">
                 {formatEnergyParts(waterHeaterDayWh / 1000, { unit: "auto" }).value}
                 <span className="text-micro font-normal text-text-tertiary ml-0.5">
                   {formatEnergyParts(waterHeaterDayWh / 1000, { unit: "auto" }).unit}
@@ -540,7 +541,7 @@ function CompactEnergyValues({ equipment }: { equipment: EquipmentWithDetails })
 
   const dayWh = typeof energyDay?.value === "number" ? energyDay.value : null;
   const isProduction = equipment.type === "energy_production_meter";
-  const valueColor = isProduction ? "text-success" : "text-accent";
+  const valueColor = isProduction ? "text-success" : "text-text";
   const powerColor = isProduction ? "text-success" : "text-text-secondary";
 
   return (
@@ -675,7 +676,7 @@ function CompactEvCharger({
     <div className="flex items-center gap-2 flex-shrink-0">
       <EvVehicleBadge vehicle={s.vehicle} />
       {watts !== null && watts > 0 && (
-        <span className="text-small font-semibold text-accent tabular-nums">
+        <span className="text-small font-semibold text-text tabular-nums">
           {formatPower(watts)}
         </span>
       )}
@@ -704,7 +705,7 @@ function CompactUps({ equipment }: { equipment: EquipmentWithDetails }) {
     severity === "ok"
       ? "bg-success/10 text-success"
       : severity === "warning"
-        ? "bg-warning/10 text-warning"
+        ? "bg-warning/10 text-warning-ink"
         : severity === "error"
           ? "bg-error/10 text-error"
           : "bg-border-light text-text-tertiary";
@@ -748,7 +749,7 @@ function CompactAppliance({ equipment }: { equipment: EquipmentWithDetails }) {
   return (
     <div className="flex items-center gap-2 flex-shrink-0">
       <span className={`text-micro font-medium px-1.5 py-0.5 rounded-full ${
-        isRunning ? "bg-accent/10 text-accent" : "bg-border-light text-text-tertiary"
+        isRunning ? "bg-active-bg text-active-ink" : "bg-border-light text-text-tertiary"
       }`}>
         {state === "running" ? t("common.running") : state === "paused" ? t("common.paused") : state ?? "—"}
       </span>

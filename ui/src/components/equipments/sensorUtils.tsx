@@ -189,6 +189,24 @@ export function isBooleanActive(category: string, value: unknown): boolean {
   return raw === true;
 }
 
+/**
+ * Colour classes for a boolean sensor in its current state (spec 196 colour
+ * roles). Motion is activity, so primary; an open contact is a position, so
+ * neutral (the word says it); a leak or smoke is an alarm, so error. A sensor
+ * at rest is muted. `pill` is a tinted chip, `text` a bare word, `dot` a dot.
+ */
+export function booleanSensorTone(
+  category: string,
+  active: boolean,
+): { pill: string; text: string; dot: string } {
+  if (!active) return { pill: "bg-border-light text-text-tertiary", text: "text-text-tertiary", dot: "bg-border" };
+  if (category === "motion") return { pill: "bg-primary/10 text-primary", text: "text-primary", dot: "bg-primary" };
+  if (category === "water_leak" || category === "smoke") {
+    return { pill: "bg-error/10 text-error", text: "text-error", dot: "bg-error" };
+  }
+  return { pill: "bg-border-light text-text-secondary", text: "text-text", dot: "bg-text-secondary" };
+}
+
 /** Check if a category represents a boolean sensor (motion, contact, water_leak, smoke). */
 export function isBooleanSensorCategory(category: DataCategory): boolean {
   return ["motion", "contact_door", "contact_window", "water_leak", "smoke"].includes(category);
@@ -214,7 +232,7 @@ export function isContactOpen(bindings: DataBindingWithValue[]): boolean {
 export function getSensorIconColor(bindings: DataBindingWithValue[]): string {
   const primaryCat = getPrimarySensorCategory(bindings);
   if (primaryCat === "motion" && isMotionDetected(bindings)) {
-    return "bg-active/15 text-active-text";
+    return booleanSensorTone("motion", true).pill;
   }
   if (primaryCat === "action") {
     return "bg-primary/10 text-primary";
@@ -223,7 +241,7 @@ export function getSensorIconColor(bindings: DataBindingWithValue[]): string {
     (primaryCat === "contact_door" || primaryCat === "contact_window") &&
     isContactOpen(bindings)
   ) {
-    return "bg-active/15 text-active-text";
+    return booleanSensorTone(primaryCat, true).pill;
   }
   return "bg-border-light text-text-tertiary";
 }
@@ -301,6 +319,6 @@ export function getBatteryIcon(level: number | null, size = 14, strokeWidth = 1.
 export function getBatteryColor(level: number | null): string {
   if (level === null) return "text-text-tertiary";
   if (level < 20) return "text-error";
-  if (level < 30) return "text-warning";
+  if (level < 30) return "text-warning-ink";
   return "text-text-tertiary";
 }

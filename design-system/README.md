@@ -13,7 +13,7 @@ The Sowel design system codifies the visual language that emerged from the `spec
 **Three rules, in order**:
 
 1. **The interface synthesizes, it does not inventory.** A zone view tells you _what is happening_ before it lists what could happen. Pills, badges, and aggregate counts are designed to be glanceable in under one second.
-2. **One accent, one rhythm.** The amber `--a-500` is reserved for "a light is on right now" and nothing else. The orchestrated `rise` cascade on first paint is the only motion that touches multiple elements at once.
+2. **One meaning per colour, one rhythm.** Amber means: on or running right now (a light, a plug, a water heater heating, a pump, a charger charging) and nothing else. Orange asks for attention, red reports a fault, green says it works, and open/closed stays neutral. The full role table is in [tokens.md §1.2](tokens.md#12-colour-roles). The orchestrated `rise` cascade on first paint is the only motion that touches multiple elements at once.
 3. **Match the production pattern, then refine.** When the design diverges from `app.sowel.org`, the divergence is intentional and named in the relevant component spec.
 
 These rules echo the [Anthropic frontend-design skill](https://github.com/anthropics/skills/tree/main/skills/frontend-design): _"choice is intentionality, not intensity."_ The system commits to refined minimalism, executes it precisely, and does not chase trends.

@@ -195,7 +195,7 @@ export function BackupPage() {
                   <button
                     onClick={() => setConfirmRestore(backup)}
                     disabled={restoringLocal !== null}
-                    className="flex items-center gap-1 px-3 py-1.5 text-caption font-medium text-accent border border-accent/30 rounded-[6px] hover:bg-accent/10 transition-colors disabled:opacity-50 cursor-pointer disabled:cursor-default"
+                    className="flex items-center gap-1 px-3 py-1.5 text-caption font-medium text-error border border-error/40 rounded-[6px] hover:bg-error/10 transition-colors disabled:opacity-50 cursor-pointer disabled:cursor-default"
                   >
                     {restoringLocal === backup.filename ? (
                       <Loader2 size={12} className="animate-spin" />
@@ -238,7 +238,7 @@ export function BackupPage() {
               <button
                 onClick={() => handleRestoreLocal(confirmRestore)}
                 disabled={restoringLocal !== null}
-                className="flex items-center gap-1.5 px-4 py-2 text-small font-medium bg-accent text-white rounded-[6px] hover:bg-accent-hover transition-colors disabled:opacity-50 cursor-pointer disabled:cursor-default"
+                className="flex items-center gap-1.5 px-4 py-2 text-small font-medium bg-error text-on-status rounded-[6px] hover:bg-error/80 transition-colors disabled:opacity-50 cursor-pointer disabled:cursor-default"
               >
                 {restoringLocal !== null && <Loader2 size={14} className="animate-spin" />}
                 {t("backup.restore")}

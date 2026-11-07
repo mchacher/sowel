@@ -347,7 +347,7 @@ function HomeSettingsSection() {
               </span>
               <span
                 className={`text-micro ${
-                  tzSource === "fallback" ? "text-warning" : "text-text-tertiary"
+                  tzSource === "fallback" ? "text-warning-ink" : "text-text-tertiary"
                 }`}
               >
                 {tzSource === "auto" && t("settings.timezoneSourceAuto")}
@@ -805,7 +805,7 @@ function VersionBadge() {
               <button
                 onClick={handleConfirmUpdate}
                 disabled={updating}
-                className="flex items-center gap-1.5 px-4 py-2 text-small font-medium bg-error text-white rounded-[6px] hover:bg-error/80 transition-colors disabled:opacity-50 cursor-pointer disabled:cursor-default"
+                className="flex items-center gap-1.5 px-4 py-2 text-small font-medium bg-error text-on-status rounded-[6px] hover:bg-error/80 transition-colors disabled:opacity-50 cursor-pointer disabled:cursor-default"
               >
                 {updating ? (
                   <Loader2 size={14} className="animate-spin" />
@@ -961,8 +961,8 @@ function MfaReauthModal({
           <button
             onClick={handleSubmit}
             disabled={submitting || !password || !code}
-            className={`px-4 py-2 text-small font-medium text-white rounded-[6px] transition-colors disabled:opacity-50 cursor-pointer ${
-              danger ? "bg-error hover:bg-error/80" : "bg-primary hover:bg-primary-hover"
+            className={`px-4 py-2 text-small font-medium rounded-[6px] transition-colors disabled:opacity-50 cursor-pointer ${
+              danger ? "bg-error text-on-status hover:bg-error/80" : "bg-primary text-white hover:bg-primary-hover"
             }`}
           >
             {submitting ? t("common.saving") : submitLabel}

@@ -151,13 +151,12 @@ export function MissingBindingsModal({
                       type="checkbox"
                       checked={selected.has(item.sourceId)}
                       onChange={() => toggle(item.sourceId)}
-                      className="accent-primary"
                     />
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center gap-2">
                         <span
                           className={`font-mono text-caption font-medium ${
-                            item.kind === "data" ? "text-primary" : "text-accent"
+                            item.kind === "data" ? "text-primary" : "text-text-secondary"
                           }`}
                         >
                           {item.alias}

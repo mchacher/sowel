@@ -8,6 +8,7 @@ import {
   getBatteryColor,
   getSensorCategoryIcon,
   isBooleanSensorCategory,
+  booleanSensorTone,
   formatBooleanSensor,
   formatSensorValue,
 } from "./sensorUtils";
@@ -145,13 +146,14 @@ function BooleanSensorValue({
   );
   const displayActive = isContactCategory ? isContactOpen : isActive;
   const text = formatBooleanSensor(category, bindings[0]?.value, t);
+  const tone = booleanSensorTone(category, displayActive);
 
   return (
     <div className="flex items-center gap-2">
       <span
         className={`
           text-body font-semibold tabular-nums
-          ${displayActive ? "text-active-text" : "text-text-tertiary"}
+          ${tone.text}
         `}
       >
         {text}
@@ -159,7 +161,7 @@ function BooleanSensorValue({
       <div
         className={`
           w-2.5 h-2.5 rounded-full
-          ${displayActive ? "bg-active" : "bg-border"}
+          ${tone.dot}
         `}
       />
     </div>
@@ -216,15 +218,15 @@ function BatteryRow({ level, deviceName }: { level: number | null; deviceName?: 
 function getRowIconColor(category: DataCategory, bindings: DataBindingWithValue[]): string {
   if (category === "motion") {
     const active = bindings.some((b) => b.value === true || b.value === "ON");
-    return active ? "bg-active/15 text-active-text" : "bg-border-light text-text-tertiary";
+    return booleanSensorTone(category, active).pill;
   }
   if (category === "contact_door" || category === "contact_window") {
     const open = bindings.some((b) => b.value === false || b.value === "OFF");
-    return open ? "bg-active/15 text-active-text" : "bg-border-light text-text-tertiary";
+    return booleanSensorTone(category, open).pill;
   }
   if (category === "water_leak" || category === "smoke") {
     const active = bindings.some((b) => b.value === true || b.value === "ON");
-    return active ? "bg-error/15 text-error" : "bg-border-light text-text-tertiary";
+    return booleanSensorTone(category, active).pill;
   }
   return "bg-primary/10 text-primary";
 }

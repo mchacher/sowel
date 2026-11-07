@@ -100,7 +100,7 @@ function GapCell({ row }: { row: ArbiterLoadInfo }) {
       return <span>—</span>;
     case "pending":
       if ((row.shortfallW ?? 0) > 0) {
-        return <span className="text-warning font-semibold">{fmtW(row.shortfallW)}</span>;
+        return <span className="text-warning-ink font-semibold">{fmtW(row.shortfallW)}</span>;
       }
       // Covered, yet still not granted: the engage hold has not matured, or
       // something other than surplus holds it back. `reasonWaiting` knows which.
@@ -185,7 +185,7 @@ export function ArbitrationSurface() {
         }
       />
       {state.state === "degraded" && (
-        <p className="text-caption text-warning mb-2">{t("arbiter.degradedReason")}</p>
+        <p className="text-caption text-warning-ink mb-2">{t("arbiter.degradedReason")}</p>
       )}
       {dormant && (
         <p className="text-caption text-slate mb-2 flex items-center gap-1.5">

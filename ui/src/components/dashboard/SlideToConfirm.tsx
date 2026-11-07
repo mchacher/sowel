@@ -89,7 +89,7 @@ export function SlideToConfirm({
     >
       {/* progress fill */}
       <div
-        className={`absolute inset-y-0 left-0 rounded-[12px] ${done ? "bg-success/20" : "bg-warning/15"}`}
+        className={`absolute inset-y-0 left-0 rounded-[12px] ${done ? "bg-success/20" : "bg-warning/10"}`}
         style={{ width: `${KNOB + x}px`, transition }}
       />
       {/* Label, in whichever half the knob is not occupying: to its right at
@@ -102,7 +102,7 @@ export function SlideToConfirm({
         style={done ? { left: 0, right: `${KNOB_SPAN}px` } : { left: `${KNOB_SPAN}px`, right: 0 }}
       >
         {done ? confirmedLabel : label}
-        {!done && <ChevronsRight size={16} strokeWidth={2} className="text-warning" />}
+        {!done && <ChevronsRight size={16} strokeWidth={2} className="text-warning-ink" />}
       </div>
       {/* knob */}
       <div
@@ -112,7 +112,7 @@ export function SlideToConfirm({
         onPointerMove={onPointerMove}
         onPointerUp={onPointerUp}
         onPointerCancel={onPointerUp}
-        className={`absolute top-[4px] h-[50px] w-[50px] rounded-[9px] flex items-center justify-center text-white shadow-md z-[2] ${
+        className={`absolute top-[4px] h-[50px] w-[50px] rounded-[9px] flex items-center justify-center text-on-status shadow-md z-[2] ${
           done ? "bg-success cursor-default" : "bg-warning cursor-grab active:cursor-grabbing"
         }`}
         style={{ left: `${PAD + x}px`, transition }}

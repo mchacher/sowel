@@ -72,7 +72,7 @@ export function EnergyDataPanel({ computedData, status, statusReason,
     <div className="bg-surface rounded-[10px] border border-border p-4 mb-6">
       <div className="flex items-center justify-between mb-4">
         <h3 className="text-body font-semibold text-text flex items-center gap-2">
-          <Zap size={16} strokeWidth={1.5} className="text-accent" />
+          <Zap size={16} strokeWidth={1.5} className="text-text-tertiary" />
           {t(isProduction ? "energy.cumulsProduction" : "energy.cumuls")}
         </h3>
         {status && <EquipmentStatusBadge status={status} reason={statusReason} size="sm" />}
@@ -86,7 +86,7 @@ export function EnergyDataPanel({ computedData, status, statusReason,
               key={c.alias}
               className="flex items-center gap-3 px-3 py-3 rounded-[8px] bg-border-light/50"
             >
-              <div className="flex-shrink-0 w-10 h-10 rounded-[6px] flex items-center justify-center bg-accent/10 text-accent">
+              <div className="flex-shrink-0 w-10 h-10 rounded-[6px] flex items-center justify-center bg-primary-light text-primary">
                 {c.icon}
               </div>
               <div className="flex-1 min-w-0">

@@ -437,7 +437,7 @@ function LightEquipmentWidget({
           ) : (
             <span
               className={`text-caption font-medium px-2.5 py-0.5 rounded-full ${
-                isOn ? "bg-active/10 text-active" : "bg-border-light text-text-tertiary"
+                isOn ? "bg-active-bg text-active-ink" : "bg-border-light text-text-tertiary"
               }`}
             >
               {isOn ? t("controls.on") : t("controls.off")}
@@ -453,7 +453,7 @@ function LightEquipmentWidget({
             onClick={handleToggle}
             disabled={executing}
             className={`w-10 h-10 flex items-center justify-center rounded-[6px] transition-all duration-150 cursor-pointer border border-border bg-surface text-text-secondary hover:border-primary/40 hover:text-primary hover:bg-primary/5 active:scale-[0.97] disabled:opacity-40 disabled:cursor-not-allowed ${
-              isOn ? "!border-active/40 !text-active !bg-active/5" : ""
+              isOn ? "!border-active !text-active-ink !bg-active-bg" : ""
             }`}
             title={isOn ? t("controls.turnOff") : t("controls.turnOn")}
           >
@@ -548,7 +548,7 @@ function WaterHeaterEquipmentWidget({
         <div className="flex flex-col items-start gap-1 pl-2">
           <span
             className={`text-caption font-medium px-2.5 py-0.5 rounded-full ${
-              isOn ? "bg-active/10 text-active" : "bg-border-light text-text-tertiary"
+              isOn ? "bg-active-bg text-active-ink" : "bg-border-light text-text-tertiary"
             }`}
           >
             {isOn ? t("controls.on") : t("controls.off")}
@@ -582,7 +582,7 @@ function WaterHeaterEquipmentWidget({
             onClick={handleToggle}
             disabled={executing}
             className={`w-10 h-10 flex items-center justify-center rounded-[6px] transition-all duration-150 cursor-pointer border border-border bg-surface text-text-secondary hover:border-primary/40 hover:text-primary hover:bg-primary/5 active:scale-[0.97] disabled:opacity-40 disabled:cursor-not-allowed ${
-              isOn ? "!border-active/40 !text-active !bg-active/5" : ""
+              isOn ? "!border-active !text-active-ink !bg-active-bg" : ""
             }`}
             title={isOn ? t("controls.turnOff") : t("controls.turnOn")}
           >
@@ -640,7 +640,7 @@ function VmcEquipmentWidget({
         <div className="flex flex-col items-start gap-1 pl-2">
           <span
             className={`text-caption font-medium px-2.5 py-0.5 rounded-full ${
-              running ? "bg-active/10 text-active" : "bg-border-light text-text-tertiary"
+              running ? "bg-active-bg text-active-ink" : "bg-border-light text-text-tertiary"
             }`}
           >
             {speedLabel}
@@ -758,7 +758,7 @@ function ShutterEquipmentWidget({
           ) : position === null ? (
             <span className="text-lead text-text-tertiary">{"\u2014"}</span>
           ) : position === 100 ? (
-            <span className="text-small font-medium text-success px-2 py-0.5 rounded bg-success/10">
+            <span className="text-small font-medium text-text-secondary px-2 py-0.5 rounded bg-border-light">
               {pillAtHundred}
             </span>
           ) : position === 0 ? (
@@ -907,7 +907,7 @@ function ThermostatEquipmentWidget({
               disabled={executing === "power"}
               className={`w-7 h-7 flex items-center justify-center rounded-[5px] transition-all duration-150 cursor-pointer border border-border bg-surface text-text-secondary active:scale-[0.97] disabled:opacity-40 disabled:cursor-not-allowed ${
                 isOn
-                  ? "!border-error/40 !text-error !bg-error/5 hover:!bg-error/10"
+                  ? "!border-heat/40 !text-heat !bg-heat/5 hover:!bg-heat/10"
                   : "hover:border-primary/40 hover:text-primary hover:bg-primary/5"
               }`}
               title={isOn ? t("controls.turnOff") : t("controls.turnOn")}
@@ -1027,11 +1027,10 @@ function GateEquipmentWidget({
       <div className="flex justify-center mt-auto pt-1">
         <span
           className={`text-caption font-medium px-2.5 py-0.5 rounded-full ${
-            isOpen
-              ? "bg-warning/10 text-warning"
-              : gateState === "closed"
-                ? "bg-success/10 text-success"
-                : "bg-text-tertiary/10 text-text-tertiary"
+            // Open and closed are neutral (spec 196): the word says it.
+            isOpen || gateState === "closed"
+              ? "bg-border-light text-text-secondary"
+              : "bg-text-tertiary/10 text-text-tertiary"
           }`}
         >
           {t(`controls.gate.${gateState}`)}
@@ -1121,7 +1120,7 @@ function HeaterEquipmentWidget({
         <div className="pl-2">
           <span
             className={`text-caption font-medium px-2.5 py-0.5 rounded-full ${
-              isComfort ? "bg-error/10 text-error" : "bg-primary/10 text-primary"
+              isComfort ? "bg-heat/10 text-heat" : "bg-primary/10 text-primary"
             }`}
           >
             {isComfort ? t("controls.heater.comfort") : t("controls.heater.eco")}
@@ -1138,7 +1137,7 @@ function HeaterEquipmentWidget({
             className={`w-10 h-10 flex items-center justify-center rounded-[6px] transition-all duration-150 cursor-pointer border border-border bg-surface text-text-secondary active:scale-[0.97] disabled:opacity-40 disabled:cursor-not-allowed ${
               isComfort
                 ? "hover:border-primary/40 hover:text-primary hover:bg-primary/5"
-                : "hover:border-error/40 hover:text-error hover:bg-error/5"
+                : "hover:border-heat/40 hover:text-heat hover:bg-heat/5"
             }`}
             title={isComfort ? t("controls.heater.switchEco") : t("controls.heater.switchComfort")}
           >
@@ -1592,7 +1591,7 @@ function EvChargerEquipmentWidget({
           iconKey,
           <EvCharger
             strokeWidth={1.5}
-            className={`${charging ? "text-accent" : "text-text-tertiary"} w-[52px] h-[52px]`}
+            className={`${charging ? "text-active" : "text-text-tertiary"} w-[52px] h-[52px]`}
           />,
         )}
         <EvVehicleBadge vehicle={s.vehicle} />
@@ -1656,7 +1655,7 @@ function UpsEquipmentWidget({
     severity === "ok"
       ? "text-success"
       : severity === "warning"
-        ? "text-warning"
+        ? "text-warning-ink"
         : severity === "error"
           ? "text-error"
           : "text-text-tertiary";
@@ -1733,7 +1732,7 @@ function ApplianceEquipmentWidget({
           strokeWidth={0.8}
           className={
             isRunning
-              ? "text-accent animate-pulse"
+              ? "text-active animate-pulse"
               : isOn
                 ? "text-text-secondary"
                 : "text-text-tertiary"
@@ -1744,7 +1743,7 @@ function ApplianceEquipmentWidget({
           <span className="text-caption text-text-tertiary">{t("controls.off")}</span>
         ) : isRunning ? (
           <div className="flex flex-col items-center gap-0.5">
-            <span className="text-caption font-medium text-accent">{t("common.running")}</span>
+            <span className="text-caption font-medium text-active-ink">{t("common.running")}</span>
             {remainingStr && (
               <span className="flex items-center gap-1 text-small tabular-nums text-text">
                 <Timer size={12} />
@@ -1753,7 +1752,7 @@ function ApplianceEquipmentWidget({
             )}
             {progress > 0 && (
               <div className="w-16 h-1.5 bg-border-light rounded-full overflow-hidden mt-0.5">
-                <div className="h-full bg-accent rounded-full" style={{ width: `${progress}%` }} />
+                <div className="h-full bg-active rounded-full" style={{ width: `${progress}%` }} />
               </div>
             )}
           </div>
@@ -1829,7 +1828,7 @@ function WaterValveEquipmentWidget({
         <div className="flex items-center gap-2 pl-2">
           <span
             className={`text-caption font-medium px-2.5 py-0.5 rounded-full ${
-              isOpen ? "bg-active/10 text-active" : "bg-border-light text-text-tertiary"
+              isOpen ? "bg-active-bg text-active-ink" : "bg-border-light text-text-tertiary"
             }`}
           >
             {isOpen ? t("water.open") : t("water.closed")}
@@ -1843,7 +1842,7 @@ function WaterValveEquipmentWidget({
             onClick={handleToggle}
             disabled={executing}
             className={`w-10 h-10 flex items-center justify-center rounded-[6px] transition-all duration-150 cursor-pointer border border-border bg-surface text-text-secondary hover:border-primary/40 hover:text-primary hover:bg-primary/5 active:scale-[0.97] disabled:opacity-40 disabled:cursor-not-allowed ${
-              isOpen ? "!border-active/40 !text-active !bg-active/5" : ""
+              isOpen ? "!border-active !text-active-ink !bg-active-bg" : ""
             }`}
             title={isOpen ? t("controls.turnOff") : t("controls.turnOn")}
           >
@@ -1947,7 +1946,7 @@ function PoolCoverEquipmentWidget({
           {position === null ? (
             <span className="text-lead text-text-tertiary">{"\u2014"}</span>
           ) : position === 100 ? (
-            <span className="text-small font-medium text-success px-2 py-0.5 rounded bg-success/10">
+            <span className="text-small font-medium text-text-secondary px-2 py-0.5 rounded bg-border-light">
               {t("controls.opened")}
             </span>
           ) : position === 0 ? (

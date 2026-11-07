@@ -89,7 +89,7 @@ export function BindingsPicker({ bindings, visibleAliases, onUpdate, onClose, mo
           type="checkbox"
           checked={isChecked(b.alias)}
           onChange={() => handleToggle(b.alias)}
-          className="accent-primary w-3.5 h-3.5 flex-shrink-0"
+          className="w-3.5 h-3.5 flex-shrink-0"
         />
         <span className="text-caption text-text flex-1 truncate">{b.alias}</span>
         <span className="text-micro text-text-tertiary tabular-nums flex-shrink-0">

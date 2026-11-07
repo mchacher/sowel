@@ -68,10 +68,12 @@ const SHOWN_IN_MARGINS = new Set([
   "battery_runtime_low",
 ]);
 
-function severityColor(r: UpsReadings): string {
+/** `ink`: the colour for words (the status tag), where orange takes its
+ *  darker text variant; otherwise the fill colour for strokes (spec 196). */
+function severityColor(r: UpsReadings, ink = false): string {
   const s = upsSeverityOf(r.status);
   if (s === "error") return "var(--color-error)";
-  if (s === "warning") return "var(--color-warning)";
+  if (s === "warning") return ink ? "var(--color-warning-ink)" : "var(--color-warning)";
   if (s === "ok") return GRID_COLOR;
   return IDLE_COLOR;
 }
@@ -83,7 +85,7 @@ export function UpsPanel({ dataBindings }: UpsPanelProps) {
   const statusText = r.status ? t(upsStatusKey(r.status)) : (r.rawStatus ?? t(upsStatusKey(null)));
   const tagColor = severityColor(r);
 
-  // The battery branch borrows the status severity: amber the moment the mains
+  // The battery branch borrows the status severity: orange the moment the mains
   // is gone, red once the hardware calls the charge low.
   const batteryBranchColor = onBattery ? tagColor : BATTERY_COLOR;
 
@@ -169,6 +171,7 @@ export function UpsPanel({ dataBindings }: UpsPanelProps) {
       : margin === "tight"
         ? "var(--color-warning)"
         : "var(--color-success)";
+  const marginInk = margin === "tight" ? "var(--color-warning-ink)" : marginColor;
 
   const sheetRows = dataBindings.filter(
     (b) => !SHOWN_IN_DIAGRAM.has(b.alias) && !SHOWN_IN_MARGINS.has(b.alias),
@@ -186,7 +189,7 @@ export function UpsPanel({ dataBindings }: UpsPanelProps) {
         <FlowDiagram
           nodes={nodes}
           links={links}
-          tag={{ text: statusText, color: tagColor }}
+          tag={{ text: statusText, color: severityColor(r, true) }}
           ariaLabel={ariaLabel}
         />
       </div>
@@ -204,7 +207,7 @@ export function UpsPanel({ dataBindings }: UpsPanelProps) {
             </div>
             <span
               className="text-caption font-medium px-2.5 py-1 rounded-full shrink-0"
-              style={{ color: marginColor, background: `color-mix(in srgb, ${marginColor} 12%, transparent)` }}
+              style={{ color: marginInk, background: `color-mix(in srgb, ${marginColor} 10%, transparent)` }}
             >
               {t(`equipments.ups.margins.${margin}`)}
             </span>

@@ -55,7 +55,7 @@ export function TimedCommandControl({
   return (
     <div className="flex items-center gap-2" onClick={(e) => e.stopPropagation()}>
       {running && (
-        <span className="text-micro font-medium px-2 py-0.5 rounded-full bg-active/10 text-active-text flex-shrink-0">
+        <span className="text-micro font-medium px-2 py-0.5 rounded-full bg-active-bg text-active-ink flex-shrink-0">
           <TimedCountdown action={running} size={14} />
         </span>
       )}
@@ -73,7 +73,7 @@ export function TimedCommandControl({
           labelled ? "px-3 py-2 text-small font-medium" : "p-2"
         } ${
           running
-            ? "bg-active/10 text-active-text hover:bg-active/20"
+            ? "bg-active-bg text-active-ink hover:bg-active/20"
             : "bg-primary/10 text-primary hover:bg-primary/20"
         }`}
       >

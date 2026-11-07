@@ -19,16 +19,45 @@ The Sowel signature color. Used for navigation active states, links, focus rings
 | `--p-600` | `#144159`     | `#82BCDD`     | primary button hover                                    |
 | `--p-700` | `#0F3146`     | `#A8CEE6`     | rarely used, darker hover                               |
 
-### 1.2 Accent — Sowel amber/yellow
+### 1.2 Colour roles
 
-**Rule**: amber is reserved for "a light is currently on". Never use amber for category headers, panel borders, or call-to-action buttons. The accent must point at _live state_, not decoration.
+One colour, one meaning (spec 196). Use the Tailwind role, never a raw hue. Every text/background pair below is checked in light and dark by `ui/src/lib/color-roles.test.ts` (≥ 4.5:1 for text, ≥ 3:1 for graphics), which also fails on a retired class name.
 
-| Token     | Hybrid        | Dark          | Usage                                         |
-| --------- | ------------- | ------------- | --------------------------------------------- |
-| `--a-50`  | `#FFF6D6`     | `#332715`     | light-on icon bg tint, alarm pill bg          |
-| `--a-100` | `#FCE89A`     | `#5C3F1A`     | dimmer track tint                             |
-| `--a-500` | **`#F2C035`** | **`#F2BC6E`** | light-on icon fg, slider knob, power-btn on   |
-| `--a-600` | `#D4A41C`     | `#FFCF8C`     | dimmer value text ("4 %"), power-btn on hover |
+| Role (Tailwind) | Meaning                                            | Hybrid        | Dark          | Key ratios (hybrid / dark)                  |
+| --------------- | -------------------------------------------------- | ------------- | ------------- | ------------------------------------------- |
+| `active`        | on or running now: fill, icon in a tile            | **`#F2C035`** | **`#F2BC6E`** | never alone as text or icon on light (1.70) |
+| `active-ink`    | the word or value of something on                  | `#8A6100`     | `#F2BC6E`     | 5.54 on white, 5.12 on `active-bg` / 10.30  |
+| `active-bg`     | tinted pill of something on                        | `#FFF6D6`     | `#332715`     | —                                           |
+| `on-active`     | content on an amber fill (never white)             | `#1C1A14`     | `#1C1A14`     | 10.24 / 10.10                               |
+| `warning`       | needs attention: dot, fill, icon                   | `#E8730C`     | `#F99549`     | 3.05 on white / 7.96                        |
+| `warning-ink`   | needs attention, in words                          | `#A85500`     | `#F99549`     | 5.30 on white, 4.77 on `warning/10` / 7.96  |
+| `success`       | works as expected: connected, done, mode active    | `#13794A`     | `#3DDB89`     | 5.44 on white, 4.74 on `success/10` / 9.88  |
+| `error`         | fault, failure, offline, leak, destructive action  | `#B42318`     | `#F97066`     | 6.57 on white, 5.58 on `error/10` / 6.37    |
+| `heat`          | heating now (alias of `error`, may diverge later)  | = `error`     | = `error`     | = `error`                                   |
+| `on-status`     | text on a `success`, `error` or `warning-ink` fill | `#FFFFFF`     | `#16181E`     | 5.30–6.57 / 6.37–9.88                       |
+
+Who may use what:
+
+- **Amber** only for something on or running now: light, switch, plug, water heater heating, VMC, pump, compressor, appliance in a cycle, timer running, charger charging, valve open (water flows), solar command on. Not for alerts, energy, plugins, decoration, links or action buttons. On a fill, the content is `on-active`; as text, `active-ink`. The sun glyph (sunrise, sunny weather) is the one tolerated amber icon; its text stays neutral.
+- **Orange** (`warning`, `warning-ink`) when something asks for attention but is not a fault: low battery, degraded, connecting, partly offline, waiting for surplus, stale reading, fallback time zone, fairly reliable forecast, unconfirmed order.
+- **Red** (`error`) for faults: failure, offline, leak, smoke, critical battery, delete, restore a backup, surplus revoked. **`heat`** for heating.
+- **Green** (`success`) for what works as expected: connected, online, saved, mode active, access armed. Not for open, closed, changed or solar production (energy palette).
+- **Neutral** (`text`, `text-secondary`, icons `text-tertiary`) for positions and openings (open and closed alike: the word and the icon say it), meters and energy values, plugins, equipment categories, decoration.
+- **Primary** for selection, links, the main action, a changed field, and motion detected (activity).
+- Tinted status backgrounds stop at `/10`: at `/15` `success` and `warning-ink` drop under 4.5:1.
+
+Raw amber scale (for fills and the tokens above; use the roles in components):
+
+| Token     | Hybrid        | Dark          | Usage                                       |
+| --------- | ------------- | ------------- | ------------------------------------------- |
+| `--a-50`  | `#FFF6D6`     | `#332715`     | `active-bg`                                 |
+| `--a-100` | `#FCE89A`     | `#5C3F1A`     | dimmer track tint                           |
+| `--a-500` | **`#F2C035`** | **`#F2BC6E`** | `active`: icon in a tile, slider fill, glow |
+| `--a-600` | `#D4A41C`     | `#FFCF8C`     | not a text colour (2.30:1 on white)         |
+| `--a-ink` | `#8A6100`     | `#F2BC6E`     | `active-ink`                                |
+| `--a-on`  | `#1C1A14`     | `#1C1A14`     | `on-active`                                 |
+
+Native controls (checkboxes, radios, selects, date pickers, scrollbars) follow the theme through `color-scheme` and `accent-color: var(--color-primary)` in `ui/src/index.css`; no `accent-*` class is needed. Switches use the shared `ui/src/components/ui/Switch.tsx`: off has a visible outline (`text-tertiary`, 4.83:1) and a grey thumb, on is a primary track.
 
 ### 1.3 Neutrals — zinc scale
 
@@ -56,29 +85,31 @@ The neutral scale carries 95% of the UI. It is calibrated so that:
 
 These are NOT decorative. Each maps to a specific state.
 
-| Token group | Color                                 | Used for                                                                 |
-| ----------- | ------------------------------------- | ------------------------------------------------------------------------ |
-| `--green-*` | success                               | `Calme` motion pill, mode actif badge, "Connecté" pill, recipe toggle ON |
-| `--info-*`  | informational                         | temperature/humidity/lux sensors, sparklines                             |
-| `--red-*`   | error / alert                         | open door/window pills, smoke/leak alerts, delete buttons                |
-| `--a-*`     | live light (already documented above) | the on-state of any light                                                |
+| Token group   | Role            | Used for                                                   |
+| ------------- | --------------- | ---------------------------------------------------------- |
+| `--green-*`   | `success`       | `Calme` motion pill, mode actif badge, "Connecté" pill     |
+| `--info-*`    | informational   | temperature/humidity/lux sensors, sparklines               |
+| `--orange-*`  | `warning`       | attention: low battery, connecting, waiting, stale reading |
+| `--red-*`     | `error`, `heat` | faults, smoke/leak alerts, delete buttons; heating         |
+| `--a-*`       | `active`        | something on or running now (see §1.2)                     |
+| `--on-status` | `on-status`     | text on a status fill                                      |
 
 ```
---green-50:#E6F7EE  --green-500:#1FA260  --green-700:#0E6B3F   (Hybrid)
---info-50:#E0EFFA   --info-500:#247EB5
---red-50:#FBE9E1    --red-500:#C7522E
+--green-50:#E6F7EE   --green-500:#13794A   --green-700:#0E6B3F   (Hybrid)
+--info-50:#E0EFFA    --info-500:#247EB5
+--orange-50:#FDF1E7  --orange-500:#E8730C  --orange-700:#A85500
+--red-50:#FBE9E1     --red-500:#B42318
 ```
 
 ### 1.5 Equipment category tints
 
 Used **only** on equipment row icons (`.eq__icon--{type}`). They give a glanceable visual cue per category. **Do not propagate** these colors to category headers (the user explicitly rejected that — sub-cat headers stay neutral).
 
-| Type         | `--{type}-50`  | `--{type}-500`  | Hex (Hybrid)          |
-| ------------ | -------------- | --------------- | --------------------- |
-| Lights (off) | `--light-50`   | `--light-500`   | `#FFF6D6` / `#F2C035` |
-| Shutters     | `--shutter-50` | `--shutter-500` | `#E8EBEE` / `#4F5763` |
-| Sensors      | `--sensor-50`  | `--sensor-500`  | `#EBF2EC` / `#4F7559` |
-| Media        | `--media-50`   | `--media-500`   | `#EAE9F2` / `#5759A5` |
+| Type     | `--{type}-50`  | `--{type}-500`  | Hex (Hybrid)          |
+| -------- | -------------- | --------------- | --------------------- |
+| Shutters | `--shutter-50` | `--shutter-500` | `#E8EBEE` / `#4F5763` |
+| Sensors  | `--sensor-50`  | `--sensor-500`  | `#EBF2EC` / `#4F7559` |
+| Media    | `--media-50`   | `--media-500`   | `#EAE9F2` / `#5759A5` |
 
 ### 1.6 Borders & lines
 
@@ -230,20 +261,23 @@ Components **never** declare arbitrary z-index values. Pick from this registry.
 
 The current production codebase uses Tailwind utility classes with semantic class names (`bg-surface`, `text-text-tertiary`, etc.) backed by a Tailwind config. To migrate:
 
-| Tailwind semantic                | Tokens.css equivalent                  |
-| -------------------------------- | -------------------------------------- |
-| `bg-surface`                     | `var(--n-0)`                           |
-| `bg-border-light` / `bg-bg`      | `var(--n-25)`                          |
-| `text-text`                      | `var(--n-700)`                         |
-| `text-text-secondary`            | `var(--n-600)`                         |
-| `text-text-tertiary`             | `var(--n-400)`                         |
-| `border-border`                  | `var(--line-2)`                        |
-| `border-border-light`            | `var(--line)`                          |
-| `text-primary` / `bg-primary`    | `var(--p-500)`                         |
-| `bg-primary/8`                   | `var(--p-50)`                          |
-| `text-accent` / `bg-accent`      | `var(--a-500)` / `var(--a-50)`         |
-| `text-success` / `bg-success/10` | `var(--green-500)` / `var(--green-50)` |
-| `text-error` / `bg-error/10`     | `var(--red-500)` / `var(--red-50)`     |
+| Tailwind semantic                 | Tokens.css equivalent                     |
+| --------------------------------- | ----------------------------------------- |
+| `bg-surface`                      | `var(--n-0)`                              |
+| `bg-border-light` / `bg-bg`       | `var(--n-25)`                             |
+| `text-text`                       | `var(--n-700)`                            |
+| `text-text-secondary`             | `var(--n-600)`                            |
+| `text-text-tertiary`              | `var(--n-400)`                            |
+| `border-border`                   | `var(--line-2)`                           |
+| `border-border-light`             | `var(--line)`                             |
+| `text-primary` / `bg-primary`     | `var(--p-500)`                            |
+| `bg-primary/8`                    | `var(--p-50)`                             |
+| `bg-active` / `text-active-ink`   | `var(--a-500)` / `var(--a-ink)`           |
+| `bg-active-bg` / `text-on-active` | `var(--a-50)` / `var(--a-on)`             |
+| `bg-warning` / `text-warning-ink` | `var(--orange-500)` / `var(--orange-700)` |
+| `text-success` / `bg-success/10`  | `var(--green-500)` / `var(--green-50)`    |
+| `text-error` / `bg-error/10`      | `var(--red-500)` / `var(--red-50)`        |
+| `text-heat` / `text-on-status`    | `var(--red-500)` / `var(--on-status)`     |
 
 See [migration.md](migration.md) for the broader strategy.
 
@@ -255,3 +289,4 @@ See [migration.md](migration.md) for the broader strategy.
 | ---------- | ----------------------------------------------------------------------------------- |
 | 2026-05-13 | Initial extraction from polished.html (v1.0)                                        |
 | 2026-11-07 | Inter variable, type scale `text-micro` … `text-value`, no 700 (spec 196, slice 5a) |
+| 2026-11-07 | Colour roles: amber = on, orange = attention, red = fault; no light tint (slice 4)  |

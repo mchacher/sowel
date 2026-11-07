@@ -29,6 +29,7 @@ import {
 } from "../../api";
 import type { IntegrationInfo, IntegrationSettingDef } from "../../types";
 import { FIELD_LABEL } from "../ui/text-roles";
+import { Switch } from "../ui/Switch";
 
 interface IntegrationDrawerProps {
   integration: IntegrationInfo | null;
@@ -181,8 +182,8 @@ export function IntegrationDrawer({ integration, onClose, onRefresh }: Integrati
         {/* Header */}
         <div className="flex items-center justify-between p-5 border-b border-border">
           <div className="flex items-center gap-3">
-            <div className="w-9 h-9 bg-accent/10 rounded-[8px] flex items-center justify-center">
-              <IconComponent size={18} className="text-accent" />
+            <div className="w-9 h-9 bg-border-light rounded-[8px] flex items-center justify-center">
+              <IconComponent size={18} className="text-text-secondary" />
             </div>
             <div>
               <h2 className="text-lead font-semibold text-text">{integration.name}</h2>
@@ -230,7 +231,7 @@ export function IntegrationDrawer({ integration, onClose, onRefresh }: Integrati
               <div className="text-micro text-text-tertiary">
                 {t("integrations.devices")}
                 {integration.offlineDeviceCount > 0 && (
-                  <span className="text-warning ml-1">
+                  <span className="text-warning-ink ml-1">
                     ({integration.offlineDeviceCount} off)
                   </span>
                 )}
@@ -453,21 +454,11 @@ function SettingField({
     const checked = value === "true";
     return (
       <div className="flex items-center gap-3 py-1">
-        <button
-          type="button"
-          role="switch"
-          aria-checked={checked}
-          onClick={() => onChange(checked ? "false" : "true")}
-          className={`relative inline-flex h-5 w-9 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ${
-            checked ? "bg-primary" : "bg-border"
-          }`}
-        >
-          <span
-            className={`pointer-events-none inline-block h-4 w-4 transform rounded-full bg-white shadow transition-transform duration-200 ${
-              checked ? "translate-x-4" : "translate-x-0"
-            }`}
-          />
-        </button>
+        <Switch
+          checked={checked}
+          onChange={(next) => onChange(next ? "true" : "false")}
+          label={setting.label}
+        />
         <span className="text-small text-text">{setting.label}</span>
       </div>
     );

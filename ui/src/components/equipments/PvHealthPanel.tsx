@@ -145,7 +145,7 @@ export const PvHealthPanel = memo(function PvHealthPanel({
 
       {data.alert ? (
         <div className="flex items-start gap-2 mb-3 p-3 rounded-[8px] bg-warning/10 border border-warning/30">
-          <AlertTriangle size={16} strokeWidth={1.5} className="text-warning flex-shrink-0 mt-0.5" />
+          <AlertTriangle size={16} strokeWidth={1.5} className="text-warning-ink flex-shrink-0 mt-0.5" />
           <p className="text-small text-text">
             {t("equipments.pvHealth.alert", {
               pct: formatPercent(data.alert.deficit * 100, { locale }),
@@ -193,7 +193,7 @@ export const PvHealthPanel = memo(function PvHealthPanel({
 function Header({ t }: { t: (k: string) => string }) {
   return (
     <div className="flex items-center gap-2 mb-3">
-      <Activity size={16} strokeWidth={1.5} className="text-accent" />
+      <Activity size={16} strokeWidth={1.5} className="text-text-tertiary" />
       <h3 className="text-body font-semibold text-text">{t("equipments.pvHealth.title")}</h3>
     </div>
   );

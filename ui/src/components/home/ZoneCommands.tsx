@@ -30,7 +30,7 @@ interface ZoneCommandsProps {
 }
 
 const CATEGORY_HOVER: Record<Category, string> = {
-  light: "hover:bg-active/8 hover:text-active-text",
+  light: "hover:bg-active/8 hover:text-active-ink",
   "light-off": "hover:bg-border-light hover:text-text",
   shutter: "hover:bg-primary/8 hover:text-primary",
 };

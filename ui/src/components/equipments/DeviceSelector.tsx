@@ -350,7 +350,6 @@ export function DeviceSelector({
                               name={`candidate-${device.id}`}
                               checked={isPicked}
                               onChange={() => pickCandidate(device.id, c.id)}
-                              className="accent-primary"
                             />
                             {chMatch ? (
                               <>

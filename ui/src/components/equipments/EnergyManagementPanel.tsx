@@ -186,7 +186,7 @@ export function EnergyManagementPanel({
       </p>
 
       {suspension && (
-        <div className="flex items-center gap-2 mb-3 px-3 py-2 rounded-md bg-accent/10 border border-accent/20 text-caption text-text-secondary">
+        <div className="flex items-center gap-2 mb-3 px-3 py-2 rounded-md bg-primary-light border border-primary/20 text-caption text-text-secondary">
           <span>
             {t("energyProfile.manualUntil", {
               time: new Date(suspension.untilIso).toLocaleTimeString(currentLocale(), {
@@ -313,7 +313,7 @@ export function EnergyManagementPanel({
         </>
       )}
 
-      {error && <p className="text-caption text-red-500 mt-2">{error}</p>}
+      {error && <p className="text-caption text-error mt-2">{error}</p>}
     </div>
   );
 

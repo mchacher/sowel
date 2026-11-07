@@ -98,7 +98,7 @@ export function Invitation({ link, code }: { link: string | null; code: string |
                 <CopyButton text={link} label={t("sharedAccess.actions.copyLink")} />
               </>
             ) : (
-              <span className="text-warning">
+              <span className="text-warning-ink">
                 {t("sharedAccess.header.noPublicUrl")}{" "}
                 <Link to="/settings?tab=general" className="text-primary hover:underline">
                   {t("sharedAccess.header.setIt")}

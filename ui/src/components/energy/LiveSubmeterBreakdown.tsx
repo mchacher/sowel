@@ -136,7 +136,7 @@ export function LiveSubmeterBreakdown({ house, hasMainMeter }: Props) {
       </div>
 
       {overshoot && (
-        <p className="mt-3 text-caption text-warning italic">
+        <p className="mt-3 text-caption text-warning-ink italic">
           {t("energy.live.breakdown.overshoot")}
         </p>
       )}

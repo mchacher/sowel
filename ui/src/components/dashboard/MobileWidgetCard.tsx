@@ -488,7 +488,7 @@ function useMobileState(
         <WashingMachine
           size={96}
           strokeWidth={1}
-          className={isRunning ? "text-accent" : "text-text-tertiary"}
+          className={isRunning ? "text-active" : "text-text-tertiary"}
         />
       ),
       stateLines: lines,
@@ -553,7 +553,7 @@ function useMobileState(
       severity === "ok"
         ? "text-success"
         : severity === "warning"
-          ? "text-warning"
+          ? "text-warning-ink"
           : severity === "error"
             ? "text-error"
             : "text-text-tertiary";
@@ -635,7 +635,7 @@ function useMobileState(
         <EvCharger
           size={96}
           strokeWidth={1.2}
-          className={charging ? "text-accent" : "text-text-tertiary"}
+          className={charging ? "text-active" : "text-text-tertiary"}
         />,
       ),
       stateLines: [

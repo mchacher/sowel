@@ -19,7 +19,7 @@ import { ZoneSparkline } from "../history/ZoneSparkline";
 import type { ZoneAggregatedData } from "../../types";
 import { formatDuration, formatPercent, formatPower, formatTemperature, formatWithUnit } from "../../lib/format";
 
-type PillVariant = "default" | "active" | "calm" | "alert";
+type PillVariant = "default" | "active" | "info" | "calm" | "alert";
 
 /**
  * Spec 170 — watts below the kilowatt, kilowatts above, so a house drawing four
@@ -122,7 +122,8 @@ export function ZoneAggregationPills({
       // Mobile: when motion is active, drop the "Mouvement" word but keep the duration.
       // The icon color signals motion; the word is redundant. Calm stays verbatim.
       mobileLabel: data.motion ? (duration ?? "") : `${label}${suffix}`,
-      variant: data.motion ? "active" : "calm",
+      // Motion is activity, not something switched on: primary, not amber.
+      variant: data.motion ? "info" : "calm",
     });
   }
 
@@ -165,7 +166,8 @@ export function ZoneAggregationPills({
       key: "door-equipments",
       icon: someOpen ? <DoorOpen size={14} strokeWidth={1.5} /> : <DoorClosed size={14} strokeWidth={1.5} />,
       label: `${data.doorsOpen}/${data.doorsTotal}`,
-      variant: someOpen ? "active" : "default",
+      // Open/closed is neutral (spec 196): the word and the icon say it.
+      variant: "default",
       iconTint: "text-text-secondary",
       valueTint: someOpen ? "text-text" : "text-text-tertiary",
     });
@@ -195,9 +197,10 @@ export function ZoneAggregationPills({
       key: "power",
       icon: <Zap size={14} strokeWidth={1.5} />,
       label: formatWatts(data.powerTotal),
-      variant: data.powerTotal > 0 ? "active" : "default",
+      // Energy is not "on": a neutral value, never amber.
+      variant: "default",
       iconTint: "text-text-tertiary",
-      valueTint: "text-text-tertiary",
+      valueTint: data.powerTotal > 0 ? "text-text" : "text-text-tertiary",
     });
   }
 
@@ -210,8 +213,8 @@ export function ZoneAggregationPills({
       icon: <DoorOpen size={14} strokeWidth={1.5} />,
       label: t("aggregation.open", { count: data.openDoors }),
       variant: "default",
-      iconTint: "text-active-text",
-      valueTint: "text-active-text",
+      iconTint: "text-text-secondary",
+      valueTint: "text-text",
     });
   }
 
@@ -221,8 +224,8 @@ export function ZoneAggregationPills({
       icon: <SquareStack size={14} strokeWidth={1.5} />,
       label: t("aggregation.open", { count: data.openWindows }),
       variant: "default",
-      iconTint: "text-active-text",
-      valueTint: "text-active-text",
+      iconTint: "text-text-secondary",
+      valueTint: "text-text",
     });
   }
 
@@ -300,10 +303,17 @@ function variantClasses(variant: PillVariant): {
         value: "text-error",
       };
     case "active":
+      // Something on or running now: lights on, water flowing.
       return {
         pill: "",
-        icon: "text-active-text",
-        value: "text-active-text",
+        icon: "text-active-ink",
+        value: "text-active-ink",
+      };
+    case "info":
+      return {
+        pill: "",
+        icon: "text-primary",
+        value: "text-primary",
       };
     case "calm":
       return {

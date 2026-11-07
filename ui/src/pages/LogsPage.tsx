@@ -17,7 +17,7 @@ const LOG_LEVELS: LogLevel[] = ["debug", "info", "warn", "error", "fatal"];
 const LEVEL_COLORS: Record<string, string> = {
   fatal: "text-error font-semibold",
   error: "text-error",
-  warn: "text-accent",
+  warn: "text-warning-ink",
   info: "text-text-secondary",
   debug: "text-text-tertiary",
   trace: "text-text-tertiary",
@@ -241,7 +241,7 @@ export function LogsPage() {
           className={`flex items-center gap-1.5 px-3 py-1.5 text-small font-medium rounded-[6px] border transition-colors cursor-pointer ${
             live
               ? "bg-success/10 text-success border-success/30"
-              : "bg-accent/10 text-accent border-accent/30"
+              : "bg-border-light text-text-secondary border-border"
           }`}
         >
           {live ? <Play size={14} /> : <Pause size={14} />}

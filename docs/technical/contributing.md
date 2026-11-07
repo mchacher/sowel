@@ -179,6 +179,17 @@ Every displayed number goes through `ui/src/lib/format.ts`, never through `toFix
 
 Trailing zeros are dropped everywhere except on temperatures (« 4 kWh », not « 4,0 kWh »). Each function takes `locale` (from `dateLocale(i18n.language)`, the default) and the `*Parts` variants return value and unit apart for layouts that style them differently. A translated sentence that carries a quantity receives it formatted, unit included (`{{power}}`, not `{{kw}} kW`).
 
+#### Colour roles
+
+Use the colour roles of `ui/src/index.css`, never a raw hue (`text-amber-500`, `text-red-500`) nor `text-accent`: each role means one thing, and the full table is in `design-system/tokens.md` §1.2.
+
+- **Amber** (`bg-active`, `text-active-ink`, `bg-active-bg`, `text-on-active` on an amber fill): something on or running now. Never for alerts, energy, plugins or decoration.
+- **Orange** (`bg-warning`, `text-warning-ink`): needs attention, not a fault. **Red** (`text-error`, `text-heat` for heating): fault, offline, destructive. **Green** (`text-success`): works as expected.
+- **Neutral**: open and closed alike (the word and the icon say it), meters and energy values, plugins. **Primary**: selection, links, changed fields, motion.
+- Text on a status fill is `text-on-status`, not `text-white`. Tinted status backgrounds stop at `/10`. Switches use `components/ui/Switch.tsx`.
+
+`ui/src/lib/color-roles.test.ts` computes every role pair from `design-system/tokens.css` in light and dark (4.5:1 text, 3:1 graphics) and fails on a retired class name, because Tailwind 4 drops an unknown class without an error.
+
 ---
 
 ## Logging Rules
@@ -236,19 +247,19 @@ Structured JSON logging via pino (Fastify default) with multistream: ring buffer
 
 When adding or modifying UI components, follow these design tokens:
 
-| Property           | Value                                                      |
-| ------------------ | ---------------------------------------------------------- |
-| **Body font**      | Inter                                                      |
-| **Monospace font** | JetBrains Mono: logs, JSON, identifiers, versions, code    |
-| **Numbers**        | Inter with `tabular-nums` (fixed-width digits), not mono   |
-| **Labels**         | Sentence case; uppercase only in table column headers      |
-| **Primary color**  | `#1A4F6E` (ocean blue), hover: `#13405A`, light: `#E6F0F6` |
-| **Accent color**   | `#D4963F` (amber), hover: `#BB8232`                        |
-| **Spacing base**   | 4px                                                        |
-| **Border radius**  | 6px (buttons), 10px (cards), 14px (modals)                 |
-| **Body font size** | 14px (dense dashboard)                                     |
-| **Data values**    | 28px (readable at a glance)                                |
-| **Icons**          | Lucide React, stroke 1.5px                                 |
+| Property           | Value                                                                          |
+| ------------------ | ------------------------------------------------------------------------------ |
+| **Body font**      | Inter                                                                          |
+| **Monospace font** | JetBrains Mono: logs, JSON, identifiers, versions, code                        |
+| **Numbers**        | Inter with `tabular-nums` (fixed-width digits), not mono                       |
+| **Labels**         | Sentence case; uppercase only in table column headers                          |
+| **Primary color**  | `#1A4F6E` (ocean blue), hover: `#13405A`, light: `#E6F0F6`                     |
+| **Colour roles**   | Amber `#F2C035` = on or running only; others in `design-system/tokens.md` §1.2 |
+| **Spacing base**   | 4px                                                                            |
+| **Border radius**  | 6px (buttons), 10px (cards), 14px (modals)                                     |
+| **Body font size** | 14px (dense dashboard)                                                         |
+| **Data values**    | 28px (readable at a glance)                                                    |
+| **Icons**          | Lucide React, stroke 1.5px                                                     |
 
 ---
 

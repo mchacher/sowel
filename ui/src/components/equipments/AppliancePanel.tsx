@@ -53,7 +53,7 @@ export function AppliancePanel({ equipment }: AppliancePanelProps) {
           {/* State badge */}
           <div className="flex items-center gap-3">
             <span className={`text-small font-semibold px-3 py-1 rounded-full ${
-              isRunning ? "bg-accent/10 text-accent" : isPaused ? "bg-warning/10 text-warning" : "bg-border-light text-text-secondary"
+              isRunning ? "bg-active-bg text-active-ink" : isPaused ? "bg-warning/10 text-warning-ink" : "bg-border-light text-text-secondary"
             }`}>
               {isRunning ? t("common.running") : isPaused ? t("common.paused") : state}
             </span>
@@ -73,7 +73,7 @@ export function AppliancePanel({ equipment }: AppliancePanelProps) {
               </div>
               <div className="h-2 bg-border-light rounded-full overflow-hidden">
                 <div
-                  className="h-full bg-accent rounded-full transition-all duration-500"
+                  className="h-full bg-active rounded-full transition-all duration-500"
                   style={{ width: `${Math.min(100, progress)}%` }}
                 />
               </div>
@@ -98,7 +98,7 @@ export function AppliancePanel({ equipment }: AppliancePanelProps) {
           {/* Energy */}
           {energyWh !== null && energyWh > 0 && (
             <div className="flex items-center gap-2 pt-2 border-t border-border-light">
-              <Zap size={14} strokeWidth={1.5} className="text-accent" />
+              <Zap size={14} strokeWidth={1.5} className="text-text-tertiary" />
               <span className="text-caption text-text-secondary">
                 {formatEnergyParts(energyWh / 1000, { unit: "auto" }).value}
                 <span className="text-text-tertiary ml-0.5">

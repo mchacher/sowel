@@ -131,7 +131,7 @@ export function PvForecastPanel({ equipmentId }: PvForecastPanelProps) {
   return (
     <div className="mb-6 bg-surface rounded-[10px] border border-border p-4">
       <div className="flex items-center gap-2 mb-3">
-        <Sun size={16} strokeWidth={1.5} className="text-accent" />
+        <Sun size={16} strokeWidth={1.5} className="text-text-tertiary" />
         <h3 className="text-body font-semibold text-text">{t("equipments.pv.title")}</h3>
         {/* The stale-declaration tell. For admins it is also the way to fix
             it: the same figure, linking to the section that edits it. */}
@@ -153,7 +153,7 @@ export function PvForecastPanel({ equipmentId }: PvForecastPanelProps) {
             resolves itself; a missing weather plugin never does, and saying
             "learning" there would leave the household waiting on nothing. */}
         {data.curve.length === 0 && !data.weatherAvailable ? (
-          <p className="text-small text-warning">{t("equipments.pv.noWeather")}</p>
+          <p className="text-small text-warning-ink">{t("equipments.pv.noWeather")}</p>
         ) : data.model === null && data.curve.length === 0 ? (
           <p className="text-small text-text-secondary">{t("equipments.pv.learning")}</p>
         ) : (
@@ -356,7 +356,7 @@ export function PvForecastPanel({ equipmentId }: PvForecastPanelProps) {
             </div>
 
             {data.model === null && (
-              <p className="mt-3 text-caption text-warning">{t("equipments.pv.provisional")}</p>
+              <p className="mt-3 text-caption text-warning-ink">{t("equipments.pv.provisional")}</p>
             )}
 
             <p className="mt-3 text-caption text-text-tertiary">

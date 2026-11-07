@@ -96,8 +96,8 @@ export function EvCurrentSessionCard({
           </span>
         </div>
         {session.graceUntil && (
-          <div className="flex gap-2.5 items-start bg-accent-light rounded-[6px] px-3 py-2.5">
-            <CircleAlert size={16} strokeWidth={1.5} className="shrink-0 mt-px text-active-text" />
+          <div className="flex gap-2.5 items-start bg-warning/10 rounded-[6px] px-3 py-2.5">
+            <CircleAlert size={16} strokeWidth={1.5} className="shrink-0 mt-px text-warning-ink" />
             <span className="text-small text-text">
               {t("equipments.evSessions.current.willAttribute", {
                 name: vehicle.name,

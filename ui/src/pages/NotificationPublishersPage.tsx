@@ -112,7 +112,7 @@ function PushEnableCard() {
         </div>
         {action}
       </div>
-      {error && <div className="text-micro text-red-500 mt-2">{error}</div>}
+      {error && <div className="text-micro text-error mt-2">{error}</div>}
     </div>
   );
 }
@@ -316,7 +316,7 @@ function PublisherForm({
           values={config}
           onChange={(key, value) => setConfig((prev) => ({ ...prev, [key]: value }))}
         />
-        {error && <div className="text-micro text-red-500">{error}</div>}
+        {error && <div className="text-micro text-error">{error}</div>}
         <div className="flex items-center gap-2">
           <button
             type="submit"
@@ -482,17 +482,17 @@ function PublisherCard({
         </div>
         <div className="flex items-center gap-1 flex-wrap justify-end self-end sm:self-auto">
           {testChannelOk && (
-            <span className="text-caption text-green-500">{t("notifPublishers.testChannelOk")}</span>
+            <span className="text-caption text-success">{t("notifPublishers.testChannelOk")}</span>
           )}
           {testResult !== null && (
-            <span className="text-micro text-green-500">
+            <span className="text-micro text-success">
               {t("notifPublishers.testResult", { count: testResult })}
             </span>
           )}
           <button
             onClick={handleTestChannel}
             disabled={testingChannel}
-            className="flex items-center gap-1 px-2 py-1 text-micro rounded-[6px] hover:bg-bg transition-colors text-text-secondary hover:text-accent disabled:opacity-40"
+            className="flex items-center gap-1 px-2 py-1 text-micro rounded-[6px] hover:bg-bg transition-colors text-text-secondary hover:text-primary disabled:opacity-40"
             title={t("notifPublishers.testChannelHint")}
           >
             {testingChannel ? (
@@ -505,7 +505,7 @@ function PublisherCard({
           <button
             onClick={handleTestPublisher}
             disabled={testingPub || publisher.mappings.length === 0}
-            className="flex items-center gap-1 px-2 py-1 text-micro rounded-[6px] hover:bg-bg transition-colors text-text-secondary hover:text-accent disabled:opacity-40"
+            className="flex items-center gap-1 px-2 py-1 text-micro rounded-[6px] hover:bg-bg transition-colors text-text-secondary hover:text-primary disabled:opacity-40"
             title={t("notifPublishers.testPublisherHint")}
           >
             {testingPub ? <Loader2 size={13} className="animate-spin" /> : <Zap size={13} />}
@@ -525,7 +525,7 @@ function PublisherCard({
             title={publisher.enabled ? t("common.disable") : t("common.enable")}
           >
             {publisher.enabled ? (
-              <Power size={16} className="text-green-500" />
+              <Power size={16} className="text-success" />
             ) : (
               <PowerOff size={16} className="text-text-tertiary" />
             )}
@@ -533,7 +533,7 @@ function PublisherCard({
           <button
             onClick={handleDelete}
             disabled={deleting}
-            className="p-1.5 rounded-[6px] hover:bg-bg transition-colors text-text-tertiary hover:text-red-500"
+            className="p-1.5 rounded-[6px] hover:bg-bg transition-colors text-text-tertiary hover:text-error"
             title={t("common.delete")}
           >
             <Trash2 size={16} />
@@ -801,7 +801,7 @@ function MappingRow({
             }}
           />
         </div>
-        {error && <div className="mt-2 text-micro text-red-500">{error}</div>}
+        {error && <div className="mt-2 text-micro text-error">{error}</div>}
         <div className="flex items-center gap-2 mt-3">
           <button
             type="submit"
@@ -854,7 +854,7 @@ function MappingRow({
         </button>
         <button
           onClick={handleDelete}
-          className="p-1 rounded hover:bg-surface transition-colors text-text-tertiary hover:text-red-500"
+          className="p-1 rounded hover:bg-surface transition-colors text-text-tertiary hover:text-error"
         >
           <Trash2 size={12} />
         </button>
@@ -978,7 +978,7 @@ function AddMappingForm({
           }}
         />
       </div>
-      {error && <div className="mt-2 text-micro text-red-500">{error}</div>}
+      {error && <div className="mt-2 text-micro text-error">{error}</div>}
       <div className="flex items-center gap-2 mt-3">
         <button
           type="submit"

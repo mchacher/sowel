@@ -163,7 +163,7 @@ export function ButtonActionsSection({ equipmentId }: ButtonActionsSectionProps)
     <div className="bg-surface rounded-[10px] border border-border p-4 mb-6">
       <div className="flex items-center justify-between mb-3">
         <h3 className="text-body font-semibold text-text flex items-center gap-2">
-          <Zap size={16} strokeWidth={1.5} className="text-accent" />
+          <Zap size={16} strokeWidth={1.5} className="text-text-tertiary" />
           {t("buttonActions.title")}
         </h3>
         <button
@@ -204,7 +204,7 @@ export function ButtonActionsSection({ equipmentId }: ButtonActionsSectionProps)
                     key={binding.id}
                     className="flex items-center gap-2 px-3 py-2 bg-background rounded-[6px] border border-border-light"
                   >
-                    <Zap size={12} strokeWidth={1.5} className="text-accent flex-shrink-0" />
+                    <Zap size={12} strokeWidth={1.5} className="text-text-tertiary flex-shrink-0" />
                     <span className="text-caption text-text flex-1 truncate">
                       {getEffectLabel(binding)}
                     </span>

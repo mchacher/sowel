@@ -185,6 +185,17 @@ Tout nombre affiché passe par `ui/src/lib/format.ts`, jamais par `toFixed`, un 
 
 Les zéros inutiles sont retirés partout sauf sur les températures (« 4 kWh », pas « 4,0 kWh »). Chaque fonction prend `locale` (par défaut `dateLocale(i18n.language)`), et les variantes `*Parts` rendent la valeur et l'unité séparément pour les mises en page qui les stylent différemment. Une phrase traduite qui contient une grandeur la reçoit déjà formatée, unité comprise (`{{power}}`, pas `{{kw}} kW`).
 
+#### Rôles de couleur
+
+Utilisez les rôles de couleur de `ui/src/index.css`, jamais une teinte brute (`text-amber-500`, `text-red-500`) ni `text-accent` : chaque rôle veut dire une chose, et la table complète est dans `design-system/tokens.md` §1.2.
+
+- **Ambre** (`bg-active`, `text-active-ink`, `bg-active-bg`, `text-on-active` sur un aplat ambre) : allumé ou en marche maintenant. Jamais pour une alerte, l'énergie, un plugin ou le décor.
+- **Orange** (`bg-warning`, `text-warning-ink`) : demande de l'attention, sans être une panne. **Rouge** (`text-error`, `text-heat` pour la chauffe) : panne, hors ligne, action destructive. **Vert** (`text-success`) : fonctionne comme prévu.
+- **Neutre** : ouvert comme fermé (le mot et l'icône le disent), compteurs et valeurs d'énergie, plugins. **Primaire** : sélection, liens, champ modifié, mouvement.
+- Le texte sur un aplat d'état est `text-on-status`, pas `text-white`. Les fonds teintés d'état s'arrêtent à `/10`. Les interrupteurs passent par `components/ui/Switch.tsx`.
+
+`ui/src/lib/color-roles.test.ts` calcule chaque paire de rôles depuis `design-system/tokens.css`, en clair et en sombre (4,5:1 pour le texte, 3:1 pour le graphique), et échoue sur un nom de classe retiré, parce que Tailwind 4 ignore une classe inconnue sans erreur.
+
 ---
 
 ## Règles de logging
@@ -242,19 +253,19 @@ Logs JSON structurés via pino (par défaut Fastify) avec multistream : ring buf
 
 Quand vous ajoutez ou modifiez des composants UI, suivez ces design tokens :
 
-| Propriété                 | Valeur                                                       |
-| ------------------------- | ------------------------------------------------------------ |
-| **Police body**           | Inter                                                        |
-| **Police mono**           | JetBrains Mono : logs, JSON, identifiants, versions, code    |
-| **Nombres**               | Inter avec `tabular-nums` (chiffres à chasse fixe), pas mono |
-| **Libellés**              | Casse de phrase ; majuscules seulement en tête de tableau    |
-| **Couleur primaire**      | `#1A4F6E` (ocean blue), hover : `#13405A`, light : `#E6F0F6` |
-| **Couleur accent**        | `#D4963F` (amber), hover : `#BB8232`                         |
-| **Espacement de base**    | 4px                                                          |
-| **Border radius**         | 6px (boutons), 10px (cartes), 14px (modales)                 |
-| **Taille de police body** | 14px (tableau de bord dense)                                 |
-| **Valeurs de données**    | 28px (lisibles d'un coup d'œil)                              |
-| **Icônes**                | Lucide React, stroke 1.5px                                   |
+| Propriété                 | Valeur                                                                                        |
+| ------------------------- | --------------------------------------------------------------------------------------------- |
+| **Police body**           | Inter                                                                                         |
+| **Police mono**           | JetBrains Mono : logs, JSON, identifiants, versions, code                                     |
+| **Nombres**               | Inter avec `tabular-nums` (chiffres à chasse fixe), pas mono                                  |
+| **Libellés**              | Casse de phrase ; majuscules seulement en tête de tableau                                     |
+| **Couleur primaire**      | `#1A4F6E` (ocean blue), hover : `#13405A`, light : `#E6F0F6`                                  |
+| **Rôles de couleur**      | Ambre `#F2C035` = allumé ou en marche seulement ; les autres : `design-system/tokens.md` §1.2 |
+| **Espacement de base**    | 4px                                                                                           |
+| **Border radius**         | 6px (boutons), 10px (cartes), 14px (modales)                                                  |
+| **Taille de police body** | 14px (tableau de bord dense)                                                                  |
+| **Valeurs de données**    | 28px (lisibles d'un coup d'œil)                                                               |
+| **Icônes**                | Lucide React, stroke 1.5px                                                                    |
 
 ---
 

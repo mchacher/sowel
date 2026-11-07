@@ -89,8 +89,8 @@ export function EvChargerSessionsSection({
       {error && <p className="text-caption text-error">{error}</p>}
 
       {todo > 0 && (
-        <div className="flex items-center gap-2 bg-accent-light rounded-[8px] px-3 py-2.5 text-small text-text">
-          <span className="w-2 h-2 rounded-full bg-accent-hover shrink-0" />
+        <div className="flex items-center gap-2 bg-warning/10 rounded-[8px] px-3 py-2.5 text-small text-text">
+          <span className="w-2 h-2 rounded-full bg-warning shrink-0" />
           {t("equipments.evSessions.todoBanner", { count: todo })}
         </div>
       )}
@@ -106,7 +106,7 @@ export function EvChargerSessionsSection({
               chip.kind === "vehicle"
                 ? "bg-primary-light text-primary"
                 : chip.kind === "todo"
-                  ? "bg-accent-light text-text"
+                  ? "bg-warning/10 text-text"
                   : "bg-border-light text-text-secondary";
             const chipText =
               chip.kind === "vehicle"

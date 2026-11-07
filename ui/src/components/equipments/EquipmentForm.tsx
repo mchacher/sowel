@@ -229,7 +229,7 @@ export function EquipmentForm({ title, initial, defaultZoneId, zones, onSubmit, 
                   boundDataKeysByDevice={boundDataKeysByDevice}
                 />
                 {type === "pool_heat_pump" && !poolHeatPumpValidation.ok && (
-                  <p className="text-caption text-warning">
+                  <p className="text-caption text-warning-ink">
                     {!poolHeatPumpValidation.hasPac
                       ? "Sélectionnez la PAC (Polytropic)."
                       : "Sélectionnez aussi la pompe de filtration (Sonoff/relais ON-OFF)."}

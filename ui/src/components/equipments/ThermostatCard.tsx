@@ -42,7 +42,7 @@ const MODE_ICONS: Record<string, React.ReactNode> = {
 const MODE_COLORS: Record<string, string> = {
   auto: "bg-primary/10 text-primary border-primary/30",
   cool: "bg-primary/10 text-primary border-primary/30",
-  heat: "bg-error/10 text-error border-error/30",
+  heat: "bg-heat/10 text-heat border-heat/30",
   dry: "bg-success/10 text-success border-success/30",
   fan: "bg-text-tertiary/10 text-text-secondary border-text-tertiary/30",
   off: "bg-border-light text-text-tertiary border-border",

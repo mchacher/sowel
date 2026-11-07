@@ -263,9 +263,9 @@ export function TariffSettings() {
       {!configured && (
         <div
           role="status"
-          className="flex items-start gap-2 mb-4 px-3 py-2 rounded-md bg-accent/10 border border-accent/20 text-caption text-text-secondary"
+          className="flex items-start gap-2 mb-4 px-3 py-2 rounded-md bg-primary-light border border-primary/20 text-caption text-text-secondary"
         >
-          <Info size={14} strokeWidth={1.5} className="mt-0.5 flex-shrink-0 text-accent" />
+          <Info size={14} strokeWidth={1.5} className="mt-0.5 flex-shrink-0 text-primary" />
           <span>{t("tariff.unsavedBanner")}</span>
         </div>
       )}
@@ -361,7 +361,7 @@ export function TariffSettings() {
               {slots.length > 1 && (
                 <button
                   onClick={() => removeSlot(slotIdx)}
-                  className="p-1 text-text-tertiary hover:text-red-500 transition-colors"
+                  className="p-1 text-text-tertiary hover:text-error transition-colors"
                   title={t("tariff.delete")}
                 >
                   <Trash2 size={14} />
@@ -397,10 +397,10 @@ export function TariffSettings() {
           )}
         </button>
         {saved && (
-          <span className="text-caption text-green-600">{t("tariff.saved")}</span>
+          <span className="text-caption text-success">{t("tariff.saved")}</span>
         )}
         {error && (
-          <span className="text-caption text-red-500">{error}</span>
+          <span className="text-caption text-error">{error}</span>
         )}
       </div>
     </div>

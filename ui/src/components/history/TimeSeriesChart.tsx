@@ -238,7 +238,7 @@ export function TimeSeriesChart({ points, range, resolution, unit, height = 200,
       </ComposedChart>
     </ResponsiveContainer>
     {staleDuration && (
-      <div className="text-caption text-accent text-right mt-1">
+      <div className="text-caption text-warning-ink text-right mt-1">
         {t("history.lastMeasurement", { duration: staleDuration })}
       </div>
     )}

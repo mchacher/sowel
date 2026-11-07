@@ -14,6 +14,7 @@ import { useZones } from "../store/useZones";
 import { useRecipes } from "../store/useRecipes";
 import { useAuth } from "../store/useAuth";
 import { ModeForm } from "../components/modes/ModeForm";
+import { Switch } from "../components/ui/Switch";
 import type { ModeWithDetails, EquipmentWithDetails, ZoneModeImpactAction, CalendarSlot, ButtonActionBinding } from "../types";
 import { useWsSubscription } from "../hooks/useWsSubscription";
 import { flattenZonesWithPath } from "../lib/zone-path";
@@ -159,19 +160,12 @@ export function ModeDetailPage() {
           {/* Issue #912 — switching which mode is on is usage, not
               configuration, so the switch renders for every authenticated
               user. Edit and delete below stay behind `isAdmin`. */}
-          <button
-            onClick={handleToggle}
-            className="relative w-10 h-[22px] rounded-full transition-colors duration-200 flex-shrink-0 cursor-pointer"
-            style={{ backgroundColor: mode.active ? "var(--color-primary)" : "var(--color-border)" }}
+          <Switch
+            checked={mode.active}
+            onChange={() => void handleToggle()}
             title={mode.active ? t("modes.deactivate") : t("modes.activate")}
-            role="switch"
-            aria-checked={mode.active}
-          >
-            <span
-              className="absolute top-[3px] left-[3px] w-4 h-4 bg-white rounded-full shadow-sm transition-transform duration-200"
-              style={{ transform: mode.active ? "translateX(18px)" : "translateX(0)" }}
-            />
-          </button>
+            label={mode.name}
+          />
           {isAdmin && (
             <>
               <button
@@ -376,7 +370,7 @@ function ButtonTriggersSection({
   return (
     <section className="bg-surface rounded-[10px] border border-border p-3 sm:p-5">
       <h2 className="text-body font-semibold text-text flex items-center gap-2 mb-4">
-        <Zap size={16} strokeWidth={1.5} className="text-accent" />
+        <Zap size={16} strokeWidth={1.5} className="text-text-tertiary" />
         {t("modes.triggers")}
       </h2>
 
@@ -412,7 +406,7 @@ function ButtonTriggersSection({
               to={`/equipments/${binding.equipmentId}`}
               className="flex items-center gap-3 px-3 py-2 bg-background rounded-[6px] border border-border-light hover:border-primary/30 transition-colors"
             >
-              <Zap size={14} strokeWidth={1.5} className="text-accent flex-shrink-0" />
+              <Zap size={14} strokeWidth={1.5} className="text-text-tertiary flex-shrink-0" />
               <div className="flex-1 min-w-0">
                 <div className="text-small font-medium text-text">
                   {eqName}
@@ -470,7 +464,7 @@ function CalendarScheduleSection({
   return (
     <section className="bg-surface rounded-[10px] border border-border p-3 sm:p-5">
       <h2 className="text-body font-semibold text-text flex items-center gap-2 mb-4">
-        <Clock size={16} strokeWidth={1.5} className="text-accent" />
+        <Clock size={16} strokeWidth={1.5} className="text-text-tertiary" />
         {t("modes.schedule")}
       </h2>
 

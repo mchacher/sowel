@@ -165,12 +165,13 @@ Empty slots collapse to 0 px due to `grid-template-columns: 32px 1fr auto auto a
   height: 15px;
 }
 .eq__icon--light {
-  --icon-bg: var(--light-50);
-  --icon-fg: var(--light-500);
+  /* Off is neutral: amber appears only while the light is on (spec 196). */
+  --icon-bg: var(--n-50);
+  --icon-fg: var(--n-400);
 }
 .eq__icon--light-on {
   --icon-bg: var(--a-500);
-  --icon-fg: var(--n-0);
+  --icon-fg: var(--a-on); /* never white on amber: 1.70:1 */
   animation: glow 3.2s ease-in-out infinite;
 }
 .eq__icon--shutter {

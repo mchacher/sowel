@@ -43,7 +43,7 @@ export function TempExtremes({
         className={`flex items-center ${large ? "" : "gap-0.5"}`}
         aria-label={t("weather.maxToday")}
       >
-        <ArrowUp size={arrow} strokeWidth={2} className="text-accent shrink-0" />
+        <ArrowUp size={arrow} strokeWidth={2} className="text-heat shrink-0" />
         <span className={`${text} font-medium tabular-nums text-text-tertiary`}>
           {formatTemperature(max, { style: "compact" })}
         </span>

@@ -98,7 +98,7 @@ export function EvReassignSheet({
           value={value}
           checked={selected}
           onChange={() => setChoice(c)}
-          className="w-[18px] h-[18px] accent-primary"
+          className="w-[18px] h-[18px]"
         />
         <span className={`flex-1 text-body text-text ${selected ? "font-medium" : ""}`}>
           {label}
@@ -159,8 +159,8 @@ export function EvReassignSheet({
         </div>
 
         {reason && (
-          <div className="flex gap-2 items-start bg-accent-light rounded-[8px] px-3 py-2.5 text-small text-text">
-            <span className="w-2 h-2 rounded-full bg-accent-hover shrink-0 mt-[5px]" />
+          <div className="flex gap-2 items-start bg-warning/10 rounded-[8px] px-3 py-2.5 text-small text-text">
+            <span className="w-2 h-2 rounded-full bg-warning shrink-0 mt-[5px]" />
             <span>{reason}</span>
           </div>
         )}

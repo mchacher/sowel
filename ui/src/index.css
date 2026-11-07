@@ -20,9 +20,8 @@
   --color-primary-mid:    #7FB8D4; /* dedicated logo mid-blue (smile/eyes) — not in design-system scale */
   --color-primary-light:  var(--p-50);
   --color-primary-hover:  var(--p-600);
+  /* Kept for the PV forecast curve only, until the energy palette work. */
   --color-accent:         var(--a-500);
-  --color-accent-hover:   var(--a-600);
-  --color-accent-light:   var(--a-50);
   --color-background:     var(--n-50);
   --color-surface:        var(--n-0);
   --color-surface-raised: var(--n-0);
@@ -31,11 +30,19 @@
   --color-text-tertiary:  var(--n-400);
   --color-border:         var(--line-2);
   --color-border-light:   var(--line);
-  --color-active:         var(--a-500);
-  --color-active-text:    var(--a-600);
-  --color-success:        var(--green-500);
-  --color-warning:        var(--a-500);
-  --color-error:          var(--red-500);
+  /* Colour roles (spec 196) — one meaning each, see design-system/tokens.md
+     §1.2. Contrast of every text/background pair: lib/color-roles.test.ts. */
+  --color-active:         var(--a-500);   /* on or running now: fill, icon */
+  --color-active-ink:     var(--a-ink);   /* on or running now: text */
+  --color-active-bg:      var(--a-50);    /* on or running now: tinted pill */
+  --color-on-active:      var(--a-on);    /* content on an amber fill */
+  --color-warning:        var(--orange-500); /* needs attention: dot, fill, icon */
+  --color-warning-ink:    var(--orange-700); /* needs attention: text */
+  --color-warning-bg:     var(--orange-50);
+  --color-success:        var(--green-500);  /* works as expected */
+  --color-error:          var(--red-500);    /* fault, failure, destructive */
+  --color-heat:           var(--red-500);    /* heating now (alias of error) */
+  --color-on-status:      var(--on-status);  /* text on a success/error/warning-ink fill */
 
   /* Energy palette (spec 148) — shared by energy/production charts + arbiter */
   --color-solar-injection: var(--solar-injection);
@@ -72,8 +79,6 @@
   --shadow-lg: var(--sh-3);
 
   /* Equipment category tints — from design-system/tokens.css (spec 099) */
-  --color-light-50: var(--light-50);
-  --color-light-500: var(--light-500);
   --color-shutter-50: var(--shutter-50);
   --color-shutter-500: var(--shutter-500);
   --color-sensor-50: var(--sensor-50);
@@ -107,6 +112,17 @@
 /* ============================================================
    Base styles
    ============================================================ */
+
+/* Native controls follow the theme: checkboxes, radios, selects, date and
+   time pickers and scrollbars take the primary colour and go dark with the
+   .dark class (spec 196). */
+:root {
+  color-scheme: light;
+  accent-color: var(--color-primary);
+}
+.dark {
+  color-scheme: dark;
+}
 
 body {
   font-family: var(--font-sans);
@@ -370,15 +386,6 @@ input:focus, select:focus, textarea:focus {
       z-index: -1;
     }
   }
-}
-
-/* ============================================================
-   Native time/date picker — adapt icons to dark mode
-   ============================================================ */
-
-.dark input[type="time"]::-webkit-calendar-picker-indicator,
-.dark input[type="date"]::-webkit-calendar-picker-indicator {
-  filter: invert(1);
 }
 
 /* ============================================================

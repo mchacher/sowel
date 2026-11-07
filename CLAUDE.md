@@ -194,7 +194,7 @@ Every integration plugin runs with scoped Proxies on its `PluginDeps` (`src/plug
 - **Fonts**: Inter (body and numbers, with `tabular-nums`), JetBrains Mono (logs, JSON, ids, versions, code only)
 - **Labels**: sentence case; uppercase only in table column headers (lint)
 - **Primary**: `#1A4F6E` (ocean blue), hover `#144159`, light `#EEF5F8`
-- **Accent**: `#F2C035` (amber), hover `#D4A41C`
+- **Amber** `#F2C035`: on or running now only. State roles (orange attention, red fault, green OK, open/closed neutral) in `design-system/tokens.md` §1.2, contrast checked by `ui/src/lib/color-roles.test.ts`
 - **Spacing**: 4px base; radii 6px / 8px / 12px (`--radius-sm/md/lg`)
 - **Font sizes**: 14px body, 28px data values
 

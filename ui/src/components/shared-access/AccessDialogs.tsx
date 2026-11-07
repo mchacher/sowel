@@ -231,7 +231,7 @@ export function JournalDialog({
                         e.outcome === "confirmed"
                           ? "text-success"
                           : e.outcome === "unconfirmed"
-                            ? "text-warning"
+                            ? "text-warning-ink"
                             : "text-text-secondary"
                       }
                     >

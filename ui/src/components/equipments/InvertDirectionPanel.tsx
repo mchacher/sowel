@@ -62,7 +62,7 @@ export function InvertDirectionPanel({
         {t(`${copyPrefix}.hint`)}
         {saving && <Loader2 size={12} className="animate-spin text-text-tertiary" />}
       </p>
-      {error && <p className="text-caption text-red-500 mt-2">{error}</p>}
+      {error && <p className="text-caption text-error mt-2">{error}</p>}
     </div>
   );
 }

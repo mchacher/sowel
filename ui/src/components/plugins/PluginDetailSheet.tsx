@@ -269,7 +269,7 @@ function DetailBody({
           className={`
             inline-flex items-center justify-center gap-2 w-full min-h-[44px] px-4 mt-2
             text-small font-medium rounded-[8px] transition-colors cursor-pointer disabled:opacity-50
-            ${confirmUninstall ? "text-white bg-error" : "text-error hover:bg-error/10"}
+            ${confirmUninstall ? "text-on-status bg-error" : "text-error hover:bg-error/10"}
           `}
         >
           {actionLoading === "uninstall" ? (

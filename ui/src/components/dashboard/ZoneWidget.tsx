@@ -336,7 +336,7 @@ function ZoneShutterWidget({
           {avgPosition === null ? (
             <span className="text-lead text-text-tertiary">{"\u2014"}</span>
           ) : avgPosition === 100 ? (
-            <span className="text-small font-medium text-success px-2 py-0.5 rounded bg-success/10">{t("controls.opened")}</span>
+            <span className="text-small font-medium text-text-secondary px-2 py-0.5 rounded bg-border-light">{t("controls.opened")}</span>
           ) : avgPosition === 0 ? (
             <span className="text-small font-medium text-text-secondary px-2 py-0.5 rounded bg-border-light">{t("controls.closed")}</span>
           ) : (
@@ -420,7 +420,7 @@ function ZoneAwningWidget({
           {total === 0 ? (
             <span className="text-lead text-text-tertiary">{"—"}</span>
           ) : deployedCount === total ? (
-            <span className="text-small font-medium text-success px-2 py-0.5 rounded bg-success/10">
+            <span className="text-small font-medium text-text-secondary px-2 py-0.5 rounded bg-border-light">
               {t("controls.deployed")}
             </span>
           ) : deployedCount === 0 ? (
@@ -562,7 +562,7 @@ function ZoneHeatingWidget({
             disabled={commandLoading !== null}
             className={`w-7 h-7 flex items-center justify-center rounded-[5px] transition-all duration-150 cursor-pointer border border-border bg-surface text-text-secondary active:scale-[0.97] disabled:opacity-40 disabled:cursor-not-allowed ${
               anyOn
-                ? "!border-error/40 !text-error !bg-error/5 hover:!bg-error/10"
+                ? "!border-heat/40 !text-heat !bg-heat/5 hover:!bg-heat/10"
                 : "hover:border-primary/40 hover:text-primary hover:bg-primary/5"
             }`}
             title={anyOn ? t("controls.turnOff") : t("controls.turnOn")}
@@ -747,7 +747,7 @@ function ZoneWaterWidget({
         <WaterValveIcon
           size={48}
           strokeWidth={1.5}
-          className={anyOpen ? "text-active-text" : "text-text-tertiary"}
+          className={anyOpen ? "text-active" : "text-text-tertiary"}
         />
         <div className="flex flex-col items-start gap-0.5 pl-2">
           <span className="text-lead font-semibold text-text tabular-nums leading-none">

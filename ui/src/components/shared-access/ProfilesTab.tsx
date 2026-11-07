@@ -81,7 +81,7 @@ export function ProfilesTab({ state }: { state: SharedAccessState }) {
                     <Star
                       size={14}
                       strokeWidth={1.5}
-                      className="text-warning"
+                      className="text-primary"
                       role="img"
                       aria-label={t("sharedAccess.profiles.defaultTitle")}
                     >
@@ -91,7 +91,7 @@ export function ProfilesTab({ state }: { state: SharedAccessState }) {
                   <span className="text-body font-semibold text-text">{p.name}</span>
 
                   {p.gates.length === 0 && (
-                    <span className="text-caption rounded-full px-2 py-0.5 bg-warning/15 text-warning">
+                    <span className="text-caption rounded-full px-2 py-0.5 bg-warning/10 text-warning-ink">
                       {t("sharedAccess.profiles.noGate")}
                     </span>
                   )}

@@ -158,7 +158,7 @@ function StalenessBanner({ entry }: { entry: LiveStalenessEntry }) {
       className={`mb-4 flex items-center gap-2 rounded-[10px] border px-4 py-3 text-small ${
         entry.mode === "offline"
           ? "bg-error/10 border-error/20 text-error"
-          : "bg-warning/10 border-warning/20 text-warning"
+          : "bg-warning/10 border-warning/20 text-warning-ink"
       }`}
       role="status"
     >

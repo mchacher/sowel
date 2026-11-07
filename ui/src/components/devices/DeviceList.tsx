@@ -341,7 +341,7 @@ function BatteryCell({ value }: { value: unknown }) {
     level <= 15
       ? "text-error"
       : level <= 30
-        ? "text-warning"
+        ? "text-warning-ink"
         : "text-text-secondary";
 
   return (
@@ -365,7 +365,7 @@ function LqiCell({ value }: { value: unknown }) {
     lqi < 75
       ? "text-error"
       : lqi < 150
-        ? "text-warning"
+        ? "text-warning-ink"
         : "text-text-secondary";
 
   return (

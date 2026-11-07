@@ -558,8 +558,8 @@ function PluginRow({
         title={t("plugins.openDetails", { name })}
         className="flex items-center gap-3 min-w-0 flex-1 px-4 py-3 text-left rounded-l-[10px] hover:bg-border-light/40 transition-colors cursor-pointer"
       >
-        <div className="w-9 h-9 bg-accent/10 rounded-[8px] flex items-center justify-center shrink-0">
-          <IconComponent size={18} className="text-accent" />
+        <div className="w-9 h-9 bg-border-light rounded-[8px] flex items-center justify-center shrink-0">
+          <IconComponent size={18} className="text-text-secondary" />
         </div>
         <div className="min-w-0 flex-1">
           <div className="flex items-center gap-2 min-w-0 flex-wrap">
@@ -573,7 +573,7 @@ function PluginRow({
                 <span className="text-micro text-text-tertiary truncate">
                   {t("integrations.deviceCount", { count: plugin.deviceCount })}
                   {plugin.offlineDeviceCount > 0 && (
-                    <span className="text-warning ml-1">{t("integrations.offlineCount", { count: plugin.offlineDeviceCount })}</span>
+                    <span className="text-warning-ink ml-1">{t("integrations.offlineCount", { count: plugin.offlineDeviceCount })}</span>
                   )}
                 </span>
               </>
@@ -655,7 +655,7 @@ function PluginRow({
         onClose={closeSheet}
         name={name}
         description={getLocalizedDescription(plugin.manifest, lang)}
-        icon={<IconComponent size={18} className="text-accent" />}
+        icon={<IconComponent size={18} className="text-text-secondary" />}
         type={isRecipe ? "recipe" : "integration"}
         installedVersion={plugin.manifest.version}
         latestVersion={plugin.latestVersion}
@@ -814,8 +814,8 @@ function StoreRow({
     <div className="flex flex-col gap-3 px-4 py-3 bg-surface border border-border rounded-[10px] sm:flex-row sm:flex-wrap sm:items-center">
       <div className="flex items-start gap-3 min-w-0 flex-1">
         {/* Icon */}
-        <div className="w-9 h-9 bg-accent/10 rounded-[8px] flex items-center justify-center shrink-0">
-          <IconComponent size={18} className="text-accent" />
+        <div className="w-9 h-9 bg-border-light rounded-[8px] flex items-center justify-center shrink-0">
+          <IconComponent size={18} className="text-text-secondary" />
         </div>
 
         {/* Name + description */}
@@ -836,7 +836,7 @@ function StoreRow({
               in the install confirmation modal, where caution is the point. */}
           {tier === "community" && (
             <span
-              className="text-micro px-1.5 py-0.5 bg-warning/10 text-warning rounded-[4px] font-medium shrink-0 inline-flex items-center gap-1"
+              className="text-micro px-1.5 py-0.5 bg-border-light text-text-secondary rounded-[4px] font-medium shrink-0 inline-flex items-center gap-1"
               title={t("plugins.community.badge.tooltip")}
             >
               <Users size={10} strokeWidth={2} />
@@ -905,7 +905,7 @@ function StoreRow({
           <div className="bg-surface rounded-[14px] max-w-md w-full p-6 space-y-4 shadow-lg">
             <div className="flex items-start gap-3">
               <div className="w-10 h-10 rounded-full bg-warning/10 flex items-center justify-center shrink-0">
-                <AlertTriangle size={20} className="text-warning" strokeWidth={2} />
+                <AlertTriangle size={20} className="text-warning-ink" strokeWidth={2} />
               </div>
               <div className="min-w-0">
                 <h3 className="text-lead font-semibold text-text">
@@ -927,7 +927,7 @@ function StoreRow({
               <button
                 onClick={() => doInstall(true)}
                 disabled={installing}
-                className="px-4 py-2 text-small font-medium text-white bg-warning hover:opacity-90 rounded-[6px] transition-colors disabled:opacity-50 inline-flex items-center gap-1.5"
+                className="px-4 py-2 text-small font-medium text-on-status bg-warning-ink hover:opacity-90 rounded-[6px] transition-colors disabled:opacity-50 inline-flex items-center gap-1.5"
               >
                 {installing ? <Loader2 size={14} className="animate-spin" /> : <Download size={14} />}
                 {t("plugins.community.modal.confirm")}

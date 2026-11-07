@@ -1375,7 +1375,7 @@ export function AnalyseView() {
               <button
                 type="button"
                 onClick={handleDelete}
-                className="px-3 py-1.5 rounded-[6px] text-caption font-medium bg-error text-white
+                className="px-3 py-1.5 rounded-[6px] text-caption font-medium bg-error text-on-status
                   hover:bg-error/80 transition-colors cursor-pointer"
               >
                 {t("common.delete")}

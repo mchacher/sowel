@@ -64,8 +64,8 @@ export function IntegrationRow({ integration, onOpen, onRefresh }: IntegrationRo
       className="flex items-center gap-3 px-4 py-3 bg-surface border border-border rounded-[10px] hover:border-primary/30 transition-colors cursor-pointer group"
     >
       {/* Icon */}
-      <div className="w-9 h-9 bg-accent/10 rounded-[8px] flex items-center justify-center shrink-0">
-        <IconComponent size={18} className="text-accent" />
+      <div className="w-9 h-9 bg-border-light rounded-[8px] flex items-center justify-center shrink-0">
+        <IconComponent size={18} className="text-text-secondary" />
       </div>
 
       {/* Name + status */}
@@ -100,7 +100,7 @@ export function IntegrationRow({ integration, onOpen, onRefresh }: IntegrationRo
         <span>
           {t("integrations.deviceCount", { count: integration.deviceCount })}
           {integration.offlineDeviceCount > 0 && (
-            <span className="text-warning ml-1">{t("integrations.offlineCount", { count: integration.offlineDeviceCount })}</span>
+            <span className="text-warning-ink ml-1">{t("integrations.offlineCount", { count: integration.offlineDeviceCount })}</span>
           )}
         </span>
         {isConnected && integration.polling && (

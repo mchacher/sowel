@@ -391,17 +391,17 @@ Détails : [spec 181](https://github.com/mchacher/sowel/tree/main/specs/181-shar
 
 ## Design system
 
-| Propriété                 | Valeur                                                       |
-| ------------------------- | ------------------------------------------------------------ |
-| **Police body**           | Inter                                                        |
-| **Police mono**           | JetBrains Mono (valeurs, logs)                               |
-| **Couleur primaire**      | `#1A4F6E` (ocean blue), hover : `#13405A`, light : `#E6F0F6` |
-| **Couleur accent**        | `#D4963F` (amber), hover : `#BB8232`                         |
-| **Espacement de base**    | 4px                                                          |
-| **Border radius**         | 6px (boutons), 10px (cartes), 14px (modales)                 |
-| **Taille de police body** | 14px (tableau de bord dense)                                 |
-| **Valeurs de données**    | 28px (lisibles d'un coup d'œil)                              |
-| **Icônes**                | Lucide React, stroke 1.5px                                   |
+| Propriété                 | Valeur                                                                                        |
+| ------------------------- | --------------------------------------------------------------------------------------------- |
+| **Police body**           | Inter                                                                                         |
+| **Police mono**           | JetBrains Mono (valeurs, logs)                                                                |
+| **Couleur primaire**      | `#1A4F6E` (ocean blue), hover : `#13405A`, light : `#E6F0F6`                                  |
+| **Rôles de couleur**      | Ambre `#F2C035` = allumé ou en marche seulement ; les autres : `design-system/tokens.md` §1.2 |
+| **Espacement de base**    | 4px                                                                                           |
+| **Border radius**         | 6px (boutons), 10px (cartes), 14px (modales)                                                  |
+| **Taille de police body** | 14px (tableau de bord dense)                                                                  |
+| **Valeurs de données**    | 28px (lisibles d'un coup d'œil)                                                               |
+| **Icônes**                | Lucide React, stroke 1.5px                                                                    |
 
 ---
 

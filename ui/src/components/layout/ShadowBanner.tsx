@@ -15,7 +15,7 @@ export function ShadowBanner() {
     <div
       role="status"
       aria-live="polite"
-      className="bg-amber-500 text-white text-caption sm:text-small font-medium px-4 py-1.5 text-center sticky top-0 z-50 shadow-sm"
+      className="bg-warning-ink text-on-status text-caption sm:text-small font-medium px-4 py-1.5 text-center sticky top-0 z-50 shadow-sm"
     >
       {t("shadow.banner")}
     </div>

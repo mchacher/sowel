@@ -313,7 +313,7 @@ export function EquipmentDetailPage() {
               {t(TYPE_LABELS[equipment.type])}
               {equipment.description && ` · ${equipment.description}`}
               {!equipment.enabled && (
-                <span className="text-warning ml-2">{t("common.disabled")}</span>
+                <span className="text-warning-ink ml-2">{t("common.disabled")}</span>
               )}
             </p>
             {/* Spec 188 — what became of the last tracked order (gate, cover). */}
@@ -747,8 +747,8 @@ export function EquipmentDetailPage() {
                   </h4>
                   <div className="space-y-1">
                     {equipment.computedData.map((cd) => (
-                      <div key={cd.alias} className="flex items-center gap-2 px-2.5 py-1.5 rounded-[4px] bg-accent/5 border border-accent/15 text-caption">
-                        <span className="font-mono font-medium text-accent">{cd.alias}</span>
+                      <div key={cd.alias} className="flex items-center gap-2 px-2.5 py-1.5 rounded-[4px] bg-border-light border border-border text-caption">
+                        <span className="font-mono font-medium text-text-secondary">{cd.alias}</span>
                         {cd.category && <span className="text-text-tertiary">({cd.category})</span>}
                         <span className="ml-auto tabular-nums text-text">
                           {cd.value !== null && cd.value !== undefined
@@ -783,7 +783,7 @@ export function EquipmentDetailPage() {
                   <div className="space-y-1">
                     {equipment.orderBindings.map((binding) => (
                       <div key={binding.id} className="flex items-center gap-2 px-2.5 py-1.5 rounded-[4px] bg-border-light/50 text-caption group">
-                        <span className="font-mono font-medium text-accent">{binding.alias}</span>
+                        <span className="font-mono font-medium text-text-secondary">{binding.alias}</span>
                         <span className="text-text-tertiary">({binding.type})</span>
                         <span className="text-text-tertiary">· {binding.deviceName} · {binding.key}</span>
                         <button

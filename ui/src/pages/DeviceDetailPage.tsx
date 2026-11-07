@@ -273,7 +273,7 @@ function OrdersTable({ orders }: { orders: DeviceOrder[] }) {
           >
             <td className="py-2.5 px-3">
               <div className="flex items-center gap-1.5">
-                <Zap size={14} strokeWidth={1.5} className="text-accent" />
+                <Zap size={14} strokeWidth={1.5} className="text-text-tertiary" />
                 <span className="font-mono text-small text-text">{order.key}</span>
               </div>
             </td>
