@@ -169,6 +169,20 @@ Say so on the meter: open its equipment page and tick **Fed by a separate supply
 
 A separate-supply meter cannot be picked under **Already counted by** — nothing the partition renders can be "inside" a meter on another supply.
 
+##### When a solar panel sits behind a submeter
+
+A small panel can be wired behind a submeter rather than through the production meter: a few modules on the pool house roof, behind the pool clamp. When the panel produces more than the circuit draws, the clamp reads **negative** watts. By default Sowel takes a negative reading for a clamp mounted backwards and counts its absolute value as consumption, so the panel's output would inflate the circuit's slice, shrink "Other" by as much, and never appear as production.
+
+Say so on the meter: open its equipment page and tick **Local production flows through this meter**. From then on:
+
+- the circuit's slice keeps the positive part of its reading. The clamp measures the circuit **net of the panel**, so while the panel covers part of the pump's draw, that part shows up neither as consumption nor as production;
+- the negative part counts as **solar production** of the house: it is added to the total production, to self-consumption, and to the household consumption that is rebuilt from them;
+- on the live page, the circuit's row shows its load only and the panel's output joins the solar flow.
+
+It works whether the circuit is drawing or producing at a given moment: every interval between two readings is split at the point where the power crosses zero. It applies from the moment the box is ticked — past history is not rewritten; unticking it later keeps what was already counted. It needs an **Energy Meter (production)** equipment to be configured, since that is where self-consumption is recorded.
+
+The box is offered only on a meter that reports power alone (Sowel computes its energy): a meter with its own energy counter cannot be split by sign. It cannot be combined with **Fed by a separate supply**: that panel's output never reaches your main meter. If the meter is declared inside another one (**Already counted by**), the outer clamp sees the panel too and is not split: tick the box on the innermost meter carrying the panel only.
+
 Totals widgets (peak / off-peak, autoconsumption) stay unchanged when you toggle modes.
 
 #### Longer periods
@@ -291,4 +305,4 @@ Data older than 7 days lives only in the downsampled hourly and daily buckets. I
 
 This means your submeters do not cover most of the main meter's consumption — which is normal: the main meter sees everything in the house, while submeters typically cover specific high-power circuits. The residual is "Other circuits".
 
-If the residual is **negative** (clamped to zero in the chart), one of your submeters is reporting more than the main meter sees — usually a clamp wired backwards or a calibration mismatch. The integrator clamps negative power deltas at zero and logs a WARN once per occurrence.
+If the residual is **negative** (clamped to zero in the chart), one of your submeters is reporting more than the main meter sees — usually a clamp wired backwards or a calibration mismatch. A power-only clamp reading negative watts is integrated as its absolute value, with a WARN logged once — unless it is declared as [seeing local production](#when-a-solar-panel-sits-behind-a-submeter).

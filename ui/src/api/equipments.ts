@@ -61,6 +61,8 @@ export async function updateEquipment(
     meteringParentId?: string | null;
     /** Spec 179 — this meter is fed by a separate supply. */
     separateSupply?: boolean;
+    /** Spec 195 — negative power on this meter is local production. */
+    localProduction?: boolean;
     /** Spec 191 — this electric vehicle is a plug-in hybrid. */
     plugInHybrid?: boolean;
     /** Spec 193 — an EV charger's usual vehicle; null clears it. */

@@ -676,7 +676,9 @@ export class ZoneAggregator {
     // backwards reports negative watts, and a negative total is a wiring fault
     // the user needs to see. (`PowerSubmeterIntegrator` integrates |P| for
     // energy per spec 091 — that protects a cumulative counter, a different
-    // question.)
+    // question.) A meter seeing local production (spec 195) is no exception:
+    // a pool clamp at −412 W says the panel behind it is exporting, which is
+    // what the zone should show.
     acc.powerSum += powerBinding.value;
     acc.powerHasData = true;
   }
