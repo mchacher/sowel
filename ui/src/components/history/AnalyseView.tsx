@@ -720,8 +720,10 @@ export function AnalyseView() {
     <div className="space-y-4">
       {/* Header — copies Energy's two-child flex layout (title left,
           PeriodSelector right, justify-between). Save actions move to the
-          end of the series-pills row so the header stays clean. */}
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+          end of the series-pills row so the header stays clean. It wraps
+          rather than squeezing the title onto two lines on a tablet (spec
+          196, slice 1c). */}
+      <div className="flex flex-col sm:flex-row sm:flex-wrap sm:items-center sm:justify-between gap-4">
         <div className="hidden sm:flex items-center gap-3">
           <BarChart3 size={20} strokeWidth={1.5} className="text-primary" />
           <h1>{title}</h1>

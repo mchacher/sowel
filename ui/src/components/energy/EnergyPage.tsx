@@ -114,10 +114,12 @@ export function EnergyPage() {
   return (
     <div className="p-4 sm:p-6">
       <EnergyMobileNav />
-      {/* Header — h1 hidden on mobile (title in topbar). PeriodSelector visible on both. */}
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-4 sm:mb-6">
+      {/* Header — h1 hidden on mobile (title in topbar). PeriodSelector visible on both.
+          Spec 196, slice 1c: the row wraps instead of running off the edge on a
+          tablet, where the title and the period controls do not fit side by side. */}
+      <div className="flex flex-col sm:flex-row sm:flex-wrap sm:items-center sm:justify-between gap-4 mb-4 sm:mb-6">
         <h1 className="hidden sm:block">{t("energy.consumption")}</h1>
-        <div className="flex flex-col items-start gap-3 sm:flex-row sm:items-center sm:gap-4">
+        <div className="flex flex-col items-start gap-3 sm:flex-row sm:flex-wrap sm:items-center sm:gap-4">
           <UnitToggle enabled={tariffConfigured} />
           <PeriodSelector />
         </div>

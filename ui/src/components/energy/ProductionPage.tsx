@@ -53,7 +53,10 @@ export function ProductionPage() {
   return (
     <div className="p-4 sm:p-6">
       <EnergyMobileNav />
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-4 sm:mb-6">
+      {/* Spec 196, slice 1c — the row wraps instead of running off the edge:
+          on a tablet (and at 1 024 px beside the sidebar) the title and the
+          period controls do not fit side by side, so the controls go below. */}
+      <div className="flex flex-col sm:flex-row sm:flex-wrap sm:items-center sm:justify-between gap-4 mb-4 sm:mb-6">
         <h1 className="hidden sm:block">{t("energy.production")}</h1>
         <PeriodSelector />
       </div>

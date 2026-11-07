@@ -1262,9 +1262,14 @@ function WeatherStationWidget({
 
   return (
     <WidgetCard label={label} sublabel={sublabel} onClick={onOpenDetail} className={clickClass}>
-      <div className="flex items-stretch justify-center flex-1 min-h-0">
+      {/* Spec 196, slice 1c — sized by the tile, not the viewport: a 3-column
+          tablet grid (~220 px of content) and a 4-column one beside the
+          sidebar at 1 024 px (~145 px) cropped both readings on the left. The
+          figures scale with the tile (cqw) and each day's min/max stack below
+          240 px, where they would be wider than the reading. */}
+      <div className="@container flex items-stretch justify-center flex-1 min-h-0">
         {both ? (
-          <div className="flex items-stretch gap-4 sm:gap-6">
+          <div className="flex items-stretch gap-2 @min-[240px]:gap-6">
             <WeatherTempColumn
               label={t("weather.outdoor")}
               value={fmt(outdoor)}
@@ -1314,14 +1319,20 @@ function WeatherTempColumn({
         </span>
       )}
       <div className="flex items-baseline leading-none">
-        <span className="font-mono font-bold text-[32px] sm:text-[36px] text-text tabular-nums leading-none">
+        <span className="font-mono font-bold text-[clamp(22px,14cqw,36px)] text-text tabular-nums leading-none">
           {value}
         </span>
         <span className="text-text-tertiary font-medium text-[14px] sm:text-[16px] leading-none">
           °
         </span>
       </div>
-      {extremes && <TempExtremes min={extremes.min} max={extremes.max} />}
+      {extremes && (
+        <TempExtremes
+          min={extremes.min}
+          max={extremes.max}
+          className="@max-[239px]:flex-col @max-[239px]:gap-1"
+        />
+      )}
     </div>
   );
 }

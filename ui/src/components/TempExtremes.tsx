@@ -12,9 +12,12 @@ export function TempExtremes({
   min,
   max,
   large = false,
+  className = "",
 }: {
   min: number;
   max: number;
+  /** Extra classes for the row (e.g. stacking it in a narrow tile). */
+  className?: string;
   /** 2x sizing for the mobile widget icon slot (rendered at 50% scale). */
   large?: boolean;
 }) {
@@ -24,7 +27,9 @@ export function TempExtremes({
   const arrow = large ? 14 : 11;
   const text = large ? "text-[18px]" : "text-[12px]";
   return (
-    <div className={`flex items-center justify-center leading-none ${large ? "gap-1.5" : "gap-2"}`}>
+    <div
+      className={`flex items-center justify-center leading-none ${large ? "gap-1.5" : "gap-2"} ${className}`}
+    >
       <span
         className={`flex items-center ${large ? "" : "gap-0.5"}`}
         aria-label={t("weather.minToday")}

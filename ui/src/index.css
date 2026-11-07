@@ -165,113 +165,28 @@ input:focus, select:focus, textarea:focus {
 
 /* ============================================================
    Range slider — strip native styling, use design tokens
-   ============================================================ */
+   ============================================================
 
-input[type="range"] {
-  -webkit-appearance: none;
-  appearance: none;
-  background: transparent;
-  cursor: pointer;
-}
+   In `@layer components` (spec 196, slice 1c): unlayered, these rules beat
+   every Tailwind utility, so a slider's `h-12` or `h-[60px]` was silently
+   reset to 5 px and the vertical dashboard light sliders collapsed to a dot.
+   Inside the layer, a utility on the element wins over the defaults below.
 
-input[type="range"]:focus {
-  outline: none;
-}
+   The fill is drawn on the track, not on the input, so an input made taller
+   for the finger (`h-12`, 28 px on touch screens) still draws a 5 px line. */
 
-/* Sowel slider — mock parity (.eq__slider).
- * Track 5px, fill via CSS variable --fill-pct (% string set inline),
- * fill color via --fill-color (defaults to primary). Thumb is a 12px
- * white circle with 2px colored border. */
-input[type="range"] {
-  -webkit-appearance: none;
-  appearance: none;
-  height: 5px;
-  border-radius: 9999px;
-  background: linear-gradient(
-    to right,
-    var(--fill-color, var(--color-primary)) 0%,
-    var(--fill-color, var(--color-primary)) var(--fill-pct, 0%),
-    var(--n-100) var(--fill-pct, 0%),
-    var(--n-100) 100%
-  );
-}
-
-input[type="range"]::-webkit-slider-runnable-track {
-  height: 5px;
-  border-radius: 9999px;
-  background: transparent;
-}
-
-input[type="range"]::-moz-range-track {
-  height: 5px;
-  border-radius: 9999px;
-  background: transparent;
-  border: none;
-}
-
-input[type="range"]::-webkit-slider-thumb {
-  -webkit-appearance: none;
-  appearance: none;
-  width: 12px;
-  height: 12px;
-  border-radius: 50%;
-  background: var(--n-0);
-  border: 2px solid var(--fill-color, var(--color-primary));
-  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.18);
-  margin-top: -3.5px; /* (track_h - thumb_h) / 2 */
-}
-
-input[type="range"]::-moz-range-thumb {
-  width: 12px;
-  height: 12px;
-  border-radius: 50%;
-  background: var(--n-0);
-  border: 2px solid var(--fill-color, var(--color-primary));
-  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.18);
-}
-
-/* Legacy class aliases — variant colors are now passed via the
- * --fill-color CSS variable (set inline). These are kept so existing
- * `slider-active` callers keep working with no JS change required. */
-input[type="range"].slider-active {
-  --fill-color: var(--color-active);
-}
-
-/* Slim variant — smaller thumb + thinner track for dashboard widgets */
-input[type="range"].slider-slim::-webkit-slider-runnable-track {
-  height: 3px;
-}
-
-input[type="range"].slider-slim::-moz-range-track {
-  height: 3px;
-}
-
-input[type="range"].slider-slim::-webkit-slider-thumb {
-  width: 12px;
-  height: 12px;
-  margin-top: -4.5px;
-}
-
-input[type="range"].slider-slim::-moz-range-thumb {
-  width: 12px;
-  height: 12px;
-}
-
-/* Touch screens (spec 196, decision pr1-cibles) — the drawing stays a 5 px
- * track (3 px slim), but the input itself is 28 px tall so a finger anywhere
- * on the line grabs it, and the thumb grows to 22 px (20 px slim). The fill
- * gradient moves from the input onto the track for that. Vertical sliders
- * (dashboard light tiles, `slider-vertical`) keep their own geometry. */
-@media (pointer: coarse) {
-  input[type="range"]:not(.slider-vertical) {
-    height: 28px;
+@layer components {
+  /* Sowel slider — mock parity (.eq__slider).
+   * Track 5px, fill via CSS variable --fill-pct (% string set inline),
+   * fill color via --fill-color (defaults to primary). Thumb is a 12px
+   * white circle with 2px colored border. */
+  input[type="range"] {
+    -webkit-appearance: none;
+    appearance: none;
+    height: 5px;
     background: transparent;
-  }
-
-  input[type="range"]:not(.slider-vertical)::-webkit-slider-runnable-track {
-    height: 5px;
-    border-radius: 9999px;
-    background: linear-gradient(
+    cursor: pointer;
+    --slider-fill: linear-gradient(
       to right,
       var(--fill-color, var(--color-primary)) 0%,
       var(--fill-color, var(--color-primary)) var(--fill-pct, 0%),
@@ -280,11 +195,79 @@ input[type="range"].slider-slim::-moz-range-thumb {
     );
   }
 
-  input[type="range"]:not(.slider-vertical)::-moz-range-track {
+  input[type="range"]:focus {
+    outline: none;
+  }
+
+  input[type="range"]::-webkit-slider-runnable-track {
     height: 5px;
     border-radius: 9999px;
-    background: linear-gradient(
-      to right,
+    background: var(--slider-fill);
+  }
+
+  input[type="range"]::-moz-range-track {
+    height: 5px;
+    border-radius: 9999px;
+    background: var(--slider-fill);
+    border: none;
+  }
+
+  input[type="range"]::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    appearance: none;
+    width: 12px;
+    height: 12px;
+    border-radius: 50%;
+    background: var(--n-0);
+    border: 2px solid var(--fill-color, var(--color-primary));
+    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.18);
+    margin-top: -3.5px; /* (track_h - thumb_h) / 2 */
+  }
+
+  input[type="range"]::-moz-range-thumb {
+    width: 12px;
+    height: 12px;
+    border-radius: 50%;
+    background: var(--n-0);
+    border: 2px solid var(--fill-color, var(--color-primary));
+    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.18);
+  }
+
+  /* Legacy class aliases — variant colors are now passed via the
+   * --fill-color CSS variable (set inline). These are kept so existing
+   * `slider-active` callers keep working with no JS change required. */
+  input[type="range"].slider-active {
+    --fill-color: var(--color-active);
+  }
+
+  /* Slim variant — smaller thumb + thinner track for dashboard widgets */
+  input[type="range"].slider-slim::-webkit-slider-runnable-track {
+    height: 3px;
+  }
+
+  input[type="range"].slider-slim::-moz-range-track {
+    height: 3px;
+  }
+
+  input[type="range"].slider-slim::-webkit-slider-thumb {
+    width: 12px;
+    height: 12px;
+    margin-top: -4.5px;
+  }
+
+  input[type="range"].slider-slim::-moz-range-thumb {
+    width: 12px;
+    height: 12px;
+  }
+
+  /* Vertical slider (dashboard light tiles: `writing-mode: vertical-lr;
+   * direction: rtl`, length from the element's `h-*`). The track runs along
+   * the height, so its thickness is a width, and the fill rises from the
+   * bottom. 20 px wide so a finger can take it. */
+  input[type="range"].slider-vertical {
+    width: 20px;
+    --slider-fill: linear-gradient(
+      to top,
       var(--fill-color, var(--color-primary)) 0%,
       var(--fill-color, var(--color-primary)) var(--fill-pct, 0%),
       var(--n-100) var(--fill-pct, 0%),
@@ -292,34 +275,52 @@ input[type="range"].slider-slim::-moz-range-thumb {
     );
   }
 
-  input[type="range"]:not(.slider-vertical)::-webkit-slider-thumb {
-    width: 22px;
-    height: 22px;
-    margin-top: -8.5px; /* (5 - 22) / 2 */
+  input[type="range"].slider-vertical::-webkit-slider-runnable-track {
+    width: 3px;
+    height: 100%;
+    margin: 0 auto;
   }
 
-  input[type="range"]:not(.slider-vertical)::-moz-range-thumb {
-    width: 22px;
-    height: 22px;
+  input[type="range"].slider-vertical::-moz-range-track {
+    width: 3px;
+    height: 100%;
   }
 
-  input[type="range"].slider-slim:not(.slider-vertical)::-webkit-slider-runnable-track {
-    height: 3px;
+  input[type="range"].slider-vertical::-webkit-slider-thumb {
+    margin-top: 0;
+    margin-left: -4.5px; /* (track_w - thumb_w) / 2 */
   }
 
-  input[type="range"].slider-slim:not(.slider-vertical)::-moz-range-track {
-    height: 3px;
-  }
+  /* Touch screens (spec 196, decision pr1-cibles) — the drawing stays a 5 px
+   * track (3 px slim), but the input itself is 28 px tall so a finger anywhere
+   * on the line grabs it, and the thumb grows to 22 px (20 px slim). Vertical
+   * sliders keep their own geometry. */
+  @media (pointer: coarse) {
+    input[type="range"]:not(.slider-vertical) {
+      height: 28px;
+    }
 
-  input[type="range"].slider-slim:not(.slider-vertical)::-webkit-slider-thumb {
-    width: 20px;
-    height: 20px;
-    margin-top: -8.5px; /* (3 - 20) / 2 */
-  }
+    input[type="range"]:not(.slider-vertical)::-webkit-slider-thumb {
+      width: 22px;
+      height: 22px;
+      margin-top: -8.5px; /* (5 - 22) / 2 */
+    }
 
-  input[type="range"].slider-slim:not(.slider-vertical)::-moz-range-thumb {
-    width: 20px;
-    height: 20px;
+    input[type="range"]:not(.slider-vertical)::-moz-range-thumb {
+      width: 22px;
+      height: 22px;
+    }
+
+    input[type="range"].slider-slim:not(.slider-vertical)::-webkit-slider-thumb {
+      width: 20px;
+      height: 20px;
+      margin-top: -8.5px; /* (3 - 20) / 2 */
+    }
+
+    input[type="range"].slider-slim:not(.slider-vertical)::-moz-range-thumb {
+      width: 20px;
+      height: 20px;
+    }
   }
 }
 
