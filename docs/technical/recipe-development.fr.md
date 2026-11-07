@@ -299,14 +299,17 @@ Déclarez `confirm` sur une tuile qui ouvre quelque chose, laissez les trois de 
 
 L'objet `ctx` injecté dans `validate()` et `createInstance()` fournit :
 
-| Propriété          | Type               | Usage                                                                                 |
-| ------------------ | ------------------ | ------------------------------------------------------------------------------------- |
-| `eventBus`         | `EventBus`         | S'abonner aux événements typés                                                        |
-| `equipmentManager` | `EquipmentManager` | Interroger l'état d'un équipement, exécuter des ordres                                |
-| `zoneManager`      | `ZoneManager`      | Interroger les définitions de zones                                                   |
-| `zoneAggregator`   | `ZoneAggregator`   | Interroger les données agrégées de zone                                               |
-| `state`            | `RecipeStateStore` | Persister un état clé-valeur (survit au redémarrage, auto-notifie l'UI sur mutations) |
-| `log(msg, level?)` | fonction           | Écrire dans le journal d'exécution de la recette                                      |
+| Propriété                                  | Type               | Usage                                                                                 |
+| ------------------------------------------ | ------------------ | ------------------------------------------------------------------------------------- |
+| `eventBus`                                 | `EventBus`         | S'abonner aux événements typés                                                        |
+| `equipmentManager`                         | `EquipmentManager` | Interroger l'état d'un équipement                                                     |
+| `zoneManager`                              | `ZoneManager`      | Interroger les définitions de zones                                                   |
+| `zoneAggregator`                           | `ZoneAggregator`   | Interroger les données agrégées de zone                                               |
+| `state`                                    | `RecipeStateStore` | Persister un état clé-valeur (survit au redémarrage, auto-notifie l'UI sur mutations) |
+| `log(msg, level?)`                         | fonction           | Écrire dans le journal d'exécution de la recette                                      |
+| `dispatchOrder(equipmentId, alias, value)` | fonction           | Envoyer un ordre attribué à cette instance (renvoie `{ success, error? }`)            |
+
+Envoyez les ordres avec `ctx.dispatchOrder`, pas `ctx.equipmentManager.executeOrder` : seul le premier dit à Sowel quelle recette a envoyé l'ordre, ce qui permet au journal d'activité de la nommer (issue #1122).
 
 ## Helpers partagés
 

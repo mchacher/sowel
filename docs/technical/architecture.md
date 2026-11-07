@@ -83,23 +83,23 @@ The Event Bus is a typed `EventEmitter` using TypeScript discriminated unions (`
 
 ### Event Types
 
-| Event                             | Payload                                              | When                                  |
-| --------------------------------- | ---------------------------------------------------- | ------------------------------------- |
-| `device.discovered`               | `device: Device`                                     | New device found                      |
-| `device.removed`                  | `deviceId, deviceName`                               | Device deleted                        |
-| `device.status_changed`           | `deviceId, deviceName, status`                       | Online/offline                        |
-| `device.data.updated`             | `deviceId, deviceName, dataId, key, value, previous` | Property change                       |
-| `equipment.data.changed`          | `equipmentId, alias, value, previous`                | Bound data changed                    |
-| `equipment.order.executed`        | `equipmentId, orderAlias, value, source?`            | Order dispatched                      |
-| `zone.data.changed`               | `zoneId, aggregatedData`                             | Aggregated data changed (whole set)   |
-| `system.started`                  | --                                                   | Engine boot complete                  |
-| `system.integration.connected`    | `integrationId`                                      | Integration connected                 |
-| `system.integration.disconnected` | `integrationId`                                      | Integration disconnected              |
-| `settings.changed`                | `keys`                                               | Settings updated                      |
-| `mode.activated`                  | mode details                                         | Mode activated                        |
-| `mode.deactivated`                | mode details                                         | Mode deactivated                      |
-| `recipe.instance.state.changed`   | instance details                                     | Recipe state changed                  |
-| `activity.added`                  | `item: ActivityItem`                                 | New activity item buffered (spec 101) |
+| Event                             | Payload                                                        | When                                  |
+| --------------------------------- | -------------------------------------------------------------- | ------------------------------------- |
+| `device.discovered`               | `device: Device`                                               | New device found                      |
+| `device.removed`                  | `deviceId, deviceName`                                         | Device deleted                        |
+| `device.status_changed`           | `deviceId, deviceName, status`                                 | Online/offline                        |
+| `device.data.updated`             | `deviceId, deviceName, dataId, key, value, previous`           | Property change                       |
+| `equipment.data.changed`          | `equipmentId, alias, value, previous`                          | Bound data changed                    |
+| `equipment.order.executed`        | `equipmentId, orderAlias, value, source?, partOf?, composite?` | Order dispatched                      |
+| `zone.data.changed`               | `zoneId, aggregatedData`                                       | Aggregated data changed (whole set)   |
+| `system.started`                  | --                                                             | Engine boot complete                  |
+| `system.integration.connected`    | `integrationId`                                                | Integration connected                 |
+| `system.integration.disconnected` | `integrationId`                                                | Integration disconnected              |
+| `settings.changed`                | `keys`                                                         | Settings updated                      |
+| `mode.activated`                  | mode details                                                   | Mode activated                        |
+| `mode.deactivated`                | mode details                                                   | Mode deactivated                      |
+| `recipe.instance.state.changed`   | instance details                                               | Recipe state changed                  |
+| `activity.added`                  | `item: ActivityItem`                                           | New activity item buffered (spec 101) |
 
 ---
 
@@ -675,6 +675,7 @@ Runtime image is ~950 MB uncompressed (~210 MB content). The Python 3.13 require
 ### Event flow
 
 1. The buffer subscribes to a curated set of `EngineEvent`s: `equipment.order.executed`, `equipment.data.changed` (filtered by binding category to `motion`, `water_leak`, `smoke`), `recipe.instance.started/stopped/error`, `mode.activated/deactivated`, `sunlight.changed`, `system.alarm.raised`, `system.alarm.resolved`. A resolution is filed in the zone its event carries, falling back to the zone of the raise the buffer saw (global when it has neither, e.g. an alarm raised before a restart).
+   An order made of steps (a VMC `speed` change, spec 153, switched as relay orders) reaches it as steps carrying `partOf`, which it skips, then one `composite` order, which it records: one line per speed change. The order confirmation tracker and the capacity arbiter do the opposite, since only the steps were dispatched (issue #1122).
 2. For each event it resolves equipment / recipe names and the relevant `zoneId` via the equipment, recipe, zone and sunlight managers, then builds an `ActivityItem`.
 3. It pushes the item to the ring buffer (capping by count, purging stale entries past the TTL) and emits an `activity.added` event on the bus.
 4. The WebSocket layer broadcasts that event to clients subscribed to the `activity` topic. Clients also bootstrap from `GET /api/v1/activity` on mount.
