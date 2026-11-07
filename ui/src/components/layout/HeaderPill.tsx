@@ -63,13 +63,13 @@ export function HeaderPill({
   if (href) {
     // Use a regular anchor — kept dependency-free; callers can swap to NavLink if they need SPA routing.
     return (
-      <a href={href} title={title} className="cursor-pointer">
+      <a href={href} title={title} aria-label={title} className="hit-44 cursor-pointer">
         {content}
       </a>
     );
   }
   return (
-    <button onClick={onClick} title={title} type="button" className="cursor-pointer">
+    <button onClick={onClick} title={title} aria-label={title} type="button" className="hit-44 cursor-pointer">
       {content}
     </button>
   );

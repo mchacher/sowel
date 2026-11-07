@@ -69,9 +69,10 @@ describe("solarWidgetState", () => {
       NOW,
     );
 
-    expect(state).toEqual({
+    // Spec 196: one decimal for kW and A, whole volts (spaces compared as spaces).
+    expect({ ...state, lines: state.lines.map((l) => l.replace(/[\u00A0\u202F]/g, " ")) }).toEqual({
       producing: true,
-      lines: ["1.24 kW", "5.4 A", "231.0 V"],
+      lines: ["1.2 kW", "5.4 A", "231 V"],
       outdatedSince: null,
     });
   });
@@ -140,7 +141,7 @@ describe("solarWidgetState", () => {
     );
 
     expect(state.producing).toBe(true);
-    expect(state.lines).toEqual(["1.24 kW", "5.4 A"]);
+    expect(state.lines.map((l) => l.replace(/[\u00A0\u202F]/g, " "))).toEqual(["1.2 kW", "5.4 A"]);
   });
 
   it("still blanks a panel that fell silent mid-production", () => {

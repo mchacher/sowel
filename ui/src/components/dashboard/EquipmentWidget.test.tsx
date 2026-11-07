@@ -101,7 +101,7 @@ describe("EquipmentWidget", () => {
       />,
     );
 
-    expect(screen.getByText("OFF")).toBeTruthy();
+    expect(screen.getByText("Off")).toBeTruthy();
     await userEvent.click(screen.getByRole("button"));
     expect(onExecuteOrder).toHaveBeenCalledWith("eq-1", "state", "ON");
   });
@@ -114,7 +114,7 @@ describe("EquipmentWidget", () => {
       <EquipmentWidget widget={makeWidget()} equipment={eq} onExecuteOrder={onExecuteOrder} />,
     );
 
-    expect(screen.getByText("ON")).toBeTruthy();
+    expect(screen.getByText("On")).toBeTruthy();
     await userEvent.click(screen.getByRole("button"));
     expect(onExecuteOrder).toHaveBeenCalledWith("eq-1", "state", "OFF");
   });
@@ -278,8 +278,8 @@ describe("EquipmentWidget", () => {
         onExecuteOrder={vi.fn()}
       />,
     );
-    expect(screen.getByText("ON")).toBeTruthy();
-    expect(screen.getByText("1h 30m")).toBeTruthy();
+    expect(screen.getByText("On")).toBeTruthy();
+    expect(screen.getByText(/^1\sh\s30$/)).toBeTruthy();
   });
 
   // Issue #325 — a multi-action gate exposed NO way to act on desktop (the
@@ -587,7 +587,7 @@ describe("EquipmentWidget — stale power readings (#839)", () => {
     expect(screen.getByText("\u2014")).toBeTruthy();
     expect(screen.getByText(/15 min/)).toBeTruthy();
     // The tile keeps saying the heater is on: only the measurement is unknown.
-    expect(screen.getByText("ON")).toBeTruthy();
+    expect(screen.getByText("On")).toBeTruthy();
   });
 
   it("keeps a 270 s reading from a slow-polling integration", () => {
@@ -616,7 +616,7 @@ describe("EquipmentWidget — stale power readings (#839)", () => {
       <EquipmentWidget widget={makeWidget()} equipment={eq} onExecuteOrder={vi.fn()} />,
     );
 
-    expect(screen.queryByText(/1.24 kW/)).toBeNull();
+    expect(screen.queryByText(/1[.,]2\s?kW/)).toBeNull();
     expect(screen.queryByText("Standby")).toBeNull();
     expect(screen.getByText(/reading outdated/)).toBeTruthy();
   });

@@ -113,7 +113,7 @@ describe("CompactEquipmentCard — stale power readings (#839)", () => {
       }),
     );
 
-    expect(screen.queryByText(/1.24 kW/)).toBeNull();
+    expect(screen.queryByText(/1[.,]2\s?kW/)).toBeNull();
     expect(screen.getByText("\u2014")).toBeTruthy();
   });
 
@@ -155,7 +155,7 @@ describe("CompactEquipmentCard — stale power readings (#839)", () => {
       }),
     );
 
-    expect(screen.getByText("1.24 kW")).toBeTruthy();
+    expect(screen.getByText("1.2 kW")).toBeTruthy();
   });
 });
 

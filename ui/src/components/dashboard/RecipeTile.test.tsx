@@ -109,7 +109,7 @@ describe("RecipeTile", () => {
 
     expect(screen.getByText("Delivery Gate")).toBeTruthy();
     expect(screen.getByText("Ouvert pour le livreur")).toBeTruthy();
-    expect(screen.getByText("12m")).toBeTruthy();
+    expect(screen.getByText("12 min")).toBeTruthy();
     expect(screen.getByRole("button", { name: /Livreur/ })).toBeTruthy();
   });
 
@@ -145,7 +145,7 @@ describe("RecipeTile", () => {
 
     expect(screen.getByText("Depuis la clé déclarée")).toBeTruthy();
     expect(screen.queryByText("Cette ligne ne doit pas s'afficher")).toBeNull();
-    expect(screen.getByText("5m")).toBeTruthy();
+    expect(screen.getByText("5 min")).toBeTruthy();
   });
 
   it("skips a control the recipe does not actually declare", () => {
@@ -166,7 +166,7 @@ describe("RecipeTile", () => {
 
     expect(screen.getByText("Delivery Gate")).toBeTruthy();
     expect(screen.queryByRole("button")).toBeNull();
-    expect(screen.queryByText("12m")).toBeNull();
+    expect(screen.queryByText("12 min")).toBeNull();
   });
 
   it("says so when the recipe no longer declares a tile", () => {
@@ -202,12 +202,12 @@ describe("RecipeTile", () => {
       state: { timerExpiresAt: new Date("2026-08-30T14:10:00Z").toISOString() },
     });
     render(<RecipeTile widget={WIDGET} />);
-    expect(screen.getByText("10m")).toBeTruthy();
+    expect(screen.getByText("10 min")).toBeTruthy();
 
     act(() => {
       vi.advanceTimersByTime(5 * 60_000);
     });
-    expect(screen.getByText("5m")).toBeTruthy();
+    expect(screen.getByText("5 min")).toBeTruthy();
 
     // Past the deadline it disappears rather than showing a negative time.
     act(() => {

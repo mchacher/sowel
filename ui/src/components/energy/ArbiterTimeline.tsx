@@ -6,6 +6,7 @@ import { getArbiterTimeline } from "../../api";
 import { useArbiter } from "../../store/useArbiter";
 import { cellColor, journalDotColor } from "./arbiterColors";
 import { journalReasonLabel } from "./arbiterReason";
+import { currentLocale, formatPower, formatRange } from "../../lib/format";
 
 // Spec 148 (Phase B) — the redesigned Energy → arbitrage timeline: a signed
 // surplus/deficit curve above per-load quarter-hour ribbons, paged back to 48h,
@@ -46,7 +47,7 @@ function useWindowHours(): number {
 }
 
 function hhmm(ms: number): string {
-  return new Date(ms).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
+  return new Date(ms).toLocaleTimeString(currentLocale(), { hour: "2-digit", minute: "2-digit" });
 }
 
 /** Spec 165 — the states the ribbon can paint, in reading order. `suspended`
@@ -184,9 +185,13 @@ export function ArbiterTimeline() {
   const yDown = H - y0; // px below
   const yOf = (v: number) =>
     v >= 0 ? y0 - (v / maxAbs) * (yUp - 2) : y0 + (-v / maxAbs) * (yDown - 2);
-  const pts = values.map((p) => `${(p.x * W).toFixed(1)},${yOf(p.v).toFixed(1)}`).join(" ");
+  // SVG coordinates, not text: a tenth of a pixel is plenty.
+  const px = (v: number) => Math.round(v * 10) / 10;
+  const pts = values.map((p) => `${px(p.x * W)},${px(yOf(p.v))}`).join(" ");
   const area = values.length ? `0,${y0} ${pts} ${W},${y0}` : "";
-  const scaleKW = (maxAbs / 1000).toFixed(1); // symmetric axis: +/- the same peak
+  // Symmetric axis: ± the same peak, in kW whatever its size.
+  const scaleTop = formatPower(maxAbs, { unit: "kW", signed: true });
+  const scaleBottom = formatPower(-maxAbs, { unit: "kW" });
 
   // ── hourly alignment guides ───────────────────────────────────
   // The hour LABELS sit on the clock-hour tick (:00); the dotted GUIDES sit at
@@ -220,7 +225,7 @@ export function ArbiterTimeline() {
   };
 
   const uid = `arbtl-${pageOffset}`;
-  const rangeLabel = `${dayLabel(start, t)} · ${hhmm(start)}-${hhmm(geom.end)}`;
+  const rangeLabel = `${dayLabel(start, t)} · ${formatRange(hhmm(start), hhmm(geom.end))}`;
 
   return (
     <div className="mt-4">
@@ -288,7 +293,7 @@ export function ArbiterTimeline() {
         <div className="flex items-stretch gap-2 mt-1 mb-3">
           <div className="relative w-[80px] flex-none">
             <span className="absolute right-0 top-[2px] text-[8px] font-mono text-text-tertiary">
-              +{scaleKW} kW
+              {scaleTop}
             </span>
             <span
               className="absolute right-0 text-[8px] font-mono text-text-tertiary"
@@ -300,7 +305,7 @@ export function ArbiterTimeline() {
               className="absolute right-0 text-[8px] font-mono text-text-tertiary"
               style={{ top: `${H - 10}px` }}
             >
-              -{scaleKW} kW
+              {scaleBottom}
             </span>
           </div>
           <svg

@@ -7,6 +7,7 @@
 import type { EquipmentStatus, EquipmentWithDetails } from "../../types";
 import { pickSubmeterColor } from "./submeterPalette";
 import { countsLocalProduction, isSubmeterEquipment } from "../../lib/metering";
+import { displayedWatts } from "../../lib/format";
 import {
   BUDGET_LEARNING_MS,
   classifyPowerReading,
@@ -222,7 +223,7 @@ export function buildSubmeterRows(
 }
 
 /**
- * The numeric value `formatPower` actually puts on screen: watts rounded to
+ * The numeric value the breakdown actually puts on screen: watts rounded to
  * the nearest 5 below a kilowatt, and to one decimal of a kilowatt above.
  *
  * Shares are computed from this rather than from the raw reading so that the
@@ -230,14 +231,14 @@ export function buildSubmeterRows(
  * displaying rounded ones is how a PAC at 10 W of a 32.4 W house came to read
  * "31 % of 35 W" (#744): both numbers were defensible and they contradicted
  * each other, which is worse than either being slightly off.
+ *
+ * It is `lib/format`'s own rounding, not a copy of it: before spec 196 this
+ * used `toFixed(1)` while the label used another rounding, and the two
+ * disagreed on every X50 W step (a 575 W part in a 1150 W house printed 48 %
+ * under a label reading 1.1 kW).
  */
 export function displayedPower(value: number): number {
-  if (value < 1000) return Math.round(value / 5) * 5;
-  // NOT Math.round(value / 100) * 100: toFixed(1) rounds 1.15 down, because
-  // the binary double nearest 1.15 is below the half. The two disagreed on
-  // every X50 W step, so a 575 W part in a 1150 W house printed 48 % under a
-  // label reading 1.1 kW.
-  return Number((value / 1000).toFixed(1)) * 1000;
+  return displayedWatts(value, { step: 5 });
 }
 
 /**

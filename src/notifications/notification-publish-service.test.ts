@@ -307,7 +307,7 @@ describe("system alarm broadcast (spec 143)", () => {
       localized: {
         en: { title: "⚠️ Portail: still open after the command — lost or stopped on the way" },
         fr: {
-          title: "⚠️ Portail : toujours ouvert après la commande — perdue ou arrêtée en route",
+          title: "⚠️ Portail\u202f: toujours ouvert après la commande — perdue ou arrêtée en route",
         },
       },
     });
@@ -320,7 +320,7 @@ describe("system alarm broadcast (spec 143)", () => {
       messageParams: { equipment: "Portail" },
     });
     expect(webPushSend.mock.calls[1][1]).toMatchObject({
-      localized: { fr: { title: "✅ Portail : l'état attendu est finalement arrivé" } },
+      localized: { fr: { title: "✅ Portail\u202f: l'état attendu est finalement arrivé" } },
     });
     h.svc.destroy();
   });

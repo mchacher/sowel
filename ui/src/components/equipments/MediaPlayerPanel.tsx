@@ -68,7 +68,7 @@ export function MediaPlayerPanel({ equipment, onExecuteOrder }: MediaPlayerPanel
           <div className="flex-1">
             <div className="flex items-center gap-2">
               <span className={`text-[20px] font-semibold ${isOn ? "text-text" : "text-text-tertiary"}`}>
-                {isOn ? currentSource : "OFF"}
+                {isOn ? currentSource : t("controls.off")}
               </span>
               {isOn && pictureMode && (
                 <span className="text-[11px] px-1.5 py-0.5 bg-border-light rounded text-text-tertiary">

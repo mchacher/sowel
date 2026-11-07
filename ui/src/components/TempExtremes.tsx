@@ -1,5 +1,6 @@
 import { ArrowDown, ArrowUp } from "lucide-react";
 import { useTranslation } from "react-i18next";
+import { formatTemperature } from "../lib/format";
 
 /**
  * Compact "today's min/max" line for a temperature reading (spec 134).
@@ -11,9 +12,12 @@ export function TempExtremes({
   min,
   max,
   large = false,
+  className = "",
 }: {
   min: number;
   max: number;
+  /** Extra classes for the row (e.g. stacking it in a narrow tile). */
+  className?: string;
   /** 2x sizing for the mobile widget icon slot (rendered at 50% scale). */
   large?: boolean;
 }) {
@@ -23,14 +27,16 @@ export function TempExtremes({
   const arrow = large ? 14 : 11;
   const text = large ? "text-[18px]" : "text-[12px]";
   return (
-    <div className={`flex items-center justify-center leading-none ${large ? "gap-1.5" : "gap-2"}`}>
+    <div
+      className={`flex items-center justify-center leading-none ${large ? "gap-1.5" : "gap-2"} ${className}`}
+    >
       <span
         className={`flex items-center ${large ? "" : "gap-0.5"}`}
         aria-label={t("weather.minToday")}
       >
         <ArrowDown size={arrow} strokeWidth={2} className="text-primary/70 shrink-0" />
         <span className={`font-mono ${text} font-medium tabular-nums text-text-tertiary`}>
-          {min.toFixed(1)}°
+          {formatTemperature(min, { style: "compact" })}
         </span>
       </span>
       <span
@@ -39,7 +45,7 @@ export function TempExtremes({
       >
         <ArrowUp size={arrow} strokeWidth={2} className="text-accent shrink-0" />
         <span className={`font-mono ${text} font-medium tabular-nums text-text-tertiary`}>
-          {max.toFixed(1)}°
+          {formatTemperature(max, { style: "compact" })}
         </span>
       </span>
     </div>

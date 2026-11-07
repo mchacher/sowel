@@ -14,6 +14,7 @@ import type { HistoryPoint } from "../../types";
 import type { TimeRange } from "./history-utils";
 import { aggregateToBuckets, formatLabel, pickTickInterval } from "./chart-utils";
 import { formatBarTooltip } from "./tooltip-format";
+import { formatEnergyParts, formatNumber } from "../../lib/format";
 
 interface HistoryBarChartProps {
   points: HistoryPoint[];
@@ -59,18 +60,12 @@ function formatYAxis(value: number, unit?: string): string {
   // Energy: show in kWh
   if (unit === "Wh" || unit === "kWh") {
     const kwh = unit === "kWh" ? value : value / 1000;
-    if (kwh >= 100) return `${Math.round(kwh)}`;
-    if (kwh >= 10) return `${kwh.toFixed(0)}`;
-    if (kwh >= 1) return `${kwh.toFixed(1)}`;
-    return `${kwh.toFixed(2)}`;
+    return formatEnergyParts(kwh).value;
   }
 
   // Generic: show raw value with smart precision
-  if (value >= 100) return `${Math.round(value)}`;
-  if (value >= 10) return `${value.toFixed(0)}`;
-  if (value >= 1) return `${value.toFixed(1)}`;
-  if (value > 0) return `${value.toFixed(2)}`;
-  return "0";
+  const decimals = value >= 10 ? 0 : value >= 1 ? 1 : 2;
+  return formatNumber(value, { maxDecimals: decimals });
 }
 
 /** Track the current viewport width so the chart can adapt tick density. */

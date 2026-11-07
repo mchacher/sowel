@@ -5,6 +5,7 @@ import type {
   EquipmentWithDetails,
 } from "../../types";
 import { pickSubmeterColor, SUBMETER_PALETTE } from "./submeterPalette";
+import { formatPower } from "../../lib/format";
 import {
   buildSubmeterRows,
   computeOther,
@@ -417,12 +418,13 @@ describe("displayedPower and sharePercent (#744)", () => {
     expect(displayedPower(999)).toBe(1000);
   });
 
-  it("rounds a half-step the way toFixed(1) does, not the way Math.round does", () => {
-    // The binary double nearest 1.15 sits just below the half, so toFixed(1)
-    // gives "1.1" while Math.round(1150 / 100) * 100 gives 1200. A 575 W part
-    // in a 1150 W house printed 48 % under a label reading 1.1 kW.
-    expect(displayedPower(1150)).toBe(1100);
-    expect(sharePercent(575, 1150)).toBe(52);
+  it("rounds a half-step the way the label does", () => {
+    // A 575 W part in a 1150 W house once printed 48 % under a label reading
+    // 1.1 kW: the share and the label rounded 1.15 differently. Both now come
+    // from lib/format, which rounds the decimal digits half up, as Intl does.
+    expect(displayedPower(1150)).toBe(1200);
+    expect(formatPower(1150, { step: 5, locale: "en-US" })).toBe("1.2\u00A0kW");
+    expect(sharePercent(575, 1150)).toBe(48);
   });
 
   it("never reports a part larger than the whole", () => {

@@ -3,7 +3,7 @@ import { useTranslation } from "react-i18next";
 import { Loader2, Minus, Plus } from "lucide-react";
 import type { EquipmentWithDetails } from "../../types";
 import { splitEvChargerExtras, type EvVehicleState } from "../../lib/ev-charger-contract";
-import { humanizeAlias } from "../../lib/humanize-alias";
+import { extraLabel, extraTextValue } from "../../lib/extra-labels";
 import { formatValue } from "./useEquipmentState";
 import { LightControl } from "./LightControl";
 import {
@@ -12,6 +12,7 @@ import {
   evVehicleKey,
   evVehiclePillClass,
 } from "./evChargerState";
+import { formatEnergy, formatNumber, formatPower, formatRange, formatWithUnit } from "../../lib/format";
 
 interface EvChargerControlProps {
   equipment: EquipmentWithDetails;
@@ -30,9 +31,6 @@ export function EvVehicleBadge({ vehicle }: { vehicle: EvVehicleState | null }) 
   );
 }
 
-function formatPower(watts: number): string {
-  return watts >= 1000 ? `${(watts / 1000).toFixed(2)} kW` : `${Math.round(watts)} W`;
-}
 
 /**
  * Spec 182 — the EV charger control surface, shared by the detail page and the
@@ -101,21 +99,21 @@ export function EvChargerControl({ equipment, onExecuteOrder }: EvChargerControl
     metrics.push({
       key: "session",
       label: t("equipments.evCharger.session"),
-      value: `${s.sessionEnergyKwh.toFixed(1)} kWh`,
+      value: formatEnergy(s.sessionEnergyKwh),
     });
   }
   if (s.measuredCurrentA !== null) {
     metrics.push({
       key: "current",
       label: t("equipments.evCharger.measuredCurrent"),
-      value: `${s.measuredCurrentA.toFixed(1)} A`,
+      value: formatWithUnit(s.measuredCurrentA, "A"),
     });
   }
   if (s.voltageV !== null) {
     metrics.push({
       key: "voltage",
       label: t("equipments.evCharger.voltage"),
-      value: `${Math.round(s.voltageV)} V`,
+      value: formatWithUnit(s.voltageV, "V"),
     });
   }
 
@@ -151,14 +149,14 @@ export function EvChargerControl({ equipment, onExecuteOrder }: EvChargerControl
           <span className="text-[13px] text-text-secondary">
             {t("equipments.evCharger.chargeCurrent")}
           </span>
-          <div className="flex items-center gap-2">
+          <div className="hit-group flex items-center gap-2">
             {order && (
               <button
                 type="button"
                 aria-label={t("equipments.evCharger.decrease")}
                 onClick={() => void step(-1)}
                 disabled={!usable || sending || (shownA !== null && shownA <= order.min)}
-                className="p-1.5 rounded-[6px] bg-border-light text-text-secondary hover:bg-border disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer"
+                className="hit-44 p-1.5 rounded-[6px] bg-border-light text-text-secondary hover:bg-border disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer"
               >
                 <Minus size={14} strokeWidth={1.5} />
               </button>
@@ -167,7 +165,7 @@ export function EvChargerControl({ equipment, onExecuteOrder }: EvChargerControl
               {sending ? (
                 <Loader2 size={14} className="animate-spin inline" />
               ) : shownA !== null ? (
-                `${shownA} A`
+                formatWithUnit(shownA, "A")
               ) : (
                 "—"
               )}
@@ -178,7 +176,7 @@ export function EvChargerControl({ equipment, onExecuteOrder }: EvChargerControl
                 aria-label={t("equipments.evCharger.increase")}
                 onClick={() => void step(1)}
                 disabled={!usable || sending || (shownA !== null && shownA >= order.max)}
-                className="p-1.5 rounded-[6px] bg-border-light text-text-secondary hover:bg-border disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer"
+                className="hit-44 p-1.5 rounded-[6px] bg-border-light text-text-secondary hover:bg-border disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer"
               >
                 <Plus size={14} strokeWidth={1.5} />
               </button>
@@ -188,7 +186,7 @@ export function EvChargerControl({ equipment, onExecuteOrder }: EvChargerControl
       )}
       {order && (
         <span className="text-[11px] text-text-tertiary -mt-3 text-right">
-          {t("equipments.evCharger.range", { min: order.min, max: order.max })}
+          {formatRange(formatNumber(order.min, { maxDecimals: 1 }), formatWithUnit(order.max, "A"))}
         </span>
       )}
 
@@ -196,8 +194,10 @@ export function EvChargerControl({ equipment, onExecuteOrder }: EvChargerControl
         <div className="flex flex-col gap-1 pt-3 border-t border-border-light">
           {extraData.map((b) => (
             <div key={b.alias} className="flex items-center justify-between gap-3 text-[13px]">
-              <span className="text-text-secondary">{humanizeAlias(b.alias)}</span>
-              <span className="font-mono tabular-nums text-text">{formatValue(b.value, b.unit)}</span>
+              <span className="text-text-secondary">{extraLabel("equipments.evCharger", b.alias, t)}</span>
+              <span className="font-mono tabular-nums text-text">{typeof b.value === "string"
+                  ? extraTextValue("equipments.evCharger", b.alias, b.value, t)
+                  : formatValue(b.value, b.unit)}</span>
             </div>
           ))}
         </div>

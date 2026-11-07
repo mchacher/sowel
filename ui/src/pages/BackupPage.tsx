@@ -9,6 +9,7 @@ import {
 } from "../api";
 import type { LocalBackup } from "../api";
 import { localDateStr } from "../lib/local-date";
+import { currentLocale, formatBytes } from "../lib/format";
 
 export function BackupPage() {
   const { t } = useTranslation();
@@ -95,19 +96,14 @@ export function BackupPage() {
     }
   };
 
-  const formatSize = (bytes: number): string => {
-    if (bytes < 1024) return `${bytes} B`;
-    if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
-    if (bytes < 1024 * 1024 * 1024) return `${(bytes / 1024 / 1024).toFixed(1)} MB`;
-    return `${(bytes / 1024 / 1024 / 1024).toFixed(2)} GB`;
-  };
+  const formatSize = (bytes: number): string => formatBytes(bytes);
 
   const formatDate = (iso: string): string => {
-    return new Date(iso).toLocaleString();
+    return new Date(iso).toLocaleString(currentLocale());
   };
 
   return (
-    <div className="p-6">
+    <div className="p-4 sm:p-6">
       {/* Page header */}
       <div className="mb-6">
         <div className="flex items-center gap-2.5 mb-1">

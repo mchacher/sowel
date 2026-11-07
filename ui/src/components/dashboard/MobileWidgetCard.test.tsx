@@ -83,7 +83,7 @@ describe("MobileWidgetCard", () => {
       ] as EquipmentWithDetails["dataBindings"],
     });
     render(<MobileWidgetCard widget={{ ...widget, equipmentId: "sw-1" }} equipment={plug} />);
-    expect(screen.getByText("ON")).toBeTruthy();
+    expect(screen.getByText("On")).toBeTruthy();
   });
 
   // Issue #325 divergence 1 — the daily runtime was desktop-only; the mobile
@@ -99,8 +99,8 @@ describe("MobileWidgetCard", () => {
       computedData: [{ alias: "runtime_daily", value: 5400, lastUpdated: "2026-01-01T00:00:00Z" }],
     });
     render(<MobileWidgetCard widget={{ ...widget, equipmentId: "pp-1" }} equipment={pump} />);
-    expect(screen.getByText(/ON/)).toBeTruthy();
-    expect(screen.getByText(/1h 30m/)).toBeTruthy();
+    expect(screen.getByText(/^On · /)).toBeTruthy();
+    expect(screen.getByText(/1\sh\s30/)).toBeTruthy();
   });
 
   // Issue #325 divergence 3 — a boolean-category sensor emitting a string
@@ -242,7 +242,7 @@ describe("MobileWidgetCard — stale power readings (#839)", () => {
       ] as unknown as EquipmentWithDetails["dataBindings"],
     });
     render(<MobileWidgetCard widget={{ ...widget, equipmentId: "ev-1" }} equipment={car} />);
-    expect(screen.getByText("9 %")).toBeTruthy();
+    expect(screen.getByText(/^9\s?%$/)).toBeTruthy();
     expect(screen.getByText(/1 km/)).toBeTruthy();
     expect(screen.getByText(/Débranché|Unplugged/)).toBeTruthy();
   });

@@ -1,8 +1,9 @@
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { dateLocale } from "../../lib/locale";
 import { formatHourLabel, formatHourRange } from "../../lib/hour-label";
 import { localDateStr } from "../../lib/local-date";
+import { xTickInterval, ENERGY_CHART_Y_AXIS_PX } from "../../lib/chart-ticks";
 import {
   ResponsiveContainer,
   BarChart,
@@ -13,6 +14,7 @@ import {
   CartesianGrid,
 } from "recharts";
 import type { EnergyPoint } from "../../types";
+import { formatKwhTick, formatKwhTooltip } from "./format";
 
 interface ProductionBarChartProps {
   points: EnergyPoint[];
@@ -169,19 +171,6 @@ function buildChartData(
   }
 }
 
-function formatKWh(kwh: number): string {
-  if (kwh >= 1) return `${kwh.toFixed(2)} kWh`;
-  if (kwh > 0) return `${Math.round(kwh * 1000)} Wh`;
-  return "0 Wh";
-}
-
-function formatYAxis(kwh: number): string {
-  if (kwh >= 100) return `${Math.round(kwh)} kWh`;
-  if (kwh >= 1) return `${kwh.toFixed(1)} kWh`;
-  if (kwh === 0) return "0";
-  return `${kwh.toFixed(2)} kWh`;
-}
-
 export function ProductionBarChart({ points, period, date, height = 300 }: ProductionBarChartProps) {
   const { t, i18n } = useTranslation();
   const locale = dateLocale(i18n.language);
@@ -210,6 +199,9 @@ export function ProductionBarChart({ points, period, date, height = 300 }: Produ
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [data, period, hasSplit]);
 
+  // Measured chart width, for the X tick density (spec 196). 0 until measured.
+  const [chartWidth, setChartWidth] = useState(0);
+
   const hasData = data.some((d) => barTotal(d) > 0);
   if (!hasData) {
     return (
@@ -219,10 +211,10 @@ export function ProductionBarChart({ points, period, date, height = 300 }: Produ
     );
   }
 
-  const tickInterval = period === "day" ? Math.max(1, Math.floor(data.length / 12)) - 1 : 0;
+  const tickInterval = xTickInterval(period, data.length, chartWidth - ENERGY_CHART_Y_AXIS_PX);
 
   return (
-    <ResponsiveContainer width="100%" height={height}>
+    <ResponsiveContainer width="100%" height={height} onResize={(w) => setChartWidth(w)}>
       <BarChart data={data} margin={{ top: 5, right: 10, left: 0, bottom: 5 }}>
         <CartesianGrid strokeDasharray="3 3" stroke="var(--color-border-light)" vertical={false} />
         <XAxis
@@ -236,7 +228,7 @@ export function ProductionBarChart({ points, period, date, height = 300 }: Produ
           tick={{ fontSize: 11, fill: "var(--color-text-tertiary)" }}
           tickLine={false}
           axisLine={false}
-          tickFormatter={formatYAxis}
+          tickFormatter={(kwh: number) => formatKwhTick(kwh, locale)}
           width={70}
           domain={[0, yTicks[yTicks.length - 1] ?? "dataMax"]}
           ticks={yTicks}
@@ -259,12 +251,12 @@ export function ProductionBarChart({ points, period, date, height = 300 }: Produ
                 }}
               >
                 <div style={{ fontWeight: 600, marginBottom: 4 }}>{datum.tooltipLabel}</div>
-                <div style={{ fontWeight: 600, marginBottom: hasSplit ? 4 : 0 }}>{t("energy.production")}{t("common.colon")}{formatKWh(total)}</div>
+                <div style={{ fontWeight: 600, marginBottom: hasSplit ? 4 : 0 }}>{t("energy.production")}{t("common.colon")}{formatKwhTooltip(total, locale)}</div>
                 {hasSplit && (
                   <>
-                    <div style={{ color: AUTOCONSO_COLOR }}>{t("energy.autoconsumption")}{t("common.colon")}{formatKWh(datum.autoconso)}</div>
+                    <div style={{ color: AUTOCONSO_COLOR }}>{t("energy.autoconsumption")}{t("common.colon")}{formatKwhTooltip(datum.autoconso, locale)}</div>
                     {datum.injection > 0 && (
-                      <div style={{ color: INJECTION_COLOR }}>{t("energy.gridInjection")}{t("common.colon")}{formatKWh(datum.injection)}</div>
+                      <div style={{ color: INJECTION_COLOR }}>{t("energy.gridInjection")}{t("common.colon")}{formatKwhTooltip(datum.injection, locale)}</div>
                     )}
                   </>
                 )}

@@ -38,6 +38,7 @@ import { useIsMobile } from "../../hooks/useIsMobile";
 import { getSensorBindings } from "../equipments/sensorUtils";
 import { EQUIPMENT_ZONE_SEPARATOR } from "../../lib/zone-path";
 import { thermostatPowerStateBinding } from "../../lib/thermostat-state";
+import { formatPercent, formatTemperature } from "../../lib/format";
 
 interface WidgetGridProps {
   widgets: DashboardWidget[];
@@ -596,7 +597,7 @@ function MobileZoneCard({
       const level = avg !== null ? shutterLevel(avg) : null;
       const text = avg === 100 ? t("controls.opened")
         : avg === 0 ? t("controls.closed")
-        : avg !== null ? `${avg}%`
+        : avg !== null ? formatPercent(avg)
         : null;
       return { icon: <ShutterWidgetIcon level={level} />, stateText: text };
     }
@@ -626,7 +627,7 @@ function MobileZoneCard({
         : null;
       return {
         icon: <ThermometerIcon warm={anyOn} />,
-        stateText: avg !== null ? `${avg.toFixed(1)}°C` : null,
+        stateText: avg !== null ? formatTemperature(avg, { style: "compact" }) : null,
       };
     }
     if (family === "sensors") {

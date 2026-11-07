@@ -50,7 +50,7 @@ Sowel ships a closed catalogue of equipment types. Every equipment in your home 
 
 | Type                 | Controls                             | Expected data                               |
 | -------------------- | ------------------------------------ | ------------------------------------------- |
-| **Light (On/Off)**   | Toggle ON/OFF                        | state (on/off)                              |
+| **Light (On/Off)**   | Toggle On/Off                        | state (on/off)                              |
 | **Light (Dimmable)** | Toggle + brightness slider           | state, brightness                           |
 | **Light (Color)**    | Toggle + brightness + color controls | state, brightness, color, color temperature |
 
@@ -75,15 +75,15 @@ Thermostat covers air conditioning, pellet stoves, and heat pumps. Heater covers
 
 A thermostat has a **core** and **extras**. The core is the small set every thermostat shares and every Sowel surface relies on: `temperature`, `setpoint`, `state`, `power`, `operationMode`, plus `outsideTemperature` when the unit carries an outdoor probe. Sowel recognises a device as a thermostat when it can be given a setpoint, whatever the plugin calls the key. Everything else the device offers (a fan speed, an ioniser, a pellet stove's programme and alarm reset, a vendor setting Sowel has never met) is bound too, but as an **extra**: the card leads with the core and lists the extras in a secondary section, one control per bound command (buttons for a choice, a toggle for an on/off, an action button for a one-shot, a stepper for a number) and one chip per reading. Extras vary from one thermostat to the next and never define the type. The operating mode uses a common vocabulary: `auto`, `heat`, `cool`, `dry`, `fan`, and `off` on units whose mode carries the stop.
 
-On a thermostat, the on/off state reported by the device itself is bound under the `state` alias, the same on/off alias relay-style equipments use. This matters on a **submetered** thermostat (a heat pump measured by a clamp): there the `power` alias carries the live wattage, and the wattage cannot tell the UI whether the unit is on or in standby. If your thermostat card never shows as ON, open the equipment's missing-bindings panel and add the device's power reading: it is offered as `state`. Legacy thermostats with the boolean bound directly under `power` keep working unchanged.
+On a thermostat, the on/off state reported by the device itself is bound under the `state` alias, the same on/off alias relay-style equipments use. This matters on a **submetered** thermostat (a heat pump measured by a clamp): there the `power` alias carries the live wattage, and the wattage cannot tell the UI whether the unit is on or in standby. If your thermostat card never shows as on, open the equipment's missing-bindings panel and add the device's power reading: it is offered as `state`. Legacy thermostats with the boolean bound directly under `power` keep working unchanged.
 
 A water heater (and a switch) can also carry a dedicated **solar** on/off channel, independent from the main on/off: a second contact (e.g. a SONOFF MINI-ZBD Zigbee dry-contact relay driving the photovoltaic input of a heat-pump water heater). It is bound explicitly under the solar role, distinct from the appliance's normal operation. On a water heater left on permanent mains, only the Solar toggle appears; the card shows one toggle per bound channel. The solar channel is the actuator a solar-surplus recipe drives through the energy arbiter; the arbitration logic itself stays in the recipe.
 
 ### Access
 
-| Type     | Controls                            | Expected data                               |
-| -------- | ----------------------------------- | ------------------------------------------- |
-| **Gate** | Open/Close button + state indicator | gate state (open, closed, opening, closing) |
+| Type     | Controls                            | Expected data                                       |
+| -------- | ----------------------------------- | --------------------------------------------------- |
+| **Gate** | Open/Close button + state indicator | gate state (open, closed; unknown without a sensor) |
 
 !!! tip "Dashboard icon"
 You can choose a specific icon for gates on the dashboard: standard gate, sliding gate, or garage door.
@@ -177,7 +177,7 @@ Use a `state-watch` recipe to get notified when the operating state changes from
 
 | Type            | Controls                                                                 | Expected data                                                                    |
 | --------------- | ------------------------------------------------------------------------ | -------------------------------------------------------------------------------- |
-| **Water Valve** | Toggle ON/OFF, "Water for X min" timed action (firmware-side auto-close) | state, flow rate (m³/h), battery, device status (normal / water shortage / leak) |
+| **Water Valve** | Toggle On/Off, "Water for X min" timed action (firmware-side auto-close) | state, flow rate (m³/h), battery, device status (normal / water shortage / leak) |
 
 Designed for devices like the SONOFF SWV. Standard aliases: `state`, `flow`, `battery`, `status`, `duration`, `cycles`, `interval`, `capacity`, `autoCloseOnShortage`. Only `state` is required — the UI adapts to whichever are bound. Zones aggregate open/total valves and sum live flow across the tree.
 
@@ -185,7 +185,7 @@ Designed for devices like the SONOFF SWV. Standard aliases: `state`, `flow`, `ba
 
 | Type               | Controls                               | Expected data                                   |
 | ------------------ | -------------------------------------- | ----------------------------------------------- |
-| **Pool Pump**      | Toggle ON/OFF + daily runtime display  | pump state, daily runtime                       |
+| **Pool Pump**      | Toggle On/Off + daily runtime display  | pump state, daily runtime                       |
 | **Pool Cover**     | Open / Stop / Close + position display | cover position (0% = closed, 100% = open)       |
 | **Pool Heat Pump** | Power on/off, target water temperature | water temperature, target setpoint, power state |
 
@@ -211,7 +211,7 @@ never talks to the camera directly, and never learns its network address.
 
 | Type              | Controls                    | Expected data                         |
 | ----------------- | --------------------------- | ------------------------------------- |
-| **Switch / Plug** | Toggle ON/OFF + state badge | state (on/off); optional power/energy |
+| **Switch / Plug** | Toggle On/Off + state badge | state (on/off); optional power/energy |
 
 A **metering plug** (e.g. SONOFF S60ZBTPF) is a `Switch / Plug` that also
 reports `power`/`energy`. Bind it as a switch and Sowel automatically captures
@@ -232,6 +232,8 @@ Click on any equipment to see its detail page:
 - **Controls** -- interactive controls adapted to the equipment type
 - **History chart** -- data trends over time (if historization is enabled)
 - **Configuration** -- bound devices, data bindings, order bindings
+
+The page loads the equipment once, then follows its live values without asking the server again. Only that first load, or a **Retry**, can fail. If the server is busy or cannot be reached at that moment, the page says so (« Server busy », « Cannot connect ») and offers **Retry**, unless Sowel already has the equipment in hand: the page then shows it and keeps it live, with no message. « Equipment not found » means the equipment really does not exist.
 
 ### Changing the device
 

@@ -7,6 +7,8 @@
  * `"fr-FR"`, which is exactly the bug.
  */
 
+import { formatRange } from "./format";
+
 export type SelectorPeriod = "day" | "week" | "month" | "year";
 
 export function formatDateLabel(
@@ -31,7 +33,7 @@ export function formatDateLabel(
         month: "short",
         year: "numeric",
       });
-      return `${startLabel} - ${endLabel}`;
+      return formatRange(startLabel, endLabel, { locale });
     }
     case "month":
       return d.toLocaleDateString(locale, { month: "long", year: "numeric" });

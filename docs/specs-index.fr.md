@@ -323,6 +323,7 @@ Les specs sont regroupées par thème et annotées d'un statut :
 | 193 | Borne mesurée et voiture habituelle                                   | ✅     | Recharges sur un `ev_charger` qui ne mesure que sa puissance (un compteur d'énergie) : recharges par la puissance, voiture habituelle pour départager, une borne par voiture à la fois ; complète les specs 182, 191, 192. Shipped in v1.78.0.             |
 | 194 | Distinguer les voitures par leurs données de charge                   | ✅     | Attribution des recharges par signaux mesurés : `charge_power` optionnel sur `electric_vehicle` comparé à la puissance de la borne, puis énergie et hausse de batterie ; générique ; complète les specs 183, 191, 193. Shipped in v1.79.0.                 |
 | 195 | Un sous-compteur qui voit une production locale                       | ✅     | `Equipment.localProduction` : sous-compteur à puissance seule avec un panneau derrière ; sa puissance négative devient `production`, ajoutée au solaire (autoconsommation, historique, Live) ; la part garde le positif (#1116, amende 091).               |
+| 196 | Refonte incrémentale de l'interface                                   | 🚧     | Corrections mobile et tablette, textes FR, `lib/format`, échelle typographique Inter sans majuscules, rôles de couleur, gris bleutés et nuit océan, consigne unique, confirmation du portail partout (amende 146). Unreleased.                             |
 
 ---
 

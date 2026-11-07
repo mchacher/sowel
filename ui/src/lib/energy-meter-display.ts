@@ -1,4 +1,5 @@
 import type { DataBindingWithValue } from "../types";
+import { formatPowerParts } from "./format";
 
 /**
  * The binding behind an energy meter's live instantaneous power (issue #376).
@@ -48,8 +49,7 @@ export function pickPowerFactor(bindings: DataBindingWithValue[]): number | null
   return b ? (b.value as number) : null;
 }
 
-/** Format a watt value: 1257 → "1.3 kW", 850 → "850 W". */
+/** Format a watt value: 1257 → « 1,3 » kW, 850 → « 850 » W (lib/format). */
 export function formatWatts(w: number): { value: string; unit: string } {
-  if (Math.abs(w) >= 1000) return { value: (w / 1000).toFixed(1), unit: "kW" };
-  return { value: String(Math.round(w)), unit: "W" };
+  return formatPowerParts(w);
 }

@@ -56,12 +56,14 @@ import {
   type ChartFamily,
   type Period,
 } from "./history-utils";
-import { humanBindingLabel, humanBindingLabelFromList } from "./binding-label";
+import { humanBindingLabelFromList } from "./binding-label";
 import { SeriesColorPicker } from "./SeriesColorPicker";
 import { fitYAxis } from "./y-axis";
 import { firstChartTarget } from "./analyse-nav";
 import { ChartTooltip } from "./ChartTooltip";
 import { mergeSeriesData } from "./chart-utils";
+import { formatAxisTick, seriesFullLabel, seriesMetricLabel } from "./tooltip-format";
+import { currentLocale, formatNumber } from "../../lib/format";
 
 // ============================================================
 // Types
@@ -82,6 +84,9 @@ interface SeriesConfig {
    * Used by humanBindingLabel to decide whether device-name disambiguation
    * is needed. */
   sameCategoryCount: number;
+  /** A saved chart outlived this series' equipment: labelled as such, not fetched,
+   * and offered for removal (spec 196). */
+  deleted?: boolean;
 }
 
 /** A series with its effective colour resolved — what the render consumes.
@@ -110,21 +115,14 @@ function formatTime(iso: string, period: Period): string {
   const d = new Date(iso);
   switch (period) {
     case "day":
-      return d.toLocaleTimeString(undefined, { hour: "2-digit", minute: "2-digit" });
+      return d.toLocaleTimeString(currentLocale(), { hour: "2-digit", minute: "2-digit" });
     case "week":
-      return d.toLocaleDateString(undefined, { weekday: "short", day: "numeric", hour: "2-digit", minute: "2-digit" });
+      return d.toLocaleDateString(currentLocale(), { weekday: "short", day: "numeric", hour: "2-digit", minute: "2-digit" });
     case "month":
-      return d.toLocaleDateString(undefined, { day: "numeric", month: "short" });
+      return d.toLocaleDateString(currentLocale(), { day: "numeric", month: "short" });
     case "year":
-      return d.toLocaleDateString(undefined, { month: "short" });
+      return d.toLocaleDateString(currentLocale(), { month: "short" });
   }
-}
-
-/** Y axis tick label. The unit is appended only when the chart carries two
- *  scales — on a single-axis chart the legend and tooltip already say it. */
-function formatAxisTick(value: number, unit: string): string {
-  const formatted = Number.isInteger(value) ? String(value) : value.toFixed(1);
-  return unit ? `${formatted} ${unit}` : formatted;
 }
 
 // ============================================================
@@ -297,12 +295,13 @@ export function AnalyseView() {
           newSeries.push({
             id,
             equipmentId: sc.equipmentId,
-            equipmentName: eq?.name ?? sc.equipmentId,
+            equipmentName: eq?.name ?? "",
             zoneName: eq?.zoneId ? (zoneNameById.get(eq.zoneId) ?? "") : "",
             alias: sc.alias,
             category: binding?.category ?? "",
             deviceName: binding?.deviceName ?? "",
             sameCategoryCount,
+            deleted: !eq,
           });
         }
         setSeries(newSeries);
@@ -337,7 +336,8 @@ export function AnalyseView() {
     async (seriesList: SeriesConfig[], window: { from: Date; to: Date }) => {
       const fromIso = window.from.toISOString();
       const toIso = window.to.toISOString();
-      for (const s of seriesList) {
+      // A deleted equipment has no history to ask for: the request would only 404.
+      for (const s of seriesList.filter((ser) => !ser.deleted)) {
         setSeriesData((prev) => ({
           ...prev,
           [s.id]: { points: [], resolution: "raw", loading: true, error: null },
@@ -652,6 +652,27 @@ export function AnalyseView() {
     return { left: fitAxis("left"), right: fitAxis("right") };
   }, [yAxisFit, showYAxisFitToggle, series, chartData, showBand, axisIdOf]);
 
+  // The largest magnitude each axis shows, to give all its ticks one unit (W or kW):
+  // the fitted bounds when fitted, else the data.
+  const axisMax = useMemo(() => {
+    const peak = (target: "left" | "right"): number => {
+      const fitted = fittedAxes[target];
+      if (fitted) return Math.max(Math.abs(fitted.domain[0]), Math.abs(fitted.domain[1]));
+      let m = 0;
+      for (const s of series) {
+        if (axisIdOf(s.category) !== target) continue;
+        for (const row of chartData) {
+          for (const key of [s.id, `${s.id}:min`, `${s.id}:max`]) {
+            const v = row[key];
+            if (typeof v === "number" && Math.abs(v) > m) m = Math.abs(v);
+          }
+        }
+      }
+      return m;
+    };
+    return { left: peak("left"), right: peak("right") };
+  }, [fittedAxes, series, chartData, axisIdOf]);
+
   const familyLabel = useMemo(() => {
     if (series.length === 0) return "";
     if (hasStateSeries && hasMeasurementSeries) return t("analyse.family.mixed");
@@ -714,9 +735,13 @@ export function AnalyseView() {
     <div className="space-y-4">
       {/* Header — copies Energy's two-child flex layout (title left,
           PeriodSelector right, justify-between). Save actions move to the
-          end of the series-pills row so the header stays clean. */}
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-        <div className="hidden sm:flex items-center gap-3">
+          end of the series-pills row so the header stays clean. It wraps
+          rather than squeezing the title onto two lines on a tablet (spec
+          196, slice 1c). */}
+      <div className="flex flex-col sm:flex-row sm:flex-wrap sm:items-center sm:justify-between gap-4">
+        {/* A saved chart's name is not in the compact top bar, so it stays
+            visible on tablets; the bare « Analyse » title is hidden below lg. */}
+        <div className={`${currentChart ? "hidden sm:flex" : "hidden lg:flex"} items-center gap-3`}>
           <BarChart3 size={20} strokeWidth={1.5} className="text-primary" />
           <h1>{title}</h1>
         </div>
@@ -734,7 +759,11 @@ export function AnalyseView() {
           {styledSeries.map((s) => (
             <div
               key={s.id}
-              className="relative flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[12px] font-medium bg-surface border border-border"
+              className={`relative flex items-center gap-1.5 px-2.5 py-1 text-[12px] font-medium border ${
+                s.deleted
+                  ? "flex-wrap rounded-[10px] bg-warning/10 border-warning/40"
+                  : "rounded-full bg-surface border-border"
+              }`}
             >
               {/* Spec 145 — the dot opens the colour picker for this series. */}
               <button
@@ -752,27 +781,37 @@ export function AnalyseView() {
                   onClose={() => setColorPicker(null)}
                 />
               )}
-              {s.zoneName && <span className="text-text-tertiary">{s.zoneName} /</span>}
-              <span className="text-text">{s.equipmentName}</span>
-              <span className="text-text-tertiary">
-                /{" "}
-                {s.category
-                  ? humanBindingLabel(
-                      { alias: s.alias, category: s.category, deviceName: s.deviceName, sameCategoryCount: s.sameCategoryCount },
-                      t,
-                    )
-                  : s.alias}
-              </span>
-              {CATEGORY_UNITS[s.category] && (
-                <span className="text-text-tertiary">({CATEGORY_UNITS[s.category]})</span>
+              {s.deleted ? (
+                <>
+                  <span className="text-text">{t("analyse.series.deleted")}</span>
+                  <span className="text-text-secondary">· {seriesMetricLabel(s, t)}</span>
+                  <button
+                    type="button"
+                    onClick={() => removeSeries(s.id)}
+                    className="ml-1 underline text-text-secondary hover:text-error cursor-pointer"
+                  >
+                    {t("analyse.series.remove")}
+                  </button>
+                </>
+              ) : (
+                <>
+                  {s.zoneName && <span className="text-text-tertiary">{s.zoneName} /</span>}
+                  <span className="text-text">{s.equipmentName}</span>
+                  <span className="text-text-tertiary">/ {seriesMetricLabel(s, t)}</span>
+                  {CATEGORY_UNITS[s.category] && (
+                    <span className="text-text-tertiary">({CATEGORY_UNITS[s.category]})</span>
+                  )}
+                  <button
+                    type="button"
+                    onClick={() => removeSeries(s.id)}
+                    aria-label={t("analyse.series.remove")}
+                    title={t("analyse.series.remove")}
+                    className="ml-0.5 text-text-tertiary hover:text-error transition-colors cursor-pointer"
+                  >
+                    <X size={12} strokeWidth={2} />
+                  </button>
+                </>
               )}
-              <button
-                type="button"
-                onClick={() => removeSeries(s.id)}
-                className="ml-0.5 text-text-tertiary hover:text-error transition-colors cursor-pointer"
-              >
-                <X size={12} strokeWidth={2} />
-              </button>
             </div>
           ))}
 
@@ -1065,16 +1104,7 @@ export function AnalyseView() {
                   <Legend
                     formatter={(value: string) => {
                       const s = series.find((ser) => ser.id === value);
-                      if (!s) return value;
-                      const metricLabel = s.category
-                        ? humanBindingLabel(
-                            { alias: s.alias, category: s.category, deviceName: s.deviceName, sameCategoryCount: s.sameCategoryCount },
-                            t,
-                          )
-                        : s.alias;
-                      return s.zoneName
-                        ? `${s.zoneName} / ${s.equipmentName} / ${metricLabel}`
-                        : `${s.equipmentName} / ${metricLabel}`;
+                      return s ? seriesFullLabel(s, t) : value;
                     }}
                     wrapperStyle={{ fontSize: "11px", cursor: "pointer" }}
                     onClick={openColorPickerFromLegend}
@@ -1104,7 +1134,7 @@ export function AnalyseView() {
                         tickLine={false}
                         axisLine={false}
                         width={52}
-                        tickFormatter={(v: number) => (Number.isInteger(v) ? String(v) : v.toFixed(1))}
+                        tickFormatter={(v: number) => formatNumber(v, { maxDecimals: 1 })}
                       />
                       {tooltip}
                       {commonLegend}
@@ -1187,7 +1217,9 @@ export function AnalyseView() {
                       tickLine={false}
                       axisLine={false}
                       width={splitAxes ? 62 : 52}
-                      tickFormatter={(v: number) => formatAxisTick(v, splitAxes ? chartUnits[0] : "")}
+                      // The unit is appended only when the chart carries two scales — on a
+                      // single-axis chart the legend and tooltip already say it.
+                      tickFormatter={(v: number) => formatAxisTick(v, splitAxes ? chartUnits[0] : "", axisMax.left)}
                     />
                     {splitAxes && (
                       <YAxis
@@ -1200,7 +1232,7 @@ export function AnalyseView() {
                         tickLine={false}
                         axisLine={false}
                         width={62}
-                        tickFormatter={(v: number) => formatAxisTick(v, chartUnits[1])}
+                        tickFormatter={(v: number) => formatAxisTick(v, chartUnits[1], axisMax.right)}
                       />
                     )}
                     {hasStateSeries && (

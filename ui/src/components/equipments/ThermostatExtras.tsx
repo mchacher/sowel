@@ -3,6 +3,7 @@ import { ChevronDown, ChevronUp, SlidersHorizontal, Zap } from "lucide-react";
 import type { DataBindingWithValue, OrderBindingWithDetails } from "../../types";
 import { splitThermostatExtras } from "../../lib/thermostat-contract";
 import { humanizeAlias } from "../../lib/humanize-alias";
+import { formatWithUnit } from "../../lib/format";
 
 /**
  * Spec 177 — everything bound on a thermostat that is not the core, rendered
@@ -68,10 +69,7 @@ export function ThermostatExtras({
   const valueLabel = (alias: string, value: unknown, unit?: string): string => {
     if (value === null || value === undefined) return "—";
     if (typeof value === "boolean") return value ? t("common.on") : t("common.off");
-    if (typeof value === "number") {
-      const n = Number.isInteger(value) ? String(value) : value.toFixed(1);
-      return unit ? `${n} ${unit}` : n;
-    }
+    if (typeof value === "number") return formatWithUnit(value, unit);
     const s = String(value);
     return t(`thermostat.values.${alias}.${s}`, { defaultValue: s });
   };

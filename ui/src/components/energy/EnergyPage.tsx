@@ -8,7 +8,8 @@ import { EnergyBarChart } from "./EnergyBarChart";
 import { EnergyByUsageChart } from "./EnergyByUsageChart";
 import { EnergyMobileNav } from "./EnergyMobileNav";
 import { UnitToggle } from "./UnitToggle";
-import { formatEnergyOrCost, formatKWh } from "./format";
+import { formatEnergyOrCost, formatWh } from "./format";
+import { formatPercent } from "../../lib/format";
 import { dateLocale } from "../../lib/locale";
 import { getEnergyByUsage, getEquipments } from "../../api";
 import type { EnergyByUsageResponse, SubmeterSeries } from "../../types";
@@ -113,10 +114,12 @@ export function EnergyPage() {
   return (
     <div className="p-4 sm:p-6">
       <EnergyMobileNav />
-      {/* Header — h1 hidden on mobile (title in topbar). PeriodSelector visible on both. */}
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-4 sm:mb-6">
-        <h1 className="hidden sm:block">{t("energy.consumption")}</h1>
-        <div className="flex flex-col items-start gap-3 sm:flex-row sm:items-center sm:gap-4">
+      {/* Header — h1 hidden below lg (title in the compact top bar). PeriodSelector always.
+          Spec 196, slice 1c: the row wraps instead of running off the edge on a
+          tablet, where the title and the period controls do not fit side by side. */}
+      <div className="flex flex-col sm:flex-row sm:flex-wrap sm:items-center sm:justify-between gap-4 mb-4 sm:mb-6">
+        <h1 className="hidden lg:block">{t("energy.consumption")}</h1>
+        <div className="flex flex-col items-start gap-3 sm:flex-row sm:flex-wrap sm:items-center sm:gap-4">
           <UnitToggle enabled={tariffConfigured} />
           <PeriodSelector />
         </div>
@@ -191,7 +194,7 @@ export function EnergyPage() {
                             />
                             {s.name}
                             {t("common.colon")}
-                            {`${formatKWh(s.points.reduce((acc, p) => acc + p.wh, 0), period)} kWh`}
+                            {formatWh(s.points.reduce((acc, p) => acc + p.wh, 0), locale)}
                           </span>
                         ))}
                       </div>
@@ -226,7 +229,6 @@ export function EnergyPage() {
                       history.totals.total_consumption,
                       history.totals.cost_total,
                       effectiveUnit,
-                      period,
                       locale,
                     )}
                   </span>
@@ -237,7 +239,6 @@ export function EnergyPage() {
                         history.totals.total_hp,
                         history.totals.cost_hp,
                         effectiveUnit,
-                        period,
                         locale,
                       )}{" "}
                       / {t("energy.offPeakHours")}{t("common.colon")}
@@ -245,7 +246,6 @@ export function EnergyPage() {
                         history.totals.total_hc,
                         history.totals.cost_hc,
                         effectiveUnit,
-                        period,
                         locale,
                       )})
                     </span>
@@ -253,7 +253,7 @@ export function EnergyPage() {
                   {hasProduction && history.totals.total_autoconso > 0 && (
                     <span className="flex items-center gap-1.5">
                       <span className="inline-block w-2.5 h-2.5 rounded-full" style={{ backgroundColor: AUTOCONSO_COLOR }} />
-                      {t("energy.autoconsumption")}{t("common.colon")}{formatKWh(history.totals.total_autoconso, period)} kWh
+                      {t("energy.autoconsumption")}{t("common.colon")}{formatWh(history.totals.total_autoconso, locale)}
                     </span>
                   )}
                 </div>
@@ -263,12 +263,11 @@ export function EnergyPage() {
                     history.totals.total_consumption + (history.totals.total_autoconso ?? 0),
                     history.totals.cost_total,
                     effectiveUnit,
-                    period,
                     locale,
                   )}
                   {hasProduction && history.totals.total_consumption > 0 && history.totals.total_autoconso > 0 && (
                     <span className="ml-2 font-normal text-text-secondary">
-                      ({Math.round(history.totals.total_autoconso / (history.totals.total_consumption + history.totals.total_autoconso) * 100)}% {t("energy.autoconsumption").toLowerCase()})
+                      ({formatPercent((history.totals.total_autoconso / (history.totals.total_consumption + history.totals.total_autoconso)) * 100, { locale })} {t("energy.autoconsumption").toLowerCase()})
                     </span>
                   )}
                 </div>

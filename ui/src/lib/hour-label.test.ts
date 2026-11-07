@@ -7,17 +7,17 @@ import { formatHourLabel, formatHourRange } from "./hour-label";
 describe("hour labels", () => {
   it("uses French hour notation in French", () => {
     expect(formatHourLabel(8, "fr-FR")).toBe("08h");
-    expect(formatHourRange(8, "fr-FR")).toBe("08h00 - 09h00");
+    expect(formatHourRange(8, "fr-FR")).toBe("08h00\u202F–\u202F09h00");
   });
 
   it("uses a colon in English, and never a 12-hour clock", () => {
     expect(formatHourLabel(14, "en-US")).toBe("14:00");
-    expect(formatHourRange(14, "en-US")).toBe("14:00 - 15:00");
+    expect(formatHourRange(14, "en-US")).toBe("14:00 – 15:00");
   });
 
   it("wraps the last hour of the day back to midnight", () => {
-    expect(formatHourRange(23, "fr-FR")).toBe("23h00 - 00h00");
-    expect(formatHourRange(23, "en-US")).toBe("23:00 - 00:00");
+    expect(formatHourRange(23, "fr-FR")).toBe("23h00\u202F–\u202F00h00");
+    expect(formatHourRange(23, "en-US")).toBe("23:00 – 00:00");
   });
 
   it("pads single-digit hours so the axis ticks stay the same width", () => {

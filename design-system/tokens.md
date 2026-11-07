@@ -98,6 +98,8 @@ Used **only** on equipment row icons (`.eq__icon--{type}`). They give a glanceab
 | `--font-body` | `'Inter', system-ui, -apple-system, sans-serif` | All UI text                    |
 | `--font-mono` | `'JetBrains Mono', ui-monospace, monospace`     | All numbers, timestamps, codes |
 
+The text of a number (separators, unit spacing, precision per unit) comes from `ui/src/lib/format.ts`, never from `toFixed` (spec 196).
+
 ### 2.2 Type scale (no tokens — used inline)
 
 The scale is small and informal. Sowel uses ~10 sizes total. They are declared inline because the system is too narrow to justify named tokens.

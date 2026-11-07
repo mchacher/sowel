@@ -10,6 +10,7 @@ import {
   getBatteryColor,
 } from "./sensorUtils";
 import { computeElapsed, formatElapsed } from "./useEquipmentState";
+import { formatPercent } from "../../lib/format";
 
 interface SensorValuesProps {
   sensorBindings: DataBindingWithValue[];
@@ -20,9 +21,18 @@ interface SensorValuesProps {
    * indicator cannot be derived from `batteryBindings` alone.
    */
   batteryAlert?: BatteryAlert | null;
-  /** "row" (default) = horizontal, "column" = stacked vertically */
-  layout?: "row" | "column";
+  /**
+   * "row" (default) = horizontal, "column" = stacked vertically,
+   * "wrap" = horizontal but values wrap onto further lines (equipment list on phones).
+   */
+  layout?: "row" | "column" | "wrap";
 }
+
+const VALUES_LAYOUT_CLASS: Record<NonNullable<SensorValuesProps["layout"]>, string> = {
+  row: "flex items-center gap-2 flex-shrink-0",
+  column: "flex flex-col gap-0.5",
+  wrap: "flex flex-wrap items-center gap-x-3 gap-y-1 min-w-0",
+};
 
 export function SensorValues({
   sensorBindings,
@@ -53,15 +63,15 @@ export function SensorValues({
   const batteryTooltip = batteryBindings
     .map((b) => {
       const lvl = typeof b.value === "number" ? b.value : null;
-      return `${b.deviceName}: ${lvl !== null ? `${lvl}%` : "?"}`;
+      return `${b.deviceName}: ${lvl !== null ? formatPercent(lvl) : "?"}`;
     })
     .join("\n");
 
   const batteryTitle = batteryAlert
-    ? `${batteryAlert.deviceName} — ${t("sensors.battery")}${shownLevel !== null ? ` : ${shownLevel}%` : ""}`
+    ? `${batteryAlert.deviceName} — ${t("sensors.battery")}${shownLevel !== null ? ` : ${formatPercent(shownLevel)}` : ""}`
     : batteryBindings.length > 1
       ? batteryTooltip
-      : `${t("sensors.battery")} : ${shownLevel}%`;
+      : `${t("sensors.battery")} : ${formatPercent(shownLevel)}`;
 
   return (
     <>
@@ -74,15 +84,15 @@ export function SensorValues({
           title={batteryTitle}
         >
           {getBatteryIcon(shownLevel, 14, 1.5)}
-          {shownLevel !== null && <span className="text-[11px] tabular-nums">{shownLevel}%</span>}
+          {shownLevel !== null && <span className="text-[11px] tabular-nums">{formatPercent(shownLevel)}</span>}
         </span>
       )}
 
       {/* Sensor values */}
       {sensorBindings.length > 0 && (
-        <div className={layout === "column" ? "flex flex-col gap-0.5" : "flex items-center gap-2 flex-shrink-0"}>
+        <div className={VALUES_LAYOUT_CLASS[layout]}>
           {sensorBindings.map((b) => (
-            <span key={b.id} className="text-[13px] tabular-nums flex-shrink-0">
+            <span key={b.id} className={layout === "wrap" ? "text-[13px] tabular-nums" : "text-[13px] tabular-nums flex-shrink-0"}>
               {b.category === "motion" && isBooleanActive(b.category, b.value) ? (
                 <span className="font-medium px-2 py-0.5 rounded-full text-[11px] bg-active/15 text-active-text inline-flex items-center gap-1">
                   {formatBooleanSensor(b.category, b.value, t)}
@@ -90,7 +100,7 @@ export function SensorValues({
                 </span>
               ) : b.category === "action" && b.value != null ? (
                 <span className="font-medium px-2 py-0.5 rounded-full text-[11px] bg-primary/10 text-primary inline-flex items-center gap-1">
-                  {String(b.value)}
+                  {t(`buttonActions.action.${String(b.value)}`, { defaultValue: String(b.value) })}
                   <ElapsedCounter origin={b.lastChanged ?? b.lastUpdated} />
                 </span>
               ) : isBooleanSensorCategory(b.category) ? (

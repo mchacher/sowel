@@ -13,6 +13,7 @@ import { EQUIPMENT_TYPE_CATEGORIES } from "./equipment-type-meta";
 import { isEvChargerDevice, isMeteredChargerDevice } from "../../lib/ev-charger-contract";
 import { isElectricVehicleDevice } from "../../lib/electric-vehicle-contract";
 import { isThermostatDevice } from "../../lib/thermostat-contract";
+import { formatPower } from "../../lib/format";
 
 
 /** Maps EquipmentType to required data keys for filtering (when category alone is too broad). */
@@ -358,7 +359,7 @@ export function DeviceSelector({
                                 </span>
                                 {typeof chPower === "number" && (
                                   <span className="text-text-tertiary text-[11px] tabular-nums">
-                                    · {Math.round(chPower)} W
+                                    · {formatPower(chPower)}
                                   </span>
                                 )}
                               </>

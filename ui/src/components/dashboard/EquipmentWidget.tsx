@@ -54,6 +54,14 @@ import { resolvePowerReading } from "../../lib/power-reading";
 import { pickLivePowerBinding } from "../../lib/energy-meter-display";
 import { thermostatPowerStateBinding } from "../../lib/thermostat-state";
 import { formatRelative } from "../../lib/format-relative";
+import {
+  formatEnergyParts,
+  formatNumber,
+  formatPercent,
+  formatPowerParts,
+  formatTemperature,
+  formatWithUnit,
+} from "../../lib/format";
 import { useStalenessClock } from "../../hooks/useStalenessClock";
 import { brightnessPercent, brightnessScale } from "../../lib/brightness";
 import {
@@ -416,7 +424,7 @@ function LightEquipmentWidget({
                 onChange={(e) => slider.onChange(Number(e.target.value))}
                 onMouseUp={handleBrightnessCommit}
                 onTouchEnd={handleBrightnessCommit}
-                className="h-[60px] slider-active slider-slim"
+                className="h-[60px] slider-active slider-slim slider-vertical"
                 style={{ writingMode: "vertical-lr", direction: "rtl" }}
               />
               <div className="flex items-baseline gap-0.5">
@@ -432,7 +440,7 @@ function LightEquipmentWidget({
                 isOn ? "bg-active/10 text-active" : "bg-border-light text-text-tertiary"
               }`}
             >
-              {isOn ? "ON" : "OFF"}
+              {isOn ? t("controls.on") : t("controls.off")}
             </span>
           )}
         </div>
@@ -543,12 +551,12 @@ function WaterHeaterEquipmentWidget({
               isOn ? "bg-active/10 text-active" : "bg-border-light text-text-tertiary"
             }`}
           >
-            {isOn ? "ON" : "OFF"}
+            {isOn ? t("controls.on") : t("controls.off")}
           </span>
           {tempValue !== null && (
             <span className="font-mono text-[13px] font-semibold text-text tabular-nums">
-              {tempValue.toFixed(1)}
-              <span className="text-[11px] text-text-tertiary font-normal ml-0.5">°C</span>
+              {formatNumber(tempValue, { decimals: 1 })}
+              <span className="text-[11px] text-text-tertiary font-normal">°</span>
             </span>
           )}
           {powerValue !== null && (
@@ -886,9 +894,9 @@ function ThermostatEquipmentWidget({
           {insideTemp !== null ? (
             <div className="flex items-baseline gap-0.5">
               <span className="text-[18px] font-semibold text-text tabular-nums leading-none font-mono">
-                {insideTemp.toFixed(1)}
+                {formatNumber(insideTemp, { decimals: 1 })}
               </span>
-              <span className="text-[12px] font-medium text-text-tertiary">°C</span>
+              <span className="text-[12px] font-medium text-text-tertiary">°</span>
             </div>
           ) : (
             <span className="text-[18px] text-text-tertiary">{"\u2014"}</span>
@@ -925,7 +933,7 @@ function ThermostatEquipmentWidget({
             <Minus size={14} strokeWidth={2} />
           </button>
           <span className="text-[12px] font-medium text-text-secondary tabular-nums font-mono min-w-[42px] text-center">
-            {displaySetpoint.toFixed(1)}°C
+            {formatTemperature(displaySetpoint, { style: "compact" })}
           </span>
           <button
             onClick={() => handleSetpoint(Math.min(targetMax, displaySetpoint + STEP))}
@@ -982,7 +990,8 @@ function GateEquipmentWidget({
   );
   const hasCommand = !!commandBinding;
   const enumValues = commandBinding?.enumValues ?? [];
-  const hasSingleAction = hasCommand && enumValues.length <= 1;
+  // A disabled gate does not actuate, like a disabled light (spec 196).
+  const hasSingleAction = hasCommand && enumValues.length <= 1 && equipment.enabled;
   // Issue #325 — multi-action gates used to expose NO way to act on desktop
   // (the mobile detail sheet had one button per enum action, the card none).
   const hasMultiAction = hasCommand && enumValues.length > 1 && equipment.enabled;
@@ -1230,7 +1239,8 @@ function WeatherStationWidget({
   const outdoorExtremes = findTempExtremes(equipment, "temperature_outdoor");
   const indoorExtremes = findTempExtremes(equipment, "temperature");
 
-  const fmt = (b: typeof outdoor) => (b && typeof b.value === "number" ? b.value.toFixed(1) : "—");
+  const fmt = (b: typeof outdoor) =>
+    formatNumber(b && typeof b.value === "number" ? b.value : null, { decimals: 1 });
 
   const clickClass = onOpenDetail
     ? "cursor-pointer transition-colors hover:bg-primary-light/30"
@@ -1252,9 +1262,14 @@ function WeatherStationWidget({
 
   return (
     <WidgetCard label={label} sublabel={sublabel} onClick={onOpenDetail} className={clickClass}>
-      <div className="flex items-stretch justify-center flex-1 min-h-0">
+      {/* Spec 196, slice 1c — sized by the tile, not the viewport: a 3-column
+          tablet grid (~220 px of content) and a 4-column one beside the
+          sidebar at 1 024 px (~145 px) cropped both readings on the left. The
+          figures scale with the tile (cqw) and each day's min/max stack below
+          240 px, where they would be wider than the reading. */}
+      <div className="@container flex items-stretch justify-center flex-1 min-h-0">
         {both ? (
-          <div className="flex items-stretch gap-4 sm:gap-6">
+          <div className="flex items-stretch gap-2 @min-[240px]:gap-6">
             <WeatherTempColumn
               label={t("weather.outdoor")}
               value={fmt(outdoor)}
@@ -1304,14 +1319,20 @@ function WeatherTempColumn({
         </span>
       )}
       <div className="flex items-baseline leading-none">
-        <span className="font-mono font-bold text-[32px] sm:text-[36px] text-text tabular-nums leading-none">
+        <span className="font-mono font-bold text-[clamp(22px,14cqw,36px)] text-text tabular-nums leading-none">
           {value}
         </span>
-        <span className="text-text-tertiary font-medium text-[14px] sm:text-[16px] leading-none ml-1">
-          °C
+        <span className="text-text-tertiary font-medium text-[14px] sm:text-[16px] leading-none">
+          °
         </span>
       </div>
-      {extremes && <TempExtremes min={extremes.min} max={extremes.max} />}
+      {extremes && (
+        <TempExtremes
+          min={extremes.min}
+          max={extremes.max}
+          className="@max-[239px]:flex-col @max-[239px]:gap-1"
+        />
+      )}
     </div>
   );
 }
@@ -1349,16 +1370,10 @@ function EnergyMeterEquipmentWidget({
   const isProduction = equipment.type === "energy_production_meter";
   const primaryColor = isProduction ? "text-success" : "text-text";
 
-  const formatWh = (wh: unknown): string => {
-    if (typeof wh !== "number") return "\u2014";
-    if (wh >= 1000) return (wh / 1000).toFixed(1);
-    return String(Math.round(wh));
-  };
-
-  const unitWh = (wh: unknown): string => {
-    if (typeof wh !== "number") return "";
-    return wh >= 1000 ? "kWh" : "Wh";
-  };
+  const whParts = (wh: unknown) =>
+    formatEnergyParts(typeof wh === "number" ? wh / 1000 : null, { unit: "auto" });
+  const formatWh = (wh: unknown): string => whParts(wh).value;
+  const unitWh = (wh: unknown): string => (typeof wh === "number" ? whParts(wh).unit : "");
 
   return (
     <WidgetCard label={label} sublabel={sublabel}>
@@ -1387,9 +1402,9 @@ function EnergyMeterEquipmentWidget({
         {demandW !== null && (
           <div className="flex flex-col items-center">
             <span className="text-[13px] font-semibold text-text tabular-nums font-mono leading-none">
-              {demandW >= 1000 ? (demandW / 1000).toFixed(1) : Math.round(demandW)}
+              {formatPowerParts(demandW).value}
             </span>
-            <span className="text-[10px] text-text-tertiary">{demandW >= 1000 ? "kW" : "W"}</span>
+            <span className="text-[10px] text-text-tertiary">{formatPowerParts(demandW).unit}</span>
           </div>
         )}
         {/* The age takes the unit's place, so the row keeps its height (#839). */}
@@ -1527,7 +1542,7 @@ function ElectricVehicleEquipmentWidget({
         </span>
         <span className="text-[12px] text-text-secondary">
           {[
-            s.rangeKm !== null ? `${Math.round(s.rangeKm)} km` : null,
+            s.rangeKm !== null ? formatWithUnit(s.rangeKm, "km") : null,
             s.chargingState ? t(evChargingStateKey(s.chargingState)) : null,
           ]
             .filter(Boolean)
@@ -1582,15 +1597,15 @@ function EvChargerEquipmentWidget({
         <EvVehicleBadge vehicle={s.vehicle} />
         {watts !== null && watts > 0 && (
           <span className="font-mono text-[15px] font-semibold text-text tabular-nums">
-            {watts >= 1000 ? (watts / 1000).toFixed(2) : Math.round(watts)}
+            {formatPowerParts(watts).value}
             <span className="text-[11px] text-text-tertiary font-normal ml-0.5">
-              {watts >= 1000 ? "kW" : "W"}
+              {formatPowerParts(watts).unit}
             </span>
           </span>
         )}
         {s.sessionEnergyKwh !== null && s.sessionEnergyKwh > 0 && (
           <span className="font-mono text-[12px] text-text-secondary tabular-nums">
-            {s.sessionEnergyKwh.toFixed(1)}
+            {formatEnergyParts(s.sessionEnergyKwh).value}
             <span className="text-[10px] text-text-tertiary font-normal ml-0.5">kWh</span>
           </span>
         )}
@@ -1647,13 +1662,13 @@ function UpsEquipmentWidget({
 
   const rows: { key: string; label: string; value: string }[] = [];
   if (charge !== null && charge !== undefined) {
-    rows.push({ key: "battery", label: t("equipments.ups.battery"), value: `${String(charge)} %` });
+    rows.push({ key: "battery", label: t("equipments.ups.battery"), value: formatPercent(Number(charge)) });
   }
   if (runtime) {
     rows.push({ key: "runtime", label: t("equipments.ups.runtime"), value: runtime });
   }
   if (load !== null && load !== undefined) {
-    rows.push({ key: "load", label: t("equipments.ups.load"), value: `${String(load)} %` });
+    rows.push({ key: "load", label: t("equipments.ups.load"), value: formatPercent(Number(load)) });
   }
 
   return (
@@ -1725,7 +1740,7 @@ function ApplianceEquipmentWidget({
         />
 
         {!isOn || state === "off" ? (
-          <span className="text-[12px] text-text-tertiary">OFF</span>
+          <span className="text-[12px] text-text-tertiary">{t("controls.off")}</span>
         ) : isRunning ? (
           <div className="flex flex-col items-center gap-0.5">
             <span className="text-[12px] font-medium text-accent">{t("common.running")}</span>

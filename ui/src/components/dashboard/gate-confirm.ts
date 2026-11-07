@@ -1,3 +1,4 @@
+import type { TFunction } from "i18next";
 import type { EquipmentWithDetails } from "../../types";
 import { findOrderByCategory } from "../equipments/bindingUtils";
 
@@ -24,4 +25,29 @@ export function gateNeedsConfirm(equipment: EquipmentWithDetails): boolean {
   );
   if (!command) return false;
   return (command.enumValues?.length ?? 0) <= 1;
+}
+
+/** What `gate_state` can read (equipment-manager): no sensor, or no report yet, is `unknown`. */
+export type GateState = "open" | "closed" | "unknown";
+
+/** The gate's state as the confirmation reads it, by category whatever the alias. */
+export function gateStateOf(equipment: EquipmentWithDetails): GateState {
+  const value = equipment.dataBindings.find((db) => db.category === "gate_state")?.value;
+  return value === "open" || value === "closed" ? value : "unknown";
+}
+
+/**
+ * Spec 196 — the confirmation names what the tap is about to do: an open gate is about
+ * to close, a closed one to open. Without a state the tap only "operates" it: an impulse
+ * on a gate Sowel cannot see may do either.
+ */
+export function gateConfirmTexts(
+  gateState: GateState,
+  name: string,
+  t: TFunction,
+): { title: string; slideLabel: string } {
+  return {
+    title: t(`controls.gate.confirmTitle.${gateState}`, { name }),
+    slideLabel: t(`controls.gate.slideTo.${gateState}`),
+  };
 }

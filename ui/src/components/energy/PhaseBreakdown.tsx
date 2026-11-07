@@ -49,7 +49,7 @@ export function PhaseBreakdown({ gridEquipments }: Props) {
                 />
               </div>
               <span className="font-mono text-[13px] font-medium text-text-secondary w-16 text-right shrink-0">
-                {f.num} {f.unit}
+                {f}
               </span>
             </div>
           );

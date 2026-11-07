@@ -87,7 +87,7 @@ export function DeviceDetailPage() {
 
   if (error || !device || !detail) {
     return (
-      <div className="p-6">
+      <div className="p-4 sm:p-6">
         <button
           onClick={() => navigate(-1)}
           className="flex items-center gap-1.5 text-[13px] text-text-secondary hover:text-text transition-colors duration-150 ease-out mb-6"
@@ -107,7 +107,7 @@ export function DeviceDetailPage() {
   const mergedData = liveData ?? detail.data;
 
   return (
-    <div className="p-6 max-w-[960px]">
+    <div className="p-4 sm:p-6 max-w-[960px]">
       {/* Back navigation */}
       <button
         onClick={() => navigate(-1)}

@@ -37,7 +37,7 @@ export function IntegrationsPage() {
       setTimeout(() => setOauthMessage(null), 5000);
     } else if (params.has("oauth_error")) {
       const msg = params.get("oauth_error") ?? t("common.error");
-      setOauthMessage({ type: "error", text: `${t("integrations.oauthError")}: ${msg}` });
+      setOauthMessage({ type: "error", text: `${t("integrations.oauthError")}${t("common.colon")}${msg}` });
       window.history.replaceState({}, "", window.location.pathname);
       setTimeout(() => setOauthMessage(null), 7000);
     }
@@ -47,7 +47,7 @@ export function IntegrationsPage() {
 
   if (loading) {
     return (
-      <div className="p-6 flex items-center justify-center py-20">
+      <div className="px-4 sm:px-6 flex items-center justify-center py-20">
         <Loader2 size={20} className="animate-spin text-text-tertiary" />
       </div>
     );

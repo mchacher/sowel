@@ -11,7 +11,7 @@ import { ShareBar } from "./EvShareBar";
 import { EV_CHARGER_ALIASES, EV_VEHICLE_STATE_CATEGORY } from "../../../lib/ev-charger-contract";
 import { electricVehicleStateOf } from "../electricVehicleState";
 import { evChargerStateOf } from "../evChargerState";
-import { kw, kwh, liveState, type LiveInputs, timeLabel } from "./evSessionsDisplay";
+import { powerLabel, energyLabel, liveState, type LiveInputs, timeLabel } from "./evSessionsDisplay";
 
 /** The shared readers' view of the charger and the car, for `liveState`. */
 function liveInputs(
@@ -89,7 +89,7 @@ export function EvCurrentSessionCard({
             <ShareBar e={session} height="h-1.5" />
           </div>
           <span className="font-mono text-[12px] text-text-secondary tabular-nums whitespace-nowrap">
-            {kwh(session.energyWh, locale)} kWh
+            {energyLabel(session.energyWh, locale)}
           </span>
           <span className="font-mono text-[14px] font-semibold text-text tabular-nums whitespace-nowrap">
             {eur(session.costEur)}
@@ -153,7 +153,7 @@ export function EvCurrentSessionCard({
         {live.kind === "charging" && live.powerW !== null && (
           <span className="flex items-center gap-1.5 font-mono text-[13px] text-primary tabular-nums">
             <span className="w-2 h-2 rounded-full bg-primary animate-pulse" />
-            {kw(live.powerW, locale)} kW
+            {powerLabel(live.powerW, locale)}
           </span>
         )}
         {live.kind === "paused" && live.sinceIso && (
@@ -192,7 +192,7 @@ export function EvCurrentSessionCard({
       <div className="flex items-end justify-between gap-3">
         <div className="flex flex-col">
           <span className="font-mono text-[28px] font-semibold text-text tabular-nums">
-            {kwh(session.energyWh, locale)} kWh
+            {energyLabel(session.energyWh, locale)}
           </span>
           <span className="text-[13px] text-text-tertiary">
             {t("equipments.evSessions.current.charged")}
@@ -211,9 +211,9 @@ export function EvCurrentSessionCard({
         e={session}
         height="h-2"
         label={t("equipments.evSessions.barLabel", {
-          hc: kwh(session.gridHcWh, locale),
-          hp: kwh(session.gridHpWh, locale),
-          solar: kwh(session.solarWh, locale),
+          hc: energyLabel(session.gridHcWh, locale),
+          hp: energyLabel(session.gridHpWh, locale),
+          solar: energyLabel(session.solarWh, locale),
         })}
       />
       <span

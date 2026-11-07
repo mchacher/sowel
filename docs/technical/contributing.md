@@ -149,6 +149,36 @@ docs(api): update endpoint documentation
 - **Dark mode** via Tailwind `class` strategy.
 - **Icons**: Lucide React, stroke 1.5px.
 
+#### Translations (i18n)
+
+Every visible string is a key in `ui/src/i18n/locales/fr.json` **and** `en.json` (the two files hold exactly the same keys). Tests in `ui/src/i18n/` enforce the rules below:
+
+- **No hard-coded word.** On/off states read `controls.on` / `controls.off` (« Marche » / « Arrêt »), never a literal `"ON"`; a colon after a label is `t("common.colon")`, never `": "`. Values sent to devices (`"ON"`, `true`) are not display text and stay as they are.
+- **Plurals** use i18next plural keys: `key_one` and `key_other`, called as `t("key", { count })`. Never glue a count to a fixed plural word (`{n} {t("devices")}`) and never write `(s)`. A key called with `count` without both forms fails `plurals.test.ts`, unless its text cannot change with the count (an abbreviated unit, « 3 j »): then it goes in that test's `INVARIANT` list.
+- **Categories**: every `DataCategory` has a `category.<name>` label in both languages. `locale-completeness.test.ts` lists the union exhaustively, so a category added to `ui/src/types.ts` without a label does not compile.
+- **French typography** (`fr-typography.test.ts`): a narrow no-break space (U+202F) before `: ; ! ?` and inside « », the ellipsis character `…` rather than `...`, the straight apostrophe `'` only. A French value equal to its English one fails the test unless it is listed in `SAME_AS_EN` (proper nouns, acronyms, words both languages share, admin terms kept on purpose such as broker or topic).
+
+#### Numbers and units
+
+Every displayed number goes through `ui/src/lib/format.ts`, never through `toFixed`, a bare `toLocaleString()` or a hand-made `Intl.NumberFormat`. The module follows the UI language: in French a decimal comma, a narrow no-break space (U+202F) between thousands and before the unit (« 1 288 lx », « 14,3 kWh », « 39 % »), the minus sign U+2212 and never « −0 »; in English the dot, a comma between thousands and « 39% ». `null`, `undefined` and `NaN` read « — ». An ESLint rule (`no-restricted-syntax` in `ui/eslint.config.js`, checked by `format-lint.test.ts`) fails on `toFixed`, `new Intl.NumberFormat` and `toLocaleString()` outside the module, and on a `toLocaleDateString`/`toLocaleTimeString`/`toLocaleString` given no locale, `undefined` or `[]`, which follow the browser's language instead of Sowel's: pass `currentLocale()` from the module. A value that is not displayed (an SVG coordinate) rounds with `Math.round`.
+
+| Quantity                                        | Function             | Precision                                                                                               | French example                                      |
+| ----------------------------------------------- | -------------------- | ------------------------------------------------------------------------------------------------------- | --------------------------------------------------- |
+| Temperature, setpoint                           | `formatTemperature`  | 1 fixed decimal; `compact` in tiles, rows and strips, `full` in pages, axes and tooltips                | « 20,0° », « 20,5 °C »                              |
+| Power                                           | `formatPower`        | whole W below 1 000 W, then kW with 1 decimal; `step: 5` on the Live page; `unit: "W"` to stay in watts | « 407 W », « 1,1 kW »                               |
+| Energy (value in kWh)                           | `formatEnergy`       | 3 significant digits, at most 2 decimals; `unit: "auto"` for Wh below 1 kWh                             | « 7,09 kWh », « 14,3 kWh », « 984 kWh »             |
+| Percentage (0–100)                              | `formatPercent`      | 0 decimals                                                                                              | « 46 % »                                            |
+| Euros                                           | `formatCurrency`     | 2 fixed decimals; `decimals` for a price per kWh                                                        | « 2,72 € »                                          |
+| V, mbar, hPa, km/h, m/s, dB, lx, ppm, µg/m³, km | `formatWithUnit`     | 0 decimals                                                                                              | « 1 022 mbar »                                      |
+| A, mm, mm/h                                     | `formatWithUnit`     | 1 decimal, trailing zero dropped                                                                        | « 0 A », « 0,4 mm »                                 |
+| Unit the table does not know                    | `formatWithUnit`     | 1 decimal, trailing zero dropped, unit kept as given                                                    | « 3,2 xyz »                                         |
+| Duration (seconds), unit `s`                    | `formatDuration`     | at most two units, seconds dropped above 10 min; `clock` for countdowns                                 | « 2 min 12 s », « 35 min », « 1 h 05 », « 3 j 4 h » |
+| Size in bytes                                   | `formatBytes`        | 1 decimal; o, ko, Mo, Go in French                                                                      | « 5,9 Mo »                                          |
+| Time ago                                        | `formatRelativeTime` | in the UI language; the date beyond a day                                                               | « il y a 12 min »                                   |
+| Range                                           | `formatRange`        | en dash                                                                                                 | « 07:22 – 17:17 »                                   |
+
+Trailing zeros are dropped everywhere except on temperatures (« 4 kWh », not « 4,0 kWh »). Each function takes `locale` (from `dateLocale(i18n.language)`, the default) and the `*Parts` variants return value and unit apart for layouts that style them differently. A translated sentence that carries a quantity receives it formatted, unit included (`{{power}}`, not `{{kw}} kW`).
+
 ---
 
 ## Logging Rules

@@ -14,6 +14,7 @@ import {
 import { findDataByCategory, findOrderByCategory } from "./bindingUtils";
 import { thermostatPowerStateBinding } from "../../lib/thermostat-state";
 import { useWebSocket } from "../../store/useWebSocket";
+import { formatDataValue, formatDuration } from "../../lib/format";
 
 export function useEquipmentState(equipment: EquipmentWithDetails) {
   // Classification
@@ -221,26 +222,15 @@ export function computeElapsed(iso: string | null): number {
   return Math.max(0, Math.floor((Date.now() - new Date(ts).getTime()) / 1000));
 }
 
-/** Format elapsed seconds as compact string (45s, 2m30s, 1h05, 3j). */
+/** Elapsed seconds by the shared duration rule: « 45 s », « 2 min 30 s », « 35 min », « 1 h 05 ». */
 export function formatElapsed(s: number): string {
-  if (s < 60) return `${s}s`;
-  if (s < 3600)
-    return `${Math.floor(s / 60)}m${String(s % 60).padStart(2, "0")}s`;
-  if (s < 86400) {
-    const h = Math.floor(s / 3600);
-    const m = Math.floor((s % 3600) / 60);
-    return `${h}h${String(m).padStart(2, "0")}`;
-  }
-  return `${Math.floor(s / 86400)}j`;
+  return formatDuration(s);
 }
 
-/** Format a data value for inline display. */
+/** Format a data value for inline display: numbers by their unit's rule (lib/format). */
 export function formatValue(value: unknown, unit?: string): string {
-  if (value === null || value === undefined) return "\u2014";
-  if (typeof value === "boolean") return value ? "ON" : "OFF";
-  if (typeof value === "number") {
-    const formatted = Number.isInteger(value) ? String(value) : value.toFixed(1);
-    return unit ? `${formatted}${unit}` : formatted;
+  if (value === null || value === undefined || typeof value === "boolean" || typeof value === "number") {
+    return formatDataValue(value, unit);
   }
   return String(value);
 }

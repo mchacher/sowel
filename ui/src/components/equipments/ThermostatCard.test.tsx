@@ -310,7 +310,7 @@ describe("ThermostatCard extras (spec 177)", () => {
     expect(exec).toHaveBeenCalledWith("profile", "overnight");
 
     // Boolean order with a data mirror → toggle, reads the mirror (off).
-    await userEvent.click(screen.getByRole("button", { name: "OFF" }));
+    await userEvent.click(screen.getByRole("button", { name: "Off" }));
     expect(exec).toHaveBeenCalledWith("ecoMode", true);
 
     // Boolean order without a mirror → momentary action.
@@ -451,7 +451,7 @@ describe("ThermostatCard extras — review follow-ups (spec 177)", () => {
       />,
     );
     expect(screen.queryByRole("button", { name: /Trigger/ })).toBeNull();
-    await userEvent.click(screen.getByRole("button", { name: "ON" }));
+    await userEvent.click(screen.getByRole("button", { name: "On" }));
     expect(exec).toHaveBeenCalledWith("state", false);
   });
 
@@ -467,4 +467,33 @@ describe("ThermostatCard extras — review follow-ups (spec 177)", () => {
     );
     expect(screen.getByText("weekday")).toBeTruthy();
   });
+});
+
+// ============================================================
+// Spec 196, slice 1b — the setpoint chevrons are 16–22 px drawings. They carry
+// an accessible name and the `hit-44` touch area, and sit in a `hit-group` so a
+// neighbour's enlarged area never paints over them and takes their tap.
+// ============================================================
+
+describe("ThermostatCard setpoint chevrons", () => {
+  for (const compact of [false, true]) {
+    it(`are labelled, enlarged for touch and grouped${compact ? " (Maison row)" : " (card)"}`, async () => {
+      const exec = vi.fn().mockResolvedValue(undefined);
+      render(
+        <ThermostatCard
+          equipment={equipment(pacBindings(true, 2974))}
+          onExecuteOrder={exec}
+          compact={compact}
+        />,
+      );
+      const down = screen.getByRole("button", { name: "Lower the setpoint" });
+      const up = screen.getByRole("button", { name: "Raise the setpoint" });
+      for (const button of [down, up]) {
+        expect(button.classList.contains("hit-44")).toBe(true);
+        expect(button.parentElement?.classList.contains("hit-group")).toBe(true);
+      }
+      await userEvent.click(up);
+      expect(exec).toHaveBeenCalledWith("setpoint", 25);
+    });
+  }
 });
