@@ -1,3 +1,4 @@
+import { formatNumber, formatTemperature } from "./format";
 /**
  * The Maison activity panel as one continuous log (spec 196, slice 7c).
  *
@@ -54,7 +55,8 @@ export function groupActivityLog(items: readonly ActivityItem[], now: Date): Log
   const sorted = [...items].sort((a, b) => b.timestamp - a.timestamp);
   // The clock is re-read once a minute: an event that arrives just after it
   // crossed into a new part of the day is still "now", not "this afternoon".
-  const ref = sorted.length > 0 && sorted[0].timestamp > now.getTime() ? new Date(sorted[0].timestamp) : now;
+  const ref =
+    sorted.length > 0 && sorted[0].timestamp > now.getTime() ? new Date(sorted[0].timestamp) : now;
   const currentKey = `0-${dayPart(ref.getHours())}`;
   const groups: LogGroup[] = [];
   for (const item of sorted) {
@@ -67,7 +69,12 @@ export function groupActivityLog(items: readonly ActivityItem[], now: Date): Log
       last.items.push(item);
       continue;
     }
-    groups.push({ key, period: { daysAgo, part, day: d }, labelled: key !== currentKey, items: [item] });
+    groups.push({
+      key,
+      period: { daysAgo, part, day: d },
+      labelled: key !== currentKey,
+      items: [item],
+    });
   }
   return groups;
 }
@@ -87,4 +94,26 @@ export function logPeriodLabel(period: LogPeriod, t: Translate, locale: string):
   const name = new Intl.DateTimeFormat(locale, fmt).format(period.day);
   const day = name.charAt(0).toLocaleUpperCase(locale) + name.slice(1);
   return t(`activity.period.other.${period.part}`, { day });
+}
+
+/**
+ * An order's raw value as the activity log shows it (spec 196): « Marche / Arrêt »
+ * for ON/OFF, numbers through lib/format, a setpoint or temperature in degrees.
+ */
+export function displayValue(
+  raw: string,
+  alias: string,
+  t: (key: string, opts?: Record<string, unknown>) => string,
+): string {
+  const v = raw.trim();
+  const upper = v.toUpperCase();
+  if (upper === "ON" || upper === "TRUE") return t("controls.on");
+  if (upper === "OFF" || upper === "FALSE") return t("controls.off");
+  const n = Number(v);
+  if (v !== "" && Number.isFinite(n)) {
+    return /setpoint|temperature/i.test(alias)
+      ? formatTemperature(n, { style: "compact" })
+      : formatNumber(n, { maxDecimals: 2 });
+  }
+  return raw;
 }

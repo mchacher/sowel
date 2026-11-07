@@ -13,6 +13,7 @@ import type { ActivityItem, ActivityCategory, OrderSource } from "../../types";
 import { useRecipes } from "../../store/useRecipes";
 import i18n from "../../i18n";
 import { ORDER_OUTCOME_ALARM_SOURCE } from "../../lib/alarm-message";
+import { displayValue } from "../../lib/activity-log";
 
 /** A recipe's name in the UI language, from its manifest i18n; else the name the server sent. */
 type RecipeLabel = (recipeId: string | undefined, fallback: string) => string;
@@ -84,17 +85,21 @@ function interpolation(
 ): Record<string, string | number> {
   const m = item.message;
   // A momentary order (wake, refresh…) shows the action, not its resolved "ON".
-  const valueOf = (value: string, momentary?: string) =>
-    momentary ? t(`activity.momentary.${momentary}`, { defaultValue: value }) : value;
+  // Otherwise the raw value is shown the way the rest of the UI writes it
+  // (spec 196): « Marche / Arrêt », numbers through lib/format, a setpoint in degrees.
+  const valueOf = (value: string, alias: string, momentary?: string) =>
+    momentary
+      ? t(`activity.momentary.${momentary}`, { defaultValue: value })
+      : displayValue(value, alias, t);
   switch (m.template) {
     case "order.executed":
-      return { ...m.params, value: valueOf(m.params.value, m.params.momentary) };
+      return { ...m.params, value: valueOf(m.params.value, m.params.alias, m.params.momentary) };
     case "order.executed.multi":
       return {
         firstName: m.params.equipmentNames[0],
         count: m.params.count,
         alias: m.params.alias,
-        value: valueOf(m.params.value, m.params.momentary),
+        value: valueOf(m.params.value, m.params.alias, m.params.momentary),
       };
     case "recipe.started":
     case "recipe.stopped":
@@ -138,7 +143,9 @@ function CategoryIcon({
   // Neutral glyphs; only an alarm keeps its role colour (red raised, green
   // cleared), so a fault still stands out in the log.
   const dot = (Ico: typeof Circle, tone = "text-text-secondary") => (
-    <span className={`relative z-[1] w-5 h-5 rounded-full bg-surface flex items-center justify-center ${tone}`}>
+    <span
+      className={`relative z-[1] w-5 h-5 rounded-full bg-surface flex items-center justify-center ${tone}`}
+    >
       <Ico size={12} strokeWidth={1.5} aria-hidden="true" />
     </span>
   );
@@ -150,7 +157,9 @@ function CategoryIcon({
     case "motion":
       return dot(PersonStanding);
     case "alarm":
-      return template === "alarm.resolved" ? dot(CircleCheck, "text-success") : dot(AlertTriangle, "text-error");
+      return template === "alarm.resolved"
+        ? dot(CircleCheck, "text-success")
+        : dot(AlertTriangle, "text-error");
     case "sunlight":
       return dot(template === "sunlight.sunrise" ? Sunrise : Sunset);
     default:
