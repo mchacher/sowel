@@ -260,15 +260,6 @@ h1 {
   }
 }
 
-/* Header gradient tint — primary color fading into surface */
-.header-tint {
-  background: linear-gradient(
-    to bottom,
-    color-mix(in srgb, var(--color-primary) 12%, var(--color-surface)) 0%,
-    var(--color-surface) 100%
-  );
-}
-
 /* Form inputs — the border turns primary on focus, and a ring in the primary
    ink marks the field without relying on that colour change alone (WCAG
    2.4.7). Unlayered, so it beats an `outline-none` utility on the element. */
