@@ -132,7 +132,7 @@ Today's look is kept (solar greens, HP dark blue / HC light blue). Only dark-the
 - [ ] AC-8 One setpoint component across the UI; repeated taps send one order.
 - [ ] AC-9 Equipment page shows usage above the fold; back returns to the room.
 - [ ] AC-10 Gate confirmation on every path when enabled; texts follow the state.
-- [ ] AC-11 The FR-E rule holds, computed from the tokens: same-family energy pairs (HP/HC, autoconsumption/injection, house/grid, grid/unmanaged) ≥ 2:1 in dark; series-palette neighbours ≥ 2:1 or ≥ 30°; every series vs "Other" ≥ 1.5:1 and ≥ 30°. `colorIndex` present in by-usage responses, `color` unchanged.
+- [x] AC-11 The FR-E rule holds, computed from the tokens: same-family energy pairs (HP/HC, autoconsumption/injection, house/grid, grid/unmanaged) ≥ 2:1 in dark; series-palette neighbours ≥ 2:1 or ≥ 30°; every series vs "Other" ≥ 1.5:1 and ≥ 30°. `colorIndex` present in by-usage responses, `color` unchanged.
 - [ ] AC-12 `npm run validate` green; screenshots of the reviewed screens retaken after each slice.
 
 ## Edge Cases
