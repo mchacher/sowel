@@ -64,8 +64,9 @@ export function HistoryPanel({ equipmentId, bindings, defaultExpandedAlias }: Hi
 
   // Filter: historized bindings only, exclude internal metrics (energy delta used for aggregation only)
   const INTERNAL_ALIASES = new Set(["energy"]);
-  const historizedBindings = bindings
-    .filter((b) => b.effectiveOn && !INTERNAL_ALIASES.has(b.alias));
+  const historizedBindings = bindings.filter(
+    (b) => b.effectiveOn && !INTERNAL_ALIASES.has(b.alias),
+  );
 
   const fetchChart = useCallback(
     async (alias: string, timeRange: TimeRange) => {
@@ -157,98 +158,97 @@ export function HistoryPanel({ equipmentId, bindings, defaultExpandedAlias }: Hi
         onClick={() => setOpen(!open)}
         className="flex items-center gap-2 w-full p-4 text-left cursor-pointer"
       >
-        {open
-          ? <ChevronDown size={14} strokeWidth={1.5} className="text-text-tertiary" />
-          : <ChevronRight size={14} strokeWidth={1.5} className="text-text-tertiary" />
-        }
+        {open ? (
+          <ChevronDown size={14} strokeWidth={1.5} className="text-text-tertiary" />
+        ) : (
+          <ChevronRight size={14} strokeWidth={1.5} className="text-text-tertiary" />
+        )}
         <BarChart3 size={16} strokeWidth={1.5} className="text-text-tertiary" />
-        <span className="text-body font-semibold text-text">
-          {t("history.chart")}
-        </span>
-        <span className="text-micro text-text-tertiary">
-          {allCharts.length}
-        </span>
+        <span className="text-body font-semibold text-text">{t("history.chart")}</span>
+        <span className="text-micro text-text-tertiary">{allCharts.length}</span>
       </button>
 
-      {open && <div className="px-4 pb-4 space-y-1">
-        {allCharts.map((entry) => {
-          const isExpanded = expandedAlias === entry.alias;
-          const chart = charts[entry.alias];
-          const unit = entry.unit;
+      {open && (
+        <div className="px-4 pb-4 space-y-1">
+          {allCharts.map((entry) => {
+            const isExpanded = expandedAlias === entry.alias;
+            const chart = charts[entry.alias];
+            const unit = entry.unit;
 
-          return (
-            <div key={entry.alias}>
-              {/* Binding row — clickable to expand */}
-              <button
-                type="button"
-                onClick={() => handleToggle(entry.alias)}
-                className={`flex items-center justify-between w-full px-2.5 py-1.5 rounded-sm text-caption cursor-pointer transition-colors ${
-                  isExpanded
-                    ? "bg-primary-light"
-                    : "bg-border-light/50 hover:bg-border-light"
-                }`}
-              >
-                <div className="flex items-center gap-2">
-                  <span className="font-medium text-primary" title={entry.alias}>{entry.label}</span>
-                  {unit && <span className="text-text-tertiary">({unit})</span>}
-                </div>
-                <BarChart3
-                  size={12}
-                  strokeWidth={1.5}
-                  className={isExpanded ? "text-primary" : "text-text-tertiary"}
-                />
-              </button>
+            return (
+              <div key={entry.alias}>
+                {/* Binding row — clickable to expand */}
+                <button
+                  type="button"
+                  onClick={() => handleToggle(entry.alias)}
+                  className={`flex items-center justify-between w-full px-2.5 py-1.5 rounded-sm text-caption cursor-pointer transition-colors ${
+                    isExpanded ? "bg-primary-light" : "bg-border-light/50 hover:bg-border-light"
+                  }`}
+                >
+                  <div className="flex items-center gap-2">
+                    <span className="font-medium text-primary" title={entry.alias}>
+                      {entry.label}
+                    </span>
+                    {unit && <span className="text-text-tertiary">({unit})</span>}
+                  </div>
+                  <BarChart3
+                    size={12}
+                    strokeWidth={1.5}
+                    className={isExpanded ? "text-primary" : "text-text-tertiary"}
+                  />
+                </button>
 
-              {/* Chart (expanded) */}
-              {isExpanded && (
-                <div className="mt-2 mb-3 px-1">
-                  {chart?.loading ? (
-                    <div className="flex items-center justify-center py-8">
-                      <Loader2 size={16} className="animate-spin text-text-tertiary" />
-                      <span className="ml-2 text-caption text-text-tertiary">
-                        {t("history.loading")}
-                      </span>
-                    </div>
-                  ) : chart?.error ? (
-                    <div className="text-caption text-error text-center py-8">
-                      {chart.error}
-                    </div>
-                  ) : (
-                    <>
-                      <div className="flex justify-end mb-2">
-                        <TimeRangeSelector value={range} onChange={setRange} />
+                {/* Chart (expanded) */}
+                {isExpanded && (
+                  <div className="mt-2 mb-3 px-1">
+                    {chart?.loading ? (
+                      <div className="flex items-center justify-center py-8">
+                        <Loader2 size={16} className="animate-spin text-text-tertiary" />
+                        <span className="ml-2 text-caption text-text-tertiary">
+                          {t("history.loading")}
+                        </span>
                       </div>
-                      {isCumulativeBarChart(chart?.category ?? "") ? (
-                        <HistoryBarChart
-                          points={chart?.points ?? []}
-                          range={range}
-                          resolution={chart?.resolution ?? "raw"}
-                          unit={unit}
-                        />
-                      ) : (
-                        <TimeSeriesChart
-                          points={chart?.points ?? []}
-                          range={range}
-                          resolution={chart?.resolution ?? "raw"}
-                          unit={unit}
-                          fetchTime={chart?.fetchTime}
-                          dataType={chart?.dataType}
-                          category={chart?.category}
-                        />
-                      )}
-                      {chart?.resolution && (
-                        <div className="text-micro text-text-tertiary text-right mt-1">
-                          {t("history.resolution")}{t("common.colon")}{t(RESOLUTION_I18N[chart.resolution])}
+                    ) : chart?.error ? (
+                      <div className="text-caption text-error text-center py-8">{chart.error}</div>
+                    ) : (
+                      <>
+                        <div className="flex justify-end mb-2">
+                          <TimeRangeSelector value={range} onChange={setRange} />
                         </div>
-                      )}
-                    </>
-                  )}
-                </div>
-              )}
-            </div>
-          );
-        })}
-      </div>}
+                        {isCumulativeBarChart(chart?.category ?? "") ? (
+                          <HistoryBarChart
+                            points={chart?.points ?? []}
+                            range={range}
+                            resolution={chart?.resolution ?? "raw"}
+                            unit={unit}
+                          />
+                        ) : (
+                          <TimeSeriesChart
+                            points={chart?.points ?? []}
+                            range={range}
+                            resolution={chart?.resolution ?? "raw"}
+                            unit={unit}
+                            fetchTime={chart?.fetchTime}
+                            dataType={chart?.dataType}
+                            category={chart?.category}
+                          />
+                        )}
+                        {chart?.resolution && (
+                          <div className="text-micro text-text-tertiary text-right mt-1">
+                            {t("history.resolution")}
+                            {t("common.colon")}
+                            {t(RESOLUTION_I18N[chart.resolution])}
+                          </div>
+                        )}
+                      </>
+                    )}
+                  </div>
+                )}
+              </div>
+            );
+          })}
+        </div>
+      )}
     </div>
   );
 }

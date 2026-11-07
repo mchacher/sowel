@@ -46,15 +46,11 @@ export function RestartToast({ onClose }: { onClose: () => void }) {
           <RefreshCw size={18} className="text-primary" strokeWidth={1.5} />
         </div>
         <div className="flex-1 min-w-0">
-          <h3 className="text-body font-semibold text-text">
-            {t("update.restartRequiredTitle")}
-          </h3>
+          <h3 className="text-body font-semibold text-text">{t("update.restartRequiredTitle")}</h3>
           <p className="text-caption text-text-secondary mt-1">
             {t("update.restartRequiredMessage")}
           </p>
-          {error && (
-            <p className="text-caption text-error mt-2">{error}</p>
-          )}
+          {error && <p className="text-caption text-error mt-2">{error}</p>}
           <div className="flex gap-2 mt-3">
             <button
               onClick={handleRestart}

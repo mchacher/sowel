@@ -88,10 +88,7 @@ const columns = (c: HTMLElement) => [...c.querySelectorAll("div.flex-1")];
 const pills = (c: HTMLElement) =>
   [...c.querySelectorAll("span")]
     .filter((s) => s.className.includes("rounded-full") && s.className.includes("border"))
-    .map(
-      (s) =>
-        [...s.classList].find((k) => /^text-(success|warning-ink|error)$/.test(k)) ?? "",
-    );
+    .map((s) => [...s.classList].find((k) => /^text-(success|warning-ink|error)$/.test(k)) ?? "");
 
 describe("ForecastDetailContent (spec 168)", () => {
   it("renders one column per day, in day order", () => {
@@ -139,9 +136,7 @@ describe("ForecastDetailContent (spec 168)", () => {
     // Three days qualified, two not: without a reserved slot the two bare
     // columns end higher than the others.
     const bindings = fiveDays();
-    const bare = bindings.filter(
-      (b) => !["j4_confidence", "j5_confidence"].includes(b.alias),
-    );
+    const bare = bindings.filter((b) => !["j4_confidence", "j5_confidence"].includes(b.alias));
     const { container } = render(<ForecastDetailContent equipment={equipmentWith(bare)} />);
     const feet = [...container.querySelectorAll("span")].filter((s) =>
       s.className.includes("min-h-["),

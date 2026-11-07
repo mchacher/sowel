@@ -110,9 +110,7 @@ describe("PvHealthPanel", () => {
   });
 
   it("renders the last clear day with its date, not as an undated figure", async () => {
-    await renderPanel(
-      response({ latest: { day: "2026-08-20", ratio: 3.6, hours: 6 } }),
-    );
+    await renderPanel(response({ latest: { day: "2026-08-20", ratio: 3.6, hours: 6 } }));
     // 3.6 / 3.8 ≈ 5 % below its usual level, dated.
     expect(await screen.findByText(/5\s?%/)).toBeTruthy();
   });

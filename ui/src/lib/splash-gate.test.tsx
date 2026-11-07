@@ -41,9 +41,14 @@ function run(storage: Storage, { clock = { now: NOW }, prefersDark = false } = {
     addEventListener: () => {},
     matchMedia: () => ({ matches: prefersDark }),
   };
-  new Function("document", "window", "localStorage", "Date", source)(document, fakeWindow, storage, {
-    now: () => clock.now,
-  });
+  new Function("document", "window", "localStorage", "Date", source)(
+    document,
+    fakeWindow,
+    storage,
+    {
+      now: () => clock.now,
+    },
+  );
   const splash = document.getElementById("splash")!;
   const style = getComputedStyle(splash);
   return {

@@ -1,10 +1,5 @@
 import { describe, it, expect } from "vitest";
-import {
-  categoryOf,
-  groupByCategory,
-  matchesQuery,
-  normalizeForSearch,
-} from "./plugin-categories";
+import { categoryOf, groupByCategory, matchesQuery, normalizeForSearch } from "./plugin-categories";
 import type { PluginManifest } from "../types";
 
 function manifest(overrides: Partial<PluginManifest>): PluginManifest {

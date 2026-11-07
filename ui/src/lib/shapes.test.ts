@@ -8,7 +8,10 @@ import { classNameOfTag, classNames } from "./classname-scan";
 // (decisions pr7-rayons and pr7-bordures). Tailwind 4 emits nothing for a
 // class it does not know, so a removed radius step or a stray bordered card
 // would not fail the build: they are searched for here.
-const tokensCss = readFileSync(new URL("../../../design-system/tokens.css", import.meta.url), "utf8");
+const tokensCss = readFileSync(
+  new URL("../../../design-system/tokens.css", import.meta.url),
+  "utf8",
+);
 const indexCss = readFileSync(new URL("../index.css", import.meta.url), "utf8");
 const srcRoot = fileURLToPath(new URL("..", import.meta.url));
 
@@ -23,19 +26,23 @@ function sources(dir: string): string[] {
 const FILES = sources(srcRoot).map((path) => ({ path, text: readFileSync(path, "utf8") }));
 
 const LINES = FILES.flatMap(({ path, text: file }) =>
-  file
-    .split("\n")
-    .map((text, i) => ({ where: `${path.slice(srcRoot.length)}:${i + 1}`, text })),
+  file.split("\n").map((text, i) => ({ where: `${path.slice(srcRoot.length)}:${i + 1}`, text })),
 );
 
 /** Every className value in ui/src, whole even when it spans several lines. */
 const CLASSNAMES = FILES.flatMap(({ path, text }) =>
-  classNames(text).map(({ line, cls }) => ({ where: `${path.slice(srcRoot.length)}:${line}`, cls })),
+  classNames(text).map(({ line, cls }) => ({
+    where: `${path.slice(srcRoot.length)}:${line}`,
+    cls,
+  })),
 );
 
 /** The value of a custom property in the first block that defines it after `from`. */
 function cssVar(css: string, name: string, from = 0): string | undefined {
-  return css.slice(from).match(new RegExp(`${name}\\s*:\\s*([^;]+);`))?.[1].trim();
+  return css
+    .slice(from)
+    .match(new RegExp(`${name}\\s*:\\s*([^;]+);`))?.[1]
+    .trim();
 }
 
 describe("radius scale", () => {
@@ -57,8 +64,11 @@ describe("radius scale", () => {
 
   it("leaves no arbitrary or retired radius in ui/src", () => {
     // Bare `rounded` too, but not a variable named so (`const rounded = …`).
-    const off = /(^|[\s"'`:])rounded(-(t|r|b|l|s|e|tl|tr|bl|br))?(-\[|-(none|xl|2xl|3xl)\b|(?=["'`]|\s+(?!=)))/;
-    const hits = LINES.filter(({ text }) => !/^\s*(\/\/|\*|\/\*|\{\/\*)/.test(text) && off.test(text));
+    const off =
+      /(^|[\s"'`:])rounded(-(t|r|b|l|s|e|tl|tr|bl|br))?(-\[|-(none|xl|2xl|3xl)\b|(?=["'`]|\s+(?!=)))/;
+    const hits = LINES.filter(
+      ({ text }) => !/^\s*(\/\/|\*|\/\*|\{\/\*)/.test(text) && off.test(text),
+    );
     expect(hits.map((h) => h.where)).toEqual([]);
   });
 });
@@ -131,9 +141,13 @@ describe("panels as slices under a lid", () => {
   it("stacks the body's slices 4 px apart, 4 px inside and 10 px at the ends", () => {
     const body = utility("slices");
     expect(body).toMatch(/gap:\s*4px/);
-    expect(body).toMatch(/& > \*\s*\{[^}]*background-color:\s*var\(--color-surface\)[^}]*border-radius:\s*4px[^}]*box-shadow:\s*var\(--sh-card\)/);
+    expect(body).toMatch(
+      /& > \*\s*\{[^}]*background-color:\s*var\(--color-surface\)[^}]*border-radius:\s*4px[^}]*box-shadow:\s*var\(--sh-card\)/,
+    );
     expect(body).toMatch(/& > :first-child\s*\{[^}]*border-top-left-radius:\s*var\(--radius-md\)/);
-    expect(body).toMatch(/& > :last-child\s*\{[^}]*border-bottom-right-radius:\s*var\(--radius-md\)/);
+    expect(body).toMatch(
+      /& > :last-child\s*\{[^}]*border-bottom-right-radius:\s*var\(--radius-md\)/,
+    );
   });
 
   it("separates rows by an inset hairline, none above the first", () => {
@@ -155,7 +169,8 @@ describe("panels as slices under a lid", () => {
 // they lost their edge, their on-state border (`!border-active`) and their
 // focus border. A control on the surface needs its border to be seen at all.
 describe("controls", () => {
-  const has = (cls: string, token: string) => new RegExp(`(^|[\\s"'\`])${token}(?=[\\s"'\`]|$)`).test(cls);
+  const has = (cls: string, token: string) =>
+    new RegExp(`(^|[\\s"'\`])${token}(?=[\\s"'\`]|$)`).test(cls);
 
   // Segments inside a bordered group, and the solid button on the red takeover banner.
   const BORDERLESS_OK = ["components/PeriodSelector.tsx", "components/layout/TakeoverBanner.tsx"];

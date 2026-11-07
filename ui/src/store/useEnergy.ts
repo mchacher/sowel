@@ -46,8 +46,10 @@ export function canGoForward(dateStr: string, period: Period): boolean {
       return sunday < today;
     }
     case "month":
-      return d.getFullYear() < today.getFullYear() ||
-        (d.getFullYear() === today.getFullYear() && d.getMonth() < today.getMonth());
+      return (
+        d.getFullYear() < today.getFullYear() ||
+        (d.getFullYear() === today.getFullYear() && d.getMonth() < today.getMonth())
+      );
     case "year":
       return d.getFullYear() < today.getFullYear();
   }

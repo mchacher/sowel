@@ -11,11 +11,7 @@ import { formatRange } from "./format";
 
 export type SelectorPeriod = "day" | "week" | "month" | "year";
 
-export function formatDateLabel(
-  dateStr: string,
-  period: SelectorPeriod,
-  locale: string,
-): string {
+export function formatDateLabel(dateStr: string, period: SelectorPeriod, locale: string): string {
   const d = new Date(dateStr + "T12:00:00");
   switch (period) {
     case "day":

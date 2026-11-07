@@ -66,10 +66,7 @@ export function BottomSheet({ open, onClose, title, icon, children, footer }: Bo
   return createPortal(
     <div className="fixed inset-0 z-50">
       {/* Backdrop */}
-      <div
-        className="absolute inset-0 bg-black/40 transition-opacity"
-        onClick={onClose}
-      />
+      <div className="absolute inset-0 bg-black/40 transition-opacity" onClick={onClose} />
 
       {/* Sheet */}
       <div
@@ -99,9 +96,7 @@ export function BottomSheet({ open, onClose, title, icon, children, footer }: Bo
         </div>
 
         {/* Content */}
-        <div className="flex-1 overflow-y-auto px-5 pb-6">
-          {children}
-        </div>
+        <div className="flex-1 overflow-y-auto px-5 pb-6">{children}</div>
 
         {footer && <div className="border-t border-border-light px-5 py-1">{footer}</div>}
       </div>

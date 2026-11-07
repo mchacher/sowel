@@ -24,7 +24,10 @@ interface DashboardState {
     label?: string;
     icon?: string;
   }) => Promise<DashboardWidget>;
-  updateWidget: (id: string, data: { label?: string | null; icon?: string | null; config?: WidgetConfig | null }) => Promise<void>;
+  updateWidget: (
+    id: string,
+    data: { label?: string | null; icon?: string | null; config?: WidgetConfig | null },
+  ) => Promise<void>;
   deleteWidget: (id: string) => Promise<void>;
   reorderWidgets: (order: string[]) => Promise<void>;
   setWidgets: (widgets: DashboardWidget[]) => void;

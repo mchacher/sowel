@@ -160,10 +160,7 @@ describe("Live consumption breakdown — stale parts (#744)", () => {
     // Before the tick, a row only aged out when something else re-rendered the
     // page. A home whose only sources poll every 300 s would recompute at the
     // poll, with the reading 0 s old, and the rule would never apply at all.
-    seed([
-      meter("Grid", "main_energy_meter", 1000),
-      meter("Piscine", "energy_meter", 900, 30_000),
-    ]);
+    seed([meter("Grid", "main_energy_meter", 1000), meter("Piscine", "energy_meter", 900, 30_000)]);
     render(<LiveEnergyPage />, { wrapper: MemoryRouter });
     expect(within(row("Piscine")).queryByText(/reading outdated/)).toBeNull();
 
@@ -189,10 +186,7 @@ describe("Live consumption breakdown — stale parts (#744)", () => {
   it("agrees with its own centre label", () => {
     // The centre rounds to the nearest 5 W while the shares used to divide by
     // the unrounded total, so the two figures on screen contradicted each other.
-    seed([
-      meter("Grid", "main_energy_meter", 33.5),
-      meter("PAC", "energy_meter", 10),
-    ]);
+    seed([meter("Grid", "main_energy_meter", 33.5), meter("PAC", "energy_meter", 10)]);
     render(<LiveEnergyPage />, { wrapper: MemoryRouter });
 
     // The flow diagram above shows the same house figure, so scope to the card.

@@ -37,7 +37,9 @@ export function Panel({
             {subtitle}
           </span>
         )}
-        {headerRight && <div className="ml-auto flex items-center gap-2 flex-shrink-0">{headerRight}</div>}
+        {headerRight && (
+          <div className="ml-auto flex items-center gap-2 flex-shrink-0">{headerRight}</div>
+        )}
       </div>
       <div className="slices">{children}</div>
     </section>

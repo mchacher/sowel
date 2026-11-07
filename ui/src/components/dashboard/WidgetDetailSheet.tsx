@@ -82,7 +82,13 @@ interface EquipmentDetailProps {
   onClose: () => void;
 }
 
-export function EquipmentDetailSheet({ widget, equipment, equipmentZone, onExecuteOrder, onClose }: EquipmentDetailProps) {
+export function EquipmentDetailSheet({
+  widget,
+  equipment,
+  equipmentZone,
+  onExecuteOrder,
+  onClose,
+}: EquipmentDetailProps) {
   const {
     isLight,
     isShutter,
@@ -99,8 +105,11 @@ export function EquipmentDetailSheet({ widget, equipment, equipmentZone, onExecu
     shutterPosition,
   } = useEquipmentState(equipment);
   // A full-width sheet header has room for the joined form, unlike the cards.
-  const label = widget.label
-    || (equipmentZone ? `${equipment.name}${EQUIPMENT_ZONE_SEPARATOR}${equipmentZone}` : equipment.name);
+  const label =
+    widget.label ||
+    (equipmentZone
+      ? `${equipment.name}${EQUIPMENT_ZONE_SEPARATOR}${equipmentZone}`
+      : equipment.name);
   const execOrder = (alias: string, value: unknown) => onExecuteOrder(equipment.id, alias, value);
   // Spec 196 (pr9-dashboard) — the sheet's way to the equipment page (history, settings).
   const pageLink = <EquipmentPageLink equipmentId={equipment.id} />;
@@ -127,9 +136,7 @@ export function EquipmentDetailSheet({ widget, equipment, equipmentZone, onExecu
 
   if (isLight && (equipment.type === "light_dimmable" || equipment.type === "light_color")) {
     return (
-      <BottomSheet open onClose={onClose} title={label} footer={pageLink}
-        icon={customIcon}
-      >
+      <BottomSheet open onClose={onClose} title={label} footer={pageLink} icon={customIcon}>
         <LightDetailContent equipment={equipment} onExecuteOrder={execOrder} />
       </BottomSheet>
     );
@@ -140,9 +147,7 @@ export function EquipmentDetailSheet({ widget, equipment, equipmentZone, onExecu
   // all and the sheet returned null, which is why the tile was not clickable.
   if (equipment.type === "weather_forecast") {
     return (
-      <BottomSheet open onClose={onClose} title={label} footer={pageLink}
-        icon={customIcon}
-      >
+      <BottomSheet open onClose={onClose} title={label} footer={pageLink} icon={customIcon}>
         <ForecastDetailContent equipment={equipment} />
       </BottomSheet>
     );
@@ -150,9 +155,7 @@ export function EquipmentDetailSheet({ widget, equipment, equipmentZone, onExecu
 
   if (isShutter || isAwning || equipment.type === "door" || equipment.type === "pool_cover") {
     return (
-      <BottomSheet open onClose={onClose} title={label} footer={pageLink}
-        icon={customIcon}
-      >
+      <BottomSheet open onClose={onClose} title={label} footer={pageLink} icon={customIcon}>
         <ShutterDetailContent equipment={equipment} onExecuteOrder={execOrder} />
       </BottomSheet>
     );
@@ -160,9 +163,7 @@ export function EquipmentDetailSheet({ widget, equipment, equipmentZone, onExecu
 
   if (isThermostat || isPoolHeatPump) {
     return (
-      <BottomSheet open onClose={onClose} title={label} footer={pageLink}
-        icon={customIcon}
-      >
+      <BottomSheet open onClose={onClose} title={label} footer={pageLink} icon={customIcon}>
         <ThermostatDetailContent equipment={equipment} onExecuteOrder={execOrder} />
       </BottomSheet>
     );
@@ -170,9 +171,7 @@ export function EquipmentDetailSheet({ widget, equipment, equipmentZone, onExecu
 
   if (isHeater) {
     return (
-      <BottomSheet open onClose={onClose} title={label} footer={pageLink}
-        icon={customIcon}
-      >
+      <BottomSheet open onClose={onClose} title={label} footer={pageLink} icon={customIcon}>
         <HeaterDetailContent equipment={equipment} onExecuteOrder={execOrder} />
       </BottomSheet>
     );
@@ -180,19 +179,20 @@ export function EquipmentDetailSheet({ widget, equipment, equipmentZone, onExecu
 
   if (isGate) {
     return (
-      <BottomSheet open onClose={onClose} title={label} footer={pageLink}
-        icon={customIcon}
-      >
-        <GateDetailContent equipment={equipment} onExecuteOrder={execOrder} iconKey={widget.icon} zoneName={equipmentZone} />
+      <BottomSheet open onClose={onClose} title={label} footer={pageLink} icon={customIcon}>
+        <GateDetailContent
+          equipment={equipment}
+          onExecuteOrder={execOrder}
+          iconKey={widget.icon}
+          zoneName={equipmentZone}
+        />
       </BottomSheet>
     );
   }
 
   if (equipment.type === "weather") {
     return (
-      <BottomSheet open onClose={onClose} title={label} footer={pageLink}
-        icon={customIcon}
-      >
+      <BottomSheet open onClose={onClose} title={label} footer={pageLink} icon={customIcon}>
         {isRainOnlyWeather(equipment) ? (
           <RainDetailContent equipment={equipment} />
         ) : (
@@ -204,9 +204,7 @@ export function EquipmentDetailSheet({ widget, equipment, equipmentZone, onExecu
 
   if (equipment.type === "electric_vehicle") {
     return (
-      <BottomSheet open onClose={onClose} title={label} footer={pageLink}
-        icon={customIcon}
-      >
+      <BottomSheet open onClose={onClose} title={label} footer={pageLink} icon={customIcon}>
         <div className="p-4">
           <ElectricVehicleControl equipment={equipment} onExecuteOrder={execOrder} />
         </div>
@@ -216,9 +214,7 @@ export function EquipmentDetailSheet({ widget, equipment, equipmentZone, onExecu
 
   if (equipment.type === "ev_charger") {
     return (
-      <BottomSheet open onClose={onClose} title={label} footer={pageLink}
-        icon={customIcon}
-      >
+      <BottomSheet open onClose={onClose} title={label} footer={pageLink} icon={customIcon}>
         <div className="p-4">
           <EvChargerControl equipment={equipment} onExecuteOrder={execOrder} />
         </div>
@@ -228,9 +224,7 @@ export function EquipmentDetailSheet({ widget, equipment, equipmentZone, onExecu
 
   if (equipment.type === "vmc") {
     return (
-      <BottomSheet open onClose={onClose} title={label} footer={pageLink}
-        icon={customIcon}
-      >
+      <BottomSheet open onClose={onClose} title={label} footer={pageLink} icon={customIcon}>
         <div className="p-4">
           <VmcControl equipment={equipment} onExecuteOrder={execOrder} />
         </div>
@@ -240,10 +234,11 @@ export function EquipmentDetailSheet({ widget, equipment, equipmentZone, onExecu
 
   if (isSensor) {
     return (
-      <BottomSheet open onClose={onClose} title={label} footer={pageLink}
-        icon={customIcon}
-      >
-        <SensorDetailContent equipment={equipment} visibleBindings={widget.config?.visibleBindings} />
+      <BottomSheet open onClose={onClose} title={label} footer={pageLink} icon={customIcon}>
+        <SensorDetailContent
+          equipment={equipment}
+          visibleBindings={widget.config?.visibleBindings}
+        />
       </BottomSheet>
     );
   }
@@ -376,9 +371,7 @@ function WeatherDetailContent({ equipment }: { equipment: EquipmentWithDetails }
   const rainHost = sensorBindings.find((b) => b.category === "rain");
   const rainDeviceId = rainHost?.deviceId ?? "computed-rain";
   const rainDeviceName = rainHost?.deviceName ?? t("weather.rainCurrent");
-  const existingRainKeys = new Set(
-    (byDevice.get(rainDeviceId)?.bindings ?? []).map((b) => b.key),
-  );
+  const existingRainKeys = new Set((byDevice.get(rainDeviceId)?.bindings ?? []).map((b) => b.key));
   for (const c of (equipment.computedData ?? []).filter((c) =>
     WEATHER_COMPUTED_ALIASES.includes(c.alias),
   )) {
@@ -431,14 +424,9 @@ function WeatherDetailContent({ equipment }: { equipment: EquipmentWithDetails }
       <div className="space-y-3">
         {devices.map((dev) => {
           const batteryLevel =
-            dev.battery && typeof dev.battery.value === "number"
-              ? dev.battery.value
-              : null;
+            dev.battery && typeof dev.battery.value === "number" ? dev.battery.value : null;
           return (
-            <div
-              key={dev.id}
-              className="rounded-md border border-border-light overflow-hidden"
-            >
+            <div key={dev.id} className="rounded-md border border-border-light overflow-hidden">
               <div className="bg-border-light/40 px-3 py-2 flex items-center gap-2">
                 <span className="text-text-tertiary">{getKindIcon(dev.kind)}</span>
                 <span className="text-small font-semibold text-text-secondary flex-1 min-w-0 truncate">
@@ -457,10 +445,7 @@ function WeatherDetailContent({ equipment }: { equipment: EquipmentWithDetails }
               </div>
               <div className="divide-y divide-border-light">
                 {dev.bindings.map((b) => (
-                  <div
-                    key={b.id}
-                    className="flex items-baseline justify-between px-3 py-2"
-                  >
+                  <div key={b.id} className="flex items-baseline justify-between px-3 py-2">
                     <span className="text-small text-text-secondary">
                       {WEATHER_KEY_LABELS[b.key] ? t(WEATHER_KEY_LABELS[b.key]) : b.key}
                     </span>
@@ -525,27 +510,28 @@ export function ZoneDetailSheet({ widget, zone, zoneLabel, equipments, onClose }
   }, [zone]);
 
   const filteredEquipments = useMemo(() => {
-    const types = family ? WIDGET_FAMILY_TYPES[family] ?? [] : [];
-    return equipments.filter(
-      (eq) => zoneIds.has(eq.zoneId) && types.includes(eq.type),
-    );
+    const types = family ? (WIDGET_FAMILY_TYPES[family] ?? []) : [];
+    return equipments.filter((eq) => zoneIds.has(eq.zoneId) && types.includes(eq.type));
   }, [equipments, zoneIds, family]);
 
   const [commandLoading, setCommandLoading] = useState<string | null>(null);
 
-  const handleZoneCommand = useCallback(async (orderKey: string, value?: unknown) => {
-    if (!widget.zoneId) return;
-    setCommandLoading(orderKey);
-    try {
-      await executeZoneOrder(widget.zoneId, orderKey, value);
-    } catch (err) {
-      // The setpoint stepper reverts and says « not applied » on a rejection;
-      // the other commands stay silent, the live updates tell the outcome.
-      if (orderKey === "allThermostatsSetpoint") throw err;
-    } finally {
-      setCommandLoading(null);
-    }
-  }, [widget.zoneId]);
+  const handleZoneCommand = useCallback(
+    async (orderKey: string, value?: unknown) => {
+      if (!widget.zoneId) return;
+      setCommandLoading(orderKey);
+      try {
+        await executeZoneOrder(widget.zoneId, orderKey, value);
+      } catch (err) {
+        // The setpoint stepper reverts and says « not applied » on a rejection;
+        // the other commands stay silent, the live updates tell the outcome.
+        if (orderKey === "allThermostatsSetpoint") throw err;
+      } finally {
+        setCommandLoading(null);
+      }
+    },
+    [widget.zoneId],
+  );
 
   return (
     <BottomSheet open onClose={onClose} title={label}>
@@ -577,9 +563,7 @@ export function ZoneDetailSheet({ widget, zone, zoneLabel, equipments, onClose }
           onCommand={handleZoneCommand}
         />
       )}
-      {family === "sensors" && (
-        <ZoneSensorsDetail equipments={filteredEquipments} />
-      )}
+      {family === "sensors" && <ZoneSensorsDetail equipments={filteredEquipments} />}
       {filteredEquipments.length === 0 && (
         <p className="text-small text-text-tertiary text-center py-4">
           {t("dashboard.noEquipments")}
@@ -621,9 +605,10 @@ function ZoneLightsDetail({
         if (bb && typeof bb.value === "number") brightnessValues.push(bb.value);
       }
     }
-    const avg = brightnessValues.length > 0
-      ? Math.round(brightnessValues.reduce((a, b) => a + b, 0) / brightnessValues.length)
-      : null;
+    const avg =
+      brightnessValues.length > 0
+        ? Math.round(brightnessValues.reduce((a, b) => a + b, 0) / brightnessValues.length)
+        : null;
     return {
       onCount: on,
       allDimmable: equipments.length > 0 && dimmableCount === equipments.length,
@@ -633,7 +618,8 @@ function ZoneLightsDetail({
 
   const anyOn = onCount > 0;
   const displayBrightness = slider.displayValue(avgBrightness);
-  const brightnessPct = displayBrightness !== null ? Math.round((displayBrightness / 254) * 100) : null;
+  const brightnessPct =
+    displayBrightness !== null ? Math.round((displayBrightness / 254) * 100) : null;
 
   const handleBrightnessCommit = () =>
     slider.onCommit((v) => {
@@ -678,7 +664,11 @@ function ZoneLightsDetail({
           disabled={commandLoading !== null}
           className="flex-1 h-12 flex items-center justify-center gap-2 rounded-sm border border-border bg-surface text-text-secondary hover:bg-border-light transition-colors cursor-pointer active:scale-[0.97]"
         >
-          {commandLoading === "allLightsOn" ? <Loader2 size={18} className="animate-spin" /> : <Lightbulb size={18} strokeWidth={1.5} />}
+          {commandLoading === "allLightsOn" ? (
+            <Loader2 size={18} className="animate-spin" />
+          ) : (
+            <Lightbulb size={18} strokeWidth={1.5} />
+          )}
           {t("zones.commands.allLightsOn")}
         </button>
         <button
@@ -686,7 +676,11 @@ function ZoneLightsDetail({
           disabled={commandLoading !== null}
           className="flex-1 h-12 flex items-center justify-center gap-2 rounded-sm border border-border bg-surface text-text-secondary hover:bg-border-light transition-colors cursor-pointer active:scale-[0.97]"
         >
-          {commandLoading === "allLightsOff" ? <Loader2 size={18} className="animate-spin" /> : <LightbulbOff size={18} strokeWidth={1.5} />}
+          {commandLoading === "allLightsOff" ? (
+            <Loader2 size={18} className="animate-spin" />
+          ) : (
+            <LightbulbOff size={18} strokeWidth={1.5} />
+          )}
           {t("zones.commands.allLightsOff")}
         </button>
       </div>
@@ -747,7 +741,11 @@ function ZoneShuttersDetail({
           className="flex-1 h-12 flex items-center justify-center rounded-sm border border-border bg-surface text-text-secondary hover:bg-border-light transition-colors cursor-pointer active:scale-[0.97]"
           title={t("zones.commands.allShuttersOpen")}
         >
-          {commandLoading === "allShuttersOpen" ? <Loader2 size={18} className="animate-spin" /> : <ChevronUp size={20} strokeWidth={2} />}
+          {commandLoading === "allShuttersOpen" ? (
+            <Loader2 size={18} className="animate-spin" />
+          ) : (
+            <ChevronUp size={20} strokeWidth={2} />
+          )}
         </button>
         {hasStop && (
           <button
@@ -756,7 +754,11 @@ function ZoneShuttersDetail({
             className="flex-1 h-12 flex items-center justify-center rounded-sm border border-border bg-surface text-text-secondary hover:bg-border-light transition-colors cursor-pointer active:scale-[0.97]"
             title={t("zones.commands.allShuttersStop")}
           >
-            {commandLoading === "allShuttersStop" ? <Loader2 size={18} className="animate-spin" /> : <Square size={14} strokeWidth={2.5} />}
+            {commandLoading === "allShuttersStop" ? (
+              <Loader2 size={18} className="animate-spin" />
+            ) : (
+              <Square size={14} strokeWidth={2.5} />
+            )}
           </button>
         )}
         <button
@@ -765,7 +767,11 @@ function ZoneShuttersDetail({
           className="flex-1 h-12 flex items-center justify-center rounded-sm border border-border bg-surface text-text-secondary hover:bg-border-light transition-colors cursor-pointer active:scale-[0.97]"
           title={t("zones.commands.allShuttersClose")}
         >
-          {commandLoading === "allShuttersClose" ? <Loader2 size={18} className="animate-spin" /> : <ChevronDown size={20} strokeWidth={2} />}
+          {commandLoading === "allShuttersClose" ? (
+            <Loader2 size={18} className="animate-spin" />
+          ) : (
+            <ChevronDown size={20} strokeWidth={2} />
+          )}
         </button>
       </div>
     </div>
@@ -821,7 +827,11 @@ function ZoneAwningsDetail({
           className="flex-1 h-12 flex items-center justify-center rounded-sm border border-border bg-surface text-text-secondary hover:bg-border-light transition-colors cursor-pointer active:scale-[0.97]"
           title={t("zones.commands.allAwningsRetract")}
         >
-          {commandLoading === "allAwningsRetract" ? <Loader2 size={18} className="animate-spin" /> : <ChevronUp size={20} strokeWidth={2} />}
+          {commandLoading === "allAwningsRetract" ? (
+            <Loader2 size={18} className="animate-spin" />
+          ) : (
+            <ChevronUp size={20} strokeWidth={2} />
+          )}
         </button>
         {hasStop && (
           <button
@@ -830,7 +840,11 @@ function ZoneAwningsDetail({
             className="flex-1 h-12 flex items-center justify-center rounded-sm border border-border bg-surface text-text-secondary hover:bg-border-light transition-colors cursor-pointer active:scale-[0.97]"
             title={t("zones.commands.allAwningsStop")}
           >
-            {commandLoading === "allAwningsStop" ? <Loader2 size={18} className="animate-spin" /> : <Square size={14} strokeWidth={2.5} />}
+            {commandLoading === "allAwningsStop" ? (
+              <Loader2 size={18} className="animate-spin" />
+            ) : (
+              <Square size={14} strokeWidth={2.5} />
+            )}
           </button>
         )}
         <button
@@ -839,7 +853,11 @@ function ZoneAwningsDetail({
           className="flex-1 h-12 flex items-center justify-center rounded-sm border border-border bg-surface text-text-secondary hover:bg-border-light transition-colors cursor-pointer active:scale-[0.97]"
           title={t("zones.commands.allAwningsExtend")}
         >
-          {commandLoading === "allAwningsExtend" ? <Loader2 size={18} className="animate-spin" /> : <ChevronDown size={20} strokeWidth={2} />}
+          {commandLoading === "allAwningsExtend" ? (
+            <Loader2 size={18} className="animate-spin" />
+          ) : (
+            <ChevronDown size={20} strokeWidth={2} />
+          )}
         </button>
       </div>
     </div>
@@ -878,8 +896,8 @@ function ZoneHeatingDetail({
       const power = thermostatPowerStateBinding(eq.dataBindings);
       if (power?.value === true) on = true;
     }
-    const avg = (arr: number[]) => arr.length > 0
-      ? arr.reduce((a, b) => a + b, 0) / arr.length : null;
+    const avg = (arr: number[]) =>
+      arr.length > 0 ? arr.reduce((a, b) => a + b, 0) / arr.length : null;
     return { avgTemp: avg(temps), avgSetpoint: avg(setpoints), anyOn: on };
   }, [equipments]);
 
@@ -929,9 +947,12 @@ function ZoneHeatingDetail({
             : "bg-primary/10 text-primary border border-primary/30 hover:bg-primary/20"
         }`}
       >
-        {(commandLoading === "allThermostatsPowerOn" || commandLoading === "allThermostatsPowerOff")
-          ? <Loader2 size={18} className="animate-spin" />
-          : <Power size={18} strokeWidth={1.5} />}
+        {commandLoading === "allThermostatsPowerOn" ||
+        commandLoading === "allThermostatsPowerOff" ? (
+          <Loader2 size={18} className="animate-spin" />
+        ) : (
+          <Power size={18} strokeWidth={1.5} />
+        )}
         {anyOn ? t("controls.turnOff") : t("controls.turnOn")}
       </button>
     </div>
@@ -952,8 +973,8 @@ function ZoneSensorsDetail({ equipments }: { equipments: EquipmentWithDetails[] 
         if (b.category === "humidity" && typeof b.value === "number") humidities.push(b.value);
       }
     }
-    const avg = (arr: number[]) => arr.length > 0
-      ? arr.reduce((a, b) => a + b, 0) / arr.length : null;
+    const avg = (arr: number[]) =>
+      arr.length > 0 ? arr.reduce((a, b) => a + b, 0) / arr.length : null;
     return { avgTemp: avg(temps), avgHumidity: avg(humidities) };
   }, [equipments]);
 
@@ -1014,9 +1035,10 @@ function LightDetailContent({
   const brightnessBinding = equipment.dataBindings.find(
     (db) => db.alias === "brightness" || db.category === "light_brightness",
   );
-  const deviceBrightness = brightnessBinding && typeof brightnessBinding.value === "number"
-    ? brightnessBinding.value
-    : null;
+  const deviceBrightness =
+    brightnessBinding && typeof brightnessBinding.value === "number"
+      ? brightnessBinding.value
+      : null;
   const brightness = slider.displayValue(deviceBrightness);
 
   // Category-first resolver — see spec 110.
@@ -1039,11 +1061,10 @@ function LightDetailContent({
     setExecuting(true);
     try {
       const alias = toggleBinding.alias;
-      const onVal = toggleBinding.enumValues?.find(v => /^on$/i.test(v)) ?? "ON";
-      const offVal = toggleBinding.enumValues?.find(v => /^off$/i.test(v)) ?? "OFF";
-      const value = toggleBinding.type === "boolean" && alias !== "state"
-        ? !isOn
-        : (isOn ? offVal : onVal);
+      const onVal = toggleBinding.enumValues?.find((v) => /^on$/i.test(v)) ?? "ON";
+      const offVal = toggleBinding.enumValues?.find((v) => /^off$/i.test(v)) ?? "OFF";
+      const value =
+        toggleBinding.type === "boolean" && alias !== "state" ? !isOn : isOn ? offVal : onVal;
       await onExecuteOrder(alias, value);
     } finally {
       setExecuting(false);
@@ -1094,7 +1115,11 @@ function LightDetailContent({
                 : "bg-border-light text-text-secondary border border-border hover:bg-border"
             }`}
           >
-            {executing ? <Loader2 size={18} className="animate-spin" /> : <Power size={18} strokeWidth={1.5} />}
+            {executing ? (
+              <Loader2 size={18} className="animate-spin" />
+            ) : (
+              <Power size={18} strokeWidth={1.5} />
+            )}
             {isOn ? t("controls.on") : t("controls.off")}
           </button>
         </div>
@@ -1124,12 +1149,9 @@ function ShutterDetailContent({
   const doorPill = doorWordPill(equipment);
   const doorOpen = isDoor && isDoorOpenForCount(doorState(equipment.dataBindings));
 
-  const positionBinding = equipment.dataBindings.find(
-    (db) => db.category === "shutter_position",
-  );
-  const devicePosition = positionBinding && typeof positionBinding.value === "number"
-    ? positionBinding.value
-    : null;
+  const positionBinding = equipment.dataBindings.find((db) => db.category === "shutter_position");
+  const devicePosition =
+    positionBinding && typeof positionBinding.value === "number" ? positionBinding.value : null;
   const position = slider.displayValue(devicePosition);
   const level = position !== null ? shutterLevel(position) : null;
 
@@ -1153,9 +1175,7 @@ function ShutterDetailContent({
     equipment.orderBindings.find(
       (ob) => ob.category === "pool_cover_move" || ob.category === "shutter_move",
     ) ??
-    equipment.orderBindings.find(
-      (ob) => ob.alias === "state" || /shutter\d*_state/.test(ob.alias),
-    );
+    equipment.orderBindings.find((ob) => ob.alias === "state" || /shutter\d*_state/.test(ob.alias));
   const positionOrderBinding =
     equipment.orderBindings.find((ob) => ob.category === "set_shutter_position") ??
     equipment.orderBindings.find(
@@ -1168,7 +1188,8 @@ function ShutterDetailContent({
   // control — confirmed live: a stop command only makes the motor pause
   // briefly before it continues to its original target). The integration
   // signals this by omitting "STOP" from the move order's enumValues.
-  const hasStop = !moveBinding?.enumValues || moveBinding.enumValues.some((v) => v.toUpperCase() === "STOP");
+  const hasStop =
+    !moveBinding?.enumValues || moveBinding.enumValues.some((v) => v.toUpperCase() === "STOP");
 
   const handleCommand = async (command: "OPEN" | "STOP" | "CLOSE") => {
     if (executing || !moveBinding) return;
@@ -1231,38 +1252,40 @@ function ShutterDetailContent({
 
       {/* Action buttons — full width. Pool covers slide horizontally so we
        * use ←/→ arrows; window shutters stay with up/down. */}
-      {hasState && equipment.enabled && (() => {
-        const isHorizontal = equipment.type === "pool_cover";
-        const OpenIcon = isHorizontal ? ChevronLeft : ChevronUp;
-        const CloseIcon = isHorizontal ? ChevronRight : ChevronDown;
-        return (
-          <div className="flex gap-3">
-            <button
-              onClick={() => handleCommand("OPEN")}
-              disabled={executing}
-              className="flex-1 h-12 flex items-center justify-center rounded-sm border border-border bg-surface text-text-secondary hover:bg-border-light transition-colors cursor-pointer active:scale-[0.97]"
-            >
-              <OpenIcon size={20} strokeWidth={2} />
-            </button>
-            {hasStop && (
+      {hasState &&
+        equipment.enabled &&
+        (() => {
+          const isHorizontal = equipment.type === "pool_cover";
+          const OpenIcon = isHorizontal ? ChevronLeft : ChevronUp;
+          const CloseIcon = isHorizontal ? ChevronRight : ChevronDown;
+          return (
+            <div className="flex gap-3">
               <button
-                onClick={() => handleCommand("STOP")}
+                onClick={() => handleCommand("OPEN")}
                 disabled={executing}
                 className="flex-1 h-12 flex items-center justify-center rounded-sm border border-border bg-surface text-text-secondary hover:bg-border-light transition-colors cursor-pointer active:scale-[0.97]"
               >
-                <Square size={14} strokeWidth={2.5} />
+                <OpenIcon size={20} strokeWidth={2} />
               </button>
-            )}
-            <button
-              onClick={() => handleCommand("CLOSE")}
-              disabled={executing}
-              className="flex-1 h-12 flex items-center justify-center rounded-sm border border-border bg-surface text-text-secondary hover:bg-border-light transition-colors cursor-pointer active:scale-[0.97]"
-            >
-              <CloseIcon size={20} strokeWidth={2} />
-            </button>
-          </div>
-        );
-      })()}
+              {hasStop && (
+                <button
+                  onClick={() => handleCommand("STOP")}
+                  disabled={executing}
+                  className="flex-1 h-12 flex items-center justify-center rounded-sm border border-border bg-surface text-text-secondary hover:bg-border-light transition-colors cursor-pointer active:scale-[0.97]"
+                >
+                  <Square size={14} strokeWidth={2.5} />
+                </button>
+              )}
+              <button
+                onClick={() => handleCommand("CLOSE")}
+                disabled={executing}
+                className="flex-1 h-12 flex items-center justify-center rounded-sm border border-border bg-surface text-text-secondary hover:bg-border-light transition-colors cursor-pointer active:scale-[0.97]"
+              >
+                <CloseIcon size={20} strokeWidth={2} />
+              </button>
+            </div>
+          );
+        })()}
     </div>
   );
 }
@@ -1367,9 +1390,11 @@ function ThermostatDetailContent({
               : "bg-primary/10 text-primary border border-primary/30 hover:bg-primary/20"
           }`}
         >
-          {executing === "power"
-            ? <Loader2 size={18} className="animate-spin" />
-            : <Power size={18} strokeWidth={1.5} />}
+          {executing === "power" ? (
+            <Loader2 size={18} className="animate-spin" />
+          ) : (
+            <Power size={18} strokeWidth={1.5} />
+          )}
           {isOn ? t("controls.turnOff") : t("controls.turnOn")}
         </button>
       )}
@@ -1437,9 +1462,7 @@ function HeaterDetailContent({
       <div className="flex justify-center">
         <span
           className={`text-body font-medium px-4 py-2 rounded-full ${
-            isComfort
-              ? "bg-heat/10 text-heat"
-              : "bg-primary/10 text-primary"
+            isComfort ? "bg-heat/10 text-heat" : "bg-primary/10 text-primary"
           }`}
         >
           {isComfort ? t("controls.heater.comfort") : t("controls.heater.eco")}
@@ -1457,11 +1480,13 @@ function HeaterDetailContent({
               : "bg-heat/10 text-heat border-heat/30 hover:bg-heat/20"
           }`}
         >
-          {executing
-            ? <Loader2 size={18} className="animate-spin" />
-            : isComfort
-              ? <Snowflake size={18} strokeWidth={1.5} />
-              : <Flame size={18} strokeWidth={1.5} />}
+          {executing ? (
+            <Loader2 size={18} className="animate-spin" />
+          ) : isComfort ? (
+            <Snowflake size={18} strokeWidth={1.5} />
+          ) : (
+            <Flame size={18} strokeWidth={1.5} />
+          )}
           {isComfort ? t("controls.heater.switchEco") : t("controls.heater.switchComfort")}
         </button>
       )}
@@ -1589,9 +1614,12 @@ function SensorDetailContent({
 }) {
   const { sensorBindings, batteryBindings, batteryAlert } = useEquipmentState(equipment);
 
-  const filteredBindings = visibleBindings && visibleBindings.length > 0
-    ? visibleBindings.map((alias) => sensorBindings.find((b) => b.alias === alias)).filter((b): b is typeof sensorBindings[number] => !!b)
-    : sensorBindings;
+  const filteredBindings =
+    visibleBindings && visibleBindings.length > 0
+      ? visibleBindings
+          .map((alias) => sensorBindings.find((b) => b.alias === alias))
+          .filter((b): b is (typeof sensorBindings)[number] => !!b)
+      : sensorBindings;
 
   return (
     <div className="flex flex-col gap-4">

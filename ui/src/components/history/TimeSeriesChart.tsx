@@ -1,4 +1,8 @@
-import { CHART_TICK_FONT, CHART_TOOLTIP_FONT, CHART_TOOLTIP_ITEM_STYLE } from "../../lib/chart-font";
+import {
+  CHART_TICK_FONT,
+  CHART_TOOLTIP_FONT,
+  CHART_TOOLTIP_ITEM_STYLE,
+} from "../../lib/chart-font";
 import { useMemo } from "react";
 import { useTranslation } from "react-i18next";
 import {
@@ -36,7 +40,12 @@ function formatTime(iso: string, range: TimeRange): string {
     return d.toLocaleTimeString(currentLocale(), { hour: "2-digit", minute: "2-digit" });
   }
   if (range === "7d") {
-    return d.toLocaleDateString(currentLocale(), { weekday: "short", day: "numeric", hour: "2-digit", minute: "2-digit" });
+    return d.toLocaleDateString(currentLocale(), {
+      weekday: "short",
+      day: "numeric",
+      hour: "2-digit",
+      minute: "2-digit",
+    });
   }
   return d.toLocaleDateString(currentLocale(), { month: "short", day: "numeric" });
 }
@@ -63,7 +72,16 @@ function formatRelativeTime(isoTime: string, now: number): string | null {
 const POWER_COLOR = "var(--color-energy-hp)";
 const POWER_GRADIENT_ID = "powerGradient";
 
-export function TimeSeriesChart({ points, range, resolution, unit, height = 200, fetchTime, dataType, category }: TimeSeriesChartProps) {
+export function TimeSeriesChart({
+  points,
+  range,
+  resolution,
+  unit,
+  height = 200,
+  fetchTime,
+  dataType,
+  category,
+}: TimeSeriesChartProps) {
   const { t } = useTranslation();
   const isDiscrete = dataType === "boolean" || dataType === "enum";
   const isPower = category === "power";
@@ -106,14 +124,18 @@ export function TimeSeriesChart({ points, range, resolution, unit, height = 200,
 
   if (data.length === 0) {
     return (
-      <div className="flex items-center justify-center text-caption text-text-tertiary" style={{ height }}>
+      <div
+        className="flex items-center justify-center text-caption text-text-tertiary"
+        style={{ height }}
+      >
         {t("history.noData")}
       </div>
     );
   }
 
   const hasMinMax = resolution !== "raw" && data.some((d) => d.min !== undefined);
-  const staleDuration = lastRealTime && fetchTime ? formatRelativeTime(lastRealTime, fetchTime) : null;
+  const staleDuration =
+    lastRealTime && fetchTime ? formatRelativeTime(lastRealTime, fetchTime) : null;
 
   // Use CSS variables for chart colors — works in both light and dark mode
   const primaryColor = isPower ? POWER_COLOR : "var(--color-primary)";
@@ -124,127 +146,135 @@ export function TimeSeriesChart({ points, range, resolution, unit, height = 200,
 
   return (
     <div>
-    <ResponsiveContainer width="100%" height={height}>
-      <ComposedChart data={data} margin={{ top: 4, right: 8, left: -16, bottom: 0 }}>
-        {/* Gradient definition for power area fill */}
-        {isPower && (
-          <defs>
-            <linearGradient id={POWER_GRADIENT_ID} x1="0" y1="0" x2="0" y2="1">
-              <stop offset="0%" stopColor={POWER_COLOR} stopOpacity={0.3} />
-              <stop offset="100%" stopColor={POWER_COLOR} stopOpacity={0.02} />
-            </linearGradient>
-          </defs>
-        )}
-
-        <CartesianGrid strokeDasharray="3 3" stroke={borderColor} />
-        <XAxis
-          dataKey="ts"
-          type="number"
-          scale="time"
-          domain={domain ?? ["dataMin", "dataMax"]}
-          tickFormatter={(ts: number) => formatTime(new Date(ts).toISOString(), range)}
-          tick={{ fontSize: CHART_TICK_FONT, fill: textTertiary }}
-          tickLine={false}
-          axisLine={{ stroke: borderColor }}
-          minTickGap={40}
-        />
-        <YAxis
-          tick={{ fontSize: CHART_TICK_FONT, fill: textTertiary }}
-          tickLine={false}
-          axisLine={false}
-          width={48}
-          {...(isDiscrete
-            ? { domain: [0, 1], ticks: [0, 1], tickFormatter: (v: number) => (v === 1 ? t("controls.on") : t("controls.off")) }
-            : isPower
-              ? { tickFormatter: (v: number) => (v >= 1000 ? `${formatNumber(v / 1000, { maxDecimals: 1 })}k` : formatNumber(v, { maxDecimals: 0 })) }
-              : { tickFormatter: (v: number) => formatNumber(v, { maxDecimals: 1 }) }
+      <ResponsiveContainer width="100%" height={height}>
+        <ComposedChart data={data} margin={{ top: 4, right: 8, left: -16, bottom: 0 }}>
+          {/* Gradient definition for power area fill */}
+          {isPower && (
+            <defs>
+              <linearGradient id={POWER_GRADIENT_ID} x1="0" y1="0" x2="0" y2="1">
+                <stop offset="0%" stopColor={POWER_COLOR} stopOpacity={0.3} />
+                <stop offset="100%" stopColor={POWER_COLOR} stopOpacity={0.02} />
+              </linearGradient>
+            </defs>
           )}
-        />
-        <Tooltip
-          itemStyle={CHART_TOOLTIP_ITEM_STYLE}
-          contentStyle={{
-            backgroundColor: "var(--color-surface)",
-            border: `1px solid var(--color-border)`,
-            borderRadius: "6px",
-            fontSize: CHART_TOOLTIP_FONT,
-            color: "var(--color-text)",
-          }}
-          labelFormatter={(_, payload) => {
-            if (payload?.[0]?.payload?.time) {
-              return formatTooltipTime(payload[0].payload.time as string);
+
+          <CartesianGrid strokeDasharray="3 3" stroke={borderColor} />
+          <XAxis
+            dataKey="ts"
+            type="number"
+            scale="time"
+            domain={domain ?? ["dataMin", "dataMax"]}
+            tickFormatter={(ts: number) => formatTime(new Date(ts).toISOString(), range)}
+            tick={{ fontSize: CHART_TICK_FONT, fill: textTertiary }}
+            tickLine={false}
+            axisLine={{ stroke: borderColor }}
+            minTickGap={40}
+          />
+          <YAxis
+            tick={{ fontSize: CHART_TICK_FONT, fill: textTertiary }}
+            tickLine={false}
+            axisLine={false}
+            width={48}
+            {...(isDiscrete
+              ? {
+                  domain: [0, 1],
+                  ticks: [0, 1],
+                  tickFormatter: (v: number) => (v === 1 ? t("controls.on") : t("controls.off")),
+                }
+              : isPower
+                ? {
+                    tickFormatter: (v: number) =>
+                      v >= 1000
+                        ? `${formatNumber(v / 1000, { maxDecimals: 1 })}k`
+                        : formatNumber(v, { maxDecimals: 0 }),
+                  }
+                : { tickFormatter: (v: number) => formatNumber(v, { maxDecimals: 1 }) })}
+          />
+          <Tooltip
+            itemStyle={CHART_TOOLTIP_ITEM_STYLE}
+            contentStyle={{
+              backgroundColor: "var(--color-surface)",
+              border: `1px solid var(--color-border)`,
+              borderRadius: "6px",
+              fontSize: CHART_TOOLTIP_FONT,
+              color: "var(--color-text)",
+            }}
+            labelFormatter={(_, payload) => {
+              if (payload?.[0]?.payload?.time) {
+                return formatTooltipTime(payload[0].payload.time as string);
+              }
+              return "";
+            }}
+            formatter={(value: unknown, name: unknown) =>
+              formatSeriesTooltip(value, name, { unit, isPower, isDiscrete, t })
             }
-            return "";
-          }}
-          formatter={(value: unknown, name: unknown) =>
-            formatSeriesTooltip(value, name, { unit, isPower, isDiscrete, t })
-          }
-        />
-
-        {/* Min/Max area fill for aggregated data (non-power) */}
-        {hasMinMax && !isPower && (
-          <Area
-            type="monotone"
-            dataKey="max"
-            stroke="none"
-            fill={primaryLightColor}
-            fillOpacity={0.5}
-            isAnimationActive={false}
           />
-        )}
 
-        {/* Power: area chart with gradient fill */}
-        {isPower && (
-          <Area
-            type="monotone"
+          {/* Min/Max area fill for aggregated data (non-power) */}
+          {hasMinMax && !isPower && (
+            <Area
+              type="monotone"
+              dataKey="max"
+              stroke="none"
+              fill={primaryLightColor}
+              fillOpacity={0.5}
+              isAnimationActive={false}
+            />
+          )}
+
+          {/* Power: area chart with gradient fill */}
+          {isPower && (
+            <Area
+              type="monotone"
+              dataKey="value"
+              stroke="none"
+              fill={`url(#${POWER_GRADIENT_ID})`}
+              isAnimationActive={false}
+            />
+          )}
+
+          {/* Main value line */}
+          <Line
+            type={isDiscrete ? "stepAfter" : "monotone"}
             dataKey="value"
-            stroke="none"
-            fill={`url(#${POWER_GRADIENT_ID})`}
-            isAnimationActive={false}
-          />
-        )}
-
-        {/* Main value line */}
-        <Line
-          type={isDiscrete ? "stepAfter" : "monotone"}
-          dataKey="value"
-          stroke={primaryColor}
-          strokeWidth={isPower ? 2 : 1.5}
-          dot={false}
-          activeDot={{ r: 3, fill: primaryColor }}
-          isAnimationActive={false}
-        />
-
-        {/* Min line (subtle) */}
-        {hasMinMax && (
-          <Line
-            type="monotone"
-            dataKey="min"
-            stroke={textTertiary}
-            strokeWidth={0.5}
-            strokeDasharray="3 3"
+            stroke={primaryColor}
+            strokeWidth={isPower ? 2 : 1.5}
             dot={false}
+            activeDot={{ r: 3, fill: primaryColor }}
             isAnimationActive={false}
           />
-        )}
-        {/* Max line (subtle) */}
-        {hasMinMax && (
-          <Line
-            type="monotone"
-            dataKey="max"
-            stroke={textSecondary}
-            strokeWidth={0.5}
-            strokeDasharray="3 3"
-            dot={false}
-            isAnimationActive={false}
-          />
-        )}
-      </ComposedChart>
-    </ResponsiveContainer>
-    {staleDuration && (
-      <div className="text-caption text-warning-ink text-right mt-1">
-        {t("history.lastMeasurement", { duration: staleDuration })}
-      </div>
-    )}
+
+          {/* Min line (subtle) */}
+          {hasMinMax && (
+            <Line
+              type="monotone"
+              dataKey="min"
+              stroke={textTertiary}
+              strokeWidth={0.5}
+              strokeDasharray="3 3"
+              dot={false}
+              isAnimationActive={false}
+            />
+          )}
+          {/* Max line (subtle) */}
+          {hasMinMax && (
+            <Line
+              type="monotone"
+              dataKey="max"
+              stroke={textSecondary}
+              strokeWidth={0.5}
+              strokeDasharray="3 3"
+              dot={false}
+              isAnimationActive={false}
+            />
+          )}
+        </ComposedChart>
+      </ResponsiveContainer>
+      {staleDuration && (
+        <div className="text-caption text-warning-ink text-right mt-1">
+          {t("history.lastMeasurement", { duration: staleDuration })}
+        </div>
+      )}
     </div>
   );
 }

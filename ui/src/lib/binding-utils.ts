@@ -24,8 +24,9 @@ interface EquipmentLikeForStopCheck {
 export function allSupportStop(equipments: readonly EquipmentLikeForStopCheck[]): boolean {
   for (const eq of equipments) {
     const moveBinding =
-      eq.orderBindings.find((ob) => ob.category === "pool_cover_move" || ob.category === "shutter_move") ??
-      eq.orderBindings.find((ob) => ob.alias === "state" || /shutter\d*_state/.test(ob.alias));
+      eq.orderBindings.find(
+        (ob) => ob.category === "pool_cover_move" || ob.category === "shutter_move",
+      ) ?? eq.orderBindings.find((ob) => ob.alias === "state" || /shutter\d*_state/.test(ob.alias));
     if (!moveBinding) continue; // no move order at all — irrelevant to Stop
     if (moveBinding.enumValues && !moveBinding.enumValues.some((v) => v.toUpperCase() === "STOP")) {
       return false;

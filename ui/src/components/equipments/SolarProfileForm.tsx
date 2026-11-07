@@ -120,10 +120,7 @@ export function SolarProfileForm({ equipmentId, planes, since, onSaved }: SolarP
     <div>
       <div className="flex flex-col gap-4">
         {draft.map((plane, index) => (
-          <div
-            key={index}
-            className={index > 0 ? "border-t border-border-light pt-4" : undefined}
-          >
+          <div key={index} className={index > 0 ? "border-t border-border-light pt-4" : undefined}>
             {draft.length > 1 && (
               <div className="flex items-center justify-between mb-2">
                 <span className="text-caption font-medium text-text-secondary">

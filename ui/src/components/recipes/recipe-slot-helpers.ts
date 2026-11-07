@@ -22,7 +22,11 @@ export function groupSlots(slots: RecipeSlotDef[]): SlotChunk[] {
 }
 
 /** Check if a group has meaningful data — the first slot in the group must have a value. */
-export function isGroupFilled(group: string, allSlots: RecipeSlotDef[], paramsRecord: Record<string, string>): boolean {
+export function isGroupFilled(
+  group: string,
+  allSlots: RecipeSlotDef[],
+  paramsRecord: Record<string, string>,
+): boolean {
   const firstSlot = allSlots.find((s) => s.group === group);
   if (!firstSlot) return false;
   return (paramsRecord[firstSlot.id] ?? "") !== "";
@@ -49,9 +53,13 @@ export function durationToMinutes(value: string): number {
   if (!match) return NaN;
   const num = parseInt(match[1], 10);
   switch (match[2]) {
-    case "s": return num / 60;
-    case "m": return num;
-    case "h": return num * 60;
-    default: return NaN;
+    case "s":
+      return num / 60;
+    case "m":
+      return num;
+    case "h":
+      return num * 60;
+    default:
+      return NaN;
   }
 }

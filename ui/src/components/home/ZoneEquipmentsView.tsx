@@ -34,25 +34,101 @@ interface EquipmentGroup {
 // One neutral header per category (spec 196, slice 7c): the icon glyph alone
 // conveys the category, no per-group tint.
 const EQUIPMENT_GROUPS: EquipmentGroup[] = [
-  { labelKey: "equipments.group.lights", types: ["light_onoff", "light_dimmable", "light_color"], icon: <Lightbulb size={16} strokeWidth={1.5} /> },
-  { labelKey: "equipments.group.shutters", types: ["shutter"], icon: <ShutterClosedIcon size={16} strokeWidth={1.5} /> },
-  { labelKey: "equipments.group.awnings", types: ["awning"], icon: <AwningIcon size={16} strokeWidth={1.5} /> },
-  { labelKey: "equipments.group.doors", types: ["door"], icon: <DoorClosed size={16} strokeWidth={1.5} /> },
-  { labelKey: "equipments.group.climate", types: ["thermostat", "heater"], icon: <Thermometer size={16} strokeWidth={1.5} /> },
-  { labelKey: "equipments.group.energy", types: ["energy_meter", "main_energy_meter", "energy_production_meter"], icon: <Zap size={16} strokeWidth={1.5} /> },
-  { labelKey: "equipments.group.solar", types: ["solar_panel"], icon: <SolarPanelIcon size={16} strokeWidth={1.5} /> },
-  { labelKey: "equipments.group.sensors", types: ["sensor"], icon: <Gauge size={16} strokeWidth={1.5} /> },
-  { labelKey: "equipments.group.weather", types: ["weather", "weather_forecast"], icon: <CloudSun size={16} strokeWidth={1.5} /> },
-  { labelKey: "equipments.group.media", types: ["media_player"], icon: <Tv size={16} strokeWidth={1.5} /> },
-  { labelKey: "equipments.group.appliances", types: ["appliance"], icon: <WashingMachine size={16} strokeWidth={1.5} /> },
-  { labelKey: "equipments.group.water", types: ["water_valve", "water_heater"], icon: <WaterValveIcon size={16} strokeWidth={1.5} /> },
-  { labelKey: "equipments.group.pool", types: ["pool_pump", "pool_cover", "pool_heat_pump"], icon: <Waves size={16} strokeWidth={1.5} /> },
-  { labelKey: "equipments.group.ventilation", types: ["vmc"], icon: <Fan size={16} strokeWidth={1.5} /> },
-  { labelKey: "equipments.group.displays", types: ["display"], icon: <Monitor size={16} strokeWidth={1.5} /> },
-  { labelKey: "equipments.group.cameras", types: ["camera"], icon: <Camera size={16} strokeWidth={1.5} /> },
-  { labelKey: "equipments.group.power", types: ["ups", "ev_charger"], icon: <BatteryCharging size={16} strokeWidth={1.5} /> },
-  { labelKey: "equipments.group.vehicles", types: ["electric_vehicle"], icon: <Car size={16} strokeWidth={1.5} /> },
-  { labelKey: "equipments.group.other", types: ["switch", "button", "gate"], icon: <ToggleRight size={16} strokeWidth={1.5} /> },
+  {
+    labelKey: "equipments.group.lights",
+    types: ["light_onoff", "light_dimmable", "light_color"],
+    icon: <Lightbulb size={16} strokeWidth={1.5} />,
+  },
+  {
+    labelKey: "equipments.group.shutters",
+    types: ["shutter"],
+    icon: <ShutterClosedIcon size={16} strokeWidth={1.5} />,
+  },
+  {
+    labelKey: "equipments.group.awnings",
+    types: ["awning"],
+    icon: <AwningIcon size={16} strokeWidth={1.5} />,
+  },
+  {
+    labelKey: "equipments.group.doors",
+    types: ["door"],
+    icon: <DoorClosed size={16} strokeWidth={1.5} />,
+  },
+  {
+    labelKey: "equipments.group.climate",
+    types: ["thermostat", "heater"],
+    icon: <Thermometer size={16} strokeWidth={1.5} />,
+  },
+  {
+    labelKey: "equipments.group.energy",
+    types: ["energy_meter", "main_energy_meter", "energy_production_meter"],
+    icon: <Zap size={16} strokeWidth={1.5} />,
+  },
+  {
+    labelKey: "equipments.group.solar",
+    types: ["solar_panel"],
+    icon: <SolarPanelIcon size={16} strokeWidth={1.5} />,
+  },
+  {
+    labelKey: "equipments.group.sensors",
+    types: ["sensor"],
+    icon: <Gauge size={16} strokeWidth={1.5} />,
+  },
+  {
+    labelKey: "equipments.group.weather",
+    types: ["weather", "weather_forecast"],
+    icon: <CloudSun size={16} strokeWidth={1.5} />,
+  },
+  {
+    labelKey: "equipments.group.media",
+    types: ["media_player"],
+    icon: <Tv size={16} strokeWidth={1.5} />,
+  },
+  {
+    labelKey: "equipments.group.appliances",
+    types: ["appliance"],
+    icon: <WashingMachine size={16} strokeWidth={1.5} />,
+  },
+  {
+    labelKey: "equipments.group.water",
+    types: ["water_valve", "water_heater"],
+    icon: <WaterValveIcon size={16} strokeWidth={1.5} />,
+  },
+  {
+    labelKey: "equipments.group.pool",
+    types: ["pool_pump", "pool_cover", "pool_heat_pump"],
+    icon: <Waves size={16} strokeWidth={1.5} />,
+  },
+  {
+    labelKey: "equipments.group.ventilation",
+    types: ["vmc"],
+    icon: <Fan size={16} strokeWidth={1.5} />,
+  },
+  {
+    labelKey: "equipments.group.displays",
+    types: ["display"],
+    icon: <Monitor size={16} strokeWidth={1.5} />,
+  },
+  {
+    labelKey: "equipments.group.cameras",
+    types: ["camera"],
+    icon: <Camera size={16} strokeWidth={1.5} />,
+  },
+  {
+    labelKey: "equipments.group.power",
+    types: ["ups", "ev_charger"],
+    icon: <BatteryCharging size={16} strokeWidth={1.5} />,
+  },
+  {
+    labelKey: "equipments.group.vehicles",
+    types: ["electric_vehicle"],
+    icon: <Car size={16} strokeWidth={1.5} />,
+  },
+  {
+    labelKey: "equipments.group.other",
+    types: ["switch", "button", "gate"],
+    icon: <ToggleRight size={16} strokeWidth={1.5} />,
+  },
 ];
 
 interface ZoneEquipmentsViewProps {
@@ -86,7 +162,11 @@ export function ZoneEquipmentsView({
     <>
       {grouped.map((group) => (
         <div key={group.labelKey}>
-          <SliceHeader icon={group.icon} label={t(group.labelKey)} count={group.equipments.length} />
+          <SliceHeader
+            icon={group.icon}
+            label={t(group.labelKey)}
+            count={group.equipments.length}
+          />
           <div className="slice-rows">
             {group.equipments.map((eq) => (
               <CompactEquipmentCard

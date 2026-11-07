@@ -18,6 +18,11 @@ export function extraLabel(namespace: string, alias: string, t: TFunction): stri
 }
 
 /** A text value (an enum state such as `sleep`) in words, or as published when unknown. */
-export function extraTextValue(namespace: string, alias: string, value: string, t: TFunction): string {
+export function extraTextValue(
+  namespace: string,
+  alias: string,
+  value: string,
+  t: TFunction,
+): string {
   return t(`${namespace}.values.${dictionaryKey(alias)}.${value}`, { defaultValue: value });
 }

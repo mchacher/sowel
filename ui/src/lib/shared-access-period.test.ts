@@ -73,7 +73,9 @@ describe("the lists of the end picker", () => {
     const early: Bounds = { max: start };
     expect(isDayAllowed("2026-10-04", early)).toBe(false);
     expect(hourOptions("2026-10-03", early).find((h) => h.value === 17)?.disabled).toBe(true);
-    expect(minuteOptions("2026-10-03", 16, early).find((m) => m.value === 20)?.disabled).toBe(false);
+    expect(minuteOptions("2026-10-03", 16, early).find((m) => m.value === 20)?.disabled).toBe(
+      false,
+    );
     expect(minuteOptions("2026-10-03", 16, early).find((m) => m.value === 25)?.disabled).toBe(true);
   });
 });
@@ -149,23 +151,42 @@ describe("a period with one bound only", () => {
 
   it("sends a missing bound as null, and checks no order without both", () => {
     const v: ValidityDraft = { period: true, from: start, until: null, ranges: false, windows: [] };
-    expect(validityBody(v)).toEqual({ validFrom: "2026-10-03T16:20", validUntil: null, timeWindows: [] });
+    expect(validityBody(v)).toEqual({
+      validFrom: "2026-10-03T16:20",
+      validUntil: null,
+      timeWindows: [],
+    });
     expect(checkValidity(v)).toBeNull();
     expect(checkValidity({ ...v, from: null, until: start })).toBeNull();
   });
 
   it("leaves out of the body a bound the owner did not change", () => {
-    const initial: ValidityDraft = { period: true, from: start, until: null, ranges: false, windows: [] };
+    const initial: ValidityDraft = {
+      period: true,
+      from: start,
+      until: null,
+      ranges: false,
+      windows: [],
+    };
     expect(validityBody({ ...initial }, initial)).toEqual({ timeWindows: [] });
     // Changing the start sends the start alone.
     const moved = { ...initial, from: { date: "2026-10-04", time: "09:00" } };
-    expect(validityBody(moved, initial)).toEqual({ validFrom: "2026-10-04T09:00", timeWindows: [] });
+    expect(validityBody(moved, initial)).toEqual({
+      validFrom: "2026-10-04T09:00",
+      timeWindows: [],
+    });
     // « Tout le temps » clears the bound that was held, and only that one.
-    expect(validityBody({ ...initial, period: false }, initial)).toEqual({ validFrom: null, timeWindows: [] });
+    expect(validityBody({ ...initial, period: false }, initial)).toEqual({
+      validFrom: null,
+      timeWindows: [],
+    });
   });
 
   it("offers a fresh day for an access held « tout le temps », without sending it", () => {
-    const always = validityFromView({ validFrom: null, validUntil: null, timeWindows: [] }, "Europe/Paris");
+    const always = validityFromView(
+      { validFrom: null, validUntil: null, timeWindows: [] },
+      "Europe/Paris",
+    );
     expect(always.period).toBe(false);
     expect(always.from).not.toBeNull();
     expect(always.until).not.toBeNull();
@@ -199,9 +220,9 @@ describe("the two validity groups", () => {
 
   it("refuses what the server refuses", () => {
     expect(checkValidity({ ...base, period: true, until: start })?.code).toBe("end_before_start");
-    expect(checkValidity({ ...base, ranges: true, windows: [{ from: "8h", to: "20:00" }] })?.code).toBe(
-      "invalid_hours",
-    );
+    expect(
+      checkValidity({ ...base, ranges: true, windows: [{ from: "8h", to: "20:00" }] })?.code,
+    ).toBe("invalid_hours");
     expect(
       checkValidity({ ...base, ranges: true, windows: [{ from: "22:00", to: "06:00" }] })?.code,
     ).toBe("window_crosses_midnight");
@@ -215,7 +236,9 @@ describe("the two validity groups", () => {
         ],
       })?.code,
     ).toBe("windows_overlap");
-    expect(checkValidity({ ...base, ranges: true, windows: [{ from: "08:00", to: "20:00" }] })).toBeNull();
+    expect(
+      checkValidity({ ...base, ranges: true, windows: [{ from: "08:00", to: "20:00" }] }),
+    ).toBeNull();
   });
 });
 
@@ -260,9 +283,9 @@ describe("days of the week on the windows (spec 187)", () => {
   });
 
   it("refuses a window with every day unticked, rather than sending it", () => {
-    expect(checkValidity({ ...base, windows: [{ from: "08:00", to: "12:00", days: [] }] })?.code).toBe(
-      "invalid_days",
-    );
+    expect(
+      checkValidity({ ...base, windows: [{ from: "08:00", to: "12:00", days: [] }] })?.code,
+    ).toBe("invalid_days");
   });
 
   it("sends the days sorted, and all seven as none", () => {
@@ -284,7 +307,11 @@ describe("days of the week on the windows (spec 187)", () => {
 
   it("keeps the days an access already has when its editor opens", () => {
     const v = validityFromView(
-      { validFrom: null, validUntil: null, timeWindows: [{ from: "18:00", to: "22:00", days: [5] }] },
+      {
+        validFrom: null,
+        validUntil: null,
+        timeWindows: [{ from: "18:00", to: "22:00", days: [5] }],
+      },
       "Europe/Paris",
     );
     expect(v.windows).toEqual([{ from: "18:00", to: "22:00", days: [5] }]);

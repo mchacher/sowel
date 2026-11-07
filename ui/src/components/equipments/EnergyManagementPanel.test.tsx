@@ -15,10 +15,7 @@ vi.mock("../../api", async (orig) => ({
   resumeArbiterEquipment: vi.fn().mockResolvedValue(undefined),
 }));
 
-function equipment(
-  type: EquipmentType,
-  energyProfile?: EnergyLoadProfile,
-): EquipmentWithDetails {
+function equipment(type: EquipmentType, energyProfile?: EnergyLoadProfile): EquipmentWithDetails {
   return {
     id: "eq-1",
     name: "Test load",
@@ -42,14 +39,26 @@ describe("EnergyManagementPanel — derived load class (#555)", () => {
   });
 
   it("no longer exposes a class selector", async () => {
-    render(<EnergyManagementPanel defaultOpen equipment={equipment("water_heater")} onUpdated={() => {}} />);
+    render(
+      <EnergyManagementPanel
+        defaultOpen
+        equipment={equipment("water_heater")}
+        onUpdated={() => {}}
+      />,
+    );
     await userEvent.click(screen.getByLabelText("Flexible load"));
     expect(screen.queryByRole("combobox")).toBeNull();
     expect(screen.queryByText("Class")).toBeNull();
   });
 
   it("derives class 'deferrable' from a relay-type equipment on save", async () => {
-    render(<EnergyManagementPanel defaultOpen equipment={equipment("water_heater")} onUpdated={() => {}} />);
+    render(
+      <EnergyManagementPanel
+        defaultOpen
+        equipment={equipment("water_heater")}
+        onUpdated={() => {}}
+      />,
+    );
     await userEvent.click(screen.getByLabelText("Flexible load"));
     await userEvent.type(screen.getByLabelText("Nominal power (W)"), "2000");
     await userEvent.click(screen.getByRole("button", { name: "Save" }));
@@ -63,7 +72,13 @@ describe("EnergyManagementPanel — derived load class (#555)", () => {
   });
 
   it("derives class 'comfort' from a self-regulating equipment on save", async () => {
-    render(<EnergyManagementPanel defaultOpen equipment={equipment("thermostat")} onUpdated={() => {}} />);
+    render(
+      <EnergyManagementPanel
+        defaultOpen
+        equipment={equipment("thermostat")}
+        onUpdated={() => {}}
+      />,
+    );
     await userEvent.click(screen.getByLabelText("Flexible load"));
     await userEvent.type(screen.getByLabelText("Nominal power (W)"), "1800");
     await userEvent.click(screen.getByRole("button", { name: "Save" }));
@@ -95,7 +110,11 @@ describe("EnergyManagementPanel — derived load class (#555)", () => {
       minOffS: 300,
     };
     render(
-      <EnergyManagementPanel defaultOpen equipment={equipment("switch", profile)} onUpdated={() => {}} />,
+      <EnergyManagementPanel
+        defaultOpen
+        equipment={equipment("switch", profile)}
+        onUpdated={() => {}}
+      />,
     );
     // Toggle stays enabled and the form is revealed with the saved values.
     const toggle = screen.getByLabelText("Flexible load") as HTMLInputElement;

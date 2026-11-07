@@ -25,7 +25,16 @@ function vehicle(): EquipmentWithDetails {
     updatedAt: "2026-01-01T00:00:00Z",
     status: "online",
     dataBindings: [
-      { ...data, id: "d1", alias: "charge_limit", key: "charge_limit", type: "number", category: "ev_charge_limit", value: 80, unit: "%" },
+      {
+        ...data,
+        id: "d1",
+        alias: "charge_limit",
+        key: "charge_limit",
+        type: "number",
+        category: "ev_charge_limit",
+        value: 80,
+        unit: "%",
+      },
     ] as EquipmentWithDetails["dataBindings"],
     orderBindings: [
       {

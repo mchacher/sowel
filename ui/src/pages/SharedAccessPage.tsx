@@ -100,8 +100,7 @@ function SharedAccessBody({
       ...known.map((g) => ({ id: g.equipmentId, name: g.name })),
       ...orphans.map((id) => ({
         id,
-        name:
-          state.accesses.flatMap((a) => a.gates).find((g) => g.equipmentId === id)?.name ?? id,
+        name: state.accesses.flatMap((a) => a.gates).find((g) => g.equipmentId === id)?.name ?? id,
       })),
     ];
   }, [state, gateParam]);
@@ -122,7 +121,8 @@ function SharedAccessBody({
     if (openedFromUrl.current) return;
     if (params.get("new") === "1") {
       openedFromUrl.current = true;
-      const gate = gateParam && state.gates.some((g) => g.equipmentId === gateParam) ? gateParam : null;
+      const gate =
+        gateParam && state.gates.some((g) => g.equipmentId === gateParam) ? gateParam : null;
       setEditor({ kind: "create", gateIds: gate ? [gate] : [] });
       const next = new URLSearchParams(params);
       next.delete("new");
@@ -154,9 +154,7 @@ function SharedAccessBody({
   };
 
   const lines = state.accesses
-    .filter((a) =>
-      activeTab === ALL ? true : a.gates.some((g) => g.equipmentId === activeTab),
-    )
+    .filter((a) => (activeTab === ALL ? true : a.gates.some((g) => g.equipmentId === activeTab)))
     .sort((a, b) => rank(a) - rank(b));
 
   const tabCls = (on: boolean) =>
@@ -171,36 +169,39 @@ function SharedAccessBody({
       <HeaderLine state={state} />
 
       <div className="flex items-end gap-3 mb-4 border-b border-border">
-        <div className="flex items-center gap-1 flex-1 min-w-0 overflow-x-auto overflow-y-hidden [scrollbar-width:none] [&::-webkit-scrollbar]:hidden" role="tablist">
-        {gateTabs.map((g) => (
-          <button
-            key={g.id}
-            role="tab"
-            aria-selected={activeTab === g.id}
-            className={tabCls(activeTab === g.id)}
-            onClick={() => selectTab(g.id)}
-          >
-            {g.name}
-          </button>
-        ))}
-        {showAll && (
-          <button
-            role="tab"
-            aria-selected={activeTab === ALL}
-            className={tabCls(activeTab === ALL)}
-            onClick={() => selectTab(ALL)}
-          >
-            {t("sharedAccess.tabs.all")}
-          </button>
-        )}
-        <button
-          role="tab"
-          aria-selected={activeTab === PROFILES}
-          className={tabCls(activeTab === PROFILES)}
-          onClick={() => selectTab(PROFILES)}
+        <div
+          className="flex items-center gap-1 flex-1 min-w-0 overflow-x-auto overflow-y-hidden [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+          role="tablist"
         >
-          {t("sharedAccess.tabs.profiles")}
-        </button>
+          {gateTabs.map((g) => (
+            <button
+              key={g.id}
+              role="tab"
+              aria-selected={activeTab === g.id}
+              className={tabCls(activeTab === g.id)}
+              onClick={() => selectTab(g.id)}
+            >
+              {g.name}
+            </button>
+          ))}
+          {showAll && (
+            <button
+              role="tab"
+              aria-selected={activeTab === ALL}
+              className={tabCls(activeTab === ALL)}
+              onClick={() => selectTab(ALL)}
+            >
+              {t("sharedAccess.tabs.all")}
+            </button>
+          )}
+          <button
+            role="tab"
+            aria-selected={activeTab === PROFILES}
+            className={tabCls(activeTab === PROFILES)}
+            onClick={() => selectTab(PROFILES)}
+          >
+            {t("sharedAccess.tabs.profiles")}
+          </button>
         </div>
         <button
           type="button"
@@ -215,9 +216,13 @@ function SharedAccessBody({
 
       {picking && (
         <div className="card mb-4 p-3">
-          <p className="text-caption text-text-secondary mb-2">{t("sharedAccess.tabs.pickGateHint")}</p>
+          <p className="text-caption text-text-secondary mb-2">
+            {t("sharedAccess.tabs.pickGateHint")}
+          </p>
           {state.gates.length === 0 ? (
-            <p className="text-small text-text-tertiary">{t("sharedAccess.profiles.noGateInHouse")}</p>
+            <p className="text-small text-text-tertiary">
+              {t("sharedAccess.profiles.noGateInHouse")}
+            </p>
           ) : (
             <div className="flex flex-wrap gap-2">
               {state.gates.map((g) => (

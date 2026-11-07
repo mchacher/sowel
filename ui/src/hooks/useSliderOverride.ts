@@ -17,8 +17,7 @@ export function useSliderOverride(settleMs = DEFAULT_SETTLE_MS) {
 
   /** Returns the display value: local override if active, otherwise device value. */
   const displayValue = useCallback(
-    (deviceValue: number | null): number | null =>
-      localValue !== null ? localValue : deviceValue,
+    (deviceValue: number | null): number | null => (localValue !== null ? localValue : deviceValue),
     [localValue],
   );
 
@@ -32,14 +31,11 @@ export function useSliderOverride(settleMs = DEFAULT_SETTLE_MS) {
   }, []);
 
   /** Call on every slider change event (drag). */
-  const onChange = useCallback(
-    (newValue: number) => {
-      if (timerRef.current) clearTimeout(timerRef.current);
-      localValueRef.current = newValue;
-      setLocalValue(newValue);
-    },
-    [],
-  );
+  const onChange = useCallback((newValue: number) => {
+    if (timerRef.current) clearTimeout(timerRef.current);
+    localValueRef.current = newValue;
+    setLocalValue(newValue);
+  }, []);
 
   /** Call on mouseUp / touchEnd — sends value then clears after settle delay. */
   const onCommit = useCallback(

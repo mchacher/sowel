@@ -179,7 +179,11 @@ export function useSetpointCommit({
       return;
     }
     const current = valueRef.current;
-    if (outstandingRef.current === null && current !== null && Math.abs(current - v) < ECHO_EPSILON) {
+    if (
+      outstandingRef.current === null &&
+      current !== null &&
+      Math.abs(current - v) < ECHO_EPSILON
+    ) {
       // Tapped back to where the device already is: nothing to send.
       settle();
       return;
@@ -223,12 +227,19 @@ export function useSetpointCommit({
       if (!waiting || v === null) return;
       // Tapped back to where the device already is (the same check as `flush`).
       const current = valueRef.current;
-      if (outstandingRef.current === null && current !== null && Math.abs(current - v) < ECHO_EPSILON) return;
+      if (
+        outstandingRef.current === null &&
+        current !== null &&
+        Math.abs(current - v) < ECHO_EPSILON
+      )
+        return;
       const commit = onCommitRef.current;
       const after = inflightRef.current ?? Promise.resolve();
-      void after.then(() => commit(v)).catch(() => {
-        // Nobody is left to show it; the device keeps its value.
-      });
+      void after
+        .then(() => commit(v))
+        .catch(() => {
+          // Nobody is left to show it; the device keeps its value.
+        });
     };
   }, []);
 
@@ -237,7 +248,9 @@ export function useSetpointCommit({
 
 /** The commit delay for these equipments, from their devices' integrations. */
 export function useSetpointCommitDelay(
-  equipment: Pick<EquipmentWithDetails, "orderBindings"> | readonly Pick<EquipmentWithDetails, "orderBindings">[],
+  equipment:
+    | Pick<EquipmentWithDetails, "orderBindings">
+    | readonly Pick<EquipmentWithDetails, "orderBindings">[],
 ): number {
   return useDevices((s) => setpointCommitDelay(equipment, s.devices));
 }

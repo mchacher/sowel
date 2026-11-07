@@ -67,7 +67,9 @@ export function ZoneSparkline({
         if (!cancelled) setLoading(false);
       });
 
-    return () => { cancelled = true; };
+    return () => {
+      cancelled = true;
+    };
   }, [visible, zoneId, category, cacheKey]);
 
   // Build SVG path from values
@@ -108,22 +110,14 @@ export function ZoneSparkline({
 
   return (
     <div ref={ref} className={`flex-shrink-0 ${className}`} style={{ width, height }}>
-      <svg
-        width={width}
-        height={height}
-        viewBox={`0 0 ${width} ${height}`}
-        className="block"
-      >
+      <svg width={width} height={height} viewBox={`0 0 ${width} ${height}`} className="block">
         <defs>
           <linearGradient id={`zsp-${zoneId}-${category}`} x1="0" y1="0" x2="0" y2="1">
             <stop offset="0%" stopColor="var(--color-primary)" stopOpacity="0.18" />
             <stop offset="100%" stopColor="var(--color-primary)" stopOpacity="0.02" />
           </linearGradient>
         </defs>
-        <path
-          d={pathData.fillPath}
-          fill={`url(#zsp-${zoneId}-${category})`}
-        />
+        <path d={pathData.fillPath} fill={`url(#zsp-${zoneId}-${category})`} />
         <path
           d={pathData.linePath}
           fill="none"

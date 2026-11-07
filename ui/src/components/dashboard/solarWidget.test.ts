@@ -60,11 +60,7 @@ function panel(
 describe("solarWidgetState", () => {
   it("renders power, current and voltage while producing", () => {
     const state = solarWidgetState(
-      panel([
-        binding("power", 1240),
-        binding("current", 5.4),
-        binding("voltage", 231),
-      ]),
+      panel([binding("power", 1240), binding("current", 5.4), binding("voltage", 231)]),
       t,
       NOW,
     );

@@ -206,7 +206,9 @@ function BrokersSection({ brokers, onRefresh }: { brokers: MqttBroker[]; onRefre
               <div className="text-caption text-text-tertiary font-mono">{broker.url}</div>
               {broker.username && (
                 <div className="text-micro text-text-tertiary">
-                  {t("mqttPublishers.brokerUsername")}{t("common.colon")}{broker.username}
+                  {t("mqttPublishers.brokerUsername")}
+                  {t("common.colon")}
+                  {broker.username}
                 </div>
               )}
             </div>
@@ -297,10 +299,7 @@ function BrokerForm({
   };
 
   return (
-    <form
-      onSubmit={handleSubmit}
-      className="card p-4 max-w-lg"
-    >
+    <form onSubmit={handleSubmit} className="card p-4 max-w-lg">
       <div className="space-y-3">
         <div>
           <label className="block text-caption text-text-secondary mb-1">
@@ -428,10 +427,7 @@ function PublisherForm({
   };
 
   return (
-    <form
-      onSubmit={handleSubmit}
-      className="card mb-4 p-4 max-w-lg"
-    >
+    <form onSubmit={handleSubmit} className="card mb-4 p-4 max-w-lg">
       <div className="space-y-3">
         <div>
           <label className="block text-caption text-text-secondary mb-1">
@@ -616,9 +612,7 @@ function PublisherCard({
   };
 
   return (
-    <div
-      className={`card p-4 ${publisher.enabled ? "" : "opacity-60"}`}
-    >
+    <div className={`card p-4 ${publisher.enabled ? "" : "opacity-60"}`}>
       {/* Header */}
       <div className="flex items-center justify-between mb-3">
         <div className="flex items-center gap-3">

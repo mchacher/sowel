@@ -128,7 +128,12 @@ describe("resolveWidgetPresentation", () => {
     it("maps a boolean order binding (non-state alias) to true/false values", () => {
       const eq = makeEquipment({
         orderBindings: [
-          orderBinding({ alias: "power_switch", key: "power_switch", type: "boolean", enumValues: undefined }),
+          orderBinding({
+            alias: "power_switch",
+            key: "power_switch",
+            type: "boolean",
+            enumValues: undefined,
+          }),
         ],
       });
       expect(toggleOf(resolveWidgetPresentation(makeWidget(), eq, t))).toMatchObject({
@@ -146,7 +151,13 @@ describe("resolveWidgetPresentation", () => {
     it("prefers the category-bound toggle (light_toggle) over an earlier generic boolean order", () => {
       const eq = makeEquipment({
         orderBindings: [
-          orderBinding({ id: "ob-x", alias: "child_lock", key: "child_lock", type: "boolean", enumValues: undefined }),
+          orderBinding({
+            id: "ob-x",
+            alias: "child_lock",
+            key: "child_lock",
+            type: "boolean",
+            enumValues: undefined,
+          }),
           orderBinding({ id: "ob-y", alias: "relay", key: "relay", category: "light_toggle" }),
         ],
       });
@@ -180,7 +191,12 @@ describe("resolveWidgetPresentation", () => {
       const p = resolveWidgetPresentation(makeWidget(), makeTv(), t);
       expect(p!.isActive).toBe(true);
       expect(p!.state.primary).toBe("HDMI 1");
-      expect(toggleOf(p)).toMatchObject({ alias: "power", on: true, onValue: true, offValue: false });
+      expect(toggleOf(p)).toMatchObject({
+        alias: "power",
+        on: true,
+        onValue: true,
+        offValue: false,
+      });
     });
 
     it("falls back to ON when powered without a source, OFF otherwise", () => {
@@ -205,7 +221,9 @@ describe("resolveWidgetPresentation", () => {
           }),
         ],
       });
-      expect(toggleOf(resolveWidgetPresentation(makeWidget(), tv, t))).toMatchObject({ alias: "state" });
+      expect(toggleOf(resolveWidgetPresentation(makeWidget(), tv, t))).toMatchObject({
+        alias: "state",
+      });
     });
   });
 
@@ -213,7 +231,9 @@ describe("resolveWidgetPresentation", () => {
     it("adds the daily runtime as a secondary state line", () => {
       const eq = makeEquipment({
         type: "pool_pump",
-        computedData: [{ alias: "runtime_daily", value: 5400, lastUpdated: "2026-01-01T00:00:00Z" }],
+        computedData: [
+          { alias: "runtime_daily", value: 5400, lastUpdated: "2026-01-01T00:00:00Z" },
+        ],
       });
       const p = resolveWidgetPresentation(makeWidget(), eq, t);
       expect(p!.state.secondary?.map((s) => s.replace(/[\u00A0\u202F]/g, " "))).toEqual(["1 h 30"]);
@@ -228,7 +248,13 @@ describe("resolveWidgetPresentation", () => {
       const eq = makeEquipment({
         type: "pool_pump",
         orderBindings: [
-          orderBinding({ id: "ob-a", alias: "auto_mode", key: "auto_mode", type: "boolean", enumValues: undefined }),
+          orderBinding({
+            id: "ob-a",
+            alias: "auto_mode",
+            key: "auto_mode",
+            type: "boolean",
+            enumValues: undefined,
+          }),
           orderBinding({ id: "ob-t", alias: "relay", key: "relay", category: "pool_pump_toggle" }),
         ],
       });

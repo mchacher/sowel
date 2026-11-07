@@ -29,7 +29,6 @@ const SIZE_CLASSES: Record<Size, string> = {
 
 const ICON_SIZE: Record<Size, number> = { sm: 11, md: 13 };
 
-
 function buildTooltip(
   status: EquipmentStatus,
   reason: EquipmentStatusReason | undefined,
@@ -39,7 +38,9 @@ function buildTooltip(
   const lines: string[] = [t(`equipment.status.${status}`)];
   if (reason.offlineDevices.length > 0) {
     lines.push("");
-    lines.push(t("equipment.status.tooltip.offlineDevices", { count: reason.offlineDevices.length }));
+    lines.push(
+      t("equipment.status.tooltip.offlineDevices", { count: reason.offlineDevices.length }),
+    );
     for (const name of reason.offlineDevices) lines.push(`  · ${name}`);
   }
   if (reason.staleBindings.length > 0) {
@@ -49,9 +50,7 @@ function buildTooltip(
   }
   if (reason.offlineSince) {
     lines.push("");
-    lines.push(
-      t("equipment.status.tooltip.since", { when: formatRelative(reason.offlineSince) }),
-    );
+    lines.push(t("equipment.status.tooltip.since", { when: formatRelative(reason.offlineSince) }));
   }
   return lines.join("\n");
 }
@@ -69,9 +68,7 @@ export function EquipmentStatusBadge({
 
   const Icon = status === "offline" ? WifiOff : AlertTriangle;
   const colorClasses =
-    status === "offline"
-      ? "bg-error/10 text-error"
-      : "bg-warning/10 text-warning-ink";
+    status === "offline" ? "bg-error/10 text-error" : "bg-warning/10 text-warning-ink";
 
   const labelKey = status === "offline" ? "equipment.status.offline" : "equipment.status.degraded";
   const tooltip = buildTooltip(status, reason, t);

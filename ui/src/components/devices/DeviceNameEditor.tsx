@@ -62,9 +62,7 @@ export function DeviceNameEditor({ name, onSave }: DeviceNameEditorProps) {
   if (!editing) {
     return (
       <div className="flex items-center gap-2 group">
-        <h1>
-          {name}
-        </h1>
+        <h1>{name}</h1>
         <button
           onClick={() => setEditing(true)}
           className="p-1.5 rounded-sm text-text-tertiary opacity-0 group-hover:opacity-100 hover:text-text-secondary hover:bg-border-light transition-all duration-150 ease-out"
@@ -105,9 +103,7 @@ export function DeviceNameEditor({ name, onSave }: DeviceNameEditorProps) {
           <X size={16} strokeWidth={1.5} />
         </button>
       </div>
-      {error && (
-        <span className="text-caption text-error">{error}</span>
-      )}
+      {error && <span className="text-caption text-error">{error}</span>}
     </div>
   );
 }

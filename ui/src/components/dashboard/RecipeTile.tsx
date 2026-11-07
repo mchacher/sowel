@@ -105,7 +105,8 @@ export function RecipeTile({
   const recipe = instance ? recipes.find((r) => r.id === instance.recipeId) : undefined;
 
   const tile = recipe?.tile;
-  const title = widget.label ?? (recipe ? recipeName(recipe, lang) : t("dashboard.recipeTile.gone"));
+  const title =
+    widget.label ?? (recipe ? recipeName(recipe, lang) : t("dashboard.recipeTile.gone"));
 
   // Spec 196 — the corner glyph has to tell a guarded tile before the tap, so
   // this one answer is subscribed to. A boolean selector: the tile re-renders
@@ -173,7 +174,9 @@ export function RecipeTile({
     ) : null;
 
   const countdown =
-    typeof expiresAt === "string" && instance.enabled ? <CountdownTimer expiresAt={expiresAt} /> : null;
+    typeof expiresAt === "string" && instance.enabled ? (
+      <CountdownTimer expiresAt={expiresAt} />
+    ) : null;
 
   // Spec 171 — one control, one card action. `resolveCycle` is the very call
   // the pill makes, so the card can never offer a press the pill would refuse;

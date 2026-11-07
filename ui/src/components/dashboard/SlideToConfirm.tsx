@@ -117,11 +117,7 @@ export function SlideToConfirm({
         }`}
         style={{ left: `${PAD + x}px`, transition }}
       >
-        {done ? (
-          <Check size={20} strokeWidth={2.4} />
-        ) : (
-          <ChevronsRight size={20} strokeWidth={2} />
-        )}
+        {done ? <Check size={20} strokeWidth={2.4} /> : <ChevronsRight size={20} strokeWidth={2} />}
       </div>
     </div>
   );

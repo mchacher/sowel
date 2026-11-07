@@ -396,7 +396,9 @@ export function formatWithUnit(
       return formatDuration(v, { locale });
     default: {
       const u = unit as string;
-      const n = isMissing(v) ? EMPTY : formatNumber(v, { maxDecimals: unitDecimals(u, v), signed, locale });
+      const n = isMissing(v)
+        ? EMPTY
+        : formatNumber(v, { maxDecimals: unitDecimals(u, v), signed, locale });
       return withUnit(n, u, resolve(locale));
     }
   }
@@ -466,7 +468,10 @@ const BYTE_UNITS: Record<"fr" | "en", string[]> = {
 };
 
 /** A size in bytes, 1 024-based, one decimal at most: « 5,9 Mo » / « 5.9 MB ». */
-export function formatBytes(bytes: number | null | undefined, opts: { locale?: Locale } = {}): string {
+export function formatBytes(
+  bytes: number | null | undefined,
+  opts: { locale?: Locale } = {},
+): string {
   if (isMissing(bytes)) return EMPTY;
   const locale = resolve(opts.locale);
   const units = BYTE_UNITS[isFr(locale) ? "fr" : "en"];

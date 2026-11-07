@@ -4,7 +4,11 @@ import { ShutterIcon } from "../icons/ShutterIcons";
 import { AwningIcon } from "../icons/AwningIcon";
 import { DoorClosed, DoorOpen } from "lucide-react";
 import { createElement } from "react";
-import { doorState as resolveDoorState, isDoorOpenForCount, type DoorState } from "../../../../src/shared/door-state";
+import {
+  doorState as resolveDoorState,
+  isDoorOpenForCount,
+  type DoorState,
+} from "../../../../src/shared/door-state";
 import {
   getSensorIcon,
   getSensorIconColor,
@@ -32,8 +36,12 @@ export function useEquipmentState(equipment: EquipmentWithDetails) {
   // is identical, so most existing logic gates on `isShutter || isAwning`.
   const isShutterFamily = isShutter || isAwning || isDoor;
   const isWeatherForecast = equipment.type === "weather_forecast";
-  const isSensor = equipment.type === "sensor" || equipment.type === "button" || equipment.type === "weather";
-  const isEnergyMeter = equipment.type === "energy_meter" || equipment.type === "main_energy_meter" || equipment.type === "energy_production_meter";
+  const isSensor =
+    equipment.type === "sensor" || equipment.type === "button" || equipment.type === "weather";
+  const isEnergyMeter =
+    equipment.type === "energy_meter" ||
+    equipment.type === "main_energy_meter" ||
+    equipment.type === "energy_production_meter";
   const isThermostat = equipment.type === "thermostat";
   const isHeater = equipment.type === "heater";
   const isGate = equipment.type === "gate";
@@ -57,14 +65,8 @@ export function useEquipmentState(equipment: EquipmentWithDetails) {
   // it for any "relay-style" data). Gate and cover have their own dedicated
   // lookups below because their value space is "open"/"closed" rather than
   // ON/OFF. Spec 110.
-  const stateBinding = findDataByCategory(
-    equipment.dataBindings,
-    ["light_state"],
-    ["state"],
-  );
-  const powerBinding = isThermostat
-    ? thermostatPowerStateBinding(equipment.dataBindings)
-    : null;
+  const stateBinding = findDataByCategory(equipment.dataBindings, ["light_state"], ["state"]);
+  const powerBinding = isThermostat ? thermostatPowerStateBinding(equipment.dataBindings) : null;
   const modeBinding = isPoolHeatPump
     ? equipment.dataBindings.find((db) => db.alias === "mode")
     : null;
@@ -102,17 +104,11 @@ export function useEquipmentState(equipment: EquipmentWithDetails) {
       : shutterPosition !== null && shutterPosition > 0;
 
   // Sensor / Button
-  const sensorBindings = isSensor
-    ? getSensorBindings(equipment.dataBindings)
-    : [];
-  const batteryBindings = isSensor
-    ? getAllBatteryBindings(equipment.dataBindings)
-    : [];
+  const sensorBindings = isSensor ? getSensorBindings(equipment.dataBindings) : [];
+  const batteryBindings = isSensor ? getAllBatteryBindings(equipment.dataBindings) : [];
   const batteryBinding = batteryBindings[0] ?? null;
   const batteryLevel =
-    batteryBinding && typeof batteryBinding.value === "number"
-      ? batteryBinding.value
-      : null;
+    batteryBinding && typeof batteryBinding.value === "number" ? batteryBinding.value : null;
 
   // Spec 143 — an active low-battery alert on any device this equipment binds.
   // Matching on the device, not on a battery binding: an equipment bound only to
@@ -146,34 +142,34 @@ export function useEquipmentState(equipment: EquipmentWithDetails) {
       ? "bg-primary/10 text-primary"
       : "bg-border-light text-text-tertiary"
     : isAppliance
-    ? isOn
-      ? "bg-active-bg text-active-ink"
-      : "bg-border-light text-text-tertiary"
-    : isEnergyMeter
-    ? "bg-primary/10 text-primary"
-    : isSensor
-    ? getSensorIconColor(equipment.dataBindings)
-    : isThermostat || isPoolHeatPump
       ? isOn
-        ? "bg-heat/10 text-heat"
+        ? "bg-active-bg text-active-ink"
         : "bg-border-light text-text-tertiary"
-      : isHeater
-        ? !isOn // fil pilote: relay OFF = comfort (warm)
-          ? "bg-heat/10 text-heat"
-          : "bg-border-light text-text-tertiary"
-      : isShutterFamily
-        ? shutterIsOpen
-          ? "bg-primary/10 text-primary"
-          : "bg-border-light text-text-tertiary"
-        : isGate
-          ? gateIsOpen
-            ? "bg-primary/10 text-primary"
-            : "bg-border-light text-text-tertiary"
-          : isLight && isOn
-            ? "bg-active-bg text-active-ink"
-            : isOn
-              ? "bg-primary/10 text-primary"
-              : "bg-border-light text-text-tertiary";
+      : isEnergyMeter
+        ? "bg-primary/10 text-primary"
+        : isSensor
+          ? getSensorIconColor(equipment.dataBindings)
+          : isThermostat || isPoolHeatPump
+            ? isOn
+              ? "bg-heat/10 text-heat"
+              : "bg-border-light text-text-tertiary"
+            : isHeater
+              ? !isOn // fil pilote: relay OFF = comfort (warm)
+                ? "bg-heat/10 text-heat"
+                : "bg-border-light text-text-tertiary"
+              : isShutterFamily
+                ? shutterIsOpen
+                  ? "bg-primary/10 text-primary"
+                  : "bg-border-light text-text-tertiary"
+                : isGate
+                  ? gateIsOpen
+                    ? "bg-primary/10 text-primary"
+                    : "bg-border-light text-text-tertiary"
+                  : isLight && isOn
+                    ? "bg-active-bg text-active-ink"
+                    : isOn
+                      ? "bg-primary/10 text-primary"
+                      : "bg-border-light text-text-tertiary";
 
   return {
     isLight,
@@ -227,7 +223,12 @@ export function formatElapsed(s: number): string {
 
 /** Format a data value for inline display: numbers by their unit's rule (lib/format). */
 export function formatValue(value: unknown, unit?: string): string {
-  if (value === null || value === undefined || typeof value === "boolean" || typeof value === "number") {
+  if (
+    value === null ||
+    value === undefined ||
+    typeof value === "boolean" ||
+    typeof value === "number"
+  ) {
     return formatDataValue(value, unit);
   }
   return String(value);

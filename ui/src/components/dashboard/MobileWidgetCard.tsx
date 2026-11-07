@@ -42,7 +42,12 @@ import {
 import { useStalenessClock } from "../../hooks/useStalenessClock";
 import { brightnessPercent, brightnessScale } from "../../lib/brightness";
 import { findOrderByCategory } from "../equipments/bindingUtils";
-import { resolveSetpoint, setpointLevel, setpointOwnerIsOff, setpointStateLine } from "../equipments/setpoint";
+import {
+  resolveSetpoint,
+  setpointLevel,
+  setpointOwnerIsOff,
+  setpointStateLine,
+} from "../equipments/setpoint";
 import {
   parseForecastDays,
   CONDITION_ICONS,
@@ -52,14 +57,7 @@ import { findTempExtremes, findTempIndoor, findTempOutdoor } from "../equipments
 import { isRainOnlyWeather } from "../equipments/rain-summary";
 import { RainLine, RainMobileHeadline } from "./RainGauge";
 import { TempExtremes } from "../TempExtremes";
-import {
-  Cloud,
-  WashingMachine,
-  Camera,
-  Fan,
-  BatteryCharging,
-  EvCharger,
-} from "lucide-react";
+import { Cloud, WashingMachine, Camera, Fan, BatteryCharging, EvCharger } from "lucide-react";
 import { evChargerStateOf, evVehicleKey } from "../equipments/evChargerState";
 import {
   electricVehicleStateOf,
@@ -218,7 +216,13 @@ function useMobileState(
     const isDimmable = equipment.type === "light_dimmable" || equipment.type === "light_color";
     return {
       icon: renderWidgetStateIcon(widget.icon, <LightBulbIcon on={isOn} />),
-      stateLines: [isDimmable && pct !== null ? formatPercent(pct) : isOn ? t("controls.on") : t("controls.off")],
+      stateLines: [
+        isDimmable && pct !== null
+          ? formatPercent(pct)
+          : isOn
+            ? t("controls.on")
+            : t("controls.off"),
+      ],
     };
   }
 
@@ -367,9 +371,7 @@ function useMobileState(
       extremes: { min: number; max: number } | null,
     ) => (
       <div className="flex flex-col items-center gap-1 leading-none whitespace-nowrap">
-        <span className="text-display text-text-tertiary font-medium">
-          {t(captionKey)}
-        </span>
+        <span className="text-display text-text-tertiary font-medium">{t(captionKey)}</span>
         <span className="font-semibold text-value text-text tabular-nums leading-none">
           {fmt(b)}
         </span>
@@ -456,7 +458,8 @@ function useMobileState(
       const lines: string[] = [];
       if (tomorrow.tempMax !== null) {
         let tempStr = `${formatNumber(tomorrow.tempMax, { decimals: 0 })}°`;
-        if (tomorrow.tempMin !== null) tempStr += ` / ${formatNumber(tomorrow.tempMin, { decimals: 0 })}°`;
+        if (tomorrow.tempMin !== null)
+          tempStr += ` / ${formatNumber(tomorrow.tempMin, { decimals: 0 })}°`;
         lines.push(tempStr);
       }
       if (tomorrow.rainProb !== null && tomorrow.rainProb > 0) {
@@ -633,8 +636,7 @@ function useMobileState(
     const s = evChargerStateOf(equipment);
     const watts = s.power.watts;
     const charging = s.vehicle === "charging" || (watts !== null && watts > 0);
-    const powerLine =
-      watts !== null && watts > 0 ? formatPower(watts) : null;
+    const powerLine = watts !== null && watts > 0 ? formatPower(watts) : null;
     return {
       icon: renderWidgetStateIcon(
         widget.icon,
@@ -645,7 +647,13 @@ function useMobileState(
         />,
       ),
       stateLines: [
-        s.vehicle ? t(evVehicleKey(s.vehicle)) : s.on === null ? "—" : s.on ? t("controls.on") : t("controls.off"),
+        s.vehicle
+          ? t(evVehicleKey(s.vehicle))
+          : s.on === null
+            ? "—"
+            : s.on
+              ? t("controls.on")
+              : t("controls.off"),
         ...(powerLine ? [powerLine] : []),
       ],
     };

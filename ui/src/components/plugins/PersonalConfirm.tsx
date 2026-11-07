@@ -74,10 +74,9 @@ export function PersonalConfirmModal({
               {t("plugins.personal.modal.title")}
             </h3>
             <p className="text-small text-text-secondary mt-1">
-              {t(
-                isInstall ? "plugins.personal.modal.body" : "plugins.personal.modal.updateBody",
-                { repo: info.repo },
-              )}
+              {t(isInstall ? "plugins.personal.modal.body" : "plugins.personal.modal.updateBody", {
+                repo: info.repo,
+              })}
             </p>
           </div>
         </div>
@@ -113,7 +112,9 @@ export function PersonalConfirmModal({
             ) : (
               <ArrowUpCircle size={14} />
             )}
-            {t(isInstall ? "plugins.personal.modal.confirm" : "plugins.personal.modal.confirmUpdate")}
+            {t(
+              isInstall ? "plugins.personal.modal.confirm" : "plugins.personal.modal.confirmUpdate",
+            )}
           </button>
         </div>
       </div>

@@ -69,11 +69,7 @@ function formatValue(category: DataCategory, value: unknown): string {
   }
 }
 
-export function DisplayPanel({
-  dataBindings,
-  orderBindings,
-  onExecuteOrder,
-}: DisplayPanelProps) {
+export function DisplayPanel({ dataBindings, orderBindings, onExecuteOrder }: DisplayPanelProps) {
   const { t } = useTranslation();
 
   // Local drag state for the brightness slider — null when the slider
@@ -158,10 +154,7 @@ export function DisplayPanel({
             (category === "display_brightness" && brightnessOrder);
 
           return (
-            <div
-              key={category}
-              className="flex items-center gap-3 py-2 first:pt-0 last:pb-0"
-            >
+            <div key={category} className="flex items-center gap-3 py-2 first:pt-0 last:pb-0">
               {iconFor(category)}
               <span className="flex-1 text-small text-text">
                 {t(`displays.fields.${category}`)}
@@ -175,46 +168,42 @@ export function DisplayPanel({
                 <select
                   className="text-small bg-bg border border-border rounded-sm px-2 py-1"
                   value={String(languageBinding.value ?? "")}
-                  onChange={(e) =>
-                    onExecuteOrder(languageOrder.alias, e.target.value)
-                  }
+                  onChange={(e) => onExecuteOrder(languageOrder.alias, e.target.value)}
                 >
                   <option value="fr">FR</option>
                   <option value="en">EN</option>
                 </select>
               )}
-              {category === "display_brightness" &&
-                brightnessBinding &&
-                brightnessOrder && (
-                  <div className="flex items-center gap-2">
-                    <input
-                      type="range"
-                      min={0}
-                      max={100}
-                      step={10}
-                      value={draftBrightness ?? Number(brightnessBinding.value ?? 0)}
-                      onChange={(e) => {
-                        const next = Number(e.target.value);
-                        setDraftBrightness(next);
-                        // Fallback debounce for keyboard nav (no pointerup).
-                        if (brightnessTimeoutRef.current) {
-                          clearTimeout(brightnessTimeoutRef.current);
-                        }
-                        brightnessTimeoutRef.current = setTimeout(
-                          () => commitBrightness(next),
-                          BRIGHTNESS_FALLBACK_DEBOUNCE_MS,
-                        );
-                      }}
-                      onPointerUp={() => {
-                        if (draftBrightness !== null) commitBrightness(draftBrightness);
-                      }}
-                      className="w-24"
-                    />
-                    <span className="text-small tabular-nums text-text-secondary w-12 text-right">
-                      {formatValue(category, draftBrightness ?? brightnessBinding.value)}
-                    </span>
-                  </div>
-                )}
+              {category === "display_brightness" && brightnessBinding && brightnessOrder && (
+                <div className="flex items-center gap-2">
+                  <input
+                    type="range"
+                    min={0}
+                    max={100}
+                    step={10}
+                    value={draftBrightness ?? Number(brightnessBinding.value ?? 0)}
+                    onChange={(e) => {
+                      const next = Number(e.target.value);
+                      setDraftBrightness(next);
+                      // Fallback debounce for keyboard nav (no pointerup).
+                      if (brightnessTimeoutRef.current) {
+                        clearTimeout(brightnessTimeoutRef.current);
+                      }
+                      brightnessTimeoutRef.current = setTimeout(
+                        () => commitBrightness(next),
+                        BRIGHTNESS_FALLBACK_DEBOUNCE_MS,
+                      );
+                    }}
+                    onPointerUp={() => {
+                      if (draftBrightness !== null) commitBrightness(draftBrightness);
+                    }}
+                    className="w-24"
+                  />
+                  <span className="text-small tabular-nums text-text-secondary w-12 text-right">
+                    {formatValue(category, draftBrightness ?? brightnessBinding.value)}
+                  </span>
+                </div>
+              )}
             </div>
           );
         })}

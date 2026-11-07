@@ -72,8 +72,10 @@ export function TimedCommandControl({
             return;
           }
           const value = equipment.timedCommand?.value;
-          guardGate(equipment, typeof value === "string" ? value : null, () =>
-            void run(() => armTimedCommand(equipment.id)),
+          guardGate(
+            equipment,
+            typeof value === "string" ? value : null,
+            () => void run(() => armTimedCommand(equipment.id)),
           );
         }}
         disabled={busy}
@@ -95,9 +97,7 @@ export function TimedCommandControl({
         )}
         {labelled && (
           <span>
-            {running
-              ? t("dashboard.timed.cancel")
-              : t("dashboard.timed.arm", { count: minutes })}
+            {running ? t("dashboard.timed.cancel") : t("dashboard.timed.arm", { count: minutes })}
           </span>
         )}
       </button>

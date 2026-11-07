@@ -1,19 +1,8 @@
-import {
-  Lightbulb,
-  LightbulbOff,
-  ChevronUp,
-  ChevronDown,
-  Square,
-  Loader2,
-} from "lucide-react";
+import { Lightbulb, LightbulbOff, ChevronUp, ChevronDown, Square, Loader2 } from "lucide-react";
 import { useTranslation } from "react-i18next";
 
 export type ZoneOrder =
-  | "allLightsOn"
-  | "allLightsOff"
-  | "allShuttersOpen"
-  | "allShuttersStop"
-  | "allShuttersClose";
+  "allLightsOn" | "allLightsOff" | "allShuttersOpen" | "allShuttersStop" | "allShuttersClose";
 
 type Category = "light" | "light-off" | "shutter";
 
@@ -54,11 +43,7 @@ function ZCmdsBtn({ cat, title, loading, disabled, onClick, children }: ZCmdsBtn
       disabled={disabled}
       className={`hit-44 inline-flex items-center justify-center w-9 h-[34px] rounded-sm text-text-secondary transition-colors duration-150 disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer ${CATEGORY_HOVER[cat]}`}
     >
-      {loading ? (
-        <Loader2 size={16} strokeWidth={1.5} className="animate-spin" />
-      ) : (
-        children
-      )}
+      {loading ? <Loader2 size={16} strokeWidth={1.5} className="animate-spin" /> : children}
     </button>
   );
 }

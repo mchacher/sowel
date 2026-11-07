@@ -14,7 +14,15 @@ import type { RecipeInfo, EquipmentWithDetails, ZoneWithChildren } from "../../t
 // required slot blocks submission with an inline error.
 
 function zone(id: string, name: string, children: ZoneWithChildren[] = []): ZoneWithChildren {
-  return { id, name, parentId: null, displayOrder: 0, createdAt: "2026-01-01T00:00:00Z", updatedAt: "2026-01-01T00:00:00Z", children };
+  return {
+    id,
+    name,
+    parentId: null,
+    displayOrder: 0,
+    createdAt: "2026-01-01T00:00:00Z",
+    updatedAt: "2026-01-01T00:00:00Z",
+    children,
+  };
 }
 
 function equipment(over: Partial<EquipmentWithDetails> = {}): EquipmentWithDetails {
@@ -39,8 +47,21 @@ const RECIPE: RecipeInfo = {
   description: "Turn the light on with motion",
   slots: [
     { id: "zone", name: "Zone", description: "", type: "zone", required: true },
-    { id: "light", name: "Light", description: "The light to drive", type: "equipment", required: true, constraints: { equipmentType: "light_onoff" } },
-    { id: "delay", name: "Delay", description: "Minutes before off", type: "number", required: false },
+    {
+      id: "light",
+      name: "Light",
+      description: "The light to drive",
+      type: "equipment",
+      required: true,
+      constraints: { equipmentType: "light_onoff" },
+    },
+    {
+      id: "delay",
+      name: "Delay",
+      description: "Minutes before off",
+      type: "number",
+      required: false,
+    },
   ],
 };
 
@@ -56,7 +77,9 @@ describe("AddRecipeForm", () => {
   });
 
   it("renders the selected recipe's name, description and slot fields", () => {
-    render(<AddRecipeForm zoneId="z-salon" recipes={[RECIPE]} initialRecipeId="r-1" onClose={vi.fn()} />);
+    render(
+      <AddRecipeForm zoneId="z-salon" recipes={[RECIPE]} initialRecipeId="r-1" onClose={vi.fn()} />,
+    );
 
     expect(screen.getAllByText("Auto light").length).toBeGreaterThan(0);
     expect(screen.getByText("Turn the light on with motion")).toBeTruthy();
@@ -70,7 +93,9 @@ describe("AddRecipeForm", () => {
     const createInstance = vi.fn().mockResolvedValue({});
     useRecipes.setState({ createInstance, instances: [] });
     const onClose = vi.fn();
-    render(<AddRecipeForm zoneId="z-salon" recipes={[RECIPE]} initialRecipeId="r-1" onClose={onClose} />);
+    render(
+      <AddRecipeForm zoneId="z-salon" recipes={[RECIPE]} initialRecipeId="r-1" onClose={onClose} />,
+    );
 
     await userEvent.selectOptions(screen.getByRole("combobox"), "eq-1");
     await userEvent.click(screen.getByRole("button", { name: "Create" }));
@@ -85,7 +110,9 @@ describe("AddRecipeForm", () => {
   it("blocks submission and shows an error when a required slot is empty", async () => {
     const createInstance = vi.fn().mockResolvedValue({});
     useRecipes.setState({ createInstance, instances: [] });
-    render(<AddRecipeForm zoneId="z-salon" recipes={[RECIPE]} initialRecipeId="r-1" onClose={vi.fn()} />);
+    render(
+      <AddRecipeForm zoneId="z-salon" recipes={[RECIPE]} initialRecipeId="r-1" onClose={vi.fn()} />,
+    );
 
     // Do not pick the required light equipment.
     await userEvent.click(screen.getByRole("button", { name: "Create" }));

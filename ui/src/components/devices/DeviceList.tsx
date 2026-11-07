@@ -21,24 +21,20 @@ interface DeviceListProps {
   /** Active integration tab (null = all devices). Controls which columns are shown. */
   activeTab: string | null;
   /** Map of deviceId → associated equipments with zone info */
-  deviceEquipmentMap: Map<string, { id: string; name: string; zoneName?: string; zoneId?: string }[]>;
+  deviceEquipmentMap: Map<
+    string,
+    { id: string; name: string; zoneName?: string; zoneId?: string }[]
+  >;
 }
 
 type SortKey =
-  | "status"
-  | "name"
-  | "manufacturer"
-  | "model"
-  | "source"
-  | "battery"
-  | "lqi"
-  | "lastSeen";
+  "status" | "name" | "manufacturer" | "model" | "source" | "battery" | "lqi" | "lastSeen";
 type SortDir = "asc" | "desc";
 
 function getNumericDataValue(
   deviceData: Record<string, DeviceData[]>,
   deviceId: string,
-  match: (d: DeviceData) => boolean
+  match: (d: DeviceData) => boolean,
 ): number | null {
   const data = deviceData[deviceId] ?? [];
   const found = data.find(match);
@@ -52,7 +48,7 @@ function compareSortKey(
   b: Device,
   key: SortKey,
   dir: SortDir,
-  deviceData: Record<string, DeviceData[]>
+  deviceData: Record<string, DeviceData[]>,
 ): number {
   const mul = dir === "asc" ? 1 : -1;
 
@@ -95,7 +91,12 @@ function compareSortKey(
   }
 }
 
-export function DeviceList({ devices, deviceData, activeTab, deviceEquipmentMap }: DeviceListProps) {
+export function DeviceList({
+  devices,
+  deviceData,
+  activeTab,
+  deviceEquipmentMap,
+}: DeviceListProps) {
   const { t } = useTranslation();
   const navigate = useNavigate();
   const [sortKey, setSortKey] = useState<SortKey>("name");
@@ -117,9 +118,7 @@ export function DeviceList({ devices, deviceData, activeTab, deviceEquipmentMap 
     }
   };
 
-  const sorted = [...devices].sort((a, b) =>
-    compareSortKey(a, b, sortKey, sortDir, deviceData)
-  );
+  const sorted = [...devices].sort((a, b) => compareSortKey(a, b, sortKey, sortDir, deviceData));
 
   return (
     <div className="card overflow-hidden">
@@ -298,11 +297,7 @@ function SortHeader({
 }) {
   const isActive = currentKey === sortKey;
   const alignClass =
-    align === "right"
-      ? "justify-end"
-      : align === "center"
-        ? "justify-center"
-        : "justify-start";
+    align === "right" ? "justify-end" : align === "center" ? "justify-center" : "justify-start";
 
   return (
     <th
@@ -317,13 +312,12 @@ function SortHeader({
         >
           {label}
         </span>
-        {isActive && (
-          currentDir === "asc" ? (
+        {isActive &&
+          (currentDir === "asc" ? (
             <ArrowUp size={11} strokeWidth={2} className="text-primary" />
           ) : (
             <ArrowDown size={11} strokeWidth={2} className="text-primary" />
-          )
-        )}
+          ))}
       </span>
     </th>
   );
@@ -339,11 +333,7 @@ function BatteryCell({ value }: { value: unknown }) {
 
   const Icon = level <= 15 ? BatteryLow : level <= 30 ? BatteryWarning : Battery;
   const color =
-    level <= 15
-      ? "text-error"
-      : level <= 30
-        ? "text-warning-ink"
-        : "text-text-secondary";
+    level <= 15 ? "text-error" : level <= 30 ? "text-warning-ink" : "text-text-secondary";
 
   return (
     <span className={`inline-flex items-center gap-1 ${color}`}>
@@ -362,12 +352,7 @@ function LqiCell({ value }: { value: unknown }) {
   if (isNaN(lqi)) return <span className="text-micro text-text-tertiary">—</span>;
 
   // Zigbee LQI range: 0–255. <75 = poor, <150 = fair, ≥150 = good
-  const color =
-    lqi < 75
-      ? "text-error"
-      : lqi < 150
-        ? "text-warning-ink"
-        : "text-text-secondary";
+  const color = lqi < 75 ? "text-error" : lqi < 150 ? "text-warning-ink" : "text-text-secondary";
 
   return (
     <span className={`inline-flex items-center gap-1 ${color}`}>
@@ -377,7 +362,11 @@ function LqiCell({ value }: { value: unknown }) {
   );
 }
 
-function EquipmentCell({ equipments }: { equipments?: { id: string; name: string; zoneName?: string; zoneId?: string }[] }) {
+function EquipmentCell({
+  equipments,
+}: {
+  equipments?: { id: string; name: string; zoneName?: string; zoneId?: string }[];
+}) {
   const { t } = useTranslation();
   if (!equipments || equipments.length === 0) {
     return <span className="text-micro text-text-tertiary">—</span>;
@@ -421,9 +410,7 @@ function EmptyState() {
         <Radio size={28} strokeWidth={1.5} className="text-text-tertiary" />
       </div>
       <h3 className="text-lead font-medium text-text mb-1">{t("devices.empty.title")}</h3>
-      <p className="text-small text-text-secondary max-w-[320px]">
-        {t("devices.empty.message")}
-      </p>
+      <p className="text-small text-text-secondary max-w-[320px]">{t("devices.empty.message")}</p>
     </div>
   );
 }

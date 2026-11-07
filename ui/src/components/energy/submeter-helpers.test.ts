@@ -1,9 +1,5 @@
 import { describe, expect, it } from "vitest";
-import type {
-  DataBindingWithValue,
-  EquipmentStatus,
-  EquipmentWithDetails,
-} from "../../types";
+import type { DataBindingWithValue, EquipmentStatus, EquipmentWithDetails } from "../../types";
 import { pickSubmeterColor, SUBMETER_PALETTE } from "./submeterPalette";
 import { formatPower } from "../../lib/format";
 import {
@@ -80,9 +76,7 @@ function makeEquipment(
         alias: "power",
         value: opts.power,
         lastUpdated:
-          opts.lastUpdated !== undefined
-            ? opts.lastUpdated
-            : ago(opts.readingAgeMs ?? 5_000),
+          opts.lastUpdated !== undefined ? opts.lastUpdated : ago(opts.readingAgeMs ?? 5_000),
         freshnessBudgetMs: opts.freshnessBudgetMs,
       }),
     );
@@ -255,9 +249,7 @@ describe("readSubmeterReading — freshness (#744)", () => {
   });
 
   it("accepts the SQLite-flavoured timestamp the API also emits", () => {
-    expect(parseReadingTime("2026-05-27 08:00:00Z")).toBe(
-      parseReadingTime("2026-05-27T08:00:00Z"),
-    );
+    expect(parseReadingTime("2026-05-27 08:00:00Z")).toBe(parseReadingTime("2026-05-27T08:00:00Z"));
     expect(parseReadingTime(null)).toBeNull();
     expect(parseReadingTime("nope")).toBeNull();
   });
@@ -461,9 +453,7 @@ describe("computeOther", () => {
   });
 
   it("returns 0 when submeter sum equals the house value", () => {
-    const rows = buildRows([
-      makeEquipment("a", "PAC", { power: 1000 }),
-    ]);
+    const rows = buildRows([makeEquipment("a", "PAC", { power: 1000 })]);
     expect(computeOther(1000, rows)).toBe(0);
   });
 

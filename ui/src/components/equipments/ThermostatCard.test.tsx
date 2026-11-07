@@ -73,9 +73,7 @@ describe("ThermostatCard power state", () => {
     // Before the fix, `2974 === true` read as off and every tap sent ON — the
     // production log shows five ON orders in 90 s from a user trying to stop.
     const exec = vi.fn().mockResolvedValue(undefined);
-    render(
-      <ThermostatCard equipment={equipment(pacBindings(true, 2974))} onExecuteOrder={exec} />,
-    );
+    render(<ThermostatCard equipment={equipment(pacBindings(true, 2974))} onExecuteOrder={exec} />);
     await userEvent.click(screen.getByTitle("Turn off"));
     expect(exec).toHaveBeenCalledWith("power", false);
   });
@@ -297,7 +295,9 @@ describe("ThermostatCard extras fold (spec 196)", () => {
     unmount();
 
     render(<ThermostatCard equipment={eq} onExecuteOrder={vi.fn()} />);
-    expect(screen.getByRole("button", { name: /Other settings/ }).getAttribute("aria-expanded")).toBe("true");
+    expect(
+      screen.getByRole("button", { name: /Other settings/ }).getAttribute("aria-expanded"),
+    ).toBe("true");
   });
 });
 

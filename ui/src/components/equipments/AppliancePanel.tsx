@@ -15,15 +15,19 @@ export function AppliancePanel({ equipment }: AppliancePanelProps) {
   const jobPhaseBinding = equipment.dataBindings.find((b) => b.alias === "job_phase");
   const progressBinding = equipment.dataBindings.find((b) => b.alias === "progress");
   const remainingTimeBinding = equipment.dataBindings.find((b) => b.alias === "remaining_time");
-  const remainingTimeStrBinding = equipment.dataBindings.find((b) => b.alias === "remaining_time_str");
+  const remainingTimeStrBinding = equipment.dataBindings.find(
+    (b) => b.alias === "remaining_time_str",
+  );
   const energyBinding = equipment.dataBindings.find((b) => b.alias === "energy");
 
   const isOn = powerBinding?.value === true;
   const state = typeof stateBinding?.value === "string" ? stateBinding.value : "off";
   const jobPhase = typeof jobPhaseBinding?.value === "string" ? jobPhaseBinding.value : null;
   const progress = typeof progressBinding?.value === "number" ? progressBinding.value : 0;
-  const remainingTimeStr = typeof remainingTimeStrBinding?.value === "string" ? remainingTimeStrBinding.value : null;
-  const remainingMin = typeof remainingTimeBinding?.value === "number" ? remainingTimeBinding.value : null;
+  const remainingTimeStr =
+    typeof remainingTimeStrBinding?.value === "string" ? remainingTimeStrBinding.value : null;
+  const remainingMin =
+    typeof remainingTimeBinding?.value === "number" ? remainingTimeBinding.value : null;
   const energyWh = typeof energyBinding?.value === "number" ? energyBinding.value : null;
 
   const isRunning = state === "running";
@@ -45,16 +49,26 @@ export function AppliancePanel({ equipment }: AppliancePanelProps) {
 
       {!isOn || state === "off" ? (
         <div className="text-center py-6">
-          <WashingMachine size={40} strokeWidth={1} className="mx-auto mb-2 text-text-tertiary/30" />
+          <WashingMachine
+            size={40}
+            strokeWidth={1}
+            className="mx-auto mb-2 text-text-tertiary/30"
+          />
           <span className="text-body text-text-tertiary">{t("controls.off")}</span>
         </div>
       ) : (
         <div className="space-y-4">
           {/* State badge */}
           <div className="flex items-center gap-3">
-            <span className={`text-small font-semibold px-3 py-1 rounded-full ${
-              isRunning ? "bg-active-bg text-active-ink" : isPaused ? "bg-warning/10 text-warning-ink" : "bg-border-light text-text-secondary"
-            }`}>
+            <span
+              className={`text-small font-semibold px-3 py-1 rounded-full ${
+                isRunning
+                  ? "bg-active-bg text-active-ink"
+                  : isPaused
+                    ? "bg-warning/10 text-warning-ink"
+                    : "bg-border-light text-text-secondary"
+              }`}
+            >
               {isRunning ? t("common.running") : isPaused ? t("common.paused") : state}
             </span>
             {jobPhase && jobPhase !== "none" && (
@@ -69,7 +83,9 @@ export function AppliancePanel({ equipment }: AppliancePanelProps) {
             <div>
               <div className="flex items-center justify-between mb-1.5">
                 <span className="text-caption text-text-secondary">{t("common.progress")}</span>
-                <span className="text-small tabular-nums font-semibold text-text">{formatPercent(progress)}</span>
+                <span className="text-small tabular-nums font-semibold text-text">
+                  {formatPercent(progress)}
+                </span>
               </div>
               <div className="h-2 bg-border-light rounded-full overflow-hidden">
                 <div
@@ -84,9 +100,7 @@ export function AppliancePanel({ equipment }: AppliancePanelProps) {
           {(isRunning || isPaused) && remainingTimeStr && (
             <div className="flex items-center gap-2">
               <Timer size={14} strokeWidth={1.5} className="text-text-tertiary" />
-              <span className="text-body tabular-nums text-text">
-                {remainingTimeStr}
-              </span>
+              <span className="text-body tabular-nums text-text">{remainingTimeStr}</span>
               {remainingMin !== null && (
                 <span className="text-caption text-text-tertiary">
                   ({formatDuration(remainingMin * 60)})

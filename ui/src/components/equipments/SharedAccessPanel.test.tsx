@@ -33,7 +33,10 @@ function renderPanel() {
   return render(
     <MemoryRouter initialEntries={["/equipments/g1"]}>
       <Routes>
-        <Route path="/equipments/:id" element={<SharedAccessPanel defaultOpen equipmentId="g1" />} />
+        <Route
+          path="/equipments/:id"
+          element={<SharedAccessPanel defaultOpen equipmentId="g1" />}
+        />
         <Route path="/shared-access" element={<Where />} />
       </Routes>
     </MemoryRouter>,
@@ -68,7 +71,9 @@ describe("SharedAccessPanel", () => {
     vi.mocked(api.getSharedAccessGatePanel).mockResolvedValue({ armed: true, people: 3 });
     renderPanel();
 
-    expect(await screen.findByText("3 people can open this gate with a code or a link.")).toBeTruthy();
+    expect(
+      await screen.findByText("3 people can open this gate with a code or a link."),
+    ).toBeTruthy();
     const sw = screen.getByRole("switch");
     expect(sw.getAttribute("aria-checked")).toBe("true");
     expect(screen.getByRole("link", { name: /See the accesses/ }).getAttribute("href")).toBe(
@@ -84,7 +89,9 @@ describe("SharedAccessPanel", () => {
     await userEvent.click(await screen.findByRole("switch"));
 
     expect(api.setSharedAccessArmed).toHaveBeenCalledWith("g1", false);
-    await waitFor(() => expect(screen.getByRole("switch").getAttribute("aria-checked")).toBe("false"));
+    await waitFor(() =>
+      expect(screen.getByRole("switch").getAttribute("aria-checked")).toBe("false"),
+    );
     expect(screen.getByText("Disarmed.")).toBeTruthy();
     expect(screen.getByText(/The 3 accesses are kept, but every press is refused/)).toBeTruthy();
   });

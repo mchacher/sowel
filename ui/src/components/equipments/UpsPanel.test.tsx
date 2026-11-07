@@ -44,9 +44,9 @@ const paintedStrokes = (c: HTMLElement) =>
 describe("UpsPanel on mains", () => {
   it("puts the three live values on the diagram, one per node", () => {
     render(<UpsPanel dataBindings={bindings()} />);
-    expect(screen.getByText("21")).toBeTruthy();   // load, watts
-    expect(screen.getByText("237")).toBeTruthy();  // mains, volts
-    expect(screen.getByText("100")).toBeTruthy();  // battery, percent
+    expect(screen.getByText("21")).toBeTruthy(); // load, watts
+    expect(screen.getByText("237")).toBeTruthy(); // mains, volts
+    expect(screen.getByText("100")).toBeTruthy(); // battery, percent
     expect(screen.getByText("59 min")).toBeTruthy(); // autonomy, as a duration
   });
 
@@ -134,11 +134,7 @@ describe("UpsPanel technical sheet", () => {
 
   it("never repeats a value the diagram or the margins already show", () => {
     render(<UpsPanel dataBindings={bindings()} />);
-    for (const shown of [
-      "Transfer to battery",
-      "Output capacity",
-      "Shutdown commanded",
-    ]) {
+    for (const shown of ["Transfer to battery", "Output capacity", "Shutdown commanded"]) {
       expect(screen.getAllByText(shown)).toHaveLength(1);
     }
     // The nameplate rows the diagram never shows are the sheet's own.

@@ -1,4 +1,8 @@
-import type { SharedAccessGateInput, SharedAccessGateSummary, SharedAccessState } from "../../types";
+import type {
+  SharedAccessGateInput,
+  SharedAccessGateSummary,
+  SharedAccessState,
+} from "../../types";
 
 /**
  * R2.5 — a gate whose command offers a CHOICE opens with « open » unless told
@@ -26,6 +30,8 @@ export function gatesBody(
 ): SharedAccessGateInput[] {
   return gates.map((g) => {
     const choice = (byId.get(g.equipmentId)?.commandValues.length ?? 0) > 1;
-    return choice && g.value !== null ? { equipmentId: g.equipmentId, value: g.value } : { equipmentId: g.equipmentId };
+    return choice && g.value !== null
+      ? { equipmentId: g.equipmentId, value: g.value }
+      : { equipmentId: g.equipmentId };
   });
 }

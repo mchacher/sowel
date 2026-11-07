@@ -1,4 +1,10 @@
-import { useEffect, useId, useRef, useState, type KeyboardEvent as ReactKeyboardEvent } from "react";
+import {
+  useEffect,
+  useId,
+  useRef,
+  useState,
+  type KeyboardEvent as ReactKeyboardEvent,
+} from "react";
 import { createPortal } from "react-dom";
 import { useTranslation } from "react-i18next";
 import { BottomSheet } from "./BottomSheet";
@@ -31,9 +37,12 @@ export function ConfirmActionSheet({
 }) {
   const { t } = useTranslation();
   const closeTimer = useRef<number | null>(null);
-  useEffect(() => () => {
-    if (closeTimer.current !== null) window.clearTimeout(closeTimer.current);
-  }, []);
+  useEffect(
+    () => () => {
+      if (closeTimer.current !== null) window.clearTimeout(closeTimer.current);
+    },
+    [],
+  );
 
   const handleConfirm = () => {
     onConfirm();
@@ -136,7 +145,9 @@ export function ConfirmActionDialog({
     }
     if (e.key !== "Tab" || !dialogRef.current) return;
     const focusable = Array.from(
-      dialogRef.current.querySelectorAll<HTMLElement>("button:not([disabled]), [href], [tabindex]:not([tabindex='-1'])"),
+      dialogRef.current.querySelectorAll<HTMLElement>(
+        "button:not([disabled]), [href], [tabindex]:not([tabindex='-1'])",
+      ),
     );
     if (focusable.length === 0) return;
     const first = focusable[0];

@@ -82,17 +82,29 @@ export function ProductionPage() {
               {showSplit && (
                 <div className="flex items-center gap-4 text-small text-text-secondary">
                   <span className="flex items-center gap-1.5">
-                    <span className="inline-block w-2.5 h-2.5 rounded-full" style={{ backgroundColor: AUTOCONSO_COLOR }} />
-                    {t("energy.autoconsumption")}{t("common.colon")}{formatWh(history.totals.total_autoconso)}
+                    <span
+                      className="inline-block w-2.5 h-2.5 rounded-full"
+                      style={{ backgroundColor: AUTOCONSO_COLOR }}
+                    />
+                    {t("energy.autoconsumption")}
+                    {t("common.colon")}
+                    {formatWh(history.totals.total_autoconso)}
                   </span>
                   <span className="flex items-center gap-1.5">
-                    <span className="inline-block w-2.5 h-2.5 rounded-full" style={{ backgroundColor: INJECTION_COLOR }} />
-                    {t("energy.gridInjection")}{t("common.colon")}{formatWh(history.totals.total_injection)}
+                    <span
+                      className="inline-block w-2.5 h-2.5 rounded-full"
+                      style={{ backgroundColor: INJECTION_COLOR }}
+                    />
+                    {t("energy.gridInjection")}
+                    {t("common.colon")}
+                    {formatWh(history.totals.total_injection)}
                   </span>
                 </div>
               )}
               <div className="text-lead font-semibold text-text tabular-nums mt-1">
-                {t("energy.total")}{t("common.colon")}{formatWh(displayedProductionTotalWh(history.totals))}
+                {t("energy.total")}
+                {t("common.colon")}
+                {formatWh(displayedProductionTotalWh(history.totals))}
               </div>
             </div>
           )}

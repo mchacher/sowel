@@ -30,12 +30,7 @@ import {
 import { EvCarGauge } from "../icons/EvCarGauge";
 import { LightControl } from "../equipments/LightControl";
 import { vmcSpeedOf } from "../equipments/vmcSpeed";
-import {
-  formatRuntime,
-  upsSeverityOf,
-  upsStatusKey,
-  upsStatusOf,
-} from "../equipments/upsStatus";
+import { formatRuntime, upsSeverityOf, upsStatusKey, upsStatusOf } from "../equipments/upsStatus";
 import type { DashboardWidget } from "../../types";
 import { useEquipmentState, formatValue } from "../equipments/useEquipmentState";
 import { useCameraSnapshot } from "../../hooks/useCameraSnapshot";
@@ -236,7 +231,8 @@ function EquipmentWidgetBody({
         editMode={editMode}
       />
     );
-  if (isEnergyMeter) return <EnergyMeterEquipmentWidget label={label} sublabel={sublabel} equipment={equipment} />;
+  if (isEnergyMeter)
+    return <EnergyMeterEquipmentWidget label={label} sublabel={sublabel} equipment={equipment} />;
   if (equipment.type === "solar_panel")
     return <SolarPanelEquipmentWidget label={label} sublabel={sublabel} equipment={equipment} />;
   if (equipment.type === "water_heater")
@@ -292,8 +288,16 @@ function EquipmentWidgetBody({
       />
     );
   if (equipment.type === "weather")
-    return <WeatherStationWidget label={label} sublabel={sublabel} equipment={equipment} onOpenDetail={onOpenDetail} />;
-  if (isAppliance) return <ApplianceEquipmentWidget label={label} sublabel={sublabel} equipment={equipment} />;
+    return (
+      <WeatherStationWidget
+        label={label}
+        sublabel={sublabel}
+        equipment={equipment}
+        onOpenDetail={onOpenDetail}
+      />
+    );
+  if (isAppliance)
+    return <ApplianceEquipmentWidget label={label} sublabel={sublabel} equipment={equipment} />;
   if (isWaterValve)
     return (
       <WaterValveEquipmentWidget
@@ -373,7 +377,11 @@ function LightEquipmentWidget({
       : null;
   const brightness = slider.displayValue(deviceBrightness);
   // Issue #933 — the dimmer's declared range; Zigbee's only when none is declared.
-  const brightnessOrder = findOrderByCategory(equipment.orderBindings, ["set_brightness"], ["brightness"]);
+  const brightnessOrder = findOrderByCategory(
+    equipment.orderBindings,
+    ["set_brightness"],
+    ["brightness"],
+  );
   const scale = brightnessScale(brightnessOrder);
   const brightnessPct = brightness !== null ? brightnessPercent(brightness, scale) : null;
 
@@ -1320,11 +1328,7 @@ function WeatherTempColumn({
 }) {
   return (
     <div className="flex flex-col items-center justify-center gap-1">
-      {label && (
-        <span className="text-caption text-text-tertiary font-medium">
-          {label}
-        </span>
-      )}
+      {label && <span className="text-caption text-text-tertiary font-medium">{label}</span>}
       <div className="flex items-baseline leading-none">
         {/* eslint-disable-next-line sowel/type-scale -- fluid size, follows the tile width (container query); no step of the scale can do that */}
         <span className="font-semibold text-[clamp(22px,14cqw,36px)] text-text tabular-nums leading-none">
@@ -1389,9 +1393,7 @@ function EnergyMeterEquipmentWidget({
         <div className="flex flex-col items-start gap-1.5 pl-2">
           {/* Today's consumption — primary value (green for production meters) */}
           <div className="flex items-baseline gap-0.5">
-            <span
-              className={`text-title font-semibold ${primaryColor} tabular-nums leading-none`}
-            >
+            <span className={`text-title font-semibold ${primaryColor} tabular-nums leading-none`}>
               {formatWh(energyDay?.value)}
             </span>
             <span className="text-micro font-medium text-text-tertiary">
@@ -1481,7 +1483,8 @@ function SolarPanelEquipmentWidget({
               that stopped reporting (#839). */}
           {outdatedSince && (
             <span className="text-micro text-text-tertiary mt-1">
-              {t("reading.outdated")} · {t("reading.ago", { age: formatRelative(outdatedSince, t) })}
+              {t("reading.outdated")} ·{" "}
+              {t("reading.ago", { age: formatRelative(outdatedSince, t) })}
             </span>
           )}
         </div>
@@ -1667,7 +1670,11 @@ function UpsEquipmentWidget({
 
   const rows: { key: string; label: string; value: string }[] = [];
   if (charge !== null && charge !== undefined) {
-    rows.push({ key: "battery", label: t("equipments.ups.battery"), value: formatPercent(Number(charge)) });
+    rows.push({
+      key: "battery",
+      label: t("equipments.ups.battery"),
+      value: formatPercent(Number(charge)),
+    });
   }
   if (runtime) {
     rows.push({ key: "runtime", label: t("equipments.ups.runtime"), value: runtime });

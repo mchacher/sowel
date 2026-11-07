@@ -9,10 +9,16 @@ describe("TooltipSeriesRow", () => {
     const { container } = render(
       <TooltipSeriesRow color="var(--color-energy-hc)" label="Heures creuses" value="1,2 kWh" />,
     );
-    expect(screen.getByTestId("tooltip-swatch").style.backgroundColor).toBe("var(--color-energy-hc)");
-    const withColour = [...container.querySelectorAll<HTMLElement>("*")].filter((el) => el.style.color !== "");
+    expect(screen.getByTestId("tooltip-swatch").style.backgroundColor).toBe(
+      "var(--color-energy-hc)",
+    );
+    const withColour = [...container.querySelectorAll<HTMLElement>("*")].filter(
+      (el) => el.style.color !== "",
+    );
     expect(withColour).toEqual([]);
-    expect(screen.getByText("Heures creuses").parentElement!.className).toContain("text-text-secondary");
+    expect(screen.getByText("Heures creuses").parentElement!.className).toContain(
+      "text-text-secondary",
+    );
     expect(screen.getByText("1,2 kWh").className).toContain("text-text");
   });
 });

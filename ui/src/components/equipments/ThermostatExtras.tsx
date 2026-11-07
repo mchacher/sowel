@@ -65,7 +65,8 @@ function isControllable(order: OrderBindingWithDetails): boolean {
   return order.type === "boolean" || order.type === "number";
 }
 
-const chip = "inline-flex items-center gap-1.5 px-2.5 py-1 rounded-sm text-caption bg-border-light text-text-secondary";
+const chip =
+  "inline-flex items-center gap-1.5 px-2.5 py-1 rounded-sm text-caption bg-border-light text-text-secondary";
 const segment = (selected: boolean) =>
   `px-2.5 py-1 rounded-sm text-micro font-medium border transition-colors duration-150 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed ${
     selected
@@ -100,7 +101,8 @@ export function ThermostatExtras({
 
   if (controls.length === 0 && readings.length === 0) return null;
 
-  const label = (alias: string) => t(`thermostat.extras.${alias}`, { defaultValue: humanizeAlias(alias) });
+  const label = (alias: string) =>
+    t(`thermostat.extras.${alias}`, { defaultValue: humanizeAlias(alias) });
   const valueLabel = (alias: string, value: unknown, unit?: string): string => {
     if (value === null || value === undefined) return "—";
     if (typeof value === "boolean") return value ? t("common.on") : t("common.off");
@@ -123,7 +125,11 @@ export function ThermostatExtras({
           }}
           className="text-caption text-text-tertiary hover:text-text-secondary flex items-center gap-1 cursor-pointer"
         >
-          {open ? <ChevronDown size={12} strokeWidth={1.5} /> : <ChevronRight size={12} strokeWidth={1.5} />}
+          {open ? (
+            <ChevronDown size={12} strokeWidth={1.5} />
+          ) : (
+            <ChevronRight size={12} strokeWidth={1.5} />
+          )}
           <SlidersHorizontal size={12} strokeWidth={1.5} />
           {t("thermostat.extras.titleCount", { n: controls.length + readings.length })}
         </button>
@@ -134,102 +140,105 @@ export function ThermostatExtras({
         </span>
       )}
 
-      {open && <>
+      {open && (
+        <>
+          {controls.map((order) => {
+            const alias = order.alias;
+            const value = current(alias);
+            const busy = executing === alias;
 
-      {controls.map((order) => {
-        const alias = order.alias;
-        const value = current(alias);
-        const busy = executing === alias;
+            if (order.type === "enum") {
+              return (
+                <div key={alias} className="space-y-1.5">
+                  <span className="text-caption text-text-tertiary">{label(alias)}</span>
+                  <div className="flex gap-1.5 flex-wrap">
+                    {(order.enumValues ?? []).map((v) => (
+                      <button
+                        key={v}
+                        onClick={() => onExec(alias, v)}
+                        disabled={busy}
+                        className={segment(value === v)}
+                      >
+                        {valueLabel(alias, v)}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              );
+            }
 
-        if (order.type === "enum") {
-          return (
-            <div key={alias} className="space-y-1.5">
-              <span className="text-caption text-text-tertiary">{label(alias)}</span>
-              <div className="flex gap-1.5 flex-wrap">
-                {(order.enumValues ?? []).map((v) => (
+            if (order.type === "boolean") {
+              const mirror = dataByAlias.get(alias);
+              if (!mirror) {
+                return (
+                  <div key={alias} className="flex items-center gap-3">
+                    <span className="text-caption text-text-tertiary">{label(alias)}</span>
+                    <button
+                      onClick={() => onExec(alias, true)}
+                      disabled={busy}
+                      className={segment(false)}
+                      title={label(alias)}
+                    >
+                      <span className="inline-flex items-center gap-1">
+                        <Zap size={11} strokeWidth={1.5} />
+                        {t("thermostat.extras.trigger")}
+                      </span>
+                    </button>
+                  </div>
+                );
+              }
+              const on = value === true;
+              return (
+                <div key={alias} className="flex items-center gap-3">
+                  <span className="text-caption text-text-tertiary">{label(alias)}</span>
                   <button
-                    key={v}
-                    onClick={() => onExec(alias, v)}
+                    onClick={() => onExec(alias, !on)}
                     disabled={busy}
-                    className={segment(value === v)}
+                    className={segment(on)}
+                    title={on ? t("controls.turnOff") : t("controls.turnOn")}
                   >
-                    {valueLabel(alias, v)}
+                    {on ? t("common.on") : t("common.off")}
                   </button>
-                ))}
-              </div>
-            </div>
-          );
-        }
+                </div>
+              );
+            }
 
-        if (order.type === "boolean") {
-          const mirror = dataByAlias.get(alias);
-          if (!mirror) {
+            // number
+            const n = typeof value === "number" ? value : null;
             return (
               <div key={alias} className="flex items-center gap-3">
                 <span className="text-caption text-text-tertiary">{label(alias)}</span>
-                <button
-                  onClick={() => onExec(alias, true)}
-                  disabled={busy}
-                  className={segment(false)}
-                  title={label(alias)}
-                >
-                  <span className="inline-flex items-center gap-1">
-                    <Zap size={11} strokeWidth={1.5} />
-                    {t("thermostat.extras.trigger")}
-                  </span>
-                </button>
+                <SetpointStepper
+                  size="sm"
+                  value={n}
+                  min={order.min ?? Number.NEGATIVE_INFINITY}
+                  max={order.max ?? Number.POSITIVE_INFINITY}
+                  step={1}
+                  unit={order.unit}
+                  label={label(alias)}
+                  decreaseLabel={t("setpoint.decreaseOf", { label: label(alias) })}
+                  increaseLabel={t("setpoint.increaseOf", { label: label(alias) })}
+                  debounceMs={commitDelayMs}
+                  onCommit={(v) => onCommitNumber(alias, v)}
+                />
               </div>
             );
-          }
-          const on = value === true;
-          return (
-            <div key={alias} className="flex items-center gap-3">
-              <span className="text-caption text-text-tertiary">{label(alias)}</span>
-              <button
-                onClick={() => onExec(alias, !on)}
-                disabled={busy}
-                className={segment(on)}
-                title={on ? t("controls.turnOff") : t("controls.turnOn")}
-              >
-                {on ? t("common.on") : t("common.off")}
-              </button>
+          })}
+
+          {readings.length > 0 && (
+            <div className="flex gap-1.5 flex-wrap">
+              {readings.map((b) => (
+                <span key={b.alias} className={chip} title={b.alias}>
+                  <span className="text-text-tertiary">{label(b.alias)}</span>
+                  <span className="font-medium text-text">
+                    {valueLabel(b.alias, b.value, b.unit)}
+                  </span>
+                </span>
+              ))}
             </div>
-          );
-        }
-
-        // number
-        const n = typeof value === "number" ? value : null;
-        return (
-          <div key={alias} className="flex items-center gap-3">
-            <span className="text-caption text-text-tertiary">{label(alias)}</span>
-            <SetpointStepper
-              size="sm"
-              value={n}
-              min={order.min ?? Number.NEGATIVE_INFINITY}
-              max={order.max ?? Number.POSITIVE_INFINITY}
-              step={1}
-              unit={order.unit}
-              label={label(alias)}
-              decreaseLabel={t("setpoint.decreaseOf", { label: label(alias) })}
-              increaseLabel={t("setpoint.increaseOf", { label: label(alias) })}
-              debounceMs={commitDelayMs}
-              onCommit={(v) => onCommitNumber(alias, v)}
-            />
-          </div>
-        );
-      })}
-
-      {readings.length > 0 && (
-        <div className="flex gap-1.5 flex-wrap">
-          {readings.map((b) => (
-            <span key={b.alias} className={chip} title={b.alias}>
-              <span className="text-text-tertiary">{label(b.alias)}</span>
-              <span className="font-medium text-text">{valueLabel(b.alias, b.value, b.unit)}</span>
-            </span>
-          ))}
-        </div>
+          )}
+        </>
       )}
-      </>}
     </div>
   );
 }

@@ -1,7 +1,12 @@
 import { useEffect, useState, useRef, useMemo } from "react";
 import { useTranslation } from "react-i18next";
 import { Zap, Trash2, Plus, Pencil } from "lucide-react";
-import { getButtonActionBindings, addButtonActionBinding, updateButtonActionBinding, removeButtonActionBinding } from "../../api";
+import {
+  getButtonActionBindings,
+  addButtonActionBinding,
+  updateButtonActionBinding,
+  removeButtonActionBinding,
+} from "../../api";
 import { useModes } from "../../store/useModes";
 import { useEquipments } from "../../store/useEquipments";
 import { useRecipes } from "../../store/useRecipes";
@@ -57,7 +62,10 @@ interface ButtonActionsSectionProps {
   defaultOpen?: boolean;
 }
 
-export function ButtonActionsSection({ equipmentId, defaultOpen = false }: ButtonActionsSectionProps) {
+export function ButtonActionsSection({
+  equipmentId,
+  defaultOpen = false,
+}: ButtonActionsSectionProps) {
   const { t } = useTranslation();
   const modes = useModes((s) => s.modes);
   const fetchModes = useModes((s) => s.fetchModes);
@@ -69,7 +77,9 @@ export function ButtonActionsSection({ equipmentId, defaultOpen = false }: Butto
 
   // Derive action values from the equipment's "action" data binding enum values
   const currentEquipment = equipments.find((e) => e.id === equipmentId);
-  const actionBinding = currentEquipment?.dataBindings.find((b) => b.alias === "action" || b.category === "action");
+  const actionBinding = currentEquipment?.dataBindings.find(
+    (b) => b.alias === "action" || b.category === "action",
+  );
   const actionValues = actionBinding?.enumValues ?? DEFAULT_BUTTON_ACTIONS;
 
   const [bindings, setBindings] = useState<ButtonActionBinding[]>([]);
@@ -80,10 +90,16 @@ export function ButtonActionsSection({ equipmentId, defaultOpen = false }: Butto
   useEffect(() => {
     mountedRef.current = true;
     getButtonActionBindings(equipmentId)
-      .then((data) => { if (mountedRef.current) setBindings(data); })
-      .catch(() => { if (mountedRef.current) setBindings([]); });
+      .then((data) => {
+        if (mountedRef.current) setBindings(data);
+      })
+      .catch(() => {
+        if (mountedRef.current) setBindings([]);
+      });
     fetchModes();
-    return () => { mountedRef.current = false; };
+    return () => {
+      mountedRef.current = false;
+    };
   }, [equipmentId, fetchModes]);
 
   const refreshBindings = async () => {
@@ -100,13 +116,20 @@ export function ButtonActionsSection({ equipmentId, defaultOpen = false }: Butto
     await refreshBindings();
   };
 
-  const handleAdd = async (data: { actionValue: string; effectType: ButtonEffectType; config: Record<string, unknown> }) => {
+  const handleAdd = async (data: {
+    actionValue: string;
+    effectType: ButtonEffectType;
+    config: Record<string, unknown>;
+  }) => {
     await addButtonActionBinding(equipmentId, data);
     setShowAddForm(false);
     await refreshBindings();
   };
 
-  const handleEdit = async (bindingId: string, data: { actionValue: string; effectType: ButtonEffectType; config: Record<string, unknown> }) => {
+  const handleEdit = async (
+    bindingId: string,
+    data: { actionValue: string; effectType: ButtonEffectType; config: Record<string, unknown> },
+  ) => {
     await updateButtonActionBinding(equipmentId, bindingId, data);
     setEditingId(null);
     await refreshBindings();
@@ -134,7 +157,11 @@ export function ButtonActionsSection({ equipmentId, defaultOpen = false }: Butto
       case "equipment_order": {
         const eq = equipments.find((e) => e.id === binding.config.equipmentId);
         const zoneName = eq ? zones.find((z) => z.id === eq.zoneId)?.label : undefined;
-        const eqName = eq ? (zoneName ? `${zoneName} — ${eq.name}` : eq.name) : String(binding.config.equipmentId);
+        const eqName = eq
+          ? zoneName
+            ? `${zoneName} — ${eq.name}`
+            : eq.name
+          : String(binding.config.equipmentId);
         const val = binding.config.value;
         const valueStr = val != null && val !== "" ? ` = ${val}` : "";
         return `${t("buttonActions.effectType.equipment_order")} → ${eqName} · ${String(binding.config.orderAlias)}${valueStr}`;
@@ -184,52 +211,52 @@ export function ButtonActionsSection({ equipmentId, defaultOpen = false }: Butto
       )}
 
       {[...grouped.entries()].map(([actionValue, actionBindings]) => (
-          <div key={actionValue} className="mb-3">
-            <div className="text-small font-semibold text-text-secondary mb-1.5">
-              {getActionLabel(actionValue)}
-            </div>
-            <div className="space-y-1.5">
-              {actionBindings.map((binding) =>
-                editingId === binding.id ? (
-                  <AddEffectForm
-                    key={binding.id}
-                    modes={modes}
-                    equipments={equipments}
-                    zones={zones}
-                    zoneTree={zoneTree}
-                    instances={instances}
-                    actionValues={actionValues}
-                    initial={binding}
-                    onSubmit={async (data) => handleEdit(binding.id, data)}
-                    onCancel={() => setEditingId(null)}
-                  />
-                ) : (
-                  <div
-                    key={binding.id}
-                    className="flex items-center gap-2 px-3 py-2 bg-background rounded-sm border border-border-light"
-                  >
-                    <Zap size={12} strokeWidth={1.5} className="text-text-tertiary flex-shrink-0" />
-                    <span className="text-caption text-text flex-1 truncate">
-                      {getEffectLabel(binding)}
-                    </span>
-                    <button
-                      onClick={() => setEditingId(binding.id)}
-                      className="p-1 text-text-tertiary hover:text-primary transition-colors"
-                    >
-                      <Pencil size={12} strokeWidth={1.5} />
-                    </button>
-                    <button
-                      onClick={() => handleRemove(binding.id)}
-                      className="p-1 text-text-tertiary hover:text-error transition-colors"
-                    >
-                      <Trash2 size={12} strokeWidth={1.5} />
-                    </button>
-                  </div>
-                ),
-              )}
-            </div>
+        <div key={actionValue} className="mb-3">
+          <div className="text-small font-semibold text-text-secondary mb-1.5">
+            {getActionLabel(actionValue)}
           </div>
-        ))}
+          <div className="space-y-1.5">
+            {actionBindings.map((binding) =>
+              editingId === binding.id ? (
+                <AddEffectForm
+                  key={binding.id}
+                  modes={modes}
+                  equipments={equipments}
+                  zones={zones}
+                  zoneTree={zoneTree}
+                  instances={instances}
+                  actionValues={actionValues}
+                  initial={binding}
+                  onSubmit={async (data) => handleEdit(binding.id, data)}
+                  onCancel={() => setEditingId(null)}
+                />
+              ) : (
+                <div
+                  key={binding.id}
+                  className="flex items-center gap-2 px-3 py-2 bg-background rounded-sm border border-border-light"
+                >
+                  <Zap size={12} strokeWidth={1.5} className="text-text-tertiary flex-shrink-0" />
+                  <span className="text-caption text-text flex-1 truncate">
+                    {getEffectLabel(binding)}
+                  </span>
+                  <button
+                    onClick={() => setEditingId(binding.id)}
+                    className="p-1 text-text-tertiary hover:text-primary transition-colors"
+                  >
+                    <Pencil size={12} strokeWidth={1.5} />
+                  </button>
+                  <button
+                    onClick={() => handleRemove(binding.id)}
+                    className="p-1 text-text-tertiary hover:text-error transition-colors"
+                  >
+                    <Trash2 size={12} strokeWidth={1.5} />
+                  </button>
+                </div>
+              ),
+            )}
+          </div>
+        </div>
+      ))}
 
       {showAddForm && (
         <AddEffectForm
@@ -259,18 +286,39 @@ function AddEffectForm({
   onCancel,
 }: {
   modes: { id: string; name: string; active: boolean }[];
-  equipments: { id: string; name: string; type: string; zoneId: string; orderBindings: { alias: string; type?: string; category?: string; enumValues?: string[]; min?: number; max?: number }[] }[];
+  equipments: {
+    id: string;
+    name: string;
+    type: string;
+    zoneId: string;
+    orderBindings: {
+      alias: string;
+      type?: string;
+      category?: string;
+      enumValues?: string[];
+      min?: number;
+      max?: number;
+    }[];
+  }[];
   zones: { id: string; label: string }[];
   zoneTree: ZoneWithChildren[];
   instances: { id: string; recipeId: string }[];
   actionValues: string[];
   initial?: ButtonActionBinding;
-  onSubmit: (data: { actionValue: string; effectType: ButtonEffectType; config: Record<string, unknown> }) => Promise<void>;
+  onSubmit: (data: {
+    actionValue: string;
+    effectType: ButtonEffectType;
+    config: Record<string, unknown>;
+  }) => Promise<void>;
   onCancel: () => void;
 }) {
   const { t } = useTranslation();
-  const [actionValue, setActionValue] = useState(initial?.actionValue ?? actionValues[0] ?? "single");
-  const [effectType, setEffectType] = useState<ButtonEffectType>(initial?.effectType ?? "mode_activate");
+  const [actionValue, setActionValue] = useState(
+    initial?.actionValue ?? actionValues[0] ?? "single",
+  );
+  const [effectType, setEffectType] = useState<ButtonEffectType>(
+    initial?.effectType ?? "mode_activate",
+  );
   const [saving, setSaving] = useState(false);
 
   const getActionLabel = (val: string): string => {
@@ -316,7 +364,9 @@ function AddEffectForm({
     initial?.effectType === "zone_order" ? String(initial.config.orderKey ?? "") : "",
   );
   const [zoValue, setZoValue] = useState(
-    initial?.effectType === "zone_order" && initial.config.value != null ? String(initial.config.value) : "",
+    initial?.effectType === "zone_order" && initial.config.value != null
+      ? String(initial.config.value)
+      : "",
   );
   // Hide allShuttersStop/allAwningsStop from the picker if the selected
   // zone (+ its subtree, matching the backend's own zone-order scope)
@@ -345,10 +395,14 @@ function AddEffectForm({
 
   const canSubmit = () => {
     switch (effectType) {
-      case "mode_activate": return !!modeId;
-      case "mode_toggle": return !!modeAId && !!modeBId;
-      case "equipment_order": return !!targetEquipmentId && !!orderAlias;
-      case "recipe_toggle": return !!instanceId;
+      case "mode_activate":
+        return !!modeId;
+      case "mode_toggle":
+        return !!modeAId && !!modeBId;
+      case "equipment_order":
+        return !!targetEquipmentId && !!orderAlias;
+      case "recipe_toggle":
+        return !!instanceId;
       case "zone_order": {
         if (!zoZoneId || !zoOrderKey) return false;
         const opt = ZONE_ORDER_OPTIONS.find((o) => o.key === zoOrderKey);
@@ -375,7 +429,11 @@ function AddEffectForm({
           // null → backend auto-resolves from single enum or order default
           let parsedValue: unknown = null;
           if (orderValue !== "") {
-            try { parsedValue = JSON.parse(orderValue); } catch { parsedValue = orderValue; }
+            try {
+              parsedValue = JSON.parse(orderValue);
+            } catch {
+              parsedValue = orderValue;
+            }
           }
           config = { equipmentId: targetEquipmentId, orderAlias, value: parsedValue || null };
           break;
@@ -417,16 +475,17 @@ function AddEffectForm({
     <div className="bg-background rounded-md p-3 space-y-3 mt-3">
       {/* Action value */}
       <div>
-        <label className={FIELD_LABEL}>
-          {t("buttonActions.actionType")}
-        </label>
+        <label className={FIELD_LABEL}>{t("buttonActions.actionType")}</label>
         {actionValues.length <= 4 ? (
           <div className="inline-flex flex-wrap gap-y-1">
             {actionValues.map((action, i) => (
               <button
                 key={action}
                 onClick={() => setActionValue(action)}
-                className={seg(actionValue === action, i === 0 ? "first" : i === actionValues.length - 1 ? "last" : "mid")}
+                className={seg(
+                  actionValue === action,
+                  i === 0 ? "first" : i === actionValues.length - 1 ? "last" : "mid",
+                )}
               >
                 {getActionLabel(action)}
               </button>
@@ -439,7 +498,9 @@ function AddEffectForm({
             className="w-full px-3 py-1.5 text-small border border-border bg-surface rounded-sm text-text"
           >
             {actionValues.map((action) => (
-              <option key={action} value={action}>{getActionLabel(action)}</option>
+              <option key={action} value={action}>
+                {getActionLabel(action)}
+              </option>
             ))}
           </select>
         )}
@@ -447,9 +508,7 @@ function AddEffectForm({
 
       {/* Effect type selector */}
       <div>
-        <label className={FIELD_LABEL}>
-          {t("buttonActions.effectTypeLabel")}
-        </label>
+        <label className={FIELD_LABEL}>{t("buttonActions.effectTypeLabel")}</label>
         <select
           value={effectType}
           onChange={(e) => setEffectType(e.target.value as ButtonEffectType)}
@@ -466,9 +525,7 @@ function AddEffectForm({
       {/* Config per effect type */}
       {effectType === "mode_activate" && (
         <div>
-          <label className={FIELD_LABEL}>
-            {t("modes.title")}
-          </label>
+          <label className={FIELD_LABEL}>{t("modes.title")}</label>
           <select
             value={modeId}
             onChange={(e) => setModeId(e.target.value)}
@@ -476,7 +533,9 @@ function AddEffectForm({
           >
             <option value="">{t("common.select")}</option>
             {modes.map((m) => (
-              <option key={m.id} value={m.id}>{m.name}</option>
+              <option key={m.id} value={m.id}>
+                {m.name}
+              </option>
             ))}
           </select>
         </div>
@@ -485,9 +544,7 @@ function AddEffectForm({
       {effectType === "mode_toggle" && (
         <div className="space-y-2">
           <div>
-            <label className={FIELD_LABEL}>
-              Mode A
-            </label>
+            <label className={FIELD_LABEL}>Mode A</label>
             <select
               value={modeAId}
               onChange={(e) => setModeAId(e.target.value)}
@@ -495,23 +552,27 @@ function AddEffectForm({
             >
               <option value="">{t("common.select")}</option>
               {modes.map((m) => (
-                <option key={m.id} value={m.id}>{m.name}</option>
+                <option key={m.id} value={m.id}>
+                  {m.name}
+                </option>
               ))}
             </select>
           </div>
           <div>
-            <label className={FIELD_LABEL}>
-              Mode B
-            </label>
+            <label className={FIELD_LABEL}>Mode B</label>
             <select
               value={modeBId}
               onChange={(e) => setModeBId(e.target.value)}
               className="w-full px-3 py-1.5 text-small border border-border bg-surface rounded-sm text-text"
             >
               <option value="">{t("common.select")}</option>
-              {modes.filter((m) => m.id !== modeAId).map((m) => (
-                <option key={m.id} value={m.id}>{m.name}</option>
-              ))}
+              {modes
+                .filter((m) => m.id !== modeAId)
+                .map((m) => (
+                  <option key={m.id} value={m.id}>
+                    {m.name}
+                  </option>
+                ))}
             </select>
           </div>
         </div>
@@ -520,9 +581,7 @@ function AddEffectForm({
       {effectType === "equipment_order" && (
         <div className="space-y-2">
           <div>
-            <label className={FIELD_LABEL}>
-              {t("buttonActions.zone")}
-            </label>
+            <label className={FIELD_LABEL}>{t("buttonActions.zone")}</label>
             <select
               value={eqZoneId}
               onChange={(e) => {
@@ -535,47 +594,49 @@ function AddEffectForm({
             >
               <option value="">{t("common.select")}</option>
               {zones.map((z) => (
-                <option key={z.id} value={z.id}>{z.label}</option>
+                <option key={z.id} value={z.id}>
+                  {z.label}
+                </option>
               ))}
             </select>
           </div>
           {eqZoneId && (
-          <div>
-            <label className={FIELD_LABEL}>
-              {t("equipments.title")}
-            </label>
-            <select
-              value={targetEquipmentId}
-              onChange={(e) => {
-                const eqId = e.target.value;
-                setTargetEquipmentId(eqId);
-                const eq = equipments.find((x) => x.id === eqId);
-                const orders = eq?.orderBindings ?? [];
-                if (orders.length === 1) {
-                  setOrderAlias(orders[0].alias);
-                  setOrderValue("");
-                } else {
-                  setOrderAlias("");
-                  setOrderValue("");
-                }
-              }}
-              className="w-full px-3 py-1.5 text-small border border-border bg-surface rounded-sm text-text"
-            >
-              <option value="">{t("common.select")}</option>
-              {equipments.filter((eq) => eq.zoneId === eqZoneId && eq.orderBindings.length > 0).map((eq) => (
-                <option key={eq.id} value={eq.id}>{eq.name}</option>
-              ))}
-            </select>
-          </div>
+            <div>
+              <label className={FIELD_LABEL}>{t("equipments.title")}</label>
+              <select
+                value={targetEquipmentId}
+                onChange={(e) => {
+                  const eqId = e.target.value;
+                  setTargetEquipmentId(eqId);
+                  const eq = equipments.find((x) => x.id === eqId);
+                  const orders = eq?.orderBindings ?? [];
+                  if (orders.length === 1) {
+                    setOrderAlias(orders[0].alias);
+                    setOrderValue("");
+                  } else {
+                    setOrderAlias("");
+                    setOrderValue("");
+                  }
+                }}
+                className="w-full px-3 py-1.5 text-small border border-border bg-surface rounded-sm text-text"
+              >
+                <option value="">{t("common.select")}</option>
+                {equipments
+                  .filter((eq) => eq.zoneId === eqZoneId && eq.orderBindings.length > 0)
+                  .map((eq) => (
+                    <option key={eq.id} value={eq.id}>
+                      {eq.name}
+                    </option>
+                  ))}
+              </select>
+            </div>
           )}
           {selectedEquipment && (
             <>
               {/* Command: hidden if single order (auto-selected), select if 2+ */}
               {selectedEquipment.orderBindings.length > 1 && (
                 <div>
-                  <label className={FIELD_LABEL}>
-                    {t("modes.form.orderAlias")}
-                  </label>
+                  <label className={FIELD_LABEL}>{t("modes.form.orderAlias")}</label>
                   <select
                     value={orderAlias}
                     onChange={(e) => {
@@ -588,7 +649,9 @@ function AddEffectForm({
                   >
                     <option value="">{t("common.select")}</option>
                     {selectedEquipment.orderBindings.map((o) => (
-                      <option key={o.alias} value={o.alias}>{o.alias}</option>
+                      <option key={o.alias} value={o.alias}>
+                        {o.alias}
+                      </option>
                     ))}
                   </select>
                 </div>
@@ -596,9 +659,7 @@ function AddEffectForm({
               {/* Value: select for 2+ enums, number input for numeric, hidden for single enum (auto-resolved) */}
               {enumVals.length > 1 ? (
                 <div>
-                  <label className={FIELD_LABEL}>
-                    {t("modes.form.actionValuePlaceholder")}
-                  </label>
+                  <label className={FIELD_LABEL}>{t("modes.form.actionValuePlaceholder")}</label>
                   <select
                     value={orderValue}
                     onChange={(e) => setOrderValue(e.target.value)}
@@ -606,7 +667,9 @@ function AddEffectForm({
                   >
                     <option value="">{t("common.select")}</option>
                     {enumVals.map((v) => (
-                      <option key={v} value={JSON.stringify(v)}>{v}</option>
+                      <option key={v} value={JSON.stringify(v)}>
+                        {v}
+                      </option>
                     ))}
                   </select>
                 </div>
@@ -615,7 +678,9 @@ function AddEffectForm({
                   <label className={FIELD_LABEL}>
                     {t("modes.form.actionValuePlaceholder")}
                     {selectedOrder.min != null && selectedOrder.max != null && (
-                      <span className="ml-1 font-normal">({selectedOrder.min}–{selectedOrder.max})</span>
+                      <span className="ml-1 font-normal">
+                        ({selectedOrder.min}–{selectedOrder.max})
+                      </span>
                     )}
                   </label>
                   <input
@@ -636,9 +701,7 @@ function AddEffectForm({
       {effectType === "recipe_toggle" && (
         <div className="space-y-2">
           <div>
-            <label className={FIELD_LABEL}>
-              {t("recipes.title")}
-            </label>
+            <label className={FIELD_LABEL}>{t("recipes.title")}</label>
             <select
               value={instanceId}
               onChange={(e) => setInstanceId(e.target.value)}
@@ -646,22 +709,18 @@ function AddEffectForm({
             >
               <option value="">{t("common.select")}</option>
               {instances.map((inst) => (
-                <option key={inst.id} value={inst.id}>{inst.recipeId}</option>
+                <option key={inst.id} value={inst.id}>
+                  {inst.recipeId}
+                </option>
               ))}
             </select>
           </div>
           {instanceId && (
             <div className="inline-flex">
-              <button
-                onClick={() => setEnabled(true)}
-                className={seg(enabled, "first")}
-              >
+              <button onClick={() => setEnabled(true)} className={seg(enabled, "first")}>
                 {t("common.on")}
               </button>
-              <button
-                onClick={() => setEnabled(false)}
-                className={seg(!enabled, "last")}
-              >
+              <button onClick={() => setEnabled(false)} className={seg(!enabled, "last")}>
                 {t("common.off")}
               </button>
             </div>
@@ -672,9 +731,7 @@ function AddEffectForm({
       {effectType === "zone_order" && (
         <div className="space-y-2">
           <div>
-            <label className={FIELD_LABEL}>
-              {t("buttonActions.zone")}
-            </label>
+            <label className={FIELD_LABEL}>{t("buttonActions.zone")}</label>
             <select
               value={zoZoneId}
               onChange={(e) => setZoZoneId(e.target.value)}
@@ -682,15 +739,15 @@ function AddEffectForm({
             >
               <option value="">{t("common.select")}</option>
               {zones.map((z) => (
-                <option key={z.id} value={z.id}>{z.label}</option>
+                <option key={z.id} value={z.id}>
+                  {z.label}
+                </option>
               ))}
             </select>
           </div>
           {zoZoneId && (
             <div>
-              <label className={FIELD_LABEL}>
-                {t("buttonActions.zoneOrderLabel")}
-              </label>
+              <label className={FIELD_LABEL}>{t("buttonActions.zoneOrderLabel")}</label>
               <select
                 value={zoOrderKey}
                 onChange={(e) => {
@@ -710,9 +767,7 @@ function AddEffectForm({
           )}
           {zoOrderKey && ZONE_ORDER_OPTIONS.find((o) => o.key === zoOrderKey)?.parametric && (
             <div>
-              <label className={FIELD_LABEL}>
-                {t("modes.form.actionValuePlaceholder")}
-              </label>
+              <label className={FIELD_LABEL}>{t("modes.form.actionValuePlaceholder")}</label>
               <input
                 type="number"
                 value={zoValue}

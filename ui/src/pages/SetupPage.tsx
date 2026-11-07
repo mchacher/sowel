@@ -53,16 +53,12 @@ export function SetupPage() {
       <div className="w-full max-w-sm mx-4">
         <div className="text-center mb-8">
           <SowelLogo size={160} showText animated className="inline-block mb-2" />
-          <p className="text-small text-text-secondary mt-2">
-            {t("auth.setupTitle")}
-          </p>
+          <p className="text-small text-text-secondary mt-2">{t("auth.setupTitle")}</p>
         </div>
 
         <form onSubmit={handleSubmit} className="card p-6">
           <div className="mb-4">
-            <label className={FIELD_LABEL}>
-              {t("auth.username")}
-            </label>
+            <label className={FIELD_LABEL}>{t("auth.username")}</label>
             <input
               type="text"
               value={username}
@@ -74,9 +70,7 @@ export function SetupPage() {
           </div>
 
           <div className="mb-4">
-            <label className={FIELD_LABEL}>
-              {t("auth.displayName")}
-            </label>
+            <label className={FIELD_LABEL}>{t("auth.displayName")}</label>
             <input
               type="text"
               value={displayName}
@@ -87,9 +81,7 @@ export function SetupPage() {
           </div>
 
           <div className="mb-4">
-            <label className={FIELD_LABEL}>
-              {t("auth.password")}
-            </label>
+            <label className={FIELD_LABEL}>{t("auth.password")}</label>
             <input
               type="password"
               value={password}
@@ -100,9 +92,7 @@ export function SetupPage() {
           </div>
 
           <div className="mb-5">
-            <label className={FIELD_LABEL}>
-              {t("auth.confirmPassword")}
-            </label>
+            <label className={FIELD_LABEL}>{t("auth.confirmPassword")}</label>
             <input
               type="password"
               value={confirmPassword}
@@ -112,9 +102,7 @@ export function SetupPage() {
             />
           </div>
 
-          {error && (
-            <p className="text-small text-error mb-4">{error}</p>
-          )}
+          {error && <p className="text-small text-error mb-4">{error}</p>}
 
           <button
             type="submit"

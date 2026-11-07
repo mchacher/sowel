@@ -37,7 +37,10 @@ export function ZonesPage() {
               <PageHeaderButton
                 icon={Plus}
                 label={t("zones.addZone")}
-                onClick={() => { setDefaultParentId(null); setShowForm(true); }}
+                onClick={() => {
+                  setDefaultParentId(null);
+                  setShowForm(true);
+                }}
               />
             )}
 
@@ -76,7 +79,10 @@ export function ZonesPage() {
           onSubmit={async (data) => {
             await createZone(data);
           }}
-          onClose={() => { setShowForm(false); setDefaultParentId(null); }}
+          onClose={() => {
+            setShowForm(false);
+            setDefaultParentId(null);
+          }}
         />
       )}
     </div>

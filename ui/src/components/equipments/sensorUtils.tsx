@@ -100,9 +100,11 @@ function iconForCategory(category: DataCategory, value?: unknown): React.ReactNo
       return <PersonStanding size={ICON_SIZE} strokeWidth={ICON_STROKE} />;
     case "contact_door":
     case "contact_window":
-      return value === true || value === "ON"
-        ? <DoorOpen size={ICON_SIZE} strokeWidth={ICON_STROKE} />
-        : <DoorClosed size={ICON_SIZE} strokeWidth={ICON_STROKE} />;
+      return value === true || value === "ON" ? (
+        <DoorOpen size={ICON_SIZE} strokeWidth={ICON_STROKE} />
+      ) : (
+        <DoorClosed size={ICON_SIZE} strokeWidth={ICON_STROKE} />
+      );
     case "co2":
     case "voc":
       return <Cloud size={ICON_SIZE} strokeWidth={ICON_STROKE} />;
@@ -126,9 +128,7 @@ function iconForCategory(category: DataCategory, value?: unknown): React.ReactNo
 }
 
 /** Find the primary data category from bindings, by priority. */
-export function getPrimarySensorCategory(
-  bindings: DataBindingWithValue[],
-): DataCategory | null {
+export function getPrimarySensorCategory(bindings: DataBindingWithValue[]): DataCategory | null {
   for (const cat of CATEGORY_PRIORITY) {
     if (bindings.some((b) => b.category === cat)) return cat;
   }
@@ -199,12 +199,22 @@ export function booleanSensorTone(
   category: string,
   active: boolean,
 ): { pill: string; text: string; dot: string } {
-  if (!active) return { pill: "bg-border-light text-text-tertiary", text: "text-text-tertiary", dot: "bg-border" };
-  if (category === "motion") return { pill: "bg-primary/10 text-primary", text: "text-primary", dot: "bg-primary" };
+  if (!active)
+    return {
+      pill: "bg-border-light text-text-tertiary",
+      text: "text-text-tertiary",
+      dot: "bg-border",
+    };
+  if (category === "motion")
+    return { pill: "bg-primary/10 text-primary", text: "text-primary", dot: "bg-primary" };
   if (category === "water_leak" || category === "smoke") {
     return { pill: "bg-error/10 text-error", text: "text-error", dot: "bg-error" };
   }
-  return { pill: "bg-border-light text-text-secondary", text: "text-text", dot: "bg-text-secondary" };
+  return {
+    pill: "bg-border-light text-text-secondary",
+    text: "text-text",
+    dot: "bg-text-secondary",
+  };
 }
 
 /** Check if a category represents a boolean sensor (motion, contact, water_leak, smoke). */
@@ -214,9 +224,7 @@ export function isBooleanSensorCategory(category: DataCategory): boolean {
 
 /** Check if motion is currently detected. */
 export function isMotionDetected(bindings: DataBindingWithValue[]): boolean {
-  return bindings.some(
-    (b) => b.category === "motion" && (b.value === true || b.value === "ON"),
-  );
+  return bindings.some((b) => b.category === "motion" && (b.value === true || b.value === "ON"));
 }
 
 /** Check if a contact is open. */
@@ -249,7 +257,8 @@ export function getSensorIconColor(bindings: DataBindingWithValue[]): string {
 /** Format a sensor value for compact display (rows, tiles): « 16,5° », « 1 021 mbar ». */
 export function formatSensorValue(value: unknown, unit?: string, t?: TFunction): string {
   if (value === null || value === undefined) return "\u2014";
-  if (typeof value === "boolean") return t ? (value ? t("common.yes") : t("common.no")) : (value ? "Oui" : "Non");
+  if (typeof value === "boolean")
+    return t ? (value ? t("common.yes") : t("common.no")) : value ? "Oui" : "Non";
   if (typeof value === "number") return formatWithUnit(value, unit, { style: "compact" });
   return String(value);
 }
@@ -294,7 +303,9 @@ export function formatBooleanSensor(category: DataCategory, value: unknown, t?: 
 
 /** Filter bindings to only sensor-relevant categories (excluding battery). */
 export function getSensorBindings(bindings: DataBindingWithValue[]): DataBindingWithValue[] {
-  return bindings.filter((b) => SENSOR_DATA_CATEGORIES.includes(b.category) && b.category !== "battery");
+  return bindings.filter(
+    (b) => SENSOR_DATA_CATEGORIES.includes(b.category) && b.category !== "battery",
+  );
 }
 
 /** Get the first battery binding from an equipment's data bindings. */
@@ -308,7 +319,11 @@ export function getAllBatteryBindings(bindings: DataBindingWithValue[]): DataBin
 }
 
 /** Get the appropriate battery icon based on level. */
-export function getBatteryIcon(level: number | null, size = 14, strokeWidth = 1.5): React.ReactNode {
+export function getBatteryIcon(
+  level: number | null,
+  size = 14,
+  strokeWidth = 1.5,
+): React.ReactNode {
   if (level === null) return <BatteryMedium size={size} strokeWidth={strokeWidth} />;
   if (level <= 20) return <BatteryLow size={size} strokeWidth={strokeWidth} />;
   if (level <= 60) return <BatteryMedium size={size} strokeWidth={strokeWidth} />;

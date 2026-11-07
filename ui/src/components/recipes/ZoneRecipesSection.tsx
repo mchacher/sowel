@@ -62,7 +62,10 @@ export function ZoneRecipesSection({ zoneId, zoneName }: ZoneRecipesSectionProps
         action={
           isAdmin ? (
             <div ref={pickerWrapRef} className="relative">
-              <SliceAddButton onClick={() => setShowPicker((v) => !v)} title={t("recipes.addRecipe")} />
+              <SliceAddButton
+                onClick={() => setShowPicker((v) => !v)}
+                title={t("recipes.addRecipe")}
+              />
               {showPicker && (
                 <RecipePickerPopover
                   recipes={recipes}

@@ -1,10 +1,5 @@
 import { create } from "zustand";
-import type {
-  Equipment,
-  EquipmentType,
-  EquipmentStatus,
-  EquipmentWithDetails,
-} from "../types";
+import type { Equipment, EquipmentType, EquipmentStatus, EquipmentWithDetails } from "../types";
 import {
   getEquipments,
   createEquipment as apiCreateEquipment,
@@ -43,7 +38,7 @@ interface EquipmentsState {
       icon?: string | null;
       description?: string | null;
       enabled?: boolean;
-    }
+    },
   ) => Promise<void>;
   deleteEquipment: (id: string) => Promise<void>;
   executeOrder: (equipmentId: string, alias: string, value: unknown) => Promise<void>;
@@ -125,9 +120,15 @@ export const useEquipments = create<EquipmentsState>((set, get) => ({
   },
 
   // WebSocket handlers
-  handleEquipmentCreated: () => { refetchEquipments(); },
-  handleEquipmentUpdated: () => { refetchEquipments(); },
-  handleEquipmentRemoved: () => { refetchEquipments(); },
+  handleEquipmentCreated: () => {
+    refetchEquipments();
+  },
+  handleEquipmentUpdated: () => {
+    refetchEquipments();
+  },
+  handleEquipmentRemoved: () => {
+    refetchEquipments();
+  },
   handleEquipmentDataChanged: (equipmentId, alias, value) => {
     useOrderTiming.getState().markReceived(equipmentId, alias);
     const now = new Date().toISOString();
@@ -143,8 +144,14 @@ export const useEquipments = create<EquipmentsState>((set, get) => ({
             ...eq,
             dataBindings: eq.dataBindings.map((db) => {
               if (db.alias !== alias) return db;
-              const valueChanged = JSON.stringify(db.value) !== JSON.stringify(value) || db.category === "action";
-              return { ...db, value, lastUpdated: now, lastChanged: valueChanged ? now : db.lastChanged };
+              const valueChanged =
+                JSON.stringify(db.value) !== JSON.stringify(value) || db.category === "action";
+              return {
+                ...db,
+                value,
+                lastUpdated: now,
+                lastChanged: valueChanged ? now : db.lastChanged,
+              };
             }),
           };
         }
@@ -152,10 +159,17 @@ export const useEquipments = create<EquipmentsState>((set, get) => ({
         // No binding found — update computedData (e.g. energy cumuls from EnergyAggregator)
         const existing = eq.computedData ?? [];
         const idx = existing.findIndex((c) => c.alias === alias);
-        const entry = { alias, value, lastUpdated: now, unit: idx >= 0 ? existing[idx].unit : undefined, category: idx >= 0 ? existing[idx].category : undefined };
-        const updated = idx >= 0
-          ? existing.map((c, i) => (i === idx ? { ...c, value, lastUpdated: now } : c))
-          : [...existing, entry];
+        const entry = {
+          alias,
+          value,
+          lastUpdated: now,
+          unit: idx >= 0 ? existing[idx].unit : undefined,
+          category: idx >= 0 ? existing[idx].category : undefined,
+        };
+        const updated =
+          idx >= 0
+            ? existing.map((c, i) => (i === idx ? { ...c, value, lastUpdated: now } : c))
+            : [...existing, entry];
         return { ...eq, computedData: updated };
       }),
     }));

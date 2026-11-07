@@ -124,7 +124,11 @@ describe("WeatherForecastWidget — tomorrow's confidence (spec 168)", () => {
   it("is clickable when a detail handler is given", () => {
     const onOpenDetail = vi.fn();
     const { container } = render(
-      <WeatherForecastWidget label="Météo" equipment={forecast(FIVE)} onOpenDetail={onOpenDetail} />,
+      <WeatherForecastWidget
+        label="Météo"
+        equipment={forecast(FIVE)}
+        onOpenDetail={onOpenDetail}
+      />,
     );
     const card = container.querySelector(".cursor-pointer");
     expect(card).toBeTruthy();

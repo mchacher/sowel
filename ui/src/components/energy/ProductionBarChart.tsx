@@ -5,15 +5,7 @@ import { dateLocale } from "../../lib/locale";
 import { formatHourLabel, formatHourRange } from "../../lib/hour-label";
 import { localDateStr } from "../../lib/local-date";
 import { xTickInterval, ENERGY_CHART_Y_AXIS_PX } from "../../lib/chart-ticks";
-import {
-  ResponsiveContainer,
-  BarChart,
-  Bar,
-  XAxis,
-  YAxis,
-  Tooltip,
-  CartesianGrid,
-} from "recharts";
+import { ResponsiveContainer, BarChart, Bar, XAxis, YAxis, Tooltip, CartesianGrid } from "recharts";
 import type { EnergyPoint } from "../../types";
 import { formatKwhTick, formatKwhTooltip } from "./format";
 import { TooltipSeriesRow } from "./TooltipSeriesRow";
@@ -103,7 +95,12 @@ function aggregateWeek(points: EnergyPoint[], locale: string, dateStr?: string):
       day.toLocaleDateString(locale, { weekday: "short", day: "numeric" }),
     );
     const tooltipLabel = capitalizeFirst(
-      day.toLocaleDateString(locale, { weekday: "long", day: "numeric", month: "long", year: "numeric" }),
+      day.toLocaleDateString(locale, {
+        weekday: "long",
+        day: "numeric",
+        month: "long",
+        year: "numeric",
+      }),
     );
     return {
       label,
@@ -125,7 +122,12 @@ function aggregateMonth(points: EnergyPoint[], locale: string, dateStr?: string)
     const day = new Date(year, month, i + 1);
     const key = localDateKey(day);
     const tooltipLabel = capitalizeFirst(
-      day.toLocaleDateString(locale, { weekday: "long", day: "numeric", month: "long", year: "numeric" }),
+      day.toLocaleDateString(locale, {
+        weekday: "long",
+        day: "numeric",
+        month: "long",
+        year: "numeric",
+      }),
     );
     return {
       label: String(i + 1),
@@ -173,7 +175,12 @@ function buildChartData(
   }
 }
 
-export function ProductionBarChart({ points, period, date, height = 300 }: ProductionBarChartProps) {
+export function ProductionBarChart({
+  points,
+  period,
+  date,
+  height = 300,
+}: ProductionBarChartProps) {
   const { t, i18n } = useTranslation();
   const locale = dateLocale(i18n.language);
   const data = useMemo(
@@ -207,7 +214,10 @@ export function ProductionBarChart({ points, period, date, height = 300 }: Produ
   const hasData = data.some((d) => barTotal(d) > 0);
   if (!hasData) {
     return (
-      <div className="flex items-center justify-center text-text-tertiary text-small" style={{ height }}>
+      <div
+        className="flex items-center justify-center text-text-tertiary text-small"
+        style={{ height }}
+      >
         {t("common.noData")}
       </div>
     );
@@ -253,7 +263,11 @@ export function ProductionBarChart({ points, period, date, height = 300 }: Produ
                 }}
               >
                 <div style={{ fontWeight: 600, marginBottom: 4 }}>{datum.tooltipLabel}</div>
-                <div style={{ fontWeight: 600, marginBottom: hasSplit ? 4 : 0 }}>{t("energy.production")}{t("common.colon")}{formatKwhTooltip(total, locale)}</div>
+                <div style={{ fontWeight: 600, marginBottom: hasSplit ? 4 : 0 }}>
+                  {t("energy.production")}
+                  {t("common.colon")}
+                  {formatKwhTooltip(total, locale)}
+                </div>
                 {hasSplit && (
                   <>
                     <TooltipSeriesRow
@@ -292,8 +306,12 @@ export function ProductionBarChart({ points, period, date, height = 300 }: Produ
           hide={!hasSplit}
           shape={(props: unknown) => {
             const p = props as Record<string, unknown>;
-            const x = p.x as number, y = p.y as number, width = p.width as number, height = p.height as number;
-            const f = p.fill as string, injVal = p.injection as number;
+            const x = p.x as number,
+              y = p.y as number,
+              width = p.width as number,
+              height = p.height as number;
+            const f = p.fill as string,
+              injVal = p.injection as number;
             if (!height || height <= 0) return null;
             const r = injVal > 0 ? 0 : 4;
             return (

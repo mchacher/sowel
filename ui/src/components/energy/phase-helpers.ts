@@ -27,9 +27,7 @@ export function extractPhases(equipments: EquipmentWithDetails[]): PhaseValue[] 
       byPhase.set(n, (byPhase.get(n) ?? 0) + b.value);
     }
   }
-  return [...byPhase.entries()]
-    .sort(([a], [b]) => a - b)
-    .map(([n, power]) => ({ n, power }));
+  return [...byPhase.entries()].sort(([a], [b]) => a - b).map(([n, power]) => ({ n, power }));
 }
 
 /** A phase's power, unsigned: « 270 W » (to the nearest 5), « 1,2 kW ». */

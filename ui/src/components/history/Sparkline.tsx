@@ -28,9 +28,7 @@ export function Sparkline({
   const cacheKey = `${equipmentId}:${alias}`;
   const ref = useRef<HTMLDivElement>(null);
   const [visible, setVisible] = useState(false);
-  const [values, setValues] = useState<number[] | null>(
-    () => sparklineCache.get(cacheKey) ?? null,
-  );
+  const [values, setValues] = useState<number[] | null>(() => sparklineCache.get(cacheKey) ?? null);
   const [loading, setLoading] = useState(() => !sparklineCache.has(cacheKey));
 
   // Lazy visibility detection
@@ -69,7 +67,9 @@ export function Sparkline({
         if (!cancelled) setLoading(false);
       });
 
-    return () => { cancelled = true; };
+    return () => {
+      cancelled = true;
+    };
   }, [visible, equipmentId, alias, cacheKey]);
 
   // Build SVG path from values
@@ -110,22 +110,14 @@ export function Sparkline({
 
   return (
     <div ref={ref} className={`flex-shrink-0 ${className}`} style={{ width, height }}>
-      <svg
-        width={width}
-        height={height}
-        viewBox={`0 0 ${width} ${height}`}
-        className="block"
-      >
+      <svg width={width} height={height} viewBox={`0 0 ${width} ${height}`} className="block">
         <defs>
           <linearGradient id={`sp-${equipmentId}-${alias}`} x1="0" y1="0" x2="0" y2="1">
             <stop offset="0%" stopColor="var(--color-primary)" stopOpacity="0.18" />
             <stop offset="100%" stopColor="var(--color-primary)" stopOpacity="0.02" />
           </linearGradient>
         </defs>
-        <path
-          d={pathData.fillPath}
-          fill={`url(#sp-${equipmentId}-${alias})`}
-        />
+        <path d={pathData.fillPath} fill={`url(#sp-${equipmentId}-${alias})`} />
         <path
           d={pathData.linePath}
           fill="none"

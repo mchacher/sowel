@@ -40,7 +40,10 @@ describe("FlowDiagram routes", () => {
     const { container } = render(
       <FlowDiagram
         nodes={[]}
-        links={[link({ active: true, color: "lime" }), link({ edge: "rightToFocal", active: false })]}
+        links={[
+          link({ active: true, color: "lime" }),
+          link({ edge: "rightToFocal", active: false }),
+        ]}
       />,
     );
     expect(painted(container).filter((p) => p.stroke === "lime")).toHaveLength(1);
@@ -69,7 +72,10 @@ describe("FlowDiagram routes", () => {
 
   it("emits three staggered bubbles per active link and none for an idle one", () => {
     const { container } = render(
-      <FlowDiagram nodes={[]} links={[link({ magnitude: 500 }), link({ edge: "rightToFocal", active: false })]} />,
+      <FlowDiagram
+        nodes={[]}
+        links={[link({ magnitude: 500 }), link({ edge: "rightToFocal", active: false })]}
+      />,
     );
     expect(container.querySelectorAll("animateMotion")).toHaveLength(3);
   });
@@ -113,7 +119,10 @@ describe("FlowDiagram nodes", () => {
   it("writes the node label in sentence case, smaller in a satellite on a phone", () => {
     render(
       <FlowDiagram
-        nodes={[node({ label: "Consommation" }), node({ slot: "right", label: "Production", value: "745", unit: "W" })]}
+        nodes={[
+          node({ label: "Consommation" }),
+          node({ slot: "right", label: "Production", value: "745", unit: "W" }),
+        ]}
         links={[]}
       />,
     );
@@ -136,7 +145,12 @@ describe("FlowDiagram nodes", () => {
 // the solar green on the well at under 2:1.
 describe("FlowDiagram colours: values in ink, colour on the node", () => {
   it("paints the icon in the node colour and the value in ink", () => {
-    render(<FlowDiagram nodes={[node({ color: "var(--color-solar-auto)", value: "745", unit: "W" })]} links={[]} />);
+    render(
+      <FlowDiagram
+        nodes={[node({ color: "var(--color-solar-auto)", value: "745", unit: "W" })]}
+        links={[]}
+      />,
+    );
     expect(screen.getByTestId("flow-node-icon").style.color).toBe("var(--color-solar-auto)");
     const value = screen.getByText("745").parentElement as HTMLElement;
     expect(value.className).toMatch(/(^|\s)text-text(\s|$)/);
@@ -148,7 +162,12 @@ describe("FlowDiagram colours: values in ink, colour on the node", () => {
   });
 
   it("borders a pill in the link colour and writes its figure in ink", () => {
-    render(<FlowDiagram nodes={[]} links={[link({ pill: { text: "90 %", color: "var(--color-solar-auto)" } })]} />);
+    render(
+      <FlowDiagram
+        nodes={[]}
+        links={[link({ pill: { text: "90 %", color: "var(--color-solar-auto)" } })]}
+      />,
+    );
     const pill = screen.getByText("90 %");
     expect(pill.style.borderColor).toBe("var(--color-solar-auto)");
     expect(pill.style.color).toBe("");
@@ -157,12 +176,18 @@ describe("FlowDiagram colours: values in ink, colour on the node", () => {
 
   it("tints the tag with its colour and writes it in its ink, the colour by default", () => {
     const { rerender } = render(
-      <FlowDiagram nodes={[]} links={[]} tag={{ text: "Autonome", color: "var(--color-solar-auto)", ink: "var(--color-text)" }} />,
+      <FlowDiagram
+        nodes={[]}
+        links={[]}
+        tag={{ text: "Autonome", color: "var(--color-solar-auto)", ink: "var(--color-text)" }}
+      />,
     );
     const tag = screen.getByText("Autonome");
     expect(tag.style.color).toBe("var(--color-text)");
     expect(tag.style.background).toContain("--color-solar-auto");
-    rerender(<FlowDiagram nodes={[]} links={[]} tag={{ text: "Autonome", color: "var(--color-error)" }} />);
+    rerender(
+      <FlowDiagram nodes={[]} links={[]} tag={{ text: "Autonome", color: "var(--color-error)" }} />,
+    );
     expect(screen.getByText("Autonome").style.color).toBe("var(--color-error)");
   });
 });
@@ -179,17 +204,20 @@ describe("FlowDiagram satellite geometry", () => {
   // x of the vertical leg of each satellite's routes, as a % of the 540 viewBox.
   const ROUTE_X = { left: (60 / 540) * 100, right: 100 - (480 / 540) * 100 };
 
-  it.each(["left", "right"] as const)("keeps the %s satellite centred on its route, phone and wider", (slot) => {
-    const cls = SLOT_BOX[slot];
-    for (const prefix of ["", "sm:"]) {
-      const offset = pct(cls, slot, prefix);
-      const width = pct(cls, "w", prefix);
-      expect(offset, `${prefix}${slot}`).not.toBeNull();
-      expect(width, `${prefix}w`).not.toBeNull();
-      expect(Math.abs(offset! + width! / 2 - ROUTE_X[slot]), `${prefix} centre`).toBeLessThan(1);
-    }
-    expect(pct(cls, "w")).toBe(24);
-  });
+  it.each(["left", "right"] as const)(
+    "keeps the %s satellite centred on its route, phone and wider",
+    (slot) => {
+      const cls = SLOT_BOX[slot];
+      for (const prefix of ["", "sm:"]) {
+        const offset = pct(cls, slot, prefix);
+        const width = pct(cls, "w", prefix);
+        expect(offset, `${prefix}${slot}`).not.toBeNull();
+        expect(width, `${prefix}w`).not.toBeNull();
+        expect(Math.abs(offset! + width! / 2 - ROUTE_X[slot]), `${prefix} centre`).toBeLessThan(1);
+      }
+      expect(pct(cls, "w")).toBe(24);
+    },
+  );
 });
 
 describe("FlowDiagram pills and tag", () => {

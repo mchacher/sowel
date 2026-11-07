@@ -68,7 +68,9 @@ function PushEnableCard() {
   let action: React.ReactNode;
   if (!supported) {
     action = (
-      <span className="text-caption text-text-tertiary">{t("notifPublishers.pushUnsupported")}</span>
+      <span className="text-caption text-text-tertiary">
+        {t("notifPublishers.pushUnsupported")}
+      </span>
     );
   } else if (status === "insecure") {
     action = (
@@ -275,10 +277,7 @@ function PublisherForm({
   };
 
   return (
-    <form
-      onSubmit={handleSubmit}
-      className="card mb-4 p-4 max-w-lg"
-    >
+    <form onSubmit={handleSubmit} className="card mb-4 p-4 max-w-lg">
       <div className="space-y-3">
         <div>
           <label className="block text-caption text-text-secondary mb-1">
@@ -463,9 +462,7 @@ function PublisherCard({
   };
 
   return (
-    <div
-      className={`card p-4 ${publisher.enabled ? "" : "opacity-60"}`}
-    >
+    <div className={`card p-4 ${publisher.enabled ? "" : "opacity-60"}`}>
       {/* Header — stacks on mobile so the name stays readable and the
           actions sit on their own row instead of crushing into the title. */}
       <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between mb-3">

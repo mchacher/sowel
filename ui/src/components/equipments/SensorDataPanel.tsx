@@ -16,8 +16,16 @@ import { Sparkline } from "../history/Sparkline";
 
 /** Categories that produce continuous numeric data suitable for sparklines. */
 const SPARKLINE_CATEGORIES = new Set([
-  "temperature", "humidity", "luminosity", "pressure",
-  "power", "energy", "co2", "noise", "voltage", "current",
+  "temperature",
+  "humidity",
+  "luminosity",
+  "pressure",
+  "power",
+  "energy",
+  "co2",
+  "noise",
+  "voltage",
+  "current",
 ]);
 
 interface SensorDataPanelProps {
@@ -136,14 +144,11 @@ function BooleanSensorValue({
 }) {
   const { t } = useTranslation();
   // For boolean sensors, OR logic: active if any binding is active
-  const isActive = bindings.some(
-    (b) => b.value === true || b.value === "ON",
-  );
+  const isActive = bindings.some((b) => b.value === true || b.value === "ON");
   // Contact: inverted (contact=false means open)
   const isContactCategory = category === "contact_door" || category === "contact_window";
-  const isContactOpen = isContactCategory && bindings.some(
-    (b) => b.value === false || b.value === "OFF",
-  );
+  const isContactOpen =
+    isContactCategory && bindings.some((b) => b.value === false || b.value === "OFF");
   const displayActive = isContactCategory ? isContactOpen : isActive;
   const text = formatBooleanSensor(category, bindings[0]?.value, t);
   const tone = booleanSensorTone(category, displayActive);
@@ -168,7 +173,13 @@ function BooleanSensorValue({
   );
 }
 
-function NumericSensorValues({ bindings, equipmentId }: { bindings: DataBindingWithValue[]; equipmentId: string }) {
+function NumericSensorValues({
+  bindings,
+  equipmentId,
+}: {
+  bindings: DataBindingWithValue[];
+  equipmentId: string;
+}) {
   const { t } = useTranslation();
   return (
     <div className="flex items-center gap-3">
@@ -178,9 +189,7 @@ function NumericSensorValues({ bindings, equipmentId }: { bindings: DataBindingW
             <span className="text-title font-semibold text-text tabular-nums leading-none">
               {formatSensorValue(b.value, undefined, t)}
             </span>
-            {b.unit && (
-              <span className="text-small text-text-tertiary ml-1">{b.unit}</span>
-            )}
+            {b.unit && <span className="text-small text-text-tertiary ml-1">{b.unit}</span>}
           </div>
           {SPARKLINE_CATEGORIES.has(b.category) && (
             <Sparkline equipmentId={equipmentId} alias={b.alias} width={80} height={28} />
@@ -196,14 +205,14 @@ function BatteryRow({ level, deviceName }: { level: number | null; deviceName?: 
   const color = getBatteryColor(level);
   return (
     <div className="flex items-center gap-3 px-3 py-3 rounded-md bg-border-light/50">
-      <div className={`flex-shrink-0 w-10 h-10 rounded-sm flex items-center justify-center bg-border-light ${color}`}>
+      <div
+        className={`flex-shrink-0 w-10 h-10 rounded-sm flex items-center justify-center bg-border-light ${color}`}
+      >
         {getBatteryIcon(level, 18, 1.5)}
       </div>
       <div className="flex-1 min-w-0">
         <div className="text-small font-medium text-text-secondary">{t("sensors.battery")}</div>
-        {deviceName && (
-          <div className="text-micro text-text-tertiary truncate">{deviceName}</div>
-        )}
+        {deviceName && <div className="text-micro text-text-tertiary truncate">{deviceName}</div>}
       </div>
       <div className="flex items-baseline gap-1 flex-shrink-0">
         <span className={`text-title font-semibold tabular-nums leading-none ${color}`}>

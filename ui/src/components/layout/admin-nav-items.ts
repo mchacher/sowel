@@ -31,7 +31,12 @@ export const ADMIN_NAV_ITEMS: AdminNavItem[] = [
   { to: "/integrations", labelKey: "nav.integrations", icon: Plug, adminOnly: true },
   { to: "/plugins", labelKey: "nav.plugins", icon: Package, adminOnly: true },
   { to: "/mqtt-publishers", labelKey: "nav.mqttPublishers", icon: Send, adminOnly: true },
-  { to: "/notification-publishers", labelKey: "nav.notificationPublishers", icon: Bell, adminOnly: true },
+  {
+    to: "/notification-publishers",
+    labelKey: "nav.notificationPublishers",
+    icon: Bell,
+    adminOnly: true,
+  },
   { to: "/logs", labelKey: "nav.logs", icon: ScrollText, adminOnly: true },
   { to: "/backup", labelKey: "nav.backup", icon: DatabaseBackup, adminOnly: true },
 ];

@@ -144,9 +144,7 @@ export function HomeSetupWizard() {
 
           <div className="grid grid-cols-2 gap-3">
             <div>
-              <label className={FIELD_LABEL}>
-                {t("setup.home.latitude", "Latitude")}
-              </label>
+              <label className={FIELD_LABEL}>{t("setup.home.latitude", "Latitude")}</label>
               <input
                 type="text"
                 inputMode="decimal"
@@ -158,9 +156,7 @@ export function HomeSetupWizard() {
               />
             </div>
             <div>
-              <label className={FIELD_LABEL}>
-                {t("setup.home.longitude", "Longitude")}
-              </label>
+              <label className={FIELD_LABEL}>{t("setup.home.longitude", "Longitude")}</label>
               <input
                 type="text"
                 inputMode="decimal"
@@ -181,9 +177,7 @@ export function HomeSetupWizard() {
           </p>
 
           {error && (
-            <div className="text-caption text-error bg-error/10 px-3 py-2 rounded-sm">
-              {error}
-            </div>
+            <div className="text-caption text-error bg-error/10 px-3 py-2 rounded-sm">{error}</div>
           )}
 
           <button

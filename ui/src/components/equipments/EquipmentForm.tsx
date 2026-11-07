@@ -69,7 +69,18 @@ interface EquipmentFormProps {
   excludeTypes?: Set<EquipmentType>;
 }
 
-export function EquipmentForm({ title, initial, defaultZoneId, zones, onSubmit, onClose, boundDeviceIds, boundOrderKeysByDevice, boundDataKeysByDevice, excludeTypes }: EquipmentFormProps) {
+export function EquipmentForm({
+  title,
+  initial,
+  defaultZoneId,
+  zones,
+  onSubmit,
+  onClose,
+  boundDeviceIds,
+  boundOrderKeysByDevice,
+  boundDataKeysByDevice,
+  excludeTypes,
+}: EquipmentFormProps) {
   const { t } = useTranslation();
   const [step, setStep] = useState<"info" | "devices">("info");
   const [name, setName] = useState(initial?.name ?? "");
@@ -83,7 +94,9 @@ export function EquipmentForm({ title, initial, defaultZoneId, zones, onSubmit, 
 
   useEffect(() => {
     if (type === "pool_heat_pump") {
-      getDevices().then(setAllDevices).catch(() => setAllDevices([]));
+      getDevices()
+        .then(setAllDevices)
+        .catch(() => setAllDevices([]));
     }
   }, [type]);
 
@@ -95,7 +108,9 @@ export function EquipmentForm({ title, initial, defaultZoneId, zones, onSubmit, 
   const poolHeatPumpValidation = useMemo(() => {
     if (type !== "pool_heat_pump") return { ok: true, hasPac: true, hasRelay: true };
     const selected = allDevices.filter((d) => selectedDeviceIds.includes(d.id));
-    const hasPac = selected.some((d) => d.data.some((x) => x.category === "pool_water_temperature"));
+    const hasPac = selected.some((d) =>
+      d.data.some((x) => x.category === "pool_water_temperature"),
+    );
     const hasRelay = selected.some((d) => d.data.some((x) => x.category === "light_state"));
     return { ok: hasPac && hasRelay, hasPac, hasRelay };
   }, [type, allDevices, selectedDeviceIds]);
@@ -140,13 +155,14 @@ export function EquipmentForm({ title, initial, defaultZoneId, zones, onSubmit, 
 
   return (
     <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50">
-      <div
-        className="bg-surface rounded-lg w-full max-w-[520px] mx-4 max-h-[90vh] flex flex-col shadow-lg"
-      >
+      <div className="bg-surface rounded-lg w-full max-w-[520px] mx-4 max-h-[90vh] flex flex-col shadow-lg">
         {/* Header */}
         <div className="flex items-center justify-between px-6 py-4 border-b border-border-light flex-shrink-0">
           <h2 className="text-lead font-semibold text-text">{title}</h2>
-          <button onClick={onClose} className="text-text-tertiary hover:text-text-secondary transition-colors">
+          <button
+            onClick={onClose}
+            className="text-text-tertiary hover:text-text-secondary transition-colors"
+          >
             <X size={18} strokeWidth={1.5} />
           </button>
         </div>
@@ -158,9 +174,7 @@ export function EquipmentForm({ title, initial, defaultZoneId, zones, onSubmit, 
               <>
                 {/* Type */}
                 <div>
-                  <label className={FIELD_LABEL}>
-                    {t("equipments.form.type")}
-                  </label>
+                  <label className={FIELD_LABEL}>{t("equipments.form.type")}</label>
                   <select
                     value={type}
                     onChange={(e) => {
@@ -171,16 +185,16 @@ export function EquipmentForm({ title, initial, defaultZoneId, zones, onSubmit, 
                     disabled={offeredOnEdit !== null && offeredOnEdit.length < 2}
                   >
                     {sortedTypes.map((et) => (
-                      <option key={et.value} value={et.value}>{t(et.labelKey)}</option>
+                      <option key={et.value} value={et.value}>
+                        {t(et.labelKey)}
+                      </option>
                     ))}
                   </select>
                 </div>
 
                 {/* Name */}
                 <div>
-                  <label className={FIELD_LABEL}>
-                    {t("equipments.form.name")}
-                  </label>
+                  <label className={FIELD_LABEL}>{t("equipments.form.name")}</label>
                   <input
                     type="text"
                     value={name}
@@ -195,9 +209,7 @@ export function EquipmentForm({ title, initial, defaultZoneId, zones, onSubmit, 
 
                 {/* Zone */}
                 <div>
-                  <label className={FIELD_LABEL}>
-                    {t("equipments.form.zone")}
-                  </label>
+                  <label className={FIELD_LABEL}>{t("equipments.form.zone")}</label>
                   <select
                     value={zoneId}
                     onChange={(e) => setZoneId(e.target.value)}

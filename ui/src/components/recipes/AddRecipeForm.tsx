@@ -6,9 +6,21 @@ import { useEquipments } from "../../store/useEquipments";
 import { useZones } from "../../store/useZones";
 import { useZoneAggregation } from "../../store/useZoneAggregation";
 import type { RecipeInfo, EquipmentWithDetails, ZoneWithChildren } from "../../types";
-import { recipeName, recipeDescription, recipeSlotName, recipeSlotDescription, recipeGroupLabel, recipeSlotOptionLabel } from "../../lib/recipe-i18n";
+import {
+  recipeName,
+  recipeDescription,
+  recipeSlotName,
+  recipeSlotDescription,
+  recipeGroupLabel,
+  recipeSlotOptionLabel,
+} from "../../lib/recipe-i18n";
 import { isSlotHidden, matchesEquipmentType } from "../../lib/recipe-slots";
-import { groupSlots, isGroupRequired, getGroupKeys, durationToMinutes } from "./recipe-slot-helpers";
+import {
+  groupSlots,
+  isGroupRequired,
+  getGroupKeys,
+  durationToMinutes,
+} from "./recipe-slot-helpers";
 import {
   EquipmentOptions,
   MultiSelectChips,
@@ -91,7 +103,8 @@ export function AddRecipeForm({
     const slot = selectedRecipe?.slots.find((s) => s.id === slotId);
     if (!slot) return [];
 
-    const isGlobalSlot = slot.constraints?.equipmentType &&
+    const isGlobalSlot =
+      slot.constraints?.equipmentType &&
       (Array.isArray(slot.constraints.equipmentType)
         ? slot.constraints.equipmentType.some((t) => GLOBAL_EQUIPMENT_TYPES.has(t))
         : GLOBAL_EQUIPMENT_TYPES.has(slot.constraints.equipmentType));
@@ -186,17 +199,24 @@ export function AddRecipeForm({
         <span className="text-small font-medium text-text">
           {selectedRecipe ? recipeName(selectedRecipe, lang) : ""}
         </span>
-        <button onClick={onClose} className="p-1 text-text-tertiary hover:text-text transition-colors duration-150">
+        <button
+          onClick={onClose}
+          className="p-1 text-text-tertiary hover:text-text transition-colors duration-150"
+        >
           <X size={14} strokeWidth={1.5} />
         </button>
       </div>
 
       {selectedRecipe && (
         <>
-          <p className="text-caption text-text-tertiary mb-3">{recipeDescription(selectedRecipe, lang)}</p>
+          <p className="text-caption text-text-tertiary mb-3">
+            {recipeDescription(selectedRecipe, lang)}
+          </p>
 
           {(() => {
-            const filteredSlots = selectedRecipe.slots.filter((slot) => slot.id !== "zone" && shouldShowSlot(slot.id));
+            const filteredSlots = selectedRecipe.slots.filter(
+              (slot) => slot.id !== "zone" && shouldShowSlot(slot.id),
+            );
             const chunks = groupSlots(filteredSlots);
             const allGroupKeys = getGroupKeys(selectedRecipe.slots);
             const hiddenGroups = allGroupKeys.filter((gk) => !visibleGroups.has(gk));
@@ -210,37 +230,51 @@ export function AddRecipeForm({
                     return (
                       <div key={groupKey} className="mb-2.5 pl-2 border-l-2 border-border">
                         <div className="flex items-center justify-between mb-1">
-                          <span className="text-small font-medium text-text-secondary">{recipeGroupLabel(selectedRecipe, groupKey, lang)}</span>
-                          {!isGroupRequired(groupKey, selectedRecipe.slots) && <button
-                            type="button"
-                            onClick={() => {
-                              const next = { ...params };
-                              for (const s of chunk.slots) next[s.id] = "";
-                              setParams(next);
-                              setVisibleGroups((prev) => { const n = new Set(prev); n.delete(groupKey); return n; });
-                            }}
-                            className="p-0.5 rounded-sm text-text-tertiary hover:text-error hover:bg-error/5 transition-colors duration-150"
-                            title={t("common.delete")}
-                          >
-                            <Minus size={14} strokeWidth={1.5} />
-                          </button>}
+                          <span className="text-small font-medium text-text-secondary">
+                            {recipeGroupLabel(selectedRecipe, groupKey, lang)}
+                          </span>
+                          {!isGroupRequired(groupKey, selectedRecipe.slots) && (
+                            <button
+                              type="button"
+                              onClick={() => {
+                                const next = { ...params };
+                                for (const s of chunk.slots) next[s.id] = "";
+                                setParams(next);
+                                setVisibleGroups((prev) => {
+                                  const n = new Set(prev);
+                                  n.delete(groupKey);
+                                  return n;
+                                });
+                              }}
+                              className="p-0.5 rounded-sm text-text-tertiary hover:text-error hover:bg-error/5 transition-colors duration-150"
+                              title={t("common.delete")}
+                            >
+                              <Minus size={14} strokeWidth={1.5} />
+                            </button>
+                          )}
                         </div>
                         {/* Full-width equipment list slots — cross-zone picker */}
-                        {chunk.slots.filter((s) => s.type === "equipment" && s.list).map((slot) => (
-                          <EquipmentListPicker
-                            key={slot.id}
-                            slot={slot}
-                            value={params[slot.id] ?? ""}
-                            onChange={(v) => setParams({ ...params, [slot.id]: v })}
-                            equipments={equipments}
-                            zones={allZones}
-                            recipe={selectedRecipe}
-                            lang={lang}
-                          />
-                        ))}
+                        {chunk.slots
+                          .filter((s) => s.type === "equipment" && s.list)
+                          .map((slot) => (
+                            <EquipmentListPicker
+                              key={slot.id}
+                              slot={slot}
+                              value={params[slot.id] ?? ""}
+                              onChange={(v) => setParams({ ...params, [slot.id]: v })}
+                              equipments={equipments}
+                              zones={allZones}
+                              recipe={selectedRecipe}
+                              lang={lang}
+                            />
+                          ))}
                         {/* Compact grid for non-list slots */}
                         {(() => {
-                          const compactSlots = chunk.slots.filter((s) => !((s.type === "equipment" || s.type === "select") && s.list) && !isSlotHidden(s, params, selectedRecipe.slots));
+                          const compactSlots = chunk.slots.filter(
+                            (s) =>
+                              !((s.type === "equipment" || s.type === "select") && s.list) &&
+                              !isSlotHidden(s, params, selectedRecipe.slots),
+                          );
                           if (compactSlots.length === 0) return null;
                           const n = compactSlots.length;
                           const cols = n <= 3 ? n : n % 3 === 0 ? 3 : 2;
@@ -248,36 +282,52 @@ export function AddRecipeForm({
                           // (or two time pickers) sit side by side at the same
                           // size and labels never wrap into a narrow column.
                           return (
-                            <div className={`grid gap-1.5 ${cols === 1 ? "grid-cols-1" : cols === 2 ? "grid-cols-2" : "grid-cols-3"}`}>
+                            <div
+                              className={`grid gap-1.5 ${cols === 1 ? "grid-cols-1" : cols === 2 ? "grid-cols-2" : "grid-cols-3"}`}
+                            >
                               {compactSlots.map((slot) => (
                                 <div key={slot.id}>
                                   <label className={FIELD_LABEL}>
-                                    {recipeSlotName(selectedRecipe, slot, lang)}{slot.required && <span className="text-error ml-0.5">*</span>}
+                                    {recipeSlotName(selectedRecipe, slot, lang)}
+                                    {slot.required && <span className="text-error ml-0.5">*</span>}
                                   </label>
                                   {slot.type === "equipment" ? (
                                     <select
                                       value={params[slot.id] ?? ""}
-                                      onChange={(e) => setParams({ ...params, [slot.id]: e.target.value })}
+                                      onChange={(e) =>
+                                        setParams({ ...params, [slot.id]: e.target.value })
+                                      }
                                       className="w-full px-2 py-1.5 text-small border border-border bg-surface rounded-sm text-text"
                                     >
                                       <option value="">{t("common.select")}</option>
-                                      <EquipmentOptions equipments={getEquipmentOptions(slot.id)} zoneChains={zoneChains} />
+                                      <EquipmentOptions
+                                        equipments={getEquipmentOptions(slot.id)}
+                                        zoneChains={zoneChains}
+                                      />
                                     </select>
                                   ) : slot.type === "data-key" ? (
                                     (() => {
-                                      const eqSlot = selectedRecipe?.slots.find((s) => s.type === "equipment" && !s.list);
+                                      const eqSlot = selectedRecipe?.slots.find(
+                                        (s) => s.type === "equipment" && !s.list,
+                                      );
                                       const eqId = eqSlot ? params[eqSlot.id] : undefined;
-                                      const eq = eqId ? equipments.find((e) => e.id === eqId) : undefined;
+                                      const eq = eqId
+                                        ? equipments.find((e) => e.id === eqId)
+                                        : undefined;
                                       const bindings = eq?.dataBindings ?? [];
                                       return (
                                         <select
                                           value={params[slot.id] ?? ""}
-                                          onChange={(e) => setParams({ ...params, [slot.id]: e.target.value })}
+                                          onChange={(e) =>
+                                            setParams({ ...params, [slot.id]: e.target.value })
+                                          }
                                           className="w-full px-2 py-1.5 text-small border border-border bg-surface rounded-sm text-text"
                                         >
                                           <option value="">{t("common.select")}</option>
                                           {bindings.map((b) => (
-                                            <option key={b.alias} value={b.alias}>{b.alias}</option>
+                                            <option key={b.alias} value={b.alias}>
+                                              {b.alias}
+                                            </option>
                                           ))}
                                         </select>
                                       );
@@ -285,12 +335,19 @@ export function AddRecipeForm({
                                   ) : slot.type === "select" ? (
                                     <select
                                       value={String(params[slot.id] ?? slot.defaultValue ?? "")}
-                                      onChange={(e) => setParams({ ...params, [slot.id]: e.target.value })}
+                                      onChange={(e) =>
+                                        setParams({ ...params, [slot.id]: e.target.value })
+                                      }
                                       className="w-full px-3 py-1.5 text-small border border-border bg-surface rounded-sm text-text"
                                     >
                                       {(slot.options ?? []).map((o) => (
                                         <option key={o.value} value={o.value}>
-                                          {recipeSlotOptionLabel(selectedRecipe, slot, o.value, lang)}
+                                          {recipeSlotOptionLabel(
+                                            selectedRecipe,
+                                            slot,
+                                            o.value,
+                                            lang,
+                                          )}
                                         </option>
                                       ))}
                                     </select>
@@ -305,8 +362,12 @@ export function AddRecipeForm({
                                       min={slot.constraints?.min}
                                       max={slot.constraints?.max}
                                       value={params[slot.id] ?? ""}
-                                      onChange={(e) => setParams({ ...params, [slot.id]: e.target.value })}
-                                      placeholder={slot.constraints?.max ? `1-${slot.constraints.max}` : ""}
+                                      onChange={(e) =>
+                                        setParams({ ...params, [slot.id]: e.target.value })
+                                      }
+                                      placeholder={
+                                        slot.constraints?.max ? `1-${slot.constraints.max}` : ""
+                                      }
                                       className="w-full px-2 py-1 text-small border border-border bg-surface rounded-sm text-text placeholder:text-text-tertiary"
                                     />
                                   )}
@@ -316,136 +377,181 @@ export function AddRecipeForm({
                           );
                         })()}
                         {/* Full-width multi-select slots (e.g. weekdays) — rendered as chips */}
-                        {chunk.slots.filter((s) => s.type === "select" && s.list && !isSlotHidden(s, params, selectedRecipe.slots)).map((slot) => (
-                          <div key={slot.id} className="mt-1.5">
-                            <label className={FIELD_LABEL}>
-                              {recipeSlotName(selectedRecipe, slot, lang)}{slot.required && <span className="text-error ml-0.5">*</span>}
-                            </label>
-                            <MultiSelectChips
-                              slot={slot}
-                              value={params[slot.id] ?? ""}
-                              onChange={(v) => setParams({ ...params, [slot.id]: v })}
-                              recipe={selectedRecipe}
-                              lang={lang}
-                            />
-                            <p className="text-caption text-text-tertiary mt-0.5">{recipeSlotDescription(selectedRecipe, slot, lang)}</p>
-                          </div>
-                        ))}
+                        {chunk.slots
+                          .filter(
+                            (s) =>
+                              s.type === "select" &&
+                              s.list &&
+                              !isSlotHidden(s, params, selectedRecipe.slots),
+                          )
+                          .map((slot) => (
+                            <div key={slot.id} className="mt-1.5">
+                              <label className={FIELD_LABEL}>
+                                {recipeSlotName(selectedRecipe, slot, lang)}
+                                {slot.required && <span className="text-error ml-0.5">*</span>}
+                              </label>
+                              <MultiSelectChips
+                                slot={slot}
+                                value={params[slot.id] ?? ""}
+                                onChange={(v) => setParams({ ...params, [slot.id]: v })}
+                                recipe={selectedRecipe}
+                                lang={lang}
+                              />
+                              <p className="text-caption text-text-tertiary mt-0.5">
+                                {recipeSlotDescription(selectedRecipe, slot, lang)}
+                              </p>
+                            </div>
+                          ))}
                       </div>
                     );
                   }
                   // Ungrouped — render each slot individually
-                  return chunk.slots.map((slot) => isSlotHidden(slot, params, selectedRecipe.slots) ? null : (
-                    <div key={slot.id} className="mb-3">
-                      {slot.type === "boolean" ? (
-                        <label className="flex items-center gap-2 px-3 py-1.5 text-small border border-border bg-surface rounded-sm text-text cursor-pointer hover:bg-border-light/30 transition-colors duration-150">
-                          <input
-                            type="checkbox"
-                            checked={params[slot.id] === "true"}
-                            onChange={(e) => setParams({ ...params, [slot.id]: e.target.checked ? "true" : "false" })}
-                          />
-                          {recipeSlotName(selectedRecipe, slot, lang)}
-                        </label>
-                      ) : (
-                      <>
-                      <label className={FIELD_LABEL}>
-                        {recipeSlotName(selectedRecipe, slot, lang)}{slot.required && <span className="text-error ml-0.5">*</span>}
-                      </label>
-                      {slot.type === "equipment" && slot.list ? (
-                        <EquipmentCheckboxList
-                          equipments={getEquipmentOptions(slot.id)}
-                          zoneChains={zoneChains}
-                          value={params[slot.id] ?? ""}
-                          onChange={(v) => setParams({ ...params, [slot.id]: v })}
-                        />
-                      ) : slot.type === "equipment" ? (
-                        slot.constraints?.crossZone === true ||
-                        slot.constraints?.includeDescendants === true ? (
-                          <SingleEquipmentZonePicker
-                            value={params[slot.id] ?? ""}
-                            onChange={(v) => setParams({ ...params, [slot.id]: v })}
-                            equipments={getEquipmentOptions(slot.id)}
-                            zones={allZones}
-                          />
+                  return chunk.slots.map((slot) =>
+                    isSlotHidden(slot, params, selectedRecipe.slots) ? null : (
+                      <div key={slot.id} className="mb-3">
+                        {slot.type === "boolean" ? (
+                          <label className="flex items-center gap-2 px-3 py-1.5 text-small border border-border bg-surface rounded-sm text-text cursor-pointer hover:bg-border-light/30 transition-colors duration-150">
+                            <input
+                              type="checkbox"
+                              checked={params[slot.id] === "true"}
+                              onChange={(e) =>
+                                setParams({
+                                  ...params,
+                                  [slot.id]: e.target.checked ? "true" : "false",
+                                })
+                              }
+                            />
+                            {recipeSlotName(selectedRecipe, slot, lang)}
+                          </label>
                         ) : (
-                          <select
-                            value={params[slot.id] ?? ""}
-                            onChange={(e) => setParams({ ...params, [slot.id]: e.target.value })}
-                            className="w-full px-3 py-1.5 text-small border border-border bg-surface rounded-sm text-text"
-                          >
-                            <option value="">{t("common.select")}</option>
-                            <EquipmentOptions equipments={getEquipmentOptions(slot.id)} zoneChains={zoneChains} />
-                          </select>
-                        )
-                      ) : slot.type === "data-key" ? (
-                        (() => {
-                          const eqSlot = selectedRecipe?.slots.find((s) => s.type === "equipment" && !s.list);
-                          const eqId = eqSlot ? params[eqSlot.id] : undefined;
-                          const eq = eqId ? equipments.find((e) => e.id === eqId) : undefined;
-                          const bindings = eq?.dataBindings ?? [];
-                          return (
-                            <select
-                              value={params[slot.id] ?? ""}
-                              onChange={(e) => setParams({ ...params, [slot.id]: e.target.value })}
-                              className="w-full px-3 py-1.5 text-small border border-border bg-surface rounded-sm text-text"
-                            >
-                              <option value="">{t("common.select")}</option>
-                              {bindings.map((b) => (
-                                <option key={b.alias} value={b.alias}>{b.alias}</option>
-                              ))}
-                            </select>
-                          );
-                        })()
-                      ) : slot.type === "duration" ? (
-                        <DurationInput
-                          value={params[slot.id] ?? ""}
-                          onChange={(v) => setParams({ ...params, [slot.id]: v })}
-                          placeholder={slot.defaultValue ? String(durationToMinutes(String(slot.defaultValue))) : undefined}
-                        />
-                      ) : slot.type === "select" ? (
-                        slot.list ? (
-                          <MultiSelectChips
-                            slot={slot}
-                            value={params[slot.id] ?? ""}
-                            onChange={(v) => setParams({ ...params, [slot.id]: v })}
-                            recipe={selectedRecipe}
-                            lang={lang}
-                          />
-                        ) : (
-                        <select
-                          value={String(params[slot.id] ?? slot.defaultValue ?? "")}
-                          onChange={(e) => setParams({ ...params, [slot.id]: e.target.value })}
-                          className="w-full px-3 py-1.5 text-small border border-border bg-surface rounded-sm text-text"
-                        >
-                          {(slot.options ?? []).map((o) => (
-                            <option key={o.value} value={o.value}>
-                              {recipeSlotOptionLabel(selectedRecipe, slot, o.value, lang)}
-                            </option>
-                          ))}
-                        </select>
-                        )
-                      ) : slot.type === "time" ? (
-                        <TimeInput
-                          value={params[slot.id] ?? ""}
-                          onChange={(v) => setParams({ ...params, [slot.id]: v })}
-                          placeholder={slot.defaultValue ? String(slot.defaultValue) : undefined}
-                        />
-                      ) : (
-                        <input
-                          type={slot.type === "number" ? "number" : "text"}
-                          min={slot.constraints?.min}
-                          max={slot.constraints?.max}
-                          value={params[slot.id] ?? ""}
-                          onChange={(e) => setParams({ ...params, [slot.id]: e.target.value })}
-                          placeholder={slot.defaultValue ? String(slot.defaultValue) : recipeSlotDescription(selectedRecipe, slot, lang)}
-                          className="w-full px-3 py-1.5 text-small border border-border bg-surface rounded-sm text-text placeholder:text-text-tertiary"
-                        />
-                      )}
-                      <p className="text-caption text-text-tertiary mt-0.5">{recipeSlotDescription(selectedRecipe, slot, lang)}</p>
-                      </>
-                      )}
-                    </div>
-                  ));
+                          <>
+                            <label className={FIELD_LABEL}>
+                              {recipeSlotName(selectedRecipe, slot, lang)}
+                              {slot.required && <span className="text-error ml-0.5">*</span>}
+                            </label>
+                            {slot.type === "equipment" && slot.list ? (
+                              <EquipmentCheckboxList
+                                equipments={getEquipmentOptions(slot.id)}
+                                zoneChains={zoneChains}
+                                value={params[slot.id] ?? ""}
+                                onChange={(v) => setParams({ ...params, [slot.id]: v })}
+                              />
+                            ) : slot.type === "equipment" ? (
+                              slot.constraints?.crossZone === true ||
+                              slot.constraints?.includeDescendants === true ? (
+                                <SingleEquipmentZonePicker
+                                  value={params[slot.id] ?? ""}
+                                  onChange={(v) => setParams({ ...params, [slot.id]: v })}
+                                  equipments={getEquipmentOptions(slot.id)}
+                                  zones={allZones}
+                                />
+                              ) : (
+                                <select
+                                  value={params[slot.id] ?? ""}
+                                  onChange={(e) =>
+                                    setParams({ ...params, [slot.id]: e.target.value })
+                                  }
+                                  className="w-full px-3 py-1.5 text-small border border-border bg-surface rounded-sm text-text"
+                                >
+                                  <option value="">{t("common.select")}</option>
+                                  <EquipmentOptions
+                                    equipments={getEquipmentOptions(slot.id)}
+                                    zoneChains={zoneChains}
+                                  />
+                                </select>
+                              )
+                            ) : slot.type === "data-key" ? (
+                              (() => {
+                                const eqSlot = selectedRecipe?.slots.find(
+                                  (s) => s.type === "equipment" && !s.list,
+                                );
+                                const eqId = eqSlot ? params[eqSlot.id] : undefined;
+                                const eq = eqId ? equipments.find((e) => e.id === eqId) : undefined;
+                                const bindings = eq?.dataBindings ?? [];
+                                return (
+                                  <select
+                                    value={params[slot.id] ?? ""}
+                                    onChange={(e) =>
+                                      setParams({ ...params, [slot.id]: e.target.value })
+                                    }
+                                    className="w-full px-3 py-1.5 text-small border border-border bg-surface rounded-sm text-text"
+                                  >
+                                    <option value="">{t("common.select")}</option>
+                                    {bindings.map((b) => (
+                                      <option key={b.alias} value={b.alias}>
+                                        {b.alias}
+                                      </option>
+                                    ))}
+                                  </select>
+                                );
+                              })()
+                            ) : slot.type === "duration" ? (
+                              <DurationInput
+                                value={params[slot.id] ?? ""}
+                                onChange={(v) => setParams({ ...params, [slot.id]: v })}
+                                placeholder={
+                                  slot.defaultValue
+                                    ? String(durationToMinutes(String(slot.defaultValue)))
+                                    : undefined
+                                }
+                              />
+                            ) : slot.type === "select" ? (
+                              slot.list ? (
+                                <MultiSelectChips
+                                  slot={slot}
+                                  value={params[slot.id] ?? ""}
+                                  onChange={(v) => setParams({ ...params, [slot.id]: v })}
+                                  recipe={selectedRecipe}
+                                  lang={lang}
+                                />
+                              ) : (
+                                <select
+                                  value={String(params[slot.id] ?? slot.defaultValue ?? "")}
+                                  onChange={(e) =>
+                                    setParams({ ...params, [slot.id]: e.target.value })
+                                  }
+                                  className="w-full px-3 py-1.5 text-small border border-border bg-surface rounded-sm text-text"
+                                >
+                                  {(slot.options ?? []).map((o) => (
+                                    <option key={o.value} value={o.value}>
+                                      {recipeSlotOptionLabel(selectedRecipe, slot, o.value, lang)}
+                                    </option>
+                                  ))}
+                                </select>
+                              )
+                            ) : slot.type === "time" ? (
+                              <TimeInput
+                                value={params[slot.id] ?? ""}
+                                onChange={(v) => setParams({ ...params, [slot.id]: v })}
+                                placeholder={
+                                  slot.defaultValue ? String(slot.defaultValue) : undefined
+                                }
+                              />
+                            ) : (
+                              <input
+                                type={slot.type === "number" ? "number" : "text"}
+                                min={slot.constraints?.min}
+                                max={slot.constraints?.max}
+                                value={params[slot.id] ?? ""}
+                                onChange={(e) =>
+                                  setParams({ ...params, [slot.id]: e.target.value })
+                                }
+                                placeholder={
+                                  slot.defaultValue
+                                    ? String(slot.defaultValue)
+                                    : recipeSlotDescription(selectedRecipe, slot, lang)
+                                }
+                                className="w-full px-3 py-1.5 text-small border border-border bg-surface rounded-sm text-text placeholder:text-text-tertiary"
+                              />
+                            )}
+                            <p className="text-caption text-text-tertiary mt-0.5">
+                              {recipeSlotDescription(selectedRecipe, slot, lang)}
+                            </p>
+                          </>
+                        )}
+                      </div>
+                    ),
+                  );
                 })}
                 {/* Add group buttons */}
                 {hiddenGroups.length > 0 && (
@@ -469,9 +575,7 @@ export function AddRecipeForm({
             );
           })()}
 
-          {error && (
-            <p className="text-caption text-error mb-3">{error}</p>
-          )}
+          {error && <p className="text-caption text-error mb-3">{error}</p>}
 
           <div className="flex gap-2">
             <button

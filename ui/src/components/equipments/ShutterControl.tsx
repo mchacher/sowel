@@ -20,9 +20,8 @@ export function ShutterControl({ equipment, onExecuteOrder, compact }: ShutterCo
   const positionBinding = equipment.dataBindings.find(
     (db) => db.category === "shutter_position" || db.alias === "position",
   );
-  const devicePosition = positionBinding && typeof positionBinding.value === "number"
-    ? positionBinding.value
-    : null;
+  const devicePosition =
+    positionBinding && typeof positionBinding.value === "number" ? positionBinding.value : null;
 
   const position = slider.displayValue(devicePosition);
 
@@ -35,9 +34,7 @@ export function ShutterControl({ equipment, onExecuteOrder, compact }: ShutterCo
     equipment.orderBindings.find(
       (ob) => ob.category === "pool_cover_move" || ob.category === "shutter_move",
     ) ??
-    equipment.orderBindings.find(
-      (ob) => ob.alias === "state" || /shutter\d*_state/.test(ob.alias),
-    );
+    equipment.orderBindings.find((ob) => ob.alias === "state" || /shutter\d*_state/.test(ob.alias));
   const positionOrderBinding =
     equipment.orderBindings.find((ob) => ob.category === "set_shutter_position") ??
     equipment.orderBindings.find(
@@ -55,7 +52,8 @@ export function ShutterControl({ equipment, onExecuteOrder, compact }: ShutterCo
   // integration signals "no real stop" by omitting "STOP" from the move
   // order's enumValues; when enumValues is undefined we keep the historical
   // behavior (always show Stop) so existing integrations are unaffected.
-  const hasStop = !moveBinding?.enumValues || moveBinding.enumValues.some((v) => v.toUpperCase() === "STOP");
+  const hasStop =
+    !moveBinding?.enumValues || moveBinding.enumValues.some((v) => v.toUpperCase() === "STOP");
 
   // Pool covers slide horizontally → ←/→ arrows. Window shutters and awnings keep ↑/↓.
   const isHorizontal = equipment.type === "pool_cover";
@@ -72,8 +70,16 @@ export function ShutterControl({ equipment, onExecuteOrder, compact }: ShutterCo
   // vocabulary changes.
   const openKey = isAwning ? "controls.retract" : "controls.open";
   const closeKey = isAwning ? "controls.extend" : "controls.close";
-  const pillAtZeroKey = isAwning ? "controls.retracted" : isDoor ? "controls.doorClosed" : "controls.closed";
-  const pillAtHundredKey = isAwning ? "controls.deployed" : isDoor ? "controls.doorOpen" : "controls.opened";
+  const pillAtZeroKey = isAwning
+    ? "controls.retracted"
+    : isDoor
+      ? "controls.doorClosed"
+      : "controls.closed";
+  const pillAtHundredKey = isAwning
+    ? "controls.deployed"
+    : isDoor
+      ? "controls.doorOpen"
+      : "controls.opened";
 
   const handleCommand = async (command: "OPEN" | "STOP" | "CLOSE", e?: React.MouseEvent) => {
     e?.preventDefault();
@@ -98,31 +104,42 @@ export function ShutterControl({ equipment, onExecuteOrder, compact }: ShutterCo
     const sttClass =
       "w-[24px] h-[24px] inline-flex items-center justify-center border border-border-light bg-surface text-text-tertiary rounded-sm transition-colors duration-150 cursor-pointer hover:bg-shutter-50 hover:text-shutter-500 hover:border-shutter-500 disabled:opacity-50 disabled:cursor-not-allowed";
     return (
-      <div
-        className="flex items-center gap-2 flex-shrink-0"
-        onClick={(e) => e.preventDefault()}
-      >
+      <div className="flex items-center gap-2 flex-shrink-0" onClick={(e) => e.preventDefault()}>
         {hasPositionOrder && position !== null && (
           <input
             type="range"
             min={0}
             max={100}
             value={position}
-            onPointerDown={(e) => { e.stopPropagation(); slider.onStart(); }}
-            onChange={(e) => { e.stopPropagation(); slider.onChange(Number(e.target.value)); }}
+            onPointerDown={(e) => {
+              e.stopPropagation();
+              slider.onStart();
+            }}
+            onChange={(e) => {
+              e.stopPropagation();
+              slider.onChange(Number(e.target.value));
+            }}
             onMouseUp={handlePositionCommit}
             onTouchEnd={handlePositionCommit}
             onClick={(e) => e.stopPropagation()}
             className="hidden sm:block w-[80px]"
-            style={{ "--fill-pct": `${position}%`, "--fill-color": "var(--shutter-500)" } as React.CSSProperties}
+            style={
+              {
+                "--fill-pct": `${position}%`,
+                "--fill-color": "var(--shutter-500)",
+              } as React.CSSProperties
+            }
           />
         )}
         {doorPill ? (
-          <span className={`text-micro font-semibold px-[7px] py-[1px] rounded-full ${doorPill.className}`}>
+          <span
+            className={`text-micro font-semibold px-[7px] py-[1px] rounded-full ${doorPill.className}`}
+          >
             {t(doorPill.key)}
           </span>
-        ) : position !== null && (
-          position === 100 ? (
+        ) : (
+          position !== null &&
+          (position === 100 ? (
             <span className="text-micro font-semibold text-text-secondary px-[7px] py-[1px] rounded-full bg-border-light">
               {t(pillAtHundredKey)}
             </span>
@@ -134,38 +151,38 @@ export function ShutterControl({ equipment, onExecuteOrder, compact }: ShutterCo
             <span className="text-micro text-text-tertiary tabular-nums w-8 text-right">
               {formatPercent(position)}
             </span>
-          )
+          ))
         )}
         {hasState && (
           <>
             <div className="w-px h-5 bg-border" />
             <div className="inline-flex items-center gap-[2px]">
-            <button
-              onClick={(e) => handleCommand("OPEN", e)}
-              disabled={executing}
-              className={sttClass}
-              title={t(openKey)}
-            >
-              <OpenIcon size={10} strokeWidth={2} />
-            </button>
-            {hasStop && (
               <button
-                onClick={(e) => handleCommand("STOP", e)}
+                onClick={(e) => handleCommand("OPEN", e)}
                 disabled={executing}
                 className={sttClass}
-                title={t("controls.stop")}
+                title={t(openKey)}
               >
-                <Square size={9} strokeWidth={0} fill="currentColor" />
+                <OpenIcon size={10} strokeWidth={2} />
               </button>
-            )}
-            <button
-              onClick={(e) => handleCommand("CLOSE", e)}
-              disabled={executing}
-              className={sttClass}
-              title={t(closeKey)}
-            >
-              <CloseIcon size={10} strokeWidth={2} />
-            </button>
+              {hasStop && (
+                <button
+                  onClick={(e) => handleCommand("STOP", e)}
+                  disabled={executing}
+                  className={sttClass}
+                  title={t("controls.stop")}
+                >
+                  <Square size={9} strokeWidth={0} fill="currentColor" />
+                </button>
+              )}
+              <button
+                onClick={(e) => handleCommand("CLOSE", e)}
+                disabled={executing}
+                className={sttClass}
+                title={t(closeKey)}
+              >
+                <CloseIcon size={10} strokeWidth={2} />
+              </button>
             </div>
           </>
         )}
@@ -178,7 +195,9 @@ export function ShutterControl({ equipment, onExecuteOrder, compact }: ShutterCo
       {doorPill && (
         <div className="flex items-center gap-3">
           <span className="text-caption text-text-tertiary w-16">{t("controls.state")}</span>
-          <span className={`text-caption font-semibold px-2 py-[1px] rounded-full ${doorPill.className}`}>
+          <span
+            className={`text-caption font-semibold px-2 py-[1px] rounded-full ${doorPill.className}`}
+          >
             {t(doorPill.key)}
           </span>
         </div>
@@ -198,7 +217,12 @@ export function ShutterControl({ equipment, onExecuteOrder, compact }: ShutterCo
               onMouseUp={handlePositionCommit}
               onTouchEnd={handlePositionCommit}
               className="flex-1"
-              style={{ "--fill-pct": `${position}%`, "--fill-color": "var(--shutter-500)" } as React.CSSProperties}
+              style={
+                {
+                  "--fill-pct": `${position}%`,
+                  "--fill-color": "var(--shutter-500)",
+                } as React.CSSProperties
+              }
             />
           ) : (
             <div className="flex-1 h-1.5 bg-border-light rounded-full overflow-hidden">
@@ -209,7 +233,11 @@ export function ShutterControl({ equipment, onExecuteOrder, compact }: ShutterCo
             </div>
           )}
           <span className="text-caption text-text-secondary w-auto text-right tabular-nums">
-            {position === 0 ? t(pillAtZeroKey) : position === 100 ? t(pillAtHundredKey) : formatPercent(position)}
+            {position === 0
+              ? t(pillAtZeroKey)
+              : position === 100
+                ? t(pillAtHundredKey)
+                : formatPercent(position)}
           </span>
         </div>
       )}

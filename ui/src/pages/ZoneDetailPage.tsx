@@ -6,15 +6,7 @@ import { useAuth } from "../store/useAuth";
 import { useRecipes } from "../store/useRecipes";
 import { getZone } from "../api";
 import { ZoneForm, flattenZoneTree } from "../components/zones/ZoneForm";
-import {
-  ArrowLeft,
-  Loader2,
-  Map,
-  Pencil,
-  Trash2,
-  ChevronRight,
-  FolderOpen,
-} from "lucide-react";
+import { ArrowLeft, Loader2, Map, Pencil, Trash2, ChevronRight, FolderOpen } from "lucide-react";
 import type { ZoneWithChildren, RecipeActionDef, RecipeInstance, RecipeInfo } from "../types";
 import { useWsSubscription } from "../hooks/useWsSubscription";
 import { ROOT_ZONE_ID } from "../lib/constants";
@@ -25,7 +17,10 @@ import { cycleOptionLabel } from "../components/recipes/recipe-cycle";
 const MODE_COLORS: Record<string, { bg: string; text: string }> = {
   // Tokens only, so the pills follow the theme (spec 196). Cocoon and night
   // stay neutral until the series palette gives them a hue of their own.
-  eco: { bg: "color-mix(in srgb, var(--color-success) 10%, transparent)", text: "var(--color-success)" },
+  eco: {
+    bg: "color-mix(in srgb, var(--color-success) 10%, transparent)",
+    text: "var(--color-success)",
+  },
   comfort: { bg: "var(--color-primary-light)", text: "var(--color-primary)" },
   cocoon: { bg: "var(--color-border-light)", text: "var(--color-text-secondary)" },
   night: { bg: "var(--color-border-light)", text: "var(--color-text-secondary)" },
@@ -144,7 +139,9 @@ export function ZoneDetailPage() {
         }
       });
 
-    return () => { cancelled = true; };
+    return () => {
+      cancelled = true;
+    };
   }, [id, tree]); // Re-fetch when tree updates (via WebSocket)
 
   if (loading) {
@@ -158,7 +155,10 @@ export function ZoneDetailPage() {
   if (error || !zone) {
     return (
       <div className="p-4 sm:p-6">
-        <Link to="/zones" className="inline-flex items-center gap-1.5 text-small text-text-secondary hover:text-text mb-4">
+        <Link
+          to="/zones"
+          className="inline-flex items-center gap-1.5 text-small text-text-secondary hover:text-text mb-4"
+        >
           <ArrowLeft size={14} strokeWidth={1.5} />
           {t("zones.backToZones")}
         </Link>
@@ -192,7 +192,9 @@ export function ZoneDetailPage() {
     <div className="p-4 sm:p-6">
       {/* Breadcrumb */}
       <div className="flex items-center gap-1.5 text-small text-text-secondary mb-4">
-        <Link to="/zones" className="hover:text-text transition-colors">{t("zones.title")}</Link>
+        <Link to="/zones" className="hover:text-text transition-colors">
+          {t("zones.title")}
+        </Link>
         {breadcrumb.map((item) => (
           <span key={item.id} className="flex items-center gap-1.5">
             <ChevronRight size={12} strokeWidth={1.5} className="text-text-tertiary" />
@@ -211,9 +213,7 @@ export function ZoneDetailPage() {
       <div className="flex items-start justify-between mb-4 sm:mb-8">
         <div>
           <div className="flex items-center gap-3">
-            <h1>
-              {zone.name}
-            </h1>
+            <h1>{zone.name}</h1>
             {/* Recipe mode pills */}
             {instances
               .filter((inst) => inst.params.zone === zone.id && inst.enabled)
@@ -237,27 +237,29 @@ export function ZoneDetailPage() {
           )}
         </div>
         {isAdmin && (
-        <div className="flex items-center gap-2">
-          <button
-            onClick={() => setShowEditForm(true)}
-            className="p-2 sm:px-3 sm:py-2 text-small font-medium text-text-secondary border border-border rounded-sm hover:bg-border-light transition-colors duration-150"
-            title={t("common.edit")}
-          >
-            <Pencil size={14} strokeWidth={1.5} />
-            <span className="hidden sm:inline ml-2">{t("common.edit")}</span>
-          </button>
-          {zone.id !== ROOT_ZONE_ID && (
+          <div className="flex items-center gap-2">
             <button
-              onClick={handleDelete}
-              disabled={deleting}
-              className="p-2 sm:px-3 sm:py-2 text-small font-medium text-error border border-error/30 rounded-sm hover:bg-error/10 transition-colors duration-150 disabled:opacity-50"
-              title={t("common.delete")}
+              onClick={() => setShowEditForm(true)}
+              className="p-2 sm:px-3 sm:py-2 text-small font-medium text-text-secondary border border-border rounded-sm hover:bg-border-light transition-colors duration-150"
+              title={t("common.edit")}
             >
-              <Trash2 size={14} strokeWidth={1.5} />
-              <span className="hidden sm:inline ml-2">{deleting ? t("common.deleting") : t("common.delete")}</span>
+              <Pencil size={14} strokeWidth={1.5} />
+              <span className="hidden sm:inline ml-2">{t("common.edit")}</span>
             </button>
-          )}
-        </div>
+            {zone.id !== ROOT_ZONE_ID && (
+              <button
+                onClick={handleDelete}
+                disabled={deleting}
+                className="p-2 sm:px-3 sm:py-2 text-small font-medium text-error border border-error/30 rounded-sm hover:bg-error/10 transition-colors duration-150 disabled:opacity-50"
+                title={t("common.delete")}
+              >
+                <Trash2 size={14} strokeWidth={1.5} />
+                <span className="hidden sm:inline ml-2">
+                  {deleting ? t("common.deleting") : t("common.delete")}
+                </span>
+              </button>
+            )}
+          </div>
         )}
       </div>
 
@@ -272,11 +274,17 @@ export function ZoneDetailPage() {
                 to={`/zones/${child.id}`}
                 className="flex items-center gap-3 px-4 py-3 hover:bg-primary-light/40 transition-colors duration-150"
               >
-                <FolderOpen size={18} strokeWidth={1.5} className="text-text-secondary flex-shrink-0" />
+                <FolderOpen
+                  size={18}
+                  strokeWidth={1.5}
+                  className="text-text-secondary flex-shrink-0"
+                />
                 <div className="flex-1 min-w-0">
                   <span className="text-body font-medium text-text">{child.name}</span>
                   {child.description && (
-                    <span className="text-caption text-text-tertiary ml-2">{child.description}</span>
+                    <span className="text-caption text-text-tertiary ml-2">
+                      {child.description}
+                    </span>
                   )}
                 </div>
                 <div className="flex items-center gap-2 flex-shrink-0">
@@ -310,10 +318,7 @@ export function ZoneDetailPage() {
   );
 }
 
-function buildBreadcrumb(
-  zoneId: string,
-  tree: ZoneWithChildren[]
-): { id: string; name: string }[] {
+function buildBreadcrumb(zoneId: string, tree: ZoneWithChildren[]): { id: string; name: string }[] {
   const path: { id: string; name: string }[] = [];
 
   function find(zones: ZoneWithChildren[], trail: { id: string; name: string }[]): boolean {

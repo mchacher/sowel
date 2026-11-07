@@ -1,7 +1,13 @@
 import { useState, useEffect, useMemo } from "react";
 import { useTranslation } from "react-i18next";
 import { X, Timer } from "lucide-react";
-import type { RecipeInfo, RecipeInstance, RecipeActionDef, EquipmentWithDetails, RecipeSlotDef } from "../../types";
+import type {
+  RecipeInfo,
+  RecipeInstance,
+  RecipeActionDef,
+  EquipmentWithDetails,
+  RecipeSlotDef,
+} from "../../types";
 import { recipeSlotName, recipeSlotOptionLabel } from "../../lib/recipe-i18n";
 import { equipmentCandidates } from "../../lib/recipe-slots";
 import { equipmentLabelMap, type ZoneOption } from "../../lib/zone-path";
@@ -35,7 +41,6 @@ export function EquipmentOptions({
   );
 }
 
-
 /** Multi-select renderer for a `select` slot with `list: true`: one toggle chip
  *  per option. Stores the selected option values as a comma-joined string, the
  *  same convention used by equipment-list slots (e.g. "mon,tue,thu,fri"). An
@@ -64,9 +69,7 @@ export function MultiSelectChips({
             type="button"
             aria-pressed={on}
             onClick={() => {
-              const next = on
-                ? selected.filter((v) => v !== o.value)
-                : [...selected, o.value];
+              const next = on ? selected.filter((v) => v !== o.value) : [...selected, o.value];
               onChange(next.join(","));
             }}
             className={`px-3 py-1.5 text-caption font-medium rounded-sm border transition-colors duration-150 ${
@@ -90,7 +93,10 @@ export function MultiSelectChips({
 const MODE_PILL_COLORS: Record<string, { bg: string; text: string }> = {
   // Tokens only, so the pills follow the theme (spec 196). Cocoon and night
   // stay neutral until the series palette gives them a hue of their own.
-  eco: { bg: "color-mix(in srgb, var(--color-success) 10%, transparent)", text: "var(--color-success)" },
+  eco: {
+    bg: "color-mix(in srgb, var(--color-success) 10%, transparent)",
+    text: "var(--color-success)",
+  },
   comfort: { bg: "var(--color-primary-light)", text: "var(--color-primary)" },
   cocoon: { bg: "var(--color-border-light)", text: "var(--color-text-secondary)" },
   night: { bg: "var(--color-border-light)", text: "var(--color-text-secondary)" },
@@ -108,7 +114,11 @@ export function ModeCyclePill({
   recipe: RecipeInfo;
   action: RecipeActionDef;
   lang: string;
-  sendAction: (instanceId: string, action: string, payload?: Record<string, unknown>) => Promise<void>;
+  sendAction: (
+    instanceId: string,
+    action: string,
+    payload?: Record<string, unknown>,
+  ) => Promise<void>;
 }) {
   const { t } = useTranslation();
   const [sending, setSending] = useState(false);
@@ -137,7 +147,10 @@ export function ModeCyclePill({
       disabled={sending}
       className="inline-flex items-center gap-1 px-2 py-[1.5px] rounded-full text-micro leading-tight font-semibold transition-all duration-150 cursor-pointer disabled:opacity-50 disabled:cursor-default hover:brightness-95 active:scale-95 flex-shrink-0"
       style={{ backgroundColor: colors.bg, color: colors.text }}
-      title={t("recipes.actions.cycleTo", { mode: cycle.next.label, defaultValue: `Click to switch to ${cycle.next.label}` })}
+      title={t("recipes.actions.cycleTo", {
+        mode: cycle.next.label,
+        defaultValue: `Click to switch to ${cycle.next.label}`,
+      })}
     >
       {displayLabel}
     </button>
@@ -352,7 +365,8 @@ export function EquipmentListPicker({
   const zonesWithOptions = useMemo(
     () =>
       zones.filter(
-        (z) => equipmentCandidates(equipments, z.id, { constraint, excludeIds: selectedIds }).length > 0,
+        (z) =>
+          equipmentCandidates(equipments, z.id, { constraint, excludeIds: selectedIds }).length > 0,
       ),
     [zones, equipments, selectedIds, constraint],
   );
@@ -369,9 +383,7 @@ export function EquipmentListPicker({
 
   return (
     <div className="mb-1.5">
-      <label className={labelClassName ?? FIELD_LABEL}>
-        {recipeSlotName(recipe, slot, lang)}
-      </label>
+      <label className={labelClassName ?? FIELD_LABEL}>{recipeSlotName(recipe, slot, lang)}</label>
 
       {/* Selected items — zone then equipment, the reading order of the two
           dropdowns underneath, so a chip lines up with the row that made it. */}
@@ -379,10 +391,19 @@ export function EquipmentListPicker({
         const eq = equipments.find((e) => e.id === id);
         const zone = eq ? zones.find((z) => z.id === eq.zoneId) : null;
         return (
-          <div key={id} className="flex items-center gap-2 px-2 py-1 mb-1 text-small border border-border bg-surface rounded-sm">
-            {zone && <span className="min-w-0 text-micro text-text-tertiary truncate">{zone.label}</span>}
+          <div
+            key={id}
+            className="flex items-center gap-2 px-2 py-1 mb-1 text-small border border-border bg-surface rounded-sm"
+          >
+            {zone && (
+              <span className="min-w-0 text-micro text-text-tertiary truncate">{zone.label}</span>
+            )}
             <span className="flex-1 min-w-0 text-text truncate">{eq?.name ?? id}</span>
-            <button type="button" onClick={() => handleRemove(id)} className="p-0.5 text-text-tertiary hover:text-error transition-colors">
+            <button
+              type="button"
+              onClick={() => handleRemove(id)}
+              className="p-0.5 text-text-tertiary hover:text-error transition-colors"
+            >
               <X size={12} strokeWidth={1.5} />
             </button>
           </div>
@@ -396,7 +417,10 @@ export function EquipmentListPicker({
             value={pickerZoneId}
             onChange={(e) => {
               const zid = e.target.value;
-              const candidates = equipmentCandidates(equipments, zid, { constraint, excludeIds: selectedIds });
+              const candidates = equipmentCandidates(equipments, zid, {
+                constraint,
+                excludeIds: selectedIds,
+              });
               // One candidate left in that zone: add it and drop back to the
               // zone dropdown, exactly where picking it by hand would land.
               if (candidates.length === 1) {
@@ -410,7 +434,9 @@ export function EquipmentListPicker({
           >
             <option value="">Zone…</option>
             {zonesWithOptions.map((z) => (
-              <option key={z.id} value={z.id}>{z.label}</option>
+              <option key={z.id} value={z.id}>
+                {z.label}
+              </option>
             ))}
           </select>
           <select
@@ -429,7 +455,9 @@ export function EquipmentListPicker({
           >
             <option value="">{t("common.select")}</option>
             {pickerOptions.map((eq) => (
-              <option key={eq.id} value={eq.id}>{eq.name}</option>
+              <option key={eq.id} value={eq.id}>
+                {eq.name}
+              </option>
             ))}
           </select>
         </div>
@@ -437,7 +465,6 @@ export function EquipmentListPicker({
     </div>
   );
 }
-
 
 /**
  * Checkbox list of an equipment-list slot (spec 139). Real markup here, so the
@@ -474,14 +501,14 @@ export function EquipmentCheckboxList({
               checked={checked}
               onChange={() =>
                 onChange(
-                  (checked ? selected.filter((id) => id !== eq.id) : [...selected, eq.id]).join(","),
+                  (checked ? selected.filter((id) => id !== eq.id) : [...selected, eq.id]).join(
+                    ",",
+                  ),
                 )
               }
             />
             <span className="truncate">{eq.name}</span>
-            {zone && (
-              <span className="ml-auto text-micro text-text-tertiary truncate">{zone}</span>
-            )}
+            {zone && <span className="ml-auto text-micro text-text-tertiary truncate">{zone}</span>}
           </label>
         );
       })}

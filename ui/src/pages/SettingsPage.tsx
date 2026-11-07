@@ -82,9 +82,7 @@ export function SettingsPage() {
     <div className="p-4 sm:p-6">
       {/* Page header + version inline */}
       <div className="flex items-center justify-between mb-3 lg:mb-5">
-        <h1 className={TOP_LEVEL_H1}>
-          {t("settings.title")}
-        </h1>
+        <h1 className={TOP_LEVEL_H1}>{t("settings.title")}</h1>
         {isAdmin && <VersionBadge />}
       </div>
 
@@ -242,8 +240,7 @@ function HomeSettingsSection() {
         "home.sunriseOffset": sunriseOffset,
         "home.sunsetOffset": sunsetOffset,
       });
-      const locationChanged =
-        latitude !== initial.latitude || longitude !== initial.longitude;
+      const locationChanged = latitude !== initial.latitude || longitude !== initial.longitude;
       setInitial({ homeName, latitude, longitude, sunriseOffset, sunsetOffset });
       if (locationChanged) {
         setShowRestartToast(true);
@@ -268,9 +265,7 @@ function HomeSettingsSection() {
       <p className="text-caption text-text-tertiary mb-4">{t("settings.homeDescription")}</p>
       <div className="space-y-3">
         <div>
-          <label className={FIELD_LABEL}>
-            {t("settings.homeName")}
-          </label>
+          <label className={FIELD_LABEL}>{t("settings.homeName")}</label>
           <input
             type="text"
             value={homeName}
@@ -281,9 +276,7 @@ function HomeSettingsSection() {
         </div>
         <div className="grid grid-cols-2 gap-3">
           <div>
-            <label className={FIELD_LABEL}>
-              {t("settings.latitude")}
-            </label>
+            <label className={FIELD_LABEL}>{t("settings.latitude")}</label>
             <input
               type="text"
               inputMode="decimal"
@@ -294,9 +287,7 @@ function HomeSettingsSection() {
             />
           </div>
           <div>
-            <label className={FIELD_LABEL}>
-              {t("settings.longitude")}
-            </label>
+            <label className={FIELD_LABEL}>{t("settings.longitude")}</label>
             <input
               type="text"
               inputMode="decimal"
@@ -309,21 +300,19 @@ function HomeSettingsSection() {
         </div>
         <div className="grid grid-cols-2 gap-3">
           <div>
-            <label className={FIELD_LABEL}>
-              {t("settings.sunriseOffset")}
-            </label>
+            <label className={FIELD_LABEL}>{t("settings.sunriseOffset")}</label>
             <input
               type="number"
               value={sunriseOffset}
               onChange={(e) => setSunriseOffset(e.target.value)}
               className="w-full px-3 py-2 text-body bg-background border border-border rounded-sm text-text focus:outline-none focus:border-primary"
             />
-            <p className="text-caption text-text-tertiary mt-1">{t("settings.sunriseOffsetHelp")}</p>
+            <p className="text-caption text-text-tertiary mt-1">
+              {t("settings.sunriseOffsetHelp")}
+            </p>
           </div>
           <div>
-            <label className={FIELD_LABEL}>
-              {t("settings.sunsetOffset")}
-            </label>
+            <label className={FIELD_LABEL}>{t("settings.sunsetOffset")}</label>
             <input
               type="number"
               value={sunsetOffset}
@@ -335,9 +324,7 @@ function HomeSettingsSection() {
         </div>
         {tzLoaded && (
           <div className="pt-3 border-t border-border-light">
-            <label className={FIELD_LABEL}>
-              {t("settings.timezone")}
-            </label>
+            <label className={FIELD_LABEL}>{t("settings.timezone")}</label>
             <div className="flex items-center gap-2">
               <span className="text-small font-mono text-text px-2 py-1 bg-background rounded-sm border border-border">
                 {tz}
@@ -396,22 +383,16 @@ function ProfileSection({
       <div className="space-y-3">
         <div className="grid grid-cols-2 gap-4">
           <div>
-            <label className={FIELD_LABEL}>
-              {t("auth.username")}
-            </label>
+            <label className={FIELD_LABEL}>{t("auth.username")}</label>
             <p className="text-body text-text-secondary">{user?.username}</p>
           </div>
           <div>
-            <label className={FIELD_LABEL}>
-              {t("settings.role")}
-            </label>
+            <label className={FIELD_LABEL}>{t("settings.role")}</label>
             <p className="text-body text-text-secondary capitalize">{user?.role}</p>
           </div>
         </div>
         <div>
-          <label className={FIELD_LABEL}>
-            {t("auth.displayName")}
-          </label>
+          <label className={FIELD_LABEL}>{t("auth.displayName")}</label>
           <input
             type="text"
             value={displayName}
@@ -462,9 +443,7 @@ function PreferencesSection({
       <h2 className="text-body font-semibold text-text mb-4">{t("settings.preferences")}</h2>
       <div className="space-y-4">
         <div>
-          <label className={FIELD_LABEL}>
-            {t("settings.language")}
-          </label>
+          <label className={FIELD_LABEL}>{t("settings.language")}</label>
           <div className="flex gap-2">
             {(["en", "fr"] as const).map((lang) => (
               <button
@@ -482,9 +461,7 @@ function PreferencesSection({
           </div>
         </div>
         <div>
-          <label className={FIELD_LABEL}>
-            {t("settings.theme")}
-          </label>
+          <label className={FIELD_LABEL}>{t("settings.theme")}</label>
           <div className="flex gap-2">
             {(["light", "system", "dark"] as const).map((opt) => (
               <button
@@ -577,9 +554,7 @@ function ChangePasswordSection() {
       {open && (
         <div className="mt-4 space-y-3">
           <div className="relative">
-            <label className={FIELD_LABEL}>
-              {t("settings.currentPassword")}
-            </label>
+            <label className={FIELD_LABEL}>{t("settings.currentPassword")}</label>
             <input
               type={showCurrent ? "text" : "password"}
               value={currentPassword}
@@ -595,9 +570,7 @@ function ChangePasswordSection() {
             </button>
           </div>
           <div className="relative">
-            <label className={FIELD_LABEL}>
-              {t("settings.newPassword")}
-            </label>
+            <label className={FIELD_LABEL}>{t("settings.newPassword")}</label>
             <input
               type={showNew ? "text" : "password"}
               value={newPassword}
@@ -613,9 +586,7 @@ function ChangePasswordSection() {
             </button>
           </div>
           <div>
-            <label className={FIELD_LABEL}>
-              {t("settings.confirmNewPassword")}
-            </label>
+            <label className={FIELD_LABEL}>{t("settings.confirmNewPassword")}</label>
             <input
               type="password"
               value={confirmPassword}
@@ -725,11 +696,7 @@ function VersionBadge() {
           className="p-1 text-text-tertiary hover:text-text-secondary rounded-sm hover:bg-border-light transition-colors cursor-pointer disabled:opacity-50"
           title={t("update.checkNow")}
         >
-          {checking ? (
-            <Loader2 size={12} className="animate-spin" />
-          ) : (
-            <RefreshCw size={12} />
-          )}
+          {checking ? <Loader2 size={12} className="animate-spin" /> : <RefreshCw size={12} />}
         </button>
 
         {info.updateAvailable && info.latest && (
@@ -755,8 +722,7 @@ function VersionBadge() {
                 className="flex items-center gap-1 px-2.5 py-1 text-micro font-medium text-error hover:bg-error/10 rounded-sm transition-colors"
                 title={updateDisabledReason}
               >
-                <ArrowUpCircle size={12} />
-                v{info.latest}
+                <ArrowUpCircle size={12} />v{info.latest}
                 <ExternalLink size={10} />
               </a>
             )}
@@ -783,9 +749,7 @@ function VersionBadge() {
                 latest: info.latest,
               })}
             </p>
-            <p className="text-caption text-text-tertiary mb-4">
-              {t("update.confirmAutoBackup")}
-            </p>
+            <p className="text-caption text-text-tertiary mb-4">{t("update.confirmAutoBackup")}</p>
             {error && (
               <div className="mb-4 p-3 bg-error/10 border border-error/30 rounded-sm">
                 <p className="text-small text-error">{error}</p>
@@ -859,9 +823,7 @@ function BackupCodesDisplay({ codes }: { codes: string[] }) {
         {copied ? <Check size={13} /> : <Copy size={13} />}
         {t("settings.mfa.copyAllCodes")}
       </button>
-      {copyFailed && (
-        <p className="text-caption text-error mt-1">{t("settings.mfa.copyFailed")}</p>
-      )}
+      {copyFailed && <p className="text-caption text-error mt-1">{t("settings.mfa.copyFailed")}</p>}
     </div>
   );
 }
@@ -911,9 +873,7 @@ function MfaReauthModal({
 
         <div className="space-y-3">
           <div>
-            <label className={FIELD_LABEL}>
-              {t("settings.currentPassword")}
-            </label>
+            <label className={FIELD_LABEL}>{t("settings.currentPassword")}</label>
             <input
               type="password"
               value={password}
@@ -959,7 +919,9 @@ function MfaReauthModal({
             onClick={handleSubmit}
             disabled={submitting || !password || !code}
             className={`px-4 py-2 text-small font-medium rounded-sm transition-colors disabled:opacity-50 cursor-pointer ${
-              danger ? "bg-error text-on-status hover:bg-error/80" : "bg-primary-fill text-white hover:bg-primary-fill-hover"
+              danger
+                ? "bg-error text-on-status hover:bg-error/80"
+                : "bg-primary-fill text-white hover:bg-primary-fill-hover"
             }`}
           >
             {submitting ? t("common.saving") : submitLabel}
@@ -1031,9 +993,7 @@ function MfaEnrollModal({ onDone, onClose }: { onDone: () => void; onClose: () =
               </code>
             </details>
             <div>
-              <label className={FIELD_LABEL}>
-                {t("settings.mfa.totpCode")}
-              </label>
+              <label className={FIELD_LABEL}>{t("settings.mfa.totpCode")}</label>
               <input
                 type="text"
                 inputMode="numeric"
@@ -1171,7 +1131,9 @@ function TwoFactorSection() {
         )}
       </div>
 
-      {!status.enabled && <p className="text-small text-text-tertiary">{t("settings.mfa.disabledHint")}</p>}
+      {!status.enabled && (
+        <p className="text-small text-text-tertiary">{t("settings.mfa.disabledHint")}</p>
+      )}
 
       {status.enabled && (
         <div className="mt-3 space-y-4">
@@ -1191,9 +1153,7 @@ function TwoFactorSection() {
           )}
 
           <div>
-            <label className={FIELD_LABEL}>
-              {t("settings.mfa.trustedDeviceDuration")}
-            </label>
+            <label className={FIELD_LABEL}>{t("settings.mfa.trustedDeviceDuration")}</label>
             <div className="flex items-center gap-2">
               <input
                 type="number"
@@ -1209,9 +1169,7 @@ function TwoFactorSection() {
           </div>
 
           <div>
-            <p className={FIELD_LABEL}>
-              {t("settings.mfa.trustedDevices")}
-            </p>
+            <p className={FIELD_LABEL}>{t("settings.mfa.trustedDevices")}</p>
             {devices.length === 0 ? (
               <p className="text-small text-text-tertiary">{t("settings.mfa.noTrustedDevices")}</p>
             ) : (
@@ -1421,7 +1379,8 @@ function ApiTokensSection() {
               <div>
                 <span className="text-small font-medium text-text">{token.name}</span>
                 <span className="text-micro text-text-tertiary ml-2">
-                  {t("settings.lastUsed")}{t("common.colon")}
+                  {t("settings.lastUsed")}
+                  {t("common.colon")}
                   {token.lastUsedAt
                     ? new Date(token.lastUsedAt).toLocaleDateString(currentLocale())
                     : t("settings.never")}
@@ -1536,9 +1495,7 @@ function UserManagementSection({ currentUserId }: { currentUserId: string }) {
         <div className="mb-4 p-4 bg-background rounded-md space-y-3">
           <div className="grid grid-cols-2 gap-3">
             <div>
-              <label className={FIELD_LABEL}>
-                {t("auth.username")}
-              </label>
+              <label className={FIELD_LABEL}>{t("auth.username")}</label>
               <input
                 type="text"
                 value={newUsername}
@@ -1547,9 +1504,7 @@ function UserManagementSection({ currentUserId }: { currentUserId: string }) {
               />
             </div>
             <div>
-              <label className={FIELD_LABEL}>
-                {t("auth.displayName")}
-              </label>
+              <label className={FIELD_LABEL}>{t("auth.displayName")}</label>
               <input
                 type="text"
                 value={newDisplayName}
@@ -1558,9 +1513,7 @@ function UserManagementSection({ currentUserId }: { currentUserId: string }) {
               />
             </div>
             <div>
-              <label className={FIELD_LABEL}>
-                {t("auth.password")}
-              </label>
+              <label className={FIELD_LABEL}>{t("auth.password")}</label>
               <input
                 type="password"
                 value={newPassword}
@@ -1569,9 +1522,7 @@ function UserManagementSection({ currentUserId }: { currentUserId: string }) {
               />
             </div>
             <div>
-              <label className={FIELD_LABEL}>
-                {t("settings.role")}
-              </label>
+              <label className={FIELD_LABEL}>{t("settings.role")}</label>
               <select
                 value={newRole}
                 onChange={(e) => setNewRole(e.target.value as UserRole)}

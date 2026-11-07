@@ -4,7 +4,11 @@ import { ChartTooltip } from "./ChartTooltip";
 import type { TooltipSeries } from "./tooltip-format";
 
 // Matches the Recharts-injected payload shape ChartTooltip consumes.
-type Entry = { name?: string; value?: number | string | number[]; payload?: Record<string, number> };
+type Entry = {
+  name?: string;
+  value?: number | string | number[];
+  payload?: Record<string, number>;
+};
 
 const TS = Date.UTC(2026, 6, 21, 2, 0); // fixed timestamp for the header
 
@@ -55,7 +59,9 @@ describe("ChartTooltip (#498, point 4)", () => {
   });
 
   it("renders nothing when inactive or empty", () => {
-    const { container: c1 } = render(<ChartTooltip active={false} payload={payload} series={[temp]} />);
+    const { container: c1 } = render(
+      <ChartTooltip active={false} payload={payload} series={[temp]} />,
+    );
     expect(c1.firstChild).toBeNull();
     const { container: c2 } = render(<ChartTooltip active payload={[]} series={[temp]} />);
     expect(c2.firstChild).toBeNull();

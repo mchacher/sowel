@@ -2,7 +2,14 @@ import type { TFunction } from "i18next";
 import { CATEGORY_UNITS, booleanTickLabels, isBooleanCategory } from "./history-utils";
 import { humanBindingLabel } from "./binding-label";
 import { humanizeAlias } from "../../lib/humanize-alias";
-import { NBSP, NNBSP, formatEnergy, formatPercent, formatPower, formatWithUnit } from "../../lib/format";
+import {
+  NBSP,
+  NNBSP,
+  formatEnergy,
+  formatPercent,
+  formatPower,
+  formatWithUnit,
+} from "../../lib/format";
 
 /** The slice of a series the tooltip needs to render one row (#498, point 4). */
 export interface TooltipSeries {
@@ -45,7 +52,13 @@ export function formatBand(min: number, max: number, unit?: string): string {
 
 type SeriesLabelInput = Pick<
   TooltipSeries,
-  "alias" | "category" | "deviceName" | "sameCategoryCount" | "equipmentName" | "zoneName" | "deleted"
+  | "alias"
+  | "category"
+  | "deviceName"
+  | "sameCategoryCount"
+  | "equipmentName"
+  | "zoneName"
+  | "deleted"
 >;
 
 /** The metric's words. Without a category (the binding is gone with its equipment) the
@@ -53,7 +66,12 @@ type SeriesLabelInput = Pick<
 export function seriesMetricLabel(s: SeriesLabelInput, t: TFunction): string {
   if (s.category) {
     return humanBindingLabel(
-      { alias: s.alias, category: s.category, deviceName: s.deviceName, sameCategoryCount: s.sameCategoryCount },
+      {
+        alias: s.alias,
+        category: s.category,
+        deviceName: s.deviceName,
+        sameCategoryCount: s.sameCategoryCount,
+      },
       t,
     );
   }
@@ -66,7 +84,9 @@ export function seriesMetricLabel(s: SeriesLabelInput, t: TFunction): string {
 export function seriesFullLabel(s: SeriesLabelInput, t: TFunction): string {
   const metric = seriesMetricLabel(s, t);
   if (s.deleted) return `${t("analyse.series.deleted")} · ${metric}`;
-  return s.zoneName ? `${s.zoneName} / ${s.equipmentName} / ${metric}` : `${s.equipmentName} / ${metric}`;
+  return s.zoneName
+    ? `${s.zoneName} / ${s.equipmentName} / ${metric}`
+    : `${s.equipmentName} / ${metric}`;
 }
 
 /**

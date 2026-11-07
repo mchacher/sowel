@@ -87,7 +87,8 @@ export function humanBindingLabel(input: BindingLabelInput, t: TFunction): strin
   const outdoor = t("weather.outdoor").toLowerCase();
   const ambiguous = sameCategoryCount > 1 && !!deviceName;
   const withDevice = (base: string): string => (ambiguous ? `${base} (${deviceName})` : base);
-  if (category === "temperature_outdoor") return withDevice(`${t("category.temperature")} ${outdoor}`);
+  if (category === "temperature_outdoor")
+    return withDevice(`${t("category.temperature")} ${outdoor}`);
   if (category === "temperature_device") return withDevice(t("category.temperature_device"));
   if (category === "temperature") return withDevice(`${t("category.temperature")} ${indoor}`);
   if (category === "humidity_outdoor") return withDevice(`${t("category.humidity")} ${outdoor}`);

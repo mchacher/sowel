@@ -17,9 +17,7 @@ function totals(partial: Partial<EnergyTotals>): EnergyTotals {
 describe("displayedProductionTotalWh", () => {
   it("returns autoconso + injection", () => {
     expect(
-      displayedProductionTotalWh(
-        totals({ total_autoconso: 13_600, total_injection: 2_480 }),
-      ),
+      displayedProductionTotalWh(totals({ total_autoconso: 13_600, total_injection: 2_480 })),
     ).toBe(16_080);
   });
 

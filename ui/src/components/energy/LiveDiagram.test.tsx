@@ -71,10 +71,7 @@ describe("Live energy diagram — geometry", () => {
 
   it("overlays only the routes actually carrying energy", () => {
     // Importing 1000 W, producing nothing: grid→house lit, the other two bare.
-    seed([
-      meter("grid", "main_energy_meter", 1000),
-      meter("pv", "energy_production_meter", 0),
-    ]);
+    seed([meter("grid", "main_energy_meter", 1000), meter("pv", "energy_production_meter", 0)]);
     const { container } = render(<LiveEnergyPage />, { wrapper: MemoryRouter });
     expect(strokesFor(container, PATH_GRID_TO_HOUSE)).toContain("var(--color-energy-grid)");
     expect(strokesFor(container, PATH_SOLAR_TO_HOUSE)).toEqual(["var(--color-border)"]);
@@ -83,10 +80,7 @@ describe("Live energy diagram — geometry", () => {
 
   it("lights the export loop and greys the grid when exporting", () => {
     // Producing 2000 W, exporting 1500 W → house 500 W.
-    seed([
-      meter("grid", "main_energy_meter", -1500),
-      meter("pv", "energy_production_meter", 2000),
-    ]);
+    seed([meter("grid", "main_energy_meter", -1500), meter("pv", "energy_production_meter", 2000)]);
     const { container } = render(<LiveEnergyPage />, { wrapper: MemoryRouter });
     expect(strokesFor(container, PATH_SOLAR_TO_GRID)).toContain("var(--color-solar-auto)");
     expect(strokesFor(container, PATH_SOLAR_TO_HOUSE)).toContain("var(--color-solar-auto)");
@@ -97,10 +91,7 @@ describe("Live energy diagram — geometry", () => {
 
 describe("Live energy diagram — nodes and status", () => {
   it("labels the three nodes and formats the house total", () => {
-    seed([
-      meter("grid", "main_energy_meter", 1000),
-      meter("pv", "energy_production_meter", 800),
-    ]);
+    seed([meter("grid", "main_energy_meter", 1000), meter("pv", "energy_production_meter", 800)]);
     render(<LiveEnergyPage />, { wrapper: MemoryRouter });
     expect(screen.getByText("Consumption")).toBeTruthy();
     expect(screen.getByText("Grid")).toBeTruthy();
@@ -116,20 +107,14 @@ describe("Live energy diagram — nodes and status", () => {
   });
 
   it("names the qualitative status", () => {
-    seed([
-      meter("grid", "main_energy_meter", -1500),
-      meter("pv", "energy_production_meter", 2000),
-    ]);
+    seed([meter("grid", "main_energy_meter", -1500), meter("pv", "energy_production_meter", 2000)]);
     render(<LiveEnergyPage />, { wrapper: MemoryRouter });
     expect(screen.getByText("Solar surplus")).toBeTruthy();
   });
 
   it("shows the share of consumption on each supplying leg", () => {
     // 1000 W grid + 1000 W solar → 50 / 50.
-    seed([
-      meter("grid", "main_energy_meter", 1000),
-      meter("pv", "energy_production_meter", 1000),
-    ]);
+    seed([meter("grid", "main_energy_meter", 1000), meter("pv", "energy_production_meter", 1000)]);
     render(<LiveEnergyPage />, { wrapper: MemoryRouter });
     expect(screen.getAllByText("50%").length).toBe(2);
   });

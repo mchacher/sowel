@@ -4,7 +4,11 @@ import { fileURLToPath } from "node:url";
 import { ESLint } from "eslint";
 import { describe, expect, it } from "vitest";
 import { SERIES_COLORS, seriesDrawnHex, seriesPaint } from "./series-palette";
-import { byUsageSeriesColor, pickSubmeterColor, seriesColor } from "../components/energy/submeterPalette";
+import {
+  byUsageSeriesColor,
+  pickSubmeterColor,
+  seriesColor,
+} from "../components/energy/submeterPalette";
 import {
   loadStateInk,
   loadStatePillBg,
@@ -22,12 +26,18 @@ import {
 // - every series against "Other": >= 1.5:1 and >= 30 deg of hue (Other is a
 //   near-grey, so hue alone means little).
 // - every mark on the dark card: >= 3:1.
-const tokensCss = readFileSync(new URL("../../../design-system/tokens.css", import.meta.url), "utf8");
+const tokensCss = readFileSync(
+  new URL("../../../design-system/tokens.css", import.meta.url),
+  "utf8",
+);
 
 type Theme = "light" | "dark";
 
 function themeVars(theme: Theme): Record<string, string> {
-  const selector = theme === "light" ? /:root,\s*\[data-theme="hybrid"\]\s*\{/ : /\[data-theme="dark"\],\s*\.dark\s*\{/;
+  const selector =
+    theme === "light"
+      ? /:root,\s*\[data-theme="hybrid"\]\s*\{/
+      : /\[data-theme="dark"\],\s*\.dark\s*\{/;
   const start = tokensCss.search(selector);
   const body = tokensCss.slice(tokensCss.indexOf("{", start) + 1, tokensCss.indexOf("\n}", start));
   const vars: Record<string, string> = {};
@@ -38,11 +48,15 @@ function themeVars(theme: Theme): Record<string, string> {
 }
 
 const LIGHT = themeVars("light");
-const VARS: Record<Theme, Record<string, string>> = { light: LIGHT, dark: { ...LIGHT, ...themeVars("dark") } };
+const VARS: Record<Theme, Record<string, string>> = {
+  light: LIGHT,
+  dark: { ...LIGHT, ...themeVars("dark") },
+};
 
 function hex(theme: Theme, token: string): string {
   const v = VARS[theme][token];
-  if (!v || !/^#[0-9a-f]{6}$/i.test(v)) throw new Error(`${token} in ${theme} is not a #rrggbb colour: ${v}`);
+  if (!v || !/^#[0-9a-f]{6}$/i.test(v))
+    throw new Error(`${token} in ${theme} is not a #rrggbb colour: ${v}`);
   return v;
 }
 
@@ -109,12 +123,13 @@ describe("energy palette: neighbouring series are told apart (spec 196, FR-E)", 
     });
   }
 
-  it.each([...[...SAME_FAMILY, ...CROSS_FAMILY].flatMap(([a, b]) => [a, b]), "--solar-production", "--energy-other"])(
-    "dark: %s stands on the card (>= 3:1)",
-    (token) => {
-      expect(ratio(hex("dark", token), hex("dark", SURFACE))).toBeGreaterThanOrEqual(3);
-    },
-  );
+  it.each([
+    ...[...SAME_FAMILY, ...CROSS_FAMILY].flatMap(([a, b]) => [a, b]),
+    "--solar-production",
+    "--energy-other",
+  ])("dark: %s stands on the card (>= 3:1)", (token) => {
+    expect(ratio(hex("dark", token), hex("dark", SURFACE))).toBeGreaterThanOrEqual(3);
+  });
 
   it("keeps the 'hors pilotage' slate readable as text in both themes (pill, caption)", () => {
     for (const theme of ["light", "dark"] as const) {
@@ -126,7 +141,8 @@ describe("energy palette: neighbouring series are told apart (spec 196, FR-E)", 
 describe("series palette (sub-meters, phases, Analyse)", () => {
   for (const theme of ["light", "dark"] as const) {
     it(`${theme}: each series stands on the card (>= 3:1)`, () => {
-      for (const s of SERIES) expect(ratio(hex(theme, s), hex(theme, SURFACE)), s).toBeGreaterThanOrEqual(3);
+      for (const s of SERIES)
+        expect(ratio(hex(theme, s), hex(theme, SURFACE)), s).toBeGreaterThanOrEqual(3);
     });
 
     it(`${theme}: neighbours, the last and the first included, differ by >= 2:1 or >= 30 deg`, () => {
@@ -138,9 +154,12 @@ describe("series palette (sub-meters, phases, Analyse)", () => {
     });
 
     it(`${theme}: no series takes a role's hue (warning, error, on, success, solar)`, () => {
-      const roles = ["--orange-500", "--red-500", "--a-500", "--green-500", "--solar-auto"].map((t) => hex(theme, t));
+      const roles = ["--orange-500", "--red-500", "--a-500", "--green-500", "--solar-auto"].map(
+        (t) => hex(theme, t),
+      );
       for (const s of SERIES) {
-        for (const role of roles) expect(hueGap(hex(theme, s), role), `${s} vs ${role}`).toBeGreaterThanOrEqual(20);
+        for (const role of roles)
+          expect(hueGap(hex(theme, s), role), `${s} vs ${role}`).toBeGreaterThanOrEqual(20);
       }
     });
 
@@ -229,7 +248,16 @@ function alias(name: string): string {
 
 function mixHex(fg: string, bg: string, alpha: number): string {
   const [f, b] = [rgb(fg), rgb(bg)];
-  return "#" + f.map((c, i) => Math.round((c * alpha + b[i] * (1 - alpha)) * 255).toString(16).padStart(2, "0")).join("");
+  return (
+    "#" +
+    f
+      .map((c, i) =>
+        Math.round((c * alpha + b[i] * (1 - alpha)) * 255)
+          .toString(16)
+          .padStart(2, "0"),
+      )
+      .join("")
+  );
 }
 
 /** What the browser paints for a CSS colour the components write: a
@@ -247,7 +275,15 @@ function paint(theme: Theme, css: string): string {
 }
 
 describe("words in the energy surfaces reach 4.5:1 (#1126)", () => {
-  const STATES = ["granted", "granted-idle", "pending", "revoked", "unmanaged", "suspended", "idle"] as const;
+  const STATES = [
+    "granted",
+    "granted-idle",
+    "pending",
+    "revoked",
+    "unmanaged",
+    "suspended",
+    "idle",
+  ] as const;
 
   for (const theme of ["light", "dark"] as const) {
     it.each(STATES)(`${theme}: the arbiter pill « %s » reads on its tint`, (s) => {
@@ -260,12 +296,15 @@ describe("words in the energy surfaces reach 4.5:1 (#1126)", () => {
       [-200, false],
       [null, false],
       [null, true],
-    ] as const)(`${theme}: the surplus sticker (%s W, night %s) reads on its tint`, (w, dormant) => {
-      const hue = dormant ? "var(--color-slate)" : surplusStickerColor(w);
-      const ink = paint(theme, surplusStickerInk(w, dormant));
-      const bg = paint(theme, `color-mix(in srgb, ${hue} 12%, transparent)`);
-      expect(ratio(ink, bg), `${ink} on ${bg}`).toBeGreaterThanOrEqual(4.5);
-    });
+    ] as const)(
+      `${theme}: the surplus sticker (%s W, night %s) reads on its tint`,
+      (w, dormant) => {
+        const hue = dormant ? "var(--color-slate)" : surplusStickerColor(w);
+        const ink = paint(theme, surplusStickerInk(w, dormant));
+        const bg = paint(theme, `color-mix(in srgb, ${hue} 12%, transparent)`);
+        expect(ratio(ink, bg), `${ink} on ${bg}`).toBeGreaterThanOrEqual(4.5);
+      },
+    );
   }
 
   // A text colour set from a series constant or token, anywhere in a style
@@ -288,7 +327,9 @@ describe("words in the energy surfaces reach 4.5:1 (#1126)", () => {
   it("writes no word in an energy colour (tooltips, flow figures, totals)", () => {
     const textInPalette =
       /style=\{\{[^}]*?(?<![\w-])color:\s*(?:[A-Z_]+_COLOR\b|"var\(--color-(?:energy|solar|series|slate)[\w-]*\)")/g;
-    const hits = scope.flatMap(({ f, text }) => [...text.matchAll(textInPalette)].map((m) => `${f}:${lineOf(text, m.index)}`));
+    const hits = scope.flatMap(({ f, text }) =>
+      [...text.matchAll(textInPalette)].map((m) => `${f}:${lineOf(text, m.index)}`),
+    );
     expect(hits).toEqual([]);
   });
 
@@ -308,10 +349,15 @@ describe("lint: no colour literal in the energy components", () => {
   const uiRoot = fileURLToPath(new URL("../..", import.meta.url));
 
   /** Lines (1-based) the rule reports for `source` linted as `filePath`. */
-  async function flagged(source: string, filePath = "src/components/energy/Fixture.tsx"): Promise<number[]> {
+  async function flagged(
+    source: string,
+    filePath = "src/components/energy/Fixture.tsx",
+  ): Promise<number[]> {
     const eslint = new ESLint({ cwd: uiRoot });
     const [result] = await eslint.lintText(source, { filePath });
-    return result.messages.filter((m) => m.ruleId === "sowel-chart/no-hex-color").map((m) => m.line);
+    return result.messages
+      .filter((m) => m.ruleId === "sowel-chart/no-hex-color")
+      .map((m) => m.line);
   }
 
   const FIXTURE = `
@@ -364,7 +410,7 @@ export const ok2 = "url(#powerGradient)";
       'export const b = "issue #1234 fixed";',
       'export const c = "fill: url(#abc)";',
       'export const d = <a href="#add">x</a>;',
-      "export const e = <use xlinkHref={\"#bad\"} />;",
+      'export const e = <use xlinkHref={"#bad"} />;',
       'export const f = "&#123;";',
       'export const g = "#section-1";',
       'export const h = "#12345";',

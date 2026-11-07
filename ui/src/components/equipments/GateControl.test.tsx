@@ -17,7 +17,8 @@ function gate(state: string | null): EquipmentWithDetails {
     createdAt: "",
     updatedAt: "",
     status: "online",
-    dataBindings: state === null ? [] : [{ id: "d-1", alias: "contact", category: "gate_state", value: state }],
+    dataBindings:
+      state === null ? [] : [{ id: "d-1", alias: "contact", category: "gate_state", value: state }],
     orderBindings: [{ id: "o-1", alias: "relay", category: "gate_trigger" }],
   } as unknown as EquipmentWithDetails;
 }

@@ -67,7 +67,9 @@ function FlowNode({ node }: { node: FlowNodeSpec }) {
       <div
         className={`flex flex-col items-center justify-center gap-1 ${node.dimmed ? "opacity-40" : ""}`}
       >
-        <div className={`font-medium text-text-tertiary leading-tight whitespace-nowrap ${SLOT_LABEL[node.slot]}`}>
+        <div
+          className={`font-medium text-text-tertiary leading-tight whitespace-nowrap ${SLOT_LABEL[node.slot]}`}
+        >
           {node.label}
         </div>
         <span className="flex" data-testid="flow-node-icon" style={{ color: node.color }}>
@@ -78,11 +80,11 @@ function FlowNode({ node }: { node: FlowNodeSpec }) {
         >
           {node.valuePrefix}
           <span>{node.value}</span>
-          {node.unit && <span className="text-micro text-text-tertiary font-semibold">{node.unit}</span>}
+          {node.unit && (
+            <span className="text-micro text-text-tertiary font-semibold">{node.unit}</span>
+          )}
         </div>
-        {node.sub && (
-          <div className="text-micro text-text-tertiary leading-none">{node.sub}</div>
-        )}
+        {node.sub && <div className="text-micro text-text-tertiary leading-none">{node.sub}</div>}
       </div>
     </div>
   );
@@ -133,7 +135,13 @@ export function FlowDiagram({ nodes, links, tag, ariaLabel }: FlowDiagramProps) 
         {links
           .filter((l) => l.active)
           .map((l) => (
-            <path key={`mp-${l.edge}`} id={`${uid}-${l.edge}`} d={PATHS[l.edge]} fill="none" stroke="none" />
+            <path
+              key={`mp-${l.edge}`}
+              id={`${uid}-${l.edge}`}
+              d={PATHS[l.edge]}
+              fill="none"
+              stroke="none"
+            />
           ))}
 
         {/* Bubbles. Each circle stays hidden until its stagger fires, otherwise

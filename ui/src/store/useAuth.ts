@@ -33,7 +33,12 @@ interface AuthState {
   ) => Promise<void>;
   /** Abandon the pending MFA challenge and return to the username/password form. */
   cancelMfaChallenge: () => void;
-  setup: (data: { username: string; password: string; displayName: string; language?: "fr" | "en" }) => Promise<void>;
+  setup: (data: {
+    username: string;
+    password: string;
+    displayName: string;
+    language?: "fr" | "en";
+  }) => Promise<void>;
   logout: () => Promise<void>;
   refreshSession: () => Promise<boolean>;
   updatePreferences: (prefs: UserPreferences) => Promise<void>;

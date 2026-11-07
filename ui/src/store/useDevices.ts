@@ -18,12 +18,7 @@ interface DevicesState {
   addDevice: (device: Device) => void;
   removeDevice: (deviceId: string) => void;
   updateDeviceStatus: (deviceId: string, status: DeviceStatus) => void;
-  updateDeviceDataValue: (
-    deviceId: string,
-    key: string,
-    value: unknown,
-    timestamp: string
-  ) => void;
+  updateDeviceDataValue: (deviceId: string, key: string, value: unknown, timestamp: string) => void;
   updateDeviceHeartbeat: (deviceId: string, timestamp: string) => void;
   updateDeviceName: (deviceId: string, name: string) => Promise<void>;
 }
@@ -93,7 +88,7 @@ export const useDevices = create<DevicesState>((set, get) => ({
       if (!dataArr) return state;
 
       const updated = dataArr.map((d) =>
-        d.key === key ? { ...d, value, lastUpdated: timestamp } : d
+        d.key === key ? { ...d, value, lastUpdated: timestamp } : d,
       );
 
       // Also update device lastSeen

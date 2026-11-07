@@ -195,7 +195,6 @@ describe("booleanTickLabels", () => {
     ]);
   });
 
-
   it("falls back to generic on/off for unsupported categories", () => {
     expect(booleanTickLabels("unknown")).toEqual([
       "analyse.bool.generic.off",

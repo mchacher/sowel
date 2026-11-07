@@ -2,11 +2,7 @@ import { useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { Plus, X } from "lucide-react";
 import { createSharedAccess, updateSharedAccess } from "../../api";
-import type {
-  SharedAccessState,
-  SharedAccessView,
-  SharedAccessWrite,
-} from "../../types";
+import type { SharedAccessState, SharedAccessView, SharedAccessWrite } from "../../types";
 import {
   type ValidityDraft,
   type Wall,
@@ -48,8 +44,7 @@ export interface GateDraft {
 }
 
 export type EditorMode =
-  | { kind: "create"; gateIds: string[] }
-  | { kind: "edit"; access: SharedAccessView };
+  { kind: "create"; gateIds: string[] } | { kind: "edit"; access: SharedAccessView };
 
 interface Problem {
   field: RefusalField;
@@ -175,8 +170,8 @@ export function AccessEditor({
           {t("sharedAccess.editor.created", { label: created.label })}
         </p>
         <p className="text-caption text-text-secondary mt-1">
-          {created.gates.map((g) => g.name).join(", ")} · {fmt.period(created.validFrom, created.validUntil)} ·{" "}
-          {fmt.hours(created.timeWindows)}
+          {created.gates.map((g) => g.name).join(", ")} ·{" "}
+          {fmt.period(created.validFrom, created.validUntil)} · {fmt.hours(created.timeWindows)}
         </p>
         <Invitation link={created.invitationUrl} code={created.code} />
         <div className="flex justify-end mt-5">
@@ -279,7 +274,9 @@ export function AccessEditor({
                 <span className="text-small font-semibold text-text">{name}</span>
                 {summary && summary.commandValues.length > 1 ? (
                   <>
-                    <span className="text-caption text-text-tertiary">{t("sharedAccess.editor.sends")}</span>
+                    <span className="text-caption text-text-tertiary">
+                      {t("sharedAccess.editor.sends")}
+                    </span>
                     <select
                       className={`${inputCls} py-1`}
                       value={g.value ?? ""}
@@ -300,7 +297,9 @@ export function AccessEditor({
                     </select>
                   </>
                 ) : (
-                  <span className="text-caption text-text-tertiary">{t("sharedAccess.editor.impulse")}</span>
+                  <span className="text-caption text-text-tertiary">
+                    {t("sharedAccess.editor.impulse")}
+                  </span>
                 )}
                 <button
                   type="button"
@@ -339,7 +338,10 @@ export function AccessEditor({
                 className={btnSecondary}
                 disabled={!pick}
                 onClick={() => {
-                  setGates([...gates, { equipmentId: pick, value: defaultGateValue(gateById.get(pick)) }]);
+                  setGates([
+                    ...gates,
+                    { equipmentId: pick, value: defaultGateValue(gateById.get(pick)) },
+                  ]);
                   setPick("");
                   setAdding(false);
                   if (problem?.field === "gates") setProblem(null);
@@ -379,9 +381,15 @@ export function AccessEditor({
 
       {!external && (
         <label className="flex items-center gap-2 mt-3 text-small text-text cursor-pointer">
-          <input type="checkbox" checked={withCode} onChange={(e) => setWithCode(e.target.checked)} />
+          <input
+            type="checkbox"
+            checked={withCode}
+            onChange={(e) => setWithCode(e.target.checked)}
+          />
           {t("sharedAccess.editor.withCode")}
-          <span className="text-caption text-text-tertiary">{t("sharedAccess.editor.withCodeHint")}</span>
+          <span className="text-caption text-text-tertiary">
+            {t("sharedAccess.editor.withCodeHint")}
+          </span>
         </label>
       )}
 
@@ -389,7 +397,9 @@ export function AccessEditor({
         <Invitation link={editing.invitationUrl} code={withCode ? editing.code : null} />
       ) : (
         <p className="mt-3 text-caption text-text-tertiary">
-          {withCode ? t("sharedAccess.editor.invitationLater") : t("sharedAccess.invitation.noCode")}
+          {withCode
+            ? t("sharedAccess.editor.invitationLater")
+            : t("sharedAccess.invitation.noCode")}
         </p>
       )}
 

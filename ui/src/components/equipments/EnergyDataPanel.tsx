@@ -32,9 +32,12 @@ function formatEnergy(wh: number): { value: string; unit: string } {
   return formatEnergyParts(wh / 1000, { unit: "auto" });
 }
 
-
-export function EnergyDataPanel({ computedData, status, statusReason,
-  isProduction, section = false,
+export function EnergyDataPanel({
+  computedData,
+  status,
+  statusReason,
+  isProduction,
+  section = false,
 }: EnergyDataPanelProps) {
   const { t } = useTranslation();
 

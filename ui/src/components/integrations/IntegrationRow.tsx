@@ -1,15 +1,6 @@
 import { useState, useEffect } from "react";
 import { useTranslation } from "react-i18next";
-import {
-  Play,
-  Square,
-  RefreshCw,
-  Timer,
-  ChevronRight,
-  Cpu,
-  Loader2,
-  Power,
-} from "lucide-react";
+import { Play, Square, RefreshCw, Timer, ChevronRight, Cpu, Loader2, Power } from "lucide-react";
 import * as LucideIcons from "lucide-react";
 import {
   startIntegration,
@@ -71,9 +62,7 @@ export function IntegrationRow({ integration, onOpen, onRefresh }: IntegrationRo
       {/* Name + status */}
       <div className="min-w-0 flex-1 sm:flex-none sm:w-[220px] sm:shrink-0">
         <div className="flex items-center gap-2">
-          <span className="text-body font-semibold text-text truncate">
-            {integration.name}
-          </span>
+          <span className="text-body font-semibold text-text truncate">{integration.name}</span>
           {integration.pluginVersion && (
             <span className="text-micro px-1.5 py-0.5 bg-border-light rounded-sm text-text-tertiary font-mono shrink-0">
               {integration.pluginVersion}
@@ -83,9 +72,7 @@ export function IntegrationRow({ integration, onOpen, onRefresh }: IntegrationRo
         <StatusBadge status={integration.status} disabled={isDisabled} />
         {/* Mobile stats — under the status, inside the name column */}
         <div className="flex sm:hidden items-center gap-1.5 text-micro text-text-tertiary mt-0.5 whitespace-nowrap">
-          <span>
-            {t("integrations.deviceCount", { count: integration.deviceCount })}
-          </span>
+          <span>{t("integrations.deviceCount", { count: integration.deviceCount })}</span>
           {isConnected && integration.polling && (
             <>
               <span aria-hidden="true">·</span>
@@ -100,7 +87,9 @@ export function IntegrationRow({ integration, onOpen, onRefresh }: IntegrationRo
         <span>
           {t("integrations.deviceCount", { count: integration.deviceCount })}
           {integration.offlineDeviceCount > 0 && (
-            <span className="text-warning-ink ml-1">{t("integrations.offlineCount", { count: integration.offlineDeviceCount })}</span>
+            <span className="text-warning-ink ml-1">
+              {t("integrations.offlineCount", { count: integration.offlineDeviceCount })}
+            </span>
           )}
         </span>
         {isConnected && integration.polling && (

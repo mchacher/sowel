@@ -1,7 +1,4 @@
-import type {
-  LogsResponse,
-  LogLevel,
-} from "../types";
+import type { LogsResponse, LogLevel } from "../types";
 import { fetchJSON, API_BASE, getAccessToken } from "./client";
 
 // ============================================================
@@ -89,7 +86,6 @@ export async function restoreLocalBackup(filename: string): Promise<{
   });
 }
 
-
 // ============================================================
 // Settings (admin)
 // ============================================================
@@ -106,7 +102,6 @@ export async function updateSettings(
     body: JSON.stringify(entries),
   });
 }
-
 
 // ============================================================
 // Backup (admin)
@@ -143,7 +138,6 @@ export async function importBackup(file: File): Promise<{ success: boolean }> {
   }
   return response.json() as Promise<{ success: boolean }>;
 }
-
 
 // ============================================================
 // Logs (admin)

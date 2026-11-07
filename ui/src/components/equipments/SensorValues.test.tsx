@@ -8,7 +8,12 @@ import type { DataBindingWithValue } from "../../types";
 // layout="wrap" lets them break onto further lines; the default stays a
 // single non-shrinking row for the three other callers.
 
-function binding(id: string, category: DataBindingWithValue["category"], value: unknown, unit?: string): DataBindingWithValue {
+function binding(
+  id: string,
+  category: DataBindingWithValue["category"],
+  value: unknown,
+  unit?: string,
+): DataBindingWithValue {
   return {
     id,
     equipmentId: "eq-1",
@@ -40,7 +45,7 @@ function valuesContainer(): HTMLElement {
 }
 
 describe("SensorValues layout", () => {
-  it("wraps its values and lets them shrink with layout=\"wrap\"", () => {
+  it('wraps its values and lets them shrink with layout="wrap"', () => {
     render(<SensorValues sensorBindings={bindings} batteryBindings={[]} layout="wrap" />);
     const container = valuesContainer();
     expect(container.className).toContain("flex-wrap");
@@ -61,7 +66,7 @@ describe("SensorValues layout", () => {
     }
   });
 
-  it("stacks the values with layout=\"column\"", () => {
+  it('stacks the values with layout="column"', () => {
     render(<SensorValues sensorBindings={bindings} batteryBindings={[]} layout="column" />);
     expect(valuesContainer().className).toContain("flex-col");
   });
@@ -76,14 +81,24 @@ describe("SensorValues button action", () => {
 
   it("names the action with its translated label", async () => {
     await i18n.changeLanguage("fr");
-    render(<SensorValues sensorBindings={[binding("action", "action", "single")]} batteryBindings={[]} />);
+    render(
+      <SensorValues
+        sensorBindings={[binding("action", "action", "single")]}
+        batteryBindings={[]}
+      />,
+    );
     expect(screen.getByText("Appui simple")).toBeTruthy();
     expect(screen.queryByText("single")).toBeNull();
   });
 
   it("falls back to the raw value for an action it has no label for", async () => {
     await i18n.changeLanguage("fr");
-    render(<SensorValues sensorBindings={[binding("action", "action", "brightness_step_up")]} batteryBindings={[]} />);
+    render(
+      <SensorValues
+        sensorBindings={[binding("action", "action", "brightness_step_up")]}
+        batteryBindings={[]}
+      />,
+    );
     expect(screen.getByText("brightness_step_up")).toBeTruthy();
   });
 });

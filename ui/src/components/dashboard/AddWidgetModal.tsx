@@ -64,7 +64,10 @@ export function AddWidgetModal({
         {/* Header */}
         <div className="flex items-center justify-between px-5 py-4 border-b border-border-light">
           <h2 className="text-lead font-semibold text-text">{t("dashboard.addWidget")}</h2>
-          <button onClick={onClose} className="text-text-tertiary hover:text-text transition-colors cursor-pointer">
+          <button
+            onClick={onClose}
+            className="text-text-tertiary hover:text-text transition-colors cursor-pointer"
+          >
             <X size={18} strokeWidth={1.5} />
           </button>
         </div>
@@ -118,7 +121,9 @@ export function AddWidgetModal({
             <div className="space-y-4">
               {/* Zone selector */}
               <div>
-                <label className="block text-caption font-medium text-text-secondary mb-1">{t("dashboard.selectZone")}</label>
+                <label className="block text-caption font-medium text-text-secondary mb-1">
+                  {t("dashboard.selectZone")}
+                </label>
                 <select
                   value={eqZoneId}
                   onChange={(e) => setEqZoneId(e.target.value)}
@@ -176,8 +181,11 @@ export function AddWidgetModal({
                         )}
                       </div>
                     ))}
-                  {equipments.filter((eq) => eq.zoneId === eqZoneId && eq.type !== "display").length === 0 && (
-                    <p className="text-small text-text-tertiary text-center py-4">{t("dashboard.noEquipmentsAvailable")}</p>
+                  {equipments.filter((eq) => eq.zoneId === eqZoneId && eq.type !== "display")
+                    .length === 0 && (
+                    <p className="text-small text-text-tertiary text-center py-4">
+                      {t("dashboard.noEquipmentsAvailable")}
+                    </p>
                   )}
                 </div>
               )}
@@ -188,7 +196,9 @@ export function AddWidgetModal({
             <div className="space-y-4">
               {/* Zone selector */}
               <div>
-                <label className="block text-caption font-medium text-text-secondary mb-1">{t("dashboard.selectZone")}</label>
+                <label className="block text-caption font-medium text-text-secondary mb-1">
+                  {t("dashboard.selectZone")}
+                </label>
                 <select
                   value={selectedZoneId}
                   onChange={(e) => setSelectedZoneId(e.target.value)}
@@ -205,7 +215,9 @@ export function AddWidgetModal({
 
               {/* Family selector */}
               <div>
-                <label className="block text-caption font-medium text-text-secondary mb-1">{t("dashboard.selectFamily")}</label>
+                <label className="block text-caption font-medium text-text-secondary mb-1">
+                  {t("dashboard.selectFamily")}
+                </label>
                 <div className="grid grid-cols-2 gap-2">
                   {FAMILIES.map((f) => (
                     <button
@@ -251,7 +263,9 @@ export function AddWidgetModal({
                   className="w-full text-left px-3 py-2 text-small text-text hover:bg-border-light rounded-sm transition-colors cursor-pointer"
                 >
                   {row.name}
-                  {row.zone && <span className="ml-2 text-micro text-text-tertiary">{row.zone}</span>}
+                  {row.zone && (
+                    <span className="ml-2 text-micro text-text-tertiary">{row.zone}</span>
+                  )}
                 </button>
               ))}
               {pinnable.length === 0 && (

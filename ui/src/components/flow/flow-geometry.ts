@@ -55,7 +55,8 @@ export const PILL_POSITION: Record<FlowEdge, string> = {
 export const SLOT_BOX: Record<FlowSlot, string> = {
   focal: "top-0 left-1/2 -translate-x-1/2 w-[36%] h-[36%] px-2 sm:px-3 py-2",
   left: "top-1/2 -translate-y-1/2 -left-[1%] sm:left-0 w-[24%] sm:w-[22%] h-[29%] px-0.5 sm:px-2 py-2",
-  right: "top-1/2 -translate-y-1/2 -right-[1%] sm:right-0 w-[24%] sm:w-[22%] h-[29%] px-0.5 sm:px-2 py-2",
+  right:
+    "top-1/2 -translate-y-1/2 -right-[1%] sm:right-0 w-[24%] sm:w-[22%] h-[29%] px-0.5 sm:px-2 py-2",
 };
 
 export const SLOT_LABEL: Record<FlowSlot, string> = {
@@ -134,4 +135,3 @@ export function flowDuration(magnitude: number | undefined): number {
   const d = 7 - Math.log10(a + 10) * 0.6;
   return Math.max(4, Math.min(7, d));
 }
-

@@ -117,7 +117,9 @@ export function SharedAccessPanel({
             <button
               type="button"
               className={btnPrimary}
-              onClick={() => navigate(`/shared-access?gate=${encodeURIComponent(equipmentId)}&new=1`)}
+              onClick={() =>
+                navigate(`/shared-access?gate=${encodeURIComponent(equipmentId)}&new=1`)
+              }
             >
               {t("sharedAccess.create")}
             </button>

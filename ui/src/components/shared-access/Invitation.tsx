@@ -110,9 +110,7 @@ export function Invitation({ link, code }: { link: string | null; code: string |
             <span className="text-text-secondary">{t("sharedAccess.invitation.code")}</span>
             {code ? (
               <>
-                <span className="font-mono text-lead tracking-[0.08em] text-text">
-                  {code}
-                </span>
+                <span className="font-mono text-lead tracking-[0.08em] text-text">{code}</span>
                 <CopyButton text={code} label={t("sharedAccess.actions.copyCode")} />
               </>
             ) : (

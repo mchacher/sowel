@@ -67,7 +67,13 @@ describe("PickerOverlay", () => {
 describe("MobileZoneCard", () => {
   it("keeps the title and the state in its name, then the gesture", () => {
     const zone = { id: "z1", name: "Salon", children: [] } as unknown as ZoneWithChildren;
-    const widget = { id: "w1", type: "zone", zoneId: "z1", family: "lights", label: "" } as unknown as DashboardWidget;
+    const widget = {
+      id: "w1",
+      type: "zone",
+      zoneId: "z1",
+      family: "lights",
+      label: "",
+    } as unknown as DashboardWidget;
     const lamp = {
       id: "l1",
       zoneId: "z1",

@@ -169,7 +169,12 @@ export function TimedCommandPanel({
     : t("equipments.summary.disabledF");
 
   return (
-    <ConfigRow icon={TimerReset} title={t("equipments.timed.title")} summary={summary} defaultOpen={defaultOpen}>
+    <ConfigRow
+      icon={TimerReset}
+      title={t("equipments.timed.title")}
+      summary={summary}
+      defaultOpen={defaultOpen}
+    >
       <div className="flex items-center gap-2">
         <label className="flex items-center gap-2 text-small text-text cursor-pointer">
           <input
@@ -181,7 +186,12 @@ export function TimedCommandPanel({
           />
           {t("equipments.timed.enable")}
         </label>
-        <InfoTooltip help align="start" text={t("equipments.timed.hint")} label={t("common.help")} />
+        <InfoTooltip
+          help
+          align="start"
+          text={t("equipments.timed.hint")}
+          label={t("common.help")}
+        />
         {saving && <Loader2 size={12} className="animate-spin text-text-tertiary" />}
       </div>
 

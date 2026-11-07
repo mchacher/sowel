@@ -9,7 +9,12 @@ import {
   ChevronDown,
   Power,
 } from "lucide-react";
-import type { DashboardWidget, EquipmentWithDetails, ZoneWithChildren, WidgetFamily } from "../../types";
+import type {
+  DashboardWidget,
+  EquipmentWithDetails,
+  ZoneWithChildren,
+  WidgetFamily,
+} from "../../types";
 import { executeZoneOrder, executeEquipmentOrder } from "../../api";
 import { findOrderByCategory } from "../equipments/bindingUtils";
 import { allSupportStop } from "../../lib/binding-utils";
@@ -29,7 +34,6 @@ import { WaterValveIcon } from "../icons/WaterValveIcon";
 import { shutterLevel } from "./widget-icons";
 import { WidgetCard } from "./WidgetCard";
 import { formatTemperature } from "../../lib/format";
-
 
 const WIDGET_FAMILY_TYPES: Record<WidgetFamily, string[]> = {
   lights: ["light_onoff", "light_dimmable", "light_color"],
@@ -73,27 +77,28 @@ export function ZoneWidget({ widget, zone, zoneLabel, equipments }: ZoneWidgetPr
   }, [zone]);
 
   const filteredEquipments = useMemo(() => {
-    return equipments.filter(
-      (eq) => zoneIds.has(eq.zoneId) && familyTypes.includes(eq.type),
-    );
+    return equipments.filter((eq) => zoneIds.has(eq.zoneId) && familyTypes.includes(eq.type));
   }, [equipments, zoneIds, familyTypes]);
 
   const zoneName = zoneLabel ?? zone?.name ?? t("dashboard.unknownZone");
   const label = widget.label || zoneName;
 
-  const handleZoneCommand = useCallback(async (orderKey: string, value?: unknown) => {
-    if (!widget.zoneId) return;
-    setCommandLoading(orderKey);
-    try {
-      await executeZoneOrder(widget.zoneId, orderKey, value);
-    } catch (err) {
-      // The setpoint stepper reverts and says « not applied » on a rejection;
-      // the other commands stay silent, the live updates tell the outcome.
-      if (orderKey === "allThermostatsSetpoint") throw err;
-    } finally {
-      setCommandLoading(null);
-    }
-  }, [widget.zoneId]);
+  const handleZoneCommand = useCallback(
+    async (orderKey: string, value?: unknown) => {
+      if (!widget.zoneId) return;
+      setCommandLoading(orderKey);
+      try {
+        await executeZoneOrder(widget.zoneId, orderKey, value);
+      } catch (err) {
+        // The setpoint stepper reverts and says « not applied » on a rejection;
+        // the other commands stay silent, the live updates tell the outcome.
+        if (orderKey === "allThermostatsSetpoint") throw err;
+      } finally {
+        setCommandLoading(null);
+      }
+    },
+    [widget.zoneId],
+  );
 
   if (family === "shutters") {
     return (
@@ -140,21 +145,11 @@ export function ZoneWidget({ widget, zone, zoneLabel, equipments }: ZoneWidgetPr
   }
 
   if (family === "sensors") {
-    return (
-      <ZoneSensorsWidget
-        label={label}
-        filteredEquipments={filteredEquipments}
-      />
-    );
+    return <ZoneSensorsWidget label={label} filteredEquipments={filteredEquipments} />;
   }
 
   if (family === "water") {
-    return (
-      <ZoneWaterWidget
-        label={label}
-        filteredEquipments={filteredEquipments}
-      />
-    );
+    return <ZoneWaterWidget label={label} filteredEquipments={filteredEquipments} />;
   }
 
   return null;
@@ -164,12 +159,22 @@ export function ZoneWidget({ widget, zone, zoneLabel, equipments }: ZoneWidgetPr
 // Shared zone widget card shell
 // ============================================================
 
-function ZoneWidgetCard({ label, children, empty }: { label: string; children: React.ReactNode; empty?: boolean }) {
+function ZoneWidgetCard({
+  label,
+  children,
+  empty,
+}: {
+  label: string;
+  children: React.ReactNode;
+  empty?: boolean;
+}) {
   const { t } = useTranslation();
   return (
     <WidgetCard label={label}>
       {empty ? (
-        <span className="text-caption text-text-tertiary text-center">{t("dashboard.noEquipments")}</span>
+        <span className="text-caption text-text-tertiary text-center">
+          {t("dashboard.noEquipments")}
+        </span>
       ) : (
         children
       )}
@@ -215,9 +220,10 @@ function ZoneLightsWidget({
       }
     }
 
-    const avg = brightnessValues.length > 0
-      ? Math.round(brightnessValues.reduce((a, b) => a + b, 0) / brightnessValues.length)
-      : null;
+    const avg =
+      brightnessValues.length > 0
+        ? Math.round(brightnessValues.reduce((a, b) => a + b, 0) / brightnessValues.length)
+        : null;
 
     return {
       onCount: on,
@@ -228,7 +234,8 @@ function ZoneLightsWidget({
 
   const anyOn = onCount > 0;
   const displayBrightness = slider.displayValue(avgBrightness);
-  const brightnessPct = displayBrightness !== null ? Math.round((displayBrightness / 254) * 100) : null;
+  const brightnessPct =
+    displayBrightness !== null ? Math.round((displayBrightness / 254) * 100) : null;
 
   const handleBrightnessCommit = () =>
     slider.onCommit((v) => {
@@ -280,7 +287,11 @@ function ZoneLightsWidget({
           className="w-10 h-10 flex items-center justify-center rounded-sm transition-all duration-150 cursor-pointer border border-border bg-surface text-text-secondary hover:border-primary/40 hover:text-primary hover:bg-primary/5 active:scale-[0.97] disabled:opacity-40 disabled:cursor-not-allowed"
           title={t("zones.commands.allLightsOn")}
         >
-          {commandLoading === "allLightsOn" ? <Loader2 size={16} className="animate-spin" /> : <Lightbulb size={16} strokeWidth={1.5} />}
+          {commandLoading === "allLightsOn" ? (
+            <Loader2 size={16} className="animate-spin" />
+          ) : (
+            <Lightbulb size={16} strokeWidth={1.5} />
+          )}
         </button>
         <button
           onClick={() => onCommand("allLightsOff")}
@@ -288,7 +299,11 @@ function ZoneLightsWidget({
           className="w-10 h-10 flex items-center justify-center rounded-sm transition-all duration-150 cursor-pointer border border-border bg-surface text-text-secondary hover:border-text-tertiary hover:text-text hover:bg-border-light active:scale-[0.97] disabled:opacity-40 disabled:cursor-not-allowed"
           title={t("zones.commands.allLightsOff")}
         >
-          {commandLoading === "allLightsOff" ? <Loader2 size={16} className="animate-spin" /> : <LightbulbOff size={16} strokeWidth={1.5} />}
+          {commandLoading === "allLightsOff" ? (
+            <Loader2 size={16} className="animate-spin" />
+          ) : (
+            <LightbulbOff size={16} strokeWidth={1.5} />
+          )}
         </button>
       </div>
     </ZoneWidgetCard>
@@ -339,12 +354,18 @@ function ZoneShutterWidget({
           {avgPosition === null ? (
             <span className="text-lead text-text-tertiary">{"\u2014"}</span>
           ) : avgPosition === 100 ? (
-            <span className="text-small font-medium text-text-secondary px-2 py-0.5 rounded-sm bg-border-light">{t("controls.opened")}</span>
+            <span className="text-small font-medium text-text-secondary px-2 py-0.5 rounded-sm bg-border-light">
+              {t("controls.opened")}
+            </span>
           ) : avgPosition === 0 ? (
-            <span className="text-small font-medium text-text-secondary px-2 py-0.5 rounded-sm bg-border-light">{t("controls.closed")}</span>
+            <span className="text-small font-medium text-text-secondary px-2 py-0.5 rounded-sm bg-border-light">
+              {t("controls.closed")}
+            </span>
           ) : (
             <div className="flex items-baseline gap-0.5">
-              <span className="text-lead font-semibold text-text tabular-nums leading-none">{avgPosition}</span>
+              <span className="text-lead font-semibold text-text tabular-nums leading-none">
+                {avgPosition}
+              </span>
               <span className="text-caption font-medium text-text-tertiary">%</span>
             </div>
           )}
@@ -359,7 +380,11 @@ function ZoneShutterWidget({
           className="w-10 h-10 flex items-center justify-center rounded-sm transition-all duration-150 cursor-pointer border border-border bg-surface text-text-secondary hover:border-primary/40 hover:text-primary hover:bg-primary/5 active:scale-[0.97] disabled:opacity-40 disabled:cursor-not-allowed"
           title={t("zones.commands.allShuttersOpen")}
         >
-          {commandLoading === "allShuttersOpen" ? <Loader2 size={16} className="animate-spin" /> : <ChevronUp size={16} strokeWidth={2} />}
+          {commandLoading === "allShuttersOpen" ? (
+            <Loader2 size={16} className="animate-spin" />
+          ) : (
+            <ChevronUp size={16} strokeWidth={2} />
+          )}
         </button>
         {hasStop && (
           <button
@@ -368,7 +393,11 @@ function ZoneShutterWidget({
             className="w-10 h-10 flex items-center justify-center rounded-sm transition-all duration-150 cursor-pointer border border-border bg-surface text-text-secondary hover:border-text-tertiary hover:text-text hover:bg-border-light active:scale-[0.97] disabled:opacity-40 disabled:cursor-not-allowed"
             title={t("zones.commands.allShuttersStop")}
           >
-            {commandLoading === "allShuttersStop" ? <Loader2 size={16} className="animate-spin" /> : <Square size={11} strokeWidth={2.5} />}
+            {commandLoading === "allShuttersStop" ? (
+              <Loader2 size={16} className="animate-spin" />
+            ) : (
+              <Square size={11} strokeWidth={2.5} />
+            )}
           </button>
         )}
         <button
@@ -377,7 +406,11 @@ function ZoneShutterWidget({
           className="w-10 h-10 flex items-center justify-center rounded-sm transition-all duration-150 cursor-pointer border border-border bg-surface text-text-secondary hover:border-primary/40 hover:text-primary hover:bg-primary/5 active:scale-[0.97] disabled:opacity-40 disabled:cursor-not-allowed"
           title={t("zones.commands.allShuttersClose")}
         >
-          {commandLoading === "allShuttersClose" ? <Loader2 size={16} className="animate-spin" /> : <ChevronDown size={16} strokeWidth={2} />}
+          {commandLoading === "allShuttersClose" ? (
+            <Loader2 size={16} className="animate-spin" />
+          ) : (
+            <ChevronDown size={16} strokeWidth={2} />
+          )}
         </button>
       </div>
     </ZoneWidgetCard>
@@ -449,7 +482,11 @@ function ZoneAwningWidget({
           className="w-10 h-10 flex items-center justify-center rounded-sm transition-all duration-150 cursor-pointer border border-border bg-surface text-text-secondary hover:border-primary/40 hover:text-primary hover:bg-primary/5 active:scale-[0.97] disabled:opacity-40 disabled:cursor-not-allowed"
           title={t("zones.commands.allAwningsRetract")}
         >
-          {commandLoading === "allAwningsRetract" ? <Loader2 size={16} className="animate-spin" /> : <ChevronUp size={16} strokeWidth={2} />}
+          {commandLoading === "allAwningsRetract" ? (
+            <Loader2 size={16} className="animate-spin" />
+          ) : (
+            <ChevronUp size={16} strokeWidth={2} />
+          )}
         </button>
         {hasStop && (
           <button
@@ -458,7 +495,11 @@ function ZoneAwningWidget({
             className="w-10 h-10 flex items-center justify-center rounded-sm transition-all duration-150 cursor-pointer border border-border bg-surface text-text-secondary hover:border-text-tertiary hover:text-text hover:bg-border-light active:scale-[0.97] disabled:opacity-40 disabled:cursor-not-allowed"
             title={t("zones.commands.allAwningsStop")}
           >
-            {commandLoading === "allAwningsStop" ? <Loader2 size={16} className="animate-spin" /> : <Square size={11} strokeWidth={2.5} />}
+            {commandLoading === "allAwningsStop" ? (
+              <Loader2 size={16} className="animate-spin" />
+            ) : (
+              <Square size={11} strokeWidth={2.5} />
+            )}
           </button>
         )}
         <button
@@ -467,7 +508,11 @@ function ZoneAwningWidget({
           className="w-10 h-10 flex items-center justify-center rounded-sm transition-all duration-150 cursor-pointer border border-border bg-surface text-text-secondary hover:border-primary/40 hover:text-primary hover:bg-primary/5 active:scale-[0.97] disabled:opacity-40 disabled:cursor-not-allowed"
           title={t("zones.commands.allAwningsExtend")}
         >
-          {commandLoading === "allAwningsExtend" ? <Loader2 size={16} className="animate-spin" /> : <ChevronDown size={16} strokeWidth={2} />}
+          {commandLoading === "allAwningsExtend" ? (
+            <Loader2 size={16} className="animate-spin" />
+          ) : (
+            <ChevronDown size={16} strokeWidth={2} />
+          )}
         </button>
       </div>
     </ZoneWidgetCard>
@@ -517,14 +562,15 @@ function ZoneHeatingWidget({
         // reachable for a submetered thermostat without a state binding
         // (spec 176), and the old existence check would have painted the zone
         // warm forever there.
-        const state = eq.dataBindings.find((b) => b.alias === "state" || b.category === "light_state");
+        const state = eq.dataBindings.find(
+          (b) => b.alias === "state" || b.category === "light_state",
+        );
         if (state?.value === true || state?.value === "ON") on = true;
       }
     }
 
-    const avg = (arr: number[]) => arr.length > 0
-      ? arr.reduce((a, b) => a + b, 0) / arr.length
-      : null;
+    const avg = (arr: number[]) =>
+      arr.length > 0 ? arr.reduce((a, b) => a + b, 0) / arr.length : null;
 
     return { avgTemp: avg(temps), avgSetpoint: avg(setpoints), anyOn: on };
   }, [filteredEquipments]);
@@ -559,10 +605,12 @@ function ZoneHeatingWidget({
             }`}
             title={anyOn ? t("controls.turnOff") : t("controls.turnOn")}
           >
-            {commandLoading === "allThermostatsPowerOn" || commandLoading === "allThermostatsPowerOff"
-              ? <Loader2 size={14} className="animate-spin" />
-              : <Power size={14} strokeWidth={1.5} />
-            }
+            {commandLoading === "allThermostatsPowerOn" ||
+            commandLoading === "allThermostatsPowerOff" ? (
+              <Loader2 size={14} className="animate-spin" />
+            ) : (
+              <Power size={14} strokeWidth={1.5} />
+            )}
           </button>
         </div>
       </div>
@@ -617,9 +665,8 @@ function ZoneSensorsWidget({
       }
     }
 
-    const avg = (arr: number[]) => arr.length > 0
-      ? arr.reduce((a, b) => a + b, 0) / arr.length
-      : null;
+    const avg = (arr: number[]) =>
+      arr.length > 0 ? arr.reduce((a, b) => a + b, 0) / arr.length : null;
 
     return {
       avgTemp: avg(temps),
@@ -678,8 +725,7 @@ function ZoneWaterWidget({
     let hasFlow = false;
     for (const eq of filteredEquipments) {
       const stateBinding = eq.dataBindings.find((b) => b.alias === "state");
-      const isOpen =
-        stateBinding?.value === true || stateBinding?.value === "ON";
+      const isOpen = stateBinding?.value === true || stateBinding?.value === "ON";
       if (isOpen) {
         open++;
         const flowBinding = eq.dataBindings.find((b) => b.alias === "flow");
@@ -704,8 +750,7 @@ function ZoneWaterWidget({
       await Promise.all(
         filteredEquipments.map(async (eq) => {
           const stateBinding = eq.dataBindings.find((b) => b.alias === "state");
-          const isOpen =
-            stateBinding?.value === true || stateBinding?.value === "ON";
+          const isOpen = stateBinding?.value === true || stateBinding?.value === "ON";
           if (!isOpen) return;
           // Category-first resolver so close-all works on manually-bound
           // valves whose alias defaults to the device key (spec 110).
@@ -759,11 +804,7 @@ function ZoneWaterWidget({
           className="px-3 h-10 flex items-center justify-center rounded-sm transition-all duration-150 cursor-pointer border border-border bg-surface text-text-secondary text-caption font-medium hover:border-text-tertiary hover:text-text hover:bg-border-light active:scale-[0.97] disabled:opacity-40 disabled:cursor-not-allowed"
           title={t("water.closeAll")}
         >
-          {closingAll ? (
-            <Loader2 size={14} className="animate-spin" />
-          ) : (
-            t("water.closeAll")
-          )}
+          {closingAll ? <Loader2 size={14} className="animate-spin" /> : t("water.closeAll")}
         </button>
       </div>
     </ZoneWidgetCard>

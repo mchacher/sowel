@@ -13,9 +13,7 @@ function agoIso(seconds: number): string {
   return new Date(Date.now() - seconds * 1000).toISOString();
 }
 
-function binding(
-  over: Partial<DataBindingWithValue> & { alias: string },
-): DataBindingWithValue {
+function binding(over: Partial<DataBindingWithValue> & { alias: string }): DataBindingWithValue {
   return {
     id: `b-${over.alias}`,
     equipmentId: "em-1",

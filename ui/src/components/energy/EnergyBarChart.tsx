@@ -5,15 +5,7 @@ import { dateLocale } from "../../lib/locale";
 import { formatHourLabel, formatHourRange } from "../../lib/hour-label";
 import { localDateStr } from "../../lib/local-date";
 import { xTickInterval, ENERGY_CHART_Y_AXIS_PX } from "../../lib/chart-ticks";
-import {
-  ResponsiveContainer,
-  BarChart,
-  Bar,
-  XAxis,
-  YAxis,
-  Tooltip,
-  CartesianGrid,
-} from "recharts";
+import { ResponsiveContainer, BarChart, Bar, XAxis, YAxis, Tooltip, CartesianGrid } from "recharts";
 import type { EnergyPoint } from "../../types";
 import type { EnergyUnit } from "../../store/useUiState";
 import { formatEur, formatKwhTick, formatKwhTooltip } from "./format";
@@ -128,7 +120,14 @@ function aggregateWeek(points: EnergyPoint[], locale: string, dateStr?: string):
     const a = byDay.get(key) ?? newAcc();
     return toDatum(
       capitalizeFirst(day.toLocaleDateString(locale, { weekday: "short", day: "numeric" })),
-      capitalizeFirst(day.toLocaleDateString(locale, { weekday: "long", day: "numeric", month: "long", year: "numeric" })),
+      capitalizeFirst(
+        day.toLocaleDateString(locale, {
+          weekday: "long",
+          day: "numeric",
+          month: "long",
+          year: "numeric",
+        }),
+      ),
       a.hp,
       a.hc,
       a.auto,
@@ -159,7 +158,14 @@ function aggregateMonth(points: EnergyPoint[], locale: string, dateStr?: string)
     const a = byDay.get(key) ?? newAcc();
     return toDatum(
       String(i + 1),
-      capitalizeFirst(day.toLocaleDateString(locale, { weekday: "long", day: "numeric", month: "long", year: "numeric" })),
+      capitalizeFirst(
+        day.toLocaleDateString(locale, {
+          weekday: "long",
+          day: "numeric",
+          month: "long",
+          year: "numeric",
+        }),
+      ),
       a.hp,
       a.hc,
       a.auto,
@@ -209,11 +215,16 @@ function buildChartData(
   date?: string,
 ): ChartDatum[] {
   switch (period) {
-    case "day": return aggregateDay(points, locale);
-    case "week": return aggregateWeek(points, locale, date);
-    case "month": return aggregateMonth(points, locale, date);
-    case "year": return aggregateYear(points, locale, date);
-    default: return aggregateDay(points, locale);
+    case "day":
+      return aggregateDay(points, locale);
+    case "week":
+      return aggregateWeek(points, locale, date);
+    case "month":
+      return aggregateMonth(points, locale, date);
+    case "year":
+      return aggregateYear(points, locale, date);
+    default:
+      return aggregateDay(points, locale);
   }
 }
 
@@ -230,7 +241,13 @@ function roundedTopRect(x: number, y: number, w: number, h: number, r: number): 
 // Component
 // ============================================================
 
-export function EnergyBarChart({ points, period, date, height = 300, unit = "wh" }: EnergyBarChartProps) {
+export function EnergyBarChart({
+  points,
+  period,
+  date,
+  height = 300,
+  unit = "wh",
+}: EnergyBarChartProps) {
   const { t, i18n } = useTranslation();
   const locale = dateLocale(i18n.language);
   const data = useMemo(
@@ -242,10 +259,7 @@ export function EnergyBarChart({ points, period, date, height = 300, unit = "wh"
   // of hp / hc kWh. Autoconso has no billed cost so its overlay is
   // hidden in € mode to keep the bar height = "what you pay".
   const isEur = unit === "eur";
-  const hasAutoconso = useMemo(
-    () => !isEur && data.some((d) => d.autoconso > 0),
-    [data, isEur],
-  );
+  const hasAutoconso = useMemo(() => !isEur && data.some((d) => d.autoconso > 0), [data, isEur]);
 
   // Fixed gridline intervals per period — only meaningful in kWh mode.
   // In € mode let recharts auto-pick (cost distributions vary too much
@@ -273,7 +287,10 @@ export function EnergyBarChart({ points, period, date, height = 300, unit = "wh"
 
   if (data.length === 0) {
     return (
-      <div className="flex items-center justify-center text-text-tertiary text-small" style={{ height }}>
+      <div
+        className="flex items-center justify-center text-text-tertiary text-small"
+        style={{ height }}
+      >
         {t("energy.noDataPeriod")}
       </div>
     );
@@ -297,7 +314,11 @@ export function EnergyBarChart({ points, period, date, height = 300, unit = "wh"
           tick={{ fontSize: CHART_TICK_FONT, fill: "var(--color-text-tertiary)" }}
           tickLine={false}
           axisLine={false}
-          tickFormatter={isEur ? (eur: number) => formatEur(eur, locale) : (kwh: number) => formatKwhTick(kwh, locale)}
+          tickFormatter={
+            isEur
+              ? (eur: number) => formatEur(eur, locale)
+              : (kwh: number) => formatKwhTick(kwh, locale)
+          }
           width={70}
           domain={isEur ? [0, "auto"] : [0, yTicks?.[yTicks.length - 1] ?? "dataMax"]}
           ticks={isEur ? undefined : yTicks}
@@ -334,18 +355,23 @@ export function EnergyBarChart({ points, period, date, height = 300, unit = "wh"
               >
                 <div style={{ fontWeight: 600, marginBottom: 4 }}>{datum.tooltipLabel}</div>
                 <div style={{ fontWeight: 600, marginBottom: 4 }}>
-                  {t("energy.consumption")}{t("common.colon")}
+                  {t("energy.consumption")}
+                  {t("common.colon")}
                   {isEur ? formatEur(costTotal, locale) : formatKwhTooltip(consoTotal, locale)}
                 </div>
                 <TooltipSeriesRow
                   color={HP_COLOR}
                   label={t("energy.peakHours")}
-                  value={isEur ? formatEur(datum.cost_hp, locale) : formatKwhTooltip(hpGrid, locale)}
+                  value={
+                    isEur ? formatEur(datum.cost_hp, locale) : formatKwhTooltip(hpGrid, locale)
+                  }
                 />
                 <TooltipSeriesRow
                   color={HC_COLOR}
                   label={t("energy.offPeakHours")}
-                  value={isEur ? formatEur(datum.cost_hc, locale) : formatKwhTooltip(hcGrid, locale)}
+                  value={
+                    isEur ? formatEur(datum.cost_hc, locale) : formatKwhTooltip(hcGrid, locale)
+                  }
                 />
                 {!isEur && datum.autoconso > 0 && (
                   <TooltipSeriesRow
@@ -365,7 +391,14 @@ export function EnergyBarChart({ points, period, date, height = 300, unit = "wh"
           fill={HC_COLOR}
           maxBarSize={maxBarSize}
           name="hc"
-          shape={(props: { x?: number; y?: number; width?: number; height?: number; index?: number; payload?: ChartDatum }) => {
+          shape={(props: {
+            x?: number;
+            y?: number;
+            width?: number;
+            height?: number;
+            index?: number;
+            payload?: ChartDatum;
+          }) => {
             const { x = 0, y = 0, width: w = 0, height: h = 0, index = 0, payload } = props;
             // Record baseline for autoconso overlay
             hcBaselines[index] = { x, width: w, baseline: y + h };
@@ -384,11 +417,17 @@ export function EnergyBarChart({ points, period, date, height = 300, unit = "wh"
           radius={[4, 4, 0, 0]}
           maxBarSize={maxBarSize}
           name="hp"
-          shape={(props: { x?: number; y?: number; width?: number; height?: number; index?: number; payload?: ChartDatum }) => {
+          shape={(props: {
+            x?: number;
+            y?: number;
+            width?: number;
+            height?: number;
+            index?: number;
+            payload?: ChartDatum;
+          }) => {
             const { x = 0, y = 0, width: w = 0, height: h = 0, index = 0, payload } = props;
-            const hpRect = h > 0
-              ? <path d={roundedTopRect(x, y, w, h, 4)} fill={HP_COLOR} />
-              : null;
+            const hpRect =
+              h > 0 ? <path d={roundedTopRect(x, y, w, h, 4)} fill={HP_COLOR} /> : null;
 
             // Draw autoconso overlay from baseline upward
             let autoRect = null;

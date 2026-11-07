@@ -9,7 +9,10 @@ import { classNames } from "./classname-scan";
 // design-system/tokens.css at test time, so a token change that breaks a
 // pair fails here instead of in a hand-written table (the old one in
 // design-system/accessibility.md was wrong by up to 6:1).
-const tokensCss = readFileSync(new URL("../../../design-system/tokens.css", import.meta.url), "utf8");
+const tokensCss = readFileSync(
+  new URL("../../../design-system/tokens.css", import.meta.url),
+  "utf8",
+);
 const indexCss = readFileSync(new URL("../index.css", import.meta.url), "utf8");
 const srcRoot = fileURLToPath(new URL("..", import.meta.url));
 
@@ -17,7 +20,10 @@ type Theme = "light" | "dark";
 
 /** The custom properties of one theme block, light inheriting nothing. */
 function themeVars(theme: Theme): Record<string, string> {
-  const selector = theme === "light" ? /:root,\s*\[data-theme="hybrid"\]\s*\{/ : /\[data-theme="dark"\],\s*\.dark\s*\{/;
+  const selector =
+    theme === "light"
+      ? /:root,\s*\[data-theme="hybrid"\]\s*\{/
+      : /\[data-theme="dark"\],\s*\.dark\s*\{/;
   const start = tokensCss.search(selector);
   if (start < 0) throw new Error(`no ${theme} block in tokens.css`);
   const body = tokensCss.slice(tokensCss.indexOf("{", start) + 1, tokensCss.indexOf("\n}", start));
@@ -41,7 +47,8 @@ function themeColor(name: string): string {
 
 function hex(theme: Theme, token: string): string {
   const v = VARS[theme][token];
-  if (!v || !/^#[0-9a-f]{6}$/i.test(v)) throw new Error(`${token} in ${theme} is not a #rrggbb colour: ${v}`);
+  if (!v || !/^#[0-9a-f]{6}$/i.test(v))
+    throw new Error(`${token} in ${theme} is not a #rrggbb colour: ${v}`);
   return v;
 }
 
@@ -201,37 +208,56 @@ describe("colour role tokens", () => {
     expect(luminance(surface)).toBeGreaterThan(luminance(page));
   });
 
-  it.each(["shutter", "sensor", "media"])("draws the %s icon square on the theme's card (slice 7b)", (cat) => {
-    for (const theme of ["light", "dark"] as Theme[]) {
-      expect(ratio(hex(theme, `--${cat}-500`), hex(theme, `--${cat}-50`))).toBeGreaterThanOrEqual(GRAPHIC);
-    }
-    // The dark tints were calibrated for the old #16181E card, on which the
-    // new one painted them 1.00:1 to 1.04:1: an icon with no square.
-    expect(ratio(hex("dark", `--${cat}-50`), resolve("dark", "surface"))).toBeGreaterThanOrEqual(1.1);
-  });
+  it.each(["shutter", "sensor", "media"])(
+    "draws the %s icon square on the theme's card (slice 7b)",
+    (cat) => {
+      for (const theme of ["light", "dark"] as Theme[]) {
+        expect(ratio(hex(theme, `--${cat}-500`), hex(theme, `--${cat}-50`))).toBeGreaterThanOrEqual(
+          GRAPHIC,
+        );
+      }
+      // The dark tints were calibrated for the old #16181E card, on which the
+      // new one painted them 1.00:1 to 1.04:1: an icon with no square.
+      expect(ratio(hex("dark", `--${cat}-50`), resolve("dark", "surface"))).toBeGreaterThanOrEqual(
+        1.1,
+      );
+    },
+  );
 
   it("gives dark illustrations ocean night fills that read on a card (slice 7b)", () => {
-    expect(ratio(hex("dark", "--illu-fill"), resolve("dark", "surface"))).toBeGreaterThanOrEqual(1.15);
-    expect(luminance(hex("dark", "--illu-fill-2"))).toBeGreaterThan(luminance(hex("dark", "--illu-fill")));
+    expect(ratio(hex("dark", "--illu-fill"), resolve("dark", "surface"))).toBeGreaterThanOrEqual(
+      1.15,
+    );
+    expect(luminance(hex("dark", "--illu-fill-2"))).toBeGreaterThan(
+      luminance(hex("dark", "--illu-fill")),
+    );
   });
 
   it("gives the live breakdown's « other » a colour per theme (slice 7b)", () => {
     expect(hex("dark", "--energy-other")).not.toBe(hex("light", "--energy-other"));
     // Subdued, yet a visible wedge on the night card.
-    expect(ratio(hex("dark", "--energy-other"), resolve("dark", "surface"))).toBeGreaterThanOrEqual(GRAPHIC);
+    expect(ratio(hex("dark", "--energy-other"), resolve("dark", "surface"))).toBeGreaterThanOrEqual(
+      GRAPHIC,
+    );
   });
 
   it("keeps the dark selection visible on a card", () => {
     // #1A2A38 was 1.09:1 on the new surface, the same colour to the eye.
-    expect(ratio(resolve("dark", "primary-light"), resolve("dark", "surface"))).toBeGreaterThanOrEqual(1.15);
+    expect(
+      ratio(resolve("dark", "primary-light"), resolve("dark", "surface")),
+    ).toBeGreaterThanOrEqual(1.15);
   });
 
   it("paints the splash and the dark browser bar with the page colour", () => {
     const html = readFileSync(new URL("../../index.html", import.meta.url), "utf8");
     const vite = readFileSync(new URL("../../vite.config.ts", import.meta.url), "utf8");
-    expect(html).toContain(`#splash{position:fixed;inset:0;display:flex;align-items:center;justify-content:center;background:${hex("light", "--n-50")}`);
+    expect(html).toContain(
+      `#splash{position:fixed;inset:0;display:flex;align-items:center;justify-content:center;background:${hex("light", "--n-50")}`,
+    );
     expect(html).toContain(`.dark #splash{background:${hex("dark", "--n-50")}}`);
-    expect(html).toContain(`<meta name="theme-color" content="${hex("dark", "--n-50")}" media="(prefers-color-scheme: dark)" />`);
+    expect(html).toContain(
+      `<meta name="theme-color" content="${hex("dark", "--n-50")}" media="(prefers-color-scheme: dark)" />`,
+    );
     expect(vite).toContain(`background_color: "${hex("light", "--n-50")}"`);
     // theme.ts repaints both metas with the app's own theme.
     expect(THEME_COLOR).toEqual({ light: hex("light", "--p-500"), dark: hex("dark", "--n-50") });
@@ -248,7 +274,9 @@ describe("colour role tokens", () => {
   });
 
   it("follows the theme for native controls", () => {
-    expect(indexCss).toMatch(/:root\s*\{[^}]*color-scheme:\s*light;[^}]*accent-color:\s*var\(--color-primary-fill\);/);
+    expect(indexCss).toMatch(
+      /:root\s*\{[^}]*color-scheme:\s*light;[^}]*accent-color:\s*var\(--color-primary-fill\);/,
+    );
     expect(indexCss).toMatch(/\.dark\s*\{[^}]*color-scheme:\s*dark;/);
   });
 });
@@ -266,32 +294,54 @@ function sources(dir: string): string[] {
   });
 }
 
-const FILES = sources(srcRoot).map((path) => ({ path: path.slice(srcRoot.length), text: readFileSync(path, "utf8") }));
+const FILES = sources(srcRoot).map((path) => ({
+  path: path.slice(srcRoot.length),
+  text: readFileSync(path, "utf8"),
+}));
 
 const RETIRED: [RegExp, string][] = [
-  [/\b(text|bg|border|fill|stroke|ring)-accent\b/, "amber means on or running: active, active-ink or active-bg"],
+  [
+    /\b(text|bg|border|fill|stroke|ring)-accent\b/,
+    "amber means on or running: active, active-ink or active-bg",
+  ],
   [/\bactive-text\b/, "renamed active-ink"],
   [/\btext-warning(?![-\w])/, "orange as text is warning-ink"],
   [/\b(bg|border)-(success|warning|error|active)\/15\b/, "tinted status backgrounds stop at /10"],
-  [/\b(text|bg|border)-(red|green|amber|yellow|orange|emerald)-\d/, "raw Tailwind colours bypass the theme"],
+  [
+    /\b(text|bg|border)-(red|green|amber|yellow|orange|emerald)-\d/,
+    "raw Tailwind colours bypass the theme",
+  ],
   [/\b(bg|text)-light-(50|500)\b/, "a light off is neutral; the light tint is gone"],
   [/--color-(accent-light|accent-hover|success-light)\b/, "token removed or never defined"],
   // #1126 — the last user, the PV forecast curve, took the solar green.
-  [/--color-accent\b/, "amber means on or running: --color-active; a chart takes the energy palette"],
+  [
+    /--color-accent\b/,
+    "amber means on or running: --color-active; a chart takes the energy palette",
+  ],
   [/#(dcfce7|ede9fe|7c3aed)\b/i, "mode badges take tokens"],
-  [/\bbg-primary(?![-/\w])[^"`]*\btext-white\b|\btext-white\b[^"`]*\bbg-primary(?![-/\w])/, "text sits on bg-primary-fill, not on the ink"],
+  [
+    /\bbg-primary(?![-/\w])[^"`]*\btext-white\b|\btext-white\b[^"`]*\bbg-primary(?![-/\w])/,
+    "text sits on bg-primary-fill, not on the ink",
+  ],
   [/\bbg-primary-hover\b/, "a filled control hovers to bg-primary-fill-hover"],
-  [/\bwidget-icon\b|brightness\(1\.6\)/, "illustrations take --illu-* tokens, no brightness filter"],
+  [
+    /\bwidget-icon\b|brightness\(1\.6\)/,
+    "illustrations take --illu-* tokens, no brightness filter",
+  ],
 ];
 
 describe("illustrations follow the theme", () => {
-  it.each(["components/dashboard/WidgetIcons.tsx", "components/icons/AwningIcon.tsx", "components/icons/EvCarGauge.tsx"])(
-    "%s has no hard-coded colour",
-    (file) => {
-      const text = readFileSync(join(srcRoot, file), "utf8").replace(/\/\*[\s\S]*?\*\/|\/\/.*$/gm, "");
-      expect(text.match(/#[0-9a-f]{3,6}\b|"white"|"black"/gi) ?? []).toEqual([]);
-    },
-  );
+  it.each([
+    "components/dashboard/WidgetIcons.tsx",
+    "components/icons/AwningIcon.tsx",
+    "components/icons/EvCarGauge.tsx",
+  ])("%s has no hard-coded colour", (file) => {
+    const text = readFileSync(join(srcRoot, file), "utf8").replace(
+      /\/\*[\s\S]*?\*\/|\/\/.*$/gm,
+      "",
+    );
+    expect(text.match(/#[0-9a-f]{3,6}\b|"white"|"black"/gi) ?? []).toEqual([]);
+  });
 
   it("drops the dark-mode brightness filter", () => {
     expect(indexCss).not.toMatch(/filter:\s*brightness/);
@@ -324,10 +374,14 @@ describe("no retired colour class in ui/src", () => {
     // A chart stroke of var(--border) (instead of --color-border) drew nothing.
     // Properties set inline (style={{ "--fill-pct": … }}) count as defined.
     const defined = new Set(
-      [tokensCss, indexCss, ...FILES.map((f) => f.text)].flatMap((t) => [...t.matchAll(/["']?(--[\w-]+)["']?\s*:/g)].map((m) => m[1])),
+      [tokensCss, indexCss, ...FILES.map((f) => f.text)].flatMap((t) =>
+        [...t.matchAll(/["']?(--[\w-]+)["']?\s*:/g)].map((m) => m[1]),
+      ),
     );
     const missing = FILES.flatMap(({ path, text }) =>
-      [...text.matchAll(/var\((--[\w-]+)/g)].filter((m) => !defined.has(m[1])).map((m) => `${path}: ${m[1]}`),
+      [...text.matchAll(/var\((--[\w-]+)/g)]
+        .filter((m) => !defined.has(m[1]))
+        .map((m) => `${path}: ${m[1]}`),
     );
     expect(missing).toEqual([]);
   });
@@ -337,9 +391,11 @@ describe("no retired colour class in ui/src", () => {
     const defined = new Set([...indexCss.matchAll(/--color-([\w-]+):/g)].map((m) => m[1]));
     const used = new Set(
       FILES.flatMap(({ text }) =>
-        [...text.matchAll(/\b(?:text|bg|border|fill|stroke)-((?:active|warning|success|error|heat|info|illu|on-status|on-active|on-primary|primary-fill)[\w-]*)/g)].map(
-          (m) => m[1],
-        ),
+        [
+          ...text.matchAll(
+            /\b(?:text|bg|border|fill|stroke)-((?:active|warning|success|error|heat|info|illu|on-status|on-active|on-primary|primary-fill)[\w-]*)/g,
+          ),
+        ].map((m) => m[1]),
       ),
     );
     expect([...used].filter((c) => !defined.has(c))).toEqual([]);

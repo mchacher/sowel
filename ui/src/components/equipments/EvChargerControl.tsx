@@ -6,12 +6,14 @@ import { splitEvChargerExtras, type EvVehicleState } from "../../lib/ev-charger-
 import { extraLabel, extraTextValue } from "../../lib/extra-labels";
 import { formatValue } from "./useEquipmentState";
 import { LightControl } from "./LightControl";
+import { evChargerStateOf, evVehicleKey, evVehiclePillClass } from "./evChargerState";
 import {
-  evChargerStateOf,
-  evVehicleKey,
-  evVehiclePillClass,
-} from "./evChargerState";
-import { formatEnergy, formatNumber, formatPower, formatRange, formatWithUnit } from "../../lib/format";
+  formatEnergy,
+  formatNumber,
+  formatPower,
+  formatRange,
+  formatWithUnit,
+} from "../../lib/format";
 import { SetpointStepper } from "./SetpointStepper";
 import { useSetpointCommitDelay } from "../../hooks/useSetpointCommit";
 
@@ -31,7 +33,6 @@ export function EvVehicleBadge({ vehicle }: { vehicle: EvVehicleState | null }) 
     </span>
   );
 }
-
 
 /**
  * Spec 182 — the EV charger control surface, shared by the detail page and the
@@ -107,9 +108,7 @@ export function EvChargerControl({ equipment, onExecuteOrder }: EvChargerControl
           {metrics.map((m) => (
             <div key={m.key} className="flex flex-col">
               <span className="text-caption text-text-tertiary">{m.label}</span>
-              <span className="text-lead font-semibold text-text tabular-nums">
-                {m.value}
-              </span>
+              <span className="text-lead font-semibold text-text tabular-nums">{m.value}</span>
             </div>
           ))}
         </div>
@@ -163,17 +162,26 @@ export function EvChargerControl({ equipment, onExecuteOrder }: EvChargerControl
             onClick={() => setDetailsOpen(!detailsOpen)}
             className="self-start flex items-center gap-1 text-caption text-text-tertiary hover:text-text-secondary cursor-pointer"
           >
-            {detailsOpen ? <ChevronDown size={12} strokeWidth={1.5} /> : <ChevronRight size={12} strokeWidth={1.5} />}
+            {detailsOpen ? (
+              <ChevronDown size={12} strokeWidth={1.5} />
+            ) : (
+              <ChevronRight size={12} strokeWidth={1.5} />
+            )}
             {t("equipments.evCharger.details", { n: extraData.length })}
           </button>
-          {detailsOpen && extraData.map((b) => (
-            <div key={b.alias} className="flex items-center justify-between gap-3 text-small">
-              <span className="text-text-secondary">{extraLabel("equipments.evCharger", b.alias, t)}</span>
-              <span className="tabular-nums text-text">{typeof b.value === "string"
-                  ? extraTextValue("equipments.evCharger", b.alias, b.value, t)
-                  : formatValue(b.value, b.unit)}</span>
-            </div>
-          ))}
+          {detailsOpen &&
+            extraData.map((b) => (
+              <div key={b.alias} className="flex items-center justify-between gap-3 text-small">
+                <span className="text-text-secondary">
+                  {extraLabel("equipments.evCharger", b.alias, t)}
+                </span>
+                <span className="tabular-nums text-text">
+                  {typeof b.value === "string"
+                    ? extraTextValue("equipments.evCharger", b.alias, b.value, t)
+                    : formatValue(b.value, b.unit)}
+                </span>
+              </div>
+            ))}
         </div>
       )}
     </div>

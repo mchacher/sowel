@@ -1,12 +1,6 @@
 import { useState, useEffect, useRef, useCallback } from "react";
 import { useTranslation } from "react-i18next";
-import {
-  Play,
-  Pause,
-  Trash2,
-  ChevronDown,
-  ChevronRight,
-} from "lucide-react";
+import { Play, Pause, Trash2, ChevronDown, ChevronRight } from "lucide-react";
 import { fetchLogs, setLogLevel } from "../api";
 import { useAuth } from "../store/useAuth";
 import type { LogEntry, LogLevel } from "../types";
@@ -134,8 +128,7 @@ export function LogsPage() {
   const filtered = entries.filter((e) => {
     if (filterLevel && e.level !== filterLevel) return false;
     if (filterModule && e.module !== filterModule) return false;
-    if (filterSearch && !e.msg.toLowerCase().includes(filterSearch.toLowerCase()))
-      return false;
+    if (filterSearch && !e.msg.toLowerCase().includes(filterSearch.toLowerCase())) return false;
     return true;
   });
 
@@ -144,17 +137,14 @@ export function LogsPage() {
     setExpandedIdx(null);
   }, []);
 
-  const handleLevelChange = useCallback(
-    async (newLevel: LogLevel) => {
-      try {
-        await setLogLevel(newLevel);
-        setCurrentLevel(newLevel);
-      } catch {
-        // Ignore errors
-      }
-    },
-    [],
-  );
+  const handleLevelChange = useCallback(async (newLevel: LogLevel) => {
+    try {
+      await setLogLevel(newLevel);
+      setCurrentLevel(newLevel);
+    } catch {
+      // Ignore errors
+    }
+  }, []);
 
   const toggleExpand = useCallback((idx: number) => {
     setExpandedIdx((prev) => (prev === idx ? null : idx));
@@ -164,9 +154,7 @@ export function LogsPage() {
     <div className="p-4 sm:p-6 h-full flex flex-col">
       {/* Header */}
       <div className="mb-4">
-        <h1 className={TOP_LEVEL_H1}>
-          {t("logs.title")}
-        </h1>
+        <h1 className={TOP_LEVEL_H1}>{t("logs.title")}</h1>
         <p className="text-small text-text-tertiary">{t("logs.subtitle")}</p>
       </div>
 
@@ -218,7 +206,10 @@ export function LogsPage() {
 
         {/* Engine level control */}
         <div className="flex items-center gap-1.5">
-          <span className="text-caption text-text-tertiary">{t("logs.engineLevel")}{t("common.colon").trimEnd()}</span>
+          <span className="text-caption text-text-tertiary">
+            {t("logs.engineLevel")}
+            {t("common.colon").trimEnd()}
+          </span>
           <select
             value={currentLevel}
             onChange={(e) => handleLevelChange(e.target.value as LogLevel)}
@@ -298,7 +289,9 @@ export function LogsPage() {
                     <span className="text-primary/70 flex-1 min-w-0 sm:flex-none sm:w-[140px] truncate">
                       {entry.module ?? ""}
                     </span>
-                    <span className="text-text basis-full sm:basis-auto min-w-0 break-words pl-5 sm:pl-0">{entry.msg}</span>
+                    <span className="text-text basis-full sm:basis-auto min-w-0 break-words pl-5 sm:pl-0">
+                      {entry.msg}
+                    </span>
                   </div>
                   {isExpanded && extraKeys.length > 0 && (
                     <div className="ml-[22px] pl-4 py-1 mb-1 border-l border-border-light text-micro text-text-tertiary">

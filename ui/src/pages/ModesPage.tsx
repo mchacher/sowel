@@ -55,7 +55,10 @@ export function ModesPage() {
           <h3 className="text-lead font-medium text-text mb-1">{t("common.error")}</h3>
           <p className="text-small text-text-secondary max-w-[320px] mb-4">{error}</p>
           <button
-            onClick={() => { setError(null); fetchModes(); }}
+            onClick={() => {
+              setError(null);
+              fetchModes();
+            }}
             className="px-4 py-2 bg-primary-fill text-white text-small font-medium rounded-sm hover:bg-primary-fill-hover transition-colors duration-150"
           >
             {t("common.retry")}
@@ -70,22 +73,18 @@ export function ModesPage() {
       {/* Header */}
       <div className="flex items-center justify-between mb-4 sm:mb-6">
         <div className="hidden lg:block">
-          <h1>
-            {t("modes.title")}
-          </h1>
-          <p className="text-small text-text-secondary mt-0.5">
-            {t("modes.subtitle")}
-          </p>
+          <h1>{t("modes.title")}</h1>
+          <p className="text-small text-text-secondary mt-0.5">{t("modes.subtitle")}</p>
         </div>
         <div className="flex items-center gap-2 sm:gap-3">
           {isAdmin && (
-          <button
-            onClick={() => setShowForm(true)}
-            className="flex items-center gap-1.5 sm:gap-2 px-3 sm:px-4 py-2 bg-primary-fill text-white text-small font-medium rounded-sm hover:bg-primary-fill-hover transition-colors duration-150"
-          >
-            <Plus size={16} strokeWidth={1.5} />
-            <span className="hidden sm:inline">{t("modes.addMode")}</span>
-          </button>
+            <button
+              onClick={() => setShowForm(true)}
+              className="flex items-center gap-1.5 sm:gap-2 px-3 sm:px-4 py-2 bg-primary-fill text-white text-small font-medium rounded-sm hover:bg-primary-fill-hover transition-colors duration-150"
+            >
+              <Plus size={16} strokeWidth={1.5} />
+              <span className="hidden sm:inline">{t("modes.addMode")}</span>
+            </button>
           )}
           <span className="text-small font-medium text-primary bg-primary-light px-3 py-1.5 rounded-sm tabular-nums">
             {modes.length}
@@ -107,7 +106,12 @@ export function ModesPage() {
       ) : (
         <div className="space-y-2 max-w-[720px]">
           {modes.map((mode) => (
-            <ModeCard key={mode.id} mode={mode} calendarSlots={calendarSlots} onClick={() => navigate(`/modes/${mode.id}`)} />
+            <ModeCard
+              key={mode.id}
+              mode={mode}
+              calendarSlots={calendarSlots}
+              onClick={() => navigate(`/modes/${mode.id}`)}
+            />
           ))}
         </div>
       )}
@@ -124,7 +128,15 @@ export function ModesPage() {
   );
 }
 
-function ModeCard({ mode, calendarSlots, onClick }: { mode: ModeWithDetails; calendarSlots: CalendarSlot[]; onClick: () => void }) {
+function ModeCard({
+  mode,
+  calendarSlots,
+  onClick,
+}: {
+  mode: ModeWithDetails;
+  calendarSlots: CalendarSlot[];
+  onClick: () => void;
+}) {
   const { t } = useTranslation();
   const activateMode = useModes((s) => s.activateMode);
   const deactivateMode = useModes((s) => s.deactivateMode);
@@ -135,7 +147,8 @@ function ModeCard({ mode, calendarSlots, onClick }: { mode: ModeWithDetails; cal
 
   // Find next scheduled slot for this mode
   const modeSlots = calendarSlots.filter((s) => s.modeActions.some((a) => a.modeId === mode.id));
-  const nextSlot = modeSlots.length > 0 ? modeSlots.sort((a, b) => a.time.localeCompare(b.time))[0] : null;
+  const nextSlot =
+    modeSlots.length > 0 ? modeSlots.sort((a, b) => a.time.localeCompare(b.time))[0] : null;
 
   // Build summary
   const summary = totalActions > 0 ? t("modes.actionCount", { count: totalActions }) : undefined;
@@ -172,9 +185,7 @@ function ModeCard({ mode, calendarSlots, onClick }: { mode: ModeWithDetails; cal
         )}
       </div>
       <div className="flex-1 min-w-0">
-        <div className="text-body font-medium text-text truncate">
-          {mode.name}
-        </div>
+        <div className="text-body font-medium text-text truncate">{mode.name}</div>
         {mode.description && (
           <div className="text-caption text-text-secondary truncate">{mode.description}</div>
         )}

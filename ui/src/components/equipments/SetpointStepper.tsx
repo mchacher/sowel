@@ -66,7 +66,11 @@ const VALUE: Record<SetpointStepperSize, string> = {
   md: "text-title min-w-[72px]",
   lg: "text-display min-w-[104px]",
 };
-const GAP: Record<SetpointStepperSize, string> = { sm: "gap-0.5 pointer-coarse:gap-2", md: "gap-2", lg: "gap-4" };
+const GAP: Record<SetpointStepperSize, string> = {
+  sm: "gap-0.5 pointer-coarse:gap-2",
+  md: "gap-2",
+  lg: "gap-4",
+};
 
 /**
  * Spec 196, slice 8a — the one setpoint control: thermostat and pool heat pump
@@ -125,8 +129,7 @@ export function SetpointStepper({
   };
 
   const buttonClass = `${BUTTON[size]} flex items-center justify-center transition-colors cursor-pointer active:scale-[0.97] disabled:opacity-30 disabled:cursor-not-allowed`;
-  const text =
-    shown === null ? "—" : formatWithUnit(shown, unit, { style: valueStyle });
+  const text = shown === null ? "—" : formatWithUnit(shown, unit, { style: valueStyle });
 
   return (
     <div className={`flex flex-col items-center ${className}`}>
@@ -149,7 +152,9 @@ export function SetpointStepper({
         >
           <span className="sr-only">{label} </span>
           {text}
-          {pending && <span data-testid="setpoint-pending" className="w-1.5 h-1.5 rounded-full bg-primary" />}
+          {pending && (
+            <span data-testid="setpoint-pending" className="w-1.5 h-1.5 rounded-full bg-primary" />
+          )}
         </span>
         <button
           type="button"

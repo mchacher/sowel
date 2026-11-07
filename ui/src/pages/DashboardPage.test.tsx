@@ -11,7 +11,9 @@ import type { DashboardWidget, User } from "../types";
 
 // The grid itself is not under test: what matters is how editing starts.
 vi.mock("../components/dashboard/WidgetGrid", () => ({
-  WidgetGrid: ({ editMode }: { editMode: boolean }) => <div data-testid="grid" data-edit={String(editMode)} />,
+  WidgetGrid: ({ editMode }: { editMode: boolean }) => (
+    <div data-testid="grid" data-edit={String(editMode)} />
+  ),
 }));
 
 // Spec 196, decision pr6-edition — below lg the edit action was a floating

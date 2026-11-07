@@ -31,7 +31,12 @@ import { DeviceSelector } from "../components/equipments/DeviceSelector";
 import { TYPE_LABELS } from "../components/equipments/equipment-type-meta";
 import { useEquipmentState } from "../components/equipments/useEquipmentState";
 import { isSubmeterEquipment } from "../lib/metering";
-import { autoCreateBindings, removeAllBindings, computeMissingBindings, fetchDevices } from "../components/equipments/bindingUtils";
+import {
+  autoCreateBindings,
+  removeAllBindings,
+  computeMissingBindings,
+  fetchDevices,
+} from "../components/equipments/bindingUtils";
 import { MissingBindingsModal } from "../components/equipments/MissingBindingsModal";
 import { GateControl } from "../components/equipments/GateControl";
 import { HeaterControl } from "../components/equipments/HeaterControl";
@@ -153,10 +158,7 @@ export function EquipmentDetailPage() {
     let cancelled = false;
     const { type, dataBindings, orderBindings } = equipment;
     const deviceIds = [
-      ...new Set([
-        ...dataBindings.map((b) => b.deviceId),
-        ...orderBindings.map((b) => b.deviceId),
-      ]),
+      ...new Set([...dataBindings.map((b) => b.deviceId), ...orderBindings.map((b) => b.deviceId)]),
     ];
     if (deviceIds.length === 0) {
       setMissingBindingCount(0);
@@ -181,7 +183,18 @@ export function EquipmentDetailPage() {
   }, [showBindings, bindingSignature]);
 
   // Must call hooks before any early returns
-  const EMPTY: EquipmentWithDetails = { id: "", name: "", type: "sensor", zoneId: "", enabled: true, createdAt: "", updatedAt: "", dataBindings: [], orderBindings: [], status: "online" };
+  const EMPTY: EquipmentWithDetails = {
+    id: "",
+    name: "",
+    type: "sensor",
+    zoneId: "",
+    enabled: true,
+    createdAt: "",
+    updatedAt: "",
+    dataBindings: [],
+    orderBindings: [],
+    status: "online",
+  };
   const equipmentState = useEquipmentState(equipment ?? EMPTY);
 
   // Eagerly load history bindings so HistoryPanel can render immediately
@@ -252,7 +265,16 @@ export function EquipmentDetailPage() {
     }
   };
 
-  const { isLight, isSwitch, isShutterFamily, isSensor, isThermostat, isHeater, isGate, actionBinding } = equipmentState;
+  const {
+    isLight,
+    isSwitch,
+    isShutterFamily,
+    isSensor,
+    isThermostat,
+    isHeater,
+    isGate,
+    actionBinding,
+  } = equipmentState;
 
   return (
     <div className="p-4 sm:p-6">
@@ -290,9 +312,7 @@ export function EquipmentDetailPage() {
           </div>
           <div className="min-w-0">
             <div className="flex items-center gap-3 flex-wrap">
-              <h1 className="min-w-0 wrap-anywhere">
-                {equipment.name}
-              </h1>
+              <h1 className="min-w-0 wrap-anywhere">{equipment.name}</h1>
               {/* Spec 116: availability badge next to the equipment name */}
               <EquipmentStatusBadge
                 status={equipment.status}
@@ -313,25 +333,29 @@ export function EquipmentDetailPage() {
             {actionBinding && actionBinding.value != null && (
               <div className="flex items-center gap-1.5 mt-1 text-caption text-text-tertiary">
                 <Clock size={12} strokeWidth={1.5} />
-                <span className="font-mono font-medium text-text-secondary min-w-0 wrap-anywhere">{String(actionBinding.value)}</span>
+                <span className="font-mono font-medium text-text-secondary min-w-0 wrap-anywhere">
+                  {String(actionBinding.value)}
+                </span>
                 {actionBinding.lastUpdated && (
-                  <span>· <RelativeTime iso={actionBinding.lastUpdated} /></span>
+                  <span>
+                    · <RelativeTime iso={actionBinding.lastUpdated} />
+                  </span>
                 )}
               </div>
             )}
           </div>
         </div>
         {isAdmin && (
-        <div className="flex items-center gap-2 shrink-0">
-          <button
-            onClick={() => setShowEditForm(true)}
-            className="flex items-center gap-1.5 p-2 sm:px-3 sm:py-2 text-small font-medium text-text-secondary border border-border rounded-sm hover:bg-border-light transition-colors duration-150 cursor-pointer"
-            title={t("common.edit")}
-          >
-            <Pencil size={14} strokeWidth={1.5} />
-            <span className="hidden sm:inline">{t("common.edit")}</span>
-          </button>
-        </div>
+          <div className="flex items-center gap-2 shrink-0">
+            <button
+              onClick={() => setShowEditForm(true)}
+              className="flex items-center gap-1.5 p-2 sm:px-3 sm:py-2 text-small font-medium text-text-secondary border border-border rounded-sm hover:bg-border-light transition-colors duration-150 cursor-pointer"
+              title={t("common.edit")}
+            >
+              <Pencil size={14} strokeWidth={1.5} />
+              <span className="hidden sm:inline">{t("common.edit")}</span>
+            </button>
+          </div>
         )}
       </div>
 
@@ -483,9 +507,7 @@ export function EquipmentDetailPage() {
       )}
 
       {/* Appliance status */}
-      {equipment.type === "appliance" && (
-        <AppliancePanel equipment={equipment} />
-      )}
+      {equipment.type === "appliance" && <AppliancePanel equipment={equipment} />}
 
       {/* Sensor / Weather / Display data */}
       {equipment.type === "weather_forecast" ? (
@@ -587,7 +609,9 @@ export function EquipmentDetailPage() {
                 isProduction={equipment.type === "energy_production_meter"}
               />
             )}
-            {equipment.type !== "ev_charger" && <ElectricalMeteringPanel section equipment={equipment} />}
+            {equipment.type !== "ev_charger" && (
+              <ElectricalMeteringPanel section equipment={equipment} />
+            )}
           </div>
         </div>
       )}
@@ -596,221 +620,259 @@ export function EquipmentDetailPage() {
           collapsed row here with a one-line summary, below what the page is used
           for; nothing configures above the chart any more. */}
       {isAdmin && (
-      <div className="card mb-6 divide-y divide-border-light">
-        <div className="flex items-center gap-2 p-4">
-          <Settings size={16} strokeWidth={1.5} className="text-text-tertiary" />
-          <h3 className="text-body font-semibold text-text">{t("equipments.configuration")}</h3>
-        </div>
+        <div className="card mb-6 divide-y divide-border-light">
+          <div className="flex items-center gap-2 p-4">
+            <Settings size={16} strokeWidth={1.5} className="text-text-tertiary" />
+            <h3 className="text-body font-semibold text-text">{t("equipments.configuration")}</h3>
+          </div>
 
-        {/* Gate — confirmation before action (spec 146) */}
-        {isGate && (
-          <GateConfirmationPanel equipment={equipment} onUpdated={() => void fetchEquipments()} />
-        )}
+          {/* Gate — confirmation before action (spec 146) */}
+          {isGate && (
+            <GateConfirmationPanel equipment={equipment} onUpdated={() => void fetchEquipments()} />
+          )}
 
-        {/* Gate, door, shutter, awning — follow orders to their outcome (spec 188 O10) */}
-        {ORDER_OUTCOME_TYPES.includes(equipment.type) && (
-          <OrderOutcomePanel equipment={equipment} onUpdated={() => void fetchEquipments()} />
-        )}
+          {/* Gate, door, shutter, awning — follow orders to their outcome (spec 188 O10) */}
+          {ORDER_OUTCOME_TYPES.includes(equipment.type) && (
+            <OrderOutcomePanel equipment={equipment} onUpdated={() => void fetchEquipments()} />
+          )}
 
-        {/* Gate — shared access (spec 181 R8), hidden while the feature is off */}
-        {isGate && <SharedAccessPanel equipmentId={equipment.id} />}
+          {/* Gate — shared access (spec 181 R8), hidden while the feature is off */}
+          {isGate && <SharedAccessPanel equipmentId={equipment.id} />}
 
-        {/* Timed command — act now, revert after N (spec 174 phase 2). Offered
+          {/* Timed command — act now, revert after N (spec 174 phase 2). Offered
             only where a hand-revert could end the window early: the equipment
             must carry the order AND a state reading tied to it. */}
-        {hasTimedCommandCandidate(equipment) && (
-          <TimedCommandPanel equipment={equipment} onUpdated={() => void fetchEquipments()} />
-        )}
+          {hasTimedCommandCandidate(equipment) && (
+            <TimedCommandPanel equipment={equipment} onUpdated={() => void fetchEquipments()} />
+          )}
 
-        {/* Shutter-family / gate — invert command direction (spec 154, extended
+          {/* Shutter-family / gate — invert command direction (spec 154, extended
             to boolean gate triggers per issue #627) */}
-        {(isShutterFamily || equipment.type === "pool_cover" || isGate) && (
-          <InvertDirectionPanel equipment={equipment} onUpdated={() => void fetchEquipments()} />
-        )}
+          {(isShutterFamily || equipment.type === "pool_cover" || isGate) && (
+            <InvertDirectionPanel equipment={equipment} onUpdated={() => void fetchEquipments()} />
+          )}
 
-        {/* Nested submeters — "already counted by that meter" (spec 173) */}
-        {isSubmeterEquipment(equipment) && (
-          <MeteringParentPanel
-            equipment={equipment}
-            equipments={equipments}
-            onUpdated={() => void fetchEquipments()}
-          />
-        )}
+          {/* Nested submeters — "already counted by that meter" (spec 173) */}
+          {isSubmeterEquipment(equipment) && (
+            <MeteringParentPanel
+              equipment={equipment}
+              equipments={equipments}
+              onUpdated={() => void fetchEquipments()}
+            />
+          )}
 
-        {/* Energy management — flexible-load declaration (spec 140). A vehicle is
+          {/* Energy management — flexible-load declaration (spec 140). A vehicle is
             never a flexible load, the charger is (spec 183); a type with no
             energy semantics renders nothing (spec 196). */}
-        {equipment.orderBindings.length > 0 && equipment.type !== "electric_vehicle" && (
-          <EnergyManagementPanel equipment={equipment} onUpdated={() => void fetchEquipments()} />
-        )}
+          {equipment.orderBindings.length > 0 && equipment.type !== "electric_vehicle" && (
+            <EnergyManagementPanel equipment={equipment} onUpdated={() => void fetchEquipments()} />
+          )}
 
-        {/* Button actions */}
-        {equipment.type === "button" && <ButtonActionsSection equipmentId={equipment.id} />}
+          {/* Button actions */}
+          {equipment.type === "button" && <ButtonActionsSection equipmentId={equipment.id} />}
 
-        <DevicesSection equipment={equipment} onChangeDevice={() => setShowChangeDevice(true)} />
+          <DevicesSection equipment={equipment} onChangeDevice={() => setShowChangeDevice(true)} />
 
-        {historyBindings.length > 0 && (
-          <HistorySection equipmentId={equipment.id} bindings={historyBindings} onBindingsChanged={loadHistoryBindings} />
-        )}
+          {historyBindings.length > 0 && (
+            <HistorySection
+              equipmentId={equipment.id}
+              bindings={historyBindings}
+              onBindingsChanged={loadHistoryBindings}
+            />
+          )}
 
-        {/* Bindings */}
-        <div>
-          <button
-            type="button"
-            onClick={() => setShowBindings(!showBindings)}
-            className="flex items-center gap-2 w-full p-4 text-left cursor-pointer"
-          >
-            {showBindings
-              ? <ChevronDown size={14} strokeWidth={1.5} className="text-text-tertiary" />
-              : <ChevronRight size={14} strokeWidth={1.5} className="text-text-tertiary" />
-            }
-            <Link2 size={14} strokeWidth={1.5} className="text-text-tertiary" />
-            <span className="text-small font-medium text-text-secondary">{t("equipments.bindings")}</span>
-            <span className="text-micro text-text-tertiary">
-              {t("equipments.bindingCount", { count: equipment.dataBindings.length + equipment.orderBindings.length })}
-            </span>
-          </button>
+          {/* Bindings */}
+          <div>
+            <button
+              type="button"
+              onClick={() => setShowBindings(!showBindings)}
+              className="flex items-center gap-2 w-full p-4 text-left cursor-pointer"
+            >
+              {showBindings ? (
+                <ChevronDown size={14} strokeWidth={1.5} className="text-text-tertiary" />
+              ) : (
+                <ChevronRight size={14} strokeWidth={1.5} className="text-text-tertiary" />
+              )}
+              <Link2 size={14} strokeWidth={1.5} className="text-text-tertiary" />
+              <span className="text-small font-medium text-text-secondary">
+                {t("equipments.bindings")}
+              </span>
+              <span className="text-micro text-text-tertiary">
+                {t("equipments.bindingCount", {
+                  count: equipment.dataBindings.length + equipment.orderBindings.length,
+                })}
+              </span>
+            </button>
 
-          {showBindings && (
-            <div className="px-4 pb-4 space-y-4">
-              {/* Issue #707 — a plugin can start publishing data points long
+            {showBindings && (
+              <div className="px-4 pb-4 space-y-4">
+                {/* Issue #707 — a plugin can start publishing data points long
                   after the equipment was bound, and nothing revisits the
                   bindings on its own. Rebuilding through the device selector
                   would wipe custom aliases and historization, so this offers
                   the missing ones additively. */}
-              {missingBindingCount !== null && missingBindingCount > 0 && (
-                <div className="flex items-center gap-2 px-3 py-2.5 rounded-sm bg-primary-light border border-primary/20">
-                  <Sparkles size={14} strokeWidth={1.5} className="text-primary flex-shrink-0" />
-                  <span className="flex-1 text-caption text-text-secondary">
-                    {t("binding.missingAvailable", { count: missingBindingCount })}
-                  </span>
-                  <button
-                    onClick={() => setShowMissingBindings(true)}
-                    className="px-2 py-1 text-micro font-medium text-white bg-primary-fill hover:bg-primary-fill-hover rounded-sm transition-colors duration-150 flex-shrink-0"
-                  >
-                    {t("binding.missingReview")}
-                  </button>
-                </div>
-              )}
-
-              {/* Data Bindings */}
-              <div>
-                <div className="flex items-center justify-between mb-2">
-                  <h4 className="text-caption font-medium text-text-tertiary flex items-center gap-1.5">
-                    <Link2 size={13} strokeWidth={1.5} />
-                    {t("equipments.dataBindings")}
-                  </h4>
-                  <button
-                    onClick={() => setShowAddDataBinding(true)}
-                    className="flex items-center gap-1 px-2 py-1 text-micro font-medium text-primary border border-primary/30 rounded-sm hover:bg-primary-light transition-colors duration-150"
-                  >
-                    <Plus size={11} strokeWidth={1.5} />
-                    {t("common.add")}
-                  </button>
-                </div>
-                {equipment.dataBindings.length === 0 ? (
-                  <p className="text-caption text-text-tertiary">{t("common.none")}</p>
-                ) : (
-                  <div className="space-y-1">
-                    {equipment.dataBindings.map((binding) => (
-                      <div key={binding.id} className="flex items-center gap-2 px-2.5 py-1.5 rounded-sm bg-border-light/50 text-caption group">
-                        <span className="font-mono font-medium text-primary">{binding.alias}</span>
-                        <span className="text-text-tertiary">({binding.category})</span>
-                        <span className="text-text-tertiary">· {binding.deviceName} · {binding.key}</span>
-                        <span className="ml-auto tabular-nums text-text">
-                          {binding.value !== null && binding.value !== undefined ? String(binding.value) : "—"}
-                          {binding.unit && <span className="text-text-tertiary ml-0.5">{binding.unit}</span>}
-                        </span>
-                        <button
-                          onClick={() => removeDataBinding(equipment.id, binding.id)}
-                          className="p-1 text-text-tertiary hover:text-error rounded-sm hover:bg-error/10 opacity-0 group-hover:opacity-100 transition-opacity"
-                          title={t("common.remove")}
-                        >
-                          <Unlink size={11} strokeWidth={1.5} />
-                        </button>
-                      </div>
-                    ))}
+                {missingBindingCount !== null && missingBindingCount > 0 && (
+                  <div className="flex items-center gap-2 px-3 py-2.5 rounded-sm bg-primary-light border border-primary/20">
+                    <Sparkles size={14} strokeWidth={1.5} className="text-primary flex-shrink-0" />
+                    <span className="flex-1 text-caption text-text-secondary">
+                      {t("binding.missingAvailable", { count: missingBindingCount })}
+                    </span>
+                    <button
+                      onClick={() => setShowMissingBindings(true)}
+                      className="px-2 py-1 text-micro font-medium text-white bg-primary-fill hover:bg-primary-fill-hover rounded-sm transition-colors duration-150 flex-shrink-0"
+                    >
+                      {t("binding.missingReview")}
+                    </button>
                   </div>
                 )}
-              </div>
 
-              {/* Computed Data (e.g. energy cumuls) */}
-              {equipment.computedData && equipment.computedData.length > 0 && (
+                {/* Data Bindings */}
                 <div>
-                  <h4 className="text-caption font-medium text-text-tertiary flex items-center gap-1.5 mb-2">
-                    <Activity size={13} strokeWidth={1.5} />
-                    {t("equipments.computedData", "Computed Data")}
-                  </h4>
-                  <div className="space-y-1">
-                    {equipment.computedData.map((cd) => (
-                      <div key={cd.alias} className="flex items-center gap-2 px-2.5 py-1.5 rounded-sm bg-border-light border border-border text-caption">
-                        <span className="font-mono font-medium text-text-secondary">{cd.alias}</span>
-                        {cd.category && <span className="text-text-tertiary">({cd.category})</span>}
-                        <span className="ml-auto tabular-nums text-text">
-                          {cd.value !== null && cd.value !== undefined
-                            ? typeof cd.value === "number" ? formatNumber(cd.value, { maxDecimals: 1 }) : String(cd.value)
-                            : "—"}
-                          {cd.unit && <span className="text-text-tertiary ml-0.5">{cd.unit}</span>}
-                        </span>
-                      </div>
-                    ))}
+                  <div className="flex items-center justify-between mb-2">
+                    <h4 className="text-caption font-medium text-text-tertiary flex items-center gap-1.5">
+                      <Link2 size={13} strokeWidth={1.5} />
+                      {t("equipments.dataBindings")}
+                    </h4>
+                    <button
+                      onClick={() => setShowAddDataBinding(true)}
+                      className="flex items-center gap-1 px-2 py-1 text-micro font-medium text-primary border border-primary/30 rounded-sm hover:bg-primary-light transition-colors duration-150"
+                    >
+                      <Plus size={11} strokeWidth={1.5} />
+                      {t("common.add")}
+                    </button>
                   </div>
-                </div>
-              )}
-
-              {/* Order Bindings */}
-              <div>
-                <div className="flex items-center justify-between mb-2">
-                  <h4 className="text-caption font-medium text-text-tertiary flex items-center gap-1.5">
-                    <Zap size={13} strokeWidth={1.5} />
-                    {t("equipments.orderBindings")}
-                  </h4>
-                  <button
-                    onClick={() => setShowAddOrderBinding(true)}
-                    className="flex items-center gap-1 px-2 py-1 text-micro font-medium text-primary border border-primary/30 rounded-sm hover:bg-primary-light transition-colors duration-150"
-                  >
-                    <Plus size={11} strokeWidth={1.5} />
-                    {t("common.add")}
-                  </button>
-                </div>
-                {equipment.orderBindings.length === 0 ? (
-                  <p className="text-caption text-text-tertiary">{t("common.none")}</p>
-                ) : (
-                  <div className="space-y-1">
-                    {equipment.orderBindings.map((binding) => (
-                      <div key={binding.id} className="flex items-center gap-2 px-2.5 py-1.5 rounded-sm bg-border-light/50 text-caption group">
-                        <span className="font-mono font-medium text-text-secondary">{binding.alias}</span>
-                        <span className="text-text-tertiary">({binding.type})</span>
-                        <span className="text-text-tertiary">· {binding.deviceName} · {binding.key}</span>
-                        <button
-                          onClick={() => removeOrderBinding(equipment.id, binding.id)}
-                          className="ml-auto p-1 text-text-tertiary hover:text-error rounded-sm hover:bg-error/10 opacity-0 group-hover:opacity-100 transition-opacity"
-                          title={t("common.remove")}
+                  {equipment.dataBindings.length === 0 ? (
+                    <p className="text-caption text-text-tertiary">{t("common.none")}</p>
+                  ) : (
+                    <div className="space-y-1">
+                      {equipment.dataBindings.map((binding) => (
+                        <div
+                          key={binding.id}
+                          className="flex items-center gap-2 px-2.5 py-1.5 rounded-sm bg-border-light/50 text-caption group"
                         >
-                          <Unlink size={11} strokeWidth={1.5} />
-                        </button>
-                      </div>
-                    ))}
+                          <span className="font-mono font-medium text-primary">
+                            {binding.alias}
+                          </span>
+                          <span className="text-text-tertiary">({binding.category})</span>
+                          <span className="text-text-tertiary">
+                            · {binding.deviceName} · {binding.key}
+                          </span>
+                          <span className="ml-auto tabular-nums text-text">
+                            {binding.value !== null && binding.value !== undefined
+                              ? String(binding.value)
+                              : "—"}
+                            {binding.unit && (
+                              <span className="text-text-tertiary ml-0.5">{binding.unit}</span>
+                            )}
+                          </span>
+                          <button
+                            onClick={() => removeDataBinding(equipment.id, binding.id)}
+                            className="p-1 text-text-tertiary hover:text-error rounded-sm hover:bg-error/10 opacity-0 group-hover:opacity-100 transition-opacity"
+                            title={t("common.remove")}
+                          >
+                            <Unlink size={11} strokeWidth={1.5} />
+                          </button>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+
+                {/* Computed Data (e.g. energy cumuls) */}
+                {equipment.computedData && equipment.computedData.length > 0 && (
+                  <div>
+                    <h4 className="text-caption font-medium text-text-tertiary flex items-center gap-1.5 mb-2">
+                      <Activity size={13} strokeWidth={1.5} />
+                      {t("equipments.computedData", "Computed Data")}
+                    </h4>
+                    <div className="space-y-1">
+                      {equipment.computedData.map((cd) => (
+                        <div
+                          key={cd.alias}
+                          className="flex items-center gap-2 px-2.5 py-1.5 rounded-sm bg-border-light border border-border text-caption"
+                        >
+                          <span className="font-mono font-medium text-text-secondary">
+                            {cd.alias}
+                          </span>
+                          {cd.category && (
+                            <span className="text-text-tertiary">({cd.category})</span>
+                          )}
+                          <span className="ml-auto tabular-nums text-text">
+                            {cd.value !== null && cd.value !== undefined
+                              ? typeof cd.value === "number"
+                                ? formatNumber(cd.value, { maxDecimals: 1 })
+                                : String(cd.value)
+                              : "—"}
+                            {cd.unit && (
+                              <span className="text-text-tertiary ml-0.5">{cd.unit}</span>
+                            )}
+                          </span>
+                        </div>
+                      ))}
+                    </div>
                   </div>
                 )}
-              </div>
-            </div>
-          )}
-        </div>
 
-        {/* Spec 196 — delete left the header, where it sat next to « Modifier ». */}
-        <div className="p-4">
-          <button
-            type="button"
-            onClick={handleDelete}
-            disabled={deleting}
-            className="inline-flex items-center gap-1.5 text-small font-medium text-error hover:underline disabled:opacity-50 cursor-pointer"
-          >
-            <Trash2 size={14} strokeWidth={1.5} />
-            {deleting ? t("common.deleting") : t("equipments.deleteEquipment")}
-          </button>
+                {/* Order Bindings */}
+                <div>
+                  <div className="flex items-center justify-between mb-2">
+                    <h4 className="text-caption font-medium text-text-tertiary flex items-center gap-1.5">
+                      <Zap size={13} strokeWidth={1.5} />
+                      {t("equipments.orderBindings")}
+                    </h4>
+                    <button
+                      onClick={() => setShowAddOrderBinding(true)}
+                      className="flex items-center gap-1 px-2 py-1 text-micro font-medium text-primary border border-primary/30 rounded-sm hover:bg-primary-light transition-colors duration-150"
+                    >
+                      <Plus size={11} strokeWidth={1.5} />
+                      {t("common.add")}
+                    </button>
+                  </div>
+                  {equipment.orderBindings.length === 0 ? (
+                    <p className="text-caption text-text-tertiary">{t("common.none")}</p>
+                  ) : (
+                    <div className="space-y-1">
+                      {equipment.orderBindings.map((binding) => (
+                        <div
+                          key={binding.id}
+                          className="flex items-center gap-2 px-2.5 py-1.5 rounded-sm bg-border-light/50 text-caption group"
+                        >
+                          <span className="font-mono font-medium text-text-secondary">
+                            {binding.alias}
+                          </span>
+                          <span className="text-text-tertiary">({binding.type})</span>
+                          <span className="text-text-tertiary">
+                            · {binding.deviceName} · {binding.key}
+                          </span>
+                          <button
+                            onClick={() => removeOrderBinding(equipment.id, binding.id)}
+                            className="ml-auto p-1 text-text-tertiary hover:text-error rounded-sm hover:bg-error/10 opacity-0 group-hover:opacity-100 transition-opacity"
+                            title={t("common.remove")}
+                          >
+                            <Unlink size={11} strokeWidth={1.5} />
+                          </button>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              </div>
+            )}
+          </div>
+
+          {/* Spec 196 — delete left the header, where it sat next to « Modifier ». */}
+          <div className="p-4">
+            <button
+              type="button"
+              onClick={handleDelete}
+              disabled={deleting}
+              className="inline-flex items-center gap-1.5 text-small font-medium text-error hover:underline disabled:opacity-50 cursor-pointer"
+            >
+              <Trash2 size={14} strokeWidth={1.5} />
+              {deleting ? t("common.deleting") : t("equipments.deleteEquipment")}
+            </button>
+          </div>
         </div>
-      </div>
       )}
 
       {/* Edit equipment modal */}
@@ -896,10 +958,17 @@ export function EquipmentDetailPage() {
  * opened from when the link said so, else to the equipment's room — a page of
  * usage, which a room is and the equipment list is not.
  */
-function BackLink({ origin, room }: { origin: EquipmentOrigin | null; room: { id: string; name: string } | null }) {
+function BackLink({
+  origin,
+  room,
+}: {
+  origin: EquipmentOrigin | null;
+  room: { id: string; name: string } | null;
+}) {
   const { t } = useTranslation();
   const navigate = useNavigate();
-  const cls = "inline-flex items-center gap-1.5 text-small text-text-secondary hover:text-text mb-4";
+  const cls =
+    "inline-flex items-center gap-1.5 text-small text-text-secondary hover:text-text mb-4";
   if (origin) {
     return (
       <button type="button" onClick={() => navigate(-1)} className={`${cls} cursor-pointer`}>
@@ -922,7 +991,15 @@ function BackLink({ origin, room }: { origin: EquipmentOrigin | null; room: { id
 // History section (per-binding ON/OFF toggles)
 // ============================================================
 
-function HistorySection({ equipmentId, bindings, onBindingsChanged }: { equipmentId: string; bindings: HistoryBindingState[]; onBindingsChanged: () => void }) {
+function HistorySection({
+  equipmentId,
+  bindings,
+  onBindingsChanged,
+}: {
+  equipmentId: string;
+  bindings: HistoryBindingState[];
+  onBindingsChanged: () => void;
+}) {
   const { t } = useTranslation();
   const [open, setOpen] = useState(false);
 
@@ -946,10 +1023,11 @@ function HistorySection({ equipmentId, bindings, onBindingsChanged }: { equipmen
         onClick={() => setOpen(!open)}
         className="flex items-center gap-2 w-full p-4 text-left cursor-pointer"
       >
-        {open
-          ? <ChevronDown size={14} strokeWidth={1.5} className="text-text-tertiary" />
-          : <ChevronRight size={14} strokeWidth={1.5} className="text-text-tertiary" />
-        }
+        {open ? (
+          <ChevronDown size={14} strokeWidth={1.5} className="text-text-tertiary" />
+        ) : (
+          <ChevronRight size={14} strokeWidth={1.5} className="text-text-tertiary" />
+        )}
         <Database size={14} strokeWidth={1.5} className="text-text-tertiary" />
         <span className="text-small font-medium text-text-secondary">{t("history.title")}</span>
       </button>
@@ -970,8 +1048,7 @@ function HistorySection({ equipmentId, bindings, onBindingsChanged }: { equipmen
                   <span className="text-micro text-text-tertiary">
                     {b.historize === null
                       ? `(${t("history.default")})`
-                      : `(${t("history.override")})`
-                    }
+                      : `(${t("history.override")})`}
                   </span>
                   <button
                     onClick={() => handleToggle(b)}
@@ -994,12 +1071,21 @@ function HistorySection({ equipmentId, bindings, onBindingsChanged }: { equipmen
 }
 
 /** Collapsible devices sub-section inside the Configuration card. */
-function DevicesSection({ equipment, onChangeDevice }: { equipment: EquipmentWithDetails; onChangeDevice: () => void }) {
+function DevicesSection({
+  equipment,
+  onChangeDevice,
+}: {
+  equipment: EquipmentWithDetails;
+  onChangeDevice: () => void;
+}) {
   const { t } = useTranslation();
   const [open, setOpen] = useState(false);
   const devicesStore = useDevices((s) => s.devices);
 
-  const deviceMap = new Map<string, { deviceId: string; deviceName: string; dataKeys: string[]; orderKeys: string[] }>();
+  const deviceMap = new Map<
+    string,
+    { deviceId: string; deviceName: string; dataKeys: string[]; orderKeys: string[] }
+  >();
   for (const db of equipment.dataBindings) {
     let entry = deviceMap.get(db.deviceId);
     if (!entry) {
@@ -1025,12 +1111,15 @@ function DevicesSection({ equipment, onChangeDevice }: { equipment: EquipmentWit
         onClick={() => setOpen(!open)}
         className="flex items-center gap-2 w-full p-4 text-left cursor-pointer"
       >
-        {open
-          ? <ChevronDown size={14} strokeWidth={1.5} className="text-text-tertiary" />
-          : <ChevronRight size={14} strokeWidth={1.5} className="text-text-tertiary" />
-        }
+        {open ? (
+          <ChevronDown size={14} strokeWidth={1.5} className="text-text-tertiary" />
+        ) : (
+          <ChevronRight size={14} strokeWidth={1.5} className="text-text-tertiary" />
+        )}
         <Cpu size={14} strokeWidth={1.5} className="text-text-tertiary" />
-        <span className="text-small font-medium text-text-secondary">{t("equipments.devices")}</span>
+        <span className="text-small font-medium text-text-secondary">
+          {t("equipments.devices")}
+        </span>
         <span className="text-micro text-text-tertiary">{devices.length}</span>
         {open && (
           <div className="ml-auto" onClick={(e) => e.stopPropagation()}>
@@ -1038,10 +1127,15 @@ function DevicesSection({ equipment, onChangeDevice }: { equipment: EquipmentWit
               onClick={onChangeDevice}
               className="flex items-center gap-1 px-2 py-1 text-micro font-medium text-primary border border-primary/30 rounded-sm hover:bg-primary-light transition-colors duration-150"
             >
-              {devices.length > 0
-                ? <><RefreshCw size={11} strokeWidth={1.5} /> {t("equipments.changeDevice")}</>
-                : <><Plus size={11} strokeWidth={1.5} /> {t("common.add")}</>
-              }
+              {devices.length > 0 ? (
+                <>
+                  <RefreshCw size={11} strokeWidth={1.5} /> {t("equipments.changeDevice")}
+                </>
+              ) : (
+                <>
+                  <Plus size={11} strokeWidth={1.5} /> {t("common.add")}
+                </>
+              )}
             </button>
           </div>
         )}
@@ -1057,19 +1151,26 @@ function DevicesSection({ equipment, onChangeDevice }: { equipment: EquipmentWit
                 const storeDevice = devicesStore[dev.deviceId];
                 const lastSeen = storeDevice?.lastSeen ?? null;
                 return (
-                  <div key={dev.deviceId} className="flex items-center gap-3 px-3 py-2.5 rounded-sm bg-border-light/50">
+                  <div
+                    key={dev.deviceId}
+                    className="flex items-center gap-3 px-3 py-2.5 rounded-sm bg-border-light/50"
+                  >
                     <Cpu size={14} strokeWidth={1.5} className="text-text-tertiary flex-shrink-0" />
                     <div className="flex-1 min-w-0">
                       <div className="text-small font-medium text-text">{dev.deviceName}</div>
                       <div className="flex items-center gap-1 text-micro text-text-tertiary mt-0.5">
                         <Clock size={10} strokeWidth={1.5} />
-                        <span><RelativeTime iso={lastSeen} /></span>
+                        <span>
+                          <RelativeTime iso={lastSeen} />
+                        </span>
                       </div>
                     </div>
                     <span className="text-micro text-text-tertiary flex-shrink-0">
-                      {dev.dataKeys.length > 0 && t("equipments.dataCount", { count: dev.dataKeys.length })}
+                      {dev.dataKeys.length > 0 &&
+                        t("equipments.dataCount", { count: dev.dataKeys.length })}
                       {dev.dataKeys.length > 0 && dev.orderKeys.length > 0 && " · "}
-                      {dev.orderKeys.length > 0 && t("equipments.orderCount", { count: dev.orderKeys.length })}
+                      {dev.orderKeys.length > 0 &&
+                        t("equipments.orderCount", { count: dev.orderKeys.length })}
                     </span>
                   </div>
                 );
@@ -1115,7 +1216,10 @@ function ChangeDeviceModal({
   };
 
   return (
-    <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50" onClick={onClose}>
+    <div
+      className="fixed inset-0 bg-black/40 flex items-center justify-center z-50"
+      onClick={onClose}
+    >
       <div
         className="bg-surface rounded-lg w-full max-w-[520px] mx-4 max-h-[90vh] flex flex-col shadow-lg"
         onClick={(e) => e.stopPropagation()}
@@ -1123,7 +1227,10 @@ function ChangeDeviceModal({
         {/* Header */}
         <div className="flex items-center justify-between px-6 py-4 border-b border-border-light flex-shrink-0">
           <h2 className="text-lead font-semibold text-text">{t("equipments.changeDevice")}</h2>
-          <button onClick={onClose} className="text-text-tertiary hover:text-text-secondary transition-colors">
+          <button
+            onClick={onClose}
+            className="text-text-tertiary hover:text-text-secondary transition-colors"
+          >
             <X size={18} strokeWidth={1.5} />
           </button>
         </div>

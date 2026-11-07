@@ -105,8 +105,7 @@ type StyledSeries = SeriesConfig & {
 
 /** Where the colour picker was opened from — see `colorPicker` state. */
 type ColorPickerAnchor =
-  | { kind: "pill"; id: string }
-  | { kind: "legend"; id: string; x: number; y: number };
+  { kind: "pill"; id: string } | { kind: "legend"; id: string; x: number; y: number };
 
 interface SeriesData {
   points: HistoryPoint[];
@@ -125,7 +124,12 @@ function formatTime(iso: string, period: Period): string {
     case "day":
       return d.toLocaleTimeString(currentLocale(), { hour: "2-digit", minute: "2-digit" });
     case "week":
-      return d.toLocaleDateString(currentLocale(), { weekday: "short", day: "numeric", hour: "2-digit", minute: "2-digit" });
+      return d.toLocaleDateString(currentLocale(), {
+        weekday: "short",
+        day: "numeric",
+        hour: "2-digit",
+        minute: "2-digit",
+      });
     case "month":
       return d.toLocaleDateString(currentLocale(), { day: "numeric", month: "short" });
     case "year":
@@ -358,12 +362,22 @@ export function AnalyseView() {
           });
           setSeriesData((prev) => ({
             ...prev,
-            [s.id]: { points: result.points, resolution: result.resolution, loading: false, error: null },
+            [s.id]: {
+              points: result.points,
+              resolution: result.resolution,
+              loading: false,
+              error: null,
+            },
           }));
         } catch (err) {
           setSeriesData((prev) => ({
             ...prev,
-            [s.id]: { points: [], resolution: "raw", loading: false, error: err instanceof Error ? err.message : "Failed" },
+            [s.id]: {
+              points: [],
+              resolution: "raw",
+              loading: false,
+              error: err instanceof Error ? err.message : "Failed",
+            },
           }));
         }
       }
@@ -478,7 +492,9 @@ export function AnalyseView() {
       try {
         const updated = await updateChartStore(currentChart.id, { config: buildConfig() });
         setCurrentChart(updated);
-      } catch { /* ignore */ }
+      } catch {
+        /* ignore */
+      }
       setSaving(false);
     } else {
       setSaveMode("save");
@@ -502,7 +518,9 @@ export function AnalyseView() {
       loadedChartIdRef.current = chart.id;
       setShowSaveModal(false);
       navigate(`/analyse/${chart.id}`, { replace: true });
-    } catch { /* ignore */ }
+    } catch {
+      /* ignore */
+    }
     setSaving(false);
   };
 
@@ -514,7 +532,9 @@ export function AnalyseView() {
       loadedChartIdRef.current = undefined;
       setShowDeleteConfirm(false);
       navigate("/analyse", { replace: true });
-    } catch { /* ignore */ }
+    } catch {
+      /* ignore */
+    }
   };
 
   useEffect(() => {
@@ -560,7 +580,8 @@ export function AnalyseView() {
   // Merge + dedup live in `mergeSeriesData` (see #537 for why epoch keying,
   // not ISO strings, is what keeps the tick culling alive).
   const chartData = useMemo<Record<string, number>[]>(
-    () => mergeSeriesData(series.map((s) => ({ id: s.id, points: seriesData[s.id]?.points ?? [] }))),
+    () =>
+      mergeSeriesData(series.map((s) => ({ id: s.id, points: seriesData[s.id]?.points ?? [] }))),
     [series, seriesData],
   );
 
@@ -580,7 +601,8 @@ export function AnalyseView() {
   // Anything that is neither a state nor a bar series lands on the left axis,
   // including unclassified categories (family `null`).
   const hasMeasurementSeries = useMemo(
-    () => series.some((s) => familyOf(s.category) === null || familyOf(s.category) === "measurements"),
+    () =>
+      series.some((s) => familyOf(s.category) === null || familyOf(s.category) === "measurements"),
     [series],
   );
 
@@ -899,41 +921,41 @@ export function AnalyseView() {
               <Eraser size={14} strokeWidth={1.5} />
             </button>
             {canManageCharts && (
-            <>
-            <button
-              type="button"
-              onClick={handleSave}
-              disabled={saving}
-              className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-sm text-caption font-medium
+              <>
+                <button
+                  type="button"
+                  onClick={handleSave}
+                  disabled={saving}
+                  className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-sm text-caption font-medium
                 bg-primary-light text-primary hover:bg-primary-fill hover:text-white
                 transition-colors cursor-pointer disabled:opacity-50"
-              title={t("analyse.save")}
-            >
-              <Save size={14} strokeWidth={1.5} />
-              <span className="hidden sm:inline">{t("analyse.save")}</span>
-            </button>
-            <button
-              type="button"
-              onClick={handleSaveAs}
-              disabled={saving}
-              className="flex items-center justify-center p-1.5 rounded-sm text-text-secondary
+                  title={t("analyse.save")}
+                >
+                  <Save size={14} strokeWidth={1.5} />
+                  <span className="hidden sm:inline">{t("analyse.save")}</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={handleSaveAs}
+                  disabled={saving}
+                  className="flex items-center justify-center p-1.5 rounded-sm text-text-secondary
                 hover:bg-border-light hover:text-text transition-colors cursor-pointer disabled:opacity-50"
-              title={t("analyse.saveAs")}
-            >
-              <Copy size={14} strokeWidth={1.5} />
-            </button>
-            {currentChart && (
-              <button
-                type="button"
-                onClick={() => setShowDeleteConfirm(true)}
-                className="flex items-center justify-center p-1.5 rounded-sm text-text-secondary
+                  title={t("analyse.saveAs")}
+                >
+                  <Copy size={14} strokeWidth={1.5} />
+                </button>
+                {currentChart && (
+                  <button
+                    type="button"
+                    onClick={() => setShowDeleteConfirm(true)}
+                    className="flex items-center justify-center p-1.5 rounded-sm text-text-secondary
                   hover:bg-error/10 hover:text-error transition-colors cursor-pointer"
-                title={t("analyse.deleteChart")}
-              >
-                <Trash2 size={14} strokeWidth={1.5} />
-              </button>
-            )}
-            </>
+                    title={t("analyse.deleteChart")}
+                  >
+                    <Trash2 size={14} strokeWidth={1.5} />
+                  </button>
+                )}
+              </>
             )}
           </div>
         )}
@@ -963,7 +985,10 @@ export function AnalyseView() {
                     </option>
                   ))}
                 </select>
-                <ChevronDown size={12} className="absolute right-2.5 top-1/2 -translate-y-1/2 text-text-tertiary pointer-events-none" />
+                <ChevronDown
+                  size={12}
+                  className="absolute right-2.5 top-1/2 -translate-y-1/2 text-text-tertiary pointer-events-none"
+                />
               </div>
             </div>
 
@@ -980,10 +1005,15 @@ export function AnalyseView() {
                 >
                   <option value="">{t("analyse.selectEquipment")}</option>
                   {filteredEquipments.map((eq) => (
-                    <option key={eq.id} value={eq.id}>{eq.name}</option>
+                    <option key={eq.id} value={eq.id}>
+                      {eq.name}
+                    </option>
                   ))}
                 </select>
-                <ChevronDown size={12} className="absolute right-2.5 top-1/2 -translate-y-1/2 text-text-tertiary pointer-events-none" />
+                <ChevronDown
+                  size={12}
+                  className="absolute right-2.5 top-1/2 -translate-y-1/2 text-text-tertiary pointer-events-none"
+                />
               </div>
             </div>
           </div>
@@ -1000,7 +1030,9 @@ export function AnalyseView() {
                   <span className="text-caption text-text-tertiary">{t("common.loading")}</span>
                 </div>
               ) : availableBindings.length === 0 ? (
-                <p className="text-caption text-text-tertiary py-2">{t("analyse.noHistorizedData")}</p>
+                <p className="text-caption text-text-tertiary py-2">
+                  {t("analyse.noHistorizedData")}
+                </p>
               ) : (
                 <div className="flex flex-wrap gap-1.5">
                   {availableBindings.map((b) => {
@@ -1015,9 +1047,7 @@ export function AnalyseView() {
                       (f) => !familiesCompatible(f, bindingFamily),
                     );
                     const disabled = alreadyAdded || familyMismatch;
-                    const title = familyMismatch
-                      ? t("analyse.familyIncompatible")
-                      : b.alias;
+                    const title = familyMismatch ? t("analyse.familyIncompatible") : b.alias;
                     return (
                       <button
                         key={b.bindingId}
@@ -1033,7 +1063,9 @@ export function AnalyseView() {
                       >
                         {humanBindingLabelFromList(b, availableBindings, t)}
                         {CATEGORY_UNITS[b.category] && (
-                          <span className="text-text-tertiary ml-1">({CATEGORY_UNITS[b.category]})</span>
+                          <span className="text-text-tertiary ml-1">
+                            ({CATEGORY_UNITS[b.category]})
+                          </span>
                         )}
                       </button>
                     );
@@ -1160,9 +1192,7 @@ export function AnalyseView() {
                 // Tick labels of the 0/1 axis come from the first state series'
                 // category — every state series shares that axis.
                 const stateSeries = series.filter((s) => isBooleanCategory(s.category));
-                const [stateOffKey, stateOnKey] = booleanTickLabels(
-                  stateSeries[0]?.category ?? "",
-                );
+                const [stateOffKey, stateOnKey] = booleanTickLabels(stateSeries[0]?.category ?? "");
 
                 if (hasStateSeries && !hasMeasurementSeries) {
                   // F5 — step chart on a [0, 1] axis with semantic tick labels.
@@ -1204,7 +1234,10 @@ export function AnalyseView() {
                 // dedicated 0/1 axis on the right so the measurement scale is
                 // left untouched.
                 return (
-                  <ComposedChart data={chartData} margin={{ top: 8, right: 16, left: -8, bottom: 0 }}>
+                  <ComposedChart
+                    data={chartData}
+                    margin={{ top: 8, right: 16, left: -8, bottom: 0 }}
+                  >
                     {commonGrid}
                     {commonXAxis}
                     {/* Spec 145 — passing our own ticks alongside the domain is
@@ -1225,7 +1258,9 @@ export function AnalyseView() {
                       width={splitAxes ? 62 : 52}
                       // The unit is appended only when the chart carries two scales — on a
                       // single-axis chart the legend and tooltip already say it.
-                      tickFormatter={(v: number) => formatAxisTick(v, splitAxes ? chartUnits[0] : "", axisMax.left)}
+                      tickFormatter={(v: number) =>
+                        formatAxisTick(v, splitAxes ? chartUnits[0] : "", axisMax.left)
+                      }
                     />
                     {splitAxes && (
                       <YAxis
@@ -1238,7 +1273,9 @@ export function AnalyseView() {
                         tickLine={false}
                         axisLine={false}
                         width={62}
-                        tickFormatter={(v: number) => formatAxisTick(v, chartUnits[1], axisMax.right)}
+                        tickFormatter={(v: number) =>
+                          formatAxisTick(v, chartUnits[1], axisMax.right)
+                        }
                       />
                     )}
                     {hasStateSeries && (
@@ -1330,7 +1367,9 @@ export function AnalyseView() {
               type="text"
               value={saveName}
               onChange={(e) => setSaveName(e.target.value)}
-              onKeyDown={(e) => { if (e.key === "Enter") handleSaveConfirm(); }}
+              onKeyDown={(e) => {
+                if (e.key === "Enter") handleSaveConfirm();
+              }}
               placeholder={t("analyse.saveNamePlaceholder")}
               className="w-full px-3 py-2 rounded-sm border border-border bg-surface text-small text-text
                 focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary"
@@ -1362,9 +1401,7 @@ export function AnalyseView() {
       {showDeleteConfirm && currentChart && (
         <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50">
           <div className="bg-surface rounded-lg w-[360px] p-5 shadow-lg">
-            <h2 className="text-lead font-semibold text-text mb-3">
-              {t("analyse.deleteChart")}
-            </h2>
+            <h2 className="text-lead font-semibold text-text mb-3">{t("analyse.deleteChart")}</h2>
             <p className="text-small text-text-secondary">
               {t("analyse.deleteConfirm", { name: currentChart.name })}
             </p>

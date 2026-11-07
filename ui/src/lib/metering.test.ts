@@ -23,7 +23,8 @@ function eq(
       key: b.alias,
       alias: b.alias,
       type: b.type ?? "number",
-      category: (b.category ?? "generic") as EquipmentWithDetails["dataBindings"][number]["category"],
+      category: (b.category ??
+        "generic") as EquipmentWithDetails["dataBindings"][number]["category"],
       value: 0,
       lastUpdated: null,
       lastChanged: null,

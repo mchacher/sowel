@@ -66,10 +66,7 @@ export function DashboardPage() {
 
   // Path-aware zone labels (spec 139): a widget on one of two homonym zones
   // must say which one it watches.
-  const zoneLabels = useMemo(
-    () => new Map(zoneOptions.map((z) => [z.id, z.label])),
-    [zoneOptions],
-  );
+  const zoneLabels = useMemo(() => new Map(zoneOptions.map((z) => [z.id, z.label])), [zoneOptions]);
 
   // Build equipment map for fast lookup
   const equipmentMap = useMemo(() => {
@@ -105,21 +102,33 @@ export function DashboardPage() {
     [createWidget],
   );
 
-  const handleAddZone = useCallback(async (zoneId: string, family: WidgetFamily) => {
-    await createWidget({ type: "zone", zoneId, family });
-  }, [createWidget]);
+  const handleAddZone = useCallback(
+    async (zoneId: string, family: WidgetFamily) => {
+      await createWidget({ type: "zone", zoneId, family });
+    },
+    [createWidget],
+  );
 
-  const handleAddRecipe = useCallback(async (recipeInstanceId: string) => {
-    await createWidget({ type: "recipe", recipeInstanceId });
-  }, [createWidget]);
+  const handleAddRecipe = useCallback(
+    async (recipeInstanceId: string) => {
+      await createWidget({ type: "recipe", recipeInstanceId });
+    },
+    [createWidget],
+  );
 
-  const handleDelete = useCallback(async (id: string) => {
-    await deleteWidget(id);
-  }, [deleteWidget]);
+  const handleDelete = useCallback(
+    async (id: string) => {
+      await deleteWidget(id);
+    },
+    [deleteWidget],
+  );
 
-  const handleReorder = useCallback(async (order: string[]) => {
-    await reorderWidgets(order);
-  }, [reorderWidgets]);
+  const handleReorder = useCallback(
+    async (order: string[]) => {
+      await reorderWidgets(order);
+    },
+    [reorderWidgets],
+  );
 
   // Empty state
   if (widgets.length === 0 && !editMode) {

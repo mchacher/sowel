@@ -62,7 +62,7 @@ function ForecastDayCard({ day, locale }: { day: ForecastDay; locale: string }) 
   const dayName = dayDate.toLocaleDateString(locale, { weekday: "long" });
   const capitalizedDayName = dayName.charAt(0).toUpperCase() + dayName.slice(1);
 
-  const ConditionIcon = day.condition ? CONDITION_ICONS[day.condition] ?? Cloud : Cloud;
+  const ConditionIcon = day.condition ? (CONDITION_ICONS[day.condition] ?? Cloud) : Cloud;
   const conditionColor = day.condition
     ? (CONDITION_COLORS[day.condition] ?? "text-text-tertiary")
     : "text-text-tertiary";

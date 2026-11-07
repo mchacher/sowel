@@ -11,7 +11,11 @@ import { ActivityPanel } from "./ActivityPanel";
 // row per event, a separator where it crosses into another part of the day,
 // no more one card per hour.
 
-function sun(id: string, timestamp: number, template: "sunlight.sunrise" | "sunlight.sunset"): ActivityItem {
+function sun(
+  id: string,
+  timestamp: number,
+  template: "sunlight.sunrise" | "sunlight.sunset",
+): ActivityItem {
   return { id, timestamp, category: "sunlight", zoneId: null, message: { template, params: {} } };
 }
 

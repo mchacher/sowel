@@ -25,7 +25,8 @@ export function useSaFormat() {
     });
 
   const period = (from: string | null, until: string | null): string => {
-    if (from && until) return t("sharedAccess.line.fromTo", { from: dateTime(from), until: dateTime(until) });
+    if (from && until)
+      return t("sharedAccess.line.fromTo", { from: dateTime(from), until: dateTime(until) });
     if (from) return t("sharedAccess.line.fromOnly", { from: dateTime(from) });
     if (until) return t("sharedAccess.line.untilOnly", { until: dateTime(until) });
     return t("sharedAccess.validity.always");

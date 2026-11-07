@@ -40,11 +40,7 @@ function FailedOverlay({ failure, showReason }: { failure: UpdateFailure; showRe
   return (
     <div className="fixed inset-0 z-[100] flex items-center justify-center bg-background/95 backdrop-blur-sm">
       <div className="text-center max-w-md px-6">
-        <AlertTriangle
-          size={56}
-          className="mx-auto mb-6 text-error"
-          strokeWidth={1.5}
-        />
+        <AlertTriangle size={56} className="mx-auto mb-6 text-error" strokeWidth={1.5} />
         <h2 className="text-title font-semibold text-text mb-3">
           {t(isRestart ? "update.restartFailedTitle" : "update.failedTitle")}
         </h2>
@@ -91,10 +87,7 @@ function ActiveOverlay() {
         try {
           const info = await getSystemVersion();
           if (cancelled) return;
-          if (
-            originalVersionRef.current === null ||
-            info.current !== originalVersionRef.current
-          ) {
+          if (originalVersionRef.current === null || info.current !== originalVersionRef.current) {
             window.location.reload();
           }
         } catch {
@@ -106,9 +99,12 @@ function ActiveOverlay() {
     captureAndPoll();
 
     // Show fallback "Reload manually" after 3 min — async via setTimeout, not in body
-    const fallbackTimer = setTimeout(() => {
-      if (!cancelled) setShowFallback(true);
-    }, 3 * 60 * 1000);
+    const fallbackTimer = setTimeout(
+      () => {
+        if (!cancelled) setShowFallback(true);
+      },
+      3 * 60 * 1000,
+    );
 
     return () => {
       cancelled = true;
@@ -124,10 +120,7 @@ function ActiveOverlay() {
     getSystemVersion()
       .then((info) => {
         if (cancelled) return;
-        if (
-          originalVersionRef.current === null ||
-          info.current !== originalVersionRef.current
-        ) {
+        if (originalVersionRef.current === null || info.current !== originalVersionRef.current) {
           window.location.reload();
         }
       })
@@ -142,14 +135,8 @@ function ActiveOverlay() {
   return (
     <div className="fixed inset-0 z-[100] flex items-center justify-center bg-background/95 backdrop-blur-sm">
       <div className="text-center max-w-md px-6">
-        <Loader2
-          size={56}
-          className="animate-spin mx-auto mb-6 text-primary"
-          strokeWidth={1.5}
-        />
-        <h2 className="text-title font-semibold text-text mb-3">
-          {t("update.overlayTitle")}
-        </h2>
+        <Loader2 size={56} className="animate-spin mx-auto mb-6 text-primary" strokeWidth={1.5} />
+        <h2 className="text-title font-semibold text-text mb-3">{t("update.overlayTitle")}</h2>
         <p className="text-body text-text-secondary leading-relaxed">
           {t("update.overlayMessage")}
         </p>

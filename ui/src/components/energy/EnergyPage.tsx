@@ -13,11 +13,7 @@ import { formatPercent } from "../../lib/format";
 import { dateLocale } from "../../lib/locale";
 import { getEnergyByUsage, getEquipments } from "../../api";
 import type { EnergyByUsageResponse, SubmeterSeries } from "../../types";
-import {
-  equipmentLabelMap,
-  flattenZonesWithPath,
-  zoneChainMap,
-} from "../../lib/zone-path";
+import { equipmentLabelMap, flattenZonesWithPath, zoneChainMap } from "../../lib/zone-path";
 import { isSubmeterEquipment } from "../../lib/metering";
 import { byUsageSeriesColor } from "./submeterPalette";
 
@@ -199,7 +195,10 @@ export function EnergyPage() {
                             />
                             {s.name}
                             {t("common.colon")}
-                            {formatWh(s.points.reduce((acc, p) => acc + p.wh, 0), locale)}
+                            {formatWh(
+                              s.points.reduce((acc, p) => acc + p.wh, 0),
+                              locale,
+                            )}
                           </span>
                         ))}
                       </div>
@@ -228,8 +227,12 @@ export function EnergyPage() {
               <div className="flex flex-col items-center mt-3 gap-1">
                 <div className="flex items-center gap-4 text-small text-text-secondary flex-wrap justify-center">
                   <span className="flex items-center gap-1.5">
-                    <span className="inline-block w-2.5 h-2.5 rounded-full" style={{ backgroundColor: HP_COLOR }} />
-                    {t("energy.gridConsumption")}{t("common.colon")}
+                    <span
+                      className="inline-block w-2.5 h-2.5 rounded-full"
+                      style={{ backgroundColor: HP_COLOR }}
+                    />
+                    {t("energy.gridConsumption")}
+                    {t("common.colon")}
                     {formatEnergyOrCost(
                       history.totals.total_consumption,
                       history.totals.cost_total,
@@ -243,10 +246,14 @@ export function EnergyPage() {
                     <span className="flex items-center gap-1 text-text-tertiary">
                       <span className="flex items-center gap-0.5">
                         (
-                        <span className="inline-block w-2 h-2 rounded-full" style={{ backgroundColor: HP_COLOR }} />
+                        <span
+                          className="inline-block w-2 h-2 rounded-full"
+                          style={{ backgroundColor: HP_COLOR }}
+                        />
                       </span>
                       <span>
-                        {t("energy.peakHours")}{t("common.colon")}
+                        {t("energy.peakHours")}
+                        {t("common.colon")}
                         {formatEnergyOrCost(
                           history.totals.total_hp,
                           history.totals.cost_hp,
@@ -255,9 +262,13 @@ export function EnergyPage() {
                         )}
                       </span>
                       <span className="mx-0.5">/</span>
-                      <span className="inline-block w-2 h-2 rounded-full" style={{ backgroundColor: HC_COLOR }} />
+                      <span
+                        className="inline-block w-2 h-2 rounded-full"
+                        style={{ backgroundColor: HC_COLOR }}
+                      />
                       <span>
-                        {t("energy.offPeakHours")}{t("common.colon")}
+                        {t("energy.offPeakHours")}
+                        {t("common.colon")}
                         {formatEnergyOrCost(
                           history.totals.total_hc,
                           history.totals.cost_hc,
@@ -270,29 +281,43 @@ export function EnergyPage() {
                   )}
                   {hasProduction && history.totals.total_autoconso > 0 && (
                     <span className="flex items-center gap-1.5">
-                      <span className="inline-block w-2.5 h-2.5 rounded-full" style={{ backgroundColor: AUTOCONSO_COLOR }} />
-                      {t("energy.autoconsumption")}{t("common.colon")}{formatWh(history.totals.total_autoconso, locale)}
+                      <span
+                        className="inline-block w-2.5 h-2.5 rounded-full"
+                        style={{ backgroundColor: AUTOCONSO_COLOR }}
+                      />
+                      {t("energy.autoconsumption")}
+                      {t("common.colon")}
+                      {formatWh(history.totals.total_autoconso, locale)}
                     </span>
                   )}
                 </div>
                 <div className="text-lead font-semibold text-text tabular-nums mt-1">
-                  {t("energy.total")}{t("common.colon")}
+                  {t("energy.total")}
+                  {t("common.colon")}
                   {formatEnergyOrCost(
                     history.totals.total_consumption + (history.totals.total_autoconso ?? 0),
                     history.totals.cost_total,
                     effectiveUnit,
                     locale,
                   )}
-                  {hasProduction && history.totals.total_consumption > 0 && history.totals.total_autoconso > 0 && (
-                    <span className="ml-2 font-normal text-text-secondary">
-                      ({formatPercent((history.totals.total_autoconso / (history.totals.total_consumption + history.totals.total_autoconso)) * 100, { locale })} {t("energy.autoconsumption").toLowerCase()})
-                    </span>
-                  )}
+                  {hasProduction &&
+                    history.totals.total_consumption > 0 &&
+                    history.totals.total_autoconso > 0 && (
+                      <span className="ml-2 font-normal text-text-secondary">
+                        (
+                        {formatPercent(
+                          (history.totals.total_autoconso /
+                            (history.totals.total_consumption + history.totals.total_autoconso)) *
+                            100,
+                          { locale },
+                        )}{" "}
+                        {t("energy.autoconsumption").toLowerCase()})
+                      </span>
+                    )}
                 </div>
               </div>
             )}
           </div>
-
         </>
       )}
     </div>

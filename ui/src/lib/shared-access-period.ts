@@ -219,7 +219,10 @@ export function windowDays(w: SharedAccessTimeWindow): readonly number[] {
 }
 
 /** A window with these days: all seven are written as none, the rest sorted. */
-export function withDays(w: SharedAccessTimeWindow, days: readonly number[]): SharedAccessTimeWindow {
+export function withDays(
+  w: SharedAccessTimeWindow,
+  days: readonly number[],
+): SharedAccessTimeWindow {
   const { days: _was, ...rest } = w;
   void _was;
   const unique = [...new Set(days)].sort((a, b) => a - b);
@@ -294,7 +297,11 @@ export function validityBody(
 } {
   const now = boundsOf(v);
   const was = initial ? boundsOf(initial) : null;
-  const body: { validFrom?: string | null; validUntil?: string | null; timeWindows: SharedAccessTimeWindow[] } = {
+  const body: {
+    validFrom?: string | null;
+    validUntil?: string | null;
+    timeWindows: SharedAccessTimeWindow[];
+  } = {
     timeWindows: v.ranges
       ? v.windows.map((w) => withDays({ from: w.from.trim(), to: w.to.trim() }, windowDays(w)))
       : [],
@@ -318,7 +325,10 @@ export function isoToWall(iso: string, tz: string): Wall {
     hourCycle: "h23",
   }).formatToParts(new Date(iso));
   const get = (type: string) => parts.find((p) => p.type === type)?.value ?? "00";
-  return { date: `${get("year")}-${get("month")}-${get("day")}`, time: `${get("hour")}:${get("minute")}` };
+  return {
+    date: `${get("year")}-${get("month")}-${get("day")}`,
+    time: `${get("hour")}:${get("minute")}`,
+  };
 }
 
 export function nowWall(tz: string): Wall {
@@ -327,7 +337,11 @@ export function nowWall(tz: string): Wall {
 
 /** The validity groups of an access or a profile as the server holds them. */
 export function validityFromView(
-  view: { validFrom: string | null; validUntil: string | null; timeWindows: SharedAccessTimeWindow[] },
+  view: {
+    validFrom: string | null;
+    validUntil: string | null;
+    timeWindows: SharedAccessTimeWindow[];
+  },
   tz: string,
 ): ValidityDraft {
   const windows = {

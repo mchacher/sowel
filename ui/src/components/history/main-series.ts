@@ -19,7 +19,10 @@ const PREFERENCES: Partial<Record<EquipmentType, { aliases?: string[]; categorie
   awning: { categories: ["shutter_position"] },
   pool_cover: { categories: ["shutter_position"] },
   electric_vehicle: { categories: ["battery"] },
-  pool_heat_pump: { aliases: ["effective_water_temperature", "water_temperature"], categories: ["temperature"] },
+  pool_heat_pump: {
+    aliases: ["effective_water_temperature", "water_temperature"],
+    categories: ["temperature"],
+  },
   main_energy_meter: { categories: ["power"] },
   energy_meter: { categories: ["power"] },
   energy_production_meter: { categories: ["power"] },

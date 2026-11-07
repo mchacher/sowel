@@ -3,20 +3,36 @@ import { mainHistoryAlias } from "./main-series";
 import type { HistoryBindingState } from "../../types";
 
 const b = (alias: string, category: string, effectiveOn = true) =>
-  ({ alias, category, effectiveOn }) as Pick<HistoryBindingState, "alias" | "category" | "effectiveOn">;
+  ({ alias, category, effectiveOn }) as Pick<
+    HistoryBindingState,
+    "alias" | "category" | "effectiveOn"
+  >;
 
 // Spec 196, slice 9 (pr9-graphique) — the series open on arrival.
 
 describe("mainHistoryAlias", () => {
   it("picks the main series of each type the slice names", () => {
-    const pac = [b("setpoint", "temperature"), b("power", "power"), b("temperature", "temperature")];
-    expect(mainHistoryAlias("thermostat", [b("power", "power"), b("inside", "temperature")])).toBe("inside");
+    const pac = [
+      b("setpoint", "temperature"),
+      b("power", "power"),
+      b("temperature", "temperature"),
+    ];
+    expect(mainHistoryAlias("thermostat", [b("power", "power"), b("inside", "temperature")])).toBe(
+      "inside",
+    );
     expect(mainHistoryAlias("thermostat", pac)).toBe("temperature"); // never the setpoint
-    expect(mainHistoryAlias("ev_charger", [b("voltage", "voltage"), b("power", "power")])).toBe("power");
+    expect(mainHistoryAlias("ev_charger", [b("voltage", "voltage"), b("power", "power")])).toBe(
+      "power",
+    );
     expect(mainHistoryAlias("shutter", [b("position", "shutter_position")])).toBe("position");
-    expect(mainHistoryAlias("electric_vehicle", [b("range", "distance"), b("battery_level", "battery")])).toBe("battery_level");
     expect(
-      mainHistoryAlias("pool_heat_pump", [b("air", "temperature"), b("effective_water_temperature", "temperature")]),
+      mainHistoryAlias("electric_vehicle", [b("range", "distance"), b("battery_level", "battery")]),
+    ).toBe("battery_level");
+    expect(
+      mainHistoryAlias("pool_heat_pump", [
+        b("air", "temperature"),
+        b("effective_water_temperature", "temperature"),
+      ]),
     ).toBe("effective_water_temperature");
   });
 

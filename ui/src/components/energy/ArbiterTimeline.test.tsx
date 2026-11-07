@@ -173,11 +173,20 @@ describe("#1129 — a journal row keeps the load's name on one line", () => {
   it("does not let the name wrap, and lets the decision give way", async () => {
     mockTimeline.mockResolvedValue({
       ...timelineData("Chauffe-eau"),
-      journal: [{ atIso: "2026-08-15T05:30:00.000Z", kind: "revoked", equipmentName: "Chauffe-eau", reason: "surplus-deficit" }],
+      journal: [
+        {
+          atIso: "2026-08-15T05:30:00.000Z",
+          kind: "revoked",
+          equipmentName: "Chauffe-eau",
+          reason: "surplus-deficit",
+        },
+      ],
     });
     render(<ArbiterTimeline />);
     await act(async () => {});
-    const name = screen.getAllByText("Chauffe-eau").find((el) => el.tagName === "SPAN" && el.className.includes("font-semibold"))!;
+    const name = screen
+      .getAllByText("Chauffe-eau")
+      .find((el) => el.tagName === "SPAN" && el.className.includes("font-semibold"))!;
     expect(name.className).toMatch(/(^|\s)whitespace-nowrap(\s|$)/);
     expect(name.className).toMatch(/(^|\s)flex-none(\s|$)/);
     expect((name.nextElementSibling as HTMLElement).className).toMatch(/(^|\s)min-w-0(\s|$)/);

@@ -26,7 +26,11 @@ interface RecipesState {
   deleteInstance: (instanceId: string) => Promise<void>;
   enableInstance: (instanceId: string) => Promise<void>;
   disableInstance: (instanceId: string) => Promise<void>;
-  sendAction: (instanceId: string, action: string, payload?: Record<string, unknown>) => Promise<void>;
+  sendAction: (
+    instanceId: string,
+    action: string,
+    payload?: Record<string, unknown>,
+  ) => Promise<void>;
   getLog: (instanceId: string) => Promise<RecipeLogEntry[]>;
   handleInstanceChanged: () => void;
 }

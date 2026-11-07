@@ -17,7 +17,9 @@ describe("apiErrorMessage", () => {
     await i18n.changeLanguage("fr");
     const text = apiErrorMessage(new ApiError(429, "Too Many Requests"), t);
     expect(text.title).toBe("Serveur occupé");
-    expect(text.message).toBe("Trop de demandes en peu de temps. Réessayez dans quelques secondes.");
+    expect(text.message).toBe(
+      "Trop de demandes en peu de temps. Réessayez dans quelques secondes.",
+    );
     expect(text.retryable).toBe(true);
   });
 

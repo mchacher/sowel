@@ -11,11 +11,7 @@ import {
   useSensors,
   type DragEndEvent,
 } from "@dnd-kit/core";
-import {
-  SortableContext,
-  rectSortingStrategy,
-  useSortable,
-} from "@dnd-kit/sortable";
+import { SortableContext, rectSortingStrategy, useSortable } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
 import { GripVertical, X, Palette, SlidersHorizontal } from "lucide-react";
 import type { DashboardWidget, EquipmentWithDetails, ZoneWithChildren } from "../../types";
@@ -29,7 +25,13 @@ import { TapGlyph } from "./TapGlyph";
 import { TimedEquipmentWidget } from "./TimedEquipmentWidget";
 import { TileEquipmentContext } from "../equipments/order-outcome";
 import { RecipeTile } from "./RecipeTile";
-import { LightBulbIcon, ShutterWidgetIcon, AwningWidgetIcon, ThermometerIcon, MultiSensorIcon } from "./WidgetIcons";
+import {
+  LightBulbIcon,
+  ShutterWidgetIcon,
+  AwningWidgetIcon,
+  ThermometerIcon,
+  MultiSensorIcon,
+} from "./WidgetIcons";
 import { shutterLevel } from "./widget-icons";
 import { EquipmentDetailSheet, ZoneDetailSheet } from "./WidgetDetailSheet";
 import { getMobileClickAction } from "./mobile-click-action";
@@ -109,7 +111,9 @@ export function WidgetGrid({
   const ids = widgets.map((w) => w.id);
 
   // Find the widget being shown in bottom sheet (auto-clears if widget was deleted)
-  const detailWidget = detailWidgetId ? widgets.find((w) => w.id === detailWidgetId) ?? null : null;
+  const detailWidget = detailWidgetId
+    ? (widgets.find((w) => w.id === detailWidgetId) ?? null)
+    : null;
 
   if (!editMode) {
     return (
@@ -191,7 +195,10 @@ function equipmentLabel(
   return zone ? `${equipment.name}${EQUIPMENT_ZONE_SEPARATOR}${zone}` : equipment.name;
 }
 
-function getEquipmentType(widget: DashboardWidget, equipmentMap: Map<string, EquipmentWithDetails>): string | undefined {
+function getEquipmentType(
+  widget: DashboardWidget,
+  equipmentMap: Map<string, EquipmentWithDetails>,
+): string | undefined {
   if (widget.type === "equipment" && widget.equipmentId) {
     return equipmentMap.get(widget.equipmentId)?.type;
   }
@@ -217,7 +224,13 @@ export function PickerOverlay({
   children: ReactNode;
 }) {
   const overlay = (
-    <div className={mobile ? "fixed inset-0 z-50 flex items-start justify-center pt-24" : "absolute top-7 left-0 right-0 z-20"}>
+    <div
+      className={
+        mobile
+          ? "fixed inset-0 z-50 flex items-start justify-center pt-24"
+          : "absolute top-7 left-0 right-0 z-20"
+      }
+    >
       {mobile && <div className="fixed inset-0 bg-black/20" onClick={onDismiss} />}
       {children}
     </div>
@@ -267,25 +280,30 @@ function SortableWidget({
     transform: CSS.Transform.toString(transform),
     transition,
     opacity: isDragging ? 0.6 : 1,
-    ...(isDragging && isMobile ? { zIndex: 50, scale: "1.05", boxShadow: "0 8px 24px rgba(0,0,0,0.15)" } : {}),
+    ...(isDragging && isMobile
+      ? { zIndex: 50, scale: "1.05", boxShadow: "0 8px 24px rgba(0,0,0,0.15)" }
+      : {}),
   };
 
   const eqType = getEquipmentType(widget, equipmentMap);
-  const isSensorWidget = eqType === "sensor" || eqType === "sensors" || eqType === "weather" || eqType === "button";
-  const sensorEquipment = isSensorWidget && widget.type === "equipment" && widget.equipmentId
-    ? equipmentMap.get(widget.equipmentId)
-    : undefined;
+  const isSensorWidget =
+    eqType === "sensor" || eqType === "sensors" || eqType === "weather" || eqType === "button";
+  const sensorEquipment =
+    isSensorWidget && widget.type === "equipment" && widget.equipmentId
+      ? equipmentMap.get(widget.equipmentId)
+      : undefined;
   const sensorBindings = sensorEquipment ? getSensorBindings(sensorEquipment.dataBindings) : [];
 
   // The rename field opens on everything the card is showing, zone line
   // included: a manual label replaces both, so dropping the zone here would
   // silently throw away the only thing separating this widget from its twin.
-  const currentLabel = widget.label
-    || (widget.type === "equipment" && widget.equipmentId
+  const currentLabel =
+    widget.label ||
+    (widget.type === "equipment" && widget.equipmentId
       ? equipmentLabel(equipmentMap.get(widget.equipmentId), equipmentZones.get(widget.equipmentId))
-      : undefined)
-    || (widget.type === "zone" && widget.zoneId ? zoneLabels.get(widget.zoneId) : undefined)
-    || "";
+      : undefined) ||
+    (widget.type === "zone" && widget.zoneId ? zoneLabels.get(widget.zoneId) : undefined) ||
+    "";
 
   const handleRenameStart = () => {
     setRenameValue(currentLabel);
@@ -342,7 +360,9 @@ function SortableWidget({
       </button>
       {/* Rename overlay on title area */}
       {renaming ? (
-        <div className={`absolute ${isMobile ? "top-[2px] left-6 right-6" : "top-[10px] left-3 right-3"} z-10`}>
+        <div
+          className={`absolute ${isMobile ? "top-[2px] left-6 right-6" : "top-[10px] left-3 right-3"} z-10`}
+        >
           <input
             ref={renameRef}
             value={renameValue}
@@ -467,7 +487,9 @@ function WidgetRenderer({
 
     // On mobile: ALL equipment widgets use compact MobileWidgetCard
     if (isMobile) {
-      const mobileClick = editMode ? undefined : getMobileClickAction(widget, equipment, t, onExecuteOrder, onOpenDetail, onConfirmAction);
+      const mobileClick = editMode
+        ? undefined
+        : getMobileClickAction(widget, equipment, t, onExecuteOrder, onOpenDetail, onConfirmAction);
       return (
         <MobileWidgetCard
           widget={widget}
@@ -561,7 +583,7 @@ export function MobileZoneCard({
 
   // Filter equipments for this zone + family
   const zoneIds = zone ? new Set(getDescendantZoneIds(zone)) : new Set<string>();
-  const familyTypes = family ? ZONE_FAMILY_TYPES[family] ?? [] : [];
+  const familyTypes = family ? (ZONE_FAMILY_TYPES[family] ?? []) : [];
   const filtered = equipments.filter(
     (eq) => zoneIds.has(eq.zoneId) && familyTypes.includes(eq.type),
   );
@@ -586,14 +608,19 @@ export function MobileZoneCard({
         const b = eq.dataBindings.find((d) => d.category === "shutter_position");
         if (b && typeof b.value === "number") positions.push(b.value);
       }
-      const avg = positions.length > 0
-        ? Math.round(positions.reduce((a, b) => a + b, 0) / positions.length)
-        : null;
+      const avg =
+        positions.length > 0
+          ? Math.round(positions.reduce((a, b) => a + b, 0) / positions.length)
+          : null;
       const level = avg !== null ? shutterLevel(avg) : null;
-      const text = avg === 100 ? t("controls.opened")
-        : avg === 0 ? t("controls.closed")
-        : avg !== null ? formatPercent(avg)
-        : null;
+      const text =
+        avg === 100
+          ? t("controls.opened")
+          : avg === 0
+            ? t("controls.closed")
+            : avg !== null
+              ? formatPercent(avg)
+              : null;
       return { icon: <ShutterWidgetIcon level={level} />, stateText: text };
     }
     if (family === "awnings") {
@@ -617,9 +644,7 @@ export function MobileZoneCard({
         const power = thermostatPowerStateBinding(eq.dataBindings);
         if (power?.value === true) anyOn = true;
       }
-      const avg = temps.length > 0
-        ? temps.reduce((a, b) => a + b, 0) / temps.length
-        : null;
+      const avg = temps.length > 0 ? temps.reduce((a, b) => a + b, 0) / temps.length : null;
       return {
         icon: <ThermometerIcon warm={anyOn} />,
         stateText: avg !== null ? formatTemperature(avg, { style: "compact" }) : null,
@@ -644,9 +669,11 @@ export function MobileZoneCard({
     >
       {opens && <TapGlyph kind="sheet" />}
       {/* Label */}
-      <span className={`text-caption font-semibold text-text truncate w-full text-center ${
-        editMode ? "pl-5 pr-8" : opens ? "px-4" : ""
-      }`}>
+      <span
+        className={`text-caption font-semibold text-text truncate w-full text-center ${
+          editMode ? "pl-5 pr-8" : opens ? "px-4" : ""
+        }`}
+      >
         {label}
       </span>
 
@@ -657,9 +684,7 @@ export function MobileZoneCard({
 
       {/* State */}
       {stateText && (
-        <span className="text-micro text-text-secondary truncate max-w-full">
-          {stateText}
-        </span>
+        <span className="text-micro text-text-secondary truncate max-w-full">{stateText}</span>
       )}
       {/* Named by its text (title, state), the gesture said after it. */}
       {opens && <span className="sr-only">{`, ${t("dashboard.tap.sheet")}`}</span>}

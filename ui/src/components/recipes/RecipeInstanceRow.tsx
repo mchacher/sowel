@@ -1,16 +1,44 @@
 import { useState, useEffect, useMemo } from "react";
 import { useTranslation } from "react-i18next";
-import { ChefHat, Plus, Minus, Trash2, ScrollText, Loader2, Check, Copy, ShieldOff } from "lucide-react";
+import {
+  ChefHat,
+  Plus,
+  Minus,
+  Trash2,
+  ScrollText,
+  Loader2,
+  Check,
+  Copy,
+  ShieldOff,
+} from "lucide-react";
 import { useRecipes } from "../../store/useRecipes";
 import { useEquipments } from "../../store/useEquipments";
 import { useZones } from "../../store/useZones";
 import { useZoneAggregation } from "../../store/useZoneAggregation";
 import { useAuth } from "../../store/useAuth";
-import type { RecipeInfo, RecipeInstance, RecipeLogEntry, EquipmentWithDetails, ZoneWithChildren } from "../../types";
+import type {
+  RecipeInfo,
+  RecipeInstance,
+  RecipeLogEntry,
+  EquipmentWithDetails,
+  ZoneWithChildren,
+} from "../../types";
 import { formatTime } from "../../lib/format";
-import { recipeName, recipeSlotName, recipeSlotDescription, recipeGroupLabel, recipeSlotOptionLabel } from "../../lib/recipe-i18n";
+import {
+  recipeName,
+  recipeSlotName,
+  recipeSlotDescription,
+  recipeGroupLabel,
+  recipeSlotOptionLabel,
+} from "../../lib/recipe-i18n";
 import { isSlotHidden, matchesEquipmentType } from "../../lib/recipe-slots";
-import { groupSlots, isGroupFilled, isGroupRequired, getGroupKeys, durationToMinutes } from "./recipe-slot-helpers";
+import {
+  groupSlots,
+  isGroupFilled,
+  isGroupRequired,
+  getGroupKeys,
+  durationToMinutes,
+} from "./recipe-slot-helpers";
 import {
   EquipmentOptions,
   MultiSelectChips,
@@ -174,7 +202,8 @@ export function RecipeInstanceRow({
     if (recipe) {
       const filled = new Set<string>();
       for (const gk of getGroupKeys(recipe.slots)) {
-        if (isGroupRequired(gk, recipe.slots) || isGroupFilled(gk, recipe.slots, params)) filled.add(gk);
+        if (isGroupRequired(gk, recipe.slots) || isGroupFilled(gk, recipe.slots, params))
+          filled.add(gk);
       }
       setVisibleGroups(filled);
     }
@@ -244,7 +273,8 @@ export function RecipeInstanceRow({
     if (!slot) return [];
 
     // Check if this slot targets a global equipment type or opts in to cross-zone selection.
-    const isGlobalSlot = slot.constraints?.equipmentType &&
+    const isGlobalSlot =
+      slot.constraints?.equipmentType &&
       (Array.isArray(slot.constraints.equipmentType)
         ? slot.constraints.equipmentType.some((t) => GLOBAL_EQUIPMENT_TYPES.has(t))
         : GLOBAL_EQUIPMENT_TYPES.has(slot.constraints.equipmentType));
@@ -289,7 +319,9 @@ export function RecipeInstanceRow({
       <div className="space-y-0.5">
         {logs.map((log) => (
           <div key={log.id} className="flex gap-2 text-micro font-mono">
-            <span className="text-text-tertiary whitespace-nowrap">{formatTime(log.timestamp)}</span>
+            <span className="text-text-tertiary whitespace-nowrap">
+              {formatTime(log.timestamp)}
+            </span>
             <span
               className={
                 log.level === "error"
@@ -310,8 +342,14 @@ export function RecipeInstanceRow({
     <div className={instance.enabled ? "" : "opacity-50"}>
       <div className="grid grid-cols-[32px_1fr_auto] gap-x-[0.85rem] gap-y-0 items-center px-[1.1rem] py-[0.35rem] min-h-[52px]">
         {/* Icon — spans both rows (mock .recipe__icon { grid-row: 1 / span 2 }) */}
-        <div className={`row-span-2 self-center w-8 h-8 rounded-md flex items-center justify-center ${instance.enabled ? "bg-primary/10" : "bg-background"}`}>
-          <ChefHat size={15} strokeWidth={1.5} className={instance.enabled ? "text-primary" : "text-text-tertiary"} />
+        <div
+          className={`row-span-2 self-center w-8 h-8 rounded-md flex items-center justify-center ${instance.enabled ? "bg-primary/10" : "bg-background"}`}
+        >
+          <ChefHat
+            size={15}
+            strokeWidth={1.5}
+            className={instance.enabled ? "text-primary" : "text-text-tertiary"}
+          />
         </div>
         {/* Row 1 col 2: name + inline pills */}
         <div className="col-start-2 row-start-1 flex items-center gap-2 min-w-0">
@@ -320,9 +358,7 @@ export function RecipeInstanceRow({
             className={`flex-1 min-w-0 text-left transition-opacity duration-150 ${isAdmin ? "hover:opacity-70 cursor-pointer" : "cursor-default"}`}
             title={isAdmin ? "Edit" : undefined}
           >
-            <div className="text-body font-medium text-text truncate">
-              {displayName}
-            </div>
+            <div className="text-body font-medium text-text truncate">{displayName}</div>
             {/* Optional recipe-provided status line (spec: state.summary).
                 A recipe sets it to surface live context (e.g. a pool pump's
                 "Filtration 2,1/9,6 h · heures creuses"). Absent → unchanged. */}
@@ -340,63 +376,68 @@ export function RecipeInstanceRow({
           {!!instance.state?.overrideMode && instance.enabled && (
             <span
               className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-full text-micro font-medium flex-shrink-0"
-              style={{ backgroundColor: "var(--color-primary-light)", color: "var(--color-primary)" }}
+              style={{
+                backgroundColor: "var(--color-primary-light)",
+                color: "var(--color-primary)",
+              }}
               title={t("recipes.overrideActive", "Override active")}
             >
               <ShieldOff size={10} strokeWidth={2} />
               Override
             </span>
           )}
-          {recipe?.actions?.filter((a) => a.type === "cycle").map((action) => (
-            <ModeCyclePill
-              key={action.id}
-              instance={instance}
-              recipe={recipe}
-              action={action}
-              lang={lang}
-              sendAction={sendAction}
-            />
-          ))}
+          {recipe?.actions
+            ?.filter((a) => a.type === "cycle")
+            .map((action) => (
+              <ModeCyclePill
+                key={action.id}
+                instance={instance}
+                recipe={recipe}
+                action={action}
+                lang={lang}
+                sendAction={sendAction}
+              />
+            ))}
         </div>
         {/* Row 1 col 3: toggle (admin only — enable/disable is config) */}
         {isAdmin && (
-        <Switch
-          checked={instance.enabled}
-          onChange={() => void handleToggleEnabled()}
-          disabled={toggling}
-          title={instance.enabled ? t("recipes.disable") : t("recipes.enable")}
-          label={instance.enabled ? t("recipes.disable") : t("recipes.enable")}
-          className="col-start-3 row-start-1 justify-self-end"
-        />
+          <Switch
+            checked={instance.enabled}
+            onChange={() => void handleToggleEnabled()}
+            disabled={toggling}
+            title={instance.enabled ? t("recipes.disable") : t("recipes.enable")}
+            label={instance.enabled ? t("recipes.disable") : t("recipes.enable")}
+            className="col-start-3 row-start-1 justify-self-end"
+          />
         )}
         {/* Row 2: compact action buttons — admin only. The log button stays
             visible on mobile (read-only, opens a bottom sheet on the PWA, #615);
             duplicate / delete are config/destructive and stay desktop-only. */}
         {isAdmin && (
-        <div className="col-start-2 col-span-2 row-start-2 flex items-center gap-[2px]">
-          <button
-            onClick={handleShowLog}
-            className="w-8 h-8 sm:w-[22px] sm:h-[20px] inline-flex items-center justify-center rounded-sm text-text-tertiary hover:text-text hover:bg-border-light/60 transition-colors duration-150"
-            title={t("recipes.viewLog")}
-          >
-            <ScrollText className="w-3.5 h-3.5 sm:w-3 sm:h-3" strokeWidth={1.5} />
-          </button>
-          <button
-            onClick={() => setShowDuplicate(true)}
-            className="w-[22px] h-[20px] hidden sm:inline-flex items-center justify-center rounded-sm text-text-tertiary hover:text-primary hover:bg-primary/5 transition-colors duration-150"
-            title={t("recipes.duplicate")}
-          >
-            <Copy size={12} strokeWidth={1.5} />
-          </button>
-          <button
-            onClick={handleDelete}
-            disabled={deleting}
-            className="w-[22px] h-[20px] hidden sm:inline-flex items-center justify-center rounded-sm text-text-tertiary hover:text-error hover:bg-error/5 transition-colors duration-150 disabled:opacity-50"
-            title={t("common.delete")}
-          >
-            <Trash2 size={12} strokeWidth={1.5} />
-          </button>
-        </div>
+          <div className="col-start-2 col-span-2 row-start-2 flex items-center gap-[2px]">
+            <button
+              onClick={handleShowLog}
+              className="w-8 h-8 sm:w-[22px] sm:h-[20px] inline-flex items-center justify-center rounded-sm text-text-tertiary hover:text-text hover:bg-border-light/60 transition-colors duration-150"
+              title={t("recipes.viewLog")}
+            >
+              <ScrollText className="w-3.5 h-3.5 sm:w-3 sm:h-3" strokeWidth={1.5} />
+            </button>
+            <button
+              onClick={() => setShowDuplicate(true)}
+              className="w-[22px] h-[20px] hidden sm:inline-flex items-center justify-center rounded-sm text-text-tertiary hover:text-primary hover:bg-primary/5 transition-colors duration-150"
+              title={t("recipes.duplicate")}
+            >
+              <Copy size={12} strokeWidth={1.5} />
+            </button>
+            <button
+              onClick={handleDelete}
+              disabled={deleting}
+              className="w-[22px] h-[20px] hidden sm:inline-flex items-center justify-center rounded-sm text-text-tertiary hover:text-error hover:bg-error/5 transition-colors duration-150 disabled:opacity-50"
+              title={t("common.delete")}
+            >
+              <Trash2 size={12} strokeWidth={1.5} />
+            </button>
+          </div>
         )}
       </div>
 
@@ -415,7 +456,9 @@ export function RecipeInstanceRow({
         <div className="px-4 pb-3">
           <div className="bg-background rounded-md p-3">
             {(() => {
-              const filteredSlots = recipe.slots.filter((slot) => slot.id !== "zone" && shouldShowSlot(slot.id));
+              const filteredSlots = recipe.slots.filter(
+                (slot) => slot.id !== "zone" && shouldShowSlot(slot.id),
+              );
               const chunks = groupSlots(filteredSlots);
               const allGroupKeys = getGroupKeys(recipe.slots);
               const hiddenGroups = allGroupKeys.filter((gk) => !visibleGroups.has(gk));
@@ -429,79 +472,126 @@ export function RecipeInstanceRow({
                       return (
                         <div key={groupKey} className="mb-2.5 pl-2 border-l-2 border-border">
                           <div className="flex items-center justify-between mb-1">
-                            <span className="text-small font-medium text-text-secondary">{recipeGroupLabel(recipe, groupKey, lang)}</span>
-                            {!isGroupRequired(groupKey, recipe.slots) && <button
-                              type="button"
-                              onClick={() => {
-                                const next = { ...editParams };
-                                for (const s of chunk.slots) next[s.id] = "";
-                                setEditParams(next);
-                                setVisibleGroups((prev) => { const n = new Set(prev); n.delete(groupKey); return n; });
-                              }}
-                              className="p-0.5 rounded-sm text-text-tertiary hover:text-error hover:bg-error/5 transition-colors duration-150"
-                              title={t("common.delete")}
-                            >
-                              <Minus size={14} strokeWidth={1.5} />
-                            </button>}
+                            <span className="text-small font-medium text-text-secondary">
+                              {recipeGroupLabel(recipe, groupKey, lang)}
+                            </span>
+                            {!isGroupRequired(groupKey, recipe.slots) && (
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  const next = { ...editParams };
+                                  for (const s of chunk.slots) next[s.id] = "";
+                                  setEditParams(next);
+                                  setVisibleGroups((prev) => {
+                                    const n = new Set(prev);
+                                    n.delete(groupKey);
+                                    return n;
+                                  });
+                                }}
+                                className="p-0.5 rounded-sm text-text-tertiary hover:text-error hover:bg-error/5 transition-colors duration-150"
+                                title={t("common.delete")}
+                              >
+                                <Minus size={14} strokeWidth={1.5} />
+                              </button>
+                            )}
                           </div>
                           {/* Full-width equipment list slots — cross-zone picker */}
-                          {chunk.slots.filter((s) => s.type === "equipment" && s.list).map((slot) => (
-                            <EquipmentListPicker
-                              key={slot.id}
-                              slot={slot}
-                              value={editParams[slot.id] ?? ""}
-                              onChange={(v) => setEditParams({ ...editParams, [slot.id]: v })}
-                              equipments={equipments}
-                              zones={allZones}
-                              recipe={recipe}
-                              lang={lang}
-                              labelClassName={`${FIELD_LABEL_UNTONED} ${isSlotChanged(slot.id) ? "text-primary" : "text-text-secondary"}`}
-                            />
-                          ))}
+                          {chunk.slots
+                            .filter((s) => s.type === "equipment" && s.list)
+                            .map((slot) => (
+                              <EquipmentListPicker
+                                key={slot.id}
+                                slot={slot}
+                                value={editParams[slot.id] ?? ""}
+                                onChange={(v) => setEditParams({ ...editParams, [slot.id]: v })}
+                                equipments={equipments}
+                                zones={allZones}
+                                recipe={recipe}
+                                lang={lang}
+                                labelClassName={`${FIELD_LABEL_UNTONED} ${isSlotChanged(slot.id) ? "text-primary" : "text-text-secondary"}`}
+                              />
+                            ))}
                           {/* Compact grid for non-list slots */}
                           {(() => {
-                            const compactSlots = chunk.slots.filter((s) => !((s.type === "equipment" || s.type === "select") && s.list) && !isSlotHidden(s, editParams, recipe.slots));
+                            const compactSlots = chunk.slots.filter(
+                              (s) =>
+                                !((s.type === "equipment" || s.type === "select") && s.list) &&
+                                !isSlotHidden(s, editParams, recipe.slots),
+                            );
                             if (compactSlots.length === 0) return null;
                             const cols = compactSlots.length <= 3 ? compactSlots.length : 2;
                             return (
-                              <div className={`grid gap-1.5 ${cols === 1 ? "grid-cols-1" : cols === 2 ? "grid-cols-2" : "grid-cols-3"}`}>
+                              <div
+                                className={`grid gap-1.5 ${cols === 1 ? "grid-cols-1" : cols === 2 ? "grid-cols-2" : "grid-cols-3"}`}
+                              >
                                 {compactSlots.map((slot) => (
                                   <div key={slot.id}>
-                                    <label className={`${FIELD_LABEL_UNTONED} ${isSlotChanged(slot.id) ? "text-primary" : "text-text-secondary"}`}>
-                                      {recipeSlotName(recipe, slot, lang)}{slot.required && <span className="text-error ml-0.5">*</span>}
+                                    <label
+                                      className={`${FIELD_LABEL_UNTONED} ${isSlotChanged(slot.id) ? "text-primary" : "text-text-secondary"}`}
+                                    >
+                                      {recipeSlotName(recipe, slot, lang)}
+                                      {slot.required && (
+                                        <span className="text-error ml-0.5">*</span>
+                                      )}
                                     </label>
                                     {slot.type === "equipment" ? (
                                       <select
                                         value={editParams[slot.id] ?? ""}
-                                        onChange={(e) => setEditParams({ ...editParams, [slot.id]: e.target.value })}
+                                        onChange={(e) =>
+                                          setEditParams({
+                                            ...editParams,
+                                            [slot.id]: e.target.value,
+                                          })
+                                        }
                                         className="w-full px-2 py-1.5 text-small border border-border bg-surface rounded-sm text-text"
                                       >
                                         <option value="">{t("common.select")}</option>
-                                        <EquipmentOptions equipments={getEquipmentOptions(slot.id)} zoneChains={zoneChains} />
+                                        <EquipmentOptions
+                                          equipments={getEquipmentOptions(slot.id)}
+                                          zoneChains={zoneChains}
+                                        />
                                       </select>
                                     ) : slot.type === "data-key" ? (
                                       (() => {
-                                        const eqSlot = recipe?.slots.find((s) => s.type === "equipment" && !s.list);
+                                        const eqSlot = recipe?.slots.find(
+                                          (s) => s.type === "equipment" && !s.list,
+                                        );
                                         const eqId = eqSlot ? editParams[eqSlot.id] : undefined;
-                                        const eq = eqId ? equipments.find((e) => e.id === eqId) : undefined;
+                                        const eq = eqId
+                                          ? equipments.find((e) => e.id === eqId)
+                                          : undefined;
                                         const bindings = eq?.dataBindings ?? [];
                                         return (
                                           <select
                                             value={editParams[slot.id] ?? ""}
-                                            onChange={(e) => setEditParams({ ...editParams, [slot.id]: e.target.value })}
+                                            onChange={(e) =>
+                                              setEditParams({
+                                                ...editParams,
+                                                [slot.id]: e.target.value,
+                                              })
+                                            }
                                             className="w-full px-2 py-1.5 text-small border border-border bg-surface rounded-sm text-text"
                                           >
                                             <option value="">{t("common.select")}</option>
                                             {bindings.map((b) => (
-                                              <option key={b.alias} value={b.alias}>{b.alias}</option>
+                                              <option key={b.alias} value={b.alias}>
+                                                {b.alias}
+                                              </option>
                                             ))}
                                           </select>
                                         );
                                       })()
                                     ) : slot.type === "select" ? (
                                       <select
-                                        value={String(editParams[slot.id] ?? slot.defaultValue ?? "")}
-                                        onChange={(e) => setEditParams({ ...editParams, [slot.id]: e.target.value })}
+                                        value={String(
+                                          editParams[slot.id] ?? slot.defaultValue ?? "",
+                                        )}
+                                        onChange={(e) =>
+                                          setEditParams({
+                                            ...editParams,
+                                            [slot.id]: e.target.value,
+                                          })
+                                        }
                                         className="w-full px-3 py-1.5 text-small border border-border bg-surface rounded-sm text-text"
                                       >
                                         {(slot.options ?? []).map((o) => (
@@ -513,7 +603,9 @@ export function RecipeInstanceRow({
                                     ) : slot.type === "time" ? (
                                       <TimeInput
                                         value={editParams[slot.id] ?? ""}
-                                        onChange={(v) => setEditParams({ ...editParams, [slot.id]: v })}
+                                        onChange={(v) =>
+                                          setEditParams({ ...editParams, [slot.id]: v })
+                                        }
                                       />
                                     ) : (
                                       <input
@@ -521,148 +613,211 @@ export function RecipeInstanceRow({
                                         min={slot.constraints?.min}
                                         max={slot.constraints?.max}
                                         value={editParams[slot.id] ?? ""}
-                                        onChange={(e) => setEditParams({ ...editParams, [slot.id]: e.target.value })}
-                                        placeholder={slot.constraints?.max ? `1-${slot.constraints.max}` : ""}
+                                        onChange={(e) =>
+                                          setEditParams({
+                                            ...editParams,
+                                            [slot.id]: e.target.value,
+                                          })
+                                        }
+                                        placeholder={
+                                          slot.constraints?.max ? `1-${slot.constraints.max}` : ""
+                                        }
                                         className="w-full px-2 py-1.5 text-small border border-border bg-surface rounded-sm text-text placeholder:text-text-tertiary"
                                       />
                                     )}
-                                    <p className="text-caption text-text-tertiary mt-0.5">{recipeSlotDescription(recipe, slot, lang)}</p>
+                                    <p className="text-caption text-text-tertiary mt-0.5">
+                                      {recipeSlotDescription(recipe, slot, lang)}
+                                    </p>
                                   </div>
                                 ))}
                               </div>
                             );
                           })()}
                           {/* Full-width multi-select slots (e.g. weekdays) — rendered as chips */}
-                          {chunk.slots.filter((s) => s.type === "select" && s.list && !isSlotHidden(s, editParams, recipe.slots)).map((slot) => (
-                            <div key={slot.id} className="mt-1.5">
-                              <label className={`${FIELD_LABEL_UNTONED} ${isSlotChanged(slot.id) ? "text-primary" : "text-text-secondary"}`}>
-                                {recipeSlotName(recipe, slot, lang)}{slot.required && <span className="text-error ml-0.5">*</span>}
-                              </label>
-                              <MultiSelectChips
-                                slot={slot}
-                                value={editParams[slot.id] ?? ""}
-                                onChange={(v) => setEditParams({ ...editParams, [slot.id]: v })}
-                                recipe={recipe}
-                                lang={lang}
-                              />
-                              <p className="text-caption text-text-tertiary mt-0.5">{recipeSlotDescription(recipe, slot, lang)}</p>
-                            </div>
-                          ))}
+                          {chunk.slots
+                            .filter(
+                              (s) =>
+                                s.type === "select" &&
+                                s.list &&
+                                !isSlotHidden(s, editParams, recipe.slots),
+                            )
+                            .map((slot) => (
+                              <div key={slot.id} className="mt-1.5">
+                                <label
+                                  className={`${FIELD_LABEL_UNTONED} ${isSlotChanged(slot.id) ? "text-primary" : "text-text-secondary"}`}
+                                >
+                                  {recipeSlotName(recipe, slot, lang)}
+                                  {slot.required && <span className="text-error ml-0.5">*</span>}
+                                </label>
+                                <MultiSelectChips
+                                  slot={slot}
+                                  value={editParams[slot.id] ?? ""}
+                                  onChange={(v) => setEditParams({ ...editParams, [slot.id]: v })}
+                                  recipe={recipe}
+                                  lang={lang}
+                                />
+                                <p className="text-caption text-text-tertiary mt-0.5">
+                                  {recipeSlotDescription(recipe, slot, lang)}
+                                </p>
+                              </div>
+                            ))}
                         </div>
                       );
                     }
                     // Ungrouped — render each slot individually (original logic)
-                    return chunk.slots.map((slot) => isSlotHidden(slot, editParams, recipe.slots) ? null : (
-                      <div key={slot.id} className={`mb-2.5 pl-2 border-l-2 transition-colors duration-150 ${isSlotChanged(slot.id) ? "border-primary" : "border-transparent"}`}>
-                        {slot.type === "boolean" ? (
-                          <label className="flex items-center gap-2 px-3 py-1.5 text-small border border-border bg-surface rounded-sm text-text cursor-pointer hover:bg-border-light/30 transition-colors duration-150">
-                            <input
-                              type="checkbox"
-                              checked={editParams[slot.id] === "true"}
-                              onChange={(e) => setEditParams({ ...editParams, [slot.id]: e.target.checked ? "true" : "false" })}
-                            />
-                            {recipeSlotName(recipe, slot, lang)}
-                          </label>
-                        ) : (
-                        <>
-                        <label className={`${FIELD_LABEL_UNTONED} ${isSlotChanged(slot.id) ? "text-primary" : "text-text-secondary"}`}>
-                          {recipeSlotName(recipe, slot, lang)}{slot.required && <span className="text-error ml-0.5">*</span>}
-                        </label>
-                        {slot.type === "equipment" && slot.list ? (
-                          <EquipmentCheckboxList
-                            equipments={getEquipmentOptions(slot.id)}
-                            zoneChains={zoneChains}
-                            value={editParams[slot.id] ?? ""}
-                            onChange={(v) => setEditParams({ ...editParams, [slot.id]: v })}
-                          />
-                        ) : slot.type === "equipment" ? (
-                          slot.constraints?.crossZone === true ||
-                          slot.constraints?.includeDescendants === true ? (
-                            <SingleEquipmentZonePicker
-                              value={editParams[slot.id] ?? ""}
-                              onChange={(v) => setEditParams({ ...editParams, [slot.id]: v })}
-                              equipments={getEquipmentOptions(slot.id)}
-                              zones={allZones}
-                            />
+                    return chunk.slots.map((slot) =>
+                      isSlotHidden(slot, editParams, recipe.slots) ? null : (
+                        <div
+                          key={slot.id}
+                          className={`mb-2.5 pl-2 border-l-2 transition-colors duration-150 ${isSlotChanged(slot.id) ? "border-primary" : "border-transparent"}`}
+                        >
+                          {slot.type === "boolean" ? (
+                            <label className="flex items-center gap-2 px-3 py-1.5 text-small border border-border bg-surface rounded-sm text-text cursor-pointer hover:bg-border-light/30 transition-colors duration-150">
+                              <input
+                                type="checkbox"
+                                checked={editParams[slot.id] === "true"}
+                                onChange={(e) =>
+                                  setEditParams({
+                                    ...editParams,
+                                    [slot.id]: e.target.checked ? "true" : "false",
+                                  })
+                                }
+                              />
+                              {recipeSlotName(recipe, slot, lang)}
+                            </label>
                           ) : (
-                            <select
-                              value={editParams[slot.id] ?? ""}
-                              onChange={(e) => setEditParams({ ...editParams, [slot.id]: e.target.value })}
-                              className="w-full px-3 py-1.5 text-small border border-border bg-surface rounded-sm text-text"
-                            >
-                              <option value="">{t("common.select")}</option>
-                              <EquipmentOptions equipments={getEquipmentOptions(slot.id)} zoneChains={zoneChains} />
-                            </select>
-                          )
-                        ) : slot.type === "data-key" ? (
-                          (() => {
-                            const eqSlot = recipe?.slots.find((s) => s.type === "equipment" && !s.list);
-                            const eqId = eqSlot ? editParams[eqSlot.id] : undefined;
-                            const eq = eqId ? equipments.find((e) => e.id === eqId) : undefined;
-                            const bindings = eq?.dataBindings ?? [];
-                            return (
-                              <select
-                                value={editParams[slot.id] ?? ""}
-                                onChange={(e) => setEditParams({ ...editParams, [slot.id]: e.target.value })}
-                                className="w-full px-3 py-1.5 text-small border border-border bg-surface rounded-sm text-text"
+                            <>
+                              <label
+                                className={`${FIELD_LABEL_UNTONED} ${isSlotChanged(slot.id) ? "text-primary" : "text-text-secondary"}`}
                               >
-                                <option value="">{t("common.select")}</option>
-                                {bindings.map((b) => (
-                                  <option key={b.alias} value={b.alias}>{b.alias}</option>
-                                ))}
-                              </select>
-                            );
-                          })()
-                        ) : slot.type === "duration" ? (
-                          <DurationInput
-                            value={editParams[slot.id] ?? ""}
-                            onChange={(v) => setEditParams({ ...editParams, [slot.id]: v })}
-                            placeholder={slot.defaultValue ? String(durationToMinutes(String(slot.defaultValue))) : undefined}
-                          />
-                        ) : slot.type === "select" ? (
-                          slot.list ? (
-                            <MultiSelectChips
-                              slot={slot}
-                              value={editParams[slot.id] ?? ""}
-                              onChange={(v) => setEditParams({ ...editParams, [slot.id]: v })}
-                              recipe={recipe}
-                              lang={lang}
-                            />
-                          ) : (
-                          <select
-                            value={String(editParams[slot.id] ?? slot.defaultValue ?? "")}
-                            onChange={(e) => setEditParams({ ...editParams, [slot.id]: e.target.value })}
-                            className="w-full px-3 py-1.5 text-small border border-border bg-surface rounded-sm text-text"
-                          >
-                            {(slot.options ?? []).map((o) => (
-                              <option key={o.value} value={o.value}>
-                                {recipeSlotOptionLabel(recipe, slot, o.value, lang)}
-                              </option>
-                            ))}
-                          </select>
-                          )
-                        ) : slot.type === "time" ? (
-                          <TimeInput
-                            value={editParams[slot.id] ?? ""}
-                            onChange={(v) => setEditParams({ ...editParams, [slot.id]: v })}
-                            placeholder={slot.defaultValue ? String(slot.defaultValue) : undefined}
-                          />
-                        ) : (
-                          <input
-                            type={slot.type === "number" ? "number" : "text"}
-                            min={slot.constraints?.min}
-                            max={slot.constraints?.max}
-                            value={editParams[slot.id] ?? ""}
-                            onChange={(e) => setEditParams({ ...editParams, [slot.id]: e.target.value })}
-                            placeholder={slot.defaultValue ? String(slot.defaultValue) : recipeSlotDescription(recipe, slot, lang)}
-                            className="w-full px-3 py-1.5 text-small border border-border bg-surface rounded-sm text-text placeholder:text-text-tertiary"
-                          />
-                        )}
-                        <p className="text-caption text-text-tertiary mt-0.5">{recipeSlotDescription(recipe, slot, lang)}</p>
-                        </>
-                        )}
-                      </div>
-                    ));
+                                {recipeSlotName(recipe, slot, lang)}
+                                {slot.required && <span className="text-error ml-0.5">*</span>}
+                              </label>
+                              {slot.type === "equipment" && slot.list ? (
+                                <EquipmentCheckboxList
+                                  equipments={getEquipmentOptions(slot.id)}
+                                  zoneChains={zoneChains}
+                                  value={editParams[slot.id] ?? ""}
+                                  onChange={(v) => setEditParams({ ...editParams, [slot.id]: v })}
+                                />
+                              ) : slot.type === "equipment" ? (
+                                slot.constraints?.crossZone === true ||
+                                slot.constraints?.includeDescendants === true ? (
+                                  <SingleEquipmentZonePicker
+                                    value={editParams[slot.id] ?? ""}
+                                    onChange={(v) => setEditParams({ ...editParams, [slot.id]: v })}
+                                    equipments={getEquipmentOptions(slot.id)}
+                                    zones={allZones}
+                                  />
+                                ) : (
+                                  <select
+                                    value={editParams[slot.id] ?? ""}
+                                    onChange={(e) =>
+                                      setEditParams({ ...editParams, [slot.id]: e.target.value })
+                                    }
+                                    className="w-full px-3 py-1.5 text-small border border-border bg-surface rounded-sm text-text"
+                                  >
+                                    <option value="">{t("common.select")}</option>
+                                    <EquipmentOptions
+                                      equipments={getEquipmentOptions(slot.id)}
+                                      zoneChains={zoneChains}
+                                    />
+                                  </select>
+                                )
+                              ) : slot.type === "data-key" ? (
+                                (() => {
+                                  const eqSlot = recipe?.slots.find(
+                                    (s) => s.type === "equipment" && !s.list,
+                                  );
+                                  const eqId = eqSlot ? editParams[eqSlot.id] : undefined;
+                                  const eq = eqId
+                                    ? equipments.find((e) => e.id === eqId)
+                                    : undefined;
+                                  const bindings = eq?.dataBindings ?? [];
+                                  return (
+                                    <select
+                                      value={editParams[slot.id] ?? ""}
+                                      onChange={(e) =>
+                                        setEditParams({ ...editParams, [slot.id]: e.target.value })
+                                      }
+                                      className="w-full px-3 py-1.5 text-small border border-border bg-surface rounded-sm text-text"
+                                    >
+                                      <option value="">{t("common.select")}</option>
+                                      {bindings.map((b) => (
+                                        <option key={b.alias} value={b.alias}>
+                                          {b.alias}
+                                        </option>
+                                      ))}
+                                    </select>
+                                  );
+                                })()
+                              ) : slot.type === "duration" ? (
+                                <DurationInput
+                                  value={editParams[slot.id] ?? ""}
+                                  onChange={(v) => setEditParams({ ...editParams, [slot.id]: v })}
+                                  placeholder={
+                                    slot.defaultValue
+                                      ? String(durationToMinutes(String(slot.defaultValue)))
+                                      : undefined
+                                  }
+                                />
+                              ) : slot.type === "select" ? (
+                                slot.list ? (
+                                  <MultiSelectChips
+                                    slot={slot}
+                                    value={editParams[slot.id] ?? ""}
+                                    onChange={(v) => setEditParams({ ...editParams, [slot.id]: v })}
+                                    recipe={recipe}
+                                    lang={lang}
+                                  />
+                                ) : (
+                                  <select
+                                    value={String(editParams[slot.id] ?? slot.defaultValue ?? "")}
+                                    onChange={(e) =>
+                                      setEditParams({ ...editParams, [slot.id]: e.target.value })
+                                    }
+                                    className="w-full px-3 py-1.5 text-small border border-border bg-surface rounded-sm text-text"
+                                  >
+                                    {(slot.options ?? []).map((o) => (
+                                      <option key={o.value} value={o.value}>
+                                        {recipeSlotOptionLabel(recipe, slot, o.value, lang)}
+                                      </option>
+                                    ))}
+                                  </select>
+                                )
+                              ) : slot.type === "time" ? (
+                                <TimeInput
+                                  value={editParams[slot.id] ?? ""}
+                                  onChange={(v) => setEditParams({ ...editParams, [slot.id]: v })}
+                                  placeholder={
+                                    slot.defaultValue ? String(slot.defaultValue) : undefined
+                                  }
+                                />
+                              ) : (
+                                <input
+                                  type={slot.type === "number" ? "number" : "text"}
+                                  min={slot.constraints?.min}
+                                  max={slot.constraints?.max}
+                                  value={editParams[slot.id] ?? ""}
+                                  onChange={(e) =>
+                                    setEditParams({ ...editParams, [slot.id]: e.target.value })
+                                  }
+                                  placeholder={
+                                    slot.defaultValue
+                                      ? String(slot.defaultValue)
+                                      : recipeSlotDescription(recipe, slot, lang)
+                                  }
+                                  className="w-full px-3 py-1.5 text-small border border-border bg-surface rounded-sm text-text placeholder:text-text-tertiary"
+                                />
+                              )}
+                              <p className="text-caption text-text-tertiary mt-0.5">
+                                {recipeSlotDescription(recipe, slot, lang)}
+                              </p>
+                            </>
+                          )}
+                        </div>
+                      ),
+                    );
                   })}
                   {/* Add group button */}
                   {hiddenGroups.length > 0 && (
@@ -685,9 +840,7 @@ export function RecipeInstanceRow({
                 </>
               );
             })()}
-            {editError && (
-              <p className="text-caption text-error mb-2">{editError}</p>
-            )}
+            {editError && <p className="text-caption text-error mb-2">{editError}</p>}
             <div className="flex gap-2">
               <button
                 onClick={handleSave}
@@ -696,7 +849,11 @@ export function RecipeInstanceRow({
                   hasChanges ? "bg-primary-fill hover:bg-primary-fill-hover" : "bg-primary-fill"
                 }`}
               >
-                {saving ? <Loader2 size={12} className="animate-spin" /> : <Check size={12} strokeWidth={1.5} />}
+                {saving ? (
+                  <Loader2 size={12} className="animate-spin" />
+                ) : (
+                  <Check size={12} strokeWidth={1.5} />
+                )}
                 {t("common.save")}
               </button>
               <button
