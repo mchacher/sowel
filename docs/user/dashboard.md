@@ -22,6 +22,14 @@ Displays a single equipment with its current state and quick controls.
 
 On/off equipments (lights, switches, plugs, water heaters, water valves, heaters, pool pumps, media players, single-action gates) toggle when you click **anywhere on the tile**, not just the button under the icon. Tiles with several controls -- shutters, thermostats, pool covers, VMC -- keep their own buttons. In edit mode the tile stops acting, so you can drag and rename it safely.
 
+On a phone, a small sign in the top-right corner of each tile tells you what a tap does before you tap:
+
+- **power symbol**: the tap acts at once -- it switches the equipment on or off, or sends a gate its single command;
+- **›**: the tap opens a panel with the tile's controls (dimmer, shutter, thermostat, charger...) or its details (sensors, weather);
+- **shield**: the tap asks you to slide to confirm before anything moves (a gate with **Confirmation before action** turned on).
+
+A tile with no sign does nothing on a tap, and does not press in under your finger: meters, solar panels, appliances, cameras. A disabled equipment is never switched from its tile. The thermostat and pool heat pump tiles show the temperature and the setpoint side by side (« 21.0° → 20.0° »), or the temperature and **Off** while the equipment is off. A car whose last report is old shows its age at the end of the state line.
+
 A tile that shows a **power draw** in watts -- a metering plug, a water heater, a solar panel, an energy meter -- only shows it while the reading is recent. Past that, the figure gives way to a dash and the tile says how old the last reading is, instead of presenting a value the house has no reason to doubt. The budget follows how often the source actually speaks: two minutes for a meter that reports continuously, ten for everything else, because several integrations poll on a five-minute cycle and a healthy appliance must not flicker on every poll. Readings that share a device age together -- a solar tile drops its current and voltage along with the power, and the live measures on an equipment page do the same -- because a silence that hid one figure hid them all. A panel that simply wound down for the night still reads **Standby**, not outdated: it stopped producing, it did not stop being heard from. This is the same rule as the consumption breakdown on the Energy page.
 
 The **weather forecast** tile shows tomorrow, and says how much the models agree on it: a badge at the foot of the tile (green reliable, orange fairly reliable, red unreliable). Click or tap the tile, on a computer as well as on a phone, to open a panel showing the five forecast days side by side, each with its condition, maximum, minimum, wind and a reliability badge, plus the model the forecast came from. It is the same badge as on the equipment page.

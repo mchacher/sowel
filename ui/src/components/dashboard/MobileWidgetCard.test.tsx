@@ -247,3 +247,108 @@ describe("MobileWidgetCard — stale power readings (#839)", () => {
     expect(screen.getByText(/Débranché|Unplugged/)).toBeTruthy();
   });
 });
+
+// Spec 196 (pr8-geste) — the tile says what a tap does, and a tile that does
+// nothing is not a button.
+describe("MobileWidgetCard — tap gesture (spec 196)", () => {
+  const meter = () => makeEnergyMeter();
+
+  it("renders a plain block, no glyph, when a tap does nothing", () => {
+    const { container } = render(<MobileWidgetCard widget={widget} equipment={meter()} />);
+    expect(container.querySelector("button")).toBeNull();
+    expect(container.querySelector(".active\\:scale-\\[0\\.98\\]")).toBeNull();
+    expect(container.querySelector("[data-tap-glyph]")).toBeNull();
+  });
+
+  it.each([
+    ["toggle", "power", "Main meter, toggle"],
+    ["now", "power", "Main meter, operate"],
+    ["sheet", "chevron", "Main meter, open details"],
+    ["confirm", "shield", "Main meter, operate with confirmation"],
+  ] as const)("%s → %s glyph and a spoken gesture", (kind, glyph, label) => {
+    const { container } = render(
+      <MobileWidgetCard widget={widget} equipment={meter()} onClick={() => {}} tapKind={kind} />,
+    );
+    expect(container.querySelector("[data-tap-glyph]")?.getAttribute("data-tap-glyph")).toBe(glyph);
+    expect(screen.getByRole("button").getAttribute("aria-label")).toBe(label);
+  });
+
+  it("shows no glyph in edit mode", () => {
+    const { container } = render(
+      <MobileWidgetCard widget={widget} equipment={meter()} tapKind="sheet" editMode />,
+    );
+    expect(container.querySelector("[data-tap-glyph]")).toBeNull();
+  });
+});
+
+describe("MobileWidgetCard — thermostat setpoint (spec 196)", () => {
+  const binding = (alias: string, category: string, value: unknown, type = "number") => ({
+    id: `db-${alias}`,
+    alias,
+    category,
+    value,
+    type,
+    lastUpdated: agoIso(30),
+  });
+  const thermostat = (bindings: unknown[]) =>
+    makeEquipment({
+      id: "th-1",
+      name: "PAC",
+      type: "thermostat",
+      dataBindings: bindings as EquipmentWithDetails["dataBindings"],
+    });
+  const render1 = (eq: EquipmentWithDetails) =>
+    render(<MobileWidgetCard widget={{ ...widget, equipmentId: eq.id }} equipment={eq} />);
+
+  it("shows temperature → setpoint", () => {
+    render1(
+      thermostat([
+        binding("temperature", "temperature", 21),
+        binding("setpoint", "setpoint", 20),
+        binding("state", "light_state", true, "boolean"),
+      ]),
+    );
+    expect(screen.getByText("21.0° → 20.0°")).toBeTruthy();
+  });
+
+  it("says off instead of the setpoint when the thermostat is off", () => {
+    render1(
+      thermostat([
+        binding("temperature", "temperature", 21),
+        binding("setpoint", "setpoint", 20),
+        binding("state", "light_state", false, "boolean"),
+      ]),
+    );
+    expect(screen.getByText("21.0° · Off")).toBeTruthy();
+  });
+
+  it("shows the temperature alone without a setpoint", () => {
+    render1(thermostat([binding("temperature", "temperature", 20.5)]));
+    expect(screen.getByText("20.5°")).toBeTruthy();
+  });
+});
+
+describe("MobileWidgetCard — vehicle report age (spec 196)", () => {
+  it("puts a stale report's age on the state line, not in the corner", () => {
+    const car = makeEquipment({
+      id: "ev-2",
+      name: "Megane",
+      type: "electric_vehicle",
+      dataBindings: [
+        { alias: "battery_level", category: "ev_battery_level", value: 39, lastUpdated: agoIso(7200) },
+        { alias: "range", category: "ev_range", value: 114, lastUpdated: agoIso(7200) },
+        {
+          alias: "charging_state",
+          category: "ev_charging_state",
+          value: "unplugged",
+          lastUpdated: agoIso(7200),
+        },
+      ] as unknown as EquipmentWithDetails["dataBindings"],
+    });
+    const { container } = render(
+      <MobileWidgetCard widget={{ ...widget, equipmentId: "ev-2" }} equipment={car} />,
+    );
+    expect(screen.getByText(/114 km · (Débranché|Unplugged) · 2 h/)).toBeTruthy();
+    expect(container.querySelector(".absolute")).toBeNull();
+  });
+});

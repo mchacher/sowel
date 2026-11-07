@@ -21,6 +21,8 @@ import { WidgetCard } from "./WidgetCard";
 import { ConfirmActionSheet } from "./ConfirmActionSheet";
 import { useCardPrimaryAction } from "./card-primary-action";
 import { tileNeedsConfirm } from "./recipe-tile-confirm";
+import { TapGlyph } from "./TapGlyph";
+import type { MobileTapKind } from "./mobile-click-action";
 import { CountdownTimer, ModeCyclePill } from "../recipes/recipe-form-fields";
 import { cycleOptionLabel, resolveCycle } from "../recipes/recipe-cycle";
 import { recipeName } from "../../lib/recipe-i18n";
@@ -102,6 +104,16 @@ export function RecipeTile({
 
   const tile = recipe?.tile;
   const title = widget.label ?? (recipe ? recipeName(recipe, lang) : t("dashboard.recipeTile.gone"));
+
+  // Spec 196 — the corner glyph has to tell a guarded tile before the tap, so
+  // this one answer is subscribed to. A boolean selector: the tile re-renders
+  // when the guard flips, not on every device reading.
+  const guardedTile = useEquipments(
+    (st) =>
+      !!isMobile &&
+      !!tile &&
+      tileNeedsConfirm(tile, instance?.params, (id) => st.equipments.find((e) => e.id === id)),
+  );
 
   // A package can stop declaring a tile from one version to the next, and a
   // widget must survive that: it says so and keeps its place. Deleting the
@@ -234,7 +246,13 @@ export function RecipeTile({
     // card would come straight back out as a tap on the card.
     return (
       <>
-        <MobileShell title={title} editMode={editMode} className={dim} onClick={primary}>
+        <MobileShell
+          title={title}
+          editMode={editMode}
+          className={dim}
+          onClick={primary}
+          tapKind={guardedTile ? "confirm" : "now"}
+        >
           <div className="flex-1 flex items-center justify-center min-h-0 gap-1.5">
             {icon}
             {countdown}
@@ -265,15 +283,19 @@ function MobileShell({
   editMode,
   className = "",
   onClick,
+  tapKind,
   children,
 }: {
   title: string;
   editMode?: boolean;
   className?: string;
   onClick?: () => void;
+  /** What `onClick` does, drawn in the corner like the equipment cards (spec 196). */
+  tapKind?: MobileTapKind;
   children: React.ReactNode;
 }) {
   const cardAction = useCardPrimaryAction(onClick);
+  const gesture = onClick && !editMode ? tapKind : undefined;
   return (
     <div
       className={`card relative p-2 flex flex-col items-center h-[120px] overflow-hidden w-full gap-1 ${
@@ -281,9 +303,10 @@ function MobileShell({
       } ${className}`}
       {...cardAction}
     >
+      {gesture && <TapGlyph kind={gesture} />}
       <span
         className={`text-caption font-semibold text-text truncate w-full text-center ${
-          editMode ? "pl-5 pr-8" : ""
+          editMode ? "pl-5 pr-8" : gesture ? "px-4" : ""
         }`}
       >
         {title}
