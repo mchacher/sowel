@@ -5,6 +5,7 @@ import type { EquipmentWithDetails } from "../../types";
 import { useSliderOverride } from "../../hooks/useSliderOverride";
 import { findOrderByCategory, findMainOnOffOrder } from "./bindingUtils";
 import { brightnessPercent, brightnessScale } from "../../lib/brightness";
+import { formatPercent } from "../../lib/format";
 
 interface LightControlProps {
   equipment: EquipmentWithDetails;
@@ -95,8 +96,8 @@ export function LightControl({ equipment, onExecuteOrder, compact, divider = tru
               className="w-[48px] sm:w-[80px] slider-active"
               style={{ "--fill-pct": `${pct}%` } as React.CSSProperties}
             />
-            <span className="text-micro text-text-tertiary w-7 text-right tabular-nums">
-              {pct}%
+            <span className="text-micro text-text-tertiary w-8 text-right tabular-nums whitespace-nowrap">
+              {formatPercent(pct)}
             </span>
           </div>
         )}
@@ -158,8 +159,8 @@ export function LightControl({ equipment, onExecuteOrder, compact, divider = tru
             className="flex-1 slider-active"
             style={{ "--fill-pct": `${pct}%` } as React.CSSProperties}
           />
-          <span className="text-caption text-text-secondary w-10 text-right">
-            {pct}%
+          <span className="text-caption text-text-secondary w-10 text-right tabular-nums whitespace-nowrap">
+            {formatPercent(pct)}
           </span>
         </div>
       )}

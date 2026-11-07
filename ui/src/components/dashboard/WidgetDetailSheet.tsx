@@ -667,7 +667,7 @@ function ZoneLightsDetail({
             className="flex-1 h-12 slider-active"
           />
           <span className="text-title font-semibold text-text tabular-nums min-w-[40px] text-right">
-            {brightnessPct}%
+            {formatPercent(brightnessPct)}
           </span>
         </div>
       )}
@@ -1077,7 +1077,7 @@ function LightDetailContent({
             className="flex-1 h-12 slider-active"
           />
           <span className="text-title font-semibold text-text tabular-nums min-w-[40px] text-right">
-            {brightnessPct}%
+            {formatPercent(brightnessPct)}
           </span>
         </div>
       )}

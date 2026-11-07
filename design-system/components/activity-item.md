@@ -1,7 +1,5 @@
 # Activity item (`activity__item`)
 
-> **Superseded in part by [tokens.md](../tokens.md) (spec 196).** Labels are sentence case and numbers Inter with tabular figures (§2), radii are 6 / 10 / 16 px (§4), and a card or panel has no border (§5.1). Where the CSS below disagrees, tokens.md wins.
-
 > A single entry in the Activity feed (right column on desktop, scrollable section on mobile). Each entry is a timestamped, colored event with a short description.
 
 ---
@@ -44,7 +42,7 @@ Items are visually grouped by **time window** using a `.activity__group` separat
 <div class="activity__item">…</div>
 ```
 
-The group label is small uppercase text. It compresses the time noise (many items at the same minute) and lets the eye scan by epoch.
+The group label is a small sentence-case caption. It compresses the time noise (many items at the same minute) and lets the eye scan by epoch.
 
 ---
 
@@ -95,10 +93,8 @@ The group label is small uppercase text. It compresses the time noise (many item
 
 ```css
 .activity__group {
-  font-size: 0.62rem;
+  font-size: var(--fs-caption);
   font-weight: 600;
-  text-transform: uppercase;
-  letter-spacing: 0.14em;
   color: var(--n-400);
   padding: 0.5rem 1.1rem 0.25rem;
 }
@@ -118,7 +114,7 @@ The group label is small uppercase text. It compresses the time noise (many item
 .activity__item-icon {
   width: 24px;
   height: 24px;
-  border-radius: var(--r-xs);
+  border-radius: var(--r-sm);
   background: var(--n-50);
   color: var(--n-500);
   display: flex;
@@ -144,7 +140,7 @@ The group label is small uppercase text. It compresses the time noise (many item
 }
 
 .activity__item-text {
-  font-size: 0.78rem;
+  font-size: var(--fs-caption);
   color: var(--n-600);
   line-height: 1.45;
 }
@@ -154,12 +150,11 @@ The group label is small uppercase text. It compresses the time noise (many item
 }
 .activity__item-text .by {
   color: var(--n-400);
-  font-size: 0.72rem;
+  font-size: var(--fs-caption);
 }
 
 .activity__item-time {
-  font-family: var(--font-mono);
-  font-size: 0.72rem;
+  font-size: var(--fs-caption);
   color: var(--n-400);
   font-feature-settings: "tnum" 1;
   flex-shrink: 0;
@@ -193,8 +188,7 @@ Identical structure, slightly tighter:
   border-top: 1px solid var(--line);
 }
 .mob__act-time {
-  font-family: var(--font-mono);
-  font-size: 0.68rem;
+  font-size: var(--fs-micro);
   min-width: 38px;
   color: var(--n-400);
   padding-top: 1px;
@@ -218,7 +212,7 @@ Identical structure, slightly tighter:
   background: var(--shutter-500);
 }
 .mob__act-text {
-  font-size: 0.78rem;
+  font-size: var(--fs-caption);
   color: var(--n-700);
   line-height: 1.4;
 }

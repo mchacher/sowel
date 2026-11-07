@@ -1,7 +1,5 @@
 # Panel
 
-> **Superseded in part by [tokens.md](../tokens.md) (spec 196).** Labels are sentence case and numbers Inter with tabular figures (§2), radii are 6 / 10 / 16 px (§4), and a card or panel has no border (§5.1). Where the CSS below disagrees, tokens.md wins.
-
 > The top-level container of a section in the zone view. Three panels exist on a zone page: **Équipements**, **Comportements**, **Activité**.
 
 ---
@@ -25,15 +23,15 @@
 
 ## Anatomy parts
 
-| Part                | Class                                                      | Required                       |
-| ------------------- | ---------------------------------------------------------- | ------------------------------ |
-| Wrapper             | `.panel`                                                   | yes                            |
-| Header              | `.panel__head`                                             | yes                            |
-| Title               | `.panel__title`                                            | yes (uppercase, primary color) |
-| Sub-text            | `.panel__sub`                                              | optional ("dans cette zone")   |
-| Action              | `.panel__add`                                              | optional (`+` icon to add)     |
-| Sub-category header | `.cat-head`                                                | one per group                  |
-| Body rows           | one of `.eq` / `.mode-row` / `.recipe` / `.activity__item` | n+                             |
+| Part                | Class                                                      | Required                     |
+| ------------------- | ---------------------------------------------------------- | ---------------------------- |
+| Wrapper             | `.panel`                                                   | yes                          |
+| Header              | `.panel__head`                                             | yes                          |
+| Title               | `.panel__title`                                            | yes (sentence case, 16 px)   |
+| Sub-text            | `.panel__sub`                                              | optional ("dans cette zone") |
+| Action              | `.panel__add`                                              | optional (`+` icon to add)   |
+| Sub-category header | `.cat-head`                                                | one per group                |
+| Body rows           | one of `.eq` / `.mode-row` / `.recipe` / `.activity__item` | n+                           |
 
 ---
 
@@ -111,15 +109,13 @@ The **panel\_\_head** has one optional element: a `+` button (`.panel__add`) for
 }
 
 .panel__title {
-  font-size: 0.72rem;
-  font-weight: 700;
-  color: var(--p-500);
-  text-transform: uppercase;
-  letter-spacing: 0.12em;
+  font-size: var(--fs-lead);
+  font-weight: 600;
+  color: var(--n-700);
 }
 
 .panel__sub {
-  font-size: 0.72rem;
+  font-size: var(--fs-caption);
   font-weight: 500;
   margin-left: 0.35rem;
   color: color-mix(in srgb, var(--p-500) 65%, transparent);
@@ -130,7 +126,7 @@ The **panel\_\_head** has one optional element: a `+` button (`.panel__add`) for
   width: 26px;
   height: 26px;
   background: transparent;
-  border: 1px solid var(--p-100);
+  border: 1px solid var(--line-2);
   border-radius: var(--r-sm);
   color: var(--p-500);
   cursor: pointer;

@@ -1,7 +1,5 @@
 # Pill atom (`strip__pill`)
 
-> **Superseded in part by [tokens.md](../tokens.md) (spec 196).** Labels are sentence case and numbers Inter with tabular figures (§2), radii are 6 / 10 / 16 px (§4), and a card or panel has no border (§5.1). Where the CSS below disagrees, tokens.md wins.
-
 > Content-width chip with an icon and a value. The building block of the zone aggregation strip and a frequent pattern across the topbar.
 
 ---
@@ -13,7 +11,7 @@
 │ [🌡] 21,4 °C   [▭]  │   icon + value + optional sparkline
 └─────────────────────┘
   padding .35 .65 rem
-  font-size .82 rem
+  font-size 13 px (--fs-small)
 ```
 
 ---
@@ -36,7 +34,7 @@ The full state set is documented in the parent [strip.md](strip.md).
 | Slot                 | Class                | Content                                |
 | -------------------- | -------------------- | -------------------------------------- |
 | Icon (required)      | `.strip__pill-icon`  | 14×14 SVG, color via `--c` custom prop |
-| Value (required)     | `.strip__pill-val`   | mono number + optional `.u` unit       |
+| Value (required)     | `.strip__pill-val`   | tabular number + optional `.u` unit    |
 | Meta (optional)      | `.strip__pill-meta`  | secondary text ("39 min")              |
 | Sparkline (optional) | `.strip__pill-spark` | 48×16 mini chart inline                |
 

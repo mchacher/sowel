@@ -1,7 +1,5 @@
 # Equipment row (`eq-row`)
 
-> **Superseded in part by [tokens.md](../tokens.md) (spec 196).** Labels are sentence case and numbers Inter with tabular figures (§2), radii are 6 / 10 / 16 px (§4), and a card or panel has no border (§5.1). Where the CSS below disagrees, tokens.md wins.
-
 > A row inside the Équipements panel that displays a single equipment (light, shutter, sensor, thermostat…). The pattern is shared with `mode-row` and `recipe-row` to maintain visual alignment across panels.
 
 ---
@@ -54,12 +52,12 @@ The full list of 21 equipment types maps to one of these visual shapes — see [
 
 ### Icon-level (the "live" cue)
 
-| State           | Class                                                  | Effect                                                                             |
-| --------------- | ------------------------------------------------------ | ---------------------------------------------------------------------------------- |
-| Off             | base `--icon-bg` (light tint) + `--icon-fg` (mid tint) | calm, neutral                                                                      |
-| **Light on**    | `.eq__icon--light-on`                                  | bg switches to `var(--a-500)` (yellow), fg becomes white, **animated glow** ripple |
-| Shutter closed  | (data-driven slider position)                          | slider knob navy, chip-state shows "Fermé"                                         |
-| Sensor detected | `.chip-state--detected`                                | green tinted "Détecté Xs"                                                          |
+| State           | Class                                                  | Effect                                                                        |
+| --------------- | ------------------------------------------------------ | ----------------------------------------------------------------------------- |
+| Off             | base `--icon-bg` (light tint) + `--icon-fg` (mid tint) | calm, neutral                                                                 |
+| **Light on**    | `.eq__icon--light-on`                                  | bg switches to `var(--a-500)` (amber), fg becomes `--a-on`, **animated glow** |
+| Shutter closed  | (data-driven slider position)                          | slider knob navy, chip-state shows "Fermé"                                    |
+| Sensor detected | `.chip-state--detected`                                | green tinted "Détecté Xs"                                                     |
 
 The light-on state is the **single accent moment** of the entire UI. Reserved exclusively to "a light is on right now."
 
@@ -100,7 +98,7 @@ Empty slots collapse to 0 px due to `grid-template-columns: 32px 1fr auto auto a
     <div class="eq__slider-fill" style="width:4%"></div>
     <div class="eq__slider-knob" style="left:4%"></div>
   </div>
-  <div class="eq__value" style="color:var(--a-600)">4 %</div>
+  <div class="eq__value" style="color:var(--a-ink)">4 %</div>
   <button class="power-btn power-btn--on" aria-label="Éteindre">
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
       <path d="M18.36 6.64a9 9 0 1 1-12.73 0" />
@@ -191,7 +189,7 @@ Empty slots collapse to 0 px due to `grid-template-columns: 32px 1fr auto auto a
 
 .eq__name {
   font-weight: 500;
-  font-size: 0.88rem;
+  font-size: var(--fs-body);
   color: var(--n-800);
 }
 ```
@@ -200,14 +198,14 @@ Empty slots collapse to 0 px due to `grid-template-columns: 32px 1fr auto auto a
 
 ## Accessibility
 
-| Concern            | Implementation                                                                                                                                                                                     |
-| ------------------ | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Row clickability   | The row is `cursor: pointer` but should be wrapped in a `<button>` or have `role="button"` and keyboard handler when used to open detail. The mock uses `<div>` for visual demo.                   |
-| Power button label | `aria-label="Allumer Appliques x 2"` (production pattern). Never just "Allumer" alone.                                                                                                             |
-| Slider             | Production uses `<input type="range">` underneath the visual slider for keyboard control. The mock shows the visual only.                                                                          |
-| Color contrast     | `--n-800` text on `--n-0` bg: AAA. `--a-600` (`#D4A41C`) on white: **WCAG AA** for normal text (4.6:1). Use `--n-800` for primary text wherever possible.                                          |
-| Touch target       | `.power-btn` is 32 × 26 px. Below Apple HIG 44 × 44. **Action: production should keep the visual 32×26 but add `padding` to expand the clickable area** (e.g. negative margins + larger hit zone). |
-| Reduced motion     | `.eq__icon--light-on` glow animation is disabled by `prefers-reduced-motion: reduce` (see [motion.md](../motion.md)).                                                                              |
+| Concern            | Implementation                                                                                                                                                                                      |
+| ------------------ | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Row clickability   | The row is `cursor: pointer` but should be wrapped in a `<button>` or have `role="button"` and keyboard handler when used to open detail. The mock uses `<div>` for visual demo.                    |
+| Power button label | `aria-label="Allumer Appliques x 2"` (production pattern). Never just "Allumer" alone.                                                                                                              |
+| Slider             | Production uses `<input type="range">` underneath the visual slider for keyboard control. The mock shows the visual only.                                                                           |
+| Color contrast     | `--n-800` text on `--n-0` bg: AAA. `--a-ink` (`#8A6100`) on white: 5.54:1 for the value of something on; `--a-600` is not a text colour (2.30:1). Use `--n-800` for primary text wherever possible. |
+| Touch target       | `.power-btn` is 32 × 26 px. Below Apple HIG 44 × 44. **Action: production should keep the visual 32×26 but add `padding` to expand the clickable area** (e.g. negative margins + larger hit zone).  |
+| Reduced motion     | `.eq__icon--light-on` glow animation is disabled by `prefers-reduced-motion: reduce` (see [motion.md](../motion.md)).                                                                               |
 
 ---
 

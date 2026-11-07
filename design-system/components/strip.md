@@ -1,7 +1,5 @@
 # Zone aggregation strip (`strip`)
 
-> **Superseded in part by [tokens.md](../tokens.md) (spec 196).** Labels are sentence case and numbers Inter with tabular figures (§2), radii are 6 / 10 / 16 px (§4), and a card or panel has no border (§5.1). Where the CSS below disagrees, tokens.md wins.
-
 > Single-line, content-width pill row that surfaces all aggregated state of a zone. Modeled on production's `ZoneAggregationPills` component, with our group-divider refinement.
 
 ---
@@ -86,8 +84,8 @@ A pill renders **only if its sensor or data exists** for the zone. A bathroom wi
   align-items: center;
   flex-wrap: nowrap;
   background: var(--n-0);
-  border: 1px solid var(--line);
   border-radius: var(--r-md);
+  box-shadow: var(--sh-card); /* a card: no border */
   padding: 0.35rem 0.4rem;
   margin-bottom: 0.65rem;
   overflow-x: auto;
@@ -99,7 +97,7 @@ A pill renders **only if its sensor or data exists** for the zone. A bathroom wi
 }
 .strip::-webkit-scrollbar-thumb {
   background: var(--n-200);
-  border-radius: 3px;
+  border-radius: var(--r-full);
 }
 
 .strip__pill {
@@ -107,7 +105,7 @@ A pill renders **only if its sensor or data exists** for the zone. A bathroom wi
   align-items: center;
   gap: 0.45rem;
   padding: 0.35rem 0.65rem;
-  font-size: 0.82rem;
+  font-size: var(--fs-small);
   font-weight: 500;
   color: var(--n-700);
   border-radius: var(--r-sm);
@@ -126,10 +124,8 @@ A pill renders **only if its sensor or data exists** for the zone. A bathroom wi
   flex: none;
 }
 .strip__pill-val {
-  font-family: var(--font-mono);
-  font-weight: 600;
+  font-weight: 600; /* Inter, tabular figures from .strip__pill */
   color: var(--n-800);
-  letter-spacing: -0.005em;
 }
 .strip__pill-val .u {
   font-size: 0.78em;
@@ -138,7 +134,7 @@ A pill renders **only if its sensor or data exists** for the zone. A bathroom wi
   font-weight: 500;
 }
 .strip__pill-meta {
-  font-size: 0.76rem;
+  font-size: var(--fs-caption);
   color: var(--n-500);
 }
 .strip__pill-spark {
@@ -193,8 +189,7 @@ A pill renders **only if its sensor or data exists** for the zone. A bathroom wi
 }
 .strip__pill--alert .strip__pill-val {
   color: var(--red-500);
-  font-family: var(--font-body);
-  font-weight: 700;
+  font-weight: 600;
 }
 .strip__pill--alert::before {
   content: "";
@@ -219,8 +214,8 @@ On mobile the strip becomes a horizontal scroll container (already a scroll cont
   display: flex;
   align-items: center;
   background: var(--n-0);
-  border: 1px solid var(--line);
   border-radius: var(--r-md);
+  box-shadow: var(--sh-card);
   padding: 0.3rem 0.35rem;
   margin-bottom: 0.85rem;
   overflow-x: auto;

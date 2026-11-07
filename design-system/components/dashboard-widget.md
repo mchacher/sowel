@@ -1,7 +1,5 @@
 # Dashboard widget (`dashboard-widget`)
 
-> **Superseded in part by [tokens.md](../tokens.md) (spec 196).** Labels are sentence case and numbers Inter with tabular figures (§2), radii are 6 / 10 / 16 px (§4), and a card or panel has no border (§5.1). Where the CSS below disagrees, tokens.md wins.
-
 > Large card used on the Dashboard page. One widget = one equipment. Different layout from `eq-row` because the Dashboard is a glance-first surface, not a list.
 
 ---
@@ -166,7 +164,7 @@ When the dashboard is in edit mode, each widget gets four small icon controls at
 }
 
 .widget__title {
-  font-size: 14px;
+  font-size: var(--fs-body);
   font-weight: 500;
   color: var(--n-800);
   text-align: center;

@@ -58,7 +58,10 @@ export function ElectricVehicleControl({ equipment, onExecuteOrder }: ElectricVe
     value: unknown,
     okText: string,
   ): Promise<boolean> => {
-    if (busy || !usable) return false;
+    // A charge-limit tap queued by the stepper replays while the first order
+    // is in flight: its own key must not block it. Before #1129 the stepper's
+    // generic line hid that refusal; now the outcome line is the only one.
+    if ((busy && busy !== key) || !usable) return false;
     setBusy(key);
     setOutcome(null);
     try {
@@ -218,6 +221,9 @@ export function ElectricVehicleControl({ equipment, onExecuteOrder }: ElectricVe
             increaseLabel={t("equipments.electricVehicle.limitUp")}
             debounceMs={commitDelay}
             settleMs={CHARGE_LIMIT_SETTLE_MS}
+            // The outcome line below writes the car's own reason; the
+            // stepper's generic line would say the same failure twice (#1129).
+            errorLine={false}
             onCommit={commitLimit}
           />
         </div>

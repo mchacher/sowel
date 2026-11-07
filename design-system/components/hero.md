@@ -1,7 +1,5 @@
 # Zone hero (`hero`)
 
-> **Superseded in part by [tokens.md](../tokens.md) (spec 196).** Labels are sentence case and numbers Inter with tabular figures (§2), radii are 6 / 10 / 16 px (§4), and a card or panel has no border (§5.1). Where the CSS below disagrees, tokens.md wins.
-
 > The title block at the top of a zone view. Composed of two lines: the zone title and a state-synthesis lead.
 
 ---
@@ -63,17 +61,11 @@ The hero has no interactive state. Its appearance is driven by data:
 .hero {
   position: relative;
   padding: 2.1rem 1.5rem 1.25rem;
-  background:
-    radial-gradient(
-      120% 80% at 0% 0%,
-      color-mix(in srgb, var(--p-500) 6%, transparent),
-      transparent 55%
-    ),
-    radial-gradient(
-      80% 100% at 100% 0%,
-      color-mix(in srgb, var(--a-500) 4%, transparent),
-      transparent 60%
-    );
+  background: radial-gradient(
+    120% 80% at 0% 0%,
+    color-mix(in srgb, var(--p-500) 6%, transparent),
+    transparent 55%
+  );
 }
 
 .hero__head {
@@ -83,11 +75,11 @@ The hero has no interactive state. Its appearance is driven by data:
   min-width: 0;
 }
 .hero__title {
-  font-size: 2.6rem;
-  font-weight: 700;
+  font-size: var(--fs-display); /* a page title (tokens.md §2.2) */
+  font-weight: 600;
   margin: 0 0 0.15rem;
   color: var(--n-800);
-  letter-spacing: -0.03em;
+  letter-spacing: -0.015em;
   line-height: 1;
 }
 .hero__lead {
@@ -95,7 +87,7 @@ The hero has no interactive state. Its appearance is driven by data:
   align-items: center;
   gap: 0.6rem;
   margin-top: 0.55rem;
-  font-size: 0.85rem;
+  font-size: var(--fs-body);
   color: var(--n-500);
   font-feature-settings: "tnum" 1;
 }

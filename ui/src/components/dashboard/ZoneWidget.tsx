@@ -571,6 +571,7 @@ function ZoneHeatingWidget({
       {avgSetpoint !== null && (
         <SetpointStepper
           size="md"
+          valueStyle="compact"
           className="mt-auto pt-1"
           value={avgSetpoint}
           min={bounds.min}

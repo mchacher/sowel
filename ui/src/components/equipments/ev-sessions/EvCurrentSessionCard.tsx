@@ -136,11 +136,9 @@ export function EvCurrentSessionCard({
 
   const charging = live.kind === "charging";
   return (
-    <div
-      className={`rounded-md border p-4 mb-6 flex flex-col gap-3 ${
-        charging ? "bg-primary-light border-primary/25" : "bg-surface border-border"
-      }`}
-    >
+    // A card, without a border (spec 196, pr7-bordures; #1129). Charging keeps
+    // its selection tint, which the `card` surface would otherwise cover.
+    <div className={`card p-4 mb-6 flex flex-col gap-3 ${charging ? "bg-primary-light" : ""}`}>
       <div className="flex items-center justify-between gap-2">
         <div className="flex items-center gap-2">
           {charging ? (

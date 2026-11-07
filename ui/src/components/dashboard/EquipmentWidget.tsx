@@ -917,6 +917,7 @@ function ThermostatEquipmentWidget({
       {setpointOrder && setpoint.value !== null && (
         <SetpointStepper
           size="md"
+          valueStyle="compact"
           className="mt-auto pt-1"
           value={setpoint.value}
           min={setpoint.min}

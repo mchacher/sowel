@@ -1,3 +1,5 @@
+import { readdirSync, readFileSync } from "node:fs";
+import { join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { ESLint } from "eslint";
 import { describe, expect, it } from "vitest";
@@ -57,4 +59,23 @@ describe("lint: numbers go through lib/format", () => {
     expect(await restricted(FIXTURE, "src/lib/format.ts")).toEqual([]);
     expect(await restricted(FIXTURE, "src/components/Fixture.test.tsx")).toEqual([]);
   }, 30_000);
+});
+
+// #1129 — a percentage written by hand after a value (`{level}%`) skips the
+// narrow no-break space French puts before « % » (« 66 % »). Text nodes only:
+// a CSS length such as `${pct}%` in a style is not a number for reading.
+describe("percentages go through formatPercent", () => {
+  it("writes no `{value}%` text in rendering code", () => {
+    const srcRoot = fileURLToPath(new URL("..", import.meta.url));
+    const files = readdirSync(srcRoot, { recursive: true, encoding: "utf8" }).filter(
+      (f) => f.endsWith(".tsx") && !f.endsWith(".test.tsx"),
+    );
+    const hits = files.flatMap((f) => {
+      const text = readFileSync(join(srcRoot, f), "utf8");
+      return [...text.matchAll(/(^|>)\s*\{[^{}]+\}\s*%\s*(?=<|$)/gm)].map(
+        (m) => `${f}:${text.slice(0, m.index).split("\n").length}`,
+      );
+    });
+    expect(hits).toEqual([]);
+  });
 });
