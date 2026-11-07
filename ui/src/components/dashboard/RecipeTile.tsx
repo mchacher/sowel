@@ -18,9 +18,11 @@ import {
   type LucideIcon,
 } from "lucide-react";
 import { WidgetCard } from "./WidgetCard";
-import { ConfirmActionSheet } from "./ConfirmActionSheet";
+import { useGuardedAction } from "../../hooks/useGuardedAction";
 import { useCardPrimaryAction } from "./card-primary-action";
 import { tileNeedsConfirm } from "./recipe-tile-confirm";
+import { TapGlyph } from "./TapGlyph";
+import type { MobileTapKind } from "./mobile-click-action";
 import { CountdownTimer, ModeCyclePill } from "../recipes/recipe-form-fields";
 import { cycleOptionLabel, resolveCycle } from "../recipes/recipe-cycle";
 import { recipeName } from "../../lib/recipe-i18n";
@@ -68,7 +70,8 @@ const TILE_ICONS: Record<string, LucideIcon> = {
  *
  * Spec 171 — when the tile renders exactly one control, the whole card fires
  * it, like every other widget on this Dashboard. A recipe that moves something
- * physical is guarded on mobile: the card asks for a slide before it acts. Who
+ * physical is guarded: the card asks before it acts — a slide on touch, a dialog
+ * with a pointer since spec 196 (it was mobile only before). Who
  * decides that is resolved by `tileNeedsConfirm` — the equipment named by
  * `tile.confirmFrom` first, so the answer is given once and every surface that
  * actuates that gate asks the same question, then the instance's own parameter
@@ -95,13 +98,24 @@ export function RecipeTile({
   const sendAction = useRecipes((s) => s.sendAction);
   // Above the early return: hooks cannot hide behind a condition.
   const [sending, setSending] = useState(false);
-  const [confirming, setConfirming] = useState(false);
+  // Spec 196 — the card asks at every width: the slide on touch, a dialog with a pointer.
+  const { guard, element: confirmElement } = useGuardedAction();
 
   const instance = instances.find((i) => i.id === widget.recipeInstanceId);
   const recipe = instance ? recipes.find((r) => r.id === instance.recipeId) : undefined;
 
   const tile = recipe?.tile;
   const title = widget.label ?? (recipe ? recipeName(recipe, lang) : t("dashboard.recipeTile.gone"));
+
+  // Spec 196 — the corner glyph has to tell a guarded tile before the tap, so
+  // this one answer is subscribed to. A boolean selector: the tile re-renders
+  // when the guard flips, not on every device reading.
+  const guardedTile = useEquipments(
+    (st) =>
+      !!isMobile &&
+      !!tile &&
+      tileNeedsConfirm(tile, instance?.params, (id) => st.equipments.find((e) => e.id === id)),
+  );
 
   // A package can stop declaring a tile from one version to the next, and a
   // widget must survive that: it says so and keeps its place. Deleting the
@@ -188,29 +202,24 @@ export function RecipeTile({
   const primary =
     !cycle || editMode
       ? undefined
-      : () => {
-          const guarded =
-            isMobile &&
+      : () =>
+          guard(
             tileNeedsConfirm(tile, instance.params, (id) =>
               useEquipments.getState().equipments.find((e) => e.id === id),
-            );
-          if (guarded) setConfirming(true);
-          else fire();
-        };
-
-  const confirmSheet =
-    confirming && only && cycle ? (
-      <ConfirmActionSheet
-        title={t("dashboard.recipeTile.confirmTitle", {
-          mode: cycleOptionLabel(recipe, only, cycle.next, lang, t),
-        })}
-        subtitle={[title, typeof summary === "string" ? summary : ""].filter(Boolean).join(" · ")}
-        slideLabel={t("dashboard.recipeTile.slideToConfirm")}
-        confirmedLabel={t("dashboard.recipeTile.confirmed")}
-        onConfirm={fire}
-        onClose={() => setConfirming(false)}
-      />
-    ) : null;
+            ),
+            () => ({
+              title: t("dashboard.recipeTile.confirmTitle", {
+                mode: only ? cycleOptionLabel(recipe, only, cycle.next, lang, t) : "",
+              }),
+              subtitle:
+                [title, typeof summary === "string" ? summary : ""].filter(Boolean).join(" · ") ||
+                undefined,
+              slideLabel: t("dashboard.recipeTile.slideToConfirm"),
+              confirmLabel: t("common.confirm"),
+              confirmedLabel: t("dashboard.recipeTile.confirmed"),
+            }),
+            fire,
+          );
 
   const controls =
     actions.length > 0 ? (
@@ -234,7 +243,13 @@ export function RecipeTile({
     // card would come straight back out as a tap on the card.
     return (
       <>
-        <MobileShell title={title} editMode={editMode} className={dim} onClick={primary}>
+        <MobileShell
+          title={title}
+          editMode={editMode}
+          className={dim}
+          onClick={primary}
+          tapKind={guardedTile ? "confirm" : "now"}
+        >
           <div className="flex-1 flex items-center justify-center min-h-0 gap-1.5">
             {icon}
             {countdown}
@@ -242,20 +257,23 @@ export function RecipeTile({
           {summaryLine}
           {controls}
         </MobileShell>
-        {confirmSheet}
+        {confirmElement}
       </>
     );
   }
 
   return (
-    <WidgetCard label={title} className={dim} onClick={primary}>
-      <div className="flex-1 flex flex-col items-center justify-center gap-2 min-h-0">
-        {icon}
-        {countdown}
-        {summaryLine}
-      </div>
-      {controls}
-    </WidgetCard>
+    <>
+      <WidgetCard label={title} className={dim} onClick={primary}>
+        <div className="flex-1 flex flex-col items-center justify-center gap-2 min-h-0">
+          {icon}
+          {countdown}
+          {summaryLine}
+        </div>
+        {controls}
+      </WidgetCard>
+      {confirmElement}
+    </>
   );
 }
 
@@ -265,15 +283,19 @@ function MobileShell({
   editMode,
   className = "",
   onClick,
+  tapKind,
   children,
 }: {
   title: string;
   editMode?: boolean;
   className?: string;
   onClick?: () => void;
+  /** What `onClick` does, drawn in the corner like the equipment cards (spec 196). */
+  tapKind?: MobileTapKind;
   children: React.ReactNode;
 }) {
   const cardAction = useCardPrimaryAction(onClick);
+  const gesture = onClick && !editMode ? tapKind : undefined;
   return (
     <div
       className={`card relative p-2 flex flex-col items-center h-[120px] overflow-hidden w-full gap-1 ${
@@ -281,9 +303,10 @@ function MobileShell({
       } ${className}`}
       {...cardAction}
     >
+      {gesture && <TapGlyph kind={gesture} />}
       <span
         className={`text-caption font-semibold text-text truncate w-full text-center ${
-          editMode ? "pl-5 pr-8" : ""
+          editMode ? "pl-5 pr-8" : gesture ? "px-4" : ""
         }`}
       >
         {title}

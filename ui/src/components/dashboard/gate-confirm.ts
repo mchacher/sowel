@@ -3,28 +3,25 @@ import type { EquipmentWithDetails } from "../../types";
 import { findOrderByCategory } from "../equipments/bindingUtils";
 
 /**
- * Spec 146 — decide whether a gate action must be confirmed on the mobile
- * dashboard before it actuates.
+ * Spec 146, extended by spec 196 (slice P) — does actuating this gate ask first?
  *
- * True only when ALL hold:
+ * True when ALL hold:
  *  - the equipment is a `gate` (covers portail battant/coulissant and porte de
  *    garage — same type, different icon);
  *  - the admin opted in (`requireConfirmation`);
- *  - it exposes a single-action command. Multi-action gates already open the
- *    detail sheet on mobile (two taps, not a one-tap accident), so they are not
- *    guarded in v1.
+ *  - it exposes a command to actuate.
+ *
+ * Spec 146 v1 left multi-action gates out, because on the mobile dashboard they
+ * open a detail sheet first. Spec 196 guards every UI path where one tap or click
+ * actuates the gate, and the buttons of that sheet are such a path, so the answer
+ * no longer depends on the shape of the command. Which press asks is
+ * `gatePressNeedsConfirm`'s answer: never a STOP.
  *
  * Pure and side-effect free so it can be unit-tested without React.
  */
 export function gateNeedsConfirm(equipment: EquipmentWithDetails): boolean {
   if (equipment.type !== "gate" || !equipment.requireConfirmation) return false;
-  const command = findOrderByCategory(
-    equipment.orderBindings,
-    ["gate_trigger"],
-    ["command"],
-  );
-  if (!command) return false;
-  return (command.enumValues?.length ?? 0) <= 1;
+  return !!findOrderByCategory(equipment.orderBindings, ["gate_trigger"], ["command"]);
 }
 
 /** What `gate_state` can read (equipment-manager): no sensor, or no report yet, is `unknown`. */
@@ -36,18 +33,87 @@ export function gateStateOf(equipment: EquipmentWithDetails): GateState {
   return value === "open" || value === "closed" ? value : "unknown";
 }
 
+/** What a press is about to do, in the words the confirmation and the buttons use. */
+export type GateAction = "open" | "close" | "stop" | "operate";
+
 /**
- * Spec 196 — the confirmation names what the tap is about to do: an open gate is about
- * to close, a closed one to open. Without a state the tap only "operates" it: an impulse
- * on a gate Sowel cannot see may do either.
+ * Spec 196 — the action a press asks for.
+ *
+ * A multi-action gate names it in the enum value it sends (OPEN, CLOSE, STOP);
+ * an impulse sends nothing, and then the state says what it will do: an open
+ * gate is about to close, a closed one to open. Without a state, or with a value
+ * Sowel has no word for, the press only "operates" the gate: an impulse on a gate
+ * Sowel cannot see may do either.
  */
+export function gateActionOf(value: string | null | undefined, gateState: GateState): GateAction {
+  if (value === null || value === undefined || value === "") {
+    return gateState === "open" ? "close" : gateState === "closed" ? "open" : "operate";
+  }
+  if (/^open$/i.test(value)) return "open";
+  if (/^close$/i.test(value)) return "close";
+  if (/^stop$/i.test(value)) return "stop";
+  return "operate";
+}
+
+/**
+ * Spec 196 (maintainer decision) — does THIS press ask first? Every press on a
+ * guarded gate does, except STOP: a stop that waits for a confirmation defeats
+ * its purpose, so open, close and operate are guarded and a stop leaves at once.
+ */
+export function gatePressNeedsConfirm(
+  equipment: EquipmentWithDetails,
+  value: string | null | undefined,
+): boolean {
+  return gateNeedsConfirm(equipment) && gateActionOf(value, gateStateOf(equipment)) !== "stop";
+}
+
+/** The label of a multi-action button: the translated verb, or the raw value when Sowel has no word for it. */
+export function gateValueLabel(value: string, t: TFunction): string {
+  const action = gateActionOf(value, "unknown");
+  return action === "operate" ? value : t(`controls.gate.action.${action}`);
+}
+
+/** The words of a confirmation for one action: title, slide (touch) and button (pointer). */
 export function gateConfirmTexts(
-  gateState: GateState,
+  action: GateAction,
   name: string,
   t: TFunction,
-): { title: string; slideLabel: string } {
+): { title: string; slideLabel: string; confirmLabel: string } {
   return {
-    title: t(`controls.gate.confirmTitle.${gateState}`, { name }),
-    slideLabel: t(`controls.gate.slideTo.${gateState}`),
+    title: t(`controls.gate.confirmTitle.${action}`, { name }),
+    slideLabel: t(`controls.gate.slideTo.${action}`),
+    confirmLabel: t(`controls.gate.action.${action}`),
+  };
+}
+
+/** Everything a confirmation shows, whichever form it takes (slide on touch, dialog with a pointer). */
+export interface ConfirmPrompt {
+  title: string;
+  subtitle?: string;
+  slideLabel: string;
+  confirmLabel: string;
+  confirmedLabel: string;
+}
+
+/**
+ * The confirmation for one press on a gate: the action it asks for, the gate's
+ * name, then its zone and the state it reads now. A value Sowel has no word for
+ * is titled « Actionner » and named as is in the subtitle, so the confirmation
+ * still says which of the buttons was pressed.
+ */
+export function gatePrompt(
+  equipment: EquipmentWithDetails,
+  value: string | null,
+  t: TFunction,
+  zoneName?: string,
+): ConfirmPrompt {
+  const gateState = gateStateOf(equipment);
+  const action = gateActionOf(value, gateState);
+  const rawValue = value && action === "operate" ? value : undefined;
+  const subtitle = [zoneName, rawValue, t(`controls.gate.${gateState}`)].filter(Boolean).join(" · ");
+  return {
+    ...gateConfirmTexts(action, equipment.name, t),
+    subtitle: subtitle || undefined,
+    confirmedLabel: t("controls.gate.actuated"),
   };
 }

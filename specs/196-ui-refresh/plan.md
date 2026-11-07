@@ -6,30 +6,30 @@ Delivered as stacked pull requests, one per phase, one commit per slice so each 
 
 ### PR A — Repair (phase 1)
 
-- [ ] 1a — Mobile breakages: Logs, PageHeader, SensorValues wrap, IntegrationRow, chart ticks, FAB padding, mobile top bar without clock, Maison strip, gutters
-- [ ] 2a — French copy: categories, Accueil / En direct / Marche-Arrêt, plurals, `lang`, typography, ZoneDetailPage badge key
-- [ ] 3a — `lib/format` + tests + lint rule (warn) + energy screens
-- [ ] 2b — ApiError, 429/404 texts, equipment page keeps data and reads from the store, orphan series in Analyse, gate texts and unknown state
-- [ ] 1b — Mobile chrome up to `lg`, `hit-44`, sliders
-- [ ] 3b — Remaining components on `lib/format`, lint rule to error
+- [x] 1a — Mobile breakages: Logs, PageHeader, SensorValues wrap, IntegrationRow, chart ticks, FAB padding, mobile top bar without clock, Maison strip, gutters
+- [x] 2a — French copy: categories, Accueil / En direct / Marche-Arrêt, plurals, `lang`, typography, ZoneDetailPage badge key
+- [x] 3a — `lib/format` + tests + lint rule (warn) + energy screens
+- [x] 2b — ApiError, 429/404 texts, equipment page keeps data and reads from the store, orphan series in Analyse, gate texts and unknown state
+- [x] 1b — Mobile chrome up to `lg`, `hit-44`, sliders
+- [x] 3b — Remaining components on `lib/format`, lint rule to error
 
 ### PR B — Calm (phase 2)
 
-- [ ] 5a — Inter variable, type tokens, size codemod, bold → semibold, lint rule
-- [ ] 5b — Sentence case, mono only where allowed, flow diagram sized for its labels
-- [ ] 4 — Colour roles, contrast, open/closed neutral, switches, `color-scheme`, mode badges
-- [ ] 4b — Dark primary fill/ink, illustrations without filter, PWA splash
-- [ ] 7a — Neutrals and ocean night
-- [ ] 6 — Top bar, H1, Dashboard edit button
-- [ ] 7b — Radii, borderless cards
-- [ ] 7c — Maison panels as slices under a lid, Activité as a log
+- [x] 5a — Inter variable, type tokens, size codemod, bold → semibold, lint rule
+- [x] 5b — Sentence case, mono only where allowed, flow diagram sized for its labels
+- [x] 4 — Colour roles, contrast, open/closed neutral, switches, `color-scheme`, mode badges
+- [x] 4b — Dark primary fill/ink, illustrations without filter, PWA splash
+- [x] 7a — Neutrals and ocean night
+- [x] 6 — Top bar, H1, Dashboard edit button
+- [x] 7b — Radii, borderless cards
+- [x] 7c — Maison panels as slices under a lid, Activité as a log
 
 ### PR C — Same gesture everywhere (phase 3)
 
-- [ ] 8a — SetpointStepper everywhere, per-integration commit delay
-- [ ] 8b — Explicit mobile tiles
-- [ ] 9 — Equipment page order, back to room, dashboard link
-- [ ] P — Gate confirmation on every path
+- [x] 8a — SetpointStepper everywhere, per-integration commit delay
+- [x] 8b — Explicit mobile tiles
+- [x] 9 — Equipment page order, back to room, dashboard link
+- [x] P — Gate confirmation on every path
 
 ### PR D — Energy palette
 

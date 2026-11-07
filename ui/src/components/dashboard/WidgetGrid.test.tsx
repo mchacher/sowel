@@ -1,6 +1,7 @@
 import { describe, it, expect, vi } from "vitest";
 import { render, screen } from "../../test-utils";
-import { PickerOverlay } from "./WidgetGrid";
+import { MobileZoneCard, PickerOverlay } from "./WidgetGrid";
+import type { DashboardWidget, EquipmentWithDetails, ZoneWithChildren } from "../../types";
 
 // #538 — in mobile edit mode every card carries the `animate-jiggle` transform.
 // A transformed ancestor becomes the containing block + stacking context for
@@ -58,5 +59,24 @@ describe("PickerOverlay", () => {
     expect(card.contains(picker)).toBe(true);
     // And no full-screen backdrop on desktop.
     expect(document.querySelector(".fixed.inset-0.bg-black\\/20")).toBeNull();
+  });
+});
+
+// Spec 196 (phase 3 review) — a zone tile is named by its text, the gesture
+// said after it, instead of an aria-label that hid the state.
+describe("MobileZoneCard", () => {
+  it("keeps the title and the state in its name, then the gesture", () => {
+    const zone = { id: "z1", name: "Salon", children: [] } as unknown as ZoneWithChildren;
+    const widget = { id: "w1", type: "zone", zoneId: "z1", family: "lights", label: "" } as unknown as DashboardWidget;
+    const lamp = {
+      id: "l1",
+      zoneId: "z1",
+      type: "light_onoff",
+      dataBindings: [{ alias: "state", category: "light_state", value: true }],
+      orderBindings: [],
+    } as unknown as EquipmentWithDetails;
+    render(<MobileZoneCard widget={widget} zone={zone} equipments={[lamp]} onClick={() => {}} />);
+    const button = screen.getByRole("button", { name: /^Salon.*1.*, open details$/ });
+    expect(button.getAttribute("aria-label")).toBeNull();
   });
 });

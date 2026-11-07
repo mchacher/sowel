@@ -3,6 +3,7 @@ import { useTranslation } from "react-i18next";
 import { useNavigate, Link } from "react-router-dom";
 import type { Device, DeviceData } from "../../types";
 import { sourceLabel } from "../../lib/format";
+import { equipmentLinkState } from "../../lib/equipment-origin";
 import { RelativeTime } from "../RelativeTime";
 import {
   Radio,
@@ -377,6 +378,7 @@ function LqiCell({ value }: { value: unknown }) {
 }
 
 function EquipmentCell({ equipments }: { equipments?: { id: string; name: string; zoneName?: string; zoneId?: string }[] }) {
+  const { t } = useTranslation();
   if (!equipments || equipments.length === 0) {
     return <span className="text-micro text-text-tertiary">—</span>;
   }
@@ -399,6 +401,7 @@ function EquipmentCell({ equipments }: { equipments?: { id: string; name: string
           )}
           <Link
             to={`/equipments/${eq.id}`}
+            state={equipmentLinkState(t("nav.devices"), "/devices")}
             onClick={(e) => e.stopPropagation()}
             className="text-primary hover:text-primary-hover hover:underline"
           >

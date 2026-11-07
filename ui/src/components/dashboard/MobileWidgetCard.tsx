@@ -42,6 +42,7 @@ import {
 import { useStalenessClock } from "../../hooks/useStalenessClock";
 import { brightnessPercent, brightnessScale } from "../../lib/brightness";
 import { findOrderByCategory } from "../equipments/bindingUtils";
+import { resolveSetpoint, setpointLevel, setpointOwnerIsOff, setpointStateLine } from "../equipments/setpoint";
 import {
   parseForecastDays,
   CONDITION_ICONS,
@@ -55,11 +56,9 @@ import {
   Cloud,
   WashingMachine,
   Camera,
-  ShieldCheck,
   Fan,
   BatteryCharging,
   EvCharger,
-  Clock,
 } from "lucide-react";
 import { evChargerStateOf, evVehicleKey } from "../equipments/evChargerState";
 import {
@@ -68,7 +67,9 @@ import {
   evGaugeTone,
   evIsPlugged,
 } from "../equipments/electricVehicleState";
-import { gateNeedsConfirm } from "./gate-confirm";
+import type { MobileTapKind } from "./mobile-click-action";
+import { TapGlyph } from "./TapGlyph";
+import { gateStateOf } from "./gate-confirm";
 import { OrderOutcomeLine } from "../equipments/OrderOutcomeLine";
 import { ForecastConfidenceMark } from "./ForecastConfidenceMark";
 import { vmcSpeedOf } from "../equipments/vmcSpeed";
@@ -87,6 +88,8 @@ interface MobileWidgetCardProps {
   /** Zone qualifier (spec 139), set only when a homonym shares the dashboard. */
   equipmentZone?: string;
   onClick?: () => void;
+  /** What `onClick` does, drawn as the corner glyph (spec 196). */
+  tapKind?: MobileTapKind;
   editMode?: boolean;
 }
 
@@ -95,6 +98,7 @@ export function MobileWidgetCard({
   equipment,
   equipmentZone,
   onClick,
+  tapKind,
   editMode,
 }: MobileWidgetCardProps) {
   const { t } = useTranslation();
@@ -103,29 +107,20 @@ export function MobileWidgetCard({
   // it off exactly where it starts to disambiguate. Own line, quieter.
   const zone = widget.label ? undefined : equipmentZone;
   const { icon, stateLines, footer } = useMobileState(widget, equipment, t);
-  // Spec 146 — a guarded gate shows a tiny shield so it reads as protected.
-  const guarded = !editMode && gateNeedsConfirm(equipment);
-
-  return (
-    <button
-      onClick={onClick}
-      className={`card relative p-2 flex flex-col items-center h-[120px] overflow-hidden w-full text-left ${
-        editMode ? "" : "cursor-pointer active:scale-[0.98]"
-      } transition-transform`}
-    >
-      {guarded && (
-        <ShieldCheck
-          size={11}
-          strokeWidth={2}
-          className="absolute top-1.5 right-1.5 text-text-tertiary/70"
-          aria-label={t("controls.gate.confirmProtected")}
-        />
-      )}
+  // Spec 196 — the corner says what a tap does; a tile that does nothing is a
+  // plain block that does not press, and edit mode shows no gesture.
+  const gesture = !editMode && onClick ? tapKind : undefined;
+  const className = `card relative p-2 flex flex-col items-center h-[120px] overflow-hidden w-full text-left ${
+    onClick ? "cursor-pointer active:scale-[0.98] transition-transform" : ""
+  }`;
+  const body = (
+    <>
+      {gesture && <TapGlyph kind={gesture} />}
 
       {/* Label */}
       <span
         className={`text-caption font-semibold text-text truncate w-full text-center ${
-          editMode ? "pl-5 pr-8" : ""
+          editMode ? "pl-5 pr-8" : gesture ? "px-4" : ""
         }`}
       >
         {label}
@@ -156,7 +151,19 @@ export function MobileWidgetCard({
       {/* Spec 168 — the forecast tile qualifies tomorrow on the phone too,
           which is the surface this dashboard is mostly read on. */}
       {footer}
+
+      {/* The name is the tile's text (title, zone, state); the gesture the
+          corner glyph draws is said after it. */}
+      {gesture && <span className="sr-only">{`, ${t(`dashboard.tap.${gesture}`)}`}</span>}
+    </>
+  );
+
+  return onClick ? (
+    <button type="button" onClick={onClick} className={className}>
+      {body}
     </button>
+  ) : (
+    <div className={className}>{body}</div>
   );
 }
 
@@ -278,27 +285,29 @@ function useMobileState(
     const computedTemp = isPoolHeatPump
       ? equipment.computedData?.find((c) => c.alias === "effective_water_temperature")
       : null;
-    const setpoint = equipment.dataBindings.find((b) => b.alias === "setpoint");
     const tempVal =
       isPoolHeatPump && typeof computedTemp?.value === "number"
         ? computedTemp.value
         : typeof temp?.value === "number"
           ? temp.value
           : null;
-    const spVal = typeof setpoint?.value === "number" ? setpoint.value : null;
-    const minBound = isPoolHeatPump ? 10 : 16;
-    const level = spVal !== null ? (spVal - minBound) / (30 - minBound) : undefined;
+    // Spec 196, slice 8a: the card shows the setpoint too, « 21,0° → 20,0° »,
+    // or « 21,0° · arrêt » when the thermostat is off.
+    const sp = resolveSetpoint(equipment);
+    const level = setpointLevel(sp.value, sp.min, sp.max);
     return {
       icon: renderWidgetStateIcon(widget.icon, <ThermometerIcon warm={isOn} level={level} />),
-      stateLines: tempVal !== null ? [formatTemperature(tempVal, { style: "compact" })] : [],
+      // « — → 20,0° » when the setpoint is known before the temperature.
+      stateLines:
+        tempVal !== null || sp.value !== null
+          ? [setpointStateLine(tempVal, sp.value, setpointOwnerIsOff(equipment), t("controls.off"))]
+          : [],
     };
   }
 
   if (isGate) {
-    const stateBinding = equipment.dataBindings.find(
-      (b) => b.alias === "state" && b.category === "gate_state",
-    );
-    const gateState = (stateBinding?.value as string) ?? "unknown";
+    // By category, like GateControl: a gate bound under another alias read « unknown ».
+    const gateState = gateStateOf(equipment);
     const isOpen = gateState === "open";
     const iconKey = widget.icon;
     const GateIcon =
@@ -585,12 +594,15 @@ function useMobileState(
   if (equipment.type === "electric_vehicle") {
     // Spec 183 — the car is its own battery gauge, next to its charging post
     // while plugged in; two short lines under it (a single joined line was cut
-    // off on a half-width card), and the age of a stale report in the corner.
+    // off on a half-width card), the age of a stale report at the end of the second.
     const s = electricVehicleStateOf(equipment, now);
     const tone = evGaugeTone(s.batteryLevel, s.chargingState === "charging");
     const detail = [
       s.rangeKm !== null ? formatWithUnit(s.rangeKm, "km") : null,
       s.chargingState ? t(evChargingStateKey(s.chargingState)) : null,
+      // Spec 196 — the age of a stale report joins the state line: in the
+      // corner it squeezed the car's name, and the corner now says the gesture.
+      s.reportStale && s.reportedAt ? formatRelative(s.reportedAt, t) : null,
     ].filter(Boolean);
     return {
       // The icon slot is scaled to 50%: drawn at twice the visible size.
@@ -601,12 +613,6 @@ function useMobileState(
       stateLines: [],
       footer: (
         <>
-          {s.reportStale && s.reportedAt && (
-            <span className="absolute top-1.5 right-1.5 flex items-center gap-0.5 tabular-nums text-micro text-text-tertiary">
-              <Clock size={10} strokeWidth={2} aria-hidden="true" />
-              {formatRelative(s.reportedAt, t)}
-            </span>
-          )}
           <span className="text-caption font-semibold text-text tabular-nums">
             <span className={tone === "low" ? "text-error" : undefined}>
               {formatPercent(s.batteryLevel)}

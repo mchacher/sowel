@@ -3,19 +3,26 @@ import { useTranslation } from "react-i18next";
 import { ShieldCheck, Loader2 } from "lucide-react";
 import { updateEquipment } from "../../api";
 import type { EquipmentWithDetails } from "../../types";
+import { ConfigRow } from "./ConfigRow";
+import { InfoTooltip } from "../InfoTooltip";
 
 /**
  * Spec 146 — opt-in "confirmation before action" toggle for a gate equipment.
- * Off by default. When on, the mobile dashboard requires a slide-to-confirm
- * before actuating (protects against an accidental one-tap, issue #320).
+ * Off by default. When on, every UI path that actuates the gate in one press
+ * asks first — a slide on touch, a dialog with a pointer (spec 196, which
+ * extended spec 146's mobile dashboard to every surface). Protects against an
+ * accidental one-tap, issue #320.
  * Admin-only, gate-only — the caller gates the mount.
  */
 export function GateConfirmationPanel({
   equipment,
   onUpdated,
+  defaultOpen = false,
 }: {
   equipment: EquipmentWithDetails;
   onUpdated: () => void;
+  /** Open on arrival; the equipment page keeps its Configuration rows closed. */
+  defaultOpen?: boolean;
 }) {
   const { t } = useTranslation();
   const [saving, setSaving] = useState(false);
@@ -36,11 +43,14 @@ export function GateConfirmationPanel({
   };
 
   return (
-    <div className="card mb-6 p-4">
-      <div className="flex items-center gap-2 mb-1">
-        <ShieldCheck size={16} strokeWidth={1.5} className="text-text-tertiary" />
-        <h3 className="text-body font-semibold text-text">{t("equipments.gateConfirm.title")}</h3>
-        <label className="ml-auto flex items-center gap-2 text-caption text-text-secondary cursor-pointer">
+    <ConfigRow
+      icon={ShieldCheck}
+      title={t("equipments.gateConfirm.title")}
+      summary={t(enabled ? "equipments.summary.enabledF" : "equipments.summary.disabledF")}
+      defaultOpen={defaultOpen}
+    >
+      <div className="flex items-center gap-2">
+        <label className="flex items-center gap-2 text-small text-text cursor-pointer">
           <input
             type="checkbox"
             checked={enabled}
@@ -49,12 +59,10 @@ export function GateConfirmationPanel({
           />
           {t("equipments.gateConfirm.enable")}
         </label>
-      </div>
-      <p className="text-caption text-text-tertiary flex items-center gap-1.5">
-        {t("equipments.gateConfirm.hint")}
+        <InfoTooltip help align="start" text={t("equipments.gateConfirm.hint")} label={t("common.help")} />
         {saving && <Loader2 size={12} className="animate-spin text-text-tertiary" />}
-      </p>
+      </div>
       {error && <p className="text-caption text-error mt-2">{error}</p>}
-    </div>
+    </ConfigRow>
   );
 }

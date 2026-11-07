@@ -1,6 +1,14 @@
 import { describe, it, expect } from "vitest";
 import i18n from "../../i18n";
-import { gateConfirmTexts, gateNeedsConfirm, gateStateOf } from "./gate-confirm";
+import {
+  gateActionOf,
+  gateConfirmTexts,
+  gateNeedsConfirm,
+  gatePressNeedsConfirm,
+  gatePrompt,
+  gateStateOf,
+  gateValueLabel,
+} from "./gate-confirm";
 import type { EquipmentWithDetails } from "../../types";
 
 /** Minimal EquipmentWithDetails fixture for the guard decision. */
@@ -46,12 +54,13 @@ describe("gateNeedsConfirm", () => {
     ).toBe(true);
   });
 
-  it("is false for a multi-action gate (not guarded in v1)", () => {
+  // Spec 196 — the buttons of a multi-action gate actuate on one press too.
+  it("is true for a multi-action gate (spec 196; spec 146 v1 left it out)", () => {
     expect(
       gateNeedsConfirm(
         equip({ requireConfirmation: true, command: { enumValues: ["OPEN", "CLOSE", "STOP"] } }),
       ),
-    ).toBe(false);
+    ).toBe(true);
   });
 
   it("is false when the flag is off", () => {
@@ -68,6 +77,28 @@ describe("gateNeedsConfirm", () => {
   });
 });
 
+// Spec 196 (maintainer decision) — a stop that waits for a confirmation
+// defeats its purpose: open, close and operate ask, STOP never does.
+describe("gatePressNeedsConfirm", () => {
+  const guarded = equip({ requireConfirmation: true, command: { enumValues: ["OPEN", "CLOSE", "STOP"] } });
+
+  it("asks for open, close, a raw value and an impulse", () => {
+    expect(gatePressNeedsConfirm(guarded, "OPEN")).toBe(true);
+    expect(gatePressNeedsConfirm(guarded, "CLOSE")).toBe(true);
+    expect(gatePressNeedsConfirm(guarded, "PEDESTRIAN")).toBe(true);
+    expect(gatePressNeedsConfirm(equip({ requireConfirmation: true }), null)).toBe(true);
+  });
+
+  it("never asks for STOP, whatever its case", () => {
+    expect(gatePressNeedsConfirm(guarded, "STOP")).toBe(false);
+    expect(gatePressNeedsConfirm(guarded, "stop")).toBe(false);
+  });
+
+  it("does not ask on a gate that is not guarded", () => {
+    expect(gatePressNeedsConfirm(equip({ requireConfirmation: false }), "OPEN")).toBe(false);
+  });
+});
+
 // Spec 196 — the confirmation follows the state it reads: an open gate is about to
 // close, a closed one to open, and a gate Sowel cannot see reads « État inconnu »,
 // never « En mouvement ».
@@ -75,18 +106,55 @@ describe("gateConfirmTexts", () => {
   const t = i18n.t.bind(i18n);
 
   it("says what the tap will do from each state, in French", async () => {
+    const withState = (value: unknown) =>
+      equip({
+        dataBindings: [{ alias: "state", category: "gate_state", value }],
+      } as unknown as Partial<EquipmentWithDetails>);
     await i18n.changeLanguage("fr");
     try {
-      expect(gateConfirmTexts("open", "Portail", t)).toEqual({
+      expect(gatePrompt(withState("open"), null, t)).toMatchObject({
         title: "Fermer Portail\u202f?",
+        subtitle: "Ouvert",
         slideLabel: "Glisser pour fermer",
+        confirmLabel: "Fermer",
       });
-      expect(gateConfirmTexts("closed", "Portail", t)).toEqual({
+      expect(gatePrompt(withState("closed"), null, t, "Entrée")).toMatchObject({
         title: "Ouvrir Portail\u202f?",
+        subtitle: "Entrée · Fermé",
         slideLabel: "Glisser pour ouvrir",
+        confirmLabel: "Ouvrir",
       });
-      expect(gateConfirmTexts("unknown", "Portail", t).title).toBe("Actionner Portail\u202f?");
-      expect(t("controls.gate.unknown")).toBe("État inconnu");
+      expect(gatePrompt(withState(null), null, t)).toMatchObject({
+        title: "Actionner Portail\u202f?",
+        subtitle: "État inconnu",
+        confirmLabel: "Actionner",
+      });
+    } finally {
+      await i18n.changeLanguage("en");
+    }
+  });
+
+  it("names the button pressed on a multi-action gate, whatever the state", () => {
+    expect(gateActionOf("OPEN", "open")).toBe("open");
+    expect(gateActionOf("close", "closed")).toBe("close");
+    expect(gateActionOf("STOP", "unknown")).toBe("stop");
+    expect(gateActionOf("PEDESTRIAN", "closed")).toBe("operate");
+    expect(gateConfirmTexts("stop", "Portail", t)).toEqual({
+      title: "Stop Portail?",
+      slideLabel: "Slide to stop",
+      confirmLabel: "Stop",
+    });
+  });
+
+  it("labels the buttons in words, keeping a value it has no word for", async () => {
+    await i18n.changeLanguage("fr");
+    try {
+      expect(["OPEN", "CLOSE", "STOP", "PEDESTRIAN"].map((v) => gateValueLabel(v, t))).toEqual([
+        "Ouvrir",
+        "Fermer",
+        "Arrêter",
+        "PEDESTRIAN",
+      ]);
     } finally {
       await i18n.changeLanguage("en");
     }

@@ -33,7 +33,7 @@ function renderPanel() {
   return render(
     <MemoryRouter initialEntries={["/equipments/g1"]}>
       <Routes>
-        <Route path="/equipments/:id" element={<SharedAccessPanel equipmentId="g1" />} />
+        <Route path="/equipments/:id" element={<SharedAccessPanel defaultOpen equipmentId="g1" />} />
         <Route path="/shared-access" element={<Where />} />
       </Routes>
     </MemoryRouter>,

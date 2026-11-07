@@ -1,4 +1,4 @@
-import { describe, it, expect, vi, afterEach } from "vitest";
+import { describe, it, expect, vi, afterEach, beforeEach } from "vitest";
 import { act, fireEvent, render, screen, userEvent, waitFor } from "../../test-utils";
 import { ThermostatCard } from "./ThermostatCard";
 import type { EquipmentWithDetails } from "../../types";
@@ -276,7 +276,33 @@ const coreOrders: RichOrder[] = [
   { alias: "setpoint", type: "number", min: 5, max: 40 },
 ];
 
+// Spec 196 — the extras fold, closed by default; these tests read them open.
+const openExtras = () => localStorage.setItem("sowel_thermostat_extras_open_eq-rich", "1");
+
+describe("ThermostatCard extras fold (spec 196)", () => {
+  beforeEach(() => localStorage.clear());
+
+  it("folds the extras, closed by default, and remembers them open per equipment", async () => {
+    const eq = richEquipment(
+      [...core, { alias: "profile", value: "comfort" }],
+      [...coreOrders, { alias: "profile", type: "enum", enumValues: ["dynamic", "comfort"] }],
+    );
+    const { unmount } = render(<ThermostatCard equipment={eq} onExecuteOrder={vi.fn()} />);
+    const fold = screen.getByRole("button", { name: /Other settings \(1\)/ });
+    expect(fold.getAttribute("aria-expanded")).toBe("false");
+    expect(screen.queryByText("Profile")).toBeNull();
+
+    await userEvent.click(fold);
+    expect(screen.getByText("Profile")).toBeTruthy();
+    unmount();
+
+    render(<ThermostatCard equipment={eq} onExecuteOrder={vi.fn()} />);
+    expect(screen.getByRole("button", { name: /Other settings/ }).getAttribute("aria-expanded")).toBe("true");
+  });
+});
+
 describe("ThermostatCard extras (spec 177)", () => {
+  beforeEach(openExtras);
   it("still shows and controls the full MCZ pellet-stove surface, as extras", async () => {
     const exec = vi.fn().mockResolvedValue(undefined);
     render(
@@ -301,7 +327,7 @@ describe("ThermostatCard extras (spec 177)", () => {
       />,
     );
 
-    expect(screen.getByText("Other settings")).toBeTruthy();
+    expect(screen.getByText(/Other settings/)).toBeTruthy();
     // The profile is a programme, not an operating mode: no core mode selector.
     expect(screen.queryByText("Mode")).toBeNull();
     expect(screen.getByText("Profile")).toBeTruthy();
@@ -397,9 +423,11 @@ describe("ThermostatCard extras (spec 177)", () => {
     await userEvent.click(screen.getByRole("button", { name: "off" }));
     expect(exec).toHaveBeenCalledWith("swing", "off");
 
-    expect(screen.getByText("Fan level")).toBeTruthy();
-    await userEvent.click(screen.getByTitle("Fan level +"));
-    expect(exec).toHaveBeenCalledWith("fanLevel", 4);
+    expect(screen.getAllByText("Fan level").length).toBeGreaterThan(0);
+    // A numeric extra is a SetpointStepper (spec 196, slice 8a): one order
+    // after the last tap.
+    await userEvent.click(screen.getByRole("button", { name: "Fan level: increase" }));
+    await waitFor(() => expect(exec).toHaveBeenCalledWith("fanLevel", 4));
   });
 
   it("shows the optimistic value on an extra until its mirror re-reports", async () => {
@@ -431,11 +459,12 @@ describe("ThermostatCard extras (spec 177)", () => {
         onExecuteOrder={vi.fn().mockResolvedValue(undefined)}
       />,
     );
-    expect(screen.queryByText("Other settings")).toBeNull();
+    expect(screen.queryByText(/Other settings/)).toBeNull();
   });
 });
 
 describe("ThermostatCard extras — review follow-ups (spec 177)", () => {
+  beforeEach(openExtras);
   it("renders a legacy state ORDER as a toggle mirrored by the core state reading", async () => {
     // Bound before the toggle_power → power override: the order landed under
     // `state`. It is an extra, but its mirror is the core `state` reading, so
@@ -470,14 +499,15 @@ describe("ThermostatCard extras — review follow-ups (spec 177)", () => {
 });
 
 // ============================================================
-// Spec 196, slice 1b — the setpoint chevrons are 16–22 px drawings. They carry
-// an accessible name and the `hit-44` touch area, and sit in a `hit-group` so a
-// neighbour's enlarged area never paints over them and takes their tap.
+// Spec 196, slice 1b, then 8a — the setpoint buttons are the SetpointStepper's:
+// 44 px drawn on the card; 28 px drawn with the `hit-44` touch area in the
+// Maison row, inside a `hit-group` so a neighbour's enlarged area never paints
+// over them and takes their tap. One order leaves after the last tap.
 // ============================================================
 
-describe("ThermostatCard setpoint chevrons", () => {
+describe("ThermostatCard setpoint buttons", () => {
   for (const compact of [false, true]) {
-    it(`are labelled, enlarged for touch and grouped${compact ? " (Maison row)" : " (card)"}`, async () => {
+    it(`are labelled, 44 px to the finger and grouped${compact ? " (Maison row)" : " (card)"}`, async () => {
       const exec = vi.fn().mockResolvedValue(undefined);
       render(
         <ThermostatCard
@@ -489,11 +519,14 @@ describe("ThermostatCard setpoint chevrons", () => {
       const down = screen.getByRole("button", { name: "Lower the setpoint" });
       const up = screen.getByRole("button", { name: "Raise the setpoint" });
       for (const button of [down, up]) {
-        expect(button.classList.contains("hit-44")).toBe(true);
+        if (compact) expect(button.classList.contains("hit-44")).toBe(true);
+        else expect(button.classList.contains("min-h-11")).toBe(true);
         expect(button.parentElement?.classList.contains("hit-group")).toBe(true);
       }
       await userEvent.click(up);
-      expect(exec).toHaveBeenCalledWith("setpoint", 25);
+      await userEvent.click(up);
+      await waitFor(() => expect(exec).toHaveBeenCalledWith("setpoint", 25.5));
+      expect(exec.mock.calls.filter(([alias]) => alias === "setpoint")).toHaveLength(1);
     });
   }
 });

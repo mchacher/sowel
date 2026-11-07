@@ -30,6 +30,7 @@ import { Cloud, Timer } from "lucide-react";
 import { parseForecastDays, CONDITION_ICONS, CONDITION_COLORS } from "../equipments/weatherForecastUtils";
 import { syntheticBindingFromComputed } from "../equipments/weather-utils";
 import { EquipmentStatusBadge } from "../equipments/EquipmentStatusBadge";
+import { equipmentLinkState } from "../../lib/equipment-origin";
 import { pickLivePowerBinding, formatWatts } from "../../lib/energy-meter-display";
 import { resolvePowerReading } from "../../lib/power-reading";
 import { formatRelative } from "../../lib/format-relative";
@@ -194,7 +195,7 @@ export function CompactEquipmentCard({ equipment, onExecuteOrder, zoneName }: Co
         </div>
         <Link
           to={`/equipments/${equipment.id}`}
-          state={zoneName ? { fromZone: zoneName } : undefined}
+          state={zoneName ? equipmentLinkState(zoneName, `/home/${equipment.zoneId}`) : undefined}
           className="min-w-0 text-body font-medium text-text truncate hover:text-primary transition-colors"
         >
           {equipment.name}
@@ -215,7 +216,7 @@ export function CompactEquipmentCard({ equipment, onExecuteOrder, zoneName }: Co
       <div className="min-w-0 flex items-center gap-2">
         <Link
           to={`/equipments/${equipment.id}`}
-          state={zoneName ? { fromZone: zoneName } : undefined}
+          state={zoneName ? equipmentLinkState(zoneName, `/home/${equipment.zoneId}`) : undefined}
           className="min-w-0 text-body font-medium text-text truncate hover:text-primary transition-colors"
         >
           {equipment.name}

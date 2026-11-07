@@ -4,6 +4,8 @@ import { GitMerge, Loader2 } from "lucide-react";
 import { updateEquipment } from "../../api";
 import { derivesEnergyFromPower, isSubmeterEquipment } from "../../lib/metering";
 import type { EquipmentWithDetails } from "../../types";
+import { ConfigRow } from "./ConfigRow";
+import { InfoTooltip } from "../InfoTooltip";
 
 /**
  * Spec 173 — declare that this meter's consumption is already counted by
@@ -22,10 +24,13 @@ export function MeteringParentPanel({
   equipment,
   equipments,
   onUpdated,
+  defaultOpen = false,
 }: {
   equipment: EquipmentWithDetails;
   equipments: EquipmentWithDetails[];
   onUpdated: () => void;
+  /** Open on arrival; the equipment page keeps its Configuration rows closed. */
+  defaultOpen?: boolean;
 }) {
   const { t } = useTranslation();
   const [saving, setSaving] = useState(false);
@@ -87,79 +92,82 @@ export function MeteringParentPanel({
     }
   };
 
+  const parentName = equipments.find((eq) => eq.id === current)?.name;
+  const base = separate
+    ? t("equipments.metering.separateSupply.title")
+    : (parentName ?? t("equipments.metering.nesting.none"));
+  // Spec 195 — the folded row says the third declaration too.
+  const summary =
+    localProduction && !separate ? `${base} · ${t("equipments.metering.localProduction.summary")}` : base;
+
   return (
-    <div className="card mb-6 p-4">
+    <ConfigRow
+      icon={GitMerge}
+      title={t("equipments.metering.nesting.title")}
+      summary={summary}
+      defaultOpen={defaultOpen}
+    >
       {/* Spec 179 — a separate-supply meter is outside the partition, so a
           containment declaration would sit there unused: the select yields to
           the toggle rather than offering a choice that does nothing. */}
       {!separate && (
-        <>
-          <div className="flex items-center gap-2 mb-1">
-            <GitMerge size={16} strokeWidth={1.5} className="text-text-tertiary" />
-            <h3 className="text-body font-semibold text-text">{t("equipments.metering.nesting.title")}</h3>
-            <div className="ml-auto flex items-center gap-2">
-              {saving && <Loader2 size={12} className="animate-spin text-text-tertiary" />}
-              <select
-                value={current}
-                disabled={saving}
-                onChange={(e) =>
-                  void save({ meteringParentId: e.target.value === "" ? null : e.target.value })
-                }
-                aria-label={t("equipments.metering.nesting.title")}
-                className="px-2 py-1 text-caption bg-background border border-border rounded-sm text-text max-w-[220px]"
-              >
-                <option value="">{t("equipments.metering.nesting.none")}</option>
-                {candidates.map((eq) => (
-                  <option key={eq.id} value={eq.id}>
-                    {eq.name}
-                  </option>
-                ))}
-              </select>
-            </div>
-          </div>
-          <p className="text-caption text-text-tertiary">{t("equipments.metering.nesting.hint")}</p>
-        </>
+        <div className="flex items-center gap-2 flex-wrap">
+          <select
+            value={current}
+            disabled={saving}
+            onChange={(e) =>
+              void save({ meteringParentId: e.target.value === "" ? null : e.target.value })
+            }
+            aria-label={t("equipments.metering.nesting.title")}
+            className="px-2 py-1 text-caption bg-background border border-border rounded-sm text-text max-w-[220px]"
+          >
+            <option value="">{t("equipments.metering.nesting.none")}</option>
+            {candidates.map((eq) => (
+              <option key={eq.id} value={eq.id}>
+                {eq.name}
+              </option>
+            ))}
+          </select>
+          <InfoTooltip help align="start" text={t("equipments.metering.nesting.hint")} label={t("common.help")} />
+          {saving && <Loader2 size={12} className="animate-spin text-text-tertiary" />}
+        </div>
       )}
 
       {/* Spec 179 — declare the meter fed by a separate supply. */}
-      <label
-        className={`flex items-center gap-2 text-small text-text cursor-pointer ${separate ? "" : "mt-3 pt-3 border-t border-border"}`}
-      >
-        <input
-          type="checkbox"
-          checked={separate}
-          // Spec 195 — a panel's output on another supply never reaches the
-          // house: the API refuses the pair, so the box waits for the other.
-          disabled={saving || localProduction}
-          onChange={(e) => void save({ separateSupply: e.target.checked })}
-        />
-        <span className="font-semibold">{t("equipments.metering.separateSupply.title")}</span>
+      <div className={`flex items-center gap-2 ${separate ? "" : "mt-3 pt-3 border-t border-border-light"}`}>
+        <label className="flex items-center gap-2 text-small text-text cursor-pointer">
+          <input
+            type="checkbox"
+            checked={separate}
+            // Spec 195 — a panel's output on another supply never reaches the
+            // house: the API refuses the pair, so the box waits for the other.
+            disabled={saving || localProduction}
+            onChange={(e) => void save({ separateSupply: e.target.checked })}
+          />
+          {t("equipments.metering.separateSupply.title")}
+        </label>
+        <InfoTooltip help align="start" text={t("equipments.metering.separateSupply.hint")} label={t("common.help")} />
         {separate && saving && <Loader2 size={12} className="animate-spin text-text-tertiary" />}
-      </label>
-      <p className="text-caption text-text-tertiary mt-1">
-        {t("equipments.metering.separateSupply.hint")}
-      </p>
+      </div>
 
       {/* Spec 195 — a panel wired behind this meter: its negative power is
           production. Meaningless off the house supply (the API refuses the
           pair), so the toggle yields to the separate-supply one. */}
       {!separate && offerLocalProduction && (
-        <>
-          <label className="flex items-center gap-2 text-small text-text cursor-pointer mt-3 pt-3 border-t border-border">
+        <div className="flex items-center gap-2 mt-3 pt-3 border-t border-border-light">
+          <label className="flex items-center gap-2 text-small text-text cursor-pointer">
             <input
               type="checkbox"
               checked={localProduction}
               disabled={saving}
               onChange={(e) => void save({ localProduction: e.target.checked })}
             />
-            <span className="font-semibold">{t("equipments.metering.localProduction.title")}</span>
+            {t("equipments.metering.localProduction.title")}
           </label>
-          <p className="text-caption text-text-tertiary mt-1">
-            {t("equipments.metering.localProduction.hint")}
-          </p>
-        </>
+          <InfoTooltip help align="start" text={t("equipments.metering.localProduction.hint")} label={t("common.help")} />
+        </div>
       )}
       {error && <p className="text-caption text-error mt-2">{error}</p>}
-    </div>
+    </ConfigRow>
   );
 }

@@ -28,20 +28,12 @@ import { useUpdateAvailable } from "../../hooks/useUpdateAvailable";
 import { useEnergy } from "../../store/useEnergy";
 import { usePluginUpdates } from "./usePluginUpdates";
 import { ADMIN_NAV_ITEMS } from "./admin-nav-items";
+import { getSectionForPath, type SidebarSection } from "./sidebar-section";
+import { equipmentIdFromPath, isUsageEquipmentPage } from "../../lib/equipment-origin";
+import { useEquipments } from "../../store/useEquipments";
 import { useSharedAccess } from "../../store/useSharedAccess";
 
-type SidebarSection = "maison" | "modes" | "analyse" | "energy" | "admin";
-
 const ADMIN_ROUTES = ADMIN_NAV_ITEMS.map((item) => item.to);
-
-function getSectionForPath(pathname: string): SidebarSection | null {
-  if (pathname.startsWith("/home")) return "maison";
-  if (pathname.startsWith("/modes")) return "modes";
-  if (pathname.startsWith("/analyse")) return "analyse";
-  if (pathname.startsWith("/energy")) return "energy";
-  if (ADMIN_ROUTES.some((r) => pathname.startsWith(r))) return "admin";
-  return null;
-}
 
 const ICON_SIZE = 16;
 
@@ -60,14 +52,14 @@ export function Sidebar() {
 
   // Auto-collapse: only one section expanded at a time
   const [expandedSection, setExpandedSection] = useState<SidebarSection | null>(
-    () => getSectionForPath(location.pathname)
+    () => getSectionForPath(location.pathname, location.state)
   );
 
   // Auto-update expanded section when route changes (React recommended pattern)
   const [prevPath, setPrevPath] = useState(location.pathname);
   if (prevPath !== location.pathname) {
     setPrevPath(location.pathname);
-    setExpandedSection(getSectionForPath(location.pathname));
+    setExpandedSection(getSectionForPath(location.pathname, location.state));
   }
 
   const toggleSection = (section: SidebarSection) => {
@@ -78,7 +70,14 @@ export function Sidebar() {
     checkEnergyAvailability();
   }, [checkEnergyAvailability]);
 
-  const adminActive = ADMIN_ROUTES.some((r) => location.pathname.startsWith(r));
+  // Spec 196 — an equipment page opened from Maison, the dashboard, a mode…
+  // belongs to Maison, its room highlighted in the tree.
+  const usageEquipmentPage = isUsageEquipmentPage(location.pathname, location.state);
+  const equipmentRoomId = useEquipments((s) => {
+    const eqId = usageEquipmentPage ? equipmentIdFromPath(location.pathname) : null;
+    return eqId ? s.equipments.find((e) => e.id === eqId)?.zoneId : undefined;
+  });
+  const adminActive = !usageEquipmentPage && ADMIN_ROUTES.some((r) => location.pathname.startsWith(r));
   const energyActive = location.pathname.startsWith("/energy");
   const modesSubActive = !collapsed && expandedSection === "modes" && location.pathname.startsWith("/modes/");
   const analyseSubActive = !collapsed && expandedSection === "analyse" && location.pathname.startsWith("/analyse/");
@@ -123,7 +122,7 @@ export function Sidebar() {
 
         {/* Maison — when expanded and not collapsed, render the zone tree instead */}
         {expandedSection === "maison" && !collapsed ? (
-          <SidebarZoneTree collapsed={collapsed} />
+          <SidebarZoneTree collapsed={collapsed} activeZoneId={equipmentRoomId} />
         ) : (
           <SidebarSectionHeader
             to="/home"
@@ -132,6 +131,7 @@ export function Sidebar() {
             collapsed={collapsed}
             expanded={collapsed ? undefined : false}
             title={collapsed ? t("nav.maison") : undefined}
+            active={usageEquipmentPage || undefined}
             onClick={(e) => {
               if (location.pathname.startsWith("/home")) {
                 e.preventDefault();

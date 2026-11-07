@@ -5,6 +5,7 @@ import { CircleAlert, Clock, Loader2, Pause, Power, Check, Zap } from "lucide-re
 import { setEvSessionAttribution } from "../../../api";
 import { dateLocale } from "../../../lib/locale";
 import { useEquipments } from "../../../store/useEquipments";
+import { equipmentLinkState } from "../../../lib/equipment-origin";
 import type { EquipmentWithDetails, EvChargeSession } from "../../../types";
 import { formatEur } from "../../energy/format";
 import { ShareBar } from "./EvShareBar";
@@ -123,6 +124,7 @@ export function EvCurrentSessionCard({
           </button>
           <Link
             to={`/equipments/${session.chargerId}`}
+            state={equipmentLinkState(vehicle.name, `/equipments/${vehicle.id}`)}
             className="min-h-[44px] flex items-center justify-center text-small font-medium text-primary hover:text-primary-hover"
           >
             {t("equipments.evSessions.current.notThisCar")} ›

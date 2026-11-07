@@ -67,7 +67,7 @@ Awnings share the shutter control surface (same position binding, same OPEN/STOP
 
 | Type             | Controls                                              | Expected data                                                                                                          |
 | ---------------- | ----------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------- |
-| **Thermostat**   | Temperature display, setpoint +/-, power on/off, mode | core: current temperature, setpoint, run state, power, operating mode; then whatever else the device offers, as extras |
+| **Thermostat**   | Temperature display, setpoint − / +, power on/off, mode | core: current temperature, setpoint, run state, power, operating mode; then whatever else the device offers, as extras |
 | **Heater**       | Comfort / Eco toggle                                  | relay state (fil pilote: ON = eco, OFF = comfort)                                                                      |
 | **Water Heater** | On/Off toggle, optional dedicated Solar toggle        | on/off relay state, optional solar-channel state, optional water temperature (display only), optional power/energy     |
 
@@ -76,6 +76,8 @@ Thermostat covers air conditioning, pellet stoves, and heat pumps. Heater covers
 A thermostat has a **core** and **extras**. The core is the small set every thermostat shares and every Sowel surface relies on: `temperature`, `setpoint`, `state`, `power`, `operationMode`, plus `outsideTemperature` when the unit carries an outdoor probe. Sowel recognises a device as a thermostat when it can be given a setpoint, whatever the plugin calls the key. Everything else the device offers (a fan speed, an ioniser, a pellet stove's programme and alarm reset, a vendor setting Sowel has never met) is bound too, but as an **extra**: the card leads with the core and lists the extras in a secondary section, one control per bound command (buttons for a choice, a toggle for an on/off, an action button for a one-shot, a stepper for a number) and one chip per reading. Extras vary from one thermostat to the next and never define the type. The operating mode uses a common vocabulary: `auto`, `heat`, `cool`, `dry`, `fan`, and `off` on units whose mode carries the stop.
 
 On a thermostat, the on/off state reported by the device itself is bound under the `state` alias, the same on/off alias relay-style equipments use. This matters on a **submetered** thermostat (a heat pump measured by a clamp): there the `power` alias carries the live wattage, and the wattage cannot tell the UI whether the unit is on or in standby. If your thermostat card never shows as on, open the equipment's missing-bindings panel and add the device's power reading: it is offered as `state`. Legacy thermostats with the boolean bound directly under `power` keep working unchanged.
+
+The setpoint has the same − / + buttons on the equipment page, in the Home rows, on the dashboard and in its phone panel, and so do a thermostat's numeric extras, an EV charger's current and a car's charge limit. The value follows each tap at once and one order leaves after the last one: about 0.6 s later for a cloud device, 0.15 s for a local one. See [Dashboard](dashboard.md#equipment-widget).
 
 A water heater (and a switch) can also carry a dedicated **solar** on/off channel, independent from the main on/off: a second contact (e.g. a SONOFF MINI-ZBD Zigbee dry-contact relay driving the photovoltaic input of a heat-pump water heater). It is bound explicitly under the solar role, distinct from the appliance's normal operation. On a water heater left on permanent mains, only the Solar toggle appears; the card shows one toggle per bound channel. The solar channel is the actuator a solar-surplus recipe drives through the energy arbiter; the arbitration logic itself stays in the recipe.
 
@@ -89,6 +91,8 @@ A water heater (and a switch) can also carry a dedicated **solar** on/off channe
 You can choose a specific icon for gates on the dashboard: standard gate, sliding gate, or garage door.
 
 A gate can be driven by any on/off relay — a Zigbee dry-contact module (e.g. SONOFF MINI-ZBD), a LoRa relay channel, or a Somfy RTS remote — and the command button triggers it as a momentary action. Configure the pulse behavior (inching / auto-off) on the device itself. Bind a door contact sensor (e.g. SONOFF SNZB-04P) to the same equipment to get the open/closed state; without one the state shows as unknown.
+
+An administrator can turn on **Confirmation before action** on the gate's equipment page. Every press that would move the gate then asks first — on the Dashboard, in the Home view, in the Equipments list and on the equipment page, with a slide on a touch screen and a dialog with a mouse. **Stop** never asks: it is sent at once. See [Gates that ask first](dashboard.md#gate-confirmation).
 
 | Type     | Controls                                                 | Expected data                                                                   |
 | -------- | -------------------------------------------------------- | ------------------------------------------------------------------------------- |
@@ -226,12 +230,13 @@ metering data behaves as a plain switch.
 
 ### Detail page
 
-Click on any equipment to see its detail page:
+Click on any equipment to see its detail page. It puts what you use first and what you set up last:
 
-- **Live data** -- all values updated in real-time via WebSocket
-- **Controls** -- interactive controls adapted to the equipment type
-- **History chart** -- data trends over time (if historization is enabled)
-- **Configuration** -- bound devices, data bindings, order bindings
+- **Use** -- the header names the type and the room (« Thermostat · Living room »), then the controls adapted to the equipment type (value, setpoint, mode, buttons), the timed command when one is set, the charging sessions of a car or a charger, and the **history chart**, opened on the main series over the last 24 hours (temperature for a thermostat, power for a charger, position for a shutter, battery level for a car). Fine settings stay folded: a thermostat's **Other settings** (remembered open or closed per equipment), a charger's raw **Charger details**. Pick another series or range in the chart as before.
+- **Energy** -- on a meter or a metered equipment, one card with the energy cumuls and the live electrical measures.
+- **Configuration** (administrators) -- one card at the bottom. Each setting is a folded row with where it stands (« Timed command · Disabled »): confirmation before action, order outcome, shared access, timed command, invert direction, already counted by, energy management, button actions, then the devices, history and bindings. A **?** next to a setting explains it. **Delete equipment** sits at the foot of this card; **Edit** stays in the header.
+
+The **back** link returns to where you came from: the room, the dashboard, a mode, the equipment list. Opened from a direct link, it goes to the equipment's room (« Back to Living room »). The sidebar and the breadcrumb follow the same rule: the page sits under **Maison › room**, and under Administration only when you opened it from the equipment or device list.
 
 The page loads the equipment once, then follows its live values without asking the server again. Only that first load, or a **Retry**, can fail. If the server is busy or cannot be reached at that moment, the page says so (« Server busy », « Cannot connect ») and offers **Retry**, unless Sowel already has the equipment in hand: the page then shows it and keeps it live, with no message. « Equipment not found » means the equipment really does not exist.
 
@@ -354,7 +359,7 @@ A disabled equipment behaves as if it weren't there for the engine, while stayin
 
 ### Deleting an equipment
 
-Deleting removes the equipment from Sowel. The underlying devices are **not** affected -- they remain available for new equipments.
+**Delete equipment** is at the foot of the **Configuration** card of the detail page. Deleting removes the equipment from Sowel. The underlying devices are **not** affected -- they remain available for new equipments.
 
 !!! warning
 Deleting an equipment also removes any recipe instances and mode impacts that reference it.

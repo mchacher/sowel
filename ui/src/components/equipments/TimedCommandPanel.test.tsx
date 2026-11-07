@@ -38,7 +38,7 @@ describe("TimedCommandPanel", () => {
   beforeEach(() => vi.clearAllMocks());
 
   it("is off by default and leaves its fields disabled", () => {
-    render(<TimedCommandPanel equipment={gate()} onUpdated={() => {}} />);
+    render(<TimedCommandPanel defaultOpen equipment={gate()} onUpdated={() => {}} />);
 
     expect((screen.getByRole("checkbox") as HTMLInputElement).checked).toBe(false);
     for (const select of screen.getAllByRole("combobox")) {
@@ -47,7 +47,7 @@ describe("TimedCommandPanel", () => {
   });
 
   it("saves an impulse: the same command both ways, carrying no value", async () => {
-    render(<TimedCommandPanel equipment={gate()} onUpdated={() => {}} />);
+    render(<TimedCommandPanel defaultOpen equipment={gate()} onUpdated={() => {}} />);
 
     await userEvent.click(screen.getByRole("checkbox"));
 
@@ -67,7 +67,7 @@ describe("TimedCommandPanel", () => {
       dataBindings: [{ id: "d1", alias: "state", category: "light_state" }],
       orderBindings: [{ id: "o1", alias: "state", type: "boolean" }],
     } as never);
-    render(<TimedCommandPanel equipment={light} onUpdated={() => {}} />);
+    render(<TimedCommandPanel defaultOpen equipment={light} onUpdated={() => {}} />);
 
     await userEvent.click(screen.getByRole("checkbox"));
 
@@ -80,7 +80,7 @@ describe("TimedCommandPanel", () => {
     const configured = gate({
       timedCommand: { alias: "command", value: null, revertValue: null, durationMs: 900_000 },
     });
-    render(<TimedCommandPanel equipment={configured} onUpdated={() => {}} />);
+    render(<TimedCommandPanel defaultOpen equipment={configured} onUpdated={() => {}} />);
 
     await userEvent.selectOptions(screen.getByLabelText(/Durée|Duration/i), String(30 * 60_000));
 
@@ -94,7 +94,7 @@ describe("TimedCommandPanel", () => {
       timedCommand: { alias: "command", value: null, revertValue: null, durationMs: 900_000 },
     });
     const onUpdated = vi.fn();
-    render(<TimedCommandPanel equipment={configured} onUpdated={onUpdated} />);
+    render(<TimedCommandPanel defaultOpen equipment={configured} onUpdated={onUpdated} />);
 
     // Named, not "the checkbox": a configured panel also offers the spec 178
     // ladder switch, and the two must not be told apart by their order.
@@ -118,14 +118,14 @@ describe("TimedCommandPanel", () => {
         nextDurationMs: null,
       },
     });
-    render(<TimedCommandPanel equipment={running} onUpdated={() => {}} />);
+    render(<TimedCommandPanel defaultOpen equipment={running} onUpdated={() => {}} />);
 
     expect(screen.getByText("10:00")).toBeTruthy();
   });
 
   it("surfaces a refusal from the API instead of pretending it saved", async () => {
     vi.mocked(api.updateEquipment).mockRejectedValueOnce(new Error("TimedCommandNotEligible"));
-    render(<TimedCommandPanel equipment={gate()} onUpdated={() => {}} />);
+    render(<TimedCommandPanel defaultOpen equipment={gate()} onUpdated={() => {}} />);
 
     await userEvent.click(screen.getByRole("checkbox"));
 
@@ -141,7 +141,7 @@ describe("TimedCommandPanel", () => {
       });
 
     it("is off until it is asked for, and proposes 15/30/60 from a quarter-hour", async () => {
-      render(<TimedCommandPanel equipment={configured()} onUpdated={() => {}} />);
+      render(<TimedCommandPanel defaultOpen equipment={configured()} onUpdated={() => {}} />);
 
       const ladder = screen.getByRole("checkbox", {
         name: "Steps: each press asks for longer",
@@ -168,7 +168,7 @@ describe("TimedCommandPanel", () => {
           durationStepsMs: [900_000, 1_800_000],
         },
       });
-      render(<TimedCommandPanel equipment={laddered} onUpdated={() => {}} />);
+      render(<TimedCommandPanel defaultOpen equipment={laddered} onUpdated={() => {}} />);
 
       const selects = screen.getAllByRole("combobox") as HTMLSelectElement[];
       expect(selects[selects.length - 1].disabled).toBe(true);
@@ -184,7 +184,7 @@ describe("TimedCommandPanel", () => {
           durationStepsMs: [900_000, 1_800_000],
         },
       });
-      render(<TimedCommandPanel equipment={laddered} onUpdated={() => {}} />);
+      render(<TimedCommandPanel defaultOpen equipment={laddered} onUpdated={() => {}} />);
 
       // A shorter rung than any configured: it must land FIRST, and drag the
       // duration with it, or the tile would announce a length nothing arms.
@@ -209,7 +209,7 @@ describe("TimedCommandPanel", () => {
           durationStepsMs: [900_000, 1_800_000],
         },
       });
-      render(<TimedCommandPanel equipment={laddered} onUpdated={() => {}} />);
+      render(<TimedCommandPanel defaultOpen equipment={laddered} onUpdated={() => {}} />);
 
       // One rung means the SECOND press walks off the top and stops the
       // countdown — a foot-gun on a gate, refused here as well as by the API.

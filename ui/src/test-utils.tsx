@@ -11,3 +11,25 @@ import "./i18n";
 // globally (globals: true in vitest.config.ts).
 export * from "@testing-library/react";
 export { default as userEvent } from "@testing-library/user-event";
+
+/**
+ * Report a primary pointer to `matchMedia("(pointer: coarse)")` — the slide-or-dialog
+ * choice of `useGuardedAction` (spec 196). Every other query reads `false`, so
+ * `useIsMobile` keeps the desktop default. Returns the restore function.
+ */
+export function mockPointer(kind: "coarse" | "fine"): () => void {
+  const original = window.matchMedia;
+  window.matchMedia = ((query: string) => ({
+    matches: kind === "coarse" && query.includes("pointer: coarse"),
+    media: query,
+    onchange: null,
+    addEventListener: () => {},
+    removeEventListener: () => {},
+    addListener: () => {},
+    removeListener: () => {},
+    dispatchEvent: () => false,
+  })) as unknown as typeof window.matchMedia;
+  return () => {
+    window.matchMedia = original;
+  };
+}

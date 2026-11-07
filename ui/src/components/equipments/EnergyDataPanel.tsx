@@ -17,6 +17,8 @@ interface EnergyDataPanelProps {
    * what the figures mean.
    */
   isProduction?: boolean;
+  /** Spec 196 — a section of the page's « Énergie » card rather than a card of its own. */
+  section?: boolean;
 }
 
 interface EnergyCumul {
@@ -32,7 +34,7 @@ function formatEnergy(wh: number): { value: string; unit: string } {
 
 
 export function EnergyDataPanel({ computedData, status, statusReason,
-  isProduction,
+  isProduction, section = false,
 }: EnergyDataPanelProps) {
   const { t } = useTranslation();
 
@@ -69,12 +71,18 @@ export function EnergyDataPanel({ computedData, status, statusReason,
   const isDegraded = status === "degraded" || status === "offline";
 
   return (
-    <div className="card p-4 mb-6">
-      <div className="flex items-center justify-between mb-4">
-        <h3 className="text-body font-semibold text-text flex items-center gap-2">
-          <Zap size={16} strokeWidth={1.5} className="text-text-tertiary" />
-          {t(isProduction ? "energy.cumulsProduction" : "energy.cumuls")}
-        </h3>
+    <div className={section ? "" : "card p-4 mb-6"} data-energy-section={section || undefined}>
+      <div className={`flex items-center justify-between ${section ? "mb-2" : "mb-4"}`}>
+        {section ? (
+          <h4 className="text-caption font-medium text-text-tertiary">
+            {t(isProduction ? "energy.cumulsProduction" : "energy.cumuls")}
+          </h4>
+        ) : (
+          <h3 className="text-body font-semibold text-text flex items-center gap-2">
+            <Zap size={16} strokeWidth={1.5} className="text-text-tertiary" />
+            {t(isProduction ? "energy.cumulsProduction" : "energy.cumuls")}
+          </h3>
+        )}
         {status && <EquipmentStatusBadge status={status} reason={statusReason} size="sm" />}
       </div>
       <div className="grid grid-cols-2 gap-3">

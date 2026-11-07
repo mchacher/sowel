@@ -102,3 +102,59 @@ Scope is intentionally narrow (issue #320 discussion):
   the detail sheet); documented.
 - Non-admin viewing a gate detail page → no toggle shown (read path unaffected).
 - Flag on but viewed on desktop → inert (no swipe surface); direct control stays.
+
+## Amendment — 2026-11-07, spec 196: every path that actuates the gate asks
+
+The v1 scope above (mobile dashboard tap only) is widened by spec 196, slice P
+(decisions `portail-perimetre`, `portail-desktop`, `portail-mode` in
+`specs/196-ui-refresh/spec.md`). The user documentation promised it already
+(« turn it on there and every way of opening the gate asks first ») while two
+paths out of about twelve asked.
+
+**What changes.** When `requireConfirmation` is on, every UI path where one tap or
+click actuates the gate asks first, through one hook, `ui/src/hooks/useGuardedAction.ts`:
+
+| Path                                                 | Before | After |
+| ---------------------------------------------------- | ------ | ----- |
+| Dashboard tile, phone, single action                 | asks   | asks  |
+| Dashboard detail sheet, multi-action gate buttons    | no     | asks  |
+| Dashboard tile ≥ 640 px (card click and buttons)     | no     | asks  |
+| Timed tile (spec 174), arming                        | no     | asks  |
+| Maison row: gate button and timed control (arming)   | no     | asks  |
+| Equipment list quick control                         | no     | asks  |
+| Equipment page: command buttons and timed control    | no     | asks  |
+| Recipe tile card with `confirmFrom` (spec 171), desktop | no  | asks  |
+
+**Form.** The form follows the pointer, not the width: a coarse pointer (touch)
+gets the existing slide-to-confirm sheet; a fine pointer (mouse, trackpad) gets a
+two-button dialog, « Annuler » and the action named on the primary button, Enter
+confirms, Escape cancels.
+
+**Wording.** The title says what the press will do: for an impulse, from the state
+(open → « Fermer … ? », closed → « Ouvrir … ? », no state → « Actionner … ? »); for
+a multi-action gate, from the button pressed (OPEN, CLOSE → Ouvrir, Fermer; any
+other value → « Actionner », the value named in the subtitle). The multi-action
+buttons show the same words instead of the raw enum values (STOP reads « Arrêter »).
+
+**STOP never asks** (maintainer decision, phase 3 review). A stop is the one press
+that must not wait: delaying it defeats its purpose. On a guarded gate, open,
+close and operate (an impulse, or a value Sowel has no word for) ask; STOP is sent
+at once, on every path (`gatePressNeedsConfirm` in `gate-confirm.ts`).
+
+**Non-goals revised.** The first two non-goals above (desktop and non-dashboard
+surfaces; multi-action gates) are lifted, and `gateNeedsConfirm` no longer
+excludes multi-action gates. The rest stand, with these explicit exclusions:
+
+- activating a mode whose impacts command the gate does not ask
+  (`portail-mode`: activating a mode is already deliberate and touches several
+  equipments);
+- recipes' automations, the calendar, physical buttons and API tokens do not ask
+  (no UI press);
+- the recipe mode pill (the small button of a recipe tile or row) acts at once,
+  as `docs/user/dashboard.md` documents;
+- the shared-access guest page (spec 181) keeps its own deliberate gesture;
+- zone commands target no gate, so nothing to guard there;
+- still no server-side enforcement: the API accepts the order.
+
+Cancelling a running timed window never asks: the confirmation precedes the
+arming, not its undoing.

@@ -119,18 +119,18 @@ Today's look is kept (solar greens, HP dark blue / HC light blue). Only dark-the
 
 ## Acceptance Criteria
 
-- [ ] AC-1 No horizontal overflow and no overlapping text on Logs, Équipements, Appareils, Topologie, Intégrations, Dashboard, Maison and Énergie at 360, 390 and 430 px; tablet 768–1023 px reaches the zone tree, Énergie sub-pages and Analyse charts.
-- [ ] AC-2 No English string, raw i18n key or UUID in the French UI on the reviewed screens; 429 shows « Serveur occupé » with a retry; the equipment page never flips to « introuvable » on a failed background refresh.
-- [ ] AC-3 No `toFixed` in rendering code (lint); every displayed number goes through `lib/format`.
-- [ ] AC-4 Every text/background role pair passes WCAG AA (contrast test); amber is used only for on/running.
-- [ ] AC-5 No arbitrary font size in `ui/src` (lint); uppercase only in table headers; mono only in the allowed places.
-- [ ] AC-6 Top bar shows no clock (same zone) and no "Connecté" when connected; no FAB on the Dashboard.
-- [ ] AC-7 Dark theme: cards lighter than page, no `brightness` filter, primary buttons ≥ 4.5:1.
-- [ ] AC-8 One setpoint component across the UI; repeated taps send one order.
-- [ ] AC-9 Equipment page shows usage above the fold; back returns to the room.
-- [ ] AC-10 Gate confirmation on every path when enabled; texts follow the state.
+- [x] AC-1 No horizontal overflow and no overlapping text on Logs, Équipements, Appareils, Topologie, Intégrations, Dashboard, Maison and Énergie at 360, 390 and 430 px; tablet 768–1023 px reaches the zone tree, Énergie sub-pages and Analyse charts.
+- [x] AC-2 No English string, raw i18n key or UUID in the French UI on the reviewed screens; 429 shows « Serveur occupé » with a retry; the equipment page never flips to « introuvable » on a failed background refresh.
+- [x] AC-3 No `toFixed` in rendering code (lint); every displayed number goes through `lib/format`.
+- [x] AC-4 Every text/background role pair passes WCAG AA (contrast test); amber is used only for on/running.
+- [x] AC-5 No arbitrary font size in `ui/src` (lint); uppercase only in table headers; mono only in the allowed places.
+- [x] AC-6 Top bar shows no clock (same zone) and no "Connecté" when connected; no FAB on the Dashboard.
+- [x] AC-7 Dark theme: cards lighter than page, no `brightness` filter, primary buttons ≥ 4.5:1.
+- [x] AC-8 One setpoint component across the UI; repeated taps send one order.
+- [x] AC-9 Equipment page shows usage above the fold; back returns to the room.
+- [x] AC-10 Gate confirmation on every path when enabled; texts follow the state.
 - [ ] AC-11 Energy series pairs in dark theme ≥ 2:1; `colorIndex` present in by-usage responses.
-- [ ] AC-12 `npm run validate` green; screenshots of the reviewed screens retaken after each slice.
+- [x] AC-12 `npm run validate` green; screenshots of the reviewed screens retaken after each slice.
 
 ## Edge Cases
 
@@ -138,9 +138,9 @@ Today's look is kept (solar greens, HP dark blue / HC light blue). Only dark-the
 - `null` / `NaN` values: « — ».
 - English UI: numbers keep the dot; plural keys exist in both locales.
 - Browser and home in the same time zone: no clock anywhere; different zone: home time shown with its zone.
-- Gate with several actions (open/close/stop): the confirmation names the action chosen.
+- Gate with several actions (open/close/stop): the confirmation names the action chosen; STOP never asks (maintainer decision, phase 3 review: delaying a stop defeats it).
 - Setpoint sheet closed during the debounce: the pending value is sent.
-- Device not reporting after a setpoint order: the stepper keeps the requested value until the next report or a timeout, then shows the reported one.
+- Device not reporting after a setpoint order: the stepper keeps the requested value until the next report or a timeout, then shows the reported one. A zone keeps it until its average reaches the value (± half a step) or the timeout: its first report is one thermostat of several.
 - Weather forecasts show whole degrees (« 13° »): an exception to pr3-zero, a forecast carries no tenth.
 - Tablet keeps desktop content layouts (`useIsMobile` < 640 px) while the chrome is mobile up to 1024 px (pr1-tablette): page titles shown in the compact top bar are hidden from the page below `lg`.
 

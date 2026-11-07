@@ -258,7 +258,7 @@ Publish the resting value of a cycle action's `stateKey` from the start of `crea
 
 When a tile renders **exactly one** control, a click anywhere on the card fires it — the same cycle, the same next value as the pill, which stays where it is for anyone who prefers to aim. Two controls and the card stays inert: it would have to guess which one you meant. So does a tile with no control at all, a disabled instance, and a Dashboard in edit mode.
 
-`confirm: true` says that firing this tile **moves something physical** — a gate, a door, a pump. On the mobile Dashboard the card then opens a slide-to-confirm sheet naming the position it is about to switch to, instead of actuating on a tap; on desktop it fires directly, a mouse click being deliberate enough. The pill is never guarded: a 10 px target is already an aim, and this is the same call spec 146 made for gate equipment.
+`confirm: true` says that firing this tile **moves something physical** — a gate, a door, a pump. The card then asks before it acts, naming the position it is about to switch to: a slide-to-confirm sheet on a touch screen, a two-button dialog with a mouse (spec 196; until then the desktop click fired directly). The pill is never guarded: a 10 px target is already an aim.
 
 `confirmParam` names one of your **`boolean` slots**, and hands that choice to the user — the recipe's equivalent of the confirmation toggle a gate equipment carries. Whatever the instance answers wins; `confirm` is only the default for an instance that was never asked, so adding the slot to an existing recipe never silently drops the guard on the instances already running.
 

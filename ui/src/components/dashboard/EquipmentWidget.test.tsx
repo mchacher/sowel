@@ -330,8 +330,10 @@ describe("EquipmentWidget", () => {
       />,
     );
 
-    expect(screen.getByText("OPEN")).toBeTruthy();
-    expect(screen.getByText("CLOSE")).toBeTruthy();
+    // Spec 196 — the buttons say it in words; a value Sowel has no word for stays as is.
+    expect(screen.getByRole("button", { name: "Open" })).toBeTruthy();
+    expect(screen.getByRole("button", { name: "Close" })).toBeTruthy();
+    expect(screen.queryByText("OPEN")).toBeNull();
     await userEvent.click(screen.getByText("PEDESTRIAN"));
     expect(onExecuteOrder).toHaveBeenCalledWith("g-1", "command", "PEDESTRIAN");
   });
@@ -382,8 +384,10 @@ describe("EquipmentWidget", () => {
       />,
     );
 
-    // No per-enum button row for a single action…
+    // No per-enum button row for a single action, one button saying what it does
+    // (spec 196: the keyboard had no way in)…
     expect(screen.queryByText("TRIGGER")).toBeNull();
+    expect(screen.getByRole("button", { name: "Open" })).toBeTruthy();
     // …the whole card is the action.
     await userEvent.click(screen.getByText("Garage"));
     expect(onExecuteOrder).toHaveBeenCalledWith("g-2", "command", null);
