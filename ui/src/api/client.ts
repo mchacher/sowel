@@ -22,6 +22,41 @@ export function getAccessToken(): string | null {
   return _accessToken;
 }
 
+/**
+ * An HTTP failure with its status code, so a caller can tell a busy server (429) from a
+ * missing record (404) or a dropped connection (0). The message is the server's own text,
+ * exactly as the plain `Error` used to carry it, so callers that read `err.message` keep
+ * working.
+ */
+export class ApiError extends Error {
+  readonly status: number;
+
+  constructor(status: number, message: string, options?: { cause?: unknown }) {
+    super(message, options);
+    this.name = "ApiError";
+    this.status = status;
+  }
+}
+
+/** `fetch` itself rejects when the request never got an answer (offline, DNS, reset). */
+async function send(url: string, init: RequestInit): Promise<Response> {
+  try {
+    return await fetch(url, init);
+  } catch (err) {
+    // An abort is the caller's own decision, not a network failure.
+    if (err instanceof Error && err.name === "AbortError") throw err;
+    throw new ApiError(0, err instanceof Error ? err.message : String(err), { cause: err });
+  }
+}
+
+async function failure(response: Response): Promise<ApiError> {
+  const body = await response.json().catch(() => ({}));
+  return new ApiError(
+    response.status,
+    (body as { error?: string }).error ?? `HTTP ${response.status}: ${response.statusText}`,
+  );
+}
+
 /** Server-side global rate limit is 300 req/min per IP — a burst can 429 a legitimate read. */
 const RATE_LIMIT_MAX_WAIT_MS = 5000;
 
@@ -45,7 +80,7 @@ export async function fetchJSON<T>(
     headers["Content-Type"] = "application/json";
   }
 
-  const response = await fetch(url, {
+  const response = await send(url, {
     headers,
     ...options,
   });
@@ -72,15 +107,10 @@ export async function fetchJSON<T>(
       // Retry with new token
       return fetchJSON<T>(url, options, true);
     }
-    throw new Error("Session expired");
+    throw new ApiError(401, "Session expired");
   }
 
-  if (!response.ok) {
-    const body = await response.json().catch(() => ({}));
-    throw new Error(
-      (body as { error?: string }).error ?? `HTTP ${response.status}: ${response.statusText}`,
-    );
-  }
+  if (!response.ok) throw await failure(response);
 
   if (response.status === 204) return undefined as T;
   return response.json() as Promise<T>;
@@ -93,13 +123,8 @@ export async function fetchPublic<T>(url: string, options?: RequestInit): Promis
     headers["Content-Type"] = "application/json";
   }
 
-  const response = await fetch(url, { headers, ...options });
-  if (!response.ok) {
-    const body = await response.json().catch(() => ({}));
-    throw new Error(
-      (body as { error?: string }).error ?? `HTTP ${response.status}: ${response.statusText}`,
-    );
-  }
+  const response = await send(url, { headers, ...options });
+  if (!response.ok) throw await failure(response);
   if (response.status === 204) return undefined as T;
   return response.json() as Promise<T>;
 }

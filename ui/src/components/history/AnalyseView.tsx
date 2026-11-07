@@ -56,12 +56,13 @@ import {
   type ChartFamily,
   type Period,
 } from "./history-utils";
-import { humanBindingLabel, humanBindingLabelFromList } from "./binding-label";
+import { humanBindingLabelFromList } from "./binding-label";
 import { SeriesColorPicker } from "./SeriesColorPicker";
 import { fitYAxis } from "./y-axis";
 import { firstChartTarget } from "./analyse-nav";
 import { ChartTooltip } from "./ChartTooltip";
 import { mergeSeriesData } from "./chart-utils";
+import { seriesFullLabel, seriesMetricLabel } from "./tooltip-format";
 
 // ============================================================
 // Types
@@ -82,6 +83,9 @@ interface SeriesConfig {
    * Used by humanBindingLabel to decide whether device-name disambiguation
    * is needed. */
   sameCategoryCount: number;
+  /** A saved chart outlived this series' equipment: labelled as such, not fetched,
+   * and offered for removal (spec 196). */
+  deleted?: boolean;
 }
 
 /** A series with its effective colour resolved — what the render consumes.
@@ -297,12 +301,13 @@ export function AnalyseView() {
           newSeries.push({
             id,
             equipmentId: sc.equipmentId,
-            equipmentName: eq?.name ?? sc.equipmentId,
+            equipmentName: eq?.name ?? "",
             zoneName: eq?.zoneId ? (zoneNameById.get(eq.zoneId) ?? "") : "",
             alias: sc.alias,
             category: binding?.category ?? "",
             deviceName: binding?.deviceName ?? "",
             sameCategoryCount,
+            deleted: !eq,
           });
         }
         setSeries(newSeries);
@@ -337,7 +342,8 @@ export function AnalyseView() {
     async (seriesList: SeriesConfig[], window: { from: Date; to: Date }) => {
       const fromIso = window.from.toISOString();
       const toIso = window.to.toISOString();
-      for (const s of seriesList) {
+      // A deleted equipment has no history to ask for: the request would only 404.
+      for (const s of seriesList.filter((ser) => !ser.deleted)) {
         setSeriesData((prev) => ({
           ...prev,
           [s.id]: { points: [], resolution: "raw", loading: true, error: null },
@@ -734,7 +740,11 @@ export function AnalyseView() {
           {styledSeries.map((s) => (
             <div
               key={s.id}
-              className="relative flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[12px] font-medium bg-surface border border-border"
+              className={`relative flex items-center gap-1.5 px-2.5 py-1 text-[12px] font-medium border ${
+                s.deleted
+                  ? "flex-wrap rounded-[10px] bg-warning/10 border-warning/40"
+                  : "rounded-full bg-surface border-border"
+              }`}
             >
               {/* Spec 145 — the dot opens the colour picker for this series. */}
               <button
@@ -752,27 +762,37 @@ export function AnalyseView() {
                   onClose={() => setColorPicker(null)}
                 />
               )}
-              {s.zoneName && <span className="text-text-tertiary">{s.zoneName} /</span>}
-              <span className="text-text">{s.equipmentName}</span>
-              <span className="text-text-tertiary">
-                /{" "}
-                {s.category
-                  ? humanBindingLabel(
-                      { alias: s.alias, category: s.category, deviceName: s.deviceName, sameCategoryCount: s.sameCategoryCount },
-                      t,
-                    )
-                  : s.alias}
-              </span>
-              {CATEGORY_UNITS[s.category] && (
-                <span className="text-text-tertiary">({CATEGORY_UNITS[s.category]})</span>
+              {s.deleted ? (
+                <>
+                  <span className="text-text">{t("analyse.series.deleted")}</span>
+                  <span className="text-text-secondary">· {seriesMetricLabel(s, t)}</span>
+                  <button
+                    type="button"
+                    onClick={() => removeSeries(s.id)}
+                    className="ml-1 underline text-text-secondary hover:text-error cursor-pointer"
+                  >
+                    {t("analyse.series.remove")}
+                  </button>
+                </>
+              ) : (
+                <>
+                  {s.zoneName && <span className="text-text-tertiary">{s.zoneName} /</span>}
+                  <span className="text-text">{s.equipmentName}</span>
+                  <span className="text-text-tertiary">/ {seriesMetricLabel(s, t)}</span>
+                  {CATEGORY_UNITS[s.category] && (
+                    <span className="text-text-tertiary">({CATEGORY_UNITS[s.category]})</span>
+                  )}
+                  <button
+                    type="button"
+                    onClick={() => removeSeries(s.id)}
+                    aria-label={t("analyse.series.remove")}
+                    title={t("analyse.series.remove")}
+                    className="ml-0.5 text-text-tertiary hover:text-error transition-colors cursor-pointer"
+                  >
+                    <X size={12} strokeWidth={2} />
+                  </button>
+                </>
               )}
-              <button
-                type="button"
-                onClick={() => removeSeries(s.id)}
-                className="ml-0.5 text-text-tertiary hover:text-error transition-colors cursor-pointer"
-              >
-                <X size={12} strokeWidth={2} />
-              </button>
             </div>
           ))}
 
@@ -1065,16 +1085,7 @@ export function AnalyseView() {
                   <Legend
                     formatter={(value: string) => {
                       const s = series.find((ser) => ser.id === value);
-                      if (!s) return value;
-                      const metricLabel = s.category
-                        ? humanBindingLabel(
-                            { alias: s.alias, category: s.category, deviceName: s.deviceName, sameCategoryCount: s.sameCategoryCount },
-                            t,
-                          )
-                        : s.alias;
-                      return s.zoneName
-                        ? `${s.zoneName} / ${s.equipmentName} / ${metricLabel}`
-                        : `${s.equipmentName} / ${metricLabel}`;
+                      return s ? seriesFullLabel(s, t) : value;
                     }}
                     wrapperStyle={{ fontSize: "11px", cursor: "pointer" }}
                     onClick={openColorPickerFromLegend}

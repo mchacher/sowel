@@ -2,6 +2,8 @@ import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import { DoorOpen, DoorClosed, HelpCircle, Loader2 } from "lucide-react";
 import type { EquipmentWithDetails } from "../../types";
+import { findOrderByCategory } from "./bindingUtils";
+import { gateStateOf } from "../dashboard/gate-confirm";
 
 interface GateControlProps {
   equipment: EquipmentWithDetails;
@@ -13,19 +15,19 @@ export function GateControl({ equipment, onExecuteOrder, compact }: GateControlP
   const { t } = useTranslation();
   const [executing, setExecuting] = useState(false);
 
-  const commandBinding = equipment.orderBindings.find((ob) => ob.alias === "command");
+  // Category first, like the dashboard tile and the mobile tap (spec 110): a gate
+  // bound under another alias than `command` used to get a button on the dashboard
+  // and none here or in the Maison row.
+  const commandBinding = findOrderByCategory(equipment.orderBindings, ["gate_trigger"], ["command"]);
   const hasCommand = !!commandBinding;
   const enumValues = commandBinding?.enumValues ?? [];
-  const stateBinding = equipment.dataBindings.find(
-    (db) => db.alias === "state" && db.category === "gate_state",
-  );
-  const gateState = (stateBinding?.value as string) ?? "unknown";
+  const gateState = gateStateOf(equipment);
 
   const handleCommand = async (value?: string) => {
     if (executing || !commandBinding) return;
     setExecuting(true);
     try {
-      await onExecuteOrder("command", value ?? null);
+      await onExecuteOrder(commandBinding.alias, value ?? null);
     } finally {
       setExecuting(false);
     }

@@ -128,7 +128,7 @@ Chauffe-eau / cumulus piloté par un relais on/off. Le canal on/off est lié aut
 Portail, portail coulissant, ou porte de garage.
 
 - **Contrôles :** Bouton Ouvrir/Fermer avec indicateur d'état
-- **Données attendues :** état du portail (ouvert, fermé, en ouverture, en fermeture)
+- **Données attendues :** état du portail (ouvert, fermé ; « État inconnu » sans capteur)
 
 !!! tip "Icône sur l'Accueil"
 Vous pouvez choisir une icône spécifique pour les portails sur l'Accueil : portail standard, portail coulissant, ou porte de garage.
@@ -326,6 +326,8 @@ Cliquez sur n'importe quel équipement pour voir sa page de détail :
 - **Contrôles** : contrôles interactifs adaptés au type d'équipement
 - **Graphique d'historique** : tendances des données dans le temps (si l'historisation est activée)
 - **Configuration** : devices liés, liaisons de données, liaisons d'ordres
+
+Si le serveur est occupé ou injoignable, la page le dit (« Serveur occupé », « Connexion impossible ») et propose **Réessayer** ; « Équipement introuvable » veut dire que l'équipement n'existe vraiment pas. Une page déjà affichée reste là quand une mise à jour échoue : un bandeau au-dessus indique que les dernières valeurs connues restent affichées.
 
 ### Changer le device
 

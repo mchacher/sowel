@@ -1,6 +1,7 @@
 import type { TFunction } from "i18next";
 import { CATEGORY_UNITS, booleanTickLabels, isBooleanCategory } from "./history-utils";
 import { humanBindingLabel } from "./binding-label";
+import { humanizeAlias } from "../../lib/humanize-alias";
 
 /** The slice of a series the tooltip needs to render one row (#498, point 4). */
 export interface TooltipSeries {
@@ -11,6 +12,8 @@ export interface TooltipSeries {
   sameCategoryCount: number;
   equipmentName: string;
   zoneName: string;
+  /** The series' equipment no longer exists (a saved chart outlived it). */
+  deleted?: boolean;
   color: string;
 }
 
@@ -22,15 +25,29 @@ export interface TooltipRow {
 
 const fmt = (x: number): string => (Number.isInteger(x) ? String(x) : x.toFixed(1));
 
+type SeriesLabelInput = Pick<
+  TooltipSeries,
+  "alias" | "category" | "deviceName" | "sameCategoryCount" | "equipmentName" | "zoneName" | "deleted"
+>;
+
+/** The metric's words. Without a category (the binding is gone with its equipment) the
+ *  alias is looked up as a category — `humidity` reads « Humidité » — then humanised. */
+export function seriesMetricLabel(s: SeriesLabelInput, t: TFunction): string {
+  if (s.category) {
+    return humanBindingLabel(
+      { alias: s.alias, category: s.category, deviceName: s.deviceName, sameCategoryCount: s.sameCategoryCount },
+      t,
+    );
+  }
+  return t(`category.${s.alias}`, { defaultValue: humanizeAlias(s.alias) });
+}
+
 /** "Zone / Equipment / Metric" (Zone omitted when unknown) — the same label the
- *  legend uses. */
-export function seriesFullLabel(s: TooltipSeries, t: TFunction): string {
-  const metric = s.category
-    ? humanBindingLabel(
-        { alias: s.alias, category: s.category, deviceName: s.deviceName, sameCategoryCount: s.sameCategoryCount },
-        t,
-      )
-    : s.alias;
+ *  legend uses. A series whose equipment was deleted reads « Équipement supprimé ·
+ *  Humidité » instead of the equipment's id (spec 196). */
+export function seriesFullLabel(s: SeriesLabelInput, t: TFunction): string {
+  const metric = seriesMetricLabel(s, t);
+  if (s.deleted) return `${t("analyse.series.deleted")} · ${metric}`;
   return s.zoneName ? `${s.zoneName} / ${s.equipmentName} / ${metric}` : `${s.equipmentName} / ${metric}`;
 }
 

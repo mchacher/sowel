@@ -3,7 +3,7 @@ import { useTranslation } from "react-i18next";
 import { Loader2, Minus, Plus } from "lucide-react";
 import type { EquipmentWithDetails } from "../../types";
 import { splitEvChargerExtras, type EvVehicleState } from "../../lib/ev-charger-contract";
-import { humanizeAlias } from "../../lib/humanize-alias";
+import { extraLabel, extraTextValue } from "../../lib/extra-labels";
 import { formatValue } from "./useEquipmentState";
 import { LightControl } from "./LightControl";
 import {
@@ -196,8 +196,10 @@ export function EvChargerControl({ equipment, onExecuteOrder }: EvChargerControl
         <div className="flex flex-col gap-1 pt-3 border-t border-border-light">
           {extraData.map((b) => (
             <div key={b.alias} className="flex items-center justify-between gap-3 text-[13px]">
-              <span className="text-text-secondary">{humanizeAlias(b.alias)}</span>
-              <span className="font-mono tabular-nums text-text">{formatValue(b.value, b.unit)}</span>
+              <span className="text-text-secondary">{extraLabel("equipments.evCharger", b.alias, t)}</span>
+              <span className="font-mono tabular-nums text-text">{typeof b.value === "string"
+                  ? extraTextValue("equipments.evCharger", b.alias, b.value, t)
+                  : formatValue(b.value, b.unit)}</span>
             </div>
           ))}
         </div>

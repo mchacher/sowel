@@ -982,7 +982,8 @@ function GateEquipmentWidget({
   );
   const hasCommand = !!commandBinding;
   const enumValues = commandBinding?.enumValues ?? [];
-  const hasSingleAction = hasCommand && enumValues.length <= 1;
+  // A disabled gate does not actuate, like a disabled light (spec 196).
+  const hasSingleAction = hasCommand && enumValues.length <= 1 && equipment.enabled;
   // Issue #325 — multi-action gates used to expose NO way to act on desktop
   // (the mobile detail sheet had one button per enum action, the card none).
   const hasMultiAction = hasCommand && enumValues.length > 1 && equipment.enabled;

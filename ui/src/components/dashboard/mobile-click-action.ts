@@ -44,6 +44,8 @@ export function getMobileClickAction(
     );
     const enumValues = commandBinding?.enumValues ?? [];
     if (commandBinding && enumValues.length <= 1) {
+      // A disabled gate does not actuate on a tap, like a disabled light (spec 196).
+      if (!equipment.enabled) return undefined;
       // Spec 146 — guarded gate: open the slide-to-confirm sheet instead of
       // actuating on a single tap (issue #320).
       if (gateNeedsConfirm(equipment) && onConfirmAction) return onConfirmAction;

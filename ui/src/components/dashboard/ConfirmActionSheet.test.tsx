@@ -128,7 +128,25 @@ describe("ConfirmActionSheet", () => {
       />,
     );
 
-    // No binding reads as `unknown`, which this gate's vocabulary calls Moving.
-    expect(screen.getByText("Entrée · Moving")).toBeTruthy();
+    // No binding reads as `unknown`: Sowel cannot see the gate, so it does not
+    // claim it is moving (spec 196), and the tap only « operates » it.
+    expect(screen.getByText("Entrée · Unknown state")).toBeTruthy();
+    expect(screen.getByText("Operate Portail?")).toBeTruthy();
+    expect(screen.getByRole("button", { name: "Slide to operate" })).toBeTruthy();
+  });
+
+  // Spec 196 — the sheet said « Ouvrir » even on an open gate.
+  it("asks to close a gate that reads open", () => {
+    render(
+      <GateConfirmSheet
+        equipment={makeGate("open")}
+        zoneName="Entrée"
+        onConfirm={vi.fn()}
+        onClose={vi.fn()}
+      />,
+    );
+
+    expect(screen.getByText("Close Portail?")).toBeTruthy();
+    expect(screen.getByRole("button", { name: "Slide to close" })).toBeTruthy();
   });
 });

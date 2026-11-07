@@ -81,9 +81,9 @@ A water heater (and a switch) can also carry a dedicated **solar** on/off channe
 
 ### Access
 
-| Type     | Controls                            | Expected data                               |
-| -------- | ----------------------------------- | ------------------------------------------- |
-| **Gate** | Open/Close button + state indicator | gate state (open, closed, opening, closing) |
+| Type     | Controls                            | Expected data                                       |
+| -------- | ----------------------------------- | --------------------------------------------------- |
+| **Gate** | Open/Close button + state indicator | gate state (open, closed; unknown without a sensor) |
 
 !!! tip "Dashboard icon"
 You can choose a specific icon for gates on the dashboard: standard gate, sliding gate, or garage door.
@@ -232,6 +232,8 @@ Click on any equipment to see its detail page:
 - **Controls** -- interactive controls adapted to the equipment type
 - **History chart** -- data trends over time (if historization is enabled)
 - **Configuration** -- bound devices, data bindings, order bindings
+
+If the server is busy or cannot be reached, the page says so (« Server busy », « Cannot connect ») and offers **Retry**; « Equipment not found » means the equipment really does not exist. A page already on screen stays there when a later refresh fails: a notice above it says the last known values are shown.
 
 ### Changing the device
 

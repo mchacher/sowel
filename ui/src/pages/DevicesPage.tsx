@@ -1,4 +1,4 @@
-import { useMemo } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { useSearchParams } from "react-router-dom";
 import { useDevices } from "../store/useDevices";
@@ -10,6 +10,7 @@ import { Radio, Loader2, Search, X } from "lucide-react";
 import { useWsSubscription } from "../hooks/useWsSubscription";
 import { INTEGRATION_LABELS } from "../constants";
 import { PageHeader } from "../components/layout/PageHeader";
+import { getIntegrations } from "../api";
 
 const ALL_TAB = "__all__";
 
@@ -22,6 +23,22 @@ export function DevicesPage() {
   const error = useDevices((s) => s.error);
   const equipments = useEquipments((s) => s.equipments);
   const zoneTree = useZones((s) => s.tree);
+
+  // Tab labels come from the installed plugin's own name (« LoRa2MQTT », « Somfy RTS
+  // Bridge »), not from cutting its id (« Lora2mqtt », « Somfy Rts »). The fixed list
+  // and the cut stay as fallbacks while the names load, or if they cannot.
+  const [integrationNames, setIntegrationNames] = useState<Record<string, string>>({});
+  useEffect(() => {
+    let cancelled = false;
+    getIntegrations()
+      .then((list) => {
+        if (!cancelled) setIntegrationNames(Object.fromEntries(list.map((i) => [i.id, i.name])));
+      })
+      .catch(() => {});
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   // Flatten zone tree into id → path-aware label map (spec 139)
   const zoneNames = useMemo(
@@ -155,7 +172,11 @@ export function DevicesPage() {
             return (
               <TabButton
                 key={integrationId}
-                label={INTEGRATION_LABELS[integrationId] ?? integrationId.split(/[-_]/).map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(" ")}
+                label={
+                  integrationNames[integrationId] ??
+                  INTEGRATION_LABELS[integrationId] ??
+                  integrationId.split(/[-_]/).map((w) => w.charAt(0).toUpperCase() + w.slice(1)).join(" ")
+                }
                 count={count}
                 active={resolvedTab === integrationId}
                 onClick={() => setActiveTab(integrationId)}

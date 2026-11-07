@@ -5,7 +5,7 @@ import type { EquipmentWithDetails } from "../../types";
 import { splitElectricVehicleExtras } from "../../lib/electric-vehicle-contract";
 import { formatRelative } from "../../lib/format-relative";
 import { useStalenessClock } from "../../hooks/useStalenessClock";
-import { humanizeAlias } from "../../lib/humanize-alias";
+import { extraLabel, extraTextValue } from "../../lib/extra-labels";
 import { formatValue } from "./useEquipmentState";
 import { electricVehicleStateOf, evBatteryTone, evChargingStateKey } from "./electricVehicleState";
 
@@ -258,9 +258,11 @@ export function ElectricVehicleControl({ equipment, onExecuteOrder }: ElectricVe
           )}
           {extraData.map((b) => (
             <div key={b.alias} className="flex items-center justify-between gap-3 text-[13px]">
-              <span className="text-text-secondary">{humanizeAlias(b.alias)}</span>
+              <span className="text-text-secondary">{extraLabel("equipments.electricVehicle", b.alias, t)}</span>
               <span className="font-mono tabular-nums text-text">
-                {formatValue(b.value, b.unit)}
+                {typeof b.value === "string"
+                  ? extraTextValue("equipments.electricVehicle", b.alias, b.value, t)
+                  : formatValue(b.value, b.unit)}
               </span>
             </div>
           ))}

@@ -1,5 +1,5 @@
 // Barrel: re-exports the whole API surface so `import { x } from "../api"` keeps working.
-export { setAccessToken, setOnUnauthorized, getAccessToken } from "./client";
+export { setAccessToken, setOnUnauthorized, getAccessToken, ApiError } from "./client";
 export * from "./system";
 export * from "./auth";
 export * from "./zones";

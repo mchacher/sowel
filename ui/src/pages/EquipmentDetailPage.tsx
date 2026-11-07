@@ -5,7 +5,7 @@ import { useDevices } from "../store/useDevices";
 import { useEquipments } from "../store/useEquipments";
 import { useZones } from "../store/useZones";
 import { useAuth } from "../store/useAuth";
-import { getEquipment, getHistoryBindings, setHistorize } from "../api";
+import { getHistoryBindings, setHistorize } from "../api";
 import { EquipmentForm } from "../components/equipments/EquipmentForm";
 import { LightControl } from "../components/equipments/LightControl";
 import { SolarControl } from "../components/equipments/SolarControl";
@@ -77,6 +77,8 @@ import { RelativeTime } from "../components/RelativeTime";
 import type { EquipmentWithDetails, HistoryBindingState } from "../types";
 import { useWsSubscription } from "../hooks/useWsSubscription";
 import { HistoryPanel } from "../components/history/HistoryPanel";
+import { useEquipmentDetail } from "../hooks/useEquipmentDetail";
+import { apiErrorMessage } from "../lib/api-error";
 
 export function EquipmentDetailPage() {
   useWsSubscription(["equipments", "devices", "energy"]);
@@ -98,9 +100,7 @@ export function EquipmentDetailPage() {
   const fetchZones = useZones((s) => s.fetchZones);
   const isAdmin = useAuth((s) => s.user?.role === "admin");
 
-  const [equipment, setEquipment] = useState<EquipmentWithDetails | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  const { equipment, notFound, error: loadError, retry } = useEquipmentDetail(id);
   const [showEditForm, setShowEditForm] = useState(false);
   const [showAddDataBinding, setShowAddDataBinding] = useState(false);
   const [showAddOrderBinding, setShowAddOrderBinding] = useState(false);
@@ -122,8 +122,8 @@ export function EquipmentDetailPage() {
   //
   // Gated on the section being open: it costs one GET per backing device, and
   // it is only ever read from inside that section. Keyed on the BINDINGS, not
-  // on `equipment`: that object is replaced on every value refetch (see the
-  // 429 note on thisEquipmentSnapshot below), so depending on it would
+  // on `equipment`: that object is replaced each time a reading arrives (the
+  // store patches it in place, see useEquipmentDetail), so depending on it would
   // re-fetch every device each time a sensor reports. Tracking the bindings
   // means a plugin publishing a new point while the page sits open is picked
   // up on the next binding change or revisit, not live — which is the right
@@ -173,51 +173,6 @@ export function EquipmentDetailPage() {
   const EMPTY: EquipmentWithDetails = { id: "", name: "", type: "sensor", zoneId: "", enabled: true, createdAt: "", updatedAt: "", dataBindings: [], orderBindings: [], status: "online" };
   const equipmentState = useEquipmentState(equipment ?? EMPTY);
 
-  // `equipments` changes reference on *any* equipment's WS-pushed update
-  // (handleEquipmentStatusChanged/handleEquipmentDataChanged always produce
-  // a new array, and the coalesced fetchEquipments() list refresh replaces
-  // every entry wholesale) — depending on the array directly re-triggers
-  // this effect, and its GET /equipments/:id call, for unrelated equipment
-  // changing state anywhere in the house. Confirmed live (2026-08-17): a
-  // single flapping equipment elsewhere produced a sustained 429 storm on
-  // this endpoint while this page was open. Depending on a snapshot of
-  // just *this* equipment's own entry keeps the "refetch when server data
-  // for what we're viewing changes" behavior without firing on everything
-  // else.
-  const thisEquipmentSnapshot = useMemo(
-    () => JSON.stringify(equipments.find((eq) => eq.id === id) ?? null),
-    [id, equipments],
-  );
-
-  useEffect(() => {
-    if (!id) return;
-    let cancelled = false;
-
-    // Only show loading spinner on initial load, not on WebSocket refetches
-    const isInitialLoad = equipment === null;
-    if (isInitialLoad) {
-      setLoading(true);
-      setError(null);
-    }
-
-    getEquipment(id)
-      .then((data) => {
-        if (!cancelled) {
-          setEquipment(data);
-          setLoading(false);
-        }
-      })
-      .catch((err) => {
-        if (!cancelled) {
-          setError(err instanceof Error ? err.message : "Failed to load equipment");
-          setLoading(false);
-        }
-      });
-
-    return () => { cancelled = true; };
-  // eslint-disable-next-line react-hooks/exhaustive-deps -- equipment is set inside effect, adding it would cause infinite loop
-  }, [id, thisEquipmentSnapshot]); // Re-fetch when *this* equipment's store entry changes
-
   // Eagerly load history bindings so HistoryPanel can render immediately
   const loadHistoryBindings = useCallback(async () => {
     if (!id) return;
@@ -233,7 +188,7 @@ export function EquipmentDetailPage() {
     loadHistoryBindings();
   }, [loadHistoryBindings]);
 
-  if (loading) {
+  if (!equipment && !notFound && !loadError) {
     return (
       <div className="flex items-center justify-center py-20">
         <Loader2 size={24} className="animate-spin text-text-tertiary" />
@@ -241,7 +196,11 @@ export function EquipmentDetailPage() {
     );
   }
 
-  if (error || !equipment) {
+  // A 404 is the only « introuvable ». Any other failure says what it was (a busy
+  // server, no connection) and offers a retry, and only when there is nothing on
+  // screen: a failed refresh of a loaded page keeps it (notice below).
+  const failure = loadError ? apiErrorMessage(loadError, t) : null;
+  if (notFound || !equipment) {
     return (
       <div className="p-4 sm:p-6">
         {fromZone ? (
@@ -259,8 +218,22 @@ export function EquipmentDetailPage() {
           <div className="w-16 h-16 rounded-full bg-error/10 flex items-center justify-center mb-4">
             <Box size={28} strokeWidth={1.5} className="text-error" />
           </div>
-          <h3 className="text-[16px] font-medium text-text mb-1">{t("equipments.notFound.title")}</h3>
-          <p className="text-[13px] text-text-secondary">{error ?? t("equipments.notFound.message")}</p>
+          <h3 className="text-[16px] font-medium text-text mb-1">
+            {notFound || !failure ? t("equipments.notFound.title") : failure.title}
+          </h3>
+          <p className="text-[13px] text-text-secondary">
+            {notFound || !failure ? t("equipments.notFound.message") : failure.message}
+          </p>
+          {!notFound && failure && (
+            <button
+              type="button"
+              onClick={retry}
+              className="mt-4 inline-flex items-center gap-1.5 px-3 py-2 text-[13px] font-medium text-text-secondary border border-border rounded-[6px] hover:bg-border-light transition-colors duration-150 cursor-pointer"
+            >
+              <RefreshCw size={14} strokeWidth={1.5} />
+              {t("common.retry")}
+            </button>
+          )}
         </div>
       </div>
     );
@@ -273,7 +246,7 @@ export function EquipmentDetailPage() {
       await deleteEquipment(equipment.id);
       navigate("/equipments");
     } catch (err) {
-      alert(err instanceof Error ? err.message : "Failed to delete equipment");
+      alert(err instanceof Error ? err.message : t("common.error"));
       setDeleting(false);
     }
   };
@@ -293,6 +266,25 @@ export function EquipmentDetailPage() {
           <ArrowLeft size={14} strokeWidth={1.5} />
           {t("equipments.backToEquipments")}
         </Link>
+      )}
+
+      {/* A refresh failed: the last good data stays, with what went wrong and a retry. */}
+      {failure && (
+        <div
+          role="status"
+          className="flex flex-wrap items-center gap-x-3 gap-y-1 mb-4 px-3 py-2 rounded-[8px] border border-warning/30 bg-warning/10 text-[13px]"
+        >
+          <span className="font-medium text-text">{failure.title}</span>
+          <span className="text-text-secondary">{t("equipments.keptData")}</span>
+          <button
+            type="button"
+            onClick={retry}
+            className="ml-auto inline-flex items-center gap-1.5 font-medium text-primary hover:underline cursor-pointer"
+          >
+            <RefreshCw size={14} strokeWidth={1.5} />
+            {t("common.retry")}
+          </button>
+        </div>
       )}
 
       {/* Header */}

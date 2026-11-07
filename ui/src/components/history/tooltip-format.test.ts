@@ -76,6 +76,13 @@ describe("seriesFullLabel", () => {
   it("joins zone / equipment / metric", () => {
     expect(seriesFullLabel(measurement, t).startsWith("Salon / Thermostat /")).toBe(true);
   });
+
+  // Spec 196 — a saved chart outliving its equipment showed the equipment's UUID and
+  // the raw alias.
+  it("names a deleted equipment's series by what it measured, not by an id", () => {
+    const orphan = { ...measurement, alias: "humidity", category: "", equipmentName: "", zoneName: "", deleted: true };
+    expect(seriesFullLabel(orphan, t)).toBe("analyse.series.deleted · category.humidity");
+  });
 });
 
 // The recharts <Tooltip formatter> path (#681). Recharts calls a formatter with

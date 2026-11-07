@@ -3,6 +3,7 @@ import { useTranslation } from "react-i18next";
 import type { EquipmentWithDetails } from "../../types";
 import { BottomSheet } from "./BottomSheet";
 import { SlideToConfirm } from "./SlideToConfirm";
+import { gateConfirmTexts, gateStateOf } from "./gate-confirm";
 
 /**
  * Spec 146 — minimal confirmation sheet for a sensitive action on the mobile
@@ -70,7 +71,8 @@ export function ConfirmActionSheet({
   );
 }
 
-/** Spec 146 wording: the gate's name, its zone and the state it reads now. */
+/** Spec 146 wording: the gate's name, its zone and the state it reads now; spec 196: the
+ * title and the slide say what the tap will do from that state. */
 export function GateConfirmSheet({
   equipment,
   zoneName,
@@ -84,18 +86,15 @@ export function GateConfirmSheet({
 }) {
   const { t } = useTranslation();
 
-  const stateBinding = equipment.dataBindings.find((db) => db.category === "gate_state");
-  const gateState = (stateBinding?.value as string) ?? "unknown";
-  const subtitleParts = [
-    zoneName,
-    t(`controls.gate.${gateState}`, { defaultValue: "" }),
-  ].filter(Boolean);
+  const gateState = gateStateOf(equipment);
+  const { title, slideLabel } = gateConfirmTexts(gateState, equipment.name, t);
+  const subtitleParts = [zoneName, t(`controls.gate.${gateState}`)].filter(Boolean);
 
   return (
     <ConfirmActionSheet
-      title={t("controls.gate.confirmSheetTitle", { name: equipment.name })}
+      title={title}
       subtitle={subtitleParts.length > 0 ? subtitleParts.join(" · ") : undefined}
-      slideLabel={t("controls.gate.slideToOpen")}
+      slideLabel={slideLabel}
       confirmedLabel={t("controls.gate.actuated")}
       onConfirm={onConfirm}
       onClose={onClose}
