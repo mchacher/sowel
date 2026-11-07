@@ -328,6 +328,8 @@ export interface ZoneAggregatedData {
    * affected metric.
    */
   unavailableEquipmentsByCategory: Partial<Record<DataCategory, number>>;
+  /** #1134 — names of those equipments, sorted, one entry per equipment (same keys). */
+  unavailableEquipmentNamesByCategory: Partial<Record<DataCategory, string[]>>;
 }
 
 // ============================================================

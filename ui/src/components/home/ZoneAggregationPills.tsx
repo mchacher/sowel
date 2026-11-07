@@ -18,7 +18,14 @@ import { ShutterIcon } from "../icons/ShutterIcons";
 import { WaterValveIcon } from "../icons/WaterValveIcon";
 import { ZoneSparkline } from "../history/ZoneSparkline";
 import type { ZoneAggregatedData } from "../../types";
-import { formatDuration, formatPercent, formatPower, formatRange, formatTemperature, formatWithUnit } from "../../lib/format";
+import {
+  formatDuration,
+  formatPercent,
+  formatPower,
+  formatRange,
+  formatTemperature,
+  formatWithUnit,
+} from "../../lib/format";
 import { ROOT_ZONE_ID } from "../../lib/constants";
 
 type PillVariant = "default" | "active" | "info" | "calm" | "alert";
@@ -55,26 +62,22 @@ interface StatusItem {
   name?: string;
   /** Shown below lg only: the desktop top bar already carries it. */
   compactOnly?: boolean;
+  /** Offline equipments left out of this pill (spec 116, #1134): a marker, named on hover. */
+  unavailable?: string[];
 }
 
-export function ZoneAggregationPills({
-  data,
-  zoneId,
-  historyEnabled,
-}: ZoneAggregationPillsProps) {
+export function ZoneAggregationPills({ data, zoneId, historyEnabled }: ZoneAggregationPillsProps) {
   const { t } = useTranslation();
   const duration = useRelativeTime(data.motionSince);
 
-  // Spec 116: append "(N unavailable)" hint when offline equipments of this
-  // category were excluded from the aggregation.
-  const unavail = (cat: string): string => {
-    const count = data.unavailableEquipmentsByCategory?.[cat as never] as
-      | number
-      | undefined;
-    return count && count > 0
-      ? ` ${t("zones.aggregate.unavailable", { count })}`
-      : "";
+  // Spec 116, #1134: the offline equipments left out of a category's pill. The
+  // pill carries a marker and names them, so the hint can be traced to a zone.
+  const unavail = (cat: string): string[] | undefined => {
+    const names = data.unavailableEquipmentNamesByCategory?.[cat as never] as string[] | undefined;
+    return names && names.length > 0 ? names : undefined;
   };
+  const offlineLights = unavail("light_state");
+  const offlineShutters = unavail("shutter_position");
 
   // ── Cluster 1: Sensors (passive measurement) ────────────────
   const sensorPills: StatusItem[] = [];
@@ -83,7 +86,8 @@ export function ZoneAggregationPills({
     sensorPills.push({
       key: "temp",
       icon: <Thermometer size={14} strokeWidth={1.5} />,
-      label: `${formatTemperature(data.temperature, { style: "compact" })}${unavail("temperature")}`,
+      label: formatTemperature(data.temperature, { style: "compact" }),
+      unavailable: unavail("temperature"),
       variant: "default",
       iconTint: "text-primary",
       valueTint: "text-text",
@@ -95,7 +99,8 @@ export function ZoneAggregationPills({
     sensorPills.push({
       key: "hum",
       icon: <Droplets size={14} strokeWidth={1.5} />,
-      label: `${formatPercent(data.humidity)}${unavail("humidity")}`,
+      label: formatPercent(data.humidity),
+      unavailable: unavail("humidity"),
       variant: "default",
       iconTint: "text-primary",
       valueTint: "text-text",
@@ -107,7 +112,8 @@ export function ZoneAggregationPills({
     sensorPills.push({
       key: "lux",
       icon: <Sun size={14} strokeWidth={1.5} />,
-      label: `${formatWithUnit(data.luminosity, "lx")}${unavail("luminosity")}`,
+      label: formatWithUnit(data.luminosity, "lx"),
+      unavailable: unavail("luminosity"),
       variant: "default",
       iconTint: "text-primary",
       valueTint: "text-text",
@@ -152,15 +158,30 @@ export function ZoneAggregationPills({
     });
   }
 
-  if (data.lightsTotal > 0) {
+  // A zone whose lights are all offline keeps a greyed pill, so the marker its
+  // parent shows can be followed down to it (#1134).
+  if (data.lightsTotal > 0 || offlineLights) {
     const isOn = data.lightsOn > 0;
     counterPills.push({
       key: "lights",
       icon: <Lightbulb size={14} strokeWidth={1.5} />,
-      label: `${data.lightsOn}/${data.lightsTotal}${unavail("light_state")}`,
+      label: data.lightsTotal > 0 ? `${data.lightsOn}/${data.lightsTotal}` : "—",
       variant: isOn ? "active" : "default",
       iconTint: "text-text-tertiary",
       valueTint: "text-text-tertiary",
+      unavailable: offlineLights,
+    });
+  }
+
+  if (data.shuttersTotal === 0 && offlineShutters) {
+    counterPills.push({
+      key: "shutters",
+      icon: <ShutterIcon size={14} strokeWidth={1.5} position={null} />,
+      label: "—",
+      variant: "default",
+      iconTint: "text-text-tertiary",
+      valueTint: "text-text-tertiary",
+      unavailable: offlineShutters,
     });
   }
 
@@ -176,10 +197,11 @@ export function ZoneAggregationPills({
     counterPills.push({
       key: "shutters",
       icon: <ShutterIcon size={14} strokeWidth={1.5} position={pos} />,
-      label: `${data.shuttersOpen}/${data.shuttersTotal}${positionSuffix}${unavail("shutter_position")}`,
+      label: `${data.shuttersOpen}/${data.shuttersTotal}${positionSuffix}`,
       variant: "default",
       iconTint: "text-text-secondary",
       valueTint: someOpen ? "text-text" : "text-text-tertiary",
+      unavailable: offlineShutters,
     });
   }
 
@@ -189,7 +211,11 @@ export function ZoneAggregationPills({
     const someOpen = data.doorsOpen > 0;
     counterPills.push({
       key: "door-equipments",
-      icon: someOpen ? <DoorOpen size={14} strokeWidth={1.5} /> : <DoorClosed size={14} strokeWidth={1.5} />,
+      icon: someOpen ? (
+        <DoorOpen size={14} strokeWidth={1.5} />
+      ) : (
+        <DoorClosed size={14} strokeWidth={1.5} />
+      ),
       label: `${data.doorsOpen}/${data.doorsTotal}`,
       // Open/closed is neutral (spec 196): the word and the icon say it.
       variant: "default",
@@ -272,9 +298,7 @@ export function ZoneAggregationPills({
     });
   }
 
-  const clusters = [sensorPills, counterPills, alertPills].filter(
-    (c) => c.length > 0,
-  );
+  const clusters = [sensorPills, counterPills, alertPills].filter((c) => c.length > 0);
 
   if (clusters.length === 0) return null;
 
@@ -300,15 +324,13 @@ export function ZoneAggregationPills({
               {ii > 0 && (
                 <div
                   className={`w-px h-4 bg-border-light mx-1 flex-shrink-0 ${
-                    item.compactOnly || cluster.slice(0, ii).every(isCompactOnly) ? "hidden" : "hidden lg:block"
+                    item.compactOnly || cluster.slice(0, ii).every(isCompactOnly)
+                      ? "hidden"
+                      : "hidden lg:block"
                   }`}
                 />
               )}
-              <StripPill
-                item={item}
-                zoneId={zoneId}
-                historyEnabled={historyEnabled}
-              />
+              <StripPill item={item} zoneId={zoneId} historyEnabled={historyEnabled} />
             </Fragment>
           ))}
         </Fragment>
@@ -369,7 +391,12 @@ function variantClasses(variant: PillVariant): {
 }
 
 function StripPill({ item, zoneId, historyEnabled }: StripPillProps) {
+  const { t } = useTranslation();
   const v = variantClasses(item.variant);
+  const offline = item.unavailable
+    ? t("zones.aggregate.offline", { names: item.unavailable.join(", ") })
+    : undefined;
+  const title = [item.name, offline].filter(Boolean).join(" · ") || undefined;
   const iconClass = v.icon || item.iconTint || "text-text-tertiary";
   const valueClass = v.value || item.valueTint || "text-text";
   const hasMobileOverride = item.mobileLabel !== undefined;
@@ -379,17 +406,26 @@ function StripPill({ item, zoneId, historyEnabled }: StripPillProps) {
       className={`flex items-center gap-1.5 px-2 py-0.5 rounded-sm text-small font-medium tabular-nums whitespace-nowrap ${v.pill} ${
         item.compactOnly ? "lg:hidden" : ""
       }`}
-      title={item.name}
+      title={title}
     >
       <span className={`flex-shrink-0 ${iconClass}`}>{item.icon}</span>
       {item.name && <span className="sr-only">{item.name}</span>}
       {hasMobileOverride ? (
         <>
-          {item.mobileLabel && <span className={`sm:hidden ${valueClass}`}>{item.mobileLabel}</span>}
+          {item.mobileLabel && (
+            <span className={`sm:hidden ${valueClass}`}>{item.mobileLabel}</span>
+          )}
           <span className={`hidden sm:inline ${valueClass}`}>{item.label}</span>
         </>
       ) : (
         <span className={valueClass}>{item.label}</span>
+      )}
+      {offline && (
+        <>
+          {/* Attention, not a fault: part of the zone is offline (orange role). */}
+          <span aria-hidden="true" className="w-1.5 h-1.5 rounded-full bg-warning flex-shrink-0" />
+          <span className="sr-only">{offline}</span>
+        </>
       )}
       {historyEnabled && zoneId && item.sparklineCategory && (
         <span className="hidden sm:inline-flex">

@@ -125,6 +125,7 @@ describe("ZoneAggregator", () => {
         displaysOnline: 0,
         displaysTotal: 0,
         unavailableEquipmentsByCategory: {},
+        unavailableEquipmentNamesByCategory: {},
       });
     });
 
@@ -182,6 +183,70 @@ describe("ZoneAggregator", () => {
       // Average uses only the online sensor (20°C), not the (20+22)/2 = 21.
       expect(data?.temperature).toBe(20);
       expect(data?.unavailableEquipmentsByCategory).toEqual({ temperature: 1 });
+      expect(data?.unavailableEquipmentNamesByCategory).toEqual({ temperature: ["Sensor 2"] });
+    });
+
+    // #1134 — the Piscine zone in production: everything offline.
+    it("counts an offline equipment as an unavailable light or shutter only if it would count online", () => {
+      const parent = zoneManager.create({ name: "Maison" });
+      const pool = zoneManager.create({ name: "Piscine", parentId: parent.id });
+      const offline = (name: string, type: EquipmentType, bindings: [string, string][]) => {
+        const dev = seedDevice(db, {
+          name,
+          dataKeys: bindings.map(([key, category]) => ({ key, category, value: "true" })),
+        });
+        db.prepare("UPDATE devices SET status = 'offline' WHERE id = ?").run(dev.deviceId);
+        const eq = equipmentManager.create({ name, type, zoneId: pool.id });
+        bindings.forEach(([key], i) => equipmentManager.addDataBinding(eq.id, dev.dataIds[i], key));
+      };
+      offline("Spot Piscine", "light_onoff", [["state", "light_state"]]);
+      // Two channels of one light: one unavailable light, not two.
+      offline("Guirlande", "light_onoff", [
+        ["state", "light_state"],
+        ["state_2", "light_state"],
+      ]);
+      offline("Pompe Piscine", "pool_pump", [["state", "light_state"]]);
+      offline("PAC Piscine", "pool_heat_pump", [["state", "light_state"]]);
+      offline("Volet Piscine", "pool_cover", [["position", "shutter_position"]]);
+
+      aggregator.computeAll();
+
+      for (const zoneId of [pool.id, parent.id]) {
+        const data = aggregator.getByZoneId(zoneId);
+        expect(data?.lightsTotal).toBe(0);
+        expect(data?.unavailableEquipmentsByCategory.light_state).toBe(2);
+        expect(data?.unavailableEquipmentNamesByCategory.light_state).toEqual([
+          "Guirlande",
+          "Spot Piscine",
+        ]);
+        expect(data?.unavailableEquipmentsByCategory.shutter_position).toBeUndefined();
+      }
+    });
+
+    it("tells apart two equal counts naming different offline equipments", () => {
+      const zone = zoneManager.create({ name: "Salon" });
+      const devs = ["Lampe A", "Lampe B"].map((name) => {
+        const dev = seedDevice(db, {
+          name,
+          dataKeys: [{ key: "state", category: "light_state", value: "true" }],
+        });
+        const eq = equipmentManager.create({ name, type: "light_onoff", zoneId: zone.id });
+        equipmentManager.addDataBinding(eq.id, dev.dataIds[0], "state");
+        return dev;
+      });
+      db.prepare("UPDATE devices SET status = 'offline' WHERE id = ?").run(devs[0].deviceId);
+      aggregator.computeAll();
+      expect(aggregator.getByZoneId(zone.id)?.unavailableEquipmentNamesByCategory).toEqual({
+        light_state: ["Lampe A"],
+      });
+
+      // Same count, different equipment: still a change the tooltip must show.
+      db.prepare("UPDATE devices SET status = 'online' WHERE id = ?").run(devs[0].deviceId);
+      db.prepare("UPDATE devices SET status = 'offline' WHERE id = ?").run(devs[1].deviceId);
+      aggregator.computeAll();
+      expect(aggregator.getByZoneId(zone.id)?.unavailableEquipmentNamesByCategory).toEqual({
+        light_state: ["Lampe B"],
+      });
     });
 
     it("leaves unavailableEquipmentsByCategory empty when all equipments are online", () => {

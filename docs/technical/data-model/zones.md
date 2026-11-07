@@ -85,6 +85,14 @@ interface ZoneAggregatedData {
   sunrise: string | null; // From SunlightManager (computed from home location)
   sunset: string | null;
   isDaylight: boolean | null;
+  displaysOnline: number; // spec 120 — COUNT(type=display, status=online)
+  displaysTotal: number;
+  // Spec 116 / #1134 — offline equipments are left out of the values above and
+  // listed here instead, once per equipment, keyed by the category they would
+  // have fed. Same rule as the totals: an offline pool pump with a light_state
+  // binding is not an unavailable light, a pool cover not a shutter.
+  unavailableEquipmentsByCategory: Partial<Record<DataCategory, number>>;
+  unavailableEquipmentNamesByCategory: Partial<Record<DataCategory, string[]>>; // sorted names
 }
 ```
 

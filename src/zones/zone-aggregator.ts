@@ -56,8 +56,11 @@ interface Accumulator {
   /** Spec 120 — displays online (EquipmentStatus === "online") vs total. */
   displaysOnline: number;
   displaysTotal: number;
-  /** Per-DataCategory count of equipments skipped because status === "offline" (spec 116). */
-  unavailableByCategory: Partial<Record<DataCategory, number>>;
+  /**
+   * Per-DataCategory names of the equipments skipped because status === "offline"
+   * (spec 116), one entry per equipment (#1134). The public counts are their lengths.
+   */
+  unavailableByCategory: Partial<Record<DataCategory, string[]>>;
 }
 
 function emptyAccumulator(): Accumulator {
@@ -95,12 +98,12 @@ function emptyAccumulator(): Accumulator {
 }
 
 function mergeUnavailable(
-  a: Partial<Record<DataCategory, number>>,
-  b: Partial<Record<DataCategory, number>>,
-): Partial<Record<DataCategory, number>> {
-  const result: Partial<Record<DataCategory, number>> = { ...a };
-  for (const [cat, count] of Object.entries(b) as [DataCategory, number][]) {
-    result[cat] = (result[cat] ?? 0) + count;
+  a: Partial<Record<DataCategory, string[]>>,
+  b: Partial<Record<DataCategory, string[]>>,
+): Partial<Record<DataCategory, string[]>> {
+  const result: Partial<Record<DataCategory, string[]>> = { ...a };
+  for (const [cat, names] of Object.entries(b) as [DataCategory, string[]][]) {
+    result[cat] = [...(result[cat] ?? []), ...names];
   }
   return result;
 }
@@ -181,7 +184,15 @@ function accumulatorToPublic(acc: Accumulator): ZoneAggregatedData {
     isDaylight: null,
     displaysOnline: acc.displaysOnline,
     displaysTotal: acc.displaysTotal,
-    unavailableEquipmentsByCategory: acc.unavailableByCategory,
+    unavailableEquipmentsByCategory: Object.fromEntries(
+      Object.entries(acc.unavailableByCategory).map(([cat, names]) => [cat, names.length]),
+    ),
+    unavailableEquipmentNamesByCategory: Object.fromEntries(
+      Object.entries(acc.unavailableByCategory).map(([cat, names]) => [
+        cat,
+        [...names].sort((x, y) => x.localeCompare(y)),
+      ]),
+    ),
   };
 }
 
@@ -215,19 +226,23 @@ function aggregatedDataEqual(a: ZoneAggregatedData, b: ZoneAggregatedData): bool
     a.isDaylight === b.isDaylight &&
     a.displaysOnline === b.displaysOnline &&
     a.displaysTotal === b.displaysTotal &&
-    unavailableEqual(a.unavailableEquipmentsByCategory, b.unavailableEquipmentsByCategory)
+    unavailableEqual(a.unavailableEquipmentNamesByCategory, b.unavailableEquipmentNamesByCategory)
   );
 }
 
+/** The counts are the names' lengths, so comparing the (sorted) names covers both. */
 function unavailableEqual(
-  a: Partial<Record<DataCategory, number>>,
-  b: Partial<Record<DataCategory, number>>,
+  a: Partial<Record<DataCategory, string[]>>,
+  b: Partial<Record<DataCategory, string[]>>,
 ): boolean {
   const keysA = Object.keys(a);
   const keysB = Object.keys(b);
   if (keysA.length !== keysB.length) return false;
   for (const key of keysA) {
-    if (a[key as DataCategory] !== b[key as DataCategory]) return false;
+    const namesA = a[key as DataCategory] ?? [];
+    const namesB = b[key as DataCategory];
+    if (!namesB || namesA.length !== namesB.length) return false;
+    if (namesA.some((name, i) => name !== namesB[i])) return false;
   }
   return true;
 }
@@ -568,9 +583,9 @@ export class ZoneAggregator {
    * Compute the direct accumulator for a zone from its own equipments.
    *
    * Spec 116: equipments whose derived status === "offline" are excluded from
-   * numeric aggregation. Each of their data-binding categories increments
-   * `unavailableByCategory` so the UI can surface "(N unavailable)" hints.
-   * Degraded equipments still contribute their last known values.
+   * numeric aggregation and listed in `unavailableByCategory` instead, so the UI
+   * can flag the affected pill. Degraded equipments still contribute their last
+   * known values.
    */
   private computeDirectAccumulator(zoneId: string): Accumulator {
     const equipments = this.equipmentManager.getByZone(zoneId);
@@ -593,9 +608,11 @@ export class ZoneAggregator {
       }
 
       if (withDetails.status === "offline") {
-        for (const binding of withDetails.dataBindings) {
-          acc.unavailableByCategory[binding.category] =
-            (acc.unavailableByCategory[binding.category] ?? 0) + 1;
+        for (const category of this.unavailableCategories(
+          equipment.type,
+          withDetails.dataBindings,
+        )) {
+          (acc.unavailableByCategory[category] ??= []).push(equipment.name);
         }
         continue;
       }
@@ -611,6 +628,33 @@ export class ZoneAggregator {
     }
 
     return acc;
+  }
+
+  /**
+   * #1134 — the categories an offline equipment is missing from, once each.
+   *
+   * Counted per equipment, not per binding, and with the rule the online totals
+   * use: a pump whose `state` binding is a `light_state` is not a light while
+   * online, so it is not an unavailable light either, and a pool cover is not a
+   * shutter. Otherwise the root zone shows unavailable lights that no child zone
+   * can account for.
+   */
+  private unavailableCategories(
+    equipmentType: EquipmentType,
+    bindings: DataBindingWithValue[],
+  ): Set<DataCategory> {
+    const categories = new Set<DataCategory>();
+    for (const binding of bindings) {
+      if (
+        binding.category === "light_state" &&
+        !ZoneAggregator.LIGHT_EQUIPMENT_TYPES.has(equipmentType)
+      ) {
+        continue;
+      }
+      if (binding.category === "shutter_position" && equipmentType !== "shutter") continue;
+      categories.add(binding.category);
+    }
+    return categories;
   }
 
   /**

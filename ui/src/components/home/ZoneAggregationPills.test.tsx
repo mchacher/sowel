@@ -36,6 +36,7 @@ const data: ZoneAggregatedData = {
   displaysOnline: 0,
   displaysTotal: 0,
   unavailableEquipmentsByCategory: {},
+  unavailableEquipmentNamesByCategory: {},
 };
 
 describe("ZoneAggregationPills — sun", () => {
@@ -78,7 +79,67 @@ describe("ZoneAggregationPills — sun", () => {
   });
 
   it("leaves them out when the home has no sun times", () => {
-    render(<ZoneAggregationPills data={{ ...data, sunrise: null, sunset: null }} zoneId={ROOT_ZONE_ID} />);
+    render(
+      <ZoneAggregationPills
+        data={{ ...data, sunrise: null, sunset: null }}
+        zoneId={ROOT_ZONE_ID}
+      />,
+    );
     expect(screen.queryByText("Soleil")).toBeNull();
+  });
+});
+
+// #1134 — offline equipments: a marker on the pill that names them, traceable to
+// the zone they are in.
+describe("ZoneAggregationPills — offline equipments", () => {
+  beforeEach(async () => {
+    await i18n.changeLanguage("fr");
+  });
+
+  const offlineLights = (lightsTotal: number): ZoneAggregatedData => ({
+    ...data,
+    lightsOn: lightsTotal > 0 ? 1 : 0,
+    lightsTotal,
+    unavailableEquipmentsByCategory: { light_state: 2 },
+    unavailableEquipmentNamesByCategory: { light_state: ["Guirlande", "Spot Piscine"] },
+  });
+
+  it("marks the pill and names the offline equipments instead of a count", () => {
+    const { container } = render(
+      <ZoneAggregationPills data={offlineLights(16)} zoneId="zone-maison" />,
+    );
+    const pill = screen.getByText("1/16").parentElement!;
+    expect(pill.getAttribute("title")).toBe("Hors ligne : Guirlande, Spot Piscine");
+    expect(pill.querySelector(".bg-warning")).not.toBeNull();
+    expect(container.textContent).not.toMatch(/indispo/);
+  });
+
+  it("keeps a greyed lights pill in a zone whose lights are all offline", () => {
+    render(<ZoneAggregationPills data={offlineLights(0)} zoneId="zone-piscine" />);
+    const pill = screen.getByTitle(/^Hors ligne\s: Guirlande, Spot Piscine$/);
+    expect(pill.textContent).toContain("—");
+    expect(pill.querySelector(".text-text-tertiary")).not.toBeNull();
+  });
+
+  it("keeps a greyed shutters pill in a zone whose shutters are all offline", () => {
+    render(
+      <ZoneAggregationPills
+        data={{
+          ...data,
+          unavailableEquipmentsByCategory: { shutter_position: 1 },
+          unavailableEquipmentNamesByCategory: { shutter_position: ["Volet bureau"] },
+        }}
+        zoneId="zone-bureau"
+      />,
+    );
+    expect(screen.getByTitle(/^Hors ligne\s: Volet bureau$/).textContent).toContain("—");
+  });
+
+  it("shows no marker when nothing is offline", () => {
+    const { container } = render(
+      <ZoneAggregationPills data={{ ...data, lightsOn: 1, lightsTotal: 3 }} zoneId="zone-salon" />,
+    );
+    expect(container.querySelector(".bg-warning")).toBeNull();
+    expect(screen.queryByTitle(/Hors ligne/)).toBeNull();
   });
 });
