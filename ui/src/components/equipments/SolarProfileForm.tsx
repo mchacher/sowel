@@ -258,7 +258,7 @@ export function SolarProfileForm({ equipmentId, planes, since, onSaved }: SolarP
           type="button"
           onClick={save}
           disabled={saving || nothingToSave}
-          className="px-3 py-1.5 rounded-[6px] bg-primary text-white text-small font-medium disabled:opacity-50"
+          className="px-3 py-1.5 rounded-[6px] bg-primary-fill text-white text-small font-medium disabled:opacity-50"
         >
           {saving ? t("common.saving") : t("common.save")}
         </button>

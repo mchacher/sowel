@@ -71,7 +71,7 @@ export function MultiSelectChips({
             }}
             className={`px-3 py-1.5 text-caption font-medium rounded-[6px] border transition-colors duration-150 ${
               on
-                ? "bg-primary border-primary text-white"
+                ? "bg-primary-fill border-primary-fill text-white"
                 : "bg-surface border-border text-text-secondary hover:border-primary"
             }`}
           >

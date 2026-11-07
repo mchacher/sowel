@@ -100,7 +100,7 @@ export function ActivityPanel({ zoneId }: Props) {
             aria-pressed={includeDescendants}
             className={
               includeDescendants
-                ? "ml-auto inline-flex items-center justify-center w-[22px] h-[22px] rounded-[4px] bg-primary text-[var(--n-0)] hover:bg-primary-hover transition-colors"
+                ? "ml-auto inline-flex items-center justify-center w-[22px] h-[22px] rounded-[4px] bg-primary-fill text-white hover:bg-primary-fill-hover transition-colors"
                 : "ml-auto inline-flex items-center justify-center w-[22px] h-[22px] rounded-[4px] bg-transparent text-primary border border-[var(--p-100)] hover:bg-surface transition-colors"
             }
           >

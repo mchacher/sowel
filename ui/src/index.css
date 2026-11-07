@@ -20,6 +20,14 @@
   --color-primary-mid:    #7FB8D4; /* dedicated logo mid-blue (smile/eyes) — not in design-system scale */
   --color-primary-light:  var(--p-50);
   --color-primary-hover:  var(--p-600);
+  /* Primary fill (spec 196, slice 4b): the background of a button, selected
+     segment, checked box or switch. bg-primary is the ink (dots, bars, the
+     light blue of dark links) and never carries text. */
+  --color-primary-fill:       var(--p-fill);
+  --color-primary-fill-hover: var(--p-fill-hover);
+  --color-on-primary:         var(--p-on);
+  /* Dashboard illustrations at rest (WidgetIcons, EvCarGauge). */
+  --color-illu:           var(--illu-ink);
   /* Kept for the PV forecast curve only, until the energy palette work. */
   --color-accent:         var(--a-500);
   --color-background:     var(--n-50);
@@ -41,6 +49,8 @@
   --color-warning-bg:     var(--orange-50);
   --color-success:        var(--green-500);  /* works as expected */
   --color-error:          var(--red-500);    /* fault, failure, destructive */
+  --color-info:           var(--info-500);   /* informational: icon, fill */
+  --color-info-ink:       var(--info-700);   /* informational: text */
   --color-heat:           var(--red-500);    /* heating now (alias of error) */
   --color-on-status:      var(--on-status);  /* text on a success/error/warning-ink fill */
 
@@ -85,15 +95,6 @@
   --color-sensor-500: var(--sensor-500);
   --color-media-50: var(--media-50);
   --color-media-500: var(--media-500);
-}
-
-/* ============================================================
-   Dark mode widget SVG boost (production-specific, kept outside @theme)
-   ============================================================ */
-
-.dark svg[viewBox="0 0 56 56"],
-.dark svg.widget-icon {
-  filter: brightness(1.6);
 }
 
 /* All JetBrains Mono containers get tabular numbers by default —

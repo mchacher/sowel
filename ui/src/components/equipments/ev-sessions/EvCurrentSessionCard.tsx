@@ -112,7 +112,7 @@ export function EvCurrentSessionCard({
             type="button"
             disabled={saving}
             onClick={() => void confirm()}
-            className="min-h-[44px] rounded-[6px] bg-primary hover:bg-primary-hover text-white text-body font-medium cursor-pointer disabled:opacity-60 flex items-center justify-center gap-2"
+            className="min-h-[44px] rounded-[6px] bg-primary-fill hover:bg-primary-fill-hover text-white text-body font-medium cursor-pointer disabled:opacity-60 flex items-center justify-center gap-2"
           >
             {saving ? (
               <Loader2 size={14} className="animate-spin" />

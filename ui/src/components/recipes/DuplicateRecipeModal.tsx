@@ -207,7 +207,7 @@ export function DuplicateRecipeModal({
           <button
             onClick={handleSubmit}
             disabled={!targetZoneId || submitting}
-            className="flex items-center gap-1.5 px-4 py-2 text-small font-medium text-white bg-primary rounded-[6px] hover:bg-primary-hover transition-colors duration-150 disabled:opacity-50 disabled:cursor-not-allowed"
+            className="flex items-center gap-1.5 px-4 py-2 text-small font-medium text-white bg-primary-fill rounded-[6px] hover:bg-primary-fill-hover transition-colors duration-150 disabled:opacity-50 disabled:cursor-not-allowed"
           >
             {submitting && <Loader2 size={14} className="animate-spin" />}
             {t("recipes.duplicateAction")}

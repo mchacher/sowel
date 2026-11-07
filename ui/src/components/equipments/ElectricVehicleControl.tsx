@@ -191,7 +191,7 @@ export function ElectricVehicleControl({ equipment, onExecuteOrder }: ElectricVe
                   t("equipments.electricVehicle.startSent"),
                 )
               }
-              className="flex items-center gap-1.5 px-3 py-1.5 rounded-[6px] text-small font-medium bg-primary text-white hover:bg-primary-hover disabled:opacity-50 cursor-pointer"
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-[6px] text-small font-medium bg-primary-fill text-white hover:bg-primary-fill-hover disabled:opacity-50 cursor-pointer"
             >
               {busy === "start" ? (
                 <Loader2 size={13} className="animate-spin" />

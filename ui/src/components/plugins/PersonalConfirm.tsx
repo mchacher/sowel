@@ -104,7 +104,7 @@ export function PersonalConfirmModal({
           <button
             onClick={onConfirm}
             disabled={busy}
-            className="px-4 py-2 text-small font-medium text-white bg-primary hover:bg-primary-hover rounded-[6px] transition-colors disabled:opacity-50 inline-flex items-center gap-1.5"
+            className="px-4 py-2 text-small font-medium text-white bg-primary-fill hover:bg-primary-fill-hover rounded-[6px] transition-colors disabled:opacity-50 inline-flex items-center gap-1.5"
           >
             {busy ? (
               <Loader2 size={14} className="animate-spin" />

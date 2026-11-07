@@ -276,7 +276,7 @@ export function DeviceSelector({
                   <div
                     className={`
                       flex-shrink-0 w-5 h-5 rounded-[4px] border flex items-center justify-center
-                      ${isSelected ? "bg-primary border-primary text-white" : "border-border bg-surface"}
+                      ${isSelected ? "bg-primary-fill border-primary-fill text-white" : "border-border bg-surface"}
                     `}
                   >
                     {isSelected && <Check size={12} strokeWidth={2} />}

@@ -123,7 +123,7 @@ export function MqttPublishersPage() {
         <button
           onClick={() => setShowCreate(true)}
           disabled={brokers.length === 0}
-          className="flex items-center gap-1.5 px-3 py-1.5 bg-primary text-white text-small rounded-[6px] hover:bg-primary-hover transition-colors disabled:opacity-50"
+          className="flex items-center gap-1.5 px-3 py-1.5 bg-primary-fill text-white text-small rounded-[6px] hover:bg-primary-fill-hover transition-colors disabled:opacity-50"
           title={brokers.length === 0 ? t("mqttPublishers.noBrokersHint") : undefined}
         >
           <Plus size={14} />
@@ -356,7 +356,7 @@ function BrokerForm({
           <button
             type="submit"
             disabled={saving || !name.trim() || !url.trim()}
-            className="px-4 py-1.5 bg-primary text-white text-small rounded-[6px] hover:bg-primary-hover disabled:opacity-50"
+            className="px-4 py-1.5 bg-primary-fill text-white text-small rounded-[6px] hover:bg-primary-fill-hover disabled:opacity-50"
           >
             {saving ? (
               <Loader2 size={14} className="animate-spin" />
@@ -492,7 +492,7 @@ function PublisherForm({
           <button
             type="submit"
             disabled={saving || !name.trim() || !brokerId || !topic.trim()}
-            className="px-4 py-1.5 bg-primary text-white text-small rounded-[6px] hover:bg-primary-hover disabled:opacity-50"
+            className="px-4 py-1.5 bg-primary-fill text-white text-small rounded-[6px] hover:bg-primary-fill-hover disabled:opacity-50"
           >
             {saving ? (
               <Loader2 size={14} className="animate-spin" />
@@ -858,7 +858,7 @@ function MappingRow({
           <button
             type="submit"
             disabled={saving || !publishKey.trim() || !sourceId || !sourceKey}
-            className="px-3 py-1 bg-primary text-white text-caption rounded-[4px] hover:bg-primary-hover disabled:opacity-50"
+            className="px-3 py-1 bg-primary-fill text-white text-caption rounded-[4px] hover:bg-primary-fill-hover disabled:opacity-50"
           >
             {saving ? <Loader2 size={12} className="animate-spin" /> : t("common.save")}
           </button>
@@ -1003,7 +1003,7 @@ function AddMappingForm({
         <button
           type="submit"
           disabled={saving || !publishKey.trim() || !sourceId || !sourceKey}
-          className="px-3 py-1 bg-primary text-white text-caption rounded-[4px] hover:bg-primary-hover disabled:opacity-50"
+          className="px-3 py-1 bg-primary-fill text-white text-caption rounded-[4px] hover:bg-primary-fill-hover disabled:opacity-50"
         >
           {t("mqttPublishers.addMapping")}
         </button>

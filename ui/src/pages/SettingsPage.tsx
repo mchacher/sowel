@@ -361,7 +361,7 @@ function HomeSettingsSection() {
           <button
             onClick={handleSave}
             disabled={saving}
-            className="px-4 py-2 text-small font-medium bg-primary text-white rounded-[6px] hover:bg-primary-hover transition-colors disabled:opacity-50"
+            className="px-4 py-2 text-small font-medium bg-primary-fill text-white rounded-[6px] hover:bg-primary-fill-hover transition-colors disabled:opacity-50"
           >
             {saving ? t("common.saving") : t("common.save")}
           </button>
@@ -433,7 +433,7 @@ function ProfileSection({
               }
             }}
             disabled={saving}
-            className="px-4 py-2 text-small font-medium bg-primary text-white rounded-[6px] hover:bg-primary-hover transition-colors disabled:opacity-50"
+            className="px-4 py-2 text-small font-medium bg-primary-fill text-white rounded-[6px] hover:bg-primary-fill-hover transition-colors disabled:opacity-50"
           >
             {saving ? t("common.saving") : t("common.save")}
           </button>
@@ -475,7 +475,7 @@ function PreferencesSection({
                 onClick={() => onLanguageChange(lang)}
                 className={`px-4 py-2 text-small font-medium rounded-[6px] border transition-colors cursor-pointer ${
                   language === lang
-                    ? "bg-primary text-white border-primary"
+                    ? "bg-primary-fill text-white border-primary-fill"
                     : "bg-background text-text-secondary border-border hover:border-primary hover:text-text"
                 }`}
               >
@@ -495,7 +495,7 @@ function PreferencesSection({
                 onClick={() => onThemeChange(opt)}
                 className={`px-4 py-2 text-small font-medium rounded-[6px] border transition-colors cursor-pointer ${
                   theme === opt
-                    ? "bg-primary text-white border-primary"
+                    ? "bg-primary-fill text-white border-primary-fill"
                     : "bg-background text-text-secondary border-border hover:border-primary hover:text-text"
                 }`}
               >
@@ -632,7 +632,7 @@ function ChangePasswordSection() {
             <button
               onClick={handleSubmit}
               disabled={saving || !currentPassword || !newPassword || !confirmPassword}
-              className="px-4 py-2 text-small font-medium bg-primary text-white rounded-[6px] hover:bg-primary-hover transition-colors disabled:opacity-50"
+              className="px-4 py-2 text-small font-medium bg-primary-fill text-white rounded-[6px] hover:bg-primary-fill-hover transition-colors disabled:opacity-50"
             >
               {saving ? t("common.saving") : t("common.save")}
             </button>
@@ -962,7 +962,7 @@ function MfaReauthModal({
             onClick={handleSubmit}
             disabled={submitting || !password || !code}
             className={`px-4 py-2 text-small font-medium rounded-[6px] transition-colors disabled:opacity-50 cursor-pointer ${
-              danger ? "bg-error text-on-status hover:bg-error/80" : "bg-primary text-white hover:bg-primary-hover"
+              danger ? "bg-error text-on-status hover:bg-error/80" : "bg-primary-fill text-white hover:bg-primary-fill-hover"
             }`}
           >
             {submitting ? t("common.saving") : submitLabel}
@@ -1058,7 +1058,7 @@ function MfaEnrollModal({ onDone, onClose }: { onDone: () => void; onClose: () =
               <button
                 onClick={handleConfirm}
                 disabled={submitting || !code}
-                className="px-4 py-2 text-small font-medium bg-primary text-white rounded-[6px] hover:bg-primary-hover transition-colors disabled:opacity-50 cursor-pointer"
+                className="px-4 py-2 text-small font-medium bg-primary-fill text-white rounded-[6px] hover:bg-primary-fill-hover transition-colors disabled:opacity-50 cursor-pointer"
               >
                 {submitting ? t("common.saving") : t("common.next")}
               </button>
@@ -1081,7 +1081,7 @@ function MfaEnrollModal({ onDone, onClose }: { onDone: () => void; onClose: () =
               <button
                 onClick={onDone}
                 disabled={!acknowledged}
-                className="px-4 py-2 text-small font-medium bg-primary text-white rounded-[6px] hover:bg-primary-hover transition-colors disabled:opacity-50 cursor-pointer"
+                className="px-4 py-2 text-small font-medium bg-primary-fill text-white rounded-[6px] hover:bg-primary-fill-hover transition-colors disabled:opacity-50 cursor-pointer"
               >
                 {t("common.close")}
               </button>
@@ -1304,7 +1304,7 @@ function TwoFactorSection() {
                   setRegeneratedCodes(null);
                   load();
                 }}
-                className="px-4 py-2 text-small font-medium bg-primary text-white rounded-[6px] hover:bg-primary-hover transition-colors cursor-pointer"
+                className="px-4 py-2 text-small font-medium bg-primary-fill text-white rounded-[6px] hover:bg-primary-fill-hover transition-colors cursor-pointer"
               >
                 {t("common.close")}
               </button>
@@ -1403,7 +1403,7 @@ function ApiTokensSection() {
         <button
           onClick={handleCreate}
           disabled={creating || !tokenName.trim()}
-          className="flex items-center gap-1.5 px-3 py-2 text-small font-medium bg-primary text-white rounded-[6px] hover:bg-primary-hover transition-colors disabled:opacity-50"
+          className="flex items-center gap-1.5 px-3 py-2 text-small font-medium bg-primary-fill text-white rounded-[6px] hover:bg-primary-fill-hover transition-colors disabled:opacity-50"
         >
           <Plus size={14} />
           {t("settings.createToken")}
@@ -1590,7 +1590,7 @@ function UserManagementSection({ currentUserId }: { currentUserId: string }) {
             <button
               onClick={handleCreate}
               disabled={creating || !newUsername || !newDisplayName || !newPassword}
-              className="px-4 py-2 text-small font-medium bg-primary text-white rounded-[6px] hover:bg-primary-hover transition-colors disabled:opacity-50"
+              className="px-4 py-2 text-small font-medium bg-primary-fill text-white rounded-[6px] hover:bg-primary-fill-hover transition-colors disabled:opacity-50"
             >
               {creating ? t("common.creating") : t("common.create")}
             </button>

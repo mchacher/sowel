@@ -142,7 +142,7 @@ export function EnergyPage() {
                     onClick={() => setViewMode("total")}
                     className={
                       viewMode === "total"
-                        ? "px-3 py-1 bg-primary text-white"
+                        ? "px-3 py-1 bg-primary-fill text-white"
                         : "px-3 py-1 text-text-secondary hover:bg-bg"
                     }
                   >
@@ -153,7 +153,7 @@ export function EnergyPage() {
                     onClick={() => setViewMode("by-usage")}
                     className={
                       viewMode === "by-usage"
-                        ? "px-3 py-1 bg-primary text-white"
+                        ? "px-3 py-1 bg-primary-fill text-white"
                         : "px-3 py-1 text-text-secondary hover:bg-bg"
                     }
                   >

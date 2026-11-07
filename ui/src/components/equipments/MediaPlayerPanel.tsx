@@ -91,7 +91,7 @@ export function MediaPlayerPanel({ equipment, onExecuteOrder }: MediaPlayerPanel
                   disabled={executing !== null}
                   className={`px-2.5 py-1 text-micro font-medium rounded-[5px] transition-colors cursor-pointer ${
                     currentSource === src
-                      ? "bg-primary text-white"
+                      ? "bg-primary-fill text-white"
                       : "bg-border-light text-text-secondary hover:bg-primary/10 hover:text-primary"
                   } disabled:opacity-40`}
                 >

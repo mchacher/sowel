@@ -290,7 +290,7 @@ function UpdateRow({
         type="button"
         onClick={onUpdate}
         disabled={loading || disabled}
-        className="px-3 py-1.5 rounded-[6px] bg-primary text-white text-caption font-medium hover:bg-primary-hover disabled:opacity-50 disabled:cursor-not-allowed transition-colors flex items-center gap-1.5 cursor-pointer flex-shrink-0"
+        className="px-3 py-1.5 rounded-[6px] bg-primary-fill text-white text-caption font-medium hover:bg-primary-fill-hover disabled:opacity-50 disabled:cursor-not-allowed transition-colors flex items-center gap-1.5 cursor-pointer flex-shrink-0"
       >
         {loading && <Loader2 size={12} strokeWidth={1.5} className="animate-spin" />}
         {t("updates.action.update")}

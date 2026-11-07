@@ -206,7 +206,7 @@ export function AppLayout() {
               {user && (
                 <div className="hidden lg:flex items-center gap-1.5 ml-1">
                   <div className="flex items-center gap-1.5 pl-1 pr-2.5 py-[3px] rounded-full bg-[var(--n-50)] border border-border-light">
-                    <span className="w-[22px] h-[22px] rounded-full bg-primary text-white flex items-center justify-center text-micro font-semibold leading-none">
+                    <span className="w-[22px] h-[22px] rounded-full bg-primary-fill text-white flex items-center justify-center text-micro font-semibold leading-none">
                       {getInitials(user.displayName)}
                     </span>
                     <span className="text-caption font-medium text-text">{user.displayName}</span>

@@ -303,7 +303,7 @@ export function EnergyManagementPanel({
                   void commit({ cls, watts, toleratedImportW, minOnS, minOffS, releaseDelayS })
                 }
                 disabled={saving}
-                className="mt-3 px-3 py-1.5 bg-primary text-white text-small font-medium rounded-md hover:bg-primary-hover disabled:opacity-50"
+                className="mt-3 px-3 py-1.5 bg-primary-fill text-white text-small font-medium rounded-md hover:bg-primary-fill-hover disabled:opacity-50"
               >
                 {t("energyProfile.save")}
               </button>

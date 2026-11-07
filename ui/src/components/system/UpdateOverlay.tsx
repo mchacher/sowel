@@ -58,7 +58,7 @@ function FailedOverlay({ failure, showReason }: { failure: UpdateFailure; showRe
         </p>
         <button
           onClick={() => setUpdateFailure(null)}
-          className="mt-6 px-4 py-2 mx-auto text-small font-medium bg-primary text-white rounded-[6px] hover:bg-primary-hover transition-colors cursor-pointer"
+          className="mt-6 px-4 py-2 mx-auto text-small font-medium bg-primary-fill text-white rounded-[6px] hover:bg-primary-fill-hover transition-colors cursor-pointer"
         >
           {t("common.close")}
         </button>
@@ -156,7 +156,7 @@ function ActiveOverlay() {
         {showFallback && (
           <button
             onClick={() => window.location.reload()}
-            className="mt-6 flex items-center gap-2 px-4 py-2 mx-auto text-small font-medium bg-primary text-white rounded-[6px] hover:bg-primary-hover transition-colors cursor-pointer"
+            className="mt-6 flex items-center gap-2 px-4 py-2 mx-auto text-small font-medium bg-primary-fill text-white rounded-[6px] hover:bg-primary-fill-hover transition-colors cursor-pointer"
           >
             <RefreshCw size={14} />
             {t("update.overlayReload")}

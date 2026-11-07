@@ -127,15 +127,15 @@ function DataValueCell({
 function getCategoryColor(category: string): string {
   const map: Record<string, string> = {
     temperature: "bg-border-light text-text-secondary",
-    humidity: "bg-info/10 text-info",
+    humidity: "bg-info/10 text-info-ink",
     motion: "bg-primary/10 text-primary",
     light_state: "bg-active-bg text-active-ink",
     light_brightness: "bg-active-bg text-active-ink",
     battery: "bg-success/10 text-success",
     power: "bg-primary/10 text-primary",
     energy: "bg-primary/10 text-primary",
-    contact_door: "bg-info/10 text-info",
-    contact_window: "bg-info/10 text-info",
+    contact_door: "bg-info/10 text-info-ink",
+    contact_window: "bg-info/10 text-info-ink",
     water_leak: "bg-error/10 text-error",
     smoke: "bg-error/10 text-error",
   };

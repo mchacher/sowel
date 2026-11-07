@@ -369,7 +369,7 @@ export function IntegrationDrawer({ integration, onClose, onRefresh }: Integrati
                 <button
                   onClick={handleOAuthConnect}
                   disabled={oauthLoading || hasRequiredEmpty}
-                  className="w-full flex items-center justify-center gap-2 px-4 py-3 text-body font-medium bg-primary text-white rounded-[8px] hover:bg-primary-hover transition-colors disabled:opacity-50 cursor-pointer disabled:cursor-default"
+                  className="w-full flex items-center justify-center gap-2 px-4 py-3 text-body font-medium bg-primary-fill text-white rounded-[8px] hover:bg-primary-fill-hover transition-colors disabled:opacity-50 cursor-pointer disabled:cursor-default"
                 >
                   {oauthLoading ? (
                     <Loader2 size={15} className="animate-spin" />
@@ -393,7 +393,7 @@ export function IntegrationDrawer({ integration, onClose, onRefresh }: Integrati
           <button
             onClick={handleSave}
             disabled={saving || !dirty}
-            className="w-full px-4 py-2.5 text-body font-medium bg-primary text-white rounded-[6px] hover:bg-primary-hover transition-colors disabled:opacity-50 cursor-pointer disabled:cursor-default"
+            className="w-full px-4 py-2.5 text-body font-medium bg-primary-fill text-white rounded-[6px] hover:bg-primary-fill-hover transition-colors disabled:opacity-50 cursor-pointer disabled:cursor-default"
           >
             {saving ? (
               <span className="flex items-center justify-center gap-2">
@@ -431,7 +431,7 @@ function ActionButton({
       disabled={loading || disabled}
       className={`flex items-center gap-1.5 px-3 py-2 text-small font-medium rounded-[6px] transition-colors disabled:opacity-50 cursor-pointer disabled:cursor-default ${
         primary
-          ? "bg-primary text-white hover:bg-primary-hover"
+          ? "bg-primary-fill text-white hover:bg-primary-fill-hover"
           : "text-text-secondary border border-border hover:bg-border-light"
       }`}
     >

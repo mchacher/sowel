@@ -11,6 +11,12 @@
 [data-theme="hybrid"] {
   /* Primary — ocean blue, used for nav active, links, focus rings */
   --p-50:#EEF5F8;  --p-100:#D9E7EF; --p-500:#1A4F6E; --p-600:#144159; --p-700:#0F3146;
+  /* Primary fill vs primary ink (spec 196, slice 4b). p-500 is the ink:
+     links, icons, outlines, selected text. p-fill is the background of a
+     button, a selected segment, a checked box or switch, always carrying
+     white (p-on). The two are the same ocean in light; in dark the ink goes
+     light (#5BA5CC) and the fill stays a deep ocean that white text reads on. */
+  --p-fill:#1A4F6E; --p-fill-hover:#144159; --p-on:#FFFFFF;
 
   /* Amber — means "on or running right now" and nothing else (spec 196).
      a-500 is the fill and the icon colour; a-ink is the text variant (never
@@ -27,7 +33,7 @@
      or red stays a good dot); orange keeps a bright fill (500) and a text
      variant (700). Ratios are checked by ui/src/lib/color-roles.test.ts. */
   --green-50:#E6F7EE; --green-500:#13794A; --green-700:#0E6B3F; /* success: connected, done, active */
-  --info-50:#E0EFFA;  --info-500:#247EB5;                        /* informational, sensor accents */
+  --info-50:#E0EFFA;  --info-500:#247EB5; --info-700:#1D6A9A;    /* informational: humidity, contacts (700 = text) */
   --orange-50:#FDF1E7; --orange-500:#E8730C; --orange-700:#A85500; /* warning: needs attention, not a fault */
   --red-50:#FBE9E1;   --red-500:#B42318;                          /* error: fault, failure, offline, destructive */
   --on-status:#FFFFFF;                                            /* text on a success/error/warning-ink fill */
@@ -41,6 +47,13 @@
   --energy-hc:#93B5F0;        /* consumption, off-peak (light blue) */
   --energy-grid:#4A6396;      /* grid import (slate blue)         */
   --slate-neutral:#6E7C88;    /* On (hors pilotage) / manual      */
+
+  /* Dashboard illustrations (WidgetIcons.tsx, AwningIcon.tsx, EvCarGauge.tsx).
+     ink = strokes at rest, ink-2 = the darker shade of a gradient, fill and
+     fill-2 = the pale parts (awning stripes), water = water seen in a pipe.
+     On or running, an illustration takes amber (text-active) instead. */
+  --illu-ink:#1A4F6E; --illu-ink-2:#13405A; --illu-fill:#E6F0F6; --illu-fill-2:#D6E5EF;
+  --illu-water:#247EB5;
 
   /* Equipment category tints — used on .eq__icon backgrounds. No "light"
      tint: a light takes amber only while it is on (spec 196). */
@@ -63,12 +76,16 @@
    toggle dark mode via a class on <html> (e.g. ui/src/theme.ts). */
 [data-theme="dark"], .dark {
   --p-50:#1A2A38;  --p-100:#243B4E; --p-500:#5BA5CC; --p-600:#82BCDD; --p-700:#A8CEE6;
+  --p-fill:#2B7299; --p-fill-hover:#276B8F;
   --a-50:#332715;  --a-100:#5C3F1A; --a-500:#F2BC6E; --a-600:#FFCF8C;
   --a-ink:#F2BC6E; --a-on:#1C1A14;
   --n-0:#16181E;   --n-25:#1B1D24;  --n-50:#1F2128;  --n-100:#262931; --n-200:#363941;
-  --n-300:#52565F; --n-400:#7E828B; --n-500:#9CA0AA; --n-600:#C7C9CF; --n-700:#E2E3E7; --n-800:#F4F5F8;
+  --n-300:#52565F; --n-400:#8A8E97; --n-500:#9CA0AA; --n-600:#C7C9CF; --n-700:#E2E3E7; --n-800:#F4F5F8;
   --green-50:#0F2A1E; --green-500:#3DDB89; --green-700:#9AF0C6;
-  --info-50:#0F1F33;  --info-500:#5DA8F0;
+  --info-50:#0F1F33;  --info-500:#5DA8F0; --info-700:#5DA8F0;
+  /* Illustrations: logo blue strokes, night fills; no brightness filter. */
+  --illu-ink:#7FB8D4; --illu-ink-2:#5BA5CC; --illu-fill:#1A2A38; --illu-fill-2:#22364A;
+  --illu-water:#5DA8F0;
   --orange-50:#2D2422; --orange-500:#F99549; --orange-700:#F99549;
   --red-50:#2E1614;   --red-500:#F97066;
   --on-status:#16181E;

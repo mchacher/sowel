@@ -193,6 +193,7 @@ Utilisez les rôles de couleur de `ui/src/index.css`, jamais une teinte brute (`
 - **Orange** (`bg-warning`, `text-warning-ink`) : demande de l'attention, sans être une panne. **Rouge** (`text-error`, `text-heat` pour la chauffe) : panne, hors ligne, action destructive. **Vert** (`text-success`) : fonctionne comme prévu.
 - **Neutre** : ouvert comme fermé (le mot et l'icône le disent), compteurs et valeurs d'énergie, plugins. **Primaire** : sélection, liens, champ modifié, mouvement.
 - Le texte sur un aplat d'état est `text-on-status`, pas `text-white`. Les fonds teintés d'état s'arrêtent à `/10`. Les interrupteurs passent par `components/ui/Switch.tsx`.
+- **Le fond primaire et l'encre primaire sont deux rôles.** Un bouton, un segment sélectionné, une case cochée ou un interrupteur qui porte du texte ou une icône est `bg-primary-fill text-white hover:bg-primary-fill-hover` ; `bg-primary` (l'encre, bleu clair en sombre) ne sert qu'à un point, une barre ou un trait. Les illustrations du dashboard sont en `text-illu` au repos et prennent les tokens `--illu-*`, jamais un hex ni un filtre.
 
 `ui/src/lib/color-roles.test.ts` calcule chaque paire de rôles depuis `design-system/tokens.css`, en clair et en sombre (4,5:1 pour le texte, 3:1 pour le graphique), et échoue sur un nom de classe retiré, parce que Tailwind 4 ignore une classe inconnue sans erreur.
 

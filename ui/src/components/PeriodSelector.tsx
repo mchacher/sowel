@@ -60,7 +60,7 @@ export function PeriodSelector({
             onClick={() => onPeriodChange(p.key)}
             className={`min-w-[60px] px-3 py-1.5 text-caption font-medium text-center transition-colors cursor-pointer ${
               period === p.key
-                ? "bg-primary text-white"
+                ? "bg-primary-fill text-white"
                 : "bg-surface text-text-secondary hover:bg-border-light hover:text-text"
             }`}
           >
@@ -102,7 +102,7 @@ export function PeriodSelector({
           className={`ml-1 px-2 py-1 rounded-[6px] text-micro font-medium transition-colors ${
             isToday
               ? "text-text-tertiary bg-border-light cursor-default"
-              : "text-primary bg-primary-light hover:bg-primary hover:text-white cursor-pointer"
+              : "text-primary bg-primary-light hover:bg-primary-fill hover:text-white cursor-pointer"
           }`}
         >
           {t("period.today")}

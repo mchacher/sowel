@@ -41,10 +41,8 @@ const BOLT =
  * Electric vehicle widget icon (spec 183), drawn like the other dashboard
  * icons (WidgetIcons.tsx): thin strokes, soft `currentColor` gradients. The
  * battery rises in the body like the water in WaterHeaterIcon; the charging
- * post and its cable appear only while the car is plugged in.
- *
- * Wider than the 56x56 house icons, so it carries `widget-icon` to get their
- * dark-mode brightening (index.css).
+ * post and its cable appear only while the car is plugged in. At rest it takes
+ * the illustration ink (text-illu), like the house icons.
  */
 export function EvCarGauge({ level, tone, plugged, width = 171 }: EvCarGaugeProps) {
   const id = useId();
@@ -68,7 +66,7 @@ export function EvCarGauge({ level, tone, plugged, width = 171 }: EvCarGaugeProp
       viewBox="0 0 80 56"
       fill="none"
       aria-hidden="true"
-      className={`widget-icon ${charging ? "text-active" : "text-primary"}`}
+      className={charging ? "text-active" : "text-illu"}
     >
       <defs>
         <linearGradient id={bodyGrad} x1="0" y1="0" x2="0" y2="1">

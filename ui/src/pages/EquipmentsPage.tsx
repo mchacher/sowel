@@ -198,7 +198,7 @@ function EmptyState({ onAdd, canCreate }: { onAdd: () => void; canCreate: boolea
       {canCreate && (
         <button
           onClick={onAdd}
-          className="px-4 py-2 bg-primary text-white text-small font-medium rounded-[6px] hover:bg-primary-hover transition-colors duration-150 ease-out"
+          className="px-4 py-2 bg-primary-fill text-white text-small font-medium rounded-[6px] hover:bg-primary-fill-hover transition-colors duration-150 ease-out"
         >
           {t("equipments.createEquipment")}
         </button>
@@ -220,7 +220,7 @@ function ErrorState({ error }: { error: string }) {
       <p className="text-small text-text-secondary max-w-[320px] mb-4">{error}</p>
       <button
         onClick={() => fetchEquipments()}
-        className="px-4 py-2 bg-primary text-white text-small font-medium rounded-[6px] hover:bg-primary-hover transition-colors duration-150 ease-out"
+        className="px-4 py-2 bg-primary-fill text-white text-small font-medium rounded-[6px] hover:bg-primary-fill-hover transition-colors duration-150 ease-out"
       >
         {t("common.retry")}
       </button>

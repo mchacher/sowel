@@ -93,7 +93,7 @@ function PushEnableCard() {
       <button
         onClick={() => void subscribe()}
         disabled={busy}
-        className="flex items-center gap-1.5 px-3 py-1.5 bg-primary text-white text-small rounded-[6px] hover:bg-primary-hover disabled:opacity-50"
+        className="flex items-center gap-1.5 px-3 py-1.5 bg-primary-fill text-white text-small rounded-[6px] hover:bg-primary-fill-hover disabled:opacity-50"
       >
         {busy ? <Loader2 size={14} className="animate-spin" /> : <Bell size={14} />}
         {t("notifPublishers.pushEnable")}
@@ -177,7 +177,7 @@ export function NotificationPublishersPage() {
       <div className="flex items-center gap-3 mb-4">
         <button
           onClick={() => setShowCreate(true)}
-          className="flex items-center gap-1.5 px-3 py-1.5 bg-primary text-white text-small rounded-[6px] hover:bg-primary-hover transition-colors"
+          className="flex items-center gap-1.5 px-3 py-1.5 bg-primary-fill text-white text-small rounded-[6px] hover:bg-primary-fill-hover transition-colors"
         >
           <Plus size={14} />
           {t("notifPublishers.newPublisher")}
@@ -321,7 +321,7 @@ function PublisherForm({
           <button
             type="submit"
             disabled={saving || !canSubmit}
-            className="px-4 py-1.5 bg-primary text-white text-small rounded-[6px] hover:bg-primary-hover disabled:opacity-50"
+            className="px-4 py-1.5 bg-primary-fill text-white text-small rounded-[6px] hover:bg-primary-fill-hover disabled:opacity-50"
           >
             {saving ? (
               <Loader2 size={14} className="animate-spin" />
@@ -806,7 +806,7 @@ function MappingRow({
           <button
             type="submit"
             disabled={saving || !message.trim() || !sourceId || !sourceKey}
-            className="px-3 py-1 bg-primary text-white text-caption rounded-[4px] hover:bg-primary-hover disabled:opacity-50"
+            className="px-3 py-1 bg-primary-fill text-white text-caption rounded-[4px] hover:bg-primary-fill-hover disabled:opacity-50"
           >
             {saving ? <Loader2 size={12} className="animate-spin" /> : t("common.save")}
           </button>
@@ -983,7 +983,7 @@ function AddMappingForm({
         <button
           type="submit"
           disabled={saving || !message.trim() || !sourceId || !sourceKey}
-          className="px-3 py-1 bg-primary text-white text-caption rounded-[4px] hover:bg-primary-hover disabled:opacity-50"
+          className="px-3 py-1 bg-primary-fill text-white text-caption rounded-[4px] hover:bg-primary-fill-hover disabled:opacity-50"
         >
           {t("notifPublishers.addMapping")}
         </button>

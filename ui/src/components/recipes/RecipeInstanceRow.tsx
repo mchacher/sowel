@@ -693,7 +693,7 @@ export function RecipeInstanceRow({
                 onClick={handleSave}
                 disabled={saving || !hasChanges}
                 className={`flex items-center gap-1.5 px-3 py-1.5 text-white text-caption font-medium rounded-[6px] transition-colors duration-150 disabled:opacity-40 ${
-                  hasChanges ? "bg-primary hover:bg-primary-hover" : "bg-primary"
+                  hasChanges ? "bg-primary-fill hover:bg-primary-fill-hover" : "bg-primary-fill"
                 }`}
               >
                 {saving ? <Loader2 size={12} className="animate-spin" /> : <Check size={12} strokeWidth={1.5} />}

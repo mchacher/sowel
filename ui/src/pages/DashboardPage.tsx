@@ -133,7 +133,7 @@ export function DashboardPage() {
           {isAdmin && (
             <button
               onClick={() => setShowAddModal(true)}
-              className="inline-flex items-center gap-2 px-4 py-2.5 bg-primary text-white text-small font-medium rounded-[6px] hover:bg-primary-hover transition-colors cursor-pointer"
+              className="inline-flex items-center gap-2 px-4 py-2.5 bg-primary-fill text-white text-small font-medium rounded-[6px] hover:bg-primary-fill-hover transition-colors cursor-pointer"
             >
               <Plus size={16} strokeWidth={1.5} />
               {t("dashboard.addFirstWidget")}
@@ -181,7 +181,7 @@ export function DashboardPage() {
                 onClick={() => setEditMode(!editMode)}
                 className={`inline-flex items-center gap-1.5 px-3 py-1.5 text-small font-medium rounded-[6px] transition-colors cursor-pointer ${
                   editMode
-                    ? "text-white bg-primary hover:bg-primary-hover"
+                    ? "text-white bg-primary-fill hover:bg-primary-fill-hover"
                     : "text-text-secondary bg-surface border border-border hover:bg-border-light"
                 }`}
               >
@@ -221,7 +221,7 @@ export function DashboardPage() {
               aria-label={editMode ? t("dashboard.done") : t("dashboard.edit")}
               className={`w-11 h-11 flex items-center justify-center rounded-full shadow-lg active:scale-95 transition-transform ${
                 editMode
-                  ? "bg-primary text-white"
+                  ? "bg-primary-fill text-white"
                   : "bg-surface text-text-secondary border border-border"
               }`}
             >

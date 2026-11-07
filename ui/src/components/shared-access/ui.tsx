@@ -17,7 +17,7 @@ export const inputBadCls =
   "px-3 py-2 text-body bg-background border border-error rounded-[6px] text-text placeholder:text-text-tertiary focus:outline-none";
 export const labelCls = FIELD_LABEL;
 export const btnPrimary =
-  "px-4 py-2 text-small font-medium bg-primary text-white rounded-[6px] hover:bg-primary-hover transition-colors disabled:opacity-50 cursor-pointer disabled:cursor-default";
+  "px-4 py-2 text-small font-medium bg-primary-fill text-white rounded-[6px] hover:bg-primary-fill-hover transition-colors disabled:opacity-50 cursor-pointer disabled:cursor-default";
 export const btnSecondary =
   "px-3 py-2 text-small font-medium text-text-secondary border border-border rounded-[6px] hover:bg-border-light transition-colors disabled:opacity-50 cursor-pointer disabled:cursor-default";
 export const btnDanger =

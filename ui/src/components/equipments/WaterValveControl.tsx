@@ -226,7 +226,7 @@ export function WaterValveControl({ equipment, onExecuteOrder, compact }: WaterV
           <button
             onClick={handleWaterNow}
             disabled={watering || !equipment.enabled}
-            className="flex items-center gap-1.5 px-3 py-1.5 text-caption font-medium rounded-[6px] bg-primary text-white hover:bg-primary-hover transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+            className="flex items-center gap-1.5 px-3 py-1.5 text-caption font-medium rounded-[6px] bg-primary-fill text-white hover:bg-primary-fill-hover transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
           >
             {watering ? (
               <Loader2 size={13} className="animate-spin" />

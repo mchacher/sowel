@@ -27,9 +27,9 @@ function svgOf(node: React.ReactElement): SVGSVGElement {
 }
 
 describe("Printer3DIcon", () => {
-  it("rests in the primary tone, with no filament and no fault badge", () => {
+  it("rests in the illustration ink, with no filament and no fault badge", () => {
     const svg = svgOf(<Printer3DIcon state="off" />);
-    expect(svg.getAttribute("class")).toContain("text-primary");
+    expect(svg.getAttribute("class")).toContain("text-illu");
     expect(svg.querySelector("[data-part='filament']")).toBeNull();
     expect(svg.querySelector("[data-part='error-badge']")).toBeNull();
   });
@@ -84,7 +84,7 @@ describe("CUSTOM_ICON_REGISTRY", () => {
 
   it("draws the compressor at rest until something tells it otherwise", () => {
     const svg = svgOf(<AirCompressorIcon on={false} />);
-    expect(svg.getAttribute("class")).toContain("text-primary");
+    expect(svg.getAttribute("class")).toContain("text-illu");
   });
 });
 

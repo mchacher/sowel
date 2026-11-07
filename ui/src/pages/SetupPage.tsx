@@ -119,7 +119,7 @@ export function SetupPage() {
           <button
             type="submit"
             disabled={loading || !username || !displayName || !password || !confirmPassword}
-            className="w-full flex items-center justify-center gap-2 px-4 py-2.5 bg-primary text-white text-body font-medium rounded-[6px] hover:bg-primary-hover transition-colors duration-150 disabled:opacity-50"
+            className="w-full flex items-center justify-center gap-2 px-4 py-2.5 bg-primary-fill text-white text-body font-medium rounded-[6px] hover:bg-primary-fill-hover transition-colors duration-150 disabled:opacity-50"
           >
             {loading && <Loader2 size={16} className="animate-spin" />}
             {t("auth.createAccount")}

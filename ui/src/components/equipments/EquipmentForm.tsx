@@ -257,7 +257,7 @@ export function EquipmentForm({ title, initial, defaultZoneId, zones, onSubmit, 
                   type="button"
                   onClick={handleCreate}
                   disabled={!name.trim() || !zoneId || saving || !poolHeatPumpValidation.ok}
-                  className="px-4 py-2 text-small font-medium text-white bg-primary rounded-[6px] hover:bg-primary-hover transition-colors duration-150 disabled:opacity-50 disabled:cursor-not-allowed"
+                  className="px-4 py-2 text-small font-medium text-white bg-primary-fill rounded-[6px] hover:bg-primary-fill-hover transition-colors duration-150 disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                   {saving ? t("common.creating") : initial ? t("common.save") : t("common.create")}
                 </button>
@@ -276,7 +276,7 @@ export function EquipmentForm({ title, initial, defaultZoneId, zones, onSubmit, 
                     type="button"
                     onClick={handleCreate}
                     disabled={!name.trim() || !zoneId || saving}
-                    className="px-4 py-2 text-small font-medium text-white bg-primary rounded-[6px] hover:bg-primary-hover transition-colors duration-150 disabled:opacity-50 disabled:cursor-not-allowed"
+                    className="px-4 py-2 text-small font-medium text-white bg-primary-fill rounded-[6px] hover:bg-primary-fill-hover transition-colors duration-150 disabled:opacity-50 disabled:cursor-not-allowed"
                   >
                     {saving ? t("common.saving") : t("common.save")}
                   </button>
@@ -285,7 +285,7 @@ export function EquipmentForm({ title, initial, defaultZoneId, zones, onSubmit, 
                     type="button"
                     onClick={() => setStep("devices")}
                     disabled={!name.trim() || !zoneId}
-                    className="px-4 py-2 text-small font-medium text-white bg-primary rounded-[6px] hover:bg-primary-hover transition-colors duration-150 disabled:opacity-50 disabled:cursor-not-allowed"
+                    className="px-4 py-2 text-small font-medium text-white bg-primary-fill rounded-[6px] hover:bg-primary-fill-hover transition-colors duration-150 disabled:opacity-50 disabled:cursor-not-allowed"
                   >
                     {t("equipments.form.nextDevices")}
                   </button>

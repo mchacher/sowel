@@ -106,7 +106,7 @@ export function CalendarPage() {
                 onClick={() => handleProfileChange(profile.id)}
                 className={`px-4 py-2 text-small font-medium rounded-[6px] transition-colors duration-150 ${
                   selectedProfileId === profile.id
-                    ? "bg-primary text-white"
+                    ? "bg-primary-fill text-white"
                     : "bg-border-light text-text-secondary hover:bg-border"
                 }`}
               >
@@ -339,7 +339,7 @@ function SlotForm({
               onClick={() => toggleDay(day.index)}
               className={`px-2.5 py-1 text-micro font-medium rounded-[4px] transition-colors duration-150 ${
                 days.includes(day.index)
-                  ? "bg-primary text-white"
+                  ? "bg-primary-fill text-white"
                   : "bg-border-light text-text-tertiary hover:bg-border"
               }`}
             >
@@ -402,7 +402,7 @@ function SlotForm({
         <button
           onClick={handleSubmit}
           disabled={days.length === 0 || !time || !hasModeActions || saving}
-          className="px-3 py-1.5 bg-primary text-white text-caption font-medium rounded-[6px] hover:bg-primary-hover transition-colors duration-150 disabled:opacity-50"
+          className="px-3 py-1.5 bg-primary-fill text-white text-caption font-medium rounded-[6px] hover:bg-primary-fill-hover transition-colors duration-150 disabled:opacity-50"
         >
           {submitLabel}
         </button>

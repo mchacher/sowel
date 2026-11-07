@@ -15,8 +15,15 @@ describe("EvCarGauge", () => {
     expect(screen.queryByTestId("ev-cable")).toBeNull();
   });
 
-  it("carries the class that brightens widget icons in dark mode", () => {
+  it("rests in the illustration ink, with no brightening class (spec 196, 4b)", () => {
     const { container } = render(<EvCarGauge level={null} tone="ok" plugged={false} />);
-    expect(container.querySelector("svg.widget-icon")).toBeTruthy();
+    const svg = container.querySelector("svg");
+    expect(svg?.getAttribute("class")).toBe("text-illu");
+    expect(container.querySelector("svg.widget-icon")).toBeNull();
+  });
+
+  it("turns amber while charging", () => {
+    const { container } = render(<EvCarGauge level={50} tone="charging" plugged />);
+    expect(container.querySelector("svg")?.getAttribute("class")).toBe("text-active");
   });
 });

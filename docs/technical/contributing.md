@@ -187,6 +187,7 @@ Use the colour roles of `ui/src/index.css`, never a raw hue (`text-amber-500`, `
 - **Orange** (`bg-warning`, `text-warning-ink`): needs attention, not a fault. **Red** (`text-error`, `text-heat` for heating): fault, offline, destructive. **Green** (`text-success`): works as expected.
 - **Neutral**: open and closed alike (the word and the icon say it), meters and energy values, plugins. **Primary**: selection, links, changed fields, motion.
 - Text on a status fill is `text-on-status`, not `text-white`. Tinted status backgrounds stop at `/10`. Switches use `components/ui/Switch.tsx`.
+- **Primary fill and primary ink are two roles.** A button, selected segment, checked box or switch that carries text or an icon is `bg-primary-fill text-white hover:bg-primary-fill-hover`; `bg-primary` (the ink, light blue in dark) is only for a dot, a bar or a line. Dashboard illustrations rest in `text-illu` and take the `--illu-*` tokens, never a hex or a filter.
 
 `ui/src/lib/color-roles.test.ts` computes every role pair from `design-system/tokens.css` in light and dark (4.5:1 text, 3:1 graphics) and fails on a retired class name, because Tailwind 4 drops an unknown class without an error.
 

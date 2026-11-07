@@ -107,6 +107,22 @@ const PAIRS: [string, string, number][] = [
   // Off switch: its outline on the surface, its thumb on its track.
   ["text-tertiary", "surface", GRAPHIC],
   ["text-tertiary", "n-100", GRAPHIC],
+  // Tertiary text on the page (AppLayout paints n-25): 4.37:1 in dark before
+  // n-400 moved to #8A8E97 (slice 4b).
+  ["text-tertiary", "n-25", TEXT],
+  // Informational (humidity, contacts): text on its tinted pill.
+  ["info-ink", "surface", TEXT],
+  ["info-ink", "background", TEXT],
+  ["info-ink", "info/10", TEXT],
+  ["info", "surface", GRAPHIC],
+  // Slice 4b — primary fill carries white text; primary ink is text itself.
+  ["on-primary", "primary-fill", TEXT],
+  ["on-primary", "primary-fill-hover", TEXT],
+  ["primary-fill", "surface", GRAPHIC],
+  ["primary", "surface", TEXT],
+  ["primary", "background", TEXT],
+  // Illustrations at rest, without any brightness filter.
+  ["illu", "surface", GRAPHIC],
 ];
 
 describe.each(["light", "dark"] as Theme[])("colour roles, %s theme", (theme) => {
@@ -132,6 +148,33 @@ describe("colour role tokens", () => {
     expect(hex("light", "--orange-700")).toBe("#A85500");
     expect(hex("light", "--red-500")).toBe("#B42318");
     expect(hex("light", "--green-500")).toBe("#13794A");
+  });
+
+  it("separates the primary fill from the primary ink in dark (slice 4b)", () => {
+    expect(hex("light", "--p-fill")).toBe("#1A4F6E");
+    expect(hex("light", "--p-fill-hover")).toBe("#144159");
+    expect(hex("dark", "--p-fill")).toBe("#2B7299");
+    expect(hex("dark", "--p-fill-hover")).toBe("#276B8F");
+    expect(hex("dark", "--p-on")).toBe("#FFFFFF");
+    // The light blue stays the ink of links and icons in dark.
+    expect(hex("dark", "--p-500")).toBe("#5BA5CC");
+    expect(themeColor("primary-fill")).toBe("--p-fill");
+    expect(themeColor("on-primary")).toBe("--p-on");
+  });
+
+  it("gives the illustrations theme colours (slice 4b)", () => {
+    expect(themeColor("illu")).toBe("--illu-ink");
+    expect(hex("light", "--illu-ink")).toBe("#1A4F6E");
+    expect(hex("dark", "--illu-ink")).toBe("#7FB8D4");
+    for (const token of ["--illu-ink-2", "--illu-fill", "--illu-fill-2", "--illu-water"]) {
+      expect(hex("dark", token)).not.toBe(hex("light", token));
+    }
+    expect(hex("dark", "--n-400")).toBe("#8A8E97");
+  });
+
+  it("defines info as a role in both themes", () => {
+    expect(themeColor("info")).toBe("--info-500");
+    expect(themeColor("info-ink")).toBe("--info-700");
   });
 
   it("makes warning orange, no longer amber", () => {
@@ -169,7 +212,24 @@ const RETIRED: [RegExp, string][] = [
   [/\b(bg|text)-light-(50|500)\b/, "a light off is neutral; the light tint is gone"],
   [/--color-(accent-light|accent-hover|success-light)\b/, "token removed or never defined"],
   [/#(dcfce7|ede9fe|7c3aed)\b/i, "mode badges take tokens"],
+  [/\bbg-primary(?![-/\w])[^"`]*\btext-white\b|\btext-white\b[^"`]*\bbg-primary(?![-/\w])/, "text sits on bg-primary-fill, not on the ink"],
+  [/\bbg-primary-hover\b/, "a filled control hovers to bg-primary-fill-hover"],
+  [/\bwidget-icon\b|brightness\(1\.6\)/, "illustrations take --illu-* tokens, no brightness filter"],
 ];
+
+describe("illustrations follow the theme", () => {
+  it.each(["components/dashboard/WidgetIcons.tsx", "components/icons/AwningIcon.tsx", "components/icons/EvCarGauge.tsx"])(
+    "%s has no hard-coded colour",
+    (file) => {
+      const text = readFileSync(join(srcRoot, file), "utf8").replace(/\/\*[\s\S]*?\*\/|\/\/.*$/gm, "");
+      expect(text.match(/#[0-9a-f]{3,6}\b|"white"|"black"/gi) ?? []).toEqual([]);
+    },
+  );
+
+  it("drops the dark-mode brightness filter", () => {
+    expect(indexCss).not.toMatch(/filter:\s*brightness/);
+  });
+});
 
 describe("no retired colour class in ui/src", () => {
   it.each(RETIRED)("%s", (pattern, why) => {
@@ -184,7 +244,7 @@ describe("no retired colour class in ui/src", () => {
     const defined = new Set([...indexCss.matchAll(/--color-([\w-]+):/g)].map((m) => m[1]));
     const used = new Set(
       FILES.flatMap(({ text }) =>
-        [...text.matchAll(/\b(?:text|bg|border|fill|stroke)-((?:active|warning|success|error|heat|on-status|on-active)[\w-]*)/g)].map(
+        [...text.matchAll(/\b(?:text|bg|border|fill|stroke)-((?:active|warning|success|error|heat|info|illu|on-status|on-active|on-primary|primary-fill)[\w-]*)/g)].map(
           (m) => m[1],
         ),
       ),

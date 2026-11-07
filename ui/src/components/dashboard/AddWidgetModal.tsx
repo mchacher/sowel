@@ -232,7 +232,7 @@ export function AddWidgetModal({
                     onClose();
                   }
                 }}
-                className="w-full px-4 py-2.5 bg-primary text-white text-small font-medium rounded-[6px] hover:bg-primary-hover transition-colors disabled:opacity-50 cursor-pointer"
+                className="w-full px-4 py-2.5 bg-primary-fill text-white text-small font-medium rounded-[6px] hover:bg-primary-fill-hover transition-colors disabled:opacity-50 cursor-pointer"
               >
                 {t("dashboard.addZoneWidget")}
               </button>

@@ -1,6 +1,6 @@
 /**
  * Shared SVG icons for dashboard widgets (4-zone layout).
- * All icons: 96x96 rendered, viewBox 0 0 56 56, className="text-primary", currentColor.
+ * All icons: 96x96 rendered, viewBox 0 0 56 56, className="text-illu", currentColor.
  *
  * Each icon uses useId() to generate unique gradient IDs, avoiding
  * cross-instance bleeding when multiple SVGs share the same page.
@@ -17,7 +17,7 @@ export function LightBulbIcon({ on }: { on: boolean }) {
   const baseGrad = `bulb-base-${id}`;
 
   return (
-    <svg width="120" height="120" viewBox="0 0 56 56" fill="none" className={on ? "text-active" : "text-primary"}>
+    <svg width="120" height="120" viewBox="0 0 56 56" fill="none" className={on ? "text-active" : "text-illu"}>
       <defs>
         <linearGradient id={glassGrad} x1="0" y1="0" x2="0" y2="1">
           <stop offset="0%" stopColor="currentColor" stopOpacity={on ? 0.4 : 0.08} />
@@ -86,7 +86,7 @@ export function WaterHeaterIcon({ on }: { on: boolean }) {
   const waterGrad = `wh-water-${id}`;
 
   return (
-    <svg width="120" height="120" viewBox="0 0 56 56" fill="none" className={on ? "text-active" : "text-primary"}>
+    <svg width="120" height="120" viewBox="0 0 56 56" fill="none" className={on ? "text-active" : "text-illu"}>
       <defs>
         <linearGradient id={bodyGrad} x1="0" y1="0" x2="0" y2="1">
           <stop offset="0%" stopColor="currentColor" stopOpacity={on ? 0.22 : 0.1} />
@@ -156,7 +156,7 @@ export function ShutterWidgetIcon({ level }: { level: number | null }) {
   const slatTotalH = slatCount * (slatH + slatGap);
 
   return (
-    <svg width="120" height="120" viewBox="0 0 56 56" fill="none" className="text-primary">
+    <svg width="120" height="120" viewBox="0 0 56 56" fill="none" className="text-illu">
       <defs>
         <linearGradient id={slatGradId} x1="0" y1="0" x2="0" y2="1">
           <stop offset="0%" stopColor="currentColor" stopOpacity="0.65" />
@@ -226,27 +226,27 @@ export function AwningWidgetIcon({ deployed }: { deployed: boolean }) {
     <svg width="120" height="120" viewBox="0 0 56 56" fill="none">
       <defs>
         <linearGradient id={darkGradId} x1="0" y1="0" x2="0" y2="1">
-          <stop offset="0%" stopColor="#1A4F6E" stopOpacity="1" />
-          <stop offset="100%" stopColor="#1A4F6E" stopOpacity="0.82" />
+          <stop offset="0%" stopColor="var(--illu-ink)" stopOpacity="1" />
+          <stop offset="100%" stopColor="var(--illu-ink)" stopOpacity="0.82" />
         </linearGradient>
         <linearGradient id={lightGradId} x1="0" y1="0" x2="0" y2="1">
-          <stop offset="0%" stopColor="#E6F0F6" stopOpacity="1" />
-          <stop offset="100%" stopColor="#D6E5EF" stopOpacity="1" />
+          <stop offset="0%" stopColor="var(--illu-fill)" stopOpacity="1" />
+          <stop offset="100%" stopColor="var(--illu-fill-2)" stopOpacity="1" />
         </linearGradient>
         <linearGradient id={cassetteGradId} x1="0" y1="0" x2="0" y2="1">
-          <stop offset="0%" stopColor="#1A4F6E" stopOpacity="1" />
-          <stop offset="100%" stopColor="#13405A" stopOpacity="1" />
+          <stop offset="0%" stopColor="var(--illu-ink)" stopOpacity="1" />
+          <stop offset="100%" stopColor="var(--illu-ink-2)" stopOpacity="1" />
         </linearGradient>
         <linearGradient id={glassId} x1="0" y1="0" x2="0" y2="1">
-          <stop offset="0%" stopColor="#1A4F6E" stopOpacity="0.04" />
-          <stop offset="100%" stopColor="#1A4F6E" stopOpacity="0.1" />
+          <stop offset="0%" stopColor="var(--illu-ink)" stopOpacity="0.04" />
+          <stop offset="100%" stopColor="var(--illu-ink)" stopOpacity="0.1" />
         </linearGradient>
       </defs>
 
       {/* Window — backdrop, drawn first so cassette + canopy overlay it */}
       <rect
         x={winX} y={winY} width={winW} height={winH}
-        rx="2" stroke="#1A4F6E" strokeWidth="1.2" fill={`url(#${glassId})`}
+        rx="2" stroke="var(--illu-ink)" strokeWidth="1.2" fill={`url(#${glassId})`}
       />
 
       {deployed ? (
@@ -347,7 +347,7 @@ export function ThermometerIcon({ warm, level }: { warm: boolean; level?: number
   const fillTop = iJy - clampedLevel * (iJy - iTop - 2);
 
   return (
-    <svg width="120" height="120" viewBox="0 0 56 56" fill="none" className={warm ? "text-heat" : "text-primary"}>
+    <svg width="120" height="120" viewBox="0 0 56 56" fill="none" className={warm ? "text-heat" : "text-illu"}>
       <defs>
         <linearGradient id={tubeGrad} x1="0" y1="0" x2="0" y2="1">
           <stop offset="0%" stopColor="currentColor" stopOpacity="0.06" />
@@ -389,7 +389,7 @@ export function MultiSensorIcon() {
   const bodyGrad = `msensor-body-${id}`;
 
   return (
-    <svg width="120" height="120" viewBox="0 0 56 56" fill="none" className="text-primary">
+    <svg width="120" height="120" viewBox="0 0 56 56" fill="none" className="text-illu">
       <defs>
         <linearGradient id={bodyGrad} x1="0" y1="0" x2="0" y2="1">
           <stop offset="0%" stopColor="currentColor" stopOpacity="0.12" />
@@ -432,7 +432,7 @@ export function HumiditySensorIcon() {
   const dropGrad = `humidity-drop-${id}`;
 
   return (
-    <svg width="120" height="120" viewBox="0 0 56 56" fill="none" className="text-primary">
+    <svg width="120" height="120" viewBox="0 0 56 56" fill="none" className="text-illu">
       <defs>
         <linearGradient id={dropGrad} x1="0" y1="0" x2="0" y2="1">
           <stop offset="0%" stopColor="currentColor" stopOpacity="0.1" />
@@ -470,7 +470,7 @@ export function HumiditySensorIcon() {
 
 export function LuminositySensorIcon() {
   return (
-    <svg width="120" height="120" viewBox="0 0 56 56" fill="none" className="text-primary">
+    <svg width="120" height="120" viewBox="0 0 56 56" fill="none" className="text-illu">
       {/* Sun body */}
       <circle cx="28" cy="28" r="10" fill="currentColor" fillOpacity="0.12" stroke="currentColor" strokeWidth="1.2" strokeOpacity="0.3" />
       <circle cx="28" cy="28" r="5" fill="currentColor" opacity="0.2" />
@@ -507,7 +507,7 @@ export function LuminositySensorIcon() {
 
 export function WaterLeakSensorIcon() {
   return (
-    <svg width="120" height="120" viewBox="0 0 56 56" fill="none" className="text-primary">
+    <svg width="120" height="120" viewBox="0 0 56 56" fill="none" className="text-illu">
       {/* Falling drop */}
       <path
         d="M28 4 Q28 4 24 14 A5 5 0 0 0 32 14 Q28 4 28 4 Z"
@@ -545,7 +545,7 @@ export function SmokeSensorIcon() {
   const bodyGrad = `smoke-body-${id}`;
 
   return (
-    <svg width="120" height="120" viewBox="0 0 56 56" fill="none" className="text-primary">
+    <svg width="120" height="120" viewBox="0 0 56 56" fill="none" className="text-illu">
       <defs>
         <linearGradient id={bodyGrad} x1="0" y1="0" x2="0" y2="1">
           <stop offset="0%" stopColor="currentColor" stopOpacity="0.1" />
@@ -581,7 +581,7 @@ export function SmokeSensorIcon() {
 
 export function Co2SensorIcon() {
   return (
-    <svg width="120" height="120" viewBox="0 0 56 56" fill="none" className="text-primary">
+    <svg width="120" height="120" viewBox="0 0 56 56" fill="none" className="text-illu">
       {/* Cloud shape */}
       <path
         d="M14 32 A10 10 0 0 1 20 16 A12 12 0 0 1 40 16 A10 10 0 0 1 42 32 Z"
@@ -613,7 +613,7 @@ export function PressureSensorIcon() {
   const arcGrad = `pressure-arc-${id}`;
 
   return (
-    <svg width="120" height="120" viewBox="0 0 56 56" fill="none" className="text-primary">
+    <svg width="120" height="120" viewBox="0 0 56 56" fill="none" className="text-illu">
       <defs>
         <linearGradient id={arcGrad} x1="0" y1="0" x2="1" y2="0">
           <stop offset="0%" stopColor="currentColor" stopOpacity="0.15" />
@@ -676,7 +676,7 @@ export function PressureSensorIcon() {
 
 export function GateWidgetIcon({ open }: { open: boolean }) {
   return (
-    <svg width="120" height="120" viewBox="0 0 56 56" fill="none" className="text-primary">
+    <svg width="120" height="120" viewBox="0 0 56 56" fill="none" className="text-illu">
       {/* Left pillar */}
       <rect x="4" y="10" width="6" height="36" rx="3" stroke="currentColor" strokeWidth="2" strokeLinecap="round" fill="currentColor" fillOpacity="0.06" />
       <circle cx="7" cy="10" r="3.5" fill="currentColor" fillOpacity="0.12" stroke="currentColor" strokeWidth="1.5" />
@@ -723,7 +723,7 @@ export function HeaterWidgetIcon({ comfort }: { comfort: boolean }) {
   const finGrad = `heater-fin-${id}`;
 
   return (
-    <svg width="120" height="120" viewBox="0 0 56 56" fill="none" className={comfort ? "text-heat" : "text-primary"}>
+    <svg width="120" height="120" viewBox="0 0 56 56" fill="none" className={comfort ? "text-heat" : "text-illu"}>
       <defs>
         <linearGradient id={finGrad} x1="0" y1="0" x2="0" y2="1">
           <stop offset="0%" stopColor="currentColor" stopOpacity={comfort ? 0.4 : 0.15} />
@@ -767,7 +767,7 @@ export function HeaterWidgetIcon({ comfort }: { comfort: boolean }) {
 
 export function SlidingGateIcon({ open }: { open: boolean }) {
   return (
-    <svg width="120" height="120" viewBox="0 0 56 56" fill="none" className="text-primary">
+    <svg width="120" height="120" viewBox="0 0 56 56" fill="none" className="text-illu">
       {/* Left pillar */}
       <rect x="3" y="10" width="5" height="34" rx="2.5" stroke="currentColor" strokeWidth="1.8" fill="currentColor" fillOpacity="0.08" />
       {/* Right pillar */}
@@ -812,7 +812,7 @@ export function SlidingGateIcon({ open }: { open: boolean }) {
 
 export function GarageDoorIcon({ open }: { open: boolean }) {
   return (
-    <svg width="120" height="120" viewBox="0 0 56 56" fill="none" className="text-primary">
+    <svg width="120" height="120" viewBox="0 0 56 56" fill="none" className="text-illu">
       {/* Roof */}
       <path d="M6 16 L28 6 L50 16" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" fill="none" />
       {/* Walls */}
@@ -852,7 +852,7 @@ export function GarageDoorIcon({ open }: { open: boolean }) {
 
 export function PlugWidgetIcon({ on }: { on: boolean }) {
   return (
-    <svg width="108" height="108" viewBox="0 0 24 24" fill="none" className={on ? "text-active" : "text-primary"}>
+    <svg width="108" height="108" viewBox="0 0 24 24" fill="none" className={on ? "text-active" : "text-illu"}>
       {/* Glow when powered */}
       {on && <circle cx="12" cy="12" r="11" fill="currentColor" opacity="0.08" />}
 
@@ -891,7 +891,7 @@ export function PlugWidgetIcon({ on }: { on: boolean }) {
 
 export function MotionSensorIcon({ active }: { active: boolean }) {
   return (
-    <svg width="120" height="120" viewBox="0 0 56 56" fill="none" className="text-primary">
+    <svg width="120" height="120" viewBox="0 0 56 56" fill="none" className="text-illu">
       {/* Person silhouette; motion is activity, not "on": primary in both states (spec 196) */}
       <circle cx="22" cy="14" r="4" fill="currentColor" opacity="0.25" />
       <path d="M22 18 L22 30 M16 23 L28 23 M22 30 L16 40 M22 30 L28 40" stroke="currentColor" strokeWidth="2" strokeOpacity="0.25" strokeLinecap="round" strokeLinejoin="round" />
@@ -921,7 +921,7 @@ export function EnergyMeterIcon() {
   const screenGrad = `energy-screen-${id}`;
 
   return (
-    <svg width="120" height="120" viewBox="0 0 56 56" fill="none" className="text-primary">
+    <svg width="120" height="120" viewBox="0 0 56 56" fill="none" className="text-illu">
       <defs>
         <linearGradient id={bodyGrad} x1="0" y1="0" x2="0" y2="1">
           <stop offset="0%" stopColor="currentColor" stopOpacity="0.12" />
@@ -972,7 +972,7 @@ export function PoolPumpIcon({ on }: { on: boolean }) {
       height="120"
       viewBox="0 0 56 56"
       fill="none"
-      className={on ? "text-primary" : "text-text-tertiary"}
+      className={on ? "text-illu" : "text-text-tertiary"}
     >
       {/* PIPES — single continuous outline with smoothed joints. Inner
        * "water" core uses the same currentColor at higher opacity when ON,
@@ -1091,7 +1091,7 @@ export function PoolCoverIcon({ position }: { position: number | null }) {
   const waveStartX = Math.max(POOL_X + 2, lastSlatRight + 1);
 
   return (
-    <svg width="138" height="138" viewBox="0 0 56 56" fill="none" className="text-primary">
+    <svg width="138" height="138" viewBox="0 0 56 56" fill="none" className="text-illu">
       <defs>
         <linearGradient id={waterGrad} x1="0" y1="0" x2="0" y2="1">
           <stop offset="0%" stopColor="currentColor" stopOpacity="0.04" />
@@ -1180,7 +1180,7 @@ export function WaterValveWidgetIcon({ open }: { open: boolean }) {
   // horizontal when OPEN, vertical when CLOSED. Water flow visible only
   // when OPEN.
   return (
-    <svg width="120" height="120" viewBox="0 0 56 56" fill="none" className={open ? "text-active" : "text-primary"}>
+    <svg width="120" height="120" viewBox="0 0 56 56" fill="none" className={open ? "text-active" : "text-illu"}>
       {/* Pipe (horizontal) */}
       <rect
         x="4"
@@ -1190,7 +1190,7 @@ export function WaterValveWidgetIcon({ open }: { open: boolean }) {
         rx="2"
         stroke="currentColor"
         strokeWidth="1.6"
-        fill="white"
+        fill="var(--color-surface)"
       />
       {/* Flanges */}
       <line x1="9" y1="32" x2="9" y2="42" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" />
@@ -1199,13 +1199,13 @@ export function WaterValveWidgetIcon({ open }: { open: boolean }) {
       {/* Water flow inside the pipe (only when open) */}
       {open && (
         <>
-          <path d="M12 37 Q16 35 20 37 T28 37 T36 37 T44 37" stroke="#3B82F6" strokeWidth="1.4" fill="none" strokeLinecap="round" />
-          <path d="M12 39.5 Q16 37.5 20 39.5 T28 39.5 T36 39.5 T44 39.5" stroke="#3B82F6" strokeWidth="1.0" fill="none" strokeLinecap="round" strokeOpacity="0.5" />
+          <path d="M12 37 Q16 35 20 37 T28 37 T36 37 T44 37" stroke="var(--illu-water)" strokeWidth="1.4" fill="none" strokeLinecap="round" />
+          <path d="M12 39.5 Q16 37.5 20 39.5 T28 39.5 T36 39.5 T44 39.5" stroke="var(--illu-water)" strokeWidth="1.0" fill="none" strokeLinecap="round" strokeOpacity="0.5" />
         </>
       )}
 
       {/* Valve body (vertical extension) */}
-      <rect x="22" y="20" width="12" height="14" rx="1" stroke="currentColor" strokeWidth="1.6" fill="white" />
+      <rect x="22" y="20" width="12" height="14" rx="1" stroke="currentColor" strokeWidth="1.6" fill="var(--color-surface)" />
 
       {/* Stem */}
       <line x1="28" y1="10" x2="28" y2="22" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" />
@@ -1226,7 +1226,7 @@ export function WaterValveWidgetIcon({ open }: { open: boolean }) {
 
 export function ContactSensorIcon({ open }: { open: boolean }) {
   return (
-    <svg width="120" height="120" viewBox="0 0 56 56" fill="none" className="text-primary">
+    <svg width="120" height="120" viewBox="0 0 56 56" fill="none" className="text-illu">
       {/* Door frame; open/closed is neutral, the drawing says it (spec 196) */}
       <rect x="8" y="6" width="18" height="44" rx="2" fill="currentColor" fillOpacity="0.06" stroke="currentColor" strokeWidth="1" strokeOpacity="0.2" />
       {/* Door */}
@@ -1252,7 +1252,7 @@ export function ContactSensorIcon({ open }: { open: boolean }) {
 
 export function AirCompressorIcon({ on }: { on: boolean }) {
   return (
-    <svg width="120" height="120" viewBox="0 0 56 56" fill="none" className={on ? "text-active" : "text-primary"}>
+    <svg width="120" height="120" viewBox="0 0 56 56" fill="none" className={on ? "text-active" : "text-illu"}>
       {on && <ellipse cx="28" cy="31" rx="25" ry="22" fill="currentColor" opacity="0.07" />}
 
       {/* Motor housing with cooling fins */}
@@ -1321,7 +1321,7 @@ export function Printer3DIcon({ state = "off" }: { state?: Printer3DState }) {
   const printing = state === "printing";
   const error = state === "error";
   const running = printing || state === "on";
-  const tone = error ? "text-error" : running ? "text-active" : "text-primary";
+  const tone = error ? "text-error" : running ? "text-active" : "text-illu";
 
   return (
     <svg width="120" height="120" viewBox="0 0 56 56" fill="none" className={tone} data-state={state}>

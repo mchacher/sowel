@@ -725,7 +725,7 @@ function AddEffectForm({
         <button
           onClick={handleSubmit}
           disabled={!canSubmit() || saving}
-          className="px-3 py-1.5 bg-primary text-white text-caption font-medium rounded-[6px] hover:bg-primary-hover transition-colors duration-150 disabled:opacity-50"
+          className="px-3 py-1.5 bg-primary-fill text-white text-caption font-medium rounded-[6px] hover:bg-primary-fill-hover transition-colors duration-150 disabled:opacity-50"
         >
           {saving ? t("common.saving") : initial ? t("common.save") : t("common.add")}
         </button>

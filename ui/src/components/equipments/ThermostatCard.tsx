@@ -224,7 +224,7 @@ export function ThermostatCard({ equipment, onExecuteOrder, compact }: Thermosta
             className={`
               p-2.5 rounded-[8px] transition-colors duration-150 cursor-pointer
               ${isOn
-                ? "bg-primary text-white hover:bg-primary-hover"
+                ? "bg-primary-fill text-white hover:bg-primary-fill-hover"
                 : "bg-border-light text-text-tertiary hover:bg-border hover:text-text-secondary"
               }
               disabled:opacity-50 disabled:cursor-not-allowed
@@ -381,7 +381,7 @@ function CompactThermostat({
             className={`
               p-1.5 rounded-[5px] transition-colors duration-150 cursor-pointer
               ${isOn
-                ? "bg-primary text-white hover:bg-primary-hover"
+                ? "bg-primary-fill text-white hover:bg-primary-fill-hover"
                 : "bg-border-light text-text-tertiary hover:bg-border hover:text-text-secondary"
               }
               disabled:opacity-50 disabled:cursor-not-allowed

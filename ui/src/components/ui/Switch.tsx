@@ -36,7 +36,7 @@ export function Switch({
       disabled={disabled}
       onClick={(e) => onChange(!checked, e)}
       className={`hit-44 relative inline-flex items-center w-9 h-5 px-[1.5px] shrink-0 rounded-full border-[1.5px] transition-colors duration-200 cursor-pointer disabled:opacity-50 disabled:cursor-default ${
-        checked ? "bg-primary border-primary" : "bg-[var(--n-100)] border-text-tertiary"
+        checked ? "bg-primary-fill border-primary-fill" : "bg-[var(--n-100)] border-text-tertiary"
       } ${className}`}
     >
       <span

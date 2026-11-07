@@ -112,7 +112,7 @@ function WindowDays({
                   onClick={() => onChange(on ? days.filter((x) => x !== d) : [...days, d])}
                   className={`min-h-[40px] rounded-[6px] border text-small font-semibold transition-colors cursor-pointer ${
                     on
-                      ? "bg-primary border-primary text-white"
+                      ? "bg-primary-fill border-primary-fill text-white"
                       : "bg-surface border-border text-text-secondary hover:bg-border-light"
                   }`}
                 >

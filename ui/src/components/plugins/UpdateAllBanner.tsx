@@ -86,7 +86,7 @@ export function UpdateAllBanner({
           type="button"
           onClick={handleUpdateAll}
           disabled={updating}
-          className="inline-flex items-center justify-center gap-1.5 shrink-0 self-start sm:self-auto px-3 py-2 text-caption font-medium text-white bg-primary hover:bg-primary-hover rounded-[6px] transition-colors cursor-pointer disabled:opacity-50"
+          className="inline-flex items-center justify-center gap-1.5 shrink-0 self-start sm:self-auto px-3 py-2 text-caption font-medium text-white bg-primary-fill hover:bg-primary-fill-hover rounded-[6px] transition-colors cursor-pointer disabled:opacity-50"
         >
           {updating ? (
             <Loader2 size={14} className="animate-spin" />

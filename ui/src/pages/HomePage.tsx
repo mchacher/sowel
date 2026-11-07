@@ -278,7 +278,7 @@ function ZoneNotFound() {
       </p>
       <button
         onClick={() => navigate("/home")}
-        className="px-4 py-2 bg-primary text-white text-small font-medium rounded-[6px] hover:bg-primary-hover transition-colors duration-150"
+        className="px-4 py-2 bg-primary-fill text-white text-small font-medium rounded-[6px] hover:bg-primary-fill-hover transition-colors duration-150"
       >
         {t("home.backToHome")}
       </button>

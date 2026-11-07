@@ -826,7 +826,7 @@ export function AnalyseView() {
               }
             }}
             className="flex items-center gap-1 px-2.5 py-1 rounded-full text-caption font-medium
-              bg-primary-light text-primary hover:bg-primary hover:text-white
+              bg-primary-light text-primary hover:bg-primary-fill hover:text-white
               transition-colors cursor-pointer"
           >
             <Plus size={12} strokeWidth={2} />
@@ -856,7 +856,7 @@ export function AnalyseView() {
                 className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-[6px] text-caption font-medium
                   transition-colors cursor-pointer ${
                     envelopeOn
-                      ? "bg-primary-light text-primary hover:bg-primary hover:text-white"
+                      ? "bg-primary-light text-primary hover:bg-primary-fill hover:text-white"
                       : "text-text-secondary hover:bg-border-light hover:text-text"
                   }`}
                 title={t("analyse.envelopeToggle")}
@@ -874,7 +874,7 @@ export function AnalyseView() {
                 className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-[6px] text-caption font-medium
                   transition-colors cursor-pointer ${
                     yAxisFit
-                      ? "bg-primary-light text-primary hover:bg-primary hover:text-white"
+                      ? "bg-primary-light text-primary hover:bg-primary-fill hover:text-white"
                       : "text-text-secondary hover:bg-border-light hover:text-text"
                   }`}
                 title={t("analyse.yAxisFit")}
@@ -900,7 +900,7 @@ export function AnalyseView() {
               onClick={handleSave}
               disabled={saving}
               className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-[6px] text-caption font-medium
-                bg-primary-light text-primary hover:bg-primary hover:text-white
+                bg-primary-light text-primary hover:bg-primary-fill hover:text-white
                 transition-colors cursor-pointer disabled:opacity-50"
               title={t("analyse.save")}
             >
@@ -1343,8 +1343,8 @@ export function AnalyseView() {
                 type="button"
                 onClick={handleSaveConfirm}
                 disabled={!saveName.trim() || saving}
-                className="px-3 py-1.5 rounded-[6px] text-caption font-medium bg-primary text-white
-                  hover:bg-primary-hover transition-colors cursor-pointer disabled:opacity-50"
+                className="px-3 py-1.5 rounded-[6px] text-caption font-medium bg-primary-fill text-white
+                  hover:bg-primary-fill-hover transition-colors cursor-pointer disabled:opacity-50"
               >
                 {saving ? <Loader2 size={14} className="animate-spin" /> : t("analyse.save")}
               </button>

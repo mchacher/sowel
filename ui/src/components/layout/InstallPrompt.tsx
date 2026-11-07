@@ -25,7 +25,7 @@ export function InstallPrompt() {
         </button>
         <button
           onClick={install}
-          className="text-caption font-medium text-white bg-primary hover:bg-primary-hover px-3 py-1.5 rounded-[6px] transition-colors cursor-pointer"
+          className="text-caption font-medium text-white bg-primary-fill hover:bg-primary-fill-hover px-3 py-1.5 rounded-[6px] transition-colors cursor-pointer"
         >
           {t("app.install")}
         </button>

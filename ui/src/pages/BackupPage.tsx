@@ -135,7 +135,7 @@ export function BackupPage() {
             <button
               onClick={handleExport}
               disabled={exporting}
-              className="flex items-center gap-1.5 px-4 py-2 text-small font-medium bg-primary text-white rounded-[6px] hover:bg-primary-hover transition-colors disabled:opacity-50 cursor-pointer disabled:cursor-default"
+              className="flex items-center gap-1.5 px-4 py-2 text-small font-medium bg-primary-fill text-white rounded-[6px] hover:bg-primary-fill-hover transition-colors disabled:opacity-50 cursor-pointer disabled:cursor-default"
             >
               {exporting ? <Loader2 size={14} className="animate-spin" /> : <Download size={14} />}
               {t("backup.export")}

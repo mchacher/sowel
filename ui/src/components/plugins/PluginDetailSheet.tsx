@@ -238,7 +238,7 @@ function DetailBody({
           <button
             onClick={onUpdate}
             disabled={busy}
-            className="inline-flex items-center justify-center gap-2 w-full min-h-[44px] px-4 text-small font-medium text-white bg-primary hover:bg-primary-hover rounded-[8px] transition-colors cursor-pointer disabled:opacity-50"
+            className="inline-flex items-center justify-center gap-2 w-full min-h-[44px] px-4 text-small font-medium text-white bg-primary-fill hover:bg-primary-fill-hover rounded-[8px] transition-colors cursor-pointer disabled:opacity-50"
           >
             {actionLoading === "update" ? (
               <Loader2 size={15} className="animate-spin" />

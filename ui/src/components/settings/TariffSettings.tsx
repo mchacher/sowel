@@ -385,7 +385,7 @@ export function TariffSettings() {
         <button
           onClick={handleSave}
           disabled={saving}
-          className="px-4 py-1.5 bg-primary text-white text-small font-medium rounded-md hover:bg-primary-hover disabled:opacity-50 transition-colors"
+          className="px-4 py-1.5 bg-primary-fill text-white text-small font-medium rounded-md hover:bg-primary-fill-hover disabled:opacity-50 transition-colors"
         >
           {saving ? (
             <span className="flex items-center gap-1.5">

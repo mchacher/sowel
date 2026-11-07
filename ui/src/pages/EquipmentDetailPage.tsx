@@ -690,7 +690,7 @@ export function EquipmentDetailPage() {
                   </span>
                   <button
                     onClick={() => setShowMissingBindings(true)}
-                    className="px-2 py-1 text-micro font-medium text-white bg-primary hover:bg-primary-hover rounded-[4px] transition-colors duration-150 flex-shrink-0"
+                    className="px-2 py-1 text-micro font-medium text-white bg-primary-fill hover:bg-primary-fill-hover rounded-[4px] transition-colors duration-150 flex-shrink-0"
                   >
                     {t("binding.missingReview")}
                   </button>
@@ -1119,7 +1119,7 @@ function ChangeDeviceModal({
             type="button"
             onClick={handleConfirm}
             disabled={selectedDeviceIds.length === 0 || saving}
-            className="px-4 py-2 text-small font-medium text-white bg-primary rounded-[6px] hover:bg-primary-hover transition-colors duration-150 disabled:opacity-50 disabled:cursor-not-allowed"
+            className="px-4 py-2 text-small font-medium text-white bg-primary-fill rounded-[6px] hover:bg-primary-fill-hover transition-colors duration-150 disabled:opacity-50 disabled:cursor-not-allowed"
           >
             {saving ? t("common.saving") : t("common.save")}
           </button>

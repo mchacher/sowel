@@ -195,7 +195,7 @@ export function EvReassignSheet({
             type="button"
             onClick={() => void save()}
             disabled={!choice || saving}
-            className="flex-1 min-h-[44px] rounded-[8px] bg-primary text-white text-body font-medium hover:bg-primary-hover disabled:opacity-50 cursor-pointer flex items-center justify-center gap-2"
+            className="flex-1 min-h-[44px] rounded-[8px] bg-primary-fill text-white text-body font-medium hover:bg-primary-fill-hover disabled:opacity-50 cursor-pointer flex items-center justify-center gap-2"
           >
             {saving && <Loader2 size={14} className="animate-spin" />}
             {t("equipments.evSessions.sheet.save")}

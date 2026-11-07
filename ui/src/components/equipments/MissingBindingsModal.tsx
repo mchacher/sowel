@@ -202,7 +202,7 @@ export function MissingBindingsModal({
           <button
             onClick={handleConfirm}
             disabled={submitting || chosen.length === 0}
-            className="px-3 py-1.5 text-small font-medium text-white bg-primary hover:bg-primary-hover rounded-[6px] disabled:opacity-40 disabled:cursor-not-allowed"
+            className="px-3 py-1.5 text-small font-medium text-white bg-primary-fill hover:bg-primary-fill-hover rounded-[6px] disabled:opacity-40 disabled:cursor-not-allowed"
           >
             {submitting ? (
               <Loader2 size={14} className="animate-spin" />

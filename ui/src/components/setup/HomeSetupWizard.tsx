@@ -189,7 +189,7 @@ export function HomeSetupWizard() {
           <button
             type="submit"
             disabled={!canSubmit}
-            className="w-full px-4 py-2.5 text-body font-semibold text-white bg-primary hover:bg-primary-hover disabled:opacity-40 disabled:cursor-not-allowed rounded-[6px] transition-colors inline-flex items-center justify-center gap-2"
+            className="w-full px-4 py-2.5 text-body font-semibold text-white bg-primary-fill hover:bg-primary-fill-hover disabled:opacity-40 disabled:cursor-not-allowed rounded-[6px] transition-colors inline-flex items-center justify-center gap-2"
           >
             {saving ? <Loader2 size={16} className="animate-spin" /> : null}
             {t("setup.home.submit", "Continuer")}

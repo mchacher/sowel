@@ -325,7 +325,7 @@ function TabButton({
       className={`
         px-4 py-2 text-small font-medium rounded-[6px] transition-colors cursor-pointer
         ${active
-          ? "bg-primary text-white"
+          ? "bg-primary-fill text-white"
           : "bg-surface border border-border text-text-secondary hover:bg-border-light hover:text-text"
         }
       `}
@@ -867,7 +867,7 @@ function StoreRow({
           <button
             onClick={handleInstall}
             disabled={installing}
-            className="flex items-center gap-1.5 px-3 py-1.5 text-caption font-medium text-white bg-primary hover:bg-primary-hover rounded-[6px] transition-colors cursor-pointer disabled:opacity-50"
+            className="flex items-center gap-1.5 px-3 py-1.5 text-caption font-medium text-white bg-primary-fill hover:bg-primary-fill-hover rounded-[6px] transition-colors cursor-pointer disabled:opacity-50"
           >
             {installing ? (
               <>
@@ -1017,7 +1017,7 @@ function PersonalSourcesSection({
         <button
           type="submit"
           disabled={adding || !repoInput.trim()}
-          className="inline-flex items-center gap-1.5 px-3 py-1.5 text-caption font-medium text-white bg-primary hover:bg-primary-hover rounded-[6px] transition-colors cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed shrink-0"
+          className="inline-flex items-center gap-1.5 px-3 py-1.5 text-caption font-medium text-white bg-primary-fill hover:bg-primary-fill-hover rounded-[6px] transition-colors cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed shrink-0"
         >
           {adding ? (
             <Loader2 size={14} className="animate-spin" />

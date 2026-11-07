@@ -31,7 +31,7 @@ export function UnitToggle({ enabled }: UnitToggleProps) {
         onClick={() => enabled && setUnit("wh")}
         className={
           effectiveUnit === "wh"
-            ? "px-3 py-1 bg-primary text-white"
+            ? "px-3 py-1 bg-primary-fill text-white"
             : "px-3 py-1 text-text-secondary hover:bg-bg disabled:hover:bg-transparent"
         }
       >
@@ -43,7 +43,7 @@ export function UnitToggle({ enabled }: UnitToggleProps) {
         onClick={() => enabled && setUnit("eur")}
         className={
           effectiveUnit === "eur"
-            ? "px-3 py-1 bg-primary text-white"
+            ? "px-3 py-1 bg-primary-fill text-white"
             : "px-3 py-1 text-text-secondary hover:bg-bg disabled:hover:bg-transparent"
         }
       >
