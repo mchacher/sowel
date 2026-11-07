@@ -225,7 +225,7 @@
     "icon": "Thermometer",
     "author": "mchacher",
     "repo": "mchacher/sowel-recipe-presence-thermostat",
-    "version": "1.0.0",
+    "version": "1.0.1",
     "tags": ["automation", "heating", "thermostat", "presence"],
     "i18n": {
       "fr": {
@@ -233,9 +233,9 @@
         "description": "Ajuste la consigne du thermostat selon la présence dans la zone, avec mode nuit, préchauffe et cocoon."
       }
     },
-    "sowelVersion": ">=0.10.0",
+    "sowelVersion": ">=1.8.0",
     "owner": "mchacher",
-    "sha256": "3f29ab928f979d33dbdf6ea95ff78dcdcaf6bad5eb3b20afc6958767abf7a61f"
+    "sha256": "a9b1905bafac10227fd8dd0174c06c0cc3bb40fbf12a06907401ca254dd4618a"
   },
   {
     "id": "motion-light",
