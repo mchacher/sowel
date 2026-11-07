@@ -323,7 +323,7 @@ export function DeviceSelector({
                   const picked = candidateByDevice[device.id];
                   return (
                     <div className="ml-11 mt-1 mb-2 space-y-1">
-                      <div className="text-micro font-medium text-text-secondary uppercase tracking-widest mb-1">
+                      <div className="text-small font-medium text-text-secondary mb-1">
                         {t("deviceSelector.pickChannel")}
                       </div>
                       {cs.map((c) => {
@@ -365,7 +365,7 @@ export function DeviceSelector({
                               </>
                             ) : (
                               <>
-                                <span className="font-mono">{c.label}</span>
+                                <span>{c.label}</span>
                                 {c.dataKeys.length + c.orderKeys.length > 0 && (
                                   <span className="text-text-tertiary text-micro">
                                     ({[...new Set([...c.dataKeys, ...c.orderKeys])].join(", ")})

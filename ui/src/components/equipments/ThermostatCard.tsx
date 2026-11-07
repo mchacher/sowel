@@ -207,7 +207,7 @@ export function ThermostatCard({ equipment, onExecuteOrder, compact }: Thermosta
       {/* Temperature display + Power */}
       <div className="flex items-center justify-between">
         <div className="flex items-end gap-3">
-          <div className="text-value font-semibold text-text leading-none tabular-nums font-mono">
+          <div className="text-value font-semibold text-text leading-none tabular-nums">
             {formatNumber(insideTemp, { decimals: 1 })}
             <span className="text-lead text-text-tertiary font-normal">°C</span>
           </div>
@@ -249,7 +249,7 @@ export function ThermostatCard({ equipment, onExecuteOrder, compact }: Thermosta
             >
               <ChevronDown size={14} strokeWidth={2} />
             </button>
-            <span className="text-title font-semibold text-text tabular-nums font-mono min-w-[60px] text-center">
+            <span className="text-title font-semibold text-text tabular-nums min-w-[60px] text-center">
               {formatNumber(targetTemp, { decimals: 1 })}
               <span className="text-caption text-text-tertiary font-normal">°C</span>
             </span>
@@ -356,7 +356,7 @@ function CompactThermostat({
           >
             <ChevronDown size={12} strokeWidth={2} />
           </button>
-          <span className="flex items-center gap-0.5 text-body font-semibold text-text tabular-nums font-mono">
+          <span className="flex items-center gap-0.5 text-body font-semibold text-text tabular-nums">
             <Crosshair size={11} strokeWidth={1.5} className="text-text-secondary" />
             {formatTemperature(targetTemp, { style: "compact" })}
           </span>

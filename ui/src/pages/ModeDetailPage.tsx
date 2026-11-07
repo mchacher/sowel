@@ -482,14 +482,14 @@ function CalendarScheduleSection({
               key={slot.id}
               className="flex items-center gap-3 px-3 py-2 bg-background rounded-[6px] border border-border-light"
             >
-              <span className={`text-micro font-semibold uppercase px-1.5 py-0.5 rounded ${
+              <span className={`text-caption font-medium px-1.5 py-0.5 rounded ${
                 action === "on"
                   ? "bg-success/10 text-success"
                   : "bg-error/10 text-error"
               }`}>
                 {action === "on" ? t("common.on") : t("common.off")}
               </span>
-              <span className="text-display sm:text-value font-semibold text-text leading-[1.1] tracking-tight tabular-nums font-mono">
+              <span className="text-display sm:text-value font-semibold text-text leading-[1.1] tracking-tight tabular-nums">
                 {slot.time}
               </span>
               <span className="text-small text-text-secondary">

@@ -45,7 +45,7 @@ function headerClasses(
 
 function labelClasses(isInSection: boolean): string {
   const base =
-    "text-micro font-semibold uppercase tracking-widest transition-colors";
+    "text-body font-medium transition-colors";
   return `${base} ${isInSection ? "text-primary" : "text-text-secondary"}`;
 }
 

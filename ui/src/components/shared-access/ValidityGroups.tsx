@@ -18,7 +18,7 @@ import { btnSecondary, iconBtn, inputBadCls, inputCls, Refusal, Segmented } from
 function Group({ title, children }: { title: string; children: ReactNode }) {
   return (
     <fieldset className="mt-3 border border-border rounded-[10px] px-3 py-2.5">
-      <legend className="text-micro font-semibold text-text-tertiary uppercase tracking-widest px-1">
+      <legend className="text-small font-semibold text-text-secondary px-1">
         {title}
       </legend>
       {children}
@@ -110,7 +110,7 @@ function WindowDays({
                   aria-pressed={on}
                   aria-label={dayName(d)}
                   onClick={() => onChange(on ? days.filter((x) => x !== d) : [...days, d])}
-                  className={`min-h-[40px] rounded-[6px] border text-small font-semibold uppercase transition-colors cursor-pointer ${
+                  className={`min-h-[40px] rounded-[6px] border text-small font-semibold transition-colors cursor-pointer ${
                     on
                       ? "bg-primary border-primary text-white"
                       : "bg-surface border-border text-text-secondary hover:bg-border-light"

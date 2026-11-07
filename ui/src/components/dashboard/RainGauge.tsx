@@ -73,11 +73,11 @@ export function RainTileBody({ equipment }: { equipment: EquipmentWithDetails })
   const { hasToday, value } = rainHeadline(equipment);
   return (
     <div className="flex flex-col items-center justify-center gap-1 flex-1 min-h-0">
-      <span className="text-micro uppercase tracking-wide text-text-tertiary font-medium">
+      <span className="text-caption text-text-tertiary font-medium">
         {hasToday ? t("weather.today") : t("weather.rain24hShort")}
       </span>
       <div className="flex items-baseline leading-none">
-        <span className="font-mono font-semibold text-value text-text tabular-nums leading-none">
+        <span className="font-semibold text-value text-text tabular-nums leading-none">
           {formatMm(value, locale)}
         </span>
         <span className="text-text-tertiary font-medium text-body sm:text-lead leading-none ml-1">
@@ -99,10 +99,10 @@ export function RainMobileHeadline({ equipment }: { equipment: EquipmentWithDeta
   const { hasToday, value } = rainHeadline(equipment);
   return (
     <div className="flex flex-col items-center gap-1 leading-none whitespace-nowrap">
-      <span className="text-title uppercase tracking-wide text-text-tertiary font-medium">
+      <span className="text-display text-text-tertiary font-medium">
         {hasToday ? t("weather.todayShort") : t("weather.rain24hShort")}
       </span>
-      <span className="font-mono font-semibold text-value text-text tabular-nums leading-none">
+      <span className="font-semibold text-value text-text tabular-nums leading-none">
         {formatMm(value, locale)}
         <span className="text-text-tertiary font-medium text-display ml-1">mm</span>
       </span>
@@ -156,7 +156,7 @@ function Stat({ label, value, note }: { label: string; value: string; note?: str
   return (
     <div className="rounded-[8px] bg-border-light/40 px-3 py-2">
       <div className="text-caption text-text-secondary">{label}</div>
-      <div className="font-mono font-semibold text-title text-text tabular-nums leading-tight">
+      <div className="font-semibold text-title text-text tabular-nums leading-tight">
         {value}
         {value !== "—" && value !== "…" && (
           <span className="text-text-tertiary font-normal text-caption ml-1">mm</span>
@@ -295,7 +295,7 @@ export function RainDetailContent({ equipment }: { equipment: EquipmentWithDetai
           <div className="text-caption text-text-secondary">{t("weather.rainLast")}</div>
           <div className="text-body font-semibold text-text truncate">{lastRainText}</div>
         </div>
-        <div className="font-mono font-semibold text-title text-text tabular-nums whitespace-nowrap">
+        <div className="font-semibold text-title text-text tabular-nums whitespace-nowrap">
           {lastRainValue}
           {lastRainValue !== "—" && (
             <span className="text-text-tertiary font-normal text-caption ml-1">mm</span>

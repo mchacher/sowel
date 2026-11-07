@@ -358,10 +358,10 @@ function useMobileState(
       extremes: { min: number; max: number } | null,
     ) => (
       <div className="flex flex-col items-center gap-1 leading-none whitespace-nowrap">
-        <span className="text-title uppercase tracking-wide text-text-tertiary font-medium">
+        <span className="text-display text-text-tertiary font-medium">
           {t(captionKey)}
         </span>
-        <span className="font-mono font-semibold text-value text-text tabular-nums leading-none">
+        <span className="font-semibold text-value text-text tabular-nums leading-none">
           {fmt(b)}
         </span>
         {extremes && <TempExtremes min={extremes.min} max={extremes.max} large />}
@@ -371,10 +371,10 @@ function useMobileState(
       icon: both ? (
         <div className="flex items-end gap-3 leading-none whitespace-nowrap">
           <div className="flex flex-col items-center gap-1">
-            <span className="text-title uppercase tracking-wide text-text-tertiary font-medium">
+            <span className="text-display text-text-tertiary font-medium">
               {t("weather.outdoorShort")}
             </span>
-            <span className="font-mono font-semibold text-value text-text tabular-nums leading-none">
+            <span className="font-semibold text-value text-text tabular-nums leading-none">
               {fmt(outdoor)}
             </span>
             {outdoorExtremes && (
@@ -383,10 +383,10 @@ function useMobileState(
           </div>
           <div className="w-px self-stretch bg-border" />
           <div className="flex flex-col items-center gap-1">
-            <span className="text-title uppercase tracking-wide text-text-tertiary font-medium">
+            <span className="text-display text-text-tertiary font-medium">
               {t("weather.indoorShort")}
             </span>
-            <span className="font-mono font-semibold text-value text-text tabular-nums leading-none">
+            <span className="font-semibold text-value text-text tabular-nums leading-none">
               {fmt(indoor)}
             </span>
             {indoorExtremes && (
@@ -400,7 +400,7 @@ function useMobileState(
         singleColumn(indoor, "weather.indoorShort", indoorExtremes)
       ) : (
         <div className="flex flex-col items-center gap-1 leading-none whitespace-nowrap">
-          <span className="font-mono font-semibold text-value text-text tabular-nums">—</span>
+          <span className="font-semibold text-value text-text tabular-nums">—</span>
         </div>
       ),
       stateLines: [],
@@ -602,12 +602,12 @@ function useMobileState(
       footer: (
         <>
           {s.reportStale && s.reportedAt && (
-            <span className="absolute top-1.5 right-1.5 flex items-center gap-0.5 font-mono text-micro text-text-tertiary">
+            <span className="absolute top-1.5 right-1.5 flex items-center gap-0.5 tabular-nums text-micro text-text-tertiary">
               <Clock size={10} strokeWidth={2} aria-hidden="true" />
               {formatRelative(s.reportedAt, t)}
             </span>
           )}
-          <span className="font-mono text-caption font-semibold text-text tabular-nums">
+          <span className="text-caption font-semibold text-text tabular-nums">
             <span className={tone === "low" ? "text-error" : undefined}>
               {formatPercent(s.batteryLevel)}
             </span>

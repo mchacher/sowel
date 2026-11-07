@@ -148,7 +148,7 @@ export function EvChargerSessionsSection({
                           : t("equipments.evSessions.inProgress")}
                       </span>
                     </span>
-                    <span className="font-mono text-body font-semibold text-text tabular-nums whitespace-nowrap">
+                    <span className="text-body font-semibold text-text tabular-nums whitespace-nowrap">
                       {eur(s.costEur)}
                     </span>
                   </div>
@@ -161,7 +161,7 @@ export function EvChargerSessionsSection({
                       </span>
                       <span className="text-caption text-text-tertiary truncate">{how}</span>
                     </div>
-                    <span className="font-mono text-caption text-text-secondary tabular-nums whitespace-nowrap">
+                    <span className="text-caption text-text-secondary tabular-nums whitespace-nowrap">
                       {energyLabel(s.energyWh, locale)}
                     </span>
                   </div>

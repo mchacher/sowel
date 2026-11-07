@@ -46,7 +46,7 @@ The neutral scale carries 95% of the UI. It is calibrated so that:
 | `--n-100` | `#E9E9EB` | `#262931` | slider track, off-state pill bg         |
 | `--n-200` | `#D4D4D8` | `#363941` | dividers between strip pills            |
 | `--n-300` | `#A1A1AA` | `#52565F` | inactive dot, expand chevron            |
-| `--n-400` | `#71717A` | `#7E828B` | meta text, label uppercase              |
+| `--n-400` | `#71717A` | `#7E828B` | meta text, table column header          |
 | `--n-500` | `#52525B` | `#9CA0AA` | sidebar item text default, icon strokes |
 | `--n-600` | `#3F3F46` | `#C7C9CF` | hover text, button icon                 |
 | `--n-700` | `#27272A` | `#E2E3E7` | body text default                       |
@@ -93,16 +93,30 @@ Used **only** on equipment row icons (`.eq__icon--{type}`). They give a glanceab
 
 ### 2.1 Font families
 
-| Token         | Value                                                             | Used for                       |
-| ------------- | ----------------------------------------------------------------- | ------------------------------ |
-| `--font-body` | `'Inter Variable', 'Inter', system-ui, -apple-system, sans-serif` | All UI text                    |
-| `--font-mono` | `'JetBrains Mono', ui-monospace, monospace`                       | All numbers, timestamps, codes |
+| Token         | Value                                                             | Used for                                                 |
+| ------------- | ----------------------------------------------------------------- | -------------------------------------------------------- |
+| `--font-body` | `'Inter Variable', 'Inter', system-ui, -apple-system, sans-serif` | All UI text                                              |
+| `--font-mono` | `'JetBrains Mono', ui-monospace, monospace`                       | Logs, JSON, identifiers, versions, codes and code fields |
 
 Inter is the variable build (`@fontsource-variable/inter/opsz.css`): every weight is real, and the optical-size axis gives large sizes the display cut. Fontsource registers it as **`'Inter Variable'`**; a stack that starts with `'Inter'` silently falls back to `system-ui`. JetBrains Mono is loaded at 400 only.
 
 Weights: 400, 500 and 600. There is no 700 in the interface (`font-bold` became `font-semibold`); the only exception is the « SOWEL » wordmark in Nunito 800.
 
 The text of a number (separators, unit spacing, precision per unit) comes from `ui/src/lib/format.ts`, never from `toFixed` (spec 196).
+
+**Numbers are Inter, not mono** (spec 196, slice 5b). A value, a time, a duration or a counter is set in Inter with `tabular-nums`, so its digits keep a fixed width and the value does not jump when it changes. JetBrains Mono is kept for what a person reads character by character or copies: logs, raw JSON, identifiers (aliases, data keys, topics, IEEE addresses), versions, codes and tokens, and the inputs that take code (topic, path, URL, template). It stays at 400: no `font-semibold` on mono, which would be a synthesised bold.
+
+**Labels are sentence case** (spec 196, slice 5b). Size and weight carry the hierarchy, not capitals and letter-spacing. Uppercase is used in one place, the column headers of a table (`text-caption font-semibold uppercase tracking-[0.04em]`); an ESLint rule rejects `uppercase` anywhere else. The roles:
+
+| Role                          | Classes                                                                                            |
+| ----------------------------- | -------------------------------------------------------------------------------------------------- |
+| Navigation entry              | `text-body font-medium`                                                                            |
+| Panel or section title        | `text-lead font-semibold text-text`                                                                |
+| Category in a list            | `text-small font-semibold text-text-secondary`, counter `text-micro text-text-tertiary`            |
+| Form field label              | `FIELD_LABEL` (`ui/src/components/ui/text-roles.ts`): `text-small font-medium text-text-secondary` |
+| Caption over a measured value | `text-caption text-text-tertiary`                                                                  |
+| Pill or badge                 | `text-caption font-medium`                                                                         |
+| Table column header           | `text-caption font-semibold uppercase tracking-[0.04em] text-text-tertiary`                        |
 
 ### 2.2 Type scale
 
@@ -125,9 +139,9 @@ An ESLint rule (`ui/eslint.config.js`) rejects arbitrary sizes — `text-[13px]`
 
 ### 2.3 Text features (applied via tokens.css)
 
-- **Tabular nums** (`font-feature-settings: "tnum" 1`) on every numeric container so values don't shift when their digit count changes.
+- **Tabular nums** (`tabular-nums`, or `font-feature-settings: "tnum" 1`) on every numeric container so values don't shift when their digit count changes. This is what keeps Inter numbers steady; it is not a reason to use mono.
 - **Inter contextual ligatures** (`cv11`, `ss01`) on all body text for the "modern Inter" feel.
-- **Letter-spacing** is tight on titles (`-0.022em` to `-0.03em`) and wide on uppercase labels (`0.12em`–`0.14em`).
+- **Letter-spacing** is tight on titles (`-0.022em` to `-0.03em`), `0.04em` on table column headers, and normal everywhere else.
 
 ---
 

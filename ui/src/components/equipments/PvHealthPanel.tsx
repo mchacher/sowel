@@ -176,7 +176,7 @@ export const PvHealthPanel = memo(function PvHealthPanel({
 
       {/* What the detector can and cannot do, from the days it has actually had. */}
       {data.detection && (
-        <p className="mt-3 text-micro text-text-tertiary">
+        <p className="mt-3 text-caption text-text-tertiary">
           {t("equipments.pvHealth.speed", {
             clear: data.detection.qualifyingDays,
             window: data.detection.windowDays,
@@ -185,7 +185,7 @@ export const PvHealthPanel = memo(function PvHealthPanel({
           })}
         </p>
       )}
-      <p className="mt-1 text-micro text-text-tertiary">{t("equipments.pvHealth.noPanelId")}</p>
+      <p className="mt-1 text-caption text-text-tertiary">{t("equipments.pvHealth.noPanelId")}</p>
     </div>
   );
 });

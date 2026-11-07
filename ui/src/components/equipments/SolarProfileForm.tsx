@@ -190,7 +190,7 @@ export function SolarProfileForm({ equipmentId, planes, since, onSaved }: SolarP
                     badFields.has(`${index}:tiltDeg`) ? "border-error" : "border-border"
                   }`}
                 />
-                <p className="text-micro text-text-tertiary mt-1">
+                <p className="text-caption text-text-tertiary mt-1">
                   {t("equipments.solar.tiltHint")}
                 </p>
               </div>
@@ -211,7 +211,7 @@ export function SolarProfileForm({ equipmentId, planes, since, onSaved }: SolarP
                     badFields.has(`${index}:peakWc`) ? "border-error" : "border-border"
                   }`}
                 />
-                <p className="text-micro text-text-tertiary mt-1">
+                <p className="text-caption text-text-tertiary mt-1">
                   {t("equipments.solar.peakHint")}
                 </p>
               </div>
@@ -248,7 +248,7 @@ export function SolarProfileForm({ equipmentId, planes, since, onSaved }: SolarP
           onChange={(e) => setSinceDraft(e.target.value)}
           className="px-2 py-1.5 rounded-[6px] border border-border bg-background text-small tabular-nums"
         />
-        <p className="text-micro text-text-tertiary mt-1">{t("equipments.solar.sinceHint")}</p>
+        <p className="text-caption text-text-tertiary mt-1">{t("equipments.solar.sinceHint")}</p>
       </div>
 
       {error && <p className="mt-3 text-caption text-error">{error}</p>}
@@ -276,7 +276,7 @@ export function SolarProfileForm({ equipmentId, planes, since, onSaved }: SolarP
           </button>
         )}
         {totalWc > 0 && (
-          <span className="text-caption text-text-tertiary tabular-nums font-mono">
+          <span className="text-caption text-text-tertiary tabular-nums">
             {t("equipments.solar.total", { wc: totalWc })}
           </span>
         )}

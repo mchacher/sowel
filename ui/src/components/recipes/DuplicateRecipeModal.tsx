@@ -9,6 +9,7 @@ import { recipeName, recipeSlotName } from "../../lib/recipe-i18n";
 import { matchesEquipmentType } from "../../lib/recipe-slots";
 import { EquipmentOptions } from "./recipe-form-fields";
 import { useZoneOptions } from "./useZoneOptions";
+import { FIELD_LABEL } from "../ui/text-roles";
 
 // ============================================================
 // Duplicate recipe modal
@@ -153,7 +154,7 @@ export function DuplicateRecipeModal({
 
           {/* Target zone picker */}
           <div>
-            <label className="block text-micro text-text-tertiary uppercase tracking-widest mb-1">
+            <label className={FIELD_LABEL}>
               {t("recipes.targetZone")}
             </label>
             <select
@@ -173,7 +174,7 @@ export function DuplicateRecipeModal({
             const compatible = getCompatibleEquipments(slot.id);
             return (
               <div key={slot.id}>
-                <label className="block text-micro text-text-tertiary uppercase tracking-widest mb-1">
+                <label className={FIELD_LABEL}>
                   {recipeSlotName(recipe, slot, lang)}
                 </label>
                 {compatible.length === 0 ? (

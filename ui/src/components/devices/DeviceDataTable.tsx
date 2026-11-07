@@ -29,16 +29,16 @@ export function DeviceDataTable({ data }: DeviceDataTableProps) {
       <table className="w-full">
         <thead>
           <tr className="border-b border-border">
-            <th className="text-left py-2.5 px-3 text-caption font-medium text-text-secondary uppercase tracking-widest">
+            <th className="text-left py-2.5 px-3 text-caption font-semibold uppercase tracking-[0.04em] text-text-tertiary">
               {t("devices.col.key")}
             </th>
-            <th className="text-left py-2.5 px-3 text-caption font-medium text-text-secondary uppercase tracking-widest">
+            <th className="text-left py-2.5 px-3 text-caption font-semibold uppercase tracking-[0.04em] text-text-tertiary">
               {t("devices.col.category")}
             </th>
-            <th className="text-right py-2.5 px-3 text-caption font-medium text-text-secondary uppercase tracking-widest">
+            <th className="text-right py-2.5 px-3 text-caption font-semibold uppercase tracking-[0.04em] text-text-tertiary">
               {t("devices.col.value")}
             </th>
-            <th className="text-right py-2.5 px-3 text-caption font-medium text-text-secondary uppercase tracking-widest">
+            <th className="text-right py-2.5 px-3 text-caption font-semibold uppercase tracking-[0.04em] text-text-tertiary">
               {t("devices.col.updated")}
             </th>
           </tr>
@@ -118,7 +118,7 @@ function DataValueCell({
   }
 
   return (
-    <span className="font-mono text-small text-text">
+    <span className="tabular-nums text-small text-text">
       {formatDataValue(value, unit)}
     </span>
   );

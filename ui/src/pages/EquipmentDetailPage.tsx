@@ -721,7 +721,7 @@ export function EquipmentDetailPage() {
                         <span className="font-mono font-medium text-primary">{binding.alias}</span>
                         <span className="text-text-tertiary">({binding.category})</span>
                         <span className="text-text-tertiary">· {binding.deviceName} · {binding.key}</span>
-                        <span className="ml-auto font-mono text-text">
+                        <span className="ml-auto tabular-nums text-text">
                           {binding.value !== null && binding.value !== undefined ? String(binding.value) : "—"}
                           {binding.unit && <span className="text-text-tertiary ml-0.5">{binding.unit}</span>}
                         </span>
@@ -750,7 +750,7 @@ export function EquipmentDetailPage() {
                       <div key={cd.alias} className="flex items-center gap-2 px-2.5 py-1.5 rounded-[4px] bg-accent/5 border border-accent/15 text-caption">
                         <span className="font-mono font-medium text-accent">{cd.alias}</span>
                         {cd.category && <span className="text-text-tertiary">({cd.category})</span>}
-                        <span className="ml-auto font-mono text-text">
+                        <span className="ml-auto tabular-nums text-text">
                           {cd.value !== null && cd.value !== undefined
                             ? typeof cd.value === "number" ? formatNumber(cd.value, { maxDecimals: 1 }) : String(cd.value)
                             : "—"}

@@ -48,7 +48,7 @@ export function PhaseBreakdown({ gridEquipments }: Props) {
                   style={{ width: `${pct}%`, background: color }}
                 />
               </div>
-              <span className="font-mono text-small font-medium text-text-secondary w-16 text-right shrink-0">
+              <span className="tabular-nums text-small font-medium text-text-secondary w-16 text-right shrink-0">
                 {f}
               </span>
             </div>

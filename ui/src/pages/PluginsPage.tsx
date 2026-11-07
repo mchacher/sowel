@@ -283,9 +283,9 @@ function CategorySection({
   const { t } = useTranslation();
   return (
     <section>
-      <h3 className="flex items-baseline gap-1.5 text-caption font-semibold text-text-secondary uppercase tracking-widest mb-2">
+      <h3 className="flex items-baseline gap-1.5 text-lead font-semibold text-text mb-2">
         {t(`plugins.category.${category}`)}
-        <span className="font-normal text-text-tertiary tabular-nums normal-case tracking-normal">
+        <span className="text-small font-normal text-text-tertiary tabular-nums">
           {count}
         </span>
       </h3>

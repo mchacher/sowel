@@ -199,7 +199,7 @@ export function JournalDialog({
             const outcomeKey = e.kind === "opened" ? journalOutcomeKey(e) : null;
             return (
               <li key={e.id} className="flex items-baseline gap-3 px-1 py-2 text-small">
-                <span className="font-mono text-caption text-text-tertiary tabular-nums shrink-0 w-[112px]">
+                <span className="text-caption text-text-tertiary tabular-nums shrink-0 w-[112px]">
                   {fmt.dateTime(e.at)}
                 </span>
                 <span className="min-w-0">

@@ -19,7 +19,7 @@ export function SidebarZoneTree({ collapsed }: { collapsed: boolean }) {
   if (tree.length === 0) {
     return (
       <div className="px-3 py-2">
-        <p className="text-micro text-text-tertiary leading-tight">
+        <p className="text-caption text-text-tertiary leading-tight">
           {t("zones.noZonesSidebar")}
         </p>
       </div>
@@ -65,7 +65,7 @@ function SidebarZoneNode({ zone, depth }: { zone: ZoneWithChildren; depth: numbe
           {({ isActive: linkActive }) => (
             <>
               <Home size={14} strokeWidth={1.5} className={`flex-shrink-0 transition-colors ${linkActive ? "text-primary" : "text-text group-hover:text-primary"}`} />
-              <span className={`text-micro font-semibold uppercase tracking-widest transition-colors truncate ${linkActive ? "text-primary" : "text-text group-hover:text-primary"}`}>
+              <span className={`text-body font-medium transition-colors truncate ${linkActive ? "text-primary" : "text-text group-hover:text-primary"}`}>
                 {zone.name}
               </span>
             </>

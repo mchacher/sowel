@@ -8,6 +8,7 @@ import { equipmentLabelMap, type ZoneOption } from "../../lib/zone-path";
 import { durationToMinutes } from "./recipe-slot-helpers";
 import { cycleOptionLabel, resolveCycle } from "./recipe-cycle";
 import { formatDuration } from "../../lib/format";
+import { FIELD_LABEL } from "../ui/text-roles";
 
 /**
  * `<option>` list of an equipment dropdown (spec 139). Integrations name every
@@ -366,7 +367,7 @@ export function EquipmentListPicker({
 
   return (
     <div className="mb-1.5">
-      <label className={labelClassName ?? "block text-micro tracking-wider mb-0.5 text-text-tertiary"}>
+      <label className={labelClassName ?? FIELD_LABEL}>
         {recipeSlotName(recipe, slot, lang)}
       </label>
 

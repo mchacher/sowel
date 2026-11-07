@@ -147,7 +147,7 @@ export function CameraPanel({
       {detectionBinding && detectionBinding.value != null && (
         <p className="text-small text-text-secondary">
           {t("cameras.lastDetection")}{": "}
-          <span className="font-mono font-medium text-text">{String(detectionBinding.value)}</span>
+          <span className="font-medium text-text">{String(detectionBinding.value)}</span>
           {detectionBinding.lastUpdated && (
             <>
               {" · "}

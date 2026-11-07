@@ -163,7 +163,7 @@ export function SolarInstallationSettings() {
                     <History size={14} strokeWidth={1.5} />
                     {t("equipments.pv.backfill")}
                   </button>
-                  <span className="text-micro text-text-tertiary">
+                  <span className="text-caption text-text-tertiary">
                     {t("equipments.pv.backfillHint")}
                   </span>
                   {notice && <span className="text-caption text-text-secondary">{notice}</span>}

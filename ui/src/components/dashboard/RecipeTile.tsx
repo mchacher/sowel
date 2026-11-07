@@ -109,7 +109,7 @@ export function RecipeTile({
   // worse answer than an honest empty tile.
   if (!recipe || !tile || !instance) {
     const body = (
-      <span className="text-micro text-text-tertiary text-center px-2">
+      <span className="text-caption text-text-tertiary text-center px-2">
         {t("dashboard.recipeTile.unavailable")}
       </span>
     );

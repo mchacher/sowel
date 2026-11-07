@@ -17,7 +17,7 @@ export function ChannelConfigFields({
   const { t } = useTranslation();
   if (spec.fields.length === 0) {
     return spec.hintKey ? (
-      <p className="text-micro text-text-tertiary">{t(spec.hintKey)}</p>
+      <p className="text-caption text-text-tertiary">{t(spec.hintKey)}</p>
     ) : null;
   }
   return (

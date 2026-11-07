@@ -167,7 +167,7 @@ export function DisplayPanel({
                 {t(`displays.fields.${category}`)}
               </span>
               {!isInteractive && (
-                <span className="text-small font-mono text-text-secondary">
+                <span className="text-small tabular-nums text-text-secondary">
                   {formatValue(category, binding.value)}
                 </span>
               )}
@@ -210,7 +210,7 @@ export function DisplayPanel({
                       }}
                       className="w-24"
                     />
-                    <span className="text-small font-mono text-text-secondary w-12 text-right">
+                    <span className="text-small tabular-nums text-text-secondary w-12 text-right">
                       {formatValue(category, draftBrightness ?? brightnessBinding.value)}
                     </span>
                   </div>

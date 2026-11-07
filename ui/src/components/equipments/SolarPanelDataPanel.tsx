@@ -63,7 +63,7 @@ export function SolarPanelDataPanel({ bindings, status, statusReason }: SolarPan
           {rows.map((r) => (
             <div key={r.key} className="flex items-center justify-between">
               <span className="text-small text-text-secondary">{r.label}</span>
-              <span className="text-body font-semibold text-text tabular-nums font-mono">
+              <span className="text-body font-semibold text-text tabular-nums">
                 {r.display}
               </span>
             </div>

@@ -358,7 +358,7 @@ function Panel({
     <section className={`bg-surface border border-border-light rounded-lg ${className}`}>
       {/* Panel head — strict alignment with design-system .panel__head (spec 100) */}
       <div className="flex items-center gap-[0.55rem] px-[1.1rem] py-[0.55rem] min-h-[44px] bg-primary-light border-b border-primary-mid">
-        <h2 className="text-caption font-semibold text-primary uppercase tracking-[0.12em]">
+        <h2 className="text-lead font-semibold text-text">
           {title}
         </h2>
         {headerRight && <div className="ml-auto flex-shrink-0">{headerRight}</div>}

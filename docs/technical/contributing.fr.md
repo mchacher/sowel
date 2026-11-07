@@ -245,7 +245,9 @@ Quand vous ajoutez ou modifiez des composants UI, suivez ces design tokens :
 | Propriété                 | Valeur                                                       |
 | ------------------------- | ------------------------------------------------------------ |
 | **Police body**           | Inter                                                        |
-| **Police mono**           | JetBrains Mono (valeurs, logs)                               |
+| **Police mono**           | JetBrains Mono : logs, JSON, identifiants, versions, code    |
+| **Nombres**               | Inter avec `tabular-nums` (chiffres à chasse fixe), pas mono |
+| **Libellés**              | Casse de phrase ; majuscules seulement en tête de tableau    |
 | **Couleur primaire**      | `#1A4F6E` (ocean blue), hover : `#13405A`, light : `#E6F0F6` |
 | **Couleur accent**        | `#D4963F` (amber), hover : `#BB8232`                         |
 | **Espacement de base**    | 4px                                                          |

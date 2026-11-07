@@ -102,6 +102,20 @@ export default defineConfig([
           selector: "TemplateElement[value.raw=/text-\\[(\\d|\\.\\d|clamp|calc|length)/]",
           message: "Arbitrary font size: use a step of the type scale (text-micro … text-value).",
         },
+        // Spec 196, FR-5 (slice 5b) — labels are sentence case: size and
+        // weight carry the hierarchy. Tracked capitals at four levels at once
+        // were the most visible "generated UI" tell. A table column header is
+        // the one place uppercase stays (inside <thead>/<th>).
+        {
+          selector:
+            "Literal[value=/(^|\\s)uppercase(\\s|$)/]:not(JSXElement[openingElement.name.name=/^(thead|th)$/] Literal)",
+          message: "Uppercase is for table column headers only: write the label in sentence case.",
+        },
+        {
+          selector:
+            "TemplateElement[value.raw=/(^|\\s)uppercase(\\s|$)/]:not(JSXElement[openingElement.name.name=/^(thead|th)$/] TemplateElement)",
+          message: "Uppercase is for table column headers only: write the label in sentence case.",
+        },
         {
           selector: "Property[key.name='fontSize'] > Literal.value",
           message:

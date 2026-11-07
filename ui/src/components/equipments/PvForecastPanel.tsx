@@ -138,12 +138,12 @@ export function PvForecastPanel({ equipmentId }: PvForecastPanelProps) {
         {isAdmin ? (
           <Link
             to="/settings?tab=energy"
-            className="ml-auto text-micro text-text-tertiary tabular-nums font-mono hover:text-primary hover:underline"
+            className="ml-auto text-micro text-text-tertiary tabular-nums hover:text-primary hover:underline"
           >
             {t("equipments.pv.declared", { wc: formatWithUnit(data.declaredPeakWc, "Wc", { locale }) })}
           </Link>
         ) : (
-          <span className="ml-auto text-micro text-text-tertiary tabular-nums font-mono">
+          <span className="ml-auto text-micro text-text-tertiary tabular-nums">
             {t("equipments.pv.declared", { wc: formatWithUnit(data.declaredPeakWc, "Wc", { locale }) })}
           </span>
         )}
@@ -172,14 +172,14 @@ export function PvForecastPanel({ equipmentId }: PvForecastPanelProps) {
                 forecast, 0.0 kWh measured" all night with a dangling delta. */}
             {data.accuracy.today !== null &&
               (data.accuracy.today.forecastWh > 0 || data.accuracy.today.actualWh > 0) && (
-              <p className="text-micro text-text-tertiary mb-3">
+              <p className="text-caption text-text-tertiary mb-3">
                 {t("equipments.pv.todaySoFar", {
                   expected: formatEnergy(data.accuracy.today.forecastWh / 1000, { locale }),
                   measured: formatEnergy(data.accuracy.today.actualWh / 1000, { locale }),
                   count: data.accuracy.today.hours,
                 })}{" "}
                 <span
-                  className={`font-mono tabular-nums ${
+                  className={`tabular-nums ${
                     data.accuracy.today.actualWh >= data.accuracy.today.forecastWh
                       ? "text-success"
                       : "text-text-secondary"
@@ -199,7 +199,7 @@ export function PvForecastPanel({ equipmentId }: PvForecastPanelProps) {
               </span>
               {data.accuracy.dailyMaeWh !== null ? (
                 <>
-                  <span className="text-small font-semibold font-mono tabular-nums text-text">
+                  <span className="text-small font-semibold tabular-nums text-text">
                     {/* No percentage when nothing was produced to take a share
                         of: `?? 0` printed "(0%)" over a real error, so a dead
                         inverter under a live forecast read as a perfect score
@@ -218,7 +218,7 @@ export function PvForecastPanel({ equipmentId }: PvForecastPanelProps) {
                   </span>
                 </>
               ) : (
-                <span className="text-micro text-text-tertiary">
+                <span className="text-caption text-text-tertiary">
                   {t("equipments.pv.accuracyPending")}
                 </span>
               )}
@@ -356,10 +356,10 @@ export function PvForecastPanel({ equipmentId }: PvForecastPanelProps) {
             </div>
 
             {data.model === null && (
-              <p className="mt-3 text-micro text-warning">{t("equipments.pv.provisional")}</p>
+              <p className="mt-3 text-caption text-warning">{t("equipments.pv.provisional")}</p>
             )}
 
-            <p className="mt-3 text-micro text-text-tertiary">
+            <p className="mt-3 text-caption text-text-tertiary">
               {data.model === null
                 ? t("equipments.pv.learning")
                 : t("equipments.pv.provenance", {
@@ -391,7 +391,7 @@ function Figure({ label, value }: { label: string; value: number }) {
     <div>
       <div className="text-micro text-text-tertiary">{label}</div>
       <div className="flex items-baseline gap-1">
-        <span className="text-title font-semibold font-mono tabular-nums text-text leading-none">
+        <span className="text-title font-semibold tabular-nums text-text leading-none">
           {energy.value}
         </span>
         <span className="text-caption text-text-tertiary">{energy.unit}</span>

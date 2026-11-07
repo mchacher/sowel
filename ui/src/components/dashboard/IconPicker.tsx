@@ -77,7 +77,7 @@ export function IconPicker({ currentIcon, equipmentType, onSelect, onClose, mobi
       {/* Other custom icons */}
       {otherIcons.length > 0 && (
         <div className="mb-1">
-          <p className="text-micro font-semibold text-text-tertiary uppercase tracking-widest mb-1">
+          <p className="text-small font-semibold text-text-secondary mb-1">
             {t("dashboard.otherIcons")}
           </p>
           <div className="flex flex-wrap gap-1">

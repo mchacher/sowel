@@ -534,7 +534,7 @@ function MobileDrawer({ onClose }: { onClose: () => void }) {
         </div>
         {/* Close button */}
         <div className="flex items-center justify-between px-4 pb-2">
-          <span className="text-small font-semibold text-text-secondary uppercase tracking-widest">
+          <span className="text-lead font-semibold text-text">
             {t("nav.more", "Plus")}
           </span>
           <button
@@ -588,7 +588,7 @@ function MobileDrawer({ onClose }: { onClose: () => void }) {
           {isAdmin && (
             <>
               <div className="pt-3 pb-1 px-2">
-                <span className="text-micro font-semibold text-text-tertiary uppercase tracking-widest">
+                <span className="text-caption font-semibold text-text-secondary">
                   {t("nav.administration")}
                 </span>
               </div>

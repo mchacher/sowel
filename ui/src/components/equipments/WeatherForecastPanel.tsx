@@ -80,7 +80,7 @@ function ForecastDayCard({ day, locale }: { day: ForecastDay; locale: string }) 
       {/* Temperature max */}
       {day.tempMax !== null && (
         <div className="flex items-baseline gap-0.5">
-          <span className="text-title font-semibold font-mono text-text tabular-nums leading-none">
+          <span className="text-title font-semibold text-text tabular-nums leading-none">
             {formatNumber(day.tempMax, { decimals: 0 })}
           </span>
           <span className="text-small text-text-tertiary">&deg;C</span>
@@ -90,7 +90,7 @@ function ForecastDayCard({ day, locale }: { day: ForecastDay; locale: string }) 
       {/* Temperature min */}
       {day.tempMin !== null && (
         <div className="flex items-baseline gap-0.5">
-          <span className="text-lead font-medium font-mono text-text-secondary tabular-nums leading-none">
+          <span className="text-lead font-medium text-text-secondary tabular-nums leading-none">
             {formatNumber(day.tempMin, { decimals: 0 })}
           </span>
           <span className="text-micro text-text-tertiary">&deg;C</span>
@@ -101,7 +101,7 @@ function ForecastDayCard({ day, locale }: { day: ForecastDay; locale: string }) 
       {day.rainProb !== null && (
         <div className="flex items-center gap-1 mt-1">
           <Droplets size={13} strokeWidth={1.5} className="text-primary" />
-          <span className="text-caption text-text-secondary tabular-nums font-mono">
+          <span className="text-caption text-text-secondary tabular-nums">
             {formatPercent(day.rainProb)}
           </span>
         </div>
@@ -111,7 +111,7 @@ function ForecastDayCard({ day, locale }: { day: ForecastDay; locale: string }) 
       {day.windGusts !== null && (
         <div className="flex items-center gap-1">
           <Wind size={13} strokeWidth={1.5} className="text-text-tertiary" />
-          <span className="text-caption text-text-secondary tabular-nums font-mono">
+          <span className="text-caption text-text-secondary tabular-nums">
             {formatWithUnit(day.windGusts, "km/h")}
           </span>
         </div>

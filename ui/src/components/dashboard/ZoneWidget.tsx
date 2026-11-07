@@ -549,7 +549,7 @@ function ZoneHeatingWidget({
         <div className="flex flex-col items-start gap-2 pl-2">
           {avgTemp !== null ? (
             <div className="flex items-baseline gap-0.5">
-              <span className="text-title font-semibold text-text tabular-nums leading-none font-mono">
+              <span className="text-title font-semibold text-text tabular-nums leading-none">
                 {formatNumber(avgTemp, { decimals: 1 })}
               </span>
               <span className="text-caption font-medium text-text-tertiary">°</span>
@@ -585,7 +585,7 @@ function ZoneHeatingWidget({
           >
             <Minus size={14} strokeWidth={2} />
           </button>
-          <span className="text-caption font-medium text-text-secondary tabular-nums font-mono min-w-[42px] text-center">
+          <span className="text-caption font-medium text-text-secondary tabular-nums min-w-[42px] text-center">
             {formatTemperature(displaySetpoint, { style: "compact" })}
           </span>
           <button
@@ -647,7 +647,7 @@ function ZoneSensorsWidget({
         <div className="flex flex-col items-start gap-1 pl-2">
           {aggregates.avgTemp !== null && (
             <div className="flex items-baseline gap-0.5">
-              <span className="text-title font-semibold text-text tabular-nums leading-none font-mono">
+              <span className="text-title font-semibold text-text tabular-nums leading-none">
                 {formatNumber(aggregates.avgTemp, { decimals: 1 })}
               </span>
               <span className="text-caption font-medium text-text-tertiary">°</span>
@@ -655,7 +655,7 @@ function ZoneSensorsWidget({
           )}
           {aggregates.avgHumidity !== null && (
             <div className="flex items-baseline gap-0.5">
-              <span className="text-body font-semibold text-text tabular-nums leading-none font-mono">
+              <span className="text-body font-semibold text-text tabular-nums leading-none">
                 {Math.round(aggregates.avgHumidity)}
               </span>
               <span className="text-caption font-medium text-text-tertiary">%</span>

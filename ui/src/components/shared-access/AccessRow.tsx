@@ -82,7 +82,7 @@ export function AccessRow({
           <div className="text-caption text-text-secondary mt-1 flex flex-wrap gap-x-2 gap-y-0.5">
             {access.code ? (
               <span className="inline-flex items-center gap-0.5">
-                <span className="font-mono font-semibold tracking-[0.06em] text-text">
+                <span className="font-mono tracking-[0.06em] text-text">
                   {access.code}
                 </span>
                 <CopyButton text={access.code} label={t("sharedAccess.actions.copyCode")} />

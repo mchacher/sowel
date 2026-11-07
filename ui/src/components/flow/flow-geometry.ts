@@ -41,16 +41,26 @@ export const PILL_POSITION: Record<FlowEdge, string> = {
   leftToRight: "left-1/2 top-[75%] -translate-x-1/2 -translate-y-1/2",
 };
 
+// A satellite node is 22 % of the diagram: about 70 px wide on a 390 px phone.
+// Its padding, label and value are sized so « Production », « Batterie »,
+// « ↑ 745 W » and « ↑ 2,4 kW » fit inside it at that width (spec 196, slice 5b;
+// measured: 61 px available, « Production » 57 px, « ↑ 999 W » 55 px).
 export const SLOT_BOX: Record<FlowSlot, string> = {
   focal: "top-0 left-1/2 -translate-x-1/2 w-[36%] h-[36%] px-3 py-2",
-  left: "top-1/2 -translate-y-1/2 left-0 w-[22%] h-[29%] px-2 py-2",
-  right: "top-1/2 -translate-y-1/2 right-0 w-[22%] h-[29%] px-2 py-2",
+  left: "top-1/2 -translate-y-1/2 left-0 w-[22%] h-[29%] px-1 sm:px-2 py-2",
+  right: "top-1/2 -translate-y-1/2 right-0 w-[22%] h-[29%] px-1 sm:px-2 py-2",
+};
+
+export const SLOT_LABEL: Record<FlowSlot, string> = {
+  focal: "text-caption sm:text-small",
+  left: "text-micro sm:text-small",
+  right: "text-micro sm:text-small",
 };
 
 export const SLOT_VALUE: Record<FlowSlot, string> = {
-  focal: "text-title sm:text-display mt-1",
-  left: "text-lead sm:text-title",
-  right: "text-lead sm:text-title",
+  focal: "text-title sm:text-display gap-1 mt-1",
+  left: "text-body sm:text-title gap-0.5 sm:gap-1",
+  right: "text-body sm:text-title gap-0.5 sm:gap-1",
 };
 
 export interface FlowNodeSpec {

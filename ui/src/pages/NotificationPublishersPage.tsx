@@ -482,7 +482,7 @@ function PublisherCard({
         </div>
         <div className="flex items-center gap-1 flex-wrap justify-end self-end sm:self-auto">
           {testChannelOk && (
-            <span className="text-micro text-green-500">{t("notifPublishers.testChannelOk")}</span>
+            <span className="text-caption text-green-500">{t("notifPublishers.testChannelOk")}</span>
           )}
           {testResult !== null && (
             <span className="text-micro text-green-500">

@@ -3,6 +3,7 @@ import { useTranslation } from "react-i18next";
 import { X } from "lucide-react";
 import type { ZoneWithChildren } from "../../types";
 import { flattenZonesWithPath, type ZoneOption } from "../../lib/zone-path";
+import { FIELD_LABEL } from "../ui/text-roles";
 
 interface ZoneFormProps {
   /** If provided, we're editing this zone. Otherwise creating a new one. */
@@ -70,7 +71,7 @@ export function ZoneForm({ initial, parentZones, defaultParentId, onSubmit, onCl
         <form onSubmit={handleSubmit} className="p-6 space-y-4">
           {/* Name */}
           <div>
-            <label className="block text-caption font-medium text-text-secondary uppercase tracking-widest mb-1.5">
+            <label className={FIELD_LABEL}>
               {t("zones.form.name")}
             </label>
             <input
@@ -86,7 +87,7 @@ export function ZoneForm({ initial, parentZones, defaultParentId, onSubmit, onCl
 
           {/* Parent zone */}
           <div>
-            <label className="block text-caption font-medium text-text-secondary uppercase tracking-widest mb-1.5">
+            <label className={FIELD_LABEL}>
               {t("zones.form.parent")}
             </label>
             <select
@@ -105,9 +106,9 @@ export function ZoneForm({ initial, parentZones, defaultParentId, onSubmit, onCl
 
           {/* Description */}
           <div>
-            <label className="block text-caption font-medium text-text-secondary uppercase tracking-widest mb-1.5">
+            <label className={FIELD_LABEL}>
               {t("zones.form.description")}
-              <span className="text-text-tertiary font-normal normal-case tracking-normal ml-1">({t("common.optional")})</span>
+              <span className="text-text-tertiary font-normal ml-1">({t("common.optional")})</span>
             </label>
             <input
               type="text"

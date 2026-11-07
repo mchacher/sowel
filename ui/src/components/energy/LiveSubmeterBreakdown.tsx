@@ -111,10 +111,10 @@ export function LiveSubmeterBreakdown({ house, hasMainMeter }: Props) {
                 style={{ background: OTHER_COLOR }}
               />
               <span className="text-text-secondary">{t("energy.live.breakdown.other")}</span>
-              <span className="font-mono font-medium text-text-secondary min-w-[64px] text-right">
+              <span className="tabular-nums font-medium text-text-secondary min-w-[64px] text-right">
                 {formatPower(other, POWER)}
               </span>
-              <span className="font-mono font-semibold text-text-tertiary min-w-[40px] text-right">
+              <span className="tabular-nums font-semibold text-text-tertiary min-w-[40px] text-right">
                 {formatPercent(sharePercent(other, total))}
               </span>
             </div>
@@ -124,7 +124,7 @@ export function LiveSubmeterBreakdown({ house, hasMainMeter }: Props) {
               donut whose total never carried them. */}
           {separateRows.length > 0 && (
             <>
-              <div className="mt-2 pt-2 border-t border-border text-micro font-semibold uppercase tracking-wide text-text-tertiary">
+              <div className="mt-2 pt-2 border-t border-border text-caption font-medium text-text-tertiary">
                 {t("energy.byUsage.separateSupply")}
               </div>
               {separateRows.map((row) => (
@@ -242,11 +242,8 @@ function Donut({
           <span className="text-small font-semibold text-text-tertiary px-3">{totalLabel}</span>
         ) : (
           <>
-            <span className="text-micro font-semibold uppercase tracking-widest text-text-tertiary">
-              {totalUnit ? "" : ""}
-            </span>
             <span
-              className="font-mono font-semibold text-display leading-none flex items-baseline gap-1"
+              className="tabular-nums font-semibold text-display leading-none flex items-baseline gap-1"
               style={{ color: HOUSE_COLOR }}
             >
               <span>{totalLabel}</span>
@@ -287,7 +284,7 @@ function LegendRow({
         {/* Spec 173 — this row is smaller than the meter's own card on purpose:
             say why here, rather than leave the reader to find the difference. */}
         {row.netOfChildren && (
-          <span className="text-micro text-text-tertiary">
+          <span className="text-caption text-text-tertiary">
             {t("energy.byUsage.netOfChildren")}
           </span>
         )}
@@ -306,10 +303,10 @@ function LegendRow({
           </span>
         )}
       </div>
-      <span className="font-mono font-medium text-text-secondary min-w-[64px] text-right">
+      <span className="tabular-nums font-medium text-text-secondary min-w-[64px] text-right">
         {formatPower(row.power, POWER)}
       </span>
-      <span className="font-mono font-semibold text-text-tertiary min-w-[40px] text-right">
+      <span className="tabular-nums font-semibold text-text-tertiary min-w-[40px] text-right">
         {pct !== null ? formatPercent(pct) : ""}
       </span>
     </div>

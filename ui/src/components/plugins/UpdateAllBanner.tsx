@@ -70,13 +70,13 @@ export function UpdateAllBanner({
         <p className="text-small font-semibold text-error">
           {t("plugins.updatesAvailable", { count: pending.length })}
         </p>
-        <p className="text-micro text-text-tertiary truncate">
+        <p className="text-caption text-text-tertiary truncate">
           {failed > 0
             ? t("plugins.updateAllFailed", { count: failed })
             : pending.map((p) => localizedName(p.manifest, lang)).join(", ")}
         </p>
         {personalCount > 0 && (
-          <p className="text-micro text-text-tertiary">
+          <p className="text-caption text-text-tertiary">
             {t("plugins.updateAllPersonalHint", { count: personalCount })}
           </p>
         )}

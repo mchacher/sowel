@@ -83,7 +83,7 @@ export function Invitation({ link, code }: { link: string | null; code: string |
   const { t } = useTranslation();
   return (
     <div className="mt-3 border border-dashed border-border rounded-[10px] px-3 py-2.5 text-small">
-      <div className="text-micro font-semibold text-text-tertiary uppercase tracking-widest mb-1.5">
+      <div className="text-small font-semibold text-text-secondary mb-1.5">
         {t("sharedAccess.invitation.title")}
       </div>
       <div className="flex flex-wrap items-start gap-x-4 gap-y-3">
@@ -110,7 +110,7 @@ export function Invitation({ link, code }: { link: string | null; code: string |
             <span className="text-text-secondary">{t("sharedAccess.invitation.code")}</span>
             {code ? (
               <>
-                <span className="font-mono font-semibold text-lead tracking-[0.08em] text-text">
+                <span className="font-mono text-lead tracking-[0.08em] text-text">
                   {code}
                 </span>
                 <CopyButton text={code} label={t("sharedAccess.actions.copyCode")} />

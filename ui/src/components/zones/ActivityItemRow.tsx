@@ -46,7 +46,7 @@ export function ActivityItemRow({ item }: Props) {
           </span>
         )}
       </div>
-      <span className="font-mono text-micro text-text-tertiary pt-[4px] leading-none tabular-nums">
+      <span className="text-micro text-text-tertiary pt-[4px] leading-none tabular-nums">
         {formatTime(item.timestamp)}
       </span>
     </div>

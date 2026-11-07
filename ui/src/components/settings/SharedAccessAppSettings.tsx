@@ -179,7 +179,7 @@ export function SharedAccessAppSettings() {
             onChange={(e) => void choose(e.target.files?.[0])}
           />
         </div>
-        <p className="text-micro text-text-tertiary mt-1">{t("sharedAccess.app.iconHelp")}</p>
+        <p className="text-caption text-text-tertiary mt-1">{t("sharedAccess.app.iconHelp")}</p>
       </div>
       {dirty && (
         <button type="button" className={btnPrimary} disabled={busy} onClick={() => void save()}>

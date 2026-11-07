@@ -128,7 +128,7 @@ export function ElectricalMeteringPanel({ equipment }: ElectricalMeteringPanelPr
                 <div className="text-caption font-medium text-text-tertiary">{t(m.labelKey)}</div>
                 <div className="flex items-baseline gap-1">
                   <span
-                    className={`text-title font-semibold font-mono leading-none ${
+                    className={`text-title font-semibold tabular-nums leading-none ${
                       m.sublabel ? "text-text-tertiary" : "text-text"
                     }`}
                   >

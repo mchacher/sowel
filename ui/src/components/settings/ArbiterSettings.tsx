@@ -166,7 +166,7 @@ export function ArbiterSettings() {
                     <span className="text-micro text-text-tertiary">
                       {t(`energyProfile.${eq.energyProfile?.class ?? "deferrable"}`)}
                       {" · "}
-                      <span className="font-mono">{formatPower(eq.energyProfile?.nominalPowerW)}</span>
+                      <span className="tabular-nums">{formatPower(eq.energyProfile?.nominalPowerW)}</span>
                     </span>
                     <span className="ml-auto flex gap-1">
                       <button

@@ -251,7 +251,7 @@ function UpdateRow({
         <div className="flex items-center gap-2 text-small font-semibold text-text">
           <span className="truncate">{title}</span>
           {badge && (
-            <span className="text-micro px-1.5 py-0.5 rounded uppercase bg-primary/10 text-primary">
+            <span className="text-caption font-medium px-1.5 py-0.5 rounded bg-primary/10 text-primary">
               {badge}
             </span>
           )}

@@ -73,7 +73,7 @@ export function WateringScheduleEditor({
 
   if (valveIds.length === 0) {
     return (
-      <p className="text-micro text-text-tertiary py-2">
+      <p className="text-caption text-text-tertiary py-2">
         Sélectionnez d'abord les vannes ci-dessus
       </p>
     );
@@ -88,7 +88,7 @@ export function WateringScheduleEditor({
         >
           {/* Header: badge + time + remove */}
           <div className="flex items-center gap-2.5 mb-2.5">
-            <span className="text-micro font-semibold text-primary bg-primary-light px-2 py-0.5 rounded-[4px] tracking-wide">
+            <span className="text-micro font-semibold text-primary bg-primary-light px-2 py-0.5 rounded-[4px]">
               {i + 1}
             </span>
             <input

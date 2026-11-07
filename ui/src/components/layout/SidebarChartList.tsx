@@ -42,7 +42,7 @@ export function SidebarChartList({ collapsed }: { collapsed: boolean }) {
     return (
       <div className="space-y-0.5 pl-2">
         {newChartLink}
-        <p className="px-3 py-1.5 text-micro text-text-tertiary leading-tight">
+        <p className="px-3 py-1.5 text-caption text-text-tertiary leading-tight">
           {t("analyse.noSavedCharts")}
         </p>
       </div>

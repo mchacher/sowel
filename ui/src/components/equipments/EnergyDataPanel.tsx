@@ -92,7 +92,7 @@ export function EnergyDataPanel({ computedData, status, statusReason,
               <div className="flex-1 min-w-0">
                 <div className="text-caption font-medium text-text-tertiary">{t(c.labelKey)}</div>
                 <div className="flex items-baseline gap-1">
-                  <span className="text-title font-semibold text-text font-mono leading-none">
+                  <span className="text-title font-semibold text-text tabular-nums leading-none">
                     {formatted.value}
                   </span>
                   <span className="text-caption text-text-tertiary">{formatted.unit}</span>
@@ -104,7 +104,7 @@ export function EnergyDataPanel({ computedData, status, statusReason,
       </div>
       {isDegraded && statusReason?.offlineSince && (
         <div
-          className={`mt-3 text-center text-micro font-mono ${status === "offline" ? "text-error" : "text-text-tertiary"}`}
+          className={`mt-3 text-center text-caption ${status === "offline" ? "text-error" : "text-text-tertiary"}`}
         >
           {status === "offline"
             ? t("energy.cumul.offlineSince", { when: formatRelative(statusReason.offlineSince) })

@@ -554,20 +554,20 @@ function WaterHeaterEquipmentWidget({
             {isOn ? t("controls.on") : t("controls.off")}
           </span>
           {tempValue !== null && (
-            <span className="font-mono text-small font-semibold text-text tabular-nums">
+            <span className="text-small font-semibold text-text tabular-nums">
               {formatNumber(tempValue, { decimals: 1 })}
               <span className="text-micro text-text-tertiary font-normal">°</span>
             </span>
           )}
           {powerValue !== null && (
-            <span className="font-mono text-caption text-text-secondary tabular-nums">
+            <span className="text-caption text-text-secondary tabular-nums">
               {Math.round(powerValue)}
               <span className="text-micro text-text-tertiary font-normal ml-0.5">W</span>
             </span>
           )}
           {powerReading.verdict === "stale" && (
             <>
-              <span className="font-mono text-caption text-text-tertiary tabular-nums">—</span>
+              <span className="text-caption text-text-tertiary tabular-nums">—</span>
               <span className="text-micro text-text-tertiary leading-tight">
                 {t("reading.ago", { age: formatRelative(powerReading.since, t) })}
               </span>
@@ -893,7 +893,7 @@ function ThermostatEquipmentWidget({
         <div className="flex flex-col items-start gap-2 pl-2">
           {insideTemp !== null ? (
             <div className="flex items-baseline gap-0.5">
-              <span className="text-title font-semibold text-text tabular-nums leading-none font-mono">
+              <span className="text-title font-semibold text-text tabular-nums leading-none">
                 {formatNumber(insideTemp, { decimals: 1 })}
               </span>
               <span className="text-caption font-medium text-text-tertiary">°</span>
@@ -932,7 +932,7 @@ function ThermostatEquipmentWidget({
           >
             <Minus size={14} strokeWidth={2} />
           </button>
-          <span className="text-caption font-medium text-text-secondary tabular-nums font-mono min-w-[42px] text-center">
+          <span className="text-caption font-medium text-text-secondary tabular-nums min-w-[42px] text-center">
             {formatTemperature(displaySetpoint, { style: "compact" })}
           </span>
           <button
@@ -1314,13 +1314,13 @@ function WeatherTempColumn({
   return (
     <div className="flex flex-col items-center justify-center gap-1">
       {label && (
-        <span className="text-micro uppercase tracking-wide text-text-tertiary font-medium">
+        <span className="text-caption text-text-tertiary font-medium">
           {label}
         </span>
       )}
       <div className="flex items-baseline leading-none">
         {/* eslint-disable-next-line no-restricted-syntax -- fluid size, follows the tile width (container query); no step of the scale can do that */}
-        <span className="font-mono font-semibold text-[clamp(22px,14cqw,36px)] text-text tabular-nums leading-none">
+        <span className="font-semibold text-[clamp(22px,14cqw,36px)] text-text tabular-nums leading-none">
           {value}
         </span>
         <span className="text-text-tertiary font-medium text-body sm:text-lead leading-none">
@@ -1386,7 +1386,7 @@ function EnergyMeterEquipmentWidget({
           {/* Today's consumption — primary value (green for production meters) */}
           <div className="flex items-baseline gap-0.5">
             <span
-              className={`text-title font-semibold ${primaryColor} tabular-nums leading-none font-mono`}
+              className={`text-title font-semibold ${primaryColor} tabular-nums leading-none`}
             >
               {formatWh(energyDay?.value)}
             </span>
@@ -1402,7 +1402,7 @@ function EnergyMeterEquipmentWidget({
       <div className="flex justify-center gap-4 mt-auto pt-1">
         {demandW !== null && (
           <div className="flex flex-col items-center">
-            <span className="text-small font-semibold text-text tabular-nums font-mono leading-none">
+            <span className="text-small font-semibold text-text tabular-nums leading-none">
               {formatPowerParts(demandW).value}
             </span>
             <span className="text-micro text-text-tertiary">{formatPowerParts(demandW).unit}</span>
@@ -1411,7 +1411,7 @@ function EnergyMeterEquipmentWidget({
         {/* The age takes the unit's place, so the row keeps its height (#839). */}
         {demandReading.verdict === "stale" && (
           <div className="flex flex-col items-center">
-            <span className="text-small font-medium text-text-tertiary tabular-nums font-mono leading-none">
+            <span className="text-small font-medium text-text-tertiary tabular-nums leading-none">
               —
             </span>
             <span className="text-micro text-text-tertiary">
@@ -1421,7 +1421,7 @@ function EnergyMeterEquipmentWidget({
         )}
         {energyHour?.value != null && (
           <div className="flex flex-col items-center">
-            <span className="text-small font-semibold text-text tabular-nums font-mono leading-none">
+            <span className="text-small font-semibold text-text tabular-nums leading-none">
               {formatWh(energyHour.value)}
             </span>
             <span className="text-micro text-text-tertiary">{t("energy.hour")}</span>
@@ -1429,7 +1429,7 @@ function EnergyMeterEquipmentWidget({
         )}
         {energyMonth?.value != null && (
           <div className="flex flex-col items-center">
-            <span className="text-small font-semibold text-text tabular-nums font-mono leading-none">
+            <span className="text-small font-semibold text-text tabular-nums leading-none">
               {formatWh(energyMonth.value)}
             </span>
             <span className="text-micro text-text-tertiary">{unitWh(energyMonth.value)}</span>
@@ -1469,7 +1469,7 @@ function SolarPanelEquipmentWidget({
         />
         <div className="flex flex-col items-center">
           <span
-            className={`text-lead font-semibold tabular-nums font-mono ${producing ? "text-text" : "text-text-tertiary"}`}
+            className={`text-lead font-semibold tabular-nums ${producing ? "text-text" : "text-text-tertiary"}`}
           >
             {lines.join("  ·  ")}
           </span>
@@ -1528,7 +1528,7 @@ function ElectricVehicleEquipmentWidget({
           />,
         )}
         <span
-          className={`font-mono text-title font-semibold tabular-nums ${
+          className={`text-title font-semibold tabular-nums ${
             s.batteryLevel === null
               ? "text-text-tertiary"
               : tone === "low"
@@ -1597,7 +1597,7 @@ function EvChargerEquipmentWidget({
         )}
         <EvVehicleBadge vehicle={s.vehicle} />
         {watts !== null && watts > 0 && (
-          <span className="font-mono text-lead font-semibold text-text tabular-nums">
+          <span className="text-lead font-semibold text-text tabular-nums">
             {formatPowerParts(watts).value}
             <span className="text-micro text-text-tertiary font-normal ml-0.5">
               {formatPowerParts(watts).unit}
@@ -1605,7 +1605,7 @@ function EvChargerEquipmentWidget({
           </span>
         )}
         {s.sessionEnergyKwh !== null && s.sessionEnergyKwh > 0 && (
-          <span className="font-mono text-caption text-text-secondary tabular-nums">
+          <span className="text-caption text-text-secondary tabular-nums">
             {formatEnergyParts(s.sessionEnergyKwh).value}
             <span className="text-micro text-text-tertiary font-normal ml-0.5">kWh</span>
           </span>
@@ -1684,7 +1684,7 @@ function UpsEquipmentWidget({
             {rows.map((row) => (
               <div key={row.key} className="flex items-center justify-between gap-4">
                 <span>{row.label}</span>
-                <span className="font-mono tabular-nums text-text">{row.value}</span>
+                <span className="tabular-nums text-text">{row.value}</span>
               </div>
             ))}
           </div>
@@ -1746,7 +1746,7 @@ function ApplianceEquipmentWidget({
           <div className="flex flex-col items-center gap-0.5">
             <span className="text-caption font-medium text-accent">{t("common.running")}</span>
             {remainingStr && (
-              <span className="flex items-center gap-1 text-small font-mono tabular-nums text-text">
+              <span className="flex items-center gap-1 text-small tabular-nums text-text">
                 <Timer size={12} />
                 {remainingStr}
               </span>

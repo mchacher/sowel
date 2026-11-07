@@ -4,6 +4,7 @@ import { Home, Loader2 } from "lucide-react";
 import { getSettings, updateSettings, triggerSystemRestart } from "../../api";
 import { useAuth } from "../../store/useAuth";
 import { SowelLogo } from "../layout/SowelLogo";
+import { FIELD_LABEL } from "../ui/text-roles";
 
 /**
  * First-login Home setup wizard. Blocks the app when:
@@ -126,7 +127,7 @@ export function HomeSetupWizard() {
 
         <form onSubmit={handleSubmit} className="space-y-4">
           <div>
-            <label className="block text-caption text-text-tertiary uppercase tracking-widest mb-1">
+            <label className={FIELD_LABEL}>
               <Home size={12} className="inline mr-1 -mt-0.5" />
               {t("setup.home.name", "Nom de la maison")}
             </label>
@@ -143,7 +144,7 @@ export function HomeSetupWizard() {
 
           <div className="grid grid-cols-2 gap-3">
             <div>
-              <label className="block text-caption text-text-tertiary uppercase tracking-widest mb-1">
+              <label className={FIELD_LABEL}>
                 {t("setup.home.latitude", "Latitude")}
               </label>
               <input
@@ -157,7 +158,7 @@ export function HomeSetupWizard() {
               />
             </div>
             <div>
-              <label className="block text-caption text-text-tertiary uppercase tracking-widest mb-1">
+              <label className={FIELD_LABEL}>
                 {t("setup.home.longitude", "Longitude")}
               </label>
               <input
@@ -172,7 +173,7 @@ export function HomeSetupWizard() {
             </div>
           </div>
 
-          <p className="text-micro text-text-tertiary">
+          <p className="text-caption text-text-tertiary">
             {t(
               "setup.home.hint",
               "Astuce: ouvrez Google Maps sur l'emplacement de votre maison, clic droit → les deux nombres affichés sont la latitude et la longitude.",

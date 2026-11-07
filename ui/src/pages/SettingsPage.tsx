@@ -56,6 +56,7 @@ import { SolarInstallationSettings } from "../components/settings/SolarInstallat
 import { initialSettingsTab } from "../lib/settings-tab";
 import type { SettingsTab } from "../lib/settings-tab";
 import { currentLocale } from "../lib/format";
+import { FIELD_LABEL } from "../components/ui/text-roles";
 
 export function SettingsPage() {
   const { t, i18n } = useTranslation();
@@ -270,7 +271,7 @@ function HomeSettingsSection() {
       <p className="text-caption text-text-tertiary mb-4">{t("settings.homeDescription")}</p>
       <div className="space-y-3">
         <div>
-          <label className="block text-caption text-text-tertiary uppercase tracking-widest mb-1">
+          <label className={FIELD_LABEL}>
             {t("settings.homeName")}
           </label>
           <input
@@ -283,7 +284,7 @@ function HomeSettingsSection() {
         </div>
         <div className="grid grid-cols-2 gap-3">
           <div>
-            <label className="block text-caption text-text-tertiary uppercase tracking-widest mb-1">
+            <label className={FIELD_LABEL}>
               {t("settings.latitude")}
             </label>
             <input
@@ -296,7 +297,7 @@ function HomeSettingsSection() {
             />
           </div>
           <div>
-            <label className="block text-caption text-text-tertiary uppercase tracking-widest mb-1">
+            <label className={FIELD_LABEL}>
               {t("settings.longitude")}
             </label>
             <input
@@ -311,7 +312,7 @@ function HomeSettingsSection() {
         </div>
         <div className="grid grid-cols-2 gap-3">
           <div>
-            <label className="block text-caption text-text-tertiary uppercase tracking-widest mb-1">
+            <label className={FIELD_LABEL}>
               {t("settings.sunriseOffset")}
             </label>
             <input
@@ -320,10 +321,10 @@ function HomeSettingsSection() {
               onChange={(e) => setSunriseOffset(e.target.value)}
               className="w-full px-3 py-2 text-body bg-background border border-border rounded-[6px] text-text focus:outline-none focus:border-primary"
             />
-            <p className="text-micro text-text-tertiary mt-1">{t("settings.sunriseOffsetHelp")}</p>
+            <p className="text-caption text-text-tertiary mt-1">{t("settings.sunriseOffsetHelp")}</p>
           </div>
           <div>
-            <label className="block text-caption text-text-tertiary uppercase tracking-widest mb-1">
+            <label className={FIELD_LABEL}>
               {t("settings.sunsetOffset")}
             </label>
             <input
@@ -332,12 +333,12 @@ function HomeSettingsSection() {
               onChange={(e) => setSunsetOffset(e.target.value)}
               className="w-full px-3 py-2 text-body bg-background border border-border rounded-[6px] text-text focus:outline-none focus:border-primary"
             />
-            <p className="text-micro text-text-tertiary mt-1">{t("settings.sunsetOffsetHelp")}</p>
+            <p className="text-caption text-text-tertiary mt-1">{t("settings.sunsetOffsetHelp")}</p>
           </div>
         </div>
         {tzLoaded && (
           <div className="pt-3 border-t border-border-light">
-            <label className="block text-caption text-text-tertiary uppercase tracking-widest mb-1">
+            <label className={FIELD_LABEL}>
               {t("settings.timezone")}
             </label>
             <div className="flex items-center gap-2">
@@ -398,20 +399,20 @@ function ProfileSection({
       <div className="space-y-3">
         <div className="grid grid-cols-2 gap-4">
           <div>
-            <label className="block text-caption text-text-tertiary uppercase tracking-widest mb-1">
+            <label className={FIELD_LABEL}>
               {t("auth.username")}
             </label>
             <p className="text-body text-text-secondary">{user?.username}</p>
           </div>
           <div>
-            <label className="block text-caption text-text-tertiary uppercase tracking-widest mb-1">
+            <label className={FIELD_LABEL}>
               {t("settings.role")}
             </label>
             <p className="text-body text-text-secondary capitalize">{user?.role}</p>
           </div>
         </div>
         <div>
-          <label className="block text-caption text-text-tertiary uppercase tracking-widest mb-1">
+          <label className={FIELD_LABEL}>
             {t("auth.displayName")}
           </label>
           <input
@@ -464,7 +465,7 @@ function PreferencesSection({
       <h2 className="text-body font-semibold text-text mb-4">{t("settings.preferences")}</h2>
       <div className="space-y-4">
         <div>
-          <label className="block text-caption text-text-tertiary uppercase tracking-widest mb-1.5">
+          <label className={FIELD_LABEL}>
             {t("settings.language")}
           </label>
           <div className="flex gap-2">
@@ -484,7 +485,7 @@ function PreferencesSection({
           </div>
         </div>
         <div>
-          <label className="block text-caption text-text-tertiary uppercase tracking-widest mb-1.5">
+          <label className={FIELD_LABEL}>
             {t("settings.theme")}
           </label>
           <div className="flex gap-2">
@@ -579,7 +580,7 @@ function ChangePasswordSection() {
       {open && (
         <div className="mt-4 space-y-3">
           <div className="relative">
-            <label className="block text-caption text-text-tertiary uppercase tracking-widest mb-1">
+            <label className={FIELD_LABEL}>
               {t("settings.currentPassword")}
             </label>
             <input
@@ -597,7 +598,7 @@ function ChangePasswordSection() {
             </button>
           </div>
           <div className="relative">
-            <label className="block text-caption text-text-tertiary uppercase tracking-widest mb-1">
+            <label className={FIELD_LABEL}>
               {t("settings.newPassword")}
             </label>
             <input
@@ -615,7 +616,7 @@ function ChangePasswordSection() {
             </button>
           </div>
           <div>
-            <label className="block text-caption text-text-tertiary uppercase tracking-widest mb-1">
+            <label className={FIELD_LABEL}>
               {t("settings.confirmNewPassword")}
             </label>
             <input
@@ -716,7 +717,7 @@ function VersionBadge() {
   return (
     <>
       <div className="flex items-center gap-2">
-        <span className="text-small font-mono font-semibold text-primary px-2.5 py-1 bg-primary-light rounded-[6px]">
+        <span className="text-small font-mono text-primary px-2.5 py-1 bg-primary-light rounded-[6px]">
           v{info.current}
         </span>
 
@@ -862,7 +863,7 @@ function BackupCodesDisplay({ codes }: { codes: string[] }) {
         {t("settings.mfa.copyAllCodes")}
       </button>
       {copyFailed && (
-        <p className="text-micro text-error mt-1">{t("settings.mfa.copyFailed")}</p>
+        <p className="text-caption text-error mt-1">{t("settings.mfa.copyFailed")}</p>
       )}
     </div>
   );
@@ -913,7 +914,7 @@ function MfaReauthModal({
 
         <div className="space-y-3">
           <div>
-            <label className="block text-caption text-text-tertiary uppercase tracking-widest mb-1">
+            <label className={FIELD_LABEL}>
               {t("settings.currentPassword")}
             </label>
             <input
@@ -925,7 +926,7 @@ function MfaReauthModal({
             />
           </div>
           <div>
-            <label className="block text-caption text-text-tertiary uppercase tracking-widest mb-1">
+            <label className={FIELD_LABEL}>
               {isBackupCode ? t("settings.mfa.backupCode") : t("settings.mfa.totpCode")}
             </label>
             <input
@@ -1033,7 +1034,7 @@ function MfaEnrollModal({ onDone, onClose }: { onDone: () => void; onClose: () =
               </code>
             </details>
             <div>
-              <label className="block text-caption text-text-tertiary uppercase tracking-widest mb-1">
+              <label className={FIELD_LABEL}>
                 {t("settings.mfa.totpCode")}
               </label>
               <input
@@ -1193,7 +1194,7 @@ function TwoFactorSection() {
           )}
 
           <div>
-            <label className="block text-caption text-text-tertiary uppercase tracking-widest mb-1">
+            <label className={FIELD_LABEL}>
               {t("settings.mfa.trustedDeviceDuration")}
             </label>
             <div className="flex items-center gap-2">
@@ -1211,7 +1212,7 @@ function TwoFactorSection() {
           </div>
 
           <div>
-            <p className="text-caption text-text-tertiary uppercase tracking-widest mb-1.5">
+            <p className={FIELD_LABEL}>
               {t("settings.mfa.trustedDevices")}
             </p>
             {devices.length === 0 ? (
@@ -1538,7 +1539,7 @@ function UserManagementSection({ currentUserId }: { currentUserId: string }) {
         <div className="mb-4 p-4 bg-background rounded-[8px] border border-border space-y-3">
           <div className="grid grid-cols-2 gap-3">
             <div>
-              <label className="block text-caption text-text-tertiary uppercase tracking-widest mb-1">
+              <label className={FIELD_LABEL}>
                 {t("auth.username")}
               </label>
               <input
@@ -1549,7 +1550,7 @@ function UserManagementSection({ currentUserId }: { currentUserId: string }) {
               />
             </div>
             <div>
-              <label className="block text-caption text-text-tertiary uppercase tracking-widest mb-1">
+              <label className={FIELD_LABEL}>
                 {t("auth.displayName")}
               </label>
               <input
@@ -1560,7 +1561,7 @@ function UserManagementSection({ currentUserId }: { currentUserId: string }) {
               />
             </div>
             <div>
-              <label className="block text-caption text-text-tertiary uppercase tracking-widest mb-1">
+              <label className={FIELD_LABEL}>
                 {t("auth.password")}
               </label>
               <input
@@ -1571,7 +1572,7 @@ function UserManagementSection({ currentUserId }: { currentUserId: string }) {
               />
             </div>
             <div>
-              <label className="block text-caption text-text-tertiary uppercase tracking-widest mb-1">
+              <label className={FIELD_LABEL}>
                 {t("settings.role")}
               </label>
               <select

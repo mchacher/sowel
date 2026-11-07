@@ -170,7 +170,7 @@ function ZoneHeading({ chain }: { chain?: string[] }) {
   const name = chain?.[chain.length - 1] ?? t("dashboard.unknownZone");
 
   return (
-    <h3 className="text-small font-semibold text-text-secondary uppercase tracking-widest mb-2">
+    <h3 className="text-lead font-semibold text-text mb-2">
       {ancestors.length > 0 && (
         <span className="font-normal text-text-tertiary">
           {ancestors.join(ZONE_PATH_SEPARATOR)}

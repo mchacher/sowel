@@ -6,6 +6,7 @@ import { DeviceSelector } from "./DeviceSelector";
 import { getDevices, type DeviceWithData } from "../../api";
 import { typesOfferedOnEdit } from "../../../../src/shared/equipment-type-change";
 import { flattenZonesWithPath } from "../../lib/zone-path";
+import { FIELD_LABEL } from "../ui/text-roles";
 
 const EQUIPMENT_TYPE_KEYS: { value: EquipmentType; labelKey: string }[] = [
   { value: "light_onoff", labelKey: "equipments.type.light_onoff" },
@@ -157,7 +158,7 @@ export function EquipmentForm({ title, initial, defaultZoneId, zones, onSubmit, 
               <>
                 {/* Type */}
                 <div>
-                  <label className="block text-caption font-medium text-text-secondary uppercase tracking-widest mb-1.5">
+                  <label className={FIELD_LABEL}>
                     {t("equipments.form.type")}
                   </label>
                   <select
@@ -177,7 +178,7 @@ export function EquipmentForm({ title, initial, defaultZoneId, zones, onSubmit, 
 
                 {/* Name */}
                 <div>
-                  <label className="block text-caption font-medium text-text-secondary uppercase tracking-widest mb-1.5">
+                  <label className={FIELD_LABEL}>
                     {t("equipments.form.name")}
                   </label>
                   <input
@@ -194,7 +195,7 @@ export function EquipmentForm({ title, initial, defaultZoneId, zones, onSubmit, 
 
                 {/* Zone */}
                 <div>
-                  <label className="block text-caption font-medium text-text-secondary uppercase tracking-widest mb-1.5">
+                  <label className={FIELD_LABEL}>
                     {t("equipments.form.zone")}
                   </label>
                   <select

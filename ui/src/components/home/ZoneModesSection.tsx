@@ -75,10 +75,10 @@ export function ZoneModesSection({ zoneId }: ZoneModesSectionProps) {
         <span className="text-text-tertiary opacity-70 flex-shrink-0">
           <Layers size={14} strokeWidth={1.5} />
         </span>
-        <span className="text-micro font-semibold text-text-tertiary uppercase tracking-[0.14em]">
+        <span className="text-small font-semibold text-text-secondary">
           {t("modes.title")}
         </span>
-        <span className="text-micro text-text-tertiary opacity-65 ml-auto tabular-nums font-mono">
+        <span className="text-micro text-text-tertiary ml-auto tabular-nums">
           {activeCount > 0
             ? t("modes.activeCount", { count: activeCount })
             : configuredModes.length}
@@ -216,7 +216,7 @@ function ModeRow({
         {/* Right: active badge then settings gear (far right) */}
         <div className="flex items-center gap-1">
           {mode.active && (
-            <span className="text-micro font-semibold uppercase tracking-[0.1em] text-[var(--green-700)] bg-[color-mix(in_srgb,var(--green-500)_12%,transparent)] px-2 py-0.5 rounded-full">
+            <span className="text-caption font-medium text-[var(--green-700)] bg-[color-mix(in_srgb,var(--green-500)_12%,transparent)] px-2 py-0.5 rounded-full">
               {t("modes.activeBadge", { defaultValue: "Actif" })}
             </span>
           )}
@@ -303,7 +303,7 @@ function ImpactEditor({
         {/* Actions section */}
         <div>
           <div className="flex items-center justify-between mb-2">
-            <span className="text-micro font-medium text-text-tertiary uppercase tracking-widest">
+            <span className="text-small font-semibold text-text-secondary">
               {t("modes.impacts")}
             </span>
             {!showAddAction && (
@@ -334,7 +334,7 @@ function ImpactEditor({
           )}
 
           {savedActions.length === 0 && !showAddAction && (
-            <p className="text-micro text-text-tertiary mb-2">{t("modes.noImpacts")}</p>
+            <p className="text-caption text-text-tertiary mb-2">{t("modes.noImpacts")}</p>
           )}
 
           {showAddAction && (

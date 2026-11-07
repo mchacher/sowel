@@ -220,7 +220,7 @@ export function AddBindingModal({
                           )}
                         </div>
                         {dataItem && (
-                          <span className="text-caption font-mono text-text-secondary">
+                          <span className="text-caption tabular-nums text-text-secondary">
                             {dataItem.value !== null && dataItem.value !== undefined
                               ? String(dataItem.value)
                               : "—"}

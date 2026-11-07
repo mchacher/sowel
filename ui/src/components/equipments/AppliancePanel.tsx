@@ -69,7 +69,7 @@ export function AppliancePanel({ equipment }: AppliancePanelProps) {
             <div>
               <div className="flex items-center justify-between mb-1.5">
                 <span className="text-caption text-text-secondary">{t("common.progress")}</span>
-                <span className="text-small font-mono tabular-nums font-semibold text-text">{formatPercent(progress)}</span>
+                <span className="text-small tabular-nums font-semibold text-text">{formatPercent(progress)}</span>
               </div>
               <div className="h-2 bg-border-light rounded-full overflow-hidden">
                 <div
@@ -84,7 +84,7 @@ export function AppliancePanel({ equipment }: AppliancePanelProps) {
           {(isRunning || isPaused) && remainingTimeStr && (
             <div className="flex items-center gap-2">
               <Timer size={14} strokeWidth={1.5} className="text-text-tertiary" />
-              <span className="text-body font-mono tabular-nums text-text">
+              <span className="text-body tabular-nums text-text">
                 {remainingTimeStr}
               </span>
               {remainingMin !== null && (

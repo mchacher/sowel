@@ -160,7 +160,7 @@ export function DeviceList({ devices, deviceData, activeTab, deviceEquipmentMap 
               className="hidden md:table-cell"
             />
             <th className="py-2 px-3 text-left hidden md:table-cell">
-              <span className="text-micro font-semibold uppercase tracking-widest text-text-tertiary">
+              <span className="text-caption font-semibold uppercase tracking-[0.04em] text-text-tertiary">
                 {t("devices.col.equipment")}
               </span>
             </th>
@@ -249,7 +249,7 @@ export function DeviceList({ devices, deviceData, activeTab, deviceEquipmentMap 
                 </td>
                 {showSource && (
                   <td className="py-2.5 px-3 hidden sm:table-cell">
-                    <span className="inline-flex items-center px-1.5 py-0.5 rounded bg-border-light text-micro font-semibold text-text-secondary uppercase tracking-wide">
+                    <span className="inline-flex items-center px-1.5 py-0.5 rounded bg-border-light text-caption font-medium text-text-secondary">
                       {sourceLabel(device.source)}
                     </span>
                   </td>
@@ -310,7 +310,7 @@ function SortHeader({
     >
       <span className={`inline-flex items-center gap-1 ${alignClass}`}>
         <span
-          className={`text-micro font-semibold uppercase tracking-widest ${
+          className={`text-caption font-semibold uppercase tracking-[0.04em] ${
             isActive ? "text-primary" : "text-text-tertiary group-hover:text-text-secondary"
           } transition-colors duration-100`}
         >
@@ -347,7 +347,7 @@ function BatteryCell({ value }: { value: unknown }) {
   return (
     <span className={`inline-flex items-center gap-1 ${color}`}>
       <Icon size={14} strokeWidth={1.5} />
-      <span className="text-micro font-mono">{level}%</span>
+      <span className="text-micro tabular-nums">{level}%</span>
     </span>
   );
 }
@@ -371,7 +371,7 @@ function LqiCell({ value }: { value: unknown }) {
   return (
     <span className={`inline-flex items-center gap-1 ${color}`}>
       <Signal size={13} strokeWidth={1.5} />
-      <span className="text-micro font-mono">{lqi}</span>
+      <span className="text-micro tabular-nums">{lqi}</span>
     </span>
   );
 }

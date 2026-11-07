@@ -150,7 +150,7 @@ function BooleanSensorValue({
     <div className="flex items-center gap-2">
       <span
         className={`
-          text-body font-semibold font-mono
+          text-body font-semibold tabular-nums
           ${displayActive ? "text-active-text" : "text-text-tertiary"}
         `}
       >
@@ -173,7 +173,7 @@ function NumericSensorValues({ bindings, equipmentId }: { bindings: DataBindingW
       {bindings.map((b) => (
         <div key={b.id} className="flex items-center gap-2">
           <div className="text-right">
-            <span className="text-title font-semibold text-text font-mono leading-none">
+            <span className="text-title font-semibold text-text tabular-nums leading-none">
               {formatSensorValue(b.value, undefined, t)}
             </span>
             {b.unit && (
@@ -204,7 +204,7 @@ function BatteryRow({ level, deviceName }: { level: number | null; deviceName?: 
         )}
       </div>
       <div className="flex items-baseline gap-1 flex-shrink-0">
-        <span className={`text-title font-semibold font-mono leading-none ${color}`}>
+        <span className={`text-title font-semibold tabular-nums leading-none ${color}`}>
           {level !== null ? level : "\u2014"}
         </span>
         <span className="text-small text-text-tertiary">%</span>

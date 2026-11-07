@@ -105,7 +105,7 @@ The system is designed for incremental adoption: nothing forces a big-bang refac
 
 These are deferred to a future revision:
 
-- **Inter** is used as body font. The Anthropic frontend-design skill discourages it as generic. We accept it for legibility and production parity, but should periodically re-evaluate against pairs like Geist + Roboto Mono, or Söhne + JetBrains Mono.
+- **Inter** is used as body font, in its variable build. Spec 196 kept it: what read as generic was the tracked uppercase labels and the monospace numbers, not Inter. Since then labels are sentence case (uppercase only in table column headers) and numbers are Inter with tabular figures; JetBrains Mono is kept for logs, JSON, identifiers, versions and code ([tokens.md](tokens.md) §2.1). Component specs written before spec 196 (`panel.md`, `cat-head.md`, `activity-item.md`, `mode-row.md`, `strip.md`, `topbar.md`) still show uppercase titles and mono values in their CSS: tokens.md wins where they disagree.
 - **No dedicated component for charts** — energy bar/line charts use the current production conventions. A future spec should formalize axis, gridlines, legend.
 - **No formal token versioning** — when token semantics change, add a row in `tokens.md` change log and bump the file header date.
 - **Illustration system** is partially documented (note in `components/dashboard-widget.md`) but the line-art SVGs used in Dashboard widgets are not yet formalized as their own spec. Proposed for v1.1 if the illustration set grows beyond the current dashboard scope.

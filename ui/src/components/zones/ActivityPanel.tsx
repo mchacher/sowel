@@ -82,10 +82,10 @@ export function ActivityPanel({ zoneId }: Props) {
     <section className="bg-surface border border-border-light rounded-lg overflow-hidden">
       {/* Panel head — strict alignment with design-system .panel__head */}
       <div className="flex items-center gap-[0.55rem] px-[1.1rem] py-[0.55rem] min-h-[44px] bg-primary-light border-b border-[var(--p-100)]">
-        <h2 className="text-caption font-semibold text-primary uppercase tracking-[0.12em]">
+        <h2 className="text-lead font-semibold text-text">
           {t("activity.title")}
         </h2>
-        <span className="text-caption text-primary/65 font-medium normal-case tracking-normal">
+        <span className="text-caption text-text-tertiary">
           {t("activity.subtitle")}
         </span>
         {hasDescendants && (
@@ -111,8 +111,8 @@ export function ActivityPanel({ zoneId }: Props) {
           className={
             (hasDescendants ? "ml-[0.4rem] " : "ml-auto ") +
             (isLive
-              ? "font-mono text-micro font-semibold leading-none px-[7px] py-[1px] rounded-full bg-[var(--green-50)] text-[var(--green-700)] border border-[var(--green-50)]"
-              : "font-mono text-micro font-semibold leading-none px-[7px] py-[1px] rounded-full bg-background text-text-tertiary border border-border-light")
+              ? "text-micro font-semibold leading-none px-[7px] py-[1px] rounded-full bg-[var(--green-50)] text-[var(--green-700)] border border-[var(--green-50)]"
+              : "text-micro font-semibold leading-none px-[7px] py-[1px] rounded-full bg-background text-text-tertiary border border-border-light")
           }
         >
           {isLive ? `● ${t("activity.live")}` : `○ ${t("activity.offline")}`}
@@ -149,7 +149,7 @@ export function ActivityPanel({ zoneId }: Props) {
         )}
         {groups.map((group) => (
           <div key={group.key}>
-            <div className="px-[1.1rem] py-[0.35rem] font-mono text-micro font-semibold uppercase tracking-[0.14em] text-text-tertiary border-t border-border-light first:border-t-0">
+            <div className="px-[1.1rem] py-[0.35rem] text-caption font-semibold text-text-secondary tabular-nums border-t border-border-light first:border-t-0">
               {group.label}
             </div>
             {group.items.map((item) => (

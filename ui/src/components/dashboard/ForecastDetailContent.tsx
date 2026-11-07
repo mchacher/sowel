@@ -101,7 +101,7 @@ function ForecastDayColumn({ day, locale }: { day: ForecastDay; locale: string }
       </span>
 
       <span className="flex items-baseline gap-0.5">
-        <span className="text-lead sm:text-title font-semibold font-mono text-text tabular-nums leading-none">
+        <span className="text-lead sm:text-title font-semibold text-text tabular-nums leading-none">
           {formatNumber(day.tempMax, { decimals: 0 })}
         </span>
         <span className="text-micro sm:text-small text-text-tertiary">°C</span>
@@ -109,7 +109,7 @@ function ForecastDayColumn({ day, locale }: { day: ForecastDay; locale: string }
 
       {day.tempMin !== null && (
         <span className="flex items-baseline gap-0.5">
-          <span className="text-caption sm:text-lead font-medium font-mono text-text-secondary tabular-nums leading-none">
+          <span className="text-caption sm:text-lead font-medium text-text-secondary tabular-nums leading-none">
             {formatNumber(day.tempMin, { decimals: 0 })}
           </span>
           <span className="text-micro text-text-tertiary">°C</span>
@@ -117,7 +117,7 @@ function ForecastDayColumn({ day, locale }: { day: ForecastDay; locale: string }
       )}
 
       {day.windGusts !== null && (
-        <span className="flex items-center gap-0.5 sm:gap-1 text-micro sm:text-caption text-text-secondary font-mono tabular-nums">
+        <span className="flex items-center gap-0.5 sm:gap-1 text-micro sm:text-caption text-text-secondary tabular-nums">
           <Wind size={11} strokeWidth={1.5} className="text-text-tertiary shrink-0 sm:hidden" />
           <Wind
             size={13}

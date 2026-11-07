@@ -136,7 +136,7 @@ export function EvChargerControl({ equipment, onExecuteOrder }: EvChargerControl
           {metrics.map((m) => (
             <div key={m.key} className="flex flex-col">
               <span className="text-caption text-text-tertiary">{m.label}</span>
-              <span className="font-mono text-lead font-semibold text-text tabular-nums">
+              <span className="text-lead font-semibold text-text tabular-nums">
                 {m.value}
               </span>
             </div>
@@ -161,7 +161,7 @@ export function EvChargerControl({ equipment, onExecuteOrder }: EvChargerControl
                 <Minus size={14} strokeWidth={1.5} />
               </button>
             )}
-            <span className="min-w-[56px] text-center font-mono text-lead font-semibold text-text tabular-nums">
+            <span className="min-w-[56px] text-center text-lead font-semibold text-text tabular-nums">
               {sending ? (
                 <Loader2 size={14} className="animate-spin inline" />
               ) : shownA !== null ? (
@@ -195,7 +195,7 @@ export function EvChargerControl({ equipment, onExecuteOrder }: EvChargerControl
           {extraData.map((b) => (
             <div key={b.alias} className="flex items-center justify-between gap-3 text-small">
               <span className="text-text-secondary">{extraLabel("equipments.evCharger", b.alias, t)}</span>
-              <span className="font-mono tabular-nums text-text">{typeof b.value === "string"
+              <span className="tabular-nums text-text">{typeof b.value === "string"
                   ? extraTextValue("equipments.evCharger", b.alias, b.value, t)
                   : formatValue(b.value, b.unit)}</span>
             </div>

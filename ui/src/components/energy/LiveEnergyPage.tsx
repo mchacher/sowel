@@ -305,7 +305,7 @@ function LiveDiagram({
             dimmed: Math.abs(grid) < 5,
             value: gridValue.value,
             unit: gridValue.unit,
-            valuePrefix: <span className="text-title font-semibold">{exporting ? "↓" : "↑"}</span>,
+            valuePrefix: <span className="text-body sm:text-title font-semibold">{exporting ? "↓" : "↑"}</span>,
             icon: <GridPylonIcon className="w-9 h-9 sm:w-10 sm:h-10" />,
           },
           {

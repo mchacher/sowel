@@ -111,7 +111,7 @@ export function SharedAccessSettings() {
               placeholder="https://acces.example.org"
               onChange={(e) => setBaseUrl(e.target.value)}
             />
-            <p className="text-micro text-text-tertiary mt-1">{t("sharedAccess.settings.baseUrlHelp")}</p>
+            <p className="text-caption text-text-tertiary mt-1">{t("sharedAccess.settings.baseUrlHelp")}</p>
             {urlInvalid && <Refusal>{t("sharedAccess.settings.baseUrlInvalid")}</Refusal>}
           </div>
           <div>
@@ -125,7 +125,7 @@ export function SharedAccessSettings() {
               placeholder={DEFAULT_PATH}
               onChange={(e) => setPath(e.target.value)}
             />
-            <p className="text-micro text-text-tertiary mt-1">{t("sharedAccess.settings.pathHelp")}</p>
+            <p className="text-caption text-text-tertiary mt-1">{t("sharedAccess.settings.pathHelp")}</p>
           </div>
           {dirty && (
             <button

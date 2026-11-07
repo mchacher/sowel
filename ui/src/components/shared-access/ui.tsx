@@ -4,6 +4,7 @@ import { createPortal } from "react-dom";
 import { useTranslation } from "react-i18next";
 import { X } from "lucide-react";
 import type { SharedAccessStatus } from "../../types";
+import { FIELD_LABEL } from "../ui/text-roles";
 
 // ============================================================
 // Spec 181 — the few pieces every shared-access screen shares, in Sowel's
@@ -14,7 +15,7 @@ export const inputCls =
   "px-3 py-2 text-body bg-background border border-border rounded-[6px] text-text placeholder:text-text-tertiary focus:outline-none focus:border-primary disabled:opacity-50";
 export const inputBadCls =
   "px-3 py-2 text-body bg-background border border-error rounded-[6px] text-text placeholder:text-text-tertiary focus:outline-none";
-export const labelCls = "block text-caption text-text-tertiary uppercase tracking-widest mb-1";
+export const labelCls = FIELD_LABEL;
 export const btnPrimary =
   "px-4 py-2 text-small font-medium bg-primary text-white rounded-[6px] hover:bg-primary-hover transition-colors disabled:opacity-50 cursor-pointer disabled:cursor-default";
 export const btnSecondary =

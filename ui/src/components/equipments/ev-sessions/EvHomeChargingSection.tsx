@@ -116,7 +116,7 @@ export function EvHomeChargingSection({
             <>
               <div className="flex items-end justify-between gap-3">
                 <div className="flex flex-col">
-                  <span className="font-mono text-display font-semibold text-text tabular-nums">
+                  <span className="text-display font-semibold text-text tabular-nums">
                     {eur(summary.costEur)}
                   </span>
                   <span className="text-small text-text-tertiary">
@@ -124,7 +124,7 @@ export function EvHomeChargingSection({
                   </span>
                 </div>
                 <div className="flex flex-col items-end">
-                  <span className="font-mono text-title font-semibold text-text tabular-nums">
+                  <span className="text-title font-semibold text-text tabular-nums">
                     {energyLabel(summary.energyWh, locale)}
                   </span>
                   <span className="text-small text-text-tertiary">
@@ -154,11 +154,11 @@ export function EvHomeChargingSection({
                     <div key={key} className="flex items-center gap-2">
                       <span className={`w-2.5 h-2.5 rounded-[3px] shrink-0 ${swatch}`} />
                       <span className="flex-1 text-text">{t(`equipments.evSessions.${key}`)}</span>
-                      <span className="font-mono text-text-secondary tabular-nums">
+                      <span className="text-text-secondary tabular-nums">
                         {energyLabel(wh, locale)}
                       </span>
                       <span
-                        className={`w-16 text-right ${cost === null ? "text-success" : "font-mono text-text tabular-nums"}`}
+                        className={`w-16 text-right ${cost === null ? "text-success" : "text-text tabular-nums"}`}
                       >
                         {cost ?? t("equipments.evSessions.free")}
                       </span>
@@ -184,7 +184,7 @@ export function EvHomeChargingSection({
                             : t("equipments.evSessions.inProgress")}
                         </span>
                       </span>
-                      <span className="font-mono text-body font-semibold text-text tabular-nums whitespace-nowrap">
+                      <span className="text-body font-semibold text-text tabular-nums whitespace-nowrap">
                         {eur(s.costEur)}
                       </span>
                     </div>
@@ -192,7 +192,7 @@ export function EvHomeChargingSection({
                       <div className="flex-1">
                         <ShareBar e={s} height="h-1.5" />
                       </div>
-                      <span className="font-mono text-caption text-text-secondary tabular-nums whitespace-nowrap">
+                      <span className="text-caption text-text-secondary tabular-nums whitespace-nowrap">
                         {energyLabel(s.energyWh, locale)}
                       </span>
                     </div>
@@ -257,7 +257,7 @@ function Per100km({ summary, locale }: { summary: EvVehicleMonthSummary; locale:
   return (
     <div className="flex flex-col gap-0.5 pt-1">
       <span className="text-small text-text-secondary">
-        <span className="font-mono font-semibold text-text tabular-nums">
+        <span className="font-semibold text-text tabular-nums">
           {formatEur(summary.eurPer100km, locale)}
         </span>{" "}
         {t("equipments.evSessions.per100")}

@@ -177,7 +177,7 @@ export function ArbitrationSurface() {
               <>
                 {t(`arbiter.state.${state.state}`)}
                 {available !== null && (
-                  <span className="font-mono">{formatPower(available)}</span>
+                  <span className="tabular-nums">{formatPower(available)}</span>
                 )}
               </>
             )}
@@ -192,7 +192,7 @@ export function ArbitrationSurface() {
           <Moon size={13} strokeWidth={1.5} className="flex-none" />
           <span>
             {t("arbiter.nightContext")}
-            {rootAgg?.sunrise && <span className="font-mono"> ({rootAgg.sunrise})</span>}
+            {rootAgg?.sunrise && <span className="tabular-nums"> ({rootAgg.sunrise})</span>}
           </span>
         </p>
       )}
@@ -208,7 +208,7 @@ export function ArbitrationSurface() {
             <div className="overflow-x-auto">
               <table className="w-full text-caption border-collapse">
                 <thead>
-                  <tr className="text-micro uppercase tracking-wide text-text-tertiary">
+                  <tr className="text-caption uppercase tracking-[0.04em] text-text-tertiary">
                     <th className="text-left font-semibold pb-2 pr-3 border-b border-border">
                       {t("arbiter.roster.equipment")}
                     </th>
@@ -244,13 +244,13 @@ export function ArbitrationSurface() {
                             {/* #807 — the roster has been priority-ordered since
                                 #616 and nothing said so. On a phone, where the
                                 numeric columns are gone, it is the only clue left. */}
-                            <span className="inline-block w-[15px] font-mono text-micro font-medium text-text-tertiary">
+                            <span className="inline-block w-[15px] tabular-nums text-micro font-medium text-text-tertiary">
                               {i + 1}
                             </span>
                             {r.equipmentName}
                           </div>
                           {r.state === "pending" && (r.shortfallW ?? 0) > 0 && (
-                            <div className="pl-[15px] text-micro font-normal text-text-tertiary">
+                            <div className="pl-[15px] text-caption font-normal text-text-tertiary">
                               {t("arbiter.waitingForSurplus")}
                             </div>
                           )}
@@ -262,10 +262,10 @@ export function ArbitrationSurface() {
                             columns: the longest words ("outside arbitration")
                             would push a 375 px card into a sideways scroll,
                             and wrapping them costs nothing. */}
-                        <td className="text-right py-2.5 px-3 font-mono text-text-tertiary">
+                        <td className="text-right py-2.5 px-3 tabular-nums text-text-tertiary">
                           <GapCell row={r} />
                         </td>
-                        <td className="hidden lg:table-cell text-right py-2.5 px-3 font-mono text-text-secondary whitespace-nowrap">
+                        <td className="hidden lg:table-cell text-right py-2.5 px-3 tabular-nums text-text-secondary whitespace-nowrap">
                           {fmtW(r.state === "suspended" ? null : r.watts)}
                           {/* Spec 185 — a modulating load: the budget the
                               arbiter assigned, out of its maximum. */}
@@ -278,10 +278,10 @@ export function ArbitrationSurface() {
                             </div>
                           )}
                         </td>
-                        <td className="hidden lg:table-cell text-right py-2.5 px-3 font-mono text-text-secondary whitespace-nowrap">
+                        <td className="hidden lg:table-cell text-right py-2.5 px-3 tabular-nums text-text-secondary whitespace-nowrap">
                           {fmtW(r.state === "suspended" ? null : r.toleratedImportW)}
                         </td>
-                        <td className="hidden sm:table-cell text-right py-2.5 pl-3 font-mono text-text-secondary whitespace-nowrap">
+                        <td className="hidden sm:table-cell text-right py-2.5 pl-3 tabular-nums text-text-secondary whitespace-nowrap">
                           {fmtNeed(r.state === "suspended" ? null : r.needW)}
                         </td>
                       </tr>
@@ -293,7 +293,7 @@ export function ArbitrationSurface() {
             {/* The margin appears in no other place in the UI, and without it the
                 three figures on a row look unrelated. Shown only where all three
                 columns are (≥ 1024 px). */}
-            <p className="hidden lg:block mt-3 text-micro font-mono text-text-tertiary">
+            <p className="hidden lg:block mt-3 text-caption text-text-tertiary">
               {t("arbiter.needFormula", { margin: formatPower(state.engageMarginW) })}
             </p>
           </div>
@@ -311,11 +311,11 @@ export function ArbitrationSurface() {
                 // on a phone; from there up it is the figure the need column is
                 // compared against, so it belongs next to the table.
                 <div className="hidden sm:block">
-                  <div className="text-micro uppercase tracking-wide font-semibold text-text-tertiary">
+                  <div className="text-caption text-text-tertiary">
                     {t("arbiter.aside.available")}
                   </div>
                   <div
-                    className="font-mono text-title leading-tight mt-0.5"
+                    className="tabular-nums text-title leading-tight mt-0.5"
                     style={{ color: surplusStickerColor(available) }}
                   >
                     {formatPower(available)}
@@ -327,10 +327,10 @@ export function ArbitrationSurface() {
               )}
               {nextUp && (
                 <div>
-                  <div className="hidden sm:block text-micro uppercase tracking-wide font-semibold text-text-tertiary">
+                  <div className="hidden sm:block text-caption text-text-tertiary">
                     {t("arbiter.aside.next")}
                   </div>
-                  <div className="font-mono text-caption sm:text-lead leading-tight sm:mt-0.5 text-text">
+                  <div className="text-caption sm:text-lead leading-tight sm:mt-0.5 text-text">
                     {nextUp.equipmentName}
                   </div>
                   <div className="text-caption text-text-tertiary mt-1">

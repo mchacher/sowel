@@ -65,7 +65,7 @@ export function PresentationWidget({
             {state.primary}
           </span>
           {state.secondary?.map((line) => (
-            <span key={line} className="text-micro text-text-tertiary tabular-nums font-mono">
+            <span key={line} className="text-micro text-text-tertiary tabular-nums">
               {line}
             </span>
           ))}

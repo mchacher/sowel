@@ -127,7 +127,7 @@ export function WaterValveControl({ equipment, onExecuteOrder, compact }: WaterV
       <div className="flex items-center gap-2" onClick={(e) => e.stopPropagation()}>
         {flow !== null && isOn && (
           <div className="flex items-baseline gap-0.5 text-text-secondary">
-            <span className="text-small font-medium tabular-nums font-mono">{flow}</span>
+            <span className="text-small font-medium tabular-nums">{flow}</span>
             <span className="text-micro text-text-tertiary">m³/h</span>
           </div>
         )}
@@ -181,7 +181,7 @@ export function WaterValveControl({ equipment, onExecuteOrder, compact }: WaterV
           {flow !== null && isOn && (
             <div className="flex items-center gap-1.5 text-text-secondary">
               <Droplets size={14} strokeWidth={1.5} />
-              <span className="text-body font-semibold tabular-nums font-mono">{flow}</span>
+              <span className="text-body font-semibold tabular-nums">{flow}</span>
               <span className="text-caption text-text-tertiary">m³/h</span>
             </div>
           )}

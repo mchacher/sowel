@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import { X } from "lucide-react";
+import { FIELD_LABEL } from "../ui/text-roles";
 
 interface ModeFormProps {
   initial?: { name: string; description?: string; icon?: string };
@@ -56,7 +57,7 @@ export function ModeForm({ initial, onSubmit, onClose, title }: ModeFormProps) {
         <form onSubmit={handleSubmit} className="p-6 space-y-4">
           {/* Name */}
           <div>
-            <label className="block text-caption font-medium text-text-secondary uppercase tracking-widest mb-1.5">
+            <label className={FIELD_LABEL}>
               {t("modes.name")}
             </label>
             <input
@@ -72,9 +73,9 @@ export function ModeForm({ initial, onSubmit, onClose, title }: ModeFormProps) {
 
           {/* Description */}
           <div>
-            <label className="block text-caption font-medium text-text-secondary uppercase tracking-widest mb-1.5">
+            <label className={FIELD_LABEL}>
               {t("modes.description")}
-              <span className="text-text-tertiary font-normal normal-case tracking-normal ml-1">({t("common.optional")})</span>
+              <span className="text-text-tertiary font-normal ml-1">({t("common.optional")})</span>
             </label>
             <input
               type="text"

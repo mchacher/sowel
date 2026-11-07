@@ -19,6 +19,7 @@ import {
   EquipmentCheckboxList,
 } from "./recipe-form-fields";
 import { useZoneOptions } from "./useZoneOptions";
+import { FIELD_LABEL } from "../ui/text-roles";
 
 // ============================================================
 // Add recipe wizard (step 1: choose recipe, step 2: configure)
@@ -192,7 +193,7 @@ export function AddRecipeForm({
 
       {selectedRecipe && (
         <>
-          <p className="text-micro text-text-tertiary mb-3">{recipeDescription(selectedRecipe, lang)}</p>
+          <p className="text-caption text-text-tertiary mb-3">{recipeDescription(selectedRecipe, lang)}</p>
 
           {(() => {
             const filteredSlots = selectedRecipe.slots.filter((slot) => slot.id !== "zone" && shouldShowSlot(slot.id));
@@ -209,7 +210,7 @@ export function AddRecipeForm({
                     return (
                       <div key={groupKey} className="mb-2.5 pl-2 border-l-2 border-accent/40">
                         <div className="flex items-center justify-between mb-1">
-                          <span className="text-micro uppercase tracking-widest text-accent">{recipeGroupLabel(selectedRecipe, groupKey, lang)}</span>
+                          <span className="text-small font-medium text-text-secondary">{recipeGroupLabel(selectedRecipe, groupKey, lang)}</span>
                           {!isGroupRequired(groupKey, selectedRecipe.slots) && <button
                             type="button"
                             onClick={() => {
@@ -250,7 +251,7 @@ export function AddRecipeForm({
                             <div className={`grid gap-1.5 ${cols === 1 ? "grid-cols-1" : cols === 2 ? "grid-cols-2" : "grid-cols-3"}`}>
                               {compactSlots.map((slot) => (
                                 <div key={slot.id}>
-                                  <label className="block text-micro tracking-wider mb-0.5 text-text-tertiary">
+                                  <label className={FIELD_LABEL}>
                                     {recipeSlotName(selectedRecipe, slot, lang)}{slot.required && <span className="text-error ml-0.5">*</span>}
                                   </label>
                                   {slot.type === "equipment" ? (
@@ -317,7 +318,7 @@ export function AddRecipeForm({
                         {/* Full-width multi-select slots (e.g. weekdays) — rendered as chips */}
                         {chunk.slots.filter((s) => s.type === "select" && s.list && !isSlotHidden(s, params, selectedRecipe.slots)).map((slot) => (
                           <div key={slot.id} className="mt-1.5">
-                            <label className="block text-micro tracking-wider mb-1 text-text-tertiary">
+                            <label className={FIELD_LABEL}>
                               {recipeSlotName(selectedRecipe, slot, lang)}{slot.required && <span className="text-error ml-0.5">*</span>}
                             </label>
                             <MultiSelectChips
@@ -327,7 +328,7 @@ export function AddRecipeForm({
                               recipe={selectedRecipe}
                               lang={lang}
                             />
-                            <p className="text-micro text-text-tertiary mt-0.5">{recipeSlotDescription(selectedRecipe, slot, lang)}</p>
+                            <p className="text-caption text-text-tertiary mt-0.5">{recipeSlotDescription(selectedRecipe, slot, lang)}</p>
                           </div>
                         ))}
                       </div>
@@ -348,7 +349,7 @@ export function AddRecipeForm({
                         </label>
                       ) : (
                       <>
-                      <label className="block text-micro text-text-tertiary uppercase tracking-widest mb-1">
+                      <label className={FIELD_LABEL}>
                         {recipeSlotName(selectedRecipe, slot, lang)}{slot.required && <span className="text-error ml-0.5">*</span>}
                       </label>
                       {slot.type === "equipment" && slot.list ? (
@@ -441,7 +442,7 @@ export function AddRecipeForm({
                           className="w-full px-3 py-1.5 text-small bg-surface border border-border rounded-[6px] text-text placeholder:text-text-tertiary"
                         />
                       )}
-                      <p className="text-micro text-text-tertiary mt-0.5">{recipeSlotDescription(selectedRecipe, slot, lang)}</p>
+                      <p className="text-caption text-text-tertiary mt-0.5">{recipeSlotDescription(selectedRecipe, slot, lang)}</p>
                       </>
                       )}
                     </div>

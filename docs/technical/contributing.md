@@ -239,7 +239,9 @@ When adding or modifying UI components, follow these design tokens:
 | Property           | Value                                                      |
 | ------------------ | ---------------------------------------------------------- |
 | **Body font**      | Inter                                                      |
-| **Monospace font** | JetBrains Mono (values, logs)                              |
+| **Monospace font** | JetBrains Mono: logs, JSON, identifiers, versions, code    |
+| **Numbers**        | Inter with `tabular-nums` (fixed-width digits), not mono   |
+| **Labels**         | Sentence case; uppercase only in table column headers      |
 | **Primary color**  | `#1A4F6E` (ocean blue), hover: `#13405A`, light: `#E6F0F6` |
 | **Accent color**   | `#D4963F` (amber), hover: `#BB8232`                        |
 | **Spacing base**   | 4px                                                        |

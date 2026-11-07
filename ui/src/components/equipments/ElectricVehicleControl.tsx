@@ -102,7 +102,7 @@ export function ElectricVehicleControl({ equipment, onExecuteOrder }: ElectricVe
       {s.batteryLevel !== null && (
         <div className="flex flex-col gap-2">
           <div className="flex items-baseline justify-between gap-3">
-            <span className="font-mono text-display font-semibold text-text tabular-nums">
+            <span className="text-display font-semibold text-text tabular-nums">
               {Math.round(s.batteryLevel)}
               <span className="text-body text-text-tertiary font-normal ml-0.5">%</span>
             </span>
@@ -219,7 +219,7 @@ export function ElectricVehicleControl({ equipment, onExecuteOrder }: ElectricVe
             >
               <Minus size={14} strokeWidth={1.5} />
             </button>
-            <span className="min-w-[56px] text-center font-mono text-lead font-semibold text-text tabular-nums">
+            <span className="min-w-[56px] text-center text-lead font-semibold text-text tabular-nums">
               {busy === "limit" ? (
                 <Loader2 size={14} className="animate-spin inline" />
               ) : shownLimit !== null ? (
@@ -252,7 +252,7 @@ export function ElectricVehicleControl({ equipment, onExecuteOrder }: ElectricVe
           {s.mileageKm !== null && (
             <div className="flex items-center justify-between gap-3 text-small">
               <span className="text-text-secondary">{t("equipments.electricVehicle.mileage")}</span>
-              <span className="font-mono tabular-nums text-text">
+              <span className="tabular-nums text-text">
                 {formatWithUnit(s.mileageKm, "km")}
               </span>
             </div>
@@ -260,7 +260,7 @@ export function ElectricVehicleControl({ equipment, onExecuteOrder }: ElectricVe
           {extraData.map((b) => (
             <div key={b.alias} className="flex items-center justify-between gap-3 text-small">
               <span className="text-text-secondary">{extraLabel("equipments.electricVehicle", b.alias, t)}</span>
-              <span className="font-mono tabular-nums text-text">
+              <span className="tabular-nums text-text">
                 {typeof b.value === "string"
                   ? extraTextValue("equipments.electricVehicle", b.alias, b.value, t)
                   : formatValue(b.value, b.unit)}

@@ -4,6 +4,7 @@ import { Loader2 } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { useAuth } from "../store/useAuth";
 import { SowelLogo } from "../components/layout/SowelLogo";
+import { FIELD_LABEL } from "../components/ui/text-roles";
 
 export function SetupPage() {
   const isAuthenticated = useAuth((s) => s.isAuthenticated);
@@ -59,7 +60,7 @@ export function SetupPage() {
 
         <form onSubmit={handleSubmit} className="bg-surface rounded-[10px] border border-border p-6">
           <div className="mb-4">
-            <label className="block text-caption text-text-tertiary uppercase tracking-widest mb-1.5">
+            <label className={FIELD_LABEL}>
               {t("auth.username")}
             </label>
             <input
@@ -73,7 +74,7 @@ export function SetupPage() {
           </div>
 
           <div className="mb-4">
-            <label className="block text-caption text-text-tertiary uppercase tracking-widest mb-1.5">
+            <label className={FIELD_LABEL}>
               {t("auth.displayName")}
             </label>
             <input
@@ -86,7 +87,7 @@ export function SetupPage() {
           </div>
 
           <div className="mb-4">
-            <label className="block text-caption text-text-tertiary uppercase tracking-widest mb-1.5">
+            <label className={FIELD_LABEL}>
               {t("auth.password")}
             </label>
             <input
@@ -99,7 +100,7 @@ export function SetupPage() {
           </div>
 
           <div className="mb-5">
-            <label className="block text-caption text-text-tertiary uppercase tracking-widest mb-1.5">
+            <label className={FIELD_LABEL}>
               {t("auth.confirmPassword")}
             </label>
             <input

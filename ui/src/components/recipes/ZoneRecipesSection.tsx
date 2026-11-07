@@ -58,10 +58,10 @@ export function ZoneRecipesSection({ zoneId, zoneName }: ZoneRecipesSectionProps
         <span className="text-text-tertiary opacity-70 flex-shrink-0">
           <ChefHat size={14} strokeWidth={1.5} />
         </span>
-        <span className="text-micro font-semibold text-text-tertiary uppercase tracking-[0.14em]">
+        <span className="text-small font-semibold text-text-secondary">
           {t("recipes.title")}
         </span>
-        <span className="text-micro text-text-tertiary opacity-65 ml-auto tabular-nums font-mono">
+        <span className="text-micro text-text-tertiary ml-auto tabular-nums">
           {zoneInstances.length}
         </span>
         {isAdmin && (

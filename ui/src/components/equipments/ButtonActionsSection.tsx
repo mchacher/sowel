@@ -9,6 +9,7 @@ import { useZones } from "../../store/useZones";
 import type { ButtonActionBinding, ButtonEffectType, ZoneWithChildren } from "../../types";
 import { allSupportStop } from "../../lib/binding-utils";
 import { flattenZonesWithPath } from "../../lib/zone-path";
+import { FIELD_LABEL } from "../ui/text-roles";
 
 const DEFAULT_BUTTON_ACTIONS = ["single", "double", "hold"];
 
@@ -180,7 +181,7 @@ export function ButtonActionsSection({ equipmentId }: ButtonActionsSectionProps)
 
       {[...grouped.entries()].map(([actionValue, actionBindings]) => (
           <div key={actionValue} className="mb-3">
-            <div className="text-micro font-medium text-text-tertiary uppercase tracking-widest mb-1.5">
+            <div className="text-small font-semibold text-text-secondary mb-1.5">
               {getActionLabel(actionValue)}
             </div>
             <div className="space-y-1.5">
@@ -412,7 +413,7 @@ function AddEffectForm({
     <div className="bg-border-light/20 border border-border-light rounded-[6px] p-3 space-y-3 mt-3">
       {/* Action value */}
       <div>
-        <label className="block text-micro text-text-tertiary uppercase tracking-widest mb-1">
+        <label className={FIELD_LABEL}>
           {t("buttonActions.actionType")}
         </label>
         {actionValues.length <= 4 ? (
@@ -442,7 +443,7 @@ function AddEffectForm({
 
       {/* Effect type selector */}
       <div>
-        <label className="block text-micro text-text-tertiary uppercase tracking-widest mb-1">
+        <label className={FIELD_LABEL}>
           {t("buttonActions.effectTypeLabel")}
         </label>
         <select
@@ -461,7 +462,7 @@ function AddEffectForm({
       {/* Config per effect type */}
       {effectType === "mode_activate" && (
         <div>
-          <label className="block text-micro text-text-tertiary uppercase tracking-widest mb-1">
+          <label className={FIELD_LABEL}>
             {t("modes.title")}
           </label>
           <select
@@ -480,7 +481,7 @@ function AddEffectForm({
       {effectType === "mode_toggle" && (
         <div className="space-y-2">
           <div>
-            <label className="block text-micro text-text-tertiary uppercase tracking-widest mb-1">
+            <label className={FIELD_LABEL}>
               Mode A
             </label>
             <select
@@ -495,7 +496,7 @@ function AddEffectForm({
             </select>
           </div>
           <div>
-            <label className="block text-micro text-text-tertiary uppercase tracking-widest mb-1">
+            <label className={FIELD_LABEL}>
               Mode B
             </label>
             <select
@@ -515,7 +516,7 @@ function AddEffectForm({
       {effectType === "equipment_order" && (
         <div className="space-y-2">
           <div>
-            <label className="block text-micro text-text-tertiary uppercase tracking-widest mb-1">
+            <label className={FIELD_LABEL}>
               {t("buttonActions.zone")}
             </label>
             <select
@@ -536,7 +537,7 @@ function AddEffectForm({
           </div>
           {eqZoneId && (
           <div>
-            <label className="block text-micro text-text-tertiary uppercase tracking-widest mb-1">
+            <label className={FIELD_LABEL}>
               {t("equipments.title")}
             </label>
             <select
@@ -568,7 +569,7 @@ function AddEffectForm({
               {/* Command: hidden if single order (auto-selected), select if 2+ */}
               {selectedEquipment.orderBindings.length > 1 && (
                 <div>
-                  <label className="block text-micro text-text-tertiary uppercase tracking-widest mb-1">
+                  <label className={FIELD_LABEL}>
                     {t("modes.form.orderAlias")}
                   </label>
                   <select
@@ -591,7 +592,7 @@ function AddEffectForm({
               {/* Value: select for 2+ enums, number input for numeric, hidden for single enum (auto-resolved) */}
               {enumVals.length > 1 ? (
                 <div>
-                  <label className="block text-micro text-text-tertiary uppercase tracking-widest mb-1">
+                  <label className={FIELD_LABEL}>
                     {t("modes.form.actionValuePlaceholder")}
                   </label>
                   <select
@@ -607,7 +608,7 @@ function AddEffectForm({
                 </div>
               ) : selectedOrder?.type === "number" ? (
                 <div>
-                  <label className="block text-micro text-text-tertiary uppercase tracking-widest mb-1">
+                  <label className={FIELD_LABEL}>
                     {t("modes.form.actionValuePlaceholder")}
                     {selectedOrder.min != null && selectedOrder.max != null && (
                       <span className="ml-1 font-normal">({selectedOrder.min}–{selectedOrder.max})</span>
@@ -631,7 +632,7 @@ function AddEffectForm({
       {effectType === "recipe_toggle" && (
         <div className="space-y-2">
           <div>
-            <label className="block text-micro text-text-tertiary uppercase tracking-widest mb-1">
+            <label className={FIELD_LABEL}>
               {t("recipes.title")}
             </label>
             <select
@@ -667,7 +668,7 @@ function AddEffectForm({
       {effectType === "zone_order" && (
         <div className="space-y-2">
           <div>
-            <label className="block text-micro text-text-tertiary uppercase tracking-widest mb-1">
+            <label className={FIELD_LABEL}>
               {t("buttonActions.zone")}
             </label>
             <select
@@ -683,7 +684,7 @@ function AddEffectForm({
           </div>
           {zoZoneId && (
             <div>
-              <label className="block text-micro text-text-tertiary uppercase tracking-widest mb-1">
+              <label className={FIELD_LABEL}>
                 {t("buttonActions.zoneOrderLabel")}
               </label>
               <select
@@ -705,7 +706,7 @@ function AddEffectForm({
           )}
           {zoOrderKey && ZONE_ORDER_OPTIONS.find((o) => o.key === zoOrderKey)?.parametric && (
             <div>
-              <label className="block text-micro text-text-tertiary uppercase tracking-widest mb-1">
+              <label className={FIELD_LABEL}>
                 {t("modes.form.actionValuePlaceholder")}
               </label>
               <input

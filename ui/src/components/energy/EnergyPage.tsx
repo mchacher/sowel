@@ -182,7 +182,7 @@ export function EnergyPage() {
                       is not the main meter's). */}
                   {labelledByUsage.separateSupply.length > 0 && (
                     <div className="flex flex-col items-center mt-3 gap-1">
-                      <div className="text-micro font-semibold uppercase tracking-wide text-text-tertiary">
+                      <div className="text-caption font-medium text-text-tertiary">
                         {t("energy.byUsage.separateSupply")}
                       </div>
                       <div className="flex items-center gap-4 text-small text-text-secondary flex-wrap justify-center">

@@ -160,7 +160,7 @@ export function ThermostatExtras({
               >
                 <ChevronDown size={12} strokeWidth={2} />
               </button>
-              <span className="text-small font-semibold text-text tabular-nums font-mono min-w-[40px] text-center">
+              <span className="text-small font-semibold text-text tabular-nums min-w-[40px] text-center">
                 {valueLabel(alias, n, order.unit)}
               </span>
               <button

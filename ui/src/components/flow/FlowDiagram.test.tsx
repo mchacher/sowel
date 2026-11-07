@@ -106,6 +106,30 @@ describe("FlowDiagram nodes", () => {
     render(<FlowDiagram nodes={[node({ valuePrefix: <span>↑</span> })]} links={[]} />);
     expect(screen.getByText("↑")).toBeTruthy();
   });
+
+  // Spec 196, slice 5b — a satellite is about 70 px wide on a 390 px phone.
+  // In tracked capitals « PRODUCTION » ran past its border; the label is now
+  // sentence case and the satellite steps down a size below `sm`.
+  it("writes the node label in sentence case, smaller in a satellite on a phone", () => {
+    render(
+      <FlowDiagram
+        nodes={[node({ label: "Consommation" }), node({ slot: "right", label: "Production", value: "745", unit: "W" })]}
+        links={[]}
+      />,
+    );
+    const focal = screen.getByText("Consommation");
+    const satellite = screen.getByText("Production");
+    for (const label of [focal, satellite]) {
+      expect(label.className).not.toMatch(/uppercase|tracking-widest/);
+      expect(label.className).toContain("whitespace-nowrap");
+    }
+    expect(satellite.className).toMatch(/(^|\s)text-micro(\s|$)/);
+    expect(focal.className).not.toMatch(/(^|\s)text-micro(\s|$)/);
+    const value = screen.getByText("745").parentElement as HTMLElement;
+    expect(value.className).toContain("text-body");
+    expect(value.className).not.toContain("font-mono");
+    expect(value.className).toContain("tabular-nums");
+  });
 });
 
 describe("FlowDiagram pills and tag", () => {

@@ -88,10 +88,10 @@ export function EvCurrentSessionCard({
           <div className="flex-1">
             <ShareBar e={session} height="h-1.5" />
           </div>
-          <span className="font-mono text-caption text-text-secondary tabular-nums whitespace-nowrap">
+          <span className="text-caption text-text-secondary tabular-nums whitespace-nowrap">
             {energyLabel(session.energyWh, locale)}
           </span>
-          <span className="font-mono text-body font-semibold text-text tabular-nums whitespace-nowrap">
+          <span className="text-body font-semibold text-text tabular-nums whitespace-nowrap">
             {eur(session.costEur)}
           </span>
         </div>
@@ -151,7 +151,7 @@ export function EvCurrentSessionCard({
           </h3>
         </div>
         {live.kind === "charging" && live.powerW !== null && (
-          <span className="flex items-center gap-1.5 font-mono text-small text-primary tabular-nums">
+          <span className="flex items-center gap-1.5 text-small text-primary tabular-nums">
             <span className="w-2 h-2 rounded-full bg-primary animate-pulse" />
             {powerLabel(live.powerW, locale)}
           </span>
@@ -191,7 +191,7 @@ export function EvCurrentSessionCard({
 
       <div className="flex items-end justify-between gap-3">
         <div className="flex flex-col">
-          <span className="font-mono text-display font-semibold text-text tabular-nums">
+          <span className="text-display font-semibold text-text tabular-nums">
             {energyLabel(session.energyWh, locale)}
           </span>
           <span className="text-small text-text-tertiary">
@@ -199,7 +199,7 @@ export function EvCurrentSessionCard({
           </span>
         </div>
         <div className="flex flex-col items-end">
-          <span className="font-mono text-title font-semibold text-text tabular-nums">
+          <span className="text-title font-semibold text-text tabular-nums">
             {eur(session.costEur)}
           </span>
           <span className="text-small text-text-tertiary">

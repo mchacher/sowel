@@ -434,7 +434,7 @@ function WeatherDetailContent({ equipment }: { equipment: EquipmentWithDetails }
             >
               <div className="bg-border-light/40 px-3 py-2 flex items-center gap-2">
                 <span className="text-text-tertiary">{getKindIcon(dev.kind)}</span>
-                <span className="text-caption font-semibold uppercase tracking-wide text-text-secondary flex-1 min-w-0 truncate">
+                <span className="text-small font-semibold text-text-secondary flex-1 min-w-0 truncate">
                   {dev.deviceName}
                 </span>
                 {dev.battery && (
@@ -457,7 +457,7 @@ function WeatherDetailContent({ equipment }: { equipment: EquipmentWithDetails }
                     <span className="text-small text-text-secondary">
                       {WEATHER_KEY_LABELS[b.key] ? t(WEATHER_KEY_LABELS[b.key]) : b.key}
                     </span>
-                    <span className="text-body font-mono font-semibold text-text tabular-nums">
+                    <span className="text-body font-semibold text-text tabular-nums">
                       {formatSensorValue(b.value, undefined, t)}
                       {b.unit && (
                         <span className="text-text-tertiary font-normal text-caption ml-1">
@@ -894,7 +894,7 @@ function ZoneHeatingDetail({
         <ThermometerIcon warm={anyOn} level={thermometerLevel} />
         <div className="flex flex-col items-center">
           {avgTemp !== null ? (
-            <span className="text-value font-semibold text-text tabular-nums font-mono leading-none">
+            <span className="text-value font-semibold text-text tabular-nums leading-none">
               {formatTemperature(avgTemp)}
             </span>
           ) : (
@@ -912,7 +912,7 @@ function ZoneHeatingDetail({
           >
             <Minus size={20} strokeWidth={2} />
           </button>
-          <span className="text-display font-semibold text-text tabular-nums font-mono min-w-[80px] text-center">
+          <span className="text-display font-semibold text-text tabular-nums min-w-[80px] text-center">
             {formatTemperature(displaySetpoint)}
           </span>
           <button
@@ -972,7 +972,7 @@ function ZoneSensorsDetail({ equipments }: { equipments: EquipmentWithDetails[] 
       <div className="flex flex-col items-center gap-2">
         {aggregates.avgTemp !== null && (
           <div className="flex items-baseline gap-1">
-            <span className="text-display font-semibold text-text tabular-nums font-mono leading-none">
+            <span className="text-display font-semibold text-text tabular-nums leading-none">
               {formatNumber(aggregates.avgTemp, { decimals: 1 })}
             </span>
             <span className="text-body font-medium text-text-tertiary">°C</span>
@@ -980,7 +980,7 @@ function ZoneSensorsDetail({ equipments }: { equipments: EquipmentWithDetails[] 
         )}
         {aggregates.avgHumidity !== null && (
           <div className="flex items-baseline gap-1">
-            <span className="text-title font-semibold text-text tabular-nums font-mono leading-none">
+            <span className="text-title font-semibold text-text tabular-nums leading-none">
               {Math.round(aggregates.avgHumidity)}
             </span>
             <span className="text-body font-medium text-text-tertiary">%</span>
@@ -1345,7 +1345,7 @@ function ThermostatDetailContent({
         <ThermometerIcon warm={isOn} level={thermometerLevel} />
         <div className="flex flex-col items-center">
           {insideTemp !== null ? (
-            <span className="text-value font-semibold text-text tabular-nums font-mono leading-none">
+            <span className="text-value font-semibold text-text tabular-nums leading-none">
               {formatTemperature(insideTemp)}
             </span>
           ) : (
@@ -1364,7 +1364,7 @@ function ThermostatDetailContent({
           >
             <Minus size={20} strokeWidth={2} />
           </button>
-          <span className="text-display font-semibold text-text tabular-nums font-mono min-w-[80px] text-center">
+          <span className="text-display font-semibold text-text tabular-nums min-w-[80px] text-center">
             {formatTemperature(displaySetpoint)}
           </span>
           <button

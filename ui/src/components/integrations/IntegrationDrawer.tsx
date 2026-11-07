@@ -28,6 +28,7 @@ import {
   disablePlugin,
 } from "../../api";
 import type { IntegrationInfo, IntegrationSettingDef } from "../../types";
+import { FIELD_LABEL } from "../ui/text-roles";
 
 interface IntegrationDrawerProps {
   integration: IntegrationInfo | null;
@@ -255,7 +256,7 @@ export function IntegrationDrawer({ integration, onClose, onRefresh }: Integrati
 
           {/* Actions */}
           <div>
-            <h3 className="text-caption font-medium text-text-tertiary uppercase tracking-widest mb-3">
+            <h3 className="text-lead font-semibold text-text mb-3">
               {t("integrations.actions")}
             </h3>
             <div className="flex flex-wrap gap-2">
@@ -328,7 +329,7 @@ export function IntegrationDrawer({ integration, onClose, onRefresh }: Integrati
 
           {/* Configuration */}
           <div>
-            <h3 className="text-caption font-medium text-text-tertiary uppercase tracking-widest mb-3">
+            <h3 className="text-lead font-semibold text-text mb-3">
               {t("integrations.configuration")}
             </h3>
             <div className="space-y-3">
@@ -346,7 +347,7 @@ export function IntegrationDrawer({ integration, onClose, onRefresh }: Integrati
           {/* OAuth Authorization */}
           {integration.supportsOAuth && (
             <div>
-              <h3 className="text-caption font-medium text-text-tertiary uppercase tracking-widest mb-3">
+              <h3 className="text-lead font-semibold text-text mb-3">
                 {t("integrations.authorization")}
               </h3>
               {isConnected ? (
@@ -474,7 +475,7 @@ function SettingField({
 
   return (
     <div>
-      <label className="block text-caption text-text-tertiary uppercase tracking-widest mb-1">
+      <label className={FIELD_LABEL}>
         {setting.label}
         {setting.required ? <span className="text-error ml-0.5">*</span> : <span className="text-text-tertiary ml-1">(opt.)</span>}
       </label>

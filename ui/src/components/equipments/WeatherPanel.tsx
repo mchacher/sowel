@@ -268,7 +268,7 @@ function WeatherDeviceCard({
       {primaryBinding && (
         <div className="text-center mb-4">
           <div className="inline-flex items-center gap-2">
-            <span className="text-value font-semibold font-mono text-text leading-none tabular-nums">
+            <span className="text-value font-semibold text-text leading-none tabular-nums">
               {formatSensorValue(primaryBinding.value, undefined, t)}
             </span>
             {primaryBinding.unit && (
@@ -306,7 +306,7 @@ function WeatherDeviceCard({
               <span className="text-small text-text-secondary">
                 {KEY_LABELS[b.key] ? t(KEY_LABELS[b.key]) : b.key}
               </span>
-              <span className="text-lead font-semibold font-mono text-text tabular-nums">
+              <span className="text-lead font-semibold text-text tabular-nums">
                 {formatSensorValue(b.value, undefined, t)}
                 {b.unit && (
                   <span className="text-caption text-text-tertiary font-normal ml-0.5">

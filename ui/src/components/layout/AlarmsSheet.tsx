@@ -54,7 +54,7 @@ export function AlarmsSheet({ open, onClose }: AlarmsSheetProps) {
 
           {acknowledged.length > 0 && (
             <div className="flex flex-col gap-2">
-              <div className="text-micro font-semibold uppercase text-text-tertiary px-1">
+              <div className="text-small font-semibold text-text-secondary px-1">
                 {t("alarms.acknowledgedSection")}
               </div>
               <ul className="flex flex-col gap-2">
@@ -109,7 +109,7 @@ function IssueRow({
         <div className="flex items-center gap-2 text-caption font-semibold text-text">
           <span>{sourceLabel}</span>
           <span
-            className={`text-micro px-1.5 py-0.5 rounded uppercase ${
+            className={`text-caption font-medium px-1.5 py-0.5 rounded ${
               isError ? "bg-error/10 text-error" : "bg-warning/10 text-warning"
             }`}
           >

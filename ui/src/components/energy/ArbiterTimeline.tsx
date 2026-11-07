@@ -232,7 +232,7 @@ export function ArbiterTimeline() {
       {/* header */}
       <div className="flex items-center gap-2 mb-2">
         <h3 className="text-small font-semibold text-text">{t("arbiter.timeline.title")}</h3>
-        <span className="ml-auto text-micro text-text-tertiary font-mono">{rangeLabel}</span>
+        <span className="ml-auto text-micro text-text-tertiary tabular-nums">{rangeLabel}</span>
         <div className="flex gap-1">
           <button
             onClick={() => setOffset((o) => Math.min(maxOffset, o + 1))}
@@ -292,17 +292,17 @@ export function ArbiterTimeline() {
         {/* surplus / deficit curve with kW scale */}
         <div className="flex items-stretch gap-2 mt-1 mb-3">
           <div className="relative w-[80px] flex-none">
-            <span className="absolute right-0 top-[2px] text-micro font-mono text-text-tertiary">
+            <span className="absolute right-0 top-[2px] text-micro tabular-nums text-text-tertiary">
               {scaleTop}
             </span>
             <span
-              className="absolute right-0 text-micro font-mono text-text-tertiary"
+              className="absolute right-0 text-micro tabular-nums text-text-tertiary"
               style={{ top: `${y0 - 4}px` }}
             >
               0
             </span>
             <span
-              className="absolute right-0 text-micro font-mono text-text-tertiary"
+              className="absolute right-0 text-micro tabular-nums text-text-tertiary"
               style={{ top: `${H - 10}px` }}
             >
               {scaleBottom}
@@ -457,7 +457,7 @@ export function ArbiterTimeline() {
                   data-hl={hl ? "1" : undefined}
                   className={`flex items-baseline gap-2.5 py-1.5 px-1.5 text-caption border-t border-border-light first:border-t-0 rounded-[4px] ${hl ? "bg-primary/10" : ""}`}
                 >
-                  <span className="font-mono text-micro text-text-tertiary w-11 flex-none">
+                  <span className="tabular-nums text-micro text-text-tertiary w-11 flex-none">
                     {hhmm(at)}
                   </span>
                   <span

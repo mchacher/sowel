@@ -19,7 +19,7 @@ export function SidebarModeList({ collapsed }: { collapsed: boolean }) {
   if (modes.length === 0) {
     return (
       <div className="pl-2 px-3 py-2">
-        <p className="text-micro text-text-tertiary leading-tight">
+        <p className="text-caption text-text-tertiary leading-tight">
           {t("modes.noModes")}
         </p>
       </div>

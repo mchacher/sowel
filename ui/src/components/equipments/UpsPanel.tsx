@@ -203,7 +203,7 @@ export function UpsPanel({ dataBindings }: UpsPanelProps) {
               </p>
             </div>
             <span
-              className="font-mono text-micro font-semibold px-2.5 py-1 rounded-full shrink-0"
+              className="text-caption font-medium px-2.5 py-1 rounded-full shrink-0"
               style={{ color: marginColor, background: `color-mix(in srgb, ${marginColor} 12%, transparent)` }}
             >
               {t(`equipments.ups.margins.${margin}`)}
@@ -213,13 +213,13 @@ export function UpsPanel({ dataBindings }: UpsPanelProps) {
           <table className="w-full border-collapse">
             <thead>
               <tr>
-                <th className="text-left text-micro font-semibold uppercase tracking-widest text-text-tertiary px-5 pb-2">
+                <th className="text-left text-caption font-semibold uppercase tracking-[0.04em] text-text-tertiary px-5 pb-2">
                   {t("equipments.ups.margins.threshold")}
                 </th>
-                <th className="text-left text-micro font-semibold uppercase tracking-widest text-text-tertiary px-5 pb-2">
+                <th className="text-left text-caption font-semibold uppercase tracking-[0.04em] text-text-tertiary px-5 pb-2">
                   {t("equipments.ups.margins.setting")}
                 </th>
-                <th className="text-right text-micro font-semibold uppercase tracking-widest text-text-tertiary px-5 pb-2">
+                <th className="text-right text-caption font-semibold uppercase tracking-[0.04em] text-text-tertiary px-5 pb-2">
                   {t("equipments.ups.margins.position")}
                 </th>
               </tr>
@@ -281,7 +281,7 @@ export function UpsPanel({ dataBindings }: UpsPanelProps) {
                 <span className="text-small text-text-secondary">
                   {t(`equipments.ups.field.${b.alias}`, b.alias)}
                 </span>
-                <span className="text-small font-mono text-text tabular-nums">
+                <span className="text-small text-text tabular-nums">
                   {formatSheetValue(b.value, b.unit)}
                 </span>
               </div>
@@ -326,7 +326,7 @@ function MarginRow({
       <td className="px-5 py-2.5 border-t border-border-light text-small font-medium text-text">
         {label}
       </td>
-      <td className="px-5 py-2.5 border-t border-border-light text-small font-mono text-text tabular-nums whitespace-nowrap">
+      <td className="px-5 py-2.5 border-t border-border-light text-small text-text tabular-nums whitespace-nowrap">
         {setting}
       </td>
       <td className="px-5 py-2.5 border-t border-border-light text-right">{children}</td>

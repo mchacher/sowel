@@ -35,7 +35,7 @@ export function TempExtremes({
         aria-label={t("weather.minToday")}
       >
         <ArrowDown size={arrow} strokeWidth={2} className="text-primary/70 shrink-0" />
-        <span className={`font-mono ${text} font-medium tabular-nums text-text-tertiary`}>
+        <span className={`${text} font-medium tabular-nums text-text-tertiary`}>
           {formatTemperature(min, { style: "compact" })}
         </span>
       </span>
@@ -44,7 +44,7 @@ export function TempExtremes({
         aria-label={t("weather.maxToday")}
       >
         <ArrowUp size={arrow} strokeWidth={2} className="text-accent shrink-0" />
-        <span className={`font-mono ${text} font-medium tabular-nums text-text-tertiary`}>
+        <span className={`${text} font-medium tabular-nums text-text-tertiary`}>
           {formatTemperature(max, { style: "compact" })}
         </span>
       </span>

@@ -26,6 +26,7 @@ import { useZoneOptions } from "./useZoneOptions";
 import { DuplicateRecipeModal } from "./DuplicateRecipeModal";
 import { BottomSheet } from "../dashboard/BottomSheet";
 import { useIsMobile } from "../../hooks/useIsMobile";
+import { FIELD_LABEL_UNTONED } from "../ui/text-roles";
 
 // ============================================================
 // Instance row
@@ -282,7 +283,7 @@ export function RecipeInstanceRow({
   // on the PWA/mobile (#615). Kept in one place so both stay in sync.
   const logBody =
     logs.length === 0 ? (
-      <p className="text-micro text-text-tertiary text-center py-2">{t("common.noLogs")}</p>
+      <p className="text-caption text-text-tertiary text-center py-2">{t("common.noLogs")}</p>
     ) : (
       <div className="space-y-0.5">
         {logs.map((log) => (
@@ -433,7 +434,7 @@ export function RecipeInstanceRow({
                       return (
                         <div key={groupKey} className="mb-2.5 pl-2 border-l-2 border-accent/40">
                           <div className="flex items-center justify-between mb-1">
-                            <span className="text-micro uppercase tracking-widest text-accent">{recipeGroupLabel(recipe, groupKey, lang)}</span>
+                            <span className="text-small font-medium text-text-secondary">{recipeGroupLabel(recipe, groupKey, lang)}</span>
                             {!isGroupRequired(groupKey, recipe.slots) && <button
                               type="button"
                               onClick={() => {
@@ -459,7 +460,7 @@ export function RecipeInstanceRow({
                               zones={allZones}
                               recipe={recipe}
                               lang={lang}
-                              labelClassName={`block text-micro tracking-wider mb-0.5 ${isSlotChanged(slot.id) ? "text-success" : "text-text-tertiary"}`}
+                              labelClassName={`${FIELD_LABEL_UNTONED} ${isSlotChanged(slot.id) ? "text-success" : "text-text-secondary"}`}
                             />
                           ))}
                           {/* Compact grid for non-list slots */}
@@ -471,7 +472,7 @@ export function RecipeInstanceRow({
                               <div className={`grid gap-1.5 ${cols === 1 ? "grid-cols-1" : cols === 2 ? "grid-cols-2" : "grid-cols-3"}`}>
                                 {compactSlots.map((slot) => (
                                   <div key={slot.id}>
-                                    <label className={`block text-micro tracking-wider mb-0.5 ${isSlotChanged(slot.id) ? "text-success" : "text-text-tertiary"}`}>
+                                    <label className={`${FIELD_LABEL_UNTONED} ${isSlotChanged(slot.id) ? "text-success" : "text-text-secondary"}`}>
                                       {recipeSlotName(recipe, slot, lang)}{slot.required && <span className="text-error ml-0.5">*</span>}
                                     </label>
                                     {slot.type === "equipment" ? (
@@ -530,7 +531,7 @@ export function RecipeInstanceRow({
                                         className="w-full px-2 py-1.5 text-small bg-surface border border-border rounded-[6px] text-text placeholder:text-text-tertiary"
                                       />
                                     )}
-                                    <p className="text-micro text-text-tertiary mt-0.5">{recipeSlotDescription(recipe, slot, lang)}</p>
+                                    <p className="text-caption text-text-tertiary mt-0.5">{recipeSlotDescription(recipe, slot, lang)}</p>
                                   </div>
                                 ))}
                               </div>
@@ -539,7 +540,7 @@ export function RecipeInstanceRow({
                           {/* Full-width multi-select slots (e.g. weekdays) — rendered as chips */}
                           {chunk.slots.filter((s) => s.type === "select" && s.list && !isSlotHidden(s, editParams, recipe.slots)).map((slot) => (
                             <div key={slot.id} className="mt-1.5">
-                              <label className={`block text-micro tracking-wider mb-1 ${isSlotChanged(slot.id) ? "text-success" : "text-text-tertiary"}`}>
+                              <label className={`${FIELD_LABEL_UNTONED} ${isSlotChanged(slot.id) ? "text-success" : "text-text-secondary"}`}>
                                 {recipeSlotName(recipe, slot, lang)}{slot.required && <span className="text-error ml-0.5">*</span>}
                               </label>
                               <MultiSelectChips
@@ -549,7 +550,7 @@ export function RecipeInstanceRow({
                                 recipe={recipe}
                                 lang={lang}
                               />
-                              <p className="text-micro text-text-tertiary mt-0.5">{recipeSlotDescription(recipe, slot, lang)}</p>
+                              <p className="text-caption text-text-tertiary mt-0.5">{recipeSlotDescription(recipe, slot, lang)}</p>
                             </div>
                           ))}
                         </div>
@@ -570,7 +571,7 @@ export function RecipeInstanceRow({
                           </label>
                         ) : (
                         <>
-                        <label className={`block text-micro uppercase tracking-widest mb-1 ${isSlotChanged(slot.id) ? "text-success" : "text-text-tertiary"}`}>
+                        <label className={`${FIELD_LABEL_UNTONED} ${isSlotChanged(slot.id) ? "text-success" : "text-text-secondary"}`}>
                           {recipeSlotName(recipe, slot, lang)}{slot.required && <span className="text-error ml-0.5">*</span>}
                         </label>
                         {slot.type === "equipment" && slot.list ? (
@@ -663,7 +664,7 @@ export function RecipeInstanceRow({
                             className="w-full px-3 py-1.5 text-small bg-surface border border-border rounded-[6px] text-text placeholder:text-text-tertiary"
                           />
                         )}
-                        <p className="text-micro text-text-tertiary mt-0.5">{recipeSlotDescription(recipe, slot, lang)}</p>
+                        <p className="text-caption text-text-tertiary mt-0.5">{recipeSlotDescription(recipe, slot, lang)}</p>
                         </>
                         )}
                       </div>

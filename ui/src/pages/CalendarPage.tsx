@@ -5,6 +5,7 @@ import { useCalendar } from "../store/useCalendar";
 import { useModes } from "../store/useModes";
 import type { CalendarSlot, CalendarModeAction } from "../types";
 import { useWsSubscription } from "../hooks/useWsSubscription";
+import { FIELD_LABEL } from "../components/ui/text-roles";
 
 export function CalendarPage() {
   useWsSubscription(["calendar", "modes"]);
@@ -220,7 +221,7 @@ function SlotRow({
     <div className="flex items-center gap-3 px-3 py-2.5 bg-background rounded-[6px] border border-border">
       <Clock size={14} strokeWidth={1.5} className="text-accent flex-shrink-0" />
       <div className="flex-1 min-w-0">
-        <div className="text-small font-medium text-text font-mono">{slot.time}</div>
+        <div className="text-small font-medium text-text tabular-nums">{slot.time}</div>
         <div className="text-micro text-text-tertiary truncate">
           {daysStr}
           {onModes.length > 0 && (
@@ -328,7 +329,7 @@ function SlotForm({
     <div className="bg-border-light/20 border border-border-light rounded-[6px] p-3 space-y-3">
       {/* Days */}
       <div>
-        <label className="block text-micro text-text-tertiary uppercase tracking-widest mb-1.5">
+        <label className={FIELD_LABEL}>
           {t("calendar.days")}
         </label>
         <div className="flex gap-1">
@@ -350,20 +351,20 @@ function SlotForm({
 
       {/* Time */}
       <div>
-        <label className="block text-micro text-text-tertiary uppercase tracking-widest mb-1.5">
+        <label className={FIELD_LABEL}>
           {t("calendar.time")}
         </label>
         <input
           type="time"
           value={time}
           onChange={(e) => setTime(e.target.value)}
-          className="px-3 py-1.5 text-small bg-surface border border-border rounded-[6px] text-text font-mono"
+          className="px-3 py-1.5 text-small bg-surface border border-border rounded-[6px] text-text tabular-nums"
         />
       </div>
 
       {/* Modes — tri-state: click cycles null → on → off → null */}
       <div>
-        <label className="block text-micro text-text-tertiary uppercase tracking-widest mb-1.5">
+        <label className={FIELD_LABEL}>
           {t("modes.title")}
         </label>
         <div className="flex flex-wrap gap-1.5">
@@ -391,9 +392,9 @@ function SlotForm({
           })}
         </div>
         {modes.length === 0 && (
-          <p className="text-micro text-text-tertiary">{t("calendar.noModesAvailable")}</p>
+          <p className="text-caption text-text-tertiary">{t("calendar.noModesAvailable")}</p>
         )}
-        <p className="text-micro text-text-tertiary mt-1">{t("calendar.modeActionHint")}</p>
+        <p className="text-caption text-text-tertiary mt-1">{t("calendar.modeActionHint")}</p>
       </div>
 
       {/* Actions */}

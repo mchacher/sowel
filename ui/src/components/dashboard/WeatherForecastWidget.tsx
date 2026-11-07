@@ -89,12 +89,12 @@ export function WeatherForecastWidget({
                 exception to pr3-zero (spec 196, Edge Cases), a forecast has no tenth. */}
             <div className="flex items-baseline gap-1">
               {tomorrow.tempMax !== null && (
-                <span className="text-title sm:text-display font-semibold font-mono text-text tabular-nums leading-none">
+                <span className="text-title sm:text-display font-semibold text-text tabular-nums leading-none">
                   {formatNumber(tomorrow.tempMax, { decimals: 0 })}°
                 </span>
               )}
               {tomorrow.tempMin !== null && (
-                <span className="text-caption sm:text-body font-mono text-text-tertiary tabular-nums ml-1">
+                <span className="text-caption sm:text-body text-text-tertiary tabular-nums ml-1">
                   {formatNumber(tomorrow.tempMin, { decimals: 0 })}°
                 </span>
               )}
@@ -110,7 +110,7 @@ export function WeatherForecastWidget({
               {tomorrow.rainProb !== null && (
                 <div className="flex items-center gap-0.5">
                   <Droplets size={10} strokeWidth={1.5} className="text-primary" />
-                  <span className="text-micro sm:text-caption text-text-secondary font-mono tabular-nums">
+                  <span className="text-micro sm:text-caption text-text-secondary tabular-nums">
                     {formatPercent(tomorrow.rainProb)}
                   </span>
                 </div>
@@ -118,7 +118,7 @@ export function WeatherForecastWidget({
               {tomorrow.windGusts !== null && (
                 <div className="flex items-center gap-0.5">
                   <Wind size={10} strokeWidth={1.5} className="text-text-tertiary" />
-                  <span className="text-micro sm:text-caption text-text-secondary font-mono tabular-nums">
+                  <span className="text-micro sm:text-caption text-text-secondary tabular-nums">
                     {formatWithUnit(tomorrow.windGusts, "km/h")}
                   </span>
                 </div>

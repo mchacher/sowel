@@ -235,7 +235,7 @@ function StatusBadge({ status }: { status: string }) {
 function InfoItem({ label, value, mono }: { label: string; value: React.ReactNode; mono?: boolean }) {
   return (
     <div className="flex flex-col gap-0.5 min-w-[120px]">
-      <span className="text-micro font-medium text-text-tertiary uppercase tracking-widest">
+      <span className="text-caption text-text-tertiary">
         {label}
       </span>
       <span className={`text-small text-text ${mono ? "font-mono" : ""}`}>
@@ -251,16 +251,16 @@ function OrdersTable({ orders }: { orders: DeviceOrder[] }) {
     <table className="w-full">
       <thead>
         <tr className="border-b border-border">
-          <th className="text-left py-2.5 px-3 text-caption font-medium text-text-secondary uppercase tracking-widest">
+          <th className="text-left py-2.5 px-3 text-caption font-semibold uppercase tracking-[0.04em] text-text-tertiary">
             {t("devices.col.key")}
           </th>
-          <th className="text-left py-2.5 px-3 text-caption font-medium text-text-secondary uppercase tracking-widest">
+          <th className="text-left py-2.5 px-3 text-caption font-semibold uppercase tracking-[0.04em] text-text-tertiary">
             {t("common.type")}
           </th>
-          <th className="text-left py-2.5 px-3 text-caption font-medium text-text-secondary uppercase tracking-widest">
+          <th className="text-left py-2.5 px-3 text-caption font-semibold uppercase tracking-[0.04em] text-text-tertiary">
             {t("devices.col.range")}
           </th>
-          <th className="text-left py-2.5 px-3 text-caption font-medium text-text-secondary uppercase tracking-widest">
+          <th className="text-left py-2.5 px-3 text-caption font-semibold uppercase tracking-[0.04em] text-text-tertiary">
             {t("devices.col.category")}
           </th>
         </tr>
@@ -313,7 +313,7 @@ function OrderRange({ order }: { order: DeviceOrder }) {
 
   if (order.min !== undefined || order.max !== undefined) {
     return (
-      <span className="font-mono text-caption text-text-secondary">
+      <span className="tabular-nums text-caption text-text-secondary">
         {order.min ?? "—"} … {order.max ?? "—"}
         {order.unit ? ` ${order.unit}` : ""}
       </span>

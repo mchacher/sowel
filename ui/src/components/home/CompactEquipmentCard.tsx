@@ -261,7 +261,7 @@ export function CompactEquipmentCard({ equipment, onExecuteOrder, zoneName }: Co
         {isSolar && (
           <span className="flex items-baseline gap-1 flex-shrink-0">
             <span
-              className={`text-small font-semibold tabular-nums font-mono ${
+              className={`text-small font-semibold tabular-nums ${
                 solarPowerW === null ? "text-text-tertiary" : "text-success"
               }`}
             >
@@ -301,12 +301,12 @@ export function CompactEquipmentCard({ equipment, onExecuteOrder, zoneName }: Co
         {(isLight || isSwitch || isWaterHeater) && equipment.enabled && (
           <div className="flex items-center gap-2 flex-shrink-0">
             {waterHeaterTempC !== null && (
-              <span className="text-small font-semibold text-text-secondary tabular-nums font-mono">
+              <span className="text-small font-semibold text-text-secondary tabular-nums">
                 {formatTemperature(waterHeaterTempC, { style: "compact" })}
               </span>
             )}
             {switchPowerW !== null && (
-              <span className="text-small font-semibold text-accent tabular-nums font-mono">
+              <span className="text-small font-semibold text-accent tabular-nums">
                 {formatPower(switchPowerW)}
               </span>
             )}
@@ -314,7 +314,7 @@ export function CompactEquipmentCard({ equipment, onExecuteOrder, zoneName }: Co
                 is needed to say the number is gone on purpose (#839). */}
             {switchPowerStale && (
               <span className="flex items-baseline gap-1">
-                <span className="text-small font-medium text-text-tertiary tabular-nums font-mono">
+                <span className="text-small font-medium text-text-tertiary tabular-nums">
                   —
                 </span>
                 <span className="text-micro text-text-tertiary">
@@ -323,7 +323,7 @@ export function CompactEquipmentCard({ equipment, onExecuteOrder, zoneName }: Co
               </span>
             )}
             {waterHeaterDayWh !== null && (
-              <span className="text-small text-accent tabular-nums font-mono font-semibold">
+              <span className="text-small text-accent tabular-nums font-semibold">
                 {formatEnergyParts(waterHeaterDayWh / 1000, { unit: "auto" }).value}
                 <span className="text-micro font-normal text-text-tertiary ml-0.5">
                   {formatEnergyParts(waterHeaterDayWh / 1000, { unit: "auto" }).unit}
@@ -515,7 +515,7 @@ function CompactForecast({ equipment }: { equipment: EquipmentWithDetails }) {
           <div key={day.dayIndex} className="flex items-center gap-0.5">
             <ConditionIcon size={14} strokeWidth={1.5} className={color} />
             {day.tempMax !== null && (
-              <span className="text-micro font-mono tabular-nums text-text-secondary">
+              <span className="text-micro tabular-nums text-text-secondary">
                 {formatNumber(day.tempMax, { decimals: 0 })}°
               </span>
             )}
@@ -546,7 +546,7 @@ function CompactEnergyValues({ equipment }: { equipment: EquipmentWithDetails })
   return (
     <div className="flex items-center gap-3 flex-shrink-0">
       {liveW !== null && (
-        <span className={`text-small font-semibold ${powerColor} tabular-nums font-mono`}>
+        <span className={`text-small font-semibold ${powerColor} tabular-nums`}>
           {formatWatts(liveW).value}
           <span className="text-micro font-normal text-text-tertiary ml-0.5">
             {formatWatts(liveW).unit}
@@ -554,7 +554,7 @@ function CompactEnergyValues({ equipment }: { equipment: EquipmentWithDetails })
         </span>
       )}
       {liveReading.verdict === "stale" && (
-        <span className="text-small font-medium text-text-tertiary tabular-nums font-mono">
+        <span className="text-small font-medium text-text-tertiary tabular-nums">
           —
           <span className="text-micro font-normal ml-1">
             {formatRelative(liveReading.since, t)}
@@ -562,7 +562,7 @@ function CompactEnergyValues({ equipment }: { equipment: EquipmentWithDetails })
         </span>
       )}
       {dayWh !== null && (
-        <span className={`text-small ${valueColor} tabular-nums font-mono font-semibold`}>
+        <span className={`text-small ${valueColor} tabular-nums font-semibold`}>
           {formatEnergyParts(dayWh / 1000, { unit: "auto" }).value}
           <span className="text-micro font-normal text-text-tertiary ml-0.5">
             {formatEnergyParts(dayWh / 1000, { unit: "auto" }).unit}
@@ -618,7 +618,7 @@ function PoolPumpRuntime({ equipment }: { equipment: EquipmentWithDetails }) {
   if (seconds === 0) return null;
   const runtimeStr = formatDuration(seconds);
   return (
-    <span className="text-micro text-text-tertiary tabular-nums font-mono flex-shrink-0">
+    <span className="text-micro text-text-tertiary tabular-nums flex-shrink-0">
       {runtimeStr}
     </span>
   );
@@ -644,7 +644,7 @@ function CompactElectricVehicle({ equipment }: { equipment: EquipmentWithDetails
         <span className="text-micro text-text-secondary tabular-nums">{formatWithUnit(s.rangeKm, "km")}</span>
       )}
       {s.batteryLevel !== null && (
-        <span className="text-small font-semibold text-text tabular-nums font-mono">
+        <span className="text-small font-semibold text-text tabular-nums">
           {formatPercent(s.batteryLevel)}
         </span>
       )}
@@ -675,7 +675,7 @@ function CompactEvCharger({
     <div className="flex items-center gap-2 flex-shrink-0">
       <EvVehicleBadge vehicle={s.vehicle} />
       {watts !== null && watts > 0 && (
-        <span className="text-small font-semibold text-accent tabular-nums font-mono">
+        <span className="text-small font-semibold text-accent tabular-nums">
           {formatPower(watts)}
         </span>
       )}

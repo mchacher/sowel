@@ -191,7 +191,8 @@ Every integration plugin runs with scoped Proxies on its `PluginDeps` (`src/plug
 
 ## Design system
 
-- **Fonts**: Inter (body), JetBrains Mono (values, logs)
+- **Fonts**: Inter (body and numbers, with `tabular-nums`), JetBrains Mono (logs, JSON, ids, versions, code only)
+- **Labels**: sentence case; uppercase only in table column headers (lint)
 - **Primary**: `#1A4F6E` (ocean blue), hover `#144159`, light `#EEF5F8`
 - **Accent**: `#F2C035` (amber), hover `#D4A41C`
 - **Spacing**: 4px base; radii 6px / 8px / 12px (`--radius-sm/md/lg`)

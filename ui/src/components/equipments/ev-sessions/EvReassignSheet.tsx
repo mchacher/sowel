@@ -137,11 +137,11 @@ export function EvReassignSheet({
               {session.endedAt
                 ? timeLabel(session.endedAt, locale)
                 : t("equipments.evSessions.inProgress")}{" "}
-              · <span className="font-mono">{energyLabel(session.energyWh, locale)}</span>
+              · <span className="tabular-nums">{energyLabel(session.energyWh, locale)}</span>
               {session.costEur !== null && (
                 <>
                   {" "}
-                  · <span className="font-mono">{formatEur(session.costEur, locale)}</span>
+                  · <span className="tabular-nums">{formatEur(session.costEur, locale)}</span>
                 </>
               )}
               {session.solarWh > 0 &&

@@ -269,7 +269,7 @@ export function TimedCommandPanel({
                         : "border-border bg-surface text-text-tertiary hover:border-primary/30"
                     }`}
                   >
-                    {on && <span className="font-mono mr-1">{rung}.</span>}
+                    {on && <span className="tabular-nums mr-1">{rung}.</span>}
                     {t("equipments.timed.minutes", { count: Math.round(ms / 60_000) })}
                   </button>
                 );
