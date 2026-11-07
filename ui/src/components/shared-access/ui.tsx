@@ -12,18 +12,18 @@ import { FIELD_LABEL } from "../ui/text-roles";
 // ============================================================
 
 export const inputCls =
-  "px-3 py-2 text-body bg-background border border-border rounded-[6px] text-text placeholder:text-text-tertiary focus:outline-none focus:border-primary disabled:opacity-50";
+  "px-3 py-2 text-body bg-background border border-border rounded-sm text-text placeholder:text-text-tertiary focus:outline-none focus:border-primary disabled:opacity-50";
 export const inputBadCls =
-  "px-3 py-2 text-body bg-background border border-error rounded-[6px] text-text placeholder:text-text-tertiary focus:outline-none";
+  "px-3 py-2 text-body bg-background border border-error rounded-sm text-text placeholder:text-text-tertiary focus:outline-none";
 export const labelCls = FIELD_LABEL;
 export const btnPrimary =
-  "px-4 py-2 text-small font-medium bg-primary-fill text-white rounded-[6px] hover:bg-primary-fill-hover transition-colors disabled:opacity-50 cursor-pointer disabled:cursor-default";
+  "px-4 py-2 text-small font-medium bg-primary-fill text-white rounded-sm hover:bg-primary-fill-hover transition-colors disabled:opacity-50 cursor-pointer disabled:cursor-default";
 export const btnSecondary =
-  "px-3 py-2 text-small font-medium text-text-secondary border border-border rounded-[6px] hover:bg-border-light transition-colors disabled:opacity-50 cursor-pointer disabled:cursor-default";
+  "px-3 py-2 text-small font-medium text-text-secondary border border-border rounded-sm hover:bg-border-light transition-colors disabled:opacity-50 cursor-pointer disabled:cursor-default";
 export const btnDanger =
-  "px-3 py-2 text-small font-medium text-error border border-error/40 rounded-[6px] hover:bg-error/10 transition-colors disabled:opacity-50 cursor-pointer disabled:cursor-default";
+  "px-3 py-2 text-small font-medium text-error border border-error/40 rounded-sm hover:bg-error/10 transition-colors disabled:opacity-50 cursor-pointer disabled:cursor-default";
 export const iconBtn =
-  "p-1.5 rounded-[6px] text-text-tertiary hover:text-text hover:bg-border-light transition-colors disabled:opacity-40 cursor-pointer disabled:cursor-default";
+  "p-1.5 rounded-sm text-text-tertiary hover:text-text hover:bg-border-light transition-colors disabled:opacity-40 cursor-pointer disabled:cursor-default";
 
 /** A server refusal code (`{ error }` of a 4xx), in words. */
 export function useRefusalText(): (code: string) => string {
@@ -44,7 +44,7 @@ export function errorCode(err: unknown): string {
 /** A refusal shown next to the control it is about. */
 export function Refusal({ children }: { children: ReactNode }) {
   return (
-    <p role="alert" className="text-caption text-error bg-error/10 rounded-[6px] px-2.5 py-1.5 mt-2">
+    <p role="alert" className="text-caption text-error bg-error/10 rounded-sm px-2.5 py-1.5 mt-2">
       {children}
     </p>
   );
@@ -88,7 +88,7 @@ export function Dialog({
         role="dialog"
         aria-modal="true"
         aria-label={title}
-        className={`m-auto bg-surface rounded-[14px] border border-border p-4 sm:p-6 w-full ${
+        className={`m-auto bg-surface rounded-lg p-4 sm:p-6 w-full shadow-lg ${
           wide ? "max-w-[640px]" : "max-w-md"
         }`}
         onClick={(e) => e.stopPropagation()}
@@ -127,7 +127,7 @@ export function Segmented<T extends string>({
   disabled?: boolean;
 }) {
   return (
-    <div className="inline-flex border border-border rounded-[6px] overflow-hidden">
+    <div className="inline-flex border border-border rounded-sm overflow-hidden">
       {options.map((o, i) => (
         <button
           key={o.value}

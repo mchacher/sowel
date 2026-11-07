@@ -94,7 +94,7 @@ export function CalendarPage() {
 
       <div className="max-w-[720px] space-y-6">
         {/* Profile selector */}
-        <section className="bg-surface rounded-[10px] border border-border p-5">
+        <section className="card p-5">
           <h2 className="text-body font-semibold text-text mb-4 flex items-center gap-2">
             <Calendar size={16} strokeWidth={1.5} className="text-primary" />
             {t("calendar.profiles")}
@@ -105,7 +105,7 @@ export function CalendarPage() {
               <button
                 key={profile.id}
                 onClick={() => handleProfileChange(profile.id)}
-                className={`px-4 py-2 text-small font-medium rounded-[6px] transition-colors duration-150 ${
+                className={`px-4 py-2 text-small font-medium rounded-sm transition-colors duration-150 ${
                   selectedProfileId === profile.id
                     ? "bg-primary-fill text-white"
                     : "bg-border-light text-text-secondary hover:bg-border"
@@ -131,7 +131,7 @@ export function CalendarPage() {
 
         {/* Slots */}
         {selectedProfileId && (
-          <section className="bg-surface rounded-[10px] border border-border p-5">
+          <section className="card p-5">
             <div className="flex items-center justify-between mb-4">
               <h2 className="text-body font-semibold text-text flex items-center gap-2">
                 <Clock size={16} strokeWidth={1.5} className="text-text-tertiary" />
@@ -139,7 +139,7 @@ export function CalendarPage() {
               </h2>
               <button
                 onClick={() => { setShowAddSlot(!showAddSlot); setEditingSlotId(null); }}
-                className="p-1.5 rounded-[4px] text-text-tertiary hover:text-primary hover:bg-primary/5 transition-colors duration-150"
+                className="p-1.5 rounded-sm text-text-tertiary hover:text-primary hover:bg-primary/5 transition-colors duration-150"
               >
                 {showAddSlot ? <X size={14} strokeWidth={1.5} /> : <Plus size={14} strokeWidth={1.5} />}
               </button>
@@ -219,7 +219,7 @@ function SlotRow({
     .map((a) => modeNames.find((m) => m.id === a.modeId)?.name ?? a.modeId);
 
   return (
-    <div className="flex items-center gap-3 px-3 py-2.5 bg-background rounded-[6px] border border-border">
+    <div className="flex items-center gap-3 px-3 py-2.5 bg-background rounded-md">
       <Clock size={14} strokeWidth={1.5} className="text-text-tertiary flex-shrink-0" />
       <div className="flex-1 min-w-0">
         <div className="text-small font-medium text-text tabular-nums">{slot.time}</div>
@@ -327,7 +327,7 @@ function SlotForm({
   };
 
   return (
-    <div className="bg-border-light/20 border border-border-light rounded-[6px] p-3 space-y-3">
+    <div className="bg-background rounded-md p-3 space-y-3">
       {/* Days */}
       <div>
         <label className={FIELD_LABEL}>
@@ -338,7 +338,7 @@ function SlotForm({
             <button
               key={day.index}
               onClick={() => toggleDay(day.index)}
-              className={`px-2.5 py-1 text-micro font-medium rounded-[4px] transition-colors duration-150 ${
+              className={`px-2.5 py-1 text-micro font-medium rounded-sm transition-colors duration-150 ${
                 days.includes(day.index)
                   ? "bg-primary-fill text-white"
                   : "bg-border-light text-text-tertiary hover:bg-border"
@@ -359,7 +359,7 @@ function SlotForm({
           type="time"
           value={time}
           onChange={(e) => setTime(e.target.value)}
-          className="px-3 py-1.5 text-small bg-surface border border-border rounded-[6px] text-text tabular-nums"
+          className="px-3 py-1.5 text-small bg-surface rounded-sm text-text tabular-nums shadow-lg"
         />
       </div>
 
@@ -375,7 +375,7 @@ function SlotForm({
               <button
                 key={mode.id}
                 onClick={() => cycleMode(mode.id)}
-                className={`inline-flex items-center gap-1 px-2.5 py-1 text-micro font-medium rounded-[4px] transition-colors duration-150 ${
+                className={`inline-flex items-center gap-1 px-2.5 py-1 text-micro font-medium rounded-sm transition-colors duration-150 ${
                   state === "on"
                     ? "bg-success text-on-status"
                     : state === "off"
@@ -403,13 +403,13 @@ function SlotForm({
         <button
           onClick={handleSubmit}
           disabled={days.length === 0 || !time || !hasModeActions || saving}
-          className="px-3 py-1.5 bg-primary-fill text-white text-caption font-medium rounded-[6px] hover:bg-primary-fill-hover transition-colors duration-150 disabled:opacity-50"
+          className="px-3 py-1.5 bg-primary-fill text-white text-caption font-medium rounded-sm hover:bg-primary-fill-hover transition-colors duration-150 disabled:opacity-50"
         >
           {submitLabel}
         </button>
         <button
           onClick={onCancel}
-          className="px-3 py-1.5 bg-border-light text-text-secondary text-caption font-medium rounded-[6px] hover:bg-border transition-colors duration-150"
+          className="px-3 py-1.5 bg-border-light text-text-secondary text-caption font-medium rounded-sm hover:bg-border transition-colors duration-150"
         >
           {t("common.cancel")}
         </button>

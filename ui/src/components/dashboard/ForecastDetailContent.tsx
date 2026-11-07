@@ -85,7 +85,7 @@ function ForecastDayColumn({ day, locale }: { day: ForecastDay; locale: string }
     : undefined;
 
   return (
-    <div className="flex-1 min-w-0 flex flex-col items-center gap-1.5 rounded-[10px] border border-border bg-surface px-1 py-2.5 sm:px-3 sm:py-4">
+    <div className="flex-1 min-w-0 flex flex-col items-center gap-1.5 rounded-md bg-background px-1 py-2.5 sm:px-3 sm:py-4">
       <span className="text-micro sm:text-small font-semibold text-text truncate max-w-full">
         <span className="sm:hidden">{shortName}</span>
         <span className="hidden sm:inline">{longName}</span>

@@ -69,7 +69,7 @@ export function MultiSelectChips({
                 : [...selected, o.value];
               onChange(next.join(","));
             }}
-            className={`px-3 py-1.5 text-caption font-medium rounded-[6px] border transition-colors duration-150 ${
+            className={`px-3 py-1.5 text-caption font-medium rounded-sm border transition-colors duration-150 ${
               on
                 ? "bg-primary-fill border-primary-fill text-white"
                 : "bg-surface border-border text-text-secondary hover:border-primary"
@@ -208,7 +208,7 @@ export function DurationInput({
           }
         }}
         placeholder={placeholder ?? "10"}
-        className="flex-1 px-3 py-1.5 text-small bg-surface border border-border rounded-[6px] text-text placeholder:text-text-tertiary"
+        className="flex-1 px-3 py-1.5 text-small bg-surface rounded-sm text-text placeholder:text-text-tertiary shadow-lg"
       />
       <span className="text-caption text-text-tertiary font-medium">{t("time.min")}</span>
     </div>
@@ -234,7 +234,7 @@ export function TimeInput({
       value={value ?? ""}
       onChange={(e) => onChange(e.target.value)}
       placeholder={placeholder ?? "08:00"}
-      className="w-full px-3 py-1.5 text-small bg-surface border border-border rounded-[6px] text-text"
+      className="w-full px-3 py-1.5 text-small bg-surface rounded-sm text-text shadow-lg"
     />
   );
 }
@@ -293,7 +293,7 @@ export function SingleEquipmentZonePicker({
           // Otherwise clear the equipment if it no longer belongs to the zone.
           else if (selectedEq && selectedEq.zoneId !== zid) onChange("");
         }}
-        className="flex-1 px-3 py-1.5 text-small bg-surface border border-border rounded-[6px] text-text"
+        className="flex-1 px-3 py-1.5 text-small bg-surface rounded-sm text-text shadow-lg"
       >
         <option value="">Zone…</option>
         {zonesWithOptions.map((z) => (
@@ -306,7 +306,7 @@ export function SingleEquipmentZonePicker({
         value={value}
         onChange={(e) => onChange(e.target.value)}
         disabled={!pickerZoneId}
-        className="flex-1 px-3 py-1.5 text-small bg-surface border border-border rounded-[6px] text-text disabled:opacity-40"
+        className="flex-1 px-3 py-1.5 text-small bg-surface rounded-sm text-text disabled:opacity-40 shadow-lg"
       >
         <option value="">{t("common.select")}</option>
         {pickerOptions.map((eq) => (
@@ -379,7 +379,7 @@ export function EquipmentListPicker({
         const eq = equipments.find((e) => e.id === id);
         const zone = eq ? zones.find((z) => z.id === eq.zoneId) : null;
         return (
-          <div key={id} className="flex items-center gap-2 px-2 py-1 mb-1 text-small bg-surface border border-border rounded-[6px]">
+          <div key={id} className="flex items-center gap-2 px-2 py-1 mb-1 text-small bg-surface rounded-sm shadow-lg">
             {zone && <span className="min-w-0 text-micro text-text-tertiary truncate">{zone.label}</span>}
             <span className="flex-1 min-w-0 text-text truncate">{eq?.name ?? id}</span>
             <button type="button" onClick={() => handleRemove(id)} className="p-0.5 text-text-tertiary hover:text-error transition-colors">
@@ -406,7 +406,7 @@ export function EquipmentListPicker({
                 setPickerZoneId(zid);
               }
             }}
-            className="flex-1 px-2 py-1 text-small bg-surface border border-border rounded-[6px] text-text"
+            className="flex-1 px-2 py-1 text-small bg-surface rounded-sm text-text shadow-lg"
           >
             <option value="">Zone…</option>
             {zonesWithOptions.map((z) => (
@@ -425,7 +425,7 @@ export function EquipmentListPicker({
               }
             }}
             disabled={!pickerZoneId}
-            className="flex-1 px-2 py-1 text-small bg-surface border border-border rounded-[6px] text-text disabled:opacity-40"
+            className="flex-1 px-2 py-1 text-small bg-surface rounded-sm text-text disabled:opacity-40 shadow-lg"
           >
             <option value="">{t("common.select")}</option>
             {pickerOptions.map((eq) => (
@@ -467,7 +467,7 @@ export function EquipmentCheckboxList({
         return (
           <label
             key={eq.id}
-            className="flex items-center gap-2 px-3 py-1.5 text-small bg-surface border border-border rounded-[6px] text-text cursor-pointer hover:bg-border-light/30 transition-colors duration-150"
+            className="flex items-center gap-2 px-3 py-1.5 text-small bg-surface rounded-sm text-text cursor-pointer hover:bg-border-light/30 transition-colors duration-150 shadow-lg"
           >
             <input
               type="checkbox"

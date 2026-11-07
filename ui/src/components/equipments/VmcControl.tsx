@@ -71,7 +71,7 @@ export function VmcControl({ equipment, onExecuteOrder, compact }: VmcControlPro
               aria-pressed={active}
               title={label}
               className={`
-                px-2.5 py-1.5 rounded-[6px] text-caption font-medium transition-colors duration-150 cursor-pointer
+                px-2.5 py-1.5 rounded-sm text-caption font-medium transition-colors duration-150 cursor-pointer
                 ${
                   active
                     ? "bg-primary-fill text-white hover:bg-primary-fill-hover"
@@ -91,7 +91,7 @@ export function VmcControl({ equipment, onExecuteOrder, compact }: VmcControlPro
   return (
     // Detail page: a grouped segmented control (neutral track, small pills).
     <div
-      className="inline-flex items-center gap-0.5 rounded-lg bg-border-light p-0.5 mt-1"
+      className="inline-flex items-center gap-0.5 rounded-sm bg-border-light p-0.5 mt-1"
       onClick={(e) => e.stopPropagation()}
     >
       {options.map(({ speed, label }) => {
@@ -104,7 +104,7 @@ export function VmcControl({ equipment, onExecuteOrder, compact }: VmcControlPro
             disabled={!!executing}
             aria-pressed={active}
             className={`
-              min-w-[42px] px-3 py-1 rounded-md text-small font-medium
+              min-w-[42px] px-3 py-1 rounded-sm text-small font-medium
               flex items-center justify-center transition-colors
               ${active ? "bg-primary-fill text-white shadow-sm" : "text-text-secondary hover:text-primary"}
               ${executing ? "opacity-60" : ""}

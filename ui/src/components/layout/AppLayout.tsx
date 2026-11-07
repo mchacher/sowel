@@ -339,7 +339,7 @@ function MobileTopbarBurger() {
     return (
       <button
         onClick={onClick}
-        className="lg:hidden w-10 h-10 -ml-2 flex items-center justify-center rounded-[6px] text-text-secondary hover:bg-border-light/60 transition-colors duration-150"
+        className="lg:hidden w-10 h-10 -ml-2 flex items-center justify-center rounded-sm text-text-secondary hover:bg-border-light/60 transition-colors duration-150"
         aria-label={label}
       >
         <Menu size={20} strokeWidth={1.7} />
@@ -351,7 +351,7 @@ function MobileTopbarBurger() {
   return (
     <NavLink
       to="/home"
-      className="lg:hidden w-10 h-10 -ml-2 flex items-center justify-center rounded-[6px] hover:bg-border-light/60 transition-colors duration-150"
+      className="lg:hidden w-10 h-10 -ml-2 flex items-center justify-center rounded-sm hover:bg-border-light/60 transition-colors duration-150"
       aria-label="Sowel"
     >
       <SowelLogo size={24} />
@@ -366,7 +366,7 @@ function HomeNameSkeleton() {
     <span
       aria-hidden="true"
       data-testid="home-name-skeleton"
-      className="inline-block align-middle w-24 h-3.5 rounded-[4px] bg-border-light"
+      className="inline-block align-middle w-24 h-3.5 rounded-sm bg-border-light"
     />
   );
 }
@@ -501,7 +501,7 @@ function MobileNav({
           />
           <button
             onClick={() => setDrawerOpen(true)}
-            className="flex flex-col items-center justify-center py-1 px-3 rounded-[6px] text-micro font-medium text-text-secondary"
+            className="flex flex-col items-center justify-center py-1 px-3 rounded-sm text-micro font-medium text-text-secondary"
           >
             <span className="mb-0.5">
               <Menu size={18} strokeWidth={1.5} />
@@ -541,7 +541,7 @@ function MobileDrawer({ onClose }: { onClose: () => void }) {
       {/* Backdrop */}
       <div className="absolute inset-0 bg-black/40" onClick={onClose} />
       {/* Drawer panel — slides up from bottom */}
-      <div className="absolute bottom-0 left-0 right-0 bg-surface rounded-t-[14px] max-h-[85vh] overflow-y-auto animate-slide-up">
+      <div className="absolute bottom-0 left-0 right-0 bg-surface rounded-t-lg max-h-[85vh] overflow-y-auto animate-slide-up">
         {/* Handle bar */}
         <div className="flex justify-center pt-3 pb-1">
           <div className="w-10 h-1 rounded-full bg-border" />
@@ -553,7 +553,7 @@ function MobileDrawer({ onClose }: { onClose: () => void }) {
           </span>
           <button
             onClick={onClose}
-            className="p-1.5 rounded-[6px] text-text-tertiary hover:bg-border-light"
+            className="p-1.5 rounded-sm text-text-tertiary hover:bg-border-light"
           >
             <X size={18} strokeWidth={1.5} />
           </button>
@@ -636,7 +636,7 @@ function MobileDrawer({ onClose }: { onClose: () => void }) {
                   <User size={16} strokeWidth={1.5} />
                   <span className="text-small font-medium">{user.displayName}</span>
                   {user.role === "admin" && (
-                    <span className="text-micro bg-primary/10 text-primary px-1.5 py-0.5 rounded font-medium">
+                    <span className="text-micro bg-primary/10 text-primary px-1.5 py-0.5 rounded-sm font-medium">
                       {t("auth.admin")}
                     </span>
                   )}
@@ -646,7 +646,7 @@ function MobileDrawer({ onClose }: { onClose: () => void }) {
                     logout();
                     onClose();
                   }}
-                  className="flex items-center gap-1.5 px-3 py-1.5 rounded-[6px] text-text-tertiary hover:bg-border-light text-caption"
+                  className="flex items-center gap-1.5 px-3 py-1.5 rounded-sm text-text-tertiary hover:bg-border-light text-caption"
                 >
                   <LogOut size={14} strokeWidth={1.5} />
                   {t("auth.logout")}
@@ -680,7 +680,7 @@ function DrawerLink({
   return (
     <button
       onClick={onClick}
-      className="flex items-center gap-3 w-full px-3 py-2.5 rounded-[10px] text-text hover:bg-border-light transition-colors duration-150 text-left"
+      className="flex items-center gap-3 w-full px-3 py-2.5 rounded-md text-text hover:bg-border-light transition-colors duration-150 text-left"
     >
       <span className="text-text-secondary">{icon}</span>
       <span className="text-body font-medium flex-1">{label}</span>
@@ -695,7 +695,7 @@ function MobileNavLink({ to, label, icon }: { to: string; label: string; icon?: 
     <NavLink
       to={to}
       className={({ isActive }) =>
-        `flex flex-col items-center justify-center py-1 px-3 rounded-[6px] text-micro font-medium ${
+        `flex flex-col items-center justify-center py-1 px-3 rounded-sm text-micro font-medium ${
           isActive ? "text-primary" : "text-text-secondary"
         }`
       }

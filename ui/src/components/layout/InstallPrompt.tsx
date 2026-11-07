@@ -19,13 +19,13 @@ export function InstallPrompt() {
       <div className="flex items-center gap-2 shrink-0">
         <button
           onClick={() => setDismissed(true)}
-          className="text-caption text-text-secondary hover:text-text px-2 py-1 rounded-[6px] hover:bg-border-light transition-colors cursor-pointer"
+          className="text-caption text-text-secondary hover:text-text px-2 py-1 rounded-sm hover:bg-border-light transition-colors cursor-pointer"
         >
           {t("app.notNow")}
         </button>
         <button
           onClick={install}
-          className="text-caption font-medium text-white bg-primary-fill hover:bg-primary-fill-hover px-3 py-1.5 rounded-[6px] transition-colors cursor-pointer"
+          className="text-caption font-medium text-white bg-primary-fill hover:bg-primary-fill-hover px-3 py-1.5 rounded-sm transition-colors cursor-pointer"
         >
           {t("app.install")}
         </button>

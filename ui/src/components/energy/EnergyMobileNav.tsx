@@ -40,7 +40,7 @@ export function EnergyMobileNav() {
               <button
                 key={item.to}
                 onClick={() => { navigate(item.to); close(); }}
-                className={`flex items-center gap-3 w-full px-3 py-3 rounded-[10px] transition-colors duration-150 text-left ${
+                className={`flex items-center gap-3 w-full px-3 py-3 rounded-md transition-colors duration-150 text-left ${
                   active ? "bg-primary-light text-primary" : "text-text hover:bg-border-light"
                 }`}
               >

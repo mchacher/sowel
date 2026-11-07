@@ -274,7 +274,7 @@ function ZoneLightsWidget({
         <button
           onClick={() => onCommand("allLightsOn")}
           disabled={commandLoading !== null}
-          className="w-10 h-10 flex items-center justify-center rounded-[6px] transition-all duration-150 cursor-pointer border border-border bg-surface text-text-secondary hover:border-primary/40 hover:text-primary hover:bg-primary/5 active:scale-[0.97] disabled:opacity-40 disabled:cursor-not-allowed"
+          className="w-10 h-10 flex items-center justify-center rounded-sm transition-all duration-150 cursor-pointer bg-surface text-text-secondary hover:border-primary/40 hover:text-primary hover:bg-primary/5 active:scale-[0.97] disabled:opacity-40 disabled:cursor-not-allowed shadow-lg"
           title={t("zones.commands.allLightsOn")}
         >
           {commandLoading === "allLightsOn" ? <Loader2 size={16} className="animate-spin" /> : <Lightbulb size={16} strokeWidth={1.5} />}
@@ -282,7 +282,7 @@ function ZoneLightsWidget({
         <button
           onClick={() => onCommand("allLightsOff")}
           disabled={commandLoading !== null}
-          className="w-10 h-10 flex items-center justify-center rounded-[6px] transition-all duration-150 cursor-pointer border border-border bg-surface text-text-secondary hover:border-text-tertiary hover:text-text hover:bg-border-light active:scale-[0.97] disabled:opacity-40 disabled:cursor-not-allowed"
+          className="w-10 h-10 flex items-center justify-center rounded-sm transition-all duration-150 cursor-pointer bg-surface text-text-secondary hover:border-text-tertiary hover:text-text hover:bg-border-light active:scale-[0.97] disabled:opacity-40 disabled:cursor-not-allowed shadow-lg"
           title={t("zones.commands.allLightsOff")}
         >
           {commandLoading === "allLightsOff" ? <Loader2 size={16} className="animate-spin" /> : <LightbulbOff size={16} strokeWidth={1.5} />}
@@ -336,9 +336,9 @@ function ZoneShutterWidget({
           {avgPosition === null ? (
             <span className="text-lead text-text-tertiary">{"\u2014"}</span>
           ) : avgPosition === 100 ? (
-            <span className="text-small font-medium text-text-secondary px-2 py-0.5 rounded bg-border-light">{t("controls.opened")}</span>
+            <span className="text-small font-medium text-text-secondary px-2 py-0.5 rounded-sm bg-border-light">{t("controls.opened")}</span>
           ) : avgPosition === 0 ? (
-            <span className="text-small font-medium text-text-secondary px-2 py-0.5 rounded bg-border-light">{t("controls.closed")}</span>
+            <span className="text-small font-medium text-text-secondary px-2 py-0.5 rounded-sm bg-border-light">{t("controls.closed")}</span>
           ) : (
             <div className="flex items-baseline gap-0.5">
               <span className="text-lead font-semibold text-text tabular-nums leading-none">{avgPosition}</span>
@@ -353,7 +353,7 @@ function ZoneShutterWidget({
         <button
           onClick={() => onCommand("allShuttersOpen")}
           disabled={commandLoading !== null}
-          className="w-10 h-10 flex items-center justify-center rounded-[6px] transition-all duration-150 cursor-pointer border border-border bg-surface text-text-secondary hover:border-primary/40 hover:text-primary hover:bg-primary/5 active:scale-[0.97] disabled:opacity-40 disabled:cursor-not-allowed"
+          className="w-10 h-10 flex items-center justify-center rounded-sm transition-all duration-150 cursor-pointer bg-surface text-text-secondary hover:border-primary/40 hover:text-primary hover:bg-primary/5 active:scale-[0.97] disabled:opacity-40 disabled:cursor-not-allowed shadow-lg"
           title={t("zones.commands.allShuttersOpen")}
         >
           {commandLoading === "allShuttersOpen" ? <Loader2 size={16} className="animate-spin" /> : <ChevronUp size={16} strokeWidth={2} />}
@@ -362,7 +362,7 @@ function ZoneShutterWidget({
           <button
             onClick={() => onCommand("allShuttersStop")}
             disabled={commandLoading !== null}
-            className="w-10 h-10 flex items-center justify-center rounded-[6px] transition-all duration-150 cursor-pointer border border-border bg-surface text-text-secondary hover:border-text-tertiary hover:text-text hover:bg-border-light active:scale-[0.97] disabled:opacity-40 disabled:cursor-not-allowed"
+            className="w-10 h-10 flex items-center justify-center rounded-sm transition-all duration-150 cursor-pointer bg-surface text-text-secondary hover:border-text-tertiary hover:text-text hover:bg-border-light active:scale-[0.97] disabled:opacity-40 disabled:cursor-not-allowed shadow-lg"
             title={t("zones.commands.allShuttersStop")}
           >
             {commandLoading === "allShuttersStop" ? <Loader2 size={16} className="animate-spin" /> : <Square size={11} strokeWidth={2.5} />}
@@ -371,7 +371,7 @@ function ZoneShutterWidget({
         <button
           onClick={() => onCommand("allShuttersClose")}
           disabled={commandLoading !== null}
-          className="w-10 h-10 flex items-center justify-center rounded-[6px] transition-all duration-150 cursor-pointer border border-border bg-surface text-text-secondary hover:border-primary/40 hover:text-primary hover:bg-primary/5 active:scale-[0.97] disabled:opacity-40 disabled:cursor-not-allowed"
+          className="w-10 h-10 flex items-center justify-center rounded-sm transition-all duration-150 cursor-pointer bg-surface text-text-secondary hover:border-primary/40 hover:text-primary hover:bg-primary/5 active:scale-[0.97] disabled:opacity-40 disabled:cursor-not-allowed shadow-lg"
           title={t("zones.commands.allShuttersClose")}
         >
           {commandLoading === "allShuttersClose" ? <Loader2 size={16} className="animate-spin" /> : <ChevronDown size={16} strokeWidth={2} />}
@@ -420,11 +420,11 @@ function ZoneAwningWidget({
           {total === 0 ? (
             <span className="text-lead text-text-tertiary">{"—"}</span>
           ) : deployedCount === total ? (
-            <span className="text-small font-medium text-text-secondary px-2 py-0.5 rounded bg-border-light">
+            <span className="text-small font-medium text-text-secondary px-2 py-0.5 rounded-sm bg-border-light">
               {t("controls.deployed")}
             </span>
           ) : deployedCount === 0 ? (
-            <span className="text-small font-medium text-text-secondary px-2 py-0.5 rounded bg-border-light">
+            <span className="text-small font-medium text-text-secondary px-2 py-0.5 rounded-sm bg-border-light">
               {t("controls.retracted")}
             </span>
           ) : (
@@ -443,7 +443,7 @@ function ZoneAwningWidget({
         <button
           onClick={() => onCommand("allAwningsRetract")}
           disabled={commandLoading !== null}
-          className="w-10 h-10 flex items-center justify-center rounded-[6px] transition-all duration-150 cursor-pointer border border-border bg-surface text-text-secondary hover:border-primary/40 hover:text-primary hover:bg-primary/5 active:scale-[0.97] disabled:opacity-40 disabled:cursor-not-allowed"
+          className="w-10 h-10 flex items-center justify-center rounded-sm transition-all duration-150 cursor-pointer bg-surface text-text-secondary hover:border-primary/40 hover:text-primary hover:bg-primary/5 active:scale-[0.97] disabled:opacity-40 disabled:cursor-not-allowed shadow-lg"
           title={t("zones.commands.allAwningsRetract")}
         >
           {commandLoading === "allAwningsRetract" ? <Loader2 size={16} className="animate-spin" /> : <ChevronUp size={16} strokeWidth={2} />}
@@ -452,7 +452,7 @@ function ZoneAwningWidget({
           <button
             onClick={() => onCommand("allAwningsStop")}
             disabled={commandLoading !== null}
-            className="w-10 h-10 flex items-center justify-center rounded-[6px] transition-all duration-150 cursor-pointer border border-border bg-surface text-text-secondary hover:border-text-tertiary hover:text-text hover:bg-border-light active:scale-[0.97] disabled:opacity-40 disabled:cursor-not-allowed"
+            className="w-10 h-10 flex items-center justify-center rounded-sm transition-all duration-150 cursor-pointer bg-surface text-text-secondary hover:border-text-tertiary hover:text-text hover:bg-border-light active:scale-[0.97] disabled:opacity-40 disabled:cursor-not-allowed shadow-lg"
             title={t("zones.commands.allAwningsStop")}
           >
             {commandLoading === "allAwningsStop" ? <Loader2 size={16} className="animate-spin" /> : <Square size={11} strokeWidth={2.5} />}
@@ -461,7 +461,7 @@ function ZoneAwningWidget({
         <button
           onClick={() => onCommand("allAwningsExtend")}
           disabled={commandLoading !== null}
-          className="w-10 h-10 flex items-center justify-center rounded-[6px] transition-all duration-150 cursor-pointer border border-border bg-surface text-text-secondary hover:border-primary/40 hover:text-primary hover:bg-primary/5 active:scale-[0.97] disabled:opacity-40 disabled:cursor-not-allowed"
+          className="w-10 h-10 flex items-center justify-center rounded-sm transition-all duration-150 cursor-pointer bg-surface text-text-secondary hover:border-primary/40 hover:text-primary hover:bg-primary/5 active:scale-[0.97] disabled:opacity-40 disabled:cursor-not-allowed shadow-lg"
           title={t("zones.commands.allAwningsExtend")}
         >
           {commandLoading === "allAwningsExtend" ? <Loader2 size={16} className="animate-spin" /> : <ChevronDown size={16} strokeWidth={2} />}
@@ -560,7 +560,7 @@ function ZoneHeatingWidget({
           <button
             onClick={() => onCommand(anyOn ? "allThermostatsPowerOff" : "allThermostatsPowerOn")}
             disabled={commandLoading !== null}
-            className={`w-7 h-7 flex items-center justify-center rounded-[5px] transition-all duration-150 cursor-pointer border border-border bg-surface text-text-secondary active:scale-[0.97] disabled:opacity-40 disabled:cursor-not-allowed ${
+            className={`w-7 h-7 flex items-center justify-center rounded-sm transition-all duration-150 cursor-pointer bg-surface text-text-secondary active:scale-[0.97] disabled:opacity-40 disabled:cursor-not-allowed shadow-lg ${
               anyOn
                 ? "!border-heat/40 !text-heat !bg-heat/5 hover:!bg-heat/10"
                 : "hover:border-primary/40 hover:text-primary hover:bg-primary/5"
@@ -581,7 +581,7 @@ function ZoneHeatingWidget({
           <button
             onClick={() => handleSetpoint(Math.max(SETPOINT_MIN, displaySetpoint - SETPOINT_STEP))}
             disabled={displaySetpoint <= SETPOINT_MIN}
-            className="w-8 h-8 flex items-center justify-center rounded-[5px] transition-colors cursor-pointer border border-border bg-surface text-text-tertiary hover:bg-border-light hover:text-text-secondary active:scale-[0.97] disabled:opacity-30 disabled:cursor-not-allowed"
+            className="w-8 h-8 flex items-center justify-center rounded-sm transition-colors cursor-pointer bg-surface text-text-tertiary hover:bg-border-light hover:text-text-secondary active:scale-[0.97] disabled:opacity-30 disabled:cursor-not-allowed shadow-lg"
           >
             <Minus size={14} strokeWidth={2} />
           </button>
@@ -591,7 +591,7 @@ function ZoneHeatingWidget({
           <button
             onClick={() => handleSetpoint(Math.min(SETPOINT_MAX, displaySetpoint + SETPOINT_STEP))}
             disabled={displaySetpoint >= SETPOINT_MAX}
-            className="w-8 h-8 flex items-center justify-center rounded-[5px] transition-colors cursor-pointer border border-border bg-surface text-text-tertiary hover:bg-border-light hover:text-text-secondary active:scale-[0.97] disabled:opacity-30 disabled:cursor-not-allowed"
+            className="w-8 h-8 flex items-center justify-center rounded-sm transition-colors cursor-pointer bg-surface text-text-tertiary hover:bg-border-light hover:text-text-secondary active:scale-[0.97] disabled:opacity-30 disabled:cursor-not-allowed shadow-lg"
           >
             <Plus size={14} strokeWidth={2} />
           </button>
@@ -768,7 +768,7 @@ function ZoneWaterWidget({
         <button
           onClick={handleCloseAll}
           disabled={closingAll || !anyOpen}
-          className="px-3 h-10 flex items-center justify-center rounded-[6px] transition-all duration-150 cursor-pointer border border-border bg-surface text-text-secondary text-caption font-medium hover:border-text-tertiary hover:text-text hover:bg-border-light active:scale-[0.97] disabled:opacity-40 disabled:cursor-not-allowed"
+          className="px-3 h-10 flex items-center justify-center rounded-sm transition-all duration-150 cursor-pointer bg-surface text-text-secondary text-caption font-medium hover:border-text-tertiary hover:text-text hover:bg-border-light active:scale-[0.97] disabled:opacity-40 disabled:cursor-not-allowed shadow-lg"
           title={t("water.closeAll")}
         >
           {closingAll ? (

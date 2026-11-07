@@ -1,5 +1,7 @@
 # Mode row (`mode-row`)
 
+> **Superseded in part by [tokens.md](../tokens.md) (spec 196).** Labels are sentence case and numbers Inter with tabular figures (§2), radii are 6 / 10 / 16 px (§4), and a card or panel has no border (§5.1). Where the CSS below disagrees, tokens.md wins.
+
 > A row inside the Comportements panel's Modes sub-category. Displays one mode (Lumière jour, Lumière nuit, …) with its action count, last application time, and an Apply / Active state.
 
 ---

@@ -23,7 +23,7 @@ export function SidebarChartList({ collapsed }: { collapsed: boolean }) {
       to="/analyse?new"
       end
       className={({ isActive }) => `
-        flex items-center gap-2 px-3 py-1.5 rounded-[6px] min-w-0
+        flex items-center gap-2 px-3 py-1.5 rounded-sm min-w-0
         text-small transition-colors duration-150 ease-out
         ${isActive
           ? "bg-primary-light text-primary font-medium"
@@ -59,7 +59,7 @@ export function SidebarChartList({ collapsed }: { collapsed: boolean }) {
             key={chart.id}
             to={`/analyse/${chart.id}`}
             className={`
-              flex items-center gap-2 px-3 py-1.5 rounded-[6px] min-w-0
+              flex items-center gap-2 px-3 py-1.5 rounded-sm min-w-0
               text-small transition-colors duration-150 ease-out
               ${isActive
                 ? "bg-primary-light text-primary font-medium"

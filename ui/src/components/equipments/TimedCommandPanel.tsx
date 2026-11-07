@@ -156,10 +156,10 @@ export function TimedCommandPanel({
   };
 
   const selectClass =
-    "px-2 py-1 text-caption bg-background border border-border rounded-[6px] text-text disabled:opacity-50";
+    "px-2 py-1 text-caption bg-background border border-border rounded-sm text-text disabled:opacity-50";
 
   return (
-    <div className="bg-surface rounded-[10px] border border-border mb-6 p-4">
+    <div className="card mb-6 p-4">
       <div className="flex items-center gap-2 mb-1">
         <TimerReset size={16} strokeWidth={1.5} className="text-text-tertiary" />
         <h3 className="text-body font-semibold text-text">{t("equipments.timed.configTitle")}</h3>
@@ -280,7 +280,7 @@ export function TimedCommandPanel({
       )}
 
       {equipment.timedAction && (
-        <div className="mt-4 flex items-center gap-2 text-caption text-text-secondary bg-active-bg border border-active rounded-[8px] px-3 py-2">
+        <div className="mt-4 flex items-center gap-2 text-caption text-text-secondary bg-active-bg border border-active rounded-md px-3 py-2">
           <span className="text-active-ink">
             <TimedCountdown action={equipment.timedAction} />
           </span>

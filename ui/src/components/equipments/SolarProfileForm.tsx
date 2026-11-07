@@ -132,7 +132,7 @@ export function SolarProfileForm({ equipmentId, planes, since, onSaved }: SolarP
                 <button
                   type="button"
                   onClick={() => setDraft((c) => c.filter((_, i) => i !== index))}
-                  className="text-text-tertiary hover:text-error p-1 rounded-[6px]"
+                  className="text-text-tertiary hover:text-error p-1 rounded-sm"
                   aria-label={t("common.remove")}
                 >
                   <Trash2 size={14} strokeWidth={1.5} />
@@ -149,7 +149,7 @@ export function SolarProfileForm({ equipmentId, planes, since, onSaved }: SolarP
                   key={c.key}
                   type="button"
                   onClick={() => patch(index, { azimuthDeg: c.azimuth })}
-                  className={`px-2.5 py-1 rounded-[6px] text-caption font-medium border ${
+                  className={`px-2.5 py-1 rounded-sm text-caption font-medium border ${
                     plane.azimuthDeg === c.azimuth
                       ? "border-primary bg-primary-light text-primary"
                       : "border-border text-text-secondary hover:border-primary"
@@ -164,7 +164,7 @@ export function SolarProfileForm({ equipmentId, planes, since, onSaved }: SolarP
                 max={359}
                 value={plane.azimuthDeg}
                 onChange={(e) => patch(index, { azimuthDeg: toDegrees(e.target.value) })}
-                className={`w-20 px-2 py-1 rounded-[6px] border bg-background text-caption tabular-nums ${
+                className={`w-20 px-2 py-1 rounded-sm border bg-background text-caption tabular-nums ${
                   badFields.has(`${index}:azimuthDeg`) ? "border-error" : "border-border"
                 }`}
                 aria-label={t("equipments.solar.orientation")}
@@ -186,7 +186,7 @@ export function SolarProfileForm({ equipmentId, planes, since, onSaved }: SolarP
                   max={90}
                   value={plane.tiltDeg}
                   onChange={(e) => patch(index, { tiltDeg: toDegrees(e.target.value) })}
-                  className={`w-full px-2 py-1.5 rounded-[6px] border bg-background text-small tabular-nums ${
+                  className={`w-full px-2 py-1.5 rounded-sm border bg-background text-small tabular-nums ${
                     badFields.has(`${index}:tiltDeg`) ? "border-error" : "border-border"
                   }`}
                 />
@@ -207,7 +207,7 @@ export function SolarProfileForm({ equipmentId, planes, since, onSaved }: SolarP
                   min={0}
                   value={plane.peakWc || ""}
                   onChange={(e) => patch(index, { peakWc: toDegrees(e.target.value) })}
-                  className={`w-full px-2 py-1.5 rounded-[6px] border bg-background text-small tabular-nums ${
+                  className={`w-full px-2 py-1.5 rounded-sm border bg-background text-small tabular-nums ${
                     badFields.has(`${index}:peakWc`) ? "border-error" : "border-border"
                   }`}
                 />
@@ -246,7 +246,7 @@ export function SolarProfileForm({ equipmentId, planes, since, onSaved }: SolarP
           value={sinceDraft}
           max={new Date().toISOString().slice(0, 10)}
           onChange={(e) => setSinceDraft(e.target.value)}
-          className="px-2 py-1.5 rounded-[6px] border border-border bg-background text-small tabular-nums"
+          className="px-2 py-1.5 rounded-sm border border-border bg-background text-small tabular-nums"
         />
         <p className="text-caption text-text-tertiary mt-1">{t("equipments.solar.sinceHint")}</p>
       </div>
@@ -258,7 +258,7 @@ export function SolarProfileForm({ equipmentId, planes, since, onSaved }: SolarP
           type="button"
           onClick={save}
           disabled={saving || nothingToSave}
-          className="px-3 py-1.5 rounded-[6px] bg-primary-fill text-white text-small font-medium disabled:opacity-50"
+          className="px-3 py-1.5 rounded-sm bg-primary-fill text-white text-small font-medium disabled:opacity-50"
         >
           {saving ? t("common.saving") : t("common.save")}
         </button>

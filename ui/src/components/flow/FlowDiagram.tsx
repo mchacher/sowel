@@ -61,7 +61,7 @@ function FlowNode({ node }: { node: FlowNodeSpec }) {
 
   return (
     <div
-      className={`absolute flex items-center justify-center bg-surface border border-border rounded-[14px] z-10 ${SLOT_BOX[node.slot]}`}
+      className={`absolute flex items-center justify-center bg-background rounded-md z-10 ${SLOT_BOX[node.slot]}`}
       style={{ color: node.color }}
     >
       <div

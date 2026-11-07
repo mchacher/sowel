@@ -154,7 +154,7 @@ function dayLabel(date: Date, daysAgo: number, locale: string, t: TFunction): st
 
 function Stat({ label, value, note }: { label: string; value: string; note?: string | null }) {
   return (
-    <div className="rounded-[8px] bg-border-light/40 px-3 py-2">
+    <div className="rounded-md bg-border-light/40 px-3 py-2">
       <div className="text-caption text-text-secondary">{label}</div>
       <div className="font-semibold text-title text-text tabular-nums leading-tight">
         {value}
@@ -194,7 +194,7 @@ function RainBars({ bars, locale, t }: { bars: RainDay[]; locale: string; t: TFu
               className="flex-1 h-full flex items-end cursor-pointer"
             >
               <span
-                className={`w-full rounded-t-[2px] ${
+                className={`w-full rounded-t-xs ${
                   mm === null
                     ? "border-b border-dashed border-border"
                     : mm === 0
@@ -269,7 +269,7 @@ export function RainDetailContent({ equipment }: { equipment: EquipmentWithDetai
   return (
     <div className="flex flex-col gap-3">
       <div className="flex justify-center">
-        <div className="w-12 h-12 rounded-[10px] flex items-center justify-center bg-primary-light text-primary">
+        <div className="w-12 h-12 rounded-md flex items-center justify-center bg-primary-light text-primary">
           <CloudRain size={28} strokeWidth={1.5} />
         </div>
       </div>
@@ -290,7 +290,7 @@ export function RainDetailContent({ equipment }: { equipment: EquipmentWithDetai
           note={summary && partial(summary.measured30, 30)}
         />
       </div>
-      <div className="rounded-[8px] bg-primary-light px-3 py-2 flex items-center justify-between gap-2">
+      <div className="rounded-md bg-primary-light px-3 py-2 flex items-center justify-between gap-2">
         <div className="min-w-0">
           <div className="text-caption text-text-secondary">{t("weather.rainLast")}</div>
           <div className="text-body font-semibold text-text truncate">{lastRainText}</div>

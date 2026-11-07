@@ -90,7 +90,7 @@ export const PvHealthPanel = memo(function PvHealthPanel({
   // rendering an empty chart that looks broken.
   if (data.days.length === 0) {
     return (
-      <div className="mb-6 bg-surface rounded-[10px] border border-border p-4">
+      <div className="card mb-6 p-4">
         <Header t={t} />
         <p className="text-small text-text-secondary">{t("equipments.pvHealth.waiting")}</p>
       </div>
@@ -104,7 +104,7 @@ export const PvHealthPanel = memo(function PvHealthPanel({
   // card has to say so.
   if (data.normal === null) {
     return (
-      <div className="mb-6 bg-surface rounded-[10px] border border-border p-4">
+      <div className="card mb-6 p-4">
         <Header t={t} />
         <p className="text-small text-text-secondary mb-3">
           {data.sinceCutoff
@@ -140,11 +140,11 @@ export const PvHealthPanel = memo(function PvHealthPanel({
   const deviation = latest ? (latest.ratio / normal - 1) * 100 : null;
 
   return (
-    <div className="mb-6 bg-surface rounded-[10px] border border-border p-4">
+    <div className="card mb-6 p-4">
       <Header t={t} />
 
       {data.alert ? (
-        <div className="flex items-start gap-2 mb-3 p-3 rounded-[8px] bg-warning/10 border border-warning/30">
+        <div className="flex items-start gap-2 mb-3 p-3 rounded-md bg-warning/10 border border-warning/30">
           <AlertTriangle size={16} strokeWidth={1.5} className="text-warning-ink flex-shrink-0 mt-0.5" />
           <p className="text-small text-text">
             {t("equipments.pvHealth.alert", {

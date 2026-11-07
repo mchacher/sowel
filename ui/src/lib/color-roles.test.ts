@@ -199,6 +199,26 @@ describe("colour role tokens", () => {
     expect(luminance(surface)).toBeGreaterThan(luminance(page));
   });
 
+  it.each(["shutter", "sensor", "media"])("draws the %s icon square on the theme's card (slice 7b)", (cat) => {
+    for (const theme of ["light", "dark"] as Theme[]) {
+      expect(ratio(hex(theme, `--${cat}-500`), hex(theme, `--${cat}-50`))).toBeGreaterThanOrEqual(GRAPHIC);
+    }
+    // The dark tints were calibrated for the old #16181E card, on which the
+    // new one painted them 1.00:1 to 1.04:1: an icon with no square.
+    expect(ratio(hex("dark", `--${cat}-50`), resolve("dark", "surface"))).toBeGreaterThanOrEqual(1.1);
+  });
+
+  it("gives dark illustrations ocean night fills that read on a card (slice 7b)", () => {
+    expect(ratio(hex("dark", "--illu-fill"), resolve("dark", "surface"))).toBeGreaterThanOrEqual(1.15);
+    expect(luminance(hex("dark", "--illu-fill-2"))).toBeGreaterThan(luminance(hex("dark", "--illu-fill")));
+  });
+
+  it("gives the live breakdown's « other » a colour per theme (slice 7b)", () => {
+    expect(hex("dark", "--energy-other")).not.toBe(hex("light", "--energy-other"));
+    // Subdued, yet a visible wedge on the night card.
+    expect(ratio(hex("dark", "--energy-other"), resolve("dark", "surface"))).toBeGreaterThanOrEqual(GRAPHIC);
+  });
+
   it("keeps the dark selection visible on a card", () => {
     // #1A2A38 was 1.09:1 on the new surface, the same colour to the eye.
     expect(ratio(resolve("dark", "primary-light"), resolve("dark", "surface"))).toBeGreaterThanOrEqual(1.15);

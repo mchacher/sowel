@@ -72,7 +72,7 @@ export function HeaterControl({ equipment, onExecuteOrder, compact }: HeaterCont
             onClick={handleToggle}
             disabled={executing}
             className={`
-              p-1.5 rounded-[6px] transition-colors duration-150 cursor-pointer
+              p-1.5 rounded-sm transition-colors duration-150 cursor-pointer
               ${isComfort
                 ? "bg-heat/10 text-heat hover:bg-heat/20"
                 : "bg-primary/10 text-primary hover:bg-primary/20"
@@ -100,7 +100,7 @@ export function HeaterControl({ equipment, onExecuteOrder, compact }: HeaterCont
       <div className="flex items-center gap-3">
         <div
           className={`
-            w-10 h-10 rounded-[8px] flex items-center justify-center
+            w-10 h-10 rounded-md flex items-center justify-center
             ${isComfort
               ? "bg-heat/10 text-heat"
               : "bg-primary/10 text-primary"
@@ -128,7 +128,7 @@ export function HeaterControl({ equipment, onExecuteOrder, compact }: HeaterCont
           onClick={handleToggle}
           disabled={executing}
           className={`
-            flex items-center gap-2 px-4 py-2 rounded-[6px] text-small font-medium
+            flex items-center gap-2 px-4 py-2 rounded-sm text-small font-medium
             transition-colors duration-150
             ${isComfort
               ? "bg-primary/10 text-primary hover:bg-primary/20"

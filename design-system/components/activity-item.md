@@ -1,5 +1,7 @@
 # Activity item (`activity__item`)
 
+> **Superseded in part by [tokens.md](../tokens.md) (spec 196).** Labels are sentence case and numbers Inter with tabular figures (§2), radii are 6 / 10 / 16 px (§4), and a card or panel has no border (§5.1). Where the CSS below disagrees, tokens.md wins.
+
 > A single entry in the Activity feed (right column on desktop, scrollable section on mobile). Each entry is a timestamped, colored event with a short description.
 
 ---

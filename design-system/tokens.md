@@ -128,11 +128,13 @@ These are NOT decorative. Each maps to a specific state.
 
 Used **only** on equipment row icons (`.eq__icon--{type}`). They give a glanceable visual cue per category. **Do not propagate** these colors to category headers (the user explicitly rejected that — sub-cat headers stay neutral).
 
-| Type     | `--{type}-50`  | `--{type}-500`  | Hex (Hybrid)          |
-| -------- | -------------- | --------------- | --------------------- |
-| Shutters | `--shutter-50` | `--shutter-500` | `#E8EBEE` / `#4F5763` |
-| Sensors  | `--sensor-50`  | `--sensor-500`  | `#EBF2EC` / `#4F7559` |
-| Media    | `--media-50`   | `--media-500`   | `#EAE9F2` / `#5759A5` |
+| Type     | `--{type}-50`  | `--{type}-500`  | Hex (Hybrid)          | Hex (Dark)            |
+| -------- | -------------- | --------------- | --------------------- | --------------------- |
+| Shutters | `--shutter-50` | `--shutter-500` | `#E8EBEE` / `#4F5763` | `#222C3A` / `#94A3B8` |
+| Sensors  | `--sensor-50`  | `--sensor-500`  | `#EBF2EC` / `#4F7559` | `#203024` / `#6BCF8C` |
+| Media    | `--media-50`   | `--media-500`   | `#EAE9F2` / `#5759A5` | `#282A3A` / `#9D9FE6` |
+
+The dark squares take the lightness of `--n-100` with the category's hue: 1.14:1 on the ocean night card, the icon at 5.5:1 or more on them (`ui/src/lib/color-roles.test.ts`).
 
 ### 1.5b Illustrations
 
@@ -142,18 +144,20 @@ The dashboard illustrations (`WidgetIcons.tsx`, `AwningIcon.tsx`, `EvCarGauge.ts
 | --------------- | --------- | --------- | --------------------------------------------- |
 | `--illu-ink`    | `#1A4F6E` | `#7FB8D4` | strokes at rest (`text-illu`), awning stripes |
 | `--illu-ink-2`  | `#13405A` | `#5BA5CC` | darker end of a gradient (awning cassette)    |
-| `--illu-fill`   | `#E6F0F6` | `#1A2A38` | pale parts: awning stripes                    |
-| `--illu-fill-2` | `#D6E5EF` | `#22364A` | pale end of a gradient                        |
+| `--illu-fill`   | `#E6F0F6` | `#1D303D` | pale parts: awning stripes                    |
+| `--illu-fill-2` | `#D6E5EF` | `#243B4E` | pale end of a gradient                        |
 | `--illu-water`  | `#247EB5` | `#5DA8F0` | water seen in a pipe (water valve open)       |
 
 A part painted "white" in light (valve body, pipe) takes `var(--color-surface)`, so it is the card colour in dark.
 
 ### 1.6 Borders & lines
 
-| Token      | Hybrid               | Dark                    | Usage                                                     |
-| ---------- | -------------------- | ----------------------- | --------------------------------------------------------- |
-| `--line`   | `rgba(17,23,27,.08)` | `rgba(255,255,255,.06)` | row dividers, panel borders, dividers between strip pills |
-| `--line-2` | `rgba(17,23,27,.14)` | `rgba(255,255,255,.14)` | group dividers (stronger), modal section breaks           |
+| Token      | Hybrid               | Dark                    | Usage                                              |
+| ---------- | -------------------- | ----------------------- | -------------------------------------------------- |
+| `--line`   | `rgba(17,23,27,.08)` | `rgba(255,255,255,.06)` | row dividers, dividers between strip pills         |
+| `--line-2` | `rgba(17,23,27,.14)` | `rgba(255,255,255,.14)` | field and secondary-button borders, group dividers |
+
+**A card has no border; a field has one** (spec 196, decision pr7-bordures). Lines separate rows inside a card, outline fields, secondary buttons, chart tooltips, menus and other floating layers. They never draw a card's edge: see §5.
 
 ---
 
@@ -235,27 +239,36 @@ Most components use **rem values directly** (e.g. `padding: .55rem 1.1rem`) inst
 
 ## 4. Radius tokens
 
-| Token      | Value  | Used for                               |
-| ---------- | ------ | -------------------------------------- |
-| `--r-xs`   | 4 px   | Chip-state badges, small tags          |
-| `--r-sm`   | 6 px   | Buttons, input fields, icon containers |
-| `--r-md`   | 8 px   | Cards, strip, modals                   |
-| `--r-lg`   | 12 px  | Panels, hero                           |
-| `--r-full` | 999 px | Pills (`Calme · 39 min`, `Connecté`)   |
+Three radii and full (spec 196, decision pr7-rayons). They replaced twelve hand-picked values from 1 to 16 px.
 
-**Note**: Production Dashboard widgets currently use an arbitrary `border-radius: 10px`. The design system targets `--r-md` (8 px) for full alignment; production may keep 10 px transitionally and snap to 8 px during the next refactor. See [components/dashboard-widget.md](components/dashboard-widget.md) and [migration.md](migration.md).
+| Token      | Value  | Tailwind       | Used for                                                                      |
+| ---------- | ------ | -------------- | ----------------------------------------------------------------------------- |
+| `--r-sm`   | 6 px   | `rounded-sm`   | Controls: buttons, fields, chips, icon buttons, segmented controls, skeletons |
+| `--r-md`   | 10 px  | `rounded-md`   | Cards, dashboard tiles, rows, panels, wells, popovers, tooltips, icon squares |
+| `--r-lg`   | 16 px  | `rounded-lg`   | Modals, bottom sheets (`rounded-t-lg`), the slide-to-confirm track            |
+| `--r-full` | 999 px | `rounded-full` | Switches, avatars, dots, status pills                                         |
+| `--r-xs`   | 2 px   | `rounded-xs`   | Chart bars and legend swatches only                                           |
+
+`ui/src/index.css` binds Tailwind's `--radius-*` to these and removes the other steps (`rounded-xl` draws nothing). A bare `rounded`, `rounded-[Npx]` or a removed step is rejected by eslint. A thumb inside a track takes the next step down (the slide thumb is `rounded-md` in a `rounded-lg` track).
 
 ---
 
 ## 5. Shadow tokens (elevation)
 
-| Token    | Hybrid value     | Used for                              |
-| -------- | ---------------- | ------------------------------------- |
-| `--sh-1` | subtle, 1–3 px   | Default panels, card hover            |
-| `--sh-2` | medium, 4–14 px  | Pill bar (variant A), modal head hint |
-| `--sh-3` | strong, 24–56 px | Modal, dropdown, overlay              |
+| Token       | Hybrid value     | Dark       | Tailwind    | Used for                                      |
+| ----------- | ---------------- | ---------- | ----------- | --------------------------------------------- |
+| `--sh-1`    | subtle, 1–3 px   | near-black | `shadow-sm` | —                                             |
+| `--sh-card` | `var(--sh-1)`    | `none`     | (in `card`) | Every card                                    |
+| `--sh-2`    | medium, 4–14 px  | near-black | `shadow-md` | Hover on a clickable card, chart tooltips     |
+| `--sh-3`    | strong, 24–56 px | near-black | `shadow-lg` | Modals, bottom sheets, menus, pickers, toasts |
 
-Each shadow has a complementary set in dark theme that uses near-black tints instead of slate-tinted ones.
+### 5.1 Cards, wells and floating layers
+
+- **Card**: one class, `card` (`@utility card` in `ui/src/index.css`): the surface, `rounded-md`, `--sh-card`, no border. In light it floats on the tinted page (`--n-50`) with a soft shadow; in dark the surface is lighter than the page and the tone alone lifts it. Add padding and layout classes beside it (`card p-4 mb-6`). A clickable card lifts on hover (`hover:shadow-md`), it does not draw a border.
+- **Well**: a group inside a card (a list of slots, local backups, a flow diagram node, a form opened in a row) is sunken, never a second card: `bg-background rounded-md`, no border, no shadow.
+- **Modal and sheet**: `bg-surface rounded-lg shadow-lg` (`rounded-t-lg` for a bottom sheet), no border.
+- **Keep their border**: fields (`input`, `select`, `textarea`), secondary buttons, a selectable option whose border shows the selection, chart tooltips, menus, pickers and toasts that float over any content, a dashed empty state, and the log viewer.
+- **Not cards**: the sidebar and the top bar keep their dividing line.
 
 ---
 
@@ -332,3 +345,4 @@ See [migration.md](migration.md) for the broader strategy.
 | 2026-05-13 | Initial extraction from polished.html (v1.0)                                        |
 | 2026-11-07 | Inter variable, type scale `text-micro` … `text-value`, no 700 (spec 196, slice 5a) |
 | 2026-11-07 | Colour roles: amber = on, orange = attention, red = fault; no light tint (slice 4)  |
+| 2026-11-07 | Radii 6 / 10 / 16, cards without border (`card`), wells, dark category tints (7b)   |

@@ -20,7 +20,7 @@ export function UnitToggle({ enabled }: UnitToggleProps) {
   return (
     <div
       className={
-        "inline-flex border border-border rounded-[6px] overflow-hidden text-caption" +
+        "inline-flex border border-border rounded-sm overflow-hidden text-caption" +
         (enabled ? "" : " opacity-50 cursor-not-allowed")
       }
       title={tooltip}

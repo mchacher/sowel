@@ -116,13 +116,13 @@ export function MissingBindingsModal({
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40">
-      <div className="bg-surface rounded-[14px] border border-border shadow-xl w-full max-w-[520px] mx-4 max-h-[85vh] flex flex-col">
+      <div className="bg-surface rounded-lg w-full max-w-[520px] mx-4 max-h-[85vh] flex flex-col shadow-lg">
         {/* Header */}
         <div className="flex items-center justify-between px-5 py-4 border-b border-border-light">
           <h2 className="text-lead font-semibold text-text">{t("binding.missingTitle")}</h2>
           <button
             onClick={onClose}
-            className="p-1.5 text-text-tertiary hover:text-text-secondary rounded-[4px] hover:bg-border-light"
+            className="p-1.5 text-text-tertiary hover:text-text-secondary rounded-sm hover:bg-border-light"
           >
             <X size={16} strokeWidth={1.5} />
           </button>
@@ -145,7 +145,7 @@ export function MissingBindingsModal({
                 {missing.map((item) => (
                   <label
                     key={item.sourceId}
-                    className="flex items-center gap-2.5 px-2.5 py-2 rounded-[6px] bg-border-light/50 hover:bg-border-light transition-colors duration-150 cursor-pointer"
+                    className="flex items-center gap-2.5 px-2.5 py-2 rounded-sm bg-border-light/50 hover:bg-border-light transition-colors duration-150 cursor-pointer"
                   >
                     <input
                       type="checkbox"
@@ -195,14 +195,14 @@ export function MissingBindingsModal({
         <div className="flex items-center justify-end gap-2 px-5 py-4 border-t border-border-light">
           <button
             onClick={onClose}
-            className="px-3 py-1.5 text-small text-text-secondary hover:text-text rounded-[6px] hover:bg-border-light"
+            className="px-3 py-1.5 text-small text-text-secondary hover:text-text rounded-sm hover:bg-border-light"
           >
             {t("common.cancel")}
           </button>
           <button
             onClick={handleConfirm}
             disabled={submitting || chosen.length === 0}
-            className="px-3 py-1.5 text-small font-medium text-white bg-primary-fill hover:bg-primary-fill-hover rounded-[6px] disabled:opacity-40 disabled:cursor-not-allowed"
+            className="px-3 py-1.5 text-small font-medium text-white bg-primary-fill hover:bg-primary-fill-hover rounded-sm disabled:opacity-40 disabled:cursor-not-allowed"
           >
             {submitting ? (
               <Loader2 size={14} className="animate-spin" />

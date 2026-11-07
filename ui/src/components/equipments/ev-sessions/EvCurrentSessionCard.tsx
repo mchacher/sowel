@@ -74,7 +74,7 @@ export function EvCurrentSessionCard({
 
   if (live.kind === "ended") {
     return (
-      <div className="bg-surface rounded-[10px] border border-border p-4 mb-6 flex flex-col gap-3">
+      <div className="card p-4 mb-6 flex flex-col gap-3">
         <div className="flex items-center gap-2">
           <Clock size={18} strokeWidth={1.5} className="text-text-secondary" />
           <h3 className="text-body font-semibold text-text">
@@ -96,7 +96,7 @@ export function EvCurrentSessionCard({
           </span>
         </div>
         {session.graceUntil && (
-          <div className="flex gap-2.5 items-start bg-warning/10 rounded-[6px] px-3 py-2.5">
+          <div className="flex gap-2.5 items-start bg-warning/10 rounded-sm px-3 py-2.5">
             <CircleAlert size={16} strokeWidth={1.5} className="shrink-0 mt-px text-warning-ink" />
             <span className="text-small text-text">
               {t("equipments.evSessions.current.willAttribute", {
@@ -112,7 +112,7 @@ export function EvCurrentSessionCard({
             type="button"
             disabled={saving}
             onClick={() => void confirm()}
-            className="min-h-[44px] rounded-[6px] bg-primary-fill hover:bg-primary-fill-hover text-white text-body font-medium cursor-pointer disabled:opacity-60 flex items-center justify-center gap-2"
+            className="min-h-[44px] rounded-sm bg-primary-fill hover:bg-primary-fill-hover text-white text-body font-medium cursor-pointer disabled:opacity-60 flex items-center justify-center gap-2"
           >
             {saving ? (
               <Loader2 size={14} className="animate-spin" />
@@ -135,7 +135,7 @@ export function EvCurrentSessionCard({
   const charging = live.kind === "charging";
   return (
     <div
-      className={`rounded-[10px] border p-4 mb-6 flex flex-col gap-3 ${
+      className={`rounded-md border p-4 mb-6 flex flex-col gap-3 ${
         charging ? "bg-primary-light border-primary/25" : "bg-surface border-border"
       }`}
     >
@@ -157,7 +157,7 @@ export function EvCurrentSessionCard({
           </span>
         )}
         {live.kind === "paused" && live.sinceIso && (
-          <span className="text-caption font-medium text-text-secondary bg-background rounded-[6px] px-2 py-0.5">
+          <span className="text-caption font-medium text-text-secondary bg-background rounded-sm px-2 py-0.5">
             {t("equipments.evSessions.current.since", { time: time(live.sinceIso) })}
           </span>
         )}
@@ -172,7 +172,7 @@ export function EvCurrentSessionCard({
       </span>
 
       {live.kind === "paused" && live.reason !== null && (
-        <div className="flex gap-2.5 items-start bg-background rounded-[6px] px-3 py-2.5">
+        <div className="flex gap-2.5 items-start bg-background rounded-sm px-3 py-2.5">
           {live.reason === "charger-off" ? (
             <Power size={16} strokeWidth={1.5} className="shrink-0 mt-px text-text-secondary" />
           ) : live.reason === "charge-limit" ? (

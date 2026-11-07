@@ -26,7 +26,7 @@ export function ZoneTree({ zones, onReordered, onAddChild }: ZoneTreeProps) {
   };
 
   return (
-    <div className="bg-surface rounded-[10px] border border-border overflow-hidden">
+    <div className="card overflow-hidden">
       <div className="divide-y divide-border-light">
         {zones.map((zone, index) => (
           <ZoneTreeNode
@@ -85,7 +85,7 @@ function ZoneTreeNode({ zone, depth, index, siblingCount, onMove, onReordered, o
             e.stopPropagation();
             if (hasChildren) setExpanded(!expanded);
           }}
-          className={`flex-shrink-0 w-5 h-5 flex items-center justify-center rounded ${
+          className={`flex-shrink-0 w-5 h-5 flex items-center justify-center rounded-sm ${
             hasChildren
               ? "text-text-secondary hover:text-text hover:bg-border-light"
               : "text-transparent"
@@ -140,7 +140,7 @@ function ZoneTreeNode({ zone, depth, index, siblingCount, onMove, onReordered, o
           {onAddChild && (
             <button
               onClick={(e) => { e.stopPropagation(); onAddChild(zone.id); }}
-              className="p-1 rounded text-text-tertiary hover:text-primary hover:bg-primary-light transition-colors cursor-pointer"
+              className="p-1 rounded-sm text-text-tertiary hover:text-primary hover:bg-primary-light transition-colors cursor-pointer"
               title={t("zones.addSubZone")}
             >
               <Plus size={13} strokeWidth={1.5} />
@@ -151,7 +151,7 @@ function ZoneTreeNode({ zone, depth, index, siblingCount, onMove, onReordered, o
               <button
                 onClick={(e) => { e.stopPropagation(); onMove(index, "up"); }}
                 disabled={isFirst}
-                className="p-1 rounded text-text-tertiary hover:text-text hover:bg-border-light disabled:opacity-0 transition-colors cursor-pointer"
+                className="p-1 rounded-sm text-text-tertiary hover:text-text hover:bg-border-light disabled:opacity-0 transition-colors cursor-pointer"
                 title={t("zones.moveUp")}
               >
                 <ArrowUp size={13} strokeWidth={1.5} />
@@ -159,7 +159,7 @@ function ZoneTreeNode({ zone, depth, index, siblingCount, onMove, onReordered, o
               <button
                 onClick={(e) => { e.stopPropagation(); onMove(index, "down"); }}
                 disabled={isLast}
-                className="p-1 rounded text-text-tertiary hover:text-text hover:bg-border-light disabled:opacity-0 transition-colors cursor-pointer"
+                className="p-1 rounded-sm text-text-tertiary hover:text-text hover:bg-border-light disabled:opacity-0 transition-colors cursor-pointer"
                 title={t("zones.moveDown")}
               >
                 <ArrowDown size={13} strokeWidth={1.5} />

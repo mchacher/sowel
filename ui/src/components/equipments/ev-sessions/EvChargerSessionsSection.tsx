@@ -78,7 +78,7 @@ export function EvChargerSessionsSection({
   const eur = (v: number | null) => (v === null ? "—" : formatEur(v, locale));
 
   return (
-    <div className="bg-surface rounded-[10px] border border-border p-4 mb-6 flex flex-col gap-3">
+    <div className="card p-4 mb-6 flex flex-col gap-3">
       <div className="flex items-center justify-between gap-2">
         <h3 className="text-body font-semibold text-text">
           {t("equipments.evSessions.sessions")}
@@ -89,7 +89,7 @@ export function EvChargerSessionsSection({
       {error && <p className="text-caption text-error">{error}</p>}
 
       {todo > 0 && (
-        <div className="flex items-center gap-2 bg-warning/10 rounded-[8px] px-3 py-2.5 text-small text-text">
+        <div className="flex items-center gap-2 bg-warning/10 rounded-md px-3 py-2.5 text-small text-text">
           <span className="w-2 h-2 rounded-full bg-warning shrink-0" />
           {t("equipments.evSessions.todoBanner", { count: todo })}
         </div>
@@ -133,7 +133,7 @@ export function EvChargerSessionsSection({
                 <button
                   type="button"
                   onClick={() => setEditing(s)}
-                  className="flex flex-col gap-1.5 text-left cursor-pointer rounded-[6px] hover:bg-border-light/50 -mx-1 px-1"
+                  className="flex flex-col gap-1.5 text-left cursor-pointer rounded-sm hover:bg-border-light/50 -mx-1 px-1"
                   aria-label={t("equipments.evSessions.edit", {
                     day: dayLabel(s.startedAt, locale),
                   })}
@@ -170,7 +170,7 @@ export function EvChargerSessionsSection({
                   <button
                     type="button"
                     onClick={() => setEditing(s)}
-                    className="self-start min-h-[44px] px-4 rounded-[8px] border border-primary text-primary text-small font-medium hover:bg-primary-light cursor-pointer"
+                    className="self-start min-h-[44px] px-4 rounded-sm border border-primary text-primary text-small font-medium hover:bg-primary-light cursor-pointer"
                   >
                     {t("equipments.evSessions.choose")}
                   </button>
@@ -191,7 +191,7 @@ export function EvChargerSessionsSection({
                 value={usualVehicleId ?? ""}
                 disabled={saving}
                 onChange={(e) => void setUsual(e.target.value)}
-                className="min-h-[36px] px-2 rounded-[6px] border border-border bg-surface text-small text-text"
+                className="min-h-[36px] px-2 rounded-sm bg-surface text-small text-text shadow-lg"
               >
                 <option value="">{t("equipments.evSessions.usual.none")}</option>
                 {vehicles.map((v) => (

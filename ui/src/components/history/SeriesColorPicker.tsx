@@ -46,7 +46,7 @@ export function SeriesColorPicker({
     <div
       ref={ref}
       className={`absolute z-30 left-0 w-[176px] p-2.5
-        bg-surface border border-border rounded-[10px] shadow-lg ${
+        bg-surface border border-border rounded-md shadow-lg ${
           placement === "above" ? "bottom-full mb-1" : "top-full mt-1"
         }`}
     >
@@ -76,7 +76,7 @@ export function SeriesColorPicker({
           type="color"
           value={color}
           onChange={(e) => onChange(e.target.value)}
-          className="w-7 h-7 p-0 border border-border rounded-[6px] bg-surface cursor-pointer"
+          className="w-7 h-7 p-0 rounded-sm bg-surface cursor-pointer shadow-lg"
         />
         <span className="text-micro text-text-secondary">{t("analyse.customColor")}</span>
       </label>

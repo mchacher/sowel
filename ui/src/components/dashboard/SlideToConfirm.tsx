@@ -83,13 +83,13 @@ export function SlideToConfirm({
   return (
     <div
       ref={trackRef}
-      className={`relative mx-auto w-full max-w-[260px] h-[58px] rounded-[12px] border overflow-hidden select-none touch-none ${
+      className={`relative mx-auto w-full max-w-[260px] h-[58px] rounded-lg border overflow-hidden select-none touch-none ${
         done ? "border-success/40" : "border-border"
       } bg-border-light`}
     >
       {/* progress fill */}
       <div
-        className={`absolute inset-y-0 left-0 rounded-[12px] ${done ? "bg-success/20" : "bg-warning/10"}`}
+        className={`absolute inset-y-0 left-0 rounded-lg ${done ? "bg-success/20" : "bg-warning/10"}`}
         style={{ width: `${KNOB + x}px`, transition }}
       />
       {/* Label, in whichever half the knob is not occupying: to its right at
@@ -112,7 +112,7 @@ export function SlideToConfirm({
         onPointerMove={onPointerMove}
         onPointerUp={onPointerUp}
         onPointerCancel={onPointerUp}
-        className={`absolute top-[4px] h-[50px] w-[50px] rounded-[9px] flex items-center justify-center text-on-status shadow-md z-[2] ${
+        className={`absolute top-[4px] h-[50px] w-[50px] rounded-md flex items-center justify-center text-on-status shadow-md z-[2] ${
           done ? "bg-success cursor-default" : "bg-warning cursor-grab active:cursor-grabbing"
         }`}
         style={{ left: `${PAD + x}px`, transition }}

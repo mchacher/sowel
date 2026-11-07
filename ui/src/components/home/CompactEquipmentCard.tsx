@@ -603,7 +603,7 @@ function CompactCameraThumbnail({ equipmentId }: { equipmentId: string }) {
   const { url } = useCameraSnapshot(equipmentId, true, COMPACT_SNAPSHOT_REFRESH_MS);
 
   return (
-    <div className="w-11 h-8 rounded-[4px] bg-black/80 overflow-hidden flex items-center justify-center flex-shrink-0">
+    <div className="w-11 h-8 rounded-sm bg-black/80 overflow-hidden flex items-center justify-center flex-shrink-0">
       {url ? (
         <img src={url} alt="" className="w-full h-full object-cover" />
       ) : (

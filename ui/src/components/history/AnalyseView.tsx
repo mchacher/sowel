@@ -761,7 +761,7 @@ export function AnalyseView() {
               key={s.id}
               className={`relative flex items-center gap-1.5 px-2.5 py-1 text-caption font-medium border ${
                 s.deleted
-                  ? "flex-wrap rounded-[10px] bg-warning/10 border-warning/40"
+                  ? "flex-wrap rounded-md bg-warning/10 border-warning/40"
                   : "rounded-full bg-surface border-border"
               }`}
             >
@@ -852,7 +852,7 @@ export function AnalyseView() {
               <button
                 type="button"
                 onClick={() => setEnvelopeOn((v) => !v)}
-                className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-[6px] text-caption font-medium
+                className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-sm text-caption font-medium
                   transition-colors cursor-pointer ${
                     envelopeOn
                       ? "bg-primary-light text-primary hover:bg-primary-fill hover:text-white"
@@ -870,7 +870,7 @@ export function AnalyseView() {
               <button
                 type="button"
                 onClick={() => setYAxisFit((v) => !v)}
-                className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-[6px] text-caption font-medium
+                className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-sm text-caption font-medium
                   transition-colors cursor-pointer ${
                     yAxisFit
                       ? "bg-primary-light text-primary hover:bg-primary-fill hover:text-white"
@@ -886,7 +886,7 @@ export function AnalyseView() {
             <button
               type="button"
               onClick={clearChart}
-              className="flex items-center justify-center p-1.5 rounded-[6px] text-text-secondary
+              className="flex items-center justify-center p-1.5 rounded-sm text-text-secondary
                 hover:bg-border-light hover:text-text transition-colors cursor-pointer"
               title={t("analyse.clearChart")}
             >
@@ -898,7 +898,7 @@ export function AnalyseView() {
               type="button"
               onClick={handleSave}
               disabled={saving}
-              className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-[6px] text-caption font-medium
+              className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-sm text-caption font-medium
                 bg-primary-light text-primary hover:bg-primary-fill hover:text-white
                 transition-colors cursor-pointer disabled:opacity-50"
               title={t("analyse.save")}
@@ -910,7 +910,7 @@ export function AnalyseView() {
               type="button"
               onClick={handleSaveAs}
               disabled={saving}
-              className="flex items-center justify-center p-1.5 rounded-[6px] text-text-secondary
+              className="flex items-center justify-center p-1.5 rounded-sm text-text-secondary
                 hover:bg-border-light hover:text-text transition-colors cursor-pointer disabled:opacity-50"
               title={t("analyse.saveAs")}
             >
@@ -920,7 +920,7 @@ export function AnalyseView() {
               <button
                 type="button"
                 onClick={() => setShowDeleteConfirm(true)}
-                className="flex items-center justify-center p-1.5 rounded-[6px] text-text-secondary
+                className="flex items-center justify-center p-1.5 rounded-sm text-text-secondary
                   hover:bg-error/10 hover:text-error transition-colors cursor-pointer"
                 title={t("analyse.deleteChart")}
               >
@@ -935,7 +935,7 @@ export function AnalyseView() {
 
       {/* Add series form */}
       {showAddForm && (
-        <div className="bg-surface rounded-[10px] border border-border p-4 space-y-3">
+        <div className="card p-4 space-y-3">
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             {/* Zone selector */}
             <div>
@@ -949,7 +949,7 @@ export function AnalyseView() {
                     setSelectedZoneId(e.target.value);
                     setSelectedEquipmentId("");
                   }}
-                  className="w-full px-3 py-1.5 pr-8 rounded-[6px] border border-border bg-surface text-caption text-text appearance-none cursor-pointer"
+                  className="w-full px-3 py-1.5 pr-8 rounded-sm bg-surface text-caption text-text appearance-none cursor-pointer shadow-lg"
                 >
                   {flatZones.map((z) => (
                     <option key={z.id} value={z.id}>
@@ -970,7 +970,7 @@ export function AnalyseView() {
                 <select
                   value={selectedEquipmentId}
                   onChange={(e) => setSelectedEquipmentId(e.target.value)}
-                  className="w-full px-3 py-1.5 pr-8 rounded-[6px] border border-border bg-surface text-caption text-text appearance-none cursor-pointer"
+                  className="w-full px-3 py-1.5 pr-8 rounded-sm bg-surface text-caption text-text appearance-none cursor-pointer shadow-lg"
                 >
                   <option value="">{t("analyse.selectEquipment")}</option>
                   {filteredEquipments.map((eq) => (
@@ -1019,7 +1019,7 @@ export function AnalyseView() {
                         disabled={disabled}
                         onClick={() => addSeries(b)}
                         title={title}
-                        className={`px-2.5 py-1 rounded-[4px] text-caption font-medium transition-colors cursor-pointer ${
+                        className={`px-2.5 py-1 rounded-sm text-caption font-medium transition-colors cursor-pointer ${
                           disabled
                             ? "bg-border-light text-text-tertiary cursor-not-allowed opacity-60"
                             : "bg-border-light/50 text-text hover:bg-primary-light hover:text-primary"
@@ -1044,12 +1044,12 @@ export function AnalyseView() {
         // Quiet placeholder when the workspace is empty. The add-series form
         // above is the call to action; the placeholder just signals the chart
         // area without competing for attention.
-        <div className="bg-surface/50 rounded-[10px] border border-dashed border-border flex flex-col items-center justify-center py-12 text-center">
+        <div className="bg-surface/50 rounded-md border border-dashed border-border flex flex-col items-center justify-center py-12 text-center">
           <BarChart3 size={28} strokeWidth={1} className="text-border mb-2" />
           <p className="text-caption text-text-tertiary">{t("analyse.emptyHint")}</p>
         </div>
       ) : (
-        <div ref={chartCardRef} className="relative bg-surface rounded-[10px] border border-border p-4">
+        <div ref={chartCardRef} className="card relative p-4">
           {/* Colour picker opened from a legend entry — placed at the click
               point and opening upwards, so it does not fall out of the card
               (the legend sits at its bottom edge). */}
@@ -1312,7 +1312,7 @@ export function AnalyseView() {
       {/* Save name modal */}
       {showSaveModal && (
         <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50">
-          <div className="bg-surface rounded-[14px] border border-border shadow-xl w-[360px] p-5">
+          <div className="bg-surface rounded-lg w-[360px] p-5 shadow-lg">
             <h2 className="text-lead font-semibold text-text mb-3">
               {saveMode === "saveAs" ? t("analyse.saveAs") : t("analyse.save")}
             </h2>
@@ -1326,14 +1326,14 @@ export function AnalyseView() {
               onChange={(e) => setSaveName(e.target.value)}
               onKeyDown={(e) => { if (e.key === "Enter") handleSaveConfirm(); }}
               placeholder={t("analyse.saveNamePlaceholder")}
-              className="w-full px-3 py-2 rounded-[6px] border border-border bg-surface text-small text-text
+              className="w-full px-3 py-2 rounded-sm border border-border bg-surface text-small text-text
                 focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary"
             />
             <div className="flex justify-end gap-2 mt-4">
               <button
                 type="button"
                 onClick={() => setShowSaveModal(false)}
-                className="px-3 py-1.5 rounded-[6px] text-caption font-medium text-text-secondary
+                className="px-3 py-1.5 rounded-sm text-caption font-medium text-text-secondary
                   hover:bg-border-light transition-colors cursor-pointer"
               >
                 {t("common.cancel")}
@@ -1342,7 +1342,7 @@ export function AnalyseView() {
                 type="button"
                 onClick={handleSaveConfirm}
                 disabled={!saveName.trim() || saving}
-                className="px-3 py-1.5 rounded-[6px] text-caption font-medium bg-primary-fill text-white
+                className="px-3 py-1.5 rounded-sm text-caption font-medium bg-primary-fill text-white
                   hover:bg-primary-fill-hover transition-colors cursor-pointer disabled:opacity-50"
               >
                 {saving ? <Loader2 size={14} className="animate-spin" /> : t("analyse.save")}
@@ -1355,7 +1355,7 @@ export function AnalyseView() {
       {/* Delete confirm modal */}
       {showDeleteConfirm && currentChart && (
         <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50">
-          <div className="bg-surface rounded-[14px] border border-border shadow-xl w-[360px] p-5">
+          <div className="bg-surface rounded-lg w-[360px] p-5 shadow-lg">
             <h2 className="text-lead font-semibold text-text mb-3">
               {t("analyse.deleteChart")}
             </h2>
@@ -1366,7 +1366,7 @@ export function AnalyseView() {
               <button
                 type="button"
                 onClick={() => setShowDeleteConfirm(false)}
-                className="px-3 py-1.5 rounded-[6px] text-caption font-medium text-text-secondary
+                className="px-3 py-1.5 rounded-sm text-caption font-medium text-text-secondary
                   hover:bg-border-light transition-colors cursor-pointer"
               >
                 {t("common.cancel")}
@@ -1374,7 +1374,7 @@ export function AnalyseView() {
               <button
                 type="button"
                 onClick={handleDelete}
-                className="px-3 py-1.5 rounded-[6px] text-caption font-medium bg-error text-on-status
+                className="px-3 py-1.5 rounded-sm text-caption font-medium bg-error text-on-status
                   hover:bg-error/80 transition-colors cursor-pointer"
               >
                 {t("common.delete")}

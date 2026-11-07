@@ -32,7 +32,7 @@ export function SensorDataPanel({ bindings, equipmentId }: SensorDataPanelProps)
 
   if (sensorBindings.length === 0 && batteryBindings.length === 0) {
     return (
-      <div className="bg-surface rounded-[10px] border border-border p-4 mb-6">
+      <div className="card p-4 mb-6">
         <h3 className="text-body font-semibold text-text flex items-center gap-2 mb-2">
           <Gauge size={16} strokeWidth={1.5} className="text-text-tertiary" />
           {t("sensors.title")}
@@ -51,7 +51,7 @@ export function SensorDataPanel({ bindings, equipmentId }: SensorDataPanelProps)
   }
 
   return (
-    <div className="bg-surface rounded-[10px] border border-border p-4 mb-6">
+    <div className="card p-4 mb-6">
       <h3 className="text-body font-semibold text-text flex items-center gap-2 mb-4">
         <Gauge size={16} strokeWidth={1.5} className="text-text-tertiary" />
         {t("sensors.title")}
@@ -94,11 +94,11 @@ function SensorCategoryRow({
   const label = t(`category.${category}`);
 
   return (
-    <div className="flex items-center gap-3 px-3 py-3 rounded-[8px] bg-border-light/50">
+    <div className="flex items-center gap-3 px-3 py-3 rounded-md bg-border-light/50">
       {/* Category icon */}
       <div
         className={`
-          flex-shrink-0 w-10 h-10 rounded-[6px] flex items-center justify-center
+          flex-shrink-0 w-10 h-10 rounded-sm flex items-center justify-center
           ${getRowIconColor(category, bindings)}
         `}
       >
@@ -195,8 +195,8 @@ function BatteryRow({ level, deviceName }: { level: number | null; deviceName?: 
   const { t } = useTranslation();
   const color = getBatteryColor(level);
   return (
-    <div className="flex items-center gap-3 px-3 py-3 rounded-[8px] bg-border-light/50">
-      <div className={`flex-shrink-0 w-10 h-10 rounded-[6px] flex items-center justify-center bg-border-light ${color}`}>
+    <div className="flex items-center gap-3 px-3 py-3 rounded-md bg-border-light/50">
+      <div className={`flex-shrink-0 w-10 h-10 rounded-sm flex items-center justify-center bg-border-light ${color}`}>
         {getBatteryIcon(level, 18, 1.5)}
       </div>
       <div className="flex-1 min-w-0">

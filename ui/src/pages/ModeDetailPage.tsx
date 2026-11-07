@@ -137,7 +137,7 @@ export function ModeDetailPage() {
       <div className="flex items-start justify-between mb-4 sm:mb-8 max-w-[720px]">
         <div className="hidden lg:flex items-center gap-3 sm:gap-4 min-w-0">
           <div
-            className={`w-10 h-10 sm:w-12 sm:h-12 rounded-[8px] sm:rounded-[10px] flex items-center justify-center flex-shrink-0 ${
+            className={`w-10 h-10 sm:w-12 sm:h-12 rounded-md flex items-center justify-center flex-shrink-0 ${
               mode.active ? "bg-primary/10" : "bg-border-light"
             }`}
           >
@@ -170,14 +170,14 @@ export function ModeDetailPage() {
             <>
               <button
                 onClick={() => setShowEditForm(true)}
-                className="p-2 text-text-secondary border border-border rounded-[6px] hover:bg-border-light transition-colors duration-150"
+                className="p-2 text-text-secondary border border-border rounded-sm hover:bg-border-light transition-colors duration-150"
                 title={t("common.edit")}
               >
                 <Pencil size={14} strokeWidth={1.5} />
               </button>
               <button
                 onClick={handleDelete}
-                className="p-2 text-error border border-error/30 rounded-[6px] hover:bg-error/10 transition-colors duration-150"
+                className="p-2 text-error border border-error/30 rounded-sm hover:bg-error/10 transition-colors duration-150"
                 title={t("common.delete")}
               >
                 <Trash2 size={14} strokeWidth={1.5} />
@@ -206,7 +206,7 @@ export function ModeDetailPage() {
         />
 
         {/* Zone impacts section */}
-        <section className="bg-surface rounded-[10px] border border-border p-3 sm:p-5">
+        <section className="card p-3 sm:p-5">
           <h2 className="text-body font-semibold text-text flex items-center gap-2 mb-4">
             <MapPin size={16} strokeWidth={1.5} className="text-primary" />
             {t("modes.impacts")}
@@ -312,7 +312,7 @@ function ImpactActionRow({
     }
 
     return (
-      <div className="flex items-center gap-2 px-3 py-1.5 bg-background rounded-[4px] border border-border-light">
+      <div className="flex items-center gap-2 px-3 py-1.5 bg-background rounded-sm border border-border-light">
         <span className="text-text-tertiary flex-shrink-0">{icon}</span>
         <span className="text-caption text-text font-medium">{name}</span>
         <span className="text-caption text-text-secondary">→</span>
@@ -324,7 +324,7 @@ function ImpactActionRow({
   if (action.type === "recipe_toggle") {
     const inst = instances.find((i) => i.id === action.instanceId);
     return (
-      <div className="flex items-center gap-2 px-3 py-1.5 bg-background rounded-[4px] border border-border-light">
+      <div className="flex items-center gap-2 px-3 py-1.5 bg-background rounded-sm border border-border-light">
         <span className="text-text-tertiary flex-shrink-0"><Layers size={12} strokeWidth={1.5} /></span>
         <span className="text-caption text-text font-medium">{inst?.recipeId ?? action.instanceId}</span>
         <span className="text-caption text-text-secondary">→</span>
@@ -338,7 +338,7 @@ function ImpactActionRow({
   if (action.type === "recipe_params") {
     const inst = instances.find((i) => i.id === action.instanceId);
     return (
-      <div className="flex items-center gap-2 px-3 py-1.5 bg-background rounded-[4px] border border-border-light">
+      <div className="flex items-center gap-2 px-3 py-1.5 bg-background rounded-sm border border-border-light">
         <span className="text-text-tertiary flex-shrink-0"><Layers size={12} strokeWidth={1.5} /></span>
         <span className="text-caption text-text font-medium">{inst?.recipeId ?? action.instanceId}</span>
         <span className="text-caption text-text-secondary">→</span>
@@ -368,7 +368,7 @@ function ButtonTriggersSection({
   if (triggers.length === 0) return null;
 
   return (
-    <section className="bg-surface rounded-[10px] border border-border p-3 sm:p-5">
+    <section className="card p-3 sm:p-5">
       <h2 className="text-body font-semibold text-text flex items-center gap-2 mb-4">
         <Zap size={16} strokeWidth={1.5} className="text-text-tertiary" />
         {t("modes.triggers")}
@@ -404,7 +404,7 @@ function ButtonTriggersSection({
             <Link
               key={binding.id}
               to={`/equipments/${binding.equipmentId}`}
-              className="flex items-center gap-3 px-3 py-2 bg-background rounded-[6px] border border-border-light hover:border-primary/30 transition-colors"
+              className="flex items-center gap-3 px-3 py-2 bg-background rounded-sm border border-border-light hover:border-primary/30 transition-colors"
             >
               <Zap size={14} strokeWidth={1.5} className="text-text-tertiary flex-shrink-0" />
               <div className="flex-1 min-w-0">
@@ -462,7 +462,7 @@ function CalendarScheduleSection({
   };
 
   return (
-    <section className="bg-surface rounded-[10px] border border-border p-3 sm:p-5">
+    <section className="card p-3 sm:p-5">
       <h2 className="text-body font-semibold text-text flex items-center gap-2 mb-4">
         <Clock size={16} strokeWidth={1.5} className="text-text-tertiary" />
         {t("modes.schedule")}
@@ -474,9 +474,9 @@ function CalendarScheduleSection({
           return (
             <div
               key={slot.id}
-              className="flex items-center gap-3 px-3 py-2 bg-background rounded-[6px] border border-border-light"
+              className="flex items-center gap-3 px-3 py-2 bg-background rounded-sm border border-border-light"
             >
-              <span className={`text-caption font-medium px-1.5 py-0.5 rounded ${
+              <span className={`text-caption font-medium px-1.5 py-0.5 rounded-sm ${
                 action === "on"
                   ? "bg-success/10 text-success"
                   : "bg-error/10 text-error"

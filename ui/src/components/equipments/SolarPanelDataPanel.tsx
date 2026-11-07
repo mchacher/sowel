@@ -48,7 +48,7 @@ export function SolarPanelDataPanel({ bindings, status, statusReason }: SolarPan
   }).filter((r): r is { key: DataCategory; label: string; display: string } => r !== null);
 
   return (
-    <div className="bg-surface rounded-[10px] border border-border p-4 mb-6">
+    <div className="card p-4 mb-6">
       <div className="flex items-center justify-between mb-4">
         <h3 className="text-body font-semibold text-text flex items-center gap-2">
           <SolarPanelIcon size={16} strokeWidth={1.5} className="text-primary" />

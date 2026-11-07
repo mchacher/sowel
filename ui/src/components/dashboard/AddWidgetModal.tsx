@@ -60,7 +60,7 @@ export function AddWidgetModal({
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40">
-      <div className="bg-surface border border-border rounded-[14px] shadow-xl w-full max-w-[480px] max-h-[80vh] flex flex-col mx-4">
+      <div className="bg-surface rounded-lg w-full max-w-[480px] max-h-[80vh] flex flex-col mx-4 shadow-lg">
         {/* Header */}
         <div className="flex items-center justify-between px-5 py-4 border-b border-border-light">
           <h2 className="text-lead font-semibold text-text">{t("dashboard.addWidget")}</h2>
@@ -122,7 +122,7 @@ export function AddWidgetModal({
                 <select
                   value={eqZoneId}
                   onChange={(e) => setEqZoneId(e.target.value)}
-                  className="w-full px-3 py-2 text-small bg-surface border border-border rounded-[6px] text-text"
+                  className="w-full px-3 py-2 text-small bg-surface rounded-sm text-text shadow-lg"
                 >
                   <option value="">{t("dashboard.chooseZone")}</option>
                   {flatZones.map((z) => (
@@ -149,7 +149,7 @@ export function AddWidgetModal({
                             onAddEquipment(eq.id);
                             onClose();
                           }}
-                          className="w-full text-left px-3 py-2 text-small text-text hover:bg-border-light rounded-[6px] transition-colors cursor-pointer"
+                          className="w-full text-left px-3 py-2 text-small text-text hover:bg-border-light rounded-sm transition-colors cursor-pointer"
                         >
                           {eq.name}
                           <span className="ml-2 text-micro text-text-tertiary">{eq.type}</span>
@@ -164,7 +164,7 @@ export function AddWidgetModal({
                               onAddEquipment(eq.id, true);
                               onClose();
                             }}
-                            className="w-full text-left px-3 py-2 pl-6 text-small text-text hover:bg-border-light rounded-[6px] transition-colors cursor-pointer"
+                            className="w-full text-left px-3 py-2 pl-6 text-small text-text hover:bg-border-light rounded-sm transition-colors cursor-pointer"
                           >
                             {eq.name}
                             <span className="ml-2 text-micro text-primary">
@@ -192,7 +192,7 @@ export function AddWidgetModal({
                 <select
                   value={selectedZoneId}
                   onChange={(e) => setSelectedZoneId(e.target.value)}
-                  className="w-full px-3 py-2 text-small bg-surface border border-border rounded-[6px] text-text"
+                  className="w-full px-3 py-2 text-small bg-surface rounded-sm text-text shadow-lg"
                 >
                   <option value="">{t("dashboard.chooseZone")}</option>
                   {flatZones.map((z) => (
@@ -211,7 +211,7 @@ export function AddWidgetModal({
                     <button
                       key={f}
                       onClick={() => setSelectedFamily(f)}
-                      className={`px-3 py-2 text-small font-medium rounded-[6px] border transition-colors cursor-pointer ${
+                      className={`px-3 py-2 text-small font-medium rounded-sm border transition-colors cursor-pointer ${
                         selectedFamily === f
                           ? "border-primary bg-primary-light text-primary"
                           : "border-border text-text-secondary hover:bg-border-light"
@@ -232,7 +232,7 @@ export function AddWidgetModal({
                     onClose();
                   }
                 }}
-                className="w-full px-4 py-2.5 bg-primary-fill text-white text-small font-medium rounded-[6px] hover:bg-primary-fill-hover transition-colors disabled:opacity-50 cursor-pointer"
+                className="w-full px-4 py-2.5 bg-primary-fill text-white text-small font-medium rounded-sm hover:bg-primary-fill-hover transition-colors disabled:opacity-50 cursor-pointer"
               >
                 {t("dashboard.addZoneWidget")}
               </button>
@@ -248,7 +248,7 @@ export function AddWidgetModal({
                     onAddRecipe(row.id);
                     onClose();
                   }}
-                  className="w-full text-left px-3 py-2 text-small text-text hover:bg-border-light rounded-[6px] transition-colors cursor-pointer"
+                  className="w-full text-left px-3 py-2 text-small text-text hover:bg-border-light rounded-sm transition-colors cursor-pointer"
                 >
                   {row.name}
                   {row.zone && <span className="ml-2 text-micro text-text-tertiary">{row.zone}</span>}

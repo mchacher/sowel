@@ -154,7 +154,7 @@ export function ArbitrationSurface() {
   const showAside = !dormant && (available !== null || nextUp !== undefined);
 
   return (
-    <div className="bg-surface border border-border rounded-[10px] p-4 mt-4">
+    <div className="card p-4 mt-4">
       <SectionHeader
         icon={Scale}
         title={t("arbiter.surfaceTitle")}

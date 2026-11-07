@@ -97,7 +97,7 @@ export function EvHomeChargingSection({
             onAttributed={refreshSoon}
           />
         ))}
-      <div className="bg-surface rounded-[10px] border border-border p-4 mb-6 flex flex-col gap-4">
+      <div className="card p-4 mb-6 flex flex-col gap-4">
         <div className="flex items-center justify-between gap-2">
           <h3 className="text-body font-semibold text-text">
             {t("equipments.evSessions.homeCharging")}
@@ -152,7 +152,7 @@ export function EvHomeChargingSection({
                     ] as const
                   ).map(([swatch, key, wh, cost]) => (
                     <div key={key} className="flex items-center gap-2">
-                      <span className={`w-2.5 h-2.5 rounded-[3px] shrink-0 ${swatch}`} />
+                      <span className={`w-2.5 h-2.5 rounded-sm shrink-0 ${swatch}`} />
                       <span className="flex-1 text-text">{t(`equipments.evSessions.${key}`)}</span>
                       <span className="text-text-secondary tabular-nums">
                         {energyLabel(wh, locale)}

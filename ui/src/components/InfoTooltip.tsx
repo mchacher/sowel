@@ -24,7 +24,7 @@ export function InfoTooltip({ text, label }: { text: string; label?: string }) {
         onKeyDown={(e) => {
           if (e.key === "Escape") setOpen(false);
         }}
-        className="text-text-tertiary hover:text-text-secondary focus-visible:outline focus-visible:outline-2 focus-visible:outline-primary rounded"
+        className="text-text-tertiary hover:text-text-secondary focus-visible:outline focus-visible:outline-2 focus-visible:outline-primary rounded-sm"
       >
         <Info size={13} strokeWidth={1.5} />
       </button>

@@ -78,10 +78,17 @@
   --text-display: var(--fs-display);
   --text-value: var(--fs-value);
 
-  /* Border radius — aligned with design-system tokens */
-  --radius-sm: 6px;
-  --radius-md: 8px;
-  --radius-lg: 12px;
+  /* Border radius (spec 196, decision pr7-rayons): three steps and full.
+     sm 6 px = controls (buttons, fields, chips, icon buttons), md 10 px =
+     cards, tiles, rows, panels, popovers, lg 16 px = modals and bottom
+     sheets. xs 2 px is for chart bars and legend swatches only. Tailwind's
+     other steps are removed, and eslint rejects rounded-[Npx]. */
+  --radius-*: initial;
+  --radius-xs: var(--r-xs);
+  --radius-sm: var(--r-sm);
+  --radius-md: var(--r-md);
+  --radius-lg: var(--r-lg);
+  --radius: var(--r-sm);
 
   /* Shadows — resolved from design-system tokens (auto-darken in dark mode) */
   --shadow-sm: var(--sh-1);
@@ -95,6 +102,18 @@
   --color-sensor-500: var(--sensor-500);
   --color-media-50: var(--media-50);
   --color-media-500: var(--media-500);
+}
+
+/* A card (spec 196, decision pr7-bordures): a surface without a border. In
+   light it floats on the tinted page with a soft shadow (sh-1); in dark the
+   tone alone lifts it (the surface is lighter than the page, --sh-card is
+   none). One class: `card`, plus padding and layout. A group inside a card
+   is a sunken well (bg-background, no border, rounded-md), never a second
+   bordered card. Fields and secondary buttons keep their border. */
+@utility card {
+  background-color: var(--color-surface);
+  border-radius: var(--radius-md);
+  box-shadow: var(--sh-card);
 }
 
 /* All JetBrains Mono containers get tabular numbers by default —

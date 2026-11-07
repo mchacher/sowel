@@ -135,7 +135,7 @@ export function WaterValveControl({ equipment, onExecuteOrder, compact }: WaterV
           onClick={handleToggle}
           disabled={executing || !equipment.enabled}
           className={`
-            p-2 rounded-[6px] transition-colors duration-150 cursor-pointer
+            p-2 rounded-sm transition-colors duration-150 cursor-pointer
             ${isOn
               ? "bg-active text-on-active hover:bg-active/80"
               : "bg-border-light text-text-tertiary hover:bg-border hover:text-text-secondary"}
@@ -161,7 +161,7 @@ export function WaterValveControl({ equipment, onExecuteOrder, compact }: WaterV
             onClick={handleToggle}
             disabled={executing}
             className={`
-              flex items-center gap-2 px-4 py-2 rounded-[6px] text-small font-medium
+              flex items-center gap-2 px-4 py-2 rounded-sm text-small font-medium
               transition-colors duration-150
               ${isOn
                 ? "bg-active text-on-active hover:bg-active/80"
@@ -220,13 +220,13 @@ export function WaterValveControl({ equipment, onExecuteOrder, compact }: WaterV
             max={120}
             value={duration}
             onChange={(e) => setDuration(Math.max(1, Math.min(120, Number(e.target.value) || 1)))}
-            className="w-14 px-2 py-1 text-small tabular-nums border border-border rounded-[6px] outline-none focus:border-primary"
+            className="w-14 px-2 py-1 text-small tabular-nums border border-border rounded-sm outline-none focus:border-primary"
           />
           <span className="text-caption text-text-tertiary mr-1">{t("water.minutes")}</span>
           <button
             onClick={handleWaterNow}
             disabled={watering || !equipment.enabled}
-            className="flex items-center gap-1.5 px-3 py-1.5 text-caption font-medium rounded-[6px] bg-primary-fill text-white hover:bg-primary-fill-hover transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+            className="flex items-center gap-1.5 px-3 py-1.5 text-caption font-medium rounded-sm bg-primary-fill text-white hover:bg-primary-fill-hover transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
           >
             {watering ? (
               <Loader2 size={13} className="animate-spin" />
@@ -256,7 +256,7 @@ function Indicator({
   return (
     <div
       className={`
-        inline-flex items-center gap-1.5 px-2.5 py-1 rounded-[6px] border text-caption
+        inline-flex items-center gap-1.5 px-2.5 py-1 rounded-sm border text-caption
         ${alert ? "border-error/30 bg-error/5 text-error" : "border-border bg-surface text-text-secondary"}
       `}
       title={label}

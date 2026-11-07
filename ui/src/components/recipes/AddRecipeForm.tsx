@@ -219,7 +219,7 @@ export function AddRecipeForm({
                               setParams(next);
                               setVisibleGroups((prev) => { const n = new Set(prev); n.delete(groupKey); return n; });
                             }}
-                            className="p-0.5 rounded text-text-tertiary hover:text-error hover:bg-error/5 transition-colors duration-150"
+                            className="p-0.5 rounded-sm text-text-tertiary hover:text-error hover:bg-error/5 transition-colors duration-150"
                             title={t("common.delete")}
                           >
                             <Minus size={14} strokeWidth={1.5} />
@@ -258,7 +258,7 @@ export function AddRecipeForm({
                                     <select
                                       value={params[slot.id] ?? ""}
                                       onChange={(e) => setParams({ ...params, [slot.id]: e.target.value })}
-                                      className="w-full px-2 py-1.5 text-small bg-surface border border-border rounded-[6px] text-text"
+                                      className="w-full px-2 py-1.5 text-small bg-surface rounded-sm text-text shadow-lg"
                                     >
                                       <option value="">{t("common.select")}</option>
                                       <EquipmentOptions equipments={getEquipmentOptions(slot.id)} zoneChains={zoneChains} />
@@ -273,7 +273,7 @@ export function AddRecipeForm({
                                         <select
                                           value={params[slot.id] ?? ""}
                                           onChange={(e) => setParams({ ...params, [slot.id]: e.target.value })}
-                                          className="w-full px-2 py-1.5 text-small bg-surface border border-border rounded-[6px] text-text"
+                                          className="w-full px-2 py-1.5 text-small bg-surface rounded-sm text-text shadow-lg"
                                         >
                                           <option value="">{t("common.select")}</option>
                                           {bindings.map((b) => (
@@ -286,7 +286,7 @@ export function AddRecipeForm({
                                     <select
                                       value={String(params[slot.id] ?? slot.defaultValue ?? "")}
                                       onChange={(e) => setParams({ ...params, [slot.id]: e.target.value })}
-                                      className="w-full px-3 py-1.5 text-small bg-surface border border-border rounded-[6px] text-text"
+                                      className="w-full px-3 py-1.5 text-small bg-surface rounded-sm text-text shadow-lg"
                                     >
                                       {(slot.options ?? []).map((o) => (
                                         <option key={o.value} value={o.value}>
@@ -307,7 +307,7 @@ export function AddRecipeForm({
                                       value={params[slot.id] ?? ""}
                                       onChange={(e) => setParams({ ...params, [slot.id]: e.target.value })}
                                       placeholder={slot.constraints?.max ? `1-${slot.constraints.max}` : ""}
-                                      className="w-full px-2 py-1 text-small bg-surface border border-border rounded-[6px] text-text placeholder:text-text-tertiary"
+                                      className="w-full px-2 py-1 text-small bg-surface rounded-sm text-text placeholder:text-text-tertiary shadow-lg"
                                     />
                                   )}
                                 </div>
@@ -338,7 +338,7 @@ export function AddRecipeForm({
                   return chunk.slots.map((slot) => isSlotHidden(slot, params, selectedRecipe.slots) ? null : (
                     <div key={slot.id} className="mb-3">
                       {slot.type === "boolean" ? (
-                        <label className="flex items-center gap-2 px-3 py-1.5 text-small bg-surface border border-border rounded-[6px] text-text cursor-pointer hover:bg-border-light/30 transition-colors duration-150">
+                        <label className="flex items-center gap-2 px-3 py-1.5 text-small bg-surface rounded-sm text-text cursor-pointer hover:bg-border-light/30 transition-colors duration-150 shadow-lg">
                           <input
                             type="checkbox"
                             checked={params[slot.id] === "true"}
@@ -371,7 +371,7 @@ export function AddRecipeForm({
                           <select
                             value={params[slot.id] ?? ""}
                             onChange={(e) => setParams({ ...params, [slot.id]: e.target.value })}
-                            className="w-full px-3 py-1.5 text-small bg-surface border border-border rounded-[6px] text-text"
+                            className="w-full px-3 py-1.5 text-small bg-surface rounded-sm text-text shadow-lg"
                           >
                             <option value="">{t("common.select")}</option>
                             <EquipmentOptions equipments={getEquipmentOptions(slot.id)} zoneChains={zoneChains} />
@@ -387,7 +387,7 @@ export function AddRecipeForm({
                             <select
                               value={params[slot.id] ?? ""}
                               onChange={(e) => setParams({ ...params, [slot.id]: e.target.value })}
-                              className="w-full px-3 py-1.5 text-small bg-surface border border-border rounded-[6px] text-text"
+                              className="w-full px-3 py-1.5 text-small bg-surface rounded-sm text-text shadow-lg"
                             >
                               <option value="">{t("common.select")}</option>
                               {bindings.map((b) => (
@@ -415,7 +415,7 @@ export function AddRecipeForm({
                         <select
                           value={String(params[slot.id] ?? slot.defaultValue ?? "")}
                           onChange={(e) => setParams({ ...params, [slot.id]: e.target.value })}
-                          className="w-full px-3 py-1.5 text-small bg-surface border border-border rounded-[6px] text-text"
+                          className="w-full px-3 py-1.5 text-small bg-surface rounded-sm text-text shadow-lg"
                         >
                           {(slot.options ?? []).map((o) => (
                             <option key={o.value} value={o.value}>
@@ -438,7 +438,7 @@ export function AddRecipeForm({
                           value={params[slot.id] ?? ""}
                           onChange={(e) => setParams({ ...params, [slot.id]: e.target.value })}
                           placeholder={slot.defaultValue ? String(slot.defaultValue) : recipeSlotDescription(selectedRecipe, slot, lang)}
-                          className="w-full px-3 py-1.5 text-small bg-surface border border-border rounded-[6px] text-text placeholder:text-text-tertiary"
+                          className="w-full px-3 py-1.5 text-small bg-surface rounded-sm text-text placeholder:text-text-tertiary shadow-lg"
                         />
                       )}
                       <p className="text-caption text-text-tertiary mt-0.5">{recipeSlotDescription(selectedRecipe, slot, lang)}</p>
@@ -477,14 +477,14 @@ export function AddRecipeForm({
             <button
               onClick={handleSubmit}
               disabled={submitting}
-              className="flex-1 px-4 py-2 bg-primary-fill text-white text-small font-medium rounded-[6px] hover:bg-primary-fill-hover transition-colors duration-150 disabled:opacity-50 flex items-center justify-center gap-2"
+              className="flex-1 px-4 py-2 bg-primary-fill text-white text-small font-medium rounded-sm hover:bg-primary-fill-hover transition-colors duration-150 disabled:opacity-50 flex items-center justify-center gap-2"
             >
               {submitting && <Loader2 size={14} className="animate-spin" />}
               {t("common.create")}
             </button>
             <button
               onClick={onClose}
-              className="px-4 py-2 bg-border-light text-text-secondary text-small font-medium rounded-[6px] hover:bg-border transition-colors duration-150"
+              className="px-4 py-2 bg-border-light text-text-secondary text-small font-medium rounded-sm hover:bg-border transition-colors duration-150"
             >
               {t("common.cancel")}
             </button>

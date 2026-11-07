@@ -26,7 +26,7 @@ import { SectionHeader } from "./SectionHeader";
 import { useStalenessClock } from "../../hooks/useStalenessClock";
 
 const HOUSE_COLOR = "#4F7BE8"; // matches HP_COLOR in LiveEnergyPage
-const OTHER_COLOR = "#9AA4AB"; // light --n-300, neutral grey (one value for both themes)
+const OTHER_COLOR = "var(--energy-other)"; // neutral grey, one value per theme (tokens.css)
 
 const RADIUS = 72;
 const STROKE = 22;
@@ -88,7 +88,7 @@ export function LiveSubmeterBreakdown({ house, hasMainMeter }: Props) {
   const t_total = formatPowerParts(total, POWER);
 
   return (
-    <div className="bg-surface border border-border rounded-[10px] p-4 sm:p-6 mt-4">
+    <div className="card p-4 sm:p-6 mt-4">
       <SectionHeader icon={ChartPie} title={t("energy.live.breakdown.title")} />
 
       <div className="flex flex-col sm:flex-row items-center sm:items-start gap-6 max-w-[600px]">
@@ -107,7 +107,7 @@ export function LiveSubmeterBreakdown({ house, hasMainMeter }: Props) {
           {hasMainMeter && other > 0 && (
             <div className="grid grid-cols-[10px_1fr_auto_auto] gap-x-3 items-center text-small opacity-80">
               <span
-                className="w-[10px] h-[10px] rounded-[2px] border border-border"
+                className="w-[10px] h-[10px] rounded-xs border border-border"
                 style={{ background: OTHER_COLOR }}
               />
               <span className="text-text-secondary">{t("energy.live.breakdown.other")}</span>
@@ -278,7 +278,7 @@ function LegendRow({
         isOffline || isStale ? "opacity-60" : ""
       }`}
     >
-      <span className="w-[10px] h-[10px] rounded-[2px]" style={{ background: row.color }} />
+      <span className="w-[10px] h-[10px] rounded-xs" style={{ background: row.color }} />
       <div className="flex flex-col min-w-0">
         <span className="font-medium text-text truncate">{row.name}</span>
         {/* Spec 173 — this row is smaller than the meter's own card on purpose:

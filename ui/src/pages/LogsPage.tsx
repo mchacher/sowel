@@ -176,7 +176,7 @@ export function LogsPage() {
         <select
           value={filterLevel}
           onChange={(e) => setFilterLevel(e.target.value)}
-          className="px-3 py-1.5 text-small bg-background border border-border rounded-[6px] text-text focus:outline-none focus:border-primary"
+          className="px-3 py-1.5 text-small bg-background border border-border rounded-sm text-text focus:outline-none focus:border-primary"
         >
           <option value="">{t("logs.allLevels")}</option>
           {LOG_LEVELS.map((l) => (
@@ -190,7 +190,7 @@ export function LogsPage() {
         <select
           value={filterModule}
           onChange={(e) => setFilterModule(e.target.value)}
-          className="px-3 py-1.5 text-small bg-background border border-border rounded-[6px] text-text focus:outline-none focus:border-primary"
+          className="px-3 py-1.5 text-small bg-background border border-border rounded-sm text-text focus:outline-none focus:border-primary"
         >
           <option value="">{t("logs.allModules")}</option>
           {modules.map((m) => (
@@ -206,7 +206,7 @@ export function LogsPage() {
           value={filterSearch}
           onChange={(e) => setFilterSearch(e.target.value)}
           placeholder={t("logs.search")}
-          className="px-3 py-1.5 text-small bg-background border border-border rounded-[6px] text-text placeholder:text-text-tertiary focus:outline-none focus:border-primary w-48"
+          className="px-3 py-1.5 text-small bg-background border border-border rounded-sm text-text placeholder:text-text-tertiary focus:outline-none focus:border-primary w-48"
         />
 
         <div className="flex-1" />
@@ -222,7 +222,7 @@ export function LogsPage() {
           <select
             value={currentLevel}
             onChange={(e) => handleLevelChange(e.target.value as LogLevel)}
-            className="px-2 py-1 text-caption bg-background border border-border rounded-[6px] text-text focus:outline-none focus:border-primary"
+            className="px-2 py-1 text-caption bg-background border border-border rounded-sm text-text focus:outline-none focus:border-primary"
           >
             {LOG_LEVELS.map((l) => (
               <option key={l} value={l}>
@@ -235,7 +235,7 @@ export function LogsPage() {
         {/* Live / Pause toggle */}
         <button
           onClick={() => setLive(!live)}
-          className={`flex items-center gap-1.5 px-3 py-1.5 text-small font-medium rounded-[6px] border transition-colors cursor-pointer ${
+          className={`flex items-center gap-1.5 px-3 py-1.5 text-small font-medium rounded-sm border transition-colors cursor-pointer ${
             live
               ? "bg-success/10 text-success border-success/30"
               : "bg-border-light text-text-secondary border-border"
@@ -248,7 +248,7 @@ export function LogsPage() {
         {/* Clear */}
         <button
           onClick={handleClear}
-          className="flex items-center gap-1.5 px-3 py-1.5 text-small font-medium text-text-secondary border border-border rounded-[6px] hover:bg-border-light transition-colors cursor-pointer"
+          className="flex items-center gap-1.5 px-3 py-1.5 text-small font-medium text-text-secondary border border-border rounded-sm hover:bg-border-light transition-colors cursor-pointer"
         >
           <Trash2 size={14} />
           {t("logs.clear")}
@@ -258,7 +258,7 @@ export function LogsPage() {
       {/* Log entries */}
       <div
         ref={scrollRef}
-        className="flex-1 min-h-0 overflow-y-auto bg-background border border-border rounded-[10px] font-mono text-caption leading-[18px]"
+        className="flex-1 min-h-0 overflow-y-auto bg-background border border-border rounded-md font-mono text-caption leading-[18px]"
       >
         {filtered.length === 0 ? (
           <div className="flex items-center justify-center h-full text-text-tertiary text-small">
@@ -277,7 +277,7 @@ export function LogsPage() {
               return (
                 <div key={idx}>
                   <div
-                    className={`flex flex-wrap sm:flex-nowrap items-start gap-x-2 px-2 py-0.5 rounded hover:bg-border-light/50 cursor-pointer ${levelClass}`}
+                    className={`flex flex-wrap sm:flex-nowrap items-start gap-x-2 px-2 py-0.5 rounded-sm hover:bg-border-light/50 cursor-pointer ${levelClass}`}
                     onClick={() => extraKeys.length > 0 && toggleExpand(idx)}
                   >
                     {extraKeys.length > 0 ? (

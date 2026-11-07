@@ -39,7 +39,7 @@ export function IconPicker({ currentIcon, equipmentType, onSelect, onClose, mobi
   return (
     <div
       ref={ref}
-      className={`bg-surface border border-border rounded-[10px] shadow-lg p-3 ${
+      className={`bg-surface border border-border rounded-md shadow-lg p-3 ${
         mobile
           ? "relative z-50 w-[300px] max-h-[60vh] overflow-y-auto"
           : "absolute z-20 top-full left-1/2 -translate-x-1/2 mt-1 w-[280px]"
@@ -59,7 +59,7 @@ export function IconPicker({ currentIcon, equipmentType, onSelect, onClose, mobi
                   onClose();
                 }}
                 title={entry.label}
-                className={`w-12 h-12 flex items-center justify-center rounded-[6px] transition-colors cursor-pointer ${
+                className={`w-12 h-12 flex items-center justify-center rounded-sm transition-colors cursor-pointer ${
                   currentIcon === key
                     ? "bg-primary-light ring-2 ring-primary/30"
                     : "hover:bg-border-light"
@@ -89,7 +89,7 @@ export function IconPicker({ currentIcon, equipmentType, onSelect, onClose, mobi
                   onClose();
                 }}
                 title={entry.label}
-                className={`w-12 h-12 flex items-center justify-center rounded-[6px] transition-colors cursor-pointer ${
+                className={`w-12 h-12 flex items-center justify-center rounded-sm transition-colors cursor-pointer ${
                   currentIcon === key
                     ? "bg-primary-light ring-2 ring-primary/30"
                     : "hover:bg-border-light"

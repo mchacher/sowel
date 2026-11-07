@@ -8,7 +8,7 @@ export function EvMonthNav({ month, onChange }: { month: string; onChange: (m: s
   const { t, i18n } = useTranslation();
   const isCurrent = month >= monthOf(new Date());
   const btn =
-    "w-9 h-11 flex items-center justify-center rounded-[6px] text-text-secondary hover:bg-border-light disabled:text-text-tertiary disabled:hover:bg-transparent disabled:cursor-default cursor-pointer";
+    "w-9 h-11 flex items-center justify-center rounded-sm text-text-secondary hover:bg-border-light disabled:text-text-tertiary disabled:hover:bg-transparent disabled:cursor-default cursor-pointer";
   return (
     <div className="flex items-center gap-0.5">
       <button

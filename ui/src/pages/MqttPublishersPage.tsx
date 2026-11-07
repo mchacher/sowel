@@ -121,7 +121,7 @@ export function MqttPublishersPage() {
         <button
           onClick={() => setShowCreate(true)}
           disabled={brokers.length === 0}
-          className="flex items-center gap-1.5 px-3 py-1.5 bg-primary-fill text-white text-small rounded-[6px] hover:bg-primary-fill-hover transition-colors disabled:opacity-50"
+          className="flex items-center gap-1.5 px-3 py-1.5 bg-primary-fill text-white text-small rounded-sm hover:bg-primary-fill-hover transition-colors disabled:opacity-50"
           title={brokers.length === 0 ? t("mqttPublishers.noBrokersHint") : undefined}
         >
           <Plus size={14} />
@@ -199,7 +199,7 @@ function BrokersSection({ brokers, onRefresh }: { brokers: MqttBroker[]; onRefre
         ) : (
           <div
             key={broker.id}
-            className="flex items-center justify-between px-4 py-2.5 bg-surface rounded-[10px] border border-border max-w-lg"
+            className="card flex items-center justify-between px-4 py-2.5 max-w-lg"
           >
             <div>
               <div className="text-small font-medium text-text">{broker.name}</div>
@@ -213,13 +213,13 @@ function BrokersSection({ brokers, onRefresh }: { brokers: MqttBroker[]; onRefre
             <div className="flex items-center gap-1">
               <button
                 onClick={() => setEditingId(broker.id)}
-                className="p-1.5 rounded-[6px] hover:bg-bg transition-colors text-text-tertiary hover:text-text"
+                className="p-1.5 rounded-sm hover:bg-bg transition-colors text-text-tertiary hover:text-text"
               >
                 <Pencil size={14} />
               </button>
               <button
                 onClick={() => handleDelete(broker.id)}
-                className="p-1.5 rounded-[6px] hover:bg-bg transition-colors text-text-tertiary hover:text-error"
+                className="p-1.5 rounded-sm hover:bg-bg transition-colors text-text-tertiary hover:text-error"
               >
                 <Trash2 size={14} />
               </button>
@@ -299,7 +299,7 @@ function BrokerForm({
   return (
     <form
       onSubmit={handleSubmit}
-      className="p-4 bg-surface rounded-[10px] border border-border max-w-lg"
+      className="card p-4 max-w-lg"
     >
       <div className="space-y-3">
         <div>
@@ -311,7 +311,7 @@ function BrokerForm({
             value={name}
             onChange={(e) => setName(e.target.value)}
             placeholder="My Broker"
-            className="w-full px-3 py-1.5 text-small bg-bg border border-border rounded-[6px] text-text placeholder:text-text-tertiary"
+            className="w-full px-3 py-1.5 text-small bg-bg border border-border rounded-sm text-text placeholder:text-text-tertiary"
             autoFocus
           />
         </div>
@@ -324,7 +324,7 @@ function BrokerForm({
             value={url}
             onChange={(e) => setUrl(e.target.value)}
             placeholder="mqtt://192.168.0.45:1883"
-            className="w-full px-3 py-1.5 text-small bg-bg border border-border rounded-[6px] text-text placeholder:text-text-tertiary font-mono"
+            className="w-full px-3 py-1.5 text-small bg-bg border border-border rounded-sm text-text placeholder:text-text-tertiary font-mono"
           />
         </div>
         <div>
@@ -335,7 +335,7 @@ function BrokerForm({
             type="text"
             value={username}
             onChange={(e) => setUsername(e.target.value)}
-            className="w-full px-3 py-1.5 text-small bg-bg border border-border rounded-[6px] text-text"
+            className="w-full px-3 py-1.5 text-small bg-bg border border-border rounded-sm text-text"
           />
         </div>
         <div>
@@ -346,7 +346,7 @@ function BrokerForm({
             type="password"
             value={password}
             onChange={(e) => setPassword(e.target.value)}
-            className="w-full px-3 py-1.5 text-small bg-bg border border-border rounded-[6px] text-text"
+            className="w-full px-3 py-1.5 text-small bg-bg border border-border rounded-sm text-text"
           />
         </div>
         {error && <div className="text-micro text-error">{error}</div>}
@@ -354,7 +354,7 @@ function BrokerForm({
           <button
             type="submit"
             disabled={saving || !name.trim() || !url.trim()}
-            className="px-4 py-1.5 bg-primary-fill text-white text-small rounded-[6px] hover:bg-primary-fill-hover disabled:opacity-50"
+            className="px-4 py-1.5 bg-primary-fill text-white text-small rounded-sm hover:bg-primary-fill-hover disabled:opacity-50"
           >
             {saving ? (
               <Loader2 size={14} className="animate-spin" />
@@ -430,7 +430,7 @@ function PublisherForm({
   return (
     <form
       onSubmit={handleSubmit}
-      className="mb-4 p-4 bg-surface rounded-[10px] border border-border max-w-lg"
+      className="card mb-4 p-4 max-w-lg"
     >
       <div className="space-y-3">
         <div>
@@ -442,7 +442,7 @@ function PublisherForm({
             value={name}
             onChange={(e) => setName(e.target.value)}
             placeholder="Mon publisher"
-            className="w-full px-3 py-1.5 text-small bg-bg border border-border rounded-[6px] text-text placeholder:text-text-tertiary"
+            className="w-full px-3 py-1.5 text-small bg-bg border border-border rounded-sm text-text placeholder:text-text-tertiary"
             autoFocus
           />
         </div>
@@ -453,7 +453,7 @@ function PublisherForm({
           <select
             value={brokerId}
             onChange={(e) => setBrokerId(e.target.value)}
-            className="w-full px-3 py-1.5 text-small bg-bg border border-border rounded-[6px] text-text"
+            className="w-full px-3 py-1.5 text-small bg-bg border border-border rounded-sm text-text"
           >
             <option value="">{t("mqttPublishers.selectBroker")}</option>
             {brokers.map((b) => (
@@ -472,7 +472,7 @@ function PublisherForm({
             value={topic}
             onChange={(e) => setTopic(e.target.value)}
             placeholder="sowel/publish/my-topic"
-            className="w-full px-3 py-1.5 text-small bg-bg border border-border rounded-[6px] text-text placeholder:text-text-tertiary font-mono"
+            className="w-full px-3 py-1.5 text-small bg-bg border border-border rounded-sm text-text placeholder:text-text-tertiary font-mono"
           />
         </div>
         <label className="flex items-center gap-2 cursor-pointer">
@@ -480,7 +480,7 @@ function PublisherForm({
             type="checkbox"
             checked={onChangeOnly}
             onChange={(e) => setOnChangeOnly(e.target.checked)}
-            className="rounded border-border"
+            className="rounded-sm border-border"
           />
           <span className="text-caption text-text-secondary">
             {t("mqttPublishers.onChangeOnly")}
@@ -490,7 +490,7 @@ function PublisherForm({
           <button
             type="submit"
             disabled={saving || !name.trim() || !brokerId || !topic.trim()}
-            className="px-4 py-1.5 bg-primary-fill text-white text-small rounded-[6px] hover:bg-primary-fill-hover disabled:opacity-50"
+            className="px-4 py-1.5 bg-primary-fill text-white text-small rounded-sm hover:bg-primary-fill-hover disabled:opacity-50"
           >
             {saving ? (
               <Loader2 size={14} className="animate-spin" />
@@ -617,7 +617,7 @@ function PublisherCard({
 
   return (
     <div
-      className={`p-4 bg-surface rounded-[10px] border ${publisher.enabled ? "border-border" : "border-border opacity-60"}`}
+      className={`card p-4 ${publisher.enabled ? "" : "opacity-60"}`}
     >
       {/* Header */}
       <div className="flex items-center justify-between mb-3">
@@ -628,7 +628,7 @@ function PublisherCard({
             <span className="text-caption text-text-tertiary font-mono">{publisher.topic}</span>
             {broker && <span className="ml-2 text-micro text-text-tertiary">→ {broker.name}</span>}
             {publisher.onChangeOnly && (
-              <span className="ml-2 text-micro text-primary bg-primary/10 px-1.5 py-0.5 rounded">
+              <span className="ml-2 text-micro text-primary bg-primary/10 px-1.5 py-0.5 rounded-sm">
                 {t("mqttPublishers.onChangeOnlyBadge")}
               </span>
             )}
@@ -643,7 +643,7 @@ function PublisherCard({
           <button
             onClick={handleTest}
             disabled={testing || publisher.mappings.length === 0 || !publisher.brokerId}
-            className="flex items-center gap-1 px-2 py-1 text-micro rounded-[6px] hover:bg-bg transition-colors text-text-secondary hover:text-primary disabled:opacity-40"
+            className="flex items-center gap-1 px-2 py-1 text-micro rounded-sm hover:bg-bg transition-colors text-text-secondary hover:text-primary disabled:opacity-40"
             title={t("mqttPublishers.testPublish")}
           >
             {testing ? <Loader2 size={13} className="animate-spin" /> : <Zap size={13} />}
@@ -656,7 +656,7 @@ function PublisherCard({
           )}
           <button
             onClick={() => setEditing(true)}
-            className="p-1.5 rounded-[6px] hover:bg-bg transition-colors text-text-tertiary hover:text-text"
+            className="p-1.5 rounded-sm hover:bg-bg transition-colors text-text-tertiary hover:text-text"
             title={t("common.edit")}
           >
             <Pencil size={16} />
@@ -664,7 +664,7 @@ function PublisherCard({
           <button
             onClick={handleToggle}
             disabled={toggling}
-            className="p-1.5 rounded-[6px] hover:bg-bg transition-colors"
+            className="p-1.5 rounded-sm hover:bg-bg transition-colors"
             title={publisher.enabled ? t("common.disable") : t("common.enable")}
           >
             {publisher.enabled ? (
@@ -676,7 +676,7 @@ function PublisherCard({
           <button
             onClick={handleDelete}
             disabled={deleting}
-            className="p-1.5 rounded-[6px] hover:bg-bg transition-colors text-text-tertiary hover:text-error"
+            className="p-1.5 rounded-sm hover:bg-bg transition-colors text-text-tertiary hover:text-error"
             title={t("common.delete")}
           >
             <Trash2 size={16} />
@@ -821,7 +821,7 @@ function MappingRow({
 
   if (editing) {
     return (
-      <form onSubmit={handleSave} className="p-3 bg-bg rounded-[6px] border border-border">
+      <form onSubmit={handleSave} className="p-3 bg-background rounded-md">
         <div className="grid grid-cols-2 gap-3">
           <div>
             <label className="block text-micro text-text-secondary mb-1">
@@ -831,7 +831,7 @@ function MappingRow({
               type="text"
               value={publishKey}
               onChange={(e) => setPublishKey(e.target.value)}
-              className="w-full px-2 py-1 text-caption bg-surface border border-border rounded-[4px] text-text font-mono"
+              className="w-full px-2 py-1 text-caption bg-surface rounded-sm text-text font-mono shadow-lg"
               autoFocus
             />
           </div>
@@ -856,7 +856,7 @@ function MappingRow({
           <button
             type="submit"
             disabled={saving || !publishKey.trim() || !sourceId || !sourceKey}
-            className="px-3 py-1 bg-primary-fill text-white text-caption rounded-[4px] hover:bg-primary-fill-hover disabled:opacity-50"
+            className="px-3 py-1 bg-primary-fill text-white text-caption rounded-sm hover:bg-primary-fill-hover disabled:opacity-50"
           >
             {saving ? <Loader2 size={12} className="animate-spin" /> : t("common.save")}
           </button>
@@ -874,7 +874,7 @@ function MappingRow({
 
   return (
     <div
-      className={`flex items-center justify-between px-3 py-1.5 bg-bg rounded-[4px] ${
+      className={`flex items-center justify-between px-3 py-1.5 bg-bg rounded-sm ${
         mapping.enabled ? "" : "opacity-50"
       }`}
     >
@@ -890,14 +890,14 @@ function MappingRow({
       <div className="flex items-center gap-1 shrink-0">
         <button
           onClick={() => setEditing(true)}
-          className="p-1 rounded hover:bg-surface transition-colors text-text-tertiary hover:text-text"
+          className="p-1 rounded-sm hover:bg-surface transition-colors text-text-tertiary hover:text-text"
           title={t("common.edit")}
         >
           <Pencil size={12} />
         </button>
         <button
           onClick={handleToggleEnabled}
-          className="p-1 rounded hover:bg-surface transition-colors text-text-tertiary hover:text-text"
+          className="p-1 rounded-sm hover:bg-surface transition-colors text-text-tertiary hover:text-text"
           title={
             mapping.enabled ? t("mqttPublishers.mappingDisable") : t("mqttPublishers.mappingEnable")
           }
@@ -906,7 +906,7 @@ function MappingRow({
         </button>
         <button
           onClick={handleDelete}
-          className="p-1 rounded hover:bg-surface transition-colors text-text-tertiary hover:text-error"
+          className="p-1 rounded-sm hover:bg-surface transition-colors text-text-tertiary hover:text-error"
           title={t("common.delete")}
         >
           <Trash2 size={12} />
@@ -965,7 +965,7 @@ function AddMappingForm({
   };
 
   return (
-    <form onSubmit={handleSubmit} className="p-3 bg-bg rounded-[6px] border border-border">
+    <form onSubmit={handleSubmit} className="p-3 bg-background rounded-md">
       <div className="grid grid-cols-2 gap-3">
         <div>
           <label className="block text-micro text-text-secondary mb-1">
@@ -976,7 +976,7 @@ function AddMappingForm({
             value={publishKey}
             onChange={(e) => setPublishKey(e.target.value)}
             placeholder="Thome"
-            className="w-full px-2 py-1 text-caption bg-surface border border-border rounded-[4px] text-text font-mono placeholder:text-text-tertiary"
+            className="w-full px-2 py-1 text-caption bg-surface rounded-sm text-text font-mono placeholder:text-text-tertiary shadow-lg"
             autoFocus
           />
         </div>
@@ -1001,7 +1001,7 @@ function AddMappingForm({
         <button
           type="submit"
           disabled={saving || !publishKey.trim() || !sourceId || !sourceKey}
-          className="px-3 py-1 bg-primary-fill text-white text-caption rounded-[4px] hover:bg-primary-fill-hover disabled:opacity-50"
+          className="px-3 py-1 bg-primary-fill text-white text-caption rounded-sm hover:bg-primary-fill-hover disabled:opacity-50"
         >
           {t("mqttPublishers.addMapping")}
         </button>

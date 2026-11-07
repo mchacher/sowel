@@ -376,14 +376,14 @@ export function RecipeInstanceRow({
         <div className="col-start-2 col-span-2 row-start-2 flex items-center gap-[2px]">
           <button
             onClick={handleShowLog}
-            className="w-8 h-8 sm:w-[22px] sm:h-[20px] inline-flex items-center justify-center rounded-[4px] text-text-tertiary hover:text-text hover:bg-border-light/60 transition-colors duration-150"
+            className="w-8 h-8 sm:w-[22px] sm:h-[20px] inline-flex items-center justify-center rounded-sm text-text-tertiary hover:text-text hover:bg-border-light/60 transition-colors duration-150"
             title={t("recipes.viewLog")}
           >
             <ScrollText className="w-3.5 h-3.5 sm:w-3 sm:h-3" strokeWidth={1.5} />
           </button>
           <button
             onClick={() => setShowDuplicate(true)}
-            className="w-[22px] h-[20px] hidden sm:inline-flex items-center justify-center rounded-[4px] text-text-tertiary hover:text-primary hover:bg-primary/5 transition-colors duration-150"
+            className="w-[22px] h-[20px] hidden sm:inline-flex items-center justify-center rounded-sm text-text-tertiary hover:text-primary hover:bg-primary/5 transition-colors duration-150"
             title={t("recipes.duplicate")}
           >
             <Copy size={12} strokeWidth={1.5} />
@@ -391,7 +391,7 @@ export function RecipeInstanceRow({
           <button
             onClick={handleDelete}
             disabled={deleting}
-            className="w-[22px] h-[20px] hidden sm:inline-flex items-center justify-center rounded-[4px] text-text-tertiary hover:text-error hover:bg-error/5 transition-colors duration-150 disabled:opacity-50"
+            className="w-[22px] h-[20px] hidden sm:inline-flex items-center justify-center rounded-sm text-text-tertiary hover:text-error hover:bg-error/5 transition-colors duration-150 disabled:opacity-50"
             title={t("common.delete")}
           >
             <Trash2 size={12} strokeWidth={1.5} />
@@ -413,7 +413,7 @@ export function RecipeInstanceRow({
       {/* Edit form */}
       {editing && recipe && (
         <div className="px-4 pb-3">
-          <div className="bg-border-light/20 border border-border-light rounded-[6px] p-3">
+          <div className="bg-background rounded-md p-3">
             {(() => {
               const filteredSlots = recipe.slots.filter((slot) => slot.id !== "zone" && shouldShowSlot(slot.id));
               const chunks = groupSlots(filteredSlots);
@@ -438,7 +438,7 @@ export function RecipeInstanceRow({
                                 setEditParams(next);
                                 setVisibleGroups((prev) => { const n = new Set(prev); n.delete(groupKey); return n; });
                               }}
-                              className="p-0.5 rounded text-text-tertiary hover:text-error hover:bg-error/5 transition-colors duration-150"
+                              className="p-0.5 rounded-sm text-text-tertiary hover:text-error hover:bg-error/5 transition-colors duration-150"
                               title={t("common.delete")}
                             >
                               <Minus size={14} strokeWidth={1.5} />
@@ -474,7 +474,7 @@ export function RecipeInstanceRow({
                                       <select
                                         value={editParams[slot.id] ?? ""}
                                         onChange={(e) => setEditParams({ ...editParams, [slot.id]: e.target.value })}
-                                        className="w-full px-2 py-1.5 text-small bg-surface border border-border rounded-[6px] text-text"
+                                        className="w-full px-2 py-1.5 text-small bg-surface rounded-sm text-text shadow-lg"
                                       >
                                         <option value="">{t("common.select")}</option>
                                         <EquipmentOptions equipments={getEquipmentOptions(slot.id)} zoneChains={zoneChains} />
@@ -489,7 +489,7 @@ export function RecipeInstanceRow({
                                           <select
                                             value={editParams[slot.id] ?? ""}
                                             onChange={(e) => setEditParams({ ...editParams, [slot.id]: e.target.value })}
-                                            className="w-full px-2 py-1.5 text-small bg-surface border border-border rounded-[6px] text-text"
+                                            className="w-full px-2 py-1.5 text-small bg-surface rounded-sm text-text shadow-lg"
                                           >
                                             <option value="">{t("common.select")}</option>
                                             {bindings.map((b) => (
@@ -502,7 +502,7 @@ export function RecipeInstanceRow({
                                       <select
                                         value={String(editParams[slot.id] ?? slot.defaultValue ?? "")}
                                         onChange={(e) => setEditParams({ ...editParams, [slot.id]: e.target.value })}
-                                        className="w-full px-3 py-1.5 text-small bg-surface border border-border rounded-[6px] text-text"
+                                        className="w-full px-3 py-1.5 text-small bg-surface rounded-sm text-text shadow-lg"
                                       >
                                         {(slot.options ?? []).map((o) => (
                                           <option key={o.value} value={o.value}>
@@ -523,7 +523,7 @@ export function RecipeInstanceRow({
                                         value={editParams[slot.id] ?? ""}
                                         onChange={(e) => setEditParams({ ...editParams, [slot.id]: e.target.value })}
                                         placeholder={slot.constraints?.max ? `1-${slot.constraints.max}` : ""}
-                                        className="w-full px-2 py-1.5 text-small bg-surface border border-border rounded-[6px] text-text placeholder:text-text-tertiary"
+                                        className="w-full px-2 py-1.5 text-small bg-surface rounded-sm text-text placeholder:text-text-tertiary shadow-lg"
                                       />
                                     )}
                                     <p className="text-caption text-text-tertiary mt-0.5">{recipeSlotDescription(recipe, slot, lang)}</p>
@@ -555,7 +555,7 @@ export function RecipeInstanceRow({
                     return chunk.slots.map((slot) => isSlotHidden(slot, editParams, recipe.slots) ? null : (
                       <div key={slot.id} className={`mb-2.5 pl-2 border-l-2 transition-colors duration-150 ${isSlotChanged(slot.id) ? "border-primary" : "border-transparent"}`}>
                         {slot.type === "boolean" ? (
-                          <label className="flex items-center gap-2 px-3 py-1.5 text-small bg-surface border border-border rounded-[6px] text-text cursor-pointer hover:bg-border-light/30 transition-colors duration-150">
+                          <label className="flex items-center gap-2 px-3 py-1.5 text-small bg-surface rounded-sm text-text cursor-pointer hover:bg-border-light/30 transition-colors duration-150 shadow-lg">
                             <input
                               type="checkbox"
                               checked={editParams[slot.id] === "true"}
@@ -588,7 +588,7 @@ export function RecipeInstanceRow({
                             <select
                               value={editParams[slot.id] ?? ""}
                               onChange={(e) => setEditParams({ ...editParams, [slot.id]: e.target.value })}
-                              className="w-full px-3 py-1.5 text-small bg-surface border border-border rounded-[6px] text-text"
+                              className="w-full px-3 py-1.5 text-small bg-surface rounded-sm text-text shadow-lg"
                             >
                               <option value="">{t("common.select")}</option>
                               <EquipmentOptions equipments={getEquipmentOptions(slot.id)} zoneChains={zoneChains} />
@@ -604,7 +604,7 @@ export function RecipeInstanceRow({
                               <select
                                 value={editParams[slot.id] ?? ""}
                                 onChange={(e) => setEditParams({ ...editParams, [slot.id]: e.target.value })}
-                                className="w-full px-3 py-1.5 text-small bg-surface border border-border rounded-[6px] text-text"
+                                className="w-full px-3 py-1.5 text-small bg-surface rounded-sm text-text shadow-lg"
                               >
                                 <option value="">{t("common.select")}</option>
                                 {bindings.map((b) => (
@@ -632,7 +632,7 @@ export function RecipeInstanceRow({
                           <select
                             value={String(editParams[slot.id] ?? slot.defaultValue ?? "")}
                             onChange={(e) => setEditParams({ ...editParams, [slot.id]: e.target.value })}
-                            className="w-full px-3 py-1.5 text-small bg-surface border border-border rounded-[6px] text-text"
+                            className="w-full px-3 py-1.5 text-small bg-surface rounded-sm text-text shadow-lg"
                           >
                             {(slot.options ?? []).map((o) => (
                               <option key={o.value} value={o.value}>
@@ -655,7 +655,7 @@ export function RecipeInstanceRow({
                             value={editParams[slot.id] ?? ""}
                             onChange={(e) => setEditParams({ ...editParams, [slot.id]: e.target.value })}
                             placeholder={slot.defaultValue ? String(slot.defaultValue) : recipeSlotDescription(recipe, slot, lang)}
-                            className="w-full px-3 py-1.5 text-small bg-surface border border-border rounded-[6px] text-text placeholder:text-text-tertiary"
+                            className="w-full px-3 py-1.5 text-small bg-surface rounded-sm text-text placeholder:text-text-tertiary shadow-lg"
                           />
                         )}
                         <p className="text-caption text-text-tertiary mt-0.5">{recipeSlotDescription(recipe, slot, lang)}</p>
@@ -692,7 +692,7 @@ export function RecipeInstanceRow({
               <button
                 onClick={handleSave}
                 disabled={saving || !hasChanges}
-                className={`flex items-center gap-1.5 px-3 py-1.5 text-white text-caption font-medium rounded-[6px] transition-colors duration-150 disabled:opacity-40 ${
+                className={`flex items-center gap-1.5 px-3 py-1.5 text-white text-caption font-medium rounded-sm transition-colors duration-150 disabled:opacity-40 ${
                   hasChanges ? "bg-primary-fill hover:bg-primary-fill-hover" : "bg-primary-fill"
                 }`}
               >
@@ -701,7 +701,7 @@ export function RecipeInstanceRow({
               </button>
               <button
                 onClick={handleCancelEdit}
-                className="px-3 py-1.5 bg-border-light text-text-secondary text-caption font-medium rounded-[6px] hover:bg-border transition-colors duration-150"
+                className="px-3 py-1.5 bg-border-light text-text-secondary text-caption font-medium rounded-sm hover:bg-border transition-colors duration-150"
               >
                 {t("common.cancel")}
               </button>
@@ -713,7 +713,7 @@ export function RecipeInstanceRow({
       {/* Log panel — inline on desktop, a bottom sheet on the PWA/mobile (#615). */}
       {showLog && !isMobile && (
         <div className="px-4 pb-3">
-          <div className="bg-border-light/40 rounded-[6px] p-2 max-h-[200px] overflow-y-auto">
+          <div className="bg-border-light/40 rounded-sm p-2 max-h-[200px] overflow-y-auto">
             {logBody}
           </div>
         </div>

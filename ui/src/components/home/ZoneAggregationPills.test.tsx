@@ -56,8 +56,20 @@ describe("ZoneAggregationPills — sun", () => {
     const pill = screen.getByText(/^07:22\s–\s17:17$/).parentElement!;
     const separator = pill.previousElementSibling!;
     expect(separator.className).toContain("w-px");
-    expect(separator.className).toContain("lg:hidden");
-    expect(container.querySelectorAll(".w-px:not(.lg\\:hidden)")).toHaveLength(0);
+    // Separators only show from lg, where the sun pill is gone: this one never does.
+    expect(separator.className.split(/\s+/)).toContain("hidden");
+    expect(container.querySelectorAll(".w-px.lg\\:block")).toHaveLength(0);
+  });
+
+  it("wraps on phones and tablets, a single scrolling line only from lg", () => {
+    const { container } = render(<ZoneAggregationPills data={data} zoneId={ROOT_ZONE_ID} />);
+    const strip = container.firstElementChild!;
+    const classes = strip.className.split(/\s+/);
+    // At 820 px (a tablet) the strip used to stop wrapping and overflow sideways.
+    expect(classes).toContain("flex-wrap");
+    expect(classes).toContain("lg:flex-nowrap");
+    expect(classes).not.toContain("sm:flex-nowrap");
+    expect(classes).not.toContain("sm:overflow-x-auto");
   });
 
   it("leaves them out of any other zone's strip", () => {

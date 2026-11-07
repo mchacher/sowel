@@ -98,7 +98,7 @@ Refactor `ui/src/components/layout/Sidebar.tsx` to adopt `.sb__item` / `.sb__ite
 
 The SVG icon work is already done in the mock (`WidgetIcons.tsx` is production-aligned). Remaining:
 
-- Snap widget radius from `10px` → `--r-md` (8 px).
+- Widget radius: `--r-md` is 10 px since spec 196 (slice 7b), the radius every card already used.
 - Verify `.widget`, `.widget__title`, `.widget__art`, `.widget__big`, `.widget__footer` grid matches the spec.
 - Verify the energy-meter widget uses tabular-nums consistently.
 

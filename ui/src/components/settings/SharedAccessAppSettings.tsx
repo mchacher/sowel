@@ -141,14 +141,14 @@ export function SharedAccessAppSettings() {
             <img
               src={preview}
               alt={t("sharedAccess.app.icon")}
-              className="w-16 h-16 rounded-[14px] border border-border object-cover shrink-0"
+              className="w-16 h-16 rounded-lg border border-border object-cover shrink-0"
             />
           ) : (
             // The page's own mark, as the backend draws it.
             <div
               role="img"
               aria-label={t("sharedAccess.app.iconDefault")}
-              className="w-16 h-16 rounded-[14px] bg-[#0a0705] grid place-items-center shrink-0"
+              className="w-16 h-16 rounded-lg bg-[#0a0705] grid place-items-center shrink-0"
             >
               <span className="w-[56%] h-[56%] rounded-full bg-[#e8963c]" />
             </div>

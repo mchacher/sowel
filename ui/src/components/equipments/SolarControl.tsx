@@ -60,7 +60,7 @@ export function SolarControl({ equipment, onExecuteOrder, compact }: SolarContro
         onClick={handleToggle}
         disabled={executing}
         className={`
-          p-2 rounded-[6px] transition-colors duration-150 cursor-pointer
+          p-2 rounded-sm transition-colors duration-150 cursor-pointer
           ${
             isOn
               ? "bg-active text-on-active hover:bg-active/80"
@@ -80,7 +80,7 @@ export function SolarControl({ equipment, onExecuteOrder, compact }: SolarContro
       onClick={handleToggle}
       disabled={executing}
       className={`
-        flex items-center gap-2 px-4 py-2 rounded-[6px] text-small font-medium
+        flex items-center gap-2 px-4 py-2 rounded-sm text-small font-medium
         transition-colors duration-150
         ${
           isOn

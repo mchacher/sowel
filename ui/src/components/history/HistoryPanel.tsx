@@ -146,7 +146,7 @@ export function HistoryPanel({ equipmentId, bindings }: HistoryPanelProps) {
   };
 
   return (
-    <div className="bg-surface rounded-[10px] border border-border mb-6">
+    <div className="card mb-6">
       <button
         type="button"
         onClick={() => setOpen(!open)}
@@ -177,7 +177,7 @@ export function HistoryPanel({ equipmentId, bindings }: HistoryPanelProps) {
               <button
                 type="button"
                 onClick={() => handleToggle(entry.alias)}
-                className={`flex items-center justify-between w-full px-2.5 py-1.5 rounded-[4px] text-caption cursor-pointer transition-colors ${
+                className={`flex items-center justify-between w-full px-2.5 py-1.5 rounded-sm text-caption cursor-pointer transition-colors ${
                   isExpanded
                     ? "bg-primary-light"
                     : "bg-border-light/50 hover:bg-border-light"

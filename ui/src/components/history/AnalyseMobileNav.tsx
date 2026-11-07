@@ -54,7 +54,7 @@ export function AnalyseMobileNav() {
           <button
             type="button"
             onClick={() => goto(NEW_CHART_PATH)}
-            className={`flex items-center gap-3 w-full px-3 py-3 rounded-[10px] transition-colors duration-150 text-left ${
+            className={`flex items-center gap-3 w-full px-3 py-3 rounded-md transition-colors duration-150 text-left ${
               isNewActive ? "bg-primary-light text-primary" : "text-text hover:bg-border-light"
             }`}
           >
@@ -79,7 +79,7 @@ export function AnalyseMobileNav() {
                   key={chart.id}
                   type="button"
                   onClick={() => goto(`/analyse/${chart.id}`)}
-                  className={`flex items-center gap-3 w-full px-3 py-3 rounded-[10px] transition-colors duration-150 text-left ${
+                  className={`flex items-center gap-3 w-full px-3 py-3 rounded-md transition-colors duration-150 text-left ${
                     active ? "bg-primary-light text-primary" : "text-text hover:bg-border-light"
                   }`}
                 >

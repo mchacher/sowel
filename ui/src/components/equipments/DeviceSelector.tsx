@@ -248,7 +248,7 @@ export function DeviceSelector({
           value={filter}
           onChange={(e) => setFilter(e.target.value)}
           placeholder={t("devices.filterPlaceholder")}
-          className="w-full pl-8 pr-3 py-1.5 text-caption bg-surface border border-border rounded-[6px] outline-none placeholder:text-text-tertiary focus:border-primary transition-colors duration-150"
+          className="w-full pl-8 pr-3 py-1.5 text-caption bg-surface rounded-sm outline-none placeholder:text-text-tertiary focus:border-primary transition-colors duration-150 shadow-lg"
         />
       </div>
 
@@ -267,7 +267,7 @@ export function DeviceSelector({
               <div key={device.id}>
                 <div
                   className={`
-                    flex items-center gap-3 px-3 py-2.5 rounded-[6px] cursor-pointer
+                    flex items-center gap-3 px-3 py-2.5 rounded-sm cursor-pointer
                     transition-colors duration-150
                     ${isSelected ? "bg-primary-light border border-primary/30" : "bg-border-light/50 hover:bg-border-light border border-transparent"}
                   `}
@@ -275,7 +275,7 @@ export function DeviceSelector({
                 >
                   <div
                     className={`
-                      flex-shrink-0 w-5 h-5 rounded-[4px] border flex items-center justify-center
+                      flex-shrink-0 w-5 h-5 rounded-sm border flex items-center justify-center
                       ${isSelected ? "bg-primary-fill border-primary-fill text-white" : "border-border bg-surface"}
                     `}
                   >
@@ -339,7 +339,7 @@ export function DeviceSelector({
                         return (
                           <label
                             key={c.id}
-                            className={`flex items-center gap-2 px-2 py-1.5 rounded-[5px] cursor-pointer text-caption ${
+                            className={`flex items-center gap-2 px-2 py-1.5 rounded-sm cursor-pointer text-caption ${
                               isPicked
                                 ? "bg-primary/10 text-text"
                                 : "hover:bg-border-light/40 text-text-secondary"

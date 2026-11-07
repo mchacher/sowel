@@ -126,24 +126,24 @@ function CategoryIcon({
   template: ActivityItem["message"]["template"];
 }) {
   // Each variant follows the polished.html .activity__item-icon--<variant> recipe:
-  //   24x24, rounded-[4px], svg 12x12, distinctive bg + color
+  //   24x24, rounded-sm, svg 12x12, distinctive bg + color
   if (category === "recipe") {
     return (
-      <div className="w-6 h-6 rounded-[4px] flex items-center justify-center flex-shrink-0 bg-[var(--p-50)] text-primary">
+      <div className="w-6 h-6 rounded-sm flex items-center justify-center flex-shrink-0 bg-primary-light text-primary">
         <ChefHat size={12} strokeWidth={2} />
       </div>
     );
   }
   if (category === "mode") {
     return (
-      <div className="w-6 h-6 rounded-[4px] flex items-center justify-center flex-shrink-0 bg-[var(--green-50)] text-[var(--green-700)]">
+      <div className="w-6 h-6 rounded-sm flex items-center justify-center flex-shrink-0 bg-success/10 text-success">
         <Layers size={12} strokeWidth={2} />
       </div>
     );
   }
   if (category === "motion") {
     return (
-      <div className="w-6 h-6 rounded-[4px] flex items-center justify-center flex-shrink-0 bg-info/10 text-info">
+      <div className="w-6 h-6 rounded-sm flex items-center justify-center flex-shrink-0 bg-info/10 text-info">
         <PersonStanding size={12} strokeWidth={2} />
       </div>
     );
@@ -153,13 +153,13 @@ function CategoryIcon({
     // as a second failure. Green tick, same slot.
     if (template === "alarm.resolved") {
       return (
-        <div className="w-6 h-6 rounded-[4px] flex items-center justify-center flex-shrink-0 bg-[var(--green-50)] text-[var(--green-700)]">
+        <div className="w-6 h-6 rounded-sm flex items-center justify-center flex-shrink-0 bg-success/10 text-success">
           <CircleCheck size={12} strokeWidth={2} />
         </div>
       );
     }
     return (
-      <div className="w-6 h-6 rounded-[4px] flex items-center justify-center flex-shrink-0 bg-[var(--red-50)] text-[var(--red-500)]">
+      <div className="w-6 h-6 rounded-sm flex items-center justify-center flex-shrink-0 bg-error/10 text-error">
         <AlertTriangle size={12} strokeWidth={2} />
       </div>
     );
@@ -167,14 +167,14 @@ function CategoryIcon({
   if (category === "sunlight") {
     const Ico = template === "sunlight.sunrise" ? Sun : Moon;
     return (
-      <div className="w-6 h-6 rounded-[4px] flex items-center justify-center flex-shrink-0 bg-background text-text-tertiary">
+      <div className="w-6 h-6 rounded-sm flex items-center justify-center flex-shrink-0 bg-background text-text-tertiary">
         <Ico size={12} strokeWidth={2} />
       </div>
     );
   }
   // category === "order"
   return (
-    <div className="w-6 h-6 rounded-[4px] flex items-center justify-center flex-shrink-0 bg-background text-text-tertiary">
+    <div className="w-6 h-6 rounded-sm flex items-center justify-center flex-shrink-0 bg-background text-text-tertiary">
       <Circle size={12} strokeWidth={2} />
     </div>
   );

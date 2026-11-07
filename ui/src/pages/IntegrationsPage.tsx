@@ -65,7 +65,7 @@ export function IntegrationsPage() {
 
       {oauthMessage && (
         <div
-          className={`mb-4 max-w-[720px] px-4 py-3 rounded-[8px] text-small font-medium ${
+          className={`mb-4 max-w-[720px] px-4 py-3 rounded-md text-small font-medium ${
             oauthMessage.type === "success"
               ? "bg-success/10 border border-success/20 text-success"
               : "bg-error/10 border border-error/20 text-error"

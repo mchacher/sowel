@@ -58,7 +58,7 @@ export function SetupPage() {
           </p>
         </div>
 
-        <form onSubmit={handleSubmit} className="bg-surface rounded-[10px] border border-border p-6">
+        <form onSubmit={handleSubmit} className="card p-6">
           <div className="mb-4">
             <label className={FIELD_LABEL}>
               {t("auth.username")}
@@ -67,7 +67,7 @@ export function SetupPage() {
               type="text"
               value={username}
               onChange={(e) => setUsername(e.target.value)}
-              className="w-full px-3 py-2 text-body bg-background border border-border rounded-[6px] text-text placeholder:text-text-tertiary focus:outline-none focus:border-primary"
+              className="w-full px-3 py-2 text-body bg-background border border-border rounded-sm text-text placeholder:text-text-tertiary focus:outline-none focus:border-primary"
               autoFocus
               autoComplete="username"
             />
@@ -81,7 +81,7 @@ export function SetupPage() {
               type="text"
               value={displayName}
               onChange={(e) => setDisplayName(e.target.value)}
-              className="w-full px-3 py-2 text-body bg-background border border-border rounded-[6px] text-text placeholder:text-text-tertiary focus:outline-none focus:border-primary"
+              className="w-full px-3 py-2 text-body bg-background border border-border rounded-sm text-text placeholder:text-text-tertiary focus:outline-none focus:border-primary"
               autoComplete="name"
             />
           </div>
@@ -94,7 +94,7 @@ export function SetupPage() {
               type="password"
               value={password}
               onChange={(e) => setPassword(e.target.value)}
-              className="w-full px-3 py-2 text-body bg-background border border-border rounded-[6px] text-text placeholder:text-text-tertiary focus:outline-none focus:border-primary"
+              className="w-full px-3 py-2 text-body bg-background border border-border rounded-sm text-text placeholder:text-text-tertiary focus:outline-none focus:border-primary"
               autoComplete="new-password"
             />
           </div>
@@ -107,7 +107,7 @@ export function SetupPage() {
               type="password"
               value={confirmPassword}
               onChange={(e) => setConfirmPassword(e.target.value)}
-              className="w-full px-3 py-2 text-body bg-background border border-border rounded-[6px] text-text placeholder:text-text-tertiary focus:outline-none focus:border-primary"
+              className="w-full px-3 py-2 text-body bg-background border border-border rounded-sm text-text placeholder:text-text-tertiary focus:outline-none focus:border-primary"
               autoComplete="new-password"
             />
           </div>
@@ -119,7 +119,7 @@ export function SetupPage() {
           <button
             type="submit"
             disabled={loading || !username || !displayName || !password || !confirmPassword}
-            className="w-full flex items-center justify-center gap-2 px-4 py-2.5 bg-primary-fill text-white text-body font-medium rounded-[6px] hover:bg-primary-fill-hover transition-colors duration-150 disabled:opacity-50"
+            className="w-full flex items-center justify-center gap-2 px-4 py-2.5 bg-primary-fill text-white text-body font-medium rounded-sm hover:bg-primary-fill-hover transition-colors duration-150 disabled:opacity-50"
           >
             {loading && <Loader2 size={16} className="animate-spin" />}
             {t("auth.createAccount")}

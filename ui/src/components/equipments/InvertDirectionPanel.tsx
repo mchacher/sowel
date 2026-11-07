@@ -44,7 +44,7 @@ export function InvertDirectionPanel({
   };
 
   return (
-    <div className="bg-surface rounded-[10px] border border-border mb-6 p-4">
+    <div className="card mb-6 p-4">
       <div className="flex items-center gap-2 mb-1">
         <ArrowUpDown size={16} strokeWidth={1.5} className="text-text-tertiary" />
         <h3 className="text-body font-semibold text-text">{t(`${copyPrefix}.title`)}</h3>

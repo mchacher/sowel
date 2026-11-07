@@ -60,7 +60,7 @@ function SidebarZoneNode({ zone, depth }: { zone: ZoneWithChildren; depth: numbe
       <div>
         <NavLink
           to={`/home/${zone.id}`}
-          className={({ isActive: linkActive }) => `flex items-center gap-2 px-3 py-1.5 min-w-0 rounded-[6px] mx-1 group transition-colors duration-150 ${linkActive ? "bg-primary-light" : ""}`}
+          className={({ isActive: linkActive }) => `flex items-center gap-2 px-3 py-1.5 min-w-0 rounded-sm mx-1 group transition-colors duration-150 ${linkActive ? "bg-primary-light" : ""}`}
         >
           {({ isActive: linkActive }) => (
             <>
@@ -96,7 +96,7 @@ function SidebarZoneNode({ zone, depth }: { zone: ZoneWithChildren; depth: numbe
             e.stopPropagation();
             if (hasChildren) setExpanded(!expanded);
           }}
-          className={`flex-shrink-0 w-4 h-4 flex items-center justify-center rounded ${
+          className={`flex-shrink-0 w-4 h-4 flex items-center justify-center rounded-sm ${
             hasChildren
               ? "text-text-tertiary hover:text-text-secondary"
               : "text-transparent"
@@ -114,7 +114,7 @@ function SidebarZoneNode({ zone, depth }: { zone: ZoneWithChildren; depth: numbe
         <NavLink
           to={`/home/${zone.id}`}
           className={`
-            flex-1 flex items-center gap-2 px-2 py-1.5 rounded-[6px] min-w-0
+            flex-1 flex items-center gap-2 px-2 py-1.5 rounded-sm min-w-0
             text-small transition-colors duration-150 ease-out
             ${isActive
               ? "bg-primary-light text-primary font-medium"

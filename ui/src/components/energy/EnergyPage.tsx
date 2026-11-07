@@ -133,10 +133,10 @@ export function EnergyPage() {
       ) : (
         <>
           {/* Consumption chart */}
-          <div className="bg-surface border border-border rounded-[10px] p-4 sm:p-6">
+          <div className="card p-4 sm:p-6">
             {hasSubmeters && (
               <div className="flex justify-end mb-3">
-                <div className="inline-flex border border-border rounded-[6px] overflow-hidden text-caption">
+                <div className="inline-flex border border-border rounded-sm overflow-hidden text-caption">
                   <button
                     type="button"
                     onClick={() => setViewMode("total")}

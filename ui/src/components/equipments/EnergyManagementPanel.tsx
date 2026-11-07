@@ -164,10 +164,10 @@ export function EnergyManagementPanel({
   };
 
   const inputCls =
-    "w-24 px-2 py-1 border border-border rounded text-small text-text bg-background";
+    "w-24 px-2 py-1 border border-border rounded-sm text-small text-text bg-background";
 
   return (
-    <div className="bg-surface rounded-[10px] border border-border mb-6 p-4">
+    <div className="card mb-6 p-4">
       <div className="flex items-center gap-2 mb-1">
         <PlugZap size={16} strokeWidth={1.5} className="text-text-tertiary" />
         <h3 className="text-body font-semibold text-text">{t("energyProfile.title")}</h3>
@@ -197,7 +197,7 @@ export function EnergyManagementPanel({
           </span>
           <button
             onClick={() => void resume()}
-            className="ml-auto text-caption font-medium text-primary hover:text-primary-hover focus-visible:outline focus-visible:outline-2 focus-visible:outline-primary rounded"
+            className="ml-auto text-caption font-medium text-primary hover:text-primary-hover focus-visible:outline focus-visible:outline-2 focus-visible:outline-primary rounded-sm"
           >
             {t("energyProfile.resumeNow")}
           </button>
@@ -303,7 +303,7 @@ export function EnergyManagementPanel({
                   void commit({ cls, watts, toleratedImportW, minOnS, minOffS, releaseDelayS })
                 }
                 disabled={saving}
-                className="mt-3 px-3 py-1.5 bg-primary-fill text-white text-small font-medium rounded-md hover:bg-primary-fill-hover disabled:opacity-50"
+                className="mt-3 px-3 py-1.5 bg-primary-fill text-white text-small font-medium rounded-sm hover:bg-primary-fill-hover disabled:opacity-50"
               >
                 {t("energyProfile.save")}
               </button>

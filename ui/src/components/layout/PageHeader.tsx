@@ -47,7 +47,7 @@ export function PageHeaderButton({ icon: Icon, label, onClick }: PageHeaderButto
       type="button"
       onClick={onClick}
       aria-label={label}
-      className="flex items-center justify-center gap-2 w-10 h-10 sm:w-auto sm:h-auto sm:px-4 sm:py-2 shrink-0 text-small font-medium text-white bg-primary-fill rounded-[6px] hover:bg-primary-fill-hover transition-colors duration-150"
+      className="flex items-center justify-center gap-2 w-10 h-10 sm:w-auto sm:h-auto sm:px-4 sm:py-2 shrink-0 text-small font-medium text-white bg-primary-fill rounded-sm hover:bg-primary-fill-hover transition-colors duration-150"
     >
       <Icon size={16} strokeWidth={1.5} />
       <span className="hidden sm:inline">{label}</span>

@@ -68,7 +68,7 @@ function ForecastDayCard({ day, locale }: { day: ForecastDay; locale: string }) 
     : "text-text-tertiary";
 
   return (
-    <div className="flex-shrink-0 min-w-[140px] bg-surface rounded-[10px] border border-border p-4 flex flex-col items-center gap-2">
+    <div className="card flex-shrink-0 min-w-[140px] p-4 flex flex-col items-center gap-2">
       {/* Day name */}
       <span className="text-small font-semibold text-text">{capitalizedDayName}</span>
 

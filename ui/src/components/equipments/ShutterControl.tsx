@@ -96,7 +96,7 @@ export function ShutterControl({ equipment, onExecuteOrder, compact }: ShutterCo
   if (compact) {
     // Layout: slider (80px) → state pill → 3 bordered 24×24 buttons (.shutter-btn).
     const sttClass =
-      "w-[24px] h-[24px] inline-flex items-center justify-center border border-border-light bg-surface text-text-tertiary rounded-[4px] transition-colors duration-150 cursor-pointer hover:bg-shutter-50 hover:text-shutter-500 hover:border-shutter-500 disabled:opacity-50 disabled:cursor-not-allowed";
+      "w-[24px] h-[24px] inline-flex items-center justify-center bg-surface text-text-tertiary rounded-sm transition-colors duration-150 cursor-pointer hover:bg-shutter-50 hover:text-shutter-500 hover:border-shutter-500 disabled:opacity-50 disabled:cursor-not-allowed shadow-lg";
     return (
       <div
         className="flex items-center gap-2 flex-shrink-0"
@@ -220,7 +220,7 @@ export function ShutterControl({ equipment, onExecuteOrder, compact }: ShutterCo
           <button
             onClick={() => handleCommand("OPEN")}
             disabled={executing}
-            className="flex items-center gap-2 px-4 py-2 rounded-[6px] text-small font-medium transition-colors duration-150 bg-border-light text-text-secondary hover:bg-border hover:text-text disabled:opacity-50"
+            className="flex items-center gap-2 px-4 py-2 rounded-sm text-small font-medium transition-colors duration-150 bg-border-light text-text-secondary hover:bg-border hover:text-text disabled:opacity-50"
           >
             <OpenIcon size={16} strokeWidth={1.5} />
             {t(openKey)}
@@ -229,7 +229,7 @@ export function ShutterControl({ equipment, onExecuteOrder, compact }: ShutterCo
             <button
               onClick={() => handleCommand("STOP")}
               disabled={executing}
-              className="flex items-center gap-2 px-4 py-2 rounded-[6px] text-small font-medium transition-colors duration-150 bg-border-light text-text-secondary hover:bg-border hover:text-text disabled:opacity-50"
+              className="flex items-center gap-2 px-4 py-2 rounded-sm text-small font-medium transition-colors duration-150 bg-border-light text-text-secondary hover:bg-border hover:text-text disabled:opacity-50"
             >
               <Square size={12} strokeWidth={2} />
               {t("controls.stop")}
@@ -238,7 +238,7 @@ export function ShutterControl({ equipment, onExecuteOrder, compact }: ShutterCo
           <button
             onClick={() => handleCommand("CLOSE")}
             disabled={executing}
-            className="flex items-center gap-2 px-4 py-2 rounded-[6px] text-small font-medium transition-colors duration-150 bg-border-light text-text-secondary hover:bg-border hover:text-text disabled:opacity-50"
+            className="flex items-center gap-2 px-4 py-2 rounded-sm text-small font-medium transition-colors duration-150 bg-border-light text-text-secondary hover:bg-border hover:text-text disabled:opacity-50"
           >
             <CloseIcon size={16} strokeWidth={1.5} />
             {t(closeKey)}

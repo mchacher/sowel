@@ -109,7 +109,7 @@ export function MobileWidgetCard({
   return (
     <button
       onClick={onClick}
-      className={`relative bg-surface border border-border rounded-[8px] p-2 flex flex-col items-center h-[120px] overflow-hidden w-full text-left ${
+      className={`card relative p-2 flex flex-col items-center h-[120px] overflow-hidden w-full text-left ${
         editMode ? "" : "cursor-pointer active:scale-[0.98]"
       } transition-transform`}
     >

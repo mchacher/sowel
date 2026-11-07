@@ -79,12 +79,12 @@ export function PvForecastPanel({ equipmentId }: PvForecastPanelProps) {
   // absent panel: silence here would read as "nothing declared".
   if (!data) {
     return failed ? (
-      <div className="mb-6 bg-surface rounded-[10px] border border-border p-4">
+      <div className="card mb-6 p-4">
         <p className="text-small text-text-secondary">{t("equipments.pv.loadFailed")}</p>
         <button
           type="button"
           onClick={() => void load()}
-          className="mt-3 px-3 py-1.5 rounded-[6px] border border-border text-caption text-text-secondary hover:border-primary"
+          className="mt-3 px-3 py-1.5 rounded-sm border border-border text-caption text-text-secondary hover:border-primary"
         >
           {t("common.retry")}
         </button>
@@ -129,7 +129,7 @@ export function PvForecastPanel({ equipmentId }: PvForecastPanelProps) {
   const tomorrowKwh = sumKwh(data.curve, 1);
 
   return (
-    <div className="mb-6 bg-surface rounded-[10px] border border-border p-4">
+    <div className="card mb-6 p-4">
       <div className="flex items-center gap-2 mb-3">
         <Sun size={16} strokeWidth={1.5} className="text-text-tertiary" />
         <h3 className="text-body font-semibold text-text">{t("equipments.pv.title")}</h3>
@@ -254,7 +254,7 @@ export function PvForecastPanel({ equipmentId }: PvForecastPanelProps) {
                     key={d}
                     type="button"
                     onClick={() => setAccuracyDays(d)}
-                    className={`px-2 py-0.5 rounded-[6px] text-micro font-medium border ${
+                    className={`px-2 py-0.5 rounded-sm text-micro font-medium border ${
                       accuracyDays === d
                         ? "border-primary bg-primary-light text-primary"
                         : "border-border text-text-secondary hover:border-primary"

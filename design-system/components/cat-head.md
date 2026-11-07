@@ -1,5 +1,7 @@
 # Sub-category header (`cat-head`)
 
+> **Superseded in part by [tokens.md](../tokens.md) (spec 196).** Labels are sentence case and numbers Inter with tabular figures (§2), radii are 6 / 10 / 16 px (§4), and a card or panel has no border (§5.1). Where the CSS below disagrees, tokens.md wins.
+
 > The thin band that visually groups rows of the same kind inside a [panel](panel.md). Examples: "Éclairages" / "Volets" / "Capteurs" inside Équipements, "Modes" / "Recettes" inside Comportements.
 
 ---

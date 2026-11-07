@@ -136,7 +136,7 @@ export function DashboardPage() {
           {isAdmin && (
             <button
               onClick={() => setShowAddModal(true)}
-              className="inline-flex items-center gap-2 px-4 py-2.5 bg-primary-fill text-white text-small font-medium rounded-[6px] hover:bg-primary-fill-hover transition-colors cursor-pointer"
+              className="inline-flex items-center gap-2 px-4 py-2.5 bg-primary-fill text-white text-small font-medium rounded-sm hover:bg-primary-fill-hover transition-colors cursor-pointer"
             >
               <Plus size={16} strokeWidth={1.5} />
               {t("dashboard.addFirstWidget")}
@@ -175,7 +175,7 @@ export function DashboardPage() {
               {editMode && (
                 <button
                   onClick={() => setShowAddModal(true)}
-                  className="inline-flex items-center gap-1.5 px-3 py-1.5 text-small font-medium text-primary bg-primary-light border border-primary/20 rounded-[6px] hover:bg-primary/15 transition-colors cursor-pointer"
+                  className="inline-flex items-center gap-1.5 px-3 py-1.5 text-small font-medium text-primary bg-primary-light border border-primary/20 rounded-sm hover:bg-primary/15 transition-colors cursor-pointer"
                 >
                   <Plus size={14} strokeWidth={1.5} />
                   {t("dashboard.addWidget")}
@@ -183,10 +183,10 @@ export function DashboardPage() {
               )}
               <button
                 onClick={() => setEditMode(!editMode)}
-                className={`inline-flex items-center gap-1.5 px-3 py-1.5 text-small font-medium rounded-[6px] transition-colors cursor-pointer ${
+                className={`inline-flex items-center gap-1.5 px-3 py-1.5 text-small font-medium rounded-sm transition-colors cursor-pointer ${
                   editMode
                     ? "text-white bg-primary-fill hover:bg-primary-fill-hover"
-                    : "text-text-secondary bg-surface border border-border hover:bg-border-light"
+                    : "text-text-secondary bg-surface hover:bg-border-light shadow-lg"
                 }`}
               >
                 {editMode ? (
@@ -225,7 +225,7 @@ export function DashboardPage() {
           <button
             type="button"
             onClick={() => setEditMode(true)}
-            className="lg:hidden mt-4 w-full flex items-center justify-center gap-2 min-h-11 rounded-[8px] text-small font-medium text-text-secondary hover:bg-border-light transition-colors duration-150"
+            className="lg:hidden mt-4 w-full flex items-center justify-center gap-2 min-h-11 rounded-sm text-small font-medium text-text-secondary hover:bg-border-light transition-colors duration-150"
           >
             <Pencil size={16} strokeWidth={1.5} aria-hidden="true" />
             {t("dashboard.customize")}
@@ -243,7 +243,7 @@ export function DashboardPage() {
           <button
             type="button"
             onClick={() => setShowAddModal(true)}
-            className="flex-1 inline-flex items-center justify-center gap-1.5 min-h-11 px-3 text-small font-medium text-primary bg-primary-light border border-primary/20 rounded-[6px] hover:bg-primary/15 transition-colors"
+            className="flex-1 inline-flex items-center justify-center gap-1.5 min-h-11 px-3 text-small font-medium text-primary bg-primary-light border border-primary/20 rounded-sm hover:bg-primary/15 transition-colors"
           >
             <Plus size={16} strokeWidth={1.5} aria-hidden="true" />
             {t("dashboard.addWidget")}
@@ -251,7 +251,7 @@ export function DashboardPage() {
           <button
             type="button"
             onClick={() => setEditMode(false)}
-            className="flex-1 inline-flex items-center justify-center gap-1.5 min-h-11 px-3 text-small font-medium text-white bg-primary-fill rounded-[6px] hover:bg-primary-fill-hover transition-colors"
+            className="flex-1 inline-flex items-center justify-center gap-1.5 min-h-11 px-3 text-small font-medium text-white bg-primary-fill rounded-sm hover:bg-primary-fill-hover transition-colors"
           >
             <Check size={16} strokeWidth={1.5} aria-hidden="true" />
             {t("dashboard.done")}

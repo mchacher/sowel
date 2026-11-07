@@ -97,7 +97,7 @@ describe("FlowDiagram nodes", () => {
 
   it("dims the contents but never the box, so the skeleton cannot show through", () => {
     const { container } = render(<FlowDiagram nodes={[node({ dimmed: true })]} links={[]} />);
-    const box = container.querySelector(".rounded-\\[14px\\]") as HTMLElement;
+    const box = container.querySelector(".rounded-md") as HTMLElement;
     expect(box.className).not.toContain("opacity-40");
     expect((box.firstElementChild as HTMLElement).className).toContain("opacity-40");
   });

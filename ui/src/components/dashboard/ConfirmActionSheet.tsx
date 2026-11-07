@@ -62,7 +62,7 @@ export function ConfirmActionSheet({
         />
         <button
           onClick={onClose}
-          className="w-[150px] mx-auto mt-4 text-center text-small text-text-secondary border border-border rounded-[9px] py-2 hover:bg-border-light cursor-pointer"
+          className="w-[150px] mx-auto mt-4 text-center text-small text-text-secondary border border-border rounded-sm py-2 hover:bg-border-light cursor-pointer"
         >
           {t("common.cancel")}
         </button>

@@ -105,7 +105,7 @@ export function HomeSetupWizard() {
 
   return (
     <div className="fixed inset-0 z-[100] bg-background flex items-center justify-center p-4 overflow-y-auto">
-      <div className="bg-surface rounded-[14px] border border-border max-w-md w-full p-6 my-auto shadow-lg">
+      <div className="bg-surface rounded-lg max-w-md w-full p-6 my-auto shadow-lg">
         <div className="flex items-center gap-3 mb-4">
           <SowelLogo size={32} />
           <div className="min-w-0">
@@ -136,7 +136,7 @@ export function HomeSetupWizard() {
               value={homeName}
               onChange={(e) => setHomeName(e.target.value)}
               placeholder={t("setup.home.namePlaceholder", "Ma maison, Studio Paris...")}
-              className="w-full px-3 py-2 text-body bg-background border border-border rounded-[6px] text-text placeholder:text-text-tertiary focus:outline-none focus:border-primary"
+              className="w-full px-3 py-2 text-body bg-background border border-border rounded-sm text-text placeholder:text-text-tertiary focus:outline-none focus:border-primary"
               autoFocus
               required
             />
@@ -153,7 +153,7 @@ export function HomeSetupWizard() {
                 value={latitude}
                 onChange={(e) => setLatitude(e.target.value.replace(",", "."))}
                 placeholder="48.8566"
-                className="w-full px-3 py-2 text-body bg-background border border-border rounded-[6px] text-text placeholder:text-text-tertiary focus:outline-none focus:border-primary"
+                className="w-full px-3 py-2 text-body bg-background border border-border rounded-sm text-text placeholder:text-text-tertiary focus:outline-none focus:border-primary"
                 required
               />
             </div>
@@ -167,7 +167,7 @@ export function HomeSetupWizard() {
                 value={longitude}
                 onChange={(e) => setLongitude(e.target.value.replace(",", "."))}
                 placeholder="2.3522"
-                className="w-full px-3 py-2 text-body bg-background border border-border rounded-[6px] text-text placeholder:text-text-tertiary focus:outline-none focus:border-primary"
+                className="w-full px-3 py-2 text-body bg-background border border-border rounded-sm text-text placeholder:text-text-tertiary focus:outline-none focus:border-primary"
                 required
               />
             </div>
@@ -181,7 +181,7 @@ export function HomeSetupWizard() {
           </p>
 
           {error && (
-            <div className="text-caption text-error bg-error/10 px-3 py-2 rounded-[6px]">
+            <div className="text-caption text-error bg-error/10 px-3 py-2 rounded-sm">
               {error}
             </div>
           )}
@@ -189,7 +189,7 @@ export function HomeSetupWizard() {
           <button
             type="submit"
             disabled={!canSubmit}
-            className="w-full px-4 py-2.5 text-body font-semibold text-white bg-primary-fill hover:bg-primary-fill-hover disabled:opacity-40 disabled:cursor-not-allowed rounded-[6px] transition-colors inline-flex items-center justify-center gap-2"
+            className="w-full px-4 py-2.5 text-body font-semibold text-white bg-primary-fill hover:bg-primary-fill-hover disabled:opacity-40 disabled:cursor-not-allowed rounded-sm transition-colors inline-flex items-center justify-center gap-2"
           >
             {saving ? <Loader2 size={16} className="animate-spin" /> : null}
             {t("setup.home.submit", "Continuer")}

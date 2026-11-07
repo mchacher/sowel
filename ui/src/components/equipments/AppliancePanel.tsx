@@ -37,7 +37,7 @@ export function AppliancePanel({ equipment }: AppliancePanelProps) {
   };
 
   return (
-    <div className="bg-surface rounded-[10px] border border-border p-4 mb-6">
+    <div className="card p-4 mb-6">
       <h3 className="text-body font-semibold text-text mb-4">
         <WashingMachine size={16} strokeWidth={1.5} className="inline mr-2 text-text-tertiary" />
         {t("equipments.status")}

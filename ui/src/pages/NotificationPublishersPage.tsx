@@ -83,7 +83,7 @@ function PushEnableCard() {
       <button
         onClick={() => void unsubscribe()}
         disabled={busy}
-        className="flex items-center gap-1.5 px-3 py-1.5 text-small rounded-[6px] border border-border text-text-secondary hover:text-text disabled:opacity-50"
+        className="flex items-center gap-1.5 px-3 py-1.5 text-small rounded-sm border border-border text-text-secondary hover:text-text disabled:opacity-50"
       >
         {busy ? <Loader2 size={14} className="animate-spin" /> : <BellOff size={14} />}
         {t("notifPublishers.pushDisable")}
@@ -94,7 +94,7 @@ function PushEnableCard() {
       <button
         onClick={() => void subscribe()}
         disabled={busy}
-        className="flex items-center gap-1.5 px-3 py-1.5 bg-primary-fill text-white text-small rounded-[6px] hover:bg-primary-fill-hover disabled:opacity-50"
+        className="flex items-center gap-1.5 px-3 py-1.5 bg-primary-fill text-white text-small rounded-sm hover:bg-primary-fill-hover disabled:opacity-50"
       >
         {busy ? <Loader2 size={14} className="animate-spin" /> : <Bell size={14} />}
         {t("notifPublishers.pushEnable")}
@@ -103,7 +103,7 @@ function PushEnableCard() {
   }
 
   return (
-    <div className="mb-4 p-4 bg-surface rounded-[10px] border border-border max-w-lg">
+    <div className="card mb-4 p-4 max-w-lg">
       <div className="flex items-center justify-between gap-3">
         <div>
           <div className="text-small font-medium text-text">{t("notifPublishers.pushTitle")}</div>
@@ -175,7 +175,7 @@ export function NotificationPublishersPage() {
       <div className="flex items-center gap-3 mb-4">
         <button
           onClick={() => setShowCreate(true)}
-          className="flex items-center gap-1.5 px-3 py-1.5 bg-primary-fill text-white text-small rounded-[6px] hover:bg-primary-fill-hover transition-colors"
+          className="flex items-center gap-1.5 px-3 py-1.5 bg-primary-fill text-white text-small rounded-sm hover:bg-primary-fill-hover transition-colors"
         >
           <Plus size={14} />
           {t("notifPublishers.newPublisher")}
@@ -277,7 +277,7 @@ function PublisherForm({
   return (
     <form
       onSubmit={handleSubmit}
-      className="mb-4 p-4 bg-surface rounded-[10px] border border-border max-w-lg"
+      className="card mb-4 p-4 max-w-lg"
     >
       <div className="space-y-3">
         <div>
@@ -289,7 +289,7 @@ function PublisherForm({
             value={name}
             onChange={(e) => setName(e.target.value)}
             placeholder={t("notifPublishers.namePlaceholder")}
-            className="w-full px-3 py-1.5 text-small bg-bg border border-border rounded-[6px] text-text placeholder:text-text-tertiary"
+            className="w-full px-3 py-1.5 text-small bg-bg border border-border rounded-sm text-text placeholder:text-text-tertiary"
             autoFocus
           />
         </div>
@@ -300,7 +300,7 @@ function PublisherForm({
           <select
             value={channelType}
             onChange={(e) => handleChannelChange(e.target.value as NotificationChannelType)}
-            className="w-full px-3 py-1.5 text-small bg-bg border border-border rounded-[6px] text-text"
+            className="w-full px-3 py-1.5 text-small bg-bg border border-border rounded-sm text-text"
           >
             {NOTIFICATION_CHANNELS.map((c) => (
               <option key={c.type} value={c.type}>
@@ -319,7 +319,7 @@ function PublisherForm({
           <button
             type="submit"
             disabled={saving || !canSubmit}
-            className="px-4 py-1.5 bg-primary-fill text-white text-small rounded-[6px] hover:bg-primary-fill-hover disabled:opacity-50"
+            className="px-4 py-1.5 bg-primary-fill text-white text-small rounded-sm hover:bg-primary-fill-hover disabled:opacity-50"
           >
             {saving ? (
               <Loader2 size={14} className="animate-spin" />
@@ -464,7 +464,7 @@ function PublisherCard({
 
   return (
     <div
-      className={`p-4 bg-surface rounded-[10px] border ${publisher.enabled ? "border-border" : "border-border opacity-60"}`}
+      className={`card p-4 ${publisher.enabled ? "" : "opacity-60"}`}
     >
       {/* Header — stacks on mobile so the name stays readable and the
           actions sit on their own row instead of crushing into the title. */}
@@ -490,7 +490,7 @@ function PublisherCard({
           <button
             onClick={handleTestChannel}
             disabled={testingChannel}
-            className="flex items-center gap-1 px-2 py-1 text-micro rounded-[6px] hover:bg-bg transition-colors text-text-secondary hover:text-primary disabled:opacity-40"
+            className="flex items-center gap-1 px-2 py-1 text-micro rounded-sm hover:bg-bg transition-colors text-text-secondary hover:text-primary disabled:opacity-40"
             title={t("notifPublishers.testChannelHint")}
           >
             {testingChannel ? (
@@ -503,7 +503,7 @@ function PublisherCard({
           <button
             onClick={handleTestPublisher}
             disabled={testingPub || publisher.mappings.length === 0}
-            className="flex items-center gap-1 px-2 py-1 text-micro rounded-[6px] hover:bg-bg transition-colors text-text-secondary hover:text-primary disabled:opacity-40"
+            className="flex items-center gap-1 px-2 py-1 text-micro rounded-sm hover:bg-bg transition-colors text-text-secondary hover:text-primary disabled:opacity-40"
             title={t("notifPublishers.testPublisherHint")}
           >
             {testingPub ? <Loader2 size={13} className="animate-spin" /> : <Zap size={13} />}
@@ -511,7 +511,7 @@ function PublisherCard({
           </button>
           <button
             onClick={() => setEditing(true)}
-            className="p-1.5 rounded-[6px] hover:bg-bg transition-colors text-text-tertiary hover:text-text"
+            className="p-1.5 rounded-sm hover:bg-bg transition-colors text-text-tertiary hover:text-text"
             title={t("common.edit")}
           >
             <Pencil size={16} />
@@ -519,7 +519,7 @@ function PublisherCard({
           <button
             onClick={handleToggle}
             disabled={toggling}
-            className="p-1.5 rounded-[6px] hover:bg-bg transition-colors"
+            className="p-1.5 rounded-sm hover:bg-bg transition-colors"
             title={publisher.enabled ? t("common.disable") : t("common.enable")}
           >
             {publisher.enabled ? (
@@ -531,7 +531,7 @@ function PublisherCard({
           <button
             onClick={handleDelete}
             disabled={deleting}
-            className="p-1.5 rounded-[6px] hover:bg-bg transition-colors text-text-tertiary hover:text-error"
+            className="p-1.5 rounded-sm hover:bg-bg transition-colors text-text-tertiary hover:text-error"
             title={t("common.delete")}
           >
             <Trash2 size={16} />
@@ -610,7 +610,7 @@ function RepeatControl({
 }) {
   const { t } = useTranslation();
   const inputCls =
-    "w-16 px-2 py-1 text-caption bg-surface border border-border rounded-[4px] text-text";
+    "w-16 px-2 py-1 text-caption bg-surface rounded-sm text-text shadow-lg";
   return (
     <div>
       <label className="block text-micro text-text-secondary mb-1">
@@ -619,7 +619,7 @@ function RepeatControl({
       <select
         value={mode}
         onChange={(e) => onChange({ mode: e.target.value as RepeatMode, intervalMin, maxCount })}
-        className="w-full px-2 py-1 text-caption bg-surface border border-border rounded-[4px] text-text"
+        className="w-full px-2 py-1 text-caption bg-surface rounded-sm text-text shadow-lg"
       >
         <option value="none">{t("notifPublishers.repeatNone")}</option>
         <option value="forever">{t("notifPublishers.repeatForever")}</option>
@@ -742,7 +742,7 @@ function MappingRow({
 
   if (editing) {
     return (
-      <form onSubmit={handleSave} className="p-3 bg-bg rounded-[6px] border border-border">
+      <form onSubmit={handleSave} className="p-3 bg-background rounded-md">
         <div className="grid grid-cols-2 gap-3">
           <div className="col-span-2">
             <label className="block text-micro text-text-secondary mb-1">
@@ -752,7 +752,7 @@ function MappingRow({
               type="text"
               value={message}
               onChange={(e) => setMessage(e.target.value)}
-              className="w-full px-2 py-1 text-caption bg-surface border border-border rounded-[4px] text-text"
+              className="w-full px-2 py-1 text-caption bg-surface rounded-sm text-text shadow-lg"
               autoFocus
             />
           </div>
@@ -783,7 +783,7 @@ function MappingRow({
               onChange={(e) => setThrottleMs(Number(e.target.value) * 60000)}
               min={0}
               step={1}
-              className="w-full px-2 py-1 text-caption bg-surface border border-border rounded-[4px] text-text font-mono"
+              className="w-full px-2 py-1 text-caption bg-surface rounded-sm text-text font-mono shadow-lg"
             />
           </div>
         </div>
@@ -804,7 +804,7 @@ function MappingRow({
           <button
             type="submit"
             disabled={saving || !message.trim() || !sourceId || !sourceKey}
-            className="px-3 py-1 bg-primary-fill text-white text-caption rounded-[4px] hover:bg-primary-fill-hover disabled:opacity-50"
+            className="px-3 py-1 bg-primary-fill text-white text-caption rounded-sm hover:bg-primary-fill-hover disabled:opacity-50"
           >
             {saving ? <Loader2 size={12} className="animate-spin" /> : t("common.save")}
           </button>
@@ -821,7 +821,7 @@ function MappingRow({
   }
 
   return (
-    <div className="flex items-start justify-between gap-2 px-3 py-2 bg-bg rounded-[4px]">
+    <div className="flex items-start justify-between gap-2 px-3 py-2 bg-bg rounded-sm">
       <div className="flex flex-col gap-0.5 min-w-0 sm:flex-row sm:items-center sm:gap-3">
         <span className="text-caption text-text font-medium truncate sm:max-w-[200px] sm:shrink-0">
           {mapping.message}
@@ -846,13 +846,13 @@ function MappingRow({
             setFilterZoneId(deriveSourceZoneFilter(mapping, equipments, recipeInstances));
             setEditing(true);
           }}
-          className="p-1 rounded hover:bg-surface transition-colors text-text-tertiary hover:text-text"
+          className="p-1 rounded-sm hover:bg-surface transition-colors text-text-tertiary hover:text-text"
         >
           <Pencil size={12} />
         </button>
         <button
           onClick={handleDelete}
-          className="p-1 rounded hover:bg-surface transition-colors text-text-tertiary hover:text-error"
+          className="p-1 rounded-sm hover:bg-surface transition-colors text-text-tertiary hover:text-error"
         >
           <Trash2 size={12} />
         </button>
@@ -918,7 +918,7 @@ function AddMappingForm({
   };
 
   return (
-    <form onSubmit={handleSubmit} className="p-3 bg-bg rounded-[6px] border border-border">
+    <form onSubmit={handleSubmit} className="p-3 bg-background rounded-md">
       <div className="grid grid-cols-2 gap-3">
         <div className="col-span-2">
           <label className="block text-micro text-text-secondary mb-1">
@@ -929,7 +929,7 @@ function AddMappingForm({
             value={message}
             onChange={(e) => setMessage(e.target.value)}
             placeholder={t("notifPublishers.messagePlaceholder")}
-            className="w-full px-2 py-1 text-caption bg-surface border border-border rounded-[4px] text-text placeholder:text-text-tertiary"
+            className="w-full px-2 py-1 text-caption bg-surface rounded-sm text-text placeholder:text-text-tertiary shadow-lg"
             autoFocus
           />
         </div>
@@ -960,7 +960,7 @@ function AddMappingForm({
             onChange={(e) => setThrottleMs(Number(e.target.value) * 60000)}
             min={0}
             step={1}
-            className="w-full px-2 py-1 text-caption bg-surface border border-border rounded-[4px] text-text font-mono"
+            className="w-full px-2 py-1 text-caption bg-surface rounded-sm text-text font-mono shadow-lg"
           />
         </div>
       </div>
@@ -981,7 +981,7 @@ function AddMappingForm({
         <button
           type="submit"
           disabled={saving || !message.trim() || !sourceId || !sourceKey}
-          className="px-3 py-1 bg-primary-fill text-white text-caption rounded-[4px] hover:bg-primary-fill-hover disabled:opacity-50"
+          className="px-3 py-1 bg-primary-fill text-white text-caption rounded-sm hover:bg-primary-fill-hover disabled:opacity-50"
         >
           {t("notifPublishers.addMapping")}
         </button>

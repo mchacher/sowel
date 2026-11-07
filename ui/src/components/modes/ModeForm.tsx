@@ -39,7 +39,7 @@ export function ModeForm({ initial, onSubmit, onClose, title }: ModeFormProps) {
   return (
     <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50" onClick={onClose}>
       <div
-        className="bg-surface rounded-[14px] border border-border shadow-xl w-full max-w-[440px] mx-4"
+        className="bg-surface rounded-lg w-full max-w-[440px] mx-4 shadow-lg"
         onClick={(e) => e.stopPropagation()}
       >
         {/* Header */}
@@ -65,7 +65,7 @@ export function ModeForm({ initial, onSubmit, onClose, title }: ModeFormProps) {
               value={name}
               onChange={(e) => setName(e.target.value)}
               placeholder={t("modes.form.namePlaceholder")}
-              className="w-full px-3 py-2 text-body bg-surface border border-border rounded-[6px] outline-none placeholder:text-text-tertiary focus:border-primary transition-colors duration-150"
+              className="w-full px-3 py-2 text-body bg-surface rounded-sm outline-none placeholder:text-text-tertiary focus:border-primary transition-colors duration-150 shadow-lg"
               autoFocus
               maxLength={100}
             />
@@ -82,7 +82,7 @@ export function ModeForm({ initial, onSubmit, onClose, title }: ModeFormProps) {
               value={description}
               onChange={(e) => setDescription(e.target.value)}
               placeholder={t("modes.form.descriptionPlaceholder")}
-              className="w-full px-3 py-2 text-body bg-surface border border-border rounded-[6px] outline-none placeholder:text-text-tertiary focus:border-primary transition-colors duration-150"
+              className="w-full px-3 py-2 text-body bg-surface rounded-sm outline-none placeholder:text-text-tertiary focus:border-primary transition-colors duration-150 shadow-lg"
               maxLength={500}
             />
           </div>
@@ -97,14 +97,14 @@ export function ModeForm({ initial, onSubmit, onClose, title }: ModeFormProps) {
             <button
               type="button"
               onClick={onClose}
-              className="px-4 py-2 text-small font-medium text-text-secondary hover:text-text border border-border rounded-[6px] hover:bg-border-light transition-colors duration-150"
+              className="px-4 py-2 text-small font-medium text-text-secondary hover:text-text border border-border rounded-sm hover:bg-border-light transition-colors duration-150"
             >
               {t("common.cancel")}
             </button>
             <button
               type="submit"
               disabled={!name.trim() || saving}
-              className="px-4 py-2 text-small font-medium text-white bg-primary-fill rounded-[6px] hover:bg-primary-fill-hover transition-colors duration-150 disabled:opacity-50 disabled:cursor-not-allowed"
+              className="px-4 py-2 text-small font-medium text-white bg-primary-fill rounded-sm hover:bg-primary-fill-hover transition-colors duration-150 disabled:opacity-50 disabled:cursor-not-allowed"
             >
               {saving ? t("common.saving") : initial ? t("common.save") : t("common.create")}
             </button>

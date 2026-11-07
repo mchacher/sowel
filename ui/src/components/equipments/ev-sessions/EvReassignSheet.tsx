@@ -88,7 +88,7 @@ export function EvReassignSheet({
     return (
       <label
         key={value}
-        className={`flex items-center gap-3 min-h-[48px] px-3 rounded-[8px] cursor-pointer ${
+        className={`flex items-center gap-3 min-h-[48px] px-3 rounded-md cursor-pointer ${
           selected ? "border-2 border-primary bg-primary-light" : "border border-border"
         }`}
       >
@@ -125,7 +125,7 @@ export function EvReassignSheet({
         role="dialog"
         aria-modal="true"
         aria-label={title}
-        className="w-full sm:max-w-md bg-surface rounded-t-[12px] sm:rounded-[12px] border border-border px-4 pt-3 pb-6 sm:p-6 flex flex-col gap-4 max-h-[90vh] overflow-y-auto"
+        className="w-full sm:max-w-md bg-surface rounded-t-lg sm:rounded-lg px-4 pt-3 pb-6 sm:p-6 flex flex-col gap-4 max-h-[90vh] overflow-y-auto shadow-lg"
         onClick={(e) => e.stopPropagation()}
       >
         <div className="sm:hidden self-center w-10 h-1 rounded-full bg-border" aria-hidden="true" />
@@ -151,7 +151,7 @@ export function EvReassignSheet({
           <button
             type="button"
             onClick={onClose}
-            className="w-11 h-11 -mt-2 -mr-2 flex items-center justify-center rounded-[8px] text-text-secondary hover:bg-border-light cursor-pointer"
+            className="w-11 h-11 -mt-2 -mr-2 flex items-center justify-center rounded-sm text-text-secondary hover:bg-border-light cursor-pointer"
             aria-label={t("common.close")}
           >
             <X size={18} strokeWidth={1.5} />
@@ -159,7 +159,7 @@ export function EvReassignSheet({
         </div>
 
         {reason && (
-          <div className="flex gap-2 items-start bg-warning/10 rounded-[8px] px-3 py-2.5 text-small text-text">
+          <div className="flex gap-2 items-start bg-warning/10 rounded-md px-3 py-2.5 text-small text-text">
             <span className="w-2 h-2 rounded-full bg-warning shrink-0 mt-[5px]" />
             <span>{reason}</span>
           </div>
@@ -187,7 +187,7 @@ export function EvReassignSheet({
           <button
             type="button"
             onClick={onClose}
-            className="flex-1 min-h-[44px] rounded-[8px] border border-border text-body font-medium text-text hover:bg-border-light cursor-pointer"
+            className="flex-1 min-h-[44px] rounded-sm border border-border text-body font-medium text-text hover:bg-border-light cursor-pointer"
           >
             {t("common.cancel")}
           </button>
@@ -195,7 +195,7 @@ export function EvReassignSheet({
             type="button"
             onClick={() => void save()}
             disabled={!choice || saving}
-            className="flex-1 min-h-[44px] rounded-[8px] bg-primary-fill text-white text-body font-medium hover:bg-primary-fill-hover disabled:opacity-50 cursor-pointer flex items-center justify-center gap-2"
+            className="flex-1 min-h-[44px] rounded-sm bg-primary-fill text-white text-body font-medium hover:bg-primary-fill-hover disabled:opacity-50 cursor-pointer flex items-center justify-center gap-2"
           >
             {saving && <Loader2 size={14} className="animate-spin" />}
             {t("equipments.evSessions.sheet.save")}

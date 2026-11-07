@@ -120,7 +120,7 @@ function TariffTimeline({ slots }: { slots: TariffSlot[] }) {
       </div>
 
       {/* Bar */}
-      <div className="flex h-7 rounded-md overflow-hidden">
+      <div className="flex h-7 rounded-sm overflow-hidden">
         {segments.map((seg, i) => {
           const widthPct = ((seg.endMin - seg.startMin) / TOTAL_MINUTES) * 100;
           const color =
@@ -241,7 +241,7 @@ export function TariffSettings() {
 
   if (loading) {
     return (
-      <div className="bg-surface border border-border rounded-[10px] p-5">
+      <div className="card p-5">
         <div className="flex items-center gap-2 text-text-secondary text-small">
           <Loader2 size={14} className="animate-spin" />
           {t("common.loading")}
@@ -251,7 +251,7 @@ export function TariffSettings() {
   }
 
   return (
-    <div className="bg-surface border border-border rounded-[10px] p-5">
+    <div className="card p-5">
       <div className="flex items-center gap-2 mb-4">
         <Zap size={18} strokeWidth={1.5} className="text-text-secondary" />
         <h2 className="text-lead font-semibold text-text">{t("tariff.title")}</h2>
@@ -287,7 +287,7 @@ export function TariffSettings() {
                 prices: { ...prev.prices, hp: parseFloat(e.target.value) || 0 },
               }))
             }
-            className="w-full px-3 py-1.5 border border-border rounded-md text-small text-text bg-background"
+            className="w-full px-3 py-1.5 border border-border rounded-sm text-small text-text bg-background"
           />
         </div>
         <div>
@@ -305,7 +305,7 @@ export function TariffSettings() {
                 prices: { ...prev.prices, hc: parseFloat(e.target.value) || 0 },
               }))
             }
-            className="w-full px-3 py-1.5 border border-border rounded-md text-small text-text bg-background"
+            className="w-full px-3 py-1.5 border border-border rounded-sm text-small text-text bg-background"
           />
         </div>
       </div>
@@ -321,7 +321,7 @@ export function TariffSettings() {
       <TariffTimeline slots={slots} />
 
       {/* Time slots */}
-      <div className="mb-5 border border-border-light rounded-lg p-4">
+      <div className="mb-5 bg-background rounded-md p-4">
         <h3 className="text-small font-medium text-text mb-3">
           {t("tariff.timeSlots")}
         </h3>
@@ -338,7 +338,7 @@ export function TariffSettings() {
                 step="60"
                 value={slot.start}
                 onChange={(e) => updateSlot(slotIdx, { start: e.target.value })}
-                className="px-2 py-1 border border-border rounded text-small text-text bg-background"
+                className="px-2 py-1 border border-border rounded-sm text-small text-text bg-background"
               />
               <span className="text-text-tertiary text-caption">→</span>
               <input
@@ -346,14 +346,14 @@ export function TariffSettings() {
                 step="60"
                 value={slot.end}
                 onChange={(e) => updateSlot(slotIdx, { end: e.target.value })}
-                className="px-2 py-1 border border-border rounded text-small text-text bg-background"
+                className="px-2 py-1 border border-border rounded-sm text-small text-text bg-background"
               />
               <select
                 value={slot.tariff}
                 onChange={(e) =>
                   updateSlot(slotIdx, { tariff: e.target.value as "hp" | "hc" })
                 }
-                className="px-2 py-1 border border-border rounded text-small text-text bg-background"
+                className="px-2 py-1 border border-border rounded-sm text-small text-text bg-background"
               >
                 <option value="hp">{t("energy.peakHours")}</option>
                 <option value="hc">{t("energy.offPeakHours")}</option>
@@ -385,7 +385,7 @@ export function TariffSettings() {
         <button
           onClick={handleSave}
           disabled={saving}
-          className="px-4 py-1.5 bg-primary-fill text-white text-small font-medium rounded-md hover:bg-primary-fill-hover disabled:opacity-50 transition-colors"
+          className="px-4 py-1.5 bg-primary-fill text-white text-small font-medium rounded-sm hover:bg-primary-fill-hover disabled:opacity-50 transition-colors"
         >
           {saving ? (
             <span className="flex items-center gap-1.5">

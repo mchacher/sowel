@@ -274,7 +274,7 @@ export function AccessEditor({
             return (
               <div
                 key={g.equipmentId}
-                className="flex items-center gap-2 flex-wrap bg-background border border-border rounded-[6px] px-2.5 py-1.5"
+                className="flex items-center gap-2 flex-wrap bg-background border border-border rounded-sm px-2.5 py-1.5"
               >
                 <span className="text-small font-semibold text-text">{name}</span>
                 {summary && summary.commandValues.length > 1 ? (

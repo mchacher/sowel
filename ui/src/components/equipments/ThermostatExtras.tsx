@@ -34,9 +34,9 @@ function isControllable(order: OrderBindingWithDetails): boolean {
   return order.type === "boolean" || order.type === "number";
 }
 
-const chip = "inline-flex items-center gap-1.5 px-2.5 py-1 rounded-[6px] text-caption bg-border-light text-text-secondary";
+const chip = "inline-flex items-center gap-1.5 px-2.5 py-1 rounded-sm text-caption bg-border-light text-text-secondary";
 const segment = (selected: boolean) =>
-  `px-2.5 py-1 rounded-[6px] text-micro font-medium border transition-colors duration-150 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed ${
+  `px-2.5 py-1 rounded-sm text-micro font-medium border transition-colors duration-150 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed ${
     selected
       ? "bg-primary/10 text-primary border-primary/30"
       : "bg-surface text-text-tertiary border-border hover:text-text-secondary"
@@ -155,7 +155,7 @@ export function ThermostatExtras({
               <button
                 onClick={() => n !== null && onExec(alias, n - 1)}
                 disabled={busy || n === null || n - 1 < min}
-                className="p-1 rounded-[4px] bg-border-light text-text-secondary hover:bg-border hover:text-text transition-colors disabled:opacity-30 disabled:cursor-not-allowed cursor-pointer"
+                className="p-1 rounded-sm bg-border-light text-text-secondary hover:bg-border hover:text-text transition-colors disabled:opacity-30 disabled:cursor-not-allowed cursor-pointer"
                 title={`${label(alias)} −`}
               >
                 <ChevronDown size={12} strokeWidth={2} />
@@ -166,7 +166,7 @@ export function ThermostatExtras({
               <button
                 onClick={() => n !== null && onExec(alias, n + 1)}
                 disabled={busy || n === null || n + 1 > max}
-                className="p-1 rounded-[4px] bg-border-light text-text-secondary hover:bg-border hover:text-text transition-colors disabled:opacity-30 disabled:cursor-not-allowed cursor-pointer"
+                className="p-1 rounded-sm bg-border-light text-text-secondary hover:bg-border hover:text-text transition-colors disabled:opacity-30 disabled:cursor-not-allowed cursor-pointer"
                 title={`${label(alias)} +`}
               >
                 <ChevronUp size={12} strokeWidth={2} />

@@ -30,7 +30,7 @@ export function PhaseBreakdown({ gridEquipments }: Props) {
   const maxPower = Math.max(1, ...phases.map((p) => Math.abs(p.power)));
 
   return (
-    <div className="bg-surface border border-border rounded-[10px] p-4 sm:p-6 mt-4">
+    <div className="card p-4 sm:p-6 mt-4">
       <SectionHeader icon={Columns3} title={t("energy.live.phases.title")} />
       <div className="flex flex-col gap-3 max-w-[600px]">
         {phases.map((p, i) => {

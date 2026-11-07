@@ -98,7 +98,7 @@ export function AddBindingModal({
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40">
-      <div className="bg-surface rounded-[14px] border border-border shadow-xl w-full max-w-[480px] max-h-[80vh] flex flex-col">
+      <div className="bg-surface rounded-lg w-full max-w-[480px] max-h-[80vh] flex flex-col shadow-lg">
         {/* Header */}
         <div className="flex items-center justify-between px-5 py-4 border-b border-border-light">
           <h2 className="text-lead font-semibold text-text">
@@ -106,7 +106,7 @@ export function AddBindingModal({
           </h2>
           <button
             onClick={onClose}
-            className="p-1.5 text-text-tertiary hover:text-text-secondary rounded-[4px] hover:bg-border-light"
+            className="p-1.5 text-text-tertiary hover:text-text-secondary rounded-sm hover:bg-border-light"
           >
             <X size={16} strokeWidth={1.5} />
           </button>
@@ -132,7 +132,7 @@ export function AddBindingModal({
                     <button
                       key={device.id}
                       onClick={() => handleSelectDevice(device.id)}
-                      className="flex items-center gap-3 w-full px-3 py-2.5 rounded-[6px] bg-border-light/50 hover:bg-border-light transition-colors duration-150 text-left"
+                      className="flex items-center gap-3 w-full px-3 py-2.5 rounded-sm bg-border-light/50 hover:bg-border-light transition-colors duration-150 text-left"
                     >
                       <Radio size={16} strokeWidth={1.5} className="text-text-tertiary flex-shrink-0" />
                       <div className="flex-1 min-w-0">
@@ -193,7 +193,7 @@ export function AddBindingModal({
                         key={item.id}
                         onClick={() => handleSelectItem(item)}
                         className={`
-                          flex items-center gap-3 w-full px-3 py-2.5 rounded-[6px]
+                          flex items-center gap-3 w-full px-3 py-2.5 rounded-sm
                           transition-colors duration-150 text-left
                           ${isSelected
                             ? "bg-primary-light border border-primary/30"
@@ -246,7 +246,7 @@ export function AddBindingModal({
                       setError(null);
                     }}
                     placeholder={t("binding.aliasPlaceholder")}
-                    className="w-full px-3 py-2 text-small bg-surface border border-border rounded-[6px] outline-none placeholder:text-text-tertiary focus:border-primary transition-colors duration-150"
+                    className="w-full px-3 py-2 text-small bg-surface rounded-sm outline-none placeholder:text-text-tertiary focus:border-primary transition-colors duration-150 shadow-lg"
                   />
                 </div>
               )}
@@ -263,14 +263,14 @@ export function AddBindingModal({
         <div className="flex justify-end gap-2 px-5 py-3 border-t border-border-light">
           <button
             onClick={onClose}
-            className="px-4 py-2 text-small font-medium text-text-secondary border border-border rounded-[6px] hover:bg-border-light transition-colors duration-150"
+            className="px-4 py-2 text-small font-medium text-text-secondary border border-border rounded-sm hover:bg-border-light transition-colors duration-150"
           >
             {t("common.cancel")}
           </button>
           <button
             onClick={handleSubmit}
             disabled={!selectedItemId || !alias.trim() || submitting}
-            className="px-4 py-2 text-small font-medium text-white bg-primary-fill rounded-[6px] hover:bg-primary-fill-hover transition-colors duration-150 disabled:opacity-50 disabled:cursor-not-allowed"
+            className="px-4 py-2 text-small font-medium text-white bg-primary-fill rounded-sm hover:bg-primary-fill-hover transition-colors duration-150 disabled:opacity-50 disabled:cursor-not-allowed"
           >
             {submitting ? t("common.adding") : t("binding.addBinding")}
           </button>

@@ -33,7 +33,7 @@ export class ErrorBoundary extends Component<Props, State> {
     if (this.state.hasError) {
       return (
         <div className="min-h-screen flex items-center justify-center bg-background p-6">
-          <div className="max-w-md w-full bg-surface rounded-[14px] border border-border p-6 space-y-4">
+          <div className="max-w-md w-full bg-surface rounded-lg p-6 space-y-4 shadow-lg">
             <h1>
               Something went wrong
             </h1>
@@ -41,20 +41,20 @@ export class ErrorBoundary extends Component<Props, State> {
               An unexpected error occurred. You can try dismissing this error or reloading the page.
             </p>
             {this.state.error && (
-              <pre className="text-caption text-error bg-error/5 rounded-[6px] p-3 overflow-auto max-h-32 font-mono">
+              <pre className="text-caption text-error bg-error/5 rounded-sm p-3 overflow-auto max-h-32 font-mono">
                 {this.state.error.message}
               </pre>
             )}
             <div className="flex gap-3">
               <button
                 onClick={this.handleDismiss}
-                className="px-4 py-2 text-small font-medium rounded-[6px] bg-border-light text-text-secondary hover:bg-border hover:text-text transition-colors"
+                className="px-4 py-2 text-small font-medium rounded-sm bg-border-light text-text-secondary hover:bg-border hover:text-text transition-colors"
               >
                 Dismiss
               </button>
               <button
                 onClick={this.handleReload}
-                className="px-4 py-2 text-small font-medium rounded-[6px] bg-primary-fill text-white hover:bg-primary-fill-hover transition-colors"
+                className="px-4 py-2 text-small font-medium rounded-sm bg-primary-fill text-white hover:bg-primary-fill-hover transition-colors"
               >
                 Reload page
               </button>

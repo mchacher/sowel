@@ -182,7 +182,7 @@ export function HomePage() {
           headerRight={isAdmin ? (
             <button
               onClick={() => setShowEquipmentForm(true)}
-              className="w-[26px] h-[26px] inline-flex items-center justify-center rounded-[4px] border border-[var(--p-100)] bg-transparent text-primary hover:bg-surface hover:border-primary transition-colors duration-150"
+              className="w-[26px] h-[26px] inline-flex items-center justify-center rounded-sm border border-[var(--p-100)] bg-transparent text-primary hover:bg-surface hover:border-primary transition-colors duration-150"
               title={t("equipments.createEquipment")}
             >
               <Plus size={13} strokeWidth={1.5} />
@@ -279,7 +279,7 @@ function ZoneNotFound() {
       </p>
       <button
         onClick={() => navigate("/home")}
-        className="px-4 py-2 bg-primary-fill text-white text-small font-medium rounded-[6px] hover:bg-primary-fill-hover transition-colors duration-150"
+        className="px-4 py-2 bg-primary-fill text-white text-small font-medium rounded-sm hover:bg-primary-fill-hover transition-colors duration-150"
       >
         {t("home.backToHome")}
       </button>
@@ -299,9 +299,9 @@ function Panel({
   children: React.ReactNode;
 }) {
   return (
-    <section className={`bg-surface border border-border-light rounded-lg ${className}`}>
+    <section className={`card ${className}`}>
       {/* Panel head — strict alignment with design-system .panel__head (spec 100) */}
-      <div className="flex items-center gap-[0.55rem] px-[1.1rem] py-[0.55rem] min-h-[44px] bg-primary-light border-b border-primary-mid">
+      <div className="flex items-center gap-[0.55rem] px-[1.1rem] py-[0.55rem] min-h-[44px] bg-primary-light border-b border-primary-mid rounded-t-md">
         <h2 className="text-lead font-semibold text-text">
           {title}
         </h2>
@@ -338,7 +338,7 @@ function MobileZoneDrawer({
           </div>
           <button
             onClick={onClose}
-            className="p-1.5 rounded-[6px] text-text-tertiary hover:text-text-secondary hover:bg-border-light transition-colors"
+            className="p-1.5 rounded-sm text-text-tertiary hover:text-text-secondary hover:bg-border-light transition-colors"
           >
             <X size={18} strokeWidth={1.5} />
           </button>

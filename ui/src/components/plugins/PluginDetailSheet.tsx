@@ -139,7 +139,7 @@ function SidePanel({
           <button
             onClick={onClose}
             title={t("common.close")}
-            className="p-1.5 rounded-[6px] text-text-tertiary hover:text-text-secondary hover:bg-border-light transition-colors cursor-pointer shrink-0"
+            className="p-1.5 rounded-sm text-text-tertiary hover:text-text-secondary hover:bg-border-light transition-colors cursor-pointer shrink-0"
           >
             <X size={18} strokeWidth={1.5} />
           </button>
@@ -227,7 +227,7 @@ function DetailBody({
       {actionError && (
         <p
           role="alert"
-          className="px-3 py-2 text-caption text-error bg-error/10 rounded-[8px] break-words"
+          className="px-3 py-2 text-caption text-error bg-error/10 rounded-md break-words"
         >
           {actionError}
         </p>
@@ -238,7 +238,7 @@ function DetailBody({
           <button
             onClick={onUpdate}
             disabled={busy}
-            className="inline-flex items-center justify-center gap-2 w-full min-h-[44px] px-4 text-small font-medium text-white bg-primary-fill hover:bg-primary-fill-hover rounded-[8px] transition-colors cursor-pointer disabled:opacity-50"
+            className="inline-flex items-center justify-center gap-2 w-full min-h-[44px] px-4 text-small font-medium text-white bg-primary-fill hover:bg-primary-fill-hover rounded-sm transition-colors cursor-pointer disabled:opacity-50"
           >
             {actionLoading === "update" ? (
               <Loader2 size={15} className="animate-spin" />
@@ -252,7 +252,7 @@ function DetailBody({
         <button
           onClick={onToggle}
           disabled={busy}
-          className="inline-flex items-center justify-center gap-2 w-full min-h-[44px] px-4 text-small font-medium text-text-secondary border border-border rounded-[8px] hover:bg-border-light hover:text-text transition-colors cursor-pointer disabled:opacity-50"
+          className="inline-flex items-center justify-center gap-2 w-full min-h-[44px] px-4 text-small font-medium text-text-secondary border border-border rounded-sm hover:bg-border-light hover:text-text transition-colors cursor-pointer disabled:opacity-50"
         >
           {actionLoading === "enable" || actionLoading === "disable" ? (
             <Loader2 size={15} className="animate-spin" />
@@ -268,7 +268,7 @@ function DetailBody({
           disabled={busy}
           className={`
             inline-flex items-center justify-center gap-2 w-full min-h-[44px] px-4 mt-2
-            text-small font-medium rounded-[8px] transition-colors cursor-pointer disabled:opacity-50
+            text-small font-medium rounded-sm transition-colors cursor-pointer disabled:opacity-50
             ${confirmUninstall ? "text-on-status bg-error" : "text-error hover:bg-error/10"}
           `}
         >

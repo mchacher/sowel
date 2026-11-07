@@ -80,7 +80,7 @@ export function MeteringParentPanel({
   };
 
   return (
-    <div className="bg-surface rounded-[10px] border border-border mb-6 p-4">
+    <div className="card mb-6 p-4">
       {/* Spec 179 — a separate-supply meter is outside the partition, so a
           containment declaration would sit there unused: the select yields to
           the toggle rather than offering a choice that does nothing. */}
@@ -98,7 +98,7 @@ export function MeteringParentPanel({
                   void save({ meteringParentId: e.target.value === "" ? null : e.target.value })
                 }
                 aria-label={t("equipments.metering.nesting.title")}
-                className="px-2 py-1 text-caption bg-background border border-border rounded-[6px] text-text max-w-[220px]"
+                className="px-2 py-1 text-caption bg-background border border-border rounded-sm text-text max-w-[220px]"
               >
                 <option value="">{t("equipments.metering.nesting.none")}</option>
                 {candidates.map((eq) => (

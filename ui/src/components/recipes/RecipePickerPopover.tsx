@@ -90,9 +90,9 @@ export function RecipePickerPopover({
       <button
         key={recipe.id}
         onClick={() => onPick(recipe.id)}
-        className="w-full flex items-center gap-2.5 px-2.5 py-2 rounded-[6px] hover:bg-border-light/60 transition-colors duration-150 text-left"
+        className="w-full flex items-center gap-2.5 px-2.5 py-2 rounded-sm hover:bg-border-light/60 transition-colors duration-150 text-left"
       >
-        <div className="w-7 h-7 rounded-[6px] bg-border-light text-text-secondary flex items-center justify-center flex-shrink-0">
+        <div className="w-7 h-7 rounded-sm bg-border-light text-text-secondary flex items-center justify-center flex-shrink-0">
           <ChefHat size={14} strokeWidth={1.5} />
         </div>
         <div className="min-w-0 flex-1">
@@ -113,14 +113,14 @@ export function RecipePickerPopover({
   return (
     <>
       {/* Desktop side-popover: opens to the right of the "+" button */}
-      <div className="hidden sm:block absolute right-0 top-full mt-1 z-20 w-[320px] max-h-[360px] overflow-y-auto bg-surface border border-border rounded-[8px] shadow-lg p-1">
+      <div className="hidden sm:block absolute right-0 top-full mt-1 z-20 w-[320px] max-h-[360px] overflow-y-auto bg-surface border border-border rounded-md shadow-lg p-1">
         {list}
       </div>
 
       {/* Mobile bottom sheet with backdrop */}
       <div className="sm:hidden">
         <div className="fixed inset-0 z-40 bg-black/40" onClick={onClose} />
-        <div className="fixed inset-x-0 bottom-0 z-50 max-h-[70vh] flex flex-col bg-surface border-t border-border rounded-t-[16px] shadow-xl">
+        <div className="fixed inset-x-0 bottom-0 z-50 max-h-[70vh] flex flex-col bg-surface rounded-t-lg shadow-lg">
           <div className="flex justify-center pt-2 pb-1 flex-shrink-0">
             <div className="w-10 h-1 rounded-full bg-border" />
           </div>
@@ -128,7 +128,7 @@ export function RecipePickerPopover({
             <span className="text-small font-semibold text-text">{t("recipes.addRecipe")}</span>
             <button
               onClick={onClose}
-              className="p-1 rounded-[4px] text-text-tertiary hover:text-text hover:bg-border-light/60"
+              className="p-1 rounded-sm text-text-tertiary hover:text-text hover:bg-border-light/60"
             >
               <X size={14} strokeWidth={1.5} />
             </button>

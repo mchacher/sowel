@@ -69,7 +69,7 @@ export function TimedCommandControl({
         }}
         disabled={busy}
         title={running ? t("dashboard.timed.cancel") : t("dashboard.timed.arm", { count: minutes })}
-        className={`rounded-[6px] transition-colors duration-150 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed inline-flex items-center gap-1.5 ${
+        className={`rounded-sm transition-colors duration-150 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed inline-flex items-center gap-1.5 ${
           labelled ? "px-3 py-2 text-small font-medium" : "p-2"
         } ${
           running

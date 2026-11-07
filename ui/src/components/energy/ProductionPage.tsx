@@ -67,7 +67,7 @@ export function ProductionPage() {
           {t("common.loading")}
         </div>
       ) : (
-        <div className="bg-surface border border-border rounded-[10px] p-4 sm:p-6">
+        <div className="card p-4 sm:p-6">
           <ProductionBarChart
             points={history?.points ?? []}
             period={period}

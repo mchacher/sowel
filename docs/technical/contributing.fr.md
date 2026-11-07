@@ -254,19 +254,20 @@ Logs JSON structurés via pino (par défaut Fastify) avec multistream : ring buf
 
 Quand vous ajoutez ou modifiez des composants UI, suivez ces design tokens :
 
-| Propriété                 | Valeur                                                                                        |
-| ------------------------- | --------------------------------------------------------------------------------------------- |
-| **Police body**           | Inter                                                                                         |
-| **Police mono**           | JetBrains Mono : logs, JSON, identifiants, versions, code                                     |
-| **Nombres**               | Inter avec `tabular-nums` (chiffres à chasse fixe), pas mono                                  |
-| **Libellés**              | Casse de phrase ; majuscules seulement en tête de tableau                                     |
-| **Couleur primaire**      | `#1A4F6E` (ocean blue), hover : `#144159`, light : `#EEF5F8`                                  |
-| **Rôles de couleur**      | Ambre `#F2C035` = allumé ou en marche seulement ; les autres : `design-system/tokens.md` §1.2 |
-| **Espacement de base**    | 4px                                                                                           |
-| **Border radius**         | 6px (boutons), 10px (cartes), 14px (modales)                                                  |
-| **Taille de police body** | 14px (tableau de bord dense)                                                                  |
-| **Valeurs de données**    | 28px (lisibles d'un coup d'œil)                                                               |
-| **Icônes**                | Lucide React, stroke 1.5px                                                                    |
+| Propriété                 | Valeur                                                                                                                                   |
+| ------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------- |
+| **Police body**           | Inter                                                                                                                                    |
+| **Police mono**           | JetBrains Mono : logs, JSON, identifiants, versions, code                                                                                |
+| **Nombres**               | Inter avec `tabular-nums` (chiffres à chasse fixe), pas mono                                                                             |
+| **Libellés**              | Casse de phrase ; majuscules seulement en tête de tableau                                                                                |
+| **Couleur primaire**      | `#1A4F6E` (ocean blue), hover : `#144159`, light : `#EEF5F8`                                                                             |
+| **Rôles de couleur**      | Ambre `#F2C035` = allumé ou en marche seulement ; les autres : `design-system/tokens.md` §1.2                                            |
+| **Espacement de base**    | 4px                                                                                                                                      |
+| **Border radius**         | 6px contrôles (`rounded-sm`), 10px cartes (`rounded-md`), 16px modales et feuilles (`rounded-lg`), full                                  |
+| **Cartes**                | classe `card` : pas de bordure, ombre douce en clair, ton plus clair en sombre ; un groupe dans une carte est un puits (`bg-background`) |
+| **Taille de police body** | 14px (tableau de bord dense)                                                                                                             |
+| **Valeurs de données**    | 28px (lisibles d'un coup d'œil)                                                                                                          |
+| **Icônes**                | Lucide React, stroke 1.5px                                                                                                               |
 
 ---
 

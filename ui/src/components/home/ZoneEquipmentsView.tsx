@@ -123,7 +123,7 @@ function EmptyZone({ zoneName, onAdd }: { zoneName: string; onAdd?: () => void }
       {onAdd && (
         <button
           onClick={onAdd}
-          className="mt-4 inline-flex items-center gap-1.5 px-4 py-2 text-small font-medium text-white bg-primary-fill rounded-[6px] hover:bg-primary-fill-hover transition-colors duration-150"
+          className="mt-4 inline-flex items-center gap-1.5 px-4 py-2 text-small font-medium text-white bg-primary-fill rounded-sm hover:bg-primary-fill-hover transition-colors duration-150"
         >
           {t("equipments.createEquipment")}
         </button>

@@ -156,7 +156,7 @@ export function EvChargerControl({ equipment, onExecuteOrder }: EvChargerControl
                 aria-label={t("equipments.evCharger.decrease")}
                 onClick={() => void step(-1)}
                 disabled={!usable || sending || (shownA !== null && shownA <= order.min)}
-                className="hit-44 p-1.5 rounded-[6px] bg-border-light text-text-secondary hover:bg-border disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer"
+                className="hit-44 p-1.5 rounded-sm bg-border-light text-text-secondary hover:bg-border disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer"
               >
                 <Minus size={14} strokeWidth={1.5} />
               </button>
@@ -176,7 +176,7 @@ export function EvChargerControl({ equipment, onExecuteOrder }: EvChargerControl
                 aria-label={t("equipments.evCharger.increase")}
                 onClick={() => void step(1)}
                 disabled={!usable || sending || (shownA !== null && shownA >= order.max)}
-                className="hit-44 p-1.5 rounded-[6px] bg-border-light text-text-secondary hover:bg-border disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer"
+                className="hit-44 p-1.5 rounded-sm bg-border-light text-text-secondary hover:bg-border disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer"
               >
                 <Plus size={14} strokeWidth={1.5} />
               </button>

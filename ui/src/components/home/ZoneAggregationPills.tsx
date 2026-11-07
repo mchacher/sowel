@@ -278,18 +278,20 @@ export function ZoneAggregationPills({
 
   if (clusters.length === 0) return null;
 
-  // On phones the strip wraps instead of scrolling sideways (spec 196): the
-  // separators would dangle at line ends there, so the gap replaces them.
+  // Below lg (phones and tablets) the strip wraps instead of scrolling
+  // sideways (spec 196): the separators would dangle at line ends there, so
+  // the gap replaces them. A separator next to a compact-only pill (hidden
+  // from lg) never shows.
   return (
-    <div className="flex flex-wrap sm:flex-nowrap items-center gap-x-2 gap-y-1 sm:gap-x-0 rounded-[8px] border border-border bg-surface px-1 py-1 sm:overflow-x-auto">
+    <div className="card flex flex-wrap lg:flex-nowrap items-center gap-x-2 gap-y-1 lg:gap-x-0 px-1 py-1 lg:overflow-x-auto">
       {clusters.map((cluster, ci) => (
         <Fragment key={ci}>
           {ci > 0 && (
             <div
-              className={`hidden sm:block w-px h-5 bg-border mx-2 flex-shrink-0 ${
+              className={`w-px h-5 bg-border mx-2 flex-shrink-0 ${
                 cluster.every(isCompactOnly) || clusters.slice(0, ci).flat().every(isCompactOnly)
-                  ? "lg:hidden"
-                  : ""
+                  ? "hidden"
+                  : "hidden lg:block"
               }`}
             />
           )}
@@ -297,8 +299,8 @@ export function ZoneAggregationPills({
             <Fragment key={item.key}>
               {ii > 0 && (
                 <div
-                  className={`hidden sm:block w-px h-4 bg-border-light mx-1 flex-shrink-0 ${
-                    item.compactOnly || cluster.slice(0, ii).every(isCompactOnly) ? "lg:hidden" : ""
+                  className={`w-px h-4 bg-border-light mx-1 flex-shrink-0 ${
+                    item.compactOnly || cluster.slice(0, ii).every(isCompactOnly) ? "hidden" : "hidden lg:block"
                   }`}
                 />
               )}
@@ -374,7 +376,7 @@ function StripPill({ item, zoneId, historyEnabled }: StripPillProps) {
 
   return (
     <div
-      className={`flex items-center gap-1.5 px-2 py-0.5 rounded-[5px] text-small font-medium tabular-nums whitespace-nowrap ${v.pill} ${
+      className={`flex items-center gap-1.5 px-2 py-0.5 rounded-sm text-small font-medium tabular-nums whitespace-nowrap ${v.pill} ${
         item.compactOnly ? "lg:hidden" : ""
       }`}
       title={item.name}

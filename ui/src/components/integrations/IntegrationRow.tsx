@@ -61,10 +61,10 @@ export function IntegrationRow({ integration, onOpen, onRefresh }: IntegrationRo
   return (
     <div
       onClick={onOpen}
-      className="flex items-center gap-3 px-4 py-3 bg-surface border border-border rounded-[10px] hover:border-primary/30 transition-colors cursor-pointer group"
+      className="card flex items-center gap-3 px-4 py-3 hover:shadow-md transition-shadow cursor-pointer group"
     >
       {/* Icon */}
-      <div className="w-9 h-9 bg-border-light rounded-[8px] flex items-center justify-center shrink-0">
+      <div className="w-9 h-9 bg-border-light rounded-md flex items-center justify-center shrink-0">
         <IconComponent size={18} className="text-text-secondary" />
       </div>
 
@@ -75,7 +75,7 @@ export function IntegrationRow({ integration, onOpen, onRefresh }: IntegrationRo
             {integration.name}
           </span>
           {integration.pluginVersion && (
-            <span className="text-micro px-1.5 py-0.5 bg-border-light rounded-[4px] text-text-tertiary font-mono shrink-0">
+            <span className="text-micro px-1.5 py-0.5 bg-border-light rounded-sm text-text-tertiary font-mono shrink-0">
               {integration.pluginVersion}
             </span>
           )}
@@ -194,7 +194,7 @@ function QuickAction({
       onClick={onClick}
       disabled={loading}
       title={title}
-      className={`p-1.5 rounded-[5px] transition-colors cursor-pointer disabled:opacity-50 ${
+      className={`p-1.5 rounded-sm transition-colors cursor-pointer disabled:opacity-50 ${
         accent
           ? "text-success/70 hover:bg-success/10 hover:text-success"
           : "text-text-tertiary hover:bg-border-light hover:text-text-secondary"

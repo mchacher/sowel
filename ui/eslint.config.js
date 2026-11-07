@@ -116,6 +116,24 @@ export default defineConfig([
             "TemplateElement[value.raw=/(^|\\s)uppercase(\\s|$)/]:not(JSXElement[openingElement.name.name=/^(thead|th)$/] TemplateElement)",
           message: "Uppercase is for table column headers only: write the label in sentence case.",
         },
+        // Spec 196, decision pr7-rayons — three radii and full: rounded-sm
+        // (6 px, controls), rounded-md (10 px, cards, rows, popovers),
+        // rounded-lg (16 px, modals and sheets), rounded-full; rounded-xs
+        // (2 px) for chart bars and legend swatches only. These replaced
+        // twelve hand-picked radii. A bare `rounded` or a removed step
+        // (rounded-xl…) would silently draw 4 px or nothing.
+        {
+          selector:
+            "Literal[value=/(^|[\\s:])rounded(-(t|r|b|l|s|e|tl|tr|bl|br|ss|se|es|ee))?(-\\[|-(none|xl|2xl|3xl|4xl)(\\s|$)|(\\s|$))/]",
+          message:
+            "Radius off the scale: use rounded-sm (controls), rounded-md (cards), rounded-lg (sheets) or rounded-full.",
+        },
+        {
+          selector:
+            "TemplateElement[value.raw=/(^|[\\s:])rounded(-(t|r|b|l|s|e|tl|tr|bl|br|ss|se|es|ee))?(-\\[|-(none|xl|2xl|3xl|4xl)(\\s|$)|(\\s|$))/]",
+          message:
+            "Radius off the scale: use rounded-sm (controls), rounded-md (cards), rounded-lg (sheets) or rounded-full.",
+        },
         {
           selector: "Property[key.name='fontSize'] > Literal.value",
           message:

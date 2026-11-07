@@ -182,7 +182,7 @@ export function IntegrationDrawer({ integration, onClose, onRefresh }: Integrati
         {/* Header */}
         <div className="flex items-center justify-between p-5 border-b border-border">
           <div className="flex items-center gap-3">
-            <div className="w-9 h-9 bg-border-light rounded-[8px] flex items-center justify-center">
+            <div className="w-9 h-9 bg-border-light rounded-md flex items-center justify-center">
               <IconComponent size={18} className="text-text-secondary" />
             </div>
             <div>
@@ -192,7 +192,7 @@ export function IntegrationDrawer({ integration, onClose, onRefresh }: Integrati
           </div>
           <button
             onClick={onClose}
-            className="w-8 h-8 flex items-center justify-center rounded-[6px] hover:bg-border-light transition-colors cursor-pointer"
+            className="w-8 h-8 flex items-center justify-center rounded-sm hover:bg-border-light transition-colors cursor-pointer"
           >
             <X size={18} className="text-text-secondary" />
           </button>
@@ -202,7 +202,7 @@ export function IntegrationDrawer({ integration, onClose, onRefresh }: Integrati
         <div className="flex-1 overflow-y-auto p-5 space-y-6">
           {/* Status cards */}
           <div className="grid grid-cols-3 gap-3">
-            <div className="bg-background rounded-[8px] p-3 text-center">
+            <div className="bg-background rounded-md p-3 text-center">
               <div className="flex items-center justify-center gap-1.5 mb-1">
                 {isDisabled ? (
                   <Power size={14} className="text-text-tertiary" />
@@ -224,7 +224,7 @@ export function IntegrationDrawer({ integration, onClose, onRefresh }: Integrati
                     )}
               </div>
             </div>
-            <div className="bg-background rounded-[8px] p-3 text-center">
+            <div className="bg-background rounded-md p-3 text-center">
               <div className="text-title font-semibold text-text tabular-nums">
                 {integration.deviceCount}
               </div>
@@ -237,7 +237,7 @@ export function IntegrationDrawer({ integration, onClose, onRefresh }: Integrati
                 )}
               </div>
             </div>
-            <div className="bg-background rounded-[8px] p-3 text-center">
+            <div className="bg-background rounded-md p-3 text-center">
               {integration.polling ? (
                 <>
                   <div className="flex items-center justify-center gap-1 text-small font-medium text-text tabular-nums">
@@ -352,7 +352,7 @@ export function IntegrationDrawer({ integration, onClose, onRefresh }: Integrati
                 {t("integrations.authorization")}
               </h3>
               {isConnected ? (
-                <div className="flex items-center justify-between bg-success/10 border border-success/20 rounded-[8px] px-4 py-3">
+                <div className="flex items-center justify-between bg-success/10 border border-success/20 rounded-md px-4 py-3">
                   <div className="flex items-center gap-2 text-success text-small font-medium">
                     <CheckCircle size={15} />
                     {t("integrations.oauthConnected")}
@@ -369,7 +369,7 @@ export function IntegrationDrawer({ integration, onClose, onRefresh }: Integrati
                 <button
                   onClick={handleOAuthConnect}
                   disabled={oauthLoading || hasRequiredEmpty}
-                  className="w-full flex items-center justify-center gap-2 px-4 py-3 text-body font-medium bg-primary-fill text-white rounded-[8px] hover:bg-primary-fill-hover transition-colors disabled:opacity-50 cursor-pointer disabled:cursor-default"
+                  className="w-full flex items-center justify-center gap-2 px-4 py-3 text-body font-medium bg-primary-fill text-white rounded-sm hover:bg-primary-fill-hover transition-colors disabled:opacity-50 cursor-pointer disabled:cursor-default"
                 >
                   {oauthLoading ? (
                     <Loader2 size={15} className="animate-spin" />
@@ -393,7 +393,7 @@ export function IntegrationDrawer({ integration, onClose, onRefresh }: Integrati
           <button
             onClick={handleSave}
             disabled={saving || !dirty}
-            className="w-full px-4 py-2.5 text-body font-medium bg-primary-fill text-white rounded-[6px] hover:bg-primary-fill-hover transition-colors disabled:opacity-50 cursor-pointer disabled:cursor-default"
+            className="w-full px-4 py-2.5 text-body font-medium bg-primary-fill text-white rounded-sm hover:bg-primary-fill-hover transition-colors disabled:opacity-50 cursor-pointer disabled:cursor-default"
           >
             {saving ? (
               <span className="flex items-center justify-center gap-2">
@@ -429,7 +429,7 @@ function ActionButton({
     <button
       onClick={onClick}
       disabled={loading || disabled}
-      className={`flex items-center gap-1.5 px-3 py-2 text-small font-medium rounded-[6px] transition-colors disabled:opacity-50 cursor-pointer disabled:cursor-default ${
+      className={`flex items-center gap-1.5 px-3 py-2 text-small font-medium rounded-sm transition-colors disabled:opacity-50 cursor-pointer disabled:cursor-default ${
         primary
           ? "bg-primary-fill text-white hover:bg-primary-fill-hover"
           : "text-text-secondary border border-border hover:bg-border-light"
@@ -475,7 +475,7 @@ function SettingField({
         value={value}
         onChange={(e) => onChange(e.target.value)}
         placeholder={setting.placeholder ?? ""}
-        className="w-full px-3 py-2 text-body bg-background border border-border rounded-[6px] text-text placeholder:text-text-tertiary focus:outline-none focus:border-primary"
+        className="w-full px-3 py-2 text-body bg-background border border-border rounded-sm text-text placeholder:text-text-tertiary focus:outline-none focus:border-primary"
       />
     </div>
   );

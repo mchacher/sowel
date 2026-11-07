@@ -100,7 +100,7 @@ function IssueRow({
 
   return (
     <li
-      className={`flex items-start gap-3 px-3 py-2.5 rounded-[8px] bg-border-light/50 ${
+      className={`flex items-start gap-3 px-3 py-2.5 rounded-md bg-border-light/50 ${
         acknowledged ? "opacity-60" : ""
       }`}
     >
@@ -109,7 +109,7 @@ function IssueRow({
         <div className="flex items-center gap-2 text-caption font-semibold text-text">
           <span>{sourceLabel}</span>
           <span
-            className={`text-caption font-medium px-1.5 py-0.5 rounded ${
+            className={`text-caption font-medium px-1.5 py-0.5 rounded-sm ${
               isError ? "bg-error/10 text-error" : "bg-warning/10 text-warning-ink"
             }`}
           >

@@ -107,7 +107,7 @@ export function DisplayPanel({
   const visibleRows = ROW_ORDER.filter((c) => dataByCategory.has(c));
   if (visibleRows.length === 0) {
     return (
-      <div className="bg-surface rounded-[10px] border border-border p-4 mb-6">
+      <div className="card p-4 mb-6">
         <h3 className="text-body font-semibold text-text flex items-center gap-2 mb-2">
           <Monitor size={16} strokeWidth={1.5} className="text-text-tertiary" />
           {t("displays.panel.title")}
@@ -143,7 +143,7 @@ export function DisplayPanel({
   };
 
   return (
-    <div className="bg-surface rounded-[10px] border border-border p-4 mb-6">
+    <div className="card p-4 mb-6">
       <h3 className="text-body font-semibold text-text flex items-center gap-2 mb-4">
         <Monitor size={16} strokeWidth={1.5} className="text-text-tertiary" />
         {t("displays.panel.title")}
@@ -173,7 +173,7 @@ export function DisplayPanel({
               )}
               {category === "language" && languageBinding && languageOrder && (
                 <select
-                  className="text-small bg-bg border border-border rounded-[6px] px-2 py-1"
+                  className="text-small bg-bg border border-border rounded-sm px-2 py-1"
                   value={String(languageBinding.value ?? "")}
                   onChange={(e) =>
                     onExecuteOrder(languageOrder.alias, e.target.value)

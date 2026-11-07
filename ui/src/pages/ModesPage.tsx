@@ -56,7 +56,7 @@ export function ModesPage() {
           <p className="text-small text-text-secondary max-w-[320px] mb-4">{error}</p>
           <button
             onClick={() => { setError(null); fetchModes(); }}
-            className="px-4 py-2 bg-primary-fill text-white text-small font-medium rounded-[6px] hover:bg-primary-fill-hover transition-colors duration-150"
+            className="px-4 py-2 bg-primary-fill text-white text-small font-medium rounded-sm hover:bg-primary-fill-hover transition-colors duration-150"
           >
             {t("common.retry")}
           </button>
@@ -81,13 +81,13 @@ export function ModesPage() {
           {isAdmin && (
           <button
             onClick={() => setShowForm(true)}
-            className="flex items-center gap-1.5 sm:gap-2 px-3 sm:px-4 py-2 bg-primary-fill text-white text-small font-medium rounded-[6px] hover:bg-primary-fill-hover transition-colors duration-150"
+            className="flex items-center gap-1.5 sm:gap-2 px-3 sm:px-4 py-2 bg-primary-fill text-white text-small font-medium rounded-sm hover:bg-primary-fill-hover transition-colors duration-150"
           >
             <Plus size={16} strokeWidth={1.5} />
             <span className="hidden sm:inline">{t("modes.addMode")}</span>
           </button>
           )}
-          <span className="text-small font-medium text-primary bg-primary-light px-3 py-1.5 rounded-[6px] tabular-nums">
+          <span className="text-small font-medium text-primary bg-primary-light px-3 py-1.5 rounded-sm tabular-nums">
             {modes.length}
           </span>
         </div>
@@ -158,10 +158,10 @@ function ModeCard({ mode, calendarSlots, onClick }: { mode: ModeWithDetails; cal
   return (
     <div
       onClick={onClick}
-      className="w-full flex items-center gap-4 px-4 py-3 bg-surface rounded-[10px] border border-border hover:border-primary/30 transition-colors duration-150 text-left cursor-pointer group"
+      className="card w-full flex items-center gap-4 px-4 py-3 hover:shadow-md transition-shadow duration-150 text-left cursor-pointer group"
     >
       <div
-        className={`w-10 h-10 rounded-[8px] flex items-center justify-center flex-shrink-0 ${
+        className={`w-10 h-10 rounded-md flex items-center justify-center flex-shrink-0 ${
           mode.active ? "bg-primary/10" : "bg-border-light"
         }`}
       >

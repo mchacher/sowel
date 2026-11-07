@@ -65,7 +65,7 @@ export function UpdateAllBanner({
   };
 
   return (
-    <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between mb-4 px-4 py-3 bg-error/[0.06] border border-error/25 rounded-[10px]">
+    <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between mb-4 px-4 py-3 bg-error/[0.06] border border-error/25 rounded-md">
       <div className="min-w-0">
         <p className="text-small font-semibold text-error">
           {t("plugins.updatesAvailable", { count: pending.length })}
@@ -86,7 +86,7 @@ export function UpdateAllBanner({
           type="button"
           onClick={handleUpdateAll}
           disabled={updating}
-          className="inline-flex items-center justify-center gap-1.5 shrink-0 self-start sm:self-auto px-3 py-2 text-caption font-medium text-white bg-primary-fill hover:bg-primary-fill-hover rounded-[6px] transition-colors cursor-pointer disabled:opacity-50"
+          className="inline-flex items-center justify-center gap-1.5 shrink-0 self-start sm:self-auto px-3 py-2 text-caption font-medium text-white bg-primary-fill hover:bg-primary-fill-hover rounded-sm transition-colors cursor-pointer disabled:opacity-50"
         >
           {updating ? (
             <Loader2 size={14} className="animate-spin" />

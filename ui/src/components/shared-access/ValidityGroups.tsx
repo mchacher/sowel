@@ -17,7 +17,7 @@ import { btnSecondary, iconBtn, inputBadCls, inputCls, Refusal, Segmented } from
 
 function Group({ title, children }: { title: string; children: ReactNode }) {
   return (
-    <fieldset className="mt-3 border border-border rounded-[10px] px-3 py-2.5">
+    <fieldset className="mt-3 border border-border rounded-md px-3 py-2.5">
       <legend className="text-small font-semibold text-text-secondary px-1">
         {title}
       </legend>
@@ -110,7 +110,7 @@ function WindowDays({
                   aria-pressed={on}
                   aria-label={dayName(d)}
                   onClick={() => onChange(on ? days.filter((x) => x !== d) : [...days, d])}
-                  className={`min-h-[40px] rounded-[6px] border text-small font-semibold transition-colors cursor-pointer ${
+                  className={`min-h-[40px] rounded-sm border text-small font-semibold transition-colors cursor-pointer ${
                     on
                       ? "bg-primary-fill border-primary-fill text-white"
                       : "bg-surface border-border text-text-secondary hover:bg-border-light"
@@ -248,7 +248,7 @@ export function ValidityGroups({
         {value.ranges && (
           <div className="mt-2.5 flex flex-col gap-1.5">
             {value.windows.map((w, i) => (
-              <div key={i} className="flex flex-col gap-2 border border-border rounded-[8px] p-2.5">
+              <div key={i} className="flex flex-col gap-2 border border-border rounded-md p-2.5">
                 <div className="flex items-center gap-1.5">
                   <input
                     className={`${parseHm(w.from) === null ? inputBadCls : inputCls} min-w-0 flex-1 tabular-nums`}

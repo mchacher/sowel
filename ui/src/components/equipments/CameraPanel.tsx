@@ -72,7 +72,7 @@ export function CameraPanel({
 
   if (!hasAnything) {
     return (
-      <div className="bg-surface rounded-[10px] border border-border p-4 mb-6">
+      <div className="card p-4 mb-6">
         <h3 className="text-body font-semibold text-text flex items-center gap-2 mb-2">
           <Camera size={16} strokeWidth={1.5} className="text-text-tertiary" />
           {t("cameras.panel.title")}
@@ -83,7 +83,7 @@ export function CameraPanel({
   }
 
   return (
-    <div className="bg-surface rounded-[10px] border border-border p-4 mb-6 space-y-4">
+    <div className="card p-4 mb-6 space-y-4">
       <h3 className="text-body font-semibold text-text flex items-center gap-2">
         <Camera size={16} strokeWidth={1.5} className="text-text-tertiary" />
         {t("cameras.panel.title")}
@@ -100,7 +100,7 @@ export function CameraPanel({
               onClick={() =>
                 void onExecuteOrder(monitoringOrder.alias, !(monitoringBinding?.value === true))
               }
-              className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-[6px] text-small font-medium border transition-colors duration-150 ${
+              className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-sm text-small font-medium border transition-colors duration-150 ${
                 monitoringBinding?.value === true
                   ? "bg-success/10 text-success border-success/30"
                   : "bg-border-light text-text-secondary border-border"
@@ -123,7 +123,7 @@ export function CameraPanel({
               <select
                 value={String(lightModeBinding.value ?? "auto")}
                 onChange={(e) => void onExecuteOrder(lightModeOrder.alias, e.target.value)}
-                className="bg-bg border border-border rounded-[6px] px-2 py-1.5"
+                className="bg-bg border border-border rounded-sm px-2 py-1.5"
               >
                 <option value="auto">{t("cameras.lightMode.auto")}</option>
                 <option value="on">{t("cameras.lightMode.on")}</option>
@@ -135,7 +135,7 @@ export function CameraPanel({
           {sirenOrder && (
             <button
               onClick={() => void onExecuteOrder(sirenOrder.alias, true)}
-              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-[6px] text-small font-medium border border-error/30 bg-error/10 text-error transition-colors duration-150 hover:bg-error/20"
+              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-sm text-small font-medium border border-error/30 bg-error/10 text-error transition-colors duration-150 hover:bg-error/20"
             >
               <Siren size={14} strokeWidth={1.5} />
               {t("cameras.siren.trigger")}
@@ -264,7 +264,7 @@ function CameraView({ equipmentId, hasSnapshot, hasStream }: CameraViewProps) {
 
   return (
     <div className="space-y-2">
-      <div className="relative bg-black rounded-[6px] overflow-hidden aspect-video flex items-center justify-center">
+      <div className="relative bg-black rounded-sm overflow-hidden aspect-video flex items-center justify-center">
         {live ? (
           liveError || !HLS_SUPPORTED ? (
             <div className="flex flex-col items-center gap-2 px-4 text-center">
@@ -305,7 +305,7 @@ function CameraView({ equipmentId, hasSnapshot, hasStream }: CameraViewProps) {
         {hasSnapshot && !live && (
           <button
             onClick={refreshSnapshot}
-            className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-[6px] text-small font-medium text-text-secondary border border-border hover:bg-border-light transition-colors duration-150"
+            className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-sm text-small font-medium text-text-secondary border border-border hover:bg-border-light transition-colors duration-150"
           >
             <RefreshCw size={14} strokeWidth={1.5} />
             {t("cameras.snapshot.refresh")}
@@ -317,7 +317,7 @@ function CameraView({ equipmentId, hasSnapshot, hasStream }: CameraViewProps) {
               if (!live) setLiveError(false);
               setLive((v) => !v);
             }}
-            className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-[6px] text-small font-medium border transition-colors duration-150 ${
+            className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-sm text-small font-medium border transition-colors duration-150 ${
               live
                 ? "bg-error/10 text-error border-error/30"
                 : "bg-primary/10 text-primary border-primary/30"

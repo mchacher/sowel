@@ -120,7 +120,7 @@ export function DeviceDetailPage() {
       {/* Device header */}
       <div className="flex items-start justify-between mb-8">
         <div className="flex items-start gap-4">
-          <div className="flex-shrink-0 w-12 h-12 rounded-[10px] bg-primary-light flex items-center justify-center">
+          <div className="flex-shrink-0 w-12 h-12 rounded-md bg-primary-light flex items-center justify-center">
             <Radio size={24} strokeWidth={1.5} className="text-primary" />
           </div>
           <div>
@@ -149,7 +149,7 @@ export function DeviceDetailPage() {
         <button
           onClick={handleDelete}
           disabled={deleting}
-          className="flex items-center gap-1.5 px-3 py-1.5 rounded-[6px] text-caption font-medium text-error hover:bg-error/10 transition-colors duration-150 cursor-pointer disabled:opacity-50"
+          className="flex items-center gap-1.5 px-3 py-1.5 rounded-sm text-caption font-medium text-error hover:bg-error/10 transition-colors duration-150 cursor-pointer disabled:opacity-50"
         >
           <Trash2 size={14} strokeWidth={1.5} />
           {deleting ? t("common.deleting") : t("common.delete")}
@@ -158,7 +158,7 @@ export function DeviceDetailPage() {
       </div>
 
       {/* Info bar */}
-      <div className="flex flex-wrap gap-4 mb-8 p-4 bg-surface rounded-[10px] border border-border">
+      <div className="card flex flex-wrap gap-4 mb-8 p-4">
         <InfoItem label={t("devices.sourceId")} value={device.sourceDeviceId} mono />
         {!!device.ieeeAddress && (
           <InfoItem label={t("devices.ieeeAddress")} value={device.ieeeAddress} mono />
@@ -172,7 +172,7 @@ export function DeviceDetailPage() {
         <h2 className="text-title font-semibold text-text leading-[28px] mb-4">
           {t("devices.data")}
         </h2>
-        <div className="bg-surface rounded-[10px] border border-border overflow-hidden">
+        <div className="card overflow-hidden">
           <DeviceDataTable data={mergedData} />
         </div>
       </section>
@@ -183,7 +183,7 @@ export function DeviceDetailPage() {
           <h2 className="text-title font-semibold text-text leading-[28px] mb-4">
             {t("devices.orders")}
           </h2>
-          <div className="bg-surface rounded-[10px] border border-border overflow-hidden">
+          <div className="card overflow-hidden">
             <OrdersTable orders={detail.orders} />
           </div>
         </section>
@@ -204,7 +204,7 @@ export function DeviceDetailPage() {
             {t("devices.rawExpose")}
           </button>
           {showRaw && (
-            <div className="bg-surface rounded-[10px] border border-border p-4 overflow-x-auto">
+            <div className="card p-4 overflow-x-auto">
               <pre className="font-mono text-caption text-text-secondary leading-[18px] whitespace-pre-wrap">
                 {JSON.stringify(rawExpose, null, 2)}
               </pre>
@@ -302,7 +302,7 @@ function OrderRange({ order }: { order: DeviceOrder }) {
         {order.enumValues.map((v) => (
           <span
             key={v}
-            className="px-1.5 py-0.5 rounded bg-border-light text-micro font-mono text-text-secondary"
+            className="px-1.5 py-0.5 rounded-sm bg-border-light text-micro font-mono text-text-secondary"
           >
             {v}
           </span>

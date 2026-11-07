@@ -276,7 +276,7 @@ function MobileShell({
   const cardAction = useCardPrimaryAction(onClick);
   return (
     <div
-      className={`relative bg-surface border border-border rounded-[8px] p-2 flex flex-col items-center h-[120px] overflow-hidden w-full gap-1 ${
+      className={`card relative p-2 flex flex-col items-center h-[120px] overflow-hidden w-full gap-1 ${
         onClick ? "cursor-pointer active:scale-[0.98] transition-transform" : ""
       } ${className}`}
       {...cardAction}

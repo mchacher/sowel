@@ -68,7 +68,7 @@ export function ZoneRecipesSection({ zoneId, zoneName }: ZoneRecipesSectionProps
         <div ref={pickerWrapRef} className="relative ml-2">
           <button
             onClick={() => setShowPicker((v) => !v)}
-            className="w-[22px] h-[22px] inline-flex items-center justify-center rounded-[4px] border border-border-light text-text-tertiary hover:text-primary hover:bg-primary-light hover:border-primary-mid transition-colors duration-150"
+            className="w-[22px] h-[22px] inline-flex items-center justify-center rounded-sm border border-border-light text-text-tertiary hover:text-primary hover:bg-primary-light hover:border-primary-mid transition-colors duration-150"
             title={t("recipes.addRecipe")}
           >
             <Plus size={11} strokeWidth={2} />

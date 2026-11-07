@@ -52,7 +52,7 @@ export function PeriodSelector({
   return (
     <div className="flex flex-col sm:flex-row sm:flex-wrap items-center gap-3">
       {/* Period tabs */}
-      <div className="flex rounded-[6px] border border-border overflow-hidden">
+      <div className="flex rounded-sm border border-border overflow-hidden">
         {PERIODS.map((p) => (
           <button
             key={p.key}
@@ -75,7 +75,7 @@ export function PeriodSelector({
           type="button"
           onClick={onPrevious}
           aria-label={t("period.previous")}
-          className="p-1.5 rounded-[6px] text-text-tertiary hover:text-text-secondary hover:bg-border-light transition-colors cursor-pointer"
+          className="p-1.5 rounded-sm text-text-tertiary hover:text-text-secondary hover:bg-border-light transition-colors cursor-pointer"
         >
           <ChevronLeft size={16} strokeWidth={1.5} />
         </button>
@@ -87,7 +87,7 @@ export function PeriodSelector({
           onClick={onNext}
           disabled={!canGoForward}
           aria-label={t("period.next")}
-          className={`p-1.5 rounded-[6px] transition-colors ${
+          className={`p-1.5 rounded-sm transition-colors ${
             canGoForward
               ? "text-text-tertiary hover:text-text-secondary hover:bg-border-light cursor-pointer"
               : "text-border cursor-not-allowed"
@@ -99,7 +99,7 @@ export function PeriodSelector({
           type="button"
           onClick={onToday}
           disabled={isToday}
-          className={`ml-1 px-2 py-1 rounded-[6px] text-micro font-medium transition-colors ${
+          className={`ml-1 px-2 py-1 rounded-sm text-micro font-medium transition-colors ${
             isToday
               ? "text-text-tertiary bg-border-light cursor-default"
               : "text-primary bg-primary-light hover:bg-primary-fill hover:text-white cursor-pointer"

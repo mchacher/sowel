@@ -136,7 +136,7 @@ export function DevicesPage() {
                 value={filter}
                 onChange={(e) => setFilter(e.target.value)}
                 placeholder={t("devices.filterPlaceholder")}
-                className="w-full sm:w-[200px] pl-8 pr-8 py-1.5 text-small bg-surface border border-border rounded-[6px] outline-none placeholder:text-text-tertiary focus:border-primary transition-colors duration-150"
+                className="w-full sm:w-[200px] pl-8 pr-8 py-1.5 text-small bg-surface rounded-sm outline-none placeholder:text-text-tertiary focus:border-primary transition-colors duration-150 shadow-lg"
               />
               {filter && (
                 <button
@@ -148,7 +148,7 @@ export function DevicesPage() {
               )}
             </div>
 
-            <div className="hidden sm:flex items-center gap-2 px-3 py-1.5 rounded-[6px] bg-primary-light text-primary">
+            <div className="hidden sm:flex items-center gap-2 px-3 py-1.5 rounded-sm bg-primary-light text-primary">
               <Radio size={16} strokeWidth={1.5} />
               <span className="text-small font-medium">
                 {filter ? `${filtered.length}/${tabFiltered.length}` : tabFiltered.length}
@@ -252,7 +252,7 @@ function ErrorState({ error }: { error: string }) {
       <p className="text-small text-text-secondary max-w-[320px] mb-4">{error}</p>
       <button
         onClick={() => fetchDevices()}
-        className="px-4 py-2 bg-primary-fill text-white text-small font-medium rounded-[6px] hover:bg-primary-fill-hover transition-colors duration-150 ease-out"
+        className="px-4 py-2 bg-primary-fill text-white text-small font-medium rounded-sm hover:bg-primary-fill-hover transition-colors duration-150 ease-out"
       >
         {t("common.retry")}
       </button>

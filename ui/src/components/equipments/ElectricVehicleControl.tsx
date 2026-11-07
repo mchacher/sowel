@@ -153,7 +153,7 @@ export function ElectricVehicleControl({ equipment, onExecuteOrder }: ElectricVe
                 t("equipments.electricVehicle.refreshSent"),
               )
             }
-            className="p-1 rounded-[6px] text-text-tertiary hover:text-text-secondary hover:bg-border-light disabled:opacity-40 cursor-pointer"
+            className="p-1 rounded-sm text-text-tertiary hover:text-text-secondary hover:bg-border-light disabled:opacity-40 cursor-pointer"
           >
             <RefreshCw
               size={13}
@@ -173,7 +173,7 @@ export function ElectricVehicleControl({ equipment, onExecuteOrder }: ElectricVe
               onClick={() =>
                 void send("wake", s.wakeAlias!, null, t("equipments.electricVehicle.wakeSent"))
               }
-              className="flex items-center gap-1.5 px-3 py-1.5 rounded-[6px] text-small font-medium bg-border-light text-text-secondary hover:bg-border disabled:opacity-50 cursor-pointer"
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-sm text-small font-medium bg-border-light text-text-secondary hover:bg-border disabled:opacity-50 cursor-pointer"
             >
               {busy === "wake" && <Loader2 size={13} className="animate-spin" />}
               {t("equipments.electricVehicle.wake")}
@@ -191,7 +191,7 @@ export function ElectricVehicleControl({ equipment, onExecuteOrder }: ElectricVe
                   t("equipments.electricVehicle.startSent"),
                 )
               }
-              className="flex items-center gap-1.5 px-3 py-1.5 rounded-[6px] text-small font-medium bg-primary-fill text-white hover:bg-primary-fill-hover disabled:opacity-50 cursor-pointer"
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-sm text-small font-medium bg-primary-fill text-white hover:bg-primary-fill-hover disabled:opacity-50 cursor-pointer"
             >
               {busy === "start" ? (
                 <Loader2 size={13} className="animate-spin" />
@@ -215,7 +215,7 @@ export function ElectricVehicleControl({ equipment, onExecuteOrder }: ElectricVe
               aria-label={t("equipments.electricVehicle.limitDown")}
               disabled={!usable || !!busy || (shownLimit !== null && shownLimit <= order.min)}
               onClick={() => void stepLimit(-5)}
-              className="p-1.5 rounded-[6px] bg-border-light text-text-secondary hover:bg-border disabled:opacity-40 cursor-pointer"
+              className="p-1.5 rounded-sm bg-border-light text-text-secondary hover:bg-border disabled:opacity-40 cursor-pointer"
             >
               <Minus size={14} strokeWidth={1.5} />
             </button>
@@ -233,7 +233,7 @@ export function ElectricVehicleControl({ equipment, onExecuteOrder }: ElectricVe
               aria-label={t("equipments.electricVehicle.limitUp")}
               disabled={!usable || !!busy || (shownLimit !== null && shownLimit >= order.max)}
               onClick={() => void stepLimit(5)}
-              className="p-1.5 rounded-[6px] bg-border-light text-text-secondary hover:bg-border disabled:opacity-40 cursor-pointer"
+              className="p-1.5 rounded-sm bg-border-light text-text-secondary hover:bg-border disabled:opacity-40 cursor-pointer"
             >
               <Plus size={14} strokeWidth={1.5} />
             </button>

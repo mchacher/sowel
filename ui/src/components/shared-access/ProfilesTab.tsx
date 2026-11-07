@@ -72,7 +72,7 @@ export function ProfilesTab({ state }: { state: SharedAccessState }) {
                 type="button"
                 aria-current={p.id === selected}
                 onClick={() => pick(p.id)}
-                className={`w-full text-left bg-surface border rounded-[10px] px-3 py-2.5 cursor-pointer transition-colors ${
+                className={`w-full text-left bg-surface border rounded-md px-3 py-2.5 cursor-pointer transition-colors ${
                   p.id === selected ? "border-primary" : "border-border hover:border-text-tertiary"
                 }`}
               >
@@ -128,7 +128,7 @@ export function ProfilesTab({ state }: { state: SharedAccessState }) {
         </div>
       </div>
 
-      <div className="bg-surface border border-border rounded-[10px] p-4">
+      <div className="card p-4">
         {selected === NEW || current ? (
           <ProfileEditor
             key={editorKey}
@@ -301,7 +301,7 @@ function ProfileEditor({
             return (
               <div
                 key={g.equipmentId}
-                className="flex items-center gap-2 flex-wrap bg-background border border-border rounded-[6px] px-2.5 py-1.5"
+                className="flex items-center gap-2 flex-wrap bg-background border border-border rounded-sm px-2.5 py-1.5"
               >
                 <label className="flex items-center gap-2 cursor-pointer">
                   <input
@@ -386,7 +386,7 @@ function ProfileEditor({
       {errorFor("other") && <Refusal>{errorFor("other")}</Refusal>}
 
       {confirmDelete && profile && (
-        <div className="mt-3 bg-error/10 rounded-[6px] px-3 py-2.5 text-small text-error">
+        <div className="mt-3 bg-error/10 rounded-sm px-3 py-2.5 text-small text-error">
           {t("sharedAccess.profiles.deleteConfirm", { name: profile.name })}
           <div className="flex gap-2 mt-2">
             <button type="button" className={btnDanger} disabled={saving} onClick={() => void remove()}>

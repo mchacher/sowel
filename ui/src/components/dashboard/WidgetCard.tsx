@@ -45,7 +45,7 @@ export function WidgetCard({
 
   return (
     <div
-      className={`bg-surface border border-border rounded-md p-3 flex flex-col h-[160px] sm:h-[240px] overflow-hidden ${
+      className={`card p-3 flex flex-col h-[160px] sm:h-[240px] overflow-hidden ${
         onClick ? "cursor-pointer active:scale-[0.98] transition-transform" : ""
       } ${className}`}
       {...cardAction}

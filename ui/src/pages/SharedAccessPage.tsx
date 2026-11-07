@@ -214,7 +214,7 @@ function SharedAccessBody({
       </div>
 
       {picking && (
-        <div className="mb-4 bg-surface border border-border rounded-[10px] p-3">
+        <div className="card mb-4 p-3">
           <p className="text-caption text-text-secondary mb-2">{t("sharedAccess.tabs.pickGateHint")}</p>
           {state.gates.length === 0 ? (
             <p className="text-small text-text-tertiary">{t("sharedAccess.profiles.noGateInHouse")}</p>
@@ -227,7 +227,7 @@ function SharedAccessBody({
                   disabled={!g.hasCommand}
                   title={g.hasCommand ? undefined : t("sharedAccess.editor.noCommand")}
                   onClick={() => openNewOn(g.equipmentId)}
-                  className="px-3 py-1.5 text-small border border-border rounded-[6px] hover:border-primary hover:text-primary disabled:opacity-50 cursor-pointer disabled:cursor-default"
+                  className="px-3 py-1.5 text-small border border-border rounded-sm hover:border-primary hover:text-primary disabled:opacity-50 cursor-pointer disabled:cursor-default"
                 >
                   {g.name}
                 </button>
@@ -243,7 +243,7 @@ function SharedAccessBody({
         <>
           {activeTab !== ALL && <GateBar state={state} gateId={activeTab} />}
           {lines.length === 0 ? (
-            <div className="bg-surface border border-border rounded-[10px] p-5 text-center">
+            <div className="card p-5 text-center">
               <p className="text-small text-text-secondary mb-3">{t("sharedAccess.empty")}</p>
               <button
                 type="button"

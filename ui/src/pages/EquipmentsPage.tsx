@@ -61,7 +61,7 @@ export function EquipmentsPage() {
                   value={filter}
                   onChange={(e) => setFilter(e.target.value)}
                   placeholder={t("equipments.filterPlaceholder")}
-                  className="w-full sm:w-[180px] pl-8 pr-8 py-1.5 text-small bg-surface border border-border rounded-[6px] outline-none placeholder:text-text-tertiary focus:border-primary transition-colors duration-150"
+                  className="w-full sm:w-[180px] pl-8 pr-8 py-1.5 text-small bg-surface rounded-sm outline-none placeholder:text-text-tertiary focus:border-primary transition-colors duration-150 shadow-lg"
                 />
                 {filter && (
                   <button onClick={() => setFilter("")} className="absolute right-2 top-1/2 -translate-y-1/2 text-text-tertiary hover:text-text-secondary">
@@ -75,7 +75,7 @@ export function EquipmentsPage() {
               <PageHeaderButton icon={Plus} label={t("equipments.addEquipment")} onClick={() => setShowForm(true)} />
             )}
 
-            <div className="hidden sm:flex items-center gap-2 px-3 py-1.5 rounded-[6px] bg-primary-light text-primary">
+            <div className="hidden sm:flex items-center gap-2 px-3 py-1.5 rounded-sm bg-primary-light text-primary">
               <Box size={16} strokeWidth={1.5} />
               <span className="text-small font-medium">
                 {filter ? `${filtered.length}/${equipments.length}` : equipments.length}
@@ -198,7 +198,7 @@ function EmptyState({ onAdd, canCreate }: { onAdd: () => void; canCreate: boolea
       {canCreate && (
         <button
           onClick={onAdd}
-          className="px-4 py-2 bg-primary-fill text-white text-small font-medium rounded-[6px] hover:bg-primary-fill-hover transition-colors duration-150 ease-out"
+          className="px-4 py-2 bg-primary-fill text-white text-small font-medium rounded-sm hover:bg-primary-fill-hover transition-colors duration-150 ease-out"
         >
           {t("equipments.createEquipment")}
         </button>
@@ -220,7 +220,7 @@ function ErrorState({ error }: { error: string }) {
       <p className="text-small text-text-secondary max-w-[320px] mb-4">{error}</p>
       <button
         onClick={() => fetchEquipments()}
-        className="px-4 py-2 bg-primary-fill text-white text-small font-medium rounded-[6px] hover:bg-primary-fill-hover transition-colors duration-150 ease-out"
+        className="px-4 py-2 bg-primary-fill text-white text-small font-medium rounded-sm hover:bg-primary-fill-hover transition-colors duration-150 ease-out"
       >
         {t("common.retry")}
       </button>

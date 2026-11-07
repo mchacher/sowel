@@ -185,7 +185,7 @@ export function UpsPanel({ dataBindings }: UpsPanelProps) {
 
   return (
     <div className="mb-6 space-y-4">
-      <div className="bg-surface border border-border rounded-[10px] p-4 sm:p-6">
+      <div className="card p-4 sm:p-6">
         <FlowDiagram
           nodes={nodes}
           links={links}
@@ -195,7 +195,7 @@ export function UpsPanel({ dataBindings }: UpsPanelProps) {
       </div>
 
       {hasMargins && (
-        <div className="bg-surface border border-border rounded-[10px]">
+        <div className="card">
           <div className="flex items-start justify-between gap-4 px-5 pt-4 pb-3">
             <div>
               <h3 className="text-lead font-semibold text-text">
@@ -270,7 +270,7 @@ export function UpsPanel({ dataBindings }: UpsPanelProps) {
       )}
 
       {sheetRows.length > 0 && (
-        <details className="bg-surface border border-border rounded-[10px] group">
+        <details className="card group">
           <summary className="flex items-center gap-2 px-5 py-3 text-small text-text-secondary cursor-pointer list-none">
             <span className="text-text-tertiary transition-transform group-open:rotate-90">▸</span>
             {t("equipments.ups.sheet.title")}

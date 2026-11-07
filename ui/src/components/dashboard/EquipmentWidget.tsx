@@ -452,7 +452,7 @@ function LightEquipmentWidget({
           <button
             onClick={handleToggle}
             disabled={executing}
-            className={`w-10 h-10 flex items-center justify-center rounded-[6px] transition-all duration-150 cursor-pointer border border-border bg-surface text-text-secondary hover:border-primary/40 hover:text-primary hover:bg-primary/5 active:scale-[0.97] disabled:opacity-40 disabled:cursor-not-allowed ${
+            className={`w-10 h-10 flex items-center justify-center rounded-sm transition-all duration-150 cursor-pointer bg-surface text-text-secondary hover:border-primary/40 hover:text-primary hover:bg-primary/5 active:scale-[0.97] disabled:opacity-40 disabled:cursor-not-allowed shadow-lg ${
               isOn ? "!border-active !text-active-ink !bg-active-bg" : ""
             }`}
             title={isOn ? t("controls.turnOff") : t("controls.turnOn")}
@@ -581,7 +581,7 @@ function WaterHeaterEquipmentWidget({
           <button
             onClick={handleToggle}
             disabled={executing}
-            className={`w-10 h-10 flex items-center justify-center rounded-[6px] transition-all duration-150 cursor-pointer border border-border bg-surface text-text-secondary hover:border-primary/40 hover:text-primary hover:bg-primary/5 active:scale-[0.97] disabled:opacity-40 disabled:cursor-not-allowed ${
+            className={`w-10 h-10 flex items-center justify-center rounded-sm transition-all duration-150 cursor-pointer bg-surface text-text-secondary hover:border-primary/40 hover:text-primary hover:bg-primary/5 active:scale-[0.97] disabled:opacity-40 disabled:cursor-not-allowed shadow-lg ${
               isOn ? "!border-active !text-active-ink !bg-active-bg" : ""
             }`}
             title={isOn ? t("controls.turnOff") : t("controls.turnOn")}
@@ -752,17 +752,17 @@ function ShutterEquipmentWidget({
         )}
         <div className="pl-2">
           {doorPill ? (
-            <span className={`text-small font-medium px-2 py-0.5 rounded ${doorPill.className}`}>
+            <span className={`text-small font-medium px-2 py-0.5 rounded-sm ${doorPill.className}`}>
               {t(doorPill.key)}
             </span>
           ) : position === null ? (
             <span className="text-lead text-text-tertiary">{"\u2014"}</span>
           ) : position === 100 ? (
-            <span className="text-small font-medium text-text-secondary px-2 py-0.5 rounded bg-border-light">
+            <span className="text-small font-medium text-text-secondary px-2 py-0.5 rounded-sm bg-border-light">
               {pillAtHundred}
             </span>
           ) : position === 0 ? (
-            <span className="text-small font-medium text-text-secondary px-2 py-0.5 rounded bg-border-light">
+            <span className="text-small font-medium text-text-secondary px-2 py-0.5 rounded-sm bg-border-light">
               {pillAtZero}
             </span>
           ) : (
@@ -782,7 +782,7 @@ function ShutterEquipmentWidget({
           <button
             onClick={() => handleCommand("OPEN")}
             disabled={executing}
-            className="w-10 h-10 flex items-center justify-center rounded-[6px] transition-all duration-150 cursor-pointer border border-border bg-surface text-text-secondary hover:border-primary/40 hover:text-primary hover:bg-primary/5 active:scale-[0.97] disabled:opacity-40 disabled:cursor-not-allowed"
+            className="w-10 h-10 flex items-center justify-center rounded-sm transition-all duration-150 cursor-pointer bg-surface text-text-secondary hover:border-primary/40 hover:text-primary hover:bg-primary/5 active:scale-[0.97] disabled:opacity-40 disabled:cursor-not-allowed shadow-lg"
             title={openTitle}
           >
             {executing ? (
@@ -795,7 +795,7 @@ function ShutterEquipmentWidget({
             <button
               onClick={() => handleCommand("STOP")}
               disabled={executing}
-              className="w-10 h-10 flex items-center justify-center rounded-[6px] transition-all duration-150 cursor-pointer border border-border bg-surface text-text-secondary hover:border-text-tertiary hover:text-text hover:bg-border-light active:scale-[0.97] disabled:opacity-40 disabled:cursor-not-allowed"
+              className="w-10 h-10 flex items-center justify-center rounded-sm transition-all duration-150 cursor-pointer bg-surface text-text-secondary hover:border-text-tertiary hover:text-text hover:bg-border-light active:scale-[0.97] disabled:opacity-40 disabled:cursor-not-allowed shadow-lg"
               title={t("controls.stop")}
             >
               <Square size={11} strokeWidth={2.5} />
@@ -804,7 +804,7 @@ function ShutterEquipmentWidget({
           <button
             onClick={() => handleCommand("CLOSE")}
             disabled={executing}
-            className="w-10 h-10 flex items-center justify-center rounded-[6px] transition-all duration-150 cursor-pointer border border-border bg-surface text-text-secondary hover:border-primary/40 hover:text-primary hover:bg-primary/5 active:scale-[0.97] disabled:opacity-40 disabled:cursor-not-allowed"
+            className="w-10 h-10 flex items-center justify-center rounded-sm transition-all duration-150 cursor-pointer bg-surface text-text-secondary hover:border-primary/40 hover:text-primary hover:bg-primary/5 active:scale-[0.97] disabled:opacity-40 disabled:cursor-not-allowed shadow-lg"
             title={closeTitle}
           >
             <ChevronDown size={16} strokeWidth={2} />
@@ -905,7 +905,7 @@ function ThermostatEquipmentWidget({
             <button
               onClick={() => exec("power", !isOn)}
               disabled={executing === "power"}
-              className={`w-7 h-7 flex items-center justify-center rounded-[5px] transition-all duration-150 cursor-pointer border border-border bg-surface text-text-secondary active:scale-[0.97] disabled:opacity-40 disabled:cursor-not-allowed ${
+              className={`w-7 h-7 flex items-center justify-center rounded-sm transition-all duration-150 cursor-pointer bg-surface text-text-secondary active:scale-[0.97] disabled:opacity-40 disabled:cursor-not-allowed shadow-lg ${
                 isOn
                   ? "!border-heat/40 !text-heat !bg-heat/5 hover:!bg-heat/10"
                   : "hover:border-primary/40 hover:text-primary hover:bg-primary/5"
@@ -928,7 +928,7 @@ function ThermostatEquipmentWidget({
           <button
             onClick={() => handleSetpoint(Math.max(targetMin, displaySetpoint - STEP))}
             disabled={displaySetpoint <= targetMin}
-            className="w-8 h-8 flex items-center justify-center rounded-[5px] transition-colors cursor-pointer border border-border bg-surface text-text-tertiary hover:bg-border-light hover:text-text-secondary active:scale-[0.97] disabled:opacity-30 disabled:cursor-not-allowed"
+            className="w-8 h-8 flex items-center justify-center rounded-sm transition-colors cursor-pointer bg-surface text-text-tertiary hover:bg-border-light hover:text-text-secondary active:scale-[0.97] disabled:opacity-30 disabled:cursor-not-allowed shadow-lg"
           >
             <Minus size={14} strokeWidth={2} />
           </button>
@@ -938,7 +938,7 @@ function ThermostatEquipmentWidget({
           <button
             onClick={() => handleSetpoint(Math.min(targetMax, displaySetpoint + STEP))}
             disabled={displaySetpoint >= targetMax}
-            className="w-8 h-8 flex items-center justify-center rounded-[5px] transition-colors cursor-pointer border border-border bg-surface text-text-tertiary hover:bg-border-light hover:text-text-secondary active:scale-[0.97] disabled:opacity-30 disabled:cursor-not-allowed"
+            className="w-8 h-8 flex items-center justify-center rounded-sm transition-colors cursor-pointer bg-surface text-text-tertiary hover:bg-border-light hover:text-text-secondary active:scale-[0.97] disabled:opacity-30 disabled:cursor-not-allowed shadow-lg"
           >
             <Plus size={14} strokeWidth={2} />
           </button>
@@ -1045,7 +1045,7 @@ function GateEquipmentWidget({
               key={val}
               onClick={() => handleCommand(val)}
               disabled={executing !== null}
-              className="h-8 px-2.5 flex items-center justify-center rounded-[6px] text-micro font-medium transition-all duration-150 cursor-pointer border border-border bg-surface text-text-secondary hover:border-primary/40 hover:text-primary hover:bg-primary/5 active:scale-[0.97] disabled:opacity-40 disabled:cursor-not-allowed"
+              className="h-8 px-2.5 flex items-center justify-center rounded-sm text-micro font-medium transition-all duration-150 cursor-pointer bg-surface text-text-secondary hover:border-primary/40 hover:text-primary hover:bg-primary/5 active:scale-[0.97] disabled:opacity-40 disabled:cursor-not-allowed shadow-lg"
             >
               {val}
             </button>
@@ -1134,7 +1134,7 @@ function HeaterEquipmentWidget({
           <button
             onClick={handleToggle}
             disabled={executing}
-            className={`w-10 h-10 flex items-center justify-center rounded-[6px] transition-all duration-150 cursor-pointer border border-border bg-surface text-text-secondary active:scale-[0.97] disabled:opacity-40 disabled:cursor-not-allowed ${
+            className={`w-10 h-10 flex items-center justify-center rounded-sm transition-all duration-150 cursor-pointer bg-surface text-text-secondary active:scale-[0.97] disabled:opacity-40 disabled:cursor-not-allowed shadow-lg ${
               isComfort
                 ? "hover:border-primary/40 hover:text-primary hover:bg-primary/5"
                 : "hover:border-heat/40 hover:text-heat hover:bg-heat/5"
@@ -1841,7 +1841,7 @@ function WaterValveEquipmentWidget({
           <button
             onClick={handleToggle}
             disabled={executing}
-            className={`w-10 h-10 flex items-center justify-center rounded-[6px] transition-all duration-150 cursor-pointer border border-border bg-surface text-text-secondary hover:border-primary/40 hover:text-primary hover:bg-primary/5 active:scale-[0.97] disabled:opacity-40 disabled:cursor-not-allowed ${
+            className={`w-10 h-10 flex items-center justify-center rounded-sm transition-all duration-150 cursor-pointer bg-surface text-text-secondary hover:border-primary/40 hover:text-primary hover:bg-primary/5 active:scale-[0.97] disabled:opacity-40 disabled:cursor-not-allowed shadow-lg ${
               isOpen ? "!border-active !text-active-ink !bg-active-bg" : ""
             }`}
             title={isOpen ? t("controls.turnOff") : t("controls.turnOn")}
@@ -1946,11 +1946,11 @@ function PoolCoverEquipmentWidget({
           {position === null ? (
             <span className="text-lead text-text-tertiary">{"\u2014"}</span>
           ) : position === 100 ? (
-            <span className="text-small font-medium text-text-secondary px-2 py-0.5 rounded bg-border-light">
+            <span className="text-small font-medium text-text-secondary px-2 py-0.5 rounded-sm bg-border-light">
               {t("controls.opened")}
             </span>
           ) : position === 0 ? (
-            <span className="text-small font-medium text-text-secondary px-2 py-0.5 rounded bg-border-light">
+            <span className="text-small font-medium text-text-secondary px-2 py-0.5 rounded-sm bg-border-light">
               {t("controls.closed")}
             </span>
           ) : (
@@ -1969,7 +1969,7 @@ function PoolCoverEquipmentWidget({
           <button
             onClick={() => handleCommand("OPEN")}
             disabled={executing}
-            className="w-10 h-10 flex items-center justify-center rounded-[6px] transition-all duration-150 cursor-pointer border border-border bg-surface text-text-secondary hover:border-primary/40 hover:text-primary hover:bg-primary/5 active:scale-[0.97] disabled:opacity-40 disabled:cursor-not-allowed"
+            className="w-10 h-10 flex items-center justify-center rounded-sm transition-all duration-150 cursor-pointer bg-surface text-text-secondary hover:border-primary/40 hover:text-primary hover:bg-primary/5 active:scale-[0.97] disabled:opacity-40 disabled:cursor-not-allowed shadow-lg"
             title={t("controls.open")}
           >
             {executing ? (
@@ -1982,7 +1982,7 @@ function PoolCoverEquipmentWidget({
             <button
               onClick={() => handleCommand("STOP")}
               disabled={executing}
-              className="w-10 h-10 flex items-center justify-center rounded-[6px] transition-all duration-150 cursor-pointer border border-border bg-surface text-text-secondary hover:border-text-tertiary hover:text-text hover:bg-border-light active:scale-[0.97] disabled:opacity-40 disabled:cursor-not-allowed"
+              className="w-10 h-10 flex items-center justify-center rounded-sm transition-all duration-150 cursor-pointer bg-surface text-text-secondary hover:border-text-tertiary hover:text-text hover:bg-border-light active:scale-[0.97] disabled:opacity-40 disabled:cursor-not-allowed shadow-lg"
               title={t("controls.stop")}
             >
               <Square size={11} strokeWidth={2.5} />
@@ -1991,7 +1991,7 @@ function PoolCoverEquipmentWidget({
           <button
             onClick={() => handleCommand("CLOSE")}
             disabled={executing}
-            className="w-10 h-10 flex items-center justify-center rounded-[6px] transition-all duration-150 cursor-pointer border border-border bg-surface text-text-secondary hover:border-primary/40 hover:text-primary hover:bg-primary/5 active:scale-[0.97] disabled:opacity-40 disabled:cursor-not-allowed"
+            className="w-10 h-10 flex items-center justify-center rounded-sm transition-all duration-150 cursor-pointer bg-surface text-text-secondary hover:border-primary/40 hover:text-primary hover:bg-primary/5 active:scale-[0.97] disabled:opacity-40 disabled:cursor-not-allowed shadow-lg"
             title={t("controls.close")}
           >
             <ChevronRight size={16} strokeWidth={2} />
@@ -2025,7 +2025,7 @@ function CameraEquipmentWidget({
 
   return (
     <WidgetCard label={label} sublabel={sublabel}>
-      <div className="flex-1 min-h-0 rounded-[4px] bg-black overflow-hidden flex items-center justify-center">
+      <div className="flex-1 min-h-0 rounded-sm bg-black overflow-hidden flex items-center justify-center">
         {url ? (
           <img src={url} alt="" className="w-full h-full object-cover" />
         ) : (

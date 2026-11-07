@@ -66,7 +66,7 @@ export function DeviceNameEditor({ name, onSave }: DeviceNameEditorProps) {
         </h1>
         <button
           onClick={() => setEditing(true)}
-          className="p-1.5 rounded-[6px] text-text-tertiary opacity-0 group-hover:opacity-100 hover:text-text-secondary hover:bg-border-light transition-all duration-150 ease-out"
+          className="p-1.5 rounded-sm text-text-tertiary opacity-0 group-hover:opacity-100 hover:text-text-secondary hover:bg-border-light transition-all duration-150 ease-out"
           title={t("devices.editName")}
         >
           <Pencil size={14} strokeWidth={1.5} />
@@ -90,7 +90,7 @@ export function DeviceNameEditor({ name, onSave }: DeviceNameEditorProps) {
         <button
           onClick={handleSave}
           disabled={saving}
-          className="p-1.5 rounded-[6px] text-success hover:bg-success/10 transition-colors duration-150 ease-out disabled:opacity-50"
+          className="p-1.5 rounded-sm text-success hover:bg-success/10 transition-colors duration-150 ease-out disabled:opacity-50"
           title={t("common.save")}
         >
           <Check size={16} strokeWidth={1.5} />
@@ -98,7 +98,7 @@ export function DeviceNameEditor({ name, onSave }: DeviceNameEditorProps) {
         <button
           onClick={handleCancel}
           disabled={saving}
-          className="p-1.5 rounded-[6px] text-text-tertiary hover:text-error hover:bg-error/10 transition-colors duration-150 ease-out disabled:opacity-50"
+          className="p-1.5 rounded-sm text-text-tertiary hover:text-error hover:bg-error/10 transition-colors duration-150 ease-out disabled:opacity-50"
           title={t("common.cancel")}
         >
           <X size={16} strokeWidth={1.5} />

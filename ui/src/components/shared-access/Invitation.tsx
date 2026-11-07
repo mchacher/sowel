@@ -68,7 +68,7 @@ export function InvitationQr({ link }: { link: string }) {
       <div
         role="img"
         aria-label={t("sharedAccess.invitation.qrLabel")}
-        className="w-[132px] h-[132px] rounded-[6px] overflow-hidden bg-white [&>svg]:w-full [&>svg]:h-full"
+        className="w-[132px] h-[132px] rounded-sm overflow-hidden bg-white [&>svg]:w-full [&>svg]:h-full"
         dangerouslySetInnerHTML={{ __html: svg }}
       />
       <figcaption className="text-caption text-text-tertiary text-center max-w-[132px]">
@@ -82,7 +82,7 @@ export function InvitationQr({ link }: { link: string }) {
 export function Invitation({ link, code }: { link: string | null; code: string | null }) {
   const { t } = useTranslation();
   return (
-    <div className="mt-3 border border-dashed border-border rounded-[10px] px-3 py-2.5 text-small">
+    <div className="mt-3 border border-dashed border-border rounded-md px-3 py-2.5 text-small">
       <div className="text-small font-semibold text-text-secondary mb-1.5">
         {t("sharedAccess.invitation.title")}
       </div>

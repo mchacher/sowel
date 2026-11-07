@@ -78,7 +78,7 @@ export function SharedAccessSettings() {
   };
 
   return (
-    <section className="bg-surface rounded-[10px] border border-border p-5">
+    <section className="card p-5">
       <div className="flex items-center gap-2 mb-1">
         <KeyRound size={16} strokeWidth={1.5} className="text-text-tertiary" />
         <h2 className="text-body font-semibold text-text">{t("sharedAccess.title")}</h2>

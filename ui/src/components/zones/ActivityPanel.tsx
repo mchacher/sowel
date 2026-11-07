@@ -79,7 +79,7 @@ export function ActivityPanel({ zoneId }: Props) {
   );
 
   return (
-    <section className="bg-surface border border-border-light rounded-lg overflow-hidden">
+    <section className="card overflow-hidden">
       {/* Panel head — strict alignment with design-system .panel__head */}
       <div className="flex items-center gap-[0.55rem] px-[1.1rem] py-[0.55rem] min-h-[44px] bg-primary-light border-b border-[var(--p-100)]">
         <h2 className="text-lead font-semibold text-text">
@@ -100,8 +100,8 @@ export function ActivityPanel({ zoneId }: Props) {
             aria-pressed={includeDescendants}
             className={
               includeDescendants
-                ? "ml-auto inline-flex items-center justify-center w-[22px] h-[22px] rounded-[4px] bg-primary-fill text-white hover:bg-primary-fill-hover transition-colors"
-                : "ml-auto inline-flex items-center justify-center w-[22px] h-[22px] rounded-[4px] bg-transparent text-primary border border-[var(--p-100)] hover:bg-surface transition-colors"
+                ? "ml-auto inline-flex items-center justify-center w-[22px] h-[22px] rounded-sm bg-primary-fill text-white hover:bg-primary-fill-hover transition-colors"
+                : "ml-auto inline-flex items-center justify-center w-[22px] h-[22px] rounded-sm bg-transparent text-primary border border-[var(--p-100)] hover:bg-surface transition-colors"
             }
           >
             <Network size={12} strokeWidth={2} />

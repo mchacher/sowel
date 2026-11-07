@@ -195,7 +195,7 @@ Every integration plugin runs with scoped Proxies on its `PluginDeps` (`src/plug
 - **Labels**: sentence case; uppercase only in table column headers (lint)
 - **Primary**: `#1A4F6E` (ocean blue), hover `#144159`, light `#EEF5F8`
 - **Amber** `#F2C035`: on or running now only. State roles (orange attention, red fault, green OK, open/closed neutral) in `design-system/tokens.md` §1.2, contrast checked by `ui/src/lib/color-roles.test.ts`
-- **Spacing**: 4px base; radii 6px / 8px / 12px (`--radius-sm/md/lg`)
+- **Spacing**: 4px base; radii 6px controls / 10px cards / 16px sheets (`rounded-sm/md/lg`); cards are the `card` class, no border
 - **Font sizes**: 14px body, 28px data values
 
 ## Installation-specific context (private companion repo)

@@ -84,23 +84,23 @@ export function WateringScheduleEditor({
       {slots.map((slot, i) => (
         <div
           key={i}
-          className="bg-surface border border-border rounded-[10px] p-3"
+          className="card p-3"
         >
           {/* Header: badge + time + remove */}
           <div className="flex items-center gap-2.5 mb-2.5">
-            <span className="text-micro font-semibold text-primary bg-primary-light px-2 py-0.5 rounded-[4px]">
+            <span className="text-micro font-semibold text-primary bg-primary-light px-2 py-0.5 rounded-sm">
               {i + 1}
             </span>
             <input
               type="time"
               value={slot.time}
               onChange={(e) => updateTime(i, e.target.value)}
-              className="px-2 py-1 text-body font-semibold tabular-nums border border-border rounded-[6px] outline-none focus:border-primary bg-surface text-text w-[96px]"
+              className="px-2 py-1 text-body font-semibold tabular-nums rounded-sm outline-none focus:border-primary bg-surface text-text w-[96px] shadow-lg"
             />
             <button
               type="button"
               onClick={() => removeSlot(i)}
-              className="ml-auto p-1 rounded-[4px] text-text-tertiary hover:text-error hover:bg-error/5 transition-colors"
+              className="ml-auto p-1 rounded-sm text-text-tertiary hover:text-error hover:bg-error/5 transition-colors"
               title="Supprimer"
             >
               <X size={14} strokeWidth={1.5} />
@@ -126,7 +126,7 @@ export function WateringScheduleEditor({
                       Math.max(1, Math.min(120, Number(e.target.value) || 1)),
                     )
                   }
-                  className="w-[52px] px-1.5 py-1 text-small tabular-nums text-center border border-border rounded-[6px] outline-none focus:border-primary bg-surface text-text"
+                  className="w-[52px] px-1.5 py-1 text-small tabular-nums text-center rounded-sm outline-none focus:border-primary bg-surface text-text shadow-lg"
                 />
                 <span className="text-micro text-text-tertiary w-6">min</span>
               </div>
@@ -139,7 +139,7 @@ export function WateringScheduleEditor({
       <button
         type="button"
         onClick={addSlot}
-        className="flex items-center justify-center gap-1 w-full py-2 text-caption font-medium text-primary bg-primary-light border border-dashed border-primary/30 rounded-[6px] hover:bg-primary-light/70 transition-colors cursor-pointer"
+        className="flex items-center justify-center gap-1 w-full py-2 text-caption font-medium text-primary bg-primary-light border border-dashed border-primary/30 rounded-sm hover:bg-primary-light/70 transition-colors cursor-pointer"
       >
         <Plus size={14} strokeWidth={1.5} />
         Ajouter un créneau

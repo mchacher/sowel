@@ -33,7 +33,7 @@ function headerClasses(
   collapsed: boolean,
 ): string {
   const base =
-    "flex items-center gap-2 px-3 py-1.5 w-full rounded-[6px] transition-colors duration-150 ease-out";
+    "flex items-center gap-2 px-3 py-1.5 w-full rounded-sm transition-colors duration-150 ease-out";
   const layout = collapsed ? "justify-center" : "";
   const state = isLeaf
     ? "bg-primary-light"

@@ -41,7 +41,7 @@ export function TakeoverBanner() {
         <button
           onClick={onConfirm}
           disabled={state === "confirming"}
-          className="bg-surface text-error rounded-md px-2.5 py-0.5 text-caption font-semibold hover:bg-background disabled:opacity-60"
+          className="bg-surface text-error rounded-sm px-2.5 py-0.5 text-caption font-semibold hover:bg-background disabled:opacity-60"
         >
           {state === "confirming" ? t("takeover.confirming") : t("takeover.confirm")}
         </button>

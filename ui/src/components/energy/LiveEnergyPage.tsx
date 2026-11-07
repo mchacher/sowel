@@ -155,7 +155,7 @@ function StalenessBanner({ entry }: { entry: LiveStalenessEntry }) {
         : "energy.live.sourceStale";
   return (
     <div
-      className={`mb-4 flex items-center gap-2 rounded-[10px] border px-4 py-3 text-small ${
+      className={`mb-4 flex items-center gap-2 rounded-md border px-4 py-3 text-small ${
         entry.mode === "offline"
           ? "bg-error/10 border-error/20 text-error"
           : "bg-warning/10 border-warning/20 text-warning-ink"
@@ -240,7 +240,7 @@ function LiveDiagram({
   const solarValue = nodePower(solarPower !== null ? solar : null);
 
   return (
-    <div className="bg-surface border border-border rounded-[10px] p-4 sm:p-6">
+    <div className="card p-4 sm:p-6">
       <SectionHeader icon={Waypoints} title={t("energy.live.diagram.title")} />
       <FlowDiagram
         tag={{ text: t(`energy.live.status.${status}`), color: statusColor }}
@@ -328,7 +328,7 @@ function LiveDiagram({
 function EmptyState() {
   const { t } = useTranslation();
   return (
-    <div className="bg-surface border border-border rounded-[10px] p-10 text-center max-w-[480px] mx-auto">
+    <div className="card p-10 text-center max-w-[480px] mx-auto">
       <h2 className="text-lead font-semibold text-text mb-2">{t("energy.live.empty.title")}</h2>
       <p className="text-small text-text-secondary">{t("energy.live.empty.help")}</p>
     </div>

@@ -326,7 +326,7 @@ export function Sidebar() {
       <div className="border-t border-border-light p-2">
         <button
           onClick={() => setCollapsed(!collapsed)}
-          className="flex items-center justify-center w-full py-2 rounded-[6px] text-text-tertiary hover:text-text-secondary hover:bg-background transition-colors duration-150 ease-out cursor-pointer"
+          className="flex items-center justify-center w-full py-2 rounded-sm text-text-tertiary hover:text-text-secondary hover:bg-background transition-colors duration-150 ease-out cursor-pointer"
         >
           {collapsed ? (
             <ChevronRight size={16} strokeWidth={1.5} />

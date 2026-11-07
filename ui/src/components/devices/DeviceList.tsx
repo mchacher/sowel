@@ -121,7 +121,7 @@ export function DeviceList({ devices, deviceData, activeTab, deviceEquipmentMap 
   );
 
   return (
-    <div className="bg-surface rounded-[10px] border border-border overflow-hidden">
+    <div className="card overflow-hidden">
       <table className="w-full">
         <thead>
           <tr className="border-b border-border bg-border-light/40">
@@ -249,7 +249,7 @@ export function DeviceList({ devices, deviceData, activeTab, deviceEquipmentMap 
                 </td>
                 {showSource && (
                   <td className="py-2.5 px-3 hidden sm:table-cell">
-                    <span className="inline-flex items-center px-1.5 py-0.5 rounded bg-border-light text-caption font-medium text-text-secondary">
+                    <span className="inline-flex items-center px-1.5 py-0.5 rounded-sm bg-border-light text-caption font-medium text-text-secondary">
                       {sourceLabel(device.source)}
                     </span>
                   </td>

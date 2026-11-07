@@ -57,15 +57,13 @@ export function EquipmentCard({ equipment, onExecuteOrder }: EquipmentCardProps)
   return (
     <div
       className={`
-        flex flex-wrap sm:flex-nowrap items-center gap-x-3 gap-y-2 px-4 py-3 bg-surface rounded-[10px] border
-        transition-colors duration-150
-        border-border
+        card flex flex-wrap sm:flex-nowrap items-center gap-x-3 gap-y-2 px-4 py-3
       `}
     >
       {/* Icon */}
       <div
         className={`
-          flex-shrink-0 w-9 h-9 rounded-[6px] flex items-center justify-center
+          flex-shrink-0 w-9 h-9 rounded-sm flex items-center justify-center
           ${iconColor}
         `}
       >

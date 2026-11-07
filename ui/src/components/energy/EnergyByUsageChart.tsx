@@ -225,7 +225,7 @@ export function EnergyByUsageChart({ data, period, date, height = 300, unit = "w
               const datum = payload[0].payload as Datum;
               const total = seriesWithI18n.reduce((acc, s) => acc + (datum[s.id] as number), 0);
               return (
-                <div className="bg-surface border border-border rounded-[6px] p-3 text-caption shadow-lg">
+                <div className="bg-surface border border-border rounded-md p-3 text-caption shadow-lg">
                   <div className="font-semibold text-text mb-1">{datum.tooltipLabel ?? label}</div>
                   {seriesWithI18n.map((s) => {
                     const v = datum[s.id] as number;

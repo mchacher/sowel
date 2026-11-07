@@ -358,7 +358,7 @@ function SortableWidget({
               if (e.key === "Enter") handleRenameCommit();
               if (e.key === "Escape") setRenaming(false);
             }}
-            className={`w-full font-semibold text-text text-center bg-surface border border-primary/40 rounded-[5px] px-1 py-0 outline-none focus:ring-1 focus:ring-primary/30 ${
+            className={`w-full font-semibold text-text text-center bg-surface border border-primary/40 rounded-sm px-1 py-0 outline-none focus:ring-1 focus:ring-primary/30 ${
               isMobile ? "text-micro" : "text-lead"
             }`}
           />
@@ -366,7 +366,7 @@ function SortableWidget({
       ) : (
         <button
           onClick={handleRenameStart}
-          className={`absolute ${isMobile ? "top-[2px] left-6 right-6 h-[18px]" : "top-[10px] left-7 right-7 h-[24px]"} z-10 cursor-text rounded hover:bg-primary/5 transition-colors`}
+          className={`absolute ${isMobile ? "top-[2px] left-6 right-6 h-[18px]" : "top-[10px] left-7 right-7 h-[24px]"} z-10 cursor-text rounded-sm hover:bg-primary/5 transition-colors`}
         />
       )}
       {/* Bindings picker popover */}
@@ -639,7 +639,7 @@ function MobileZoneCard({
   return (
     <button
       onClick={onClick}
-      className={`bg-surface border border-border rounded-[8px] p-2 flex flex-col items-center h-[120px] overflow-hidden w-full text-left ${
+      className={`card p-2 flex flex-col items-center h-[120px] overflow-hidden w-full text-left ${
         editMode ? "" : "cursor-pointer active:scale-[0.98]"
       } transition-transform`}
     >

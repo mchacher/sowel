@@ -58,7 +58,7 @@ export function AccessRow({
   const src = access.kind === "external" ? access.source : null;
 
   return (
-    <li className="bg-surface border border-border rounded-[10px] px-3 py-2.5">
+    <li className="card px-3 py-2.5">
       <div className="flex items-start gap-2">
         {/* Faded when revoked or ended — the content only: an opacity on the
             <li> would fade the « ⋯ » menu too and give it a stacking context
@@ -191,7 +191,7 @@ export function AccessRow({
               <div className="fixed inset-0 z-30" onClick={() => setOpen(null)} />
               <div
                 role="menu"
-                className="absolute right-0 top-full mt-1 z-40 min-w-[210px] bg-surface border border-border rounded-[10px] shadow-lg py-1 text-small"
+                className="absolute right-0 top-full mt-1 z-40 min-w-[210px] bg-surface border border-border rounded-md shadow-lg py-1 text-small"
               >
                 {!revoked && (
                   <MenuItem onClick={() => setOpen("code")}>

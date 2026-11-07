@@ -255,7 +255,7 @@ function HomeSettingsSection() {
 
   if (loading) {
     return (
-      <section className="bg-surface rounded-[10px] border border-border p-5">
+      <section className="card p-5">
         <h2 className="text-body font-semibold text-text mb-4">{t("settings.home")}</h2>
         <Loader2 size={16} className="animate-spin text-text-tertiary" />
       </section>
@@ -263,7 +263,7 @@ function HomeSettingsSection() {
   }
 
   return (
-    <section className="bg-surface rounded-[10px] border border-border p-5">
+    <section className="card p-5">
       <h2 className="text-body font-semibold text-text mb-1">{t("settings.home")}</h2>
       <p className="text-caption text-text-tertiary mb-4">{t("settings.homeDescription")}</p>
       <div className="space-y-3">
@@ -276,7 +276,7 @@ function HomeSettingsSection() {
             value={homeName}
             onChange={(e) => setHomeName(e.target.value)}
             placeholder={t("settings.homeNamePlaceholder")}
-            className="w-full px-3 py-2 text-body bg-background border border-border rounded-[6px] text-text placeholder:text-text-tertiary focus:outline-none focus:border-primary"
+            className="w-full px-3 py-2 text-body bg-background border border-border rounded-sm text-text placeholder:text-text-tertiary focus:outline-none focus:border-primary"
           />
         </div>
         <div className="grid grid-cols-2 gap-3">
@@ -290,7 +290,7 @@ function HomeSettingsSection() {
               value={latitude}
               onChange={(e) => setLatitude(e.target.value.replace(",", "."))}
               placeholder="48.8566"
-              className="w-full px-3 py-2 text-body bg-background border border-border rounded-[6px] text-text placeholder:text-text-tertiary focus:outline-none focus:border-primary"
+              className="w-full px-3 py-2 text-body bg-background border border-border rounded-sm text-text placeholder:text-text-tertiary focus:outline-none focus:border-primary"
             />
           </div>
           <div>
@@ -303,7 +303,7 @@ function HomeSettingsSection() {
               value={longitude}
               onChange={(e) => setLongitude(e.target.value.replace(",", "."))}
               placeholder="2.3522"
-              className="w-full px-3 py-2 text-body bg-background border border-border rounded-[6px] text-text placeholder:text-text-tertiary focus:outline-none focus:border-primary"
+              className="w-full px-3 py-2 text-body bg-background border border-border rounded-sm text-text placeholder:text-text-tertiary focus:outline-none focus:border-primary"
             />
           </div>
         </div>
@@ -316,7 +316,7 @@ function HomeSettingsSection() {
               type="number"
               value={sunriseOffset}
               onChange={(e) => setSunriseOffset(e.target.value)}
-              className="w-full px-3 py-2 text-body bg-background border border-border rounded-[6px] text-text focus:outline-none focus:border-primary"
+              className="w-full px-3 py-2 text-body bg-background border border-border rounded-sm text-text focus:outline-none focus:border-primary"
             />
             <p className="text-caption text-text-tertiary mt-1">{t("settings.sunriseOffsetHelp")}</p>
           </div>
@@ -328,7 +328,7 @@ function HomeSettingsSection() {
               type="number"
               value={sunsetOffset}
               onChange={(e) => setSunsetOffset(e.target.value)}
-              className="w-full px-3 py-2 text-body bg-background border border-border rounded-[6px] text-text focus:outline-none focus:border-primary"
+              className="w-full px-3 py-2 text-body bg-background border border-border rounded-sm text-text focus:outline-none focus:border-primary"
             />
             <p className="text-caption text-text-tertiary mt-1">{t("settings.sunsetOffsetHelp")}</p>
           </div>
@@ -339,7 +339,7 @@ function HomeSettingsSection() {
               {t("settings.timezone")}
             </label>
             <div className="flex items-center gap-2">
-              <span className="text-small font-mono text-text px-2 py-1 bg-background rounded-[6px] border border-border">
+              <span className="text-small font-mono text-text px-2 py-1 bg-background rounded-sm border border-border">
                 {tz}
               </span>
               <span
@@ -358,7 +358,7 @@ function HomeSettingsSection() {
           <button
             onClick={handleSave}
             disabled={saving}
-            className="px-4 py-2 text-small font-medium bg-primary-fill text-white rounded-[6px] hover:bg-primary-fill-hover transition-colors disabled:opacity-50"
+            className="px-4 py-2 text-small font-medium bg-primary-fill text-white rounded-sm hover:bg-primary-fill-hover transition-colors disabled:opacity-50"
           >
             {saving ? t("common.saving") : t("common.save")}
           </button>
@@ -391,7 +391,7 @@ function ProfileSection({
   const dirty = displayName !== (user?.displayName ?? "");
 
   return (
-    <section className="bg-surface rounded-[10px] border border-border p-5">
+    <section className="card p-5">
       <h2 className="text-body font-semibold text-text mb-4">{t("settings.profile")}</h2>
       <div className="space-y-3">
         <div className="grid grid-cols-2 gap-4">
@@ -416,7 +416,7 @@ function ProfileSection({
             type="text"
             value={displayName}
             onChange={(e) => setDisplayName(e.target.value)}
-            className="w-full px-3 py-2 text-body bg-background border border-border rounded-[6px] text-text focus:outline-none focus:border-primary"
+            className="w-full px-3 py-2 text-body bg-background border border-border rounded-sm text-text focus:outline-none focus:border-primary"
           />
         </div>
         {dirty && (
@@ -430,7 +430,7 @@ function ProfileSection({
               }
             }}
             disabled={saving}
-            className="px-4 py-2 text-small font-medium bg-primary-fill text-white rounded-[6px] hover:bg-primary-fill-hover transition-colors disabled:opacity-50"
+            className="px-4 py-2 text-small font-medium bg-primary-fill text-white rounded-sm hover:bg-primary-fill-hover transition-colors disabled:opacity-50"
           >
             {saving ? t("common.saving") : t("common.save")}
           </button>
@@ -458,7 +458,7 @@ function PreferencesSection({
   const { t } = useTranslation();
 
   return (
-    <section className="bg-surface rounded-[10px] border border-border p-5">
+    <section className="card p-5">
       <h2 className="text-body font-semibold text-text mb-4">{t("settings.preferences")}</h2>
       <div className="space-y-4">
         <div>
@@ -470,7 +470,7 @@ function PreferencesSection({
               <button
                 key={lang}
                 onClick={() => onLanguageChange(lang)}
-                className={`px-4 py-2 text-small font-medium rounded-[6px] border transition-colors cursor-pointer ${
+                className={`px-4 py-2 text-small font-medium rounded-sm border transition-colors cursor-pointer ${
                   language === lang
                     ? "bg-primary-fill text-white border-primary-fill"
                     : "bg-background text-text-secondary border-border hover:border-primary hover:text-text"
@@ -490,7 +490,7 @@ function PreferencesSection({
               <button
                 key={opt}
                 onClick={() => onThemeChange(opt)}
-                className={`px-4 py-2 text-small font-medium rounded-[6px] border transition-colors cursor-pointer ${
+                className={`px-4 py-2 text-small font-medium rounded-sm border transition-colors cursor-pointer ${
                   theme === opt
                     ? "bg-primary-fill text-white border-primary-fill"
                     : "bg-background text-text-secondary border-border hover:border-primary hover:text-text"
@@ -559,7 +559,7 @@ function ChangePasswordSection() {
   };
 
   return (
-    <section className="bg-surface rounded-[10px] border border-border p-5">
+    <section className="card p-5">
       <div className="flex items-center justify-between">
         <h2 className="text-body font-semibold text-text">{t("settings.changePassword")}</h2>
         {!open && (
@@ -584,7 +584,7 @@ function ChangePasswordSection() {
               type={showCurrent ? "text" : "password"}
               value={currentPassword}
               onChange={(e) => setCurrentPassword(e.target.value)}
-              className="w-full px-3 py-2 pr-9 text-body bg-background border border-border rounded-[6px] text-text focus:outline-none focus:border-primary"
+              className="w-full px-3 py-2 pr-9 text-body bg-background border border-border rounded-sm text-text focus:outline-none focus:border-primary"
             />
             <button
               type="button"
@@ -602,7 +602,7 @@ function ChangePasswordSection() {
               type={showNew ? "text" : "password"}
               value={newPassword}
               onChange={(e) => setNewPassword(e.target.value)}
-              className="w-full px-3 py-2 pr-9 text-body bg-background border border-border rounded-[6px] text-text focus:outline-none focus:border-primary"
+              className="w-full px-3 py-2 pr-9 text-body bg-background border border-border rounded-sm text-text focus:outline-none focus:border-primary"
             />
             <button
               type="button"
@@ -620,7 +620,7 @@ function ChangePasswordSection() {
               type="password"
               value={confirmPassword}
               onChange={(e) => setConfirmPassword(e.target.value)}
-              className="w-full px-3 py-2 text-body bg-background border border-border rounded-[6px] text-text focus:outline-none focus:border-primary"
+              className="w-full px-3 py-2 text-body bg-background border border-border rounded-sm text-text focus:outline-none focus:border-primary"
             />
           </div>
           {error && <p className="text-small text-error">{error}</p>}
@@ -629,7 +629,7 @@ function ChangePasswordSection() {
             <button
               onClick={handleSubmit}
               disabled={saving || !currentPassword || !newPassword || !confirmPassword}
-              className="px-4 py-2 text-small font-medium bg-primary-fill text-white rounded-[6px] hover:bg-primary-fill-hover transition-colors disabled:opacity-50"
+              className="px-4 py-2 text-small font-medium bg-primary-fill text-white rounded-sm hover:bg-primary-fill-hover transition-colors disabled:opacity-50"
             >
               {saving ? t("common.saving") : t("common.save")}
             </button>
@@ -638,7 +638,7 @@ function ChangePasswordSection() {
                 setOpen(false);
                 reset();
               }}
-              className="px-4 py-2 text-small font-medium text-text-secondary hover:text-text rounded-[6px] border border-border hover:bg-border-light transition-colors"
+              className="px-4 py-2 text-small font-medium text-text-secondary hover:text-text rounded-sm border border-border hover:bg-border-light transition-colors"
             >
               {t("common.cancel")}
             </button>
@@ -714,7 +714,7 @@ function VersionBadge() {
   return (
     <>
       <div className="flex items-center gap-2">
-        <span className="text-small font-mono text-primary px-2.5 py-1 bg-primary-light rounded-[6px]">
+        <span className="text-small font-mono text-primary px-2.5 py-1 bg-primary-light rounded-sm">
           v{info.current}
         </span>
 
@@ -722,7 +722,7 @@ function VersionBadge() {
         <button
           onClick={handleCheckNow}
           disabled={checking}
-          className="p-1 text-text-tertiary hover:text-text-secondary rounded-[5px] hover:bg-border-light transition-colors cursor-pointer disabled:opacity-50"
+          className="p-1 text-text-tertiary hover:text-text-secondary rounded-sm hover:bg-border-light transition-colors cursor-pointer disabled:opacity-50"
           title={t("update.checkNow")}
         >
           {checking ? (
@@ -738,7 +738,7 @@ function VersionBadge() {
               <button
                 onClick={() => setConfirmOpen(true)}
                 disabled={updating}
-                className="flex items-center gap-1.5 px-2.5 py-1 text-micro font-medium text-error hover:bg-error/10 rounded-[5px] transition-colors cursor-pointer disabled:opacity-50"
+                className="flex items-center gap-1.5 px-2.5 py-1 text-micro font-medium text-error hover:bg-error/10 rounded-sm transition-colors cursor-pointer disabled:opacity-50"
               >
                 {updating ? (
                   <Loader2 size={12} className="animate-spin" />
@@ -752,7 +752,7 @@ function VersionBadge() {
                 href={info.releaseUrl ?? "#"}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="flex items-center gap-1 px-2.5 py-1 text-micro font-medium text-error hover:bg-error/10 rounded-[5px] transition-colors"
+                className="flex items-center gap-1 px-2.5 py-1 text-micro font-medium text-error hover:bg-error/10 rounded-sm transition-colors"
                 title={updateDisabledReason}
               >
                 <ArrowUpCircle size={12} />
@@ -771,7 +771,7 @@ function VersionBadge() {
           onClick={() => !updating && setConfirmOpen(false)}
         >
           <div
-            className="bg-surface rounded-[14px] border border-border p-6 max-w-md w-full"
+            className="bg-surface rounded-lg p-6 max-w-md w-full shadow-lg"
             onClick={(e) => e.stopPropagation()}
           >
             <h3 className="text-lead font-semibold text-text mb-2">
@@ -787,7 +787,7 @@ function VersionBadge() {
               {t("update.confirmAutoBackup")}
             </p>
             {error && (
-              <div className="mb-4 p-3 bg-error/10 border border-error/30 rounded-[6px]">
+              <div className="mb-4 p-3 bg-error/10 border border-error/30 rounded-sm">
                 <p className="text-small text-error">{error}</p>
               </div>
             )}
@@ -795,14 +795,14 @@ function VersionBadge() {
               <button
                 onClick={() => setConfirmOpen(false)}
                 disabled={updating}
-                className="px-4 py-2 text-small font-medium text-text-secondary border border-border rounded-[6px] hover:bg-border-light transition-colors disabled:opacity-50 cursor-pointer disabled:cursor-default"
+                className="px-4 py-2 text-small font-medium text-text-secondary border border-border rounded-sm hover:bg-border-light transition-colors disabled:opacity-50 cursor-pointer disabled:cursor-default"
               >
                 {t("common.cancel")}
               </button>
               <button
                 onClick={handleConfirmUpdate}
                 disabled={updating}
-                className="flex items-center gap-1.5 px-4 py-2 text-small font-medium bg-error text-on-status rounded-[6px] hover:bg-error/80 transition-colors disabled:opacity-50 cursor-pointer disabled:cursor-default"
+                className="flex items-center gap-1.5 px-4 py-2 text-small font-medium bg-error text-on-status rounded-sm hover:bg-error/80 transition-colors disabled:opacity-50 cursor-pointer disabled:cursor-default"
               >
                 {updating ? (
                   <Loader2 size={14} className="animate-spin" />
@@ -840,13 +840,13 @@ function BackupCodesDisplay({ codes }: { codes: string[] }) {
   };
 
   return (
-    <div className="p-3 bg-success/10 border border-success/30 rounded-[6px]">
+    <div className="p-3 bg-success/10 border border-success/30 rounded-sm">
       <p className="text-caption text-success mb-2">{t("settings.mfa.backupCodesShownOnce")}</p>
       <div className="grid grid-cols-2 gap-1.5 mb-2">
         {codes.map((code) => (
           <code
             key={code}
-            className="text-caption font-mono bg-background px-2 py-1 rounded border border-border text-center"
+            className="text-caption font-mono bg-background px-2 py-1 rounded-sm border border-border text-center"
           >
             {code}
           </code>
@@ -904,7 +904,7 @@ function MfaReauthModal({
       onClick={() => !submitting && onClose()}
     >
       <div
-        className="bg-surface rounded-[14px] border border-border p-6 max-w-sm w-full"
+        className="bg-surface rounded-lg p-6 max-w-sm w-full shadow-lg"
         onClick={(e) => e.stopPropagation()}
       >
         <h3 className="text-lead font-semibold text-text mb-4">{title}</h3>
@@ -919,7 +919,7 @@ function MfaReauthModal({
               value={password}
               onChange={(e) => setPassword(e.target.value)}
               autoFocus
-              className="w-full px-3 py-2 text-body bg-background border border-border rounded-[6px] text-text focus:outline-none focus:border-primary"
+              className="w-full px-3 py-2 text-body bg-background border border-border rounded-sm text-text focus:outline-none focus:border-primary"
             />
           </div>
           <div>
@@ -931,7 +931,7 @@ function MfaReauthModal({
               inputMode="numeric"
               value={code}
               onChange={(e) => setCode(e.target.value)}
-              className="w-full px-3 py-2 text-body bg-background border border-border rounded-[6px] text-text focus:outline-none focus:border-primary"
+              className="w-full px-3 py-2 text-body bg-background border border-border rounded-sm text-text focus:outline-none focus:border-primary"
             />
             <button
               type="button"
@@ -951,14 +951,14 @@ function MfaReauthModal({
           <button
             onClick={onClose}
             disabled={submitting}
-            className="px-4 py-2 text-small font-medium text-text-secondary border border-border rounded-[6px] hover:bg-border-light transition-colors disabled:opacity-50 cursor-pointer"
+            className="px-4 py-2 text-small font-medium text-text-secondary border border-border rounded-sm hover:bg-border-light transition-colors disabled:opacity-50 cursor-pointer"
           >
             {t("common.cancel")}
           </button>
           <button
             onClick={handleSubmit}
             disabled={submitting || !password || !code}
-            className={`px-4 py-2 text-small font-medium rounded-[6px] transition-colors disabled:opacity-50 cursor-pointer ${
+            className={`px-4 py-2 text-small font-medium rounded-sm transition-colors disabled:opacity-50 cursor-pointer ${
               danger ? "bg-error text-on-status hover:bg-error/80" : "bg-primary-fill text-white hover:bg-primary-fill-hover"
             }`}
           >
@@ -1007,7 +1007,7 @@ function MfaEnrollModal({ onDone, onClose }: { onDone: () => void; onClose: () =
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
-      <div className="bg-surface rounded-[14px] border border-border p-6 max-w-sm w-full">
+      <div className="bg-surface rounded-lg p-6 max-w-sm w-full shadow-lg">
         <h3 className="text-lead font-semibold text-text mb-4">{t("settings.mfa.enableTitle")}</h3>
 
         {step === "loading" && <Loader2 size={20} className="animate-spin text-text-tertiary" />}
@@ -1019,14 +1019,14 @@ function MfaEnrollModal({ onDone, onClose }: { onDone: () => void; onClose: () =
               <img
                 src={qrCodeDataUrl}
                 alt={t("settings.mfa.qrAlt")}
-                className="mx-auto rounded-[6px] border border-border"
+                className="mx-auto rounded-sm border border-border"
                 width={200}
                 height={200}
               />
             )}
             <details className="text-caption text-text-tertiary">
               <summary className="cursor-pointer">{t("settings.mfa.cantScan")}</summary>
-              <code className="block mt-1 font-mono break-all bg-background px-2 py-1 rounded border border-border">
+              <code className="block mt-1 font-mono break-all bg-background px-2 py-1 rounded-sm border border-border">
                 {secret}
               </code>
             </details>
@@ -1040,7 +1040,7 @@ function MfaEnrollModal({ onDone, onClose }: { onDone: () => void; onClose: () =
                 value={code}
                 onChange={(e) => setCode(e.target.value)}
                 autoFocus
-                className="w-full px-3 py-2 text-body bg-background border border-border rounded-[6px] text-text focus:outline-none focus:border-primary"
+                className="w-full px-3 py-2 text-body bg-background border border-border rounded-sm text-text focus:outline-none focus:border-primary"
               />
             </div>
             {error && <p className="text-small text-error">{error}</p>}
@@ -1048,14 +1048,14 @@ function MfaEnrollModal({ onDone, onClose }: { onDone: () => void; onClose: () =
               <button
                 onClick={onClose}
                 disabled={submitting}
-                className="px-4 py-2 text-small font-medium text-text-secondary border border-border rounded-[6px] hover:bg-border-light transition-colors disabled:opacity-50 cursor-pointer"
+                className="px-4 py-2 text-small font-medium text-text-secondary border border-border rounded-sm hover:bg-border-light transition-colors disabled:opacity-50 cursor-pointer"
               >
                 {t("common.cancel")}
               </button>
               <button
                 onClick={handleConfirm}
                 disabled={submitting || !code}
-                className="px-4 py-2 text-small font-medium bg-primary-fill text-white rounded-[6px] hover:bg-primary-fill-hover transition-colors disabled:opacity-50 cursor-pointer"
+                className="px-4 py-2 text-small font-medium bg-primary-fill text-white rounded-sm hover:bg-primary-fill-hover transition-colors disabled:opacity-50 cursor-pointer"
               >
                 {submitting ? t("common.saving") : t("common.next")}
               </button>
@@ -1078,7 +1078,7 @@ function MfaEnrollModal({ onDone, onClose }: { onDone: () => void; onClose: () =
               <button
                 onClick={onDone}
                 disabled={!acknowledged}
-                className="px-4 py-2 text-small font-medium bg-primary-fill text-white rounded-[6px] hover:bg-primary-fill-hover transition-colors disabled:opacity-50 cursor-pointer"
+                className="px-4 py-2 text-small font-medium bg-primary-fill text-white rounded-sm hover:bg-primary-fill-hover transition-colors disabled:opacity-50 cursor-pointer"
               >
                 {t("common.close")}
               </button>
@@ -1141,14 +1141,14 @@ function TwoFactorSection() {
 
   if (!status) {
     return (
-      <section className="bg-surface rounded-[10px] border border-border p-5">
+      <section className="card p-5">
         <Loader2 size={16} className="animate-spin text-text-tertiary" />
       </section>
     );
   }
 
   return (
-    <section className="bg-surface rounded-[10px] border border-border p-5">
+    <section className="card p-5">
       <div className="flex items-center justify-between mb-1">
         <h2 className="text-body font-semibold text-text flex items-center gap-2">
           <ShieldCheck size={16} className="text-text-tertiary" />
@@ -1202,7 +1202,7 @@ function TwoFactorSection() {
                 value={trustDays}
                 onChange={(e) => setTrustDays(Number(e.target.value))}
                 onBlur={handleTrustDaysBlur}
-                className="w-20 px-3 py-1.5 text-body bg-background border border-border rounded-[6px] text-text focus:outline-none focus:border-primary"
+                className="w-20 px-3 py-1.5 text-body bg-background border border-border rounded-sm text-text focus:outline-none focus:border-primary"
               />
               <span className="text-small text-text-tertiary">{t("settings.mfa.days")}</span>
             </div>
@@ -1219,7 +1219,7 @@ function TwoFactorSection() {
                 {devices.map((device) => (
                   <div
                     key={device.id}
-                    className="flex items-center justify-between py-2 px-3 bg-background rounded-[6px] border border-border"
+                    className="flex items-center justify-between py-2 px-3 bg-background rounded-sm border border-border"
                   >
                     <div className="flex items-center gap-2 min-w-0">
                       <Smartphone size={14} className="text-text-tertiary shrink-0" />
@@ -1287,7 +1287,7 @@ function TwoFactorSection() {
           }}
         >
           <div
-            className="bg-surface rounded-[14px] border border-border p-6 max-w-sm w-full"
+            className="bg-surface rounded-lg p-6 max-w-sm w-full shadow-lg"
             onClick={(e) => e.stopPropagation()}
           >
             <h3 className="text-lead font-semibold text-text mb-4">
@@ -1301,7 +1301,7 @@ function TwoFactorSection() {
                   setRegeneratedCodes(null);
                   load();
                 }}
-                className="px-4 py-2 text-small font-medium bg-primary-fill text-white rounded-[6px] hover:bg-primary-fill-hover transition-colors cursor-pointer"
+                className="px-4 py-2 text-small font-medium bg-primary-fill text-white rounded-sm hover:bg-primary-fill-hover transition-colors cursor-pointer"
               >
                 {t("common.close")}
               </button>
@@ -1368,19 +1368,19 @@ function ApiTokensSection() {
   };
 
   return (
-    <section className="bg-surface rounded-[10px] border border-border p-5">
+    <section className="card p-5">
       <h2 className="text-body font-semibold text-text mb-4">{t("settings.apiTokens")}</h2>
 
       {newTokenValue && (
-        <div className="mb-4 p-3 bg-success/10 border border-success/30 rounded-[6px]">
+        <div className="mb-4 p-3 bg-success/10 border border-success/30 rounded-sm">
           <p className="text-caption text-success mb-2">{t("settings.tokenCreated")}</p>
           <div className="flex items-center gap-2">
-            <code className="flex-1 text-caption font-mono bg-background px-2 py-1 rounded border border-border break-all">
+            <code className="flex-1 text-caption font-mono bg-background px-2 py-1 rounded-sm border border-border break-all">
               {newTokenValue}
             </code>
             <button
               onClick={() => handleCopy(newTokenValue)}
-              className="p-1.5 text-text-secondary hover:text-text rounded cursor-pointer"
+              className="p-1.5 text-text-secondary hover:text-text rounded-sm cursor-pointer"
             >
               {copied ? <Check size={14} /> : <Copy size={14} />}
             </button>
@@ -1394,13 +1394,13 @@ function ApiTokensSection() {
           value={tokenName}
           onChange={(e) => setTokenName(e.target.value)}
           placeholder={t("settings.tokenName")}
-          className="flex-1 px-3 py-2 text-body bg-background border border-border rounded-[6px] text-text placeholder:text-text-tertiary focus:outline-none focus:border-primary"
+          className="flex-1 px-3 py-2 text-body bg-background border border-border rounded-sm text-text placeholder:text-text-tertiary focus:outline-none focus:border-primary"
           onKeyDown={(e) => e.key === "Enter" && handleCreate()}
         />
         <button
           onClick={handleCreate}
           disabled={creating || !tokenName.trim()}
-          className="flex items-center gap-1.5 px-3 py-2 text-small font-medium bg-primary-fill text-white rounded-[6px] hover:bg-primary-fill-hover transition-colors disabled:opacity-50"
+          className="flex items-center gap-1.5 px-3 py-2 text-small font-medium bg-primary-fill text-white rounded-sm hover:bg-primary-fill-hover transition-colors disabled:opacity-50"
         >
           <Plus size={14} />
           {t("settings.createToken")}
@@ -1416,7 +1416,7 @@ function ApiTokensSection() {
           {tokens.map((token) => (
             <div
               key={token.id}
-              className="flex items-center justify-between py-2 px-3 bg-background rounded-[6px] border border-border"
+              className="flex items-center justify-between py-2 px-3 bg-background rounded-sm border border-border"
             >
               <div>
                 <span className="text-small font-medium text-text">{token.name}</span>
@@ -1520,7 +1520,7 @@ function UserManagementSection({ currentUserId }: { currentUserId: string }) {
   };
 
   return (
-    <section className="bg-surface rounded-[10px] border border-border p-5">
+    <section className="card p-5">
       <div className="flex items-center justify-between mb-4">
         <h2 className="text-body font-semibold text-text">{t("settings.userManagement")}</h2>
         <button
@@ -1533,7 +1533,7 @@ function UserManagementSection({ currentUserId }: { currentUserId: string }) {
       </div>
 
       {showAdd && (
-        <div className="mb-4 p-4 bg-background rounded-[8px] border border-border space-y-3">
+        <div className="mb-4 p-4 bg-background rounded-md space-y-3">
           <div className="grid grid-cols-2 gap-3">
             <div>
               <label className={FIELD_LABEL}>
@@ -1543,7 +1543,7 @@ function UserManagementSection({ currentUserId }: { currentUserId: string }) {
                 type="text"
                 value={newUsername}
                 onChange={(e) => setNewUsername(e.target.value)}
-                className="w-full px-3 py-2 text-body bg-surface border border-border rounded-[6px] text-text focus:outline-none focus:border-primary"
+                className="w-full px-3 py-2 text-body bg-surface rounded-sm text-text focus:outline-none focus:border-primary shadow-lg"
               />
             </div>
             <div>
@@ -1554,7 +1554,7 @@ function UserManagementSection({ currentUserId }: { currentUserId: string }) {
                 type="text"
                 value={newDisplayName}
                 onChange={(e) => setNewDisplayName(e.target.value)}
-                className="w-full px-3 py-2 text-body bg-surface border border-border rounded-[6px] text-text focus:outline-none focus:border-primary"
+                className="w-full px-3 py-2 text-body bg-surface rounded-sm text-text focus:outline-none focus:border-primary shadow-lg"
               />
             </div>
             <div>
@@ -1565,7 +1565,7 @@ function UserManagementSection({ currentUserId }: { currentUserId: string }) {
                 type="password"
                 value={newPassword}
                 onChange={(e) => setNewPassword(e.target.value)}
-                className="w-full px-3 py-2 text-body bg-surface border border-border rounded-[6px] text-text focus:outline-none focus:border-primary"
+                className="w-full px-3 py-2 text-body bg-surface rounded-sm text-text focus:outline-none focus:border-primary shadow-lg"
               />
             </div>
             <div>
@@ -1575,7 +1575,7 @@ function UserManagementSection({ currentUserId }: { currentUserId: string }) {
               <select
                 value={newRole}
                 onChange={(e) => setNewRole(e.target.value as UserRole)}
-                className="w-full px-3 py-2 text-body bg-surface border border-border rounded-[6px] text-text focus:outline-none focus:border-primary"
+                className="w-full px-3 py-2 text-body bg-surface rounded-sm text-text focus:outline-none focus:border-primary shadow-lg"
               >
                 <option value="standard">standard</option>
                 <option value="admin">admin</option>
@@ -1587,13 +1587,13 @@ function UserManagementSection({ currentUserId }: { currentUserId: string }) {
             <button
               onClick={handleCreate}
               disabled={creating || !newUsername || !newDisplayName || !newPassword}
-              className="px-4 py-2 text-small font-medium bg-primary-fill text-white rounded-[6px] hover:bg-primary-fill-hover transition-colors disabled:opacity-50"
+              className="px-4 py-2 text-small font-medium bg-primary-fill text-white rounded-sm hover:bg-primary-fill-hover transition-colors disabled:opacity-50"
             >
               {creating ? t("common.creating") : t("common.create")}
             </button>
             <button
               onClick={() => setShowAdd(false)}
-              className="px-4 py-2 text-small font-medium text-text-secondary hover:text-text rounded-[6px] border border-border hover:bg-border-light transition-colors"
+              className="px-4 py-2 text-small font-medium text-text-secondary hover:text-text rounded-sm border border-border hover:bg-border-light transition-colors"
             >
               {t("common.cancel")}
             </button>
@@ -1608,7 +1608,7 @@ function UserManagementSection({ currentUserId }: { currentUserId: string }) {
           {users.map((u) => (
             <div
               key={u.id}
-              className="flex items-center justify-between py-2 px-3 bg-background rounded-[6px] border border-border"
+              className="flex items-center justify-between py-2 px-3 bg-background rounded-sm border border-border"
             >
               <div className="flex items-center gap-3">
                 <div>
@@ -1618,7 +1618,7 @@ function UserManagementSection({ currentUserId }: { currentUserId: string }) {
                 <select
                   value={u.role}
                   onChange={(e) => handleChangeRole(u, e.target.value as UserRole)}
-                  className="text-micro px-2 py-0.5 bg-surface border border-border rounded text-text-secondary"
+                  className="text-micro px-2 py-0.5 bg-surface rounded-sm text-text-secondary shadow-lg"
                   disabled={u.id === currentUserId}
                 >
                   <option value="standard">standard</option>
@@ -1627,7 +1627,7 @@ function UserManagementSection({ currentUserId }: { currentUserId: string }) {
                 <button
                   onClick={() => handleToggleEnabled(u)}
                   disabled={u.id === currentUserId}
-                  className={`text-micro px-2 py-0.5 rounded font-medium cursor-pointer ${
+                  className={`text-micro px-2 py-0.5 rounded-sm font-medium cursor-pointer ${
                     u.enabled ? "bg-success/10 text-success" : "bg-error/10 text-error"
                   } ${u.id === currentUserId ? "opacity-50 cursor-not-allowed" : ""}`}
                 >
@@ -1637,7 +1637,7 @@ function UserManagementSection({ currentUserId }: { currentUserId: string }) {
               <div className="flex items-center gap-1">
                 <button
                   onClick={() => handleResetMfa(u)}
-                  className="p-1.5 text-text-tertiary hover:text-text rounded cursor-pointer"
+                  className="p-1.5 text-text-tertiary hover:text-text rounded-sm cursor-pointer"
                   title={t("settings.mfa.adminResetTitle")}
                 >
                   <ShieldCheck size={14} />
@@ -1645,7 +1645,7 @@ function UserManagementSection({ currentUserId }: { currentUserId: string }) {
                 {u.id !== currentUserId && (
                   <button
                     onClick={() => handleDelete(u)}
-                    className="p-1.5 text-text-tertiary hover:text-error rounded cursor-pointer"
+                    className="p-1.5 text-text-tertiary hover:text-error rounded-sm cursor-pointer"
                     title={t("common.delete")}
                   >
                     <Trash2 size={14} />

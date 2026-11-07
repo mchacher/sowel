@@ -38,7 +38,7 @@ export function MediaPlayerPanel({ equipment, onExecuteOrder }: MediaPlayerPanel
   };
 
   return (
-    <div className="bg-surface rounded-[10px] border border-border p-4 mb-6">
+    <div className="card p-4 mb-6">
       <h3 className="text-body font-semibold text-text mb-4">
         <Monitor size={16} strokeWidth={1.5} className="inline mr-2 text-text-tertiary" />
         {t("equipments.controls")}
@@ -51,7 +51,7 @@ export function MediaPlayerPanel({ equipment, onExecuteOrder }: MediaPlayerPanel
             <button
               onClick={() => powerOrder && exec(powerOrder.alias, !isOn)}
               disabled={executing !== null}
-              className={`w-10 h-10 flex items-center justify-center rounded-[8px] transition-all cursor-pointer border ${
+              className={`w-10 h-10 flex items-center justify-center rounded-sm transition-all cursor-pointer border ${
                 isOn
                   ? "border-primary/40 text-primary bg-primary/5 hover:bg-primary/10"
                   : "border-border text-text-tertiary hover:border-primary/30 hover:text-primary"
@@ -71,7 +71,7 @@ export function MediaPlayerPanel({ equipment, onExecuteOrder }: MediaPlayerPanel
                 {isOn ? currentSource : t("controls.off")}
               </span>
               {isOn && pictureMode && (
-                <span className="text-micro px-1.5 py-0.5 bg-border-light rounded text-text-tertiary">
+                <span className="text-micro px-1.5 py-0.5 bg-border-light rounded-sm text-text-tertiary">
                   {pictureMode}
                 </span>
               )}
@@ -89,7 +89,7 @@ export function MediaPlayerPanel({ equipment, onExecuteOrder }: MediaPlayerPanel
                   key={src}
                   onClick={() => exec("input_source", src)}
                   disabled={executing !== null}
-                  className={`px-2.5 py-1 text-micro font-medium rounded-[5px] transition-colors cursor-pointer ${
+                  className={`px-2.5 py-1 text-micro font-medium rounded-sm transition-colors cursor-pointer ${
                     currentSource === src
                       ? "bg-primary-fill text-white"
                       : "bg-border-light text-text-secondary hover:bg-primary/10 hover:text-primary"

@@ -124,7 +124,7 @@ export function PoolHeatPumpControl({ equipment, onExecuteOrder, compact }: Prop
             type="button"
             onClick={() => bumpSetpoint(Math.max(targetMin, setpoint - STEP))}
             disabled={setpoint <= targetMin}
-            className="w-6 h-6 flex items-center justify-center rounded-[4px] border border-border bg-surface text-text-secondary hover:border-primary/40 hover:text-primary disabled:opacity-40 disabled:cursor-not-allowed"
+            className="w-6 h-6 flex items-center justify-center rounded-sm bg-surface text-text-secondary hover:border-primary/40 hover:text-primary disabled:opacity-40 disabled:cursor-not-allowed shadow-lg"
           >
             <ChevronDown size={12} strokeWidth={2} />
           </button>
@@ -135,7 +135,7 @@ export function PoolHeatPumpControl({ equipment, onExecuteOrder, compact }: Prop
             type="button"
             onClick={() => bumpSetpoint(Math.min(targetMax, setpoint + STEP))}
             disabled={setpoint >= targetMax}
-            className="w-6 h-6 flex items-center justify-center rounded-[4px] border border-border bg-surface text-text-secondary hover:border-primary/40 hover:text-primary disabled:opacity-40 disabled:cursor-not-allowed"
+            className="w-6 h-6 flex items-center justify-center rounded-sm bg-surface text-text-secondary hover:border-primary/40 hover:text-primary disabled:opacity-40 disabled:cursor-not-allowed shadow-lg"
           >
             <ChevronUp size={12} strokeWidth={2} />
           </button>

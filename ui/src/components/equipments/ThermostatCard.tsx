@@ -222,7 +222,7 @@ export function ThermostatCard({ equipment, onExecuteOrder, compact }: Thermosta
             onClick={() => exec("power", !isOn)}
             disabled={executing === "power"}
             className={`
-              p-2.5 rounded-[8px] transition-colors duration-150 cursor-pointer
+              p-2.5 rounded-sm transition-colors duration-150 cursor-pointer
               ${isOn
                 ? "bg-primary-fill text-white hover:bg-primary-fill-hover"
                 : "bg-border-light text-text-tertiary hover:bg-border hover:text-text-secondary"
@@ -245,7 +245,7 @@ export function ThermostatCard({ equipment, onExecuteOrder, compact }: Thermosta
               onClick={() => targetTemp !== null && exec("setpoint", targetTemp - 0.5)}
               aria-label={t("thermostat.setpointDown")}
               disabled={executing === "setpoint" || targetTemp === null || targetTemp <= (targetTempOrder.min ?? 16)}
-              className="hit-44 p-1 rounded-[4px] bg-border-light text-text-secondary hover:bg-border hover:text-text transition-colors disabled:opacity-30 disabled:cursor-not-allowed cursor-pointer"
+              className="hit-44 p-1 rounded-sm bg-border-light text-text-secondary hover:bg-border hover:text-text transition-colors disabled:opacity-30 disabled:cursor-not-allowed cursor-pointer"
             >
               <ChevronDown size={14} strokeWidth={2} />
             </button>
@@ -257,7 +257,7 @@ export function ThermostatCard({ equipment, onExecuteOrder, compact }: Thermosta
               onClick={() => targetTemp !== null && exec("setpoint", targetTemp + 0.5)}
               aria-label={t("thermostat.setpointUp")}
               disabled={executing === "setpoint" || targetTemp === null || targetTemp >= (targetTempOrder.max ?? 30)}
-              className="hit-44 p-1 rounded-[4px] bg-border-light text-text-secondary hover:bg-border hover:text-text transition-colors disabled:opacity-30 disabled:cursor-not-allowed cursor-pointer"
+              className="hit-44 p-1 rounded-sm bg-border-light text-text-secondary hover:bg-border hover:text-text transition-colors disabled:opacity-30 disabled:cursor-not-allowed cursor-pointer"
             >
               <ChevronUp size={14} strokeWidth={2} />
             </button>
@@ -276,7 +276,7 @@ export function ThermostatCard({ equipment, onExecuteOrder, compact }: Thermosta
                 onClick={() => exec("operationMode", mode)}
                 disabled={executing === "operationMode"}
                 className={`
-                  flex items-center gap-1 px-2.5 py-1.5 rounded-[6px] text-caption font-medium border
+                  flex items-center gap-1 px-2.5 py-1.5 rounded-sm text-caption font-medium border
                   transition-colors duration-150 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed
                   ${currentMode === mode
                     ? MODE_COLORS[mode] ?? "bg-primary/10 text-primary border-primary/30"
@@ -352,7 +352,7 @@ function CompactThermostat({
             onClick={(e) => { e.preventDefault(); e.stopPropagation(); onSetTarget(targetTemp - 0.5); }}
             aria-label={t("thermostat.setpointDown")}
             disabled={executing === "setpoint" || targetTemp <= targetMin}
-            className="hit-44 p-0.5 rounded-[3px] text-text-tertiary hover:bg-border-light hover:text-text transition-colors disabled:opacity-30 disabled:cursor-not-allowed cursor-pointer"
+            className="hit-44 p-0.5 rounded-sm text-text-tertiary hover:bg-border-light hover:text-text transition-colors disabled:opacity-30 disabled:cursor-not-allowed cursor-pointer"
           >
             <ChevronDown size={12} strokeWidth={2} />
           </button>
@@ -364,7 +364,7 @@ function CompactThermostat({
             onClick={(e) => { e.preventDefault(); e.stopPropagation(); onSetTarget(targetTemp + 0.5); }}
             aria-label={t("thermostat.setpointUp")}
             disabled={executing === "setpoint" || targetTemp >= targetMax}
-            className="hit-44 p-0.5 rounded-[3px] text-text-tertiary hover:bg-border-light hover:text-text transition-colors disabled:opacity-30 disabled:cursor-not-allowed cursor-pointer"
+            className="hit-44 p-0.5 rounded-sm text-text-tertiary hover:bg-border-light hover:text-text transition-colors disabled:opacity-30 disabled:cursor-not-allowed cursor-pointer"
           >
             <ChevronUp size={12} strokeWidth={2} />
           </button>
@@ -379,7 +379,7 @@ function CompactThermostat({
             onClick={(e) => { e.preventDefault(); e.stopPropagation(); onTogglePower(); }}
             disabled={executing === "power"}
             className={`
-              p-1.5 rounded-[5px] transition-colors duration-150 cursor-pointer
+              p-1.5 rounded-sm transition-colors duration-150 cursor-pointer
               ${isOn
                 ? "bg-primary-fill text-white hover:bg-primary-fill-hover"
                 : "bg-border-light text-text-tertiary hover:bg-border hover:text-text-secondary"

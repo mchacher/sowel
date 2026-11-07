@@ -248,19 +248,20 @@ Structured JSON logging via pino (Fastify default) with multistream: ring buffer
 
 When adding or modifying UI components, follow these design tokens:
 
-| Property           | Value                                                                          |
-| ------------------ | ------------------------------------------------------------------------------ |
-| **Body font**      | Inter                                                                          |
-| **Monospace font** | JetBrains Mono: logs, JSON, identifiers, versions, code                        |
-| **Numbers**        | Inter with `tabular-nums` (fixed-width digits), not mono                       |
-| **Labels**         | Sentence case; uppercase only in table column headers                          |
-| **Primary color**  | `#1A4F6E` (ocean blue), hover: `#144159`, light: `#EEF5F8`                     |
-| **Colour roles**   | Amber `#F2C035` = on or running only; others in `design-system/tokens.md` §1.2 |
-| **Spacing base**   | 4px                                                                            |
-| **Border radius**  | 6px (buttons), 10px (cards), 14px (modals)                                     |
-| **Body font size** | 14px (dense dashboard)                                                         |
-| **Data values**    | 28px (readable at a glance)                                                    |
-| **Icons**          | Lucide React, stroke 1.5px                                                     |
+| Property           | Value                                                                                                                  |
+| ------------------ | ---------------------------------------------------------------------------------------------------------------------- |
+| **Body font**      | Inter                                                                                                                  |
+| **Monospace font** | JetBrains Mono: logs, JSON, identifiers, versions, code                                                                |
+| **Numbers**        | Inter with `tabular-nums` (fixed-width digits), not mono                                                               |
+| **Labels**         | Sentence case; uppercase only in table column headers                                                                  |
+| **Primary color**  | `#1A4F6E` (ocean blue), hover: `#144159`, light: `#EEF5F8`                                                             |
+| **Colour roles**   | Amber `#F2C035` = on or running only; others in `design-system/tokens.md` §1.2                                         |
+| **Spacing base**   | 4px                                                                                                                    |
+| **Border radius**  | 6px controls (`rounded-sm`), 10px cards (`rounded-md`), 16px modals and sheets (`rounded-lg`), full                    |
+| **Cards**          | `card` class: no border, soft shadow in light, lighter tone in dark; a group inside a card is a well (`bg-background`) |
+| **Body font size** | 14px (dense dashboard)                                                                                                 |
+| **Data values**    | 28px (readable at a glance)                                                                                            |
+| **Icons**          | Lucide React, stroke 1.5px                                                                                             |
 
 ---
 

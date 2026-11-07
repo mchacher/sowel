@@ -30,7 +30,7 @@ export function ChannelConfigFields({
             value={values[field.key] ?? ""}
             onChange={(e) => onChange(field.key, e.target.value)}
             placeholder={field.placeholder}
-            className={`w-full px-3 py-1.5 text-small bg-bg border border-border rounded-[6px] text-text placeholder:text-text-tertiary${
+            className={`w-full px-3 py-1.5 text-small bg-bg border border-border rounded-sm text-text placeholder:text-text-tertiary${
               field.mono ? " font-mono" : ""
             }`}
           />

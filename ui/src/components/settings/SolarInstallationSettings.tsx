@@ -98,7 +98,7 @@ export function SolarInstallationSettings() {
   }
 
   return (
-    <div className="bg-surface border border-border rounded-[10px] p-5">
+    <div className="card p-5">
       <div className="flex items-center gap-2 mb-1">
         <Sun size={18} strokeWidth={1.5} className="text-text-secondary" />
         <h2 className="text-lead font-semibold text-text">{t("equipments.solar.title")}</h2>
@@ -115,7 +115,7 @@ export function SolarInstallationSettings() {
               <select
                 value={effectiveId ?? ""}
                 onChange={(e) => setSelectedId(e.target.value)}
-                className="px-2 py-1.5 rounded-[6px] border border-border bg-surface text-small text-text"
+                className="px-2 py-1.5 rounded-sm bg-surface text-small text-text shadow-lg"
               >
                 {meters.map((m) => (
                   <option key={m.id} value={m.id}>
@@ -135,7 +135,7 @@ export function SolarInstallationSettings() {
               <button
                 type="button"
                 onClick={() => void load()}
-                className="mt-3 px-3 py-1.5 rounded-[6px] border border-border text-caption text-text-secondary hover:border-primary"
+                className="mt-3 px-3 py-1.5 rounded-sm border border-border text-caption text-text-secondary hover:border-primary"
               >
                 {t("common.retry")}
               </button>
@@ -158,7 +158,7 @@ export function SolarInstallationSettings() {
                     type="button"
                     onClick={() => void backfill()}
                     disabled={busy}
-                    className="flex items-center gap-1.5 px-3 py-1.5 rounded-[6px] border border-border text-small text-text-secondary hover:border-primary disabled:opacity-50"
+                    className="flex items-center gap-1.5 px-3 py-1.5 rounded-sm border border-border text-small text-text-secondary hover:border-primary disabled:opacity-50"
                   >
                     <History size={14} strokeWidth={1.5} />
                     {t("equipments.pv.backfill")}

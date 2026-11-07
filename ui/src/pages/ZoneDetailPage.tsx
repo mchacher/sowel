@@ -240,7 +240,7 @@ export function ZoneDetailPage() {
         <div className="flex items-center gap-2">
           <button
             onClick={() => setShowEditForm(true)}
-            className="p-2 sm:px-3 sm:py-2 text-small font-medium text-text-secondary border border-border rounded-[6px] hover:bg-border-light transition-colors duration-150"
+            className="p-2 sm:px-3 sm:py-2 text-small font-medium text-text-secondary border border-border rounded-sm hover:bg-border-light transition-colors duration-150"
             title={t("common.edit")}
           >
             <Pencil size={14} strokeWidth={1.5} />
@@ -250,7 +250,7 @@ export function ZoneDetailPage() {
             <button
               onClick={handleDelete}
               disabled={deleting}
-              className="p-2 sm:px-3 sm:py-2 text-small font-medium text-error border border-error/30 rounded-[6px] hover:bg-error/10 transition-colors duration-150 disabled:opacity-50"
+              className="p-2 sm:px-3 sm:py-2 text-small font-medium text-error border border-error/30 rounded-sm hover:bg-error/10 transition-colors duration-150 disabled:opacity-50"
               title={t("common.delete")}
             >
               <Trash2 size={14} strokeWidth={1.5} />
@@ -265,7 +265,7 @@ export function ZoneDetailPage() {
       {zone.children.length > 0 && (
         <div className="mb-8">
           <h3 className="text-body font-semibold text-text mb-3">{t("zones.childZones")}</h3>
-          <div className="bg-surface rounded-[10px] border border-border overflow-hidden divide-y divide-border-light">
+          <div className="card overflow-hidden divide-y divide-border-light">
             {zone.children.map((child) => (
               <Link
                 key={child.id}

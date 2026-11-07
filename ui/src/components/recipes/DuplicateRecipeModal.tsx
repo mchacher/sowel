@@ -131,7 +131,7 @@ export function DuplicateRecipeModal({
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40">
-      <div className="bg-surface rounded-[14px] border border-border shadow-xl w-full max-w-[400px] flex flex-col">
+      <div className="bg-surface rounded-lg w-full max-w-[400px] flex flex-col shadow-lg">
         {/* Header */}
         <div className="flex items-center justify-between px-5 py-4 border-b border-border-light">
           <h2 className="text-lead font-semibold text-text">
@@ -139,7 +139,7 @@ export function DuplicateRecipeModal({
           </h2>
           <button
             onClick={onClose}
-            className="p-1.5 text-text-tertiary hover:text-text-secondary rounded-[4px] hover:bg-border-light"
+            className="p-1.5 text-text-tertiary hover:text-text-secondary rounded-sm hover:bg-border-light"
           >
             <X size={16} strokeWidth={1.5} />
           </button>
@@ -160,7 +160,7 @@ export function DuplicateRecipeModal({
             <select
               value={targetZoneId}
               onChange={(e) => setTargetZoneId(e.target.value)}
-              className="w-full px-3 py-1.5 text-small bg-surface border border-border rounded-[6px] text-text"
+              className="w-full px-3 py-1.5 text-small bg-surface rounded-sm text-text shadow-lg"
             >
               <option value="">{t("common.select")}</option>
               {otherZones.map((z) => (
@@ -183,7 +183,7 @@ export function DuplicateRecipeModal({
                   <select
                     value={equipmentMap[slot.id] ?? ""}
                     onChange={(e) => setEquipmentMap({ ...equipmentMap, [slot.id]: e.target.value })}
-                    className="w-full px-3 py-1.5 text-small bg-surface border border-border rounded-[6px] text-text"
+                    className="w-full px-3 py-1.5 text-small bg-surface rounded-sm text-text shadow-lg"
                   >
                     {compatible.length > 1 && <option value="">{t("common.select")}</option>}
                     <EquipmentOptions equipments={compatible} zoneChains={zoneChains} />
@@ -200,14 +200,14 @@ export function DuplicateRecipeModal({
         <div className="flex justify-end gap-2 px-5 py-3 border-t border-border-light">
           <button
             onClick={onClose}
-            className="px-4 py-2 text-small font-medium text-text-secondary border border-border rounded-[6px] hover:bg-border-light transition-colors duration-150"
+            className="px-4 py-2 text-small font-medium text-text-secondary border border-border rounded-sm hover:bg-border-light transition-colors duration-150"
           >
             {t("common.cancel")}
           </button>
           <button
             onClick={handleSubmit}
             disabled={!targetZoneId || submitting}
-            className="flex items-center gap-1.5 px-4 py-2 text-small font-medium text-white bg-primary-fill rounded-[6px] hover:bg-primary-fill-hover transition-colors duration-150 disabled:opacity-50 disabled:cursor-not-allowed"
+            className="flex items-center gap-1.5 px-4 py-2 text-small font-medium text-white bg-primary-fill rounded-sm hover:bg-primary-fill-hover transition-colors duration-150 disabled:opacity-50 disabled:cursor-not-allowed"
           >
             {submitting && <Loader2 size={14} className="animate-spin" />}
             {t("recipes.duplicateAction")}

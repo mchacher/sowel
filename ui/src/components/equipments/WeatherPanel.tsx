@@ -239,11 +239,11 @@ function WeatherDeviceCard({
     });
 
   return (
-    <div className="bg-surface rounded-[10px] border border-border p-4 flex flex-col">
+    <div className="card p-4 flex flex-col">
       {/* Header: icon + name + battery */}
       <div className="flex items-center gap-3 mb-4">
         <div
-          className={`w-10 h-10 rounded-[8px] flex items-center justify-center flex-shrink-0 ${getKindColor(kind)}`}
+          className={`w-10 h-10 rounded-md flex items-center justify-center flex-shrink-0 ${getKindColor(kind)}`}
         >
           {getKindIcon(kind)}
         </div>

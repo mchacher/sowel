@@ -82,7 +82,7 @@ export function BindingsPicker({ bindings, visibleAliases, onUpdate, onClose, mo
   const renderRow = (b: DataBindingWithValue, canReorder: boolean, index: number, total: number) => (
     <div
       key={b.alias}
-      className="flex items-center gap-1.5 px-1 py-0.5 rounded hover:bg-border-light"
+      className="flex items-center gap-1.5 px-1 py-0.5 rounded-sm hover:bg-border-light"
     >
       <label className="flex items-center gap-2 flex-1 min-w-0 cursor-pointer">
         <input
@@ -120,7 +120,7 @@ export function BindingsPicker({ bindings, visibleAliases, onUpdate, onClose, mo
   return (
     <div
       ref={ref}
-      className={`bg-surface border border-border rounded-[10px] shadow-lg p-3 ${
+      className={`bg-surface border border-border rounded-md shadow-lg p-3 ${
         mobile
           ? "relative z-50 w-[280px] max-h-[60vh] overflow-y-auto"
           : "absolute z-20 top-full left-1/2 -translate-x-1/2 mt-1 w-[260px]"

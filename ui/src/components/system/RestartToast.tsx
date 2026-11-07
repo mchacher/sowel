@@ -40,7 +40,7 @@ export function RestartToast({ onClose }: { onClose: () => void }) {
   };
 
   return (
-    <div className="fixed bottom-4 right-4 z-50 max-w-sm bg-surface border border-border rounded-[10px] shadow-lg p-4">
+    <div className="fixed bottom-4 right-4 z-50 max-w-sm bg-surface border border-border rounded-md shadow-lg p-4">
       <div className="flex items-start gap-3">
         <div className="flex-shrink-0 mt-0.5">
           <RefreshCw size={18} className="text-primary" strokeWidth={1.5} />
@@ -59,7 +59,7 @@ export function RestartToast({ onClose }: { onClose: () => void }) {
             <button
               onClick={handleRestart}
               disabled={restarting}
-              className="flex items-center gap-1.5 px-3 py-1.5 text-caption font-medium bg-primary-fill text-white rounded-[6px] hover:bg-primary-fill-hover transition-colors disabled:opacity-50 cursor-pointer disabled:cursor-default"
+              className="flex items-center gap-1.5 px-3 py-1.5 text-caption font-medium bg-primary-fill text-white rounded-sm hover:bg-primary-fill-hover transition-colors disabled:opacity-50 cursor-pointer disabled:cursor-default"
             >
               {restarting ? (
                 <Loader2 size={12} className="animate-spin" />
@@ -71,7 +71,7 @@ export function RestartToast({ onClose }: { onClose: () => void }) {
             <button
               onClick={onClose}
               disabled={restarting}
-              className="px-3 py-1.5 text-caption font-medium text-text-secondary border border-border rounded-[6px] hover:bg-border-light transition-colors disabled:opacity-50 cursor-pointer"
+              className="px-3 py-1.5 text-caption font-medium text-text-secondary border border-border rounded-sm hover:bg-border-light transition-colors disabled:opacity-50 cursor-pointer"
             >
               {t("update.later")}
             </button>
@@ -80,7 +80,7 @@ export function RestartToast({ onClose }: { onClose: () => void }) {
         <button
           onClick={onClose}
           disabled={restarting}
-          className="flex-shrink-0 p-1 text-text-tertiary hover:text-text-secondary rounded-[4px] cursor-pointer"
+          className="flex-shrink-0 p-1 text-text-tertiary hover:text-text-secondary rounded-sm cursor-pointer"
         >
           <X size={14} strokeWidth={1.5} />
         </button>

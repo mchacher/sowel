@@ -736,8 +736,6 @@
   "aggregation.smoke": "Fumée",
   "aggregation.open_one": "{{count}} ouvert(e)",
   "aggregation.open_other": "{{count}} ouvert(e)s",
-  "aggregation.daylight": "Jour",
-  "aggregation.night": "Nuit",
   "time.min": "min",
   "time.hour": "h",
   "time.day": "j",

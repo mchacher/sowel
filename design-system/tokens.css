@@ -53,6 +53,7 @@
   --energy-hc:#93B5F0;        /* consumption, off-peak (light blue) */
   --energy-grid:#4A6396;      /* grid import (slate blue)         */
   --slate-neutral:#6E7C88;    /* On (hors pilotage) / manual      */
+  --energy-other:#9AA4AB;     /* live breakdown: not metered apart */
 
   /* Dashboard illustrations (WidgetIcons.tsx, AwningIcon.tsx, EvCarGauge.tsx).
      ink = strokes at rest, ink-2 = the darker shade of a gradient, fill and
@@ -75,6 +76,9 @@
   --sh-1: 0 1px 2px rgba(15,42,60,.04), 0 1px 3px rgba(15,42,60,.06);
   --sh-2: 0 4px 14px -4px rgba(15,42,60,.10);
   --sh-3: 0 24px 56px -16px rgba(15,42,60,.14);
+  /* A card's elevation (spec 196): no border, a soft shadow on the tinted
+     page. None in dark, where the lighter surface does the job. */
+  --sh-card: var(--sh-1);
 }
 
 /* ── Theme 2: DARK (ocean night, spec 196 slice 7a) ──
@@ -92,8 +96,9 @@
   --n-300:#515D65; --n-400:#939DA4; --n-500:#A8B1B7; --n-600:#C9CFD3; --n-700:#E4E8EB; --n-800:#F1F4F6;
   --green-50:#0F2A1E; --green-500:#3DDB89; --green-700:#9AF0C6;
   --info-50:#0F1F33;  --info-500:#5DA8F0; --info-700:#5DA8F0;
-  /* Illustrations: logo blue strokes, night fills; no brightness filter. */
-  --illu-ink:#7FB8D4; --illu-ink-2:#5BA5CC; --illu-fill:#1A2A38; --illu-fill-2:#22364A;
+  /* Illustrations: logo blue strokes, night fills (p-50 / p-100 of the ocean
+     night); no brightness filter. */
+  --illu-ink:#7FB8D4; --illu-ink-2:#5BA5CC; --illu-fill:#1D303D; --illu-fill-2:#243B4E;
   --illu-water:#5DA8F0;
   --orange-50:#2D2422; --orange-500:#F99549; --orange-700:#F99549;
   --red-50:#2E1614;   --red-500:#F97066;
@@ -102,14 +107,19 @@
   --solar-injection:#3DA855; --solar-auto:#74C77F; --solar-production:#57BE6C;
   --energy-hp:#6E93EE; --energy-hc:#5E7FC0; --energy-grid:#7E93C0;
   --slate-neutral:#8A97A3;
-  --shutter-50:#1B2230; --shutter-500:#94A3B8;
-  --sensor-50:#152920;  --sensor-500:#6BCF8C;
-  --media-50:#1B1F36;   --media-500:#9D9FE6;
+  --energy-other:#6E7A82; /* subdued on the night card, still 3.6:1 */
+  /* Category tints on the ocean night: the n-100 lightness (1.14:1 on a
+     card) with each category's hue, so a tinted icon square still reads on
+     a card (spec 196, slice 7b). */
+  --shutter-50:#222C3A; --shutter-500:#94A3B8;
+  --sensor-50:#203024;  --sensor-500:#6BCF8C;
+  --media-50:#282A3A;   --media-500:#9D9FE6;
   --line:rgba(255,255,255,.06);
   --line-2:rgba(255,255,255,.14);
   --sh-1: 0 1px 2px rgba(0,0,0,.4),  0 1px 3px rgba(0,0,0,.5);
   --sh-2: 0 4px 14px -4px rgba(0,0,0,.5);
   --sh-3: 0 24px 56px -16px rgba(0,0,0,.6);
+  --sh-card: none;
 }
 
 /* ── Theme-agnostic primitives ── */
@@ -118,8 +128,10 @@
   --s-1:4px;  --s-2:8px;  --s-3:12px; --s-4:16px;
   --s-5:20px; --s-6:24px; --s-8:32px;
 
-  /* Radii */
-  --r-xs:4px; --r-sm:6px; --r-md:8px; --r-lg:12px; --r-full:999px;
+  /* Radii (spec 196): 6 controls, 10 cards, 16 sheets and modals, full for
+     pills, dots and switches. r-xs (2 px) is for chart bars and legend
+     swatches only. */
+  --r-xs:2px; --r-sm:6px; --r-md:10px; --r-lg:16px; --r-full:999px;
 
   /* Typography — Fontsource names the variable build "Inter Variable"; with
      plain 'Inter' the face never matches and everything falls back to

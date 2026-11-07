@@ -237,7 +237,7 @@ export function ArbiterTimeline() {
           <button
             onClick={() => setOffset((o) => Math.min(maxOffset, o + 1))}
             disabled={pageOffset >= maxOffset}
-            className="w-6 h-6 flex items-center justify-center border border-border rounded-[6px] text-text-secondary hover:bg-border-light disabled:opacity-35 disabled:cursor-not-allowed"
+            className="w-6 h-6 flex items-center justify-center border border-border rounded-sm text-text-secondary hover:bg-border-light disabled:opacity-35 disabled:cursor-not-allowed"
             aria-label={t("arbiter.timeline.earlier", { h: windowHours })}
           >
             <ChevronLeft size={16} strokeWidth={2} />
@@ -245,7 +245,7 @@ export function ArbiterTimeline() {
           <button
             onClick={() => setOffset((o) => Math.max(0, o - 1))}
             disabled={pageOffset === 0}
-            className="w-6 h-6 flex items-center justify-center border border-border rounded-[6px] text-text-secondary hover:bg-border-light disabled:opacity-35 disabled:cursor-not-allowed"
+            className="w-6 h-6 flex items-center justify-center border border-border rounded-sm text-text-secondary hover:bg-border-light disabled:opacity-35 disabled:cursor-not-allowed"
             aria-label={t("arbiter.timeline.later", { h: windowHours })}
           >
             <ChevronRight size={16} strokeWidth={2} />
@@ -389,7 +389,7 @@ export function ArbiterTimeline() {
                     key={i}
                     onClick={() => onCell(cellTime)}
                     title={`${hhmm(cellTime)} · ${t(`arbiter.loadState.${s}`)}`}
-                    className="absolute top-0 h-[20px] rounded-[1px] focus:outline-none"
+                    className="absolute top-0 h-[20px] rounded-xs focus:outline-none"
                     style={{
                       left: `calc(${(i / n) * 100}% + 1px)`,
                       width: `calc(${(1 / n) * 100}% - 2px)`,
@@ -455,7 +455,7 @@ export function ArbiterTimeline() {
                 <div
                   key={i}
                   data-hl={hl ? "1" : undefined}
-                  className={`flex items-baseline gap-2.5 py-1.5 px-1.5 text-caption border-t border-border-light first:border-t-0 rounded-[4px] ${hl ? "bg-primary/10" : ""}`}
+                  className={`flex items-baseline gap-2.5 py-1.5 px-1.5 text-caption border-t border-border-light first:border-t-0 rounded-sm ${hl ? "bg-primary/10" : ""}`}
                 >
                   <span className="tabular-nums text-micro text-text-tertiary w-11 flex-none">
                     {hhmm(at)}
