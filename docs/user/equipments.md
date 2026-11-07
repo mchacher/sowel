@@ -226,12 +226,13 @@ metering data behaves as a plain switch.
 
 ### Detail page
 
-Click on any equipment to see its detail page:
+Click on any equipment to see its detail page. It puts what you use first and what you set up last:
 
-- **Live data** -- all values updated in real-time via WebSocket
-- **Controls** -- interactive controls adapted to the equipment type
-- **History chart** -- data trends over time (if historization is enabled)
-- **Configuration** -- bound devices, data bindings, order bindings
+- **Use** -- the header names the type and the room (« Thermostat · Living room »), then the controls adapted to the equipment type (value, setpoint, mode, buttons), the timed command when one is set, the charging sessions of a car or a charger, and the **history chart**, opened on the main series over the last 24 hours (temperature for a thermostat, power for a charger, position for a shutter, battery level for a car). Fine settings stay folded: a thermostat's **Other settings** (remembered open or closed per equipment), a charger's raw **Charger details**. Pick another series or range in the chart as before.
+- **Energy** -- on a meter or a metered equipment, one card with the energy cumuls and the live electrical measures.
+- **Configuration** (administrators) -- one card at the bottom. Each setting is a folded row with where it stands (« Timed command · Disabled »): confirmation before action, order outcome, shared access, timed command, invert direction, already counted by, energy management, button actions, then the devices, history and bindings. A **?** next to a setting explains it. **Delete equipment** sits at the foot of this card; **Edit** stays in the header.
+
+The **back** link returns to where you came from: the room, the dashboard, a mode, the equipment list. Opened from a direct link, it goes to the equipment's room (« Back to Living room »). The sidebar and the breadcrumb follow the same rule: the page sits under **Maison › room**, and under Administration only when you opened it from the equipment or device list.
 
 The page loads the equipment once, then follows its live values without asking the server again. Only that first load, or a **Retry**, can fail. If the server is busy or cannot be reached at that moment, the page says so (« Server busy », « Cannot connect ») and offers **Retry**, unless Sowel already has the equipment in hand: the page then shows it and keeps it live, with no message. « Equipment not found » means the equipment really does not exist.
 
@@ -354,7 +355,7 @@ A disabled equipment behaves as if it weren't there for the engine, while stayin
 
 ### Deleting an equipment
 
-Deleting removes the equipment from Sowel. The underlying devices are **not** affected -- they remain available for new equipments.
+**Delete equipment** is at the foot of the **Configuration** card of the detail page. Deleting removes the equipment from Sowel. The underlying devices are **not** affected -- they remain available for new equipments.
 
 !!! warning
 Deleting an equipment also removes any recipe instances and mode impacts that reference it.

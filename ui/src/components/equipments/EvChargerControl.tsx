@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
-import { Loader2, Minus, Plus } from "lucide-react";
+import { ChevronDown, ChevronRight, Loader2, Minus, Plus } from "lucide-react";
 import type { EquipmentWithDetails } from "../../types";
 import { splitEvChargerExtras, type EvVehicleState } from "../../lib/ev-charger-contract";
 import { extraLabel, extraTextValue } from "../../lib/extra-labels";
@@ -86,6 +86,7 @@ export function EvChargerControl({ equipment, onExecuteOrder }: EvChargerControl
 
   // Everything bound beyond the contract (status, temperature, last session…).
   const { extraData } = splitEvChargerExtras(equipment.dataBindings, equipment.orderBindings);
+  const [detailsOpen, setDetailsOpen] = useState(false);
 
   const metrics: { key: string; label: string; value: string }[] = [];
   if (s.power.watts !== null) {
@@ -192,7 +193,17 @@ export function EvChargerControl({ equipment, onExecuteOrder }: EvChargerControl
 
       {extraData.length > 0 && (
         <div className="flex flex-col gap-1 pt-3 border-t border-border-light">
-          {extraData.map((b) => (
+          {/* Spec 196 — the plugin's raw list folds away, closed: usage first. */}
+          <button
+            type="button"
+            aria-expanded={detailsOpen}
+            onClick={() => setDetailsOpen(!detailsOpen)}
+            className="self-start flex items-center gap-1 text-caption text-text-tertiary hover:text-text-secondary cursor-pointer"
+          >
+            {detailsOpen ? <ChevronDown size={12} strokeWidth={1.5} /> : <ChevronRight size={12} strokeWidth={1.5} />}
+            {t("equipments.evCharger.details", { n: extraData.length })}
+          </button>
+          {detailsOpen && extraData.map((b) => (
             <div key={b.alias} className="flex items-center justify-between gap-3 text-small">
               <span className="text-text-secondary">{extraLabel("equipments.evCharger", b.alias, t)}</span>
               <span className="tabular-nums text-text">{typeof b.value === "string"

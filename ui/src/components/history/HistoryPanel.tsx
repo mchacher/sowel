@@ -20,6 +20,8 @@ interface ChartEntry {
 interface HistoryPanelProps {
   equipmentId: string;
   bindings: HistoryBindingState[];
+  /** Series open on arrival (spec 196, pr9-graphique), until the user picks another. */
+  defaultExpandedAlias?: string;
 }
 
 interface ChartState {
@@ -42,12 +44,15 @@ const RESOLUTION_I18N: Record<string, string> = {
  * History charts panel — shows expandable charts for each historized binding.
  * Only visible when history is enabled and the equipment has historized bindings.
  */
-export function HistoryPanel({ equipmentId, bindings }: HistoryPanelProps) {
+export function HistoryPanel({ equipmentId, bindings, defaultExpandedAlias }: HistoryPanelProps) {
   const { t } = useTranslation();
   const [historyEnabled, setHistoryEnabled] = useState<boolean | null>(null);
   const [open, setOpen] = useState(true);
   const [range, setRange] = useState<TimeRange>("24h");
-  const [expandedAlias, setExpandedAlias] = useState<string | null>(null);
+  // `undefined` until the user opens or closes a series: the default one shows
+  // meanwhile, and keeps showing when the bindings it is picked from arrive late.
+  const [chosenAlias, setChosenAlias] = useState<string | null | undefined>(undefined);
+  const expandedAlias = chosenAlias === undefined ? (defaultExpandedAlias ?? null) : chosenAlias;
   const [charts, setCharts] = useState<Record<string, ChartState>>({});
 
   // Check if history is enabled on mount
@@ -142,7 +147,7 @@ export function HistoryPanel({ equipmentId, bindings }: HistoryPanelProps) {
   if (!historyEnabled || allCharts.length === 0) return null;
 
   const handleToggle = (alias: string) => {
-    setExpandedAlias((prev) => (prev === alias ? null : alias));
+    setChosenAlias(expandedAlias === alias ? null : alias);
   };
 
   return (

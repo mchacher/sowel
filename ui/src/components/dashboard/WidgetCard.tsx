@@ -1,6 +1,10 @@
-import { type ReactNode } from "react";
+import { useContext, type ReactNode } from "react";
+import { Link, useInRouterContext } from "react-router-dom";
+import { useTranslation } from "react-i18next";
 import { useCardPrimaryAction } from "./card-primary-action";
 import { TileOrderOutcomeLine } from "../equipments/OrderOutcomeLine";
+import { TileEquipmentContext } from "../equipments/order-outcome";
+import { equipmentLinkState } from "../../lib/equipment-origin";
 
 interface WidgetCardProps {
   label: string;
@@ -42,6 +46,12 @@ export function WidgetCard({
   children,
 }: WidgetCardProps) {
   const cardAction = useCardPrimaryAction(onClick);
+  const { t } = useTranslation();
+  // Spec 196 (pr9-dashboard) — on an equipment tile the title opens the
+  // equipment page. The card action ignores clicks that land on a link.
+  const equipmentId = useContext(TileEquipmentContext);
+  // A tile rendered outside a router (a picker preview, a test) keeps a plain title.
+  const linkable = useInRouterContext() && equipmentId !== null;
 
   return (
     <div
@@ -51,9 +61,19 @@ export function WidgetCard({
       {...cardAction}
     >
       <div className="mb-2 text-center">
-        <span className="block text-lead font-semibold text-text truncate leading-tight">
-          {label}
-        </span>
+        {linkable ? (
+          <Link
+            to={`/equipments/${equipmentId}`}
+            state={equipmentLinkState(t("nav.dashboard"), "/dashboard")}
+            className="block text-lead font-semibold text-text truncate leading-tight hover:text-primary hover:underline underline-offset-2"
+          >
+            {label}
+          </Link>
+        ) : (
+          <span className="block text-lead font-semibold text-text truncate leading-tight">
+            {label}
+          </span>
+        )}
         {sublabel && (
           <span className="block text-micro text-text-tertiary truncate">{sublabel}</span>
         )}

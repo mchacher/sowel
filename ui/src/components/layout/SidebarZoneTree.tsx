@@ -5,7 +5,14 @@ import { useTranslation } from "react-i18next";
 import type { ZoneWithChildren } from "../../types";
 import { useZones } from "../../store/useZones";
 
-export function SidebarZoneTree({ collapsed }: { collapsed: boolean }) {
+export function SidebarZoneTree({
+  collapsed,
+  activeZoneId,
+}: {
+  collapsed: boolean;
+  /** Highlights a room off its own route: the room of the equipment page shown (spec 196). */
+  activeZoneId?: string;
+}) {
   const { t } = useTranslation();
   const tree = useZones((s) => s.tree);
   const fetchZones = useZones((s) => s.fetchZones);
@@ -29,14 +36,23 @@ export function SidebarZoneTree({ collapsed }: { collapsed: boolean }) {
   return (
     <div className="space-y-0.5">
       {tree.map((zone) => (
-        <SidebarZoneNode key={zone.id} zone={zone} depth={0} />
+        <SidebarZoneNode key={zone.id} zone={zone} depth={0} activeZoneId={activeZoneId} />
       ))}
     </div>
   );
 }
 
-function SidebarZoneNode({ zone, depth }: { zone: ZoneWithChildren; depth: number }) {
-  const { zoneId } = useParams();
+function SidebarZoneNode({
+  zone,
+  depth,
+  activeZoneId,
+}: {
+  zone: ZoneWithChildren;
+  depth: number;
+  activeZoneId?: string;
+}) {
+  const { zoneId: routeZoneId } = useParams();
+  const zoneId = routeZoneId ?? activeZoneId;
   const [expanded, setExpanded] = useState(depth < 1);
   const hasChildren = zone.children.length > 0;
   const isActive = zoneId === zone.id;
@@ -60,22 +76,25 @@ function SidebarZoneNode({ zone, depth }: { zone: ZoneWithChildren; depth: numbe
       <div>
         <NavLink
           to={`/home/${zone.id}`}
-          className={({ isActive: linkActive }) => `flex items-center gap-2 px-3 py-1.5 min-w-0 rounded-sm mx-1 group transition-colors duration-150 ${linkActive ? "bg-primary-light" : ""}`}
+          className={({ isActive: linkActive }) => `flex items-center gap-2 px-3 py-1.5 min-w-0 rounded-sm mx-1 group transition-colors duration-150 ${linkActive || isActive ? "bg-primary-light" : ""}`}
         >
-          {({ isActive: linkActive }) => (
+          {({ isActive: routeActive }) => {
+            const linkActive = routeActive || isActive;
+            return (
             <>
               <Home size={14} strokeWidth={1.5} className={`flex-shrink-0 transition-colors ${linkActive ? "text-primary" : "text-text group-hover:text-primary"}`} />
               <span className={`text-body font-medium transition-colors truncate ${linkActive ? "text-primary" : "text-text group-hover:text-primary"}`}>
                 {zone.name}
               </span>
             </>
-          )}
+            );
+          }}
         </NavLink>
 
         {hasChildren && (
           <div>
             {zone.children.map((child) => (
-              <SidebarZoneNode key={child.id} zone={child} depth={depth + 1} />
+              <SidebarZoneNode key={child.id} zone={child} depth={depth + 1} activeZoneId={activeZoneId} />
             ))}
           </div>
         )}
@@ -131,7 +150,7 @@ function SidebarZoneNode({ zone, depth }: { zone: ZoneWithChildren; depth: numbe
       {expanded && hasChildren && (
         <div>
           {zone.children.map((child) => (
-            <SidebarZoneNode key={child.id} zone={child} depth={depth + 1} />
+            <SidebarZoneNode key={child.id} zone={child} depth={depth + 1} activeZoneId={activeZoneId} />
           ))}
         </div>
       )}

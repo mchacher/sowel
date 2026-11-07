@@ -60,6 +60,7 @@ import { useUiState } from "../../store/useUiState";
 import { useModes } from "../../store/useModes";
 import { getSettings } from "../../api";
 import { useSharedAccess } from "../../store/useSharedAccess";
+import { equipmentIdFromPath, isUsageEquipmentPage } from "../../lib/equipment-origin";
 
 export function AppLayout() {
   const { t } = useTranslation();
@@ -266,7 +267,14 @@ function TopbarBreadcrumb({ homeName }: { homeName: string | null }) {
   const tree = useZones((s) => s.tree);
 
   const zoneMatch = location.pathname.match(/^\/home\/([^/]+)/);
-  const path = zoneMatch ? buildZonePath(zoneMatch[1], tree) : null;
+  // Spec 196 — an equipment page outside Administration sits in its room:
+  // « Home › Room › Equipment ».
+  const usageEquipment = useUsageEquipment();
+  const path = zoneMatch
+    ? buildZonePath(zoneMatch[1], tree)
+    : usageEquipment
+      ? [...buildZonePath(usageEquipment.zoneId, tree), { id: usageEquipment.id, name: usageEquipment.name }]
+      : null;
 
   const homeLabel = homeName === null ? <HomeNameSkeleton /> : homeName || t("nav.maison");
 
@@ -385,7 +393,13 @@ export function MobileTopbarTitle({ homeName }: { homeName: string | null }) {
 
   const onHomeRoute = location.pathname === "/home" || location.pathname.startsWith("/home/");
   const zoneMatch = location.pathname.match(/^\/home\/([^/]+)/);
-  if (zoneMatch) {
+  // Spec 196 — an equipment page outside Administration is titled by its room.
+  const usageEquipment = useUsageEquipment();
+  if (usageEquipment) {
+    const path = buildZonePath(usageEquipment.zoneId, tree);
+    const segments = path.length > 0 && path[0].id === ROOT_ZONE_ID ? path.slice(1) : path;
+    sub = segments.length > 0 ? segments.map((s) => s.name).join(" · ") : t("nav.maison");
+  } else if (zoneMatch) {
     const path = buildZonePath(zoneMatch[1], tree);
     if (path.length > 0) {
       const segments = path[0].id === ROOT_ZONE_ID ? path.slice(1) : path;
@@ -416,6 +430,20 @@ export function MobileTopbarTitle({ homeName }: { homeName: string | null }) {
       )}
     </div>
   );
+}
+
+/**
+ * The equipment shown by an equipment page that belongs to Maison (opened from a
+ * room, the dashboard, a mode… or with no origin), or null: any other route, an
+ * equipment page opened from Administration, or an equipment not loaded yet.
+ */
+function useUsageEquipment(): { id: string; name: string; zoneId: string } | null {
+  const location = useLocation();
+  const id = isUsageEquipmentPage(location.pathname, location.state)
+    ? equipmentIdFromPath(location.pathname)
+    : null;
+  const equipment = useEquipments((s) => (id ? s.equipments.find((e) => e.id === id) : undefined));
+  return equipment ? { id: equipment.id, name: equipment.name, zoneId: equipment.zoneId } : null;
 }
 
 function buildZonePath(zoneId: string, tree: ZoneWithChildren[]): { id: string; name: string }[] {

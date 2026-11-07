@@ -1,4 +1,4 @@
-import { describe, it, expect, vi, afterEach } from "vitest";
+import { describe, it, expect, vi, afterEach, beforeEach } from "vitest";
 import { act, fireEvent, render, screen, userEvent, waitFor } from "../../test-utils";
 import { ThermostatCard } from "./ThermostatCard";
 import type { EquipmentWithDetails } from "../../types";
@@ -276,7 +276,33 @@ const coreOrders: RichOrder[] = [
   { alias: "setpoint", type: "number", min: 5, max: 40 },
 ];
 
+// Spec 196 — the extras fold, closed by default; these tests read them open.
+const openExtras = () => localStorage.setItem("sowel_thermostat_extras_open_eq-rich", "1");
+
+describe("ThermostatCard extras fold (spec 196)", () => {
+  beforeEach(() => localStorage.clear());
+
+  it("folds the extras, closed by default, and remembers them open per equipment", async () => {
+    const eq = richEquipment(
+      [...core, { alias: "profile", value: "comfort" }],
+      [...coreOrders, { alias: "profile", type: "enum", enumValues: ["dynamic", "comfort"] }],
+    );
+    const { unmount } = render(<ThermostatCard equipment={eq} onExecuteOrder={vi.fn()} />);
+    const fold = screen.getByRole("button", { name: /Other settings \(1\)/ });
+    expect(fold.getAttribute("aria-expanded")).toBe("false");
+    expect(screen.queryByText("Profile")).toBeNull();
+
+    await userEvent.click(fold);
+    expect(screen.getByText("Profile")).toBeTruthy();
+    unmount();
+
+    render(<ThermostatCard equipment={eq} onExecuteOrder={vi.fn()} />);
+    expect(screen.getByRole("button", { name: /Other settings/ }).getAttribute("aria-expanded")).toBe("true");
+  });
+});
+
 describe("ThermostatCard extras (spec 177)", () => {
+  beforeEach(openExtras);
   it("still shows and controls the full MCZ pellet-stove surface, as extras", async () => {
     const exec = vi.fn().mockResolvedValue(undefined);
     render(
@@ -301,7 +327,7 @@ describe("ThermostatCard extras (spec 177)", () => {
       />,
     );
 
-    expect(screen.getByText("Other settings")).toBeTruthy();
+    expect(screen.getByText(/Other settings/)).toBeTruthy();
     // The profile is a programme, not an operating mode: no core mode selector.
     expect(screen.queryByText("Mode")).toBeNull();
     expect(screen.getByText("Profile")).toBeTruthy();
@@ -431,11 +457,12 @@ describe("ThermostatCard extras (spec 177)", () => {
         onExecuteOrder={vi.fn().mockResolvedValue(undefined)}
       />,
     );
-    expect(screen.queryByText("Other settings")).toBeNull();
+    expect(screen.queryByText(/Other settings/)).toBeNull();
   });
 });
 
 describe("ThermostatCard extras — review follow-ups (spec 177)", () => {
+  beforeEach(openExtras);
   it("renders a legacy state ORDER as a toggle mirrored by the core state reading", async () => {
     // Bound before the toggle_power → power override: the order landed under
     // `state`. It is an extra, but its mirror is the core `state` reading, so

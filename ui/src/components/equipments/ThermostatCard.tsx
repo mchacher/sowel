@@ -299,6 +299,7 @@ export function ThermostatCard({ equipment, onExecuteOrder, compact }: Thermosta
         optimistic={optimistic}
         executing={executing}
         onExec={(alias, value) => void exec(alias, value)}
+        equipmentId={equipment.id}
       />
     </div>
   );

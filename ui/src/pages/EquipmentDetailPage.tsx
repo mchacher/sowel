@@ -80,6 +80,9 @@ import { HistoryPanel } from "../components/history/HistoryPanel";
 import { useEquipmentDetail } from "../hooks/useEquipmentDetail";
 import { apiErrorMessage } from "../lib/api-error";
 import { formatNumber } from "../lib/format";
+import { readEquipmentOrigin, type EquipmentOrigin } from "../lib/equipment-origin";
+import { flattenZonesWithPath } from "../lib/zone-path";
+import { mainHistoryAlias } from "../components/history/main-series";
 
 export function EquipmentDetailPage() {
   useWsSubscription(["equipments", "devices", "energy"]);
@@ -87,7 +90,7 @@ export function EquipmentDetailPage() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const location = useLocation();
-  const fromZone = (location.state as { fromZone?: string } | null)?.fromZone;
+  const origin = readEquipmentOrigin(location.state);
   const equipments = useEquipments((s) => s.equipments);
   const updateEquipment = useEquipments((s) => s.updateEquipment);
   const deleteEquipment = useEquipments((s) => s.deleteEquipment);
@@ -102,6 +105,13 @@ export function EquipmentDetailPage() {
   const isAdmin = useAuth((s) => s.user?.role === "admin");
 
   const { equipment, fromStore, notFound, error: loadError, retry } = useEquipmentDetail(id);
+  // The equipment's room: the subtitle names it, and the back link goes there
+  // when the page was not opened from a link that says where it came from.
+  const zoneId = equipment?.zoneId;
+  const room = useMemo(() => {
+    const zone = zoneId ? flattenZonesWithPath(tree).find((z) => z.id === zoneId) : undefined;
+    return zone ? { id: zone.id, name: zone.name } : null;
+  }, [tree, zoneId]);
   const [showEditForm, setShowEditForm] = useState(false);
   const [showAddDataBinding, setShowAddDataBinding] = useState(false);
   const [showAddOrderBinding, setShowAddOrderBinding] = useState(false);
@@ -204,17 +214,7 @@ export function EquipmentDetailPage() {
   if (notFound || !equipment) {
     return (
       <div className="p-4 sm:p-6">
-        {fromZone ? (
-          <button onClick={() => navigate(-1)} className="inline-flex items-center gap-1.5 text-small text-text-secondary hover:text-text mb-4">
-            <ArrowLeft size={14} strokeWidth={1.5} />
-            {t("equipments.backToZone", { name: fromZone })}
-          </button>
-        ) : (
-          <Link to="/equipments" className="inline-flex items-center gap-1.5 text-small text-text-secondary hover:text-text mb-4">
-            <ArrowLeft size={14} strokeWidth={1.5} />
-            {t("equipments.backToEquipments")}
-          </Link>
-        )}
+        <BackLink origin={origin} room={null} />
         <div className="flex flex-col items-center justify-center py-20 text-center">
           <div className="w-16 h-16 rounded-full bg-error/10 flex items-center justify-center mb-4">
             <Box size={28} strokeWidth={1.5} className="text-error" />
@@ -256,18 +256,9 @@ export function EquipmentDetailPage() {
 
   return (
     <div className="p-4 sm:p-6">
-      {/* Back link */}
-      {fromZone ? (
-        <button onClick={() => navigate(-1)} className="inline-flex items-center gap-1.5 text-small text-text-secondary hover:text-text mb-4">
-          <ArrowLeft size={14} strokeWidth={1.5} />
-          {t("equipments.backToZone", { name: fromZone })}
-        </button>
-      ) : (
-        <Link to="/equipments" className="inline-flex items-center gap-1.5 text-small text-text-secondary hover:text-text mb-4">
-          <ArrowLeft size={14} strokeWidth={1.5} />
-          {t("equipments.backToEquipments")}
-        </Link>
-      )}
+      {/* Back: to where the page was opened from, else to the equipment's room
+          (spec 196, pr9-retour). */}
+      <BackLink origin={origin} room={room} />
 
       {/* A refresh failed: the last good data stays, with what went wrong and a retry.
           Not when the store holds the equipment: that copy is live, nothing is missing. */}
@@ -311,6 +302,7 @@ export function EquipmentDetailPage() {
             </div>
             <p className="text-small text-text-secondary wrap-anywhere">
               {t(TYPE_LABELS[equipment.type])}
+              {room && ` · ${room.name}`}
               {equipment.description && ` · ${equipment.description}`}
               {!equipment.enabled && (
                 <span className="text-warning-ink ml-2">{t("common.disabled")}</span>
@@ -339,19 +331,12 @@ export function EquipmentDetailPage() {
             <Pencil size={14} strokeWidth={1.5} />
             <span className="hidden sm:inline">{t("common.edit")}</span>
           </button>
-          <button
-            onClick={handleDelete}
-            disabled={deleting}
-            className="flex items-center gap-1.5 p-2 sm:px-3 sm:py-2 text-small font-medium text-error border border-error/30 rounded-sm hover:bg-error/10 transition-colors duration-150 disabled:opacity-50 cursor-pointer"
-            title={t("common.delete")}
-          >
-            <Trash2 size={14} strokeWidth={1.5} />
-            <span className="hidden sm:inline">{deleting ? t("common.deleting") : t("common.delete")}</span>
-          </button>
         </div>
         )}
       </div>
 
+      {/* Spec 196 — use first: the controls, the timed action, the sessions and
+          the 24 h chart; then energy; then, for an admin, the configuration. */}
       {/* Controls — light, switch (smart plug) and water heater share the ON/OFF
           toggle surface. Spec 152: a water heater can additionally (or only, on
           permanent mains) carry a dedicated "solar" on/off. Each toggle renders
@@ -434,44 +419,6 @@ export function EquipmentDetailPage() {
         </div>
       )}
 
-      {/* Timed command — the ACTION, next to the ordinary controls above and
-          available to every user (spec 174 phase 2). Its own card, labelled, so
-          "actuate" and "actuate for fifteen minutes" are two named buttons
-          rather than two icons to guess between. The admin panel further down
-          configures it; this one fires it. */}
-      {equipment.timedCommand && equipment.enabled && (
-        <div className="card p-4 mb-6">
-          <h3 className="text-body font-semibold text-text mb-3">{t("equipments.timed.title")}</h3>
-          <TimedCommandControl equipment={equipment} labelled />
-        </div>
-      )}
-
-      {/* Gate — confirmation before action (spec 146), admin only */}
-      {isGate && isAdmin && (
-        <GateConfirmationPanel equipment={equipment} onUpdated={() => void fetchEquipments()} />
-      )}
-
-      {/* Gate, door, shutter, awning — follow orders to their outcome (spec 188 O10), admin only */}
-      {ORDER_OUTCOME_TYPES.includes(equipment.type) && isAdmin && (
-        <OrderOutcomePanel equipment={equipment} onUpdated={() => void fetchEquipments()} />
-      )}
-
-      {/* Gate — shared access (spec 181 R8), admin only, hidden while off */}
-      {isGate && isAdmin && <SharedAccessPanel equipmentId={equipment.id} />}
-
-      {/* Timed command — act now, revert after N (spec 174 phase 2), admin only.
-          Offered only where a hand-revert could end the window early: the
-          equipment must carry the order AND a state reading tied to it. */}
-      {isAdmin && hasTimedCommandCandidate(equipment) && (
-        <TimedCommandPanel equipment={equipment} onUpdated={() => void fetchEquipments()} />
-      )}
-
-      {/* Shutter-family / gate — invert command direction (spec 154, extended
-          to boolean gate triggers per issue #627), admin only */}
-      {(isShutterFamily || equipment.type === "pool_cover" || isGate) && isAdmin && (
-        <InvertDirectionPanel equipment={equipment} onUpdated={() => void fetchEquipments()} />
-      )}
-
       {/* Water valve controls */}
       {equipment.type === "water_valve" && equipment.enabled && (
         <div className="card p-4 mb-6">
@@ -505,15 +452,6 @@ export function EquipmentDetailPage() {
         </div>
       )}
 
-      {/* Spec 191 — home charging of this vehicle: cost, split, per 100 km. */}
-      {equipment.type === "electric_vehicle" && (
-        <EvHomeChargingSection
-          equipment={equipment}
-          isAdmin={isAdmin}
-          onUpdated={() => void fetchEquipments()}
-        />
-      )}
-
       {/* EV charger (spec 182): start/stop, vehicle, power, session, current. */}
       {equipment.type === "ev_charger" && (
         <div className="card p-4 mb-6">
@@ -523,16 +461,6 @@ export function EquipmentDetailPage() {
             onExecuteOrder={(alias, value) => executeOrder(equipment.id, alias, value)}
           />
         </div>
-      )}
-
-      {/* Spec 191 — the charge sessions of this charger and their vehicle. */}
-      {equipment.type === "ev_charger" && (
-        <EvChargerSessionsSection
-          chargerId={equipment.id}
-          usualVehicleId={equipment.usualVehicleId}
-          isAdmin={isAdmin}
-          onUpdated={() => void fetchEquipments()}
-        />
       )}
 
       {/* VMC speed controls (spec 153) */}
@@ -594,62 +522,130 @@ export function EquipmentDetailPage() {
         <SensorDataPanel bindings={equipment.dataBindings} equipmentId={equipment.id} />
       ) : null}
 
-      {/* PV forecast and health moved to Energy -> Production, their
-          configuration to Settings -> Energy (spec 163). This page keeps what
-          describes the meter as a device. */}
-
-      {/* Energy cumuls — meters + metering relays (switch/water_heater, #521) */}
-      {(equipment.type === "main_energy_meter" ||
-        equipment.type === "energy_production_meter" ||
-        isSubmeterEquipment(equipment)) && equipment.computedData && (
-        <EnergyDataPanel
-          computedData={equipment.computedData}
-          status={equipment.status}
-          statusReason={equipment.statusReason}
-          isProduction={equipment.type === "energy_production_meter"}
-        />
+      {/* Timed command — the ACTION, next to the ordinary controls above and
+          available to every user (spec 174 phase 2). Its own card, labelled, so
+          "actuate" and "actuate for fifteen minutes" are two named buttons
+          rather than two icons to guess between. The admin panel further down
+          configures it; this one fires it. */}
+      {equipment.timedCommand && equipment.enabled && (
+        <div className="card p-4 mb-6">
+          <h3 className="text-body font-semibold text-text mb-3">{t("equipments.timed.title")}</h3>
+          <TimedCommandControl equipment={equipment} labelled />
+        </div>
       )}
 
-      {/* Live electrical measures — P/U/I/PF when bound (issue #376, #521) */}
-      {(equipment.type === "main_energy_meter" ||
-        equipment.type === "energy_production_meter" ||
-        isSubmeterEquipment(equipment)) &&
-        // Spec 182 — a charger's control block already shows power, current
-        // and voltage; the metering panel would only repeat them.
-        equipment.type !== "ev_charger" && (
-        <ElectricalMeteringPanel equipment={equipment} />
-      )}
-
-      {/* Nested submeters — "already counted by that meter" (spec 173), admin only */}
-      {isAdmin && isSubmeterEquipment(equipment) && (
-        <MeteringParentPanel
+      {/* Spec 191 — home charging of this vehicle: cost, split, per 100 km. */}
+      {equipment.type === "electric_vehicle" && (
+        <EvHomeChargingSection
           equipment={equipment}
-          equipments={equipments}
+          isAdmin={isAdmin}
           onUpdated={() => void fetchEquipments()}
         />
       )}
 
-      {/* Energy management — flexible-load declaration (spec 140), admin only */}
-      {/* Spec 183 — a vehicle is never a flexible load: the charger is. */}
-      {isAdmin && equipment.orderBindings.length > 0 && equipment.type !== "electric_vehicle" && (
-        <EnergyManagementPanel equipment={equipment} onUpdated={() => void fetchEquipments()} />
+      {/* Spec 191 — the charge sessions of this charger and their vehicle. */}
+      {equipment.type === "ev_charger" && (
+        <EvChargerSessionsSection
+          chargerId={equipment.id}
+          usualVehicleId={equipment.usualVehicleId}
+          isAdmin={isAdmin}
+          onUpdated={() => void fetchEquipments()}
+        />
       )}
 
-      {/* Button actions — config, admin only */}
-      {equipment.type === "button" && isAdmin && (
-        <ButtonActionsSection equipmentId={equipment.id} />
+      {/* History — the main series over 24 h, open on arrival (spec 196, pr9-graphique) */}
+      <HistoryPanel
+        key={equipment.id}
+        equipmentId={equipment.id}
+        bindings={historyBindings}
+        defaultExpandedAlias={mainHistoryAlias(equipment.type, historyBindings)}
+      />
+
+      {/* PV forecast and health moved to Energy -> Production, their
+          configuration to Settings -> Energy (spec 163). This page keeps what
+          describes the meter as a device. */}
+
+      {/* Energy — meters and metering relays (switch/water_heater, #521): the
+          cumuls and the live electrical measures, one card (spec 196). The card
+          hides itself when neither section has anything to show. A charger's
+          control block already shows power, current and voltage (spec 182). */}
+      {(equipment.type === "main_energy_meter" ||
+        equipment.type === "energy_production_meter" ||
+        isSubmeterEquipment(equipment)) && (
+        <div className="card p-4 mb-6 hidden has-[[data-energy-section]]:block">
+          <h3 className="text-body font-semibold text-text flex items-center gap-2 mb-3">
+            <Zap size={16} strokeWidth={1.5} className="text-text-tertiary" />
+            {t("equipments.energy")}
+          </h3>
+          <div className="space-y-4">
+            {equipment.computedData && (
+              <EnergyDataPanel
+                section
+                computedData={equipment.computedData}
+                status={equipment.status}
+                statusReason={equipment.statusReason}
+                isProduction={equipment.type === "energy_production_meter"}
+              />
+            )}
+            {equipment.type !== "ev_charger" && <ElectricalMeteringPanel section equipment={equipment} />}
+          </div>
+        </div>
       )}
 
-      {/* History charts */}
-      <HistoryPanel equipmentId={equipment.id} bindings={historyBindings} />
-
-      {/* Configuration — admin only (bindings, devices, history config) */}
+      {/* Configuration — admin only. Spec 196 (pr9-config): every setting is a
+          collapsed row here with a one-line summary, below what the page is used
+          for; nothing configures above the chart any more. */}
       {isAdmin && (
       <div className="card mb-6 divide-y divide-border-light">
         <div className="flex items-center gap-2 p-4">
           <Settings size={16} strokeWidth={1.5} className="text-text-tertiary" />
           <h3 className="text-body font-semibold text-text">{t("equipments.configuration")}</h3>
         </div>
+
+        {/* Gate — confirmation before action (spec 146) */}
+        {isGate && (
+          <GateConfirmationPanel equipment={equipment} onUpdated={() => void fetchEquipments()} />
+        )}
+
+        {/* Gate, door, shutter, awning — follow orders to their outcome (spec 188 O10) */}
+        {ORDER_OUTCOME_TYPES.includes(equipment.type) && (
+          <OrderOutcomePanel equipment={equipment} onUpdated={() => void fetchEquipments()} />
+        )}
+
+        {/* Gate — shared access (spec 181 R8), hidden while the feature is off */}
+        {isGate && <SharedAccessPanel equipmentId={equipment.id} />}
+
+        {/* Timed command — act now, revert after N (spec 174 phase 2). Offered
+            only where a hand-revert could end the window early: the equipment
+            must carry the order AND a state reading tied to it. */}
+        {hasTimedCommandCandidate(equipment) && (
+          <TimedCommandPanel equipment={equipment} onUpdated={() => void fetchEquipments()} />
+        )}
+
+        {/* Shutter-family / gate — invert command direction (spec 154, extended
+            to boolean gate triggers per issue #627) */}
+        {(isShutterFamily || equipment.type === "pool_cover" || isGate) && (
+          <InvertDirectionPanel equipment={equipment} onUpdated={() => void fetchEquipments()} />
+        )}
+
+        {/* Nested submeters — "already counted by that meter" (spec 173) */}
+        {isSubmeterEquipment(equipment) && (
+          <MeteringParentPanel
+            equipment={equipment}
+            equipments={equipments}
+            onUpdated={() => void fetchEquipments()}
+          />
+        )}
+
+        {/* Energy management — flexible-load declaration (spec 140). A vehicle is
+            never a flexible load, the charger is (spec 183); a type with no
+            energy semantics renders nothing (spec 196). */}
+        {equipment.orderBindings.length > 0 && equipment.type !== "electric_vehicle" && (
+          <EnergyManagementPanel equipment={equipment} onUpdated={() => void fetchEquipments()} />
+        )}
+
+        {/* Button actions */}
+        {equipment.type === "button" && <ButtonActionsSection equipmentId={equipment.id} />}
 
         <DevicesSection equipment={equipment} onChangeDevice={() => setShowChangeDevice(true)} />
 
@@ -801,6 +797,19 @@ export function EquipmentDetailPage() {
             </div>
           )}
         </div>
+
+        {/* Spec 196 — delete left the header, where it sat next to « Modifier ». */}
+        <div className="p-4">
+          <button
+            type="button"
+            onClick={handleDelete}
+            disabled={deleting}
+            className="inline-flex items-center gap-1.5 text-small font-medium text-error hover:underline disabled:opacity-50 cursor-pointer"
+          >
+            <Trash2 size={14} strokeWidth={1.5} />
+            {deleting ? t("common.deleting") : t("equipments.deleteEquipment")}
+          </button>
+        </div>
       </div>
       )}
 
@@ -879,6 +888,33 @@ export function EquipmentDetailPage() {
         />
       )}
     </div>
+  );
+}
+
+/**
+ * Back from the equipment page (spec 196, pr9-retour): to the page it was
+ * opened from when the link said so, else to the equipment's room — a page of
+ * usage, which a room is and the equipment list is not.
+ */
+function BackLink({ origin, room }: { origin: EquipmentOrigin | null; room: { id: string; name: string } | null }) {
+  const { t } = useTranslation();
+  const navigate = useNavigate();
+  const cls = "inline-flex items-center gap-1.5 text-small text-text-secondary hover:text-text mb-4";
+  if (origin) {
+    return (
+      <button type="button" onClick={() => navigate(-1)} className={`${cls} cursor-pointer`}>
+        <ArrowLeft size={14} strokeWidth={1.5} />
+        {origin.to === "/equipments"
+          ? t("equipments.backToEquipments")
+          : t("equipments.backToZone", { name: origin.label })}
+      </button>
+    );
+  }
+  return (
+    <Link to={room ? `/home/${room.id}` : "/home"} className={cls}>
+      <ArrowLeft size={14} strokeWidth={1.5} />
+      {t("equipments.backToZone", { name: room ? room.name : t("nav.maison") })}
+    </Link>
   );
 }
 

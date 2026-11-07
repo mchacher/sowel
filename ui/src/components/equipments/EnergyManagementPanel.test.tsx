@@ -42,14 +42,14 @@ describe("EnergyManagementPanel — derived load class (#555)", () => {
   });
 
   it("no longer exposes a class selector", async () => {
-    render(<EnergyManagementPanel equipment={equipment("water_heater")} onUpdated={() => {}} />);
+    render(<EnergyManagementPanel defaultOpen equipment={equipment("water_heater")} onUpdated={() => {}} />);
     await userEvent.click(screen.getByLabelText("Flexible load"));
     expect(screen.queryByRole("combobox")).toBeNull();
     expect(screen.queryByText("Class")).toBeNull();
   });
 
   it("derives class 'deferrable' from a relay-type equipment on save", async () => {
-    render(<EnergyManagementPanel equipment={equipment("water_heater")} onUpdated={() => {}} />);
+    render(<EnergyManagementPanel defaultOpen equipment={equipment("water_heater")} onUpdated={() => {}} />);
     await userEvent.click(screen.getByLabelText("Flexible load"));
     await userEvent.type(screen.getByLabelText("Nominal power (W)"), "2000");
     await userEvent.click(screen.getByRole("button", { name: "Save" }));
@@ -63,7 +63,7 @@ describe("EnergyManagementPanel — derived load class (#555)", () => {
   });
 
   it("derives class 'comfort' from a self-regulating equipment on save", async () => {
-    render(<EnergyManagementPanel equipment={equipment("thermostat")} onUpdated={() => {}} />);
+    render(<EnergyManagementPanel defaultOpen equipment={equipment("thermostat")} onUpdated={() => {}} />);
     await userEvent.click(screen.getByLabelText("Flexible load"));
     await userEvent.type(screen.getByLabelText("Nominal power (W)"), "1800");
     await userEvent.click(screen.getByRole("button", { name: "Save" }));
@@ -76,11 +76,15 @@ describe("EnergyManagementPanel — derived load class (#555)", () => {
     );
   });
 
-  it("cannot declare a type with no energy semantics as a flexible load", () => {
-    render(<EnergyManagementPanel equipment={equipment("switch")} onUpdated={() => {}} />);
-    const toggle = screen.getByLabelText("Flexible load") as HTMLInputElement;
-    expect(toggle.disabled).toBe(true);
-    expect(screen.queryByText(/no flexible-load behaviour/i)).not.toBeNull();
+  it("is not offered on a type with no energy semantics (spec 196: a shutter, a gate, a plain switch)", () => {
+    for (const type of ["switch", "shutter", "gate"] as const) {
+      const { container, unmount } = render(
+        <EnergyManagementPanel defaultOpen equipment={equipment(type)} onUpdated={() => {}} />,
+      );
+      expect(container.innerHTML).toBe("");
+      expect(screen.queryByLabelText("Flexible load")).toBeNull();
+      unmount();
+    }
   });
 
   it("still edits an already-saved profile on a type with no derived class (never orphaned)", () => {
@@ -91,7 +95,7 @@ describe("EnergyManagementPanel — derived load class (#555)", () => {
       minOffS: 300,
     };
     render(
-      <EnergyManagementPanel equipment={equipment("switch", profile)} onUpdated={() => {}} />,
+      <EnergyManagementPanel defaultOpen equipment={equipment("switch", profile)} onUpdated={() => {}} />,
     );
     // Toggle stays enabled and the form is revealed with the saved values.
     const toggle = screen.getByLabelText("Flexible load") as HTMLInputElement;
