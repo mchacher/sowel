@@ -146,11 +146,11 @@ export function UpdatesSheet({ open, onClose }: UpdatesSheetProps) {
       icon={<RefreshCw size={18} strokeWidth={1.5} className="text-error" />}
     >
       {plugins === null ? (
-        <div className="text-center text-text-tertiary text-[13px] py-6">
+        <div className="text-center text-text-tertiary text-small py-6">
           {t("common.loading")}
         </div>
       ) : totalCount === 0 ? (
-        <div className="text-center text-text-tertiary text-[13px] py-6">
+        <div className="text-center text-text-tertiary text-small py-6">
           {t("updates.sheet.empty")}
         </div>
       ) : (
@@ -187,7 +187,7 @@ export function UpdatesSheet({ open, onClose }: UpdatesSheetProps) {
         </ul>
       )}
       {error && (
-        <div role="alert" className="mt-3 text-[12px] text-error text-center">
+        <div role="alert" className="mt-3 text-caption text-error text-center">
           {error}
         </div>
       )}
@@ -248,10 +248,10 @@ function UpdateRow({
   return (
     <li className="flex items-center gap-3 px-3 py-2.5 rounded-[8px] bg-border-light/50">
       <div className="flex-1 min-w-0">
-        <div className="flex items-center gap-2 text-[13px] font-semibold text-text">
+        <div className="flex items-center gap-2 text-small font-semibold text-text">
           <span className="truncate">{title}</span>
           {badge && (
-            <span className="text-[10px] px-1.5 py-0.5 rounded uppercase bg-primary/10 text-primary">
+            <span className="text-micro px-1.5 py-0.5 rounded uppercase bg-primary/10 text-primary">
               {badge}
             </span>
           )}
@@ -259,7 +259,7 @@ function UpdateRow({
               surprise if the row says where the package comes from. */}
           {personal && <PersonalBadge />}
         </div>
-        <div className="text-[11px] text-text-secondary font-mono mt-0.5">
+        <div className="text-micro text-text-secondary font-mono mt-0.5">
           {t("updates.sheet.versions", { from, to })}
         </div>
       </div>
@@ -290,7 +290,7 @@ function UpdateRow({
         type="button"
         onClick={onUpdate}
         disabled={loading || disabled}
-        className="px-3 py-1.5 rounded-[6px] bg-primary text-white text-[12px] font-medium hover:bg-primary-hover disabled:opacity-50 disabled:cursor-not-allowed transition-colors flex items-center gap-1.5 cursor-pointer flex-shrink-0"
+        className="px-3 py-1.5 rounded-[6px] bg-primary text-white text-caption font-medium hover:bg-primary-hover disabled:opacity-50 disabled:cursor-not-allowed transition-colors flex items-center gap-1.5 cursor-pointer flex-shrink-0"
       >
         {loading && <Loader2 size={12} strokeWidth={1.5} className="animate-spin" />}
         {t("updates.action.update")}

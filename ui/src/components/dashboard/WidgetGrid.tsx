@@ -359,7 +359,7 @@ function SortableWidget({
               if (e.key === "Escape") setRenaming(false);
             }}
             className={`w-full font-semibold text-text text-center bg-surface border border-primary/40 rounded-[5px] px-1 py-0 outline-none focus:ring-1 focus:ring-primary/30 ${
-              isMobile ? "text-[11px]" : "text-[17px]"
+              isMobile ? "text-micro" : "text-lead"
             }`}
           />
         </div>
@@ -644,7 +644,7 @@ function MobileZoneCard({
       } transition-transform`}
     >
       {/* Label */}
-      <span className={`text-[12px] font-semibold text-text truncate w-full text-center ${
+      <span className={`text-caption font-semibold text-text truncate w-full text-center ${
         editMode ? "pl-5 pr-8" : ""
       }`}>
         {label}
@@ -657,7 +657,7 @@ function MobileZoneCard({
 
       {/* State */}
       {stateText && (
-        <span className="text-[11px] text-text-secondary truncate max-w-full">
+        <span className="text-micro text-text-secondary truncate max-w-full">
           {stateText}
         </span>
       )}

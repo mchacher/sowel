@@ -37,7 +37,7 @@ export function AlarmsSheet({ open, onClose }: AlarmsSheetProps) {
       icon={<AlertTriangle size={18} strokeWidth={1.5} className="text-error" />}
     >
       {active.length === 0 && acknowledged.length === 0 ? (
-        <div className="text-center text-text-tertiary text-[13px] py-6">{t("alarms.empty")}</div>
+        <div className="text-center text-text-tertiary text-small py-6">{t("alarms.empty")}</div>
       ) : (
         <div className="flex flex-col gap-3">
           {active.length > 0 && (
@@ -54,7 +54,7 @@ export function AlarmsSheet({ open, onClose }: AlarmsSheetProps) {
 
           {acknowledged.length > 0 && (
             <div className="flex flex-col gap-2">
-              <div className="text-[11px] font-semibold uppercase text-text-tertiary px-1">
+              <div className="text-micro font-semibold uppercase text-text-tertiary px-1">
                 {t("alarms.acknowledgedSection")}
               </div>
               <ul className="flex flex-col gap-2">
@@ -106,17 +106,17 @@ function IssueRow({
     >
       <Icon size={16} strokeWidth={1.5} className={`mt-0.5 flex-shrink-0 ${tone}`} />
       <div className="flex-1 min-w-0">
-        <div className="flex items-center gap-2 text-[12px] font-semibold text-text">
+        <div className="flex items-center gap-2 text-caption font-semibold text-text">
           <span>{sourceLabel}</span>
           <span
-            className={`text-[10px] px-1.5 py-0.5 rounded uppercase ${
+            className={`text-micro px-1.5 py-0.5 rounded uppercase ${
               isError ? "bg-error/10 text-error" : "bg-warning/10 text-warning"
             }`}
           >
             {isError ? t("alarms.level.error") : t("alarms.level.warning")}
           </span>
         </div>
-        <div className="text-[12px] text-text-secondary mt-0.5 break-words">{message}</div>
+        <div className="text-caption text-text-secondary mt-0.5 break-words">{message}</div>
       </div>
       {acknowledged ? (
         <button

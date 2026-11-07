@@ -32,11 +32,11 @@ export function SensorDataPanel({ bindings, equipmentId }: SensorDataPanelProps)
   if (sensorBindings.length === 0 && batteryBindings.length === 0) {
     return (
       <div className="bg-surface rounded-[10px] border border-border p-4 mb-6">
-        <h3 className="text-[14px] font-semibold text-text flex items-center gap-2 mb-2">
+        <h3 className="text-body font-semibold text-text flex items-center gap-2 mb-2">
           <Gauge size={16} strokeWidth={1.5} className="text-text-tertiary" />
           {t("sensors.title")}
         </h3>
-        <p className="text-[13px] text-text-tertiary">{t("sensors.noData")}</p>
+        <p className="text-small text-text-tertiary">{t("sensors.noData")}</p>
       </div>
     );
   }
@@ -51,7 +51,7 @@ export function SensorDataPanel({ bindings, equipmentId }: SensorDataPanelProps)
 
   return (
     <div className="bg-surface rounded-[10px] border border-border p-4 mb-6">
-      <h3 className="text-[14px] font-semibold text-text flex items-center gap-2 mb-4">
+      <h3 className="text-body font-semibold text-text flex items-center gap-2 mb-4">
         <Gauge size={16} strokeWidth={1.5} className="text-text-tertiary" />
         {t("sensors.title")}
       </h3>
@@ -106,9 +106,9 @@ function SensorCategoryRow({
 
       {/* Label */}
       <div className="flex-1 min-w-0">
-        <div className="text-[13px] font-medium text-text-secondary">{label}</div>
+        <div className="text-small font-medium text-text-secondary">{label}</div>
         {bindings.length > 1 && (
-          <div className="text-[11px] text-text-tertiary">
+          <div className="text-micro text-text-tertiary">
             {t("sensors.sources", { count: bindings.length })}
           </div>
         )}
@@ -150,7 +150,7 @@ function BooleanSensorValue({
     <div className="flex items-center gap-2">
       <span
         className={`
-          text-[14px] font-semibold font-mono
+          text-body font-semibold font-mono
           ${displayActive ? "text-active-text" : "text-text-tertiary"}
         `}
       >
@@ -173,11 +173,11 @@ function NumericSensorValues({ bindings, equipmentId }: { bindings: DataBindingW
       {bindings.map((b) => (
         <div key={b.id} className="flex items-center gap-2">
           <div className="text-right">
-            <span className="text-[22px] font-semibold text-text font-mono leading-none">
+            <span className="text-title font-semibold text-text font-mono leading-none">
               {formatSensorValue(b.value, undefined, t)}
             </span>
             {b.unit && (
-              <span className="text-[13px] text-text-tertiary ml-1">{b.unit}</span>
+              <span className="text-small text-text-tertiary ml-1">{b.unit}</span>
             )}
           </div>
           {SPARKLINE_CATEGORIES.has(b.category) && (
@@ -198,16 +198,16 @@ function BatteryRow({ level, deviceName }: { level: number | null; deviceName?: 
         {getBatteryIcon(level, 18, 1.5)}
       </div>
       <div className="flex-1 min-w-0">
-        <div className="text-[13px] font-medium text-text-secondary">{t("sensors.battery")}</div>
+        <div className="text-small font-medium text-text-secondary">{t("sensors.battery")}</div>
         {deviceName && (
-          <div className="text-[11px] text-text-tertiary truncate">{deviceName}</div>
+          <div className="text-micro text-text-tertiary truncate">{deviceName}</div>
         )}
       </div>
       <div className="flex items-baseline gap-1 flex-shrink-0">
-        <span className={`text-[22px] font-semibold font-mono leading-none ${color}`}>
+        <span className={`text-title font-semibold font-mono leading-none ${color}`}>
           {level !== null ? level : "\u2014"}
         </span>
-        <span className="text-[13px] text-text-tertiary">%</span>
+        <span className="text-small text-text-tertiary">%</span>
       </div>
     </div>
   );

@@ -1,3 +1,4 @@
+import { CHART_TICK_FONT, CHART_TOOLTIP_FONT } from "../../lib/chart-font";
 import { useMemo, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { dateLocale } from "../../lib/locale";
@@ -271,7 +272,7 @@ export function EnergyBarChart({ points, period, date, height = 300, unit = "wh"
 
   if (data.length === 0) {
     return (
-      <div className="flex items-center justify-center text-text-tertiary text-[13px]" style={{ height }}>
+      <div className="flex items-center justify-center text-text-tertiary text-small" style={{ height }}>
         {t("energy.noDataPeriod")}
       </div>
     );
@@ -286,13 +287,13 @@ export function EnergyBarChart({ points, period, date, height = 300, unit = "wh"
         <CartesianGrid strokeDasharray="3 3" stroke="var(--color-border-light)" vertical={false} />
         <XAxis
           dataKey="label"
-          tick={{ fontSize: 11, fill: "var(--color-text-tertiary)" }}
+          tick={{ fontSize: CHART_TICK_FONT, fill: "var(--color-text-tertiary)" }}
           interval={tickInterval}
           tickLine={false}
           axisLine={{ stroke: "var(--color-border)" }}
         />
         <YAxis
-          tick={{ fontSize: 11, fill: "var(--color-text-tertiary)" }}
+          tick={{ fontSize: CHART_TICK_FONT, fill: "var(--color-text-tertiary)" }}
           tickLine={false}
           axisLine={false}
           tickFormatter={isEur ? (eur: number) => formatEur(eur, locale) : (kwh: number) => formatKwhTick(kwh, locale)}
@@ -326,7 +327,7 @@ export function EnergyBarChart({ points, period, date, height = 300, unit = "wh"
                   backgroundColor: "var(--color-surface)",
                   border: "1px solid var(--color-border)",
                   borderRadius: "6px",
-                  fontSize: "12px",
+                  fontSize: CHART_TOOLTIP_FONT,
                   padding: "8px 12px",
                 }}
               >

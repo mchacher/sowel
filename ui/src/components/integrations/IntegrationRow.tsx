@@ -71,18 +71,18 @@ export function IntegrationRow({ integration, onOpen, onRefresh }: IntegrationRo
       {/* Name + status */}
       <div className="min-w-0 flex-1 sm:flex-none sm:w-[220px] sm:shrink-0">
         <div className="flex items-center gap-2">
-          <span className="text-[14px] font-semibold text-text truncate">
+          <span className="text-body font-semibold text-text truncate">
             {integration.name}
           </span>
           {integration.pluginVersion && (
-            <span className="text-[10px] px-1.5 py-0.5 bg-border-light rounded-[4px] text-text-tertiary font-mono shrink-0">
+            <span className="text-micro px-1.5 py-0.5 bg-border-light rounded-[4px] text-text-tertiary font-mono shrink-0">
               {integration.pluginVersion}
             </span>
           )}
         </div>
         <StatusBadge status={integration.status} disabled={isDisabled} />
         {/* Mobile stats — under the status, inside the name column */}
-        <div className="flex sm:hidden items-center gap-1.5 text-[11px] text-text-tertiary mt-0.5 whitespace-nowrap">
+        <div className="flex sm:hidden items-center gap-1.5 text-micro text-text-tertiary mt-0.5 whitespace-nowrap">
           <span>
             {t("integrations.deviceCount", { count: integration.deviceCount })}
           </span>
@@ -96,7 +96,7 @@ export function IntegrationRow({ integration, onOpen, onRefresh }: IntegrationRo
       </div>
 
       {/* Stats */}
-      <div className="hidden sm:flex items-center gap-4 text-[12px] text-text-tertiary flex-1">
+      <div className="hidden sm:flex items-center gap-4 text-caption text-text-tertiary flex-1">
         <span>
           {t("integrations.deviceCount", { count: integration.deviceCount })}
           {integration.offlineDeviceCount > 0 && (
@@ -216,7 +216,7 @@ function StatusBadge({
 
   if (disabled) {
     return (
-      <span className="inline-flex items-center gap-1.5 text-[11px] text-text-tertiary mt-0.5">
+      <span className="inline-flex items-center gap-1.5 text-micro text-text-tertiary mt-0.5">
         <span className="w-1.5 h-1.5 rounded-full bg-text-tertiary" />
         {t("integrations.disabledStatus")}
       </span>
@@ -234,7 +234,7 @@ function StatusBadge({
   const label = status === "not_configured" ? "disconnected" : status;
 
   return (
-    <span className={`inline-flex items-center gap-1.5 text-[11px] ${text} mt-0.5`}>
+    <span className={`inline-flex items-center gap-1.5 text-micro ${text} mt-0.5`}>
       <span className={`w-1.5 h-1.5 rounded-full ${dot}`} />
       {t(`status.${label}`)}
     </span>
@@ -274,7 +274,7 @@ function PollCountdown({
   const label = formatDuration(remaining);
 
   return (
-    <span className="inline-flex items-center gap-1 text-[11px] text-text-tertiary tabular-nums">
+    <span className="inline-flex items-center gap-1 text-micro text-text-tertiary tabular-nums">
       <Timer size={10} />
       {label}
     </span>

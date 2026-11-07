@@ -428,15 +428,15 @@ function LightEquipmentWidget({
                 style={{ writingMode: "vertical-lr", direction: "rtl" }}
               />
               <div className="flex items-baseline gap-0.5">
-                <span className="text-[16px] font-semibold text-text tabular-nums leading-none">
+                <span className="text-lead font-semibold text-text tabular-nums leading-none">
                   {brightnessPct}
                 </span>
-                <span className="text-[12px] font-medium text-text-tertiary">%</span>
+                <span className="text-caption font-medium text-text-tertiary">%</span>
               </div>
             </>
           ) : (
             <span
-              className={`text-[12px] font-medium px-2.5 py-0.5 rounded-full ${
+              className={`text-caption font-medium px-2.5 py-0.5 rounded-full ${
                 isOn ? "bg-active/10 text-active" : "bg-border-light text-text-tertiary"
               }`}
             >
@@ -547,28 +547,28 @@ function WaterHeaterEquipmentWidget({
         {renderWidgetStateIcon(iconKey, <WaterHeaterIcon on={isOn} />)}
         <div className="flex flex-col items-start gap-1 pl-2">
           <span
-            className={`text-[12px] font-medium px-2.5 py-0.5 rounded-full ${
+            className={`text-caption font-medium px-2.5 py-0.5 rounded-full ${
               isOn ? "bg-active/10 text-active" : "bg-border-light text-text-tertiary"
             }`}
           >
             {isOn ? t("controls.on") : t("controls.off")}
           </span>
           {tempValue !== null && (
-            <span className="font-mono text-[13px] font-semibold text-text tabular-nums">
+            <span className="font-mono text-small font-semibold text-text tabular-nums">
               {formatNumber(tempValue, { decimals: 1 })}
-              <span className="text-[11px] text-text-tertiary font-normal">°</span>
+              <span className="text-micro text-text-tertiary font-normal">°</span>
             </span>
           )}
           {powerValue !== null && (
-            <span className="font-mono text-[12px] text-text-secondary tabular-nums">
+            <span className="font-mono text-caption text-text-secondary tabular-nums">
               {Math.round(powerValue)}
-              <span className="text-[10px] text-text-tertiary font-normal ml-0.5">W</span>
+              <span className="text-micro text-text-tertiary font-normal ml-0.5">W</span>
             </span>
           )}
           {powerReading.verdict === "stale" && (
             <>
-              <span className="font-mono text-[12px] text-text-tertiary tabular-nums">—</span>
-              <span className="text-[10px] text-text-tertiary leading-tight">
+              <span className="font-mono text-caption text-text-tertiary tabular-nums">—</span>
+              <span className="text-micro text-text-tertiary leading-tight">
                 {t("reading.ago", { age: formatRelative(powerReading.since, t) })}
               </span>
             </>
@@ -639,7 +639,7 @@ function VmcEquipmentWidget({
         )}
         <div className="flex flex-col items-start gap-1 pl-2">
           <span
-            className={`text-[12px] font-medium px-2.5 py-0.5 rounded-full ${
+            className={`text-caption font-medium px-2.5 py-0.5 rounded-full ${
               running ? "bg-active/10 text-active" : "bg-border-light text-text-tertiary"
             }`}
           >
@@ -752,25 +752,25 @@ function ShutterEquipmentWidget({
         )}
         <div className="pl-2">
           {doorPill ? (
-            <span className={`text-[13px] font-medium px-2 py-0.5 rounded ${doorPill.className}`}>
+            <span className={`text-small font-medium px-2 py-0.5 rounded ${doorPill.className}`}>
               {t(doorPill.key)}
             </span>
           ) : position === null ? (
-            <span className="text-[16px] text-text-tertiary">{"\u2014"}</span>
+            <span className="text-lead text-text-tertiary">{"\u2014"}</span>
           ) : position === 100 ? (
-            <span className="text-[13px] font-medium text-success px-2 py-0.5 rounded bg-success/10">
+            <span className="text-small font-medium text-success px-2 py-0.5 rounded bg-success/10">
               {pillAtHundred}
             </span>
           ) : position === 0 ? (
-            <span className="text-[13px] font-medium text-text-secondary px-2 py-0.5 rounded bg-border-light">
+            <span className="text-small font-medium text-text-secondary px-2 py-0.5 rounded bg-border-light">
               {pillAtZero}
             </span>
           ) : (
             <div className="flex items-baseline gap-0.5">
-              <span className="text-[16px] font-semibold text-text tabular-nums leading-none">
+              <span className="text-lead font-semibold text-text tabular-nums leading-none">
                 {position}
               </span>
-              <span className="text-[12px] font-medium text-text-tertiary">%</span>
+              <span className="text-caption font-medium text-text-tertiary">%</span>
             </div>
           )}
         </div>
@@ -893,13 +893,13 @@ function ThermostatEquipmentWidget({
         <div className="flex flex-col items-start gap-2 pl-2">
           {insideTemp !== null ? (
             <div className="flex items-baseline gap-0.5">
-              <span className="text-[18px] font-semibold text-text tabular-nums leading-none font-mono">
+              <span className="text-title font-semibold text-text tabular-nums leading-none font-mono">
                 {formatNumber(insideTemp, { decimals: 1 })}
               </span>
-              <span className="text-[12px] font-medium text-text-tertiary">°</span>
+              <span className="text-caption font-medium text-text-tertiary">°</span>
             </div>
           ) : (
-            <span className="text-[18px] text-text-tertiary">{"\u2014"}</span>
+            <span className="text-title text-text-tertiary">{"\u2014"}</span>
           )}
           {hasPowerOrder && equipment.enabled && (
             <button
@@ -932,7 +932,7 @@ function ThermostatEquipmentWidget({
           >
             <Minus size={14} strokeWidth={2} />
           </button>
-          <span className="text-[12px] font-medium text-text-secondary tabular-nums font-mono min-w-[42px] text-center">
+          <span className="text-caption font-medium text-text-secondary tabular-nums font-mono min-w-[42px] text-center">
             {formatTemperature(displaySetpoint, { style: "compact" })}
           </span>
           <button
@@ -1026,7 +1026,7 @@ function GateEquipmentWidget({
       {/* State text */}
       <div className="flex justify-center mt-auto pt-1">
         <span
-          className={`text-[12px] font-medium px-2.5 py-0.5 rounded-full ${
+          className={`text-caption font-medium px-2.5 py-0.5 rounded-full ${
             isOpen
               ? "bg-warning/10 text-warning"
               : gateState === "closed"
@@ -1046,7 +1046,7 @@ function GateEquipmentWidget({
               key={val}
               onClick={() => handleCommand(val)}
               disabled={executing !== null}
-              className="h-8 px-2.5 flex items-center justify-center rounded-[6px] text-[11px] font-medium transition-all duration-150 cursor-pointer border border-border bg-surface text-text-secondary hover:border-primary/40 hover:text-primary hover:bg-primary/5 active:scale-[0.97] disabled:opacity-40 disabled:cursor-not-allowed"
+              className="h-8 px-2.5 flex items-center justify-center rounded-[6px] text-micro font-medium transition-all duration-150 cursor-pointer border border-border bg-surface text-text-secondary hover:border-primary/40 hover:text-primary hover:bg-primary/5 active:scale-[0.97] disabled:opacity-40 disabled:cursor-not-allowed"
             >
               {val}
             </button>
@@ -1120,7 +1120,7 @@ function HeaterEquipmentWidget({
         {renderWidgetStateIcon(iconKey, <HeaterWidgetIcon comfort={isComfort} />)}
         <div className="pl-2">
           <span
-            className={`text-[12px] font-medium px-2.5 py-0.5 rounded-full ${
+            className={`text-caption font-medium px-2.5 py-0.5 rounded-full ${
               isComfort ? "bg-error/10 text-error" : "bg-primary/10 text-primary"
             }`}
           >
@@ -1314,15 +1314,16 @@ function WeatherTempColumn({
   return (
     <div className="flex flex-col items-center justify-center gap-1">
       {label && (
-        <span className="text-[11px] uppercase tracking-wide text-text-tertiary font-medium">
+        <span className="text-micro uppercase tracking-wide text-text-tertiary font-medium">
           {label}
         </span>
       )}
       <div className="flex items-baseline leading-none">
-        <span className="font-mono font-bold text-[clamp(22px,14cqw,36px)] text-text tabular-nums leading-none">
+        {/* eslint-disable-next-line no-restricted-syntax -- fluid size, follows the tile width (container query); no step of the scale can do that */}
+        <span className="font-mono font-semibold text-[clamp(22px,14cqw,36px)] text-text tabular-nums leading-none">
           {value}
         </span>
-        <span className="text-text-tertiary font-medium text-[14px] sm:text-[16px] leading-none">
+        <span className="text-text-tertiary font-medium text-body sm:text-lead leading-none">
           °
         </span>
       </div>
@@ -1385,15 +1386,15 @@ function EnergyMeterEquipmentWidget({
           {/* Today's consumption — primary value (green for production meters) */}
           <div className="flex items-baseline gap-0.5">
             <span
-              className={`text-[20px] font-semibold ${primaryColor} tabular-nums leading-none font-mono`}
+              className={`text-title font-semibold ${primaryColor} tabular-nums leading-none font-mono`}
             >
               {formatWh(energyDay?.value)}
             </span>
-            <span className="text-[11px] font-medium text-text-tertiary">
+            <span className="text-micro font-medium text-text-tertiary">
               {unitWh(energyDay?.value)}
             </span>
           </div>
-          <span className="text-[11px] text-text-tertiary">{t("energy.today")}</span>
+          <span className="text-micro text-text-tertiary">{t("energy.today")}</span>
         </div>
       </div>
 
@@ -1401,37 +1402,37 @@ function EnergyMeterEquipmentWidget({
       <div className="flex justify-center gap-4 mt-auto pt-1">
         {demandW !== null && (
           <div className="flex flex-col items-center">
-            <span className="text-[13px] font-semibold text-text tabular-nums font-mono leading-none">
+            <span className="text-small font-semibold text-text tabular-nums font-mono leading-none">
               {formatPowerParts(demandW).value}
             </span>
-            <span className="text-[10px] text-text-tertiary">{formatPowerParts(demandW).unit}</span>
+            <span className="text-micro text-text-tertiary">{formatPowerParts(demandW).unit}</span>
           </div>
         )}
         {/* The age takes the unit's place, so the row keeps its height (#839). */}
         {demandReading.verdict === "stale" && (
           <div className="flex flex-col items-center">
-            <span className="text-[13px] font-medium text-text-tertiary tabular-nums font-mono leading-none">
+            <span className="text-small font-medium text-text-tertiary tabular-nums font-mono leading-none">
               —
             </span>
-            <span className="text-[10px] text-text-tertiary">
+            <span className="text-micro text-text-tertiary">
               {formatRelative(demandReading.since, t)}
             </span>
           </div>
         )}
         {energyHour?.value != null && (
           <div className="flex flex-col items-center">
-            <span className="text-[13px] font-semibold text-text tabular-nums font-mono leading-none">
+            <span className="text-small font-semibold text-text tabular-nums font-mono leading-none">
               {formatWh(energyHour.value)}
             </span>
-            <span className="text-[10px] text-text-tertiary">{t("energy.hour")}</span>
+            <span className="text-micro text-text-tertiary">{t("energy.hour")}</span>
           </div>
         )}
         {energyMonth?.value != null && (
           <div className="flex flex-col items-center">
-            <span className="text-[13px] font-semibold text-text tabular-nums font-mono leading-none">
+            <span className="text-small font-semibold text-text tabular-nums font-mono leading-none">
               {formatWh(energyMonth.value)}
             </span>
-            <span className="text-[10px] text-text-tertiary">{unitWh(energyMonth.value)}</span>
+            <span className="text-micro text-text-tertiary">{unitWh(energyMonth.value)}</span>
           </div>
         )}
       </div>
@@ -1468,14 +1469,14 @@ function SolarPanelEquipmentWidget({
         />
         <div className="flex flex-col items-center">
           <span
-            className={`text-[16px] font-semibold tabular-nums font-mono ${producing ? "text-text" : "text-text-tertiary"}`}
+            className={`text-lead font-semibold tabular-nums font-mono ${producing ? "text-text" : "text-text-tertiary"}`}
           >
             {lines.join("  ·  ")}
           </span>
           {/* Without this the blank tile reads as night, not as an inverter
               that stopped reporting (#839). */}
           {outdatedSince && (
-            <span className="text-[11px] text-text-tertiary mt-1">
+            <span className="text-micro text-text-tertiary mt-1">
               {t("reading.outdated")} · {t("reading.ago", { age: formatRelative(outdatedSince, t) })}
             </span>
           )}
@@ -1527,7 +1528,7 @@ function ElectricVehicleEquipmentWidget({
           />,
         )}
         <span
-          className={`font-mono text-[20px] font-semibold tabular-nums ${
+          className={`font-mono text-title font-semibold tabular-nums ${
             s.batteryLevel === null
               ? "text-text-tertiary"
               : tone === "low"
@@ -1537,10 +1538,10 @@ function ElectricVehicleEquipmentWidget({
         >
           {s.batteryLevel !== null ? Math.round(s.batteryLevel) : "—"}
           {s.batteryLevel !== null && (
-            <span className="text-[12px] text-text-tertiary font-normal ml-0.5">%</span>
+            <span className="text-caption text-text-tertiary font-normal ml-0.5">%</span>
           )}
         </span>
-        <span className="text-[12px] text-text-secondary">
+        <span className="text-caption text-text-secondary">
           {[
             s.rangeKm !== null ? formatWithUnit(s.rangeKm, "km") : null,
             s.chargingState ? t(evChargingStateKey(s.chargingState)) : null,
@@ -1549,7 +1550,7 @@ function ElectricVehicleEquipmentWidget({
             .join(" · ")}
         </span>
         {s.reportStale && s.reportedAt && (
-          <span className="text-[10px] text-text-tertiary">
+          <span className="text-micro text-text-tertiary">
             {t("reading.ago", { age: formatRelative(s.reportedAt, t) })}
           </span>
         )}
@@ -1596,17 +1597,17 @@ function EvChargerEquipmentWidget({
         )}
         <EvVehicleBadge vehicle={s.vehicle} />
         {watts !== null && watts > 0 && (
-          <span className="font-mono text-[15px] font-semibold text-text tabular-nums">
+          <span className="font-mono text-lead font-semibold text-text tabular-nums">
             {formatPowerParts(watts).value}
-            <span className="text-[11px] text-text-tertiary font-normal ml-0.5">
+            <span className="text-micro text-text-tertiary font-normal ml-0.5">
               {formatPowerParts(watts).unit}
             </span>
           </span>
         )}
         {s.sessionEnergyKwh !== null && s.sessionEnergyKwh > 0 && (
-          <span className="font-mono text-[12px] text-text-secondary tabular-nums">
+          <span className="font-mono text-caption text-text-secondary tabular-nums">
             {formatEnergyParts(s.sessionEnergyKwh).value}
-            <span className="text-[10px] text-text-tertiary font-normal ml-0.5">kWh</span>
+            <span className="text-micro text-text-tertiary font-normal ml-0.5">kWh</span>
           </span>
         )}
         {s.canToggle && usable && (
@@ -1675,11 +1676,11 @@ function UpsEquipmentWidget({
     <WidgetCard label={label} sublabel={sublabel}>
       <div className="flex-1 flex flex-col items-center justify-center gap-3">
         <BatteryCharging strokeWidth={1.5} className={`${tone} w-[52px] h-[52px]`} />
-        <span className={`text-[16px] font-semibold ${tone}`}>
+        <span className={`text-lead font-semibold ${tone}`}>
           {status ? t(upsStatusKey(status)) : (raw ?? t(upsStatusKey(null)))}
         </span>
         {rows.length > 0 && (
-          <div className="flex flex-col gap-0.5 text-[13px] text-text-secondary">
+          <div className="flex flex-col gap-0.5 text-small text-text-secondary">
             {rows.map((row) => (
               <div key={row.key} className="flex items-center justify-between gap-4">
                 <span>{row.label}</span>
@@ -1740,12 +1741,12 @@ function ApplianceEquipmentWidget({
         />
 
         {!isOn || state === "off" ? (
-          <span className="text-[12px] text-text-tertiary">{t("controls.off")}</span>
+          <span className="text-caption text-text-tertiary">{t("controls.off")}</span>
         ) : isRunning ? (
           <div className="flex flex-col items-center gap-0.5">
-            <span className="text-[12px] font-medium text-accent">{t("common.running")}</span>
+            <span className="text-caption font-medium text-accent">{t("common.running")}</span>
             {remainingStr && (
-              <span className="flex items-center gap-1 text-[13px] font-mono tabular-nums text-text">
+              <span className="flex items-center gap-1 text-small font-mono tabular-nums text-text">
                 <Timer size={12} />
                 {remainingStr}
               </span>
@@ -1757,7 +1758,7 @@ function ApplianceEquipmentWidget({
             )}
           </div>
         ) : (
-          <span className="text-[12px] text-text-secondary">
+          <span className="text-caption text-text-secondary">
             {state === "paused" ? t("common.paused") : state === "ready" ? "Ready" : state}
           </span>
         )}
@@ -1827,7 +1828,7 @@ function WaterValveEquipmentWidget({
         {renderWidgetStateIcon(iconKey, <WaterValveWidgetIcon open={isOpen} />)}
         <div className="flex items-center gap-2 pl-2">
           <span
-            className={`text-[12px] font-medium px-2.5 py-0.5 rounded-full ${
+            className={`text-caption font-medium px-2.5 py-0.5 rounded-full ${
               isOpen ? "bg-active/10 text-active" : "bg-border-light text-text-tertiary"
             }`}
           >
@@ -1944,21 +1945,21 @@ function PoolCoverEquipmentWidget({
         </div>
         <div className="pl-2">
           {position === null ? (
-            <span className="text-[16px] text-text-tertiary">{"\u2014"}</span>
+            <span className="text-lead text-text-tertiary">{"\u2014"}</span>
           ) : position === 100 ? (
-            <span className="text-[13px] font-medium text-success px-2 py-0.5 rounded bg-success/10">
+            <span className="text-small font-medium text-success px-2 py-0.5 rounded bg-success/10">
               {t("controls.opened")}
             </span>
           ) : position === 0 ? (
-            <span className="text-[13px] font-medium text-text-secondary px-2 py-0.5 rounded bg-border-light">
+            <span className="text-small font-medium text-text-secondary px-2 py-0.5 rounded bg-border-light">
               {t("controls.closed")}
             </span>
           ) : (
             <div className="flex items-baseline gap-0.5">
-              <span className="text-[16px] font-semibold text-text tabular-nums leading-none">
+              <span className="text-lead font-semibold text-text tabular-nums leading-none">
                 {position}
               </span>
-              <span className="text-[12px] font-medium text-text-tertiary">%</span>
+              <span className="text-caption font-medium text-text-tertiary">%</span>
             </div>
           )}
         </div>
@@ -2034,7 +2035,7 @@ function CameraEquipmentWidget({
       </div>
       {monitoringBinding && (
         <span
-          className={`text-[11px] font-medium px-2 py-0.5 rounded-full mt-2 self-center ${
+          className={`text-micro font-medium px-2 py-0.5 rounded-full mt-2 self-center ${
             monitoringBinding.value === true
               ? "bg-success/10 text-success"
               : "bg-border-light text-text-tertiary"
@@ -2069,17 +2070,17 @@ function GenericEquipmentWidget({
   return (
     <WidgetCard label={label} sublabel={sublabel}>
       {equipment.dataBindings.length === 0 ? (
-        <span className="text-[12px] text-text-tertiary text-center">{t("dashboard.noData")}</span>
+        <span className="text-caption text-text-tertiary text-center">{t("dashboard.noData")}</span>
       ) : (
         <div className="flex flex-col items-center py-2 gap-1">
           {primaryBinding && (
-            <span className="text-[14px] text-text-secondary tabular-nums">
+            <span className="text-body text-text-secondary tabular-nums">
               {formatValue(primaryBinding.value, primaryBinding.unit)}
             </span>
           )}
           {stateBinding && (
             <span
-              className={`text-[11px] font-medium px-2 py-0.5 rounded-full ${isOn ? "bg-success/10 text-success" : "bg-border-light text-text-tertiary"}`}
+              className={`text-micro font-medium px-2 py-0.5 rounded-full ${isOn ? "bg-success/10 text-success" : "bg-border-light text-text-tertiary"}`}
             >
               {isOn ? t("common.on") : t("common.off")}
             </span>

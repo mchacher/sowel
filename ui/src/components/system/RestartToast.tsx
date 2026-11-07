@@ -46,20 +46,20 @@ export function RestartToast({ onClose }: { onClose: () => void }) {
           <RefreshCw size={18} className="text-primary" strokeWidth={1.5} />
         </div>
         <div className="flex-1 min-w-0">
-          <h3 className="text-[14px] font-semibold text-text">
+          <h3 className="text-body font-semibold text-text">
             {t("update.restartRequiredTitle")}
           </h3>
-          <p className="text-[12px] text-text-secondary mt-1">
+          <p className="text-caption text-text-secondary mt-1">
             {t("update.restartRequiredMessage")}
           </p>
           {error && (
-            <p className="text-[12px] text-error mt-2">{error}</p>
+            <p className="text-caption text-error mt-2">{error}</p>
           )}
           <div className="flex gap-2 mt-3">
             <button
               onClick={handleRestart}
               disabled={restarting}
-              className="flex items-center gap-1.5 px-3 py-1.5 text-[12px] font-medium bg-primary text-white rounded-[6px] hover:bg-primary-hover transition-colors disabled:opacity-50 cursor-pointer disabled:cursor-default"
+              className="flex items-center gap-1.5 px-3 py-1.5 text-caption font-medium bg-primary text-white rounded-[6px] hover:bg-primary-hover transition-colors disabled:opacity-50 cursor-pointer disabled:cursor-default"
             >
               {restarting ? (
                 <Loader2 size={12} className="animate-spin" />
@@ -71,7 +71,7 @@ export function RestartToast({ onClose }: { onClose: () => void }) {
             <button
               onClick={onClose}
               disabled={restarting}
-              className="px-3 py-1.5 text-[12px] font-medium text-text-secondary border border-border rounded-[6px] hover:bg-border-light transition-colors disabled:opacity-50 cursor-pointer"
+              className="px-3 py-1.5 text-caption font-medium text-text-secondary border border-border rounded-[6px] hover:bg-border-light transition-colors disabled:opacity-50 cursor-pointer"
             >
               {t("update.later")}
             </button>

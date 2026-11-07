@@ -80,23 +80,23 @@ export function EvChargerSessionsSection({
   return (
     <div className="bg-surface rounded-[10px] border border-border p-4 mb-6 flex flex-col gap-3">
       <div className="flex items-center justify-between gap-2">
-        <h3 className="text-[14px] font-semibold text-text">
+        <h3 className="text-body font-semibold text-text">
           {t("equipments.evSessions.sessions")}
         </h3>
         <EvMonthNav month={month} onChange={setMonth} />
       </div>
 
-      {error && <p className="text-[12px] text-error">{error}</p>}
+      {error && <p className="text-caption text-error">{error}</p>}
 
       {todo > 0 && (
-        <div className="flex items-center gap-2 bg-accent-light rounded-[8px] px-3 py-2.5 text-[13px] text-text">
+        <div className="flex items-center gap-2 bg-accent-light rounded-[8px] px-3 py-2.5 text-small text-text">
           <span className="w-2 h-2 rounded-full bg-accent-hover shrink-0" />
           {t("equipments.evSessions.todoBanner", { count: todo })}
         </div>
       )}
 
       {sessions.length === 0 ? (
-        <p className="text-[13px] text-text-tertiary">{t("equipments.evSessions.emptyCharger")}</p>
+        <p className="text-small text-text-tertiary">{t("equipments.evSessions.emptyCharger")}</p>
       ) : (
         <div className="flex flex-col border-t border-border-light">
           {sessions.map((s) => {
@@ -139,7 +139,7 @@ export function EvChargerSessionsSection({
                   })}
                 >
                   <div className="flex justify-between gap-3 w-full">
-                    <span className="text-[14px] font-medium text-text">
+                    <span className="text-body font-medium text-text">
                       {dayLabel(s.startedAt, locale)}{" "}
                       <span className="font-normal text-text-tertiary">
                         · {timeLabel(s.startedAt, locale)} →{" "}
@@ -148,20 +148,20 @@ export function EvChargerSessionsSection({
                           : t("equipments.evSessions.inProgress")}
                       </span>
                     </span>
-                    <span className="font-mono text-[14px] font-semibold text-text tabular-nums whitespace-nowrap">
+                    <span className="font-mono text-body font-semibold text-text tabular-nums whitespace-nowrap">
                       {eur(s.costEur)}
                     </span>
                   </div>
                   <div className="flex items-center justify-between gap-2 w-full">
                     <div className="flex items-center gap-2 min-w-0">
                       <span
-                        className={`text-[12px] font-medium px-2.5 py-0.5 rounded-full whitespace-nowrap ${chipClass}`}
+                        className={`text-caption font-medium px-2.5 py-0.5 rounded-full whitespace-nowrap ${chipClass}`}
                       >
                         {chipText}
                       </span>
-                      <span className="text-[12px] text-text-tertiary truncate">{how}</span>
+                      <span className="text-caption text-text-tertiary truncate">{how}</span>
                     </div>
-                    <span className="font-mono text-[12px] text-text-secondary tabular-nums whitespace-nowrap">
+                    <span className="font-mono text-caption text-text-secondary tabular-nums whitespace-nowrap">
                       {energyLabel(s.energyWh, locale)}
                     </span>
                   </div>
@@ -170,7 +170,7 @@ export function EvChargerSessionsSection({
                   <button
                     type="button"
                     onClick={() => setEditing(s)}
-                    className="self-start min-h-[44px] px-4 rounded-[8px] border border-primary text-primary text-[13px] font-medium hover:bg-primary-light cursor-pointer"
+                    className="self-start min-h-[44px] px-4 rounded-[8px] border border-primary text-primary text-small font-medium hover:bg-primary-light cursor-pointer"
                   >
                     {t("equipments.evSessions.choose")}
                   </button>
@@ -183,7 +183,7 @@ export function EvChargerSessionsSection({
 
       {isAdmin && vehicles.length > 1 && (
         <div className="pt-3 border-t border-border-light flex flex-col gap-1">
-          <label className="flex items-center justify-between gap-3 text-[13px] text-text">
+          <label className="flex items-center justify-between gap-3 text-small text-text">
             <span className="font-semibold">{t("equipments.evSessions.usual.title")}</span>
             <span className="flex items-center gap-2">
               {saving && <Loader2 size={12} className="animate-spin text-text-tertiary" />}
@@ -191,7 +191,7 @@ export function EvChargerSessionsSection({
                 value={usualVehicleId ?? ""}
                 disabled={saving}
                 onChange={(e) => void setUsual(e.target.value)}
-                className="min-h-[36px] px-2 rounded-[6px] border border-border bg-surface text-[13px] text-text"
+                className="min-h-[36px] px-2 rounded-[6px] border border-border bg-surface text-small text-text"
               >
                 <option value="">{t("equipments.evSessions.usual.none")}</option>
                 {vehicles.map((v) => (
@@ -202,7 +202,7 @@ export function EvChargerSessionsSection({
               </select>
             </span>
           </label>
-          <p className="text-[12px] text-text-tertiary">{t("equipments.evSessions.usual.hint")}</p>
+          <p className="text-caption text-text-tertiary">{t("equipments.evSessions.usual.hint")}</p>
         </div>
       )}
 

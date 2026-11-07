@@ -105,7 +105,7 @@ export function LiveSubmeterBreakdown({ house, hasMainMeter }: Props) {
             <LegendRow key={row.id} row={row} total={total} t={t} />
           ))}
           {hasMainMeter && other > 0 && (
-            <div className="grid grid-cols-[10px_1fr_auto_auto] gap-x-3 items-center text-[13px] opacity-80">
+            <div className="grid grid-cols-[10px_1fr_auto_auto] gap-x-3 items-center text-small opacity-80">
               <span
                 className="w-[10px] h-[10px] rounded-[2px] border border-border"
                 style={{ background: OTHER_COLOR }}
@@ -124,7 +124,7 @@ export function LiveSubmeterBreakdown({ house, hasMainMeter }: Props) {
               donut whose total never carried them. */}
           {separateRows.length > 0 && (
             <>
-              <div className="mt-2 pt-2 border-t border-border text-[11px] font-semibold uppercase tracking-wide text-text-tertiary">
+              <div className="mt-2 pt-2 border-t border-border text-micro font-semibold uppercase tracking-wide text-text-tertiary">
                 {t("energy.byUsage.separateSupply")}
               </div>
               {separateRows.map((row) => (
@@ -136,7 +136,7 @@ export function LiveSubmeterBreakdown({ house, hasMainMeter }: Props) {
       </div>
 
       {overshoot && (
-        <p className="mt-3 text-[12px] text-warning italic">
+        <p className="mt-3 text-caption text-warning italic">
           {t("energy.live.breakdown.overshoot")}
         </p>
       )}
@@ -146,7 +146,7 @@ export function LiveSubmeterBreakdown({ house, hasMainMeter }: Props) {
           true and nothing on screen connected them, which reads as an
           unmetered load appearing from nowhere (#744). */}
       {hasStale && (
-        <p className="mt-3 text-[12px] text-text-tertiary italic">
+        <p className="mt-3 text-caption text-text-tertiary italic">
           {t("energy.live.breakdown.staleNote")}
         </p>
       )}
@@ -239,19 +239,19 @@ function Donut({
       </svg>
       <div className="absolute inset-0 flex flex-col items-center justify-center text-center pointer-events-none">
         {idle ? (
-          <span className="text-[13px] font-semibold text-text-tertiary px-3">{totalLabel}</span>
+          <span className="text-small font-semibold text-text-tertiary px-3">{totalLabel}</span>
         ) : (
           <>
-            <span className="text-[10px] font-semibold uppercase tracking-widest text-text-tertiary">
+            <span className="text-micro font-semibold uppercase tracking-widest text-text-tertiary">
               {totalUnit ? "" : ""}
             </span>
             <span
-              className="font-mono font-bold flex items-baseline gap-1"
-              style={{ color: HOUSE_COLOR, fontSize: "26px", lineHeight: 1 }}
+              className="font-mono font-semibold text-display leading-none flex items-baseline gap-1"
+              style={{ color: HOUSE_COLOR }}
             >
               <span>{totalLabel}</span>
               {totalUnit && (
-                <span className="text-[12px] text-text-tertiary font-semibold">{totalUnit}</span>
+                <span className="text-caption text-text-tertiary font-semibold">{totalUnit}</span>
               )}
             </span>
           </>
@@ -277,7 +277,7 @@ function LegendRow({
 
   return (
     <div
-      className={`grid grid-cols-[10px_1fr_auto_auto] gap-x-3 items-center text-[13px] ${
+      className={`grid grid-cols-[10px_1fr_auto_auto] gap-x-3 items-center text-small ${
         isOffline || isStale ? "opacity-60" : ""
       }`}
     >
@@ -287,12 +287,12 @@ function LegendRow({
         {/* Spec 173 — this row is smaller than the meter's own card on purpose:
             say why here, rather than leave the reader to find the difference. */}
         {row.netOfChildren && (
-          <span className="text-[11px] text-text-tertiary">
+          <span className="text-micro text-text-tertiary">
             {t("energy.byUsage.netOfChildren")}
           </span>
         )}
         {isOffline && (
-          <span className="text-[11px] text-text-tertiary">
+          <span className="text-micro text-text-tertiary">
             {t("energy.live.breakdown.offline")}
             {row.offlineSince && ` · ${formatRelative(row.offlineSince, t)}`}
           </span>
@@ -300,7 +300,7 @@ function LegendRow({
         {/* Not "0 W": the row says the reading is old rather than presenting a
             number the household has no reason to doubt (#744). */}
         {!isOffline && isStale && (
-          <span className="text-[11px] text-text-tertiary">
+          <span className="text-micro text-text-tertiary">
             {t("energy.live.breakdown.stale")}
             {row.staleSince && ` · ${formatRelative(row.staleSince, t)}`}
           </span>

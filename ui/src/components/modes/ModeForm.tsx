@@ -43,7 +43,7 @@ export function ModeForm({ initial, onSubmit, onClose, title }: ModeFormProps) {
       >
         {/* Header */}
         <div className="flex items-center justify-between px-6 py-4 border-b border-border-light">
-          <h2 className="text-[16px] font-semibold text-text">{title}</h2>
+          <h2 className="text-lead font-semibold text-text">{title}</h2>
           <button
             onClick={onClose}
             className="text-text-tertiary hover:text-text-secondary transition-colors"
@@ -56,7 +56,7 @@ export function ModeForm({ initial, onSubmit, onClose, title }: ModeFormProps) {
         <form onSubmit={handleSubmit} className="p-6 space-y-4">
           {/* Name */}
           <div>
-            <label className="block text-[12px] font-medium text-text-secondary uppercase tracking-widest mb-1.5">
+            <label className="block text-caption font-medium text-text-secondary uppercase tracking-widest mb-1.5">
               {t("modes.name")}
             </label>
             <input
@@ -64,7 +64,7 @@ export function ModeForm({ initial, onSubmit, onClose, title }: ModeFormProps) {
               value={name}
               onChange={(e) => setName(e.target.value)}
               placeholder={t("modes.form.namePlaceholder")}
-              className="w-full px-3 py-2 text-[14px] bg-surface border border-border rounded-[6px] outline-none placeholder:text-text-tertiary focus:border-primary transition-colors duration-150"
+              className="w-full px-3 py-2 text-body bg-surface border border-border rounded-[6px] outline-none placeholder:text-text-tertiary focus:border-primary transition-colors duration-150"
               autoFocus
               maxLength={100}
             />
@@ -72,7 +72,7 @@ export function ModeForm({ initial, onSubmit, onClose, title }: ModeFormProps) {
 
           {/* Description */}
           <div>
-            <label className="block text-[12px] font-medium text-text-secondary uppercase tracking-widest mb-1.5">
+            <label className="block text-caption font-medium text-text-secondary uppercase tracking-widest mb-1.5">
               {t("modes.description")}
               <span className="text-text-tertiary font-normal normal-case tracking-normal ml-1">({t("common.optional")})</span>
             </label>
@@ -81,14 +81,14 @@ export function ModeForm({ initial, onSubmit, onClose, title }: ModeFormProps) {
               value={description}
               onChange={(e) => setDescription(e.target.value)}
               placeholder={t("modes.form.descriptionPlaceholder")}
-              className="w-full px-3 py-2 text-[14px] bg-surface border border-border rounded-[6px] outline-none placeholder:text-text-tertiary focus:border-primary transition-colors duration-150"
+              className="w-full px-3 py-2 text-body bg-surface border border-border rounded-[6px] outline-none placeholder:text-text-tertiary focus:border-primary transition-colors duration-150"
               maxLength={500}
             />
           </div>
 
           {/* Error */}
           {error && (
-            <p className="text-[13px] text-error">{error}</p>
+            <p className="text-small text-error">{error}</p>
           )}
 
           {/* Actions */}
@@ -96,14 +96,14 @@ export function ModeForm({ initial, onSubmit, onClose, title }: ModeFormProps) {
             <button
               type="button"
               onClick={onClose}
-              className="px-4 py-2 text-[13px] font-medium text-text-secondary hover:text-text border border-border rounded-[6px] hover:bg-border-light transition-colors duration-150"
+              className="px-4 py-2 text-small font-medium text-text-secondary hover:text-text border border-border rounded-[6px] hover:bg-border-light transition-colors duration-150"
             >
               {t("common.cancel")}
             </button>
             <button
               type="submit"
               disabled={!name.trim() || saving}
-              className="px-4 py-2 text-[13px] font-medium text-white bg-primary rounded-[6px] hover:bg-primary-hover transition-colors duration-150 disabled:opacity-50 disabled:cursor-not-allowed"
+              className="px-4 py-2 text-small font-medium text-white bg-primary rounded-[6px] hover:bg-primary-hover transition-colors duration-150 disabled:opacity-50 disabled:cursor-not-allowed"
             >
               {saving ? t("common.saving") : initial ? t("common.save") : t("common.create")}
             </button>

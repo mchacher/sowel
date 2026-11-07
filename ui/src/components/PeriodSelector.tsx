@@ -58,7 +58,7 @@ export function PeriodSelector({
             key={p.key}
             type="button"
             onClick={() => onPeriodChange(p.key)}
-            className={`min-w-[60px] px-3 py-1.5 text-[12px] font-medium text-center transition-colors cursor-pointer ${
+            className={`min-w-[60px] px-3 py-1.5 text-caption font-medium text-center transition-colors cursor-pointer ${
               period === p.key
                 ? "bg-primary text-white"
                 : "bg-surface text-text-secondary hover:bg-border-light hover:text-text"
@@ -79,7 +79,7 @@ export function PeriodSelector({
         >
           <ChevronLeft size={16} strokeWidth={1.5} />
         </button>
-        <span className="text-[13px] font-medium text-text min-w-[160px] text-center">
+        <span className="text-small font-medium text-text min-w-[160px] text-center">
           {formatDateLabel(date, period, locale)}
         </span>
         <button
@@ -99,7 +99,7 @@ export function PeriodSelector({
           type="button"
           onClick={onToday}
           disabled={isToday}
-          className={`ml-1 px-2 py-1 rounded-[6px] text-[11px] font-medium transition-colors ${
+          className={`ml-1 px-2 py-1 rounded-[6px] text-micro font-medium transition-colors ${
             isToday
               ? "text-text-tertiary bg-border-light cursor-default"
               : "text-primary bg-primary-light hover:bg-primary hover:text-white cursor-pointer"

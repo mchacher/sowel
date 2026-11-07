@@ -51,11 +51,11 @@ export function ModesPage() {
           <div className="w-16 h-16 rounded-full bg-error/10 flex items-center justify-center mb-4">
             <AlertCircle size={28} strokeWidth={1.5} className="text-error" />
           </div>
-          <h3 className="text-[16px] font-medium text-text mb-1">{t("common.error")}</h3>
-          <p className="text-[13px] text-text-secondary max-w-[320px] mb-4">{error}</p>
+          <h3 className="text-lead font-medium text-text mb-1">{t("common.error")}</h3>
+          <p className="text-small text-text-secondary max-w-[320px] mb-4">{error}</p>
           <button
             onClick={() => { setError(null); fetchModes(); }}
-            className="px-4 py-2 bg-primary text-white text-[13px] font-medium rounded-[6px] hover:bg-primary-hover transition-colors duration-150"
+            className="px-4 py-2 bg-primary text-white text-small font-medium rounded-[6px] hover:bg-primary-hover transition-colors duration-150"
           >
             {t("common.retry")}
           </button>
@@ -72,7 +72,7 @@ export function ModesPage() {
           <h1>
             {t("modes.title")}
           </h1>
-          <p className="text-[13px] text-text-secondary mt-0.5">
+          <p className="text-small text-text-secondary mt-0.5">
             {t("modes.subtitle")}
           </p>
         </div>
@@ -80,13 +80,13 @@ export function ModesPage() {
           {isAdmin && (
           <button
             onClick={() => setShowForm(true)}
-            className="flex items-center gap-1.5 sm:gap-2 px-3 sm:px-4 py-2 bg-primary text-white text-[13px] font-medium rounded-[6px] hover:bg-primary-hover transition-colors duration-150"
+            className="flex items-center gap-1.5 sm:gap-2 px-3 sm:px-4 py-2 bg-primary text-white text-small font-medium rounded-[6px] hover:bg-primary-hover transition-colors duration-150"
           >
             <Plus size={16} strokeWidth={1.5} />
             <span className="hidden sm:inline">{t("modes.addMode")}</span>
           </button>
           )}
-          <span className="text-[13px] font-medium text-primary bg-primary-light px-3 py-1.5 rounded-[6px] tabular-nums">
+          <span className="text-small font-medium text-primary bg-primary-light px-3 py-1.5 rounded-[6px] tabular-nums">
             {modes.length}
           </span>
         </div>
@@ -98,8 +98,8 @@ export function ModesPage() {
           <div className="w-16 h-16 rounded-full bg-border-light flex items-center justify-center mb-4">
             <Layers size={28} strokeWidth={1.5} className="text-text-tertiary" />
           </div>
-          <h3 className="text-[16px] font-medium text-text mb-1">{t("modes.noModes")}</h3>
-          <p className="text-[13px] text-text-secondary max-w-[320px]">
+          <h3 className="text-lead font-medium text-text mb-1">{t("modes.noModes")}</h3>
+          <p className="text-small text-text-secondary max-w-[320px]">
             {t("modes.noModesMessage")}
           </p>
         </div>
@@ -171,13 +171,13 @@ function ModeCard({ mode, calendarSlots, onClick }: { mode: ModeWithDetails; cal
         )}
       </div>
       <div className="flex-1 min-w-0">
-        <div className="text-[14px] font-medium text-text truncate">
+        <div className="text-body font-medium text-text truncate">
           {mode.name}
         </div>
         {mode.description && (
-          <div className="text-[12px] text-text-secondary truncate">{mode.description}</div>
+          <div className="text-caption text-text-secondary truncate">{mode.description}</div>
         )}
-        <div className="text-[11px] text-text-tertiary truncate">
+        <div className="text-micro text-text-tertiary truncate">
           {summary ?? t("modes.noImpacts")}
           {nextSlot && (
             <span className="ml-1.5">

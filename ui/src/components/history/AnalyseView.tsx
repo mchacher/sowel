@@ -1,3 +1,4 @@
+import { CHART_TICK_FONT } from "../../lib/chart-font";
 import { useState, useEffect, useCallback, useMemo, useRef, type MouseEvent } from "react";
 import { useParams, useNavigate, useSearchParams } from "react-router-dom";
 import { useTranslation } from "react-i18next";
@@ -759,7 +760,7 @@ export function AnalyseView() {
           {styledSeries.map((s) => (
             <div
               key={s.id}
-              className={`relative flex items-center gap-1.5 px-2.5 py-1 text-[12px] font-medium border ${
+              className={`relative flex items-center gap-1.5 px-2.5 py-1 text-caption font-medium border ${
                 s.deleted
                   ? "flex-wrap rounded-[10px] bg-warning/10 border-warning/40"
                   : "rounded-full bg-surface border-border"
@@ -824,7 +825,7 @@ export function AnalyseView() {
                 setSelectedZoneId(flatZones[0].id);
               }
             }}
-            className="flex items-center gap-1 px-2.5 py-1 rounded-full text-[12px] font-medium
+            className="flex items-center gap-1 px-2.5 py-1 rounded-full text-caption font-medium
               bg-primary-light text-primary hover:bg-primary hover:text-white
               transition-colors cursor-pointer"
           >
@@ -836,7 +837,7 @@ export function AnalyseView() {
               mixed chart) */}
           {familyLabel && (
             <span
-              className="px-2 py-0.5 rounded-full text-[11px] font-medium bg-border-light text-text-secondary"
+              className="px-2 py-0.5 rounded-full text-micro font-medium bg-border-light text-text-secondary"
               title={t("analyse.familyLocked", { family: familyLabel })}
             >
               {familyLabel}
@@ -852,7 +853,7 @@ export function AnalyseView() {
               <button
                 type="button"
                 onClick={() => setEnvelopeOn((v) => !v)}
-                className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-[6px] text-[12px] font-medium
+                className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-[6px] text-caption font-medium
                   transition-colors cursor-pointer ${
                     envelopeOn
                       ? "bg-primary-light text-primary hover:bg-primary hover:text-white"
@@ -870,7 +871,7 @@ export function AnalyseView() {
               <button
                 type="button"
                 onClick={() => setYAxisFit((v) => !v)}
-                className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-[6px] text-[12px] font-medium
+                className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-[6px] text-caption font-medium
                   transition-colors cursor-pointer ${
                     yAxisFit
                       ? "bg-primary-light text-primary hover:bg-primary hover:text-white"
@@ -898,7 +899,7 @@ export function AnalyseView() {
               type="button"
               onClick={handleSave}
               disabled={saving}
-              className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-[6px] text-[12px] font-medium
+              className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-[6px] text-caption font-medium
                 bg-primary-light text-primary hover:bg-primary hover:text-white
                 transition-colors cursor-pointer disabled:opacity-50"
               title={t("analyse.save")}
@@ -939,7 +940,7 @@ export function AnalyseView() {
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             {/* Zone selector */}
             <div>
-              <label className="block text-[11px] font-medium text-text-tertiary mb-1">
+              <label className="block text-micro font-medium text-text-tertiary mb-1">
                 {t("analyse.zone")}
               </label>
               <div className="relative">
@@ -949,7 +950,7 @@ export function AnalyseView() {
                     setSelectedZoneId(e.target.value);
                     setSelectedEquipmentId("");
                   }}
-                  className="w-full px-3 py-1.5 pr-8 rounded-[6px] border border-border bg-surface text-[12px] text-text appearance-none cursor-pointer"
+                  className="w-full px-3 py-1.5 pr-8 rounded-[6px] border border-border bg-surface text-caption text-text appearance-none cursor-pointer"
                 >
                   {flatZones.map((z) => (
                     <option key={z.id} value={z.id}>
@@ -963,14 +964,14 @@ export function AnalyseView() {
 
             {/* Equipment selector */}
             <div>
-              <label className="block text-[11px] font-medium text-text-tertiary mb-1">
+              <label className="block text-micro font-medium text-text-tertiary mb-1">
                 {t("analyse.equipment")}
               </label>
               <div className="relative">
                 <select
                   value={selectedEquipmentId}
                   onChange={(e) => setSelectedEquipmentId(e.target.value)}
-                  className="w-full px-3 py-1.5 pr-8 rounded-[6px] border border-border bg-surface text-[12px] text-text appearance-none cursor-pointer"
+                  className="w-full px-3 py-1.5 pr-8 rounded-[6px] border border-border bg-surface text-caption text-text appearance-none cursor-pointer"
                 >
                   <option value="">{t("analyse.selectEquipment")}</option>
                   {filteredEquipments.map((eq) => (
@@ -985,16 +986,16 @@ export function AnalyseView() {
           {/* Metric selector */}
           {selectedEquipmentId && (
             <div>
-              <label className="block text-[11px] font-medium text-text-tertiary mb-1">
+              <label className="block text-micro font-medium text-text-tertiary mb-1">
                 {t("analyse.metric")}
               </label>
               {loadingBindings ? (
                 <div className="flex items-center gap-2 py-2">
                   <Loader2 size={12} className="animate-spin text-text-tertiary" />
-                  <span className="text-[12px] text-text-tertiary">{t("common.loading")}</span>
+                  <span className="text-caption text-text-tertiary">{t("common.loading")}</span>
                 </div>
               ) : availableBindings.length === 0 ? (
-                <p className="text-[12px] text-text-tertiary py-2">{t("analyse.noHistorizedData")}</p>
+                <p className="text-caption text-text-tertiary py-2">{t("analyse.noHistorizedData")}</p>
               ) : (
                 <div className="flex flex-wrap gap-1.5">
                   {availableBindings.map((b) => {
@@ -1019,7 +1020,7 @@ export function AnalyseView() {
                         disabled={disabled}
                         onClick={() => addSeries(b)}
                         title={title}
-                        className={`px-2.5 py-1 rounded-[4px] text-[12px] font-medium transition-colors cursor-pointer ${
+                        className={`px-2.5 py-1 rounded-[4px] text-caption font-medium transition-colors cursor-pointer ${
                           disabled
                             ? "bg-border-light text-text-tertiary cursor-not-allowed opacity-60"
                             : "bg-border-light/50 text-text hover:bg-primary-light hover:text-primary"
@@ -1046,7 +1047,7 @@ export function AnalyseView() {
         // area without competing for attention.
         <div className="bg-surface/50 rounded-[10px] border border-dashed border-border flex flex-col items-center justify-center py-12 text-center">
           <BarChart3 size={28} strokeWidth={1} className="text-border mb-2" />
-          <p className="text-[12px] text-text-tertiary">{t("analyse.emptyHint")}</p>
+          <p className="text-caption text-text-tertiary">{t("analyse.emptyHint")}</p>
         </div>
       ) : (
         <div ref={chartCardRef} className="relative bg-surface rounded-[10px] border border-border p-4">
@@ -1070,12 +1071,12 @@ export function AnalyseView() {
           {anyLoading && (
             <div className="flex items-center gap-2 mb-3">
               <Loader2 size={14} className="animate-spin text-text-tertiary" />
-              <span className="text-[12px] text-text-tertiary">{t("history.loading")}</span>
+              <span className="text-caption text-text-tertiary">{t("history.loading")}</span>
             </div>
           )}
 
           {chartData.length === 0 && !anyLoading ? (
-            <div className="flex items-center justify-center py-16 text-[12px] text-text-tertiary">
+            <div className="flex items-center justify-center py-16 text-caption text-text-tertiary">
               {t("history.noData")}
             </div>
           ) : (
@@ -1093,7 +1094,7 @@ export function AnalyseView() {
                     type="number"
                     domain={["dataMin", "dataMax"]}
                     scale="time"
-                    tick={{ fontSize: 10, fill: textTertiary }}
+                    tick={{ fontSize: CHART_TICK_FONT, fill: textTertiary }}
                     tickLine={false}
                     axisLine={{ stroke: borderColor }}
                     minTickGap={xMinTickGap}
@@ -1106,7 +1107,7 @@ export function AnalyseView() {
                       const s = series.find((ser) => ser.id === value);
                       return s ? seriesFullLabel(s, t) : value;
                     }}
-                    wrapperStyle={{ fontSize: "11px", cursor: "pointer" }}
+                    wrapperStyle={{ fontSize: CHART_TICK_FONT, cursor: "pointer" }}
                     onClick={openColorPickerFromLegend}
                   />
                 );
@@ -1130,7 +1131,7 @@ export function AnalyseView() {
                       {commonGrid}
                       {commonXAxis}
                       <YAxis
-                        tick={{ fontSize: 10, fill: textTertiary }}
+                        tick={{ fontSize: CHART_TICK_FONT, fill: textTertiary }}
                         tickLine={false}
                         axisLine={false}
                         width={52}
@@ -1167,7 +1168,7 @@ export function AnalyseView() {
                       <YAxis
                         domain={[0, 1]}
                         ticks={[0, 1]}
-                        tick={{ fontSize: 10, fill: textTertiary }}
+                        tick={{ fontSize: CHART_TICK_FONT, fill: textTertiary }}
                         tickLine={false}
                         axisLine={false}
                         width={68}
@@ -1213,7 +1214,7 @@ export function AnalyseView() {
                       {...(fittedAxes.left
                         ? { domain: fittedAxes.left.domain, ticks: fittedAxes.left.ticks }
                         : {})}
-                      tick={{ fontSize: 10, fill: axisColors.left ?? textTertiary }}
+                      tick={{ fontSize: CHART_TICK_FONT, fill: axisColors.left ?? textTertiary }}
                       tickLine={false}
                       axisLine={false}
                       width={splitAxes ? 62 : 52}
@@ -1228,7 +1229,7 @@ export function AnalyseView() {
                         {...(fittedAxes.right
                           ? { domain: fittedAxes.right.domain, ticks: fittedAxes.right.ticks }
                           : {})}
-                        tick={{ fontSize: 10, fill: axisColors.right ?? textTertiary }}
+                        tick={{ fontSize: CHART_TICK_FONT, fill: axisColors.right ?? textTertiary }}
                         tickLine={false}
                         axisLine={false}
                         width={62}
@@ -1241,7 +1242,7 @@ export function AnalyseView() {
                         orientation="right"
                         domain={[0, 1]}
                         ticks={[0, 1]}
-                        tick={{ fontSize: 10, fill: textTertiary }}
+                        tick={{ fontSize: CHART_TICK_FONT, fill: textTertiary }}
                         tickLine={false}
                         axisLine={false}
                         width={68}
@@ -1313,10 +1314,10 @@ export function AnalyseView() {
       {showSaveModal && (
         <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50">
           <div className="bg-surface rounded-[14px] border border-border shadow-xl w-[360px] p-5">
-            <h2 className="text-[15px] font-semibold text-text mb-3">
+            <h2 className="text-lead font-semibold text-text mb-3">
               {saveMode === "saveAs" ? t("analyse.saveAs") : t("analyse.save")}
             </h2>
-            <label className="block text-[11px] font-medium text-text-tertiary mb-1">
+            <label className="block text-micro font-medium text-text-tertiary mb-1">
               {t("analyse.saveName")}
             </label>
             <input
@@ -1326,14 +1327,14 @@ export function AnalyseView() {
               onChange={(e) => setSaveName(e.target.value)}
               onKeyDown={(e) => { if (e.key === "Enter") handleSaveConfirm(); }}
               placeholder={t("analyse.saveNamePlaceholder")}
-              className="w-full px-3 py-2 rounded-[6px] border border-border bg-surface text-[13px] text-text
+              className="w-full px-3 py-2 rounded-[6px] border border-border bg-surface text-small text-text
                 focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary"
             />
             <div className="flex justify-end gap-2 mt-4">
               <button
                 type="button"
                 onClick={() => setShowSaveModal(false)}
-                className="px-3 py-1.5 rounded-[6px] text-[12px] font-medium text-text-secondary
+                className="px-3 py-1.5 rounded-[6px] text-caption font-medium text-text-secondary
                   hover:bg-border-light transition-colors cursor-pointer"
               >
                 {t("common.cancel")}
@@ -1342,7 +1343,7 @@ export function AnalyseView() {
                 type="button"
                 onClick={handleSaveConfirm}
                 disabled={!saveName.trim() || saving}
-                className="px-3 py-1.5 rounded-[6px] text-[12px] font-medium bg-primary text-white
+                className="px-3 py-1.5 rounded-[6px] text-caption font-medium bg-primary text-white
                   hover:bg-primary-hover transition-colors cursor-pointer disabled:opacity-50"
               >
                 {saving ? <Loader2 size={14} className="animate-spin" /> : t("analyse.save")}
@@ -1356,17 +1357,17 @@ export function AnalyseView() {
       {showDeleteConfirm && currentChart && (
         <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50">
           <div className="bg-surface rounded-[14px] border border-border shadow-xl w-[360px] p-5">
-            <h2 className="text-[15px] font-semibold text-text mb-3">
+            <h2 className="text-lead font-semibold text-text mb-3">
               {t("analyse.deleteChart")}
             </h2>
-            <p className="text-[13px] text-text-secondary">
+            <p className="text-small text-text-secondary">
               {t("analyse.deleteConfirm", { name: currentChart.name })}
             </p>
             <div className="flex justify-end gap-2 mt-4">
               <button
                 type="button"
                 onClick={() => setShowDeleteConfirm(false)}
-                className="px-3 py-1.5 rounded-[6px] text-[12px] font-medium text-text-secondary
+                className="px-3 py-1.5 rounded-[6px] text-caption font-medium text-text-secondary
                   hover:bg-border-light transition-colors cursor-pointer"
               >
                 {t("common.cancel")}
@@ -1374,7 +1375,7 @@ export function AnalyseView() {
               <button
                 type="button"
                 onClick={handleDelete}
-                className="px-3 py-1.5 rounded-[6px] text-[12px] font-medium bg-error text-white
+                className="px-3 py-1.5 rounded-[6px] text-caption font-medium bg-error text-white
                   hover:bg-error/80 transition-colors cursor-pointer"
               >
                 {t("common.delete")}

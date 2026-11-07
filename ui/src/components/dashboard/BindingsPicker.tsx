@@ -91,8 +91,8 @@ export function BindingsPicker({ bindings, visibleAliases, onUpdate, onClose, mo
           onChange={() => handleToggle(b.alias)}
           className="accent-primary w-3.5 h-3.5 flex-shrink-0"
         />
-        <span className="text-[12px] text-text flex-1 truncate">{b.alias}</span>
-        <span className="text-[11px] text-text-tertiary tabular-nums flex-shrink-0">
+        <span className="text-caption text-text flex-1 truncate">{b.alias}</span>
+        <span className="text-micro text-text-tertiary tabular-nums flex-shrink-0">
           {formatSensorValue(b.value, b.unit, t)}
         </span>
       </label>
@@ -126,7 +126,7 @@ export function BindingsPicker({ bindings, visibleAliases, onUpdate, onClose, mo
           : "absolute z-20 top-full left-1/2 -translate-x-1/2 mt-1 w-[260px]"
       }`}
     >
-      <h3 className="text-[12px] font-medium text-text-secondary mb-2">{t("dashboard.visibleData")}</h3>
+      <h3 className="text-caption font-medium text-text-secondary mb-2">{t("dashboard.visibleData")}</h3>
       <div className="flex flex-col gap-0.5">
         {checked.map((b, i) => renderRow(b, checked.length > 1, i, checked.length))}
         {unchecked.length > 0 && checked.length > 0 && (

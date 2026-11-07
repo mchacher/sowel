@@ -49,7 +49,7 @@ export function SidebarItem({
     >
       <span className="flex-shrink-0 relative">{icon}</span>
       {!collapsed && (
-        <span className="text-[13px] font-medium truncate">{label}</span>
+        <span className="text-small font-medium truncate">{label}</span>
       )}
       {!collapsed && badge !== undefined && (
         <span className="ml-auto flex-shrink-0">{badge}</span>

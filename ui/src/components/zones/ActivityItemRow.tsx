@@ -38,15 +38,15 @@ export function ActivityItemRow({ item }: Props) {
   return (
     <div className="grid grid-cols-[24px_1fr_auto] gap-[0.55rem] items-start px-[1.1rem] py-[0.45rem]">
       <CategoryIcon category={item.category} template={item.message.template} />
-      <div className="text-[0.78rem] text-text-secondary leading-[1.45] min-w-0 break-words">
+      <div className="text-caption text-text-secondary leading-[1.45] min-w-0 break-words">
         <Message item={item} recipeLabel={recipeLabel} />
         {item.source && (
-          <span className="text-[0.68rem] text-text-tertiary ml-[0.15rem] whitespace-nowrap">
+          <span className="text-micro text-text-tertiary ml-[0.15rem] whitespace-nowrap">
             {formatSource(item.source, t, recipeLabel)}
           </span>
         )}
       </div>
-      <span className="font-mono text-[0.66rem] text-text-tertiary pt-[4px] leading-none tabular-nums">
+      <span className="font-mono text-micro text-text-tertiary pt-[4px] leading-none tabular-nums">
         {formatTime(item.timestamp)}
       </span>
     </div>

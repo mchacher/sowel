@@ -136,7 +136,7 @@ export function DevicesPage() {
                 value={filter}
                 onChange={(e) => setFilter(e.target.value)}
                 placeholder={t("devices.filterPlaceholder")}
-                className="w-full sm:w-[200px] pl-8 pr-8 py-1.5 text-[13px] bg-surface border border-border rounded-[6px] outline-none placeholder:text-text-tertiary focus:border-primary transition-colors duration-150"
+                className="w-full sm:w-[200px] pl-8 pr-8 py-1.5 text-small bg-surface border border-border rounded-[6px] outline-none placeholder:text-text-tertiary focus:border-primary transition-colors duration-150"
               />
               {filter && (
                 <button
@@ -150,7 +150,7 @@ export function DevicesPage() {
 
             <div className="hidden sm:flex items-center gap-2 px-3 py-1.5 rounded-[6px] bg-primary-light text-primary">
               <Radio size={16} strokeWidth={1.5} />
-              <span className="text-[13px] font-medium">
+              <span className="text-small font-medium">
                 {filter ? `${filtered.length}/${tabFiltered.length}` : tabFiltered.length}
               </span>
             </div>
@@ -220,7 +220,7 @@ function TabButton({
     <button
       onClick={onClick}
       className={`
-        shrink-0 px-3 py-2 text-[13px] font-medium transition-colors duration-150
+        shrink-0 px-3 py-2 text-small font-medium transition-colors duration-150
         border-b-2 -mb-px cursor-pointer
         ${
           active
@@ -231,7 +231,7 @@ function TabButton({
     >
       {label}
       <span
-        className={`ml-1.5 text-[11px] tabular-nums ${active ? "text-primary/70" : "text-text-tertiary"}`}
+        className={`ml-1.5 text-micro tabular-nums ${active ? "text-primary/70" : "text-text-tertiary"}`}
       >
         {count}
       </span>
@@ -248,11 +248,11 @@ function ErrorState({ error }: { error: string }) {
       <div className="w-16 h-16 rounded-full bg-error/10 flex items-center justify-center mb-4">
         <Radio size={28} strokeWidth={1.5} className="text-error" />
       </div>
-      <h3 className="text-[16px] font-medium text-text mb-1">{t("devices.error.title")}</h3>
-      <p className="text-[13px] text-text-secondary max-w-[320px] mb-4">{error}</p>
+      <h3 className="text-lead font-medium text-text mb-1">{t("devices.error.title")}</h3>
+      <p className="text-small text-text-secondary max-w-[320px] mb-4">{error}</p>
       <button
         onClick={() => fetchDevices()}
-        className="px-4 py-2 bg-primary text-white text-[13px] font-medium rounded-[6px] hover:bg-primary-hover transition-colors duration-150 ease-out"
+        className="px-4 py-2 bg-primary text-white text-small font-medium rounded-[6px] hover:bg-primary-hover transition-colors duration-150 ease-out"
       >
         {t("common.retry")}
       </button>

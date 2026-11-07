@@ -1,7 +1,9 @@
 @import "tailwindcss";
-@import "@fontsource/inter/400.css";
-@import "@fontsource/inter/500.css";
-@import "@fontsource/inter/600.css";
+/* Inter variable: every weight, so no synthetic bold, plus the optical-size
+   axis that gives large values the display cut. JetBrains Mono stays at 400,
+   the only weight it keeps once it is reserved for logs, ids and code.
+   Spec 196, slice 5a. */
+@import "@fontsource-variable/inter/opsz.css";
 @import "@fontsource/jetbrains-mono/400.css";
 @import "../../design-system/tokens.css";
 
@@ -48,9 +50,16 @@
   --font-sans: var(--font-body);
   --font-mono: var(--font-mono);
 
-  /* Font sizes — Sowel specific (no design-system equivalent yet) */
-  --font-size-data-lg: 28px;
-  --font-size-data-md: 20px;
+  /* Type scale — resolved from design-system/tokens.css (spec 196). Use these
+     text-* utilities; arbitrary sizes (text-[13px]) are rejected by eslint. */
+  --text-micro: var(--fs-micro);
+  --text-caption: var(--fs-caption);
+  --text-small: var(--fs-small);
+  --text-body: var(--fs-body);
+  --text-lead: var(--fs-lead);
+  --text-title: var(--fs-title);
+  --text-display: var(--fs-display);
+  --text-value: var(--fs-value);
 
   /* Border radius — aligned with design-system tokens */
   --radius-sm: 6px;
@@ -101,7 +110,7 @@
 
 body {
   font-family: var(--font-sans);
-  font-size: 14px;
+  font-size: var(--text-body);
   line-height: 20px;
   color: var(--color-text);
   background-color: var(--color-background);

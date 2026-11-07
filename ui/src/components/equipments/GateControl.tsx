@@ -39,7 +39,7 @@ export function GateControl({ equipment, onExecuteOrder, compact }: GateControlP
         {/* State badge */}
         <span
           className={`
-            text-[11px] font-medium px-2 py-0.5 rounded-full flex-shrink-0
+            text-micro font-medium px-2 py-0.5 rounded-full flex-shrink-0
             ${gateState === "open"
               ? "bg-warning/10 text-warning"
               : gateState === "closed"
@@ -96,7 +96,7 @@ export function GateControl({ equipment, onExecuteOrder, compact }: GateControlP
               : <HelpCircle size={22} strokeWidth={1.5} />
           }
         </div>
-        <div className="text-[16px] font-medium text-text">
+        <div className="text-lead font-medium text-text">
           {t(`controls.gate.${gateState}`)}
         </div>
       </div>
@@ -112,7 +112,7 @@ export function GateControl({ equipment, onExecuteOrder, compact }: GateControlP
                 onClick={() => handleCommand(val)}
                 disabled={executing}
                 className={`
-                  flex items-center gap-2 px-4 py-2 rounded-[6px] text-[13px] font-medium
+                  flex items-center gap-2 px-4 py-2 rounded-[6px] text-small font-medium
                   transition-colors duration-150
                   bg-border-light text-text-secondary hover:bg-border hover:text-text
                   disabled:opacity-50
@@ -128,7 +128,7 @@ export function GateControl({ equipment, onExecuteOrder, compact }: GateControlP
               onClick={() => handleCommand()}
               disabled={executing}
               className={`
-                flex items-center gap-2 px-4 py-2 rounded-[6px] text-[13px] font-medium
+                flex items-center gap-2 px-4 py-2 rounded-[6px] text-small font-medium
                 transition-colors duration-150
                 bg-border-light text-text-secondary hover:bg-border hover:text-text
                 disabled:opacity-50

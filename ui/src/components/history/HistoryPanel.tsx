@@ -157,10 +157,10 @@ export function HistoryPanel({ equipmentId, bindings }: HistoryPanelProps) {
           : <ChevronRight size={14} strokeWidth={1.5} className="text-text-tertiary" />
         }
         <BarChart3 size={16} strokeWidth={1.5} className="text-text-tertiary" />
-        <span className="text-[14px] font-semibold text-text">
+        <span className="text-body font-semibold text-text">
           {t("history.chart")}
         </span>
-        <span className="text-[11px] text-text-tertiary">
+        <span className="text-micro text-text-tertiary">
           {allCharts.length}
         </span>
       </button>
@@ -177,7 +177,7 @@ export function HistoryPanel({ equipmentId, bindings }: HistoryPanelProps) {
               <button
                 type="button"
                 onClick={() => handleToggle(entry.alias)}
-                className={`flex items-center justify-between w-full px-2.5 py-1.5 rounded-[4px] text-[12px] cursor-pointer transition-colors ${
+                className={`flex items-center justify-between w-full px-2.5 py-1.5 rounded-[4px] text-caption cursor-pointer transition-colors ${
                   isExpanded
                     ? "bg-primary-light"
                     : "bg-border-light/50 hover:bg-border-light"
@@ -200,12 +200,12 @@ export function HistoryPanel({ equipmentId, bindings }: HistoryPanelProps) {
                   {chart?.loading ? (
                     <div className="flex items-center justify-center py-8">
                       <Loader2 size={16} className="animate-spin text-text-tertiary" />
-                      <span className="ml-2 text-[12px] text-text-tertiary">
+                      <span className="ml-2 text-caption text-text-tertiary">
                         {t("history.loading")}
                       </span>
                     </div>
                   ) : chart?.error ? (
-                    <div className="text-[12px] text-error text-center py-8">
+                    <div className="text-caption text-error text-center py-8">
                       {chart.error}
                     </div>
                   ) : (
@@ -232,7 +232,7 @@ export function HistoryPanel({ equipmentId, bindings }: HistoryPanelProps) {
                         />
                       )}
                       {chart?.resolution && (
-                        <div className="text-[10px] text-text-tertiary text-right mt-1">
+                        <div className="text-micro text-text-tertiary text-right mt-1">
                           {t("history.resolution")}{t("common.colon")}{t(RESOLUTION_I18N[chart.resolution])}
                         </div>
                       )}

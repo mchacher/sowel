@@ -57,7 +57,7 @@ export function ChartTooltip({ active, payload, series }: ChartTooltipProps) {
   if (rows.length === 0) return null;
 
   return (
-    <div className="max-w-[min(280px,88vw)] rounded-[6px] border border-border bg-surface px-3 py-2 text-[12px] text-text shadow-md">
+    <div className="max-w-[min(280px,88vw)] rounded-[6px] border border-border bg-surface px-3 py-2 text-caption text-text shadow-md">
       {header && <div className="mb-1.5 font-medium text-text-secondary">{header}</div>}
       <ul className="space-y-1">
         {rows.map((r) => (

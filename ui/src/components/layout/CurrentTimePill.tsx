@@ -32,7 +32,7 @@ export function CurrentTimePill({
   if (!loaded) return null;
 
   const size = compact ? 12 : 13;
-  const textSize = compact ? "text-[11px]" : "text-[12px]";
+  const textSize = compact ? "text-micro" : "text-caption";
   const padding = compact ? "" : "px-2.5 py-1 rounded-full bg-[var(--n-50)] border border-border-light";
   const textColor = compact ? "text-primary" : "text-text-secondary";
 

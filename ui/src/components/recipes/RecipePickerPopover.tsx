@@ -82,7 +82,7 @@ export function RecipePickerPopover({
   }, [recipes, equipments, zoneId, zoneAndDescendantIds, usedLightIds]);
 
   const list = availableRecipes.length === 0 ? (
-    <div className="px-3 py-4 text-center text-[12px] text-text-tertiary">
+    <div className="px-3 py-4 text-center text-caption text-text-tertiary">
       {t("recipes.noRecipesAvailable")}
     </div>
   ) : (
@@ -96,11 +96,11 @@ export function RecipePickerPopover({
           <ChefHat size={14} strokeWidth={1.5} />
         </div>
         <div className="min-w-0 flex-1">
-          <div className="text-[13px] font-medium text-text leading-tight">
+          <div className="text-small font-medium text-text leading-tight">
             {recipeName(recipe, lang)}
           </div>
           <div
-            className="text-[11px] text-text-tertiary leading-snug mt-0.5 overflow-hidden"
+            className="text-micro text-text-tertiary leading-snug mt-0.5 overflow-hidden"
             style={{ display: "-webkit-box", WebkitLineClamp: 2, WebkitBoxOrient: "vertical" }}
           >
             {recipeDescription(recipe, lang)}
@@ -125,7 +125,7 @@ export function RecipePickerPopover({
             <div className="w-10 h-1 rounded-full bg-border" />
           </div>
           <div className="flex items-center justify-between px-4 pb-2 flex-shrink-0">
-            <span className="text-[13px] font-semibold text-text">{t("recipes.addRecipe")}</span>
+            <span className="text-small font-semibold text-text">{t("recipes.addRecipe")}</span>
             <button
               onClick={onClose}
               className="p-1 rounded-[4px] text-text-tertiary hover:text-text hover:bg-border-light/60"

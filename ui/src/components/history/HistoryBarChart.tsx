@@ -1,3 +1,4 @@
+import { CHART_TICK_FONT, CHART_TOOLTIP_FONT } from "../../lib/chart-font";
 import { useEffect, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { dateLocale } from "../../lib/locale";
@@ -155,14 +156,14 @@ export function HistoryBarChart({ points, range, unit, height = 200 }: HistoryBa
 
   if (data.length === 0) {
     return (
-      <div className="flex items-center justify-center text-[12px] text-text-tertiary" style={{ height }}>
+      <div className="flex items-center justify-center text-caption text-text-tertiary" style={{ height }}>
         {t("common.noData")}
       </div>
     );
   }
 
   const tickInterval = pickTickInterval(data.length, viewportWidth, range);
-  const tickFontSize = isNarrow ? 9 : 10;
+  const tickFontSize = CHART_TICK_FONT;
   const has2LineLabels = data.some((d) => d.label2 !== undefined);
   const xAxisHeight = has2LineLabels ? 36 : 20;
   const chartHeight = has2LineLabels ? height + 16 : height;
@@ -226,7 +227,7 @@ export function HistoryBarChart({ points, range, unit, height = 200 }: HistoryBa
             backgroundColor: "var(--color-surface)",
             border: "1px solid var(--color-border)",
             borderRadius: "6px",
-            fontSize: "12px",
+            fontSize: CHART_TOOLTIP_FONT,
           }}
           formatter={(value: unknown) => formatBarTooltip(value, unit, tooltipLabel)}
           labelFormatter={(_, payload) => {

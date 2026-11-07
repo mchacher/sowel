@@ -65,7 +65,7 @@ export function ChangeCodeDialog({
   if (done) {
     return (
       <Dialog title={title} onClose={onClose}>
-        <p className="text-[13px] text-success">
+        <p className="text-small text-success">
           {cutPhones ? t("sharedAccess.changeCode.doneCut") : t("sharedAccess.changeCode.doneKept")}
         </p>
         <Invitation link={done.invitationUrl} code={done.code} />
@@ -80,14 +80,14 @@ export function ChangeCodeDialog({
 
   return (
     <Dialog title={title} onClose={onClose}>
-      <p className="text-[13px] text-text-secondary mb-3">
+      <p className="text-small text-text-secondary mb-3">
         {access.code
           ? t("sharedAccess.changeCode.intro")
           : t("sharedAccess.changeCode.introNoCode")}
       </p>
       <fieldset className="space-y-2">
         <legend className="sr-only">{t("sharedAccess.changeCode.phones")}</legend>
-        <label className="flex items-start gap-2 text-[13.5px] text-text cursor-pointer">
+        <label className="flex items-start gap-2 text-small text-text cursor-pointer">
           <input
             type="radio"
             name="sa-phones"
@@ -97,12 +97,12 @@ export function ChangeCodeDialog({
           />
           <span>
             {t("sharedAccess.changeCode.keep")}
-            <span className="block text-[12px] text-text-tertiary">
+            <span className="block text-caption text-text-tertiary">
               {t("sharedAccess.changeCode.keepHint")}
             </span>
           </span>
         </label>
-        <label className="flex items-start gap-2 text-[13.5px] text-text cursor-pointer">
+        <label className="flex items-start gap-2 text-small text-text cursor-pointer">
           <input
             type="radio"
             name="sa-phones"
@@ -112,7 +112,7 @@ export function ChangeCodeDialog({
           />
           <span>
             {t("sharedAccess.changeCode.cut", { count: access.phones })}
-            <span className="block text-[12px] text-text-tertiary">
+            <span className="block text-caption text-text-tertiary">
               {t("sharedAccess.changeCode.cutHint")}
             </span>
           </span>
@@ -190,7 +190,7 @@ export function JournalDialog({
       {error && <Refusal>{error}</Refusal>}
       {!entries && !error && <Loader2 size={16} className="animate-spin text-text-tertiary" />}
       {entries && entries.length === 0 && (
-        <p className="text-[13px] text-text-tertiary">{t("sharedAccess.journal.empty")}</p>
+        <p className="text-small text-text-tertiary">{t("sharedAccess.journal.empty")}</p>
       )}
       {entries && entries.length > 0 && (
         <ul className="divide-y divide-border-light max-h-[60vh] overflow-y-auto -mx-1">
@@ -198,8 +198,8 @@ export function JournalDialog({
             const gate = gateName(e.equipmentId);
             const outcomeKey = e.kind === "opened" ? journalOutcomeKey(e) : null;
             return (
-              <li key={e.id} className="flex items-baseline gap-3 px-1 py-2 text-[13px]">
-                <span className="font-mono text-[12px] text-text-tertiary tabular-nums shrink-0 w-[112px]">
+              <li key={e.id} className="flex items-baseline gap-3 px-1 py-2 text-small">
+                <span className="font-mono text-caption text-text-tertiary tabular-nums shrink-0 w-[112px]">
                   {fmt.dateTime(e.at)}
                 </span>
                 <span className="min-w-0">
@@ -316,18 +316,18 @@ export function PhonesDialog({
       {error && <Refusal>{error}</Refusal>}
       {!phones && !error && <Loader2 size={16} className="animate-spin text-text-tertiary" />}
       {phones && phones.length === 0 && (
-        <p className="text-[13px] text-text-tertiary">{t("sharedAccess.phones.empty")}</p>
+        <p className="text-small text-text-tertiary">{t("sharedAccess.phones.empty")}</p>
       )}
       {phones && phones.length > 0 && (
         <ul className="divide-y divide-border-light max-h-[60vh] overflow-y-auto -mx-1">
           {phones.map((p) => (
             <li key={p.id} className="flex items-center gap-3 px-1 py-2.5">
               <div className="min-w-0 flex-1">
-                <div className="text-[13.5px] font-medium text-text">
+                <div className="text-small font-medium text-text">
                   {t(`sharedAccess.phones.platform.${p.platform}`)}{" "}
                   <span className="font-mono tracking-[0.06em]">· {p.tag}</span>
                 </div>
-                <div className="text-[12px] text-text-secondary">
+                <div className="text-caption text-text-secondary">
                   {t("sharedAccess.phones.since", { date: fmt.dateTime(p.firstSeenAt) })} ·{" "}
                   {t("sharedAccess.phones.seen", { age: formatRelative(p.lastSeenAt, t) })}
                 </div>
@@ -346,7 +346,7 @@ export function PhonesDialog({
           ))}
         </ul>
       )}
-      <p className="text-[12px] text-text-tertiary mt-3">{t("sharedAccess.phones.hint")}</p>
+      <p className="text-caption text-text-tertiary mt-3">{t("sharedAccess.phones.hint")}</p>
       <div className="flex justify-end mt-4">
         <button type="button" className={btnSecondary} onClick={onClose}>
           {t("common.close")}
@@ -376,7 +376,7 @@ export function ConfirmDialog({
   const [error, setError] = useState<string | null>(null);
   return (
     <Dialog title={title} onClose={onClose}>
-      <p className="text-[13px] text-text-secondary">{message}</p>
+      <p className="text-small text-text-secondary">{message}</p>
       {error && <Refusal>{error}</Refusal>}
       <div className="flex gap-2 justify-end mt-5">
         <button type="button" className={btnSecondary} onClick={onClose} disabled={busy}>

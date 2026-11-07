@@ -93,29 +93,35 @@ Used **only** on equipment row icons (`.eq__icon--{type}`). They give a glanceab
 
 ### 2.1 Font families
 
-| Token         | Value                                           | Used for                       |
-| ------------- | ----------------------------------------------- | ------------------------------ |
-| `--font-body` | `'Inter', system-ui, -apple-system, sans-serif` | All UI text                    |
-| `--font-mono` | `'JetBrains Mono', ui-monospace, monospace`     | All numbers, timestamps, codes |
+| Token         | Value                                                             | Used for                       |
+| ------------- | ----------------------------------------------------------------- | ------------------------------ |
+| `--font-body` | `'Inter Variable', 'Inter', system-ui, -apple-system, sans-serif` | All UI text                    |
+| `--font-mono` | `'JetBrains Mono', ui-monospace, monospace`                       | All numbers, timestamps, codes |
+
+Inter is the variable build (`@fontsource-variable/inter/opsz.css`): every weight is real, and the optical-size axis gives large sizes the display cut. Fontsource registers it as **`'Inter Variable'`**; a stack that starts with `'Inter'` silently falls back to `system-ui`. JetBrains Mono is loaded at 400 only.
+
+Weights: 400, 500 and 600. There is no 700 in the interface (`font-bold` became `font-semibold`); the only exception is the « SOWEL » wordmark in Nunito 800.
 
 The text of a number (separators, unit spacing, precision per unit) comes from `ui/src/lib/format.ts`, never from `toFixed` (spec 196).
 
-### 2.2 Type scale (no tokens — used inline)
+### 2.2 Type scale
 
-The scale is small and informal. Sowel uses ~10 sizes total. They are declared inline because the system is too narrow to justify named tokens.
+Seven text steps and one value size (spec 196). Defined as `--fs-*` in `tokens.css` and exposed as Tailwind utilities by `ui/src/index.css` (`@theme`). `text-micro` … `text-value` set the **size only**: the line height is the 20 px inherited from `body`, or a `leading-*` class. Line heights per step were left out on purpose, so the move to the scale keeps every row and button its height.
 
-| Size               | Where it appears                        |
-| ------------------ | --------------------------------------- |
-| `2.6rem` (~42 px)  | Zone hero title (`Séjour`)              |
-| `1.2rem`           | Timeline / page section titles          |
-| `0.98rem`          | Strip pill primary value                |
-| `0.95rem`          | Lead text under hero                    |
-| `0.88rem`          | Equipment / mode / recipe row name      |
-| `0.82rem`          | Action button label, sub-line meta      |
-| `0.78rem`          | Modal body, table cell                  |
-| `0.72rem`          | Pill secondary text, panel sub          |
-| `0.66rem`–`0.7rem` | Uppercase labels (panel head, cat-head) |
-| `0.6rem`–`0.62rem` | Counts, tiny tags                       |
+| Utility        | Size  | Use                                                                      |
+| -------------- | ----- | ------------------------------------------------------------------------ |
+| `text-micro`   | 11 px | Chart ticks, timestamps, small unit, counter. Never a sentence. Minimum. |
+| `text-caption` | 12 px | Secondary info, help under a field, table header, pill                   |
+| `text-small`   | 13 px | Field label, button, dense list row, breadcrumb, sub-navigation          |
+| `text-body`    | 14 px | Running text (the `body` default), equipment name, main navigation       |
+| `text-lead`    | 16 px | Panel, section or card title                                             |
+| `text-title`   | 20 px | Sheet or modal title; a value in a detail row                            |
+| `text-display` | 28 px | Page title; a card's main value                                          |
+| `text-value`   | 40 px | Headline value: thermostat, mobile weather, battery                      |
+
+Charts take numbers, not classes: `CHART_TICK_FONT` (11) and `CHART_TOOLTIP_FONT` (12) in `ui/src/lib/chart-font.ts`.
+
+An ESLint rule (`ui/eslint.config.js`) rejects arbitrary sizes — `text-[13px]`, `text-[.82rem]`, `text-[clamp(…)]` — and a literal `fontSize` in a style or chart prop. A colour in brackets (`text-[var(--n-700)]`) is fine. SVG illustrations (`WidgetIcons.tsx`, the logo) keep their own `fontSize` attributes. The one fluid size (the dashboard weather tile, sized to its container) carries an explained `eslint-disable`.
 
 ### 2.3 Text features (applied via tokens.css)
 
@@ -231,6 +237,7 @@ See [migration.md](migration.md) for the broader strategy.
 
 ## 9. Changelog
 
-| Date       | Change                                       |
-| ---------- | -------------------------------------------- |
-| 2026-05-13 | Initial extraction from polished.html (v1.0) |
+| Date       | Change                                                                              |
+| ---------- | ----------------------------------------------------------------------------------- |
+| 2026-05-13 | Initial extraction from polished.html (v1.0)                                        |
+| 2026-11-07 | Inter variable, type scale `text-micro` … `text-value`, no 700 (spec 196, slice 5a) |

@@ -161,13 +161,13 @@ export function ButtonActionsSection({ equipmentId }: ButtonActionsSectionProps)
   return (
     <div className="bg-surface rounded-[10px] border border-border p-4 mb-6">
       <div className="flex items-center justify-between mb-3">
-        <h3 className="text-[14px] font-semibold text-text flex items-center gap-2">
+        <h3 className="text-body font-semibold text-text flex items-center gap-2">
           <Zap size={16} strokeWidth={1.5} className="text-accent" />
           {t("buttonActions.title")}
         </h3>
         <button
           onClick={() => setShowAddForm(!showAddForm)}
-          className="flex items-center gap-1 px-2 py-1 text-[11px] font-medium text-primary border border-primary/30 rounded-[4px] hover:bg-primary-light transition-colors duration-150"
+          className="flex items-center gap-1 px-2 py-1 text-micro font-medium text-primary border border-primary/30 rounded-[4px] hover:bg-primary-light transition-colors duration-150"
         >
           <Plus size={11} strokeWidth={1.5} />
           {t("buttonActions.addEffect")}
@@ -175,12 +175,12 @@ export function ButtonActionsSection({ equipmentId }: ButtonActionsSectionProps)
       </div>
 
       {bindings.length === 0 && !showAddForm && (
-        <p className="text-[13px] text-text-tertiary">{t("buttonActions.noEffects")}</p>
+        <p className="text-small text-text-tertiary">{t("buttonActions.noEffects")}</p>
       )}
 
       {[...grouped.entries()].map(([actionValue, actionBindings]) => (
           <div key={actionValue} className="mb-3">
-            <div className="text-[11px] font-medium text-text-tertiary uppercase tracking-widest mb-1.5">
+            <div className="text-micro font-medium text-text-tertiary uppercase tracking-widest mb-1.5">
               {getActionLabel(actionValue)}
             </div>
             <div className="space-y-1.5">
@@ -204,7 +204,7 @@ export function ButtonActionsSection({ equipmentId }: ButtonActionsSectionProps)
                     className="flex items-center gap-2 px-3 py-2 bg-background rounded-[6px] border border-border-light"
                   >
                     <Zap size={12} strokeWidth={1.5} className="text-accent flex-shrink-0" />
-                    <span className="text-[12px] text-text flex-1 truncate">
+                    <span className="text-caption text-text flex-1 truncate">
                       {getEffectLabel(binding)}
                     </span>
                     <button
@@ -399,7 +399,7 @@ function AddEffectForm({
 
   const seg = (active: boolean, pos: "first" | "mid" | "last") => {
     const r = pos === "first" ? "rounded-l-[4px]" : pos === "last" ? "rounded-r-[4px]" : "";
-    return `inline-flex items-center justify-center px-3 py-1.5 text-[12px] font-medium transition-all cursor-pointer border border-border-light ${r} ${
+    return `inline-flex items-center justify-center px-3 py-1.5 text-caption font-medium transition-all cursor-pointer border border-border-light ${r} ${
       pos !== "first" ? "border-l-0" : ""
     } ${
       active
@@ -412,7 +412,7 @@ function AddEffectForm({
     <div className="bg-border-light/20 border border-border-light rounded-[6px] p-3 space-y-3 mt-3">
       {/* Action value */}
       <div>
-        <label className="block text-[11px] text-text-tertiary uppercase tracking-widest mb-1">
+        <label className="block text-micro text-text-tertiary uppercase tracking-widest mb-1">
           {t("buttonActions.actionType")}
         </label>
         {actionValues.length <= 4 ? (
@@ -431,7 +431,7 @@ function AddEffectForm({
           <select
             value={actionValue}
             onChange={(e) => setActionValue(e.target.value)}
-            className="w-full px-3 py-1.5 text-[13px] bg-surface border border-border rounded-[6px] text-text"
+            className="w-full px-3 py-1.5 text-small bg-surface border border-border rounded-[6px] text-text"
           >
             {actionValues.map((action) => (
               <option key={action} value={action}>{getActionLabel(action)}</option>
@@ -442,13 +442,13 @@ function AddEffectForm({
 
       {/* Effect type selector */}
       <div>
-        <label className="block text-[11px] text-text-tertiary uppercase tracking-widest mb-1">
+        <label className="block text-micro text-text-tertiary uppercase tracking-widest mb-1">
           {t("buttonActions.effectTypeLabel")}
         </label>
         <select
           value={effectType}
           onChange={(e) => setEffectType(e.target.value as ButtonEffectType)}
-          className="w-full px-3 py-1.5 text-[13px] bg-surface border border-border rounded-[6px] text-text"
+          className="w-full px-3 py-1.5 text-small bg-surface border border-border rounded-[6px] text-text"
         >
           <option value="mode_activate">{t("buttonActions.effectType.mode_activate")}</option>
           <option value="mode_toggle">{t("buttonActions.effectType.mode_toggle")}</option>
@@ -461,13 +461,13 @@ function AddEffectForm({
       {/* Config per effect type */}
       {effectType === "mode_activate" && (
         <div>
-          <label className="block text-[11px] text-text-tertiary uppercase tracking-widest mb-1">
+          <label className="block text-micro text-text-tertiary uppercase tracking-widest mb-1">
             {t("modes.title")}
           </label>
           <select
             value={modeId}
             onChange={(e) => setModeId(e.target.value)}
-            className="w-full px-3 py-1.5 text-[13px] bg-surface border border-border rounded-[6px] text-text"
+            className="w-full px-3 py-1.5 text-small bg-surface border border-border rounded-[6px] text-text"
           >
             <option value="">{t("common.select")}</option>
             {modes.map((m) => (
@@ -480,13 +480,13 @@ function AddEffectForm({
       {effectType === "mode_toggle" && (
         <div className="space-y-2">
           <div>
-            <label className="block text-[11px] text-text-tertiary uppercase tracking-widest mb-1">
+            <label className="block text-micro text-text-tertiary uppercase tracking-widest mb-1">
               Mode A
             </label>
             <select
               value={modeAId}
               onChange={(e) => setModeAId(e.target.value)}
-              className="w-full px-3 py-1.5 text-[13px] bg-surface border border-border rounded-[6px] text-text"
+              className="w-full px-3 py-1.5 text-small bg-surface border border-border rounded-[6px] text-text"
             >
               <option value="">{t("common.select")}</option>
               {modes.map((m) => (
@@ -495,13 +495,13 @@ function AddEffectForm({
             </select>
           </div>
           <div>
-            <label className="block text-[11px] text-text-tertiary uppercase tracking-widest mb-1">
+            <label className="block text-micro text-text-tertiary uppercase tracking-widest mb-1">
               Mode B
             </label>
             <select
               value={modeBId}
               onChange={(e) => setModeBId(e.target.value)}
-              className="w-full px-3 py-1.5 text-[13px] bg-surface border border-border rounded-[6px] text-text"
+              className="w-full px-3 py-1.5 text-small bg-surface border border-border rounded-[6px] text-text"
             >
               <option value="">{t("common.select")}</option>
               {modes.filter((m) => m.id !== modeAId).map((m) => (
@@ -515,7 +515,7 @@ function AddEffectForm({
       {effectType === "equipment_order" && (
         <div className="space-y-2">
           <div>
-            <label className="block text-[11px] text-text-tertiary uppercase tracking-widest mb-1">
+            <label className="block text-micro text-text-tertiary uppercase tracking-widest mb-1">
               {t("buttonActions.zone")}
             </label>
             <select
@@ -526,7 +526,7 @@ function AddEffectForm({
                 setOrderAlias("");
                 setOrderValue("");
               }}
-              className="w-full px-3 py-1.5 text-[13px] bg-surface border border-border rounded-[6px] text-text"
+              className="w-full px-3 py-1.5 text-small bg-surface border border-border rounded-[6px] text-text"
             >
               <option value="">{t("common.select")}</option>
               {zones.map((z) => (
@@ -536,7 +536,7 @@ function AddEffectForm({
           </div>
           {eqZoneId && (
           <div>
-            <label className="block text-[11px] text-text-tertiary uppercase tracking-widest mb-1">
+            <label className="block text-micro text-text-tertiary uppercase tracking-widest mb-1">
               {t("equipments.title")}
             </label>
             <select
@@ -554,7 +554,7 @@ function AddEffectForm({
                   setOrderValue("");
                 }
               }}
-              className="w-full px-3 py-1.5 text-[13px] bg-surface border border-border rounded-[6px] text-text"
+              className="w-full px-3 py-1.5 text-small bg-surface border border-border rounded-[6px] text-text"
             >
               <option value="">{t("common.select")}</option>
               {equipments.filter((eq) => eq.zoneId === eqZoneId && eq.orderBindings.length > 0).map((eq) => (
@@ -568,7 +568,7 @@ function AddEffectForm({
               {/* Command: hidden if single order (auto-selected), select if 2+ */}
               {selectedEquipment.orderBindings.length > 1 && (
                 <div>
-                  <label className="block text-[11px] text-text-tertiary uppercase tracking-widest mb-1">
+                  <label className="block text-micro text-text-tertiary uppercase tracking-widest mb-1">
                     {t("modes.form.orderAlias")}
                   </label>
                   <select
@@ -579,7 +579,7 @@ function AddEffectForm({
                       // Pre-select value if single enum
                       setOrderValue("");
                     }}
-                    className="w-full px-3 py-1.5 text-[13px] bg-surface border border-border rounded-[6px] text-text"
+                    className="w-full px-3 py-1.5 text-small bg-surface border border-border rounded-[6px] text-text"
                   >
                     <option value="">{t("common.select")}</option>
                     {selectedEquipment.orderBindings.map((o) => (
@@ -591,13 +591,13 @@ function AddEffectForm({
               {/* Value: select for 2+ enums, number input for numeric, hidden for single enum (auto-resolved) */}
               {enumVals.length > 1 ? (
                 <div>
-                  <label className="block text-[11px] text-text-tertiary uppercase tracking-widest mb-1">
+                  <label className="block text-micro text-text-tertiary uppercase tracking-widest mb-1">
                     {t("modes.form.actionValuePlaceholder")}
                   </label>
                   <select
                     value={orderValue}
                     onChange={(e) => setOrderValue(e.target.value)}
-                    className="w-full px-3 py-1.5 text-[13px] bg-surface border border-border rounded-[6px] text-text"
+                    className="w-full px-3 py-1.5 text-small bg-surface border border-border rounded-[6px] text-text"
                   >
                     <option value="">{t("common.select")}</option>
                     {enumVals.map((v) => (
@@ -607,7 +607,7 @@ function AddEffectForm({
                 </div>
               ) : selectedOrder?.type === "number" ? (
                 <div>
-                  <label className="block text-[11px] text-text-tertiary uppercase tracking-widest mb-1">
+                  <label className="block text-micro text-text-tertiary uppercase tracking-widest mb-1">
                     {t("modes.form.actionValuePlaceholder")}
                     {selectedOrder.min != null && selectedOrder.max != null && (
                       <span className="ml-1 font-normal">({selectedOrder.min}–{selectedOrder.max})</span>
@@ -619,7 +619,7 @@ function AddEffectForm({
                     onChange={(e) => setOrderValue(e.target.value)}
                     min={selectedOrder.min}
                     max={selectedOrder.max}
-                    className="w-full px-3 py-1.5 text-[13px] bg-surface border border-border rounded-[6px] text-text"
+                    className="w-full px-3 py-1.5 text-small bg-surface border border-border rounded-[6px] text-text"
                   />
                 </div>
               ) : null}
@@ -631,13 +631,13 @@ function AddEffectForm({
       {effectType === "recipe_toggle" && (
         <div className="space-y-2">
           <div>
-            <label className="block text-[11px] text-text-tertiary uppercase tracking-widest mb-1">
+            <label className="block text-micro text-text-tertiary uppercase tracking-widest mb-1">
               {t("recipes.title")}
             </label>
             <select
               value={instanceId}
               onChange={(e) => setInstanceId(e.target.value)}
-              className="w-full px-3 py-1.5 text-[13px] bg-surface border border-border rounded-[6px] text-text"
+              className="w-full px-3 py-1.5 text-small bg-surface border border-border rounded-[6px] text-text"
             >
               <option value="">{t("common.select")}</option>
               {instances.map((inst) => (
@@ -667,13 +667,13 @@ function AddEffectForm({
       {effectType === "zone_order" && (
         <div className="space-y-2">
           <div>
-            <label className="block text-[11px] text-text-tertiary uppercase tracking-widest mb-1">
+            <label className="block text-micro text-text-tertiary uppercase tracking-widest mb-1">
               {t("buttonActions.zone")}
             </label>
             <select
               value={zoZoneId}
               onChange={(e) => setZoZoneId(e.target.value)}
-              className="w-full px-3 py-1.5 text-[13px] bg-surface border border-border rounded-[6px] text-text"
+              className="w-full px-3 py-1.5 text-small bg-surface border border-border rounded-[6px] text-text"
             >
               <option value="">{t("common.select")}</option>
               {zones.map((z) => (
@@ -683,7 +683,7 @@ function AddEffectForm({
           </div>
           {zoZoneId && (
             <div>
-              <label className="block text-[11px] text-text-tertiary uppercase tracking-widest mb-1">
+              <label className="block text-micro text-text-tertiary uppercase tracking-widest mb-1">
                 {t("buttonActions.zoneOrderLabel")}
               </label>
               <select
@@ -692,7 +692,7 @@ function AddEffectForm({
                   setZoOrderKey(e.target.value);
                   setZoValue("");
                 }}
-                className="w-full px-3 py-1.5 text-[13px] bg-surface border border-border rounded-[6px] text-text"
+                className="w-full px-3 py-1.5 text-small bg-surface border border-border rounded-[6px] text-text"
               >
                 <option value="">{t("common.select")}</option>
                 {visibleZoneOrderOptions.map((opt) => (
@@ -705,14 +705,14 @@ function AddEffectForm({
           )}
           {zoOrderKey && ZONE_ORDER_OPTIONS.find((o) => o.key === zoOrderKey)?.parametric && (
             <div>
-              <label className="block text-[11px] text-text-tertiary uppercase tracking-widest mb-1">
+              <label className="block text-micro text-text-tertiary uppercase tracking-widest mb-1">
                 {t("modes.form.actionValuePlaceholder")}
               </label>
               <input
                 type="number"
                 value={zoValue}
                 onChange={(e) => setZoValue(e.target.value)}
-                className="w-full px-3 py-1.5 text-[13px] bg-surface border border-border rounded-[6px] text-text"
+                className="w-full px-3 py-1.5 text-small bg-surface border border-border rounded-[6px] text-text"
               />
             </div>
           )}
@@ -724,13 +724,13 @@ function AddEffectForm({
         <button
           onClick={handleSubmit}
           disabled={!canSubmit() || saving}
-          className="px-3 py-1.5 bg-primary text-white text-[12px] font-medium rounded-[6px] hover:bg-primary-hover transition-colors duration-150 disabled:opacity-50"
+          className="px-3 py-1.5 bg-primary text-white text-caption font-medium rounded-[6px] hover:bg-primary-hover transition-colors duration-150 disabled:opacity-50"
         >
           {saving ? t("common.saving") : initial ? t("common.save") : t("common.add")}
         </button>
         <button
           onClick={onCancel}
-          className="px-3 py-1.5 bg-border-light text-text-secondary text-[12px] font-medium rounded-[6px] hover:bg-border transition-colors duration-150"
+          className="px-3 py-1.5 bg-border-light text-text-secondary text-caption font-medium rounded-[6px] hover:bg-border transition-colors duration-150"
         >
           {t("common.cancel")}
         </button>

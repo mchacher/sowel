@@ -73,18 +73,18 @@ export function RainTileBody({ equipment }: { equipment: EquipmentWithDetails })
   const { hasToday, value } = rainHeadline(equipment);
   return (
     <div className="flex flex-col items-center justify-center gap-1 flex-1 min-h-0">
-      <span className="text-[11px] uppercase tracking-wide text-text-tertiary font-medium">
+      <span className="text-micro uppercase tracking-wide text-text-tertiary font-medium">
         {hasToday ? t("weather.today") : t("weather.rain24hShort")}
       </span>
       <div className="flex items-baseline leading-none">
-        <span className="font-mono font-bold text-[32px] sm:text-[36px] text-text tabular-nums leading-none">
+        <span className="font-mono font-semibold text-value text-text tabular-nums leading-none">
           {formatMm(value, locale)}
         </span>
-        <span className="text-text-tertiary font-medium text-[14px] sm:text-[16px] leading-none ml-1">
+        <span className="text-text-tertiary font-medium text-body sm:text-lead leading-none ml-1">
           mm
         </span>
       </div>
-      <RainLine equipment={equipment} className="max-w-full text-[12px] text-text-secondary" />
+      <RainLine equipment={equipment} className="max-w-full text-caption text-text-secondary" />
     </div>
   );
 }
@@ -99,12 +99,12 @@ export function RainMobileHeadline({ equipment }: { equipment: EquipmentWithDeta
   const { hasToday, value } = rainHeadline(equipment);
   return (
     <div className="flex flex-col items-center gap-1 leading-none whitespace-nowrap">
-      <span className="text-[18px] uppercase tracking-wide text-text-tertiary font-medium">
+      <span className="text-title uppercase tracking-wide text-text-tertiary font-medium">
         {hasToday ? t("weather.todayShort") : t("weather.rain24hShort")}
       </span>
-      <span className="font-mono font-bold text-[56px] text-text tabular-nums leading-none">
+      <span className="font-mono font-semibold text-value text-text tabular-nums leading-none">
         {formatMm(value, locale)}
-        <span className="text-text-tertiary font-medium text-[28px] ml-1">mm</span>
+        <span className="text-text-tertiary font-medium text-display ml-1">mm</span>
       </span>
     </div>
   );
@@ -155,14 +155,14 @@ function dayLabel(date: Date, daysAgo: number, locale: string, t: TFunction): st
 function Stat({ label, value, note }: { label: string; value: string; note?: string | null }) {
   return (
     <div className="rounded-[8px] bg-border-light/40 px-3 py-2">
-      <div className="text-[12px] text-text-secondary">{label}</div>
-      <div className="font-mono font-bold text-[20px] text-text tabular-nums leading-tight">
+      <div className="text-caption text-text-secondary">{label}</div>
+      <div className="font-mono font-semibold text-title text-text tabular-nums leading-tight">
         {value}
         {value !== "—" && value !== "…" && (
-          <span className="text-text-tertiary font-normal text-[12px] ml-1">mm</span>
+          <span className="text-text-tertiary font-normal text-caption ml-1">mm</span>
         )}
       </div>
-      {note && <div className="text-[11px] text-warning">{note}</div>}
+      {note && <div className="text-micro text-warning">{note}</div>}
     </div>
   );
 }
@@ -207,11 +207,11 @@ function RainBars({ bars, locale, t }: { bars: RainDay[]; locale: string; t: TFu
           );
         })}
       </div>
-      <div className="flex justify-between text-[11px] text-text-tertiary mt-1">
+      <div className="flex justify-between text-micro text-text-tertiary mt-1">
         <span>{dayLabel(bars[0].date, last, locale, t)}</span>
         <span>{t("weather.today")}</span>
       </div>
-      <div className="text-[12px] text-text-secondary text-center min-h-[18px] mt-1">
+      <div className="text-caption text-text-secondary text-center min-h-[18px] mt-1">
         {picked !== null && describe(picked)}
       </div>
     </div>
@@ -292,25 +292,25 @@ export function RainDetailContent({ equipment }: { equipment: EquipmentWithDetai
       </div>
       <div className="rounded-[8px] bg-primary-light px-3 py-2 flex items-center justify-between gap-2">
         <div className="min-w-0">
-          <div className="text-[12px] text-text-secondary">{t("weather.rainLast")}</div>
-          <div className="text-[14px] font-semibold text-text truncate">{lastRainText}</div>
+          <div className="text-caption text-text-secondary">{t("weather.rainLast")}</div>
+          <div className="text-body font-semibold text-text truncate">{lastRainText}</div>
         </div>
-        <div className="font-mono font-bold text-[20px] text-text tabular-nums whitespace-nowrap">
+        <div className="font-mono font-semibold text-title text-text tabular-nums whitespace-nowrap">
           {lastRainValue}
           {lastRainValue !== "—" && (
-            <span className="text-text-tertiary font-normal text-[12px] ml-1">mm</span>
+            <span className="text-text-tertiary font-normal text-caption ml-1">mm</span>
           )}
         </div>
       </div>
       {summary && <RainBars bars={summary.bars} locale={locale} t={t} />}
       {history.status === "error" && (
-        <div className="text-[12px] text-text-tertiary text-center">
+        <div className="text-caption text-text-tertiary text-center">
           {t("weather.rainHistoryError")}
         </div>
       )}
       {live.battery !== null && (
         <div
-          className={`flex items-center justify-center gap-1 text-[12px] ${getBatteryColor(live.battery)}`}
+          className={`flex items-center justify-center gap-1 text-caption ${getBatteryColor(live.battery)}`}
         >
           {getBatteryIcon(live.battery, 13, 1.5)}
           <span className="tabular-nums">{formatPercent(live.battery)}</span>

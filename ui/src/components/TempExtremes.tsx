@@ -25,7 +25,7 @@ export function TempExtremes({
   // The large (mobile 2x) variant must fit "↓17.4° ↑32.6°" inside a narrow
   // scaled icon slot: smaller arrows/text and minimal gaps, decimals kept.
   const arrow = large ? 14 : 11;
-  const text = large ? "text-[18px]" : "text-[12px]";
+  const text = large ? "text-title" : "text-caption";
   return (
     <div
       className={`flex items-center justify-center leading-none ${large ? "gap-1.5" : "gap-2"} ${className}`}

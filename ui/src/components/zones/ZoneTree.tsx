@@ -115,11 +115,11 @@ function ZoneTreeNode({ zone, depth, index, siblingCount, onMove, onReordered, o
           </span>
 
           <div className="flex-1 min-w-0">
-            <span className="text-[14px] font-medium text-text truncate block">
+            <span className="text-body font-medium text-text truncate block">
               {zone.name}
             </span>
             {zone.description && (
-              <span className="text-[12px] text-text-tertiary truncate block">
+              <span className="text-caption text-text-tertiary truncate block">
                 {zone.description}
               </span>
             )}
@@ -128,7 +128,7 @@ function ZoneTreeNode({ zone, depth, index, siblingCount, onMove, onReordered, o
           {/* Badges */}
           <div className="flex items-center gap-2 flex-shrink-0">
             {childCount > 0 && (
-              <span className="text-[11px] text-text-tertiary bg-border-light px-2 py-0.5 rounded-full">
+              <span className="text-micro text-text-tertiary bg-border-light px-2 py-0.5 rounded-full">
                 {t("zones.childCount", { count: childCount })}
               </span>
             )}
@@ -198,8 +198,8 @@ function EmptyState() {
       <div className="w-16 h-16 rounded-full bg-border-light flex items-center justify-center mb-4">
         <Home size={28} strokeWidth={1.5} className="text-text-tertiary" />
       </div>
-      <h3 className="text-[16px] font-medium text-text mb-1">{t("zones.empty.title")}</h3>
-      <p className="text-[13px] text-text-secondary max-w-[320px]">
+      <h3 className="text-lead font-medium text-text mb-1">{t("zones.empty.title")}</h3>
+      <p className="text-small text-text-secondary max-w-[320px]">
         {t("zones.empty.message")}
       </p>
     </div>

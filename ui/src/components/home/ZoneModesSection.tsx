@@ -75,10 +75,10 @@ export function ZoneModesSection({ zoneId }: ZoneModesSectionProps) {
         <span className="text-text-tertiary opacity-70 flex-shrink-0">
           <Layers size={14} strokeWidth={1.5} />
         </span>
-        <span className="text-[10.4px] font-semibold text-text-tertiary uppercase tracking-[0.14em]">
+        <span className="text-micro font-semibold text-text-tertiary uppercase tracking-[0.14em]">
           {t("modes.title")}
         </span>
-        <span className="text-[10.9px] text-text-tertiary opacity-65 ml-auto tabular-nums font-mono">
+        <span className="text-micro text-text-tertiary opacity-65 ml-auto tabular-nums font-mono">
           {activeCount > 0
             ? t("modes.activeCount", { count: activeCount })
             : configuredModes.length}
@@ -98,7 +98,7 @@ export function ZoneModesSection({ zoneId }: ZoneModesSectionProps) {
                   <button
                     key={m.id}
                     onClick={() => handleSelectMode(m.id)}
-                    className="w-full text-left px-3 py-1.5 text-[12px] text-text hover:bg-border-light/60 transition-colors flex items-center gap-2"
+                    className="w-full text-left px-3 py-1.5 text-caption text-text hover:bg-border-light/60 transition-colors flex items-center gap-2"
                   >
                     {m.active ? (
                       <ToggleRight size={12} strokeWidth={1.5} className="text-primary flex-shrink-0" />
@@ -195,15 +195,15 @@ function ModeRow({
         {/* Main */}
         <div className="min-w-0">
           <div
-            className={`text-[14px] leading-[1.25] truncate ${
+            className={`text-body leading-[1.25] truncate ${
               mode.active
-                ? "font-bold text-[var(--green-700)]"
+                ? "font-semibold text-[var(--green-700)]"
                 : "font-medium text-text"
             }`}
           >
             {mode.name}
           </div>
-          <div className="text-[11px] text-text-tertiary leading-[1.25] truncate mt-px">
+          <div className="text-micro text-text-tertiary leading-[1.25] truncate mt-px">
             {actionCount > 0
               ? t("modes.actionCount", { count: actionCount })
               : t("modes.noImpacts")}
@@ -216,7 +216,7 @@ function ModeRow({
         {/* Right: active badge then settings gear (far right) */}
         <div className="flex items-center gap-1">
           {mode.active && (
-            <span className="text-[10.4px] font-bold uppercase tracking-[0.1em] text-[var(--green-700)] bg-[color-mix(in_srgb,var(--green-500)_12%,transparent)] px-2 py-0.5 rounded-full">
+            <span className="text-micro font-semibold uppercase tracking-[0.1em] text-[var(--green-700)] bg-[color-mix(in_srgb,var(--green-500)_12%,transparent)] px-2 py-0.5 rounded-full">
               {t("modes.activeBadge", { defaultValue: "Actif" })}
             </span>
           )}
@@ -303,13 +303,13 @@ function ImpactEditor({
         {/* Actions section */}
         <div>
           <div className="flex items-center justify-between mb-2">
-            <span className="text-[11px] font-medium text-text-tertiary uppercase tracking-widest">
+            <span className="text-micro font-medium text-text-tertiary uppercase tracking-widest">
               {t("modes.impacts")}
             </span>
             {!showAddAction && (
               <button
                 onClick={() => setShowAddAction(true)}
-                className="text-[11px] text-primary hover:text-primary-hover transition-colors"
+                className="text-micro text-primary hover:text-primary-hover transition-colors"
               >
                 {t("modes.addImpact")}
               </button>
@@ -334,7 +334,7 @@ function ImpactEditor({
           )}
 
           {savedActions.length === 0 && !showAddAction && (
-            <p className="text-[11px] text-text-tertiary mb-2">{t("modes.noImpacts")}</p>
+            <p className="text-micro text-text-tertiary mb-2">{t("modes.noImpacts")}</p>
           )}
 
           {showAddAction && (
@@ -461,7 +461,7 @@ function ActionRow({
   if (editing) {
     return (
       <div className="rounded-[4px] border border-primary/20 bg-primary/5 p-1.5 space-y-1.5">
-        <div className="text-[10px] text-text-tertiary truncate">
+        <div className="text-micro text-text-tertiary truncate">
           {action.type === "order"
             ? eq?.name ?? action.equipmentId
             : (() => { const inst = instances.find((i) => i.id === (action as { instanceId: string }).instanceId); return inst ? resolveRecipeName(inst.recipeId) : (action as { instanceId: string }).instanceId; })()}
@@ -480,14 +480,14 @@ function ActionRow({
             type="text"
             value={editValue}
             onChange={(e) => setEditValue(e.target.value)}
-            className="w-full px-2 py-1 text-[11px] bg-surface border border-border rounded-[4px] text-text"
+            className="w-full px-2 py-1 text-micro bg-surface border border-border rounded-[4px] text-text"
           />
         )}
         {action.type === "recipe_toggle" && (
           <div className="inline-flex">
             <button
               onClick={() => setEditEnabled(true)}
-              className={`inline-flex items-center justify-center px-2 py-[3px] text-[10px] font-medium transition-all cursor-pointer border border-border-light rounded-l-[4px] ${
+              className={`inline-flex items-center justify-center px-2 py-[3px] text-micro font-medium transition-all cursor-pointer border border-border-light rounded-l-[4px] ${
                 editEnabled ? "bg-primary/10 text-primary border-primary/30 z-10 relative" : "text-text-tertiary hover:text-text-secondary hover:bg-border-light/40"
               }`}
             >
@@ -495,7 +495,7 @@ function ActionRow({
             </button>
             <button
               onClick={() => setEditEnabled(false)}
-              className={`inline-flex items-center justify-center px-2 py-[3px] text-[10px] font-medium transition-all cursor-pointer border border-l-0 border-border-light rounded-r-[4px] ${
+              className={`inline-flex items-center justify-center px-2 py-[3px] text-micro font-medium transition-all cursor-pointer border border-l-0 border-border-light rounded-r-[4px] ${
                 !editEnabled ? "bg-primary/10 text-primary border-primary/30 z-10 relative" : "text-text-tertiary hover:text-text-secondary hover:bg-border-light/40"
               }`}
             >
@@ -506,14 +506,14 @@ function ActionRow({
         <div className="flex items-center gap-2 pt-0.5">
           <button
             onClick={confirmEdit}
-            className="text-[10px] font-medium text-primary hover:text-primary-hover transition-colors"
+            className="text-micro font-medium text-primary hover:text-primary-hover transition-colors"
           >
             <Check size={9} strokeWidth={2} className="inline -mt-0.5 mr-0.5" />
             {t("common.save")}
           </button>
           <button
             onClick={() => setEditing(false)}
-            className="text-[10px] text-text-tertiary hover:text-text-secondary transition-colors"
+            className="text-micro text-text-tertiary hover:text-text-secondary transition-colors"
           >
             {t("common.cancel")}
           </button>
@@ -524,7 +524,7 @@ function ActionRow({
 
   return (
     <div className="flex items-center gap-2 px-2 py-1.5 rounded-[4px] border bg-surface border-border-light">
-      <span className="text-[11px] text-text flex-1 truncate">{label}</span>
+      <span className="text-micro text-text flex-1 truncate">{label}</span>
       {onUpdate && action.type !== "recipe_params" && (
         <button onClick={startEdit} className="text-text-tertiary hover:text-primary flex-shrink-0">
           <Pencil size={10} strokeWidth={1.5} />
@@ -549,7 +549,7 @@ function OrderValueControl({
   const { t } = useTranslation();
   const seg = (active: boolean, pos: "first" | "mid" | "last" | "solo") => {
     const r = pos === "first" ? "rounded-l-[4px]" : pos === "last" ? "rounded-r-[4px]" : pos === "solo" ? "rounded-[4px]" : "";
-    return `inline-flex items-center justify-center px-2 py-[3px] text-[10px] font-medium transition-all cursor-pointer border border-l-0 first:border-l border-border-light ${r} ${
+    return `inline-flex items-center justify-center px-2 py-[3px] text-micro font-medium transition-all cursor-pointer border border-l-0 first:border-l border-border-light ${r} ${
       active ? "bg-primary/10 text-primary border-primary/30 z-10 relative" : "text-text-tertiary hover:text-text-secondary hover:bg-border-light/40"
     }`;
   };
@@ -595,7 +595,7 @@ function OrderValueControl({
           onChange={(e) => onChange(e.target.value)}
           className="flex-1"
         />
-        <span className="text-[10px] text-text-secondary tabular-nums min-w-10 text-right">
+        <span className="text-micro text-text-secondary tabular-nums min-w-10 text-right">
           {formatWithUnit(Number(value || order.min), order.unit)}
         </span>
       </div>
@@ -609,7 +609,7 @@ function OrderValueControl({
       value={value}
       onChange={(e) => onChange(e.target.value)}
       placeholder={order.unit ? `(${order.unit})` : ""}
-      className="w-full px-1.5 py-1 text-[10px] bg-surface border border-border rounded-[4px] text-text placeholder:text-text-tertiary"
+      className="w-full px-1.5 py-1 text-micro bg-surface border border-border rounded-[4px] text-text placeholder:text-text-tertiary"
     />
   );
 }
@@ -650,7 +650,7 @@ function SmartOrderPicker({
 
   const seg = (active: boolean, pos: "first" | "mid" | "last" | "solo") => {
     const r = pos === "first" ? "rounded-l-[4px]" : pos === "last" ? "rounded-r-[4px]" : pos === "solo" ? "rounded-[4px]" : "";
-    return `inline-flex items-center justify-center gap-0.5 px-2 py-[3px] text-[10px] font-medium transition-all cursor-pointer border border-l-0 first:border-l border-border-light ${r} ${
+    return `inline-flex items-center justify-center gap-0.5 px-2 py-[3px] text-micro font-medium transition-all cursor-pointer border border-l-0 first:border-l border-border-light ${r} ${
       active ? "bg-primary/10 text-primary border-primary/30 z-10 relative" : "text-text-tertiary hover:text-text-secondary hover:bg-border-light/40"
     }`;
   };
@@ -687,7 +687,7 @@ function SmartOrderPicker({
               onChange={(e) => onChangeValue(e.target.value)}
               className="flex-1"
             />
-            <span className="text-[10px] text-text-secondary tabular-nums min-w-7 text-right">{formatPercent(Number(orderValue) || 50)}</span>
+            <span className="text-micro text-text-secondary tabular-nums min-w-7 text-right">{formatPercent(Number(orderValue) || 50)}</span>
           </div>
         )}
       </div>
@@ -726,7 +726,7 @@ function SmartOrderPicker({
               onChange={(e) => onChangeValue(e.target.value)}
               className="flex-1"
             />
-            <span className="text-[10px] text-text-secondary tabular-nums min-w-7 text-right">
+            <span className="text-micro text-text-secondary tabular-nums min-w-7 text-right">
               {formatPercent(brightnessPercent(Number(orderValue), brightnessRange))}
             </span>
           </div>
@@ -816,7 +816,7 @@ function AddActionForm({
     : instanceId;
 
   const tab = (active: boolean) =>
-    `px-2 py-1 text-[10px] font-medium transition-colors border-b-2 ${
+    `px-2 py-1 text-micro font-medium transition-colors border-b-2 ${
       active
         ? "border-primary text-primary"
         : "border-transparent text-text-tertiary hover:text-text-secondary"
@@ -840,7 +840,7 @@ function AddActionForm({
             <select
               value={equipmentId}
               onChange={(e) => { setEquipmentId(e.target.value); setOrderAlias(""); setOrderValue(""); }}
-              className="w-full px-1.5 py-1 text-[11px] bg-surface border border-border rounded-[4px] text-text"
+              className="w-full px-1.5 py-1 text-micro bg-surface border border-border rounded-[4px] text-text"
             >
               <option value="">{t("modes.form.selectEquipment")}</option>
               {equipments.filter((eq) => eq.orderBindings.length > 0).map((eq) => (
@@ -864,7 +864,7 @@ function AddActionForm({
             <select
               value={instanceId}
               onChange={(e) => setInstanceId(e.target.value)}
-              className="w-full px-1.5 py-1 text-[11px] bg-surface border border-border rounded-[4px] text-text"
+              className="w-full px-1.5 py-1 text-micro bg-surface border border-border rounded-[4px] text-text"
             >
               <option value="">{t("modes.form.selectRecipe")}</option>
               {instances.map((inst) => (
@@ -875,7 +875,7 @@ function AddActionForm({
               <div className="inline-flex">
                 <button
                   onClick={() => setEnabled(true)}
-                  className={`inline-flex items-center justify-center px-2 py-[3px] text-[10px] font-medium transition-all cursor-pointer border border-border-light rounded-l-[4px] ${
+                  className={`inline-flex items-center justify-center px-2 py-[3px] text-micro font-medium transition-all cursor-pointer border border-border-light rounded-l-[4px] ${
                     enabled ? "bg-primary/10 text-primary border-primary/30 z-10 relative" : "text-text-tertiary hover:text-text-secondary hover:bg-border-light/40"
                   }`}
                 >
@@ -883,7 +883,7 @@ function AddActionForm({
                 </button>
                 <button
                   onClick={() => setEnabled(false)}
-                  className={`inline-flex items-center justify-center px-2 py-[3px] text-[10px] font-medium transition-all cursor-pointer border border-l-0 border-border-light rounded-r-[4px] ${
+                  className={`inline-flex items-center justify-center px-2 py-[3px] text-micro font-medium transition-all cursor-pointer border border-l-0 border-border-light rounded-r-[4px] ${
                     !enabled ? "bg-primary/10 text-primary border-primary/30 z-10 relative" : "text-text-tertiary hover:text-text-secondary hover:bg-border-light/40"
                   }`}
                 >
@@ -898,13 +898,13 @@ function AddActionForm({
           <button
             onClick={handleAdd}
             disabled={!canAdd || saving}
-            className="text-[10px] font-medium text-primary hover:text-primary-hover disabled:text-text-tertiary disabled:opacity-50 transition-colors"
+            className="text-micro font-medium text-primary hover:text-primary-hover disabled:text-text-tertiary disabled:opacity-50 transition-colors"
           >
             + {t("common.add")}
           </button>
           <button
             onClick={onDone}
-            className="text-[10px] text-text-tertiary hover:text-text-secondary transition-colors"
+            className="text-micro text-text-tertiary hover:text-text-secondary transition-colors"
           >
             {t("common.close")}
           </button>

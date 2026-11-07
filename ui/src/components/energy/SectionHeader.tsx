@@ -28,8 +28,8 @@ export function SectionHeader({
     <div className="flex items-start gap-2 mb-4">
       <Icon size={18} strokeWidth={1.5} className="text-text-secondary mt-0.5" />
       <div className="min-w-0">
-        <h2 className="text-[15px] font-semibold text-text">{title}</h2>
-        {hint && <p className="text-[12px] text-text-secondary">{hint}</p>}
+        <h2 className="text-lead font-semibold text-text">{title}</h2>
+        {hint && <p className="text-caption text-text-secondary">{hint}</p>}
       </div>
       {aside}
     </div>

@@ -43,7 +43,7 @@ export function ZonesPage() {
 
             <div className="hidden sm:flex items-center gap-2 px-3 py-1.5 rounded-[6px] bg-primary-light text-primary">
               <Home size={16} strokeWidth={1.5} />
-              <span className="text-[13px] font-medium">{zoneCount}</span>
+              <span className="text-small font-medium">{zoneCount}</span>
             </div>
           </>
         }
@@ -102,11 +102,11 @@ function ErrorState({ error }: { error: string }) {
       <div className="w-16 h-16 rounded-full bg-error/10 flex items-center justify-center mb-4">
         <Home size={28} strokeWidth={1.5} className="text-error" />
       </div>
-      <h3 className="text-[16px] font-medium text-text mb-1">{t("zones.error.title")}</h3>
-      <p className="text-[13px] text-text-secondary max-w-[320px] mb-4">{error}</p>
+      <h3 className="text-lead font-medium text-text mb-1">{t("zones.error.title")}</h3>
+      <p className="text-small text-text-secondary max-w-[320px] mb-4">{error}</p>
       <button
         onClick={() => fetchZones()}
-        className="px-4 py-2 bg-primary text-white text-[13px] font-medium rounded-[6px] hover:bg-primary-hover transition-colors duration-150 ease-out"
+        className="px-4 py-2 bg-primary text-white text-small font-medium rounded-[6px] hover:bg-primary-hover transition-colors duration-150 ease-out"
       >
         {t("common.retry")}
       </button>

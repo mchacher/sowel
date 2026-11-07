@@ -37,24 +37,24 @@ export class ErrorBoundary extends Component<Props, State> {
             <h1>
               Something went wrong
             </h1>
-            <p className="text-[14px] text-text-secondary">
+            <p className="text-body text-text-secondary">
               An unexpected error occurred. You can try dismissing this error or reloading the page.
             </p>
             {this.state.error && (
-              <pre className="text-[12px] text-error bg-error/5 rounded-[6px] p-3 overflow-auto max-h-32 font-mono">
+              <pre className="text-caption text-error bg-error/5 rounded-[6px] p-3 overflow-auto max-h-32 font-mono">
                 {this.state.error.message}
               </pre>
             )}
             <div className="flex gap-3">
               <button
                 onClick={this.handleDismiss}
-                className="px-4 py-2 text-[13px] font-medium rounded-[6px] bg-border-light text-text-secondary hover:bg-border hover:text-text transition-colors"
+                className="px-4 py-2 text-small font-medium rounded-[6px] bg-border-light text-text-secondary hover:bg-border hover:text-text transition-colors"
               >
                 Dismiss
               </button>
               <button
                 onClick={this.handleReload}
-                className="px-4 py-2 text-[13px] font-medium rounded-[6px] bg-primary text-white hover:bg-primary-hover transition-colors"
+                className="px-4 py-2 text-small font-medium rounded-[6px] bg-primary text-white hover:bg-primary-hover transition-colors"
               >
                 Reload page
               </button>

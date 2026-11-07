@@ -155,7 +155,7 @@ function StalenessBanner({ entry }: { entry: LiveStalenessEntry }) {
         : "energy.live.sourceStale";
   return (
     <div
-      className={`mb-4 flex items-center gap-2 rounded-[10px] border px-4 py-3 text-[13px] ${
+      className={`mb-4 flex items-center gap-2 rounded-[10px] border px-4 py-3 text-small ${
         entry.mode === "offline"
           ? "bg-error/10 border-error/20 text-error"
           : "bg-warning/10 border-warning/20 text-warning"
@@ -305,7 +305,7 @@ function LiveDiagram({
             dimmed: Math.abs(grid) < 5,
             value: gridValue.value,
             unit: gridValue.unit,
-            valuePrefix: <span className="text-[18px] font-bold">{exporting ? "↓" : "↑"}</span>,
+            valuePrefix: <span className="text-title font-semibold">{exporting ? "↓" : "↑"}</span>,
             icon: <GridPylonIcon className="w-9 h-9 sm:w-10 sm:h-10" />,
           },
           {
@@ -329,8 +329,8 @@ function EmptyState() {
   const { t } = useTranslation();
   return (
     <div className="bg-surface border border-border rounded-[10px] p-10 text-center max-w-[480px] mx-auto">
-      <h2 className="text-[16px] font-semibold text-text mb-2">{t("energy.live.empty.title")}</h2>
-      <p className="text-[13px] text-text-secondary">{t("energy.live.empty.help")}</p>
+      <h2 className="text-lead font-semibold text-text mb-2">{t("energy.live.empty.title")}</h2>
+      <p className="text-small text-text-secondary">{t("energy.live.empty.help")}</p>
     </div>
   );
 }

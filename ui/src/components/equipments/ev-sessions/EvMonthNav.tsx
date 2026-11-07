@@ -19,7 +19,7 @@ export function EvMonthNav({ month, onChange }: { month: string; onChange: (m: s
       >
         <ChevronLeft size={16} strokeWidth={1.5} />
       </button>
-      <span className="text-[13px] text-text-secondary min-w-[110px] text-center">
+      <span className="text-small text-text-secondary min-w-[110px] text-center">
         {monthLabel(month, dateLocale(i18n.language))}
       </span>
       <button

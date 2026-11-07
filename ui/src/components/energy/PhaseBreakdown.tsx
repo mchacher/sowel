@@ -39,7 +39,7 @@ export function PhaseBreakdown({ gridEquipments }: Props) {
           const color = PHASE_COLORS[i % PHASE_COLORS.length];
           return (
             <div key={p.n} className="flex items-center gap-3">
-              <span className="text-[12px] font-semibold text-text-tertiary w-14 shrink-0">
+              <span className="text-caption font-semibold text-text-tertiary w-14 shrink-0">
                 {t("energy.live.phases.phase", { n: p.n })}
               </span>
               <div className="flex-1 h-2 rounded-full bg-border overflow-hidden">
@@ -48,7 +48,7 @@ export function PhaseBreakdown({ gridEquipments }: Props) {
                   style={{ width: `${pct}%`, background: color }}
                 />
               </div>
-              <span className="font-mono text-[13px] font-medium text-text-secondary w-16 text-right shrink-0">
+              <span className="font-mono text-small font-medium text-text-secondary w-16 text-right shrink-0">
                 {f}
               </span>
             </div>

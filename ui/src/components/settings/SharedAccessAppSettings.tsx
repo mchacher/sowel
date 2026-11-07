@@ -115,9 +115,9 @@ export function SharedAccessAppSettings() {
     <div className="border-t border-border pt-4 mt-4 space-y-3">
       <div className="flex items-center gap-2">
         <Smartphone size={14} strokeWidth={1.5} className="text-text-tertiary" />
-        <h3 className="text-[13px] font-semibold text-text">{t("sharedAccess.app.title")}</h3>
+        <h3 className="text-small font-semibold text-text">{t("sharedAccess.app.title")}</h3>
       </div>
-      <p className="text-[12px] text-text-tertiary">{t("sharedAccess.app.description")}</p>
+      <p className="text-caption text-text-tertiary">{t("sharedAccess.app.description")}</p>
       <div>
         <label className={labelCls} htmlFor="sa-app-name">
           {t("sharedAccess.app.name")}
@@ -179,7 +179,7 @@ export function SharedAccessAppSettings() {
             onChange={(e) => void choose(e.target.files?.[0])}
           />
         </div>
-        <p className="text-[11px] text-text-tertiary mt-1">{t("sharedAccess.app.iconHelp")}</p>
+        <p className="text-micro text-text-tertiary mt-1">{t("sharedAccess.app.iconHelp")}</p>
       </div>
       {dirty && (
         <button type="button" className={btnPrimary} disabled={busy} onClick={() => void save()}>
@@ -187,7 +187,7 @@ export function SharedAccessAppSettings() {
         </button>
       )}
       {saved && !dirty && (
-        <p className="text-[12px] text-text-secondary">{t("sharedAccess.app.saved")}</p>
+        <p className="text-caption text-text-secondary">{t("sharedAccess.app.saved")}</p>
       )}
       {error && <Refusal>{error}</Refusal>}
     </div>

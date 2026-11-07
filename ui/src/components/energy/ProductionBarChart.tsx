@@ -1,3 +1,4 @@
+import { CHART_TICK_FONT, CHART_TOOLTIP_FONT } from "../../lib/chart-font";
 import { useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { dateLocale } from "../../lib/locale";
@@ -205,7 +206,7 @@ export function ProductionBarChart({ points, period, date, height = 300 }: Produ
   const hasData = data.some((d) => barTotal(d) > 0);
   if (!hasData) {
     return (
-      <div className="flex items-center justify-center text-text-tertiary text-[13px]" style={{ height }}>
+      <div className="flex items-center justify-center text-text-tertiary text-small" style={{ height }}>
         {t("common.noData")}
       </div>
     );
@@ -219,13 +220,13 @@ export function ProductionBarChart({ points, period, date, height = 300 }: Produ
         <CartesianGrid strokeDasharray="3 3" stroke="var(--color-border-light)" vertical={false} />
         <XAxis
           dataKey="label"
-          tick={{ fontSize: 11, fill: "var(--color-text-tertiary)" }}
+          tick={{ fontSize: CHART_TICK_FONT, fill: "var(--color-text-tertiary)" }}
           interval={tickInterval}
           tickLine={false}
           axisLine={{ stroke: "var(--color-border)" }}
         />
         <YAxis
-          tick={{ fontSize: 11, fill: "var(--color-text-tertiary)" }}
+          tick={{ fontSize: CHART_TICK_FONT, fill: "var(--color-text-tertiary)" }}
           tickLine={false}
           axisLine={false}
           tickFormatter={(kwh: number) => formatKwhTick(kwh, locale)}
@@ -246,7 +247,7 @@ export function ProductionBarChart({ points, period, date, height = 300 }: Produ
                   backgroundColor: "var(--color-surface)",
                   border: "1px solid var(--color-border)",
                   borderRadius: "6px",
-                  fontSize: "12px",
+                  fontSize: CHART_TOOLTIP_FONT,
                   padding: "8px 12px",
                 }}
               >

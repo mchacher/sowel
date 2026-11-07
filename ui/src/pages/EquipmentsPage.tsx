@@ -61,7 +61,7 @@ export function EquipmentsPage() {
                   value={filter}
                   onChange={(e) => setFilter(e.target.value)}
                   placeholder={t("equipments.filterPlaceholder")}
-                  className="w-full sm:w-[180px] pl-8 pr-8 py-1.5 text-[13px] bg-surface border border-border rounded-[6px] outline-none placeholder:text-text-tertiary focus:border-primary transition-colors duration-150"
+                  className="w-full sm:w-[180px] pl-8 pr-8 py-1.5 text-small bg-surface border border-border rounded-[6px] outline-none placeholder:text-text-tertiary focus:border-primary transition-colors duration-150"
                 />
                 {filter && (
                   <button onClick={() => setFilter("")} className="absolute right-2 top-1/2 -translate-y-1/2 text-text-tertiary hover:text-text-secondary">
@@ -77,7 +77,7 @@ export function EquipmentsPage() {
 
             <div className="hidden sm:flex items-center gap-2 px-3 py-1.5 rounded-[6px] bg-primary-light text-primary">
               <Box size={16} strokeWidth={1.5} />
-              <span className="text-[13px] font-medium">
+              <span className="text-small font-medium">
                 {filter ? `${filtered.length}/${equipments.length}` : equipments.length}
               </span>
             </div>
@@ -170,7 +170,7 @@ function ZoneHeading({ chain }: { chain?: string[] }) {
   const name = chain?.[chain.length - 1] ?? t("dashboard.unknownZone");
 
   return (
-    <h3 className="text-[13px] font-semibold text-text-secondary uppercase tracking-widest mb-2">
+    <h3 className="text-small font-semibold text-text-secondary uppercase tracking-widest mb-2">
       {ancestors.length > 0 && (
         <span className="font-normal text-text-tertiary">
           {ancestors.join(ZONE_PATH_SEPARATOR)}
@@ -191,14 +191,14 @@ function EmptyState({ onAdd, canCreate }: { onAdd: () => void; canCreate: boolea
       <div className="w-16 h-16 rounded-full bg-primary-light flex items-center justify-center mb-4">
         <Box size={28} strokeWidth={1.5} className="text-primary" />
       </div>
-      <h3 className="text-[16px] font-medium text-text mb-1">{t("equipments.empty.title")}</h3>
-      <p className="text-[13px] text-text-secondary max-w-[320px] mb-4">
+      <h3 className="text-lead font-medium text-text mb-1">{t("equipments.empty.title")}</h3>
+      <p className="text-small text-text-secondary max-w-[320px] mb-4">
         {t("equipments.empty.message")}
       </p>
       {canCreate && (
         <button
           onClick={onAdd}
-          className="px-4 py-2 bg-primary text-white text-[13px] font-medium rounded-[6px] hover:bg-primary-hover transition-colors duration-150 ease-out"
+          className="px-4 py-2 bg-primary text-white text-small font-medium rounded-[6px] hover:bg-primary-hover transition-colors duration-150 ease-out"
         >
           {t("equipments.createEquipment")}
         </button>
@@ -216,11 +216,11 @@ function ErrorState({ error }: { error: string }) {
       <div className="w-16 h-16 rounded-full bg-error/10 flex items-center justify-center mb-4">
         <Box size={28} strokeWidth={1.5} className="text-error" />
       </div>
-      <h3 className="text-[16px] font-medium text-text mb-1">{t("equipments.error.title")}</h3>
-      <p className="text-[13px] text-text-secondary max-w-[320px] mb-4">{error}</p>
+      <h3 className="text-lead font-medium text-text mb-1">{t("equipments.error.title")}</h3>
+      <p className="text-small text-text-secondary max-w-[320px] mb-4">{error}</p>
       <button
         onClick={() => fetchEquipments()}
-        className="px-4 py-2 bg-primary text-white text-[13px] font-medium rounded-[6px] hover:bg-primary-hover transition-colors duration-150 ease-out"
+        className="px-4 py-2 bg-primary text-white text-small font-medium rounded-[6px] hover:bg-primary-hover transition-colors duration-150 ease-out"
       >
         {t("common.retry")}
       </button>

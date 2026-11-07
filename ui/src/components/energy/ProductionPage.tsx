@@ -63,7 +63,7 @@ export function ProductionPage() {
 
       {/* Content */}
       {loading && !history ? (
-        <div className="flex items-center justify-center h-[300px] text-text-tertiary text-[13px]">
+        <div className="flex items-center justify-center h-[300px] text-text-tertiary text-small">
           {t("common.loading")}
         </div>
       ) : (
@@ -79,7 +79,7 @@ export function ProductionPage() {
           {history && hasProdData && (
             <div className="flex flex-col items-center mt-3 gap-1">
               {showSplit && (
-                <div className="flex items-center gap-4 text-[13px] text-text-secondary">
+                <div className="flex items-center gap-4 text-small text-text-secondary">
                   <span className="flex items-center gap-1.5">
                     <span className="inline-block w-2.5 h-2.5 rounded-full" style={{ backgroundColor: AUTOCONSO_COLOR }} />
                     {t("energy.autoconsumption")}{t("common.colon")}{formatWh(history.totals.total_autoconso)}
@@ -90,7 +90,7 @@ export function ProductionPage() {
                   </span>
                 </div>
               )}
-              <div className="text-[15px] font-semibold text-text tabular-nums mt-1">
+              <div className="text-lead font-semibold text-text tabular-nums mt-1">
                 {t("energy.total")}{t("common.colon")}{formatWh(displayedProductionTotalWh(history.totals))}
               </div>
             </div>
@@ -105,7 +105,7 @@ export function ProductionPage() {
       {declaredMeters.map((meter) => (
         <div key={meter.id} className="mt-6">
           {meters.length > 1 && (
-            <h2 className="text-[15px] font-semibold text-text mb-3">{meter.name}</h2>
+            <h2 className="text-lead font-semibold text-text mb-3">{meter.name}</h2>
           )}
           <PvForecastPanel equipmentId={meter.id} />
           <PvHealthPanel equipmentId={meter.id} />
@@ -116,7 +116,7 @@ export function ProductionPage() {
           so only an admin sees the pointer. No meter at all stays silent —
           this page cannot create equipment. */}
       {meters.length > 0 && declaredMeters.length === 0 && isAdmin && (
-        <p className="mt-6 text-[13px] text-text-secondary">
+        <p className="mt-6 text-small text-text-secondary">
           <Link to="/settings?tab=energy" className="text-primary hover:underline">
             {t("energy.pv.setupHint")}
           </Link>

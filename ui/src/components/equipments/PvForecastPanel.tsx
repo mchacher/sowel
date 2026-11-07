@@ -1,3 +1,4 @@
+import { CHART_TICK_FONT, CHART_TOOLTIP_FONT } from "../../lib/chart-font";
 import { useCallback, useEffect, useState } from "react";
 import {
   Area,
@@ -79,11 +80,11 @@ export function PvForecastPanel({ equipmentId }: PvForecastPanelProps) {
   if (!data) {
     return failed ? (
       <div className="mb-6 bg-surface rounded-[10px] border border-border p-4">
-        <p className="text-[13px] text-text-secondary">{t("equipments.pv.loadFailed")}</p>
+        <p className="text-small text-text-secondary">{t("equipments.pv.loadFailed")}</p>
         <button
           type="button"
           onClick={() => void load()}
-          className="mt-3 px-3 py-1.5 rounded-[6px] border border-border text-[12px] text-text-secondary hover:border-primary"
+          className="mt-3 px-3 py-1.5 rounded-[6px] border border-border text-caption text-text-secondary hover:border-primary"
         >
           {t("common.retry")}
         </button>
@@ -131,18 +132,18 @@ export function PvForecastPanel({ equipmentId }: PvForecastPanelProps) {
     <div className="mb-6 bg-surface rounded-[10px] border border-border p-4">
       <div className="flex items-center gap-2 mb-3">
         <Sun size={16} strokeWidth={1.5} className="text-accent" />
-        <h3 className="text-[14px] font-semibold text-text">{t("equipments.pv.title")}</h3>
+        <h3 className="text-body font-semibold text-text">{t("equipments.pv.title")}</h3>
         {/* The stale-declaration tell. For admins it is also the way to fix
             it: the same figure, linking to the section that edits it. */}
         {isAdmin ? (
           <Link
             to="/settings?tab=energy"
-            className="ml-auto text-[11px] text-text-tertiary tabular-nums font-mono hover:text-primary hover:underline"
+            className="ml-auto text-micro text-text-tertiary tabular-nums font-mono hover:text-primary hover:underline"
           >
             {t("equipments.pv.declared", { wc: formatWithUnit(data.declaredPeakWc, "Wc", { locale }) })}
           </Link>
         ) : (
-          <span className="ml-auto text-[11px] text-text-tertiary tabular-nums font-mono">
+          <span className="ml-auto text-micro text-text-tertiary tabular-nums font-mono">
             {t("equipments.pv.declared", { wc: formatWithUnit(data.declaredPeakWc, "Wc", { locale }) })}
           </span>
         )}
@@ -152,9 +153,9 @@ export function PvForecastPanel({ equipmentId }: PvForecastPanelProps) {
             resolves itself; a missing weather plugin never does, and saying
             "learning" there would leave the household waiting on nothing. */}
         {data.curve.length === 0 && !data.weatherAvailable ? (
-          <p className="text-[13px] text-warning">{t("equipments.pv.noWeather")}</p>
+          <p className="text-small text-warning">{t("equipments.pv.noWeather")}</p>
         ) : data.model === null && data.curve.length === 0 ? (
-          <p className="text-[13px] text-text-secondary">{t("equipments.pv.learning")}</p>
+          <p className="text-small text-text-secondary">{t("equipments.pv.learning")}</p>
         ) : (
           <>
             <div className="flex gap-6 mb-4">
@@ -171,7 +172,7 @@ export function PvForecastPanel({ equipmentId }: PvForecastPanelProps) {
                 forecast, 0.0 kWh measured" all night with a dangling delta. */}
             {data.accuracy.today !== null &&
               (data.accuracy.today.forecastWh > 0 || data.accuracy.today.actualWh > 0) && (
-              <p className="text-[11px] text-text-tertiary mb-3">
+              <p className="text-micro text-text-tertiary mb-3">
                 {t("equipments.pv.todaySoFar", {
                   expected: formatEnergy(data.accuracy.today.forecastWh / 1000, { locale }),
                   measured: formatEnergy(data.accuracy.today.actualWh / 1000, { locale }),
@@ -193,12 +194,12 @@ export function PvForecastPanel({ equipmentId }: PvForecastPanelProps) {
                 same quantity in the same unit on adjacent stretches of time;
                 split apart, the reader had to join them up by eye. */}
             <div className="flex items-baseline gap-2 flex-wrap mb-2">
-              <span className="text-[12px] text-text-secondary">
+              <span className="text-caption text-text-secondary">
                 {t("equipments.pv.accuracy")}
               </span>
               {data.accuracy.dailyMaeWh !== null ? (
                 <>
-                  <span className="text-[13px] font-semibold font-mono tabular-nums text-text">
+                  <span className="text-small font-semibold font-mono tabular-nums text-text">
                     {/* No percentage when nothing was produced to take a share
                         of: `?? 0` printed "(0%)" over a real error, so a dead
                         inverter under a live forecast read as a perfect score
@@ -212,12 +213,12 @@ export function PvForecastPanel({ equipmentId }: PvForecastPanelProps) {
                           energy: formatEnergy(data.accuracy.dailyMaeWh / 1000, { locale }),
                         })}
                   </span>
-                  <span className="text-[11px] text-text-tertiary">
+                  <span className="text-micro text-text-tertiary">
                     {t("equipments.pv.accuracySamples", { count: data.accuracy.dailyDays })}
                   </span>
                 </>
               ) : (
-                <span className="text-[11px] text-text-tertiary">
+                <span className="text-micro text-text-tertiary">
                   {t("equipments.pv.accuracyPending")}
                 </span>
               )}
@@ -225,7 +226,7 @@ export function PvForecastPanel({ equipmentId }: PvForecastPanelProps) {
               {/* Which line is which. Two series in two colours and nothing
                   else saying so is the question this panel exists to answer. */}
               <span className="flex items-center gap-3 ml-2">
-                <span className="flex items-center gap-1 text-[11px] text-text-secondary">
+                <span className="flex items-center gap-1 text-micro text-text-secondary">
                   <span
                     aria-hidden
                     className="inline-block w-3 h-[2px] rounded-full"
@@ -234,7 +235,7 @@ export function PvForecastPanel({ equipmentId }: PvForecastPanelProps) {
                   {t("equipments.pv.expected")}
                 </span>
                 {chart.some((p) => p.actualW !== undefined) && (
-                  <span className="flex items-center gap-1 text-[11px] text-text-secondary">
+                  <span className="flex items-center gap-1 text-micro text-text-secondary">
                     <span
                       aria-hidden
                       className="inline-block w-3 h-[2px] rounded-full"
@@ -253,7 +254,7 @@ export function PvForecastPanel({ equipmentId }: PvForecastPanelProps) {
                     key={d}
                     type="button"
                     onClick={() => setAccuracyDays(d)}
-                    className={`px-2 py-0.5 rounded-[6px] text-[11px] font-medium border ${
+                    className={`px-2 py-0.5 rounded-[6px] text-micro font-medium border ${
                       accuracyDays === d
                         ? "border-primary bg-primary-light text-primary"
                         : "border-border text-text-secondary hover:border-primary"
@@ -290,7 +291,7 @@ export function PvForecastPanel({ equipmentId }: PvForecastPanelProps) {
                     tickFormatter={(ts: number) =>
                       new Date(ts).toLocaleDateString(locale, tickFormat)
                     }
-                    tick={{ fontSize: 11, fill: "var(--color-text-tertiary)" }}
+                    tick={{ fontSize: CHART_TICK_FONT, fill: "var(--color-text-tertiary)" }}
                     stroke="var(--color-border)"
                   />
                   <YAxis
@@ -298,7 +299,7 @@ export function PvForecastPanel({ equipmentId }: PvForecastPanelProps) {
                     // and were clipped to their last three digits, so a 3800 W
                     // peak read "800".
                     tickFormatter={(w: number) => (w > 0 ? formatPower(w, { unit: "kW", locale }) : "0")}
-                    tick={{ fontSize: 11, fill: "var(--color-text-tertiary)" }}
+                    tick={{ fontSize: CHART_TICK_FONT, fill: "var(--color-text-tertiary)" }}
                     stroke="var(--color-border)"
                     width={56}
                   />
@@ -315,7 +316,7 @@ export function PvForecastPanel({ equipmentId }: PvForecastPanelProps) {
                       background: "var(--color-surface)",
                       border: "1px solid var(--color-border)",
                       borderRadius: 6,
-                      fontSize: 12,
+                      fontSize: CHART_TOOLTIP_FONT,
                     }}
                   />
                   {/* Where the record stops and the promise starts. */}
@@ -326,7 +327,7 @@ export function PvForecastPanel({ equipmentId }: PvForecastPanelProps) {
                     label={{
                       value: t("equipments.pv.now"),
                       position: "insideTopRight",
-                      fontSize: 10,
+                      fontSize: CHART_TICK_FONT,
                       fill: "var(--color-text-tertiary)",
                     }}
                   />
@@ -355,10 +356,10 @@ export function PvForecastPanel({ equipmentId }: PvForecastPanelProps) {
             </div>
 
             {data.model === null && (
-              <p className="mt-3 text-[11px] text-warning">{t("equipments.pv.provisional")}</p>
+              <p className="mt-3 text-micro text-warning">{t("equipments.pv.provisional")}</p>
             )}
 
-            <p className="mt-3 text-[11px] text-text-tertiary">
+            <p className="mt-3 text-micro text-text-tertiary">
               {data.model === null
                 ? t("equipments.pv.learning")
                 : t("equipments.pv.provenance", {
@@ -388,12 +389,12 @@ function Figure({ label, value }: { label: string; value: number }) {
   const energy = formatEnergyParts(value);
   return (
     <div>
-      <div className="text-[11px] text-text-tertiary">{label}</div>
+      <div className="text-micro text-text-tertiary">{label}</div>
       <div className="flex items-baseline gap-1">
-        <span className="text-[22px] font-bold font-mono tabular-nums text-text leading-none">
+        <span className="text-title font-semibold font-mono tabular-nums text-text leading-none">
           {energy.value}
         </span>
-        <span className="text-[12px] text-text-tertiary">{energy.unit}</span>
+        <span className="text-caption text-text-tertiary">{energy.unit}</span>
       </div>
     </div>
   );

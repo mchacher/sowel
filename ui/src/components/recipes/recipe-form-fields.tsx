@@ -68,7 +68,7 @@ export function MultiSelectChips({
                 : [...selected, o.value];
               onChange(next.join(","));
             }}
-            className={`px-3 py-1.5 text-[12px] font-medium rounded-[6px] border transition-colors duration-150 ${
+            className={`px-3 py-1.5 text-caption font-medium rounded-[6px] border transition-colors duration-150 ${
               on
                 ? "bg-primary border-primary text-white"
                 : "bg-surface border-border text-text-secondary hover:border-primary"
@@ -132,7 +132,7 @@ export function ModeCyclePill({
     <button
       onClick={handleClick}
       disabled={sending}
-      className="inline-flex items-center gap-1 px-2 py-[1.5px] rounded-full text-[10px] leading-tight font-semibold transition-all duration-150 cursor-pointer disabled:opacity-50 disabled:cursor-default hover:brightness-95 active:scale-95 flex-shrink-0"
+      className="inline-flex items-center gap-1 px-2 py-[1.5px] rounded-full text-micro leading-tight font-semibold transition-all duration-150 cursor-pointer disabled:opacity-50 disabled:cursor-default hover:brightness-95 active:scale-95 flex-shrink-0"
       style={{ backgroundColor: colors.bg, color: colors.text }}
       title={t("recipes.actions.cycleTo", { mode: cycle.next.label, defaultValue: `Click to switch to ${cycle.next.label}` })}
     >
@@ -157,7 +157,7 @@ export function CountdownTimer({ expiresAt }: { expiresAt: string }) {
   if (remaining <= 0) return null;
 
   return (
-    <span className="flex items-center gap-1 text-[11px] font-medium text-accent tabular-nums flex-shrink-0">
+    <span className="flex items-center gap-1 text-micro font-medium text-accent tabular-nums flex-shrink-0">
       <Timer size={12} strokeWidth={1.5} />
       {formatCountdown(remaining)}
     </span>
@@ -205,9 +205,9 @@ export function DurationInput({
           }
         }}
         placeholder={placeholder ?? "10"}
-        className="flex-1 px-3 py-1.5 text-[13px] bg-surface border border-border rounded-[6px] text-text placeholder:text-text-tertiary"
+        className="flex-1 px-3 py-1.5 text-small bg-surface border border-border rounded-[6px] text-text placeholder:text-text-tertiary"
       />
-      <span className="text-[12px] text-text-tertiary font-medium">{t("time.min")}</span>
+      <span className="text-caption text-text-tertiary font-medium">{t("time.min")}</span>
     </div>
   );
 }
@@ -231,7 +231,7 @@ export function TimeInput({
       value={value ?? ""}
       onChange={(e) => onChange(e.target.value)}
       placeholder={placeholder ?? "08:00"}
-      className="w-full px-3 py-1.5 text-[13px] bg-surface border border-border rounded-[6px] text-text"
+      className="w-full px-3 py-1.5 text-small bg-surface border border-border rounded-[6px] text-text"
     />
   );
 }
@@ -290,7 +290,7 @@ export function SingleEquipmentZonePicker({
           // Otherwise clear the equipment if it no longer belongs to the zone.
           else if (selectedEq && selectedEq.zoneId !== zid) onChange("");
         }}
-        className="flex-1 px-3 py-1.5 text-[13px] bg-surface border border-border rounded-[6px] text-text"
+        className="flex-1 px-3 py-1.5 text-small bg-surface border border-border rounded-[6px] text-text"
       >
         <option value="">Zone…</option>
         {zonesWithOptions.map((z) => (
@@ -303,7 +303,7 @@ export function SingleEquipmentZonePicker({
         value={value}
         onChange={(e) => onChange(e.target.value)}
         disabled={!pickerZoneId}
-        className="flex-1 px-3 py-1.5 text-[13px] bg-surface border border-border rounded-[6px] text-text disabled:opacity-40"
+        className="flex-1 px-3 py-1.5 text-small bg-surface border border-border rounded-[6px] text-text disabled:opacity-40"
       >
         <option value="">{t("common.select")}</option>
         {pickerOptions.map((eq) => (
@@ -366,7 +366,7 @@ export function EquipmentListPicker({
 
   return (
     <div className="mb-1.5">
-      <label className={labelClassName ?? "block text-[10px] tracking-wider mb-0.5 text-text-tertiary"}>
+      <label className={labelClassName ?? "block text-micro tracking-wider mb-0.5 text-text-tertiary"}>
         {recipeSlotName(recipe, slot, lang)}
       </label>
 
@@ -376,8 +376,8 @@ export function EquipmentListPicker({
         const eq = equipments.find((e) => e.id === id);
         const zone = eq ? zones.find((z) => z.id === eq.zoneId) : null;
         return (
-          <div key={id} className="flex items-center gap-2 px-2 py-1 mb-1 text-[13px] bg-surface border border-border rounded-[6px]">
-            {zone && <span className="min-w-0 text-[11px] text-text-tertiary truncate">{zone.label}</span>}
+          <div key={id} className="flex items-center gap-2 px-2 py-1 mb-1 text-small bg-surface border border-border rounded-[6px]">
+            {zone && <span className="min-w-0 text-micro text-text-tertiary truncate">{zone.label}</span>}
             <span className="flex-1 min-w-0 text-text truncate">{eq?.name ?? id}</span>
             <button type="button" onClick={() => handleRemove(id)} className="p-0.5 text-text-tertiary hover:text-error transition-colors">
               <X size={12} strokeWidth={1.5} />
@@ -403,7 +403,7 @@ export function EquipmentListPicker({
                 setPickerZoneId(zid);
               }
             }}
-            className="flex-1 px-2 py-1 text-[13px] bg-surface border border-border rounded-[6px] text-text"
+            className="flex-1 px-2 py-1 text-small bg-surface border border-border rounded-[6px] text-text"
           >
             <option value="">Zone…</option>
             {zonesWithOptions.map((z) => (
@@ -422,7 +422,7 @@ export function EquipmentListPicker({
               }
             }}
             disabled={!pickerZoneId}
-            className="flex-1 px-2 py-1 text-[13px] bg-surface border border-border rounded-[6px] text-text disabled:opacity-40"
+            className="flex-1 px-2 py-1 text-small bg-surface border border-border rounded-[6px] text-text disabled:opacity-40"
           >
             <option value="">{t("common.select")}</option>
             {pickerOptions.map((eq) => (
@@ -464,7 +464,7 @@ export function EquipmentCheckboxList({
         return (
           <label
             key={eq.id}
-            className="flex items-center gap-2 px-3 py-1.5 text-[13px] bg-surface border border-border rounded-[6px] text-text cursor-pointer hover:bg-border-light/30 transition-colors duration-150"
+            className="flex items-center gap-2 px-3 py-1.5 text-small bg-surface border border-border rounded-[6px] text-text cursor-pointer hover:bg-border-light/30 transition-colors duration-150"
           >
             <input
               type="checkbox"
@@ -478,7 +478,7 @@ export function EquipmentCheckboxList({
             />
             <span className="truncate">{eq.name}</span>
             {zone && (
-              <span className="ml-auto text-[11px] text-text-tertiary truncate">{zone}</span>
+              <span className="ml-auto text-micro text-text-tertiary truncate">{zone}</span>
             )}
           </label>
         );

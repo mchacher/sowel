@@ -1,3 +1,4 @@
+import { CHART_TICK_FONT } from "../../lib/chart-font";
 import { useMemo } from "react";
 import { useTranslation } from "react-i18next";
 import { dateLocale } from "../../lib/locale";
@@ -212,10 +213,10 @@ export function EnergyByUsageChart({ data, period, date, height = 300, unit = "w
       <ResponsiveContainer>
         <BarChart data={rows} margin={{ top: 10, right: 10, left: 0, bottom: 0 }}>
           <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="var(--border)" />
-          <XAxis dataKey="label" tick={{ fill: "var(--text-secondary)", fontSize: 11 }} />
+          <XAxis dataKey="label" tick={{ fill: "var(--text-secondary)", fontSize: CHART_TICK_FONT }} />
           <YAxis
             tickFormatter={isEur ? (kwh: number) => formatEur(kwh * blendedRate, locale) : (kwh: number) => formatKwhTick(kwh, locale)}
-            tick={{ fill: "var(--text-secondary)", fontSize: 11 }}
+            tick={{ fill: "var(--text-secondary)", fontSize: CHART_TICK_FONT }}
           />
           <Tooltip
             cursor={{ fill: "rgba(0,0,0,0.03)" }}
@@ -224,7 +225,7 @@ export function EnergyByUsageChart({ data, period, date, height = 300, unit = "w
               const datum = payload[0].payload as Datum;
               const total = seriesWithI18n.reduce((acc, s) => acc + (datum[s.id] as number), 0);
               return (
-                <div className="bg-surface border border-border rounded-[6px] p-3 text-[12px] shadow-lg">
+                <div className="bg-surface border border-border rounded-[6px] p-3 text-caption shadow-lg">
                   <div className="font-semibold text-text mb-1">{datum.tooltipLabel ?? label}</div>
                   {seriesWithI18n.map((s) => {
                     const v = datum[s.id] as number;

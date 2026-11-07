@@ -206,10 +206,10 @@ export function AppLayout() {
               {user && (
                 <div className="hidden lg:flex items-center gap-1.5 ml-1">
                   <div className="flex items-center gap-1.5 pl-1 pr-2.5 py-[3px] rounded-full bg-[var(--n-50)] border border-border-light">
-                    <span className="w-[22px] h-[22px] rounded-full bg-primary text-white flex items-center justify-center text-[10px] font-bold leading-none">
+                    <span className="w-[22px] h-[22px] rounded-full bg-primary text-white flex items-center justify-center text-micro font-semibold leading-none">
                       {getInitials(user.displayName)}
                     </span>
-                    <span className="text-[12px] font-medium text-text">{user.displayName}</span>
+                    <span className="text-caption font-medium text-text">{user.displayName}</span>
                   </div>
                   <button
                     onClick={() => logout()}
@@ -256,7 +256,7 @@ export function AppLayout() {
   );
 }
 
-// Mock parity: text-[.82rem] / n-400 / weight 500 for crumb, n-700 weight 600 for current.
+// Mock parity: text-small / n-400 / weight 500 for crumb, n-700 weight 600 for current.
 // On /home/:zoneId shows "Home › ... › CurrentZone" (root zone Maison is treated as implicit).
 // On other top-level routes shows the localized route name as the current crumb.
 function TopbarBreadcrumb({ homeName }: { homeName: string }) {
@@ -273,10 +273,10 @@ function TopbarBreadcrumb({ homeName }: { homeName: string }) {
     // Skip root zone "Maison" from crumb — it's redundant with home name.
     const segments = path[0].id === ROOT_ZONE_ID ? path.slice(1) : path;
     if (segments.length === 0) {
-      return <span className="text-[.82rem] font-semibold text-[var(--n-700)]">{homeLabel}</span>;
+      return <span className="text-small font-semibold text-[var(--n-700)]">{homeLabel}</span>;
     }
     return (
-      <div className="text-[.82rem] font-medium text-[var(--n-400)]">
+      <div className="text-small font-medium text-[var(--n-400)]">
         <span>{homeLabel}</span>
         {segments.map((s, i) => (
           <span key={s.id}>
@@ -295,7 +295,7 @@ function TopbarBreadcrumb({ homeName }: { homeName: string }) {
   const routeLabel = getRouteLabel(location.pathname, t);
   if (routeLabel) {
     return (
-      <div className="text-[.82rem] font-medium text-[var(--n-400)]">
+      <div className="text-small font-medium text-[var(--n-400)]">
         <span>{homeLabel}</span>
         <span className="mx-[.35rem] opacity-35">›</span>
         <b className="font-semibold text-[var(--n-700)]">{routeLabel}</b>
@@ -303,7 +303,7 @@ function TopbarBreadcrumb({ homeName }: { homeName: string }) {
     );
   }
 
-  return <span className="text-[.82rem] font-semibold text-[var(--n-700)]">{homeLabel}</span>;
+  return <span className="text-small font-semibold text-[var(--n-700)]">{homeLabel}</span>;
 }
 
 // Mobile topbar leading slot — burger when contextual nav is available, Sowel logo otherwise.
@@ -392,11 +392,11 @@ function MobileTopbarTitle({ homeName }: { homeName: string }) {
 
   return (
     <div className="min-w-0">
-      <div className="text-[16px] font-bold text-text leading-[1.15] tracking-[-0.015em] truncate">
+      <div className="text-lead font-semibold text-text leading-[1.15] tracking-[-0.015em] truncate">
         {homeLabel}
       </div>
       {sub && (
-        <div className="text-[11px] text-text-tertiary font-medium leading-[1.3] truncate">
+        <div className="text-micro text-text-tertiary font-medium leading-[1.3] truncate">
           {sub}
         </div>
       )}
@@ -487,12 +487,12 @@ function MobileNav({
           />
           <button
             onClick={() => setDrawerOpen(true)}
-            className="flex flex-col items-center justify-center py-1 px-3 rounded-[6px] text-[11px] font-medium text-text-secondary"
+            className="flex flex-col items-center justify-center py-1 px-3 rounded-[6px] text-micro font-medium text-text-secondary"
           >
             <span className="mb-0.5">
               <Menu size={18} strokeWidth={1.5} />
             </span>
-            <span className="text-[11px]">{t("nav.more", "Plus")}</span>
+            <span className="text-micro">{t("nav.more", "Plus")}</span>
           </button>
         </div>
         {/* Safe area spacer for iOS PWA home indicator */}
@@ -534,7 +534,7 @@ function MobileDrawer({ onClose }: { onClose: () => void }) {
         </div>
         {/* Close button */}
         <div className="flex items-center justify-between px-4 pb-2">
-          <span className="text-[13px] font-semibold text-text-secondary uppercase tracking-widest">
+          <span className="text-small font-semibold text-text-secondary uppercase tracking-widest">
             {t("nav.more", "Plus")}
           </span>
           <button
@@ -588,7 +588,7 @@ function MobileDrawer({ onClose }: { onClose: () => void }) {
           {isAdmin && (
             <>
               <div className="pt-3 pb-1 px-2">
-                <span className="text-[11px] font-semibold text-text-tertiary uppercase tracking-widest">
+                <span className="text-micro font-semibold text-text-tertiary uppercase tracking-widest">
                   {t("nav.administration")}
                 </span>
               </div>
@@ -602,7 +602,7 @@ function MobileDrawer({ onClose }: { onClose: () => void }) {
                     label={t(item.labelKey)}
                     badge={
                       showBadge ? (
-                        <span className="text-[10px] font-medium text-error bg-error/10 px-1.5 py-0.5 rounded-full">
+                        <span className="text-micro font-medium text-error bg-error/10 px-1.5 py-0.5 rounded-full">
                           {pluginUpdateCount}
                         </span>
                       ) : undefined
@@ -620,9 +620,9 @@ function MobileDrawer({ onClose }: { onClose: () => void }) {
               <div className="pt-3 mt-2 border-t border-border-light flex items-center justify-between px-2">
                 <div className="flex items-center gap-2 text-text-secondary">
                   <User size={16} strokeWidth={1.5} />
-                  <span className="text-[13px] font-medium">{user.displayName}</span>
+                  <span className="text-small font-medium">{user.displayName}</span>
                   {user.role === "admin" && (
-                    <span className="text-[10px] bg-primary/10 text-primary px-1.5 py-0.5 rounded font-medium">
+                    <span className="text-micro bg-primary/10 text-primary px-1.5 py-0.5 rounded font-medium">
                       {t("auth.admin")}
                     </span>
                   )}
@@ -632,7 +632,7 @@ function MobileDrawer({ onClose }: { onClose: () => void }) {
                     logout();
                     onClose();
                   }}
-                  className="flex items-center gap-1.5 px-3 py-1.5 rounded-[6px] text-text-tertiary hover:bg-border-light text-[12px]"
+                  className="flex items-center gap-1.5 px-3 py-1.5 rounded-[6px] text-text-tertiary hover:bg-border-light text-caption"
                 >
                   <LogOut size={14} strokeWidth={1.5} />
                   {t("auth.logout")}
@@ -669,7 +669,7 @@ function DrawerLink({
       className="flex items-center gap-3 w-full px-3 py-2.5 rounded-[10px] text-text hover:bg-border-light transition-colors duration-150 text-left"
     >
       <span className="text-text-secondary">{icon}</span>
-      <span className="text-[14px] font-medium flex-1">{label}</span>
+      <span className="text-body font-medium flex-1">{label}</span>
       {badge}
       <ChevronRight size={14} strokeWidth={1.5} className="text-text-tertiary" />
     </button>
@@ -681,13 +681,13 @@ function MobileNavLink({ to, label, icon }: { to: string; label: string; icon?: 
     <NavLink
       to={to}
       className={({ isActive }) =>
-        `flex flex-col items-center justify-center py-1 px-3 rounded-[6px] text-[11px] font-medium ${
+        `flex flex-col items-center justify-center py-1 px-3 rounded-[6px] text-micro font-medium ${
           isActive ? "text-primary" : "text-text-secondary"
         }`
       }
     >
       {icon && <span className="mb-0.5">{icon}</span>}
-      <span className="text-[11px]">{label}</span>
+      <span className="text-micro">{label}</span>
     </NavLink>
   );
 }

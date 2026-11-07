@@ -109,7 +109,7 @@ export function RecipeTile({
   // worse answer than an honest empty tile.
   if (!recipe || !tile || !instance) {
     const body = (
-      <span className="text-[11px] text-text-tertiary text-center px-2">
+      <span className="text-micro text-text-tertiary text-center px-2">
         {t("dashboard.recipeTile.unavailable")}
       </span>
     );
@@ -150,7 +150,7 @@ export function RecipeTile({
   const summaryLine =
     typeof summary === "string" && summary.length > 0 ? (
       <span
-        className={`text-[11px] text-text-secondary text-center leading-tight ${
+        className={`text-micro text-text-secondary text-center leading-tight ${
           isMobile ? "truncate max-w-full" : "line-clamp-2 px-1"
         }`}
       >
@@ -282,7 +282,7 @@ function MobileShell({
       {...cardAction}
     >
       <span
-        className={`text-[12px] font-semibold text-text truncate w-full text-center ${
+        className={`text-caption font-semibold text-text truncate w-full text-center ${
           editMode ? "pl-5 pr-8" : ""
         }`}
       >

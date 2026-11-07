@@ -126,7 +126,7 @@ export function SolarProfileForm({ equipmentId, planes, since, onSaved }: SolarP
           >
             {draft.length > 1 && (
               <div className="flex items-center justify-between mb-2">
-                <span className="text-[12px] font-medium text-text-secondary">
+                <span className="text-caption font-medium text-text-secondary">
                   {t("equipments.solar.planeN", { n: index + 1 })}
                 </span>
                 <button
@@ -140,7 +140,7 @@ export function SolarProfileForm({ equipmentId, planes, since, onSaved }: SolarP
               </div>
             )}
 
-            <label className="block text-[12px] text-text-secondary mb-1">
+            <label className="block text-caption text-text-secondary mb-1">
               {t("equipments.solar.orientation")}
             </label>
             <div className="flex flex-wrap gap-1 mb-2">
@@ -149,7 +149,7 @@ export function SolarProfileForm({ equipmentId, planes, since, onSaved }: SolarP
                   key={c.key}
                   type="button"
                   onClick={() => patch(index, { azimuthDeg: c.azimuth })}
-                  className={`px-2.5 py-1 rounded-[6px] text-[12px] font-medium border ${
+                  className={`px-2.5 py-1 rounded-[6px] text-caption font-medium border ${
                     plane.azimuthDeg === c.azimuth
                       ? "border-primary bg-primary-light text-primary"
                       : "border-border text-text-secondary hover:border-primary"
@@ -164,7 +164,7 @@ export function SolarProfileForm({ equipmentId, planes, since, onSaved }: SolarP
                 max={359}
                 value={plane.azimuthDeg}
                 onChange={(e) => patch(index, { azimuthDeg: toDegrees(e.target.value) })}
-                className={`w-20 px-2 py-1 rounded-[6px] border bg-background text-[12px] tabular-nums ${
+                className={`w-20 px-2 py-1 rounded-[6px] border bg-background text-caption tabular-nums ${
                   badFields.has(`${index}:azimuthDeg`) ? "border-error" : "border-border"
                 }`}
                 aria-label={t("equipments.solar.orientation")}
@@ -175,7 +175,7 @@ export function SolarProfileForm({ equipmentId, planes, since, onSaved }: SolarP
               <div className="flex-1">
                 <label
                   htmlFor={`tilt-${index}`}
-                  className="block text-[12px] text-text-secondary mb-1"
+                  className="block text-caption text-text-secondary mb-1"
                 >
                   {t("equipments.solar.tilt")}
                 </label>
@@ -186,18 +186,18 @@ export function SolarProfileForm({ equipmentId, planes, since, onSaved }: SolarP
                   max={90}
                   value={plane.tiltDeg}
                   onChange={(e) => patch(index, { tiltDeg: toDegrees(e.target.value) })}
-                  className={`w-full px-2 py-1.5 rounded-[6px] border bg-background text-[13px] tabular-nums ${
+                  className={`w-full px-2 py-1.5 rounded-[6px] border bg-background text-small tabular-nums ${
                     badFields.has(`${index}:tiltDeg`) ? "border-error" : "border-border"
                   }`}
                 />
-                <p className="text-[11px] text-text-tertiary mt-1">
+                <p className="text-micro text-text-tertiary mt-1">
                   {t("equipments.solar.tiltHint")}
                 </p>
               </div>
               <div className="flex-1">
                 <label
                   htmlFor={`peak-${index}`}
-                  className="block text-[12px] text-text-secondary mb-1"
+                  className="block text-caption text-text-secondary mb-1"
                 >
                   {t("equipments.solar.peak")}
                 </label>
@@ -207,11 +207,11 @@ export function SolarProfileForm({ equipmentId, planes, since, onSaved }: SolarP
                   min={0}
                   value={plane.peakWc || ""}
                   onChange={(e) => patch(index, { peakWc: toDegrees(e.target.value) })}
-                  className={`w-full px-2 py-1.5 rounded-[6px] border bg-background text-[13px] tabular-nums ${
+                  className={`w-full px-2 py-1.5 rounded-[6px] border bg-background text-small tabular-nums ${
                     badFields.has(`${index}:peakWc`) ? "border-error" : "border-border"
                   }`}
                 />
-                <p className="text-[11px] text-text-tertiary mt-1">
+                <p className="text-micro text-text-tertiary mt-1">
                   {t("equipments.solar.peakHint")}
                 </p>
               </div>
@@ -226,7 +226,7 @@ export function SolarProfileForm({ equipmentId, planes, since, onSaved }: SolarP
         <button
           type="button"
           onClick={() => setDraft((c) => [...c, { ...EMPTY_PLANE }])}
-          className="mt-4 flex items-center gap-1.5 text-[12px] text-primary hover:underline"
+          className="mt-4 flex items-center gap-1.5 text-caption text-primary hover:underline"
         >
           <Plus size={14} strokeWidth={1.5} />
           {t("equipments.solar.addPlane")}
@@ -237,7 +237,7 @@ export function SolarProfileForm({ equipmentId, planes, since, onSaved }: SolarP
           across a capacity change the gain describes neither array, and this
           date is the one thing only the household knows. */}
       <div className="mt-4 pt-4 border-t border-border-light">
-        <label htmlFor="solar-since" className="block text-[12px] text-text-secondary mb-1">
+        <label htmlFor="solar-since" className="block text-caption text-text-secondary mb-1">
           {t("equipments.solar.since")}
         </label>
         <input
@@ -246,19 +246,19 @@ export function SolarProfileForm({ equipmentId, planes, since, onSaved }: SolarP
           value={sinceDraft}
           max={new Date().toISOString().slice(0, 10)}
           onChange={(e) => setSinceDraft(e.target.value)}
-          className="px-2 py-1.5 rounded-[6px] border border-border bg-background text-[13px] tabular-nums"
+          className="px-2 py-1.5 rounded-[6px] border border-border bg-background text-small tabular-nums"
         />
-        <p className="text-[11px] text-text-tertiary mt-1">{t("equipments.solar.sinceHint")}</p>
+        <p className="text-micro text-text-tertiary mt-1">{t("equipments.solar.sinceHint")}</p>
       </div>
 
-      {error && <p className="mt-3 text-[12px] text-error">{error}</p>}
+      {error && <p className="mt-3 text-caption text-error">{error}</p>}
 
       <div className="mt-4 flex items-center gap-3">
         <button
           type="button"
           onClick={save}
           disabled={saving || nothingToSave}
-          className="px-3 py-1.5 rounded-[6px] bg-primary text-white text-[13px] font-medium disabled:opacity-50"
+          className="px-3 py-1.5 rounded-[6px] bg-primary text-white text-small font-medium disabled:opacity-50"
         >
           {saving ? t("common.saving") : t("common.save")}
         </button>
@@ -270,13 +270,13 @@ export function SolarProfileForm({ equipmentId, planes, since, onSaved }: SolarP
             type="button"
             onClick={withdraw}
             disabled={saving}
-            className="text-[12px] text-text-tertiary hover:text-error disabled:opacity-50"
+            className="text-caption text-text-tertiary hover:text-error disabled:opacity-50"
           >
             {t("equipments.solar.withdraw")}
           </button>
         )}
         {totalWc > 0 && (
-          <span className="text-[12px] text-text-tertiary tabular-nums font-mono">
+          <span className="text-caption text-text-tertiary tabular-nums font-mono">
             {t("equipments.solar.total", { wc: totalWc })}
           </span>
         )}

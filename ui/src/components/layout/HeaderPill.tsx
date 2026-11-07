@@ -43,7 +43,7 @@ export function HeaderPill({
 }: HeaderPillProps) {
   const content = (
     <span
-      className={`flex items-center gap-1.5 px-2.5 py-1 rounded-full transition-colors text-[12px] font-semibold ${TONE_CLASS[tone]}`}
+      className={`flex items-center gap-1.5 px-2.5 py-1 rounded-full transition-colors text-caption font-semibold ${TONE_CLASS[tone]}`}
     >
       <span className="relative flex items-center">
         {icon}

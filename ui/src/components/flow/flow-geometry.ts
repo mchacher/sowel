@@ -48,9 +48,9 @@ export const SLOT_BOX: Record<FlowSlot, string> = {
 };
 
 export const SLOT_VALUE: Record<FlowSlot, string> = {
-  focal: "text-[20px] sm:text-[24px] mt-1",
-  left: "text-[16px] sm:text-[19px]",
-  right: "text-[16px] sm:text-[19px]",
+  focal: "text-title sm:text-display mt-1",
+  left: "text-lead sm:text-title",
+  right: "text-lead sm:text-title",
 };
 
 export interface FlowNodeSpec {

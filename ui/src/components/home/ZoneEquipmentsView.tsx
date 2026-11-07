@@ -86,10 +86,10 @@ export function ZoneEquipmentsView({
           {/* cat-head — strict design-system style: neutral grey, flush, no radius */}
           <div className="flex items-center gap-[0.55rem] px-[1.1rem] py-[0.4rem] min-h-[36px] bg-[var(--n-25)] border-t border-b border-border-light">
             <span className="text-text-tertiary opacity-70 flex-shrink-0">{group.icon}</span>
-            <span className="text-[10.4px] font-semibold text-text-tertiary uppercase tracking-[0.14em]">
+            <span className="text-micro font-semibold text-text-tertiary uppercase tracking-[0.14em]">
               {t(group.labelKey)}
             </span>
-            <span className="text-[10.9px] text-text-tertiary opacity-65 ml-auto tabular-nums font-mono">
+            <span className="text-micro text-text-tertiary opacity-65 ml-auto tabular-nums font-mono">
               {group.equipments.length}
             </span>
           </div>
@@ -116,14 +116,14 @@ function EmptyZone({ zoneName, onAdd }: { zoneName: string; onAdd?: () => void }
       <div className="w-14 h-14 rounded-full bg-border-light flex items-center justify-center mb-3">
         <Box size={24} strokeWidth={1.5} className="text-text-tertiary" />
       </div>
-      <h3 className="text-[15px] font-medium text-text mb-1">{t("equipments.noEquipments")}</h3>
-      <p className="text-[13px] text-text-secondary max-w-[280px]">
+      <h3 className="text-lead font-medium text-text mb-1">{t("equipments.noEquipments")}</h3>
+      <p className="text-small text-text-secondary max-w-[280px]">
         {t("equipments.noEquipmentsMessage", { name: zoneName })}
       </p>
       {onAdd && (
         <button
           onClick={onAdd}
-          className="mt-4 inline-flex items-center gap-1.5 px-4 py-2 text-[13px] font-medium text-white bg-primary rounded-[6px] hover:bg-primary-hover transition-colors duration-150"
+          className="mt-4 inline-flex items-center gap-1.5 px-4 py-2 text-small font-medium text-white bg-primary rounded-[6px] hover:bg-primary-hover transition-colors duration-150"
         >
           {t("equipments.createEquipment")}
         </button>

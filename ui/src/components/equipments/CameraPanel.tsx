@@ -73,18 +73,18 @@ export function CameraPanel({
   if (!hasAnything) {
     return (
       <div className="bg-surface rounded-[10px] border border-border p-4 mb-6">
-        <h3 className="text-[14px] font-semibold text-text flex items-center gap-2 mb-2">
+        <h3 className="text-body font-semibold text-text flex items-center gap-2 mb-2">
           <Camera size={16} strokeWidth={1.5} className="text-text-tertiary" />
           {t("cameras.panel.title")}
         </h3>
-        <p className="text-[13px] text-text-tertiary">{t("cameras.panel.noData")}</p>
+        <p className="text-small text-text-tertiary">{t("cameras.panel.noData")}</p>
       </div>
     );
   }
 
   return (
     <div className="bg-surface rounded-[10px] border border-border p-4 mb-6 space-y-4">
-      <h3 className="text-[14px] font-semibold text-text flex items-center gap-2">
+      <h3 className="text-body font-semibold text-text flex items-center gap-2">
         <Camera size={16} strokeWidth={1.5} className="text-text-tertiary" />
         {t("cameras.panel.title")}
       </h3>
@@ -100,7 +100,7 @@ export function CameraPanel({
               onClick={() =>
                 void onExecuteOrder(monitoringOrder.alias, !(monitoringBinding?.value === true))
               }
-              className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-[6px] text-[13px] font-medium border transition-colors duration-150 ${
+              className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-[6px] text-small font-medium border transition-colors duration-150 ${
                 monitoringBinding?.value === true
                   ? "bg-success/10 text-success border-success/30"
                   : "bg-border-light text-text-secondary border-border"
@@ -118,7 +118,7 @@ export function CameraPanel({
           )}
 
           {lightModeOrder && lightModeBinding && (
-            <div className="inline-flex items-center gap-1.5 text-[13px] text-text-secondary">
+            <div className="inline-flex items-center gap-1.5 text-small text-text-secondary">
               <Lightbulb size={14} strokeWidth={1.5} className="text-text-tertiary" />
               <select
                 value={String(lightModeBinding.value ?? "auto")}
@@ -135,7 +135,7 @@ export function CameraPanel({
           {sirenOrder && (
             <button
               onClick={() => void onExecuteOrder(sirenOrder.alias, true)}
-              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-[6px] text-[13px] font-medium border border-error/30 bg-error/10 text-error transition-colors duration-150 hover:bg-error/20"
+              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-[6px] text-small font-medium border border-error/30 bg-error/10 text-error transition-colors duration-150 hover:bg-error/20"
             >
               <Siren size={14} strokeWidth={1.5} />
               {t("cameras.siren.trigger")}
@@ -145,7 +145,7 @@ export function CameraPanel({
       )}
 
       {detectionBinding && detectionBinding.value != null && (
-        <p className="text-[13px] text-text-secondary">
+        <p className="text-small text-text-secondary">
           {t("cameras.lastDetection")}{": "}
           <span className="font-mono font-medium text-text">{String(detectionBinding.value)}</span>
           {detectionBinding.lastUpdated && (
@@ -269,13 +269,13 @@ function CameraView({ equipmentId, hasSnapshot, hasStream }: CameraViewProps) {
           liveError || !HLS_SUPPORTED ? (
             <div className="flex flex-col items-center gap-2 px-4 text-center">
               <WifiOff size={28} strokeWidth={1.5} className="text-error" />
-              <p className="text-[13px] font-medium text-white">{t("cameras.live.error")}</p>
+              <p className="text-small font-medium text-white">{t("cameras.live.error")}</p>
               <button
                 onClick={() => {
                   setLiveError(false);
                   setLiveRetryTick((n) => n + 1);
                 }}
-                className="text-[12px] font-medium text-primary hover:underline"
+                className="text-caption font-medium text-primary hover:underline"
               >
                 {t("cameras.live.retry")}
               </button>
@@ -288,10 +288,10 @@ function CameraView({ equipmentId, hasSnapshot, hasStream }: CameraViewProps) {
         ) : snapshotError ? (
           <div className="flex flex-col items-center gap-2 px-4 text-center">
             <WifiOff size={28} strokeWidth={1.5} className="text-error" />
-            <p className="text-[13px] font-medium text-white">{t("cameras.snapshot.error")}</p>
+            <p className="text-small font-medium text-white">{t("cameras.snapshot.error")}</p>
             <button
               onClick={refreshSnapshot}
-              className="text-[12px] font-medium text-primary hover:underline"
+              className="text-caption font-medium text-primary hover:underline"
             >
               {t("cameras.snapshot.retry")}
             </button>
@@ -305,7 +305,7 @@ function CameraView({ equipmentId, hasSnapshot, hasStream }: CameraViewProps) {
         {hasSnapshot && !live && (
           <button
             onClick={refreshSnapshot}
-            className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-[6px] text-[13px] font-medium text-text-secondary border border-border hover:bg-border-light transition-colors duration-150"
+            className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-[6px] text-small font-medium text-text-secondary border border-border hover:bg-border-light transition-colors duration-150"
           >
             <RefreshCw size={14} strokeWidth={1.5} />
             {t("cameras.snapshot.refresh")}
@@ -317,7 +317,7 @@ function CameraView({ equipmentId, hasSnapshot, hasStream }: CameraViewProps) {
               if (!live) setLiveError(false);
               setLive((v) => !v);
             }}
-            className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-[6px] text-[13px] font-medium border transition-colors duration-150 ${
+            className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-[6px] text-small font-medium border transition-colors duration-150 ${
               live
                 ? "bg-error/10 text-error border-error/30"
                 : "bg-primary/10 text-primary border-primary/30"

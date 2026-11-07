@@ -82,10 +82,10 @@ export function ActivityPanel({ zoneId }: Props) {
     <section className="bg-surface border border-border-light rounded-lg overflow-hidden">
       {/* Panel head — strict alignment with design-system .panel__head */}
       <div className="flex items-center gap-[0.55rem] px-[1.1rem] py-[0.55rem] min-h-[44px] bg-primary-light border-b border-[var(--p-100)]">
-        <h2 className="text-[0.72rem] font-bold text-primary uppercase tracking-[0.12em]">
+        <h2 className="text-caption font-semibold text-primary uppercase tracking-[0.12em]">
           {t("activity.title")}
         </h2>
-        <span className="text-[0.72rem] text-primary/65 font-medium normal-case tracking-normal">
+        <span className="text-caption text-primary/65 font-medium normal-case tracking-normal">
           {t("activity.subtitle")}
         </span>
         {hasDescendants && (
@@ -111,8 +111,8 @@ export function ActivityPanel({ zoneId }: Props) {
           className={
             (hasDescendants ? "ml-[0.4rem] " : "ml-auto ") +
             (isLive
-              ? "font-mono text-[0.68rem] font-semibold leading-none px-[7px] py-[1px] rounded-full bg-[var(--green-50)] text-[var(--green-700)] border border-[var(--green-50)]"
-              : "font-mono text-[0.68rem] font-semibold leading-none px-[7px] py-[1px] rounded-full bg-background text-text-tertiary border border-border-light")
+              ? "font-mono text-micro font-semibold leading-none px-[7px] py-[1px] rounded-full bg-[var(--green-50)] text-[var(--green-700)] border border-[var(--green-50)]"
+              : "font-mono text-micro font-semibold leading-none px-[7px] py-[1px] rounded-full bg-background text-text-tertiary border border-border-light")
           }
         >
           {isLive ? `● ${t("activity.live")}` : `○ ${t("activity.offline")}`}
@@ -125,12 +125,12 @@ export function ActivityPanel({ zoneId }: Props) {
         style={isMobile ? undefined : { maxHeight: DESKTOP_MAX_HEIGHT_PX }}
       >
         {status === "loading" && items.length === 0 && (
-          <div className="px-[1.1rem] py-3 text-[0.78rem] text-text-tertiary">
+          <div className="px-[1.1rem] py-3 text-caption text-text-tertiary">
             {t("activity.loading")}
           </div>
         )}
         {status === "error" && items.length === 0 && (
-          <div className="px-[1.1rem] py-3 flex items-center gap-2 text-[0.78rem] text-error">
+          <div className="px-[1.1rem] py-3 flex items-center gap-2 text-caption text-error">
             <span>{t("activity.loadError")}</span>
             <button
               type="button"
@@ -143,13 +143,13 @@ export function ActivityPanel({ zoneId }: Props) {
           </div>
         )}
         {status === "ready" && items.length === 0 && (
-          <div className="px-[1.1rem] py-3 text-[0.78rem] text-text-tertiary">
+          <div className="px-[1.1rem] py-3 text-caption text-text-tertiary">
             {t("activity.empty")}
           </div>
         )}
         {groups.map((group) => (
           <div key={group.key}>
-            <div className="px-[1.1rem] py-[0.35rem] font-mono text-[0.65rem] font-semibold uppercase tracking-[0.14em] text-text-tertiary border-t border-border-light first:border-t-0">
+            <div className="px-[1.1rem] py-[0.35rem] font-mono text-micro font-semibold uppercase tracking-[0.14em] text-text-tertiary border-t border-border-light first:border-t-0">
               {group.label}
             </div>
             {group.items.map((item) => (

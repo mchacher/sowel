@@ -324,7 +324,7 @@ function StripPill({ item, zoneId, historyEnabled }: StripPillProps) {
 
   return (
     <div
-      className={`flex items-center gap-1.5 px-2 py-0.5 rounded-[5px] text-[13px] font-medium tabular-nums whitespace-nowrap ${v.pill}`}
+      className={`flex items-center gap-1.5 px-2 py-0.5 rounded-[5px] text-small font-medium tabular-nums whitespace-nowrap ${v.pill}`}
     >
       <span className={`flex-shrink-0 ${iconClass}`}>{item.icon}</span>
       {hasMobileOverride ? (

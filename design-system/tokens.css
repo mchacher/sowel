@@ -85,9 +85,24 @@
   /* Radii */
   --r-xs:4px; --r-sm:6px; --r-md:8px; --r-lg:12px; --r-full:999px;
 
-  /* Typography */
-  --font-body: 'Inter', system-ui, -apple-system, sans-serif;
+  /* Typography — Fontsource names the variable build "Inter Variable"; with
+     plain 'Inter' the face never matches and everything falls back to
+     system-ui without an error (spec 196, slice 5a). */
+  --font-body: 'Inter Variable', 'Inter', system-ui, -apple-system, sans-serif;
   --font-mono: 'JetBrains Mono', ui-monospace, monospace;
+
+  /* Type scale (spec 196): seven text steps and one value size, exposed as
+     Tailwind text-* utilities in ui/src/index.css (@theme). Size only: the
+     line height stays the inherited 20 px of body unless a leading-* class
+     sets it, as before the scale (slice 5a keeps every row its height). */
+  --fs-micro:   11px; /* ticks, timestamps, counters — never a sentence */
+  --fs-caption: 12px; /* secondary info, help, table headers, pills */
+  --fs-small:   13px; /* field labels, buttons, dense rows, breadcrumb */
+  --fs-body:    14px; /* running text (body default), equipment names */
+  --fs-lead:    16px; /* panel, section and card titles */
+  --fs-title:   20px; /* sheet and modal titles, values in a detail row */
+  --fs-display: 28px; /* page title, a card's main value */
+  --fs-value:   40px; /* headline values: thermostat, mobile weather */
 }
 
 /* ── Defaults wired to body ── */

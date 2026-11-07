@@ -89,6 +89,24 @@ export default defineConfig([
           message:
             "new Intl.DateTimeFormat() follows the browser, not Sowel's language: pass currentLocale() from lib/format.",
         },
+        // Spec 196, FR-5 — one type scale (text-micro … text-value, index.css
+        // @theme). It replaced 33 hand-picked sizes from 8 to 56 px; these keep
+        // them from coming back. A colour in brackets (text-[var(--n-700)]) is
+        // fine. SVG illustrations size their <text> with a JSX attribute, which
+        // these selectors do not see.
+        {
+          selector: "Literal[value=/text-\\[(\\d|\\.\\d|clamp|calc|length)/]",
+          message: "Arbitrary font size: use a step of the type scale (text-micro … text-value).",
+        },
+        {
+          selector: "TemplateElement[value.raw=/text-\\[(\\d|\\.\\d|clamp|calc|length)/]",
+          message: "Arbitrary font size: use a step of the type scale (text-micro … text-value).",
+        },
+        {
+          selector: "Property[key.name='fontSize'] > Literal.value",
+          message:
+            "Font size in a style or chart prop: use CHART_TICK_FONT / CHART_TOOLTIP_FONT (lib/chart-font) or a text-* class.",
+        },
       ],
     },
   },

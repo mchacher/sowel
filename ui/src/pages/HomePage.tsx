@@ -255,8 +255,8 @@ function NoZonesState() {
       <div className="w-16 h-16 rounded-full bg-border-light flex items-center justify-center mb-4">
         <Home size={28} strokeWidth={1.5} className="text-text-tertiary" />
       </div>
-      <h3 className="text-[16px] font-medium text-text mb-1">{t("home.welcome")}</h3>
-      <p className="text-[13px] text-text-secondary max-w-[320px]">
+      <h3 className="text-lead font-medium text-text mb-1">{t("home.welcome")}</h3>
+      <p className="text-small text-text-secondary max-w-[320px]">
         {t("home.noZones")}
       </p>
     </div>
@@ -272,13 +272,13 @@ function ZoneNotFound() {
       <div className="w-16 h-16 rounded-full bg-error/10 flex items-center justify-center mb-4">
         <Home size={28} strokeWidth={1.5} className="text-error" />
       </div>
-      <h3 className="text-[16px] font-medium text-text mb-1">{t("home.zoneNotFound")}</h3>
-      <p className="text-[13px] text-text-secondary max-w-[320px] mb-4">
+      <h3 className="text-lead font-medium text-text mb-1">{t("home.zoneNotFound")}</h3>
+      <p className="text-small text-text-secondary max-w-[320px] mb-4">
         {t("home.zoneDeleted")}
       </p>
       <button
         onClick={() => navigate("/home")}
-        className="px-4 py-2 bg-primary text-white text-[13px] font-medium rounded-[6px] hover:bg-primary-hover transition-colors duration-150"
+        className="px-4 py-2 bg-primary text-white text-small font-medium rounded-[6px] hover:bg-primary-hover transition-colors duration-150"
       >
         {t("home.backToHome")}
       </button>
@@ -330,7 +330,7 @@ function ZoneHeroLead({
 
   return (
     <div
-      className="flex items-center gap-[0.6rem] mt-[0.55rem] text-[0.85rem] text-text-tertiary tabular-nums flex-wrap"
+      className="flex items-center gap-[0.6rem] mt-[0.55rem] text-small text-text-tertiary tabular-nums flex-wrap"
       aria-label={t("zone.lead.aria", { defaultValue: "Résumé de la zone" })}
     >
       {segments.map((seg, i) => (
@@ -358,7 +358,7 @@ function Panel({
     <section className={`bg-surface border border-border-light rounded-lg ${className}`}>
       {/* Panel head — strict alignment with design-system .panel__head (spec 100) */}
       <div className="flex items-center gap-[0.55rem] px-[1.1rem] py-[0.55rem] min-h-[44px] bg-primary-light border-b border-primary-mid">
-        <h2 className="text-[11.5px] font-bold text-primary uppercase tracking-[0.12em]">
+        <h2 className="text-caption font-semibold text-primary uppercase tracking-[0.12em]">
           {title}
         </h2>
         {headerRight && <div className="ml-auto flex-shrink-0">{headerRight}</div>}
@@ -390,7 +390,7 @@ function MobileZoneDrawer({
         <div className="flex items-center justify-between px-4 py-3 border-b border-border">
           <div className="flex items-center gap-2">
             <Home size={18} strokeWidth={1.5} className="text-primary" />
-            <span className="text-[15px] font-semibold text-text">{t("nav.maison")}</span>
+            <span className="text-lead font-semibold text-text">{t("nav.maison")}</span>
           </div>
           <button
             onClick={onClose}
@@ -456,7 +456,7 @@ function ZoneTreeItem({
         )}
         {!hasChildren && <span className="w-[14px] flex-shrink-0" />}
         <Icon size={16} strokeWidth={1.5} className={isActive ? "text-primary" : "text-text-tertiary"} />
-        <span className="text-[14px] truncate">{zone.name}</span>
+        <span className="text-body truncate">{zone.name}</span>
       </button>
       {hasChildren && expanded && (
         <div>

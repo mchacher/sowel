@@ -97,7 +97,7 @@ export function SettingsPage() {
             key={tab.id}
             onClick={() => setActiveTab(tab.id)}
             className={`
-              px-3 py-2 text-[13px] font-medium transition-colors duration-150
+              px-3 py-2 text-small font-medium transition-colors duration-150
               border-b-2 -mb-px cursor-pointer
               ${
                 activeTab === tab.id
@@ -258,7 +258,7 @@ function HomeSettingsSection() {
   if (loading) {
     return (
       <section className="bg-surface rounded-[10px] border border-border p-5">
-        <h2 className="text-[14px] font-semibold text-text mb-4">{t("settings.home")}</h2>
+        <h2 className="text-body font-semibold text-text mb-4">{t("settings.home")}</h2>
         <Loader2 size={16} className="animate-spin text-text-tertiary" />
       </section>
     );
@@ -266,11 +266,11 @@ function HomeSettingsSection() {
 
   return (
     <section className="bg-surface rounded-[10px] border border-border p-5">
-      <h2 className="text-[14px] font-semibold text-text mb-1">{t("settings.home")}</h2>
-      <p className="text-[12px] text-text-tertiary mb-4">{t("settings.homeDescription")}</p>
+      <h2 className="text-body font-semibold text-text mb-1">{t("settings.home")}</h2>
+      <p className="text-caption text-text-tertiary mb-4">{t("settings.homeDescription")}</p>
       <div className="space-y-3">
         <div>
-          <label className="block text-[12px] text-text-tertiary uppercase tracking-widest mb-1">
+          <label className="block text-caption text-text-tertiary uppercase tracking-widest mb-1">
             {t("settings.homeName")}
           </label>
           <input
@@ -278,12 +278,12 @@ function HomeSettingsSection() {
             value={homeName}
             onChange={(e) => setHomeName(e.target.value)}
             placeholder={t("settings.homeNamePlaceholder")}
-            className="w-full px-3 py-2 text-[14px] bg-background border border-border rounded-[6px] text-text placeholder:text-text-tertiary focus:outline-none focus:border-primary"
+            className="w-full px-3 py-2 text-body bg-background border border-border rounded-[6px] text-text placeholder:text-text-tertiary focus:outline-none focus:border-primary"
           />
         </div>
         <div className="grid grid-cols-2 gap-3">
           <div>
-            <label className="block text-[12px] text-text-tertiary uppercase tracking-widest mb-1">
+            <label className="block text-caption text-text-tertiary uppercase tracking-widest mb-1">
               {t("settings.latitude")}
             </label>
             <input
@@ -292,11 +292,11 @@ function HomeSettingsSection() {
               value={latitude}
               onChange={(e) => setLatitude(e.target.value.replace(",", "."))}
               placeholder="48.8566"
-              className="w-full px-3 py-2 text-[14px] bg-background border border-border rounded-[6px] text-text placeholder:text-text-tertiary focus:outline-none focus:border-primary"
+              className="w-full px-3 py-2 text-body bg-background border border-border rounded-[6px] text-text placeholder:text-text-tertiary focus:outline-none focus:border-primary"
             />
           </div>
           <div>
-            <label className="block text-[12px] text-text-tertiary uppercase tracking-widest mb-1">
+            <label className="block text-caption text-text-tertiary uppercase tracking-widest mb-1">
               {t("settings.longitude")}
             </label>
             <input
@@ -305,47 +305,47 @@ function HomeSettingsSection() {
               value={longitude}
               onChange={(e) => setLongitude(e.target.value.replace(",", "."))}
               placeholder="2.3522"
-              className="w-full px-3 py-2 text-[14px] bg-background border border-border rounded-[6px] text-text placeholder:text-text-tertiary focus:outline-none focus:border-primary"
+              className="w-full px-3 py-2 text-body bg-background border border-border rounded-[6px] text-text placeholder:text-text-tertiary focus:outline-none focus:border-primary"
             />
           </div>
         </div>
         <div className="grid grid-cols-2 gap-3">
           <div>
-            <label className="block text-[12px] text-text-tertiary uppercase tracking-widest mb-1">
+            <label className="block text-caption text-text-tertiary uppercase tracking-widest mb-1">
               {t("settings.sunriseOffset")}
             </label>
             <input
               type="number"
               value={sunriseOffset}
               onChange={(e) => setSunriseOffset(e.target.value)}
-              className="w-full px-3 py-2 text-[14px] bg-background border border-border rounded-[6px] text-text focus:outline-none focus:border-primary"
+              className="w-full px-3 py-2 text-body bg-background border border-border rounded-[6px] text-text focus:outline-none focus:border-primary"
             />
-            <p className="text-[11px] text-text-tertiary mt-1">{t("settings.sunriseOffsetHelp")}</p>
+            <p className="text-micro text-text-tertiary mt-1">{t("settings.sunriseOffsetHelp")}</p>
           </div>
           <div>
-            <label className="block text-[12px] text-text-tertiary uppercase tracking-widest mb-1">
+            <label className="block text-caption text-text-tertiary uppercase tracking-widest mb-1">
               {t("settings.sunsetOffset")}
             </label>
             <input
               type="number"
               value={sunsetOffset}
               onChange={(e) => setSunsetOffset(e.target.value)}
-              className="w-full px-3 py-2 text-[14px] bg-background border border-border rounded-[6px] text-text focus:outline-none focus:border-primary"
+              className="w-full px-3 py-2 text-body bg-background border border-border rounded-[6px] text-text focus:outline-none focus:border-primary"
             />
-            <p className="text-[11px] text-text-tertiary mt-1">{t("settings.sunsetOffsetHelp")}</p>
+            <p className="text-micro text-text-tertiary mt-1">{t("settings.sunsetOffsetHelp")}</p>
           </div>
         </div>
         {tzLoaded && (
           <div className="pt-3 border-t border-border-light">
-            <label className="block text-[12px] text-text-tertiary uppercase tracking-widest mb-1">
+            <label className="block text-caption text-text-tertiary uppercase tracking-widest mb-1">
               {t("settings.timezone")}
             </label>
             <div className="flex items-center gap-2">
-              <span className="text-[13px] font-mono text-text px-2 py-1 bg-background rounded-[6px] border border-border">
+              <span className="text-small font-mono text-text px-2 py-1 bg-background rounded-[6px] border border-border">
                 {tz}
               </span>
               <span
-                className={`text-[11px] ${
+                className={`text-micro ${
                   tzSource === "fallback" ? "text-warning" : "text-text-tertiary"
                 }`}
               >
@@ -360,7 +360,7 @@ function HomeSettingsSection() {
           <button
             onClick={handleSave}
             disabled={saving}
-            className="px-4 py-2 text-[13px] font-medium bg-primary text-white rounded-[6px] hover:bg-primary-hover transition-colors disabled:opacity-50"
+            className="px-4 py-2 text-small font-medium bg-primary text-white rounded-[6px] hover:bg-primary-hover transition-colors disabled:opacity-50"
           >
             {saving ? t("common.saving") : t("common.save")}
           </button>
@@ -394,31 +394,31 @@ function ProfileSection({
 
   return (
     <section className="bg-surface rounded-[10px] border border-border p-5">
-      <h2 className="text-[14px] font-semibold text-text mb-4">{t("settings.profile")}</h2>
+      <h2 className="text-body font-semibold text-text mb-4">{t("settings.profile")}</h2>
       <div className="space-y-3">
         <div className="grid grid-cols-2 gap-4">
           <div>
-            <label className="block text-[12px] text-text-tertiary uppercase tracking-widest mb-1">
+            <label className="block text-caption text-text-tertiary uppercase tracking-widest mb-1">
               {t("auth.username")}
             </label>
-            <p className="text-[14px] text-text-secondary">{user?.username}</p>
+            <p className="text-body text-text-secondary">{user?.username}</p>
           </div>
           <div>
-            <label className="block text-[12px] text-text-tertiary uppercase tracking-widest mb-1">
+            <label className="block text-caption text-text-tertiary uppercase tracking-widest mb-1">
               {t("settings.role")}
             </label>
-            <p className="text-[14px] text-text-secondary capitalize">{user?.role}</p>
+            <p className="text-body text-text-secondary capitalize">{user?.role}</p>
           </div>
         </div>
         <div>
-          <label className="block text-[12px] text-text-tertiary uppercase tracking-widest mb-1">
+          <label className="block text-caption text-text-tertiary uppercase tracking-widest mb-1">
             {t("auth.displayName")}
           </label>
           <input
             type="text"
             value={displayName}
             onChange={(e) => setDisplayName(e.target.value)}
-            className="w-full px-3 py-2 text-[14px] bg-background border border-border rounded-[6px] text-text focus:outline-none focus:border-primary"
+            className="w-full px-3 py-2 text-body bg-background border border-border rounded-[6px] text-text focus:outline-none focus:border-primary"
           />
         </div>
         {dirty && (
@@ -432,7 +432,7 @@ function ProfileSection({
               }
             }}
             disabled={saving}
-            className="px-4 py-2 text-[13px] font-medium bg-primary text-white rounded-[6px] hover:bg-primary-hover transition-colors disabled:opacity-50"
+            className="px-4 py-2 text-small font-medium bg-primary text-white rounded-[6px] hover:bg-primary-hover transition-colors disabled:opacity-50"
           >
             {saving ? t("common.saving") : t("common.save")}
           </button>
@@ -461,10 +461,10 @@ function PreferencesSection({
 
   return (
     <section className="bg-surface rounded-[10px] border border-border p-5">
-      <h2 className="text-[14px] font-semibold text-text mb-4">{t("settings.preferences")}</h2>
+      <h2 className="text-body font-semibold text-text mb-4">{t("settings.preferences")}</h2>
       <div className="space-y-4">
         <div>
-          <label className="block text-[12px] text-text-tertiary uppercase tracking-widest mb-1.5">
+          <label className="block text-caption text-text-tertiary uppercase tracking-widest mb-1.5">
             {t("settings.language")}
           </label>
           <div className="flex gap-2">
@@ -472,7 +472,7 @@ function PreferencesSection({
               <button
                 key={lang}
                 onClick={() => onLanguageChange(lang)}
-                className={`px-4 py-2 text-[13px] font-medium rounded-[6px] border transition-colors cursor-pointer ${
+                className={`px-4 py-2 text-small font-medium rounded-[6px] border transition-colors cursor-pointer ${
                   language === lang
                     ? "bg-primary text-white border-primary"
                     : "bg-background text-text-secondary border-border hover:border-primary hover:text-text"
@@ -484,7 +484,7 @@ function PreferencesSection({
           </div>
         </div>
         <div>
-          <label className="block text-[12px] text-text-tertiary uppercase tracking-widest mb-1.5">
+          <label className="block text-caption text-text-tertiary uppercase tracking-widest mb-1.5">
             {t("settings.theme")}
           </label>
           <div className="flex gap-2">
@@ -492,7 +492,7 @@ function PreferencesSection({
               <button
                 key={opt}
                 onClick={() => onThemeChange(opt)}
-                className={`px-4 py-2 text-[13px] font-medium rounded-[6px] border transition-colors cursor-pointer ${
+                className={`px-4 py-2 text-small font-medium rounded-[6px] border transition-colors cursor-pointer ${
                   theme === opt
                     ? "bg-primary text-white border-primary"
                     : "bg-background text-text-secondary border-border hover:border-primary hover:text-text"
@@ -563,14 +563,14 @@ function ChangePasswordSection() {
   return (
     <section className="bg-surface rounded-[10px] border border-border p-5">
       <div className="flex items-center justify-between">
-        <h2 className="text-[14px] font-semibold text-text">{t("settings.changePassword")}</h2>
+        <h2 className="text-body font-semibold text-text">{t("settings.changePassword")}</h2>
         {!open && (
           <button
             onClick={() => {
               setOpen(true);
               reset();
             }}
-            className="text-[13px] text-primary hover:text-primary-hover font-medium cursor-pointer"
+            className="text-small text-primary hover:text-primary-hover font-medium cursor-pointer"
           >
             {t("common.edit")}
           </button>
@@ -579,14 +579,14 @@ function ChangePasswordSection() {
       {open && (
         <div className="mt-4 space-y-3">
           <div className="relative">
-            <label className="block text-[12px] text-text-tertiary uppercase tracking-widest mb-1">
+            <label className="block text-caption text-text-tertiary uppercase tracking-widest mb-1">
               {t("settings.currentPassword")}
             </label>
             <input
               type={showCurrent ? "text" : "password"}
               value={currentPassword}
               onChange={(e) => setCurrentPassword(e.target.value)}
-              className="w-full px-3 py-2 pr-9 text-[14px] bg-background border border-border rounded-[6px] text-text focus:outline-none focus:border-primary"
+              className="w-full px-3 py-2 pr-9 text-body bg-background border border-border rounded-[6px] text-text focus:outline-none focus:border-primary"
             />
             <button
               type="button"
@@ -597,14 +597,14 @@ function ChangePasswordSection() {
             </button>
           </div>
           <div className="relative">
-            <label className="block text-[12px] text-text-tertiary uppercase tracking-widest mb-1">
+            <label className="block text-caption text-text-tertiary uppercase tracking-widest mb-1">
               {t("settings.newPassword")}
             </label>
             <input
               type={showNew ? "text" : "password"}
               value={newPassword}
               onChange={(e) => setNewPassword(e.target.value)}
-              className="w-full px-3 py-2 pr-9 text-[14px] bg-background border border-border rounded-[6px] text-text focus:outline-none focus:border-primary"
+              className="w-full px-3 py-2 pr-9 text-body bg-background border border-border rounded-[6px] text-text focus:outline-none focus:border-primary"
             />
             <button
               type="button"
@@ -615,23 +615,23 @@ function ChangePasswordSection() {
             </button>
           </div>
           <div>
-            <label className="block text-[12px] text-text-tertiary uppercase tracking-widest mb-1">
+            <label className="block text-caption text-text-tertiary uppercase tracking-widest mb-1">
               {t("settings.confirmNewPassword")}
             </label>
             <input
               type="password"
               value={confirmPassword}
               onChange={(e) => setConfirmPassword(e.target.value)}
-              className="w-full px-3 py-2 text-[14px] bg-background border border-border rounded-[6px] text-text focus:outline-none focus:border-primary"
+              className="w-full px-3 py-2 text-body bg-background border border-border rounded-[6px] text-text focus:outline-none focus:border-primary"
             />
           </div>
-          {error && <p className="text-[13px] text-error">{error}</p>}
-          {success && <p className="text-[13px] text-success">{t("settings.passwordChanged")}</p>}
+          {error && <p className="text-small text-error">{error}</p>}
+          {success && <p className="text-small text-success">{t("settings.passwordChanged")}</p>}
           <div className="flex gap-2">
             <button
               onClick={handleSubmit}
               disabled={saving || !currentPassword || !newPassword || !confirmPassword}
-              className="px-4 py-2 text-[13px] font-medium bg-primary text-white rounded-[6px] hover:bg-primary-hover transition-colors disabled:opacity-50"
+              className="px-4 py-2 text-small font-medium bg-primary text-white rounded-[6px] hover:bg-primary-hover transition-colors disabled:opacity-50"
             >
               {saving ? t("common.saving") : t("common.save")}
             </button>
@@ -640,7 +640,7 @@ function ChangePasswordSection() {
                 setOpen(false);
                 reset();
               }}
-              className="px-4 py-2 text-[13px] font-medium text-text-secondary hover:text-text rounded-[6px] border border-border hover:bg-border-light transition-colors"
+              className="px-4 py-2 text-small font-medium text-text-secondary hover:text-text rounded-[6px] border border-border hover:bg-border-light transition-colors"
             >
               {t("common.cancel")}
             </button>
@@ -716,7 +716,7 @@ function VersionBadge() {
   return (
     <>
       <div className="flex items-center gap-2">
-        <span className="text-[13px] font-mono font-semibold text-primary px-2.5 py-1 bg-primary-light rounded-[6px]">
+        <span className="text-small font-mono font-semibold text-primary px-2.5 py-1 bg-primary-light rounded-[6px]">
           v{info.current}
         </span>
 
@@ -740,7 +740,7 @@ function VersionBadge() {
               <button
                 onClick={() => setConfirmOpen(true)}
                 disabled={updating}
-                className="flex items-center gap-1.5 px-2.5 py-1 text-[11px] font-medium text-error hover:bg-error/10 rounded-[5px] transition-colors cursor-pointer disabled:opacity-50"
+                className="flex items-center gap-1.5 px-2.5 py-1 text-micro font-medium text-error hover:bg-error/10 rounded-[5px] transition-colors cursor-pointer disabled:opacity-50"
               >
                 {updating ? (
                   <Loader2 size={12} className="animate-spin" />
@@ -754,7 +754,7 @@ function VersionBadge() {
                 href={info.releaseUrl ?? "#"}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="flex items-center gap-1 px-2.5 py-1 text-[11px] font-medium text-error hover:bg-error/10 rounded-[5px] transition-colors"
+                className="flex items-center gap-1 px-2.5 py-1 text-micro font-medium text-error hover:bg-error/10 rounded-[5px] transition-colors"
                 title={updateDisabledReason}
               >
                 <ArrowUpCircle size={12} />
@@ -776,35 +776,35 @@ function VersionBadge() {
             className="bg-surface rounded-[14px] border border-border p-6 max-w-md w-full"
             onClick={(e) => e.stopPropagation()}
           >
-            <h3 className="text-[16px] font-semibold text-text mb-2">
+            <h3 className="text-lead font-semibold text-text mb-2">
               {t("update.confirmTitle", { version: info.latest })}
             </h3>
-            <p className="text-[13px] text-text-secondary mb-2">
+            <p className="text-small text-text-secondary mb-2">
               {t("update.confirmMessage", {
                 current: info.current,
                 latest: info.latest,
               })}
             </p>
-            <p className="text-[12px] text-text-tertiary mb-4">
+            <p className="text-caption text-text-tertiary mb-4">
               {t("update.confirmAutoBackup")}
             </p>
             {error && (
               <div className="mb-4 p-3 bg-error/10 border border-error/30 rounded-[6px]">
-                <p className="text-[13px] text-error">{error}</p>
+                <p className="text-small text-error">{error}</p>
               </div>
             )}
             <div className="flex gap-2 justify-end">
               <button
                 onClick={() => setConfirmOpen(false)}
                 disabled={updating}
-                className="px-4 py-2 text-[13px] font-medium text-text-secondary border border-border rounded-[6px] hover:bg-border-light transition-colors disabled:opacity-50 cursor-pointer disabled:cursor-default"
+                className="px-4 py-2 text-small font-medium text-text-secondary border border-border rounded-[6px] hover:bg-border-light transition-colors disabled:opacity-50 cursor-pointer disabled:cursor-default"
               >
                 {t("common.cancel")}
               </button>
               <button
                 onClick={handleConfirmUpdate}
                 disabled={updating}
-                className="flex items-center gap-1.5 px-4 py-2 text-[13px] font-medium bg-error text-white rounded-[6px] hover:bg-error/80 transition-colors disabled:opacity-50 cursor-pointer disabled:cursor-default"
+                className="flex items-center gap-1.5 px-4 py-2 text-small font-medium bg-error text-white rounded-[6px] hover:bg-error/80 transition-colors disabled:opacity-50 cursor-pointer disabled:cursor-default"
               >
                 {updating ? (
                   <Loader2 size={14} className="animate-spin" />
@@ -843,12 +843,12 @@ function BackupCodesDisplay({ codes }: { codes: string[] }) {
 
   return (
     <div className="p-3 bg-success/10 border border-success/30 rounded-[6px]">
-      <p className="text-[12px] text-success mb-2">{t("settings.mfa.backupCodesShownOnce")}</p>
+      <p className="text-caption text-success mb-2">{t("settings.mfa.backupCodesShownOnce")}</p>
       <div className="grid grid-cols-2 gap-1.5 mb-2">
         {codes.map((code) => (
           <code
             key={code}
-            className="text-[12px] font-mono bg-background px-2 py-1 rounded border border-border text-center"
+            className="text-caption font-mono bg-background px-2 py-1 rounded border border-border text-center"
           >
             {code}
           </code>
@@ -856,13 +856,13 @@ function BackupCodesDisplay({ codes }: { codes: string[] }) {
       </div>
       <button
         onClick={handleCopyAll}
-        className="flex items-center gap-1.5 text-[12px] text-text-secondary hover:text-text cursor-pointer"
+        className="flex items-center gap-1.5 text-caption text-text-secondary hover:text-text cursor-pointer"
       >
         {copied ? <Check size={13} /> : <Copy size={13} />}
         {t("settings.mfa.copyAllCodes")}
       </button>
       {copyFailed && (
-        <p className="text-[11px] text-error mt-1">{t("settings.mfa.copyFailed")}</p>
+        <p className="text-micro text-error mt-1">{t("settings.mfa.copyFailed")}</p>
       )}
     </div>
   );
@@ -909,11 +909,11 @@ function MfaReauthModal({
         className="bg-surface rounded-[14px] border border-border p-6 max-w-sm w-full"
         onClick={(e) => e.stopPropagation()}
       >
-        <h3 className="text-[16px] font-semibold text-text mb-4">{title}</h3>
+        <h3 className="text-lead font-semibold text-text mb-4">{title}</h3>
 
         <div className="space-y-3">
           <div>
-            <label className="block text-[12px] text-text-tertiary uppercase tracking-widest mb-1">
+            <label className="block text-caption text-text-tertiary uppercase tracking-widest mb-1">
               {t("settings.currentPassword")}
             </label>
             <input
@@ -921,11 +921,11 @@ function MfaReauthModal({
               value={password}
               onChange={(e) => setPassword(e.target.value)}
               autoFocus
-              className="w-full px-3 py-2 text-[14px] bg-background border border-border rounded-[6px] text-text focus:outline-none focus:border-primary"
+              className="w-full px-3 py-2 text-body bg-background border border-border rounded-[6px] text-text focus:outline-none focus:border-primary"
             />
           </div>
           <div>
-            <label className="block text-[12px] text-text-tertiary uppercase tracking-widest mb-1">
+            <label className="block text-caption text-text-tertiary uppercase tracking-widest mb-1">
               {isBackupCode ? t("settings.mfa.backupCode") : t("settings.mfa.totpCode")}
             </label>
             <input
@@ -933,12 +933,12 @@ function MfaReauthModal({
               inputMode="numeric"
               value={code}
               onChange={(e) => setCode(e.target.value)}
-              className="w-full px-3 py-2 text-[14px] bg-background border border-border rounded-[6px] text-text focus:outline-none focus:border-primary"
+              className="w-full px-3 py-2 text-body bg-background border border-border rounded-[6px] text-text focus:outline-none focus:border-primary"
             />
             <button
               type="button"
               onClick={() => setIsBackupCode(!isBackupCode)}
-              className="mt-1 text-[12px] text-primary hover:text-primary-hover cursor-pointer"
+              className="mt-1 text-caption text-primary hover:text-primary-hover cursor-pointer"
             >
               {isBackupCode
                 ? t("settings.mfa.useTotpInstead")
@@ -947,20 +947,20 @@ function MfaReauthModal({
           </div>
         </div>
 
-        {error && <p className="text-[13px] text-error mt-3">{error}</p>}
+        {error && <p className="text-small text-error mt-3">{error}</p>}
 
         <div className="flex gap-2 justify-end mt-5">
           <button
             onClick={onClose}
             disabled={submitting}
-            className="px-4 py-2 text-[13px] font-medium text-text-secondary border border-border rounded-[6px] hover:bg-border-light transition-colors disabled:opacity-50 cursor-pointer"
+            className="px-4 py-2 text-small font-medium text-text-secondary border border-border rounded-[6px] hover:bg-border-light transition-colors disabled:opacity-50 cursor-pointer"
           >
             {t("common.cancel")}
           </button>
           <button
             onClick={handleSubmit}
             disabled={submitting || !password || !code}
-            className={`px-4 py-2 text-[13px] font-medium text-white rounded-[6px] transition-colors disabled:opacity-50 cursor-pointer ${
+            className={`px-4 py-2 text-small font-medium text-white rounded-[6px] transition-colors disabled:opacity-50 cursor-pointer ${
               danger ? "bg-error hover:bg-error/80" : "bg-primary hover:bg-primary-hover"
             }`}
           >
@@ -1010,13 +1010,13 @@ function MfaEnrollModal({ onDone, onClose }: { onDone: () => void; onClose: () =
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
       <div className="bg-surface rounded-[14px] border border-border p-6 max-w-sm w-full">
-        <h3 className="text-[16px] font-semibold text-text mb-4">{t("settings.mfa.enableTitle")}</h3>
+        <h3 className="text-lead font-semibold text-text mb-4">{t("settings.mfa.enableTitle")}</h3>
 
         {step === "loading" && <Loader2 size={20} className="animate-spin text-text-tertiary" />}
 
         {step === "scan" && (
           <div className="space-y-3">
-            <p className="text-[13px] text-text-secondary">{t("settings.mfa.scanInstructions")}</p>
+            <p className="text-small text-text-secondary">{t("settings.mfa.scanInstructions")}</p>
             {qrCodeDataUrl && (
               <img
                 src={qrCodeDataUrl}
@@ -1026,14 +1026,14 @@ function MfaEnrollModal({ onDone, onClose }: { onDone: () => void; onClose: () =
                 height={200}
               />
             )}
-            <details className="text-[12px] text-text-tertiary">
+            <details className="text-caption text-text-tertiary">
               <summary className="cursor-pointer">{t("settings.mfa.cantScan")}</summary>
               <code className="block mt-1 font-mono break-all bg-background px-2 py-1 rounded border border-border">
                 {secret}
               </code>
             </details>
             <div>
-              <label className="block text-[12px] text-text-tertiary uppercase tracking-widest mb-1">
+              <label className="block text-caption text-text-tertiary uppercase tracking-widest mb-1">
                 {t("settings.mfa.totpCode")}
               </label>
               <input
@@ -1042,22 +1042,22 @@ function MfaEnrollModal({ onDone, onClose }: { onDone: () => void; onClose: () =
                 value={code}
                 onChange={(e) => setCode(e.target.value)}
                 autoFocus
-                className="w-full px-3 py-2 text-[14px] bg-background border border-border rounded-[6px] text-text focus:outline-none focus:border-primary"
+                className="w-full px-3 py-2 text-body bg-background border border-border rounded-[6px] text-text focus:outline-none focus:border-primary"
               />
             </div>
-            {error && <p className="text-[13px] text-error">{error}</p>}
+            {error && <p className="text-small text-error">{error}</p>}
             <div className="flex gap-2 justify-end pt-1">
               <button
                 onClick={onClose}
                 disabled={submitting}
-                className="px-4 py-2 text-[13px] font-medium text-text-secondary border border-border rounded-[6px] hover:bg-border-light transition-colors disabled:opacity-50 cursor-pointer"
+                className="px-4 py-2 text-small font-medium text-text-secondary border border-border rounded-[6px] hover:bg-border-light transition-colors disabled:opacity-50 cursor-pointer"
               >
                 {t("common.cancel")}
               </button>
               <button
                 onClick={handleConfirm}
                 disabled={submitting || !code}
-                className="px-4 py-2 text-[13px] font-medium bg-primary text-white rounded-[6px] hover:bg-primary-hover transition-colors disabled:opacity-50 cursor-pointer"
+                className="px-4 py-2 text-small font-medium bg-primary text-white rounded-[6px] hover:bg-primary-hover transition-colors disabled:opacity-50 cursor-pointer"
               >
                 {submitting ? t("common.saving") : t("common.next")}
               </button>
@@ -1068,7 +1068,7 @@ function MfaEnrollModal({ onDone, onClose }: { onDone: () => void; onClose: () =
         {step === "codes" && (
           <div className="space-y-3">
             <BackupCodesDisplay codes={backupCodes} />
-            <label className="flex items-center gap-2 text-[13px] text-text-secondary cursor-pointer">
+            <label className="flex items-center gap-2 text-small text-text-secondary cursor-pointer">
               <input
                 type="checkbox"
                 checked={acknowledged}
@@ -1080,7 +1080,7 @@ function MfaEnrollModal({ onDone, onClose }: { onDone: () => void; onClose: () =
               <button
                 onClick={onDone}
                 disabled={!acknowledged}
-                className="px-4 py-2 text-[13px] font-medium bg-primary text-white rounded-[6px] hover:bg-primary-hover transition-colors disabled:opacity-50 cursor-pointer"
+                className="px-4 py-2 text-small font-medium bg-primary text-white rounded-[6px] hover:bg-primary-hover transition-colors disabled:opacity-50 cursor-pointer"
               >
                 {t("common.close")}
               </button>
@@ -1152,48 +1152,48 @@ function TwoFactorSection() {
   return (
     <section className="bg-surface rounded-[10px] border border-border p-5">
       <div className="flex items-center justify-between mb-1">
-        <h2 className="text-[14px] font-semibold text-text flex items-center gap-2">
+        <h2 className="text-body font-semibold text-text flex items-center gap-2">
           <ShieldCheck size={16} className="text-text-tertiary" />
           {t("settings.mfa.title")}
         </h2>
         {status.enabled ? (
           <button
             onClick={() => setShowDisable(true)}
-            className="text-[13px] text-error hover:text-error/80 font-medium cursor-pointer"
+            className="text-small text-error hover:text-error/80 font-medium cursor-pointer"
           >
             {t("common.disable")}
           </button>
         ) : (
           <button
             onClick={() => setShowEnroll(true)}
-            className="text-[13px] text-primary hover:text-primary-hover font-medium cursor-pointer"
+            className="text-small text-primary hover:text-primary-hover font-medium cursor-pointer"
           >
             {t("common.enable")}
           </button>
         )}
       </div>
 
-      {!status.enabled && <p className="text-[13px] text-text-tertiary">{t("settings.mfa.disabledHint")}</p>}
+      {!status.enabled && <p className="text-small text-text-tertiary">{t("settings.mfa.disabledHint")}</p>}
 
       {status.enabled && (
         <div className="mt-3 space-y-4">
           <div className="flex items-center justify-between">
-            <p className="text-[13px] text-text-secondary">
+            <p className="text-small text-text-secondary">
               {t("settings.mfa.backupCodesRemaining", { count: status.backupCodesRemaining })}
             </p>
             <button
               onClick={() => setShowRegenerate(true)}
-              className="text-[12px] text-primary hover:text-primary-hover font-medium cursor-pointer"
+              className="text-caption text-primary hover:text-primary-hover font-medium cursor-pointer"
             >
               {t("settings.mfa.regenerateCodes")}
             </button>
           </div>
           {status.backupCodesRemaining <= 2 && (
-            <p className="text-[12px] text-error">{t("settings.mfa.lowBackupCodesWarning")}</p>
+            <p className="text-caption text-error">{t("settings.mfa.lowBackupCodesWarning")}</p>
           )}
 
           <div>
-            <label className="block text-[12px] text-text-tertiary uppercase tracking-widest mb-1">
+            <label className="block text-caption text-text-tertiary uppercase tracking-widest mb-1">
               {t("settings.mfa.trustedDeviceDuration")}
             </label>
             <div className="flex items-center gap-2">
@@ -1204,18 +1204,18 @@ function TwoFactorSection() {
                 value={trustDays}
                 onChange={(e) => setTrustDays(Number(e.target.value))}
                 onBlur={handleTrustDaysBlur}
-                className="w-20 px-3 py-1.5 text-[14px] bg-background border border-border rounded-[6px] text-text focus:outline-none focus:border-primary"
+                className="w-20 px-3 py-1.5 text-body bg-background border border-border rounded-[6px] text-text focus:outline-none focus:border-primary"
               />
-              <span className="text-[13px] text-text-tertiary">{t("settings.mfa.days")}</span>
+              <span className="text-small text-text-tertiary">{t("settings.mfa.days")}</span>
             </div>
           </div>
 
           <div>
-            <p className="text-[12px] text-text-tertiary uppercase tracking-widest mb-1.5">
+            <p className="text-caption text-text-tertiary uppercase tracking-widest mb-1.5">
               {t("settings.mfa.trustedDevices")}
             </p>
             {devices.length === 0 ? (
-              <p className="text-[13px] text-text-tertiary">{t("settings.mfa.noTrustedDevices")}</p>
+              <p className="text-small text-text-tertiary">{t("settings.mfa.noTrustedDevices")}</p>
             ) : (
               <div className="space-y-2">
                 {devices.map((device) => (
@@ -1225,13 +1225,13 @@ function TwoFactorSection() {
                   >
                     <div className="flex items-center gap-2 min-w-0">
                       <Smartphone size={14} className="text-text-tertiary shrink-0" />
-                      <span className="text-[13px] text-text truncate">
+                      <span className="text-small text-text truncate">
                         {device.userAgent ?? t("settings.mfa.unknownDevice")}
                       </span>
                     </div>
                     <button
                       onClick={() => handleRevokeDevice(device.id)}
-                      className="text-[12px] text-error hover:text-error/80 font-medium cursor-pointer shrink-0 ml-2"
+                      className="text-caption text-error hover:text-error/80 font-medium cursor-pointer shrink-0 ml-2"
                     >
                       {t("common.remove")}
                     </button>
@@ -1292,7 +1292,7 @@ function TwoFactorSection() {
             className="bg-surface rounded-[14px] border border-border p-6 max-w-sm w-full"
             onClick={(e) => e.stopPropagation()}
           >
-            <h3 className="text-[16px] font-semibold text-text mb-4">
+            <h3 className="text-lead font-semibold text-text mb-4">
               {t("settings.mfa.regenerateTitle")}
             </h3>
             <BackupCodesDisplay codes={regeneratedCodes} />
@@ -1303,7 +1303,7 @@ function TwoFactorSection() {
                   setRegeneratedCodes(null);
                   load();
                 }}
-                className="px-4 py-2 text-[13px] font-medium bg-primary text-white rounded-[6px] hover:bg-primary-hover transition-colors cursor-pointer"
+                className="px-4 py-2 text-small font-medium bg-primary text-white rounded-[6px] hover:bg-primary-hover transition-colors cursor-pointer"
               >
                 {t("common.close")}
               </button>
@@ -1371,13 +1371,13 @@ function ApiTokensSection() {
 
   return (
     <section className="bg-surface rounded-[10px] border border-border p-5">
-      <h2 className="text-[14px] font-semibold text-text mb-4">{t("settings.apiTokens")}</h2>
+      <h2 className="text-body font-semibold text-text mb-4">{t("settings.apiTokens")}</h2>
 
       {newTokenValue && (
         <div className="mb-4 p-3 bg-success/10 border border-success/30 rounded-[6px]">
-          <p className="text-[12px] text-success mb-2">{t("settings.tokenCreated")}</p>
+          <p className="text-caption text-success mb-2">{t("settings.tokenCreated")}</p>
           <div className="flex items-center gap-2">
-            <code className="flex-1 text-[12px] font-mono bg-background px-2 py-1 rounded border border-border break-all">
+            <code className="flex-1 text-caption font-mono bg-background px-2 py-1 rounded border border-border break-all">
               {newTokenValue}
             </code>
             <button
@@ -1396,13 +1396,13 @@ function ApiTokensSection() {
           value={tokenName}
           onChange={(e) => setTokenName(e.target.value)}
           placeholder={t("settings.tokenName")}
-          className="flex-1 px-3 py-2 text-[14px] bg-background border border-border rounded-[6px] text-text placeholder:text-text-tertiary focus:outline-none focus:border-primary"
+          className="flex-1 px-3 py-2 text-body bg-background border border-border rounded-[6px] text-text placeholder:text-text-tertiary focus:outline-none focus:border-primary"
           onKeyDown={(e) => e.key === "Enter" && handleCreate()}
         />
         <button
           onClick={handleCreate}
           disabled={creating || !tokenName.trim()}
-          className="flex items-center gap-1.5 px-3 py-2 text-[13px] font-medium bg-primary text-white rounded-[6px] hover:bg-primary-hover transition-colors disabled:opacity-50"
+          className="flex items-center gap-1.5 px-3 py-2 text-small font-medium bg-primary text-white rounded-[6px] hover:bg-primary-hover transition-colors disabled:opacity-50"
         >
           <Plus size={14} />
           {t("settings.createToken")}
@@ -1412,7 +1412,7 @@ function ApiTokensSection() {
       {loading ? (
         <Loader2 size={16} className="animate-spin text-text-tertiary" />
       ) : tokens.length === 0 ? (
-        <p className="text-[13px] text-text-tertiary">{t("settings.noTokens")}</p>
+        <p className="text-small text-text-tertiary">{t("settings.noTokens")}</p>
       ) : (
         <div className="space-y-2">
           {tokens.map((token) => (
@@ -1421,8 +1421,8 @@ function ApiTokensSection() {
               className="flex items-center justify-between py-2 px-3 bg-background rounded-[6px] border border-border"
             >
               <div>
-                <span className="text-[13px] font-medium text-text">{token.name}</span>
-                <span className="text-[11px] text-text-tertiary ml-2">
+                <span className="text-small font-medium text-text">{token.name}</span>
+                <span className="text-micro text-text-tertiary ml-2">
                   {t("settings.lastUsed")}{t("common.colon")}
                   {token.lastUsedAt
                     ? new Date(token.lastUsedAt).toLocaleDateString(currentLocale())
@@ -1431,7 +1431,7 @@ function ApiTokensSection() {
               </div>
               <button
                 onClick={() => handleRevoke(token.id)}
-                className="text-[12px] text-error hover:text-error/80 font-medium cursor-pointer"
+                className="text-caption text-error hover:text-error/80 font-medium cursor-pointer"
               >
                 {t("settings.revokeToken")}
               </button>
@@ -1524,10 +1524,10 @@ function UserManagementSection({ currentUserId }: { currentUserId: string }) {
   return (
     <section className="bg-surface rounded-[10px] border border-border p-5">
       <div className="flex items-center justify-between mb-4">
-        <h2 className="text-[14px] font-semibold text-text">{t("settings.userManagement")}</h2>
+        <h2 className="text-body font-semibold text-text">{t("settings.userManagement")}</h2>
         <button
           onClick={() => setShowAdd(!showAdd)}
-          className="flex items-center gap-1.5 text-[13px] text-primary hover:text-primary-hover font-medium cursor-pointer"
+          className="flex items-center gap-1.5 text-small text-primary hover:text-primary-hover font-medium cursor-pointer"
         >
           <Plus size={14} />
           {t("settings.addUser")}
@@ -1538,64 +1538,64 @@ function UserManagementSection({ currentUserId }: { currentUserId: string }) {
         <div className="mb-4 p-4 bg-background rounded-[8px] border border-border space-y-3">
           <div className="grid grid-cols-2 gap-3">
             <div>
-              <label className="block text-[12px] text-text-tertiary uppercase tracking-widest mb-1">
+              <label className="block text-caption text-text-tertiary uppercase tracking-widest mb-1">
                 {t("auth.username")}
               </label>
               <input
                 type="text"
                 value={newUsername}
                 onChange={(e) => setNewUsername(e.target.value)}
-                className="w-full px-3 py-2 text-[14px] bg-surface border border-border rounded-[6px] text-text focus:outline-none focus:border-primary"
+                className="w-full px-3 py-2 text-body bg-surface border border-border rounded-[6px] text-text focus:outline-none focus:border-primary"
               />
             </div>
             <div>
-              <label className="block text-[12px] text-text-tertiary uppercase tracking-widest mb-1">
+              <label className="block text-caption text-text-tertiary uppercase tracking-widest mb-1">
                 {t("auth.displayName")}
               </label>
               <input
                 type="text"
                 value={newDisplayName}
                 onChange={(e) => setNewDisplayName(e.target.value)}
-                className="w-full px-3 py-2 text-[14px] bg-surface border border-border rounded-[6px] text-text focus:outline-none focus:border-primary"
+                className="w-full px-3 py-2 text-body bg-surface border border-border rounded-[6px] text-text focus:outline-none focus:border-primary"
               />
             </div>
             <div>
-              <label className="block text-[12px] text-text-tertiary uppercase tracking-widest mb-1">
+              <label className="block text-caption text-text-tertiary uppercase tracking-widest mb-1">
                 {t("auth.password")}
               </label>
               <input
                 type="password"
                 value={newPassword}
                 onChange={(e) => setNewPassword(e.target.value)}
-                className="w-full px-3 py-2 text-[14px] bg-surface border border-border rounded-[6px] text-text focus:outline-none focus:border-primary"
+                className="w-full px-3 py-2 text-body bg-surface border border-border rounded-[6px] text-text focus:outline-none focus:border-primary"
               />
             </div>
             <div>
-              <label className="block text-[12px] text-text-tertiary uppercase tracking-widest mb-1">
+              <label className="block text-caption text-text-tertiary uppercase tracking-widest mb-1">
                 {t("settings.role")}
               </label>
               <select
                 value={newRole}
                 onChange={(e) => setNewRole(e.target.value as UserRole)}
-                className="w-full px-3 py-2 text-[14px] bg-surface border border-border rounded-[6px] text-text focus:outline-none focus:border-primary"
+                className="w-full px-3 py-2 text-body bg-surface border border-border rounded-[6px] text-text focus:outline-none focus:border-primary"
               >
                 <option value="standard">standard</option>
                 <option value="admin">admin</option>
               </select>
             </div>
           </div>
-          {error && <p className="text-[13px] text-error">{error}</p>}
+          {error && <p className="text-small text-error">{error}</p>}
           <div className="flex gap-2">
             <button
               onClick={handleCreate}
               disabled={creating || !newUsername || !newDisplayName || !newPassword}
-              className="px-4 py-2 text-[13px] font-medium bg-primary text-white rounded-[6px] hover:bg-primary-hover transition-colors disabled:opacity-50"
+              className="px-4 py-2 text-small font-medium bg-primary text-white rounded-[6px] hover:bg-primary-hover transition-colors disabled:opacity-50"
             >
               {creating ? t("common.creating") : t("common.create")}
             </button>
             <button
               onClick={() => setShowAdd(false)}
-              className="px-4 py-2 text-[13px] font-medium text-text-secondary hover:text-text rounded-[6px] border border-border hover:bg-border-light transition-colors"
+              className="px-4 py-2 text-small font-medium text-text-secondary hover:text-text rounded-[6px] border border-border hover:bg-border-light transition-colors"
             >
               {t("common.cancel")}
             </button>
@@ -1614,13 +1614,13 @@ function UserManagementSection({ currentUserId }: { currentUserId: string }) {
             >
               <div className="flex items-center gap-3">
                 <div>
-                  <span className="text-[13px] font-medium text-text">{u.displayName}</span>
-                  <span className="text-[11px] text-text-tertiary ml-1.5">@{u.username}</span>
+                  <span className="text-small font-medium text-text">{u.displayName}</span>
+                  <span className="text-micro text-text-tertiary ml-1.5">@{u.username}</span>
                 </div>
                 <select
                   value={u.role}
                   onChange={(e) => handleChangeRole(u, e.target.value as UserRole)}
-                  className="text-[11px] px-2 py-0.5 bg-surface border border-border rounded text-text-secondary"
+                  className="text-micro px-2 py-0.5 bg-surface border border-border rounded text-text-secondary"
                   disabled={u.id === currentUserId}
                 >
                   <option value="standard">standard</option>
@@ -1629,7 +1629,7 @@ function UserManagementSection({ currentUserId }: { currentUserId: string }) {
                 <button
                   onClick={() => handleToggleEnabled(u)}
                   disabled={u.id === currentUserId}
-                  className={`text-[11px] px-2 py-0.5 rounded font-medium cursor-pointer ${
+                  className={`text-micro px-2 py-0.5 rounded font-medium cursor-pointer ${
                     u.enabled ? "bg-success/10 text-success" : "bg-error/10 text-error"
                   } ${u.id === currentUserId ? "opacity-50 cursor-not-allowed" : ""}`}
                 >

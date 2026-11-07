@@ -126,14 +126,14 @@ export function DashboardPage() {
           <div className="w-16 h-16 rounded-full bg-border-light flex items-center justify-center mb-4">
             <LayoutDashboard size={28} strokeWidth={1.5} className="text-text-tertiary" />
           </div>
-          <h3 className="text-[16px] font-medium text-text mb-1">{t("dashboard.emptyTitle")}</h3>
-          <p className="text-[13px] text-text-secondary max-w-[320px] mb-4">
+          <h3 className="text-lead font-medium text-text mb-1">{t("dashboard.emptyTitle")}</h3>
+          <p className="text-small text-text-secondary max-w-[320px] mb-4">
             {isAdmin ? t("dashboard.emptyDescAdmin") : t("dashboard.emptyDesc")}
           </p>
           {isAdmin && (
             <button
               onClick={() => setShowAddModal(true)}
-              className="inline-flex items-center gap-2 px-4 py-2.5 bg-primary text-white text-[13px] font-medium rounded-[6px] hover:bg-primary-hover transition-colors cursor-pointer"
+              className="inline-flex items-center gap-2 px-4 py-2.5 bg-primary text-white text-small font-medium rounded-[6px] hover:bg-primary-hover transition-colors cursor-pointer"
             >
               <Plus size={16} strokeWidth={1.5} />
               {t("dashboard.addFirstWidget")}
@@ -171,7 +171,7 @@ export function DashboardPage() {
               {editMode && (
                 <button
                   onClick={() => setShowAddModal(true)}
-                  className="inline-flex items-center gap-1.5 px-3 py-1.5 text-[13px] font-medium text-primary bg-primary-light border border-primary/20 rounded-[6px] hover:bg-primary/15 transition-colors cursor-pointer"
+                  className="inline-flex items-center gap-1.5 px-3 py-1.5 text-small font-medium text-primary bg-primary-light border border-primary/20 rounded-[6px] hover:bg-primary/15 transition-colors cursor-pointer"
                 >
                   <Plus size={14} strokeWidth={1.5} />
                   {t("dashboard.addWidget")}
@@ -179,7 +179,7 @@ export function DashboardPage() {
               )}
               <button
                 onClick={() => setEditMode(!editMode)}
-                className={`inline-flex items-center gap-1.5 px-3 py-1.5 text-[13px] font-medium rounded-[6px] transition-colors cursor-pointer ${
+                className={`inline-flex items-center gap-1.5 px-3 py-1.5 text-small font-medium rounded-[6px] transition-colors cursor-pointer ${
                   editMode
                     ? "text-white bg-primary hover:bg-primary-hover"
                     : "text-text-secondary bg-surface border border-border hover:bg-border-light"

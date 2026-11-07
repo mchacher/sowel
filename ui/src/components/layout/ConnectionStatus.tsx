@@ -15,7 +15,7 @@ export function ConnectionStatus() {
     return (
       <div className="flex items-center gap-2 px-2 py-1 sm:px-3 sm:py-1.5 rounded-full bg-error/10 text-error">
         <WifiOff size={14} strokeWidth={1.5} />
-        <span className="text-[12px] font-medium hidden sm:inline">{t("status.disconnected")}</span>
+        <span className="text-caption font-medium hidden sm:inline">{t("status.disconnected")}</span>
       </div>
     );
   }
@@ -24,7 +24,7 @@ export function ConnectionStatus() {
     return (
       <div className="flex items-center gap-2 px-2 py-1 sm:px-3 sm:py-1.5 rounded-full bg-warning/10 text-warning">
         <Wifi size={14} strokeWidth={1.5} className="animate-pulse" />
-        <span className="text-[12px] font-medium hidden sm:inline">{t("status.connecting")}</span>
+        <span className="text-caption font-medium hidden sm:inline">{t("status.connecting")}</span>
       </div>
     );
   }
@@ -36,7 +36,7 @@ export function ConnectionStatus() {
         <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-success opacity-60" />
         <span className="relative inline-flex rounded-full h-2 w-2 bg-success" />
       </span>
-      <span className="text-[12px] font-medium text-success hidden sm:inline">
+      <span className="text-caption font-medium text-success hidden sm:inline">
         {t("status.connected")}
       </span>
     </div>

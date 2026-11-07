@@ -248,7 +248,7 @@ function WeatherDeviceCard({
           {getKindIcon(kind)}
         </div>
         <div className="flex-1 min-w-0">
-          <div className="text-[14px] font-semibold text-text truncate">
+          <div className="text-body font-semibold text-text truncate">
             {deviceName}
           </div>
         </div>
@@ -257,7 +257,7 @@ function WeatherDeviceCard({
             className={`flex items-center gap-1 flex-shrink-0 ${getBatteryColor(batteryLevel)}`}
           >
             {getBatteryIcon(batteryLevel, 16, 1.5)}
-            <span className="text-[12px] tabular-nums font-medium">
+            <span className="text-caption tabular-nums font-medium">
               {batteryLevel !== null ? formatPercent(batteryLevel) : "?"}
             </span>
           </span>
@@ -268,11 +268,11 @@ function WeatherDeviceCard({
       {primaryBinding && (
         <div className="text-center mb-4">
           <div className="inline-flex items-center gap-2">
-            <span className="text-[32px] font-bold font-mono text-text leading-none tabular-nums">
+            <span className="text-value font-semibold font-mono text-text leading-none tabular-nums">
               {formatSensorValue(primaryBinding.value, undefined, t)}
             </span>
             {primaryBinding.unit && (
-              <span className="text-[16px] text-text-tertiary">
+              <span className="text-lead text-text-tertiary">
                 {primaryBinding.unit}
               </span>
             )}
@@ -287,7 +287,7 @@ function WeatherDeviceCard({
               <TempExtremes min={heroExtremes.min} max={heroExtremes.max} />
             </div>
           )}
-          <div className="text-[12px] text-text-tertiary mt-1">
+          <div className="text-caption text-text-tertiary mt-1">
             {KEY_LABELS[primaryBinding.key]
               ? t(KEY_LABELS[primaryBinding.key])
               : primaryBinding.key}
@@ -303,13 +303,13 @@ function WeatherDeviceCard({
         <div className="border-t border-border-light pt-3 space-y-2">
           {secondaryBindings.map((b) => (
             <div key={b.id} className="flex items-baseline justify-between">
-              <span className="text-[13px] text-text-secondary">
+              <span className="text-small text-text-secondary">
                 {KEY_LABELS[b.key] ? t(KEY_LABELS[b.key]) : b.key}
               </span>
-              <span className="text-[15px] font-semibold font-mono text-text tabular-nums">
+              <span className="text-lead font-semibold font-mono text-text tabular-nums">
                 {formatSensorValue(b.value, undefined, t)}
                 {b.unit && (
-                  <span className="text-[12px] text-text-tertiary font-normal ml-0.5">
+                  <span className="text-caption text-text-tertiary font-normal ml-0.5">
                     {b.unit}
                   </span>
                 )}

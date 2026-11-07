@@ -102,11 +102,11 @@ export function ElectricVehicleControl({ equipment, onExecuteOrder }: ElectricVe
       {s.batteryLevel !== null && (
         <div className="flex flex-col gap-2">
           <div className="flex items-baseline justify-between gap-3">
-            <span className="font-mono text-[28px] font-semibold text-text tabular-nums">
+            <span className="font-mono text-display font-semibold text-text tabular-nums">
               {Math.round(s.batteryLevel)}
-              <span className="text-[14px] text-text-tertiary font-normal ml-0.5">%</span>
+              <span className="text-body text-text-tertiary font-normal ml-0.5">%</span>
             </span>
-            <span className="text-[13px] text-text-secondary">
+            <span className="text-small text-text-secondary">
               {s.rangeKm !== null && formatWithUnit(s.rangeKm, "km")}
               {s.chargeLimit !== null &&
                 ` · ${t("equipments.electricVehicle.limit", { value: Math.round(s.chargeLimit) })}`}
@@ -116,7 +116,7 @@ export function ElectricVehicleControl({ equipment, onExecuteOrder }: ElectricVe
         </div>
       )}
 
-      <div className="flex flex-wrap items-center gap-2 text-[13px]">
+      <div className="flex flex-wrap items-center gap-2 text-small">
         {s.chargingState && (
           <span className="flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-primary/10 text-primary font-medium">
             {s.chargingState === "charging" ? (
@@ -173,7 +173,7 @@ export function ElectricVehicleControl({ equipment, onExecuteOrder }: ElectricVe
               onClick={() =>
                 void send("wake", s.wakeAlias!, null, t("equipments.electricVehicle.wakeSent"))
               }
-              className="flex items-center gap-1.5 px-3 py-1.5 rounded-[6px] text-[13px] font-medium bg-border-light text-text-secondary hover:bg-border disabled:opacity-50 cursor-pointer"
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-[6px] text-small font-medium bg-border-light text-text-secondary hover:bg-border disabled:opacity-50 cursor-pointer"
             >
               {busy === "wake" && <Loader2 size={13} className="animate-spin" />}
               {t("equipments.electricVehicle.wake")}
@@ -191,7 +191,7 @@ export function ElectricVehicleControl({ equipment, onExecuteOrder }: ElectricVe
                   t("equipments.electricVehicle.startSent"),
                 )
               }
-              className="flex items-center gap-1.5 px-3 py-1.5 rounded-[6px] text-[13px] font-medium bg-primary text-white hover:bg-primary-hover disabled:opacity-50 cursor-pointer"
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-[6px] text-small font-medium bg-primary text-white hover:bg-primary-hover disabled:opacity-50 cursor-pointer"
             >
               {busy === "start" ? (
                 <Loader2 size={13} className="animate-spin" />
@@ -206,7 +206,7 @@ export function ElectricVehicleControl({ equipment, onExecuteOrder }: ElectricVe
 
       {order && (
         <div className="flex items-center justify-between gap-3">
-          <span className="text-[13px] text-text-secondary">
+          <span className="text-small text-text-secondary">
             {t("equipments.electricVehicle.chargeLimit")}
           </span>
           <div className="flex items-center gap-2">
@@ -219,7 +219,7 @@ export function ElectricVehicleControl({ equipment, onExecuteOrder }: ElectricVe
             >
               <Minus size={14} strokeWidth={1.5} />
             </button>
-            <span className="min-w-[56px] text-center font-mono text-[16px] font-semibold text-text tabular-nums">
+            <span className="min-w-[56px] text-center font-mono text-lead font-semibold text-text tabular-nums">
               {busy === "limit" ? (
                 <Loader2 size={14} className="animate-spin inline" />
               ) : shownLimit !== null ? (
@@ -242,7 +242,7 @@ export function ElectricVehicleControl({ equipment, onExecuteOrder }: ElectricVe
       )}
 
       {outcome && (
-        <span className={`text-[12px] ${outcome.ok ? "text-success" : "text-error"}`}>
+        <span className={`text-caption ${outcome.ok ? "text-success" : "text-error"}`}>
           {outcome.text}
         </span>
       )}
@@ -250,7 +250,7 @@ export function ElectricVehicleControl({ equipment, onExecuteOrder }: ElectricVe
       {(s.mileageKm !== null || extraData.length > 0) && (
         <div className="flex flex-col gap-1 pt-3 border-t border-border-light">
           {s.mileageKm !== null && (
-            <div className="flex items-center justify-between gap-3 text-[13px]">
+            <div className="flex items-center justify-between gap-3 text-small">
               <span className="text-text-secondary">{t("equipments.electricVehicle.mileage")}</span>
               <span className="font-mono tabular-nums text-text">
                 {formatWithUnit(s.mileageKm, "km")}
@@ -258,7 +258,7 @@ export function ElectricVehicleControl({ equipment, onExecuteOrder }: ElectricVe
             </div>
           )}
           {extraData.map((b) => (
-            <div key={b.alias} className="flex items-center justify-between gap-3 text-[13px]">
+            <div key={b.alias} className="flex items-center justify-between gap-3 text-small">
               <span className="text-text-secondary">{extraLabel("equipments.electricVehicle", b.alias, t)}</span>
               <span className="font-mono tabular-nums text-text">
                 {typeof b.value === "string"

@@ -86,7 +86,7 @@ export function BottomSheet({ open, onClose, title, icon, children }: BottomShee
         <div className="flex items-center justify-between px-5 pb-3">
           <div className="flex items-center gap-3">
             {icon && <div className="w-8 h-8 flex items-center justify-center">{icon}</div>}
-            <h2 className="text-[16px] font-semibold text-text">{title}</h2>
+            <h2 className="text-lead font-semibold text-text">{title}</h2>
           </div>
           <button
             onClick={onClose}

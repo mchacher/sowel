@@ -71,7 +71,7 @@ export function EnergyDataPanel({ computedData, status, statusReason,
   return (
     <div className="bg-surface rounded-[10px] border border-border p-4 mb-6">
       <div className="flex items-center justify-between mb-4">
-        <h3 className="text-[14px] font-semibold text-text flex items-center gap-2">
+        <h3 className="text-body font-semibold text-text flex items-center gap-2">
           <Zap size={16} strokeWidth={1.5} className="text-accent" />
           {t(isProduction ? "energy.cumulsProduction" : "energy.cumuls")}
         </h3>
@@ -90,12 +90,12 @@ export function EnergyDataPanel({ computedData, status, statusReason,
                 {c.icon}
               </div>
               <div className="flex-1 min-w-0">
-                <div className="text-[12px] font-medium text-text-tertiary">{t(c.labelKey)}</div>
+                <div className="text-caption font-medium text-text-tertiary">{t(c.labelKey)}</div>
                 <div className="flex items-baseline gap-1">
-                  <span className="text-[20px] font-semibold text-text font-mono leading-none">
+                  <span className="text-title font-semibold text-text font-mono leading-none">
                     {formatted.value}
                   </span>
-                  <span className="text-[12px] text-text-tertiary">{formatted.unit}</span>
+                  <span className="text-caption text-text-tertiary">{formatted.unit}</span>
                 </div>
               </div>
             </div>
@@ -104,7 +104,7 @@ export function EnergyDataPanel({ computedData, status, statusReason,
       </div>
       {isDegraded && statusReason?.offlineSince && (
         <div
-          className={`mt-3 text-center text-[11px] font-mono ${status === "offline" ? "text-error" : "text-text-tertiary"}`}
+          className={`mt-3 text-center text-micro font-mono ${status === "offline" ? "text-error" : "text-text-tertiary"}`}
         >
           {status === "offline"
             ? t("energy.cumul.offlineSince", { when: formatRelative(statusReason.offlineSince) })

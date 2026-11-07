@@ -9,7 +9,7 @@ export function OfflineBanner() {
   if (online) return null;
 
   return (
-    <div className="flex items-center justify-center gap-2 px-4 py-2 bg-accent/10 text-accent text-[13px] font-medium">
+    <div className="flex items-center justify-center gap-2 px-4 py-2 bg-accent/10 text-accent text-small font-medium">
       <WifiOff size={14} strokeWidth={1.5} />
       <span>{t("app.offline")}</span>
     </div>

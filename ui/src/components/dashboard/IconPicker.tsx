@@ -45,7 +45,7 @@ export function IconPicker({ currentIcon, equipmentType, onSelect, onClose, mobi
           : "absolute z-20 top-full left-1/2 -translate-x-1/2 mt-1 w-[280px]"
       }`}
     >
-      <h3 className="text-[12px] font-medium text-text-secondary mb-2">{t("dashboard.chooseIcon")}</h3>
+      <h3 className="text-caption font-medium text-text-secondary mb-2">{t("dashboard.chooseIcon")}</h3>
 
       {/* Relevant custom icons */}
       {relevantIcons.length > 0 && (
@@ -77,7 +77,7 @@ export function IconPicker({ currentIcon, equipmentType, onSelect, onClose, mobi
       {/* Other custom icons */}
       {otherIcons.length > 0 && (
         <div className="mb-1">
-          <p className="text-[10px] font-semibold text-text-tertiary uppercase tracking-widest mb-1">
+          <p className="text-micro font-semibold text-text-tertiary uppercase tracking-widest mb-1">
             {t("dashboard.otherIcons")}
           </p>
           <div className="flex flex-wrap gap-1">

@@ -99,7 +99,7 @@ export function Sidebar() {
           <SowelLogo size={40} className="flex-shrink-0" />
           {!collapsed && (
             <span
-              className="font-extrabold text-[18px] tracking-[0.18em] text-primary ml-2.5 mt-1"
+              className="font-extrabold text-title tracking-[0.18em] text-primary ml-2.5 mt-1"
               style={{ fontFamily: "Nunito, sans-serif" }}
             >
               SOWEL
@@ -289,7 +289,7 @@ export function Sidebar() {
                         }
                         badge={
                           showBadge ? (
-                            <span className="text-[10px] font-medium text-error bg-error/10 px-1.5 py-0.5 rounded-full">
+                            <span className="text-micro font-medium text-error bg-error/10 px-1.5 py-0.5 rounded-full">
                               {pluginUpdateCount}
                             </span>
                           ) : undefined

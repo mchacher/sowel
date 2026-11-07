@@ -73,7 +73,7 @@ export function WateringScheduleEditor({
 
   if (valveIds.length === 0) {
     return (
-      <p className="text-[11px] text-text-tertiary py-2">
+      <p className="text-micro text-text-tertiary py-2">
         Sélectionnez d'abord les vannes ci-dessus
       </p>
     );
@@ -88,14 +88,14 @@ export function WateringScheduleEditor({
         >
           {/* Header: badge + time + remove */}
           <div className="flex items-center gap-2.5 mb-2.5">
-            <span className="text-[10px] font-bold text-primary bg-primary-light px-2 py-0.5 rounded-[4px] tracking-wide">
+            <span className="text-micro font-semibold text-primary bg-primary-light px-2 py-0.5 rounded-[4px] tracking-wide">
               {i + 1}
             </span>
             <input
               type="time"
               value={slot.time}
               onChange={(e) => updateTime(i, e.target.value)}
-              className="px-2 py-1 text-[14px] font-semibold tabular-nums border border-border rounded-[6px] outline-none focus:border-primary bg-surface text-text w-[96px]"
+              className="px-2 py-1 text-body font-semibold tabular-nums border border-border rounded-[6px] outline-none focus:border-primary bg-surface text-text w-[96px]"
             />
             <button
               type="button"
@@ -111,7 +111,7 @@ export function WateringScheduleEditor({
           <div className="space-y-1">
             {valveIds.map((valveId) => (
               <div key={valveId} className="flex items-center gap-2">
-                <span className="text-[12px] text-text-secondary flex-1 truncate">
+                <span className="text-caption text-text-secondary flex-1 truncate">
                   {valveNames.get(valveId)}
                 </span>
                 <input
@@ -126,9 +126,9 @@ export function WateringScheduleEditor({
                       Math.max(1, Math.min(120, Number(e.target.value) || 1)),
                     )
                   }
-                  className="w-[52px] px-1.5 py-1 text-[13px] tabular-nums text-center border border-border rounded-[6px] outline-none focus:border-primary bg-surface text-text"
+                  className="w-[52px] px-1.5 py-1 text-small tabular-nums text-center border border-border rounded-[6px] outline-none focus:border-primary bg-surface text-text"
                 />
-                <span className="text-[11px] text-text-tertiary w-6">min</span>
+                <span className="text-micro text-text-tertiary w-6">min</span>
               </div>
             ))}
           </div>
@@ -139,7 +139,7 @@ export function WateringScheduleEditor({
       <button
         type="button"
         onClick={addSlot}
-        className="flex items-center justify-center gap-1 w-full py-2 text-[12px] font-medium text-primary bg-primary-light border border-dashed border-primary/30 rounded-[6px] hover:bg-primary-light/70 transition-colors cursor-pointer"
+        className="flex items-center justify-center gap-1 w-full py-2 text-caption font-medium text-primary bg-primary-light border border-dashed border-primary/30 rounded-[6px] hover:bg-primary-light/70 transition-colors cursor-pointer"
       >
         <Plus size={14} strokeWidth={1.5} />
         Ajouter un créneau

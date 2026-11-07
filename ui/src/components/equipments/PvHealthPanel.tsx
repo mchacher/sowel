@@ -1,3 +1,4 @@
+import { CHART_TICK_FONT, CHART_TOOLTIP_FONT } from "../../lib/chart-font";
 import { memo, useEffect, useMemo, useState } from "react";
 import { Activity, AlertTriangle } from "lucide-react";
 import { useTranslation } from "react-i18next";
@@ -91,7 +92,7 @@ export const PvHealthPanel = memo(function PvHealthPanel({
     return (
       <div className="mb-6 bg-surface rounded-[10px] border border-border p-4">
         <Header t={t} />
-        <p className="text-[13px] text-text-secondary">{t("equipments.pvHealth.waiting")}</p>
+        <p className="text-small text-text-secondary">{t("equipments.pvHealth.waiting")}</p>
       </div>
     );
   }
@@ -105,7 +106,7 @@ export const PvHealthPanel = memo(function PvHealthPanel({
     return (
       <div className="mb-6 bg-surface rounded-[10px] border border-border p-4">
         <Header t={t} />
-        <p className="text-[13px] text-text-secondary mb-3">
+        <p className="text-small text-text-secondary mb-3">
           {data.sinceCutoff
             ? t("equipments.pvHealth.building", {
                 have: data.days.length,
@@ -145,7 +146,7 @@ export const PvHealthPanel = memo(function PvHealthPanel({
       {data.alert ? (
         <div className="flex items-start gap-2 mb-3 p-3 rounded-[8px] bg-warning/10 border border-warning/30">
           <AlertTriangle size={16} strokeWidth={1.5} className="text-warning flex-shrink-0 mt-0.5" />
-          <p className="text-[13px] text-text">
+          <p className="text-small text-text">
             {t("equipments.pvHealth.alert", {
               pct: formatPercent(data.alert.deficit * 100, { locale }),
               since: localDayToDate(data.alert.since).toLocaleDateString(locale, {
@@ -156,9 +157,9 @@ export const PvHealthPanel = memo(function PvHealthPanel({
           </p>
         </div>
       ) : blind ? (
-        <p className="text-[13px] text-text-secondary mb-3">{t("equipments.pvHealth.blind")}</p>
+        <p className="text-small text-text-secondary mb-3">{t("equipments.pvHealth.blind")}</p>
       ) : (
-        <p className="text-[13px] text-text-secondary mb-3">
+        <p className="text-small text-text-secondary mb-3">
           {t("equipments.pvHealth.normal", {
             date: latest ? localDayToDate(latest.day).toLocaleDateString(locale) : "",
             pct: formatPercent(deviation === null ? 0 : Math.abs(deviation), { locale }),
@@ -175,7 +176,7 @@ export const PvHealthPanel = memo(function PvHealthPanel({
 
       {/* What the detector can and cannot do, from the days it has actually had. */}
       {data.detection && (
-        <p className="mt-3 text-[11px] text-text-tertiary">
+        <p className="mt-3 text-micro text-text-tertiary">
           {t("equipments.pvHealth.speed", {
             clear: data.detection.qualifyingDays,
             window: data.detection.windowDays,
@@ -184,7 +185,7 @@ export const PvHealthPanel = memo(function PvHealthPanel({
           })}
         </p>
       )}
-      <p className="mt-1 text-[11px] text-text-tertiary">{t("equipments.pvHealth.noPanelId")}</p>
+      <p className="mt-1 text-micro text-text-tertiary">{t("equipments.pvHealth.noPanelId")}</p>
     </div>
   );
 });
@@ -193,7 +194,7 @@ function Header({ t }: { t: (k: string) => string }) {
   return (
     <div className="flex items-center gap-2 mb-3">
       <Activity size={16} strokeWidth={1.5} className="text-accent" />
-      <h3 className="text-[14px] font-semibold text-text">{t("equipments.pvHealth.title")}</h3>
+      <h3 className="text-body font-semibold text-text">{t("equipments.pvHealth.title")}</h3>
     </div>
   );
 }
@@ -234,7 +235,7 @@ function RatioChart({
             tickFormatter={(ts: number) =>
               new Date(ts).toLocaleDateString(locale, { day: "numeric", month: "short" })
             }
-            tick={{ fontSize: 11, fill: "var(--color-text-tertiary)" }}
+            tick={{ fontSize: CHART_TICK_FONT, fill: "var(--color-text-tertiary)" }}
             stroke="var(--color-border)"
           />
           <YAxis
@@ -242,7 +243,7 @@ function RatioChart({
             // nothing to a household. 100 % is "as usual".
             tickFormatter={(r: number) => formatPercent((r / anchor) * 100, { locale })}
             domain={["dataMin", "dataMax"]}
-            tick={{ fontSize: 11, fill: "var(--color-text-tertiary)" }}
+            tick={{ fontSize: CHART_TICK_FONT, fill: "var(--color-text-tertiary)" }}
             stroke="var(--color-border)"
             width={48}
           />
@@ -256,7 +257,7 @@ function RatioChart({
               background: "var(--color-surface)",
               border: "1px solid var(--color-border)",
               borderRadius: 6,
-              fontSize: 12,
+              fontSize: CHART_TOOLTIP_FONT,
             }}
           />
           {showReference && (

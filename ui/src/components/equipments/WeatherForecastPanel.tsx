@@ -46,7 +46,7 @@ export function WeatherForecastPanel({ bindings }: WeatherForecastPanelProps) {
         ))}
       </div>
       {modelUsed && (
-        <p className="mt-1 text-[12px] text-text-tertiary">
+        <p className="mt-1 text-caption text-text-tertiary">
           {t("equipments.forecast.source", { model: sourceLabel })}
         </p>
       )}
@@ -70,7 +70,7 @@ function ForecastDayCard({ day, locale }: { day: ForecastDay; locale: string }) 
   return (
     <div className="flex-shrink-0 min-w-[140px] bg-surface rounded-[10px] border border-border p-4 flex flex-col items-center gap-2">
       {/* Day name */}
-      <span className="text-[13px] font-semibold text-text">{capitalizedDayName}</span>
+      <span className="text-small font-semibold text-text">{capitalizedDayName}</span>
 
       {/* Condition icon */}
       <div className={`my-1 ${conditionColor}`}>
@@ -80,20 +80,20 @@ function ForecastDayCard({ day, locale }: { day: ForecastDay; locale: string }) 
       {/* Temperature max */}
       {day.tempMax !== null && (
         <div className="flex items-baseline gap-0.5">
-          <span className="text-[22px] font-bold font-mono text-text tabular-nums leading-none">
+          <span className="text-title font-semibold font-mono text-text tabular-nums leading-none">
             {formatNumber(day.tempMax, { decimals: 0 })}
           </span>
-          <span className="text-[13px] text-text-tertiary">&deg;C</span>
+          <span className="text-small text-text-tertiary">&deg;C</span>
         </div>
       )}
 
       {/* Temperature min */}
       {day.tempMin !== null && (
         <div className="flex items-baseline gap-0.5">
-          <span className="text-[15px] font-medium font-mono text-text-secondary tabular-nums leading-none">
+          <span className="text-lead font-medium font-mono text-text-secondary tabular-nums leading-none">
             {formatNumber(day.tempMin, { decimals: 0 })}
           </span>
-          <span className="text-[11px] text-text-tertiary">&deg;C</span>
+          <span className="text-micro text-text-tertiary">&deg;C</span>
         </div>
       )}
 
@@ -101,7 +101,7 @@ function ForecastDayCard({ day, locale }: { day: ForecastDay; locale: string }) 
       {day.rainProb !== null && (
         <div className="flex items-center gap-1 mt-1">
           <Droplets size={13} strokeWidth={1.5} className="text-primary" />
-          <span className="text-[12px] text-text-secondary tabular-nums font-mono">
+          <span className="text-caption text-text-secondary tabular-nums font-mono">
             {formatPercent(day.rainProb)}
           </span>
         </div>
@@ -111,7 +111,7 @@ function ForecastDayCard({ day, locale }: { day: ForecastDay; locale: string }) 
       {day.windGusts !== null && (
         <div className="flex items-center gap-1">
           <Wind size={13} strokeWidth={1.5} className="text-text-tertiary" />
-          <span className="text-[12px] text-text-secondary tabular-nums font-mono">
+          <span className="text-caption text-text-secondary tabular-nums font-mono">
             {formatWithUnit(day.windGusts, "km/h")}
           </span>
         </div>
@@ -123,7 +123,7 @@ function ForecastDayCard({ day, locale }: { day: ForecastDay; locale: string }) 
       {day.confidence && (
         <div className="mt-0.5 w-full border-t border-border-light pt-2 flex justify-center">
           <span
-            className={`rounded-full border px-2 py-0.5 text-[10px] font-semibold ${
+            className={`rounded-full border px-2 py-0.5 text-micro font-semibold ${
               CONFIDENCE_STYLES[day.confidence]
             }`}
             title={

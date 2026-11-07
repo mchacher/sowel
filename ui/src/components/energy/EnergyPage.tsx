@@ -127,7 +127,7 @@ export function EnergyPage() {
 
       {/* Content */}
       {loading && !history ? (
-        <div className="flex items-center justify-center h-[300px] text-text-tertiary text-[13px]">
+        <div className="flex items-center justify-center h-[300px] text-text-tertiary text-small">
           {t("common.loading")}
         </div>
       ) : (
@@ -136,7 +136,7 @@ export function EnergyPage() {
           <div className="bg-surface border border-border rounded-[10px] p-4 sm:p-6">
             {hasSubmeters && (
               <div className="flex justify-end mb-3">
-                <div className="inline-flex border border-border rounded-[6px] overflow-hidden text-[12px]">
+                <div className="inline-flex border border-border rounded-[6px] overflow-hidden text-caption">
                   <button
                     type="button"
                     onClick={() => setViewMode("total")}
@@ -165,7 +165,7 @@ export function EnergyPage() {
 
             {viewMode === "by-usage" ? (
               byUsageLoading && !byUsage ? (
-                <div className="flex items-center justify-center h-[350px] text-text-tertiary text-[13px]">
+                <div className="flex items-center justify-center h-[350px] text-text-tertiary text-small">
                   {t("common.loading")}
                 </div>
               ) : labelledByUsage ? (
@@ -182,10 +182,10 @@ export function EnergyPage() {
                       is not the main meter's). */}
                   {labelledByUsage.separateSupply.length > 0 && (
                     <div className="flex flex-col items-center mt-3 gap-1">
-                      <div className="text-[11px] font-semibold uppercase tracking-wide text-text-tertiary">
+                      <div className="text-micro font-semibold uppercase tracking-wide text-text-tertiary">
                         {t("energy.byUsage.separateSupply")}
                       </div>
-                      <div className="flex items-center gap-4 text-[13px] text-text-secondary flex-wrap justify-center">
+                      <div className="flex items-center gap-4 text-small text-text-secondary flex-wrap justify-center">
                         {labelledByUsage.separateSupply.map((s) => (
                           <span key={s.id} className="flex items-center gap-1.5">
                             <span
@@ -202,7 +202,7 @@ export function EnergyPage() {
                   )}
                 </>
               ) : (
-                <div className="flex items-center justify-center h-[350px] text-text-tertiary text-[13px]">
+                <div className="flex items-center justify-center h-[350px] text-text-tertiary text-small">
                   —
                 </div>
               )
@@ -221,7 +221,7 @@ export function EnergyPage() {
                 it always renders in kWh, even when the toggle is on €. */}
             {history && viewMode === "total" && (
               <div className="flex flex-col items-center mt-3 gap-1">
-                <div className="flex items-center gap-4 text-[13px] text-text-secondary flex-wrap justify-center">
+                <div className="flex items-center gap-4 text-small text-text-secondary flex-wrap justify-center">
                   <span className="flex items-center gap-1.5">
                     <span className="inline-block w-2.5 h-2.5 rounded-full" style={{ backgroundColor: "#4F7BE8" }} />
                     {t("energy.gridConsumption")}{t("common.colon")}
@@ -257,7 +257,7 @@ export function EnergyPage() {
                     </span>
                   )}
                 </div>
-                <div className="text-[15px] font-semibold text-text tabular-nums mt-1">
+                <div className="text-lead font-semibold text-text tabular-nums mt-1">
                   {t("energy.total")}{t("common.colon")}
                   {formatEnergyOrCost(
                     history.totals.total_consumption + (history.totals.total_autoconso ?? 0),

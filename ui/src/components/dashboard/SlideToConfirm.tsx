@@ -96,7 +96,7 @@ export function SlideToConfirm({
           rest, to its left once the slide is done. On a capped track a label
           centred across the whole width would start under the knob. */}
       <div
-        className={`absolute inset-y-0 flex items-center justify-center gap-2 px-2 text-[13px] font-medium whitespace-nowrap pointer-events-none ${
+        className={`absolute inset-y-0 flex items-center justify-center gap-2 px-2 text-small font-medium whitespace-nowrap pointer-events-none ${
           done ? "text-success" : "text-text-secondary"
         }`}
         style={done ? { left: 0, right: `${KNOB_SPAN}px` } : { left: `${KNOB_SPAN}px`, right: 0 }}

@@ -100,10 +100,10 @@ export function EvReassignSheet({
           onChange={() => setChoice(c)}
           className="w-[18px] h-[18px] accent-primary"
         />
-        <span className={`flex-1 text-[14px] text-text ${selected ? "font-medium" : ""}`}>
+        <span className={`flex-1 text-body text-text ${selected ? "font-medium" : ""}`}>
           {label}
         </span>
-        {hint && <span className="text-[12px] text-text-tertiary text-right">{hint}</span>}
+        {hint && <span className="text-caption text-text-tertiary text-right">{hint}</span>}
       </label>
     );
   };
@@ -131,8 +131,8 @@ export function EvReassignSheet({
         <div className="sm:hidden self-center w-10 h-1 rounded-full bg-border" aria-hidden="true" />
         <div className="flex items-start gap-2">
           <div className="flex flex-col gap-1 flex-1">
-            <h3 className="text-[17px] font-semibold text-text">{title}</h3>
-            <span className="text-[13px] text-text-secondary">
+            <h3 className="text-lead font-semibold text-text">{title}</h3>
+            <span className="text-small text-text-secondary">
               {timeLabel(session.startedAt, locale)} →{" "}
               {session.endedAt
                 ? timeLabel(session.endedAt, locale)
@@ -159,14 +159,14 @@ export function EvReassignSheet({
         </div>
 
         {reason && (
-          <div className="flex gap-2 items-start bg-accent-light rounded-[8px] px-3 py-2.5 text-[13px] text-text">
+          <div className="flex gap-2 items-start bg-accent-light rounded-[8px] px-3 py-2.5 text-small text-text">
             <span className="w-2 h-2 rounded-full bg-accent-hover shrink-0 mt-[5px]" />
             <span>{reason}</span>
           </div>
         )}
 
         <fieldset className="flex flex-col gap-1">
-          <legend className="text-[13px] text-text-tertiary pb-1.5">
+          <legend className="text-small text-text-tertiary pb-1.5">
             {t("equipments.evSessions.sheet.question")}
           </legend>
           {vehicles.map((v) => option({ kind: "vehicle", id: v.id }, v.name, evidenceOf(v.id)))}
@@ -178,16 +178,16 @@ export function EvReassignSheet({
           {option({ kind: "todo" }, t("equipments.evSessions.sheet.todo"), null)}
         </fieldset>
 
-        <span className="text-[12px] text-text-tertiary">
+        <span className="text-caption text-text-tertiary">
           {t("equipments.evSessions.sheet.final")}
         </span>
-        {error && <p className="text-[12px] text-error">{error}</p>}
+        {error && <p className="text-caption text-error">{error}</p>}
 
         <div className="flex gap-2">
           <button
             type="button"
             onClick={onClose}
-            className="flex-1 min-h-[44px] rounded-[8px] border border-border text-[14px] font-medium text-text hover:bg-border-light cursor-pointer"
+            className="flex-1 min-h-[44px] rounded-[8px] border border-border text-body font-medium text-text hover:bg-border-light cursor-pointer"
           >
             {t("common.cancel")}
           </button>
@@ -195,7 +195,7 @@ export function EvReassignSheet({
             type="button"
             onClick={() => void save()}
             disabled={!choice || saving}
-            className="flex-1 min-h-[44px] rounded-[8px] bg-primary text-white text-[14px] font-medium hover:bg-primary-hover disabled:opacity-50 cursor-pointer flex items-center justify-center gap-2"
+            className="flex-1 min-h-[44px] rounded-[8px] bg-primary text-white text-body font-medium hover:bg-primary-hover disabled:opacity-50 cursor-pointer flex items-center justify-center gap-2"
           >
             {saving && <Loader2 size={14} className="animate-spin" />}
             {t("equipments.evSessions.sheet.save")}

@@ -101,7 +101,7 @@ export function AddBindingModal({
       <div className="bg-surface rounded-[14px] border border-border shadow-xl w-full max-w-[480px] max-h-[80vh] flex flex-col">
         {/* Header */}
         <div className="flex items-center justify-between px-5 py-4 border-b border-border-light">
-          <h2 className="text-[16px] font-semibold text-text">
+          <h2 className="text-lead font-semibold text-text">
             {mode === "data" ? t("binding.addData") : t("binding.addOrder")}
           </h2>
           <button
@@ -121,11 +121,11 @@ export function AddBindingModal({
           ) : !selectedDevice ? (
             /* Step 1: Pick a device */
             <>
-              <p className="text-[13px] text-text-secondary">
+              <p className="text-small text-text-secondary">
                 {mode === "data" ? t("binding.selectDevice") : t("binding.selectDeviceOrder")}
               </p>
               {devices.length === 0 ? (
-                <p className="text-[13px] text-text-tertiary py-4">{t("binding.noDevices")}</p>
+                <p className="text-small text-text-tertiary py-4">{t("binding.noDevices")}</p>
               ) : (
                 <div className="space-y-1 max-h-[400px] overflow-y-auto">
                   {devices.map((device) => (
@@ -136,9 +136,9 @@ export function AddBindingModal({
                     >
                       <Radio size={16} strokeWidth={1.5} className="text-text-tertiary flex-shrink-0" />
                       <div className="flex-1 min-w-0">
-                        <span className="text-[13px] font-medium text-text">{device.name}</span>
+                        <span className="text-small font-medium text-text">{device.name}</span>
                         {device.manufacturer && (
-                          <span className="text-[11px] text-text-tertiary ml-2">
+                          <span className="text-micro text-text-tertiary ml-2">
                             {device.manufacturer} {device.model ?? ""}
                           </span>
                         )}
@@ -168,16 +168,16 @@ export function AddBindingModal({
               <div className="flex items-center gap-2">
                 <button
                   onClick={() => setSelectedDevice(null)}
-                  className="text-[13px] text-primary hover:underline"
+                  className="text-small text-primary hover:underline"
                 >
                   {t("equipments.devices")}
                 </button>
                 <ChevronRight size={12} className="text-text-tertiary" />
-                <span className="text-[13px] font-medium text-text">{selectedDevice.name}</span>
+                <span className="text-small font-medium text-text">{selectedDevice.name}</span>
               </div>
 
               {items.length === 0 ? (
-                <p className="text-[13px] text-text-tertiary py-4">
+                <p className="text-small text-text-tertiary py-4">
                   {t("binding.noProperties", { type: mode === "data" ? t("binding.dataProperties") : t("binding.orders") })}
                 </p>
               ) : (
@@ -202,25 +202,25 @@ export function AddBindingModal({
                         `}
                       >
                         <div className="flex-1 min-w-0">
-                          <span className="text-[13px] font-mono font-medium text-text">
+                          <span className="text-small font-mono font-medium text-text">
                             {item.key}
                           </span>
-                          <span className="text-[11px] text-text-tertiary ml-2">
+                          <span className="text-micro text-text-tertiary ml-2">
                             ({item.type})
                           </span>
                           {dataItem && (
-                            <span className="text-[11px] text-text-tertiary ml-1">
+                            <span className="text-micro text-text-tertiary ml-1">
                               · {dataItem.category}
                             </span>
                           )}
                           {orderItem?.min !== undefined && orderItem?.max !== undefined && (
-                            <span className="text-[11px] text-text-tertiary ml-1">
+                            <span className="text-micro text-text-tertiary ml-1">
                               · [{orderItem.min}–{orderItem.max}]
                             </span>
                           )}
                         </div>
                         {dataItem && (
-                          <span className="text-[12px] font-mono text-text-secondary">
+                          <span className="text-caption font-mono text-text-secondary">
                             {dataItem.value !== null && dataItem.value !== undefined
                               ? String(dataItem.value)
                               : "—"}
@@ -235,7 +235,7 @@ export function AddBindingModal({
               {/* Alias input */}
               {selectedItemId && (
                 <div>
-                  <label className="block text-[12px] font-medium text-text-secondary mb-1">
+                  <label className="block text-caption font-medium text-text-secondary mb-1">
                     {t("binding.alias")}
                   </label>
                   <input
@@ -246,7 +246,7 @@ export function AddBindingModal({
                       setError(null);
                     }}
                     placeholder={t("binding.aliasPlaceholder")}
-                    className="w-full px-3 py-2 text-[13px] bg-surface border border-border rounded-[6px] outline-none placeholder:text-text-tertiary focus:border-primary transition-colors duration-150"
+                    className="w-full px-3 py-2 text-small bg-surface border border-border rounded-[6px] outline-none placeholder:text-text-tertiary focus:border-primary transition-colors duration-150"
                   />
                 </div>
               )}
@@ -255,7 +255,7 @@ export function AddBindingModal({
 
           {/* Error */}
           {error && (
-            <p className="text-[12px] text-error">{error}</p>
+            <p className="text-caption text-error">{error}</p>
           )}
         </div>
 
@@ -263,14 +263,14 @@ export function AddBindingModal({
         <div className="flex justify-end gap-2 px-5 py-3 border-t border-border-light">
           <button
             onClick={onClose}
-            className="px-4 py-2 text-[13px] font-medium text-text-secondary border border-border rounded-[6px] hover:bg-border-light transition-colors duration-150"
+            className="px-4 py-2 text-small font-medium text-text-secondary border border-border rounded-[6px] hover:bg-border-light transition-colors duration-150"
           >
             {t("common.cancel")}
           </button>
           <button
             onClick={handleSubmit}
             disabled={!selectedItemId || !alias.trim() || submitting}
-            className="px-4 py-2 text-[13px] font-medium text-white bg-primary rounded-[6px] hover:bg-primary-hover transition-colors duration-150 disabled:opacity-50 disabled:cursor-not-allowed"
+            className="px-4 py-2 text-small font-medium text-white bg-primary rounded-[6px] hover:bg-primary-hover transition-colors duration-150 disabled:opacity-50 disabled:cursor-not-allowed"
           >
             {submitting ? t("common.adding") : t("binding.addBinding")}
           </button>

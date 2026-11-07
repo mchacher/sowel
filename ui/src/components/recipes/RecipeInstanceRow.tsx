@@ -282,11 +282,11 @@ export function RecipeInstanceRow({
   // on the PWA/mobile (#615). Kept in one place so both stay in sync.
   const logBody =
     logs.length === 0 ? (
-      <p className="text-[11px] text-text-tertiary text-center py-2">{t("common.noLogs")}</p>
+      <p className="text-micro text-text-tertiary text-center py-2">{t("common.noLogs")}</p>
     ) : (
       <div className="space-y-0.5">
         {logs.map((log) => (
-          <div key={log.id} className="flex gap-2 text-[11px] font-mono">
+          <div key={log.id} className="flex gap-2 text-micro font-mono">
             <span className="text-text-tertiary whitespace-nowrap">{formatTime(log.timestamp)}</span>
             <span
               className={
@@ -318,7 +318,7 @@ export function RecipeInstanceRow({
             className={`flex-1 min-w-0 text-left transition-opacity duration-150 ${isAdmin ? "hover:opacity-70 cursor-pointer" : "cursor-default"}`}
             title={isAdmin ? "Edit" : undefined}
           >
-            <div className="text-[14px] font-medium text-text truncate">
+            <div className="text-body font-medium text-text truncate">
               {displayName}
             </div>
             {/* Optional recipe-provided status line (spec: state.summary).
@@ -327,7 +327,7 @@ export function RecipeInstanceRow({
             {typeof instance.state?.summary === "string" &&
               instance.state.summary.length > 0 &&
               instance.enabled && (
-                <div className="text-[11px] text-text-tertiary truncate mt-0.5">
+                <div className="text-micro text-text-tertiary truncate mt-0.5">
                   {instance.state.summary}
                 </div>
               )}
@@ -337,7 +337,7 @@ export function RecipeInstanceRow({
           )}
           {!!instance.state?.overrideMode && instance.enabled && (
             <span
-              className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-full text-[10px] font-medium flex-shrink-0"
+              className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-full text-micro font-medium flex-shrink-0"
               style={{ backgroundColor: "var(--color-accent-light)", color: "var(--color-accent)" }}
               title={t("recipes.overrideActive", "Override active")}
             >
@@ -433,7 +433,7 @@ export function RecipeInstanceRow({
                       return (
                         <div key={groupKey} className="mb-2.5 pl-2 border-l-2 border-accent/40">
                           <div className="flex items-center justify-between mb-1">
-                            <span className="text-[11px] uppercase tracking-widest text-accent">{recipeGroupLabel(recipe, groupKey, lang)}</span>
+                            <span className="text-micro uppercase tracking-widest text-accent">{recipeGroupLabel(recipe, groupKey, lang)}</span>
                             {!isGroupRequired(groupKey, recipe.slots) && <button
                               type="button"
                               onClick={() => {
@@ -459,7 +459,7 @@ export function RecipeInstanceRow({
                               zones={allZones}
                               recipe={recipe}
                               lang={lang}
-                              labelClassName={`block text-[10px] tracking-wider mb-0.5 ${isSlotChanged(slot.id) ? "text-success" : "text-text-tertiary"}`}
+                              labelClassName={`block text-micro tracking-wider mb-0.5 ${isSlotChanged(slot.id) ? "text-success" : "text-text-tertiary"}`}
                             />
                           ))}
                           {/* Compact grid for non-list slots */}
@@ -471,14 +471,14 @@ export function RecipeInstanceRow({
                               <div className={`grid gap-1.5 ${cols === 1 ? "grid-cols-1" : cols === 2 ? "grid-cols-2" : "grid-cols-3"}`}>
                                 {compactSlots.map((slot) => (
                                   <div key={slot.id}>
-                                    <label className={`block text-[10px] tracking-wider mb-0.5 ${isSlotChanged(slot.id) ? "text-success" : "text-text-tertiary"}`}>
+                                    <label className={`block text-micro tracking-wider mb-0.5 ${isSlotChanged(slot.id) ? "text-success" : "text-text-tertiary"}`}>
                                       {recipeSlotName(recipe, slot, lang)}{slot.required && <span className="text-error ml-0.5">*</span>}
                                     </label>
                                     {slot.type === "equipment" ? (
                                       <select
                                         value={editParams[slot.id] ?? ""}
                                         onChange={(e) => setEditParams({ ...editParams, [slot.id]: e.target.value })}
-                                        className="w-full px-2 py-1.5 text-[13px] bg-surface border border-border rounded-[6px] text-text"
+                                        className="w-full px-2 py-1.5 text-small bg-surface border border-border rounded-[6px] text-text"
                                       >
                                         <option value="">{t("common.select")}</option>
                                         <EquipmentOptions equipments={getEquipmentOptions(slot.id)} zoneChains={zoneChains} />
@@ -493,7 +493,7 @@ export function RecipeInstanceRow({
                                           <select
                                             value={editParams[slot.id] ?? ""}
                                             onChange={(e) => setEditParams({ ...editParams, [slot.id]: e.target.value })}
-                                            className="w-full px-2 py-1.5 text-[13px] bg-surface border border-border rounded-[6px] text-text"
+                                            className="w-full px-2 py-1.5 text-small bg-surface border border-border rounded-[6px] text-text"
                                           >
                                             <option value="">{t("common.select")}</option>
                                             {bindings.map((b) => (
@@ -506,7 +506,7 @@ export function RecipeInstanceRow({
                                       <select
                                         value={String(editParams[slot.id] ?? slot.defaultValue ?? "")}
                                         onChange={(e) => setEditParams({ ...editParams, [slot.id]: e.target.value })}
-                                        className="w-full px-3 py-1.5 text-[13px] bg-surface border border-border rounded-[6px] text-text"
+                                        className="w-full px-3 py-1.5 text-small bg-surface border border-border rounded-[6px] text-text"
                                       >
                                         {(slot.options ?? []).map((o) => (
                                           <option key={o.value} value={o.value}>
@@ -527,10 +527,10 @@ export function RecipeInstanceRow({
                                         value={editParams[slot.id] ?? ""}
                                         onChange={(e) => setEditParams({ ...editParams, [slot.id]: e.target.value })}
                                         placeholder={slot.constraints?.max ? `1-${slot.constraints.max}` : ""}
-                                        className="w-full px-2 py-1.5 text-[13px] bg-surface border border-border rounded-[6px] text-text placeholder:text-text-tertiary"
+                                        className="w-full px-2 py-1.5 text-small bg-surface border border-border rounded-[6px] text-text placeholder:text-text-tertiary"
                                       />
                                     )}
-                                    <p className="text-[10px] text-text-tertiary mt-0.5">{recipeSlotDescription(recipe, slot, lang)}</p>
+                                    <p className="text-micro text-text-tertiary mt-0.5">{recipeSlotDescription(recipe, slot, lang)}</p>
                                   </div>
                                 ))}
                               </div>
@@ -539,7 +539,7 @@ export function RecipeInstanceRow({
                           {/* Full-width multi-select slots (e.g. weekdays) — rendered as chips */}
                           {chunk.slots.filter((s) => s.type === "select" && s.list && !isSlotHidden(s, editParams, recipe.slots)).map((slot) => (
                             <div key={slot.id} className="mt-1.5">
-                              <label className={`block text-[10px] tracking-wider mb-1 ${isSlotChanged(slot.id) ? "text-success" : "text-text-tertiary"}`}>
+                              <label className={`block text-micro tracking-wider mb-1 ${isSlotChanged(slot.id) ? "text-success" : "text-text-tertiary"}`}>
                                 {recipeSlotName(recipe, slot, lang)}{slot.required && <span className="text-error ml-0.5">*</span>}
                               </label>
                               <MultiSelectChips
@@ -549,7 +549,7 @@ export function RecipeInstanceRow({
                                 recipe={recipe}
                                 lang={lang}
                               />
-                              <p className="text-[10px] text-text-tertiary mt-0.5">{recipeSlotDescription(recipe, slot, lang)}</p>
+                              <p className="text-micro text-text-tertiary mt-0.5">{recipeSlotDescription(recipe, slot, lang)}</p>
                             </div>
                           ))}
                         </div>
@@ -559,7 +559,7 @@ export function RecipeInstanceRow({
                     return chunk.slots.map((slot) => isSlotHidden(slot, editParams, recipe.slots) ? null : (
                       <div key={slot.id} className={`mb-2.5 pl-2 border-l-2 transition-colors duration-150 ${isSlotChanged(slot.id) ? "border-success" : "border-transparent"}`}>
                         {slot.type === "boolean" ? (
-                          <label className="flex items-center gap-2 px-3 py-1.5 text-[13px] bg-surface border border-border rounded-[6px] text-text cursor-pointer hover:bg-border-light/30 transition-colors duration-150">
+                          <label className="flex items-center gap-2 px-3 py-1.5 text-small bg-surface border border-border rounded-[6px] text-text cursor-pointer hover:bg-border-light/30 transition-colors duration-150">
                             <input
                               type="checkbox"
                               checked={editParams[slot.id] === "true"}
@@ -570,7 +570,7 @@ export function RecipeInstanceRow({
                           </label>
                         ) : (
                         <>
-                        <label className={`block text-[11px] uppercase tracking-widest mb-1 ${isSlotChanged(slot.id) ? "text-success" : "text-text-tertiary"}`}>
+                        <label className={`block text-micro uppercase tracking-widest mb-1 ${isSlotChanged(slot.id) ? "text-success" : "text-text-tertiary"}`}>
                           {recipeSlotName(recipe, slot, lang)}{slot.required && <span className="text-error ml-0.5">*</span>}
                         </label>
                         {slot.type === "equipment" && slot.list ? (
@@ -593,7 +593,7 @@ export function RecipeInstanceRow({
                             <select
                               value={editParams[slot.id] ?? ""}
                               onChange={(e) => setEditParams({ ...editParams, [slot.id]: e.target.value })}
-                              className="w-full px-3 py-1.5 text-[13px] bg-surface border border-border rounded-[6px] text-text"
+                              className="w-full px-3 py-1.5 text-small bg-surface border border-border rounded-[6px] text-text"
                             >
                               <option value="">{t("common.select")}</option>
                               <EquipmentOptions equipments={getEquipmentOptions(slot.id)} zoneChains={zoneChains} />
@@ -609,7 +609,7 @@ export function RecipeInstanceRow({
                               <select
                                 value={editParams[slot.id] ?? ""}
                                 onChange={(e) => setEditParams({ ...editParams, [slot.id]: e.target.value })}
-                                className="w-full px-3 py-1.5 text-[13px] bg-surface border border-border rounded-[6px] text-text"
+                                className="w-full px-3 py-1.5 text-small bg-surface border border-border rounded-[6px] text-text"
                               >
                                 <option value="">{t("common.select")}</option>
                                 {bindings.map((b) => (
@@ -637,7 +637,7 @@ export function RecipeInstanceRow({
                           <select
                             value={String(editParams[slot.id] ?? slot.defaultValue ?? "")}
                             onChange={(e) => setEditParams({ ...editParams, [slot.id]: e.target.value })}
-                            className="w-full px-3 py-1.5 text-[13px] bg-surface border border-border rounded-[6px] text-text"
+                            className="w-full px-3 py-1.5 text-small bg-surface border border-border rounded-[6px] text-text"
                           >
                             {(slot.options ?? []).map((o) => (
                               <option key={o.value} value={o.value}>
@@ -660,10 +660,10 @@ export function RecipeInstanceRow({
                             value={editParams[slot.id] ?? ""}
                             onChange={(e) => setEditParams({ ...editParams, [slot.id]: e.target.value })}
                             placeholder={slot.defaultValue ? String(slot.defaultValue) : recipeSlotDescription(recipe, slot, lang)}
-                            className="w-full px-3 py-1.5 text-[13px] bg-surface border border-border rounded-[6px] text-text placeholder:text-text-tertiary"
+                            className="w-full px-3 py-1.5 text-small bg-surface border border-border rounded-[6px] text-text placeholder:text-text-tertiary"
                           />
                         )}
-                        <p className="text-[11px] text-text-tertiary mt-0.5">{recipeSlotDescription(recipe, slot, lang)}</p>
+                        <p className="text-micro text-text-tertiary mt-0.5">{recipeSlotDescription(recipe, slot, lang)}</p>
                         </>
                         )}
                       </div>
@@ -679,7 +679,7 @@ export function RecipeInstanceRow({
                           onClick={() => {
                             setVisibleGroups((prev) => new Set([...prev, gk]));
                           }}
-                          className="flex items-center gap-1.5 text-[12px] text-accent hover:text-accent-hover transition-colors duration-150"
+                          className="flex items-center gap-1.5 text-caption text-accent hover:text-accent-hover transition-colors duration-150"
                         >
                           <Plus size={14} strokeWidth={1.5} />
                           {recipeGroupLabel(recipe, gk, lang)}
@@ -691,13 +691,13 @@ export function RecipeInstanceRow({
               );
             })()}
             {editError && (
-              <p className="text-[12px] text-error mb-2">{editError}</p>
+              <p className="text-caption text-error mb-2">{editError}</p>
             )}
             <div className="flex gap-2">
               <button
                 onClick={handleSave}
                 disabled={saving || !hasChanges}
-                className={`flex items-center gap-1.5 px-3 py-1.5 text-white text-[12px] font-medium rounded-[6px] transition-colors duration-150 disabled:opacity-40 ${
+                className={`flex items-center gap-1.5 px-3 py-1.5 text-white text-caption font-medium rounded-[6px] transition-colors duration-150 disabled:opacity-40 ${
                   hasChanges ? "bg-success hover:brightness-110" : "bg-primary"
                 }`}
               >
@@ -706,7 +706,7 @@ export function RecipeInstanceRow({
               </button>
               <button
                 onClick={handleCancelEdit}
-                className="px-3 py-1.5 bg-border-light text-text-secondary text-[12px] font-medium rounded-[6px] hover:bg-border transition-colors duration-150"
+                className="px-3 py-1.5 bg-border-light text-text-secondary text-caption font-medium rounded-[6px] hover:bg-border transition-colors duration-150"
               >
                 {t("common.cancel")}
               </button>

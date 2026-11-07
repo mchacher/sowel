@@ -56,11 +56,11 @@ export function SharedAccessPanel({ equipmentId }: { equipmentId: string }) {
     <div className="bg-surface rounded-[10px] border border-border mb-6 p-4">
       <div className="flex items-center gap-2 mb-1">
         <KeyRound size={16} strokeWidth={1.5} className="text-text-tertiary" />
-        <h3 className="text-[14px] font-semibold text-text">{t("sharedAccess.title")}</h3>
+        <h3 className="text-body font-semibold text-text">{t("sharedAccess.title")}</h3>
         {people > 0 && (
           <Link
             to={`/shared-access?gate=${encodeURIComponent(equipmentId)}`}
-            className="ml-auto text-[12px] font-semibold text-primary hover:underline"
+            className="ml-auto text-caption font-semibold text-primary hover:underline"
           >
             {t("sharedAccess.panel.seeAccesses")}
           </Link>
@@ -70,7 +70,7 @@ export function SharedAccessPanel({ equipmentId }: { equipmentId: string }) {
         <Loader2 size={14} className="animate-spin text-text-tertiary" />
       ) : (
         <>
-          <p className="text-[12px] text-text-tertiary">
+          <p className="text-caption text-text-tertiary">
             {!armed ? (
               <>
                 <b className="text-error">{t("sharedAccess.panel.disarmedTitle")}</b>{" "}
@@ -89,7 +89,7 @@ export function SharedAccessPanel({ equipmentId }: { equipmentId: string }) {
               label={t("sharedAccess.armed")}
               onChange={(next) => void toggle(next)}
             />
-            <span className="text-[13px] text-text">
+            <span className="text-small text-text">
               {armed ? t("sharedAccess.armed") : t("sharedAccess.disarmed")}
             </span>
             <span className="flex-1" />

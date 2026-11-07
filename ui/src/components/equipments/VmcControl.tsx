@@ -71,7 +71,7 @@ export function VmcControl({ equipment, onExecuteOrder, compact }: VmcControlPro
               aria-pressed={active}
               title={label}
               className={`
-                px-2.5 py-1.5 rounded-[6px] text-[12px] font-medium transition-colors duration-150 cursor-pointer
+                px-2.5 py-1.5 rounded-[6px] text-caption font-medium transition-colors duration-150 cursor-pointer
                 ${
                   active
                     ? "bg-primary text-white hover:bg-primary/90"
@@ -104,7 +104,7 @@ export function VmcControl({ equipment, onExecuteOrder, compact }: VmcControlPro
             disabled={!!executing}
             aria-pressed={active}
             className={`
-              min-w-[42px] px-3 py-1 rounded-md text-[13px] font-medium
+              min-w-[42px] px-3 py-1 rounded-md text-small font-medium
               flex items-center justify-center transition-colors
               ${active ? "bg-primary text-white shadow-sm" : "text-text-secondary hover:text-primary"}
               ${executing ? "opacity-60" : ""}

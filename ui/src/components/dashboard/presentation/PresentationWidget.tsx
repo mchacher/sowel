@@ -58,14 +58,14 @@ export function PresentationWidget({
         {presentation.icon({ surface: "desktop" })}
         <div className="flex flex-col items-start gap-1 pl-2">
           <span
-            className={`text-[12px] font-medium px-2.5 py-0.5 rounded-full ${
+            className={`text-caption font-medium px-2.5 py-0.5 rounded-full ${
               isActive ? "bg-active/10 text-active" : "bg-border-light text-text-tertiary"
             }`}
           >
             {state.primary}
           </span>
           {state.secondary?.map((line) => (
-            <span key={line} className="text-[11px] text-text-tertiary tabular-nums font-mono">
+            <span key={line} className="text-micro text-text-tertiary tabular-nums font-mono">
               {line}
             </span>
           ))}

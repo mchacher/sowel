@@ -18,7 +18,7 @@ export function SunlightBanner({ data, compact }: SunlightBannerProps) {
   if (compact) {
     return (
       <div
-        className={`flex items-center gap-1 text-[11px] font-medium tabular-nums ${
+        className={`flex items-center gap-1 text-micro font-medium tabular-nums ${
           isDay ? "text-accent" : "text-primary"
         }`}
       >
@@ -35,7 +35,7 @@ export function SunlightBanner({ data, compact }: SunlightBannerProps) {
     <div
       className={`
         flex items-center gap-1.5 px-2.5 py-1 rounded-full border
-        text-[12px] font-medium tabular-nums
+        text-caption font-medium tabular-nums
         ${isDay
           ? "bg-accent/10 text-accent border-accent/20"
           : "bg-primary/10 text-primary border-primary/20"
@@ -47,7 +47,7 @@ export function SunlightBanner({ data, compact }: SunlightBannerProps) {
         : <Moon size={13} strokeWidth={1.5} />
       }
       <span>{formatRange(data.sunrise, data.sunset)}</span>
-      <span className="text-[11px] opacity-70 lowercase">{isDay ? t("aggregation.daylight") : t("aggregation.night")}</span>
+      <span className="text-micro opacity-70 lowercase">{isDay ? t("aggregation.daylight") : t("aggregation.night")}</span>
     </div>
   );
 }

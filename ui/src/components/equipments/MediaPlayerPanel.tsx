@@ -39,7 +39,7 @@ export function MediaPlayerPanel({ equipment, onExecuteOrder }: MediaPlayerPanel
 
   return (
     <div className="bg-surface rounded-[10px] border border-border p-4 mb-6">
-      <h3 className="text-[14px] font-semibold text-text mb-4">
+      <h3 className="text-body font-semibold text-text mb-4">
         <Monitor size={16} strokeWidth={1.5} className="inline mr-2 text-text-tertiary" />
         {t("equipments.controls")}
       </h3>
@@ -67,11 +67,11 @@ export function MediaPlayerPanel({ equipment, onExecuteOrder }: MediaPlayerPanel
 
           <div className="flex-1">
             <div className="flex items-center gap-2">
-              <span className={`text-[20px] font-semibold ${isOn ? "text-text" : "text-text-tertiary"}`}>
+              <span className={`text-title font-semibold ${isOn ? "text-text" : "text-text-tertiary"}`}>
                 {isOn ? currentSource : t("controls.off")}
               </span>
               {isOn && pictureMode && (
-                <span className="text-[11px] px-1.5 py-0.5 bg-border-light rounded text-text-tertiary">
+                <span className="text-micro px-1.5 py-0.5 bg-border-light rounded text-text-tertiary">
                   {pictureMode}
                 </span>
               )}
@@ -82,14 +82,14 @@ export function MediaPlayerPanel({ equipment, onExecuteOrder }: MediaPlayerPanel
         {/* Source selector */}
         {isOn && hasSourceOrder && (
           <div className="flex items-center gap-3">
-            <span className="text-[12px] text-text-secondary w-16">Source</span>
+            <span className="text-caption text-text-secondary w-16">Source</span>
             <div className="flex gap-1.5 flex-wrap">
               {["TV", "HDMI1", "HDMI2", "HDMI3", "HDMI4"].map((src) => (
                 <button
                   key={src}
                   onClick={() => exec("input_source", src)}
                   disabled={executing !== null}
-                  className={`px-2.5 py-1 text-[11px] font-medium rounded-[5px] transition-colors cursor-pointer ${
+                  className={`px-2.5 py-1 text-micro font-medium rounded-[5px] transition-colors cursor-pointer ${
                     currentSource === src
                       ? "bg-primary text-white"
                       : "bg-border-light text-text-secondary hover:bg-primary/10 hover:text-primary"

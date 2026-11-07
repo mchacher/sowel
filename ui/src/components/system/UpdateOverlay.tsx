@@ -45,20 +45,20 @@ function FailedOverlay({ failure, showReason }: { failure: UpdateFailure; showRe
           className="mx-auto mb-6 text-error"
           strokeWidth={1.5}
         />
-        <h2 className="text-[20px] font-semibold text-text mb-3">
+        <h2 className="text-title font-semibold text-text mb-3">
           {t(isRestart ? "update.restartFailedTitle" : "update.failedTitle")}
         </h2>
         {showReason && (
-          <p className="text-[13px] font-mono text-text-secondary leading-relaxed break-words text-left bg-surface border border-border rounded-[8px] p-3">
+          <p className="text-small font-mono text-text-secondary leading-relaxed break-words text-left bg-surface border border-border rounded-[8px] p-3">
             {failure.message}
           </p>
         )}
-        <p className="mt-3 text-[13px] text-text-secondary leading-relaxed">
+        <p className="mt-3 text-small text-text-secondary leading-relaxed">
           {t(isRestart ? "update.restartFailedHint" : "update.failedHint")}
         </p>
         <button
           onClick={() => setUpdateFailure(null)}
-          className="mt-6 px-4 py-2 mx-auto text-[13px] font-medium bg-primary text-white rounded-[6px] hover:bg-primary-hover transition-colors cursor-pointer"
+          className="mt-6 px-4 py-2 mx-auto text-small font-medium bg-primary text-white rounded-[6px] hover:bg-primary-hover transition-colors cursor-pointer"
         >
           {t("common.close")}
         </button>
@@ -147,16 +147,16 @@ function ActiveOverlay() {
           className="animate-spin mx-auto mb-6 text-primary"
           strokeWidth={1.5}
         />
-        <h2 className="text-[20px] font-semibold text-text mb-3">
+        <h2 className="text-title font-semibold text-text mb-3">
           {t("update.overlayTitle")}
         </h2>
-        <p className="text-[14px] text-text-secondary leading-relaxed">
+        <p className="text-body text-text-secondary leading-relaxed">
           {t("update.overlayMessage")}
         </p>
         {showFallback && (
           <button
             onClick={() => window.location.reload()}
-            className="mt-6 flex items-center gap-2 px-4 py-2 mx-auto text-[13px] font-medium bg-primary text-white rounded-[6px] hover:bg-primary-hover transition-colors cursor-pointer"
+            className="mt-6 flex items-center gap-2 px-4 py-2 mx-auto text-small font-medium bg-primary text-white rounded-[6px] hover:bg-primary-hover transition-colors cursor-pointer"
           >
             <RefreshCw size={14} />
             {t("update.overlayReload")}

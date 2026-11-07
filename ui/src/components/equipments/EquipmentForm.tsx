@@ -144,7 +144,7 @@ export function EquipmentForm({ title, initial, defaultZoneId, zones, onSubmit, 
       >
         {/* Header */}
         <div className="flex items-center justify-between px-6 py-4 border-b border-border-light flex-shrink-0">
-          <h2 className="text-[16px] font-semibold text-text">{title}</h2>
+          <h2 className="text-lead font-semibold text-text">{title}</h2>
           <button onClick={onClose} className="text-text-tertiary hover:text-text-secondary transition-colors">
             <X size={18} strokeWidth={1.5} />
           </button>
@@ -157,7 +157,7 @@ export function EquipmentForm({ title, initial, defaultZoneId, zones, onSubmit, 
               <>
                 {/* Type */}
                 <div>
-                  <label className="block text-[12px] font-medium text-text-secondary uppercase tracking-widest mb-1.5">
+                  <label className="block text-caption font-medium text-text-secondary uppercase tracking-widest mb-1.5">
                     {t("equipments.form.type")}
                   </label>
                   <select
@@ -166,7 +166,7 @@ export function EquipmentForm({ title, initial, defaultZoneId, zones, onSubmit, 
                       setType(e.target.value as EquipmentType);
                       setSelectedDeviceIds([]);
                     }}
-                    className="w-full px-3 py-2 text-[14px] bg-surface border border-border rounded-[6px] outline-none focus:border-primary transition-colors duration-150"
+                    className="w-full px-3 py-2 text-body bg-surface border border-border rounded-[6px] outline-none focus:border-primary transition-colors duration-150"
                     disabled={offeredOnEdit !== null && offeredOnEdit.length < 2}
                   >
                     {sortedTypes.map((et) => (
@@ -177,7 +177,7 @@ export function EquipmentForm({ title, initial, defaultZoneId, zones, onSubmit, 
 
                 {/* Name */}
                 <div>
-                  <label className="block text-[12px] font-medium text-text-secondary uppercase tracking-widest mb-1.5">
+                  <label className="block text-caption font-medium text-text-secondary uppercase tracking-widest mb-1.5">
                     {t("equipments.form.name")}
                   </label>
                   <input
@@ -186,7 +186,7 @@ export function EquipmentForm({ title, initial, defaultZoneId, zones, onSubmit, 
                     onChange={(e) => setName(e.target.value)}
                     onKeyDown={handleKeyDown}
                     placeholder={t("equipments.form.namePlaceholder")}
-                    className="w-full px-3 py-2 text-[14px] bg-surface border border-border rounded-[6px] outline-none placeholder:text-text-tertiary focus:border-primary transition-colors duration-150"
+                    className="w-full px-3 py-2 text-body bg-surface border border-border rounded-[6px] outline-none placeholder:text-text-tertiary focus:border-primary transition-colors duration-150"
                     autoFocus
                     maxLength={100}
                   />
@@ -194,13 +194,13 @@ export function EquipmentForm({ title, initial, defaultZoneId, zones, onSubmit, 
 
                 {/* Zone */}
                 <div>
-                  <label className="block text-[12px] font-medium text-text-secondary uppercase tracking-widest mb-1.5">
+                  <label className="block text-caption font-medium text-text-secondary uppercase tracking-widest mb-1.5">
                     {t("equipments.form.zone")}
                   </label>
                   <select
                     value={zoneId}
                     onChange={(e) => setZoneId(e.target.value)}
-                    className="w-full px-3 py-2 text-[14px] bg-surface border border-border rounded-[6px] outline-none focus:border-primary transition-colors duration-150"
+                    className="w-full px-3 py-2 text-body bg-surface border border-border rounded-[6px] outline-none focus:border-primary transition-colors duration-150"
                   >
                     <option value="">{t("equipments.form.selectZone")}</option>
                     {flatZones.map((z) => (
@@ -215,7 +215,7 @@ export function EquipmentForm({ title, initial, defaultZoneId, zones, onSubmit, 
 
             {step === "devices" && (
               <>
-                <p className="text-[13px] text-text-secondary">
+                <p className="text-small text-text-secondary">
                   {t("equipments.form.deviceInstruction")}
                 </p>
                 <DeviceSelector
@@ -228,7 +228,7 @@ export function EquipmentForm({ title, initial, defaultZoneId, zones, onSubmit, 
                   boundDataKeysByDevice={boundDataKeysByDevice}
                 />
                 {type === "pool_heat_pump" && !poolHeatPumpValidation.ok && (
-                  <p className="text-[12px] text-warning">
+                  <p className="text-caption text-warning">
                     {!poolHeatPumpValidation.hasPac
                       ? "Sélectionnez la PAC (Polytropic)."
                       : "Sélectionnez aussi la pompe de filtration (Sonoff/relais ON-OFF)."}
@@ -238,7 +238,7 @@ export function EquipmentForm({ title, initial, defaultZoneId, zones, onSubmit, 
             )}
 
             {/* Error */}
-            {error && <p className="text-[13px] text-error">{error}</p>}
+            {error && <p className="text-small text-error">{error}</p>}
           </div>
 
           {/* Actions */}
@@ -248,7 +248,7 @@ export function EquipmentForm({ title, initial, defaultZoneId, zones, onSubmit, 
                 <button
                   type="button"
                   onClick={() => setStep("info")}
-                  className="px-4 py-2 text-[13px] font-medium text-text-secondary hover:text-text border border-border rounded-[6px] hover:bg-border-light transition-colors duration-150"
+                  className="px-4 py-2 text-small font-medium text-text-secondary hover:text-text border border-border rounded-[6px] hover:bg-border-light transition-colors duration-150"
                 >
                   {t("common.back")}
                 </button>
@@ -256,7 +256,7 @@ export function EquipmentForm({ title, initial, defaultZoneId, zones, onSubmit, 
                   type="button"
                   onClick={handleCreate}
                   disabled={!name.trim() || !zoneId || saving || !poolHeatPumpValidation.ok}
-                  className="px-4 py-2 text-[13px] font-medium text-white bg-primary rounded-[6px] hover:bg-primary-hover transition-colors duration-150 disabled:opacity-50 disabled:cursor-not-allowed"
+                  className="px-4 py-2 text-small font-medium text-white bg-primary rounded-[6px] hover:bg-primary-hover transition-colors duration-150 disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                   {saving ? t("common.creating") : initial ? t("common.save") : t("common.create")}
                 </button>
@@ -266,7 +266,7 @@ export function EquipmentForm({ title, initial, defaultZoneId, zones, onSubmit, 
                 <button
                   type="button"
                   onClick={onClose}
-                  className="px-4 py-2 text-[13px] font-medium text-text-secondary hover:text-text border border-border rounded-[6px] hover:bg-border-light transition-colors duration-150"
+                  className="px-4 py-2 text-small font-medium text-text-secondary hover:text-text border border-border rounded-[6px] hover:bg-border-light transition-colors duration-150"
                 >
                   {t("common.cancel")}
                 </button>
@@ -275,7 +275,7 @@ export function EquipmentForm({ title, initial, defaultZoneId, zones, onSubmit, 
                     type="button"
                     onClick={handleCreate}
                     disabled={!name.trim() || !zoneId || saving}
-                    className="px-4 py-2 text-[13px] font-medium text-white bg-primary rounded-[6px] hover:bg-primary-hover transition-colors duration-150 disabled:opacity-50 disabled:cursor-not-allowed"
+                    className="px-4 py-2 text-small font-medium text-white bg-primary rounded-[6px] hover:bg-primary-hover transition-colors duration-150 disabled:opacity-50 disabled:cursor-not-allowed"
                   >
                     {saving ? t("common.saving") : t("common.save")}
                   </button>
@@ -284,7 +284,7 @@ export function EquipmentForm({ title, initial, defaultZoneId, zones, onSubmit, 
                     type="button"
                     onClick={() => setStep("devices")}
                     disabled={!name.trim() || !zoneId}
-                    className="px-4 py-2 text-[13px] font-medium text-white bg-primary rounded-[6px] hover:bg-primary-hover transition-colors duration-150 disabled:opacity-50 disabled:cursor-not-allowed"
+                    className="px-4 py-2 text-small font-medium text-white bg-primary rounded-[6px] hover:bg-primary-hover transition-colors duration-150 disabled:opacity-50 disabled:cursor-not-allowed"
                   >
                     {t("equipments.form.nextDevices")}
                   </button>

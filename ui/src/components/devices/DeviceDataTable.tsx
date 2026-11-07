@@ -12,7 +12,7 @@ export function DeviceDataTable({ data }: DeviceDataTableProps) {
 
   if (data.length === 0) {
     return (
-      <p className="text-[13px] text-text-tertiary italic py-4">
+      <p className="text-small text-text-tertiary italic py-4">
         {t("devices.noData")}
       </p>
     );
@@ -29,16 +29,16 @@ export function DeviceDataTable({ data }: DeviceDataTableProps) {
       <table className="w-full">
         <thead>
           <tr className="border-b border-border">
-            <th className="text-left py-2.5 px-3 text-[12px] font-medium text-text-secondary uppercase tracking-widest">
+            <th className="text-left py-2.5 px-3 text-caption font-medium text-text-secondary uppercase tracking-widest">
               {t("devices.col.key")}
             </th>
-            <th className="text-left py-2.5 px-3 text-[12px] font-medium text-text-secondary uppercase tracking-widest">
+            <th className="text-left py-2.5 px-3 text-caption font-medium text-text-secondary uppercase tracking-widest">
               {t("devices.col.category")}
             </th>
-            <th className="text-right py-2.5 px-3 text-[12px] font-medium text-text-secondary uppercase tracking-widest">
+            <th className="text-right py-2.5 px-3 text-caption font-medium text-text-secondary uppercase tracking-widest">
               {t("devices.col.value")}
             </th>
-            <th className="text-right py-2.5 px-3 text-[12px] font-medium text-text-secondary uppercase tracking-widest">
+            <th className="text-right py-2.5 px-3 text-caption font-medium text-text-secondary uppercase tracking-widest">
               {t("devices.col.updated")}
             </th>
           </tr>
@@ -50,7 +50,7 @@ export function DeviceDataTable({ data }: DeviceDataTableProps) {
               className="border-b border-border-light hover:bg-border-light/50 transition-colors duration-100"
             >
               <td className="py-2.5 px-3">
-                <span className="font-mono text-[13px] text-text">{d.key}</span>
+                <span className="font-mono text-small text-text">{d.key}</span>
               </td>
               <td className="py-2.5 px-3">
                 <CategoryBadge category={d.category} />
@@ -59,7 +59,7 @@ export function DeviceDataTable({ data }: DeviceDataTableProps) {
                 <DataValueCell value={d.value} unit={d.unit} type={d.type} />
               </td>
               <td className="py-2.5 px-3 text-right">
-                <span className="text-[12px] text-text-tertiary">
+                <span className="text-caption text-text-tertiary">
                   <RelativeTime iso={d.lastUpdated} />
                 </span>
               </td>
@@ -78,7 +78,7 @@ function CategoryBadge({ category }: { category: string }) {
   return (
     <span
       className={`
-        inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-medium
+        inline-flex items-center px-2 py-0.5 rounded-full text-micro font-medium
         ${colorClass}
       `}
     >
@@ -99,7 +99,7 @@ function DataValueCell({
   const { t } = useTranslation();
 
   if (value === null || value === undefined) {
-    return <span className="text-[13px] text-text-tertiary">—</span>;
+    return <span className="text-small text-text-tertiary">—</span>;
   }
 
   // Boolean states get colored badges
@@ -108,7 +108,7 @@ function DataValueCell({
     return (
       <span
         className={`
-          inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-semibold
+          inline-flex items-center px-2 py-0.5 rounded-full text-micro font-semibold
           ${isOn ? "bg-success/10 text-success" : "bg-border-light text-text-tertiary"}
         `}
       >
@@ -118,7 +118,7 @@ function DataValueCell({
   }
 
   return (
-    <span className="font-mono text-[13px] text-text">
+    <span className="font-mono text-small text-text">
       {formatDataValue(value, unit)}
     </span>
   );

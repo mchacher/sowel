@@ -58,10 +58,10 @@ export function ZoneRecipesSection({ zoneId, zoneName }: ZoneRecipesSectionProps
         <span className="text-text-tertiary opacity-70 flex-shrink-0">
           <ChefHat size={14} strokeWidth={1.5} />
         </span>
-        <span className="text-[10.4px] font-semibold text-text-tertiary uppercase tracking-[0.14em]">
+        <span className="text-micro font-semibold text-text-tertiary uppercase tracking-[0.14em]">
           {t("recipes.title")}
         </span>
-        <span className="text-[10.9px] text-text-tertiary opacity-65 ml-auto tabular-nums font-mono">
+        <span className="text-micro text-text-tertiary opacity-65 ml-auto tabular-nums font-mono">
           {zoneInstances.length}
         </span>
         {isAdmin && (
@@ -94,7 +94,7 @@ export function ZoneRecipesSection({ zoneId, zoneName }: ZoneRecipesSectionProps
       )}
 
       {zoneInstances.length === 0 && !pickedRecipeId && (
-        <div className="flex items-center justify-center gap-2 px-4 py-3 text-[12px] text-text-tertiary">
+        <div className="flex items-center justify-center gap-2 px-4 py-3 text-caption text-text-tertiary">
           <span>{t("recipes.noActiveRecipes", { name: zoneName })}</span>
           {isAdmin && (
             <button

@@ -85,7 +85,7 @@ export function DeviceNameEditor({ name, onSave }: DeviceNameEditorProps) {
           onChange={(e) => setValue(e.target.value)}
           onKeyDown={handleKeyDown}
           disabled={saving}
-          className="text-[28px] sm:text-[42px] font-bold text-text leading-[1.1] tracking-tight bg-transparent border-b-2 border-primary outline-none px-0 py-0 w-auto min-w-[200px]"
+          className="text-display sm:text-value font-semibold text-text leading-[1.1] tracking-tight bg-transparent border-b-2 border-primary outline-none px-0 py-0 w-auto min-w-[200px]"
         />
         <button
           onClick={handleSave}
@@ -105,7 +105,7 @@ export function DeviceNameEditor({ name, onSave }: DeviceNameEditorProps) {
         </button>
       </div>
       {error && (
-        <span className="text-[12px] text-error">{error}</span>
+        <span className="text-caption text-error">{error}</span>
       )}
     </div>
   );

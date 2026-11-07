@@ -77,28 +77,28 @@ export function EvCurrentSessionCard({
       <div className="bg-surface rounded-[10px] border border-border p-4 mb-6 flex flex-col gap-3">
         <div className="flex items-center gap-2">
           <Clock size={18} strokeWidth={1.5} className="text-text-secondary" />
-          <h3 className="text-[14px] font-semibold text-text">
+          <h3 className="text-body font-semibold text-text">
             {t("equipments.evSessions.current.ended")}
           </h3>
         </div>
-        <span className="text-[13px] text-text-secondary -mt-1.5">
+        <span className="text-small text-text-secondary -mt-1.5">
           {session.chargerName} · {time(session.startedAt)} → {time(session.endedAt!)}
         </span>
         <div className="flex items-center gap-2.5">
           <div className="flex-1">
             <ShareBar e={session} height="h-1.5" />
           </div>
-          <span className="font-mono text-[12px] text-text-secondary tabular-nums whitespace-nowrap">
+          <span className="font-mono text-caption text-text-secondary tabular-nums whitespace-nowrap">
             {energyLabel(session.energyWh, locale)}
           </span>
-          <span className="font-mono text-[14px] font-semibold text-text tabular-nums whitespace-nowrap">
+          <span className="font-mono text-body font-semibold text-text tabular-nums whitespace-nowrap">
             {eur(session.costEur)}
           </span>
         </div>
         {session.graceUntil && (
           <div className="flex gap-2.5 items-start bg-accent-light rounded-[6px] px-3 py-2.5">
             <CircleAlert size={16} strokeWidth={1.5} className="shrink-0 mt-px text-active-text" />
-            <span className="text-[13px] text-text">
+            <span className="text-small text-text">
               {t("equipments.evSessions.current.willAttribute", {
                 name: vehicle.name,
                 time: time(session.graceUntil),
@@ -106,13 +106,13 @@ export function EvCurrentSessionCard({
             </span>
           </div>
         )}
-        {error && <p className="text-[12px] text-error">{error}</p>}
+        {error && <p className="text-caption text-error">{error}</p>}
         <div className="flex flex-col gap-1">
           <button
             type="button"
             disabled={saving}
             onClick={() => void confirm()}
-            className="min-h-[44px] rounded-[6px] bg-primary hover:bg-primary-hover text-white text-[14px] font-medium cursor-pointer disabled:opacity-60 flex items-center justify-center gap-2"
+            className="min-h-[44px] rounded-[6px] bg-primary hover:bg-primary-hover text-white text-body font-medium cursor-pointer disabled:opacity-60 flex items-center justify-center gap-2"
           >
             {saving ? (
               <Loader2 size={14} className="animate-spin" />
@@ -123,7 +123,7 @@ export function EvCurrentSessionCard({
           </button>
           <Link
             to={`/equipments/${session.chargerId}`}
-            className="min-h-[44px] flex items-center justify-center text-[13px] font-medium text-primary hover:text-primary-hover"
+            className="min-h-[44px] flex items-center justify-center text-small font-medium text-primary hover:text-primary-hover"
           >
             {t("equipments.evSessions.current.notThisCar")} ›
           </Link>
@@ -146,23 +146,23 @@ export function EvCurrentSessionCard({
           ) : (
             <Pause size={18} strokeWidth={1.5} className="text-text-secondary" />
           )}
-          <h3 className={`text-[14px] font-semibold ${charging ? "text-primary" : "text-text"}`}>
+          <h3 className={`text-body font-semibold ${charging ? "text-primary" : "text-text"}`}>
             {t(`equipments.evSessions.current.${live.kind}`)}
           </h3>
         </div>
         {live.kind === "charging" && live.powerW !== null && (
-          <span className="flex items-center gap-1.5 font-mono text-[13px] text-primary tabular-nums">
+          <span className="flex items-center gap-1.5 font-mono text-small text-primary tabular-nums">
             <span className="w-2 h-2 rounded-full bg-primary animate-pulse" />
             {powerLabel(live.powerW, locale)}
           </span>
         )}
         {live.kind === "paused" && live.sinceIso && (
-          <span className="text-[12px] font-medium text-text-secondary bg-background rounded-[6px] px-2 py-0.5">
+          <span className="text-caption font-medium text-text-secondary bg-background rounded-[6px] px-2 py-0.5">
             {t("equipments.evSessions.current.since", { time: time(live.sinceIso) })}
           </span>
         )}
       </div>
-      <span className="text-[13px] text-text-secondary -mt-1.5">
+      <span className="text-small text-text-secondary -mt-1.5">
         {t(
           charging
             ? "equipments.evSessions.current.startedCharging"
@@ -180,7 +180,7 @@ export function EvCurrentSessionCard({
           ) : (
             <Clock size={16} strokeWidth={1.5} className="shrink-0 mt-px text-text-secondary" />
           )}
-          <span className="text-[13px] text-text-secondary">
+          <span className="text-small text-text-secondary">
             {t(`equipments.evSessions.current.reason.${live.reason}`, {
               name: vehicle.name,
               battery: live.battery ?? "—",
@@ -191,18 +191,18 @@ export function EvCurrentSessionCard({
 
       <div className="flex items-end justify-between gap-3">
         <div className="flex flex-col">
-          <span className="font-mono text-[28px] font-semibold text-text tabular-nums">
+          <span className="font-mono text-display font-semibold text-text tabular-nums">
             {energyLabel(session.energyWh, locale)}
           </span>
-          <span className="text-[13px] text-text-tertiary">
+          <span className="text-small text-text-tertiary">
             {t("equipments.evSessions.current.charged")}
           </span>
         </div>
         <div className="flex flex-col items-end">
-          <span className="font-mono text-[18px] font-semibold text-text tabular-nums">
+          <span className="font-mono text-title font-semibold text-text tabular-nums">
             {eur(session.costEur)}
           </span>
-          <span className="text-[13px] text-text-tertiary">
+          <span className="text-small text-text-tertiary">
             {t("equipments.evSessions.current.soFar")}
           </span>
         </div>
@@ -217,7 +217,7 @@ export function EvCurrentSessionCard({
         })}
       />
       <span
-        className={`text-[12px] text-text-tertiary border-t pt-2.5 ${
+        className={`text-caption text-text-tertiary border-t pt-2.5 ${
           charging ? "border-primary/15" : "border-border-light"
         }`}
       >

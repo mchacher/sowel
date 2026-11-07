@@ -117,11 +117,11 @@ export function TimedEquipmentWidget({
 
       <div className="shrink-0 flex justify-center pt-1">
         {running ? (
-          <span className="text-[12px] font-medium px-2.5 py-0.5 rounded-full bg-active/10 text-active-text">
+          <span className="text-caption font-medium px-2.5 py-0.5 rounded-full bg-active/10 text-active-text">
             <TimedCountdown action={running} />
           </span>
         ) : (
-          <span className="text-[12px] font-medium px-2.5 py-0.5 rounded-full bg-border-light text-text-tertiary text-center">
+          <span className="text-caption font-medium px-2.5 py-0.5 rounded-full bg-border-light text-text-tertiary text-center">
             {inert
               ? t("dashboard.timed.unavailable")
               : error

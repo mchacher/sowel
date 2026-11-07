@@ -207,12 +207,12 @@ export function ThermostatCard({ equipment, onExecuteOrder, compact }: Thermosta
       {/* Temperature display + Power */}
       <div className="flex items-center justify-between">
         <div className="flex items-end gap-3">
-          <div className="text-[36px] font-semibold text-text leading-none tabular-nums font-mono">
+          <div className="text-value font-semibold text-text leading-none tabular-nums font-mono">
             {formatNumber(insideTemp, { decimals: 1 })}
-            <span className="text-[16px] text-text-tertiary font-normal">°C</span>
+            <span className="text-lead text-text-tertiary font-normal">°C</span>
           </div>
           {outsideTemp !== null && (
-            <div className="text-[13px] text-text-tertiary mb-1">
+            <div className="text-small text-text-tertiary mb-1">
               {t("thermostat.outside")}{t("common.colon")}{formatTemperature(outsideTemp)}
             </div>
           )}
@@ -239,7 +239,7 @@ export function ThermostatCard({ equipment, onExecuteOrder, compact }: Thermosta
       {/* Target temperature control */}
       {targetTempOrder && (
         <div className="flex items-center gap-3">
-          <span className="text-[12px] text-text-tertiary">{t("thermostat.target")}</span>
+          <span className="text-caption text-text-tertiary">{t("thermostat.target")}</span>
           <div className="hit-group flex items-center gap-1">
             <button
               onClick={() => targetTemp !== null && exec("setpoint", targetTemp - 0.5)}
@@ -249,9 +249,9 @@ export function ThermostatCard({ equipment, onExecuteOrder, compact }: Thermosta
             >
               <ChevronDown size={14} strokeWidth={2} />
             </button>
-            <span className="text-[20px] font-semibold text-text tabular-nums font-mono min-w-[60px] text-center">
+            <span className="text-title font-semibold text-text tabular-nums font-mono min-w-[60px] text-center">
               {formatNumber(targetTemp, { decimals: 1 })}
-              <span className="text-[12px] text-text-tertiary font-normal">°C</span>
+              <span className="text-caption text-text-tertiary font-normal">°C</span>
             </span>
             <button
               onClick={() => targetTemp !== null && exec("setpoint", targetTemp + 0.5)}
@@ -268,7 +268,7 @@ export function ThermostatCard({ equipment, onExecuteOrder, compact }: Thermosta
       {/* Mode selector */}
       {availableModes.length > 0 && (
         <div className="space-y-1.5">
-          <span className="text-[12px] text-text-tertiary">{t("thermostat.mode")}</span>
+          <span className="text-caption text-text-tertiary">{t("thermostat.mode")}</span>
           <div className="flex gap-1.5 flex-wrap">
             {availableModes.map((mode) => (
               <button
@@ -276,7 +276,7 @@ export function ThermostatCard({ equipment, onExecuteOrder, compact }: Thermosta
                 onClick={() => exec("operationMode", mode)}
                 disabled={executing === "operationMode"}
                 className={`
-                  flex items-center gap-1 px-2.5 py-1.5 rounded-[6px] text-[12px] font-medium border
+                  flex items-center gap-1 px-2.5 py-1.5 rounded-[6px] text-caption font-medium border
                   transition-colors duration-150 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed
                   ${currentMode === mode
                     ? MODE_COLORS[mode] ?? "bg-primary/10 text-primary border-primary/30"
@@ -334,7 +334,7 @@ function CompactThermostat({
     <div className="flex items-center gap-2 flex-shrink-0" onClick={(e) => e.preventDefault()}>
       {/* Current temp */}
       {insideTemp !== null && (
-        <span className="flex items-center gap-0.5 text-[12px] text-text-tertiary tabular-nums">
+        <span className="flex items-center gap-0.5 text-caption text-text-tertiary tabular-nums">
           <Thermometer size={11} strokeWidth={1.5} />
           {formatTemperature(insideTemp, { style: "compact" })}
         </span>
@@ -356,7 +356,7 @@ function CompactThermostat({
           >
             <ChevronDown size={12} strokeWidth={2} />
           </button>
-          <span className="flex items-center gap-0.5 text-[14px] font-semibold text-text tabular-nums font-mono">
+          <span className="flex items-center gap-0.5 text-body font-semibold text-text tabular-nums font-mono">
             <Crosshair size={11} strokeWidth={1.5} className="text-text-secondary" />
             {formatTemperature(targetTemp, { style: "compact" })}
           </span>

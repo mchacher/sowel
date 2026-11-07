@@ -48,38 +48,38 @@ export function LoginPage() {
             className="bg-surface rounded-[10px] border border-border p-6"
           >
             <div className="mb-4">
-              <label className="block text-[12px] text-text-tertiary uppercase tracking-widest mb-1.5">
+              <label className="block text-caption text-text-tertiary uppercase tracking-widest mb-1.5">
                 {t("auth.username")}
               </label>
               <input
                 type="text"
                 value={username}
                 onChange={(e) => setUsername(e.target.value)}
-                className="w-full px-3 py-2 text-[14px] bg-background border border-border rounded-[6px] text-text placeholder:text-text-tertiary focus:outline-none focus:border-primary"
+                className="w-full px-3 py-2 text-body bg-background border border-border rounded-[6px] text-text placeholder:text-text-tertiary focus:outline-none focus:border-primary"
                 autoFocus
                 autoComplete="username"
               />
             </div>
 
             <div className="mb-5">
-              <label className="block text-[12px] text-text-tertiary uppercase tracking-widest mb-1.5">
+              <label className="block text-caption text-text-tertiary uppercase tracking-widest mb-1.5">
                 {t("auth.password")}
               </label>
               <input
                 type="password"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
-                className="w-full px-3 py-2 text-[14px] bg-background border border-border rounded-[6px] text-text placeholder:text-text-tertiary focus:outline-none focus:border-primary"
+                className="w-full px-3 py-2 text-body bg-background border border-border rounded-[6px] text-text placeholder:text-text-tertiary focus:outline-none focus:border-primary"
                 autoComplete="current-password"
               />
             </div>
 
-            {error && <p className="text-[13px] text-error mb-4">{error}</p>}
+            {error && <p className="text-small text-error mb-4">{error}</p>}
 
             <button
               type="submit"
               disabled={loading || !username || !password}
-              className="w-full flex items-center justify-center gap-2 px-4 py-2.5 bg-primary text-white text-[14px] font-medium rounded-[6px] hover:bg-primary-hover transition-colors duration-150 disabled:opacity-50"
+              className="w-full flex items-center justify-center gap-2 px-4 py-2.5 bg-primary text-white text-body font-medium rounded-[6px] hover:bg-primary-hover transition-colors duration-150 disabled:opacity-50"
             >
               {loading && <Loader2 size={16} className="animate-spin" />}
               {t("auth.login")}
@@ -117,7 +117,7 @@ function MfaStep() {
 
   return (
     <form onSubmit={handleSubmit} className="bg-surface rounded-[10px] border border-border p-6">
-      <p className="text-[13px] text-text-secondary mb-4">
+      <p className="text-small text-text-secondary mb-4">
         {isBackupCode ? t("auth.mfa.enterBackupCode") : t("auth.mfa.enterCode")}
       </p>
 
@@ -127,7 +127,7 @@ function MfaStep() {
           inputMode={isBackupCode ? "text" : "numeric"}
           value={code}
           onChange={(e) => setCode(e.target.value)}
-          className="w-full px-3 py-2 text-[14px] bg-background border border-border rounded-[6px] text-text placeholder:text-text-tertiary focus:outline-none focus:border-primary"
+          className="w-full px-3 py-2 text-body bg-background border border-border rounded-[6px] text-text placeholder:text-text-tertiary focus:outline-none focus:border-primary"
           autoFocus
         />
         <button
@@ -136,13 +136,13 @@ function MfaStep() {
             setIsBackupCode(!isBackupCode);
             setCode("");
           }}
-          className="mt-1.5 text-[12px] text-primary hover:text-primary-hover cursor-pointer"
+          className="mt-1.5 text-caption text-primary hover:text-primary-hover cursor-pointer"
         >
           {isBackupCode ? t("auth.mfa.useTotpInstead") : t("auth.mfa.useBackupCodeInstead")}
         </button>
       </div>
 
-      <label className="flex items-center gap-2 text-[13px] text-text-secondary mb-5 cursor-pointer">
+      <label className="flex items-center gap-2 text-small text-text-secondary mb-5 cursor-pointer">
         <input
           type="checkbox"
           checked={trustDevice}
@@ -151,12 +151,12 @@ function MfaStep() {
         {t("auth.mfa.trustDevice")}
       </label>
 
-      {error && <p className="text-[13px] text-error mb-4">{error}</p>}
+      {error && <p className="text-small text-error mb-4">{error}</p>}
 
       <button
         type="submit"
         disabled={loading || !code}
-        className="w-full flex items-center justify-center gap-2 px-4 py-2.5 bg-primary text-white text-[14px] font-medium rounded-[6px] hover:bg-primary-hover transition-colors duration-150 disabled:opacity-50"
+        className="w-full flex items-center justify-center gap-2 px-4 py-2.5 bg-primary text-white text-body font-medium rounded-[6px] hover:bg-primary-hover transition-colors duration-150 disabled:opacity-50"
       >
         {loading && <Loader2 size={16} className="animate-spin" />}
         {t("auth.mfa.verify")}
@@ -164,7 +164,7 @@ function MfaStep() {
       <button
         type="button"
         onClick={cancelMfaChallenge}
-        className="w-full mt-2 px-4 py-2 text-[13px] text-text-secondary hover:text-text cursor-pointer"
+        className="w-full mt-2 px-4 py-2 text-small text-text-secondary hover:text-text cursor-pointer"
       >
         {t("common.back")}
       </button>

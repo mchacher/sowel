@@ -38,7 +38,7 @@ export function AppliancePanel({ equipment }: AppliancePanelProps) {
 
   return (
     <div className="bg-surface rounded-[10px] border border-border p-4 mb-6">
-      <h3 className="text-[14px] font-semibold text-text mb-4">
+      <h3 className="text-body font-semibold text-text mb-4">
         <WashingMachine size={16} strokeWidth={1.5} className="inline mr-2 text-text-tertiary" />
         {t("equipments.status")}
       </h3>
@@ -46,19 +46,19 @@ export function AppliancePanel({ equipment }: AppliancePanelProps) {
       {!isOn || state === "off" ? (
         <div className="text-center py-6">
           <WashingMachine size={40} strokeWidth={1} className="mx-auto mb-2 text-text-tertiary/30" />
-          <span className="text-[14px] text-text-tertiary">{t("controls.off")}</span>
+          <span className="text-body text-text-tertiary">{t("controls.off")}</span>
         </div>
       ) : (
         <div className="space-y-4">
           {/* State badge */}
           <div className="flex items-center gap-3">
-            <span className={`text-[13px] font-semibold px-3 py-1 rounded-full ${
+            <span className={`text-small font-semibold px-3 py-1 rounded-full ${
               isRunning ? "bg-accent/10 text-accent" : isPaused ? "bg-warning/10 text-warning" : "bg-border-light text-text-secondary"
             }`}>
               {isRunning ? t("common.running") : isPaused ? t("common.paused") : state}
             </span>
             {jobPhase && jobPhase !== "none" && (
-              <span className="text-[13px] text-text-secondary">
+              <span className="text-small text-text-secondary">
                 {PHASE_LABELS[jobPhase] ?? jobPhase}
               </span>
             )}
@@ -68,8 +68,8 @@ export function AppliancePanel({ equipment }: AppliancePanelProps) {
           {isRunning && (
             <div>
               <div className="flex items-center justify-between mb-1.5">
-                <span className="text-[12px] text-text-secondary">{t("common.progress")}</span>
-                <span className="text-[13px] font-mono tabular-nums font-semibold text-text">{formatPercent(progress)}</span>
+                <span className="text-caption text-text-secondary">{t("common.progress")}</span>
+                <span className="text-small font-mono tabular-nums font-semibold text-text">{formatPercent(progress)}</span>
               </div>
               <div className="h-2 bg-border-light rounded-full overflow-hidden">
                 <div
@@ -84,11 +84,11 @@ export function AppliancePanel({ equipment }: AppliancePanelProps) {
           {(isRunning || isPaused) && remainingTimeStr && (
             <div className="flex items-center gap-2">
               <Timer size={14} strokeWidth={1.5} className="text-text-tertiary" />
-              <span className="text-[14px] font-mono tabular-nums text-text">
+              <span className="text-body font-mono tabular-nums text-text">
                 {remainingTimeStr}
               </span>
               {remainingMin !== null && (
-                <span className="text-[12px] text-text-tertiary">
+                <span className="text-caption text-text-tertiary">
                   ({formatDuration(remainingMin * 60)})
                 </span>
               )}
@@ -99,7 +99,7 @@ export function AppliancePanel({ equipment }: AppliancePanelProps) {
           {energyWh !== null && energyWh > 0 && (
             <div className="flex items-center gap-2 pt-2 border-t border-border-light">
               <Zap size={14} strokeWidth={1.5} className="text-accent" />
-              <span className="text-[12px] text-text-secondary">
+              <span className="text-caption text-text-secondary">
                 {formatEnergyParts(energyWh / 1000, { unit: "auto" }).value}
                 <span className="text-text-tertiary ml-0.5">
                   {formatEnergyParts(energyWh / 1000, { unit: "auto" }).unit}

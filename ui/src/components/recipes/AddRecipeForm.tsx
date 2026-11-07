@@ -182,7 +182,7 @@ export function AddRecipeForm({
     <div className="border-t border-border-light px-4 py-3 bg-border-light/20">
       {/* Header */}
       <div className="flex items-center justify-between mb-3">
-        <span className="text-[13px] font-medium text-text">
+        <span className="text-small font-medium text-text">
           {selectedRecipe ? recipeName(selectedRecipe, lang) : ""}
         </span>
         <button onClick={onClose} className="p-1 text-text-tertiary hover:text-text transition-colors duration-150">
@@ -192,7 +192,7 @@ export function AddRecipeForm({
 
       {selectedRecipe && (
         <>
-          <p className="text-[11px] text-text-tertiary mb-3">{recipeDescription(selectedRecipe, lang)}</p>
+          <p className="text-micro text-text-tertiary mb-3">{recipeDescription(selectedRecipe, lang)}</p>
 
           {(() => {
             const filteredSlots = selectedRecipe.slots.filter((slot) => slot.id !== "zone" && shouldShowSlot(slot.id));
@@ -209,7 +209,7 @@ export function AddRecipeForm({
                     return (
                       <div key={groupKey} className="mb-2.5 pl-2 border-l-2 border-accent/40">
                         <div className="flex items-center justify-between mb-1">
-                          <span className="text-[11px] uppercase tracking-widest text-accent">{recipeGroupLabel(selectedRecipe, groupKey, lang)}</span>
+                          <span className="text-micro uppercase tracking-widest text-accent">{recipeGroupLabel(selectedRecipe, groupKey, lang)}</span>
                           {!isGroupRequired(groupKey, selectedRecipe.slots) && <button
                             type="button"
                             onClick={() => {
@@ -250,14 +250,14 @@ export function AddRecipeForm({
                             <div className={`grid gap-1.5 ${cols === 1 ? "grid-cols-1" : cols === 2 ? "grid-cols-2" : "grid-cols-3"}`}>
                               {compactSlots.map((slot) => (
                                 <div key={slot.id}>
-                                  <label className="block text-[10px] tracking-wider mb-0.5 text-text-tertiary">
+                                  <label className="block text-micro tracking-wider mb-0.5 text-text-tertiary">
                                     {recipeSlotName(selectedRecipe, slot, lang)}{slot.required && <span className="text-error ml-0.5">*</span>}
                                   </label>
                                   {slot.type === "equipment" ? (
                                     <select
                                       value={params[slot.id] ?? ""}
                                       onChange={(e) => setParams({ ...params, [slot.id]: e.target.value })}
-                                      className="w-full px-2 py-1.5 text-[13px] bg-surface border border-border rounded-[6px] text-text"
+                                      className="w-full px-2 py-1.5 text-small bg-surface border border-border rounded-[6px] text-text"
                                     >
                                       <option value="">{t("common.select")}</option>
                                       <EquipmentOptions equipments={getEquipmentOptions(slot.id)} zoneChains={zoneChains} />
@@ -272,7 +272,7 @@ export function AddRecipeForm({
                                         <select
                                           value={params[slot.id] ?? ""}
                                           onChange={(e) => setParams({ ...params, [slot.id]: e.target.value })}
-                                          className="w-full px-2 py-1.5 text-[13px] bg-surface border border-border rounded-[6px] text-text"
+                                          className="w-full px-2 py-1.5 text-small bg-surface border border-border rounded-[6px] text-text"
                                         >
                                           <option value="">{t("common.select")}</option>
                                           {bindings.map((b) => (
@@ -285,7 +285,7 @@ export function AddRecipeForm({
                                     <select
                                       value={String(params[slot.id] ?? slot.defaultValue ?? "")}
                                       onChange={(e) => setParams({ ...params, [slot.id]: e.target.value })}
-                                      className="w-full px-3 py-1.5 text-[13px] bg-surface border border-border rounded-[6px] text-text"
+                                      className="w-full px-3 py-1.5 text-small bg-surface border border-border rounded-[6px] text-text"
                                     >
                                       {(slot.options ?? []).map((o) => (
                                         <option key={o.value} value={o.value}>
@@ -306,7 +306,7 @@ export function AddRecipeForm({
                                       value={params[slot.id] ?? ""}
                                       onChange={(e) => setParams({ ...params, [slot.id]: e.target.value })}
                                       placeholder={slot.constraints?.max ? `1-${slot.constraints.max}` : ""}
-                                      className="w-full px-2 py-1 text-[13px] bg-surface border border-border rounded-[6px] text-text placeholder:text-text-tertiary"
+                                      className="w-full px-2 py-1 text-small bg-surface border border-border rounded-[6px] text-text placeholder:text-text-tertiary"
                                     />
                                   )}
                                 </div>
@@ -317,7 +317,7 @@ export function AddRecipeForm({
                         {/* Full-width multi-select slots (e.g. weekdays) — rendered as chips */}
                         {chunk.slots.filter((s) => s.type === "select" && s.list && !isSlotHidden(s, params, selectedRecipe.slots)).map((slot) => (
                           <div key={slot.id} className="mt-1.5">
-                            <label className="block text-[10px] tracking-wider mb-1 text-text-tertiary">
+                            <label className="block text-micro tracking-wider mb-1 text-text-tertiary">
                               {recipeSlotName(selectedRecipe, slot, lang)}{slot.required && <span className="text-error ml-0.5">*</span>}
                             </label>
                             <MultiSelectChips
@@ -327,7 +327,7 @@ export function AddRecipeForm({
                               recipe={selectedRecipe}
                               lang={lang}
                             />
-                            <p className="text-[10px] text-text-tertiary mt-0.5">{recipeSlotDescription(selectedRecipe, slot, lang)}</p>
+                            <p className="text-micro text-text-tertiary mt-0.5">{recipeSlotDescription(selectedRecipe, slot, lang)}</p>
                           </div>
                         ))}
                       </div>
@@ -337,7 +337,7 @@ export function AddRecipeForm({
                   return chunk.slots.map((slot) => isSlotHidden(slot, params, selectedRecipe.slots) ? null : (
                     <div key={slot.id} className="mb-3">
                       {slot.type === "boolean" ? (
-                        <label className="flex items-center gap-2 px-3 py-1.5 text-[13px] bg-surface border border-border rounded-[6px] text-text cursor-pointer hover:bg-border-light/30 transition-colors duration-150">
+                        <label className="flex items-center gap-2 px-3 py-1.5 text-small bg-surface border border-border rounded-[6px] text-text cursor-pointer hover:bg-border-light/30 transition-colors duration-150">
                           <input
                             type="checkbox"
                             checked={params[slot.id] === "true"}
@@ -348,7 +348,7 @@ export function AddRecipeForm({
                         </label>
                       ) : (
                       <>
-                      <label className="block text-[11px] text-text-tertiary uppercase tracking-widest mb-1">
+                      <label className="block text-micro text-text-tertiary uppercase tracking-widest mb-1">
                         {recipeSlotName(selectedRecipe, slot, lang)}{slot.required && <span className="text-error ml-0.5">*</span>}
                       </label>
                       {slot.type === "equipment" && slot.list ? (
@@ -371,7 +371,7 @@ export function AddRecipeForm({
                           <select
                             value={params[slot.id] ?? ""}
                             onChange={(e) => setParams({ ...params, [slot.id]: e.target.value })}
-                            className="w-full px-3 py-1.5 text-[13px] bg-surface border border-border rounded-[6px] text-text"
+                            className="w-full px-3 py-1.5 text-small bg-surface border border-border rounded-[6px] text-text"
                           >
                             <option value="">{t("common.select")}</option>
                             <EquipmentOptions equipments={getEquipmentOptions(slot.id)} zoneChains={zoneChains} />
@@ -387,7 +387,7 @@ export function AddRecipeForm({
                             <select
                               value={params[slot.id] ?? ""}
                               onChange={(e) => setParams({ ...params, [slot.id]: e.target.value })}
-                              className="w-full px-3 py-1.5 text-[13px] bg-surface border border-border rounded-[6px] text-text"
+                              className="w-full px-3 py-1.5 text-small bg-surface border border-border rounded-[6px] text-text"
                             >
                               <option value="">{t("common.select")}</option>
                               {bindings.map((b) => (
@@ -415,7 +415,7 @@ export function AddRecipeForm({
                         <select
                           value={String(params[slot.id] ?? slot.defaultValue ?? "")}
                           onChange={(e) => setParams({ ...params, [slot.id]: e.target.value })}
-                          className="w-full px-3 py-1.5 text-[13px] bg-surface border border-border rounded-[6px] text-text"
+                          className="w-full px-3 py-1.5 text-small bg-surface border border-border rounded-[6px] text-text"
                         >
                           {(slot.options ?? []).map((o) => (
                             <option key={o.value} value={o.value}>
@@ -438,10 +438,10 @@ export function AddRecipeForm({
                           value={params[slot.id] ?? ""}
                           onChange={(e) => setParams({ ...params, [slot.id]: e.target.value })}
                           placeholder={slot.defaultValue ? String(slot.defaultValue) : recipeSlotDescription(selectedRecipe, slot, lang)}
-                          className="w-full px-3 py-1.5 text-[13px] bg-surface border border-border rounded-[6px] text-text placeholder:text-text-tertiary"
+                          className="w-full px-3 py-1.5 text-small bg-surface border border-border rounded-[6px] text-text placeholder:text-text-tertiary"
                         />
                       )}
-                      <p className="text-[11px] text-text-tertiary mt-0.5">{recipeSlotDescription(selectedRecipe, slot, lang)}</p>
+                      <p className="text-micro text-text-tertiary mt-0.5">{recipeSlotDescription(selectedRecipe, slot, lang)}</p>
                       </>
                       )}
                     </div>
@@ -457,7 +457,7 @@ export function AddRecipeForm({
                         onClick={() => {
                           setVisibleGroups((prev) => new Set([...prev, gk]));
                         }}
-                        className="flex items-center gap-1.5 text-[12px] text-accent hover:text-accent-hover transition-colors duration-150"
+                        className="flex items-center gap-1.5 text-caption text-accent hover:text-accent-hover transition-colors duration-150"
                       >
                         <Plus size={14} strokeWidth={1.5} />
                         {recipeGroupLabel(selectedRecipe, gk, lang)}
@@ -470,21 +470,21 @@ export function AddRecipeForm({
           })()}
 
           {error && (
-            <p className="text-[12px] text-error mb-3">{error}</p>
+            <p className="text-caption text-error mb-3">{error}</p>
           )}
 
           <div className="flex gap-2">
             <button
               onClick={handleSubmit}
               disabled={submitting}
-              className="flex-1 px-4 py-2 bg-primary text-white text-[13px] font-medium rounded-[6px] hover:bg-primary-hover transition-colors duration-150 disabled:opacity-50 flex items-center justify-center gap-2"
+              className="flex-1 px-4 py-2 bg-primary text-white text-small font-medium rounded-[6px] hover:bg-primary-hover transition-colors duration-150 disabled:opacity-50 flex items-center justify-center gap-2"
             >
               {submitting && <Loader2 size={14} className="animate-spin" />}
               {t("common.create")}
             </button>
             <button
               onClick={onClose}
-              className="px-4 py-2 bg-border-light text-text-secondary text-[13px] font-medium rounded-[6px] hover:bg-border transition-colors duration-150"
+              className="px-4 py-2 bg-border-light text-text-secondary text-small font-medium rounded-[6px] hover:bg-border transition-colors duration-150"
             >
               {t("common.cancel")}
             </button>

@@ -80,7 +80,7 @@ export function SolarControl({ equipment, onExecuteOrder, compact }: SolarContro
       onClick={handleToggle}
       disabled={executing}
       className={`
-        flex items-center gap-2 px-4 py-2 rounded-[6px] text-[13px] font-medium
+        flex items-center gap-2 px-4 py-2 rounded-[6px] text-small font-medium
         transition-colors duration-150
         ${
           isOn

@@ -102,14 +102,14 @@ export function PoolHeatPumpControl({ equipment, onExecuteOrder, compact }: Prop
   return (
     <div className={`flex items-center gap-2 ${compact ? "" : "py-1"}`}>
       <div className="flex items-baseline gap-0.5">
-        <span className="text-[13px] font-semibold text-text tabular-nums leading-none font-mono">
+        <span className="text-small font-semibold text-text tabular-nums leading-none font-mono">
           {formatNumber(water, { decimals: 1 })}
         </span>
-        <span className="text-[10px] font-medium text-text-tertiary">{compact ? "°" : "°C"}</span>
+        <span className="text-micro font-medium text-text-tertiary">{compact ? "°" : "°C"}</span>
       </div>
       {mode && (
         <span
-          className={`text-[10px] font-medium px-1.5 py-0.5 rounded-full ${
+          className={`text-micro font-medium px-1.5 py-0.5 rounded-full ${
             mode.toUpperCase() === "OFF"
               ? "bg-border-light text-text-tertiary"
               : "bg-error/10 text-error"
@@ -128,7 +128,7 @@ export function PoolHeatPumpControl({ equipment, onExecuteOrder, compact }: Prop
           >
             <ChevronDown size={12} strokeWidth={2} />
           </button>
-          <span className="text-[11px] tabular-nums font-mono text-text-secondary min-w-[34px] text-center">
+          <span className="text-micro tabular-nums font-mono text-text-secondary min-w-[34px] text-center">
             {formatTemperature(setpoint, { style: compact ? "compact" : "full" })}
           </span>
           <button

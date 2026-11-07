@@ -66,7 +66,7 @@ function StatePill({ state }: { state: ArbiterLoadState }) {
   const shortLabel = state === "granted-idle" ? t("arbiter.loadState.granted") : null;
   return (
     <span
-      className="inline-flex items-center gap-1.5 text-[11px] font-semibold px-2 py-0.5 rounded-full whitespace-nowrap"
+      className="inline-flex items-center gap-1.5 text-micro font-semibold px-2 py-0.5 rounded-full whitespace-nowrap"
       style={{ color, background: `color-mix(in srgb, ${color} 15%, transparent)` }}
     >
       <span className="w-2 h-2 rounded-full flex-none" style={{ backgroundColor: color }} />
@@ -89,7 +89,7 @@ function StatePill({ state }: { state: ArbiterLoadState }) {
  */
 function GapCell({ row }: { row: ArbiterLoadInfo }) {
   const { t } = useTranslation();
-  const word = (key: string) => <span className="text-[11.5px]">{t(`arbiter.gap.${key}`)}</span>;
+  const word = (key: string) => <span className="text-caption">{t(`arbiter.gap.${key}`)}</span>;
   switch (row.state) {
     case "granted":
     case "granted-idle":
@@ -161,7 +161,7 @@ export function ArbitrationSurface() {
         hint={t("arbiter.surfaceHint")}
         aside={
           <span
-            className="ml-auto flex items-center gap-1 text-[10px] font-semibold px-1.5 py-0.5 rounded-full whitespace-nowrap"
+            className="ml-auto flex items-center gap-1 text-micro font-semibold px-1.5 py-0.5 rounded-full whitespace-nowrap"
             style={{
               color: stickerColor,
               background: `color-mix(in srgb, ${stickerColor} 12%, transparent)`,
@@ -185,10 +185,10 @@ export function ArbitrationSurface() {
         }
       />
       {state.state === "degraded" && (
-        <p className="text-[12px] text-warning mb-2">{t("arbiter.degradedReason")}</p>
+        <p className="text-caption text-warning mb-2">{t("arbiter.degradedReason")}</p>
       )}
       {dormant && (
-        <p className="text-[12px] text-slate mb-2 flex items-center gap-1.5">
+        <p className="text-caption text-slate mb-2 flex items-center gap-1.5">
           <Moon size={13} strokeWidth={1.5} className="flex-none" />
           <span>
             {t("arbiter.nightContext")}
@@ -197,7 +197,7 @@ export function ArbitrationSurface() {
         </p>
       )}
       {showDeficit && (
-        <p className="text-[12px] text-text-tertiary mb-2">
+        <p className="text-caption text-text-tertiary mb-2">
           {t("arbiter.deficitContext", { power: formatPower(Math.abs(available)) })}
         </p>
       )}
@@ -206,9 +206,9 @@ export function ArbitrationSurface() {
         <div className="flex flex-col lg:flex-row lg:items-start gap-4 lg:gap-6">
           <div className="flex-1 min-w-0 lg:max-w-[660px]">
             <div className="overflow-x-auto">
-              <table className="w-full text-[12.5px] border-collapse">
+              <table className="w-full text-caption border-collapse">
                 <thead>
-                  <tr className="text-[10.5px] uppercase tracking-wide text-text-tertiary">
+                  <tr className="text-micro uppercase tracking-wide text-text-tertiary">
                     <th className="text-left font-semibold pb-2 pr-3 border-b border-border">
                       {t("arbiter.roster.equipment")}
                     </th>
@@ -244,13 +244,13 @@ export function ArbitrationSurface() {
                             {/* #807 — the roster has been priority-ordered since
                                 #616 and nothing said so. On a phone, where the
                                 numeric columns are gone, it is the only clue left. */}
-                            <span className="inline-block w-[15px] font-mono text-[10.5px] font-medium text-text-tertiary">
+                            <span className="inline-block w-[15px] font-mono text-micro font-medium text-text-tertiary">
                               {i + 1}
                             </span>
                             {r.equipmentName}
                           </div>
                           {r.state === "pending" && (r.shortfallW ?? 0) > 0 && (
-                            <div className="pl-[15px] text-[11px] font-normal text-text-tertiary">
+                            <div className="pl-[15px] text-micro font-normal text-text-tertiary">
                               {t("arbiter.waitingForSurplus")}
                             </div>
                           )}
@@ -270,7 +270,7 @@ export function ArbitrationSurface() {
                           {/* Spec 185 — a modulating load: the budget the
                               arbiter assigned, out of its maximum. */}
                           {r.modulation && r.budgetW !== undefined && r.state !== "suspended" && (
-                            <div className="text-[11px] text-text-tertiary">
+                            <div className="text-micro text-text-tertiary">
                               {t("arbiter.budget", {
                                 budget: fmtW(r.budgetW),
                                 max: fmtW(r.modulation.maxW),
@@ -293,7 +293,7 @@ export function ArbitrationSurface() {
             {/* The margin appears in no other place in the UI, and without it the
                 three figures on a row look unrelated. Shown only where all three
                 columns are (≥ 1024 px). */}
-            <p className="hidden lg:block mt-3 text-[11px] font-mono text-text-tertiary">
+            <p className="hidden lg:block mt-3 text-micro font-mono text-text-tertiary">
               {t("arbiter.needFormula", { margin: formatPower(state.engageMarginW) })}
             </p>
           </div>
@@ -311,29 +311,29 @@ export function ArbitrationSurface() {
                 // on a phone; from there up it is the figure the need column is
                 // compared against, so it belongs next to the table.
                 <div className="hidden sm:block">
-                  <div className="text-[10.5px] uppercase tracking-wide font-semibold text-text-tertiary">
+                  <div className="text-micro uppercase tracking-wide font-semibold text-text-tertiary">
                     {t("arbiter.aside.available")}
                   </div>
                   <div
-                    className="font-mono text-[22px] leading-tight mt-0.5"
+                    className="font-mono text-title leading-tight mt-0.5"
                     style={{ color: surplusStickerColor(available) }}
                   >
                     {formatPower(available)}
                   </div>
-                  <div className="text-[11.5px] text-text-tertiary mt-1">
+                  <div className="text-caption text-text-tertiary mt-1">
                     {t("arbiter.aside.availableHint")}
                   </div>
                 </div>
               )}
               {nextUp && (
                 <div>
-                  <div className="hidden sm:block text-[10.5px] uppercase tracking-wide font-semibold text-text-tertiary">
+                  <div className="hidden sm:block text-micro uppercase tracking-wide font-semibold text-text-tertiary">
                     {t("arbiter.aside.next")}
                   </div>
-                  <div className="font-mono text-[12px] sm:text-[15px] leading-tight sm:mt-0.5 text-text">
+                  <div className="font-mono text-caption sm:text-lead leading-tight sm:mt-0.5 text-text">
                     {nextUp.equipmentName}
                   </div>
-                  <div className="text-[11.5px] text-text-tertiary mt-1">
+                  <div className="text-caption text-text-tertiary mt-1">
                     {(nextUp.shortfallW ?? 0) > 0
                       ? t("arbiter.aside.nextHint", {
                           need: fmtNeed(nextUp.needW),

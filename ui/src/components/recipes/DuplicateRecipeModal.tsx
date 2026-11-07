@@ -133,7 +133,7 @@ export function DuplicateRecipeModal({
       <div className="bg-surface rounded-[14px] border border-border shadow-xl w-full max-w-[400px] flex flex-col">
         {/* Header */}
         <div className="flex items-center justify-between px-5 py-4 border-b border-border-light">
-          <h2 className="text-[16px] font-semibold text-text">
+          <h2 className="text-lead font-semibold text-text">
             {t("recipes.duplicateTitle")}
           </h2>
           <button
@@ -147,19 +147,19 @@ export function DuplicateRecipeModal({
         {/* Body */}
         <div className="px-5 py-4 space-y-4">
           {/* Source summary */}
-          <div className="text-[12px] text-text-tertiary">
+          <div className="text-caption text-text-tertiary">
             {recipeName(recipe, lang)}
           </div>
 
           {/* Target zone picker */}
           <div>
-            <label className="block text-[11px] text-text-tertiary uppercase tracking-widest mb-1">
+            <label className="block text-micro text-text-tertiary uppercase tracking-widest mb-1">
               {t("recipes.targetZone")}
             </label>
             <select
               value={targetZoneId}
               onChange={(e) => setTargetZoneId(e.target.value)}
-              className="w-full px-3 py-1.5 text-[13px] bg-surface border border-border rounded-[6px] text-text"
+              className="w-full px-3 py-1.5 text-small bg-surface border border-border rounded-[6px] text-text"
             >
               <option value="">{t("common.select")}</option>
               {otherZones.map((z) => (
@@ -173,16 +173,16 @@ export function DuplicateRecipeModal({
             const compatible = getCompatibleEquipments(slot.id);
             return (
               <div key={slot.id}>
-                <label className="block text-[11px] text-text-tertiary uppercase tracking-widest mb-1">
+                <label className="block text-micro text-text-tertiary uppercase tracking-widest mb-1">
                   {recipeSlotName(recipe, slot, lang)}
                 </label>
                 {compatible.length === 0 ? (
-                  <p className="text-[12px] text-error">{t("recipes.noCompatibleEquipment")}</p>
+                  <p className="text-caption text-error">{t("recipes.noCompatibleEquipment")}</p>
                 ) : (
                   <select
                     value={equipmentMap[slot.id] ?? ""}
                     onChange={(e) => setEquipmentMap({ ...equipmentMap, [slot.id]: e.target.value })}
-                    className="w-full px-3 py-1.5 text-[13px] bg-surface border border-border rounded-[6px] text-text"
+                    className="w-full px-3 py-1.5 text-small bg-surface border border-border rounded-[6px] text-text"
                   >
                     {compatible.length > 1 && <option value="">{t("common.select")}</option>}
                     <EquipmentOptions equipments={compatible} zoneChains={zoneChains} />
@@ -192,21 +192,21 @@ export function DuplicateRecipeModal({
             );
           })}
 
-          {error && <p className="text-[12px] text-error">{error}</p>}
+          {error && <p className="text-caption text-error">{error}</p>}
         </div>
 
         {/* Footer */}
         <div className="flex justify-end gap-2 px-5 py-3 border-t border-border-light">
           <button
             onClick={onClose}
-            className="px-4 py-2 text-[13px] font-medium text-text-secondary border border-border rounded-[6px] hover:bg-border-light transition-colors duration-150"
+            className="px-4 py-2 text-small font-medium text-text-secondary border border-border rounded-[6px] hover:bg-border-light transition-colors duration-150"
           >
             {t("common.cancel")}
           </button>
           <button
             onClick={handleSubmit}
             disabled={!targetZoneId || submitting}
-            className="flex items-center gap-1.5 px-4 py-2 text-[13px] font-medium text-white bg-primary rounded-[6px] hover:bg-primary-hover transition-colors duration-150 disabled:opacity-50 disabled:cursor-not-allowed"
+            className="flex items-center gap-1.5 px-4 py-2 text-small font-medium text-white bg-primary rounded-[6px] hover:bg-primary-hover transition-colors duration-150 disabled:opacity-50 disabled:cursor-not-allowed"
           >
             {submitting && <Loader2 size={14} className="animate-spin" />}
             {t("recipes.duplicateAction")}

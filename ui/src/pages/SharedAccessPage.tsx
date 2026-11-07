@@ -52,10 +52,10 @@ export function SharedAccessPage() {
           <KeyRound size={22} strokeWidth={1.5} className="text-text-secondary" />
           <h1>{t("sharedAccess.title")}</h1>
         </div>
-        <p className="text-[13px] text-text-secondary mt-1">{t("sharedAccess.subtitle")}</p>
+        <p className="text-small text-text-secondary mt-1">{t("sharedAccess.subtitle")}</p>
       </div>
       {enabled === false ? (
-        <p className="text-[13px] text-text-secondary">
+        <p className="text-small text-text-secondary">
           {t("sharedAccess.off")}{" "}
           <Link to="/settings?tab=general" className="text-primary hover:underline">
             {t("sharedAccess.openSettings")}
@@ -63,7 +63,7 @@ export function SharedAccessPage() {
         </p>
       ) : !state && error && !loading ? (
         <div className="flex items-center gap-3 flex-wrap">
-          <p className="text-[13px] text-text-secondary">{t("sharedAccess.unreadable")}</p>
+          <p className="text-small text-text-secondary">{t("sharedAccess.unreadable")}</p>
           <button type="button" className={btnSecondary} onClick={() => void refresh()}>
             {t("common.retry")}
           </button>
@@ -162,7 +162,7 @@ function SharedAccessBody({
     .sort((a, b) => rank(a) - rank(b));
 
   const tabCls = (on: boolean) =>
-    `px-3 py-2 text-[13px] font-medium transition-colors duration-150 border-b-2 -mb-px cursor-pointer whitespace-nowrap ${
+    `px-3 py-2 text-small font-medium transition-colors duration-150 border-b-2 -mb-px cursor-pointer whitespace-nowrap ${
       on
         ? "border-primary text-primary"
         : "border-transparent text-text-tertiary hover:text-text-secondary hover:border-border"
@@ -217,9 +217,9 @@ function SharedAccessBody({
 
       {picking && (
         <div className="mb-4 bg-surface border border-border rounded-[10px] p-3">
-          <p className="text-[12.5px] text-text-secondary mb-2">{t("sharedAccess.tabs.pickGateHint")}</p>
+          <p className="text-caption text-text-secondary mb-2">{t("sharedAccess.tabs.pickGateHint")}</p>
           {state.gates.length === 0 ? (
-            <p className="text-[13px] text-text-tertiary">{t("sharedAccess.profiles.noGateInHouse")}</p>
+            <p className="text-small text-text-tertiary">{t("sharedAccess.profiles.noGateInHouse")}</p>
           ) : (
             <div className="flex flex-wrap gap-2">
               {state.gates.map((g) => (
@@ -229,7 +229,7 @@ function SharedAccessBody({
                   disabled={!g.hasCommand}
                   title={g.hasCommand ? undefined : t("sharedAccess.editor.noCommand")}
                   onClick={() => openNewOn(g.equipmentId)}
-                  className="px-3 py-1.5 text-[13px] border border-border rounded-[6px] hover:border-primary hover:text-primary disabled:opacity-50 cursor-pointer disabled:cursor-default"
+                  className="px-3 py-1.5 text-small border border-border rounded-[6px] hover:border-primary hover:text-primary disabled:opacity-50 cursor-pointer disabled:cursor-default"
                 >
                   {g.name}
                 </button>
@@ -246,7 +246,7 @@ function SharedAccessBody({
           {activeTab !== ALL && <GateBar state={state} gateId={activeTab} />}
           {lines.length === 0 ? (
             <div className="bg-surface border border-border rounded-[10px] p-5 text-center">
-              <p className="text-[13px] text-text-secondary mb-3">{t("sharedAccess.empty")}</p>
+              <p className="text-small text-text-secondary mb-3">{t("sharedAccess.empty")}</p>
               <button
                 type="button"
                 className={`${btnPrimary} inline-flex items-center gap-1`}
@@ -294,13 +294,13 @@ function HeaderLine({ state }: { state: SharedAccessState }) {
     state.accesses.some((a) => a.gates.some((x) => x.equipmentId === g.equipmentId)),
   );
   return (
-    <div className="flex flex-wrap items-center gap-x-3 gap-y-1.5 mb-4 text-[12.5px]">
+    <div className="flex flex-wrap items-center gap-x-3 gap-y-1.5 mb-4 text-caption">
       <span className="inline-flex items-center gap-1.5">
         <Globe size={14} strokeWidth={1.5} className="text-text-tertiary" />
         {state.publicUrl ? (
           <span className="text-text-secondary">
             {t("sharedAccess.header.publicAt")}{" "}
-            <code className="font-mono text-[12px] text-text">{state.publicUrl}</code>
+            <code className="font-mono text-caption text-text">{state.publicUrl}</code>
           </span>
         ) : (
           <span className="text-warning">
@@ -356,11 +356,11 @@ function GateBar({ state, gateId }: { state: SharedAccessState; gateId: string }
             }
           }}
         />
-        <span className="text-[13px] text-text">
+        <span className="text-small text-text">
           {gate.armed ? t("sharedAccess.armed") : t("sharedAccess.disarmed")}
         </span>
         {!gate.armed && (
-          <span className="text-[12.5px] text-error">{t("sharedAccess.disarmedShort")}</span>
+          <span className="text-caption text-error">{t("sharedAccess.disarmedShort")}</span>
         )}
       </div>
       {error && <Refusal>{error}</Refusal>}

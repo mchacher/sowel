@@ -74,8 +74,8 @@ export function EquipmentCard({ equipment, onExecuteOrder }: EquipmentCardProps)
 
       {/* Info */}
       <Link to={`/equipments/${equipment.id}`} className="flex-1 min-w-0 hover:opacity-80">
-        <div className="text-[14px] font-medium text-text truncate">{equipment.name}</div>
-        <div className="text-[12px] text-text-tertiary">
+        <div className="text-body font-medium text-text truncate">{equipment.name}</div>
+        <div className="text-caption text-text-tertiary">
           {t(TYPE_LABELS[equipment.type])}
           {equipment.dataBindings.length === 0 && ` · ${t("equipments.noBindings")}`}
           {!equipment.enabled && ` · ${t("common.disabled")}`}

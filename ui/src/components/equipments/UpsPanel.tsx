@@ -195,15 +195,15 @@ export function UpsPanel({ dataBindings }: UpsPanelProps) {
         <div className="bg-surface border border-border rounded-[10px]">
           <div className="flex items-start justify-between gap-4 px-5 pt-4 pb-3">
             <div>
-              <h3 className="text-[15px] font-semibold text-text">
+              <h3 className="text-lead font-semibold text-text">
                 {t("equipments.ups.margins.title")}
               </h3>
-              <p className="text-[13px] text-text-tertiary mt-0.5">
+              <p className="text-small text-text-tertiary mt-0.5">
                 {t("equipments.ups.margins.help")}
               </p>
             </div>
             <span
-              className="font-mono text-[11px] font-bold px-2.5 py-1 rounded-full shrink-0"
+              className="font-mono text-micro font-semibold px-2.5 py-1 rounded-full shrink-0"
               style={{ color: marginColor, background: `color-mix(in srgb, ${marginColor} 12%, transparent)` }}
             >
               {t(`equipments.ups.margins.${margin}`)}
@@ -213,13 +213,13 @@ export function UpsPanel({ dataBindings }: UpsPanelProps) {
           <table className="w-full border-collapse">
             <thead>
               <tr>
-                <th className="text-left text-[10px] font-semibold uppercase tracking-widest text-text-tertiary px-5 pb-2">
+                <th className="text-left text-micro font-semibold uppercase tracking-widest text-text-tertiary px-5 pb-2">
                   {t("equipments.ups.margins.threshold")}
                 </th>
-                <th className="text-left text-[10px] font-semibold uppercase tracking-widest text-text-tertiary px-5 pb-2">
+                <th className="text-left text-micro font-semibold uppercase tracking-widest text-text-tertiary px-5 pb-2">
                   {t("equipments.ups.margins.setting")}
                 </th>
-                <th className="text-right text-[10px] font-semibold uppercase tracking-widest text-text-tertiary px-5 pb-2">
+                <th className="text-right text-micro font-semibold uppercase tracking-widest text-text-tertiary px-5 pb-2">
                   {t("equipments.ups.margins.position")}
                 </th>
               </tr>
@@ -256,7 +256,7 @@ export function UpsPanel({ dataBindings }: UpsPanelProps) {
                     .filter(Boolean)
                     .join(" · ")}
                 >
-                  <span className="text-[12px] text-text-tertiary">
+                  <span className="text-caption text-text-tertiary">
                     {t("equipments.ups.margins.shutdownHelp")}
                   </span>
                 </MarginRow>
@@ -268,20 +268,20 @@ export function UpsPanel({ dataBindings }: UpsPanelProps) {
 
       {sheetRows.length > 0 && (
         <details className="bg-surface border border-border rounded-[10px] group">
-          <summary className="flex items-center gap-2 px-5 py-3 text-[13px] text-text-secondary cursor-pointer list-none">
+          <summary className="flex items-center gap-2 px-5 py-3 text-small text-text-secondary cursor-pointer list-none">
             <span className="text-text-tertiary transition-transform group-open:rotate-90">▸</span>
             {t("equipments.ups.sheet.title")}
-            <span className="ml-auto text-[12px] text-text-tertiary">
+            <span className="ml-auto text-caption text-text-tertiary">
               {t("equipments.ups.sheet.count", { count: sheetRows.length })}
             </span>
           </summary>
           <div className="border-t border-border-light divide-y divide-border-light">
             {sheetRows.map((b) => (
               <div key={b.id} className="flex items-baseline justify-between gap-4 px-5 py-2">
-                <span className="text-[13px] text-text-secondary">
+                <span className="text-small text-text-secondary">
                   {t(`equipments.ups.field.${b.alias}`, b.alias)}
                 </span>
-                <span className="text-[13px] font-mono text-text tabular-nums">
+                <span className="text-small font-mono text-text tabular-nums">
                   {formatSheetValue(b.value, b.unit)}
                 </span>
               </div>
@@ -323,10 +323,10 @@ function MarginRow({
 }) {
   return (
     <tr>
-      <td className="px-5 py-2.5 border-t border-border-light text-[13px] font-medium text-text">
+      <td className="px-5 py-2.5 border-t border-border-light text-small font-medium text-text">
         {label}
       </td>
-      <td className="px-5 py-2.5 border-t border-border-light text-[13px] font-mono text-text tabular-nums whitespace-nowrap">
+      <td className="px-5 py-2.5 border-t border-border-light text-small font-mono text-text tabular-nums whitespace-nowrap">
         {setting}
       </td>
       <td className="px-5 py-2.5 border-t border-border-light text-right">{children}</td>

@@ -62,12 +62,12 @@ export function IntegrationsPage() {
             {t("integrations.title")}
           </h1>
         </div>
-        <p className="text-[13px] text-text-secondary mt-1">{t("integrations.subtitle")}</p>
+        <p className="text-small text-text-secondary mt-1">{t("integrations.subtitle")}</p>
       </div>
 
       {oauthMessage && (
         <div
-          className={`mb-4 max-w-[720px] px-4 py-3 rounded-[8px] text-[13px] font-medium ${
+          className={`mb-4 max-w-[720px] px-4 py-3 rounded-[8px] text-small font-medium ${
             oauthMessage.type === "success"
               ? "bg-success/10 border border-success/20 text-success"
               : "bg-error/10 border border-error/20 text-error"

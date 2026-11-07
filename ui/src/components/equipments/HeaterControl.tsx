@@ -56,7 +56,7 @@ export function HeaterControl({ equipment, onExecuteOrder, compact }: HeaterCont
         {/* State badge */}
         <span
           className={`
-            text-[11px] font-medium px-2 py-0.5 rounded-full flex-shrink-0
+            text-micro font-medium px-2 py-0.5 rounded-full flex-shrink-0
             ${isComfort
               ? "bg-error/10 text-error"
               : "bg-primary/10 text-primary"
@@ -113,10 +113,10 @@ export function HeaterControl({ equipment, onExecuteOrder, compact }: HeaterCont
           }
         </div>
         <div>
-          <div className="text-[16px] font-medium text-text">
+          <div className="text-lead font-medium text-text">
             {isComfort ? t("controls.heater.comfort") : t("controls.heater.eco")}
           </div>
-          <div className="text-[12px] text-text-tertiary">
+          <div className="text-caption text-text-tertiary">
             {isOn ? t("controls.heater.relayOn") : t("controls.heater.relayOff")}
           </div>
         </div>
@@ -128,7 +128,7 @@ export function HeaterControl({ equipment, onExecuteOrder, compact }: HeaterCont
           onClick={handleToggle}
           disabled={executing}
           className={`
-            flex items-center gap-2 px-4 py-2 rounded-[6px] text-[13px] font-medium
+            flex items-center gap-2 px-4 py-2 rounded-[6px] text-small font-medium
             transition-colors duration-150
             ${isComfort
               ? "bg-primary/10 text-primary hover:bg-primary/20"

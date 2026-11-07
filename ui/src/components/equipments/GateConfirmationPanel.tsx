@@ -39,8 +39,8 @@ export function GateConfirmationPanel({
     <div className="bg-surface rounded-[10px] border border-border mb-6 p-4">
       <div className="flex items-center gap-2 mb-1">
         <ShieldCheck size={16} strokeWidth={1.5} className="text-text-tertiary" />
-        <h3 className="text-[14px] font-semibold text-text">{t("equipments.gateConfirm.title")}</h3>
-        <label className="ml-auto flex items-center gap-2 text-[12px] text-text-secondary cursor-pointer">
+        <h3 className="text-body font-semibold text-text">{t("equipments.gateConfirm.title")}</h3>
+        <label className="ml-auto flex items-center gap-2 text-caption text-text-secondary cursor-pointer">
           <input
             type="checkbox"
             checked={enabled}
@@ -50,11 +50,11 @@ export function GateConfirmationPanel({
           {t("equipments.gateConfirm.enable")}
         </label>
       </div>
-      <p className="text-[12px] text-text-tertiary flex items-center gap-1.5">
+      <p className="text-caption text-text-tertiary flex items-center gap-1.5">
         {t("equipments.gateConfirm.hint")}
         {saving && <Loader2 size={12} className="animate-spin text-text-tertiary" />}
       </p>
-      {error && <p className="text-[12px] text-red-500 mt-2">{error}</p>}
+      {error && <p className="text-caption text-red-500 mt-2">{error}</p>}
     </div>
   );
 }

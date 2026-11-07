@@ -74,8 +74,8 @@ export function MappingSourceFields({
   };
 
   const selectClass =
-    "w-full px-2 py-1 text-[12px] bg-surface border border-border rounded-[4px] text-text";
-  const labelClass = "block text-[11px] text-text-secondary mb-1";
+    "w-full px-2 py-1 text-caption bg-surface border border-border rounded-[4px] text-text";
+  const labelClass = "block text-micro text-text-secondary mb-1";
 
   return (
     <>

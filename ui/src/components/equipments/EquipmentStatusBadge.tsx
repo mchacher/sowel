@@ -23,8 +23,8 @@ interface Props {
 }
 
 const SIZE_CLASSES: Record<Size, string> = {
-  sm: "text-[11px] font-medium px-2 py-0.5 gap-1",
-  md: "text-[12px] font-medium px-2.5 py-1 gap-1.5",
+  sm: "text-micro font-medium px-2 py-0.5 gap-1",
+  md: "text-caption font-medium px-2.5 py-1 gap-1.5",
 };
 
 const ICON_SIZE: Record<Size, number> = { sm: 11, md: 13 };

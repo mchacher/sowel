@@ -166,7 +166,7 @@ function ZoneWidgetCard({ label, children, empty }: { label: string; children: R
   return (
     <WidgetCard label={label}>
       {empty ? (
-        <span className="text-[12px] text-text-tertiary text-center">{t("dashboard.noEquipments")}</span>
+        <span className="text-caption text-text-tertiary text-center">{t("dashboard.noEquipments")}</span>
       ) : (
         children
       )}
@@ -255,14 +255,14 @@ function ZoneLightsWidget({
                 style={{ writingMode: "vertical-lr", direction: "rtl" }}
               />
               <div className="flex items-baseline gap-0.5">
-                <span className="text-[16px] font-semibold text-text tabular-nums leading-none">
+                <span className="text-lead font-semibold text-text tabular-nums leading-none">
                   {brightnessPct}
                 </span>
-                <span className="text-[12px] font-medium text-text-tertiary">%</span>
+                <span className="text-caption font-medium text-text-tertiary">%</span>
               </div>
             </>
           ) : (
-            <span className="text-[13px] font-medium text-text-secondary">
+            <span className="text-small font-medium text-text-secondary">
               {onCount}/{filteredEquipments.length}
             </span>
           )}
@@ -334,15 +334,15 @@ function ZoneShutterWidget({
         <ShutterWidgetIcon level={level} />
         <div className="pl-2">
           {avgPosition === null ? (
-            <span className="text-[16px] text-text-tertiary">{"\u2014"}</span>
+            <span className="text-lead text-text-tertiary">{"\u2014"}</span>
           ) : avgPosition === 100 ? (
-            <span className="text-[13px] font-medium text-success px-2 py-0.5 rounded bg-success/10">{t("controls.opened")}</span>
+            <span className="text-small font-medium text-success px-2 py-0.5 rounded bg-success/10">{t("controls.opened")}</span>
           ) : avgPosition === 0 ? (
-            <span className="text-[13px] font-medium text-text-secondary px-2 py-0.5 rounded bg-border-light">{t("controls.closed")}</span>
+            <span className="text-small font-medium text-text-secondary px-2 py-0.5 rounded bg-border-light">{t("controls.closed")}</span>
           ) : (
             <div className="flex items-baseline gap-0.5">
-              <span className="text-[16px] font-semibold text-text tabular-nums leading-none">{avgPosition}</span>
-              <span className="text-[12px] font-medium text-text-tertiary">%</span>
+              <span className="text-lead font-semibold text-text tabular-nums leading-none">{avgPosition}</span>
+              <span className="text-caption font-medium text-text-tertiary">%</span>
             </div>
           )}
         </div>
@@ -418,21 +418,21 @@ function ZoneAwningWidget({
         <AwningWidgetIcon deployed={deployedCount > 0} />
         <div className="pl-2">
           {total === 0 ? (
-            <span className="text-[16px] text-text-tertiary">{"—"}</span>
+            <span className="text-lead text-text-tertiary">{"—"}</span>
           ) : deployedCount === total ? (
-            <span className="text-[13px] font-medium text-success px-2 py-0.5 rounded bg-success/10">
+            <span className="text-small font-medium text-success px-2 py-0.5 rounded bg-success/10">
               {t("controls.deployed")}
             </span>
           ) : deployedCount === 0 ? (
-            <span className="text-[13px] font-medium text-text-secondary px-2 py-0.5 rounded bg-border-light">
+            <span className="text-small font-medium text-text-secondary px-2 py-0.5 rounded bg-border-light">
               {t("controls.retracted")}
             </span>
           ) : (
             <div className="flex items-baseline gap-0.5">
-              <span className="text-[16px] font-semibold text-text tabular-nums leading-none">
+              <span className="text-lead font-semibold text-text tabular-nums leading-none">
                 {deployedCount}
               </span>
-              <span className="text-[12px] font-medium text-text-tertiary">/{total}</span>
+              <span className="text-caption font-medium text-text-tertiary">/{total}</span>
             </div>
           )}
         </div>
@@ -549,13 +549,13 @@ function ZoneHeatingWidget({
         <div className="flex flex-col items-start gap-2 pl-2">
           {avgTemp !== null ? (
             <div className="flex items-baseline gap-0.5">
-              <span className="text-[18px] font-semibold text-text tabular-nums leading-none font-mono">
+              <span className="text-title font-semibold text-text tabular-nums leading-none font-mono">
                 {formatNumber(avgTemp, { decimals: 1 })}
               </span>
-              <span className="text-[12px] font-medium text-text-tertiary">°</span>
+              <span className="text-caption font-medium text-text-tertiary">°</span>
             </div>
           ) : (
-            <span className="text-[18px] text-text-tertiary">{"\u2014"}</span>
+            <span className="text-title text-text-tertiary">{"\u2014"}</span>
           )}
           <button
             onClick={() => onCommand(anyOn ? "allThermostatsPowerOff" : "allThermostatsPowerOn")}
@@ -585,7 +585,7 @@ function ZoneHeatingWidget({
           >
             <Minus size={14} strokeWidth={2} />
           </button>
-          <span className="text-[12px] font-medium text-text-secondary tabular-nums font-mono min-w-[42px] text-center">
+          <span className="text-caption font-medium text-text-secondary tabular-nums font-mono min-w-[42px] text-center">
             {formatTemperature(displaySetpoint, { style: "compact" })}
           </span>
           <button
@@ -647,22 +647,22 @@ function ZoneSensorsWidget({
         <div className="flex flex-col items-start gap-1 pl-2">
           {aggregates.avgTemp !== null && (
             <div className="flex items-baseline gap-0.5">
-              <span className="text-[18px] font-semibold text-text tabular-nums leading-none font-mono">
+              <span className="text-title font-semibold text-text tabular-nums leading-none font-mono">
                 {formatNumber(aggregates.avgTemp, { decimals: 1 })}
               </span>
-              <span className="text-[12px] font-medium text-text-tertiary">°</span>
+              <span className="text-caption font-medium text-text-tertiary">°</span>
             </div>
           )}
           {aggregates.avgHumidity !== null && (
             <div className="flex items-baseline gap-0.5">
-              <span className="text-[14px] font-semibold text-text tabular-nums leading-none font-mono">
+              <span className="text-body font-semibold text-text tabular-nums leading-none font-mono">
                 {Math.round(aggregates.avgHumidity)}
               </span>
-              <span className="text-[12px] font-medium text-text-tertiary">%</span>
+              <span className="text-caption font-medium text-text-tertiary">%</span>
             </div>
           )}
           {aggregates.avgTemp === null && aggregates.avgHumidity === null && (
-            <span className="text-[18px] text-text-tertiary">{"\u2014"}</span>
+            <span className="text-title text-text-tertiary">{"\u2014"}</span>
           )}
         </div>
       </div>
@@ -750,15 +750,15 @@ function ZoneWaterWidget({
           className={anyOpen ? "text-active-text" : "text-text-tertiary"}
         />
         <div className="flex flex-col items-start gap-0.5 pl-2">
-          <span className="text-[16px] font-semibold text-text tabular-nums leading-none">
+          <span className="text-lead font-semibold text-text tabular-nums leading-none">
             {openCount}/{totalCount}
           </span>
           {totalFlow !== null && (
             <div className="flex items-baseline gap-0.5">
-              <span className="text-[12px] font-medium text-text-secondary tabular-nums">
+              <span className="text-caption font-medium text-text-secondary tabular-nums">
                 {totalFlow}
               </span>
-              <span className="text-[11px] font-medium text-text-tertiary">m³/h</span>
+              <span className="text-micro font-medium text-text-tertiary">m³/h</span>
             </div>
           )}
         </div>
@@ -768,7 +768,7 @@ function ZoneWaterWidget({
         <button
           onClick={handleCloseAll}
           disabled={closingAll || !anyOpen}
-          className="px-3 h-10 flex items-center justify-center rounded-[6px] transition-all duration-150 cursor-pointer border border-border bg-surface text-text-secondary text-[12px] font-medium hover:border-text-tertiary hover:text-text hover:bg-border-light active:scale-[0.97] disabled:opacity-40 disabled:cursor-not-allowed"
+          className="px-3 h-10 flex items-center justify-center rounded-[6px] transition-all duration-150 cursor-pointer border border-border bg-surface text-text-secondary text-caption font-medium hover:border-text-tertiary hover:text-text hover:bg-border-light active:scale-[0.97] disabled:opacity-40 disabled:cursor-not-allowed"
           title={t("water.closeAll")}
         >
           {closingAll ? (
