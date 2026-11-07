@@ -1026,6 +1026,8 @@
   "calendar.modeOff": "désactivé",
   "thermostat.outside": "Extérieur",
   "thermostat.target": "Consigne",
+  "thermostat.setpointDown": "Baisser la consigne",
+  "thermostat.setpointUp": "Monter la consigne",
   "thermostat.mode": "Mode",
   "thermostat.modes.auto": "Auto",
   "thermostat.modes.cool": "Froid",

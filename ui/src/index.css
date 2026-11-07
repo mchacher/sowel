@@ -257,6 +257,111 @@ input[type="range"].slider-slim::-moz-range-thumb {
   height: 12px;
 }
 
+/* Touch screens (spec 196, decision pr1-cibles) — the drawing stays a 5 px
+ * track (3 px slim), but the input itself is 28 px tall so a finger anywhere
+ * on the line grabs it, and the thumb grows to 22 px (20 px slim). The fill
+ * gradient moves from the input onto the track for that. Vertical sliders
+ * (dashboard light tiles, `slider-vertical`) keep their own geometry. */
+@media (pointer: coarse) {
+  input[type="range"]:not(.slider-vertical) {
+    height: 28px;
+    background: transparent;
+  }
+
+  input[type="range"]:not(.slider-vertical)::-webkit-slider-runnable-track {
+    height: 5px;
+    border-radius: 9999px;
+    background: linear-gradient(
+      to right,
+      var(--fill-color, var(--color-primary)) 0%,
+      var(--fill-color, var(--color-primary)) var(--fill-pct, 0%),
+      var(--n-100) var(--fill-pct, 0%),
+      var(--n-100) 100%
+    );
+  }
+
+  input[type="range"]:not(.slider-vertical)::-moz-range-track {
+    height: 5px;
+    border-radius: 9999px;
+    background: linear-gradient(
+      to right,
+      var(--fill-color, var(--color-primary)) 0%,
+      var(--fill-color, var(--color-primary)) var(--fill-pct, 0%),
+      var(--n-100) var(--fill-pct, 0%),
+      var(--n-100) 100%
+    );
+  }
+
+  input[type="range"]:not(.slider-vertical)::-webkit-slider-thumb {
+    width: 22px;
+    height: 22px;
+    margin-top: -8.5px; /* (5 - 22) / 2 */
+  }
+
+  input[type="range"]:not(.slider-vertical)::-moz-range-thumb {
+    width: 22px;
+    height: 22px;
+  }
+
+  input[type="range"].slider-slim:not(.slider-vertical)::-webkit-slider-runnable-track {
+    height: 3px;
+  }
+
+  input[type="range"].slider-slim:not(.slider-vertical)::-moz-range-track {
+    height: 3px;
+  }
+
+  input[type="range"].slider-slim:not(.slider-vertical)::-webkit-slider-thumb {
+    width: 20px;
+    height: 20px;
+    margin-top: -8.5px; /* (3 - 20) / 2 */
+  }
+
+  input[type="range"].slider-slim:not(.slider-vertical)::-moz-range-thumb {
+    width: 20px;
+    height: 20px;
+  }
+}
+
+/* ============================================================
+   Touch hit areas (spec 196, decision pr1-cibles)
+   `hit-44` gives a small control an invisible 44 px tap area on touch
+   screens, centred on it, without changing its drawing.
+   `hit-group` goes on the direct parent of neighbouring `hit-44`
+   controls: it makes the parent a stacking context and puts the
+   enlarged areas *under* the controls' own boxes, so a tap on a visible
+   control always reaches that control even when a neighbour's area
+   overlaps it (without it, the later sibling's area would paint on top
+   and take the tap). Where two areas overlap outside the visible boxes,
+   the later sibling wins.
+   ============================================================ */
+
+@utility hit-44 {
+  @media (pointer: coarse) {
+    position: relative;
+
+    &::after {
+      content: "";
+      position: absolute;
+      left: 50%;
+      top: 50%;
+      width: max(100%, 44px);
+      height: max(100%, 44px);
+      transform: translate(-50%, -50%);
+    }
+  }
+}
+
+@utility hit-group {
+  @media (pointer: coarse) {
+    isolation: isolate;
+
+    & > .hit-44::after {
+      z-index: -1;
+    }
+  }
+}
+
 /* ============================================================
    Native time/date picker — adapt icons to dark mode
    ============================================================ */

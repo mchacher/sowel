@@ -1026,6 +1026,8 @@
   "calendar.modeOff": "off",
   "thermostat.outside": "Outside",
   "thermostat.target": "Target",
+  "thermostat.setpointDown": "Lower the setpoint",
+  "thermostat.setpointUp": "Raise the setpoint",
   "thermostat.mode": "Mode",
   "thermostat.modes.auto": "Auto",
   "thermostat.modes.cool": "Cool",

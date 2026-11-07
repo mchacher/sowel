@@ -192,7 +192,7 @@ function ModeCard({ mode, calendarSlots, onClick }: { mode: ModeWithDetails; cal
       <button
         onClick={handleToggle}
         disabled={toggling}
-        className="relative w-9 h-5 rounded-full transition-colors duration-200 disabled:opacity-50 flex-shrink-0 cursor-pointer disabled:cursor-default"
+        className="hit-44 relative w-9 h-5 rounded-full transition-colors duration-200 disabled:opacity-50 flex-shrink-0 cursor-pointer disabled:cursor-default"
         style={{ backgroundColor: mode.active ? "var(--color-primary)" : "var(--color-border)" }}
         title={mode.active ? t("modes.deactivate") : t("modes.activate")}
         role="switch"

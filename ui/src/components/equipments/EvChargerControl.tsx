@@ -151,14 +151,14 @@ export function EvChargerControl({ equipment, onExecuteOrder }: EvChargerControl
           <span className="text-[13px] text-text-secondary">
             {t("equipments.evCharger.chargeCurrent")}
           </span>
-          <div className="flex items-center gap-2">
+          <div className="hit-group flex items-center gap-2">
             {order && (
               <button
                 type="button"
                 aria-label={t("equipments.evCharger.decrease")}
                 onClick={() => void step(-1)}
                 disabled={!usable || sending || (shownA !== null && shownA <= order.min)}
-                className="p-1.5 rounded-[6px] bg-border-light text-text-secondary hover:bg-border disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer"
+                className="hit-44 p-1.5 rounded-[6px] bg-border-light text-text-secondary hover:bg-border disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer"
               >
                 <Minus size={14} strokeWidth={1.5} />
               </button>
@@ -178,7 +178,7 @@ export function EvChargerControl({ equipment, onExecuteOrder }: EvChargerControl
                 aria-label={t("equipments.evCharger.increase")}
                 onClick={() => void step(1)}
                 disabled={!usable || sending || (shownA !== null && shownA >= order.max)}
-                className="p-1.5 rounded-[6px] bg-border-light text-text-secondary hover:bg-border disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer"
+                className="hit-44 p-1.5 rounded-[6px] bg-border-light text-text-secondary hover:bg-border disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer"
               >
                 <Plus size={14} strokeWidth={1.5} />
               </button>

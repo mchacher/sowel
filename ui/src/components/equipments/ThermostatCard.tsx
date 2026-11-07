@@ -239,11 +239,12 @@ export function ThermostatCard({ equipment, onExecuteOrder, compact }: Thermosta
       {targetTempOrder && (
         <div className="flex items-center gap-3">
           <span className="text-[12px] text-text-tertiary">{t("thermostat.target")}</span>
-          <div className="flex items-center gap-1">
+          <div className="hit-group flex items-center gap-1">
             <button
               onClick={() => targetTemp !== null && exec("setpoint", targetTemp - 0.5)}
+              aria-label={t("thermostat.setpointDown")}
               disabled={executing === "setpoint" || targetTemp === null || targetTemp <= (targetTempOrder.min ?? 16)}
-              className="p-1 rounded-[4px] bg-border-light text-text-secondary hover:bg-border hover:text-text transition-colors disabled:opacity-30 disabled:cursor-not-allowed cursor-pointer"
+              className="hit-44 p-1 rounded-[4px] bg-border-light text-text-secondary hover:bg-border hover:text-text transition-colors disabled:opacity-30 disabled:cursor-not-allowed cursor-pointer"
             >
               <ChevronDown size={14} strokeWidth={2} />
             </button>
@@ -253,8 +254,9 @@ export function ThermostatCard({ equipment, onExecuteOrder, compact }: Thermosta
             </span>
             <button
               onClick={() => targetTemp !== null && exec("setpoint", targetTemp + 0.5)}
+              aria-label={t("thermostat.setpointUp")}
               disabled={executing === "setpoint" || targetTemp === null || targetTemp >= (targetTempOrder.max ?? 30)}
-              className="p-1 rounded-[4px] bg-border-light text-text-secondary hover:bg-border hover:text-text transition-colors disabled:opacity-30 disabled:cursor-not-allowed cursor-pointer"
+              className="hit-44 p-1 rounded-[4px] bg-border-light text-text-secondary hover:bg-border hover:text-text transition-colors disabled:opacity-30 disabled:cursor-not-allowed cursor-pointer"
             >
               <ChevronUp size={14} strokeWidth={2} />
             </button>
@@ -344,11 +346,12 @@ function CompactThermostat({
 
       {/* Target temp with +/- controls */}
       {hasTargetTempOrder && targetTemp !== null && (
-        <div className="flex items-center gap-0.5">
+        <div className="hit-group flex items-center gap-0.5 pointer-coarse:gap-2">
           <button
             onClick={(e) => { e.preventDefault(); e.stopPropagation(); onSetTarget(targetTemp - 0.5); }}
+            aria-label={t("thermostat.setpointDown")}
             disabled={executing === "setpoint" || targetTemp <= targetMin}
-            className="p-0.5 rounded-[3px] text-text-tertiary hover:bg-border-light hover:text-text transition-colors disabled:opacity-30 disabled:cursor-not-allowed cursor-pointer"
+            className="hit-44 p-0.5 rounded-[3px] text-text-tertiary hover:bg-border-light hover:text-text transition-colors disabled:opacity-30 disabled:cursor-not-allowed cursor-pointer"
           >
             <ChevronDown size={12} strokeWidth={2} />
           </button>
@@ -358,8 +361,9 @@ function CompactThermostat({
           </span>
           <button
             onClick={(e) => { e.preventDefault(); e.stopPropagation(); onSetTarget(targetTemp + 0.5); }}
+            aria-label={t("thermostat.setpointUp")}
             disabled={executing === "setpoint" || targetTemp >= targetMax}
-            className="p-0.5 rounded-[3px] text-text-tertiary hover:bg-border-light hover:text-text transition-colors disabled:opacity-30 disabled:cursor-not-allowed cursor-pointer"
+            className="hit-44 p-0.5 rounded-[3px] text-text-tertiary hover:bg-border-light hover:text-text transition-colors disabled:opacity-30 disabled:cursor-not-allowed cursor-pointer"
           >
             <ChevronUp size={12} strokeWidth={2} />
           </button>

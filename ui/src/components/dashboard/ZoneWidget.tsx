@@ -250,7 +250,7 @@ function ZoneLightsWidget({
                 onChange={(e) => slider.onChange(Number(e.target.value))}
                 onMouseUp={handleBrightnessCommit}
                 onTouchEnd={handleBrightnessCommit}
-                className="h-[60px] slider-active slider-slim"
+                className="h-[60px] slider-active slider-slim slider-vertical"
                 style={{ writingMode: "vertical-lr", direction: "rtl" }}
               />
               <div className="flex items-baseline gap-0.5">

@@ -6,7 +6,6 @@ import {
   Home,
   ChevronRight,
   Plus,
-  Menu,
   X,
   Layers,
   DoorOpen,
@@ -108,7 +107,6 @@ export function HomePage() {
   }, [zoneId]);
 
   const drawerOpen = useUiState((s) => s.zoneDrawerOpen);
-  const openDrawer = useUiState((s) => s.openZoneDrawer);
   const closeDrawer = useUiState((s) => s.closeZoneDrawer);
 
   const loading = zonesLoading || equipmentsLoading;
@@ -146,21 +144,10 @@ export function HomePage() {
         />
       )}
 
-      {/* Zone header — desktop only: burger (tablet portrait) + h1 + lead.
-          On mobile, title + burger are in the topbar. */}
+      {/* Zone header — h1 + lead from 640 px. Below lg the zone tree opens from
+          the topbar burger (spec 196, decision pr1-tablette). */}
       <div className="hidden sm:block max-w-[1200px] mb-3">
-        <div className="flex items-center gap-1.5">
-          {tree.length > 0 && (
-            <button
-              onClick={openDrawer}
-              className="md:hidden p-1 -ml-1 rounded-[6px] text-text-secondary hover:bg-border-light transition-colors"
-              aria-label={t("zones.openTree", "Open zones")}
-            >
-              <Menu size={18} strokeWidth={1.5} />
-            </button>
-          )}
-          <h1>{currentZone.name}</h1>
-        </div>
+        <h1>{currentZone.name}</h1>
         <ZoneHeroLead zone={currentZone} aggData={aggData} />
       </div>
 
@@ -394,7 +381,7 @@ function MobileZoneDrawer({
   const { t } = useTranslation();
 
   return (
-    <div className="fixed inset-0 z-50 md:hidden">
+    <div className="fixed inset-0 z-50 lg:hidden">
       {/* Backdrop */}
       <div className="fixed inset-0 bg-black/30" onClick={onClose} />
       {/* Drawer panel */}
