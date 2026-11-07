@@ -79,7 +79,7 @@ export function ZoneCommands({
     <div
       role="toolbar"
       aria-label={t("zones.commands.toolbarLabel", { defaultValue: "Commandes globales" })}
-      className="hit-group inline-flex items-center gap-px bg-surface rounded-sm px-1.5 py-1 shadow-lg"
+      className="hit-group inline-flex items-center gap-px border border-border-light bg-surface rounded-sm px-1.5 py-1"
     >
       {hasLights && (
         <>

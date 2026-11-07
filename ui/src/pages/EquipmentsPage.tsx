@@ -61,7 +61,7 @@ export function EquipmentsPage() {
                   value={filter}
                   onChange={(e) => setFilter(e.target.value)}
                   placeholder={t("equipments.filterPlaceholder")}
-                  className="w-full sm:w-[180px] pl-8 pr-8 py-1.5 text-small bg-surface rounded-sm outline-none placeholder:text-text-tertiary focus:border-primary transition-colors duration-150 shadow-lg"
+                  className="w-full sm:w-[180px] pl-8 pr-8 py-1.5 text-small border border-border bg-surface rounded-sm outline-none placeholder:text-text-tertiary focus:border-primary transition-colors duration-150"
                 />
                 {filter && (
                   <button onClick={() => setFilter("")} className="absolute right-2 top-1/2 -translate-y-1/2 text-text-tertiary hover:text-text-secondary">

@@ -186,7 +186,7 @@ export function DashboardPage() {
                 className={`inline-flex items-center gap-1.5 px-3 py-1.5 text-small font-medium rounded-sm transition-colors cursor-pointer ${
                   editMode
                     ? "text-white bg-primary-fill hover:bg-primary-fill-hover"
-                    : "text-text-secondary bg-surface hover:bg-border-light shadow-lg"
+                    : "text-text-secondary border border-border bg-surface hover:bg-border-light"
                 }`}
               >
                 {editMode ? (

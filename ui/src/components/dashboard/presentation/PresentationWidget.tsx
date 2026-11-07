@@ -78,7 +78,7 @@ export function PresentationWidget({
           <button
             onClick={handleToggle}
             disabled={executing}
-            className={`w-10 h-10 flex items-center justify-center rounded-sm transition-all duration-150 cursor-pointer bg-surface text-text-secondary hover:border-primary/40 hover:text-primary hover:bg-primary/5 active:scale-[0.97] disabled:opacity-40 disabled:cursor-not-allowed shadow-lg ${
+            className={`w-10 h-10 flex items-center justify-center rounded-sm transition-all duration-150 cursor-pointer border border-border bg-surface text-text-secondary hover:border-primary/40 hover:text-primary hover:bg-primary/5 active:scale-[0.97] disabled:opacity-40 disabled:cursor-not-allowed ${
               toggle.on ? "!border-active !text-active-ink !bg-active-bg" : ""
             }`}
             title={toggle.on ? t("controls.turnOff") : t("controls.turnOn")}

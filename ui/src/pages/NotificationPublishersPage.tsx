@@ -610,7 +610,7 @@ function RepeatControl({
 }) {
   const { t } = useTranslation();
   const inputCls =
-    "w-16 px-2 py-1 text-caption bg-surface rounded-sm text-text shadow-lg";
+    "w-16 px-2 py-1 text-caption border border-border bg-surface rounded-sm text-text";
   return (
     <div>
       <label className="block text-micro text-text-secondary mb-1">
@@ -619,7 +619,7 @@ function RepeatControl({
       <select
         value={mode}
         onChange={(e) => onChange({ mode: e.target.value as RepeatMode, intervalMin, maxCount })}
-        className="w-full px-2 py-1 text-caption bg-surface rounded-sm text-text shadow-lg"
+        className="w-full px-2 py-1 text-caption border border-border bg-surface rounded-sm text-text"
       >
         <option value="none">{t("notifPublishers.repeatNone")}</option>
         <option value="forever">{t("notifPublishers.repeatForever")}</option>
@@ -752,7 +752,7 @@ function MappingRow({
               type="text"
               value={message}
               onChange={(e) => setMessage(e.target.value)}
-              className="w-full px-2 py-1 text-caption bg-surface rounded-sm text-text shadow-lg"
+              className="w-full px-2 py-1 text-caption border border-border bg-surface rounded-sm text-text"
               autoFocus
             />
           </div>
@@ -783,7 +783,7 @@ function MappingRow({
               onChange={(e) => setThrottleMs(Number(e.target.value) * 60000)}
               min={0}
               step={1}
-              className="w-full px-2 py-1 text-caption bg-surface rounded-sm text-text font-mono shadow-lg"
+              className="w-full px-2 py-1 text-caption border border-border bg-surface rounded-sm text-text font-mono"
             />
           </div>
         </div>
@@ -929,7 +929,7 @@ function AddMappingForm({
             value={message}
             onChange={(e) => setMessage(e.target.value)}
             placeholder={t("notifPublishers.messagePlaceholder")}
-            className="w-full px-2 py-1 text-caption bg-surface rounded-sm text-text placeholder:text-text-tertiary shadow-lg"
+            className="w-full px-2 py-1 text-caption border border-border bg-surface rounded-sm text-text placeholder:text-text-tertiary"
             autoFocus
           />
         </div>
@@ -960,7 +960,7 @@ function AddMappingForm({
             onChange={(e) => setThrottleMs(Number(e.target.value) * 60000)}
             min={0}
             step={1}
-            className="w-full px-2 py-1 text-caption bg-surface rounded-sm text-text font-mono shadow-lg"
+            className="w-full px-2 py-1 text-caption border border-border bg-surface rounded-sm text-text font-mono"
           />
         </div>
       </div>

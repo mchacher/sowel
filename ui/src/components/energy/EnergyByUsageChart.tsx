@@ -212,11 +212,11 @@ export function EnergyByUsageChart({ data, period, date, height = 300, unit = "w
     <div style={{ width: "100%", height }}>
       <ResponsiveContainer>
         <BarChart data={rows} margin={{ top: 10, right: 10, left: 0, bottom: 0 }}>
-          <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="var(--border)" />
-          <XAxis dataKey="label" tick={{ fill: "var(--text-secondary)", fontSize: CHART_TICK_FONT }} />
+          <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="var(--color-border)" />
+          <XAxis dataKey="label" tick={{ fill: "var(--color-text-secondary)", fontSize: CHART_TICK_FONT }} />
           <YAxis
             tickFormatter={isEur ? (kwh: number) => formatEur(kwh * blendedRate, locale) : (kwh: number) => formatKwhTick(kwh, locale)}
-            tick={{ fill: "var(--text-secondary)", fontSize: CHART_TICK_FONT }}
+            tick={{ fill: "var(--color-text-secondary)", fontSize: CHART_TICK_FONT }}
           />
           <Tooltip
             cursor={{ fill: "rgba(0,0,0,0.03)" }}

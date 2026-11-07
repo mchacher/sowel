@@ -138,7 +138,7 @@ export function TimedEquipmentWidget({
           onClick={arm}
           disabled={busy || editMode || inert}
           title={nextPress}
-          className={`w-10 h-10 flex items-center justify-center rounded-sm transition-all duration-150 cursor-pointer bg-surface text-text-secondary hover:border-primary/40 hover:text-primary hover:bg-primary/5 active:scale-[0.97] disabled:opacity-40 disabled:cursor-not-allowed shadow-lg ${
+          className={`w-10 h-10 flex items-center justify-center rounded-sm transition-all duration-150 cursor-pointer border border-border bg-surface text-text-secondary hover:border-primary/40 hover:text-primary hover:bg-primary/5 active:scale-[0.97] disabled:opacity-40 disabled:cursor-not-allowed ${
             running ? "!border-active !text-active-ink !bg-active-bg" : ""
           }`}
         >
@@ -149,7 +149,7 @@ export function TimedEquipmentWidget({
             onClick={cancel}
             disabled={busy || editMode}
             title={t("dashboard.timed.cancel")}
-            className="w-10 h-10 flex items-center justify-center rounded-sm transition-all duration-150 cursor-pointer bg-surface text-text-secondary hover:border-primary/40 hover:text-primary hover:bg-primary/5 active:scale-[0.97] disabled:opacity-40 disabled:cursor-not-allowed shadow-lg"
+            className="w-10 h-10 flex items-center justify-center rounded-sm transition-all duration-150 cursor-pointer border border-border bg-surface text-text-secondary hover:border-primary/40 hover:text-primary hover:bg-primary/5 active:scale-[0.97] disabled:opacity-40 disabled:cursor-not-allowed"
           >
             <X size={16} strokeWidth={1.5} />
           </button>

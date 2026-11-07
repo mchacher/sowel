@@ -4,10 +4,15 @@ import { Clock } from "lucide-react";
 import { useTimezone } from "../../store/useTimezone";
 import { currentLocale } from "../../lib/format";
 
-/** The browser's own time zone, or null when the runtime does not say. */
-function browserTimeZone(): string | null {
+/**
+ * A time zone in its canonical spelling, or null when the runtime rejects it
+ * or does not say. Both sides go through it, so another spelling of the
+ * browser's zone (Etc/UTC for UTC, US/Pacific for America/Los_Angeles,
+ * europe/paris) is not taken for another place.
+ */
+function canonicalTimeZone(tz?: string): string | null {
   try {
-    return Intl.DateTimeFormat().resolvedOptions().timeZone ?? null;
+    return Intl.DateTimeFormat(currentLocale(), tz ? { timeZone: tz } : undefined).resolvedOptions().timeZone ?? null;
   } catch {
     return null;
   }
@@ -25,18 +30,23 @@ export function HomeTimeNote({ compact = false }: { compact?: boolean }) {
   const { t } = useTranslation();
   const tz = useTimezone((s) => s.tz);
   const loaded = useTimezone((s) => s.loaded);
-  const differs = loaded && tz !== browserTimeZone();
-  const [now, setNow] = useState<string>(() => formatHomeTime(tz));
+  // Nothing until the home zone is known: the store starts on "UTC", which
+  // would otherwise flash a clock before the real zone arrives.
+  const home = loaded ? canonicalTimeZone(tz) : null;
+  const differs = home !== null && home !== canonicalTimeZone();
+  // A tick only re-renders; the time is formatted from the current zone at
+  // render, so a zone change never shows the previous zone's time.
+  const [, setTick] = useState(0);
 
   useEffect(() => {
     if (!differs) return;
-    const tick = () => setNow(formatHomeTime(tz));
-    tick();
-    const id = setInterval(tick, 30_000);
+    const id = setInterval(() => setTick((n) => n + 1), 30_000);
     return () => clearInterval(id);
-  }, [tz, differs]);
+  }, [differs]);
 
   if (!differs) return null;
+
+  const now = formatHomeTime(tz);
 
   const label = `${t("header.homeTime")} ${now}`;
   return (

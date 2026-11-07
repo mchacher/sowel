@@ -223,7 +223,8 @@ function SlotRow({
       <Clock size={14} strokeWidth={1.5} className="text-text-tertiary flex-shrink-0" />
       <div className="flex-1 min-w-0">
         <div className="text-small font-medium text-text tabular-nums">{slot.time}</div>
-        <div className="text-micro text-text-tertiary truncate">
+        {/* Wraps on a phone: truncated, the line lost the modes, its point. */}
+        <div className="text-micro text-text-tertiary sm:truncate">
           {daysStr}
           {onModes.length > 0 && (
             <span className="text-success"> &middot; {t("calendar.modeOn")}{t("common.colon")}{onModes.join(", ")}</span>
@@ -359,7 +360,7 @@ function SlotForm({
           type="time"
           value={time}
           onChange={(e) => setTime(e.target.value)}
-          className="px-3 py-1.5 text-small bg-surface rounded-sm text-text tabular-nums shadow-lg"
+          className="px-3 py-1.5 text-small border border-border bg-surface rounded-sm text-text tabular-nums"
         />
       </div>
 

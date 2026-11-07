@@ -95,7 +95,7 @@ export function WateringScheduleEditor({
               type="time"
               value={slot.time}
               onChange={(e) => updateTime(i, e.target.value)}
-              className="px-2 py-1 text-body font-semibold tabular-nums rounded-sm outline-none focus:border-primary bg-surface text-text w-[96px] shadow-lg"
+              className="px-2 py-1 text-body font-semibold tabular-nums rounded-sm outline-none focus:border-primary border border-border bg-surface text-text w-[96px]"
             />
             <button
               type="button"
@@ -126,7 +126,7 @@ export function WateringScheduleEditor({
                       Math.max(1, Math.min(120, Number(e.target.value) || 1)),
                     )
                   }
-                  className="w-[52px] px-1.5 py-1 text-small tabular-nums text-center rounded-sm outline-none focus:border-primary bg-surface text-text shadow-lg"
+                  className="w-[52px] px-1.5 py-1 text-small tabular-nums text-center rounded-sm outline-none focus:border-primary border border-border bg-surface text-text"
                 />
                 <span className="text-micro text-text-tertiary w-6">min</span>
               </div>

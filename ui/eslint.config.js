@@ -4,6 +4,7 @@ import reactHooks from "eslint-plugin-react-hooks";
 import reactRefresh from "eslint-plugin-react-refresh";
 import tseslint from "typescript-eslint";
 import { defineConfig, globalIgnores } from "eslint/config";
+import designClasses from "./eslint/design-classes.js";
 
 export default defineConfig([
   globalIgnores(["dist", "dev-dist"]),
@@ -89,57 +90,21 @@ export default defineConfig([
           message:
             "new Intl.DateTimeFormat() follows the browser, not Sowel's language: pass currentLocale() from lib/format.",
         },
-        // Spec 196, FR-5 — one type scale (text-micro … text-value, index.css
-        // @theme). It replaced 33 hand-picked sizes from 8 to 56 px; these keep
-        // them from coming back. A colour in brackets (text-[var(--n-700)]) is
-        // fine. SVG illustrations size their <text> with a JSX attribute, which
-        // these selectors do not see.
-        {
-          selector: "Literal[value=/text-\\[(\\d|\\.\\d|clamp|calc|length)/]",
-          message: "Arbitrary font size: use a step of the type scale (text-micro … text-value).",
-        },
-        {
-          selector: "TemplateElement[value.raw=/text-\\[(\\d|\\.\\d|clamp|calc|length)/]",
-          message: "Arbitrary font size: use a step of the type scale (text-micro … text-value).",
-        },
-        // Spec 196, FR-5 (slice 5b) — labels are sentence case: size and
-        // weight carry the hierarchy. Tracked capitals at four levels at once
-        // were the most visible "generated UI" tell. A table column header is
-        // the one place uppercase stays (inside <thead>/<th>).
-        {
-          selector:
-            "Literal[value=/(^|\\s)uppercase(\\s|$)/]:not(JSXElement[openingElement.name.name=/^(thead|th)$/] Literal)",
-          message: "Uppercase is for table column headers only: write the label in sentence case.",
-        },
-        {
-          selector:
-            "TemplateElement[value.raw=/(^|\\s)uppercase(\\s|$)/]:not(JSXElement[openingElement.name.name=/^(thead|th)$/] TemplateElement)",
-          message: "Uppercase is for table column headers only: write the label in sentence case.",
-        },
-        // Spec 196, decision pr7-rayons — three radii and full: rounded-sm
-        // (6 px, controls), rounded-md (10 px, cards, rows, popovers),
-        // rounded-lg (16 px, modals and sheets), rounded-full; rounded-xs
-        // (2 px) for chart bars and legend swatches only. These replaced
-        // twelve hand-picked radii. A bare `rounded` or a removed step
-        // (rounded-xl…) would silently draw 4 px or nothing.
-        {
-          selector:
-            "Literal[value=/(^|[\\s:])rounded(-(t|r|b|l|s|e|tl|tr|bl|br|ss|se|es|ee))?(-\\[|-(none|xl|2xl|3xl|4xl)(\\s|$)|(\\s|$))/]",
-          message:
-            "Radius off the scale: use rounded-sm (controls), rounded-md (cards), rounded-lg (sheets) or rounded-full.",
-        },
-        {
-          selector:
-            "TemplateElement[value.raw=/(^|[\\s:])rounded(-(t|r|b|l|s|e|tl|tr|bl|br|ss|se|es|ee))?(-\\[|-(none|xl|2xl|3xl|4xl)(\\s|$)|(\\s|$))/]",
-          message:
-            "Radius off the scale: use rounded-sm (controls), rounded-md (cards), rounded-lg (sheets) or rounded-full.",
-        },
-        {
-          selector: "Property[key.name='fontSize'] > Literal.value",
-          message:
-            "Font size in a style or chart prop: use CHART_TICK_FONT / CHART_TOOLTIP_FONT (lib/chart-font) or a text-* class.",
-        },
       ],
+    },
+  },
+  {
+    // Spec 196, FR-5 and decision pr7-rayons — the type scale, sentence case
+    // and the radius scale, judged on class tokens (variants and `!` included)
+    // by eslint/design-classes.js. Separate rules, so an exception disables
+    // one of them and leaves the formatting rules above on.
+    files: ["src/**/*.{ts,tsx}"],
+    ignores: ["**/*.test.{ts,tsx}"],
+    plugins: { sowel: designClasses },
+    rules: {
+      "sowel/type-scale": "error",
+      "sowel/sentence-case": "error",
+      "sowel/radius-scale": "error",
     },
   },
 ]);

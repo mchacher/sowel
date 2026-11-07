@@ -2,6 +2,8 @@ import { readdirSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
+import { THEME_COLOR } from "../theme";
+import { classNames } from "./classname-scan";
 
 // Spec 196, FR-4 (slice 4) — colour roles. The ratios are computed from
 // design-system/tokens.css at test time, so a token change that breaks a
@@ -231,6 +233,8 @@ describe("colour role tokens", () => {
     expect(html).toContain(`.dark #splash{background:${hex("dark", "--n-50")}}`);
     expect(html).toContain(`<meta name="theme-color" content="${hex("dark", "--n-50")}" media="(prefers-color-scheme: dark)" />`);
     expect(vite).toContain(`background_color: "${hex("light", "--n-50")}"`);
+    // theme.ts repaints both metas with the app's own theme.
+    expect(THEME_COLOR).toEqual({ light: hex("light", "--p-500"), dark: hex("dark", "--n-50") });
   });
 
   it("defines info as a role in both themes", () => {
@@ -244,7 +248,7 @@ describe("colour role tokens", () => {
   });
 
   it("follows the theme for native controls", () => {
-    expect(indexCss).toMatch(/:root\s*\{[^}]*color-scheme:\s*light;[^}]*accent-color:\s*var\(--color-primary\);/);
+    expect(indexCss).toMatch(/:root\s*\{[^}]*color-scheme:\s*light;[^}]*accent-color:\s*var\(--color-primary-fill\);/);
     expect(indexCss).toMatch(/\.dark\s*\{[^}]*color-scheme:\s*dark;/);
   });
 });
@@ -298,6 +302,32 @@ describe("no retired colour class in ui/src", () => {
       text.split("\n").flatMap((line, i) => (pattern.test(line) ? [`${path}:${i + 1}`] : [])),
     );
     expect(hits, why).toEqual([]);
+  });
+
+  it("puts no white text on bg-primary, even when the className spans several lines", () => {
+    // bg-primary is the ink (light in dark): text sits on bg-primary-fill. A
+    // line-by-line search misses `bg-primary ${on ? "text-white" : …}` split
+    // over lines, so each className is read whole.
+    const bare = /(^|[\s"'`])bg-primary(?=[\s"'`]|$)/;
+    const white = /(^|[\s"'`])text-white(?=[\s"'`]|$)/;
+    const hits = FILES.flatMap(({ path, text }) =>
+      classNames(text)
+        .filter(({ cls }) => bare.test(cls) && white.test(cls))
+        .map(({ line }) => `${path}:${line}`),
+    );
+    expect(hits).toEqual([]);
+  });
+
+  it("references only custom properties that are defined", () => {
+    // A chart stroke of var(--border) (instead of --color-border) drew nothing.
+    // Properties set inline (style={{ "--fill-pct": … }}) count as defined.
+    const defined = new Set(
+      [tokensCss, indexCss, ...FILES.map((f) => f.text)].flatMap((t) => [...t.matchAll(/["']?(--[\w-]+)["']?\s*:/g)].map((m) => m[1])),
+    );
+    const missing = FILES.flatMap(({ path, text }) =>
+      [...text.matchAll(/var\((--[\w-]+)/g)].filter((m) => !defined.has(m[1])).map((m) => `${path}: ${m[1]}`),
+    );
+    expect(missing).toEqual([]);
   });
 
   it("uses only role colours that exist in the theme", () => {

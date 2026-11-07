@@ -292,18 +292,20 @@ export function ArbiterTimeline() {
         {/* surplus / deficit curve with kW scale */}
         <div className="flex items-stretch gap-2 mt-1 mb-3">
           <div className="relative w-[80px] flex-none">
-            <span className="absolute right-0 top-[2px] text-micro tabular-nums text-text-tertiary">
+            {/* leading-none: an 11 px label in the 20 px body line sat 5 px
+                below the level it names; each one is now centred on it. */}
+            <span className="absolute right-0 top-0 text-micro leading-none tabular-nums text-text-tertiary">
               {scaleTop}
             </span>
             <span
-              className="absolute right-0 text-micro tabular-nums text-text-tertiary"
-              style={{ top: `${y0 - 4}px` }}
+              className="absolute right-0 text-micro leading-none tabular-nums text-text-tertiary"
+              style={{ top: `${y0 - 5}px` }}
             >
               0
             </span>
             <span
-              className="absolute right-0 text-micro tabular-nums text-text-tertiary"
-              style={{ top: `${H - 10}px` }}
+              className="absolute right-0 text-micro leading-none tabular-nums text-text-tertiary"
+              style={{ top: `${H - 11}px` }}
             >
               {scaleBottom}
             </span>
@@ -408,7 +410,7 @@ export function ArbiterTimeline() {
         {hourLabels.map((m, k) => (
           <span
             key={k}
-            className="absolute top-0 text-micro text-text-tertiary whitespace-nowrap"
+            className="absolute top-0 text-micro leading-none text-text-tertiary whitespace-nowrap"
             style={{
               left: `${m.f * 100}%`,
               transform:

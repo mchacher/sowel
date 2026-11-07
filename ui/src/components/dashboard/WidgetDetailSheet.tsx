@@ -667,7 +667,7 @@ function ZoneLightsDetail({
         <button
           onClick={() => onCommand("allLightsOn")}
           disabled={commandLoading !== null}
-          className="flex-1 h-12 flex items-center justify-center gap-2 rounded-sm bg-surface text-text-secondary hover:bg-border-light transition-colors cursor-pointer active:scale-[0.97] shadow-lg"
+          className="flex-1 h-12 flex items-center justify-center gap-2 rounded-sm border border-border bg-surface text-text-secondary hover:bg-border-light transition-colors cursor-pointer active:scale-[0.97]"
         >
           {commandLoading === "allLightsOn" ? <Loader2 size={18} className="animate-spin" /> : <Lightbulb size={18} strokeWidth={1.5} />}
           {t("zones.commands.allLightsOn")}
@@ -675,7 +675,7 @@ function ZoneLightsDetail({
         <button
           onClick={() => onCommand("allLightsOff")}
           disabled={commandLoading !== null}
-          className="flex-1 h-12 flex items-center justify-center gap-2 rounded-sm bg-surface text-text-secondary hover:bg-border-light transition-colors cursor-pointer active:scale-[0.97] shadow-lg"
+          className="flex-1 h-12 flex items-center justify-center gap-2 rounded-sm border border-border bg-surface text-text-secondary hover:bg-border-light transition-colors cursor-pointer active:scale-[0.97]"
         >
           {commandLoading === "allLightsOff" ? <Loader2 size={18} className="animate-spin" /> : <LightbulbOff size={18} strokeWidth={1.5} />}
           {t("zones.commands.allLightsOff")}
@@ -735,7 +735,7 @@ function ZoneShuttersDetail({
         <button
           onClick={() => onCommand("allShuttersOpen")}
           disabled={commandLoading !== null}
-          className="flex-1 h-12 flex items-center justify-center rounded-sm bg-surface text-text-secondary hover:bg-border-light transition-colors cursor-pointer active:scale-[0.97] shadow-lg"
+          className="flex-1 h-12 flex items-center justify-center rounded-sm border border-border bg-surface text-text-secondary hover:bg-border-light transition-colors cursor-pointer active:scale-[0.97]"
           title={t("zones.commands.allShuttersOpen")}
         >
           {commandLoading === "allShuttersOpen" ? <Loader2 size={18} className="animate-spin" /> : <ChevronUp size={20} strokeWidth={2} />}
@@ -744,7 +744,7 @@ function ZoneShuttersDetail({
           <button
             onClick={() => onCommand("allShuttersStop")}
             disabled={commandLoading !== null}
-            className="flex-1 h-12 flex items-center justify-center rounded-sm bg-surface text-text-secondary hover:bg-border-light transition-colors cursor-pointer active:scale-[0.97] shadow-lg"
+            className="flex-1 h-12 flex items-center justify-center rounded-sm border border-border bg-surface text-text-secondary hover:bg-border-light transition-colors cursor-pointer active:scale-[0.97]"
             title={t("zones.commands.allShuttersStop")}
           >
             {commandLoading === "allShuttersStop" ? <Loader2 size={18} className="animate-spin" /> : <Square size={14} strokeWidth={2.5} />}
@@ -753,7 +753,7 @@ function ZoneShuttersDetail({
         <button
           onClick={() => onCommand("allShuttersClose")}
           disabled={commandLoading !== null}
-          className="flex-1 h-12 flex items-center justify-center rounded-sm bg-surface text-text-secondary hover:bg-border-light transition-colors cursor-pointer active:scale-[0.97] shadow-lg"
+          className="flex-1 h-12 flex items-center justify-center rounded-sm border border-border bg-surface text-text-secondary hover:bg-border-light transition-colors cursor-pointer active:scale-[0.97]"
           title={t("zones.commands.allShuttersClose")}
         >
           {commandLoading === "allShuttersClose" ? <Loader2 size={18} className="animate-spin" /> : <ChevronDown size={20} strokeWidth={2} />}
@@ -809,7 +809,7 @@ function ZoneAwningsDetail({
         <button
           onClick={() => onCommand("allAwningsRetract")}
           disabled={commandLoading !== null}
-          className="flex-1 h-12 flex items-center justify-center rounded-sm bg-surface text-text-secondary hover:bg-border-light transition-colors cursor-pointer active:scale-[0.97] shadow-lg"
+          className="flex-1 h-12 flex items-center justify-center rounded-sm border border-border bg-surface text-text-secondary hover:bg-border-light transition-colors cursor-pointer active:scale-[0.97]"
           title={t("zones.commands.allAwningsRetract")}
         >
           {commandLoading === "allAwningsRetract" ? <Loader2 size={18} className="animate-spin" /> : <ChevronUp size={20} strokeWidth={2} />}
@@ -818,7 +818,7 @@ function ZoneAwningsDetail({
           <button
             onClick={() => onCommand("allAwningsStop")}
             disabled={commandLoading !== null}
-            className="flex-1 h-12 flex items-center justify-center rounded-sm bg-surface text-text-secondary hover:bg-border-light transition-colors cursor-pointer active:scale-[0.97] shadow-lg"
+            className="flex-1 h-12 flex items-center justify-center rounded-sm border border-border bg-surface text-text-secondary hover:bg-border-light transition-colors cursor-pointer active:scale-[0.97]"
             title={t("zones.commands.allAwningsStop")}
           >
             {commandLoading === "allAwningsStop" ? <Loader2 size={18} className="animate-spin" /> : <Square size={14} strokeWidth={2.5} />}
@@ -827,7 +827,7 @@ function ZoneAwningsDetail({
         <button
           onClick={() => onCommand("allAwningsExtend")}
           disabled={commandLoading !== null}
-          className="flex-1 h-12 flex items-center justify-center rounded-sm bg-surface text-text-secondary hover:bg-border-light transition-colors cursor-pointer active:scale-[0.97] shadow-lg"
+          className="flex-1 h-12 flex items-center justify-center rounded-sm border border-border bg-surface text-text-secondary hover:bg-border-light transition-colors cursor-pointer active:scale-[0.97]"
           title={t("zones.commands.allAwningsExtend")}
         >
           {commandLoading === "allAwningsExtend" ? <Loader2 size={18} className="animate-spin" /> : <ChevronDown size={20} strokeWidth={2} />}
@@ -908,7 +908,7 @@ function ZoneHeatingDetail({
           <button
             onClick={() => handleSetpoint(Math.max(SETPOINT_MIN, displaySetpoint - STEP))}
             disabled={displaySetpoint <= SETPOINT_MIN}
-            className="w-14 h-14 flex items-center justify-center rounded-sm bg-surface text-text-secondary hover:bg-border-light transition-colors cursor-pointer active:scale-[0.95] disabled:opacity-30 shadow-lg"
+            className="w-14 h-14 flex items-center justify-center rounded-sm border border-border bg-surface text-text-secondary hover:bg-border-light transition-colors cursor-pointer active:scale-[0.95] disabled:opacity-30"
           >
             <Minus size={20} strokeWidth={2} />
           </button>
@@ -918,7 +918,7 @@ function ZoneHeatingDetail({
           <button
             onClick={() => handleSetpoint(Math.min(SETPOINT_MAX, displaySetpoint + STEP))}
             disabled={displaySetpoint >= SETPOINT_MAX}
-            className="w-14 h-14 flex items-center justify-center rounded-sm bg-surface text-text-secondary hover:bg-border-light transition-colors cursor-pointer active:scale-[0.95] disabled:opacity-30 shadow-lg"
+            className="w-14 h-14 flex items-center justify-center rounded-sm border border-border bg-surface text-text-secondary hover:bg-border-light transition-colors cursor-pointer active:scale-[0.95] disabled:opacity-30"
           >
             <Plus size={20} strokeWidth={2} />
           </button>
@@ -1245,7 +1245,7 @@ function ShutterDetailContent({
             <button
               onClick={() => handleCommand("OPEN")}
               disabled={executing}
-              className="flex-1 h-12 flex items-center justify-center rounded-sm bg-surface text-text-secondary hover:bg-border-light transition-colors cursor-pointer active:scale-[0.97] shadow-lg"
+              className="flex-1 h-12 flex items-center justify-center rounded-sm border border-border bg-surface text-text-secondary hover:bg-border-light transition-colors cursor-pointer active:scale-[0.97]"
             >
               <OpenIcon size={20} strokeWidth={2} />
             </button>
@@ -1253,7 +1253,7 @@ function ShutterDetailContent({
               <button
                 onClick={() => handleCommand("STOP")}
                 disabled={executing}
-                className="flex-1 h-12 flex items-center justify-center rounded-sm bg-surface text-text-secondary hover:bg-border-light transition-colors cursor-pointer active:scale-[0.97] shadow-lg"
+                className="flex-1 h-12 flex items-center justify-center rounded-sm border border-border bg-surface text-text-secondary hover:bg-border-light transition-colors cursor-pointer active:scale-[0.97]"
               >
                 <Square size={14} strokeWidth={2.5} />
               </button>
@@ -1261,7 +1261,7 @@ function ShutterDetailContent({
             <button
               onClick={() => handleCommand("CLOSE")}
               disabled={executing}
-              className="flex-1 h-12 flex items-center justify-center rounded-sm bg-surface text-text-secondary hover:bg-border-light transition-colors cursor-pointer active:scale-[0.97] shadow-lg"
+              className="flex-1 h-12 flex items-center justify-center rounded-sm border border-border bg-surface text-text-secondary hover:bg-border-light transition-colors cursor-pointer active:scale-[0.97]"
             >
               <CloseIcon size={20} strokeWidth={2} />
             </button>
@@ -1360,7 +1360,7 @@ function ThermostatDetailContent({
           <button
             onClick={() => handleSetpoint(Math.max(targetMin, displaySetpoint - STEP))}
             disabled={displaySetpoint <= targetMin}
-            className="w-14 h-14 flex items-center justify-center rounded-sm bg-surface text-text-secondary hover:bg-border-light transition-colors cursor-pointer active:scale-[0.95] disabled:opacity-30 shadow-lg"
+            className="w-14 h-14 flex items-center justify-center rounded-sm border border-border bg-surface text-text-secondary hover:bg-border-light transition-colors cursor-pointer active:scale-[0.95] disabled:opacity-30"
           >
             <Minus size={20} strokeWidth={2} />
           </button>
@@ -1370,7 +1370,7 @@ function ThermostatDetailContent({
           <button
             onClick={() => handleSetpoint(Math.min(targetMax, displaySetpoint + STEP))}
             disabled={displaySetpoint >= targetMax}
-            className="w-14 h-14 flex items-center justify-center rounded-sm bg-surface text-text-secondary hover:bg-border-light transition-colors cursor-pointer active:scale-[0.95] disabled:opacity-30 shadow-lg"
+            className="w-14 h-14 flex items-center justify-center rounded-sm border border-border bg-surface text-text-secondary hover:bg-border-light transition-colors cursor-pointer active:scale-[0.95] disabled:opacity-30"
           >
             <Plus size={20} strokeWidth={2} />
           </button>
@@ -1570,7 +1570,7 @@ function GateDetailContent({
                 key={val}
                 onClick={() => handleCommand(val)}
                 disabled={executing !== null}
-                className="h-12 flex items-center justify-center gap-2 rounded-sm text-body font-medium transition-all cursor-pointer bg-surface text-text-secondary hover:border-primary/40 hover:text-primary hover:bg-primary/5 active:scale-[0.97] disabled:opacity-40 shadow-lg"
+                className="h-12 flex items-center justify-center gap-2 rounded-sm text-body font-medium transition-all cursor-pointer border border-border bg-surface text-text-secondary hover:border-primary/40 hover:text-primary hover:bg-primary/5 active:scale-[0.97] disabled:opacity-40"
               >
                 {executing === val ? <Loader2 size={18} className="animate-spin" /> : null}
                 {val}
@@ -1580,7 +1580,7 @@ function GateDetailContent({
             <button
               onClick={() => handleCommand(null)}
               disabled={executing !== null}
-              className="h-12 flex items-center justify-center gap-2 rounded-sm text-body font-medium transition-all cursor-pointer bg-surface text-text-secondary hover:border-primary/40 hover:text-primary hover:bg-primary/5 active:scale-[0.97] disabled:opacity-40 shadow-lg"
+              className="h-12 flex items-center justify-center gap-2 rounded-sm text-body font-medium transition-all cursor-pointer border border-border bg-surface text-text-secondary hover:border-primary/40 hover:text-primary hover:bg-primary/5 active:scale-[0.97] disabled:opacity-40"
             >
               {executing ? <Loader2 size={18} className="animate-spin" /> : null}
               {t("controls.gate.command")}

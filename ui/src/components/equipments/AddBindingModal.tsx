@@ -246,7 +246,7 @@ export function AddBindingModal({
                       setError(null);
                     }}
                     placeholder={t("binding.aliasPlaceholder")}
-                    className="w-full px-3 py-2 text-small bg-surface rounded-sm outline-none placeholder:text-text-tertiary focus:border-primary transition-colors duration-150 shadow-lg"
+                    className="w-full px-3 py-2 text-small border border-border bg-surface rounded-sm outline-none placeholder:text-text-tertiary focus:border-primary transition-colors duration-150"
                   />
                 </div>
               )}

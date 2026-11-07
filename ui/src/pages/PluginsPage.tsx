@@ -220,7 +220,7 @@ export function PluginsPage() {
             onChange={(e) => setQuery(e.target.value)}
             placeholder={t("plugins.search.placeholder")}
             spellCheck={false}
-            className="w-full pl-9 pr-9 py-2 text-small text-text bg-surface rounded-sm placeholder:text-text-tertiary focus:outline-none focus:border-primary transition-colors shadow-lg"
+            className="w-full pl-9 pr-9 py-2 text-small text-text border border-border bg-surface rounded-sm placeholder:text-text-tertiary focus:outline-none focus:border-primary transition-colors"
           />
           {searching && (
             <button
@@ -324,7 +324,7 @@ function TabButton({
         px-4 py-2 text-small font-medium rounded-sm transition-colors cursor-pointer
         ${active
           ? "bg-primary-fill text-white"
-          : "bg-surface text-text-secondary hover:bg-border-light hover:text-text shadow-lg"
+          : "border border-border bg-surface text-text-secondary hover:bg-border-light hover:text-text"
         }
       `}
     >

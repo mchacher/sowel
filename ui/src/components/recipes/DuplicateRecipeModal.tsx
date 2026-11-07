@@ -160,7 +160,7 @@ export function DuplicateRecipeModal({
             <select
               value={targetZoneId}
               onChange={(e) => setTargetZoneId(e.target.value)}
-              className="w-full px-3 py-1.5 text-small bg-surface rounded-sm text-text shadow-lg"
+              className="w-full px-3 py-1.5 text-small border border-border bg-surface rounded-sm text-text"
             >
               <option value="">{t("common.select")}</option>
               {otherZones.map((z) => (
@@ -183,7 +183,7 @@ export function DuplicateRecipeModal({
                   <select
                     value={equipmentMap[slot.id] ?? ""}
                     onChange={(e) => setEquipmentMap({ ...equipmentMap, [slot.id]: e.target.value })}
-                    className="w-full px-3 py-1.5 text-small bg-surface rounded-sm text-text shadow-lg"
+                    className="w-full px-3 py-1.5 text-small border border-border bg-surface rounded-sm text-text"
                   >
                     {compatible.length > 1 && <option value="">{t("common.select")}</option>}
                     <EquipmentOptions equipments={compatible} zoneChains={zoneChains} />

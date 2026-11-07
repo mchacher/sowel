@@ -480,7 +480,7 @@ function ActionRow({
             type="text"
             value={editValue}
             onChange={(e) => setEditValue(e.target.value)}
-            className="w-full px-2 py-1 text-micro bg-surface rounded-sm text-text shadow-lg"
+            className="w-full px-2 py-1 text-micro border border-border bg-surface rounded-sm text-text"
           />
         )}
         {action.type === "recipe_toggle" && (
@@ -523,7 +523,7 @@ function ActionRow({
   }
 
   return (
-    <div className="flex items-center gap-2 px-2 py-1.5 rounded-sm bg-surface shadow-lg">
+    <div className="flex items-center gap-2 px-2 py-1.5 rounded-sm border border-border-light bg-surface">
       <span className="text-micro text-text flex-1 truncate">{label}</span>
       {onUpdate && action.type !== "recipe_params" && (
         <button onClick={startEdit} className="text-text-tertiary hover:text-primary flex-shrink-0">
@@ -609,7 +609,7 @@ function OrderValueControl({
       value={value}
       onChange={(e) => onChange(e.target.value)}
       placeholder={order.unit ? `(${order.unit})` : ""}
-      className="w-full px-1.5 py-1 text-micro bg-surface rounded-sm text-text placeholder:text-text-tertiary shadow-lg"
+      className="w-full px-1.5 py-1 text-micro border border-border bg-surface rounded-sm text-text placeholder:text-text-tertiary"
     />
   );
 }
@@ -823,7 +823,7 @@ function AddActionForm({
     }`;
 
   return (
-    <div className="bg-surface rounded-sm overflow-hidden shadow-lg">
+    <div className="border border-border-light bg-surface rounded-sm overflow-hidden">
       {/* Tab bar */}
       <div className="flex border-b border-border-light">
         <button onClick={() => setActionType("order")} className={tab(actionType === "order")}>
@@ -840,7 +840,7 @@ function AddActionForm({
             <select
               value={equipmentId}
               onChange={(e) => { setEquipmentId(e.target.value); setOrderAlias(""); setOrderValue(""); }}
-              className="w-full px-1.5 py-1 text-micro bg-surface rounded-sm text-text shadow-lg"
+              className="w-full px-1.5 py-1 text-micro border border-border bg-surface rounded-sm text-text"
             >
               <option value="">{t("modes.form.selectEquipment")}</option>
               {equipments.filter((eq) => eq.orderBindings.length > 0).map((eq) => (
@@ -864,7 +864,7 @@ function AddActionForm({
             <select
               value={instanceId}
               onChange={(e) => setInstanceId(e.target.value)}
-              className="w-full px-1.5 py-1 text-micro bg-surface rounded-sm text-text shadow-lg"
+              className="w-full px-1.5 py-1 text-micro border border-border bg-surface rounded-sm text-text"
             >
               <option value="">{t("modes.form.selectRecipe")}</option>
               {instances.map((inst) => (

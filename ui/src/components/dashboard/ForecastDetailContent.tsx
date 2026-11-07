@@ -132,9 +132,10 @@ function ForecastDayColumn({ day, locale }: { day: ForecastDay; locale: string }
       {/* The pill of the equipment page, at the foot of the column and behind
           the same rule, so the two surfaces say a day's confidence the same
           way. It wraps to two lines on a 68px column rather than shrinking
-          below a readable size; the slot is reserved whether or not there is
-          a pill, so the five columns end on one line. */}
-      <span className="mt-auto w-full border-t border-border-light pt-2 flex justify-center items-start min-h-[30px] sm:min-h-[24px]">
+          below a readable size (11 px: two lines and the padding need 36 px);
+          the slot is reserved whether or not there is a pill, so the five
+          columns end on one line. */}
+      <span className="mt-auto w-full border-t border-border-light pt-2 flex justify-center items-start min-h-[36px] sm:min-h-[24px]">
         {day.confidence && (
           <span
             className={`rounded-full border px-1.5 sm:px-2 py-0.5 text-micro font-semibold text-center leading-[1.25] ${

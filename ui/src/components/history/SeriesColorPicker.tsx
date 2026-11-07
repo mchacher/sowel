@@ -76,7 +76,7 @@ export function SeriesColorPicker({
           type="color"
           value={color}
           onChange={(e) => onChange(e.target.value)}
-          className="w-7 h-7 p-0 rounded-sm bg-surface cursor-pointer shadow-lg"
+          className="w-7 h-7 p-0 rounded-sm border border-border bg-surface cursor-pointer"
         />
         <span className="text-micro text-text-secondary">{t("analyse.customColor")}</span>
       </label>

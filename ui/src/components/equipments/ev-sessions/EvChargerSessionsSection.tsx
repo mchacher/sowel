@@ -191,7 +191,7 @@ export function EvChargerSessionsSection({
                 value={usualVehicleId ?? ""}
                 disabled={saving}
                 onChange={(e) => void setUsual(e.target.value)}
-                className="min-h-[36px] px-2 rounded-sm bg-surface text-small text-text shadow-lg"
+                className="min-h-[36px] px-2 rounded-sm border border-border bg-surface text-small text-text"
               >
                 <option value="">{t("equipments.evSessions.usual.none")}</option>
                 {vehicles.map((v) => (

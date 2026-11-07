@@ -124,7 +124,7 @@ function TariffTimeline({ slots }: { slots: TariffSlot[] }) {
         {segments.map((seg, i) => {
           const widthPct = ((seg.endMin - seg.startMin) / TOTAL_MINUTES) * 100;
           const color =
-            seg.tariff === "hp" ? HP_COLOR : seg.tariff === "hc" ? HC_COLOR : "#e5e7eb";
+            seg.tariff === "hp" ? HP_COLOR : seg.tariff === "hc" ? HC_COLOR : "var(--color-border)";
           return (
             <div
               key={i}

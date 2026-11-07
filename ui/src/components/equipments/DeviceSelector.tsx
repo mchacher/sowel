@@ -248,7 +248,7 @@ export function DeviceSelector({
           value={filter}
           onChange={(e) => setFilter(e.target.value)}
           placeholder={t("devices.filterPlaceholder")}
-          className="w-full pl-8 pr-3 py-1.5 text-caption bg-surface rounded-sm outline-none placeholder:text-text-tertiary focus:border-primary transition-colors duration-150 shadow-lg"
+          className="w-full pl-8 pr-3 py-1.5 text-caption border border-border bg-surface rounded-sm outline-none placeholder:text-text-tertiary focus:border-primary transition-colors duration-150"
         />
       </div>
 

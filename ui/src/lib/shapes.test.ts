@@ -2,6 +2,7 @@ import { readdirSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
+import { classNameOfTag, classNames } from "./classname-scan";
 
 // Spec 196, slice 7b — radii 6 / 10 / 16 and cards without a border
 // (decisions pr7-rayons and pr7-bordures). Tailwind 4 emits nothing for a
@@ -19,10 +20,17 @@ function sources(dir: string): string[] {
   });
 }
 
-const LINES = sources(srcRoot).flatMap((path) =>
-  readFileSync(path, "utf8")
+const FILES = sources(srcRoot).map((path) => ({ path, text: readFileSync(path, "utf8") }));
+
+const LINES = FILES.flatMap(({ path, text: file }) =>
+  file
     .split("\n")
     .map((text, i) => ({ where: `${path.slice(srcRoot.length)}:${i + 1}`, text })),
+);
+
+/** Every className value in ui/src, whole even when it spans several lines. */
+const CLASSNAMES = FILES.flatMap(({ path, text }) =>
+  classNames(text).map(({ line, cls }) => ({ where: `${path.slice(srcRoot.length)}:${line}`, cls })),
 );
 
 /** The value of a custom property in the first block that defines it after `from`. */
@@ -74,14 +82,60 @@ describe("cards", () => {
     // The 107 `bg-surface border border-border rounded-[10px]` sections of
     // before. Floating layers (menus, pickers, toasts) keep their border: they
     // sit over any content, not on the page. So does a dashed empty state.
-    const bordered = LINES.filter(
-      ({ text }) =>
-        /\bbg-surface\b/.test(text) &&
-        /(^|[\s"`])border(?=[\s"`])/.test(text) &&
-        /\bborder-border(-light)?\b/.test(text) &&
-        /\brounded-(md|lg|t-lg)\b/.test(text) &&
-        !/\b(absolute|fixed|shadow-lg|shadow-md|border-dashed)\b/.test(text),
+    // Floating layers are told by their class (absolute, fixed); a chart
+    // tooltip is positioned by the chart library, so it is listed here.
+    // Selectable options (a profile, a series chip) keep the border that shows
+    // their state. EvCurrentSessionCard is a bordered card the line-based 7b
+    // codemod could not see (its classes span three lines): listed until it is
+    // moved to `card`.
+    const KEEPS_BORDER = [
+      "components/energy/EnergyByUsageChart.tsx",
+      "components/shared-access/ProfilesTab.tsx",
+      "components/history/AnalyseView.tsx",
+      "components/equipments/ev-sessions/EvCurrentSessionCard.tsx",
+    ];
+    const bordered = CLASSNAMES.filter(
+      ({ where, cls }) =>
+        /\bbg-surface\b/.test(cls) &&
+        /(^|[\s"`])border(?=[\s"`])/.test(cls) &&
+        /\bborder-border(-light)?\b/.test(cls) &&
+        /\brounded-(md|lg|t-lg)\b/.test(cls) &&
+        !/\b(absolute|fixed|shadow-md|border-dashed)\b/.test(cls) &&
+        !KEEPS_BORDER.includes(where.replace(/:\d+$/, "")),
     );
     expect(bordered.map((h) => h.where)).toEqual([]);
+  });
+});
+
+// Review of phase 2: the 7b codemod took `border border-border` off ~140
+// fields, selects, steppers and secondary buttons and gave them `shadow-lg`, so
+// they lost their edge, their on-state border (`!border-active`) and their
+// focus border. A control on the surface needs its border to be seen at all.
+describe("controls", () => {
+  const has = (cls: string, token: string) => new RegExp(`(^|[\\s"'\`])${token}(?=[\\s"'\`]|$)`).test(cls);
+
+  // Segments inside a bordered group, and the solid button on the red takeover banner.
+  const BORDERLESS_OK = ["components/PeriodSelector.tsx", "components/layout/TakeoverBanner.tsx"];
+
+  it("gives every input, select, textarea and button on bg-surface a border", () => {
+    const hits = FILES.flatMap(({ path, text }) =>
+      [...text.matchAll(/<(input|select|textarea|button)\b/g)].flatMap((m) => {
+        const cls = classNameOfTag(text, m.index + m[0].length);
+        if (!cls || !has(cls, "bg-surface") || has(cls, "border(-[trblxy])?")) return [];
+        const where = path.slice(srcRoot.length);
+        if (BORDERLESS_OK.includes(where)) return [];
+        return [`${where}:${text.slice(0, m.index).split("\n").length}`];
+      }),
+    );
+    expect(hits).toEqual([]);
+  });
+
+  it("never draws a control as a floating layer (bg-surface rounded-sm shadow-lg)", () => {
+    const hits = FILES.flatMap(({ path, text }) =>
+      [...text.matchAll(/"[^"\n]*"|`[^`]*`/g)]
+        .filter(([s]) => has(s, "bg-surface") && has(s, "rounded-sm") && has(s, "shadow-lg"))
+        .map((m) => `${path.slice(srcRoot.length)}:${text.slice(0, m.index).split("\n").length}`),
+    );
+    expect(hits).toEqual([]);
   });
 });

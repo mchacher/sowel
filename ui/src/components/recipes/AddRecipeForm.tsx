@@ -258,7 +258,7 @@ export function AddRecipeForm({
                                     <select
                                       value={params[slot.id] ?? ""}
                                       onChange={(e) => setParams({ ...params, [slot.id]: e.target.value })}
-                                      className="w-full px-2 py-1.5 text-small bg-surface rounded-sm text-text shadow-lg"
+                                      className="w-full px-2 py-1.5 text-small border border-border bg-surface rounded-sm text-text"
                                     >
                                       <option value="">{t("common.select")}</option>
                                       <EquipmentOptions equipments={getEquipmentOptions(slot.id)} zoneChains={zoneChains} />
@@ -273,7 +273,7 @@ export function AddRecipeForm({
                                         <select
                                           value={params[slot.id] ?? ""}
                                           onChange={(e) => setParams({ ...params, [slot.id]: e.target.value })}
-                                          className="w-full px-2 py-1.5 text-small bg-surface rounded-sm text-text shadow-lg"
+                                          className="w-full px-2 py-1.5 text-small border border-border bg-surface rounded-sm text-text"
                                         >
                                           <option value="">{t("common.select")}</option>
                                           {bindings.map((b) => (
@@ -286,7 +286,7 @@ export function AddRecipeForm({
                                     <select
                                       value={String(params[slot.id] ?? slot.defaultValue ?? "")}
                                       onChange={(e) => setParams({ ...params, [slot.id]: e.target.value })}
-                                      className="w-full px-3 py-1.5 text-small bg-surface rounded-sm text-text shadow-lg"
+                                      className="w-full px-3 py-1.5 text-small border border-border bg-surface rounded-sm text-text"
                                     >
                                       {(slot.options ?? []).map((o) => (
                                         <option key={o.value} value={o.value}>
@@ -307,7 +307,7 @@ export function AddRecipeForm({
                                       value={params[slot.id] ?? ""}
                                       onChange={(e) => setParams({ ...params, [slot.id]: e.target.value })}
                                       placeholder={slot.constraints?.max ? `1-${slot.constraints.max}` : ""}
-                                      className="w-full px-2 py-1 text-small bg-surface rounded-sm text-text placeholder:text-text-tertiary shadow-lg"
+                                      className="w-full px-2 py-1 text-small border border-border bg-surface rounded-sm text-text placeholder:text-text-tertiary"
                                     />
                                   )}
                                 </div>
@@ -338,7 +338,7 @@ export function AddRecipeForm({
                   return chunk.slots.map((slot) => isSlotHidden(slot, params, selectedRecipe.slots) ? null : (
                     <div key={slot.id} className="mb-3">
                       {slot.type === "boolean" ? (
-                        <label className="flex items-center gap-2 px-3 py-1.5 text-small bg-surface rounded-sm text-text cursor-pointer hover:bg-border-light/30 transition-colors duration-150 shadow-lg">
+                        <label className="flex items-center gap-2 px-3 py-1.5 text-small border border-border bg-surface rounded-sm text-text cursor-pointer hover:bg-border-light/30 transition-colors duration-150">
                           <input
                             type="checkbox"
                             checked={params[slot.id] === "true"}
@@ -371,7 +371,7 @@ export function AddRecipeForm({
                           <select
                             value={params[slot.id] ?? ""}
                             onChange={(e) => setParams({ ...params, [slot.id]: e.target.value })}
-                            className="w-full px-3 py-1.5 text-small bg-surface rounded-sm text-text shadow-lg"
+                            className="w-full px-3 py-1.5 text-small border border-border bg-surface rounded-sm text-text"
                           >
                             <option value="">{t("common.select")}</option>
                             <EquipmentOptions equipments={getEquipmentOptions(slot.id)} zoneChains={zoneChains} />
@@ -387,7 +387,7 @@ export function AddRecipeForm({
                             <select
                               value={params[slot.id] ?? ""}
                               onChange={(e) => setParams({ ...params, [slot.id]: e.target.value })}
-                              className="w-full px-3 py-1.5 text-small bg-surface rounded-sm text-text shadow-lg"
+                              className="w-full px-3 py-1.5 text-small border border-border bg-surface rounded-sm text-text"
                             >
                               <option value="">{t("common.select")}</option>
                               {bindings.map((b) => (
@@ -415,7 +415,7 @@ export function AddRecipeForm({
                         <select
                           value={String(params[slot.id] ?? slot.defaultValue ?? "")}
                           onChange={(e) => setParams({ ...params, [slot.id]: e.target.value })}
-                          className="w-full px-3 py-1.5 text-small bg-surface rounded-sm text-text shadow-lg"
+                          className="w-full px-3 py-1.5 text-small border border-border bg-surface rounded-sm text-text"
                         >
                           {(slot.options ?? []).map((o) => (
                             <option key={o.value} value={o.value}>
@@ -438,7 +438,7 @@ export function AddRecipeForm({
                           value={params[slot.id] ?? ""}
                           onChange={(e) => setParams({ ...params, [slot.id]: e.target.value })}
                           placeholder={slot.defaultValue ? String(slot.defaultValue) : recipeSlotDescription(selectedRecipe, slot, lang)}
-                          className="w-full px-3 py-1.5 text-small bg-surface rounded-sm text-text placeholder:text-text-tertiary shadow-lg"
+                          className="w-full px-3 py-1.5 text-small border border-border bg-surface rounded-sm text-text placeholder:text-text-tertiary"
                         />
                       )}
                       <p className="text-caption text-text-tertiary mt-0.5">{recipeSlotDescription(selectedRecipe, slot, lang)}</p>

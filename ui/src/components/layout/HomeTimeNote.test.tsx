@@ -1,4 +1,5 @@
 import { describe, it, expect, beforeEach, afterEach } from "vitest";
+import { act } from "react";
 import { render, screen } from "../../test-utils";
 import i18n from "../../i18n";
 import { useTimezone } from "../../store/useTimezone";
@@ -28,6 +29,37 @@ describe("HomeTimeNote", () => {
     useTimezone.setState({ tz: otherTz, loaded: false });
     const { container } = render(<HomeTimeNote />);
     expect(container.firstChild).toBeNull();
+  });
+
+  it("renders nothing for another spelling of the browser's zone", () => {
+    // Intl takes zone names in any case and resolves them to the canonical one.
+    useTimezone.setState({ tz: browserTz.toLowerCase(), loaded: true });
+    const { container } = render(<HomeTimeNote />);
+    expect(container.firstChild).toBeNull();
+  });
+
+  it("shows the home zone's time as soon as it is known, never the UTC placeholder's", () => {
+    useTimezone.setState({ tz: "UTC", loaded: false });
+    const { container } = render(<HomeTimeNote />);
+    expect(container.firstChild).toBeNull();
+    // Every text the note ever showed, intermediate renders included.
+    const observer = new MutationObserver(() => {});
+    observer.observe(container, { subtree: true, childList: true, characterData: true, characterDataOldValue: true });
+    act(() => useTimezone.setState({ tz: otherTz, loaded: true }));
+    const shown = observer
+      .takeRecords()
+      .flatMap((r) => (r.type === "characterData" ? [r.oldValue ?? ""] : []))
+      .filter((v) => v.startsWith("Heure maison"));
+    observer.disconnect();
+    const expected = new Intl.DateTimeFormat("fr-FR", {
+      timeZone: otherTz,
+      hour: "2-digit",
+      minute: "2-digit",
+      hour12: false,
+      timeZoneName: "short",
+    }).format(new Date());
+    expect(screen.getByText(/^Heure maison/).textContent).toBe(`Heure maison ${expected}`);
+    expect(shown).toEqual([]);
   });
 
   it("shows the home time, minutes only, when the zones differ", () => {

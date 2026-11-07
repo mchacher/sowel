@@ -136,7 +136,7 @@ export function DevicesPage() {
                 value={filter}
                 onChange={(e) => setFilter(e.target.value)}
                 placeholder={t("devices.filterPlaceholder")}
-                className="w-full sm:w-[200px] pl-8 pr-8 py-1.5 text-small bg-surface rounded-sm outline-none placeholder:text-text-tertiary focus:border-primary transition-colors duration-150 shadow-lg"
+                className="w-full sm:w-[200px] pl-8 pr-8 py-1.5 text-small border border-border bg-surface rounded-sm outline-none placeholder:text-text-tertiary focus:border-primary transition-colors duration-150"
               />
               {filter && (
                 <button

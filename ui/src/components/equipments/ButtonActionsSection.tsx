@@ -432,7 +432,7 @@ function AddEffectForm({
           <select
             value={actionValue}
             onChange={(e) => setActionValue(e.target.value)}
-            className="w-full px-3 py-1.5 text-small bg-surface rounded-sm text-text shadow-lg"
+            className="w-full px-3 py-1.5 text-small border border-border bg-surface rounded-sm text-text"
           >
             {actionValues.map((action) => (
               <option key={action} value={action}>{getActionLabel(action)}</option>
@@ -449,7 +449,7 @@ function AddEffectForm({
         <select
           value={effectType}
           onChange={(e) => setEffectType(e.target.value as ButtonEffectType)}
-          className="w-full px-3 py-1.5 text-small bg-surface rounded-sm text-text shadow-lg"
+          className="w-full px-3 py-1.5 text-small border border-border bg-surface rounded-sm text-text"
         >
           <option value="mode_activate">{t("buttonActions.effectType.mode_activate")}</option>
           <option value="mode_toggle">{t("buttonActions.effectType.mode_toggle")}</option>
@@ -468,7 +468,7 @@ function AddEffectForm({
           <select
             value={modeId}
             onChange={(e) => setModeId(e.target.value)}
-            className="w-full px-3 py-1.5 text-small bg-surface rounded-sm text-text shadow-lg"
+            className="w-full px-3 py-1.5 text-small border border-border bg-surface rounded-sm text-text"
           >
             <option value="">{t("common.select")}</option>
             {modes.map((m) => (
@@ -487,7 +487,7 @@ function AddEffectForm({
             <select
               value={modeAId}
               onChange={(e) => setModeAId(e.target.value)}
-              className="w-full px-3 py-1.5 text-small bg-surface rounded-sm text-text shadow-lg"
+              className="w-full px-3 py-1.5 text-small border border-border bg-surface rounded-sm text-text"
             >
               <option value="">{t("common.select")}</option>
               {modes.map((m) => (
@@ -502,7 +502,7 @@ function AddEffectForm({
             <select
               value={modeBId}
               onChange={(e) => setModeBId(e.target.value)}
-              className="w-full px-3 py-1.5 text-small bg-surface rounded-sm text-text shadow-lg"
+              className="w-full px-3 py-1.5 text-small border border-border bg-surface rounded-sm text-text"
             >
               <option value="">{t("common.select")}</option>
               {modes.filter((m) => m.id !== modeAId).map((m) => (
@@ -527,7 +527,7 @@ function AddEffectForm({
                 setOrderAlias("");
                 setOrderValue("");
               }}
-              className="w-full px-3 py-1.5 text-small bg-surface rounded-sm text-text shadow-lg"
+              className="w-full px-3 py-1.5 text-small border border-border bg-surface rounded-sm text-text"
             >
               <option value="">{t("common.select")}</option>
               {zones.map((z) => (
@@ -555,7 +555,7 @@ function AddEffectForm({
                   setOrderValue("");
                 }
               }}
-              className="w-full px-3 py-1.5 text-small bg-surface rounded-sm text-text shadow-lg"
+              className="w-full px-3 py-1.5 text-small border border-border bg-surface rounded-sm text-text"
             >
               <option value="">{t("common.select")}</option>
               {equipments.filter((eq) => eq.zoneId === eqZoneId && eq.orderBindings.length > 0).map((eq) => (
@@ -580,7 +580,7 @@ function AddEffectForm({
                       // Pre-select value if single enum
                       setOrderValue("");
                     }}
-                    className="w-full px-3 py-1.5 text-small bg-surface rounded-sm text-text shadow-lg"
+                    className="w-full px-3 py-1.5 text-small border border-border bg-surface rounded-sm text-text"
                   >
                     <option value="">{t("common.select")}</option>
                     {selectedEquipment.orderBindings.map((o) => (
@@ -598,7 +598,7 @@ function AddEffectForm({
                   <select
                     value={orderValue}
                     onChange={(e) => setOrderValue(e.target.value)}
-                    className="w-full px-3 py-1.5 text-small bg-surface rounded-sm text-text shadow-lg"
+                    className="w-full px-3 py-1.5 text-small border border-border bg-surface rounded-sm text-text"
                   >
                     <option value="">{t("common.select")}</option>
                     {enumVals.map((v) => (
@@ -620,7 +620,7 @@ function AddEffectForm({
                     onChange={(e) => setOrderValue(e.target.value)}
                     min={selectedOrder.min}
                     max={selectedOrder.max}
-                    className="w-full px-3 py-1.5 text-small bg-surface rounded-sm text-text shadow-lg"
+                    className="w-full px-3 py-1.5 text-small border border-border bg-surface rounded-sm text-text"
                   />
                 </div>
               ) : null}
@@ -638,7 +638,7 @@ function AddEffectForm({
             <select
               value={instanceId}
               onChange={(e) => setInstanceId(e.target.value)}
-              className="w-full px-3 py-1.5 text-small bg-surface rounded-sm text-text shadow-lg"
+              className="w-full px-3 py-1.5 text-small border border-border bg-surface rounded-sm text-text"
             >
               <option value="">{t("common.select")}</option>
               {instances.map((inst) => (
@@ -674,7 +674,7 @@ function AddEffectForm({
             <select
               value={zoZoneId}
               onChange={(e) => setZoZoneId(e.target.value)}
-              className="w-full px-3 py-1.5 text-small bg-surface rounded-sm text-text shadow-lg"
+              className="w-full px-3 py-1.5 text-small border border-border bg-surface rounded-sm text-text"
             >
               <option value="">{t("common.select")}</option>
               {zones.map((z) => (
@@ -693,7 +693,7 @@ function AddEffectForm({
                   setZoOrderKey(e.target.value);
                   setZoValue("");
                 }}
-                className="w-full px-3 py-1.5 text-small bg-surface rounded-sm text-text shadow-lg"
+                className="w-full px-3 py-1.5 text-small border border-border bg-surface rounded-sm text-text"
               >
                 <option value="">{t("common.select")}</option>
                 {visibleZoneOrderOptions.map((opt) => (
@@ -713,7 +713,7 @@ function AddEffectForm({
                 type="number"
                 value={zoValue}
                 onChange={(e) => setZoValue(e.target.value)}
-                className="w-full px-3 py-1.5 text-small bg-surface rounded-sm text-text shadow-lg"
+                className="w-full px-3 py-1.5 text-small border border-border bg-surface rounded-sm text-text"
               />
             </div>
           )}

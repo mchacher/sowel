@@ -831,7 +831,7 @@ function MappingRow({
               type="text"
               value={publishKey}
               onChange={(e) => setPublishKey(e.target.value)}
-              className="w-full px-2 py-1 text-caption bg-surface rounded-sm text-text font-mono shadow-lg"
+              className="w-full px-2 py-1 text-caption border border-border bg-surface rounded-sm text-text font-mono"
               autoFocus
             />
           </div>
@@ -976,7 +976,7 @@ function AddMappingForm({
             value={publishKey}
             onChange={(e) => setPublishKey(e.target.value)}
             placeholder="Thome"
-            className="w-full px-2 py-1 text-caption bg-surface rounded-sm text-text font-mono placeholder:text-text-tertiary shadow-lg"
+            className="w-full px-2 py-1 text-caption border border-border bg-surface rounded-sm text-text font-mono placeholder:text-text-tertiary"
             autoFocus
           />
         </div>

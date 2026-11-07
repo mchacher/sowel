@@ -949,7 +949,7 @@ export function AnalyseView() {
                     setSelectedZoneId(e.target.value);
                     setSelectedEquipmentId("");
                   }}
-                  className="w-full px-3 py-1.5 pr-8 rounded-sm bg-surface text-caption text-text appearance-none cursor-pointer shadow-lg"
+                  className="w-full px-3 py-1.5 pr-8 rounded-sm border border-border bg-surface text-caption text-text appearance-none cursor-pointer"
                 >
                   {flatZones.map((z) => (
                     <option key={z.id} value={z.id}>
@@ -970,7 +970,7 @@ export function AnalyseView() {
                 <select
                   value={selectedEquipmentId}
                   onChange={(e) => setSelectedEquipmentId(e.target.value)}
-                  className="w-full px-3 py-1.5 pr-8 rounded-sm bg-surface text-caption text-text appearance-none cursor-pointer shadow-lg"
+                  className="w-full px-3 py-1.5 pr-8 rounded-sm border border-border bg-surface text-caption text-text appearance-none cursor-pointer"
                 >
                   <option value="">{t("analyse.selectEquipment")}</option>
                   {filteredEquipments.map((eq) => (

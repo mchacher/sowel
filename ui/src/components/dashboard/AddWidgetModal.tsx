@@ -122,7 +122,7 @@ export function AddWidgetModal({
                 <select
                   value={eqZoneId}
                   onChange={(e) => setEqZoneId(e.target.value)}
-                  className="w-full px-3 py-2 text-small bg-surface rounded-sm text-text shadow-lg"
+                  className="w-full px-3 py-2 text-small border border-border bg-surface rounded-sm text-text"
                 >
                   <option value="">{t("dashboard.chooseZone")}</option>
                   {flatZones.map((z) => (
@@ -192,7 +192,7 @@ export function AddWidgetModal({
                 <select
                   value={selectedZoneId}
                   onChange={(e) => setSelectedZoneId(e.target.value)}
-                  className="w-full px-3 py-2 text-small bg-surface rounded-sm text-text shadow-lg"
+                  className="w-full px-3 py-2 text-small border border-border bg-surface rounded-sm text-text"
                 >
                   <option value="">{t("dashboard.chooseZone")}</option>
                   {flatZones.map((z) => (

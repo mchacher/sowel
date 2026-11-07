@@ -115,7 +115,7 @@ export function SolarInstallationSettings() {
               <select
                 value={effectiveId ?? ""}
                 onChange={(e) => setSelectedId(e.target.value)}
-                className="px-2 py-1.5 rounded-sm bg-surface text-small text-text shadow-lg"
+                className="px-2 py-1.5 rounded-sm border border-border bg-surface text-small text-text"
               >
                 {meters.map((m) => (
                   <option key={m.id} value={m.id}>

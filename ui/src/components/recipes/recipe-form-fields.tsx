@@ -208,7 +208,7 @@ export function DurationInput({
           }
         }}
         placeholder={placeholder ?? "10"}
-        className="flex-1 px-3 py-1.5 text-small bg-surface rounded-sm text-text placeholder:text-text-tertiary shadow-lg"
+        className="flex-1 px-3 py-1.5 text-small border border-border bg-surface rounded-sm text-text placeholder:text-text-tertiary"
       />
       <span className="text-caption text-text-tertiary font-medium">{t("time.min")}</span>
     </div>
@@ -234,7 +234,7 @@ export function TimeInput({
       value={value ?? ""}
       onChange={(e) => onChange(e.target.value)}
       placeholder={placeholder ?? "08:00"}
-      className="w-full px-3 py-1.5 text-small bg-surface rounded-sm text-text shadow-lg"
+      className="w-full px-3 py-1.5 text-small border border-border bg-surface rounded-sm text-text"
     />
   );
 }
@@ -293,7 +293,7 @@ export function SingleEquipmentZonePicker({
           // Otherwise clear the equipment if it no longer belongs to the zone.
           else if (selectedEq && selectedEq.zoneId !== zid) onChange("");
         }}
-        className="flex-1 px-3 py-1.5 text-small bg-surface rounded-sm text-text shadow-lg"
+        className="flex-1 px-3 py-1.5 text-small border border-border bg-surface rounded-sm text-text"
       >
         <option value="">Zone…</option>
         {zonesWithOptions.map((z) => (
@@ -306,7 +306,7 @@ export function SingleEquipmentZonePicker({
         value={value}
         onChange={(e) => onChange(e.target.value)}
         disabled={!pickerZoneId}
-        className="flex-1 px-3 py-1.5 text-small bg-surface rounded-sm text-text disabled:opacity-40 shadow-lg"
+        className="flex-1 px-3 py-1.5 text-small border border-border bg-surface rounded-sm text-text disabled:opacity-40"
       >
         <option value="">{t("common.select")}</option>
         {pickerOptions.map((eq) => (
@@ -379,7 +379,7 @@ export function EquipmentListPicker({
         const eq = equipments.find((e) => e.id === id);
         const zone = eq ? zones.find((z) => z.id === eq.zoneId) : null;
         return (
-          <div key={id} className="flex items-center gap-2 px-2 py-1 mb-1 text-small bg-surface rounded-sm shadow-lg">
+          <div key={id} className="flex items-center gap-2 px-2 py-1 mb-1 text-small border border-border bg-surface rounded-sm">
             {zone && <span className="min-w-0 text-micro text-text-tertiary truncate">{zone.label}</span>}
             <span className="flex-1 min-w-0 text-text truncate">{eq?.name ?? id}</span>
             <button type="button" onClick={() => handleRemove(id)} className="p-0.5 text-text-tertiary hover:text-error transition-colors">
@@ -406,7 +406,7 @@ export function EquipmentListPicker({
                 setPickerZoneId(zid);
               }
             }}
-            className="flex-1 px-2 py-1 text-small bg-surface rounded-sm text-text shadow-lg"
+            className="flex-1 px-2 py-1 text-small border border-border bg-surface rounded-sm text-text"
           >
             <option value="">Zone…</option>
             {zonesWithOptions.map((z) => (
@@ -425,7 +425,7 @@ export function EquipmentListPicker({
               }
             }}
             disabled={!pickerZoneId}
-            className="flex-1 px-2 py-1 text-small bg-surface rounded-sm text-text disabled:opacity-40 shadow-lg"
+            className="flex-1 px-2 py-1 text-small border border-border bg-surface rounded-sm text-text disabled:opacity-40"
           >
             <option value="">{t("common.select")}</option>
             {pickerOptions.map((eq) => (
@@ -467,7 +467,7 @@ export function EquipmentCheckboxList({
         return (
           <label
             key={eq.id}
-            className="flex items-center gap-2 px-3 py-1.5 text-small bg-surface rounded-sm text-text cursor-pointer hover:bg-border-light/30 transition-colors duration-150 shadow-lg"
+            className="flex items-center gap-2 px-3 py-1.5 text-small border border-border bg-surface rounded-sm text-text cursor-pointer hover:bg-border-light/30 transition-colors duration-150"
           >
             <input
               type="checkbox"

@@ -167,7 +167,7 @@ export function EquipmentForm({ title, initial, defaultZoneId, zones, onSubmit, 
                       setType(e.target.value as EquipmentType);
                       setSelectedDeviceIds([]);
                     }}
-                    className="w-full px-3 py-2 text-body bg-surface rounded-sm outline-none focus:border-primary transition-colors duration-150 shadow-lg"
+                    className="w-full px-3 py-2 text-body border border-border bg-surface rounded-sm outline-none focus:border-primary transition-colors duration-150"
                     disabled={offeredOnEdit !== null && offeredOnEdit.length < 2}
                   >
                     {sortedTypes.map((et) => (
@@ -187,7 +187,7 @@ export function EquipmentForm({ title, initial, defaultZoneId, zones, onSubmit, 
                     onChange={(e) => setName(e.target.value)}
                     onKeyDown={handleKeyDown}
                     placeholder={t("equipments.form.namePlaceholder")}
-                    className="w-full px-3 py-2 text-body bg-surface rounded-sm outline-none placeholder:text-text-tertiary focus:border-primary transition-colors duration-150 shadow-lg"
+                    className="w-full px-3 py-2 text-body border border-border bg-surface rounded-sm outline-none placeholder:text-text-tertiary focus:border-primary transition-colors duration-150"
                     autoFocus
                     maxLength={100}
                   />
@@ -201,7 +201,7 @@ export function EquipmentForm({ title, initial, defaultZoneId, zones, onSubmit, 
                   <select
                     value={zoneId}
                     onChange={(e) => setZoneId(e.target.value)}
-                    className="w-full px-3 py-2 text-body bg-surface rounded-sm outline-none focus:border-primary transition-colors duration-150 shadow-lg"
+                    className="w-full px-3 py-2 text-body border border-border bg-surface rounded-sm outline-none focus:border-primary transition-colors duration-150"
                   >
                     <option value="">{t("equipments.form.selectZone")}</option>
                     {flatZones.map((z) => (

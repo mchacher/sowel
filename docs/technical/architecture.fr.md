@@ -394,14 +394,14 @@ Détails : [spec 181](https://github.com/mchacher/sowel/tree/main/specs/181-shar
 | Propriété                 | Valeur                                                                                                                                   |
 | ------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------- |
 | **Police body**           | Inter                                                                                                                                    |
-| **Police mono**           | JetBrains Mono (valeurs, logs)                                                                                                           |
-| **Couleur primaire**      | `#1A4F6E` (ocean blue), hover : `#13405A`, light : `#E6F0F6`                                                                             |
+| **Police mono**           | JetBrains Mono pour les logs, le JSON, les identifiants, les versions et le code seulement ; les nombres sont en Inter `tabular-nums`    |
+| **Couleur primaire**      | `#1A4F6E` (ocean blue), hover : `#144159`, light : `#EEF5F8` ; `bg-primary-fill` porte le texte, `bg-primary` (l'encre) jamais           |
 | **Rôles de couleur**      | Ambre `#F2C035` = allumé ou en marche seulement ; les autres : `design-system/tokens.md` §1.2                                            |
 | **Espacement de base**    | 4px                                                                                                                                      |
 | **Border radius**         | 6px contrôles (`rounded-sm`), 10px cartes (`rounded-md`), 16px modales et feuilles (`rounded-lg`), full                                  |
 | **Cartes**                | classe `card` : pas de bordure, ombre douce en clair, ton plus clair en sombre ; un groupe dans une carte est un puits (`bg-background`) |
-| **Taille de police body** | 14px (tableau de bord dense)                                                                                                             |
-| **Valeurs de données**    | 28px (lisibles d'un coup d'œil)                                                                                                          |
+| **Échelle typographique** | `text-micro` 11, `caption` 12, `small` 13, `body` 14, `lead` 16, `title` 20, `display` 28, `value` 40 px ; le lint refuse les autres     |
+| **Contrôles**             | Champs et boutons secondaires gardent `border border-border` et un anneau de focus ; `shadow-lg` est pour modales, feuilles, popovers    |
 | **Icônes**                | Lucide React, stroke 1.5px                                                                                                               |
 
 ---

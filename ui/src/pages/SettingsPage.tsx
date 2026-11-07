@@ -1543,7 +1543,7 @@ function UserManagementSection({ currentUserId }: { currentUserId: string }) {
                 type="text"
                 value={newUsername}
                 onChange={(e) => setNewUsername(e.target.value)}
-                className="w-full px-3 py-2 text-body bg-surface rounded-sm text-text focus:outline-none focus:border-primary shadow-lg"
+                className="w-full px-3 py-2 text-body border border-border bg-surface rounded-sm text-text focus:outline-none focus:border-primary"
               />
             </div>
             <div>
@@ -1554,7 +1554,7 @@ function UserManagementSection({ currentUserId }: { currentUserId: string }) {
                 type="text"
                 value={newDisplayName}
                 onChange={(e) => setNewDisplayName(e.target.value)}
-                className="w-full px-3 py-2 text-body bg-surface rounded-sm text-text focus:outline-none focus:border-primary shadow-lg"
+                className="w-full px-3 py-2 text-body border border-border bg-surface rounded-sm text-text focus:outline-none focus:border-primary"
               />
             </div>
             <div>
@@ -1565,7 +1565,7 @@ function UserManagementSection({ currentUserId }: { currentUserId: string }) {
                 type="password"
                 value={newPassword}
                 onChange={(e) => setNewPassword(e.target.value)}
-                className="w-full px-3 py-2 text-body bg-surface rounded-sm text-text focus:outline-none focus:border-primary shadow-lg"
+                className="w-full px-3 py-2 text-body border border-border bg-surface rounded-sm text-text focus:outline-none focus:border-primary"
               />
             </div>
             <div>
@@ -1575,7 +1575,7 @@ function UserManagementSection({ currentUserId }: { currentUserId: string }) {
               <select
                 value={newRole}
                 onChange={(e) => setNewRole(e.target.value as UserRole)}
-                className="w-full px-3 py-2 text-body bg-surface rounded-sm text-text focus:outline-none focus:border-primary shadow-lg"
+                className="w-full px-3 py-2 text-body border border-border bg-surface rounded-sm text-text focus:outline-none focus:border-primary"
               >
                 <option value="standard">standard</option>
                 <option value="admin">admin</option>
@@ -1618,7 +1618,7 @@ function UserManagementSection({ currentUserId }: { currentUserId: string }) {
                 <select
                   value={u.role}
                   onChange={(e) => handleChangeRole(u, e.target.value as UserRole)}
-                  className="text-micro px-2 py-0.5 bg-surface rounded-sm text-text-secondary shadow-lg"
+                  className="text-micro px-2 py-0.5 border border-border bg-surface rounded-sm text-text-secondary"
                   disabled={u.id === currentUserId}
                 >
                   <option value="standard">standard</option>

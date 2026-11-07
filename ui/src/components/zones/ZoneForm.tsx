@@ -79,7 +79,7 @@ export function ZoneForm({ initial, parentZones, defaultParentId, onSubmit, onCl
               value={name}
               onChange={(e) => setName(e.target.value)}
               placeholder={t("zones.form.namePlaceholder")}
-              className="w-full px-3 py-2 text-body bg-surface rounded-sm outline-none placeholder:text-text-tertiary focus:border-primary transition-colors duration-150 shadow-lg"
+              className="w-full px-3 py-2 text-body border border-border bg-surface rounded-sm outline-none placeholder:text-text-tertiary focus:border-primary transition-colors duration-150"
               autoFocus
               maxLength={100}
             />
@@ -93,7 +93,7 @@ export function ZoneForm({ initial, parentZones, defaultParentId, onSubmit, onCl
             <select
               value={parentId ?? ""}
               onChange={(e) => setParentId(e.target.value || null)}
-              className="w-full px-3 py-2 text-body bg-surface rounded-sm outline-none focus:border-primary transition-colors duration-150 shadow-lg"
+              className="w-full px-3 py-2 text-body border border-border bg-surface rounded-sm outline-none focus:border-primary transition-colors duration-150"
             >
               <option value="">{t("zones.form.parentNone")}</option>
               {parentZones.map((z) => (
@@ -115,7 +115,7 @@ export function ZoneForm({ initial, parentZones, defaultParentId, onSubmit, onCl
               value={description}
               onChange={(e) => setDescription(e.target.value)}
               placeholder="Pièce principale, 35m²..."
-              className="w-full px-3 py-2 text-body bg-surface rounded-sm outline-none placeholder:text-text-tertiary focus:border-primary transition-colors duration-150 shadow-lg"
+              className="w-full px-3 py-2 text-body border border-border bg-surface rounded-sm outline-none placeholder:text-text-tertiary focus:border-primary transition-colors duration-150"
               maxLength={500}
             />
           </div>

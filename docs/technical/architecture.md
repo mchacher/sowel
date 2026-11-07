@@ -514,18 +514,18 @@ Details: [spec 181](https://github.com/mchacher/sowel/tree/main/specs/181-shared
 
 ## Design System
 
-| Property           | Value                                                                                                                  |
-| ------------------ | ---------------------------------------------------------------------------------------------------------------------- |
-| **Body font**      | Inter                                                                                                                  |
-| **Monospace font** | JetBrains Mono (values, logs)                                                                                          |
-| **Primary color**  | `#1A4F6E` (ocean blue), hover `#144159`, light `#EEF5F8`                                                               |
-| **Colour roles**   | Amber `#F2C035` = on or running only; others in `design-system/tokens.md` §1.2                                         |
-| **Spacing base**   | 4px                                                                                                                    |
-| **Border radius**  | 6px controls (`rounded-sm`), 10px cards (`rounded-md`), 16px modals and sheets (`rounded-lg`), full                    |
-| **Cards**          | `card` class: no border, soft shadow in light, lighter tone in dark; a group inside a card is a well (`bg-background`) |
-| **Body font size** | 14px (dense dashboard)                                                                                                 |
-| **Data values**    | 28px (readable at a glance)                                                                                            |
-| **Icons**          | Lucide React, stroke 1.5px                                                                                             |
+| Property           | Value                                                                                                                         |
+| ------------------ | ----------------------------------------------------------------------------------------------------------------------------- |
+| **Body font**      | Inter                                                                                                                         |
+| **Monospace font** | JetBrains Mono for logs, JSON, ids, versions and code only; numbers are Inter with `tabular-nums`                             |
+| **Primary color**  | `#1A4F6E` (ocean blue), hover `#144159`, light `#EEF5F8`; `bg-primary-fill` carries text, `bg-primary` (the ink) never        |
+| **Colour roles**   | Amber `#F2C035` = on or running only; others in `design-system/tokens.md` §1.2                                                |
+| **Spacing base**   | 4px                                                                                                                           |
+| **Border radius**  | 6px controls (`rounded-sm`), 10px cards (`rounded-md`), 16px modals and sheets (`rounded-lg`), full                           |
+| **Cards**          | `card` class: no border, soft shadow in light, lighter tone in dark; a group inside a card is a well (`bg-background`)        |
+| **Type scale**     | `text-micro` 11, `caption` 12, `small` 13, `body` 14, `lead` 16, `title` 20, `display` 28, `value` 40 px; lint rejects others |
+| **Controls**       | Fields and secondary buttons keep `border border-border` and a focus ring; `shadow-lg` is for modals, sheets, popovers        |
+| **Icons**          | Lucide React, stroke 1.5px                                                                                                    |
 
 ---
 

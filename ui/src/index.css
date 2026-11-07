@@ -135,10 +135,11 @@
 
 /* Native controls follow the theme: checkboxes, radios, selects, date and
    time pickers and scrollbars take the primary colour and go dark with the
-   .dark class (spec 196). */
+   .dark class (spec 196). A checked box is a fill carrying a white tick, so it
+   takes the fill token, not the ink (which goes light in dark). */
 :root {
   color-scheme: light;
-  accent-color: var(--color-primary);
+  accent-color: var(--color-primary-fill);
 }
 .dark {
   color-scheme: dark;
@@ -192,13 +193,20 @@ h1 {
   );
 }
 
-/* Form inputs — clean focus ring */
+/* Form inputs — the border turns primary on focus, and a ring in the primary
+   ink marks the field without relying on that colour change alone (WCAG
+   2.4.7). Unlayered, so it beats an `outline-none` utility on the element. */
 input, select, textarea {
   outline: none;
 }
 
 input:focus, select:focus, textarea:focus {
   border-color: var(--color-primary);
+}
+
+input:focus-visible, select:focus-visible, textarea:focus-visible {
+  outline: 2px solid var(--color-primary);
+  outline-offset: 1px;
 }
 
 /* Scrollbar styling */

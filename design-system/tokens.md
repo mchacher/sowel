@@ -267,7 +267,8 @@ Three radii and full (spec 196, decision pr7-rayons). They replaced twelve hand-
 - **Card**: one class, `card` (`@utility card` in `ui/src/index.css`): the surface, `rounded-md`, `--sh-card`, no border. In light it floats on the tinted page (`--n-50`) with a soft shadow; in dark the surface is lighter than the page and the tone alone lifts it. Add padding and layout classes beside it (`card p-4 mb-6`). A clickable card lifts on hover (`hover:shadow-md`), it does not draw a border.
 - **Well**: a group inside a card (a list of slots, local backups, a flow diagram node, a form opened in a row) is sunken, never a second card: `bg-background rounded-md`, no border, no shadow.
 - **Modal and sheet**: `bg-surface rounded-lg shadow-lg` (`rounded-t-lg` for a bottom sheet), no border.
-- **Keep their border**: fields (`input`, `select`, `textarea`), secondary buttons, a selectable option whose border shows the selection, chart tooltips, menus, pickers and toasts that float over any content, a dashed empty state, and the log viewer.
+- **Keep their border**: fields (`input`, `select`, `textarea`), secondary and icon buttons, steppers and segmented controls (`border border-border`, never `shadow-lg`: a control is not a floating layer, and its on state and hover recolour that border), a selectable option whose border shows the selection, chart tooltips, menus, pickers and toasts that float over any content, a dashed empty state, and the log viewer. `ui/src/lib/shapes.test.ts` fails on a `bg-surface` control without a border.
+- **Focus**: a field shows a 2 px ring in the primary ink on `:focus-visible` (`ui/src/index.css`), on top of its border turning primary, so focus does not rest on a colour change alone (WCAG 2.4.7).
 - **Not cards**: the sidebar and the top bar keep their dividing line.
 
 ---
