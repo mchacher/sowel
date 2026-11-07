@@ -117,6 +117,9 @@ export function AppLayout() {
     disconnect,
   ]);
 
+  // A shadow or takeover banner keeps the top bar in the flow (see below).
+  const topBanner = useShadowMode((s) => s.shadowMode || s.takeoverPending);
+
   // Spec 181 — whether shared access is on decides the navigation entry and
   // the gate panel. Only an admin can read it; the route 404s while it is off.
   const isAdminUser = user?.role === "admin";
@@ -139,91 +142,102 @@ export function AppLayout() {
 
         {/* Main content */}
         <div className="flex-1 flex flex-col min-w-0">
-          {/* Safe area spacer for iOS PWA */}
+          {/* iOS 26 blurs the top ~40pt of the page (title and pills included) unless a
+              fixed, full-width box of one solid colour covers the top edge. Below lg the
+              safe-area band and the top bar are that box, and a spacer keeps their place.
+              They stay in the flow under a shadow or takeover banner, which they would cover. */}
           <div
-            className="header-tint flex-shrink-0"
-            style={{ height: "env(safe-area-inset-top, 0px)" }}
-          />
-          {/* Top bar — compact on phones and tablets (below lg, spec 196 decision
+            className={`flex-shrink-0 bg-surface ${topBanner ? "" : "max-lg:fixed max-lg:inset-x-0 max-lg:top-0 max-lg:z-30"}`}
+          >
+            <div style={{ height: "env(safe-area-inset-top, 0px)" }} />
+            {/* Top bar — compact on phones and tablets (below lg, spec 196 decision
               pr1-tablette: one switch point with the sidebar and bottom bar), full on desktop */}
-          <header className="flex items-center min-h-[56px] lg:min-h-[49px] px-3 lg:px-6 border-b border-border-light bg-surface gap-2">
-            {/* Left: mobile burger (on zone pages) + title+sub (mockup parity), desktop breadcrumb */}
-            <div className="flex items-center gap-2 flex-1 min-w-0">
-              <MobileTopbarBurger />
-              <div className="lg:hidden flex-1 min-w-0">
-                <MobileTopbarTitle homeName={homeName} />
+            <header className="flex items-center h-[56px] lg:h-auto lg:min-h-[49px] px-3 lg:px-6 border-b border-border-light bg-surface gap-2">
+              {/* Left: mobile burger (on zone pages) + title+sub (mockup parity), desktop breadcrumb */}
+              <div className="flex items-center gap-2 flex-1 min-w-0">
+                <MobileTopbarBurger />
+                <div className="lg:hidden flex-1 min-w-0">
+                  <MobileTopbarTitle homeName={homeName} />
+                </div>
+                <div className="hidden lg:flex items-center">
+                  <TopbarBreadcrumb homeName={homeName} />
+                </div>
               </div>
-              <div className="hidden lg:flex items-center">
-                <TopbarBreadcrumb homeName={homeName} />
-              </div>
-            </div>
 
-            {/* Right (spec 196, FR-6): the sun as plain text on desktop (phones see it in
+              {/* Right (spec 196, FR-6): the sun as plain text on desktop (phones see it in
                 the root-zone strip), the home time only when the browser is in another
                 time zone, the link only when degraded, then alerts, updates, avatar. */}
-            <div className="hit-group flex items-center gap-2 flex-shrink-0">
-              <div className="hidden lg:flex items-center gap-3 mr-1">
-                <HomeTimeNote />
-                <SunTimes data={rootAgg} />
-              </div>
-              <div className="flex lg:hidden items-center">
-                <HomeTimeNote compact />
-              </div>
-              <ConnectionStatus />
-              {issues.length > 0 && (
-                <HeaderPill
-                  icon={
-                    alarmTone === "error" ? (
-                      <AlertOctagon size={14} strokeWidth={1.5} />
-                    ) : (
-                      <AlertTriangle size={14} strokeWidth={1.5} />
-                    )
-                  }
-                  count={issues.length}
-                  tone={alarmTone}
-                  title={t("alarms.pill.title", { count: issues.length })}
-                  onClick={() => setAlarmsOpen(true)}
-                />
-              )}
-              {totalUpdates > 0 && (
-                <HeaderPill
-                  icon={<RefreshCw size={14} strokeWidth={1.5} />}
-                  count={totalUpdates}
-                  tone="info"
-                  title={t("updates.pill.title", { count: totalUpdates })}
-                  onClick={() => setUpdatesOpen(true)}
-                />
-              )}
-              {restartRequired && (
-                <HeaderPill
-                  icon={<Power size={14} strokeWidth={1.5} />}
-                  tone="info"
-                  title={t("restart.pill.title")}
-                  href="/settings"
-                />
-              )}
-              {/* User — desktop only; phones have it in the « Plus » drawer. */}
-              {user && (
-                <div className="hidden lg:flex items-center gap-2 ml-1">
-                  <span
-                    aria-hidden="true"
-                    className="w-7 h-7 rounded-full bg-primary-fill text-white flex items-center justify-center text-caption font-semibold leading-none"
-                  >
-                    {getInitials(user.displayName)}
-                  </span>
-                  <span className="text-small text-text-secondary">{user.displayName}</span>
-                  <button
-                    onClick={() => logout()}
-                    className="p-1.5 rounded-full text-text-tertiary hover:text-text-secondary hover:bg-border-light transition-colors duration-150 cursor-pointer"
-                    title={t("auth.logout")}
-                    aria-label={t("auth.logout")}
-                  >
-                    <LogOut size={14} strokeWidth={1.5} />
-                  </button>
+              <div className="hit-group flex items-center gap-2 flex-shrink-0">
+                <div className="hidden lg:flex items-center gap-3 mr-1">
+                  <HomeTimeNote />
+                  <SunTimes data={rootAgg} />
                 </div>
-              )}
-            </div>
-          </header>
+                <div className="flex lg:hidden items-center">
+                  <HomeTimeNote compact />
+                </div>
+                <ConnectionStatus />
+                {issues.length > 0 && (
+                  <HeaderPill
+                    icon={
+                      alarmTone === "error" ? (
+                        <AlertOctagon size={14} strokeWidth={1.5} />
+                      ) : (
+                        <AlertTriangle size={14} strokeWidth={1.5} />
+                      )
+                    }
+                    count={issues.length}
+                    tone={alarmTone}
+                    title={t("alarms.pill.title", { count: issues.length })}
+                    onClick={() => setAlarmsOpen(true)}
+                  />
+                )}
+                {totalUpdates > 0 && (
+                  <HeaderPill
+                    icon={<RefreshCw size={14} strokeWidth={1.5} />}
+                    count={totalUpdates}
+                    tone="info"
+                    title={t("updates.pill.title", { count: totalUpdates })}
+                    onClick={() => setUpdatesOpen(true)}
+                  />
+                )}
+                {restartRequired && (
+                  <HeaderPill
+                    icon={<Power size={14} strokeWidth={1.5} />}
+                    tone="info"
+                    title={t("restart.pill.title")}
+                    href="/settings"
+                  />
+                )}
+                {/* User — desktop only; phones have it in the « Plus » drawer. */}
+                {user && (
+                  <div className="hidden lg:flex items-center gap-2 ml-1">
+                    <span
+                      aria-hidden="true"
+                      className="w-7 h-7 rounded-full bg-primary-fill text-white flex items-center justify-center text-caption font-semibold leading-none"
+                    >
+                      {getInitials(user.displayName)}
+                    </span>
+                    <span className="text-small text-text-secondary">{user.displayName}</span>
+                    <button
+                      onClick={() => logout()}
+                      className="p-1.5 rounded-full text-text-tertiary hover:text-text-secondary hover:bg-border-light transition-colors duration-150 cursor-pointer"
+                      title={t("auth.logout")}
+                      aria-label={t("auth.logout")}
+                    >
+                      <LogOut size={14} strokeWidth={1.5} />
+                    </button>
+                  </div>
+                )}
+              </div>
+            </header>
+          </div>
+          {!topBanner && (
+            <div
+              aria-hidden
+              className="lg:hidden flex-shrink-0"
+              style={{ height: "calc(env(safe-area-inset-top, 0px) + 56px)" }}
+            />
+          )}
 
           {/* Offline banner */}
           <OfflineBanner />
