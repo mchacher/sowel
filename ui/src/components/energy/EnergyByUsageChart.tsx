@@ -220,7 +220,7 @@ export function EnergyByUsageChart({ data, period, date, height = 300, unit = "w
             tick={{ fill: "var(--color-text-secondary)", fontSize: CHART_TICK_FONT }}
           />
           <Tooltip
-            cursor={{ fill: "rgba(0,0,0,0.03)" }}
+            cursor={{ fill: "var(--color-border-light)" }}
             content={({ active, payload, label }) => {
               if (!active || !payload || payload.length === 0) return null;
               const datum = payload[0].payload as Datum;

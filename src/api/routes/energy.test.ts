@@ -1,7 +1,6 @@
 import Fastify from "fastify";
 import { describe, it, expect, beforeEach, afterEach } from "vitest";
 import { createLogger } from "../../core/logger.js";
-import { readFileSync } from "node:fs";
 import { registerEnergyRoutes, trimToWindow, SUBMETER_PALETTE } from "./energy.js";
 import { EMPTY_ACCURACY } from "../../energy/pv/pv-accuracy.js";
 import { installValidationErrorHandler, validationAjvOptions } from "../error-handler.js";
@@ -516,7 +515,20 @@ describe("Spec 196 (FR-E) — by-usage series carry a colorIndex", () => {
     app = null;
   });
 
-  it("gives each series its sorted index, and keeps the light hex beside it", async () => {
+  // The `color` every API client received before spec 196, by index. Spelled
+  // out rather than imported, so a change to the server list fails here.
+  const LEGACY_COLORS = [
+    "#60A5FA",
+    "#34D399",
+    "#F87171",
+    "#A78BFA",
+    "#22D3EE",
+    "#FB7185",
+    "#FBBF24",
+    "#818CF8",
+  ];
+
+  it("gives each series its sorted index, and keeps the pre-196 colour beside it", async () => {
     app = await buildApp({
       // Declared out of order: the index follows the id sort, then the
       // separate-supply meters after the partition.
@@ -537,20 +549,27 @@ describe("Spec 196 (FR-E) — by-usage series carry a colorIndex", () => {
     const index = (list: { id: string; colorIndex: number; color: string }[]) =>
       list.map((s) => [s.id, s.colorIndex, s.color]);
     expect(index(body.submeters)).toEqual([
-      ["sub-A", 0, SUBMETER_PALETTE[0]],
-      ["sub-B", 1, SUBMETER_PALETTE[1]],
-      ["sub-C", 2, SUBMETER_PALETTE[2]],
+      ["sub-A", 0, "#60A5FA"],
+      ["sub-B", 1, "#34D399"],
+      ["sub-C", 2, "#F87171"],
     ]);
-    expect(index(body.separateSupply)).toEqual([["ev", 3, SUBMETER_PALETTE[3]]]);
+    expect(index(body.separateSupply)).toEqual([["ev", 3, "#A78BFA"]]);
   });
 
-  it("keeps the hex list in step with the light series tokens", () => {
-    // The UI paints from the tokens; API clients read `color`. The two must
-    // name the same colours, in the same order.
-    const css = readFileSync(new URL("../../../design-system/tokens.css", import.meta.url), "utf8");
-    const light = css.slice(0, css.indexOf('[data-theme="dark"]'));
-    const tokens = [...light.matchAll(/--series-(\d):(#[0-9A-Fa-f]{6})/g)].map((m) => m[2]);
-    expect(tokens).toEqual(SUBMETER_PALETTE);
+  it("keeps `color` on the pre-196 palette, at the entry colorIndex names", async () => {
+    expect(SUBMETER_PALETTE).toEqual(LEGACY_COLORS);
+    // Ten meters: the index keeps counting, the colour wraps after eight.
+    const ids = Array.from({ length: 10 }, (_, i) => `m-${String(i).padStart(2, "0")}`);
+    app = await buildApp({ equipments: ids.map((id) => ({ id, name: id, type: "energy_meter" })) });
+    const body = (
+      await app.inject({
+        method: "GET",
+        url: "/api/v1/energy/by-usage?period=week&date=2026-05-30",
+      })
+    ).json();
+    const series = body.submeters as { id: string; colorIndex: number; color: string }[];
+    expect(series.map((s) => s.colorIndex)).toEqual(ids.map((_, i) => i));
+    for (const s of series) expect(s.color, s.id).toBe(LEGACY_COLORS[s.colorIndex % 8]);
   });
 });
 

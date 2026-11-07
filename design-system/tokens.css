@@ -46,10 +46,12 @@
 
   /* Energy palette (spec 148) — shared by the production/energy charts and the
      arbiter surface. Solar greens match ProductionBarChart. Spec 196 (FR-E):
-     the series that sit side by side are told apart by lightness (>= 2:1 in
-     dark, >= 1.5:1 in light) or by hue (>= 30 deg); every pair is checked by
-     ui/src/lib/energy-palette.test.ts. Legends and swatches use these tokens,
-     never a hex copy (eslint rejects hex in components/energy and history). */
+     the same-family series that sit side by side on one chart (HP/HC,
+     autoconsumption/injection, house/grid, grid/unmanaged) differ by lightness,
+     >= 2:1 in dark and >= 1.5:1 in light; a blue next to a green differs by
+     >= 30 deg of hue. Checked by ui/src/lib/energy-palette.test.ts. Legends
+     and swatches use these tokens, never a hex copy (eslint rejects colour
+     literals in the energy and history components). */
   --solar-injection:#2D8F3E;  /* surplus / injection (dark green) */
   --solar-auto:#6BCB77;       /* auto-consumption / "accordé"     */
   --solar-production:#4CA85C; /* solar production                 */
@@ -57,13 +59,14 @@
   --energy-hc:#93B5F0;        /* consumption, off-peak (light blue) */
   --energy-grid:#405682;      /* grid import (slate blue; was #4A6396, 1.39:1 from the slate) */
   --slate-neutral:#6E7C88;    /* On (hors pilotage) / manual      */
-  --energy-other:#9AA4AB;     /* live breakdown: not metered apart */
+  --energy-other:#A69E96;     /* "Other": not metered apart. A warm grey: every series >= 1.5:1 and >= 30 deg away */
 
   /* Series palette (spec 196, FR-E) — sub-meters (by usage, Live donut),
      phases and Analyse curves, in this order. No red, orange, amber or solar
-     green: those carry a role. Neighbours sit >= 70 deg of hue apart; series
-     1 is the brand ocean. The server sends a by-usage series' index
-     (colorIndex) and its light hex (src/api/routes/energy.ts, kept in step). */
+     green: those carry a role. Neighbours differ by >= 2:1 or >= 30 deg of
+     hue (they sit >= 70 deg apart); series 1 is the brand ocean. The server
+     sends a by-usage series' index (colorIndex), which the UI paints with
+     these; its `color` field keeps the pre-196 hex for API clients. */
   --series-1:#1A4F6E; --series-2:#6A7B27; --series-3:#00867A; --series-4:#7C61A8;
   --series-5:#006574; --series-6:#A0557B; --series-7:#526FB2; --series-8:#915A95;
 
@@ -123,7 +126,7 @@
   --solar-injection:#2C8C3C; --solar-auto:#74C77F; --solar-production:#57BE6C;
   --energy-hp:#5681E9; --energy-hc:#A5C2F3; --energy-grid:#BDC8DF;
   --slate-neutral:#7C8B98; /* also a text colour (pill, caption): 4.58:1 */
-  --energy-other:#6E7A82; /* subdued on the night card, still 3.6:1 */
+  --energy-other:#78726B; /* subdued on the night card, still 3.4:1; was #6E7A82, 1.46:1 and 15 deg from series 5 */
   --series-1:#7CC0E3; --series-2:#ACBE74; --series-3:#5FC9BC; --series-4:#BEA6EB;
   --series-5:#44A1B1; --series-6:#E59ABD; --series-7:#95B3F5; --series-8:#D59ED8;
   /* Category tints on the ocean night: the n-100 lightness (1.14:1 on a

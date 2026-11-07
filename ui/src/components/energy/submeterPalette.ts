@@ -7,8 +7,8 @@
  * `colorIndex`; the Live donut computes the same index from the same sort, so
  * the two surfaces paint a meter alike. The colour itself is a CSS variable
  * (`--color-series-N`, design-system/tokens.css), so it follows the theme. The
- * server's `color` field is the light hex of the same entry, kept for external
- * API clients.
+ * server's `color` field keeps the pre-196 palette for external API clients;
+ * it is painted only when an older server sends no `colorIndex`.
  */
 import { SERIES_VARS } from "../../lib/series-palette";
 

@@ -19,7 +19,7 @@ export type ChartFamily = "measurements" | "cumulative" | "states";
  * keeps untouched charts rendering exactly as before. The hex identities and
  * their themed paint live in lib/series-palette (spec 196, FR-E).
  */
-export { SERIES_COLORS, seriesPaint } from "../../lib/series-palette";
+export { SERIES_COLORS, seriesDrawnHex, seriesPaint } from "../../lib/series-palette";
 
 const CUMULATIVE_CATEGORIES = new Set<string>(["rain", "energy"]);
 

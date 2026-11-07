@@ -2,14 +2,19 @@ import { readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import { ESLint } from "eslint";
 import { describe, expect, it } from "vitest";
-import { SERIES_COLORS, seriesPaint } from "./series-palette";
+import { SERIES_COLORS, seriesDrawnHex, seriesPaint } from "./series-palette";
 import { byUsageSeriesColor, pickSubmeterColor, seriesColor } from "../components/energy/submeterPalette";
 
-// Spec 196 (FR-E) — the energy palette. Series drawn side by side (stacked
-// bars, the Live diagram, a legend row, the series palette's neighbours) must
-// be told apart: by lightness (>= 2:1 in dark, >= 1.5:1 in light) or by hue
-// (>= 30 deg). Each mark must stand on the dark card (>= 3:1). Computed from
-// design-system/tokens.css, so a token change that breaks a pair fails here.
+// Spec 196 (FR-E, AC-11) — the energy palette, computed from
+// design-system/tokens.css so a token change that breaks a pair fails here:
+// - same-family energy series side by side on one chart (HP/HC,
+//   autoconsumption/injection, house/grid, grid/unmanaged): >= 2:1 in dark,
+//   >= 1.5:1 in light. Lightness only: they share a hue.
+// - a blue next to a green: >= 30 deg of hue.
+// - series palette neighbours: >= 2:1 or >= 30 deg of hue.
+// - every series against "Other": >= 1.5:1 and >= 30 deg of hue (Other is a
+//   near-grey, so hue alone means little).
+// - every mark on the dark card: >= 3:1.
 const tokensCss = readFileSync(new URL("../../../design-system/tokens.css", import.meta.url), "utf8");
 
 type Theme = "light" | "dark";
@@ -65,15 +70,19 @@ function hueGap(a: string, b: string): number {
 
 const MIN_RATIO: Record<Theme, number> = { light: 1.5, dark: 2 };
 
-/** Pairs that sit next to each other somewhere, and where. */
-const NEIGHBOURS: Array<[string, string, string]> = [
-  ["--energy-hp", "--energy-hc", "Consumption bars, EV share bar"],
+/** Same-family series drawn side by side on one chart, and where. */
+const SAME_FAMILY: Array<[string, string, string]> = [
+  ["--energy-hp", "--energy-hc", "Consumption bars (HP/HC), EV share bar"],
+  ["--solar-auto", "--solar-injection", "Production bars (autoconsumption/injection)"],
+  ["--energy-hp", "--energy-grid", "Live diagram, UPS panel (house/grid)"],
+  ["--energy-grid", "--slate-neutral", "Live page (grid/unmanaged)"],
+];
+
+/** A blue next to a green, and where. */
+const CROSS_FAMILY: Array<[string, string, string]> = [
   ["--energy-hc", "--solar-auto", "Consumption bars, EV share bar"],
   ["--energy-hp", "--solar-auto", "Consumption bars, UPS panel"],
-  ["--solar-auto", "--solar-injection", "Production bars"],
-  ["--energy-hp", "--energy-grid", "Live diagram, UPS panel"],
   ["--energy-grid", "--solar-auto", "Live diagram"],
-  ["--energy-grid", "--slate-neutral", "Live page: grid node, arbiter 'hors pilotage'"],
   ["--slate-neutral", "--solar-auto", "Arbiter legend"],
 ];
 
@@ -82,15 +91,18 @@ const SURFACE = "--n-0";
 
 describe("energy palette: neighbouring series are told apart (spec 196, FR-E)", () => {
   for (const theme of ["light", "dark"] as const) {
-    it.each(NEIGHBOURS)(`${theme}: %s / %s (%s)`, (a, b) => {
+    it.each(SAME_FAMILY)(`${theme}: %s / %s differ by lightness (%s)`, (a, b) => {
       const [ca, cb] = [hex(theme, a), hex(theme, b)];
-      const r = ratio(ca, cb);
-      const gap = hueGap(ca, cb);
-      expect(r >= MIN_RATIO[theme] || gap >= 30, `${ca} / ${cb}: ${r.toFixed(2)}:1, ${gap.toFixed(0)} deg`).toBe(true);
+      expect(ratio(ca, cb), `${ca} / ${cb}`).toBeGreaterThanOrEqual(MIN_RATIO[theme]);
+    });
+
+    it.each(CROSS_FAMILY)(`${theme}: %s / %s differ by >= 30 deg of hue (%s)`, (a, b) => {
+      const [ca, cb] = [hex(theme, a), hex(theme, b)];
+      expect(hueGap(ca, cb), `${ca} / ${cb}`).toBeGreaterThanOrEqual(30);
     });
   }
 
-  it.each([...NEIGHBOURS.flatMap(([a, b]) => [a, b]), "--solar-production", "--energy-other"])(
+  it.each([...[...SAME_FAMILY, ...CROSS_FAMILY].flatMap(([a, b]) => [a, b]), "--solar-production", "--energy-other"])(
     "dark: %s stands on the card (>= 3:1)",
     (token) => {
       expect(ratio(hex("dark", token), hex("dark", SURFACE))).toBeGreaterThanOrEqual(3);
@@ -125,11 +137,12 @@ describe("series palette (sub-meters, phases, Analyse)", () => {
       }
     });
 
-    it(`${theme}: the 'Other' slice differs from every series`, () => {
+    it(`${theme}: the 'Other' slice differs from every series by >= 1.5:1 and >= 30 deg`, () => {
       const other = hex(theme, "--energy-other");
       for (const s of SERIES) {
         const c = hex(theme, s);
-        expect(ratio(c, other) >= 1.4 || hueGap(c, other) >= 30, s).toBe(true);
+        expect(ratio(c, other), `${s} ${c} / ${other}`).toBeGreaterThanOrEqual(1.5);
+        expect(hueGap(c, other), `${s} ${c} / ${other}`).toBeGreaterThanOrEqual(30);
       }
     });
   }
@@ -161,6 +174,28 @@ describe("seriesPaint (Analyse)", () => {
   });
 });
 
+describe("seriesDrawnHex (the custom colour input's starting value)", () => {
+  // What the browser computes for the aliases in dark: the dark tokens.
+  const darkVar = (name: string) => {
+    const n = /^--color-series-(\d)$/.exec(name)?.[1];
+    return n ? ` ${hex("dark", `--series-${n}`)}` : "";
+  };
+
+  it("opens on the themed colour drawn, not on the stored hex", () => {
+    expect(seriesDrawnHex("#6A7B27", darkVar)).toBe(hex("dark", "--series-2"));
+    // A chart saved with the old red: drawn as series 5, so opens there.
+    expect(seriesDrawnHex("#E74C3C", darkVar)).toBe(hex("dark", "--series-5"));
+  });
+
+  it("falls back on the entry's light hex when nothing is computed", () => {
+    expect(seriesDrawnHex("#E74C3C", () => "")).toBe(SERIES_COLORS[4]);
+  });
+
+  it("keeps a freely chosen colour", () => {
+    expect(seriesDrawnHex("#123456", darkVar)).toBe("#123456");
+  });
+});
+
 describe("sub-meter colours", () => {
   it("take the themed series variable by sorted index, wrapping after eight", () => {
     expect(pickSubmeterColor(0)).toBe("var(--color-series-1)");
@@ -169,13 +204,21 @@ describe("sub-meter colours", () => {
   });
 
   it("follow the server's colorIndex, and fall back on its hex without one", () => {
-    expect(byUsageSeriesColor({ color: "#1A4F6E", colorIndex: 3 })).toBe("var(--color-series-4)");
-    expect(byUsageSeriesColor({ color: "#1A4F6E" })).toBe("#1A4F6E");
+    expect(byUsageSeriesColor({ color: "#60A5FA", colorIndex: 3 })).toBe("var(--color-series-4)");
+    expect(byUsageSeriesColor({ color: "#60A5FA" })).toBe("#60A5FA");
   });
 });
 
-describe("lint: no hex colour in energy and history components", () => {
+describe("lint: no colour literal in the energy components", () => {
   const uiRoot = fileURLToPath(new URL("../..", import.meta.url));
+
+  /** Lines (1-based) the rule reports for `source` linted as `filePath`. */
+  async function flagged(source: string, filePath = "src/components/energy/Fixture.tsx"): Promise<number[]> {
+    const eslint = new ESLint({ cwd: uiRoot });
+    const [result] = await eslint.lintText(source, { filePath });
+    return result.messages.filter((m) => m.ruleId === "sowel-chart/no-hex-color").map((m) => m.line);
+  }
+
   const FIXTURE = `
 export const a = "#4F7BE8";
 export const b = { fill: "#6b93f0" };
@@ -183,19 +226,58 @@ export const c = \`1px solid #fff\`;
 export const ok1 = "var(--color-energy-hp)";
 export const ok2 = "url(#powerGradient)";
 `;
-  async function hexMessages(filePath: string): Promise<number> {
-    const eslint = new ESLint({ cwd: uiRoot });
-    const [result] = await eslint.lintText(FIXTURE, { filePath });
-    return result.messages.filter((m) => m.ruleId === "sowel-chart/no-hex-color").length;
-  }
 
-  it("flags hex literals in the chart folders", async () => {
-    expect(await hexMessages("src/components/energy/Fixture.tsx")).toBe(3);
-    expect(await hexMessages("src/components/history/Fixture.tsx")).toBe(3);
+  it("flags hex literals in every folder in scope", async () => {
+    for (const file of [
+      "src/components/energy/Fixture.tsx",
+      "src/components/history/Fixture.tsx",
+      "src/components/settings/TariffSettings.tsx",
+      "src/components/equipments/UpsPanel.tsx",
+      "src/components/equipments/ev-sessions/Fixture.tsx",
+    ]) {
+      expect(await flagged(FIXTURE, file), file).toEqual([2, 3, 4]);
+    }
   }, 30_000);
 
   it("leaves tests and other folders alone", async () => {
-    expect(await hexMessages("src/components/energy/Fixture.test.tsx")).toBe(0);
-    expect(await hexMessages("src/lib/Fixture.ts")).toBe(0);
+    expect(await flagged(FIXTURE, "src/components/energy/Fixture.test.tsx")).toEqual([]);
+    expect(await flagged(FIXTURE, "src/lib/Fixture.ts")).toEqual([]);
+    expect(await flagged(FIXTURE, "src/components/equipments/OtherPanel.tsx")).toEqual([]);
+  }, 30_000);
+
+  it("flags every colour shape and the rgb()/hsl() literals", async () => {
+    const source = [
+      'export const a = "#ABC";',
+      'export const b = "#4F7BE8CC";',
+      'export const c = "#fff8";',
+      'export const d = "bg-[#4F7BE8]";',
+      'export const e = "rgba(0,0,0,0.03)";',
+      'export const f = "rgb(255 0 0)";',
+      'export const g = "hsl(200, 50%, 50%)";',
+      'export const h = "hsla(.5turn 50% 50% / .2)";',
+      'export const i = "bg-[rgba(0,0,0,.1)]";',
+      "export const j = `${1}px solid #000`;",
+      'export const k = "linear-gradient(to right, #fff, transparent)";',
+      'export const l = "color-mix(in srgb, #4F7BE8 40%, transparent)";',
+    ].join("\n");
+    expect(await flagged(source)).toEqual([1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12]);
+  }, 30_000);
+
+  it("does not flag references, anchors, entities, issue numbers or other hex-like text", async () => {
+    const source = [
+      'export const a = "voir #617";',
+      'export const b = "issue #1234 fixed";',
+      'export const c = "fill: url(#abc)";',
+      'export const d = <a href="#add">x</a>;',
+      "export const e = <use xlinkHref={\"#bad\"} />;",
+      'export const f = "&#123;";',
+      'export const g = "#section-1";',
+      'export const h = "#12345";',
+      'export const i = "#abcdefg";',
+      'export const j = "rgb(var(--x))";',
+      'export const k = "a#fff";',
+      'export const l = "Hors pilotage (#960)";',
+    ].join("\n");
+    expect(await flagged(source)).toEqual([]);
   }, 30_000);
 });

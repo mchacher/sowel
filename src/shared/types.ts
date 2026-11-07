@@ -2478,8 +2478,9 @@ export interface EnergyByUsagePoint {
 export interface SubmeterSeries {
   id: string;
   name: string;
-  /** Light-theme hex of the series' palette entry. Kept for API clients; the
-   *  Sowel UI paints from `colorIndex` so the colour follows the theme. */
+  /** Hex from the pre-196 palette at `colorIndex % 8`, unchanged for API
+   *  clients. The Sowel UI paints from `colorIndex` so the colour follows the
+   *  theme, and falls back on this hex only against an older server. */
   color: string;
   /** Spec 196 (FR-E) — the series' index in the 8-entry series palette
    *  (`--series-N` in design-system/tokens.css, N = colorIndex % 8 + 1). Sort

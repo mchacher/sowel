@@ -152,7 +152,15 @@ A part painted "white" in light (valve body, pipe) takes `var(--color-surface)`,
 
 ### 1.5c Energy and series palettes
 
-The energy charts, the Live diagram and the arbiter paint from these tokens (`--color-*` aliases in `ui/src/index.css`); a hex literal in `ui/src/components/{energy,history}` fails lint (`sowel-chart/no-hex-color`). Series drawn side by side differ by at least 2:1 in dark and 1.5:1 in light, or by 30° of hue; `ui/src/lib/energy-palette.test.ts` checks every pair (spec 196, FR-E).
+The energy charts, the Live diagram and the arbiter paint from these tokens (`--color-*` aliases in the `@theme static` block of `ui/src/index.css`, always emitted). A hex, `rgb()` or `hsl()` literal in `ui/src/components/{energy,history}`, `TariffSettings.tsx`, `UpsPanel.tsx` or `equipments/ev-sessions` fails lint (`sowel-chart/no-hex-color`).
+
+`ui/src/lib/energy-palette.test.ts` checks every pair (spec 196, FR-E):
+
+- Same-family energy series that sit side by side on one chart (HP/HC, autoconsumption/injection, house/grid, grid/unmanaged) differ by lightness: at least 2:1 in dark, 1.5:1 in light. Hue does not count: they are all blues or all greens.
+- A blue next to a green (consumption next to autoconsumption, grid next to autoconsumption, unmanaged next to granted) differs by at least 30° of hue.
+- Series palette: neighbours, the last and the first included, differ by at least 2:1 **or** 30° of hue.
+- Every series against "Other": at least 1.5:1 **and** 30° of hue. Other is a near-grey, so a hue gap alone means little; it is a warm grey because the palette's blues sit on the cool side.
+- Every mark stands on the dark card (at least 3:1).
 
 | Token                | Hybrid    | Dark      | Usage                                                  |
 | -------------------- | --------- | --------- | ------------------------------------------------------ |
@@ -163,9 +171,9 @@ The energy charts, the Live diagram and the arbiter paint from these tokens (`--
 | `--solar-injection`  | `#2D8F3E` | `#2C8C3C` | injection                                              |
 | `--solar-production` | `#4CA85C` | `#57BE6C` | production when not split                              |
 | `--slate-neutral`    | `#6E7C88` | `#7C8B98` | arbiter "on, outside arbitration" (also a text colour) |
-| `--energy-other`     | `#9AA4AB` | `#6E7A82` | "Other": consumption no sub-meter accounts for         |
+| `--energy-other`     | `#A69E96` | `#78726B` | "Other": consumption no sub-meter accounts for         |
 
-`--series-1` … `--series-8` colour the sub-meters (by-usage chart, Live donut, by sorted index; the API sends it as `colorIndex`), the phases and the Analyse curves. No red, orange, amber or solar green; neighbours sit at least 70° of hue apart.
+`--series-1` … `--series-8` colour the sub-meters (by-usage chart, Live donut, by sorted index; the API sends it as `colorIndex`), the phases and the Analyse curves. No red, orange, amber or solar green; neighbours sit at least 70° of hue apart. The API's `color` field keeps the palette from before spec 196 for external clients; the UI paints from `colorIndex`.
 
 |        | 1         | 2         | 3         | 4         | 5         | 6         | 7         | 8         |
 | ------ | --------- | --------- | --------- | --------- | --------- | --------- | --------- | --------- |

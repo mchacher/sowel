@@ -111,7 +111,15 @@ export default defineConfig([
   {
     // Spec 196 (FR-E) — energy and history charts paint from theme tokens, so
     // a legend cannot keep its light-theme colour in dark. eslint/chart-colors.js.
-    files: ["src/components/energy/**/*.{ts,tsx}", "src/components/history/**/*.{ts,tsx}"],
+    // Also the energy surfaces that live elsewhere: the tariff strip, the UPS
+    // panel and the EV sessions.
+    files: [
+      "src/components/energy/**/*.{ts,tsx}",
+      "src/components/history/**/*.{ts,tsx}",
+      "src/components/settings/TariffSettings.tsx",
+      "src/components/equipments/UpsPanel.tsx",
+      "src/components/equipments/ev-sessions/**/*.{ts,tsx}",
+    ],
     ignores: ["**/*.test.{ts,tsx}"],
     plugins: { "sowel-chart": chartColors },
     rules: {

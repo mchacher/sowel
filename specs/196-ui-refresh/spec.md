@@ -114,7 +114,11 @@ When an admin enabled "require confirmation" on a gate, every UI path where one 
 
 ### FR-E — Energy palette
 
-Today's look is kept (solar greens, HP dark blue / HC light blue). Only dark-theme values are corrected where two series are indistinguishable (≥ 2:1 between neighbours, ≥ 3:1 against the surface), legends take token colours instead of hard-coded hex, sub-meter and Analyse series use themed palettes without state colours, and the server adds a `colorIndex` to by-usage series (additive; `color` kept).
+Today's look is kept (solar greens, HP dark blue / HC light blue). Only dark-theme values are corrected where two series are indistinguishable, legends take token colours instead of hard-coded hex, sub-meter and Analyse series use themed palettes without state colours, and the server adds a `colorIndex` to by-usage series (additive; `color` keeps its pre-196 values for API clients). The rule:
+
+- Energy series that sit side by side on one chart and share a hue family (HP/HC, autoconsumption/injection, house/grid, grid/unmanaged): ≥ 2:1 in dark (≥ 1.5:1 in light). A blue next to a green: ≥ 30° of hue apart.
+- Categorical series palette: neighbours ≥ 2:1 contrast **or** ≥ 30° of hue apart; every series against "Other" ≥ 1.5:1 **and** ≥ 30° of hue (Other is near-grey, so hue alone means little).
+- Every mark ≥ 3:1 against the dark card.
 
 ## Acceptance Criteria
 
@@ -128,7 +132,7 @@ Today's look is kept (solar greens, HP dark blue / HC light blue). Only dark-the
 - [ ] AC-8 One setpoint component across the UI; repeated taps send one order.
 - [ ] AC-9 Equipment page shows usage above the fold; back returns to the room.
 - [ ] AC-10 Gate confirmation on every path when enabled; texts follow the state.
-- [ ] AC-11 Energy series pairs in dark theme ≥ 2:1; `colorIndex` present in by-usage responses.
+- [ ] AC-11 The FR-E rule holds, computed from the tokens: same-family energy pairs (HP/HC, autoconsumption/injection, house/grid, grid/unmanaged) ≥ 2:1 in dark; series-palette neighbours ≥ 2:1 or ≥ 30°; every series vs "Other" ≥ 1.5:1 and ≥ 30°. `colorIndex` present in by-usage responses, `color` unchanged.
 - [ ] AC-12 `npm run validate` green; screenshots of the reviewed screens retaken after each slice.
 
 ## Edge Cases

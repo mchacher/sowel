@@ -1437,21 +1437,21 @@ from(bucket: "${bucket}")
   return points;
 }
 
-/** Submeter colours: the light-theme values of the series palette
- *  (`--series-1…8` in design-system/tokens.css, spec 196 FR-E), in order.
- *  Each series also carries `colorIndex`, which the Sowel UI turns into the
- *  themed variable, so the hex here only serves API clients. No red, orange,
- *  amber or solar green: those carry a meaning elsewhere. A test checks this
- *  list against tokens.css. */
+/** Submeter colours sent as `color` to API clients: the palette from before
+ *  spec 196, unchanged so an external client keeps drawing the same colours
+ *  (spec 196 FR-E: additive, `color` kept). Each series also carries
+ *  `colorIndex`, which the Sowel UI turns into the themed variable
+ *  (`--series-N` in design-system/tokens.css); this hex list no longer reaches
+ *  the Sowel UI except through an older server, where it is the fallback. */
 export const SUBMETER_PALETTE = [
-  "#1A4F6E", // ocean
-  "#6A7B27", // olive
-  "#00867A", // teal
-  "#7C61A8", // violet
-  "#006574", // petrol
-  "#A0557B", // raspberry
-  "#526FB2", // periwinkle
-  "#915A95", // orchid
+  "#60A5FA", // soft blue
+  "#34D399", // emerald
+  "#F87171", // soft red
+  "#A78BFA", // lavender
+  "#22D3EE", // cyan
+  "#FB7185", // coral pink
+  "#FBBF24", // soft amber
+  "#818CF8", // pale indigo
 ];
 
 /** Spec 123 — local 4-decimal rounding mirror of cost-calculator. */

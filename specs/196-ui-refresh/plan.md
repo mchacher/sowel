@@ -32,7 +32,7 @@ Delivered as stacked pull requests, one per phase, one commit per slice so each 
 
 ### PR D — Energy palette
 
-- [ ] E — Dark values, themed legends and series, `colorIndex`
+- [x] E — Dark values, themed legends and series, `colorIndex`
 
 ## Test Plan
 
@@ -65,7 +65,7 @@ Delivered as stacked pull requests, one per phase, one commit per slice so each 
 | `useGuardedAction`    | gate requiring confirmation, pointer fine / coarse       | dialog / slide sheet; no order before confirm       |
 | `useGuardedAction`    | gate not requiring confirmation                          | order sent directly                                 |
 | gate texts            | open, closed, unknown                                    | « Fermer… », « Ouvrir… », « État inconnu »          |
-| energy palette        | neighbouring series in dark                              | ≥ 2:1 between neighbours, ≥ 3:1 against surface     |
+| energy palette        | neighbouring series, series vs « Other », light and dark | the FR-E rule (spec), ≥ 3:1 against the dark card   |
 | `energy.ts` (backend) | by-usage response                                        | each series has `colorIndex`, `color` unchanged     |
 
 `formatDuration` keeps the seconds below ten minutes only: 3599 s reads « 59 min », not « 59 min 59 s ».

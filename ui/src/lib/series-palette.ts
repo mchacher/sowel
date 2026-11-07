@@ -56,3 +56,22 @@ for (const list of [LEGACY_SERIES_COLORS, SERIES_COLORS]) {
 export function seriesPaint(color: string): string {
   return PAINT.get(color.toLowerCase()) ?? color;
 }
+
+/** Reads a custom property on the page root as the browser computes it. */
+function rootVar(name: string): string {
+  if (typeof document === "undefined") return "";
+  return getComputedStyle(document.documentElement).getPropertyValue(name);
+}
+
+/** The `#rrggbb` actually drawn for a stored series colour, in the theme the
+ *  page shows now: the computed value of the themed palette entry when the
+ *  hex is (or was) a palette colour, the hex itself otherwise. The free colour
+ *  input opens on it, so it starts from what the user sees, not from a light
+ *  value or a pre-196 hex the chart no longer paints. Where nothing is
+ *  computed (no stylesheet), the entry's light hex. */
+export function seriesDrawnHex(color: string, readVar: (name: string) => string = rootVar): string {
+  const index = SERIES_VARS.indexOf(seriesPaint(color));
+  if (index < 0) return color;
+  const computed = readVar(SERIES_VARS[index].slice("var(".length, -1)).trim();
+  return /^#[0-9a-f]{6}$/i.test(computed) ? computed : SERIES_COLORS[index];
+}
