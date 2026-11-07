@@ -308,7 +308,7 @@ export function RecipeInstanceRow({
 
   return (
     <div className={instance.enabled ? "" : "opacity-50"}>
-      <div className="grid grid-cols-[32px_1fr_auto] gap-x-[0.85rem] gap-y-0 items-center px-[1.1rem] py-[0.35rem] min-h-[52px] border-t border-border-light">
+      <div className="grid grid-cols-[32px_1fr_auto] gap-x-[0.85rem] gap-y-0 items-center px-[1.1rem] py-[0.35rem] min-h-[52px]">
         {/* Icon — spans both rows (mock .recipe__icon { grid-row: 1 / span 2 }) */}
         <div className={`row-span-2 self-center w-8 h-8 rounded-md flex items-center justify-center ${instance.enabled ? "bg-primary/10" : "bg-background"}`}>
           <ChefHat size={15} strokeWidth={1.5} className={instance.enabled ? "text-primary" : "text-text-tertiary"} />

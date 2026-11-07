@@ -92,7 +92,7 @@ In the **Home** view, each zone displays a **status header** with aggregated dat
 - **Power** pill (e.g., "47 W", or "2.4 kW" above the kilowatt) when the zone has at least one meter
 - **Sun** pill on the root zone, on a phone or a tablet, with today's sunrise and sunset (e.g., "07:22 – 17:17"). On a computer they sit in the top bar instead, on every page.
 
-Below the header, equipments are grouped by type (Lights, Shutters, Sensors) with inline controls.
+Below the header, equipments are grouped by type (Lights, Shutters, Sensors) with inline controls. Each panel (Equipments, Behaviors, Activity) has its title on a block of its own, with how many items it holds; each type of equipment is a block under it.
 
 ### Power aggregation
 
@@ -111,7 +111,7 @@ If a zone holds both a meter on a circuit and a meter on a load fed by that circ
 
 Each zone has a live **Activity** panel on the right side of the Home view. It is a glance widget that shows what just happened in the zone: orders dispatched, motion detected, recipes started, mode changes, sunrise/sunset, alarms.
 
-The panel groups events by hour. The most recent bucket is labeled `HH:00 → now`, older buckets are labeled `HH:00`.
+The panel reads as one log, newest first: one line per event, its time on the left, a thin line linking the events. When the log crosses into another part of the day, a small label marks it: "This morning", "Overnight", "Yesterday evening", "Monday afternoon". The part of the day you are in carries no label. Parts of the day follow local time: overnight before 6:00, morning until noon, afternoon until 18:00, evening after.
 
 ![Zone view showing the Activity panel in the right column](../screenshots/activity-zone-view-en.png)
 

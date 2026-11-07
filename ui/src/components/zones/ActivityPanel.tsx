@@ -5,8 +5,11 @@ import { useActivity } from "../../store/useActivity";
 import { useWebSocket } from "../../store/useWebSocket";
 import { useZones } from "../../store/useZones";
 import { useIsMobile } from "../../hooks/useIsMobile";
-import type { ActivityItem, ZoneWithChildren } from "../../types";
+import type { ZoneWithChildren } from "../../types";
 import { ActivityItemRow } from "./ActivityItemRow";
+import { Panel } from "../home/Panel";
+import { groupActivityLog, logPeriodLabel } from "../../lib/activity-log";
+import { currentLocale } from "../../lib/format";
 
 const MOBILE_CAP = 10;
 const DESKTOP_MAX_HEIGHT_PX = 480;
@@ -42,11 +45,11 @@ export function ActivityPanel({ zoneId }: Props) {
   );
   const hasDescendants = descendantIds.length > 0;
 
-  // Re-render every minute so relative-time labels stay fresh.
-  // One global timer per ActivityPanel instance, not per item.
-  const [, forceTick] = useState(0);
+  // Re-read the clock every minute so the unlabelled "now" group of the log
+  // follows the time of day. One timer per ActivityPanel instance, not per item.
+  const [now, setNow] = useState(() => new Date());
   useEffect(() => {
-    const id = setInterval(() => forceTick((n) => n + 1), 60_000);
+    const id = setInterval(() => setNow(new Date()), 60_000);
     return () => clearInterval(id);
   }, []);
 
@@ -72,65 +75,64 @@ export function ActivityPanel({ zoneId }: Props) {
     () => (isMobile ? items.slice(0, MOBILE_CAP) : items),
     [items, isMobile],
   );
-  const nowSuffix = t("activity.bucket.now");
-  const groups = useMemo(
-    () => groupByHour(visibleItems, new Date(), nowSuffix),
-    [visibleItems, nowSuffix],
-  );
+  const groups = useMemo(() => groupActivityLog(visibleItems, now), [visibleItems, now]);
+  const locale = currentLocale();
 
   return (
-    <section className="card overflow-hidden">
-      {/* Panel head — strict alignment with design-system .panel__head */}
-      <div className="flex items-center gap-[0.55rem] px-[1.1rem] py-[0.55rem] min-h-[44px] bg-primary-light border-b border-[var(--p-100)]">
-        <h2 className="text-lead font-semibold text-text">
-          {t("activity.title")}
-        </h2>
-        <span className="text-caption text-text-tertiary">
-          {t("activity.subtitle")}
-        </span>
-        {hasDescendants && (
-          <button
-            type="button"
-            onClick={() => void setIncludeDescendants(!includeDescendants, descendantIds)}
-            title={
-              includeDescendants
-                ? t("activity.toggleDescendants.on")
-                : t("activity.toggleDescendants.off")
-            }
-            aria-pressed={includeDescendants}
+    <Panel
+      title={t("activity.title")}
+      subtitle={t("activity.subtitle")}
+      headerRight={
+        <>
+          {hasDescendants && (
+            <button
+              type="button"
+              onClick={() => void setIncludeDescendants(!includeDescendants, descendantIds)}
+              title={
+                includeDescendants
+                  ? t("activity.toggleDescendants.on")
+                  : t("activity.toggleDescendants.off")
+              }
+              aria-pressed={includeDescendants}
+              className={
+                includeDescendants
+                  ? "inline-flex items-center justify-center w-7 h-7 rounded-sm bg-primary-fill text-white hover:bg-primary-fill-hover transition-colors"
+                  : "inline-flex items-center justify-center w-7 h-7 rounded-sm bg-transparent text-primary border border-[var(--p-100)] hover:bg-primary-light transition-colors"
+              }
+            >
+              <Network size={13} strokeWidth={1.5} />
+            </button>
+          )}
+          <span
             className={
-              includeDescendants
-                ? "ml-auto inline-flex items-center justify-center w-[22px] h-[22px] rounded-sm bg-primary-fill text-white hover:bg-primary-fill-hover transition-colors"
-                : "ml-auto inline-flex items-center justify-center w-[22px] h-[22px] rounded-sm bg-transparent text-primary border border-[var(--p-100)] hover:bg-surface transition-colors"
+              "inline-flex items-center gap-[5px] px-2 py-0.5 rounded-full text-caption font-semibold whitespace-nowrap " +
+              (isLive
+                ? "bg-[var(--green-50)] text-[var(--green-700)]"
+                : "bg-background text-text-tertiary")
             }
           >
-            <Network size={12} strokeWidth={2} />
-          </button>
-        )}
-        <span
-          className={
-            (hasDescendants ? "ml-[0.4rem] " : "ml-auto ") +
-            (isLive
-              ? "text-micro font-semibold leading-none px-[7px] py-[1px] rounded-full bg-[var(--green-50)] text-[var(--green-700)] border border-[var(--green-50)]"
-              : "text-micro font-semibold leading-none px-[7px] py-[1px] rounded-full bg-background text-text-tertiary border border-border-light")
-          }
-        >
-          {isLive ? `● ${t("activity.live")}` : `○ ${t("activity.offline")}`}
-        </span>
-      </div>
-
-      {/* Body — desktop scrolls internally; mobile lets the page scroll the (small) list. */}
+            <span
+              aria-hidden="true"
+              className={`w-1.5 h-1.5 rounded-full ${isLive ? "bg-success" : "border border-text-tertiary"}`}
+            />
+            {isLive ? t("activity.live") : t("activity.offline")}
+          </span>
+        </>
+      }
+    >
+      {/* One log slice. Desktop scrolls inside it (the lid stays outside the
+          scroll); mobile lets the page scroll the (small) list. */}
       <div
-        className="py-[0.35rem] md:overflow-y-auto"
+        className="md:overflow-y-auto"
         style={isMobile ? undefined : { maxHeight: DESKTOP_MAX_HEIGHT_PX }}
       >
         {status === "loading" && items.length === 0 && (
-          <div className="px-[1.1rem] py-3 text-caption text-text-tertiary">
+          <div className="px-4 py-3 text-caption text-text-tertiary">
             {t("activity.loading")}
           </div>
         )}
         {status === "error" && items.length === 0 && (
-          <div className="px-[1.1rem] py-3 flex items-center gap-2 text-caption text-error">
+          <div className="px-4 py-3 flex items-center gap-2 text-caption text-error">
             <span>{t("activity.loadError")}</span>
             <button
               type="button"
@@ -143,64 +145,36 @@ export function ActivityPanel({ zoneId }: Props) {
           </div>
         )}
         {status === "ready" && items.length === 0 && (
-          <div className="px-[1.1rem] py-3 text-caption text-text-tertiary">
+          <div className="px-4 py-3 text-caption text-text-tertiary">
             {t("activity.empty")}
           </div>
         )}
-        {groups.map((group) => (
-          <div key={group.key}>
-            <div className="px-[1.1rem] py-[0.35rem] text-caption font-semibold text-text-secondary tabular-nums border-t border-border-light first:border-t-0">
-              {group.label}
-            </div>
-            {group.items.map((item) => (
-              <ActivityItemRow key={item.id} item={item} />
+        {groups.length > 0 && (
+          // The rail runs down the centre of the 20 px dot column:
+          // 16 px padding + 44 px time + 10 px gap + 9.5 px.
+          <ol
+            data-testid="activity-log"
+            className="relative pt-1.5 pb-2 before:content-[''] before:absolute before:left-[79.5px] before:top-3.5 before:bottom-3.5 before:w-px before:bg-border"
+          >
+            {groups.map((group) => (
+              <li key={group.key}>
+                {group.labelled && (
+                  <div className="pl-[100px] pr-4 pt-2 pb-0.5 text-caption font-semibold text-text-tertiary">
+                    {logPeriodLabel(group.period, t, locale)}
+                  </div>
+                )}
+                <ul>
+                  {group.items.map((item) => (
+                    <ActivityItemRow key={item.id} item={item} />
+                  ))}
+                </ul>
+              </li>
             ))}
-          </div>
-        ))}
+          </ol>
+        )}
       </div>
-    </section>
+    </Panel>
   );
-}
-
-interface Group {
-  key: string;
-  label: string;
-  items: ActivityItem[];
-}
-
-function groupByHour(items: ActivityItem[], now: Date, nowSuffix: string): Group[] {
-  const groups: Group[] = [];
-  const groupMap = new Map<string, Group>();
-
-  const currentHourBucket = bucketKey(now.getTime());
-
-  for (const item of items) {
-    const key = bucketKey(item.timestamp);
-    let group = groupMap.get(key);
-    if (!group) {
-      const hour = formatHour(item.timestamp);
-      const label = key === currentHourBucket ? `${hour} → ${nowSuffix}` : hour;
-      group = { key, label, items: [] };
-      groupMap.set(key, group);
-      groups.push(group);
-    }
-    group.items.push(item);
-  }
-  return groups;
-}
-
-function bucketKey(timestamp: number): string {
-  const d = new Date(timestamp);
-  return `${d.getFullYear()}-${d.getMonth()}-${d.getDate()}-${d.getHours()}`;
-}
-
-function formatHour(timestamp: number): string {
-  const d = new Date(timestamp);
-  return `${pad(d.getHours())}:00`;
-}
-
-function pad(n: number): string {
-  return n.toString().padStart(2, "0");
 }
 
 function collectDescendantIds(tree: ZoneWithChildren[], zoneId: string): string[] {
