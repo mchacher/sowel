@@ -91,6 +91,19 @@ MODE_TRANSLATE = {
     "Lumière nuit": "Night Lighting",
 }
 
+# Week profiles head the Calendar page, and saved charts are listed on the
+# Analyse page: both are named by the household, in French, and neither has
+# an accent to trip `assert_english` on its own (`Travail`, `Vacances`).
+CALENDAR_PROFILE_TRANSLATE = {
+    "Travail": "Work",
+    "Vacances": "Holidays",
+}
+
+CHART_TRANSLATE = {
+    "Bureau T / HR": "Office T / RH",
+    "T Extérieure": "Outdoor T",
+}
+
 # Names that may legitimately stay as they are in the EN fixture: acronyms,
 # model codes, product names. Everything else carrying a French accent is a
 # map that has not caught up.
@@ -324,6 +337,12 @@ def translate_to_en(backup: dict) -> dict:
     for m in t.get("modes", []):
         if m["name"] in MODE_TRANSLATE:
             m["name"] = MODE_TRANSLATE[m["name"]]
+    for p in t.get("calendar_profiles", []):
+        if p["name"] in CALENDAR_PROFILE_TRANSLATE:
+            p["name"] = CALENDAR_PROFILE_TRANSLATE[p["name"]]
+    for c in t.get("chart_configs", []):
+        if c["name"] in CHART_TRANSLATE:
+            c["name"] = CHART_TRANSLATE[c["name"]]
     for s in t["settings"]:
         if s["key"] == "home.name":
             s["value"] = HOME_NAME_EN
@@ -373,7 +392,7 @@ def assert_english(backup: dict) -> None:
     """
     t = backup["tables"]
     offenders = []
-    for table in ("zones", "equipments", "modes"):
+    for table in ("zones", "equipments", "modes", "calendar_profiles", "chart_configs"):
         for row in t.get(table, []):
             name = row.get("name") or ""
             if name in EN_ALLOWED_NON_ENGLISH:
@@ -385,7 +404,8 @@ def assert_english(backup: dict) -> None:
         for o in sorted(set(offenders)):
             print(f"    {o}", file=sys.stderr)
         print(
-            "\nAdd them to ZONE_TRANSLATE / EQUIPMENT_TRANSLATE / MODE_TRANSLATE,\n"
+            "\nAdd them to ZONE_TRANSLATE / EQUIPMENT_TRANSLATE / MODE_TRANSLATE /\n"
+            "CALENDAR_PROFILE_TRANSLATE / CHART_TRANSLATE,\n"
             "or to EN_ALLOWED_NON_ENGLISH if the name is deliberately kept.\n"
             "Then read the printed name lists: an unaccented French word such as\n"
             "`Store` passes this check and still has to be translated by hand.",
@@ -443,7 +463,7 @@ def main() -> None:
     print("\n--- EN fixture summary ---")
     _summary(en)
     print("\n--- EN names, read these: an unaccented French word passes every check ---")
-    for table in ("zones", "equipments", "modes"):
+    for table in ("zones", "equipments", "modes", "calendar_profiles", "chart_configs"):
         names = sorted({r["name"] for r in en["tables"].get(table, [])})
         print(f"  {table}: {names}")
 
