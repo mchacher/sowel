@@ -253,3 +253,42 @@ describe("Live consumption breakdown — folded and ordered (spec 197)", () => {
     expect(container.querySelector('circle[stroke="var(--color-border)"]')).toBeNull();
   });
 });
+
+// #1170 — on desktop the card is stretched to the flow card's height: the
+// legend goes under the donut and the block sits centred, on every width.
+describe("Live consumption breakdown — stacked and centred (#1170)", () => {
+  beforeEach(() => {
+    vi.useFakeTimers();
+    vi.setSystemTime(NOW);
+  });
+  afterEach(() => vi.useRealTimers());
+
+  it("puts the legend under the donut, with no side-by-side layout at any width", () => {
+    seed([meter("Grid", "main_energy_meter", 2000), meter("Radiateur", "energy_meter", 1200)]);
+    render(<LiveEnergyPage />, { wrapper: MemoryRouter });
+    const legend = screen.getByTestId("breakdown-legend");
+    const donut = screen.getByRole("img", { name: /Radiateur/ });
+    const stack = legend.parentElement!;
+    expect(donut.parentElement).toBe(stack);
+    expect(stack.firstElementChild).toBe(donut);
+    // `(^|\s)` rather than `\b`: a `:` is a word boundary, so `\bflex-col` also
+    // matches `sm:flex-col`, which would leave a row below that width.
+    expect(stack.className).toMatch(/(^|\s)flex-col(\s|$)/);
+    const body = screen.getByTestId("breakdown-body");
+    for (const el of [stack, body, body.parentElement!]) {
+      expect(el.className).not.toMatch(/flex-row/);
+    }
+  });
+
+  it("centres the block in a card taller than its content", () => {
+    seed([meter("Grid", "main_energy_meter", 2000), meter("Radiateur", "energy_meter", 1200)]);
+    render(<LiveEnergyPage />, { wrapper: MemoryRouter });
+    const body = screen.getByTestId("breakdown-body");
+    expect(body.className).toMatch(/\bflex-1\b/);
+    expect(body.className).toMatch(/\bjustify-center\b/);
+    expect(body.className).toMatch(/\bmx-auto\b/);
+    // The cap keeps the legend near its donut on a full-width tablet card.
+    expect(body.className).toMatch(/(^|\s)max-w-md(\s|$)/);
+    expect(body.parentElement!.className).toMatch(/\bcard\b.*\bflex-col\b/);
+  });
+});
