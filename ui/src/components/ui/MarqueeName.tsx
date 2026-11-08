@@ -94,10 +94,16 @@ export function MarqueeName({
   const boxRef = useRef<HTMLSpanElement>(null);
   const textRef = useRef<HTMLSpanElement>(null);
   const [mode, setMode] = useState<Mode>("fit");
-  // Pointer devices: the single scroll a hover or a focus asks for.
-  const [hovering, setHovering] = useState(false);
+  // Pointer devices: the single scroll a hover or a focus asks for; either one
+  // keeps it going while the other ends.
+  const [hovered, setHovered] = useState(false);
+  const [focused, setFocused] = useState(false);
+  const hovering = hovered || focused;
   // Bumped to decide again from the fit layout (a new width, the web font).
   const [measure, setMeasure] = useState(0);
+  // Bumped to rebuild a running loop for a width change below the guard, so it
+  // still travels exactly to the end of the name.
+  const [loopWidth, setLoopWidth] = useState(0);
 
   // Decide before paint, from the fit layout, so the row never shows a frame
   // of the other mode. A new text starts over from the fit layout.
@@ -105,7 +111,8 @@ export function MarqueeName({
   if (measuredText !== text) {
     setMeasuredText(text);
     setMode("fit");
-    setHovering(false);
+    setHovered(false);
+    setFocused(false);
   }
   useLayoutEffect(() => {
     if (mode !== "fit") return;
@@ -124,7 +131,8 @@ export function MarqueeName({
     const redecide = () => {
       if (!alive) return;
       setMode("fit");
-      setHovering(false);
+      setHovered(false);
+      setFocused(false);
       setMeasure((m) => m + 1);
     };
     if (typeof document !== "undefined" && document.fonts && document.fonts.status !== "loaded") {
@@ -139,7 +147,9 @@ export function MarqueeName({
     const ro = new ResizeObserver(() => {
       const w = box.clientWidth;
       if (width !== null && Math.abs(w - width) >= RESIZE_THRESHOLD_PX) redecide();
-      if (width === null || Math.abs(w - width) >= RESIZE_THRESHOLD_PX) width = w;
+      // Only a running loop reads it; elsewhere it is one cheap render.
+      else if (width !== null && Math.abs(w - width) >= 0.5) setLoopWidth((n) => n + 1);
+      width = w;
     });
     ro.observe(box);
     return () => {
@@ -157,7 +167,10 @@ export function MarqueeName({
     const animation = scrollAnimation(box, inner, LOOP_HOLD_START_MS, LOOP_HOLD_END_MS, Infinity);
     if (!animation) return;
     let onScreen = true;
+    let alive = true;
     const sync = () => {
+      // An observer callback queued before the cleanup must not revive it.
+      if (!alive) return;
       if (onScreen && document.visibilityState !== "hidden") animation.play();
       else animation.pause();
     };
@@ -171,11 +184,12 @@ export function MarqueeName({
     io?.observe(box);
     document.addEventListener("visibilitychange", sync);
     return () => {
+      alive = false;
       animation.cancel();
       io?.disconnect();
       document.removeEventListener("visibilitychange", sync);
     };
-  }, [mode]);
+  }, [mode, loopWidth]);
 
   // Pointer: hovering the row (the stretched link covers it) or focusing the
   // link starts one scroll; leaving or blurring ends it.
@@ -184,17 +198,19 @@ export function MarqueeName({
     const box = boxRef.current;
     if (!box) return;
     const target: HTMLElement = box.closest<HTMLElement>("a, button") ?? box;
-    const start = () => setHovering(true);
-    const stop = () => setHovering(false);
-    target.addEventListener("mouseenter", start);
-    target.addEventListener("mouseleave", stop);
-    target.addEventListener("focusin", start);
-    target.addEventListener("focusout", stop);
+    const enter = () => setHovered(true);
+    const leave = () => setHovered(false);
+    const focus = () => setFocused(true);
+    const blur = () => setFocused(false);
+    target.addEventListener("mouseenter", enter);
+    target.addEventListener("mouseleave", leave);
+    target.addEventListener("focusin", focus);
+    target.addEventListener("focusout", blur);
     return () => {
-      target.removeEventListener("mouseenter", start);
-      target.removeEventListener("mouseleave", stop);
-      target.removeEventListener("focusin", start);
-      target.removeEventListener("focusout", stop);
+      target.removeEventListener("mouseenter", enter);
+      target.removeEventListener("mouseleave", leave);
+      target.removeEventListener("focusin", focus);
+      target.removeEventListener("focusout", blur);
     };
   }, [mode]);
 
@@ -206,7 +222,10 @@ export function MarqueeName({
     const animation = scrollAnimation(box, inner, HOVER_HOLD_START_MS, HOVER_HOLD_END_MS, 1);
     if (!animation) return;
     // At the end, back to the ellipsis until the next hover.
-    animation.onfinish = () => setHovering(false);
+    animation.onfinish = () => {
+      setHovered(false);
+      setFocused(false);
+    };
     return () => animation.cancel();
   }, [mode, hovering]);
 

@@ -218,6 +218,31 @@ describe("MarqueeName — touch screens loop (#1163)", () => {
     visibility.mockRestore();
   });
 
+  it("keeps one loop running through a re-render with the same text", () => {
+    const { rerender } = render(<MarqueeName text={LONG} lines={2} />);
+    rerender(<MarqueeName text={LONG} lines={2} />);
+    expect(animations).toHaveLength(1);
+    expect(animations[0].cancel).not.toHaveBeenCalled();
+  });
+
+  it("rebuilds the loop for a small width change, so it still ends on the last letter", () => {
+    render(<MarqueeName text={LONG} lines={2} />);
+    resize(92, true); // 8 px: under the guard, the mode stays
+    expect(box().getAttribute("data-marquee")).toBe("loop");
+    expect(animations).toHaveLength(2);
+    expect(animations[0].cancel).toHaveBeenCalled();
+    const t = animations[1].frames.map((f) => f.transform);
+    expect(t[t.length - 1]).toBe("translateX(-168px)");
+  });
+
+  it("does not revive a loop once it is gone", () => {
+    const { unmount } = render(<MarqueeName text={LONG} lines={2} />);
+    const [a] = animations;
+    unmount();
+    act(() => intersectionObservers[0].fire(true));
+    expect(a.play).not.toHaveBeenCalled();
+  });
+
   it("holds the text once, whatever the mode", () => {
     render(
       <a href="/x">
@@ -268,6 +293,15 @@ describe("MarqueeName — pointer devices end in an ellipsis (#1163)", () => {
     fireEvent.mouseLeave(screen.getByRole("link"));
     expect(animations[0].cancel).toHaveBeenCalled();
     expect(box().getAttribute("data-marquee")).toBe("ellipsis");
+  });
+
+  it("keeps scrolling for the focus when the pointer leaves", () => {
+    renderLinked();
+    fireEvent.focusIn(screen.getByRole("link"));
+    fireEvent.mouseEnter(screen.getByRole("link"));
+    fireEvent.mouseLeave(screen.getByRole("link"));
+    expect(box().getAttribute("data-marquee")).toBe("hover");
+    expect(animations[0].cancel).not.toHaveBeenCalled();
   });
 
   it("scrolls when the link gets the keyboard focus", () => {
