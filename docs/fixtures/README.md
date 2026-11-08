@@ -4,14 +4,14 @@ This folder holds reusable Sowel backup archives used to drive **documentation s
 
 ## Files
 
-| File              | Purpose                                                                                                                                      |
-| ----------------- | -------------------------------------------------------------------------------------------------------------------------------------------- |
-| `showroom-fr.zip` | Anonymized FR snapshot derived from the maintainer's production. Restorable via `POST /api/v1/backup`. Drives the FR user guide screenshots. |
-| `showroom-en.zip` | Same content as `showroom-fr.zip` with zone, equipment, mode and saved-chart names translated to English. Drives the EN user guide screenshots.                 |
+| File              | Purpose                                                                                                                                         |
+| ----------------- | ----------------------------------------------------------------------------------------------------------------------------------------------- |
+| `showroom-fr.zip` | Anonymized FR snapshot derived from the maintainer's production. Restorable via `POST /api/v1/backup`. Drives the FR user guide screenshots.    |
+| `showroom-en.zip` | Same content as `showroom-fr.zip` with zone, equipment, mode and saved-chart names translated to English. Drives the EN user guide screenshots. |
 
 Both archives contain a single `sowel-backup.json` (the engine state) and no InfluxDB history, no integration credentials and no InfluxDB connection settings. Their only user is a baked-in admin (`admin` / `sowel-demo-2026`), so the restore lands in a usable state. A blank instance still needs a first admin through the setup wizard, only to obtain the token the restore call requires; the restore then replaces it with the fixture admin. Every device is restored offline.
 
-The English fixture translates zone, equipment and mode names and saved charts (Analyse). Device names are kept: they are what the integration published, as on a real network. So are the Calendar week profiles `Travail` and `Vacances`: they are built-in, seeded in French by the first migration, and every install shows them under those names.
+The English fixture translates zone, equipment and mode names and saved charts (Analyse). Device names are kept: they are what the integration published, as on a real network. So are the Calendar week profiles `Travail` and `Vacances`: they are built-in, seeded in French by the first migration, and the UI translates them at display time (« Work », « Holidays » in English, #1151).
 
 ## Regenerating the fixtures
 

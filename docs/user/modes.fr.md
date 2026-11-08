@@ -102,6 +102,8 @@ Un profil est une grille hebdomadaire nommée. Vous pourriez avoir :
 - **Week-end** : une grille différente pour samedi et dimanche
 - **Vacances** : grille relâchée quand vous êtes à la maison toute la journée
 
+Sowel fournit deux profils intégrés, **Travail** et **Vacances**, nommés dans la langue dans laquelle vous utilisez Sowel.
+
 Un seul profil est actif à la fois. Basculez d'un profil à l'autre en un seul geste.
 
 ### Créneaux horaires

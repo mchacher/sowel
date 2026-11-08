@@ -108,7 +108,7 @@ CREATE TABLE button_action_bindings (
 
 ## Calendar (Mode Scheduling)
 
-Calendars schedule mode activations/deactivations on a recurring weekly basis. Two profiles are seeded at first run: **Travail** and **Vacances**. Only one profile is **active** at a time (key `calendar.activeProfileId` in the `settings` table).
+Calendars schedule mode activations/deactivations on a recurring weekly basis. Two profiles are seeded at first run: **Travail** and **Vacances** (ids `travail`, `vacances`, `built_in = 1`). Their identity is the id: the UI shows them in the viewer's language (`calendar.builtInProfile.*`) for as long as they keep their seeded name, and shows a name set otherwise as it is. There is no rename API. Only one profile is **active** at a time (key `calendar.activeProfileId` in the `settings` table).
 
 ```typescript
 interface CalendarProfile {
