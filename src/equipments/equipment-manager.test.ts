@@ -1651,6 +1651,29 @@ describe("EquipmentManager", () => {
       expect(mockPublished).toHaveLength(1);
     });
 
+    // #1140 — a two-channel light is one light, on when any channel is on, so
+    // "all lights off" must switch every channel off, not only the first.
+    it("sends allLightsOff to every light_toggle channel of a light", async () => {
+      const zone = zoneManager.create({ name: "Cuisine" });
+      const eq = manager.create({ name: "Plafonnier", type: "light_onoff", zoneId: zone.id });
+      const { orderIds } = seedDevice(db, {
+        name: "ZDual",
+        orderKeys: [
+          { key: "state_l1", category: "light_toggle", enumValues: ["ON", "OFF"] },
+          { key: "state_l2", category: "light_toggle", enumValues: ["ON", "OFF"] },
+        ],
+      });
+      manager.addOrderBinding(eq.id, orderIds[0], "state");
+      manager.addOrderBinding(eq.id, orderIds[1], "state_2");
+
+      const result = await manager.executeZoneOrder([zone.id], "allLightsOff");
+      expect(result).toEqual({ executed: 2, errors: 0 });
+      expect(mockPublished.map((m) => JSON.parse(m.payload))).toEqual([
+        { state_l1: "OFF" },
+        { state_l2: "OFF" },
+      ]);
+    });
+
     it("finds order binding by order category (shutter_move)", async () => {
       const zone = zoneManager.create({ name: "Bureau" });
       const eq = manager.create({ name: "Volet", type: "shutter", zoneId: zone.id });

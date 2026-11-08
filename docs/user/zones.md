@@ -85,7 +85,7 @@ In the **Home** view, each zone displays a **status header** with aggregated dat
 - **Temperature** pill (e.g., "21.5 C")
 - **Humidity** pill (e.g., "45%")
 - **Motion** pill with duration ("Motion" or "Calm 15min")
-- **Lights** count pill (e.g., "2/5")
+- **Lights** count pill (e.g., "2/5"); a light with several channels counts once, lit when any of its channels is on
 - **Shutters** count pill (e.g., "1/3")
 - **Doors** count pill for motorised doors (e.g., "1/2"), apart from the door contact alert
 - **Alert** pills for open doors/windows, water leaks, smoke
@@ -93,7 +93,7 @@ In the **Home** view, each zone displays a **status header** with aggregated dat
 
 Today's sunrise and sunset are not a zone pill: they sit in the top bar, on every page (e.g., "07:22 – 17:17", a moon at night). On a phone they give way when two of these already share the bar: alert, update or restart pills, the home time (shown when you are in another time zone), the connection indicator.
 
-When an equipment is offline, it is left out of the pills it would feed, and those pills carry a small orange dot. On a computer, hover the pill to see which equipments are offline. A zone whose lights (or shutters) are all offline still shows the pill, greyed out with a dash, so you can follow the dot from the parent zone down to the room it comes from. Only real lights count: a pool pump whose state looks like a light's is not counted as an offline light.
+When an equipment is offline, it is left out of the pills it would feed, and those pills carry a small orange dot. Tap the pill (or click it) to show which equipments are offline, in a line under the pills; tap it again to hide them. On a computer, hovering the pill shows them too. A zone whose lights (or shutters) are all offline still shows the pill, greyed out with a dash, so you can follow the dot from the parent zone down to the room it comes from. Only real lights count: a pool pump whose state looks like a light's is not counted as an offline light.
 
 Below the header, equipments are grouped by type (Lights, Shutters, Sensors) with inline controls. Each panel (Equipments, Behaviors, Activity) has its title on a block of its own, with how many items it holds; each type of equipment is a block under it.
 
@@ -169,6 +169,8 @@ Each zone exposes automatic orders that you can use from the UI or in automation
 | **All Off**        | Turns off all equipments in the zone (and child zones) |
 | **All Lights Off** | Turns off all light equipments in the zone             |
 | **All Lights On**  | Turns on all light equipments in the zone              |
+
+A light with several channels is switched on or off on all of them.
 
 These are available in the Home view, in the API, and as actions in recipes and modes.
 

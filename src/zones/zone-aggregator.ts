@@ -770,6 +770,11 @@ export class ZoneAggregator {
     bindings: DataBindingWithValue[],
     equipmentType: EquipmentType,
   ): void {
+    // #1140 — a light counts once, per equipment: a two-channel light is one
+    // light, on when any of its channels is on, the same unit #1134 counts
+    // when the light is offline.
+    let hasLightState = false;
+    let lightOn = false;
     for (const binding of bindings) {
       const category: DataCategory = binding.category;
       const value = binding.value;
@@ -831,10 +836,8 @@ export class ZoneAggregator {
 
         case "light_state":
           if (ZoneAggregator.LIGHT_EQUIPMENT_TYPES.has(equipmentType)) {
-            acc.lightsTotal += 1;
-            if (isBooleanActive(value)) {
-              acc.lightsOn += 1;
-            }
+            hasLightState = true;
+            if (isBooleanActive(value)) lightOn = true;
           }
           break;
 
@@ -860,6 +863,10 @@ export class ZoneAggregator {
           }
           break;
       }
+    }
+    if (hasLightState) {
+      acc.lightsTotal += 1;
+      if (lightOn) acc.lightsOn += 1;
     }
   }
 }
