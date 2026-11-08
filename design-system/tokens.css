@@ -55,6 +55,7 @@
   --solar-injection:#2D8F3E;  /* surplus / injection (dark green) */
   --solar-auto:#6BCB77;       /* auto-consumption / "accordé"     */
   --solar-production:#4CA85C; /* solar production                 */
+  --solar-ink:#1E7B34;        /* solar as text (spec 197): the fills above are 2:1 on a card */
   --energy-hp:#4F7BE8;        /* consumption, peak (vivid blue)   */
   --energy-hc:#93B5F0;        /* consumption, off-peak (light blue) */
   --energy-grid:#405682;      /* grid import (slate blue; was #4A6396, 1.39:1 from the slate) */
@@ -124,6 +125,7 @@
      stays the vivid blue and off-peak the pale one, as in light; the grid
      goes pale, the slate and the injection go deeper. */
   --solar-injection:#2C8C3C; --solar-auto:#74C77F; --solar-production:#57BE6C;
+  --solar-ink:var(--solar-auto); /* the light green already reads as text on the night card */
   --energy-hp:#5681E9; --energy-hc:#A5C2F3; --energy-grid:#BDC8DF;
   --slate-neutral:#7C8B98; /* also a text colour (pill, caption): 4.58:1 */
   --energy-other:#78726B; /* subdued on the night card, still 3.4:1; was #6E7A82, 1.46:1 and 15 deg from series 5 */

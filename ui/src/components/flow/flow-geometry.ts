@@ -21,12 +21,18 @@ export type FlowEdge = "leftToFocal" | "rightToFocal" | "rightToLeft" | "leftToR
 /**
  * Manhattan routes, verbatim from the v1.53.0 Live page.
  *
+ * The viewBox is 540 × 290 (spec 197). It was 540 × 360 while a status tag
+ * sat in a band under the bottom route; the headline above the diagram
+ * replaced the tag, and the band would have been 70 units of nothing. The
+ * routes did not move, only the frame's bottom edge.
+ *
  * Box geometry (heights explicit so the centres are deterministic):
- *   focal  top-0            h-[36%] w-[36%] → y   0..130, centre (270,  65)
- *   left   top-1/2 centred  h-[29%] w-[22%] → y 128..232, centre ( 60, 180)
- *   right  top-1/2 centred  h-[29%] w-[22%] → y 128..232, centre (480, 180)
+ *   focal  top-0               h-[45%] w-[36%] → y   0..130, centre (270,  65)
+ *   left   top-[62%] centred   h-[36%] w-[22%] → y 128..232, centre ( 60, 180)
+ *   right  top-[62%] centred   h-[36%] w-[22%] → y 128..232, centre (480, 180)
  * Below `sm` the satellites are 24 % wide from -1 %: same centres (#1129).
  */
+export const VIEWBOX_HEIGHT = 290;
 export const PATHS: Record<FlowEdge, string> = {
   leftToFocal: "M 60 180 V 75 Q 60 65 70 65 H 270",
   rightToFocal: "M 480 180 V 75 Q 480 65 470 65 H 270",
@@ -36,10 +42,10 @@ export const PATHS: Record<FlowEdge, string> = {
 
 /** Where an edge's pill sits: mid of the visible vertical leg, or the bottom run. */
 export const PILL_POSITION: Record<FlowEdge, string> = {
-  leftToFocal: "left-[11%] top-[28%] -translate-x-1/2 -translate-y-1/2",
-  rightToFocal: "right-[11%] top-[28%] translate-x-1/2 -translate-y-1/2",
-  rightToLeft: "left-1/2 top-[75%] -translate-x-1/2 -translate-y-1/2",
-  leftToRight: "left-1/2 top-[75%] -translate-x-1/2 -translate-y-1/2",
+  leftToFocal: "left-[11%] top-[35%] -translate-x-1/2 -translate-y-1/2",
+  rightToFocal: "right-[11%] top-[35%] translate-x-1/2 -translate-y-1/2",
+  rightToLeft: "left-1/2 top-[93%] -translate-x-1/2 -translate-y-1/2",
+  leftToRight: "left-1/2 top-[93%] -translate-x-1/2 -translate-y-1/2",
 };
 
 // A satellite node is 22 % of the diagram from `sm`, 24 % below it with 2 px
@@ -53,10 +59,10 @@ export const PILL_POSITION: Record<FlowEdge, string> = {
 // The focal box takes 8 px of side padding below `sm`: « Consommation », set
 // at 12 px, ran 2 px past its content box at 360 px with 12 px of padding.
 export const SLOT_BOX: Record<FlowSlot, string> = {
-  focal: "top-0 left-1/2 -translate-x-1/2 w-[36%] h-[36%] px-2 sm:px-3 py-2",
-  left: "top-1/2 -translate-y-1/2 -left-[1%] sm:left-0 w-[24%] sm:w-[22%] h-[29%] px-0.5 sm:px-2 py-2",
+  focal: "top-0 left-1/2 -translate-x-1/2 w-[36%] h-[45%] px-2 sm:px-3 py-2",
+  left: "top-[62%] -translate-y-1/2 -left-[1%] sm:left-0 w-[24%] sm:w-[22%] h-[36%] px-0.5 sm:px-2 py-2",
   right:
-    "top-1/2 -translate-y-1/2 -right-[1%] sm:right-0 w-[24%] sm:w-[22%] h-[29%] px-0.5 sm:px-2 py-2",
+    "top-[62%] -translate-y-1/2 -right-[1%] sm:right-0 w-[24%] sm:w-[22%] h-[36%] px-0.5 sm:px-2 py-2",
 };
 
 export const SLOT_LABEL: Record<FlowSlot, string> = {
@@ -81,8 +87,6 @@ export interface FlowNodeSpec {
   unit?: string;
   /** Optional second line under the value (the UPS reads its autonomy here). */
   sub?: string;
-  /** Glyph before the value — the grid node's ↑ / ↓ direction arrow. */
-  valuePrefix?: ReactNode;
   /** Paints the icon only; the value is always in ink (#1126). */
   color: string;
   /**
@@ -108,17 +112,30 @@ export interface FlowLinkSpec {
   pill?: { text: string; color: string };
 }
 
+/**
+ * The balance line above the diagram (spec 197, FR-E1): what the card answers
+ * first. A coloured dot and a label, one large figure, an optional sentence.
+ */
+export interface FlowHeadline {
+  /** Colour of the 8 px dot before the label: a fill, never text. */
+  dotColor: string;
+  label: string;
+  /** Pre-formatted figure, in ink. */
+  value: string;
+  unit?: string;
+  sentence?: ReactNode;
+}
+
 export interface FlowDiagramProps {
   nodes: FlowNodeSpec[];
   links: FlowLinkSpec[];
+  /** The balance line, rendered above the diagram. */
+  headline?: FlowHeadline;
   /**
-   * Qualitative one-word summary, in the empty band under the diagram. `color`
-   * tints its background; `ink` colours its words and defaults to `color`,
-   * for a caller whose colour is a status role that reads as text (the UPS).
-   * An energy-series colour is a fill: pass a text colour as `ink` (#1126).
+   * Sentence describing the whole flow for screen readers. When given, the
+   * visible headline, nodes and pills are hidden from assistive technology,
+   * so the figures are not read twice.
    */
-  tag?: { text: string; color: string; ink?: string };
-  /** Sentence describing the whole flow for screen readers. */
   ariaLabel?: string;
 }
 

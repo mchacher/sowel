@@ -8,7 +8,7 @@
  */
 
 import { describe, it, expect, beforeEach, vi } from "vitest";
-import { render, screen } from "../../test-utils";
+import { render, screen, within } from "../../test-utils";
 import { MemoryRouter } from "react-router-dom";
 import { LiveEnergyPage } from "./LiveEnergyPage";
 import { useEquipments } from "../../store/useEquipments";
@@ -106,10 +106,62 @@ describe("Live energy diagram — nodes and status", () => {
     expect(screen.getAllByText("185").length).toBeGreaterThan(0);
   });
 
-  it("names the qualitative status", () => {
+  // Spec 197 (FR-E1) — the balance line replaces the status tag.
+  it("states the import in words, with one large figure, and no status tag", () => {
+    // The review's morning: 4.9 kW from the grid, 180 W of sun, 5 kW drawn.
+    seed([meter("grid", "main_energy_meter", 4900), meter("pv", "energy_production_meter", 180)]);
+    render(<LiveEnergyPage />, { wrapper: MemoryRouter });
+    const headline = screen.getByTestId("flow-headline");
+    expect(headline.textContent).toContain("Grid import");
+    expect(within(headline).getByText("4.9").parentElement?.className).toContain("text-value");
+    expect(headline.textContent).toMatch(/The sun covers 4% of the 5(\.1)?\skW consumed/);
+    for (const old of ["Solar-assisted", "Grid-assisted", "Solar surplus", "Grid only"]) {
+      expect(screen.queryByText(old)).toBeNull();
+    }
+  });
+
+  it("states the export, and says the house runs on the sun", () => {
     seed([meter("grid", "main_energy_meter", -1500), meter("pv", "energy_production_meter", 2000)]);
     render(<LiveEnergyPage />, { wrapper: MemoryRouter });
-    expect(screen.getByText("Solar surplus")).toBeTruthy();
+    const headline = screen.getByTestId("flow-headline");
+    expect(headline.textContent).toContain("Grid export");
+    expect(within(headline).getByText("1.5")).toBeTruthy();
+    expect(headline.textContent).toMatch(/The house consumes 500\sW, all of it from the sun/);
+  });
+
+  it("says import or export under the grid node, and nothing in balance", () => {
+    seed([meter("grid", "main_energy_meter", 1000), meter("pv", "energy_production_meter", 800)]);
+    const { unmount } = render(<LiveEnergyPage />, { wrapper: MemoryRouter });
+    expect(screen.getByText("import")).toBeTruthy();
+    expect(screen.queryByText("↑")).toBeNull();
+    unmount();
+    seed([meter("grid", "main_energy_meter", -400), meter("pv", "energy_production_meter", 800)]);
+    const second = render(<LiveEnergyPage />, { wrapper: MemoryRouter });
+    expect(screen.getByText("export")).toBeTruthy();
+    second.unmount();
+    seed([meter("grid", "main_energy_meter", 2), meter("pv", "energy_production_meter", 800)]);
+    render(<LiveEnergyPage />, { wrapper: MemoryRouter });
+    expect(screen.queryByText("import")).toBeNull();
+    expect(screen.queryByText("export")).toBeNull();
+    expect(screen.getByTestId("flow-headline").textContent).toContain("Self-powered");
+  });
+
+  it("describes the whole flow to a screen reader in one sentence", () => {
+    seed([meter("grid", "main_energy_meter", 4900), meter("pv", "energy_production_meter", 180)]);
+    render(<LiveEnergyPage />, { wrapper: MemoryRouter });
+    expect(
+      screen.getByRole("img", {
+        name: /^Consumption 5(\.1)?\skW: 96% from the grid, importing 4\.9\skW; 4% from solar, producing 180\sW\.$/,
+      }),
+    ).toBeTruthy();
+  });
+
+  it("falls back to the consumption alone without a production source", () => {
+    seed([meter("grid", "main_energy_meter", 1200)]);
+    render(<LiveEnergyPage />, { wrapper: MemoryRouter });
+    const headline = screen.getByTestId("flow-headline");
+    expect(headline.textContent).toContain("Consumption");
+    expect(headline.querySelector("p")).toBeNull();
   });
 
   it("shows the share of consumption on each supplying leg", () => {

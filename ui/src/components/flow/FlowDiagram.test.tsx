@@ -108,11 +108,6 @@ describe("FlowDiagram nodes", () => {
     expect((box.firstElementChild as HTMLElement).className).toContain("opacity-40");
   });
 
-  it("renders a value prefix when the caller supplies one", () => {
-    render(<FlowDiagram nodes={[node({ valuePrefix: <span>↑</span> })]} links={[]} />);
-    expect(screen.getByText("↑")).toBeTruthy();
-  });
-
   // Spec 196, slice 5b — a satellite is about 70 px wide on a 390 px phone.
   // In tracked capitals « PRODUCTION » ran past its border; the label is now
   // sentence case and the satellite steps down a size below `sm`.
@@ -174,21 +169,22 @@ describe("FlowDiagram colours: values in ink, colour on the node", () => {
     expect(pill.className).toMatch(/(^|\s)text-text(\s|$)/);
   });
 
-  it("tints the tag with its colour and writes it in its ink, the colour by default", () => {
-    const { rerender } = render(
+  it("puts the headline's colour on its dot and writes its words in ink", () => {
+    render(
       <FlowDiagram
         nodes={[]}
         links={[]}
-        tag={{ text: "Autonome", color: "var(--color-solar-auto)", ink: "var(--color-text)" }}
+        headline={{ dotColor: "var(--color-energy-grid)", label: "Import réseau", value: "4,9" }}
       />,
     );
-    const tag = screen.getByText("Autonome");
-    expect(tag.style.color).toBe("var(--color-text)");
-    expect(tag.style.background).toContain("--color-solar-auto");
-    rerender(
-      <FlowDiagram nodes={[]} links={[]} tag={{ text: "Autonome", color: "var(--color-error)" }} />,
+    expect(screen.getByTestId("flow-headline-dot").style.background).toBe(
+      "var(--color-energy-grid)",
     );
-    expect(screen.getByText("Autonome").style.color).toBe("var(--color-error)");
+    const headline = screen.getByTestId("flow-headline");
+    for (const el of headline.querySelectorAll<HTMLElement>("*")) {
+      if (el.dataset.testid === "flow-headline-dot") continue;
+      expect(el.style.color, el.className).toBe("");
+    }
   });
 });
 
@@ -220,7 +216,7 @@ describe("FlowDiagram satellite geometry", () => {
   );
 });
 
-describe("FlowDiagram pills and tag", () => {
+describe("FlowDiagram pills and headline", () => {
   it("places a pill only on the links that carry one", () => {
     render(
       <FlowDiagram
@@ -231,14 +227,55 @@ describe("FlowDiagram pills and tag", () => {
     expect(screen.getByText("90%")).toBeTruthy();
   });
 
-  it("renders the qualitative tag when given", () => {
-    render(<FlowDiagram nodes={[]} links={[]} tag={{ text: "Sur secteur", color: "blue" }} />);
-    expect(screen.getByText("Sur secteur")).toBeTruthy();
+  // Spec 197 (FR-E1.1) — the balance line above the diagram, shared by Live
+  // and the UPS: a dot, a label, a 40 px figure in ink, an optional sentence.
+  it("renders the headline above the diagram: label, value in the value size, sentence", () => {
+    render(
+      <FlowDiagram
+        nodes={[node()]}
+        links={[]}
+        headline={{
+          dotColor: "blue",
+          label: "Import réseau",
+          value: "4,9",
+          unit: "kW",
+          sentence: "Le soleil couvre 4 % des 5 kW consommés",
+        }}
+      />,
+    );
+    const headline = screen.getByTestId("flow-headline");
+    expect(headline.textContent).toContain("Import réseau");
+    const value = screen.getByText("4,9").parentElement as HTMLElement;
+    expect(value.className).toContain("text-value");
+    expect(value.className).toContain("tabular-nums");
+    expect(screen.getByText("kW").className).toContain("text-lead");
+    expect(screen.getByText("Le soleil couvre 4 % des 5 kW consommés")).toBeTruthy();
+    // Above the diagram, in document order.
+    expect(
+      headline.compareDocumentPosition(screen.getByText("Focal")) &
+        Node.DOCUMENT_POSITION_FOLLOWING,
+    ).toBeTruthy();
   });
 
-  it("exposes the flow as one sentence for screen readers", () => {
-    render(<FlowDiagram nodes={[]} links={[]} ariaLabel="Le secteur alimente la charge" />);
+  it("renders no headline and no tag band when none is given", () => {
+    const { container } = render(<FlowDiagram nodes={[]} links={[]} />);
+    expect(screen.queryByTestId("flow-headline")).toBeNull();
+    expect(container.querySelector(".rounded-full.absolute")).toBeNull();
+  });
+
+  it("exposes the flow as one sentence and hides the figures it already says", () => {
+    render(
+      <FlowDiagram
+        nodes={[node({ value: "1.8" })]}
+        links={[link({ pill: { text: "90%", color: "green" } })]}
+        headline={{ dotColor: "blue", label: "Sur secteur", value: "21", unit: "W" }}
+        ariaLabel="Le secteur alimente la charge"
+      />,
+    );
     expect(screen.getByRole("img", { name: "Le secteur alimente la charge" })).toBeTruthy();
+    for (const text of ["Sur secteur", "1.8", "90%"]) {
+      expect(screen.getByText(text).closest('[aria-hidden="true"]'), text).toBeTruthy();
+    }
   });
 });
 

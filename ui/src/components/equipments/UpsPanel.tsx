@@ -29,7 +29,7 @@ import {
 import { GridPylonIcon } from "../icons/GridPylonIcon";
 import type { DataBindingWithValue } from "../../types";
 import { FlowDiagram } from "../flow/FlowDiagram";
-import type { FlowLinkSpec, FlowNodeSpec } from "../flow/flow-geometry";
+import type { FlowHeadline, FlowLinkSpec, FlowNodeSpec } from "../flow/flow-geometry";
 import {
   formatRuntime,
   isOnBattery,
@@ -81,14 +81,14 @@ const SHOWN_IN_MARGINS = new Set([
   "battery_runtime_low",
 ]);
 
-/** `ink`: the colour for words (the status tag), where orange takes its
- *  darker text variant and "on mains" is plain ink, the grid blue being an
- *  energy colour (#1126); otherwise the fill colour for strokes (spec 196). */
-function severityColor(r: UpsReadings, ink = false): string {
+/** The fill colour of the status severity: the headline dot and the battery
+ *  branch on battery (spec 196). Never a text colour: the status words are in
+ *  ink beside the dot (spec 197). */
+function severityColor(r: UpsReadings): string {
   const s = upsSeverityOf(r.status);
   if (s === "error") return "var(--color-error)";
-  if (s === "warning") return ink ? "var(--color-warning-ink)" : "var(--color-warning)";
-  if (s === "ok") return ink ? "var(--color-text)" : GRID_COLOR;
+  if (s === "warning") return "var(--color-warning)";
+  if (s === "ok") return GRID_COLOR;
   return IDLE_COLOR;
 }
 
@@ -173,6 +173,38 @@ export function UpsPanel({ dataBindings }: UpsPanelProps) {
     },
   ];
 
+  // Spec 197 (FR-E1.6) — the status reads as the same balance line as Live:
+  // the state, then the figure that matters in it. On mains, what the load
+  // draws, and the autonomy it leaves; on battery, the time left, and the
+  // charge it is spending.
+  const loadParts = nodes[0];
+  const runtime = runtimeParts(r.runtimeS);
+  const headline: FlowHeadline = onBattery
+    ? {
+        dotColor: tagColor,
+        label: statusText,
+        value: runtime?.value ?? "—",
+        unit: runtime?.unit,
+        ...(r.chargePct !== null
+          ? {
+              sentence: t("equipments.ups.headline.charge", {
+                charge: formatPercent(r.chargePct),
+              }),
+            }
+          : {}),
+      }
+    : {
+        dotColor: tagColor,
+        label: statusText,
+        value: loadParts.value,
+        // A load the unit reports only as a share of its capacity says so: a
+        // bare « 11 % » under « Sur secteur » reads as a battery level.
+        unit: loadParts.unit === "%" ? t("equipments.ups.headline.loadPctUnit") : loadParts.unit,
+        ...(runtimeLabel
+          ? { sentence: t("equipments.ups.headline.runtime", { runtime: runtimeLabel }) }
+          : {}),
+      };
+
   const ariaLabel = onBattery
     ? t("equipments.ups.aria.onBattery", {
         charge: r.chargePct != null ? formatPercent(r.chargePct) : "?",
@@ -207,12 +239,7 @@ export function UpsPanel({ dataBindings }: UpsPanelProps) {
   return (
     <div className="mb-6 space-y-4">
       <div className="card p-4 sm:p-6">
-        <FlowDiagram
-          nodes={nodes}
-          links={links}
-          tag={{ text: statusText, color: severityColor(r, true) }}
-          ariaLabel={ariaLabel}
-        />
+        <FlowDiagram nodes={nodes} links={links} headline={headline} ariaLabel={ariaLabel} />
       </div>
 
       {hasMargins && (
@@ -321,6 +348,18 @@ export function UpsPanel({ dataBindings }: UpsPanelProps) {
       )}
     </div>
   );
+}
+
+/**
+ * The autonomy split into a figure and its unit for the headline: « 6 » and
+ * « min ». A compound duration (« 2 min 12 s », « 1 h 05 ») stays whole, its
+ * units in the figure, rather than be cut at the wrong place.
+ */
+function runtimeParts(seconds: number | null): { value: string; unit?: string } | null {
+  const label = formatRuntime(seconds);
+  if (label === null) return null;
+  const m = /^(\d+)[\s\u202f\u00a0]+(\p{L}+)$/u.exec(label);
+  return m ? { value: m[1], unit: m[2] } : { value: label };
 }
 
 /**

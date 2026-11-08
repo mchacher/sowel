@@ -55,6 +55,8 @@ const SAME_AS_EN = new Set<string>([
   "equipments.vmc.v1",
   "equipments.vmc.v2",
   "equipments.ups.absent",
+  "energy.live.grid.import",
+  "energy.live.grid.export",
   "equipments.ups.margins.position",
   "equipments.ups.field.beeper",
   "cameras.lightMode.auto",

@@ -14,10 +14,11 @@
  * │ left  │╌╌╌╌╌╌╌│ right │   the bottom edge is the two sources exchanging:
  * └───────┘       └───────┘   solar export one way, battery charge the other.
  *
- * What the diagram owns: the viewBox, the node slots, the three Manhattan
- * routes, the always-visible skeleton, the active overlay, the bubbles, the
- * pill placement and the status tag. What the caller owns: which edges carry
- * energy, in which direction, with what colours and formatted values.
+ * What the diagram owns: the headline above it, the viewBox, the node slots,
+ * the three Manhattan routes, the always-visible skeleton, the active
+ * overlay, the bubbles and the pill placement. What the caller owns: which
+ * edges carry energy, in which direction, with what colours and formatted
+ * values.
  */
 
 import { useId } from "react";
@@ -28,8 +29,10 @@ import {
   SLOT_BOX,
   SLOT_LABEL,
   SLOT_VALUE,
+  VIEWBOX_HEIGHT,
   flowDuration,
   type FlowDiagramProps,
+  type FlowHeadline,
   type FlowNodeSpec,
 } from "./flow-geometry";
 
@@ -78,7 +81,6 @@ function FlowNode({ node }: { node: FlowNodeSpec }) {
         <div
           className={`tabular-nums font-semibold leading-none flex items-baseline whitespace-nowrap text-text ${SLOT_VALUE[node.slot]}`}
         >
-          {node.valuePrefix}
           <span>{node.value}</span>
           {node.unit && (
             <span className="text-micro text-text-tertiary font-semibold">{node.unit}</span>
@@ -90,106 +92,133 @@ function FlowNode({ node }: { node: FlowNodeSpec }) {
   );
 }
 
-export function FlowDiagram({ nodes, links, tag, ariaLabel }: FlowDiagramProps) {
+/**
+ * The balance line (spec 197, FR-E1): the one answer the card gives first, in
+ * the 40 px value size, before the reader has to decode the routes.
+ */
+function Headline({ headline }: { headline: FlowHeadline }) {
+  return (
+    <div className="mb-4" data-testid="flow-headline">
+      <div className="flex items-center gap-2 text-small text-text-secondary">
+        <span
+          className="w-2 h-2 rounded-full shrink-0"
+          style={{ background: headline.dotColor }}
+          data-testid="flow-headline-dot"
+        />
+        {headline.label}
+      </div>
+      <div className="flex items-baseline gap-1.5 tabular-nums font-semibold text-value leading-tight text-text">
+        <span>{headline.value}</span>
+        {headline.unit && (
+          <span className="text-lead font-semibold text-text-tertiary">{headline.unit}</span>
+        )}
+      </div>
+      {headline.sentence && (
+        <p className="text-small text-text-secondary mt-0.5">{headline.sentence}</p>
+      )}
+    </div>
+  );
+}
+
+export function FlowDiagram({ nodes, links, headline, ariaLabel }: FlowDiagramProps) {
   // Unique per instance so two diagrams on one page cannot collide on their
   // <mpath> references — the ids were hardcoded while this lived in Live.
   const uid = useId().replace(/:/g, "");
+  // With a sentence for screen readers, everything visible is decoration to
+  // them: the figures would otherwise be read twice, once out of order.
+  const hidden = ariaLabel ? true : undefined;
 
   return (
-    <div className="relative h-[300px] sm:h-auto sm:aspect-[3/2] max-w-[600px]">
-      <svg
-        viewBox="0 0 540 360"
-        preserveAspectRatio="none"
-        className="absolute inset-0 w-full h-full overflow-visible"
-        role={ariaLabel ? "img" : undefined}
-        aria-label={ariaLabel}
+    <div role={ariaLabel ? "img" : undefined} aria-label={ariaLabel}>
+      {headline && (
+        <div aria-hidden={hidden}>
+          <Headline headline={headline} />
+        </div>
+      )}
+      <div
+        className="relative h-[260px] sm:h-auto sm:aspect-[54/29] max-w-[600px]"
+        aria-hidden={hidden}
       >
-        {/* Skeleton — every declared route stays faintly visible, so the whole
+        <svg
+          viewBox={`0 0 540 ${VIEWBOX_HEIGHT}`}
+          preserveAspectRatio="none"
+          className="absolute inset-0 w-full h-full overflow-visible"
+        >
+          {/* Skeleton — every declared route stays faintly visible, so the whole
             circuit reads even when a single branch is working. */}
-        {links.map((l) => (
-          <path
-            key={`sk-${l.edge}`}
-            d={PATHS[l.edge]}
-            fill="none"
-            stroke="var(--color-border)"
-            strokeWidth="2"
-            strokeLinecap="round"
-          />
-        ))}
-
-        {/* Active overlays */}
-        {links
-          .filter((l) => l.active)
-          .map((l) => (
+          {links.map((l) => (
             <path
-              key={`ov-${l.edge}`}
+              key={`sk-${l.edge}`}
               d={PATHS[l.edge]}
               fill="none"
-              stroke={l.color}
-              strokeWidth="2.5"
+              stroke="var(--color-border)"
+              strokeWidth="2"
               strokeLinecap="round"
             />
           ))}
 
-        {/* Invisible motion references */}
-        {links
-          .filter((l) => l.active)
-          .map((l) => (
-            <path
-              key={`mp-${l.edge}`}
-              id={`${uid}-${l.edge}`}
-              d={PATHS[l.edge]}
-              fill="none"
-              stroke="none"
-            />
-          ))}
+          {/* Active overlays */}
+          {links
+            .filter((l) => l.active)
+            .map((l) => (
+              <path
+                key={`ov-${l.edge}`}
+                d={PATHS[l.edge]}
+                fill="none"
+                stroke={l.color}
+                strokeWidth="2.5"
+                strokeLinecap="round"
+              />
+            ))}
 
-        {/* Bubbles. Each circle stays hidden until its stagger fires, otherwise
+          {/* Invisible motion references */}
+          {links
+            .filter((l) => l.active)
+            .map((l) => (
+              <path
+                key={`mp-${l.edge}`}
+                id={`${uid}-${l.edge}`}
+                d={PATHS[l.edge]}
+                fill="none"
+                stroke="none"
+              />
+            ))}
+
+          {/* Bubbles. Each circle stays hidden until its stagger fires, otherwise
             it would flash at the SVG origin before its motion starts. */}
-        {links
-          .filter((l) => l.active)
-          .map((l) => {
-            const dur = flowDuration(l.magnitude);
-            if (dur <= 0) return null;
-            return (
-              <g key={`bb-${l.edge}`}>
-                {[0, dur / 3, (2 * dur) / 3].map((begin, i) => (
-                  <circle key={i} r="4" fill={l.color} opacity="0">
-                    <set attributeName="opacity" to="1" begin={`${begin}s`} />
-                    <animateMotion dur={`${dur}s`} begin={`${begin}s`} repeatCount="indefinite">
-                      <mpath href={`#${uid}-${l.edge}`} />
-                    </animateMotion>
-                  </circle>
-                ))}
-              </g>
-            );
-          })}
-      </svg>
+          {links
+            .filter((l) => l.active)
+            .map((l) => {
+              const dur = flowDuration(l.magnitude);
+              if (dur <= 0) return null;
+              return (
+                <g key={`bb-${l.edge}`}>
+                  {[0, dur / 3, (2 * dur) / 3].map((begin, i) => (
+                    <circle key={i} r="4" fill={l.color} opacity="0">
+                      <set attributeName="opacity" to="1" begin={`${begin}s`} />
+                      <animateMotion dur={`${dur}s`} begin={`${begin}s`} repeatCount="indefinite">
+                        <mpath href={`#${uid}-${l.edge}`} />
+                      </animateMotion>
+                    </circle>
+                  ))}
+                </g>
+              );
+            })}
+        </svg>
 
-      {links.map(
-        (l) =>
-          l.pill && (
-            <Pill key={`pl-${l.edge}`} className={PILL_POSITION[l.edge]} color={l.pill.color}>
-              {l.pill.text}
-            </Pill>
-          ),
-      )}
+        {links.map(
+          (l) =>
+            l.pill && (
+              <Pill key={`pl-${l.edge}`} className={PILL_POSITION[l.edge]} color={l.pill.color}>
+                {l.pill.text}
+              </Pill>
+            ),
+        )}
 
-      {nodes.map((n) => (
-        <FlowNode key={n.slot} node={n} />
-      ))}
-
-      {tag && (
-        <span
-          className="absolute left-1/2 -translate-x-1/2 bottom-[8%] text-caption font-semibold px-3 py-1 rounded-full z-10"
-          style={{
-            color: tag.ink ?? tag.color,
-            background: `color-mix(in srgb, ${tag.color} 12%, transparent)`,
-          }}
-        >
-          {tag.text}
-        </span>
-      )}
+        {nodes.map((n) => (
+          <FlowNode key={n.slot} node={n} />
+        ))}
+      </div>
     </div>
   );
 }

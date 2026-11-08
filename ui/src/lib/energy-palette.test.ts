@@ -54,7 +54,10 @@ const VARS: Record<Theme, Record<string, string>> = {
 };
 
 function hex(theme: Theme, token: string): string {
-  const v = VARS[theme][token];
+  let v = VARS[theme][token];
+  // A token may alias another one (--solar-ink in dark is var(--solar-auto)).
+  for (let m = /^var\((--[\w-]+)\)$/.exec(v ?? ""); m; m = /^var\((--[\w-]+)\)$/.exec(v ?? ""))
+    v = VARS[theme][m[1]];
   if (!v || !/^#[0-9a-f]{6}$/i.test(v))
     throw new Error(`${token} in ${theme} is not a #rrggbb colour: ${v}`);
   return v;
@@ -273,6 +276,33 @@ function paint(theme: Theme, css: string): string {
   }
   throw new Error(`cannot resolve ${css}`);
 }
+
+// Spec 197 (FR-E1.4) — the solar ink: the one green a figure or a word may
+// take. The fills beside it are 2:1 on a light card; this reads as text.
+describe("the solar ink is a text colour (spec 197)", () => {
+  for (const theme of ["light", "dark"] as const) {
+    it(`${theme}: --solar-ink reaches 4.5:1 on the card`, () => {
+      expect(ratio(hex(theme, "--solar-ink"), hex(theme, SURFACE))).toBeGreaterThanOrEqual(4.5);
+    });
+  }
+
+  it("light: --solar-ink is the decided #1E7B34, darker than every solar fill", () => {
+    expect(hex("light", "--solar-ink")).toBe("#1E7B34");
+    for (const fill of ["--solar-auto", "--solar-injection", "--solar-production"]) {
+      expect(luminance(hex("light", "--solar-ink")), fill).toBeLessThan(
+        luminance(hex("light", fill)),
+      );
+    }
+  });
+
+  it("dark: --solar-ink is the auto-consumption green", () => {
+    expect(hex("dark", "--solar-ink")).toBe(hex("dark", "--solar-auto"));
+  });
+
+  it("is exposed to Tailwind as text-solar-ink", () => {
+    expect(alias("solar-ink")).toBe("--solar-ink");
+  });
+});
 
 describe("words in the energy surfaces reach 4.5:1 (#1126)", () => {
   const STATES = [
