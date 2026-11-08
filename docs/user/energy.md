@@ -145,7 +145,7 @@ Pricing is applied at read time, so changing your tariff (after a contract reneg
 
 #### Total / By usage toggle
 
-When at least one submeter is configured, a **Total / By usage** toggle appears beside the headline. It, the Wh / € toggle, the period tabs (here and on the Analyse page) and the forecast's window buttons are the same segmented control. The **By usage** view replaces the peak / off-peak split with one stack per submeter, plus an **Other** stack for the residual that the main meter saw but no submeter accounted for.
+When at least one submeter is configured, a **Total / By usage** toggle appears beside the headline. It, the Wh / € toggle, the period tabs (here and on the Analyse page) and the forecast's window buttons are the same segmented control. The **By usage** view replaces the peak / off-peak split with one stack per submeter, plus an **Other** stack for the residual that the main meter saw but no submeter accounted for. The headline then gives the total of those stacks, the grid energy the main meter measured, without the peak / off-peak sentence.
 
 ![By usage breakdown](../screenshots/energy-consumption-by-usage-en.png)
 

@@ -1,13 +1,13 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { MemoryRouter } from "react-router-dom";
-import { render, screen } from "../../test-utils";
+import { render, screen, userEvent } from "../../test-utils";
 import i18n from "../../i18n";
 import { EnergyPage } from "./EnergyPage";
 import { useEnergy } from "../../store/useEnergy";
 import { useUiState } from "../../store/useUiState";
 import { localDateStr } from "../../lib/local-date";
 import * as api from "../../api";
-import type { EnergyHistoryResponse } from "../../types";
+import type { EnergyHistoryResponse, EquipmentWithDetails } from "../../types";
 
 // Spec 197 (FR-E6.1) — the Consumption card opens on its total, in Wh or in €.
 
@@ -111,5 +111,41 @@ describe("EnergyPage headline (spec 197)", () => {
     await renderPage();
     expect(screen.getByRole("button", { name: "Wh" }).getAttribute("aria-pressed")).toBe("true");
     expect(screen.getByRole("button", { name: "Jour" }).getAttribute("aria-pressed")).toBe("true");
+  });
+
+  it("in By usage, opens on the stacks' own total, with no tariff split", async () => {
+    setup("wh");
+    vi.mocked(api.getEquipments).mockResolvedValue([
+      {
+        id: "sub-1",
+        name: "Chauffe-eau",
+        type: "energy_meter",
+        zoneId: "z1",
+        enabled: true,
+        dataBindings: [],
+        orderBindings: [],
+      } as unknown as EquipmentWithDetails,
+    ]);
+    vi.mocked(api.getEnergyByUsage).mockResolvedValue({
+      period: "day",
+      from: "",
+      to: "",
+      resolution: "1h",
+      submeters: [],
+      other: { points: [] },
+      totals: {
+        byEquipment: {},
+        other: 9050,
+        total: 9050,
+        costByEquipment: {},
+        otherCost: 1.78,
+        totalCost: 1.78,
+      },
+    });
+    await renderPage();
+    await userEvent.click(await screen.findByRole("button", { name: "Par usage" }));
+    // The stacks split the grid energy only: 9,05 kWh, not 9,11 with the sun.
+    expect(await screen.findByText((_, el) => norm(el?.textContent) === "9,05 kWh")).toBeTruthy();
+    expect(screen.queryByText(/en heures pleines/)).toBeNull();
   });
 });

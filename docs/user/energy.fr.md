@@ -147,7 +147,7 @@ La valorisation est appliquée au moment de l'affichage : modifier votre tarif (
 
 #### Bascule Total / Par usage
 
-Quand au moins un sous-compteur est configuré, un bouton **Total / Par usage** apparaît à côté de l'en-tête. Lui, la bascule Wh / €, les onglets de période (ici et sur la page Analyse) et les boutons de fenêtre de la prévision sont le même sélecteur segmenté. La vue **Par usage** remplace la répartition HP / HC par une pile par sous-compteur, plus une pile **Autre** pour le résidu vu par le compteur principal mais non comptabilisé par les sous-compteurs.
+Quand au moins un sous-compteur est configuré, un bouton **Total / Par usage** apparaît à côté de l'en-tête. Lui, la bascule Wh / €, les onglets de période (ici et sur la page Analyse) et les boutons de fenêtre de la prévision sont le même sélecteur segmenté. La vue **Par usage** remplace la répartition HP / HC par une pile par sous-compteur, plus une pile **Autre** pour le résidu vu par le compteur principal mais non comptabilisé par les sous-compteurs. L'en-tête donne alors le total de ces piles, l'énergie réseau mesurée par le compteur principal, sans la phrase heures pleines / heures creuses.
 
 ![Répartition par usage](../screenshots/energy-consumption-by-usage-fr.png)
 

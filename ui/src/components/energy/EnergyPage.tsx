@@ -115,9 +115,21 @@ export function EnergyPage() {
 
   const hasHpHc = history ? history.totals.total_hc > 0 : false;
 
-  const headline = history
-    ? consumptionHeadline(history.totals, effectiveUnit, hasProduction)
-    : null;
+  // The By usage stacks partition the main meter's grid energy only, so
+  // there the headline is their total, with no tariff split it does not draw.
+  const headline =
+    viewMode === "by-usage"
+      ? byUsage
+        ? {
+            total: effectiveUnit === "eur" ? byUsage.totals.totalCost : byUsage.totals.total,
+            peak: null,
+            offPeak: null,
+            selfPct: null,
+          }
+        : null
+      : history
+        ? consumptionHeadline(history.totals, effectiveUnit, hasProduction)
+        : null;
   const fmt = (v: number) => (effectiveUnit === "eur" ? formatEur(v, locale) : formatWh(v, locale));
   const headlineSentence = headline
     ? [
@@ -176,8 +188,9 @@ export function EnergyPage() {
               <PeriodHeadline
                 value={fmt(headline.total)}
                 context={periodContextLabel(period, date, locale, t)}
-                sentence={headlineSentence}
+                sentence={headlineSentence || undefined}
                 aside={viewModeControl}
+                stale={viewMode === "by-usage" ? byUsageLoading : loading}
               />
             ) : (
               viewModeControl && <div className="flex justify-end mb-4">{viewModeControl}</div>

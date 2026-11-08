@@ -65,13 +65,16 @@ export function ProductionPage() {
     setForecasts((prev) => ({ ...prev, [id]: data }));
   }, []);
   const isToday = period === "day" && !canGoForward(date, period);
-  const forecast = useMemo(
-    () =>
-      isToday
-        ? todayForecast(declaredMeters.flatMap((m) => (forecasts[m.id] ? [forecasts[m.id]] : [])))
-        : null,
-    [isToday, declaredMeters, forecasts],
-  );
+  // Only when every production meter is declared (the history total covers
+  // them all, the forecast only the declared ones) and every declared array
+  // has reported, so the figure does not grow one panel at a time.
+  const forecast = useMemo(() => {
+    if (!isToday || declaredMeters.length === 0 || declaredMeters.length !== meters.length) {
+      return null;
+    }
+    if (!declaredMeters.every((m) => forecasts[m.id])) return null;
+    return todayForecast(declaredMeters.map((m) => forecasts[m.id]));
+  }, [isToday, meters, declaredMeters, forecasts]);
 
   return (
     <div className="p-4 sm:p-6">
@@ -115,6 +118,7 @@ export function ProductionPage() {
                     ].join("\u00a0· ")
                   : undefined
               }
+              stale={loading}
             />
           )}
 
