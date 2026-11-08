@@ -15,13 +15,13 @@ import {
   buildSubmeterRows,
   computeOther,
   sharePercent,
+  splitStoppedRows,
   type SubmeterRow,
 } from "./submeter-helpers";
 import { isSubmeterEquipment } from "../../lib/metering";
 import { equipmentLabelMap, flattenZonesWithPath, zoneChainMap } from "../../lib/zone-path";
 import { formatRelative } from "../../lib/format-relative";
 import { formatPercent, formatPower, formatPowerParts } from "../../lib/format";
-import { ChartPie } from "lucide-react";
 import { SectionHeader } from "./SectionHeader";
 import { useStalenessClock } from "../../hooks/useStalenessClock";
 
@@ -30,6 +30,13 @@ const OTHER_COLOR = "var(--color-energy-other)"; // neutral grey, one value per 
 const RADIUS = 72;
 const STROKE = 22;
 const CIRCUMFERENCE = 2 * Math.PI * RADIUS;
+/**
+ * Spec 197 (FR-E3.3) — the gap between two segments, in viewBox units: about
+ * 2 px at both drawn sizes (180 px, 140 px on a phone). Two neighbours of the
+ * series palette can sit side by side here at 1.3:1, so the boundary is drawn
+ * by the card itself.
+ */
+const SEGMENT_GAP = 2.5;
 /** Below this house power, the donut would be all rounding noise. */
 const IDLE_THRESHOLD_W = 5;
 /** Show the overshoot footnote only when Σ exceeds house by > 5%. */
@@ -40,6 +47,8 @@ interface Props {
   house: number | null;
   /** True when a `main_energy_meter` exists. Controls "Autre" rendering. */
   hasMainMeter: boolean;
+  /** Placement classes from the page's grid (spec 197, FR-E3.1). */
+  className?: string;
 }
 
 /**
@@ -49,7 +58,7 @@ interface Props {
  */
 const POWER = { step: 5 } as const;
 
-export function LiveSubmeterBreakdown({ house, hasMainMeter }: Props) {
+export function LiveSubmeterBreakdown({ house, hasMainMeter, className }: Props) {
   const { t } = useTranslation();
   const equipments = useEquipments((s) => s.equipments);
   const zoneTree = useZones((s) => s.tree);
@@ -82,15 +91,20 @@ export function LiveSubmeterBreakdown({ house, hasMainMeter }: Props) {
   const hasStale = rows.some((r) => r.unknown === "stale");
 
   const isIdle = total < IDLE_THRESHOLD_W;
-  const segments = isIdle ? [] : buildSegments(partitionRows, other, total);
+  // Spec 197 (FR-E3.2) — the appliances at 0 W fold into one line; the
+  // donut follows the list, so its segments are the active rows then Autre.
+  const { active, stopped } = splitStoppedRows(partitionRows);
+  const segments = isIdle ? [] : buildSegments(active, other, total);
 
   const t_total = formatPowerParts(total, POWER);
 
   return (
-    <div className="card p-4 sm:p-6 mt-4">
-      <SectionHeader icon={ChartPie} title={t("energy.live.breakdown.title")} />
+    <div className={`card p-4 sm:p-6 @container ${className ?? ""}`}>
+      <SectionHeader title={t("energy.live.breakdown.title")} />
 
-      <div className="flex flex-col sm:flex-row items-center sm:items-start gap-6 max-w-[600px]">
+      {/* Side by side when the card is wide enough, whatever the viewport:
+          from lg the card is the narrow right column of the page. */}
+      <div className="flex flex-col @md:flex-row items-center @md:items-start gap-6">
         <Donut
           segments={segments}
           totalLabel={isIdle ? t("energy.live.breakdown.houseIdle") : t_total.value}
@@ -100,16 +114,23 @@ export function LiveSubmeterBreakdown({ house, hasMainMeter }: Props) {
         />
 
         <div className="flex-1 min-w-0 w-full flex flex-col gap-2">
-          {partitionRows.map((row) => (
+          {active.map((row) => (
             <LegendRow key={row.id} row={row} total={total} t={t} />
           ))}
+          {/* « Autre » is the unmetered part, often the largest: a full row,
+              last, saying what it is (spec 197, FR-E3.2). */}
           {hasMainMeter && other > 0 && (
-            <div className="grid grid-cols-[10px_1fr_auto_auto] gap-x-3 items-center text-small opacity-80">
-              <span
-                className="w-[10px] h-[10px] rounded-xs border border-border"
-                style={{ background: OTHER_COLOR }}
-              />
-              <span className="text-text-secondary">{t("energy.live.breakdown.other")}</span>
+            <div
+              className="grid grid-cols-[10px_1fr_auto_auto] gap-x-3 items-center text-small"
+              data-testid="breakdown-other"
+            >
+              <span className="w-[10px] h-[10px] rounded-xs" style={{ background: OTHER_COLOR }} />
+              <div className="flex flex-col min-w-0">
+                <span className="font-medium text-text">{t("energy.live.breakdown.other")}</span>
+                <span className="text-micro text-text-tertiary">
+                  {t("energy.live.breakdown.unmetered")}
+                </span>
+              </div>
               <span className="tabular-nums font-medium text-text-secondary min-w-[64px] text-right">
                 {formatPower(other, POWER)}
               </span>
@@ -117,6 +138,13 @@ export function LiveSubmeterBreakdown({ house, hasMainMeter }: Props) {
                 {formatPercent(sharePercent(other, total))}
               </span>
             </div>
+          )}
+          {stopped.length > 0 && (
+            <p className="text-caption text-text-tertiary" data-testid="breakdown-stopped">
+              {t("energy.live.breakdown.stopped", {
+                names: stopped.map((r) => r.name).join(", "),
+              })}
+            </p>
           )}
 
           {/* Spec 179 — meters on their own supply: watts shown, no share of a
@@ -203,22 +231,36 @@ function Donut({
     offsets.push(acc);
     acc += s.fraction;
   }
+  // The faint track shows only where no segment is drawn: under a full ring
+  // it would fill the gaps, which must show the card (spec 197, FR-E3.3).
+  const showTrack = idle || acc < 0.999;
+  // A lone segment is the whole ring: no boundary, so no gap.
+  const gap = segments.length > 1 ? SEGMENT_GAP : 0;
   return (
-    <div className="relative w-[180px] h-[180px] shrink-0" role="img" aria-label={ariaLabel}>
-      <svg width="180" height="180" viewBox="0 0 200 200" className="block">
+    <div
+      className="relative w-[140px] h-[140px] sm:w-[180px] sm:h-[180px] shrink-0"
+      role="img"
+      aria-label={ariaLabel}
+    >
+      <svg viewBox="0 0 200 200" className="block w-full h-full">
         <g transform="rotate(-90 100 100)">
-          <circle
-            cx="100"
-            cy="100"
-            r={RADIUS}
-            fill="none"
-            stroke="var(--color-border)"
-            strokeWidth={STROKE}
-            opacity={idle ? 1 : 0.35}
-          />
+          {showTrack && (
+            <circle
+              cx="100"
+              cy="100"
+              r={RADIUS}
+              fill="none"
+              stroke="var(--color-border)"
+              strokeWidth={STROKE}
+              opacity={idle ? 1 : 0.35}
+            />
+          )}
           {segments.map((seg, i) => {
-            const dasharray = `${seg.fraction * CIRCUMFERENCE} ${CIRCUMFERENCE}`;
-            const dashoffset = -offsets[i] * CIRCUMFERENCE;
+            // Each arc is shortened by the gap and starts half a gap late, so
+            // the card shows between two neighbours. A sliver keeps 1 unit.
+            const length = Math.max(1, seg.fraction * CIRCUMFERENCE - gap);
+            const dasharray = `${length} ${CIRCUMFERENCE}`;
+            const dashoffset = -(offsets[i] * CIRCUMFERENCE + gap / 2);
             return (
               <circle
                 key={seg.id}

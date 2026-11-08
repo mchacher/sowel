@@ -162,7 +162,7 @@ The energy charts, the Live diagram and the arbiter paint from these tokens (`--
 - Every series against "Other": at least 1.5:1 **and** 30° of hue. Other is a near-grey, so a hue gap alone means little; it is a warm grey because the palette's blues sit on the cool side.
 - Every mark stands on the dark card (at least 3:1).
 
-**The energy palette paints marks, not words** (#1126). The off-peak blue is 2.08:1 on a light card and the auto-consumption green 2.01:1, so a word or a figure never takes an energy or series colour: a tooltip row is a swatch beside neutral text (`TooltipSeriesRow`), a Live diagram node puts its colour on the icon and its value in ink, a flow pill puts it on its border, and the arbiter pill writes « Accordé » in `success`. A Recharts default tooltip takes `itemStyle={CHART_TOOLTIP_ITEM_STYLE}` (`ui/src/lib/chart-font.ts`), otherwise it writes each row in its series colour. The PV forecast draws « Attendu » as a dashed neutral line (`text-tertiary`, 1.5 px, dash 4-3, no fill) and « Réalisé » as a solid `--solar-production` line (2 px), its legend keys drawn like the lines (spec 197); amber is not used. `energy-palette.test.ts` computes the arbiter pill and sticker words on their tint, and scans the energy components for a style `color` set from an energy constant or token and for a default tooltip without neutral rows; a colour passed through a variable escapes the scan.
+**The energy palette paints marks, not words** (#1126). The off-peak blue is 2.08:1 on a light card and the auto-consumption green 2.01:1, so a word or a figure never takes an energy or series colour: a tooltip row is a swatch beside neutral text (`TooltipSeriesRow`), a Live diagram node puts its colour on the icon and its value in ink, a flow percentage is plain secondary text by its route (spec 197), and the arbiter pill writes « Accordé » in `success`. A Recharts default tooltip takes `itemStyle={CHART_TOOLTIP_ITEM_STYLE}` (`ui/src/lib/chart-font.ts`), otherwise it writes each row in its series colour. The PV forecast draws « Attendu » as a dashed neutral line (`text-tertiary`, 1.5 px, dash 4-3, no fill) and « Réalisé » as a solid `--solar-production` line (2 px), its legend keys drawn like the lines (spec 197); amber is not used. Where a solar figure or word must carry the green, it takes `--solar-ink` (`text-solar-ink`, 5.3:1 on a light card), never a fill token. `energy-palette.test.ts` computes the arbiter pill and sticker words on their tint, and scans the energy components for a style `color` set from an energy constant or token and for a default tooltip without neutral rows; a colour passed through a variable escapes the scan.
 
 | Token                | Hybrid    | Dark      | Usage                                                  |
 | -------------------- | --------- | --------- | ------------------------------------------------------ |
@@ -172,6 +172,7 @@ The energy charts, the Live diagram and the arbiter paint from these tokens (`--
 | `--solar-auto`       | `#6BCB77` | `#74C77F` | autoconsumption, arbiter "granted"                     |
 | `--solar-injection`  | `#2D8F3E` | `#2C8C3C` | injection                                              |
 | `--solar-production` | `#4CA85C` | `#57BE6C` | production when not split, PV forecast « Attendu »     |
+| `--solar-ink`        | `#1E7B34` | `#74C77F` | solar as text only: a figure or a word (spec 197)      |
 | `--slate-neutral`    | `#6E7C88` | `#7C8B98` | arbiter "on, outside arbitration" (also a text colour) |
 | `--energy-other`     | `#A69E96` | `#78726B` | "Other": consumption no sub-meter accounts for         |
 
@@ -321,6 +322,8 @@ Keyframes are declared in [tokens.css](tokens.css):
 - `pulseAlert` — concentric red ripple on alert pills
 - `connPing` — ping ring on Connecté dot
 
+And in `ui/src/index.css`: `flow-dash` moves the flow diagram's dots (round-capped dashes, one 20 px period per cycle, the cycle's length set per power tier; spec 197). It stops outright under reduced motion: the route's width and its end arrowhead still say how much and which way.
+
 All animations honor `prefers-reduced-motion: reduce`.
 
 ---
@@ -380,3 +383,4 @@ See [migration.md](migration.md) for the broader strategy.
 | 2026-11-07 | Colour roles: amber = on, orange = attention, red = fault; no light tint (slice 4)  |
 | 2026-11-07 | Radii 6 / 10 / 16, cards without border (`card`), wells, dark category tints (7b)   |
 | 2026-11-07 | Energy palette: dark values told apart, series palette `--series-1…8` (slice E)     |
+| 2026-11-08 | `--solar-ink` for solar words; flow dots `flow-dash` keyframes (spec 197)           |

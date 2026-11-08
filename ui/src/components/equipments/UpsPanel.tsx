@@ -29,7 +29,7 @@ import {
 import { GridPylonIcon } from "../icons/GridPylonIcon";
 import type { DataBindingWithValue } from "../../types";
 import { FlowDiagram } from "../flow/FlowDiagram";
-import type { FlowLinkSpec, FlowNodeSpec } from "../flow/flow-geometry";
+import type { FlowHeadline, FlowLinkSpec, FlowNodeSpec } from "../flow/flow-geometry";
 import {
   formatRuntime,
   isOnBattery,
@@ -81,14 +81,14 @@ const SHOWN_IN_MARGINS = new Set([
   "battery_runtime_low",
 ]);
 
-/** `ink`: the colour for words (the status tag), where orange takes its
- *  darker text variant and "on mains" is plain ink, the grid blue being an
- *  energy colour (#1126); otherwise the fill colour for strokes (spec 196). */
-function severityColor(r: UpsReadings, ink = false): string {
+/** The fill colour of the status severity: the headline dot and the battery
+ *  branch on battery (spec 196). Never a text colour: the status words are in
+ *  ink beside the dot (spec 197). */
+function severityColor(r: UpsReadings): string {
   const s = upsSeverityOf(r.status);
   if (s === "error") return "var(--color-error)";
-  if (s === "warning") return ink ? "var(--color-warning-ink)" : "var(--color-warning)";
-  if (s === "ok") return ink ? "var(--color-text)" : GRID_COLOR;
+  if (s === "warning") return "var(--color-warning)";
+  if (s === "ok") return GRID_COLOR;
   return IDLE_COLOR;
 }
 
@@ -115,7 +115,7 @@ export function UpsPanel({ dataBindings }: UpsPanelProps) {
             ? formatNumber(r.loadPct, { decimals: 0 })
             : "—",
       unit: r.loadW !== null ? "W" : r.loadPct !== null ? "%" : undefined,
-      icon: <Server className="w-11 h-11 sm:w-14 sm:h-14" strokeWidth={1.5} />,
+      icon: <Server className="w-11 h-11 @lg:w-14 @lg:h-14" strokeWidth={1.5} />,
     },
     {
       slot: "left",
@@ -128,7 +128,7 @@ export function UpsPanel({ dataBindings }: UpsPanelProps) {
           ? formatNumber(r.inputV, { decimals: 0 })
           : "—",
       unit: onBattery || r.inputV === null ? undefined : "V",
-      icon: <GridPylonIcon className="w-9 h-9 sm:w-10 sm:h-10" />,
+      icon: <GridPylonIcon className="w-9 h-9 @lg:w-10 @lg:h-10" />,
     },
     {
       slot: "right",
@@ -139,41 +139,76 @@ export function UpsPanel({ dataBindings }: UpsPanelProps) {
       dimmed: !onBattery && !r.charging,
       value: r.chargePct !== null ? String(Math.round(r.chargePct)) : "—",
       unit: r.chargePct !== null ? "%" : undefined,
-      sub: onBattery ? t("equipments.ups.discharging") : (formatRuntime(r.runtimeS) ?? undefined),
+      // The runtime is the headline's figure (spec 197): not repeated here.
+      sub: onBattery ? t("equipments.ups.discharging") : undefined,
       icon: batteryIcon(r.chargePct),
     },
   ];
 
   const runtimeLabel = formatRuntime(r.runtimeS);
+  // Spec 197 (FR-E4.5) — the watts on each route pick its tier, as on Live.
+  // The UPS reports no charging power, so the charge loop takes the first
+  // tier, which a charger topping up a battery is in any case.
   const links: FlowLinkSpec[] = [
     {
       edge: "leftToFocal",
       color: GRID_COLOR,
       active: !onBattery && r.status !== "offline",
-      magnitude: r.loadW ?? undefined,
+      powerW: r.loadW ?? undefined,
     },
     {
       edge: "rightToFocal",
       color: batteryBranchColor,
       active: onBattery,
-      magnitude: r.loadW ?? undefined,
-      // During an outage the autonomy is the only number worth reading, and it
-      // sits where the solar page puts its share-of-supply percentage.
-      ...(onBattery && runtimeLabel
-        ? { pill: { text: runtimeLabel, color: batteryBranchColor } }
-        : {}),
+      powerW: r.loadW ?? undefined,
+      // No runtime pill on this route any more: during an outage the time
+      // left is the headline's figure (spec 197), and nothing is said twice.
     },
     {
       edge: "leftToRight",
       color: BATTERY_COLOR,
       active: r.charging && !onBattery,
-      ...(r.charging && !onBattery
-        ? { pill: { text: t("equipments.ups.charging"), color: BATTERY_COLOR } }
-        : {}),
+      ...(r.charging && !onBattery ? { pill: { text: t("equipments.ups.charging") } } : {}),
     },
   ];
 
-  const ariaLabel = onBattery
+  // Spec 197 (FR-E1.6) — the status reads as the same balance line as Live.
+  // A UPS headline answers "am I covered, and for how long?": the figure is
+  // the runtime in both states, and the sentence carries the load and the
+  // battery level, the two facts the nodes below already show (the battery
+  // node no longer repeats the runtime). Without a runtime reading, the load
+  // takes the figure, as the focal node shows it.
+  const loadParts = nodes[0];
+  const runtime = runtimeParts(r.runtimeS);
+  const loadText =
+    r.loadW !== null ? formatPower(r.loadW) : r.loadPct !== null ? formatPercent(r.loadPct) : null;
+  const batteryText = r.chargePct !== null ? formatPercent(r.chargePct) : null;
+  const sentenceParts = [
+    runtime && !onBattery ? t("equipments.ups.headline.runtimeOnMains") : null,
+    onBattery && batteryText ? t("equipments.ups.headline.battery", { charge: batteryText }) : null,
+    runtime && loadText ? t("equipments.ups.headline.load", { load: loadText }) : null,
+    !onBattery && batteryText
+      ? t("equipments.ups.headline.battery", { charge: batteryText })
+      : null,
+  ].filter((x): x is string => x !== null);
+  const sentence = sentenceParts.join(" · ");
+  const headline: FlowHeadline = {
+    dotColor: tagColor,
+    label: statusText,
+    ...(runtime
+      ? { value: runtime.value, unit: runtime.unit }
+      : {
+          value: loadParts.value,
+          // A load the unit reports only as a share of its capacity says so:
+          // a bare « 11 % » under « Sur secteur » reads as a battery level.
+          unit: loadParts.unit === "%" ? t("equipments.ups.headline.loadPctUnit") : loadParts.unit,
+        }),
+    ...(sentence ? { sentence: sentence.charAt(0).toLocaleUpperCase() + sentence.slice(1) } : {}),
+  };
+
+  // The status leads: the visible headline is hidden from screen readers, and
+  // « Batterie faible » or « Surcharge » must not be lost with it.
+  const flowSentence = onBattery
     ? t("equipments.ups.aria.onBattery", {
         charge: r.chargePct != null ? formatPercent(r.chargePct) : "?",
         runtime: runtimeLabel ?? "?",
@@ -184,6 +219,7 @@ export function UpsPanel({ dataBindings }: UpsPanelProps) {
         power: r.loadW != null ? formatPower(r.loadW) : "?",
         charge: r.chargePct != null ? formatPercent(r.chargePct) : "?",
       });
+  const ariaLabel = `${statusText}. ${flowSentence}`;
 
   const margin = upsMarginOf(r);
   const marginColor =
@@ -207,12 +243,7 @@ export function UpsPanel({ dataBindings }: UpsPanelProps) {
   return (
     <div className="mb-6 space-y-4">
       <div className="card p-4 sm:p-6">
-        <FlowDiagram
-          nodes={nodes}
-          links={links}
-          tag={{ text: statusText, color: severityColor(r, true) }}
-          ariaLabel={ariaLabel}
-        />
+        <FlowDiagram nodes={nodes} links={links} headline={headline} ariaLabel={ariaLabel} />
       </div>
 
       {hasMargins && (
@@ -324,11 +355,23 @@ export function UpsPanel({ dataBindings }: UpsPanelProps) {
 }
 
 /**
+ * The autonomy split into a figure and its unit for the headline: « 6 » and
+ * « min ». A compound duration (« 2 min 12 s », « 1 h 05 ») stays whole, its
+ * units in the figure, rather than be cut at the wrong place.
+ */
+function runtimeParts(seconds: number | null): { value: string; unit?: string } | null {
+  const label = formatRuntime(seconds);
+  if (label === null) return null;
+  const m = /^(\d+)[\s\u202f\u00a0]+(\p{L}+)$/u.exec(label);
+  return m ? { value: m[1], unit: m[2] } : { value: label };
+}
+
+/**
  * Battery glyph matching the charge, so the level reads before the number does.
  * Mirrors the low-battery thresholds the engine already uses (spec 143).
  */
 function batteryIcon(pct: number | null) {
-  const cls = "w-9 h-9 sm:w-10 sm:h-10";
+  const cls = "w-9 h-9 @lg:w-10 @lg:h-10";
   if (pct === null) return <Battery className={cls} strokeWidth={1.5} />;
   if (pct <= 20) return <BatteryWarning className={cls} strokeWidth={1.5} />;
   if (pct <= 50) return <BatteryLow className={cls} strokeWidth={1.5} />;

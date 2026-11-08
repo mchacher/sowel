@@ -10,6 +10,10 @@ import type { LucideIcon } from "lucide-react";
  *
  * A component rather than a copied block, because four copies of a heading is
  * how they came to differ in the first place.
+ *
+ * Spec 197 (FR-E3.4): the icon is optional, and the Energy sections drop it.
+ * A pie beside the donut it heads, a node graph over the flow: each icon only
+ * repeated the card below it, on every card of the page.
  */
 export function SectionHeader({
   icon: Icon,

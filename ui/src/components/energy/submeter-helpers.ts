@@ -265,3 +265,27 @@ export function computeOther(house: number, submeters: SubmeterRow[]): number {
   const sum = submeters.reduce((acc, r) => acc + (r.power ?? 0), 0);
   return Math.max(0, house - sum);
 }
+
+/**
+ * Spec 197 (FR-E3.2) — split the legend into the rows worth a line and the
+ * appliances at rest.
+ *
+ * A row is stopped when its reading is current and rounds to 0 W on screen
+ * (`displayedPower`, the rounding the row itself would print): four lines of
+ * « 0 W 0 % » took half the legend on the reference install. A row with no
+ * current reading (offline, stale) is not "stopped": we do not know, and it
+ * keeps its own line and wording (spec 179, #744). The order of `rows` is
+ * kept, so the active rows stay sorted by power.
+ */
+export function splitStoppedRows(rows: SubmeterRow[]): {
+  active: SubmeterRow[];
+  stopped: SubmeterRow[];
+} {
+  const active: SubmeterRow[] = [];
+  const stopped: SubmeterRow[] = [];
+  for (const row of rows) {
+    if (row.power !== null && displayedPower(row.power) <= 0) stopped.push(row);
+    else active.push(row);
+  }
+  return { active, stopped };
+}

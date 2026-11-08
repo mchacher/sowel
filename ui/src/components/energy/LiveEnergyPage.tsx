@@ -8,14 +8,14 @@
  *
  * Flow model:
  *   P_house = P_grid + P_solar  (signs respected)
- *   importing  → P_grid > 0  → bubbles flow grid → house, slate-blue
- *   exporting  → P_grid < 0  → bubbles flow solar → grid, green
- *   solar > 0  → bubbles flow solar → house, green
+ *   importing  → P_grid > 0  → dots flow grid → house, slate-blue
+ *   exporting  → P_grid < 0  → dots flow solar → grid, green
+ *   solar > 0  → dots flow solar → house, green
  */
 
 import { useEffect, useMemo } from "react";
 import { useTranslation } from "react-i18next";
-import { Clock, Snowflake, Waypoints, WifiOff } from "lucide-react";
+import { Clock, Snowflake, WifiOff } from "lucide-react";
 import { SectionHeader } from "./SectionHeader";
 import { SolarPanelIcon } from "../icons/SolarPanelIcon";
 import { GridPylonIcon } from "../icons/GridPylonIcon";
@@ -29,8 +29,10 @@ import { useWsSubscription } from "../../hooks/useWsSubscription";
 import { ArbitrationSurface } from "./ArbitrationSurface";
 import { FlowDiagram } from "../flow/FlowDiagram";
 import { formatRelative } from "../../lib/format-relative";
-import { formatPercent, formatPowerParts, type QuantityParts } from "../../lib/format";
+import { formatPercent, formatPower, formatPowerParts, type QuantityParts } from "../../lib/format";
 import { detectLiveStaleness, type LiveStalenessEntry } from "./live-staleness";
+import { liveHeadline, BALANCE_THRESHOLD_W, type LiveHeadline } from "./live-headline";
+import type { FlowHeadline } from "../flow/flow-geometry";
 import { useStalenessClock } from "../../hooks/useStalenessClock";
 
 // Sowel energy palette (matches EnergyBarChart.tsx + extends with grid colours)
@@ -39,6 +41,7 @@ const HP_COLOR = "var(--color-energy-hp)"; // House consumption (vivid blue, foc
 const GRID_COLOR = "var(--color-energy-grid)"; // Grid import (slate blue)
 const GRID_OFF_COLOR = "var(--color-text-tertiary)"; // Grid passive (neutral, on export)
 const AUTO_COLOR = "var(--color-solar-auto)"; // Solar / autoconso (green)
+const INJECTION_COLOR = "var(--color-solar-injection)"; // Export (dark green)
 
 // ── Helpers ─────────────────────────────────────────────────────────────
 
@@ -58,7 +61,8 @@ function sumPower(equipments: EquipmentWithDetails[]): number | null {
 
 /** A node's figure: whole watts rounded to 5 below a kilowatt (a 1 Hz meter
  *  would otherwise flicker the last digit), kW with one decimal above. The
- *  direction is carried by the arrow beside it, so the figure is unsigned. */
+ *  direction is carried by the word under it (« import » / « export »), so the
+ *  figure is unsigned. */
 function nodePower(value: number | null): QuantityParts {
   return formatPowerParts(value === null ? null : Math.abs(value), { step: 5 });
 }
@@ -119,16 +123,32 @@ export function LiveEnergyPage() {
         <EmptyState />
       ) : (
         <>
-          <LiveDiagram gridPower={gridPower} solarPower={solarPower} />
-          <PhaseBreakdown gridEquipments={gridEqs} />
-          <LiveSubmeterBreakdown
-            house={
-              gridPower !== null || solarPower !== null
-                ? Math.max(0, (gridPower ?? 0) + (solarPower ?? 0))
-                : null
-            }
-            hasMainMeter={gridEqs.length > 0}
-          />
+          {/* Spec 197 (FR-E3.1) — from `lg` the flow and the breakdown share a
+              row, the phases under the breakdown. Below `lg` the right column
+              dissolves (`contents`) and the order classes keep the stacking
+              of before: flow, phases, breakdown. */}
+          {/* A home with neither sub-meters nor phases has nothing for the right
+              column: the flow card then takes the whole row. */}
+          <div className="flex flex-col gap-4 lg:grid lg:grid-cols-[7fr_5fr] lg:items-stretch lg:has-[>[data-live-aside]:empty]:grid-cols-1">
+            <LiveDiagram
+              gridPower={gridPower}
+              solarPower={solarPower}
+              staleness={staleness}
+              className="order-1 lg:order-none"
+            />
+            <div className="contents lg:flex lg:flex-col lg:gap-4 lg:min-w-0" data-live-aside>
+              <LiveSubmeterBreakdown
+                house={
+                  gridPower !== null || solarPower !== null
+                    ? Math.max(0, (gridPower ?? 0) + (solarPower ?? 0))
+                    : null
+                }
+                hasMainMeter={gridEqs.length > 0}
+                className="order-3 lg:order-none lg:flex-1"
+              />
+              <PhaseBreakdown gridEquipments={gridEqs} className="order-2 lg:order-none" />
+            </div>
+          </div>
           {/* Spec 140 / FR-10 — arbitration surface (renders only when the
               arbiter is enabled; a no-PV home never sees dead UI here) */}
           <ArbitrationSurface />
@@ -186,9 +206,13 @@ function StalenessBanner({ entry }: { entry: LiveStalenessEntry }) {
 function LiveDiagram({
   gridPower,
   solarPower,
+  staleness,
+  className,
 }: {
   gridPower: number | null;
   solarPower: number | null;
+  staleness: LiveStalenessEntry[];
+  className?: string;
 }) {
   const { t } = useTranslation();
   const grid = gridPower ?? 0;
@@ -200,31 +224,13 @@ function LiveDiagram({
   //   solar→house : production used locally
   //   grid→house  : imported supply (only when importing)
   //   solar→grid  : surplus exported (only when exporting)
-  const flowSolarToHouse = Math.max(0, Math.min(solar, house));
-  const flowGridToHouse = Math.max(0, grid);
-  const flowSolarToGrid = Math.max(0, -grid);
-
-  // Qualitative status — single-tag summary shown beneath the diagram.
-  // The mixed case is split by *which source dominates* the house supply:
-  // "appoint" is always the supplement, never the main source.
   //
-  //   solar < 5W                                  → "Réseau seul"
-  //   exporting (grid < -5)                       → "Excédent solaire"
-  //   balanced (|grid| < 5W) + production         → "Autonome"
-  //   importing + solar producing & solar ≥ grid  → "Appoint réseau"   (solar is the main)
-  //   importing + solar producing & solar <  grid → "Appoint solaire"  (grid is the main)
-  type Status = "grid_only" | "self" | "mixed_solar_lead" | "mixed_grid_lead" | "export";
-  let status: Status;
-  if (solar < 5) status = "grid_only";
-  else if (grid < -5) status = "export";
-  else if (grid > 5) status = solar >= grid ? "mixed_solar_lead" : "mixed_grid_lead";
-  else status = "self";
-  const statusColor =
-    status === "export" || status === "self" || status === "mixed_solar_lead"
-      ? AUTO_COLOR
-      : status === "mixed_grid_lead"
-        ? GRID_COLOR
-        : GRID_OFF_COLOR;
+  // A flow under 5 W is meter noise: it lights no route, so a house the
+  // headline calls « Autonome » shows no grid route either.
+  const lit = (w: number) => (w >= BALANCE_THRESHOLD_W ? w : 0);
+  const flowSolarToHouse = lit(Math.max(0, Math.min(solar, house)));
+  const flowGridToHouse = lit(Math.max(0, grid));
+  const flowSolarToGrid = lit(Math.max(0, -grid));
 
   const gridColor = exporting ? GRID_OFF_COLOR : GRID_COLOR;
 
@@ -246,37 +252,49 @@ function LiveDiagram({
   const gridValue = nodePower(gridPower !== null ? grid : null);
   const solarValue = nodePower(solarPower !== null ? solar : null);
 
+  // Spec 197 (FR-E1) — the balance line, and the same facts for a screen
+  // reader. The grid's age wins when both sources are late: it is the figure.
+  const staleEntry =
+    staleness.find((e) => e.source === "grid") ?? staleness.find((e) => e.source === "solar");
+  const balance = liveHeadline({
+    gridW: gridPower,
+    solarW: solarPower,
+    stale: staleEntry
+      ? { source: staleEntry.source, since: staleEntry.since, mode: staleEntry.mode }
+      : null,
+  });
+  const gridWord =
+    gridPower === null || Math.abs(grid) < BALANCE_THRESHOLD_W
+      ? undefined
+      : t(exporting ? "energy.live.grid.export" : "energy.live.grid.import");
+
   return (
-    <div className="card p-4 sm:p-6">
-      <SectionHeader icon={Waypoints} title={t("energy.live.diagram.title")} />
+    <div className={`card p-4 sm:p-6 min-w-0 ${className ?? ""}`}>
+      <SectionHeader title={t("energy.live.diagram.title")} />
       <FlowDiagram
-        // The energy colours tint the tag; its words are in ink (#1126).
-        tag={{
-          text: t(`energy.live.status.${status}`),
-          color: statusColor,
-          ink: "var(--color-text)",
-        }}
+        headline={buildHeadline(balance, t)}
+        ariaLabel={buildAriaLabel(balance, gridPower, solarPower, t)}
         links={[
           {
             edge: "leftToFocal",
             color: gridColor,
             active: flowGridToHouse > 0,
-            magnitude: flowGridToHouse,
-            ...(pctGH !== null ? { pill: { text: formatPercent(pctGH), color: gridColor } } : {}),
+            powerW: flowGridToHouse,
+            ...(pctGH !== null ? { pill: { text: formatPercent(pctGH) } } : {}),
           },
           {
             edge: "rightToFocal",
             color: AUTO_COLOR,
             active: flowSolarToHouse > 0,
-            magnitude: flowSolarToHouse,
-            ...(pctSH !== null ? { pill: { text: formatPercent(pctSH), color: AUTO_COLOR } } : {}),
+            powerW: flowSolarToHouse,
+            ...(pctSH !== null ? { pill: { text: formatPercent(pctSH) } } : {}),
           },
           {
             edge: "rightToLeft",
             color: AUTO_COLOR,
             active: flowSolarToGrid > 0,
-            magnitude: flowSolarToGrid,
-            ...(pctSG !== null ? { pill: { text: formatPercent(pctSG), color: AUTO_COLOR } } : {}),
+            powerW: flowSolarToGrid,
+            ...(pctSG !== null ? { pill: { text: formatPercent(pctSG) } } : {}),
           },
         ]}
         nodes={[
@@ -288,7 +306,7 @@ function LiveDiagram({
             unit: houseValue.unit,
             icon: (
               <svg
-                className="w-11 h-11 sm:w-14 sm:h-14"
+                className="w-11 h-11 @lg:w-14 @lg:h-14"
                 viewBox="0 0 24 24"
                 fill="none"
                 stroke="currentColor"
@@ -314,27 +332,102 @@ function LiveDiagram({
             slot: "left",
             label: t("energy.live.label.grid"),
             color: gridColor,
-            dimmed: Math.abs(grid) < 5,
+            dimmed: Math.abs(grid) < BALANCE_THRESHOLD_W,
             value: gridValue.value,
             unit: gridValue.unit,
-            valuePrefix: (
-              <span className="text-body sm:text-title font-semibold">{exporting ? "↓" : "↑"}</span>
-            ),
-            icon: <GridPylonIcon className="w-9 h-9 sm:w-10 sm:h-10" />,
+            sub: gridWord,
+            icon: <GridPylonIcon className="w-9 h-9 @lg:w-10 @lg:h-10" />,
           },
           {
             slot: "right",
             label: t("energy.live.label.production"),
             color: AUTO_COLOR,
-            dimmed: solar < 5,
+            dimmed: solar < BALANCE_THRESHOLD_W,
             value: solarValue.value,
             unit: solarValue.unit,
-            icon: <SolarPanelIcon className="w-9 h-9 sm:w-10 sm:h-10" strokeWidth={1.4} />,
+            icon: <SolarPanelIcon className="w-9 h-9 @lg:w-10 @lg:h-10" strokeWidth={1.4} />,
           },
         ]}
       />
     </div>
   );
+}
+
+type T = (key: string, opts?: Record<string, unknown>) => string;
+
+const HEADLINE_DOT: Record<LiveHeadline["kind"], string> = {
+  import: GRID_COLOR,
+  export: INJECTION_COLOR,
+  self: AUTO_COLOR,
+  "consumption-only": HP_COLOR,
+};
+
+/** The balance line's words, from the pure verdict (spec 197, FR-E1.1). */
+function buildHeadline(h: LiveHeadline, t: T): FlowHeadline {
+  const value = nodePower(h.valueW);
+  const consumption = formatPower(h.consumptionW, { step: 5 });
+  let sentence: string | null = null;
+  if (h.kind === "export") {
+    sentence = t("energy.live.headline.sentence.export", { consumption });
+  } else if (h.kind === "self" || h.kind === "import") {
+    sentence =
+      h.solarPct === null
+        ? t("energy.live.headline.sentence.noSolar")
+        : t("energy.live.headline.sentence.covered", {
+            pct: formatPercent(h.solarPct),
+            consumption,
+          });
+  }
+  const when = h.stale ? formatRelative(h.stale.since, t) : "";
+  return {
+    dotColor: HEADLINE_DOT[h.kind],
+    label: t(`energy.live.headline.${h.kind}`),
+    value: value.value,
+    unit: value.unit,
+    sentence:
+      sentence !== null || h.stale ? (
+        <>
+          {sentence}
+          {h.stale && (
+            <span className="text-warning-ink">
+              {sentence !== null ? " · " : ""}
+              {when === ""
+                ? t("energy.live.headline.staleUnknown")
+                : h.stale.mode === "frozen"
+                  ? t("energy.live.headline.frozen", { when })
+                  : t("energy.live.headline.stale", { when })}
+            </span>
+          )}
+        </>
+      ) : undefined,
+  };
+}
+
+/**
+ * The whole flow as one sentence for a screen reader (FR-E1.5): the visible
+ * figures are hidden from it, so this must carry all of them.
+ */
+function buildAriaLabel(
+  h: LiveHeadline,
+  gridPower: number | null,
+  solarPower: number | null,
+  t: T,
+): string {
+  const power = (w: number | null) => formatPower(w === null ? null : Math.abs(w), { step: 5 });
+  const consumption = power(h.consumptionW);
+  if (h.kind === "consumption-only") return t("energy.live.aria.consumption", { consumption });
+  const grid = power(gridPower);
+  const solar = power(solarPower);
+  if (h.kind === "export") return t("energy.live.aria.export", { consumption, solar, grid });
+  if (h.kind === "self") return t("energy.live.aria.self", { consumption, solar });
+  if (h.solarPct === null) return t("energy.live.aria.importOnly", { consumption, grid });
+  return t("energy.live.aria.import", {
+    consumption,
+    grid,
+    solar,
+    gridPct: formatPercent(100 - h.solarPct),
+    solarPct: formatPercent(h.solarPct),
+  });
 }
 
 // ── Empty state ─────────────────────────────────────────────────────────

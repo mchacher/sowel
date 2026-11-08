@@ -107,6 +107,8 @@
   --color-solar-injection: var(--solar-injection);
   --color-solar-auto:      var(--solar-auto);
   --color-solar-production: var(--solar-production);
+  /* Spec 197 — solar as text only (a figure or a word), never a fill. */
+  --color-solar-ink:       var(--solar-ink);
   --color-energy-hp:       var(--energy-hp);
   --color-energy-hc:       var(--energy-hc);
   --color-energy-grid:     var(--energy-grid);
@@ -504,6 +506,33 @@ input:focus-visible, select:focus-visible, textarea:focus-visible {
 .recharts-wrapper,
 .recharts-wrapper svg {
   outline: none !important;
+}
+
+/* ============================================================
+   Flow diagram dots (spec 197, FR-E4)
+   ============================================================ */
+
+/* The moving dots of FlowDiagram: zero-length round-capped dashes, one
+   period apart (FLOW_DOT_PERIOD in flow-geometry.ts, 20 px), shifted by one
+   period per cycle. The speed is the cycle's duration, set inline per power
+   tier. Under reduced motion they stand still, and the route's width and its
+   end cap still say how much and which way. */
+@keyframes flow-dash {
+  from { stroke-dashoffset: 0; }
+  to { stroke-dashoffset: -20; }
+}
+
+.flow-dash {
+  animation-name: flow-dash;
+  animation-duration: 1s;
+  animation-timing-function: linear;
+  animation-iteration-count: infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .flow-dash {
+    animation: none;
+  }
 }
 
 /* ============================================================

@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { render, screen } from "../../test-utils";
+import { render, screen, within } from "../../test-utils";
 import { UpsPanel } from "./UpsPanel";
 import type { DataBindingWithValue } from "../../types";
 
@@ -36,6 +36,9 @@ function bindings(over: Record<string, unknown> = {}): DataBindingWithValue[] {
   })) as unknown as DataBindingWithValue[];
 }
 
+/** The diagram's node with this label, to read its figures apart from the headline. */
+const nodeOf = (label: string) => screen.getByText(label).closest(".absolute") as HTMLElement;
+
 const paintedStrokes = (c: HTMLElement) =>
   [...c.querySelectorAll("path")]
     .map((p) => p.getAttribute("stroke"))
@@ -44,10 +47,11 @@ const paintedStrokes = (c: HTMLElement) =>
 describe("UpsPanel on mains", () => {
   it("puts the three live values on the diagram, one per node", () => {
     render(<UpsPanel dataBindings={bindings()} />);
-    expect(screen.getByText("21")).toBeTruthy(); // load, watts
-    expect(screen.getByText("237")).toBeTruthy(); // mains, volts
-    expect(screen.getByText("100")).toBeTruthy(); // battery, percent
-    expect(screen.getByText("59 min")).toBeTruthy(); // autonomy, as a duration
+    expect(within(nodeOf("Protected load")).getByText("21")).toBeTruthy(); // load, watts
+    expect(within(nodeOf("Mains")).getByText("237")).toBeTruthy(); // mains, volts
+    expect(within(nodeOf("Battery")).getByText("100")).toBeTruthy(); // battery, percent
+    // The runtime is the headline's figure, no longer the battery node's sub.
+    expect(within(nodeOf("Battery")).queryByText("59 min")).toBeNull();
   });
 
   it("lights the mains branch and leaves the battery branch dark", () => {
@@ -56,9 +60,50 @@ describe("UpsPanel on mains", () => {
     expect(paintedStrokes(container)).not.toContain("var(--color-error)");
   });
 
-  it("names the state in the tag", () => {
+  // Spec 197 (FR-E1.6) — the same balance line as Live: the state, then the
+  // load it carries, then the autonomy that leaves.
+  it("reads its status as the headline: state, runtime, then load and battery", () => {
     render(<UpsPanel dataBindings={bindings()} />);
-    expect(screen.getByText("On mains")).toBeTruthy();
+    const headline = screen.getByTestId("flow-headline");
+    expect(headline.textContent).toContain("On mains");
+    expect(within(headline).getByText("59").parentElement?.className).toContain("text-value");
+    expect(within(headline).getByText("min")).toBeTruthy();
+    expect(headline.textContent).toMatch(/Battery runtime · load 21\sW · battery 100\s?%/);
+    expect(screen.getByTestId("flow-headline-dot").style.background).toBe(
+      "var(--color-energy-grid)",
+    );
+  });
+
+  it("quotes a load given only in percent in the sentence", () => {
+    const pctOnly = bindings().filter((b) => b.alias !== "estimated_power");
+    render(<UpsPanel dataBindings={pctOnly} />);
+    expect(screen.getByTestId("flow-headline").textContent).toMatch(/load 4\s?%/);
+  });
+
+  it("falls back to the load, named, when the runtime is unknown", () => {
+    const noRuntime = bindings().filter(
+      (b) => b.alias !== "battery_runtime" && b.alias !== "estimated_power",
+    );
+    render(<UpsPanel dataBindings={noRuntime} />);
+    const headline = screen.getByTestId("flow-headline");
+    expect(within(headline).getByText("4")).toBeTruthy();
+    expect(within(headline).getByText("% of capacity")).toBeTruthy();
+    expect(headline.textContent).toMatch(/Battery 100\s?%$/);
+  });
+
+  it("shows a dash when neither the runtime nor the load can be read", () => {
+    const none = bindings().filter(
+      (b) => !["estimated_power", "load", "battery_runtime"].includes(b.alias),
+    );
+    render(<UpsPanel dataBindings={none} />);
+    expect(within(screen.getByTestId("flow-headline")).getByText("—")).toBeTruthy();
+  });
+
+  it("draws the mains route by the load's power tier", () => {
+    const { container, rerender } = render(<UpsPanel dataBindings={bindings()} />);
+    expect(container.querySelector("path[data-tier]")?.getAttribute("data-tier")).toBe("1");
+    rerender(<UpsPanel dataBindings={bindings({ real_power: 900 })} />);
+    expect(container.querySelector("path[data-tier]")?.getAttribute("data-tier")).toBe("2");
   });
 
   it("lights the charge loop only while the UPS is charging", () => {
@@ -85,9 +130,31 @@ describe("UpsPanel during an outage", () => {
     expect(paintedStrokes(container)).not.toContain("var(--color-energy-grid)");
   });
 
-  it("moves the autonomy onto the active branch as a pill", () => {
+  it("says the time left once, as the headline, not again on the route", () => {
     render(<UpsPanel dataBindings={outage()} />);
-    expect(screen.getByText("6 min")).toBeTruthy();
+    expect(screen.queryByText("6 min")).toBeNull();
+    expect(within(screen.getByTestId("flow-headline")).getByText("6")).toBeTruthy();
+  });
+
+  it("tells a screen reader the status before the flow", () => {
+    render(<UpsPanel dataBindings={outage()} />);
+    expect(screen.getByRole("img", { name: /^Battery low\. Mains absent\./ })).toBeTruthy();
+  });
+
+  it("reads the time left as the headline, the battery and the load as its sentence", () => {
+    render(<UpsPanel dataBindings={outage()} />);
+    const headline = screen.getByTestId("flow-headline");
+    expect(headline.textContent).toContain("Battery low");
+    expect(within(headline).getByText("6").parentElement?.className).toContain("text-value");
+    expect(within(headline).getByText("min")).toBeTruthy();
+    expect(headline.textContent).toMatch(/Battery 14\s?% · load 21\sW$/);
+    expect(screen.getByTestId("flow-headline-dot").style.background).toBe("var(--color-error)");
+  });
+
+  it("still draws the battery route with its end head on battery", () => {
+    render(<UpsPanel dataBindings={outage()} />);
+    const caps = screen.getAllByTestId("flow-end-cap");
+    expect(caps.map((c) => c.dataset.edge)).toEqual(["rightToFocal"]);
   });
 
   it("flags the margins as critical", () => {
@@ -151,13 +218,13 @@ describe("UpsPanel technical sheet", () => {
     // The focal node reads the load from `estimated_power` (21 W); the sheet
     // must not list it again under "Estimated output power".
     render(<UpsPanel dataBindings={bindings()} />);
-    expect(screen.getByText("21")).toBeTruthy(); // still on the diagram
+    expect(within(nodeOf("Protected load")).getByText("21")).toBeTruthy(); // still on the diagram
     expect(screen.queryByText("Estimated output power")).toBeNull();
   });
 
   it("hides a measured output power from the sheet too, since it feeds the node", () => {
     render(<UpsPanel dataBindings={bindings({ real_power: 33 })} />);
-    expect(screen.getByText("33")).toBeTruthy(); // real_power wins on the node
+    expect(within(nodeOf("Protected load")).getByText("33")).toBeTruthy(); // real_power wins
     expect(screen.queryByText("Measured output power")).toBeNull();
     expect(screen.queryByText("Estimated output power")).toBeNull();
   });
