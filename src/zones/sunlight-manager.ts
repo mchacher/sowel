@@ -65,6 +65,17 @@ export class SunlightManager {
     return this.currentData;
   }
 
+  /**
+   * Spec 197 (FR-E5.4) — the same daylight rule as `isDaylight`, at any
+   * instant: the arbiter's history asks whether a past quarter fell at night.
+   * `null` when the home has no coordinates, as for the live flag.
+   */
+  isDaylightAt(atMs: number): boolean | null {
+    const settings = this.getSettings();
+    if (!settings) return null;
+    return this.daylightAt(new Date(atMs), settings);
+  }
+
   private getSettings(): {
     latitude: number;
     longitude: number;
@@ -109,25 +120,15 @@ export class SunlightManager {
 
     const now = new Date();
     const times = getTimes(now, settings.latitude, settings.longitude);
-
-    // suncalc 2 returns null where version 1 returned an Invalid Date: above
-    // the polar circles the sun may never rise or never set. The old code did
-    // the arithmetic anyway and produced NaN, which made every comparison
-    // false, so a polar summer read as permanent night. Answer from the sun's
-    // actual elevation instead, which is right in both directions.
+    // No sunrise or sunset above the polar circles: the times stay "--:--"
+    // and `daylightAt` answers from the sun's elevation.
     let sunrise = "--:--";
     let sunset = "--:--";
-    let isDaylight: boolean;
+    const isDaylight = this.daylightAt(now, settings);
 
     if (times.sunrise && times.sunset) {
       sunrise = this.formatTime(times.sunrise);
       sunset = this.formatTime(times.sunset);
-      // true when now > sunrise + sunriseOffset AND now < sunset - sunsetOffset
-      const sunriseWithOffset = new Date(times.sunrise.getTime() + settings.sunriseOffset * 60_000);
-      const sunsetWithOffset = new Date(times.sunset.getTime() - settings.sunsetOffset * 60_000);
-      isDaylight = now >= sunriseWithOffset && now < sunsetWithOffset;
-    } else {
-      isDaylight = getPosition(now, settings.latitude, settings.longitude).altitude > 0;
     }
 
     const prev = this.currentData;
@@ -154,17 +155,7 @@ export class SunlightManager {
     const settings = this.getSettings();
     if (!settings || !this.currentData.sunrise || !this.currentData.sunset) return;
 
-    const times = getTimes(now, settings.latitude, settings.longitude);
-    // Same polar guard as compute(): suncalc 2 returns null rather than an
-    // Invalid Date when the sun does not cross the horizon that day.
-    let isDaylight: boolean;
-    if (times.sunrise && times.sunset) {
-      const sunriseWithOffset = new Date(times.sunrise.getTime() + settings.sunriseOffset * 60_000);
-      const sunsetWithOffset = new Date(times.sunset.getTime() - settings.sunsetOffset * 60_000);
-      isDaylight = now >= sunriseWithOffset && now < sunsetWithOffset;
-    } else {
-      isDaylight = getPosition(now, settings.latitude, settings.longitude).altitude > 0;
-    }
+    const isDaylight = this.daylightAt(now, settings);
 
     if (isDaylight !== this.currentData.isDaylight) {
       this.logger.info(
@@ -174,6 +165,26 @@ export class SunlightManager {
       this.currentData = { ...this.currentData, isDaylight };
       this.eventBus.emit({ type: "sunlight.changed" });
     }
+  }
+
+  /**
+   * True when `now` is after sunrise + sunriseOffset and before sunset −
+   * sunsetOffset. suncalc 2 returns null where version 1 returned an Invalid
+   * Date: above the polar circles the sun may never rise or never set, so the
+   * answer then comes from the sun's actual elevation, which is right in both
+   * directions (the old arithmetic produced NaN and read as permanent night).
+   */
+  private daylightAt(
+    now: Date,
+    settings: { latitude: number; longitude: number; sunriseOffset: number; sunsetOffset: number },
+  ): boolean {
+    const times = getTimes(now, settings.latitude, settings.longitude);
+    if (times.sunrise && times.sunset) {
+      const sunriseWithOffset = new Date(times.sunrise.getTime() + settings.sunriseOffset * 60_000);
+      const sunsetWithOffset = new Date(times.sunset.getTime() - settings.sunsetOffset * 60_000);
+      return now >= sunriseWithOffset && now < sunsetWithOffset;
+    }
+    return getPosition(now, settings.latitude, settings.longitude).altitude > 0;
   }
 
   private formatTime(date: Date): string {
