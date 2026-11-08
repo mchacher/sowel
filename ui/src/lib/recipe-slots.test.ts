@@ -1,5 +1,11 @@
 import { describe, it, expect } from "vitest";
-import { isSlotHidden, matchesEquipmentType, equipmentCandidates } from "./recipe-slots";
+import {
+  isSlotHidden,
+  matchesEquipmentType,
+  equipmentCandidates,
+  instanceEquipmentNames,
+  shortNameList,
+} from "./recipe-slots";
 import type { RecipeSlotDef } from "../types";
 
 const kind: RecipeSlotDef = {
@@ -126,5 +132,56 @@ describe("equipmentCandidates", () => {
     const before = [...equipments];
     equipmentCandidates(equipments, "bath", { excludeIds: ["t-bath"] });
     expect(equipments).toEqual(before);
+  });
+});
+
+describe("instanceEquipmentNames (#1165)", () => {
+  const slot = (id: string, type: RecipeSlotDef["type"], list = false): RecipeSlotDef => ({
+    id,
+    name: id,
+    description: "",
+    type,
+    required: false,
+    list,
+  });
+  const EQ = [
+    { id: "a", name: "Onduleur" },
+    { id: "b", name: "Lumière" },
+    { id: "c", name: "Spots" },
+  ];
+
+  it("names the equipment of a single slot", () => {
+    const slots = [slot("zone", "zone"), slot("equipment", "equipment"), slot("d", "data-key")];
+    expect(instanceEquipmentNames(slots, { equipment: "a" }, EQ)).toEqual(["Onduleur"]);
+  });
+
+  it("reads only the first equipment slot, in the order picked", () => {
+    const slots = [slot("lights", "equipment", true), slot("buttons", "equipment", true)];
+    const params = { lights: ["c", "b"], buttons: ["a"] };
+    expect(instanceEquipmentNames(slots, params, EQ)).toEqual(["Spots", "Lumière"]);
+  });
+
+  it("splits a legacy comma-joined list", () => {
+    const slots = [slot("lights", "equipment", true)];
+    expect(instanceEquipmentNames(slots, { lights: "b,c" }, EQ)).toEqual(["Lumière", "Spots"]);
+  });
+
+  it("skips ids that are no longer in the store", () => {
+    const slots = [slot("equipment", "equipment")];
+    expect(instanceEquipmentNames(slots, { equipment: "gone" }, EQ)).toEqual([]);
+  });
+
+  it("gives nothing for a recipe without an equipment slot, or an empty one", () => {
+    expect(instanceEquipmentNames([slot("zone", "zone")], { zone: "z" }, EQ)).toEqual([]);
+    expect(instanceEquipmentNames([slot("e", "equipment", true)], { e: [] }, EQ)).toEqual([]);
+    expect(instanceEquipmentNames([slot("e", "equipment")], {}, EQ)).toEqual([]);
+  });
+});
+
+describe("shortNameList (#1165)", () => {
+  it("lists up to two names and counts the rest", () => {
+    expect(shortNameList(["A"])).toEqual({ text: "A", more: 0 });
+    expect(shortNameList(["A", "B"])).toEqual({ text: "A, B", more: 0 });
+    expect(shortNameList(["A", "B", "C", "D"])).toEqual({ text: "A, B", more: 2 });
   });
 });

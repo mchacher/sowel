@@ -68,3 +68,42 @@ export function equipmentCandidates<T extends EquipmentCandidate>(
     return true;
   });
 }
+
+/**
+ * The equipments an instance acts on, as far as its row can tell (#1165): the
+ * ones bound to the recipe's first `equipment` slot, in the order the user
+ * picked them, resolved to names. Ids no longer in the store (a deleted
+ * equipment) are skipped. A recipe without an equipment slot, or with that
+ * slot empty, gives an empty list.
+ *
+ * A list slot is stored as an array; a single slot as a string. A legacy list
+ * kept as a comma-joined string is split, since an id never holds a comma.
+ */
+export function instanceEquipmentNames(
+  slots: readonly RecipeSlotDef[],
+  params: Record<string, unknown>,
+  equipments: readonly { id: string; name: string }[],
+): string[] {
+  const slot = slots.find((s) => s.type === "equipment");
+  if (!slot) return [];
+  const raw = params[slot.id];
+  const ids = Array.isArray(raw)
+    ? raw.filter((v): v is string => typeof v === "string")
+    : typeof raw === "string"
+      ? raw.split(",")
+      : [];
+  const byId = new Map(equipments.map((e) => [e.id, e.name]));
+  return ids.flatMap((id) => {
+    const name = byId.get(id.trim());
+    return name ? [name] : [];
+  });
+}
+
+/**
+ * A short list for a narrow line: the first `shown` names, and how many more
+ * there are. Rendered « A, B +2 »; the count is kept apart so the caller can
+ * truncate the names and never the count.
+ */
+export function shortNameList(names: readonly string[], shown = 2): { text: string; more: number } {
+  return { text: names.slice(0, shown).join(", "), more: Math.max(0, names.length - shown) };
+}
