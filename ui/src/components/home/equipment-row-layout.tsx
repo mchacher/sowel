@@ -1,5 +1,6 @@
 import { Children, type ReactNode } from "react";
 import { Link, type LinkProps } from "react-router-dom";
+import { MarqueeName } from "../ui/MarqueeName";
 
 /*
  * The parts of an equipment row in a zone panel (#1163). The row is one flex
@@ -28,7 +29,8 @@ export function EquipmentRow({ children }: { children: ReactNode }) {
 }
 
 /**
- * The name, and the row's only link: up to two lines, then an ellipsis. Its
+ * The name, and the row's only link: one line, else two, else it scrolls once
+ * (`MarqueeName`), never cut. Its
  * `::after` covers the whole row, so a tap anywhere outside a control opens the
  * equipment, and the keyboard focus ring outlines the row it opens. `badge`
  * sits right after the name (the degraded marker, spec 116).
@@ -49,9 +51,9 @@ export function RowName({
       <Link
         to={to}
         state={state}
-        className="min-w-0 text-body font-medium text-text line-clamp-2 break-words text-balance hover:text-primary transition-colors after:absolute after:inset-0 after:rounded-md focus-visible:outline-none focus-visible:after:outline-2 focus-visible:after:-outline-offset-2 focus-visible:after:outline-primary"
+        className="min-w-0 text-body font-medium text-text hover:text-primary transition-colors after:absolute after:inset-0 after:rounded-md focus-visible:outline-none focus-visible:after:outline-2 focus-visible:after:-outline-offset-2 focus-visible:after:outline-primary"
       >
-        {name}
+        <MarqueeName text={name} lines={2} />
       </Link>
       {/* Above the stretched link, so its tooltip (spec 116) can be hovered */}
       {badge && <span className="relative flex flex-shrink-0">{badge}</span>}

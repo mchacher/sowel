@@ -357,9 +357,12 @@ describe("CompactEquipmentCard — the row is one link (#1163)", () => {
 describe("CompactEquipmentCard — readings give way, controls never (#1163)", () => {
   it("wraps the name onto two lines instead of cutting it", () => {
     renderCard(light());
-    const name = screen.getByRole("link");
+    const link = screen.getByRole("link");
+    const name = link.querySelector("[data-marquee]")!;
     expect(name.className).toContain("line-clamp-2");
     expect(name.className).not.toContain("truncate");
+    // Read once: the link's accessible name is the name, nothing doubled.
+    expect(link.textContent).toBe("Circulation - Escalier Piscine");
   });
 
   it("puts a control's own reading where it can give way, the control where it cannot", () => {

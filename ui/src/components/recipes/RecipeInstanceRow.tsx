@@ -1,4 +1,5 @@
 import { useState, useEffect, useMemo } from "react";
+import { MarqueeName } from "../ui/MarqueeName";
 import { useTranslation } from "react-i18next";
 import {
   ChefHat,
@@ -374,14 +375,15 @@ export function RecipeInstanceRow({
           />
         </div>
         {/* Row 1 col 2: the name owns the whole line (#1161) — the pills live
-            on row 2, so the name only truncates when it alone is too long. */}
+            on row 2. A name too long for it scrolls once instead of being cut
+            (#1163). */}
         <div className="col-start-2 row-start-1 flex items-center min-w-0">
           <button
             onClick={isAdmin ? handleStartEdit : undefined}
             className={`flex-1 min-w-0 text-left transition-opacity duration-150 ${isAdmin ? "hover:opacity-70 cursor-pointer" : "cursor-default"}`}
             title={isAdmin ? "Edit" : undefined}
           >
-            <div className="text-body font-medium text-text truncate">{displayName}</div>
+            <MarqueeName text={displayName} className="text-body font-medium text-text" />
             {/* The equipment line (#1165) — « A, B +2 ». The names truncate,
                 the count never does. */}
             {equipmentNames.length > 0 && (
