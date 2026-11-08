@@ -45,6 +45,8 @@ function makeHarness(opts?: {
   /** Spec 165 — daylight for the dormant flag. `undefined` injects no sun
    *  source at all, which is the pre-165 shape and must never read dormant. */
   daylight?: boolean | null;
+  /** Spec 197 — daylight at a past instant, for the history's night rule. */
+  sunAt?: (at: number) => boolean | null;
 }) {
   const settingsMap = new Map<string, string>(
     Object.entries({
@@ -170,7 +172,14 @@ function makeHarness(opts?: {
     opts?.daylight === undefined
       ? undefined
       : ({
-          getSunlightData: () => ({ sunrise: null, sunset: null, isDaylight: daylight }),
+          getSunlightData: () => ({
+            sunrise: null,
+            sunset: null,
+            isDaylight: opts?.sunAt ? opts.sunAt(Date.now()) : daylight,
+          }),
+          // Spec 197 — history asks about past instants; the fake sun answers
+          // the current setting, or `sunAt` when a test draws a day.
+          isDaylightAt: (at: number) => (opts?.sunAt ? opts.sunAt(at) : daylight),
         } as never);
   /** Move the sun without touching the meter (spec 165 review — sunset alone
    *  must reach an open tab). */
@@ -3273,5 +3282,100 @@ describe("a load handed back while running reads unmanaged on both halves (#1154
     for (const w of [700, 720, 720, 740, 300]) h.feedLoadPower("pac", w); // 300 < 25 % floor
     h.feedState("pac", false);
     expect(h.learnedCalls).toEqual([{ id: "pac", watts: 720, runs: 1 }]);
+  });
+});
+
+// ============================================================
+// Spec 197 — the history window reaches now (DV-03), and a claim
+// waiting through a dormant night reads at rest (FR-E5.4).
+// ============================================================
+
+describe("arbiter history: the live window and the night (spec 197)", () => {
+  afterEach(() => {
+    vi.useRealTimers();
+  });
+
+  /** Day from 07:00 to 17:00 UTC, the way the fake sun draws it. */
+  const sunAt = (at: number) => {
+    const h = new Date(at).getUTCHours();
+    return h >= 7 && h < 17;
+  };
+
+  it("draws the quarter under way and every sample up to now (DV-03)", () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date("2026-08-12T10:00:00Z"));
+    const h = makeHarness();
+    h.run(200, 6 * 60); // importing, 10:00 → 10:06
+    h.claim("i1", { equipmentId: "heater", watts: 2200 }); // waits from 10:06
+    h.run(200, 60); // 10:07
+
+    const tl = h.arbiter.getTimeline(Date.now(), 6);
+    // Rounded up: the window ends after now, not at the last completed quarter.
+    expect(tl.windowEndIso).toBe("2026-08-12T10:15:00.000Z");
+    expect(tl.loads.find((l) => l.equipmentId === "heater")?.quarters.at(-1)).toBe("pending");
+    // The 10:05 sample is in; rounded down, the window stopped at 10:00.
+    const last = tl.surplus.at(-1);
+    expect(last && Date.parse(last.atIso)).toBeGreaterThanOrEqual(
+      Date.parse("2026-08-12T10:05:00Z"),
+    );
+  });
+
+  it("keeps the pages tiling: a page ends where the next one starts", () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date("2026-08-12T10:07:00Z"));
+    const h = makeHarness();
+    const live = h.arbiter.getTimeline(Date.now(), 6);
+    const page1 = h.arbiter.getTimeline(Date.now() - 6 * 3_600_000, 6);
+    expect(page1.windowEndIso).toBe(live.windowStartIso);
+  });
+
+  it("reports a claim waiting through the dormant night as idle, and pending once the sun is up", () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date("2026-08-12T05:00:00Z"));
+    const h = makeHarness({ daylight: false, sunAt });
+    h.claim("i1", { equipmentId: "heater", watts: 2200 }); // waits from 05:00
+    h.run(200, 3 * 3600); // importing until 08:00
+
+    const tl = h.arbiter.getTimeline(Date.now(), 6); // 02:15 → 08:15
+    const start = Date.parse(tl.windowStartIso);
+    const cell = (iso: string) =>
+      tl.loads.find((l) => l.equipmentId === "heater")?.quarters[
+        (Date.parse(iso) - start) / (15 * 60_000)
+      ];
+    expect(cell("2026-08-12T05:30:00Z")).toBe("idle"); // night, nothing to wait for
+    expect(cell("2026-08-12T06:45:00Z")).toBe("idle");
+    expect(cell("2026-08-12T07:15:00Z")).toBe("pending"); // day: genuinely waiting
+    // The journal is untouched: the claim did journal its wait at 05:00.
+    expect(tl.journal.some((d) => d.kind === "waiting" && d.equipmentId === "heater")).toBe(true);
+  });
+
+  it("leaves the quarter under way to the live dormant flag, not to the samples", () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date("2026-08-12T05:02:00Z"));
+    const h = makeHarness({ daylight: false, sunAt });
+    h.claim("i1", { equipmentId: "heater", watts: 2200 });
+    // A battery exports 800 W at night: the arbiter is NOT dormant, the pill
+    // says « En attente ». Samples land at :02, :07 … :27, :32: stop at 05:31,
+    // one minute into a quarter that holds no sample yet.
+    h.run(-800, 29 * 60);
+    expect(h.arbiter.getPublicState().loads.find((l) => l.equipmentId === "heater")?.state).toBe(
+      "pending",
+    );
+    const tl = h.arbiter.getTimeline(Date.now(), 6);
+    expect(tl.loads.find((l) => l.equipmentId === "heater")?.quarters.at(-1)).toBe("pending");
+  });
+
+  it("keeps a night quarter pending when a battery exports in it (not dormant)", () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date("2026-08-12T05:00:00Z"));
+    const h = makeHarness({ daylight: false, sunAt });
+    h.claim("i1", { equipmentId: "heater", watts: 2200 });
+    h.run(-800, 30 * 60); // exporting 800 W at night: too little for 2.2 kW
+
+    const tl = h.arbiter.getTimeline(Date.now(), 6);
+    const heater = tl.loads.find((l) => l.equipmentId === "heater");
+    const start = Date.parse(tl.windowStartIso);
+    const q = (Date.parse("2026-08-12T05:15:00Z") - start) / (15 * 60_000);
+    expect(heater?.quarters[q]).toBe("pending");
   });
 });

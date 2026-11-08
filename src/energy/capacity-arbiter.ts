@@ -967,11 +967,18 @@ export class CapacityArbiter {
    */
   getTimeline(endMs: number, hours: number, stepMin = 15): ArbiterTimeline {
     const stepMs = stepMin * 60_000;
-    // Quantize the window edge down to a step boundary so the quarter cells fall
+    // Quantize the window edge to a step boundary so the quarter cells fall
     // on clock ticks (:00/:15/:30/:45); the UI's hour labels and hour-edge
     // markers key off `getMinutes() === 0`, which only lands right when the
     // cells are clock-aligned (spec 148 review #4).
-    const windowEnd = Math.floor(endMs / stepMs) * stepMs;
+    // Spec 197 (DV-03) — UP, not down: rounded down, the live window ended at
+    // the last completed quarter, so the quarter under way was never drawn
+    // and the samples of the last 0-15 min were cut, leaving the curve up to
+    // 20 min behind the headline. Rounded up, the last cell is the current
+    // quarter (it shows the state reached so far) and every sample up to now
+    // is in. A paged window ends at `now − k·hours`, so the pages still tile
+    // without a gap or an overlap.
+    const windowEnd = Math.ceil(endMs / stepMs) * stepMs;
     const windowStart = windowEnd - hours * 3_600_000;
     const lookback = windowStart - 24 * 3_600_000; // enough to know the entering state
     // Spec 165 review — the same roster the read model builds, so a load
@@ -996,7 +1003,16 @@ export class CapacityArbiter {
     // the roster pill. It applies only when the window actually ends now: a
     // page scrolled back to yesterday afternoon must not have its last cell
     // rewritten by tonight's sunset.
-    const dormant = windowEnd >= Date.now() - stepMs && this.isDormant();
+    // With the end rounded up, the live window is the only one that reaches
+    // now, so this still never touches a page of history.
+    const dormant = windowEnd >= Date.now() && this.isDormant();
+
+    // Surplus: prefer the persisted store; fall back to the in-memory 24h ring.
+    let surplus = this.surplusStore?.range(windowStart, windowEnd) ?? [];
+    if (surplus.length === 0) {
+      surplus = this.surplusSeries.filter((s) => s.at >= windowStart && s.at <= windowEnd);
+    }
+
     const timelines = buildLoadTimelines(
       decisions,
       loads,
@@ -1004,13 +1020,8 @@ export class CapacityArbiter {
       windowEnd,
       stepMin,
       dormant,
+      this.dormantOver(surplus),
     );
-
-    // Surplus: prefer the persisted store; fall back to the in-memory 24h ring.
-    let surplus = this.surplusStore?.range(windowStart, windowEnd) ?? [];
-    if (surplus.length === 0) {
-      surplus = this.surplusSeries.filter((s) => s.at >= windowStart && s.at <= windowEnd);
-    }
 
     const journal = decisions
       .filter((d) => {
@@ -1029,6 +1040,35 @@ export class CapacityArbiter {
         availableW: s.availableW,
       })),
       journal,
+    };
+  }
+
+  /**
+   * Spec 197 (FR-E5.4) — was the arbiter dormant over a past quarter? The same
+   * rule as `isDormant`, read from history: the sun was down at both ends of
+   * the quarter (sunset and sunrise offsets included) and no surplus sample in
+   * it shows an export. A battery exporting at night keeps the quarter active,
+   * as it keeps the live state active. No sun source means never dormant.
+   * Returns undefined when there is no sun source, so the timeline skips it.
+   *
+   * Completed quarters only: the quarter under way is the live state, decided
+   * by `isDormant` (run state and live headroom included) through the
+   * timeline's `dormant` flag, so the roster pill and the ribbon's current
+   * cell keep one source (spec 165). Read from samples, a quarter a few
+   * minutes old holds none yet and would read dormant beside a battery
+   * exporting at night, or a stale meter.
+   */
+  private dormantOver(
+    surplus: { at: number; availableW: number }[],
+  ): ((qStart: number, qEnd: number) => boolean) | undefined {
+    const sunlight = this.sunlight;
+    if (!sunlight) return undefined;
+    const now = Date.now();
+    return (qStart, qEnd) => {
+      if (qEnd > now) return false;
+      if (sunlight.isDaylightAt(qStart) !== false) return false;
+      if (sunlight.isDaylightAt(qEnd - 1) !== false) return false; // [qStart, qEnd)
+      return !surplus.some((s) => s.at >= qStart && s.at < qEnd && quantizeW(s.availableW) > 0);
     };
   }
 
