@@ -5,7 +5,6 @@ import {
 } from "../../lib/chart-font";
 import { useCallback, useEffect, useState } from "react";
 import {
-  Area,
   CartesianGrid,
   ComposedChart,
   Line,
@@ -15,7 +14,6 @@ import {
   XAxis,
   YAxis,
 } from "recharts";
-import { Sun } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { Link } from "react-router-dom";
 import { dateLocale } from "../../lib/locale";
@@ -30,6 +28,7 @@ import { useAuth } from "../../store/useAuth";
 import type { PvForecastResponse } from "../../types";
 import { getPvForecast } from "../../api";
 import { sumKwh, dailyTicks, mergeTimeline } from "./pvForecastUtils";
+import { SegmentedControl } from "../ui/SegmentedControl";
 
 /**
  * Expected PV production (spec 160), monitoring only since spec 163: the
@@ -45,17 +44,28 @@ import { sumKwh, dailyTicks, mergeTimeline } from "./pvForecastUtils";
  */
 
 /**
- * The « Attendu » curve: the solar production green of the energy palette
- * (#1126). It was the amber accent, which spec 196 reserves for something on
- * or running now. The measured line stays the primary ink.
+ * The two lines (spec 197, FR-E6.3). « Attendu » is a prediction, so it is
+ * drawn as one: a dashed neutral line with no fill. « Réalisé » is solar
+ * production, the same green as the bars of the chart above it. Amber (#1126)
+ * and the primary ink both said something else.
  */
-const EXPECTED_COLOR = "var(--color-solar-production)";
+const EXPECTED_COLOR = "var(--color-text-tertiary)";
+const EXPECTED_DASH = "4 3";
+const ACTUAL_COLOR = "var(--color-solar-production)";
+
+/** The window chips, in days. */
+const WINDOWS = [1, 3, 7, 30, 90] as const;
 
 interface PvForecastPanelProps {
   equipmentId: string;
+  /**
+   * Called with each response, so the Production page can read today's
+   * forecast without fetching it a second time (spec 197). Keep it stable.
+   */
+  onLoaded?: (equipmentId: string, data: PvForecastResponse) => void;
 }
 
-export function PvForecastPanel({ equipmentId }: PvForecastPanelProps) {
+export function PvForecastPanel({ equipmentId, onLoaded }: PvForecastPanelProps) {
   const { t, i18n } = useTranslation();
   const isAdmin = useAuth((s) => s.user?.role === "admin");
   const [data, setData] = useState<PvForecastResponse | null>(null);
@@ -80,13 +90,15 @@ export function PvForecastPanel({ equipmentId }: PvForecastPanelProps) {
 
   const load = useCallback(async () => {
     try {
-      setData(await getPvForecast(equipmentId, accuracyDays));
+      const response = await getPvForecast(equipmentId, accuracyDays);
+      setData(response);
       setLoadedAt(Date.now());
       setFailed(false);
+      onLoaded?.(equipmentId, response);
     } catch {
       setFailed(true);
     }
-  }, [equipmentId, accuracyDays]);
+  }, [equipmentId, accuracyDays, onLoaded]);
 
   useEffect(() => {
     void load();
@@ -96,7 +108,7 @@ export function PvForecastPanel({ equipmentId }: PvForecastPanelProps) {
   // absent panel: silence here would read as "nothing declared".
   if (!data) {
     return failed ? (
-      <div className="card mb-6 p-4">
+      <div className="card mb-6 p-4 sm:p-6">
         <p className="text-small text-text-secondary">{t("equipments.pv.loadFailed")}</p>
         <button
           type="button"
@@ -144,9 +156,9 @@ export function PvForecastPanel({ equipmentId }: PvForecastPanelProps) {
   const tomorrowKwh = sumKwh(data.curve, 1);
 
   return (
-    <div className="card mb-6 p-4">
+    // Spec 197 (FR-E6.6) — the energy cards' padding, no heading icon.
+    <div className="card mb-6 p-4 sm:p-6">
       <div className="flex items-center gap-2 mb-3">
-        <Sun size={16} strokeWidth={1.5} className="text-text-tertiary" />
         <h3 className="text-body font-semibold text-text">{t("equipments.pv.title")}</h3>
         {/* The stale-declaration tell. For admins it is also the way to fix
             it: the same figure, linking to the section that edits it. */}
@@ -244,20 +256,12 @@ export function PvForecastPanel({ equipmentId }: PvForecastPanelProps) {
                   else saying so is the question this panel exists to answer. */}
             <span className="flex items-center gap-3 ml-2">
               <span className="flex items-center gap-1 text-micro text-text-secondary">
-                <span
-                  aria-hidden
-                  className="inline-block w-3 h-[2px] rounded-full"
-                  style={{ background: EXPECTED_COLOR }}
-                />
+                <LineKey color={EXPECTED_COLOR} width={1.5} dash={EXPECTED_DASH} />
                 {t("equipments.pv.expected")}
               </span>
               {chart.some((p) => p.actualW !== undefined) && (
                 <span className="flex items-center gap-1 text-micro text-text-secondary">
-                  <span
-                    aria-hidden
-                    className="inline-block w-3 h-[2px] rounded-full"
-                    style={{ background: "var(--color-primary)" }}
-                  />
+                  <LineKey color={ACTUAL_COLOR} width={2} />
                   {t("equipments.pv.actual")}
                 </span>
               )}
@@ -265,36 +269,21 @@ export function PvForecastPanel({ equipmentId }: PvForecastPanelProps) {
 
             {/* How far back. Bounded server-side by how long the measured
                   series is retained, so 90 days is the honest maximum. */}
-            <span className="ml-auto flex items-center gap-1">
-              {[1, 3, 7, 30, 90].map((d) => (
-                <button
-                  key={d}
-                  type="button"
-                  onClick={() => setAccuracyDays(d)}
-                  className={`px-2 py-0.5 rounded-sm text-micro font-medium border ${
-                    accuracyDays === d
-                      ? "border-primary bg-primary-light text-primary"
-                      : "border-border text-text-secondary hover:border-primary"
-                  }`}
-                >
-                  {t("equipments.pv.lastDays", { n: d })}
-                </button>
-              ))}
-            </span>
+            <SegmentedControl
+              options={WINDOWS.map((d) => ({
+                value: d,
+                label: t("equipments.pv.lastDays", { n: d }),
+              }))}
+              value={accuracyDays}
+              onChange={setAccuracyDays}
+              label={t("equipments.pv.window")}
+              className="ml-auto"
+            />
           </div>
 
           <div className="h-56">
             <ResponsiveContainer width="100%" height="100%">
               <ComposedChart data={chart} margin={{ top: 4, right: 4, bottom: 0, left: 0 }}>
-                <defs>
-                  {/* Suffixed with the equipment id: the Production page
-                        renders one panel per declared meter, and duplicate
-                        SVG ids are invalid HTML. */}
-                  <linearGradient id={`pvFill-${equipmentId}`} x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="0%" stopColor={EXPECTED_COLOR} stopOpacity={0.35} />
-                    <stop offset="100%" stopColor={EXPECTED_COLOR} stopOpacity={0.02} />
-                  </linearGradient>
-                </defs>
                 <CartesianGrid strokeDasharray="3 3" stroke="var(--color-border-light)" />
                 <XAxis
                   dataKey="ts"
@@ -351,21 +340,22 @@ export function PvForecastPanel({ equipmentId }: PvForecastPanelProps) {
                     fill: "var(--color-text-tertiary)",
                   }}
                 />
-                <Area
+                <Line
                   type="monotone"
                   dataKey="forecastW"
                   name={t("equipments.pv.expected")}
                   stroke={EXPECTED_COLOR}
                   strokeWidth={1.5}
-                  fill={`url(#pvFill-${equipmentId})`}
+                  strokeDasharray={EXPECTED_DASH}
+                  dot={false}
                   connectNulls
                 />
                 <Line
                   type="monotone"
                   dataKey="actualW"
                   name={t("equipments.pv.actual")}
-                  stroke="var(--color-primary)"
-                  strokeWidth={1.5}
+                  stroke={ACTUAL_COLOR}
+                  strokeWidth={2}
                   dot={false}
                   // Not connected: a gap is an hour the meter did not report,
                   // and drawing straight through it would invent production.
@@ -417,5 +407,23 @@ function Figure({ label, value }: { label: string; value: number }) {
         <span className="text-caption text-text-tertiary">{energy.unit}</span>
       </div>
     </div>
+  );
+}
+
+/** A legend key drawn like the line it names: same stroke, width and dash. */
+function LineKey({ color, width, dash }: { color: string; width: number; dash?: string }) {
+  return (
+    <svg aria-hidden width="14" height="4" className="shrink-0">
+      <line
+        x1="0"
+        y1="2"
+        x2="14"
+        y2="2"
+        stroke={color}
+        strokeWidth={width}
+        strokeDasharray={dash}
+        strokeLinecap="butt"
+      />
+    </svg>
   );
 }

@@ -160,4 +160,56 @@ describe("ProductionPage (spec 163)", () => {
     await renderPage();
     expect(screen.queryByText(/declare your photovoltaic installation/i)).toBeNull();
   });
+
+  // Spec 197 (FR-E6.2) — the card opens on the production, read against
+  // today's forecast when there is one.
+  it("reads the day's production against today's forecast", async () => {
+    setup({ meters: [meter("eq-1", "Shelly Solar", true)], role: "user" });
+    useEnergy.setState({
+      history: {
+        points: [],
+        totals: {
+          total_hp: 0,
+          total_hc: 0,
+          total_production: 50,
+          total_autoconso: 50,
+          total_injection: 0,
+        },
+      } as unknown as EnergyHistoryResponse,
+    });
+    const noon = new Date();
+    noon.setHours(12, 0, 0, 0);
+    const one = new Date(noon);
+    one.setHours(13);
+    mockedForecast.mockResolvedValue({
+      ...forecastResponse(),
+      curve: [
+        { at: noon.toISOString(), watts: 2500 },
+        { at: one.toISOString(), watts: 2000 },
+      ],
+    });
+    await renderPage();
+    expect(await screen.findByText(/of 4.5 kWh expected today/)).toBeTruthy();
+    expect(screen.getByText(/^0\.05\s*kWh$/)).toBeTruthy();
+  });
+
+  it("says no forecast it does not have", async () => {
+    setup({ meters: [meter("eq-1", "Shelly Solar", true)], role: "user" });
+    useEnergy.setState({
+      history: {
+        points: [],
+        totals: {
+          total_hp: 0,
+          total_hc: 0,
+          total_production: 50,
+          total_autoconso: 50,
+          total_injection: 0,
+        },
+      } as unknown as EnergyHistoryResponse,
+    });
+    await renderPage();
+    expect(await screen.findByText(/expected production/i)).toBeTruthy();
+    expect(screen.queryByText(/expected today/)).toBeNull();
+    expect(screen.getByText("today")).toBeTruthy();
+  });
 });
