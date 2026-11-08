@@ -136,6 +136,8 @@ Le journal garde les événements les plus récents, pas une durée fixe : les 1
 
 Chaque ligne indique **qui a déclenché l'événement** : nom de la recette, nom du mode, « manuel » pour les actions directes via l'UI, identifiant du bouton, ou « externe » pour un MQTT entrant.
 
+Une alarme qui appartient à une pièce, comme la batterie faible d'un capteur rattaché à un équipement, nomme aussi cette pièce : `Capteur porte : Batterie faible : 10 % · Chambre`. Quand deux pièces portent le même nom, le parent est ajouté (`Étage 1 › Chambre`). La feuille des alarmes, ouverte depuis la pastille d'alarme de la barre du haut, montre la même pièce à côté de la source, avec un lien vers la pièce. Une alarme sans pièce (une intégration, un appareil rattaché à aucun équipement) n'en montre pas.
+
 ### Fusion des ordres simultanés
 
 Quand une recette dispatche plusieurs ordres identiques en rafale (par exemple Motion Light qui éteint trois appliques au même instant), le fil regroupe le tout en une seule ligne avec un compteur : `Applique x 1 ×3 → Arrêt par Motion Light`. La fenêtre est de 500 ms ; même alias, même valeur et même source sont requis pour la fusion.
