@@ -610,6 +610,7 @@
   "controls.deployedAt": "Deployed {{value}}",
   "controls.doorOpen": "Open",
   "controls.doorClosed": "Closed",
+  "controls.doorOpenAt": "Open {{value}}",
   "controls.doorMoving": "Moving",
   "controls.doorFault": "Fault",
   "controls.on": "On",

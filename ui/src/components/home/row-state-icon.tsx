@@ -22,8 +22,8 @@ export interface RowState {
   /** The state in words, for the icon's accessible label and tooltip. */
   label: string;
   /**
-   * A state that must stay readable on phones too (a door fault): the icon has
-   * nothing to say it with.
+   * A state that must stay readable on phones too (a door fault or moving, a
+   * gate whose state is unknown): the icon has nothing to say it with.
    */
   keepPill: boolean;
 }
@@ -45,8 +45,9 @@ export function rowStateOf(equipment: EquipmentWithDetails, t: TFunction): RowSt
   const type = equipment.type;
   if (type === "gate") {
     const state = gateStateOf(equipment);
+    // The type's picto is an open door: without the pill it would read "open".
     if (state === "unknown")
-      return { icon: null, label: t("controls.gate.unknown"), keepPill: false };
+      return { icon: null, label: t("controls.gate.unknown"), keepPill: true };
     const Icon = state === "open" ? DoorOpen : DoorClosed;
     return {
       icon: <Icon size={18} strokeWidth={1.5} />,
@@ -65,7 +66,8 @@ export function rowStateOf(equipment: EquipmentWithDetails, t: TFunction): RowSt
         keepPill: false,
       };
     }
-    if (word === "moving") return { icon: null, label: t("controls.doorMoving"), keepPill: false };
+    // Moving draws as open in the type's picto: the pill says it is moving.
+    if (word === "moving") return { icon: null, label: t("controls.doorMoving"), keepPill: true };
     if (word === "fault") return { icon: null, label: t("controls.doorFault"), keepPill: true };
     // No word: the position decides, as for a shutter.
     const position = positionOf(equipment);
@@ -78,7 +80,7 @@ export function rowStateOf(equipment: EquipmentWithDetails, t: TFunction): RowSt
           ? t("controls.doorClosed")
           : position === 100
             ? t("controls.doorOpen")
-            : t("controls.openedAt", { value: formatPercent(position) }),
+            : t("controls.doorOpenAt", { value: formatPercent(position) }),
       keepPill: false,
     };
   }

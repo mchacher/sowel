@@ -506,7 +506,6 @@ describe("CompactEquipmentCard — state in the row icon (#1163)", () => {
     renderCard(shutter(40));
     const icon = screen.getByRole("img", { name: /40/ });
     expect(icon.getAttribute("aria-label")).toMatch(/(Ouvert à|Open) 40/);
-    expect(icon.getAttribute("title")).toBe(icon.getAttribute("aria-label"));
     expect(visibleSlats(icon)).toBe(2);
   });
 
@@ -529,10 +528,13 @@ describe("CompactEquipmentCard — state in the row icon (#1163)", () => {
     expect(open.container.querySelector(".lucide-door-open")).toBeTruthy();
   });
 
-  it("keeps the type's icon when the state is unknown, still naming it", () => {
+  it("keeps an unknown gate's pill on phones, its picto saying nothing", () => {
     const { container } = renderCard(gate(null));
     expect(screen.getByRole("img", { name: /inconnu|Unknown/i })).toBeTruthy();
     expect(container.querySelector(".lucide-door-closed")).toBeNull();
+    const pillGroup = container.querySelector('[data-row-readings="main"]')!;
+    expect(pillGroup.className).not.toContain("sm:flex");
+    expect(pillGroup.textContent).toMatch(/inconnu|Unknown/i);
   });
 
   it("hides the state pill on phones for every shutter and gate row, whatever its name", () => {
@@ -550,5 +552,65 @@ describe("CompactEquipmentCard — state in the row icon (#1163)", () => {
     const group = container.querySelector('[data-row-readings="main"]')!;
     expect(group.className).not.toContain("sm:flex");
     expect(container.querySelector("[data-row-state]")).toBeNull();
+  });
+});
+
+describe("CompactEquipmentCard — door, awning and pool cover state icons (#1163)", () => {
+  const door = (bindings: EquipmentWithDetails["dataBindings"]) =>
+    makeEquipment("door", [], {
+      name: "Porte poulailler",
+      dataBindings: bindings,
+      orderBindings: [
+        orderBinding("state", { category: "shutter_move", enumValues: ["OPEN", "STOP", "CLOSE"] }),
+      ],
+    });
+  const pillGroup = (container: HTMLElement) =>
+    container.querySelector('[data-row-readings="main"]')!;
+
+  it("draws a closed door closed and leaves its pill to wider screens", () => {
+    const { container } = renderCard(door([dataBinding("state", "CLOSED")]));
+    expect(screen.getByRole("img", { name: /Fermée|Closed/ })).toBeTruthy();
+    expect(container.querySelector(".lucide-door-closed")).toBeTruthy();
+    expect(pillGroup(container).className).toContain("sm:flex");
+  });
+
+  it("keeps a door's pill on phones while it is in fault or moving", () => {
+    for (const [word, label] of [
+      ["FAULT", /Défaut|Fault/],
+      ["OPENING", /En mouvement|Moving/],
+    ] as const) {
+      const { container, unmount } = renderCard(door([dataBinding("state", word)]));
+      expect(screen.getByRole("img", { name: label })).toBeTruthy();
+      expect(pillGroup(container).className).not.toContain("sm:flex");
+      expect(pillGroup(container).textContent).toMatch(label);
+      unmount();
+    }
+  });
+
+  it("names a door's partial position in the door's own words", () => {
+    renderCard(door([dataBinding("position", 40, { category: "shutter_position" })]));
+    expect(screen.getByRole("img", { name: /(Ouverte à|Open) 40/ })).toBeTruthy();
+  });
+
+  it("names an awning's partial position as deployed", () => {
+    renderCard(
+      makeEquipment("awning", [], {
+        name: "Store",
+        dataBindings: [dataBinding("position", 40, { category: "shutter_position" })],
+      }),
+    );
+    expect(screen.getByRole("img", { name: /(Déployé à|Deployed) 40/ })).toBeTruthy();
+  });
+
+  it("draws a pool cover's position like a shutter's", () => {
+    const { container } = renderCard(
+      makeEquipment("pool_cover", [], {
+        name: "Volet Piscine",
+        dataBindings: [dataBinding("position", 0, { category: "shutter_position" })],
+      }),
+    );
+    const icon = screen.getByRole("img", { name: /Fermé|Closed/ });
+    expect(icon.querySelectorAll("line").length).toBe(4);
+    expect(container.querySelector("[data-row-state]")).toBe(icon);
   });
 });

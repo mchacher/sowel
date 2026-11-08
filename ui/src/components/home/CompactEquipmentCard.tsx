@@ -262,7 +262,6 @@ export function CompactEquipmentCard({
         data-row-state={rowState ? rowState.label : undefined}
         role={rowState ? "img" : undefined}
         aria-label={rowState?.label}
-        title={rowState?.label}
       >
         {rowState?.icon ?? iconElement}
       </div>
@@ -454,7 +453,7 @@ export function CompactEquipmentCard({
       {/* Gate: the state pill gives way, the command stays */}
       {isGate && equipment.enabled && (
         <>
-          <RowReadings fromSm>
+          <RowReadings fromSm={!rowState?.keepPill}>
             <GateStateBadge equipment={equipment} />
           </RowReadings>
           <RowControls>

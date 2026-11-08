@@ -7,6 +7,8 @@ const HOLD_START_MS = 1200;
 const HOLD_END_MS = 1000;
 /** The return to the start, quicker than the read. */
 const RETURN_MS = 500;
+/** A width change smaller than this is a neighbour's reading, not new room. */
+const RESIZE_THRESHOLD_PX = 16;
 
 function prefersReducedMotion(): boolean {
   return (
@@ -46,6 +48,10 @@ export function MarqueeName({
   const boxRef = useRef<HTMLSpanElement>(null);
   const textRef = useRef<HTMLSpanElement>(null);
   const [scrolls, setScrolls] = useState(false);
+  // Bumped to decide again from the fit layout (a new width, the web font).
+  const [measure, setMeasure] = useState(0);
+  // The text whose scroll has run to its end: it never runs again.
+  const played = useRef<string | null>(null);
 
   // Decide before paint, from the fit layout, so the row never shows a frame
   // of the other mode. A new text starts over from the fit layout.
@@ -59,25 +65,45 @@ export function MarqueeName({
     const box = boxRef.current;
     if (!box || prefersReducedMotion()) return;
     if (overflows(box, lines)) setScrolls(true);
-  }, [scrolls, text, lines]);
+  }, [scrolls, text, lines, measure]);
 
-  // A new width (rotation, sidebar) re-decides from the fit layout.
+  // Decide again, both ways, when the room changes for real (a rotation, a
+  // sidebar: not a reading next door going from 9,9° to 10,1°), and once the
+  // web font has replaced the fallback it was first measured in.
   useEffect(() => {
     const box = boxRef.current;
-    if (!box || typeof ResizeObserver === "undefined") return;
+    if (!box) return;
+    let alive = true;
+    const redecide = () => {
+      if (!alive) return;
+      setScrolls(false);
+      setMeasure((m) => m + 1);
+    };
+    if (typeof document !== "undefined" && document.fonts && document.fonts.status !== "loaded") {
+      void document.fonts.ready.then(redecide);
+    }
+    if (typeof ResizeObserver === "undefined") {
+      return () => {
+        alive = false;
+      };
+    }
     let width: number | null = null;
     const ro = new ResizeObserver(() => {
       const w = box.clientWidth;
-      if (width !== null && Math.abs(w - width) > 0.5) setScrolls(false);
-      width = w;
+      if (width !== null && Math.abs(w - width) >= RESIZE_THRESHOLD_PX) redecide();
+      if (width === null || Math.abs(w - width) >= RESIZE_THRESHOLD_PX) width = w;
     });
     ro.observe(box);
-    return () => ro.disconnect();
+    return () => {
+      alive = false;
+      ro.disconnect();
+    };
   }, []);
 
-  // Once, on entering the scroll mode: hold, travel to the end, hold, return.
+  // Once per text: hold, travel to the end, hold, return. A run cut short (the
+  // room changed under it) may start over; a finished one stays at the start.
   useEffect(() => {
-    if (!scrolls) return;
+    if (!scrolls || played.current === text) return;
     const box = boxRef.current;
     const inner = textRef.current;
     if (!box || !inner || typeof inner.animate !== "function") return;
@@ -99,8 +125,11 @@ export function MarqueeName({
       ],
       { duration: total, easing: "linear" },
     );
+    animation.onfinish = () => {
+      played.current = text;
+    };
     return () => animation.cancel();
-  }, [scrolls]);
+  }, [scrolls, text]);
 
   // `line-clamp-2` brings its own display; `truncate` needs a block box.
   const fit = lines === 2 ? "line-clamp-2 break-words text-balance" : "block truncate";
