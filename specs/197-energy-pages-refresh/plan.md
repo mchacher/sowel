@@ -47,11 +47,11 @@ Three branches from the same spec commit, each its own PR against `main` (they t
 
 ### Slice E6 — Consumption and Production
 
-- [ ] E6.1 — `SegmentedControl` + tests; adopted by UnitToggle, Total/Par usage, PeriodSelector, accuracy chips
-- [ ] E6.2 — Consumption headline (Wh and €), legend without figures, axes kept
-- [ ] E6.3 — Production headline with forecast sentence; day-view axis floor from forecast max
-- [ ] E6.4 — forecast line styles (« Attendu » dashed neutral, « Réalisé » solar green)
-- [ ] E6.5 — mobile header column; forecast/health card padding and icons
+- [x] E6.1 — `SegmentedControl` + tests; adopted by UnitToggle, Total/Par usage, PeriodSelector, accuracy chips
+- [x] E6.2 — Consumption headline (Wh and €), legend without figures, axes kept
+- [x] E6.3 — Production headline with forecast sentence; day-view axis floor from forecast max
+- [x] E6.4 — forecast line styles (« Attendu » dashed neutral, « Réalisé » solar green)
+- [x] E6.5 — mobile header column; forecast/health card padding and icons
 
 ### Docs
 

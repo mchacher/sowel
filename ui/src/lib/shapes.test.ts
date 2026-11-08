@@ -172,8 +172,12 @@ describe("controls", () => {
   const has = (cls: string, token: string) =>
     new RegExp(`(^|[\\s"'\`])${token}(?=[\\s"'\`]|$)`).test(cls);
 
-  // Segments inside a bordered group, and the solid button on the red takeover banner.
-  const BORDERLESS_OK = ["components/PeriodSelector.tsx", "components/layout/TakeoverBanner.tsx"];
+  // Segments inside a bordered group (the shared SegmentedControl since spec
+  // 197), and the solid button on the red takeover banner.
+  const BORDERLESS_OK = [
+    "components/ui/SegmentedControl.tsx",
+    "components/layout/TakeoverBanner.tsx",
+  ];
 
   it("gives every input, select, textarea and button on bg-surface a border", () => {
     const hits = FILES.flatMap(({ path, text }) =>

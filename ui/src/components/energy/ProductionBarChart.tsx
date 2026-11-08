@@ -9,12 +9,19 @@ import { ResponsiveContainer, BarChart, Bar, XAxis, YAxis, Tooltip, CartesianGri
 import type { EnergyPoint } from "../../types";
 import { formatKwhTick, formatKwhTooltip } from "./format";
 import { TooltipSeriesRow } from "./TooltipSeriesRow";
+import { productionYTicks } from "./period-headline";
 
 interface ProductionBarChartProps {
   points: EnergyPoint[];
   period: string;
   date?: string;
   height?: number;
+  /**
+   * Spec 197 (FR-E6.2) — today's largest expected hour, kWh. On the day view
+   * the Y axis reaches at least this high, so the morning's first bars sit in
+   * the frame of the day the forecast announces.
+   */
+  floorKwh?: number;
 }
 
 interface ChartDatum {
@@ -180,6 +187,7 @@ export function ProductionBarChart({
   period,
   date,
   height = 300,
+  floorKwh,
 }: ProductionBarChartProps) {
   const { t, i18n } = useTranslation();
   const locale = dateLocale(i18n.language);
@@ -195,18 +203,11 @@ export function ProductionBarChart({
   const hasSplit = data.some((d) => d.autoconso > 0 || d.injection > 0);
   const barTotal = (d: ChartDatum): number => (hasSplit ? d.autoconso + d.injection : d.prod);
 
-  const yTicks = useMemo(() => {
-    const stepByPeriod: Record<string, number> = {
-      day: 0.5,
-      week: 5,
-      month: 10,
-      year: 200,
-    };
-    const step = stepByPeriod[period] ?? 0.5;
-    const max = Math.ceil(Math.max(...data.map(barTotal), step) / step) * step;
-    return Array.from({ length: max / step + 1 }, (_, i) => i * step);
+  const yTicks = useMemo(
+    () => productionYTicks(Math.max(0, ...data.map(barTotal)), period, floorKwh),
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [data, period, hasSplit]);
+    [data, period, hasSplit, floorKwh],
+  );
 
   // Measured chart width, for the X tick density (spec 196). 0 until measured.
   const [chartWidth, setChartWidth] = useState(0);
