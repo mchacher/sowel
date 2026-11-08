@@ -85,7 +85,7 @@ Dans la vue **Maison**, chaque zone affiche un **bandeau d'état** avec les donn
 - Pastille **Température** (par ex. "21,5 °C")
 - Pastille **Humidité** (par ex. "45 %")
 - Pastille **Mouvement** avec durée ("Mouvement" ou "Calme 15 min")
-- Pastille de comptage **Lumières** (par ex. "2/5")
+- Pastille de comptage **Lumières** (par ex. "2/5") ; une lumière à plusieurs canaux compte une seule fois, allumée dès qu'un de ses canaux l'est
 - Pastille de comptage **Volets** (par ex. "1/3")
 - Pastille de comptage **Portes** pour les portes motorisées (par ex. "1/2"), distincte de l'alerte des capteurs d'ouverture
 - Pastilles **Alerte** pour portes/fenêtres ouvertes, fuites d'eau, fumée
@@ -93,7 +93,7 @@ Dans la vue **Maison**, chaque zone affiche un **bandeau d'état** avec les donn
 
 Le lever et le coucher du soleil ne sont pas une pastille de zone : ils figurent dans la barre du haut, sur toutes les pages (par ex. « 07:22 – 17:17 », une lune la nuit). Sur téléphone, ils s'effacent quand deux de ces éléments occupent déjà la barre : pastilles d'alerte, de mise à jour ou de redémarrage, heure de la maison (affichée quand vous êtes dans un autre fuseau), indicateur de connexion.
 
-Quand un équipement est hors ligne, il est retiré des pastilles qu'il alimente, et ces pastilles portent un petit point orange. Sur ordinateur, survolez la pastille pour voir quels équipements sont hors ligne. Une zone dont toutes les lumières (ou tous les volets) sont hors ligne garde la pastille, grisée avec un tiret, pour qu'on puisse suivre le point de la zone parente jusqu'à la pièce d'où il vient. Seules les vraies lumières comptent : une pompe de piscine dont l'état ressemble à celui d'une lumière n'est pas comptée comme lumière hors ligne.
+Quand un équipement est hors ligne, il est retiré des pastilles qu'il alimente, et ces pastilles portent un petit point orange. Touchez la pastille (ou cliquez dessus) pour afficher quels équipements sont hors ligne, sur une ligne sous les pastilles ; touchez-la à nouveau pour les masquer. Sur ordinateur, le survol de la pastille les montre aussi. Une zone dont toutes les lumières (ou tous les volets) sont hors ligne garde la pastille, grisée avec un tiret, pour qu'on puisse suivre le point de la zone parente jusqu'à la pièce d'où il vient. Seules les vraies lumières comptent : une pompe de piscine dont l'état ressemble à celui d'une lumière n'est pas comptée comme lumière hors ligne.
 
 Sous le bandeau, les équipements sont regroupés par type (Lumières, Volets, Capteurs) avec des contrôles intégrés. Chaque panneau (Équipements, Comportements, Activité) porte son titre sur un bloc à part, avec le nombre d'éléments qu'il contient ; chaque type d'équipement forme un bloc en dessous.
 
@@ -169,6 +169,8 @@ Chaque zone expose des ordres automatiques que vous pouvez utiliser depuis l'UI 
 | **Tout éteindre**            | Éteint tous les équipements de la zone (et des zones enfants) |
 | **Toutes lumières éteintes** | Éteint tous les équipements lumière de la zone                |
 | **Toutes lumières allumées** | Allume tous les équipements lumière de la zone                |
+
+Une lumière à plusieurs canaux est allumée ou éteinte sur tous ses canaux.
 
 Ils sont disponibles dans la vue Maison, dans l'API, et comme actions dans les recettes et les modes.
 

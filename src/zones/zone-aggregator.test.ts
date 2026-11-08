@@ -804,6 +804,49 @@ describe("ZoneAggregator", () => {
       expect(data?.lightsTotal).toBe(2);
     });
 
+    // #1140 — a light counts once, whatever its channels: on when any is on.
+    it("counts a two-channel light once, on when any channel is on", () => {
+      const zone = zoneManager.create({ name: "Cuisine" });
+
+      const dev = seedDevice(db, {
+        name: "DualSwitch",
+        dataKeys: [
+          {
+            key: "state_l1",
+            type: "boolean",
+            category: "light_state",
+            value: JSON.stringify("OFF"),
+          },
+          {
+            key: "state_l2",
+            type: "boolean",
+            category: "light_state",
+            value: JSON.stringify("ON"),
+          },
+        ],
+      });
+      const dual = equipmentManager.create({
+        name: "Plafonnier",
+        type: "light_onoff",
+        zoneId: zone.id,
+      });
+      equipmentManager.addDataBinding(dual.id, dev.dataIds[0], "state");
+      equipmentManager.addDataBinding(dual.id, dev.dataIds[1], "state_2");
+
+      aggregator.computeAll();
+      expect(aggregator.getByZoneId(zone.id)?.lightsTotal).toBe(1);
+      expect(aggregator.getByZoneId(zone.id)?.lightsOn).toBe(1);
+
+      // Both channels off: still one light, now off.
+      db.prepare("UPDATE device_data SET value = ? WHERE id = ?").run(
+        JSON.stringify("OFF"),
+        dev.dataIds[1],
+      );
+      aggregator.computeAll();
+      expect(aggregator.getByZoneId(zone.id)?.lightsTotal).toBe(1);
+      expect(aggregator.getByZoneId(zone.id)?.lightsOn).toBe(0);
+    });
+
     // Spec 152 — the solar command channel state is an internal actuator state,
     // never a zone-level measurement. A water_heater's solar_state binding must
     // not leak into any aggregate (in particular it is not counted as a light).

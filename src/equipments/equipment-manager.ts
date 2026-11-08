@@ -1557,17 +1557,29 @@ export class EquipmentManager {
    */
   private static readonly ZONE_ORDERS: Record<
     string,
-    { types: string[]; orderCategory: OrderCategory; value: unknown | "FROM_BODY" }
+    {
+      types: string[];
+      orderCategory: OrderCategory;
+      value: unknown | "FROM_BODY";
+      /**
+       * #1140 — send the order to every binding of the category, not only the
+       * first. A two-channel light is one light, on when any channel is on
+       * (zone `lightsOn`), so "all lights off" must switch every channel off.
+       */
+      everyChannel?: true;
+    }
   > = {
     allLightsOn: {
       types: ["light_onoff", "light_dimmable", "light_color"],
       orderCategory: "light_toggle",
       value: "ON",
+      everyChannel: true,
     },
     allLightsOff: {
       types: ["light_onoff", "light_dimmable", "light_color"],
       orderCategory: "light_toggle",
       value: "OFF",
+      everyChannel: true,
     },
     allLightsBrightness: {
       types: ["light_dimmable", "light_color"],
@@ -1628,11 +1640,12 @@ export class EquipmentManager {
         const details = this.getByIdWithDetails(eq.id);
         if (!details || details.orderBindings.length === 0) continue;
 
-        const orderBinding = details.orderBindings.find(
+        const matching = details.orderBindings.filter(
           (ob) => ob.category === mapping.orderCategory,
         );
+        const targets = mapping.everyChannel ? matching : matching.slice(0, 1);
 
-        if (!orderBinding) {
+        if (targets.length === 0) {
           this.logger.debug(
             {
               equipmentId: eq.id,
@@ -1645,19 +1658,32 @@ export class EquipmentManager {
           continue;
         }
 
-        try {
-          const result = await this.executeOrder(eq.id, orderBinding.alias, resolvedValue, source);
-          if (result.success) {
-            executed++;
-          } else {
+        for (const orderBinding of targets) {
+          try {
+            const result = await this.executeOrder(
+              eq.id,
+              orderBinding.alias,
+              resolvedValue,
+              source,
+            );
+            if (result.success) {
+              executed++;
+            } else {
+              errors++;
+            }
+          } catch (err) {
             errors++;
+            this.logger.warn(
+              {
+                err,
+                equipmentId: eq.id,
+                equipmentName: eq.name,
+                orderKey,
+                alias: orderBinding.alias,
+              },
+              "Zone order failed for equipment",
+            );
           }
-        } catch (err) {
-          errors++;
-          this.logger.warn(
-            { err, equipmentId: eq.id, equipmentName: eq.name, orderKey },
-            "Zone order failed for equipment",
-          );
         }
       }
     }

@@ -1,4 +1,4 @@
-import { Fragment, useEffect, useState } from "react";
+import { Fragment, useEffect, useId, useState } from "react";
 import { useTranslation } from "react-i18next";
 import {
   Thermometer,
@@ -57,13 +57,17 @@ interface StatusItem {
   sparklineCategory?: string;
   /** Name read before the value by screen readers and shown on hover, when the icon alone says it. */
   name?: string;
-  /** Offline equipments left out of this pill (spec 116, #1134): a marker, named on hover. */
+  /** Offline equipments left out of this pill (spec 116, #1134): a marker, named on hover or tap (#1140). */
   unavailable?: string[];
 }
 
 export function ZoneAggregationPills({ data, zoneId, historyEnabled }: ZoneAggregationPillsProps) {
   const { t } = useTranslation();
   const duration = useRelativeTime(data.motionSince);
+  // #1140 — the marked pill whose offline names are shown under the strip. A
+  // `title` never shows on a touch screen, so a tap opens them inline.
+  const [namesFor, setNamesFor] = useState<string | null>(null);
+  const namesId = useId();
 
   // Spec 116, #1134: the offline equipments left out of a category's pill. The
   // pill carries a marker and names them, so the hint can be traced to a zone.
@@ -278,24 +282,40 @@ export function ZoneAggregationPills({ data, zoneId, historyEnabled }: ZoneAggre
 
   if (clusters.length === 0) return null;
 
+  const shownNames = clusters.flat().find((item) => item.key === namesFor)?.unavailable;
+
   // Below lg (phones and tablets) the strip wraps instead of scrolling
   // sideways (spec 196): the separators would dangle at line ends there, so
   // the gap replaces them.
   return (
-    <div className="card flex flex-wrap lg:flex-nowrap items-center gap-x-2 gap-y-1 lg:gap-x-0 px-1 py-1 lg:overflow-x-auto">
-      {clusters.map((cluster, ci) => (
-        <Fragment key={ci}>
-          {ci > 0 && <div className="w-px h-5 bg-border mx-2 flex-shrink-0 hidden lg:block" />}
-          {cluster.map((item, ii) => (
-            <Fragment key={item.key}>
-              {ii > 0 && (
-                <div className="w-px h-4 bg-border-light mx-1 flex-shrink-0 hidden lg:block" />
-              )}
-              <StripPill item={item} zoneId={zoneId} historyEnabled={historyEnabled} />
-            </Fragment>
-          ))}
-        </Fragment>
-      ))}
+    <div className="card px-1 py-1">
+      <div className="flex flex-wrap lg:flex-nowrap items-center gap-x-2 gap-y-1 lg:gap-x-0 lg:overflow-x-auto">
+        {clusters.map((cluster, ci) => (
+          <Fragment key={ci}>
+            {ci > 0 && <div className="w-px h-5 bg-border mx-2 flex-shrink-0 hidden lg:block" />}
+            {cluster.map((item, ii) => (
+              <Fragment key={item.key}>
+                {ii > 0 && (
+                  <div className="w-px h-4 bg-border-light mx-1 flex-shrink-0 hidden lg:block" />
+                )}
+                <StripPill
+                  item={item}
+                  zoneId={zoneId}
+                  historyEnabled={historyEnabled}
+                  namesId={namesId}
+                  namesShown={namesFor === item.key && !!shownNames}
+                  onToggleNames={() => setNamesFor((k) => (k === item.key ? null : item.key))}
+                />
+              </Fragment>
+            ))}
+          </Fragment>
+        ))}
+      </div>
+      {shownNames && (
+        <p id={namesId} className="px-2 pt-1 pb-0.5 text-caption text-text-secondary">
+          {t("zones.aggregate.offline", { names: shownNames.join(", ") })}
+        </p>
+      )}
     </div>
   );
 }
@@ -308,6 +328,11 @@ interface StripPillProps {
   item: StatusItem;
   zoneId?: string;
   historyEnabled?: boolean;
+  /** Id of the line under the strip that names the offline equipments. */
+  namesId: string;
+  /** Whether that line currently names this pill's offline equipments. */
+  namesShown: boolean;
+  onToggleNames: () => void;
 }
 
 function variantClasses(variant: PillVariant): {
@@ -346,7 +371,14 @@ function variantClasses(variant: PillVariant): {
   }
 }
 
-function StripPill({ item, zoneId, historyEnabled }: StripPillProps) {
+function StripPill({
+  item,
+  zoneId,
+  historyEnabled,
+  namesId,
+  namesShown,
+  onToggleNames,
+}: StripPillProps) {
   const { t } = useTranslation();
   const v = variantClasses(item.variant);
   const offline = item.unavailable
@@ -356,12 +388,10 @@ function StripPill({ item, zoneId, historyEnabled }: StripPillProps) {
   const iconClass = v.icon || item.iconTint || "text-text-tertiary";
   const valueClass = v.value || item.valueTint || "text-text";
   const hasMobileOverride = item.mobileLabel !== undefined;
+  const pillClass = `flex items-center gap-1.5 px-2 py-0.5 rounded-sm text-small font-medium tabular-nums whitespace-nowrap ${v.pill}`;
 
-  return (
-    <div
-      className={`flex items-center gap-1.5 px-2 py-0.5 rounded-sm text-small font-medium tabular-nums whitespace-nowrap ${v.pill}`}
-      title={title}
-    >
+  const content = (
+    <>
       <span className={`flex-shrink-0 ${iconClass}`}>{item.icon}</span>
       {item.name && <span className="sr-only">{item.name}</span>}
       {hasMobileOverride ? (
@@ -386,6 +416,29 @@ function StripPill({ item, zoneId, historyEnabled }: StripPillProps) {
           <ZoneSparkline zoneId={zoneId} category={item.sparklineCategory} />
         </span>
       )}
+    </>
+  );
+
+  // #1140 — a marked pill is a button: a tap names its offline equipments under
+  // the strip, where a hover `title` cannot reach on a touch screen.
+  if (offline) {
+    return (
+      <button
+        type="button"
+        className={`${pillClass} cursor-pointer hover:bg-border-light`}
+        title={title}
+        aria-expanded={namesShown}
+        aria-controls={namesShown ? namesId : undefined}
+        onClick={onToggleNames}
+      >
+        {content}
+      </button>
+    );
+  }
+
+  return (
+    <div className={pillClass} title={title}>
+      {content}
     </div>
   );
 }
