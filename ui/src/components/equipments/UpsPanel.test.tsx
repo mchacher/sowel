@@ -50,7 +50,8 @@ describe("UpsPanel on mains", () => {
     expect(within(nodeOf("Protected load")).getByText("21")).toBeTruthy(); // load, watts
     expect(within(nodeOf("Mains")).getByText("237")).toBeTruthy(); // mains, volts
     expect(within(nodeOf("Battery")).getByText("100")).toBeTruthy(); // battery, percent
-    expect(within(nodeOf("Battery")).getByText("59 min")).toBeTruthy(); // autonomy
+    // The runtime is the headline's figure, no longer the battery node's sub.
+    expect(within(nodeOf("Battery")).queryByText("59 min")).toBeNull();
   });
 
   it("lights the mains branch and leaves the battery branch dark", () => {
@@ -61,28 +62,39 @@ describe("UpsPanel on mains", () => {
 
   // Spec 197 (FR-E1.6) — the same balance line as Live: the state, then the
   // load it carries, then the autonomy that leaves.
-  it("reads its status as the headline: state, load power, autonomy", () => {
+  it("reads its status as the headline: state, runtime, then load and battery", () => {
     render(<UpsPanel dataBindings={bindings()} />);
     const headline = screen.getByTestId("flow-headline");
     expect(headline.textContent).toContain("On mains");
-    expect(within(headline).getByText("21").parentElement?.className).toContain("text-value");
-    expect(within(headline).getByText("W")).toBeTruthy();
-    expect(headline.textContent).toMatch(/Runtime 59\smin/);
+    expect(within(headline).getByText("59").parentElement?.className).toContain("text-value");
+    expect(within(headline).getByText("min")).toBeTruthy();
+    expect(headline.textContent).toMatch(/Battery runtime · load 21\sW · battery 100\s?%/);
     expect(screen.getByTestId("flow-headline-dot").style.background).toBe(
       "var(--color-energy-grid)",
     );
   });
 
-  it("says what a load given only in percent is", () => {
+  it("quotes a load given only in percent in the sentence", () => {
     const pctOnly = bindings().filter((b) => b.alias !== "estimated_power");
     render(<UpsPanel dataBindings={pctOnly} />);
+    expect(screen.getByTestId("flow-headline").textContent).toMatch(/load 4\s?%/);
+  });
+
+  it("falls back to the load, named, when the runtime is unknown", () => {
+    const noRuntime = bindings().filter(
+      (b) => b.alias !== "battery_runtime" && b.alias !== "estimated_power",
+    );
+    render(<UpsPanel dataBindings={noRuntime} />);
     const headline = screen.getByTestId("flow-headline");
     expect(within(headline).getByText("4")).toBeTruthy();
     expect(within(headline).getByText("% of capacity")).toBeTruthy();
+    expect(headline.textContent).toMatch(/Battery 100\s?%$/);
   });
 
-  it("shows a dash for a load it cannot read, as the node does", () => {
-    const none = bindings().filter((b) => b.alias !== "estimated_power" && b.alias !== "load");
+  it("shows a dash when neither the runtime nor the load can be read", () => {
+    const none = bindings().filter(
+      (b) => !["estimated_power", "load", "battery_runtime"].includes(b.alias),
+    );
     render(<UpsPanel dataBindings={none} />);
     expect(within(screen.getByTestId("flow-headline")).getByText("—")).toBeTruthy();
   });
@@ -129,13 +141,13 @@ describe("UpsPanel during an outage", () => {
     expect(screen.getByRole("img", { name: /^Battery low\. Mains absent\./ })).toBeTruthy();
   });
 
-  it("reads the time left as the headline, the charge it spends as its sentence", () => {
+  it("reads the time left as the headline, the battery and the load as its sentence", () => {
     render(<UpsPanel dataBindings={outage()} />);
     const headline = screen.getByTestId("flow-headline");
     expect(headline.textContent).toContain("Battery low");
     expect(within(headline).getByText("6").parentElement?.className).toContain("text-value");
     expect(within(headline).getByText("min")).toBeTruthy();
-    expect(headline.textContent).toMatch(/Battery at 14\s?%/);
+    expect(headline.textContent).toMatch(/Battery 14\s?% · load 21\sW$/);
     expect(screen.getByTestId("flow-headline-dot").style.background).toBe("var(--color-error)");
   });
 

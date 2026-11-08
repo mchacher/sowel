@@ -223,14 +223,29 @@ describe("FlowDiagram colours: values in ink, colour on the node", () => {
     expect(screen.getByText("W").className).toContain("text-text-tertiary");
   });
 
-  it("writes a percentage as plain secondary text on a surface pad (spec 197)", () => {
+  it("writes a percentage as plain secondary text beside its route (spec 197)", () => {
     render(<FlowDiagram nodes={[]} links={[link({ pill: { text: "90 %" } })]} />);
     const pill = screen.getByText("90 %");
     expect(pill.style.color).toBe("");
     expect(pill.style.borderColor).toBe("");
     expect(pill.className).toContain("text-text-secondary");
-    expect(pill.className).toContain("bg-surface");
-    expect(pill.className).not.toMatch(/(^|\s)(border|rounded-full)(\s|$)/);
+    expect(pill.className).not.toMatch(/(^|\s)(border|rounded-full|bg-surface)(\s|$)/);
+    // Beside the vertical leg (x = 11 %), not centred on it.
+    expect(pill.className).toContain("left-[calc(11%+10px)]");
+    expect(pill.className).not.toContain("-translate-x-1/2");
+  });
+
+  it("starts the headline at the card's edge and centres only the diagram", () => {
+    render(
+      <FlowDiagram
+        nodes={[node()]}
+        links={[]}
+        headline={{ dotColor: "blue", label: "Sur secteur", value: "25", unit: "min" }}
+      />,
+    );
+    const headline = screen.getByTestId("flow-headline");
+    expect(headline.closest(".mx-auto")).toBeNull();
+    expect(screen.getByText("Focal").closest(".mx-auto")).toBeTruthy();
   });
 
   it("puts the headline's colour on its dot and writes its words in ink", () => {

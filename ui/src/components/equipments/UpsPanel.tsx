@@ -139,7 +139,8 @@ export function UpsPanel({ dataBindings }: UpsPanelProps) {
       dimmed: !onBattery && !r.charging,
       value: r.chargePct !== null ? String(Math.round(r.chargePct)) : "—",
       unit: r.chargePct !== null ? "%" : undefined,
-      sub: onBattery ? t("equipments.ups.discharging") : (formatRuntime(r.runtimeS) ?? undefined),
+      // The runtime is the headline's figure (spec 197): not repeated here.
+      sub: onBattery ? t("equipments.ups.discharging") : undefined,
       icon: batteryIcon(r.chargePct),
     },
   ];
@@ -171,37 +172,39 @@ export function UpsPanel({ dataBindings }: UpsPanelProps) {
     },
   ];
 
-  // Spec 197 (FR-E1.6) — the status reads as the same balance line as Live:
-  // the state, then the figure that matters in it. On mains, what the load
-  // draws, and the autonomy it leaves; on battery, the time left, and the
-  // charge it is spending.
+  // Spec 197 (FR-E1.6) — the status reads as the same balance line as Live.
+  // A UPS headline answers "am I covered, and for how long?": the figure is
+  // the runtime in both states, and the sentence carries the load and the
+  // battery level, the two facts the nodes below already show (the battery
+  // node no longer repeats the runtime). Without a runtime reading, the load
+  // takes the figure, as the focal node shows it.
   const loadParts = nodes[0];
   const runtime = runtimeParts(r.runtimeS);
-  const headline: FlowHeadline = onBattery
-    ? {
-        dotColor: tagColor,
-        label: statusText,
-        value: runtime?.value ?? "—",
-        unit: runtime?.unit,
-        ...(r.chargePct !== null
-          ? {
-              sentence: t("equipments.ups.headline.charge", {
-                charge: formatPercent(r.chargePct),
-              }),
-            }
-          : {}),
-      }
-    : {
-        dotColor: tagColor,
-        label: statusText,
-        value: loadParts.value,
-        // A load the unit reports only as a share of its capacity says so: a
-        // bare « 11 % » under « Sur secteur » reads as a battery level.
-        unit: loadParts.unit === "%" ? t("equipments.ups.headline.loadPctUnit") : loadParts.unit,
-        ...(runtimeLabel
-          ? { sentence: t("equipments.ups.headline.runtime", { runtime: runtimeLabel }) }
-          : {}),
-      };
+  const loadText =
+    r.loadW !== null ? formatPower(r.loadW) : r.loadPct !== null ? formatPercent(r.loadPct) : null;
+  const batteryText = r.chargePct !== null ? formatPercent(r.chargePct) : null;
+  const sentenceParts = [
+    runtime && !onBattery ? t("equipments.ups.headline.runtimeOnMains") : null,
+    onBattery && batteryText ? t("equipments.ups.headline.battery", { charge: batteryText }) : null,
+    runtime && loadText ? t("equipments.ups.headline.load", { load: loadText }) : null,
+    !onBattery && batteryText
+      ? t("equipments.ups.headline.battery", { charge: batteryText })
+      : null,
+  ].filter((x): x is string => x !== null);
+  const sentence = sentenceParts.join(" · ");
+  const headline: FlowHeadline = {
+    dotColor: tagColor,
+    label: statusText,
+    ...(runtime
+      ? { value: runtime.value, unit: runtime.unit }
+      : {
+          value: loadParts.value,
+          // A load the unit reports only as a share of its capacity says so:
+          // a bare « 11 % » under « Sur secteur » reads as a battery level.
+          unit: loadParts.unit === "%" ? t("equipments.ups.headline.loadPctUnit") : loadParts.unit,
+        }),
+    ...(sentence ? { sentence: sentence.charAt(0).toLocaleUpperCase() + sentence.slice(1) } : {}),
+  };
 
   // The status leads: the visible headline is hidden from screen readers, and
   // « Batterie faible » or « Surcharge » must not be lost with it.

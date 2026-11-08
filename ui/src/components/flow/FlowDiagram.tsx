@@ -41,15 +41,15 @@ import {
 } from "./flow-geometry";
 
 /**
- * A short figure by a route (spec 197, FR-E3.4): plain secondary text on a
- * surface pad that masks the line under it. No border and no fill: on a card
+ * A short figure by a route (spec 197, FR-E3.4): plain secondary text beside
+ * the line (PILL_POSITION), never over it. No border and no fill: on a card
  * that already carries a headline, ten pills on one screen meant none of them
  * signalled anything.
  */
 function Pill({ children, className }: { children: React.ReactNode; className?: string }) {
   return (
     <div
-      className={`absolute tabular-nums text-caption font-medium px-1.5 bg-surface text-text-secondary z-20 ${className ?? ""}`}
+      className={`absolute tabular-nums text-caption font-medium whitespace-nowrap text-text-secondary z-20 ${className ?? ""}`}
     >
       {children}
     </div>
@@ -179,93 +179,92 @@ export function FlowDiagram({ nodes, links, headline, ariaLabel }: FlowDiagramPr
   const hidden = ariaLabel ? true : undefined;
 
   return (
-    // One centred block, headline and diagram aligned on the same left edge,
-    // and the container whose width sizes the nodes (`@lg:` in SLOT_BOX).
-    <div
-      className="@container max-w-[600px] mx-auto"
-      role={ariaLabel ? "img" : undefined}
-      aria-label={ariaLabel}
-    >
+    // The headline starts at the card's content edge, like a card's title,
+    // whatever the card's width; the diagram is centred under it, in the
+    // container whose width sizes the nodes (`@lg:` in SLOT_BOX).
+    <div role={ariaLabel ? "img" : undefined} aria-label={ariaLabel}>
       {headline && (
         <div aria-hidden={hidden}>
           <Headline headline={headline} />
         </div>
       )}
-      <div className="relative h-[260px] @lg:h-auto @lg:aspect-[54/29]" aria-hidden={hidden}>
-        <svg
-          viewBox={`0 0 540 ${VIEWBOX_HEIGHT}`}
-          preserveAspectRatio="none"
-          className="absolute inset-0 w-full h-full overflow-visible"
-        >
-          {/* Skeleton — every declared route stays faintly visible, so the whole
+      <div className="@container max-w-[600px] mx-auto">
+        <div className="relative h-[260px] @lg:h-auto @lg:aspect-[54/29]" aria-hidden={hidden}>
+          <svg
+            viewBox={`0 0 540 ${VIEWBOX_HEIGHT}`}
+            preserveAspectRatio="none"
+            className="absolute inset-0 w-full h-full overflow-visible"
+          >
+            {/* Skeleton — every declared route stays faintly visible, so the whole
               circuit reads even when a single branch is working. */}
-          {links.map((l) => (
-            <path
-              key={`sk-${l.edge}`}
-              d={PATHS[l.edge]}
-              fill="none"
-              stroke="var(--color-border)"
-              strokeWidth={2}
-              strokeLinecap="round"
-              vectorEffect="non-scaling-stroke"
-            />
-          ))}
-
-          {/* Active overlays: the width says how much (spec 197, FR-E4.1). */}
-          {active.map((l) => (
-            <path
-              key={`ov-${l.edge}`}
-              d={PATHS[l.edge]}
-              fill="none"
-              stroke={l.color}
-              strokeWidth={FLOW_TIER_STYLE[flowTier(l.powerW)].width}
-              strokeLinecap="round"
-              vectorEffect="non-scaling-stroke"
-              data-tier={flowTier(l.powerW)}
-            />
-          ))}
-
-          {/* Moving dots: round-capped zero-length dashes on the same path,
-              moved by a CSS animation (spec 197, FR-E4.2). A non-scaling
-              stroke keeps them round on the phone's stretched viewBox, and
-              the reduced-motion setting stops them (index.css). */}
-          {active.map((l) => {
-            if (l.powerW !== undefined && Math.abs(l.powerW) < FLOW_DOT_FLOOR_W) return null;
-            const tier = flowTier(l.powerW);
-            return (
+            {links.map((l) => (
               <path
-                key={`dt-${l.edge}`}
+                key={`sk-${l.edge}`}
+                d={PATHS[l.edge]}
+                fill="none"
+                stroke="var(--color-border)"
+                strokeWidth={2}
+                strokeLinecap="round"
+                vectorEffect="non-scaling-stroke"
+              />
+            ))}
+
+            {/* Active overlays: the width says how much (spec 197, FR-E4.1). */}
+            {active.map((l) => (
+              <path
+                key={`ov-${l.edge}`}
                 d={PATHS[l.edge]}
                 fill="none"
                 stroke={l.color}
-                strokeWidth={FLOW_TIER_STYLE[tier].dot}
+                strokeWidth={FLOW_TIER_STYLE[flowTier(l.powerW)].width}
                 strokeLinecap="round"
-                strokeDasharray={`0 ${FLOW_DOT_PERIOD}`}
                 vectorEffect="non-scaling-stroke"
-                className="flow-dash"
-                style={{ animationDuration: `${flowDotSeconds(tier)}s` }}
-                data-testid="flow-dots"
+                data-tier={flowTier(l.powerW)}
               />
-            );
-          })}
-        </svg>
+            ))}
 
-        {active.map((l) => (
-          <EndCap key={`cap-${l.edge}`} link={l} />
-        ))}
+            {/* Moving dots: round-capped zero-length dashes on the same path,
+              moved by a CSS animation (spec 197, FR-E4.2). A non-scaling
+              stroke keeps them round on the phone's stretched viewBox, and
+              the reduced-motion setting stops them (index.css). */}
+            {active.map((l) => {
+              if (l.powerW !== undefined && Math.abs(l.powerW) < FLOW_DOT_FLOOR_W) return null;
+              const tier = flowTier(l.powerW);
+              return (
+                <path
+                  key={`dt-${l.edge}`}
+                  d={PATHS[l.edge]}
+                  fill="none"
+                  stroke={l.color}
+                  strokeWidth={FLOW_TIER_STYLE[tier].dot}
+                  strokeLinecap="round"
+                  strokeDasharray={`0 ${FLOW_DOT_PERIOD}`}
+                  vectorEffect="non-scaling-stroke"
+                  className="flow-dash"
+                  style={{ animationDuration: `${flowDotSeconds(tier)}s` }}
+                  data-testid="flow-dots"
+                />
+              );
+            })}
+          </svg>
 
-        {links.map(
-          (l) =>
-            l.pill && (
-              <Pill key={`pl-${l.edge}`} className={PILL_POSITION[l.edge]}>
-                {l.pill.text}
-              </Pill>
-            ),
-        )}
+          {active.map((l) => (
+            <EndCap key={`cap-${l.edge}`} link={l} />
+          ))}
 
-        {nodes.map((n) => (
-          <FlowNode key={n.slot} node={n} />
-        ))}
+          {links.map(
+            (l) =>
+              l.pill && (
+                <Pill key={`pl-${l.edge}`} className={PILL_POSITION[l.edge]}>
+                  {l.pill.text}
+                </Pill>
+              ),
+          )}
+
+          {nodes.map((n) => (
+            <FlowNode key={n.slot} node={n} />
+          ))}
+        </div>
       </div>
     </div>
   );

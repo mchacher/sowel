@@ -48,12 +48,17 @@ export const PATHS: Record<FlowEdge, string> = {
   leftToRight: "M 60 180 V 255 Q 60 270 70 270 H 470 Q 480 270 480 255 V 180",
 };
 
-/** Where an edge's pill sits: mid of the visible vertical leg, or the bottom run. */
+/**
+ * Where an edge's figure sits: beside the visible vertical leg, on the side
+ * of the focal node, or just above the bottom run. Never on the line: set
+ * on it, the label cut a short leg into a stub with a lone dot under it
+ * (spec 197 review), so the route now runs whole past its figure.
+ */
 export const PILL_POSITION: Record<FlowEdge, string> = {
-  leftToFocal: "left-[11%] top-[35%] -translate-x-1/2 -translate-y-1/2",
-  rightToFocal: "right-[11%] top-[35%] translate-x-1/2 -translate-y-1/2",
-  rightToLeft: "left-1/2 top-[93%] -translate-x-1/2 -translate-y-1/2",
-  leftToRight: "left-1/2 top-[93%] -translate-x-1/2 -translate-y-1/2",
+  leftToFocal: "left-[calc(11%+10px)] top-[35%] -translate-y-1/2",
+  rightToFocal: "right-[calc(11%+10px)] top-[35%] -translate-y-1/2",
+  rightToLeft: "left-1/2 top-[93%] -translate-x-1/2 -translate-y-[calc(100%+4px)]",
+  leftToRight: "left-1/2 top-[93%] -translate-x-1/2 -translate-y-[calc(100%+4px)]",
 };
 
 // A satellite node is 22 % of a wide diagram (`@lg`), 24 % of a narrow one with 2 px
