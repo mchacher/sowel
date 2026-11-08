@@ -871,8 +871,11 @@ export class PvForecaster {
 
     // A fortnight, on its own merits — not a window derived from the reference
     // length. This is what "recently" means on the card, so in December it
-    // describes December's weather, not October's.
-    const cutoff = localDateStr(new Date(Date.now() - DETECTION_WINDOW_DAYS * 86_400_000));
+    // describes December's weather, not October's. Stepped by calendar day from
+    // the local date: across a DST change N x 24 h is not N days (#1143).
+    const windowStart = new Date();
+    windowStart.setDate(windowStart.getDate() - DETECTION_WINDOW_DAYS);
+    const cutoff = localDateStr(windowStart);
     const recent = days.filter((d) => d.day >= cutoff).length;
 
     return {

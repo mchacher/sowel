@@ -1,6 +1,6 @@
 import Database from "better-sqlite3";
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { ALERT_DAYS, MIN_NORMAL_DAYS } from "./pv-health.js";
+import { ALERT_DAYS, DETECTION_WINDOW_DAYS, MIN_NORMAL_DAYS } from "./pv-health.js";
 import { PvForecaster } from "./pv-forecaster.js";
 
 /**
@@ -440,6 +440,28 @@ describe("getHealth", () => {
     expect(h.days).toEqual([]);
     expect(h.normal).toBeNull();
     expect(h.detection).toBeNull();
+  });
+
+  it("counts exactly the detection window late in the evening after the October change (#1143)", () => {
+    // Europe/Paris falls back on 2026-10-25. Read at 23:30 local a week later,
+    // 14 x 24 h lands on 00:30 of the following day, one local day short.
+    const previousTz = process.env.TZ;
+    process.env.TZ = "Europe/Paris";
+    vi.useFakeTimers({ toFake: ["Date"] });
+    try {
+      vi.setSystemTime(new Date("2026-11-01T23:30:00+01:00"));
+      seedDays(db, 30, 3000);
+      const f = build(db);
+      f.runHealthCheck();
+      const h = f.getHealth(equipment);
+      f.stop();
+
+      expect(h.detection!.qualifyingDays).toBe(DETECTION_WINDOW_DAYS);
+    } finally {
+      vi.useRealTimers();
+      if (previousTz === undefined) delete process.env.TZ;
+      else process.env.TZ = previousTz;
+    }
   });
 
   it("exposes the capacity cutoff the series counts from (#724)", () => {
