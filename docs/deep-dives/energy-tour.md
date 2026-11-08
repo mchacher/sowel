@@ -60,6 +60,6 @@ This article stays light on purpose; the details live in the [energy monitoring 
 - **Everything is local.** History lives in an InfluxDB that ships inside Sowel's own Docker deployment: raw data for 7 days, hourly aggregates for 2 years, daily aggregates for 10 years, downsampled automatically. No cloud account, no data leaving the house.
 - **The self-consumption split is computed at the meter, minute by minute.** Self-consumed power is what the panels produced minus what was injected, clamped so that meter drift between two devices never invents energy.
 - **Day boundaries are your midnight.** Aggregates respect the local timezone, so the bar labeled Tuesday contains Tuesday.
-- **The tariff classifier follows your declared slots**, including slots that cross midnight, and the peak and off-peak totals shown under the chart are computed from the same classification that colors the bars. What you see priced is what was measured.
+- **The tariff classifier follows your declared slots**, including slots that cross midnight, and the peak and off-peak totals shown above the chart are computed from the same classification that colors the bars. What you see priced is what was measured.
 
 Where to go next: [The surplus arbiter](surplus-arbiter.md) explains how the surplus you see on the Live page gets shared between your flexible loads. [Watching over the panels](pv-health.md) explains how the forecast learns your installation and how a silent fault gets caught.

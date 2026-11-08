@@ -176,4 +176,31 @@ describe("PvForecastPanel accuracy (#907)", () => {
     await new Promise((r) => setTimeout(r, 0));
     expect(mockedGet).toHaveBeenCalledWith("eq-pv", 1);
   });
+
+  // Spec 197 (FR-E6.3) — « Expected » is a prediction, drawn dashed and
+  // neutral; « Actual » is solar production, solid green. The keys mirror them.
+  it("keys the expected line dashed neutral and the actual one solid green", async () => {
+    const hour = new Date(Date.now() - 2 * 3_600_000).toISOString();
+    await renderPanel(
+      response({
+        curve: [{ at: new Date(Date.now() + 3_600_000).toISOString(), watts: 900 }],
+        accuracy: { ...response().accuracy, measured: [{ at: hour, watts: 400 }] },
+      }),
+    );
+    const expected = screen.getByText("Expected").querySelector("line");
+    expect(expected?.getAttribute("stroke")).toBe("var(--color-text-tertiary)");
+    expect(expected?.getAttribute("stroke-dasharray")).toBe("4 3");
+    const actual = screen.getByText("Actual").querySelector("line");
+    expect(actual?.getAttribute("stroke")).toBe("var(--color-solar-production)");
+    expect(actual?.getAttribute("stroke-dasharray")).toBeNull();
+  });
+
+  it("picks the window with the shared segmented control", async () => {
+    await renderPanel(response({ curve: [{ at: new Date().toISOString(), watts: 900 }] }));
+    const group = screen.getByRole("group", { name: "Window shown" });
+    const pressed = [...group.querySelectorAll("button")].filter(
+      (b) => b.getAttribute("aria-pressed") === "true",
+    );
+    expect(pressed.map((b) => b.textContent)).toEqual(["3 d"]);
+  });
 });

@@ -3,6 +3,7 @@ import { MemoryRouter } from "react-router-dom";
 import { render, screen } from "../../test-utils";
 import { ProductionPage } from "./ProductionPage";
 import { useEnergy } from "../../store/useEnergy";
+import { localDateStr } from "../../lib/local-date";
 import { useEquipments } from "../../store/useEquipments";
 import { useAuth } from "../../store/useAuth";
 import * as api from "../../api";
@@ -14,6 +15,16 @@ vi.mock("../../api", async (orig) => ({
   ...(await orig<typeof import("../../api")>()),
   getPvForecast: vi.fn(),
   getPvHealth: vi.fn(),
+}));
+
+// The chart itself is Recharts and draws nothing in jsdom; what the page hands
+// it is what these tests are about (spec 197, the forecast axis floor).
+const chartProps: { floorKwh?: number }[] = [];
+vi.mock("./ProductionBarChart", () => ({
+  ProductionBarChart: (props: { floorKwh?: number }) => {
+    chartProps.push(props);
+    return null;
+  },
 }));
 
 const mockedForecast = vi.mocked(api.getPvForecast);
@@ -68,6 +79,8 @@ function setup(opts: { meters: EquipmentWithDetails[]; role: "admin" | "user" })
       },
     } as unknown as EnergyHistoryResponse,
     loading: false,
+    period: "day",
+    date: localDateStr(),
     hasProduction: true,
     fetchHistory: async () => {},
   });
@@ -159,5 +172,101 @@ describe("ProductionPage (spec 163)", () => {
     setup({ meters: [], role: "admin" });
     await renderPage();
     expect(screen.queryByText(/declare your photovoltaic installation/i)).toBeNull();
+  });
+
+  // Spec 197 (FR-E6.2) — the card opens on the production, read against
+  // today's forecast when there is one.
+  it("reads the day's production against today's forecast", async () => {
+    setup({ meters: [meter("eq-1", "Shelly Solar", true)], role: "user" });
+    useEnergy.setState({
+      history: {
+        points: [],
+        totals: {
+          total_hp: 0,
+          total_hc: 0,
+          total_production: 50,
+          total_autoconso: 50,
+          total_injection: 0,
+        },
+      } as unknown as EnergyHistoryResponse,
+    });
+    const noon = new Date();
+    noon.setHours(12, 0, 0, 0);
+    const one = new Date(noon);
+    one.setHours(13);
+    mockedForecast.mockResolvedValue({
+      ...forecastResponse(),
+      curve: [
+        { at: noon.toISOString(), watts: 2500 },
+        { at: one.toISOString(), watts: 2000 },
+      ],
+    });
+    await renderPage();
+    expect(await screen.findByText(/of 4.5 kWh expected today/)).toBeTruthy();
+    expect(screen.getByText(/^0\.05\s*kWh$/)).toBeTruthy();
+  });
+
+  it("says no forecast it does not have", async () => {
+    setup({ meters: [meter("eq-1", "Shelly Solar", true)], role: "user" });
+    useEnergy.setState({
+      history: {
+        points: [],
+        totals: {
+          total_hp: 0,
+          total_hc: 0,
+          total_production: 50,
+          total_autoconso: 50,
+          total_injection: 0,
+        },
+      } as unknown as EnergyHistoryResponse,
+    });
+    await renderPage();
+    expect(await screen.findByText(/expected production/i)).toBeTruthy();
+    expect(screen.queryByText(/expected today/)).toBeNull();
+    expect(screen.getByText("today")).toBeTruthy();
+  });
+
+  it("lifts today's day-view axis to the forecast's busiest hour", async () => {
+    setup({ meters: [meter("eq-1", "Shelly Solar", true)], role: "user" });
+    useEnergy.setState({ period: "day", date: localDateStr() });
+    const noon = new Date();
+    noon.setHours(12, 0, 0, 0);
+    mockedForecast.mockResolvedValue({
+      ...forecastResponse(),
+      curve: [{ at: noon.toISOString(), watts: 2300 }],
+    });
+    await renderPage();
+    await screen.findByText(/expected production/i);
+    expect(chartProps.at(-1)?.floorKwh).toBeCloseTo(2.3);
+  });
+
+  it("does not read a past day against today's forecast", async () => {
+    setup({ meters: [meter("eq-1", "Shelly Solar", true)], role: "user" });
+    useEnergy.setState({
+      period: "day",
+      date: "2026-03-09",
+      history: {
+        points: [],
+        totals: {
+          total_hp: 0,
+          total_hc: 0,
+          total_production: 50,
+          total_autoconso: 50,
+          total_injection: 0,
+        },
+      } as unknown as EnergyHistoryResponse,
+    });
+    const noon = new Date();
+    noon.setHours(12, 0, 0, 0);
+    mockedForecast.mockResolvedValue({
+      ...forecastResponse(),
+      curve: [{ at: noon.toISOString(), watts: 2300 }],
+    });
+    await renderPage();
+    await screen.findByText(/expected production/i);
+    expect(screen.queryByText(/expected today/)).toBeNull();
+    // The selector and the headline both name the day.
+    expect(screen.getAllByText("March 9, 2026")).toHaveLength(2);
+    expect(chartProps.at(-1)?.floorKwh).toBeUndefined();
   });
 });
