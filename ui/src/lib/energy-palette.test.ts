@@ -306,8 +306,8 @@ describe("the solar ink is a text colour (spec 197)", () => {
 
 // #1146 — a Live node carries its colour on the icon alone, a meaningful
 // graphic: 3:1 on the card (WCAG 1.4.11). The tokens are the ones
-// LiveDiagram.test.tsx pins on the three nodes; the Production icon takes the
-// solar ink, since the auto-consumption green is about 2:1 on a light card.
+// LiveDiagram.test.tsx pins on the three nodes; the Production icon (and the
+// UPS battery's, UpsPanel.test.tsx) takes the solar ink, since the auto-consumption green is about 2:1 on a light card.
 describe("the Live node icons stand on the card (#1146)", () => {
   for (const theme of ["light", "dark"] as const) {
     for (const token of ["--energy-hp", "--energy-grid", "--solar-ink"]) {
