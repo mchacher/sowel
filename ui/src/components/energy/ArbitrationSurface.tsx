@@ -6,9 +6,7 @@ import { SectionHeader } from "./SectionHeader";
 import { ArbiterTimeline } from "./ArbiterTimeline";
 import {
   surplusStickerColor,
-  surplusFigureInk,
   STICKER_INK,
-  DEFICIT_HUE,
   isDeficit,
   loadStateColor,
   loadStateInk,
@@ -161,9 +159,9 @@ export function ArbitrationSurface() {
   // Deficit context (FR-10a): when the meter is importing, no waiting load can
   // start — spell it out so an empty "need" column does not read as inaction.
   // Suppressed while dormant, which shows its own calm night line instead (#577).
-  // Spec 197 (FR-E2.3) — the figure is said once in the sticker and once in
-  // the aside, so this line carries no figure; from 640 px the aside says the
-  // same words beside the table, and the line is left to the phone.
+  // Spec 197 (FR-E2.3) — the figure is in the sticker, so this line carries
+  // none. #1162 — it is the one line between the header and the table, at
+  // every width: the aside no longer repeats the sticker.
   const deficit = !dormant && state.state === "active" && isDeficit(available);
 
   // #807 — the load the arbiter is working on next: the first waiting row, in
@@ -174,13 +172,11 @@ export function ArbitrationSurface() {
   // A claim whose surplus is already covered is included on purpose: it is
   // the closest thing to "about to happen" the roster has.
   const nextUp = rows.find((r) => r.state === "pending");
-  const showAside = !dormant && (available !== null || nextUp !== undefined);
 
   return (
     <div className="card p-4 sm:p-6 mt-4">
       <SectionHeader
         title={t("arbiter.surfaceTitle")}
-        hint={t("arbiter.surfaceHint")}
         aside={
           <span
             className="ml-auto flex items-center gap-1 text-micro font-semibold px-1.5 py-0.5 rounded-full whitespace-nowrap"
@@ -224,21 +220,18 @@ export function ArbitrationSurface() {
         </p>
       )}
       {deficit && (
-        <p className={`text-caption text-text-tertiary mb-2 ${rows.length > 0 ? "sm:hidden" : ""}`}>
-          {t("arbiter.deficitContext")}
-        </p>
+        <p className="text-caption text-text-tertiary mb-2">{t("arbiter.deficitContext")}</p>
       )}
 
       {rows.length > 0 && (
         <div className="flex flex-col lg:flex-row lg:items-start gap-4 lg:gap-6">
           <div className="flex-1 min-w-0 lg:max-w-[760px]">
-            {/* Spec 197 (FR-E2.5) — the 1 to 5 before each name is the rank;
-                only a code comment said so. */}
-            <p className="text-caption text-text-tertiary mb-2">{t("arbiter.priorityCaption")}</p>
             <div className="overflow-x-auto">
               <table className="w-full text-caption border-collapse">
                 <thead>
                   <tr className="text-caption uppercase tracking-[0.04em] text-text-tertiary">
+                    {/* Spec 197 (FR-E2.5) — the 1 to 5 before each name is the
+                        rank. #1162 — said in this tooltip, not in a caption. */}
                     <th
                       className="text-left font-semibold pb-2 pr-3 border-b border-border"
                       title={t("arbiter.rosterHint.equipment")}
@@ -271,7 +264,9 @@ export function ArbitrationSurface() {
                     </th>
                     <th
                       className="hidden sm:table-cell text-right font-semibold pb-2 pl-3 border-b border-border whitespace-nowrap"
-                      title={t("arbiter.rosterHint.need")}
+                      title={t("arbiter.rosterHint.need", {
+                        margin: formatPower(state.engageMarginW),
+                      })}
                     >
                       {t("arbiter.roster.need")}
                     </th>
@@ -334,72 +329,25 @@ export function ArbitrationSurface() {
                 </tbody>
               </table>
             </div>
-            {/* The margin appears in no other place in the UI, and without it the
-                three figures on a row look unrelated. Shown only where all three
-                columns are (≥ 1024 px). */}
-            <p className="hidden lg:block mt-3 text-caption text-text-tertiary">
-              {t("arbiter.needFormula", { margin: formatPower(state.engageMarginW) })}
-            </p>
           </div>
 
-          {showAside && (
-            <aside
-              className={`${
-                // Its only content below 640 px is the next-up block: without
-                // one, the panel would be a rule over an empty strip there.
-                nextUp ? "flex" : "hidden sm:flex"
-              } flex-row lg:flex-col gap-6 lg:gap-4 flex-wrap lg:flex-nowrap lg:flex-none lg:w-[208px] border-t lg:border-t-0 lg:border-l border-border-light pt-3 lg:pt-0 lg:pl-5`}
-            >
-              {available !== null && (
-                // Below 640 px this repeats the header sticker, which is enough
-                // on a phone; from there up it is the figure the need column is
-                // compared against, so it belongs next to the table.
-                // Spec 197 (FR-E2.3) — worded by sign: a deficit is an import,
-                // never « Surplus disponible −4,8 kW » over « Export réseau
-                // instantané » while the house imports.
-                <div className="hidden sm:block">
-                  <div className="text-caption text-text-tertiary">
-                    {t(isDeficit(available) ? "arbiter.aside.import" : "arbiter.aside.available")}
-                  </div>
-                  <div
-                    className="flex items-center gap-1.5 tabular-nums text-title leading-tight mt-0.5"
-                    style={{ color: surplusFigureInk(available) }}
-                  >
-                    {isDeficit(available) && (
-                      <span
-                        aria-hidden="true"
-                        className="w-2 h-2 rounded-full flex-none"
-                        style={{ backgroundColor: DEFICIT_HUE }}
-                      />
-                    )}
-                    {formatPower(isDeficit(available) ? Math.abs(available) : available)}
-                  </div>
-                  <div className="text-caption text-text-tertiary mt-1">
-                    {t(
-                      isDeficit(available)
-                        ? "arbiter.aside.importHint"
-                        : "arbiter.aside.availableHint",
-                    )}
-                  </div>
-                </div>
-              )}
-              {nextUp && (
-                <div>
-                  {/* Spec 197 (FR-E2.6) — labelled at every width: on a phone
-                      the name used to float under the table with no heading. */}
-                  <div className="text-caption text-text-tertiary">{t("arbiter.aside.next")}</div>
-                  <div className="text-small sm:text-lead leading-tight mt-0.5 text-text">
-                    {nextUp.equipmentName}
-                  </div>
-                  <div className="text-caption text-text-tertiary mt-1">
-                    {/* The shortfall stays in the roster: « Démarrera dès 600 W
-                        de surplus » is the threshold, not the load's draw. */}
-                    {(nextUp.shortfallW ?? 0) > 0
-                      ? t("arbiter.aside.nextHint", { need: fmtNeed(nextUp.needW) })
-                      : t("arbiter.aside.nextCovered", { need: fmtNeed(nextUp.needW) })}
-                  </div>
-                </div>
-              )}
+          {!dormant && nextUp && (
+            // #1162 — the next-up block only: the surplus figure it also held
+            // repeated the header sticker.
+            <aside className="lg:flex-none lg:w-[208px] border-t lg:border-t-0 lg:border-l border-border-light pt-3 lg:pt-0 lg:pl-5">
+              {/* Spec 197 (FR-E2.6) — labelled at every width: on a phone
+                  the name used to float under the table with no heading. */}
+              <div className="text-caption text-text-tertiary">{t("arbiter.aside.next")}</div>
+              <div className="text-small sm:text-lead leading-tight mt-0.5 text-text">
+                {nextUp.equipmentName}
+              </div>
+              <div className="text-caption text-text-tertiary mt-1">
+                {/* The shortfall stays in the roster: « Démarrera dès 600 W
+                    de surplus » is the threshold, not the load's draw. */}
+                {(nextUp.shortfallW ?? 0) > 0
+                  ? t("arbiter.aside.nextHint", { need: fmtNeed(nextUp.needW) })
+                  : t("arbiter.aside.nextCovered")}
+              </div>
             </aside>
           )}
         </div>
