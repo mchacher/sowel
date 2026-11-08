@@ -705,3 +705,100 @@ describe("EquipmentWidget — thermostat tile degrees", () => {
     expect(screen.queryByText(/°C/)).toBeNull();
   });
 });
+
+// Issue #1152 — the pool cover tile, bound like the live « Volet Piscine »:
+// a `shutter_position` reading and a `pool_cover_move` OPEN/CLOSE/STOP order.
+function poolCover(
+  position: number | null,
+  orderBindings: EquipmentWithDetails["orderBindings"] = [
+    {
+      id: "ob-pc",
+      equipmentId: "eq-pc",
+      deviceOrderId: "do-pc",
+      alias: "shutter_state",
+      deviceId: "dev-pc",
+      deviceName: "Relay",
+      key: "shutter_state",
+      type: "enum",
+      category: "pool_cover_move",
+      enumValues: ["OPEN", "CLOSE", "STOP"],
+    },
+  ] as EquipmentWithDetails["orderBindings"],
+): EquipmentWithDetails {
+  return makeEquipment({
+    id: "eq-pc",
+    name: "Pool cover",
+    type: "pool_cover",
+    dataBindings: [
+      {
+        id: "db-pc",
+        equipmentId: "eq-pc",
+        deviceDataId: "dd-pc",
+        alias: "shutter_position",
+        deviceId: "dev-pc",
+        deviceName: "Relay",
+        key: "shutter_position",
+        type: "number",
+        category: "shutter_position",
+        value: position,
+        unit: "%",
+        lastUpdated: "2026-01-01T00:00:00Z",
+        lastChanged: "2026-01-01T00:00:00Z",
+        stale: false,
+      },
+    ] as EquipmentWithDetails["dataBindings"],
+    orderBindings,
+  });
+}
+
+describe("EquipmentWidget — pool cover tile (#1152)", () => {
+  it("shows a known position as its state word or percentage", () => {
+    const widget = makeWidget({ equipmentId: "eq-pc" });
+    const { rerender } = render(
+      <EquipmentWidget widget={widget} equipment={poolCover(0)} onExecuteOrder={vi.fn()} />,
+    );
+    expect(screen.getByText("Closed")).toBeTruthy();
+
+    rerender(
+      <EquipmentWidget widget={widget} equipment={poolCover(100)} onExecuteOrder={vi.fn()} />,
+    );
+    // "Open" is also the open button's title; the state is the visible text.
+    expect(screen.getByText("Open")).toBeTruthy();
+
+    rerender(
+      <EquipmentWidget widget={widget} equipment={poolCover(40)} onExecuteOrder={vi.fn()} />,
+    );
+    expect(screen.getByText("40")).toBeTruthy();
+    expect(screen.getByText("%")).toBeTruthy();
+    expect(screen.queryByText("—")).toBeNull();
+  });
+
+  it("offers open, stop and close when a move order is bound", async () => {
+    const onExecuteOrder = vi.fn().mockResolvedValue(undefined);
+    render(
+      <EquipmentWidget
+        widget={makeWidget({ equipmentId: "eq-pc" })}
+        equipment={poolCover(0)}
+        onExecuteOrder={onExecuteOrder}
+      />,
+    );
+    expect(screen.getByTitle("Open")).toBeTruthy();
+    expect(screen.getByTitle("Stop")).toBeTruthy();
+    await userEvent.click(screen.getByTitle("Close"));
+    expect(onExecuteOrder).toHaveBeenCalledWith("eq-pc", "shutter_state", "CLOSE");
+  });
+
+  it("shows a dash and no controls when nothing is bound", () => {
+    const eq = poolCover(null, []);
+    eq.dataBindings = [];
+    render(
+      <EquipmentWidget
+        widget={makeWidget({ equipmentId: "eq-pc" })}
+        equipment={eq}
+        onExecuteOrder={vi.fn()}
+      />,
+    );
+    expect(screen.getByText("—")).toBeTruthy();
+    expect(screen.queryByRole("button")).toBeNull();
+  });
+});

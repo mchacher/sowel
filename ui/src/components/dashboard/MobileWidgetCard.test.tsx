@@ -380,3 +380,43 @@ describe("MobileWidgetCard — vehicle report age (spec 196)", () => {
     expect(container.querySelector(".absolute")).toBeNull();
   });
 });
+
+// Issue #1152 — the mobile pool cover card names its position, like a shutter.
+describe("MobileWidgetCard — pool cover (#1152)", () => {
+  function cover(position: number): EquipmentWithDetails {
+    return makeEnergyMeter({
+      id: "pc-1",
+      name: "Pool cover",
+      type: "pool_cover",
+      computedData: [],
+      dataBindings: [
+        {
+          id: "db-pc",
+          equipmentId: "pc-1",
+          deviceDataId: "dd-pc",
+          alias: "shutter_position",
+          deviceId: "dev-pc",
+          deviceName: "Relay",
+          key: "shutter_position",
+          type: "number",
+          category: "shutter_position",
+          value: position,
+          unit: "%",
+          lastUpdated: agoIso(30),
+          lastChanged: agoIso(30),
+          stale: false,
+        },
+      ] as EquipmentWithDetails["dataBindings"],
+    });
+  }
+  const pcWidget = { ...widget, equipmentId: "pc-1" };
+
+  it("shows closed, open or the percentage", () => {
+    const { rerender } = render(<MobileWidgetCard widget={pcWidget} equipment={cover(0)} />);
+    expect(screen.getByText(i18n.t("controls.closed"))).toBeTruthy();
+    rerender(<MobileWidgetCard widget={pcWidget} equipment={cover(100)} />);
+    expect(screen.getByText(i18n.t("controls.opened"))).toBeTruthy();
+    rerender(<MobileWidgetCard widget={pcWidget} equipment={cover(40)} />);
+    expect(screen.getByText(/^40\s?%$/)).toBeTruthy();
+  });
+});
