@@ -12,7 +12,6 @@ import { render, screen, within } from "../../test-utils";
 import { BUDGET_FLOOR_MS } from "../../../../src/shared/reading-freshness";
 import { MemoryRouter } from "react-router-dom";
 import { LiveEnergyPage } from "./LiveEnergyPage";
-import { ribbonWidth } from "../flow/flow-geometry";
 import { useEquipments } from "../../store/useEquipments";
 import type { EquipmentWithDetails } from "../../types";
 
@@ -167,14 +166,17 @@ describe("Live energy diagram — nodes and status", () => {
     expect(headline.querySelector("p")).toBeNull();
   });
 
-  it("draws each ribbon as wide as its power", () => {
+  it("draws both ribbons at one width and tells the power by the wave's speed", () => {
     // 4.9 kW from the grid, 180 W of sun.
     seed([meter("grid", "main_energy_meter", 4900), meter("pv", "energy_production_meter", 180)]);
     const { container } = render(<LiveEnergyPage />, { wrapper: MemoryRouter });
-    const widthOf = (edge: string) =>
-      container.querySelector(`g[data-edge="${edge}"]`)?.getAttribute("data-width");
-    expect(widthOf("leftToFocal")).toBe(String(ribbonWidth(4900)));
-    expect(widthOf("rightToFocal")).toBe(String(ribbonWidth(180)));
+    const g = (edge: string) => container.querySelector(`g[data-edge="${edge}"]`)!;
+    expect(g("leftToFocal").getAttribute("data-width")).toBe(
+      g("rightToFocal").getAttribute("data-width"),
+    );
+    const rate = (edge: string) =>
+      Number(g(edge).querySelector("[data-rate]")!.getAttribute("data-rate"));
+    expect(rate("leftToFocal")).toBeGreaterThan(rate("rightToFocal"));
   });
 
   // Spec 197 (FR-E7) — the shares moved from the routes to the nodes.

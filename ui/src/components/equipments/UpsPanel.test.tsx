@@ -1,7 +1,6 @@
 import { describe, it, expect } from "vitest";
 import { render, screen, within } from "../../test-utils";
 import { UpsPanel } from "./UpsPanel";
-import { ribbonWidth } from "../flow/flow-geometry";
 import type { DataBindingWithValue } from "../../types";
 
 /** Build the binding set an APC behind the NUT plugin actually produces. */
@@ -100,12 +99,14 @@ describe("UpsPanel on mains", () => {
     expect(within(screen.getByTestId("flow-headline")).getByText("—")).toBeTruthy();
   });
 
-  it("draws the mains ribbon as wide as the load", () => {
+  it("speeds the mains wave up with the load, at the same ribbon width", () => {
     const { container, rerender } = render(<UpsPanel dataBindings={bindings()} />);
+    const rate = () => Number(container.querySelector("[data-rate]")?.getAttribute("data-rate"));
     const width = () => container.querySelector("g[data-edge]")?.getAttribute("data-width");
-    expect(width()).toBe(String(ribbonWidth(21)));
+    const [slow, w0] = [rate(), width()];
     rerender(<UpsPanel dataBindings={bindings({ real_power: 900 })} />);
-    expect(width()).toBe(String(ribbonWidth(900)));
+    expect(rate()).toBeGreaterThan(slow);
+    expect(width()).toBe(w0);
   });
 
   // Spec 197 (FR-E7) — levels, not splits: the load in the source's colour,

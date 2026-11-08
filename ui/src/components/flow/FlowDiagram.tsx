@@ -15,8 +15,8 @@
  * └───────┘       └───────┘   solar export one way, battery charge the other.
  *
  * What the diagram owns: the headline above it, the viewBox, the node slots,
- * the routes (a skeleton at rest; a ribbon whose width follows the power, its
- * wave and its arrowhead when active) and the share bars under the values.
+ * the routes (a skeleton at rest; a ribbon of one constant width, its wave
+ * moving at a speed that follows the power, and its arrowhead when active) and the share bars under the values.
  * What the caller owns: which edges carry energy, in which direction, how
  * many watts, with what colours, and every formatted figure.
  */
@@ -34,7 +34,7 @@ import {
   VIEWBOX_HEIGHT,
   WAVE_PERIOD,
   headSize,
-  ribbonWidth,
+  RIBBON_WIDTH,
   waveDashes,
   waveRate,
   type FlowDiagramProps,
@@ -57,12 +57,11 @@ function isLit(l: FlowLinkSpec): boolean {
  * edge at every size.
  */
 function Head({ link, side }: { link: FlowLinkSpec; side: "left" | "right" | "bottom" }) {
-  // Two sizes, switched by the diagram's container query like the ribbon:
-  // a narrow diagram draws its ribbon at 0.8 of the width, and its head too.
+  // Two sizes, switched by the diagram's container query like the ribbon.
   return (
     <>
-      <HeadShape link={link} side={side} width={ribbonWidth(link.powerW, true)} size="narrow" />
-      <HeadShape link={link} side={side} width={ribbonWidth(link.powerW)} size="wide" />
+      <HeadShape link={link} side={side} width={RIBBON_WIDTH.narrow} size="narrow" />
+      <HeadShape link={link} side={side} width={RIBBON_WIDTH.wide} size="wide" />
     </>
   );
 }
@@ -241,16 +240,16 @@ function Headline({ headline }: { headline: FlowHeadline }) {
 
 /**
  * One active route (spec 197, FR-E4): a halo (dark theme only), a band tinted
- * from the route's colour whose width follows the power, and a three-dash
- * wave moving along it at a speed that follows the power too. Strokes are
- * non-scaling, so widths and dashes are screen pixels on the phone's
- * stretched viewBox as on a desktop; the narrow width (× 0.8) is switched by
- * the diagram's container query. Under reduced motion the wave is hidden and
+ * from the route's colour, of one width for every route (RIBBON_WIDTH), and a
+ * three-dash wave moving along it at a speed that follows the power. Strokes
+ * are non-scaling, so widths and dashes are screen pixels on the phone's
+ * stretched viewBox as on a desktop; the narrow width is switched by the
+ * diagram's container query. Under reduced motion the wave is hidden and
  * the band takes more colour (index.css).
  */
 function Ribbon({ link }: { link: FlowLinkSpec }): ReactNode {
-  const wide = ribbonWidth(link.powerW);
-  const narrow = ribbonWidth(link.powerW, true);
+  const wide = RIBBON_WIDTH.wide;
+  const narrow = RIBBON_WIDTH.narrow;
   const d = PATHS[link.edge];
   const vars = {
     "--flow-c": link.color,
@@ -268,9 +267,7 @@ function Ribbon({ link }: { link: FlowLinkSpec }): ReactNode {
       for (const anim of el.getAnimations?.() ?? []) anim.updatePlaybackRate(rate);
     }
   }, [rate]);
-  // Dash lengths from the width rounded to the pixel, so a reading that moves
-  // the ribbon by a fraction does not redraw the wave.
-  const dashes = waveDashes(Math.round(wide));
+  const dashes = waveDashes(wide);
   return (
     <g style={vars} data-edge={link.edge} data-width={wide}>
       <path

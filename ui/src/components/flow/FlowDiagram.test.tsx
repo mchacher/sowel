@@ -5,7 +5,7 @@ import {
   SLOT_ANCHOR,
   WAVE_PERIOD,
   headSize,
-  ribbonWidth,
+  RIBBON_WIDTH,
   type FlowLinkSpec,
   type FlowNodeSpec,
 } from "./flow-geometry";
@@ -122,18 +122,18 @@ describe("FlowDiagram ribbons", () => {
     expect(painted(container).filter((p) => p.stroke === "var(--color-border)")).toHaveLength(1);
   });
 
-  it.each([180, 1200, 4900])(
-    "sets a %s W ribbon to its width, in screen pixels, narrow and wide",
-    (powerW) => {
-      render(<FlowDiagram nodes={[]} links={[link({ powerW })]} />);
+  it("draws every ribbon at the same width, whatever its power", () => {
+    for (const powerW of [180, 1200, 4900]) {
+      const { unmount } = render(<FlowDiagram nodes={[]} links={[link({ powerW })]} />);
       const g = screen.getByTestId("flow-ribbon").parentElement as HTMLElement;
-      expect(g.style.getPropertyValue("--rw-wide")).toBe(`${ribbonWidth(powerW)}px`);
-      expect(g.style.getPropertyValue("--rw")).toBe(`${ribbonWidth(powerW, true)}px`);
+      expect(g.style.getPropertyValue("--rw-wide")).toBe(`${RIBBON_WIDTH.wide}px`);
+      expect(g.style.getPropertyValue("--rw")).toBe(`${RIBBON_WIDTH.narrow}px`);
       expect(screen.getByTestId("flow-ribbon").getAttribute("vector-effect")).toBe(
         "non-scaling-stroke",
       );
-    },
-  );
+      unmount();
+    }
+  });
 
   it("moves the wave faster on a bigger flow", () => {
     const { rerender } = render(<FlowDiagram nodes={[]} links={[link({ powerW: 180 })]} />);
@@ -165,7 +165,7 @@ describe("FlowDiagram ribbons", () => {
     // On the focal node's left side, pointing in; never in the middle of a route.
     expect(focalCap.closest('[data-slot="focal"]')).toBeTruthy();
     expect(focalCap.getAttribute("class")).toContain("right-full");
-    expect(focalCap.getAttribute("height")).toBe(String(headSize(ribbonWidth(1200)).base));
+    expect(focalCap.getAttribute("height")).toBe(String(headSize(RIBBON_WIDTH.wide).base));
     expect(focalCap.querySelector('polygon[fill="blue"]')).toBeTruthy();
     const gridCap = caps.find((c) => c.dataset.edge === "rightToLeft")!;
     expect(gridCap.closest('[data-slot="left"]')).toBeTruthy();
@@ -177,8 +177,8 @@ describe("FlowDiagram ribbons", () => {
     const [narrow, wideCap] = ["narrow", "wide"].map((size) =>
       screen.getAllByTestId("flow-end-cap").find((c) => c.dataset.size === size)!,
     );
-    expect(narrow.getAttribute("height")).toBe(String(headSize(ribbonWidth(4900, true)).base));
-    expect(wideCap.getAttribute("height")).toBe(String(headSize(ribbonWidth(4900)).base));
+    expect(narrow.getAttribute("height")).toBe(String(headSize(RIBBON_WIDTH.narrow).base));
+    expect(wideCap.getAttribute("height")).toBe(String(headSize(RIBBON_WIDTH.wide).base));
     expect(narrow.getAttribute("class")).toContain("@lg:hidden");
     expect(wideCap.getAttribute("class")).toContain("hidden @lg:block");
   });

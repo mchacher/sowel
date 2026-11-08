@@ -522,8 +522,8 @@ textarea:focus-visible {
    route's colour (--flow-c, set inline) into the card, a halo in dark, and a
    three-dash wave moving one WAVE_PERIOD (flow-geometry.ts, 150 px) per
    cycle, the cycle's length set inline from the power. Under reduced motion
-   the wave is hidden and the band takes more colour: its width and the
-   arrowhead still say how much and which way.
+   the wave is hidden and the band takes more colour: the arrowhead still
+   says which way, and the share bars how much.
    The band mixes with color-mix, which every browser Tailwind 4 supports has
    (Safari 16.4+); the opacity first is only a guard for an older engine. */
 :root {

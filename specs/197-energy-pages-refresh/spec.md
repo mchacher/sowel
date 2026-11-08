@@ -31,26 +31,26 @@ Some review findings were fixed on `main` after the screenshots by #1142 (#1126)
 
 ## Decisions (maintainer, 2026-11-08)
 
-| Id           | Decision                                                                                                                      |
-| ------------ | ----------------------------------------------------------------------------------------------------------------------------- |
-| e1-forme     | Balance line at the top of the flow card (40 px figure) and the word under the grid node                                      |
-| e1-mots      | « Import / Export » (not « Achat / Vente »)                                                                                   |
-| e1-encre     | A text-only solar ink, `#1E7B34` in light; fills unchanged                                                                    |
-| e2-pastille  | Sticker « Déficit 4,8 kW » on a neutral slate tint                                                                            |
-| e2-manque    | « déficit » in grey instead of the per-row missing watts while in deficit                                                     |
-| e2-vocab     | Renamed columns and formula, « par ordre de priorité » caption, sub-line removed, header hints, journal                       |
-| e3-desktop   | Flow and breakdown side by side from `lg`                                                                                     |
-| e3-forme     | Keep the donut, 2 px gaps between segments, smaller on phones                                                                 |
-| e3-autre     | « Autre » stays last, full opacity, « non mesuré »                                                                            |
-| e3-sobre     | Nodes without tinted wells, percentages as plain text, no icons in Energy section headings                                    |
-| e4-anim      | ~~CSS dashes, width and speed by power tier~~ → **Ruban** (2026-11-08, see below); **no mid-route chevron** (maintainer note) |
-| e5-echelle   | Zero placed from the window's peaks, live end point, hover readout                                                            |
-| e5-ruban     | Contiguous equal quarters merge into runs                                                                                     |
-| e5-nuit      | Pending demand while the arbiter is dormant reported as idle, server-side                                                     |
-| e6-tete      | A 28 px total and one sentence at the top of the card                                                                         |
-| e6-prevision | « Attendu » dashed neutral, « Réalisé » solar green                                                                           |
-| e6-segment   | One shared segmented control; **charts keep their axes** (maintainer note)                                                    |
-| e7-noeud     | Shares on the nodes: a bar under the value (« Barre sous la valeur »), the route percentages removed                          |
+| Id           | Decision                                                                                                                                                                                                                                                                                              |
+| ------------ | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| e1-forme     | Balance line at the top of the flow card (40 px figure) and the word under the grid node                                                                                                                                                                                                              |
+| e1-mots      | « Import / Export » (not « Achat / Vente »)                                                                                                                                                                                                                                                           |
+| e1-encre     | A text-only solar ink, `#1E7B34` in light; fills unchanged                                                                                                                                                                                                                                            |
+| e2-pastille  | Sticker « Déficit 4,8 kW » on a neutral slate tint                                                                                                                                                                                                                                                    |
+| e2-manque    | « déficit » in grey instead of the per-row missing watts while in deficit                                                                                                                                                                                                                             |
+| e2-vocab     | Renamed columns and formula, « par ordre de priorité » caption, sub-line removed, header hints, journal                                                                                                                                                                                               |
+| e3-desktop   | Flow and breakdown side by side from `lg`                                                                                                                                                                                                                                                             |
+| e3-forme     | Keep the donut, 2 px gaps between segments, smaller on phones                                                                                                                                                                                                                                         |
+| e3-autre     | « Autre » stays last, full opacity, « non mesuré »                                                                                                                                                                                                                                                    |
+| e3-sobre     | Nodes without tinted wells, percentages as plain text, no icons in Energy section headings                                                                                                                                                                                                            |
+| e4-anim      | ~~CSS dashes, width and speed by power tier~~ → **Ruban** (2026-11-08, see below), **at one constant width** (maintainer review of PR #1159: a width following the power « fait moche »); the magnitude is carried by the wave's speed and the share bars; **no mid-route chevron** (maintainer note) |
+| e5-echelle   | Zero placed from the window's peaks, live end point, hover readout                                                                                                                                                                                                                                    |
+| e5-ruban     | Contiguous equal quarters merge into runs                                                                                                                                                                                                                                                             |
+| e5-nuit      | Pending demand while the arbiter is dormant reported as idle, server-side                                                                                                                                                                                                                             |
+| e6-tete      | A 28 px total and one sentence at the top of the card                                                                                                                                                                                                                                                 |
+| e6-prevision | « Attendu » dashed neutral, « Réalisé » solar green                                                                                                                                                                                                                                                   |
+| e6-segment   | One shared segmented control; **charts keep their axes** (maintainer note)                                                                                                                                                                                                                            |
+| e7-noeud     | Shares on the nodes: a bar under the value (« Barre sous la valeur »), the route percentages removed                                                                                                                                                                                                  |
 
 **Amendment, 2026-11-08 (after PR #1158).** A design exploration of the flow, shot on still frames of the real Live and UPS cards in both themes, offered the maintainer several directions (pages « flux-propositions », direction 1 « Ruban », and « ruban-declinaisons », declination 2 « Barre sous la valeur »). He chose the **Ruban** for `e4-anim` and the **share bar under the value** (« sans hésiter ») as a new decision `e7-noeud`. FR-E4 below is rewritten for the ribbon and FR-E7 added; the tier dots of the first FR-E4 are replaced, the end arrowhead stays as the ribbon's head.
 
@@ -88,11 +88,11 @@ Some review findings were fixed on `main` after the screenshots by #1142 (#1126)
 
 ### FR-E4 — A flow that shows magnitude (shared FlowDiagram, « Ruban »)
 
-1. **Ribbon width.** An active route is a band whose width follows its power continuously, in screen pixels (`vector-effect: non-scaling-stroke`): 2.5 px + 1 px per 200 W up to 2 kW (12.5 px), then logarithmic (+3 px per doubling), capped at 18 px; × 0.8 in a narrow diagram (under 32 rem, container query), never under 2.5 px. A route under 5 W is skeleton only.
+1. **Ribbon width.** Every active route is a band of one constant width, in screen pixels (`vector-effect: non-scaling-stroke`): 6 px, 5 px in a narrow diagram (under 32 rem, container query), the share bar's thickness. The first draft made the width follow the power (2.5–18 px); the maintainer turned it down on review (« ça fait moche »): how much flows is told by the wave's speed (FR-E4.2) and the share bars (FR-E7). A route under 5 W is skeleton only.
 2. **Tint, wave, halo.** The band is the route's colour mixed into the card (`color-mix`, 36 % light, 40 % dark). A wave of three stacked dashes (lengths L, 0.6 L, 0.3 L with L = 26 + 2 w; opacities 0.3, 0.55, 1; one every 150 px) moves along it in CSS at a continuous speed, 18 + 70 · √(min(P, 8 kW) / 3 kW) px/s. In dark, a faint halo: a stroke 9 px wider at 16 % opacity, no filter. An opacity of the same strength sits under the `color-mix` as a guard (Tailwind 4 already needs Safari 16.4, which has `color-mix`). The wave's CSS cycle has one fixed length; the power sets its playback rate (Web Animations API), so a new reading does not make it jump, and its keyframes use no custom property.
-3. **No chevron in the middle of a route** (maintainer note). Direction at rest is the ribbon's head: a solid arrowhead where the route enters its destination node, sized on the width (base w + 10, length 0.55 w + 7, narrow and wide), on a pad in the card's colour, its tip on the node's edge.
-4. Under `prefers-reduced-motion: reduce`, no wave; the band takes more colour (72 %), and its width and head still say how much and which way.
-5. The UPS panel gets the same rendering through the shared component; the caller passes the power per link (UPS load; the charge loop, with no reading, is drawn at the floor width).
+3. **No chevron in the middle of a route** (maintainer note). Direction at rest is the ribbon's head: a solid arrowhead of one size where the route enters its destination node (base w + 10, length 0.55 w + 7 from the constant width, narrow and wide), on a pad in the card's colour, its tip on the node's edge. The dark halo is constant too.
+4. Under `prefers-reduced-motion: reduce`, no wave; the band takes more colour (72 %); its head still says which way, and the share bars how much.
+5. The UPS panel gets the same rendering through the shared component; the caller passes the power per link, which sets the wave's speed (UPS load; the charge loop, with no reading, moves at the slowest speed).
 6. The export route (solar → grid) takes the injection green, like the headline's export dot.
 
 ### FR-E5 — Arbiter history
@@ -132,7 +132,7 @@ Some review findings were fixed on `main` after the screenshots by #1142 (#1126)
 - [x] AC4 — The roster uses « Puissance / Import toléré / Surplus requis / Il manque » and shows « déficit » in waiting rows while in deficit.
 - [x] AC5 — At 1440 × 900 the flow and the breakdown share one row and the arbiter heading is visible without scrolling.
 - [x] AC6 — Zero-watt rows fold into one « À l'arrêt » line; « Autre » is last at full opacity; donut segments have gaps.
-- [x] AC7 — Flow routes are ribbons whose width follows the power within 2.5–18 px, with a CSS wave (no SMIL), a head at their end and no mid-route mark; under reduced motion no wave and a stronger tint.
+- [x] AC7 — Flow routes are ribbons of one constant width (6 px, 5 px narrow) with a CSS wave whose speed follows the power (no SMIL), a head of one size at their end and no mid-route mark; under reduced motion no wave and a stronger tint.
 - [x] AC8 — The arbiter curve draws equal watts at equal heights on both sides, ends on a live dot, and shows a hover readout.
 - [x] AC9 — Pending claims during the dormant night are `idle` in `buildLoadTimelines`; ribbons render runs; the legend lists only present states plus « Au repos ».
 - [x] AC10 — Lanes are keyboard-navigable with a visible focus ring.

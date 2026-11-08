@@ -124,9 +124,9 @@ export interface FlowLinkSpec {
   /** False → the route is drawn as skeleton only, with no ribbon and no wave. */
   active: boolean;
   /**
-   * Absolute watts on the route (spec 197): the ribbon's width and the wave's
-   * speed follow it. Omit for a link with no reading (a UPS charging loop):
-   * it is drawn at the floor width.
+   * Absolute watts on the route (spec 197): the wave's speed follows it (the
+   * ribbon's width does not). Omit for a link with no reading (a UPS charging
+   * loop): its wave moves at the slowest speed.
    */
   powerW?: number;
 }
@@ -158,22 +158,14 @@ export interface FlowDiagramProps {
   ariaLabel?: string;
 }
 
-/** The ribbon's floor and ceiling, in screen pixels. */
-export const RIBBON_MIN = 2.5;
-export const RIBBON_MAX = 18;
-
 /**
- * Spec 197 (FR-E4.1) — the ribbon's width in screen pixels for a power:
- * 2.5 px plus 1 px per 200 W up to 2 kW (12.5 px), then logarithmic (3 px per
- * doubling), capped at 18 px; × 0.8 in a narrow diagram, never under the
- * floor. Continuous, so 180 W and 4.9 kW look as different as they are, and
- * bounded, so a 10 kW charger and a 30 W UPS share one scale.
+ * Spec 197 (FR-E4.1, amended) — every active ribbon has the same width, in
+ * screen pixels: the maintainer found a width that followed the power ugly
+ * (« ça fait moche »). How much flows is told by the wave's speed and the
+ * share bars under the nodes. Narrow diagrams (under 32 rem) take the
+ * narrow width, switched by the container query.
  */
-export function ribbonWidth(powerW: number | undefined, narrow = false): number {
-  const p = Math.abs(powerW ?? 0);
-  const w = Math.min(p <= 2000 ? RIBBON_MIN + p / 200 : 12.5 + 3 * Math.log2(p / 2000), RIBBON_MAX);
-  return narrow ? Math.max(RIBBON_MIN, w * 0.8) : w;
-}
+export const RIBBON_WIDTH = { narrow: 5, wide: 6 } as const;
 
 /** The wave's speed in screen pixels a second: 18 px/s near zero, √-scaled, flat from 8 kW. */
 export function waveSpeed(powerW: number | undefined): number {
