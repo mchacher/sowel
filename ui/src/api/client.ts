@@ -27,14 +27,24 @@ export function getAccessToken(): string | null {
  * missing record (404) or a dropped connection (0). The message is the server's own text,
  * exactly as the plain `Error` used to carry it, so callers that read `err.message` keep
  * working.
+ *
+ * Issue #1141 — `fromServer` is false when the client wrote the message itself (« Session
+ * expired », `HTTP 403: Forbidden` when the body carried no `error`): that text is English
+ * and not meant for the user, so `apiErrorMessage` translates by status instead.
  */
 export class ApiError extends Error {
   readonly status: number;
+  readonly fromServer: boolean;
 
-  constructor(status: number, message: string, options?: { cause?: unknown }) {
+  constructor(
+    status: number,
+    message: string,
+    options?: { cause?: unknown; fromServer?: boolean },
+  ) {
     super(message, options);
     this.name = "ApiError";
     this.status = status;
+    this.fromServer = options?.fromServer ?? true;
   }
 }
 
@@ -51,10 +61,13 @@ async function send(url: string, init: RequestInit): Promise<Response> {
 
 async function failure(response: Response): Promise<ApiError> {
   const body = await response.json().catch(() => ({}));
-  return new ApiError(
-    response.status,
-    (body as { error?: string }).error ?? `HTTP ${response.status}: ${response.statusText}`,
-  );
+  const serverText = (body as { error?: unknown }).error;
+  if (typeof serverText === "string" && serverText) {
+    return new ApiError(response.status, serverText);
+  }
+  return new ApiError(response.status, `HTTP ${response.status}: ${response.statusText}`, {
+    fromServer: false,
+  });
 }
 
 /** Server-side global rate limit is 300 req/min per IP — a burst can 429 a legitimate read. */
@@ -107,7 +120,7 @@ export async function fetchJSON<T>(
       // Retry with new token
       return fetchJSON<T>(url, options, true);
     }
-    throw new ApiError(401, "Session expired");
+    throw new ApiError(401, "Session expired", { fromServer: false });
   }
 
   if (!response.ok) throw await failure(response);

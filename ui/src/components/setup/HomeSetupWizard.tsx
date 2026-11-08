@@ -98,7 +98,7 @@ export function HomeSetupWizard() {
         setRequired(false);
       }
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Save failed");
+      setError(err instanceof Error ? err.message : t("common.error"));
       setSaving(false);
     }
   };

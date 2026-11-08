@@ -121,7 +121,7 @@ export function DuplicateRecipeModal({
       await createInstance(instance.recipeId, newParams);
       onClose();
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Unknown error");
+      setError(err instanceof Error ? err.message : t("common.error"));
     } finally {
       setSubmitting(false);
     }

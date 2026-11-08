@@ -1210,7 +1210,7 @@ function ChangeDeviceModal({
       await autoCreateBindings(equipment.id, selectedDeviceIds, equipment.type, candidateByDevice);
       onDone();
     } catch (err) {
-      setError(err instanceof Error ? err.message : "An error occurred");
+      setError(err instanceof Error ? err.message : t("common.error"));
       setSaving(false);
     }
   };

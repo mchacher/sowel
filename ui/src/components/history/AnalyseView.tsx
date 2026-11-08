@@ -67,6 +67,7 @@ import { mergeSeriesData } from "./chart-utils";
 import { formatAxisTick, seriesFullLabel, seriesMetricLabel } from "./tooltip-format";
 import { currentLocale, formatNumber } from "../../lib/format";
 import { TOP_LEVEL_H1 } from "../layout/page-title";
+import { apiErrorText } from "../../lib/api-error";
 
 // ============================================================
 // Types
@@ -376,7 +377,7 @@ export function AnalyseView() {
               points: [],
               resolution: "raw",
               loading: false,
-              error: err instanceof Error ? err.message : "Failed",
+              error: apiErrorText(err),
             },
           }));
         }

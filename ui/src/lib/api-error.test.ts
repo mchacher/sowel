@@ -1,6 +1,6 @@
-import { describe, it, expect, afterEach } from "vitest";
+import { describe, it, expect, afterEach, vi } from "vitest";
 import i18n from "../i18n";
-import { ApiError } from "../api/client";
+import { ApiError, fetchJSON, setOnUnauthorized } from "../api/client";
 import { apiErrorMessage, apiErrorStatus, apiErrorText } from "./api-error";
 
 // Spec 196, slice 2b — a 429 used to reach the user as « Équipement introuvable »
@@ -88,5 +88,63 @@ describe("apiErrorText", () => {
     await i18n.changeLanguage("fr");
     const parse = new SyntaxError(`Unexpected token '<', "<!doctype "... is not valid JSON`);
     expect(apiErrorText(parse)).toBe("Une erreur est survenue");
+  });
+});
+
+// Issue #1141 — the client writes some 4xx messages itself (« Session expired »,
+// `HTTP 403: Forbidden` when the body names no error). They used to pass for the server's
+// own words and reached a French UI in English.
+describe("a 4xx written by the client", () => {
+  afterEach(async () => {
+    vi.unstubAllGlobals();
+    await i18n.changeLanguage("en");
+  });
+
+  function respond(status: number, body: unknown, statusText = ""): Response {
+    return new Response(JSON.stringify(body), { status, statusText });
+  }
+
+  it("reads a 403 with no server text in French in a French UI", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async () => respond(403, {}, "Forbidden")),
+    );
+    const err = await fetchJSON("/api/v1/modes/x/apply").catch((e: unknown) => e);
+    expect((err as ApiError).fromServer).toBe(false);
+    await i18n.changeLanguage("fr");
+    expect(apiErrorText(err)).toBe("Votre compte n'a pas le droit de faire cela.");
+    expect(apiErrorMessage(err, t).title).toBe("Accès refusé");
+  });
+
+  it("reads an expired session in French in a French UI", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async () => respond(401, {})),
+    );
+    setOnUnauthorized(async () => false);
+    const err = await fetchJSON("/api/v1/zones").catch((e: unknown) => e);
+    expect((err as ApiError).status).toBe(401);
+    await i18n.changeLanguage("fr");
+    expect(apiErrorText(err)).toBe("Votre session a pris fin. Reconnectez-vous.");
+  });
+
+  it("falls back to the generic line for any other 4xx with no server text", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async () => respond(400, {}, "Bad Request")),
+    );
+    const err = await fetchJSON("/api/v1/zones").catch((e: unknown) => e);
+    await i18n.changeLanguage("fr");
+    expect(apiErrorText(err)).toBe("Une erreur est survenue");
+  });
+
+  it("still shows the server's own words for a 403 that carries them", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async () => respond(403, { error: "Admin only" })),
+    );
+    const err = await fetchJSON("/api/v1/users").catch((e: unknown) => e);
+    expect((err as ApiError).fromServer).toBe(true);
+    expect(apiErrorText(err)).toBe("Admin only");
   });
 });

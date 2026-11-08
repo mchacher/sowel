@@ -257,7 +257,7 @@ export function RecipeInstanceRow({
       await updateInstance(instance.id, finalParams);
       setEditing(false);
     } catch (err) {
-      setEditError(err instanceof Error ? err.message : "Unknown error");
+      setEditError(err instanceof Error ? err.message : t("common.error"));
     } finally {
       setSaving(false);
     }

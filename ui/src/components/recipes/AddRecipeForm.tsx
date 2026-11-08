@@ -187,7 +187,7 @@ export function AddRecipeForm({
       await createInstance(selectedRecipeId, finalParams);
       onClose();
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Unknown error");
+      setError(err instanceof Error ? err.message : t("common.error"));
       setSubmitting(false);
     }
   };

@@ -9,6 +9,7 @@ import type { TimeRange } from "./history-utils";
 import { TimeSeriesChart } from "./TimeSeriesChart";
 import { HistoryBarChart } from "./HistoryBarChart";
 import { humanBindingLabelFromList } from "./binding-label";
+import { apiErrorText } from "../../lib/api-error";
 
 /** Chart entry derived from a historized binding. */
 interface ChartEntry {
@@ -99,7 +100,7 @@ export function HistoryPanel({ equipmentId, bindings, defaultExpandedAlias }: Hi
             points: [],
             resolution: "raw",
             loading: false,
-            error: err instanceof Error ? err.message : "Failed to load",
+            error: apiErrorText(err),
             fetchTime: 0,
           },
         }));
