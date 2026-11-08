@@ -222,7 +222,78 @@ describe("ArbitrationSurface roster (#561, spec 165)", () => {
     });
     render(<ArbitrationSurface />);
 
-    expect(screen.getByText("Importing 1.1 kW, no load can start yet.")).toBeTruthy();
+    // Spec 197 — the words without the figure, on the phone only: from 640 px
+    // the aside says them beside the table.
+    const line = screen.getByText("No load can start while the house imports.");
+    expect(line.className).toContain("sm:hidden");
+  });
+
+  it("captions the roster with its order (spec 197)", () => {
+    seed({ loads: [load({ equipmentId: "pac", equipmentName: "PAC", watts: 1500 })] });
+    render(<ArbitrationSurface />);
+    expect(screen.getByText("Loads in priority order.")).toBeTruthy();
+  });
+});
+
+describe("ArbitrationSurface in deficit (spec 197, FR-E2)", () => {
+  beforeEach(() => {
+    useArbiter.setState({ state: null, loading: false });
+  });
+
+  const waiting = load({
+    equipmentId: "ce",
+    equipmentName: "Chauffe-eau",
+    state: "pending",
+    watts: 500,
+    needW: 600,
+    shortfallW: 5400,
+  });
+
+  it("says the deficit once in the sticker and once in the aside, never as a negative surplus", () => {
+    seed({ availableSurplusW: -4800, loads: [waiting] });
+    const { container } = render(<ArbitrationSurface />);
+
+    expect(screen.getByText("Deficit")).toBeTruthy();
+    expect(screen.getByText("Grid import")).toBeTruthy();
+    expect(screen.getByText("No load can start")).toBeTruthy();
+    expect(screen.queryByText("Available surplus")).toBeNull();
+    expect(screen.queryByText("Live grid export")).toBeNull();
+    // 4.8 kW twice (sticker, aside), and no « −4.8 kW » anywhere.
+    expect(screen.getAllByText("4.8 kW")).toHaveLength(2);
+    expect(container.textContent).not.toMatch(/[−-]4\.8/);
+  });
+
+  it("paints nothing red in a plain deficit", () => {
+    seed({ availableSurplusW: -4800, loads: [waiting] });
+    const { container } = render(<ArbitrationSurface />);
+    const html = container.innerHTML;
+    expect(html).not.toContain("--color-error");
+    expect(html).toContain("--color-energy-grid");
+  });
+
+  it("writes « deficit » in a waiting row instead of its missing watts", () => {
+    seed({ availableSurplusW: -4800, loads: [waiting] });
+    render(<ArbitrationSurface />);
+    expect(screen.getByText("deficit")).toBeTruthy();
+    expect(screen.queryByText("5,400 W")).toBeNull();
+  });
+
+  it("brings the watts back, and the surplus words, once there is a surplus", () => {
+    seed({ availableSurplusW: 300, loads: [{ ...waiting, shortfallW: 300 }] });
+    render(<ArbitrationSurface />);
+    expect(screen.getByText("Surplus")).toBeTruthy();
+    expect(screen.getByText("Available surplus")).toBeTruthy();
+    expect(screen.getByText("Live grid export")).toBeTruthy();
+    expect(screen.queryByText("deficit")).toBeNull();
+    // Once in the gap column, once in the sticker and aside (300 W each).
+    expect(screen.getAllByText("300 W").length).toBeGreaterThanOrEqual(2);
+  });
+
+  it("keeps the degraded sticker as it was", () => {
+    seed({ state: "degraded", availableSurplusW: null, loads: [waiting] });
+    render(<ArbitrationSurface />);
+    expect(screen.getByText("Degraded")).toBeTruthy();
+    expect(screen.queryByText("Deficit")).toBeNull();
   });
 });
 
@@ -335,8 +406,9 @@ describe("ArbitrationSurface need and gap columns (#807)", () => {
     expect(screen.getByText("outside arbitration")).toBeTruthy(); // unmanaged
   });
 
-  it("shows the missing watts of a waiting claim, and why it waits", () => {
+  it("shows the missing watts of a waiting claim", () => {
     seed({
+      availableSurplusW: 1200,
       loads: [
         load({
           equipmentId: "pacp",
@@ -353,7 +425,8 @@ describe("ArbitrationSurface need and gap columns (#807)", () => {
     render(<ArbitrationSurface />);
 
     expect(screen.getByText("650 W")).toBeTruthy();
-    expect(screen.getByText("waiting for surplus")).toBeTruthy();
+    // Spec 197 — no « waiting for surplus » sub-line: the pill says it.
+    expect(screen.queryByText("waiting for surplus")).toBeNull();
   });
 
   it("names the blocking reason when the surplus is there but the claim is not granted", () => {
@@ -423,7 +496,10 @@ describe("ArbitrationSurface need and gap columns (#807)", () => {
     expect(screen.getByText("Next to switch")).toBeTruthy();
     // Once in its roster row, once in the panel.
     expect(screen.getAllByText("PAC Piscine")).toHaveLength(2);
-    expect(screen.getByText("Starts at 1,850 W, short by 650 W")).toBeTruthy();
+    // Spec 197 — the threshold, read as a surplus; the shortfall stays in the
+    // roster. The label shows at every width (no `hidden` on it).
+    expect(screen.getByText("Will start from 1,850 W of surplus")).toBeTruthy();
+    expect(screen.getByText("Next to switch").className).not.toContain("hidden");
   });
 
   it("states the arithmetic with the configured margin", () => {
@@ -433,7 +509,9 @@ describe("ArbitrationSurface need and gap columns (#807)", () => {
     });
     render(<ArbitrationSurface />);
 
-    expect(screen.getByText("Need = load + 250 W margin \u2212 tolerance")).toBeTruthy();
+    expect(
+      screen.getByText("Surplus needed = power + 250 W margin \u2212 tolerated import"),
+    ).toBeTruthy();
   });
 
   it("drops the columns by tier so a phone never scrolls sideways", () => {
@@ -448,10 +526,14 @@ describe("ArbitrationSurface need and gap columns (#807)", () => {
     // "who has the surplus, and what blocks the next one".
     expect(header("Equipment")?.className).not.toContain("hidden");
     expect(header("State")?.className).not.toContain("hidden");
-    expect(header("Gap")?.className).not.toContain("hidden");
-    expect(header("Need")?.className).toContain("hidden sm:table-cell");
-    expect(header("Load")?.className).toContain("hidden lg:table-cell");
-    expect(header("Tolerates")?.className).toContain("hidden lg:table-cell");
+    expect(header("Short by")?.className).not.toContain("hidden");
+    expect(header("Surplus needed")?.className).toContain("hidden sm:table-cell");
+    expect(header("Power")?.className).toContain("hidden lg:table-cell");
+    expect(header("Tolerated import")?.className).toContain("hidden lg:table-cell");
+    // Spec 197 — every header says what it means on hover.
+    for (const th of screen.getAllByRole("columnheader")) {
+      expect(th.getAttribute("title"), th.textContent ?? "").toBeTruthy();
+    }
   });
 
   it("names a claim whose surplus is already covered as the one about to switch", () => {

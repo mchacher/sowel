@@ -3,7 +3,9 @@ import type { ArbiterQuarterState } from "../../types";
 import {
   journalDotColor,
   surplusStickerColor,
-  surplusStickerInk,
+  surplusFigureInk,
+  STICKER_INK,
+  isDeficit,
   loadStatePillBg,
   cellColor,
   cellEdge,
@@ -98,9 +100,10 @@ describe("surplusStickerColor", () => {
     expect(surplusStickerColor(1)).toBe("var(--color-solar-auto)");
   });
 
-  it("uses red on a deficit (zero or negative surplus)", () => {
-    expect(surplusStickerColor(0)).toBe("var(--color-error)");
-    expect(surplusStickerColor(-1091)).toBe("var(--color-error)");
+  it("uses the grid slate on a deficit (zero or negative surplus), never red (spec 197)", () => {
+    expect(surplusStickerColor(0)).toBe("var(--color-energy-grid)");
+    expect(surplusStickerColor(-1091)).toBe("var(--color-energy-grid)");
+    expect(surplusStickerColor(-1091)).not.toContain("error");
   });
 
   it("uses a neutral tint while degraded/stale (null)", () => {
@@ -237,14 +240,22 @@ describe("loadStateInk (spec 196, FR-E)", () => {
   });
 });
 
-describe("surplusStickerInk (#1126)", () => {
-  it("writes a surplus in the success text green, a deficit in red", () => {
-    expect(surplusStickerInk(300)).toBe("var(--color-success)");
-    expect(surplusStickerInk(0)).toBe("var(--color-error)");
+describe("sticker words and the aside figure (spec 197)", () => {
+  it("writes the sticker in neutral text whatever the sign", () => {
+    expect(STICKER_INK).toBe("var(--color-text-secondary)");
   });
 
-  it("writes a degraded reading and the night sticker in neutral text", () => {
-    expect(surplusStickerInk(null)).toBe("var(--color-text-secondary)");
-    expect(surplusStickerInk(300, true)).toBe("var(--color-text-secondary)");
+  it("writes a surplus figure in the success green, a deficit in ink", () => {
+    expect(surplusFigureInk(300)).toBe("var(--color-success)");
+    expect(surplusFigureInk(0)).toBe("var(--color-text)");
+    expect(surplusFigureInk(-4800)).toBe("var(--color-text)");
+    expect(surplusFigureInk(null)).toBe("var(--color-text-secondary)");
+  });
+
+  it("calls zero and below a deficit, a stale reading neither", () => {
+    expect(isDeficit(-1)).toBe(true);
+    expect(isDeficit(0)).toBe(true);
+    expect(isDeficit(1)).toBe(false);
+    expect(isDeficit(null)).toBe(false);
   });
 });

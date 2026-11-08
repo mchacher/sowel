@@ -1,12 +1,15 @@
 import { useEffect } from "react";
 import type { ArbiterLoadInfo, ArbiterLoadState } from "../../types";
 import { useTranslation } from "react-i18next";
-import { Scale, Moon } from "lucide-react";
+import { Moon } from "lucide-react";
 import { SectionHeader } from "./SectionHeader";
 import { ArbiterTimeline } from "./ArbiterTimeline";
 import {
   surplusStickerColor,
-  surplusStickerInk,
+  surplusFigureInk,
+  STICKER_INK,
+  DEFICIT_HUE,
+  isDeficit,
   loadStateColor,
   loadStateInk,
   loadStatePillBg,
@@ -93,8 +96,13 @@ function StatePill({ state }: { state: ArbiterLoadState }) {
  * #807 — the gap column: what a load still waits for. A figure only while a
  * claim is genuinely short of surplus; every other state gets a word, never a
  * dash, because "nothing is missing" and "no data" are not the same statement.
+ *
+ * Spec 197 (FR-E2.4) — while the house imports, every waiting row is short by
+ * the whole deficit plus its own need: five orange figures said the same
+ * thing five times, in the attention colour. The word « déficit » says it
+ * once per row, calmly; the watts come back as soon as there is a surplus.
  */
-function GapCell({ row }: { row: ArbiterLoadInfo }) {
+function GapCell({ row, deficit }: { row: ArbiterLoadInfo; deficit: boolean }) {
   const { t } = useTranslation();
   const word = (key: string) => <span className="text-caption">{t(`arbiter.gap.${key}`)}</span>;
   switch (row.state) {
@@ -107,6 +115,7 @@ function GapCell({ row }: { row: ArbiterLoadInfo }) {
       return <span>—</span>;
     case "pending":
       if ((row.shortfallW ?? 0) > 0) {
+        if (deficit) return word("deficit");
         return <span className="text-warning-ink font-semibold">{fmtW(row.shortfallW)}</span>;
       }
       // Covered, yet still not granted: the engage hold has not matured, or
@@ -136,7 +145,10 @@ export function ArbitrationSurface() {
   // engine now decides this (spec 165) so the ribbon reads it the same way.
   const dormant = state.dormant;
   const stickerColor = dormant ? "var(--color-slate)" : surplusStickerColor(available);
-  const stickerInk = surplusStickerInk(available, dormant);
+  // Spec 197 (FR-E2.2) — an active reading says what it is, « Déficit 4,8 kW »
+  // or « Surplus 1,2 kW », where « Actif −4,8 kW » named the normal state and
+  // left the sign to say the rest. Inactive and degraded stickers unchanged.
+  const signedSticker = state.state === "active" && available !== null;
 
   // Spec 165 — the roster is the read model's `loads`, already resolved and
   // already in priority order (#616). The only presentation rule left here is
@@ -149,7 +161,10 @@ export function ArbitrationSurface() {
   // Deficit context (FR-10a): when the meter is importing, no waiting load can
   // start — spell it out so an empty "need" column does not read as inaction.
   // Suppressed while dormant, which shows its own calm night line instead (#577).
-  const showDeficit = !dormant && state.state === "active" && available !== null && available < 0;
+  // Spec 197 (FR-E2.3) — the figure is said once in the sticker and once in
+  // the aside, so this line carries no figure; from 640 px the aside says the
+  // same words beside the table, and the line is left to the phone.
+  const deficit = !dormant && state.state === "active" && isDeficit(available);
 
   // #807 — the load the arbiter is working on next: the first waiting row, in
   // the priority order the roster is listed in. That is a good guess, not a
@@ -162,16 +177,15 @@ export function ArbitrationSurface() {
   const showAside = !dormant && (available !== null || nextUp !== undefined);
 
   return (
-    <div className="card p-4 mt-4">
+    <div className="card p-4 sm:p-6 mt-4">
       <SectionHeader
-        icon={Scale}
         title={t("arbiter.surfaceTitle")}
         hint={t("arbiter.surfaceHint")}
         aside={
           <span
             className="ml-auto flex items-center gap-1 text-micro font-semibold px-1.5 py-0.5 rounded-full whitespace-nowrap"
             style={{
-              color: stickerInk,
+              color: STICKER_INK,
               background: `color-mix(in srgb, ${stickerColor} 12%, transparent)`,
             }}
             title={state.state === "degraded" ? t("arbiter.degradedReason") : undefined}
@@ -180,6 +194,11 @@ export function ArbitrationSurface() {
               <>
                 <Moon size={11} strokeWidth={2} />
                 {t("arbiter.state.dormant")}
+              </>
+            ) : signedSticker ? (
+              <>
+                {t(isDeficit(available) ? "arbiter.sticker.deficit" : "arbiter.sticker.surplus")}
+                <span className="tabular-nums">{formatPower(Math.abs(available))}</span>
               </>
             ) : (
               <>
@@ -204,35 +223,56 @@ export function ArbitrationSurface() {
           </span>
         </p>
       )}
-      {showDeficit && (
-        <p className="text-caption text-text-tertiary mb-2">
-          {t("arbiter.deficitContext", { power: formatPower(Math.abs(available)) })}
+      {deficit && (
+        <p className={`text-caption text-text-tertiary mb-2 ${rows.length > 0 ? "sm:hidden" : ""}`}>
+          {t("arbiter.deficitContext")}
         </p>
       )}
 
       {rows.length > 0 && (
         <div className="flex flex-col lg:flex-row lg:items-start gap-4 lg:gap-6">
           <div className="flex-1 min-w-0 lg:max-w-[660px]">
+            {/* Spec 197 (FR-E2.5) — the 1 to 5 before each name is the rank;
+                only a code comment said so. */}
+            <p className="text-caption text-text-tertiary mb-2">{t("arbiter.priorityCaption")}</p>
             <div className="overflow-x-auto">
               <table className="w-full text-caption border-collapse">
                 <thead>
                   <tr className="text-caption uppercase tracking-[0.04em] text-text-tertiary">
-                    <th className="text-left font-semibold pb-2 pr-3 border-b border-border">
+                    <th
+                      className="text-left font-semibold pb-2 pr-3 border-b border-border"
+                      title={t("arbiter.rosterHint.equipment")}
+                    >
                       {t("arbiter.roster.equipment")}
                     </th>
-                    <th className="text-left font-semibold pb-2 px-3 border-b border-border">
+                    <th
+                      className="text-left font-semibold pb-2 px-3 border-b border-border"
+                      title={t("arbiter.rosterHint.state")}
+                    >
                       {t("arbiter.roster.state")}
                     </th>
-                    <th className="text-right font-semibold pb-2 px-3 border-b border-border whitespace-nowrap">
+                    <th
+                      className="text-right font-semibold pb-2 px-3 border-b border-border whitespace-nowrap"
+                      title={t("arbiter.rosterHint.gap")}
+                    >
                       {t("arbiter.roster.gap")}
                     </th>
-                    <th className="hidden lg:table-cell text-right font-semibold pb-2 px-3 border-b border-border whitespace-nowrap">
+                    <th
+                      className="hidden lg:table-cell text-right font-semibold pb-2 px-3 border-b border-border whitespace-nowrap"
+                      title={t("arbiter.rosterHint.load")}
+                    >
                       {t("arbiter.roster.load")}
                     </th>
-                    <th className="hidden lg:table-cell text-right font-semibold pb-2 px-3 border-b border-border whitespace-nowrap">
+                    <th
+                      className="hidden lg:table-cell text-right font-semibold pb-2 px-3 border-b border-border whitespace-nowrap"
+                      title={t("arbiter.rosterHint.tolerates")}
+                    >
                       {t("arbiter.roster.tolerates")}
                     </th>
-                    <th className="hidden sm:table-cell text-right font-semibold pb-2 pl-3 border-b border-border whitespace-nowrap">
+                    <th
+                      className="hidden sm:table-cell text-right font-semibold pb-2 pl-3 border-b border-border whitespace-nowrap"
+                      title={t("arbiter.rosterHint.need")}
+                    >
                       {t("arbiter.roster.need")}
                     </th>
                   </tr>
@@ -257,11 +297,6 @@ export function ArbitrationSurface() {
                             </span>
                             {r.equipmentName}
                           </div>
-                          {r.state === "pending" && (r.shortfallW ?? 0) > 0 && (
-                            <div className="pl-[15px] text-caption font-normal text-text-tertiary">
-                              {t("arbiter.waitingForSurplus")}
-                            </div>
-                          )}
                         </td>
                         <td className="text-left py-2.5 px-3">
                           <StatePill state={r.state} />
@@ -271,7 +306,7 @@ export function ArbitrationSurface() {
                             would push a 375 px card into a sideways scroll,
                             and wrapping them costs nothing. */}
                         <td className="text-right py-2.5 px-3 tabular-nums text-text-tertiary">
-                          <GapCell row={r} />
+                          <GapCell row={r} deficit={deficit} />
                         </td>
                         <td className="hidden lg:table-cell text-right py-2.5 px-3 tabular-nums text-text-secondary whitespace-nowrap">
                           {fmtW(r.state === "suspended" ? null : r.watts)}
@@ -318,35 +353,48 @@ export function ArbitrationSurface() {
                 // Below 640 px this repeats the header sticker, which is enough
                 // on a phone; from there up it is the figure the need column is
                 // compared against, so it belongs next to the table.
+                // Spec 197 (FR-E2.3) — worded by sign: a deficit is an import,
+                // never « Surplus disponible −4,8 kW » over « Export réseau
+                // instantané » while the house imports.
                 <div className="hidden sm:block">
                   <div className="text-caption text-text-tertiary">
-                    {t("arbiter.aside.available")}
+                    {t(isDeficit(available) ? "arbiter.aside.import" : "arbiter.aside.available")}
                   </div>
                   <div
-                    className="tabular-nums text-title leading-tight mt-0.5"
-                    style={{ color: surplusStickerInk(available) }}
+                    className="flex items-center gap-1.5 tabular-nums text-title leading-tight mt-0.5"
+                    style={{ color: surplusFigureInk(available) }}
                   >
-                    {formatPower(available)}
+                    {isDeficit(available) && (
+                      <span
+                        aria-hidden="true"
+                        className="w-2 h-2 rounded-full flex-none"
+                        style={{ backgroundColor: DEFICIT_HUE }}
+                      />
+                    )}
+                    {formatPower(isDeficit(available) ? Math.abs(available) : available)}
                   </div>
                   <div className="text-caption text-text-tertiary mt-1">
-                    {t("arbiter.aside.availableHint")}
+                    {t(
+                      isDeficit(available)
+                        ? "arbiter.aside.importHint"
+                        : "arbiter.aside.availableHint",
+                    )}
                   </div>
                 </div>
               )}
               {nextUp && (
                 <div>
-                  <div className="hidden sm:block text-caption text-text-tertiary">
-                    {t("arbiter.aside.next")}
-                  </div>
-                  <div className="text-caption sm:text-lead leading-tight sm:mt-0.5 text-text">
+                  {/* Spec 197 (FR-E2.6) — labelled at every width: on a phone
+                      the name used to float under the table with no heading. */}
+                  <div className="text-caption text-text-tertiary">{t("arbiter.aside.next")}</div>
+                  <div className="text-small sm:text-lead leading-tight mt-0.5 text-text">
                     {nextUp.equipmentName}
                   </div>
                   <div className="text-caption text-text-tertiary mt-1">
+                    {/* The shortfall stays in the roster: « Démarrera dès 600 W
+                        de surplus » is the threshold, not the load's draw. */}
                     {(nextUp.shortfallW ?? 0) > 0
-                      ? t("arbiter.aside.nextHint", {
-                          need: fmtNeed(nextUp.needW),
-                          gap: fmtW(nextUp.shortfallW),
-                        })
+                      ? t("arbiter.aside.nextHint", { need: fmtNeed(nextUp.needW) })
                       : t("arbiter.aside.nextCovered", { need: fmtNeed(nextUp.needW) })}
                   </div>
                 </div>
