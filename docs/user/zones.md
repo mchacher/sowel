@@ -97,6 +97,8 @@ When an equipment is offline, it is left out of the pills it would feed, and tho
 
 Below the header, equipments are grouped by type (Lights, Shutters, Sensors) with inline controls. Each panel (Equipments, Behaviors, Activity) has its title on a block of its own, with how many items it holds; each type of equipment is a block under it.
 
+Tap or click anywhere on an equipment's row to open its page, except on one of its controls (switch, shutter buttons, dimmer, setpoint, timer), which acts on the equipment and leaves you where you are. On a narrow screen the readings give way first: the row shows fewer forecast days and drops its secondary values, while a row without controls always keeps its first value. Controls are never hidden; when they and the name don't fit side by side, the name wraps onto a second line instead of being cut.
+
 ### Power aggregation
 
 The power pill answers "how much is this part of the house drawing right now". It sums the equipments a zone holds that measure a **load** (a dedicated `energy_meter`, a metering plug, any equipment reporting watts) across the zone and all its descendants. This is what lets one zone total two circuits fed from different boards, which no single meter can do.

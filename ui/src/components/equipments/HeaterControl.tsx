@@ -8,18 +8,49 @@ interface HeaterControlProps {
   equipment: EquipmentWithDetails;
   onExecuteOrder: (alias: string, value: unknown) => Promise<void>;
   compact?: boolean;
+  /**
+   * Compact only: draw the read-only state beside the control (default). The
+   * Maison row draws it itself, as a reading that gives way first (#1163).
+   */
+  withReadings?: boolean;
 }
 
-export function HeaterControl({ equipment, onExecuteOrder, compact }: HeaterControlProps) {
-  const { t } = useTranslation();
-  const [executing, setExecuting] = useState(false);
-
+/** Whether the pilot-wire relay is on — which means éco (fil pilote convention). */
+function heaterRelayOn(equipment: EquipmentWithDetails): boolean {
   const stateBinding = equipment.dataBindings.find(
     (db) => db.alias === "state" || db.category === "light_state",
   );
-  const isOn = stateBinding
+  return stateBinding
     ? stateBinding.value === true || String(stateBinding.value).toUpperCase() === "ON"
     : false;
+}
+
+/** The Confort / Éco pill, as the compact rows show it. */
+export function HeaterModeBadge({ equipment }: { equipment: EquipmentWithDetails }) {
+  const { t } = useTranslation();
+  const isComfort = !heaterRelayOn(equipment);
+  return (
+    <span
+      className={`
+        text-micro font-medium px-2 py-0.5 rounded-full flex-shrink-0
+        ${isComfort ? "bg-heat/10 text-heat" : "bg-primary/10 text-primary"}
+      `}
+    >
+      {isComfort ? t("controls.heater.comfort") : t("controls.heater.eco")}
+    </span>
+  );
+}
+
+export function HeaterControl({
+  equipment,
+  onExecuteOrder,
+  compact,
+  withReadings = true,
+}: HeaterControlProps) {
+  const { t } = useTranslation();
+  const [executing, setExecuting] = useState(false);
+
+  const isOn = heaterRelayOn(equipment);
 
   // Fil pilote convention: relay ON = éco, relay OFF = confort
   const isComfort = !isOn;
@@ -53,15 +84,7 @@ export function HeaterControl({ equipment, onExecuteOrder, compact }: HeaterCont
   if (compact) {
     return (
       <div className="flex items-center gap-2" onClick={(e) => e.stopPropagation()}>
-        {/* State badge */}
-        <span
-          className={`
-            text-micro font-medium px-2 py-0.5 rounded-full flex-shrink-0
-            ${isComfort ? "bg-heat/10 text-heat" : "bg-primary/10 text-primary"}
-          `}
-        >
-          {isComfort ? t("controls.heater.comfort") : t("controls.heater.eco")}
-        </span>
+        {withReadings && <HeaterModeBadge equipment={equipment} />}
 
         {/* Toggle button */}
         {hasToggle && (

@@ -9,6 +9,11 @@ interface WaterValveControlProps {
   equipment: EquipmentWithDetails;
   onExecuteOrder: (alias: string, value: unknown) => Promise<void>;
   compact?: boolean;
+  /**
+   * Compact only: draw the read-only state beside the control (default). The
+   * Maison row draws it itself, as a reading that gives way first (#1163).
+   */
+  withReadings?: boolean;
 }
 
 /** Returns true if the device status is a known abnormal state. */
@@ -18,7 +23,40 @@ function isAbnormalStatus(status: string): boolean {
   return s.includes("shortage") || s.includes("leak") || s.includes("error") || s.includes("fault");
 }
 
-export function WaterValveControl({ equipment, onExecuteOrder, compact }: WaterValveControlProps) {
+/**
+ * The flow while the valve is open, as the compact rows show it — nothing when
+ * it is closed, the flow is unbound, or the valve has no state order (the
+ * compact control then draws nothing at all).
+ */
+export function WaterValveFlow({ equipment }: { equipment: EquipmentWithDetails }) {
+  const stateBinding = findDataByCategory(equipment.dataBindings, ["light_state"], ["state"]);
+  const flowBinding = equipment.dataBindings.find((b) => b.alias === "flow");
+  const isOn = stateBinding?.value === true || stateBinding?.value === "ON";
+  const hasStateOrder = !!findOrderByCategory(
+    equipment.orderBindings,
+    ["valve_toggle", "light_toggle"],
+    ["state"],
+  );
+  const flow = flowBinding && typeof flowBinding.value === "number" ? flowBinding.value : null;
+  if (!hasStateOrder || flow === null || !isOn) return null;
+  return <FlowReading flow={flow} />;
+}
+
+function FlowReading({ flow }: { flow: number }) {
+  return (
+    <div className="flex items-baseline gap-0.5 text-text-secondary">
+      <span className="text-small font-medium tabular-nums">{flow}</span>
+      <span className="text-micro text-text-tertiary">m³/h</span>
+    </div>
+  );
+}
+
+export function WaterValveControl({
+  equipment,
+  onExecuteOrder,
+  compact,
+  withReadings = true,
+}: WaterValveControlProps) {
   const { t } = useTranslation();
   const [executing, setExecuting] = useState(false);
   const [watering, setWatering] = useState(false);
@@ -107,12 +145,7 @@ export function WaterValveControl({ equipment, onExecuteOrder, compact }: WaterV
     if (!hasStateOrder) return null;
     return (
       <div className="flex items-center gap-2" onClick={(e) => e.stopPropagation()}>
-        {flow !== null && isOn && (
-          <div className="flex items-baseline gap-0.5 text-text-secondary">
-            <span className="text-small font-medium tabular-nums">{flow}</span>
-            <span className="text-micro text-text-tertiary">m³/h</span>
-          </div>
-        )}
+        {withReadings && flow !== null && isOn && <FlowReading flow={flow} />}
         <button
           onClick={handleToggle}
           disabled={executing || !equipment.enabled}

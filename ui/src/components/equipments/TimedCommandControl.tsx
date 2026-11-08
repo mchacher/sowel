@@ -20,11 +20,27 @@ import type { EquipmentWithDetails } from "../../types";
  * not to keep it open longer. The extend gesture lives on the tile, which is
  * where a press is deliberate enough to mean "more time".
  */
+/** The countdown pill while a timed window is open, nothing otherwise. */
+export function TimedCountdownPill({ equipment }: { equipment: EquipmentWithDetails }) {
+  if (!equipment.timedCommand || !equipment.enabled || !equipment.timedAction) return null;
+  return (
+    <span className="text-micro font-medium px-2 py-0.5 rounded-full bg-active-bg text-active-ink flex-shrink-0">
+      <TimedCountdown action={equipment.timedAction} size={14} />
+    </span>
+  );
+}
+
 export function TimedCommandControl({
   equipment,
   labelled,
+  withReadings = true,
 }: {
   equipment: EquipmentWithDetails;
+  /**
+   * Draw the countdown beside the button (default). The Maison row draws it
+   * itself, as a reading that gives way first (#1163).
+   */
+  withReadings?: boolean;
   /**
    * Show the words as well as the icon. The equipment page has room for them,
    * and there the timed command sits beside the ordinary one: two icon-only
@@ -58,11 +74,7 @@ export function TimedCommandControl({
 
   return (
     <div className="flex items-center gap-2" onClick={(e) => e.stopPropagation()}>
-      {running && (
-        <span className="text-micro font-medium px-2 py-0.5 rounded-full bg-active-bg text-active-ink flex-shrink-0">
-          <TimedCountdown action={running} size={14} />
-        </span>
-      )}
+      {withReadings && <TimedCountdownPill equipment={equipment} />}
       <button
         onClick={(e) => {
           e.preventDefault();

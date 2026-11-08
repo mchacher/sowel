@@ -1,4 +1,3 @@
-import { Link } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import {
   formatRuntime,
@@ -15,17 +14,21 @@ import { SensorValues } from "../equipments/SensorValues";
 import { LightControl } from "../equipments/LightControl";
 import { SolarControl } from "../equipments/SolarControl";
 import { findMainOnOffOrder } from "../equipments/bindingUtils";
-import { ShutterControl } from "../equipments/ShutterControl";
-import { ThermostatCard } from "../equipments/ThermostatCard";
-import { GateControl } from "../equipments/GateControl";
-import { TimedCommandControl } from "../equipments/TimedCommandControl";
-import { HeaterControl } from "../equipments/HeaterControl";
-import { WaterValveControl } from "../equipments/WaterValveControl";
+import { ShutterControl, ShutterStatePill } from "../equipments/ShutterControl";
+import { ThermostatCard, ThermostatInsideTemp } from "../equipments/ThermostatCard";
+import { GateControl, GateStateBadge } from "../equipments/GateControl";
+import { TimedCommandControl, TimedCountdownPill } from "../equipments/TimedCommandControl";
+import { HeaterControl, HeaterModeBadge } from "../equipments/HeaterControl";
+import { WaterValveControl, WaterValveFlow } from "../equipments/WaterValveControl";
 import { VmcControl } from "../equipments/VmcControl";
 import { EvVehicleBadge } from "../equipments/EvChargerControl";
 import { evChargerStateOf } from "../equipments/evChargerState";
 import { electricVehicleStateOf, evChargingStateKey } from "../equipments/electricVehicleState";
-import { PoolHeatPumpControl } from "../equipments/PoolHeatPumpControl";
+import {
+  PoolHeatPumpControl,
+  PoolHeatPumpModeBadge,
+  PoolHeatPumpWaterTemp,
+} from "../equipments/PoolHeatPumpControl";
 import { Cloud, Timer } from "lucide-react";
 import {
   parseForecastDays,
@@ -35,6 +38,7 @@ import {
 import { syntheticBindingFromComputed } from "../equipments/weather-utils";
 import { EquipmentStatusBadge } from "../equipments/EquipmentStatusBadge";
 import { equipmentLinkState } from "../../lib/equipment-origin";
+import { EquipmentRow, RowControls, RowName, RowReadings, RowSpacer } from "./equipment-row-layout";
 import { pickLivePowerBinding, formatWatts } from "../../lib/energy-meter-display";
 import { resolvePowerReading } from "../../lib/power-reading";
 import { formatRelative } from "../../lib/format-relative";
@@ -212,126 +216,154 @@ export function CompactEquipmentCard({
   const iconText = isLightOn ? "text-on-active" : baseTint.text;
   const iconAnimation = isLightOn ? "animate-glow" : "";
 
+  const linkTo = `/equipments/${equipment.id}`;
+  const linkState = zoneName
+    ? equipmentLinkState(zoneName, `/home/${equipment.zoneId}`)
+    : undefined;
+  const execFor = (alias: string, value: unknown) => onExecuteOrder(equipment.id, alias, value);
+
   // Spec 116: when the equipment is fully offline, render a minimal row —
   // just icon (muted) + name + badge — instead of stale controls + values.
   if (equipment.status === "offline") {
     return (
-      <div className="grid grid-cols-[32px_1fr_auto] gap-[0.85rem] items-center px-[1.1rem] py-[0.55rem] min-h-[52px] transition-colors duration-150 hover:bg-border-light/40">
+      <EquipmentRow>
         <div
           className={`w-8 h-8 rounded-md flex items-center justify-center flex-shrink-0 opacity-55 ${baseTint.bg} ${baseTint.text}`}
         >
           {iconElement}
         </div>
-        <Link
-          to={`/equipments/${equipment.id}`}
-          state={zoneName ? equipmentLinkState(zoneName, `/home/${equipment.zoneId}`) : undefined}
-          className="min-w-0 text-body font-medium text-text truncate hover:text-primary transition-colors"
-        >
-          {equipment.name}
-        </Link>
-        <EquipmentStatusBadge status="offline" reason={equipment.statusReason} size="sm" />
-      </div>
+        <RowName to={linkTo} state={linkState} name={equipment.name} />
+        <RowSpacer />
+        <RowReadings keepFirst>
+          <EquipmentStatusBadge status="offline" reason={equipment.statusReason} size="sm" />
+        </RowReadings>
+      </EquipmentRow>
     );
   }
 
+  // #1163 — every piece right of the name is a reading or a control. Readings
+  // give way first (`RowReadings`), and a row without controls keeps its first
+  // one (`keepFirst`); controls never go (`RowControls`): the name wraps.
+  const sensorValues =
+    equipment.type === "weather"
+      ? buildWeatherCompactBindings(equipment, sensorBindings)
+      : sensorBindings;
+
   return (
-    <div className="grid grid-cols-[32px_1fr_auto] gap-[0.85rem] items-center px-[1.1rem] py-[0.55rem] min-h-[52px] transition-colors duration-150 hover:bg-border-light/40">
-      {/* Slot 1: Icon */}
+    <EquipmentRow>
+      {/* Icon */}
       <div
         className={`w-8 h-8 rounded-md flex items-center justify-center flex-shrink-0 ${iconBg} ${iconText} ${iconAnimation}`}
       >
         {iconElement}
       </div>
 
-      {/* Slot 2: Name (+ degraded badge inline, spec 116) */}
-      <div className="min-w-0 flex items-center gap-2">
-        <Link
-          to={`/equipments/${equipment.id}`}
-          state={zoneName ? equipmentLinkState(zoneName, `/home/${equipment.zoneId}`) : undefined}
-          className="min-w-0 text-body font-medium text-text truncate hover:text-primary transition-colors"
-        >
-          {equipment.name}
-        </Link>
-        {equipment.status === "degraded" && (
-          <EquipmentStatusBadge
-            status="degraded"
-            reason={equipment.statusReason}
-            size="sm"
-            iconOnly
-          />
-        )}
-      </div>
-
-      {/* Slots 3-5: per-type content, in ONE grid cell.
-          The row is a three-column grid, so a second right-hand child wrapped
-          onto a line of its own — which is exactly what the timed control did
-          when it landed beside a gate's or a light's own control. Everything
-          that belongs on the right now shares this cell and lines up in it. */}
-      <div className="flex items-center gap-3 justify-self-end min-w-0">
-        {/* Sensor / Button values — wrapped in a single grid cell to keep the row layout intact */}
-        {isSensor && (
-          <div className="flex items-center gap-2 flex-shrink-0">
-            <SensorValues
-              sensorBindings={
-                equipment.type === "weather"
-                  ? buildWeatherCompactBindings(equipment, sensorBindings)
-                  : sensorBindings
-              }
-              batteryBindings={equipment.type === "weather" ? [] : batteryBindings}
-              batteryAlert={equipment.type === "weather" ? null : batteryAlert}
+      {/* Name (+ degraded badge inline, spec 116) — the row's one link */}
+      <RowName
+        to={linkTo}
+        state={linkState}
+        name={equipment.name}
+        badge={
+          equipment.status === "degraded" && (
+            <EquipmentStatusBadge
+              status="degraded"
+              reason={equipment.statusReason}
+              size="sm"
+              iconOnly
             />
-          </div>
-        )}
+          )
+        }
+      />
+      <RowSpacer />
 
-        {/* Weather forecast compact */}
-        {isWeatherForecast && <CompactForecast equipment={equipment} />}
+      {/* Sensor / Button values: the first value (and a battery alert) stay,
+          the others give way — a weather station keeps its temperature. */}
+      {isSensor && (
+        <RowReadings keepFirst>
+          <SensorValues
+            sensorBindings={sensorValues.slice(0, 1)}
+            batteryBindings={equipment.type === "weather" ? [] : batteryBindings}
+            batteryAlert={equipment.type === "weather" ? null : batteryAlert}
+          />
+          {sensorValues.slice(1).map((b) => (
+            <SensorValues key={b.id} sensorBindings={[b]} batteryBindings={[]} />
+          ))}
+        </RowReadings>
+      )}
 
-        {/* Energy meter values */}
-        {isEnergyMeter && <CompactEnergyValues equipment={equipment} />}
+      {/* Weather forecast: today stays, the next days give way from the last */}
+      {isWeatherForecast && <CompactForecast equipment={equipment} />}
 
-        {/* Solar panel — produced power (green) */}
-        {isSolar && (
-          <span className="flex items-baseline gap-1 flex-shrink-0">
-            <span
-              className={`text-small font-semibold tabular-nums ${
-                solarPowerW === null ? "text-text-tertiary" : "text-success"
-              }`}
-            >
-              {formatPower(solarPowerW)}
+      {/* Energy meter values */}
+      {isEnergyMeter && <CompactEnergyValues equipment={equipment} />}
+
+      {/* Solar panel — produced power (green); the age of a stale one gives way */}
+      {isSolar && (
+        <RowReadings keepFirst>
+          <span
+            className={`text-small font-semibold tabular-nums ${
+              solarPowerW === null ? "text-text-tertiary" : "text-success"
+            }`}
+          >
+            {formatPower(solarPowerW)}
+          </span>
+          {powerReading.verdict === "stale" && (
+            <span className="text-micro text-text-tertiary">
+              {formatRelative(powerReading.since, t)}
             </span>
-            {powerReading.verdict === "stale" && (
-              <span className="text-micro text-text-tertiary">
-                {formatRelative(powerReading.since, t)}
-              </span>
-            )}
-          </span>
-        )}
+          )}
+        </RowReadings>
+      )}
 
-        {/* UPS compact (spec 156) — the state, then how much runway is left.
-         * Those two answer the only question a glance at a zone asks of a UPS. */}
-        {isUps && <CompactUps equipment={equipment} />}
+      {/* UPS compact (spec 156) — the state, then how much runway is left.
+       * Those two answer the only question a glance at a zone asks of a UPS. */}
+      {isUps && <CompactUps equipment={equipment} />}
 
-        {/* Camera compact — snapshot thumbnail, blob-fetched (an <img src>
-         * can't carry the Authorization header the media-proxy route needs). */}
-        {isCamera && hasCameraSnapshot && <CompactCameraThumbnail equipmentId={equipment.id} />}
+      {/* Camera compact — snapshot thumbnail, blob-fetched (an <img src>
+       * can't carry the Authorization header the media-proxy route needs). */}
+      {isCamera && hasCameraSnapshot && (
+        <RowReadings keepFirst>
+          <CompactCameraThumbnail equipmentId={equipment.id} />
+        </RowReadings>
+      )}
 
-        {/* Media player compact */}
-        {isMediaPlayer && <CompactMediaPlayer equipment={equipment} />}
+      {/* Media player compact */}
+      {isMediaPlayer && (
+        <RowReadings keepFirst>
+          <CompactMediaPlayer equipment={equipment} />
+        </RowReadings>
+      )}
 
-        {/* Appliance compact */}
-        {isAppliance && <CompactAppliance equipment={equipment} />}
+      {/* Appliance compact */}
+      {isAppliance && <CompactAppliance equipment={equipment} />}
 
-        {/* Primary value for other equipments */}
-        {primaryBinding && !isKnownType && (
-          <span className="text-small text-text-secondary tabular-nums flex-shrink-0">
-            {formatValue(primaryBinding.value, primaryBinding.unit)}
-          </span>
-        )}
+      {/* Primary value and boolean state badge for other equipments */}
+      {!isKnownType && (
+        <RowReadings keepFirst gap="3">
+          {primaryBinding && (
+            <span className="text-small text-text-secondary tabular-nums">
+              {formatValue(primaryBinding.value, primaryBinding.unit)}
+            </span>
+          )}
+          {stateBinding && (
+            <span
+              className={`
+                text-micro font-medium px-2 py-0.5 rounded-full
+                ${isOn ? "bg-success/10 text-success" : "bg-border-light text-text-tertiary"}
+              `}
+            >
+              {isOn ? t("common.on") : t("common.off")}
+            </span>
+          )}
+        </RowReadings>
+      )}
 
-        {/* Light / switch controls (smart plug = ON/OFF relay, same surface).
-         * Metering plug (spec 129): show live power next to the toggle. */}
-        {(isLight || isSwitch || isWaterHeater) && equipment.enabled && (
-          <div className="flex items-center gap-2 flex-shrink-0">
+      {/* Light / switch controls (smart plug = ON/OFF relay, same surface).
+       * Metering plug (spec 129): live power next to the toggle, which gives
+       * way before the toggle does. */}
+      {(isLight || isSwitch || isWaterHeater) && equipment.enabled && (
+        <>
+          <RowReadings>
             {waterHeaterTempC !== null && (
               <span className="text-small font-semibold text-text-secondary tabular-nums">
                 {formatTemperature(waterHeaterTempC, { style: "compact" })}
@@ -342,8 +374,7 @@ export function CompactEquipmentCard({
                 {formatPower(switchPowerW)}
               </span>
             )}
-            {/* The 52 px row has the width for the age inline, so no sub-label
-                is needed to say the number is gone on purpose (#839). */}
+            {/* The age inline says the number is gone on purpose (#839). */}
             {switchPowerStale && (
               <span className="flex items-baseline gap-1">
                 <span className="text-small font-medium text-text-tertiary tabular-nums">—</span>
@@ -360,143 +391,168 @@ export function CompactEquipmentCard({
                 </span>
               </span>
             )}
+          </RowReadings>
+          <RowControls>
             {/* Main on/off — hidden when only a solar channel is bound (e.g. a
                 water heater on permanent mains, spec 152), so no dead toggle.
                 Uses the same resolver as LightControl so the gate never hides a
                 toggle the control would still render. */}
             {!!findMainOnOffOrder(equipment.orderBindings) && (
-              <LightControl
-                equipment={equipment}
-                onExecuteOrder={(alias, value) => onExecuteOrder(equipment.id, alias, value)}
-                compact
-              />
+              <LightControl equipment={equipment} onExecuteOrder={execFor} compact />
             )}
             {/* Spec 152 — dedicated solar on/off (same toggle, sun glyph). Renders
                 nothing when no solar command is bound. */}
-            <SolarControl
+            <SolarControl equipment={equipment} onExecuteOrder={execFor} compact />
+          </RowControls>
+        </>
+      )}
+
+      {/* Shutter / Awning / Pool cover: the state pill gives way, the buttons
+          (and the slider, from sm) stay. */}
+      {(isShutterFamily || isPoolCover) && equipment.enabled && (
+        <>
+          <RowReadings>
+            <ShutterStatePill equipment={equipment} />
+          </RowReadings>
+          <RowControls>
+            <ShutterControl
               equipment={equipment}
-              onExecuteOrder={(alias, value) => onExecuteOrder(equipment.id, alias, value)}
+              onExecuteOrder={execFor}
               compact
+              withReadings={false}
             />
-          </div>
-        )}
+          </RowControls>
+        </>
+      )}
 
-        {/* Shutter / Awning controls (shared compact control with awning vocabulary swap) */}
-        {isShutterFamily && equipment.enabled && (
-          <ShutterControl
-            equipment={equipment}
-            onExecuteOrder={(alias, value) => onExecuteOrder(equipment.id, alias, value)}
-            compact
-          />
-        )}
+      {/* Thermostat: the room temperature gives way, setpoint and power stay */}
+      {isThermostat && equipment.enabled && (
+        <>
+          <RowReadings>
+            <ThermostatInsideTemp equipment={equipment} />
+          </RowReadings>
+          <RowControls>
+            <ThermostatCard
+              equipment={equipment}
+              onExecuteOrder={execFor}
+              compact
+              withReadings={false}
+            />
+          </RowControls>
+        </>
+      )}
 
-        {/* Thermostat controls */}
-        {isThermostat && equipment.enabled && (
-          <ThermostatCard
-            equipment={equipment}
-            onExecuteOrder={(alias, value) => onExecuteOrder(equipment.id, alias, value)}
-            compact
-          />
-        )}
+      {/* Gate: the state pill gives way, the command stays */}
+      {isGate && equipment.enabled && (
+        <>
+          <RowReadings>
+            <GateStateBadge equipment={equipment} />
+          </RowReadings>
+          <RowControls>
+            <GateControl
+              equipment={equipment}
+              onExecuteOrder={execFor}
+              compact
+              withReadings={false}
+            />
+          </RowControls>
+        </>
+      )}
 
-        {/* Gate controls */}
-        {isGate && equipment.enabled && (
-          <GateControl
-            equipment={equipment}
-            onExecuteOrder={(alias, value) => onExecuteOrder(equipment.id, alias, value)}
-            compact
-          />
-        )}
+      {/* Heater: the Confort / Éco pill gives way; the toggle shows it too */}
+      {isHeater && equipment.enabled && (
+        <>
+          <RowReadings>
+            <HeaterModeBadge equipment={equipment} />
+          </RowReadings>
+          <RowControls>
+            <HeaterControl
+              equipment={equipment}
+              onExecuteOrder={execFor}
+              compact
+              withReadings={false}
+            />
+          </RowControls>
+        </>
+      )}
 
-        {/* Heater controls */}
-        {isHeater && equipment.enabled && (
-          <HeaterControl
-            equipment={equipment}
-            onExecuteOrder={(alias, value) => onExecuteOrder(equipment.id, alias, value)}
-            compact
-          />
-        )}
+      {/* Water valve: the flow gives way, the toggle stays */}
+      {isWaterValve && equipment.enabled && (
+        <>
+          <RowReadings>
+            <WaterValveFlow equipment={equipment} />
+          </RowReadings>
+          <RowControls>
+            <WaterValveControl
+              equipment={equipment}
+              onExecuteOrder={execFor}
+              compact
+              withReadings={false}
+            />
+          </RowControls>
+        </>
+      )}
 
-        {/* Water valve controls */}
-        {isWaterValve && equipment.enabled && (
-          <WaterValveControl
-            equipment={equipment}
-            onExecuteOrder={(alias, value) => onExecuteOrder(equipment.id, alias, value)}
-            compact
-          />
-        )}
+      {/* Electric vehicle (spec 183): battery, range, state, report age. */}
+      {isElectricVehicle && <CompactElectricVehicle equipment={equipment} />}
 
-        {/* Electric vehicle (spec 183): battery, range, state, report age. */}
-        {isElectricVehicle && <CompactElectricVehicle equipment={equipment} />}
+      {/* EV charger (spec 182): the vehicle, the power while charging, start/stop. */}
+      {isEvCharger && <CompactEvCharger equipment={equipment} onExecuteOrder={execFor} />}
 
-        {/* EV charger (spec 182): the vehicle, the power while charging, start/stop. */}
-        {isEvCharger && (
-          <CompactEvCharger
-            equipment={equipment}
-            onExecuteOrder={(alias, value) => onExecuteOrder(equipment.id, alias, value)}
-          />
-        )}
+      {/* VMC: OFF/V1/V2 speed selector (spec 153) */}
+      {isVmc && equipment.enabled && (
+        <RowControls>
+          <VmcControl equipment={equipment} onExecuteOrder={execFor} compact />
+        </RowControls>
+      )}
 
-        {/* VMC: OFF/V1/V2 speed selector (spec 153) */}
-        {isVmc && equipment.enabled && (
-          <VmcControl
-            equipment={equipment}
-            onExecuteOrder={(alias, value) => onExecuteOrder(equipment.id, alias, value)}
-            compact
-          />
-        )}
-
-        {/* Pool pump: runtime badge + ON/OFF toggle (reuse LightControl compact).
-         * Wrapped in a single flex cell so the two children share the row's
-         * auto-sized grid column (otherwise the toggle wraps to a second line). */}
-        {isPoolPump && (
-          <div className="flex items-center gap-2 flex-shrink-0">
+      {/* Pool pump: the day's runtime gives way, the ON/OFF toggle stays
+       * (reuse LightControl compact). */}
+      {isPoolPump && (
+        <>
+          <RowReadings>
             <PoolPumpRuntime equipment={equipment} />
-            {equipment.enabled && (
-              <LightControl
-                equipment={equipment}
-                onExecuteOrder={(alias, value) => onExecuteOrder(equipment.id, alias, value)}
-                compact
-              />
-            )}
-          </div>
-        )}
+          </RowReadings>
+          {equipment.enabled && (
+            <RowControls>
+              <LightControl equipment={equipment} onExecuteOrder={execFor} compact />
+            </RowControls>
+          )}
+        </>
+      )}
 
-        {/* Pool cover: OPEN/STOP/CLOSE buttons + position slider (reuse ShutterControl compact) */}
-        {isPoolCover && equipment.enabled && (
-          <ShutterControl
-            equipment={equipment}
-            onExecuteOrder={(alias, value) => onExecuteOrder(equipment.id, alias, value)}
-            compact
-          />
-        )}
+      {/* Pool heat pump: water temperature and mode give way, the setpoint stays */}
+      {isPoolHeatPump && (
+        <>
+          <RowReadings>
+            <PoolHeatPumpWaterTemp equipment={equipment} />
+            <PoolHeatPumpModeBadge equipment={equipment} />
+          </RowReadings>
+          <RowControls>
+            <PoolHeatPumpControl
+              equipment={equipment}
+              onExecuteOrder={execFor}
+              compact
+              withReadings={false}
+            />
+          </RowControls>
+        </>
+      )}
 
-        {/* Pool heat pump: water temp + mode badge + setpoint controls */}
-        {isPoolHeatPump && (
-          <PoolHeatPumpControl
-            equipment={equipment}
-            onExecuteOrder={(alias, value) => onExecuteOrder(equipment.id, alias, value)}
-            compact
-          />
-        )}
-
-        {/* Boolean state badge for generic equipments */}
-        {!isKnownType && stateBinding && (
-          <span
-            className={`
-              text-micro font-medium px-2 py-0.5 rounded-full flex-shrink-0
-              ${isOn ? "bg-success/10 text-success" : "bg-border-light text-text-tertiary"}
-            `}
-          >
-            {isOn ? t("common.on") : t("common.off")}
-          </span>
-        )}
-
-        {/* Timed command (spec 174 phase 2) — renders nothing unless the
-            equipment was configured for one, so every other row is unchanged. */}
-        <TimedCommandControl equipment={equipment} />
-      </div>
-    </div>
+      {/* Timed command (spec 174 phase 2) — renders nothing unless the
+          equipment was configured for one, so every other row is unchanged.
+          The countdown gives way, the button stays. */}
+      {equipment.timedCommand && equipment.enabled && (
+        <>
+          <RowReadings trailing>
+            <TimedCountdownPill equipment={equipment} />
+          </RowReadings>
+          <RowControls>
+            <TimedCommandControl equipment={equipment} withReadings={false} />
+          </RowControls>
+        </>
+      )}
+    </EquipmentRow>
   );
 }
 
@@ -530,28 +586,36 @@ function buildWeatherCompactBindings(
   return [temp, hum, rain, wind].filter((b): b is DataBindingWithValue => !!b);
 }
 
+/**
+ * Up to five days. The first stays; the next ones give way from the last, so a
+ * narrow row shows fewer days rather than a cut name (#1163).
+ */
 function CompactForecast({ equipment }: { equipment: EquipmentWithDetails }) {
-  const days = parseForecastDays(equipment.dataBindings);
+  const days = parseForecastDays(equipment.dataBindings).slice(0, 5);
   if (days.length === 0) return null;
 
   return (
-    <div className="flex items-center gap-2 flex-shrink-0">
-      {days.slice(0, 5).map((day) => {
-        const ConditionIcon = day.condition ? (CONDITION_ICONS[day.condition] ?? Cloud) : Cloud;
-        const color = day.condition
-          ? (CONDITION_COLORS[day.condition] ?? "text-text-tertiary")
-          : "text-text-tertiary";
-        return (
-          <div key={day.dayIndex} className="flex items-center gap-0.5">
-            <ConditionIcon size={14} strokeWidth={1.5} className={color} />
-            {day.tempMax !== null && (
-              <span className="text-micro tabular-nums text-text-secondary">
-                {formatNumber(day.tempMax, { decimals: 0 })}°
-              </span>
-            )}
-          </div>
-        );
-      })}
+    <RowReadings keepFirst>
+      {days.map((day) => (
+        <ForecastDay key={day.dayIndex} day={day} />
+      ))}
+    </RowReadings>
+  );
+}
+
+function ForecastDay({ day }: { day: ReturnType<typeof parseForecastDays>[number] }) {
+  const ConditionIcon = day.condition ? (CONDITION_ICONS[day.condition] ?? Cloud) : Cloud;
+  const color = day.condition
+    ? (CONDITION_COLORS[day.condition] ?? "text-text-tertiary")
+    : "text-text-tertiary";
+  return (
+    <div data-forecast-day={day.dayIndex} className="flex items-center gap-0.5">
+      <ConditionIcon size={14} strokeWidth={1.5} className={color} />
+      {day.tempMax !== null && (
+        <span className="text-micro tabular-nums text-text-secondary">
+          {formatNumber(day.tempMax, { decimals: 0 })}°
+        </span>
+      )}
     </div>
   );
 }
@@ -570,33 +634,35 @@ function CompactEnergyValues({ equipment }: { equipment: EquipmentWithDetails })
   const valueColor = isProduction ? "text-success" : "text-text";
   const powerColor = isProduction ? "text-success" : "text-text-secondary";
 
+  // The live power (or the age of a withheld one) first, the day total next.
+  const items = [
+    liveW !== null && (
+      <span key="live" className={`text-small font-semibold ${powerColor} tabular-nums`}>
+        {formatWatts(liveW).value}
+        <span className="text-micro font-normal text-text-tertiary ml-0.5">
+          {formatWatts(liveW).unit}
+        </span>
+      </span>
+    ),
+    liveReading.verdict === "stale" && (
+      <span key="stale" className="text-small font-medium text-text-tertiary tabular-nums">
+        —<span className="text-micro font-normal ml-1">{formatRelative(liveReading.since, t)}</span>
+      </span>
+    ),
+    dayWh !== null && (
+      <span key="day" className={`text-small ${valueColor} tabular-nums font-semibold`}>
+        {formatEnergyParts(dayWh / 1000, { unit: "auto" }).value}
+        <span className="text-micro font-normal text-text-tertiary ml-0.5">
+          {formatEnergyParts(dayWh / 1000, { unit: "auto" }).unit}
+        </span>
+      </span>
+    ),
+  ].filter(Boolean);
+
   return (
-    <div className="flex items-center gap-3 flex-shrink-0">
-      {liveW !== null && (
-        <span className={`text-small font-semibold ${powerColor} tabular-nums`}>
-          {formatWatts(liveW).value}
-          <span className="text-micro font-normal text-text-tertiary ml-0.5">
-            {formatWatts(liveW).unit}
-          </span>
-        </span>
-      )}
-      {liveReading.verdict === "stale" && (
-        <span className="text-small font-medium text-text-tertiary tabular-nums">
-          —
-          <span className="text-micro font-normal ml-1">
-            {formatRelative(liveReading.since, t)}
-          </span>
-        </span>
-      )}
-      {dayWh !== null && (
-        <span className={`text-small ${valueColor} tabular-nums font-semibold`}>
-          {formatEnergyParts(dayWh / 1000, { unit: "auto" }).value}
-          <span className="text-micro font-normal text-text-tertiary ml-0.5">
-            {formatEnergyParts(dayWh / 1000, { unit: "auto" }).unit}
-          </span>
-        </span>
-      )}
-    </div>
+    <RowReadings keepFirst gap="3">
+      {items}
+    </RowReadings>
   );
 }
 
@@ -656,30 +722,35 @@ function CompactElectricVehicle({ equipment }: { equipment: EquipmentWithDetails
   const { t } = useTranslation();
   const now = useStalenessClock();
   const s = electricVehicleStateOf(equipment, now);
-  return (
-    <div className="flex items-center gap-2 flex-shrink-0">
-      {s.chargingState && (
-        <span className="text-micro font-medium px-1.5 py-0.5 rounded-full bg-primary/10 text-primary">
-          {t(evChargingStateKey(s.chargingState))}
-        </span>
-      )}
-      {s.rangeKm !== null && (
-        <span className="text-micro text-text-secondary tabular-nums">
-          {formatWithUnit(s.rangeKm, "km")}
-        </span>
-      )}
-      {s.batteryLevel !== null && (
-        <span className="text-small font-semibold text-text tabular-nums">
-          {formatPercent(s.batteryLevel)}
-        </span>
-      )}
-      {s.reportStale && s.reportedAt && (
-        <span className="text-micro text-text-tertiary">
-          {t("reading.ago", { age: formatRelative(s.reportedAt, t) })}
-        </span>
-      )}
-    </div>
-  );
+  // In the order the comment above gives, which is also the reverse of the
+  // order they give way in: the battery level stays, the report age goes
+  // first (#1163).
+  const items = [
+    s.batteryLevel !== null && (
+      <span key="battery" className="text-small font-semibold text-text tabular-nums">
+        {formatPercent(s.batteryLevel)}
+      </span>
+    ),
+    s.rangeKm !== null && (
+      <span key="range" className="text-micro text-text-secondary tabular-nums">
+        {formatWithUnit(s.rangeKm, "km")}
+      </span>
+    ),
+    s.chargingState && (
+      <span
+        key="state"
+        className="text-micro font-medium px-1.5 py-0.5 rounded-full bg-primary/10 text-primary"
+      >
+        {t(evChargingStateKey(s.chargingState))}
+      </span>
+    ),
+    s.reportStale && s.reportedAt && (
+      <span key="age" className="text-micro text-text-tertiary">
+        {t("reading.ago", { age: formatRelative(s.reportedAt, t) })}
+      </span>
+    ),
+  ].filter(Boolean);
+  return <RowReadings keepFirst>{items}</RowReadings>;
 }
 
 /**
@@ -696,18 +767,25 @@ function CompactEvCharger({
 }) {
   const s = evChargerStateOf(equipment);
   const watts = s.power.watts;
+  const canToggle = s.canToggle && equipment.enabled;
+  const items = [
+    s.vehicle && <EvVehicleBadge key="vehicle" vehicle={s.vehicle} />,
+    watts !== null && watts > 0 && (
+      <span key="power" className="text-small font-semibold text-text tabular-nums">
+        {formatPower(watts)}
+      </span>
+    ),
+  ].filter(Boolean);
+  // With the start/stop toggle, every reading gives way to it; without one,
+  // the row is read-only and keeps the vehicle.
+  if (!canToggle) return <RowReadings keepFirst>{items}</RowReadings>;
   return (
-    <div className="flex items-center gap-2 flex-shrink-0">
-      <EvVehicleBadge vehicle={s.vehicle} />
-      {watts !== null && watts > 0 && (
-        <span className="text-small font-semibold text-text tabular-nums">
-          {formatPower(watts)}
-        </span>
-      )}
-      {s.canToggle && equipment.enabled && (
+    <>
+      <RowReadings>{items}</RowReadings>
+      <RowControls>
         <LightControl equipment={equipment} onExecuteOrder={onExecuteOrder} compact />
-      )}
-    </div>
+      </RowControls>
+    </>
   );
 }
 
@@ -734,24 +812,26 @@ function CompactUps({ equipment }: { equipment: EquipmentWithDetails }) {
           ? "bg-error/10 text-error"
           : "bg-border-light text-text-tertiary";
 
-  return (
-    <div className="flex items-center gap-2 flex-shrink-0">
-      <span className={`text-micro font-medium px-1.5 py-0.5 rounded-full ${pill}`}>
-        {status ? t(upsStatusKey(status)) : (raw ?? t(upsStatusKey(null)))}
+  const items = [
+    <span key="status" className={`text-micro font-medium px-1.5 py-0.5 rounded-full ${pill}`}>
+      {status ? t(upsStatusKey(status)) : (raw ?? t(upsStatusKey(null)))}
+    </span>,
+    charge !== null && charge !== undefined && (
+      <span key="charge" className="text-micro text-text-secondary tabular-nums">
+        {formatPercent(Number(charge))}
       </span>
-      {charge !== null && charge !== undefined && (
-        <span className="text-micro text-text-secondary tabular-nums">
-          {formatPercent(Number(charge))}
-        </span>
-      )}
-      {runtimeLabel && (
-        <span className="flex items-center gap-0.5 text-micro text-text-secondary tabular-nums">
-          <Timer size={10} />
-          {runtimeLabel}
-        </span>
-      )}
-    </div>
-  );
+    ),
+    runtimeLabel && (
+      <span
+        key="runtime"
+        className="flex items-center gap-0.5 text-micro text-text-secondary tabular-nums"
+      >
+        <Timer size={10} />
+        {runtimeLabel}
+      </span>
+    ),
+  ].filter(Boolean);
+  return <RowReadings keepFirst>{items}</RowReadings>;
 }
 
 function CompactAppliance({ equipment }: { equipment: EquipmentWithDetails }) {
@@ -767,35 +847,41 @@ function CompactAppliance({ equipment }: { equipment: EquipmentWithDetails }) {
   const progress = typeof progressBinding?.value === "number" ? progressBinding.value : null;
 
   if (!isOn || state === "off") {
-    return <span className="text-micro text-text-tertiary flex-shrink-0">{t("controls.off")}</span>;
+    return (
+      <RowReadings keepFirst>
+        <span className="text-micro text-text-tertiary">{t("controls.off")}</span>
+      </RowReadings>
+    );
   }
 
   const isRunning = state === "running";
-
-  return (
-    <div className="flex items-center gap-2 flex-shrink-0">
+  const items = [
+    <span
+      key="state"
+      className={`text-micro font-medium px-1.5 py-0.5 rounded-full ${
+        isRunning ? "bg-active-bg text-active-ink" : "bg-border-light text-text-tertiary"
+      }`}
+    >
+      {state === "running"
+        ? t("common.running")
+        : state === "paused"
+          ? t("common.paused")
+          : (state ?? "—")}
+    </span>,
+    isRunning && remainingStr && (
       <span
-        className={`text-micro font-medium px-1.5 py-0.5 rounded-full ${
-          isRunning ? "bg-active-bg text-active-ink" : "bg-border-light text-text-tertiary"
-        }`}
+        key="remaining"
+        className="flex items-center gap-0.5 text-micro text-text-secondary tabular-nums"
       >
-        {state === "running"
-          ? t("common.running")
-          : state === "paused"
-            ? t("common.paused")
-            : (state ?? "—")}
+        <Timer size={10} />
+        {remainingStr}
       </span>
-      {isRunning && remainingStr && (
-        <span className="flex items-center gap-0.5 text-micro text-text-secondary tabular-nums">
-          <Timer size={10} />
-          {remainingStr}
-        </span>
-      )}
-      {isRunning && progress !== null && progress > 0 && (
-        <span className="text-micro text-text-tertiary tabular-nums">
-          {formatPercent(progress)}
-        </span>
-      )}
-    </div>
-  );
+    ),
+    isRunning && progress !== null && progress > 0 && (
+      <span key="progress" className="text-micro text-text-tertiary tabular-nums">
+        {formatPercent(progress)}
+      </span>
+    ),
+  ].filter(Boolean);
+  return <RowReadings keepFirst>{items}</RowReadings>;
 }

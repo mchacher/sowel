@@ -97,6 +97,8 @@ Quand un équipement est hors ligne, il est retiré des pastilles qu'il alimente
 
 Sous le bandeau, les équipements sont regroupés par type (Lumières, Volets, Capteurs) avec des contrôles intégrés. Chaque panneau (Équipements, Comportements, Activité) porte son titre sur un bloc à part, avec le nombre d'éléments qu'il contient ; chaque type d'équipement forme un bloc en dessous.
 
+Touchez ou cliquez n'importe où sur la ligne d'un équipement pour ouvrir sa page, sauf sur l'une de ses commandes (interrupteur, boutons d'un volet, variateur, consigne, minuterie), qui agit sur l'équipement sans quitter la vue. Sur un écran étroit, les relevés cèdent la place en premier : la ligne montre moins de jours de prévision et laisse tomber ses valeurs secondaires, et une ligne sans commande garde toujours sa première valeur. Les commandes ne sont jamais masquées ; quand elles ne tiennent pas à côté du nom, le nom passe sur une deuxième ligne au lieu d'être coupé.
+
 ### Agrégation de puissance
 
 La pastille de puissance répond à « combien tire cette partie de la maison en ce moment ». Elle somme les équipements de la zone qui mesurent une **charge** (un `energy_meter` dédié, une prise avec mesure, tout équipement qui remonte des watts) sur la zone et toutes ses descendantes. C'est ce qui permet à une seule zone de totaliser deux circuits alimentés depuis des tableaux différents, ce qu'aucun compteur seul ne sait faire.
