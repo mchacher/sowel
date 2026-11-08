@@ -72,6 +72,8 @@ If a slot looks empty or wrong, the **Save** button stays disabled and the recip
 
 The instance starts as soon as you save. Toggle it on/off from the recipe list anytime. Open the instance to see its **log** -- a per-instance trace of what it has done and why.
 
+In the recipe list, each row shows the recipe's name and, under it, the equipment the instance acts on -- the one picked in its first equipment parameter, or the first two and a count (`Spot A, Spot B +2`) when it acts on several. Two instances of the same recipe can be told apart at a glance. When the recipe reports a status of its own (a pool pump's filtration hours, a charger's state), it comes on the next line. A live countdown, an override badge or a mode button sits on the line below, with the log button for an administrator.
+
 ![Zone view showing the Behaviors panel — Modes and Recipes — alongside the live Activity feed](../screenshots/activity-zone-view-en.png)
 
 The zone view's **Behaviors** panel is where you toggle running recipes on the fly without going through the admin. The **Activity** panel on the right shows each recipe firing in real time.

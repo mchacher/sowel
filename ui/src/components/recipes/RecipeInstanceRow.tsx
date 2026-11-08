@@ -31,7 +31,12 @@ import {
   recipeGroupLabel,
   recipeSlotOptionLabel,
 } from "../../lib/recipe-i18n";
-import { isSlotHidden, matchesEquipmentType } from "../../lib/recipe-slots";
+import {
+  isSlotHidden,
+  matchesEquipmentType,
+  instanceEquipmentNames,
+  shortNameList,
+} from "../../lib/recipe-slots";
 import {
   groupSlots,
   isGroupFilled,
@@ -111,6 +116,14 @@ export function RecipeInstanceRow({
 
   const recipe = recipes.find((r) => r.id === instance.recipeId);
   const displayName = recipe ? recipeName(recipe, lang) : instance.recipeId;
+  // What this instance acts on (#1165): the equipment of the recipe's first
+  // equipment slot, so instances of one recipe can be told apart. Identity,
+  // not state: shown on a disabled instance too.
+  const equipmentNames = useMemo(
+    () => (recipe ? instanceEquipmentNames(recipe.slots, instance.params, equipments) : []),
+    [recipe, instance.params, equipments],
+  );
+  const equipmentList = shortNameList(equipmentNames);
 
   const handleDelete = async () => {
     if (!confirm(t("recipes.deleteConfirm"))) return;
@@ -369,6 +382,19 @@ export function RecipeInstanceRow({
             title={isAdmin ? "Edit" : undefined}
           >
             <div className="text-body font-medium text-text truncate">{displayName}</div>
+            {/* The equipment line (#1165) — « A, B +2 ». The names truncate,
+                the count never does. */}
+            {equipmentNames.length > 0 && (
+              <div
+                className="flex min-w-0 text-caption text-text-secondary mt-0.5"
+                title={equipmentNames.join(", ")}
+              >
+                <span className="truncate">{equipmentList.text}</span>
+                {equipmentList.more > 0 && (
+                  <span className="flex-shrink-0 whitespace-pre"> +{equipmentList.more}</span>
+                )}
+              </div>
+            )}
             {/* Optional recipe-provided status line (spec: state.summary).
                 A recipe sets it to surface live context (e.g. a pool pump's
                 "Filtration 2,1/9,6 h · heures creuses"). Absent → unchanged. */}
