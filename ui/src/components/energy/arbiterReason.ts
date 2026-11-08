@@ -42,6 +42,7 @@ export const REASON_SLUG: Record<string, string> = {
 const REDUNDANT_WITH_KIND = new Set([
   "recipe switched a comfort load off on revocation", // kind comfort-off-after-revoke
   "recipe-driven run outside arbitration", // kind unclaimed-run
+  "running outside arbitration", // kind unclaimed-run (#958, #1154 hand-back)
   "run outside arbitration finished", // kind unclaimed-run-ended
   "resume control", // kind resumed
   "engine restart", // kind reset (#604) — the kind label already says it

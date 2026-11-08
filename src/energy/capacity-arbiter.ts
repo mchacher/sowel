@@ -681,8 +681,11 @@ export class CapacityArbiter {
         // Same reasoning for a TTL/manual resume observed with the load OFF:
         // the timeline already paints it idle, so a stale open flag would
         // only suppress the journaling of the next genuine unclaimed run.
+        // #1154 — and a resume observed with the load ON reopens it: rows
+        // written before the fix carry no `unclaimed-run` after the hand-back.
         case "resumed":
-          if (d.running === false) open.delete(d.equipmentId);
+          if (d.running === true) open.add(d.equipmentId);
+          else if (d.running === false) open.delete(d.equipmentId);
           break;
         default:
           break;
@@ -764,6 +767,20 @@ export class CapacityArbiter {
     if (pending) {
       this.journal({ kind: "waiting", equipmentId, watts: pending.watts });
     }
+  }
+
+  /**
+   * #1154 — a load handed back while it is still running, with no grant, IS
+   * running outside arbitration: the ribbon already paints it so from the
+   * `resumed{running:true}` entry. Left out of the live set, the roster read
+   * it "at rest", and its OFF early-returned in endUnclaimedRun, so the span
+   * never closed. Shared by the TTL expiry and the manual resume.
+   */
+  private adoptRunningOnResume(equipmentId: string, running: boolean | undefined): void {
+    if (running !== true || this.grantedClaimFor(equipmentId) !== undefined) return;
+    if (this.unclaimedRunning.has(equipmentId)) return;
+    this.unclaimedRunning.add(equipmentId);
+    this.journal({ kind: "unclaimed-run", equipmentId, reason: "running outside arbitration" });
   }
 
   /**
@@ -924,12 +941,9 @@ export class CapacityArbiter {
     // `divergenceConfirmS`, which is exactly what it did: resume at 11:32:26,
     // suspended again at 11:33:28, every time.
     this.wallOnSuspendedWhile.set(equipmentId, this.reportedOnOff.get(equipmentId) ?? false);
-    this.journal({
-      kind: "resumed",
-      equipmentId,
-      reason: "resume control",
-      running: this.observedRunning(equipmentId),
-    });
+    const running = this.observedRunning(equipmentId);
+    this.journal({ kind: "resumed", equipmentId, reason: "resume control", running });
+    this.adoptRunningOnResume(equipmentId, running);
     this.forceStatusEmit(); // let the UI drop the "Manual until…" chip live
     this.evaluate();
     return true;
@@ -1427,12 +1441,9 @@ export class CapacityArbiter {
     for (const [eq, until] of this.overridesUntil) {
       if (until <= now) {
         this.overridesUntil.delete(eq);
-        this.journal({
-          kind: "resumed",
-          equipmentId: eq,
-          reason: "override-expired",
-          running: this.observedRunning(eq),
-        });
+        const running = this.observedRunning(eq);
+        this.journal({ kind: "resumed", equipmentId: eq, reason: "override-expired", running });
+        this.adoptRunningOnResume(eq, running);
       }
     }
     for (const [eq, until] of this.unresponsiveUntil) {

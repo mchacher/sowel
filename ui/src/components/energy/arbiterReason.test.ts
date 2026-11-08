@@ -32,6 +32,7 @@ describe("journalReasonLabel (#518)", () => {
     for (const redundant of [
       "recipe switched a comfort load off on revocation",
       "recipe-driven run outside arbitration",
+      "running outside arbitration",
       "run outside arbitration finished",
       "resume control",
     ]) {
