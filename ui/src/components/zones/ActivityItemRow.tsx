@@ -12,8 +12,9 @@ import { Trans, useTranslation } from "react-i18next";
 import type { ActivityItem, ActivityCategory, OrderSource } from "../../types";
 import { useRecipes } from "../../store/useRecipes";
 import i18n from "../../i18n";
-import { ORDER_OUTCOME_ALARM_SOURCE } from "../../lib/alarm-message";
+import { alarmSourceLabel, ORDER_OUTCOME_ALARM_SOURCE } from "../../lib/alarm-message";
 import { displayValue } from "../../lib/activity-log";
+import { formatClockTime } from "../../lib/format";
 
 /** A recipe's name in the UI language, from its manifest i18n; else the name the server sent. */
 type RecipeLabel = (recipeId: string | undefined, fallback: string) => string;
@@ -47,7 +48,7 @@ export function ActivityItemRow({ item }: Props) {
         dateTime={new Date(item.timestamp).toISOString()}
         className="text-caption leading-5 text-text-tertiary tabular-nums text-right"
       >
-        {formatTime(item.timestamp)}
+        {formatClockTime(item.timestamp)}
       </time>
       <CategoryIcon category={item.category} template={item.message.template} />
       <div className="text-text min-w-0 break-words">
@@ -122,7 +123,7 @@ function interpolation(
         messageKey !== undefined &&
         i18n.exists(messageKey);
       return {
-        source,
+        source: alarmSourceLabel(t, source),
         message: keyed ? t(messageKey, { ...messageParams }) : message,
       };
     }
@@ -165,15 +166,6 @@ function CategoryIcon({
     default:
       return dot(Circle);
   }
-}
-
-function formatTime(timestamp: number): string {
-  const d = new Date(timestamp);
-  return `${pad(d.getHours())}:${pad(d.getMinutes())}`;
-}
-
-function pad(n: number): string {
-  return n.toString().padStart(2, "0");
 }
 
 function formatSource(

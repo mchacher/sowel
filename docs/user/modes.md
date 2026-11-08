@@ -102,6 +102,8 @@ A profile is a named weekly schedule. You might have:
 - **Weekend** -- a different schedule for Sat--Sun
 - **Vacation** -- relaxed schedule when you are home all day
 
+Sowel comes with two built-in profiles, **Work** and **Holidays**, named in the language you use Sowel in.
+
 Only one profile is active at a time. Switch between profiles with one tap.
 
 ### Time slots

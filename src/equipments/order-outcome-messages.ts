@@ -21,6 +21,17 @@ export const ORDER_OUTCOME_ALARM_MESSAGES: Record<MessageLanguage, Record<string
     "alarms.orderOutcome.faultWiring": "{{equipment}}: fault (wiring)",
     "alarms.orderOutcome.faultDetail": "{{equipment}}: fault ({{detail}})",
     "alarms.orderOutcome.recovered": "{{equipment}}: the expected state arrived after all",
+    "alarms.orderOutcome.superseded": "{{equipment}}: alarm cleared by a later order",
+    "alarms.orderOutcome.notConfirmedTimeout":
+      "{{equipment}}: order {{alias}} → {{value}} not confirmed (no state change within {{seconds}} s)",
+    "alarms.orderOutcome.notConfirmedOffline":
+      "{{equipment}}: order {{alias}} → {{value}} not confirmed (device offline)",
+    "alarms.orderOutcome.notConfirmedUnreachable":
+      "{{equipment}}: order {{alias}} → {{value}} not confirmed (integration unreachable)",
+    "alarms.orderOutcome.notConfirmedFault":
+      "{{equipment}}: order {{alias}} → {{value}} not confirmed (device reported a fault)",
+    "alarms.orderOutcome.notConfirmedFaultDetail":
+      "{{equipment}}: order {{alias}} → {{value}} not confirmed (device reported a fault: {{detail}})",
   },
   fr: {
     "alarms.orderOutcome.unconfirmed": "{{equipment}}\u202f: commande non confirmée par son état",
@@ -33,6 +44,17 @@ export const ORDER_OUTCOME_ALARM_MESSAGES: Record<MessageLanguage, Record<string
     "alarms.orderOutcome.faultWiring": "{{equipment}}\u202f: défaut (câblage)",
     "alarms.orderOutcome.faultDetail": "{{equipment}}\u202f: défaut ({{detail}})",
     "alarms.orderOutcome.recovered": "{{equipment}}\u202f: l'état attendu est finalement arrivé",
+    "alarms.orderOutcome.superseded": "{{equipment}}\u202f: alarme levée par une commande suivante",
+    "alarms.orderOutcome.notConfirmedTimeout":
+      "{{equipment}}\u202f: commande {{alias}} → {{value}} non confirmée (aucun changement d'état en {{seconds}}\u202fs)",
+    "alarms.orderOutcome.notConfirmedOffline":
+      "{{equipment}}\u202f: commande {{alias}} → {{value}} non confirmée (appareil hors ligne)",
+    "alarms.orderOutcome.notConfirmedUnreachable":
+      "{{equipment}}\u202f: commande {{alias}} → {{value}} non confirmée (intégration injoignable)",
+    "alarms.orderOutcome.notConfirmedFault":
+      "{{equipment}}\u202f: commande {{alias}} → {{value}} non confirmée (l'appareil signale un défaut)",
+    "alarms.orderOutcome.notConfirmedFaultDetail":
+      "{{equipment}}\u202f: commande {{alias}} → {{value}} non confirmée (l'appareil signale un défaut\u202f: {{detail}})",
   },
 };
 

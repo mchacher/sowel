@@ -845,6 +845,40 @@ export class OrderConfirmationTracker {
     });
   }
 
+  /**
+   * The keyed form of the generic « Order not confirmed » alarm (#1151): the
+   * same facts as its English `message`, worded by the UI and the push.
+   */
+  private notConfirmedWording(
+    entry: PendingOrder,
+    name: string,
+    reason: "timeout" | "device_offline" | "integration_disconnected" | "device_fault",
+  ): { messageKey: string; messageParams: Record<string, string> } {
+    const params: Record<string, string> = {
+      equipment: name,
+      alias: entry.alias,
+      value: String(entry.value),
+    };
+    switch (reason) {
+      case "device_offline":
+        return { messageKey: "alarms.orderOutcome.notConfirmedOffline", messageParams: params };
+      case "integration_disconnected":
+        return { messageKey: "alarms.orderOutcome.notConfirmedUnreachable", messageParams: params };
+      case "device_fault":
+        return entry.detail === undefined
+          ? { messageKey: "alarms.orderOutcome.notConfirmedFault", messageParams: params }
+          : {
+              messageKey: "alarms.orderOutcome.notConfirmedFaultDetail",
+              messageParams: { ...params, detail: entry.detail },
+            };
+      case "timeout":
+        return {
+          messageKey: "alarms.orderOutcome.notConfirmedTimeout",
+          messageParams: { ...params, seconds: String(Math.round(entry.timeoutMs / 1000)) },
+        };
+    }
+  }
+
   /** O6 — the i18n key and parameters the UI words a tracked order's alarm from. */
   private outcomeAlarmWording(
     entry: PendingOrder,
@@ -1110,7 +1144,11 @@ export class OrderConfirmationTracker {
       level: "warning",
       source: ALARM_SOURCE,
       message,
-      ...(wording ?? {}),
+      // #1151 — the orders with no outcome wording (a mirror order, a held
+      // one) carry a key too, so the UI and the push word them in the
+      // viewer's language. The key stays out of the re-raise signature above:
+      // such an alarm is still carried over as it is (spec 141).
+      ...(wording ?? this.notConfirmedWording(entry, name, reason)),
     });
   }
 
@@ -1194,23 +1232,27 @@ export class OrderConfirmationTracker {
 
   private resolveAlarm(entry: PendingOrder, why: string): void {
     const name = this.equipmentManager.getById(entry.equipmentId)?.name ?? entry.equipmentId;
-    // Spec 188 O6 — a tracked order's recovery is worded like its alarm.
-    const keyed =
-      entry.kind !== "mirror" && why === "state finally confirmed"
-        ? {
-            messageKey: "alarms.orderOutcome.recovered",
-            messageParams: { equipment: name },
-          }
-        : null;
+    const legacy = `Order confirmation recovered: ${name} ${entry.alias} (${why})`;
+    // Spec 188 O6 — a tracked order's recovery is worded like its alarm, and
+    // its English `message` is that wording. #1151 — every recovery carries a
+    // key, so the UI words it too; a mirror order's `message` stays the legacy
+    // English line (logs, Telegram).
+    const keyed = {
+      messageKey:
+        why === "state finally confirmed"
+          ? "alarms.orderOutcome.recovered"
+          : "alarms.orderOutcome.superseded",
+      messageParams: { equipment: name },
+    };
     this.eventBus.emit({
       type: "system.alarm.resolved",
       alarmId: this.alarmId(entry),
       source: ALARM_SOURCE,
-      message: keyed
-        ? (wordOrderOutcomeAlarm(keyed.messageKey, keyed.messageParams, "en") ??
-          `Order confirmation recovered: ${name} ${entry.alias} (${why})`)
-        : `Order confirmation recovered: ${name} ${entry.alias} (${why})`,
-      ...(keyed ?? {}),
+      message:
+        entry.kind !== "mirror" && why === "state finally confirmed"
+          ? (wordOrderOutcomeAlarm(keyed.messageKey, keyed.messageParams, "en") ?? legacy)
+          : legacy,
+      ...keyed,
     });
   }
 

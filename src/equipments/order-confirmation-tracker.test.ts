@@ -244,6 +244,42 @@ describe("OrderConfirmationTracker", () => {
     expect(alarmsResolved().length).toBe(1);
   });
 
+  // #1151 — the generic alarm carries a key, so the UI and the push word it in
+  // the viewer's language; its English `message` is unchanged.
+  it("keys the generic not-confirmed alarm and its recovery", () => {
+    emitOrder("ON");
+    vi.advanceTimersByTime(31_000);
+
+    const raised = alarmsRaised()[0] as {
+      message: string;
+      messageKey?: string;
+      messageParams?: Record<string, string>;
+    };
+    expect(raised.message).toMatch(/^Order not confirmed: Pompe Piscine state → ON \(/);
+    expect(raised.messageKey).toBe("alarms.orderOutcome.notConfirmedTimeout");
+    expect(raised.messageParams).toMatchObject({
+      equipment: "Pompe Piscine",
+      alias: "state",
+      value: "ON",
+    });
+    expect(raised.messageParams?.seconds).toMatch(/^\d+$/);
+
+    emitData("ON");
+    const resolved = alarmsResolved()[0] as { message: string; messageKey?: string };
+    expect(resolved.message).toMatch(/^Order confirmation recovered: Pompe Piscine state/);
+    expect(resolved.messageKey).toBe("alarms.orderOutcome.recovered");
+  });
+
+  it("keys an offline device's not-confirmed alarm", () => {
+    bindingValue = "ON";
+    emitDeviceStatus("offline");
+    emitOrder("OFF");
+    expect(alarmsRaised()[0]).toMatchObject({
+      messageKey: "alarms.orderOutcome.notConfirmedOffline",
+      messageParams: { equipment: "Pompe Piscine", alias: "state", value: "OFF" },
+    });
+  });
+
   it("marks unconfirmed immediately when every target device is offline", () => {
     bindingValue = "ON";
     emitDeviceStatus("offline");
@@ -561,6 +597,11 @@ describe("OrderConfirmationTracker", () => {
       emitOrderFailed("WAKE");
 
       expect(alarmsResolved()).toHaveLength(1);
+      // #1151 — worded for the UI too, the English line unchanged.
+      expect(alarmsResolved()[0]).toMatchObject({
+        messageKey: "alarms.orderOutcome.superseded",
+        message: expect.stringContaining("superseded by an exempt order"),
+      });
     });
 
     it("marks the integration unreachable so a flap still produces a transition", () => {

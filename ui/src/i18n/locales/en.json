@@ -109,6 +109,9 @@
   "alarms.battery.lowPct": "Low battery: {{value}}%",
   "alarms.battery.lowOnDevice": "Low battery ({{device}})",
   "alarms.battery.lowPctOnDevice": "Low battery: {{value}}% ({{device}})",
+  "alarms.source.orderConfirmation": "Order follow-up",
+  "alarms.source.sharedAccess": "Shared access",
+  "alarms.source.timedAction": "Timed actions",
   "alarms.acknowledge": "Acknowledge",
   "alarms.unacknowledge": "Restore",
   "alarms.acknowledgedSection": "Acknowledged",
@@ -1020,6 +1023,8 @@
   "integrations.oauthError": "Authorization failed",
   "calendar.title": "Calendar",
   "calendar.profiles": "Week profiles",
+  "calendar.builtInProfile.travail": "Work",
+  "calendar.builtInProfile.vacances": "Holidays",
   "calendar.active": "active",
   "calendar.setActive": "Set as active profile",
   "calendar.slots": "Time slots",
@@ -2177,5 +2182,11 @@
   "alarms.orderOutcome.faultBottom": "{{equipment}}: fault (bottom contact)",
   "alarms.orderOutcome.faultWiring": "{{equipment}}: fault (wiring)",
   "alarms.orderOutcome.faultDetail": "{{equipment}}: fault ({{detail}})",
-  "alarms.orderOutcome.recovered": "{{equipment}}: the expected state arrived after all"
+  "alarms.orderOutcome.recovered": "{{equipment}}: the expected state arrived after all",
+  "alarms.orderOutcome.superseded": "{{equipment}}: alarm cleared by a later order",
+  "alarms.orderOutcome.notConfirmedTimeout": "{{equipment}}: order {{alias}} → {{value}} not confirmed (no state change within {{seconds}} s)",
+  "alarms.orderOutcome.notConfirmedOffline": "{{equipment}}: order {{alias}} → {{value}} not confirmed (device offline)",
+  "alarms.orderOutcome.notConfirmedUnreachable": "{{equipment}}: order {{alias}} → {{value}} not confirmed (integration unreachable)",
+  "alarms.orderOutcome.notConfirmedFault": "{{equipment}}: order {{alias}} → {{value}} not confirmed (device reported a fault)",
+  "alarms.orderOutcome.notConfirmedFaultDetail": "{{equipment}}: order {{alias}} → {{value}} not confirmed (device reported a fault: {{detail}})"
 }

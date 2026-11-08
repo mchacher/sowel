@@ -5,6 +5,7 @@ import {
   formatBytes,
   formatCurrency,
   formatDataValue,
+  formatClockTime,
   formatRelativeTime,
   formatDuration,
   formatEnergy,
@@ -307,5 +308,23 @@ describe("formatRelativeTime — Sowel's language", () => {
 
   it("is a dash without a timestamp", () => {
     expect(formatRelativeTime(null)).toBe("—");
+  });
+});
+
+// #1151 — the Activity panel read « since 12:30 AM » over rows at « 00:30 ».
+describe("formatClockTime — one 24-hour clock in every language", () => {
+  const halfPastMidnight = new Date(2026, 10, 7, 0, 30);
+  const afternoon = new Date(2026, 10, 7, 14, 5);
+
+  it("reads 00:30 and 14:05 in English and French alike", () => {
+    for (const locale of ["en-US", "en-GB", "fr-FR"]) {
+      expect(formatClockTime(halfPastMidnight, { locale })).toBe("00:30");
+      expect(formatClockTime(afternoon.getTime(), { locale })).toBe("14:05");
+    }
+  });
+
+  it("follows Sowel's language by default", async () => {
+    await i18n.changeLanguage("en");
+    expect(formatClockTime(halfPastMidnight)).toBe("00:30");
   });
 });
