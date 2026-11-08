@@ -245,21 +245,31 @@ Go to **Settings > Administration > Energy**, enable **Surplus arbiter**, and or
 The **Energy > Live** page gains a surplus-arbitration panel with three parts:
 
 - a **roster** listing every flexible load in your priority order, with its state and its figures;
-- a **timeline** with one lane per flexible load: green where it held the surplus, a red marker (with the reason on hover) where it was stepped back;
+- a **history** of the last hours: the surplus and the deficit as a curve, then one lane per flexible load;
 - a **decision journal** in plain language, so nothing the arbiter does is a mystery.
 
-The roster answers the two questions you actually have in front of it: who has the surplus, and what is holding up the next one.
+The sticker beside the title says where the house stands: _Surplus 1.2 kW_ on a green tint when it exports, _Deficit 4.8 kW_ on the grid's slate blue when it imports. A deficit is the normal state of a morning or an evening, not a fault, so nothing turns red; red is kept for a load whose surplus was withdrawn. Beside the table, the same figure reads _Grid import_ with _No load can start_ while the house imports, and _Available surplus_ with _Live grid export_ once there is a surplus.
 
-| Column        | What it says                                                                                                                                                                                                                                                            |
-| ------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| **Gap**       | What a waiting load is still short of, in watts. When nothing is missing it says so in words instead: _covered_ for a load that already has the surplus, _not requested_ for one no automation has asked for, or the reason it is held back (confirming, cooling down). |
-| **Load**      | What the load draws: measured while it runs, its rating while it rests.                                                                                                                                                                                                 |
-| **Tolerates** | The grid import it accepts, from its energy management settings.                                                                                                                                                                                                        |
-| **Need**      | The surplus it takes to start it: **load + engage margin - tolerated import**. The margin is stated under the table, so you can check the arithmetic on any row. A load tolerating more import than it draws needs no surplus at all and reads 0 W.                     |
+The roster answers the two questions you actually have in front of it: who has the surplus, and what is holding up the next one. Hover a column header for a one-line definition.
 
-The number in front of each name is its rank in your priority list. On a narrow screen the table keeps the equipment, its state and the gap, and drops the rest.
+| Column               | What it says                                                                                                                                                                                                                                                                                                                                                                                                                  |
+| -------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **Short by**         | What a waiting load is still short of, in watts. While the house imports, a waiting load reads _deficit_ instead: every one of them is short by the whole deficit, and the figure comes back with the surplus. When nothing is missing it says so in words: _covered_ for a load that already has the surplus, _not requested_ for one no automation has asked for, or the reason it is held back (confirming, cooling down). |
+| **Power**            | What the load draws: measured while it runs, its rating while it rests.                                                                                                                                                                                                                                                                                                                                                       |
+| **Tolerated import** | The grid import it accepts, from its energy management settings.                                                                                                                                                                                                                                                                                                                                                              |
+| **Surplus needed**   | The surplus it takes to start it: **power + engage margin − tolerated import**. The margin is stated under the table, so you can check the arithmetic on any row. A load tolerating more import than it draws needs no surplus at all and reads 0 W.                                                                                                                                                                          |
+
+The table is captioned _Loads in priority order_: the number in front of each name is its rank in your priority list. On a narrow screen the table keeps the equipment, its state and what it is short by, and drops the rest. _Next to switch_ names the first waiting load and the surplus it will start from (_Will start from 600 W of surplus_).
 
 At night the arbiter goes dormant: there is no surplus to hand out, every load reads _at rest_, and the panel says when it resumes.
+
+#### The history
+
+The curve is drawn to scale: zero sits where the window's own peaks put it, a watt has the same height above and below the line, and each half is labelled with what its edge stands for (_+0.3 kW_ at the top, _4.8 kW import_ at the bottom). On the live window the curve runs up to now and ends on a dot carrying the current figure, the one the sticker shows.
+
+Each lane draws a stretch of the same state as one bar, so a night at rest reads as one long pale bar rather than forty cells. The legend lists only the states the window shows, plus _At rest_. A load waiting for surplus while the arbiter was dormant (sun down, nothing exported) reads _at rest_ for those quarters too, as the roster did at the time: it was not waiting for anything that could come before sunrise.
+
+Point at the history with a mouse for a readout of that quarter of an hour: its time, the import or surplus, and what every load was doing. On a phone, tap a quarter to bring its decisions up in the journal. With a keyboard, each lane is one Tab stop: the left and right arrows move between quarters, Enter shows them in the journal. The arrows above the curve page back through the last 48 hours, 6 hours at a time on a phone and 12 hours from a tablet.
 
 ### You always win
 
