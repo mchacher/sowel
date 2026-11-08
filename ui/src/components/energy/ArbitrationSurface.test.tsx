@@ -289,6 +289,14 @@ describe("ArbitrationSurface in deficit (spec 197, FR-E2)", () => {
     expect(screen.getAllByText("300 W").length).toBeGreaterThanOrEqual(2);
   });
 
+  it("does not call a balanced house a deficit", () => {
+    seed({ availableSurplusW: 0, loads: [waiting] });
+    render(<ArbitrationSurface />);
+    expect(screen.queryByText("Deficit")).toBeNull();
+    expect(screen.queryByText("Grid import")).toBeNull();
+    expect(screen.queryByText("deficit")).toBeNull();
+  });
+
   it("keeps the degraded sticker as it was", () => {
     seed({ state: "degraded", availableSurplusW: null, loads: [waiting] });
     render(<ArbitrationSurface />);

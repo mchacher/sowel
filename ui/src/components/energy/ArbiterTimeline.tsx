@@ -86,6 +86,10 @@ export function ArbiterTimeline() {
   // When the shown window was loaded: where "now" sits on it. Read in the
   // fetch callbacks, never during render, so a re-render cannot move it.
   const [loadedAt, setLoadedAt] = useState(() => Date.now());
+  // The page the shown data belongs to. `pageOffset` moves on the click, a
+  // round trip before the data does: keyed on it, the live point landed on
+  // the previous page for that long.
+  const [dataOffset, setDataOffset] = useState(0);
   const lastFetchAtRef = useRef(0);
   const liveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   // Latest view params, read from inside the async live refetch to tell whether
@@ -118,6 +122,7 @@ export function ArbiterTimeline() {
       .then((d) => {
         if (!cancelled) {
           setData(d);
+          setDataOffset(pageOffset);
           setLoadedAt(Date.now());
           setFailed(false);
           setSelTime(null);
@@ -161,6 +166,7 @@ export function ArbiterTimeline() {
           }
           baselineRevRef.current = useArbiter.getState().timelineRev;
           setData(d);
+          setDataOffset(0);
           setLoadedAt(Date.now());
           setFailed(false);
         })
@@ -198,11 +204,13 @@ export function ArbiterTimeline() {
   // arbiter's current reading, the figure the sticker shows, placed at now
   // (the window ends at the end of the quarter under way).
   const now = loadedAt;
-  // Clamped to the right edge: a server that still rounds the window end down
-  // (before spec 197) ends it up to 15 min before now.
+  // Clamped to the right edge (a server that still rounds the window end
+  // down, before spec 197, ends it up to 15 min before now) and never left of
+  // the last sample (`now` is the browser's clock, the samples the server's).
+  const lastSampleX = samples.length ? (samples[samples.length - 1].at - start) / span : 0;
   const live =
-    pageOffset === 0 && liveW !== null && now >= start
-      ? { x: Math.min(1, (now - start) / span), w: liveW }
+    dataOffset === 0 && liveW !== null && now >= start
+      ? { x: Math.max(lastSampleX, Math.min(1, (now - start) / span)), w: liveW }
       : null;
   const scale = surplusScale(
     samples.map((p) => p.w),
@@ -296,7 +304,9 @@ export function ArbiterTimeline() {
     t(`arbiter.loadState.${s}`).toLocaleLowerCase(currentLocale());
 
   const uid = `arbtl-${pageOffset}`;
-  const rangeLabel = `${dayLabel(start, t)} · ${formatRange(hhmm(start), hhmm(geom.end))}`;
+  // The live window ends at the end of the quarter under way: say now.
+  const rangeEnd = live ? Math.min(geom.end, now) : geom.end;
+  const rangeLabel = `${dayLabel(start, t)} · ${formatRange(hhmm(start), hhmm(rangeEnd))}`;
   const legend = legendStates(data.loads);
   const colLeft = (f: number) => `calc(${PLOT_LEFT_PX}px + (100% - ${PLOT_LEFT_PX}px) * ${f})`;
 

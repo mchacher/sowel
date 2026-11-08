@@ -121,7 +121,8 @@ export function cellColor(s: ArbiterQuarterState): string {
  * Spec 165 (#577) — dormant (sun down, nothing to share) reads a waiting claim
  * as at rest. Applied by the roster pill and by the ribbon's current cell
  * through this one helper, so the two halves cannot disagree at night. Past
- * cells are history and are never rewritten (see `buildLoadTimelines`).
+ * cells are rewritten by the engine only (spec 197, `buildLoadTimelines`),
+ * never here.
  */
 export function displayState(s: ArbiterLoadState, dormant: boolean): ArbiterLoadState {
   return dormant && s === "pending" ? "idle" : s;
@@ -174,9 +175,10 @@ export function journalDotColor(kind: ArbiterDecision["kind"]): string {
 export const SURPLUS_HUE = "var(--color-solar-auto)";
 export const DEFICIT_HUE = "var(--color-energy-grid)";
 
-/** Spec 197 — a reading the arbiter has no surplus to share in: zero or below. */
+/** Spec 197 — the house imports. Zero is not a deficit: « Import réseau 0 W »
+ *  would say something false, so a balanced reading reads « Surplus 0 W ». */
 export function isDeficit(availableSurplusW: number | null): availableSurplusW is number {
-  return availableSurplusW !== null && availableSurplusW <= 0;
+  return availableSurplusW !== null && availableSurplusW < 0;
 }
 
 /**

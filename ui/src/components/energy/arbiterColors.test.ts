@@ -100,8 +100,8 @@ describe("surplusStickerColor", () => {
     expect(surplusStickerColor(1)).toBe("var(--color-solar-auto)");
   });
 
-  it("uses the grid slate on a deficit (zero or negative surplus), never red (spec 197)", () => {
-    expect(surplusStickerColor(0)).toBe("var(--color-energy-grid)");
+  it("uses the grid slate on a deficit, never red (spec 197)", () => {
+    expect(surplusStickerColor(-1)).toBe("var(--color-energy-grid)");
     expect(surplusStickerColor(-1091)).toBe("var(--color-energy-grid)");
     expect(surplusStickerColor(-1091)).not.toContain("error");
   });
@@ -247,14 +247,14 @@ describe("sticker words and the aside figure (spec 197)", () => {
 
   it("writes a surplus figure in the success green, a deficit in ink", () => {
     expect(surplusFigureInk(300)).toBe("var(--color-success)");
-    expect(surplusFigureInk(0)).toBe("var(--color-text)");
+    expect(surplusFigureInk(-1)).toBe("var(--color-text)");
     expect(surplusFigureInk(-4800)).toBe("var(--color-text)");
     expect(surplusFigureInk(null)).toBe("var(--color-text-secondary)");
   });
 
-  it("calls zero and below a deficit, a stale reading neither", () => {
+  it("calls an import a deficit, zero and a stale reading neither", () => {
     expect(isDeficit(-1)).toBe(true);
-    expect(isDeficit(0)).toBe(true);
+    expect(isDeficit(0)).toBe(false);
     expect(isDeficit(1)).toBe(false);
     expect(isDeficit(null)).toBe(false);
   });
