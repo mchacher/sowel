@@ -32,7 +32,7 @@ import { formatRelative } from "../../lib/format-relative";
 import { formatPercent, formatPower, formatPowerParts, type QuantityParts } from "../../lib/format";
 import { detectLiveStaleness, type LiveStalenessEntry } from "./live-staleness";
 import { liveHeadline, BALANCE_THRESHOLD_W, type LiveHeadline } from "./live-headline";
-import type { FlowHeadline } from "../flow/flow-geometry";
+import type { FlowHeadline, FlowShareBar } from "../flow/flow-geometry";
 import { useStalenessClock } from "../../hooks/useStalenessClock";
 
 // Sowel energy palette (matches EnergyBarChart.tsx + extends with grid colours)
@@ -234,19 +234,22 @@ function LiveDiagram({
 
   const gridColor = exporting ? GRID_OFF_COLOR : GRID_COLOR;
 
-  // Percentages displayed on each curve.
-  //   import + solar:  GH = % of conso from grid, SH = % of conso from solar (sum = 100)
-  //   export:          SH = % of production used by house, SG = % of production exported (sum = 100)
-  let pctGH: number | null = null;
-  let pctSH: number | null = null;
-  let pctSG: number | null = null;
-  if (!exporting && house > 5) {
-    if (flowGridToHouse > 0) pctGH = Math.round((flowGridToHouse / house) * 100);
-    if (flowSolarToHouse > 0) pctSH = Math.round((flowSolarToHouse / house) * 100);
-  } else if (exporting && solar > 5) {
-    if (flowSolarToHouse > 0) pctSH = Math.round((flowSolarToHouse / solar) * 100);
-    if (flowSolarToGrid > 0) pctSG = Math.round((flowSolarToGrid / solar) * 100);
-  }
+  // Spec 197 (FR-E7) — the share bars under the values, where the route
+  // percentages used to sit. The house shows where its power comes from
+  // (grid then solar, in route order); the panel, only while it splits its
+  // production between the house and the grid. Two whole percentages that
+  // add up to 100, so the bar's two ends never read 29 % and 72 %.
+  const houseBar = shareBar([
+    { w: flowGridToHouse, color: gridColor },
+    { w: flowSolarToHouse, color: AUTO_COLOR },
+  ]);
+  const solarBar =
+    flowSolarToHouse > 0 && flowSolarToGrid > 0
+      ? shareBar([
+          { w: flowSolarToHouse, color: AUTO_COLOR },
+          { w: flowSolarToGrid, color: INJECTION_COLOR },
+        ])
+      : undefined;
 
   const houseValue = nodePower(gridPower !== null || solarPower !== null ? house : null);
   const gridValue = nodePower(gridPower !== null ? grid : null);
@@ -280,21 +283,19 @@ function LiveDiagram({
             color: gridColor,
             active: flowGridToHouse > 0,
             powerW: flowGridToHouse,
-            ...(pctGH !== null ? { pill: { text: formatPercent(pctGH) } } : {}),
           },
           {
             edge: "rightToFocal",
             color: AUTO_COLOR,
             active: flowSolarToHouse > 0,
             powerW: flowSolarToHouse,
-            ...(pctSH !== null ? { pill: { text: formatPercent(pctSH) } } : {}),
           },
           {
+            // The export takes the injection green, as the headline's dot does.
             edge: "rightToLeft",
-            color: AUTO_COLOR,
+            color: INJECTION_COLOR,
             active: flowSolarToGrid > 0,
             powerW: flowSolarToGrid,
-            ...(pctSG !== null ? { pill: { text: formatPercent(pctSG) } } : {}),
           },
         ]}
         nodes={[
@@ -304,6 +305,7 @@ function LiveDiagram({
             color: HP_COLOR,
             value: houseValue.value,
             unit: houseValue.unit,
+            ...(houseBar ? { bar: houseBar } : {}),
             icon: (
               <svg
                 className="w-11 h-11 @lg:w-14 @lg:h-14"
@@ -345,6 +347,7 @@ function LiveDiagram({
             dimmed: solar < BALANCE_THRESHOLD_W,
             value: solarValue.value,
             unit: solarValue.unit,
+            ...(solarBar ? { bar: solarBar } : {}),
             icon: <SolarPanelIcon className="w-9 h-9 @lg:w-10 @lg:h-10" strokeWidth={1.4} />,
           },
         ]}
@@ -354,6 +357,28 @@ function LiveDiagram({
 }
 
 type T = (key: string, opts?: Record<string, unknown>) => string;
+
+/**
+ * A share bar from the watts on each route, in order. Whole percentages that
+ * add up to 100: the last part is rounded, the first takes the remainder, so
+ * the house's solar end reads what the headline says (« Le soleil couvre
+ * 71 % ») and its grid end the complement, as the screen-reader sentence does.
+ * Undefined when nothing flows.
+ */
+function shareBar(flows: { w: number; color: string }[]): FlowShareBar | undefined {
+  const parts = flows.filter((f) => f.w > 0);
+  const total = parts.reduce((a, f) => a + f.w, 0);
+  if (total <= 0) return undefined;
+  const pcts = parts.map((f) => Math.round((f.w / total) * 100));
+  pcts[0] = 100 - pcts.slice(1).reduce((a, p) => a + p, 0);
+  return {
+    parts: parts.map((f, i) => ({
+      share: f.w / total,
+      color: f.color,
+      label: formatPercent(pcts[i]),
+    })),
+  };
+}
 
 const HEADLINE_DOT: Record<LiveHeadline["kind"], string> = {
   import: GRID_COLOR,

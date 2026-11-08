@@ -505,29 +505,69 @@ input:focus-visible, select:focus-visible, textarea:focus-visible {
 }
 
 /* ============================================================
-   Flow diagram dots (spec 197, FR-E4)
+   Flow diagram ribbons (spec 197, FR-E4)
    ============================================================ */
 
-/* The moving dots of FlowDiagram: zero-length round-capped dashes, one
-   period apart (FLOW_DOT_PERIOD in flow-geometry.ts, 20 px), shifted by one
-   period per cycle. The speed is the cycle's duration, set inline per power
-   tier. Under reduced motion they stand still, and the route's width and its
-   end cap still say how much and which way. */
-@keyframes flow-dash {
-  from { stroke-dashoffset: 0; }
-  to { stroke-dashoffset: -20; }
+/* The ribbon of an active route in FlowDiagram: a band tinted from the
+   route's colour (--flow-c, set inline) into the card, a halo in dark, and a
+   three-dash wave moving one WAVE_PERIOD (flow-geometry.ts, 150 px) per
+   cycle, the cycle's length set inline from the power. Under reduced motion
+   the wave is hidden and the band takes more colour: its width and the
+   arrowhead still say how much and which way.
+   color-mix needs Safari / iOS 16.2: before it, the band is the route's
+   colour at the same strength as an opacity. */
+:root {
+  --flow-tint: 36%;
+  --flow-tint-alpha: 0.36;
+  --flow-halo: 0;
+}
+.dark,
+[data-theme="dark"] {
+  --flow-tint: 40%;
+  --flow-tint-alpha: 0.4;
+  --flow-halo: 0.16;
+}
+@media (prefers-reduced-motion: reduce) {
+  :root,
+  .dark,
+  [data-theme="dark"] {
+    --flow-tint: 72%;
+    --flow-tint-alpha: 0.72;
+  }
 }
 
-.flow-dash {
-  animation-name: flow-dash;
-  animation-duration: 1s;
+.flow-band {
+  stroke: var(--flow-c);
+  stroke-opacity: var(--flow-tint-alpha);
+}
+@supports (color: color-mix(in srgb, red 50%, blue)) {
+  .flow-band {
+    stroke: color-mix(in srgb, var(--flow-c) var(--flow-tint), var(--color-surface));
+    stroke-opacity: 1;
+  }
+}
+
+.flow-halo {
+  stroke: var(--flow-c);
+  stroke-opacity: var(--flow-halo);
+}
+
+@keyframes flow-wave {
+  from { stroke-dashoffset: var(--o0, 0px); }
+  to { stroke-dashoffset: calc(var(--o0, 0px) - 150px); }
+}
+
+.flow-wave {
+  stroke-dashoffset: var(--o0, 0px);
+  animation-name: flow-wave;
+  animation-duration: 2s;
   animation-timing-function: linear;
   animation-iteration-count: infinite;
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .flow-dash {
-    animation: none;
+  .flow-wave {
+    display: none;
   }
 }
 

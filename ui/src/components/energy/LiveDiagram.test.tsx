@@ -12,6 +12,7 @@ import { render, screen, within } from "../../test-utils";
 import { BUDGET_FLOOR_MS } from "../../../../src/shared/reading-freshness";
 import { MemoryRouter } from "react-router-dom";
 import { LiveEnergyPage } from "./LiveEnergyPage";
+import { ribbonWidth } from "../flow/flow-geometry";
 import { useEquipments } from "../../store/useEquipments";
 import type { EquipmentWithDetails } from "../../types";
 
@@ -83,7 +84,8 @@ describe("Live energy diagram — geometry", () => {
     // Producing 2000 W, exporting 1500 W → house 500 W.
     seed([meter("grid", "main_energy_meter", -1500), meter("pv", "energy_production_meter", 2000)]);
     const { container } = render(<LiveEnergyPage />, { wrapper: MemoryRouter });
-    expect(strokesFor(container, PATH_SOLAR_TO_GRID)).toContain("var(--color-solar-auto)");
+    // The export takes the injection green (spec 197), like the headline's dot.
+    expect(strokesFor(container, PATH_SOLAR_TO_GRID)).toContain("var(--color-solar-injection)");
     expect(strokesFor(container, PATH_SOLAR_TO_HOUSE)).toContain("var(--color-solar-auto)");
     // The grid leg carries nothing on export, so it stays skeleton-only.
     expect(strokesFor(container, PATH_GRID_TO_HOUSE)).toEqual(["var(--color-border)"]);
@@ -165,14 +167,56 @@ describe("Live energy diagram — nodes and status", () => {
     expect(headline.querySelector("p")).toBeNull();
   });
 
-  it("draws the routes by power tier", () => {
-    // 4.9 kW from the grid, 180 W of sun: the widest and the thinnest route.
+  it("draws each ribbon as wide as its power", () => {
+    // 4.9 kW from the grid, 180 W of sun.
     seed([meter("grid", "main_energy_meter", 4900), meter("pv", "energy_production_meter", 180)]);
     const { container } = render(<LiveEnergyPage />, { wrapper: MemoryRouter });
-    const tierOf = (d: string) =>
-      container.querySelector(`path[data-tier][d="${d}"]`)?.getAttribute("data-tier");
-    expect(tierOf(PATH_GRID_TO_HOUSE)).toBe("3");
-    expect(tierOf(PATH_SOLAR_TO_HOUSE)).toBe("1");
+    const widthOf = (edge: string) =>
+      container.querySelector(`g[data-edge="${edge}"]`)?.getAttribute("data-width");
+    expect(widthOf("leftToFocal")).toBe(String(ribbonWidth(4900)));
+    expect(widthOf("rightToFocal")).toBe(String(ribbonWidth(180)));
+  });
+
+  // Spec 197 (FR-E7) — the shares moved from the routes to the nodes.
+  it("splits the house's bar grid then solar, with percentages that add up", () => {
+    // 4.9 kW from the grid, 180 W of sun: 96 % | 4 %, as the headline says 4 %.
+    seed([meter("grid", "main_energy_meter", 4900), meter("pv", "energy_production_meter", 180)]);
+    render(<LiveEnergyPage />, { wrapper: MemoryRouter });
+    const bars = screen.getAllByTestId("flow-share-bar");
+    expect(bars).toHaveLength(1);
+    const segs = [...bars[0].querySelectorAll<HTMLElement>("[data-share]")];
+    expect(segs.map((s) => s.style.background)).toEqual([
+      "var(--color-energy-grid)",
+      "var(--color-solar-auto)",
+    ]);
+    expect(bars[0].textContent).toBe("96%4%");
+    expect(bars[0].closest('[data-slot="focal"]')).toBeTruthy();
+  });
+
+  it("shows a full grid bar at night and a full solar bar on export, plus the panel's split", () => {
+    seed([meter("grid", "main_energy_meter", 1800), meter("pv", "energy_production_meter", 0)]);
+    const night = render(<LiveEnergyPage />, { wrapper: MemoryRouter });
+    const nightBar = screen.getByTestId("flow-share-bar");
+    expect(nightBar.querySelectorAll("[data-share]")).toHaveLength(1);
+    expect(nightBar.textContent).toBe("");
+    night.unmount();
+
+    // Producing 2.6 kW, exporting 1.4 kW → the house takes 1.2 kW: 46 | 54.
+    seed([meter("grid", "main_energy_meter", -1400), meter("pv", "energy_production_meter", 2600)]);
+    render(<LiveEnergyPage />, { wrapper: MemoryRouter });
+    const [house, panel] = ["focal", "right"].map(
+      (slot) =>
+        document
+          .querySelector(`[data-slot="${slot}"]`)
+          ?.querySelector('[data-testid="flow-share-bar"]') as HTMLElement | null,
+    );
+    expect(house!.querySelectorAll("[data-share]")).toHaveLength(1);
+    expect(panel!.textContent).toBe("46%54%");
+    expect(
+      [...panel!.querySelectorAll<HTMLElement>("[data-share]")].map((s) => s.style.background),
+    ).toEqual(["var(--color-solar-auto)", "var(--color-solar-injection)"]);
+    // The grid satellite carries a single flow: no bar.
+    expect(document.querySelector('[data-slot="left"] [data-testid="flow-share-bar"]')).toBeNull();
   });
 
   it("shows the share of consumption on each supplying leg", () => {

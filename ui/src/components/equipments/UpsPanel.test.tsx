@@ -1,6 +1,7 @@
 import { describe, it, expect } from "vitest";
 import { render, screen, within } from "../../test-utils";
 import { UpsPanel } from "./UpsPanel";
+import { ribbonWidth } from "../flow/flow-geometry";
 import type { DataBindingWithValue } from "../../types";
 
 /** Build the binding set an APC behind the NUT plugin actually produces. */
@@ -37,7 +38,7 @@ function bindings(over: Record<string, unknown> = {}): DataBindingWithValue[] {
 }
 
 /** The diagram's node with this label, to read its figures apart from the headline. */
-const nodeOf = (label: string) => screen.getByText(label).closest(".absolute") as HTMLElement;
+const nodeOf = (label: string) => screen.getByText(label).closest("[data-slot]") as HTMLElement;
 
 const paintedStrokes = (c: HTMLElement) =>
   [...c.querySelectorAll("path")]
@@ -99,18 +100,37 @@ describe("UpsPanel on mains", () => {
     expect(within(screen.getByTestId("flow-headline")).getByText("—")).toBeTruthy();
   });
 
-  it("draws the mains route by the load's power tier", () => {
+  it("draws the mains ribbon as wide as the load", () => {
     const { container, rerender } = render(<UpsPanel dataBindings={bindings()} />);
-    expect(container.querySelector("path[data-tier]")?.getAttribute("data-tier")).toBe("1");
+    const width = () => container.querySelector("g[data-edge]")?.getAttribute("data-width");
+    expect(width()).toBe(String(ribbonWidth(21)));
     rerender(<UpsPanel dataBindings={bindings({ real_power: 900 })} />);
-    expect(container.querySelector("path[data-tier]")?.getAttribute("data-tier")).toBe("2");
+    expect(width()).toBe(String(ribbonWidth(900)));
+  });
+
+  // Spec 197 (FR-E7) — levels, not splits: the load in the source's colour,
+  // the battery's charge; no figure repeated on the bars, none on the routes.
+  it("shows the load and the battery charge as level bars", () => {
+    render(<UpsPanel dataBindings={bindings()} />);
+    const level = (label: string) =>
+      within(nodeOf(label))
+        .getByTestId("flow-share-bar")
+        .querySelector<HTMLElement>("[data-share]")!;
+    expect(level("Protected load").style.width).toBe("4%");
+    expect(level("Protected load").style.background).toBe("var(--color-energy-grid)");
+    expect(
+      within(nodeOf("Battery")).getByTestId("flow-share-bar").querySelectorAll("[data-share]"),
+    ).toHaveLength(1);
+    expect(within(nodeOf("Mains")).queryByTestId("flow-share-bar")).toBeNull();
+    for (const bar of screen.getAllByTestId("flow-share-bar")) expect(bar.textContent).toBe("");
   });
 
   it("lights the charge loop only while the UPS is charging", () => {
     const { container, rerender } = render(<UpsPanel dataBindings={bindings()} />);
     expect(screen.queryByText("charging")).toBeNull();
     rerender(<UpsPanel dataBindings={bindings({ charging: true })} />);
-    expect(screen.getByText("charging")).toBeTruthy();
+    // « charging » is the battery's sub-line now, not a pill on the route.
+    expect(within(nodeOf("Battery")).getByText("charging")).toBeTruthy();
     expect(paintedStrokes(container)).toContain("var(--color-solar-auto)");
   });
 });
@@ -134,6 +154,17 @@ describe("UpsPanel during an outage", () => {
     render(<UpsPanel dataBindings={outage()} />);
     expect(screen.queryByText("6 min")).toBeNull();
     expect(within(screen.getByTestId("flow-headline")).getByText("6")).toBeTruthy();
+  });
+
+  it("draws the load and the battery level in the severity colour on battery", () => {
+    render(<UpsPanel dataBindings={outage()} />);
+    const level = (label: string) =>
+      within(nodeOf(label))
+        .getByTestId("flow-share-bar")
+        .querySelector<HTMLElement>("[data-share]")!;
+    expect(level("Battery").style.width).toBe("14%");
+    expect(level("Battery").style.background).toBe("var(--color-error)");
+    expect(level("Protected load").style.background).toBe("var(--color-error)");
   });
 
   it("tells a screen reader the status before the flow", () => {
