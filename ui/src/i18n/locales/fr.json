@@ -831,6 +831,7 @@
   "recipes.slotRequired": "{{name}} est requis",
   "recipes.enable": "Activer la recette",
   "recipes.overrideActive": "Dérogation active",
+  "recipes.overrideBadge": "Dérogation",
   "recipes.disable": "Désactiver la recette",
   "recipes.duplicate": "Dupliquer dans une autre zone",
   "recipes.duplicateTitle": "Dupliquer la recette",

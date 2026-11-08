@@ -1,6 +1,7 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { render, screen, userEvent } from "../../test-utils";
 import { RecipeInstanceRow } from "./RecipeInstanceRow";
+import i18n from "../../i18n";
 import { useRecipes } from "../../store/useRecipes";
 import { useEquipments } from "../../store/useEquipments";
 import { useZones } from "../../store/useZones";
@@ -311,6 +312,23 @@ describe("RecipeInstanceRow", () => {
 
       expect(screen.queryByRole("button", { name: "Comfort" })).toBeNull();
       expect(screen.queryByTitle("Override active")).toBeNull();
+    });
+
+    it("reads the override badge and the edit tooltip in French (#1169)", async () => {
+      await i18n.changeLanguage("fr");
+      try {
+        seedStores(withPills());
+        render(
+          <RecipeInstanceRow instance={withPills()} recipes={[CYCLE_RECIPE]} zoneId="z-salon" />,
+        );
+
+        expect(screen.getByTitle("Dérogation active").textContent).toBe("Dérogation");
+        expect(screen.getByTitle("Modifier")).toBeTruthy();
+        expect(screen.queryByText("Override")).toBeNull();
+        expect(screen.queryByTitle("Edit")).toBeNull();
+      } finally {
+        await i18n.changeLanguage("en");
+      }
     });
   });
 

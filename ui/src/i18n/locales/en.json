@@ -831,6 +831,7 @@
   "recipes.slotRequired": "{{name}} is required",
   "recipes.enable": "Enable recipe",
   "recipes.overrideActive": "Override active",
+  "recipes.overrideBadge": "Override",
   "recipes.disable": "Disable recipe",
   "recipes.duplicate": "Duplicate to another zone",
   "recipes.duplicateTitle": "Duplicate recipe",

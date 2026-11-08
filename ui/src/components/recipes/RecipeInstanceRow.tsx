@@ -381,7 +381,7 @@ export function RecipeInstanceRow({
           <button
             onClick={isAdmin ? handleStartEdit : undefined}
             className={`flex-1 min-w-0 text-left transition-opacity duration-150 ${isAdmin ? "hover:opacity-70 cursor-pointer" : "cursor-default"}`}
-            title={isAdmin ? "Edit" : undefined}
+            title={isAdmin ? t("common.edit") : undefined}
           >
             <MarqueeName text={displayName} className="text-body font-medium text-text" />
             {/* The equipment line (#1165) — « A, B +2 ». The names truncate,
@@ -466,7 +466,7 @@ export function RecipeInstanceRow({
                 title={t("recipes.overrideActive", "Override active")}
               >
                 <ShieldOff size={10} strokeWidth={2} />
-                Override
+                {t("recipes.overrideBadge")}
               </span>
             )}
             {recipe &&
