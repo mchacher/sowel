@@ -845,7 +845,6 @@ export class OrderConfirmationTracker {
     });
   }
 
-  /** O6 — the i18n key and parameters the UI words a tracked order's alarm from. */
   /**
    * The keyed form of the generic « Order not confirmed » alarm (#1151): the
    * same facts as its English `message`, worded by the UI and the push.
@@ -880,6 +879,7 @@ export class OrderConfirmationTracker {
     }
   }
 
+  /** O6 — the i18n key and parameters the UI words a tracked order's alarm from. */
   private outcomeAlarmWording(
     entry: PendingOrder,
     name: string,
