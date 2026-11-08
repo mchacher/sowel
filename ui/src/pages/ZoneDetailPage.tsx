@@ -10,6 +10,7 @@ import { ArrowLeft, Loader2, Map, Pencil, Trash2, ChevronRight, FolderOpen } fro
 import type { ZoneWithChildren, RecipeActionDef, RecipeInstance, RecipeInfo } from "../types";
 import { useWsSubscription } from "../hooks/useWsSubscription";
 import { ROOT_ZONE_ID } from "../lib/constants";
+import { apiErrorText } from "../lib/api-error";
 import { cycleOptionLabel } from "../components/recipes/recipe-cycle";
 
 // ── Mode pill colors ────────────────────────────────────
@@ -134,7 +135,7 @@ export function ZoneDetailPage() {
       })
       .catch((err) => {
         if (!cancelled) {
-          setError(err instanceof Error ? err.message : "Failed to load zone");
+          setError(apiErrorText(err));
           setLoading(false);
         }
       });
@@ -180,7 +181,7 @@ export function ZoneDetailPage() {
       await deleteZone(zone.id);
       navigate("/zones");
     } catch (err) {
-      alert(err instanceof Error ? err.message : "Failed to delete zone");
+      alert(apiErrorText(err, t));
       setDeleting(false);
     }
   };

@@ -9,6 +9,7 @@ import { useAuth } from "../store/useAuth";
 import { DeviceNameEditor } from "../components/devices/DeviceNameEditor";
 import { DeviceDataTable } from "../components/devices/DeviceDataTable";
 import { sourceLabel } from "../lib/format";
+import { apiErrorText } from "../lib/api-error";
 import { RelativeTime } from "../components/RelativeTime";
 import { useWsSubscription } from "../hooks/useWsSubscription";
 
@@ -60,7 +61,7 @@ export function DeviceDetailPage() {
       })
       .catch((err) => {
         if (cancelled) return;
-        setError(err instanceof Error ? err.message : "Failed to load device");
+        setError(apiErrorText(err));
         setLoading(false);
       });
 

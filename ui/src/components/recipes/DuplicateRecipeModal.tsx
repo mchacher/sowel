@@ -10,6 +10,7 @@ import { matchesEquipmentType } from "../../lib/recipe-slots";
 import { EquipmentOptions } from "./recipe-form-fields";
 import { useZoneOptions } from "./useZoneOptions";
 import { FIELD_LABEL } from "../ui/text-roles";
+import { apiErrorText } from "../../lib/api-error";
 
 // ============================================================
 // Duplicate recipe modal
@@ -121,7 +122,7 @@ export function DuplicateRecipeModal({
       await createInstance(instance.recipeId, newParams);
       onClose();
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Unknown error");
+      setError(apiErrorText(err, t));
     } finally {
       setSubmitting(false);
     }

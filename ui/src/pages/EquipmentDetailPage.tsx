@@ -83,7 +83,7 @@ import type { EquipmentWithDetails, HistoryBindingState } from "../types";
 import { useWsSubscription } from "../hooks/useWsSubscription";
 import { HistoryPanel } from "../components/history/HistoryPanel";
 import { useEquipmentDetail } from "../hooks/useEquipmentDetail";
-import { apiErrorMessage } from "../lib/api-error";
+import { apiErrorMessage, apiErrorText } from "../lib/api-error";
 import { formatNumber } from "../lib/format";
 import { readEquipmentOrigin, type EquipmentOrigin } from "../lib/equipment-origin";
 import { flattenZonesWithPath } from "../lib/zone-path";
@@ -260,7 +260,7 @@ export function EquipmentDetailPage() {
       await deleteEquipment(equipment.id);
       navigate("/equipments");
     } catch (err) {
-      alert(err instanceof Error ? err.message : t("common.error"));
+      alert(apiErrorText(err, t));
       setDeleting(false);
     }
   };
@@ -1210,7 +1210,7 @@ function ChangeDeviceModal({
       await autoCreateBindings(equipment.id, selectedDeviceIds, equipment.type, candidateByDevice);
       onDone();
     } catch (err) {
-      setError(err instanceof Error ? err.message : "An error occurred");
+      setError(apiErrorText(err, t));
       setSaving(false);
     }
   };

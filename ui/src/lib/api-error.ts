@@ -24,6 +24,8 @@ export function apiErrorStatus(err: unknown): number | null {
  * - no answer (status 0) → « Connexion impossible », retryable
  * - 5xx → « Erreur du serveur », retryable
  * - 404 → « Introuvable »
+ * - a 4xx the client wrote itself (issue #1141) → 401 « Session expirée », 403 « Accès
+ *   refusé », any other the generic « Une erreur est survenue »
  * - anything else → generic title, the server's own message (a validation error says
  *   what was wrong, and that text is meant for the user)
  */
@@ -56,6 +58,23 @@ export function apiErrorMessage(err: unknown, t: TFunction): ApiErrorText {
       message: t("errors.notFound.message"),
       retryable: false,
     };
+  }
+  if (err instanceof ApiError && !err.fromServer) {
+    if (status === 401) {
+      return {
+        title: t("errors.sessionExpired.title"),
+        message: t("errors.sessionExpired.message"),
+        retryable: false,
+      };
+    }
+    if (status === 403) {
+      return {
+        title: t("errors.forbidden.title"),
+        message: t("errors.forbidden.message"),
+        retryable: false,
+      };
+    }
+    return { title: t("common.error"), message: "", retryable: false };
   }
   const raw = err instanceof Error ? err.message : "";
   return { title: t("common.error"), message: raw, retryable: false };
