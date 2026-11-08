@@ -396,9 +396,11 @@ export function RecipeInstanceRow({
             (#1161, every user). The log button stays visible on mobile
             (read-only, opens a bottom sheet on the PWA, #615); duplicate /
             delete are config/destructive and stay desktop-only. A non-admin row
-            without pills has no row 2, as before. */}
+            without pills has no row 2, as before. On a phone the line is as
+            tall as the log button for everyone, so the mode pill's enlarged
+            hit area fits inside it. */}
         {(isAdmin || hasPills) && (
-          <div className="col-start-2 col-span-2 row-start-2 flex flex-wrap items-center gap-x-2 gap-y-1 min-w-0">
+          <div className="col-start-2 col-span-2 row-start-2 flex flex-wrap items-center gap-x-2 gap-y-1 min-w-0 min-h-8 sm:min-h-0">
             {isAdmin && (
               <div className="flex items-center gap-[2px]">
                 <button
@@ -448,6 +450,9 @@ export function RecipeInstanceRow({
                   action={action}
                   lang={lang}
                   sendAction={sendAction}
+                  // A 33 px hit area on a phone without changing the pill's
+                  // look; row 2 is 32 px tall there, so it stays on its line.
+                  className="relative after:absolute after:inset-x-0 after:-inset-y-2 after:content-[''] sm:after:hidden"
                 />
               ))}
           </div>
