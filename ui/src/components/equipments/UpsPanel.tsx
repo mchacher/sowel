@@ -160,9 +160,9 @@ export function UpsPanel({ dataBindings }: UpsPanelProps) {
   ];
 
   const runtimeLabel = formatRuntime(r.runtimeS);
-  // Spec 197 (FR-E4.5) — the watts on each route set its ribbon, as on Live.
-  // The UPS reports no charging power, so the charge loop takes the floor
-  // width, which a charger topping up a battery is in any case.
+  // Spec 197 (FR-E4.5) — the watts on each route set its wave's speed, as on
+  // Live. The UPS reports no charging power, so the charge loop's wave moves
+  // at the slowest speed, which a charger topping up a battery is in any case.
   const links: FlowLinkSpec[] = [
     {
       edge: "leftToFocal",

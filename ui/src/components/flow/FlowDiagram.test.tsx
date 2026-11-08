@@ -86,10 +86,8 @@ describe("FlowDiagram routes", () => {
   });
 });
 
-// Spec 197 (FR-E4) — the flow says how much, by width and speed, and which
-// way at rest, by a head at the route's end.
-// Spec 197 (FR-E4) — the ribbon says how much by its width, which way by its
-// wave and, at rest, by the head at its end.
+// Spec 197 (FR-E4) — one ribbon width; the wave's speed says how much (with
+// the share bars), the wave and, at rest, the head at the route's end which way.
 describe("FlowDiagram ribbons", () => {
   it("draws a band, a halo and a three-dash wave per active route, in CSS, with no SMIL", () => {
     const { container } = render(

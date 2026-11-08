@@ -256,7 +256,7 @@ function Ribbon({ link }: { link: FlowLinkSpec }): ReactNode {
     "--rw": `${narrow}px`,
     "--rw-wide": `${wide}px`,
   } as CSSProperties;
-  // The CSS cycle has one fixed length (WAVE_BASE_SECONDS); the power sets
+  // The CSS cycle has one fixed length (WAVE_PERIOD / WAVE_BASE_SPEED, 8.333 s); the power sets
   // the playback rate through the Web Animations API, which keeps the wave
   // where it is. Changing animation-duration instead re-derives the progress
   // from the elapsed time, and the wave jumped on every reading.
