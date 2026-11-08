@@ -119,7 +119,9 @@ or energy reading raises nothing here.
 
 ### Consumption view
 
-Pick a period (Day, Week, Month, Year) and navigate dates with the arrows. The chart renders bars for each time bucket of the selected period.
+Pick a period (Day, Week, Month, Year) and navigate dates with the arrows. On a phone the controls stack in one left-aligned column, the period tabs at full width.
+
+The card opens on the answer: the period's total consumption in large type, with « today », « this week »… beside it (or the date, for a past period), then one sentence of what it is made of: `9.44 kWh at peak hours · 1.97 kWh at off-peak hours · 3% self-consumed`. The chart below renders bars for each time bucket of the selected period, with its axes and tick values.
 
 ![Daily consumption chart](../screenshots/energy-consumption-day-en.png)
 
@@ -131,19 +133,19 @@ Color coding on the **Total** chart:
 | Light blue | Off-peak-hours grid consumption                          |
 | Green      | Autoconsumption (only when a production meter is set up) |
 
-The legend below the chart has one swatch per colour, peak and off-peak included. The dark theme keeps the same meanings with its own shades: peak stays the vivid blue and off-peak the pale one, far enough apart to tell two stacked bars from each other. Hovering a bar opens a tooltip with the same swatches; its labels and figures are in the text colour, which the pale blue would not be legible as.
+The legend below the chart has one swatch per colour, peak and off-peak included, with names only: the figures are in the headline above. The dark theme keeps the same meanings with its own shades: peak stays the vivid blue and off-peak the pale one, far enough apart to tell two stacked bars from each other. Hovering a bar opens a tooltip with the same swatches; its labels and figures are in the text colour, which the pale blue would not be legible as.
 
-Below the chart, totals are shown in kWh: grid (split into peak / off-peak), autoconsumption, and total (with the self-consumption share as a percentage).
+The total counts everything the house used, grid and sun; the self-consumed share is the sun's part of it.
 
 #### Wh / € unit toggle
 
-A **Wh / €** segmented toggle sits next to the period selector at the top of the page. In **€** mode, every kWh figure on the bar chart (Y axis, bar height, tooltip) and on the totals card is replaced by the corresponding cost in euros, computed from the prices you entered in **Settings > Energy tariffs**. The toggle is disabled — with a tooltip pointing back to the tariff settings — until you set at least one of the HP / HC prices to a non-zero value.
+A **Wh / €** segmented toggle sits next to the period selector at the top of the page. In **€** mode, every kWh figure on the bar chart (Y axis, bar height, tooltip) and in the headline is replaced by the corresponding cost in euros, computed from the prices you entered in **Settings > Energy tariffs**. The toggle is disabled — with a tooltip pointing back to the tariff settings — until you set at least one of the HP / HC prices to a non-zero value.
 
-Pricing is applied at read time, so changing your tariff (after a contract renegotiation, for example) re-values past consumption with the new prices. Autoconsumption has no billed cost and is therefore hidden from the chart in € mode.
+Pricing is applied at read time, so changing your tariff (after a contract renegotiation, for example) re-values past consumption with the new prices. Autoconsumption has no billed cost and is therefore hidden from the chart in € mode, and left out of the € total: the headline then reads the bill, split into peak and off-peak, with the self-consumed share still given as a percentage of energy.
 
 #### Total / By usage toggle
 
-When at least one submeter is configured, a **Total / By usage** toggle appears above the chart. The **By usage** view replaces the peak / off-peak split with one stack per submeter, plus an **Other** stack for the residual that the main meter saw but no submeter accounted for.
+When at least one submeter is configured, a **Total / By usage** toggle appears beside the headline. It, the Wh / € toggle, the period tabs (here and on the Analyse page) and the forecast's window buttons are the same segmented control. The **By usage** view replaces the peak / off-peak split with one stack per submeter, plus an **Other** stack for the residual that the main meter saw but no submeter accounted for.
 
 ![By usage breakdown](../screenshots/energy-consumption-by-usage-en.png)
 
@@ -195,11 +197,11 @@ Switching to **Month** or **Year** keeps the same colors and totals, but each ba
 
 ### Production view
 
-The Production page is the home of everything about your panels. It shows the production history, split between autoconsumption (produced and consumed locally) and grid injection, with totals for the day, month or year.
+The Production page is the home of everything about your panels. Its card opens on the energy produced over the period; on today's Day view it reads against the forecast, `0.39 kWh of 7.93 kWh expected today`, and the sentence under it splits it between autoconsumption (produced and consumed locally) and grid injection. The chart below keeps its axes. On today's Day view its scale reaches at least the forecast's busiest hour, so a morning's first bars sit in the frame of the day to come rather than filling a half-kilowatt-hour one.
 
 Since v1.57.0 it also carries two panels, both driven by your own installation rather than by a generic model:
 
-- **Forecast**, an hourly expected-production curve out to five days (in green, the measured production in blue), learned from your history. It needs the `weather-forecast` plugin at 2.3.0 or later, and about six weeks of production before the model settles. Before that, Sowel shows a provisional clear-sky estimate and says so.
+- **Forecast**, an hourly expected-production curve out to five days (« Expected » as a dashed grey line, the measured production « Actual » as a solid green line, the green of the bars above), learned from your history. It needs the `weather-forecast` plugin at 2.3.0 or later, and about six weeks of production before the model settles. Before that, Sowel shows a provisional clear-sky estimate and says so.
 - **Health**, which tells you when the panels stop performing against what your own history says they should. Declaring a new array, or changing the peak power, re-estimates the gain from the days that follow rather than waiting for the window to drift.
 
 Both are described at length in [Following your solar production](../deep-dives/pv-health.md).

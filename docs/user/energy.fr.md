@@ -121,7 +121,9 @@ en retard sur une tension ou un index d'énergie ne déclenche rien ici.
 
 ### Vue Consommation
 
-Choisissez une période (Jour, Sem, Mois, Année) et naviguez avec les flèches. Le graphique affiche une barre par seau temporel de la période sélectionnée.
+Choisissez une période (Jour, Sem, Mois, Année) et naviguez avec les flèches. Sur un téléphone, les commandes s'empilent en une colonne alignée à gauche, les onglets de période sur toute la largeur.
+
+La carte s'ouvre sur la réponse : la consommation totale de la période en grand, avec « aujourd'hui », « cette semaine »… à côté (ou la date, pour une période passée), puis une phrase qui la détaille : `9,44 kWh en heures pleines · 1,97 kWh en heures creuses · 3 % autoconsommé`. Le graphique en dessous affiche une barre par seau temporel de la période sélectionnée, avec ses axes et leurs graduations.
 
 ![Consommation journalière](../screenshots/energy-consumption-day-fr.png)
 
@@ -133,19 +135,19 @@ Code couleur sur le graphique **Total** :
 | Bleu clair | Consommation réseau en heures creuses                        |
 | Vert       | Autoconsommation (uniquement avec un compteur de production) |
 
-La légende sous le graphique a une pastille par couleur, heures pleines et heures creuses comprises. Le thème sombre garde les mêmes significations avec ses propres nuances : les heures pleines restent le bleu vif et les heures creuses le bleu pâle, assez éloignés pour distinguer deux barres empilées. Le survol d'une barre ouvre une infobulle avec les mêmes pastilles ; ses libellés et ses valeurs sont dans la couleur du texte, ce que le bleu pâle ne permettrait pas de lire.
+La légende sous le graphique a une pastille par couleur, heures pleines et heures creuses comprises, avec les noms seuls : les chiffres sont dans l'en-tête au-dessus. Le thème sombre garde les mêmes significations avec ses propres nuances : les heures pleines restent le bleu vif et les heures creuses le bleu pâle, assez éloignés pour distinguer deux barres empilées. Le survol d'une barre ouvre une infobulle avec les mêmes pastilles ; ses libellés et ses valeurs sont dans la couleur du texte, ce que le bleu pâle ne permettrait pas de lire.
 
-Sous le graphique, les totaux sont affichés en kWh : réseau (réparti HP / HC), autoconsommation, et total (avec le pourcentage d'autoconsommation).
+Le total compte tout ce que la maison a consommé, réseau et soleil ; la part autoconsommée est celle du soleil.
 
 #### Bascule Wh / €
 
-Un sélecteur segmenté **Wh / €** est placé à côté du sélecteur de période en haut de la page. En mode **€**, chaque valeur en kWh du graphique (axe Y, hauteur de barre, tooltip) et de la carte récap est remplacée par le coût correspondant en euros, calculé à partir des prix saisis dans **Réglages > Tarifs énergie**. La bascule est désactivée — avec une tooltip qui renvoie vers les réglages — tant qu'au moins un des prix HP / HC n'est pas non nul.
+Un sélecteur segmenté **Wh / €** est placé à côté du sélecteur de période en haut de la page. En mode **€**, chaque valeur en kWh du graphique (axe Y, hauteur de barre, tooltip) et de l'en-tête est remplacée par le coût correspondant en euros, calculé à partir des prix saisis dans **Réglages > Tarifs énergie**. La bascule est désactivée — avec une tooltip qui renvoie vers les réglages — tant qu'au moins un des prix HP / HC n'est pas non nul.
 
-La valorisation est appliquée au moment de l'affichage : modifier votre tarif (après une renégociation, par exemple) revalorise la consommation passée avec les nouveaux prix. L'autoconsommation n'a pas de coût facturé, elle est donc masquée du graphique en mode €.
+La valorisation est appliquée au moment de l'affichage : modifier votre tarif (après une renégociation, par exemple) revalorise la consommation passée avec les nouveaux prix. L'autoconsommation n'a pas de coût facturé, elle est donc masquée du graphique en mode € et laissée hors du total en € : l'en-tête donne alors la facture, répartie en heures pleines et heures creuses, la part autoconsommée restant un pourcentage d'énergie.
 
 #### Bascule Total / Par usage
 
-Quand au moins un sous-compteur est configuré, un bouton **Total / Par usage** apparaît au-dessus du graphique. La vue **Par usage** remplace la répartition HP / HC par une pile par sous-compteur, plus une pile **Autre** pour le résidu vu par le compteur principal mais non comptabilisé par les sous-compteurs.
+Quand au moins un sous-compteur est configuré, un bouton **Total / Par usage** apparaît à côté de l'en-tête. Lui, la bascule Wh / €, les onglets de période (ici et sur la page Analyse) et les boutons de fenêtre de la prévision sont le même sélecteur segmenté. La vue **Par usage** remplace la répartition HP / HC par une pile par sous-compteur, plus une pile **Autre** pour le résidu vu par le compteur principal mais non comptabilisé par les sous-compteurs.
 
 ![Répartition par usage](../screenshots/energy-consumption-by-usage-fr.png)
 
@@ -197,11 +199,11 @@ Passer en **Mois** ou **Année** garde les mêmes couleurs et totaux, mais chaqu
 
 ### Vue Production
 
-La page Production regroupe tout ce qui concerne vos panneaux. Elle affiche l'historique de production, réparti entre autoconsommation (produite et consommée sur place) et injection réseau, avec les totaux du jour, du mois ou de l'année.
+La page Production regroupe tout ce qui concerne vos panneaux. Sa carte s'ouvre sur l'énergie produite sur la période ; sur la vue Jour d'aujourd'hui, elle se lit face à la prévision, `0,39 kWh sur 7,93 kWh attendus aujourd'hui`, et la phrase en dessous la répartit entre autoconsommation (produite et consommée sur place) et injection réseau. Le graphique en dessous garde ses axes. Sur la vue Jour d'aujourd'hui, son échelle monte au moins jusqu'à l'heure la plus productive de la prévision : les premières barres du matin s'inscrivent dans le cadre de la journée annoncée au lieu de remplir un cadre d'un demi-kilowattheure.
 
 Depuis la v1.57.0 elle porte aussi deux panneaux, tous deux nourris par votre propre installation plutôt que par un modèle générique :
 
-- **Prévision**, une courbe horaire de production attendue jusqu'à cinq jours (en vert, la production mesurée en bleu), apprise sur votre historique. Elle réclame le plugin `weather-forecast` en 2.3.0 ou plus, et environ six semaines de production avant que le modèle ne se stabilise. En attendant, Sowel affiche une estimation ciel clair provisoire et le dit.
+- **Prévision**, une courbe horaire de production attendue jusqu'à cinq jours (« Attendu » en pointillé gris, la production mesurée « Réalisé » en trait plein vert, le vert des barres au-dessus), apprise sur votre historique. Elle réclame le plugin `weather-forecast` en 2.3.0 ou plus, et environ six semaines de production avant que le modèle ne se stabilise. En attendant, Sowel affiche une estimation ciel clair provisoire et le dit.
 - **Santé**, qui signale quand les panneaux cessent de produire ce que votre propre historique laisse attendre. Déclarer un nouveau pan de toiture, ou changer la puissance crête, ré-estime le gain sur les jours qui suivent au lieu d'attendre que la fenêtre glisse.
 
 Les deux sont détaillés dans [Suivre sa production solaire](../deep-dives/pv-health.md).
