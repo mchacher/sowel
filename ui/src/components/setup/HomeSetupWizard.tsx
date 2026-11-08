@@ -121,7 +121,7 @@ export function HomeSetupWizard() {
         <p className="text-small text-text-secondary mb-5">
           {t(
             "setup.home.body",
-            "Indiquez le nom et la position de votre maison. Sowel s'en sert pour calculer le lever et le coucher du soleil et pour déterminer votre fuseau horaire.",
+            "Le nom apparaît partout ; la position fixe le lever, le coucher du soleil et le fuseau horaire.",
           )}
         </p>
 
@@ -172,7 +172,7 @@ export function HomeSetupWizard() {
           <p className="text-caption text-text-tertiary">
             {t(
               "setup.home.hint",
-              "Astuce: ouvrez Google Maps sur l'emplacement de votre maison, clic droit → les deux nombres affichés sont la latitude et la longitude.",
+              "Astuce : un clic droit sur la maison dans Google Maps affiche latitude et longitude.",
             )}
           </p>
 

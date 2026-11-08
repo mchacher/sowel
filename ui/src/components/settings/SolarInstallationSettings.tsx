@@ -5,6 +5,7 @@ import { useEquipments } from "../../store/useEquipments";
 import { backfillPvForecast, getPvForecast } from "../../api";
 import type { PvForecastResponse } from "../../types";
 import { SolarProfileForm } from "../equipments/SolarProfileForm";
+import { InfoTooltip } from "../InfoTooltip";
 import { isActiveSolarProfile } from "../equipments/solarProfileValidation";
 
 /**
@@ -163,9 +164,13 @@ export function SolarInstallationSettings() {
                     <History size={14} strokeWidth={1.5} />
                     {t("equipments.pv.backfill")}
                   </button>
-                  <span className="text-caption text-text-tertiary">
-                    {t("equipments.pv.backfillHint")}
-                  </span>
+                  {/* #1162 — when to use it is detail: a tooltip, not a line. */}
+                  <InfoTooltip
+                    help
+                    align="start"
+                    text={t("equipments.pv.backfillHint")}
+                    label={t("common.help")}
+                  />
                   {notice && <span className="text-caption text-text-secondary">{notice}</span>}
                 </div>
               )}
