@@ -1,7 +1,13 @@
 import { describe, it, expect } from "vitest";
 import { render, screen } from "../../test-utils";
 import { FlowDiagram } from "./FlowDiagram";
-import { SLOT_BOX, flowDuration, type FlowLinkSpec, type FlowNodeSpec } from "./flow-geometry";
+import {
+  FLOW_DOT_PERIOD,
+  ROUTE_END,
+  SLOT_BOX,
+  type FlowLinkSpec,
+  type FlowNodeSpec,
+} from "./flow-geometry";
 
 const node = (over: Partial<FlowNodeSpec> = {}): FlowNodeSpec => ({
   slot: "focal",
@@ -46,7 +52,13 @@ describe("FlowDiagram routes", () => {
         ]}
       />,
     );
-    expect(painted(container).filter((p) => p.stroke === "lime")).toHaveLength(1);
+    // The overlay and its moving dots, both on the one active route.
+    const lime = [...container.querySelectorAll('path[stroke="lime"]')];
+    expect(lime.map((p) => p.getAttribute("d"))).toEqual([
+      expect.stringMatching(/^M 60 180/),
+      expect.stringMatching(/^M 60 180/),
+    ]);
+    expect(container.querySelectorAll("[data-tier]")).toHaveLength(1);
   });
 
   it("routes the bottom edge the way round the caller asks", () => {
@@ -58,31 +70,79 @@ describe("FlowDiagram routes", () => {
     expect(dOf(rtl.container)).toMatch(/^M 480 180/);
   });
 
-  it("gives each instance its own motion-path ids so two diagrams cannot collide", () => {
+  it("draws no path ids at all, so two diagrams on one page cannot collide", () => {
+    // The SMIL bubbles referenced their route by id; the CSS dots draw on the
+    // route itself, so there is nothing left to collide on.
     const { container } = render(
       <div>
         <FlowDiagram nodes={[]} links={[link()]} />
         <FlowDiagram nodes={[]} links={[link()]} />
       </div>,
     );
-    const ids = [...container.querySelectorAll("path[id]")].map((p) => p.id);
-    expect(ids).toHaveLength(2);
-    expect(new Set(ids).size).toBe(2);
+    expect(container.querySelectorAll("path[id]")).toHaveLength(0);
   });
+});
 
-  it("emits three staggered bubbles per active link and none for an idle one", () => {
+// Spec 197 (FR-E4) — the flow says how much, by width and speed, and which
+// way at rest, by a head at the route's end.
+describe("FlowDiagram magnitude and motion", () => {
+  it("draws one moving-dot stroke per active link, in CSS, with no SMIL", () => {
     const { container } = render(
       <FlowDiagram
         nodes={[]}
-        links={[link({ magnitude: 500 }), link({ edge: "rightToFocal", active: false })]}
+        links={[link({ powerW: 500 }), link({ edge: "rightToFocal", active: false })]}
       />,
     );
-    expect(container.querySelectorAll("animateMotion")).toHaveLength(3);
+    expect(container.querySelectorAll("animateMotion, animate, set")).toHaveLength(0);
+    const dots = screen.getAllByTestId("flow-dots");
+    expect(dots).toHaveLength(1);
+    expect(dots[0].getAttribute("class")).toContain("flow-dash");
+    expect(dots[0].getAttribute("stroke-dasharray")).toBe(`0 ${FLOW_DOT_PERIOD}`);
+    expect(dots[0].getAttribute("stroke-linecap")).toBe("round");
   });
 
-  it("emits no bubbles for a flow too small to animate", () => {
-    const { container } = render(<FlowDiagram nodes={[]} links={[link({ magnitude: 2 })]} />);
-    expect(container.querySelectorAll("animateMotion")).toHaveLength(0);
+  it("draws no dots for a flow too small to animate, but keeps the lit route", () => {
+    const { container } = render(<FlowDiagram nodes={[]} links={[link({ powerW: 2 })]} />);
+    expect(screen.queryAllByTestId("flow-dots")).toHaveLength(0);
+    expect(container.querySelectorAll("[data-tier]")).toHaveLength(1);
+  });
+
+  it.each([
+    [300, 2],
+    [1200, 3],
+    [4900, 4],
+  ])("strokes a %s W route %s px wide, the same on every screen", (powerW, width) => {
+    const { container } = render(<FlowDiagram nodes={[]} links={[link({ powerW })]} />);
+    const route = container.querySelector("[data-tier]") as SVGPathElement;
+    expect(route.getAttribute("stroke-width")).toBe(String(width));
+    expect(route.getAttribute("vector-effect")).toBe("non-scaling-stroke");
+  });
+
+  it("moves the dots faster on a bigger flow", () => {
+    const { rerender } = render(<FlowDiagram nodes={[]} links={[link({ powerW: 180 })]} />);
+    const slow = parseFloat(screen.getByTestId("flow-dots").style.animationDuration);
+    rerender(<FlowDiagram nodes={[]} links={[link({ powerW: 4900 })]} />);
+    const fast = parseFloat(screen.getByTestId("flow-dots").style.animationDuration);
+    expect(fast).toBeLessThan(slow);
+  });
+
+  it("puts a head at the end of each active route and nowhere else", () => {
+    render(
+      <FlowDiagram
+        nodes={[]}
+        links={[
+          link({ edge: "leftToFocal", color: "blue" }),
+          link({ edge: "rightToFocal", active: false }),
+        ]}
+      />,
+    );
+    const caps = screen.getAllByTestId("flow-end-cap");
+    expect(caps).toHaveLength(1);
+    expect(caps[0].dataset.edge).toBe("leftToFocal");
+    // At the route's destination: the focal box's left edge, on the run's height.
+    expect(caps[0].style.getPropertyValue("--cap-left")).toBe(`${ROUTE_END.leftToFocal.left}%`);
+    expect(caps[0].style.top).toBe(`${ROUTE_END.leftToFocal.top}%`);
+    expect(caps[0].querySelector('path[fill="blue"]')).toBeTruthy();
   });
 });
 
@@ -280,25 +340,5 @@ describe("FlowDiagram pills and headline", () => {
     for (const text of ["Sur secteur", "1.8", "90%"]) {
       expect(screen.getByText(text).closest('[aria-hidden="true"]'), text).toBeTruthy();
     }
-  });
-});
-
-describe("flowDuration", () => {
-  it("stays inside the calm band whatever the magnitude", () => {
-    expect(flowDuration(50)).toBeGreaterThanOrEqual(4);
-    expect(flowDuration(50)).toBeLessThanOrEqual(7);
-    expect(flowDuration(50_000)).toBeGreaterThanOrEqual(4);
-  });
-
-  it("speeds up as the flow grows", () => {
-    expect(flowDuration(10_000)).toBeLessThan(flowDuration(50));
-  });
-
-  it("returns zero below the animation floor, so no bubble is drawn", () => {
-    expect(flowDuration(2)).toBe(0);
-  });
-
-  it("falls back to a mid cadence when there is no magnitude to scale on", () => {
-    expect(flowDuration(undefined)).toBe(5.5);
   });
 });

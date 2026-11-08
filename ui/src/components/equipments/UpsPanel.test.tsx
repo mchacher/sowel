@@ -87,6 +87,13 @@ describe("UpsPanel on mains", () => {
     expect(within(screen.getByTestId("flow-headline")).getByText("—")).toBeTruthy();
   });
 
+  it("draws the mains route by the load's power tier", () => {
+    const { container, rerender } = render(<UpsPanel dataBindings={bindings()} />);
+    expect(container.querySelector("path[data-tier]")?.getAttribute("data-tier")).toBe("1");
+    rerender(<UpsPanel dataBindings={bindings({ real_power: 900 })} />);
+    expect(container.querySelector("path[data-tier]")?.getAttribute("data-tier")).toBe("2");
+  });
+
   it("lights the charge loop only while the UPS is charging", () => {
     const { container, rerender } = render(<UpsPanel dataBindings={bindings()} />);
     expect(screen.queryByText("charging")).toBeNull();
@@ -124,6 +131,12 @@ describe("UpsPanel during an outage", () => {
     expect(within(headline).getByText("min")).toBeTruthy();
     expect(headline.textContent).toMatch(/Battery at 14\s?%/);
     expect(screen.getByTestId("flow-headline-dot").style.background).toBe("var(--color-error)");
+  });
+
+  it("still draws the battery route with its end head on battery", () => {
+    render(<UpsPanel dataBindings={outage()} />);
+    const caps = screen.getAllByTestId("flow-end-cap");
+    expect(caps.map((c) => c.dataset.edge)).toEqual(["rightToFocal"]);
   });
 
   it("flags the margins as critical", () => {

@@ -145,18 +145,21 @@ export function UpsPanel({ dataBindings }: UpsPanelProps) {
   ];
 
   const runtimeLabel = formatRuntime(r.runtimeS);
+  // Spec 197 (FR-E4.5) — the watts on each route pick its tier, as on Live.
+  // The UPS reports no charging power, so the charge loop takes the first
+  // tier, which a charger topping up a battery is in any case.
   const links: FlowLinkSpec[] = [
     {
       edge: "leftToFocal",
       color: GRID_COLOR,
       active: !onBattery && r.status !== "offline",
-      magnitude: r.loadW ?? undefined,
+      powerW: r.loadW ?? undefined,
     },
     {
       edge: "rightToFocal",
       color: batteryBranchColor,
       active: onBattery,
-      magnitude: r.loadW ?? undefined,
+      powerW: r.loadW ?? undefined,
       // During an outage the autonomy is the only number worth reading, and it
       // sits where the solar page puts its share-of-supply percentage.
       ...(onBattery && runtimeLabel ? { pill: { text: runtimeLabel } } : {}),

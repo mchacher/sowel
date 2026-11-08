@@ -8,9 +8,9 @@
  *
  * Flow model:
  *   P_house = P_grid + P_solar  (signs respected)
- *   importing  → P_grid > 0  → bubbles flow grid → house, slate-blue
- *   exporting  → P_grid < 0  → bubbles flow solar → grid, green
- *   solar > 0  → bubbles flow solar → house, green
+ *   importing  → P_grid > 0  → dots flow grid → house, slate-blue
+ *   exporting  → P_grid < 0  → dots flow solar → grid, green
+ *   solar > 0  → dots flow solar → house, green
  */
 
 import { useEffect, useMemo } from "react";
@@ -271,21 +271,21 @@ function LiveDiagram({
             edge: "leftToFocal",
             color: gridColor,
             active: flowGridToHouse > 0,
-            magnitude: flowGridToHouse,
+            powerW: flowGridToHouse,
             ...(pctGH !== null ? { pill: { text: formatPercent(pctGH) } } : {}),
           },
           {
             edge: "rightToFocal",
             color: AUTO_COLOR,
             active: flowSolarToHouse > 0,
-            magnitude: flowSolarToHouse,
+            powerW: flowSolarToHouse,
             ...(pctSH !== null ? { pill: { text: formatPercent(pctSH) } } : {}),
           },
           {
             edge: "rightToLeft",
             color: AUTO_COLOR,
             active: flowSolarToGrid > 0,
-            magnitude: flowSolarToGrid,
+            powerW: flowSolarToGrid,
             ...(pctSG !== null ? { pill: { text: formatPercent(pctSG) } } : {}),
           },
         ]}

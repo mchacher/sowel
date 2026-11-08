@@ -105,14 +105,14 @@ export interface FlowNodeSpec {
 export interface FlowLinkSpec {
   edge: FlowEdge;
   color: string;
-  /** False → the route is drawn as skeleton only, with no overlay and no bubbles. */
+  /** False → the route is drawn as skeleton only, with no overlay and no dots. */
   active: boolean;
   /**
-   * Drives the bubble cadence, log-scaled so the flow stays calm. Omit for a
-   * link with no meaningful magnitude (a UPS charging loop) — it then uses the
-   * mid-range cadence.
+   * Absolute watts on the route (spec 197): picks the tier, so the stroke
+   * width and the dot speed. Omit for a link with no reading (a UPS charging
+   * loop): it is drawn at the first tier.
    */
-  magnitude?: number;
+  powerW?: number;
   /** A short figure by the route, in secondary text on a surface pad. */
   pill?: { text: string };
 }
@@ -144,16 +144,57 @@ export interface FlowDiagramProps {
   ariaLabel?: string;
 }
 
-export const DEFAULT_DURATION = 5.5;
+/** Power tier of a route: 1 below 500 W, 2 up to 2 kW, 3 from 2 kW. */
+export type FlowTier = 1 | 2 | 3;
+
+export function flowTier(powerW: number | undefined): FlowTier {
+  const a = Math.abs(powerW ?? 0);
+  if (a >= 2000) return 3;
+  if (a >= 500) return 2;
+  return 1;
+}
+
+/** Below this, a route is lit but carries no moving dots: rounding noise. */
+export const FLOW_DOT_FLOOR_W = 5;
 
 /**
- * Bubble travel time in seconds, inversely log-scaled with magnitude. Stays
- * between 4 s and 7 s so a big flow never zooms and a small one never stalls.
+ * Screen-pixel strokes per tier. The routes are drawn with
+ * `vector-effect: non-scaling-stroke`, so these are the widths on screen at
+ * every size, the phone's squeezed viewBox included (spec 197, FR-E4).
+ * `dot` is the round-capped dash diameter, wider than the route so the dots
+ * read on top of it; `speed` is how fast the dots move, in pixels a second.
  */
-export function flowDuration(magnitude: number | undefined): number {
-  if (magnitude === undefined) return DEFAULT_DURATION;
-  const a = Math.abs(magnitude);
-  if (a < 5) return 0;
-  const d = 7 - Math.log10(a + 10) * 0.6;
-  return Math.max(4, Math.min(7, d));
+export const FLOW_TIER_STYLE: Record<FlowTier, { width: number; dot: number; speed: number }> = {
+  1: { width: 2, dot: 6, speed: 16 },
+  2: { width: 3, dot: 7, speed: 32 },
+  3: { width: 4, dot: 8, speed: 56 },
+};
+
+/** Distance between two dots, in screen pixels: `stroke-dasharray: 0 P`. */
+export const FLOW_DOT_PERIOD = 20;
+
+/** Seconds a dot takes to move one period at a tier's speed. */
+export function flowDotSeconds(tier: FlowTier): number {
+  return FLOW_DOT_PERIOD / FLOW_TIER_STYLE[tier].speed;
 }
+
+/**
+ * Where each route enters its destination node, as a percentage of the
+ * diagram, and the way it is heading there (degrees, 0 = towards the right).
+ * The direction cue sits here, at the end of the route, never mid-route
+ * (spec 197, FR-E4.3: the maintainer turned down a mid-route chevron).
+ *
+ * From the box geometry above: the focal box spans 32..68 % of the width
+ * below `sm` and 38..62 % from it (`smLeft`); the satellites end at
+ * y 62 % + 36 % / 2 = 80 % of the height. The phone's wider satellites keep
+ * the same centre and height, so their points hold at every size.
+ */
+export const ROUTE_END: Record<
+  FlowEdge,
+  { left: number; smLeft: number; top: number; angle: number }
+> = {
+  leftToFocal: { left: 32, smLeft: 38, top: (65 / VIEWBOX_HEIGHT) * 100, angle: 0 },
+  rightToFocal: { left: 68, smLeft: 62, top: (65 / VIEWBOX_HEIGHT) * 100, angle: 180 },
+  rightToLeft: { left: (60 / 540) * 100, smLeft: (60 / 540) * 100, top: 80, angle: -90 },
+  leftToRight: { left: (480 / 540) * 100, smLeft: (480 / 540) * 100, top: 80, angle: -90 },
+};

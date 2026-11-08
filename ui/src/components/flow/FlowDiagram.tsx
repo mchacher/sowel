@@ -15,24 +15,28 @@
  * └───────┘       └───────┘   solar export one way, battery charge the other.
  *
  * What the diagram owns: the headline above it, the viewBox, the node slots,
- * the three Manhattan routes, the always-visible skeleton, the active
- * overlay, the bubbles and the pill placement. What the caller owns: which
- * edges carry energy, in which direction, with what colours and formatted
- * values.
+ * the three Manhattan routes, the always-visible skeleton, the active overlay
+ * with its width by power tier, the moving dots, the end caps and the pill
+ * placement. What the caller owns: which edges carry energy, in which
+ * direction, how many watts, with what colours and formatted values.
  */
 
-import { useId } from "react";
-
 import {
+  FLOW_DOT_FLOOR_W,
+  FLOW_DOT_PERIOD,
+  FLOW_TIER_STYLE,
   PATHS,
   PILL_POSITION,
+  ROUTE_END,
   SLOT_BOX,
   SLOT_LABEL,
   SLOT_VALUE,
   VIEWBOX_HEIGHT,
-  flowDuration,
+  flowDotSeconds,
+  flowTier,
   type FlowDiagramProps,
   type FlowHeadline,
+  type FlowLinkSpec,
   type FlowNodeSpec,
 } from "./flow-geometry";
 
@@ -116,10 +120,60 @@ function Headline({ headline }: { headline: FlowHeadline }) {
   );
 }
 
+/**
+ * The direction cue at rest: an arrowhead where the route enters its
+ * destination node, its tip on the node's edge (spec 197, FR-E4.3). It is the
+ * line's own end, sized from the route's width, so a still frame or a reduced
+ * motion setting still says which way the power goes. The maintainer turned
+ * down a chevron in the middle of the route; an open chevron and a long taper
+ * at the end were tried on still frames too, and read less clearly than this
+ * solid head in both themes (the PR has the frames).
+ *
+ * A pad in the card's colour sits under the head, so the moving dots vanish
+ * into its base instead of poking out past its tip.
+ *
+ * Drawn in HTML over the SVG rather than as an SVG marker: the viewBox is
+ * stretched (`preserveAspectRatio="none"`), which would squash a marker on a
+ * phone, while this box keeps its pixels at every size.
+ */
+function EndCap({ link }: { link: FlowLinkSpec }) {
+  const end = ROUTE_END[link.edge];
+  const { width } = FLOW_TIER_STYLE[flowTier(link.powerW)];
+  // Base and length grow with the route, so a 4 px route does not end in a
+  // head sized for a 2 px one.
+  const base = 2 * width + 6;
+  const length = width + 7;
+  return (
+    <span
+      className="absolute w-0 h-0 z-20 pointer-events-none left-(--cap-left) sm:left-(--cap-left-sm)"
+      style={
+        {
+          "--cap-left": `${end.left}%`,
+          "--cap-left-sm": `${end.smLeft}%`,
+          top: `${end.top}%`,
+          transform: `rotate(${end.angle}deg)`,
+          transformOrigin: "0 0",
+        } as React.CSSProperties
+      }
+      data-testid="flow-end-cap"
+      data-edge={link.edge}
+    >
+      <svg
+        width={length}
+        height={base}
+        viewBox={`0 0 ${length} ${base}`}
+        className="absolute block"
+        style={{ left: -length, top: -base / 2 }}
+      >
+        <rect width={length} height={base} fill="var(--color-surface)" />
+        <path d={`M 0 0 L ${length} ${base / 2} L 0 ${base} Z`} fill={link.color} />
+      </svg>
+    </span>
+  );
+}
+
 export function FlowDiagram({ nodes, links, headline, ariaLabel }: FlowDiagramProps) {
-  // Unique per instance so two diagrams on one page cannot collide on their
-  // <mpath> references — the ids were hardcoded while this lived in Live.
-  const uid = useId().replace(/:/g, "");
+  const active = links.filter((l) => l.active);
   // With a sentence for screen readers, everything visible is decoration to
   // them: the figures would otherwise be read twice, once out of order.
   const hidden = ariaLabel ? true : undefined;
@@ -141,66 +195,61 @@ export function FlowDiagram({ nodes, links, headline, ariaLabel }: FlowDiagramPr
           className="absolute inset-0 w-full h-full overflow-visible"
         >
           {/* Skeleton — every declared route stays faintly visible, so the whole
-            circuit reads even when a single branch is working. */}
+              circuit reads even when a single branch is working. */}
           {links.map((l) => (
             <path
               key={`sk-${l.edge}`}
               d={PATHS[l.edge]}
               fill="none"
               stroke="var(--color-border)"
-              strokeWidth="2"
+              strokeWidth={2}
               strokeLinecap="round"
+              vectorEffect="non-scaling-stroke"
             />
           ))}
 
-          {/* Active overlays */}
-          {links
-            .filter((l) => l.active)
-            .map((l) => (
+          {/* Active overlays: the width says how much (spec 197, FR-E4.1). */}
+          {active.map((l) => (
+            <path
+              key={`ov-${l.edge}`}
+              d={PATHS[l.edge]}
+              fill="none"
+              stroke={l.color}
+              strokeWidth={FLOW_TIER_STYLE[flowTier(l.powerW)].width}
+              strokeLinecap="round"
+              vectorEffect="non-scaling-stroke"
+              data-tier={flowTier(l.powerW)}
+            />
+          ))}
+
+          {/* Moving dots: round-capped zero-length dashes on the same path,
+              moved by a CSS animation (spec 197, FR-E4.2). A non-scaling
+              stroke keeps them round on the phone's stretched viewBox, and
+              the reduced-motion setting stops them (index.css). */}
+          {active.map((l) => {
+            if (l.powerW !== undefined && Math.abs(l.powerW) < FLOW_DOT_FLOOR_W) return null;
+            const tier = flowTier(l.powerW);
+            return (
               <path
-                key={`ov-${l.edge}`}
+                key={`dt-${l.edge}`}
                 d={PATHS[l.edge]}
                 fill="none"
                 stroke={l.color}
-                strokeWidth="2.5"
+                strokeWidth={FLOW_TIER_STYLE[tier].dot}
                 strokeLinecap="round"
+                strokeDasharray={`0 ${FLOW_DOT_PERIOD}`}
+                vectorEffect="non-scaling-stroke"
+                className="flow-dash"
+                style={{ animationDuration: `${flowDotSeconds(tier)}s` }}
+                data-testid="flow-dots"
               />
-            ))}
-
-          {/* Invisible motion references */}
-          {links
-            .filter((l) => l.active)
-            .map((l) => (
-              <path
-                key={`mp-${l.edge}`}
-                id={`${uid}-${l.edge}`}
-                d={PATHS[l.edge]}
-                fill="none"
-                stroke="none"
-              />
-            ))}
-
-          {/* Bubbles. Each circle stays hidden until its stagger fires, otherwise
-            it would flash at the SVG origin before its motion starts. */}
-          {links
-            .filter((l) => l.active)
-            .map((l) => {
-              const dur = flowDuration(l.magnitude);
-              if (dur <= 0) return null;
-              return (
-                <g key={`bb-${l.edge}`}>
-                  {[0, dur / 3, (2 * dur) / 3].map((begin, i) => (
-                    <circle key={i} r="4" fill={l.color} opacity="0">
-                      <set attributeName="opacity" to="1" begin={`${begin}s`} />
-                      <animateMotion dur={`${dur}s`} begin={`${begin}s`} repeatCount="indefinite">
-                        <mpath href={`#${uid}-${l.edge}`} />
-                      </animateMotion>
-                    </circle>
-                  ))}
-                </g>
-              );
-            })}
+            );
+          })}
         </svg>
+
+        {active.map((l) => (
+          <EndCap key={`cap-${l.edge}`} link={l} />
+        ))}
 
         {links.map(
           (l) =>

@@ -164,6 +164,16 @@ describe("Live energy diagram — nodes and status", () => {
     expect(headline.querySelector("p")).toBeNull();
   });
 
+  it("draws the routes by power tier", () => {
+    // 4.9 kW from the grid, 180 W of sun: the widest and the thinnest route.
+    seed([meter("grid", "main_energy_meter", 4900), meter("pv", "energy_production_meter", 180)]);
+    const { container } = render(<LiveEnergyPage />, { wrapper: MemoryRouter });
+    const tierOf = (d: string) =>
+      container.querySelector(`path[data-tier][d="${d}"]`)?.getAttribute("data-tier");
+    expect(tierOf(PATH_GRID_TO_HOUSE)).toBe("3");
+    expect(tierOf(PATH_SOLAR_TO_HOUSE)).toBe("1");
+  });
+
   it("shows the share of consumption on each supplying leg", () => {
     // 1000 W grid + 1000 W solar → 50 / 50.
     seed([meter("grid", "main_energy_meter", 1000), meter("pv", "energy_production_meter", 1000)]);
