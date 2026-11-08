@@ -16,41 +16,41 @@
 
 @theme {
   /* Colors — resolved from design-system/tokens.css */
-  --color-primary:        var(--p-500);
-  --color-primary-mid:    var(--p-mid); /* logo mid-blue (smile/eyes), soft selection border */
-  --color-primary-light:  var(--p-50);
-  --color-primary-hover:  var(--p-600);
+  --color-primary: var(--p-500);
+  --color-primary-mid: var(--p-mid); /* logo mid-blue (smile/eyes), soft selection border */
+  --color-primary-light: var(--p-50);
+  --color-primary-hover: var(--p-600);
   /* Primary fill (spec 196, slice 4b): the background of a button, selected
      segment, checked box or switch. bg-primary is the ink (dots, bars, the
      light blue of dark links) and never carries text. */
-  --color-primary-fill:       var(--p-fill);
+  --color-primary-fill: var(--p-fill);
   --color-primary-fill-hover: var(--p-fill-hover);
-  --color-on-primary:         var(--p-on);
+  --color-on-primary: var(--p-on);
   /* Dashboard illustrations at rest (WidgetIcons, EvCarGauge). */
-  --color-illu:           var(--illu-ink);
-  --color-background:     var(--n-50);
-  --color-surface:        var(--n-0);
+  --color-illu: var(--illu-ink);
+  --color-background: var(--n-50);
+  --color-surface: var(--n-0);
   --color-surface-raised: var(--n-0);
-  --color-text:           var(--n-700);
+  --color-text: var(--n-700);
   --color-text-secondary: var(--n-600);
-  --color-text-tertiary:  var(--n-400);
-  --color-border:         var(--line-2);
-  --color-border-light:   var(--line);
+  --color-text-tertiary: var(--n-400);
+  --color-border: var(--line-2);
+  --color-border-light: var(--line);
   /* Colour roles (spec 196) — one meaning each, see design-system/tokens.md
      §1.2. Contrast of every text/background pair: lib/color-roles.test.ts. */
-  --color-active:         var(--a-500);   /* on or running now: fill, icon */
-  --color-active-ink:     var(--a-ink);   /* on or running now: text */
-  --color-active-bg:      var(--a-50);    /* on or running now: tinted pill */
-  --color-on-active:      var(--a-on);    /* content on an amber fill */
-  --color-warning:        var(--orange-500); /* needs attention: dot, fill, icon */
-  --color-warning-ink:    var(--orange-700); /* needs attention: text */
-  --color-warning-bg:     var(--orange-50);
-  --color-success:        var(--green-500);  /* works as expected */
-  --color-error:          var(--red-500);    /* fault, failure, destructive */
-  --color-info:           var(--info-500);   /* informational: icon, fill */
-  --color-info-ink:       var(--info-700);   /* informational: text */
-  --color-heat:           var(--red-500);    /* heating now (alias of error) */
-  --color-on-status:      var(--on-status);  /* text on a success/error/warning-ink fill */
+  --color-active: var(--a-500); /* on or running now: fill, icon */
+  --color-active-ink: var(--a-ink); /* on or running now: text */
+  --color-active-bg: var(--a-50); /* on or running now: tinted pill */
+  --color-on-active: var(--a-on); /* content on an amber fill */
+  --color-warning: var(--orange-500); /* needs attention: dot, fill, icon */
+  --color-warning-ink: var(--orange-700); /* needs attention: text */
+  --color-warning-bg: var(--orange-50);
+  --color-success: var(--green-500); /* works as expected */
+  --color-error: var(--red-500); /* fault, failure, destructive */
+  --color-info: var(--info-500); /* informational: icon, fill */
+  --color-info-ink: var(--info-700); /* informational: text */
+  --color-heat: var(--red-500); /* heating now (alias of error) */
+  --color-on-status: var(--on-status); /* text on a success/error/warning-ink fill */
 
   /* Typography */
   --font-sans: var(--font-body);
@@ -105,15 +105,15 @@
 @theme static {
   /* Energy palette (spec 148) — shared by energy/production charts + arbiter */
   --color-solar-injection: var(--solar-injection);
-  --color-solar-auto:      var(--solar-auto);
+  --color-solar-auto: var(--solar-auto);
   --color-solar-production: var(--solar-production);
   /* Spec 197 — solar as text only (a figure or a word), never a fill. */
-  --color-solar-ink:       var(--solar-ink);
-  --color-energy-hp:       var(--energy-hp);
-  --color-energy-hc:       var(--energy-hc);
-  --color-energy-grid:     var(--energy-grid);
-  --color-slate:           var(--slate-neutral);
-  --color-energy-other:    var(--energy-other);
+  --color-solar-ink: var(--solar-ink);
+  --color-energy-hp: var(--energy-hp);
+  --color-energy-hc: var(--energy-hc);
+  --color-energy-grid: var(--energy-grid);
+  --color-slate: var(--slate-neutral);
+  --color-energy-other: var(--energy-other);
   /* Series palette (spec 196, FR-E): sub-meters, phases, Analyse. */
   --color-series-1: var(--series-1);
   --color-series-2: var(--series-2);
@@ -267,15 +267,21 @@ h1 {
 /* Form inputs — the border turns primary on focus, and a ring in the primary
    ink marks the field without relying on that colour change alone (WCAG
    2.4.7). Unlayered, so it beats an `outline-none` utility on the element. */
-input, select, textarea {
+input,
+select,
+textarea {
   outline: none;
 }
 
-input:focus, select:focus, textarea:focus {
+input:focus,
+select:focus,
+textarea:focus {
   border-color: var(--color-primary);
 }
 
-input:focus-visible, select:focus-visible, textarea:focus-visible {
+input:focus-visible,
+select:focus-visible,
+textarea:focus-visible {
   outline: 2px solid var(--color-primary);
   outline-offset: 1px;
 }
@@ -518,8 +524,8 @@ input:focus-visible, select:focus-visible, textarea:focus-visible {
    cycle, the cycle's length set inline from the power. Under reduced motion
    the wave is hidden and the band takes more colour: its width and the
    arrowhead still say how much and which way.
-   color-mix needs Safari / iOS 16.2: before it, the band is the route's
-   colour at the same strength as an opacity. */
+   The band mixes with color-mix, which every browser Tailwind 4 supports has
+   (Safari 16.4+); the opacity first is only a guard for an older engine. */
 :root {
   --flow-tint: 36%;
   --flow-tint-alpha: 0.36;
@@ -556,15 +562,22 @@ input:focus-visible, select:focus-visible, textarea:focus-visible {
   stroke-opacity: var(--flow-halo);
 }
 
+/* One period (WAVE_PERIOD, 150 px) at the base speed, 18 px/s: 150 / 18 =
+   8.33 s. The power sets the playback rate from script (Web Animations API),
+   which keeps the wave in place when the rate changes. No custom property
+   inside the keyframes: WebKit is unreliable there. */
 @keyframes flow-wave {
-  from { stroke-dashoffset: var(--o0, 0px); }
-  to { stroke-dashoffset: calc(var(--o0, 0px) - 150px); }
+  from {
+    stroke-dashoffset: 0;
+  }
+  to {
+    stroke-dashoffset: -150px;
+  }
 }
 
 .flow-wave {
-  stroke-dashoffset: var(--o0, 0px);
   animation-name: flow-wave;
-  animation-duration: 2s;
+  animation-duration: 8.333s;
   animation-timing-function: linear;
   animation-iteration-count: infinite;
 }
@@ -580,8 +593,12 @@ input:focus-visible, select:focus-visible, textarea:focus-visible {
    ============================================================ */
 
 @keyframes slide-up {
-  from { transform: translateY(100%); }
-  to { transform: translateY(0); }
+  from {
+    transform: translateY(100%);
+  }
+  to {
+    transform: translateY(0);
+  }
 }
 
 .animate-slide-up {
@@ -589,8 +606,12 @@ input:focus-visible, select:focus-visible, textarea:focus-visible {
 }
 
 @keyframes slide-left {
-  from { transform: translateX(-100%); }
-  to { transform: translateX(0); }
+  from {
+    transform: translateX(-100%);
+  }
+  to {
+    transform: translateX(0);
+  }
 }
 
 .animate-slide-left {
@@ -598,8 +619,12 @@ input:focus-visible, select:focus-visible, textarea:focus-visible {
 }
 
 @keyframes slide-in-right {
-  from { transform: translateX(100%); }
-  to { transform: translateX(0); }
+  from {
+    transform: translateX(100%);
+  }
+  to {
+    transform: translateX(0);
+  }
 }
 
 .animate-slide-in-right {
@@ -611,8 +636,13 @@ input:focus-visible, select:focus-visible, textarea:focus-visible {
    ============================================================ */
 
 @keyframes jiggle {
-  0%, 100% { transform: rotate(-0.7deg); }
-  50% { transform: rotate(0.7deg); }
+  0%,
+  100% {
+    transform: rotate(-0.7deg);
+  }
+  50% {
+    transform: rotate(0.7deg);
+  }
 }
 
 .animate-jiggle {
@@ -626,4 +656,3 @@ input:focus-visible, select:focus-visible, textarea:focus-visible {
 .animate-jiggle:nth-child(3n) {
   animation-duration: 0.35s;
 }
-

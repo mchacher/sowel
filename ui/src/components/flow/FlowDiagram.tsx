@@ -21,7 +21,7 @@
  * many watts, with what colours, and every formatted figure.
  */
 
-import type { CSSProperties, ReactNode } from "react";
+import { useEffect, useRef, type CSSProperties, type ReactNode } from "react";
 import {
   FLOW_FLOOR_W,
   PATHS,
@@ -36,7 +36,7 @@ import {
   headSize,
   ribbonWidth,
   waveDashes,
-  waveSpeed,
+  waveRate,
   type FlowDiagramProps,
   type FlowHeadline,
   type FlowLinkSpec,
@@ -57,7 +57,28 @@ function isLit(l: FlowLinkSpec): boolean {
  * edge at every size.
  */
 function Head({ link, side }: { link: FlowLinkSpec; side: "left" | "right" | "bottom" }) {
-  const { base, length } = headSize(ribbonWidth(link.powerW));
+  // Two sizes, switched by the diagram's container query like the ribbon:
+  // a narrow diagram draws its ribbon at 0.8 of the width, and its head too.
+  return (
+    <>
+      <HeadShape link={link} side={side} width={ribbonWidth(link.powerW, true)} size="narrow" />
+      <HeadShape link={link} side={side} width={ribbonWidth(link.powerW)} size="wide" />
+    </>
+  );
+}
+
+function HeadShape({
+  link,
+  side,
+  width,
+  size,
+}: {
+  link: FlowLinkSpec;
+  side: "left" | "right" | "bottom";
+  width: number;
+  size: "narrow" | "wide";
+}) {
+  const { base, length } = headSize(width);
   const place =
     side === "left"
       ? "right-full top-1/2 -translate-y-1/2"
@@ -77,9 +98,10 @@ function Head({ link, side }: { link: FlowLinkSpec; side: "left" | "right" | "bo
       width={w}
       height={h}
       viewBox={`0 0 ${w} ${h}`}
-      className={`absolute block pointer-events-none ${place}`}
+      className={`absolute pointer-events-none ${place} ${size === "narrow" ? "block @lg:hidden" : "hidden @lg:block"}`}
       data-testid="flow-end-cap"
       data-edge={link.edge}
+      data-size={size}
     >
       <rect width={w} height={h} fill="var(--color-surface)" />
       <polygon points={points} fill={link.color} />
@@ -95,9 +117,11 @@ function Head({ link, side }: { link: FlowLinkSpec; side: "left" | "right" | "bo
  * sentence carries the shares.
  */
 function ShareBar({ bar, slot }: { bar: FlowShareBar; slot: FlowNodeSpec["slot"] }) {
-  const parts = bar.parts.filter((p) => p.share > 0);
+  // A level keeps its track even at 0 % (a UPS battery run flat); a split
+  // drops its empty parts.
+  const level = bar.parts.length === 1 && bar.parts[0].share < 0.999;
+  const parts = level ? bar.parts : bar.parts.filter((p) => p.share > 0);
   if (parts.length === 0) return null;
-  const level = parts.length === 1 && parts[0].share < 0.999;
   const first = parts[0];
   const last = parts[parts.length - 1];
   return (
@@ -110,7 +134,10 @@ function ShareBar({ bar, slot }: { bar: FlowShareBar; slot: FlowNodeSpec["slot"]
             data-share={p.share}
             style={
               level
-                ? { width: `${Math.round(p.share * 1000) / 10}%`, background: p.color }
+                ? {
+                    width: `${Math.round(Math.max(0, p.share) * 1000) / 10}%`,
+                    background: p.color,
+                  }
                 : { flex: `${p.share} 1 0`, background: p.color }
             }
           />
@@ -230,7 +257,20 @@ function Ribbon({ link }: { link: FlowLinkSpec }): ReactNode {
     "--rw": `${narrow}px`,
     "--rw-wide": `${wide}px`,
   } as CSSProperties;
-  const seconds = WAVE_PERIOD / waveSpeed(link.powerW);
+  // The CSS cycle has one fixed length (WAVE_BASE_SECONDS); the power sets
+  // the playback rate through the Web Animations API, which keeps the wave
+  // where it is. Changing animation-duration instead re-derives the progress
+  // from the elapsed time, and the wave jumped on every reading.
+  const rate = waveRate(link.powerW);
+  const waveRef = useRef<SVGGElement>(null);
+  useEffect(() => {
+    for (const el of waveRef.current?.querySelectorAll(".flow-wave") ?? []) {
+      for (const anim of el.getAnimations?.() ?? []) anim.updatePlaybackRate(rate);
+    }
+  }, [rate]);
+  // Dash lengths from the width rounded to the pixel, so a reading that moves
+  // the ribbon by a fraction does not redraw the wave.
+  const dashes = waveDashes(Math.round(wide));
   return (
     <g style={vars} data-edge={link.edge} data-width={wide}>
       <path
@@ -248,26 +288,24 @@ function Ribbon({ link }: { link: FlowLinkSpec }): ReactNode {
         className="flow-band [stroke-width:var(--rw)] @lg:[stroke-width:var(--rw-wide)]"
         data-testid="flow-ribbon"
       />
-      {waveDashes(wide).map((dash, i) => (
-        <path
-          key={i}
-          d={d}
-          fill="none"
-          stroke={link.color}
-          strokeOpacity={dash.opacity}
-          strokeLinecap="round"
-          vectorEffect="non-scaling-stroke"
-          className="flow-wave [stroke-width:var(--rw)] @lg:[stroke-width:var(--rw-wide)]"
-          style={
-            {
-              strokeDasharray: `${dash.length} ${WAVE_PERIOD - dash.length}`,
-              "--o0": `${dash.length / 2}px`,
-              animationDuration: `${Math.round(seconds * 100) / 100}s`,
-            } as CSSProperties
-          }
-          data-testid="flow-wave"
-        />
-      ))}
+      <g ref={waveRef} data-rate={rate}>
+        {dashes.map((dash, i) => (
+          <path
+            key={i}
+            d={d}
+            fill="none"
+            stroke={link.color}
+            strokeOpacity={dash.opacity}
+            strokeLinecap="round"
+            vectorEffect="non-scaling-stroke"
+            className="flow-wave [stroke-width:var(--rw)] @lg:[stroke-width:var(--rw-wide)]"
+            // Centred on the period's start without a custom property in the
+            // keyframes (WebKit's weak spot): half a dash, the gap, half a dash.
+            strokeDasharray={`${dash.length / 2} ${WAVE_PERIOD - dash.length} ${dash.length / 2} 0`}
+            data-testid="flow-wave"
+          />
+        ))}
+      </g>
     </g>
   );
 }

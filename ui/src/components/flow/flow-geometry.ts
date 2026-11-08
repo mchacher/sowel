@@ -42,11 +42,17 @@ export const PATHS: Record<FlowEdge, string> = {
   leftToRight: "M 60 180 V 255 Q 60 270 70 270 H 470 Q 480 270 480 255 V 180",
 };
 
-/** Where each node's icon centre sits, in % of the diagram (x of 540, y of 290). */
+/**
+ * Where each node's icon centre sits, in % of the diagram (x of 540, y of 290).
+ * The satellites sit at y 165, above the routes' own corner (180): their value,
+ * sub-line and bar hang below the icon, and a route arriving from the bottom
+ * run needs a straight leg under them for its head (at y 180 the head landed
+ * in the run's curve on a UPS charging, 520 px wide).
+ */
 export const SLOT_ANCHOR: Record<FlowSlot, { left: number; top: number }> = {
   focal: { left: 50, top: (65 / VIEWBOX_HEIGHT) * 100 },
-  left: { left: (60 / 540) * 100, top: (180 / VIEWBOX_HEIGHT) * 100 },
-  right: { left: (480 / 540) * 100, top: (180 / VIEWBOX_HEIGHT) * 100 },
+  left: { left: (60 / 540) * 100, top: (165 / VIEWBOX_HEIGHT) * 100 },
+  right: { left: (480 / 540) * 100, top: (165 / VIEWBOX_HEIGHT) * 100 },
 };
 
 /**
@@ -177,6 +183,14 @@ export function waveSpeed(powerW: number | undefined): number {
 
 /** One wave every 150 px along the ribbon (keep in step with `flow-wave` in index.css). */
 export const WAVE_PERIOD = 150;
+
+/** The speed the CSS cycle runs at, rate 1: one period at 18 px/s (index.css). */
+export const WAVE_BASE_SPEED = 18;
+
+/** The wave's playback rate against the CSS cycle, two decimals. */
+export function waveRate(powerW: number | undefined): number {
+  return Math.round((waveSpeed(powerW) / WAVE_BASE_SPEED) * 100) / 100;
+}
 
 /**
  * The wave: three dashes stacked on one path, centred on each other, longest

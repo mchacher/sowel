@@ -322,7 +322,7 @@ Keyframes are declared in [tokens.css](tokens.css):
 - `pulseAlert` — concentric red ripple on alert pills
 - `connPing` — ping ring on Connecté dot
 
-And in `ui/src/index.css`: `flow-wave` moves the three-dash wave along a flow ribbon (one 150 px period per cycle, the cycle's length set from the power; spec 197, « Ruban »). Under reduced motion the wave is hidden and the band's tint rises from 36 % (40 % dark) to 72 % (`--flow-tint`); `--flow-halo` gives the dark theme its faint halo. The band mixes its colour into the card with `color-mix`, with an opacity fallback for Safari before 16.2.
+And in `ui/src/index.css`: `flow-wave` moves the three-dash wave along a flow ribbon (one 150 px period per cycle; spec 197, « Ruban »). Under reduced motion the wave is hidden and the band's tint rises from 36 % (40 % dark) to 72 % (`--flow-tint`); `--flow-halo` gives the dark theme its faint halo. The band mixes its colour into the card with `color-mix`, an opacity of the same strength under it as a guard. The CSS cycle has one fixed length (8.333 s, 18 px/s); the power sets the playback rate from script, so the wave does not jump when a reading changes.
 
 All animations honor `prefers-reduced-motion: reduce`.
 

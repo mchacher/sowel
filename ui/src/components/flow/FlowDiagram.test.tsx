@@ -105,8 +105,11 @@ describe("FlowDiagram ribbons", () => {
     expect(wave).toHaveLength(3);
     for (const dash of wave) {
       expect(dash.getAttribute("class")).toContain("flow-wave");
-      const [len, gap] = dash.style.strokeDasharray.split(" ").map(parseFloat);
-      expect(len + gap).toBeCloseTo(WAVE_PERIOD);
+      // Half a dash, the gap, half a dash: centred, one period in all.
+      const parts = (dash.getAttribute("stroke-dasharray") ?? "").split(" ").map(parseFloat);
+      expect(parts).toHaveLength(4);
+      expect(parts.reduce((a, b) => a + b, 0)).toBeCloseTo(WAVE_PERIOD);
+      expect(dash.style.getPropertyValue("--o0")).toBe("");
     }
     // Longest and faintest first.
     expect(wave.map((d) => Number(d.getAttribute("stroke-opacity")))).toEqual([0.3, 0.55, 1]);
@@ -134,10 +137,15 @@ describe("FlowDiagram ribbons", () => {
 
   it("moves the wave faster on a bigger flow", () => {
     const { rerender } = render(<FlowDiagram nodes={[]} links={[link({ powerW: 180 })]} />);
-    const slow = parseFloat(screen.getAllByTestId("flow-wave")[0].style.animationDuration);
+    const rateOf = () =>
+      Number(screen.getAllByTestId("flow-wave")[0].parentElement?.getAttribute("data-rate"));
+    const slow = rateOf();
+    // One fixed CSS cycle: the power sets the playback rate, not the duration,
+    // so a new reading does not make the wave jump.
+    expect(screen.getAllByTestId("flow-wave")[0].style.animationDuration).toBe("");
     rerender(<FlowDiagram nodes={[]} links={[link({ powerW: 4900 })]} />);
-    const fast = parseFloat(screen.getAllByTestId("flow-wave")[0].style.animationDuration);
-    expect(fast).toBeLessThan(slow);
+    const fast = rateOf();
+    expect(fast).toBeGreaterThan(slow);
   });
 
   it("ends each active route in a head on its destination node, sized on the ribbon", () => {
@@ -151,7 +159,7 @@ describe("FlowDiagram ribbons", () => {
         ]}
       />,
     );
-    const caps = screen.getAllByTestId("flow-end-cap");
+    const caps = screen.getAllByTestId("flow-end-cap").filter((c) => c.dataset.size === "wide");
     expect(caps.map((c) => c.dataset.edge).sort()).toEqual(["leftToFocal", "rightToLeft"]);
     const focalCap = caps.find((c) => c.dataset.edge === "leftToFocal")!;
     // On the focal node's left side, pointing in; never in the middle of a route.
@@ -162,6 +170,17 @@ describe("FlowDiagram ribbons", () => {
     const gridCap = caps.find((c) => c.dataset.edge === "rightToLeft")!;
     expect(gridCap.closest('[data-slot="left"]')).toBeTruthy();
     expect(gridCap.getAttribute("class")).toContain("top-full");
+  });
+
+  it("draws a narrow head for the narrow ribbon and a wide one for the wide", () => {
+    render(<FlowDiagram nodes={[node()]} links={[link({ powerW: 4900 })]} />);
+    const [narrow, wideCap] = ["narrow", "wide"].map((size) =>
+      screen.getAllByTestId("flow-end-cap").find((c) => c.dataset.size === size)!,
+    );
+    expect(narrow.getAttribute("height")).toBe(String(headSize(ribbonWidth(4900, true)).base));
+    expect(wideCap.getAttribute("height")).toBe(String(headSize(ribbonWidth(4900)).base));
+    expect(narrow.getAttribute("class")).toContain("@lg:hidden");
+    expect(wideCap.getAttribute("class")).toContain("hidden @lg:block");
   });
 });
 
@@ -201,6 +220,12 @@ describe("FlowDiagram share bars", () => {
     const seg = screen.getByTestId("flow-share-bar").querySelector<HTMLElement>("[data-share]")!;
     expect(seg.style.width).toBe("11%");
     expect(screen.getByTestId("flow-share-bar").textContent).toBe("");
+  });
+
+  it("keeps the track of a level at 0 %", () => {
+    render(<FlowDiagram nodes={[node({ bar: bar([{ share: 0, color: "blue" }]) })]} links={[]} />);
+    const seg = screen.getByTestId("flow-share-bar").querySelector<HTMLElement>("[data-share]")!;
+    expect(seg.style.width).toBe("0%");
   });
 
   it("draws no bar for a node without one, and none on the routes", () => {

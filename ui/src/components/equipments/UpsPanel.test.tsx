@@ -167,6 +167,11 @@ describe("UpsPanel during an outage", () => {
     expect(level("Protected load").style.background).toBe("var(--color-error)");
   });
 
+  it("tells a screen reader the load's share of the capacity, which its bar shows", () => {
+    render(<UpsPanel dataBindings={outage()} />);
+    expect(screen.getByRole("img", { name: /Load at 4\s?% of capacity\.$/ })).toBeTruthy();
+  });
+
   it("tells a screen reader the status before the flow", () => {
     render(<UpsPanel dataBindings={outage()} />);
     expect(screen.getByRole("img", { name: /^Battery low\. Mains absent\./ })).toBeTruthy();
@@ -184,7 +189,7 @@ describe("UpsPanel during an outage", () => {
 
   it("still draws the battery route with its end head on battery", () => {
     render(<UpsPanel dataBindings={outage()} />);
-    const caps = screen.getAllByTestId("flow-end-cap");
+    const caps = screen.getAllByTestId("flow-end-cap").filter((c) => c.dataset.size === "wide");
     expect(caps.map((c) => c.dataset.edge)).toEqual(["rightToFocal"]);
   });
 

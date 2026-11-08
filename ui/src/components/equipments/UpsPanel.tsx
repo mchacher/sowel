@@ -230,7 +230,12 @@ export function UpsPanel({ dataBindings }: UpsPanelProps) {
         power: r.loadW != null ? formatPower(r.loadW) : "?",
         charge: r.chargePct != null ? formatPercent(r.chargePct) : "?",
       });
-  const ariaLabel = `${statusText}. ${flowSentence}`;
+  // The load's share of the capacity, which its bar shows (FR-E7.6).
+  const loadSentence =
+    r.loadPct !== null
+      ? ` ${t("equipments.ups.aria.load", { load: formatPercent(r.loadPct) })}`
+      : "";
+  const ariaLabel = `${statusText}. ${flowSentence}${loadSentence}`;
 
   const margin = upsMarginOf(r);
   const marginColor =

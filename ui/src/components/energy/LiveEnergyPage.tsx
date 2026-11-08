@@ -276,7 +276,7 @@ function LiveDiagram({
       <SectionHeader title={t("energy.live.diagram.title")} />
       <FlowDiagram
         headline={buildHeadline(balance, t)}
-        ariaLabel={buildAriaLabel(balance, gridPower, solarPower, t)}
+        ariaLabel={buildAriaLabel(balance, gridPower, solarPower, t, solarBar)}
         links={[
           {
             edge: "leftToFocal",
@@ -366,9 +366,18 @@ type T = (key: string, opts?: Record<string, unknown>) => string;
  * Undefined when nothing flows.
  */
 function shareBar(flows: { w: number; color: string }[]): FlowShareBar | undefined {
-  const parts = flows.filter((f) => f.w > 0);
-  const total = parts.reduce((a, f) => a + f.w, 0);
+  let parts = flows.filter((f) => f.w > 0);
+  let total = parts.reduce((a, f) => a + f.w, 0);
   if (total <= 0) return undefined;
+  // A part that rounds to 0 % is dropped: a green sliver labelled « 0 % »
+  // beside « 100 % » says less than one full bar.
+  if (parts.length > 1) {
+    const kept = parts.filter((f) => Math.round((f.w / total) * 100) > 0);
+    if (kept.length < parts.length) {
+      parts = kept;
+      total = parts.reduce((a, f) => a + f.w, 0);
+    }
+  }
   const pcts = parts.map((f) => Math.round((f.w / total) * 100));
   pcts[0] = 100 - pcts.slice(1).reduce((a, p) => a + p, 0);
   return {
@@ -437,13 +446,28 @@ function buildAriaLabel(
   gridPower: number | null,
   solarPower: number | null,
   t: T,
+  solarBar?: FlowShareBar,
 ): string {
   const power = (w: number | null) => formatPower(w === null ? null : Math.abs(w), { step: 5 });
   const consumption = power(h.consumptionW);
   if (h.kind === "consumption-only") return t("energy.live.aria.consumption", { consumption });
   const grid = power(gridPower);
   const solar = power(solarPower);
-  if (h.kind === "export") return t("energy.live.aria.export", { consumption, solar, grid });
+  if (h.kind === "export") {
+    // The panel's split, as its bar shows it (FR-E7.6); one part when the
+    // house takes nothing measurable.
+    const [toHouse, toGrid] =
+      solarBar && solarBar.parts.length === 2
+        ? solarBar.parts.map((p) => p.label ?? "")
+        : [formatPercent(0), formatPercent(100)];
+    return t("energy.live.aria.export", {
+      consumption,
+      solar,
+      grid,
+      housePct: toHouse,
+      exportPct: toGrid,
+    });
+  }
   if (h.kind === "self") return t("energy.live.aria.self", { consumption, solar });
   if (h.solarPct === null) return t("energy.live.aria.importOnly", { consumption, grid });
   return t("energy.live.aria.import", {

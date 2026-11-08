@@ -3,10 +3,12 @@ import { describe, it, expect } from "vitest";
 import {
   RIBBON_MAX,
   RIBBON_MIN,
+  WAVE_BASE_SPEED,
   WAVE_PERIOD,
   headSize,
   ribbonWidth,
   waveDashes,
+  waveRate,
   waveSpeed,
 } from "./flow-geometry";
 
@@ -57,6 +59,11 @@ describe("waveSpeed, waveDashes, headSize", () => {
     expect(waveSpeed(4900)).toBeGreaterThan(waveSpeed(180));
   });
 
+  it("turns the speed into a playback rate against the 18 px/s CSS cycle", () => {
+    expect(waveRate(0)).toBe(1);
+    expect(waveRate(3000)).toBeCloseTo(88 / 18, 2);
+  });
+
   it("stacks three dashes, longest and faintest first, all shorter than the period", () => {
     const d = waveDashes(RIBBON_MAX);
     expect(d.map((x) => x.opacity)).toEqual([0.3, 0.55, 1]);
@@ -84,12 +91,15 @@ describe("ribbon CSS (spec 197, FR-E4.2 and E4.4)", () => {
   });
 
   it("moves the wave by exactly one period per cycle", () => {
+    expect(indexCss).toMatch(new RegExp(`to \\{\\s*stroke-dashoffset: -${WAVE_PERIOD}px;\\s*\\}`));
+    // At rate 1 the cycle runs at the base speed; no custom property in the keyframes.
     expect(indexCss).toMatch(
-      new RegExp(`stroke-dashoffset: calc\\(var\\(--o0, 0px\\) - ${WAVE_PERIOD}px\\)`),
+      new RegExp(`animation-duration: ${(WAVE_PERIOD / WAVE_BASE_SPEED).toFixed(3)}s`),
     );
+    expect(indexCss).not.toMatch(/--o0/);
   });
 
-  it("falls back to an opacity where color-mix is missing (Safari before 16.2)", () => {
+  it("keeps an opacity guard under the color-mix band", () => {
     expect(indexCss).toMatch(
       /\.flow-band \{\s*stroke: var\(--flow-c\);\s*stroke-opacity: var\(--flow-tint-alpha\);/,
     );

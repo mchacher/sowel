@@ -193,6 +193,31 @@ describe("Live energy diagram — nodes and status", () => {
     expect(bars[0].closest('[data-slot="focal"]')).toBeTruthy();
   });
 
+  it("rounds the house's two ends to add up to 100", () => {
+    // 2 850 W from the grid, 7 150 W of sun: 28.5 | 71.5, which rounded each
+    // on its own would print 29 % and 72 %.
+    seed([meter("grid", "main_energy_meter", 2850), meter("pv", "energy_production_meter", 7150)]);
+    render(<LiveEnergyPage />, { wrapper: MemoryRouter });
+    expect(screen.getByTestId("flow-share-bar").textContent).toBe("28%72%");
+  });
+
+  it("drops a part that rounds to 0 % instead of printing it", () => {
+    // 5 kW from the grid, 10 W of sun.
+    seed([meter("grid", "main_energy_meter", 5000), meter("pv", "energy_production_meter", 10)]);
+    render(<LiveEnergyPage />, { wrapper: MemoryRouter });
+    const bar = screen.getByTestId("flow-share-bar");
+    expect(bar.querySelectorAll("[data-share]")).toHaveLength(1);
+    expect(bar.textContent).toBe("");
+  });
+
+  it("tells a screen reader the panel's split while exporting", () => {
+    seed([meter("grid", "main_energy_meter", -1400), meter("pv", "energy_production_meter", 2600)]);
+    render(<LiveEnergyPage />, { wrapper: MemoryRouter });
+    expect(
+      screen.getByRole("img", { name: /46% to the house, 54% exported to the grid/ }),
+    ).toBeTruthy();
+  });
+
   it("shows a full grid bar at night and a full solar bar on export, plus the panel's split", () => {
     seed([meter("grid", "main_energy_meter", 1800), meter("pv", "energy_production_meter", 0)]);
     const night = render(<LiveEnergyPage />, { wrapper: MemoryRouter });
@@ -309,9 +334,12 @@ describe("Live energy page — layout", () => {
     seed([meter("grid", "main_energy_meter", 3), meter("pv", "energy_production_meter", 900)]);
     const { container } = render(<LiveEnergyPage />, { wrapper: MemoryRouter });
     expect(strokesFor(container, PATH_GRID_TO_HOUSE)).toEqual(["var(--color-border)"]);
-    expect(screen.getAllByTestId("flow-end-cap").map((c) => c.dataset.edge)).toEqual([
-      "rightToFocal",
-    ]);
+    expect(
+      screen
+        .getAllByTestId("flow-end-cap")
+        .filter((c) => c.dataset.size === "wide")
+        .map((c) => c.dataset.edge),
+    ).toEqual(["rightToFocal"]);
   });
 
   it("puts the flow and the breakdown side by side from lg, the phases under the breakdown", () => {
