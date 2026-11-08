@@ -63,6 +63,7 @@ import { BottomSheet } from "../dashboard/BottomSheet";
 import { useIsMobile } from "../../hooks/useIsMobile";
 import { FIELD_LABEL_UNTONED } from "../ui/text-roles";
 import { Switch } from "../ui/Switch";
+import { apiErrorText } from "../../lib/api-error";
 
 // ============================================================
 // Instance row
@@ -257,7 +258,7 @@ export function RecipeInstanceRow({
       await updateInstance(instance.id, finalParams);
       setEditing(false);
     } catch (err) {
-      setEditError(err instanceof Error ? err.message : t("common.error"));
+      setEditError(apiErrorText(err, t));
     } finally {
       setSaving(false);
     }

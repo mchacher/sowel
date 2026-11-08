@@ -4,6 +4,7 @@ import { X } from "lucide-react";
 import type { ZoneWithChildren } from "../../types";
 import { flattenZonesWithPath, type ZoneOption } from "../../lib/zone-path";
 import { FIELD_LABEL } from "../ui/text-roles";
+import { apiErrorText } from "../../lib/api-error";
 
 interface ZoneFormProps {
   /** If provided, we're editing this zone. Otherwise creating a new one. */
@@ -51,7 +52,7 @@ export function ZoneForm({
       });
       onClose();
     } catch (err) {
-      setError(err instanceof Error ? err.message : t("common.error"));
+      setError(apiErrorText(err, t));
     } finally {
       setSaving(false);
     }

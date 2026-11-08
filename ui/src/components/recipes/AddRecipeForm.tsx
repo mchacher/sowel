@@ -32,6 +32,7 @@ import {
 } from "./recipe-form-fields";
 import { useZoneOptions } from "./useZoneOptions";
 import { FIELD_LABEL } from "../ui/text-roles";
+import { apiErrorText } from "../../lib/api-error";
 
 // ============================================================
 // Add recipe wizard (step 1: choose recipe, step 2: configure)
@@ -187,7 +188,7 @@ export function AddRecipeForm({
       await createInstance(selectedRecipeId, finalParams);
       onClose();
     } catch (err) {
-      setError(err instanceof Error ? err.message : t("common.error"));
+      setError(apiErrorText(err, t));
       setSubmitting(false);
     }
   };

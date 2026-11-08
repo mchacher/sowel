@@ -7,6 +7,7 @@ import { getDevices, type DeviceWithData } from "../../api";
 import { typesOfferedOnEdit } from "../../../../src/shared/equipment-type-change";
 import { flattenZonesWithPath } from "../../lib/zone-path";
 import { FIELD_LABEL } from "../ui/text-roles";
+import { apiErrorText } from "../../lib/api-error";
 
 const EQUIPMENT_TYPE_KEYS: { value: EquipmentType; labelKey: string }[] = [
   { value: "light_onoff", labelKey: "equipments.type.light_onoff" },
@@ -141,7 +142,7 @@ export function EquipmentForm({
       });
       onClose();
     } catch (err) {
-      setError(err instanceof Error ? err.message : t("common.error"));
+      setError(apiErrorText(err, t));
     } finally {
       setSaving(false);
     }

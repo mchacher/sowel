@@ -44,6 +44,6 @@ describe("no English error fallback in the UI", () => {
   });
 
   it("never falls back to an English literal after an error message", () => {
-    expect(offenders(/\.message\s*:\s*["'`][A-Za-z]/)).toEqual([]);
+    expect(offenders(/\.message\s*(:|\?\?|\|\|)\s*["'`][A-Za-z]/)).toEqual([]);
   });
 });

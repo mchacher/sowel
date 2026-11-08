@@ -5,6 +5,7 @@ import { getSettings, updateSettings, triggerSystemRestart } from "../../api";
 import { useAuth } from "../../store/useAuth";
 import { SowelLogo } from "../layout/SowelLogo";
 import { FIELD_LABEL } from "../ui/text-roles";
+import { apiErrorText } from "../../lib/api-error";
 
 /**
  * First-login Home setup wizard. Blocks the app when:
@@ -98,7 +99,7 @@ export function HomeSetupWizard() {
         setRequired(false);
       }
     } catch (err) {
-      setError(err instanceof Error ? err.message : t("common.error"));
+      setError(apiErrorText(err, t));
       setSaving(false);
     }
   };
