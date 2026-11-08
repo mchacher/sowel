@@ -31,25 +31,28 @@ Some review findings were fixed on `main` after the screenshots by #1142 (#1126)
 
 ## Decisions (maintainer, 2026-11-08)
 
-| Id           | Decision                                                                                                 |
-| ------------ | -------------------------------------------------------------------------------------------------------- |
-| e1-forme     | Balance line at the top of the flow card (40 px figure) and the word under the grid node                 |
-| e1-mots      | « Import / Export » (not « Achat / Vente »)                                                              |
-| e1-encre     | A text-only solar ink, `#1E7B34` in light; fills unchanged                                               |
-| e2-pastille  | Sticker « Déficit 4,8 kW » on a neutral slate tint                                                       |
-| e2-manque    | « déficit » in grey instead of the per-row missing watts while in deficit                                |
-| e2-vocab     | Renamed columns and formula, « par ordre de priorité » caption, sub-line removed, header hints, journal  |
-| e3-desktop   | Flow and breakdown side by side from `lg`                                                                |
-| e3-forme     | Keep the donut, 2 px gaps between segments, smaller on phones                                            |
-| e3-autre     | « Autre » stays last, full opacity, « non mesuré »                                                       |
-| e3-sobre     | Nodes without tinted wells, percentages as plain text, no icons in Energy section headings               |
-| e4-anim      | CSS dashes, width and speed by power tier; **no mid-route chevron** (maintainer note), design to improve |
-| e5-echelle   | Zero placed from the window's peaks, live end point, hover readout                                       |
-| e5-ruban     | Contiguous equal quarters merge into runs                                                                |
-| e5-nuit      | Pending demand while the arbiter is dormant reported as idle, server-side                                |
-| e6-tete      | A 28 px total and one sentence at the top of the card                                                    |
-| e6-prevision | « Attendu » dashed neutral, « Réalisé » solar green                                                      |
-| e6-segment   | One shared segmented control; **charts keep their axes** (maintainer note)                               |
+| Id           | Decision                                                                                                                      |
+| ------------ | ----------------------------------------------------------------------------------------------------------------------------- |
+| e1-forme     | Balance line at the top of the flow card (40 px figure) and the word under the grid node                                      |
+| e1-mots      | « Import / Export » (not « Achat / Vente »)                                                                                   |
+| e1-encre     | A text-only solar ink, `#1E7B34` in light; fills unchanged                                                                    |
+| e2-pastille  | Sticker « Déficit 4,8 kW » on a neutral slate tint                                                                            |
+| e2-manque    | « déficit » in grey instead of the per-row missing watts while in deficit                                                     |
+| e2-vocab     | Renamed columns and formula, « par ordre de priorité » caption, sub-line removed, header hints, journal                       |
+| e3-desktop   | Flow and breakdown side by side from `lg`                                                                                     |
+| e3-forme     | Keep the donut, 2 px gaps between segments, smaller on phones                                                                 |
+| e3-autre     | « Autre » stays last, full opacity, « non mesuré »                                                                            |
+| e3-sobre     | Nodes without tinted wells, percentages as plain text, no icons in Energy section headings                                    |
+| e4-anim      | ~~CSS dashes, width and speed by power tier~~ → **Ruban** (2026-11-08, see below); **no mid-route chevron** (maintainer note) |
+| e5-echelle   | Zero placed from the window's peaks, live end point, hover readout                                                            |
+| e5-ruban     | Contiguous equal quarters merge into runs                                                                                     |
+| e5-nuit      | Pending demand while the arbiter is dormant reported as idle, server-side                                                     |
+| e6-tete      | A 28 px total and one sentence at the top of the card                                                                         |
+| e6-prevision | « Attendu » dashed neutral, « Réalisé » solar green                                                                           |
+| e6-segment   | One shared segmented control; **charts keep their axes** (maintainer note)                                                    |
+| e7-noeud     | Shares on the nodes: a bar under the value (« Barre sous la valeur »), the route percentages removed                          |
+
+**Amendment, 2026-11-08 (after PR #1158).** A design exploration of the flow, shot on still frames of the real Live and UPS cards in both themes, offered the maintainer several directions (pages « flux-propositions », direction 1 « Ruban », and « ruban-declinaisons », declination 2 « Barre sous la valeur »). He chose the **Ruban** for `e4-anim` and the **share bar under the value** (« sans hésiter ») as a new decision `e7-noeud`. FR-E4 below is rewritten for the ribbon and FR-E7 added; the tier dots of the first FR-E4 are replaced, the end arrowhead stays as the ribbon's head.
 
 ## Functional Requirements
 
@@ -83,13 +86,14 @@ Some review findings were fixed on `main` after the screenshots by #1142 (#1126)
 3. Donut: 2 px gaps between segments in the card's surface colour; 140 px below `sm` (180 today). The centre keeps the total.
 4. Quieter cards: flow nodes lose their tinted well (`bg-surface`), percentages become plain `text-caption text-text-secondary` text on a surface pad (no border), and the Energy section headings (`SectionHeader` on Live, phases, breakdown, arbiter; the Production forecast and health panels) render without an icon. The `icon` prop becomes optional.
 
-### FR-E4 — A flow that shows magnitude (shared FlowDiagram)
+### FR-E4 — A flow that shows magnitude (shared FlowDiagram, « Ruban »)
 
-1. Active routes are drawn with `vector-effect: non-scaling-stroke` and a width by tier: < 500 W 2 px, 500 W–2 kW 3 px, ≥ 2 kW 4 px.
-2. The SMIL bubbles are replaced by a second stroke on the same path, `stroke-dasharray: 0 12`, round caps (dots stay round whatever the aspect ratio), animated in CSS by `stroke-dashoffset`, linear, at three speeds by the same tiers. _Implementation: the period is 20 px; at 12 px the 6–8 px dots read as a beaded line on still frames._
-3. **No chevron in the middle of a route** (maintainer note). Direction at rest is given at the route's end: the route meets its destination node with a small arrowhead-shaped cap integrated into the line end (or another design that reads as "flows into", tested on a still frame), never a free-floating mark mid-route.
-4. Under `prefers-reduced-motion: reduce`, the dashes do not move; width and the end cap still say how much and which way.
-5. The UPS panel gets the same rendering through the shared component; the caller passes the power per link so tiers apply (UPS load, battery charge/discharge).
+1. **Ribbon width.** An active route is a band whose width follows its power continuously, in screen pixels (`vector-effect: non-scaling-stroke`): 2.5 px + 1 px per 200 W up to 2 kW (12.5 px), then logarithmic (+3 px per doubling), capped at 18 px; × 0.8 in a narrow diagram (under 32 rem, container query), never under 2.5 px. A route under 5 W is skeleton only.
+2. **Tint, wave, halo.** The band is the route's colour mixed into the card (`color-mix`, 36 % light, 40 % dark). A wave of three stacked dashes (lengths L, 0.6 L, 0.3 L with L = 26 + 2 w; opacities 0.3, 0.55, 1; one every 150 px) moves along it in CSS at a continuous speed, 18 + 70 · √(min(P, 8 kW) / 3 kW) px/s. In dark, a faint halo: a stroke 9 px wider at 16 % opacity, no filter. Where `color-mix` is missing (Safari / iOS before 16.2), the band is the route's colour at the same strength as an opacity.
+3. **No chevron in the middle of a route** (maintainer note). Direction at rest is the ribbon's head: a solid arrowhead where the route enters its destination node, sized on the width (base w + 10, length 0.55 w + 7), on a pad in the card's colour, its tip on the node's edge.
+4. Under `prefers-reduced-motion: reduce`, no wave; the band takes more colour (72 %), and its width and head still say how much and which way.
+5. The UPS panel gets the same rendering through the shared component; the caller passes the power per link (UPS load; the charge loop, with no reading, is drawn at the floor width).
+6. The export route (solar → grid) takes the injection green, like the headline's export dot.
 
 ### FR-E5 — Arbiter history
 
@@ -111,6 +115,15 @@ Some review findings were fixed on `main` after the screenshots by #1142 (#1126)
 5. Mobile header of Consumption and Production: one left-aligned column, the period control full width.
 6. The forecast and health cards pad `p-4 sm:p-6` and lose their heading icon (FR-E3.4).
 
+### FR-E7 — Shares on the nodes (shared FlowDiagram, « Barre sous la valeur »)
+
+1. **Route percentages removed.** No figure is drawn on or beside a route any more.
+2. **Share bar.** `FlowNodeSpec.bar` draws a 6 px bar under the node's value (76 / 96 px under the focal node, 58 / 72 px under a satellite, narrow / wide), segmented in route order and in the routes' colours, 2 px between segments; when it has two parts or more, the first and last percentages sit at its ends (`text-micro`, secondary). The percentages are whole and add up to 100.
+3. **Live.** The house always shows its sources, grid then solar (a full slate bar at night, a full green bar on export or self-powered); its solar end equals the headline's « Le soleil couvre {pct} ». The panel shows a bar only while it splits its production, house then export (« 46 % | 54 % »). The grid, a single flow, shows none.
+4. **UPS.** A UPS splits nothing: its bars are levels, one part over the track, with no figure (the value above says it). The load (« 11 % ») in the colour of the source carrying it (grid on mains, the severity colour on battery); the battery's charge, green on mains, the severity colour on battery. The mains node shows none. « en charge » moves from a route pill to the battery's sub-line.
+5. **Node layout.** A node is built around its icon: the icon's centre sits where the routes meet it, the label above, the value, sub-line and bar below; each part is a box in the card's colour masking the routes under it, and the heads sit on the boxes' real edges. The narrow diagram is 280 px tall (260 before).
+6. **Access.** The bar is `aria-hidden`; the diagram's `ariaLabel` already carries the shares.
+
 ## Acceptance Criteria
 
 - [x] AC1 — Live shows « Import réseau » / « Export réseau » / « Autonome » with a 40 px figure above the diagram on desktop, tablet and phone; the grid node says « import » / « export »; no « Appoint solaire » band.
@@ -119,13 +132,14 @@ Some review findings were fixed on `main` after the screenshots by #1142 (#1126)
 - [ ] AC4 — The roster uses « Puissance / Import toléré / Surplus requis / Il manque » and shows « déficit » in waiting rows while in deficit.
 - [x] AC5 — At 1440 × 900 the flow and the breakdown share one row and the arbiter heading is visible without scrolling.
 - [x] AC6 — Zero-watt rows fold into one « À l'arrêt » line; « Autre » is last at full opacity; donut segments have gaps.
-- [x] AC7 — Flow routes have three widths by tier, round moving dots in CSS, no SMIL, no mid-route mark, and stand still under reduced motion.
+- [x] AC7 — Flow routes are ribbons whose width follows the power within 2.5–18 px, with a CSS wave (no SMIL), a head at their end and no mid-route mark; under reduced motion no wave and a stronger tint.
 - [ ] AC8 — The arbiter curve draws equal watts at equal heights on both sides, ends on a live dot, and shows a hover readout.
 - [ ] AC9 — Pending claims during the dormant night are `idle` in `buildLoadTimelines`; ribbons render runs; the legend lists only present states plus « Au repos ».
 - [ ] AC10 — Lanes are keyboard-navigable with a visible focus ring.
 - [ ] AC11 — Consumption and Production open on their total; charts keep their axes; the forecast « Attendu » is dashed neutral and « Réalisé » solar green.
 - [ ] AC12 — One `SegmentedControl` across Consumption, Production and Analyse, with `aria-pressed`.
 - [ ] AC13 — `npm run validate` green; docs EN/FR updated.
+- [x] AC14 — No percentage on the routes; the house shows its share bar in every state, the panel only while it splits, the UPS its load and battery levels; the bars are hidden from screen readers.
 
 ## Edge Cases
 
@@ -139,11 +153,11 @@ Some review findings were fixed on `main` after the screenshots by #1142 (#1126)
 
 ## Docs Delta
 
-| Page (EN and FR)                           | Change                                                                                                                                                                                                                                        |
-| ------------------------------------------ | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `docs/user/energy.md` + `.fr.md`           | Live: the headline (import/export/autonomous), the side-by-side desktop layout, the folded zero rows; arbiter: new column names, deficit wording, history runs and night idle; Consumption/Production: total at the top, forecast line styles |
-| `docs/user/equipments.md` + `.fr.md` (UPS) | The UPS status now reads as the headline above the diagram (if the page describes the tag)                                                                                                                                                    |
-| `specs/165-*/spec.md`                      | One-line amendment: pending quarters while the arbiter is dormant are reported idle (spec 197)                                                                                                                                                |
-| `design-system/tokens.md`                  | `--solar-ink`; `SegmentedControl` in the components list                                                                                                                                                                                      |
+| Page (EN and FR)                           | Change                                                                                                                                                                                                                                                                                    |
+| ------------------------------------------ | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `docs/user/energy.md` + `.fr.md`           | Live: the headline (import/export/autonomous), the ribbons and the share bars (FR-E4, E7), the side-by-side desktop layout, the folded zero rows; arbiter: new column names, deficit wording, history runs and night idle; Consumption/Production: total at the top, forecast line styles |
+| `docs/user/equipments.md` + `.fr.md` (UPS) | The UPS status now reads as the headline above the diagram (if the page describes the tag)                                                                                                                                                                                                |
+| `specs/165-*/spec.md`                      | One-line amendment: pending quarters while the arbiter is dormant are reported idle (spec 197)                                                                                                                                                                                            |
+| `design-system/tokens.md`                  | `--solar-ink`; `SegmentedControl` in the components list                                                                                                                                                                                                                                  |
 
 Screenshots to retake: Energy Live (desktop, mobile), Energy Consumption, Energy Production, UPS panel, if the docs carry them.

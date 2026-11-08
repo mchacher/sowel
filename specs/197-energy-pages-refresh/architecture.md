@@ -20,10 +20,10 @@ LiveEnergyPage ── headline + nodes + links ──► FlowDiagram ◄── U
 ### `ui/src/components/flow/FlowDiagram.tsx` and `flow-geometry.ts` (FR-E1, E3.4, E4)
 
 - `FlowDiagramProps.headline?: { dotColor: string; label: string; value: string; unit?: string; sentence?: ReactNode }` rendered above the SVG. `tag` removed once Live and UPS no longer pass it.
-- `FlowLinkSpec` gains `powerW?: number` (absolute watts on the route) from which the tier (width, dash speed) is derived by a pure helper `flowTier(powerW)` in `flow-geometry.ts`.
-- The SMIL `<animateMotion>` circles are replaced by a dashed path per active link with a CSS animation class; reduced motion handled by a `@media (prefers-reduced-motion: reduce)` rule.
-- Direction cue at rest: an end cap where the route meets its destination node (marker or path-drawn), never mid-route.
-- Node well: `bg-surface`; percentage pill: plain text on a surface pad.
+- `FlowLinkSpec` gains `powerW?: number` (absolute watts on the route). Since the « Ruban » amendment, pure helpers in `flow-geometry.ts` derive the ribbon from it: `ribbonWidth(powerW, narrow)`, `waveSpeed(powerW)`, `waveDashes(width)`, `headSize(width)`.
+- The SMIL `<animateMotion>` circles are replaced by, per active link, a halo, a tinted band (`.flow-band`, `color-mix` with an opacity fallback) and three wave dashes (`.flow-wave`, CSS keyframes); reduced motion hides the wave and raises the tint (`index.css`).
+- Direction cue at rest: the ribbon's head, drawn inside the destination node on its real edge, never mid-route.
+- Nodes (FR-E7): built around the icon (label above; value, sub-line and `bar?: FlowShareBar` below), each part a box in the card's colour. No route pills.
 
 ### `ui/src/components/energy/LiveEnergyPage.tsx` (FR-E1, E3.1)
 

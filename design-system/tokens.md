@@ -162,7 +162,7 @@ The energy charts, the Live diagram and the arbiter paint from these tokens (`--
 - Every series against "Other": at least 1.5:1 **and** 30° of hue. Other is a near-grey, so a hue gap alone means little; it is a warm grey because the palette's blues sit on the cool side.
 - Every mark stands on the dark card (at least 3:1).
 
-**The energy palette paints marks, not words** (#1126). The off-peak blue is 2.08:1 on a light card and the auto-consumption green 2.01:1, so a word or a figure never takes an energy or series colour: a tooltip row is a swatch beside neutral text (`TooltipSeriesRow`), a Live diagram node puts its colour on the icon and its value in ink, a flow percentage is plain secondary text by its route (spec 197), and the arbiter pill writes « Accordé » in `success`. A Recharts default tooltip takes `itemStyle={CHART_TOOLTIP_ITEM_STYLE}` (`ui/src/lib/chart-font.ts`), otherwise it writes each row in its series colour. The PV forecast's « Attendu » curve is `--solar-production`, not amber. Where a solar figure or word must carry the green, it takes `--solar-ink` (`text-solar-ink`, 5.3:1 on a light card), never a fill token. `energy-palette.test.ts` computes the arbiter pill and sticker words on their tint, and scans the energy components for a style `color` set from an energy constant or token and for a default tooltip without neutral rows; a colour passed through a variable escapes the scan.
+**The energy palette paints marks, not words** (#1126). The off-peak blue is 2.08:1 on a light card and the auto-consumption green 2.01:1, so a word or a figure never takes an energy or series colour: a tooltip row is a swatch beside neutral text (`TooltipSeriesRow`), a Live diagram node puts its colour on the icon and its value in ink, a flow share is a bar under the node's value with its percentages in secondary text (spec 197), and the arbiter pill writes « Accordé » in `success`. A Recharts default tooltip takes `itemStyle={CHART_TOOLTIP_ITEM_STYLE}` (`ui/src/lib/chart-font.ts`), otherwise it writes each row in its series colour. The PV forecast's « Attendu » curve is `--solar-production`, not amber. Where a solar figure or word must carry the green, it takes `--solar-ink` (`text-solar-ink`, 5.3:1 on a light card), never a fill token. `energy-palette.test.ts` computes the arbiter pill and sticker words on their tint, and scans the energy components for a style `color` set from an energy constant or token and for a default tooltip without neutral rows; a colour passed through a variable escapes the scan.
 
 | Token                | Hybrid    | Dark      | Usage                                                  |
 | -------------------- | --------- | --------- | ------------------------------------------------------ |
@@ -322,7 +322,7 @@ Keyframes are declared in [tokens.css](tokens.css):
 - `pulseAlert` — concentric red ripple on alert pills
 - `connPing` — ping ring on Connecté dot
 
-And in `ui/src/index.css`: `flow-dash` moves the flow diagram's dots (round-capped dashes, one 20 px period per cycle, the cycle's length set per power tier; spec 197). It stops outright under reduced motion: the route's width and its end arrowhead still say how much and which way.
+And in `ui/src/index.css`: `flow-wave` moves the three-dash wave along a flow ribbon (one 150 px period per cycle, the cycle's length set from the power; spec 197, « Ruban »). Under reduced motion the wave is hidden and the band's tint rises from 36 % (40 % dark) to 72 % (`--flow-tint`); `--flow-halo` gives the dark theme its faint halo. The band mixes its colour into the card with `color-mix`, with an opacity fallback for Safari before 16.2.
 
 All animations honor `prefers-reduced-motion: reduce`.
 
@@ -383,4 +383,4 @@ See [migration.md](migration.md) for the broader strategy.
 | 2026-11-07 | Colour roles: amber = on, orange = attention, red = fault; no light tint (slice 4)  |
 | 2026-11-07 | Radii 6 / 10 / 16, cards without border (`card`), wells, dark category tints (7b)   |
 | 2026-11-07 | Energy palette: dark values told apart, series palette `--series-1…8` (slice E)     |
-| 2026-11-08 | `--solar-ink` for solar words; flow dots `flow-dash` keyframes (spec 197)           |
+| 2026-11-08 | `--solar-ink` for solar words; flow ribbons `flow-wave`, `--flow-tint` (spec 197)   |
