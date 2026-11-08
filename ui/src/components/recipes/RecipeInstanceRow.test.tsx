@@ -233,6 +233,87 @@ describe("RecipeInstanceRow", () => {
     expect(screen.queryByRole("heading", { name: "View log" })).toBeNull();
   });
 
+  describe("live pills on the second line (#1161)", () => {
+    const CYCLE_RECIPE: RecipeInfo = {
+      ...RECIPE,
+      actions: [
+        {
+          id: "setMode",
+          type: "cycle",
+          stateKey: "mode",
+          options: [
+            { value: "eco", label: "Eco" },
+            { value: "comfort", label: "Comfort" },
+          ],
+        },
+      ],
+    };
+    const inFuture = new Date(Date.now() + 14 * 60_000 + 30_000).toISOString();
+    const withPills = (): RecipeInstance =>
+      makeInstance({ state: { mode: "comfort", timerExpiresAt: inFuture, overrideMode: true } });
+
+    function rows(): { row1: HTMLElement; row2: HTMLElement | null } {
+      const name = screen.getByText("Auto light");
+      const row1 = name.closest(".row-start-1") as HTMLElement;
+      const row2 = row1.parentElement!.querySelector<HTMLElement>(":scope > .row-start-2");
+      return { row1, row2 };
+    }
+
+    it("puts the countdown, override and mode pills on row 2, never beside the name", () => {
+      seedStores(withPills());
+      render(
+        <RecipeInstanceRow instance={withPills()} recipes={[CYCLE_RECIPE]} zoneId="z-salon" />,
+      );
+
+      const { row1, row2 } = rows();
+      const mode = screen.getByRole("button", { name: "Comfort" });
+      const override = screen.getByTitle("Override active");
+      const countdown = screen.getByText(/14\s*min/);
+
+      for (const pill of [mode, override, countdown]) {
+        expect(row1.contains(pill)).toBe(false);
+        expect(row2?.contains(pill)).toBe(true);
+      }
+      // Next to the log button, which stays on that line.
+      expect(row2?.contains(screen.getByTitle("View log"))).toBe(true);
+    });
+
+    it("gives a non-admin a second line holding a working mode pill", async () => {
+      const sendAction = vi.fn().mockResolvedValue(undefined);
+      seedStores(withPills(), { sendAction });
+      useAuth.setState({ user: { ...adminUser(), role: "standard" } });
+      render(
+        <RecipeInstanceRow instance={withPills()} recipes={[CYCLE_RECIPE]} zoneId="z-salon" />,
+      );
+
+      expect(rows().row2).not.toBeNull();
+      expect(screen.queryByTitle("View log")).toBeNull();
+
+      await userEvent.click(screen.getByRole("button", { name: "Comfort" }));
+      expect(sendAction).toHaveBeenCalledWith("ri-1", "setMode", { mode: "eco" });
+    });
+
+    it("keeps a non-admin row on one line when there is no pill", () => {
+      seedStores(makeInstance());
+      useAuth.setState({ user: { ...adminUser(), role: "standard" } });
+      render(
+        <RecipeInstanceRow instance={makeInstance()} recipes={[CYCLE_RECIPE]} zoneId="z-salon" />,
+      );
+
+      // No mode in state → the cycle resolves to nothing, so no pill and no row 2.
+      expect(rows().row2).toBeNull();
+    });
+
+    it("shows no pill on a disabled instance", () => {
+      const off = makeInstance({ ...withPills(), enabled: false });
+      seedStores(off);
+      render(<RecipeInstanceRow instance={off} recipes={[CYCLE_RECIPE]} zoneId="z-salon" />);
+
+      expect(screen.queryByRole("button", { name: "Comfort" })).toBeNull();
+      expect(screen.queryByTitle("Override active")).toBeNull();
+    });
+  });
+
   it("hides admin controls for a non-admin user", () => {
     seedStores(makeInstance());
     useAuth.setState({ user: { ...adminUser(), role: "standard" } });
