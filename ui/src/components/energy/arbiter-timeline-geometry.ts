@@ -118,3 +118,23 @@ export function sampleInColumn(
   for (const s of samples) if (s.at >= colStart && s.at < colEnd) found = s.w;
   return found;
 }
+
+/** Height of the live value's pad: a 12 px caption line, no vertical padding. */
+const LIVE_LABEL_H = 12;
+/** Gap between the live dot (r 4 + 2 px ring) and its value. */
+const LIVE_LABEL_GAP = 8;
+
+/**
+ * Spec 197 — where the live value sits: on the side of the dot the curve does
+ * not come from. `preferAbove` is true when the curve reaches the dot from
+ * below (the previous point is lower on screen). Flipped when that side has no
+ * room, clamped inside the plot.
+ */
+export function liveLabelTop(dotY: number, preferAbove: boolean, height: number): number {
+  const above = dotY - LIVE_LABEL_GAP - LIVE_LABEL_H;
+  const below = dotY + LIVE_LABEL_GAP;
+  const fitsAbove = above >= 0;
+  const fitsBelow = below + LIVE_LABEL_H <= height;
+  const top = preferAbove ? (fitsAbove ? above : below) : fitsBelow ? below : above;
+  return Math.max(0, Math.min(height - LIVE_LABEL_H, top));
+}

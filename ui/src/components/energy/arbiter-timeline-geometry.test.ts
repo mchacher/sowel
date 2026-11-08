@@ -2,6 +2,7 @@ import { describe, it, expect } from "vitest";
 import {
   MIN_HALF_SHARE,
   legendStates,
+  liveLabelTop,
   mergeRuns,
   sampleInColumn,
   surplusScale,
@@ -97,5 +98,18 @@ describe("sampleInColumn (FR-E5.3)", () => {
     expect(sampleInColumn(samples, 0, 15)).toBe(-200);
     expect(sampleInColumn(samples, 15, 30)).toBe(300);
     expect(sampleInColumn(samples, 30, 45)).toBeNull();
+  });
+});
+
+describe("liveLabelTop — the live value keeps off the curve", () => {
+  it("sits above the dot when the curve comes from below, below otherwise", () => {
+    expect(liveLabelTop(50, true, 120)).toBe(30); // 50 − 8 − 12
+    expect(liveLabelTop(50, false, 120)).toBe(58); // 50 + 8
+  });
+
+  it("flips when its side has no room, and stays inside the plot", () => {
+    expect(liveLabelTop(10, true, 120)).toBe(18); // no room above: below
+    expect(liveLabelTop(115, false, 120)).toBe(95); // no room below: above
+    expect(liveLabelTop(5, false, 14)).toBeLessThanOrEqual(2);
   });
 });

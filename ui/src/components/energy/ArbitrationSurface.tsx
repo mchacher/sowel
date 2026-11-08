@@ -231,7 +231,7 @@ export function ArbitrationSurface() {
 
       {rows.length > 0 && (
         <div className="flex flex-col lg:flex-row lg:items-start gap-4 lg:gap-6">
-          <div className="flex-1 min-w-0 lg:max-w-[660px]">
+          <div className="flex-1 min-w-0 lg:max-w-[760px]">
             {/* Spec 197 (FR-E2.5) — the 1 to 5 before each name is the rank;
                 only a code comment said so. */}
             <p className="text-caption text-text-tertiary mb-2">{t("arbiter.priorityCaption")}</p>
@@ -287,7 +287,7 @@ export function ArbitrationSurface() {
                       >
                         <td className="text-left py-2.5 pr-3">
                           <div
-                            className={`font-semibold ${atRest ? "text-text-secondary" : "text-text"}`}
+                            className={`font-semibold lg:whitespace-nowrap ${atRest ? "text-text-secondary" : "text-text"}`}
                           >
                             {/* #807 — the roster has been priority-ordered since
                                 #616 and nothing said so. On a phone, where the
@@ -301,11 +301,12 @@ export function ArbitrationSurface() {
                         <td className="text-left py-2.5 px-3">
                           <StatePill state={r.state} />
                         </td>
-                        {/* No `whitespace-nowrap` here, unlike the figure
-                            columns: the longest words ("outside arbitration")
-                            would push a 375 px card into a sideways scroll,
-                            and wrapping them costs nothing. */}
-                        <td className="text-right py-2.5 px-3 tabular-nums text-text-tertiary">
+                        {/* No `whitespace-nowrap` below 1024 px, unlike the
+                            figure columns: the longest words ("outside
+                            arbitration") would push a 375 px card into a
+                            sideways scroll. From there, one line (spec 197):
+                            wrapped words doubled every row's height. */}
+                        <td className="text-right py-2.5 px-3 tabular-nums text-text-tertiary lg:whitespace-nowrap">
                           <GapCell row={r} deficit={deficit} />
                         </td>
                         <td className="hidden lg:table-cell text-right py-2.5 px-3 tabular-nums text-text-secondary whitespace-nowrap">

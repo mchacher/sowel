@@ -590,7 +590,12 @@ describe("ArbitrationSurface need and gap columns (#807)", () => {
     render(<ArbitrationSurface />);
 
     const cell = screen.getByText("outside arbitration").closest("td");
-    expect(cell?.className).not.toContain("whitespace-nowrap");
+    // Spec 197 — one line from 1024 px only, where the renamed columns made
+    // « non demandé » wrap and doubled the rows; the table scrolls there if
+    // it must.
+    const tokens = cell?.className.split(/\s+/) ?? [];
+    expect(tokens).not.toContain("whitespace-nowrap");
+    expect(tokens).toContain("lg:whitespace-nowrap");
   });
 
   it("hides the context panel at night, where the dormant line already explains", () => {

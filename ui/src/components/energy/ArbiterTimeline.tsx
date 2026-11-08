@@ -6,9 +6,15 @@ import type { ArbiterTimeline as ArbiterTimelineData } from "../../types";
 import { getArbiterTimeline } from "../../api";
 import { useArbiter } from "../../store/useArbiter";
 import { DEFICIT_HUE, SURPLUS_HUE, cellColor, cellEdge, journalDotColor } from "./arbiterColors";
-import { journalReasonLabel } from "./arbiterReason";
+import { journalKindLabel, journalReasonLabel, releasedFrom } from "./arbiterReason";
 import { TooltipSeriesRow } from "./TooltipSeriesRow";
-import { legendStates, mergeRuns, sampleInColumn, surplusScale } from "./arbiter-timeline-geometry";
+import {
+  legendStates,
+  liveLabelTop,
+  mergeRuns,
+  sampleInColumn,
+  surplusScale,
+} from "./arbiter-timeline-geometry";
 import { currentLocale, formatPower, formatRange } from "../../lib/format";
 
 // Spec 148 (Phase B) — the redesigned Energy → arbitrage timeline: a signed
@@ -212,6 +218,10 @@ export function ArbiterTimeline() {
     dataOffset === 0 && liveW !== null && now >= start
       ? { x: Math.max(lastSampleX, Math.min(1, (now - start) / span)), w: liveW }
       : null;
+  // The curve reaches the live dot from its last sample: from below on screen
+  // when that sample is lower (less surplus). With no sample, from zero.
+  const lastW = samples.length ? samples[samples.length - 1].w : 0;
+  const liveFromBelow = live ? lastW < live.w : false;
   const scale = surplusScale(
     samples.map((p) => p.w),
     live?.w ?? null,
@@ -231,8 +241,13 @@ export function ArbiterTimeline() {
   const scaleBottom = t("arbiter.timeline.importPeak", {
     power: formatPower(scale.bottomW, { unit: "kW" }),
   });
-  // The zero label only where it does not collide with an edge label.
-  const showZero = y0 >= 16 && y0 <= H - 17;
+  // Labels are 11 px tall: the top one spans [0, 11], « 0 » [y0 − 5, y0 + 6],
+  // the bottom one [H − 11, H]. « 0 » always shows; an edge label shows only
+  // with 4 px to spare, so a half held at its 15 % minimum (a thin, nearly
+  // empty half) drops its label rather than crowd « 0 ».
+  const LABEL_GAP = 4;
+  const showTop = y0 - 5 - 11 >= LABEL_GAP;
+  const showBottom = H - 11 - (y0 + 6) >= LABEL_GAP;
 
   // ── hourly alignment guides ───────────────────────────────────
   // The hour LABELS sit on the clock-hour tick (:00); the dotted GUIDES sit at
@@ -410,23 +425,25 @@ export function ArbiterTimeline() {
           <div className="relative w-[80px] flex-none">
             {/* leading-none: an 11 px label in the 20 px body line sat 5 px
                 below the level it names; each one is now centred on it. */}
-            <span className="absolute right-0 top-0 text-micro leading-none tabular-nums text-text-tertiary whitespace-nowrap">
-              {scaleTop}
-            </span>
-            {showZero && (
-              <span
-                className="absolute right-0 text-micro leading-none tabular-nums text-text-tertiary"
-                style={{ top: `${y0 - 5}px` }}
-              >
-                0
+            {showTop && (
+              <span className="absolute right-0 top-0 text-micro leading-none tabular-nums text-text-tertiary whitespace-nowrap">
+                {scaleTop}
               </span>
             )}
             <span
-              className="absolute right-0 text-micro leading-none tabular-nums text-text-tertiary whitespace-nowrap"
-              style={{ top: `${H - 11}px` }}
+              className="absolute right-0 text-micro leading-none tabular-nums text-text-tertiary"
+              style={{ top: `${y0 - 5}px` }}
             >
-              {scaleBottom}
+              0
             </span>
+            {showBottom && (
+              <span
+                className="absolute right-0 text-micro leading-none tabular-nums text-text-tertiary whitespace-nowrap"
+                style={{ top: `${H - 11}px` }}
+              >
+                {scaleBottom}
+              </span>
+            )}
           </div>
           <div className="relative flex-1 min-w-0">
             <svg
@@ -508,12 +525,14 @@ export function ArbiterTimeline() {
                   }}
                 />
                 <span
+                  data-testid="arbiter-live-value"
                   className="absolute px-1 rounded-xs bg-surface text-caption leading-none tabular-nums text-text whitespace-nowrap"
                   style={{
-                    // Beside the dot, on a surface pad so the line does not
-                    // run through the figure.
-                    right: `calc(${(1 - live.x) * 100}% + 8px)`,
-                    top: `${Math.max(0, Math.min(H - 12, yOf(live.w) - 6))}px`,
+                    // On a surface pad, ending at the dot, on the side the
+                    // curve does not come from; flipped when that side has
+                    // no room, and kept inside the plot.
+                    right: `calc(${(1 - live.x) * 100}% - 4px)`,
+                    top: `${liveLabelTop(yOf(live.w), liveFromBelow, H)}px`,
                   }}
                 >
                   {formatPower(Math.abs(live.w))}
@@ -683,7 +702,19 @@ export function ArbiterTimeline() {
                     {e.equipmentName ?? ""}
                   </span>
                   <span className="text-text-secondary truncate min-w-0">
-                    {t(`arbiter.kind.${e.kind}`)}
+                    {journalKindLabel(
+                      e.kind,
+                      e.kind === "released"
+                        ? releasedFrom(
+                            data.journal,
+                            i,
+                            data.loads.find((l) => l.equipmentId === e.equipmentId),
+                            start,
+                            stepMs,
+                          )
+                        : null,
+                      t,
+                    )}
                     {reasonLabel ? ` · ${reasonLabel}` : ""}
                   </span>
                 </div>
