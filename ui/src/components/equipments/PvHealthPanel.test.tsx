@@ -74,7 +74,7 @@ describe("PvHealthPanel", () => {
         sinceCutoff: "2026-08-05",
       }),
     );
-    expect(await screen.findByText(/15 of the 30 clear days/i)).toBeTruthy();
+    expect(await screen.findByText(/15 of 30 clear days/i)).toBeTruthy();
     expect(screen.getByText(/august 5/i)).toBeTruthy();
     expect(screen.queryByText(/clear midday hours/i)).toBeNull();
   });
@@ -86,14 +86,14 @@ describe("PvHealthPanel", () => {
       hours: 6,
     }));
     await renderPanel(response({ days, normal: null, latest: days[3], sinceCutoff: null }));
-    expect(await screen.findByText(/4 of the 30 clear days/i)).toBeTruthy();
+    expect(await screen.findByText(/4 of 30 clear days/i)).toBeTruthy();
   });
 
   it("says it has nothing recent to judge on when no day qualified in the window", async () => {
     // History exists, the fortnight was overcast: the card must not present a
     // weeks-old figure as current.
     await renderPanel(response({ detection: null }));
-    expect(await screen.findByText(/nothing recent to judge on/i)).toBeTruthy();
+    expect(await screen.findByText(/no clear midday hours lately/i)).toBeTruthy();
   });
 
   it("shows the alert with its start date when one stands", async () => {
@@ -101,12 +101,12 @@ describe("PvHealthPanel", () => {
     expect(await screen.findByText(/25\s?%/)).toBeTruthy();
   });
 
-  it("states the sensitivity honestly, never a per-panel figure", async () => {
+  it("states the sensitivity in one line, never a per-panel figure", async () => {
     await renderPanel(response());
-    expect(await screen.findByText(/8 clear days out of the last 14/i)).toBeTruthy();
+    expect(await screen.findByText(/8 clear days out of 14/i)).toBeTruthy();
     // The card names a size, never a panel: per-panel figures needed a panel
-    // count nothing declares.
-    expect(screen.getByText(/never which panel/i)).toBeTruthy();
+    // count nothing declares. #1162 — the line saying so went to the docs.
+    expect(screen.queryByText(/which panel/i)).toBeNull();
   });
 
   it("renders the last clear day with its date, not as an undated figure", async () => {
