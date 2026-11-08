@@ -1036,13 +1036,22 @@ export class CapacityArbiter {
    * it shows an export. A battery exporting at night keeps the quarter active,
    * as it keeps the live state active. No sun source means never dormant.
    * Returns undefined when there is no sun source, so the timeline skips it.
+   *
+   * Completed quarters only: the quarter under way is the live state, decided
+   * by `isDormant` (run state and live headroom included) through the
+   * timeline's `dormant` flag, so the roster pill and the ribbon's current
+   * cell keep one source (spec 165). Read from samples, a quarter a few
+   * minutes old holds none yet and would read dormant beside a battery
+   * exporting at night, or a stale meter.
    */
   private dormantOver(
     surplus: { at: number; availableW: number }[],
   ): ((qStart: number, qEnd: number) => boolean) | undefined {
     const sunlight = this.sunlight;
     if (!sunlight) return undefined;
+    const now = Date.now();
     return (qStart, qEnd) => {
+      if (qEnd > now) return false;
       if (sunlight.isDaylightAt(qStart) !== false) return false;
       if (sunlight.isDaylightAt(qEnd - 1) !== false) return false; // [qStart, qEnd)
       return !surplus.some((s) => s.at >= qStart && s.at < qEnd && quantizeW(s.availableW) > 0);

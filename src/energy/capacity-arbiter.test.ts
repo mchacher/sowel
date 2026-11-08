@@ -3224,6 +3224,22 @@ describe("arbiter history: the live window and the night (spec 197)", () => {
     expect(tl.journal.some((d) => d.kind === "waiting" && d.equipmentId === "heater")).toBe(true);
   });
 
+  it("leaves the quarter under way to the live dormant flag, not to the samples", () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date("2026-08-12T05:02:00Z"));
+    const h = makeHarness({ daylight: false, sunAt });
+    h.claim("i1", { equipmentId: "heater", watts: 2200 });
+    // A battery exports 800 W at night: the arbiter is NOT dormant, the pill
+    // says « En attente ». Samples land at :02, :07 … :27, :32: stop at 05:31,
+    // one minute into a quarter that holds no sample yet.
+    h.run(-800, 29 * 60);
+    expect(h.arbiter.getPublicState().loads.find((l) => l.equipmentId === "heater")?.state).toBe(
+      "pending",
+    );
+    const tl = h.arbiter.getTimeline(Date.now(), 6);
+    expect(tl.loads.find((l) => l.equipmentId === "heater")?.quarters.at(-1)).toBe("pending");
+  });
+
   it("keeps a night quarter pending when a battery exports in it (not dormant)", () => {
     vi.useFakeTimers();
     vi.setSystemTime(new Date("2026-08-12T05:00:00Z"));

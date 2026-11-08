@@ -67,7 +67,7 @@ This is a read-model and presentation refactor.
   effect on displayed state is applied once, where the state is resolved, and is
   therefore identical in both halves. The ribbon applies it to the current
   quarter only: past quarters are history and are never rewritten.
-  _Amended by spec 197 (FR-E5.4): a past quarter where a claim was pending while
+  _Amended by spec 197 (FR-E5.4): a past (completed) quarter where a claim was pending while
   the arbiter was dormant (sun down, no export in the quarter) is reported
   `idle`; the journal is unchanged._
 - **FR-5** One i18n key per state, `arbiter.loadState.<state>`, used by the
