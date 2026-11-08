@@ -271,8 +271,13 @@ describe("Live consumption breakdown — stacked and centred (#1170)", () => {
     const stack = legend.parentElement!;
     expect(donut.parentElement).toBe(stack);
     expect(stack.firstElementChild).toBe(donut);
-    expect(stack.className).toMatch(/\bflex-col\b/);
-    expect(stack.className).not.toMatch(/flex-row/);
+    // `(^|\s)` rather than `\b`: a `:` is a word boundary, so `\bflex-col` also
+    // matches `sm:flex-col`, which would leave a row below that width.
+    expect(stack.className).toMatch(/(^|\s)flex-col(\s|$)/);
+    const body = screen.getByTestId("breakdown-body");
+    for (const el of [stack, body, body.parentElement!]) {
+      expect(el.className).not.toMatch(/flex-row/);
+    }
   });
 
   it("centres the block in a card taller than its content", () => {
@@ -282,6 +287,8 @@ describe("Live consumption breakdown — stacked and centred (#1170)", () => {
     expect(body.className).toMatch(/\bflex-1\b/);
     expect(body.className).toMatch(/\bjustify-center\b/);
     expect(body.className).toMatch(/\bmx-auto\b/);
+    // The cap keeps the legend near its donut on a full-width tablet card.
+    expect(body.className).toMatch(/(^|\s)max-w-md(\s|$)/);
     expect(body.parentElement!.className).toMatch(/\bcard\b.*\bflex-col\b/);
   });
 });
