@@ -102,6 +102,13 @@ export function UpsPanel({ dataBindings }: UpsPanelProps) {
   // The battery branch borrows the status severity: orange the moment the mains
   // is gone, red once the hardware calls the charge low.
   const batteryBranchColor = onBattery ? tagColor : BATTERY_COLOR;
+  // Spec 197 (FR-E7) — the same share bars as Live. A UPS splits nothing, so
+  // its bars are levels: the load, in the colour of the source carrying it,
+  // and the battery's charge. A level shows no figure: the value above it is.
+  const level = (pct: number | null, color: string) =>
+    pct === null ? undefined : { parts: [{ share: Math.max(0, Math.min(100, pct)) / 100, color }] };
+  const loadBar = level(r.loadPct, onBattery ? batteryBranchColor : GRID_COLOR);
+  const batteryBar = level(r.chargePct, batteryBranchColor);
 
   const nodes: FlowNodeSpec[] = [
     {
@@ -115,6 +122,7 @@ export function UpsPanel({ dataBindings }: UpsPanelProps) {
             ? formatNumber(r.loadPct, { decimals: 0 })
             : "—",
       unit: r.loadW !== null ? "W" : r.loadPct !== null ? "%" : undefined,
+      ...(loadBar ? { bar: loadBar } : {}),
       icon: <Server className="w-11 h-11 @lg:w-14 @lg:h-14" strokeWidth={1.5} />,
     },
     {
@@ -140,15 +148,21 @@ export function UpsPanel({ dataBindings }: UpsPanelProps) {
       value: r.chargePct !== null ? String(Math.round(r.chargePct)) : "—",
       unit: r.chargePct !== null ? "%" : undefined,
       // The runtime is the headline's figure (spec 197): not repeated here.
-      sub: onBattery ? t("equipments.ups.discharging") : undefined,
+      // « en charge » moved here from a pill on the charge route (FR-E7).
+      sub: onBattery
+        ? t("equipments.ups.discharging")
+        : r.charging
+          ? t("equipments.ups.charging")
+          : undefined,
+      ...(batteryBar ? { bar: batteryBar } : {}),
       icon: batteryIcon(r.chargePct),
     },
   ];
 
   const runtimeLabel = formatRuntime(r.runtimeS);
-  // Spec 197 (FR-E4.5) — the watts on each route pick its tier, as on Live.
-  // The UPS reports no charging power, so the charge loop takes the first
-  // tier, which a charger topping up a battery is in any case.
+  // Spec 197 (FR-E4.5) — the watts on each route set its wave's speed, as on
+  // Live. The UPS reports no charging power, so the charge loop's wave moves
+  // at the slowest speed, which a charger topping up a battery is in any case.
   const links: FlowLinkSpec[] = [
     {
       edge: "leftToFocal",
@@ -161,14 +175,11 @@ export function UpsPanel({ dataBindings }: UpsPanelProps) {
       color: batteryBranchColor,
       active: onBattery,
       powerW: r.loadW ?? undefined,
-      // No runtime pill on this route any more: during an outage the time
-      // left is the headline's figure (spec 197), and nothing is said twice.
     },
     {
       edge: "leftToRight",
       color: BATTERY_COLOR,
       active: r.charging && !onBattery,
-      ...(r.charging && !onBattery ? { pill: { text: t("equipments.ups.charging") } } : {}),
     },
   ];
 
@@ -219,7 +230,12 @@ export function UpsPanel({ dataBindings }: UpsPanelProps) {
         power: r.loadW != null ? formatPower(r.loadW) : "?",
         charge: r.chargePct != null ? formatPercent(r.chargePct) : "?",
       });
-  const ariaLabel = `${statusText}. ${flowSentence}`;
+  // The load's share of the capacity, which its bar shows (FR-E7.6).
+  const loadSentence =
+    r.loadPct !== null
+      ? ` ${t("equipments.ups.aria.load", { load: formatPercent(r.loadPct) })}`
+      : "";
+  const ariaLabel = `${statusText}. ${flowSentence}${loadSentence}`;
 
   const margin = upsMarginOf(r);
   const marginColor =

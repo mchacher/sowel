@@ -37,7 +37,7 @@ function bindings(over: Record<string, unknown> = {}): DataBindingWithValue[] {
 }
 
 /** The diagram's node with this label, to read its figures apart from the headline. */
-const nodeOf = (label: string) => screen.getByText(label).closest(".absolute") as HTMLElement;
+const nodeOf = (label: string) => screen.getByText(label).closest("[data-slot]") as HTMLElement;
 
 const paintedStrokes = (c: HTMLElement) =>
   [...c.querySelectorAll("path")]
@@ -99,18 +99,39 @@ describe("UpsPanel on mains", () => {
     expect(within(screen.getByTestId("flow-headline")).getByText("—")).toBeTruthy();
   });
 
-  it("draws the mains route by the load's power tier", () => {
+  it("speeds the mains wave up with the load, at the same ribbon width", () => {
     const { container, rerender } = render(<UpsPanel dataBindings={bindings()} />);
-    expect(container.querySelector("path[data-tier]")?.getAttribute("data-tier")).toBe("1");
+    const rate = () => Number(container.querySelector("[data-rate]")?.getAttribute("data-rate"));
+    const width = () => container.querySelector("g[data-edge]")?.getAttribute("data-width");
+    const [slow, w0] = [rate(), width()];
     rerender(<UpsPanel dataBindings={bindings({ real_power: 900 })} />);
-    expect(container.querySelector("path[data-tier]")?.getAttribute("data-tier")).toBe("2");
+    expect(rate()).toBeGreaterThan(slow);
+    expect(width()).toBe(w0);
+  });
+
+  // Spec 197 (FR-E7) — levels, not splits: the load in the source's colour,
+  // the battery's charge; no figure repeated on the bars, none on the routes.
+  it("shows the load and the battery charge as level bars", () => {
+    render(<UpsPanel dataBindings={bindings()} />);
+    const level = (label: string) =>
+      within(nodeOf(label))
+        .getByTestId("flow-share-bar")
+        .querySelector<HTMLElement>("[data-share]")!;
+    expect(level("Protected load").style.width).toBe("4%");
+    expect(level("Protected load").style.background).toBe("var(--color-energy-grid)");
+    expect(
+      within(nodeOf("Battery")).getByTestId("flow-share-bar").querySelectorAll("[data-share]"),
+    ).toHaveLength(1);
+    expect(within(nodeOf("Mains")).queryByTestId("flow-share-bar")).toBeNull();
+    for (const bar of screen.getAllByTestId("flow-share-bar")) expect(bar.textContent).toBe("");
   });
 
   it("lights the charge loop only while the UPS is charging", () => {
     const { container, rerender } = render(<UpsPanel dataBindings={bindings()} />);
     expect(screen.queryByText("charging")).toBeNull();
     rerender(<UpsPanel dataBindings={bindings({ charging: true })} />);
-    expect(screen.getByText("charging")).toBeTruthy();
+    // « charging » is the battery's sub-line now, not a pill on the route.
+    expect(within(nodeOf("Battery")).getByText("charging")).toBeTruthy();
     expect(paintedStrokes(container)).toContain("var(--color-solar-auto)");
   });
 });
@@ -136,6 +157,22 @@ describe("UpsPanel during an outage", () => {
     expect(within(screen.getByTestId("flow-headline")).getByText("6")).toBeTruthy();
   });
 
+  it("draws the load and the battery level in the severity colour on battery", () => {
+    render(<UpsPanel dataBindings={outage()} />);
+    const level = (label: string) =>
+      within(nodeOf(label))
+        .getByTestId("flow-share-bar")
+        .querySelector<HTMLElement>("[data-share]")!;
+    expect(level("Battery").style.width).toBe("14%");
+    expect(level("Battery").style.background).toBe("var(--color-error)");
+    expect(level("Protected load").style.background).toBe("var(--color-error)");
+  });
+
+  it("tells a screen reader the load's share of the capacity, which its bar shows", () => {
+    render(<UpsPanel dataBindings={outage()} />);
+    expect(screen.getByRole("img", { name: /Load at 4\s?% of capacity\.$/ })).toBeTruthy();
+  });
+
   it("tells a screen reader the status before the flow", () => {
     render(<UpsPanel dataBindings={outage()} />);
     expect(screen.getByRole("img", { name: /^Battery low\. Mains absent\./ })).toBeTruthy();
@@ -153,7 +190,7 @@ describe("UpsPanel during an outage", () => {
 
   it("still draws the battery route with its end head on battery", () => {
     render(<UpsPanel dataBindings={outage()} />);
-    const caps = screen.getAllByTestId("flow-end-cap");
+    const caps = screen.getAllByTestId("flow-end-cap").filter((c) => c.dataset.size === "wide");
     expect(caps.map((c) => c.dataset.edge)).toEqual(["rightToFocal"]);
   });
 

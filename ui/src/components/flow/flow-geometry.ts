@@ -1,5 +1,5 @@
 /**
- * FlowDiagram geometry, types and cadence (spec 157).
+ * FlowDiagram geometry, types and cadence (spec 157, reworked by spec 197).
  *
  * Split from the component so the .tsx exports a component and nothing else —
  * react-refresh requires it, and it is the same reason `vmcSpeed.ts` sits
@@ -13,34 +13,28 @@ export type FlowSlot = "focal" | "left" | "right";
 
 /**
  * A route between two slots. The bottom edge exists in both directions because
- * the two surfaces traverse it opposite ways, and the bubbles must travel the
+ * the two surfaces traverse it opposite ways, and the wave must travel the
  * right way round.
  */
 export type FlowEdge = "leftToFocal" | "rightToFocal" | "rightToLeft" | "leftToRight";
 
 /**
- * Manhattan routes, verbatim from the v1.53.0 Live page.
- *
  * The viewBox is 540 × 290 (spec 197). It was 540 × 360 while a status tag
  * sat in a band under the bottom route; the headline above the diagram
- * replaced the tag, and the band would have been 70 units of nothing. The
- * routes did not move, only the frame's bottom edge.
+ * replaced the tag.
  *
- * Box geometry (heights explicit so the centres are deterministic):
- *   focal  top-0               h-[45%] w-[36%] → y   0..130, centre (270,  65)
- *                                      @lg:w-[24%] (x 205..335, see SLOT_BOX)
- *   left   top-[62%] centred   h-[36%] w-[22%] → y 128..232, centre ( 60, 180)
- *   right  top-[62%] centred   h-[36%] w-[22%] → y 128..232, centre (480, 180)
- * In a narrow diagram the satellites are 24 % wide from -1 %: same centres (#1129).
+ * The routes run between the node centres and pass under the nodes, which are
+ * the card's colour and mask them:
+ *   focal  (270,  65)   the icon's centre: the top routes arrive at its height
+ *   left   ( 60, 180)
+ *   right  (480, 180)
  *
  * The narrow and wide sizes switch on the diagram's own width, a container
- * query at 32 rem (`@lg:`), not on the screen's (spec 197). From `lg` the Live
- * diagram sits in a 7/12 column, 360 px wide at 1024 px with the sidebar
- * open: sized by the screen, its nodes took the wide sizes in a frame too
- * short for them. A diagram under 512 px wide gets the phone's sizes and the
- * phone's fixed 260 px height, wherever it is.
+ * query at 32 rem (`@lg:`), not on the screen's: from `lg` the Live diagram
+ * sits in a 7/12 column, 360 px wide at 1024 px with the sidebar open.
  */
 export const VIEWBOX_HEIGHT = 290;
+
 export const PATHS: Record<FlowEdge, string> = {
   leftToFocal: "M 60 180 V 75 Q 60 65 70 65 H 270",
   rightToFocal: "M 480 180 V 75 Q 480 65 470 65 H 270",
@@ -49,37 +43,28 @@ export const PATHS: Record<FlowEdge, string> = {
 };
 
 /**
- * Where an edge's figure sits: beside the visible vertical leg, on the side
- * of the focal node, or just above the bottom run. Never on the line: set
- * on it, the label cut a short leg into a stub with a lone dot under it
- * (spec 197 review), so the route now runs whole past its figure.
+ * Where each node's icon centre sits, in % of the diagram (x of 540, y of 290).
+ * The satellites sit at y 165, above the routes' own corner (180): their value,
+ * sub-line and bar hang below the icon, and a route arriving from the bottom
+ * run needs a straight leg under them for its head (at y 180 the head landed
+ * in the run's curve on a UPS charging, 520 px wide).
  */
-export const PILL_POSITION: Record<FlowEdge, string> = {
-  leftToFocal: "left-[calc(11%+10px)] top-[35%] -translate-y-1/2",
-  rightToFocal: "right-[calc(11%+10px)] top-[35%] -translate-y-1/2",
-  rightToLeft: "left-1/2 top-[93%] -translate-x-1/2 -translate-y-[calc(100%+4px)]",
-  leftToRight: "left-1/2 top-[93%] -translate-x-1/2 -translate-y-[calc(100%+4px)]",
+export const SLOT_ANCHOR: Record<FlowSlot, { left: number; top: number }> = {
+  focal: { left: 50, top: (65 / VIEWBOX_HEIGHT) * 100 },
+  left: { left: (60 / 540) * 100, top: (165 / VIEWBOX_HEIGHT) * 100 },
+  right: { left: (480 / 540) * 100, top: (165 / VIEWBOX_HEIGHT) * 100 },
 };
 
-// A satellite node is 22 % of a wide diagram (`@lg`), 24 % of a narrow one with 2 px
-// of side padding. On a phone the diagram is the viewport less 64 px (page
-// and card padding). At 22 % with 4 px of padding the widest figure,
-// « ↑ 10,5 kW » (61 px), ran 3.8 px past the content box at 360 px and
-// 0.5 px at 390 px, and « Production » filled it to the pixel (#1129,
-// measured in Chromium). Now the content box is 67 px at 360 px, 74 px at
-// 390 px. In a narrow diagram the box also steps 1 % outward so its centre stays at
-// 11 % / 89 %, where the routes of PATHS meet it (x = 60 and 480 of 540).
-// The focal box takes 8 px of side padding in a narrow diagram: « Consommation », set
-// at 12 px, ran 2 px past its content box at 360 px with 12 px of padding.
-// From `@lg` it narrows to 24 % (123 px at the narrowest, 144 px at 600 px,
-// « Consommation » and « 10,5 kW » need about 90): the box is the card's
-// own colour since spec 197, so the routes appear to end where it starts, and
-// at 36 % they stopped 50 px short of the node they feed.
-export const SLOT_BOX: Record<FlowSlot, string> = {
-  focal: "top-0 left-1/2 -translate-x-1/2 w-[36%] @lg:w-[24%] h-[45%] px-2 @lg:px-3 py-2",
-  left: "top-[62%] -translate-y-1/2 -left-[1%] @lg:left-0 w-[24%] @lg:w-[22%] h-[36%] px-0.5 @lg:px-2 py-2",
-  right:
-    "top-[62%] -translate-y-1/2 -right-[1%] @lg:right-0 w-[24%] @lg:w-[22%] h-[36%] px-0.5 @lg:px-2 py-2",
+/**
+ * The icon row of a node. The focal row is as wide as the gap the top routes
+ * leave on each side of the house (the design's 2 × 50 px narrow, 2 × 64 px
+ * wide), so the arrowheads land at a fixed distance from the icon whatever
+ * the label; a satellite's row is its icon with a little air.
+ */
+export const SLOT_ICON_ROW: Record<FlowSlot, string> = {
+  focal: "w-[100px] @lg:w-[128px]",
+  left: "px-1",
+  right: "px-1",
 };
 
 export const SLOT_LABEL: Record<FlowSlot, string> = {
@@ -89,10 +74,28 @@ export const SLOT_LABEL: Record<FlowSlot, string> = {
 };
 
 export const SLOT_VALUE: Record<FlowSlot, string> = {
-  focal: "text-title @lg:text-display gap-1 mt-1",
+  focal: "text-title @lg:text-display gap-1",
   left: "text-body @lg:text-title gap-0.5 @lg:gap-1",
   right: "text-body @lg:text-title gap-0.5 @lg:gap-1",
 };
+
+/** Width of a node's share bar: 76 / 96 px under the focal value, 58 / 72 px under a satellite's. */
+export const SLOT_BAR: Record<FlowSlot, string> = {
+  focal: "w-[76px] @lg:w-[96px]",
+  left: "w-[58px] @lg:w-[72px]",
+  right: "w-[58px] @lg:w-[72px]",
+};
+
+/**
+ * Spec 197 (FR-E7) — the share bar under a node's value: the parts the node
+ * receives or gives, in route order (grid then solar into the house; the house
+ * then the grid out of the panel), each in its route's colour, with its
+ * pre-formatted percentage. A single part under 1 is a level (a UPS load, a
+ * battery charge): the track shows the rest, and no figure is repeated.
+ */
+export interface FlowShareBar {
+  parts: { share: number; color: string; label?: string }[];
+}
 
 export interface FlowNodeSpec {
   slot: FlowSlot;
@@ -102,14 +105,15 @@ export interface FlowNodeSpec {
   /** Pre-formatted value; the diagram never formats. */
   value: string;
   unit?: string;
-  /** Optional second line under the value (the UPS reads its autonomy here). */
+  /** Optional second line under the value (« import », « en décharge »). */
   sub?: string;
   /** Paints the icon only; the value is always in ink (#1126). */
   color: string;
+  /** The share bar under the value; omit for a node with nothing to split. */
+  bar?: FlowShareBar;
   /**
-   * Idle. The box itself stays fully opaque on purpose: the skeleton routes
-   * start at its centre, so a translucent box would let the grey line show
-   * through the icon. Only the contents dim.
+   * Idle. Only the contents dim: the boxes stay opaque, since they mask the
+   * routes that start under them.
    */
   dimmed?: boolean;
 }
@@ -117,16 +121,14 @@ export interface FlowNodeSpec {
 export interface FlowLinkSpec {
   edge: FlowEdge;
   color: string;
-  /** False → the route is drawn as skeleton only, with no overlay and no dots. */
+  /** False → the route is drawn as skeleton only, with no ribbon and no wave. */
   active: boolean;
   /**
-   * Absolute watts on the route (spec 197): picks the tier, so the stroke
-   * width and the dot speed. Omit for a link with no reading (a UPS charging
-   * loop): it is drawn at the first tier.
+   * Absolute watts on the route (spec 197): the wave's speed follows it (the
+   * ribbon's width does not). Omit for a link with no reading (a UPS charging
+   * loop): its wave moves at the slowest speed.
    */
   powerW?: number;
-  /** A short figure by the route, in secondary text on a surface pad. */
-  pill?: { text: string };
 }
 
 /**
@@ -150,66 +152,65 @@ export interface FlowDiagramProps {
   headline?: FlowHeadline;
   /**
    * Sentence describing the whole flow for screen readers. When given, the
-   * visible headline, nodes and pills are hidden from assistive technology,
-   * so the figures are not read twice.
+   * visible headline, nodes and share bars are hidden from assistive
+   * technology, so the figures are not read twice.
    */
   ariaLabel?: string;
 }
 
-/** Power tier of a route: 1 below 500 W, 2 up to 2 kW, 3 from 2 kW. */
-export type FlowTier = 1 | 2 | 3;
+/**
+ * Spec 197 (FR-E4.1, amended) — every active ribbon has the same width, in
+ * screen pixels: the maintainer found a width that followed the power ugly
+ * (« ça fait moche »). How much flows is told by the wave's speed and the
+ * share bars under the nodes. Narrow diagrams (under 32 rem) take the
+ * narrow width, switched by the container query.
+ */
+export const RIBBON_WIDTH = { narrow: 5, wide: 6 } as const;
 
-export function flowTier(powerW: number | undefined): FlowTier {
-  const a = Math.abs(powerW ?? 0);
-  if (a >= 2000) return 3;
-  if (a >= 500) return 2;
-  return 1;
+/** The wave's speed in screen pixels a second: 18 px/s near zero, √-scaled, flat from 8 kW. */
+export function waveSpeed(powerW: number | undefined): number {
+  const p = Math.min(Math.abs(powerW ?? 0), 8000);
+  return 18 + 70 * Math.sqrt(p / 3000);
 }
 
-/** Below this, a route is lit but carries no moving dots: rounding noise. */
-export const FLOW_DOT_FLOOR_W = 5;
+/** One wave every 150 px along the ribbon (keep in step with `flow-wave` in index.css). */
+export const WAVE_PERIOD = 150;
 
-/**
- * Screen-pixel strokes per tier. The routes are drawn with
- * `vector-effect: non-scaling-stroke`, so these are the widths on screen at
- * every size, the phone's squeezed viewBox included (spec 197, FR-E4).
- * `dot` is the round-capped dash diameter, wider than the route so the dots
- * read on top of it; `speed` is how fast the dots move, in pixels a second.
- */
-export const FLOW_TIER_STYLE: Record<FlowTier, { width: number; dot: number; speed: number }> = {
-  1: { width: 2, dot: 6, speed: 16 },
-  2: { width: 3, dot: 7, speed: 32 },
-  3: { width: 4, dot: 8, speed: 56 },
-};
+/** The speed the CSS cycle runs at, rate 1: one period at 18 px/s (index.css). */
+export const WAVE_BASE_SPEED = 18;
 
-/** Distance between two dots, in screen pixels: `stroke-dasharray: 0 P`. */
-export const FLOW_DOT_PERIOD = 20;
-
-/** Seconds a dot takes to move one period at a tier's speed. */
-export function flowDotSeconds(tier: FlowTier): number {
-  return FLOW_DOT_PERIOD / FLOW_TIER_STYLE[tier].speed;
+/** The wave's playback rate against the CSS cycle, two decimals. */
+export function waveRate(powerW: number | undefined): number {
+  return Math.round((waveSpeed(powerW) / WAVE_BASE_SPEED) * 100) / 100;
 }
 
 /**
- * Where each route enters its destination node, as a percentage of the
- * diagram, and the way it is heading there (degrees, 0 = towards the right).
- * The direction cue sits here, at the end of the route, never mid-route
- * (spec 197, FR-E4.3: the maintainer turned down a mid-route chevron).
- *
- * From the box geometry above: the focal box spans 32..68 % of the width
- * in a narrow diagram and 38..62 % in a wide one (`wideLeft`). A satellite
- * box ends at y 62 % + 36 % / 2 = 80 %, but in a narrow diagram its contents
- * run a few pixels past it (a fourth line, « export » or the UPS runtime,
- * needs about 103 px of a 94 px box at 360 px), so the head stops at 83 %,
- * under the last line rather than on it. The phone's wider satellites keep
- * the same centre and height, so their points hold at every size.
+ * The wave: three dashes stacked on one path, centred on each other, longest
+ * and faintest first, so the colour swells and fades instead of marching in
+ * beads. Lengths in screen pixels, from the ribbon's width.
  */
-export const ROUTE_END: Record<
-  FlowEdge,
-  { left: number; wideLeft: number; top: number; angle: number }
-> = {
-  leftToFocal: { left: 32, wideLeft: 38, top: (65 / VIEWBOX_HEIGHT) * 100, angle: 0 },
-  rightToFocal: { left: 68, wideLeft: 62, top: (65 / VIEWBOX_HEIGHT) * 100, angle: 180 },
-  rightToLeft: { left: (60 / 540) * 100, wideLeft: (60 / 540) * 100, top: 83, angle: -90 },
-  leftToRight: { left: (480 / 540) * 100, wideLeft: (480 / 540) * 100, top: 83, angle: -90 },
-};
+export function waveDashes(width: number): { length: number; opacity: number }[] {
+  const L = 26 + 2 * width;
+  return [
+    { length: L, opacity: 0.3 },
+    { length: L * 0.6, opacity: 0.55 },
+    { length: L * 0.3, opacity: 1 },
+  ];
+}
+
+/** Below this, a route is noise: skeleton only, no ribbon. */
+export const FLOW_FLOOR_W = 5;
+
+/** The arrowhead at the route's end, sized on the ribbon: base w + 10, length 0.55 w + 7. */
+export function headSize(width: number): { base: number; length: number } {
+  return { base: width + 10, length: width * 0.55 + 7 };
+}
+
+/** Which node a route enters, and on which side of it. */
+export const ROUTE_TARGET: Record<FlowEdge, { slot: FlowSlot; side: "left" | "right" | "bottom" }> =
+  {
+    leftToFocal: { slot: "focal", side: "left" },
+    rightToFocal: { slot: "focal", side: "right" },
+    rightToLeft: { slot: "left", side: "bottom" },
+    leftToRight: { slot: "right", side: "bottom" },
+  };

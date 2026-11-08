@@ -83,7 +83,8 @@ describe("Live energy diagram — geometry", () => {
     // Producing 2000 W, exporting 1500 W → house 500 W.
     seed([meter("grid", "main_energy_meter", -1500), meter("pv", "energy_production_meter", 2000)]);
     const { container } = render(<LiveEnergyPage />, { wrapper: MemoryRouter });
-    expect(strokesFor(container, PATH_SOLAR_TO_GRID)).toContain("var(--color-solar-auto)");
+    // The export takes the injection green (spec 197), like the headline's dot.
+    expect(strokesFor(container, PATH_SOLAR_TO_GRID)).toContain("var(--color-solar-injection)");
     expect(strokesFor(container, PATH_SOLAR_TO_HOUSE)).toContain("var(--color-solar-auto)");
     // The grid leg carries nothing on export, so it stays skeleton-only.
     expect(strokesFor(container, PATH_GRID_TO_HOUSE)).toEqual(["var(--color-border)"]);
@@ -165,14 +166,84 @@ describe("Live energy diagram — nodes and status", () => {
     expect(headline.querySelector("p")).toBeNull();
   });
 
-  it("draws the routes by power tier", () => {
-    // 4.9 kW from the grid, 180 W of sun: the widest and the thinnest route.
+  it("draws both ribbons at one width and tells the power by the wave's speed", () => {
+    // 4.9 kW from the grid, 180 W of sun.
     seed([meter("grid", "main_energy_meter", 4900), meter("pv", "energy_production_meter", 180)]);
     const { container } = render(<LiveEnergyPage />, { wrapper: MemoryRouter });
-    const tierOf = (d: string) =>
-      container.querySelector(`path[data-tier][d="${d}"]`)?.getAttribute("data-tier");
-    expect(tierOf(PATH_GRID_TO_HOUSE)).toBe("3");
-    expect(tierOf(PATH_SOLAR_TO_HOUSE)).toBe("1");
+    const g = (edge: string) => container.querySelector(`g[data-edge="${edge}"]`)!;
+    expect(g("leftToFocal").getAttribute("data-width")).toBe(
+      g("rightToFocal").getAttribute("data-width"),
+    );
+    const rate = (edge: string) =>
+      Number(g(edge).querySelector("[data-rate]")!.getAttribute("data-rate"));
+    expect(rate("leftToFocal")).toBeGreaterThan(rate("rightToFocal"));
+  });
+
+  // Spec 197 (FR-E7) — the shares moved from the routes to the nodes.
+  it("splits the house's bar grid then solar, with percentages that add up", () => {
+    // 4.9 kW from the grid, 180 W of sun: 96 % | 4 %, as the headline says 4 %.
+    seed([meter("grid", "main_energy_meter", 4900), meter("pv", "energy_production_meter", 180)]);
+    render(<LiveEnergyPage />, { wrapper: MemoryRouter });
+    const bars = screen.getAllByTestId("flow-share-bar");
+    expect(bars).toHaveLength(1);
+    const segs = [...bars[0].querySelectorAll<HTMLElement>("[data-share]")];
+    expect(segs.map((s) => s.style.background)).toEqual([
+      "var(--color-energy-grid)",
+      "var(--color-solar-auto)",
+    ]);
+    expect(bars[0].textContent).toBe("96%4%");
+    expect(bars[0].closest('[data-slot="focal"]')).toBeTruthy();
+  });
+
+  it("rounds the house's two ends to add up to 100", () => {
+    // 2 850 W from the grid, 7 150 W of sun: 28.5 | 71.5, which rounded each
+    // on its own would print 29 % and 72 %.
+    seed([meter("grid", "main_energy_meter", 2850), meter("pv", "energy_production_meter", 7150)]);
+    render(<LiveEnergyPage />, { wrapper: MemoryRouter });
+    expect(screen.getByTestId("flow-share-bar").textContent).toBe("28%72%");
+  });
+
+  it("drops a part that rounds to 0 % instead of printing it", () => {
+    // 5 kW from the grid, 10 W of sun.
+    seed([meter("grid", "main_energy_meter", 5000), meter("pv", "energy_production_meter", 10)]);
+    render(<LiveEnergyPage />, { wrapper: MemoryRouter });
+    const bar = screen.getByTestId("flow-share-bar");
+    expect(bar.querySelectorAll("[data-share]")).toHaveLength(1);
+    expect(bar.textContent).toBe("");
+  });
+
+  it("tells a screen reader the panel's split while exporting", () => {
+    seed([meter("grid", "main_energy_meter", -1400), meter("pv", "energy_production_meter", 2600)]);
+    render(<LiveEnergyPage />, { wrapper: MemoryRouter });
+    expect(
+      screen.getByRole("img", { name: /46% to the house, 54% exported to the grid/ }),
+    ).toBeTruthy();
+  });
+
+  it("shows a full grid bar at night and a full solar bar on export, plus the panel's split", () => {
+    seed([meter("grid", "main_energy_meter", 1800), meter("pv", "energy_production_meter", 0)]);
+    const night = render(<LiveEnergyPage />, { wrapper: MemoryRouter });
+    const nightBar = screen.getByTestId("flow-share-bar");
+    expect(nightBar.querySelectorAll("[data-share]")).toHaveLength(1);
+    expect(nightBar.textContent).toBe("");
+    night.unmount();
+
+    // Producing 2.6 kW, exporting 1.4 kW → the house takes 1.2 kW: 46 | 54.
+    seed([meter("grid", "main_energy_meter", -1400), meter("pv", "energy_production_meter", 2600)]);
+    render(<LiveEnergyPage />, { wrapper: MemoryRouter });
+    const [house, panel] = ["focal", "right"].map(
+      (slot) =>
+        document
+          .querySelector(`[data-slot="${slot}"]`)
+          ?.querySelector('[data-testid="flow-share-bar"]') as HTMLElement | null,
+    );
+    expect(house!.querySelectorAll("[data-share]")).toHaveLength(1);
+    expect(panel!.textContent).toBe("46%54%");
+    expect(
+      [...panel!.querySelectorAll<HTMLElement>("[data-share]")].map((s) => s.style.background),
+    ).toEqual(["var(--color-solar-auto)", "var(--color-solar-injection)"]);
+    // The grid satellite carries a single flow: no bar.
+    expect(document.querySelector('[data-slot="left"] [data-testid="flow-share-bar"]')).toBeNull();
   });
 
   it("shows the share of consumption on each supplying leg", () => {
@@ -265,9 +336,12 @@ describe("Live energy page — layout", () => {
     seed([meter("grid", "main_energy_meter", 3), meter("pv", "energy_production_meter", 900)]);
     const { container } = render(<LiveEnergyPage />, { wrapper: MemoryRouter });
     expect(strokesFor(container, PATH_GRID_TO_HOUSE)).toEqual(["var(--color-border)"]);
-    expect(screen.getAllByTestId("flow-end-cap").map((c) => c.dataset.edge)).toEqual([
-      "rightToFocal",
-    ]);
+    expect(
+      screen
+        .getAllByTestId("flow-end-cap")
+        .filter((c) => c.dataset.size === "wide")
+        .map((c) => c.dataset.edge),
+    ).toEqual(["rightToFocal"]);
   });
 
   it("puts the flow and the breakdown side by side from lg, the phases under the breakdown", () => {

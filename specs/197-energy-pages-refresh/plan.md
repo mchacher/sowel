@@ -29,6 +29,14 @@ Three branches from the same spec commit, each its own PR against `main` (they t
 - [x] E4.1 — `flowTier()` + `powerW` on links (Live and UPS)
 - [x] E4.2 — CSS dashes replace SMIL; reduced motion
 - [x] E4.3 — end-of-route direction cue (no mid-route chevron), checked on still frames
+- [x] E4.4 — (rework, `feat/energy-flow-ribbon`) ribbon: constant `RIBBON_WIDTH` (6 / 5 px, after the maintainer's review), tinted band, three-dash CSS wave at a speed following the power, dark halo, head of one size, reduced motion and `color-mix` guard
+
+### Slice E7 — Shares on the nodes (`feat/energy-flow-ribbon`, stacked on E1/E3/E4)
+
+- [x] E7.1 — `FlowNodeSpec.bar` and the node built around its icon; route percentages removed
+- [x] E7.2 — Live bars (house always, panel when it splits), percentages adding up to 100
+- [x] E7.3 — UPS level bars (load, battery), « en charge » as the battery's sub-line
+- [x] E7.4 — tests, docs EN/FR, visual check (Live, UPS, export and battery scenarios, reduced motion)
 
 ### Slice E2 — Deficit as a state
 
@@ -61,28 +69,33 @@ Three branches from the same spec commit, each its own PR against `main` (they t
 
 ## Test Plan
 
-| Module                       | Scenario                                                   | Expected                                                       |
-| ---------------------------- | ---------------------------------------------------------- | -------------------------------------------------------------- |
-| `live-headline.ts`           | grid +4 900 W, solar 180 W, consumption 5 000 W            | kind import, value 4,9 kW, sentence « 4 % des 5 kW »           |
-| `live-headline.ts`           | grid −1 200 W                                              | kind export, value 1,2 kW                                      |
-| `live-headline.ts`           | \|grid\| < 5 W                                             | kind self                                                      |
-| `live-headline.ts`           | production 0                                               | sentence « Pas de production solaire »                         |
-| `live-headline.ts`           | no grid source                                             | consumption-only, no sentence                                  |
-| `live-headline.ts`           | stale grid                                                 | stale age present                                              |
-| `FlowDiagram`                | headline rendered; no `tag`; dashes not SMIL; tiers widths | DOM has headline, no `animateMotion`, stroke widths 2/3/4      |
-| `flow-geometry` `flowTier`   | 0, 499, 500, 1 999, 2 000 W                                | tiers 1, 1, 2, 2, 3                                            |
-| `UpsPanel`                   | on mains, on battery                                       | headline label/value per state; diagram renders                |
-| `submeter-helpers`           | rows with 0 W and positive, « Autre »                      | active sorted, stopped names, Autre last                       |
-| `arbiterColors`              | deficit / surplus sticker                                  | grid colour for deficit, never error                           |
-| `ArbitrationSurface`         | deficit state                                              | « Import réseau » aside, « déficit » cells, no « −x » surplus  |
-| `ArbitrationSurface`         | surplus state                                              | « Surplus disponible », watts in « Il manque »                 |
-| `arbiter-timeline` (backend) | pending claim at night (dormant), pending by day           | idle at night, pending by day                                  |
-| `surplusScale`               | only deficit, only surplus, both, live beyond samples      | zero placement, ≥ 15 % halves, live included, equal W/px       |
-| `mergeRuns`                  | alternating, single state, empty                           | correct runs                                                   |
-| `ArbiterTimeline`            | legend; keyboard ← →                                       | only present states + Au repos; focus moves                    |
-| `SegmentedControl`           | click, aria-pressed                                        | onChange, pressed state                                        |
-| `EnergyPage`                 | Wh and € headline                                          | total and sentence per unit; € total excludes self-consumption |
-| `ProductionPage`             | forecast present / absent                                  | sentence present / absent; axis floor                          |
+| Module                       | Scenario                                                     | Expected                                                                           |
+| ---------------------------- | ------------------------------------------------------------ | ---------------------------------------------------------------------------------- |
+| `live-headline.ts`           | grid +4 900 W, solar 180 W, consumption 5 000 W              | kind import, value 4,9 kW, sentence « 4 % des 5 kW »                               |
+| `live-headline.ts`           | grid −1 200 W                                                | kind export, value 1,2 kW                                                          |
+| `live-headline.ts`           | \|grid\| < 5 W                                               | kind self                                                                          |
+| `live-headline.ts`           | production 0                                                 | sentence « Pas de production solaire »                                             |
+| `live-headline.ts`           | no grid source                                               | consumption-only, no sentence                                                      |
+| `live-headline.ts`           | stale grid                                                   | stale age present                                                                  |
+| `FlowDiagram`                | headline rendered; no `tag`; no SMIL; ribbon per active link | DOM has headline, no `animateMotion`, band + halo + 3 wave dashes                  |
+| `flow-geometry` ribbon       | `RIBBON_WIDTH`; `waveSpeed` / `waveRate` at 0, 3 kW, 20 kW   | 6 px wide, 5 px narrow; 18 px/s, 88 px/s, flat past 8 kW; rate = speed / 18        |
+| `FlowDiagram` ribbons        | 180 W, 1,2 kW, 4,9 kW                                        | the same width on every route; the wave's rate grows with the power                |
+| `FlowDiagram` share bar      | two parts; a level; no bar                                   | segments in order and colour, end labels; level width, no figure; no route figure  |
+| `LiveEnergyPage` bars        | import 4,9 kW / 180 W; night; export 2,6 kW / −1,4 kW        | house 96 % \| 4 %; full grid bar; full solar bar + panel 46 % \| 54 %, no grid bar |
+| `UpsPanel` bars              | on mains; on battery                                         | load and battery levels, grid / green; severity colour on battery; no figure       |
+| `index.css` ribbon           | reduced motion; `color-mix` missing                          | no wave, tint 72 %; opacity fallback                                               |
+| `UpsPanel`                   | on mains, on battery                                         | headline label/value per state; diagram renders                                    |
+| `submeter-helpers`           | rows with 0 W and positive, « Autre »                        | active sorted, stopped names, Autre last                                           |
+| `arbiterColors`              | deficit / surplus sticker                                    | grid colour for deficit, never error                                               |
+| `ArbitrationSurface`         | deficit state                                                | « Import réseau » aside, « déficit » cells, no « −x » surplus                      |
+| `ArbitrationSurface`         | surplus state                                                | « Surplus disponible », watts in « Il manque »                                     |
+| `arbiter-timeline` (backend) | pending claim at night (dormant), pending by day             | idle at night, pending by day                                                      |
+| `surplusScale`               | only deficit, only surplus, both, live beyond samples        | zero placement, ≥ 15 % halves, live included, equal W/px                           |
+| `mergeRuns`                  | alternating, single state, empty                             | correct runs                                                                       |
+| `ArbiterTimeline`            | legend; keyboard ← →                                         | only present states + Au repos; focus moves                                        |
+| `SegmentedControl`           | click, aria-pressed                                          | onChange, pressed state                                                            |
+| `EnergyPage`                 | Wh and € headline                                            | total and sentence per unit; € total excludes self-consumption                     |
+| `ProductionPage`             | forecast present / absent                                    | sentence present / absent; axis floor                                              |
 
 ## Validation Plan
 

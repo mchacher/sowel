@@ -318,6 +318,10 @@ Simple interrupteur on/off ou prise connectée.
 - **Contrôles :** Bascule Marche / Arrêt avec badge d'état
 - **Données attendues :** état (on/off)
 
+#### Onduleur
+
+Un onduleur (via le plugin NUT) a une page de détail en lecture seule, construite sur le même schéma de flux que la page Énergie en direct. Sa première ligne donne l'état (Sur secteur, Sur batterie, Batterie faible…) et, en grands chiffres, l'autonomie restante, puis la charge et le niveau de batterie. Dessous, le schéma relie le secteur, la batterie et les équipements protégés : le trajet qui porte la puissance est un ruban terminé par une pointe de flèche vers les équipements, et une petite barre sous les équipements et sous la batterie montre leur niveau, dans la couleur d'alerte ou de défaut pendant la coupure. Quand la batterie se recharge, elle l'indique sous sa valeur. Sowel n'envoie jamais d'ordre à l'onduleur : l'arrêt propre revient à `upsmon` sur chaque machine protégée.
+
 ---
 
 ## Gérer les équipements

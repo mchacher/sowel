@@ -65,11 +65,11 @@ Awnings share the shutter control surface (same position binding, same OPEN/STOP
 
 ### Climate
 
-| Type             | Controls                                              | Expected data                                                                                                          |
-| ---------------- | ----------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------- |
+| Type             | Controls                                                | Expected data                                                                                                          |
+| ---------------- | ------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------- |
 | **Thermostat**   | Temperature display, setpoint − / +, power on/off, mode | core: current temperature, setpoint, run state, power, operating mode; then whatever else the device offers, as extras |
-| **Heater**       | Comfort / Eco toggle                                  | relay state (fil pilote: ON = eco, OFF = comfort)                                                                      |
-| **Water Heater** | On/Off toggle, optional dedicated Solar toggle        | on/off relay state, optional solar-channel state, optional water temperature (display only), optional power/energy     |
+| **Heater**       | Comfort / Eco toggle                                    | relay state (fil pilote: ON = eco, OFF = comfort)                                                                      |
+| **Water Heater** | On/Off toggle, optional dedicated Solar toggle          | on/off relay state, optional solar-channel state, optional water temperature (display only), optional power/energy     |
 
 Thermostat covers air conditioning, pellet stoves, and heat pumps. Heater covers individual electric heaters wired through a fil-pilote relay. Water Heater (chauffe-eau / cumulus) is an on/off relay for a hot-water tank: auto-binds the on/off channel (and its power/energy when the relay meters them); a water-temperature probe can be bound optionally and is shown but kept out of the room temperature average. Setpoint control is intentionally out of scope (that would be a thermostat).
 
@@ -223,6 +223,18 @@ the metering: the card shows live power next to the toggle, the consumption
 feeds the energy dashboard (history, HP/HC), and the plug appears in the live
 submeter breakdown — while keeping its ON/OFF control. A basic relay with no
 metering data behaves as a plain switch.
+
+#### UPS
+
+A UPS (through the NUT plugin) has a read-only detail panel built on the same
+flow diagram as the Live energy page. Its first line gives the state (On mains,
+On battery, Battery low…) and, in large figures, the runtime left, then the
+load and the battery level. Below, the diagram links the mains, the battery
+and the protected load: the route carrying the power is a ribbon ending in an
+arrowhead at the load, and a small bar under the load and under the battery
+shows their level, in the warning or fault colour while on battery. While it
+charges, the battery says so under its figure. Sowel never sends the UPS an
+order: the orderly shutdown belongs to `upsmon` on each protected host.
 
 ---
 

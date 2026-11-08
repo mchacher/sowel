@@ -2,9 +2,10 @@ import { describe, it, expect } from "vitest";
 import { render, screen } from "../../test-utils";
 import { FlowDiagram } from "./FlowDiagram";
 import {
-  FLOW_DOT_PERIOD,
-  ROUTE_END,
-  SLOT_BOX,
+  SLOT_ANCHOR,
+  WAVE_PERIOD,
+  headSize,
+  RIBBON_WIDTH,
   type FlowLinkSpec,
   type FlowNodeSpec,
 } from "./flow-geometry";
@@ -42,30 +43,32 @@ describe("FlowDiagram routes", () => {
     expect(skeletons).toHaveLength(2);
   });
 
-  it("overlays only the active links, on top of their skeleton", () => {
+  it("draws a ribbon on the active links only, and no skeleton under it", () => {
     const { container } = render(
       <FlowDiagram
         nodes={[]}
         links={[
-          link({ active: true, color: "lime" }),
+          link({ active: true, color: "lime", powerW: 800 }),
           link({ edge: "rightToFocal", active: false }),
         ]}
       />,
     );
-    // The overlay and its moving dots, both on the one active route.
-    const lime = [...container.querySelectorAll('path[stroke="lime"]')];
-    expect(lime.map((p) => p.getAttribute("d"))).toEqual([
-      expect.stringMatching(/^M 60 180/),
-      expect.stringMatching(/^M 60 180/),
-    ]);
-    expect(container.querySelectorAll("[data-tier]")).toHaveLength(1);
+    const ribbons = screen.getAllByTestId("flow-ribbon");
+    expect(ribbons).toHaveLength(1);
+    expect(ribbons[0].getAttribute("d")).toMatch(/^M 60 180/);
+    expect((ribbons[0].parentElement as HTMLElement).style.getPropertyValue("--flow-c")).toBe(
+      "lime",
+    );
+    const skeletons = painted(container).filter((p) => p.stroke === "var(--color-border)");
+    expect(skeletons.map((p) => p.d)).toEqual([expect.stringMatching(/^M 480 180/)]);
   });
 
   it("routes the bottom edge the way round the caller asks", () => {
     const ltr = render(<FlowDiagram nodes={[]} links={[link({ edge: "leftToRight" })]} />);
     const rtl = render(<FlowDiagram nodes={[]} links={[link({ edge: "rightToLeft" })]} />);
-    const dOf = (c: HTMLElement) => painted(c)[0].d;
-    // Same drawn shape, opposite traversal — the bubbles must run the right way.
+    const dOf = (c: HTMLElement) =>
+      c.querySelector('[data-testid="flow-ribbon"]')?.getAttribute("d") ?? "";
+    // Same drawn shape, opposite traversal — the wave must run the right way.
     expect(dOf(ltr.container)).toMatch(/^M 60 180/);
     expect(dOf(rtl.container)).toMatch(/^M 480 180/);
   });
@@ -83,10 +86,10 @@ describe("FlowDiagram routes", () => {
   });
 });
 
-// Spec 197 (FR-E4) — the flow says how much, by width and speed, and which
-// way at rest, by a head at the route's end.
-describe("FlowDiagram magnitude and motion", () => {
-  it("draws one moving-dot stroke per active link, in CSS, with no SMIL", () => {
+// Spec 197 (FR-E4) — one ribbon width; the wave's speed says how much (with
+// the share bars), the wave and, at rest, the head at the route's end which way.
+describe("FlowDiagram ribbons", () => {
+  it("draws a band, a halo and a three-dash wave per active route, in CSS, with no SMIL", () => {
     const { container } = render(
       <FlowDiagram
         nodes={[]}
@@ -94,55 +97,139 @@ describe("FlowDiagram magnitude and motion", () => {
       />,
     );
     expect(container.querySelectorAll("animateMotion, animate, set")).toHaveLength(0);
-    const dots = screen.getAllByTestId("flow-dots");
-    expect(dots).toHaveLength(1);
-    expect(dots[0].getAttribute("class")).toContain("flow-dash");
-    expect(dots[0].getAttribute("stroke-dasharray")).toBe(`0 ${FLOW_DOT_PERIOD}`);
-    expect(dots[0].getAttribute("stroke-linecap")).toBe("round");
+    expect(container.querySelectorAll(".flow-band")).toHaveLength(1);
+    expect(container.querySelectorAll(".flow-halo")).toHaveLength(1);
+    const wave = screen.getAllByTestId("flow-wave");
+    expect(wave).toHaveLength(3);
+    for (const dash of wave) {
+      expect(dash.getAttribute("class")).toContain("flow-wave");
+      // Half a dash, the gap, half a dash: centred, one period in all.
+      const parts = (dash.getAttribute("stroke-dasharray") ?? "").split(" ").map(parseFloat);
+      expect(parts).toHaveLength(4);
+      expect(parts.reduce((a, b) => a + b, 0)).toBeCloseTo(WAVE_PERIOD);
+      expect(dash.style.getPropertyValue("--o0")).toBe("");
+    }
+    // Longest and faintest first.
+    expect(wave.map((d) => Number(d.getAttribute("stroke-opacity")))).toEqual([0.3, 0.55, 1]);
   });
 
-  it("draws no dots for a flow too small to animate, but keeps the lit route", () => {
+  it("draws nothing but the skeleton for a flow under 5 W", () => {
     const { container } = render(<FlowDiagram nodes={[]} links={[link({ powerW: 2 })]} />);
-    expect(screen.queryAllByTestId("flow-dots")).toHaveLength(0);
-    expect(container.querySelectorAll("[data-tier]")).toHaveLength(1);
+    expect(screen.queryAllByTestId("flow-ribbon")).toHaveLength(0);
+    expect(screen.queryAllByTestId("flow-end-cap")).toHaveLength(0);
+    expect(painted(container).filter((p) => p.stroke === "var(--color-border)")).toHaveLength(1);
   });
 
-  it.each([
-    [300, 2],
-    [1200, 3],
-    [4900, 4],
-  ])("strokes a %s W route %s px wide, the same on every screen", (powerW, width) => {
-    const { container } = render(<FlowDiagram nodes={[]} links={[link({ powerW })]} />);
-    const route = container.querySelector("[data-tier]") as SVGPathElement;
-    expect(route.getAttribute("stroke-width")).toBe(String(width));
-    expect(route.getAttribute("vector-effect")).toBe("non-scaling-stroke");
+  it("draws every ribbon at the same width, whatever its power", () => {
+    for (const powerW of [180, 1200, 4900]) {
+      const { unmount } = render(<FlowDiagram nodes={[]} links={[link({ powerW })]} />);
+      const g = screen.getByTestId("flow-ribbon").parentElement as HTMLElement;
+      expect(g.style.getPropertyValue("--rw-wide")).toBe(`${RIBBON_WIDTH.wide}px`);
+      expect(g.style.getPropertyValue("--rw")).toBe(`${RIBBON_WIDTH.narrow}px`);
+      expect(screen.getByTestId("flow-ribbon").getAttribute("vector-effect")).toBe(
+        "non-scaling-stroke",
+      );
+      unmount();
+    }
   });
 
-  it("moves the dots faster on a bigger flow", () => {
+  it("moves the wave faster on a bigger flow", () => {
     const { rerender } = render(<FlowDiagram nodes={[]} links={[link({ powerW: 180 })]} />);
-    const slow = parseFloat(screen.getByTestId("flow-dots").style.animationDuration);
+    const rateOf = () =>
+      Number(screen.getAllByTestId("flow-wave")[0].parentElement?.getAttribute("data-rate"));
+    const slow = rateOf();
+    // One fixed CSS cycle: the power sets the playback rate, not the duration,
+    // so a new reading does not make the wave jump.
+    expect(screen.getAllByTestId("flow-wave")[0].style.animationDuration).toBe("");
     rerender(<FlowDiagram nodes={[]} links={[link({ powerW: 4900 })]} />);
-    const fast = parseFloat(screen.getByTestId("flow-dots").style.animationDuration);
-    expect(fast).toBeLessThan(slow);
+    const fast = rateOf();
+    expect(fast).toBeGreaterThan(slow);
   });
 
-  it("puts a head at the end of each active route and nowhere else", () => {
+  it("ends each active route in a head on its destination node, sized on the ribbon", () => {
     render(
       <FlowDiagram
-        nodes={[]}
+        nodes={[node(), node({ slot: "left", label: "Grid" })]}
         links={[
-          link({ edge: "leftToFocal", color: "blue" }),
+          link({ edge: "leftToFocal", color: "blue", powerW: 1200 }),
           link({ edge: "rightToFocal", active: false }),
+          link({ edge: "rightToLeft", color: "green", powerW: 300 }),
         ]}
       />,
     );
-    const caps = screen.getAllByTestId("flow-end-cap");
-    expect(caps).toHaveLength(1);
-    expect(caps[0].dataset.edge).toBe("leftToFocal");
-    // At the route's destination: the focal box's left edge, on the run's height.
-    expect(caps[0].style.getPropertyValue("--cap-left")).toBe(`${ROUTE_END.leftToFocal.left}%`);
-    expect(caps[0].style.top).toBe(`${ROUTE_END.leftToFocal.top}%`);
-    expect(caps[0].querySelector('path[fill="blue"]')).toBeTruthy();
+    const caps = screen.getAllByTestId("flow-end-cap").filter((c) => c.dataset.size === "wide");
+    expect(caps.map((c) => c.dataset.edge).sort()).toEqual(["leftToFocal", "rightToLeft"]);
+    const focalCap = caps.find((c) => c.dataset.edge === "leftToFocal")!;
+    // On the focal node's left side, pointing in; never in the middle of a route.
+    expect(focalCap.closest('[data-slot="focal"]')).toBeTruthy();
+    expect(focalCap.getAttribute("class")).toContain("right-full");
+    expect(focalCap.getAttribute("height")).toBe(String(headSize(RIBBON_WIDTH.wide).base));
+    expect(focalCap.querySelector('polygon[fill="blue"]')).toBeTruthy();
+    const gridCap = caps.find((c) => c.dataset.edge === "rightToLeft")!;
+    expect(gridCap.closest('[data-slot="left"]')).toBeTruthy();
+    expect(gridCap.getAttribute("class")).toContain("top-full");
+  });
+
+  it("draws a narrow head for the narrow ribbon and a wide one for the wide", () => {
+    render(<FlowDiagram nodes={[node()]} links={[link({ powerW: 4900 })]} />);
+    const [narrow, wideCap] = ["narrow", "wide"].map((size) =>
+      screen.getAllByTestId("flow-end-cap").find((c) => c.dataset.size === size)!,
+    );
+    expect(narrow.getAttribute("height")).toBe(String(headSize(RIBBON_WIDTH.narrow).base));
+    expect(wideCap.getAttribute("height")).toBe(String(headSize(RIBBON_WIDTH.wide).base));
+    expect(narrow.getAttribute("class")).toContain("@lg:hidden");
+    expect(wideCap.getAttribute("class")).toContain("hidden @lg:block");
+  });
+});
+
+// Spec 197 (FR-E7) — the shares sit under the node, not on the routes.
+describe("FlowDiagram share bars", () => {
+  const bar = (parts: { share: number; color: string; label?: string }[]) => ({ parts });
+
+  it("draws the parts in order and colour, with the two ends' percentages", () => {
+    render(
+      <FlowDiagram
+        nodes={[
+          node({
+            bar: bar([
+              { share: 0.29, color: "gray", label: "29 %" },
+              { share: 0.71, color: "green", label: "71 %" },
+            ]),
+          }),
+        ]}
+        links={[]}
+      />,
+    );
+    const shareBar = screen.getByTestId("flow-share-bar");
+    const segs = [...shareBar.querySelectorAll<HTMLElement>("[data-share]")];
+    expect(segs.map((s) => s.style.background)).toEqual(["gray", "green"]);
+    expect(segs.map((s) => s.style.flex)).toEqual(["0.29 1 0px", "0.71 1 0px"]);
+    expect(shareBar.textContent).toBe("29 %71 %");
+    expect(shareBar.getAttribute("aria-hidden")).toBe("true");
+  });
+
+  it("draws a level as one part over the track, with no figure", () => {
+    render(
+      <FlowDiagram
+        nodes={[node({ bar: bar([{ share: 0.11, color: "blue", label: "11 %" }]) })]}
+        links={[]}
+      />,
+    );
+    const seg = screen.getByTestId("flow-share-bar").querySelector<HTMLElement>("[data-share]")!;
+    expect(seg.style.width).toBe("11%");
+    expect(screen.getByTestId("flow-share-bar").textContent).toBe("");
+  });
+
+  it("keeps the track of a level at 0 %", () => {
+    render(<FlowDiagram nodes={[node({ bar: bar([{ share: 0, color: "blue" }]) })]} links={[]} />);
+    const seg = screen.getByTestId("flow-share-bar").querySelector<HTMLElement>("[data-share]")!;
+    expect(seg.style.width).toBe("0%");
+  });
+
+  it("draws no bar for a node without one, and none on the routes", () => {
+    render(<FlowDiagram nodes={[node()]} links={[link({ powerW: 900 })]} />);
+    expect(screen.queryByTestId("flow-share-bar")).toBeNull();
+    expect(screen.queryByText(/%/)).toBeNull();
   });
 });
 
@@ -161,18 +248,34 @@ describe("FlowDiagram nodes", () => {
     expect(screen.queryByText("59 min")).toBeNull();
   });
 
-  it("dims the contents but never the box, so the skeleton cannot show through", () => {
+  it("dims the contents but never the boxes, so the routes cannot show through", () => {
     const { container } = render(<FlowDiagram nodes={[node({ dimmed: true })]} links={[]} />);
-    const box = container.querySelector(".rounded-md") as HTMLElement;
-    expect(box.className).not.toContain("opacity-40");
-    expect((box.firstElementChild as HTMLElement).className).toContain("opacity-40");
+    const boxes = [...container.querySelectorAll<HTMLElement>('[data-slot="focal"] .bg-surface')];
+    expect(boxes.length).toBe(3);
+    for (const b of boxes) expect(b.className).not.toContain("opacity-40");
+    expect(screen.getByText("Focal").className).toContain("opacity-40");
+    expect(screen.getByTestId("flow-node-icon").className).toContain("opacity-40");
   });
 
   it("masks the routes with the card's own colour, not a tinted well (spec 197)", () => {
     const { container } = render(<FlowDiagram nodes={[node()]} links={[]} />);
-    const box = container.querySelector(".rounded-md") as HTMLElement;
-    expect(box.className).toContain("bg-surface");
-    expect(box.className).not.toContain("bg-background");
+    expect(container.querySelector(".bg-background")).toBeNull();
+    expect(container.querySelectorAll('[data-slot="focal"] .bg-surface')).toHaveLength(3);
+  });
+
+  it("puts each node's icon centre on its anchor, where the routes meet it", () => {
+    const { container } = render(
+      <FlowDiagram nodes={[node(), node({ slot: "left" }), node({ slot: "right" })]} links={[]} />,
+    );
+    for (const slot of ["focal", "left", "right"] as const) {
+      const el = container.querySelector<HTMLElement>(`[data-slot="${slot}"]`)!;
+      expect(el.style.left).toBe(`${SLOT_ANCHOR[slot].left}%`);
+      expect(el.style.top).toBe(`${SLOT_ANCHOR[slot].top}%`);
+      expect(el.className).toContain("-translate-y-1/2");
+    }
+    // The routes' corners: x 60 / 480 of 540, y 65 (focal) and 180 of 290.
+    expect(SLOT_ANCHOR.left.left).toBeCloseTo((60 / 540) * 100);
+    expect(SLOT_ANCHOR.focal.top).toBeCloseTo((65 / 290) * 100);
   });
 
   // Spec 196, slice 5b — a satellite is about 70 px wide on a 390 px phone.
@@ -223,18 +326,6 @@ describe("FlowDiagram colours: values in ink, colour on the node", () => {
     expect(screen.getByText("W").className).toContain("text-text-tertiary");
   });
 
-  it("writes a percentage as plain secondary text beside its route (spec 197)", () => {
-    render(<FlowDiagram nodes={[]} links={[link({ pill: { text: "90 %" } })]} />);
-    const pill = screen.getByText("90 %");
-    expect(pill.style.color).toBe("");
-    expect(pill.style.borderColor).toBe("");
-    expect(pill.className).toContain("text-text-secondary");
-    expect(pill.className).not.toMatch(/(^|\s)(border|rounded-full|bg-surface)(\s|$)/);
-    // Beside the vertical leg (x = 11 %), not centred on it.
-    expect(pill.className).toContain("left-[calc(11%+10px)]");
-    expect(pill.className).not.toContain("-translate-x-1/2");
-  });
-
   it("starts the headline at the card's edge and centres only the diagram", () => {
     render(
       <FlowDiagram
@@ -267,45 +358,7 @@ describe("FlowDiagram colours: values in ink, colour on the node", () => {
   });
 });
 
-// #1129 — at 22 % with 4 px of padding, « ↑ 10,5 kW » ran past a satellite at
-// 360 and 390 px. Below `sm` the satellites widen to 24 % and step 1 % outward,
-// and their centre must stay where the routes meet them.
-describe("FlowDiagram satellite geometry", () => {
-  const pct = (cls: string, prop: string, prefix = "") => {
-    const m = cls.match(new RegExp(`(?:^|\\s)${prefix}(-?)${prop}-\\[(\\d+)%\\]`));
-    if (m) return (m[1] ? -1 : 1) * Number(m[2]);
-    return new RegExp(`(?:^|\\s)${prefix}${prop}-0(\\s|$)`).test(cls) ? 0 : null;
-  };
-  // x of the vertical leg of each satellite's routes, as a % of the 540 viewBox.
-  const ROUTE_X = { left: (60 / 540) * 100, right: 100 - (480 / 540) * 100 };
-
-  it.each(["left", "right"] as const)(
-    "keeps the %s satellite centred on its route, phone and wider",
-    (slot) => {
-      const cls = SLOT_BOX[slot];
-      for (const prefix of ["", "@lg:"]) {
-        const offset = pct(cls, slot, prefix);
-        const width = pct(cls, "w", prefix);
-        expect(offset, `${prefix}${slot}`).not.toBeNull();
-        expect(width, `${prefix}w`).not.toBeNull();
-        expect(Math.abs(offset! + width! / 2 - ROUTE_X[slot]), `${prefix} centre`).toBeLessThan(1);
-      }
-      expect(pct(cls, "w")).toBe(24);
-    },
-  );
-});
-
-describe("FlowDiagram pills and headline", () => {
-  it("places a pill only on the links that carry one", () => {
-    render(
-      <FlowDiagram
-        nodes={[]}
-        links={[link({ pill: { text: "90%" } }), link({ edge: "rightToFocal" })]}
-      />,
-    );
-    expect(screen.getByText("90%")).toBeTruthy();
-  });
-
+describe("FlowDiagram headline", () => {
   // Spec 197 (FR-E1.1) — the balance line above the diagram, shared by Live
   // and the UPS: a dot, a label, a 40 px figure in ink, an optional sentence.
   it("renders the headline above the diagram: label, value in the value size, sentence", () => {
@@ -346,13 +399,13 @@ describe("FlowDiagram pills and headline", () => {
     render(
       <FlowDiagram
         nodes={[node({ value: "1.8" })]}
-        links={[link({ pill: { text: "90%" } })]}
+        links={[link({ powerW: 900 })]}
         headline={{ dotColor: "blue", label: "Sur secteur", value: "21", unit: "W" }}
         ariaLabel="Le secteur alimente la charge"
       />,
     );
     expect(screen.getByRole("img", { name: "Le secteur alimente la charge" })).toBeTruthy();
-    for (const text of ["Sur secteur", "1.8", "90%"]) {
+    for (const text of ["Sur secteur", "1.8"]) {
       expect(screen.getByText(text).closest('[aria-hidden="true"]'), text).toBeTruthy();
     }
   });
