@@ -1,8 +1,14 @@
 import { describe, it, expect, beforeEach, afterEach } from "vitest";
+import { MemoryRouter } from "react-router-dom";
 import { render, screen, act } from "../../test-utils";
 import i18n from "../../i18n";
 import { AlarmsSheet } from "./AlarmsSheet";
-import { useWebSocket, type SystemAlarm } from "../../store/useWebSocket";
+import {
+  useWebSocket,
+  batteryAlarm as batteryAlarmFromAlert,
+  type SystemAlarm,
+} from "../../store/useWebSocket";
+import { useZones } from "../../store/useZones";
 import { useAckedIssues } from "../../store/useAckedIssues";
 
 // Issue #720 — the banner used to mix hardcoded English (battery) and hardcoded
@@ -103,5 +109,83 @@ describe("AlarmsSheet wording (#720)", () => {
     render(<AlarmsSheet open onClose={() => {}} />);
 
     expect(screen.getByText("Order dispatch failed: Volet salon open — ETIMEDOUT")).toBeTruthy();
+  });
+});
+
+// Issue #1184 — an alarm row names the room its equipment is in.
+describe("AlarmsSheet zone (#1184)", () => {
+  const zone = (id: string, name: string, children: unknown[] = []) =>
+    ({ id, name, parentId: null, children }) as never;
+
+  function renderSheet() {
+    return render(
+      <MemoryRouter>
+        <AlarmsSheet open onClose={() => {}} />
+      </MemoryRouter>,
+    );
+  }
+
+  beforeEach(() => {
+    useZones.setState({
+      tree: [
+        zone("root", "Maison", [
+          zone("f1", "Étage 1", [zone("ch1", "Chambre"), zone("salon", "Salon")]),
+          zone("f2", "Étage 2", [zone("ch2", "Chambre")]),
+        ]),
+      ],
+    } as never);
+  });
+
+  afterEach(() => {
+    useZones.setState({ tree: [] } as never);
+  });
+
+  it("shows the zone of a bound alarm, linked to the zone page", () => {
+    seed([{ ...batteryAlarm, zoneId: "salon" }]);
+    renderSheet();
+
+    const link = screen.getByRole("link", { name: "Salon" });
+    expect(link.getAttribute("href")).toBe("/home/salon");
+  });
+
+  it("adds the parent when the room name alone is ambiguous", () => {
+    seed([{ ...batteryAlarm, zoneId: "ch2" }]);
+    renderSheet();
+
+    expect(screen.getByRole("link", { name: "Étage 2 › Chambre" })).toBeTruthy();
+  });
+
+  it("shows no zone for an unbound alarm", () => {
+    seed([{ ...batteryAlarm, source: "Capteur porte", zoneId: null }]);
+    renderSheet();
+
+    expect(screen.getByText("Capteur porte")).toBeTruthy();
+    expect(screen.queryByRole("link")).toBeNull();
+  });
+
+  it("keeps two same-named equipments in two rooms as two rows", () => {
+    seed([
+      { ...batteryAlarm, alarmId: "battery-low:a", source: "Capteur porte", zoneId: "ch1" },
+      { ...batteryAlarm, alarmId: "battery-low:b", source: "Capteur porte", zoneId: "ch2" },
+    ]);
+    renderSheet();
+
+    expect(screen.getByRole("link", { name: "Étage 1 › Chambre" })).toBeTruthy();
+    expect(screen.getByRole("link", { name: "Étage 2 › Chambre" })).toBeTruthy();
+  });
+
+  it("keeps the zone of a battery alert snapshot (reconnect seeding)", () => {
+    expect(
+      batteryAlarmFromAlert({
+        deviceDataId: "dd-9",
+        deviceId: "d-9",
+        deviceName: "Capteur",
+        value: "8",
+        raisedAt: "",
+        lastNotifiedAt: "",
+        equipmentNames: ["Capteur porte"],
+        zoneId: "salon",
+      }).zoneId,
+    ).toBe("salon");
   });
 });

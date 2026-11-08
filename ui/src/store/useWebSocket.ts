@@ -32,6 +32,9 @@ export interface SystemAlarm extends AlarmWording {
   alarmId: string;
   level: "warning" | "error";
   source: string;
+  /** Zone the alarm belongs to (#1184), so its row can name the room. Absent
+   *  or null for a global alarm (an integration, an unbound device). */
+  zoneId?: string | null;
 }
 
 export interface UpdateAvailableInfo {
@@ -121,6 +124,7 @@ export function batteryAlarm(alert: BatteryAlert): SystemAlarm {
         ? "alarms.battery.lowOnDevice"
         : "alarms.battery.low",
     messageParams: { value: alert.value, device: alert.deviceName },
+    zoneId: alert.zoneId ?? null,
   };
 }
 
@@ -150,13 +154,17 @@ function alarmFromEvent(event: {
   message: string;
   messageKey?: string;
   messageParams?: Record<string, string | number>;
+  zoneId?: string | null;
 }): SystemAlarm {
+  // Any alarm that names a zone keeps it (#1184), whatever its wording path.
+  const zone = event.zoneId ? { zoneId: event.zoneId } : {};
   if (event.alarmId.startsWith(POLL_FAIL_ALARM_PREFIX)) {
     return {
       alarmId: event.alarmId,
       level: event.level,
       source: event.alarmId.slice(POLL_FAIL_ALARM_PREFIX.length),
       messageKey: "alarms.integration.error",
+      ...zone,
     };
   }
   // An alarm the engine keyed (spec 188, order outcomes) is worded in the
@@ -175,6 +183,7 @@ function alarmFromEvent(event: {
       source: event.source,
       messageKey: event.messageKey,
       ...(event.messageParams ? { messageParams: event.messageParams } : {}),
+      ...zone,
     };
   }
   return {
@@ -182,6 +191,7 @@ function alarmFromEvent(event: {
     level: event.level,
     source: event.source,
     message: event.message,
+    ...zone,
   };
 }
 
@@ -203,6 +213,7 @@ export function pvHealthAlarm(alert: PvHealthAlert): SystemAlarm {
     source: alert.equipmentName,
     messageKey: "equipments.pvHealth.alarmBanner",
     messageParams: { pct: Math.round(alert.deficit * 100), since: dayParam(alert.since) },
+    zoneId: alert.zoneId,
   };
 }
 

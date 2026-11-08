@@ -15,6 +15,7 @@ import i18n from "../../i18n";
 import { alarmSourceLabel, ORDER_OUTCOME_ALARM_SOURCE } from "../../lib/alarm-message";
 import { displayValue } from "../../lib/activity-log";
 import { formatClockTime } from "../../lib/format";
+import { useZoneLabels } from "../../hooks/useZoneLabels";
 
 /** A recipe's name in the UI language, from its manifest i18n; else the name the server sent. */
 type RecipeLabel = (recipeId: string | undefined, fallback: string) => string;
@@ -41,6 +42,9 @@ interface Props {
 export function ActivityItemRow({ item }: Props) {
   const { t } = useTranslation();
   const recipeLabel = useRecipeLabel();
+  const zones = useZoneLabels();
+  // #1184 — an alarm names the room it belongs to; a global one has no zone.
+  const alarmZone = item.category === "alarm" && item.zoneId ? zones.get(item.zoneId) : undefined;
 
   return (
     <li className="grid grid-cols-[44px_20px_minmax(0,1fr)] gap-x-2.5 items-start px-4 py-[5px] text-small leading-5">
@@ -57,6 +61,12 @@ export function ActivityItemRow({ item }: Props) {
           <span className="text-text-tertiary">
             {" · "}
             {formatSource(item.source, t, recipeLabel)}
+          </span>
+        )}
+        {alarmZone && (
+          <span className="text-text-tertiary" title={alarmZone.path}>
+            {" · "}
+            {alarmZone.label}
           </span>
         )}
       </div>

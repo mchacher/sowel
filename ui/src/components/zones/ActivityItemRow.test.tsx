@@ -4,6 +4,7 @@ import i18n from "../../i18n";
 import { ActivityItemRow } from "./ActivityItemRow";
 import { displayValue } from "../../lib/activity-log";
 import type { ActivityItem } from "../../types";
+import { useZones } from "../../store/useZones";
 
 // Spec 188 O6 — an order-outcome alarm reads in the viewer's language in the
 // activity feed too; any other alarm keeps the engine's text.
@@ -100,5 +101,25 @@ describe("ActivityItemRow — order values", () => {
     expect(displayValue("20.5", "setpoint", t)).toBe("20,5°");
     expect(displayValue("1234.5", "power", t)).toBe("1\u202f234,5");
     expect(displayValue("V2", "speed", t)).toBe("V2");
+  });
+});
+
+// Issue #1184 — an alarm row in the activity feed names its room.
+describe("ActivityItemRow — alarm zone (#1184)", () => {
+  afterEach(() => {
+    useZones.setState({ tree: [] } as never);
+  });
+
+  it("names the zone of a zoned alarm, and none for a global one", () => {
+    useZones.setState({
+      tree: [{ id: "salon", name: "Salon", parentId: null, children: [] }],
+    } as never);
+    const params = { source: "Capteur porte", message: "Low battery" };
+    const { unmount } = render(<ActivityItemRow item={{ ...alarm(params), zoneId: "salon" }} />);
+    expect(screen.getByText(/Salon/)).toBeTruthy();
+    unmount();
+
+    render(<ActivityItemRow item={alarm(params)} />);
+    expect(screen.queryByText(/Salon/)).toBeNull();
   });
 });

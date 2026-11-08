@@ -136,6 +136,8 @@ The log holds the most recent events, not a fixed period: the last 100 on a comp
 
 Each item shows **who triggered it**: a recipe name, a mode name, "manual" for direct UI actions, the button id, or "external" for inbound MQTT.
 
+An alarm that belongs to a room, such as the low battery of a bound sensor, also names that room: `Door sensor: Low battery: 10% · Bedroom`. When two rooms share a name, the parent is added (`Floor 1 › Bedroom`). The alarms sheet, opened from the alarm chip in the top bar, shows the same room next to the source, as a link to the room. An alarm with no room (an integration, a device bound to no equipment) shows none.
+
 ### Coalescing
 
 When a recipe dispatches multiple identical orders in a quick burst (e.g., Motion Light turns off three appliques at the same time), the feed merges them into a single row with a count: `Applique x 1 ×3 → Off by Motion Light`. The window is 500 ms; the same alias, value, and source are required for merging.

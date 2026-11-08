@@ -1,4 +1,5 @@
 import { useMemo } from "react";
+import { Link } from "react-router-dom";
 import { AlertTriangle, AlertOctagon, X, Undo2 } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { BottomSheet } from "../dashboard/BottomSheet";
@@ -6,6 +7,7 @@ import { useAggregatedIssues, type AggregatedIssue } from "./useAggregatedIssues
 import { useAckedIssues } from "../../store/useAckedIssues";
 import { issueSignature } from "../../lib/acked-issues";
 import { alarmSourceLabel, alarmText } from "../../lib/alarm-message";
+import { useZoneLabels } from "../../hooks/useZoneLabels";
 
 interface AlarmsSheetProps {
   open: boolean;
@@ -45,6 +47,7 @@ export function AlarmsSheet({ open, onClose }: AlarmsSheetProps) {
                 <IssueRow
                   key={issue.key}
                   issue={issue}
+                  onNavigate={onClose}
                   onAcknowledge={() => ack(issueSignature(issue))}
                 />
               ))}
@@ -62,6 +65,7 @@ export function AlarmsSheet({ open, onClose }: AlarmsSheetProps) {
                     key={issue.key}
                     issue={issue}
                     acknowledged
+                    onNavigate={onClose}
                     onRestore={() => unack(issueSignature(issue))}
                   />
                 ))}
@@ -77,15 +81,21 @@ export function AlarmsSheet({ open, onClose }: AlarmsSheetProps) {
 function IssueRow({
   issue,
   acknowledged = false,
+  onNavigate,
   onAcknowledge,
   onRestore,
 }: {
   issue: AggregatedIssue;
   acknowledged?: boolean;
+  onNavigate?: () => void;
   onAcknowledge?: () => void;
   onRestore?: () => void;
 }) {
   const { t } = useTranslation();
+  const zones = useZoneLabels();
+  // #1184 — the room the alarm belongs to, linked to its page. A zone id the
+  // tree does not know (deleted, not loaded yet) shows nothing rather than an id.
+  const zone = issue.zoneId ? zones.get(issue.zoneId) : undefined;
   const isError = issue.level === "error";
   const Icon = isError ? AlertOctagon : AlertTriangle;
   const tone = isError ? "text-error" : "text-warning-ink";
@@ -105,8 +115,23 @@ function IssueRow({
     >
       <Icon size={16} strokeWidth={1.5} className={`mt-0.5 flex-shrink-0 ${tone}`} />
       <div className="flex-1 min-w-0">
-        <div className="flex items-center gap-2 text-caption font-semibold text-text">
-          <span>{sourceLabel}</span>
+        <div className="flex flex-wrap items-center gap-x-2 gap-y-0.5 text-caption font-semibold text-text">
+          <span className="min-w-0 break-words">
+            {sourceLabel}
+            {zone && (
+              <>
+                <span className="font-normal text-text-tertiary">{" · "}</span>
+                <Link
+                  to={`/home/${zone.id}`}
+                  onClick={onNavigate}
+                  title={zone.path}
+                  className="font-normal text-text-secondary hover:text-primary hover:underline"
+                >
+                  {zone.label}
+                </Link>
+              </>
+            )}
+          </span>
           <span
             className={`text-caption font-medium px-1.5 py-0.5 rounded-sm ${
               isError ? "bg-error/10 text-error" : "bg-warning/10 text-warning-ink"

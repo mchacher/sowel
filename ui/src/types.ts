@@ -1156,6 +1156,8 @@ export type EngineEvent =
       /** Spec 188 — the engine's i18n key for the banner; `message` is the English fallback. */
       messageKey?: string;
       messageParams?: Record<string, string | number>;
+      /** Zone the alarm belongs to; absent or null for a global alarm (#1184). */
+      zoneId?: string | null;
     }
   | {
       type: "system.alarm.resolved";

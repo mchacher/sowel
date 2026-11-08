@@ -5,11 +5,13 @@ import { useAckedIssues } from "../../store/useAckedIssues";
 import { issueSignature } from "../../lib/acked-issues";
 
 export interface AggregatedIssue extends AlarmWording {
-  /** Stable key for React rendering: `<source>:<kind>` */
+  /** Stable key for React rendering: `<source>:<kind>`, plus the zone for a zoned alarm. */
   key: string;
   /** Plugin id ("netatmo_weather"), or "system" for non-integration alarms. */
   source: string;
   level: "error" | "warning";
+  /** Zone the alarm belongs to (#1184); absent for a global one. */
+  zoneId?: string | null;
 }
 
 /**
@@ -25,31 +27,41 @@ export interface AggregatedIssue extends AlarmWording {
  * signal (just "disconnected" or "error").
  *
  * Severity ranking: error > warning.
+ *
+ * Alarms dedup on source AND zone (#1184): the source of a battery alarm is the
+ * equipment name, so two « Capteur porte » in two rooms used to collapse into
+ * one row. Alarms without a zone (integrations, order outcomes) dedup on the
+ * source alone, as before.
  */
 export function useAggregatedIssues(): AggregatedIssue[] {
   const alarms = useWebSocket((s) => s.alarms);
   const integrationStatuses = useWebSocket((s) => s.integrationStatuses);
 
   return useMemo(() => {
-    // Index by source so we can dedup.
+    // Index by source (and zone) so we can dedup.
     const bySource = new Map<string, AggregatedIssue>();
+    const alarmSources = new Set<string>();
 
     // (1) Alarms first — they carry the richest message.
     for (const a of alarms.values()) {
-      bySource.set(a.source, {
-        key: `${a.source}:alarm`,
+      const zoneId = a.zoneId ?? null;
+      const dedupKey = zoneId ? `${a.source}\u0000${zoneId}` : a.source;
+      alarmSources.add(a.source);
+      bySource.set(dedupKey, {
+        key: zoneId ? `${a.source}:alarm:${zoneId}` : `${a.source}:alarm`,
         source: a.source,
         level: a.level,
         message: a.message,
         messageKey: a.messageKey,
         messageParams: a.messageParams,
+        ...(zoneId ? { zoneId } : {}),
       });
     }
 
     // (2) Integration statuses — only those in error/disconnected state.
     //     Skip if the source already has an alarm (alarm wins on detail).
     for (const [pluginId, status] of Object.entries(integrationStatuses)) {
-      if (bySource.has(pluginId)) continue;
+      if (alarmSources.has(pluginId)) continue;
       if (status === "error") {
         bySource.set(pluginId, {
           key: `${pluginId}:status`,
