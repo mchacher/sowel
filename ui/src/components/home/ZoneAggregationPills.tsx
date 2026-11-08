@@ -66,7 +66,9 @@ export function ZoneAggregationPills({ data, zoneId, historyEnabled }: ZoneAggre
   const duration = useRelativeTime(data.motionSince);
   // #1140 — the marked pill whose offline names are shown under the strip. A
   // `title` never shows on a touch screen, so a tap opens them inline.
+  // Keyed by zone too, so an open line never follows the user to another zone.
   const [namesFor, setNamesFor] = useState<string | null>(null);
+  const openKey = (key: string) => `${zoneId ?? ""}:${key}`;
   const namesId = useId();
 
   // Spec 116, #1134: the offline equipments left out of a category's pill. The
@@ -282,7 +284,10 @@ export function ZoneAggregationPills({ data, zoneId, historyEnabled }: ZoneAggre
 
   if (clusters.length === 0) return null;
 
-  const shownNames = clusters.flat().find((item) => item.key === namesFor)?.unavailable;
+  const shownNames = clusters.flat().find((item) => openKey(item.key) === namesFor)?.unavailable;
+  // The line closes for good once it has nothing to name (other zone, back
+  // online): it must not reopen by itself when an equipment drops again.
+  if (namesFor !== null && !shownNames) setNamesFor(null);
 
   // Below lg (phones and tablets) the strip wraps instead of scrolling
   // sideways (spec 196): the separators would dangle at line ends there, so
@@ -303,8 +308,10 @@ export function ZoneAggregationPills({ data, zoneId, historyEnabled }: ZoneAggre
                   zoneId={zoneId}
                   historyEnabled={historyEnabled}
                   namesId={namesId}
-                  namesShown={namesFor === item.key && !!shownNames}
-                  onToggleNames={() => setNamesFor((k) => (k === item.key ? null : item.key))}
+                  namesShown={namesFor === openKey(item.key) && !!shownNames}
+                  onToggleNames={() =>
+                    setNamesFor((k) => (k === openKey(item.key) ? null : openKey(item.key)))
+                  }
                 />
               </Fragment>
             ))}

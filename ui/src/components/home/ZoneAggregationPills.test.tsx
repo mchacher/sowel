@@ -137,6 +137,27 @@ describe("ZoneAggregationPills — offline equipments", () => {
     }
   });
 
+  it("closes the names line on a zone change and once nothing is offline", async () => {
+    const user = userEvent.setup();
+    const visible = () =>
+      screen.queryAllByText(/^Hors ligne\s:/).filter((el) => !el.classList.contains("sr-only"));
+    const { rerender } = render(
+      <ZoneAggregationPills data={offlineLights(16)} zoneId="zone-maison" />,
+    );
+    await user.click(screen.getByRole("button", { name: /1\/16/ }));
+    expect(visible()).toHaveLength(1);
+
+    rerender(<ZoneAggregationPills data={offlineLights(16)} zoneId="zone-salon" />);
+    expect(visible()).toHaveLength(0);
+
+    await user.click(screen.getByRole("button", { name: /1\/16/ }));
+    rerender(
+      <ZoneAggregationPills data={{ ...data, lightsOn: 1, lightsTotal: 16 }} zoneId="zone-salon" />,
+    );
+    rerender(<ZoneAggregationPills data={offlineLights(16)} zoneId="zone-salon" />);
+    expect(visible()).toHaveLength(0);
+  });
+
   it("keeps an unmarked pill a plain element, not a button", () => {
     render(
       <ZoneAggregationPills data={{ ...data, lightsOn: 1, lightsTotal: 3 }} zoneId="zone-salon" />,
