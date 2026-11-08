@@ -115,14 +115,14 @@ Some review findings were fixed on `main` after the screenshots by #1142 (#1126)
 
 - [ ] AC1 — Live shows « Import réseau » / « Export réseau » / « Autonome » with a 40 px figure above the diagram on desktop, tablet and phone; the grid node says « import » / « export »; no « Appoint solaire » band.
 - [ ] AC2 — The UPS panel shows its status as the same headline; its diagram still renders on mains and on battery; no `tag` prop remains.
-- [ ] AC3 — No arbiter element is red in a plain deficit; the deficit figure appears once in the sticker and once in the aside, never as « Surplus disponible −x »; « Export réseau instantané » appears only with a positive surplus.
-- [ ] AC4 — The roster uses « Puissance / Import toléré / Surplus requis / Il manque » and shows « déficit » in waiting rows while in deficit.
+- [x] AC3 — No arbiter element is red in a plain deficit; the deficit figure appears once in the sticker and once in the aside, never as « Surplus disponible −x »; « Export réseau instantané » appears only with a positive surplus.
+- [x] AC4 — The roster uses « Puissance / Import toléré / Surplus requis / Il manque » and shows « déficit » in waiting rows while in deficit.
 - [ ] AC5 — At 1440 × 900 the flow and the breakdown share one row and the arbiter heading is visible without scrolling.
 - [ ] AC6 — Zero-watt rows fold into one « À l'arrêt » line; « Autre » is last at full opacity; donut segments have gaps.
 - [ ] AC7 — Flow routes have three widths by tier, round moving dots in CSS, no SMIL, no mid-route mark, and stand still under reduced motion.
-- [ ] AC8 — The arbiter curve draws equal watts at equal heights on both sides, ends on a live dot, and shows a hover readout.
-- [ ] AC9 — Pending claims during the dormant night are `idle` in `buildLoadTimelines`; ribbons render runs; the legend lists only present states plus « Au repos ».
-- [ ] AC10 — Lanes are keyboard-navigable with a visible focus ring.
+- [x] AC8 — The arbiter curve draws equal watts at equal heights on both sides, ends on a live dot, and shows a hover readout.
+- [x] AC9 — Pending claims during the dormant night are `idle` in `buildLoadTimelines`; ribbons render runs; the legend lists only present states plus « Au repos ».
+- [x] AC10 — Lanes are keyboard-navigable with a visible focus ring.
 - [ ] AC11 — Consumption and Production open on their total; charts keep their axes; the forecast « Attendu » is dashed neutral and « Réalisé » solar green.
 - [ ] AC12 — One `SegmentedControl` across Consumption, Production and Analyse, with `aria-pressed`.
 - [ ] AC13 — `npm run validate` green; docs EN/FR updated.

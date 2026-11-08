@@ -32,18 +32,18 @@ Three branches from the same spec commit, each its own PR against `main` (they t
 
 ### Slice E2 — Deficit as a state
 
-- [ ] E2.1 — `arbiterColors` deficit → `energy-grid`; sticker text per sign
-- [ ] E2.2 — aside wording per sign; roster « déficit » cell
-- [ ] E2.3 — renamed columns, formula, caption, header hints, sub-line, next-switch wording, journal wording; « Prochaine bascule » label at all widths
-- [ ] E2.4 — card padding, heading icon dropped
+- [x] E2.1 — `arbiterColors` deficit → `energy-grid`; sticker text per sign
+- [x] E2.2 — aside wording per sign; roster « déficit » cell
+- [x] E2.3 — renamed columns, formula, caption, header hints, sub-line, next-switch wording, journal wording; « Prochaine bascule » label at all widths
+- [x] E2.4 — card padding, heading icon dropped
 
 ### Slice E5 — Arbiter history
 
-- [ ] E5.1 — backend: dormant pending → idle in `buildLoadTimelines` + tests; spec 165 amendment line
-- [ ] E5.2 — `surplusScale` helper + tests; live end point; hover crosshair
-- [ ] E5.3 — `mergeRuns` helper + tests; run rendering with per-quarter hit targets
-- [ ] E5.4 — legend from present states + « Au repos »
-- [ ] E5.5 — roving tabindex, focus ring, labels, `hit-44` pager; heights 88 px below `lg`, 12 h window from 768 px
+- [x] E5.1 — backend: dormant pending → idle in `buildLoadTimelines` + tests; spec 165 amendment line
+- [x] E5.2 — `surplusScale` helper + tests; live end point; hover crosshair
+- [x] E5.3 — `mergeRuns` helper + tests; run rendering with per-quarter hit targets
+- [x] E5.4 — legend from present states + « Au repos »
+- [x] E5.5 — roving tabindex, focus ring, labels, `hit-44` pager; heights 88 px below `lg`, 12 h window from 768 px
 
 ### Slice E6 — Consumption and Production
 
