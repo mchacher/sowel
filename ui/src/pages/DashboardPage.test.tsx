@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach, vi } from "vitest";
-import { render, screen, userEvent } from "../test-utils";
+import { render, screen, userEvent, waitFor } from "../test-utils";
 import i18n from "../i18n";
 import { DashboardPage } from "./DashboardPage";
 import { useDashboard } from "../store/useDashboard";
@@ -8,6 +8,16 @@ import { useZones } from "../store/useZones";
 import { useRecipes } from "../store/useRecipes";
 import { useAuth } from "../store/useAuth";
 import type { DashboardWidget, User } from "../types";
+import * as api from "../api";
+import { ApiError } from "../api/client";
+
+vi.mock("../api", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("../api")>();
+  return { ...actual, getDashboardWidgets: vi.fn() };
+});
+
+const getDashboardWidgets = api.getDashboardWidgets as unknown as ReturnType<typeof vi.fn>;
+const realFetchWidgets = useDashboard.getState().fetchWidgets;
 
 // The grid itself is not under test: what matters is how editing starts.
 vi.mock("../components/dashboard/WidgetGrid", () => ({
@@ -46,7 +56,7 @@ describe("DashboardPage editing", () => {
   beforeEach(async () => {
     await i18n.changeLanguage("fr");
     const noop = vi.fn().mockResolvedValue(undefined);
-    useDashboard.setState({ widgets: [widget], fetchWidgets: noop });
+    useDashboard.setState({ widgets: [widget], loaded: true, error: null, fetchWidgets: noop });
     useEquipments.setState({ equipments: [], fetchEquipments: noop });
     useZones.setState({ tree: [], fetchZones: noop });
     useRecipes.setState({ fetchRecipes: noop, fetchInstances: noop });
@@ -84,5 +94,56 @@ describe("DashboardPage editing", () => {
     render(<DashboardPage />);
     expect(screen.queryByRole("button", { name: "Modifier l'accueil" })).toBeNull();
     expect(screen.queryByRole("button", { name: "Modifier" })).toBeNull();
+  });
+});
+
+// Issue #1150 — opened before its data arrived, the dashboard said « Aucun widget
+// configuré », which reads as a lost dashboard. The empty state now needs a load that
+// succeeded with no widget; until then a loading state, and on failure the error.
+describe("DashboardPage loading", () => {
+  beforeEach(async () => {
+    await i18n.changeLanguage("fr");
+    vi.clearAllMocks();
+    const noop = vi.fn().mockResolvedValue(undefined);
+    useDashboard.setState({
+      widgets: [],
+      loaded: false,
+      loading: false,
+      error: null,
+      fetchWidgets: realFetchWidgets,
+    });
+    useEquipments.setState({ equipments: [], fetchEquipments: noop });
+    useZones.setState({ tree: [], fetchZones: noop });
+    useRecipes.setState({ fetchRecipes: noop, fetchInstances: noop });
+    asUser("admin");
+  });
+
+  it("shows a loading state, not the empty state, while the widgets load", () => {
+    getDashboardWidgets.mockReturnValue(new Promise(() => {}));
+    render(<DashboardPage />);
+    expect(screen.getByRole("status", { name: "Chargement…" })).toBeTruthy();
+    expect(screen.queryByText("Aucun widget configuré")).toBeNull();
+  });
+
+  it("shows the translated error with a retry when the load fails", async () => {
+    getDashboardWidgets.mockRejectedValueOnce(new ApiError(0, "Failed to fetch"));
+    render(<DashboardPage />);
+    expect(
+      await screen.findByText("Sowel ne répond pas. Vérifiez la connexion puis réessayez."),
+    ).toBeTruthy();
+    expect(screen.queryByText("Failed to fetch")).toBeNull();
+    expect(screen.queryByText("Aucun widget configuré")).toBeNull();
+
+    getDashboardWidgets.mockResolvedValueOnce([widget]);
+    await userEvent.click(screen.getByRole("button", { name: "Réessayer" }));
+    await waitFor(() => expect(screen.getByTestId("grid")).toBeTruthy());
+    expect(getDashboardWidgets).toHaveBeenCalledTimes(2);
+  });
+
+  it("shows the empty state once a load has returned no widget", async () => {
+    getDashboardWidgets.mockResolvedValueOnce([]);
+    render(<DashboardPage />);
+    expect(await screen.findByText("Aucun widget configuré")).toBeTruthy();
+    expect(screen.queryByRole("status")).toBeNull();
   });
 });

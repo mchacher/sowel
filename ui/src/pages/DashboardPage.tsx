@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState, useCallback } from "react";
 import { useTranslation } from "react-i18next";
-import { LayoutDashboard, Plus, Pencil, Check } from "lucide-react";
+import { LayoutDashboard, Plus, Pencil, Check, Loader2, AlertCircle } from "lucide-react";
 import { useDashboard } from "../store/useDashboard";
 import { useEquipments } from "../store/useEquipments";
 import { useZones } from "../store/useZones";
@@ -23,6 +23,8 @@ export function DashboardPage() {
   const { t } = useTranslation();
 
   const widgets = useDashboard((s) => s.widgets);
+  const loaded = useDashboard((s) => s.loaded);
+  const loadError = useDashboard((s) => s.error);
   const fetchWidgets = useDashboard((s) => s.fetchWidgets);
   const createWidget = useDashboard((s) => s.createWidget);
   const deleteWidget = useDashboard((s) => s.deleteWidget);
@@ -129,6 +131,41 @@ export function DashboardPage() {
     },
     [reorderWidgets],
   );
+
+  // Issue #1150 — an empty list means "no widget" only once a load has succeeded.
+  // Before that the page waits; a failed load with nothing to show says why and
+  // offers a retry. A failed refresh keeps the widgets already on screen.
+  if (loadError && widgets.length === 0) {
+    return (
+      <div className="p-4 sm:p-6">
+        <div className="flex flex-col items-center justify-center py-20 text-center">
+          <div className="w-16 h-16 rounded-full bg-error/10 flex items-center justify-center mb-4">
+            <AlertCircle size={28} strokeWidth={1.5} className="text-error" />
+          </div>
+          <h3 className="text-lead font-medium text-text mb-1">{t("common.error")}</h3>
+          <p className="text-small text-text-secondary max-w-[320px] mb-4">{loadError}</p>
+          <button
+            onClick={() => fetchWidgets()}
+            className="px-4 py-2 bg-primary-fill text-white text-small font-medium rounded-sm hover:bg-primary-fill-hover transition-colors duration-150"
+          >
+            {t("common.retry")}
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  if (!loaded) {
+    return (
+      <div
+        className="flex items-center justify-center py-20"
+        role="status"
+        aria-label={t("common.loading")}
+      >
+        <Loader2 size={24} className="animate-spin text-text-tertiary" />
+      </div>
+    );
+  }
 
   // Empty state
   if (widgets.length === 0 && !editMode) {
