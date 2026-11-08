@@ -11,6 +11,30 @@ This page summarises every published version, newest first. For the full diff be
 
 ---
 
+## 1.82.x: Names you can read, alarms you can place
+
+### v1.82.0 — 2026-11-08 { #v1-82-0 }
+
+Rows keep their names on a phone: readings give way, controls never do, a shutter or a gate shows its state in its icon, and a name that still does not fit scrolls. Recipe rows say which equipment each instance acts on, alarms say which room they come from, and explanations across the app are cut to one line.
+
+- Feat (ui): **equipment rows keep their names** (#1163, #1171).
+  - Read-only values give way first (fewer forecast days, secondary readings dropped); controls are never hidden; a long name wraps onto two lines instead of being cut.
+  - Shutters, awnings, pool covers, doors and gates draw their state in the row icon; on a phone their state pill leaves every row of the type.
+  - A name that still does not fit loops on a touch screen and ends in « … » with a mouse, scrolling on hover or focus; nothing moves with « reduce motion ». Recipe names use the same behaviour.
+  - The whole row opens the equipment; a tap on a control never navigates.
+- Feat (ui): **recipe rows say what they act on** (#1165, #1168). Under the recipe name, the equipment of its first equipment slot (« A, B +2 »). The countdown, override and mode pills move to the second line, so the name keeps the first (#1161, #1166). State Watch 3.1.0 adds what it watches (« Sur batterie · après 1 min »), once that plugin is updated.
+- Feat (ui): **alarms name their room** (#1184, #1185). The alarms sheet and the Activity panel show the zone next to the source, linked to it; two equipments of the same name in two rooms are two alarms again.
+- Feat (ui): **short explanations** (#1162, #1167). 157 hints, captions and context lines reviewed: 23 deleted, 53 shortened or moved to a tooltip. The arbitration card keeps one line before its table. The rule is written in `design-system/README.md` and guarded by a test.
+- Fix (zones): a multi-channel light counts once, « all lights off » switches every channel, and on a phone a tap on a marked pill names the offline equipments (#1140, #1182).
+- Fix (ui): the dashboard shows a loading state or the error, never « no widget », until it has loaded (#1150, #1180).
+- Fix (ui): order-confirmation alarms, Activity times and the built-in week profiles read in the viewer's language (#1151, #1183); the remaining English error fallbacks and client-side 401/403 are translated (#1141, #1176); the recipe override badge and edit tooltip too (#1169, #1174).
+- Fix (ui): the flow diagram's green icons reach 3:1 on the card (#1146, #1178); screen-reader text no longer stretches the page (#1149, #1177); the consumption legend stacks under the donut (#1170, #1172); iOS 26 no longer blurs the installed app's status bar (#1164).
+- Fix (energy): the PV health card counts its days by calendar day across a DST change (#1143, #1175).
+- Test (ui): the pool cover tile's state and controls are pinned (#1152, #1181).
+- Registry: zigbee2mqtt 2.8.0 and 2.8.1 (#1173, #1179).
+
+---
+
 ## 1.81.x: Energy pages that answer at a glance
 
 ### v1.81.0 — 2026-11-08 { #v1-81-0 }

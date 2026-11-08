@@ -11,6 +11,30 @@ Cette page résume toutes les versions publiées, de la plus récente à la plus
 
 ---
 
+## 1.82.x : Des noms lisibles, des alarmes situées
+
+### v1.82.0 — 2026-11-08 { #v1-82-0 }
+
+Les lignes gardent leur nom sur téléphone : les lectures cèdent la place, les commandes jamais, un volet ou un portail montre son état dans son icône, et un nom qui ne tient toujours pas défile. Les lignes de recette disent sur quel équipement agit chaque instance, les alarmes disent de quelle pièce elles viennent, et les explications de toute l'application tiennent en une ligne.
+
+- Nouveauté (interface) : **les lignes d'équipement gardent leur nom** (#1163, #1171).
+  - Les valeurs de lecture cèdent d'abord (moins de jours de prévision, lectures secondaires retirées) ; les commandes ne sont jamais masquées ; un nom long passe sur deux lignes au lieu d'être coupé.
+  - Volets, stores, couvertures de piscine, portes et portails dessinent leur état dans l'icône de la ligne ; sur téléphone, leur pastille d'état quitte toutes les lignes du type.
+  - Un nom qui ne tient toujours pas défile en boucle sur écran tactile et finit par « … » avec une souris, défilant au survol ou au focus ; rien ne bouge avec « réduire les animations ». Les noms de recette suivent le même comportement.
+  - Toute la ligne ouvre l'équipement ; un appui sur une commande ne navigue jamais.
+- Nouveauté (interface) : **les lignes de recette disent sur quoi elles agissent** (#1165, #1168). Sous le nom de la recette, l'équipement de son premier emplacement d'équipement (« A, B +2 »). Les pastilles compte à rebours, dérogation et mode passent sur la deuxième ligne, le nom garde la première (#1161, #1166). State Watch 3.1.0 ajoute ce qu'il surveille (« Sur batterie · après 1 min »), une fois ce plugin mis à jour.
+- Nouveauté (interface) : **les alarmes nomment leur pièce** (#1184, #1185). La feuille des alarmes et le panneau Activité affichent la zone à côté de la source, avec un lien ; deux équipements de même nom dans deux pièces redeviennent deux alarmes.
+- Nouveauté (interface) : **des explications courtes** (#1162, #1167). 157 aides, légendes et lignes de contexte revues : 23 supprimées, 53 raccourcies ou passées en infobulle. La carte d'arbitrage garde une ligne avant son tableau. La règle est écrite dans `design-system/README.md` et gardée par un test.
+- Correction (zones) : une lampe à plusieurs canaux compte une fois, « tout éteindre » coupe tous les canaux, et sur téléphone un appui sur une pastille marquée nomme les équipements hors ligne (#1140, #1182).
+- Correction (interface) : le tableau de bord affiche un chargement ou l'erreur, jamais « aucun widget », tant qu'il n'est pas chargé (#1150, #1180).
+- Correction (interface) : les alarmes de confirmation de commande, les heures de l'Activité et les profils de semaine fournis se lisent dans la langue de l'utilisateur (#1151, #1183) ; les derniers messages d'erreur en anglais et les 401/403 écrits par le client sont traduits (#1141, #1176) ; le badge de dérogation et l'infobulle de modification des recettes aussi (#1169, #1174).
+- Correction (interface) : les icônes vertes du diagramme de flux atteignent 3:1 sur la carte (#1146, #1178) ; le texte réservé aux lecteurs d'écran n'allonge plus la page (#1149, #1177) ; la légende de la consommation passe sous l'anneau (#1170, #1172) ; iOS 26 ne floute plus la barre d'état de l'application installée (#1164).
+- Correction (énergie) : la carte de santé PV compte ses jours par jour calendaire au changement d'heure (#1143, #1175).
+- Test (interface) : l'état et les commandes de la tuile couverture de piscine sont fixés par des tests (#1152, #1181).
+- Registre : zigbee2mqtt 2.8.0 et 2.8.1 (#1173, #1179).
+
+---
+
 ## 1.81.x : Des pages Énergie qui répondent d'un coup d'œil
 
 ### v1.81.0 — 2026-11-08 { #v1-81-0 }
