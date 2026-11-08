@@ -36,21 +36,16 @@ import {
   type FlowNodeSpec,
 } from "./flow-geometry";
 
-/** Small pill drawn on top of a flow route. The route's colour is on its
- *  border; the figure is in ink (#1126: the solar green as text was 2.01:1). */
-function Pill({
-  children,
-  className,
-  color,
-}: {
-  children: React.ReactNode;
-  className?: string;
-  color: string;
-}) {
+/**
+ * A short figure by a route (spec 197, FR-E3.4): plain secondary text on a
+ * surface pad that masks the line under it. No border and no fill: on a card
+ * that already carries a headline, ten pills on one screen meant none of them
+ * signalled anything.
+ */
+function Pill({ children, className }: { children: React.ReactNode; className?: string }) {
   return (
     <div
-      className={`absolute tabular-nums text-micro font-semibold px-2 py-0.5 rounded-full bg-surface border text-text z-20 ${className ?? ""}`}
-      style={{ borderColor: color }}
+      className={`absolute tabular-nums text-caption font-medium px-1.5 bg-surface text-text-secondary z-20 ${className ?? ""}`}
     >
       {children}
     </div>
@@ -59,13 +54,14 @@ function Pill({
 
 /**
  * One node. Its colour goes to the icon only: the value is in ink, the label
- * and unit in the tertiary grey (#1126). A value in the node's colour put the
- * solar green on the well at 1.78:1.
+ * and unit in the tertiary grey (#1126). The box is the card's own surface
+ * (spec 197): it exists to mask the skeleton route behind the icon, not to be
+ * seen, and a page-coloured well read as a hole in dark.
  */
 function FlowNode({ node }: { node: FlowNodeSpec }) {
   return (
     <div
-      className={`absolute flex items-center justify-center bg-background rounded-md z-10 ${SLOT_BOX[node.slot]}`}
+      className={`absolute flex items-center justify-center bg-surface rounded-md z-10 ${SLOT_BOX[node.slot]}`}
     >
       <div
         className={`flex flex-col items-center justify-center gap-1 ${node.dimmed ? "opacity-40" : ""}`}
@@ -136,7 +132,7 @@ export function FlowDiagram({ nodes, links, headline, ariaLabel }: FlowDiagramPr
         </div>
       )}
       <div
-        className="relative h-[260px] sm:h-auto sm:aspect-[54/29] max-w-[600px]"
+        className="relative h-[260px] sm:h-auto sm:aspect-[54/29] max-w-[600px] mx-auto"
         aria-hidden={hidden}
       >
         <svg
@@ -209,7 +205,7 @@ export function FlowDiagram({ nodes, links, headline, ariaLabel }: FlowDiagramPr
         {links.map(
           (l) =>
             l.pill && (
-              <Pill key={`pl-${l.edge}`} className={PILL_POSITION[l.edge]} color={l.pill.color}>
+              <Pill key={`pl-${l.edge}`} className={PILL_POSITION[l.edge]}>
                 {l.pill.text}
               </Pill>
             ),

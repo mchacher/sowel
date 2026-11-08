@@ -12,7 +12,6 @@ import { useMemo } from "react";
 import { useTranslation } from "react-i18next";
 import type { EquipmentWithDetails } from "../../types";
 import { extractPhases, formatPhasePower } from "./phase-helpers";
-import { Columns3 } from "lucide-react";
 import { SectionHeader } from "./SectionHeader";
 import { SERIES_VARS } from "../../lib/series-palette";
 
@@ -22,9 +21,11 @@ const PHASE_COLORS = SERIES_VARS.slice(0, 4);
 
 interface Props {
   gridEquipments: EquipmentWithDetails[];
+  /** Placement classes from the page's grid (spec 197, FR-E3.1). */
+  className?: string;
 }
 
-export function PhaseBreakdown({ gridEquipments }: Props) {
+export function PhaseBreakdown({ gridEquipments, className }: Props) {
   const { t } = useTranslation();
   const phases = useMemo(() => extractPhases(gridEquipments), [gridEquipments]);
 
@@ -33,9 +34,9 @@ export function PhaseBreakdown({ gridEquipments }: Props) {
   const maxPower = Math.max(1, ...phases.map((p) => Math.abs(p.power)));
 
   return (
-    <div className="card p-4 sm:p-6 mt-4">
-      <SectionHeader icon={Columns3} title={t("energy.live.phases.title")} />
-      <div className="flex flex-col gap-3 max-w-[600px]">
+    <div className={`card p-4 sm:p-6 ${className ?? ""}`}>
+      <SectionHeader title={t("energy.live.phases.title")} />
+      <div className="flex flex-col gap-3">
         {phases.map((p, i) => {
           const f = formatPhasePower(p.power);
           const pct = Math.round((Math.abs(p.power) / maxPower) * 100);

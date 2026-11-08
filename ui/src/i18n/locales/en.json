@@ -1447,6 +1447,8 @@
   "dashboard.tap.confirm": "operate with confirmation",
   "energy.live.breakdown.title": "Consumption breakdown",
   "energy.live.breakdown.other": "Other",
+  "energy.live.breakdown.unmetered": "not metered",
+  "energy.live.breakdown.stopped": "Off: {{names}}",
   "energy.live.breakdown.offline": "offline",
   "energy.live.breakdown.stale": "reading outdated",
   "reading.outdated": "reading outdated",

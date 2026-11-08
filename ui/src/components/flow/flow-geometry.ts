@@ -28,6 +28,7 @@ export type FlowEdge = "leftToFocal" | "rightToFocal" | "rightToLeft" | "leftToR
  *
  * Box geometry (heights explicit so the centres are deterministic):
  *   focal  top-0               h-[45%] w-[36%] → y   0..130, centre (270,  65)
+ *                                       sm:w-[24%] (x 205..335, see SLOT_BOX)
  *   left   top-[62%] centred   h-[36%] w-[22%] → y 128..232, centre ( 60, 180)
  *   right  top-[62%] centred   h-[36%] w-[22%] → y 128..232, centre (480, 180)
  * Below `sm` the satellites are 24 % wide from -1 %: same centres (#1129).
@@ -58,8 +59,12 @@ export const PILL_POSITION: Record<FlowEdge, string> = {
 // 11 % / 89 %, where the routes of PATHS meet it (x = 60 and 480 of 540).
 // The focal box takes 8 px of side padding below `sm`: « Consommation », set
 // at 12 px, ran 2 px past its content box at 360 px with 12 px of padding.
+// From `sm` it narrows to 24 % (130 px at the narrowest, 144 px at 600 px,
+// « Consommation » and « 10,5 kW » need about 90): the box is the card's
+// own colour since spec 197, so the routes appear to end where it starts, and
+// at 36 % they stopped 50 px short of the node they feed.
 export const SLOT_BOX: Record<FlowSlot, string> = {
-  focal: "top-0 left-1/2 -translate-x-1/2 w-[36%] h-[45%] px-2 sm:px-3 py-2",
+  focal: "top-0 left-1/2 -translate-x-1/2 w-[36%] sm:w-[24%] h-[45%] px-2 sm:px-3 py-2",
   left: "top-[62%] -translate-y-1/2 -left-[1%] sm:left-0 w-[24%] sm:w-[22%] h-[36%] px-0.5 sm:px-2 py-2",
   right:
     "top-[62%] -translate-y-1/2 -right-[1%] sm:right-0 w-[24%] sm:w-[22%] h-[36%] px-0.5 sm:px-2 py-2",
@@ -108,8 +113,8 @@ export interface FlowLinkSpec {
    * mid-range cadence.
    */
   magnitude?: number;
-  /** `color` draws the pill's border; its text is always in ink (#1126). */
-  pill?: { text: string; color: string };
+  /** A short figure by the route, in secondary text on a surface pad. */
+  pill?: { text: string };
 }
 
 /**

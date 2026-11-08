@@ -177,3 +177,37 @@ describe("Live energy diagram — nodes and status", () => {
     expect(screen.getByText("No sources detected")).toBeTruthy();
   });
 });
+
+// Spec 197 (FR-E3.1) — from `lg`, flow and breakdown share one row; below it,
+// the stacking of before: flow, phases, breakdown.
+describe("Live energy page — layout", () => {
+  it("puts the flow and the breakdown side by side from lg, the phases under the breakdown", () => {
+    seed([
+      {
+        ...meter("grid", "main_energy_meter", 1000),
+        dataBindings: [
+          { id: "p", alias: "power", category: "power", value: 1000 },
+          { id: "l1", alias: "power_l1", category: "power", value: 400 },
+          { id: "l2", alias: "power_l2", category: "power", value: 600 },
+        ],
+      } as unknown as EquipmentWithDetails,
+      meter("Piscine", "energy_meter", 400),
+    ]);
+    render(<LiveEnergyPage />, { wrapper: MemoryRouter });
+    const card = (title: string) => screen.getByText(title).closest(".card") as HTMLElement;
+    const flow = card("Live flows");
+    const breakdown = card("Consumption breakdown");
+    const phases = card("Phase breakdown");
+    const row = flow.parentElement as HTMLElement;
+    expect(row.className).toContain("lg:grid-cols-[7fr_5fr]");
+    // The right column holds the breakdown, then the phases.
+    expect(breakdown.parentElement).toBe(phases.parentElement);
+    expect(breakdown.parentElement?.className).toMatch(/(^|\s)contents(\s|$)/);
+    expect(
+      breakdown.compareDocumentPosition(phases) & Node.DOCUMENT_POSITION_FOLLOWING,
+    ).toBeTruthy();
+    // Below lg: flow, phases, breakdown.
+    const order = (el: HTMLElement) => Number(/(?:^|\s)order-(\d)/.exec(el.className)?.[1]);
+    expect([order(flow), order(phases), order(breakdown)]).toEqual([1, 2, 3]);
+  });
+});

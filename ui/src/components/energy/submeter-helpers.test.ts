@@ -9,6 +9,8 @@ import {
   localProductionW,
   readSubmeterReading,
   sharePercent,
+  splitStoppedRows,
+  type SubmeterRow,
 } from "./submeter-helpers";
 // Imported from shared/ rather than re-exported through the helper: one name,
 // one module, so a signature change here cannot masquerade as compatible
@@ -627,5 +629,51 @@ describe("local production (spec 195)", () => {
     const drawing = makeEquipment("p", "Piscine", { power: 300, localProduction: true });
     expect(localProductionW([drawing], NOW)).toBeNull();
     expect(localProductionW([], NOW)).toBeNull();
+  });
+});
+
+// Spec 197 (FR-E3.2) — the appliances at 0 W fold into one line.
+describe("splitStoppedRows", () => {
+  const row = (name: string, power: number | null, over: Partial<SubmeterRow> = {}) =>
+    ({
+      id: name,
+      name,
+      power,
+      unknown: power === null ? "stale" : null,
+      status: "online",
+      offlineSince: null,
+      staleSince: null,
+      color: "x",
+      ...over,
+    }) as SubmeterRow;
+
+  it("keeps the rows above 0 W in their order and names the ones at rest", () => {
+    const { active, stopped } = splitStoppedRows([
+      row("Radiateur", 1800),
+      row("PAC", 710),
+      row("Piscine", 0),
+      row("Congélateur", 0),
+    ]);
+    expect(active.map((r) => r.name)).toEqual(["Radiateur", "PAC"]);
+    expect(stopped.map((r) => r.name)).toEqual(["Piscine", "Congélateur"]);
+  });
+
+  it("folds a reading that rounds to 0 W on screen, and keeps one that rounds to 5 W", () => {
+    const { active, stopped } = splitStoppedRows([row("Veille", 2), row("Box", 3)]);
+    expect(stopped.map((r) => r.name)).toEqual(["Veille"]);
+    expect(active.map((r) => r.name)).toEqual(["Box"]);
+  });
+
+  it("never folds a row without a current reading: we do not know it is off", () => {
+    const { active, stopped } = splitStoppedRows([
+      row("Chauffe-eau", null),
+      row("Borne", null, { status: "offline", unknown: "offline" }),
+    ]);
+    expect(stopped).toEqual([]);
+    expect(active.map((r) => r.name)).toEqual(["Chauffe-eau", "Borne"]);
+  });
+
+  it("returns two empty lists for no rows", () => {
+    expect(splitStoppedRows([])).toEqual({ active: [], stopped: [] });
   });
 });

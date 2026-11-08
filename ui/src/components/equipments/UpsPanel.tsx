@@ -159,17 +159,13 @@ export function UpsPanel({ dataBindings }: UpsPanelProps) {
       magnitude: r.loadW ?? undefined,
       // During an outage the autonomy is the only number worth reading, and it
       // sits where the solar page puts its share-of-supply percentage.
-      ...(onBattery && runtimeLabel
-        ? { pill: { text: runtimeLabel, color: batteryBranchColor } }
-        : {}),
+      ...(onBattery && runtimeLabel ? { pill: { text: runtimeLabel } } : {}),
     },
     {
       edge: "leftToRight",
       color: BATTERY_COLOR,
       active: r.charging && !onBattery,
-      ...(r.charging && !onBattery
-        ? { pill: { text: t("equipments.ups.charging"), color: BATTERY_COLOR } }
-        : {}),
+      ...(r.charging && !onBattery ? { pill: { text: t("equipments.ups.charging") } } : {}),
     },
   ];
 

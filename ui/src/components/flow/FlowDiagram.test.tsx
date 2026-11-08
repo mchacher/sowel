@@ -108,6 +108,13 @@ describe("FlowDiagram nodes", () => {
     expect((box.firstElementChild as HTMLElement).className).toContain("opacity-40");
   });
 
+  it("masks the routes with the card's own colour, not a tinted well (spec 197)", () => {
+    const { container } = render(<FlowDiagram nodes={[node()]} links={[]} />);
+    const box = container.querySelector(".rounded-md") as HTMLElement;
+    expect(box.className).toContain("bg-surface");
+    expect(box.className).not.toContain("bg-background");
+  });
+
   // Spec 196, slice 5b — a satellite is about 70 px wide on a 390 px phone.
   // In tracked capitals « PRODUCTION » ran past its border; the label is now
   // sentence case and the satellite steps down a size below `sm`.
@@ -156,17 +163,14 @@ describe("FlowDiagram colours: values in ink, colour on the node", () => {
     expect(screen.getByText("W").className).toContain("text-text-tertiary");
   });
 
-  it("borders a pill in the link colour and writes its figure in ink", () => {
-    render(
-      <FlowDiagram
-        nodes={[]}
-        links={[link({ pill: { text: "90 %", color: "var(--color-solar-auto)" } })]}
-      />,
-    );
+  it("writes a percentage as plain secondary text on a surface pad (spec 197)", () => {
+    render(<FlowDiagram nodes={[]} links={[link({ pill: { text: "90 %" } })]} />);
     const pill = screen.getByText("90 %");
-    expect(pill.style.borderColor).toBe("var(--color-solar-auto)");
     expect(pill.style.color).toBe("");
-    expect(pill.className).toMatch(/(^|\s)text-text(\s|$)/);
+    expect(pill.style.borderColor).toBe("");
+    expect(pill.className).toContain("text-text-secondary");
+    expect(pill.className).toContain("bg-surface");
+    expect(pill.className).not.toMatch(/(^|\s)(border|rounded-full)(\s|$)/);
   });
 
   it("puts the headline's colour on its dot and writes its words in ink", () => {
@@ -221,7 +225,7 @@ describe("FlowDiagram pills and headline", () => {
     render(
       <FlowDiagram
         nodes={[]}
-        links={[link({ pill: { text: "90%", color: "green" } }), link({ edge: "rightToFocal" })]}
+        links={[link({ pill: { text: "90%" } }), link({ edge: "rightToFocal" })]}
       />,
     );
     expect(screen.getByText("90%")).toBeTruthy();
@@ -267,7 +271,7 @@ describe("FlowDiagram pills and headline", () => {
     render(
       <FlowDiagram
         nodes={[node({ value: "1.8" })]}
-        links={[link({ pill: { text: "90%", color: "green" } })]}
+        links={[link({ pill: { text: "90%" } })]}
         headline={{ dotColor: "blue", label: "Sur secteur", value: "21", unit: "W" }}
         ariaLabel="Le secteur alimente la charge"
       />,

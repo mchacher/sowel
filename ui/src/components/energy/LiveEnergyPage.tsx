@@ -15,7 +15,7 @@
 
 import { useEffect, useMemo } from "react";
 import { useTranslation } from "react-i18next";
-import { Clock, Snowflake, Waypoints, WifiOff } from "lucide-react";
+import { Clock, Snowflake, WifiOff } from "lucide-react";
 import { SectionHeader } from "./SectionHeader";
 import { SolarPanelIcon } from "../icons/SolarPanelIcon";
 import { GridPylonIcon } from "../icons/GridPylonIcon";
@@ -123,16 +123,30 @@ export function LiveEnergyPage() {
         <EmptyState />
       ) : (
         <>
-          <LiveDiagram gridPower={gridPower} solarPower={solarPower} staleness={staleness} />
-          <PhaseBreakdown gridEquipments={gridEqs} />
-          <LiveSubmeterBreakdown
-            house={
-              gridPower !== null || solarPower !== null
-                ? Math.max(0, (gridPower ?? 0) + (solarPower ?? 0))
-                : null
-            }
-            hasMainMeter={gridEqs.length > 0}
-          />
+          {/* Spec 197 (FR-E3.1) — from `lg` the flow and the breakdown share a
+              row, the phases under the breakdown. Below `lg` the right column
+              dissolves (`contents`) and the order classes keep the stacking
+              of before: flow, phases, breakdown. */}
+          <div className="flex flex-col gap-4 lg:grid lg:grid-cols-[7fr_5fr] lg:items-stretch">
+            <LiveDiagram
+              gridPower={gridPower}
+              solarPower={solarPower}
+              staleness={staleness}
+              className="order-1 lg:order-none"
+            />
+            <div className="contents lg:flex lg:flex-col lg:gap-4 lg:min-w-0">
+              <LiveSubmeterBreakdown
+                house={
+                  gridPower !== null || solarPower !== null
+                    ? Math.max(0, (gridPower ?? 0) + (solarPower ?? 0))
+                    : null
+                }
+                hasMainMeter={gridEqs.length > 0}
+                className="order-3 lg:order-none lg:flex-1"
+              />
+              <PhaseBreakdown gridEquipments={gridEqs} className="order-2 lg:order-none" />
+            </div>
+          </div>
           {/* Spec 140 / FR-10 — arbitration surface (renders only when the
               arbiter is enabled; a no-PV home never sees dead UI here) */}
           <ArbitrationSurface />
@@ -191,10 +205,12 @@ function LiveDiagram({
   gridPower,
   solarPower,
   staleness,
+  className,
 }: {
   gridPower: number | null;
   solarPower: number | null;
   staleness: LiveStalenessEntry[];
+  className?: string;
 }) {
   const { t } = useTranslation();
   const grid = gridPower ?? 0;
@@ -245,8 +261,8 @@ function LiveDiagram({
       : t(exporting ? "energy.live.grid.export" : "energy.live.grid.import");
 
   return (
-    <div className="card p-4 sm:p-6">
-      <SectionHeader icon={Waypoints} title={t("energy.live.diagram.title")} />
+    <div className={`card p-4 sm:p-6 min-w-0 ${className ?? ""}`}>
+      <SectionHeader title={t("energy.live.diagram.title")} />
       <FlowDiagram
         headline={buildHeadline(balance, t)}
         ariaLabel={buildAriaLabel(balance, gridPower, solarPower, t)}
@@ -256,21 +272,21 @@ function LiveDiagram({
             color: gridColor,
             active: flowGridToHouse > 0,
             magnitude: flowGridToHouse,
-            ...(pctGH !== null ? { pill: { text: formatPercent(pctGH), color: gridColor } } : {}),
+            ...(pctGH !== null ? { pill: { text: formatPercent(pctGH) } } : {}),
           },
           {
             edge: "rightToFocal",
             color: AUTO_COLOR,
             active: flowSolarToHouse > 0,
             magnitude: flowSolarToHouse,
-            ...(pctSH !== null ? { pill: { text: formatPercent(pctSH), color: AUTO_COLOR } } : {}),
+            ...(pctSH !== null ? { pill: { text: formatPercent(pctSH) } } : {}),
           },
           {
             edge: "rightToLeft",
             color: AUTO_COLOR,
             active: flowSolarToGrid > 0,
             magnitude: flowSolarToGrid,
-            ...(pctSG !== null ? { pill: { text: formatPercent(pctSG), color: AUTO_COLOR } } : {}),
+            ...(pctSG !== null ? { pill: { text: formatPercent(pctSG) } } : {}),
           },
         ]}
         nodes={[

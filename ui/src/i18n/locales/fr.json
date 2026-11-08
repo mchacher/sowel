@@ -1447,6 +1447,8 @@
   "dashboard.tap.confirm": "actionner avec confirmation",
   "energy.live.breakdown.title": "Décomposition consommation",
   "energy.live.breakdown.other": "Autre",
+  "energy.live.breakdown.unmetered": "non mesuré",
+  "energy.live.breakdown.stopped": "À l'arrêt : {{names}}",
   "energy.live.breakdown.offline": "hors-ligne",
   "energy.live.breakdown.stale": "mesure ancienne",
   "reading.outdated": "mesure ancienne",

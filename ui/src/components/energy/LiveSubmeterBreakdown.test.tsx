@@ -196,3 +196,60 @@ describe("Live consumption breakdown — stale parts (#744)", () => {
     expect(within(row("PAC")).getByText("29%")).toBeTruthy(); // 10 of 35
   });
 });
+
+// Spec 197 (FR-E3.2 and E3.3) — the zero rows fold, « Autre » is a full row,
+// last, and the donut leaves a gap between two segments.
+describe("Live consumption breakdown — folded and ordered (spec 197)", () => {
+  beforeEach(() => {
+    vi.useFakeTimers();
+    vi.setSystemTime(NOW);
+  });
+  afterEach(() => vi.useRealTimers());
+
+  const fixture = () =>
+    seed([
+      meter("Grid", "main_energy_meter", 5000),
+      meter("Radiateur", "energy_meter", 1800),
+      meter("PAC", "energy_meter", 710),
+      meter("Piscine", "energy_meter", 0),
+      meter("Congélateur", "energy_meter", 0),
+    ]);
+
+  it("folds the rows at 0 W into one « off » line", () => {
+    fixture();
+    render(<LiveEnergyPage />, { wrapper: MemoryRouter });
+    expect(screen.queryByText("Piscine")).toBeNull();
+    const line = screen.getByTestId("breakdown-stopped");
+    expect(line.textContent).toBe("Off: Congélateur, Piscine");
+    expect(line.className).toContain("text-caption");
+  });
+
+  it("lists « Other » last among the rows, at full opacity, saying it is not metered", () => {
+    fixture();
+    render(<LiveEnergyPage />, { wrapper: MemoryRouter });
+    const other = screen.getByTestId("breakdown-other");
+    expect(other.className).not.toMatch(/opacity-/);
+    expect(within(other).getByText("not metered")).toBeTruthy();
+    const rows = [...other.parentElement!.querySelectorAll("div.grid")];
+    expect(rows.at(-1)).toBe(other);
+    expect(rows.map((r) => r.textContent?.split(/\d/)[0])).toEqual([
+      "Radiateur",
+      "PAC",
+      "Othernot metered",
+    ]);
+  });
+
+  it("leaves a gap between two donut segments, in the order of the list", () => {
+    fixture();
+    const { container } = render(<LiveEnergyPage />, { wrapper: MemoryRouter });
+    const arcs = [...container.querySelectorAll("circle[stroke-dasharray]")];
+    const circumference = 2 * Math.PI * 72;
+    // Radiateur, PAC, Autre: three arcs, no track under them.
+    expect(arcs).toHaveLength(3);
+    expect(arcs.at(-1)!.getAttribute("stroke")).toBe("var(--color-energy-other)");
+    const lengths = arcs.map((c) => Number(c.getAttribute("stroke-dasharray")!.split(" ")[0]));
+    const drawn = lengths.reduce((a, b) => a + b, 0);
+    expect(circumference - drawn).toBeGreaterThan(5);
+    expect(container.querySelector('circle[stroke="var(--color-border)"]')).toBeNull();
+  });
+});
