@@ -5,6 +5,7 @@ import { getSettings, updateSettings } from "../../api";
 import { SHARED_ACCESS_SETTING, useSharedAccess } from "../../store/useSharedAccess";
 import { Refusal, Switch, btnPrimary, inputCls, labelCls } from "../shared-access/ui";
 import { SharedAccessAppSettings } from "./SharedAccessAppSettings";
+import { InfoTooltip } from "../InfoTooltip";
 
 const BASE_URL = "sharedAccess.publicBaseUrl";
 const PATH = "sharedAccess.publicPath";
@@ -82,6 +83,13 @@ export function SharedAccessSettings() {
       <div className="flex items-center gap-2 mb-1">
         <KeyRound size={16} strokeWidth={1.5} className="text-text-tertiary" />
         <h2 className="text-body font-semibold text-text">{t("sharedAccess.title")}</h2>
+        {/* #1162 — what « off » means is detail: a tooltip. */}
+        <InfoTooltip
+          help
+          align="start"
+          text={t("sharedAccess.settings.offHint")}
+          label={t("common.help")}
+        />
         {loading ? (
           <Loader2 size={14} className="ml-auto animate-spin text-text-tertiary" />
         ) : (

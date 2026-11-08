@@ -152,9 +152,7 @@ export function PluginsPage() {
       <div className="max-w-[720px]">
         {/* Header */}
         <div className="mb-5 flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
-          <div>
-            <h1 className={TOP_LEVEL_H1}>{t("plugins.title")}</h1>
-          </div>
+          <h1 className={TOP_LEVEL_H1}>{t("plugins.title")}</h1>
           <button
             type="button"
             onClick={handleRefresh}

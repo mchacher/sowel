@@ -103,7 +103,7 @@ describe("PvHealthPanel", () => {
 
   it("states the sensitivity in one line, never a per-panel figure", async () => {
     await renderPanel(response());
-    expect(await screen.findByText(/8 clear days out of 14/i)).toBeTruthy();
+    expect(await screen.findByText(/8 clear days out of the last 14/i)).toBeTruthy();
     // The card names a size, never a panel: per-panel figures needed a panel
     // count nothing declares. #1162 — the line saying so went to the docs.
     expect(screen.queryByText(/which panel/i)).toBeNull();
