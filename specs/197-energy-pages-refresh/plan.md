@@ -12,23 +12,23 @@ Three branches from the same spec commit, each its own PR against `main` (they t
 
 ### Slice E1 — Read the grid
 
-- [ ] E1.1 — `--solar-ink` token (tokens.css, index.css, tokens.md), palette test rows
-- [ ] E1.2 — `live-headline.ts` helper + tests
-- [ ] E1.3 — `FlowDiagram` `headline` prop; Live uses it; grid node `sub`; Live tag removed; `ariaLabel`
-- [ ] E1.4 — UPS panel headline; `tag` prop removed
-- [ ] E1.5 — i18n FR/EN
+- [x] E1.1 — `--solar-ink` token (tokens.css, index.css, tokens.md), palette test rows
+- [x] E1.2 — `live-headline.ts` helper + tests
+- [x] E1.3 — `FlowDiagram` `headline` prop; Live uses it; grid node `sub`; Live tag removed; `ariaLabel`
+- [x] E1.4 — UPS panel headline; `tag` prop removed
+- [x] E1.5 — i18n FR/EN
 
 ### Slice E3 — Desktop layout and breakdown
 
-- [ ] E3.1 — `lg` two-column layout, phases in the right column
-- [ ] E3.2 — breakdown split (active / stopped), « Autre » last full opacity, donut gaps and phone size
-- [ ] E3.3 — quieter nodes and pills, `SectionHeader` icon optional, icons dropped on Live sections
+- [x] E3.1 — `lg` two-column layout, phases in the right column
+- [x] E3.2 — breakdown split (active / stopped), « Autre » last full opacity, donut gaps and phone size
+- [x] E3.3 — quieter nodes and pills, `SectionHeader` icon optional, icons dropped on Live sections
 
 ### Slice E4 — Flow magnitude
 
-- [ ] E4.1 — `flowTier()` + `powerW` on links (Live and UPS)
-- [ ] E4.2 — CSS dashes replace SMIL; reduced motion
-- [ ] E4.3 — end-of-route direction cue (no mid-route chevron), checked on still frames
+- [x] E4.1 — `flowTier()` + `powerW` on links (Live and UPS)
+- [x] E4.2 — CSS dashes replace SMIL; reduced motion
+- [x] E4.3 — end-of-route direction cue (no mid-route chevron), checked on still frames
 
 ### Slice E2 — Deficit as a state
 
@@ -55,9 +55,9 @@ Three branches from the same spec commit, each its own PR against `main` (they t
 
 ### Docs
 
-- [ ] D.1 — `docs/user/energy.md` + `.fr.md` (each branch its own sections)
-- [ ] D.2 — UPS docs if the tag is described
-- [ ] D.3 — `design-system/tokens.md`
+- [ ] D.1 — `docs/user/energy.md` + `.fr.md` (each branch its own sections; Live view done in feat/energy-live-flow)
+- [x] D.2 — UPS docs if the tag is described (no user page describes it: nothing to change)
+- [x] D.3 — `design-system/tokens.md`
 
 ## Test Plan
 
