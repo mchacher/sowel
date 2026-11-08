@@ -17,6 +17,11 @@ interface ThermostatCardProps {
   equipment: EquipmentWithDetails;
   onExecuteOrder: (alias: string, value: unknown) => Promise<void>;
   compact?: boolean;
+  /**
+   * Compact only: draw the room temperature beside the controls (default). The
+   * Maison row draws it itself, as a reading that gives way first (#1163).
+   */
+  withReadings?: boolean;
 }
 
 // Spec 177 — the `operationMode` vocabulary (OPERATION_MODE_VALUES). A value
@@ -40,7 +45,12 @@ const MODE_COLORS: Record<string, string> = {
   off: "bg-border-light text-text-tertiary border-border",
 };
 
-export function ThermostatCard({ equipment, onExecuteOrder, compact }: ThermostatCardProps) {
+export function ThermostatCard({
+  equipment,
+  onExecuteOrder,
+  compact,
+  withReadings = true,
+}: ThermostatCardProps) {
   const { t } = useTranslation();
   const [executing, setExecuting] = useState<string | null>(null);
 
@@ -189,7 +199,7 @@ export function ThermostatCard({ equipment, onExecuteOrder, compact }: Thermosta
     return (
       <CompactThermostat
         isOn={isOn}
-        insideTemp={insideTemp}
+        insideTemp={withReadings ? insideTemp : null}
         setpoint={
           setpointOrder && setpoint.value !== null ? (
             <SetpointStepper
@@ -310,6 +320,22 @@ export function ThermostatCard({ equipment, onExecuteOrder, compact }: Thermosta
   );
 }
 
+/** The room temperature as the compact rows show it, or nothing when unbound. */
+export function ThermostatInsideTemp({ equipment }: { equipment: EquipmentWithDetails }) {
+  const value = equipment.dataBindings.find((b) => b.alias === "temperature")?.value;
+  if (typeof value !== "number") return null;
+  return <InsideTemp value={value} />;
+}
+
+function InsideTemp({ value }: { value: number }) {
+  return (
+    <span className="flex items-center gap-0.5 text-caption text-text-tertiary tabular-nums">
+      <Thermometer size={11} strokeWidth={1.5} />
+      {formatTemperature(value, { style: "compact" })}
+    </span>
+  );
+}
+
 /** Compact inline thermostat for the Maison rows and the equipment list */
 function CompactThermostat({
   isOn,
@@ -332,12 +358,7 @@ function CompactThermostat({
   return (
     <div className="flex items-center gap-2 flex-shrink-0" onClick={(e) => e.preventDefault()}>
       {/* Current temp */}
-      {insideTemp !== null && (
-        <span className="flex items-center gap-0.5 text-caption text-text-tertiary tabular-nums">
-          <Thermometer size={11} strokeWidth={1.5} />
-          {formatTemperature(insideTemp, { style: "compact" })}
-        </span>
-      )}
+      {insideTemp !== null && <InsideTemp value={insideTemp} />}
 
       {/* Separator */}
       {setpoint && insideTemp !== null && <div className="w-px h-4 bg-border" />}
@@ -348,7 +369,7 @@ function CompactThermostat({
       {/* Power toggle */}
       {hasPowerOrder && (
         <>
-          <div className="w-px h-5 bg-border" />
+          {(setpoint || insideTemp !== null) && <div className="w-px h-5 bg-border" />}
           <button
             onClick={(e) => {
               e.preventDefault();

@@ -10,9 +10,39 @@ interface GateControlProps {
   equipment: EquipmentWithDetails;
   onExecuteOrder: (alias: string, value: unknown) => Promise<void>;
   compact?: boolean;
+  /**
+   * Compact only: draw the read-only state beside the control (default). The
+   * Maison row draws it itself, as a reading that gives way first (#1163).
+   */
+  withReadings?: boolean;
 }
 
-export function GateControl({ equipment, onExecuteOrder, compact }: GateControlProps) {
+/** The gate's state pill, as the compact rows show it. */
+export function GateStateBadge({ equipment }: { equipment: EquipmentWithDetails }) {
+  const { t } = useTranslation();
+  const gateState = gateStateOf(equipment);
+  return (
+    <span
+      className={`
+        text-micro font-medium px-2 py-0.5 rounded-full flex-shrink-0
+        ${
+          gateState === "open" || gateState === "closed"
+            ? "bg-border-light text-text-secondary"
+            : "bg-text-tertiary/10 text-text-tertiary"
+        }
+      `}
+    >
+      {t(`controls.gate.${gateState}`)}
+    </span>
+  );
+}
+
+export function GateControl({
+  equipment,
+  onExecuteOrder,
+  compact,
+  withReadings = true,
+}: GateControlProps) {
   const { t } = useTranslation();
   const [executing, setExecuting] = useState(false);
   // Spec 196 — the Maison row, the equipment list and the equipment page actuate on
@@ -48,19 +78,7 @@ export function GateControl({ equipment, onExecuteOrder, compact }: GateControlP
   if (compact) {
     return (
       <div className="flex items-center gap-2" onClick={(e) => e.stopPropagation()}>
-        {/* State badge */}
-        <span
-          className={`
-            text-micro font-medium px-2 py-0.5 rounded-full flex-shrink-0
-            ${
-              gateState === "open" || gateState === "closed"
-                ? "bg-border-light text-text-secondary"
-                : "bg-text-tertiary/10 text-text-tertiary"
-            }
-          `}
-        >
-          {t(`controls.gate.${gateState}`)}
-        </span>
+        {withReadings && <GateStateBadge equipment={equipment} />}
 
         {/* Command button */}
         {hasCommand && (

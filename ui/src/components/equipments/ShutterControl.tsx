@@ -10,9 +10,87 @@ interface ShutterControlProps {
   equipment: EquipmentWithDetails;
   onExecuteOrder: (alias: string, value: unknown) => Promise<void>;
   compact?: boolean;
+  /**
+   * Compact only: draw the read-only state beside the controls (default). The
+   * Maison row draws it itself, as a reading that gives way first (#1163).
+   */
+  withReadings?: boolean;
 }
 
-export function ShutterControl({ equipment, onExecuteOrder, compact }: ShutterControlProps) {
+/**
+ * The compact state pill: the door word, or Ouvert / Fermé at the ends of the
+ * travel (Déployé / Rentré for an awning), the percentage in between. Nothing
+ * when the position is unknown. `position` overrides the reported one while
+ * the slider is being dragged.
+ */
+export function ShutterStatePill({
+  equipment,
+  position: positionOverride,
+}: {
+  equipment: EquipmentWithDetails;
+  position?: number | null;
+}) {
+  const { t } = useTranslation();
+  const binding = equipment.dataBindings.find(
+    (db) => db.category === "shutter_position" || db.alias === "position",
+  );
+  const position =
+    positionOverride !== undefined
+      ? positionOverride
+      : binding && typeof binding.value === "number"
+        ? binding.value
+        : null;
+  const isAwning = equipment.type === "awning";
+  const isDoor = equipment.type === "door";
+  const doorPill = doorWordPill(equipment);
+  const pillAtZeroKey = isAwning
+    ? "controls.retracted"
+    : isDoor
+      ? "controls.doorClosed"
+      : "controls.closed";
+  const pillAtHundredKey = isAwning
+    ? "controls.deployed"
+    : isDoor
+      ? "controls.doorOpen"
+      : "controls.opened";
+
+  if (doorPill) {
+    return (
+      <span
+        className={`text-micro font-semibold px-[7px] py-[1px] rounded-full ${doorPill.className}`}
+      >
+        {t(doorPill.key)}
+      </span>
+    );
+  }
+  if (position === null) return null;
+  if (position === 100) {
+    return (
+      <span className="text-micro font-semibold text-text-secondary px-[7px] py-[1px] rounded-full bg-border-light">
+        {t(pillAtHundredKey)}
+      </span>
+    );
+  }
+  if (position === 0) {
+    return (
+      <span className="text-micro font-semibold text-shutter-500 px-[7px] py-[1px] rounded-full bg-shutter-50">
+        {t(pillAtZeroKey)}
+      </span>
+    );
+  }
+  return (
+    <span className="text-micro text-text-tertiary tabular-nums w-8 text-right">
+      {formatPercent(position)}
+    </span>
+  );
+}
+
+export function ShutterControl({
+  equipment,
+  onExecuteOrder,
+  compact,
+  withReadings = true,
+}: ShutterControlProps) {
   const { t } = useTranslation();
   const [executing, setExecuting] = useState(false);
   const slider = useSliderOverride();
@@ -131,31 +209,17 @@ export function ShutterControl({ equipment, onExecuteOrder, compact }: ShutterCo
             }
           />
         )}
-        {doorPill ? (
-          <span
-            className={`text-micro font-semibold px-[7px] py-[1px] rounded-full ${doorPill.className}`}
-          >
-            {t(doorPill.key)}
-          </span>
-        ) : (
-          position !== null &&
-          (position === 100 ? (
-            <span className="text-micro font-semibold text-text-secondary px-[7px] py-[1px] rounded-full bg-border-light">
-              {t(pillAtHundredKey)}
-            </span>
-          ) : position === 0 ? (
-            <span className="text-micro font-semibold text-shutter-500 px-[7px] py-[1px] rounded-full bg-shutter-50">
-              {t(pillAtZeroKey)}
-            </span>
-          ) : (
-            <span className="text-micro text-text-tertiary tabular-nums w-8 text-right">
-              {formatPercent(position)}
-            </span>
-          ))
-        )}
+        {withReadings && <ShutterStatePill equipment={equipment} position={position} />}
         {hasState && (
           <>
-            <div className="w-px h-5 bg-border" />
+            {/* Without the pill, the separator follows the slider only, which
+                phones do not show. */}
+            {withReadings ? (
+              <div className="w-px h-5 bg-border" />
+            ) : (
+              hasPositionOrder &&
+              position !== null && <div className="hidden sm:block w-px h-5 bg-border" />
+            )}
             <div className="inline-flex items-center gap-[2px]">
               <button
                 onClick={(e) => handleCommand("OPEN", e)}

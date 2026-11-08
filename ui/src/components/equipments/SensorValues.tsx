@@ -75,10 +75,12 @@ export function SensorValues({
 
   return (
     <>
-      {/* Battery indicator — first, so it sits left of the sensor values */}
+      {/* Battery indicator — first, so it sits left of the sensor values.
+          Positioned and hit-testable, so its tooltip can still be hovered on a
+          zone row, whose stretched link covers the readings (#1163). */}
       {showBattery && (
         <span
-          className={`flex items-center gap-0.5 flex-shrink-0 ${
+          className={`relative pointer-events-auto flex items-center gap-0.5 flex-shrink-0 ${
             batteryAlert ? "text-error" : getBatteryColor(shownLevel ?? 0)
           }`}
           title={batteryTitle}
