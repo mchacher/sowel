@@ -2,21 +2,27 @@ import { useEffect, useLayoutEffect, useRef, useState } from "react";
 
 /** Scroll speed of a name too long for its room, in px per second. */
 const SPEED_PX_S = 30;
-/** Still at the start before it moves, and at the end before it comes back. */
-const HOLD_START_MS = 1200;
-const HOLD_END_MS = 1000;
-/** The return to the start, quicker than the read. */
-const RETURN_MS = 500;
+/** Touch: at rest at the start long enough to read the first words. */
+const LOOP_HOLD_START_MS = 2500;
+/** Touch: a short pause at the end, then a jump back to the start. */
+const LOOP_HOLD_END_MS = 1000;
+/** Hover: a beat before it moves, and a pause at the end before the ellipsis. */
+const HOVER_HOLD_START_MS = 300;
+const HOVER_HOLD_END_MS = 1000;
 /** A width change smaller than this is a neighbour's reading, not new room. */
 const RESIZE_THRESHOLD_PX = 16;
 
-function prefersReducedMotion(): boolean {
+function matches(query: string): boolean {
   return (
     typeof window !== "undefined" &&
     typeof window.matchMedia === "function" &&
-    window.matchMedia("(prefers-reduced-motion: reduce)").matches
+    window.matchMedia(query).matches
   );
 }
+
+const prefersReducedMotion = () => matches("(prefers-reduced-motion: reduce)");
+/** A touch screen, whatever its width: a narrow desktop window still hovers. */
+const isTouch = () => matches("(hover: none), (pointer: coarse)");
 
 /** Whether the text overflows its box as laid out in the fit mode. */
 function overflows(box: HTMLElement, lines: 1 | 2): boolean {
@@ -26,14 +32,54 @@ function overflows(box: HTMLElement, lines: 1 | 2): boolean {
 }
 
 /**
- * A name that is never cut (#1163). It shows whole on one line, or wraps onto
- * `lines` lines; only when it still overflows does it scroll, slowly and once,
- * then come back to its start and stay there. No ellipsis, except under
- * `prefers-reduced-motion: reduce`, where it keeps the plain clamp.
+ * Scroll `inner` across `box` by the overflow: a hold, the travel at
+ * SPEED_PX_S, a hold at the end. Null when there is nothing to scroll or no
+ * Web Animations API.
+ */
+function scrollAnimation(
+  box: HTMLElement,
+  inner: HTMLElement,
+  holdStartMs: number,
+  holdEndMs: number,
+  iterations: number,
+): Animation | null {
+  if (typeof inner.animate !== "function") return null;
+  const distance = inner.offsetWidth - box.clientWidth;
+  if (distance <= 0) return null;
+  const travel = (distance / SPEED_PX_S) * 1000;
+  const total = holdStartMs + travel + holdEndMs;
+  return inner.animate(
+    [
+      { transform: "translateX(0)", offset: 0 },
+      { transform: "translateX(0)", offset: holdStartMs / total },
+      { transform: `translateX(-${distance}px)`, offset: (holdStartMs + travel) / total },
+      { transform: `translateX(-${distance}px)`, offset: 1 },
+    ],
+    { duration: total, easing: "linear", iterations },
+  );
+}
+
+/**
+ * How a name shows (#1163):
+ * - "fit": whole on one line, or wrapped onto `lines` lines; also the state of
+ *   any name under `prefers-reduced-motion: reduce`, clamped with an ellipsis;
+ * - "loop" (touch screens, a name that still overflows): one line that scrolls
+ *   in a loop, at rest at its start for a moment each time, then jumping back;
+ * - "ellipsis" (pointer devices, a name that still overflows): one line ending
+ *   in « … », which scrolls once while the row is hovered or its link focused.
+ */
+type Mode = "fit" | "loop" | "ellipsis";
+
+/**
+ * A name never cut without a way to read it all (#1163). It shows whole on one
+ * line, else wraps onto `lines` lines. Only a name that still overflows moves:
+ * on a touch screen it scrolls in a loop, paused while off screen or while the
+ * tab is hidden; with a pointer it ends in « … » and scrolls when the row is
+ * hovered or its link focused. Under reduced motion it never moves.
  *
  * The text is in the DOM once, so it is read once and stays the accessible
- * name of whatever wraps it (a link, a button). Only rows that overflow do any
- * work beyond one measurement; the width is watched so a rotation re-decides.
+ * name of what wraps it (a link, a button). The decision is taken again on a
+ * real width change, once the web font has loaded, and for a new text.
  */
 export function MarqueeName({
   text,
@@ -47,25 +93,26 @@ export function MarqueeName({
 }) {
   const boxRef = useRef<HTMLSpanElement>(null);
   const textRef = useRef<HTMLSpanElement>(null);
-  const [scrolls, setScrolls] = useState(false);
+  const [mode, setMode] = useState<Mode>("fit");
+  // Pointer devices: the single scroll a hover or a focus asks for.
+  const [hovering, setHovering] = useState(false);
   // Bumped to decide again from the fit layout (a new width, the web font).
   const [measure, setMeasure] = useState(0);
-  // The text whose scroll has run to its end: it never runs again.
-  const played = useRef<string | null>(null);
 
   // Decide before paint, from the fit layout, so the row never shows a frame
   // of the other mode. A new text starts over from the fit layout.
   const [measuredText, setMeasuredText] = useState(text);
   if (measuredText !== text) {
     setMeasuredText(text);
-    setScrolls(false);
+    setMode("fit");
+    setHovering(false);
   }
   useLayoutEffect(() => {
-    if (scrolls) return;
+    if (mode !== "fit") return;
     const box = boxRef.current;
     if (!box || prefersReducedMotion()) return;
-    if (overflows(box, lines)) setScrolls(true);
-  }, [scrolls, text, lines, measure]);
+    if (overflows(box, lines)) setMode(isTouch() ? "loop" : "ellipsis");
+  }, [mode, text, lines, measure]);
 
   // Decide again, both ways, when the room changes for real (a rotation, a
   // sidebar: not a reading next door going from 9,9° to 10,1°), and once the
@@ -76,7 +123,8 @@ export function MarqueeName({
     let alive = true;
     const redecide = () => {
       if (!alive) return;
-      setScrolls(false);
+      setMode("fit");
+      setHovering(false);
       setMeasure((m) => m + 1);
     };
     if (typeof document !== "undefined" && document.fonts && document.fonts.status !== "loaded") {
@@ -100,46 +148,82 @@ export function MarqueeName({
     };
   }, []);
 
-  // Once per text: hold, travel to the end, hold, return. A run cut short (the
-  // room changed under it) may start over; a finished one stays at the start.
+  // Touch: the loop, running only while the row is on screen and the tab shown.
   useEffect(() => {
-    if (!scrolls || played.current === text) return;
+    if (mode !== "loop") return;
     const box = boxRef.current;
     const inner = textRef.current;
-    if (!box || !inner || typeof inner.animate !== "function") return;
-    const distance = inner.offsetWidth - box.clientWidth;
-    if (distance <= 0) return;
-    const travel = (distance / SPEED_PX_S) * 1000;
-    const total = HOLD_START_MS + travel + HOLD_END_MS + RETURN_MS;
-    const at = (ms: number) => ms / total;
-    const animation = inner.animate(
-      [
-        { transform: "translateX(0)", offset: 0 },
-        { transform: "translateX(0)", offset: at(HOLD_START_MS) },
-        { transform: `translateX(-${distance}px)`, offset: at(HOLD_START_MS + travel) },
-        {
-          transform: `translateX(-${distance}px)`,
-          offset: at(HOLD_START_MS + travel + HOLD_END_MS),
-        },
-        { transform: "translateX(0)", offset: 1 },
-      ],
-      { duration: total, easing: "linear" },
-    );
-    animation.onfinish = () => {
-      played.current = text;
+    if (!box || !inner) return;
+    const animation = scrollAnimation(box, inner, LOOP_HOLD_START_MS, LOOP_HOLD_END_MS, Infinity);
+    if (!animation) return;
+    let onScreen = true;
+    const sync = () => {
+      if (onScreen && document.visibilityState !== "hidden") animation.play();
+      else animation.pause();
     };
-    return () => animation.cancel();
-  }, [scrolls, text]);
+    const io =
+      typeof IntersectionObserver === "undefined"
+        ? null
+        : new IntersectionObserver((entries) => {
+            onScreen = entries.some((e) => e.isIntersecting);
+            sync();
+          });
+    io?.observe(box);
+    document.addEventListener("visibilitychange", sync);
+    return () => {
+      animation.cancel();
+      io?.disconnect();
+      document.removeEventListener("visibilitychange", sync);
+    };
+  }, [mode]);
 
-  // `line-clamp-2` brings its own display; `truncate` needs a block box.
-  const fit = lines === 2 ? "line-clamp-2 break-words text-balance" : "block truncate";
+  // Pointer: hovering the row (the stretched link covers it) or focusing the
+  // link starts one scroll; leaving or blurring ends it.
+  useEffect(() => {
+    if (mode !== "ellipsis") return;
+    const box = boxRef.current;
+    if (!box) return;
+    const target: HTMLElement = box.closest<HTMLElement>("a, button") ?? box;
+    const start = () => setHovering(true);
+    const stop = () => setHovering(false);
+    target.addEventListener("mouseenter", start);
+    target.addEventListener("mouseleave", stop);
+    target.addEventListener("focusin", start);
+    target.addEventListener("focusout", stop);
+    return () => {
+      target.removeEventListener("mouseenter", start);
+      target.removeEventListener("mouseleave", stop);
+      target.removeEventListener("focusin", start);
+      target.removeEventListener("focusout", stop);
+    };
+  }, [mode]);
+
+  useEffect(() => {
+    if (mode !== "ellipsis" || !hovering) return;
+    const box = boxRef.current;
+    const inner = textRef.current;
+    if (!box || !inner) return;
+    const animation = scrollAnimation(box, inner, HOVER_HOLD_START_MS, HOVER_HOLD_END_MS, 1);
+    if (!animation) return;
+    // At the end, back to the ellipsis until the next hover.
+    animation.onfinish = () => setHovering(false);
+    return () => animation.cancel();
+  }, [mode, hovering]);
+
+  const moving = mode === "loop" || (mode === "ellipsis" && hovering);
+  const shape = moving
+    ? "block overflow-hidden whitespace-nowrap"
+    : mode === "ellipsis" || lines === 1
+      ? "block truncate"
+      : // `line-clamp-2` brings its own display.
+        "line-clamp-2 break-words text-balance";
   return (
     <span
       ref={boxRef}
-      data-marquee={scrolls ? "scroll" : "fit"}
-      className={`min-w-0 ${scrolls ? "block overflow-hidden whitespace-nowrap" : fit} ${className}`}
+      data-marquee={mode === "ellipsis" && hovering ? "hover" : mode}
+      className={`min-w-0 ${shape} ${className}`}
     >
-      <span ref={textRef} className={scrolls ? "inline-block" : undefined}>
+      <span ref={textRef} className={moving ? "inline-block" : undefined}>
         {text}
       </span>
     </span>

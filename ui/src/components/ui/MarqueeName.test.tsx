@@ -1,22 +1,82 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { act, render, screen } from "../../test-utils";
+import { act, fireEvent, render, screen } from "../../test-utils";
 import { MarqueeName } from "./MarqueeName";
 
-// jsdom does no layout: the box sizes are mocked, keyed on the box's mode.
-// `overflowing` makes the text larger than its box in the fit layout.
+// jsdom does no layout: the box sizes are mocked. `overflowing` makes the text
+// larger than its box in the fit layout, by width and by height; `wideOnly` by
+// width alone (one line).
 let overflowing = false;
-/** Overflow by width only (one line), not by height. */
 let wideOnly = false;
 let boxWidth = 100;
 let reducedMotion = false;
-const animate = vi.fn(() => ({ cancel: vi.fn() }));
-const restore: Array<() => void> = [];
+let touch = false;
 
+interface FakeAnimation {
+  options: { iterations?: number };
+  frames: Array<{ transform: string }>;
+  onfinish: null | (() => void);
+  cancel: ReturnType<typeof vi.fn>;
+  play: ReturnType<typeof vi.fn>;
+  pause: ReturnType<typeof vi.fn>;
+}
+const animations: FakeAnimation[] = [];
+const animate = vi.fn((frames: FakeAnimation["frames"], options: FakeAnimation["options"]) => {
+  const a: FakeAnimation = {
+    frames,
+    options,
+    onfinish: null,
+    cancel: vi.fn(),
+    play: vi.fn(),
+    pause: vi.fn(),
+  };
+  animations.push(a);
+  return a;
+});
+
+/** Observers the test fires by hand, as the browser would. */
+const resizeObservers: FakeResizeObserver[] = [];
+class FakeResizeObserver {
+  private cb: () => void;
+  constructor(cb: () => void) {
+    this.cb = cb;
+    resizeObservers.push(this);
+  }
+  observe() {
+    this.cb();
+  }
+  disconnect() {}
+  fire() {
+    this.cb();
+  }
+}
+const intersectionObservers: FakeIntersectionObserver[] = [];
+class FakeIntersectionObserver {
+  private cb: (entries: Array<{ isIntersecting: boolean }>) => void;
+  constructor(cb: (entries: Array<{ isIntersecting: boolean }>) => void) {
+    this.cb = cb;
+    intersectionObservers.push(this);
+  }
+  observe() {}
+  disconnect() {}
+  fire(isIntersecting: boolean) {
+    this.cb([{ isIntersecting }]);
+  }
+}
+
+const restore: Array<() => void> = [];
 function mockGetter(name: string, get: (this: HTMLElement) => number) {
   const original = Object.getOwnPropertyDescriptor(HTMLElement.prototype, name);
   Object.defineProperty(HTMLElement.prototype, name, { configurable: true, get });
   restore.push(() => {
     if (original) Object.defineProperty(HTMLElement.prototype, name, original);
+  });
+}
+function mockGlobal(key: "ResizeObserver" | "IntersectionObserver", value: unknown) {
+  const g = globalThis as unknown as Record<string, unknown>;
+  const original = g[key];
+  g[key] = value;
+  restore.push(() => {
+    g[key] = original;
   });
 }
 
@@ -25,28 +85,29 @@ beforeEach(() => {
   wideOnly = false;
   boxWidth = 100;
   reducedMotion = false;
-  observers.length = 0;
+  touch = false;
+  animations.length = 0;
+  resizeObservers.length = 0;
+  intersectionObservers.length = 0;
   animate.mockClear();
-  // The box: 100 px wide, 40 px high (two lines).
+  // The box: `boxWidth` wide, 40 px high (two lines); the text 260 px on one line.
   mockGetter("clientWidth", () => boxWidth);
   mockGetter("clientHeight", () => 40);
   mockGetter("scrollWidth", () => (overflowing || wideOnly ? 260 : boxWidth));
   mockGetter("scrollHeight", () => (overflowing ? 60 : 40));
-  const originalRO = globalThis.ResizeObserver;
-  globalThis.ResizeObserver = FakeResizeObserver as unknown as typeof ResizeObserver;
-  restore.push(() => {
-    globalThis.ResizeObserver = originalRO;
-  });
-  // The text, on one line in the scroll mode.
   mockGetter("offsetWidth", () => 260);
   const originalAnimate = HTMLElement.prototype.animate;
   HTMLElement.prototype.animate = animate as unknown as typeof HTMLElement.prototype.animate;
   restore.push(() => {
     HTMLElement.prototype.animate = originalAnimate;
   });
+  mockGlobal("ResizeObserver", FakeResizeObserver);
+  mockGlobal("IntersectionObserver", FakeIntersectionObserver);
   const originalMatchMedia = window.matchMedia;
   window.matchMedia = ((query: string) => ({
-    matches: reducedMotion && query.includes("prefers-reduced-motion: reduce"),
+    matches:
+      (reducedMotion && query.includes("prefers-reduced-motion: reduce")) ||
+      (touch && (query.includes("hover: none") || query.includes("pointer: coarse"))),
     media: query,
     onchange: null,
     addEventListener: () => {},
@@ -64,130 +125,176 @@ afterEach(() => {
   while (restore.length) restore.pop()!();
 });
 
-/** A ResizeObserver the test fires by hand, as the browser would on a resize. */
-const observers: FakeResizeObserver[] = [];
-class FakeResizeObserver {
-  private cb: () => void;
-  constructor(cb: () => void) {
-    this.cb = cb;
-    observers.push(this);
-  }
-  observe() {
-    this.cb();
-  }
-  disconnect() {}
-  fire() {
-    this.cb();
-  }
-}
+const LONG = "Volet roulant de la grande baie vitrée côté sud-ouest";
+const box = () => document.querySelector("[data-marquee]")!;
 const resize = (width: number, overflow: boolean) =>
   act(() => {
     boxWidth = width;
     overflowing = overflow;
-    for (const o of observers) o.fire();
+    for (const o of resizeObservers) o.fire();
   });
 
-const box = () => document.querySelector("[data-marquee]")!;
-
-describe("MarqueeName (#1163)", () => {
-  it("does not scroll a name that fits", () => {
+describe("MarqueeName — a name that fits (#1163)", () => {
+  it("stays put on one line or wrapped onto its lines", () => {
+    touch = true;
     render(<MarqueeName text="Volet" lines={2} />);
     expect(box().getAttribute("data-marquee")).toBe("fit");
     expect(box().className).toContain("line-clamp-2");
     expect(animate).not.toHaveBeenCalled();
   });
 
-  it("scrolls a name that overflows its lines, once, and comes back to the start", () => {
-    overflowing = true;
-    render(<MarqueeName text="Circulation - Escalier Piscine Est" lines={2} />);
-    expect(box().getAttribute("data-marquee")).toBe("scroll");
-    expect(box().className).toContain("whitespace-nowrap");
-    expect(box().className).not.toContain("line-clamp");
-    expect(animate).toHaveBeenCalledTimes(1);
-    const [frames, options] = animate.mock.calls[0] as unknown as [
-      Array<{ transform: string }>,
-      { iterations?: number },
-    ];
-    // Out by exactly the overflow (260 - 100), back to 0, and not repeated.
-    expect(frames.map((f) => f.transform)).toContain("translateX(-160px)");
-    expect(frames[frames.length - 1].transform).toBe("translateX(0)");
-    expect(options.iterations ?? 1).toBe(1);
-  });
-
-  it("measures one line by its width", () => {
-    wideOnly = true;
-    render(<MarqueeName text="Thermostat présence chambre parents" />);
-    expect(box().getAttribute("data-marquee")).toBe("scroll");
-  });
-
-  it("keeps the clamp and never moves under reduced motion", () => {
-    overflowing = true;
-    reducedMotion = true;
-    render(<MarqueeName text="Circulation - Escalier Piscine Est" lines={2} />);
-    expect(box().getAttribute("data-marquee")).toBe("fit");
-    expect(box().className).toContain("line-clamp-2");
-    expect(animate).not.toHaveBeenCalled();
-  });
-
-  it("holds the text once, whatever the mode", () => {
-    overflowing = true;
-    render(
-      <a href="/x">
-        <MarqueeName text="Circulation - Escalier Piscine Est" lines={2} />
-      </a>,
-    );
-    expect(screen.getByRole("link").textContent).toBe("Circulation - Escalier Piscine Est");
-    expect(screen.getAllByText("Circulation - Escalier Piscine Est")).toHaveLength(1);
-  });
-
-  it("does not scroll again on a re-render with the same text", () => {
-    overflowing = true;
-    const { rerender } = render(<MarqueeName text="Circulation - Escalier Piscine Est" />);
-    rerender(<MarqueeName text="Circulation - Escalier Piscine Est" />);
-    expect(animate).toHaveBeenCalledTimes(1);
-  });
-
-  it("starts to scroll when the room narrows under a name that fitted", () => {
-    render(<MarqueeName text="Circulation - Escalier Piscine Est" lines={2} />);
+  it("starts to move when the room narrows under it, and stops when it widens", () => {
+    touch = true;
+    render(<MarqueeName text={LONG} lines={2} />);
     expect(box().getAttribute("data-marquee")).toBe("fit");
     resize(60, true);
-    expect(box().getAttribute("data-marquee")).toBe("scroll");
-    expect(animate).toHaveBeenCalledTimes(1);
-  });
-
-  it("goes back to fitting when the room widens", () => {
-    overflowing = true;
-    render(<MarqueeName text="Circulation - Escalier Piscine Est" lines={2} />);
-    expect(box().getAttribute("data-marquee")).toBe("scroll");
+    expect(box().getAttribute("data-marquee")).toBe("loop");
     resize(400, false);
     expect(box().getAttribute("data-marquee")).toBe("fit");
   });
 
-  it("ignores a neighbour's reading nudging the width, and never replays a finished scroll", () => {
-    overflowing = true;
-    const finished: Array<{ onfinish: null | (() => void); cancel: () => void }> = [];
-    animate.mockImplementation(() => {
-      const a = { onfinish: null as null | (() => void), cancel: vi.fn() };
-      finished.push(a);
-      return a;
-    });
-    render(<MarqueeName text="Circulation - Escalier Piscine Est" lines={2} />);
-    expect(animate).toHaveBeenCalledTimes(1);
-    act(() => finished[0].onfinish?.());
-    resize(96, true); // 4 px: a reading next door
-    expect(animate).toHaveBeenCalledTimes(1);
-    resize(60, true); // a real change, but this text has already played
-    expect(box().getAttribute("data-marquee")).toBe("scroll");
-    expect(animate).toHaveBeenCalledTimes(1);
+  it("ignores a neighbour's reading nudging the width", () => {
+    render(<MarqueeName text={LONG} lines={2} />);
+    resize(96, true); // 4 px: below the guard, nothing measured again
+    expect(box().getAttribute("data-marquee")).toBe("fit");
   });
 
   it("decides again for a new text", () => {
+    touch = true;
     const { rerender } = render(<MarqueeName text="Volet" lines={2} />);
-    expect(box().getAttribute("data-marquee")).toBe("fit");
     overflowing = true;
-    rerender(
-      <MarqueeName text="Volet roulant de la grande baie vitrée côté sud-ouest" lines={2} />,
+    rerender(<MarqueeName text={LONG} lines={2} />);
+    expect(box().getAttribute("data-marquee")).toBe("loop");
+  });
+});
+
+describe("MarqueeName — touch screens loop (#1163)", () => {
+  beforeEach(() => {
+    touch = true;
+    overflowing = true;
+  });
+
+  it("scrolls a name that overflows its lines on one line, in a loop", () => {
+    render(<MarqueeName text={LONG} lines={2} />);
+    expect(box().getAttribute("data-marquee")).toBe("loop");
+    expect(box().className).toContain("whitespace-nowrap");
+    expect(box().className).not.toContain("line-clamp");
+    expect(animations).toHaveLength(1);
+    const [a] = animations;
+    expect(a.options.iterations).toBe(Infinity);
+    // At rest at the start, out by exactly the overflow (260 - 100), and the
+    // iteration ends there: the next one jumps back, it never scrolls back.
+    const t = a.frames.map((f) => f.transform);
+    expect(t[0]).toBe("translateX(0)");
+    expect(t[1]).toBe("translateX(0)");
+    expect(t[t.length - 1]).toBe("translateX(-160px)");
+  });
+
+  it("measures one line by its width", () => {
+    overflowing = false;
+    wideOnly = true;
+    render(<MarqueeName text={LONG} />);
+    expect(box().getAttribute("data-marquee")).toBe("loop");
+  });
+
+  it("pauses while off screen and while the tab is hidden", () => {
+    render(<MarqueeName text={LONG} lines={2} />);
+    const [a] = animations;
+    act(() => intersectionObservers[0].fire(false));
+    expect(a.pause).toHaveBeenCalledTimes(1);
+    act(() => intersectionObservers[0].fire(true));
+    expect(a.play).toHaveBeenCalledTimes(1);
+
+    const visibility = vi.spyOn(document, "visibilityState", "get").mockReturnValue("hidden");
+    act(() => {
+      document.dispatchEvent(new Event("visibilitychange"));
+    });
+    expect(a.pause).toHaveBeenCalledTimes(2);
+    visibility.mockReturnValue("visible");
+    act(() => {
+      document.dispatchEvent(new Event("visibilitychange"));
+    });
+    expect(a.play).toHaveBeenCalledTimes(2);
+    visibility.mockRestore();
+  });
+
+  it("holds the text once, whatever the mode", () => {
+    render(
+      <a href="/x">
+        <MarqueeName text={LONG} lines={2} />
+      </a>,
     );
-    expect(box().getAttribute("data-marquee")).toBe("scroll");
+    expect(screen.getByRole("link").textContent).toBe(LONG);
+    expect(screen.getAllByText(LONG)).toHaveLength(1);
+  });
+});
+
+describe("MarqueeName — pointer devices end in an ellipsis (#1163)", () => {
+  beforeEach(() => {
+    overflowing = true;
+  });
+
+  const renderLinked = () =>
+    render(
+      <a href="/x">
+        <MarqueeName text={LONG} lines={2} />
+      </a>,
+    );
+
+  it("rests on one line ending in an ellipsis, without moving", () => {
+    renderLinked();
+    expect(box().getAttribute("data-marquee")).toBe("ellipsis");
+    expect(box().className).toContain("truncate");
+    expect(animate).not.toHaveBeenCalled();
+  });
+
+  it("scrolls once while the row is hovered, then comes back to the ellipsis", () => {
+    renderLinked();
+    fireEvent.mouseEnter(screen.getByRole("link"));
+    expect(box().getAttribute("data-marquee")).toBe("hover");
+    expect(animations).toHaveLength(1);
+    expect(animations[0].options.iterations).toBe(1);
+    act(() => animations[0].onfinish?.());
+    expect(box().getAttribute("data-marquee")).toBe("ellipsis");
+    // A new hover scrolls again.
+    fireEvent.mouseLeave(screen.getByRole("link"));
+    fireEvent.mouseEnter(screen.getByRole("link"));
+    expect(animations).toHaveLength(2);
+  });
+
+  it("stops at once when the pointer leaves", () => {
+    renderLinked();
+    fireEvent.mouseEnter(screen.getByRole("link"));
+    fireEvent.mouseLeave(screen.getByRole("link"));
+    expect(animations[0].cancel).toHaveBeenCalled();
+    expect(box().getAttribute("data-marquee")).toBe("ellipsis");
+  });
+
+  it("scrolls when the link gets the keyboard focus", () => {
+    renderLinked();
+    fireEvent.focusIn(screen.getByRole("link"));
+    expect(box().getAttribute("data-marquee")).toBe("hover");
+    fireEvent.focusOut(screen.getByRole("link"));
+    expect(box().getAttribute("data-marquee")).toBe("ellipsis");
+  });
+});
+
+describe("MarqueeName — reduced motion (#1163)", () => {
+  it("never moves, on touch or pointer, and keeps the clamp with its ellipsis", () => {
+    overflowing = true;
+    reducedMotion = true;
+    for (const isTouch of [true, false]) {
+      touch = isTouch;
+      const { unmount } = render(
+        <a href="/x">
+          <MarqueeName text={LONG} lines={2} />
+        </a>,
+      );
+      expect(box().getAttribute("data-marquee")).toBe("fit");
+      expect(box().className).toContain("line-clamp-2");
+      fireEvent.mouseEnter(screen.getByRole("link"));
+      expect(animate).not.toHaveBeenCalled();
+      unmount();
+    }
   });
 });
