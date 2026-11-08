@@ -102,6 +102,22 @@ describe("Live energy diagram — nodes and status", () => {
     expect(screen.getByText("1.8")).toBeTruthy();
   });
 
+  it("paints each node icon with a token that stands on the card (#1146)", () => {
+    seed([meter("grid", "main_energy_meter", 1000), meter("pv", "energy_production_meter", 800)]);
+    const { container } = render(<LiveEnergyPage />, { wrapper: MemoryRouter });
+    const iconColor = (slot: string) =>
+      (
+        container.querySelector(
+          `[data-slot="${slot}"] [data-testid="flow-node-icon"]`,
+        ) as HTMLElement
+      ).style.color;
+    // energy-palette.test.ts checks these three reach 3:1 in both themes.
+    expect(iconColor("focal")).toBe("var(--color-energy-hp)");
+    expect(iconColor("left")).toBe("var(--color-energy-grid)");
+    // The darker solar step, not the auto-consumption green (about 2:1).
+    expect(iconColor("right")).toBe("var(--color-solar-ink)");
+  });
+
   it("rounds sub-kilowatt values to the nearest 5 W", () => {
     seed([meter("grid", "main_energy_meter", 183)]);
     render(<LiveEnergyPage />, { wrapper: MemoryRouter });
