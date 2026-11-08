@@ -157,12 +157,111 @@ describe("ArbiterTimeline live refresh (#514)", () => {
 });
 
 describe("#960 — the legend carries 'pilotage manuel'", () => {
-  it("advertises the suspended state alongside the others", async () => {
-    mockTimeline.mockResolvedValue(timelineData());
+  it("advertises the suspended state when the window shows it", async () => {
+    const data = timelineData();
+    data.loads[0].quarters[3] = "suspended";
+    data.loads[0].quarters[4] = "unmanaged";
+    mockTimeline.mockResolvedValue(data);
     render(<ArbiterTimeline />);
     await act(async () => {});
     expect(screen.getByText("Manual control")).toBeTruthy();
     expect(screen.getByText("Running (unmanaged)")).toBeTruthy();
+  });
+});
+
+describe("spec 197 — the history reads as durations (FR-E5.5, E5.6)", () => {
+  beforeEach(() => {
+    mockTimeline.mockReset();
+    useArbiter.setState({ state: null, loading: false, timelineRev: 0 });
+  });
+
+  it("lists only the states the window shows, plus « At rest »", async () => {
+    const data = timelineData();
+    data.loads[0].quarters.fill("pending", 10, 14);
+    mockTimeline.mockResolvedValue(data);
+    const { container } = render(<ArbiterTimeline />);
+    await act(async () => {});
+    const legend = [...container.querySelectorAll("[data-legend]")].map((el) =>
+      el.getAttribute("data-legend"),
+    );
+    expect(legend).toEqual(["pending", "idle"]);
+  });
+
+  it("draws equal neighbours as one run, and keeps one target per quarter", async () => {
+    const data = timelineData();
+    data.loads[0].quarters.fill("granted", 8, 16);
+    mockTimeline.mockResolvedValue(data);
+    const { container } = render(<ArbiterTimeline />);
+    await act(async () => {});
+    const runs = [...container.querySelectorAll("[data-run]")].map((el) =>
+      el.getAttribute("data-run"),
+    );
+    expect(runs).toEqual(["idle", "granted", "idle"]);
+    expect(container.querySelectorAll("button[data-q]")).toHaveLength(24);
+  });
+});
+
+describe("spec 197 — keyboard and focus (FR-E5.7)", () => {
+  beforeEach(() => {
+    mockTimeline.mockReset();
+    useArbiter.setState({ state: null, loading: false, timelineRev: 0 });
+  });
+
+  it("makes each lane one tab stop and moves between quarters with the arrows", async () => {
+    const data = timelineData("Chauffe-eau");
+    data.loads[0].quarters[22] = "pending";
+    mockTimeline.mockResolvedValue(data);
+    const { container } = render(<ArbiterTimeline />);
+    await act(async () => {});
+
+    const lane = screen.getByRole("group", { name: "Chauffe-eau" });
+    const stops = [...lane.querySelectorAll("button")].filter((b) => b.tabIndex === 0);
+    expect(stops).toHaveLength(1);
+    expect(stops[0].getAttribute("data-q")).toBe("23"); // the current quarter
+
+    stops[0].focus();
+    await act(async () => {
+      stops[0].dispatchEvent(new KeyboardEvent("keydown", { key: "ArrowLeft", bubbles: true }));
+    });
+    const focused = document.activeElement as HTMLElement;
+    expect(focused.getAttribute("data-q")).toBe("22");
+    expect(focused.tabIndex).toBe(0);
+    expect(focused.getAttribute("aria-label")).toMatch(/^Chauffe-eau, \d{1,2}:30, waiting$/);
+    // Focus shows the same readout as the mouse.
+    expect(container.querySelector("[data-testid='arbiter-crosshair']")).toBeTruthy();
+    expect(focused.className).toContain("focus-visible:outline");
+  });
+});
+
+describe("spec 197 — the curve ends on the live reading (FR-E5.2, DV-03)", () => {
+  beforeEach(() => {
+    mockTimeline.mockReset();
+  });
+
+  it("draws the live end point on the live window only", async () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date("2026-08-15T05:58:00.000Z"));
+    useArbiter.setState({
+      state: { availableSurplusW: -4800 } as never,
+      loading: false,
+      timelineRev: 0,
+    });
+    mockTimeline.mockResolvedValue(timelineData());
+    const { container, getAllByRole } = render(<ArbiterTimeline />);
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(0);
+    });
+    expect(container.querySelector("[data-testid='arbiter-live-dot']")).toBeTruthy();
+    expect(screen.getByText("4.8 kW")).toBeTruthy();
+    // The scale reaches the live import, which no sample did.
+    expect(screen.getByText(/kW import$/).textContent).toMatch(/^4\.\d\skW import$/);
+
+    await act(async () => {
+      getAllByRole("button")[0].click(); // page back
+      await vi.advanceTimersByTimeAsync(0);
+    });
+    expect(container.querySelector("[data-testid='arbiter-live-dot']")).toBeNull();
+    vi.useRealTimers();
   });
 });
 
