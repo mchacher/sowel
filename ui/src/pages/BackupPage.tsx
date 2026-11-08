@@ -101,9 +101,8 @@ export function BackupPage() {
   return (
     <div className="p-4 sm:p-6">
       {/* Page header */}
-      <div className="mb-6">
+      <div className="lg:mb-6">
         <h1 className={TOP_LEVEL_H1}>{t("backup.title")}</h1>
-        <p className="text-small text-text-tertiary mt-1">{t("backup.description")}</p>
       </div>
 
       <div className="max-w-xl space-y-6">

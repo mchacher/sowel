@@ -154,7 +154,6 @@ export function PluginsPage() {
         <div className="mb-5 flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
           <div>
             <h1 className={TOP_LEVEL_H1}>{t("plugins.title")}</h1>
-            <p className="text-small text-text-secondary mt-1">{t("plugins.subtitle")}</p>
           </div>
           <button
             type="button"

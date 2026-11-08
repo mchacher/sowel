@@ -165,9 +165,8 @@ export function NotificationPublishersPage() {
 
   return (
     <div className="p-4 sm:p-6">
-      <div className="mb-6">
+      <div className="lg:mb-6">
         <h1 className={TOP_LEVEL_H1}>{t("notifPublishers.title")}</h1>
-        <p className="text-small text-text-secondary mt-1">{t("notifPublishers.subtitle")}</p>
       </div>
 
       {/* Web Push — enable on this device (spec 127) */}
