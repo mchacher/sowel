@@ -125,7 +125,9 @@ en retard sur une tension ou un index d'énergie ne déclenche rien ici.
 
 ### Vue Consommation
 
-Choisissez une période (Jour, Sem, Mois, Année) et naviguez avec les flèches. Le graphique affiche une barre par seau temporel de la période sélectionnée.
+Choisissez une période (Jour, Sem, Mois, Année) et naviguez avec les flèches. Sur un téléphone, les commandes s'empilent en une colonne alignée à gauche, les onglets de période sur toute la largeur.
+
+La carte s'ouvre sur la réponse : la consommation totale de la période en grand, avec « aujourd'hui », « cette semaine »… à côté (ou la date, pour une période passée), puis une phrase qui la détaille : `9,44 kWh en heures pleines · 1,97 kWh en heures creuses · 3 % autoconsommé`. Le graphique en dessous affiche une barre par seau temporel de la période sélectionnée, avec ses axes et leurs graduations.
 
 ![Consommation journalière](../screenshots/energy-consumption-day-fr.png)
 
@@ -137,19 +139,19 @@ Code couleur sur le graphique **Total** :
 | Bleu clair | Consommation réseau en heures creuses                        |
 | Vert       | Autoconsommation (uniquement avec un compteur de production) |
 
-La légende sous le graphique a une pastille par couleur, heures pleines et heures creuses comprises. Le thème sombre garde les mêmes significations avec ses propres nuances : les heures pleines restent le bleu vif et les heures creuses le bleu pâle, assez éloignés pour distinguer deux barres empilées. Le survol d'une barre ouvre une infobulle avec les mêmes pastilles ; ses libellés et ses valeurs sont dans la couleur du texte, ce que le bleu pâle ne permettrait pas de lire.
+La légende sous le graphique a une pastille par couleur, heures pleines et heures creuses comprises, avec les noms seuls : les chiffres sont dans l'en-tête au-dessus. Le thème sombre garde les mêmes significations avec ses propres nuances : les heures pleines restent le bleu vif et les heures creuses le bleu pâle, assez éloignés pour distinguer deux barres empilées. Le survol d'une barre ouvre une infobulle avec les mêmes pastilles ; ses libellés et ses valeurs sont dans la couleur du texte, ce que le bleu pâle ne permettrait pas de lire.
 
-Sous le graphique, les totaux sont affichés en kWh : réseau (réparti HP / HC), autoconsommation, et total (avec le pourcentage d'autoconsommation).
+Le total compte tout ce que la maison a consommé, réseau et soleil ; la part autoconsommée est celle du soleil.
 
 #### Bascule Wh / €
 
-Un sélecteur segmenté **Wh / €** est placé à côté du sélecteur de période en haut de la page. En mode **€**, chaque valeur en kWh du graphique (axe Y, hauteur de barre, tooltip) et de la carte récap est remplacée par le coût correspondant en euros, calculé à partir des prix saisis dans **Réglages > Tarifs énergie**. La bascule est désactivée — avec une tooltip qui renvoie vers les réglages — tant qu'au moins un des prix HP / HC n'est pas non nul.
+Un sélecteur segmenté **Wh / €** est placé à côté du sélecteur de période en haut de la page. En mode **€**, chaque valeur en kWh du graphique (axe Y, hauteur de barre, tooltip) et de l'en-tête est remplacée par le coût correspondant en euros, calculé à partir des prix saisis dans **Réglages > Tarifs énergie**. La bascule est désactivée — avec une tooltip qui renvoie vers les réglages — tant qu'au moins un des prix HP / HC n'est pas non nul.
 
-La valorisation est appliquée au moment de l'affichage : modifier votre tarif (après une renégociation, par exemple) revalorise la consommation passée avec les nouveaux prix. L'autoconsommation n'a pas de coût facturé, elle est donc masquée du graphique en mode €.
+La valorisation est appliquée au moment de l'affichage : modifier votre tarif (après une renégociation, par exemple) revalorise la consommation passée avec les nouveaux prix. L'autoconsommation n'a pas de coût facturé, elle est donc masquée du graphique en mode € et laissée hors du total en € : l'en-tête donne alors la facture, répartie en heures pleines et heures creuses, la part autoconsommée restant un pourcentage d'énergie.
 
 #### Bascule Total / Par usage
 
-Quand au moins un sous-compteur est configuré, un bouton **Total / Par usage** apparaît au-dessus du graphique. La vue **Par usage** remplace la répartition HP / HC par une pile par sous-compteur, plus une pile **Autre** pour le résidu vu par le compteur principal mais non comptabilisé par les sous-compteurs.
+Quand au moins un sous-compteur est configuré, un bouton **Total / Par usage** apparaît à côté de l'en-tête. Lui, la bascule Wh / €, les onglets de période (ici et sur la page Analyse) et les boutons de fenêtre de la prévision sont le même sélecteur segmenté. La vue **Par usage** remplace la répartition HP / HC par une pile par sous-compteur, plus une pile **Autre** pour le résidu vu par le compteur principal mais non comptabilisé par les sous-compteurs. L'en-tête donne alors le total de ces piles, l'énergie réseau mesurée par le compteur principal, sans la phrase heures pleines / heures creuses.
 
 ![Répartition par usage](../screenshots/energy-consumption-by-usage-fr.png)
 
@@ -201,11 +203,11 @@ Passer en **Mois** ou **Année** garde les mêmes couleurs et totaux, mais chaqu
 
 ### Vue Production
 
-La page Production regroupe tout ce qui concerne vos panneaux. Elle affiche l'historique de production, réparti entre autoconsommation (produite et consommée sur place) et injection réseau, avec les totaux du jour, du mois ou de l'année.
+La page Production regroupe tout ce qui concerne vos panneaux. Sa carte s'ouvre sur l'énergie produite sur la période ; sur la vue Jour d'aujourd'hui, elle se lit face à la prévision, `0,39 kWh sur 7,93 kWh attendus aujourd'hui`, et la phrase en dessous la répartit entre autoconsommation (produite et consommée sur place) et injection réseau. Le graphique en dessous garde ses axes. Sur la vue Jour d'aujourd'hui, son échelle monte au moins jusqu'à l'heure la plus productive de la prévision : les premières barres du matin s'inscrivent dans le cadre de la journée annoncée au lieu de remplir un cadre d'un demi-kilowattheure.
 
 Depuis la v1.57.0 elle porte aussi deux panneaux, tous deux nourris par votre propre installation plutôt que par un modèle générique :
 
-- **Prévision**, une courbe horaire de production attendue jusqu'à cinq jours (en vert, la production mesurée en bleu), apprise sur votre historique. Elle réclame le plugin `weather-forecast` en 2.3.0 ou plus, et environ six semaines de production avant que le modèle ne se stabilise. En attendant, Sowel affiche une estimation ciel clair provisoire et le dit.
+- **Prévision**, une courbe horaire de production attendue jusqu'à cinq jours (« Attendu » en pointillé gris, la production mesurée « Réalisé » en trait plein vert, le vert des barres au-dessus), apprise sur votre historique. Elle réclame le plugin `weather-forecast` en 2.3.0 ou plus, et environ six semaines de production avant que le modèle ne se stabilise. En attendant, Sowel affiche une estimation ciel clair provisoire et le dit.
 - **Santé**, qui signale quand les panneaux cessent de produire ce que votre propre historique laisse attendre. Déclarer un nouveau pan de toiture, ou changer la puissance crête, ré-estime le gain sur les jours qui suivent au lieu d'attendre que la fenêtre glisse.
 
 Les deux sont détaillés dans [Suivre sa production solaire](../deep-dives/pv-health.md).
@@ -250,21 +252,31 @@ Allez dans **Réglages > Administration > Énergie**, activez l'**Arbitre de sur
 La page **Énergie > En direct** gagne un panneau d'arbitrage du surplus en trois parties :
 
 - un **tableau** listant chaque charge pilotable dans votre ordre de priorité, avec son état et ses chiffres ;
-- une **frise** avec un couloir par charge pilotable : vert là où elle a tenu le surplus, un repère rouge (avec la raison au survol) là où elle s'est effacée ;
+- un **historique** des dernières heures : le surplus et le déficit en courbe, puis un couloir par charge pilotable ;
 - un **journal des décisions** en langage clair, pour que rien de ce que fait l'arbitre ne soit un mystère.
 
-Le tableau répond aux deux questions que vous vous posez vraiment devant lui : qui a le surplus, et qu'est-ce qui retient la suivante.
+La pastille à côté du titre dit où en est la maison : _Surplus 1,2 kW_ sur une teinte verte quand elle exporte, _Déficit 4,8 kW_ sur le bleu ardoise du réseau quand elle importe. Un déficit est l'état normal d'un matin ou d'un soir, pas une panne, donc rien ne passe au rouge ; le rouge est réservé à une charge dont le surplus a été retiré. À côté du tableau, le même chiffre se lit _Import réseau_ avec _Aucune charge ne peut démarrer_ tant que la maison importe, et _Surplus disponible_ avec _Export réseau instantané_ dès qu'il y a un surplus.
 
-| Colonne    | Ce qu'elle dit                                                                                                                                                                                                                                                                                                    |
-| ---------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| **Manque** | Ce qui manque encore à une charge en attente, en watts. Quand rien ne manque, elle le dit avec un mot plutôt qu'un chiffre : _couvert_ pour une charge qui a déjà le surplus, _non demandé_ pour une charge qu'aucune automatisation n'a réclamée, ou la raison qui la retient (temporisation, anti-cycle court). |
-| **Charge** | Ce que la charge consomme : mesuré quand elle tourne, sa puissance nominale au repos.                                                                                                                                                                                                                             |
-| **Tolère** | L'import réseau qu'elle accepte, tel que réglé dans sa gestion d'énergie.                                                                                                                                                                                                                                         |
-| **Besoin** | Le surplus qu'il faut pour la démarrer : **charge + marge d'engagement - tolérance**. La marge est rappelée sous le tableau, vous pouvez donc vérifier le calcul sur n'importe quelle ligne. Une charge qui tolère plus d'import qu'elle ne consomme n'a besoin d'aucun surplus et affiche 0 W.                   |
+Le tableau répond aux deux questions que vous vous posez vraiment devant lui : qui a le surplus, et qu'est-ce qui retient la suivante. Survolez un en-tête de colonne pour sa définition en une phrase.
 
-Le numéro devant chaque nom est son rang dans votre liste de priorité. Sur un écran étroit, le tableau garde l'équipement, son état et le manque, et laisse tomber le reste.
+| Colonne            | Ce qu'elle dit                                                                                                                                                                                                                                                                                                                                                                                                                                                  |
+| ------------------ | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **Il manque**      | Ce qui manque encore à une charge en attente, en watts. Tant que la maison importe, une charge en attente affiche _déficit_ à la place : il leur manque à toutes le déficit entier, et le chiffre revient avec le surplus. Quand rien ne manque, elle le dit avec un mot : _couvert_ pour une charge qui a déjà le surplus, _non demandé_ pour une charge qu'aucune automatisation n'a réclamée, ou la raison qui la retient (temporisation, anti-cycle court). |
+| **Puissance**      | Ce que la charge consomme : mesuré quand elle tourne, sa puissance nominale au repos.                                                                                                                                                                                                                                                                                                                                                                           |
+| **Import toléré**  | L'import réseau qu'elle accepte, tel que réglé dans sa gestion d'énergie.                                                                                                                                                                                                                                                                                                                                                                                       |
+| **Surplus requis** | Le surplus qu'il faut pour la démarrer : **puissance + marge d'engagement − import toléré**. La marge est rappelée sous le tableau, vous pouvez donc vérifier le calcul sur n'importe quelle ligne. Une charge qui tolère plus d'import qu'elle ne consomme n'a besoin d'aucun surplus et affiche 0 W.                                                                                                                                                          |
+
+Le tableau est titré _Charges par ordre de priorité_ : le numéro devant chaque nom est son rang dans votre liste de priorité. Sur un écran étroit, le tableau garde l'équipement, son état et ce qu'il lui manque, et laisse tomber le reste. _Prochaine bascule_ nomme la première charge en attente et le surplus dès lequel elle démarrera (_Démarrera dès 600 W de surplus_).
 
 La nuit, l'arbitre se met en veille : il n'y a pas de surplus à distribuer, chaque charge est _au repos_, et le panneau indique la reprise.
+
+#### L'historique
+
+La courbe est à l'échelle : le zéro se place là où le mettent les pics de la fenêtre, un watt a la même hauteur au-dessus et au-dessous de la ligne, et chaque moitié porte ce que vaut son bord (_+0,3 kW_ en haut, _4,8 kW import_ en bas). Sur la fenêtre en direct, la courbe va jusqu'à maintenant et finit sur un point qui porte le chiffre actuel, celui de la pastille.
+
+Chaque couloir dessine une suite de quarts d'heure dans le même état comme une seule barre : une nuit au repos se lit comme une longue barre pâle plutôt que quarante cases. La légende ne liste que les états présents dans la fenêtre, plus _Au repos_. Une charge en attente de surplus pendant que l'arbitre était en veille (soleil couché, rien d'exporté) se lit _au repos_ sur ces quarts d'heure aussi, comme le tableau la montrait à ce moment-là : elle n'attendait rien qui pouvait venir avant le lever du soleil.
+
+Pointez l'historique à la souris pour lire un quart d'heure : son heure, l'import ou le surplus, et ce que faisait chaque charge. Sur un téléphone, touchez un quart d'heure pour faire remonter ses décisions dans le journal. Au clavier, chaque couloir est un seul arrêt de tabulation : les flèches gauche et droite passent d'un quart d'heure à l'autre, Entrée les montre dans le journal. Les flèches au-dessus de la courbe remontent les 48 dernières heures, 6 heures à la fois sur un téléphone et 12 heures dès une tablette.
 
 ### Vous avez toujours le dernier mot
 

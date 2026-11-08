@@ -45,6 +45,8 @@ function makeHarness(opts?: {
   /** Spec 165 — daylight for the dormant flag. `undefined` injects no sun
    *  source at all, which is the pre-165 shape and must never read dormant. */
   daylight?: boolean | null;
+  /** Spec 197 — daylight at a past instant, for the history's night rule. */
+  sunAt?: (at: number) => boolean | null;
 }) {
   const settingsMap = new Map<string, string>(
     Object.entries({
@@ -170,7 +172,14 @@ function makeHarness(opts?: {
     opts?.daylight === undefined
       ? undefined
       : ({
-          getSunlightData: () => ({ sunrise: null, sunset: null, isDaylight: daylight }),
+          getSunlightData: () => ({
+            sunrise: null,
+            sunset: null,
+            isDaylight: opts?.sunAt ? opts.sunAt(Date.now()) : daylight,
+          }),
+          // Spec 197 — history asks about past instants; the fake sun answers
+          // the current setting, or `sunAt` when a test draws a day.
+          isDaylightAt: (at: number) => (opts?.sunAt ? opts.sunAt(at) : daylight),
         } as never);
   /** Move the sun without touching the meter (spec 165 review — sunset alone
    *  must reach an open tab). */
@@ -3148,5 +3157,225 @@ describe("re-adopting a load running outside arbitration (#958)", () => {
     h.feedState("heater", true);
     h.run(-100, 80);
     expect(h.arbiter.getPublicState().suspensions[0]?.equipmentId).toBe("heater");
+  });
+});
+
+// ============================================================
+// #1154 — a load handed back while it is still running, with no grant, is
+// running outside arbitration. The ribbon (journal replay) said so from the
+// `resumed{running:true}` entry; the roster (live set) said "au repos", and
+// the OFF that ends the run was dropped, so the span never closed.
+// ============================================================
+
+describe("a load handed back while running reads unmanaged on both halves (#1154)", () => {
+  beforeEach(() => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date("2026-11-07T18:46:00Z"));
+  });
+  afterEach(() => {
+    vi.useRealTimers();
+  });
+
+  const row = (h: ReturnType<typeof makeHarness>, id: string) =>
+    h.arbiter.getPublicState().loads.find((l) => l.equipmentId === id);
+  const idleRow = (h: ReturnType<typeof makeHarness>, id: string) =>
+    h.arbiter.getPublicState().idle.find((l) => l.equipmentId === id);
+  /** The ribbon's last cell, once the current quarter is complete. */
+  const lastCell = (h: ReturnType<typeof makeHarness>, id: string) => {
+    vi.advanceTimersByTime(15 * 60_000);
+    return h.arbiter
+      .getTimeline(Date.now(), 6)
+      .loads.find((l) => l.equipmentId === id)
+      ?.quarters.at(-1);
+  };
+  const kinds = (h: ReturnType<typeof makeHarness>, id: string) =>
+    h.arbiter
+      .getPublicState()
+      .journal.filter((j) => j.equipmentId === id)
+      .map((j) => j.kind)
+      .reverse();
+
+  /** The production PAC: switched on by hand, suspended, TTL expires while it runs. */
+  const suspendedRunningPac = () => {
+    const h = makeHarness({ settings: { "energy.arbiter.overrideTtlS": "60" } });
+    h.feedMeter(-100);
+    h.feedState("pac", true);
+    h.order("pac", true, { kind: "manual" });
+    expect(row(h, "pac")?.state).toBe("suspended");
+    return h;
+  };
+
+  it("a TTL expiry with the comfort load still running reads unmanaged in the roster and the ribbon", () => {
+    const h = suspendedRunningPac();
+    h.run(-100, 80); // past the TTL
+    const resumed = h.arbiter.getPublicState().journal.find((j) => j.kind === "resumed");
+    expect(resumed?.reason).toBe("override-expired");
+    expect(resumed?.running).toBe(true);
+    expect(row(h, "pac")?.state).toBe("unmanaged");
+    expect(idleRow(h, "pac")?.runningUnmanaged).toBe(true);
+    expect(lastCell(h, "pac")).toBe("unmanaged");
+    expect(row(h, "pac")?.state).toBe("unmanaged");
+  });
+
+  it("the run then ends on the load's own OFF report, on both halves", () => {
+    const h = suspendedRunningPac();
+    h.run(-100, 80);
+    h.feedState("pac", false); // the thermostat stops it
+    expect(kinds(h, "pac")).toContain("unclaimed-run-ended");
+    expect(row(h, "pac")?.state).toBe("idle");
+    expect(idleRow(h, "pac")?.runningUnmanaged).toBe(false);
+    expect(lastCell(h, "pac")).toBe("idle");
+  });
+
+  it("a manual resume of a running load reads unmanaged, and journals the run once", () => {
+    const h = makeHarness();
+    h.feedMeter(-100);
+    h.feedState("pac", true);
+    h.order("pac", true, { kind: "manual" });
+    expect(h.arbiter.resumeEquipment("pac")).toBe(true);
+    expect(row(h, "pac")?.state).toBe("unmanaged");
+    h.run(-100, 300);
+    expect(kinds(h, "pac").filter((k) => k === "unclaimed-run")).toHaveLength(1);
+    expect(lastCell(h, "pac")).toBe("unmanaged");
+    h.feedState("pac", false);
+    expect(row(h, "pac")?.state).toBe("idle");
+  });
+
+  it("a load handed back while off is not adopted", () => {
+    const h = makeHarness();
+    h.feedMeter(-100);
+    h.feedState("pac", false);
+    h.order("pac", false, { kind: "manual" });
+    h.arbiter.resumeEquipment("pac");
+    expect(row(h, "pac")?.state).toBe("idle");
+    expect(kinds(h, "pac")).not.toContain("unclaimed-run");
+  });
+
+  it("a restart after a running hand-back reopens the run, and its OFF closes it", () => {
+    // The production journal: no `unclaimed-run` row, only the hand-back.
+    const dec = (kind: ArbiterDecisionKind, atIso: string, running: boolean): ArbiterDecision => ({
+      kind,
+      equipmentId: "pac",
+      equipmentName: "PAC",
+      atIso,
+      reason: kind === "resumed" ? "override-expired" : "user-order",
+      running,
+    });
+    const h = makeHarness({
+      journal: [
+        dec("suspended", "2026-11-07T16:46:29.000Z", true),
+        dec("resumed", "2026-11-07T18:40:00.000Z", true),
+      ],
+    });
+    expect(h.journalRows).toHaveLength(2); // rehydration journals nothing
+    expect(row(h, "pac")?.state).toBe("unmanaged");
+
+    h.feedState("pac", false);
+    expect(h.journalRows.at(-1)?.kind).toBe("unclaimed-run-ended");
+    expect(row(h, "pac")?.state).toBe("idle");
+    expect(lastCell(h, "pac")).toBe("idle");
+  });
+
+  it("the run's power samples teach the learner, as any unclaimed run does (accepted side effect)", () => {
+    const h = suspendedRunningPac();
+    h.run(-100, 80);
+    for (const w of [700, 720, 720, 740, 300]) h.feedLoadPower("pac", w); // 300 < 25 % floor
+    h.feedState("pac", false);
+    expect(h.learnedCalls).toEqual([{ id: "pac", watts: 720, runs: 1 }]);
+  });
+});
+
+// ============================================================
+// Spec 197 — the history window reaches now (DV-03), and a claim
+// waiting through a dormant night reads at rest (FR-E5.4).
+// ============================================================
+
+describe("arbiter history: the live window and the night (spec 197)", () => {
+  afterEach(() => {
+    vi.useRealTimers();
+  });
+
+  /** Day from 07:00 to 17:00 UTC, the way the fake sun draws it. */
+  const sunAt = (at: number) => {
+    const h = new Date(at).getUTCHours();
+    return h >= 7 && h < 17;
+  };
+
+  it("draws the quarter under way and every sample up to now (DV-03)", () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date("2026-08-12T10:00:00Z"));
+    const h = makeHarness();
+    h.run(200, 6 * 60); // importing, 10:00 → 10:06
+    h.claim("i1", { equipmentId: "heater", watts: 2200 }); // waits from 10:06
+    h.run(200, 60); // 10:07
+
+    const tl = h.arbiter.getTimeline(Date.now(), 6);
+    // Rounded up: the window ends after now, not at the last completed quarter.
+    expect(tl.windowEndIso).toBe("2026-08-12T10:15:00.000Z");
+    expect(tl.loads.find((l) => l.equipmentId === "heater")?.quarters.at(-1)).toBe("pending");
+    // The 10:05 sample is in; rounded down, the window stopped at 10:00.
+    const last = tl.surplus.at(-1);
+    expect(last && Date.parse(last.atIso)).toBeGreaterThanOrEqual(
+      Date.parse("2026-08-12T10:05:00Z"),
+    );
+  });
+
+  it("keeps the pages tiling: a page ends where the next one starts", () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date("2026-08-12T10:07:00Z"));
+    const h = makeHarness();
+    const live = h.arbiter.getTimeline(Date.now(), 6);
+    const page1 = h.arbiter.getTimeline(Date.now() - 6 * 3_600_000, 6);
+    expect(page1.windowEndIso).toBe(live.windowStartIso);
+  });
+
+  it("reports a claim waiting through the dormant night as idle, and pending once the sun is up", () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date("2026-08-12T05:00:00Z"));
+    const h = makeHarness({ daylight: false, sunAt });
+    h.claim("i1", { equipmentId: "heater", watts: 2200 }); // waits from 05:00
+    h.run(200, 3 * 3600); // importing until 08:00
+
+    const tl = h.arbiter.getTimeline(Date.now(), 6); // 02:15 → 08:15
+    const start = Date.parse(tl.windowStartIso);
+    const cell = (iso: string) =>
+      tl.loads.find((l) => l.equipmentId === "heater")?.quarters[
+        (Date.parse(iso) - start) / (15 * 60_000)
+      ];
+    expect(cell("2026-08-12T05:30:00Z")).toBe("idle"); // night, nothing to wait for
+    expect(cell("2026-08-12T06:45:00Z")).toBe("idle");
+    expect(cell("2026-08-12T07:15:00Z")).toBe("pending"); // day: genuinely waiting
+    // The journal is untouched: the claim did journal its wait at 05:00.
+    expect(tl.journal.some((d) => d.kind === "waiting" && d.equipmentId === "heater")).toBe(true);
+  });
+
+  it("leaves the quarter under way to the live dormant flag, not to the samples", () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date("2026-08-12T05:02:00Z"));
+    const h = makeHarness({ daylight: false, sunAt });
+    h.claim("i1", { equipmentId: "heater", watts: 2200 });
+    // A battery exports 800 W at night: the arbiter is NOT dormant, the pill
+    // says « En attente ». Samples land at :02, :07 … :27, :32: stop at 05:31,
+    // one minute into a quarter that holds no sample yet.
+    h.run(-800, 29 * 60);
+    expect(h.arbiter.getPublicState().loads.find((l) => l.equipmentId === "heater")?.state).toBe(
+      "pending",
+    );
+    const tl = h.arbiter.getTimeline(Date.now(), 6);
+    expect(tl.loads.find((l) => l.equipmentId === "heater")?.quarters.at(-1)).toBe("pending");
+  });
+
+  it("keeps a night quarter pending when a battery exports in it (not dormant)", () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date("2026-08-12T05:00:00Z"));
+    const h = makeHarness({ daylight: false, sunAt });
+    h.claim("i1", { equipmentId: "heater", watts: 2200 });
+    h.run(-800, 30 * 60); // exporting 800 W at night: too little for 2.2 kW
+
+    const tl = h.arbiter.getTimeline(Date.now(), 6);
+    const heater = tl.loads.find((l) => l.equipmentId === "heater");
+    const start = Date.parse(tl.windowStartIso);
+    const q = (Date.parse("2026-08-12T05:15:00Z") - start) / (15 * 60_000);
+    expect(heater?.quarters[q]).toBe("pending");
   });
 });

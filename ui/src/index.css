@@ -91,6 +91,10 @@
   --color-sensor-500: var(--sensor-500);
   --color-media-50: var(--media-50);
   --color-media-500: var(--media-500);
+
+  /* Compact top bar (phones and tablets): the bar's height (h-topbar) and the
+     spacer that holds its place under the fixed bar (TopBarFrame). */
+  --spacing-topbar: 56px;
 }
 
 /* Energy and series palettes (spec 196, FR-E) — `static`, so Tailwind emits

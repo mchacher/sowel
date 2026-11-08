@@ -152,6 +152,10 @@ const SAME_AS_EN = new Set<string>([
   "activity.source.button",
   "activity.source.external",
   "arbiter.budget",
+  // Spec 197 — « Surplus » and « import » are French too; the rest is placeholders.
+  "arbiter.sticker.surplus",
+  "arbiter.timeline.importPeak",
+  "arbiter.timeline.cellLabel",
   "equipments.solar.orientation",
   "equipments.solar.cardinal.N",
   "equipments.solar.cardinal.NE",
