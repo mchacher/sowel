@@ -12,6 +12,8 @@ import { apiErrorText } from "../lib/api-error";
 interface DashboardState {
   widgets: DashboardWidget[];
   loading: boolean;
+  /** True once a load has succeeded: until then an empty list means "not known yet", not "no widget" (#1150). */
+  loaded: boolean;
   error: string | null;
 
   fetchWidgets: () => Promise<void>;
@@ -36,13 +38,14 @@ interface DashboardState {
 export const useDashboard = create<DashboardState>((set, get) => ({
   widgets: [],
   loading: false,
+  loaded: false,
   error: null,
 
   fetchWidgets: async () => {
     set({ loading: true, error: null });
     try {
       const widgets = await getDashboardWidgets();
-      set({ widgets, loading: false });
+      set({ widgets, loading: false, loaded: true });
     } catch (err) {
       set({ error: apiErrorText(err), loading: false });
     }
