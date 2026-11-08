@@ -54,6 +54,9 @@ interface UpsPanelProps {
 const GRID_COLOR = "var(--color-energy-grid)";
 const LOAD_COLOR = "var(--color-energy-hp)";
 const BATTERY_COLOR = "var(--color-solar-auto)";
+// The battery icon on mains takes the darker solar step: the green above is
+// about 2:1 on a light card, under the 3:1 an icon needs (#1146).
+const BATTERY_ICON_COLOR = "var(--color-solar-ink)";
 const IDLE_COLOR = "var(--color-text-tertiary)";
 
 /**
@@ -141,7 +144,7 @@ export function UpsPanel({ dataBindings }: UpsPanelProps) {
     {
       slot: "right",
       label: t("equipments.ups.node.battery"),
-      color: batteryBranchColor,
+      color: onBattery ? tagColor : BATTERY_ICON_COLOR,
       // On mains with a full battery there is nothing happening here, so the
       // node steps back the way the grid node does when it is not drawing.
       dimmed: !onBattery && !r.charging,

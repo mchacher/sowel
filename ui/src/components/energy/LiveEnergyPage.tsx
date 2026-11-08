@@ -42,6 +42,9 @@ const GRID_COLOR = "var(--color-energy-grid)"; // Grid import (slate blue)
 const GRID_OFF_COLOR = "var(--color-text-tertiary)"; // Grid passive (neutral, on export)
 const AUTO_COLOR = "var(--color-solar-auto)"; // Solar / autoconso (green)
 const INJECTION_COLOR = "var(--color-solar-injection)"; // Export (dark green)
+// The Production icon takes the darker solar step: the auto-consumption green
+// is about 2:1 on a light card, under the 3:1 an icon needs (#1146).
+const PRODUCTION_ICON_COLOR = "var(--color-solar-ink)";
 
 // ── Helpers ─────────────────────────────────────────────────────────────
 
@@ -343,7 +346,7 @@ function LiveDiagram({
           {
             slot: "right",
             label: t("energy.live.label.production"),
-            color: AUTO_COLOR,
+            color: PRODUCTION_ICON_COLOR,
             dimmed: solar < BALANCE_THRESHOLD_W,
             value: solarValue.value,
             unit: solarValue.unit,

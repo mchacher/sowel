@@ -55,7 +55,7 @@
   --solar-injection:#2D8F3E;  /* surplus / injection (dark green) */
   --solar-auto:#6BCB77;       /* auto-consumption / "accordé"     */
   --solar-production:#4CA85C; /* solar production                 */
-  --solar-ink:#1E7B34;        /* solar as text (spec 197): the fills above are 2:1 on a card */
+  --solar-ink:#1E7B34;        /* solar as text (spec 197) or a flow node icon (#1146): the fills above are 2:1 on a card */
   --energy-hp:#4F7BE8;        /* consumption, peak (vivid blue)   */
   --energy-hc:#93B5F0;        /* consumption, off-peak (light blue) */
   --energy-grid:#405682;      /* grid import (slate blue; was #4A6396, 1.39:1 from the slate) */

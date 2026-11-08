@@ -134,6 +134,13 @@ describe("UpsPanel on mains", () => {
     expect(within(nodeOf("Battery")).getByText("charging")).toBeTruthy();
     expect(paintedStrokes(container)).toContain("var(--color-solar-auto)");
   });
+
+  it("draws the battery icon in the solar ink, 3:1 on the card (#1146)", () => {
+    render(<UpsPanel dataBindings={bindings({ charging: true })} />);
+    const icon = within(nodeOf("Battery")).getByTestId("flow-node-icon");
+    // energy-palette.test.ts checks --solar-ink reaches 3:1 in both themes.
+    expect(icon.style.color).toBe("var(--color-solar-ink)");
+  });
 });
 
 describe("UpsPanel during an outage", () => {
