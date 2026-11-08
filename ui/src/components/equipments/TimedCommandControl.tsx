@@ -7,6 +7,16 @@ import { TimedCountdown } from "./TimedCountdown";
 import { useGuardedAction } from "../../hooks/useGuardedAction";
 import type { EquipmentWithDetails } from "../../types";
 
+/** The countdown pill while a timed window is open, nothing otherwise. */
+export function TimedCountdownPill({ equipment }: { equipment: EquipmentWithDetails }) {
+  if (!equipment.timedCommand || !equipment.enabled || !equipment.timedAction) return null;
+  return (
+    <span className="text-micro font-medium px-2 py-0.5 rounded-full bg-active-bg text-active-ink flex-shrink-0">
+      <TimedCountdown action={equipment.timedAction} size={14} />
+    </span>
+  );
+}
+
 /**
  * Spec 174 phase 2 (FR-14/FR-15) — the timed control on a dense row.
  *
@@ -20,16 +30,6 @@ import type { EquipmentWithDetails } from "../../types";
  * not to keep it open longer. The extend gesture lives on the tile, which is
  * where a press is deliberate enough to mean "more time".
  */
-/** The countdown pill while a timed window is open, nothing otherwise. */
-export function TimedCountdownPill({ equipment }: { equipment: EquipmentWithDetails }) {
-  if (!equipment.timedCommand || !equipment.enabled || !equipment.timedAction) return null;
-  return (
-    <span className="text-micro font-medium px-2 py-0.5 rounded-full bg-active-bg text-active-ink flex-shrink-0">
-      <TimedCountdown action={equipment.timedAction} size={14} />
-    </span>
-  );
-}
-
 export function TimedCommandControl({
   equipment,
   labelled,

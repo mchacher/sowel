@@ -2,6 +2,7 @@ import { describe, it, expect, vi } from "vitest";
 import { MemoryRouter, Route, Routes, useLocation } from "react-router-dom";
 import { fireEvent, render, screen } from "../../test-utils";
 import { CompactEquipmentCard } from "./CompactEquipmentCard";
+import { GateControl } from "../equipments/GateControl";
 import type { ComputedDataEntry, EquipmentType, EquipmentWithDetails } from "../../types";
 
 // Issue #605 — the compact card must drop the "aujourd'hui" suffix from every
@@ -368,9 +369,37 @@ describe("CompactEquipmentCard — readings give way, controls never (#1163)", (
     expect(temp.closest('[data-row-part="controls"]')).toBeNull();
     const power = screen.getByTitle(/Allumer|Turn on/i);
     expect(power.closest('[data-row-part="controls"]')).toBeTruthy();
-    // A row with controls keeps none of its readings: they may all go.
-    expect(container.querySelector('[data-row-readings="keepFirst"]')).toBeNull();
-    expect(container.querySelector('[data-row-readings="fill"]')).toBeTruthy();
+    // The row draws a button, which is what lets its readings all go: the CSS
+    // keys the group's minimum width and its empty opener on that button.
+    expect(container.querySelector('[data-row-part="controls"] button')).toBeTruthy();
+    const group = container.querySelector('[data-row-readings="main"]')!;
+    expect(group.className).toContain("group-has-[[data-row-part=controls]_button]/eqrow:min-w-0");
+    expect(group.querySelector("[data-row-opener]")!.className).toContain(
+      "group-has-[[data-row-part=controls]_button]/eqrow:block",
+    );
+  });
+
+  it("keeps the first reading of a row whose control draws no button", () => {
+    // A gate without a command, or any disabled equipment, has nothing to press:
+    // its state pill must not give way to the name.
+    const { container } = renderCard(makeEquipment("gate", [], { name: "Portail" }));
+    expect(container.querySelector('[data-row-part="controls"] button')).toBeNull();
+    const group = container.querySelector('[data-row-readings="main"]')!;
+    expect(group.textContent).toMatch(/\S/);
+    // Without the row variant the group keeps its widest item and the opener
+    // stays hidden, so the first item cannot wrap away.
+    expect(group.className).toContain("overflow-clip");
+    expect(group.querySelector("[data-row-opener]")!.className).toMatch(/(^|\s)hidden(\s|$)/);
+  });
+
+  it("leaves the equipment list's compact controls drawing their own readings", () => {
+    render(
+      <MemoryRouter>
+        <GateControl equipment={makeEquipment("gate", [])} onExecuteOrder={vi.fn()} compact />
+      </MemoryRouter>,
+    );
+    // The default `withReadings` keeps the state pill inside the control.
+    expect(screen.getByText(/Inconnu|Unknown|Fermé|Closed|Ouvert|Open/i)).toBeTruthy();
   });
 
   it("never puts a control in a group that gives way", () => {
@@ -390,12 +419,12 @@ describe("CompactEquipmentCard — readings give way, controls never (#1163)", (
       "4",
       "5",
     ]);
-    // One group for all of them, which drops days from the last and never the
-    // first: no empty opener ahead of day one.
+    // One group for all of them, which drops days from the last; a forecast has
+    // no control, so the opener stays hidden and day one is never dropped.
     const group = days[0].closest('[data-row-part="readings"]')!;
-    expect(group.getAttribute("data-row-readings")).toBe("keepFirst");
+    expect(group.getAttribute("data-row-readings")).toBe("main");
     expect(group.querySelectorAll("[data-forecast-day]")).toHaveLength(5);
-    expect(group.firstElementChild!.querySelector("[data-forecast-day]")).toBeTruthy();
+    expect(container.querySelector('[data-row-part="controls"]')).toBeNull();
   });
 
   it("keeps a weather station's temperature first, the other readings after it", () => {
@@ -411,8 +440,10 @@ describe("CompactEquipmentCard — readings give way, controls never (#1163)", (
       ],
     });
     const { container } = renderCard(station);
-    const group = container.querySelector('[data-row-readings="keepFirst"]')!;
-    const items = [...group.children].map((c) => c.textContent);
+    const group = container.querySelector('[data-row-readings="main"]')!;
+    const items = [...group.children]
+      .filter((c) => !c.hasAttribute("data-row-opener"))
+      .map((c) => c.textContent);
     expect(items[0]).toMatch(/11[.,]5/);
     expect(items[1]).toMatch(/70/);
   });

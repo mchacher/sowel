@@ -234,16 +234,17 @@ export function CompactEquipmentCard({
         </div>
         <RowName to={linkTo} state={linkState} name={equipment.name} />
         <RowSpacer />
-        <RowReadings keepFirst>
+        {/* Above the stretched link, so its tooltip (spec 116) can be hovered */}
+        <span className="relative flex flex-shrink-0 ml-2">
           <EquipmentStatusBadge status="offline" reason={equipment.statusReason} size="sm" />
-        </RowReadings>
+        </span>
       </EquipmentRow>
     );
   }
 
   // #1163 — every piece right of the name is a reading or a control. Readings
-  // give way first (`RowReadings`), and a row without controls keeps its first
-  // one (`keepFirst`); controls never go (`RowControls`): the name wraps.
+  // give way first (`RowReadings`), and a row without a live control keeps its
+  // first one; controls never go (`RowControls`): the name wraps.
   const sensorValues =
     equipment.type === "weather"
       ? buildWeatherCompactBindings(equipment, sensorBindings)
@@ -279,7 +280,7 @@ export function CompactEquipmentCard({
       {/* Sensor / Button values: the first value (and a battery alert) stay,
           the others give way — a weather station keeps its temperature. */}
       {isSensor && (
-        <RowReadings keepFirst>
+        <RowReadings>
           <SensorValues
             sensorBindings={sensorValues.slice(0, 1)}
             batteryBindings={equipment.type === "weather" ? [] : batteryBindings}
@@ -299,7 +300,7 @@ export function CompactEquipmentCard({
 
       {/* Solar panel — produced power (green); the age of a stale one gives way */}
       {isSolar && (
-        <RowReadings keepFirst>
+        <RowReadings>
           <span
             className={`text-small font-semibold tabular-nums ${
               solarPowerW === null ? "text-text-tertiary" : "text-success"
@@ -322,14 +323,14 @@ export function CompactEquipmentCard({
       {/* Camera compact — snapshot thumbnail, blob-fetched (an <img src>
        * can't carry the Authorization header the media-proxy route needs). */}
       {isCamera && hasCameraSnapshot && (
-        <RowReadings keepFirst>
+        <RowReadings>
           <CompactCameraThumbnail equipmentId={equipment.id} />
         </RowReadings>
       )}
 
       {/* Media player compact */}
       {isMediaPlayer && (
-        <RowReadings keepFirst>
+        <RowReadings>
           <CompactMediaPlayer equipment={equipment} />
         </RowReadings>
       )}
@@ -339,7 +340,7 @@ export function CompactEquipmentCard({
 
       {/* Primary value and boolean state badge for other equipments */}
       {!isKnownType && (
-        <RowReadings keepFirst gap="3">
+        <RowReadings gap="3">
           {primaryBinding && (
             <span className="text-small text-text-secondary tabular-nums">
               {formatValue(primaryBinding.value, primaryBinding.unit)}
@@ -595,7 +596,7 @@ function CompactForecast({ equipment }: { equipment: EquipmentWithDetails }) {
   if (days.length === 0) return null;
 
   return (
-    <RowReadings keepFirst>
+    <RowReadings>
       {days.map((day) => (
         <ForecastDay key={day.dayIndex} day={day} />
       ))}
@@ -659,11 +660,7 @@ function CompactEnergyValues({ equipment }: { equipment: EquipmentWithDetails })
     ),
   ].filter(Boolean);
 
-  return (
-    <RowReadings keepFirst gap="3">
-      {items}
-    </RowReadings>
-  );
+  return <RowReadings gap="3">{items}</RowReadings>;
 }
 
 function CompactMediaPlayer({ equipment }: { equipment: EquipmentWithDetails }) {
@@ -750,7 +747,7 @@ function CompactElectricVehicle({ equipment }: { equipment: EquipmentWithDetails
       </span>
     ),
   ].filter(Boolean);
-  return <RowReadings keepFirst>{items}</RowReadings>;
+  return <RowReadings>{items}</RowReadings>;
 }
 
 /**
@@ -767,7 +764,7 @@ function CompactEvCharger({
 }) {
   const s = evChargerStateOf(equipment);
   const watts = s.power.watts;
-  const canToggle = s.canToggle && equipment.enabled;
+
   const items = [
     s.vehicle && <EvVehicleBadge key="vehicle" vehicle={s.vehicle} />,
     watts !== null && watts > 0 && (
@@ -777,14 +774,15 @@ function CompactEvCharger({
     ),
   ].filter(Boolean);
   // With the start/stop toggle, every reading gives way to it; without one,
-  // the row is read-only and keeps the vehicle.
-  if (!canToggle) return <RowReadings keepFirst>{items}</RowReadings>;
+  // the row has no live control and keeps the vehicle.
   return (
     <>
       <RowReadings>{items}</RowReadings>
-      <RowControls>
-        <LightControl equipment={equipment} onExecuteOrder={onExecuteOrder} compact />
-      </RowControls>
+      {s.canToggle && equipment.enabled && (
+        <RowControls>
+          <LightControl equipment={equipment} onExecuteOrder={onExecuteOrder} compact />
+        </RowControls>
+      )}
     </>
   );
 }
@@ -831,7 +829,7 @@ function CompactUps({ equipment }: { equipment: EquipmentWithDetails }) {
       </span>
     ),
   ].filter(Boolean);
-  return <RowReadings keepFirst>{items}</RowReadings>;
+  return <RowReadings>{items}</RowReadings>;
 }
 
 function CompactAppliance({ equipment }: { equipment: EquipmentWithDetails }) {
@@ -848,7 +846,7 @@ function CompactAppliance({ equipment }: { equipment: EquipmentWithDetails }) {
 
   if (!isOn || state === "off") {
     return (
-      <RowReadings keepFirst>
+      <RowReadings>
         <span className="text-micro text-text-tertiary">{t("controls.off")}</span>
       </RowReadings>
     );
@@ -883,5 +881,5 @@ function CompactAppliance({ equipment }: { equipment: EquipmentWithDetails }) {
       </span>
     ),
   ].filter(Boolean);
-  return <RowReadings keepFirst>{items}</RowReadings>;
+  return <RowReadings>{items}</RowReadings>;
 }

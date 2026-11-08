@@ -9,8 +9,8 @@ import { Link, type LinkProps } from "react-router-dom";
  *   second line (two at most) rather than being cut;
  * - readings, which are read-only and give way first (`RowReadings`): they take
  *   the room the name leaves and show as many of their items as fit, from the
- *   first, dropping the others whole, the last first. A row without controls
- *   keeps its first reading (`keepFirst`);
+ *   first, dropping the others whole, the last first. A row whose controls draw
+ *   no button (none bound, or the equipment disabled) keeps its first reading;
  * - controls (`RowControls`): never hidden, and the only part of the row that
  *   does not open the equipment page.
  *
@@ -21,7 +21,7 @@ import { Link, type LinkProps } from "react-router-dom";
 /** The row: one flex line; `relative` anchors the stretched link. */
 export function EquipmentRow({ children }: { children: ReactNode }) {
   return (
-    <div className="relative flex items-center px-[1.1rem] py-[0.55rem] min-h-[52px] transition-colors duration-150 hover:bg-border-light/40">
+    <div className="group/eqrow relative flex items-center px-[1.1rem] py-[0.55rem] min-h-[52px] transition-colors duration-150 hover:bg-border-light/40">
       {children}
     </div>
   );
@@ -53,7 +53,8 @@ export function RowName({
       >
         {name}
       </Link>
-      {badge}
+      {/* Above the stretched link, so its tooltip (spec 116) can be hovered */}
+      {badge && <span className="relative flex flex-shrink-0">{badge}</span>}
     </div>
   );
 }
@@ -66,57 +67,63 @@ export function RowSpacer() {
   return <span aria-hidden="true" className="ml-auto" />;
 }
 
-const READINGS_SHAPE: Record<"fill" | "keepFirst" | "trailing", string> = {
-  // The row's readings: all the room the name and the controls leave, the
-  // items packed to the right, any of them free to go.
-  fill: "flex-1 basis-0 min-w-0 overflow-hidden",
-  // The same, but the first item cannot go: `overflow-clip` keeps the box's
-  // automatic minimum width (its widest item), which a hidden overflow drops.
-  keepFirst: "flex-1 basis-0 overflow-clip",
-  // A second group further along the row (a timed command's countdown): no
-  // wider than its items, so it never opens a gap between two controls.
-  trailing: "w-0 grow max-w-max overflow-hidden",
-};
-
 /**
- * Read-only items that give way. The group shows as many items as fit, from the
- * first: the others wrap onto a second line that is clipped away, so an item
- * disappears whole instead of being cut. The empty first child holds the first
- * line open, which lets even the first item go; `keepFirst` leaves it out.
+ * Read-only items that give way. The group takes all the room the name and the
+ * controls leave and shows as many items as fit, from the first, packed to the
+ * right: the others wrap onto a second line that is clipped away, so an item
+ * disappears whole instead of being cut.
+ *
+ * Whether the first item may go too depends on the row. Without a live control
+ * it stays: `overflow-clip` (unlike a hidden overflow) keeps the group's
+ * automatic minimum width, its widest item, and items never wrap inside
+ * themselves. With one, the group may shrink to nothing, and an empty first
+ * child holds the first line open so that even the first item can wrap away.
+ *
+ * `trailing` is a second group further along the row (a timed command's
+ * countdown): no wider than its items, so it never opens a gap between two
+ * controls, and free to go entirely. Only one group per row may be the main
+ * one: two would split the room between them and open a gap.
+ *
  * Taps go through to the row's link: a counter with its own opacity would
  * otherwise sit above it and swallow the tap.
- * Items never wrap inside themselves: that keeps the box's minimum width at its
- * widest item, so a kept first item is never cut.
- *
- * At most one `fill` or `keepFirst` group per row: two would split the room
- * between them and open a gap.
  */
 export function RowReadings({
   children,
-  keepFirst = false,
   trailing = false,
   gap = "2",
 }: {
   children: ReactNode;
-  keepFirst?: boolean;
   trailing?: boolean;
   gap?: "2" | "3";
 }) {
   const items = Children.toArray(children);
   if (items.length === 0) return null;
-  const shape = trailing ? "trailing" : keepFirst ? "keepFirst" : "fill";
   const itemGap = gap === "3" ? "ml-3" : "ml-2";
   return (
     <div
       data-row-part="readings"
-      data-row-readings={shape}
-      className={`pointer-events-none flex h-8 flex-wrap justify-end ${READINGS_SHAPE[shape]}`}
+      data-row-readings={trailing ? "trailing" : "main"}
+      className={`pointer-events-none flex h-8 flex-wrap justify-end ${
+        trailing
+          ? "w-0 grow max-w-max overflow-hidden"
+          : // "group-has-…/eqrow:" = the row has a live control: a control group
+            // that draws a button. Decided by what renders, not by the type: a
+            // gate without a command, or a disabled pump, draws none. Spelled
+            // out in full so that Tailwind finds the classes.
+            "flex-1 basis-0 overflow-clip group-has-[[data-row-part=controls]_button]/eqrow:min-w-0"
+      }`}
     >
-      {shape !== "keepFirst" && <span aria-hidden="true" className="h-8" />}
+      <span
+        aria-hidden="true"
+        data-row-opener=""
+        className={
+          trailing ? "h-8" : "h-8 hidden group-has-[[data-row-part=controls]_button]/eqrow:block"
+        }
+      />
       {items.map((item, i) => (
         <div
           key={i}
-          className={`h-8 flex items-center flex-shrink-0 whitespace-nowrap ${itemGap} empty:hidden`}
+          className={`h-8 flex items-center gap-2 flex-shrink-0 whitespace-nowrap ${itemGap} empty:hidden`}
         >
           {item}
         </div>
