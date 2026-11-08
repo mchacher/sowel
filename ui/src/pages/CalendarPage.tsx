@@ -90,9 +90,8 @@ export function CalendarPage() {
   return (
     <div className="p-4 sm:p-6">
       {/* Header */}
-      <div className="mb-6">
+      <div className="lg:mb-6">
         <h1 className={TOP_LEVEL_H1}>{t("calendar.title")}</h1>
-        <p className="text-small text-text-secondary mt-0.5">{t("calendar.subtitle")}</p>
       </div>
 
       <div className="max-w-[720px] space-y-6">

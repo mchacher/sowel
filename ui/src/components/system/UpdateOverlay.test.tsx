@@ -90,7 +90,7 @@ describe("UpdateOverlay", () => {
 
     expect(screen.getByText("Restart failed")).toBeTruthy();
     expect(screen.queryByText("Update failed")).toBeNull();
-    expect(screen.getByText(/settings were saved/)).toBeTruthy();
+    expect(screen.getByText(/settings are saved/)).toBeTruthy();
   });
 
   // The server redacts free-form strings for a non-admin client, so this one

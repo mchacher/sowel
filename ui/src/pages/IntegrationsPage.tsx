@@ -62,9 +62,8 @@ export function IntegrationsPage() {
 
   return (
     <div className="p-4 sm:p-6">
-      <div className="mb-5">
+      <div className="lg:mb-5">
         <h1 className={TOP_LEVEL_H1}>{t("integrations.title")}</h1>
-        <p className="text-small text-text-secondary mt-1">{t("integrations.subtitle")}</p>
       </div>
 
       {oauthMessage && (

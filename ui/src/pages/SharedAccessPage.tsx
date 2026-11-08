@@ -48,9 +48,8 @@ export function SharedAccessPage() {
 
   return (
     <div className="p-4 sm:p-6">
-      <div className="mb-5">
+      <div className="lg:mb-5">
         <h1 className={TOP_LEVEL_H1}>{t("sharedAccess.title")}</h1>
-        <p className="text-small text-text-secondary mt-1">{t("sharedAccess.subtitle")}</p>
       </div>
       {enabled === false ? (
         <p className="text-small text-text-secondary">

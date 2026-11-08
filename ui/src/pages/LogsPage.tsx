@@ -153,9 +153,8 @@ export function LogsPage() {
   return (
     <div className="p-4 sm:p-6 h-full flex flex-col">
       {/* Header */}
-      <div className="mb-4">
+      <div className="lg:mb-4">
         <h1 className={TOP_LEVEL_H1}>{t("logs.title")}</h1>
-        <p className="text-small text-text-tertiary">{t("logs.subtitle")}</p>
       </div>
 
       {/* Toolbar */}

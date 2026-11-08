@@ -77,7 +77,7 @@ describe("SolarInstallationSettings", () => {
   it("says a production meter is needed first when none exists", async () => {
     setMeters([]);
     await renderSection();
-    expect(await screen.findByText(/no production meter equipment yet/i)).toBeTruthy();
+    expect(await screen.findByText(/create a production meter equipment/i)).toBeTruthy();
     expect(screen.queryByText(/peak power/i)).toBeNull();
   });
 

@@ -256,17 +256,25 @@ export function TimedCommandPanel({
       {/* Spec 178 — the ladder a further press walks up. */}
       {enabled && (
         <div className="mt-4 pt-3 border-t border-border">
-          <label className="flex items-center gap-2 text-small text-text cursor-pointer">
-            <input
-              type="checkbox"
-              checked={laddered}
-              disabled={saving}
-              onChange={(e) => toggleLadder(e.target.checked)}
-              aria-label={t("equipments.timed.ladder")}
+          <div className="flex items-center gap-2">
+            <label className="flex items-center gap-2 text-small text-text cursor-pointer">
+              <input
+                type="checkbox"
+                checked={laddered}
+                disabled={saving}
+                onChange={(e) => toggleLadder(e.target.checked)}
+                aria-label={t("equipments.timed.ladder")}
+              />
+              <span className="font-semibold">{t("equipments.timed.ladder")}</span>
+            </label>
+            {/* #1162 — how the presses walk the ladder is detail: a tooltip. */}
+            <InfoTooltip
+              help
+              align="start"
+              text={t("equipments.timed.ladderHint")}
+              label={t("common.help")}
             />
-            <span className="font-semibold">{t("equipments.timed.ladder")}</span>
-          </label>
-          <p className="text-caption text-text-tertiary mt-1">{t("equipments.timed.ladderHint")}</p>
+          </div>
 
           {laddered && (
             <div className="flex flex-wrap gap-2 mt-3">

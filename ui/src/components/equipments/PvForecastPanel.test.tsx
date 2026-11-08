@@ -157,7 +157,7 @@ describe("PvForecastPanel accuracy (#907)", () => {
 
   it("says nothing rather than zero while no day has finished", async () => {
     await renderPanel(scored({ dailyMaeWh: null, dailyMaePct: null, dailyDays: 0 }));
-    expect(screen.getByText(/Available once a full day/)).toBeTruthy();
+    expect(screen.getByText(/Shown once a full day/)).toBeTruthy();
   });
 
   it("offers a one-day and a three-day window, and opens on three", async () => {
