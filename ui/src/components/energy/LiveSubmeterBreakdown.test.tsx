@@ -253,3 +253,35 @@ describe("Live consumption breakdown — folded and ordered (spec 197)", () => {
     expect(container.querySelector('circle[stroke="var(--color-border)"]')).toBeNull();
   });
 });
+
+// #1170 — on desktop the card is stretched to the flow card's height: the
+// legend goes under the donut and the block sits centred, on every width.
+describe("Live consumption breakdown — stacked and centred (#1170)", () => {
+  beforeEach(() => {
+    vi.useFakeTimers();
+    vi.setSystemTime(NOW);
+  });
+  afterEach(() => vi.useRealTimers());
+
+  it("puts the legend under the donut, with no side-by-side layout at any width", () => {
+    seed([meter("Grid", "main_energy_meter", 2000), meter("Radiateur", "energy_meter", 1200)]);
+    render(<LiveEnergyPage />, { wrapper: MemoryRouter });
+    const legend = screen.getByTestId("breakdown-legend");
+    const donut = screen.getByRole("img", { name: /Radiateur/ });
+    const stack = legend.parentElement!;
+    expect(donut.parentElement).toBe(stack);
+    expect(stack.firstElementChild).toBe(donut);
+    expect(stack.className).toMatch(/\bflex-col\b/);
+    expect(stack.className).not.toMatch(/flex-row/);
+  });
+
+  it("centres the block in a card taller than its content", () => {
+    seed([meter("Grid", "main_energy_meter", 2000), meter("Radiateur", "energy_meter", 1200)]);
+    render(<LiveEnergyPage />, { wrapper: MemoryRouter });
+    const body = screen.getByTestId("breakdown-body");
+    expect(body.className).toMatch(/\bflex-1\b/);
+    expect(body.className).toMatch(/\bjustify-center\b/);
+    expect(body.className).toMatch(/\bmx-auto\b/);
+    expect(body.parentElement!.className).toMatch(/\bcard\b.*\bflex-col\b/);
+  });
+});

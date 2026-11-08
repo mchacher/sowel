@@ -99,84 +99,94 @@ export function LiveSubmeterBreakdown({ house, hasMainMeter, className }: Props)
   const t_total = formatPowerParts(total, POWER);
 
   return (
-    <div className={`card p-4 sm:p-6 @container ${className ?? ""}`}>
+    <div className={`card p-4 sm:p-6 flex flex-col ${className ?? ""}`}>
       <SectionHeader title={t("energy.live.breakdown.title")} />
 
-      {/* Side by side when the card is wide enough, whatever the viewport:
-          from lg the card is the narrow right column of the page. */}
-      <div className="flex flex-col @md:flex-row items-center @md:items-start gap-6">
-        <Donut
-          segments={segments}
-          totalLabel={isIdle ? t("energy.live.breakdown.houseIdle") : t_total.value}
-          totalUnit={isIdle ? null : t_total.unit}
-          ariaLabel={buildAriaLabel(t, partitionRows, other, total, hasMainMeter)}
-          idle={isIdle}
-        />
+      {/* #1170 — one layout on every width: the donut, its legend under it,
+          the block centred. From lg the card is stretched to the flow card's
+          height, and a row at its top left an empty band below; on a
+          full-width tablet card the cap keeps the legend near its donut. */}
+      <div
+        className="flex-1 flex flex-col justify-center w-full max-w-md mx-auto"
+        data-testid="breakdown-body"
+      >
+        <div className="flex flex-col items-center gap-6">
+          <Donut
+            segments={segments}
+            totalLabel={isIdle ? t("energy.live.breakdown.houseIdle") : t_total.value}
+            totalUnit={isIdle ? null : t_total.unit}
+            ariaLabel={buildAriaLabel(t, partitionRows, other, total, hasMainMeter)}
+            idle={isIdle}
+          />
 
-        <div className="flex-1 min-w-0 w-full flex flex-col gap-2">
-          {active.map((row) => (
-            <LegendRow key={row.id} row={row} total={total} t={t} />
-          ))}
-          {/* « Autre » is the unmetered part, often the largest: a full row,
+          <div className="w-full flex flex-col gap-2" data-testid="breakdown-legend">
+            {active.map((row) => (
+              <LegendRow key={row.id} row={row} total={total} t={t} />
+            ))}
+            {/* « Autre » is the unmetered part, often the largest: a full row,
               last, saying what it is (spec 197, FR-E3.2). */}
-          {hasMainMeter && other > 0 && (
-            <div
-              className="grid grid-cols-[10px_1fr_auto_auto] gap-x-3 items-center text-small"
-              data-testid="breakdown-other"
-            >
-              <span className="w-[10px] h-[10px] rounded-xs" style={{ background: OTHER_COLOR }} />
-              <div className="flex flex-col min-w-0">
-                <span className="font-medium text-text">{t("energy.live.breakdown.other")}</span>
-                <span className="text-micro text-text-tertiary">
-                  {t("energy.live.breakdown.unmetered")}
+            {hasMainMeter && other > 0 && (
+              <div
+                className="grid grid-cols-[10px_1fr_auto_auto] gap-x-3 items-center text-small"
+                data-testid="breakdown-other"
+              >
+                <span
+                  className="w-[10px] h-[10px] rounded-xs"
+                  style={{ background: OTHER_COLOR }}
+                />
+                <div className="flex flex-col min-w-0">
+                  <span className="font-medium text-text">{t("energy.live.breakdown.other")}</span>
+                  <span className="text-micro text-text-tertiary">
+                    {t("energy.live.breakdown.unmetered")}
+                  </span>
+                </div>
+                <span className="tabular-nums font-medium text-text-secondary min-w-[64px] text-right">
+                  {formatPower(other, POWER)}
+                </span>
+                <span className="tabular-nums font-semibold text-text-tertiary min-w-[40px] text-right">
+                  {formatPercent(sharePercent(other, total))}
                 </span>
               </div>
-              <span className="tabular-nums font-medium text-text-secondary min-w-[64px] text-right">
-                {formatPower(other, POWER)}
-              </span>
-              <span className="tabular-nums font-semibold text-text-tertiary min-w-[40px] text-right">
-                {formatPercent(sharePercent(other, total))}
-              </span>
-            </div>
-          )}
-          {stopped.length > 0 && (
-            <p className="text-caption text-text-tertiary" data-testid="breakdown-stopped">
-              {t("energy.live.breakdown.stopped", {
-                names: stopped.map((r) => r.name).join(", "),
-              })}
-            </p>
-          )}
+            )}
+            {stopped.length > 0 && (
+              <p className="text-caption text-text-tertiary" data-testid="breakdown-stopped">
+                {t("energy.live.breakdown.stopped", {
+                  names: stopped.map((r) => r.name).join(", "),
+                })}
+              </p>
+            )}
 
-          {/* Spec 179 — meters on their own supply: watts shown, no share of a
+            {/* Spec 179 — meters on their own supply: watts shown, no share of a
               donut whose total never carried them. */}
-          {separateRows.length > 0 && (
-            <>
-              <div className="mt-2 pt-2 border-t border-border text-caption font-medium text-text-tertiary">
-                {t("energy.byUsage.separateSupply")}
-              </div>
-              {separateRows.map((row) => (
-                <LegendRow key={row.id} row={row} total={null} t={t} />
-              ))}
-            </>
-          )}
+            {separateRows.length > 0 && (
+              <>
+                <div className="mt-2 pt-2 border-t border-border text-caption font-medium text-text-tertiary">
+                  {t("energy.byUsage.separateSupply")}
+                </div>
+                {separateRows.map((row) => (
+                  <LegendRow key={row.id} row={row} total={null} t={t} />
+                ))}
+              </>
+            )}
+          </div>
         </div>
-      </div>
 
-      {overshoot && (
-        <p className="mt-3 text-caption text-warning-ink italic">
-          {t("energy.live.breakdown.overshoot")}
-        </p>
-      )}
+        {overshoot && (
+          <p className="mt-3 text-caption text-warning-ink italic">
+            {t("energy.live.breakdown.overshoot")}
+          </p>
+        )}
 
-      {/* A load with no recent reading contributes nothing, so its watts are
+        {/* A load with no recent reading contributes nothing, so its watts are
           still in the house total and land in the residual. Both facts are
           true and nothing on screen connected them, which reads as an
           unmetered load appearing from nowhere (#744). */}
-      {hasStale && (
-        <p className="mt-3 text-caption text-text-tertiary italic">
-          {t("energy.live.breakdown.staleNote")}
-        </p>
-      )}
+        {hasStale && (
+          <p className="mt-3 text-caption text-text-tertiary italic">
+            {t("energy.live.breakdown.staleNote")}
+          </p>
+        )}
+      </div>
     </div>
   );
 }
