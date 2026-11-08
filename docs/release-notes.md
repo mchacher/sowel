@@ -11,6 +11,37 @@ This page summarises every published version, newest first. For the full diff be
 
 ---
 
+## 1.81.x: Energy pages that answer at a glance
+
+### v1.81.0 — 2026-11-08 { #v1-81-0 }
+
+The Energy pages say what is happening in plain words (spec 197): Live opens on « Import réseau » or « Export réseau » with one large figure, the flow shows every route as a ribbon with a bar under each node for its share, a grid deficit is no longer drawn as a fault, and Consumption and Production open on their total. A load handed back to the arbiter while it still runs now reads « hors arbitrage » everywhere.
+
+- Feat (ui): **Live reads the grid** (spec 197, #1158).
+  - The flow card opens on « Import réseau » / « Export réseau » / « Autonome », a 40 px figure and one sentence (« Le soleil couvre 34 % des 1,3 kW consommés »); the grid node says « import » or « export ».
+  - From 1024 px the flow and the consumption breakdown sit side by side, so the surplus arbitration is visible without scrolling.
+  - The breakdown folds stopped meters into one « À l'arrêt » line; « Autre » is shown in full as « non mesuré ».
+  - The UPS panel uses the same headline: its runtime first, then load and battery.
+- Feat (ui): **ribbon flow and share bars** (spec 197, #1159). Every active route is a ribbon of one width with a colour wave whose speed follows the power; a bar under each node gives its split (grid | solar for the house, house | export for the panels, load and battery level for the UPS). The wave stops with « reduce motion ». Same drawing on Live and on the UPS page.
+- Feat (ui): **a deficit is a state, not an alarm** (spec 197, #1157).
+  - The arbitration card draws a grid deficit in the grid's slate blue, says it once (« Déficit 4,8 kW », « Import réseau »), and keeps red for a withdrawn surplus.
+  - Plainer words: « Puissance », « Import toléré », « Surplus requis », « Il manque », « Démarrera dès 600 W de surplus ».
+  - The history is drawn to scale, ends on the live value, shows a readout on hover, merges equal quarters into runs, and reaches the current quarter.
+  - A claim waiting through the night is shown « Au repos » instead of ten hours of « En attente ».
+  - Lanes can be browsed with the keyboard.
+- Feat (ui): **Consumption and Production lead with the figure** (spec 197, #1156). Each page opens on its total and one sentence (peak / off-peak / self-consumed; produced « sur X attendus aujourd'hui »), the charts keep their axes, the PV forecast draws « Attendu » dashed and « Réalisé » in solar green, and one segmented control serves Energy and Analyse.
+- Fix (energy): **a load handed back while running reads « hors arbitrage »** (#1154, #1155). After a manual override or a timed pause, or after a restart, a load still running was listed « Au repos » while the history showed it running, and its run never closed. Its learned power now follows its real runs.
+- Feat (ui): sunrise and sunset are back in the mobile top bar (#1133, #1144).
+- Fix (zones): offline equipments are counted once each and named on the zone pill (#1134, #1139).
+- Fix (ui): energy words and figures in readable text colours; the flow diagram fits a 360 px phone (#1126, #1142).
+- Fix (ui): store load errors in French and by cause (#1124, #1138); spec 196 leftovers: percentages formatted, setpoint tiles, EV charge-limit taps (#1129, #1145).
+- Fix (ui): iOS 26 no longer blurs the mobile top bar (#1136, #1153).
+- Fix (backup): deterministic backup order on equal timestamps (#1125, #1137).
+- Docs: screenshots retaken on the spec 196 interface (#1127, #1148). Tooling: the UI is formatted and gated by Prettier (#1128, #1147).
+- Registry: six recipes bumped to their `dispatchOrder` releases (#1135).
+
+---
+
 ## 1.80.x: A calmer, more consistent interface
 
 ### v1.80.0 — 2026-11-07 { #v1-80-0 }

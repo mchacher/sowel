@@ -11,6 +11,37 @@ Cette page résume toutes les versions publiées, de la plus récente à la plus
 
 ---
 
+## 1.81.x : Des pages Énergie qui répondent d'un coup d'œil
+
+### v1.81.0 — 2026-11-08 { #v1-81-0 }
+
+Les pages Énergie disent ce qui se passe en clair (spec 197) : En direct s'ouvre sur « Import réseau » ou « Export réseau » avec un grand chiffre, le flux dessine chaque route en ruban avec une barre sous chaque nœud pour sa part, un déficit réseau n'est plus présenté comme une panne, et Consommation et Production s'ouvrent sur leur total. Une charge rendue à l'arbitre alors qu'elle tourne encore s'affiche « hors arbitrage » partout.
+
+- Nouveauté (interface) : **En direct lit le réseau** (spec 197, #1158).
+  - La carte du flux s'ouvre sur « Import réseau » / « Export réseau » / « Autonome », un chiffre de 40 px et une phrase (« Le soleil couvre 34 % des 1,3 kW consommés ») ; le nœud réseau dit « import » ou « export ».
+  - À partir de 1024 px, le flux et la décomposition de la consommation sont côte à côte : l'arbitrage du surplus est visible sans défiler.
+  - La décomposition regroupe les compteurs arrêtés sur une ligne « À l'arrêt » ; « Autre » est affiché en entier, « non mesuré ».
+  - Le panneau onduleur prend le même titre : son autonomie d'abord, puis la charge et la batterie.
+- Nouveauté (interface) : **flux en ruban et barres de répartition** (spec 197, #1159). Chaque route active est un ruban d'une seule épaisseur, parcouru d'une vague dont la vitesse suit la puissance ; une barre sous chaque nœud donne sa répartition (réseau | solaire pour la maison, maison | export pour les panneaux, charge et niveau de batterie pour l'onduleur). La vague s'arrête avec « réduire les animations ». Même dessin sur En direct et sur la page de l'onduleur.
+- Nouveauté (interface) : **un déficit est un état, pas une alarme** (spec 197, #1157).
+  - La carte d'arbitrage dessine un déficit réseau dans l'ardoise du réseau, le dit une seule fois (« Déficit 4,8 kW », « Import réseau ») et garde le rouge pour un surplus retiré.
+  - Des mots plus simples : « Puissance », « Import toléré », « Surplus requis », « Il manque », « Démarrera dès 600 W de surplus ».
+  - L'historique est à l'échelle, se termine sur la valeur en direct, affiche une lecture au survol, fusionne les quarts d'heure identiques en plages et va jusqu'au quart d'heure en cours.
+  - Une demande en attente toute la nuit s'affiche « Au repos » au lieu de dix heures d'« En attente ».
+  - Les lignes se parcourent au clavier.
+- Nouveauté (interface) : **Consommation et Production commencent par le chiffre** (spec 197, #1156). Chaque page s'ouvre sur son total et une phrase (heures pleines / creuses / autoconsommé ; produit « sur X attendus aujourd'hui »), les graphiques gardent leurs axes, la prévision solaire trace « Attendu » en pointillé et « Réalisé » en vert solaire, et un seul contrôle segmenté sert Énergie et Analyse.
+- Correction (énergie) : **une charge rendue alors qu'elle tourne s'affiche « hors arbitrage »** (#1154, #1155). Après un pilotage manuel ou une pause minutée, ou après un redémarrage, une charge encore en marche était listée « Au repos » alors que l'historique la montrait en marche, et sa période ne se refermait jamais. Sa puissance apprise suit désormais ses vrais cycles.
+- Nouveauté (interface) : le lever et le coucher du soleil reviennent dans la barre mobile (#1133, #1144).
+- Correction (zones) : les équipements hors ligne sont comptés une fois chacun et nommés sur la pastille de la zone (#1134, #1139).
+- Correction (interface) : mots et chiffres de l'énergie dans des couleurs de texte lisibles ; le schéma de flux tient sur un téléphone de 360 px (#1126, #1142).
+- Correction (interface) : erreurs de chargement en français et selon leur cause (#1124, #1138) ; reliquats de la spec 196 : pourcentages formatés, tuiles de consigne, appuis sur la limite de charge du véhicule (#1129, #1145).
+- Correction (interface) : iOS 26 ne floute plus la barre mobile (#1136, #1153).
+- Correction (sauvegarde) : ordre des sauvegardes déterministe à horodatage égal (#1125, #1137).
+- Documentation : captures refaites sur l'interface de la spec 196 (#1127, #1148). Outillage : l'interface est formatée et contrôlée par Prettier (#1128, #1147).
+- Registre : six recettes passent à leur version `dispatchOrder` (#1135).
+
+---
+
 ## 1.80.x : Une interface plus calme et plus cohérente
 
 ### v1.80.0 — 2026-11-07 { #v1-80-0 }
