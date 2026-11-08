@@ -265,14 +265,9 @@ export function UpsPanel({ dataBindings }: UpsPanelProps) {
       {hasMargins && (
         <div className="card">
           <div className="flex items-start justify-between gap-4 px-5 pt-4 pb-3">
-            <div>
-              <h3 className="text-lead font-semibold text-text">
-                {t("equipments.ups.margins.title")}
-              </h3>
-              <p className="text-small text-text-tertiary mt-0.5">
-                {t("equipments.ups.margins.help")}
-              </p>
-            </div>
+            <h3 className="text-lead font-semibold text-text">
+              {t("equipments.ups.margins.title")}
+            </h3>
             <span
               className="text-caption font-medium px-2.5 py-1 rounded-full shrink-0"
               style={{

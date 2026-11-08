@@ -74,7 +74,6 @@ export function ModesPage() {
       <div className="flex items-center justify-between mb-4 sm:mb-6">
         <div className="hidden lg:block">
           <h1>{t("modes.title")}</h1>
-          <p className="text-small text-text-secondary mt-0.5">{t("modes.subtitle")}</p>
         </div>
         <div className="flex items-center gap-2 sm:gap-3">
           {isAdmin && (

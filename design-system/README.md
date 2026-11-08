@@ -18,6 +18,17 @@ The Sowel design system codifies the visual language that emerged from the `spec
 
 These rules echo the [Anthropic frontend-design skill](https://github.com/anthropics/skills/tree/main/skills/frontend-design): _"choice is intentionality, not intensity."_ The system commits to refined minimalism, executes it precisely, and does not chase trends.
 
+### Explanations
+
+A hint, a caption, a subtitle or a context line has to earn its place, at every screen width (#1162):
+
+- **Keep an explanation only if the screen can't be understood without it.** A page subtitle that restates the title, or a card hint that says what the card shows, goes.
+- **One short line at most.**
+- **Never repeat a figure, a title or a sticker.** If the sticker says « Déficit 260 W », nothing beside it says the deficit again.
+- **Put detail in a tooltip or in the docs.** A column header's `title`, an `InfoTooltip` beside a field, or the user guide.
+
+What stays: an empty state that says what to do, an error that says why, field help needed to fill the field correctly, each one line. EN and FR change together and say the same thing. `ui/src/i18n/explanations.test.ts` keeps every on-screen `…hint`, `…help`, `…caption`, `…subtitle`, `…context`, `…description` key under 90 characters in both languages; the keys rendered inside a tooltip are listed there as exceptions.
+
 ---
 
 ## 2. What's in this folder

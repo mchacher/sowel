@@ -199,14 +199,3 @@ export function surplusStickerColor(availableSurplusW: number | null): string {
  * tints; `energy-palette.test.ts` checks this one in both themes).
  */
 export const STICKER_INK = "var(--color-text-secondary)";
-
-/**
- * Spec 197 (FR-E2.3) — the colour of the aside's figure. A surplus keeps the
- * `success` text green (#1126: the auto-consumption green is 2.01:1 on a light
- * card); a deficit is written in ink, the slate dot beside it saying which
- * side it is on.
- */
-export function surplusFigureInk(availableSurplusW: number | null): string {
-  if (availableSurplusW === null) return "var(--color-text-secondary)";
-  return isDeficit(availableSurplusW) ? "var(--color-text)" : "var(--color-success)";
-}

@@ -158,20 +158,20 @@ describe("ProductionPage (spec 163)", () => {
   it("points an admin to settings when a meter exists but nothing is declared", async () => {
     setup({ meters: [meter("eq-1", "Shelly Solar", false)], role: "admin" });
     await renderPage();
-    const hint = await screen.findByText(/declare your photovoltaic installation/i);
+    const hint = await screen.findByText(/declare your solar installation/i);
     expect(hint.closest("a")?.getAttribute("href")).toBe("/settings?tab=energy");
   });
 
   it("shows no hint to a viewer, who cannot declare anything", async () => {
     setup({ meters: [meter("eq-1", "Shelly Solar", false)], role: "user" });
     await renderPage();
-    expect(screen.queryByText(/declare your photovoltaic installation/i)).toBeNull();
+    expect(screen.queryByText(/declare your solar installation/i)).toBeNull();
   });
 
   it("shows no hint either when there is no production meter at all", async () => {
     setup({ meters: [], role: "admin" });
     await renderPage();
-    expect(screen.queryByText(/declare your photovoltaic installation/i)).toBeNull();
+    expect(screen.queryByText(/declare your solar installation/i)).toBeNull();
   });
 
   // Spec 197 (FR-E6.2) — the card opens on the production, read against

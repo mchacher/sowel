@@ -81,7 +81,7 @@ describe("Live page section headings (#818)", () => {
     } as never);
     render(<LiveEnergyPage />, { wrapper: MemoryRouter });
     for (const title of ["Live flows", "Consumption breakdown"]) {
-      const header = screen.getByText(title).closest("div")?.parentElement;
+      const header = screen.getByText(title).closest("h2")?.parentElement;
       expect(header?.querySelector("svg"), title).toBeNull();
     }
   });

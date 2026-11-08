@@ -233,6 +233,181 @@ describe("RecipeInstanceRow", () => {
     expect(screen.queryByRole("heading", { name: "View log" })).toBeNull();
   });
 
+  describe("live pills on the second line (#1161)", () => {
+    const CYCLE_RECIPE: RecipeInfo = {
+      ...RECIPE,
+      actions: [
+        {
+          id: "setMode",
+          type: "cycle",
+          stateKey: "mode",
+          options: [
+            { value: "eco", label: "Eco" },
+            { value: "comfort", label: "Comfort" },
+          ],
+        },
+      ],
+    };
+    const inFuture = new Date(Date.now() + 14 * 60_000 + 30_000).toISOString();
+    const withPills = (): RecipeInstance =>
+      makeInstance({ state: { mode: "comfort", timerExpiresAt: inFuture, overrideMode: true } });
+
+    function rows(): { row1: HTMLElement; row2: HTMLElement | null } {
+      const name = screen.getByText("Auto light");
+      const row1 = name.closest(".row-start-1") as HTMLElement;
+      const row2 = row1.parentElement!.querySelector<HTMLElement>(":scope > .row-start-2");
+      return { row1, row2 };
+    }
+
+    it("puts the countdown, override and mode pills on row 2, never beside the name", () => {
+      seedStores(withPills());
+      render(
+        <RecipeInstanceRow instance={withPills()} recipes={[CYCLE_RECIPE]} zoneId="z-salon" />,
+      );
+
+      const { row1, row2 } = rows();
+      const mode = screen.getByRole("button", { name: "Comfort" });
+      const override = screen.getByTitle("Override active");
+      const countdown = screen.getByText(/14\s*min/);
+
+      for (const pill of [mode, override, countdown]) {
+        expect(row1.contains(pill)).toBe(false);
+        expect(row2?.contains(pill)).toBe(true);
+      }
+      // Next to the log button, which stays on that line.
+      expect(row2?.contains(screen.getByTitle("View log"))).toBe(true);
+    });
+
+    it("gives a non-admin a second line holding a working mode pill", async () => {
+      const sendAction = vi.fn().mockResolvedValue(undefined);
+      seedStores(withPills(), { sendAction });
+      useAuth.setState({ user: { ...adminUser(), role: "standard" } });
+      render(
+        <RecipeInstanceRow instance={withPills()} recipes={[CYCLE_RECIPE]} zoneId="z-salon" />,
+      );
+
+      expect(rows().row2).not.toBeNull();
+      expect(screen.queryByTitle("View log")).toBeNull();
+
+      await userEvent.click(screen.getByRole("button", { name: "Comfort" }));
+      expect(sendAction).toHaveBeenCalledWith("ri-1", "setMode", { mode: "eco" });
+    });
+
+    it("keeps a non-admin row on one line when there is no pill", () => {
+      seedStores(makeInstance());
+      useAuth.setState({ user: { ...adminUser(), role: "standard" } });
+      render(
+        <RecipeInstanceRow instance={makeInstance()} recipes={[CYCLE_RECIPE]} zoneId="z-salon" />,
+      );
+
+      // No mode in state → the cycle resolves to nothing, so no pill and no row 2.
+      expect(rows().row2).toBeNull();
+    });
+
+    it("shows no pill on a disabled instance", () => {
+      const off = makeInstance({ ...withPills(), enabled: false });
+      seedStores(off);
+      render(<RecipeInstanceRow instance={off} recipes={[CYCLE_RECIPE]} zoneId="z-salon" />);
+
+      expect(screen.queryByRole("button", { name: "Comfort" })).toBeNull();
+      expect(screen.queryByTitle("Override active")).toBeNull();
+    });
+  });
+
+  describe("the equipment an instance acts on (#1165)", () => {
+    const LIST_RECIPE: RecipeInfo = {
+      id: "r-list",
+      name: "Motion light",
+      description: "",
+      slots: [
+        { id: "zone", name: "Zone", description: "", type: "zone", required: true },
+        {
+          id: "lights",
+          name: "Lights",
+          description: "",
+          type: "equipment",
+          required: true,
+          list: true,
+        },
+        {
+          id: "buttons",
+          name: "Buttons",
+          description: "",
+          type: "equipment",
+          required: false,
+          list: true,
+        },
+      ],
+    };
+    const NO_EQ_RECIPE: RecipeInfo = {
+      id: "r-none",
+      name: "Freecooling",
+      description: "",
+      slots: [{ id: "zone", name: "Zone", description: "", type: "zone", required: true }],
+    };
+    const lamps = ["Spot A", "Spot B", "Spot C", "Spot D"].map((name, i) =>
+      equipment({ id: `l-${i}`, name }),
+    );
+
+    it("names the equipment of the first equipment slot under the recipe name", () => {
+      seedStores(makeInstance());
+      render(<RecipeInstanceRow instance={makeInstance()} recipes={[RECIPE]} zoneId="z-salon" />);
+
+      const line = screen.getByText("Ceiling light");
+      // Inside the name block, under the name.
+      const name = screen.getByText("Auto light");
+      expect(name.compareDocumentPosition(line) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+      expect(name.closest("button")?.contains(line)).toBe(true);
+    });
+
+    it("reads a long list as « A, B +2 », the full list on hover", () => {
+      const inst = makeInstance({
+        recipeId: "r-list",
+        params: { zone: "z-salon", lights: lamps.map((l) => l.id), buttons: ["eq-1"] },
+      });
+      seedStores(inst);
+      useEquipments.setState({ equipments: [equipment(), ...lamps] });
+      render(<RecipeInstanceRow instance={inst} recipes={[LIST_RECIPE]} zoneId="z-salon" />);
+
+      const names = screen.getByText("Spot A, Spot B");
+      expect(screen.getByText("+2")).toBeTruthy();
+      expect(names.parentElement?.getAttribute("title")).toBe("Spot A, Spot B, Spot C, Spot D");
+      // The buttons slot is not the first equipment slot: not listed.
+      expect(screen.queryByText(/Ceiling light/)).toBeNull();
+    });
+
+    it("shows nothing extra for a recipe without an equipment slot", () => {
+      const inst = makeInstance({ recipeId: "r-none", params: { zone: "z-salon" } });
+      seedStores(inst);
+      const { container } = render(
+        <RecipeInstanceRow instance={inst} recipes={[NO_EQ_RECIPE]} zoneId="z-salon" />,
+      );
+
+      const block = screen.getByText("Freecooling").parentElement!;
+      expect(block.children).toHaveLength(1);
+      expect(container.textContent).not.toContain("Ceiling light");
+    });
+
+    it("still shows the equipment of a disabled instance", () => {
+      const off = makeInstance({ enabled: false });
+      seedStores(off);
+      render(<RecipeInstanceRow instance={off} recipes={[RECIPE]} zoneId="z-salon" />);
+
+      expect(screen.getByText("Ceiling light")).toBeTruthy();
+    });
+
+    it("keeps the recipe summary as its own line, under the equipment", () => {
+      const inst = makeInstance({ state: { summary: "Filtration 2,1 h" } });
+      seedStores(inst);
+      render(<RecipeInstanceRow instance={inst} recipes={[RECIPE]} zoneId="z-salon" />);
+
+      const eq = screen.getByText("Ceiling light");
+      const summary = screen.getByText("Filtration 2,1 h");
+      expect(eq.compareDocumentPosition(summary) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+      expect(eq.closest("div")).not.toBe(summary.closest("div"));
+    });
+  });
+
   it("hides admin controls for a non-admin user", () => {
     seedStores(makeInstance());
     useAuth.setState({ user: { ...adminUser(), role: "standard" } });

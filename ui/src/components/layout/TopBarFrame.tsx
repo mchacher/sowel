@@ -5,6 +5,8 @@ import { useShadowMode } from "../../store/useShadowMode";
 // fixed, full-width box of one solid colour covers the top edge. Below lg the
 // safe-area band and the top bar are that box, and a spacer keeps their place.
 // They stay in the flow under a shadow or takeover banner, which they would cover.
+// WebKit only samples that box while the status bar obscures the page: under the
+// black-translucent status bar style nothing the page paints stops the blur (#1164).
 // The fixed box sits at z-30: an overlay rendered inside <main> under a stacking
 // context (transform, opacity, filter) ends up below it, so portal overlays.
 export function TopBarFrame({ children }: { children: ReactNode }) {

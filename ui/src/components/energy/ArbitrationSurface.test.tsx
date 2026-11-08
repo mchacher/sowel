@@ -222,16 +222,34 @@ describe("ArbitrationSurface roster (#561, spec 165)", () => {
     });
     render(<ArbitrationSurface />);
 
-    // Spec 197 — the words without the figure, on the phone only: from 640 px
-    // the aside says them beside the table.
+    // Spec 197 — the words without the figure. #1162 — at every width: the
+    // aside no longer says the deficit again beside the table.
     const line = screen.getByText("No load can start while the house imports.");
-    expect(line.className).toContain("sm:hidden");
+    expect(line.className).not.toContain("hidden");
   });
 
-  it("captions the roster with its order (spec 197)", () => {
+  it("keeps at most one line between the header and the table (#1162)", () => {
+    seed({
+      availableSurplusW: -1091,
+      loads: [load({ equipmentId: "pac", equipmentName: "PAC", watts: 1500 })],
+    });
+    const { container } = render(<ArbitrationSurface />);
+    expect(screen.queryByText("Who receives the solar surplus right now, and why.")).toBeNull();
+    expect(screen.queryByText("Loads in priority order.")).toBeNull();
+    const table = container.querySelector("table")!;
+    const between = [...container.querySelectorAll("p")].filter(
+      (p) => p.compareDocumentPosition(table) & Node.DOCUMENT_POSITION_FOLLOWING,
+    );
+    expect(between.map((p) => p.textContent)).toEqual([
+      "No load can start while the house imports.",
+    ]);
+  });
+
+  it("says what the rank means in the equipment column's tooltip (#1162)", () => {
     seed({ loads: [load({ equipmentId: "pac", equipmentName: "PAC", watts: 1500 })] });
     render(<ArbitrationSurface />);
-    expect(screen.getByText("Loads in priority order.")).toBeTruthy();
+    const th = screen.getAllByRole("columnheader").find((h) => h.textContent === "Equipment");
+    expect(th?.getAttribute("title")).toBe("Ranked by priority: number 1 gets the surplus first.");
   });
 });
 
@@ -249,17 +267,16 @@ describe("ArbitrationSurface in deficit (spec 197, FR-E2)", () => {
     shortfallW: 5400,
   });
 
-  it("says the deficit once in the sticker and once in the aside, never as a negative surplus", () => {
+  it("says the deficit once, in the sticker, never as a negative surplus", () => {
     seed({ availableSurplusW: -4800, loads: [waiting] });
     const { container } = render(<ArbitrationSurface />);
 
     expect(screen.getByText("Deficit")).toBeTruthy();
-    expect(screen.getByText("Grid import")).toBeTruthy();
-    expect(screen.getByText("No load can start")).toBeTruthy();
+    // #1162 — the aside no longer repeats the sticker.
+    expect(screen.queryByText("Grid import")).toBeNull();
     expect(screen.queryByText("Available surplus")).toBeNull();
-    expect(screen.queryByText("Live grid export")).toBeNull();
-    // 4.8 kW twice (sticker, aside), and no « −4.8 kW » anywhere.
-    expect(screen.getAllByText("4.8 kW")).toHaveLength(2);
+    // 4.8 kW once (sticker), and no « −4.8 kW » anywhere.
+    expect(screen.getAllByText("4.8 kW")).toHaveLength(1);
     expect(container.textContent).not.toMatch(/[−-]4\.8/);
   });
 
@@ -282,11 +299,9 @@ describe("ArbitrationSurface in deficit (spec 197, FR-E2)", () => {
     seed({ availableSurplusW: 300, loads: [{ ...waiting, shortfallW: 300 }] });
     render(<ArbitrationSurface />);
     expect(screen.getByText("Surplus")).toBeTruthy();
-    expect(screen.getByText("Available surplus")).toBeTruthy();
-    expect(screen.getByText("Live grid export")).toBeTruthy();
     expect(screen.queryByText("deficit")).toBeNull();
-    // Once in the gap column, once in the sticker and aside (300 W each).
-    expect(screen.getAllByText("300 W").length).toBeGreaterThanOrEqual(2);
+    // Once in the gap column, once in the sticker.
+    expect(screen.getAllByText("300 W")).toHaveLength(2);
   });
 
   it("does not call a balanced house a deficit", () => {
@@ -510,16 +525,20 @@ describe("ArbitrationSurface need and gap columns (#807)", () => {
     expect(screen.getByText("Next to switch").className).not.toContain("hidden");
   });
 
-  it("states the arithmetic with the configured margin", () => {
+  it("states the arithmetic with the configured margin, in the need column's tooltip", () => {
     seed({
       engageMarginW: 250,
       loads: [load({ equipmentId: "pump", equipmentName: "Pompe", watts: 600, needW: 850 })],
     });
     render(<ArbitrationSurface />);
 
-    expect(
-      screen.getByText("Surplus needed = power + 250 W margin \u2212 tolerated import"),
-    ).toBeTruthy();
+    // #1162 — the line under the table moved into the header's tooltip.
+    const th = screen.getAllByRole("columnheader").find((h) => h.textContent === "Surplus needed");
+    // The figure carries a no-break space, as everywhere in the UI.
+    expect(th?.getAttribute("title")?.replace(/\s/g, " ")).toBe(
+      "The surplus it takes to start the load: power + 250 W margin \u2212 tolerated import.",
+    );
+    expect(screen.queryByText(/Surplus needed = /)).toBeNull();
   });
 
   it("drops the columns by tier so a phone never scrolls sideways", () => {
@@ -564,19 +583,19 @@ describe("ArbitrationSurface need and gap columns (#807)", () => {
     render(<ArbitrationSurface />);
 
     expect(screen.getByText("Next to switch")).toBeTruthy();
-    expect(screen.getByText("Its 1,850 W need is covered, start being confirmed")).toBeTruthy();
+    expect(screen.getByText("Need covered, start being confirmed")).toBeTruthy();
   });
 
-  it("keeps the context panel off the phone tier when it would be empty", () => {
-    // Below 640 px the surplus tile is hidden, so with nothing pending the
-    // panel would render as a rule over an empty strip.
+  it("renders no context panel when no load is waiting", () => {
+    // #1162 — the next-up block is all it holds; without one it would be a
+    // rule over an empty strip.
     seed({
       availableSurplusW: 1200,
       loads: [load({ equipmentId: "pump", equipmentName: "Pompe", watts: 600, needW: 700 })],
     });
     const { container } = render(<ArbitrationSurface />);
 
-    expect(container.querySelector("aside")?.className).toContain("hidden sm:flex");
+    expect(container.querySelector("aside")).toBeNull();
   });
 
   it("lets the gap words wrap rather than push the card sideways", () => {
@@ -606,7 +625,7 @@ describe("ArbitrationSurface need and gap columns (#807)", () => {
     });
     render(<ArbitrationSurface />);
 
-    expect(screen.queryByText("Available surplus")).toBeNull();
+    expect(screen.queryByText("Next to switch")).toBeNull();
     expect(screen.getAllByText("not requested")).toHaveLength(1);
   });
 });

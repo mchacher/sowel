@@ -3,7 +3,6 @@ import type { ArbiterQuarterState } from "../../types";
 import {
   journalDotColor,
   surplusStickerColor,
-  surplusFigureInk,
   STICKER_INK,
   isDeficit,
   loadStatePillBg,
@@ -240,16 +239,9 @@ describe("loadStateInk (spec 196, FR-E)", () => {
   });
 });
 
-describe("sticker words and the aside figure (spec 197)", () => {
+describe("sticker words (spec 197)", () => {
   it("writes the sticker in neutral text whatever the sign", () => {
     expect(STICKER_INK).toBe("var(--color-text-secondary)");
-  });
-
-  it("writes a surplus figure in the success green, a deficit in ink", () => {
-    expect(surplusFigureInk(300)).toBe("var(--color-success)");
-    expect(surplusFigureInk(-1)).toBe("var(--color-text)");
-    expect(surplusFigureInk(-4800)).toBe("var(--color-text)");
-    expect(surplusFigureInk(null)).toBe("var(--color-text-secondary)");
   });
 
   it("calls an import a deficit, zero and a stale reading neither", () => {

@@ -109,6 +109,7 @@ export function ModeCyclePill({
   action,
   lang,
   sendAction,
+  className = "",
 }: {
   instance: RecipeInstance;
   recipe: RecipeInfo;
@@ -119,6 +120,8 @@ export function ModeCyclePill({
     action: string,
     payload?: Record<string, unknown>,
   ) => Promise<void>;
+  /** Extra classes from the host, e.g. a larger hit area on a phone row. */
+  className?: string;
 }) {
   const { t } = useTranslation();
   const [sending, setSending] = useState(false);
@@ -145,7 +148,7 @@ export function ModeCyclePill({
     <button
       onClick={handleClick}
       disabled={sending}
-      className="inline-flex items-center gap-1 px-2 py-[1.5px] rounded-full text-micro leading-tight font-semibold transition-all duration-150 cursor-pointer disabled:opacity-50 disabled:cursor-default hover:brightness-95 active:scale-95 flex-shrink-0"
+      className={`inline-flex items-center gap-1 px-2 py-[1.5px] rounded-full text-micro leading-tight font-semibold transition-all duration-150 cursor-pointer disabled:opacity-50 disabled:cursor-default hover:brightness-95 active:scale-95 flex-shrink-0 ${className}`}
       style={{ backgroundColor: colors.bg, color: colors.text }}
       title={t("recipes.actions.cycleTo", {
         mode: cycle.next.label,

@@ -180,7 +180,7 @@ describe("Live consumption breakdown — stale parts (#744)", () => {
       meter("Chauffe-eau", "water_heater", 560, 20 * 60 * 1000),
     ]);
     const { container } = render(<LiveEnergyPage />, { wrapper: MemoryRouter });
-    expect(container.textContent).toMatch(/is not counted, so its consumption shows up in Other/);
+    expect(container.textContent).toMatch(/A load with no recent reading is counted in Other/);
   });
 
   it("agrees with its own centre label", () => {

@@ -197,7 +197,6 @@ export const PvHealthPanel = memo(function PvHealthPanel({ equipmentId }: { equi
           })}
         </p>
       )}
-      <p className="mt-1 text-caption text-text-tertiary">{t("equipments.pvHealth.noPanelId")}</p>
     </div>
   );
 });

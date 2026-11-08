@@ -13,7 +13,6 @@ import {
   loadStateInk,
   loadStatePillBg,
   surplusStickerColor,
-  surplusFigureInk,
   STICKER_INK,
 } from "../components/energy/arbiterColors";
 
@@ -336,12 +335,6 @@ describe("words in the energy surfaces reach 4.5:1 (#1126)", () => {
         expect(ratio(ink, bg), `${ink} on ${bg}`).toBeGreaterThanOrEqual(4.5);
       },
     );
-
-    it.each([300, -4800] as const)(`${theme}: the aside figure (%s W) reads on the card`, (w) => {
-      const ink = paint(theme, surplusFigureInk(w));
-      const bg = hex(theme, SURFACE);
-      expect(ratio(ink, bg), `${ink} on ${bg}`).toBeGreaterThanOrEqual(4.5);
-    });
   }
 
   // A text colour set from a series constant or token, anywhere in a style

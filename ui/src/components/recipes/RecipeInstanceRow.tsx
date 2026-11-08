@@ -31,7 +31,12 @@ import {
   recipeGroupLabel,
   recipeSlotOptionLabel,
 } from "../../lib/recipe-i18n";
-import { isSlotHidden, matchesEquipmentType } from "../../lib/recipe-slots";
+import {
+  isSlotHidden,
+  matchesEquipmentType,
+  instanceEquipmentNames,
+  shortNameList,
+} from "../../lib/recipe-slots";
 import {
   groupSlots,
   isGroupFilled,
@@ -50,6 +55,7 @@ import {
   EquipmentListPicker,
   EquipmentCheckboxList,
 } from "./recipe-form-fields";
+import { resolveCycle } from "./recipe-cycle";
 import { useZoneOptions } from "./useZoneOptions";
 import { DuplicateRecipeModal } from "./DuplicateRecipeModal";
 import { BottomSheet } from "../dashboard/BottomSheet";
@@ -110,6 +116,14 @@ export function RecipeInstanceRow({
 
   const recipe = recipes.find((r) => r.id === instance.recipeId);
   const displayName = recipe ? recipeName(recipe, lang) : instance.recipeId;
+  // What this instance acts on (#1165): the equipment of the recipe's first
+  // equipment slot, so instances of one recipe can be told apart. Identity,
+  // not state: shown on a disabled instance too.
+  const equipmentNames = useMemo(
+    () => (recipe ? instanceEquipmentNames(recipe.slots, instance.params, equipments) : []),
+    [recipe, instance.params, equipments],
+  );
+  const equipmentList = shortNameList(equipmentNames);
 
   const handleDelete = async () => {
     if (!confirm(t("recipes.deleteConfirm"))) return;
@@ -310,6 +324,14 @@ export function RecipeInstanceRow({
 
   // (paramsSummary removed per spec 100 — recipe row keeps name + actions only, no description line)
 
+  // Live pills, shown on row 2 (#1161). Computed up front so a non-admin row
+  // gets a second line only when there is something to put on it.
+  const showTimer = !!instance.state?.timerExpiresAt && instance.enabled;
+  const showOverride = !!instance.state?.overrideMode && instance.enabled;
+  const cycleActions =
+    recipe?.actions?.filter((a) => a.type === "cycle" && resolveCycle(instance, a) !== null) ?? [];
+  const hasPills = showTimer || showOverride || cycleActions.length > 0;
+
   // Shared log list body — rendered inline on desktop and inside a bottom sheet
   // on the PWA/mobile (#615). Kept in one place so both stay in sync.
   const logBody =
@@ -351,14 +373,28 @@ export function RecipeInstanceRow({
             className={instance.enabled ? "text-primary" : "text-text-tertiary"}
           />
         </div>
-        {/* Row 1 col 2: name + inline pills */}
-        <div className="col-start-2 row-start-1 flex items-center gap-2 min-w-0">
+        {/* Row 1 col 2: the name owns the whole line (#1161) — the pills live
+            on row 2, so the name only truncates when it alone is too long. */}
+        <div className="col-start-2 row-start-1 flex items-center min-w-0">
           <button
             onClick={isAdmin ? handleStartEdit : undefined}
             className={`flex-1 min-w-0 text-left transition-opacity duration-150 ${isAdmin ? "hover:opacity-70 cursor-pointer" : "cursor-default"}`}
             title={isAdmin ? "Edit" : undefined}
           >
             <div className="text-body font-medium text-text truncate">{displayName}</div>
+            {/* The equipment line (#1165) — « A, B +2 ». The names truncate,
+                the count never does. */}
+            {equipmentNames.length > 0 && (
+              <div
+                className="flex min-w-0 text-caption text-text-secondary mt-0.5"
+                title={equipmentNames.join(", ")}
+              >
+                <span className="truncate">{equipmentList.text}</span>
+                {equipmentList.more > 0 && (
+                  <span className="flex-shrink-0 whitespace-pre"> +{equipmentList.more}</span>
+                )}
+              </div>
+            )}
             {/* Optional recipe-provided status line (spec: state.summary).
                 A recipe sets it to surface live context (e.g. a pool pump's
                 "Filtration 2,1/9,6 h · heures creuses"). Absent → unchanged. */}
@@ -370,34 +406,6 @@ export function RecipeInstanceRow({
                 </div>
               )}
           </button>
-          {!!instance.state?.timerExpiresAt && instance.enabled && (
-            <CountdownTimer expiresAt={instance.state.timerExpiresAt as string} />
-          )}
-          {!!instance.state?.overrideMode && instance.enabled && (
-            <span
-              className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-full text-micro font-medium flex-shrink-0"
-              style={{
-                backgroundColor: "var(--color-primary-light)",
-                color: "var(--color-primary)",
-              }}
-              title={t("recipes.overrideActive", "Override active")}
-            >
-              <ShieldOff size={10} strokeWidth={2} />
-              Override
-            </span>
-          )}
-          {recipe?.actions
-            ?.filter((a) => a.type === "cycle")
-            .map((action) => (
-              <ModeCyclePill
-                key={action.id}
-                instance={instance}
-                recipe={recipe}
-                action={action}
-                lang={lang}
-                sendAction={sendAction}
-              />
-            ))}
         </div>
         {/* Row 1 col 3: toggle (admin only — enable/disable is config) */}
         {isAdmin && (
@@ -410,33 +418,69 @@ export function RecipeInstanceRow({
             className="col-start-3 row-start-1 justify-self-end"
           />
         )}
-        {/* Row 2: compact action buttons — admin only. The log button stays
-            visible on mobile (read-only, opens a bottom sheet on the PWA, #615);
-            duplicate / delete are config/destructive and stay desktop-only. */}
-        {isAdmin && (
-          <div className="col-start-2 col-span-2 row-start-2 flex items-center gap-[2px]">
-            <button
-              onClick={handleShowLog}
-              className="w-8 h-8 sm:w-[22px] sm:h-[20px] inline-flex items-center justify-center rounded-sm text-text-tertiary hover:text-text hover:bg-border-light/60 transition-colors duration-150"
-              title={t("recipes.viewLog")}
-            >
-              <ScrollText className="w-3.5 h-3.5 sm:w-3 sm:h-3" strokeWidth={1.5} />
-            </button>
-            <button
-              onClick={() => setShowDuplicate(true)}
-              className="w-[22px] h-[20px] hidden sm:inline-flex items-center justify-center rounded-sm text-text-tertiary hover:text-primary hover:bg-primary/5 transition-colors duration-150"
-              title={t("recipes.duplicate")}
-            >
-              <Copy size={12} strokeWidth={1.5} />
-            </button>
-            <button
-              onClick={handleDelete}
-              disabled={deleting}
-              className="w-[22px] h-[20px] hidden sm:inline-flex items-center justify-center rounded-sm text-text-tertiary hover:text-error hover:bg-error/5 transition-colors duration-150 disabled:opacity-50"
-              title={t("common.delete")}
-            >
-              <Trash2 size={12} strokeWidth={1.5} />
-            </button>
+        {/* Row 2: compact action buttons (admin only) then the live pills
+            (#1161, every user). The log button stays visible on mobile
+            (read-only, opens a bottom sheet on the PWA, #615); duplicate /
+            delete are config/destructive and stay desktop-only. A non-admin row
+            without pills has no row 2, as before. On a phone the line is as
+            tall as the log button for everyone, so the mode pill's enlarged
+            hit area fits inside it. */}
+        {(isAdmin || hasPills) && (
+          <div className="col-start-2 col-span-2 row-start-2 flex flex-wrap items-center gap-x-2 gap-y-1 min-w-0 min-h-8 sm:min-h-0">
+            {isAdmin && (
+              <div className="flex items-center gap-[2px]">
+                <button
+                  onClick={handleShowLog}
+                  className="w-8 h-8 sm:w-[22px] sm:h-[20px] inline-flex items-center justify-center rounded-sm text-text-tertiary hover:text-text hover:bg-border-light/60 transition-colors duration-150"
+                  title={t("recipes.viewLog")}
+                >
+                  <ScrollText className="w-3.5 h-3.5 sm:w-3 sm:h-3" strokeWidth={1.5} />
+                </button>
+                <button
+                  onClick={() => setShowDuplicate(true)}
+                  className="w-[22px] h-[20px] hidden sm:inline-flex items-center justify-center rounded-sm text-text-tertiary hover:text-primary hover:bg-primary/5 transition-colors duration-150"
+                  title={t("recipes.duplicate")}
+                >
+                  <Copy size={12} strokeWidth={1.5} />
+                </button>
+                <button
+                  onClick={handleDelete}
+                  disabled={deleting}
+                  className="w-[22px] h-[20px] hidden sm:inline-flex items-center justify-center rounded-sm text-text-tertiary hover:text-error hover:bg-error/5 transition-colors duration-150 disabled:opacity-50"
+                  title={t("common.delete")}
+                >
+                  <Trash2 size={12} strokeWidth={1.5} />
+                </button>
+              </div>
+            )}
+            {showTimer && <CountdownTimer expiresAt={instance.state?.timerExpiresAt as string} />}
+            {showOverride && (
+              <span
+                className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-full text-micro font-medium flex-shrink-0"
+                style={{
+                  backgroundColor: "var(--color-primary-light)",
+                  color: "var(--color-primary)",
+                }}
+                title={t("recipes.overrideActive", "Override active")}
+              >
+                <ShieldOff size={10} strokeWidth={2} />
+                Override
+              </span>
+            )}
+            {recipe &&
+              cycleActions.map((action) => (
+                <ModeCyclePill
+                  key={action.id}
+                  instance={instance}
+                  recipe={recipe}
+                  action={action}
+                  lang={lang}
+                  sendAction={sendAction}
+                  // A 33 px hit area on a phone without changing the pill's
+                  // look; row 2 is 32 px tall there, so it stays on its line.
+                  className="relative after:absolute after:inset-x-0 after:-inset-y-2 after:content-[''] sm:after:hidden"
+                />
+              ))}
           </div>
         )}
       </div>

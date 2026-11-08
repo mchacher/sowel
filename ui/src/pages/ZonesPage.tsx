@@ -30,7 +30,7 @@ export function ZonesPage() {
     <div className="p-4 sm:p-6">
       <PageHeader
         title={t("zones.title")}
-        subtitle={zoneCount === 0 ? t("zones.subtitle") : t("zones.count", { count: zoneCount })}
+        subtitle={zoneCount === 0 ? undefined : t("zones.count", { count: zoneCount })}
         actions={
           <>
             {isAdmin && (
