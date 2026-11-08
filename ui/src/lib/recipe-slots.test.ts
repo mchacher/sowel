@@ -161,6 +161,18 @@ describe("instanceEquipmentNames (#1165)", () => {
     expect(instanceEquipmentNames(slots, params, EQ)).toEqual(["Spots", "Lumière"]);
   });
 
+  it("skips an equipment slot the form hides", () => {
+    const mode: RecipeSlotDef = { ...slot("mode", "select"), defaultValue: "pick" };
+    const hidden: RecipeSlotDef = {
+      ...slot("target", "equipment"),
+      hiddenWhen: { slot: "mode", equals: "all" },
+    };
+    const slots = [mode, hidden, slot("lights", "equipment", true)];
+    const params = { mode: "all", target: "a", lights: ["b"] };
+    expect(instanceEquipmentNames(slots, params, EQ)).toEqual(["Lumière"]);
+    expect(instanceEquipmentNames(slots, { ...params, mode: "pick" }, EQ)).toEqual(["Onduleur"]);
+  });
+
   it("splits a legacy comma-joined list", () => {
     const slots = [slot("lights", "equipment", true)];
     expect(instanceEquipmentNames(slots, { lights: "b,c" }, EQ)).toEqual(["Lumière", "Spots"]);

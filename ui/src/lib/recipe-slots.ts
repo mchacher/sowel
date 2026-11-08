@@ -71,7 +71,7 @@ export function equipmentCandidates<T extends EquipmentCandidate>(
 
 /**
  * The equipments an instance acts on, as far as its row can tell (#1165): the
- * ones bound to the recipe's first `equipment` slot, in the order the user
+ * ones bound to the recipe's first visible `equipment` slot, in the order the user
  * picked them, resolved to names. Ids no longer in the store (a deleted
  * equipment) are skipped. A recipe without an equipment slot, or with that
  * slot empty, gives an empty list.
@@ -84,7 +84,9 @@ export function instanceEquipmentNames(
   params: Record<string, unknown>,
   equipments: readonly { id: string; name: string }[],
 ): string[] {
-  const slot = slots.find((s) => s.type === "equipment");
+  // A slot the form hides keeps its old value in params; it no longer says
+  // what the instance acts on.
+  const slot = slots.find((s) => s.type === "equipment" && !isSlotHidden(s, params, slots));
   if (!slot) return [];
   const raw = params[slot.id];
   const ids = Array.isArray(raw)

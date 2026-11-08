@@ -357,7 +357,7 @@ describe("RecipeInstanceRow", () => {
       // Inside the name block, under the name.
       const name = screen.getByText("Auto light");
       expect(name.compareDocumentPosition(line) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
-      expect(name.closest(".row-start-1")?.contains(line)).toBe(true);
+      expect(name.closest("button")?.contains(line)).toBe(true);
     });
 
     it("reads a long list as « A, B +2 », the full list on hover", () => {
