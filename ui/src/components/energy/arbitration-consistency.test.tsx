@@ -70,13 +70,12 @@ function seed(state: ArbiterLoadState): void {
   mockTimeline.mockResolvedValue(timeline);
 }
 
-/** The word the ribbon puts on its current cell (its "hh:mm · state" title). */
+/** The word the ribbon puts on its current cell: the state at the end of its
+ *  accessible label, « Chauffe-eau, 8:00, waiting » (spec 197, FR-E5.7). */
 function ribbonCellLabel(): string {
-  const titles = [...document.querySelectorAll("[title]")]
-    .map((el) => el.getAttribute("title") ?? "")
-    .filter((t) => t.includes("·"));
-  expect(titles, "the ribbon rendered no cell").not.toHaveLength(0);
-  return titles[titles.length - 1].split("·").pop()?.trim() ?? "";
+  const cells = [...document.querySelectorAll("button[data-q]")];
+  expect(cells, "the ribbon rendered no cell").not.toHaveLength(0);
+  return cells.at(-1)?.getAttribute("aria-label")?.split(", ").pop()?.trim() ?? "";
 }
 
 describe("spec 165 — the two halves of the surface agree", () => {
@@ -115,7 +114,8 @@ describe("spec 165 — the two halves of the surface agree", () => {
       );
       const word = (labels.at(-1)?.textContent ?? pill?.textContent ?? "").trim();
       expect(word).toBeTruthy();
-      expect(ribbonCellLabel()).toBe(word);
+      // The cell's label says it in lower case, mid-sentence.
+      expect(ribbonCellLabel()).toBe(word.toLowerCase());
     });
   }
 });

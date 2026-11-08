@@ -119,6 +119,13 @@ function isRevoke(kind: ArbiterDecision["kind"]): boolean {
  * earlier cells are a journal replay and must stay a faithful record, so a
  * claim genuinely waiting at 14:00 stays "pending" at 14:00 whatever the sun is
  * doing at render time.
+ *
+ * Spec 197 (FR-E5.4) — `dormantAt(qStart, qEnd)` says whether the arbiter was
+ * dormant over a past quarter (sun below the horizon, no surplus possible). A
+ * claim waiting through such a quarter is not waiting for anything that can
+ * come, so the quarter is reported "idle", the word the roster used at that
+ * moment. The journal itself is untouched: only how a quarter is reported
+ * changes, so a claim pending at 14:00 still reads "pending" at 14:00.
  */
 export function buildLoadTimelines(
   decisions: ArbiterDecision[],
@@ -127,6 +134,7 @@ export function buildLoadTimelines(
   windowEnd: number,
   stepMin = 15,
   dormant = false,
+  dormantAt?: (qStart: number, qEnd: number) => boolean,
 ): TimelineLoad[] {
   const stepMs = stepMin * 60_000;
   const nQuarters = Math.max(0, Math.round((windowEnd - windowStart) / stepMs));
@@ -145,6 +153,13 @@ export function buildLoadTimelines(
     list.push({ at, kind: d.kind, running: d.running });
   }
   for (const list of byEq.values()) list.sort((a, b) => a.at - b.at);
+
+  // Asked once per quarter, not once per load and quarter.
+  const dormantQuarter: boolean[] = [];
+  for (let q = 0; q < nQuarters; q += 1) {
+    const qStart = windowStart + q * stepMs;
+    dormantQuarter.push(dormantAt?.(qStart, qStart + stepMs) ?? false);
+  }
 
   return loads.map((load) => {
     const events = byEq.get(load.equipmentId) ?? [];
@@ -168,7 +183,8 @@ export function buildLoadTimelines(
         if (s) sustained = s;
         idx += 1;
       }
-      quarters.push(revokeHere ? "revoked" : sustained);
+      if (revokeHere) quarters.push("revoked");
+      else quarters.push(sustained === "pending" && dormantQuarter[q] ? "idle" : sustained);
     }
 
     // A revoke still wins its cell: the withdrawal is the notable event, and

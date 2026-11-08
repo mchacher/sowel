@@ -17,7 +17,7 @@ export function SectionHeader({
   hint,
   aside,
 }: {
-  icon: LucideIcon;
+  icon?: LucideIcon;
   title: string;
   /** Optional second line, for a section whose purpose is not obvious. */
   hint?: string;
@@ -26,7 +26,7 @@ export function SectionHeader({
 }) {
   return (
     <div className="flex items-start gap-2 mb-4">
-      <Icon size={18} strokeWidth={1.5} className="text-text-secondary mt-0.5" />
+      {Icon && <Icon size={18} strokeWidth={1.5} className="text-text-secondary mt-0.5" />}
       <div className="min-w-0">
         <h2 className="text-lead font-semibold text-text">{title}</h2>
         {hint && <p className="text-caption text-text-secondary">{hint}</p>}

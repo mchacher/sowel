@@ -121,7 +121,8 @@ export function cellColor(s: ArbiterQuarterState): string {
  * Spec 165 (#577) — dormant (sun down, nothing to share) reads a waiting claim
  * as at rest. Applied by the roster pill and by the ribbon's current cell
  * through this one helper, so the two halves cannot disagree at night. Past
- * cells are history and are never rewritten (see `buildLoadTimelines`).
+ * cells are rewritten by the engine only (spec 197, `buildLoadTimelines`),
+ * never here.
  */
 export function displayState(s: ArbiterLoadState, dormant: boolean): ArbiterLoadState {
   return dormant && s === "pending" ? "idle" : s;
@@ -164,23 +165,48 @@ export function journalDotColor(kind: ArbiterDecision["kind"]): string {
 }
 
 /**
- * Colour token for the arbiter state sticker, matching the timeline curve:
- * the surplus green when there is surplus to give, red on a deficit, and a
- * neutral tint while the reading is degraded/stale (`availableSurplusW` null).
+ * Spec 197 (FR-E2.1) — the two halves of the surplus/deficit reading. A
+ * surplus is the auto-consumption green; a deficit is the grid's slate blue,
+ * the colour the Live page gives the grid. It used to be the error red, which
+ * made an ordinary morning of import read as a fault. Red stays for
+ * « Surplus retiré » only. The sticker, the aside and the history curve all
+ * read these two, so they cannot drift apart.
  */
-export function surplusStickerColor(availableSurplusW: number | null): string {
-  if (availableSurplusW === null) return "var(--color-text-tertiary)";
-  return availableSurplusW > 0 ? "var(--color-solar-auto)" : "var(--color-error)";
+export const SURPLUS_HUE = "var(--color-solar-auto)";
+export const DEFICIT_HUE = "var(--color-energy-grid)";
+
+/** Spec 197 — the house imports. Zero is not a deficit: « Import réseau 0 W »
+ *  would say something false, so a balanced reading reads « Surplus 0 W ». */
+export function isDeficit(availableSurplusW: number | null): availableSurplusW is number {
+  return availableSurplusW !== null && availableSurplusW < 0;
 }
 
 /**
- * #1126 — the colour of the sticker's WORDS and of the « disponible » figure:
- * the hue above for the tint, a text colour for what is read. Surplus is the
- * `success` text green (the auto-consumption green is 2.01:1 on a light card),
- * a deficit stays red, a degraded reading and the night sticker are neutral
- * (the tertiary grey and the slate on their own tint fall under 4.5:1).
+ * Colour token for the arbiter state sticker, matching the timeline curve:
+ * the surplus green when there is surplus to give, the grid slate on a deficit,
+ * and a neutral tint while the reading is degraded/stale (`availableSurplusW`
+ * null).
  */
-export function surplusStickerInk(availableSurplusW: number | null, dormant = false): string {
-  if (dormant || availableSurplusW === null) return "var(--color-text-secondary)";
-  return availableSurplusW > 0 ? "var(--color-success)" : "var(--color-error)";
+export function surplusStickerColor(availableSurplusW: number | null): string {
+  if (availableSurplusW === null) return "var(--color-text-tertiary)";
+  return isDeficit(availableSurplusW) ? DEFICIT_HUE : SURPLUS_HUE;
+}
+
+/**
+ * The colour of the sticker's WORDS, whatever its state. Spec 197 (FR-E2.2): neutral text on every
+ * tint, a surplus and a deficit alike, so the hue sits in the tint and the
+ * words stay calm and readable (#1126 measured the coloured inks on their
+ * tints; `energy-palette.test.ts` checks this one in both themes).
+ */
+export const STICKER_INK = "var(--color-text-secondary)";
+
+/**
+ * Spec 197 (FR-E2.3) — the colour of the aside's figure. A surplus keeps the
+ * `success` text green (#1126: the auto-consumption green is 2.01:1 on a light
+ * card); a deficit is written in ink, the slate dot beside it saying which
+ * side it is on.
+ */
+export function surplusFigureInk(availableSurplusW: number | null): string {
+  if (availableSurplusW === null) return "var(--color-text-secondary)";
+  return isDeficit(availableSurplusW) ? "var(--color-text)" : "var(--color-success)";
 }

@@ -265,6 +265,69 @@ describe("dormancy on the current cell (spec 165, #577)", () => {
   });
 });
 
+describe("pending through a dormant quarter reads idle (spec 197, FR-E5.4)", () => {
+  // Night until 12:30, day after: q0 and q1 are dormant, q2 and q3 are not.
+  const nightUntil = Date.parse("2026-08-14T12:30:00.000Z");
+  const dormantAt = (qStart: number) => qStart < nightUntil;
+
+  it("reports the night quarters of a waiting claim idle, the day ones pending", () => {
+    const [load] = buildLoadTimelines(
+      [dec(-30, "waiting")],
+      LOADS,
+      START,
+      END,
+      15,
+      false,
+      dormantAt,
+    );
+    expect(load.quarters).toEqual(["idle", "idle", "pending", "pending"]);
+  });
+
+  it("leaves a waiting claim pending by day", () => {
+    const [load] = buildLoadTimelines(
+      [dec(-30, "waiting")],
+      LOADS,
+      START,
+      END,
+      15,
+      false,
+      () => false,
+    );
+    expect(load.quarters).toEqual(["pending", "pending", "pending", "pending"]);
+  });
+
+  it("rewrites only pending: a grant, a run and a revoke stay what they were at night", () => {
+    const [load] = buildLoadTimelines(
+      [dec(-30, "granted"), dec(5, "revoked"), dec(6, "unclaimed-run")],
+      LOADS,
+      START,
+      END,
+      15,
+      false,
+      () => true,
+    );
+    expect(load.quarters).toEqual(["revoked", "unmanaged", "unmanaged", "unmanaged"]);
+  });
+
+  it("asks the predicate once per quarter, with the quarter's bounds", () => {
+    const calls: [number, number][] = [];
+    buildLoadTimelines(
+      [],
+      [...LOADS, { equipmentId: "b", name: "B" }],
+      START,
+      END,
+      15,
+      false,
+      (a, b) => {
+        calls.push([a, b]);
+        return false;
+      },
+    );
+    expect(calls).toHaveLength(4);
+    expect(calls[0]).toEqual([START, START + 15 * 60_000]);
+  });
+});
+
 describe("a denied claim is an audit event, not a transition (#959)", () => {
   it("leaves the sustained state alone", () => {
     expect(sustainedAfter("denied")).toBeNull();

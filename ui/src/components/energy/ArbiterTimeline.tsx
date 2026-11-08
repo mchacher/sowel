@@ -1,24 +1,45 @@
 import { useEffect, useMemo, useRef, useState } from "react";
+import type { KeyboardEvent, PointerEvent } from "react";
 import { useTranslation } from "react-i18next";
 import { ChevronLeft, ChevronRight } from "lucide-react";
-import type { ArbiterQuarterState, ArbiterTimeline as ArbiterTimelineData } from "../../types";
+import type { ArbiterTimeline as ArbiterTimelineData } from "../../types";
 import { getArbiterTimeline } from "../../api";
 import { useArbiter } from "../../store/useArbiter";
-import { cellColor, cellEdge, journalDotColor } from "./arbiterColors";
-import { journalReasonLabel } from "./arbiterReason";
+import { DEFICIT_HUE, SURPLUS_HUE, cellColor, cellEdge, journalDotColor } from "./arbiterColors";
+import { journalKindLabel, journalReasonLabel, releasedFrom } from "./arbiterReason";
+import { TooltipSeriesRow } from "./TooltipSeriesRow";
+import {
+  legendStates,
+  liveLabelTop,
+  mergeRuns,
+  sampleInColumn,
+  surplusScale,
+} from "./arbiter-timeline-geometry";
 import { currentLocale, formatPower, formatRange } from "../../lib/format";
 
 // Spec 148 (Phase B) — the redesigned Energy → arbitrage timeline: a signed
 // surplus/deficit curve above per-load quarter-hour ribbons, paged back to 48h,
 // with the decision journal below linked to a cell click. Colours come from the
 // shared energy tokens (production solar family), dark-mode ready.
+//
+// Spec 197 (FR-E5) — drawn to scale (zero placed from the window's peaks, the
+// same W/px both sides), ending on the live reading, read on hover; ribbons
+// drawn as runs with one hit target per quarter, keyboard-navigable.
 
-// Window width adapts to the viewport: a wider desktop card can carry 12h of
-// quarter cells legibly, a phone stays at 6h. The 48h scroll depth is fixed.
+// Window width adapts to the viewport: from a tablet the card carries 12h of
+// quarters legibly (spec 197: from 768 px, was 1024), a phone stays at 6h. The
+// 48h scroll depth is fixed.
 const WINDOW_HOURS_MOBILE = 6;
-const WINDOW_HOURS_DESKTOP = 12;
+const WINDOW_HOURS_WIDE = 12;
 const DEPTH_HOURS = 48;
+const WIDE_QUERY = "(min-width: 768px)";
+// The curve's height: 120 px from 1024 px, 88 px below (56 until spec 197,
+// too flat to read a morning of import against a noon of surplus).
 const DESKTOP_QUERY = "(min-width: 1024px)";
+const CURVE_H_DESKTOP = 120;
+const CURVE_H_MOBILE = 88;
+/** Width of the lane-name column, plus its gap: where the plot starts. */
+const PLOT_LEFT_PX = 88;
 
 // Issue #514 — the curve must track the live arbiter state instead of staying
 // frozen on the mount snapshot. On the live window we refetch when the arbiter
@@ -27,50 +48,54 @@ const DESKTOP_QUERY = "(min-width: 1024px)";
 // jittering surplus, so at most one refetch per this window is worthwhile.
 const LIVE_REFRESH_THROTTLE_MS = 20_000;
 
-/** Live 6h/12h window width from the viewport (SSR- and jsdom-safe, resize-aware). */
-function useWindowHours(): number {
-  const desktopMq = (): MediaQueryList | null =>
+/** A media query's match, SSR- and jsdom-safe, resize-aware. */
+function useMatches(query: string): boolean {
+  const mq = (): MediaQueryList | null =>
     typeof window !== "undefined" && typeof window.matchMedia === "function"
-      ? window.matchMedia(DESKTOP_QUERY)
+      ? window.matchMedia(query)
       : null;
-  const [hours, setHours] = useState(() =>
-    desktopMq()?.matches ? WINDOW_HOURS_DESKTOP : WINDOW_HOURS_MOBILE,
-  );
+  const [matches, setMatches] = useState(() => mq()?.matches ?? false);
   useEffect(() => {
-    const mq = desktopMq();
-    if (!mq) return;
-    const onChange = () => setHours(mq.matches ? WINDOW_HOURS_DESKTOP : WINDOW_HOURS_MOBILE);
-    mq.addEventListener("change", onChange);
-    return () => mq.removeEventListener("change", onChange);
-  }, []);
-  return hours;
+    const m = mq();
+    if (!m) return;
+    const onChange = () => setMatches(m.matches);
+    m.addEventListener("change", onChange);
+    return () => m.removeEventListener("change", onChange);
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- `mq` reads `query` only
+  }, [query]);
+  return matches;
 }
 
 function hhmm(ms: number): string {
   return new Date(ms).toLocaleTimeString(currentLocale(), { hour: "2-digit", minute: "2-digit" });
 }
 
-/** Spec 165 — the states the ribbon can paint, in reading order. `suspended`
- *  joined them in #960: it used to borrow the slate of `unmanaged` or the idle
- *  tint, so the ribbon could not say that the arbiter had stepped aside. */
-const LEGEND_STATES: ArbiterQuarterState[] = [
-  "granted",
-  "granted-idle",
-  "pending",
-  "revoked",
-  "unmanaged",
-  "suspended",
-];
-
 export function ArbiterTimeline() {
   const { t } = useTranslation();
-  const windowHours = useWindowHours();
+  const windowHours = useMatches(WIDE_QUERY) ? WINDOW_HOURS_WIDE : WINDOW_HOURS_MOBILE;
+  const isDesktop = useMatches(DESKTOP_QUERY);
   const maxOffset = Math.floor(DEPTH_HOURS / windowHours); // 8 at 6h, 4 at 12h
   const [offset, setOffset] = useState(0);
   const [data, setData] = useState<ArbiterTimelineData | null>(null);
   const [failed, setFailed] = useState(false);
   const [selTime, setSelTime] = useState<number | null>(null);
+  // Spec 197 (FR-E5.3) — the column under the mouse, or under keyboard focus.
+  const [hoverIdx, setHoverIdx] = useState<number | null>(null);
+  const [focusIdx, setFocusIdx] = useState<number | null>(null);
+  // Spec 197 (FR-E5.7) — the quarter each lane's tab stop sits on (roving
+  // tabindex), shared by the lanes so Tab keeps the column.
+  const [kbdIdx, setKbdIdx] = useState<number | null>(null);
   const jscrollRef = useRef<HTMLDivElement>(null);
+  const plotRef = useRef<HTMLDivElement>(null);
+  // The arbiter's live reading, the end of the curve on the live window.
+  const liveW = useArbiter((s) => s.state?.availableSurplusW ?? null);
+  // When the shown window was loaded: where "now" sits on it. Read in the
+  // fetch callbacks, never during render, so a re-render cannot move it.
+  const [loadedAt, setLoadedAt] = useState(() => Date.now());
+  // The page the shown data belongs to. `pageOffset` moves on the click, a
+  // round trip before the data does: keyed on it, the live point landed on
+  // the previous page for that long.
+  const [dataOffset, setDataOffset] = useState(0);
   const lastFetchAtRef = useRef(0);
   const liveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   // Latest view params, read from inside the async live refetch to tell whether
@@ -103,8 +128,11 @@ export function ArbiterTimeline() {
       .then((d) => {
         if (!cancelled) {
           setData(d);
+          setDataOffset(pageOffset);
+          setLoadedAt(Date.now());
           setFailed(false);
           setSelTime(null);
+          setKbdIdx(null);
         }
       })
       .catch(() => {
@@ -144,6 +172,8 @@ export function ArbiterTimeline() {
           }
           baselineRevRef.current = useArbiter.getState().timelineRev;
           setData(d);
+          setDataOffset(0);
+          setLoadedAt(Date.now());
           setFailed(false);
         })
         .catch(() => {
@@ -170,35 +200,60 @@ export function ArbiterTimeline() {
   const selIdx = selTime !== null ? Math.round((selTime - start) / stepMs) : -1;
 
   // ── signed surplus/deficit curve ──────────────────────────────
-  // The desktop card has room for a taller curve (2×): the vertical viewBox maps
-  // 1:1 to px, so a bigger H simply gives the surplus/deficit more amplitude.
-  const isDesktop = windowHours === WINDOW_HOURS_DESKTOP;
+  // The vertical viewBox maps 1:1 to px, so a bigger H simply gives the
+  // surplus/deficit more amplitude.
   const W = 480;
-  const H = isDesktop ? 120 : 56;
-  const values = data.surplus.map((s) => ({
-    x: (Date.parse(s.atIso) - start) / (n * stepMs),
-    v: s.availableW,
-  }));
-  const maxAbs = Math.max(500, ...data.surplus.map((s) => Math.abs(s.availableW)));
-  const y0 = Math.round(H * 0.58);
-  const yUp = y0; // px available above baseline
-  const yDown = H - y0; // px below
-  const yOf = (v: number) =>
-    v >= 0 ? y0 - (v / maxAbs) * (yUp - 2) : y0 + (-v / maxAbs) * (yDown - 2);
+  const H = isDesktop ? CURVE_H_DESKTOP : CURVE_H_MOBILE;
+  const span = n * stepMs;
+  const samples = data.surplus.map((s) => ({ at: Date.parse(s.atIso), w: s.availableW }));
+  // Spec 197 (FR-E5.2, DV-03) — on the live window the curve ends on the
+  // arbiter's current reading, the figure the sticker shows, placed at now
+  // (the window ends at the end of the quarter under way).
+  const now = loadedAt;
+  // Clamped to the right edge (a server that still rounds the window end
+  // down, before spec 197, ends it up to 15 min before now) and never left of
+  // the last sample (`now` is the browser's clock, the samples the server's).
+  const lastSampleX = samples.length ? (samples[samples.length - 1].at - start) / span : 0;
+  const live =
+    dataOffset === 0 && liveW !== null && now >= start
+      ? { x: Math.max(lastSampleX, Math.min(1, (now - start) / span)), w: liveW }
+      : null;
+  // The curve reaches the live dot from its last sample: from below on screen
+  // when that sample is lower (less surplus). With no sample, from zero.
+  const lastW = samples.length ? samples[samples.length - 1].w : 0;
+  const liveFromBelow = live ? lastW < live.w : false;
+  const scale = surplusScale(
+    samples.map((p) => p.w),
+    live?.w ?? null,
+    H,
+  );
+  const { y0, yOf } = scale;
   // SVG coordinates, not text: a tenth of a pixel is plenty.
   const px = (v: number) => Math.round(v * 10) / 10;
-  const pts = values.map((p) => `${px(p.x * W)},${px(yOf(p.v))}`).join(" ");
-  const area = values.length ? `0,${y0} ${pts} ${W},${y0}` : "";
-  // Symmetric axis: ± the same peak, in kW whatever its size.
-  const scaleTop = formatPower(maxAbs, { unit: "kW", signed: true });
-  const scaleBottom = formatPower(-maxAbs, { unit: "kW" });
+  const points = samples.map((p) => ({ x: (p.at - start) / span, w: p.w }));
+  if (live) points.push(live);
+  const pts = points.map((p) => `${px(p.x * W)},${px(yOf(p.w))}`).join(" ");
+  const area = points.length
+    ? `${px(points[0].x * W)},${px(y0)} ${pts} ${px(points[points.length - 1].x * W)},${px(y0)}`
+    : "";
+  // Spec 197 (FR-E5.1) — each half labelled with what its edge stands for.
+  const scaleTop = formatPower(scale.topW, { unit: "kW", signed: true });
+  const scaleBottom = t("arbiter.timeline.importPeak", {
+    power: formatPower(scale.bottomW, { unit: "kW" }),
+  });
+  // Labels are 11 px tall: the top one spans [0, 11], « 0 » [y0 − 5, y0 + 6],
+  // the bottom one [H − 11, H]. « 0 » always shows; an edge label shows only
+  // with 4 px to spare, so a half held at its 15 % minimum (a thin, nearly
+  // empty half) drops its label rather than crowd « 0 ».
+  const LABEL_GAP = 4;
+  const showTop = y0 - 5 - 11 >= LABEL_GAP;
+  const showBottom = H - 11 - (y0 + 6) >= LABEL_GAP;
 
   // ── hourly alignment guides ───────────────────────────────────
   // The hour LABELS sit on the clock-hour tick (:00); the dotted GUIDES sit at
   // the CENTRE of each hour column (HH:30), i.e. exactly between two labels — so
   // each guide reads as the middle of its hour slot, distinct from the ticks.
-  // Both are 15-min cell boundaries, so they stay pixel-aligned with the ribbon
-  // cells and the curve.
+  // Both are 15-min boundaries, so they stay aligned with the runs and the curve.
   const hourLabels: { f: number; label: string }[] = [];
   const hourGuides: number[] = [];
   for (let i = 0; i <= n; i += 1) {
@@ -224,8 +279,68 @@ export function ArbiterTimeline() {
     });
   };
 
+  // ── hover and keyboard (spec 197, FR-E5.3 and FR-E5.7) ────────
+  // A mouse gets the crosshair; a finger keeps today's tap-to-select, which
+  // scrolls the journal (the readout would sit under the finger anyway).
+  const onPointerMove = (e: PointerEvent<HTMLDivElement>) => {
+    if (e.pointerType !== "mouse") return;
+    const rect = plotRef.current?.getBoundingClientRect();
+    if (!rect || rect.width <= 0) return;
+    const f = (e.clientX - rect.left) / rect.width;
+    setHoverIdx(f >= 0 && f < 1 ? Math.floor(f * n) : null);
+  };
+  const crossIdx = hoverIdx ?? focusIdx;
+  const tabIdx = Math.min(kbdIdx ?? n - 1, n - 1);
+  const onLaneKey = (e: KeyboardEvent<HTMLButtonElement>, i: number) => {
+    const next =
+      e.key === "ArrowLeft"
+        ? i - 1
+        : e.key === "ArrowRight"
+          ? i + 1
+          : e.key === "Home"
+            ? 0
+            : e.key === "End"
+              ? n - 1
+              : null;
+    if (next === null) return;
+    e.preventDefault();
+    const q = Math.max(0, Math.min(n - 1, next));
+    setKbdIdx(q);
+    e.currentTarget.parentElement?.querySelector<HTMLButtonElement>(`[data-q="${q}"]`)?.focus();
+  };
+  const spoken = (ms: number) => {
+    const d = new Date(ms);
+    return t("arbiter.timeline.spokenTime", {
+      h: d.getHours(),
+      m: String(d.getMinutes()).padStart(2, "0"),
+    });
+  };
+  const stateWord = (s: Parameters<typeof cellColor>[0]) =>
+    t(`arbiter.loadState.${s}`).toLocaleLowerCase(currentLocale());
+
   const uid = `arbtl-${pageOffset}`;
-  const rangeLabel = `${dayLabel(start, t)} · ${formatRange(hhmm(start), hhmm(geom.end))}`;
+  // The live window ends at the end of the quarter under way: say now.
+  const rangeEnd = live ? Math.min(geom.end, now) : geom.end;
+  const rangeLabel = `${dayLabel(start, t)} · ${formatRange(hhmm(start), hhmm(rangeEnd))}`;
+  const legend = legendStates(data.loads);
+  const colLeft = (f: number) => `calc(${PLOT_LEFT_PX}px + (100% - ${PLOT_LEFT_PX}px) * ${f})`;
+
+  const tip =
+    crossIdx !== null && crossIdx < n
+      ? (() => {
+          const colStart = start + crossIdx * stepMs;
+          // The live column reads the live figure the curve ends on.
+          const w =
+            live && now >= colStart && now < colStart + stepMs
+              ? live.w
+              : sampleInColumn(samples, colStart, colStart + stepMs);
+          return {
+            colStart,
+            w,
+            lanes: data.loads.filter((l) => l.quarters[crossIdx] !== "idle"),
+          };
+        })()
+      : null;
 
   return (
     <div className="mt-4">
@@ -233,11 +348,12 @@ export function ArbiterTimeline() {
       <div className="flex items-center gap-2 mb-2">
         <h3 className="text-small font-semibold text-text">{t("arbiter.timeline.title")}</h3>
         <span className="ml-auto text-micro text-text-tertiary tabular-nums">{rangeLabel}</span>
-        <div className="flex gap-1">
+        {/* Spec 197 (FR-E5.7) — 24 px buttons, 44 px to a finger. */}
+        <div className="flex gap-1 hit-group">
           <button
             onClick={() => setOffset((o) => Math.min(maxOffset, o + 1))}
             disabled={pageOffset >= maxOffset}
-            className="w-6 h-6 flex items-center justify-center border border-border rounded-sm text-text-secondary hover:bg-border-light disabled:opacity-35 disabled:cursor-not-allowed"
+            className="hit-44 w-6 h-6 flex items-center justify-center border border-border rounded-sm text-text-secondary hover:bg-border-light disabled:opacity-35 disabled:cursor-not-allowed"
             aria-label={t("arbiter.timeline.earlier", { h: windowHours })}
           >
             <ChevronLeft size={16} strokeWidth={2} />
@@ -245,7 +361,7 @@ export function ArbiterTimeline() {
           <button
             onClick={() => setOffset((o) => Math.max(0, o - 1))}
             disabled={pageOffset === 0}
-            className="w-6 h-6 flex items-center justify-center border border-border rounded-sm text-text-secondary hover:bg-border-light disabled:opacity-35 disabled:cursor-not-allowed"
+            className="hit-44 w-6 h-6 flex items-center justify-center border border-border rounded-sm text-text-secondary hover:bg-border-light disabled:opacity-35 disabled:cursor-not-allowed"
             aria-label={t("arbiter.timeline.later", { h: windowHours })}
           >
             <ChevronRight size={16} strokeWidth={2} />
@@ -259,15 +375,23 @@ export function ArbiterTimeline() {
       </div>
 
       {/* curve + ribbons, overlaid with thin dotted hourly alignment guides */}
-      <div className="relative">
-        <div className="absolute left-[88px] right-0 top-0 bottom-0 pointer-events-none z-20">
+      <div
+        className="relative"
+        onPointerMove={onPointerMove}
+        onPointerLeave={() => setHoverIdx(null)}
+      >
+        <div
+          ref={plotRef}
+          className="absolute right-0 top-0 bottom-0 pointer-events-none z-20"
+          style={{ left: `${PLOT_LEFT_PX}px` }}
+        >
           {hourGuides.map((f, k) => (
             <div
               key={k}
               className="absolute top-0 bottom-0"
               style={{
                 // -0.5px centres the 1px line on the boundary, i.e. in the
-                // middle of the 2px gap between the two cells that meet there.
+                // middle of the 1px gap where two runs meet there.
                 left: `calc(${f * 100}% - 0.5px)`,
                 borderLeft:
                   "1px dotted color-mix(in srgb, var(--color-text-tertiary) 40%, transparent)",
@@ -279,12 +403,19 @@ export function ArbiterTimeline() {
               // #960 — neutral on purpose: the primary token now means "pilotage
               // manuel" on these very cells, so keeping it here made "this
               // column is selected" and "the arbiter stood down here" the same
-              // visual signal on the same 20 px strip.
+              // visual signal on the same strip.
               className="absolute top-0 bottom-0 bg-text-secondary/10 border-x border-text-secondary/50"
               style={{
                 left: `calc(${(selIdx / n) * 100}% + 1px)`,
                 width: `calc(${(1 / n) * 100}% - 2px)`,
               }}
+            />
+          )}
+          {crossIdx !== null && crossIdx < n && (
+            <div
+              data-testid="arbiter-crosshair"
+              className="absolute top-0 bottom-0 border-l border-text-secondary/60"
+              style={{ left: `calc(${((crossIdx + 0.5) / n) * 100}% - 0.5px)` }}
             />
           )}
         </div>
@@ -294,109 +425,175 @@ export function ArbiterTimeline() {
           <div className="relative w-[80px] flex-none">
             {/* leading-none: an 11 px label in the 20 px body line sat 5 px
                 below the level it names; each one is now centred on it. */}
-            <span className="absolute right-0 top-0 text-micro leading-none tabular-nums text-text-tertiary">
-              {scaleTop}
-            </span>
+            {showTop && (
+              <span className="absolute right-0 top-0 text-micro leading-none tabular-nums text-text-tertiary whitespace-nowrap">
+                {scaleTop}
+              </span>
+            )}
             <span
               className="absolute right-0 text-micro leading-none tabular-nums text-text-tertiary"
               style={{ top: `${y0 - 5}px` }}
             >
               0
             </span>
-            <span
-              className="absolute right-0 text-micro leading-none tabular-nums text-text-tertiary"
-              style={{ top: `${H - 11}px` }}
-            >
-              {scaleBottom}
-            </span>
+            {showBottom && (
+              <span
+                className="absolute right-0 text-micro leading-none tabular-nums text-text-tertiary whitespace-nowrap"
+                style={{ top: `${H - 11}px` }}
+              >
+                {scaleBottom}
+              </span>
+            )}
           </div>
-          <svg
-            width="100%"
-            viewBox={`0 0 ${W} ${H}`}
-            preserveAspectRatio="none"
-            style={{ display: "block", height: `${H}px` }}
-          >
-            <defs>
-              <clipPath id={`up-${uid}`}>
-                <rect x="0" y="0" width={W} height={y0} />
-              </clipPath>
-              <clipPath id={`dn-${uid}`}>
-                <rect x="0" y={y0} width={W} height={H - y0} />
-              </clipPath>
-            </defs>
-            {area && (
+          <div className="relative flex-1 min-w-0">
+            <svg
+              width="100%"
+              viewBox={`0 0 ${W} ${H}`}
+              preserveAspectRatio="none"
+              style={{ display: "block", height: `${H}px` }}
+            >
+              <defs>
+                <clipPath id={`up-${uid}`}>
+                  <rect x="0" y="0" width={W} height={y0} />
+                </clipPath>
+                <clipPath id={`dn-${uid}`}>
+                  <rect x="0" y={y0} width={W} height={H - y0} />
+                </clipPath>
+              </defs>
+              {area && (
+                <>
+                  <polygon
+                    points={area}
+                    fill={SURPLUS_HUE}
+                    opacity="0.16"
+                    clipPath={`url(#up-${uid})`}
+                  />
+                  <polygon
+                    points={area}
+                    fill={DEFICIT_HUE}
+                    opacity="0.16"
+                    clipPath={`url(#dn-${uid})`}
+                  />
+                  <polyline
+                    points={pts}
+                    fill="none"
+                    stroke={SURPLUS_HUE}
+                    strokeWidth="1.5"
+                    strokeLinejoin="round"
+                    strokeLinecap="round"
+                    vectorEffect="non-scaling-stroke"
+                    clipPath={`url(#up-${uid})`}
+                  />
+                  <polyline
+                    points={pts}
+                    fill="none"
+                    stroke={DEFICIT_HUE}
+                    strokeWidth="1.5"
+                    strokeLinejoin="round"
+                    strokeLinecap="round"
+                    vectorEffect="non-scaling-stroke"
+                    clipPath={`url(#dn-${uid})`}
+                  />
+                </>
+              )}
+              <line
+                x1="0"
+                y1={y0}
+                x2={W}
+                y2={y0}
+                stroke="var(--color-text-tertiary)"
+                strokeWidth="1"
+                strokeDasharray="3 3"
+                vectorEffect="non-scaling-stroke"
+                opacity="0.6"
+              />
+            </svg>
+            {/* Spec 197 (FR-E5.2) — the live end point and its value. HTML,
+                not SVG: the plot is stretched (preserveAspectRatio none), which
+                would draw a circle as an ellipse. */}
+            {live && (
               <>
-                <polygon
-                  points={area}
-                  fill="var(--color-solar-auto)"
-                  opacity="0.16"
-                  clipPath={`url(#up-${uid})`}
+                <span
+                  data-testid="arbiter-live-dot"
+                  aria-hidden="true"
+                  className="absolute w-2 h-2 rounded-full"
+                  style={{
+                    left: `calc(${live.x * 100}% - 4px)`,
+                    top: `${yOf(live.w) - 4}px`,
+                    backgroundColor: live.w > 0 ? SURPLUS_HUE : DEFICIT_HUE,
+                    boxShadow: "0 0 0 2px var(--color-surface)",
+                  }}
                 />
-                <polygon
-                  points={area}
-                  fill="var(--color-error)"
-                  opacity="0.16"
-                  clipPath={`url(#dn-${uid})`}
-                />
-                <polyline
-                  points={pts}
-                  fill="none"
-                  stroke="var(--color-solar-auto)"
-                  strokeWidth="1.5"
-                  strokeLinejoin="round"
-                  strokeLinecap="round"
-                  vectorEffect="non-scaling-stroke"
-                  clipPath={`url(#up-${uid})`}
-                />
-                <polyline
-                  points={pts}
-                  fill="none"
-                  stroke="var(--color-error)"
-                  strokeWidth="1.5"
-                  strokeLinejoin="round"
-                  strokeLinecap="round"
-                  vectorEffect="non-scaling-stroke"
-                  clipPath={`url(#dn-${uid})`}
-                />
+                <span
+                  data-testid="arbiter-live-value"
+                  className="absolute px-1 rounded-xs bg-surface text-caption leading-none tabular-nums text-text whitespace-nowrap"
+                  style={{
+                    // On a surface pad, ending at the dot, on the side the
+                    // curve does not come from; flipped when that side has
+                    // no room, and kept inside the plot.
+                    right: `calc(${(1 - live.x) * 100}% - 4px)`,
+                    top: `${liveLabelTop(yOf(live.w), liveFromBelow, H)}px`,
+                  }}
+                >
+                  {formatPower(Math.abs(live.w))}
+                </span>
               </>
             )}
-            <line
-              x1="0"
-              y1={y0}
-              x2={W}
-              y2={y0}
-              stroke="var(--color-text-tertiary)"
-              strokeWidth="1"
-              strokeDasharray="3 3"
-              vectorEffect="non-scaling-stroke"
-              opacity="0.6"
-            />
-          </svg>
+          </div>
         </div>
 
-        {/* per-load ribbons */}
+        {/* per-load ribbons — spec 197 (FR-E5.5): equal neighbours merge into
+            one run, drawn under one transparent button per quarter, so a
+            duration reads as one bar and every quarter stays selectable. */}
         {data.loads.map((load) => (
           <div key={load.equipmentId} className="flex items-center gap-2 my-[3px]">
-            <span className="w-[80px] flex-none text-right text-micro text-text-secondary truncate">
+            <span
+              aria-hidden="true"
+              className="w-[80px] flex-none text-right text-micro text-text-secondary truncate"
+            >
               {load.name}
             </span>
-            {/* Cells positioned by exact percentage (not flexbox) so a boundary
-                lands precisely at i/n — the SAME basis as the guides — with a 2px
-                gap centred on each boundary, so a guide passes through its middle. */}
-            <div className="relative flex-1 h-[20px]">
+            <div role="group" aria-label={load.name} className="relative flex-1 h-[20px]">
+              {mergeRuns(load.quarters).map((run) => (
+                <div
+                  key={run.start}
+                  data-run={run.state}
+                  aria-hidden="true"
+                  className="absolute top-1 h-3 rounded-xs pointer-events-none"
+                  style={{
+                    // A 1 px gap only where two runs meet (they always differ).
+                    left: `calc(${(run.start / n) * 100}% + 0.5px)`,
+                    width: `calc(${((run.end - run.start) / n) * 100}% - 1px)`,
+                    backgroundColor: cellColor(run.state),
+                    boxShadow: cellEdge(run.state),
+                  }}
+                />
+              ))}
               {load.quarters.map((s, i) => {
                 const cellTime = start + i * stepMs;
                 return (
                   <button
                     key={i}
-                    onClick={() => onCell(cellTime)}
-                    title={`${hhmm(cellTime)} · ${t(`arbiter.loadState.${s}`)}`}
-                    className="absolute top-0 h-[20px] rounded-xs focus:outline-none"
+                    type="button"
+                    data-q={i}
+                    tabIndex={i === tabIdx ? 0 : -1}
+                    aria-label={t("arbiter.timeline.cellLabel", {
+                      name: load.name,
+                      time: spoken(cellTime),
+                      state: stateWord(s),
+                    })}
+                    aria-pressed={i === selIdx}
+                    onClick={() => {
+                      setKbdIdx(i);
+                      onCell(cellTime);
+                    }}
+                    onKeyDown={(e) => onLaneKey(e, i)}
+                    onFocus={() => setFocusIdx(i)}
+                    onBlur={() => setFocusIdx(null)}
+                    className="absolute top-0 h-[20px] rounded-xs focus-visible:outline focus-visible:outline-2 focus-visible:outline-text"
                     style={{
-                      left: `calc(${(i / n) * 100}% + 1px)`,
-                      width: `calc(${(1 / n) * 100}% - 2px)`,
-                      backgroundColor: cellColor(s),
-                      boxShadow: cellEdge(s),
+                      left: `${(i / n) * 100}%`,
+                      width: `${(1 / n) * 100}%`,
                     }}
                   />
                 );
@@ -404,10 +601,41 @@ export function ArbiterTimeline() {
             </div>
           </div>
         ))}
+
+        {/* Spec 197 (FR-E5.3) — the readout for the column under the mouse
+            (or under keyboard focus): its time, its surplus, every lane that
+            was doing something. */}
+        {tip && (
+          <div
+            role="presentation"
+            className="absolute top-0 z-30 pointer-events-none w-max max-w-[280px] bg-surface border border-border rounded-md p-3 text-caption shadow-lg"
+            style={{
+              left: colLeft((crossIdx! + 0.5) / n),
+              transform: crossIdx! / n > 0.5 ? "translateX(calc(-100% - 8px))" : "translateX(8px)",
+            }}
+          >
+            <div className="font-semibold text-text tabular-nums mb-1">{hhmm(tip.colStart)}</div>
+            {tip.w !== null && (
+              <TooltipSeriesRow
+                color={tip.w > 0 ? SURPLUS_HUE : DEFICIT_HUE}
+                label={tip.w > 0 ? t("arbiter.aside.available") : t("arbiter.aside.import")}
+                value={formatPower(Math.abs(tip.w))}
+              />
+            )}
+            {tip.lanes.map((l) => (
+              <TooltipSeriesRow
+                key={l.equipmentId}
+                color={cellColor(l.quarters[crossIdx!])}
+                label={l.name}
+                value={t(`arbiter.loadState.${l.quarters[crossIdx!]}`)}
+              />
+            ))}
+          </div>
+        )}
       </div>
 
       {/* hour labels — centered on each hourly guide */}
-      <div className="relative ml-[88px] mt-1 h-[12px]">
+      <div className="relative mt-1 h-[12px]" style={{ marginLeft: `${PLOT_LEFT_PX}px` }}>
         {hourLabels.map((m, k) => (
           <span
             key={k}
@@ -428,12 +656,13 @@ export function ArbiterTimeline() {
       </div>
 
       {/* legend — spec 165: one word and one colour per state, the same two the
-          roster pill uses, so the halves of the surface cannot drift apart. */}
+          roster pill uses. Spec 197 (FR-E5.6): only the states this window
+          shows, plus « Au repos »; swatches shaped like the runs. */}
       <div className="flex flex-wrap gap-x-3 gap-y-1 text-micro text-text-secondary mt-2 items-center">
-        {LEGEND_STATES.map((s) => (
-          <span key={s} className="flex items-center gap-1.5">
+        {legend.map((s) => (
+          <span key={s} data-legend={s} className="flex items-center gap-1.5">
             <span
-              className="w-3 h-2.5 rounded-sm flex-none"
+              className="w-4 h-3 rounded-xs flex-none"
               style={{ backgroundColor: cellColor(s), boxShadow: cellEdge(s) }}
             />
             {t(`arbiter.loadState.${s}`)}
@@ -473,7 +702,19 @@ export function ArbiterTimeline() {
                     {e.equipmentName ?? ""}
                   </span>
                   <span className="text-text-secondary truncate min-w-0">
-                    {t(`arbiter.kind.${e.kind}`)}
+                    {journalKindLabel(
+                      e.kind,
+                      e.kind === "released"
+                        ? releasedFrom(
+                            data.journal,
+                            i,
+                            data.loads.find((l) => l.equipmentId === e.equipmentId),
+                            start,
+                            stepMs,
+                          )
+                        : null,
+                      t,
+                    )}
                     {reasonLabel ? ` · ${reasonLabel}` : ""}
                   </span>
                 </div>

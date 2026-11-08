@@ -1,5 +1,6 @@
 import { describe, it, expect } from "vitest";
-import { journalReasonLabel, REASON_SLUG } from "./arbiterReason";
+import { journalKindLabel, journalReasonLabel, releasedFrom, REASON_SLUG } from "./arbiterReason";
+import type { ArbiterDecision, ArbiterQuarterState } from "../../types";
 import fr from "../../i18n/locales/fr.json";
 import en from "../../i18n/locales/en.json";
 
@@ -57,5 +58,43 @@ describe("journalReasonLabel (#518)", () => {
       expect(fr, `fr.json missing ${key}`).toHaveProperty([key]);
       expect(en, `en.json missing ${key}`).toHaveProperty([key]);
     }
+  });
+});
+
+describe("releasedFrom (spec 197) — what a release gave up", () => {
+  const START = Date.parse("2026-08-15T00:00:00.000Z");
+  const STEP = 15 * 60_000;
+  const at = (min: number) => new Date(START + min * 60_000).toISOString();
+  const d = (min: number, kind: ArbiterDecision["kind"], equipmentId = "ce"): ArbiterDecision => ({
+    atIso: at(min),
+    kind,
+    equipmentId,
+  });
+
+  it("reads a release after a grant as giving the surplus back", () => {
+    const j = [d(50, "released"), d(40, "waiting", "other"), d(10, "granted")];
+    expect(releasedFrom(j, 0, undefined, START, STEP)).toBe("granted");
+  });
+
+  it("reads a release after a wait as no longer waiting", () => {
+    const j = [d(50, "released"), d(10, "waiting")];
+    expect(releasedFrom(j, 0, undefined, START, STEP)).toBe("pending");
+  });
+
+  it("falls back to the lane's quarter before the release", () => {
+    const lane = { quarters: ["idle", "granted-idle", "granted", "idle"] as ArbiterQuarterState[] };
+    expect(releasedFrom([d(50, "released")], 0, lane, START, STEP)).toBe("granted");
+  });
+
+  it("says nothing when neither the journal nor the lane tells", () => {
+    expect(releasedFrom([d(50, "released"), d(10, "reset")], 0, undefined, START, STEP)).toBeNull();
+  });
+
+  it("labels each case, and the unknown one neutrally", () => {
+    const t = (k: string) => k;
+    expect(journalKindLabel("released", "granted", t)).toBe("arbiter.kind.released-granted");
+    expect(journalKindLabel("released", "pending", t)).toBe("arbiter.kind.released-pending");
+    expect(journalKindLabel("released", null, t)).toBe("arbiter.kind.released");
+    expect(journalKindLabel("granted", null, t)).toBe("arbiter.kind.granted");
   });
 });

@@ -97,6 +97,17 @@ describe("SunlightManager", () => {
     expect(events.filter((e) => e.type === "sunlight.changed").length).toBe(before);
   });
 
+  it("answers daylight at any instant with the same rule (spec 197)", () => {
+    expect(manager.isDaylightAt(Date.parse("2026-11-08T12:00:00Z"))).toBeNull();
+    settings.set("home.latitude", PARIS.lat);
+    settings.set("home.longitude", PARIS.lon);
+    // Paris, November: midday is day, 02:00 UTC is night, and 07:10 UTC sits
+    // inside the 30 min sunrise offset (sunrise ≈ 06:50 UTC), so still night.
+    expect(manager.isDaylightAt(Date.parse("2026-11-08T12:00:00Z"))).toBe(true);
+    expect(manager.isDaylightAt(Date.parse("2026-11-08T02:00:00Z"))).toBe(false);
+    expect(manager.isDaylightAt(Date.parse("2026-11-08T07:10:00Z"))).toBe(false);
+  });
+
   it("stop() is idempotent", () => {
     manager.start();
     expect(() => {
