@@ -4,7 +4,7 @@ import {
   CHART_TOOLTIP_ITEM_STYLE,
 } from "../../lib/chart-font";
 import { memo, useEffect, useMemo, useState } from "react";
-import { Activity, AlertTriangle } from "lucide-react";
+import { AlertTriangle } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import {
   CartesianGrid,
@@ -99,7 +99,7 @@ export const PvHealthPanel = memo(function PvHealthPanel({ equipmentId }: { equi
   // rendering an empty chart that looks broken.
   if (data.days.length === 0) {
     return (
-      <div className="card mb-6 p-4">
+      <div className="card mb-6 p-4 sm:p-6">
         <Header t={t} />
         <p className="text-small text-text-secondary">{t("equipments.pvHealth.waiting")}</p>
       </div>
@@ -113,7 +113,7 @@ export const PvHealthPanel = memo(function PvHealthPanel({ equipmentId }: { equi
   // card has to say so.
   if (data.normal === null) {
     return (
-      <div className="card mb-6 p-4">
+      <div className="card mb-6 p-4 sm:p-6">
         <Header t={t} />
         <p className="text-small text-text-secondary mb-3">
           {data.sinceCutoff
@@ -148,7 +148,7 @@ export const PvHealthPanel = memo(function PvHealthPanel({ equipmentId }: { equi
   const deviation = latest ? (latest.ratio / normal - 1) * 100 : null;
 
   return (
-    <div className="card mb-6 p-4">
+    <div className="card mb-6 p-4 sm:p-6">
       <Header t={t} />
 
       {data.alert ? (
@@ -202,10 +202,10 @@ export const PvHealthPanel = memo(function PvHealthPanel({ equipmentId }: { equi
   );
 });
 
+// Spec 197 (FR-E6.6) — no heading icon, like the other energy cards.
 function Header({ t }: { t: (k: string) => string }) {
   return (
     <div className="flex items-center gap-2 mb-3">
-      <Activity size={16} strokeWidth={1.5} className="text-text-tertiary" />
       <h3 className="text-body font-semibold text-text">{t("equipments.pvHealth.title")}</h3>
     </div>
   );

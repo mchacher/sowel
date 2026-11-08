@@ -86,7 +86,13 @@ Some review findings were fixed on `main` after the screenshots by #1142 (#1126)
 ### FR-E4 — A flow that shows magnitude (shared FlowDiagram)
 
 1. Active routes are drawn with `vector-effect: non-scaling-stroke` and a width by tier: < 500 W 2 px, 500 W–2 kW 3 px, ≥ 2 kW 4 px.
+   <<<<<<< HEAD
 2. The SMIL bubbles are replaced by a second stroke on the same path, `stroke-dasharray: 0 12`, round caps (dots stay round whatever the aspect ratio), animated in CSS by `stroke-dashoffset`, linear, at three speeds by the same tiers. _Implementation: the period is 20 px; at 12 px the 6–8 px dots read as a beaded line on still frames._
+   \=======
+3. The SMIL bubbles are replaced by a second stroke on the same path, `stroke-dasharray: 0 12`, round caps (dots stay round whatever the aspect ratio), animated in CSS by `stroke-dashoffset`, linear, at three speeds by the same tiers.
+
+> > > > > > > origin/main
+
 3. **No chevron in the middle of a route** (maintainer note). Direction at rest is given at the route's end: the route meets its destination node with a small arrowhead-shaped cap integrated into the line end (or another design that reads as "flows into", tested on a still frame), never a free-floating mark mid-route.
 4. Under `prefers-reduced-motion: reduce`, the dashes do not move; width and the end cap still say how much and which way.
 5. The UPS panel gets the same rendering through the shared component; the caller passes the power per link so tiers apply (UPS load, battery charge/discharge).
@@ -113,6 +119,8 @@ Some review findings were fixed on `main` after the screenshots by #1142 (#1126)
 
 ## Acceptance Criteria
 
+<<<<<<< HEAD
+
 - [x] AC1 — Live shows « Import réseau » / « Export réseau » / « Autonome » with a 40 px figure above the diagram on desktop, tablet and phone; the grid node says « import » / « export »; no « Appoint solaire » band.
 - [x] AC2 — The UPS panel shows its status as the same headline; its diagram still renders on mains and on battery; no `tag` prop remains.
 - [ ] AC3 — No arbiter element is red in a plain deficit; the deficit figure appears once in the sticker and once in the aside, never as « Surplus disponible −x »; « Export réseau instantané » appears only with a positive surplus.
@@ -125,6 +133,22 @@ Some review findings were fixed on `main` after the screenshots by #1142 (#1126)
 - [ ] AC10 — Lanes are keyboard-navigable with a visible focus ring.
 - [ ] AC11 — Consumption and Production open on their total; charts keep their axes; the forecast « Attendu » is dashed neutral and « Réalisé » solar green.
 - [ ] AC12 — One `SegmentedControl` across Consumption, Production and Analyse, with `aria-pressed`.
+      \=======
+- [ ] AC1 — Live shows « Import réseau » / « Export réseau » / « Autonome » with a 40 px figure above the diagram on desktop, tablet and phone; the grid node says « import » / « export »; no « Appoint solaire » band.
+- [ ] AC2 — The UPS panel shows its status as the same headline; its diagram still renders on mains and on battery; no `tag` prop remains.
+- [ ] AC3 — No arbiter element is red in a plain deficit; the deficit figure appears once in the sticker and once in the aside, never as « Surplus disponible −x »; « Export réseau instantané » appears only with a positive surplus.
+- [ ] AC4 — The roster uses « Puissance / Import toléré / Surplus requis / Il manque » and shows « déficit » in waiting rows while in deficit.
+- [ ] AC5 — At 1440 × 900 the flow and the breakdown share one row and the arbiter heading is visible without scrolling.
+- [ ] AC6 — Zero-watt rows fold into one « À l'arrêt » line; « Autre » is last at full opacity; donut segments have gaps.
+- [ ] AC7 — Flow routes have three widths by tier, round moving dots in CSS, no SMIL, no mid-route mark, and stand still under reduced motion.
+- [ ] AC8 — The arbiter curve draws equal watts at equal heights on both sides, ends on a live dot, and shows a hover readout.
+- [ ] AC9 — Pending claims during the dormant night are `idle` in `buildLoadTimelines`; ribbons render runs; the legend lists only present states plus « Au repos ».
+- [ ] AC10 — Lanes are keyboard-navigable with a visible focus ring.
+- [x] AC11 — Consumption and Production open on their total; charts keep their axes; the forecast « Attendu » is dashed neutral and « Réalisé » solar green.
+- [x] AC12 — One `SegmentedControl` across Consumption, Production and Analyse, with `aria-pressed`.
+
+> > > > > > > origin/main
+
 - [ ] AC13 — `npm run validate` green; docs EN/FR updated.
 
 ## Edge Cases

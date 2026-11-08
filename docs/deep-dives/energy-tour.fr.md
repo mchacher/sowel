@@ -60,6 +60,6 @@ Cet article reste volontairement léger ; le détail vit dans le [guide du suivi
 - **Tout est local.** L'historique vit dans une InfluxDB embarquée dans le déploiement Docker de Sowel : données brutes 7 jours, agrégats horaires 2 ans, agrégats quotidiens 10 ans, sous-échantillonnés automatiquement. Pas de compte cloud, aucune donnée ne quitte la maison.
 - **Le partage d'autoconsommation est calculé au compteur, minute par minute.** L'autoconsommé, c'est la production moins l'injection, borné pour que la dérive entre deux compteurs n'invente jamais d'énergie.
 - **Les frontières de journée sont votre minuit.** Les agrégats respectent le fuseau local, donc la barre étiquetée mardi contient mardi.
-- **Le classifieur tarifaire suit vos créneaux déclarés**, y compris ceux qui traversent minuit, et les totaux heures pleines / heures creuses affichés sous le graphique sortent de la même classification qui colore les barres. Ce qui est chiffré est ce qui a été mesuré.
+- **Le classifieur tarifaire suit vos créneaux déclarés**, y compris ceux qui traversent minuit, et les totaux heures pleines / heures creuses affichés au-dessus du graphique sortent de la même classification qui colore les barres. Ce qui est chiffré est ce qui a été mesuré.
 
 Pour aller plus loin : [L'arbitre de surplus](surplus-arbiter.md) explique comment l'excédent que vous voyez sur la page Live se partage entre vos charges pilotables. [Veiller sur les panneaux](pv-health.md) explique comment la prévision apprend votre installation et comment une panne silencieuse se fait attraper.

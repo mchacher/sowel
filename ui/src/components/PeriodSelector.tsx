@@ -2,6 +2,7 @@ import { ChevronLeft, ChevronRight } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { dateLocale } from "../lib/locale";
 import { formatDateLabel, type SelectorPeriod } from "../lib/period-label";
+import { SegmentedControl } from "./ui/SegmentedControl";
 
 /**
  * Day / Week / Month / Year tabs with prev / next date navigation and a Today
@@ -50,24 +51,17 @@ export function PeriodSelector({
   const locale = dateLocale(i18n.language);
 
   return (
-    <div className="flex flex-col sm:flex-row sm:flex-wrap items-center gap-3">
-      {/* Period tabs */}
-      <div className="flex rounded-sm border border-border overflow-hidden">
-        {PERIODS.map((p) => (
-          <button
-            key={p.key}
-            type="button"
-            onClick={() => onPeriodChange(p.key)}
-            className={`min-w-[60px] px-3 py-1.5 text-caption font-medium text-center transition-colors cursor-pointer ${
-              period === p.key
-                ? "bg-primary-fill text-white"
-                : "bg-surface text-text-secondary hover:bg-border-light hover:text-text"
-            }`}
-          >
-            {t(p.labelKey)}
-          </button>
-        ))}
-      </div>
+    // Spec 197 (FR-E6.5) — one left-aligned column on a phone, the tabs at
+    // full width; one row from `sm`.
+    <div className="flex flex-col items-stretch sm:flex-row sm:flex-wrap sm:items-center gap-3">
+      {/* Period tabs — the shared segmented control (FR-E6.4). */}
+      <SegmentedControl<SelectorPeriod>
+        options={PERIODS.map((p) => ({ value: p.key, label: t(p.labelKey) }))}
+        value={period}
+        onChange={onPeriodChange}
+        label={t("period.label")}
+        fill
+      />
 
       {/* Date navigation */}
       <div className="flex items-center gap-2">

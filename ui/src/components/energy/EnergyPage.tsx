@@ -8,8 +8,11 @@ import { EnergyBarChart } from "./EnergyBarChart";
 import { EnergyByUsageChart } from "./EnergyByUsageChart";
 import { EnergyMobileNav } from "./EnergyMobileNav";
 import { UnitToggle } from "./UnitToggle";
-import { formatEnergyOrCost, formatWh } from "./format";
+import { formatEur, formatWh } from "./format";
 import { formatPercent } from "../../lib/format";
+import { SegmentedControl } from "../ui/SegmentedControl";
+import { PeriodHeadline } from "./PeriodHeadline";
+import { consumptionHeadline, periodContextLabel } from "./period-headline";
 import { dateLocale } from "../../lib/locale";
 import { getEnergyByUsage, getEquipments } from "../../api";
 import type { EnergyByUsageResponse, SubmeterSeries } from "../../types";
@@ -112,6 +115,48 @@ export function EnergyPage() {
 
   const hasHpHc = history ? history.totals.total_hc > 0 : false;
 
+  // The By usage stacks partition the main meter's grid energy only, so
+  // there the headline is their total, with no tariff split it does not draw.
+  const headline =
+    viewMode === "by-usage"
+      ? byUsage
+        ? {
+            total: effectiveUnit === "eur" ? byUsage.totals.totalCost : byUsage.totals.total,
+            peak: null,
+            offPeak: null,
+            selfPct: null,
+          }
+        : null
+      : history
+        ? consumptionHeadline(history.totals, effectiveUnit, hasProduction)
+        : null;
+  const fmt = (v: number) => (effectiveUnit === "eur" ? formatEur(v, locale) : formatWh(v, locale));
+  const headlineSentence = headline
+    ? [
+        headline.peak !== null && t("energy.headline.peak", { value: fmt(headline.peak) }),
+        headline.offPeak !== null && t("energy.headline.offPeak", { value: fmt(headline.offPeak) }),
+        headline.selfPct !== null &&
+          t("energy.headline.selfConsumed", {
+            pct: formatPercent(headline.selfPct, { locale }),
+          }),
+      ]
+        .filter(Boolean)
+        .join("\u00a0· ")
+    : "";
+
+  // Spec 197 (FR-E6.4) — the shared segmented control, beside the headline.
+  const viewModeControl = hasSubmeters ? (
+    <SegmentedControl<ViewMode>
+      options={[
+        { value: "total", label: t("energy.viewMode.total") },
+        { value: "by-usage", label: t("energy.viewMode.byUsage") },
+      ]}
+      value={viewMode}
+      onChange={setViewMode}
+      label={t("energy.viewMode.label")}
+    />
+  ) : null;
+
   return (
     <div className="p-4 sm:p-6">
       <EnergyMobileNav />
@@ -120,8 +165,10 @@ export function EnergyPage() {
           tablet, where the title and the period controls do not fit side by side. */}
       <div className="flex flex-col sm:flex-row sm:flex-wrap sm:items-center sm:justify-between gap-4 mb-4 sm:mb-6">
         <h1 className="hidden lg:block">{t("energy.consumption")}</h1>
-        <div className="flex flex-col items-start gap-3 sm:flex-row sm:flex-wrap sm:items-center sm:gap-4">
-          <UnitToggle enabled={tariffConfigured} />
+        {/* Spec 197 (FR-E6.5) — one left-aligned column on a phone, the period
+            control at full width. */}
+        <div className="flex flex-col items-stretch gap-3 sm:flex-row sm:flex-wrap sm:items-center sm:gap-4">
+          <UnitToggle enabled={tariffConfigured} className="self-start sm:self-auto" />
           <PeriodSelector />
         </div>
       </div>
@@ -135,33 +182,18 @@ export function EnergyPage() {
         <>
           {/* Consumption chart */}
           <div className="card p-4 sm:p-6">
-            {hasSubmeters && (
-              <div className="flex justify-end mb-3">
-                <div className="inline-flex border border-border rounded-sm overflow-hidden text-caption">
-                  <button
-                    type="button"
-                    onClick={() => setViewMode("total")}
-                    className={
-                      viewMode === "total"
-                        ? "px-3 py-1 bg-primary-fill text-white"
-                        : "px-3 py-1 text-text-secondary hover:bg-bg"
-                    }
-                  >
-                    {t("energy.viewMode.total")}
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setViewMode("by-usage")}
-                    className={
-                      viewMode === "by-usage"
-                        ? "px-3 py-1 bg-primary-fill text-white"
-                        : "px-3 py-1 text-text-secondary hover:bg-bg"
-                    }
-                  >
-                    {t("energy.viewMode.byUsage")}
-                  </button>
-                </div>
-              </div>
+            {/* Spec 197 (FR-E6.1) — the card opens on the period total; the
+                chart below keeps its axes and ticks. */}
+            {headline ? (
+              <PeriodHeadline
+                value={fmt(headline.total)}
+                context={periodContextLabel(period, date, locale, t)}
+                sentence={headlineSentence || undefined}
+                aside={viewModeControl}
+                stale={viewMode === "by-usage" ? byUsageLoading : loading}
+              />
+            ) : (
+              viewModeControl && <div className="flex justify-end mb-4">{viewModeControl}</div>
             )}
 
             {viewMode === "by-usage" ? (
@@ -220,106 +252,36 @@ export function EnergyPage() {
               />
             )}
 
-            {/* Legend below chart — Wh / € via formatEnergyOrCost (spec 123).
-                Autoconso has no € counterpart (it's avoided cost, not billed) so
-                it always renders in kWh, even when the toggle is on €. */}
+            {/* Legend below chart — swatches and names only since spec 197:
+                the figures moved to the headline above. */}
             {history && viewMode === "total" && (
-              <div className="flex flex-col items-center mt-3 gap-1">
-                <div className="flex items-center gap-4 text-small text-text-secondary flex-wrap justify-center">
-                  <span className="flex items-center gap-1.5">
-                    <span
-                      className="inline-block w-2.5 h-2.5 rounded-full"
-                      style={{ backgroundColor: HP_COLOR }}
-                    />
-                    {t("energy.gridConsumption")}
-                    {t("common.colon")}
-                    {formatEnergyOrCost(
-                      history.totals.total_consumption,
-                      history.totals.cost_total,
-                      effectiveUnit,
-                      locale,
-                    )}
-                  </span>
-                  {hasHpHc && (
-                    // Spec 196 (FR-E) — one swatch per tariff, the colours of
-                    // the two stacked bars, instead of one swatch for both.
-                    <span className="flex items-center gap-1 text-text-tertiary">
-                      <span className="flex items-center gap-0.5">
-                        (
-                        <span
-                          className="inline-block w-2 h-2 rounded-full"
-                          style={{ backgroundColor: HP_COLOR }}
-                        />
-                      </span>
-                      <span>
-                        {t("energy.peakHours")}
-                        {t("common.colon")}
-                        {formatEnergyOrCost(
-                          history.totals.total_hp,
-                          history.totals.cost_hp,
-                          effectiveUnit,
-                          locale,
-                        )}
-                      </span>
-                      <span className="mx-0.5">/</span>
-                      <span
-                        className="inline-block w-2 h-2 rounded-full"
-                        style={{ backgroundColor: HC_COLOR }}
-                      />
-                      <span>
-                        {t("energy.offPeakHours")}
-                        {t("common.colon")}
-                        {formatEnergyOrCost(
-                          history.totals.total_hc,
-                          history.totals.cost_hc,
-                          effectiveUnit,
-                          locale,
-                        )}
-                        )
-                      </span>
-                    </span>
-                  )}
-                  {hasProduction && history.totals.total_autoconso > 0 && (
-                    <span className="flex items-center gap-1.5">
-                      <span
-                        className="inline-block w-2.5 h-2.5 rounded-full"
-                        style={{ backgroundColor: AUTOCONSO_COLOR }}
-                      />
-                      {t("energy.autoconsumption")}
-                      {t("common.colon")}
-                      {formatWh(history.totals.total_autoconso, locale)}
-                    </span>
-                  )}
-                </div>
-                <div className="text-lead font-semibold text-text tabular-nums mt-1">
-                  {t("energy.total")}
-                  {t("common.colon")}
-                  {formatEnergyOrCost(
-                    history.totals.total_consumption + (history.totals.total_autoconso ?? 0),
-                    history.totals.cost_total,
-                    effectiveUnit,
-                    locale,
-                  )}
-                  {hasProduction &&
-                    history.totals.total_consumption > 0 &&
-                    history.totals.total_autoconso > 0 && (
-                      <span className="ml-2 font-normal text-text-secondary">
-                        (
-                        {formatPercent(
-                          (history.totals.total_autoconso /
-                            (history.totals.total_consumption + history.totals.total_autoconso)) *
-                            100,
-                          { locale },
-                        )}{" "}
-                        {t("energy.autoconsumption").toLowerCase()})
-                      </span>
-                    )}
-                </div>
+              <div className="flex items-center justify-center gap-4 mt-3 text-small text-text-secondary flex-wrap">
+                {hasHpHc ? (
+                  <>
+                    <LegendKey color={HP_COLOR} label={t("energy.peakHours")} />
+                    <LegendKey color={HC_COLOR} label={t("energy.offPeakHours")} />
+                  </>
+                ) : (
+                  <LegendKey color={HP_COLOR} label={t("energy.gridConsumption")} />
+                )}
+                {hasProduction && history.totals.total_autoconso > 0 && (
+                  <LegendKey color={AUTOCONSO_COLOR} label={t("energy.autoconsumption")} />
+                )}
               </div>
             )}
           </div>
         </>
       )}
     </div>
+  );
+}
+
+/** One legend entry: the bar's colour and its name, no figure (spec 197). */
+function LegendKey({ color, label }: { color: string; label: string }) {
+  return (
+    <span className="flex items-center gap-1.5">
+      <span className="inline-block w-2.5 h-2.5 rounded-full" style={{ backgroundColor: color }} />
+      {label}
+    </span>
   );
 }
