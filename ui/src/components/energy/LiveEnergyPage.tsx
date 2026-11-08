@@ -127,14 +127,16 @@ export function LiveEnergyPage() {
               row, the phases under the breakdown. Below `lg` the right column
               dissolves (`contents`) and the order classes keep the stacking
               of before: flow, phases, breakdown. */}
-          <div className="flex flex-col gap-4 lg:grid lg:grid-cols-[7fr_5fr] lg:items-stretch">
+          {/* A home with neither sub-meters nor phases has nothing for the right
+              column: the flow card then takes the whole row. */}
+          <div className="flex flex-col gap-4 lg:grid lg:grid-cols-[7fr_5fr] lg:items-stretch lg:has-[>[data-live-aside]:empty]:grid-cols-1">
             <LiveDiagram
               gridPower={gridPower}
               solarPower={solarPower}
               staleness={staleness}
               className="order-1 lg:order-none"
             />
-            <div className="contents lg:flex lg:flex-col lg:gap-4 lg:min-w-0">
+            <div className="contents lg:flex lg:flex-col lg:gap-4 lg:min-w-0" data-live-aside>
               <LiveSubmeterBreakdown
                 house={
                   gridPower !== null || solarPower !== null
@@ -222,9 +224,13 @@ function LiveDiagram({
   //   solar→house : production used locally
   //   grid→house  : imported supply (only when importing)
   //   solar→grid  : surplus exported (only when exporting)
-  const flowSolarToHouse = Math.max(0, Math.min(solar, house));
-  const flowGridToHouse = Math.max(0, grid);
-  const flowSolarToGrid = Math.max(0, -grid);
+  //
+  // A flow under 5 W is meter noise: it lights no route, so a house the
+  // headline calls « Autonome » shows no grid route either.
+  const lit = (w: number) => (w >= BALANCE_THRESHOLD_W ? w : 0);
+  const flowSolarToHouse = lit(Math.max(0, Math.min(solar, house)));
+  const flowGridToHouse = lit(Math.max(0, grid));
+  const flowSolarToGrid = lit(Math.max(0, -grid));
 
   const gridColor = exporting ? GRID_OFF_COLOR : GRID_COLOR;
 
@@ -253,7 +259,9 @@ function LiveDiagram({
   const balance = liveHeadline({
     gridW: gridPower,
     solarW: solarPower,
-    stale: staleEntry ? { source: staleEntry.source, since: staleEntry.since } : null,
+    stale: staleEntry
+      ? { source: staleEntry.source, since: staleEntry.since, mode: staleEntry.mode }
+      : null,
   });
   const gridWord =
     gridPower === null || Math.abs(grid) < BALANCE_THRESHOLD_W
@@ -298,7 +306,7 @@ function LiveDiagram({
             unit: houseValue.unit,
             icon: (
               <svg
-                className="w-11 h-11 sm:w-14 sm:h-14"
+                className="w-11 h-11 @lg:w-14 @lg:h-14"
                 viewBox="0 0 24 24"
                 fill="none"
                 stroke="currentColor"
@@ -328,7 +336,7 @@ function LiveDiagram({
             value: gridValue.value,
             unit: gridValue.unit,
             sub: gridWord,
-            icon: <GridPylonIcon className="w-9 h-9 sm:w-10 sm:h-10" />,
+            icon: <GridPylonIcon className="w-9 h-9 @lg:w-10 @lg:h-10" />,
           },
           {
             slot: "right",
@@ -337,7 +345,7 @@ function LiveDiagram({
             dimmed: solar < BALANCE_THRESHOLD_W,
             value: solarValue.value,
             unit: solarValue.unit,
-            icon: <SolarPanelIcon className="w-9 h-9 sm:w-10 sm:h-10" strokeWidth={1.4} />,
+            icon: <SolarPanelIcon className="w-9 h-9 @lg:w-10 @lg:h-10" strokeWidth={1.4} />,
           },
         ]}
       />
@@ -385,7 +393,9 @@ function buildHeadline(h: LiveHeadline, t: T): FlowHeadline {
               {sentence !== null ? " · " : ""}
               {when === ""
                 ? t("energy.live.headline.staleUnknown")
-                : t("energy.live.headline.stale", { when })}
+                : h.stale.mode === "frozen"
+                  ? t("energy.live.headline.frozen", { when })
+                  : t("energy.live.headline.stale", { when })}
             </span>
           )}
         </>

@@ -28,10 +28,17 @@ export type FlowEdge = "leftToFocal" | "rightToFocal" | "rightToLeft" | "leftToR
  *
  * Box geometry (heights explicit so the centres are deterministic):
  *   focal  top-0               h-[45%] w-[36%] → y   0..130, centre (270,  65)
- *                                       sm:w-[24%] (x 205..335, see SLOT_BOX)
+ *                                      @lg:w-[24%] (x 205..335, see SLOT_BOX)
  *   left   top-[62%] centred   h-[36%] w-[22%] → y 128..232, centre ( 60, 180)
  *   right  top-[62%] centred   h-[36%] w-[22%] → y 128..232, centre (480, 180)
- * Below `sm` the satellites are 24 % wide from -1 %: same centres (#1129).
+ * In a narrow diagram the satellites are 24 % wide from -1 %: same centres (#1129).
+ *
+ * The narrow and wide sizes switch on the diagram's own width, a container
+ * query at 32 rem (`@lg:`), not on the screen's (spec 197). From `lg` the Live
+ * diagram sits in a 7/12 column, 360 px wide at 1024 px with the sidebar
+ * open: sized by the screen, its nodes took the wide sizes in a frame too
+ * short for them. A diagram under 512 px wide gets the phone's sizes and the
+ * phone's fixed 260 px height, wherever it is.
  */
 export const VIEWBOX_HEIGHT = 290;
 export const PATHS: Record<FlowEdge, string> = {
@@ -49,43 +56,43 @@ export const PILL_POSITION: Record<FlowEdge, string> = {
   leftToRight: "left-1/2 top-[93%] -translate-x-1/2 -translate-y-1/2",
 };
 
-// A satellite node is 22 % of the diagram from `sm`, 24 % below it with 2 px
+// A satellite node is 22 % of a wide diagram (`@lg`), 24 % of a narrow one with 2 px
 // of side padding. On a phone the diagram is the viewport less 64 px (page
 // and card padding). At 22 % with 4 px of padding the widest figure,
 // « ↑ 10,5 kW » (61 px), ran 3.8 px past the content box at 360 px and
 // 0.5 px at 390 px, and « Production » filled it to the pixel (#1129,
 // measured in Chromium). Now the content box is 67 px at 360 px, 74 px at
-// 390 px. Below `sm` the box also steps 1 % outward so its centre stays at
+// 390 px. In a narrow diagram the box also steps 1 % outward so its centre stays at
 // 11 % / 89 %, where the routes of PATHS meet it (x = 60 and 480 of 540).
-// The focal box takes 8 px of side padding below `sm`: « Consommation », set
+// The focal box takes 8 px of side padding in a narrow diagram: « Consommation », set
 // at 12 px, ran 2 px past its content box at 360 px with 12 px of padding.
-// From `sm` it narrows to 24 % (130 px at the narrowest, 144 px at 600 px,
+// From `@lg` it narrows to 24 % (123 px at the narrowest, 144 px at 600 px,
 // « Consommation » and « 10,5 kW » need about 90): the box is the card's
 // own colour since spec 197, so the routes appear to end where it starts, and
 // at 36 % they stopped 50 px short of the node they feed.
 export const SLOT_BOX: Record<FlowSlot, string> = {
-  focal: "top-0 left-1/2 -translate-x-1/2 w-[36%] sm:w-[24%] h-[45%] px-2 sm:px-3 py-2",
-  left: "top-[62%] -translate-y-1/2 -left-[1%] sm:left-0 w-[24%] sm:w-[22%] h-[36%] px-0.5 sm:px-2 py-2",
+  focal: "top-0 left-1/2 -translate-x-1/2 w-[36%] @lg:w-[24%] h-[45%] px-2 @lg:px-3 py-2",
+  left: "top-[62%] -translate-y-1/2 -left-[1%] @lg:left-0 w-[24%] @lg:w-[22%] h-[36%] px-0.5 @lg:px-2 py-2",
   right:
-    "top-[62%] -translate-y-1/2 -right-[1%] sm:right-0 w-[24%] sm:w-[22%] h-[36%] px-0.5 sm:px-2 py-2",
+    "top-[62%] -translate-y-1/2 -right-[1%] @lg:right-0 w-[24%] @lg:w-[22%] h-[36%] px-0.5 @lg:px-2 py-2",
 };
 
 export const SLOT_LABEL: Record<FlowSlot, string> = {
-  focal: "text-caption sm:text-small",
-  left: "text-micro sm:text-small",
-  right: "text-micro sm:text-small",
+  focal: "text-caption @lg:text-small",
+  left: "text-micro @lg:text-small",
+  right: "text-micro @lg:text-small",
 };
 
 export const SLOT_VALUE: Record<FlowSlot, string> = {
-  focal: "text-title sm:text-display gap-1 mt-1",
-  left: "text-body sm:text-title gap-0.5 sm:gap-1",
-  right: "text-body sm:text-title gap-0.5 sm:gap-1",
+  focal: "text-title @lg:text-display gap-1 mt-1",
+  left: "text-body @lg:text-title gap-0.5 @lg:gap-1",
+  right: "text-body @lg:text-title gap-0.5 @lg:gap-1",
 };
 
 export interface FlowNodeSpec {
   slot: FlowSlot;
   label: string;
-  /** Fully styled icon — callers size it (w-11 sm:w-14 focal, w-9 sm:w-10 satellites). */
+  /** Fully styled icon — callers size it (w-11 @lg:w-14 focal, w-9 @lg:w-10 satellites). */
   icon: ReactNode;
   /** Pre-formatted value; the diagram never formats. */
   value: string;
@@ -185,16 +192,19 @@ export function flowDotSeconds(tier: FlowTier): number {
  * (spec 197, FR-E4.3: the maintainer turned down a mid-route chevron).
  *
  * From the box geometry above: the focal box spans 32..68 % of the width
- * below `sm` and 38..62 % from it (`smLeft`); the satellites end at
- * y 62 % + 36 % / 2 = 80 % of the height. The phone's wider satellites keep
+ * in a narrow diagram and 38..62 % in a wide one (`wideLeft`). A satellite
+ * box ends at y 62 % + 36 % / 2 = 80 %, but in a narrow diagram its contents
+ * run a few pixels past it (a fourth line, « export » or the UPS runtime,
+ * needs about 103 px of a 94 px box at 360 px), so the head stops at 83 %,
+ * under the last line rather than on it. The phone's wider satellites keep
  * the same centre and height, so their points hold at every size.
  */
 export const ROUTE_END: Record<
   FlowEdge,
-  { left: number; smLeft: number; top: number; angle: number }
+  { left: number; wideLeft: number; top: number; angle: number }
 > = {
-  leftToFocal: { left: 32, smLeft: 38, top: (65 / VIEWBOX_HEIGHT) * 100, angle: 0 },
-  rightToFocal: { left: 68, smLeft: 62, top: (65 / VIEWBOX_HEIGHT) * 100, angle: 180 },
-  rightToLeft: { left: (60 / 540) * 100, smLeft: (60 / 540) * 100, top: 80, angle: -90 },
-  leftToRight: { left: (480 / 540) * 100, smLeft: (480 / 540) * 100, top: 80, angle: -90 },
+  leftToFocal: { left: 32, wideLeft: 38, top: (65 / VIEWBOX_HEIGHT) * 100, angle: 0 },
+  rightToFocal: { left: 68, wideLeft: 62, top: (65 / VIEWBOX_HEIGHT) * 100, angle: 180 },
+  rightToLeft: { left: (60 / 540) * 100, wideLeft: (60 / 540) * 100, top: 83, angle: -90 },
+  leftToRight: { left: (480 / 540) * 100, wideLeft: (480 / 540) * 100, top: 83, angle: -90 },
 };

@@ -145,11 +145,11 @@ function EndCap({ link }: { link: FlowLinkSpec }) {
   const length = width + 7;
   return (
     <span
-      className="absolute w-0 h-0 z-20 pointer-events-none left-(--cap-left) sm:left-(--cap-left-sm)"
+      className="absolute w-0 h-0 z-20 pointer-events-none left-(--cap-left) @lg:left-(--cap-left-wide)"
       style={
         {
           "--cap-left": `${end.left}%`,
-          "--cap-left-sm": `${end.smLeft}%`,
+          "--cap-left-wide": `${end.wideLeft}%`,
           top: `${end.top}%`,
           transform: `rotate(${end.angle}deg)`,
           transformOrigin: "0 0",
@@ -179,16 +179,19 @@ export function FlowDiagram({ nodes, links, headline, ariaLabel }: FlowDiagramPr
   const hidden = ariaLabel ? true : undefined;
 
   return (
-    <div role={ariaLabel ? "img" : undefined} aria-label={ariaLabel}>
+    // One centred block, headline and diagram aligned on the same left edge,
+    // and the container whose width sizes the nodes (`@lg:` in SLOT_BOX).
+    <div
+      className="@container max-w-[600px] mx-auto"
+      role={ariaLabel ? "img" : undefined}
+      aria-label={ariaLabel}
+    >
       {headline && (
         <div aria-hidden={hidden}>
           <Headline headline={headline} />
         </div>
       )}
-      <div
-        className="relative h-[260px] sm:h-auto sm:aspect-[54/29] max-w-[600px] mx-auto"
-        aria-hidden={hidden}
-      >
+      <div className="relative h-[260px] @lg:h-auto @lg:aspect-[54/29]" aria-hidden={hidden}>
         <svg
           viewBox={`0 0 540 ${VIEWBOX_HEIGHT}`}
           preserveAspectRatio="none"

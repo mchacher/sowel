@@ -103,7 +103,7 @@ export function LiveSubmeterBreakdown({ house, hasMainMeter, className }: Props)
       <SectionHeader title={t("energy.live.breakdown.title")} />
 
       {/* Side by side when the card is wide enough, whatever the viewport:
-          from \`lg\` the card is the narrow right column of the page. */}
+          from lg the card is the narrow right column of the page. */}
       <div className="flex flex-col @md:flex-row items-center @md:items-start gap-6">
         <Donut
           segments={segments}

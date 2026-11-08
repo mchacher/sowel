@@ -7,8 +7,9 @@
  * the one production surface the extraction puts at risk.
  */
 
-import { describe, it, expect, beforeEach, vi } from "vitest";
+import { describe, it, expect, beforeEach, afterEach, vi } from "vitest";
 import { render, screen, within } from "../../test-utils";
+import { BUDGET_FLOOR_MS } from "../../../../src/shared/reading-freshness";
 import { MemoryRouter } from "react-router-dom";
 import { LiveEnergyPage } from "./LiveEnergyPage";
 import { useEquipments } from "../../store/useEquipments";
@@ -188,9 +189,87 @@ describe("Live energy diagram — nodes and status", () => {
   });
 });
 
+// Spec 197 (FR-E1.1) — what the sentence under the figure says, rendered.
+describe("Live energy headline — sentence", () => {
+  const NOW = Date.parse("2026-11-08T08:00:00Z");
+  beforeEach(() => {
+    vi.useFakeTimers();
+    vi.setSystemTime(NOW);
+  });
+  afterEach(() => vi.useRealTimers());
+
+  /** A meter whose reading is `ageMs` old, judged as a streaming source. */
+  const dated = (
+    id: string,
+    type: EquipmentWithDetails["type"],
+    power: number,
+    ageMs = 5_000,
+  ): EquipmentWithDetails =>
+    ({
+      ...meter(id, type, power),
+      dataBindings: [
+        {
+          id: `${id}-p`,
+          alias: "power",
+          category: "power",
+          type: "number",
+          value: power,
+          lastUpdated: new Date(NOW - ageMs).toISOString(),
+          freshnessBudgetMs: BUDGET_FLOOR_MS,
+          stale: false,
+        },
+      ],
+    }) as unknown as EquipmentWithDetails;
+
+  it("says « No solar production » when the panels give nothing", () => {
+    seed([dated("grid", "main_energy_meter", 1500), dated("pv", "energy_production_meter", 0)]);
+    render(<LiveEnergyPage />, { wrapper: MemoryRouter });
+    const headline = screen.getByTestId("flow-headline");
+    expect(headline.textContent).toContain("Grid import");
+    expect(headline.textContent).toContain("No solar production");
+  });
+
+  it("ends the sentence with the age of a late grid reading, in the warning ink", () => {
+    seed([
+      dated("grid", "main_energy_meter", 1500, 12 * 60_000),
+      dated("pv", "energy_production_meter", 300),
+    ]);
+    render(<LiveEnergyPage />, { wrapper: MemoryRouter });
+    const age = within(screen.getByTestId("flow-headline")).getByText(/read 12\smin ago/);
+    expect(age.className).toContain("text-warning-ink");
+    expect(age.textContent).toMatch(/^ · /);
+    // The figure stays.
+    expect(within(screen.getByTestId("flow-headline")).getByText("1.5")).toBeTruthy();
+  });
+
+  it("adds no age while every reading is current", () => {
+    seed([dated("grid", "main_energy_meter", 1500), dated("pv", "energy_production_meter", 300)]);
+    render(<LiveEnergyPage />, { wrapper: MemoryRouter });
+    expect(screen.getByTestId("flow-headline").textContent).not.toMatch(/ago/);
+  });
+});
+
 // Spec 197 (FR-E3.1) — from `lg`, flow and breakdown share one row; below it,
 // the stacking of before: flow, phases, breakdown.
 describe("Live energy page — layout", () => {
+  it("lets the flow card take the row when there is nothing for the right column", () => {
+    seed([meter("grid", "main_energy_meter", 1000), meter("pv", "energy_production_meter", 400)]);
+    render(<LiveEnergyPage />, { wrapper: MemoryRouter });
+    const row = screen.getByText("Live flows").closest(".card")!.parentElement as HTMLElement;
+    const aside = row.querySelector("[data-live-aside]") as HTMLElement;
+    expect(aside.childElementCount).toBe(0);
+    expect(row.className).toContain("lg:has-[>[data-live-aside]:empty]:grid-cols-1");
+  });
+
+  it("lights no route for a flow under 5 W", () => {
+    seed([meter("grid", "main_energy_meter", 3), meter("pv", "energy_production_meter", 900)]);
+    const { container } = render(<LiveEnergyPage />, { wrapper: MemoryRouter });
+    expect(strokesFor(container, PATH_GRID_TO_HOUSE)).toEqual(["var(--color-border)"]);
+    expect(screen.getAllByTestId("flow-end-cap").map((c) => c.dataset.edge)).toEqual([
+      "rightToFocal",
+    ]);
+  });
+
   it("puts the flow and the breakdown side by side from lg, the phases under the breakdown", () => {
     seed([
       {

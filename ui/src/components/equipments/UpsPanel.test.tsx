@@ -78,7 +78,7 @@ describe("UpsPanel on mains", () => {
     render(<UpsPanel dataBindings={pctOnly} />);
     const headline = screen.getByTestId("flow-headline");
     expect(within(headline).getByText("4")).toBeTruthy();
-    expect(within(headline).getByText("% load")).toBeTruthy();
+    expect(within(headline).getByText("% of capacity")).toBeTruthy();
   });
 
   it("shows a dash for a load it cannot read, as the node does", () => {
@@ -118,9 +118,15 @@ describe("UpsPanel during an outage", () => {
     expect(paintedStrokes(container)).not.toContain("var(--color-energy-grid)");
   });
 
-  it("moves the autonomy onto the active branch as a pill", () => {
+  it("says the time left once, as the headline, not again on the route", () => {
     render(<UpsPanel dataBindings={outage()} />);
-    expect(screen.getByText("6 min")).toBeTruthy();
+    expect(screen.queryByText("6 min")).toBeNull();
+    expect(within(screen.getByTestId("flow-headline")).getByText("6")).toBeTruthy();
+  });
+
+  it("tells a screen reader the status before the flow", () => {
+    render(<UpsPanel dataBindings={outage()} />);
+    expect(screen.getByRole("img", { name: /^Battery low\. Mains absent\./ })).toBeTruthy();
   });
 
   it("reads the time left as the headline, the charge it spends as its sentence", () => {

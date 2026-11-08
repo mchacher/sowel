@@ -10,6 +10,14 @@
 /** Below this, the grid is neither importing nor exporting: meter noise. */
 export const BALANCE_THRESHOLD_W = 5;
 
+/** A reading behind the figure that the staleness banner flags (spec 179). */
+export interface LiveHeadlineStale {
+  source: "grid" | "solar";
+  since: string | null;
+  /** `frozen`: readings arrive but the value stopped moving since `since`. */
+  mode?: "stale" | "offline" | "frozen";
+}
+
 export type LiveHeadlineKind = "import" | "export" | "self" | "consumption-only";
 
 export interface LiveHeadlineInput {
@@ -17,8 +25,8 @@ export interface LiveHeadlineInput {
   gridW: number | null;
   /** Solar production. Null without a production source. */
   solarW: number | null;
-  /** Which source's reading is past its freshness budget, with its age. */
-  stale?: { source: "grid" | "solar"; since: string | null } | null;
+  /** Which source's reading cannot be trusted, since when, and why. */
+  stale?: LiveHeadlineStale | null;
 }
 
 export interface LiveHeadline {
@@ -33,7 +41,7 @@ export interface LiveHeadline {
    */
   solarPct: number | null;
   /** The stale source, when a reading behind the figure is old. */
-  stale: { source: "grid" | "solar"; since: string | null } | null;
+  stale: LiveHeadlineStale | null;
 }
 
 export function liveHeadline({ gridW, solarW, stale = null }: LiveHeadlineInput): LiveHeadline {

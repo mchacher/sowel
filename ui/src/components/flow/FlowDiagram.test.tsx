@@ -268,7 +268,7 @@ describe("FlowDiagram satellite geometry", () => {
     "keeps the %s satellite centred on its route, phone and wider",
     (slot) => {
       const cls = SLOT_BOX[slot];
-      for (const prefix of ["", "sm:"]) {
+      for (const prefix of ["", "@lg:"]) {
         const offset = pct(cls, slot, prefix);
         const width = pct(cls, "w", prefix);
         expect(offset, `${prefix}${slot}`).not.toBeNull();

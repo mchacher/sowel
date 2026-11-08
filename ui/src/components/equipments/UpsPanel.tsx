@@ -115,7 +115,7 @@ export function UpsPanel({ dataBindings }: UpsPanelProps) {
             ? formatNumber(r.loadPct, { decimals: 0 })
             : "—",
       unit: r.loadW !== null ? "W" : r.loadPct !== null ? "%" : undefined,
-      icon: <Server className="w-11 h-11 sm:w-14 sm:h-14" strokeWidth={1.5} />,
+      icon: <Server className="w-11 h-11 @lg:w-14 @lg:h-14" strokeWidth={1.5} />,
     },
     {
       slot: "left",
@@ -128,7 +128,7 @@ export function UpsPanel({ dataBindings }: UpsPanelProps) {
           ? formatNumber(r.inputV, { decimals: 0 })
           : "—",
       unit: onBattery || r.inputV === null ? undefined : "V",
-      icon: <GridPylonIcon className="w-9 h-9 sm:w-10 sm:h-10" />,
+      icon: <GridPylonIcon className="w-9 h-9 @lg:w-10 @lg:h-10" />,
     },
     {
       slot: "right",
@@ -160,9 +160,8 @@ export function UpsPanel({ dataBindings }: UpsPanelProps) {
       color: batteryBranchColor,
       active: onBattery,
       powerW: r.loadW ?? undefined,
-      // During an outage the autonomy is the only number worth reading, and it
-      // sits where the solar page puts its share-of-supply percentage.
-      ...(onBattery && runtimeLabel ? { pill: { text: runtimeLabel } } : {}),
+      // No runtime pill on this route any more: during an outage the time
+      // left is the headline's figure (spec 197), and nothing is said twice.
     },
     {
       edge: "leftToRight",
@@ -204,7 +203,9 @@ export function UpsPanel({ dataBindings }: UpsPanelProps) {
           : {}),
       };
 
-  const ariaLabel = onBattery
+  // The status leads: the visible headline is hidden from screen readers, and
+  // « Batterie faible » or « Surcharge » must not be lost with it.
+  const flowSentence = onBattery
     ? t("equipments.ups.aria.onBattery", {
         charge: r.chargePct != null ? formatPercent(r.chargePct) : "?",
         runtime: runtimeLabel ?? "?",
@@ -215,6 +216,7 @@ export function UpsPanel({ dataBindings }: UpsPanelProps) {
         power: r.loadW != null ? formatPower(r.loadW) : "?",
         charge: r.chargePct != null ? formatPercent(r.chargePct) : "?",
       });
+  const ariaLabel = `${statusText}. ${flowSentence}`;
 
   const margin = upsMarginOf(r);
   const marginColor =
@@ -366,7 +368,7 @@ function runtimeParts(seconds: number | null): { value: string; unit?: string } 
  * Mirrors the low-battery thresholds the engine already uses (spec 143).
  */
 function batteryIcon(pct: number | null) {
-  const cls = "w-9 h-9 sm:w-10 sm:h-10";
+  const cls = "w-9 h-9 @lg:w-10 @lg:h-10";
   if (pct === null) return <Battery className={cls} strokeWidth={1.5} />;
   if (pct <= 20) return <BatteryWarning className={cls} strokeWidth={1.5} />;
   if (pct <= 50) return <BatteryLow className={cls} strokeWidth={1.5} />;
