@@ -471,3 +471,81 @@ describe("CompactEquipmentCard — readings give way, controls never (#1163)", (
     expect(screen.getByTitle(/Arrêter|End it/i).closest('[data-row-part="controls"]')).toBeTruthy();
   });
 });
+
+// ============================================================
+// Issue #1163 follow-up — the icon carries an open / closed state, so the pill
+// can leave every phone row of the type alike
+// ============================================================
+
+describe("CompactEquipmentCard — state in the row icon (#1163)", () => {
+  const shutter = (position: number, over: Partial<EquipmentWithDetails> = {}) =>
+    makeEquipment("shutter", [], {
+      name: "Volet Sud Ouest",
+      dataBindings: [dataBinding("position", position, { category: "shutter_position" })],
+      orderBindings: [
+        orderBinding("state", { category: "shutter_move", enumValues: ["OPEN", "STOP", "CLOSE"] }),
+      ],
+      ...over,
+    });
+  const gate = (state: "open" | "closed" | null) =>
+    makeEquipment("gate", [], {
+      name: "Porte Garage",
+      dataBindings: state ? [dataBinding("state", state, { category: "gate_state" })] : [],
+      orderBindings: [orderBinding("command", { category: "gate_trigger" })],
+    });
+
+  /** Slats drawn by the shutter icon: one per closed quarter. */
+  const visibleSlats = (icon: Element) =>
+    [...icon.querySelectorAll("line")].filter((l) => (l as SVGElement).style.opacity === "1")
+      .length;
+
+  it("draws a shutter's position in its icon, with the state in words", () => {
+    renderCard(shutter(40));
+    const icon = screen.getByRole("img", { name: /40/ });
+    expect(icon.getAttribute("aria-label")).toMatch(/(Ouvert à|Open) 40/);
+    expect(icon.getAttribute("title")).toBe(icon.getAttribute("aria-label"));
+    expect(visibleSlats(icon)).toBe(2);
+  });
+
+  it("closes the icon's slats on a closed shutter and opens them on an open one", () => {
+    const { unmount } = renderCard(shutter(0));
+    const closed = screen.getByRole("img", { name: /Fermé|Closed/ });
+    expect(visibleSlats(closed)).toBe(4);
+    unmount();
+    renderCard(shutter(100));
+    expect(visibleSlats(screen.getByRole("img", { name: /^(Ouvert|Open)$/ }))).toBe(0);
+  });
+
+  it("draws a gate open or closed in its icon", () => {
+    const { container, unmount } = renderCard(gate("closed"));
+    expect(screen.getByRole("img", { name: /Fermé|Closed/ })).toBeTruthy();
+    expect(container.querySelector(".lucide-door-closed")).toBeTruthy();
+    unmount();
+    const open = renderCard(gate("open"));
+    expect(screen.getByRole("img", { name: /^(Ouvert|Open)$/ })).toBeTruthy();
+    expect(open.container.querySelector(".lucide-door-open")).toBeTruthy();
+  });
+
+  it("keeps the type's icon when the state is unknown, still naming it", () => {
+    const { container } = renderCard(gate(null));
+    expect(screen.getByRole("img", { name: /inconnu|Unknown/i })).toBeTruthy();
+    expect(container.querySelector(".lucide-door-closed")).toBeNull();
+  });
+
+  it("hides the state pill on phones for every shutter and gate row, whatever its name", () => {
+    for (const eq of [shutter(40, { name: "Volet" }), shutter(0), gate("open")]) {
+      const { container, unmount } = renderCard(eq);
+      const pillGroup = container.querySelector('[data-row-readings="main"]')!;
+      expect(pillGroup.className).toMatch(/(^|\s)hidden(\s|$)/);
+      expect(pillGroup.className).toContain("sm:flex");
+      unmount();
+    }
+  });
+
+  it("leaves the other readings to their give-way rule", () => {
+    const { container } = renderCard(thermostat());
+    const group = container.querySelector('[data-row-readings="main"]')!;
+    expect(group.className).not.toContain("sm:flex");
+    expect(container.querySelector("[data-row-state]")).toBeNull();
+  });
+});

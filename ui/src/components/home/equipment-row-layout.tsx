@@ -90,10 +90,17 @@ export function RowSpacer() {
 export function RowReadings({
   children,
   trailing = false,
+  fromSm = false,
   gap = "2",
 }: {
   children: ReactNode;
   trailing?: boolean;
+  /**
+   * Shown from 640 px only, on every row alike: a state the row's icon already
+   * draws (a shutter's position, a gate's open / closed) leaves phones whole,
+   * never on one row and not its neighbour.
+   */
+  fromSm?: boolean;
   gap?: "2" | "3";
 }) {
   const items = Children.toArray(children);
@@ -103,7 +110,7 @@ export function RowReadings({
     <div
       data-row-part="readings"
       data-row-readings={trailing ? "trailing" : "main"}
-      className={`pointer-events-none flex h-8 flex-wrap justify-end ${
+      className={`pointer-events-none ${fromSm ? "hidden sm:flex" : "flex"} h-8 flex-wrap justify-end ${
         trailing
           ? "w-0 grow max-w-max overflow-hidden"
           : // "group-has-…/eqrow:" = the row has a live control: a control group

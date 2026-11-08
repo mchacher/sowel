@@ -38,6 +38,7 @@ import {
 import { syntheticBindingFromComputed } from "../equipments/weather-utils";
 import { EquipmentStatusBadge } from "../equipments/EquipmentStatusBadge";
 import { equipmentLinkState } from "../../lib/equipment-origin";
+import { hasRowStateIcon, rowStateOf } from "./row-state-icon";
 import { EquipmentRow, RowControls, RowName, RowReadings, RowSpacer } from "./equipment-row-layout";
 import { pickLivePowerBinding, formatWatts } from "../../lib/energy-meter-display";
 import { resolvePowerReading } from "../../lib/power-reading";
@@ -245,6 +246,7 @@ export function CompactEquipmentCard({
   // #1163 — every piece right of the name is a reading or a control. Readings
   // give way first (`RowReadings`), and a row without a live control keeps its
   // first one; controls never go (`RowControls`): the name wraps.
+  const rowState = hasRowStateIcon(equipment) ? rowStateOf(equipment, t) : null;
   const sensorValues =
     equipment.type === "weather"
       ? buildWeatherCompactBindings(equipment, sensorBindings)
@@ -252,11 +254,17 @@ export function CompactEquipmentCard({
 
   return (
     <EquipmentRow>
-      {/* Icon */}
+      {/* Icon — a shutter, awning, pool cover, door or gate draws its state in
+          it, named for screen readers (#1163): on a phone it is the only place
+          that state shows. */}
       <div
         className={`w-8 h-8 rounded-md flex items-center justify-center flex-shrink-0 ${iconBg} ${iconText} ${iconAnimation}`}
+        data-row-state={rowState ? rowState.label : undefined}
+        role={rowState ? "img" : undefined}
+        aria-label={rowState?.label}
+        title={rowState?.label}
       >
-        {iconElement}
+        {rowState?.icon ?? iconElement}
       </div>
 
       {/* Name (+ degraded badge inline, spec 116) — the row's one link */}
@@ -412,7 +420,7 @@ export function CompactEquipmentCard({
           (and the slider, from sm) stay. */}
       {(isShutterFamily || isPoolCover) && equipment.enabled && (
         <>
-          <RowReadings>
+          <RowReadings fromSm={!rowState?.keepPill}>
             <ShutterStatePill equipment={equipment} />
           </RowReadings>
           <RowControls>
@@ -446,7 +454,7 @@ export function CompactEquipmentCard({
       {/* Gate: the state pill gives way, the command stays */}
       {isGate && equipment.enabled && (
         <>
-          <RowReadings>
+          <RowReadings fromSm>
             <GateStateBadge equipment={equipment} />
           </RowReadings>
           <RowControls>
