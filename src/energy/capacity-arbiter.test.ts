@@ -3150,3 +3150,128 @@ describe("re-adopting a load running outside arbitration (#958)", () => {
     expect(h.arbiter.getPublicState().suspensions[0]?.equipmentId).toBe("heater");
   });
 });
+
+// ============================================================
+// #1154 — a load handed back while it is still running, with no grant, is
+// running outside arbitration. The ribbon (journal replay) said so from the
+// `resumed{running:true}` entry; the roster (live set) said "au repos", and
+// the OFF that ends the run was dropped, so the span never closed.
+// ============================================================
+
+describe("a load handed back while running reads unmanaged on both halves (#1154)", () => {
+  beforeEach(() => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date("2026-11-07T18:46:00Z"));
+  });
+  afterEach(() => {
+    vi.useRealTimers();
+  });
+
+  const row = (h: ReturnType<typeof makeHarness>, id: string) =>
+    h.arbiter.getPublicState().loads.find((l) => l.equipmentId === id);
+  const idleRow = (h: ReturnType<typeof makeHarness>, id: string) =>
+    h.arbiter.getPublicState().idle.find((l) => l.equipmentId === id);
+  /** The ribbon's last cell, once the current quarter is complete. */
+  const lastCell = (h: ReturnType<typeof makeHarness>, id: string) => {
+    vi.advanceTimersByTime(15 * 60_000);
+    return h.arbiter
+      .getTimeline(Date.now(), 6)
+      .loads.find((l) => l.equipmentId === id)
+      ?.quarters.at(-1);
+  };
+  const kinds = (h: ReturnType<typeof makeHarness>, id: string) =>
+    h.arbiter
+      .getPublicState()
+      .journal.filter((j) => j.equipmentId === id)
+      .map((j) => j.kind)
+      .reverse();
+
+  /** The production PAC: switched on by hand, suspended, TTL expires while it runs. */
+  const suspendedRunningPac = () => {
+    const h = makeHarness({ settings: { "energy.arbiter.overrideTtlS": "60" } });
+    h.feedMeter(-100);
+    h.feedState("pac", true);
+    h.order("pac", true, { kind: "manual" });
+    expect(row(h, "pac")?.state).toBe("suspended");
+    return h;
+  };
+
+  it("a TTL expiry with the comfort load still running reads unmanaged in the roster and the ribbon", () => {
+    const h = suspendedRunningPac();
+    h.run(-100, 80); // past the TTL
+    const resumed = h.arbiter.getPublicState().journal.find((j) => j.kind === "resumed");
+    expect(resumed?.reason).toBe("override-expired");
+    expect(resumed?.running).toBe(true);
+    expect(row(h, "pac")?.state).toBe("unmanaged");
+    expect(idleRow(h, "pac")?.runningUnmanaged).toBe(true);
+    expect(lastCell(h, "pac")).toBe("unmanaged");
+    expect(row(h, "pac")?.state).toBe("unmanaged");
+  });
+
+  it("the run then ends on the load's own OFF report, on both halves", () => {
+    const h = suspendedRunningPac();
+    h.run(-100, 80);
+    h.feedState("pac", false); // the thermostat stops it
+    expect(kinds(h, "pac")).toContain("unclaimed-run-ended");
+    expect(row(h, "pac")?.state).toBe("idle");
+    expect(idleRow(h, "pac")?.runningUnmanaged).toBe(false);
+    expect(lastCell(h, "pac")).toBe("idle");
+  });
+
+  it("a manual resume of a running load reads unmanaged, and journals the run once", () => {
+    const h = makeHarness();
+    h.feedMeter(-100);
+    h.feedState("pac", true);
+    h.order("pac", true, { kind: "manual" });
+    expect(h.arbiter.resumeEquipment("pac")).toBe(true);
+    expect(row(h, "pac")?.state).toBe("unmanaged");
+    h.run(-100, 300);
+    expect(kinds(h, "pac").filter((k) => k === "unclaimed-run")).toHaveLength(1);
+    expect(lastCell(h, "pac")).toBe("unmanaged");
+    h.feedState("pac", false);
+    expect(row(h, "pac")?.state).toBe("idle");
+  });
+
+  it("a load handed back while off is not adopted", () => {
+    const h = makeHarness();
+    h.feedMeter(-100);
+    h.feedState("pac", false);
+    h.order("pac", false, { kind: "manual" });
+    h.arbiter.resumeEquipment("pac");
+    expect(row(h, "pac")?.state).toBe("idle");
+    expect(kinds(h, "pac")).not.toContain("unclaimed-run");
+  });
+
+  it("a restart after a running hand-back reopens the run, and its OFF closes it", () => {
+    // The production journal: no `unclaimed-run` row, only the hand-back.
+    const dec = (kind: ArbiterDecisionKind, atIso: string, running: boolean): ArbiterDecision => ({
+      kind,
+      equipmentId: "pac",
+      equipmentName: "PAC",
+      atIso,
+      reason: kind === "resumed" ? "override-expired" : "user-order",
+      running,
+    });
+    const h = makeHarness({
+      journal: [
+        dec("suspended", "2026-11-07T16:46:29.000Z", true),
+        dec("resumed", "2026-11-07T18:40:00.000Z", true),
+      ],
+    });
+    expect(h.journalRows).toHaveLength(2); // rehydration journals nothing
+    expect(row(h, "pac")?.state).toBe("unmanaged");
+
+    h.feedState("pac", false);
+    expect(h.journalRows.at(-1)?.kind).toBe("unclaimed-run-ended");
+    expect(row(h, "pac")?.state).toBe("idle");
+    expect(lastCell(h, "pac")).toBe("idle");
+  });
+
+  it("the run's power samples teach the learner, as any unclaimed run does (accepted side effect)", () => {
+    const h = suspendedRunningPac();
+    h.run(-100, 80);
+    for (const w of [700, 720, 720, 740, 300]) h.feedLoadPower("pac", w); // 300 < 25 % floor
+    h.feedState("pac", false);
+    expect(h.learnedCalls).toEqual([{ id: "pac", watts: 720, runs: 1 }]);
+  });
+});
