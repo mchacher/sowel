@@ -109,6 +109,9 @@
   "alarms.battery.lowPct": "Batterie faible : {{value}} %",
   "alarms.battery.lowOnDevice": "Batterie faible ({{device}})",
   "alarms.battery.lowPctOnDevice": "Batterie faible : {{value}} % ({{device}})",
+  "alarms.source.orderConfirmation": "Suivi des commandes",
+  "alarms.source.sharedAccess": "Accès partagé",
+  "alarms.source.timedAction": "Actions temporisées",
   "alarms.acknowledge": "Acquitter",
   "alarms.unacknowledge": "Réafficher",
   "alarms.acknowledgedSection": "Acquittées",
@@ -1020,6 +1023,8 @@
   "integrations.oauthError": "Échec de l'autorisation",
   "calendar.title": "Calendrier",
   "calendar.profiles": "Profils de semaine",
+  "calendar.builtInProfile.travail": "Travail",
+  "calendar.builtInProfile.vacances": "Vacances",
   "calendar.active": "actif",
   "calendar.setActive": "Définir comme profil actif",
   "calendar.slots": "Créneaux horaires",
@@ -2177,5 +2182,11 @@
   "alarms.orderOutcome.faultBottom": "{{equipment}} : défaut (contact bas)",
   "alarms.orderOutcome.faultWiring": "{{equipment}} : défaut (câblage)",
   "alarms.orderOutcome.faultDetail": "{{equipment}} : défaut ({{detail}})",
-  "alarms.orderOutcome.recovered": "{{equipment}} : l'état attendu est finalement arrivé"
+  "alarms.orderOutcome.recovered": "{{equipment}} : l'état attendu est finalement arrivé",
+  "alarms.orderOutcome.superseded": "{{equipment}} : alarme levée par une commande suivante",
+  "alarms.orderOutcome.notConfirmedTimeout": "{{equipment}} : commande {{alias}} → {{value}} non confirmée (aucun changement d'état en {{seconds}} s)",
+  "alarms.orderOutcome.notConfirmedOffline": "{{equipment}} : commande {{alias}} → {{value}} non confirmée (appareil hors ligne)",
+  "alarms.orderOutcome.notConfirmedUnreachable": "{{equipment}} : commande {{alias}} → {{value}} non confirmée (intégration injoignable)",
+  "alarms.orderOutcome.notConfirmedFault": "{{equipment}} : commande {{alias}} → {{value}} non confirmée (l'appareil signale un défaut)",
+  "alarms.orderOutcome.notConfirmedFaultDetail": "{{equipment}} : commande {{alias}} → {{value}} non confirmée (l'appareil signale un défaut : {{detail}})"
 }

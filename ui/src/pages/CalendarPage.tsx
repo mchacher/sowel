@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { Calendar, Plus, Trash2, Loader2, Clock, X, Pencil, Power, PowerOff } from "lucide-react";
 import { useCalendar } from "../store/useCalendar";
+import { calendarProfileLabel } from "../lib/calendar-profile";
 import { useModes } from "../store/useModes";
 import type { CalendarSlot, CalendarModeAction } from "../types";
 import { useWsSubscription } from "../hooks/useWsSubscription";
@@ -113,7 +114,7 @@ export function CalendarPage() {
                     : "bg-border-light text-text-secondary hover:bg-border"
                 }`}
               >
-                {profile.name}
+                {calendarProfileLabel(profile, t)}
                 {profile.id === activeProfileId && (
                   <span className="ml-1.5 text-micro opacity-80">({t("calendar.active")})</span>
                 )}

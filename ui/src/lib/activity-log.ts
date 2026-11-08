@@ -1,4 +1,4 @@
-import { formatNumber, formatTemperature } from "./format";
+import { formatClockTime, formatNumber, formatTemperature } from "./format";
 /**
  * The Maison activity panel as one continuous log (spec 196, slice 7c).
  *
@@ -110,9 +110,8 @@ export function logSpanLabel(
 ): string | null {
   if (items.length === 0) return null;
   const oldest = new Date(Math.min(...items.map((i) => i.timestamp)));
-  const time = new Intl.DateTimeFormat(locale, { hour: "2-digit", minute: "2-digit" }).format(
-    oldest,
-  );
+  // The rows' clock format, so the subtitle and the rows agree (#1151).
+  const time = formatClockTime(oldest, { locale });
   const daysAgo = Math.max(0, daysBetween(oldest, now));
   if (daysAgo === 0) return t("activity.since.today", { time });
   if (daysAgo === 1) return t("activity.since.yesterday", { time });

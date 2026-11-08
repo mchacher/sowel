@@ -1,6 +1,6 @@
 import { describe, it, expect } from "vitest";
 import i18n from "../i18n";
-import { alarmText, dayParam, wordingSignature } from "./alarm-message";
+import { alarmSourceLabel, alarmText, dayParam, wordingSignature } from "./alarm-message";
 
 // Issue #720 — the banner used to hold pre-composed strings, in whatever
 // language happened to be active when the alarm was raised (and, for the
@@ -81,5 +81,20 @@ describe("wordingSignature", () => {
     await i18n.changeLanguage("fr");
     expect(wordingSignature(wording)).toBe(en);
     expect(en).toContain("2026-08-23");
+  });
+});
+
+// #1151 — the alarm surfaces named the core's sources by their raw id.
+describe("alarmSourceLabel", () => {
+  it("names the core's own sources in the viewer's language", async () => {
+    await i18n.changeLanguage("fr");
+    expect(alarmSourceLabel(t, "order-confirmation")).toBe("Suivi des commandes");
+    await i18n.changeLanguage("en");
+    expect(alarmSourceLabel(t, "order-confirmation")).toBe("Order follow-up");
+  });
+
+  it("names a plugin by its label, and keeps any other source as it is", () => {
+    expect(alarmSourceLabel(t, "zigbee2mqtt")).toBe("Zigbee2MQTT");
+    expect(alarmSourceLabel(t, "Salon, Cuisine")).toBe("Salon, Cuisine");
   });
 });

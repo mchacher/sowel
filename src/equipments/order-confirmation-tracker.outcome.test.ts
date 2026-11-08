@@ -719,7 +719,8 @@ describe("OrderConfirmationTracker — spec 188 outcomes", () => {
       });
       vi.advanceTimersByTime(120_000);
       const alarm = alarmsRaised()[0] as { messageKey?: string; message: string };
-      expect(alarm.messageKey).toBeUndefined();
+      // #1151 — keyed for the UI, with the unreachable wording, never an outcome's.
+      expect(alarm.messageKey).toBe("alarms.orderOutcome.notConfirmedUnreachable");
       expect(alarm.message).toContain("integration unreachable");
     });
 

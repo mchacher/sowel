@@ -15,9 +15,28 @@
 import i18n from "../i18n";
 import { dateLocale } from "./locale";
 import { localDayToDate } from "./local-date";
+import { INTEGRATION_LABELS } from "../constants";
 
 /** The only alarm source whose `messageKey` the UI honours (spec 188 order outcomes). */
 export const ORDER_OUTCOME_ALARM_SOURCE = "order-confirmation";
+
+/**
+ * The engine's own alarm sources, named in the viewer's language (#1151). Any
+ * other source is a plugin id (named by `INTEGRATION_LABELS`) or an equipment
+ * name, shown as it is.
+ */
+const CORE_ALARM_SOURCE_KEYS: Record<string, string> = {
+  [ORDER_OUTCOME_ALARM_SOURCE]: "alarms.source.orderConfirmation",
+  "shared-access": "alarms.source.sharedAccess",
+  "timed-action": "alarms.source.timedAction",
+};
+
+/** The human name of an alarm's source, never the raw core id. */
+export function alarmSourceLabel(t: (key: string) => string, source: string): string {
+  const key = CORE_ALARM_SOURCE_KEYS[source];
+  if (key) return t(key);
+  return INTEGRATION_LABELS[source] ?? source;
+}
 
 /** A local calendar day (`YYYY-MM-DD`), rendered in the viewer's locale. */
 export interface DayParam {

@@ -2,11 +2,10 @@ import { useMemo } from "react";
 import { AlertTriangle, AlertOctagon, X, Undo2 } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { BottomSheet } from "../dashboard/BottomSheet";
-import { INTEGRATION_LABELS } from "../../constants";
 import { useAggregatedIssues, type AggregatedIssue } from "./useAggregatedIssues";
 import { useAckedIssues } from "../../store/useAckedIssues";
 import { issueSignature } from "../../lib/acked-issues";
-import { alarmText } from "../../lib/alarm-message";
+import { alarmSourceLabel, alarmText } from "../../lib/alarm-message";
 
 interface AlarmsSheetProps {
   open: boolean;
@@ -90,7 +89,7 @@ function IssueRow({
   const isError = issue.level === "error";
   const Icon = isError ? AlertOctagon : AlertTriangle;
   const tone = isError ? "text-error" : "text-warning-ink";
-  const sourceLabel = INTEGRATION_LABELS[issue.source] ?? issue.source;
+  const sourceLabel = alarmSourceLabel(t, issue.source);
 
   // An issue the UI knows how to word carries an i18n key and its parameters,
   // translated here at render so a language switch re-words the alarms already

@@ -510,6 +510,18 @@ export function formatTime(iso: string | null): string {
 }
 
 /**
+ * A wall-clock time as « HH:mm », 24-hour in every language: Sowel shows no
+ * AM/PM anywhere, and a time column must keep one width (#1151).
+ */
+export function formatClockTime(when: Date | number, opts: { locale?: Locale } = {}): string {
+  return new Intl.DateTimeFormat(resolve(opts.locale), {
+    hour: "2-digit",
+    minute: "2-digit",
+    hourCycle: "h23",
+  }).format(when);
+}
+
+/**
  * How long ago, in Sowel's language: « à l'instant », « il y a 15 s »,
  * « il y a 12 min », « il y a 3 h 05 », then the date and time for anything
  * older than a day. Seconds go by steps of five, as `RelativeTime` re-renders

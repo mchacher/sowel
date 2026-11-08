@@ -152,6 +152,11 @@ describe("logSpanLabel", () => {
       logSpanLabel([at("2026-11-07T19:30:00"), at("2026-11-07T14:05:00")], now, t, "fr-FR"),
     ).toBe('activity.since.today|{"time":"14:05"}');
   });
+  it("writes the time on the rows' 24-hour clock in English too (#1151)", () => {
+    expect(logSpanLabel([at("2026-11-07T00:30:00")], now, t, "en-US")).toBe(
+      'activity.since.today|{"time":"00:30"}',
+    );
+  });
   it("says yesterday, then a weekday, then a date", () => {
     expect(logSpanLabel([at("2026-11-06T18:12:00")], now, t, "fr-FR")).toBe(
       'activity.since.yesterday|{"time":"18:12"}',

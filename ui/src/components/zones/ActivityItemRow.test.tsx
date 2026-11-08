@@ -41,6 +41,35 @@ describe("ActivityItemRow — alarms", () => {
     ).toBeTruthy();
   });
 
+  // #1151 — the generic « Order not confirmed » alarm read in English with the
+  // raw source id in the French UI.
+  it("words a generic not-confirmed alarm in French, under a human source name", async () => {
+    await i18n.changeLanguage("fr");
+    const { container } = render(
+      <ActivityItemRow
+        item={alarm({
+          source: "order-confirmation",
+          message: "Order not confirmed: Pompe state → ON (integration unreachable)",
+          messageKey: "alarms.orderOutcome.notConfirmedUnreachable",
+          messageParams: { equipment: "Pompe", alias: "state", value: "ON" },
+        })}
+      />,
+    );
+    const text = container.textContent ?? "";
+    expect(text).toContain("Suivi des commandes");
+    expect(text).toContain("non confirmée (intégration injoignable)");
+    expect(text).not.toContain("order-confirmation");
+    expect(text).not.toContain("Order not confirmed");
+  });
+
+  it("shows the row time on the 24-hour clock in English", async () => {
+    await i18n.changeLanguage("en");
+    const item = alarm({ source: "order-confirmation", message: "x" });
+    item.timestamp = new Date(2026, 9, 26, 0, 30).getTime();
+    const { container } = render(<ActivityItemRow item={item} />);
+    expect(container.querySelector("time")?.textContent).toBe("00:30");
+  });
+
   it("keeps the engine's text for a key on any other source", async () => {
     await i18n.changeLanguage("fr");
     render(
