@@ -240,7 +240,7 @@ export function AppLayout() {
           {/* Offline banner */}
           <OfflineBanner />
           {/* Page content */}
-          <main className="flex-1 overflow-y-auto bg-background">
+          <main className="relative flex-1 overflow-y-auto bg-background">
             <Outlet />
           </main>
 
