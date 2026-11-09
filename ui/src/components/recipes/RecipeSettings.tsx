@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState, type ReactNode } from "react";
+import { useEffect, useMemo, useRef, useState, type ReactNode, type RefObject } from "react";
 import { createPortal } from "react-dom";
 import { useTranslation } from "react-i18next";
 import { ArrowLeft, Check, Copy, Loader2, Minus, Plus, Trash2, X } from "lucide-react";
@@ -73,6 +73,7 @@ export function RecipeSettings({
   onDuplicate,
   onDelete,
   deleting,
+  returnFocus,
 }: {
   instance: RecipeInstance;
   recipe: RecipeInfo;
@@ -84,6 +85,8 @@ export function RecipeSettings({
   onDuplicate: () => void;
   onDelete: () => void;
   deleting: boolean;
+  /** Where focus goes back on close: the row's opener (the « Réglages » button is gone). */
+  returnFocus?: RefObject<HTMLElement | null>;
 }) {
   const { t, i18n } = useTranslation();
   const lang = i18n.language.startsWith("fr") ? "fr" : "en";
@@ -123,31 +126,48 @@ export function RecipeSettings({
   });
   const [activeSection, setActiveSection] = useState<string | null>(null);
 
+  // A modal (PluginDetailSheet pattern): focus moves in, Tab stays in, Escape
+  // closes, and focus goes back to the row on close.
+  const panelRef = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    panelRef.current?.focus();
+    const back = returnFocus?.current;
+    return () => back?.focus?.();
+  }, [returnFocus]);
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
-      if (e.key === "Escape") onClose();
+      if (e.key === "Escape") {
+        onClose();
+        return;
+      }
+      if (e.key !== "Tab" || !panelRef.current) return;
+      const focusable = panelRef.current.querySelectorAll<HTMLElement>(
+        'button:not([disabled]), a[href], input:not([disabled]), select:not([disabled]), textarea, [tabindex]:not([tabindex="-1"])',
+      );
+      if (focusable.length === 0) return;
+      const first = focusable[0];
+      const last = focusable[focusable.length - 1];
+      const active = document.activeElement;
+      if (e.shiftKey && (active === first || active === panelRef.current)) {
+        e.preventDefault();
+        last.focus();
+      } else if (!e.shiftKey && active === last) {
+        e.preventDefault();
+        first.focus();
+      }
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
   }, [onClose]);
+  // A press that starts inside the dialog and ends on the backdrop (a text
+  // selection dragged out) must not close it and drop the edits.
+  const pressedOnBackdrop = useRef(false);
 
   const isSlotChanged = (slotId: string): boolean => {
     const val = instance.params[slotId];
     const original = Array.isArray(val) ? val.join(",") : String(val ?? "");
     return (editParams[slotId] ?? "") !== original;
   };
-
-  const changedCount = useMemo(() => {
-    let n = 0;
-    for (const slot of recipe.slots) {
-      if (slot.id === "zone") continue;
-      const val = instance.params[slot.id];
-      const original = Array.isArray(val) ? val.join(",") : String(val ?? "");
-      if ((editParams[slot.id] ?? "") !== original) n++;
-    }
-    return n;
-  }, [editParams, instance.params, recipe]);
-  const hasChanges = changedCount > 0;
 
   const handleSave = async () => {
     if (!recipe) return;
@@ -272,6 +292,13 @@ export function RecipeSettings({
     sections.push({ key: `general-${i}`, label: t("recipes.settingsGeneral"), changed });
   });
   const showRail = !isMobile && sections.length > 2;
+
+  // What the footer counts: only the slots the form shows (a hidden slot with a
+  // new default is no change the user made).
+  const changedCount = filteredSlots.filter(
+    (slot) => !isSlotHidden(slot, editParams, recipe.slots) && isSlotChanged(slot.id),
+  ).length;
+  const hasChanges = changedCount > 0;
 
   const goTo = (key: string) => {
     setActiveSection(key);
@@ -672,7 +699,6 @@ export function RecipeSettings({
           </>
         );
       })()}
-      {editError && <p className="text-caption text-error mt-2">{editError}</p>}
     </>
   );
 
@@ -711,7 +737,9 @@ export function RecipeSettings({
         role="dialog"
         aria-modal="true"
         aria-label={t("recipes.settingsOf", { name })}
-        className="fixed inset-0 z-50 bg-surface flex flex-col"
+        ref={panelRef}
+        tabIndex={-1}
+        className="fixed inset-0 z-50 bg-surface flex flex-col pl-[env(safe-area-inset-left)] pr-[env(safe-area-inset-right)] focus:outline-none"
       >
         <div className="grid grid-cols-[44px_1fr_44px] items-center border-b border-border-light pt-[env(safe-area-inset-top)]">
           <button
@@ -729,6 +757,11 @@ export function RecipeSettings({
           <span />
         </div>
         <div className="flex-1 overflow-y-auto px-4 py-4">{fields}</div>
+        {editError && (
+          <p role="alert" className="text-small text-error px-4 pt-2 border-t border-border-light">
+            {editError}
+          </p>
+        )}
         <div className="grid grid-cols-2 gap-2.5 border-t border-border-light px-4 pt-3 pb-[max(1rem,env(safe-area-inset-bottom))] [&>button]:min-h-11 [&>button]:text-body">
           {cancelButton}
           {saveButton}
@@ -741,14 +774,22 @@ export function RecipeSettings({
   return createPortal(
     <div
       className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4"
-      onClick={onClose}
+      data-testid="recipe-settings-backdrop"
+      onMouseDown={(e) => {
+        pressedOnBackdrop.current = e.target === e.currentTarget;
+      }}
+      onClick={(e) => {
+        if (pressedOnBackdrop.current && e.target === e.currentTarget) onClose();
+        pressedOnBackdrop.current = false;
+      }}
     >
       <div
         role="dialog"
         aria-modal="true"
         aria-label={t("recipes.settingsOf", { name })}
-        className="bg-surface rounded-lg shadow-lg w-full max-w-[720px] max-h-[min(720px,100%)] flex flex-col overflow-hidden"
-        onClick={(e) => e.stopPropagation()}
+        ref={panelRef}
+        tabIndex={-1}
+        className="bg-surface rounded-lg shadow-lg w-full max-w-[720px] max-h-[min(720px,100%)] flex flex-col overflow-hidden focus:outline-none"
       >
         <div className="grid grid-cols-[36px_1fr_auto] gap-x-3 items-center px-5 py-4 border-b border-border-light">
           <RecipeIconTile
@@ -822,11 +863,17 @@ export function RecipeSettings({
             {t("common.delete")}
           </button>
           <span className="flex-1" />
-          <span className="text-caption text-text-tertiary">
-            {hasChanges
-              ? t("recipes.settingsChangeCount", { count: changedCount })
-              : t("recipes.settingsNoChange")}
-          </span>
+          {editError ? (
+            <span role="alert" className="text-caption text-error">
+              {editError}
+            </span>
+          ) : (
+            <span className="text-caption text-text-tertiary">
+              {hasChanges
+                ? t("recipes.settingsChangeCount", { count: changedCount })
+                : t("recipes.settingsNoChange")}
+            </span>
+          )}
           {cancelButton}
           {saveButton}
         </div>

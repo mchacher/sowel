@@ -1,4 +1,5 @@
-import { useState, useMemo, useId } from "react";
+import { useState, useMemo, useId, useRef } from "react";
+import { createPortal } from "react-dom";
 import { MarqueeName } from "../ui/MarqueeName";
 import { useTranslation } from "react-i18next";
 import { ShieldOff, Settings } from "lucide-react";
@@ -111,6 +112,8 @@ export function RecipeInstanceRow({
   // On hover, the whole equipment list (#1165), then the summary.
   const contextTitle = instanceContextLine(equipmentNames.join(", "), summary);
   const contextId = useId();
+  // The row's opener gets focus back when the settings close (spec 198).
+  const openerRef = useRef<HTMLButtonElement>(null);
 
   const handleOpenSettings = () => {
     setShowLog(false);
@@ -213,6 +216,7 @@ export function RecipeInstanceRow({
           {/* The name owns line 1 (#1161); a name too long scrolls once (#1163). */}
           <button
             type="button"
+            ref={openerRef}
             aria-expanded={showLog}
             aria-describedby={contextText ? contextId : undefined}
             onClick={handleShowLog}
@@ -240,6 +244,7 @@ export function RecipeInstanceRow({
             className={`flex items-center gap-x-2 min-w-0 text-small ${alarm ? "text-error font-medium" : "text-text-secondary"}`}
           >
             <button
+              ref={openerRef}
               type="button"
               aria-expanded={showLog}
               onClick={handleShowLog}
@@ -280,15 +285,19 @@ export function RecipeInstanceRow({
         {showLog && isMobile && <RecipeJournal instanceId={instance.id} action={settingsButton} />}
       </BottomSheet>
 
-      {/* Duplicate modal */}
-      {showDuplicate && recipe && (
-        <DuplicateRecipeModal
-          instance={instance}
-          recipe={recipe}
-          sourceZoneId={zoneId}
-          onClose={() => setShowDuplicate(false)}
-        />
-      )}
+      {/* Duplicate modal — in document.body, so a disabled row's opacity does not
+          reach it and nothing else paints over it. */}
+      {showDuplicate &&
+        recipe &&
+        createPortal(
+          <DuplicateRecipeModal
+            instance={instance}
+            recipe={recipe}
+            sourceZoneId={zoneId}
+            onClose={() => setShowDuplicate(false)}
+          />,
+          document.body,
+        )}
 
       {/* Settings — a dialog on a computer, a full-screen page on a phone (spec 198). */}
       {editing && recipe && (
@@ -299,7 +308,12 @@ export function RecipeInstanceRow({
           context={contextText}
           alarm={alarm}
           onClose={() => setEditing(false)}
-          onDuplicate={() => setShowDuplicate(true)}
+          onDuplicate={() => {
+            // One window at a time: the duplicate one replaces the settings.
+            setEditing(false);
+            setShowDuplicate(true);
+          }}
+          returnFocus={openerRef}
           onDelete={() => void handleDelete()}
           deleting={deleting}
         />

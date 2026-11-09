@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
-import { render, screen, userEvent } from "../../test-utils";
+import { fireEvent, render, screen, userEvent } from "../../test-utils";
 import { RecipeSettings } from "./RecipeSettings";
 import { useRecipes } from "../../store/useRecipes";
 import { useEquipments } from "../../store/useEquipments";
@@ -138,6 +138,36 @@ describe("RecipeSettings", () => {
     await userEvent.keyboard("{Escape}");
     await userEvent.click(screen.getByRole("button", { name: "Cancel" }));
     expect(onClose).toHaveBeenCalledTimes(2);
+    expect(updateInstance).not.toHaveBeenCalled();
+  });
+
+  it("takes focus on open and closes on a backdrop click, not on a press dragged out of it", async () => {
+    useRecipes.setState({ instances: [], updateInstance: vi.fn() });
+    const onClose = open(WATCH, inst("state-watch", { watchValue: "x" }));
+
+    expect(document.activeElement).toBe(screen.getByRole("dialog"));
+    const backdrop = screen.getByTestId("recipe-settings-backdrop");
+    // A text selection started in a field and released on the backdrop.
+    fireEvent.mouseDown(screen.getByDisplayValue("x"));
+    fireEvent.click(backdrop);
+    expect(onClose).not.toHaveBeenCalled();
+    fireEvent.mouseDown(backdrop);
+    fireEvent.click(backdrop);
+    expect(onClose).toHaveBeenCalledTimes(1);
+  });
+
+  it("shows a refused save in the footer, beside the buttons", async () => {
+    const updateInstance = vi.fn().mockResolvedValue(undefined);
+    useRecipes.setState({ instances: [], updateInstance });
+    // A required value left empty (a slot added by a newer recipe version).
+    open(WATCH, inst("state-watch", { watchValue: "", delay: "1" }));
+
+    const delay = screen.getByDisplayValue("1");
+    await userEvent.clear(delay);
+    await userEvent.type(delay, "2");
+    await userEvent.click(screen.getByRole("button", { name: "Save" }));
+
+    expect(screen.getByRole("alert").textContent).toBe("Watched value is required");
     expect(updateInstance).not.toHaveBeenCalled();
   });
 
