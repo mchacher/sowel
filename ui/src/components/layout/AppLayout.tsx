@@ -139,7 +139,10 @@ export function AppLayout() {
   }, [isAdminUser]);
 
   return (
-    <div className="flex flex-col h-screen overflow-hidden">
+    // The dynamic viewport, not the screen height: in the home-screen app the page
+    // starts below the status bar (#1164), so a screen-tall layout pushes the bottom
+    // bar off the page. Guarded by lib/viewport-height.test.ts.
+    <div className="flex flex-col h-dvh overflow-hidden">
       {/* Spec 124 — full-width shadow-mode stripe above sidebar + content. */}
       <ShadowBanner />
       {/* Issue #401 — restored-data takeover stripe (red, admin confirm). */}
