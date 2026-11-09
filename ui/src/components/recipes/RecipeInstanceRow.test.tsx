@@ -331,6 +331,34 @@ describe("RecipeInstanceRow", () => {
       expect(getLog).not.toHaveBeenCalled();
     });
 
+    it("replaces the settings with the duplicate window, and deletes from the settings", async () => {
+      const deleteInstance = vi.fn().mockResolvedValue(undefined);
+      seedStores(makeInstance(), { deleteInstance });
+      vi.spyOn(window, "confirm").mockReturnValue(true);
+      render(<RecipeInstanceRow instance={makeInstance()} recipes={[RECIPE]} zoneId="z-salon" />);
+
+      await userEvent.click(rowButton());
+      await userEvent.click(await screen.findByRole("button", { name: "Settings" }));
+      await userEvent.click(screen.getByRole("button", { name: "Duplicate" }));
+      expect(screen.queryByRole("dialog", { name: "Settings of Auto light" })).toBeNull();
+      expect(screen.getByText("Duplicate recipe")).toBeTruthy();
+
+      await userEvent.click(rowButton());
+      await userEvent.click(await screen.findByRole("button", { name: "Settings" }));
+      await userEvent.click(screen.getByRole("button", { name: "Delete" }));
+      expect(deleteInstance).toHaveBeenCalledWith("ri-1");
+    });
+
+    it("gives focus back to the row when the settings close", async () => {
+      seedStores(makeInstance());
+      render(<RecipeInstanceRow instance={makeInstance()} recipes={[RECIPE]} zoneId="z-salon" />);
+
+      await userEvent.click(rowButton());
+      await userEvent.click(await screen.findByRole("button", { name: "Settings" }));
+      await userEvent.keyboard("{Escape}");
+      expect(document.activeElement).toBe(rowButton());
+    });
+
     it("closes the edit form when the journal is opened again", async () => {
       seedStores(makeInstance());
       render(<RecipeInstanceRow instance={makeInstance()} recipes={[RECIPE]} zoneId="z-salon" />);
