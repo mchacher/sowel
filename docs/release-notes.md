@@ -13,6 +13,13 @@ This page summarises every published version, newest first. For the full diff be
 
 ## 1.83.x: Recipes at a glance
 
+### v1.83.1 — 2026-11-09 { #v1-83-1 }
+
+The bottom bar of the home-screen app on iOS sits at the foot of the screen again.
+
+- Fix (ui): the bottom bar is 49 px tall, like a native iOS tab bar, and each button fills its column, so a tap anywhere in it counts (#1195).
+- If the top of the installed app is still blurred on iOS, remove the icon from the home screen and add it again: iOS sets the status bar style when the icon is added (#1164). You will have to sign in again.
+
 ### v1.83.0 — 2026-11-09 { #v1-83-0 }
 
 A zone's recipes take two lines each and say what they watch: several instances of one recipe sit under its name and icon, a red dot marks an alarm, a tap opens the journal by part of the day, and the settings open in their own window.
