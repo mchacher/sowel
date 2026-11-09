@@ -364,6 +364,8 @@ The verdict comes from `classifyPowerReading` in `src/shared/reading-freshness.t
 | `GET`  | `/api/v1/recipes`           | List available recipe definitions (templates). |
 | `GET`  | `/api/v1/recipes/:recipeId` | Get recipe definition with slots and i18n.     |
 
+A definition carries `icon` (a Lucide name) when its package manifest declares one (spec 198); the key is absent otherwise.
+
 ### Recipe Instances
 
 | Method   | Path                                   | Description                                                       |

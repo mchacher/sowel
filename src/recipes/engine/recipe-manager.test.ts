@@ -253,6 +253,31 @@ describe("RecipeManager", () => {
   });
 
   // ============================================================
+  // Spec 198 — the manifest icon
+  // ============================================================
+
+  const bareDef = (id: string): RecipeDefinition => ({
+    id,
+    name: id,
+    description: "",
+    slots: [],
+    validate: () => {},
+    createInstance: () => ({ stop: () => {} }),
+  });
+
+  it("carries the manifest icon into RecipeInfo", () => {
+    manager.registerExternal(bareDef("icon-def"), { icon: "Eye" });
+    expect(manager.getRecipes().find((r) => r.id === "icon-def")?.icon).toBe("Eye");
+  });
+
+  it("leaves the icon key out when the manifest declares none", () => {
+    manager.registerExternal(bareDef("no-meta"));
+    manager.registerExternal(bareDef("empty-icon"), { icon: "" });
+    expect("icon" in manager.getRecipeById("no-meta")!).toBe(false);
+    expect("icon" in manager.getRecipeById("empty-icon")!).toBe(false);
+  });
+
+  // ============================================================
   // Spec 138 — read-only getTariff helper
   // ============================================================
 

@@ -1337,6 +1337,8 @@ export interface RecipeInfo {
   /** Spec 169 — present only when the package declares a Dashboard tile. */
   tile?: RecipeTileDef;
   i18n?: Record<string, RecipeLangPack>;
+  /** Spec 198 — Lucide icon name from the package manifest; absent when it declares none. */
+  icon?: string;
 }
 
 export interface RecipeInstance {

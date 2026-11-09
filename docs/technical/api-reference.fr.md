@@ -294,6 +294,8 @@ Le verdict vient de `classifyPowerReading` dans `src/shared/reading-freshness.ts
 | `GET`  | `/api/v1/recipes`           | Liste les définitions de recettes disponibles (modèles). |
 | `GET`  | `/api/v1/recipes/:recipeId` | Récupère une définition de recette avec slots et i18n.   |
 
+Une définition porte `icon` (un nom Lucide) quand le manifeste de son paquet en déclare un (spec 198) ; la clé est absente sinon.
+
 ### Recipe Instances
 
 | Method   | Path                                   | Description                                                              |

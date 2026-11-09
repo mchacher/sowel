@@ -145,6 +145,8 @@ export class RecipeLoader {
     }
 
     const definition = factory();
-    this.recipeManager.registerExternal(definition);
+    // The icon lives in the package manifest, not in the definition (spec 198).
+    const icon = this.packageManager.getById(recipeId)?.manifest.icon;
+    this.recipeManager.registerExternal(definition, { icon });
   }
 }

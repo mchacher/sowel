@@ -5,6 +5,8 @@ import { useRecipes } from "../../store/useRecipes";
 import { useAuth } from "../../store/useAuth";
 import { RecipePickerPopover } from "./RecipePickerPopover";
 import { RecipeInstanceRow } from "./RecipeInstanceRow";
+import { RecipeGroup } from "./RecipeGroup";
+import { groupZoneInstances } from "../../lib/recipe-rows";
 import { AddRecipeForm } from "./AddRecipeForm";
 import { SliceAddButton, SliceHeader } from "../home/Panel";
 
@@ -45,6 +47,8 @@ export function ZoneRecipesSection({ zoneId, zoneName }: ZoneRecipesSectionProps
   const zoneInstances = useMemo(() => {
     return instances.filter((inst) => inst.params.zone === zoneId);
   }, [instances, zoneId]);
+  // Instances of one recipe read as one group (spec 198).
+  const blocks = useMemo(() => groupZoneInstances(zoneInstances), [zoneInstances]);
 
   const handlePickRecipe = (recipeId: string) => {
     setShowPicker(false);
@@ -81,9 +85,24 @@ export function ZoneRecipesSection({ zoneId, zoneName }: ZoneRecipesSectionProps
 
       {zoneInstances.length > 0 && (
         <div className="slice-rows">
-          {zoneInstances.map((inst) => (
-            <RecipeInstanceRow key={inst.id} instance={inst} recipes={recipes} zoneId={zoneId} />
-          ))}
+          {blocks.map((block) =>
+            block.kind === "group" ? (
+              <RecipeGroup
+                key={`group-${block.recipeId}`}
+                recipeId={block.recipeId}
+                instances={block.instances}
+                recipes={recipes}
+                zoneId={zoneId}
+              />
+            ) : (
+              <RecipeInstanceRow
+                key={block.instance.id}
+                instance={block.instance}
+                recipes={recipes}
+                zoneId={zoneId}
+              />
+            ),
+          )}
         </div>
       )}
 

@@ -70,9 +70,13 @@ If a slot looks empty or wrong, the **Save** button stays disabled and the recip
 
 ### Step 3: Save and let it run
 
-The instance starts as soon as you save. Toggle it on/off from the recipe list anytime. Open the instance to see its **log** -- a per-instance trace of what it has done and why.
+The instance starts as soon as you save. Toggle it on/off from the recipe list anytime with the switch at the right of its row (administrators only).
 
-In the recipe list, each row shows the recipe's name and, under it, the equipment the instance acts on -- the one picked in its first equipment parameter, or the first two and a count (`Spot A, Spot B +2`) when it acts on several. Two instances of the same recipe can be told apart at a glance. When the recipe reports a status of its own (a pool pump's filtration hours, a charger's state), it comes on the next line. A live countdown, an override badge or a mode button sits on the line below, with the log button for an administrator.
+In the recipe list, each row reads in two lines: the recipe's name, then what the instance acts on -- the equipment picked in its first equipment parameter, or the first two and a count (`Spot A, Spot B +2`) when it acts on several -- followed, after a comma, by the status the recipe reports of its own (a pool pump's filtration hours, a watch's « Erreur A01 après 1 min »). A live countdown, an override badge or a mode button sits on that second line too. The icon on the left is the recipe's own; a red dot on it means an instance is in alarm, and its line turns red.
+
+When a zone runs several instances of the same recipe -- two watches on the stove, three on the UPS -- they are grouped: the recipe's name once, then one line per instance, each with its own switch.
+
+Click a row (or a line of a group) to open the instance's **log** -- a per-instance trace of what it has done and why. Every user can read it. An administrator finds a **Settings** button in it, which opens the instance's parameters; duplicate and delete sit at the bottom of that form, on a computer.
 
 ![Zone view showing the Behaviors panel — Modes and Recipes — alongside the live Activity feed](../screenshots/activity-zone-view-en.png)
 

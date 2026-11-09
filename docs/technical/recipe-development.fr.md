@@ -295,6 +295,18 @@ Déclarez `confirm` sur une tuile qui ouvre quelque chose, laissez les trois de 
 - Retirer `tile` dans une version ultérieure **ne supprime pas** le widget de l'utilisateur : il s'affiche comme indisponible. Le retrait est donc un changement visible, qui mérite une note de version.
 - La tuile montre un état ; elle ne configure rien. Les paramètres restent sur la page de zone.
 
+## Sur la page de zone (spec 198)
+
+Le panneau Comportements de la page de zone affiche chaque instance sur deux lignes et lit trois éléments que votre recette fournit :
+
+| Quoi           | Source                      | Règle                                                                                                                                                                       |
+| -------------- | --------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Icône          | `icon` dans `manifest.json` | Un nom Lucide de la liste utilisée par le registre officiel (`Eye`, `Fan`, `Thermometer`…, `ui/src/lib/recipe-icons.ts`). Tout autre nom donne `ChefHat`.                   |
+| Deuxième ligne | `state.summary`             | Affiché après l'équipement et une virgule : « Poele, Erreur A01 après 1 min ». Restez court, dans la langue de l'utilisateur, et sans point médian (U+00B7).                |
+| Alarme         | `state.alarm === true`      | Un point rouge sur l'icône et la ligne en rouge, tant que l'instance est active. Dites-le aussi dans le résumé (« Erreur A02 en alarme ») : l'interface n'ajoute aucun mot. |
+
+Plusieurs instances d'une même recette dans une zone sont regroupées sous le nom de la recette, une ligne chacune : c'est le résumé qui les distingue. Commencez-le par ce qui rend cette instance différente (la valeur surveillée, la cible).
+
 ## RecipeContext
 
 L'objet `ctx` injecté dans `validate()` et `createInstance()` fournit :

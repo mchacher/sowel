@@ -299,6 +299,18 @@ Declare `confirm` on a tile whose action opens something, and leave all three ou
 - Removing `tile` in a later version does **not** delete a user's widget; it renders as unavailable. Removing it is therefore a user-visible change, worth a release note.
 - The tile shows state; it does not configure. Parameters stay on the zone page.
 
+## On the zone page (spec 198)
+
+The zone page's Behaviors panel shows each instance as a two-line row, and reads three things your recipe provides:
+
+| What        | From                      | Rule                                                                                                                                                     |
+| ----------- | ------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Icon        | `icon` in `manifest.json` | A Lucide name from the set the official registry uses (`Eye`, `Fan`, `Thermometer`, …, `ui/src/lib/recipe-icons.ts`). Any other falls back to `ChefHat`. |
+| Second line | `state.summary`           | Shown after the equipment and a comma: « Poele, Erreur A01 après 1 min ». Keep it short, in the user's language, and never use a middle dot (U+00B7).    |
+| Alarm       | `state.alarm === true`    | A red dot on the icon and the line in red, while the instance is enabled. Say it in the summary too (« Erreur A02 en alarme »): the UI adds no word.     |
+
+Several instances of one recipe in a zone are grouped under the recipe's name, one line each, so the summary is what tells them apart: lead it with what makes this instance different (the watched value, the target).
+
 ## RecipeContext
 
 The `ctx` object injected into `validate()` and `createInstance()` provides:

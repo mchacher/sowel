@@ -17,6 +17,7 @@ function makePackageManager(overrides: Partial<Record<string, unknown>> = {}) {
     updateFiles: vi.fn(),
     getInstalledByType: vi.fn(() => []),
     getPackageDir: vi.fn((id: string) => `/nonexistent/${id}`),
+    getById: vi.fn(() => undefined),
     downloadMissing: vi.fn(),
     ...overrides,
   } as unknown as PackageManager;
@@ -74,7 +75,7 @@ describe("RecipeLoader", () => {
       const loader = new RecipeLoader(pm, rm, logger);
 
       await loader.install("owner/repo");
-      expect(rm.registerExternal).toHaveBeenCalledWith({ id: "temp-recipe", name: "Temp" });
+      expect(rm.registerExternal).toHaveBeenCalledWith({ id: "temp-recipe", name: "Temp" }, {});
     });
   });
 
@@ -170,15 +171,35 @@ export function createRecipe() { return { id: "temp-recipe", name: NAME }; }`,
       await loader.install("owner/repo");
       await loader.update("temp-recipe");
 
-      expect(rm.registerExternal).toHaveBeenNthCalledWith(1, {
-        id: "temp-recipe",
-        name: "Version 1",
-      });
-      expect(rm.registerExternal).toHaveBeenNthCalledWith(2, {
-        id: "temp-recipe",
-        name: "Version 2",
-      });
+      expect(rm.registerExternal).toHaveBeenNthCalledWith(
+        1,
+        { id: "temp-recipe", name: "Version 1" },
+        {},
+      );
+      expect(rm.registerExternal).toHaveBeenNthCalledWith(
+        2,
+        { id: "temp-recipe", name: "Version 2" },
+        {},
+      );
     });
+  });
+
+  it("passes the installed manifest's icon to the registration (spec 198)", async () => {
+    const dir = writeRecipePackage("named");
+    tmpDirs.push(dir);
+    const pm = makePackageManager({
+      installFromGitHub: vi.fn(async () => ({ id: "temp-recipe", type: "recipe" })),
+      getPackageDir: vi.fn(() => dir),
+      getById: vi.fn(() => ({ manifest: { id: "temp-recipe", icon: "Eye" } })),
+    });
+    const rm = makeRecipeManager();
+    const loader = new RecipeLoader(pm, rm, logger);
+
+    await loader.install("owner/repo");
+    expect(rm.registerExternal).toHaveBeenCalledWith(
+      { id: "temp-recipe", name: "Temp" },
+      { icon: "Eye" },
+    );
   });
 
   describe("loadAll", () => {
