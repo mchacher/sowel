@@ -11,6 +11,19 @@ Cette page résume toutes les versions publiées, de la plus récente à la plus
 
 ---
 
+## 1.83.x : Les recettes d'un coup d'œil
+
+### v1.83.0 — 2026-11-09 { #v1-83-0 }
+
+Les recettes d'une zone tiennent sur deux lignes et disent ce qu'elles surveillent : plusieurs instances d'une même recette se rangent sous son nom et son icône, un point rouge signale une alarme, un appui ouvre le journal par moment de la journée, et les réglages s'ouvrent dans leur propre fenêtre.
+
+- Nouveauté (interface) : **les lignes de recette sur deux lignes** (spec 198, #1188, #1190). Le nom sur la première ligne, ce sur quoi l'instance agit et son résumé sur la deuxième, l'interrupteur seul à droite ; toute la ligne l'ouvre. Les instances d'une même recette dans une zone sont regroupées sous son nom. Chaque recette affiche l'icône de son paquet (`icon` du manifeste), avec un point rouge tant qu'une instance est en alarme.
+- Nouveauté (interface) : **le journal par moment de la journée** (spec 198, #1188, #1191). Un appui sur une ligne ouvre son journal, groupé comme l'Activité (« Ce matin », « Hier soir »…), heures en HH:MM, erreurs en rouge ; tout utilisateur peut le lire. Sur téléphone, le panneau nomme l'instance.
+- Nouveauté (interface) : **les réglages dans leur propre fenêtre** (spec 198, #1188, #1192). « Réglages » dans le journal ouvre une fenêtre de 720 px qui liste les groupes de la recette dans un sommaire latéral au-delà de deux, avec Dupliquer et Supprimer en pied ; sur téléphone, une page plein écran avec un bouton retour.
+- Correction (interface) : la mise en page suit la partie visible de l'écran, la barre du bas de l'application installée sur iOS garde ses libellés (#1189).
+
+---
+
 ## 1.82.x : Des noms lisibles, des alarmes situées
 
 ### v1.82.0 — 2026-11-08 { #v1-82-0 }

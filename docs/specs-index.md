@@ -346,7 +346,7 @@ Specs are grouped by theme and annotated with status:
 | 195 | A submeter that sees local production                                   | ✅     | `Equipment.localProduction`: a power-only submeter with a panel wired behind it; its negative power becomes `production`, added to solar in the self-consumption split, history and Live; slice keeps the positive part (#1116, amends 091).  |
 | 196 | Incremental UI refresh                                                  | ✅     | Mobile/tablet fixes, French copy, `lib/format`, sentence-case Inter type scale, colour roles, brand-tinted neutrals and ocean night, one setpoint stepper, gate confirmation everywhere (amends 146). Shipped in v1.80.0.                     |
 | 197 | Energy pages refresh                                                    | ✅     | Live says import/export in a 40 px headline (shared FlowDiagram, UPS too), deficit in slate not red, side-by-side desktop, arbiter history runs and night idle, Consumption/Production total first; amends 165, 148, 157. Shipped in v1.81.0. |
-| 198 | Recipe rows                                                             | 🚧     | Recipe rows in two lines with the switch alone, same-recipe instances grouped, `RecipeInfo.icon` from the manifest, alarm dot on `state.alarm`, journal on click for all, settings window (#1188). Unreleased.                                |
+| 198 | Recipe rows                                                             | ✅     | Recipe rows in two lines with the switch alone, same-recipe instances grouped, `RecipeInfo.icon` from the manifest, alarm dot on `state.alarm`, journal on click for all, settings window (#1188). Shipped in v1.83.0.                        |
 
 ---
 

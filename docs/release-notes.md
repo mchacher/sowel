@@ -11,6 +11,19 @@ This page summarises every published version, newest first. For the full diff be
 
 ---
 
+## 1.83.x: Recipes at a glance
+
+### v1.83.0 — 2026-11-09 { #v1-83-0 }
+
+A zone's recipes take two lines each and say what they watch: several instances of one recipe sit under its name and icon, a red dot marks an alarm, a tap opens the journal by part of the day, and the settings open in their own window.
+
+- Feat (ui): **recipe rows in two lines** (spec 198, #1188, #1190). The name on the first line, what the instance acts on and its summary on the second, the switch alone on the right; the whole row opens it. Instances of one recipe in a zone are grouped under its name. Each recipe shows the icon of its package (`icon` in the manifest), with a red dot while an instance is in alarm.
+- Feat (ui): **the journal by part of the day** (spec 198, #1188, #1191). A tap on a row opens its journal, grouped like Activity (« Ce matin », « Hier soir »…), times in HH:MM, errors in red; every user can read it. On a phone the sheet names the instance.
+- Feat (ui): **settings in their own window** (spec 198, #1188, #1192). « Réglages » in the journal opens a 720 px window listing the recipe's groups in a side rail when there are more than two, with Duplicate and Delete in its footer; on a phone, a full-screen page with a back button.
+- Fix (ui): the layout fits the visible screen, so the bottom bar of the home-screen app on iOS keeps its labels (#1189).
+
+---
+
 ## 1.82.x: Names you can read, alarms you can place
 
 ### v1.82.0 — 2026-11-08 { #v1-82-0 }
