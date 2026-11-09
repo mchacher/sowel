@@ -72,15 +72,15 @@ No (U+00B7) in any text this spec adds. Equipment and summary are joined by « ,
 
 ## Acceptance Criteria
 
-- [ ] `GET /api/v1/recipes` returns `icon` for a recipe whose manifest declares one, and omits it otherwise.
-- [ ] Every icon used in `plugins/registry.json` for a recipe resolves to its Lucide component; an unknown one to `ChefHat`.
-- [ ] RDC: the two stove watches render under one « Surveillance d'état » group as « Poele, Erreur A01 après 1 min » and « Poele, Erreur A02 en alarme », the group header dotted and the A02 line in red.
-- [ ] A single instance renders in two lines; pills stay on line 2.
-- [ ] Clicking the switch toggles and does not open; clicking elsewhere on the row opens the journal; Enter/Space too.
-- [ ] A standard user opens a journal; sees no switch, no « Réglages ».
-- [ ] The journal shows period separators and `HH:MM`; an `error` line is red.
-- [ ] « Réglages » opens the dialog (desktop) or the page (phone); Save, Cancel, Escape behave as specified; Dupliquer and Supprimer only in the desktop dialog footer.
-- [ ] No (U+00B7) added.
+- [x] `GET /api/v1/recipes` returns `icon` for a recipe whose manifest declares one, and omits it otherwise.
+- [x] Every icon used in `plugins/registry.json` for a recipe resolves to its Lucide component; an unknown one to `ChefHat`.
+- [x] RDC: the two stove watches render under one « Surveillance d'état » group as « Poele, Erreur A01 après 1 min » and « Poele, Erreur A02 en alarme », the group header dotted and the A02 line in red.
+- [x] A single instance renders in two lines; pills stay on line 2.
+- [x] Clicking the switch toggles and does not open; clicking elsewhere on the row opens the journal; Enter/Space too.
+- [x] A standard user opens a journal; sees no switch, no « Réglages ».
+- [x] The journal shows period separators and `HH:MM`; an `error` line is red.
+- [x] « Réglages » opens the dialog (desktop) or the page (phone); Save, Cancel, Escape behave as specified; Dupliquer and Supprimer only in the desktop dialog footer.
+- [x] No (U+00B7) added.
 
 ## Edge Cases
 

@@ -76,7 +76,7 @@ In the recipe list, each row reads in two lines: the recipe's name, then what th
 
 When a zone runs several instances of the same recipe -- two watches on the stove, three on the UPS -- they are grouped: the recipe's name once, then one line per instance, each with its own switch.
 
-Click a row (or a line of a group) to open the instance's **log** -- a per-instance trace of what it has done and why, newest first, split like the Activity panel into parts of the day (« Yesterday evening », « 26 October morning »), with how far back it reaches. Errors are in red. Every user can read it; on a phone it opens in a sheet named after the instance. An administrator finds a **Settings** button in it, which opens the instance's parameters; duplicate and delete sit at the bottom of that form, on a computer.
+Click a row (or a line of a group) to open the instance's **log** -- a per-instance trace of what it has done and why, newest first, split like the Activity panel into parts of the day (« Yesterday evening », « 26 October morning »), with how far back it reaches. Errors are in red. Every user can read it; on a phone it opens in a sheet named after the instance. An administrator finds a **Settings** button in it, which opens the instance's parameters in their own window: a dialog on a computer, with the recipe's parameter groups as sections and, when there are more than two, a list of them on the left to jump to one; a full-screen page on a phone. The footer says how many parameters you changed; duplicate and delete sit at its left, on a computer only.
 
 ![Zone view showing the Behaviors panel — Modes and Recipes — alongside the live Activity feed](../screenshots/activity-zone-view-en.png)
 

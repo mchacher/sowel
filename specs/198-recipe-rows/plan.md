@@ -17,9 +17,9 @@
 
 ### Slice C — Settings window (PR 3)
 
-- [ ] C.1 — Move the field rendering into `RecipeSettings`; sections from `groupSlots`
-- [ ] C.2 — Desktop dialog (rail > 2 sections, sticky footer, Escape / backdrop / close); phone page
-- [ ] C.3 — Remove the inline form from the row
+- [x] C.1 — Move the field rendering into `RecipeSettings`; sections from `groupSlots`
+- [x] C.2 — Desktop dialog (rail > 2 sections, sticky footer, Escape / backdrop / close); phone page
+- [x] C.3 — Remove the inline form from the row
 
 ### Slice D — state-watch 3.1.0 (other repository)
 
