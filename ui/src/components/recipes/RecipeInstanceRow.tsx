@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo, type KeyboardEvent, type SyntheticEvent } from "react";
+import { useState, useEffect, useMemo, useId } from "react";
 import { MarqueeName } from "../ui/MarqueeName";
 import { useTranslation } from "react-i18next";
 import {
@@ -162,9 +162,15 @@ export function RecipeInstanceRow({
       setShowLog(false);
       return;
     }
-    const entries = await getLog(instance.id);
-    setLogs(entries);
-    setShowLog(true);
+    try {
+      const entries = await getLog(instance.id);
+      setLogs(entries);
+      // The journal alone (spec 198): opening it closes the edit form.
+      setEditing(false);
+      setShowLog(true);
+    } catch {
+      // The panel stays closed; the next click tries again.
+    }
   };
 
   // Auto-refresh logs every 5s when the log panel is open
@@ -339,22 +345,14 @@ export function RecipeInstanceRow({
   // Spec 198 — the second line: « equipment, summary », red while in alarm
   // (the words are the recipe's own: state-watch says « en alarme »).
   const alarm = isInstanceInAlarm(instance);
+  const summary = instance.enabled ? instanceSummary(instance) : "";
   const contextText = instanceContextLine(
     equipmentList.more > 0 ? `${equipmentList.text} +${equipmentList.more}` : equipmentList.text,
-    instance.enabled ? instanceSummary(instance) : "",
+    summary,
   );
-
-  const stop = (e: SyntheticEvent) => e.stopPropagation();
-
-  // The whole row opens the journal (spec 198); the switch and the pills
-  // keep their own clicks.
-  const handleRowKey = (e: KeyboardEvent<HTMLDivElement>) => {
-    if (e.target !== e.currentTarget) return;
-    if (e.key === "Enter" || e.key === " ") {
-      e.preventDefault();
-      void handleShowLog();
-    }
-  };
+  // On hover, the whole equipment list (#1165), then the summary.
+  const contextTitle = instanceContextLine(equipmentNames.join(", "), summary);
+  const contextId = useId();
 
   const handleOpenSettings = () => {
     setShowLog(false);
@@ -401,7 +399,7 @@ export function RecipeInstanceRow({
   );
 
   const pills = hasPills && (
-    <span className="flex items-center gap-1.5 flex-shrink-0" onClick={stop} onKeyDown={stop}>
+    <span className="relative flex items-center gap-1.5 flex-shrink-0">
       {showTimer && <CountdownTimer expiresAt={instance.state?.timerExpiresAt as string} />}
       {showOverride && (
         <span
@@ -432,33 +430,41 @@ export function RecipeInstanceRow({
     </span>
   );
 
-  const contextLine = (
-    <div className={`flex items-center gap-x-2 min-w-0 ${alarm ? "text-error" : ""}`}>
-      {contextText && (
-        <span className={`truncate ${alarm ? "font-medium" : ""}`} title={contextText}>
-          {contextText}
+  // Names, count and summary in their own spans: the names truncate first and
+  // the count is never cut from the names it counts (#1165).
+  const contextSpans = contextText ? (
+    <span className="flex min-w-0" title={contextTitle}>
+      {equipmentList.text && <span className="truncate">{equipmentList.text}</span>}
+      {equipmentList.more > 0 && (
+        <span className="flex-shrink-0 whitespace-pre"> +{equipmentList.more}</span>
+      )}
+      {summary && (
+        <span className="truncate flex-shrink-[0.5]">
+          {equipmentList.text ? `, ${summary}` : summary}
         </span>
       )}
-      {pills}
-    </div>
-  );
+    </span>
+  ) : null;
 
   const toggle = isAdmin && (
     <Switch
       checked={instance.enabled}
-      onChange={(_next, e) => {
-        e.stopPropagation();
-        void handleToggleEnabled();
-      }}
+      onChange={() => void handleToggleEnabled()}
       disabled={toggling}
       title={instance.enabled ? t("recipes.disable") : t("recipes.enable")}
       label={instance.enabled ? t("recipes.disable") : t("recipes.enable")}
-      className={variant === "row" ? "col-start-3 row-start-1 row-span-2 justify-self-end" : ""}
+      // Above the stretched button, so it keeps its own click.
+      className={`relative ${variant === "row" ? "col-start-3 row-start-1 row-span-2 justify-self-end" : ""}`}
     />
   );
 
   const open = showLog || editing;
-  const rowInteraction = `cursor-pointer transition-colors duration-150 hover:bg-border-light/40 focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-primary ${open ? "bg-border-light/40" : ""}`;
+  // The row opens through one real button whose ::after covers the whole row
+  // (equipment-row pattern): no interactive element nests in another, and the
+  // switch and the pills, positioned after it, stay clickable (spec 198).
+  const opener =
+    "text-left min-w-0 cursor-pointer after:absolute after:inset-0 focus-visible:outline-none focus-visible:after:outline-2 focus-visible:after:-outline-offset-2 focus-visible:after:outline-primary";
+  const rowSurface = `relative transition-colors duration-150 hover:bg-border-light/40 ${open ? "bg-border-light/40" : ""}`;
   // A child line lines its text up with the name of the group above it.
   const childIndent = "pl-[calc(1.1rem+32px+0.85rem)]";
 
@@ -466,12 +472,7 @@ export function RecipeInstanceRow({
     <div className={instance.enabled ? "" : "opacity-50"}>
       {variant === "row" ? (
         <div
-          role="button"
-          tabIndex={0}
-          aria-expanded={showLog}
-          onClick={() => void handleShowLog()}
-          onKeyDown={handleRowKey}
-          className={`grid grid-cols-[32px_1fr_auto] gap-x-[0.85rem] gap-y-0.5 items-center px-[1.1rem] py-2 min-h-[52px] ${rowInteraction}`}
+          className={`grid grid-cols-[32px_1fr_auto] gap-x-[0.85rem] gap-y-0.5 items-center px-[1.1rem] py-2 min-h-[52px] ${rowSurface}`}
         >
           <RecipeIconTile
             icon={recipe?.icon}
@@ -480,26 +481,43 @@ export function RecipeInstanceRow({
             className="row-span-2 self-center"
           />
           {/* The name owns line 1 (#1161); a name too long scrolls once (#1163). */}
-          <div className="col-start-2 row-start-1 min-w-0">
+          <button
+            type="button"
+            aria-expanded={showLog}
+            aria-describedby={contextText ? contextId : undefined}
+            onClick={() => void handleShowLog()}
+            className={`col-start-2 row-start-1 ${opener}`}
+          >
             <MarqueeName text={displayName} className="text-body font-medium text-text" />
-          </div>
+          </button>
           {toggle}
-          <div className="col-start-2 row-start-2 min-w-0 text-caption text-text-secondary">
-            {contextLine}
+          <div
+            className={`col-start-2 row-start-2 flex items-center gap-x-2 min-w-0 text-caption ${alarm ? "text-error font-medium" : "text-text-secondary"}`}
+          >
+            {contextSpans && (
+              <span id={contextId} className="flex min-w-0">
+                {contextSpans}
+              </span>
+            )}
+            {pills}
           </div>
         </div>
       ) : (
         <div
-          role="button"
-          tabIndex={0}
-          aria-expanded={showLog}
-          aria-label={contextText || displayName}
-          onClick={() => void handleShowLog()}
-          onKeyDown={handleRowKey}
-          className={`grid grid-cols-[1fr_auto] gap-x-[0.85rem] items-center pr-[1.1rem] ${childIndent} py-1 min-h-11 sm:min-h-9 ${rowInteraction}`}
+          className={`grid grid-cols-[1fr_auto] gap-x-[0.85rem] items-center pr-[1.1rem] ${childIndent} py-1 min-h-11 sm:min-h-9 ${rowSurface}`}
         >
-          <div className="min-w-0 text-small text-text-secondary">
-            {contextText || hasPills ? contextLine : displayName}
+          <div
+            className={`flex items-center gap-x-2 min-w-0 text-small ${alarm ? "text-error font-medium" : "text-text-secondary"}`}
+          >
+            <button
+              type="button"
+              aria-expanded={showLog}
+              onClick={() => void handleShowLog()}
+              className={`flex ${opener}`}
+            >
+              {contextSpans ?? <span className="truncate">{displayName}</span>}
+            </button>
+            {pills}
           </div>
           {toggle}
         </div>

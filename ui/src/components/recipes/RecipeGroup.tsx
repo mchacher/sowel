@@ -32,11 +32,11 @@ export function RecipeGroup({
         <RecipeIconTile icon={recipe?.icon} enabled alarm={alarm} />
         <div className="flex items-baseline gap-1.5 min-w-0">
           <span className="text-body font-medium text-text truncate">{name}</span>
-          <span
-            className="text-caption text-text-tertiary flex-shrink-0"
-            aria-label={t("recipes.instanceCount", { count: instances.length })}
-          >
-            {instances.length}
+          <span className="text-caption text-text-tertiary flex-shrink-0">
+            <span aria-hidden="true">{instances.length}</span>
+            <span className="sr-only">
+              {t("recipes.instanceCount", { count: instances.length })}
+            </span>
           </span>
         </div>
       </div>

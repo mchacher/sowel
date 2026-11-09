@@ -89,7 +89,7 @@ describe("ZoneRecipesSection", () => {
     render(<ZoneRecipesSection zoneId="z-rdc" zoneName="RDC" />);
 
     const group = screen.getByRole("group", { name: "State watch" });
-    expect(within(group).getByLabelText("2 instances")).toBeTruthy();
+    expect(within(group).getByText("2 instances")).toBeTruthy();
     expect(
       within(group).getByRole("button", { name: "Poele, Erreur A01 après 1 min" }),
     ).toBeTruthy();
