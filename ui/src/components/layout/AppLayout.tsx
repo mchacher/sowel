@@ -557,10 +557,11 @@ function MobileNav({
             <span className="text-micro">{t("nav.more", "Plus")}</span>
           </button>
         </div>
-        {/* Safe area spacer for iOS PWA home indicator */}
+        {/* Half the home indicator's safe area: the full 34pt leaves a band under the
+            labels that reads as empty, half keeps the buttons clear of the swipe. */}
         <div
           className="bg-surface flex-shrink-0"
-          style={{ height: "env(safe-area-inset-bottom, 0px)" }}
+          style={{ height: "calc(env(safe-area-inset-bottom, 0px) / 2)" }}
         />
       </nav>
 
