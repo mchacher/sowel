@@ -13,6 +13,13 @@ Cette page résume toutes les versions publiées, de la plus récente à la plus
 
 ## 1.83.x : Les recettes d'un coup d'œil
 
+### v1.83.1 — 2026-11-09 { #v1-83-1 }
+
+La barre du bas de l'app installée sur iOS revient au pied de l'écran.
+
+- Correction (interface) : la barre du bas fait 49 px, comme une barre d'onglets iOS, et chaque bouton occupe toute sa colonne : un appui n'importe où dans la colonne compte (#1195).
+- Si le haut de l'app installée reste flou sur iOS, supprimez l'icône de l'écran d'accueil puis ajoutez-la de nouveau : iOS fixe le style de la barre d'état à l'ajout de l'icône (#1164). Il faudra vous reconnecter.
+
 ### v1.83.0 — 2026-11-09 { #v1-83-0 }
 
 Les recettes d'une zone tiennent sur deux lignes et disent ce qu'elles surveillent : plusieurs instances d'une même recette se rangent sous son nom et son icône, un point rouge signale une alarme, un appui ouvre le journal par moment de la journée, et les réglages s'ouvrent dans leur propre fenêtre.
