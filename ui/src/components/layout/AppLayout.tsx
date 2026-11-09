@@ -522,7 +522,9 @@ function MobileNav({
   return (
     <>
       <nav className="flex lg:hidden flex-col border-t border-border bg-surface">
-        <div className="flex items-center justify-around min-h-[56px] px-2">
+        {/* 49px, the height of a native iOS tab bar: a taller row lifts the labels
+            away from the screen's foot. Each button fills its column and the row. */}
+        <div className="flex items-stretch justify-around min-h-[49px] px-2">
           <MobileNavLink
             to="/dashboard"
             label={t("nav.dashboard")}
@@ -547,7 +549,7 @@ function MobileNav({
           />
           <button
             onClick={() => setDrawerOpen(true)}
-            className="flex flex-col items-center justify-center py-1 px-3 rounded-sm text-micro font-medium text-text-secondary"
+            className="flex-1 flex flex-col items-center justify-center py-1 px-1 rounded-sm text-micro font-medium text-text-secondary"
           >
             <span className="mb-0.5">
               <Menu size={18} strokeWidth={1.5} />
@@ -739,7 +741,7 @@ function MobileNavLink({ to, label, icon }: { to: string; label: string; icon?: 
     <NavLink
       to={to}
       className={({ isActive }) =>
-        `flex flex-col items-center justify-center py-1 px-3 rounded-sm text-micro font-medium ${
+        `flex-1 flex flex-col items-center justify-center py-1 px-1 rounded-sm text-micro font-medium ${
           isActive ? "text-primary" : "text-text-secondary"
         }`
       }
