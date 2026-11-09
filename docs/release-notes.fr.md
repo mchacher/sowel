@@ -13,6 +13,12 @@ Cette page résume toutes les versions publiées, de la plus récente à la plus
 
 ## 1.83.x : Les recettes d'un coup d'œil
 
+### v1.83.2 — 2026-11-09 { #v1-83-2 }
+
+La barre du bas de l'app installée sur iOS descend vers le pied de l'écran.
+
+- Correction (interface) : la bande sous les libellés de la barre du bas fait la moitié de la zone du trait d'accueil, 17 pt au lieu de 34 sur un iPhone ; les boutons restent au-dessus du geste de retour à l'accueil (#1197).
+
 ### v1.83.1 — 2026-11-09 { #v1-83-1 }
 
 La barre du bas de l'app installée sur iOS revient au pied de l'écran.
