@@ -1,17 +1,7 @@
-import { useState, useEffect, useMemo, useId } from "react";
+import { useState, useMemo, useId } from "react";
 import { MarqueeName } from "../ui/MarqueeName";
 import { useTranslation } from "react-i18next";
-import {
-  Plus,
-  Minus,
-  Trash2,
-  ScrollText,
-  Loader2,
-  Check,
-  Copy,
-  ShieldOff,
-  Settings,
-} from "lucide-react";
+import { Plus, Minus, Trash2, Loader2, Check, Copy, ShieldOff, Settings } from "lucide-react";
 import { useRecipes } from "../../store/useRecipes";
 import { useEquipments } from "../../store/useEquipments";
 import { useZones } from "../../store/useZones";
@@ -20,11 +10,9 @@ import { useAuth } from "../../store/useAuth";
 import type {
   RecipeInfo,
   RecipeInstance,
-  RecipeLogEntry,
   EquipmentWithDetails,
   ZoneWithChildren,
 } from "../../types";
-import { formatTime } from "../../lib/format";
 import {
   recipeName,
   recipeSlotName,
@@ -58,6 +46,7 @@ import {
 } from "./recipe-form-fields";
 import { resolveCycle } from "./recipe-cycle";
 import { RecipeIconTile } from "./RecipeIconTile";
+import { RecipeJournal } from "./RecipeJournal";
 import { instanceContextLine, instanceSummary, isInstanceInAlarm } from "../../lib/recipe-rows";
 import { useZoneOptions } from "./useZoneOptions";
 import { DuplicateRecipeModal } from "./DuplicateRecipeModal";
@@ -92,7 +81,6 @@ export function RecipeInstanceRow({
   const enableInstance = useRecipes((s) => s.enableInstance);
   const disableInstance = useRecipes((s) => s.disableInstance);
   const sendAction = useRecipes((s) => s.sendAction);
-  const getLog = useRecipes((s) => s.getLog);
   const allInstances = useRecipes((s) => s.instances);
   const equipments = useEquipments((s) => s.equipments);
   const zoneAggregation = useZoneAggregation((s) => s.data);
@@ -111,7 +99,6 @@ export function RecipeInstanceRow({
     return ids;
   }, [zoneTree, zoneId]);
   const [showLog, setShowLog] = useState(false);
-  const [logs, setLogs] = useState<RecipeLogEntry[]>([]);
   const [deleting, setDeleting] = useState(false);
   const [toggling, setToggling] = useState(false);
   const [editing, setEditing] = useState(false);
@@ -157,35 +144,12 @@ export function RecipeInstanceRow({
     }
   };
 
-  const handleShowLog = async () => {
-    if (showLog) {
-      setShowLog(false);
-      return;
-    }
-    try {
-      const entries = await getLog(instance.id);
-      setLogs(entries);
-      // The journal alone (spec 198): opening it closes the edit form.
-      setEditing(false);
-      setShowLog(true);
-    } catch {
-      // The panel stays closed; the next click tries again.
-    }
+  // The journal fetches and refreshes itself while shown (RecipeJournal).
+  // The journal alone (spec 198): opening it closes the edit form.
+  const handleShowLog = () => {
+    if (!showLog) setEditing(false);
+    setShowLog(!showLog);
   };
-
-  // Auto-refresh logs every 5s when the log panel is open
-  useEffect(() => {
-    if (!showLog) return;
-    const id = setInterval(async () => {
-      try {
-        const entries = await getLog(instance.id);
-        setLogs(entries);
-      } catch {
-        // Silent — don't break the UI if log fetch fails
-      }
-    }, 5_000);
-    return () => clearInterval(id);
-  }, [showLog, instance.id]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const isSlotChanged = (slotId: string): boolean => {
     const val = instance.params[slotId];
@@ -359,34 +323,6 @@ export function RecipeInstanceRow({
     if (!editing) handleStartEdit();
   };
 
-  // Shared log list body — rendered inline on desktop and inside a bottom sheet
-  // on the PWA/mobile (#615). Kept in one place so both stay in sync.
-  const logBody =
-    logs.length === 0 ? (
-      <p className="text-caption text-text-tertiary text-center py-2">{t("common.noLogs")}</p>
-    ) : (
-      <div className="space-y-0.5">
-        {logs.map((log) => (
-          <div key={log.id} className="flex gap-2 text-micro font-mono">
-            <span className="text-text-tertiary whitespace-nowrap">
-              {formatTime(log.timestamp)}
-            </span>
-            <span
-              className={
-                log.level === "error"
-                  ? "text-error"
-                  : log.level === "warn"
-                    ? "text-warning-ink"
-                    : "text-text-secondary"
-              }
-            >
-              {log.message}
-            </span>
-          </div>
-        ))}
-      </div>
-    );
-
   const settingsButton = isAdmin && recipe && (
     <button
       type="button"
@@ -485,7 +421,7 @@ export function RecipeInstanceRow({
             type="button"
             aria-expanded={showLog}
             aria-describedby={contextText ? contextId : undefined}
-            onClick={() => void handleShowLog()}
+            onClick={handleShowLog}
             className={`col-start-2 row-start-1 ${opener}`}
           >
             <MarqueeName text={displayName} className="text-body font-medium text-text" />
@@ -512,7 +448,7 @@ export function RecipeInstanceRow({
             <button
               type="button"
               aria-expanded={showLog}
-              onClick={() => void handleShowLog()}
+              onClick={handleShowLog}
               className={`flex ${opener}`}
             >
               {contextSpans ?? <span className="truncate">{displayName}</span>}
@@ -526,14 +462,12 @@ export function RecipeInstanceRow({
       {/* Journal — inline on desktop, a bottom sheet on the PWA/mobile (#615). */}
       {showLog && !isMobile && (
         <div className={`pb-3 pr-[1.1rem] ${childIndent}`}>
-          <div className="bg-border-light/40 rounded-sm">
-            <div className="flex items-center justify-between gap-2 px-2 pt-1.5">
-              <span className="text-caption font-medium text-text-tertiary">
-                {t("recipes.journal")}
-              </span>
-              {settingsButton}
-            </div>
-            <div className="p-2 max-h-[200px] overflow-y-auto">{logBody}</div>
+          <div className="bg-border-light/40 rounded-sm px-2.5 pt-1.5 pb-2">
+            <RecipeJournal
+              instanceId={instance.id}
+              action={settingsButton}
+              listClassName="max-h-[220px] overflow-y-auto"
+            />
           </div>
         </div>
       )}
@@ -541,10 +475,15 @@ export function RecipeInstanceRow({
         open={showLog && isMobile}
         onClose={() => setShowLog(false)}
         title={displayName}
-        icon={<ScrollText size={18} strokeWidth={1.5} className="text-primary" />}
+        icon={<RecipeIconTile icon={recipe?.icon} enabled={instance.enabled} alarm={alarm} />}
       >
-        {settingsButton && <div className="flex justify-end pb-2">{settingsButton}</div>}
-        {logBody}
+        {/* The sheet names the instance: its second line under the title (spec 198). */}
+        {contextText && (
+          <p className={`text-small -mt-1 mb-2 ${alarm ? "text-error" : "text-text-secondary"}`}>
+            {contextText}
+          </p>
+        )}
+        {showLog && isMobile && <RecipeJournal instanceId={instance.id} action={settingsButton} />}
       </BottomSheet>
 
       {/* Duplicate modal */}

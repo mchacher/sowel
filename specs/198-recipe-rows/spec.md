@@ -53,7 +53,7 @@ Opening a row shows its journal only, for every role (the read route is already 
 - desktop: inline under the row; a second click closes it;
 - phone: the bottom sheet, whose header shows the icon, the recipe name and the instance's line 2.
 
-The journal is grouped by part of the day with the Activity labels (`groupActivityLog`, `logPeriodLabel`), times as `HH:MM`, a « depuis … » span line (`logSpanLabel`), `error` lines in red and `warn` in orange. It refreshes every 5 s while open, as today.
+The journal is grouped by part of the day with the Activity labels (`groupActivityLog`, `logPeriodLabel`; unlike the Activity panel, the current part of today is labelled too, « Cet après-midi », since the journal has no « dernières 24 h » header), times as `HH:MM`, a « depuis … » span line (`logSpanLabel`), `error` lines in red and `warn` in orange. It refreshes every 5 s while open, as today.
 
 Its header has a « Réglages » button, admin only.
 

@@ -4,16 +4,16 @@
 
 ### Slice A — Row, groups, icon, alarm (PR 1)
 
-- [ ] A.1 — `RecipeInfo.icon?` (backend + UI types); `registerExternal` meta; loader passes the manifest icon
-- [ ] A.2 — `ui/src/lib/recipe-icons.ts` and `ui/src/lib/recipe-rows.ts`
-- [ ] A.3 — `RecipeIconTile`, `RecipeGroup`, `RecipeInstanceRow` variants; `ZoneRecipesSection` renders blocks
-- [ ] A.4 — Row click opens the existing log (inline / sheet) for every role; « Réglages » (admin) opens the existing inline form, whose buttons gain Dupliquer / Supprimer
-- [ ] A.5 — i18n FR/EN; docs delta (user recipes page, recipe-development EN/FR, api-reference EN/FR)
+- [x] A.1 — `RecipeInfo.icon?` (backend + UI types); `registerExternal` meta; loader passes the manifest icon
+- [x] A.2 — `ui/src/lib/recipe-icons.ts` and `ui/src/lib/recipe-rows.ts`
+- [x] A.3 — `RecipeIconTile`, `RecipeGroup`, `RecipeInstanceRow` variants; `ZoneRecipesSection` renders blocks
+- [x] A.4 — Row click opens the existing log (inline / sheet) for every role; « Réglages » (admin) opens the existing inline form, whose buttons gain Dupliquer / Supprimer
+- [x] A.5 — i18n FR/EN; docs delta (user recipes page, recipe-development EN/FR, api-reference EN/FR)
 
 ### Slice B — Journal (PR 2)
 
-- [ ] B.1 — `RecipeJournal`: period groups (`groupActivityLog` adapted to log entries), `HH:MM`, span line, level colours
-- [ ] B.2 — Sheet header with the instance's tile, name and line 2
+- [x] B.1 — `RecipeJournal`: period groups (`groupActivityLog` adapted to log entries), `HH:MM`, span line, level colours
+- [x] B.2 — Sheet header with the instance's tile, name and line 2
 
 ### Slice C — Settings window (PR 3)
 

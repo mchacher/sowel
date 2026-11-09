@@ -30,12 +30,12 @@ export interface LogPeriod {
   day: Date;
 }
 
-export interface LogGroup {
+export interface LogGroup<T extends { timestamp: number } = ActivityItem> {
   key: string;
   period: LogPeriod;
   /** False for the current part of today: no separator above it. */
   labelled: boolean;
-  items: ActivityItem[];
+  items: T[];
 }
 
 function startOfDay(d: Date): number {
@@ -48,17 +48,21 @@ function daysBetween(earlier: Date, later: Date): number {
 }
 
 /**
- * Splits activity items into parts of the day, newest first. Consecutive items
+ * Splits activity items into parts of the day, newest first (the recipe
+ * journal reuses it, spec 198: any item with a millisecond timestamp). Consecutive items
  * of the same part share a group; the items keep their order inside it.
  */
-export function groupActivityLog(items: readonly ActivityItem[], now: Date): LogGroup[] {
+export function groupActivityLog<T extends { timestamp: number } = ActivityItem>(
+  items: readonly T[],
+  now: Date,
+): LogGroup<T>[] {
   const sorted = [...items].sort((a, b) => b.timestamp - a.timestamp);
   // The clock is re-read once a minute: an event that arrives just after it
   // crossed into a new part of the day is still "now", not "this afternoon".
   const ref =
     sorted.length > 0 && sorted[0].timestamp > now.getTime() ? new Date(sorted[0].timestamp) : now;
   const currentKey = `0-${dayPart(ref.getHours())}`;
-  const groups: LogGroup[] = [];
+  const groups: LogGroup<T>[] = [];
   for (const item of sorted) {
     const d = new Date(item.timestamp);
     const daysAgo = Math.max(0, daysBetween(d, ref));
@@ -103,7 +107,7 @@ export function logPeriodLabel(period: LogPeriod, t: Translate, locale: string):
  * « last 24 h » was wrong both ways. Null when there is nothing to show.
  */
 export function logSpanLabel(
-  items: readonly ActivityItem[],
+  items: readonly { timestamp: number }[],
   now: Date,
   t: Translate,
   locale: string,
