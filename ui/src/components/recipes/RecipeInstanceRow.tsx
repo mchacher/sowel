@@ -462,8 +462,12 @@ export function RecipeInstanceRow({
       {/* Journal — inline on desktop, a bottom sheet on the PWA/mobile (#615). */}
       {showLog && !isMobile && (
         <div className={`pb-3 pr-[1.1rem] ${childIndent}`}>
-          <div className="bg-border-light/40 rounded-sm px-2.5 pt-1.5 pb-2 max-h-[260px] overflow-y-auto">
-            <RecipeJournal instanceId={instance.id} action={settingsButton} />
+          <div className="bg-border-light/40 rounded-sm px-2.5 pt-1.5 pb-2">
+            <RecipeJournal
+              instanceId={instance.id}
+              action={settingsButton}
+              listClassName="max-h-[220px] overflow-y-auto"
+            />
           </div>
         </div>
       )}

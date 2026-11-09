@@ -854,6 +854,7 @@
   "recipes.actions.set_mode.off": "Arrêt",
   "recipes.settings": "Réglages",
   "recipes.journal": "Journal",
+  "recipes.journalError": "Journal indisponible pour le moment",
   "recipes.inAlarm": "En alarme",
   "recipes.instanceCount_one": "{{count}} exemplaire",
   "recipes.instanceCount_other": "{{count}} exemplaires",

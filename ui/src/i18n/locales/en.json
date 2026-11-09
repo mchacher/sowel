@@ -854,6 +854,7 @@
   "recipes.actions.set_mode.off": "Off",
   "recipes.settings": "Settings",
   "recipes.journal": "Log",
+  "recipes.journalError": "The log is unavailable right now",
   "recipes.inAlarm": "In alarm",
   "recipes.instanceCount_one": "{{count}} instance",
   "recipes.instanceCount_other": "{{count}} instances",

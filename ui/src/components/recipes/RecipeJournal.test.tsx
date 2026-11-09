@@ -56,6 +56,13 @@ describe("RecipeJournal", () => {
     expect(screen.getByRole("button", { name: "Settings" })).toBeTruthy();
   });
 
+  it("says the journal is unavailable when its first load fails, not that it is empty", async () => {
+    useRecipes.setState({ getLog: vi.fn().mockRejectedValue(new Error("offline")) });
+    render(<RecipeJournal instanceId="ri-1" />);
+    expect(await screen.findByText("The log is unavailable right now")).toBeTruthy();
+    expect(screen.queryByText("No logs")).toBeNull();
+  });
+
   it("says so when the journal is empty", async () => {
     useRecipes.setState({ getLog: vi.fn().mockResolvedValue([]) });
     render(<RecipeJournal instanceId="ri-1" />);

@@ -11,8 +11,8 @@ export interface JournalItem {
 /**
  * The recipe journal's entries (spec 198), newest first. SQLite writes the
  * timestamps without a time zone suffix: they are UTC, as `formatTime` reads
- * them. An entry whose time does not parse is dropped rather than shown at
- * 1970.
+ * them. Entries of the same second keep their write order (the id). An entry
+ * whose time does not parse is dropped rather than shown at 1970.
  */
 export function journalItems(entries: readonly RecipeLogEntry[]): JournalItem[] {
   return entries
@@ -27,5 +27,5 @@ export function journalItems(entries: readonly RecipeLogEntry[]): JournalItem[] 
       };
     })
     .filter((e) => Number.isFinite(e.timestamp))
-    .sort((a, b) => b.timestamp - a.timestamp);
+    .sort((a, b) => b.timestamp - a.timestamp || b.id - a.id);
 }

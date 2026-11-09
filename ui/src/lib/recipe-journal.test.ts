@@ -33,6 +33,11 @@ describe("journalItems", () => {
     expect(items[1].level).toBe("error");
   });
 
+  it("keeps the write order of entries of the same second", () => {
+    const items = journalItems([entry(7, "2026-11-08 19:40:25"), entry(8, "2026-11-08 19:40:25")]);
+    expect(items.map((i) => i.id)).toEqual([8, 7]);
+  });
+
   it("drops an entry whose time does not parse", () => {
     expect(journalItems([entry(1, "not a date"), entry(2, "2026-11-08 19:40:25")])).toHaveLength(1);
   });
