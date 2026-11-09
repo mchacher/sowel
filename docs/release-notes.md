@@ -13,6 +13,12 @@ This page summarises every published version, newest first. For the full diff be
 
 ## 1.83.x: Recipes at a glance
 
+### v1.83.2 — 2026-11-09 { #v1-83-2 }
+
+The bottom bar of the home-screen app on iOS sits closer to the foot of the screen.
+
+- Fix (ui): the band under the bottom bar's labels is half the home indicator's safe area, 17 pt instead of 34 on an iPhone; the buttons stay above the home swipe (#1197).
+
 ### v1.83.1 — 2026-11-09 { #v1-83-1 }
 
 The bottom bar of the home-screen app on iOS sits at the foot of the screen again.
