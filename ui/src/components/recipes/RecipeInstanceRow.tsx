@@ -1,8 +1,7 @@
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect, useMemo, useId } from "react";
 import { MarqueeName } from "../ui/MarqueeName";
 import { useTranslation } from "react-i18next";
 import {
-  ChefHat,
   Plus,
   Minus,
   Trash2,
@@ -11,6 +10,7 @@ import {
   Check,
   Copy,
   ShieldOff,
+  Settings,
 } from "lucide-react";
 import { useRecipes } from "../../store/useRecipes";
 import { useEquipments } from "../../store/useEquipments";
@@ -57,6 +57,8 @@ import {
   EquipmentCheckboxList,
 } from "./recipe-form-fields";
 import { resolveCycle } from "./recipe-cycle";
+import { RecipeIconTile } from "./RecipeIconTile";
+import { instanceContextLine, instanceSummary, isInstanceInAlarm } from "../../lib/recipe-rows";
 import { useZoneOptions } from "./useZoneOptions";
 import { DuplicateRecipeModal } from "./DuplicateRecipeModal";
 import { BottomSheet } from "../dashboard/BottomSheet";
@@ -73,10 +75,13 @@ export function RecipeInstanceRow({
   instance,
   recipes,
   zoneId,
+  variant = "row",
 }: {
   instance: RecipeInstance;
   recipes: RecipeInfo[];
   zoneId: string;
+  /** "child": one line inside a group of the same recipe (spec 198). */
+  variant?: "row" | "child";
 }) {
   const { t, i18n } = useTranslation();
   const lang = i18n.language.startsWith("fr") ? "fr" : "en";
@@ -157,9 +162,15 @@ export function RecipeInstanceRow({
       setShowLog(false);
       return;
     }
-    const entries = await getLog(instance.id);
-    setLogs(entries);
-    setShowLog(true);
+    try {
+      const entries = await getLog(instance.id);
+      setLogs(entries);
+      // The journal alone (spec 198): opening it closes the edit form.
+      setEditing(false);
+      setShowLog(true);
+    } catch {
+      // The panel stays closed; the next click tries again.
+    }
   };
 
   // Auto-refresh logs every 5s when the log panel is open
@@ -324,15 +335,29 @@ export function RecipeInstanceRow({
     return true;
   };
 
-  // (paramsSummary removed per spec 100 — recipe row keeps name + actions only, no description line)
-
-  // Live pills, shown on row 2 (#1161). Computed up front so a non-admin row
-  // gets a second line only when there is something to put on it.
+  // Live pills (#1161), on the second line next to the context (spec 198).
   const showTimer = !!instance.state?.timerExpiresAt && instance.enabled;
   const showOverride = !!instance.state?.overrideMode && instance.enabled;
   const cycleActions =
     recipe?.actions?.filter((a) => a.type === "cycle" && resolveCycle(instance, a) !== null) ?? [];
   const hasPills = showTimer || showOverride || cycleActions.length > 0;
+
+  // Spec 198 — the second line: « equipment, summary », red while in alarm
+  // (the words are the recipe's own: state-watch says « en alarme »).
+  const alarm = isInstanceInAlarm(instance);
+  const summary = instance.enabled ? instanceSummary(instance) : "";
+  const contextText = instanceContextLine(
+    equipmentList.more > 0 ? `${equipmentList.text} +${equipmentList.more}` : equipmentList.text,
+    summary,
+  );
+  // On hover, the whole equipment list (#1165), then the summary.
+  const contextTitle = instanceContextLine(equipmentNames.join(", "), summary);
+  const contextId = useId();
+
+  const handleOpenSettings = () => {
+    setShowLog(false);
+    if (!editing) handleStartEdit();
+  };
 
   // Shared log list body — rendered inline on desktop and inside a bottom sheet
   // on the PWA/mobile (#615). Kept in one place so both stay in sync.
@@ -362,131 +387,165 @@ export function RecipeInstanceRow({
       </div>
     );
 
+  const settingsButton = isAdmin && recipe && (
+    <button
+      type="button"
+      onClick={handleOpenSettings}
+      className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-sm text-caption font-medium text-primary hover:bg-primary/8 transition-colors duration-150"
+    >
+      <Settings size={13} strokeWidth={1.5} aria-hidden="true" />
+      {t("recipes.settings")}
+    </button>
+  );
+
+  const pills = hasPills && (
+    <span className="relative flex items-center gap-1.5 flex-shrink-0">
+      {showTimer && <CountdownTimer expiresAt={instance.state?.timerExpiresAt as string} />}
+      {showOverride && (
+        <span
+          className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-full text-micro font-medium flex-shrink-0"
+          style={{
+            backgroundColor: "var(--color-primary-light)",
+            color: "var(--color-primary)",
+          }}
+          title={t("recipes.overrideActive", "Override active")}
+        >
+          <ShieldOff size={10} strokeWidth={2} />
+          {t("recipes.overrideBadge")}
+        </span>
+      )}
+      {recipe &&
+        cycleActions.map((action) => (
+          <ModeCyclePill
+            key={action.id}
+            instance={instance}
+            recipe={recipe}
+            action={action}
+            lang={lang}
+            sendAction={sendAction}
+            // A taller hit area on a phone without changing the pill's look.
+            className="relative after:absolute after:inset-x-0 after:-inset-y-2 after:content-[''] sm:after:hidden"
+          />
+        ))}
+    </span>
+  );
+
+  // Names, count and summary in their own spans: the names truncate first and
+  // the count is never cut from the names it counts (#1165).
+  const contextSpans = contextText ? (
+    <span className="flex min-w-0" title={contextTitle}>
+      {equipmentList.text && <span className="truncate">{equipmentList.text}</span>}
+      {equipmentList.more > 0 && (
+        <span className="flex-shrink-0 whitespace-pre"> +{equipmentList.more}</span>
+      )}
+      {summary && (
+        <span className="truncate flex-shrink-[0.5]">
+          {equipmentList.text ? `, ${summary}` : summary}
+        </span>
+      )}
+    </span>
+  ) : null;
+
+  const toggle = isAdmin && (
+    <Switch
+      checked={instance.enabled}
+      onChange={() => void handleToggleEnabled()}
+      disabled={toggling}
+      title={instance.enabled ? t("recipes.disable") : t("recipes.enable")}
+      label={instance.enabled ? t("recipes.disable") : t("recipes.enable")}
+      // Above the stretched button, so it keeps its own click.
+      className={`relative ${variant === "row" ? "col-start-3 row-start-1 row-span-2 justify-self-end" : ""}`}
+    />
+  );
+
+  const open = showLog || editing;
+  // The row opens through one real button whose ::after covers the whole row
+  // (equipment-row pattern): no interactive element nests in another, and the
+  // switch and the pills, positioned after it, stay clickable (spec 198).
+  const opener =
+    "text-left min-w-0 cursor-pointer after:absolute after:inset-0 focus-visible:outline-none focus-visible:after:outline-2 focus-visible:after:-outline-offset-2 focus-visible:after:outline-primary";
+  const rowSurface = `relative transition-colors duration-150 hover:bg-border-light/40 ${open ? "bg-border-light/40" : ""}`;
+  // A child line lines its text up with the name of the group above it.
+  const childIndent = "pl-[calc(1.1rem+32px+0.85rem)]";
+
   return (
     <div className={instance.enabled ? "" : "opacity-50"}>
-      <div className="grid grid-cols-[32px_1fr_auto] gap-x-[0.85rem] gap-y-0 items-center px-[1.1rem] py-[0.35rem] min-h-[52px]">
-        {/* Icon — spans both rows (mock .recipe__icon { grid-row: 1 / span 2 }) */}
+      {variant === "row" ? (
         <div
-          className={`row-span-2 self-center w-8 h-8 rounded-md flex items-center justify-center ${instance.enabled ? "bg-primary/10" : "bg-background"}`}
+          className={`grid grid-cols-[32px_1fr_auto] gap-x-[0.85rem] gap-y-0.5 items-center px-[1.1rem] py-2 min-h-[52px] ${rowSurface}`}
         >
-          <ChefHat
-            size={15}
-            strokeWidth={1.5}
-            className={instance.enabled ? "text-primary" : "text-text-tertiary"}
+          <RecipeIconTile
+            icon={recipe?.icon}
+            enabled={instance.enabled}
+            alarm={alarm}
+            className="row-span-2 self-center"
           />
-        </div>
-        {/* Row 1 col 2: the name owns the whole line (#1161) — the pills live
-            on row 2. A name too long for it scrolls once instead of being cut
-            (#1163). */}
-        <div className="col-start-2 row-start-1 flex items-center min-w-0">
+          {/* The name owns line 1 (#1161); a name too long scrolls once (#1163). */}
           <button
-            onClick={isAdmin ? handleStartEdit : undefined}
-            className={`flex-1 min-w-0 text-left transition-opacity duration-150 ${isAdmin ? "hover:opacity-70 cursor-pointer" : "cursor-default"}`}
-            title={isAdmin ? t("common.edit") : undefined}
+            type="button"
+            aria-expanded={showLog}
+            aria-describedby={contextText ? contextId : undefined}
+            onClick={() => void handleShowLog()}
+            className={`col-start-2 row-start-1 ${opener}`}
           >
             <MarqueeName text={displayName} className="text-body font-medium text-text" />
-            {/* The equipment line (#1165) — « A, B +2 ». The names truncate,
-                the count never does. */}
-            {equipmentNames.length > 0 && (
-              <div
-                className="flex min-w-0 text-caption text-text-secondary mt-0.5"
-                title={equipmentNames.join(", ")}
-              >
-                <span className="truncate">{equipmentList.text}</span>
-                {equipmentList.more > 0 && (
-                  <span className="flex-shrink-0 whitespace-pre"> +{equipmentList.more}</span>
-                )}
-              </div>
-            )}
-            {/* Optional recipe-provided status line (spec: state.summary).
-                A recipe sets it to surface live context (e.g. a pool pump's
-                "Filtration 2,1/9,6 h · heures creuses"). Absent → unchanged. */}
-            {typeof instance.state?.summary === "string" &&
-              instance.state.summary.length > 0 &&
-              instance.enabled && (
-                <div className="text-micro text-text-tertiary truncate mt-0.5">
-                  {instance.state.summary}
-                </div>
-              )}
           </button>
-        </div>
-        {/* Row 1 col 3: toggle (admin only — enable/disable is config) */}
-        {isAdmin && (
-          <Switch
-            checked={instance.enabled}
-            onChange={() => void handleToggleEnabled()}
-            disabled={toggling}
-            title={instance.enabled ? t("recipes.disable") : t("recipes.enable")}
-            label={instance.enabled ? t("recipes.disable") : t("recipes.enable")}
-            className="col-start-3 row-start-1 justify-self-end"
-          />
-        )}
-        {/* Row 2: compact action buttons (admin only) then the live pills
-            (#1161, every user). The log button stays visible on mobile
-            (read-only, opens a bottom sheet on the PWA, #615); duplicate /
-            delete are config/destructive and stay desktop-only. A non-admin row
-            without pills has no row 2, as before. On a phone the line is as
-            tall as the log button for everyone, so the mode pill's enlarged
-            hit area fits inside it. */}
-        {(isAdmin || hasPills) && (
-          <div className="col-start-2 col-span-2 row-start-2 flex flex-wrap items-center gap-x-2 gap-y-1 min-w-0 min-h-8 sm:min-h-0">
-            {isAdmin && (
-              <div className="flex items-center gap-[2px]">
-                <button
-                  onClick={handleShowLog}
-                  className="w-8 h-8 sm:w-[22px] sm:h-[20px] inline-flex items-center justify-center rounded-sm text-text-tertiary hover:text-text hover:bg-border-light/60 transition-colors duration-150"
-                  title={t("recipes.viewLog")}
-                >
-                  <ScrollText className="w-3.5 h-3.5 sm:w-3 sm:h-3" strokeWidth={1.5} />
-                </button>
-                <button
-                  onClick={() => setShowDuplicate(true)}
-                  className="w-[22px] h-[20px] hidden sm:inline-flex items-center justify-center rounded-sm text-text-tertiary hover:text-primary hover:bg-primary/5 transition-colors duration-150"
-                  title={t("recipes.duplicate")}
-                >
-                  <Copy size={12} strokeWidth={1.5} />
-                </button>
-                <button
-                  onClick={handleDelete}
-                  disabled={deleting}
-                  className="w-[22px] h-[20px] hidden sm:inline-flex items-center justify-center rounded-sm text-text-tertiary hover:text-error hover:bg-error/5 transition-colors duration-150 disabled:opacity-50"
-                  title={t("common.delete")}
-                >
-                  <Trash2 size={12} strokeWidth={1.5} />
-                </button>
-              </div>
-            )}
-            {showTimer && <CountdownTimer expiresAt={instance.state?.timerExpiresAt as string} />}
-            {showOverride && (
-              <span
-                className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-full text-micro font-medium flex-shrink-0"
-                style={{
-                  backgroundColor: "var(--color-primary-light)",
-                  color: "var(--color-primary)",
-                }}
-                title={t("recipes.overrideActive", "Override active")}
-              >
-                <ShieldOff size={10} strokeWidth={2} />
-                {t("recipes.overrideBadge")}
+          {toggle}
+          <div
+            className={`col-start-2 row-start-2 flex items-center gap-x-2 min-w-0 text-caption ${alarm ? "text-error font-medium" : "text-text-secondary"}`}
+          >
+            {contextSpans && (
+              <span id={contextId} className="flex min-w-0">
+                {contextSpans}
               </span>
             )}
-            {recipe &&
-              cycleActions.map((action) => (
-                <ModeCyclePill
-                  key={action.id}
-                  instance={instance}
-                  recipe={recipe}
-                  action={action}
-                  lang={lang}
-                  sendAction={sendAction}
-                  // A 33 px hit area on a phone without changing the pill's
-                  // look; row 2 is 32 px tall there, so it stays on its line.
-                  className="relative after:absolute after:inset-x-0 after:-inset-y-2 after:content-[''] sm:after:hidden"
-                />
-              ))}
+            {pills}
           </div>
-        )}
-      </div>
+        </div>
+      ) : (
+        <div
+          className={`grid grid-cols-[1fr_auto] gap-x-[0.85rem] items-center pr-[1.1rem] ${childIndent} py-1 min-h-11 sm:min-h-9 ${rowSurface}`}
+        >
+          <div
+            className={`flex items-center gap-x-2 min-w-0 text-small ${alarm ? "text-error font-medium" : "text-text-secondary"}`}
+          >
+            <button
+              type="button"
+              aria-expanded={showLog}
+              onClick={() => void handleShowLog()}
+              className={`flex ${opener}`}
+            >
+              {contextSpans ?? <span className="truncate">{displayName}</span>}
+            </button>
+            {pills}
+          </div>
+          {toggle}
+        </div>
+      )}
+
+      {/* Journal — inline on desktop, a bottom sheet on the PWA/mobile (#615). */}
+      {showLog && !isMobile && (
+        <div className={`pb-3 pr-[1.1rem] ${childIndent}`}>
+          <div className="bg-border-light/40 rounded-sm">
+            <div className="flex items-center justify-between gap-2 px-2 pt-1.5">
+              <span className="text-caption font-medium text-text-tertiary">
+                {t("recipes.journal")}
+              </span>
+              {settingsButton}
+            </div>
+            <div className="p-2 max-h-[200px] overflow-y-auto">{logBody}</div>
+          </div>
+        </div>
+      )}
+      <BottomSheet
+        open={showLog && isMobile}
+        onClose={() => setShowLog(false)}
+        title={displayName}
+        icon={<ScrollText size={18} strokeWidth={1.5} className="text-primary" />}
+      >
+        {settingsButton && <div className="flex justify-end pb-2">{settingsButton}</div>}
+        {logBody}
+      </BottomSheet>
 
       {/* Duplicate modal */}
       {showDuplicate && recipe && (
@@ -888,7 +947,7 @@ export function RecipeInstanceRow({
               );
             })()}
             {editError && <p className="text-caption text-error mb-2">{editError}</p>}
-            <div className="flex gap-2">
+            <div className="flex flex-wrap items-center gap-2">
               <button
                 onClick={handleSave}
                 disabled={saving || !hasChanges}
@@ -909,27 +968,29 @@ export function RecipeInstanceRow({
               >
                 {t("common.cancel")}
               </button>
+              {/* Duplicate / delete are config and destructive: desktop only, as before. */}
+              <span className="flex-1" />
+              <button
+                type="button"
+                onClick={() => setShowDuplicate(true)}
+                className="hidden sm:inline-flex items-center gap-1 px-2 py-1.5 text-caption font-medium text-text-secondary rounded-sm hover:text-primary hover:bg-primary/5 transition-colors duration-150"
+              >
+                <Copy size={12} strokeWidth={1.5} aria-hidden="true" />
+                {t("recipes.duplicateAction")}
+              </button>
+              <button
+                type="button"
+                onClick={handleDelete}
+                disabled={deleting}
+                className="hidden sm:inline-flex items-center gap-1 px-2 py-1.5 text-caption font-medium text-error rounded-sm hover:bg-error/5 transition-colors duration-150 disabled:opacity-50"
+              >
+                <Trash2 size={12} strokeWidth={1.5} aria-hidden="true" />
+                {t("common.delete")}
+              </button>
             </div>
           </div>
         </div>
       )}
-
-      {/* Log panel — inline on desktop, a bottom sheet on the PWA/mobile (#615). */}
-      {showLog && !isMobile && (
-        <div className="px-4 pb-3">
-          <div className="bg-border-light/40 rounded-sm p-2 max-h-[200px] overflow-y-auto">
-            {logBody}
-          </div>
-        </div>
-      )}
-      <BottomSheet
-        open={showLog && isMobile}
-        onClose={() => setShowLog(false)}
-        title={t("recipes.viewLog")}
-        icon={<ScrollText size={18} strokeWidth={1.5} className="text-primary" />}
-      >
-        {logBody}
-      </BottomSheet>
     </div>
   );
 }

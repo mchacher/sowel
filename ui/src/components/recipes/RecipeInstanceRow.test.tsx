@@ -18,9 +18,9 @@ import type {
 // Component-test tier (issue #458). RecipeInstanceRow is the ~700-line row
 // extracted from ZoneRecipesSection (#456). These pin the highest-value paths:
 // the row shows the recipe name, the enable/disable toggle dispatches the
-// matching store action, clicking the name opens the inline edit form with the
-// slots pre-filled and Save gated on an actual change, and non-admins get a
-// read-only row (no toggle, no action buttons).
+// matching store action, a click on the row opens its journal and « Settings »
+// the edit form with the slots pre-filled and Save gated on an actual change,
+// and non-admins get a read-only row (no toggle, no settings) (spec 198).
 
 function zone(id: string, name: string, children: ZoneWithChildren[] = []): ZoneWithChildren {
   return {
@@ -185,12 +185,15 @@ describe("RecipeInstanceRow", () => {
     expect(enableInstance).toHaveBeenCalledWith("ri-1");
   });
 
-  it("opens the inline edit form pre-filled and gates Save on a change", async () => {
+  /** The row itself: the button holding the recipe name. */
+  const rowButton = () => screen.getByRole("button", { name: "Auto light" });
+
+  it("opens the edit form from « Settings » in the journal, pre-filled, Save gated on a change", async () => {
     seedStores(makeInstance());
     render(<RecipeInstanceRow instance={makeInstance()} recipes={[RECIPE]} zoneId="z-salon" />);
 
-    // The name is an "Edit" button for admins.
-    await userEvent.click(screen.getByTitle("Edit"));
+    await userEvent.click(rowButton());
+    await userEvent.click(await screen.findByRole("button", { name: "Settings" }));
 
     // Edit form is open: slot labels and the Save/Cancel buttons appear.
     expect(screen.getByText("Delay")).toBeTruthy();
@@ -203,35 +206,156 @@ describe("RecipeInstanceRow", () => {
     await userEvent.clear(delay);
     await userEvent.type(delay, "9");
     expect(screen.getByRole("button", { name: "Save" })).toHaveProperty("disabled", false);
+    // Duplicate and delete moved into the form (spec 198).
+    expect(screen.getByRole("button", { name: "Duplicate" })).toBeTruthy();
+    expect(screen.getByRole("button", { name: "Delete" })).toBeTruthy();
   });
 
-  it("opens recipe logs in a bottom sheet on the PWA/mobile (#615)", async () => {
+  it("opens recipe logs in a bottom sheet named after the recipe on the PWA/mobile (#615)", async () => {
     setViewport(true);
     const getLog = vi.fn().mockResolvedValue([LOG_ENTRY]);
     seedStores(makeInstance(), { getLog });
     render(<RecipeInstanceRow instance={makeInstance()} recipes={[RECIPE]} zoneId="z-salon" />);
 
-    // The log button is reachable on mobile (unlike duplicate/delete).
-    await userEvent.click(screen.getByTitle("View log"));
+    await userEvent.click(rowButton());
 
     expect(await screen.findByText("Recipe fired")).toBeTruthy();
     expect(getLog).toHaveBeenCalledWith("ri-1");
-    // Rendered in the bottom sheet: it carries a "View log" heading (the inline
-    // desktop panel has none).
-    expect(screen.getByRole("heading", { name: "View log" })).toBeTruthy();
+    expect(screen.getByRole("heading", { name: "Auto light" })).toBeTruthy();
   });
 
-  it("opens recipe logs inline (no sheet) on desktop (#615)", async () => {
+  it("opens recipe logs inline (no sheet) on desktop, closes on a second click (#615)", async () => {
     setViewport(false);
     const getLog = vi.fn().mockResolvedValue([LOG_ENTRY]);
     seedStores(makeInstance(), { getLog });
     render(<RecipeInstanceRow instance={makeInstance()} recipes={[RECIPE]} zoneId="z-salon" />);
 
-    await userEvent.click(screen.getByTitle("View log"));
+    await userEvent.click(rowButton());
 
     expect(await screen.findByText("Recipe fired")).toBeTruthy();
-    // Inline panel, not the bottom sheet — no sheet heading.
-    expect(screen.queryByRole("heading", { name: "View log" })).toBeNull();
+    expect(rowButton().getAttribute("aria-expanded")).toBe("true");
+    expect(screen.queryByRole("heading", { name: "Auto light" })).toBeNull();
+
+    await userEvent.click(rowButton());
+    expect(screen.queryByText("Recipe fired")).toBeNull();
+  });
+
+  describe("the clickable row (spec 198)", () => {
+    it("toggles from the switch without opening the journal", async () => {
+      const getLog = vi.fn().mockResolvedValue([]);
+      const disableInstance = vi.fn().mockResolvedValue(undefined);
+      seedStores(makeInstance(), { getLog, disableInstance });
+      render(<RecipeInstanceRow instance={makeInstance()} recipes={[RECIPE]} zoneId="z-salon" />);
+
+      await userEvent.click(screen.getByRole("switch"));
+      expect(disableInstance).toHaveBeenCalledWith("ri-1");
+      expect(getLog).not.toHaveBeenCalled();
+      expect(rowButton().getAttribute("aria-expanded")).toBe("false");
+    });
+
+    it("opens the journal from the keyboard", async () => {
+      const getLog = vi.fn().mockResolvedValue([LOG_ENTRY]);
+      seedStores(makeInstance(), { getLog });
+      render(<RecipeInstanceRow instance={makeInstance()} recipes={[RECIPE]} zoneId="z-salon" />);
+
+      rowButton().focus();
+      await userEvent.keyboard("{Enter}");
+      expect(await screen.findByText("Recipe fired")).toBeTruthy();
+    });
+
+    it("lets a standard user read the journal, with no switch and no « Settings »", async () => {
+      const getLog = vi.fn().mockResolvedValue([LOG_ENTRY]);
+      seedStores(makeInstance(), { getLog });
+      useAuth.setState({ user: { ...adminUser(), role: "standard" } });
+      render(<RecipeInstanceRow instance={makeInstance()} recipes={[RECIPE]} zoneId="z-salon" />);
+
+      await userEvent.click(rowButton());
+      expect(await screen.findByText("Recipe fired")).toBeTruthy();
+      expect(screen.queryByRole("switch")).toBeNull();
+      expect(screen.queryByRole("button", { name: "Settings" })).toBeNull();
+    });
+
+    it("flags an instance in alarm: a dot on the icon and the line in red", () => {
+      const inst = makeInstance({ state: { alarm: true, summary: "Erreur A02 en alarme" } });
+      seedStores(inst);
+      render(<RecipeInstanceRow instance={inst} recipes={[RECIPE]} zoneId="z-salon" />);
+
+      expect(screen.getByRole("img", { name: "In alarm" })).toBeTruthy();
+      const line = screen.getByTitle("Ceiling light, Erreur A02 en alarme");
+      expect(line.closest(".text-error")).not.toBeNull();
+    });
+
+    it("shows no alarm on a disabled instance", () => {
+      const inst = makeInstance({ enabled: false, state: { alarm: true } });
+      seedStores(inst);
+      render(<RecipeInstanceRow instance={inst} recipes={[RECIPE]} zoneId="z-salon" />);
+
+      expect(screen.queryByRole("img", { name: "In alarm" })).toBeNull();
+    });
+
+    it("leaves the row closed when a mode pill is clicked", async () => {
+      const getLog = vi.fn().mockResolvedValue([]);
+      const sendAction = vi.fn().mockResolvedValue(undefined);
+      const inst = makeInstance({ state: { mode: "comfort" } });
+      seedStores(inst, { getLog, sendAction });
+      const cycle: RecipeInfo = {
+        ...RECIPE,
+        actions: [
+          {
+            id: "setMode",
+            type: "cycle",
+            stateKey: "mode",
+            options: [
+              { value: "eco", label: "Eco" },
+              { value: "comfort", label: "Comfort" },
+            ],
+          },
+        ],
+      };
+      render(<RecipeInstanceRow instance={inst} recipes={[cycle]} zoneId="z-salon" />);
+
+      await userEvent.click(screen.getByRole("button", { name: "Comfort" }));
+      expect(sendAction).toHaveBeenCalledWith("ri-1", "setMode", { mode: "eco" });
+      expect(getLog).not.toHaveBeenCalled();
+    });
+
+    it("toggles from the keyboard on the switch without opening the row", async () => {
+      const getLog = vi.fn().mockResolvedValue([]);
+      const disableInstance = vi.fn().mockResolvedValue(undefined);
+      seedStores(makeInstance(), { getLog, disableInstance });
+      render(<RecipeInstanceRow instance={makeInstance()} recipes={[RECIPE]} zoneId="z-salon" />);
+
+      screen.getByRole("switch").focus();
+      await userEvent.keyboard("{Enter}");
+      expect(disableInstance).toHaveBeenCalledWith("ri-1");
+      expect(getLog).not.toHaveBeenCalled();
+    });
+
+    it("closes the edit form when the journal is opened again", async () => {
+      seedStores(makeInstance());
+      render(<RecipeInstanceRow instance={makeInstance()} recipes={[RECIPE]} zoneId="z-salon" />);
+
+      await userEvent.click(rowButton());
+      await userEvent.click(await screen.findByRole("button", { name: "Settings" }));
+      expect(screen.getByRole("button", { name: "Save" })).toBeTruthy();
+      await userEvent.click(rowButton());
+      await screen.findByRole("button", { name: "Settings" });
+      expect(screen.queryByRole("button", { name: "Save" })).toBeNull();
+    });
+
+    it("renders a group child as one line, the recipe name left to the group", () => {
+      const inst = makeInstance({ state: { summary: "Erreur A01 après 1 min" } });
+      seedStores(inst);
+      render(
+        <RecipeInstanceRow instance={inst} recipes={[RECIPE]} zoneId="z-salon" variant="child" />,
+      );
+
+      expect(screen.queryByText("Auto light")).toBeNull();
+      expect(
+        screen.getByRole("button", { name: "Ceiling light, Erreur A01 après 1 min" }),
+      ).toBeTruthy();
+      expect(screen.getByRole("switch")).toBeTruthy();
+    });
   });
 
   describe("live pills on the second line (#1161)", () => {
@@ -275,8 +399,6 @@ describe("RecipeInstanceRow", () => {
         expect(row1.contains(pill)).toBe(false);
         expect(row2?.contains(pill)).toBe(true);
       }
-      // Next to the log button, which stays on that line.
-      expect(row2?.contains(screen.getByTitle("View log"))).toBe(true);
     });
 
     it("gives a non-admin a second line holding a working mode pill", async () => {
@@ -288,21 +410,21 @@ describe("RecipeInstanceRow", () => {
       );
 
       expect(rows().row2).not.toBeNull();
-      expect(screen.queryByTitle("View log")).toBeNull();
 
       await userEvent.click(screen.getByRole("button", { name: "Comfort" }));
       expect(sendAction).toHaveBeenCalledWith("ri-1", "setMode", { mode: "eco" });
     });
 
-    it("keeps a non-admin row on one line when there is no pill", () => {
+    it("shows no pill when the cycle resolves to nothing", () => {
       seedStores(makeInstance());
       useAuth.setState({ user: { ...adminUser(), role: "standard" } });
       render(
         <RecipeInstanceRow instance={makeInstance()} recipes={[CYCLE_RECIPE]} zoneId="z-salon" />,
       );
 
-      // No mode in state → the cycle resolves to nothing, so no pill and no row 2.
-      expect(rows().row2).toBeNull();
+      // No mode in state → the cycle resolves to nothing: line 2 holds the equipment only.
+      expect(screen.queryByRole("button", { name: /Eco|Comfort/ })).toBeNull();
+      expect(rows().row2?.textContent).toBe("Ceiling light");
     });
 
     it("shows no pill on a disabled instance", () => {
@@ -314,7 +436,7 @@ describe("RecipeInstanceRow", () => {
       expect(screen.queryByTitle("Override active")).toBeNull();
     });
 
-    it("reads the override badge and the edit tooltip in French (#1169)", async () => {
+    it("reads the override badge and the settings button in French (#1169)", async () => {
       await i18n.changeLanguage("fr");
       try {
         seedStores(withPills());
@@ -323,9 +445,9 @@ describe("RecipeInstanceRow", () => {
         );
 
         expect(screen.getByTitle("Dérogation active").textContent).toBe("Dérogation");
-        expect(screen.getByTitle("Modifier")).toBeTruthy();
         expect(screen.queryByText("Override")).toBeNull();
-        expect(screen.queryByTitle("Edit")).toBeNull();
+        await userEvent.click(screen.getByRole("button", { name: "Auto light" }));
+        expect(await screen.findByRole("button", { name: "Réglages" })).toBeTruthy();
       } finally {
         await i18n.changeLanguage("en");
       }
@@ -372,10 +494,10 @@ describe("RecipeInstanceRow", () => {
       render(<RecipeInstanceRow instance={makeInstance()} recipes={[RECIPE]} zoneId="z-salon" />);
 
       const line = screen.getByText("Ceiling light");
-      // Inside the name block, under the name.
+      // In the row, under the name.
       const name = screen.getByText("Auto light");
       expect(name.compareDocumentPosition(line) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
-      expect(name.closest("button")?.contains(line)).toBe(true);
+      expect(name.closest(".grid")?.contains(line)).toBe(true);
     });
 
     it("reads a long list as « A, B +2 », the full list on hover", () => {
@@ -388,6 +510,7 @@ describe("RecipeInstanceRow", () => {
       render(<RecipeInstanceRow instance={inst} recipes={[LIST_RECIPE]} zoneId="z-salon" />);
 
       const names = screen.getByText("Spot A, Spot B");
+      // The count has its own span: the names truncate, never the count.
       expect(screen.getByText("+2")).toBeTruthy();
       expect(names.parentElement?.getAttribute("title")).toBe("Spot A, Spot B, Spot C, Spot D");
       // The buttons slot is not the first equipment slot: not listed.
@@ -414,15 +537,13 @@ describe("RecipeInstanceRow", () => {
       expect(screen.getByText("Ceiling light")).toBeTruthy();
     });
 
-    it("keeps the recipe summary as its own line, under the equipment", () => {
+    it("puts the recipe summary after the equipment, joined by a comma (spec 198)", () => {
       const inst = makeInstance({ state: { summary: "Filtration 2,1 h" } });
       seedStores(inst);
       render(<RecipeInstanceRow instance={inst} recipes={[RECIPE]} zoneId="z-salon" />);
 
-      const eq = screen.getByText("Ceiling light");
-      const summary = screen.getByText("Filtration 2,1 h");
-      expect(eq.compareDocumentPosition(summary) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
-      expect(eq.closest("div")).not.toBe(summary.closest("div"));
+      const line = screen.getByTitle("Ceiling light, Filtration 2,1 h");
+      expect(line.textContent).not.toContain("\u00b7");
     });
   });
 
@@ -433,6 +554,6 @@ describe("RecipeInstanceRow", () => {
 
     expect(screen.getByText("Auto light")).toBeTruthy();
     expect(screen.queryByRole("switch")).toBeNull();
-    expect(screen.queryByTitle("Edit")).toBeNull();
+    expect(screen.queryByRole("button", { name: "Settings" })).toBeNull();
   });
 });

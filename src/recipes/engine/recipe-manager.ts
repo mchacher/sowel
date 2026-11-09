@@ -145,7 +145,7 @@ export class RecipeManager {
    * Register an external recipe from a recipe package.
    * Wraps the RecipeDefinition factory into the internal RegisteredRecipe format.
    */
-  registerExternal(definition: RecipeDefinition): void {
+  registerExternal(definition: RecipeDefinition, meta: { icon?: string } = {}): void {
     this.registry.set(definition.id, {
       info: {
         id: definition.id,
@@ -161,6 +161,8 @@ export class RecipeManager {
         ...(definition.i18n && Object.keys(definition.i18n).length > 0
           ? { i18n: definition.i18n }
           : {}),
+        // Spec 198 — the manifest's icon, shown on the zone page's recipe row.
+        ...(typeof meta.icon === "string" && meta.icon.length > 0 ? { icon: meta.icon } : {}),
       },
       create: () => new ExternalRecipeAdapter(definition),
     });
