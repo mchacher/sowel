@@ -18,6 +18,7 @@ import {
   liveState,
   type LiveInputs,
   timeLabel,
+  endLabel,
 } from "./evSessionsDisplay";
 
 /** The shared readers' view of the charger and the car, for `liveState`. */
@@ -89,7 +90,8 @@ export function EvCurrentSessionCard({
           </h3>
         </div>
         <span className="text-small text-text-secondary -mt-1.5">
-          {session.chargerName} · {time(session.startedAt)} → {time(session.endedAt!)}
+          {session.chargerName}, {time(session.startedAt)} →{" "}
+          {endLabel(session.startedAt, session.endedAt!, locale)}
         </span>
         <div className="flex items-center gap-2.5">
           <div className="flex-1">

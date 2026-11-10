@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import type { EvChargeSession } from "../../../types";
 import {
+  endLabel,
   energyLabel,
   energyShares,
   liveState,
@@ -71,6 +72,18 @@ describe("evSessionsDisplay (spec 191)", () => {
     expect(
       sessionChip(session({ attribution: "vehicle", vehicleName: "Megane", vehicleDeleted: true })),
     ).toEqual({ kind: "vehicle", name: "Megane", deleted: true });
+  });
+});
+
+describe("endLabel (#1203): a session past midnight carries its end day", () => {
+  // Local wall-clock times (no offset): the day boundary is the viewer's midnight.
+  it("gives the time alone when the session ends the day it started", () => {
+    expect(endLabel("2026-11-05T10:10:00", "2026-11-05T13:09:00", "fr-FR")).toBe("13:09");
+  });
+
+  it("adds the day when the session ends on a later day", () => {
+    expect(endLabel("2026-11-07T12:11:00", "2026-11-09T11:55:00", "fr-FR")).toBe("9 nov. 11:55");
+    expect(endLabel("2026-11-01T23:50:00", "2026-11-02T00:20:00", "fr-FR")).toBe("2 nov. 00:20");
   });
 });
 

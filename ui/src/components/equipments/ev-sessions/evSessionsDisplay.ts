@@ -75,6 +75,18 @@ export function timeLabel(iso: string, locale: string): string {
   return new Date(iso).toLocaleTimeString(locale, { hour: "2-digit", minute: "2-digit" });
 }
 
+/**
+ * The end of a session, read after its start: the time alone on the same day,
+ * the day and the time once it ran past midnight (#1203), so that
+ * « 12:11 → 9 nov. 11:55 » never reads as a span running backwards.
+ */
+export function endLabel(startIso: string, endIso: string, locale: string): string {
+  const sameDay = new Date(startIso).toDateString() === new Date(endIso).toDateString();
+  return sameDay
+    ? timeLabel(endIso, locale)
+    : `${dayLabel(endIso, locale)} ${timeLabel(endIso, locale)}`;
+}
+
 export type PauseReason = "charger-off" | "charge-limit" | "waiting-vehicle";
 
 /**

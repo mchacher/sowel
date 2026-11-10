@@ -6,7 +6,7 @@ import { setEvSessionAttribution } from "../../../api";
 import { dateLocale } from "../../../lib/locale";
 import type { EvAttributionChoice, EvChargeSession } from "../../../types";
 import { formatEur } from "../../energy/format";
-import { dayLabel, energyLabel, timeLabel } from "./evSessionsDisplay";
+import { dayLabel, endLabel, energyLabel, timeLabel } from "./evSessionsDisplay";
 
 type Choice = { kind: "vehicle"; id: string } | { kind: "other" } | { kind: "todo" };
 
@@ -135,7 +135,7 @@ export function EvReassignSheet({
             <span className="text-small text-text-secondary">
               {timeLabel(session.startedAt, locale)} →{" "}
               {session.endedAt
-                ? timeLabel(session.endedAt, locale)
+                ? endLabel(session.startedAt, session.endedAt, locale)
                 : t("equipments.evSessions.inProgress")}{" "}
               · <span className="tabular-nums">{energyLabel(session.energyWh, locale)}</span>
               {session.costEur !== null && (

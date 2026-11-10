@@ -14,7 +14,7 @@ import { formatEur } from "../../energy/format";
 import { EvMonthNav } from "./EvMonthNav";
 import { EvCurrentSessionCard } from "./EvCurrentSessionCard";
 import { ShareBar } from "./EvShareBar";
-import { dayLabel, energyLabel, monthOf, timeLabel } from "./evSessionsDisplay";
+import { dayLabel, endLabel, energyLabel, monthOf, timeLabel } from "./evSessionsDisplay";
 import { formatCurrency, formatEnergy } from "../../../lib/format";
 
 const VISIBLE_SESSIONS = 4;
@@ -176,10 +176,14 @@ export function EvHomeChargingSection({
                       <span className="text-body font-medium text-text">
                         {dayLabel(s.startedAt, locale)}{" "}
                         <span className="font-normal text-text-tertiary">
-                          · {timeLabel(s.startedAt, locale)} →{" "}
-                          {s.endedAt
-                            ? timeLabel(s.endedAt, locale)
-                            : t("equipments.evSessions.inProgress")}
+                          <span className="whitespace-nowrap">
+                            {timeLabel(s.startedAt, locale)} →
+                          </span>{" "}
+                          <span className="whitespace-nowrap">
+                            {s.endedAt
+                              ? endLabel(s.startedAt, s.endedAt, locale)
+                              : t("equipments.evSessions.inProgress")}
+                          </span>
                         </span>
                       </span>
                       <span className="text-body font-semibold text-text tabular-nums whitespace-nowrap">
