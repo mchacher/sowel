@@ -40,7 +40,7 @@ interface RecipeActionDef {
   id: string;
   type: "cycle";
   stateKey: string;
-  options: { value: string; label: string }[];
+  options: { value: string; label: string; requiresParam?: string }[]; // #1210: offered only when that param is set
   targets?: string[]; // spec 201: equipment slots the mode applies to (pill on their Dashboard cards)
 }
 

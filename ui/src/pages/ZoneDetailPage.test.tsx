@@ -53,4 +53,26 @@ describe("RecipeModePill", () => {
     render(<RecipeModePill instance={instance} recipe={recipe} action={action} />);
     expect(screen.getByRole("button").textContent).toBe("Comfort");
   });
+
+  // #1210 — the pill walks the shared cycle: an option the recipe marks
+  // `requiresParam` is skipped while that parameter is unset.
+  it("skips an option whose required setting is unset", () => {
+    const boost: RecipeActionDef = {
+      ...action,
+      options: [...action.options, { value: "boost", label: "Boost", requiresParam: "boostTemp" }],
+    };
+    const { unmount } = render(
+      <RecipeModePill instance={instance} recipe={recipe} action={boost} />,
+    );
+    expect(screen.getByRole("button").getAttribute("title")).toBe("Click to switch to Eco");
+    unmount();
+    render(
+      <RecipeModePill
+        instance={{ ...instance, params: { boostTemp: 25 } }}
+        recipe={recipe}
+        action={boost}
+      />,
+    );
+    expect(screen.getByRole("button").getAttribute("title")).toBe("Click to switch to Boost");
+  });
 });

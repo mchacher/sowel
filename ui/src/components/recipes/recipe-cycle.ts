@@ -19,12 +19,11 @@ export function resolveCycle(
   const value = instance.state?.[action.stateKey] as string | undefined;
   if (!value || !instance.enabled) return null;
 
-  // Filter options: hide cocoon/night if their temp is not configured
-  const options = action.options.filter((opt) => {
-    if (opt.value === "cocoon" && !instance.params.cocoonTemp) return false;
-    if (opt.value === "night" && !instance.params.nightTemp) return false;
-    return true;
-  });
+  // #1210 — an option the recipe marks `requiresParam` is offered only when
+  // that parameter is set. Declared by the recipe, never named here.
+  const options = action.options.filter(
+    (opt) => !opt.requiresParam || isSet(instance.params[opt.requiresParam]),
+  );
   if (options.length < 2) return null;
 
   const currentIndex = options.findIndex((o) => o.value === value);
@@ -48,4 +47,10 @@ export function cycleOptionLabel(
   return i18nPack
     ? t(`recipes.actions.${action.id}.${option.value}`, { defaultValue: option.label })
     : option.label;
+}
+
+/** Absent, null, an empty string and an empty list are unset; anything else is set. */
+function isSet(value: unknown): boolean {
+  if (Array.isArray(value)) return value.length > 0;
+  return value !== undefined && value !== null && value !== "";
 }
