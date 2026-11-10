@@ -57,6 +57,7 @@ import { InstallPrompt } from "./InstallPrompt";
 import { UpdateOverlay } from "../system/UpdateOverlay";
 import { HomeSetupWizard } from "../setup/HomeSetupWizard";
 import { ROOT_ZONE_ID } from "../../lib/constants";
+import { ZONE_PATH_SEPARATOR } from "../../lib/zone-path";
 import { useEnergy } from "../../store/useEnergy";
 import { useUiState } from "../../store/useUiState";
 import { useModes } from "../../store/useModes";
@@ -326,7 +327,7 @@ function TopbarBreadcrumb({ homeName }: { homeName: string | null }) {
       <div className="text-small font-medium text-[var(--n-400)]">
         <span>{homeLabel}</span>
         {routeLabel.map((part, i) => (
-          <span key={part}>
+          <span key={i}>
             <span className="mx-[.35rem] opacity-35">›</span>
             {i === routeLabel.length - 1 ? (
               <b className="font-semibold text-[var(--n-700)]">{part}</b>
@@ -491,8 +492,9 @@ function buildZonePath(zoneId: string, tree: ZoneWithChildren[]): { id: string; 
 }
 
 // The separator of a place path in the top bar: « RDC › Séjour », « Énergie › Bilan »,
-// the same chevron as the desktop breadcrumb. Never the middle dot, banned in Sowel text.
-const PATH_SEPARATOR = " › ";
+// the same chevron as the desktop breadcrumb and the zone pickers (one source,
+// `ZONE_PATH_SEPARATOR`). Never the middle dot, banned in Sowel text.
+const PATH_SEPARATOR = ZONE_PATH_SEPARATOR;
 
 /** The parts of a route's label, top-level first: ["Énergie", "Bilan"]. */
 function getRouteLabel(pathname: string, t: (k: string) => string): string[] | null {
