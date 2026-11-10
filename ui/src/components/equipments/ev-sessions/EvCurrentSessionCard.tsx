@@ -18,6 +18,10 @@ import {
   liveState,
   type LiveInputs,
   timeLabel,
+  endLabel,
+  dayLabel,
+  momentLabel,
+  sameLocalDay,
 } from "./evSessionsDisplay";
 
 /** The shared readers' view of the charger and the car, for `liveState`. */
@@ -65,6 +69,12 @@ export function EvCurrentSessionCard({
   const live = liveState(session, liveInputs(charger, vehicle));
   const eur = (v: number | null) => (v === null ? "—" : formatEur(v, locale));
   const time = (iso: string) => timeLabel(iso, locale);
+  // A start or a pause from an earlier day carries its day (#1203).
+  const today = new Date().toISOString();
+  const at = (iso: string) =>
+    sameLocalDay(iso, today)
+      ? { suffix: "", time: time(iso) }
+      : { suffix: "Day", day: dayLabel(iso, locale), time: time(iso) };
 
   const confirm = async () => {
     setSaving(true);
@@ -89,7 +99,11 @@ export function EvCurrentSessionCard({
           </h3>
         </div>
         <span className="text-small text-text-secondary -mt-1.5">
-          {session.chargerName} · {time(session.startedAt)} → {time(session.endedAt!)}
+          {session.chargerName},{" "}
+          <span className="whitespace-nowrap">{momentLabel(session.startedAt, locale)} →</span>{" "}
+          <span className="whitespace-nowrap">
+            {endLabel(session.startedAt, session.endedAt!, locale)}
+          </span>
         </span>
         <div className="flex items-center gap-2.5">
           <div className="flex-1">
@@ -164,17 +178,21 @@ export function EvCurrentSessionCard({
         )}
         {live.kind === "paused" && live.sinceIso && (
           <span className="text-caption font-medium text-text-secondary bg-background rounded-sm px-2 py-0.5">
-            {t("equipments.evSessions.current.since", { time: time(live.sinceIso) })}
+            {(() => {
+              const { suffix, ...vars } = at(live.sinceIso);
+              return t(`equipments.evSessions.current.since${suffix}`, vars);
+            })()}
           </span>
         )}
       </div>
       <span className="text-small text-text-secondary -mt-1.5">
-        {t(
-          charging
-            ? "equipments.evSessions.current.startedCharging"
-            : "equipments.evSessions.current.startedPaused",
-          { charger: session.chargerName, time: time(session.startedAt) },
-        )}
+        {(() => {
+          const { suffix, ...vars } = at(session.startedAt);
+          return t(
+            `equipments.evSessions.current.${charging ? "startedCharging" : "startedPaused"}${suffix}`,
+            { charger: session.chargerName, ...vars },
+          );
+        })()}
       </span>
 
       {live.kind === "paused" && live.reason !== null && (

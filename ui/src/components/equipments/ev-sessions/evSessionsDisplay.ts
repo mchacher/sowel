@@ -75,6 +75,29 @@ export function timeLabel(iso: string, locale: string): string {
   return new Date(iso).toLocaleTimeString(locale, { hour: "2-digit", minute: "2-digit" });
 }
 
+/**
+ * The end of a session, read after its start: the time alone on the same day,
+ * the day and the time once it ran past midnight (#1203), so that
+ * « 12:11 → 9 nov. 11:55 » never reads as a span running backwards.
+ */
+export function endLabel(startIso: string, endIso: string, locale: string): string {
+  return sameLocalDay(startIso, endIso)
+    ? timeLabel(endIso, locale)
+    : `${dayLabel(endIso, locale)} ${timeLabel(endIso, locale)}`;
+}
+
+/** A moment read against today: the time alone today, the day and the time before (#1203). */
+export function momentLabel(iso: string, locale: string, now: Date = new Date()): string {
+  return sameLocalDay(iso, now.toISOString())
+    ? timeLabel(iso, locale)
+    : `${dayLabel(iso, locale)} ${timeLabel(iso, locale)}`;
+}
+
+/** Both instants fall on the same day of the viewer's calendar. */
+export function sameLocalDay(a: string, b: string): boolean {
+  return new Date(a).toDateString() === new Date(b).toDateString();
+}
+
 export type PauseReason = "charger-off" | "charge-limit" | "waiting-vehicle";
 
 /**

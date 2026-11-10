@@ -9,7 +9,14 @@ import type { EvChargeSession } from "../../../types";
 import { formatEur } from "../../energy/format";
 import { EvMonthNav } from "./EvMonthNav";
 import { EvReassignSheet } from "./EvReassignSheet";
-import { dayLabel, energyLabel, monthOf, sessionChip, timeLabel } from "./evSessionsDisplay";
+import {
+  dayLabel,
+  endLabel,
+  energyLabel,
+  monthOf,
+  sessionChip,
+  timeLabel,
+} from "./evSessionsDisplay";
 
 /**
  * Spec 191 FR7 — every session of a charger with the vehicle it belongs to.
@@ -140,10 +147,14 @@ export function EvChargerSessionsSection({
                     <span className="text-body font-medium text-text">
                       {dayLabel(s.startedAt, locale)}{" "}
                       <span className="font-normal text-text-tertiary">
-                        · {timeLabel(s.startedAt, locale)} →{" "}
-                        {s.endedAt
-                          ? timeLabel(s.endedAt, locale)
-                          : t("equipments.evSessions.inProgress")}
+                        <span className="whitespace-nowrap">
+                          {timeLabel(s.startedAt, locale)} →
+                        </span>{" "}
+                        <span className="whitespace-nowrap">
+                          {s.endedAt
+                            ? endLabel(s.startedAt, s.endedAt, locale)
+                            : t("equipments.evSessions.inProgress")}
+                        </span>
                       </span>
                     </span>
                     <span className="text-body font-semibold text-text tabular-nums whitespace-nowrap">
