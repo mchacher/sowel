@@ -225,7 +225,7 @@
     "icon": "Thermometer",
     "author": "mchacher",
     "repo": "mchacher/sowel-recipe-presence-thermostat",
-    "version": "1.0.1",
+    "version": "1.1.0",
     "tags": ["automation", "heating", "thermostat", "presence"],
     "i18n": {
       "fr": {
@@ -235,7 +235,7 @@
     },
     "sowelVersion": ">=1.8.0",
     "owner": "mchacher",
-    "sha256": "a9b1905bafac10227fd8dd0174c06c0cc3bb40fbf12a06907401ca254dd4618a"
+    "sha256": "44f678ce01aa0263fe4cbf7fe1cb5cad63b9a69af7c9d65f98ca94051463fd22"
   },
   {
     "id": "motion-light",
@@ -687,7 +687,7 @@
     "icon": "Flame",
     "author": "mchacher",
     "repo": "mchacher/sowel-recipe-smart-socket-heating",
-    "version": "0.4.0",
+    "version": "0.5.0",
     "tags": ["heating", "presence", "thermostat", "socket", "cocoon", "automation"],
     "i18n": {
       "fr": {
@@ -697,6 +697,6 @@
     },
     "sowelVersion": ">=1.74.0",
     "owner": "mchacher",
-    "sha256": "63e727ff9afb9f5aa832de4f9e8a2d3361ab7970e9287f77e29d12c2a233707b"
+    "sha256": "6cd191e3b642a58011f90557b019acd594b7da1bd41c8f30c1262900a2039888"
   }
 ]
