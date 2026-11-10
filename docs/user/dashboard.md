@@ -26,6 +26,8 @@ A **setpoint** is set the same way everywhere -- a thermostat, a pool heat pump,
 
 On a phone, the thermostat and pool heat pump cards show the setpoint next to the temperature: « 21.0° → 20.0° », or « 21.0° · off » when the unit is off.
 
+When a recipe drives the equipment and has a mode, its card shows that mode as a small pill under the title, on the left: « Cocoon » on the stove while presence-thermostat is in cocoon, « Eco » when it falls back. It follows the recipe live, on a computer and on a phone, and disappears when you turn the recipe off. The pill only shows: change the mode from the zone page or from the recipe's own tile. Only the equipment the recipe drives gets it, never the buttons or sensors it merely reads, and only for recipes that say which equipment their mode applies to (presence-thermostat and smart-socket-heating).
+
 On a phone, a small sign in the top-right corner of each tile tells you what a tap does before you tap:
 
 - **power symbol**: the tap acts at once -- it switches the equipment on or off, or sends a gate its single command;

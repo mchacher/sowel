@@ -12,22 +12,7 @@ import { useWsSubscription } from "../hooks/useWsSubscription";
 import { ROOT_ZONE_ID } from "../lib/constants";
 import { apiErrorText } from "../lib/api-error";
 import { cycleOptionLabel } from "../components/recipes/recipe-cycle";
-
-// ── Mode pill colors ────────────────────────────────────
-
-const MODE_COLORS: Record<string, { bg: string; text: string }> = {
-  // Tokens only, so the pills follow the theme (spec 196). Cocoon and night
-  // stay neutral until the series palette gives them a hue of their own.
-  eco: {
-    bg: "color-mix(in srgb, var(--color-success) 10%, transparent)",
-    text: "var(--color-success)",
-  },
-  comfort: { bg: "var(--color-primary-light)", text: "var(--color-primary)" },
-  cocoon: { bg: "var(--color-border-light)", text: "var(--color-text-secondary)" },
-  night: { bg: "var(--color-border-light)", text: "var(--color-text-secondary)" },
-};
-
-const DEFAULT_PILL_COLOR = { bg: "var(--color-border-light)", text: "var(--color-text-secondary)" };
+import { modePillColors } from "../lib/recipe-mode-colors";
 
 // ── Recipe mode pill ────────────────────────────────────
 
@@ -61,7 +46,7 @@ export function RecipeModePill({
   const nextOption = availableOptions[nextIndex];
   const currentOption = availableOptions[currentIndex >= 0 ? currentIndex : 0];
 
-  const colors = MODE_COLORS[currentValue] ?? DEFAULT_PILL_COLOR;
+  const colors = modePillColors(currentValue);
 
   // Resolve labels from the recipe's own i18n pack, in the UI language.
   const lang = i18n.language.startsWith("fr") ? "fr" : "en";

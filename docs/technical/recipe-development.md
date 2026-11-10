@@ -311,6 +311,28 @@ The zone page's Behaviors panel shows each instance as a two-line row, and reads
 
 Several instances of one recipe in a zone are grouped under the recipe's name, one line each, so the summary is what tells them apart: lead it with what makes this instance different (the watched value, the target).
 
+## The mode on equipment cards (spec 201)
+
+A cycle action can name the equipment its mode applies to. The Dashboard card of each such equipment then shows the current mode as a pill under its title, on a computer and on a phone, for every equipment widget type:
+
+```typescript
+actions: [
+  {
+    id: "set_mode",
+    type: "cycle",
+    stateKey: "currentMode",
+    options: [...],
+    targets: ["thermostat"], // ids of your `equipment` slots the mode applies to
+  },
+],
+```
+
+`targets` is a declaration, never inferred: an `equipment` slot does not say whether your recipe drives that equipment or only reads it, and a pill on the buttons that switch the mode would be wrong. Name only the slots you **drive**; a list slot puts the pill on each of its equipments.
+
+The card shows a pill when the instance is enabled, a target slot holds the equipment, and `state[stateKey]` is one of the action's `options`. The label is the option's, translated like the zone page's mode pill. Publish the resting value from the start of `createInstance` (as for the tile), or the pill appears only after the first change. The pill only shows; the mode is still changed on the zone page and on the tile.
+
+A core older than spec 201 ignores the field, and a recipe without it shows no pill.
+
 ## RecipeContext
 
 The `ctx` object injected into `validate()` and `createInstance()` provides:

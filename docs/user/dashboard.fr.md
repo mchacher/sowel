@@ -26,6 +26,8 @@ Une **consigne** se règle partout de la même façon (thermostat, pompe à chal
 
 Sur téléphone, les cartes thermostat et pompe à chaleur de piscine affichent la consigne à côté de la température : « 21,0° → 20,0° », ou « 21,0° · arrêt » quand l'unité est éteinte.
 
+Quand une recette pilote l'équipement et a un mode, sa carte affiche ce mode dans une petite pastille sous le titre, à gauche : « Cocoon » sur le poêle tant que presence-thermostat est en cocoon, « Éco » quand il y revient. Elle suit la recette en direct, sur ordinateur comme sur téléphone, et disparaît quand vous désactivez la recette. La pastille ne fait qu'afficher : le mode se change depuis la page de la zone ou depuis la tuile de la recette. Seul l'équipement que la recette pilote l'affiche, jamais les boutons ou capteurs qu'elle ne fait que lire, et seulement pour les recettes qui disent à quel équipement leur mode s'applique (presence-thermostat et smart-socket-heating).
+
 Sur téléphone, un petit signe dans le coin en haut à droite de chaque tuile indique ce que fait une tape, avant de toucher :
 
 - **symbole marche** : la tape agit tout de suite -- elle allume ou éteint l'équipement, ou envoie à un portail sa commande unique ;
