@@ -2296,6 +2296,16 @@ export interface PushSubscription {
   auth: string;
   userAgent?: string;
   createdAt: string;
+  /** Spec 199 — owner-given name; absent = the UI derives one from `userAgent`. */
+  label?: string;
+  /** Spec 199 — last send attempt to this endpoint. */
+  lastSentAt?: string;
+  /** Spec 199 — last time the push service accepted a send (2xx). Not proof of display. */
+  lastSuccessAt?: string;
+  /** Spec 199 — last failure (`<status> <message>`), cleared by a success. */
+  lastError?: string;
+  /** Spec 199 — failures since the last success; pruned at MAX_CONSECUTIVE_FAILURES. */
+  consecutiveFailures: number;
 }
 
 export interface NotificationPublisherMapping {

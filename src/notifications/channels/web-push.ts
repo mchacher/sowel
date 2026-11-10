@@ -9,11 +9,19 @@ import type { VapidKeys } from "../vapid.js";
 // ============================================================
 
 /**
+ * Spec 199 — a subscription that fails this many sends in a row is deleted.
+ * Apple may keep an endpoint alive for a removed home-screen app without ever
+ * answering 404/410, so the status alone never prunes it.
+ */
+export const MAX_CONSECUTIVE_FAILURES = 5;
+
+/**
  * Broadcasts a notification to every stored browser subscription using VAPID.
  * No per-publisher config: the recipients are the `push_subscriptions` rows,
- * the credentials are the server-global VAPID keys. Expired endpoints
- * (404/410) are pruned; other per-endpoint failures are logged without
- * aborting delivery to the rest.
+ * the credentials are the server-global VAPID keys. Each outcome is recorded
+ * on the subscription (spec 199). Expired endpoints (404/410) are pruned, and
+ * so is one failing MAX_CONSECUTIVE_FAILURES times in a row; other failures
+ * are logged without aborting delivery to the rest.
  */
 export class WebPushChannel implements NotificationChannel {
   private readonly logger;
@@ -58,18 +66,29 @@ export class WebPushChannel implements NotificationChannel {
             payloadFor(s.userId),
             { vapidDetails },
           );
+          this.subscriptions.recordSuccess(s.id);
         } catch (err: unknown) {
           const status = (err as { statusCode?: number }).statusCode;
+          const endpoint = s.endpoint.slice(0, 40);
           if (status === 404 || status === 410) {
             this.subscriptions.deleteByEndpoint(s.endpoint);
-            this.logger.info(
-              { endpoint: s.endpoint.slice(0, 40) },
-              "Pruned expired push subscription",
+            this.logger.info({ endpoint, status }, "Pruned expired push subscription");
+            return;
+          }
+          const msg = err instanceof Error ? err.message : String(err);
+          const failures = this.subscriptions.recordFailure(
+            s.id,
+            status ? `${status} ${msg}` : msg,
+          );
+          if (failures >= MAX_CONSECUTIVE_FAILURES) {
+            this.subscriptions.deleteById(s.id);
+            this.logger.warn(
+              { subscriptionId: s.id, userId: s.userId, endpoint, status, failures, err },
+              "Pruned push subscription after consecutive failures",
             );
           } else {
-            const msg = err instanceof Error ? err.message : String(err);
             this.logger.warn(
-              { endpoint: s.endpoint.slice(0, 40), status, err: msg },
+              { subscriptionId: s.id, endpoint, status, failures, err },
               "Web push send failed",
             );
           }

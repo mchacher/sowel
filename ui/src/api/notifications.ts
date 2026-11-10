@@ -29,3 +29,20 @@ export async function unsubscribePush(endpoint: string): Promise<void> {
     body: JSON.stringify({ endpoint }),
   });
 }
+
+// Spec 199 — name or remove one of the caller's own devices.
+export async function renamePushSubscription(
+  id: string,
+  label: string | null,
+): Promise<import("../types").PushSubscription> {
+  return fetchJSON(`${API_BASE}/push/subscriptions/${encodeURIComponent(id)}`, {
+    method: "PATCH",
+    body: JSON.stringify({ label }),
+  });
+}
+
+export async function deletePushSubscription(id: string): Promise<void> {
+  return fetchJSON<void>(`${API_BASE}/push/subscriptions/${encodeURIComponent(id)}`, {
+    method: "DELETE",
+  });
+}

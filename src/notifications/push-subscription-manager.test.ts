@@ -103,4 +103,75 @@ describe("PushSubscriptionManager", () => {
     db.prepare(`DELETE FROM users WHERE id = ?`).run("u1");
     expect(manager.listAll()).toHaveLength(0);
   });
+
+  describe("devices: delivery result, name, delete by id (spec 199)", () => {
+    function make(userId = "u1", endpoint = "https://push.example/d") {
+      return manager.upsert(userId, { endpoint, p256dh: "k", auth: "a" });
+    }
+    const get = (id: string) => manager.listAll().find((s) => s.id === id);
+
+    it("starts with no delivery and no failure", () => {
+      const s = make();
+      expect(s.consecutiveFailures).toBe(0);
+      expect(s.lastSentAt).toBeUndefined();
+      expect(s.lastSuccessAt).toBeUndefined();
+      expect(s.lastError).toBeUndefined();
+      expect(s.label).toBeUndefined();
+    });
+
+    it("counts failures in a row and a success resets them", () => {
+      const s = make();
+      expect(manager.recordFailure(s.id, "500 boom")).toBe(1);
+      expect(manager.recordFailure(s.id, "500 boom again")).toBe(2);
+      let row = get(s.id)!;
+      expect(row.consecutiveFailures).toBe(2);
+      expect(row.lastError).toBe("500 boom again");
+      expect(row.lastSentAt).toMatch(/Z$/);
+      expect(row.lastSuccessAt).toBeUndefined();
+
+      manager.recordSuccess(s.id);
+      row = get(s.id)!;
+      expect(row.consecutiveFailures).toBe(0);
+      expect(row.lastError).toBeUndefined();
+      expect(row.lastSuccessAt).toMatch(/Z$/);
+    });
+
+    it("recordFailure on a gone row returns 0", () => {
+      expect(manager.recordFailure("nope", "x")).toBe(0);
+    });
+
+    it("renames only the caller's own subscription, and blank clears it", () => {
+      const s = make("u1");
+      expect(manager.rename(s.id, "u2", "Hacked")).toBeNull();
+      expect(get(s.id)!.label).toBeUndefined();
+      expect(manager.rename(s.id, "u1", "  Marc's iPhone  ")!.label).toBe("Marc's iPhone");
+      expect(manager.rename(s.id, "u1", "   ")!.label).toBeUndefined();
+      expect(manager.rename(s.id, "u1", null)!.label).toBeUndefined();
+    });
+
+    it("re-subscribing the same endpoint keeps the name and resets the failures", () => {
+      const s = make();
+      manager.rename(s.id, "u1", "Kitchen tablet");
+      manager.recordFailure(s.id, "500 boom");
+      const again = make();
+      expect(again.id).toBe(s.id);
+      expect(again.label).toBe("Kitchen tablet");
+      expect(again.consecutiveFailures).toBe(0);
+      expect(again.lastError).toBeUndefined();
+    });
+
+    it("deletes by id only the caller's own subscription", () => {
+      const s = make("u1");
+      expect(manager.deleteById(s.id, "u2")).toBe(false);
+      expect(manager.listAll()).toHaveLength(1);
+      expect(manager.deleteById(s.id, "u1")).toBe(true);
+      expect(manager.listAll()).toHaveLength(0);
+    });
+
+    it("deletes by id without a user (server-side prune)", () => {
+      const s = make("u1");
+      expect(manager.deleteById(s.id)).toBe(true);
+      expect(manager.deleteById(s.id)).toBe(false);
+    });
+  });
 });

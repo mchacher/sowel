@@ -184,6 +184,22 @@ Si les notifications ont été refusées une fois, la ligne n'affiche plus de bo
 notifications pour Sowel dans les réglages du téléphone (ou du navigateur), puis revenez dans la
 section.
 
+### Vos appareils
+
+Sous la ligne, **Vos appareils** liste chaque téléphone ou ordinateur où vous avez activé le push,
+celui que vous tenez marqué **Cet appareil**. Chacun porte le nom de son navigateur
+(« iPhone, Safari 27.2 ») jusqu'à ce que vous le renommiez avec le crayon. La seconde ligne dit
+comment s'est passé le dernier push :
+
+- **Dernier push accepté par le service push** : Apple, Google ou Mozilla l'a pris. Cela ne prouve
+  pas que le téléphone l'a affiché (mode concentration, notifications coupées pour l'app).
+- **Échec du dernier push**, avec la raison.
+
+Retirez un appareil que vous n'utilisez plus avec la corbeille (deux touchers pour confirmer).
+Sowel retire aussi de lui-même un appareil que le service push dit disparu, ou qui échoue cinq push
+d'affilée. Après une réinstallation, le téléphone apparaît comme un nouvel appareil : retirez
+l'ancien.
+
 ## Considérations de sécurité
 
 !!! warning

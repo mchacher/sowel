@@ -1,5 +1,8 @@
 import type { FastifyInstance } from "fastify";
-import type { PushSubscriptionManager } from "../../notifications/push-subscription-manager.js";
+import {
+  PUSH_LABEL_MAX_LENGTH,
+  type PushSubscriptionManager,
+} from "../../notifications/push-subscription-manager.js";
 import type { VapidKeys } from "../../notifications/vapid.js";
 
 interface PushDeps {
@@ -32,6 +35,15 @@ const pushUnsubscribeBodySchema = {
   type: "object",
   required: ["endpoint"],
   properties: { endpoint: { type: "string", minLength: 1 } },
+} as const;
+
+// Spec 199 — rename one of the caller's devices. null or "" clears the name.
+const pushRenameBodySchema = {
+  type: "object",
+  required: ["label"],
+  properties: {
+    label: { type: ["string", "null"], maxLength: PUSH_LABEL_MAX_LENGTH },
+  },
 } as const;
 
 // ============================================================
@@ -77,6 +89,33 @@ export function registerPushRoutes(app: FastifyInstance, deps: PushDeps): void {
       if (!request.auth) return reply.code(401).send({ error: "Not authenticated" });
       const { endpoint } = request.body;
       pushSubscriptionManager.deleteByEndpoint(endpoint, request.auth.userId);
+      return reply.code(204).send();
+    },
+  );
+
+  // PATCH /api/v1/push/subscriptions/:id — name one of the caller's devices (spec 199).
+  app.patch<{ Params: { id: string }; Body: { label: string | null } }>(
+    "/api/v1/push/subscriptions/:id",
+    { schema: { body: pushRenameBodySchema } },
+    async (request, reply) => {
+      if (!request.auth) return reply.code(401).send({ error: "Not authenticated" });
+      const updated = pushSubscriptionManager.rename(
+        request.params.id,
+        request.auth.userId,
+        request.body.label,
+      );
+      if (!updated) return reply.code(404).send({ error: "Push subscription not found" });
+      return updated;
+    },
+  );
+
+  // DELETE /api/v1/push/subscriptions/:id — remove one of the caller's devices (spec 199).
+  app.delete<{ Params: { id: string } }>(
+    "/api/v1/push/subscriptions/:id",
+    async (request, reply) => {
+      if (!request.auth) return reply.code(401).send({ error: "Not authenticated" });
+      const removed = pushSubscriptionManager.deleteById(request.params.id, request.auth.userId);
+      if (!removed) return reply.code(404).send({ error: "Push subscription not found" });
       return reply.code(204).send();
     },
   );

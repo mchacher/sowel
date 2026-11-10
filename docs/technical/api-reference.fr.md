@@ -61,18 +61,19 @@ Deux rôles existent : `admin` et `standard`. La plupart des lectures (`GET`) so
 
 **Liste blanche des écritures `standard`** (les seules mutations qu'un utilisateur standard peut faire) :
 
-| Method        | Path                                                                                                      | Usage                            |
-| ------------- | --------------------------------------------------------------------------------------------------------- | -------------------------------- |
-| POST          | `/api/v1/equipments/:id/orders/:alias`                                                                    | Actionner un équipement          |
-| POST / DELETE | `/api/v1/equipments/:id/timed-action`                                                                     | Action minutée (spec 174)        |
-| POST          | `/api/v1/zones/:id/orders/:orderKey`                                                                      | Commande de zone                 |
-| POST          | `/api/v1/modes/:id/activate`, `/deactivate`                                                               | Bascule du mode actif            |
-| POST          | `/api/v1/modes/:id/apply-to-zone/:zoneId`                                                                 | Application d'un mode à une zone |
-| PUT           | `/api/v1/me`, `/api/v1/me/preferences`, `/api/v1/me/password`                                             | Son propre compte                |
-| POST / DELETE | `/api/v1/me/tokens[/:id]`                                                                                 | Ses propres tokens API           |
-| POST / DELETE | `/api/v1/me/mfa/totp/setup`, `/totp/confirm`, `/totp`, `/backup-codes/regenerate`, `/trusted-devices/:id` | Sa propre MFA (spec 151)         |
-| POST / DELETE | `/api/v1/push/subscriptions`                                                                              | Son propre abonnement push       |
-| POST          | `/api/v1/auth/logout`                                                                                     | Terminer sa propre session       |
+| Method         | Path                                                                                                      | Usage                               |
+| -------------- | --------------------------------------------------------------------------------------------------------- | ----------------------------------- |
+| POST           | `/api/v1/equipments/:id/orders/:alias`                                                                    | Actionner un équipement             |
+| POST / DELETE  | `/api/v1/equipments/:id/timed-action`                                                                     | Action minutée (spec 174)           |
+| POST           | `/api/v1/zones/:id/orders/:orderKey`                                                                      | Commande de zone                    |
+| POST           | `/api/v1/modes/:id/activate`, `/deactivate`                                                               | Bascule du mode actif               |
+| POST           | `/api/v1/modes/:id/apply-to-zone/:zoneId`                                                                 | Application d'un mode à une zone    |
+| PUT            | `/api/v1/me`, `/api/v1/me/preferences`, `/api/v1/me/password`                                             | Son propre compte                   |
+| POST / DELETE  | `/api/v1/me/tokens[/:id]`                                                                                 | Ses propres tokens API              |
+| POST / DELETE  | `/api/v1/me/mfa/totp/setup`, `/totp/confirm`, `/totp`, `/backup-codes/regenerate`, `/trusted-devices/:id` | Sa propre MFA (spec 151)            |
+| POST / DELETE  | `/api/v1/push/subscriptions`                                                                              | Son propre abonnement push          |
+| PATCH / DELETE | `/api/v1/push/subscriptions/:id`                                                                          | Son propre appareil push (spec 199) |
+| POST           | `/api/v1/auth/logout`                                                                                     | Terminer sa propre session          |
 
 Un token API hérite du rôle de son créateur : un token de portée standard est soumis à la même barrière, sans escalade de privilège possible.
 
@@ -591,6 +592,21 @@ Notifications push (actuellement Telegram) déclenchées par des changements de 
 | `POST`   | `/api/v1/notification-publishers/:id/mappings`            | Ajoute un mapping de déclenchement. Body : `{ message, sourceType, sourceId, sourceKey, throttleMs? }`. |
 | `PUT`    | `/api/v1/notification-publishers/:id/mappings/:mappingId` | Met à jour un mapping.                                                                                  |
 | `DELETE` | `/api/v1/notification-publishers/:id/mappings/:mappingId` | Supprime un mapping. Retourne 204.                                                                      |
+
+### Web Push
+
+Abonnements navigateur par utilisateur pour le canal `web-push` (spec 127). Le client doit être en contexte sécurisé (HTTPS).
+
+| Method   | Path                             | Description                                                                                                                                            |
+| -------- | -------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `GET`    | `/api/v1/push/vapid-public-key`  | La clé publique VAPID avec laquelle le navigateur s'abonne. Retourne `{ publicKey }`.                                                                  |
+| `GET`    | `/api/v1/push/subscriptions`     | Les appareils de l'utilisateur, avec `label?`, `lastSentAt?`, `lastSuccessAt?`, `lastError?` et `consecutiveFailures` (spec 199).                      |
+| `POST`   | `/api/v1/push/subscriptions`     | Enregistre cet appareil. Body : `{ endpoint, keys: { p256dh, auth }, userAgent? }`. Upsert par endpoint.                                               |
+| `DELETE` | `/api/v1/push/subscriptions`     | Retire cet appareil. Body : `{ endpoint }`. Retourne 204.                                                                                              |
+| `PATCH`  | `/api/v1/push/subscriptions/:id` | Nomme un appareil de l'appelant. Body : `{ label: string \| null }` (60 caractères max ; `null` ou vide l'efface). 404 si l'id n'est pas à l'appelant. |
+| `DELETE` | `/api/v1/push/subscriptions/:id` | Retire un appareil de l'appelant par son id. Retourne 204 ; 404 si l'id n'est pas à l'appelant.                                                        |
+
+Chaque envoi enregistre son résultat sur l'abonnement (spec 199) : `lastSuccessAt` est le dernier push **accepté** par le service push (2xx), ce qui ne prouve pas que l'appareil l'a affiché ; `lastError` et `consecutiveFailures` décrivent les échecs depuis. Un 404/410 supprime l'abonnement aussitôt, un cinquième échec d'affilée aussi.
 
 ---
 

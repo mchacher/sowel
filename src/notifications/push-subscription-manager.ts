@@ -16,6 +16,11 @@ interface SubscriptionRow {
   auth: string;
   user_agent: string | null;
   created_at: string;
+  label: string | null;
+  last_sent_at: string | null;
+  last_success_at: string | null;
+  last_error: string | null;
+  consecutive_failures: number;
 }
 
 export interface PushSubscriptionInput {
@@ -34,8 +39,16 @@ function rowToSubscription(row: SubscriptionRow): PushSubscription {
     auth: row.auth,
     userAgent: row.user_agent ?? undefined,
     createdAt: toISOUtc(row.created_at),
+    label: row.label ?? undefined,
+    lastSentAt: toISOUtc(row.last_sent_at) ?? undefined,
+    lastSuccessAt: toISOUtc(row.last_success_at) ?? undefined,
+    lastError: row.last_error ?? undefined,
+    consecutiveFailures: row.consecutive_failures,
   };
 }
+
+/** Longest label an owner can give a device (spec 199). */
+export const PUSH_LABEL_MAX_LENGTH = 60;
 
 export class PushSubscriptionManager {
   private readonly logger;
@@ -50,8 +63,29 @@ export class PushSubscriptionManager {
          VALUES (?, ?, ?, ?, ?, ?, datetime('now'))`,
       ),
       updateByEndpoint: db.prepare(
-        `UPDATE push_subscriptions SET user_id = ?, p256dh = ?, auth = ?, user_agent = ? WHERE endpoint = ?`,
+        `UPDATE push_subscriptions SET user_id = ?, p256dh = ?, auth = ?, user_agent = ?,
+           consecutive_failures = 0, last_error = NULL
+         WHERE endpoint = ?`,
       ),
+      getById: db.prepare(`SELECT * FROM push_subscriptions WHERE id = ?`),
+      recordSuccess: db.prepare(
+        `UPDATE push_subscriptions
+         SET last_sent_at = datetime('now'), last_success_at = datetime('now'),
+             last_error = NULL, consecutive_failures = 0
+         WHERE id = ?`,
+      ),
+      recordFailure: db.prepare(
+        `UPDATE push_subscriptions
+         SET last_sent_at = datetime('now'), last_error = ?,
+             consecutive_failures = consecutive_failures + 1
+         WHERE id = ?
+         RETURNING consecutive_failures`,
+      ),
+      renameForUser: db.prepare(
+        `UPDATE push_subscriptions SET label = ? WHERE id = ? AND user_id = ?`,
+      ),
+      deleteById: db.prepare(`DELETE FROM push_subscriptions WHERE id = ?`),
+      deleteByIdForUser: db.prepare(`DELETE FROM push_subscriptions WHERE id = ? AND user_id = ?`),
       listAll: db.prepare(`SELECT * FROM push_subscriptions ORDER BY created_at`),
       listByUser: db.prepare(
         `SELECT * FROM push_subscriptions WHERE user_id = ? ORDER BY created_at`,
@@ -103,5 +137,35 @@ export class PushSubscriptionManager {
   deleteByEndpoint(endpoint: string, userId?: string): void {
     if (userId) this.stmts.deleteByEndpointForUser.run(endpoint, userId);
     else this.stmts.deleteByEndpoint.run(endpoint);
+  }
+
+  /** Spec 199 — the push service accepted a send (2xx): clears the failure run. */
+  recordSuccess(id: string): void {
+    this.stmts.recordSuccess.run(id);
+  }
+
+  /** Spec 199 — a send failed; returns the failures in a row (0 if the row is gone). */
+  recordFailure(id: string, error: string): number {
+    const row = this.stmts.recordFailure.get(error.slice(0, 500), id) as
+      { consecutive_failures: number } | undefined;
+    return row?.consecutive_failures ?? 0;
+  }
+
+  /** Spec 199 — name one of the caller's devices; null or blank clears the name.
+   *  Returns null when the id is not the caller's. */
+  rename(id: string, userId: string, label: string | null): PushSubscription | null {
+    const trimmed = label?.trim().slice(0, PUSH_LABEL_MAX_LENGTH) || null;
+    const { changes } = this.stmts.renameForUser.run(trimmed, id, userId);
+    if (changes === 0) return null;
+    return rowToSubscription(this.stmts.getById.get(id) as SubscriptionRow);
+  }
+
+  /** Spec 199 — remove a subscription by id. With `userId`, only the caller's
+   *  own; without, regardless of owner (server-side pruning). */
+  deleteById(id: string, userId?: string): boolean {
+    const { changes } = userId
+      ? this.stmts.deleteByIdForUser.run(id, userId)
+      : this.stmts.deleteById.run(id);
+    return changes > 0;
   }
 }
