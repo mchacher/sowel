@@ -135,6 +135,13 @@ const STANDARD_WRITE_ALLOWLIST: ReadonlyArray<{ method: string; re: RegExp }> = 
   // configuration: it drives nothing, and the household member who charged is
   // often the one who knows. Every role may correct it.
   { method: "PUT", re: /^\/api\/v1\/ev-sessions\/[^/]+\/attribution$/ },
+  // Issue #1211 — firing a recipe's action (the mode pill on a card, a zone
+  // header or a recipe tile) is an actuation among the options an admin
+  // configured, like an equipment order. Those controls render for every role;
+  // refusing the call left a standard user with a pill that silently did
+  // nothing. Configuring the instance (create, params, enable, disable,
+  // delete) stays admin-only.
+  { method: "POST", re: /^\/api\/v1\/recipe-instances\/[^/]+\/actions$/ },
   // Personal: own account, preferences, password, own API tokens
   { method: "PUT", re: /^\/api\/v1\/me$/ },
   { method: "PUT", re: /^\/api\/v1\/me\/preferences$/ },

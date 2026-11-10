@@ -369,16 +369,16 @@ A definition carries `icon` (a Lucide name) when its package manifest declares o
 
 ### Recipe Instances
 
-| Method   | Path                                   | Description                                                       |
-| -------- | -------------------------------------- | ----------------------------------------------------------------- |
-| `GET`    | `/api/v1/recipe-instances`             | List all active recipe instances.                                 |
-| `POST`   | `/api/v1/recipe-instances`             | Create instance. Body: `{ recipeId, params }`.                    |
-| `PUT`    | `/api/v1/recipe-instances/:id`         | Update instance params. Body: `{ params }`.                       |
-| `DELETE` | `/api/v1/recipe-instances/:id`         | Stop and delete instance. Returns 204.                            |
-| `POST`   | `/api/v1/recipe-instances/:id/enable`  | Enable a disabled instance.                                       |
-| `POST`   | `/api/v1/recipe-instances/:id/disable` | Disable (pause) a running instance.                               |
-| `POST`   | `/api/v1/recipe-instances/:id/actions` | Send an action to a running recipe. Body: `{ action, payload? }`. |
-| `GET`    | `/api/v1/recipe-instances/:id/log`     | Get execution log. Query: `?limit=50`.                            |
+| Method   | Path                                   | Description                                                                                                                                                 |
+| -------- | -------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `GET`    | `/api/v1/recipe-instances`             | List all active recipe instances.                                                                                                                           |
+| `POST`   | `/api/v1/recipe-instances`             | Create instance. Body: `{ recipeId, params }`.                                                                                                              |
+| `PUT`    | `/api/v1/recipe-instances/:id`         | Update instance params. Body: `{ params }`.                                                                                                                 |
+| `DELETE` | `/api/v1/recipe-instances/:id`         | Stop and delete instance. Returns 204.                                                                                                                      |
+| `POST`   | `/api/v1/recipe-instances/:id/enable`  | Enable a disabled instance.                                                                                                                                 |
+| `POST`   | `/api/v1/recipe-instances/:id/disable` | Disable (pause) a running instance.                                                                                                                         |
+| `POST`   | `/api/v1/recipe-instances/:id/actions` | Send an action to a running recipe. Body: `{ action, payload? }`. Open to `standard` users (allowlisted, #1211); the other instance routes stay admin-only. |
+| `GET`    | `/api/v1/recipe-instances/:id/log`     | Get execution log. Query: `?limit=50`.                                                                                                                      |
 
 ---
 

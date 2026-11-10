@@ -299,16 +299,16 @@ Une définition porte `icon` (un nom Lucide) quand le manifeste de son paquet en
 
 ### Recipe Instances
 
-| Method   | Path                                   | Description                                                              |
-| -------- | -------------------------------------- | ------------------------------------------------------------------------ |
-| `GET`    | `/api/v1/recipe-instances`             | Liste toutes les instances de recettes actives.                          |
-| `POST`   | `/api/v1/recipe-instances`             | Crée une instance. Body : `{ recipeId, params }`.                        |
-| `PUT`    | `/api/v1/recipe-instances/:id`         | Met à jour les params de l'instance. Body : `{ params }`.                |
-| `DELETE` | `/api/v1/recipe-instances/:id`         | Arrête et supprime l'instance. Retourne 204.                             |
-| `POST`   | `/api/v1/recipe-instances/:id/enable`  | Active une instance désactivée.                                          |
-| `POST`   | `/api/v1/recipe-instances/:id/disable` | Désactive (met en pause) une instance en cours.                          |
-| `POST`   | `/api/v1/recipe-instances/:id/actions` | Envoie une action à une recette en cours. Body : `{ action, payload? }`. |
-| `GET`    | `/api/v1/recipe-instances/:id/log`     | Récupère le journal d'exécution. Query : `?limit=50`.                    |
+| Method   | Path                                   | Description                                                                                                                                                                                      |
+| -------- | -------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `GET`    | `/api/v1/recipe-instances`             | Liste toutes les instances de recettes actives.                                                                                                                                                  |
+| `POST`   | `/api/v1/recipe-instances`             | Crée une instance. Body : `{ recipeId, params }`.                                                                                                                                                |
+| `PUT`    | `/api/v1/recipe-instances/:id`         | Met à jour les params de l'instance. Body : `{ params }`.                                                                                                                                        |
+| `DELETE` | `/api/v1/recipe-instances/:id`         | Arrête et supprime l'instance. Retourne 204.                                                                                                                                                     |
+| `POST`   | `/api/v1/recipe-instances/:id/enable`  | Active une instance désactivée.                                                                                                                                                                  |
+| `POST`   | `/api/v1/recipe-instances/:id/disable` | Désactive (met en pause) une instance en cours.                                                                                                                                                  |
+| `POST`   | `/api/v1/recipe-instances/:id/actions` | Envoie une action à une recette en cours. Body : `{ action, payload? }`. Ouvert aux utilisateurs `standard` (liste autorisée, #1211) ; les autres routes d'instance restent réservées à l'admin. |
+| `GET`    | `/api/v1/recipe-instances/:id/log`     | Récupère le journal d'exécution. Query : `?limit=50`.                                                                                                                                            |
 
 ---
 
