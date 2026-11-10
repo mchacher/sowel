@@ -1,8 +1,9 @@
 import type { RecipeActionDef, RecipeInfo, RecipeInstance } from "../types";
 
-/** One mode to show on an equipment card: which recipe, which action, which option. */
+/** One mode to show on an equipment card: which instance and recipe, which action, which option. */
 export interface EquipmentMode {
   key: string;
+  instance: RecipeInstance;
   recipe: RecipeInfo;
   action: RecipeActionDef;
   option: RecipeActionDef["options"][number];
@@ -41,7 +42,7 @@ export function modesForEquipment(
       const option = action.options.find((o) => o.value === value);
       if (!option) continue;
       modes.push({
-        mode: { key: `${instance.id}:${action.id}`, recipe, action, option },
+        mode: { key: `${instance.id}:${action.id}`, instance, recipe, action, option },
         createdAt: instance.createdAt,
       });
     }

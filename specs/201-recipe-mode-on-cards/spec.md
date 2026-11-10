@@ -14,11 +14,11 @@ Mockup validated by the maintainer (option B2): https://claude.ai/artifact/8LfNR
 
 1. A recipe can declare which of its equipment slots its mode applies to.
 2. The Dashboard card of such an equipment shows the current mode as a pill, on a computer and on a phone, for every equipment widget type at once.
+3. The mode can be changed from there: the computer card's pill, the phone panel's pill (added at the maintainer's request after the spec was approved).
 
 ## Non-Goals
 
-- No control on the card: the pill only shows. Changing the mode stays on the zone page and on the recipe tile (spec 169).
-- No pill on the equipment page, the phone detail panel, the zone widget or the recipe tile.
+- No pill on the equipment page, the zone widget or the recipe tile.
 - No inference for recipes that declare nothing: they show no pill.
 - The `cocoonTemp` / `nightTemp` filter hard-coded in `recipe-cycle.ts` and `ZoneDetailPage.tsx` stays as it is; its removal is a separate issue.
 - No change to the recipe engine, the database, the REST routes or the WebSocket events.
@@ -60,6 +60,15 @@ The pill follows `recipe.instance.state.changed` through the existing `useRecipe
 
 Each is a patch release of its package, then a registry bump (spec 089). A core without this spec ignores the field; a recipe without it shows nothing.
 
+### FR6 — Changing the mode
+
+A click on the pill moves to the next mode, the zone page's cycle (`resolveCycle`, same options, same `{ mode }` payload through `useRecipes.sendAction`):
+
+- Computer: the card's pill is a button; the card's own click action ignores it (nested control, spec 098).
+- Phone: the card is itself a button and cannot nest another, so its pill only shows. The panel the tap opens (`EquipmentDetailSheet`, every equipment branch) carries the same pills beside its title, as buttons.
+- A cycle with fewer than two options left, or a disabled instance, renders a plain pill.
+- Recipe actions are admin-only on the API today (`/recipe-instances/:id/actions` is not in the standard user allowlist), as on the zone page and the recipe tile: a standard user's click is refused and the state does not change. Opening it to standard users is a separate issue.
+
 ## Acceptance Criteria
 
 - [ ] `RecipeActionDef.targets` exists in `src/shared/types.ts` and `ui/src/types.ts`, documented.
@@ -69,6 +78,7 @@ Each is a patch release of its package, then a registry bump (spec 089). A core 
 - [ ] A disabled instance, a missing state value or a value outside the options shows no pill.
 - [ ] The title of « Radiateur Bureau » stays whole and centred with the pill shown.
 - [ ] Cards keep their height (160/240 px computer, 120 px phone).
+- [ ] A click on the computer card's pill moves to the next mode without firing the card; the phone panel's pill does the same; the phone card's pill does not react.
 - [ ] presence-thermostat and smart-socket-heating released with `targets`, registry bumped.
 
 ## Edge Cases

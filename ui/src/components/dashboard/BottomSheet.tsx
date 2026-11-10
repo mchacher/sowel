@@ -10,9 +10,19 @@ interface BottomSheetProps {
   children: ReactNode;
   /** Pinned under the scrolling content (spec 196: the link to the equipment page). */
   footer?: ReactNode;
+  /** Beside the title (spec 201: the mode of the recipe driving the equipment). */
+  aside?: ReactNode;
 }
 
-export function BottomSheet({ open, onClose, title, icon, children, footer }: BottomSheetProps) {
+export function BottomSheet({
+  open,
+  onClose,
+  title,
+  icon,
+  children,
+  footer,
+  aside,
+}: BottomSheetProps) {
   const sheetRef = useRef<HTMLDivElement>(null);
   const dragStartY = useRef<number | null>(null);
   const dragCurrentY = useRef(0);
@@ -86,6 +96,7 @@ export function BottomSheet({ open, onClose, title, icon, children, footer }: Bo
           <div className="flex items-center gap-3">
             {icon && <div className="w-8 h-8 flex items-center justify-center">{icon}</div>}
             <h2 className="text-lead font-semibold text-text">{title}</h2>
+            {aside}
           </div>
           <button
             onClick={onClose}

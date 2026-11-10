@@ -13,6 +13,7 @@
 - [ ] B.3 — `CardModePills` and its tests
 - [ ] B.4 — Mounted in `WidgetCard` and `MobileWidgetCard`
 - [ ] B.5 — Docs EN and FR (dashboard, recipe development, data model)
+- [ ] B.6 — FR6: interactive pill on the computer card and in the phone panel (`BottomSheet.aside`)
 
 ### Slice C — Recipes (after the core PR is merged)
 
@@ -22,24 +23,28 @@
 
 ## Test Plan
 
-| Module               | Scenario                                                    | Expected                               |
-| -------------------- | ----------------------------------------------------------- | -------------------------------------- |
-| recipe-target-modes  | Single target slot holds the equipment, state among options | One entry with that option             |
-| recipe-target-modes  | List target slot contains the equipment                     | One entry                              |
-| recipe-target-modes  | Equipment only in a non-target slot (cocoon buttons)        | Empty                                  |
-| recipe-target-modes  | Action without `targets`                                    | Empty                                  |
-| recipe-target-modes  | `targets` names a non-equipment or unknown slot             | Ignored, empty                         |
-| recipe-target-modes  | Disabled instance                                           | Empty                                  |
-| recipe-target-modes  | State value absent, or not among the options                | Empty                                  |
-| recipe-target-modes  | Equipment in two target slots of the same instance          | One entry                              |
-| recipe-target-modes  | Two instances target the equipment                          | Two entries, oldest instance first     |
-| recipe-target-modes  | Recipe definition missing (package removed)                 | Empty, no throw                        |
-| CardModePills        | Instance in cocoon targeting the equipment                  | Renders « Cocoon » (recipe i18n label) |
-| CardModePills        | No matching instance                                        | Renders nothing                        |
-| WidgetCard           | Inside `TileEquipmentContext` with a matching instance      | Pill present, title unchanged          |
-| MobileWidgetCard     | Matching instance                                           | Pill present under label and zone      |
-| presence-thermostat  | Definition                                                  | `set_mode.targets` is `["thermostat"]` |
-| smart-socket-heating | Definition                                                  | `set_mode.targets` is `["heaters"]`    |
+| Module               | Scenario                                                    | Expected                                                |
+| -------------------- | ----------------------------------------------------------- | ------------------------------------------------------- |
+| recipe-target-modes  | Single target slot holds the equipment, state among options | One entry with that option                              |
+| recipe-target-modes  | List target slot contains the equipment                     | One entry                                               |
+| recipe-target-modes  | Equipment only in a non-target slot (cocoon buttons)        | Empty                                                   |
+| recipe-target-modes  | Action without `targets`                                    | Empty                                                   |
+| recipe-target-modes  | `targets` names a non-equipment or unknown slot             | Ignored, empty                                          |
+| recipe-target-modes  | Disabled instance                                           | Empty                                                   |
+| recipe-target-modes  | State value absent, or not among the options                | Empty                                                   |
+| recipe-target-modes  | Equipment in two target slots of the same instance          | One entry                                               |
+| recipe-target-modes  | Two instances target the equipment                          | Two entries, oldest instance first                      |
+| recipe-target-modes  | Recipe definition missing (package removed)                 | Empty, no throw                                         |
+| CardModePills        | Instance in cocoon targeting the equipment                  | Renders « Cocoon » (recipe i18n label)                  |
+| CardModePills        | No matching instance                                        | Renders nothing                                         |
+| WidgetCard           | Inside `TileEquipmentContext` with a matching instance      | Pill present, title unchanged                           |
+| MobileWidgetCard     | Matching instance                                           | Pill present under label and zone                       |
+| CardModePills        | Click on the computer card's pill                           | `sendAction(i1, set_mode, {mode: eco})`, card not fired |
+| CardModePills        | Phone card pill; then the phone panel's pill clicked        | Card pill is a span; panel sends the next mode          |
+| CardModePills        | Click on the computer card's pill                           | `sendAction(i1, set_mode, {mode: eco})`, card not fired |
+| CardModePills        | Phone card pill; then the phone panel's pill clicked        | Card pill is a span; panel sends the next mode          |
+| presence-thermostat  | Definition                                                  | `set_mode.targets` is `["thermostat"]`                  |
+| smart-socket-heating | Definition                                                  | `set_mode.targets` is `["heaters"]`                     |
 
 The core scenario (cocoon buttons get no pill) is broken once on purpose to see its test fail.
 

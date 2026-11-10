@@ -1,9 +1,10 @@
-import { beforeEach, describe, expect, it } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 import { MemoryRouter } from "react-router-dom";
-import { render, screen } from "../../test-utils";
+import { render, screen, userEvent } from "../../test-utils";
 import { CardModePills } from "./CardModePills";
 import { WidgetCard } from "./WidgetCard";
 import { MobileWidgetCard } from "./MobileWidgetCard";
+import { EquipmentDetailSheet } from "./WidgetDetailSheet";
 import { TileEquipmentContext } from "../equipments/order-outcome";
 import { useRecipes } from "../../store/useRecipes";
 import type {
@@ -40,7 +41,7 @@ const recipe: RecipeInfo = {
 const instance: RecipeInstance = {
   id: "i1",
   recipeId: "presence-thermostat",
-  params: { thermostat: "poele", buttons: ["switch-cocoon"] },
+  params: { thermostat: "poele", buttons: ["switch-cocoon"], cocoonTemp: 22 },
   enabled: true,
   createdAt: "2026-11-01T00:00:00Z",
   state: { currentMode: "cocoon" },
@@ -61,8 +62,11 @@ const stove: EquipmentWithDetails = {
 
 const widget = { id: "w1", type: "equipment", equipmentId: "poele" } as DashboardWidget;
 
+const sendAction = vi.fn(async () => {});
+
 beforeEach(() => {
-  useRecipes.setState({ recipes: [recipe], instances: [instance] });
+  sendAction.mockClear();
+  useRecipes.setState({ recipes: [recipe], instances: [instance], sendAction });
 });
 
 describe("CardModePills", () => {
@@ -97,5 +101,45 @@ describe("cards", () => {
     const pill = screen.getByTestId("card-mode-pill");
     expect(pill.textContent).toBe("Cocoon");
     expect(pill.parentElement?.parentElement?.textContent).toContain("Salon");
+  });
+});
+
+describe("changing the mode", () => {
+  it("moves to the next mode from a computer card, without firing the card", async () => {
+    const onClick = vi.fn();
+    render(
+      <MemoryRouter>
+        <TileEquipmentContext.Provider value="poele">
+          <WidgetCard label="Poele" onClick={onClick}>
+            <p>body</p>
+          </WidgetCard>
+        </TileEquipmentContext.Provider>
+      </MemoryRouter>,
+    );
+    await userEvent.click(screen.getByRole("button", { name: "Cocoon" }));
+    expect(sendAction).toHaveBeenCalledWith("i1", "set_mode", { mode: "eco" });
+    expect(onClick).not.toHaveBeenCalled();
+  });
+
+  it("keeps the phone card display only, its sheet changes the mode", async () => {
+    const { unmount } = render(
+      <MobileWidgetCard widget={widget} equipment={stove} equipmentZone="Salon" />,
+    );
+    expect(screen.getByTestId("card-mode-pill").tagName).toBe("SPAN");
+    unmount();
+
+    render(
+      <MemoryRouter>
+        <EquipmentDetailSheet
+          widget={widget}
+          equipment={stove}
+          equipmentZone="Salon"
+          onExecuteOrder={vi.fn()}
+          onClose={vi.fn()}
+        />
+      </MemoryRouter>,
+    );
+    await userEvent.click(screen.getByRole("button", { name: "Cocoon" }));
+    expect(sendAction).toHaveBeenCalledWith("i1", "set_mode", { mode: "eco" });
   });
 });

@@ -33,7 +33,7 @@ Pure function `modesForEquipment(equipmentId, instances, recipes)` returning `{ 
 
 ### New: `ui/src/components/dashboard/CardModePills.tsx`
 
-`CardModePills({ equipmentId, size })`: reads `useRecipes` (instances, recipes), memoises `modesForEquipment`, renders nothing when empty, else an absolutely placed row (`absolute left-0 top-full`, `pointer-events-none`) of pills labelled through `cycleOptionLabel`. `size` is `"md"` (computer, `text-micro`) or `"sm"` (phone, 10 px equivalent through the existing `text-micro` with tighter padding; no arbitrary font size, lint).
+`CardModePills({ equipmentId, size })`: reads `useRecipes` (instances, recipes), memoises `modesForEquipment`, renders nothing when empty, else a row of pills labelled through `cycleOptionLabel`: `placement="under"` (cards) is absolutely placed (`absolute left-0 top-full`), `"inline"` (sheet header) stays in the flow. With `interactive`, each pill is a button running the zone page's cycle (`resolveCycle`, `sendAction`); the computer card and the phone sheet pass it, the phone card does not. `size` is `"md"` (computer, `text-micro`) or `"sm"` (phone, 10 px equivalent through the existing `text-micro` with tighter padding; no arbitrary font size, lint).
 
 ## Files changed
 
@@ -46,6 +46,8 @@ Pure function `modesForEquipment(equipmentId, instances, recipes)` returning `{ 
 | UI       | `ui/src/components/dashboard/CardModePills.tsx` (+ test) | New                                                                       |
 | UI       | `ui/src/components/dashboard/WidgetCard.tsx`             | Title block becomes `relative`; `<CardModePills>` from the tile context   |
 | UI       | `ui/src/components/dashboard/MobileWidgetCard.tsx`       | Label and zone wrapped in a `relative` block; `<CardModePills size="sm">` |
+| UI       | `ui/src/components/dashboard/BottomSheet.tsx`            | Optional `aside` beside the title                                         |
+| UI       | `ui/src/components/dashboard/WidgetDetailSheet.tsx`      | Interactive pills in every equipment sheet                                |
 | UI       | `ui/src/pages/ZoneDetailPage.tsx`                        | Imports the moved colours                                                 |
 | Docs     | `docs/user/dashboard{,.fr}.md`                           | Equipment widget paragraph                                                |
 | Docs     | `docs/technical/recipe-development{,.fr}.md`             | New section                                                               |
