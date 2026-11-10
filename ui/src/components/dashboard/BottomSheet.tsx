@@ -93,14 +93,16 @@ export function BottomSheet({
 
         {/* Header */}
         <div className="flex items-center justify-between px-5 pb-3">
-          <div className="flex items-center gap-3">
-            {icon && <div className="w-8 h-8 flex items-center justify-center">{icon}</div>}
+          <div className="flex items-center gap-3 min-w-0">
+            {icon && (
+              <div className="w-8 h-8 shrink-0 flex items-center justify-center">{icon}</div>
+            )}
             <h2 className="text-lead font-semibold text-text">{title}</h2>
             {aside}
           </div>
           <button
             onClick={onClose}
-            className="p-1.5 rounded-sm text-text-tertiary hover:text-text-secondary hover:bg-border-light transition-colors cursor-pointer"
+            className="shrink-0 p-1.5 rounded-sm text-text-tertiary hover:text-text-secondary hover:bg-border-light transition-colors cursor-pointer"
           >
             <X size={18} strokeWidth={1.5} />
           </button>

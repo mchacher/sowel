@@ -90,9 +90,10 @@ export function WidgetCard({
             Renders nothing outside an equipment tile or without a tracked order. */}
         <TileOrderOutcomeLine />
         {/* Spec 201 — the mode of the recipe driving this equipment, under the
-            title block; a click moves to the next mode. Renders nothing
+            title block; a click moves to the next mode (computer only: a phone
+            changes it from the sheet). Renders nothing
             outside an equipment tile. */}
-        <CardModePills equipmentId={equipmentId} interactive />
+        <CardModePills equipmentId={equipmentId} interactive={!isMobile} />
       </div>
       {children}
       {corner}

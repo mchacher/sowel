@@ -41,8 +41,7 @@
 | MobileWidgetCard     | Matching instance                                           | Pill present under label and zone                       |
 | CardModePills        | Click on the computer card's pill                           | `sendAction(i1, set_mode, {mode: eco})`, card not fired |
 | CardModePills        | Phone card pill; then the phone panel's pill clicked        | Card pill is a span; panel sends the next mode          |
-| CardModePills        | Click on the computer card's pill                           | `sendAction(i1, set_mode, {mode: eco})`, card not fired |
-| CardModePills        | Phone card pill; then the phone panel's pill clicked        | Card pill is a span; panel sends the next mode          |
+| CardModePills        | Computer card, cycle with a single option left              | Plain pill (span), no button                            |
 | presence-thermostat  | Definition                                                  | `set_mode.targets` is `["thermostat"]`                  |
 | smart-socket-heating | Definition                                                  | `set_mode.targets` is `["heaters"]`                     |
 

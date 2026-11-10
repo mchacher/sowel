@@ -45,7 +45,7 @@ export function CardModePills({
   const box =
     placement === "under"
       ? "absolute left-0 top-full mt-0.5 z-10 flex gap-1 pointer-events-none"
-      : "flex gap-1";
+      : "flex flex-wrap gap-1";
   return (
     <span className={box}>
       {modes.map((mode) => (

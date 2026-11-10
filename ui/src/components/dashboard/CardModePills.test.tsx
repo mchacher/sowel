@@ -142,4 +142,20 @@ describe("changing the mode", () => {
     await userEvent.click(screen.getByRole("button", { name: "Cocoon" }));
     expect(sendAction).toHaveBeenCalledWith("i1", "set_mode", { mode: "eco" });
   });
+
+  it("draws a plain pill when the cycle has a single option left", () => {
+    useRecipes.setState({
+      instances: [{ ...instance, params: { thermostat: "poele" } }],
+    });
+    render(
+      <MemoryRouter>
+        <TileEquipmentContext.Provider value="poele">
+          <WidgetCard label="Poele">
+            <p>body</p>
+          </WidgetCard>
+        </TileEquipmentContext.Provider>
+      </MemoryRouter>,
+    );
+    expect(screen.getByTestId("card-mode-pill").tagName).toBe("SPAN");
+  });
 });

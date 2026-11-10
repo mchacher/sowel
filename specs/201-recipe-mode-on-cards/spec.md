@@ -66,7 +66,8 @@ A click on the pill moves to the next mode, the zone page's cycle (`resolveCycle
 
 - Computer: the card's pill is a button; the card's own click action ignores it (nested control, spec 098).
 - Phone: the card is itself a button and cannot nest another, so its pill only shows. The panel the tap opens (`EquipmentDetailSheet`, every equipment branch) carries the same pills beside its title, as buttons.
-- A cycle with fewer than two options left, or a disabled instance, renders a plain pill.
+- A cycle with fewer than two options left renders a plain pill (a disabled instance shows no pill at all, FR2).
+- Every card on a phone, the timed tile included (it uses the computer shell on both widths), shows the pill without the click.
 - Recipe actions are admin-only on the API today (`/recipe-instances/:id/actions` is not in the standard user allowlist), as on the zone page and the recipe tile: a standard user's click is refused and the state does not change. Opening it to standard users is a separate issue.
 
 ## Acceptance Criteria
