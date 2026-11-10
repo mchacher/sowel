@@ -41,7 +41,7 @@ describe("PushNotificationsSection (#1199)", () => {
     withStatus("default");
     render(<PushNotificationsSection />);
     expect(screen.getByText("This device")).toBeTruthy();
-    expect(screen.getByText("Push is off for this device.")).toBeTruthy();
+    expect(screen.getByText("Notifications are off for this device.")).toBeTruthy();
     await userEvent.click(screen.getByRole("button", { name: "Enable" }));
     expect(subscribe).toHaveBeenCalledOnce();
   });
@@ -55,7 +55,7 @@ describe("PushNotificationsSection (#1199)", () => {
   it("offers Disable when subscribed, and unsubscribes on tap", async () => {
     withStatus("subscribed");
     render(<PushNotificationsSection />);
-    expect(screen.getByText("Push is on for this device.")).toBeTruthy();
+    expect(screen.getByText("Notifications are on for this device.")).toBeTruthy();
     await userEvent.click(screen.getByRole("button", { name: "Disable" }));
     expect(unsubscribe).toHaveBeenCalledOnce();
   });
@@ -71,7 +71,7 @@ describe("PushNotificationsSection (#1199)", () => {
     withStatus("unsupported");
     render(<PushNotificationsSection />);
     expect(screen.queryByRole("button")).toBeNull();
-    expect(screen.getByText(/does not support push/)).toBeTruthy();
+    expect(screen.getByText(/does not support notifications/)).toBeTruthy();
   });
 
   it("explains an insecure context without a button", () => {
