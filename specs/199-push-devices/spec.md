@@ -12,7 +12,9 @@ through: the « Notifications dispatched » log line lives ~30 min in the in-mem
 ## Requirements
 
 - R1. A subscription carries an optional **label**, editable by its owner. With no label the UI
-  derives one from the user agent: device family + browser version (« iPhone, Safari 27.2 »).
+  derives one from the user agent: device family + browser version (« Android, Chrome 130 »), and for iPhone / iPad the iOS
+  version (« iPhone, iOS 27.2 »): a home-screen app reports Safari's user agent whichever browser
+  added it, so the browser name would mislead.
 - R2. The Notifications section lists the user's devices, the current one marked « this device »
   (endpoint match with `pushManager.getSubscription()`).
 - R3. An owner deletes one of their subscriptions by id, with a confirmation.

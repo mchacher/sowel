@@ -185,12 +185,14 @@ phone (or browser) settings, then come back to the section.
 ### Your devices
 
 Under the row, **Your devices** lists every phone or computer where you turned push on, the one in
-your hand marked **This device**. Each one is named after its browser (« iPhone, Safari 27.2 »)
-until you rename it with the pencil. The second line tells how the last push went:
+your hand marked **This device**. Each one is named after its device and browser (« Android, Chrome 130 »), an iPhone or iPad
+after its iOS version (« iPhone, iOS 27.2 »: a Sowel added to the home screen looks the same
+whichever browser added it), until you rename it with the pencil. Two phones on one account look
+alike: give each a name. The second line tells how the last notification went:
 
-- **Last push accepted by the push service**: Apple, Google or Mozilla took it. It does not prove
+- **Last notification accepted by the push service**: Apple, Google or Mozilla took it. It does not prove
   the phone displayed it (focus mode, notifications turned off for the app).
-- **Last push failed**, with the reason.
+- **Last notification failed**, with the reason.
 
 Remove a device you no longer use with the bin (tap twice to confirm). Sowel also removes on its
 own a device the push service reports as gone, or one it refuses five times in a row. After a

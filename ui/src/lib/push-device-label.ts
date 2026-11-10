@@ -1,7 +1,11 @@
 // Spec 199 — a default name for a push device, from the user agent it
-// subscribed with: device family + browser and version, « iPhone, Safari 27.2 ».
-// The OS version is left out on purpose: Safari freezes it at 18_7 on iOS, so
-// only the Safari version tells two iPhones' subscriptions apart.
+// subscribed with: device family + browser and version, « Android, Chrome 130 ».
+//
+// iPhone and iPad are named by iOS version instead, « iPhone, iOS 27.2 »: push
+// only works there from a Sowel added to the home screen, and that app always
+// reports Safari's user agent whichever browser added it (Chrome included), so
+// naming the browser would be wrong. The OS in that user agent is frozen at
+// 18_7; since iOS 26 its `Version/` is the iOS version.
 
 function deviceFamily(ua: string): string | null {
   if (/iPhone/.test(ua)) return "iPhone";
@@ -26,9 +30,16 @@ function browser(ua: string): string | null {
   return null;
 }
 
-/** « iPhone, Safari 27.2 », or null when the user agent says nothing usable. */
+function iosVersion(ua: string): string | null {
+  const v = ua.match(/Version\/([\d.]+)/)?.[1];
+  return v ? `iOS ${v}` : null;
+}
+
+/** « iPhone, iOS 27.2 », « Android, Chrome 130 », or null when the user agent says nothing usable. */
 export function pushDeviceLabelFromUserAgent(ua: string | undefined): string | null {
   if (!ua) return null;
-  const parts = [deviceFamily(ua), browser(ua)].filter((p): p is string => !!p);
+  const family = deviceFamily(ua);
+  const second = family === "iPhone" || family === "iPad" ? iosVersion(ua) : browser(ua);
+  const parts = [family, second].filter((p): p is string => !!p);
   return parts.length > 0 ? parts.join(", ") : null;
 }

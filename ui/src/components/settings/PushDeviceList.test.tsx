@@ -52,10 +52,12 @@ describe("PushDeviceList (spec 199)", () => {
     removeCurrent.mockClear();
   });
 
-  it("says when push is on nowhere", async () => {
+  it("says when notifications are on nowhere", async () => {
     mockedList.mockResolvedValue([]);
     renderList(null);
-    expect(await screen.findByText("Push is not on for any of your devices.")).toBeTruthy();
+    expect(
+      await screen.findByText("Notifications are not on for any of your devices."),
+    ).toBeTruthy();
   });
 
   it("names each device, marks this one, and shows the last delivery", async () => {
@@ -75,14 +77,14 @@ describe("PushDeviceList (spec 199)", () => {
     renderList();
     const rows = await screen.findAllByTestId("push-device");
     expect(rows).toHaveLength(3);
-    expect(within(rows[0]).getByText("iPhone, Safari 27.2")).toBeTruthy();
+    expect(within(rows[0]).getByText("iPhone, iOS 27.2")).toBeTruthy();
     expect(within(rows[0]).getByText("This device")).toBeTruthy();
     expect(within(rows[0]).getByText(/accepted by the push service 12 min ago/)).toBeTruthy();
     expect(within(rows[1]).getByText("Old iPhone")).toBeTruthy();
     expect(within(rows[1]).queryByText("This device")).toBeNull();
-    expect(within(rows[1]).getByText(/Last push failed .*: 403 Forbidden/)).toBeTruthy();
+    expect(within(rows[1]).getByText(/Last notification failed .*: 403 Forbidden/)).toBeTruthy();
     expect(within(rows[2]).getByText("Unknown device")).toBeTruthy();
-    expect(within(rows[2]).getByText("No push sent yet")).toBeTruthy();
+    expect(within(rows[2]).getByText("No notification sent yet")).toBeTruthy();
   });
 
   it("renames a device inline", async () => {
