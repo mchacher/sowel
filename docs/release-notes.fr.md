@@ -11,6 +11,26 @@ Cette page résume toutes les versions publiées, de la plus récente à la plus
 
 ---
 
+## 1.84.x : Ce que coûte l'électricité
+
+### v1.84.0 — 2026-11-10 { #v1-84-0 }
+
+L'énergie gagne une page Bilan qui répond en euros : ce qu'a coûté le réseau, ce qu'a évité le solaire et ce qu'a rapporté l'arbitre du surplus. Tout utilisateur peut activer les notifications push depuis les Réglages, avec la liste de ses appareils, et le mode d'une recette s'affiche sur les cartes des équipements qu'elle pilote.
+
+**Mettez à jour presence-thermostat en 1.2.0 et smart-socket-heating en 0.5.1** avec cette version : sans elles, les modes Cocon et Nuit sont proposés même quand leur température n'est pas réglée (#1210).
+
+- Nouveauté (énergie) : **la page Bilan** (spec 200, #1206). Énergie > Bilan, pour un jour, un mois ou une année : la facture du réseau (le total en € de la page Consommation), ce qu'a évité le solaire, le coût en HP payé, HC payé et évité, le coût par usage, et une comparaison (les 7 jours précédents, le rythme du mois et le même mois un an plus tôt, les mois écoulés de l'année). Un nouveau compteur enregistre ce que rapporte l'arbitre à partir du jour de son installation ; `GET /api/v1/energy/bilan`, migration 043.
+- Nouveauté (interface) : **le push depuis les Réglages** (#1199, #1201). Réglages > Compte > Notifications active ou coupe le push sur l'appareil en main, pour tout utilisateur ; la page des diffuseurs y renvoie.
+- Nouveauté (API) : **les appareils push** (spec 199, #1200, #1202). En dessous, « Vos appareils » : un nom par appareil (tiré du navigateur par défaut, modifiable), « Cet appareil », le résultat du dernier envoi, le retrait. Un appareil refusé 5 fois d'affilée par le service push est retiré ; une panne côté Sowel ne compte jamais. Migration 042.
+- Nouveauté (interface) : **le mode d'une recette sur les cartes** (spec 201, #1209). Une recette déclare les équipements auxquels s'applique son mode ; leurs cartes du Dashboard affichent le mode en pastille sous le titre (Cocon sur le poêle), qui le change sur ordinateur et dans le panneau du téléphone.
+- Correction (authentification) : un utilisateur `standard` peut changer le mode d'une recette ; c'était refusé sans message (#1211, #1213).
+- Correction (recettes) : une recette déclare quelles options de cycle demandent un réglage (`requiresParam`) ; le cœur ne nomme plus les paramètres d'une recette (#1210, #1214).
+- Correction (interface) : une session de recharge qui a passé minuit affiche son jour de fin (#1203, #1205).
+- Correction (interface) : la barre du haut sépare son chemin par « › » (« Énergie › Bilan »), et le panneau d'attribution son résumé par « – » (#1207, #1208).
+- Registre : zigbee2mqtt 2.8.2 (#1204), presence-thermostat 1.1.0 puis 1.2.0, smart-socket-heating 0.5.0 puis 0.5.1 (#1212, #1215).
+
+---
+
 ## 1.83.x : Les recettes d'un coup d'œil
 
 ### v1.83.2 — 2026-11-09 { #v1-83-2 }
