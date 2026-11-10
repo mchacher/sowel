@@ -172,7 +172,7 @@ son utilisateur. Chacun le fait pour lui-même, admin ou non :
 1. Ouvrez Sowel en HTTPS (l'adresse distante ci-dessus). Sur iPhone, ajoutez d'abord Sowel à
    l'écran d'accueil (« Partager » puis « Sur l'écran d'accueil ») et ouvrez-le depuis là : Safari
    n'autorise le push que pour une app installée.
-2. Allez dans **Paramètres → Compte → Notifications**, touchez **Activer** sur la ligne
+2. Allez dans **Réglages → Compte → Notifications**, touchez **Activer** sur la ligne
    **Cet appareil**, puis acceptez la demande du navigateur.
 
 Le navigateur ne demande l'autorisation qu'après un geste de l'utilisateur : Sowel ne peut donc pas

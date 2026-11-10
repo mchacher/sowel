@@ -110,7 +110,7 @@ export function NotificationPublishersPage() {
       {/* Web Push on this device lives in Settings > Account (#1199) */}
       <p className="text-small text-text-secondary mb-4">
         {t("notifPublishers.pushMoved")}{" "}
-        <Link to="/settings?tab=account" className="text-primary hover:underline">
+        <Link to="/settings?tab=account#notifications" className="text-primary hover:underline">
           {t("notifPublishers.pushMovedLink")}
         </Link>
       </p>

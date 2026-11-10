@@ -10,6 +10,7 @@ vi.mock("../../hooks/usePushSubscription", () => ({
 const mockedHook = vi.mocked(usePushSubscription);
 const subscribe = vi.fn(async () => {});
 const unsubscribe = vi.fn(async () => {});
+const refresh = vi.fn(async () => {});
 
 function withStatus(status: PushStatus, over: { busy?: boolean; error?: string | null } = {}) {
   mockedHook.mockReturnValue({
@@ -19,7 +20,7 @@ function withStatus(status: PushStatus, over: { busy?: boolean; error?: string |
     error: over.error ?? null,
     subscribe,
     unsubscribe,
-    refresh: vi.fn(async () => {}),
+    refresh,
   });
 }
 
@@ -27,6 +28,7 @@ describe("PushNotificationsSection (#1199)", () => {
   beforeEach(() => {
     subscribe.mockClear();
     unsubscribe.mockClear();
+    refresh.mockClear();
   });
 
   it("offers Enable when push is off, and subscribes on tap", async () => {
@@ -80,5 +82,13 @@ describe("PushNotificationsSection (#1199)", () => {
       true,
     );
     expect(screen.getByText("boom")).toBeTruthy();
+  });
+
+  it("re-reads the state when the app comes back to the foreground", () => {
+    withStatus("denied");
+    render(<PushNotificationsSection />);
+    refresh.mockClear();
+    document.dispatchEvent(new Event("visibilitychange"));
+    expect(refresh).toHaveBeenCalledOnce();
   });
 });
