@@ -164,6 +164,24 @@ This is only needed when UI code changes. In local development, use `localhost:5
 | Local production  | `http://localhost:3000`      | Backend serves built UI             |
 | Remote access     | `https://app.yourdomain.com` | Cloudflare Tunnel to localhost:3000 |
 
+## Push notifications on your phone
+
+Push alerts reach a phone only once push is turned on **on that phone**, by its user. Every user
+does it for themselves, admin or not:
+
+1. Open Sowel over HTTPS (the remote address above). On an iPhone, add Sowel to the home screen
+   first ("Share" then "Add to Home Screen") and open it from there: Safari only allows push for an
+   installed app.
+2. Go to **Settings → Account → Notifications** and tap **Enable** on the **This device** row, then
+   accept the browser's prompt.
+
+The browser only asks for the permission after a tap, so Sowel cannot turn push on by itself at
+install time. **After reinstalling the app on a phone, turn push on again**: a reinstalled app
+starts from scratch. **Disable** turns it off for this device only.
+
+If notifications were refused once, the row shows no button: allow notifications for Sowel in the
+phone (or browser) settings, then come back to the section.
+
 ## Security considerations
 
 !!! warning

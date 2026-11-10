@@ -52,6 +52,7 @@ import { TariffSettings } from "../components/settings/TariffSettings";
 import { ArbiterSettings } from "../components/settings/ArbiterSettings";
 import { SharedAccessSettings } from "../components/settings/SharedAccessSettings";
 import { SolarInstallationSettings } from "../components/settings/SolarInstallationSettings";
+import { PushNotificationsSection } from "../components/settings/PushNotificationsSection";
 import { initialSettingsTab } from "../lib/settings-tab";
 import type { SettingsTab } from "../lib/settings-tab";
 import { currentLocale } from "../lib/format";
@@ -148,6 +149,7 @@ export function SettingsPage() {
                 }
               }}
             />
+            <PushNotificationsSection />
             <ChangePasswordSection />
             <TwoFactorSection />
             <ApiTokensSection />

@@ -164,6 +164,26 @@ Cela n'est nécessaire que lorsque le code de l'UI change. En développement loc
 | Production locale   | `http://localhost:3000`      | Le backend sert l'UI compilée         |
 | Accès distant       | `https://app.yourdomain.com` | Cloudflare Tunnel vers localhost:3000 |
 
+## Notifications push sur le téléphone
+
+Les alertes push n'arrivent sur un téléphone qu'une fois le push activé **sur ce téléphone**, par
+son utilisateur. Chacun le fait pour lui-même, admin ou non :
+
+1. Ouvrez Sowel en HTTPS (l'adresse distante ci-dessus). Sur iPhone, ajoutez d'abord Sowel à
+   l'écran d'accueil (« Partager » puis « Sur l'écran d'accueil ») et ouvrez-le depuis là : Safari
+   n'autorise le push que pour une app installée.
+2. Allez dans **Réglages → Compte → Notifications**, touchez **Activer** sur la ligne
+   **Cet appareil**, puis acceptez la demande du navigateur.
+
+Le navigateur ne demande l'autorisation qu'après un geste de l'utilisateur : Sowel ne peut donc pas
+activer le push tout seul à l'installation. **Après avoir réinstallé l'app sur un téléphone,
+réactivez le push** : une app réinstallée repart de zéro. **Désactiver** le coupe pour cet appareil
+seulement.
+
+Si les notifications ont été refusées une fois, la ligne n'affiche plus de bouton : autorisez les
+notifications pour Sowel dans les réglages du téléphone (ou du navigateur), puis revenez dans la
+section.
+
 ## Considérations de sécurité
 
 !!! warning

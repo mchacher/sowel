@@ -1,9 +1,9 @@
 import { useState, useEffect, useCallback } from "react";
 import { useTranslation } from "react-i18next";
+import { Link } from "react-router-dom";
 import {
   Loader2,
   Bell,
-  BellOff,
   Plus,
   Trash2,
   Power,
@@ -37,7 +37,6 @@ import type {
   RecipeInstance,
   RecipeInfo,
 } from "../types";
-import { usePushSubscription } from "../hooks/usePushSubscription";
 import {
   deriveSourceZoneFilter,
   recipeInstanceLabel,
@@ -58,67 +57,6 @@ import { ChannelConfigFields } from "../components/publishers/ChannelConfigField
 import { TOP_LEVEL_H1 } from "../components/layout/page-title";
 
 const DEFAULT_THROTTLE_MS = 300_000; // 5 min
-
-// ── Web Push: enable on this device (spec 127) ────────────────
-
-function PushEnableCard() {
-  const { t } = useTranslation();
-  const { status, supported, busy, error, subscribe, unsubscribe } = usePushSubscription();
-
-  let action: React.ReactNode;
-  if (!supported) {
-    action = (
-      <span className="text-caption text-text-tertiary">
-        {t("notifPublishers.pushUnsupported")}
-      </span>
-    );
-  } else if (status === "insecure") {
-    action = (
-      <span className="text-caption text-text-tertiary">{t("notifPublishers.pushInsecure")}</span>
-    );
-  } else if (status === "denied") {
-    action = (
-      <span className="text-caption text-text-tertiary">{t("notifPublishers.pushDenied")}</span>
-    );
-  } else if (status === "subscribed") {
-    action = (
-      <button
-        onClick={() => void unsubscribe()}
-        disabled={busy}
-        className="flex items-center gap-1.5 px-3 py-1.5 text-small rounded-sm border border-border text-text-secondary hover:text-text disabled:opacity-50"
-      >
-        {busy ? <Loader2 size={14} className="animate-spin" /> : <BellOff size={14} />}
-        {t("notifPublishers.pushDisable")}
-      </button>
-    );
-  } else {
-    action = (
-      <button
-        onClick={() => void subscribe()}
-        disabled={busy}
-        className="flex items-center gap-1.5 px-3 py-1.5 bg-primary-fill text-white text-small rounded-sm hover:bg-primary-fill-hover disabled:opacity-50"
-      >
-        {busy ? <Loader2 size={14} className="animate-spin" /> : <Bell size={14} />}
-        {t("notifPublishers.pushEnable")}
-      </button>
-    );
-  }
-
-  return (
-    <div className="card mb-4 p-4 max-w-lg">
-      <div className="flex items-center justify-between gap-3">
-        <div>
-          <div className="text-small font-medium text-text">{t("notifPublishers.pushTitle")}</div>
-          <div className="text-caption text-text-secondary">
-            {status === "subscribed" ? t("notifPublishers.pushOn") : t("notifPublishers.pushOff")}
-          </div>
-        </div>
-        {action}
-      </div>
-      {error && <div className="text-micro text-error mt-2">{error}</div>}
-    </div>
-  );
-}
 
 export function NotificationPublishersPage() {
   const { t } = useTranslation();
@@ -169,8 +107,13 @@ export function NotificationPublishersPage() {
         <h1 className={TOP_LEVEL_H1}>{t("notifPublishers.title")}</h1>
       </div>
 
-      {/* Web Push — enable on this device (spec 127) */}
-      <PushEnableCard />
+      {/* Web Push on this device lives in Settings > Account (#1199) */}
+      <p className="text-small text-text-secondary mb-4">
+        {t("notifPublishers.pushMoved")}{" "}
+        <Link to="/settings?tab=account#notifications" className="text-primary hover:underline">
+          {t("notifPublishers.pushMovedLink")}
+        </Link>
+      </p>
 
       {/* Actions */}
       <div className="flex items-center gap-3 mb-4">

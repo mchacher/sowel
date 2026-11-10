@@ -47,6 +47,7 @@ const SAME_AS_EN = new Set<string>([
   "zones.commands.allShuttersStop",
   "zones.commands.allAwningsStop",
   "equipments.configuration",
+  "settings.notifications.title",
   "equipments.form.type",
   "equipments.form.zone",
   "equipments.type.thermostat",
