@@ -49,6 +49,8 @@ export function cycleOptionLabel(
     : option.label;
 }
 
+/** Absent, null, an empty string and an empty list are unset; anything else is set. */
 function isSet(value: unknown): boolean {
+  if (Array.isArray(value)) return value.length > 0;
   return value !== undefined && value !== null && value !== "";
 }

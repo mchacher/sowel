@@ -340,7 +340,7 @@ options: [
 ],
 ```
 
-La tuile, la page de zone et les cartes d'équipement la sautent alors tant que ce paramètre est absent, `null` ou vide. Le cœur ne filtre sur rien d'autre : il ne connaît aucun slot de votre recette par son nom, donc une option sans `requiresParam` est toujours proposée. Ignorez quand même ce mode dans `onAction` quand son réglage manque, puisque l'API peut l'envoyer.
+Chaque contrôle de mode (la tuile, la page de zone, la ligne de recette, les cartes d'équipement) la saute alors tant que ce paramètre est absent, `null`, une chaîne vide ou une liste vide ; `0` et `false` comptent comme réglés. Le cœur ne filtre sur rien d'autre : il ne connaît aucun slot de votre recette par son nom, donc une option sans `requiresParam` est toujours proposée. Ignorez quand même ce mode dans `onAction` quand son réglage manque, puisque l'API peut l'envoyer, et avant tout ce que l'action changerait d'autre. Un cœur antérieur à #1210 ignore le champ et cache encore, par son nom, une option `cocoon` sans `cocoonTemp` ou `night` sans `nightTemp`.
 
 ## RecipeContext
 

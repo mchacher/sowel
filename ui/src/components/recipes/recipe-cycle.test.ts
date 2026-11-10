@@ -40,6 +40,8 @@ describe("resolveCycle", () => {
     expect(offered({})).toEqual(["eco", "comfort"]);
     expect(offered({ boostTemp: null })).toEqual(["eco", "comfort"]);
     expect(offered({ boostTemp: "" })).toEqual(["eco", "comfort"]);
+    expect(offered({ boostTemp: [] })).toEqual(["eco", "comfort"]);
+    expect(offered({ boostTemp: ["b1"] })).toEqual(["eco", "comfort", "boost"]);
   });
 
   it("filters nothing by name: cocoon and night without requiresParam stay offered", () => {
