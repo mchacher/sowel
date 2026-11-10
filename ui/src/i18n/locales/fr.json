@@ -910,7 +910,7 @@
   "settings.notifications.remove": "Retirer",
   "settings.notifications.confirmRemove": "Confirmer le retrait",
   "settings.notifications.lastAccepted": "Dernière notification acceptée par le service de notification {{when}}",
-  "settings.notifications.lastFailed": "Échec de la dernière notification {{when}} : {{error}}",
+  "settings.notifications.lastFailed": "Échec de la dernière notification {{when}} : {{error}}",
   "settings.notifications.neverSent": "Aucune notification envoyée pour l'instant",
   "settings.language": "Langue",
   "settings.languageEn": "English",
