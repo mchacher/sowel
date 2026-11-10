@@ -31,7 +31,7 @@ const recipe: RecipeInfo = {
       stateKey: "currentMode",
       options: [
         { value: "eco", label: "Eco" },
-        { value: "cocoon", label: "Cocoon" },
+        { value: "cocoon", label: "Cocoon", requiresParam: "cocoonTemp" },
       ],
       targets: ["thermostat"],
     },

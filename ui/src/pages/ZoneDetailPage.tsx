@@ -11,7 +11,7 @@ import type { ZoneWithChildren, RecipeActionDef, RecipeInstance, RecipeInfo } fr
 import { useWsSubscription } from "../hooks/useWsSubscription";
 import { ROOT_ZONE_ID } from "../lib/constants";
 import { apiErrorText } from "../lib/api-error";
-import { cycleOptionLabel } from "../components/recipes/recipe-cycle";
+import { cycleOptionLabel, resolveCycle } from "../components/recipes/recipe-cycle";
 import { modePillColors } from "../lib/recipe-mode-colors";
 
 // ── Recipe mode pill ────────────────────────────────────
@@ -29,22 +29,10 @@ export function RecipeModePill({
   const sendAction = useRecipes((s) => s.sendAction);
   const [sending, setSending] = useState(false);
 
-  const currentValue = instance.state?.[action.stateKey] as string | undefined;
-  if (!currentValue) return null;
-
-  // Filter options: hide cocoon/night if their temp is not configured
-  const availableOptions = action.options.filter((opt) => {
-    if (opt.value === "cocoon" && !instance.params.cocoonTemp) return false;
-    if (opt.value === "night" && !instance.params.nightTemp) return false;
-    return true;
-  });
-
-  if (availableOptions.length < 2) return null;
-
-  const currentIndex = availableOptions.findIndex((o) => o.value === currentValue);
-  const nextIndex = (currentIndex + 1) % availableOptions.length;
-  const nextOption = availableOptions[nextIndex];
-  const currentOption = availableOptions[currentIndex >= 0 ? currentIndex : 0];
+  // The same cycle as the tile and the cards: one implementation (#1210).
+  const cycle = resolveCycle(instance, action);
+  if (!cycle) return null;
+  const { value: currentValue, current: currentOption, next: nextOption } = cycle;
 
   const colors = modePillColors(currentValue);
 

@@ -723,7 +723,13 @@ export interface RecipeActionDef {
   id: string;
   type: "cycle";
   stateKey: string;
-  options: { value: string; label: string }[];
+  /**
+   * `requiresParam` (#1210): the option is offered only when that instance
+   * parameter is set (not absent, null or empty), e.g. a cocoon mode that
+   * needs its setpoint. The recipe declares it; the core knows no recipe
+   * parameter by name.
+   */
+  options: { value: string; label: string; requiresParam?: string }[];
   /**
    * Spec 201 — ids of this recipe's `equipment` slots whose equipments the
    * mode applies to. The Dashboard card of each such equipment shows the

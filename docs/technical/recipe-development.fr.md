@@ -329,6 +329,19 @@ La carte affiche une pastille quand l'instance est active, qu'un slot cible cont
 
 Un cœur antérieur à la spec 201 ignore le champ, et une recette qui ne le déclare pas n'affiche aucune pastille.
 
+### Options qui demandent un réglage (#1210)
+
+Une option qui n'a de sens qu'une fois un slot rempli le dit avec `requiresParam` :
+
+```typescript
+options: [
+  { value: "eco", label: "Eco" },
+  { value: "cocoon", label: "Cocoon", requiresParam: "cocoonTemp" },
+],
+```
+
+La tuile, la page de zone et les cartes d'équipement la sautent alors tant que ce paramètre est absent, `null` ou vide. Le cœur ne filtre sur rien d'autre : il ne connaît aucun slot de votre recette par son nom, donc une option sans `requiresParam` est toujours proposée. Ignorez quand même ce mode dans `onAction` quand son réglage manque, puisque l'API peut l'envoyer.
+
 ## RecipeContext
 
 L'objet `ctx` injecté dans `validate()` et `createInstance()` fournit :
