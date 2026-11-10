@@ -81,6 +81,13 @@ describe("recipe-instance routes — input validation (characterization)", () =>
     );
   });
 
+  it("400 when the payload is not an object (#1211)", async () => {
+    const send = (payload: unknown) =>
+      post("/api/v1/recipe-instances/ri-1/actions", { action: "set_mode", payload });
+    expect((await send("eco")).statusCode).toBe(400);
+    expect((await send(["eco"])).statusCode).toBe(400);
+  });
+
   it("accepts a whitespace-only action (bare `!action` did not trim)", async () => {
     const res = await post("/api/v1/recipe-instances/ri-1/actions", { action: "   " });
     expect(res.statusCode).toBe(200);
