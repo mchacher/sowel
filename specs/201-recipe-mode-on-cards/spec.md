@@ -71,14 +71,14 @@ A click on the pill moves to the next mode, the zone page's cycle (`resolveCycle
 
 ## Acceptance Criteria
 
-- [ ] `RecipeActionDef.targets` exists in `src/shared/types.ts` and `ui/src/types.ts`, documented.
-- [ ] With presence-thermostat declaring `targets: ["thermostat"]`, the Poele card shows « Cocoon » on a computer and on a phone while the instance is in cocoon, and « Éco » in eco.
-- [ ] The cocoon buttons' cards show no pill.
-- [ ] A recipe without `targets` puts no pill anywhere.
-- [ ] A disabled instance, a missing state value or a value outside the options shows no pill.
-- [ ] The title of « Radiateur Bureau » stays whole and centred with the pill shown.
-- [ ] Cards keep their height (160/240 px computer, 120 px phone).
-- [ ] A click on the computer card's pill moves to the next mode without firing the card; the phone panel's pill does the same; the phone card's pill does not react.
+- [x] `RecipeActionDef.targets` exists in `src/shared/types.ts` and `ui/src/types.ts`, documented.
+- [x] With presence-thermostat declaring `targets: ["thermostat"]`, the Poele card shows « Cocoon » on a computer and on a phone while the instance is in cocoon, and « Éco » in eco.
+- [x] The cocoon buttons' cards show no pill.
+- [x] A recipe without `targets` puts no pill anywhere.
+- [x] A disabled instance, a missing state value or a value outside the options shows no pill.
+- [x] The title of « Radiateur Bureau » stays whole and centred with the pill shown.
+- [x] Cards keep their height (160/240 px computer, 120 px phone).
+- [x] A click on the computer card's pill moves to the next mode without firing the card; the phone panel's pill does the same; the phone card's pill does not react.
 - [ ] presence-thermostat and smart-socket-heating released with `targets`, registry bumped.
 
 ## Edge Cases
@@ -89,6 +89,9 @@ A click on the pill moves to the next mode, the zone page's cycle (`resolveCycle
 - A widget whose body starts at its top-left corner: the pill overlays it; acceptable, as for the order outcome line (no such widget among the equipment types a cycle recipe targets today).
 - Edit mode: the drag handle sits in the top-left corner above the title, the pill under it; the pill stays.
 - Recipes and instances not loaded yet: no pill until they are.
+- Phone, on an equipment whose tap acts directly (a `switch`, so the sockets of smart-socket-heating): the tap toggles the socket and opens no panel, so the mode is changed from the recipe's own tile or the zone page there. Opening a panel instead would change what a tap on a socket does; not done.
+- Edit mode on a computer: the pill stays clickable, like the other controls nested in a card (setpoint stepper, power button); only the card's own click action stops.
+- The clickable pill sits over the top-left of the card body; on the targeted types (thermostat, heater, switch) that area is empty.
 
 ## Docs Delta
 

@@ -4,21 +4,21 @@
 
 ### Slice A — Contract
 
-- [ ] A.1 — `RecipeActionDef.targets` in `src/shared/types.ts` and `ui/src/types.ts`
+- [x] A.1 — `RecipeActionDef.targets` in `src/shared/types.ts` and `ui/src/types.ts`
 
 ### Slice B — Card pill (core PR)
 
-- [ ] B.1 — `ui/src/lib/recipe-target-modes.ts` and its tests
-- [ ] B.2 — `ui/src/lib/recipe-mode-colors.ts`, zone page switched to it
-- [ ] B.3 — `CardModePills` and its tests
-- [ ] B.4 — Mounted in `WidgetCard` and `MobileWidgetCard`
-- [ ] B.5 — Docs EN and FR (dashboard, recipe development, data model)
-- [ ] B.6 — FR6: interactive pill on the computer card and in the phone panel (`BottomSheet.aside`)
+- [x] B.1 — `ui/src/lib/recipe-target-modes.ts` and its tests
+- [x] B.2 — `ui/src/lib/recipe-mode-colors.ts`, zone page switched to it
+- [x] B.3 — `CardModePills` and its tests
+- [x] B.4 — Mounted in `WidgetCard` and `MobileWidgetCard`
+- [x] B.5 — Docs EN and FR (dashboard, recipe development, data model)
+- [x] B.6 — FR6: interactive pill on the computer card and in the phone panel (`BottomSheet.aside`)
 
 ### Slice C — Recipes (after the core PR is merged)
 
-- [ ] C.1 — presence-thermostat: `targets: ["thermostat"]`, test, patch release
-- [ ] C.2 — smart-socket-heating: `targets: ["heaters"]`, test, patch release
+- [x] C.1 — presence-thermostat: `targets: ["thermostat"]`, test, v1.1.0 (PR mchacher/sowel-recipe-presence-thermostat#3; tag pending)
+- [x] C.2 — smart-socket-heating: `targets: ["heaters"]`, test, v0.5.0 (PR mchacher/sowel-recipe-smart-socket-heating#13; tag pending)
 - [ ] C.3 — Registry bump PR (`backfill-registry-sha256.mjs`, `check-registry-bump.sh`)
 
 ## Test Plan
