@@ -1635,6 +1635,13 @@ export interface PushSubscription {
   auth: string;
   userAgent?: string;
   createdAt: string;
+  /** Spec 199 — owner-given name; absent = derived from `userAgent`. */
+  label?: string;
+  lastSentAt?: string;
+  /** Last 2xx from the push service: accepted, not proof the phone displayed it. */
+  lastSuccessAt?: string;
+  lastError?: string;
+  consecutiveFailures: number;
 }
 
 export interface NotificationPublisherMapping {

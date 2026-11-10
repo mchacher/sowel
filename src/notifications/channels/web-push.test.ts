@@ -9,7 +9,7 @@ vi.mock("web-push", () => ({
   },
 }));
 
-import { WebPushChannel } from "./web-push.js";
+import { WebPushChannel, MAX_CONSECUTIVE_FAILURES } from "./web-push.js";
 import type { PushSubscriptionManager } from "../push-subscription-manager.js";
 import type { VapidKeys } from "../vapid.js";
 import type { PushSubscription } from "../../shared/types.js";
@@ -26,13 +26,17 @@ function sub(endpoint: string): PushSubscription {
     p256dh: "p",
     auth: "a",
     createdAt: "2026-01-01T00:00:00.000Z",
+    consecutiveFailures: 0,
   };
 }
 
-function createMockManager(subs: PushSubscription[]) {
+function createMockManager(subs: PushSubscription[], failuresSoFar = 0) {
   return {
     listAll: vi.fn(() => subs),
     deleteByEndpoint: vi.fn(),
+    deleteById: vi.fn(() => true),
+    recordSuccess: vi.fn(),
+    recordFailure: vi.fn(() => failuresSoFar + 1),
   } as unknown as PushSubscriptionManager;
 }
 
@@ -158,5 +162,58 @@ describe("WebPushChannel", () => {
       logger,
     );
     await expect(channel.testConnection({})).rejects.toThrow(/VAPID/);
+  });
+
+  describe("delivery result and prune (spec 199)", () => {
+    it("records a success per subscription", async () => {
+      const mgr = createMockManager([sub("https://push/1"), sub("https://push/2")]);
+      sendNotification.mockResolvedValue({ statusCode: 201 });
+      await new WebPushChannel(mgr, vapid, logger).send({}, { title: "Hi" });
+      expect(mgr.recordSuccess).toHaveBeenCalledWith("https://push/1");
+      expect(mgr.recordSuccess).toHaveBeenCalledWith("https://push/2");
+      expect(mgr.recordFailure).not.toHaveBeenCalled();
+    });
+
+    it("records a failure with its status, and keeps the subscription below the limit", async () => {
+      const mgr = createMockManager([sub("https://push/1")], MAX_CONSECUTIVE_FAILURES - 2);
+      sendNotification.mockRejectedValue(
+        Object.assign(new Error("Received unexpected response code"), { statusCode: 403 }),
+      );
+      await new WebPushChannel(mgr, vapid, logger).send({}, { title: "Hi" });
+      expect(mgr.recordFailure).toHaveBeenCalledWith(
+        "https://push/1",
+        "403 Received unexpected response code",
+        true,
+      );
+      expect(mgr.deleteById).not.toHaveBeenCalled();
+      expect(mgr.recordSuccess).not.toHaveBeenCalled();
+    });
+
+    it("prunes a subscription at the limit of failures in a row", async () => {
+      const mgr = createMockManager([sub("https://push/1")], MAX_CONSECUTIVE_FAILURES - 1);
+      sendNotification.mockRejectedValue({ statusCode: 403 });
+      await new WebPushChannel(mgr, vapid, logger).send({}, { title: "Hi" });
+      expect(mgr.deleteById).toHaveBeenCalledWith("https://push/1");
+    });
+
+    it.each([
+      ["a network error", new Error("getaddrinfo ENOTFOUND web.push.apple.com")],
+      ["a 5xx", { statusCode: 503 }],
+      ["a 429", { statusCode: 429 }],
+    ])("never prunes on %s: it records the error without counting it", async (_, rejection) => {
+      const mgr = createMockManager([sub("https://push/1")], MAX_CONSECUTIVE_FAILURES + 3);
+      sendNotification.mockRejectedValue(rejection);
+      await new WebPushChannel(mgr, vapid, logger).send({}, { title: "Hi" });
+      expect(mgr.recordFailure).toHaveBeenCalledWith("https://push/1", expect.any(String), false);
+      expect(mgr.deleteById).not.toHaveBeenCalled();
+    });
+
+    it("does not count a 404/410 as a failure: it prunes at once", async () => {
+      const mgr = createMockManager([sub("https://push/dead")]);
+      sendNotification.mockRejectedValue({ statusCode: 410 });
+      await new WebPushChannel(mgr, vapid, logger).send({}, { title: "Hi" });
+      expect(mgr.recordFailure).not.toHaveBeenCalled();
+      expect(mgr.deleteByEndpoint).toHaveBeenCalledWith("https://push/dead");
+    });
   });
 });

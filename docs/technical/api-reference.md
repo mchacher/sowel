@@ -94,18 +94,19 @@ endpoint not in the allowlist is admin-only.
 
 **Standard write allowlist** (the only mutations a `standard` may perform):
 
-| Method        | Path                                                                                                      | Purpose                 |
-| ------------- | --------------------------------------------------------------------------------------------------------- | ----------------------- |
-| POST          | `/api/v1/equipments/:id/orders/:alias`                                                                    | Actuate an equipment    |
-| POST / DELETE | `/api/v1/equipments/:id/timed-action`                                                                     | Timed action (spec 174) |
-| POST          | `/api/v1/zones/:id/orders/:orderKey`                                                                      | Zone command            |
-| POST          | `/api/v1/modes/:id/activate`, `/deactivate`                                                               | Switch the active mode  |
-| POST          | `/api/v1/modes/:id/apply-to-zone/:zoneId`                                                                 | Apply a mode to a zone  |
-| PUT           | `/api/v1/me`, `/api/v1/me/preferences`, `/api/v1/me/password`                                             | Own account             |
-| POST / DELETE | `/api/v1/me/tokens[/:id]`                                                                                 | Own API tokens          |
-| POST / DELETE | `/api/v1/me/mfa/totp/setup`, `/totp/confirm`, `/totp`, `/backup-codes/regenerate`, `/trusted-devices/:id` | Own MFA (spec 151)      |
-| POST / DELETE | `/api/v1/push/subscriptions`                                                                              | Own push subscription   |
-| POST          | `/api/v1/auth/logout`                                                                                     | End own session         |
+| Method         | Path                                                                                                      | Purpose                    |
+| -------------- | --------------------------------------------------------------------------------------------------------- | -------------------------- |
+| POST           | `/api/v1/equipments/:id/orders/:alias`                                                                    | Actuate an equipment       |
+| POST / DELETE  | `/api/v1/equipments/:id/timed-action`                                                                     | Timed action (spec 174)    |
+| POST           | `/api/v1/zones/:id/orders/:orderKey`                                                                      | Zone command               |
+| POST           | `/api/v1/modes/:id/activate`, `/deactivate`                                                               | Switch the active mode     |
+| POST           | `/api/v1/modes/:id/apply-to-zone/:zoneId`                                                                 | Apply a mode to a zone     |
+| PUT            | `/api/v1/me`, `/api/v1/me/preferences`, `/api/v1/me/password`                                             | Own account                |
+| POST / DELETE  | `/api/v1/me/tokens[/:id]`                                                                                 | Own API tokens             |
+| POST / DELETE  | `/api/v1/me/mfa/totp/setup`, `/totp/confirm`, `/totp`, `/backup-codes/regenerate`, `/trusted-devices/:id` | Own MFA (spec 151)         |
+| POST / DELETE  | `/api/v1/push/subscriptions`                                                                              | Own push subscription      |
+| PATCH / DELETE | `/api/v1/push/subscriptions/:id`                                                                          | Own push device (spec 199) |
+| POST           | `/api/v1/auth/logout`                                                                                     | End own session            |
 
 An API token inherits its creator's role, so a standard-scoped token is subject to
 the same gate (no privilege escalation).
@@ -665,12 +666,16 @@ Notifications triggered by data changes. The `channelType` is `telegram` or `web
 
 Per-user browser subscriptions for the `web-push` channel. Requires a secure context (HTTPS) on the client. The server holds a single VAPID key pair, generated on first boot; the private key is never exposed.
 
-| Method   | Path                            | Description                                                                                                 |
-| -------- | ------------------------------- | ----------------------------------------------------------------------------------------------------------- |
-| `GET`    | `/api/v1/push/vapid-public-key` | The VAPID public key the browser subscribes with. Returns `{ publicKey }`.                                  |
-| `GET`    | `/api/v1/push/subscriptions`    | List the authenticated user's device subscriptions.                                                         |
-| `POST`   | `/api/v1/push/subscriptions`    | Register/upsert this device. Body: `{ endpoint, keys: { p256dh, auth }, userAgent? }`. Upserts by endpoint. |
-| `DELETE` | `/api/v1/push/subscriptions`    | Remove this device. Body: `{ endpoint }`. Returns 204.                                                      |
+| Method   | Path                             | Description                                                                                                                                            |
+| -------- | -------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `GET`    | `/api/v1/push/vapid-public-key`  | The VAPID public key the browser subscribes with. Returns `{ publicKey }`.                                                                             |
+| `GET`    | `/api/v1/push/subscriptions`     | List the authenticated user's device subscriptions, with `label?`, `lastSentAt?`, `lastSuccessAt?`, `lastError?` and `consecutiveFailures` (spec 199). |
+| `POST`   | `/api/v1/push/subscriptions`     | Register/upsert this device. Body: `{ endpoint, keys: { p256dh, auth }, userAgent? }`. Upserts by endpoint.                                            |
+| `DELETE` | `/api/v1/push/subscriptions`     | Remove this device. Body: `{ endpoint }`. Returns 204.                                                                                                 |
+| `PATCH`  | `/api/v1/push/subscriptions/:id` | Name one of the caller's devices. Body: `{ label: string \| null }` (60 chars max; `null` or blank clears it). 404 when the id is not the caller's.    |
+| `DELETE` | `/api/v1/push/subscriptions/:id` | Remove one of the caller's devices by id. Returns 204; 404 when the id is not the caller's.                                                            |
+
+Each send records its outcome on the subscription (spec 199): `lastSuccessAt` is the last time the push service **accepted** a push (2xx), which does not prove the device displayed it; `lastError` and `consecutiveFailures` describe the failures since. A 404/410 deletes the subscription at once, and so does a fifth refusal in a row (a 4xx other than 429). A network error, a 5xx or a 429 is recorded in `lastError` without counting toward it.
 
 ---
 

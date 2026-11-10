@@ -144,6 +144,9 @@ const STANDARD_WRITE_ALLOWLIST: ReadonlyArray<{ method: string; re: RegExp }> = 
   // Personal: own push-notification subscription
   { method: "POST", re: /^\/api\/v1\/push\/subscriptions$/ },
   { method: "DELETE", re: /^\/api\/v1\/push\/subscriptions$/ },
+  // Spec 199 — name / remove one of the caller's own devices (ownership checked in the route)
+  { method: "PATCH", re: /^\/api\/v1\/push\/subscriptions\/[^/]+$/ },
+  { method: "DELETE", re: /^\/api\/v1\/push\/subscriptions\/[^/]+$/ },
   // Personal: end own session
   { method: "POST", re: /^\/api\/v1\/auth\/logout$/ },
   // Personal: own MFA enrollment/management (spec 151)

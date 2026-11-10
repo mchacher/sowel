@@ -3,6 +3,11 @@ import { render, screen, userEvent } from "../../test-utils";
 import { PushNotificationsSection } from "./PushNotificationsSection";
 import { usePushSubscription, type PushStatus } from "../../hooks/usePushSubscription";
 
+vi.mock("../../api", async (orig) => ({
+  ...(await orig<typeof import("../../api")>()),
+  getPushSubscriptions: vi.fn(async () => []),
+}));
+
 vi.mock("../../hooks/usePushSubscription", () => ({
   usePushSubscription: vi.fn(),
 }));
@@ -18,6 +23,7 @@ function withStatus(status: PushStatus, over: { busy?: boolean; error?: string |
     supported: status !== "unsupported",
     busy: over.busy ?? false,
     error: over.error ?? null,
+    endpoint: null,
     subscribe,
     unsubscribe,
     refresh,

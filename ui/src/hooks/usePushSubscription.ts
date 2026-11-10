@@ -31,6 +31,8 @@ export function usePushSubscription() {
   const [status, setStatus] = useState<PushStatus>(supported ? "default" : "unsupported");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  // Spec 199 — this device's endpoint, to mark it in the list of the user's devices.
+  const [endpoint, setEndpoint] = useState<string | null>(null);
 
   const refresh = useCallback(async () => {
     if (!supported) return setStatus("unsupported");
@@ -38,6 +40,7 @@ export function usePushSubscription() {
     if (Notification.permission === "denied") return setStatus("denied");
     const reg = await navigator.serviceWorker.getRegistration();
     const sub = reg ? await reg.pushManager.getSubscription() : null;
+    setEndpoint(sub?.endpoint ?? null);
     if (sub) return setStatus("subscribed");
     return setStatus(Notification.permission === "granted" ? "granted" : "default");
   }, [supported]);
@@ -67,6 +70,7 @@ export function usePushSubscription() {
         keys: { p256dh: json.keys?.p256dh ?? "", auth: json.keys?.auth ?? "" },
         userAgent: navigator.userAgent,
       });
+      setEndpoint(sub.endpoint);
       setStatus("subscribed");
     } catch (e) {
       setError(e instanceof Error ? e.message : String(e));
@@ -85,6 +89,7 @@ export function usePushSubscription() {
         await unsubscribePush(sub.endpoint).catch(() => undefined);
         await sub.unsubscribe();
       }
+      setEndpoint(null);
       setStatus(Notification.permission === "granted" ? "granted" : "default");
     } catch (e) {
       setError(e instanceof Error ? e.message : String(e));
@@ -93,5 +98,5 @@ export function usePushSubscription() {
     }
   }, []);
 
-  return { status, supported, busy, error, subscribe, unsubscribe, refresh };
+  return { status, supported, busy, error, endpoint, subscribe, unsubscribe, refresh };
 }

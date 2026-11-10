@@ -2,6 +2,7 @@ import { useEffect, useRef } from "react";
 import { useTranslation } from "react-i18next";
 import { Loader2, Bell, BellOff } from "lucide-react";
 import { usePushSubscription } from "../../hooks/usePushSubscription";
+import { PushDeviceList } from "./PushDeviceList";
 
 // Settings > Account > Notifications (#1199). Every role turns Web Push on or
 // off for the device in hand here: subscriptions are per user (spec 127), and
@@ -11,7 +12,8 @@ export const NOTIFICATIONS_SECTION_ID = "notifications";
 
 export function PushNotificationsSection() {
   const { t } = useTranslation();
-  const { status, supported, busy, error, subscribe, unsubscribe, refresh } = usePushSubscription();
+  const { status, supported, busy, error, endpoint, subscribe, unsubscribe, refresh } =
+    usePushSubscription();
   const sectionRef = useRef<HTMLElement>(null);
 
   // Coming back from the phone settings (permission allowed there) must update
@@ -84,6 +86,11 @@ export function PushNotificationsSection() {
       </div>
       {hint && <p className="text-caption text-text-tertiary mt-2">{hint}</p>}
       {error && <p className="text-caption text-error mt-2">{error}</p>}
+      <PushDeviceList
+        currentEndpoint={endpoint}
+        reloadKey={`${status}:${endpoint ?? ""}`}
+        onRemoveCurrent={unsubscribe}
+      />
     </section>
   );
 }
