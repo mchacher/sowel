@@ -307,6 +307,28 @@ Le panneau Comportements de la page de zone affiche chaque instance sur deux lig
 
 Plusieurs instances d'une même recette dans une zone sont regroupées sous le nom de la recette, une ligne chacune : c'est le résumé qui les distingue. Commencez-le par ce qui rend cette instance différente (la valeur surveillée, la cible).
 
+## Le mode sur les cartes d'équipement (spec 201)
+
+Une action cycle peut nommer l'équipement auquel son mode s'applique. La carte Dashboard de chacun de ces équipements affiche alors le mode courant dans une pastille sous son titre, sur ordinateur comme sur téléphone, pour tous les types de widget d'équipement :
+
+```typescript
+actions: [
+  {
+    id: "set_mode",
+    type: "cycle",
+    stateKey: "currentMode",
+    options: [...],
+    targets: ["thermostat"], // ids de vos slots `equipment` auxquels le mode s'applique
+  },
+],
+```
+
+`targets` est une déclaration, jamais une déduction : un slot `equipment` ne dit pas si votre recette pilote cet équipement ou se contente de le lire, et une pastille sur les boutons qui changent le mode serait fausse. Ne nommez que les slots que vous **pilotez** ; un slot liste met la pastille sur chacun de ses équipements.
+
+La carte affiche une pastille quand l'instance est active, qu'un slot cible contient l'équipement et que `state[stateKey]` est l'une des `options` de l'action. Le libellé est celui de l'option, traduit comme la pastille de mode de la page de zone. Publiez la valeur de repos dès le début de `createInstance` (comme pour la tuile), sinon la pastille n'apparaît qu'au premier changement. Un clic sur la pastille envoie votre action cycle avec l'option suivante (`{ mode: <valeur> }`), comme la page de zone : sur la carte d'ordinateur, et dans le panneau du téléphone, puisque la carte du téléphone est elle-même un bouton. Un équipement dont le toucher agit tout de suite (un `switch`) n'ouvre pas de panneau ; le mode s'y change depuis votre tuile ou la page de zone.
+
+Un cœur antérieur à la spec 201 ignore le champ, et une recette qui ne le déclare pas n'affiche aucune pastille.
+
 ## RecipeContext
 
 L'objet `ctx` injecté dans `validate()` et `createInstance()` fournit :

@@ -72,6 +72,7 @@ import { OrderOutcomeLine } from "../equipments/OrderOutcomeLine";
 import { ForecastConfidenceMark } from "./ForecastConfidenceMark";
 import { vmcSpeedOf } from "../equipments/vmcSpeed";
 import { doorWordPill } from "../equipments/door-pill";
+import { CardModePills } from "./CardModePills";
 import {
   formatRuntime,
   isOnBattery,
@@ -115,19 +116,23 @@ export function MobileWidgetCard({
     <>
       {gesture && <TapGlyph kind={gesture} />}
 
-      {/* Label */}
-      <span
-        className={`text-caption font-semibold text-text truncate w-full text-center ${
-          editMode ? "pl-5 pr-8" : gesture ? "px-4" : ""
-        }`}
-      >
-        {label}
-      </span>
-      {zone && (
-        <span className="text-micro text-text-tertiary truncate w-full text-center leading-tight">
-          {zone}
+      {/* Label and zone. Spec 201 — the mode of the recipe driving this
+          equipment sits just under them, on the left. */}
+      <div className="relative w-full flex flex-col items-center">
+        <span
+          className={`text-caption font-semibold text-text truncate w-full text-center ${
+            editMode ? "pl-5 pr-8" : gesture ? "px-4" : ""
+          }`}
+        >
+          {label}
         </span>
-      )}
+        {zone && (
+          <span className="text-micro text-text-tertiary truncate w-full text-center leading-tight">
+            {zone}
+          </span>
+        )}
+        <CardModePills equipmentId={equipment.id} size="sm" />
+      </div>
 
       {/* Icon */}
       <div className="flex-1 flex items-center justify-center min-h-0">

@@ -58,6 +58,7 @@ import {
 } from "./WidgetIcons";
 import { CUSTOM_ICON_REGISTRY, customIconProps, shutterLevel } from "./widget-icons";
 import { BottomSheet } from "./BottomSheet";
+import { CardModePills } from "./CardModePills";
 import { EQUIPMENT_ZONE_SEPARATOR } from "../../lib/zone-path";
 import { brightnessPercent, brightnessScale } from "../../lib/brightness";
 import { ForecastDetailContent } from "./ForecastDetailContent";
@@ -113,6 +114,8 @@ export function EquipmentDetailSheet({
   const execOrder = (alias: string, value: unknown) => onExecuteOrder(equipment.id, alias, value);
   // Spec 196 (pr9-dashboard) — the sheet's way to the equipment page (history, settings).
   const pageLink = <EquipmentPageLink equipmentId={equipment.id} />;
+  // Spec 201 — the phone card only shows the mode; its sheet changes it.
+  const modePills = <CardModePills equipmentId={equipment.id} placement="inline" interactive />;
 
   // Sheet header icon — the hand-picked drawing only, rendered from the
   // equipment's live state like the tile it was opened from. Reading
@@ -136,7 +139,14 @@ export function EquipmentDetailSheet({
 
   if (isLight && (equipment.type === "light_dimmable" || equipment.type === "light_color")) {
     return (
-      <BottomSheet open onClose={onClose} title={label} footer={pageLink} icon={customIcon}>
+      <BottomSheet
+        open
+        onClose={onClose}
+        title={label}
+        footer={pageLink}
+        icon={customIcon}
+        aside={modePills}
+      >
         <LightDetailContent equipment={equipment} onExecuteOrder={execOrder} />
       </BottomSheet>
     );
@@ -147,7 +157,14 @@ export function EquipmentDetailSheet({
   // all and the sheet returned null, which is why the tile was not clickable.
   if (equipment.type === "weather_forecast") {
     return (
-      <BottomSheet open onClose={onClose} title={label} footer={pageLink} icon={customIcon}>
+      <BottomSheet
+        open
+        onClose={onClose}
+        title={label}
+        footer={pageLink}
+        icon={customIcon}
+        aside={modePills}
+      >
         <ForecastDetailContent equipment={equipment} />
       </BottomSheet>
     );
@@ -155,7 +172,14 @@ export function EquipmentDetailSheet({
 
   if (isShutter || isAwning || equipment.type === "door" || equipment.type === "pool_cover") {
     return (
-      <BottomSheet open onClose={onClose} title={label} footer={pageLink} icon={customIcon}>
+      <BottomSheet
+        open
+        onClose={onClose}
+        title={label}
+        footer={pageLink}
+        icon={customIcon}
+        aside={modePills}
+      >
         <ShutterDetailContent equipment={equipment} onExecuteOrder={execOrder} />
       </BottomSheet>
     );
@@ -163,7 +187,14 @@ export function EquipmentDetailSheet({
 
   if (isThermostat || isPoolHeatPump) {
     return (
-      <BottomSheet open onClose={onClose} title={label} footer={pageLink} icon={customIcon}>
+      <BottomSheet
+        open
+        onClose={onClose}
+        title={label}
+        footer={pageLink}
+        icon={customIcon}
+        aside={modePills}
+      >
         <ThermostatDetailContent equipment={equipment} onExecuteOrder={execOrder} />
       </BottomSheet>
     );
@@ -171,7 +202,14 @@ export function EquipmentDetailSheet({
 
   if (isHeater) {
     return (
-      <BottomSheet open onClose={onClose} title={label} footer={pageLink} icon={customIcon}>
+      <BottomSheet
+        open
+        onClose={onClose}
+        title={label}
+        footer={pageLink}
+        icon={customIcon}
+        aside={modePills}
+      >
         <HeaterDetailContent equipment={equipment} onExecuteOrder={execOrder} />
       </BottomSheet>
     );
@@ -179,7 +217,14 @@ export function EquipmentDetailSheet({
 
   if (isGate) {
     return (
-      <BottomSheet open onClose={onClose} title={label} footer={pageLink} icon={customIcon}>
+      <BottomSheet
+        open
+        onClose={onClose}
+        title={label}
+        footer={pageLink}
+        icon={customIcon}
+        aside={modePills}
+      >
         <GateDetailContent
           equipment={equipment}
           onExecuteOrder={execOrder}
@@ -192,7 +237,14 @@ export function EquipmentDetailSheet({
 
   if (equipment.type === "weather") {
     return (
-      <BottomSheet open onClose={onClose} title={label} footer={pageLink} icon={customIcon}>
+      <BottomSheet
+        open
+        onClose={onClose}
+        title={label}
+        footer={pageLink}
+        icon={customIcon}
+        aside={modePills}
+      >
         {isRainOnlyWeather(equipment) ? (
           <RainDetailContent equipment={equipment} />
         ) : (
@@ -204,7 +256,14 @@ export function EquipmentDetailSheet({
 
   if (equipment.type === "electric_vehicle") {
     return (
-      <BottomSheet open onClose={onClose} title={label} footer={pageLink} icon={customIcon}>
+      <BottomSheet
+        open
+        onClose={onClose}
+        title={label}
+        footer={pageLink}
+        icon={customIcon}
+        aside={modePills}
+      >
         <div className="p-4">
           <ElectricVehicleControl equipment={equipment} onExecuteOrder={execOrder} />
         </div>
@@ -214,7 +273,14 @@ export function EquipmentDetailSheet({
 
   if (equipment.type === "ev_charger") {
     return (
-      <BottomSheet open onClose={onClose} title={label} footer={pageLink} icon={customIcon}>
+      <BottomSheet
+        open
+        onClose={onClose}
+        title={label}
+        footer={pageLink}
+        icon={customIcon}
+        aside={modePills}
+      >
         <div className="p-4">
           <EvChargerControl equipment={equipment} onExecuteOrder={execOrder} />
         </div>
@@ -224,7 +290,14 @@ export function EquipmentDetailSheet({
 
   if (equipment.type === "vmc") {
     return (
-      <BottomSheet open onClose={onClose} title={label} footer={pageLink} icon={customIcon}>
+      <BottomSheet
+        open
+        onClose={onClose}
+        title={label}
+        footer={pageLink}
+        icon={customIcon}
+        aside={modePills}
+      >
         <div className="p-4">
           <VmcControl equipment={equipment} onExecuteOrder={execOrder} />
         </div>
@@ -234,7 +307,14 @@ export function EquipmentDetailSheet({
 
   if (isSensor) {
     return (
-      <BottomSheet open onClose={onClose} title={label} footer={pageLink} icon={customIcon}>
+      <BottomSheet
+        open
+        onClose={onClose}
+        title={label}
+        footer={pageLink}
+        icon={customIcon}
+        aside={modePills}
+      >
         <SensorDetailContent
           equipment={equipment}
           visibleBindings={widget.config?.visibleBindings}

@@ -6,6 +6,7 @@ import { TileOrderOutcomeLine } from "../equipments/OrderOutcomeLine";
 import { TileEquipmentContext } from "../equipments/order-outcome";
 import { equipmentLinkState } from "../../lib/equipment-origin";
 import { useIsMobile } from "../../hooks/useIsMobile";
+import { CardModePills } from "./CardModePills";
 
 interface WidgetCardProps {
   label: string;
@@ -68,7 +69,7 @@ export function WidgetCard({
       } ${className}`}
       {...cardAction}
     >
-      <div className={`mb-2 text-center ${corner ? "px-4 sm:px-0" : ""}`}>
+      <div className={`relative mb-2 text-center ${corner ? "px-4 sm:px-0" : ""}`}>
         {linkable ? (
           <Link
             to={`/equipments/${equipmentId}`}
@@ -88,6 +89,11 @@ export function WidgetCard({
         {/* Spec 188 — what became of the last tracked order (gate, cover).
             Renders nothing outside an equipment tile or without a tracked order. */}
         <TileOrderOutcomeLine />
+        {/* Spec 201 — the mode of the recipe driving this equipment, under the
+            title block; a click moves to the next mode (computer only: a phone
+            changes it from the sheet). Renders nothing
+            outside an equipment tile. */}
+        <CardModePills equipmentId={equipmentId} interactive={!isMobile} />
       </div>
       {children}
       {corner}

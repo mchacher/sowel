@@ -724,6 +724,15 @@ export interface RecipeActionDef {
   type: "cycle";
   stateKey: string;
   options: { value: string; label: string }[];
+  /**
+   * Spec 201 — ids of this recipe's `equipment` slots whose equipments the
+   * mode applies to. The Dashboard card of each such equipment shows the
+   * current mode as a pill. Declared, never inferred: an equipment slot does
+   * not say whether the recipe drives it or only reads it (a thermostat and
+   * the buttons of presence-thermostat look the same). An id that names no
+   * `equipment` slot is ignored.
+   */
+  targets?: string[];
 }
 
 /**

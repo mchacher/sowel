@@ -41,6 +41,7 @@ interface RecipeActionDef {
   type: "cycle";
   stateKey: string;
   options: { value: string; label: string }[];
+  targets?: string[]; // spec 201: equipment slots the mode applies to (pill on their Dashboard cards)
 }
 
 interface RecipeDefinition {
