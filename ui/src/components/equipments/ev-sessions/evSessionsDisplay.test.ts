@@ -3,6 +3,7 @@ import type { EvChargeSession } from "../../../types";
 import {
   endLabel,
   energyLabel,
+  momentLabel,
   energyShares,
   liveState,
   type LiveInputs,
@@ -84,6 +85,16 @@ describe("endLabel (#1203): a session past midnight carries its end day", () => 
   it("adds the day when the session ends on a later day", () => {
     expect(endLabel("2026-11-07T12:11:00", "2026-11-09T11:55:00", "fr-FR")).toBe("9 nov. 11:55");
     expect(endLabel("2026-11-01T23:50:00", "2026-11-02T00:20:00", "fr-FR")).toBe("2 nov. 00:20");
+  });
+});
+
+describe("momentLabel (#1203): a moment from an earlier day carries its day", () => {
+  const now = new Date("2026-11-09T09:00:00");
+  it("gives the time alone today", () => {
+    expect(momentLabel("2026-11-09T07:30:00", "fr-FR", now)).toBe("07:30");
+  });
+  it("adds the day before today", () => {
+    expect(momentLabel("2026-11-07T12:11:00", "fr-FR", now)).toBe("7 nov. 12:11");
   });
 });
 

@@ -133,10 +133,12 @@ export function EvReassignSheet({
           <div className="flex flex-col gap-1 flex-1">
             <h3 className="text-lead font-semibold text-text">{title}</h3>
             <span className="text-small text-text-secondary">
-              {timeLabel(session.startedAt, locale)} →{" "}
-              {session.endedAt
-                ? endLabel(session.startedAt, session.endedAt, locale)
-                : t("equipments.evSessions.inProgress")}{" "}
+              <span className="whitespace-nowrap">{timeLabel(session.startedAt, locale)} →</span>{" "}
+              <span className="whitespace-nowrap">
+                {session.endedAt
+                  ? endLabel(session.startedAt, session.endedAt, locale)
+                  : t("equipments.evSessions.inProgress")}
+              </span>{" "}
               · <span className="tabular-nums">{energyLabel(session.energyWh, locale)}</span>
               {session.costEur !== null && (
                 <>
