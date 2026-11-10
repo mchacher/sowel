@@ -138,16 +138,17 @@ export function EvReassignSheet({
                 {session.endedAt
                   ? endLabel(session.startedAt, session.endedAt, locale)
                   : t("equipments.evSessions.inProgress")}
-              </span>{" "}
-              · <span className="tabular-nums">{energyLabel(session.energyWh, locale)}</span>
+              </span>
+              {"\u00a0– "}
+              <span className="tabular-nums">{energyLabel(session.energyWh, locale)}</span>
               {session.costEur !== null && (
                 <>
-                  {" "}
-                  · <span className="tabular-nums">{formatEur(session.costEur, locale)}</span>
+                  {"\u00a0– "}
+                  <span className="tabular-nums">{formatEur(session.costEur, locale)}</span>
                 </>
               )}
               {session.solarWh > 0 &&
-                ` · ${t("equipments.evSessions.sheet.solarPart", { energy: energyLabel(session.solarWh, locale) })}`}
+                `\u00a0– ${t("equipments.evSessions.sheet.solarPart", { energy: energyLabel(session.solarWh, locale) })}`}
             </span>
           </div>
           <button
