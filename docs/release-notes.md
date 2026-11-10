@@ -11,6 +11,26 @@ This page summarises every published version, newest first. For the full diff be
 
 ---
 
+## 1.84.x: What electricity costs
+
+### v1.84.0 — 2026-11-10 { #v1-84-0 }
+
+Energy gains a Costs page that answers in euros: what the grid cost, what solar avoided and what the surplus arbiter earned. Push can be turned on from Settings by every user, with a list of their devices, and a recipe's mode shows on the cards of the equipments it drives.
+
+**Update presence-thermostat to 1.2.0 and smart-socket-heating to 0.5.1** with this version: without them, the Cocoon and Night modes are offered even when their temperature is not set (#1210).
+
+- Feat (energy): **the Costs page** (spec 200, #1206). Energy > Costs, for a day, a month or a year: the grid bill (the Consumption page's € total), what solar avoided, the cost in paid HP, paid HC and avoided, the cost by usage, and a comparison (the 7 previous days, the month's pace and the same month a year earlier, the elapsed months of the year). A new meter books what the arbiter earns from the day it is installed; `GET /api/v1/energy/bilan`, migration 043.
+- Feat (ui): **push from Settings** (#1199, #1201). Settings > Account > Notifications turns push on or off for the device in hand, for every user; the publishers page links to it.
+- Feat (api): **push devices** (spec 199, #1200, #1202). Under it, « Your devices »: a name per device (from the browser by default, editable), « This device », the result of the last delivery, removal. A device the push service refuses 5 times in a row is removed; an outage on the Sowel side never counts. Migration 042.
+- Feat (ui): **a recipe's mode on equipment cards** (spec 201, #1209). A recipe declares the equipment its mode applies to; their Dashboard cards show the mode as a pill under the title (Cocoon on the stove), which changes it on a computer and in the phone sheet.
+- Fix (auth): a `standard` user can change a recipe's mode; it was refused silently (#1211, #1213).
+- Fix (recipes): a recipe declares which cycle options need a setting (`requiresParam`); the core no longer names a recipe's parameters (#1210, #1214).
+- Fix (ui): a charging session that ran past midnight shows its end day (#1203, #1205).
+- Fix (ui): the top bar separates its path with « › » (« Énergie › Bilan »), and the attribution sheet its summary with « – » (#1207, #1208).
+- Registry: zigbee2mqtt 2.8.2 (#1204), presence-thermostat 1.1.0 then 1.2.0, smart-socket-heating 0.5.0 then 0.5.1 (#1212, #1215).
+
+---
+
 ## 1.83.x: Recipes at a glance
 
 ### v1.83.2 — 2026-11-09 { #v1-83-2 }
