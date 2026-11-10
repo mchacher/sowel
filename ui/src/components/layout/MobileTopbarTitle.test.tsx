@@ -37,4 +37,10 @@ describe("MobileTopbarTitle", () => {
     renderAt("/settings", "");
     expect(screen.getByText("Maison")).toBeTruthy();
   });
+
+  it("separates the parts of a route with the chevron, never the middle dot", () => {
+    renderAt("/energy/bilan", "Grange Neuve");
+    expect(screen.getByText("Énergie › Bilan")).toBeTruthy();
+    expect(document.body.textContent).not.toContain("·");
+  });
 });

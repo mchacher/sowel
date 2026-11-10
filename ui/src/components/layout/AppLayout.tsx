@@ -321,11 +321,20 @@ function TopbarBreadcrumb({ homeName }: { homeName: string | null }) {
 
   const routeLabel = getRouteLabel(location.pathname, t);
   if (routeLabel) {
+    // « Home › Énergie › Bilan »: each part a crumb, like the zone path above.
     return (
       <div className="text-small font-medium text-[var(--n-400)]">
         <span>{homeLabel}</span>
-        <span className="mx-[.35rem] opacity-35">›</span>
-        <b className="font-semibold text-[var(--n-700)]">{routeLabel}</b>
+        {routeLabel.map((part, i) => (
+          <span key={part}>
+            <span className="mx-[.35rem] opacity-35">›</span>
+            {i === routeLabel.length - 1 ? (
+              <b className="font-semibold text-[var(--n-700)]">{part}</b>
+            ) : (
+              <span>{part}</span>
+            )}
+          </span>
+        ))}
       </div>
     );
   }
@@ -397,7 +406,7 @@ function HomeNameSkeleton() {
 }
 
 // Mobile topbar title — home name big, current context small.
-// Title = home name (e.g. "Grange Neuve"), sub = zone path / mode name / route label (e.g. "RDC · Séjour", "Énergie").
+// Title = home name (e.g. "Grange Neuve"), sub = zone path / mode name / route label (e.g. "RDC › Séjour", "Énergie").
 // homeName is null while it loads. Exported for its test.
 export function MobileTopbarTitle({ homeName }: { homeName: string | null }) {
   const { t } = useTranslation();
@@ -415,12 +424,13 @@ export function MobileTopbarTitle({ homeName }: { homeName: string | null }) {
   if (usageEquipment) {
     const path = buildZonePath(usageEquipment.zoneId, tree);
     const segments = path.length > 0 && path[0].id === ROOT_ZONE_ID ? path.slice(1) : path;
-    sub = segments.length > 0 ? segments.map((s) => s.name).join(" · ") : t("nav.maison");
+    sub = segments.length > 0 ? segments.map((s) => s.name).join(PATH_SEPARATOR) : t("nav.maison");
   } else if (zoneMatch) {
     const path = buildZonePath(zoneMatch[1], tree);
     if (path.length > 0) {
       const segments = path[0].id === ROOT_ZONE_ID ? path.slice(1) : path;
-      sub = segments.length > 0 ? segments.map((s) => s.name).join(" · ") : t("nav.maison");
+      sub =
+        segments.length > 0 ? segments.map((s) => s.name).join(PATH_SEPARATOR) : t("nav.maison");
     }
   } else if (onHomeRoute) {
     // /home without a zoneId (transient before redirect, or single-zone setup)
@@ -429,9 +439,9 @@ export function MobileTopbarTitle({ homeName }: { homeName: string | null }) {
     const modeMatch = location.pathname.match(/^\/modes\/([^/]+)/);
     if (modeMatch) {
       const mode = modes.find((m) => m.id === modeMatch[1]);
-      if (mode) sub = `${t("nav.modes")} · ${mode.name}`;
+      if (mode) sub = [t("nav.modes"), mode.name].join(PATH_SEPARATOR);
     } else {
-      sub = getRouteLabel(location.pathname, t);
+      sub = getRouteLabel(location.pathname, t)?.join(PATH_SEPARATOR) ?? null;
     }
   }
 
@@ -480,32 +490,35 @@ function buildZonePath(zoneId: string, tree: ZoneWithChildren[]): { id: string; 
   return out;
 }
 
-function getRouteLabel(pathname: string, t: (k: string) => string): string | null {
-  if (pathname.startsWith("/dashboard")) return t("nav.dashboard");
+// The separator of a place path in the top bar: « RDC › Séjour », « Énergie › Bilan »,
+// the same chevron as the desktop breadcrumb. Never the middle dot, banned in Sowel text.
+const PATH_SEPARATOR = " › ";
+
+/** The parts of a route's label, top-level first: ["Énergie", "Bilan"]. */
+function getRouteLabel(pathname: string, t: (k: string) => string): string[] | null {
+  if (pathname.startsWith("/dashboard")) return [t("nav.dashboard")];
   if (pathname.startsWith("/energy")) {
     const energy = t("nav.energy");
-    if (pathname.startsWith("/energy/live")) return `${energy} · ${t("nav.energy.live")}`;
-    if (pathname.startsWith("/energy/bilan")) return `${energy} · ${t("nav.energy.bilan")}`;
-    if (pathname.startsWith("/energy/consumption"))
-      return `${energy} · ${t("nav.energy.consumption")}`;
-    if (pathname.startsWith("/energy/production"))
-      return `${energy} · ${t("nav.energy.production")}`;
-    return energy;
+    if (pathname.startsWith("/energy/live")) return [energy, t("nav.energy.live")];
+    if (pathname.startsWith("/energy/bilan")) return [energy, t("nav.energy.bilan")];
+    if (pathname.startsWith("/energy/consumption")) return [energy, t("nav.energy.consumption")];
+    if (pathname.startsWith("/energy/production")) return [energy, t("nav.energy.production")];
+    return [energy];
   }
-  if (pathname.startsWith("/modes")) return t("nav.modes");
-  if (pathname.startsWith("/analyse")) return t("nav.analyse");
-  if (pathname.startsWith("/shared-access")) return t("nav.sharedAccess");
-  if (pathname.startsWith("/calendar")) return t("nav.calendar");
-  if (pathname.startsWith("/integrations")) return t("nav.integrations");
-  if (pathname.startsWith("/plugins")) return t("nav.plugins");
-  if (pathname.startsWith("/mqtt-publishers")) return t("nav.mqttPublishers");
-  if (pathname.startsWith("/notification-publishers")) return t("nav.notificationPublishers");
-  if (pathname.startsWith("/logs")) return t("nav.logs");
-  if (pathname.startsWith("/backup")) return t("nav.backup");
-  if (pathname.startsWith("/settings")) return t("nav.settings");
-  if (pathname.startsWith("/devices")) return t("nav.devices");
-  if (pathname.startsWith("/equipments")) return t("nav.equipments");
-  if (pathname.startsWith("/zones")) return t("nav.zones");
+  if (pathname.startsWith("/modes")) return [t("nav.modes")];
+  if (pathname.startsWith("/analyse")) return [t("nav.analyse")];
+  if (pathname.startsWith("/shared-access")) return [t("nav.sharedAccess")];
+  if (pathname.startsWith("/calendar")) return [t("nav.calendar")];
+  if (pathname.startsWith("/integrations")) return [t("nav.integrations")];
+  if (pathname.startsWith("/plugins")) return [t("nav.plugins")];
+  if (pathname.startsWith("/mqtt-publishers")) return [t("nav.mqttPublishers")];
+  if (pathname.startsWith("/notification-publishers")) return [t("nav.notificationPublishers")];
+  if (pathname.startsWith("/logs")) return [t("nav.logs")];
+  if (pathname.startsWith("/backup")) return [t("nav.backup")];
+  if (pathname.startsWith("/settings")) return [t("nav.settings")];
+  if (pathname.startsWith("/devices")) return [t("nav.devices")];
+  if (pathname.startsWith("/equipments")) return [t("nav.equipments")];
+  if (pathname.startsWith("/zones")) return [t("nav.zones")];
   return null;
 }
 
