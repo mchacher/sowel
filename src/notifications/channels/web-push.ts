@@ -16,6 +16,16 @@ import type { VapidKeys } from "../vapid.js";
 export const MAX_CONSECUTIVE_FAILURES = 5;
 
 /**
+ * Only a refusal by the push service about this subscription counts toward the
+ * prune: a 4xx other than 429. A network error (no status), a 5xx or a 429
+ * says nothing about the device, and an outage on Sowel's side must not wipe
+ * every subscription.
+ */
+function countsTowardPrune(status: number | undefined): boolean {
+  return status !== undefined && status >= 400 && status < 500 && status !== 429;
+}
+
+/**
  * Broadcasts a notification to every stored browser subscription using VAPID.
  * No per-publisher config: the recipients are the `push_subscriptions` rows,
  * the credentials are the server-global VAPID keys. Each outcome is recorded
@@ -76,19 +86,23 @@ export class WebPushChannel implements NotificationChannel {
             return;
           }
           const msg = err instanceof Error ? err.message : String(err);
+          const counts = countsTowardPrune(status);
           const failures = this.subscriptions.recordFailure(
             s.id,
             status ? `${status} ${msg}` : msg,
+            counts,
           );
-          if (failures >= MAX_CONSECUTIVE_FAILURES) {
+          // Not the raw error: a WebPushError carries the full endpoint.
+          const errLog = { message: msg, statusCode: status };
+          if (counts && failures >= MAX_CONSECUTIVE_FAILURES) {
             this.subscriptions.deleteById(s.id);
             this.logger.warn(
-              { subscriptionId: s.id, userId: s.userId, endpoint, status, failures, err },
+              { subscriptionId: s.id, userId: s.userId, endpoint, status, failures, err: errLog },
               "Pruned push subscription after consecutive failures",
             );
           } else {
             this.logger.warn(
-              { subscriptionId: s.id, endpoint, status, failures, err },
+              { subscriptionId: s.id, endpoint, status, failures, err: errLog },
               "Web push send failed",
             );
           }

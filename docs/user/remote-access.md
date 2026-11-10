@@ -193,7 +193,7 @@ until you rename it with the pencil. The second line tells how the last push wen
 - **Last push failed**, with the reason.
 
 Remove a device you no longer use with the bin (tap twice to confirm). Sowel also removes on its
-own a device the push service reports as gone, or one that fails five pushes in a row. After a
+own a device the push service reports as gone, or one it refuses five times in a row. After a
 reinstall the phone appears as a new device: remove the old one.
 
 ## Security considerations

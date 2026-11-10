@@ -19,7 +19,7 @@ through: the « Notifications dispatched » log line lives ~30 min in the in-mem
 - R4. Each send records, per subscription: `last_sent_at`, `last_success_at` (the push service
   answered 2xx), `last_error`, `consecutive_failures` (reset on success). The UI words a success as
   « accepted by the push service », never as displayed on the phone.
-- R5. Beyond 404/410, a subscription that fails **5** sends in a row is deleted (warn log).
+- R5. Beyond 404/410, a subscription the push service refuses **5** times in a row (a 4xx other than 429) is deleted (warn log). A network error, a 5xx or a 429 is recorded without counting: an outage on the Sowel side must not wipe every device.
 - R6. `PATCH` and `DELETE /api/v1/push/subscriptions/:id` act on the caller's own subscriptions
   only (404 otherwise). The endpoint-based `DELETE` stays.
 

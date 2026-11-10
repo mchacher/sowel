@@ -675,7 +675,7 @@ Per-user browser subscriptions for the `web-push` channel. Requires a secure con
 | `PATCH`  | `/api/v1/push/subscriptions/:id` | Name one of the caller's devices. Body: `{ label: string \| null }` (60 chars max; `null` or blank clears it). 404 when the id is not the caller's.    |
 | `DELETE` | `/api/v1/push/subscriptions/:id` | Remove one of the caller's devices by id. Returns 204; 404 when the id is not the caller's.                                                            |
 
-Each send records its outcome on the subscription (spec 199): `lastSuccessAt` is the last time the push service **accepted** a push (2xx), which does not prove the device displayed it; `lastError` and `consecutiveFailures` describe the failures since. A 404/410 deletes the subscription at once, and so does a fifth failure in a row.
+Each send records its outcome on the subscription (spec 199): `lastSuccessAt` is the last time the push service **accepted** a push (2xx), which does not prove the device displayed it; `lastError` and `consecutiveFailures` describe the failures since. A 404/410 deletes the subscription at once, and so does a fifth refusal in a row (a 4xx other than 429). A network error, a 5xx or a 429 is recorded in `lastError` without counting toward it.
 
 ---
 

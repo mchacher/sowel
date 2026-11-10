@@ -347,7 +347,7 @@ Both route to the `energy` WebSocket topic. A session is one plug-in on an `ev_c
 
 ### Push subscriptions (specs 127, 199)
 
-`push_subscriptions` holds one row per browser that turned Web Push on: `id`, `user_id` (cascade on user delete), `endpoint` (unique), `p256dh`, `auth`, `user_agent`, `created_at`. Migration 042 adds `label` (owner-given name, NULL = the UI derives one from the user agent), `last_sent_at`, `last_success_at` (last 2xx from the push service: accepted, not proof of display), `last_error` and `consecutive_failures` (reset by a success or a re-subscribe). The web-push channel deletes a row on 404/410 and after `MAX_CONSECUTIVE_FAILURES` (5) failures in a row.
+`push_subscriptions` holds one row per browser that turned Web Push on: `id`, `user_id` (cascade on user delete), `endpoint` (unique), `p256dh`, `auth`, `user_agent`, `created_at`. Migration 042 adds `label` (owner-given name, NULL = the UI derives one from the user agent), `last_sent_at`, `last_success_at` (last 2xx from the push service: accepted, not proof of display), `last_error` and `consecutive_failures` (reset by a success or a re-subscribe). The web-push channel deletes a row on 404/410 and after `MAX_CONSECUTIVE_FAILURES` (5) refusals in a row (a 4xx other than 429). A network error, a 5xx or a 429 is recorded in `last_error` without counting: an outage on the Sowel side never prunes.
 
 ## 6. API Endpoints Summary
 

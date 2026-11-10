@@ -196,7 +196,7 @@ comment s'est passé le dernier push :
 - **Échec du dernier push**, avec la raison.
 
 Retirez un appareil que vous n'utilisez plus avec la corbeille (deux touchers pour confirmer).
-Sowel retire aussi de lui-même un appareil que le service push dit disparu, ou qui échoue cinq push
+Sowel retire aussi de lui-même un appareil que le service push dit disparu, ou qu'il refuse cinq fois
 d'affilée. Après une réinstallation, le téléphone apparaît comme un nouvel appareil : retirez
 l'ancien.
 

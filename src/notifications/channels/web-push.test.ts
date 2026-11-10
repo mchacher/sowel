@@ -183,6 +183,7 @@ describe("WebPushChannel", () => {
       expect(mgr.recordFailure).toHaveBeenCalledWith(
         "https://push/1",
         "403 Received unexpected response code",
+        true,
       );
       expect(mgr.deleteById).not.toHaveBeenCalled();
       expect(mgr.recordSuccess).not.toHaveBeenCalled();
@@ -190,9 +191,21 @@ describe("WebPushChannel", () => {
 
     it("prunes a subscription at the limit of failures in a row", async () => {
       const mgr = createMockManager([sub("https://push/1")], MAX_CONSECUTIVE_FAILURES - 1);
-      sendNotification.mockRejectedValue({ statusCode: 500 });
+      sendNotification.mockRejectedValue({ statusCode: 403 });
       await new WebPushChannel(mgr, vapid, logger).send({}, { title: "Hi" });
       expect(mgr.deleteById).toHaveBeenCalledWith("https://push/1");
+    });
+
+    it.each([
+      ["a network error", new Error("getaddrinfo ENOTFOUND web.push.apple.com")],
+      ["a 5xx", { statusCode: 503 }],
+      ["a 429", { statusCode: 429 }],
+    ])("never prunes on %s: it records the error without counting it", async (_, rejection) => {
+      const mgr = createMockManager([sub("https://push/1")], MAX_CONSECUTIVE_FAILURES + 3);
+      sendNotification.mockRejectedValue(rejection);
+      await new WebPushChannel(mgr, vapid, logger).send({}, { title: "Hi" });
+      expect(mgr.recordFailure).toHaveBeenCalledWith("https://push/1", expect.any(String), false);
+      expect(mgr.deleteById).not.toHaveBeenCalled();
     });
 
     it("does not count a 404/410 as a failure: it prunes at once", async () => {

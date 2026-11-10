@@ -136,6 +136,26 @@ describe("PushSubscriptionManager", () => {
       expect(row.lastSuccessAt).toMatch(/Z$/);
     });
 
+    it("a failure that does not count records the error and keeps the run", () => {
+      const s = make();
+      manager.recordFailure(s.id, "403 x");
+      expect(manager.recordFailure(s.id, "ENOTFOUND", false)).toBe(1);
+      const row = get(s.id)!;
+      expect(row.consecutiveFailures).toBe(1);
+      expect(row.lastError).toBe("ENOTFOUND");
+    });
+
+    it("a new owner on the same endpoint starts unnamed, without the old history", () => {
+      const s = make("u1");
+      manager.rename(s.id, "u1", "Marc's iPhone");
+      manager.recordSuccess(s.id);
+      const taken = make("u2");
+      expect(taken.userId).toBe("u2");
+      expect(taken.label).toBeUndefined();
+      expect(taken.lastSuccessAt).toBeUndefined();
+      expect(taken.lastSentAt).toBeUndefined();
+    });
+
     it("recordFailure on a gone row returns 0", () => {
       expect(manager.recordFailure("nope", "x")).toBe(0);
     });

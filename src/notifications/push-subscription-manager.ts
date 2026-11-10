@@ -63,9 +63,16 @@ export class PushSubscriptionManager {
          VALUES (?, ?, ?, ?, ?, ?, datetime('now'))`,
       ),
       updateByEndpoint: db.prepare(
-        `UPDATE push_subscriptions SET user_id = ?, p256dh = ?, auth = ?, user_agent = ?,
-           consecutive_failures = 0, last_error = NULL
-         WHERE endpoint = ?`,
+        // A new owner on the same endpoint (shared tablet) starts unnamed and
+        // without the previous owner's delivery history (spec 199). The CASEs
+        // read the row's old user_id.
+        `UPDATE push_subscriptions
+         SET user_id = @userId, p256dh = @p256dh, auth = @auth, user_agent = @userAgent,
+             label = CASE WHEN user_id = @userId THEN label ELSE NULL END,
+             last_sent_at = CASE WHEN user_id = @userId THEN last_sent_at ELSE NULL END,
+             last_success_at = CASE WHEN user_id = @userId THEN last_success_at ELSE NULL END,
+             consecutive_failures = 0, last_error = NULL
+         WHERE endpoint = @endpoint`,
       ),
       getById: db.prepare(`SELECT * FROM push_subscriptions WHERE id = ?`),
       recordSuccess: db.prepare(
@@ -77,7 +84,7 @@ export class PushSubscriptionManager {
       recordFailure: db.prepare(
         `UPDATE push_subscriptions
          SET last_sent_at = datetime('now'), last_error = ?,
-             consecutive_failures = consecutive_failures + 1
+             consecutive_failures = consecutive_failures + ?
          WHERE id = ?
          RETURNING consecutive_failures`,
       ),
@@ -101,13 +108,13 @@ export class PushSubscriptionManager {
   upsert(userId: string, input: PushSubscriptionInput): PushSubscription {
     const existing = this.stmts.getByEndpoint.get(input.endpoint) as SubscriptionRow | undefined;
     if (existing) {
-      this.stmts.updateByEndpoint.run(
+      this.stmts.updateByEndpoint.run({
         userId,
-        input.p256dh,
-        input.auth,
-        input.userAgent ?? null,
-        input.endpoint,
-      );
+        p256dh: input.p256dh,
+        auth: input.auth,
+        userAgent: input.userAgent ?? null,
+        endpoint: input.endpoint,
+      });
     } else {
       this.stmts.insert.run(
         randomUUID(),
@@ -144,9 +151,11 @@ export class PushSubscriptionManager {
     this.stmts.recordSuccess.run(id);
   }
 
-  /** Spec 199 — a send failed; returns the failures in a row (0 if the row is gone). */
-  recordFailure(id: string, error: string): number {
-    const row = this.stmts.recordFailure.get(error.slice(0, 500), id) as
+  /** Spec 199 — a send failed; returns the failures in a row (0 if the row is gone).
+   *  `counts` false records the error without adding to the run: a failure
+   *  that says nothing about the subscription (network, 5xx, 429). */
+  recordFailure(id: string, error: string, counts = true): number {
+    const row = this.stmts.recordFailure.get(error.slice(0, 500), counts ? 1 : 0, id) as
       { consecutive_failures: number } | undefined;
     return row?.consecutive_failures ?? 0;
   }

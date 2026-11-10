@@ -606,7 +606,7 @@ Abonnements navigateur par utilisateur pour le canal `web-push` (spec 127). Le c
 | `PATCH`  | `/api/v1/push/subscriptions/:id` | Nomme un appareil de l'appelant. Body : `{ label: string \| null }` (60 caractères max ; `null` ou vide l'efface). 404 si l'id n'est pas à l'appelant. |
 | `DELETE` | `/api/v1/push/subscriptions/:id` | Retire un appareil de l'appelant par son id. Retourne 204 ; 404 si l'id n'est pas à l'appelant.                                                        |
 
-Chaque envoi enregistre son résultat sur l'abonnement (spec 199) : `lastSuccessAt` est le dernier push **accepté** par le service push (2xx), ce qui ne prouve pas que l'appareil l'a affiché ; `lastError` et `consecutiveFailures` décrivent les échecs depuis. Un 404/410 supprime l'abonnement aussitôt, un cinquième échec d'affilée aussi.
+Chaque envoi enregistre son résultat sur l'abonnement (spec 199) : `lastSuccessAt` est le dernier push **accepté** par le service push (2xx), ce qui ne prouve pas que l'appareil l'a affiché ; `lastError` et `consecutiveFailures` décrivent les échecs depuis. Un 404/410 supprime l'abonnement aussitôt, un cinquième refus d'affilée aussi (un 4xx autre que 429). Une erreur réseau, un 5xx ou un 429 est noté dans `lastError` sans compter.
 
 ---
 

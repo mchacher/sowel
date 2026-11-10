@@ -21,9 +21,13 @@ and resets the failure count.
 - `PushSubscriptionManager`: `recordSuccess(id)`, `recordFailure(id, error)` (returns the new
   count), `rename(id, userId, label)` and `deleteById(id, userId?)` (owner-scoped when `userId` is
   given; returns whether a row matched).
-- `WebPushChannel.send`: success → `recordSuccess`; 404/410 → delete (unchanged); other failure →
-  `recordFailure`, and at `MAX_CONSECUTIVE_FAILURES = 5` → `deleteById` + `warn`
-  `{ subscriptionId, userId, failures, status }`.
+- `WebPushChannel.send`: success → `recordSuccess`; 404/410 → delete (unchanged); other 4xx
+  (not 429) → `recordFailure(id, error, true)`, and at `MAX_CONSECUTIVE_FAILURES = 5` →
+  `deleteById` + `warn` `{ subscriptionId, userId, failures, status }`. Network error, 5xx, 429 →
+  `recordFailure(id, error, false)`: the error is shown, the run is not extended, so an outage on
+  the Sowel side never prunes. The log carries `{ message, statusCode }`, not the raw
+  `WebPushError` (it holds the full endpoint).
+- A re-subscribe of the same endpoint by another user clears the label and the delivery history.
 - Routes: `PATCH /api/v1/push/subscriptions/:id` `{ label: string | null }` (max 60 chars, empty
   or null clears it) and `DELETE /api/v1/push/subscriptions/:id`; both 404 when the id is not the
   caller's. Both added to the standard-role write allowlist (`auth-middleware.ts`).
