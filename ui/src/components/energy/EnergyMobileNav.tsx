@@ -1,11 +1,12 @@
 import { useNavigate, useLocation } from "react-router-dom";
 import { useTranslation } from "react-i18next";
-import { Zap, Sun, Activity } from "lucide-react";
+import { Zap, Sun, Activity, Wallet } from "lucide-react";
 import { useEnergy } from "../../store/useEnergy";
 import { useUiState } from "../../store/useUiState";
 
 /**
- * Energy sub-page drawer (Live · Consumption · Production).
+ * Energy sub-page drawer: Live, Bilan (spec 200), Consumption, and Production
+ * when the home has a production meter.
  * Open state lives in useUiState — the trigger button is in AppLayout's topbar.
  * This component only renders the drawer panel.
  */
@@ -17,20 +18,29 @@ export function EnergyMobileNav() {
   const open = useUiState((s) => s.energyNavOpen);
   const close = useUiState((s) => s.closeEnergyNav);
 
-  if (!hasProduction || !open) return null;
+  if (!open) return null;
 
   const items = [
     { to: "/energy/live", label: t("energy.live"), icon: <Activity size={18} strokeWidth={1.5} /> },
+    {
+      to: "/energy/bilan",
+      label: t("energy.bilan"),
+      icon: <Wallet size={18} strokeWidth={1.5} />,
+    },
     {
       to: "/energy/consumption",
       label: t("energy.consumption"),
       icon: <Zap size={18} strokeWidth={1.5} />,
     },
-    {
-      to: "/energy/production",
-      label: t("energy.production"),
-      icon: <Sun size={18} strokeWidth={1.5} />,
-    },
+    ...(hasProduction
+      ? [
+          {
+            to: "/energy/production",
+            label: t("energy.production"),
+            icon: <Sun size={18} strokeWidth={1.5} />,
+          },
+        ]
+      : []),
   ];
 
   return (

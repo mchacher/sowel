@@ -1,13 +1,14 @@
 import { useEnergy, canGoForward } from "../../store/useEnergy";
 import { localDateStr } from "../../lib/local-date";
 import { PeriodSelector as SharedPeriodSelector } from "../PeriodSelector";
+import type { SelectorPeriod } from "../../lib/period-label";
 
 /**
  * The Energy pages' period navigator: binds the energy store to the shared
  * selector (issue #730). It used to be a second, untranslated copy of the
  * Analyse one.
  */
-export function PeriodSelector() {
+export function PeriodSelector({ periods }: { periods?: readonly SelectorPeriod[] } = {}) {
   const period = useEnergy((s) => s.period);
   const date = useEnergy((s) => s.date);
   const setPeriod = useEnergy((s) => s.setPeriod);
@@ -25,6 +26,7 @@ export function PeriodSelector() {
       onPrevious={() => navigateDate(-1)}
       onNext={() => navigateDate(1)}
       onToday={() => setDate(today)}
+      periods={periods}
     />
   );
 }

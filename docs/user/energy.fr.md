@@ -86,6 +86,7 @@ Dès qu'un sous-compteur est configuré, le bouton **Par usage** apparaît sur l
 La barre latérale regroupe les vues énergie sous **Énergie** :
 
 - **En direct** : flux instantané entre réseau, production et consommation maison
+- **Bilan** : ce que l'électricité a coûté, ce que le solaire a évité et ce que l'arbitre a rapporté, par jour, mois ou année
 - **Consommation** : consommation historique avec répartition HP/HC et autoconsommation
 - **Production** : production solaire historique avec répartition autoconsommation / injection
 
@@ -122,6 +123,17 @@ source et chacune avec son propre âge. Il dit l'une de ces trois choses :
 
 Seules les mesures de puissance dessinées par le diagramme sont surveillées : un compteur simplement
 en retard sur une tension ou un index d'énergie ne déclenche rien ici.
+
+### Vue Bilan
+
+La page Bilan répond en euros, pour un **Jour**, un **Mois** ou une **Année** (les flèches changent de date, et la période et la date sont les mêmes que sur la page Consommation). Elle a besoin d'un tarif : sans tarif, elle invite à le renseigner dans **Réglages > Tarif**.
+
+- **La facture.** Le grand chiffre est ce que le réseau a coûté sur la période, réparti entre heures pleines et heures creuses. C'est le même total que la vue € de la page Consommation. En dessous, une comparaison : pour un jour, la moyenne des 7 jours précédents ; pour le mois en cours, ce que coûtera le mois à ce rythme, et le même mois un an plus tôt ; pour une année, les mois qui ont des relevés presque tous les jours les deux années (« De mai à octobre : 474 €, contre 939 € en 2025 (−50 %) »).
+- **Électricité consommée, en euros.** Avec un compteur de production, une barre découpe ce que valait l'électricité consommée entre ce que vous avez **payé** au fournisseur et ce que le solaire a **évité** : les kilowattheures solaires consommés sur place, au prix qu'ils auraient coûté à ce moment-là. « Sans panneaux, la facture aurait été de … » est la somme des deux.
+- **Économie solaire** et **Gain de l'arbitre.** Deux tuiles reprennent le montant évité avec l'énergie autoconsommée, et donnent la part de l'arbitre (voir [Ce que rapporte l'arbitre](#ce-que-rapporte-larbitre)). La tuile de l'arbitre apparaît lorsque l'arbitre est activé, ou lorsque la période contient un gain mesuré pendant qu'il l'était.
+- **Coût par heure, par jour ou par mois.** Des barres empilées : payé en heures pleines, payé en heures creuses, et évité par le solaire au-dessus. En vue Année, un trait pointillé marque la facture de l'année précédente pour le même mois.
+- **Par usage.** Une ligne par sous-compteur, plus **Autres** : ses kilowattheures, ce qu'il a coûté, ce que le solaire a évité pour lui, triés par montant payé. Chaque heure (vue Jour), chaque jour (vue Mois) ou chaque mois (vue Année), la part solaire de la maison est appliquée à chaque sous-compteur : ces montants sont donc un peu plus précis que les € par usage de la page Consommation, qui appliquent un prix moyen à toute la période.
+- **Comment ces montants sont calculés.** La dernière carte (repliée sur un téléphone) donne les prix utilisés et ces règles.
 
 ### Vue Consommation
 
@@ -277,6 +289,12 @@ La courbe est à l'échelle : le zéro se place là où le mettent les pics de l
 Chaque couloir dessine une suite de quarts d'heure dans le même état comme une seule barre : une nuit au repos se lit comme une longue barre pâle plutôt que quarante cases. La légende ne liste que les états présents dans la fenêtre, plus _Au repos_. Une charge en attente de surplus pendant que l'arbitre était en veille (soleil couché, rien d'exporté) se lit _au repos_ sur ces quarts d'heure aussi, comme le tableau la montrait à ce moment-là : elle n'attendait rien qui pouvait venir avant le lever du soleil.
 
 Pointez l'historique à la souris pour lire un quart d'heure : son heure, l'import ou le surplus, et ce que faisait chaque charge. Sur un téléphone, touchez un quart d'heure pour faire remonter ses décisions dans le journal. Au clavier, chaque couloir est un seul arrêt de tabulation : les flèches gauche et droite passent d'un quart d'heure à l'autre, Entrée les montre dans le journal. Les flèches au-dessus de la courbe remontent les 48 dernières heures, 6 heures à la fois sur un téléphone et 12 heures dès une tablette.
+
+### Ce que rapporte l'arbitre
+
+Chaque minute, Sowel note l'énergie solaire consommée par les charges que l'arbitre a lancées, et la compte au tarif de cette minute. Les charges sont servies **en dernier** par le soleil : quand la maison importe, l'import leur est attribué d'abord, si bien que le chiffre ne revendique jamais le solaire que la maison a consommé elle-même. Le résultat s'accumule par jour et par charge et s'affiche sur la page Bilan, dans la tuile **Gain de l'arbitre**, avec les deux charges qui ont rapporté le plus. Il fait partie de l'économie solaire, il ne s'y ajoute pas. Une charge est comptée à sa puissance mesurée quand elle a son propre compteur ; sans compteur, à sa puissance apprise ou déclarée tant qu'elle est autorisée, si bien qu'une charge qui s'arrête d'elle-même (un chauffe-eau dont le thermostat coupe) est surestimée jusqu'à ce qu'elle soit libérée.
+
+La mesure commence le jour où la version qui l'apporte est installée : les périodes antérieures affichent « Pas encore mesuré ».
 
 ### Vous avez toujours le dernier mot
 

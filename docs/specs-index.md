@@ -348,6 +348,7 @@ Specs are grouped by theme and annotated with status:
 | 197 | Energy pages refresh                                                    | ✅     | Live says import/export in a 40 px headline (shared FlowDiagram, UPS too), deficit in slate not red, side-by-side desktop, arbiter history runs and night idle, Consumption/Production total first; amends 165, 148, 157. Shipped in v1.81.0.     |
 | 198 | Recipe rows                                                             | ✅     | Recipe rows in two lines with the switch alone, same-recipe instances grouped, `RecipeInfo.icon` from the manifest, alarm dot on `state.alarm`, journal on click for all, settings window (#1188). Shipped in v1.83.0.                            |
 | 199 | Push devices                                                            | 🚧     | Push devices in Settings > Account: a name per subscription (from the user agent by default), this-device mark, remove by id, last delivery (accepted by the push service, or the error), prune after 5 failures in a row; migration 042 (#1200). |
+| 200 | Energy Bilan page                                                       | 🚧     | Energy > Bilan page (day, month, year): grid bill, cost avoided by solar, comparison, cost chart and by-usage paid/avoided; `GET /energy/bilan`; arbiter gain meter, table `arbiter_daily_gain`, migration 043. Unreleased.                       |
 
 ---
 

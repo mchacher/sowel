@@ -349,6 +349,10 @@ Both route to the `energy` WebSocket topic. A session is one plug-in on an `ev_c
 
 `push_subscriptions` holds one row per browser that turned Web Push on: `id`, `user_id` (cascade on user delete), `endpoint` (unique), `p256dh`, `auth`, `user_agent`, `created_at`. Migration 042 adds `label` (owner-given name, NULL = the UI derives one from the user agent), `last_sent_at`, `last_success_at` (last 2xx from the push service: accepted, not proof of display), `last_error` and `consecutive_failures` (reset by a success or a re-subscribe). The web-push channel deletes a row on 404/410 and after `MAX_CONSECUTIVE_FAILURES` (5) refusals in a row (a 4xx other than 429). A network error, a 5xx or a 429 is recorded in `last_error` without counting: an outage on the Sowel side never prunes.
 
+### Arbiter gain (spec 200)
+
+`arbiter_daily_gain` (migration 043) holds, per local day and per load, the solar energy used by the loads the arbiter switched on (`solar_wh`) and its value at the tariff of each minute (`avoided_eur`). Primary key (`day`, `equipment_id`), no foreign key (a removed load keeps its history), no purge (about five rows a day). Written every 15 minutes and on shutdown by `ArbiterGainMeter`, read by `GET /api/v1/energy/bilan`, and part of the backup. The first day measured is the setting `energy.arbiterGain.since`.
+
 ## 6. API Endpoints Summary
 
 This is a non-exhaustive index. See [API Reference](api-reference.md) for the full surface.

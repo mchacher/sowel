@@ -28,6 +28,7 @@ import { SharedAccessPage } from "./pages/SharedAccessPage";
 import { EnergyPage } from "./components/energy/EnergyPage";
 import { ProductionPage } from "./components/energy/ProductionPage";
 import { LiveEnergyPage } from "./components/energy/LiveEnergyPage";
+import { BilanPage } from "./components/energy/BilanPage";
 
 export default function App() {
   return (
@@ -90,6 +91,7 @@ export default function App() {
             />
             <Route path="/energy" element={<Navigate to="/energy/live" replace />} />
             <Route path="/energy/live" element={<LiveEnergyPage />} />
+            <Route path="/energy/bilan" element={<BilanPage />} />
             <Route path="/energy/consumption" element={<EnergyPage />} />
             <Route path="/energy/production" element={<ProductionPage />} />
             <Route path="/analyse" element={<AnalysePage />} />

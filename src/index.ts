@@ -44,6 +44,8 @@ import { ArbiterJournalStore } from "./energy/arbiter-journal-store.js";
 import { ArbiterSurplusStore } from "./energy/arbiter-surplus-store.js";
 import { ArbiterMetricsStore } from "./energy/arbiter-metrics-store.js";
 import { ArbiterMetricsRollup } from "./energy/arbiter-metrics-rollup.js";
+import { ArbiterGainStore } from "./energy/arbiter-gain-store.js";
+import { ArbiterGainMeter } from "./energy/arbiter-gain-meter.js";
 import { ActivityBuffer } from "./activity/activity-buffer.js";
 import { ActivityStore } from "./activity/activity-store.js";
 import { RecipeLoader } from "./recipes/recipe-loader.js";
@@ -434,6 +436,19 @@ async function main() {
   );
   arbiterMetricsRollup.start();
 
+  // Spec 200 — the arbiter's gain (solar used by the loads it switched on, at
+  // the tariff of the minute), for the Energy Bilan page. Reads the arbiter's
+  // public state only, like the metrics above.
+  const arbiterGainStore = new ArbiterGainStore(db, logger);
+  const arbiterGainMeter = new ArbiterGainMeter({
+    arbiter: capacityArbiter,
+    tariff: historyWriter.getTariffClassifier(),
+    store: arbiterGainStore,
+    settings: settingsManager,
+    logger,
+  });
+  arbiterGainMeter.start();
+
   // 12. Create Recipe Manager
   const recipeManager = new RecipeManager(
     db,
@@ -643,6 +658,7 @@ async function main() {
     recipeLoader,
     capacityArbiter,
     arbiterMetricsStore, // spec 158 — daily metrics read surface
+    arbiterGain: { store: arbiterGainStore, meter: arbiterGainMeter }, // spec 200
     backupManager,
     versionChecker,
     updateManager,
@@ -833,6 +849,11 @@ async function main() {
       arbiterMetricsRollup.stop();
     } catch (err) {
       logger.error({ err }, "Error stopping arbiter metrics rollup");
+    }
+    try {
+      arbiterGainMeter.stop(); // spec 200 — flushes the pending gain
+    } catch (err) {
+      logger.error({ err }, "Error stopping arbiter gain meter");
     }
     try {
       sunlightManager.stop();

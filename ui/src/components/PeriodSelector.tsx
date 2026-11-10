@@ -35,6 +35,9 @@ export interface PeriodSelectorProps {
   onPrevious: () => void;
   onNext: () => void;
   onToday: () => void;
+  /** The periods offered, in order; all four when omitted (spec 200: the
+   *  Bilan page has no week). */
+  periods?: readonly SelectorPeriod[];
 }
 
 export function PeriodSelector({
@@ -46,6 +49,7 @@ export function PeriodSelector({
   onPrevious,
   onNext,
   onToday,
+  periods,
 }: PeriodSelectorProps) {
   const { t, i18n } = useTranslation();
   const locale = dateLocale(i18n.language);
@@ -56,7 +60,10 @@ export function PeriodSelector({
     <div className="flex flex-col items-stretch sm:flex-row sm:flex-wrap sm:items-center gap-3">
       {/* Period tabs — the shared segmented control (FR-E6.4). */}
       <SegmentedControl<SelectorPeriod>
-        options={PERIODS.map((p) => ({ value: p.key, label: t(p.labelKey) }))}
+        options={PERIODS.filter((p) => !periods || periods.includes(p.key)).map((p) => ({
+          value: p.key,
+          label: t(p.labelKey),
+        }))}
         value={period}
         onChange={onPeriodChange}
         label={t("period.label")}

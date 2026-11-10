@@ -71,6 +71,16 @@ interface BuildOpts {
     readLoads: () => Omit<ArbiterDailyLoadMetrics, "equipmentName">[];
     readHome: () => ArbiterDailyHomeMetrics[];
   } | null;
+  /** Spec 200 — stub the arbiter gain store and meter. */
+  arbiterGain?: {
+    rows: Array<{ day: string; equipmentId: string; solarWh: number; avoidedEur: number }>;
+    pending?: Array<{ day: string; equipmentId: string; solarWh: number; avoidedEur: number }>;
+    since: string | null;
+  };
+  /** Settings the route reads (spec 200 — `energy.arbiter.enabled`). */
+  settings?: Record<string, string>;
+  /** Spec 200 — no InfluxDB configured. */
+  noInflux?: boolean;
 }
 
 async function buildApp(opts: BuildOpts = {}) {
@@ -79,7 +89,7 @@ async function buildApp(opts: BuildOpts = {}) {
   // route invocation pulls from the prepared lists in order of the
   // helper calls; we route by inspecting the flux's alias filter.
   const influxClient = {
-    getConfig: () => ({ bucket: "sowel", org: "sowel" }),
+    getConfig: () => (opts.noInflux ? null : { bucket: "sowel", org: "sowel" }),
     getClient: () =>
       ({
         getQueryApi: () => ({
@@ -136,6 +146,7 @@ async function buildApp(opts: BuildOpts = {}) {
   // can assert an accepted body actually reached the store.
   const settingsWrites: Array<[string, string]> = [];
   const settingsManager = {
+    get: (key: string) => opts.settings?.[key],
     set: (key: string, value: string) => {
       settingsWrites.push([key, value]);
     },
@@ -160,6 +171,18 @@ async function buildApp(opts: BuildOpts = {}) {
     tariffClassifier,
     capacityArbiter: null,
     arbiterMetricsStore: (opts.arbiterMetrics ?? null) as never,
+    arbiterGain: opts.arbiterGain
+      ? ({
+          store: {
+            range: (from: string, to: string) =>
+              opts.arbiterGain!.rows.filter((r) => r.day >= from && r.day <= to),
+          },
+          meter: {
+            pending: () => opts.arbiterGain!.pending ?? [],
+            since: () => opts.arbiterGain!.since,
+          },
+        } as never)
+      : null,
     // Spec 160 — the routes must answer sensibly with no forecaster at all.
     pvForecaster: (opts.pvForecaster ?? null) as never,
     logger,
@@ -1954,5 +1977,132 @@ describe("Issue #907 — trimming the accuracy payload to the chart window", () 
   it("keeps an unparseable stamp rather than silently dropping a point", () => {
     const odd = { ...accuracy, points: [{ at: "not-a-date", forecastW: 1, actualW: 1 }] };
     expect(trimToWindow(odd, 1).points).toHaveLength(1);
+  });
+});
+
+describe("Spec 200 — /api/v1/energy/bilan", () => {
+  let app: Awaited<ReturnType<typeof buildApp>> | null = null;
+  const tariff: TariffConfig = {
+    schedules: [
+      { days: [0, 1, 2, 3, 4, 5, 6], slots: [{ start: "00:00", end: "00:00", tariff: "hp" }] },
+    ],
+    prices: { hp: 0.2, hc: 0.1 },
+  };
+  const equipments = [
+    { id: "meter-1", name: "Compteur", type: "main_energy_meter" as const },
+    { id: "sub-1", name: "Chauffe-eau", type: "energy_meter" as const },
+  ];
+  // Day rows (hourly, 30 May in Paris) and reference rows (daily, 28 and 29
+  // May). The mock answers every query with the same rows; each read keeps
+  // only its own buckets.
+  const hpHcRows = [
+    { _time: "2026-05-29T22:00:00Z", _value: 100, alias: "energy_hp" },
+    { _time: "2026-05-29T23:00:00Z", _value: 120, alias: "energy_hp" },
+    { _time: "2026-05-30T00:00:00Z", _value: 80, alias: "energy_hp" },
+    { _time: "2026-05-27T22:00:00Z", _value: 10_000, alias: "energy_hp" },
+    { _time: "2026-05-28T22:00:00Z", _value: 20_000, alias: "energy_hp" },
+  ];
+
+  beforeEach(() => {
+    process.env.TZ = "Europe/Paris";
+  });
+
+  afterEach(async () => {
+    if (app) await app.close();
+    app = null;
+  });
+
+  it("refuses the week period", async () => {
+    app = await buildApp({ equipments, tariff });
+    const res = await app.inject({ method: "GET", url: "/api/v1/energy/bilan?period=week" });
+    expect(res.statusCode).toBe(400);
+  });
+
+  it("answers 404 without a main meter and 503 without InfluxDB", async () => {
+    app = await buildApp({ equipments: [], tariff });
+    expect(
+      (await app.inject({ method: "GET", url: "/api/v1/energy/bilan?period=day" })).statusCode,
+    ).toBe(404);
+    await app.close();
+    app = await buildApp({ equipments, tariff, noInflux: true });
+    expect(
+      (await app.inject({ method: "GET", url: "/api/v1/energy/bilan?period=day" })).statusCode,
+    ).toBe(503);
+  });
+
+  it("gives the day's bill, the 7-day comparison and the arbiter gain", async () => {
+    app = await buildApp({
+      equipments,
+      tariff,
+      hpHcRows,
+      arbiterGain: {
+        rows: [
+          { day: "2026-05-30", equipmentId: "sub-1", solarWh: 1000, avoidedEur: 0.2 },
+          { day: "2026-05-29", equipmentId: "sub-1", solarWh: 9999, avoidedEur: 9 },
+        ],
+        // Not flushed yet: the read must add it.
+        pending: [{ day: "2026-05-30", equipmentId: "sub-1", solarWh: 500, avoidedEur: 0.1 }],
+        since: "2026-05-01",
+      },
+    });
+    const history = await app.inject({
+      method: "GET",
+      url: "/api/v1/energy/history?period=day&date=2026-05-30",
+    });
+    const res = await app.inject({
+      method: "GET",
+      url: "/api/v1/energy/bilan?period=day&date=2026-05-30",
+    });
+    expect(res.statusCode).toBe(200);
+    const body = res.json();
+    expect(body.points).toHaveLength(24);
+    expect(body.bill.total).toBe(history.json().totals.cost_total);
+    expect(body.bill.total).toBeCloseTo(0.06, 6);
+    expect(body.tariffConfigured).toBe(true);
+    expect(body.hasProduction).toBe(false);
+    expect(body.comparison).toEqual({ kind: "days", days: 2, averageBill: 3 });
+    expect(body.arbiter).toMatchObject({
+      enabled: false,
+      since: "2026-05-01",
+      measured: "full",
+      avoided: 0.3,
+      loads: [{ equipmentId: "sub-1", name: "Chauffe-eau", solarWh: 1500, avoided: 0.3 }],
+    });
+  });
+
+  it("splits the day by usage, the rows' paid summing to the bill", async () => {
+    app = await buildApp({
+      equipments,
+      tariff,
+      hpHcRows,
+      mainConsumptionRows: hpHcRows,
+      submeterRowsById: {
+        "sub-1": [{ _time: "2026-05-29T23:00:00Z", _value: 60, alias: "energy" }],
+      },
+    });
+    const res = await app.inject({
+      method: "GET",
+      url: "/api/v1/energy/bilan?period=day&date=2026-05-30",
+    });
+    const body = res.json();
+    const ids = body.usage.map((u: { id: string | null }) => u.id);
+    expect(ids).toEqual([null, "sub-1"]);
+    const paid = body.usage.reduce((s: number, u: { paid: number }) => s + u.paid, 0);
+    expect(paid).toBeCloseTo(body.bill.total, 4);
+  });
+
+  it("reads 'not measured' for a period before the gain meter's first day", async () => {
+    app = await buildApp({
+      equipments,
+      tariff,
+      hpHcRows,
+      settings: { "energy.arbiter.enabled": "true" },
+      arbiterGain: { rows: [], since: "2026-11-10" },
+    });
+    const res = await app.inject({
+      method: "GET",
+      url: "/api/v1/energy/bilan?period=day&date=2026-05-30",
+    });
+    expect(res.json().arbiter).toMatchObject({ enabled: true, measured: "none", avoided: 0 });
   });
 });

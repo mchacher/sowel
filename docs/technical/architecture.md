@@ -412,6 +412,17 @@ works against a restored backup with no running instance.
 
 Full design, review log and rationale: `specs/140-energy-capacity-arbiter/`.
 
+### Arbiter gain meter (spec 200)
+
+`ArbiterGainMeter` (`src/energy/arbiter-gain-meter.ts`) measures what the arbiter earns, for the Energy Costs page. Every 60 s it reads the arbiter's **public state**, as the UI does, and never writes to it: like the daily metrics, the measure cannot disturb arbitration.
+
+- With the arbiter enabled and its meter fresh, it takes the loads in state `granted` and their effective watts (live draw when fresh), their sum `D` (a load without its own meter is counted at its learned or declared watts while granted, which overstates one that stops by itself), and the import `I = max(0, −availableSurplusW)`. The solar power they use is `max(0, D − I)`, split pro rata of their watts: the managed loads are **served last by the sun**, as EV sessions are, so the figure never claims solar the house itself used.
+- The energy is that power over the elapsed time, capped at 120 s so a stalled process never books a gap. It is priced at the tariff of that minute (the `TariffClassifier` gives the HP/HC proportions of the window), so the euro figure is frozen.
+- It accumulates in memory per local day and load, is flushed to `arbiter_daily_gain` every 15 minutes in one transaction and on shutdown, and a read adds the part not flushed yet. A crash loses at most 15 minutes.
+- The first day it ran with the arbiter enabled is stored once in `energy.arbiterGain.since`; a period before it reads "not measured yet".
+
+`GET /api/v1/energy/bilan` builds the rest of the page from the same loaders as `/energy/history` and `/energy/by-usage` (`loadEnergyPoints`, `loadUsagePartition` in `src/api/routes/energy.ts`), so its bill is the Consumption page's € total. A history point prices its whole consumption, solar included, while the totals price the grid side only: one point therefore splits exactly into what was paid (its cost times the grid share) and what solar avoided (its cost times the self-consumed share). The arithmetic is pure, in `src/energy/bilan.ts`.
+
 ## EV charge sessions (spec 191)
 
 `EvSessionTracker` (`src/energy/ev-sessions/`) turns every plug-in on an `ev_charger` into a persisted session, from the charger's `vehicle` leaving `disconnected` to its return. A **metered charger** (spec 193: an `ev_charger` with no `vehicle` point, bound to an energy meter) has its session follow its `power`: it opens at the first reading of 500 W or more, and the tick closes it after 30 minutes under 500 W, dated at the last active reading. The car reports received during those 30 minutes are held and folded at close against that end, or into the session if it resumes. It listens to live `equipment.data.changed` only, never to InfluxDB, so a session works without InfluxDB and outlives the raw bucket's retention.

@@ -113,6 +113,12 @@ interface ServerDeps {
   // Spec 158 — arbiter daily metrics, read-only surface. Null in tests that
   // do not exercise it.
   arbiterMetricsStore: import("../energy/arbiter-metrics-store.js").ArbiterMetricsStore | null;
+  /** Spec 200 — the arbiter gain, read by the Bilan page. Absent in harnesses
+   *  that do not exercise it. */
+  arbiterGain?: {
+    store: import("../energy/arbiter-gain-store.js").ArbiterGainStore;
+    meter: import("../energy/arbiter-gain-meter.js").ArbiterGainMeter;
+  };
   /** Spec 191 — EV charge sessions. Absent in harnesses that do not exercise them. */
   evSessionTracker?: import("../energy/ev-sessions/ev-session-tracker.js").EvSessionTracker;
   pvForecaster: PvForecaster | null;
@@ -173,6 +179,7 @@ export async function createServer(deps: ServerDeps) {
     recipeLoader,
     capacityArbiter,
     arbiterMetricsStore,
+    arbiterGain,
     pvForecaster,
     backupManager,
     versionChecker,
@@ -379,6 +386,7 @@ export async function createServer(deps: ServerDeps) {
     tariffClassifier: historyWriter.getTariffClassifier(),
     capacityArbiter,
     arbiterMetricsStore,
+    arbiterGain: arbiterGain ?? null,
     logger,
   });
   if (deps.evSessionTracker) {

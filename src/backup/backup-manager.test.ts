@@ -352,6 +352,21 @@ describe("BackupManager", () => {
       };
       expect(restored.value).toBe("before-restore");
     });
+
+    it("carries the arbiter gain through an export and a restore (spec 200)", async () => {
+      db.prepare(
+        `INSERT INTO arbiter_daily_gain (day, equipment_id, solar_wh, avoided_eur)
+         VALUES ('2026-11-10', 'car', 4600, 0.8)`,
+      ).run();
+      await manager.exportToFile("gain.zip");
+      db.prepare(`DELETE FROM arbiter_daily_gain`).run();
+
+      const result = await manager.restoreFromFile("gain.zip");
+      expect(result.success).toBe(true);
+      expect(db.prepare(`SELECT * FROM arbiter_daily_gain`).all()).toEqual([
+        { day: "2026-11-10", equipment_id: "car", solar_wh: 4600, avoided_eur: 0.8 },
+      ]);
+    });
   });
 
   describe("restoreFromBuffer — ragged tables (#939)", () => {
