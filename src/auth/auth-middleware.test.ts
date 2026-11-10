@@ -275,6 +275,16 @@ describe("auth-middleware", () => {
       expect(isStandardWriteAllowed("PUT", "/api/v1/equipments/v1")).toBe(false);
     });
 
+    it("allows a standard user to fire a recipe's action, not to configure it (#1211)", () => {
+      expect(isStandardWriteAllowed("POST", "/api/v1/recipe-instances/r1/actions")).toBe(true);
+      expect(isStandardWriteAllowed("POST", "/api/v1/recipe-instances")).toBe(false);
+      expect(isStandardWriteAllowed("PUT", "/api/v1/recipe-instances/r1")).toBe(false);
+      expect(isStandardWriteAllowed("DELETE", "/api/v1/recipe-instances/r1")).toBe(false);
+      expect(isStandardWriteAllowed("POST", "/api/v1/recipe-instances/r1/disable")).toBe(false);
+      expect(isStandardWriteAllowed("POST", "/api/v1/recipe-instances/r1/actions/x")).toBe(false);
+      expect(isStandardWriteAllowed("DELETE", "/api/v1/recipe-instances/r1/actions")).toBe(false);
+    });
+
     it("still denies configuring what a mode is or does", () => {
       expect(isStandardWriteAllowed("POST", "/api/v1/modes")).toBe(false);
       expect(isStandardWriteAllowed("PUT", "/api/v1/modes/m1")).toBe(false);

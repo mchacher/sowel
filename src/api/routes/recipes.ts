@@ -23,7 +23,9 @@ const updateInstanceBodySchema = {
 const sendActionBodySchema = {
   type: "object",
   required: ["action"],
-  properties: { action: nonEmptyString },
+  // #1211 — every role reaches this route: an object payload or none, so
+  // recipe code never receives a bare string or array.
+  properties: { action: nonEmptyString, payload: { type: "object" } },
 };
 
 interface RecipesDeps {

@@ -81,6 +81,32 @@ describe("recipe-instance routes — input validation (characterization)", () =>
     );
   });
 
+  it("400 when the payload is not an object (#1211)", async () => {
+    const send = (payload: unknown) =>
+      post("/api/v1/recipe-instances/ri-1/actions", { action: "set_mode", payload });
+    expect((await send("eco")).statusCode).toBe(400);
+    expect((await send(["eco"])).statusCode).toBe(400);
+  });
+
+  it("hands an object payload to the recipe unchanged (#1211)", async () => {
+    const received: unknown[] = [];
+    const deps = makeDeps();
+    (deps.recipeManager as unknown as { sendAction: unknown }).sendAction = (...args: unknown[]) =>
+      void received.push(args);
+    const local = Fastify({ logger: false, ajv: validationAjvOptions });
+    installValidationErrorHandler(local);
+    registerRecipeRoutes(local, deps);
+    await local.ready();
+    const res = await local.inject({
+      method: "POST",
+      url: "/api/v1/recipe-instances/ri-1/actions",
+      payload: { action: "set_mode", payload: { mode: "eco" } },
+    });
+    expect(res.statusCode).toBe(200);
+    expect(received).toEqual([["ri-1", "set_mode", { mode: "eco" }]]);
+    await local.close();
+  });
+
   it("accepts a whitespace-only action (bare `!action` did not trim)", async () => {
     const res = await post("/api/v1/recipe-instances/ri-1/actions", { action: "   " });
     expect(res.statusCode).toBe(200);

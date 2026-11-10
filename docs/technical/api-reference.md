@@ -94,19 +94,21 @@ endpoint not in the allowlist is admin-only.
 
 **Standard write allowlist** (the only mutations a `standard` may perform):
 
-| Method         | Path                                                                                                      | Purpose                    |
-| -------------- | --------------------------------------------------------------------------------------------------------- | -------------------------- |
-| POST           | `/api/v1/equipments/:id/orders/:alias`                                                                    | Actuate an equipment       |
-| POST / DELETE  | `/api/v1/equipments/:id/timed-action`                                                                     | Timed action (spec 174)    |
-| POST           | `/api/v1/zones/:id/orders/:orderKey`                                                                      | Zone command               |
-| POST           | `/api/v1/modes/:id/activate`, `/deactivate`                                                               | Switch the active mode     |
-| POST           | `/api/v1/modes/:id/apply-to-zone/:zoneId`                                                                 | Apply a mode to a zone     |
-| PUT            | `/api/v1/me`, `/api/v1/me/preferences`, `/api/v1/me/password`                                             | Own account                |
-| POST / DELETE  | `/api/v1/me/tokens[/:id]`                                                                                 | Own API tokens             |
-| POST / DELETE  | `/api/v1/me/mfa/totp/setup`, `/totp/confirm`, `/totp`, `/backup-codes/regenerate`, `/trusted-devices/:id` | Own MFA (spec 151)         |
-| POST / DELETE  | `/api/v1/push/subscriptions`                                                                              | Own push subscription      |
-| PATCH / DELETE | `/api/v1/push/subscriptions/:id`                                                                          | Own push device (spec 199) |
-| POST           | `/api/v1/auth/logout`                                                                                     | End own session            |
+| Method         | Path                                                                                                      | Purpose                          |
+| -------------- | --------------------------------------------------------------------------------------------------------- | -------------------------------- |
+| POST           | `/api/v1/equipments/:id/orders/:alias`                                                                    | Actuate an equipment             |
+| POST / DELETE  | `/api/v1/equipments/:id/timed-action`                                                                     | Timed action (spec 174)          |
+| POST           | `/api/v1/zones/:id/orders/:orderKey`                                                                      | Zone command                     |
+| POST           | `/api/v1/modes/:id/activate`, `/deactivate`                                                               | Switch the active mode           |
+| POST           | `/api/v1/modes/:id/apply-to-zone/:zoneId`                                                                 | Apply a mode to a zone           |
+| POST           | `/api/v1/recipe-instances/:id/actions`                                                                    | Fire a recipe action (#1211)     |
+| PUT            | `/api/v1/ev-sessions/:id/attribution`                                                                     | Say which car charged (spec 191) |
+| PUT            | `/api/v1/me`, `/api/v1/me/preferences`, `/api/v1/me/password`                                             | Own account                      |
+| POST / DELETE  | `/api/v1/me/tokens[/:id]`                                                                                 | Own API tokens                   |
+| POST / DELETE  | `/api/v1/me/mfa/totp/setup`, `/totp/confirm`, `/totp`, `/backup-codes/regenerate`, `/trusted-devices/:id` | Own MFA (spec 151)               |
+| POST / DELETE  | `/api/v1/push/subscriptions`                                                                              | Own push subscription            |
+| PATCH / DELETE | `/api/v1/push/subscriptions/:id`                                                                          | Own push device (spec 199)       |
+| POST           | `/api/v1/auth/logout`                                                                                     | End own session                  |
 
 An API token inherits its creator's role, so a standard-scoped token is subject to
 the same gate (no privilege escalation).
@@ -369,16 +371,16 @@ A definition carries `icon` (a Lucide name) when its package manifest declares o
 
 ### Recipe Instances
 
-| Method   | Path                                   | Description                                                       |
-| -------- | -------------------------------------- | ----------------------------------------------------------------- |
-| `GET`    | `/api/v1/recipe-instances`             | List all active recipe instances.                                 |
-| `POST`   | `/api/v1/recipe-instances`             | Create instance. Body: `{ recipeId, params }`.                    |
-| `PUT`    | `/api/v1/recipe-instances/:id`         | Update instance params. Body: `{ params }`.                       |
-| `DELETE` | `/api/v1/recipe-instances/:id`         | Stop and delete instance. Returns 204.                            |
-| `POST`   | `/api/v1/recipe-instances/:id/enable`  | Enable a disabled instance.                                       |
-| `POST`   | `/api/v1/recipe-instances/:id/disable` | Disable (pause) a running instance.                               |
-| `POST`   | `/api/v1/recipe-instances/:id/actions` | Send an action to a running recipe. Body: `{ action, payload? }`. |
-| `GET`    | `/api/v1/recipe-instances/:id/log`     | Get execution log. Query: `?limit=50`.                            |
+| Method   | Path                                   | Description                                                                                                                                                 |
+| -------- | -------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `GET`    | `/api/v1/recipe-instances`             | List all active recipe instances.                                                                                                                           |
+| `POST`   | `/api/v1/recipe-instances`             | Create instance. Body: `{ recipeId, params }`.                                                                                                              |
+| `PUT`    | `/api/v1/recipe-instances/:id`         | Update instance params. Body: `{ params }`.                                                                                                                 |
+| `DELETE` | `/api/v1/recipe-instances/:id`         | Stop and delete instance. Returns 204.                                                                                                                      |
+| `POST`   | `/api/v1/recipe-instances/:id/enable`  | Enable a disabled instance.                                                                                                                                 |
+| `POST`   | `/api/v1/recipe-instances/:id/disable` | Disable (pause) a running instance.                                                                                                                         |
+| `POST`   | `/api/v1/recipe-instances/:id/actions` | Send an action to a running recipe. Body: `{ action, payload? }`. Open to `standard` users (allowlisted, #1211); the other instance routes stay admin-only. |
+| `GET`    | `/api/v1/recipe-instances/:id/log`     | Get execution log. Query: `?limit=50`.                                                                                                                      |
 
 ---
 
