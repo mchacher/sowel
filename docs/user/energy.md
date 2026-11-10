@@ -86,6 +86,7 @@ Once at least one submeter is configured, the **By usage** toggle appears on the
 The sidebar groups the energy views under **Energy**:
 
 - **Live**: instant flow between grid, production, and house consumption
+- **Costs**: what electricity cost, what solar avoided and what the arbiter earned, by day, month or year
 - **Consumption**: historical consumption with peak / off-peak split and self-consumption overlay
 - **Production**: historical solar production with autoconsumption / injection split
 
@@ -120,6 +121,17 @@ each with its own age. It says one of three things:
 
 Only the power readings the diagram draws are watched, so a meter that is merely late on a voltage
 or energy reading raises nothing here.
+
+### Costs view
+
+The Costs page answers, in euros, for a **Day**, a **Month** or a **Year** (the arrows move through dates, and the period and date are the same as on the Consumption page). It needs a tariff: without one, it asks you to set it in **Settings > Tariff**.
+
+- **The bill.** The large figure is what the grid cost over the period, split into peak and off-peak hours. It is the same total as the € view of the Consumption page. Under it, one comparison: for a day, the average of the 7 days before; for the current month, what the month will cost at this pace, and the same month a year earlier; for a year, the months that have readings almost every day in both years ("May to October: 474 €, against 939 € in 2025 (−50 %)").
+- **Electricity used, in euros.** With a production meter, a bar splits what the electricity you used was worth into what you **paid** the supplier and what solar **avoided**: the self-consumed solar kilowatt-hours priced at what they would have cost at that moment. "Without panels, the bill would have been …" is the sum of the two.
+- **Solar savings** and **Arbiter gain.** Two tiles repeat the avoided figure with the self-consumed energy, and give the arbiter's share of it (see [What the arbiter earns](#what-the-arbiter-earns)). The arbiter tile shows when the arbiter is enabled, or when the period holds a gain measured while it was.
+- **Cost per hour, day or month.** Stacked bars: paid at peak, paid off-peak, and avoided by solar on top. In the year view a dashed tick marks the previous year's bill for the same month.
+- **By usage.** One row per sub-meter, plus **Other**: its kilowatt-hours, what it cost, what solar avoided for it, sorted by the amount paid. Each hour (day view), day (month view) or month (year view), the home's solar share is applied to every sub-meter, so these figures are a little more precise than the by-usage € of the Consumption page, which applies one average price to the whole period.
+- **How these amounts are made.** The last card (folded on a phone) gives the prices used and these rules.
 
 ### Consumption view
 
@@ -276,6 +288,12 @@ The curve is drawn to scale: zero sits where the window's own peaks put it, a wa
 Each lane draws a stretch of the same state as one bar, so a night at rest reads as one long pale bar rather than forty cells. The legend lists only the states the window shows, plus _At rest_. A load waiting for surplus while the arbiter was dormant (sun down, nothing exported) reads _at rest_ for those quarters too, as the roster did at the time: it was not waiting for anything that could come before sunrise.
 
 Point at the history with a mouse for a readout of that quarter of an hour: its time, the import or surplus, and what every load was doing. On a phone, tap a quarter to bring its decisions up in the journal. With a keyboard, each lane is one Tab stop: the left and right arrows move between quarters, Enter shows them in the journal. The arrows above the curve page back through the last 48 hours, 6 hours at a time on a phone and 12 hours from a tablet.
+
+### What the arbiter earns
+
+Every minute, Sowel notes the solar energy used by the loads the arbiter switched on, and prices it at the tariff of that minute. The loads are served **last** by the sun: when the house imports, the import is charged to them first, so the figure never claims solar the house itself used. The result builds up per day and per load and shows on the Costs page, in the **Arbiter gain** tile, with the two loads that earned most. It is part of the solar savings, not added to them. A load is counted at its measured power when it has its own meter; without one, at its learned or declared power for as long as it is granted, so a load that stops by itself (a water heater whose thermostat cuts off) is overstated until it is released.
+
+The measure starts the day the version that brings it is installed: earlier periods read "Not measured yet".
 
 ### You always win
 

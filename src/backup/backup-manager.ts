@@ -155,6 +155,9 @@ export const BACKUP_TABLES = [
   "shared_access_phones",
   "shared_access_journal",
   "shared_access_tombstones",
+  // Spec 200 — the arbiter gain cannot be recomputed (the journal is purged
+  // after 7 days). No foreign key, so its place in the order does not matter.
+  "arbiter_daily_gain",
 ] as const;
 
 // Reverse order for deletion (children first) + tables not exported but must be cleared

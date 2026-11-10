@@ -310,6 +310,17 @@ Deux conséquences à connaître :
 
 ---
 
+## Gain de l'arbitre et Bilan (spec 200)
+
+`ArbiterGainMeter` (`src/energy/arbiter-gain-meter.ts`) mesure ce que rapporte l'arbitre, pour la page Énergie > Bilan. Toutes les 60 s il lit l'**état public** de l'arbitre, comme l'interface, et n'y écrit jamais : comme les métriques quotidiennes, la mesure ne peut pas perturber l'arbitrage.
+
+- Arbitre activé et compteur frais, il prend les charges à l'état `granted` et leurs watts effectifs (tirage mesuré quand il est frais), leur somme `D` (une charge sans compteur propre est comptée à ses watts appris ou déclarés tant qu'elle est autorisée, ce qui surestime celle qui s'arrête d'elle-même), et l'import `I = max(0, −availableSurplusW)`. La puissance solaire qu'elles consomment est `max(0, D − I)`, répartie au prorata de leurs watts : les charges pilotées sont **servies en dernier par le soleil**, comme les sessions de recharge, si bien que le chiffre ne revendique jamais le solaire que la maison a consommé elle-même.
+- L'énergie est cette puissance sur le temps écoulé, plafonné à 120 s pour qu'un processus figé ne compte jamais un trou. Elle est valorisée au tarif de cette minute (le `TariffClassifier` donne les proportions HP/HC de la fenêtre) : le montant en euros est figé.
+- Elle s'accumule en mémoire par jour local et par charge, est écrite dans `arbiter_daily_gain` toutes les 15 minutes en une transaction et à l'arrêt, et une lecture ajoute la part pas encore écrite. Un plantage perd au plus 15 minutes.
+- Le premier jour mesuré avec l'arbitre activé est enregistré une fois dans `energy.arbiterGain.since` ; une période antérieure affiche « pas encore mesuré ».
+
+`GET /api/v1/energy/bilan` construit le reste de la page avec les mêmes fonctions de lecture que `/energy/history` et `/energy/by-usage` (`loadEnergyPoints`, `loadUsagePartition` dans `src/api/routes/energy.ts`), si bien que sa facture est le total € de la page Consommation. Un point d'historique valorise toute sa consommation, solaire compris, alors que les totaux ne valorisent que le côté réseau : un point se découpe donc exactement en payé (son coût fois la part réseau) et évité par le solaire (son coût fois la part autoconsommée). Le calcul est pur, dans `src/energy/bilan.ts`.
+
 ## Recharges de véhicules électriques (spec 191)
 
 `EvSessionTracker` (`src/energy/ev-sessions/`) fait de chaque branchement sur une `ev_charger` une recharge enregistrée, du moment où le `vehicle` de la borne quitte `disconnected` à celui où il y revient. Sur une **borne mesurée** (spec 193 : une `ev_charger` sans point `vehicle`, liée à un compteur d'énergie), la recharge suit sa `power` : elle s'ouvre au premier relevé de 500 W ou plus, et le tick la ferme après 30 minutes sous 500 W, datée du dernier relevé actif. Les relevés des voitures reçus pendant ces 30 minutes sont mis de côté et comptés à la clôture par rapport à cette fin, ou dans la recharge si elle reprend. Il n'écoute que les `equipment.data.changed` en direct, jamais InfluxDB : une recharge fonctionne sans InfluxDB et survit à la rétention du bucket brut.

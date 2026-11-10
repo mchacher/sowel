@@ -1871,6 +1871,83 @@ export interface EnergyByUsageResponse {
   };
 }
 
+// ============================================================
+// Energy Bilan (spec 200)
+// ============================================================
+
+export type BilanPeriod = "day" | "month" | "year";
+
+/** One bar of the Bilan chart: what was paid and what solar avoided, in €. */
+export interface BilanPoint {
+  time: string;
+  paidHp: number;
+  paidHc: number;
+  avoided: number;
+  /** Year view only: the previous year's bill for the same month, null when
+   *  that month has no data. */
+  previousYearBill?: number | null;
+}
+
+export type BilanComparison =
+  /** Day: the average bill of the 7 days before, over those with consumption. */
+  | { kind: "days"; days: number; averageBill: number }
+  /** Month: the projection (current month from day 3 on) and the same month a
+   *  year earlier (when it has data). */
+  | { kind: "month"; projectedBill: number | null; previousYearBill: number | null }
+  /** Year: the months fully elapsed with consumption in both years ("YYYY-MM"). */
+  | { kind: "year"; months: string[]; bill: number; previousYearBill: number };
+
+export interface BilanUsageRow {
+  /** Equipment id, null for "other" (what no sub-meter accounts for). */
+  id: string | null;
+  name: string;
+  colorIndex: number | null;
+  wh: number;
+  paid: number;
+  avoided: number;
+}
+
+export interface BilanArbiterLoad {
+  equipmentId: string;
+  /** Null when the equipment no longer exists. */
+  name: string | null;
+  solarWh: number;
+  avoided: number;
+}
+
+export interface BilanArbiter {
+  enabled: boolean;
+  /** First local day the gain meter ran with the arbiter enabled. */
+  since: string | null;
+  /** How much of the period the meter covers. */
+  measured: "none" | "partial" | "full";
+  solarWh: number;
+  avoided: number;
+  /** Sorted by avoided €, highest first. */
+  loads: BilanArbiterLoad[];
+}
+
+export interface EnergyBilanResponse {
+  period: BilanPeriod;
+  from: string;
+  to: string;
+  resolution: "1h" | "1d" | "1mo";
+  tariffConfigured: boolean;
+  /** The prices the figures use, € per kWh (the method card states them). */
+  prices: TariffPrices;
+  hasProduction: boolean;
+  /** The grid bill, the same figure as `/energy/history` totals. */
+  bill: { total: number; hp: number; hc: number };
+  /** € that self-consumed solar would have cost at each point's price. */
+  avoided: number;
+  selfConsumedWh: number;
+  points: BilanPoint[];
+  comparison: BilanComparison | null;
+  /** Empty without sub-meters. */
+  usage: BilanUsageRow[];
+  arbiter: BilanArbiter;
+}
+
 export interface TariffSlot {
   start: string;
   end: string;

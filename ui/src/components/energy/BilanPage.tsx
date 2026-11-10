@@ -1,0 +1,426 @@
+import { useEffect, useState } from "react";
+import { useTranslation } from "react-i18next";
+import { Link } from "react-router-dom";
+import { getEnergyBilan } from "../../api";
+import { formatCurrency, formatNumber } from "../../lib/format";
+import { localDateStr } from "../../lib/local-date";
+import { dateLocale } from "../../lib/locale";
+import { useEnergy } from "../../store/useEnergy";
+import type { BilanPeriod, BilanUsageRow, EnergyBilanResponse } from "../../types";
+import { BilanChart } from "./BilanChart";
+import { arbiterTileText, billLabel, comparisonLines, showArbiterTile } from "./bilan-format";
+import { EnergyMobileNav } from "./EnergyMobileNav";
+import { formatEur, formatWh } from "./format";
+import { PeriodSelector } from "./PeriodSelector";
+
+// Spec 200 — Energy > Bilan: what electricity cost, what solar avoided, and
+// what the arbiter earned, for a day, a month or a year.
+
+const BILAN_PERIODS = ["day", "month", "year"] as const;
+const PAID_COLOR = "var(--color-energy-hp)";
+const HC_COLOR = "var(--color-energy-hc)";
+const AVOIDED_COLOR = "var(--color-solar-auto)";
+
+function Swatch({ color }: { color: string }) {
+  return (
+    <span
+      aria-hidden
+      className="inline-block w-2.5 h-2.5 rounded-xs flex-none"
+      style={{ backgroundColor: color }}
+    />
+  );
+}
+
+/** A bar split into paid and avoided, as shares of `max`. */
+function SplitBar({
+  paid,
+  avoided,
+  max,
+  className,
+  track = "bg-border-light",
+  label,
+}: {
+  paid: number;
+  avoided: number;
+  max: number;
+  className: string;
+  /** The background of the part that is neither paid nor avoided. */
+  track?: string;
+  label?: string;
+}) {
+  const pct = (v: number) => (max > 0 ? `${(v / max) * 100}%` : "0%");
+  return (
+    <div
+      role={label ? "img" : undefined}
+      aria-label={label}
+      aria-hidden={label ? undefined : true}
+      className={`flex overflow-hidden ${track} ${className}`}
+    >
+      <div style={{ width: pct(paid), backgroundColor: PAID_COLOR }} />
+      <div style={{ width: pct(avoided), backgroundColor: AVOIDED_COLOR }} />
+    </div>
+  );
+}
+
+export function BilanPage() {
+  const { t, i18n } = useTranslation();
+  const locale = dateLocale(i18n.language);
+  const period = useEnergy((s) => s.period);
+  const date = useEnergy((s) => s.date);
+  const setPeriod = useEnergy((s) => s.setPeriod);
+  const [data, setData] = useState<EnergyBilanResponse | null>(null);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState(false);
+
+  // The page has no week: arriving with it selected reads the month around the date.
+  useEffect(() => {
+    if (period === "week") setPeriod("month");
+  }, [period, setPeriod]);
+
+  const bilanPeriod: BilanPeriod | null = period === "week" ? null : period;
+
+  useEffect(() => {
+    if (!bilanPeriod) return;
+    let cancelled = false;
+    setLoading(true);
+    setError(false);
+    getEnergyBilan(bilanPeriod, date)
+      .then((res) => {
+        if (cancelled) return;
+        setData(res);
+        setError(false);
+      })
+      .catch(() => {
+        if (!cancelled) setError(true);
+      })
+      .finally(() => {
+        if (!cancelled) setLoading(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [bilanPeriod, date]);
+
+  const today = localDateStr();
+
+  return (
+    <div className="p-4 sm:p-6">
+      <EnergyMobileNav />
+      <div className="flex flex-col sm:flex-row sm:flex-wrap sm:items-center sm:justify-between gap-4 mb-4 sm:mb-6">
+        <h1 className="hidden lg:block">{t("energy.bilan")}</h1>
+        <PeriodSelector periods={BILAN_PERIODS} />
+      </div>
+
+      {error ? (
+        <div className="card p-6 text-small text-text-secondary">{t("energy.bilan.error")}</div>
+      ) : !data ? (
+        <div className="flex items-center justify-center h-[300px] text-text-tertiary text-small">
+          {t("common.loading")}
+        </div>
+      ) : !data.tariffConfigured ? (
+        <div className="card p-6 flex flex-col gap-2 text-small text-text-secondary">
+          <p>{t("energy.bilan.noTariff")}</p>
+          <Link to="/settings?tab=energy" className="text-primary hover:underline self-start">
+            {t("energy.bilan.noTariffLink")}
+          </Link>
+        </div>
+      ) : (
+        <div
+          className={`flex flex-col gap-4 sm:gap-5 transition-opacity ${loading ? "opacity-50" : ""}`}
+          aria-busy={loading}
+        >
+          <BillCard data={data} date={date} today={today} locale={locale} />
+          <Tiles data={data} locale={locale} />
+          <section className="card p-4 sm:p-6 flex flex-col gap-4">
+            <h2 className="text-lead font-semibold text-text">
+              {t(`energy.bilan.chart.${data.period}`)}
+            </h2>
+            <BilanChart
+              points={data.points}
+              period={data.period}
+              showAvoided={data.hasProduction}
+              previousYear={
+                data.period === "year" ? new Date(date + "T12:00:00").getFullYear() - 1 : null
+              }
+            />
+          </section>
+          {data.usage.length > 0 && <UsageCard data={data} locale={locale} />}
+          <MethodCard data={data} locale={locale} />
+        </div>
+      )}
+    </div>
+  );
+}
+
+function BillCard({
+  data,
+  date,
+  today,
+  locale,
+}: {
+  data: EnergyBilanResponse;
+  date: string;
+  today: string;
+  locale: string;
+}) {
+  const { t } = useTranslation();
+  const comparison = comparisonLines(data.comparison, date, locale, t);
+  const value = data.bill.total + data.avoided;
+  const paid = formatEur(data.bill.total, locale);
+  const avoided = formatEur(data.avoided, locale);
+  return (
+    <section className="card p-5 sm:p-7 grid gap-6 lg:grid-cols-[1fr_1.25fr] lg:gap-10">
+      <div className="flex flex-col gap-2 min-w-0">
+        <span className="text-small font-medium text-text-secondary">
+          {billLabel(data.period, date, today, locale, t)}
+        </span>
+        <span className="text-value font-semibold text-text tabular-nums leading-tight">
+          {paid}
+        </span>
+        <div className="flex flex-col sm:flex-row gap-1 sm:gap-5 text-small text-text-secondary tabular-nums">
+          <span className="flex items-center gap-1.5">
+            <Swatch color={PAID_COLOR} />
+            {t("energy.peakHours")} {formatEur(data.bill.hp, locale)}
+          </span>
+          <span className="flex items-center gap-1.5">
+            <Swatch color={HC_COLOR} />
+            {t("energy.offPeakHours")} {formatEur(data.bill.hc, locale)}
+          </span>
+        </div>
+        {comparison && (
+          <div className="mt-2 rounded-sm bg-background px-3.5 py-3 flex flex-col gap-1">
+            <span className="text-small text-text tabular-nums">{comparison.main}</span>
+            {comparison.sub && (
+              <span className="text-caption text-text-tertiary tabular-nums">{comparison.sub}</span>
+            )}
+          </div>
+        )}
+      </div>
+      {data.hasProduction && (
+        <div className="flex flex-col gap-3.5 min-w-0 border-t border-border-light pt-5 lg:border-t-0 lg:pt-0">
+          <div className="flex items-baseline justify-between gap-3">
+            <span className="text-small font-medium text-text-secondary">
+              {t("energy.bilan.value.title")}
+            </span>
+            <span className="text-title font-semibold text-text tabular-nums">
+              {formatEur(value, locale)}
+            </span>
+          </div>
+          <SplitBar
+            paid={data.bill.total}
+            avoided={data.avoided}
+            max={value}
+            className="h-6 sm:h-7 rounded-sm"
+            label={t("energy.bilan.value.aria", { paid, avoided })}
+          />
+          <div className="grid grid-cols-2 gap-4">
+            <div className="flex flex-col gap-0.5">
+              <span className="flex items-center gap-1.5 text-caption text-text-tertiary">
+                <Swatch color={PAID_COLOR} />
+                {t("energy.bilan.value.paid")}
+              </span>
+              <span className="text-lead font-semibold text-text tabular-nums">{paid}</span>
+            </div>
+            <div className="flex flex-col gap-0.5">
+              <span className="flex items-center gap-1.5 text-caption text-text-tertiary">
+                <Swatch color={AVOIDED_COLOR} />
+                {t("energy.bilan.value.avoided")}
+              </span>
+              <span className="text-lead font-semibold text-solar-ink tabular-nums">{avoided}</span>
+            </div>
+          </div>
+          <span className="text-caption text-text-tertiary tabular-nums">
+            {t("energy.bilan.value.withoutSolar", { amount: formatEur(value, locale) })}
+          </span>
+        </div>
+      )}
+    </section>
+  );
+}
+
+function Tiles({ data, locale }: { data: EnergyBilanResponse; locale: string }) {
+  const { t } = useTranslation();
+  const showArbiter = showArbiterTile(data.arbiter);
+  if (!data.hasProduction && !showArbiter) return null;
+  const arbiter = arbiterTileText(data.arbiter, locale, t);
+  return (
+    <div className="grid grid-cols-2 gap-3 sm:gap-5">
+      {data.hasProduction && (
+        <section className="card p-4 sm:px-6 sm:py-5 flex flex-col gap-1 sm:gap-1.5 min-w-0">
+          <span className="text-caption sm:text-small font-medium text-text-secondary">
+            {t("energy.bilan.solar.title")}
+          </span>
+          <span className="text-title sm:text-display font-semibold text-solar-ink tabular-nums">
+            {formatEur(data.avoided, locale)}
+          </span>
+          <span className="text-micro sm:text-caption text-text-tertiary tabular-nums">
+            {t("energy.bilan.solar.caption", { energy: formatWh(data.selfConsumedWh, locale) })}
+          </span>
+        </section>
+      )}
+      {showArbiter && (
+        <section className="card p-4 sm:px-6 sm:py-5 flex flex-col gap-1 sm:gap-1.5 min-w-0">
+          <span className="text-caption sm:text-small font-medium text-text-secondary">
+            {t("energy.bilan.arbiter.title")}
+          </span>
+          {arbiter.value ? (
+            <span className="text-title sm:text-display font-semibold text-text tabular-nums">
+              {arbiter.value}
+            </span>
+          ) : (
+            <span className="text-lead sm:text-title font-semibold text-text-tertiary">
+              {t("energy.bilan.arbiter.notMeasured")}
+            </span>
+          )}
+          <span className="text-micro sm:text-caption text-text-tertiary tabular-nums">
+            {arbiter.caption}
+          </span>
+          {arbiter.note && (
+            <span className="text-micro sm:text-caption text-text-tertiary">{arbiter.note}</span>
+          )}
+        </section>
+      )}
+    </div>
+  );
+}
+
+function usageName(row: BilanUsageRow, t: (k: string) => string): string {
+  return row.id === null ? t("energy.bilan.usage.other") : row.name;
+}
+
+function UsageCard({ data, locale }: { data: EnergyBilanResponse; locale: string }) {
+  const { t } = useTranslation();
+  const max = Math.max(...data.usage.map((u) => u.paid + u.avoided), 0);
+  const solar = data.hasProduction;
+  return (
+    <section className="card p-4 sm:p-6 flex flex-col gap-3">
+      <div className="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1">
+        <h2 className="text-lead font-semibold text-text">{t("energy.bilan.usage.title")}</h2>
+        <span className="text-caption text-text-tertiary">{t("energy.bilan.usage.sorted")}</span>
+      </div>
+
+      {/* Desktop and tablet: a table. */}
+      <table className="hidden sm:table w-full text-small tabular-nums">
+        <thead>
+          <tr className="text-left text-micro font-semibold uppercase tracking-wide text-text-tertiary">
+            <th scope="col" className="py-2 font-semibold w-[22%]">
+              {t("energy.bilan.usage.usage")}
+            </th>
+            <th scope="col" className="py-2 font-semibold text-right w-[10%]">
+              {t("energy.bilan.usage.energy")}
+            </th>
+            <th scope="col" className="py-2 font-semibold text-right w-[12%]">
+              {t("energy.bilan.usage.paid")}
+            </th>
+            {solar && (
+              <th scope="col" className="py-2 font-semibold text-right w-[14%]">
+                {t("energy.bilan.usage.avoided")}
+              </th>
+            )}
+            <th scope="col" className="py-2 pl-8 font-semibold">
+              {t("energy.bilan.usage.share")}
+            </th>
+          </tr>
+        </thead>
+        <tbody>
+          {data.usage.map((u) => (
+            <tr key={u.id ?? "other"} className="border-t border-border-light">
+              <td className="py-2.5 font-medium text-text">{usageName(u, t)}</td>
+              <td className="py-2.5 text-right text-text-secondary">
+                {formatNumber(u.wh / 1000, { maxDecimals: 1, locale })}
+              </td>
+              <td className="py-2.5 text-right font-semibold text-text">
+                {formatEur(u.paid, locale)}
+              </td>
+              {solar && (
+                <td className="py-2.5 text-right text-solar-ink">
+                  {u.avoided > 0.004 ? formatEur(u.avoided, locale) : "—"}
+                </td>
+              )}
+              <td className="py-2.5 pl-8">
+                <SplitBar
+                  paid={u.paid}
+                  avoided={solar ? u.avoided : 0}
+                  max={max}
+                  className="h-2.5 rounded-xs"
+                  track="bg-background"
+                />
+              </td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+
+      {/* Phone: one row per usage. */}
+      <ul className="sm:hidden flex flex-col">
+        {data.usage.map((u) => (
+          <li
+            key={u.id ?? "other"}
+            className="border-t border-border-light py-2.5 flex flex-col gap-1.5"
+          >
+            <div className="flex items-baseline justify-between gap-2 text-small">
+              <span className="font-medium text-text">{usageName(u, t)}</span>
+              <span className="font-semibold text-text tabular-nums">
+                {formatEur(u.paid, locale)}
+              </span>
+            </div>
+            <SplitBar
+              paid={u.paid}
+              avoided={solar ? u.avoided : 0}
+              max={max}
+              className="h-2 rounded-xs"
+              track="bg-background"
+            />
+            <div className="flex justify-between text-micro text-text-tertiary tabular-nums">
+              <span>{formatWh(u.wh, locale)}</span>
+              {solar && u.avoided > 0.004 && (
+                <span className="text-solar-ink">
+                  {t("energy.bilan.usage.avoidedShort", { amount: formatEur(u.avoided, locale) })}
+                </span>
+              )}
+            </div>
+          </li>
+        ))}
+      </ul>
+    </section>
+  );
+}
+
+function MethodText({ data, locale }: { data: EnergyBilanResponse; locale: string }) {
+  const { t } = useTranslation();
+  return (
+    <>
+      <p>
+        {t("energy.bilan.method.tariff", {
+          hp: formatCurrency(data.prices.hp, { locale, decimals: 4 }),
+          hc: formatCurrency(data.prices.hc, { locale, decimals: 4 }),
+        })}{" "}
+        <Link to="/settings?tab=energy" className="text-primary hover:underline">
+          {t("energy.bilan.method.tariffLink")}
+        </Link>
+      </p>
+      <p>{t("energy.bilan.method.rule")}</p>
+      {data.usage.length > 0 && <p>{t(`energy.bilan.method.${data.period}`)}</p>}
+    </>
+  );
+}
+
+function MethodCard({ data, locale }: { data: EnergyBilanResponse; locale: string }) {
+  const { t } = useTranslation();
+  return (
+    <>
+      <section className="hidden lg:flex card px-7 py-5 flex-col gap-1.5 text-caption text-text-secondary">
+        <h2 className="text-small font-semibold text-text">{t("energy.bilan.method.title")}</h2>
+        <MethodText data={data} locale={locale} />
+      </section>
+      <details className="lg:hidden card px-4 py-3.5 text-caption text-text-secondary">
+        <summary className="text-small font-semibold text-text cursor-pointer min-h-6">
+          {t("energy.bilan.method.title")}
+        </summary>
+        <div className="mt-2.5 flex flex-col gap-1.5">
+          <MethodText data={data} locale={locale} />
+        </div>
+      </details>
+    </>
+  );
+}

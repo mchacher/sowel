@@ -4,6 +4,8 @@ import type {
   TariffConfig,
   EnergyByUsageResponse,
   ActivityItem,
+  BilanPeriod,
+  EnergyBilanResponse,
 } from "../types";
 import type { PvForecastResponse } from "../types";
 import { fetchJSON, API_BASE } from "./client";
@@ -32,6 +34,14 @@ export async function getEnergyByUsage(
   return fetchJSON<EnergyByUsageResponse>(
     `${API_BASE}/energy/by-usage?period=${period}&date=${date}`,
   );
+}
+
+/** Spec 200 — the Energy Bilan of a day, a month or a year. */
+export async function getEnergyBilan(
+  period: BilanPeriod,
+  date: string,
+): Promise<EnergyBilanResponse> {
+  return fetchJSON<EnergyBilanResponse>(`${API_BASE}/energy/bilan?period=${period}&date=${date}`);
 }
 
 export async function getTariffConfig(): Promise<TariffConfig> {

@@ -327,6 +327,7 @@ Les specs sont regroupées par thème et annotées d'un statut :
 | 197 | Rafraîchissement des pages Énergie                                    | ✅     | En direct dit import/export en titre de 40 px (FlowDiagram partagé, onduleur aussi), déficit en ardoise et non en rouge, desktop côte à côte, rubans et nuit au repos dans l'historique, total d'abord ; amende 165, 148, 157. Shipped in v1.81.0.         |
 | 198 | Lignes de recettes                                                    | ✅     | Lignes de recette sur deux lignes, interrupteur seul, instances d'une même recette regroupées, `RecipeInfo.icon` du manifeste, point d'alarme sur `state.alarm`, journal au clic pour tous, fenêtre de réglages (#1188). Shipped in v1.83.0.               |
 | 199 | Appareils push                                                        | 🚧     | Appareils push dans Réglages > Compte : nom par abonnement (tiré du user agent par défaut), « cet appareil », retrait par id, dernier envoi (accepté par le service push, ou l'erreur), purge après 5 échecs d'affilée ; migration 042 (#1200).            |
+| 200 | Page Bilan de l'énergie                                               | 🚧     | Page Énergie > Bilan (jour, mois, année) : facture, coût évité par le solaire, comparaison, graphique des coûts, payé et évité par usage ; `GET /energy/bilan` ; compteur de gain de l'arbitre, table `arbiter_daily_gain`, migration 043. Unreleased.     |
 
 ---
 

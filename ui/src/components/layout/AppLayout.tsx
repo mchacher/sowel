@@ -339,7 +339,6 @@ function MobileTopbarBurger() {
   const { t } = useTranslation();
   const location = useLocation();
   const tree = useZones((s) => s.tree);
-  const hasProduction = useEnergy((s) => s.hasProduction);
   const openZoneDrawer = useUiState((s) => s.openZoneDrawer);
   const openEnergyNav = useUiState((s) => s.openEnergyNav);
   const openAnalyseNav = useUiState((s) => s.openAnalyseNav);
@@ -353,7 +352,7 @@ function MobileTopbarBurger() {
   if (onZonePage && tree.length > 0) {
     onClick = openZoneDrawer;
     label = t("zones.openTree", "Open zones");
-  } else if (onEnergyPage && hasProduction) {
+  } else if (onEnergyPage) {
     onClick = openEnergyNav;
     label = t("nav.energy");
   } else if (onAnalysePage) {
@@ -486,6 +485,7 @@ function getRouteLabel(pathname: string, t: (k: string) => string): string | nul
   if (pathname.startsWith("/energy")) {
     const energy = t("nav.energy");
     if (pathname.startsWith("/energy/live")) return `${energy} · ${t("nav.energy.live")}`;
+    if (pathname.startsWith("/energy/bilan")) return `${energy} · ${t("nav.energy.bilan")}`;
     if (pathname.startsWith("/energy/consumption"))
       return `${energy} · ${t("nav.energy.consumption")}`;
     if (pathname.startsWith("/energy/production"))

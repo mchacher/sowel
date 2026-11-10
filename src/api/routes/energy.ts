@@ -23,7 +23,13 @@ import type {
   SubmeterSeries,
   EnergyByUsagePoint,
   ArbiterMetricsResponse,
+  BilanPeriod,
+  Equipment,
+  EnergyBilanResponse,
 } from "../../shared/types.js";
+import type { ArbiterGainStore } from "../../energy/arbiter-gain-store.js";
+import type { ArbiterGainMeter } from "../../energy/arbiter-gain-meter.js";
+import { arbiterTile, computeBilan, type UsageSeries } from "../../energy/bilan.js";
 
 import { requireAdmin } from "../../auth/auth-middleware.js";
 import { nonEmptyString } from "../schemas.js";
@@ -69,6 +75,7 @@ interface EnergyDeps {
   tariffClassifier: TariffClassifier;
   capacityArbiter: CapacityArbiter | null; // spec 140 — null in some tests
   arbiterMetricsStore: ArbiterMetricsStore | null; // spec 158 — null in some tests
+  arbiterGain?: { store: ArbiterGainStore; meter: ArbiterGainMeter } | null; // spec 200
   pvForecaster: PvForecaster | null; // spec 160 — null in some tests
   logger: Logger;
 }
@@ -129,6 +136,7 @@ export function registerEnergyRoutes(app: FastifyInstance, deps: EnergyDeps): vo
     tariffClassifier,
     capacityArbiter,
     arbiterMetricsStore,
+    arbiterGain,
     pvForecaster,
     logger: parentLogger,
   } = deps;
@@ -199,117 +207,14 @@ export function registerEnergyRoutes(app: FastifyInstance, deps: EnergyDeps): vo
         buckets.push(`${config.bucket}-energy-hourly`);
       }
 
-      let hpHcPoints: Array<{ time: string; hp: number; hc: number }> = [];
-      let legacyPoints: Array<{ time: string; hp: number; hc: number }> = [];
-
-      for (const b of buckets) {
-        if (hpHcPoints.length === 0) {
-          hpHcPoints = await queryEnergyHpHcPoints(
-            client,
-            config.org,
-            b,
-            equipmentId,
-            from,
-            to,
-            resolution,
-          );
-        }
-        if (legacyPoints.length === 0) {
-          legacyPoints = await queryEnergyLegacyPoints(
-            client,
-            config.org,
-            b,
-            equipmentId,
-            from,
-            to,
-            resolution,
-          );
-        }
-        if (hpHcPoints.length > 0 || legacyPoints.length > 0) break;
-      }
-
-      // Merge: HP/HC points take priority; fill gaps with legacy
-      const hpHcByTime = new Map(hpHcPoints.map((p) => [p.time, p]));
-      const consumptionPoints: Array<{ time: string; hp: number; hc: number }> = [];
-      const allConsoTimes = new Set([
-        ...hpHcPoints.map((p) => p.time),
-        ...legacyPoints.map((p) => p.time),
-      ]);
-      for (const time of allConsoTimes) {
-        const hpHc = hpHcByTime.get(time);
-        if (hpHc) {
-          consumptionPoints.push(hpHc);
-        } else {
-          const legacy = legacyPoints.find((p) => p.time === time);
-          if (legacy) consumptionPoints.push(legacy);
-        }
-      }
-      consumptionPoints.sort((a, b) => a.time.localeCompare(b.time));
-
-      // Query production data if production Equipment exists.
-      // Same bucket-fallback logic as the consumption side: when period=day
-      // the primary bucket is raw (7d retention), but a backfill — or simply
-      // the live downsample — may have written the data only to
-      // `-energy-hourly`. Fall back to it when the primary bucket is empty.
-      const prodMap = new Map<string, { prod: number; autoconso: number; injection: number }>();
-      if (productionEquipmentId) {
-        // Spec 195 — what a submeter's local production produced is production
-        // too, and already inside autoconso / injection. Read from every
-        // submeter, whatever its flag says TODAY: unticking it must not strip
-        // past production while the autoconso written at the time keeps it.
-        // `production` is the integrator's alias; a meter carrying a binding of
-        // that name is left out so a device series is never mistaken for it.
-        const localProducerIds = equipmentManager
-          .getAll()
-          .filter((eq) => !NON_SUBMETER_TYPES.has(eq.type))
-          .filter((eq) =>
-            equipmentManager
-              .getDataBindingsWithValues(eq.id)
-              .every((b) => b.alias !== "production"),
-          )
-          .map((eq) => eq.id);
-        for (const b of buckets) {
-          const prodPoints = await queryProductionPoints(
-            client,
-            config.org,
-            b,
-            productionEquipmentId,
-            localProducerIds,
-            from,
-            to,
-            resolution,
-          );
-          for (const p of prodPoints) {
-            prodMap.set(p.time, p);
-          }
-          if (prodMap.size > 0) break;
-        }
-      }
-
-      // Spec 119 — always return N buckets for the period.  Walk the
-      // expected bucket times in local TZ and zero-fill any bucket
-      // that neither consumption nor production data filled.  This
-      // gives consumers (web UI, sowel-energy-display firmware) a
-      // fixed-length array to iterate without gap-handling code.
-      // Spec 123 — value each bucket in € at read time using the
-      // current TariffPrices. Per-point cost matches the raw bucket
-      // consumption (chart bar tooltips); totals' cost uses the
-      // grid-side hp/hc (autoconso-subtracted) to match the summary
-      // card "grid consumption" semantics.
       const prices: TariffPrices = tariffClassifier.getConfig()?.prices ?? { hp: 0, hc: 0 };
-      const consoByTime = new Map(consumptionPoints.map((p) => [p.time, p]));
-      const points: EnergyPoint[] = [];
-      for (const time of expectedBucketTimes(from, to, resolution)) {
-        const conso = consoByTime.get(time);
-        const hp = conso?.hp ?? 0;
-        const hc = conso?.hc ?? 0;
-        const prodData = prodMap.get(time);
-        const prod = prodData?.prod ?? 0;
-        const autoconso = prodData?.autoconso ?? 0;
-        const injection = prodData?.injection ?? 0;
-        const cost = computeCost(hp, hc, prices);
-        points.push({ time, hp, hc, prod, autoconso, injection, ...cost });
-      }
+      const points = await loadEnergyPoints(
+        { client, org: config.org, equipmentManager, equipmentId, productionEquipmentId, prices },
+        buckets,
+        from,
+        to,
+        resolution,
+      );
 
       const totals = computeTotals(points, prices);
 
@@ -348,18 +253,7 @@ export function registerEnergyRoutes(app: FastifyInstance, deps: EnergyDeps): vo
       return reply.status(503).send({ error: "InfluxDB not configured" });
     }
 
-    // Any equipment carrying a numeric power/energy channel, except the house
-    // total / production meters (#523). Only the non-excluded types trigger a
-    // binding fetch, which isSubmeterEquipment inspects for a numeric channel.
-    const enrolledEquipments = equipmentManager.getAll().filter((eq) => {
-      if (NON_SUBMETER_TYPES.has(eq.type)) return false;
-      return isSubmeterEquipment(eq.type, equipmentManager.getDataBindingsWithValues(eq.id));
-    });
-    // Spec 179 — a meter fed by a separate supply measures energy the main
-    // meter never carried. It leaves the partition (Σ, `other`, cost) entirely
-    // and is rendered apart, raw and uncosted: its tariff is unknown here.
-    const submeterEquipments = enrolledEquipments.filter((eq) => !eq.separateSupply);
-    const separateEquipments = enrolledEquipments.filter((eq) => eq.separateSupply);
+    const { submeterEquipments, separateEquipments } = partitionEquipments(equipmentManager);
     const mainEquipmentId = findEnergyEquipmentId(equipmentManager);
 
     const { from, to, resolution, bucket } = computeRange(period, dateStr, config.bucket);
@@ -376,91 +270,17 @@ export function registerEnergyRoutes(app: FastifyInstance, deps: EnergyDeps): vo
       // against this list.
       const bucketTimes = expectedBucketTimes(from, to, resolution);
 
-      // Per-submeter series
-      const submeters: SubmeterSeries[] = [];
-      const totalsByEquipment: Record<string, number> = {};
-      const sumPerTime = new Map<string, number>();
-
-      const sortedSubmeters = [...submeterEquipments].sort((a, b) => a.id.localeCompare(b.id));
-
-      // Raw measurement of every submeter first: spec 173 needs a child's series
-      // in hand before its parent's can be rendered.
-      const rawSeries = new Map<string, EnergyByUsagePoint[]>();
-      for (const eq of sortedSubmeters) {
-        let rawPoints: EnergyByUsagePoint[] = [];
-        for (const b of buckets) {
-          rawPoints = await querySubmeterPoints(client, config.org, b, eq.id, from, to, resolution);
-          if (rawPoints.length > 0) break;
-        }
-        const byTime = new Map(rawPoints.map((p) => [p.time, p.wh] as const));
-        // Build the always-N series (spec 119).
-        rawSeries.set(
-          eq.id,
-          bucketTimes.map((time) => ({ time, wh: byTime.get(time) ?? 0 })),
+      const { submeters, totalsByEquipment, otherPoints, otherTotal, mainTotal } =
+        await loadUsagePartition(
+          client,
+          config.org,
+          buckets,
+          submeterEquipments,
+          mainEquipmentId,
+          from,
+          to,
+          resolution,
         );
-      }
-
-      // Spec 173 — a switchboard nests: a gîte clamp, and the water-heater clamp
-      // fed from it. Both enrol as submeters, so without this the heater lands in
-      // two slices and the residual loses it. Each parent is rendered minus its
-      // direct children, which is also what makes a chain add back up.
-      const nesting = childrenByParent(sortedSubmeters);
-      const rendered = subtractChildren(rawSeries, nesting);
-
-      for (let i = 0; i < sortedSubmeters.length; i++) {
-        const eq = sortedSubmeters[i];
-        const points = rendered.get(eq.id) ?? [];
-        const total = points.reduce((acc, p) => acc + p.wh, 0);
-        // Flagged on what was actually subtracted, not on the mere presence of a
-        // declaration: a child that reported nothing for the period leaves its
-        // parent identical to its card, and saying "net of its submeters" there
-        // sends the reader looking for a difference that is not on screen.
-        const rawTotal = (rawSeries.get(eq.id) ?? []).reduce((acc, p) => acc + p.wh, 0);
-        totalsByEquipment[eq.id] = total;
-        for (const p of points) {
-          sumPerTime.set(p.time, (sumPerTime.get(p.time) ?? 0) + p.wh);
-        }
-        submeters.push({
-          id: eq.id,
-          name: eq.name,
-          color: pickPaletteColor(i),
-          colorIndex: i,
-          points,
-          cost: 0, // Spec 123 — filled below once blended rate is known.
-          ...(rawTotal > total ? { netOfChildren: true } : {}),
-        });
-      }
-
-      // "Other" residual = main meter consumption per time - Σ submeters per time, clamped ≥ 0.
-      // Built against the canonical bucket list so the array length matches the submeters'.
-      const otherPoints: EnergyByUsagePoint[] = [];
-      let otherTotal = 0;
-      let mainTotal = 0;
-
-      if (mainEquipmentId) {
-        let mainPoints: EnergyByUsagePoint[] = [];
-        for (const b of buckets) {
-          mainPoints = await queryMainConsumptionPoints(
-            client,
-            config.org,
-            b,
-            mainEquipmentId,
-            from,
-            to,
-            resolution,
-          );
-          if (mainPoints.length > 0) break;
-        }
-        const mainByTime = new Map(mainPoints.map((p) => [p.time, p.wh] as const));
-        for (const time of bucketTimes) {
-          const wh = mainByTime.get(time) ?? 0;
-          mainTotal += wh;
-          const subs = sumPerTime.get(time) ?? 0;
-          const other = Math.max(0, wh - subs);
-          otherPoints.push({ time, wh: other });
-          otherTotal += other;
-        }
-      }
 
       const totalSubmeters = Object.values(totalsByEquipment).reduce((a, b) => a + b, 0);
       const total = mainEquipmentId ? mainTotal : totalSubmeters;
@@ -535,8 +355,8 @@ export function registerEnergyRoutes(app: FastifyInstance, deps: EnergyDeps): vo
         separateSupply.push({
           id: eq.id,
           name: eq.name,
-          color: pickPaletteColor(sortedSubmeters.length + i),
-          colorIndex: sortedSubmeters.length + i,
+          color: pickPaletteColor(submeters.length + i),
+          colorIndex: submeters.length + i,
           points: bucketTimes.map((time) => ({ time, wh: byTime.get(time) ?? 0 })),
           cost: 0,
         });
@@ -564,6 +384,125 @@ export function registerEnergyRoutes(app: FastifyInstance, deps: EnergyDeps): vo
     } catch (err) {
       logger.error({ err, period, dateStr }, "Energy by-usage query failed");
       return reply.status(500).send({ error: "Failed to query energy by-usage data" });
+    }
+  });
+
+  // ============================================================
+  // GET /api/v1/energy/bilan — spec 200
+  // ============================================================
+  // The Bilan page in one read: the grid bill, what self-consumed solar
+  // avoided, a comparison, the cost per bucket, the cost by usage and the
+  // arbiter's gain. Built on the same loaders as /energy/history and
+  // /energy/by-usage, so its bill is the Consumption page's € total.
+  app.get<{
+    Querystring: { period?: string; date?: string };
+  }>("/api/v1/energy/bilan", async (request, reply) => {
+    const period = request.query.period ?? "month";
+    const dateStr = request.query.date ?? localDateStr();
+
+    if (!["day", "month", "year"].includes(period)) {
+      return reply.status(400).send({ error: "Invalid period. Use: day, month, year" });
+    }
+
+    const equipmentId = findEnergyEquipmentId(equipmentManager);
+    if (!equipmentId) {
+      return reply.status(404).send({ error: "No energy equipment configured" });
+    }
+    const productionEquipmentId = findProductionEquipmentId(equipmentManager);
+
+    const config = influxClient.getConfig();
+    const client = influxClient.getClient();
+    if (!config || !client) {
+      return reply.status(503).send({ error: "InfluxDB not configured" });
+    }
+
+    const tariff = tariffClassifier.getConfig();
+    const prices: TariffPrices = tariff?.prices ?? { hp: 0, hc: 0 };
+    const { from, to, resolution, bucket } = computeRange(period, dateStr, config.bucket);
+    const buckets = [bucket];
+    if (period === "day" && !bucket.includes("-energy-")) {
+      buckets.push(`${config.bucket}-energy-hourly`);
+    }
+    const ctx: EnergyReadCtx = {
+      client,
+      org: config.org,
+      equipmentManager,
+      equipmentId,
+      productionEquipmentId,
+      prices,
+    };
+
+    try {
+      const ref = bilanReferenceRange(period as BilanPeriod, from, config.bucket);
+      const { submeterEquipments } = partitionEquipments(equipmentManager);
+      // The reads are independent: run them together (the year view has six).
+      const [points, reference, currentDaily, previousDaily, partition] = await Promise.all([
+        loadEnergyPoints(ctx, buckets, from, to, resolution),
+        loadEnergyPoints(ctx, [ref.bucket], ref.from, ref.to, ref.resolution),
+        // Year: which months are complete, from the daily data of both years.
+        period === "year" ? loadEnergyPoints(ctx, [bucket], from, to, "1d") : null,
+        period === "year" ? loadEnergyPoints(ctx, [ref.bucket], ref.from, ref.to, "1d") : null,
+        submeterEquipments.length > 0
+          ? loadUsagePartition(
+              client,
+              config.org,
+              buckets,
+              submeterEquipments,
+              equipmentId,
+              from,
+              to,
+              resolution,
+            )
+          : null,
+      ]);
+      const totals = computeTotals(points, prices);
+      const coverage =
+        currentDaily && previousDaily
+          ? { current: currentDaily, previous: previousDaily }
+          : undefined;
+
+      const usage: UsageSeries[] = [];
+      if (partition) {
+        for (const s of partition.submeters) {
+          usage.push({ id: s.id, name: s.name, colorIndex: s.colorIndex, points: s.points });
+        }
+        usage.push({ id: null, name: "other", colorIndex: null, points: partition.otherPoints });
+      }
+
+      const fromDay = localDateStr(from);
+      const toDay = localDateStr(new Date(to.getTime() - 1));
+      const gainRows = arbiterGain
+        ? [...arbiterGain.store.range(fromDay, toDay), ...arbiterGain.meter.pending(fromDay, toDay)]
+        : [];
+      const arbiter = arbiterTile(
+        settingsManager.get("energy.arbiter.enabled") === "true",
+        arbiterGain?.meter.since() ?? null,
+        gainRows,
+        fromDay,
+        toDay,
+        (id) => equipmentManager.getById(id)?.name ?? null,
+      );
+
+      const response: EnergyBilanResponse = computeBilan({
+        period: period as BilanPeriod,
+        from,
+        to,
+        resolution: resolution as EnergyBilanResponse["resolution"],
+        now: Date.now(),
+        tariffConfigured: tariff !== null && (prices.hp > 0 || prices.hc > 0),
+        prices,
+        hasProduction: productionEquipmentId !== null,
+        points,
+        totals,
+        reference,
+        coverage,
+        usage,
+        arbiter,
+      });
+      return response;
+    } catch (err) {
+      logger.error({ err, period, dateStr }, "Energy bilan query failed");
+      return reply.status(500).send({ error: "Failed to query energy bilan" });
     }
   });
 
@@ -987,6 +926,316 @@ const EVERY_BY_RESOLUTION: Record<Resolution, string> = {
   "1d": "1d",
   "1mo": "1mo",
 };
+
+/** What one Influx read of the energy series needs (spec 200 — shared by
+ *  /energy/history and /energy/bilan). */
+interface EnergyReadCtx {
+  client: import("@influxdata/influxdb-client").InfluxDB;
+  org: string;
+  equipmentManager: EquipmentManager;
+  equipmentId: string;
+  productionEquipmentId: string | null;
+  prices: TariffPrices;
+}
+
+/**
+ * The history points of [from, to) at `resolution`: consumption HP/HC,
+ * production, self-consumption, injection and their € (spec 123), one per
+ * expected bucket (spec 119). `buckets` are tried in order until one has data.
+ * Extracted unchanged from GET /energy/history (spec 200).
+ */
+async function loadEnergyPoints(
+  ctx: EnergyReadCtx,
+  buckets: string[],
+  from: Date,
+  to: Date,
+  resolution: Resolution,
+): Promise<EnergyPoint[]> {
+  let hpHcPoints: Array<{ time: string; hp: number; hc: number }> = [];
+  let legacyPoints: Array<{ time: string; hp: number; hc: number }> = [];
+
+  for (const b of buckets) {
+    if (hpHcPoints.length === 0) {
+      hpHcPoints = await queryEnergyHpHcPoints(
+        ctx.client,
+        ctx.org,
+        b,
+        ctx.equipmentId,
+        from,
+        to,
+        resolution,
+      );
+    }
+    if (legacyPoints.length === 0) {
+      legacyPoints = await queryEnergyLegacyPoints(
+        ctx.client,
+        ctx.org,
+        b,
+        ctx.equipmentId,
+        from,
+        to,
+        resolution,
+      );
+    }
+    if (hpHcPoints.length > 0 || legacyPoints.length > 0) break;
+  }
+
+  // Merge: HP/HC points take priority; fill gaps with legacy
+  const hpHcByTime = new Map(hpHcPoints.map((p) => [p.time, p]));
+  const consumptionPoints: Array<{ time: string; hp: number; hc: number }> = [];
+  const allConsoTimes = new Set([
+    ...hpHcPoints.map((p) => p.time),
+    ...legacyPoints.map((p) => p.time),
+  ]);
+  for (const time of allConsoTimes) {
+    const hpHc = hpHcByTime.get(time);
+    if (hpHc) {
+      consumptionPoints.push(hpHc);
+    } else {
+      const legacy = legacyPoints.find((p) => p.time === time);
+      if (legacy) consumptionPoints.push(legacy);
+    }
+  }
+  consumptionPoints.sort((a, b) => a.time.localeCompare(b.time));
+
+  // Query production data if production Equipment exists.
+  // Same bucket-fallback logic as the consumption side: when period=day
+  // the primary bucket is raw (7d retention), but a backfill — or simply
+  // the live downsample — may have written the data only to
+  // `-energy-hourly`. Fall back to it when the primary bucket is empty.
+  const prodMap = new Map<string, { prod: number; autoconso: number; injection: number }>();
+  if (ctx.productionEquipmentId) {
+    // Spec 195 — what a submeter's local production produced is production
+    // too, and already inside autoconso / injection. Read from every
+    // submeter, whatever its flag says TODAY: unticking it must not strip
+    // past production while the autoconso written at the time keeps it.
+    // `production` is the integrator's alias; a meter carrying a binding of
+    // that name is left out so a device series is never mistaken for it.
+    const localProducerIds = ctx.equipmentManager
+      .getAll()
+      .filter((eq) => !NON_SUBMETER_TYPES.has(eq.type))
+      .filter((eq) =>
+        ctx.equipmentManager
+          .getDataBindingsWithValues(eq.id)
+          .every((b) => b.alias !== "production"),
+      )
+      .map((eq) => eq.id);
+    for (const b of buckets) {
+      const prodPoints = await queryProductionPoints(
+        ctx.client,
+        ctx.org,
+        b,
+        ctx.productionEquipmentId,
+        localProducerIds,
+        from,
+        to,
+        resolution,
+      );
+      for (const p of prodPoints) {
+        prodMap.set(p.time, p);
+      }
+      if (prodMap.size > 0) break;
+    }
+  }
+
+  // Spec 119 — always return N buckets for the period.  Walk the
+  // expected bucket times in local TZ and zero-fill any bucket
+  // that neither consumption nor production data filled.  This
+  // gives consumers (web UI, sowel-energy-display firmware) a
+  // fixed-length array to iterate without gap-handling code.
+  // Spec 123 — value each bucket in € at read time using the
+  // current TariffPrices. Per-point cost matches the raw bucket
+  // consumption (chart bar tooltips); totals' cost uses the
+  // grid-side hp/hc (autoconso-subtracted) to match the summary
+  // card "grid consumption" semantics.
+  const consoByTime = new Map(consumptionPoints.map((p) => [p.time, p]));
+  const points: EnergyPoint[] = [];
+  for (const time of expectedBucketTimes(from, to, resolution)) {
+    const conso = consoByTime.get(time);
+    const hp = conso?.hp ?? 0;
+    const hc = conso?.hc ?? 0;
+    const prodData = prodMap.get(time);
+    const prod = prodData?.prod ?? 0;
+    const autoconso = prodData?.autoconso ?? 0;
+    const injection = prodData?.injection ?? 0;
+    const cost = computeCost(hp, hc, ctx.prices);
+    points.push({ time, hp, hc, prod, autoconso, injection, ...cost });
+  }
+
+  return points;
+}
+
+/** The partition of the main meter's consumption by sub-meter (spec 091,
+ *  173, 179): each partition meter net of the meters declared inside it, and
+ *  the "other" residual. Costs are left at 0 for the caller. Extracted
+ *  unchanged from GET /energy/by-usage (spec 200). */
+interface UsagePartition {
+  submeters: SubmeterSeries[];
+  totalsByEquipment: Record<string, number>;
+  otherPoints: EnergyByUsagePoint[];
+  otherTotal: number;
+  mainTotal: number;
+}
+
+/** Enrolled meters, split into the partition and the separate supplies. */
+function partitionEquipments(equipmentManager: EquipmentManager): {
+  submeterEquipments: Equipment[];
+  separateEquipments: Equipment[];
+} {
+  // Any equipment carrying a numeric power/energy channel, except the house
+  // total / production meters (#523). Only the non-excluded types trigger a
+  // binding fetch, which isSubmeterEquipment inspects for a numeric channel.
+  const enrolledEquipments = equipmentManager.getAll().filter((eq) => {
+    if (NON_SUBMETER_TYPES.has(eq.type)) return false;
+    return isSubmeterEquipment(eq.type, equipmentManager.getDataBindingsWithValues(eq.id));
+  });
+  // Spec 179 — a meter fed by a separate supply measures energy the main
+  // meter never carried. It leaves the partition (Σ, `other`, cost) entirely
+  // and is rendered apart, raw and uncosted: its tariff is unknown here.
+  return {
+    submeterEquipments: enrolledEquipments.filter((eq) => !eq.separateSupply),
+    separateEquipments: enrolledEquipments.filter((eq) => eq.separateSupply),
+  };
+}
+
+async function loadUsagePartition(
+  client: import("@influxdata/influxdb-client").InfluxDB,
+  org: string,
+  buckets: string[],
+  submeterEquipments: Equipment[],
+  mainEquipmentId: string | null,
+  from: Date,
+  to: Date,
+  resolution: Resolution,
+): Promise<UsagePartition> {
+  // Spec 119 — every series in the response is N buckets long
+  // (fixed per period).
+  const bucketTimes = expectedBucketTimes(from, to, resolution);
+
+  // Per-submeter series
+  const submeters: SubmeterSeries[] = [];
+  const totalsByEquipment: Record<string, number> = {};
+  const sumPerTime = new Map<string, number>();
+
+  const sortedSubmeters = [...submeterEquipments].sort((a, b) => a.id.localeCompare(b.id));
+
+  // Raw measurement of every submeter first: spec 173 needs a child's series
+  // in hand before its parent's can be rendered.
+  const rawSeries = new Map<string, EnergyByUsagePoint[]>();
+  for (const eq of sortedSubmeters) {
+    let rawPoints: EnergyByUsagePoint[] = [];
+    for (const b of buckets) {
+      rawPoints = await querySubmeterPoints(client, org, b, eq.id, from, to, resolution);
+      if (rawPoints.length > 0) break;
+    }
+    const byTime = new Map(rawPoints.map((p) => [p.time, p.wh] as const));
+    // Build the always-N series (spec 119).
+    rawSeries.set(
+      eq.id,
+      bucketTimes.map((time) => ({ time, wh: byTime.get(time) ?? 0 })),
+    );
+  }
+
+  // Spec 173 — a switchboard nests: a gîte clamp, and the water-heater clamp
+  // fed from it. Both enrol as submeters, so without this the heater lands in
+  // two slices and the residual loses it. Each parent is rendered minus its
+  // direct children, which is also what makes a chain add back up.
+  const nesting = childrenByParent(sortedSubmeters);
+  const rendered = subtractChildren(rawSeries, nesting);
+
+  for (let i = 0; i < sortedSubmeters.length; i++) {
+    const eq = sortedSubmeters[i];
+    const points = rendered.get(eq.id) ?? [];
+    const total = points.reduce((acc, p) => acc + p.wh, 0);
+    // Flagged on what was actually subtracted, not on the mere presence of a
+    // declaration: a child that reported nothing for the period leaves its
+    // parent identical to its card, and saying "net of its submeters" there
+    // sends the reader looking for a difference that is not on screen.
+    const rawTotal = (rawSeries.get(eq.id) ?? []).reduce((acc, p) => acc + p.wh, 0);
+    totalsByEquipment[eq.id] = total;
+    for (const p of points) {
+      sumPerTime.set(p.time, (sumPerTime.get(p.time) ?? 0) + p.wh);
+    }
+    submeters.push({
+      id: eq.id,
+      name: eq.name,
+      color: pickPaletteColor(i),
+      colorIndex: i,
+      points,
+      cost: 0, // Spec 123 — filled below once blended rate is known.
+      ...(rawTotal > total ? { netOfChildren: true } : {}),
+    });
+  }
+
+  // "Other" residual = main meter consumption per time - Σ submeters per time, clamped ≥ 0.
+  // Built against the canonical bucket list so the array length matches the submeters'.
+  const otherPoints: EnergyByUsagePoint[] = [];
+  let otherTotal = 0;
+  let mainTotal = 0;
+
+  if (mainEquipmentId) {
+    let mainPoints: EnergyByUsagePoint[] = [];
+    for (const b of buckets) {
+      mainPoints = await queryMainConsumptionPoints(
+        client,
+        org,
+        b,
+        mainEquipmentId,
+        from,
+        to,
+        resolution,
+      );
+      if (mainPoints.length > 0) break;
+    }
+    const mainByTime = new Map(mainPoints.map((p) => [p.time, p.wh] as const));
+    for (const time of bucketTimes) {
+      const wh = mainByTime.get(time) ?? 0;
+      mainTotal += wh;
+      const subs = sumPerTime.get(time) ?? 0;
+      const other = Math.max(0, wh - subs);
+      otherPoints.push({ time, wh: other });
+      otherTotal += other;
+    }
+  }
+
+  return { submeters, totalsByEquipment, otherPoints, otherTotal, mainTotal };
+}
+
+/**
+ * Spec 200 — what a Bilan period is compared with: the 7 days before (day),
+ * the same month a year earlier (month), the previous year (year). Read from
+ * the downsampled buckets: the comparison never needs the raw one.
+ */
+function bilanReferenceRange(
+  period: BilanPeriod,
+  from: Date,
+  baseBucket: string,
+): { from: Date; to: Date; resolution: Resolution; bucket: string } {
+  if (period === "day") {
+    const start = new Date(from);
+    start.setDate(start.getDate() - 7);
+    return {
+      from: start,
+      to: new Date(from),
+      resolution: "1d",
+      bucket: `${baseBucket}-energy-hourly`,
+    };
+  }
+  if (period === "month") {
+    return {
+      from: new Date(from.getFullYear() - 1, from.getMonth(), 1),
+      to: new Date(from.getFullYear() - 1, from.getMonth() + 1, 1),
+      resolution: "1d",
+      bucket: `${baseBucket}-energy-daily`,
+    };
+  }
+  return {
+    from: new Date(from.getFullYear() - 1, 0, 1),
+    to: new Date(from.getFullYear(), 0, 1),
+    resolution: "1mo",
+    bucket: `${baseBucket}-energy-daily`,
+  };
+}
 
 /**
  * Spec 119 — server timezone used by Flux `aggregateWindow(location:)`

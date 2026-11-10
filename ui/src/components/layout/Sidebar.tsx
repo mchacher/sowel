@@ -12,6 +12,7 @@ import {
   PlugZap,
   Sun,
   Activity,
+  Wallet,
   KeyRound,
 } from "lucide-react";
 import { useState, useEffect } from "react";
@@ -231,6 +232,11 @@ export function Sidebar() {
                   to="/energy/live"
                   label={t("nav.energy.live")}
                   icon={<Activity size={14} strokeWidth={1.5} />}
+                />
+                <SidebarItem
+                  to="/energy/bilan"
+                  label={t("nav.energy.bilan")}
+                  icon={<Wallet size={14} strokeWidth={1.5} />}
                 />
                 <SidebarItem
                   to="/energy/consumption"
