@@ -107,20 +107,20 @@ of the file.
 
 ## Acceptance Criteria
 
-- [ ] `tariffs/electricity-prices.json` holds every row of the two CRE files for EDF Tarif Bleu, and the check
+- [x] `tariffs/electricity-prices.json` holds every row of the two CRE files for EDF Tarif Bleu, and the check
       passes.
-- [ ] The script run on the committed CRE fixtures gives the committed expected rows; a malformed fixture makes
+- [x] The script run on the committed CRE fixtures gives the committed expected rows; a malformed fixture makes
       it fail without writing.
 - [ ] The nightly workflow opens a pull request only when the file changes, and merges nothing.
-- [ ] With the option on and a contract of 9 kVA off-peak on an instance that only has the version without a
+- [x] With the option on and a contract of 9 kVA off-peak on an instance that only has the version without a
       date, the first read holds every past price; « Ajouter ces prix » creates them with
       `origin: "file:edf-tarif-bleu"`, and the Bilan of a past month is then priced with them.
-- [ ] A new period published later is added by itself, with one notification.
-- [ ] A row that starts before a manual version, and a 30 % jump, are held, not added.
-- [ ] A version that exists is never changed by a read, whatever the file says for its date.
-- [ ] An unreachable or invalid file changes nothing and is reported under the option.
-- [ ] « Autre fournisseur », the option off, or no power: no read is made.
-- [ ] A price set aside is not proposed again by the next read.
+- [x] A new period published later is added by itself, with one notification.
+- [x] A row that starts before a manual version, and a 30 % jump, are held, not added.
+- [x] A version that exists is never changed by a read, whatever the file says for its date.
+- [x] An unreachable or invalid file changes nothing and is reported under the option.
+- [x] « Autre fournisseur », the option off, or no power: no read is made.
+- [x] A price set aside is not proposed again by the next read.
 
 ## Edge Cases
 
@@ -152,4 +152,5 @@ of the file.
 | `docs/technical/contributing.md` + `.fr.md`     | How the price file is maintained: the nightly pull request, how to add a supplier                     |
 | `docs/release-notes.md` + `.fr.md` (at release) | Automatic prices for EDF Tarif Bleu; how to take the past prices after the upgrade                    |
 
-Screenshots to retake: `energy-tariff-settings-en.png` and `-fr.png` (the option and its status line).
+Screenshots retaken: `energy-tariff-settings-en.png` and `-fr.png` (the option and its status line), on a
+scratch instance that took the 9 kVA off-peak prices from the file.

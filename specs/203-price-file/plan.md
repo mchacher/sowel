@@ -26,26 +26,28 @@ Branch `feat/price-file`. Two pull requests, so the file is on `main` before any
 
 ### Slice C — Deciding what to add
 
-- [ ] C.1 — `newPrices` in `price-file.ts`
-- [ ] C.2 — `TariffContract.autoUpdate`, `normalizeContract`, contract routes and their tests
+- [x] C.1 — `newPrices` in `price-file.ts`
+- [x] C.2 — `TariffContract.autoUpdate`, `normalizeContract`, contract routes and their tests
 
 ### Slice D — Daily read
 
-- [ ] D.1 — `price-file-sync.ts`: `check`, `apply`, `dismiss`, `status`, settings, timers
-- [ ] D.2 — Notifications; confirm the resolution-without-raise form in the UI and the push channel
-- [ ] D.3 — Four routes, wiring in `server.ts` and `index.ts`
+- [x] D.1 — `price-file-sync.ts`: `check`, `apply`, `dismiss`, `status`, settings, timers
+- [x] D.2 — Notifications; confirm the resolution-without-raise form in the UI and the push channel
+- [x] D.3 — Four routes, wiring in `server.ts` and `index.ts`
 
 ### Slice E — UI
 
-- [ ] E.1 — Mockup of the held prices panel, validated by the maintainer
-- [ ] E.2 — Option, status line and « Vérifier maintenant » in `TariffContractBlock.tsx`
-- [ ] E.3 — `TariffPriceProposals.tsx`, strings EN and FR
-- [ ] E.4 — Check on a scratch instance at phone and desktop widths, light and dark
+- [x] E.1 — Mockup of the held prices panel, validated by the maintainer
+- [x] E.2 — Option, status line and « Vérifier maintenant » in `TariffContractBlock.tsx`
+- [x] E.3 — `TariffPriceProposals.tsx`, strings EN and FR
+- [x] E.4 — Checked on a scratch instance reading the real file from `main`: 390 px and 1280 px in light,
+      1280 px in dark; the 23 prices of a 9 kVA off-peak contract added through the button (768 px and the phone
+      in dark not checked)
 
 ### Slice F — Docs and trial
 
-- [ ] F.1 — The docs delta of `spec.md`, EN and FR, screenshots
-- [ ] F.2 — Specs index rows (done with the spec)
+- [x] F.1 — The docs delta of `spec.md`, EN and FR, screenshots
+- [x] F.2 — Specs index rows (done with the spec)
 - [ ] F.3 — Trial on a local shadow instance seeded from production (`scripts/shadow-deploy.sh`, asked by the
       maintainer): Bilan of a month and a year noted before, the past prices added, the same views after; the
       differences explained by the prices alone
