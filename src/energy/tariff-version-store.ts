@@ -6,7 +6,7 @@ import type {
   TariffVersion,
   TariffVersionInput,
 } from "../shared/types.js";
-import { localDateStr } from "../shared/local-date.js";
+import { isLocalDate, localDateStr } from "../shared/local-date.js";
 import { versionOn } from "./pricing.js";
 
 // Spec 202 — the dated price versions. The rules live here: one version per
@@ -53,14 +53,6 @@ function toVersion(row: VersionRow): TariffVersion {
     createdAt: row.created_at,
     updatedAt: row.updated_at,
   };
-}
-
-/** A real calendar day written `YYYY-MM-DD`. */
-export function isLocalDate(value: unknown): value is string {
-  if (typeof value !== "string" || !/^\d{4}-\d{2}-\d{2}$/.test(value)) return false;
-  const [y, m, d] = value.split("-").map(Number);
-  const date = new Date(y, m - 1, d);
-  return date.getFullYear() === y && date.getMonth() === m - 1 && date.getDate() === d;
 }
 
 function isPrice(value: unknown): value is number {

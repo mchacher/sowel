@@ -265,6 +265,20 @@ When adding or modifying UI components, follow these design tokens:
 
 ---
 
+## Electricity price file
+
+`tariffs/electricity-prices.json` holds the electricity prices suppliers publish, per contract type, subscribed power and period (spec 203). Instances that follow the file read it from `main` (the daily read ships with part 2 of spec 203), so what is merged there is what households are priced with.
+
+- **Format.** `format` (the version instances check), `generatedAt`, and `suppliers`: each with an `id`, a `name`, its `source` and `sourceUrl`, and `prices`, one row per line: `contractType` (`hphc` or `base`), `kva`, `startDate` (`YYYY-MM-DD`), `hp` and `hc` in €/kWh including tax (a `base` row carries its one price in both), `fixedFeeYear` in €/year including tax. Rows are sorted and unique on contract type, power and start date. `src/energy/price-file/price-file.ts` is the one definition of a valid file.
+- **EDF Tarif Bleu** is rebuilt from the two CRE open data files by `npx tsx scripts/tariffs/update-edf-tarif-bleu.ts`. The script writes nothing when the rows did not change, and fails without writing when a CRE file is not as expected or when a published row would disappear; `--allow-removal` accepts a removal once you have checked the source.
+- **Every night** the `Tariffs` workflow runs that script and, when the file changed, opens a pull request listing the rows added and the rows whose figures moved. Nothing is merged automatically: check the rows against the CRE publication, then merge. A row that changed for a period already published deserves a second look, since instances that already took it keep the old figures.
+- **The check** `npx tsx scripts/tariffs/check.ts` runs in CI on every pull request. The file is in `.prettierignore`: keep its one-row-per-line layout.
+- **Adding a supplier** is a pull request that adds a block to `suppliers` (and, if its prices are published as data, a script next to the EDF one). A supplier in the file is not offered in the settings until its id is added to the contract's suppliers.
+- The workflow needs the secret `TARIFFS_PR_TOKEN` (a fine-grained token for this repository only, contents and pull requests: write): a pull request opened with the default workflow token would not start the required checks, and this repository does not let that token open pull requests. Without the secret, a night when the file changed fails with a message saying so, and nothing is opened. The token is given to the last step alone, after the dependencies and the script have run.
+- The workflow owns the branch `chore/tariffs-update` and rewrites it when the source changes again: fix the script or the source, not the branch. A pull request left open, or closed on purpose, is not reopened as long as the rows are the same.
+
+---
+
 ## Environment Variables
 
 All settings are optional with sensible defaults -- Sowel runs zero-config out of the box. Override via `.env` if needed:

@@ -2692,6 +2692,48 @@ export interface TariffVersionInput {
   kva?: number | null;
 }
 
+/**
+ * Spec 203 — the electricity price file (`tariffs/electricity-prices.json`):
+ * the prices suppliers publish, per contract type, subscribed power and period.
+ */
+export interface PriceFileRow {
+  contractType: "hphc" | "base";
+  /** Subscribed power. */
+  kva: number;
+  /** First day of the period, `YYYY-MM-DD`. */
+  startDate: string;
+  /** €/kWh incl. tax. A `base` row carries its one price in both. */
+  hp: number;
+  hc: number;
+  /** Fixed fee, €/year incl. tax. */
+  fixedFeeYear: number;
+}
+
+export interface PriceFileSupplier {
+  /** Stable id, as in `TariffContract.supplier`. */
+  id: string;
+  name: string;
+  /** Where the figures come from, in words, and the page that publishes them. */
+  source: string;
+  sourceUrl: string;
+  /** Sorted and unique on (contract type, power, start date). */
+  prices: PriceFileRow[];
+}
+
+export interface PriceFile {
+  format: number;
+  /** The day the rows last changed, `YYYY-MM-DD`. */
+  generatedAt: string;
+  suppliers: PriceFileSupplier[];
+}
+
+/** What a new list of price rows adds, changes and drops against the published one. */
+export interface PriceRowChanges {
+  added: PriceFileRow[];
+  changed: Array<{ before: PriceFileRow; after: PriceFileRow }>;
+  removed: PriceFileRow[];
+}
+
 /** Spec 202 — the current contract (setting `energy.contract`). */
 export interface TariffContract {
   supplier: "edf-tarif-bleu" | "other";

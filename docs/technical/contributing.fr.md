@@ -271,6 +271,20 @@ Quand vous ajoutez ou modifiez des composants UI, suivez ces design tokens :
 
 ---
 
+## Fichier de prix de l'électricité
+
+`tariffs/electricity-prices.json` contient les prix de l'électricité publiés par les fournisseurs, par type de contrat, puissance souscrite et période (spec 203). Les instances qui suivent le fichier le lisent sur `main` (la lecture quotidienne arrive avec la partie 2 de la spec 203) : ce qui y est fusionné est ce avec quoi les foyers sont valorisés.
+
+- **Format.** `format` (la version que les instances vérifient), `generatedAt`, et `suppliers` : chacun avec un `id`, un `name`, sa `source` et son `sourceUrl`, et `prices`, une ligne par prix : `contractType` (`hphc` ou `base`), `kva`, `startDate` (`YYYY-MM-DD`), `hp` et `hc` en €/kWh TTC (une ligne `base` porte son prix unique dans les deux), `fixedFeeYear` en €/an TTC. Les lignes sont triées et uniques par type de contrat, puissance et date de début. `src/energy/price-file/price-file.ts` est la seule définition d'un fichier valide.
+- **EDF Tarif Bleu** est reconstruit à partir des deux fichiers open data de la CRE par `npx tsx scripts/tariffs/update-edf-tarif-bleu.ts`. Le script n'écrit rien quand les lignes n'ont pas changé, et échoue sans écrire quand un fichier de la CRE n'est pas conforme ou qu'une ligne publiée disparaîtrait ; `--allow-removal` accepte une suppression une fois la source vérifiée.
+- **Chaque nuit**, le workflow `Tariffs` lance ce script et, quand le fichier a changé, ouvre une pull request qui liste les lignes ajoutées et celles dont les chiffres ont bougé. Rien n'est fusionné automatiquement : vérifiez les lignes par rapport à la publication de la CRE, puis fusionnez. Une ligne modifiée pour une période déjà publiée mérite un second regard : les instances qui l'ont déjà prise gardent les anciens chiffres.
+- **Le contrôle** `npx tsx scripts/tariffs/check.ts` tourne en CI sur chaque pull request. Le fichier est dans `.prettierignore` : gardez sa mise en page, une ligne par prix.
+- **Ajouter un fournisseur** est une pull request qui ajoute un bloc à `suppliers` (et, si ses prix sont publiés sous forme de données, un script à côté de celui d'EDF). Un fournisseur du fichier n'est proposé dans les réglages qu'une fois son identifiant ajouté aux fournisseurs du contrat.
+- Le workflow a besoin du secret `TARIFFS_PR_TOKEN` (un jeton à portée fine pour ce seul dépôt, contenu et pull requests en écriture) : une pull request ouverte avec le jeton par défaut du workflow ne lancerait pas les contrôles obligatoires, et ce dépôt n'autorise pas ce jeton à ouvrir des pull requests. Sans le secret, une nuit où le fichier a changé échoue avec un message qui le dit, et rien n'est ouvert. Le jeton n'est donné qu'à la dernière étape, après l'exécution des dépendances et du script.
+- Le workflow est propriétaire de la branche `chore/tariffs-update` et la réécrit quand la source change de nouveau : corrigez le script ou la source, pas la branche. Une pull request laissée ouverte, ou fermée volontairement, n'est pas rouverte tant que les lignes sont les mêmes.
+
+---
+
 ## Variables d'environnement
 
 Tous les réglages sont optionnels avec des valeurs par défaut raisonnables, Sowel tourne sans configuration. Surchargez via `.env` au besoin :

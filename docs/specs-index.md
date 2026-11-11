@@ -351,6 +351,7 @@ Specs are grouped by theme and annotated with status:
 | 200 | Energy Bilan page                                                       | ✅     | Energy > Bilan page (day, month, year): grid bill, cost avoided by solar, comparison, cost chart and by-usage paid/avoided; `GET /energy/bilan`; arbiter gain meter, table `arbiter_daily_gain`, migration 043. Shipped in v1.84.0.                                   |
 | 201 | A recipe's mode on equipment cards                                      | ✅     | Optional `RecipeActionDef.targets` names the equipment slots a cycle mode applies to; their Dashboard cards show the mode as a pill (Cocoon on the stove) that changes it on click, phone sheet included. Shipped in v1.84.0.                                         |
 | 202 | Dated electricity prices                                                | 🚧     | Price history `tariff_versions` (HP/HC, fixed fee, kVA) seeded from `energy.tariff`; history, Bilan, by-usage, arbiter gain and EV sessions priced at read time with the version of each point's date; migration 044; amends 123, 200. Unreleased.                    |
+| 203 | Electricity price file                                                  | 🚧     | Price file `tariffs/electricity-prices.json` (EDF Tarif Bleu from the CRE open data, nightly PR); `PriceFileSync` reads it daily and adds the contract's prices as tariff versions, past ones after confirmation; amends 202. Unreleased.                             |
 
 ---
 
