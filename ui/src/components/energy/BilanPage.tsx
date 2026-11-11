@@ -20,6 +20,7 @@ import {
 import { EnergyMobileNav } from "./EnergyMobileNav";
 import { formatEur, formatWh } from "./format";
 import { PeriodSelector } from "./PeriodSelector";
+import { ColumnLabel } from "../ui/ColumnLabel";
 
 // Spec 200 — Energy > Bilan: what electricity cost, what solar avoided, and
 // what the arbiter earned, for a day, a month or a year.
@@ -355,7 +356,7 @@ function UsageCard({ data, locale }: { data: EnergyBilanResponse; locale: string
               {t("energy.bilan.usage.usage")}
             </th>
             <th scope="col" className="py-2 font-semibold text-right w-[10%]">
-              {t("energy.bilan.usage.energy")}
+              <ColumnLabel text={t("energy.bilan.usage.energy")} />
             </th>
             <th scope="col" className="py-2 font-semibold text-right w-[12%]">
               {t("energy.bilan.usage.paid")}

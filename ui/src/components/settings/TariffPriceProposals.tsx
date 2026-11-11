@@ -9,6 +9,7 @@ import {
 import { apiErrorText } from "../../lib/api-error";
 import { formatCurrency, formatDay, formatNumber, formatWithUnit } from "../../lib/format";
 import type { PriceFileStatus, TariffSupplier } from "../../types";
+import { ColumnLabel } from "../ui/ColumnLabel";
 
 // Spec 203 (FR5) — the prices the file holds for the contract and that wait
 // for a confirmation: listed newest first above the price list, added all at
@@ -131,18 +132,22 @@ export function TariffPriceProposals({
               </th>
               {base ? (
                 <th scope="col" className={`${TH} text-right w-24 sm:w-27.5`}>
-                  {t("tariff.prices.col.price")}
+                  <ColumnLabel text={t("tariff.prices.col.price")} />
                 </th>
               ) : (
                 <>
                   {/* The short header on a phone, the unit with it from `sm`. */}
                   <th scope="col" className={`${TH} text-right w-14 sm:w-27.5`}>
                     <span className="sm:hidden">{t("tariff.prices.hpShort")}</span>
-                    <span className="hidden sm:inline">{t("tariff.prices.col.hp")}</span>
+                    <span className="hidden sm:inline">
+                      <ColumnLabel text={t("tariff.prices.col.hp")} />
+                    </span>
                   </th>
                   <th scope="col" className={`${TH} text-right w-14 sm:w-27.5`}>
                     <span className="sm:hidden">{t("tariff.prices.hcShort")}</span>
-                    <span className="hidden sm:inline">{t("tariff.prices.col.hc")}</span>
+                    <span className="hidden sm:inline">
+                      <ColumnLabel text={t("tariff.prices.col.hc")} />
+                    </span>
                   </th>
                 </>
               )}
