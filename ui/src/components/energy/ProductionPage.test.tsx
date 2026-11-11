@@ -159,7 +159,7 @@ describe("ProductionPage (spec 163)", () => {
     setup({ meters: [meter("eq-1", "Shelly Solar", false)], role: "admin" });
     await renderPage();
     const hint = await screen.findByText(/declare your solar installation/i);
-    expect(hint.closest("a")?.getAttribute("href")).toBe("/settings?tab=energy");
+    expect(hint.closest("a")?.getAttribute("href")).toBe("/settings?tab=solar");
   });
 
   it("shows no hint to a viewer, who cannot declare anything", async () => {

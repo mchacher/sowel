@@ -1765,6 +1765,7 @@
   "settings.tabs.general": "Général",
   "settings.tabs.account": "Compte",
   "settings.tabs.energy": "Énergie",
+  "settings.tabs.solar": "Solaire",
   "settings.tabs.admin": "Administration",
   "settings.solar.noMeter": "Créez d'abord un équipement compteur de production et liez-y votre compteur.",
   "settings.solar.meter": "Compteur",

@@ -24,7 +24,7 @@ The screenshot above shows the two cards on the Energy › Production page durin
 
 ### What it asks of you: three fields
 
-Everything the check needs, the forecast feature (v1.57) already collects. You declare your installation once (tilt, orientation, peak power, one entry per roof pitch) in Settings › Energy. Shading is deliberately **never** declared: the model measures it. If you have production history, one click on _Relearn from my history_ builds the reference from what your meter has already recorded.
+Everything the check needs, the forecast feature (v1.57) already collects. You declare your installation once (tilt, orientation, peak power, one entry per roof pitch) in Settings › Solar. Shading is deliberately **never** declared: the model measures it. If you have production history, one click on _Relearn from my history_ builds the reference from what your meter has already recorded.
 
 ![The declaration: three fields per roof pitch](../screenshots/pv-settings-en.png)
 

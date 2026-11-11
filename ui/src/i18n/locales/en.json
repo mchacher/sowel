@@ -1765,6 +1765,7 @@
   "settings.tabs.general": "General",
   "settings.tabs.account": "Account",
   "settings.tabs.energy": "Energy",
+  "settings.tabs.solar": "Solar",
   "settings.tabs.admin": "Administration",
   "settings.solar.noMeter": "Create a production meter equipment and bind your meter to it first.",
   "settings.solar.meter": "Meter",

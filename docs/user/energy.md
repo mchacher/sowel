@@ -224,7 +224,7 @@ The Production page is the home of everything about your panels. Its card opens 
 Since v1.57.0 it also carries two panels, both driven by your own installation rather than by a generic model:
 
 - **Forecast**, an hourly expected-production curve out to five days (« Expected » as a dashed grey line, the measured production « Actual » as a solid green line, the green of the bars above), learned from your history. It needs the `weather-forecast` plugin at 2.3.0 or later, and about six weeks of production before the model settles. Before that, Sowel shows a provisional clear-sky estimate and says so.
-- **Health**, which tells you when the panels stop performing against what your own history says they should. Declaring a new array, or changing the peak power, re-estimates the gain from the days that follow rather than waiting for the window to drift.
+- **Health**, which tells you when the panels stop performing against what your own history says they should. Declaring a new array in **Settings > Solar**, or changing the peak power, re-estimates the gain from the days that follow rather than waiting for the window to drift.
 
 Both are described at length in [Following your solar production](../deep-dives/pv-health.md).
 
@@ -262,7 +262,7 @@ Enabling this only _declares_ the load. Nothing acts on it until the arbiter its
 
 ### Enabling the arbiter and setting priority
 
-Go to **Settings > Administration > Energy**, enable **Surplus arbiter**, and order your flexible loads in the priority list. The list is read both ways: the surplus is offered top-down, and when it runs short the bottom load is the first to step back. Advanced timing thresholds live behind a fold with sensible defaults.
+Go to **Settings > Solar**, enable **Surplus arbiter**, and order your flexible loads in the priority list. The list is read both ways: the surplus is offered top-down, and when it runs short the bottom load is the first to step back. Advanced timing thresholds live behind a fold with sensible defaults.
 
 ### Reading it on the Live page
 

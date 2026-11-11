@@ -34,7 +34,7 @@ Three touchpoints, in increasing order of "you will probably never need this":
 
 ![The per-equipment energy profile](../screenshots/arbiter-energy-profile-en.png)
 
-**2. Order your priorities.** In Settings › Energy, drag your loads into the order that matches your life. The top load gets the surplus first; the bottom one is shed first. This list is the single most important decision you make, and it is yours, not an algorithm's:
+**2. Order your priorities.** In Settings › Solar, drag your loads into the order that matches your life. The top load gets the surplus first; the bottom one is shed first. This list is the single most important decision you make, and it is yours, not an algorithm's:
 
 ![The arbiter settings: priority order and advanced thresholds](../screenshots/arbiter-settings-en.png)
 
@@ -95,7 +95,7 @@ Priority is strict and yours: the list in Settings, top first for grants, bottom
 | Min rest (min)       | 0       | Once revoked, the load rests at least this long before the next grant.                                                                                                                                                     |
 | Shutdown delay (min) | global  | How long the load keeps drawing after a revoke before it actually stops, e.g. a thermodynamic water heater's 30-minute tail. The arbiter keeps budgeting that power instead of double-allocating it.                       |
 
-**Global** (Settings › Energy › Surplus arbiter › Advanced thresholds):
+**Global** (Settings › Solar › Surplus arbiter › Advanced thresholds):
 
 | Setting                 | Default | What it does                                                                                                            |
 | ----------------------- | ------- | ----------------------------------------------------------------------------------------------------------------------- |

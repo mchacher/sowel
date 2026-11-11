@@ -24,7 +24,7 @@ La capture ci-dessus montre les deux cartes de la page Énergie › Production p
 
 ### Ce que ça vous demande : trois champs
 
-Tout ce dont le contrôle a besoin, la prévision de production (v1.57) le collecte déjà. Vous déclarez votre installation une fois (inclinaison, orientation, puissance crête, une entrée par pan de toit) dans Réglages › Énergie. L'ombrage n'est délibérément **jamais** déclaré : le modèle le mesure. Si vous avez de l'historique de production, un clic sur _Réapprendre depuis mon historique_ construit la référence à partir de ce que votre compteur a déjà enregistré.
+Tout ce dont le contrôle a besoin, la prévision de production (v1.57) le collecte déjà. Vous déclarez votre installation une fois (inclinaison, orientation, puissance crête, une entrée par pan de toit) dans Réglages › Solaire. L'ombrage n'est délibérément **jamais** déclaré : le modèle le mesure. Si vous avez de l'historique de production, un clic sur _Réapprendre depuis mon historique_ construit la référence à partir de ce que votre compteur a déjà enregistré.
 
 ![La déclaration : trois champs par pan de toit](../screenshots/pv-settings-fr.png)
 

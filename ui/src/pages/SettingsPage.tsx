@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useSearchParams } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import {
@@ -69,11 +69,18 @@ export function SettingsPage() {
   const [activeTab, setActiveTab] = useState<SettingsTab>(() =>
     initialSettingsTab(searchParams.get("tab"), isAdmin),
   );
+  // On a phone the five tabs overflow the bar (spec 206): the tab a link opened
+  // on may sit past the edge, so bring it into view once, on mount.
+  const activeTabRef = useRef<HTMLButtonElement>(null);
+  useEffect(() => {
+    activeTabRef.current?.scrollIntoView?.({ inline: "nearest", block: "nearest" });
+  }, []);
 
   const tabs: { id: SettingsTab; label: string; adminOnly?: boolean }[] = [
     { id: "general", label: t("settings.tabs.general"), adminOnly: true },
     { id: "account", label: t("settings.tabs.account") },
     { id: "energy", label: t("settings.tabs.energy"), adminOnly: true },
+    { id: "solar", label: t("settings.tabs.solar"), adminOnly: true },
     { id: "admin", label: t("settings.tabs.admin"), adminOnly: true },
   ];
 
@@ -87,14 +94,16 @@ export function SettingsPage() {
         {isAdmin && <VersionBadge />}
       </div>
 
-      {/* Tabs */}
-      <div className="flex items-center gap-1 mb-6 border-b border-border">
+      {/* Tabs: on a phone the bar scrolls sideways to the screen edge, without a
+          visible scrollbar; the cut-off last label is the cue (spec 206). */}
+      <div className="flex items-center gap-1 mb-6 border-b border-border overflow-x-auto whitespace-nowrap -mr-4 pr-4 sm:mr-0 sm:pr-0 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
         {visibleTabs.map((tab) => (
           <button
             key={tab.id}
+            ref={activeTab === tab.id ? activeTabRef : undefined}
             onClick={() => setActiveTab(tab.id)}
             className={`
-              px-3 py-2 text-small font-medium transition-colors duration-150
+              shrink-0 px-3 py-2 text-small font-medium transition-colors duration-150
               border-b-2 -mb-px cursor-pointer
               ${
                 activeTab === tab.id
@@ -159,8 +168,13 @@ export function SettingsPage() {
         {activeTab === "energy" && isAdmin && (
           <div className="space-y-6">
             <TariffSettings />
-            <ArbiterSettings />
+          </div>
+        )}
+
+        {activeTab === "solar" && isAdmin && (
+          <div className="space-y-6">
             <SolarInstallationSettings />
+            <ArbiterSettings />
           </div>
         )}
 

@@ -4,6 +4,7 @@ import { initialSettingsTab } from "./settings-tab";
 describe("initialSettingsTab", () => {
   it("lands an admin on the tab the link names", () => {
     expect(initialSettingsTab("energy", true)).toBe("energy");
+    expect(initialSettingsTab("solar", true)).toBe("solar");
     expect(initialSettingsTab("admin", true)).toBe("admin");
     expect(initialSettingsTab("account", true)).toBe("account");
   });
@@ -12,6 +13,7 @@ describe("initialSettingsTab", () => {
     // Every tab but "account" is admin-only; landing there would render
     // nothing at all.
     expect(initialSettingsTab("energy", false)).toBe("account");
+    expect(initialSettingsTab("solar", false)).toBe("account");
     expect(initialSettingsTab("general", false)).toBe("account");
     expect(initialSettingsTab("account", false)).toBe("account");
   });

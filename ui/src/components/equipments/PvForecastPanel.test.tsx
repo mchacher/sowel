@@ -78,7 +78,7 @@ describe("PvForecastPanel (monitoring only, spec 163)", () => {
     await renderPanel(response());
     const link = (await screen.findByText(/4,000 Wc declared/i)).closest("a");
     expect(link).toBeTruthy();
-    expect(link?.getAttribute("href")).toBe("/settings?tab=energy");
+    expect(link?.getAttribute("href")).toBe("/settings?tab=solar");
   });
 
   it("keeps the declared figure plain text for non-admins", async () => {

@@ -41,9 +41,9 @@ Mockup (to scale): https://claude.ai/artifact/XzxdKvbMjYzcgSnSWDWK1U, boards `Se
 
 ## Acceptance Criteria
 
-- [ ] « Énergie » shows the tariff card only; « Solaire » the installation then the arbiter.
-- [ ] `?tab=solar` opens « Solaire » for an admin, « Compte » for a standard user.
-- [ ] The Production and PV forecast links open « Solaire ».
+- [x] « Énergie » shows the tariff card only; « Solaire » the installation then the arbiter.
+- [x] `?tab=solar` opens « Solaire » for an admin, « Compte » for a standard user.
+- [x] The Production and PV forecast links open « Solaire ».
 - [ ] At 390 px the bar scrolls and the page has no horizontal scroll; `?tab=admin` shows its tab in view.
 
 ## Edge Cases
@@ -53,12 +53,12 @@ Mockup (to scale): https://claude.ai/artifact/XzxdKvbMjYzcgSnSWDWK1U, boards `Se
 
 ## Docs Delta
 
-| Page (EN and FR)                          | Change                                                          |
-| ----------------------------------------- | --------------------------------------------------------------- |
-| `docs/user/energy.md` + `.fr.md`          | « Réglages › Solaire » for the installation and the arbiter     |
-| `docs/deep-dives/pv-health.md` + `.fr.md` | the path to the installation card                               |
-| `docs/deep-dives/surplus-arbiter.md` + FR | the path to the arbiter card                                    |
-| any other page naming those paths         | same (grep « Réglages › Énergie » / « Settings › Energy »)      |
+| Page (EN and FR)                          | Change                                                      |
+| ----------------------------------------- | ----------------------------------------------------------- |
+| `docs/user/energy.md` + `.fr.md`          | « Réglages › Solaire » for the installation and the arbiter |
+| `docs/deep-dives/pv-health.md` + `.fr.md` | the path to the installation card                           |
+| `docs/deep-dives/surplus-arbiter.md` + FR | the path to the arbiter card                                |
+| any other page naming those paths         | same (grep « Réglages › Énergie » / « Settings › Energy »)  |
 
 Release notes of past versions are left as they are. Screenshots: none of the existing ones shows the tab bar
 with the tabs named, to check when implementing.

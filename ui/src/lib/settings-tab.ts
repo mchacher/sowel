@@ -1,4 +1,4 @@
-export type SettingsTab = "general" | "account" | "energy" | "admin";
+export type SettingsTab = "general" | "account" | "energy" | "solar" | "admin";
 
 /**
  * Which tab a fresh Settings page opens on (spec 163).
@@ -9,7 +9,13 @@ export type SettingsTab = "general" | "account" | "energy" | "admin";
  * rendering an empty pane.
  */
 export function initialSettingsTab(param: string | null, isAdmin: boolean): SettingsTab {
-  if (param === "general" || param === "account" || param === "energy" || param === "admin") {
+  if (
+    param === "general" ||
+    param === "account" ||
+    param === "energy" ||
+    param === "solar" ||
+    param === "admin"
+  ) {
     if (param === "account" || isAdmin) return param;
   }
   return isAdmin ? "general" : "account";
