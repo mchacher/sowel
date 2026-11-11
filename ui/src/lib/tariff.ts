@@ -33,19 +33,30 @@ export function isSummerOn(season: SeasonDates, date: Date): boolean {
   return season.from <= md && md <= season.to;
 }
 
-/** The `MM-DD` one day after (`+1`) or before (`-1`) another, in a leap year. */
-function shiftMonthDay(md: string, days: 1 | -1): string {
+/** The `MM-DD` one day after (`+1`) or before (`-1`) another, in a given year. */
+function shiftMonthDay(md: string, days: 1 | -1, year: number): string {
   const [m, d] = md.split("-").map(Number);
-  return monthDay(new Date(2000, m - 1, d + days));
+  return monthDay(new Date(year, m - 1, d + days));
 }
 
 /**
  * The first and last day of a season, `MM-DD`: summer is stored, winter is
  * the rest of the year (the day after summer ends to the day before it starts).
+ * Winter's last day is computed in the year that winter ends, seen from `at`
+ * (the current winter before summer starts, the next one after), so a summer
+ * from 1 March ends winter on 28 February, or 29 in a leap year.
  */
-export function seasonRange(season: SeasonDates, which: "summer" | "winter"): SeasonDates {
+export function seasonRange(
+  season: SeasonDates,
+  which: "summer" | "winter",
+  at: Date = new Date(),
+): SeasonDates {
   if (which === "summer") return { from: season.from, to: season.to };
-  return { from: shiftMonthDay(season.to, 1), to: shiftMonthDay(season.from, -1) };
+  const endYear = monthDay(at) < season.from ? at.getFullYear() : at.getFullYear() + 1;
+  return {
+    from: shiftMonthDay(season.to, 1, at.getFullYear()),
+    to: shiftMonthDay(season.from, -1, endYear),
+  };
 }
 
 /** A `MM-DD` written for people: « 1er novembre », « 31 mars », "November 1". */
@@ -67,7 +78,8 @@ export function seasonLabel(
   season: SeasonDates,
   which: "summer" | "winter",
   language: string,
+  at: Date = new Date(),
 ): { from: string; to: string } {
-  const range = seasonRange(season, which);
+  const range = seasonRange(season, which, at);
   return { from: formatMonthDay(range.from, language), to: formatMonthDay(range.to, language) };
 }

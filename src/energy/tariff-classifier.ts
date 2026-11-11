@@ -37,11 +37,14 @@ function localMonthDay(at: Date): string {
 
 /**
  * Whether a local date falls in the stored summer, both ends inclusive.
- * `MM-DD` strings compare as strings. Spec 204.
+ * `MM-DD` strings compare as strings. A missing date (a hand-edited or
+ * restored setting) is the Enedis one, never a winter all year. Spec 204.
  */
-export function isSummer(season: Pick<TariffSeason, "from" | "to">, at: Date): boolean {
+export function isSummer(season: Partial<Pick<TariffSeason, "from" | "to">>, at: Date): boolean {
   const md = localMonthDay(at);
-  return season.from <= md && md <= season.to;
+  const from = season.from ?? SUMMER_DEFAULT.from;
+  const to = season.to ?? SUMMER_DEFAULT.to;
+  return from <= md && md <= to;
 }
 
 /**

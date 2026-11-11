@@ -1903,6 +1903,9 @@ describe("PUT /api/v1/settings/energy/tariff", () => {
   it.each([
     ["a month out of range", { from: "13-01" }],
     ["a day out of range", { to: "04-32" }],
+    ["a day past the end of April", { to: "04-31" }],
+    ["a day past the end of June", { from: "06-31" }],
+    ["a 30 February", { from: "02-30" }],
     ["a date not MM-DD", { from: "4-1" }],
   ])("400s a summer with %s, and writes nothing", async (_label, dates) => {
     app = await buildApp({});
@@ -1921,6 +1924,27 @@ describe("PUT /api/v1/settings/energy/tariff", () => {
       method: "PUT",
       url: URL,
       payload: { schedules: WINTER, summer: { from: "10-31", to: "04-01", schedules: SUMMER } },
+    });
+    expect(res.statusCode).toBe(400);
+    expect(writes()).toEqual([]);
+  });
+
+  it("accepts 29 February as a season bound", async () => {
+    app = await buildApp({});
+    const res = await app.inject({
+      method: "PUT",
+      url: URL,
+      payload: { schedules: WINTER, summer: { from: "02-29", to: "10-31", schedules: SUMMER } },
+    });
+    expect(res.statusCode).toBe(200);
+  });
+
+  it("400s a summer with an empty winter schedule, and writes nothing", async () => {
+    app = await buildApp({});
+    const res = await app.inject({
+      method: "PUT",
+      url: URL,
+      payload: { schedules: [], summer: { schedules: SUMMER } },
     });
     expect(res.statusCode).toBe(400);
     expect(writes()).toEqual([]);

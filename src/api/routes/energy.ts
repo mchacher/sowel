@@ -143,7 +143,16 @@ const daySchedulesSchema = {
   },
 } as const;
 
-/** `MM-DD`, month 01-12, day 01-31 (spec 204). */
+/** Days in each month; February allows the 29th, which exists in leap years. */
+const MONTH_LENGTHS = [31, 29, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31];
+
+/** Whether a `MM-DD` that matched the pattern names a day that exists (no 04-31). */
+function isRealMonthDay(md: string): boolean {
+  const [m, d] = md.split("-").map(Number);
+  return d <= MONTH_LENGTHS[m - 1];
+}
+
+/** `MM-DD`, month 01-12, day 01-31 (spec 204); the handler refuses 04-31 and the like. */
 const monthDaySchema = {
   type: "string",
   pattern: "^(0[1-9]|1[0-2])-(0[1-9]|[12][0-9]|3[01])$",
@@ -821,8 +830,21 @@ export function registerEnergyRoutes(app: FastifyInstance, deps: EnergyDeps): vo
           to: request.body.summer.to ?? SUMMER_DEFAULT.to,
           schedules: request.body.summer.schedules,
         };
+        for (const [field, md] of [
+          ["from", summer.from],
+          ["to", summer.to],
+        ] as const) {
+          if (!isRealMonthDay(md)) {
+            return reply.code(400).send({ error: `summer.${field} is not a real day: ${md}` });
+          }
+        }
         if (summer.from > summer.to) {
           return reply.code(400).send({ error: "summer.from must not be after summer.to" });
+        }
+        // An empty winter would read as « never saved » on the screen, whose
+        // next save would then drop the summer.
+        if (schedules.length === 0) {
+          return reply.code(400).send({ error: "schedules must not be empty when summer is set" });
         }
       }
       // Spec 202 — prices sent here edit the version in force today (or create

@@ -54,10 +54,19 @@ describe("seasons (spec 204)", () => {
 
   it("derives winter as the rest of the year", () => {
     expect(seasonRange(SUMMER_DEFAULT, "winter")).toEqual({ from: "11-01", to: "03-31" });
-    expect(seasonRange({ from: "03-01", to: "09-15" }, "winter")).toEqual({
+    const march = { from: "03-01", to: "09-15" };
+    // Seen in November 2026, the winter ends in February 2027 (not a leap year).
+    expect(seasonRange(march, "winter", new Date(2026, 10, 15))).toEqual({
+      from: "09-16",
+      to: "02-28",
+    });
+    // Seen in January 2028, the winter in force ends in February 2028 (a leap year).
+    expect(seasonRange(march, "winter", new Date(2028, 0, 15))).toEqual({
       from: "09-16",
       to: "02-29",
     });
+    // Seen in November 2027, the next winter ends in February 2028.
+    expect(seasonRange(march, "winter", new Date(2027, 10, 15)).to).toBe("02-29");
   });
 
   it("labels each season from the stored dates, in French and English", () => {

@@ -210,6 +210,16 @@ describe("seasonal schedules", () => {
     });
   });
 
+  it("uses the summer schedule in July for a stored summer missing its dates", () => {
+    const undated = {
+      ...seasonal,
+      summer: { schedules: seasonal.summer!.schedules },
+    } as unknown as TariffConfig;
+    const restored = makeClassifier(undated);
+    expect(restored.classify(1000, epochAt("2026-07-15T13:00:00"))).toEqual({ hp: 0, hc: 1000 });
+    expect(restored.classify(1000, epochAt("2026-01-15T13:00:00"))).toEqual({ hp: 1000, hc: 0 });
+  });
+
   it("follows a config changed from single to seasonal", () => {
     const single: TariffConfig = { schedules: seasonal.schedules, prices: seasonal.prices };
     let raw = JSON.stringify(single);
@@ -237,6 +247,13 @@ describe("isSummer", () => {
     expect(isSummer(custom, new Date("2026-05-15T00:00:00"))).toBe(true);
     expect(isSummer(custom, new Date("2026-09-15T23:59:00"))).toBe(true);
     expect(isSummer(custom, new Date("2026-09-16T00:00:00"))).toBe(false);
+  });
+
+  it("reads missing dates as the Enedis ones", () => {
+    expect(isSummer({}, new Date("2026-07-15T12:00:00"))).toBe(true);
+    expect(isSummer({}, new Date("2026-01-15T12:00:00"))).toBe(false);
+    expect(isSummer({ from: "05-15" }, new Date("2026-10-31T12:00:00"))).toBe(true);
+    expect(isSummer({ to: "09-15" }, new Date("2026-04-01T12:00:00"))).toBe(true);
   });
 
   it("reads the local day", () => {
