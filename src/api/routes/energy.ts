@@ -855,10 +855,8 @@ export function registerEnergyRoutes(app: FastifyInstance, deps: EnergyDeps): vo
         const removed = tariffVersions.all().find((v) => v.id === request.params.id);
         tariffVersions.remove(request.params.id);
         // Spec 203 — a version that came from the price file and is deleted on
-        // purpose is set aside, or the next read would add it again.
-        if (removed?.startDate && removed.origin.startsWith("file:")) {
-          priceFileSync?.dismiss([removed.startDate]);
-        }
+        // purpose is set aside, or the next read would propose it again.
+        if (removed) priceFileSync?.dismissVersion(removed);
         return { ok: true };
       } catch (err) {
         if (err instanceof TariffVersionError) {
@@ -951,8 +949,13 @@ export function registerEnergyRoutes(app: FastifyInstance, deps: EnergyDeps): vo
   app.post<{ Body: { startDates: string[] } }>(
     "/api/v1/settings/energy/price-file/dismiss",
     { schema: { body: priceFileDatesBodySchema } },
-    async (request) => {
-      priceFileSync?.dismiss(request.body.startDates);
+    async (request, reply) => {
+      try {
+        priceFileSync?.dismiss(request.body.startDates);
+      } catch (err) {
+        if (err instanceof PriceFileError) return reply.code(400).send({ error: err.message });
+        throw err;
+      }
       return priceFileSync?.status() ?? noPriceFile;
     },
   );

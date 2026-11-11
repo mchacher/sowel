@@ -4,18 +4,19 @@
  * The only part of the price file with I/O. Once a day, and when the user
  * asks, it downloads `tariffs/electricity-prices.json` from the Sowel
  * repository and, for the configured contract, turns the prices no version
- * holds yet into tariff versions: a new period is added by itself, everything
- * else (the past prices of an instance that has none, a late row, a jump of
- * 30 % or more) waits for the user.
+ * holds yet into tariff versions: a period published since the last read is
+ * added by itself, everything else (the prices the file already held when it
+ * was first read, a late row, a jump of 30 % or more) waits for the user.
  *
  * It never modifies or deletes a version, and a read that fails changes
- * nothing. Every handler here catches: a broken download must never reach the
- * rest of the engine.
+ * nothing. Every entry point here catches: a broken download must never reach
+ * the rest of the engine.
  */
 
 import type { EventBus } from "../../core/event-bus.js";
 import type { Logger } from "../../core/logger.js";
 import type { SettingsManager } from "../../core/settings-manager.js";
+import { isLocalDate } from "../../shared/local-date.js";
 import type {
   PriceFile,
   PriceFileRow,
@@ -33,16 +34,23 @@ import { PriceFileError, newPrices, parsePriceFile, rowsFor } from "./price-file
 export const PRICE_FILE_URL =
   "https://raw.githubusercontent.com/mchacher/sowel/main/tariffs/electricity-prices.json";
 
+/** `{ lastCheckAt, lastSuccessAt, error }` of the last read. */
 export const PRICE_FILE_STATUS_KEY = "energy.priceFile.status";
+/** JSON list of `<supplier>|<type>|<kva>|<startDate>`: the prices set aside. */
 export const PRICE_FILE_DISMISSED_KEY = "energy.priceFile.dismissed";
+/** JSON map `<supplier>|<type>|<kva>` → the latest start date the file held at the last read. */
+export const PRICE_FILE_SEEN_KEY = "energy.priceFile.seen";
+/** "1" once the user was told that prices wait, until none does. */
+export const PRICE_FILE_NOTIFIED_KEY = "energy.priceFile.pendingNotified";
 
 const FIRST_CHECK_MS = 60_000;
 const CHECK_INTERVAL_MS = 24 * 60 * 60 * 1000;
 const FETCH_TIMEOUT_MS = 10_000;
-/** A file far larger than the real one (about 30 kB) is not read. */
-const MAX_FILE_BYTES = 2_000_000;
+/** A file far larger than the real one (about 34 000 characters) is not read. */
+export const MAX_FILE_CHARS = 2_000_000;
+/** The reason of a failed read is stored and sent to the settings page: keep it short. */
+const MAX_ERROR_CHARS = 200;
 
-const PENDING_ALARM_ID = "price-file.pending";
 const ALARM_SOURCE = "price-file";
 
 interface StoredStatus {
@@ -50,6 +58,8 @@ interface StoredStatus {
   lastSuccessAt: string | null;
   error: string | null;
 }
+
+const NO_STATUS: StoredStatus = { lastCheckAt: null, lastSuccessAt: null, error: null };
 
 export interface PriceFileSyncDeps {
   settings: Pick<SettingsManager, "get" | "set">;
@@ -63,15 +73,22 @@ export interface PriceFileSyncDeps {
   now?: () => Date;
 }
 
-async function downloadPriceFile(): Promise<unknown> {
-  const res = await fetch(PRICE_FILE_URL, {
+/** Download the price file and parse its JSON. Throws on anything unexpected. */
+export async function downloadPriceFile(fetchImpl: typeof fetch = fetch): Promise<unknown> {
+  const res = await fetchImpl(PRICE_FILE_URL, {
     headers: { Accept: "application/json" },
     signal: AbortSignal.timeout(FETCH_TIMEOUT_MS),
   });
   if (!res.ok) throw new PriceFileError(`The price file answered ${res.status}`);
+  const declared = Number(res.headers.get("content-length") ?? 0);
+  if (declared > MAX_FILE_CHARS) throw new PriceFileError("The price file is too large");
   const text = await res.text();
-  if (text.length > MAX_FILE_BYTES) throw new PriceFileError("The price file is too large");
-  return JSON.parse(text) as unknown;
+  if (text.length > MAX_FILE_CHARS) throw new PriceFileError("The price file is too large");
+  try {
+    return JSON.parse(text) as unknown;
+  } catch {
+    throw new PriceFileError("The price file is not valid JSON");
+  }
 }
 
 /** Does this contract follow the file? */
@@ -79,8 +96,10 @@ export function followsPriceFile(contract: TariffContract): boolean {
   return contract.autoUpdate && contract.supplier !== "other" && contract.kva !== null;
 }
 
-const dismissedKey = (contract: TariffContract, startDate: string) =>
-  `${contract.supplier}|${contract.contractType}|${contract.kva}|${startDate}`;
+type ContractKey = Pick<TariffContract, "supplier" | "contractType" | "kva">;
+
+const contractKey = (c: ContractKey) => `${c.supplier}|${c.contractType}|${c.kva}`;
+const dismissedKey = (c: ContractKey, startDate: string) => `${contractKey(c)}|${startDate}`;
 
 export class PriceFileSync {
   private readonly deps: PriceFileSyncDeps;
@@ -90,7 +109,7 @@ export class PriceFileSync {
   /** The last file read successfully, kept for the status and the user's actions. */
   private file: PriceFile | null = null;
   private running: Promise<PriceFileStatus> | null = null;
-  private pendingAlarmRaised = false;
+  private stopped = false;
   private firstTimer: ReturnType<typeof setTimeout> | null = null;
   private timer: ReturnType<typeof setInterval> | null = null;
 
@@ -98,18 +117,21 @@ export class PriceFileSync {
     this.deps = deps;
     this.logger = deps.logger.child({ module: "price-file-sync" });
     this.now = deps.now ?? (() => new Date());
-    this.fetchFile = deps.fetchFile ?? downloadPriceFile;
+    this.fetchFile = deps.fetchFile ?? (() => downloadPriceFile());
   }
 
   /** A first read a minute after startup, then one a day. */
   start(): void {
     if (this.timer) return;
+    this.stopped = false;
     this.firstTimer = setTimeout(() => void this.check(), FIRST_CHECK_MS);
     this.timer = setInterval(() => void this.check(), CHECK_INTERVAL_MS);
     this.logger.info("Price file sync started");
   }
 
+  /** Stop the timers. A download still running ends without touching anything. */
   stop(): void {
+    this.stopped = true;
     if (this.firstTimer) clearTimeout(this.firstTimer);
     if (this.timer) clearInterval(this.timer);
     this.firstTimer = null;
@@ -118,50 +140,53 @@ export class PriceFileSync {
 
   /**
    * Read the file and act on it. One read at a time: a call made while one
-   * runs gets the same answer. NEVER throws.
+   * runs gets the same answer. NEVER rejects.
    */
   check(): Promise<PriceFileStatus> {
     if (!this.running) {
-      this.running = this.run().finally(() => {
-        this.running = null;
-      });
+      this.running = this.run()
+        .catch((err: unknown) => {
+          this.logger.error({ err }, "Price file check failed");
+          return this.status();
+        })
+        .finally(() => {
+          this.running = null;
+        });
     }
     return this.running;
   }
 
   private async run(): Promise<PriceFileStatus> {
+    if (!followsPriceFile(this.deps.contract())) return this.status();
+    const at = this.now().toISOString();
+    let file: PriceFile;
     try {
-      const contract = this.deps.contract();
-      if (!followsPriceFile(contract)) {
-        this.syncPendingAlarm();
-        return this.status();
-      }
-      const at = this.now().toISOString();
-      try {
-        this.file = parsePriceFile(await this.fetchFile());
-        this.store({ lastCheckAt: at, lastSuccessAt: at, error: null });
-      } catch (err) {
-        const message = err instanceof Error ? err.message : String(err);
-        this.logger.warn({ err }, "Price file read failed, keeping the versions as they are");
-        this.store({ lastCheckAt: at, lastSuccessAt: this.stored().lastSuccessAt, error: message });
-        return this.status();
-      }
-      this.addAutomatic(contract);
-      this.syncPendingAlarm();
+      file = parsePriceFile(await this.fetchFile());
     } catch (err) {
-      this.logger.error({ err }, "Price file check failed");
+      if (this.stopped) return this.status();
+      const message = (err instanceof Error ? err.message : String(err)).slice(0, MAX_ERROR_CHARS);
+      this.logger.warn({ err }, "Price file read failed, keeping the versions as they are");
+      this.store({ lastCheckAt: at, lastSuccessAt: this.stored().lastSuccessAt, error: message });
+      return this.status();
     }
+    // The engine is shutting down: the database may already be closed.
+    if (this.stopped) return this.status();
+    this.file = file;
+    this.store({ lastCheckAt: at, lastSuccessAt: at, error: null });
+    // The contract may have changed while the file was downloading: act on
+    // the one in force now, never on the one read before the download.
+    const contract = this.deps.contract();
+    if (followsPriceFile(contract)) {
+      this.addAutomatic(contract);
+      this.rememberSeen(contract);
+    }
+    this.notifyPending();
     return this.status();
   }
 
   /** Create the versions of the prices that need no confirmation, oldest first. */
   private addAutomatic(contract: TariffContract): void {
-    if (!this.file) return;
-    const { automatic } = newPrices(
-      rowsFor(this.file, contract),
-      this.deps.versions.all(),
-      this.dismissedDates(contract),
-    );
+    const { automatic } = this.split(contract);
     for (const row of automatic) {
       const version = this.create(row, contract);
       if (!version) continue;
@@ -220,33 +245,54 @@ export class PriceFileSync {
       { count: created.length, supplier: contract.supplier },
       "Held prices added from the price file",
     );
-    this.syncPendingAlarm();
+    this.notifyPending();
     return created;
   }
 
-  /** Set held prices aside: they are not proposed again for this contract. */
+  /**
+   * Set held prices aside: they are not proposed again for this contract.
+   * Throws `PriceFileError` on something that is not a `YYYY-MM-DD` day.
+   */
   dismiss(startDates: string[]): void {
-    const contract = this.deps.contract();
-    const keys = new Set(this.dismissedKeys());
-    for (const date of startDates) keys.add(dismissedKey(contract, date));
-    this.deps.settings.set(PRICE_FILE_DISMISSED_KEY, JSON.stringify([...keys]));
+    for (const date of startDates) {
+      if (!isLocalDate(date))
+        throw new PriceFileError("startDates must be days written YYYY-MM-DD");
+    }
+    this.addDismissed(startDates.map((date) => dismissedKey(this.deps.contract(), date)));
     this.logger.info({ count: startDates.length }, "Price file rows set aside");
-    this.syncPendingAlarm();
+    this.notifyPending();
+  }
+
+  /**
+   * A version that came from the file was deleted on purpose: set its date
+   * aside, or the next read would propose it again. Keyed on the version's own
+   * supplier and power, which may no longer be the contract's.
+   */
+  dismissVersion(version: TariffVersion): void {
+    if (!version.origin.startsWith("file:") || version.startDate === null || version.kva === null) {
+      return;
+    }
+    const supplier = version.origin.slice("file:".length) as TariffContract["supplier"];
+    const contractType = version.prices.hp === version.prices.hc ? "base" : "hphc";
+    this.addDismissed([
+      dismissedKey({ supplier, contractType, kva: version.kva }, version.startDate),
+    ]);
+    this.notifyPending();
   }
 
   /** Propose again the prices set aside for the contract in force. */
   restoreDismissed(): void {
-    const contract = this.deps.contract();
-    const prefix = dismissedKey(contract, "");
+    const prefix = dismissedKey(this.deps.contract(), "");
     const keys = this.dismissedKeys().filter((key) => !key.startsWith(prefix));
     this.deps.settings.set(PRICE_FILE_DISMISSED_KEY, JSON.stringify(keys));
-    this.syncPendingAlarm();
+    this.notifyPending();
   }
 
   /** Where the read stands, computed from the last file read. NEVER throws. */
   status(): PriceFileStatus {
-    const stored = this.stored();
+    let stored = NO_STATUS;
     try {
+      stored = this.stored();
       const contract = this.deps.contract();
       const following = followsPriceFile(contract);
       const rows = following && this.file ? rowsFor(this.file, contract) : [];
@@ -271,44 +317,82 @@ export class PriceFileSync {
     }
   }
 
-  /** The held prices of the contract, oldest first. */
-  private pending(contract: TariffContract): PriceFileRow[] {
-    if (!this.file || !followsPriceFile(contract)) return [];
-    const { automatic, held } = newPrices(
+  private split(contract: TariffContract): { automatic: PriceFileRow[]; held: PriceFileRow[] } {
+    if (!this.file || !followsPriceFile(contract)) return { automatic: [], held: [] };
+    return newPrices(
       rowsFor(this.file, contract),
       this.deps.versions.all(),
       this.dismissedDates(contract),
+      this.seen()[contractKey(contract)] ?? null,
     );
-    // A price that would be added by itself is added at the next read; until
-    // then it is shown with the others rather than hidden.
+  }
+
+  /**
+   * The prices that wait for the user, oldest first. A price that would be
+   * added by itself is added at the next read; until then it is shown with
+   * the others rather than hidden.
+   */
+  private pending(contract: TariffContract): PriceFileRow[] {
+    const { automatic, held } = this.split(contract);
     return [...held, ...automatic].sort((a, b) => a.startDate.localeCompare(b.startDate));
   }
 
-  /** One standing notice while prices wait, however many; cleared when none do. */
-  private syncPendingAlarm(): void {
+  /**
+   * Tell the user once that prices wait: an item in the activity feed and a
+   * push. Remembered in a setting, so a restart does not say it again; said
+   * again only after the list went back to empty.
+   */
+  private notifyPending(): void {
     try {
       const count = this.pending(this.deps.contract()).length;
-      if (count > 0 && !this.pendingAlarmRaised) {
-        this.pendingAlarmRaised = true;
+      const notified = this.deps.settings.get(PRICE_FILE_NOTIFIED_KEY) === "1";
+      if (count > 0 && !notified) {
+        this.deps.settings.set(PRICE_FILE_NOTIFIED_KEY, "1");
         this.deps.eventBus.emit({
-          type: "system.alarm.raised",
-          alarmId: PENDING_ALARM_ID,
-          level: "warning",
+          type: "system.alarm.resolved",
+          alarmId: "price-file.pending",
           source: ALARM_SOURCE,
           message: `${count} electricity price(s) found for your contract: confirm them in Settings, Energy`,
         });
-      } else if (count === 0 && this.pendingAlarmRaised) {
-        this.pendingAlarmRaised = false;
-        this.deps.eventBus.emit({
-          type: "system.alarm.resolved",
-          alarmId: PENDING_ALARM_ID,
-          source: ALARM_SOURCE,
-          message: "No electricity price waits for confirmation",
-        });
+      } else if (count === 0 && notified) {
+        this.deps.settings.set(PRICE_FILE_NOTIFIED_KEY, "");
       }
     } catch (err) {
       this.logger.error({ err }, "Price file notice failed");
     }
+  }
+
+  /** Note the latest price the file holds for this contract: what comes later is new. */
+  private rememberSeen(contract: TariffContract): void {
+    if (!this.file) return;
+    const rows = rowsFor(this.file, contract);
+    const latest = rows[rows.length - 1]?.startDate;
+    if (!latest) return;
+    const seen = this.seen();
+    if (seen[contractKey(contract)] === latest) return;
+    seen[contractKey(contract)] = latest;
+    this.deps.settings.set(PRICE_FILE_SEEN_KEY, JSON.stringify(seen));
+  }
+
+  private seen(): Record<string, string> {
+    const raw = this.deps.settings.get(PRICE_FILE_SEEN_KEY);
+    if (!raw) return {};
+    try {
+      const value = JSON.parse(raw) as unknown;
+      if (typeof value !== "object" || value === null || Array.isArray(value)) return {};
+      return Object.fromEntries(
+        Object.entries(value).filter(
+          (entry): entry is [string, string] => typeof entry[1] === "string",
+        ),
+      );
+    } catch {
+      return {};
+    }
+  }
+
+  private addDismissed(keys: string[]): void {
+    const all = new Set([...this.dismissedKeys(), ...keys]);
+    this.deps.settings.set(PRICE_FILE_DISMISSED_KEY, JSON.stringify([...all]));
   }
 
   private dismissedKeys(): string[] {
@@ -333,9 +417,8 @@ export class PriceFileSync {
   }
 
   private stored(): StoredStatus {
-    const empty: StoredStatus = { lastCheckAt: null, lastSuccessAt: null, error: null };
     const raw = this.deps.settings.get(PRICE_FILE_STATUS_KEY);
-    if (!raw) return empty;
+    if (!raw) return NO_STATUS;
     try {
       const value = JSON.parse(raw) as Partial<StoredStatus>;
       const text = (v: unknown) => (typeof v === "string" ? v : null);
@@ -345,7 +428,7 @@ export class PriceFileSync {
         error: text(value.error),
       };
     } catch {
-      return empty;
+      return NO_STATUS;
     }
   }
 

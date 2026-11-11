@@ -5,9 +5,11 @@ import { createMigratedTestDb } from "../../test-helpers/migrations.js";
 import { TariffVersionStore } from "../tariff-version-store.js";
 import { PriceFileError } from "./price-file.js";
 import {
+  MAX_FILE_CHARS,
   PRICE_FILE_DISMISSED_KEY,
   PRICE_FILE_STATUS_KEY,
   PriceFileSync,
+  downloadPriceFile,
   followsPriceFile,
 } from "./price-file-sync.js";
 
@@ -150,7 +152,7 @@ describe("check — when nothing is read", () => {
 });
 
 describe("check — the retroactive fill", () => {
-  it("holds every past price of an upgraded instance, with one standing notice", async () => {
+  it("holds every past price of an upgraded instance, and says so once", async () => {
     seeded(h);
     const status = await h.sync.check();
     expect(h.versions.all()).toHaveLength(1); // nothing added by itself
@@ -167,13 +169,30 @@ describe("check — the retroactive fill", () => {
       lastCheckAt: "2026-11-11T08:00:00.000Z",
       lastSuccessAt: "2026-11-11T08:00:00.000Z",
     });
-    const raised = h.events.filter((e) => e.type === "system.alarm.raised");
-    expect(raised).toHaveLength(1);
-    expect(raised[0]).toMatchObject({ alarmId: "price-file.pending", source: "price-file" });
+    // One notification, through the done half of the alarm channel: an item
+    // in the feed and a push, nothing that stands.
+    expect(h.events).toHaveLength(1);
+    expect(h.events[0]).toMatchObject({
+      type: "system.alarm.resolved",
+      alarmId: "price-file.pending",
+      source: "price-file",
+    });
 
-    // A second read says nothing more.
+    // A second read says nothing more, and neither does a restart.
     await h.sync.check();
-    expect(h.events.filter((e) => e.type === "system.alarm.raised")).toHaveLength(1);
+    await h.restart().check();
+    expect(h.events).toHaveLength(1);
+  });
+
+  it("says it again only after the list went back to empty", async () => {
+    seeded(h);
+    const { pending } = await h.sync.check();
+    h.sync.apply(pending.map((r) => r.startDate));
+    h.events.length = 0;
+    h.setFile(fileOf([...ROWS_9, row("2027-02-01", 0.29, 0.17, 243.1)])); // a jump: held
+    await h.sync.check();
+    expect(h.events).toHaveLength(1);
+    expect(h.events[0]).toMatchObject({ alarmId: "price-file.pending" });
   });
 
   it("adds the held prices oldest first, from the file, and leaves the first version alone", async () => {
@@ -191,10 +210,6 @@ describe("check — the retroactive fill", () => {
     const [first] = h.versions.all();
     expect(first).toMatchObject({ startDate: null, prices: { hp: 0.246, hc: 0.1828 } });
     expect(h.sync.status().pending).toEqual([]);
-    expect(h.events.at(-1)).toMatchObject({
-      type: "system.alarm.resolved",
-      alarmId: "price-file.pending",
-    });
   });
 
   it("makes the oldest row the version without a date on an instance that has none", async () => {
@@ -202,6 +217,11 @@ describe("check — the retroactive fill", () => {
     h.sync.apply(pending.map((r) => r.startDate));
     expect(h.versions.all().map((v) => v.startDate)).toEqual([null, "2026-02-01", "2026-08-01"]);
     expect(h.versions.all()[0].prices).toEqual({ hp: 0.2081, hc: 0.1635 });
+    // The row that became the version without a date is not proposed again,
+    // now or at the next read: the list is empty for good.
+    expect(h.sync.status().pending).toEqual([]);
+    expect((await h.sync.check()).pending).toEqual([]);
+    expect(h.versions.all()).toHaveLength(3);
   });
 
   it("refuses a date that is not waiting, and creates nothing", async () => {
@@ -248,7 +268,32 @@ describe("check — a new period", () => {
     const status = await h.sync.check();
     expect(h.versions.all()).toHaveLength(4);
     expect(status.pending.map((r) => r.startDate)).toEqual(["2027-02-01"]);
-    expect(h.events[0]).toMatchObject({ type: "system.alarm.raised" });
+    expect(h.events[0]).toMatchObject({ alarmId: "price-file.pending" });
+  });
+
+  it("holds the periods the file already held when it was first read, even after the history", async () => {
+    // Another instance: its last hand-typed version is old, the file is read for the first time.
+    const other = harness();
+    other.versions.create({ prices: { hp: 0.2, hc: 0.15 } }, "migration");
+    other.versions.create(
+      { startDate: "2025-08-01", prices: { hp: 0.2081, hc: 0.1635 } },
+      "manual",
+    );
+    const status = await other.sync.check();
+    expect(other.versions.all()).toHaveLength(2);
+    expect(status.pending.map((r) => r.startDate)).toEqual(["2026-08-01", "2026-02-01"]);
+  });
+
+  it("acts on the contract in force after the download, not the one before it", async () => {
+    let release: (value: unknown) => void = () => {};
+    h.setFile(() => new Promise((resolve) => (release = resolve)));
+    const reading = h.sync.check();
+    // While the file downloads, the user switches the option off.
+    h.setContract({ autoUpdate: false });
+    release(fileOf([...ROWS_9, row("2027-02-01", 0.2201, 0.1612, 243.1)]));
+    await reading;
+    expect(h.versions.all().map((v) => v.startDate)).not.toContain("2027-02-01");
+    expect(h.events).toEqual([]);
   });
 
   it("never changes a version that exists, whatever the file says for its date", async () => {
@@ -308,7 +353,6 @@ describe("dismiss", () => {
     await h.sync.check();
     h.sync.dismiss(["2025-08-01", "2026-02-01", "2026-08-01"]);
     expect(h.sync.status()).toMatchObject({ pending: [], dismissedCount: 3 });
-    expect(h.events.at(-1)).toMatchObject({ type: "system.alarm.resolved" });
 
     const again = h.restart();
     const status = await again.check();
@@ -331,6 +375,102 @@ describe("dismiss", () => {
     h.setContract({ kva: 9 });
     h.sync.restoreDismissed();
     expect(h.sync.status().pending).toHaveLength(3);
+  });
+});
+
+describe("dismiss — what it accepts and what it keys on", () => {
+  it("refuses anything that is not a day, and sets nothing aside", async () => {
+    seeded(h);
+    await h.sync.check();
+    expect(() => h.sync.dismiss(["2026-08-01", "x|y"])).toThrow(PriceFileError);
+    expect(h.sync.status().dismissedCount).toBe(0);
+  });
+
+  it("leaves the other contracts' set-aside prices alone when one is restored", async () => {
+    seeded(h);
+    await h.sync.check();
+    h.sync.dismiss(["2026-08-01"]);
+    h.setContract({ kva: 6 });
+    h.sync.dismiss(["2026-08-01"]);
+    h.sync.restoreDismissed(); // the 6 kVA contract only
+    expect(JSON.parse(h.settings.get(PRICE_FILE_DISMISSED_KEY)!)).toEqual([
+      "edf-tarif-bleu|hphc|9|2026-08-01",
+    ]);
+  });
+
+  it("sets a deleted file version aside under its own power, not the contract's", async () => {
+    // The documented way to change power: delete the rows, take the list again.
+    seeded(h);
+    h.setFile(fileOf([...ROWS_9, row("2026-08-01", 0.2142, 0.1589, 190.81, 6)]));
+    h.setContract({ kva: 6 });
+    const six = await h.sync.check();
+    const [created] = h.sync.apply(six.pending.map((r) => r.startDate));
+    h.setContract({ kva: 9 });
+    h.versions.remove(created.id);
+    h.sync.dismissVersion(created);
+
+    // The 9 kVA list is proposed whole, and the 6 kVA row is the one set aside.
+    expect(h.sync.status().pending).toHaveLength(3);
+    expect(h.sync.status().dismissedCount).toBe(0);
+    expect(JSON.parse(h.settings.get(PRICE_FILE_DISMISSED_KEY)!)).toEqual([
+      "edf-tarif-bleu|hphc|6|2026-08-01",
+    ]);
+  });
+
+  it("sets nothing aside for a version typed by hand", () => {
+    const manual = h.versions.create({ prices: { hp: 0.2, hc: 0.1 }, kva: 9 }, "manual");
+    h.sync.dismissVersion(manual);
+    expect(h.settings.has(PRICE_FILE_DISMISSED_KEY)).toBe(false);
+  });
+});
+
+describe("downloadPriceFile", () => {
+  const answer = (body: string, init: ResponseInit = {}) =>
+    (async () => new Response(body, init)) as unknown as typeof fetch;
+
+  it("gives the parsed file", async () => {
+    await expect(downloadPriceFile(answer('{"format":1}'))).resolves.toEqual({ format: 1 });
+  });
+
+  it("refuses an answer that is not 200", async () => {
+    await expect(downloadPriceFile(answer("Not Found", { status: 404 }))).rejects.toThrow(
+      /answered 404/,
+    );
+  });
+
+  it("refuses a body that is not JSON", async () => {
+    await expect(downloadPriceFile(answer("<html>"))).rejects.toThrow(/not valid JSON/);
+  });
+
+  it("refuses a body far larger than the file, declared or not", async () => {
+    const huge = "x".repeat(MAX_FILE_CHARS + 1);
+    await expect(downloadPriceFile(answer(huge))).rejects.toThrow(/too large/);
+    await expect(
+      downloadPriceFile(
+        answer("{}", { headers: { "content-length": String(MAX_FILE_CHARS + 1) } }),
+      ),
+    ).rejects.toThrow(/too large/);
+  });
+
+  it("passes a network failure on", async () => {
+    const failing = (async () => {
+      throw new Error("fetch failed");
+    }) as unknown as typeof fetch;
+    await expect(downloadPriceFile(failing)).rejects.toThrow("fetch failed");
+  });
+});
+
+describe("check — a stop during the download", () => {
+  it("ends without writing anything", async () => {
+    seeded(h);
+    let release: (value: unknown) => void = () => {};
+    h.setFile(() => new Promise((resolve) => (release = resolve)));
+    const reading = h.sync.check();
+    h.sync.stop(); // the engine shuts down while the file downloads
+    release(fileOf(ROWS_9));
+    const status = await reading;
+    expect(status.lastCheckAt).toBeNull(); // nothing written after the stop
+    expect(h.versions.all()).toHaveLength(1);
   });
 });
 

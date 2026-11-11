@@ -78,11 +78,13 @@ For the configured contract (supplier, type, power), the rows whose start date i
 existing version are **new prices**. Each is checked before anything is recorded: a real date; prices above 0
 and below 1 €/kWh; for `hphc`, off-peak below peak; a fee of 0 or more.
 
-- **Added by itself**: a new price that starts after every existing version (the usual case, each February and
-  August), and that moves the peak price by less than 30 % against the version before it.
-- **Held for the user**: every other new price. That is the past prices of a fresh or upgraded instance (the
-  retroactive fill), a row published late that starts before a version the user entered meanwhile, and a jump of
-  30 % or more.
+- **Added by itself**: a new price published since the file was last read for this contract, that starts after
+  every existing version (the usual case, each February and August), and that moves the peak price by less than
+  30 % against the version before it.
+- **Held for the user**: every other new price. That is every price the file already held the first time it was
+  read for the contract (the retroactive fill of a fresh or upgraded instance, including periods that follow a
+  history typed by hand: they reprice months already shown), a row published late that starts before a version
+  the user entered meanwhile, and a jump of 30 % or more.
 
 A version created from the file carries `origin: "file:<supplier>"`. An existing version is never modified or
 deleted by the file. A read that fails (offline, file unreachable or invalid) changes nothing, is logged, and is
@@ -100,7 +102,11 @@ of the file.
 ### FR6 — Telling the user
 
 - A price added by itself: one notification (activity feed and push), saying the date and the prices.
-- Prices held: one standing notice, however many prices, until they are added or set aside.
+- Prices held: one notification (activity feed and push) when prices start to wait, however many; not repeated
+  by a restart, and sent again only after the list went back to empty. The settings card shows them until they
+  are added or set aside. (Not a standing alarm: the UI rebuilds its alarms at each connection from a few
+  server-served sources, and this one would have vanished from the banner and been pushed again at every
+  restart.)
 - Under the option, the card says when the file was last checked, the start date of the latest price known for
   the contract, and, when it applies: the check failed (with the date of the last success), or the file has no
   price for this contract (a power that does not exist for this contract type).
@@ -138,6 +144,9 @@ of the file.
   is added.
 - The first read on an instance with no version at all: the past prices are held like any other, and adding
   them creates the first version without a date from the oldest row, as spec 202 does for any first version.
+  That row is then no longer proposed.
+- The user deletes a file version after changing power: the date is set aside for the version's own power, so
+  the list of the new power is proposed whole.
 - The clock is wrong or the newest row is dated in the future: a future version is legitimate (spec 202), it is
   added and applies from its day.
 

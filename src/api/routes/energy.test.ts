@@ -2835,6 +2835,17 @@ describe("Spec 203 — price file routes", () => {
     expect((await post("/dismiss", {})).statusCode).toBe(400);
   });
 
+  it("400s a dismiss of something that is not a day", async () => {
+    app = await buildApp({
+      tariff: TARIFF_20_10,
+      priceFile: FILE,
+      settings: { "energy.contract": EDF_9 },
+    });
+    await post("/check");
+    expect((await post("/dismiss", { startDates: ["x|y"] })).statusCode).toBe(400);
+    expect((await app.inject({ method: "GET", url: STATUS })).json().dismissedCount).toBe(0);
+  });
+
   it("sets prices aside, and proposes them again on request", async () => {
     app = await buildApp({
       tariff: TARIFF_20_10,
