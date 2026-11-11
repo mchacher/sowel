@@ -6,7 +6,11 @@ import type { EquipmentManager } from "../../equipments/equipment-manager.js";
 import type { ZoneAggregator } from "../../zones/zone-aggregator.js";
 import type { ZoneManager } from "../../zones/zone-manager.js";
 import type { SunlightManager } from "../../zones/sunlight-manager.js";
-import { isWithinSlot, type TariffClassifier } from "../../energy/tariff-classifier.js";
+import {
+  isWithinSlot,
+  schedulesOn,
+  type TariffClassifier,
+} from "../../energy/tariff-classifier.js";
 import type { CapacityArbiter } from "../../energy/capacity-arbiter.js";
 import type {
   RecipeInfo,
@@ -695,7 +699,8 @@ export class RecipeManager {
     if (!config) return empty;
 
     const now = new Date();
-    const schedule = config.schedules.find((s) => s.days.includes(now.getDay()));
+    // Spec 204 — the schedule of today's season.
+    const schedule = schedulesOn(config, now).find((s) => s.days.includes(now.getDay()));
     const offPeakToday: TariffSlot[] = (schedule?.slots ?? [])
       .filter((s) => s.tariff === "hc")
       .map((s) => ({ start: s.start, end: s.end, tariff: s.tariff }));

@@ -3,7 +3,7 @@ import { localDateStr } from "../../shared/local-date.js";
 import type { Logger } from "../../core/logger.js";
 import type { SettingsManager } from "../../core/settings-manager.js";
 import type { EquipmentManager } from "../../equipments/equipment-manager.js";
-import type { TariffClassifier } from "../../energy/tariff-classifier.js";
+import { SUMMER_DEFAULT, type TariffClassifier } from "../../energy/tariff-classifier.js";
 import type { CapacityArbiter } from "../../energy/capacity-arbiter.js";
 import type { ArbiterMetricsStore } from "../../energy/arbiter-metrics-store.js";
 import type { ArbiterPublicState } from "../../shared/types.js";
@@ -36,6 +36,7 @@ import type {
   PriceFileStatus,
   TariffContract,
   TariffPrices,
+  TariffSeason,
   TariffVersion,
   TariffVersionInput,
   EnergyByUsageResponse,
@@ -119,30 +120,57 @@ interface EnergyDeps {
 // Spec 202 — `prices` is optional: the prices live in the tariff versions, and
 // the settings page sends the schedule alone. A client that still sends them
 // edits the version in force today, which is what this route always did.
+const daySchedulesSchema = {
+  type: "array",
+  items: {
+    type: "object",
+    required: ["days", "slots"],
+    properties: {
+      days: { type: "array", items: { type: "integer", minimum: 0, maximum: 6 } },
+      slots: {
+        type: "array",
+        items: {
+          type: "object",
+          required: ["start", "end", "tariff"],
+          properties: {
+            start: nonEmptyString,
+            end: nonEmptyString,
+            tariff: { enum: ["hp", "hc"] },
+          },
+        },
+      },
+    },
+  },
+} as const;
+
+/** Days in each month; February allows the 29th, which exists in leap years. */
+const MONTH_LENGTHS = [31, 29, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31];
+
+/** Whether a `MM-DD` that matched the pattern names a day that exists (no 04-31). */
+function isRealMonthDay(md: string): boolean {
+  const [m, d] = md.split("-").map(Number);
+  return d <= MONTH_LENGTHS[m - 1];
+}
+
+/** `MM-DD`, month 01-12, day 01-31 (spec 204); the handler refuses 04-31 and the like. */
+const monthDaySchema = {
+  type: "string",
+  pattern: "^(0[1-9]|1[0-2])-(0[1-9]|[12][0-9]|3[01])$",
+} as const;
+
 const tariffBodySchema = {
   type: "object",
   required: ["schedules"],
   properties: {
-    schedules: {
-      type: "array",
-      items: {
-        type: "object",
-        required: ["days", "slots"],
-        properties: {
-          days: { type: "array", items: { type: "integer", minimum: 0, maximum: 6 } },
-          slots: {
-            type: "array",
-            items: {
-              type: "object",
-              required: ["start", "end", "tariff"],
-              properties: {
-                start: nonEmptyString,
-                end: nonEmptyString,
-                tariff: { enum: ["hp", "hc"] },
-              },
-            },
-          },
-        },
+    schedules: daySchedulesSchema,
+    // Spec 204 — the summer schedule; `schedules` is then the winter one.
+    summer: {
+      type: "object",
+      required: ["schedules"],
+      properties: {
+        from: monthDaySchema,
+        to: monthDaySchema,
+        schedules: daySchedulesSchema,
       },
     },
     prices: {
@@ -769,8 +797,11 @@ export function registerEnergyRoutes(app: FastifyInstance, deps: EnergyDeps): vo
 
     // Spec 202 — the schedule from the setting, the prices in force today
     // from the versions. An empty `schedules` still means "never saved".
+    // Spec 204 — `summer` only when one is stored.
+    const config = tariffClassifier.getConfig();
     return {
-      schedules: tariffClassifier.getConfig()?.schedules ?? [],
+      schedules: config?.schedules ?? [],
+      ...(config?.summer ? { summer: config.summer } : {}),
       prices: tariffVersions.current()?.prices ?? { hp: 0, hc: 0 },
     };
   });
@@ -778,11 +809,44 @@ export function registerEnergyRoutes(app: FastifyInstance, deps: EnergyDeps): vo
   // ============================================================
   // PUT /api/v1/settings/energy/tariff
   // ============================================================
-  app.put<{ Body: { schedules: DaySchedule[]; prices?: TariffPrices } }>(
+  app.put<{
+    Body: {
+      schedules: DaySchedule[];
+      summer?: { from?: string; to?: string; schedules: DaySchedule[] };
+      prices?: TariffPrices;
+    };
+  }>(
     "/api/v1/settings/energy/tariff",
     { schema: { body: tariffBodySchema } },
     async (request, reply) => {
       const { schedules, prices } = request.body;
+      // Spec 204 — the body is the whole schedule: no `summer` stores a single
+      // one. Missing season dates are the Enedis ones; a summer that ends
+      // before it starts is refused before anything is written.
+      let summer: TariffSeason | undefined;
+      if (request.body.summer) {
+        summer = {
+          from: request.body.summer.from ?? SUMMER_DEFAULT.from,
+          to: request.body.summer.to ?? SUMMER_DEFAULT.to,
+          schedules: request.body.summer.schedules,
+        };
+        for (const [field, md] of [
+          ["from", summer.from],
+          ["to", summer.to],
+        ] as const) {
+          if (!isRealMonthDay(md)) {
+            return reply.code(400).send({ error: `summer.${field} is not a real day: ${md}` });
+          }
+        }
+        if (summer.from > summer.to) {
+          return reply.code(400).send({ error: "summer.from must not be after summer.to" });
+        }
+        // An empty winter would read as « never saved » on the screen, whose
+        // next save would then drop the summer.
+        if (schedules.length === 0) {
+          return reply.code(400).send({ error: "schedules must not be empty when summer is set" });
+        }
+      }
       // Spec 202 — prices sent here edit the version in force today (or create
       // the first one), before the setting is written: a refused price must
       // not leave a half-applied save. 0/0 with no version creates nothing.
@@ -799,7 +863,10 @@ export function registerEnergyRoutes(app: FastifyInstance, deps: EnergyDeps): vo
       // The setting keeps its shape; its prices are no longer read once the
       // first version exists.
       const kept = prices ?? tariffClassifier.getConfig()?.prices ?? { hp: 0, hc: 0 };
-      settingsManager.set("energy.tariff", JSON.stringify({ schedules, prices: kept }));
+      settingsManager.set(
+        "energy.tariff",
+        JSON.stringify({ schedules, ...(summer ? { summer } : {}), prices: kept }),
+      );
       logger.info("Tariff configuration updated");
       return { ok: true };
     },

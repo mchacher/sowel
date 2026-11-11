@@ -397,7 +397,7 @@ Three properties are worth relying on:
 - **Prices are not exposed.** Knowing _when_ energy is cheap is enough to schedule a load; what it costs is commercial data, and a recipe package is third-party code that can republish whatever it is handed. `offPeakToday` carries the schedule and nothing else.
 - **Always answer for the unconfigured case.** `configured` is `false` on a fresh instance and on any instance whose owner never filled the tariff page. Treat the recipe's own slots as the fallback rather than refusing to run.
 
-`offPeakToday` reflects the current local day-of-week: a schedule that only covers weekdays yields an empty list on Sunday. Re-read it rather than caching it at start.
+`offPeakToday` reflects the current local day-of-week, and the season of today when the user entered a summer and a winter schedule (spec 204): a schedule that only covers weekdays yields an empty list on Sunday. Re-read it rather than caching it at start.
 
 ### `energy` — surplus capacity claims (spec 140)
 

@@ -72,6 +72,8 @@ Go to **Settings > Energy**, card **Energy tariffs**:
    - Automatic prices never change a row that exists. If you take the history for one power and then change your power, the dates are already used and nothing is proposed: correct the fees by hand, or delete the rows and take the list again. A row from the price file that you delete is set aside, so it does not come back the next day.
    - With a single-rate contract, one price is asked. Past rows that hold a peak and an off-peak price keep both.
 3. **Peak and off-peak hours.** Define your time slots: which hours are peak and which are off-peak, with as many slots as you need to cover the 24 hours of the day. **Save schedule** saves the hours only.
+   - If your off-peak hours differ between summer and winter (the Enedis off-peak reform gives many meters two schedules, with off-peak hours in the early afternoon in summer), tick **My off-peak hours change between summer and winter**. Two blocks appear, **Winter** (from November 1 to March 31) and **Summer** (from April 1 to October 31), each with its timeline and its slots; the season in force today is marked **Current**. The first time you tick it, summer starts as a copy of your current slots. Untick it to go back to one schedule for the whole year.
+   - A schedule change applies from the moment you save it: energy already recorded keeps the split it was given.
 
 Prices are used for the cost views; the peak / off-peak split works without them. If no schedule is configured, all consumption is classified as peak by default — you simply do not see the split.
 

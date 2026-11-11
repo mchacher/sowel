@@ -393,7 +393,7 @@ Trois propriétés sur lesquelles s'appuyer :
 - **Les prix ne sont pas exposés.** Savoir _quand_ l'énergie est bon marché suffit pour placer une charge ; le prix est une donnée commerciale, et un package de recette est du code tiers qui peut republier ce qu'on lui confie. `offPeakToday` porte le planning et rien d'autre.
 - **Toujours une réponse pour le cas non configuré.** `configured` vaut `false` sur une instance neuve ou dont le propriétaire n'a jamais rempli la page tarif. Prévoir le repli sur les créneaux propres à la recette plutôt que de refuser de fonctionner.
 
-`offPeakToday` reflète le jour de semaine local courant : un planning qui ne couvre que les jours ouvrés donne une liste vide le dimanche. Relire la valeur plutôt que la mettre en cache au démarrage.
+`offPeakToday` reflète le jour de semaine local courant, et la saison du jour quand l'utilisateur a saisi un planning d'été et un d'hiver (spec 204) : un planning qui ne couvre que les jours ouvrés donne une liste vide le dimanche. Relire la valeur plutôt que la mettre en cache au démarrage.
 
 ### `energy` — demandes de capacité sur le surplus (spec 140)
 
