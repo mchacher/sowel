@@ -14,6 +14,7 @@ import { localDateStr } from "../../lib/local-date";
 import { buildTariffVersionRows, parseDecimalInput } from "../../lib/tariffVersions";
 import type { TariffVersionRow } from "../../lib/tariffVersions";
 import type { TariffContractType, TariffVersion, TariffVersionInput } from "../../types";
+import { ColumnLabel } from "../ui/ColumnLabel";
 
 // Spec 202 (FR6) — the price history: one row per version, newest first, three
 // at a time, and one inline form to add a price change or correct a version.
@@ -287,15 +288,15 @@ export function TariffPriceHistory({
                   </th>
                   {base ? (
                     <th scope="col" className={`${TH} text-right w-21`}>
-                      {t("tariff.prices.col.price")}
+                      <ColumnLabel text={t("tariff.prices.col.price")} />
                     </th>
                   ) : (
                     <>
                       <th scope="col" className={`${TH} text-right w-21`}>
-                        {t("tariff.prices.col.hp")}
+                        <ColumnLabel text={t("tariff.prices.col.hp")} />
                       </th>
                       <th scope="col" className={`${TH} text-right w-21`}>
-                        {t("tariff.prices.col.hc")}
+                        <ColumnLabel text={t("tariff.prices.col.hc")} />
                       </th>
                     </>
                   )}
