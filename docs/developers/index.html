@@ -185,7 +185,7 @@ ol.steps li>span{grid-column:2; grid-row:2; font-size:.91rem; line-height:1.55; 
 </head>
 <body>
 <div id="bar"></div>
-<div id="hud"><span id="phase">The Sowel Method</span><span id="count">01 / 25</span></div>
+<div id="hud"><span id="phase">The Sowel Method</span><span id="count">01 / 24</span></div>
 
 <section class="s" data-phase="Opening">
   <div class="in">
@@ -195,7 +195,7 @@ ol.steps li>span{grid-column:2; grid-row:2; font-size:.91rem; line-height:1.55; 
       Nine months. 303,000 lines of code in 41 repositories, running in a real house.
       <b>Every line written by an AI</b>, directed by one person. Eleven rules to stay in control.
     </p>
-    <p class="hint"><span class="key">↓</span><span class="key">→</span><span class="key">space</span> to advance<span class="dim">·</span><span class="key">f</span> fullscreen<span class="dim">·</span>25 views</p>
+    <p class="hint"><span class="key">↓</span><span class="key">→</span><span class="key">space</span> to advance<span class="dim">·</span><span class="key">f</span> fullscreen<span class="dim">·</span>24 views</p>
   </div>
 </section>
 
@@ -376,7 +376,7 @@ $ <span class="k">/sowel-issue</span> 1210</pre>
 <section class="s" data-phase="Act 2 — Frame">
   <div class="in">
     <p class="eyebrow"><span>Act 2</span><span class="dim">·</span><span class="dim">rules 03 to 06</span></p>
-    <h1 style="font-size:clamp(2.05rem,5.4vw,3.25rem)">Frame each change</h1>
+    <h1 style="font-size:clamp(2.05rem,5.4vw,3.25rem)">Frame the work</h1>
     <p class="lead">Before the code. This is where you keep control.</p>
   </div>
 </section>
@@ -420,8 +420,36 @@ break the gate's credibility.
   <div class="in two">
     <div class="narr">
       <p class="eyebrow"><span>Rule 04</span></p>
+      <h3>Split the goal into small features, before any spec</h3>
+      <p>Once the goal is clear, <strong>cut it into a sequence of small features</strong>. Each one is specified, built and checked on its own, and adds something that works.</p>
+      <p>The order follows the goal. Each feature moves the project toward it. Small steps with no direction just wander.</p>
+      <p>Then each feature goes through the same loop: spec, tests, code, review, merge.</p>
+      <p class="takeaway"><b>Two warning signs</b>If you dread opening the result, the feature was too big. If you cannot say what it moves you toward, it is drift.</p>
+    </div>
+    <div class="impl">
+      <div class="tab"><span class="dot"></span>sowel-showroom/docs/project-map.md<span class="kind">one goal, six phases</span></div>
+<pre><span class="k">Goal</span>  <span class="w">a public URL where anyone can open a Sowel
+      instance that runs a fictional house</span>
+
+<span class="c">Phase  Repository        What</span>
+  0    sowel             standard users switch modes
+  1    plugin-simulator  a house that lives, then obeys
+  2    showroom          compose, proxy, reset, landing page
+  3    house-3d          plan, live data, read-only scene
+  4    house-3d          clicks, journal, mobile
+  5    showroom          VM, public address</pre>
+      <div class="note"><b>From the plan itself:</b> “Each phase is one spec, one branch, one PR in its repo, testable on its own.”</div>
+      <div class="xover hood"><span class="lbl">Under the hood</span><span>A feature is what fits in one conversation. In a long conversation the agent summarises older messages and loses detail. Hence the rule: one feature per conversation. A new idea becomes an issue for later.</span></div>
+    </div>
+  </div>
+</section>
+
+<section class="s" data-phase="Act 2 — Frame">
+  <div class="in two">
+    <div class="narr">
+      <p class="eyebrow"><span>Rule 05</span></p>
       <h3>Approve the spec before any code</h3>
-      <p>Each change starts with a short spec: what it does, how, and how it will be tested. <strong>The agent writes it.</strong></p>
+      <p>Each feature starts with a short spec: what it does, how, and how it will be tested. <strong>The agent writes it.</strong></p>
       <p>You approve it before any code. Usually on a summary; you read the full spec when you need to. For a screen, you decide on mock-ups first.</p>
       <p>A misunderstanding costs ten minutes on a page of text. Found in two thousand lines of code, it costs half a day.</p>
       <p class="takeaway"><b>For a developer</b>A design record that arrives before the code, not six months after it.</p>
@@ -446,7 +474,7 @@ Voulez-vous que j'implémente cette feature ?</pre>
 <section class="s" data-phase="Act 2 — Frame">
   <div class="in two">
     <div class="narr">
-      <p class="eyebrow"><span>Rule 05</span></p>
+      <p class="eyebrow"><span>Rule 06</span></p>
       <h3>Decide the tests before the code</h3>
       <p>The spec includes a <strong>test plan</strong>: the normal cases, the edge cases, and what must not change.</p>
       <p>A test written after the code only records what the code does, mistakes included. An AI will happily write a passing test over wrong code.</p>
@@ -465,35 +493,6 @@ Voulez-vous que j'implémente cette feature ?</pre>
             <span class="c">↑ fails before the fix — that is the point</span></pre>
       <div class="note"><b>A gate checks it:</b> every scenario in the plan has its test.</div>
       <div class="xover hood"><span class="lbl">Under the hood</span><span>Each test must first be seen failing on broken code. A test the agent never saw fail may be testing nothing.</span></div>
-    </div>
-  </div>
-</section>
-
-<section class="s" data-phase="Act 2 — Frame">
-  <div class="in two">
-    <div class="narr">
-      <p class="eyebrow"><span>Rule 06</span></p>
-      <h3>Small steps, toward a goal written down</h3>
-      <p>A big request, like “build me the engine”, returns a lot of code you cannot check. <strong>Ask for steps you can check in one sitting.</strong></p>
-      <p>But small steps with no direction just wander. Each step must move toward a goal written down: the architecture, the roadmap, and one guiding sentence.</p>
-      <p>In practice: one change, one branch, one review, one merge.</p>
-      <p class="takeaway"><b>Two warning signs</b>If you dread opening the result, the step was too big. If you cannot say what it moves you toward, it is drift.</p>
-    </div>
-    <div class="impl">
-      <div class="tab"><span class="dot"></span>CLAUDE.md — the guiding sentence<span class="kind">written in month one</span></div>
-<pre><span class="w">a Device is what's on the network.</span>
-<span class="w">An Equipment is what's in the room.</span>
-
-<span class="c">Every plugin, every binding, every screen has been</span>
-<span class="c">settled by that sentence, not argued again each time.</span></pre>
-      <div class="tab"><span class="dot"></span>git log<span class="kind">9 months</span></div>
-<pre><span class="k">939</span> changes, each on its own branch
-<span class="k">485</span> fixes · <span class="k">355</span> features
-
-<span class="c">More fixes than features: steps are short,</span>
-<span class="c">so being wrong is cheap.</span></pre>
-      <div class="note"><b>One branch per change.</b> Never straight onto the main branch.</div>
-      <div class="xover hood"><span class="lbl">Under the hood</span><span>A step is what fits in one conversation. In a long conversation the agent summarises older messages and loses detail. Hence the rule: one feature per conversation. A new idea becomes an issue for later.</span></div>
     </div>
   </div>
 </section>
@@ -611,31 +610,9 @@ suite and <span class="r">then throws ERR_MODULE_NOT_FOUND at startup</span>.</p
      ("./foo.js", not "./foo"): Node ESM refuses it
      at startup.'</span>,
 }]</pre>
-      <div class="note"><b>The next view shows the proof</b>, on two documents of the same project.</div>
+      <div class="note"><b>Seen in this project.</b> The release notes are checked by the CI: 188 releases, none missing. The index of specs only had a written rule: an audit found 34 rows lost.</div>
       <div class="xover hood"><span class="lbl">Under the hood</span><span>The check's message is written for the agent. When it fails, the agent reads why and fixes the cause on its own. Write error messages like instructions.</span></div>
     </div>
-  </div>
-</section>
-
-<section class="s" data-phase="Act 3 — Lock in">
-  <div class="in">
-    <p class="eyebrow"><span>The proof</span><span class="dim">·</span><span class="dim">same project, same months</span></p>
-    <h2>Two documents, only one of them checked</h2>
-    <div class="cols" style="margin-top:1.3rem">
-      <div class="col ok">
-        <span class="state">Automatic check</span>
-        <h4>The release notes</h4>
-        <p class="big">188 releases<br>0 missing</p>
-        <p>Publishing fails if a release has no entry, in English or in French. Both files are exactly 1,536 lines long.</p>
-      </div>
-      <div class="col ko">
-        <span class="state">Written rule only</span>
-        <h4>The index of specs</h4>
-        <p class="big">34 rows lost<br>28 wrong</p>
-        <p>The rule was in the instruction file, read every session. An audit found three months of drift.</p>
-      </div>
-    </div>
-    <p class="verdict">Same project, same AI, same months. <b>The only difference is the check</b>, and it explains the whole gap.</p>
   </div>
 </section>
 
