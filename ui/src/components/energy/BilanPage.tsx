@@ -188,31 +188,48 @@ function BillCard({
   const comparison = comparisonLines(data.comparison, date, locale, t);
   // Spec 205 — the fixed fee, apart from the consumption the headline states.
   const fee = data.fee ? feeLines(data.fee, data.bill.total, locale, t) : null;
-  // Spec 207 — euros on the left, kWh on the right: two cards on a phone, the
-  // two columns of one card from lg, a vertical rule between them.
+  // Spec 207 — the kWh lines, and the average price, which the euro column states.
+  const lines = energyLines(data.energy, data.hasProduction, locale, t);
+  const price = averagePrice(data.bill.total, data.energy, data.fee, locale, t);
+  const cols = lines.parts.length === 3 ? "grid-cols-3" : "grid-cols-2";
+  const billParts: BarPart[] = [
+    {
+      key: "hp",
+      label: t("energy.bilan.energy.peak"),
+      value: formatEur(data.bill.hp, locale),
+      amount: data.bill.hp,
+      color: PAID_COLOR,
+    },
+    {
+      key: "hc",
+      label: t("energy.bilan.energy.offPeak"),
+      value: formatEur(data.bill.hc, locale),
+      amount: data.bill.hc,
+      color: HC_COLOR,
+    },
+  ];
+  // Euros on the left, kWh on the right: two cards on a phone, the two columns
+  // of one card from lg. The columns mirror each other (label, figure, bar,
+  // parts, sentence, subscription, comparison) and share the card's seven rows
+  // through a subgrid, so each row starts at the same height on both sides.
   return (
-    <div className="flex flex-col gap-4 sm:gap-5 lg:card lg:grid lg:grid-cols-2 lg:gap-0 lg:p-7">
-      <section className="card p-5 sm:p-7 lg:p-0 lg:pr-8 lg:shadow-none flex flex-col gap-2 min-w-0">
-        <span className="text-small font-medium text-text-secondary">
+    <div className="flex flex-col gap-4 sm:gap-5 lg:card lg:grid lg:grid-cols-2 lg:grid-rows-[repeat(5,auto)_1fr_auto] lg:gap-x-0 lg:gap-y-2 lg:p-7">
+      <section data-testid="bilan-bill" className={`${COLUMN} lg:pr-8`}>
+        <span className={`${ROW[1]} text-small font-medium text-text-secondary`}>
           {billLabel(data.period, date, today, locale, t)}
         </span>
-        <span className="text-value font-semibold text-text tabular-nums leading-tight">
+        <span className={`${ROW[2]} text-value font-semibold text-text tabular-nums leading-tight`}>
           {formatEur(data.bill.total, locale)}
         </span>
-        <div className="flex flex-col sm:flex-row gap-1 sm:gap-5 text-small text-text-secondary tabular-nums">
-          <span className="flex items-center gap-1.5">
-            <Swatch color={PAID_COLOR} />
-            {t("energy.peakHours")} {formatEur(data.bill.hp, locale)}
-          </span>
-          <span className="flex items-center gap-1.5">
-            <Swatch color={HC_COLOR} />
-            {t("energy.offPeakHours")} {formatEur(data.bill.hc, locale)}
-          </span>
-        </div>
+        <PartBar parts={billParts} testId="bilan-bill" />
+        <PartGrid parts={billParts} cols={cols} />
+        {price && (
+          <span className={`${ROW[5]} text-caption text-text-tertiary tabular-nums`}>{price}</span>
+        )}
         {fee && (
           <div
             data-testid="bilan-fee"
-            className="mt-2 pt-3.5 border-t border-border flex flex-col gap-2.5"
+            className={`${ROW[6]} mt-2 pt-3.5 border-t border-border flex flex-col gap-2.5 lg:self-start`}
           >
             <div className="flex items-baseline justify-between gap-3">
               <div className="flex flex-col gap-0.5 min-w-0">
@@ -240,9 +257,7 @@ function BillCard({
           </div>
         )}
         {comparison && (
-          <div
-            className={`${fee ? "mt-1.5" : "mt-2"} rounded-sm bg-background px-3.5 py-3 flex flex-col gap-1`}
-          >
+          <div className={`${ROW[7]} ${BOX}`}>
             <span className="text-small text-text tabular-nums">{comparison.main}</span>
             {comparison.sub && (
               <span className="text-caption text-text-tertiary tabular-nums">{comparison.sub}</span>
@@ -255,7 +270,92 @@ function BillCard({
           </div>
         )}
       </section>
-      <EnergyColumn data={data} date={date} today={today} locale={locale} />
+      <EnergyColumn
+        data={data}
+        lines={lines}
+        cols={cols}
+        date={date}
+        today={today}
+        locale={locale}
+      />
+    </div>
+  );
+}
+
+/** A column of the bill card: a card of its own on a phone, a subgrid of the card's rows from lg. */
+const COLUMN =
+  "max-lg:card p-5 sm:p-7 lg:p-0 flex flex-col gap-2 min-w-0 lg:grid lg:grid-rows-subgrid lg:row-span-7";
+/** The row each piece takes from lg, the same on both sides (a piece left out leaves its row empty). */
+const ROW: Record<number, string> = {
+  1: "lg:row-start-1",
+  2: "lg:row-start-2",
+  3: "lg:row-start-3",
+  4: "lg:row-start-4",
+  5: "lg:row-start-5",
+  6: "lg:row-start-6",
+  7: "lg:row-start-7",
+};
+const BOX = "mt-1.5 rounded-sm bg-background px-3.5 py-3 flex flex-col gap-1";
+
+interface BarPart {
+  key: string;
+  label: string;
+  value: string;
+  amount: number;
+  color: string;
+  valueClass?: string;
+}
+
+/** The thin bar of a column, each part a share of their sum. */
+function PartBar({ parts, testId }: { parts: BarPart[]; testId: string }) {
+  const max = parts.reduce((s, p) => s + Math.max(0, p.amount), 0);
+  return (
+    <div
+      role="img"
+      aria-label={parts.map((p) => `${p.label} ${p.value}`).join(", ")}
+      className={`${ROW[3]} mt-1 flex h-3 overflow-hidden rounded-sm bg-border-light`}
+    >
+      {parts.map((p) => (
+        <div
+          key={p.key}
+          data-testid={`${testId}-${p.key}`}
+          style={{
+            width: max > 0 ? `${(Math.max(0, p.amount) / max) * 100}%` : "0%",
+            backgroundColor: p.color,
+          }}
+        />
+      ))}
+    </div>
+  );
+}
+
+/**
+ * The parts under the bar. Labels on one row, values on the next: a wrapped
+ * label never pushes its value out of line with the others. Both columns use
+ * the same column count, so their parts line up.
+ */
+function PartGrid({ parts, cols }: { parts: BarPart[]; cols: string }) {
+  return (
+    <div
+      className={`${ROW[4]} mt-1 grid grid-flow-col grid-rows-[auto_auto] gap-x-2 sm:gap-x-3 gap-y-0.5 ${cols}`}
+    >
+      {parts.flatMap((p) => [
+        <span
+          key={`${p.key}-label`}
+          className="flex items-start gap-1.5 text-caption text-text-tertiary min-w-0"
+        >
+          <span className="flex h-4.5 items-center">
+            <Swatch color={p.color} />
+          </span>
+          {p.label}
+        </span>,
+        <span
+          key={`${p.key}-value`}
+          className={`text-lead font-semibold tabular-nums ${p.valueClass ?? "text-text"}`}
+        >
+          {p.value}
+        </span>,
+      ])}
     </div>
   );
 }
@@ -263,79 +363,54 @@ function BillCard({
 /** Spec 207 FR3 — what the period consumed, in kWh. */
 function EnergyColumn({
   data,
+  lines,
+  cols,
   date,
   today,
   locale,
 }: {
   data: EnergyBilanResponse;
+  lines: ReturnType<typeof energyLines>;
+  cols: string;
   date: string;
   today: string;
   locale: string;
 }) {
   const { t } = useTranslation();
-  const lines = energyLines(data.energy, data.hasProduction, locale, t);
   const gridWh = data.energy.gridHpWh + data.energy.gridHcWh;
   const comparison = energyComparisonLines(data.comparison, gridWh, date, today, locale, t);
-  const price = averagePrice(data.bill.total, data.energy, data.fee, locale, t);
-  const max = lines.parts.reduce((s, p) => s + p.wh, 0);
-  const pct = (wh: number) => (max > 0 ? `${(wh / max) * 100}%` : "0%");
+  const parts: BarPart[] = lines.parts.map((p) => ({
+    key: p.key,
+    label: p.label,
+    value: p.value,
+    amount: p.wh,
+    color: PART_COLOR[p.key],
+    valueClass: p.key === "solar" ? "text-solar-ink" : undefined,
+  }));
   return (
     <section
       data-testid="bilan-energy"
-      className="card p-5 sm:p-7 lg:p-0 lg:pl-8 lg:shadow-none lg:border-l lg:border-border flex flex-col gap-2 min-w-0"
+      className={`${COLUMN} lg:pl-8 lg:border-l lg:border-border`}
     >
-      <span className="text-small font-medium text-text-secondary">
+      <span className={`${ROW[1]} text-small font-medium text-text-secondary`}>
         {energyLabel(data.period, date, today, locale, t)}
       </span>
-      <span className="text-display lg:text-value font-semibold text-text tabular-nums leading-tight">
+      <span
+        className={`${ROW[2]} text-display lg:text-value font-semibold text-text tabular-nums leading-tight`}
+      >
         {lines.total}
       </span>
-      <div
-        role="img"
-        aria-label={lines.parts.map((p) => `${p.label} ${p.value}`).join(", ")}
-        className="mt-1 flex h-3 overflow-hidden rounded-sm bg-border-light"
-      >
-        {lines.parts.map((p) => (
-          <div
-            key={p.key}
-            data-testid={`bilan-energy-${p.key}`}
-            style={{ width: pct(p.wh), backgroundColor: PART_COLOR[p.key] }}
-          />
-        ))}
-      </div>
-      {/* Labels on one row, values on the next: a wrapped label never
-          pushes its value out of line with the others. */}
-      <div
-        className={`mt-1 grid grid-flow-col grid-rows-[auto_auto] gap-x-2 sm:gap-x-3 gap-y-0.5 ${lines.parts.length === 3 ? "grid-cols-3" : "grid-cols-2"}`}
-      >
-        {lines.parts.flatMap((p) => [
-          <span
-            key={`${p.key}-label`}
-            className="flex items-start gap-1.5 text-caption text-text-tertiary min-w-0"
-          >
-            <span className="flex h-4.5 items-center">
-              <Swatch color={PART_COLOR[p.key]} />
-            </span>
-            {p.label}
-          </span>,
-          <span
-            key={`${p.key}-value`}
-            className={`text-lead font-semibold tabular-nums ${p.key === "solar" ? "text-solar-ink" : "text-text"}`}
-          >
-            {p.value}
-          </span>,
-        ])}
-      </div>
-      <span className="text-caption text-text-tertiary tabular-nums">{lines.sentence}</span>
-      {(comparison || price) && (
-        <div className="mt-1.5 rounded-sm bg-background px-3.5 py-3 flex flex-col gap-1">
-          {comparison && (
-            <span className="text-small text-text tabular-nums">{comparison.main}</span>
-          )}
-          {comparison?.sub && (
+      <PartBar parts={parts} testId="bilan-energy" />
+      <PartGrid parts={parts} cols={cols} />
+      <span className={`${ROW[5]} text-caption text-text-tertiary tabular-nums`}>
+        {lines.sentence}
+      </span>
+      {comparison && (
+        <div className={`${ROW[7]} ${BOX}`}>
+          <span className="text-small text-text tabular-nums">{comparison.main}</span>
+          {comparison.sub && (
             <span className="text-caption text-text-tertiary tabular-nums">{comparison.sub}</span>
           )}
-          {price && <span className="text-caption text-text-tertiary tabular-nums">{price}</span>}
         </div>
       )}
     </section>

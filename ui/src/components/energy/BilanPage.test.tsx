@@ -131,7 +131,7 @@ describe("BilanPage kWh column (spec 207)", () => {
     expect(screen.queryByText(/Sans panneaux/)).toBeNull();
   });
 
-  it("shows the three parts, the sentence, the kWh comparison and the average price", async () => {
+  it("shows the three parts, the sentence and the kWh comparison", async () => {
     await renderPage(
       response({ ...solar, fee: { total: 20.37, days: 31, daysWithoutFee: 0, kva: 9 } }),
     );
@@ -142,9 +142,33 @@ describe("BilanPage kWh column (spec 207)", () => {
       "706 kWh achetés au réseau, 214 kWh produits et consommés sur place (23 %).",
     );
     expect(column).toContain("Octobre 2025 : 1 036 kWh achetés (−32 %).");
-    expect(column).toContain("Prix moyen payé : 0,194 €/kWh, 0,223 €/kWh avec l'abonnement.");
-    // The euro column is unchanged: no kWh in it.
+    expect(column).not.toContain("Prix moyen");
+  });
+
+  it("mirrors the kWh column in euros: bar, parts, then the average price", async () => {
+    await renderPage(
+      response({ ...solar, fee: { total: 20.37, days: 31, daysWithoutFee: 0, kva: 9 } }),
+    );
+    const bill = n(screen.getByTestId("bilan-bill").textContent);
+    expect(screen.getByTestId("bilan-bill-hp")).toBeTruthy();
+    expect(screen.getByTestId("bilan-bill-hc")).toBeTruthy();
+    expect(bill).toContain("H. pleines");
+    expect(bill).toContain("H. creuses");
+    expect(bill).toContain("Prix moyen payé : 0,194 €/kWh, 0,223 €/kWh avec l'abonnement.");
     expect(screen.getByText(/Octobre 2025 : 199,83/)).toBeTruthy();
+  });
+
+  it("puts each piece on the same card row on both sides", async () => {
+    await renderPage(
+      response({ ...solar, fee: { total: 20.37, days: 31, daysWithoutFee: 0, kva: 9 } }),
+    );
+    const rows = (testId: string) =>
+      [...screen.getByTestId(testId).children].map(
+        (el) => /lg:row-start-(\d)/.exec(el.className)?.[1] ?? "none",
+      );
+    // Label, figure, bar, parts, sentence, [subscription], comparison.
+    expect(rows("bilan-bill")).toEqual(["1", "2", "3", "4", "5", "6", "7"]);
+    expect(rows("bilan-energy")).toEqual(["1", "2", "3", "4", "5", "7"]);
   });
 
   it("puts the bill without panels in the solar tile", async () => {
