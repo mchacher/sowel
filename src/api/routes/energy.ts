@@ -15,6 +15,8 @@ import {
   monthlyNeedsDaily,
   monthlyPricingPoints,
   normalizeContract,
+  periodFee,
+  priceSpans,
   resolveContract,
   pricePoints,
   pricesAt,
@@ -594,6 +596,12 @@ export function registerEnergyRoutes(app: FastifyInstance, deps: EnergyDeps): vo
         (id) => equipmentManager.getById(id)?.name ?? null,
         (day) => pricesAt(versions, new Date(`${day}T12:00:00`)),
       );
+      // Spec 205 — the fixed fee counts the days up to today, none on the day
+      // view or for a period still to come.
+      const today = localDateStr();
+      const countUntil = toDay < today ? toDay : today;
+      const fee =
+        period === "day" || fromDay > today ? null : periodFee(versions, fromDay, countUntil);
 
       const response: EnergyBilanResponse = computeBilan({
         period: period as BilanPeriod,
@@ -610,6 +618,8 @@ export function registerEnergyRoutes(app: FastifyInstance, deps: EnergyDeps): vo
         coverage,
         usage,
         arbiter,
+        fee,
+        priceSpans: priceSpans(versions, fromDay, toDay),
       });
       return response;
     } catch (err) {

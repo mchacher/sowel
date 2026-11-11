@@ -5,6 +5,7 @@ import {
   CartesianGrid,
   ComposedChart,
   Line,
+  ReferenceLine,
   ResponsiveContainer,
   Tooltip,
   XAxis,
@@ -13,62 +14,42 @@ import {
 import type { DotItemDotProps } from "recharts/types/util/types";
 import { CHART_TICK_FONT, CHART_TOOLTIP_FONT } from "../../lib/chart-font";
 import { ENERGY_CHART_Y_AXIS_PX, xTickInterval } from "../../lib/chart-ticks";
-import { formatHourLabel, formatHourRange } from "../../lib/hour-label";
 import { dateLocale } from "../../lib/locale";
 import type { BilanPeriod, BilanPoint } from "../../types";
+import { changeMarkerLayout, toData, type Datum } from "./bilan-chart-data";
 import { formatEur } from "./format";
 import { TooltipSeriesRow } from "./TooltipSeriesRow";
 
 // Spec 200 (FR6) — the Bilan's cost bars: paid at peak, paid off-peak, and what
 // solar avoided on top. The year view adds the previous year's bill for the
-// same month as a dashed tick.
+// same month as a dashed tick. Spec 205: a dashed marker where a price change
+// starts, on its day (month view) or its month (year view).
 
 const HP_COLOR = "var(--color-energy-hp)";
 const HC_COLOR = "var(--color-energy-hc)";
 const AVOIDED_COLOR = "var(--color-solar-auto)";
 const PREVIOUS_COLOR = "var(--color-text-tertiary)";
 
-interface Datum {
-  label: string;
-  tooltipLabel: string;
-  paidHp: number;
-  paidHc: number;
-  avoided: number;
-  previousYearBill: number | null;
-}
-
-function capitalizeFirst(s: string): string {
-  return s.charAt(0).toUpperCase() + s.slice(1);
-}
-
-function toData(points: BilanPoint[], period: BilanPeriod, locale: string): Datum[] {
-  return points.map((p) => {
-    const d = new Date(p.time);
-    let label: string;
-    let tooltipLabel: string;
-    if (period === "day") {
-      label = formatHourLabel(d.getHours(), locale);
-      tooltipLabel = formatHourRange(d.getHours(), locale);
-    } else if (period === "month") {
-      label = String(d.getDate());
-      tooltipLabel = capitalizeFirst(
-        d.toLocaleDateString(locale, { weekday: "long", day: "numeric", month: "long" }),
-      );
-    } else {
-      label = capitalizeFirst(d.toLocaleDateString(locale, { month: "short" }));
-      tooltipLabel = capitalizeFirst(
-        d.toLocaleDateString(locale, { month: "long", year: "numeric" }),
-      );
-    }
-    return {
-      label,
-      tooltipLabel,
-      paidHp: p.paidHp,
-      paidHc: p.paidHc,
-      avoided: p.avoided,
-      previousYearBill: p.previousYearBill ?? null,
-    };
-  });
+/** The marker's label, beside the line's top (recharts passes the line's viewBox). */
+function MarkerLabel(props: {
+  viewBox?: { x?: number; y?: number };
+  text: string;
+  side: "right" | "left";
+  row: number;
+}) {
+  const { viewBox, text, side, row } = props;
+  if (viewBox?.x === undefined || viewBox.y === undefined) return null;
+  return (
+    <text
+      x={side === "right" ? viewBox.x + 4 : viewBox.x - 4}
+      y={viewBox.y + CHART_TICK_FONT + row * (CHART_TICK_FONT + 3)}
+      textAnchor={side === "right" ? "start" : "end"}
+      fontSize={CHART_TICK_FONT}
+      fill="var(--color-text-secondary)"
+    >
+      {text}
+    </text>
+  );
 }
 
 /** A short dashed line across the bar, at the previous year's bill. */
@@ -93,11 +74,14 @@ export function BilanChart({
   period,
   showAvoided,
   previousYear,
+  changes = [],
   height = 260,
 }: {
   points: BilanPoint[];
   period: BilanPeriod;
   showAvoided: boolean;
+  /** Spec 205 — the day or month keys where new prices start (none on the day view). */
+  changes?: string[];
   /** The previous year, for the year view's legend; null elsewhere. */
   previousYear: number | null;
   height?: number;
@@ -111,6 +95,9 @@ export function BilanChart({
   const plotWidth = Math.max(0, chartWidth - ENERGY_CHART_Y_AXIS_PX);
   const halfTick = data.length > 0 ? Math.max(4, Math.min(16, plotWidth / data.length / 2 - 2)) : 8;
   const hasPrevious = previousYear !== null && data.some((d) => d.previousYearBill !== null);
+  const newPrices = t("energy.bilan.chart.newPrices");
+  // About 6 px per character at the tick font, plus the gap to the line.
+  const markers = changeMarkerLayout(data, changes, plotWidth, newPrices.length * 6 + 8);
 
   return (
     <div>
@@ -205,6 +192,17 @@ export function BilanChart({
               isAnimationActive={false}
             />
           )}
+          {markers.map((m) => (
+            <ReferenceLine
+              key={`change-${m.label}`}
+              x={m.label}
+              position="start"
+              stroke={PREVIOUS_COLOR}
+              strokeWidth={1.5}
+              strokeDasharray="4 3"
+              label={<MarkerLabel text={newPrices} side={m.side} row={m.row} />}
+            />
+          ))}
           {hasPrevious && (
             <Line
               dataKey="previousYearBill"

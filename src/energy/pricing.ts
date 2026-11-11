@@ -11,6 +11,8 @@
  */
 
 import type {
+  BilanFee,
+  BilanPriceSpan,
   EnergyPoint,
   TariffConfig,
   TariffContract,
@@ -43,6 +45,78 @@ export function versionOn(versions: TariffVersion[], localDate: string): TariffV
     if (v.startDate === null || v.startDate <= localDate) found = v;
   }
   return found;
+}
+
+/**
+ * The local day `n` days after `day` ("YYYY-MM-DD"). Through a `Date` at noon,
+ * so a daylight-saving change never skips or doubles a day.
+ */
+function addDays(day: string, n: number): string {
+  const [y, m, d] = day.split("-").map(Number);
+  return localDateStr(new Date(y, m - 1, d + n, 12));
+}
+
+function isLeapYear(year: number): boolean {
+  return (year % 4 === 0 && year % 100 !== 0) || year % 400 === 0;
+}
+
+/**
+ * Spec 205 — the versions covering the local days [fromDay, toDay], oldest
+ * first, each clamped to it. Days that no version covers are left out.
+ */
+export function priceSpans(
+  versions: TariffVersion[],
+  fromDay: string,
+  toDay: string,
+): BilanPriceSpan[] {
+  const sorted = sortVersions(versions);
+  const spans: BilanPriceSpan[] = [];
+  sorted.forEach((v, i) => {
+    const next = sorted[i + 1]?.startDate ?? null;
+    const from = v.startDate !== null && v.startDate > fromDay ? v.startDate : fromDay;
+    const end = next !== null ? addDays(next, -1) : toDay;
+    const to = end < toDay ? end : toDay;
+    if (from > to) return;
+    spans.push({
+      from,
+      to,
+      hp: v.prices.hp,
+      hc: v.prices.hc,
+      fixedFeeYear: v.fixedFeeYear,
+      kva: v.kva,
+    });
+  });
+  return spans;
+}
+
+/**
+ * Spec 205 FR1 — the fixed fee of the local days [fromDay, countUntilDay]:
+ * each day costs the yearly fee of its version over the length of its
+ * calendar year. Null when no counted day has a fee.
+ */
+export function periodFee(
+  versions: TariffVersion[],
+  fromDay: string,
+  countUntilDay: string,
+): BilanFee | null {
+  const sorted = sortVersions(versions);
+  let total = 0;
+  let days = 0;
+  let daysWithoutFee = 0;
+  let kva: number | null = null;
+  for (let day = fromDay; day <= countUntilDay; day = addDays(day, 1)) {
+    const v = versionOn(sorted, day);
+    days += 1;
+    kva = v?.kva ?? null;
+    if (v === null || v.fixedFeeYear === null) {
+      daysWithoutFee += 1;
+      continue;
+    }
+    const yearDays = isLeapYear(Number(day.slice(0, 4))) ? 366 : 365;
+    total += v.fixedFeeYear / yearDays;
+  }
+  if (days === 0 || daysWithoutFee === days) return null;
+  return { total, days, daysWithoutFee, kva };
 }
 
 /** The prices in force at an instant, 0/0 without any version. */

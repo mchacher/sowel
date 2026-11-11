@@ -353,6 +353,7 @@ Specs are grouped by theme and annotated with status:
 | 202 | Dated electricity prices                                                | 🚧     | Price history `tariff_versions` (HP/HC, fixed fee, kVA) seeded from `energy.tariff`; history, Bilan, by-usage, arbiter gain and EV sessions priced at read time with the version of each point's date; migration 044; amends 123, 200. Unreleased.                    |
 | 203 | Electricity price file                                                  | 🚧     | Price file `tariffs/electricity-prices.json` (EDF Tarif Bleu from the CRE open data, nightly PR); `PriceFileSync` reads it daily and adds the contract's prices as tariff versions, past ones after confirmation; amends 202. Unreleased.                             |
 | 204 | Seasonal off-peak hours                                                 | 🚧     | `TariffConfig.summer` (Enedis summer 04-01..10-31, stored not shown): a winter and a summer off-peak schedule, used by `TariffClassifier` and the recipe snapshot; amends 123, 202. Unreleased.                                                                       |
+| 205 | Fixed fee and price changes on the Bilan                                | 🚧     | Bilan shows the prorated fixed fee (`fixedFeeYear`) apart from consumption, the total, and marks price changes (`priceSpans`) in the chart and method card; amends 200, 202. Unreleased.                                                                              |
 
 ---
 

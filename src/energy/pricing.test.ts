@@ -9,7 +9,9 @@ import {
   monthlyNeedsDaily,
   monthlyPricingPoints,
   normalizeContract,
+  periodFee,
   pricePoints,
+  priceSpans,
   pricesAt,
   pricesOnOrNull,
   priceSeries,
@@ -364,5 +366,93 @@ describe("defaultContract", () => {
       kva: null,
       autoUpdate: false,
     });
+  });
+});
+
+// ── Spec 205 — fixed fee and price spans ────────────────────────────────
+
+/** A version carrying a yearly fee. */
+function feeVersion(
+  id: string,
+  startDate: string | null,
+  fixedFeeYear: number | null,
+  kva: number | null = 9,
+): TariffVersion {
+  return { ...version(id, startDate, { hp: 0.2, hc: 0.15 }, kva), fixedFeeYear };
+}
+
+describe("periodFee", () => {
+  it("prorates one fee over a 31-day month of a common year", () => {
+    const fee = periodFee([feeVersion("a", null, 240)], "2026-07-01", "2026-07-31");
+    expect(fee).not.toBeNull();
+    expect(fee!.total).toBeCloseTo((31 * 240) / 365, 10);
+    expect(fee).toMatchObject({ days: 31, daysWithoutFee: 0, kva: 9 });
+  });
+
+  it("adds both parts of a month crossed by a fee change on the 16th, each at its own rate", () => {
+    const versions = [feeVersion("a", null, 240), feeVersion("b", "2026-07-16", 300, 12)];
+    const fee = periodFee(versions, "2026-07-01", "2026-07-31");
+    expect(fee!.total).toBeCloseTo((15 * 240) / 365 + (16 * 300) / 365, 10);
+    expect(fee!.days).toBe(31);
+    // The power of the last day counted.
+    expect(fee!.kva).toBe(12);
+  });
+
+  it("divides by 366 in a leap year", () => {
+    const fee = periodFee([feeVersion("a", null, 240)], "2028-02-01", "2028-02-29");
+    expect(fee!.days).toBe(29);
+    expect(fee!.total).toBeCloseTo((29 * 240) / 366, 10);
+  });
+
+  it("counts the days of a version without fee as without fee", () => {
+    const versions = [feeVersion("a", null, null, null), feeVersion("b", "2026-07-11", 240)];
+    const fee = periodFee(versions, "2026-07-01", "2026-07-31");
+    expect(fee).toMatchObject({ days: 31, daysWithoutFee: 10, kva: 9 });
+    expect(fee!.total).toBeCloseTo((21 * 240) / 365, 10);
+  });
+
+  it("gives null when no version has a fee, or when nothing is counted", () => {
+    expect(periodFee([feeVersion("a", null, null)], "2026-07-01", "2026-07-31")).toBeNull();
+    expect(periodFee([], "2026-07-01", "2026-07-31")).toBeNull();
+    expect(periodFee([feeVersion("a", null, 240)], "2026-07-02", "2026-07-01")).toBeNull();
+  });
+
+  it("counts 365 calendar days over a year that crosses both daylight-saving changes", () => {
+    const fee = periodFee([feeVersion("a", null, 240)], "2026-01-01", "2026-12-31");
+    expect(fee!.days).toBe(365);
+    expect(fee!.total).toBeCloseTo(240, 10);
+  });
+});
+
+describe("priceSpans", () => {
+  const A = feeVersion("a", null, null, null);
+  const B = feeVersion("b", "2026-02-01", 235.92);
+  const C = feeVersion("c", "2026-08-01", 250.5);
+
+  it("gives one span, the period, for a period inside one version", () => {
+    expect(priceSpans([C, A, B], "2026-03-01", "2026-03-31")).toEqual([
+      { from: "2026-03-01", to: "2026-03-31", hp: 0.2, hc: 0.15, fixedFeeYear: 235.92, kva: 9 },
+    ]);
+  });
+
+  it("gives three contiguous spans, clamped, for a period crossed by two changes", () => {
+    const spans = priceSpans([C, A, B], "2026-01-01", "2026-12-31");
+    expect(spans.map((s) => [s.from, s.to])).toEqual([
+      ["2026-01-01", "2026-01-31"],
+      ["2026-02-01", "2026-07-31"],
+      ["2026-08-01", "2026-12-31"],
+    ]);
+    expect(spans.map((s) => s.fixedFeeYear)).toEqual([null, 235.92, 250.5]);
+  });
+
+  it("gives the version without date, clamped, for a period before the first dated one", () => {
+    expect(priceSpans([C, A, B], "2025-05-01", "2025-05-31")).toEqual([
+      { from: "2025-05-01", to: "2025-05-31", hp: 0.2, hc: 0.15, fixedFeeYear: null, kva: null },
+    ]);
+  });
+
+  it("lists a version that starts after today inside the period", () => {
+    const spans = priceSpans([A, feeVersion("d", "2026-11-20", 240)], "2026-11-01", "2026-11-30");
+    expect(spans.map((s) => s.from)).toEqual(["2026-11-01", "2026-11-20"]);
   });
 });
