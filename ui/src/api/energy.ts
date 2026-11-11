@@ -55,12 +55,18 @@ export async function getTariffConfig(): Promise<TariffConfig> {
 /**
  * Saves the HP/HC schedule only. Prices have their own history since spec 202
  * (`createTariffVersion` and friends): sending `prices` here would edit the
- * version in force today.
+ * version in force today. The body is the whole schedule (spec 204): without
+ * `summer`, a single schedule is stored.
  */
-export async function saveTariffConfig(config: Pick<TariffConfig, "schedules">): Promise<void> {
+export async function saveTariffConfig(
+  config: Pick<TariffConfig, "schedules" | "summer">,
+): Promise<void> {
   await fetchJSON(`${API_BASE}/settings/energy/tariff`, {
     method: "PUT",
-    body: JSON.stringify({ schedules: config.schedules }),
+    body: JSON.stringify({
+      schedules: config.schedules,
+      ...(config.summer ? { summer: config.summer } : {}),
+    }),
   });
 }
 

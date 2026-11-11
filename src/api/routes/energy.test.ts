@@ -167,12 +167,18 @@ async function buildApp(opts: BuildOpts = {}) {
       opts.bindingsById?.[id] ?? [{ alias: "power", category: "power", type: "number", value: 0 }],
   } as never;
 
-  // tariffClassifier returns the injected config (spec 123 — used for cost wiring).
-  const tariffClassifier = { getConfig: () => opts.tariff ?? null } as never;
   // The tariff PUT writes through this; capture what it was handed so a test
   // can assert an accepted body actually reached the store.
   const settingsWrites: Array<[string, string]> = [];
   const settings = new Map(Object.entries(opts.settings ?? {}));
+  // tariffClassifier returns the injected config (spec 123 — used for cost
+  // wiring), or what a tariff PUT stored (spec 204 — a PUT then GET round trip).
+  const tariffClassifier = {
+    getConfig: () => {
+      const stored = settings.get("energy.tariff");
+      return stored ? (JSON.parse(stored) as TariffConfig) : (opts.tariff ?? null);
+    },
+  } as never;
   const settingsManager = {
     get: (key: string) => settings.get(key),
     set: (key: string, value: string) => {
@@ -1857,6 +1863,91 @@ describe("PUT /api/v1/settings/energy/tariff", () => {
       },
     });
     expect(res.statusCode).toBe(200);
+  });
+
+  // Spec 204 — seasonal off-peak hours.
+  const WINTER = [
+    { days: [0, 1, 2, 3, 4, 5, 6], slots: [{ start: "22:00", end: "06:00", tariff: "hc" }] },
+  ];
+  const SUMMER = [
+    { days: [0, 1, 2, 3, 4, 5, 6], slots: [{ start: "12:00", end: "15:00", tariff: "hc" }] },
+  ];
+
+  it("stores a summer without dates with 04-01 / 10-31, and the GET returns it", async () => {
+    app = await buildApp({});
+    const res = await app.inject({
+      method: "PUT",
+      url: URL,
+      payload: { schedules: WINTER, summer: { schedules: SUMMER } },
+    });
+    expect(res.statusCode).toBe(200);
+    const summer = { from: "04-01", to: "10-31", schedules: SUMMER };
+    expect(JSON.parse(writes()[0][1])).toMatchObject({ schedules: WINTER, summer });
+    const got = (await app.inject({ method: "GET", url: URL })).json();
+    expect(got.schedules).toEqual(WINTER);
+    expect(got.summer).toEqual(summer);
+  });
+
+  it("keeps custom season dates", async () => {
+    app = await buildApp({});
+    const summer = { from: "05-15", to: "09-15", schedules: SUMMER };
+    const res = await app.inject({
+      method: "PUT",
+      url: URL,
+      payload: { schedules: WINTER, summer },
+    });
+    expect(res.statusCode).toBe(200);
+    expect(JSON.parse(writes()[0][1]).summer).toEqual(summer);
+  });
+
+  it.each([
+    ["a month out of range", { from: "13-01" }],
+    ["a day out of range", { to: "04-32" }],
+    ["a date not MM-DD", { from: "4-1" }],
+  ])("400s a summer with %s, and writes nothing", async (_label, dates) => {
+    app = await buildApp({});
+    const res = await app.inject({
+      method: "PUT",
+      url: URL,
+      payload: { schedules: WINTER, summer: { ...dates, schedules: SUMMER } },
+    });
+    expect(res.statusCode).toBe(400);
+    expect(writes()).toEqual([]);
+  });
+
+  it("400s a summer whose start is after its end, and writes nothing", async () => {
+    app = await buildApp({});
+    const res = await app.inject({
+      method: "PUT",
+      url: URL,
+      payload: { schedules: WINTER, summer: { from: "10-31", to: "04-01", schedules: SUMMER } },
+    });
+    expect(res.statusCode).toBe(400);
+    expect(writes()).toEqual([]);
+  });
+
+  it("400s a summer without schedules", async () => {
+    app = await buildApp({});
+    const res = await app.inject({
+      method: "PUT",
+      url: URL,
+      payload: { schedules: WINTER, summer: { from: "04-01", to: "10-31" } },
+    });
+    expect(res.statusCode).toBe(400);
+  });
+
+  it("stores a single schedule when a body without summer follows a seasonal one", async () => {
+    app = await buildApp({});
+    await app.inject({
+      method: "PUT",
+      url: URL,
+      payload: { schedules: WINTER, summer: { schedules: SUMMER } },
+    });
+    const res = await app.inject({ method: "PUT", url: URL, payload: { schedules: WINTER } });
+    expect(res.statusCode).toBe(200);
+    expect(JSON.parse(writes()[1][1])).not.toHaveProperty("summer");
+    const got = (await app.inject({ method: "GET", url: URL })).json();
+    expect(got).not.toHaveProperty("summer");
   });
 
   const rejects: [string, unknown][] = [

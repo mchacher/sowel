@@ -339,6 +339,23 @@ describe("defaultContract", () => {
     });
   });
 
+  it("reads HP/HC from an off-peak slot in summer only (spec 204)", () => {
+    const summerOnly = {
+      ...schedule("hp"),
+      summer: {
+        from: "04-01",
+        to: "10-31",
+        schedules: [
+          {
+            days: [0, 1, 2, 3, 4, 5, 6],
+            slots: [{ start: "12:00", end: "15:00", tariff: "hc" as const }],
+          },
+        ],
+      },
+    };
+    expect(defaultContract(summerOnly, []).contractType).toBe("hphc");
+  });
+
   it("reads Base without an off-peak slot or without a schedule", () => {
     expect(defaultContract(schedule("hp"), []).contractType).toBe("base");
     expect(defaultContract(null, [])).toEqual({

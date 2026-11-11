@@ -276,14 +276,16 @@ export function normalizeContract(value: unknown): TariffContract | null {
 
 /**
  * The contract shown before one was ever saved: an unknown supplier, HP/HC
- * when the schedule has an off-peak slot, the power of the latest version.
+ * when the schedule (either season, spec 204) has an off-peak slot, the power
+ * of the latest version.
  */
 export function defaultContract(
   tariff: TariffConfig | null,
   versions: TariffVersion[],
 ): TariffContract {
-  const hasOffPeak =
-    tariff?.schedules.some((s) => s.slots.some((slot) => slot.tariff === "hc")) ?? false;
+  // Spec 204 — an off-peak slot in either season makes it HP/HC.
+  const all = [...(tariff?.schedules ?? []), ...(tariff?.summer?.schedules ?? [])];
+  const hasOffPeak = all.some((s) => s.slots.some((slot) => slot.tariff === "hc"));
   const sorted = sortVersions(versions);
   return {
     supplier: "other",
