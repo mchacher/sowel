@@ -10,7 +10,7 @@ Branch `feat/bilan-fixed-fee`, one pull request.
 - [x] 4 — Route and `computeBilan` pass-through
 - [x] 5 — UI: fee block, markers, method card, strings EN and FR
 - [x] 6 — Docs delta, EN and FR
-- [ ] 7 — Checked on a scratch or shadow instance with the 9 kVA prices: a month crossed by 1 August 2025, the
+- [x] 7 — Checked on a scratch or shadow instance with the 9 kVA prices: a month crossed by 1 August 2025, the
       year 2025; 1280 px and 390 px, light and dark
 
 ## Test Plan
