@@ -13,6 +13,12 @@ Cette page résume toutes les versions publiées, de la plus récente à la plus
 
 ## 1.86.x : Les euros et les kWh, et une application plus légère
 
+### v1.86.1 — 2026-11-11 { #v1-86-1 }
+
+Sur un ordinateur, les deux colonnes de la carte de facture du Bilan se lisent maintenant de la même façon et s'alignent.
+
+- Correctif (interface) : **les colonnes de la carte de facture se répondent** (#1238, #1239). La colonne des euros prend la forme de celle des kWh : une barre répartie entre heures pleines et heures creuses en euros, les deux montants, puis le prix moyen payé, qui quitte l'encadré des kWh. Titre, chiffre, barre, montants, phrase et comparaison commencent à la même hauteur des deux côtés, et le trait entre les colonnes redevient droit. L'affichage sur téléphone ne change pas.
+
 ### v1.86.0 — 2026-11-11 { #v1-86-0 }
 
 Le Bilan montre maintenant ce que vous avez consommé en kWh à côté de ce que vous avez payé en euros : un changement de prix ne masque plus un changement de consommation. L'application elle-même est trois fois plus légère à ouvrir : le premier écran charge environ 1,2 Mo au lieu de 3,6 Mo, et les autres pages se chargent à leur première visite.

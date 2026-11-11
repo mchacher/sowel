@@ -13,6 +13,12 @@ This page summarises every published version, newest first. For the full diff be
 
 ## 1.86.x: Euros and kWh, and a lighter app
 
+### v1.86.1 — 2026-11-11 { #v1-86-1 }
+
+On a computer, the two columns of the Costs page's bill card now read the same way and line up.
+
+- Fix (ui): **the bill card's columns mirror each other** (#1238, #1239). The euro column gets the same shape as the kWh one: a bar split into peak and off-peak euros, the two amounts, then the average price paid, which moves there from the kWh box. Label, figure, bar, amounts, sentence and comparison start at the same height on both sides, and the rule between the columns is straight again. The phone layout is unchanged.
+
 ### v1.86.0 — 2026-11-11 { #v1-86-0 }
 
 The Costs page now shows what you consumed in kWh next to what you paid in euros, so a change in price no longer hides a change in consumption. The app itself is three times lighter to open: the first screen loads about 1.2 MB instead of 3.6 MB, and the other pages load when you first visit them.
