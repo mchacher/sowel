@@ -19,8 +19,8 @@ Branch `feat/price-file`. Two pull requests, so the file is on `main` before any
       CRE files, row counts compared with the CSV
 - [x] B.2 — `scripts/tariffs/check.ts`, step in `ci.yml`, `scripts/README.md`
 - [x] B.3 — `.github/workflows/tariffs.yml`
-- [ ] B.3b — The maintainer creates the secret `TARIFFS_PR_TOKEN`
-- [ ] B.4 — Once merged and the secret set, run the workflow by hand: nothing opened on an unchanged file. Then
+- [x] B.3b — The maintainer creates the secret `TARIFFS_PR_TOKEN`
+- [x] B.4 — Once merged and the secret set, run the workflow by hand: nothing opened on an unchanged file. Then
       exercise the path that pushes, which a no-change run never reaches: run it from a branch where one row of
       the file was removed, check the pull request opens with its checks running, close it
 
@@ -48,7 +48,7 @@ Branch `feat/price-file`. Two pull requests, so the file is on `main` before any
 
 - [x] F.1 — The docs delta of `spec.md`, EN and FR, screenshots
 - [x] F.2 — Specs index rows (done with the spec)
-- [ ] F.3 — Trial on a local shadow instance seeded from production (`scripts/shadow-deploy.sh`, asked by the
+- [x] F.3 — Trial on a local shadow instance seeded from production (`scripts/shadow-deploy.sh`, asked by the
       maintainer): Bilan of a month and a year noted before, the past prices added, the same views after; the
       differences explained by the prices alone
 

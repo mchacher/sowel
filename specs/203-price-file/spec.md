@@ -117,7 +117,7 @@ of the file.
       passes.
 - [x] The script run on the committed CRE fixtures gives the committed expected rows; a malformed fixture makes
       it fail without writing.
-- [ ] The nightly workflow opens a pull request only when the file changes, and merges nothing.
+- [x] The nightly workflow opens a pull request only when the file changes, and merges nothing.
 - [x] With the option on and a contract of 9 kVA off-peak on an instance that only has the version without a
       date, the first read holds every past price; « Ajouter ces prix » creates them with
       `origin: "file:edf-tarif-bleu"`, and the Bilan of a past month is then priced with them.

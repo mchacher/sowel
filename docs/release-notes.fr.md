@@ -11,6 +11,27 @@ Cette page résume toutes les versions publiées, de la plus récente à la plus
 
 ---
 
+## 1.85.x : Des prix qui suivent le calendrier
+
+### v1.85.0 — 2026-11-11 { #v1-85-0 }
+
+Les prix de l'électricité ont un historique : chaque euro est désormais calculé avec les prix en vigueur à sa date, et pour le Tarif Bleu d'EDF, Sowel prend ces prix dans un fichier tenu dans ce dépôt, passés compris. Les heures creuses peuvent différer entre l'été et l'hiver, le Bilan montre l'abonnement à part de la consommation, et les réglages solaires ont leur propre onglet.
+
+**Après la mise à jour, dans Réglages > Énergie :** choisissez votre contrat (fournisseur, heures creuses ou base, puissance souscrite). Pour le Tarif Bleu d'EDF, Sowel liste alors tous les prix passés de ce contrat : vérifiez-les et cliquez sur « Ajouter ces N prix » pour valoriser votre historique avec eux. D'ici là, vos prix actuels s'appliquent à toutes les dates, comme avant.
+
+**Des chiffres qui changent :** les coûts par usage sont désormais valorisés point par point au prix de chaque point, solaire compris ; leurs totaux bougent légèrement même avec un seul prix. Une fois les prix passés ajoutés, les mois passés sont recalculés avec eux.
+
+**Revenir à la v1.84.0 :** réinstallez-la et restaurez la sauvegarde faite avant la mise à jour (`data/backups/`). Une sauvegarde faite après la mise à jour contient la nouvelle table `tariff_versions` et la v1.84.0 la refuse.
+
+- Nouveauté (énergie) : **des prix de l'électricité datés** (spec 202, #1218). Réglages > Énergie > Prix liste les périodes de prix (début, fin, heures pleines et creuses en €/kWh, abonnement, puissance) ; « Ajouter un changement de prix » en ajoute une à partir d'une date, la première couvre tout ce qui précède. L'historique, le Bilan, le par usage, le gain de l'arbitre et les sessions de recharge sont valorisés à la lecture avec la période de la date de chaque point ; un mois traversé par un changement est valorisé à partir de ses jours. Le contrat (fournisseur, type, puissance) est enregistré à part. `GET/POST/PUT/DELETE /api/v1/settings/energy/tariff/versions`, `GET/PUT /api/v1/settings/energy/contract` ; migration 044, initialisée avec vos prix actuels.
+- Nouveauté (énergie) : **un fichier de prix de l'électricité** (spec 203, #1221, #1223). `tariffs/electricity-prices.json` contient tous les prix du Tarif Bleu d'EDF publiés par la CRE (toutes les puissances, heures creuses et base, depuis 2012), reconstruit chaque nuit par un workflow qui ouvre une pull request au mainteneur quand la CRE publie. Sowel le lit une fois par jour : une nouvelle période publiée depuis la dernière lecture est ajoutée d'elle-même, avec une notification ; les prix passés, les retardataires et un saut de 30 % ou plus attendent une confirmation (« Ajouter ces N prix » ou « Ignorer »). Option « Mettre à jour les prix automatiquement » sur le contrat, « Vérifier maintenant ».
+- Nouveauté (énergie) : **des heures creuses saisonnières** (spec 204, #1225). « Mes heures creuses changent entre l'été et l'hiver » affiche une plage d'hiver (du 1er novembre au 31 mars) et une d'été (du 1er avril au 31 octobre), pour la réforme Enedis des heures creuses. L'énergie est répartie en heures pleines et creuses avec la plage de la saison du jour à partir de l'enregistrement ; l'énergie passée garde sa répartition (#1219). Les recettes reçoivent les heures creuses de la saison du jour.
+- Nouveauté (énergie) : **l'abonnement dans le Bilan** (spec 205, #1227). Le mois et l'année affichent « Abonnement 9 kVA », la part fixe au prorata des jours jusqu'à aujourd'hui, et le total avec l'abonnement ; le grand chiffre et les comparaisons restent sur la consommation. Une période traversée par un changement de prix affiche « Nouveaux prix » dans son graphique et liste les prix de chaque partie.
+- Nouveauté (interface) : **un onglet Solaire dans les réglages** (spec 206, #1226). Réglages > Solaire regroupe l'installation solaire et l'arbitre de surplus ; Réglages > Énergie garde le tarif. Sur téléphone, la barre d'onglets défile de côté.
+- Documentation : les présentations non listées (#1217, #1220, #1222) et l'étape de la méthode qui passe de l'objectif aux fonctionnalités (#1224).
+
+---
+
 ## 1.84.x : Ce que coûte l'électricité
 
 ### v1.84.0 — 2026-11-10 { #v1-84-0 }
