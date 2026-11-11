@@ -196,6 +196,7 @@ export class EvSessionTracker {
   private unsubscribe: (() => void) | null = null;
   private timer: ReturnType<typeof setInterval> | null = null;
   private readonly now: () => number;
+  private readonly pricesOn: (localDay: string) => TariffPrices | null;
 
   constructor(
     private readonly eventBus: EventBus,
@@ -203,11 +204,23 @@ export class EvSessionTracker {
     private readonly tariffClassifier: TariffClassifier,
     private readonly store: EvSessionStore,
     logger: Logger,
-    options: { now?: () => number } = {},
+    options: {
+      now?: () => number;
+      /** Spec 202 — the prices in force on a local day, null without a tariff. */
+      pricesOn?: (localDay: string) => TariffPrices | null;
+    } = {},
   ) {
     this.logger = logger.child({ module: "ev-session-tracker" });
     this.now = options.now ?? (() => Date.now());
+    this.pricesOn = options.pricesOn ?? (() => null);
   }
+
+  /**
+   * A record as the API shows it, priced at read time with the prices in
+   * force on the day it started (spec 202).
+   */
+  private readonly toApi = (record: SessionRecord): EvChargeSession =>
+    toSession(record, this.pricesOn(localDateStr(new Date(record.startedAt))));
 
   start(): void {
     this.restore();
@@ -276,13 +289,13 @@ export class EvSessionTracker {
   listByCharger(chargerId: string, month: string): EvChargeSession[] | null {
     const range = monthRange(month);
     if (!range) return null;
-    return this.store.listByCharger(chargerId, range.fromIso, range.toIso).map(toSession);
+    return this.store.listByCharger(chargerId, range.fromIso, range.toIso).map(this.toApi);
   }
 
   listByVehicle(vehicleId: string, month: string): EvChargeSession[] | null {
     const range = monthRange(month);
     if (!range) return null;
-    return this.store.listByVehicle(vehicleId, range.fromIso, range.toIso).map(toSession);
+    return this.store.listByVehicle(vehicleId, range.fromIso, range.toIso).map(this.toApi);
   }
 
   /**
@@ -300,7 +313,7 @@ export class EvSessionTracker {
         return result.state === "vehicle" && result.vehicleId === vehicleId;
       })
       .sort((a, b) => b.startedAt.localeCompare(a.startedAt))
-      .map(toSession);
+      .map(this.toApi);
   }
 
   summary(vehicleId: string, month: string): EvVehicleMonthSummary | null {
@@ -309,14 +322,14 @@ export class EvSessionTracker {
     const sessions = this.store
       .listByVehicle(vehicleId, range.fromIso, range.toIso)
       .filter((r) => r.endedAt !== null)
-      .map(toSession);
+      .map(this.toApi);
     const driving = this.store.sumDriving(vehicleId, range.fromDay, range.toDay);
     return monthSummary({
       vehicleId,
       month,
       sessions,
       plugInHybrid: this.equipmentManager.getById(vehicleId)?.plugInHybrid === true,
-      whPerPoint: whPerBatteryPoint(this.store.listForLearning(vehicleId).map(toSession)),
+      whPerPoint: whPerBatteryPoint(this.store.listForLearning(vehicleId).map(this.toApi)),
       driving,
     });
   }
@@ -350,7 +363,7 @@ export class EvSessionTracker {
       { sessionId, attribution: record.attribution, vehicleId: record.vehicleId },
       "EV session attributed by hand",
     );
-    return toSession(record);
+    return this.toApi(record);
   }
 
   // ============================================================
@@ -502,7 +515,6 @@ export class EvSessionTracker {
           importWh: null,
         },
         this.hasMainMeter(),
-        this.prices(),
       );
     }
     // Manual ones too: they take no automatic decision, but still the final
@@ -511,7 +523,7 @@ export class EvSessionTracker {
     this.persist(record);
     this.settleDue(now);
     this.logger.info(
-      { sessionId: record.id, chargerId, energyWh: Math.round(toSession(record).energyWh) },
+      { sessionId: record.id, chargerId, energyWh: Math.round(this.toApi(record).energyWh) },
       "EV charge session closed",
     );
   }
@@ -924,7 +936,6 @@ export class EvSessionTracker {
     );
     if (this.queue.size === 0) return;
     const hasMainMeter = this.hasMainMeter();
-    const prices = this.prices();
     const covered = this.ledger.coveredUntilMs;
     const changed = new Set<SessionRecord>();
     for (const startS of [...this.queue.keys()].sort((a, b) => a - b)) {
@@ -949,41 +960,28 @@ export class EvSessionTracker {
         windowImport,
       );
       entries.forEach((e, i) => {
-        this.price(e.record, { ...e.window, importWh: imports[i] }, hasMainMeter, prices);
+        this.price(e.record, { ...e.window, importWh: imports[i] }, hasMainMeter);
         changed.add(e.record);
       });
     }
     for (const record of changed) this.persist(record);
   }
 
-  private price(
-    r: SessionRecord,
-    w: WindowMeasure,
-    hasMainMeter: boolean,
-    prices: TariffPrices | null,
-  ): void {
+  /** Add a settled window to the session's sums. Wh only: euros are a read-time value (spec 202). */
+  private price(r: SessionRecord, w: WindowMeasure, hasMainMeter: boolean): void {
     const split = this.tariffClassifier.classify(1_000_000, w.startS, w.lengthS);
     const total = split.hp + split.hc;
     const settled = settleWindow(w, {
       hasMainMeter,
       hcShare: total > 0 ? split.hc / total : 0,
-      prices,
     });
     r.estCarWh += settled.carWh;
     r.estGridHpWh += settled.gridHpWh;
     r.estGridHcWh += settled.gridHcWh;
-    if (settled.costHpEur !== null) r.estCostHpEur = (r.estCostHpEur ?? 0) + settled.costHpEur;
-    if (settled.costHcEur !== null) r.estCostHcEur = (r.estCostHcEur ?? 0) + settled.costHcEur;
   }
 
   private hasMainMeter(): boolean {
     return this.equipmentManager.getAll().some((e) => e.type === "main_energy_meter" && e.enabled);
-  }
-
-  private prices(): TariffPrices | null {
-    const prices = this.tariffClassifier.getConfig()?.prices;
-    if (!prices) return null;
-    return (prices.hp ?? 0) > 0 || (prices.hc ?? 0) > 0 ? prices : null;
   }
 
   // ============================================================
@@ -996,7 +994,7 @@ export class EvSessionTracker {
     if (charger) record.chargerName = charger.name;
     record.updatedAt = new Date(this.now()).toISOString();
     this.store.save(record);
-    this.eventBus.emit({ type: "energy.ev_session.updated", session: toSession(record) });
+    this.eventBus.emit({ type: "energy.ev_session.updated", session: this.toApi(record) });
   }
 
   /** The open sessions and those still in their grace period. */
@@ -1124,11 +1122,11 @@ export class EvSessionTracker {
         this.store
           .listForLearning(e.vehicleId)
           .filter((r) => r.id !== record.id)
-          .map(toSession),
+          .map(this.toApi),
       );
       if (learned !== null) whPerPoint.set(e.vehicleId, learned);
     }
-    return { energyWh: toSession(record).energyWh, whPerPoint };
+    return { energyWh: this.toApi(record).energyWh, whPerPoint };
   }
 
   private usualVehicleOf(chargerId: string): string | null {

@@ -6,7 +6,8 @@ import type { ArbiterGainRow, ArbiterGainStore } from "./arbiter-gain-store.js";
 import type { TariffClassifier } from "./tariff-classifier.js";
 
 // Spec 200 — what the arbiter earns: the solar energy used by the loads it
-// switched on, priced at the tariff of the minute.
+// switched on. Spec 202 — booked in Wh, peak and off-peak by the schedule of
+// the minute, and priced when it is read, with the prices of its day.
 //
 // It reads the arbiter's public state, exactly like the UI, and never writes to
 // it: arbitration cannot be disturbed by the measurement (same rule as the
@@ -24,7 +25,7 @@ const SPLIT_NOMINAL_WH = 1_000_000;
 
 export interface ArbiterGainMeterDeps {
   arbiter: { getPublicState(): ArbiterPublicState };
-  tariff: Pick<TariffClassifier, "classify" | "getConfig">;
+  tariff: Pick<TariffClassifier, "classify">;
   store: ArbiterGainStore;
   settings: Pick<SettingsManager, "get" | "set">;
   logger: Logger;
@@ -94,7 +95,6 @@ export class ArbiterGainMeter {
     const solarW = Math.max(0, drawW - importW);
     if (solarW <= 0) return;
 
-    const prices = this.deps.tariff.getConfig()?.prices ?? { hp: 0, hc: 0 };
     const startMs = now - dtMs;
     const day = localDateStr(new Date(startMs));
     // The classifier rounds to whole Wh, far too coarse for a minute of a
@@ -103,21 +103,30 @@ export class ArbiterGainMeter {
     const split = this.deps.tariff.classify(SPLIT_NOMINAL_WH, startMs / 1000, dtMs / 1000);
     const splitTotal = split.hp + split.hc;
     const hpShare = splitTotal > 0 ? split.hp / splitTotal : 1;
-    const eurPerWh = (hpShare * prices.hp + (1 - hpShare) * prices.hc) / 1000;
     for (const load of granted) {
       const wh = (((solarW * (load.watts ?? 0)) / drawW) * dtMs) / 3_600_000;
-      this.book(day, load.equipmentId, wh, wh * eurPerWh);
+      this.book(day, load.equipmentId, wh, hpShare);
     }
   }
 
-  private book(day: string, equipmentId: string, wh: number, eur: number): void {
+  private book(day: string, equipmentId: string, wh: number, hpShare: number): void {
+    const hpWh = wh * hpShare;
+    const hcWh = wh - hpWh;
     const key = `${day}|${equipmentId}`;
     const row = this.pendingRows.get(key);
     if (row) {
       row.solarWh += wh;
-      row.avoidedEur += eur;
+      row.solarHpWh += hpWh;
+      row.solarHcWh += hcWh;
     } else {
-      this.pendingRows.set(key, { day, equipmentId, solarWh: wh, avoidedEur: eur });
+      this.pendingRows.set(key, {
+        day,
+        equipmentId,
+        solarWh: wh,
+        solarHpWh: hpWh,
+        solarHcWh: hcWh,
+        avoidedEur: 0,
+      });
     }
   }
 

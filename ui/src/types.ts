@@ -2054,3 +2054,39 @@ export interface TariffConfig {
   schedules: DaySchedule[];
   prices: TariffPrices;
 }
+
+// ============================================================
+// Spec 202 — dated electricity prices (mirror of src/shared/types.ts)
+// ============================================================
+
+/** One price period: in force from `startDate` until the next version starts. */
+export interface TariffVersion {
+  id: string;
+  /** Local `YYYY-MM-DD`; null for the first version, which is open backwards. */
+  startDate: string | null;
+  /** € per kWh, tax included. A Base contract stores the same price twice. */
+  prices: TariffPrices;
+  /** € per year, tax included. */
+  fixedFeeYear: number | null;
+  kva: number | null;
+  origin: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface TariffVersionInput {
+  startDate?: string | null;
+  prices: TariffPrices;
+  fixedFeeYear?: number | null;
+  kva?: number | null;
+}
+
+export type TariffSupplier = "edf-tarif-bleu" | "other";
+export type TariffContractType = "hphc" | "base";
+
+export interface TariffContract {
+  supplier: TariffSupplier;
+  contractType: TariffContractType;
+  /** Subscribed power, kVA. */
+  kva: number | null;
+}

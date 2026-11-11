@@ -31,6 +31,7 @@ import {
   resolveInstanceIdentity,
 } from "../core/instance-identity.js";
 import { SettingsManager } from "../core/settings-manager.js";
+import { TariffVersionStore } from "../energy/tariff-version-store.js";
 import { applyMigrations } from "../test-helpers/migrations.js";
 import type { InfluxClient } from "../core/influx-client.js";
 
@@ -364,7 +365,65 @@ describe("BackupManager", () => {
       const result = await manager.restoreFromFile("gain.zip");
       expect(result.success).toBe(true);
       expect(db.prepare(`SELECT * FROM arbiter_daily_gain`).all()).toEqual([
-        { day: "2026-11-10", equipment_id: "car", solar_wh: 4600, avoided_eur: 0.8 },
+        {
+          day: "2026-11-10",
+          equipment_id: "car",
+          solar_wh: 4600,
+          avoided_eur: 0.8,
+          solar_hp_wh: 0,
+          solar_hc_wh: 0,
+        },
+      ]);
+    });
+
+    it("carries the tariff versions through an export and a restore (spec 202)", async () => {
+      expect(BACKUP_TABLES).toContain("tariff_versions");
+      db.prepare(
+        `INSERT INTO tariff_versions
+           (id, start_date, price_hp, price_hc, fixed_fee_year, kva, origin, created_at, updated_at)
+         VALUES ('v1', NULL, 0.2081, 0.1635, 189.99, 6, 'migration', '2026-11-11', '2026-11-11'),
+                ('v2', '2026-08-01', 0.2142, 0.1589, 190.81, 6, 'manual', '2026-11-11', '2026-11-11')`,
+      ).run();
+      await manager.exportToFile("tariff.zip");
+      db.prepare(`DELETE FROM tariff_versions`).run();
+
+      const result = await manager.restoreFromFile("tariff.zip");
+      expect(result.success).toBe(true);
+      expect(
+        db.prepare(`SELECT id, start_date, price_hp FROM tariff_versions ORDER BY id`).all(),
+      ).toEqual([
+        { id: "v1", start_date: null, price_hp: 0.2081 },
+        { id: "v2", start_date: "2026-08-01", price_hp: 0.2142 },
+      ]);
+    });
+
+    it("restores a backup taken before spec 202, and the startup seed prices it again", async () => {
+      db.prepare(
+        `INSERT INTO tariff_versions
+           (id, start_date, price_hp, price_hc, origin, created_at, updated_at)
+         VALUES ('stale', NULL, 0.5, 0.4, 'manual', '2026-11-11', '2026-11-11')`,
+      ).run();
+      // A pre-202 backup: no `tariff_versions` table, the prices in the setting.
+      const tariff = { schedules: [], prices: { hp: 0.2142, hc: 0.1589 } };
+      const tables = Object.fromEntries(
+        BACKUP_TABLES.filter((t) => t !== "tariff_versions").map((t) => [t, [] as unknown[]]),
+      );
+      tables.settings = [{ key: "energy.tariff", value: JSON.stringify(tariff) }];
+      const zip = new AdmZip();
+      zip.addFile(
+        "sowel-backup.json",
+        Buffer.from(JSON.stringify({ version: 2, exportedAt: new Date().toISOString(), tables })),
+      );
+
+      const result = await manager.restoreFromBuffer(zip.toBuffer());
+      expect(result.success).toBe(true);
+      expect(db.prepare(`SELECT COUNT(*) AS n FROM tariff_versions`).get()).toEqual({ n: 0 });
+
+      // What the next startup does.
+      const store = new TariffVersionStore(db, createLogger("silent").logger);
+      expect(store.seedFromSetting(tariff)).toBe(true);
+      expect(store.all()).toMatchObject([
+        { startDate: null, prices: { hp: 0.2142, hc: 0.1589 }, origin: "migration" },
       ]);
     });
   });

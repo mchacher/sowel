@@ -324,7 +324,7 @@ other settings, so **a backup can rebuild every live link**: keep backups like a
 
 Both route to the `energy` WebSocket topic. A session is one plug-in on an `ev_charger` (`src/energy/ev-sessions/`), or on a metered charger one stretch of power at 500 W or more (spec 193). Three SQLite tables (migration 039):
 
-- `ev_charge_sessions`: the charger's meter (`energy_wh`), the 5-minute window sums (`est_car_wh`, `est_grid_hp_wh`, `est_grid_hc_wh`, `est_cost_hp_eur`, `est_cost_hc_eur`) scaled to the meter on read, `attribution` (`pending`, `vehicle`, `unattributed`, `other`) with `attribution_source` (`auto`, `manual`: final) and `attribution_reason`, the vehicle id and name (kept with `vehicle_deleted` when the car is deleted), `battery_start` / `battery_end`, and `evidence` (JSON: what each vehicle reported during the session).
+- `ev_charge_sessions`: the charger's meter (`energy_wh`), the 5-minute window sums (`est_car_wh`, `est_grid_hp_wh`, `est_grid_hc_wh`, `est_cost_hp_eur`, `est_cost_hc_eur`: no longer written nor read since spec 202, the cost is computed at read time from the two grid sums) scaled to the meter on read, `attribution` (`pending`, `vehicle`, `unattributed`, `other`) with `attribution_source` (`auto`, `manual`: final) and `attribution_reason`, the vehicle id and name (kept with `vehicle_deleted` when the car is deleted), `battery_start` / `battery_end`, and `evidence` (JSON: what each vehicle reported during the session).
 - `ev_vehicle_daily_driving`: per vehicle and local day, `km_total`, `km_measured` (legs with no charge on the way) and `battery_drop`, for the cost per 100 km.
 - `ev_vehicle_leg_state`: the open driving leg of each vehicle.
 
@@ -351,7 +351,11 @@ Both route to the `energy` WebSocket topic. A session is one plug-in on an `ev_c
 
 ### Arbiter gain (spec 200)
 
-`arbiter_daily_gain` (migration 043) holds, per local day and per load, the solar energy used by the loads the arbiter switched on (`solar_wh`) and its value at the tariff of each minute (`avoided_eur`). Primary key (`day`, `equipment_id`), no foreign key (a removed load keeps its history), no purge (about five rows a day). Written every 15 minutes and on shutdown by `ArbiterGainMeter`, read by `GET /api/v1/energy/bilan`, and part of the backup. The first day measured is the setting `energy.arbiterGain.since`.
+`arbiter_daily_gain` (migration 043) holds, per local day and per load, the solar energy used by the loads the arbiter switched on (`solar_wh`) and, since migration 044 (spec 202), its part in peak and off-peak hours (`solar_hp_wh`, `solar_hc_wh`), priced at read time with the tariff version of the row's day. `avoided_eur` holds what was booked in euros before that migration and is no longer added to. Primary key (`day`, `equipment_id`), no foreign key (a removed load keeps its history), no purge (about five rows a day). Written every 15 minutes and on shutdown by `ArbiterGainMeter`, read by `GET /api/v1/energy/bilan`, and part of the backup. The first day measured is the setting `energy.arbiterGain.since`.
+
+### Tariff versions (spec 202)
+
+`tariff_versions` (migration 044) holds the dated electricity prices: `id` (UUID), `start_date` (local `YYYY-MM-DD`; NULL for the first version, open backwards), `price_hp`, `price_hc` (€/kWh incl. tax; a single-rate contract stores its price in both), `fixed_fee_year` (€/year incl. tax, nullable), `kva` (nullable), `origin` (`migration`, `manual`, later `<writer>:<id>`), `created_at`, `updated_at`. A unique index on `COALESCE(start_date, '')` allows one version per start date and a single version without one. No foreign key; part of the backup. Every euro is computed at read time from these rows (`src/energy/pricing.ts`). The setting `energy.tariff` keeps the HP/HC schedule; its `prices` are only read once, to create the first version at startup when the table is empty. The setting `energy.contract` holds the current contract: `{ supplier, contractType, kva }`.
 
 ## 6. API Endpoints Summary
 

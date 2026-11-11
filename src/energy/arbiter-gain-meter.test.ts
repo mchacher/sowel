@@ -8,7 +8,8 @@ import type { SettingsManager } from "../core/settings-manager.js";
 import type { ArbiterLoadInfo, ArbiterPublicState, TariffConfig } from "../shared/types.js";
 
 // Spec 200 — the arbiter gain meter: solar used by the granted loads, served
-// last by the sun, priced at the tariff of the minute.
+// last by the sun. Spec 202 — booked in Wh, peak and off-peak by the schedule
+// of the minute, never in euros: the price is applied when the row is read.
 
 const logger = createLogger("silent").logger;
 
@@ -111,7 +112,10 @@ describe("ArbiterGainMeter", () => {
     const heater = rows.find((r) => r.equipmentId === "heater")!;
     expect(car.solarWh).toBeCloseTo(1000 / 60, 6);
     expect(heater.solarWh).toBeCloseTo(500 / 60, 6);
-    expect(car.avoidedEur).toBeCloseTo((1000 / 60 / 1000) * 0.2, 9);
+    // Noon is peak time: all of it in HP, and no euro booked (spec 202).
+    expect(car.solarHpWh).toBeCloseTo(1000 / 60, 6);
+    expect(car.solarHcWh).toBeCloseTo(0, 9);
+    expect(car.avoidedEur).toBe(0);
     expect(car.day).toBe("2026-11-10");
   });
 
@@ -170,7 +174,7 @@ describe("ArbiterGainMeter", () => {
     expect(h.meter.pending("0000", "9999")[0].solarWh).toBeCloseTo((1000 * 120) / 3600, 6);
   });
 
-  it("prices a sample across a tariff change with the classifier's split", () => {
+  it("splits a sample across a tariff change with the classifier's split", () => {
     h.setState({ availableSurplusW: 1000, loads: [load("car", "granted", 1200)] });
     h.setNow(new Date(2026, 10, 10, 21, 59));
     h.meter.sample();
@@ -178,7 +182,9 @@ describe("ArbiterGainMeter", () => {
     h.meter.sample();
     const row = h.meter.pending("0000", "9999")[0];
     expect(row.solarWh).toBeCloseTo(40, 6);
-    expect(row.avoidedEur).toBeCloseTo(0.02 * 0.2 + 0.02 * 0.1, 9);
+    expect(row.solarHpWh).toBeCloseTo(20, 6);
+    expect(row.solarHcWh).toBeCloseTo(20, 6);
+    expect(row.avoidedEur).toBe(0);
   });
 
   it("books a sample on the local day it started", () => {
@@ -232,16 +238,50 @@ describe("ArbiterGainMeter", () => {
 describe("ArbiterGainStore", () => {
   it("adds to what a (day, load) holds and reads inclusive bounds", () => {
     const store = new ArbiterGainStore(createMigratedTestDb(), logger);
-    store.add([{ day: "2026-11-10", equipmentId: "car", solarWh: 100, avoidedEur: 0.02 }]);
-    store.add([
-      { day: "2026-11-10", equipmentId: "car", solarWh: 50, avoidedEur: 0.01 },
-      { day: "2026-11-12", equipmentId: "car", solarWh: 10, avoidedEur: 0.002 },
-      { day: "2026-11-13", equipmentId: "car", solarWh: 1, avoidedEur: 0.001 },
-    ]);
+    const row = (day: string, solarHpWh: number, solarHcWh: number) => ({
+      day,
+      equipmentId: "car",
+      solarWh: solarHpWh + solarHcWh,
+      solarHpWh,
+      solarHcWh,
+      avoidedEur: 0,
+    });
+    store.add([row("2026-11-10", 80, 20)]);
+    store.add([row("2026-11-10", 30, 20), row("2026-11-12", 10, 0), row("2026-11-13", 1, 0)]);
     const rows = store.range("2026-11-10", "2026-11-12");
     expect(rows).toHaveLength(2);
-    expect(rows[0]).toMatchObject({ day: "2026-11-10", solarWh: 150 });
-    expect(rows[0].avoidedEur).toBeCloseTo(0.03, 9);
+    expect(rows[0]).toMatchObject({
+      day: "2026-11-10",
+      solarWh: 150,
+      solarHpWh: 110,
+      solarHcWh: 40,
+      avoidedEur: 0,
+    });
     expect(rows[1].day).toBe("2026-11-12");
+  });
+
+  it("keeps the euros a row booked before spec 202 when Wh are added to it", () => {
+    const db = createMigratedTestDb();
+    // A row as migration 043 wrote it: euros, no HP/HC split.
+    db.prepare(
+      "INSERT INTO arbiter_daily_gain (day, equipment_id, solar_wh, avoided_eur) VALUES (?, ?, ?, ?)",
+    ).run("2026-11-10", "car", 100, 0.02);
+    const store = new ArbiterGainStore(db, logger);
+    store.add([
+      {
+        day: "2026-11-10",
+        equipmentId: "car",
+        solarWh: 50,
+        solarHpWh: 50,
+        solarHcWh: 0,
+        avoidedEur: 0,
+      },
+    ]);
+    expect(store.range("2026-11-10", "2026-11-10")[0]).toMatchObject({
+      solarWh: 150,
+      solarHpWh: 50,
+      solarHcWh: 0,
+      avoidedEur: 0.02,
+    });
   });
 });

@@ -33,42 +33,48 @@ function session(over: Partial<EvChargeSession>): EvChargeSession {
 
 describe("deriveEnergy", () => {
   it("scales the window estimates to the charger's meter", () => {
-    const d = deriveEnergy({
-      energyWh: 10_000,
-      estCarWh: 9_000,
-      estGridHpWh: 3_000,
-      estGridHcWh: 0,
-      estCostHpEur: 0.6,
-      estCostHcEur: 0,
-    });
+    const d = deriveEnergy(
+      { energyWh: 10_000, estCarWh: 9_000, estGridHpWh: 3_000, estGridHcWh: 0 },
+      { hp: 0.2, hc: 0.1 },
+    );
     expect(d.gridHpWh).toBeCloseTo(3_333.33, 1);
     expect(d.solarWh).toBeCloseTo(6_666.67, 1);
+    // Spec 202 — priced here, from the scaled grid Wh: the same figure the
+    // windows used to book (3 kWh at 0.20 €, scaled by 10/9).
     expect(d.costEur).toBeCloseTo(0.6667, 4);
   });
 
+  it("prices peak and off-peak grid energy at the prices it is given", () => {
+    const sums = { energyWh: 10_000, estCarWh: 10_000, estGridHpWh: 4_000, estGridHcWh: 6_000 };
+    const d = deriveEnergy(sums, { hp: 0.2, hc: 0.1 });
+    expect(d.costHpEur).toBeCloseTo(0.8, 9);
+    expect(d.costHcEur).toBeCloseTo(0.6, 9);
+    expect(d.costEur).toBeCloseTo(1.4, 9);
+    // Other prices, same energy: the cost follows the prices, not the session.
+    expect(deriveEnergy(sums, { hp: 0.3, hc: 0.1 }).costEur).toBeCloseTo(1.8, 9);
+  });
+
+  it("has no cost without prices, but still splits grid and solar", () => {
+    const d = deriveEnergy(
+      { energyWh: 10_000, estCarWh: 10_000, estGridHpWh: 4_000, estGridHcWh: 0 },
+      null,
+    );
+    expect(d).toMatchObject({ costHpEur: null, costHcEur: null, costEur: null });
+    expect(d.solarWh).toBe(6_000);
+  });
+
   it("uses the estimate as the energy for a charger without an energy meter", () => {
-    const d = deriveEnergy({
-      energyWh: 0,
-      estCarWh: 5_000,
-      estGridHpWh: 1_000,
-      estGridHcWh: 1_000,
-      estCostHpEur: null,
-      estCostHcEur: null,
-    });
+    const d = deriveEnergy(
+      { energyWh: 0, estCarWh: 5_000, estGridHpWh: 1_000, estGridHcWh: 1_000 },
+      null,
+    );
     expect(d.energyWh).toBe(5_000);
     expect(d.solarWh).toBe(3_000);
     expect(d.costEur).toBeNull();
   });
 
   it("counts everything as grid when the meter moved without any estimate", () => {
-    const d = deriveEnergy({
-      energyWh: 200,
-      estCarWh: 0,
-      estGridHpWh: 0,
-      estGridHcWh: 0,
-      estCostHpEur: null,
-      estCostHcEur: null,
-    });
+    const d = deriveEnergy({ energyWh: 200, estCarWh: 0, estGridHpWh: 0, estGridHcWh: 0 }, null);
     expect(d.solarWh).toBe(0);
     expect(d.gridHpWh).toBe(200);
   });

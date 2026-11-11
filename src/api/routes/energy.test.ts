@@ -4,8 +4,11 @@ import { createLogger } from "../../core/logger.js";
 import { registerEnergyRoutes, trimToWindow, SUBMETER_PALETTE } from "./energy.js";
 import { EMPTY_ACCURACY } from "../../energy/pv/pv-accuracy.js";
 import { installValidationErrorHandler, validationAjvOptions } from "../error-handler.js";
+import { TariffVersionStore } from "../../energy/tariff-version-store.js";
+import { createMigratedTestDb } from "../../test-helpers/migrations.js";
 import type {
   TariffConfig,
+  TariffVersionInput,
   ArbiterDailyHomeMetrics,
   ArbiterDailyLoadMetrics,
 } from "../../shared/types.js";
@@ -37,6 +40,9 @@ function makeRow(obj: PreparedRow) {
 
 interface BuildOpts {
   hpHcRows?: PreparedRow[];
+  /** Spec 202 — HP/HC rows per Flux window (`1mo`, `1d`…), for a route that
+   *  reads the same range at two resolutions. Falls back on `hpHcRows`. */
+  hpHcRowsByEvery?: Record<string, PreparedRow[]>;
   legacyRows?: PreparedRow[];
   productionRows?: PreparedRow[];
   submeterRowsById?: Record<string, PreparedRow[]>;
@@ -71,16 +77,32 @@ interface BuildOpts {
     readLoads: () => Omit<ArbiterDailyLoadMetrics, "equipmentName">[];
     readHome: () => ArbiterDailyHomeMetrics[];
   } | null;
-  /** Spec 200 — stub the arbiter gain store and meter. */
+  /** Spec 202 — dated versions created after the one seeded from `tariff`. */
+  versions?: TariffVersionInput[];
+  /** Spec 200 — stub the arbiter gain store and meter. Spec 202: a row may
+   *  carry Wh in HP/HC (priced at read time) instead of booked euros. */
   arbiterGain?: {
-    rows: Array<{ day: string; equipmentId: string; solarWh: number; avoidedEur: number }>;
-    pending?: Array<{ day: string; equipmentId: string; solarWh: number; avoidedEur: number }>;
+    rows: GainRowInput[];
+    pending?: GainRowInput[];
     since: string | null;
   };
   /** Settings the route reads (spec 200 — `energy.arbiter.enabled`). */
   settings?: Record<string, string>;
   /** Spec 200 — no InfluxDB configured. */
   noInflux?: boolean;
+}
+
+interface GainRowInput {
+  day: string;
+  equipmentId: string;
+  solarWh: number;
+  avoidedEur: number;
+  solarHpWh?: number;
+  solarHcWh?: number;
+}
+
+function gainRow(r: GainRowInput) {
+  return { solarHpWh: 0, solarHcWh: 0, ...r };
 }
 
 async function buildApp(opts: BuildOpts = {}) {
@@ -104,7 +126,8 @@ async function buildApp(opts: BuildOpts = {}) {
             ) {
               rows = opts.mainConsumptionRows ?? [];
             } else if (flux.includes('r.alias == "energy_hp" or r.alias == "energy_hc"')) {
-              rows = opts.hpHcRows ?? [];
+              const every = flux.match(/every: (\w+)/)?.[1] ?? "";
+              rows = opts.hpHcRowsByEvery?.[every] ?? opts.hpHcRows ?? [];
             } else if (
               flux.includes(
                 'r.alias == "energy" or r.alias == "autoconso" or r.alias == "injection"',
@@ -145,16 +168,26 @@ async function buildApp(opts: BuildOpts = {}) {
   // The tariff PUT writes through this; capture what it was handed so a test
   // can assert an accepted body actually reached the store.
   const settingsWrites: Array<[string, string]> = [];
+  const settings = new Map(Object.entries(opts.settings ?? {}));
   const settingsManager = {
-    get: (key: string) => opts.settings?.[key],
+    get: (key: string) => settings.get(key),
     set: (key: string, value: string) => {
       settingsWrites.push([key, value]);
+      settings.set(key, value);
     },
   } as never;
+
+  // Spec 202 — the real version store on a migrated in-memory database, set up
+  // as the startup does: the first version from the legacy setting's prices,
+  // then whatever dated versions the test adds.
+  const tariffVersions = new TariffVersionStore(createMigratedTestDb(), logger);
+  tariffVersions.seedFromSetting(opts.tariff ?? null);
+  for (const version of opts.versions ?? []) tariffVersions.create(version, "manual");
 
   const app = Fastify({ logger: false, ajv: validationAjvOptions });
   installValidationErrorHandler(app);
   (app as unknown as { settingsWrites: typeof settingsWrites }).settingsWrites = settingsWrites;
+  (app as unknown as { tariffVersions: TariffVersionStore }).tariffVersions = tariffVersions;
 
   // Stub auth: pre-decorate request.auth based on the test scenario (#381).
   const authRole = opts.authRole === undefined ? "admin" : opts.authRole;
@@ -169,16 +202,17 @@ async function buildApp(opts: BuildOpts = {}) {
     influxClient: influxClient as never,
     settingsManager,
     tariffClassifier,
+    tariffVersions,
     capacityArbiter: null,
     arbiterMetricsStore: (opts.arbiterMetrics ?? null) as never,
     arbiterGain: opts.arbiterGain
       ? ({
           store: {
             range: (from: string, to: string) =>
-              opts.arbiterGain!.rows.filter((r) => r.day >= from && r.day <= to),
+              opts.arbiterGain!.rows.filter((r) => r.day >= from && r.day <= to).map(gainRow),
           },
           meter: {
-            pending: () => opts.arbiterGain!.pending ?? [],
+            pending: () => (opts.arbiterGain!.pending ?? []).map(gainRow),
             since: () => opts.arbiterGain!.since,
           },
         } as never)
@@ -1013,7 +1047,10 @@ describe("Spec 123 — /api/v1/energy/history cost valuation", () => {
   });
 });
 
-describe("Spec 123 — /api/v1/energy/by-usage cost valuation (blended)", () => {
+// Spec 202 — the costs are now per point (each bucket at the main meter's
+// blended price of that bucket). With a single bucket, as here, that is the
+// period-blended rate of spec 123, so these figures did not move.
+describe("Spec 123 — /api/v1/energy/by-usage cost valuation", () => {
   let app: Awaited<ReturnType<typeof buildApp>> | null = null;
 
   beforeEach(() => {
@@ -1798,7 +1835,6 @@ describe("PUT /api/v1/settings/energy/tariff", () => {
     ["no body", undefined],
     ["missing schedules", { prices: { hp: 1, hc: 1 } }],
     ["schedules not an array", { schedules: {}, prices: { hp: 1, hc: 1 } }],
-    ["missing prices", { schedules: [] }],
     ["prices null", { schedules: [], prices: null }],
     ["hp not a number", { schedules: [], prices: { hp: "0.27", hc: 0.2 } }],
     ["hc missing", { schedules: [], prices: { hp: 0.27 } }],
@@ -2104,5 +2140,552 @@ describe("Spec 200 — /api/v1/energy/bilan", () => {
       url: "/api/v1/energy/bilan?period=day&date=2026-05-30",
     });
     expect(res.json().arbiter).toMatchObject({ enabled: true, measured: "none", avoided: 0 });
+  });
+});
+
+// ============================================================
+// Spec 202 — dated electricity prices
+// ============================================================
+
+/** A local midnight as Flux stamps a daily or monthly bucket. */
+function localDay(year: number, month: number, day: number): string {
+  return new Date(year, month - 1, day).toISOString();
+}
+
+describe("Spec 202 — pricing by tariff version", () => {
+  let app: Awaited<ReturnType<typeof buildApp>> | null = null;
+  const main = [{ id: "meter-1", name: "Compteur", type: "main_energy_meter" as const }];
+
+  beforeEach(() => {
+    process.env.TZ = "Europe/Paris";
+  });
+
+  afterEach(async () => {
+    if (app) await app.close();
+    app = null;
+  });
+
+  it("prices each day of a month with the version in force that day, totals included", async () => {
+    app = await buildApp({
+      equipments: main,
+      hpHcRows: [
+        { _time: localDay(2026, 5, 14), _value: 1000, alias: "energy_hp" },
+        { _time: localDay(2026, 5, 15), _value: 1000, alias: "energy_hp" },
+      ],
+      tariff: TARIFF_20_10,
+      versions: [{ startDate: "2026-05-15", prices: { hp: 0.3, hc: 0.1 } }],
+    });
+
+    const body = (
+      await app.inject({
+        method: "GET",
+        url: "/api/v1/energy/history?period=month&date=2026-05-30",
+      })
+    ).json();
+    expect(body.points[13].cost_total).toBe(0.2); // 14 May, before the change
+    expect(body.points[14].cost_total).toBe(0.3); // 15 May, the day it starts
+    expect(body.totals.cost_total).toBe(0.5);
+  });
+
+  it("prices a month crossed by a change from its days, in the year view", async () => {
+    // January under the first version; March crossed on the 16th.
+    const januaryDays = Array.from({ length: 10 }, (_, i) => ({
+      _time: localDay(2026, 1, i + 1),
+      _value: 1000,
+      alias: "energy_hp",
+    }));
+    const marchDays = Array.from({ length: 31 }, (_, i) => ({
+      _time: localDay(2026, 3, i + 1),
+      _value: 1000,
+      alias: "energy_hp",
+    }));
+    const fluxLog: string[] = [];
+    app = await buildApp({
+      equipments: main,
+      fluxLog,
+      hpHcRowsByEvery: {
+        "1mo": [
+          { _time: localDay(2026, 1, 1), _value: 10_000, alias: "energy_hp" },
+          { _time: localDay(2026, 3, 1), _value: 31_000, alias: "energy_hp" },
+        ],
+        "1d": [...januaryDays, ...marchDays],
+      },
+      tariff: TARIFF_20_10,
+      versions: [{ startDate: "2026-03-16", prices: { hp: 0.3, hc: 0.1 } }],
+    });
+
+    const body = (
+      await app.inject({ method: "GET", url: "/api/v1/energy/history?period=year&date=2026-06-01" })
+    ).json();
+    expect(body.points).toHaveLength(12);
+    expect(body.points[0].cost_total).toBe(2); // January: 10 kWh at 0.20
+    // March: 15 days at 0.20 and 16 days at 0.30.
+    expect(body.points[2].cost_total).toBeCloseTo(15 * 0.2 + 16 * 0.3, 4);
+    expect(body.totals.cost_total).toBeCloseTo(2 + 15 * 0.2 + 16 * 0.3, 4);
+    expect(fluxLog.some((f) => f.includes("every: 1d"))).toBe(true);
+  });
+
+  it("reads no daily points for a year whose change falls on the 1st of a month", async () => {
+    const fluxLog: string[] = [];
+    app = await buildApp({
+      equipments: main,
+      fluxLog,
+      hpHcRows: [
+        { _time: localDay(2026, 2, 1), _value: 10_000, alias: "energy_hp" },
+        { _time: localDay(2026, 3, 1), _value: 10_000, alias: "energy_hp" },
+      ],
+      tariff: TARIFF_20_10,
+      versions: [{ startDate: "2026-03-01", prices: { hp: 0.3, hc: 0.1 } }],
+    });
+
+    const body = (
+      await app.inject({ method: "GET", url: "/api/v1/energy/history?period=year&date=2026-06-01" })
+    ).json();
+    expect(body.points[1].cost_total).toBe(2);
+    expect(body.points[2].cost_total).toBe(3);
+    expect(body.totals.cost_total).toBe(5);
+    expect(fluxLog.some((f) => f.includes("every: 1d"))).toBe(false);
+  });
+
+  it("prices a meter that only runs off-peak at the off-peak price (by usage)", async () => {
+    // Monday: the house consumes 1 kWh in peak hours. Tuesday: 1 kWh off-peak,
+    // half of it by the sub-meter. The period-blended rate of spec 123 charged
+    // the sub-meter 0.5 kWh × 0.15; point by point it costs 0.5 kWh × 0.10.
+    const monday = localDay(2026, 5, 25);
+    const tuesday = localDay(2026, 5, 26);
+    app = await buildApp({
+      equipments: [...main, { id: "sub-A", name: "Chauffe-eau", type: "energy_meter" }],
+      hpHcRows: [
+        { _time: monday, _value: 1000, alias: "energy_hp" },
+        { _time: tuesday, _value: 1000, alias: "energy_hc" },
+      ],
+      submeterRowsById: { "sub-A": [{ _time: tuesday, _value: 500, alias: "energy" }] },
+      mainConsumptionRows: [
+        { _time: monday, _value: 1000, alias: "energy" },
+        { _time: tuesday, _value: 1000, alias: "energy" },
+      ],
+      tariff: TARIFF_20_10,
+    });
+
+    const body = (
+      await app.inject({
+        method: "GET",
+        url: "/api/v1/energy/by-usage?period=week&date=2026-05-30",
+      })
+    ).json();
+    expect(body.submeters[0].cost).toBeCloseTo(0.05, 4);
+    expect(body.totals.costByEquipment["sub-A"]).toBeCloseTo(0.05, 4);
+    expect(body.totals.otherCost).toBeCloseTo(0.2 + 0.05, 4);
+    expect(body.totals.totalCost).toBeCloseTo(0.3, 4);
+  });
+
+  it("prices a crossed month from its days in the Bilan year view, this year and the previous one", async () => {
+    const days = (year: number, month: number, count: number) =>
+      Array.from({ length: count }, (_, i) => ({
+        _time: localDay(year, month, i + 1),
+        _value: 1000,
+        alias: "energy_hp",
+      }));
+    app = await buildApp({
+      equipments: main,
+      hpHcRowsByEvery: {
+        "1mo": [
+          { _time: localDay(2025, 3, 1), _value: 31_000, alias: "energy_hp" },
+          { _time: localDay(2026, 1, 1), _value: 10_000, alias: "energy_hp" },
+          { _time: localDay(2026, 10, 1), _value: 31_000, alias: "energy_hp" },
+        ],
+        "1d": [...days(2025, 3, 31), ...days(2026, 1, 10), ...days(2026, 10, 31)],
+      },
+      tariff: TARIFF_20_10,
+      versions: [
+        { startDate: "2025-03-16", prices: { hp: 0.3, hc: 0.1 } }, // inside March 2025
+        { startDate: "2026-10-16", prices: { hp: 0.4, hc: 0.1 } }, // inside October 2026
+      ],
+    });
+
+    const body = (
+      await app.inject({ method: "GET", url: "/api/v1/energy/bilan?period=year&date=2026-06-01" })
+    ).json();
+    // January 2026: one version, the monthly point as it is.
+    expect(body.points[0].paidHp).toBeCloseTo(10 * 0.3, 4);
+    // October 2026: 15 days at 0.30, 16 days at 0.40.
+    expect(body.points[9].paidHp).toBeCloseTo(15 * 0.3 + 16 * 0.4, 4);
+    expect(body.bill.total).toBeCloseTo(10 * 0.3 + 15 * 0.3 + 16 * 0.4, 4);
+    // March 2025, the reference: priced from its own days, 15 at 0.20 and 16 at 0.30.
+    expect(body.points[2].previousYearBill).toBeCloseTo(15 * 0.2 + 16 * 0.3, 4);
+  });
+
+  it("keeps the months a change does not touch on their monthly points in the year totals", async () => {
+    // The daily rows of January disagree with its monthly row on purpose: a
+    // change inside October must not move January's share of the total.
+    app = await buildApp({
+      equipments: main,
+      hpHcRowsByEvery: {
+        "1mo": [
+          { _time: localDay(2026, 1, 1), _value: 10_000, alias: "energy_hp" },
+          { _time: localDay(2026, 10, 1), _value: 2_000, alias: "energy_hp" },
+        ],
+        "1d": [
+          { _time: localDay(2026, 1, 5), _value: 999, alias: "energy_hp" },
+          { _time: localDay(2026, 10, 15), _value: 1000, alias: "energy_hp" },
+          { _time: localDay(2026, 10, 16), _value: 1000, alias: "energy_hp" },
+        ],
+      },
+      tariff: TARIFF_20_10,
+      versions: [{ startDate: "2026-10-16", prices: { hp: 0.4, hc: 0.1 } }],
+    });
+    const body = (
+      await app.inject({ method: "GET", url: "/api/v1/energy/history?period=year&date=2026-06-01" })
+    ).json();
+    expect(body.totals.cost_total).toBeCloseTo(10 * 0.2 + 0.2 + 0.4, 4);
+  });
+
+  it("states the prices in force on the last day of a Bilan period", async () => {
+    app = await buildApp({
+      equipments: main,
+      tariff: TARIFF_20_10,
+      versions: [{ startDate: "2026-05-15", prices: { hp: 0.3, hc: 0.1 } }],
+    });
+    const april = (
+      await app.inject({ method: "GET", url: "/api/v1/energy/bilan?period=month&date=2026-04-10" })
+    ).json();
+    const may = (
+      await app.inject({ method: "GET", url: "/api/v1/energy/bilan?period=month&date=2026-05-10" })
+    ).json();
+    expect(april.prices).toEqual({ hp: 0.2, hc: 0.1 });
+    expect(may.prices).toEqual({ hp: 0.3, hc: 0.1 });
+    expect(may.tariffConfigured).toBe(true);
+  });
+
+  it("prices the arbiter gain booked in Wh with the version of its day", async () => {
+    app = await buildApp({
+      equipments: main,
+      tariff: TARIFF_20_10,
+      versions: [{ startDate: "2026-05-15", prices: { hp: 0.3, hc: 0.1 } }],
+      settings: { "energy.arbiter.enabled": "true" },
+      arbiterGain: {
+        rows: [
+          // Booked in euros before spec 202: kept as booked.
+          { day: "2026-05-10", equipmentId: "car", solarWh: 1000, avoidedEur: 0.5 },
+          // Booked in Wh: 1 kWh HP on each side of the change.
+          { day: "2026-05-14", equipmentId: "car", solarWh: 1000, solarHpWh: 1000, avoidedEur: 0 },
+          { day: "2026-05-15", equipmentId: "car", solarWh: 1000, solarHpWh: 1000, avoidedEur: 0 },
+        ],
+        since: "2026-05-01",
+      },
+    });
+    const body = (
+      await app.inject({ method: "GET", url: "/api/v1/energy/bilan?period=month&date=2026-05-10" })
+    ).json();
+    expect(body.arbiter.solarWh).toBe(3000);
+    expect(body.arbiter.avoided).toBeCloseTo(0.5 + 0.2 + 0.3, 4);
+  });
+
+  it("says the tariff is configured from the version in force today", async () => {
+    app = await buildApp({ tariff: { schedules: [], prices: { hp: 0, hc: 0 } } });
+    expect(
+      (await app.inject({ method: "GET", url: "/api/v1/energy/status" })).json(),
+    ).toMatchObject({ tariffConfigured: false });
+    await app.close();
+    app = await buildApp({ tariff: TARIFF_20_10 });
+    expect(
+      (await app.inject({ method: "GET", url: "/api/v1/energy/status" })).json(),
+    ).toMatchObject({ tariffConfigured: true });
+  });
+});
+
+describe("Spec 202 — tariff versions and contract routes", () => {
+  let app: Awaited<ReturnType<typeof buildApp>> | null = null;
+  const VERSIONS = "/api/v1/settings/energy/tariff/versions";
+  const CONTRACT = "/api/v1/settings/energy/contract";
+  const LEGACY = "/api/v1/settings/energy/tariff";
+
+  afterEach(async () => {
+    if (app) await app.close();
+    app = null;
+  });
+
+  const list = async () => (await app!.inject({ method: "GET", url: VERSIONS })).json();
+  const post = (payload: Record<string, unknown>) =>
+    app!.inject({ method: "POST", url: VERSIONS, payload });
+
+  it("lists the version created from the legacy setting, oldest first", async () => {
+    app = await buildApp({
+      tariff: TARIFF_20_10,
+      versions: [{ startDate: "2026-08-01", prices: { hp: 0.2142, hc: 0.1589 }, kva: 6 }],
+    });
+    const versions = await list();
+    expect(versions).toHaveLength(2);
+    expect(versions[0]).toMatchObject({
+      startDate: null,
+      prices: { hp: 0.2, hc: 0.1 },
+      origin: "migration",
+    });
+    expect(versions[1]).toMatchObject({ startDate: "2026-08-01", kva: 6, origin: "manual" });
+  });
+
+  it("refuses the list to a standard user", async () => {
+    app = await buildApp({ tariff: TARIFF_20_10, authRole: "standard" });
+    expect((await app.inject({ method: "GET", url: VERSIONS })).statusCode).toBe(403);
+    expect((await app.inject({ method: "GET", url: CONTRACT })).statusCode).toBe(403);
+  });
+
+  it("creates the first version without a date, then dated ones", async () => {
+    app = await buildApp({});
+    const first = await post({ startDate: "2026-02-01", prices: { hp: 0.2065, hc: 0.1578 } });
+    expect(first.statusCode).toBe(201);
+    expect(first.json().startDate).toBeNull();
+
+    const second = await post({
+      startDate: "2026-08-01",
+      prices: { hp: 0.2142, hc: 0.1589 },
+      fixedFeeYear: 190.81,
+      kva: 6,
+    });
+    expect(second.statusCode).toBe(201);
+    expect(second.json()).toMatchObject({ startDate: "2026-08-01", fixedFeeYear: 190.81, kva: 6 });
+  });
+
+  it.each([
+    ["a date that does not exist", { startDate: "2026-02-30", prices: { hp: 0.2, hc: 0.1 } }],
+    ["a date in another format", { startDate: "01/08/2026", prices: { hp: 0.2, hc: 0.1 } }],
+    ["a negative price", { startDate: "2026-08-01", prices: { hp: -0.1, hc: 0.1 } }],
+    ["a price above 5 € per kWh", { startDate: "2026-08-01", prices: { hp: 21.42, hc: 0.1 } }],
+    ["a negative fee", { startDate: "2026-08-01", prices: { hp: 0.2, hc: 0.1 }, fixedFeeYear: -1 }],
+    ["a power of 0", { startDate: "2026-08-01", prices: { hp: 0.2, hc: 0.1 }, kva: 0 }],
+    ["prices missing", { startDate: "2026-08-01" }],
+  ])("400s %s", async (_label, payload) => {
+    app = await buildApp({ tariff: TARIFF_20_10 });
+    expect((await post(payload)).statusCode).toBe(400);
+    expect(await list()).toHaveLength(1);
+  });
+
+  it("409s a start date already used, on create and on edit", async () => {
+    app = await buildApp({
+      tariff: TARIFF_20_10,
+      versions: [
+        { startDate: "2026-02-01", prices: { hp: 0.2, hc: 0.1 } },
+        { startDate: "2026-08-01", prices: { hp: 0.2, hc: 0.1 } },
+      ],
+    });
+    expect((await post({ startDate: "2026-08-01", prices: { hp: 0.3, hc: 0.1 } })).statusCode).toBe(
+      409,
+    );
+    const [, february] = await list();
+    const edit = await app.inject({
+      method: "PUT",
+      url: `${VERSIONS}/${february.id}`,
+      payload: { startDate: "2026-08-01", prices: { hp: 0.2, hc: 0.1 } },
+    });
+    expect(edit.statusCode).toBe(409);
+  });
+
+  it("edits a version, and keeps the first one without a date", async () => {
+    app = await buildApp({
+      tariff: TARIFF_20_10,
+      versions: [{ startDate: "2026-08-01", prices: { hp: 0.2, hc: 0.1 } }],
+    });
+    const [first, august] = await list();
+    const moved = await app.inject({
+      method: "PUT",
+      url: `${VERSIONS}/${august.id}`,
+      payload: { startDate: "2026-08-02", prices: { hp: 0.25, hc: 0.12 }, fixedFeeYear: 190 },
+    });
+    expect(moved.json()).toMatchObject({
+      startDate: "2026-08-02",
+      prices: { hp: 0.25, hc: 0.12 },
+      fixedFeeYear: 190,
+    });
+    const undated = await app.inject({
+      method: "PUT",
+      url: `${VERSIONS}/${first.id}`,
+      payload: { startDate: "2020-01-01", prices: { hp: 0.18, hc: 0.09 } },
+    });
+    expect(undated.json()).toMatchObject({ startDate: null, prices: { hp: 0.18, hc: 0.09 } });
+    expect(
+      (
+        await app.inject({
+          method: "PUT",
+          url: `${VERSIONS}/unknown`,
+          payload: { prices: { hp: 0.2, hc: 0.1 } },
+        })
+      ).statusCode,
+    ).toBe(404);
+  });
+
+  it("deletes a dated version, never the first one", async () => {
+    app = await buildApp({
+      tariff: TARIFF_20_10,
+      versions: [{ startDate: "2026-08-01", prices: { hp: 0.2, hc: 0.1 } }],
+    });
+    const [first, august] = await list();
+    expect(
+      (await app.inject({ method: "DELETE", url: `${VERSIONS}/${first.id}` })).statusCode,
+    ).toBe(409);
+    const removed = await app.inject({ method: "DELETE", url: `${VERSIONS}/${august.id}` });
+    expect(removed.json()).toEqual({ ok: true });
+    expect(await list()).toHaveLength(1);
+    expect(
+      (await app.inject({ method: "DELETE", url: `${VERSIONS}/${august.id}` })).statusCode,
+    ).toBe(404);
+  });
+
+  it("serves the prices of the version in force today on the legacy GET", async () => {
+    app = await buildApp({
+      tariff: TARIFF_20_10,
+      versions: [
+        { startDate: "2020-01-01", prices: { hp: 0.3, hc: 0.15 } },
+        { startDate: "2999-01-01", prices: { hp: 9 / 2, hc: 1 } },
+      ],
+    });
+    const body = (await app.inject({ method: "GET", url: LEGACY })).json();
+    expect(body.prices).toEqual({ hp: 0.3, hc: 0.15 });
+    expect(body.schedules).toEqual(TARIFF_20_10.schedules);
+  });
+
+  it("saves the schedule alone on the legacy PUT, leaving the versions as they are", async () => {
+    app = await buildApp({ tariff: TARIFF_20_10 });
+    const schedules = [{ days: [1], slots: [{ start: "22:00", end: "06:00", tariff: "hc" }] }];
+    const res = await app.inject({ method: "PUT", url: LEGACY, payload: { schedules } });
+    expect(res.statusCode).toBe(200);
+    const writes = (app as unknown as { settingsWrites: Array<[string, string]> }).settingsWrites;
+    expect(JSON.parse(writes[0][1])).toEqual({ schedules, prices: TARIFF_20_10.prices });
+    expect(await list()).toMatchObject([{ startDate: null, prices: { hp: 0.2, hc: 0.1 } }]);
+  });
+
+  it("edits today's version in place when the legacy PUT carries prices", async () => {
+    app = await buildApp({
+      tariff: TARIFF_20_10,
+      versions: [{ startDate: "2020-01-01", prices: { hp: 0.25, hc: 0.12 }, kva: 6 }],
+    });
+    const res = await app.inject({
+      method: "PUT",
+      url: LEGACY,
+      payload: { schedules: [], prices: { hp: 0.27, hc: 0.2 } },
+    });
+    expect(res.statusCode).toBe(200);
+    const versions = await list();
+    expect(versions).toHaveLength(2);
+    expect(versions[0].prices).toEqual({ hp: 0.2, hc: 0.1 }); // the past is untouched
+    expect(versions[1]).toMatchObject({
+      startDate: "2020-01-01",
+      prices: { hp: 0.27, hc: 0.2 },
+      kva: 6,
+    });
+  });
+
+  it("creates the first version from a legacy PUT with prices, and none from 0/0", async () => {
+    app = await buildApp({});
+    await app.inject({
+      method: "PUT",
+      url: LEGACY,
+      payload: { schedules: [], prices: { hp: 0, hc: 0 } },
+    });
+    expect(await list()).toEqual([]);
+    await app.inject({
+      method: "PUT",
+      url: LEGACY,
+      payload: { schedules: [], prices: { hp: 0.27, hc: 0.2 } },
+    });
+    expect(await list()).toMatchObject([{ startDate: null, prices: { hp: 0.27, hc: 0.2 } }]);
+  });
+
+  it("400s a legacy PUT whose price is out of range, and writes nothing", async () => {
+    app = await buildApp({ tariff: TARIFF_20_10 });
+    const res = await app.inject({
+      method: "PUT",
+      url: LEGACY,
+      payload: { schedules: [], prices: { hp: 27, hc: 0.2 } },
+    });
+    expect(res.statusCode).toBe(400);
+    const writes = (app as unknown as { settingsWrites: Array<[string, string]> }).settingsWrites;
+    expect(writes).toEqual([]);
+  });
+
+  it("400s a legacy PUT with a negative price even when no version exists", async () => {
+    app = await buildApp({});
+    const res = await app.inject({
+      method: "PUT",
+      url: LEGACY,
+      payload: { schedules: [], prices: { hp: -1, hc: 0 } },
+    });
+    expect(res.statusCode).toBe(400);
+    const writes = (app as unknown as { settingsWrites: Array<[string, string]> }).settingsWrites;
+    expect(writes).toEqual([]);
+  });
+
+  it("keeps the fee and the power of a version edited without them", async () => {
+    app = await buildApp({
+      tariff: TARIFF_20_10,
+      versions: [
+        { startDate: "2026-08-01", prices: { hp: 0.2, hc: 0.1 }, fixedFeeYear: 190.81, kva: 6 },
+      ],
+    });
+    const [, august] = await list();
+    const kept = await app.inject({
+      method: "PUT",
+      url: `${VERSIONS}/${august.id}`,
+      payload: { prices: { hp: 0.2142, hc: 0.1589 } },
+    });
+    expect(kept.json()).toMatchObject({ startDate: "2026-08-01", fixedFeeYear: 190.81, kva: 6 });
+    const cleared = await app.inject({
+      method: "PUT",
+      url: `${VERSIONS}/${august.id}`,
+      payload: { prices: { hp: 0.2142, hc: 0.1589 }, fixedFeeYear: null },
+    });
+    expect(cleared.json()).toMatchObject({ fixedFeeYear: null, kva: 6 });
+  });
+
+  it("derives the contract before one is saved", async () => {
+    app = await buildApp({
+      tariff: TARIFF_20_10,
+      versions: [{ startDate: "2026-08-01", prices: { hp: 0.2, hc: 0.1 }, kva: 9 }],
+    });
+    expect((await app.inject({ method: "GET", url: CONTRACT })).json()).toEqual({
+      supplier: "other",
+      contractType: TARIFF_20_10.schedules.some((s) => s.slots.some((x) => x.tariff === "hc"))
+        ? "hphc"
+        : "base",
+      kva: 9,
+    });
+    await app.close();
+    app = await buildApp({});
+    expect((await app.inject({ method: "GET", url: CONTRACT })).json()).toEqual({
+      supplier: "other",
+      contractType: "base",
+      kva: null,
+    });
+  });
+
+  it("falls back on the default when the stored contract is not a known one", async () => {
+    app = await buildApp({
+      settings: {
+        "energy.contract": JSON.stringify({ supplier: "<b>x</b>", contractType: "hphc", kva: 6 }),
+      },
+    });
+    expect((await app.inject({ method: "GET", url: CONTRACT })).json()).toEqual({
+      supplier: "other",
+      contractType: "base",
+      kva: null,
+    });
+  });
+
+  it("saves the contract and reads it back", async () => {
+    app = await buildApp({ tariff: TARIFF_20_10 });
+    const contract = { supplier: "edf-tarif-bleu", contractType: "hphc", kva: 6 };
+    const res = await app.inject({ method: "PUT", url: CONTRACT, payload: contract });
+    expect(res.statusCode).toBe(200);
+    expect(res.json()).toEqual(contract);
+    expect((await app.inject({ method: "GET", url: CONTRACT })).json()).toEqual(contract);
+  });
+
+  it.each([
+    ["an unknown supplier", { supplier: "engie", contractType: "hphc", kva: 6 }],
+    ["an unknown contract type", { supplier: "other", contractType: "tempo", kva: 6 }],
+    ["a power of 0", { supplier: "other", contractType: "hphc", kva: 0 }],
+    ["a missing power", { supplier: "other", contractType: "hphc" }],
+  ])("400s a contract with %s", async (_label, payload) => {
+    app = await buildApp({});
+    expect((await app.inject({ method: "PUT", url: CONTRACT, payload })).statusCode).toBe(400);
   });
 });

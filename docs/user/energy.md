@@ -57,19 +57,23 @@ If you have local production (solar panels typically), create an equipment of ty
 - **Grid injection**: energy produced and pushed to the grid
 - **Total consumption**: grid + autoconsumption
 
-### Step 4: (Optional) Configure peak / off-peak tariffs
+### Step 4: (Optional) Configure your contract, prices and off-peak hours
 
-If your electricity plan splits hours into peak and off-peak, configure the schedule so Sowel can break down your consumption.
-
-Go to **Settings > Administration > Energy tariffs**:
+Go to **Settings > Energy**, card **Energy tariffs**:
 
 ![Tariff configuration](../screenshots/energy-tariff-settings-en.png)
 
-1. Optionally enter your peak and off-peak prices per kWh (used for cost views; classification works without them)
-2. Define your time slots: which hours are peak and which are off-peak
-3. You can add as many slots as you need to cover the 24 hours of the day
+1. **Contract.** Choose your supplier, the contract type (off-peak hours, or a single rate) and your subscribed power. They describe your contract; they price nothing by themselves.
+2. **Prices.** Prices are a history: each row is valid from its start date until the day before the next one, and each consumption is priced at the price in force on its date. So a price change never reprices the past.
+   - **Add a price change** when your prices change: enter the date it starts, the peak and off-peak prices per kWh including tax, and optionally the fixed fee per year and the power. You can enter it ahead of time, or late: the days already measured are then repriced from that date.
+   - The pencil corrects a row; the bin deletes it. The oldest row, **Origin**, covers everything before the first dated change: it can be corrected, not deleted.
+   - The list shows the three latest prices and scrolls for the older ones.
+   - With a single-rate contract, one price is asked. Past rows that hold a peak and an off-peak price keep both.
+3. **Peak and off-peak hours.** Define your time slots: which hours are peak and which are off-peak, with as many slots as you need to cover the 24 hours of the day. **Save schedule** saves the hours only.
 
-If no tariff is configured, all consumption is classified as peak by default — you simply do not see the split.
+Prices are used for the cost views; the peak / off-peak split works without them. If no schedule is configured, all consumption is classified as peak by default — you simply do not see the split.
+
+When you upgrade from a version that had one pair of prices, Sowel keeps them as the **Origin** row: your figures do not move until you add or correct a price.
 
 ### Step 5: (Optional) Add submeters for a by-usage breakdown
 
@@ -130,7 +134,7 @@ The Costs page answers, in euros, for a **Day**, a **Month** or a **Year** (the 
 - **Electricity used, in euros.** With a production meter, a bar splits what the electricity you used was worth into what you **paid** the supplier and what solar **avoided**: the self-consumed solar kilowatt-hours priced at what they would have cost at that moment. "Without panels, the bill would have been …" is the sum of the two.
 - **Solar savings** and **Arbiter gain.** Two tiles repeat the avoided figure with the self-consumed energy, and give the arbiter's share of it (see [What the arbiter earns](#what-the-arbiter-earns)). The arbiter tile shows when the arbiter is enabled, or when the period holds a gain measured while it was.
 - **Cost per hour, day or month.** Stacked bars: paid at peak, paid off-peak, and avoided by solar on top. In the year view a dashed tick marks the previous year's bill for the same month.
-- **By usage.** One row per sub-meter, plus **Other**: its kilowatt-hours, what it cost, what solar avoided for it, sorted by the amount paid. Each hour (day view), day (month view) or month (year view), the home's solar share is applied to every sub-meter, so these figures are a little more precise than the by-usage € of the Consumption page, which applies one average price to the whole period.
+- **By usage.** One row per sub-meter, plus **Other**: its kilowatt-hours, what it cost, what solar avoided for it, sorted by the amount paid. Each hour (day view), day (month view) or month (year view), the home's solar share is applied to every sub-meter, so these figures are a little more precise than the by-usage € of the Consumption page, which prices each sub-meter's kilowatt-hours whole, solar included.
 - **How these amounts are made.** The last card (folded on a phone) gives the prices used and these rules.
 
 ### Consumption view
@@ -157,7 +161,7 @@ The total counts everything the house used, grid and sun; the self-consumed shar
 
 A **Wh / €** segmented toggle sits next to the period selector at the top of the page. In **€** mode, every kWh figure on the bar chart (Y axis, bar height, tooltip) and in the headline is replaced by the corresponding cost in euros, computed from the prices you entered in **Settings > Energy tariffs**. The toggle is disabled — with a tooltip pointing back to the tariff settings — until you set at least one of the HP / HC prices to a non-zero value.
 
-Pricing is applied at read time, so changing your tariff (after a contract renegotiation, for example) re-values past consumption with the new prices. Autoconsumption has no billed cost and is therefore hidden from the chart in € mode, and left out of the € total: the headline then reads the bill, split into peak and off-peak, with the self-consumed share still given as a percentage of energy.
+Pricing is applied at read time, each consumption at the price in force on its date ([price history](#step-4-optional-configure-your-contract-prices-and-off-peak-hours)): a price change applies from its start date, and correcting a past price re-values the consumption of that period only. In the month and year views, the first hour or two of the night of a price change are still priced at the previous price. Autoconsumption has no billed cost and is therefore hidden from the chart in € mode, and left out of the € total: the headline then reads the bill, split into peak and off-peak, with the self-consumed share still given as a percentage of energy.
 
 #### Total / By usage toggle
 
@@ -167,7 +171,7 @@ When at least one submeter is configured, a **Total / By usage** toggle appears 
 
 Submeters take their colors from an eight-color series palette, in a fixed order (sorted by equipment), so the same circuit keeps the same color across days, views and the Live breakdown. The palette has no red, orange, amber or solar green, since those colors carry a meaning elsewhere, and each color has a light and a dark variant. The Analyse page uses the same palette; a chart saved with the earlier palette shows the new color at the same position. The "Other" stack is clamped at zero, so a submeter that briefly overshoots the main meter (due to sampling skew) cannot make it negative.
 
-In €, every submeter is valued at the period's average price. An EV charger is the exception worth knowing: it charges mostly off-peak or on solar surplus, so its real cost is lower. Its exact cost, split peak / off-peak / solar and per car, is on the charger's and the vehicle's pages ([charging sessions](equipments.md#charging-sessions-and-cost-per-vehicle)).
+In €, every submeter is valued hour by hour (day by day in the week and month views, month by month in the year view), at the average price the house paid in that same hour: a load that runs off-peak is priced off-peak. It still counts solar kilowatt-hours at the grid price, so an EV charger that charges on solar surplus costs less than this figure. Its exact cost, split peak / off-peak / solar and per car, is on the charger's and the vehicle's pages ([charging sessions](equipments.md#charging-sessions-and-cost-per-vehicle)).
 
 ##### When one meter is fed from another
 
@@ -291,7 +295,7 @@ Point at the history with a mouse for a readout of that quarter of an hour: its 
 
 ### What the arbiter earns
 
-Every minute, Sowel notes the solar energy used by the loads the arbiter switched on, and prices it at the tariff of that minute. The loads are served **last** by the sun: when the house imports, the import is charged to them first, so the figure never claims solar the house itself used. The result builds up per day and per load and shows on the Costs page, in the **Arbiter gain** tile, with the two loads that earned most. It is part of the solar savings, not added to them. A load is counted at its measured power when it has its own meter; without one, at its learned or declared power for as long as it is granted, so a load that stops by itself (a water heater whose thermostat cuts off) is overstated until it is released.
+Every minute, Sowel notes the solar energy used by the loads the arbiter switched on, and whether that minute was peak or off-peak. Its value in euros is computed when you read it, at the prices in force that day. The loads are served **last** by the sun: when the house imports, the import is charged to them first, so the figure never claims solar the house itself used. The result builds up per day and per load and shows on the Costs page, in the **Arbiter gain** tile, with the two loads that earned most. It is part of the solar savings, not added to them. A load is counted at its measured power when it has its own meter; without one, at its learned or declared power for as long as it is granted, so a load that stops by itself (a water heater whose thermostat cuts off) is overstated until it is released.
 
 The measure starts the day the version that brings it is installed: earlier periods read "Not measured yet".
 
@@ -331,7 +335,7 @@ The aggregator also keeps in-memory cumuls (hour, day, month, year) that the Liv
 
 ### Peak / off-peak shows everything as peak
 
-This means no tariff schedule is configured. Go to **Settings > Administration > Energy tariffs** and define your slots.
+This means no tariff schedule is configured. Go to **Settings > Energy** and define your slots.
 
 ### Old data is missing
 

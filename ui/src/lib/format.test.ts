@@ -5,6 +5,7 @@ import {
   formatBytes,
   formatCurrency,
   formatDataValue,
+  formatDay,
   formatClockTime,
   formatRelativeTime,
   formatDuration,
@@ -326,5 +327,18 @@ describe("formatClockTime — one 24-hour clock in every language", () => {
   it("follows Sowel's language by default", async () => {
     await i18n.changeLanguage("en");
     expect(formatClockTime(halfPastMidnight)).toBe("00:30");
+  });
+});
+
+// Spec 202 — the price history lists local days.
+describe("formatDay — a local day as a short date", () => {
+  it("is numeric in French and names the month in English", () => {
+    expect(formatDay("2026-08-01", fr)).toBe("01/08/2026");
+    expect(formatDay("2026-08-01", en)).toBe("Aug 1, 2026");
+  });
+
+  it("reads a missing or broken day as a dash", () => {
+    expect(formatDay(null)).toBe("—");
+    expect(formatDay("not-a-date")).toBe("—");
   });
 });

@@ -417,11 +417,25 @@ Full design, review log and rationale: `specs/140-energy-capacity-arbiter/`.
 `ArbiterGainMeter` (`src/energy/arbiter-gain-meter.ts`) measures what the arbiter earns, for the Energy Costs page. Every 60 s it reads the arbiter's **public state**, as the UI does, and never writes to it: like the daily metrics, the measure cannot disturb arbitration.
 
 - With the arbiter enabled and its meter fresh, it takes the loads in state `granted` and their effective watts (live draw when fresh), their sum `D` (a load without its own meter is counted at its learned or declared watts while granted, which overstates one that stops by itself), and the import `I = max(0, −availableSurplusW)`. The solar power they use is `max(0, D − I)`, split pro rata of their watts: the managed loads are **served last by the sun**, as EV sessions are, so the figure never claims solar the house itself used.
-- The energy is that power over the elapsed time, capped at 120 s so a stalled process never books a gap. It is priced at the tariff of that minute (the `TariffClassifier` gives the HP/HC proportions of the window), so the euro figure is frozen.
+- The energy is that power over the elapsed time, capped at 120 s so a stalled process never books a gap. It is booked in Wh, peak and off-peak, by the schedule of that minute (the `TariffClassifier` gives the HP/HC proportions of the window), and priced when it is read, with the prices in force on its day (spec 202). What was booked in euros before migration 044 stays in `avoided_eur` and is added as booked.
 - It accumulates in memory per local day and load, is flushed to `arbiter_daily_gain` every 15 minutes in one transaction and on shutdown, and a read adds the part not flushed yet. A crash loses at most 15 minutes.
 - The first day it ran with the arbiter enabled is stored once in `energy.arbiterGain.since`; a period before it reads "not measured yet".
 
 `GET /api/v1/energy/bilan` builds the rest of the page from the same loaders as `/energy/history` and `/energy/by-usage` (`loadEnergyPoints`, `loadUsagePartition` in `src/api/routes/energy.ts`), so its bill is the Consumption page's € total. A history point prices its whole consumption, solar included, while the totals price the grid side only: one point therefore splits exactly into what was paid (its cost times the grid share) and what solar avoided (its cost times the self-consumed share). The arithmetic is pure, in `src/energy/bilan.ts`.
+
+### Pricing by tariff version (spec 202)
+
+Every euro Sowel shows is computed at read time from the dated price versions (table `tariff_versions`, `TariffVersionStore` in `src/energy/tariff-version-store.ts`), never stored. A version is valid from its start date, a local day, until the next one; the first has no start date and is open backwards, so every past point has a price. `src/energy/pricing.ts` is the one place that says which prices apply to which energy; it is pure and takes the versions as an argument.
+
+- **Points** (`/energy/history`, `/energy/bilan`): each point at the version in force on the local date of its start.
+- **Totals**: the grid-side Wh are summed per version, each version is priced once, the versions are added. With a single version this is the single-price computation of spec 123, to the cent (the tests keep that formula as their reference).
+- **Year view**: a month crossed by a price change is priced from its daily points, per version; a change on the 1st of a month crosses none, and no daily read is made.
+- **By usage**: each series point by point, at the main meter's blended price of the same bucket.
+- **Arbiter gain** and **EV sessions**: stored in Wh, peak and off-peak, and priced when read (the row's day, the session's start day).
+
+The peak / off-peak split itself stays a write-time value (`TariffClassifier`): months and years are read from daily points, which have no time of day. Two approximations are accepted: daily points are UTC days, so in month and year views the first hour or two of the night of a change are priced with the previous version; an EV session that crosses a change is priced whole with the version of its start.
+
+At startup, when the table is empty and the legacy setting `energy.tariff` holds a price, the first version is created from it (`origin: "migration"`). The setting's `prices` are not read after that. The current contract (supplier, type, subscribed power) is the setting `energy.contract`; it prices nothing and is what a price source will match its rows on. `origin` is free text (`migration`, `manual`, later `<writer>:<id>`) that pricing never reads, so another writer can be added without touching it.
 
 ## EV charge sessions (spec 191)
 

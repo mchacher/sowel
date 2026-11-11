@@ -315,11 +315,25 @@ Deux conséquences à connaître :
 `ArbiterGainMeter` (`src/energy/arbiter-gain-meter.ts`) mesure ce que rapporte l'arbitre, pour la page Énergie > Bilan. Toutes les 60 s il lit l'**état public** de l'arbitre, comme l'interface, et n'y écrit jamais : comme les métriques quotidiennes, la mesure ne peut pas perturber l'arbitrage.
 
 - Arbitre activé et compteur frais, il prend les charges à l'état `granted` et leurs watts effectifs (tirage mesuré quand il est frais), leur somme `D` (une charge sans compteur propre est comptée à ses watts appris ou déclarés tant qu'elle est autorisée, ce qui surestime celle qui s'arrête d'elle-même), et l'import `I = max(0, −availableSurplusW)`. La puissance solaire qu'elles consomment est `max(0, D − I)`, répartie au prorata de leurs watts : les charges pilotées sont **servies en dernier par le soleil**, comme les sessions de recharge, si bien que le chiffre ne revendique jamais le solaire que la maison a consommé elle-même.
-- L'énergie est cette puissance sur le temps écoulé, plafonné à 120 s pour qu'un processus figé ne compte jamais un trou. Elle est valorisée au tarif de cette minute (le `TariffClassifier` donne les proportions HP/HC de la fenêtre) : le montant en euros est figé.
+- L'énergie est cette puissance sur le temps écoulé, plafonné à 120 s pour qu'un processus figé ne compte jamais un trou. Elle est comptée en Wh, heures pleines et heures creuses, selon les plages de cette minute (le `TariffClassifier` donne les proportions HP/HC de la fenêtre), et valorisée à la lecture, aux prix en vigueur ce jour-là (spec 202). Ce qui a été compté en euros avant la migration 044 reste dans `avoided_eur` et est ajouté tel quel.
 - Elle s'accumule en mémoire par jour local et par charge, est écrite dans `arbiter_daily_gain` toutes les 15 minutes en une transaction et à l'arrêt, et une lecture ajoute la part pas encore écrite. Un plantage perd au plus 15 minutes.
 - Le premier jour mesuré avec l'arbitre activé est enregistré une fois dans `energy.arbiterGain.since` ; une période antérieure affiche « pas encore mesuré ».
 
 `GET /api/v1/energy/bilan` construit le reste de la page avec les mêmes fonctions de lecture que `/energy/history` et `/energy/by-usage` (`loadEnergyPoints`, `loadUsagePartition` dans `src/api/routes/energy.ts`), si bien que sa facture est le total € de la page Consommation. Un point d'historique valorise toute sa consommation, solaire compris, alors que les totaux ne valorisent que le côté réseau : un point se découpe donc exactement en payé (son coût fois la part réseau) et évité par le solaire (son coût fois la part autoconsommée). Le calcul est pur, dans `src/energy/bilan.ts`.
+
+### Valorisation par version tarifaire (spec 202)
+
+Chaque euro affiché par Sowel est calculé à la lecture à partir des versions de prix datées (table `tariff_versions`, `TariffVersionStore` dans `src/energy/tariff-version-store.ts`), jamais stocké. Une version vaut de sa date de début, un jour local, jusqu'à la suivante ; la première n'a pas de date de début et reste ouverte vers le passé, si bien que tout point passé a un prix. `src/energy/pricing.ts` est le seul endroit qui dit quels prix s'appliquent à quelle énergie ; il est pur et reçoit les versions en argument.
+
+- **Points** (`/energy/history`, `/energy/bilan`) : chaque point à la version en vigueur à la date locale de son début.
+- **Totaux** : les Wh côté réseau sont sommés par version, chaque version est valorisée une fois, les versions sont additionnées. Avec une seule version, c'est le calcul à prix unique de la spec 123, au centime près (les tests gardent cette formule comme référence).
+- **Vue année** : un mois traversé par un changement de prix est valorisé à partir de ses points journaliers, par version ; un changement au 1er du mois n'en traverse aucun, et aucune lecture journalière n'est faite.
+- **Par usage** : chaque série point par point, au prix moyen du compteur principal sur le même intervalle.
+- **Gain de l'arbitre** et **sessions VE** : stockés en Wh, heures pleines et heures creuses, et valorisés à la lecture (le jour de la ligne, le jour de début de la session).
+
+Le découpage heures pleines / heures creuses reste une valeur d'écriture (`TariffClassifier`) : les mois et les années sont lus dans des points journaliers, qui n'ont pas d'heure. Deux approximations sont assumées : les points journaliers sont des jours UTC, donc dans les vues mois et année la première heure ou les deux premières heures de la nuit d'un changement sont valorisées avec la version précédente ; une session VE qui traverse un changement est valorisée en entier avec la version de son début.
+
+Au démarrage, quand la table est vide et que l'ancien réglage `energy.tariff` contient un prix, la première version est créée à partir de lui (`origin: "migration"`). Les `prices` du réglage ne sont plus lus ensuite. Le contrat en cours (fournisseur, type, puissance souscrite) est le réglage `energy.contract` ; il ne valorise rien, et c'est sur lui qu'une source de prix fera sa correspondance. `origin` est un texte libre (`migration`, `manual`, plus tard `<source>:<id>`) que la valorisation ne lit jamais : une autre source peut donc être ajoutée sans y toucher.
 
 ## Recharges de véhicules électriques (spec 191)
 

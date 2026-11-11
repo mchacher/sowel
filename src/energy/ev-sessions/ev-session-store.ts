@@ -11,6 +11,7 @@ import type {
   EvChargeSession,
   EvSessionAttribution,
   EvSessionAttributionReason,
+  TariffPrices,
 } from "../../shared/types.js";
 import { type VehicleEvidence, startBattery } from "./attribution.js";
 import type { Leg, LegState } from "./driving.js";
@@ -113,9 +114,12 @@ function rowToRecord(row: SessionRow): SessionRecord {
   };
 }
 
-/** What the API and the UI see. */
-export function toSession(r: SessionRecord): EvChargeSession {
-  const d = deriveEnergy(r);
+/**
+ * What the API and the UI see. `prices` are those in force when the session
+ * started, null without a tariff (spec 202: the cost is a read-time value).
+ */
+export function toSession(r: SessionRecord, prices: TariffPrices | null): EvChargeSession {
+  const d = deriveEnergy(r, prices);
   return {
     id: r.id,
     chargerId: r.chargerId,

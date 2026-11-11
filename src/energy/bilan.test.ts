@@ -250,16 +250,35 @@ describe("usageRows", () => {
 });
 
 describe("arbiterTile", () => {
+  // Rows booked in euros before spec 202: no HP/HC split to price.
+  const booked = (day: string, equipmentId: string, solarWh: number, avoidedEur: number) => ({
+    day,
+    equipmentId,
+    solarWh,
+    solarHpWh: 0,
+    solarHcWh: 0,
+    avoidedEur,
+  });
+  // Rows booked in Wh since spec 202: priced when read.
+  const measured = (day: string, equipmentId: string, solarHpWh: number, solarHcWh: number) => ({
+    day,
+    equipmentId,
+    solarWh: solarHpWh + solarHcWh,
+    solarHpWh,
+    solarHcWh,
+    avoidedEur: 0,
+  });
   const rows = [
-    { day: "2026-11-10", equipmentId: "car", solarWh: 4600, avoidedEur: 0.8 },
-    { day: "2026-11-10", equipmentId: "heater", solarWh: 1800, avoidedEur: 0.3 },
-    { day: "2026-11-11", equipmentId: "car", solarWh: 1000, avoidedEur: 0.17 },
-    { day: "2026-10-31", equipmentId: "car", solarWh: 9999, avoidedEur: 9 },
+    booked("2026-11-10", "car", 4600, 0.8),
+    booked("2026-11-10", "heater", 1800, 0.3),
+    booked("2026-11-11", "car", 1000, 0.17),
+    booked("2026-10-31", "car", 9999, 9),
   ];
   const name = (id: string) => (id === "car" ? "Borne" : null);
+  const prices = () => ({ hp: HP, hc: HC });
 
   it("sums the period's rows per load, sorted by €", () => {
-    const t = arbiterTile(true, "2026-11-01", rows, "2026-11-01", "2026-11-30", name);
+    const t = arbiterTile(true, "2026-11-01", rows, "2026-11-01", "2026-11-30", name, prices);
     expect(t).toMatchObject({ enabled: true, measured: "full", solarWh: 7400, avoided: 1.27 });
     expect(t.loads).toEqual([
       { equipmentId: "car", name: "Borne", solarWh: 5600, avoided: 0.97 },
@@ -267,17 +286,50 @@ describe("arbiterTile", () => {
     ]);
   });
 
+  it("prices the Wh of a row with the prices of its day (spec 202)", () => {
+    const t = arbiterTile(
+      true,
+      "2026-11-01",
+      [measured("2026-11-12", "car", 3000, 1000)],
+      "2026-11-01",
+      "2026-11-30",
+      name,
+      prices,
+    );
+    expect(t.solarWh).toBe(4000);
+    expect(t.avoided).toBeCloseTo(3 * HP + 1 * HC, 4);
+  });
+
+  it("adds the booked euros and the priced Wh of a row that holds both", () => {
+    // The day of the upgrade: euros before, Wh after, in one row.
+    const row = { ...measured("2026-11-11", "car", 2000, 0), solarWh: 3000, avoidedEur: 0.17 };
+    const t = arbiterTile(true, "2026-11-01", [row], "2026-11-01", "2026-11-30", name, prices);
+    expect(t.solarWh).toBe(3000);
+    expect(t.avoided).toBeCloseTo(0.17 + 2 * HP, 4);
+  });
+
+  it("prices each day at its own version across a price change", () => {
+    const byDay = (day: string) =>
+      day < "2026-11-15" ? { hp: 0.2, hc: 0.1 } : { hp: 0.3, hc: 0.1 };
+    const t = arbiterTile(
+      true,
+      "2026-11-01",
+      [measured("2026-11-14", "car", 1000, 0), measured("2026-11-15", "car", 1000, 0)],
+      "2026-11-01",
+      "2026-11-30",
+      name,
+      byDay,
+    );
+    expect(t.avoided).toBeCloseTo(0.2 + 0.3, 4);
+  });
+
   it("says none, partial or full against the first measured day", () => {
-    expect(arbiterTile(true, null, [], "2026-11-01", "2026-11-30", name).measured).toBe("none");
-    expect(arbiterTile(true, "2026-12-02", [], "2026-11-01", "2026-11-30", name).measured).toBe(
-      "none",
-    );
-    expect(arbiterTile(true, "2026-11-10", [], "2026-11-01", "2026-11-30", name).measured).toBe(
-      "partial",
-    );
-    expect(arbiterTile(true, "2026-11-01", [], "2026-11-01", "2026-11-30", name).measured).toBe(
-      "full",
-    );
+    const tile = (since: string | null) =>
+      arbiterTile(true, since, [], "2026-11-01", "2026-11-30", name, prices).measured;
+    expect(tile(null)).toBe("none");
+    expect(tile("2026-12-02")).toBe("none");
+    expect(tile("2026-11-10")).toBe("partial");
+    expect(tile("2026-11-01")).toBe("full");
   });
 });
 
@@ -313,7 +365,15 @@ describe("computeBilan", () => {
       },
       reference: [],
       usage: [],
-      arbiter: arbiterTile(false, null, [], "2026-11-10", "2026-11-10", () => null),
+      arbiter: arbiterTile(
+        false,
+        null,
+        [],
+        "2026-11-10",
+        "2026-11-10",
+        () => null,
+        () => ({ hp: HP, hc: HC }),
+      ),
       ...over,
     };
   }

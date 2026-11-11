@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { blendedRate, computeCost } from "./cost-calculator.js";
+import { computeCost } from "./cost-calculator.js";
 
 describe("computeCost", () => {
   it("values pure-HP window", () => {
@@ -66,37 +66,5 @@ describe("computeCost", () => {
       cost_hc: 0.1,
       cost_total: 0.1,
     });
-  });
-});
-
-describe("blendedRate", () => {
-  it("computes a normal blended rate", () => {
-    expect(blendedRate(10_000, 2.0)).toBe(0.2);
-  });
-
-  it("returns 0 when consumption is 0", () => {
-    expect(blendedRate(0, 0)).toBe(0);
-  });
-
-  it("returns 0 when consumption is 0 even with positive cost", () => {
-    expect(blendedRate(0, 5)).toBe(0);
-  });
-
-  it("returns 0 on negative consumption defensively", () => {
-    expect(blendedRate(-100, 1)).toBe(0);
-  });
-
-  it("handles a rate of 1.5 €/kWh", () => {
-    expect(blendedRate(1000, 1.5)).toBe(1.5);
-  });
-
-  it("rounds to 4 decimals", () => {
-    // 1.23456 / 1 = 1.23456 → 1.2346
-    expect(blendedRate(1000, 1.23456)).toBe(1.2346);
-  });
-
-  it("returns 0 on NaN inputs", () => {
-    expect(blendedRate(Number.NaN, 1)).toBe(0);
-    expect(blendedRate(1000, Number.NaN)).toBe(0);
   });
 });

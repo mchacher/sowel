@@ -75,13 +75,12 @@ describe("WindowAccountant", () => {
 });
 
 describe("settleWindow", () => {
-  const prices = { hp: 0.2, hc: 0.1 };
   const base = { startS: T0 / 1000, lengthS: WINDOW_S, fromMs: T0, toMs: T0 + WINDOW_S * 1000 };
 
   it("charges the car only what the house imported (P5)", () => {
     const s = settleWindow(
       { ...base, carWh: 1400 / 12, importWh: 400 / 12 },
-      { hasMainMeter: true, hcShare: 0, prices },
+      { hasMainMeter: true, hcShare: 0 },
     );
     expect(s.gridHpWh).toBeCloseTo(400 / 12, 6);
     expect(s.gridHpWh / s.carWh).toBeCloseTo(2 / 7, 6);
@@ -90,7 +89,7 @@ describe("settleWindow", () => {
   it("is all solar when the house exported the whole window", () => {
     const s = settleWindow(
       { ...base, carWh: 100, importWh: 0 },
-      { hasMainMeter: true, hcShare: 0, prices },
+      { hasMainMeter: true, hcShare: 0 },
     );
     expect(s.gridHpWh + s.gridHcWh).toBe(0);
   });
@@ -98,7 +97,7 @@ describe("settleWindow", () => {
   it("is all grid when the house imported more than the car drew", () => {
     const s = settleWindow(
       { ...base, carWh: 100, importWh: 900 },
-      { hasMainMeter: true, hcShare: 0, prices },
+      { hasMainMeter: true, hcShare: 0 },
     );
     expect(s.gridHpWh).toBe(100);
   });
@@ -106,46 +105,44 @@ describe("settleWindow", () => {
   it("never invents solar without a grid reading or without a main meter", () => {
     const silent = settleWindow(
       { ...base, carWh: 100, importWh: null },
-      { hasMainMeter: true, hcShare: 0, prices },
+      { hasMainMeter: true, hcShare: 0 },
     );
     const noMeter = settleWindow(
       { ...base, carWh: 100, importWh: 0 },
-      { hasMainMeter: false, hcShare: 0, prices },
+      { hasMainMeter: false, hcShare: 0 },
     );
     expect(silent.gridHpWh).toBe(100);
     expect(noMeter.gridHpWh).toBe(100);
   });
 
-  it("prices off-peak at the HC price and peak at the HP price", () => {
+  it("books an off-peak window as HC and a peak window as HP", () => {
     const hc = settleWindow(
       { ...base, carWh: 1000, importWh: 1000 },
-      { hasMainMeter: true, hcShare: 1, prices },
+      { hasMainMeter: true, hcShare: 1 },
     );
     const hp = settleWindow(
       { ...base, carWh: 1000, importWh: 1000 },
-      { hasMainMeter: true, hcShare: 0, prices },
+      { hasMainMeter: true, hcShare: 0 },
     );
-    expect(hc.costHcEur).toBeCloseTo(0.1, 9);
-    expect(hc.costHpEur).toBe(0);
-    expect(hp.costHpEur).toBeCloseTo(0.2, 9);
+    expect(hc).toMatchObject({ gridHcWh: 1000, gridHpWh: 0 });
+    expect(hp).toMatchObject({ gridHcWh: 0, gridHpWh: 1000 });
   });
 
   it("splits a window straddling a tariff boundary by its off-peak share", () => {
     const s = settleWindow(
       { ...base, carWh: 1000, importWh: 1000 },
-      { hasMainMeter: true, hcShare: 0.2, prices },
+      { hasMainMeter: true, hcShare: 0.2 },
     );
     expect(s.gridHcWh).toBeCloseTo(200, 9);
     expect(s.gridHpWh).toBeCloseTo(800, 9);
   });
 
-  it("has no cost without a tariff, but still splits grid and solar", () => {
+  it("carries no euros: a session is priced when it is read (spec 202)", () => {
     const s = settleWindow(
       { ...base, carWh: 100, importWh: 40 },
-      { hasMainMeter: true, hcShare: 0, prices: null },
+      { hasMainMeter: true, hcShare: 0 },
     );
-    expect(s.costHpEur).toBeNull();
-    expect(s.gridHpWh).toBe(40);
+    expect(s).toEqual({ carWh: 100, gridHpWh: 40, gridHcWh: 0 });
   });
 });
 

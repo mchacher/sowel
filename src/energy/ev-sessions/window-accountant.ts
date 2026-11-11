@@ -185,24 +185,22 @@ export class WindowAccountant {
   }
 }
 
-/** A window once priced: the car served last by the sun (P5). */
+/** A window once settled: the car served last by the sun (P5). */
 export interface WindowSettlement {
   carWh: number;
   gridHpWh: number;
   gridHcWh: number;
-  /** Null when no tariff is configured. */
-  costHpEur: number | null;
-  costHcEur: number | null;
 }
 
 /**
- * Price one window. `grid = min(car, import)`; without a main meter or without
+ * Settle one window. `grid = min(car, import)`; without a main meter or without
  * a grid reading in the window, everything is grid. `hcShare` is the share of
- * the window in off-peak hours, from the TariffClassifier.
+ * the window in off-peak hours, from the TariffClassifier. Spec 202 — no euros
+ * here: the session is priced when it is read (`deriveEnergy`).
  */
 export function settleWindow(
   m: WindowMeasure,
-  opts: { hasMainMeter: boolean; hcShare: number; prices: { hp: number; hc: number } | null },
+  opts: { hasMainMeter: boolean; hcShare: number },
 ): WindowSettlement {
   const imported = opts.hasMainMeter && m.importWh !== null ? m.importWh : m.carWh;
   const grid = Math.min(m.carWh, imported);
@@ -213,7 +211,5 @@ export function settleWindow(
     carWh: m.carWh,
     gridHpWh,
     gridHcWh,
-    costHpEur: opts.prices ? (gridHpWh / 1000) * opts.prices.hp : null,
-    costHcEur: opts.prices ? (gridHcWh / 1000) * opts.prices.hc : null,
   };
 }

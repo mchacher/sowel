@@ -1,10 +1,10 @@
 /**
  * Cost calculator — Read-time valuation of HP/HC energy windows in €.
  *
- * Pure, dependency-free module shared by the /energy/history and
- * /energy/by-usage route handlers. The HP/HC split itself is produced
- * upstream by the TariffClassifier at write time; this module only
- * multiplies Wh by €/kWh from the current TariffPrices.
+ * Pure, dependency-free. The HP/HC split itself is produced upstream by the
+ * TariffClassifier at write time; this module only multiplies Wh by €/kWh.
+ * Which prices apply to which energy is `pricing.ts` (spec 202: the tariff
+ * version in force at the date of the energy).
  *
  * Spec 123.
  */
@@ -39,26 +39,6 @@ export function computeCost(hpWh: number, hcWh: number, prices: TariffPrices): C
   const cost_hc = round4((hcWh / 1000) * prices.hc);
   const cost_total = round4(cost_hp + cost_hc);
   return { cost_hp, cost_hc, cost_total };
-}
-
-/**
- * Period-blended rate in €/kWh, derived from already-computed totals.
- *
- * Used by /energy/by-usage to value each submeter's Wh consistently
- * with the global /energy/history cost without re-querying HP/HC per
- * submeter (submeters store only `energy`, not `energy_hp`/`energy_hc`).
- *
- * Returns 0 if the window has no consumption, never NaN.
- */
-export function blendedRate(totalConsumptionWh: number, costTotalEur: number): number {
-  if (
-    !Number.isFinite(totalConsumptionWh) ||
-    !Number.isFinite(costTotalEur) ||
-    totalConsumptionWh <= 0
-  ) {
-    return 0;
-  }
-  return round4(costTotalEur / (totalConsumptionWh / 1000));
 }
 
 function round4(n: number): number {

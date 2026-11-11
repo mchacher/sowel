@@ -178,6 +178,7 @@ const SAME_AS_EN = new Set<string>([
   "sharedAccess.value.stop",
   "sharedAccess.validity.dates",
   "sharedAccess.picker.minute",
+  "tariff.prices.col.actions",
 ]);
 
 describe("French typography (fr.json)", () => {
