@@ -11,6 +11,27 @@ This page summarises every published version, newest first. For the full diff be
 
 ---
 
+## 1.85.x: Prices that follow the calendar
+
+### v1.85.0 — 2026-11-11 { #v1-85-0 }
+
+Electricity prices get a history: every euro is now priced with the prices in force on its date, and for EDF Tarif Bleu Sowel takes those prices from a file kept in this repository, past ones included. Off-peak hours can differ between summer and winter, the Costs page shows the subscription apart from consumption, and the solar settings get their own tab.
+
+**After the update, in Settings > Energy:** choose your contract (supplier, off-peak or single rate, subscribed power). For EDF Tarif Bleu, Sowel then lists every past price of that contract: check them and click « Add these N prices » to price your history with them. Until then, your current prices keep applying to every date, as before.
+
+**Figures that change:** the costs by usage are now priced point by point at each point's price, solar included, so their totals move slightly even with a single price. Once past prices are added, past months are repriced with them.
+
+**Going back to v1.84.0:** reinstall it and restore the backup taken before the update (`data/backups/`). A backup taken after the update holds the new `tariff_versions` table and is refused by v1.84.0.
+
+- Feat (energy): **dated electricity prices** (spec 202, #1218). Settings > Energy > Prices lists the price periods (start, end, peak and off-peak €/kWh, fixed fee, power); « Add a price change » adds one from a date, the first one covers everything before. History, Costs, by usage, the arbiter's gain and EV charging sessions are priced at read time with the period of each point's date; a month crossed by a change is priced from its days. The contract (supplier, type, power) is stored apart. `GET/POST/PUT/DELETE /api/v1/settings/energy/tariff/versions`, `GET/PUT /api/v1/settings/energy/contract`; migration 044, seeded from your current prices.
+- Feat (energy): **an electricity price file** (spec 203, #1221, #1223). `tariffs/electricity-prices.json` holds every EDF Tarif Bleu price published by the CRE (every power, off-peak and single rate, since 2012), rebuilt each night by a workflow that opens a pull request for the maintainer when the CRE publishes. Sowel reads it once a day: a new period published since the last read is added by itself, with a notification; past prices, late ones and a jump of 30 % or more wait for confirmation (« Add these N prices » or « Ignore »). Option « Update prices automatically » on the contract, « Check now ».
+- Feat (energy): **seasonal off-peak hours** (spec 204, #1225). « My off-peak hours change between summer and winter » shows a winter schedule (November 1 to March 31) and a summer one (April 1 to October 31), for the Enedis reform of off-peak slots. Peak and off-peak energy is split with the schedule of the day's season from the save on; past energy keeps its split (#1219). Recipes get the off-peak slots of today's season.
+- Feat (energy): **the subscription on the Costs page** (spec 205, #1227). Month and year show « Subscription 9 kVA », the fixed fee prorated by day up to today, and the total with it; the headline and comparisons stay on consumption. A period crossed by a price change shows « New prices » in its chart and lists the prices of each part.
+- Feat (ui): **a Solar settings tab** (spec 206, #1226). Settings > Solar holds the solar installation and the surplus arbiter; Settings > Energy keeps the tariff. On a phone the tab bar scrolls sideways.
+- Docs: the unlisted decks (#1217, #1220, #1222) and the method's step from goal to features (#1224).
+
+---
+
 ## 1.84.x: What electricity costs
 
 ### v1.84.0 — 2026-11-10 { #v1-84-0 }
