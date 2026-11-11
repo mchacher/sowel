@@ -2,8 +2,14 @@ import { useState, useEffect, useCallback } from "react";
 import { useTranslation } from "react-i18next";
 import { Zap, Plus, Trash2, Loader2, Info } from "lucide-react";
 import { getPriceFileStatus, getTariffConfig, saveTariffConfig } from "../../api";
-import { isTariffSaved } from "../../lib/tariff";
-import type { PriceFileStatus, TariffConfig, TariffContract, TariffSlot } from "../../types";
+import { isSummerOn, isTariffSaved, seasonLabel, SUMMER_DEFAULT } from "../../lib/tariff";
+import type {
+  PriceFileStatus,
+  TariffConfig,
+  TariffContract,
+  TariffSeason,
+  TariffSlot,
+} from "../../types";
 import { TariffContractBlock } from "./TariffContractBlock";
 import { TariffPriceHistory } from "./TariffPriceHistory";
 import { TariffPriceProposals } from "./TariffPriceProposals";
@@ -91,9 +97,25 @@ function timelineToSegments(timeline: Array<"hp" | "hc" | null>): Segment[] {
   return segments;
 }
 
-/** Timeline bar component */
-function TariffTimeline({ slots }: { slots: TariffSlot[] }) {
+/** The HP/HC colour legend, under the timeline or once under both seasons. */
+function TariffLegend({ className }: { className: string }) {
   const { t } = useTranslation();
+  return (
+    <div className={`flex items-center gap-4 text-caption text-text-secondary ${className}`}>
+      <span className="flex items-center gap-1.5">
+        <span className="inline-block w-3 h-3 rounded-sm" style={{ backgroundColor: HP_COLOR }} />
+        {t("energy.peakHours")}
+      </span>
+      <span className="flex items-center gap-1.5">
+        <span className="inline-block w-3 h-3 rounded-sm" style={{ backgroundColor: HC_COLOR }} />
+        {t("energy.offPeakHours")}
+      </span>
+    </div>
+  );
+}
+
+/** Timeline bar component */
+function TariffTimeline({ slots, legend = true }: { slots: TariffSlot[]; legend?: boolean }) {
   const timeline = buildTimeline(slots);
   const segments = timelineToSegments(timeline);
 
@@ -152,18 +174,120 @@ function TariffTimeline({ slots }: { slots: TariffSlot[] }) {
         ))}
       </div>
 
-      {/* Legend */}
-      <div className="flex items-center gap-4 mt-2 text-caption text-text-secondary">
-        <span className="flex items-center gap-1.5">
-          <span className="inline-block w-3 h-3 rounded-sm" style={{ backgroundColor: HP_COLOR }} />
-          {t("energy.peakHours")}
-        </span>
-        <span className="flex items-center gap-1.5">
-          <span className="inline-block w-3 h-3 rounded-sm" style={{ backgroundColor: HC_COLOR }} />
-          {t("energy.offPeakHours")}
-        </span>
-      </div>
+      {legend && <TariffLegend className="mt-2" />}
     </div>
+  );
+}
+
+/**
+ * The slots of one schedule: time inputs, band, delete, add. Rendered once for
+ * a single schedule, once per season otherwise (spec 204).
+ */
+function SlotList({
+  slots,
+  onChange,
+}: {
+  slots: TariffSlot[];
+  onChange: (slots: TariffSlot[]) => void;
+}) {
+  const { t } = useTranslation();
+  const updateSlot = (slotIdx: number, patch: Partial<TariffSlot>) =>
+    onChange(slots.map((slot, i) => (i === slotIdx ? { ...slot, ...patch } : slot)));
+  const addSlot = () => onChange([...slots, { start: "00:00", end: "00:00", tariff: "hp" }]);
+  const removeSlot = (slotIdx: number) => onChange(slots.filter((_, i) => i !== slotIdx));
+
+  return (
+    <>
+      <div className="space-y-2">
+        {slots.map((slot, slotIdx) => (
+          <div key={slotIdx} className="flex flex-wrap items-center gap-2">
+            <span
+              className="inline-block w-2.5 h-2.5 rounded-full flex-shrink-0"
+              style={{ backgroundColor: slot.tariff === "hp" ? HP_COLOR : HC_COLOR }}
+            />
+            <input
+              type="time"
+              step="60"
+              value={slot.start}
+              onChange={(e) => updateSlot(slotIdx, { start: e.target.value })}
+              className="px-2 py-1 border border-border rounded-sm text-small text-text bg-background"
+            />
+            <span className="text-text-tertiary text-caption">→</span>
+            <input
+              type="time"
+              step="60"
+              value={slot.end}
+              onChange={(e) => updateSlot(slotIdx, { end: e.target.value })}
+              className="px-2 py-1 border border-border rounded-sm text-small text-text bg-background"
+            />
+            <select
+              value={slot.tariff}
+              onChange={(e) => updateSlot(slotIdx, { tariff: e.target.value as "hp" | "hc" })}
+              className="px-2 py-1 border border-border rounded-sm text-small text-text bg-background"
+            >
+              <option value="hp">{t("energy.peakHours")}</option>
+              <option value="hc">{t("energy.offPeakHours")}</option>
+            </select>
+            {slots.length > 1 && (
+              <button
+                onClick={() => removeSlot(slotIdx)}
+                className="p-1 text-text-tertiary hover:text-error transition-colors"
+                title={t("tariff.delete")}
+              >
+                <Trash2 size={14} />
+              </button>
+            )}
+          </div>
+        ))}
+      </div>
+
+      <button
+        onClick={addSlot}
+        className="mt-2 flex items-center gap-1 text-caption text-primary hover:text-primary-hover transition-colors"
+      >
+        <Plus size={14} />
+        {t("tariff.addSlot")}
+      </button>
+    </>
+  );
+}
+
+/** One season of a seasonal schedule: name, dates, « Current », timeline, slots. */
+function SeasonBlock({
+  which,
+  season,
+  current,
+  slots,
+  onChange,
+}: {
+  which: "summer" | "winter";
+  season: Pick<TariffSeason, "from" | "to">;
+  current: boolean;
+  slots: TariffSlot[];
+  onChange: (slots: TariffSlot[]) => void;
+}) {
+  const { t, i18n } = useTranslation();
+  const dates = seasonLabel(season, which, i18n.language);
+  return (
+    <section
+      className="bg-background rounded-md p-4"
+      aria-label={t(`tariff.schedule.${which}`)}
+      data-testid={`season-${which}`}
+    >
+      <div className="flex items-center gap-2">
+        <h4 className="text-small font-medium text-text">{t(`tariff.schedule.${which}`)}</h4>
+        {current && (
+          <span className="px-2 py-0.5 rounded-full bg-surface text-primary text-caption font-medium">
+            {t("tariff.schedule.current")}
+          </span>
+        )}
+      </div>
+      <p className="text-caption text-text-tertiary mb-3">
+        {t("tariff.schedule.seasonDates", dates)}
+      </p>
+      <TariffTimeline slots={slots} legend={false} />
+      <SlotList slots={slots} onChange={onChange} />
+    </section>
   );
 }
 
@@ -178,6 +302,12 @@ export function TariffSettings() {
   // proposal and warns that nothing is saved (issue #384). The server returns
   // an empty `schedules` array when `energy.tariff` is absent.
   const [configured, setConfigured] = useState(false);
+  // Spec 204 — a second schedule for summer. `summerSlots` is kept while the
+  // box is unticked, so ticking it again shows what was there; it is null
+  // until the box is first ticked, which then copies the current slots.
+  const [seasonal, setSeasonal] = useState(false);
+  const [summerSlots, setSummerSlots] = useState<TariffSlot[] | null>(null);
+  const [season, setSeason] = useState<Pick<TariffSeason, "from" | "to">>(SUMMER_DEFAULT);
   // Spec 202 — the contract block reports what it read and saved: the price
   // block needs the contract type (one price or two) and the subscribed power.
   const [contract, setContract] = useState<TariffContract | null>(null);
@@ -200,14 +330,29 @@ export function TariffSettings() {
         if (isTariffSaved(c)) {
           setConfig(c);
           setConfigured(true);
+          if (c.summer) {
+            setSeasonal(true);
+            setSummerSlots(c.summer.schedules[0]?.slots ?? []);
+            setSeason({ from: c.summer.from, to: c.summer.to });
+          }
         }
         setLoading(false);
       })
       .catch(() => setLoading(false));
   }, []);
 
-  // Always work with schedule index 0 (single schedule for all days)
+  // Always work with schedule index 0 (single schedule for all days); with a
+  // summer, this is the winter schedule.
   const slots = config.schedules[0]?.slots ?? [];
+  const summerNow = isSummerOn(season, new Date());
+
+  const setSlots = (next: TariffSlot[]) =>
+    setConfig((prev) => ({ ...prev, schedules: [{ days: [...ALL_DAYS], slots: next }] }));
+
+  const toggleSeasonal = (on: boolean) => {
+    if (on && summerSlots === null) setSummerSlots(slots.map((slot) => ({ ...slot })));
+    setSeasonal(on);
+  };
 
   const handleSave = async () => {
     setSaving(true);
@@ -216,7 +361,13 @@ export function TariffSettings() {
     try {
       // The schedule only (spec 202: prices have their own history), with all
       // days included in the single schedule.
-      await saveTariffConfig({ schedules: [{ days: [...ALL_DAYS], slots }] });
+      // Spec 204 — the whole schedule: `summer` only while the box is ticked.
+      await saveTariffConfig({
+        schedules: [{ days: [...ALL_DAYS], slots }],
+        ...(seasonal && summerSlots
+          ? { summer: { ...season, schedules: [{ days: [...ALL_DAYS], slots: summerSlots }] } }
+          : {}),
+      });
       setConfigured(true);
       setSaved(true);
       setTimeout(() => setSaved(false), 2000);
@@ -225,37 +376,6 @@ export function TariffSettings() {
     } finally {
       setSaving(false);
     }
-  };
-
-  const updateSlot = (slotIdx: number, patch: Partial<TariffSlot>) => {
-    setConfig((prev) => {
-      const schedules = [...prev.schedules];
-      const newSlots = [...schedules[0].slots];
-      newSlots[slotIdx] = { ...newSlots[slotIdx], ...patch };
-      schedules[0] = { ...schedules[0], slots: newSlots };
-      return { ...prev, schedules };
-    });
-  };
-
-  const addSlot = () => {
-    setConfig((prev) => {
-      const schedules = [...prev.schedules];
-      const newSlots = [
-        ...schedules[0].slots,
-        { start: "00:00", end: "00:00", tariff: "hp" as const },
-      ];
-      schedules[0] = { ...schedules[0], slots: newSlots };
-      return { ...prev, schedules };
-    });
-  };
-
-  const removeSlot = (slotIdx: number) => {
-    setConfig((prev) => {
-      const schedules = [...prev.schedules];
-      const newSlots = schedules[0].slots.filter((_, i) => i !== slotIdx);
-      schedules[0] = { ...schedules[0], slots: newSlots };
-      return { ...prev, schedules };
-    });
   };
 
   if (loading) {
@@ -320,64 +440,53 @@ export function TariffSettings() {
         </div>
       )}
 
-      {/* Visual timeline */}
-      <TariffTimeline slots={slots} />
-
-      {/* Time slots */}
-      <div className="mb-5 bg-background rounded-md p-4">
-        <h4 className="text-small font-medium text-text mb-3">{t("tariff.timeSlots")}</h4>
-
-        <div className="space-y-2">
-          {slots.map((slot, slotIdx) => (
-            <div key={slotIdx} className="flex items-center gap-2">
-              <span
-                className="inline-block w-2.5 h-2.5 rounded-full flex-shrink-0"
-                style={{ backgroundColor: slot.tariff === "hp" ? HP_COLOR : HC_COLOR }}
-              />
-              <input
-                type="time"
-                step="60"
-                value={slot.start}
-                onChange={(e) => updateSlot(slotIdx, { start: e.target.value })}
-                className="px-2 py-1 border border-border rounded-sm text-small text-text bg-background"
-              />
-              <span className="text-text-tertiary text-caption">→</span>
-              <input
-                type="time"
-                step="60"
-                value={slot.end}
-                onChange={(e) => updateSlot(slotIdx, { end: e.target.value })}
-                className="px-2 py-1 border border-border rounded-sm text-small text-text bg-background"
-              />
-              <select
-                value={slot.tariff}
-                onChange={(e) => updateSlot(slotIdx, { tariff: e.target.value as "hp" | "hc" })}
-                className="px-2 py-1 border border-border rounded-sm text-small text-text bg-background"
-              >
-                <option value="hp">{t("energy.peakHours")}</option>
-                <option value="hc">{t("energy.offPeakHours")}</option>
-              </select>
-              {slots.length > 1 && (
-                <button
-                  onClick={() => removeSlot(slotIdx)}
-                  className="p-1 text-text-tertiary hover:text-error transition-colors"
-                  title={t("tariff.delete")}
-                >
-                  <Trash2 size={14} />
-                </button>
-              )}
-            </div>
-          ))}
-        </div>
-
-        <button
-          onClick={addSlot}
-          className="mt-2 flex items-center gap-1 text-caption text-primary hover:text-primary-hover transition-colors"
-        >
-          <Plus size={14} />
-          {t("tariff.addSlot")}
-        </button>
+      {/* Spec 204 — one schedule all year, or one per season. */}
+      {/* 44 px high with an 18 px box on a phone, as the contract block's option. */}
+      <div className="flex items-start gap-2 mb-3 min-h-11 sm:min-h-0">
+        <input
+          id="tariff-seasonal"
+          type="checkbox"
+          className="shrink-0 mt-px sm:mt-0.5 w-4.5 h-4.5 sm:w-4 sm:h-4"
+          checked={seasonal}
+          onChange={(e) => toggleSeasonal(e.target.checked)}
+        />
+        <label htmlFor="tariff-seasonal" className="text-small text-text">
+          {t("tariff.schedule.seasonal")}
+        </label>
       </div>
+
+      {seasonal && summerSlots ? (
+        <>
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-3 items-start">
+            <SeasonBlock
+              which="winter"
+              season={season}
+              current={!summerNow}
+              slots={slots}
+              onChange={setSlots}
+            />
+            <SeasonBlock
+              which="summer"
+              season={season}
+              current={summerNow}
+              slots={summerSlots}
+              onChange={setSummerSlots}
+            />
+          </div>
+          <TariffLegend className="mt-3 mb-5" />
+        </>
+      ) : (
+        <>
+          {/* Visual timeline */}
+          <TariffTimeline slots={slots} />
+
+          {/* Time slots */}
+          <div className="mb-5 bg-background rounded-md p-4">
+            <h4 className="text-small font-medium text-text mb-3">{t("tariff.timeSlots")}</h4>
+            <SlotList slots={slots} onChange={setSlots} />
+          </div>
+        </>
+      )}
 
       {/* Save */}
       <div className="flex items-center gap-3">

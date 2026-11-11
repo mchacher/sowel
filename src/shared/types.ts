@@ -2681,8 +2681,23 @@ export interface TariffPrices {
   hc: number; // €/kWh
 }
 
-export interface TariffConfig {
+/**
+ * Spec 204 — the summer half of a seasonal off-peak schedule. The season dates
+ * are the Enedis ones by default, stored with the schedule.
+ */
+export interface TariffSeason {
+  /** First day of summer, "MM-DD". */
+  from: string;
+  /** Last day of summer, "MM-DD". */
+  to: string;
   schedules: DaySchedule[];
+}
+
+export interface TariffConfig {
+  /** All year, or winter when `summer` is set. */
+  schedules: DaySchedule[];
+  /** Spec 204 — a second schedule for summer; absent for a single schedule. */
+  summer?: TariffSeason;
   prices: TariffPrices;
 }
 

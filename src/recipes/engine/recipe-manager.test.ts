@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeEach, afterEach } from "vitest";
+import { describe, it, expect, beforeEach, afterEach, vi } from "vitest";
 import Database from "better-sqlite3";
 import { ZoneManager } from "../../zones/zone-manager.js";
 import { applyMigrations } from "../../test-helpers/migrations.js";
@@ -389,6 +389,52 @@ describe("RecipeManager", () => {
     expect(readCapturedTariff()?.offPeakToday).toEqual([
       { start: "22:00", end: "06:00", tariff: "hc" },
     ]);
+  });
+
+  it("exposes the off-peak slots of today's season (spec 204)", () => {
+    vi.useFakeTimers({ toFake: ["Date"] });
+    try {
+      // 2026-07-15 is a Wednesday, in the default summer.
+      vi.setSystemTime(new Date("2026-07-15T13:00:00"));
+      const allDays = [0, 1, 2, 3, 4, 5, 6];
+      tariffConfig = {
+        schedules: [{ days: allDays, slots: [{ start: "22:00", end: "06:00", tariff: "hc" }] }],
+        summer: {
+          from: "04-01",
+          to: "10-31",
+          schedules: [
+            {
+              days: allDays,
+              slots: [
+                { start: "02:00", end: "06:00", tariff: "hc" },
+                { start: "12:00", end: "15:00", tariff: "hc" },
+                { start: "15:00", end: "02:00", tariff: "hp" },
+              ],
+            },
+          ],
+        },
+        prices: { hp: 0.25, hc: 0.2 },
+      };
+      registerTariffProbe("tariff-summer");
+      capturedTariff = null;
+      manager.createInstance("tariff-summer", {});
+      expect(readCapturedTariff()?.offPeakToday).toEqual([
+        { start: "02:00", end: "06:00", tariff: "hc" },
+        { start: "12:00", end: "15:00", tariff: "hc" },
+      ]);
+      expect(readCapturedTariff()?.isOffPeakNow).toBe(true);
+
+      // The same config in January reads the winter schedule.
+      vi.setSystemTime(new Date("2026-01-15T13:00:00"));
+      capturedTariff = null;
+      manager.createInstance("tariff-summer", {});
+      expect(readCapturedTariff()?.offPeakToday).toEqual([
+        { start: "22:00", end: "06:00", tariff: "hc" },
+      ]);
+      expect(readCapturedTariff()?.isOffPeakNow).toBe(false);
+    } finally {
+      vi.useRealTimers();
+    }
   });
 
   it("exposes ctx.helpers.getSunlight() to a running instance", () => {

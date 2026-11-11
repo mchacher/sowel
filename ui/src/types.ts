@@ -2077,8 +2077,17 @@ export interface EvVehicleMonthSummary {
 export type EvAttributionChoice =
   { target: "vehicle"; vehicleId: string } | { target: "other" } | { target: "unattributed" };
 
-export interface TariffConfig {
+/** Spec 204 — the summer half of a seasonal schedule; dates are `MM-DD`, inclusive. */
+export interface TariffSeason {
+  from: string;
+  to: string;
   schedules: DaySchedule[];
+}
+
+export interface TariffConfig {
+  /** All year, or winter when `summer` is set. */
+  schedules: DaySchedule[];
+  summer?: TariffSeason;
   prices: TariffPrices;
 }
 
