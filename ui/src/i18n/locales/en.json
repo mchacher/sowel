@@ -1572,6 +1572,8 @@
   "energy.bilan.energy.day": "Electricity used on {{date}}",
   "energy.bilan.energy.month": "Electricity used in {{month}}",
   "energy.bilan.energy.year": "Electricity used in {{year}}",
+  "energy.bilan.energy.peak": "Peak",
+  "energy.bilan.energy.offPeak": "Off-peak",
   "energy.bilan.energy.solar": "Solar",
   "energy.bilan.energy.split": "{{grid}} bought from the grid, {{solar}} produced and used on site ({{share}}).",
   "energy.bilan.energy.gridOnly": "{{grid}} bought from the grid.",

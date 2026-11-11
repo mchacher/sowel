@@ -191,7 +191,7 @@ function BillCard({
   // two columns of one card from lg, a vertical rule between them.
   return (
     <div className="flex flex-col gap-4 sm:gap-5 lg:card lg:grid lg:grid-cols-2 lg:gap-0 lg:p-7">
-      <section className="card p-5 sm:p-7 lg:p-0 lg:pr-6 lg:shadow-none flex flex-col gap-2 min-w-0">
+      <section className="card p-5 sm:p-7 lg:p-0 lg:pr-8 lg:shadow-none flex flex-col gap-2 min-w-0">
         <span className="text-small font-medium text-text-secondary">
           {billLabel(data.period, date, today, locale, t)}
         </span>
@@ -272,7 +272,7 @@ function EnergyColumn({
   locale: string;
 }) {
   const { t } = useTranslation();
-  const lines = energyLines(data.energy, data.selfConsumedWh, data.hasProduction, locale, t);
+  const lines = energyLines(data.energy, data.hasProduction, locale, t);
   const gridWh = data.energy.gridHpWh + data.energy.gridHcWh;
   const comparison = energyComparisonLines(data.comparison, gridWh, date, today, locale, t);
   const price = averagePrice(data.bill.total, data.energy, data.fee, locale, t);
@@ -281,7 +281,7 @@ function EnergyColumn({
   return (
     <section
       data-testid="bilan-energy"
-      className="card p-5 sm:p-7 lg:p-0 lg:pl-12 lg:shadow-none lg:border-l lg:border-border flex flex-col gap-2 min-w-0"
+      className="card p-5 sm:p-7 lg:p-0 lg:pl-8 lg:shadow-none lg:border-l lg:border-border flex flex-col gap-2 min-w-0"
     >
       <span className="text-small font-medium text-text-secondary">
         {energyLabel(data.period, date, today, locale, t)}
@@ -302,22 +302,28 @@ function EnergyColumn({
           />
         ))}
       </div>
+      {/* Labels on one row, values on the next: a wrapped label never
+          pushes its value out of line with the others. */}
       <div
-        className={`mt-1 grid gap-2 sm:gap-3 ${lines.parts.length === 3 ? "grid-cols-3" : "grid-cols-2"}`}
+        className={`mt-1 grid grid-flow-col grid-rows-[auto_auto] gap-x-2 sm:gap-x-3 gap-y-0.5 ${lines.parts.length === 3 ? "grid-cols-3" : "grid-cols-2"}`}
       >
-        {lines.parts.map((p) => (
-          <div key={p.key} className="flex flex-col gap-0.5 min-w-0">
-            <span className="flex items-center gap-1.5 text-caption text-text-tertiary">
+        {lines.parts.flatMap((p) => [
+          <span
+            key={`${p.key}-label`}
+            className="flex items-start gap-1.5 text-caption text-text-tertiary min-w-0"
+          >
+            <span className="flex h-4.5 items-center">
               <Swatch color={PART_COLOR[p.key]} />
-              {p.label}
             </span>
-            <span
-              className={`text-lead font-semibold tabular-nums ${p.key === "solar" ? "text-solar-ink" : "text-text"}`}
-            >
-              {p.value}
-            </span>
-          </div>
-        ))}
+            {p.label}
+          </span>,
+          <span
+            key={`${p.key}-value`}
+            className={`text-lead font-semibold tabular-nums ${p.key === "solar" ? "text-solar-ink" : "text-text"}`}
+          >
+            {p.value}
+          </span>,
+        ])}
       </div>
       <span className="text-caption text-text-tertiary tabular-nums">{lines.sentence}</span>
       {(comparison || price) && (

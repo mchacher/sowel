@@ -210,7 +210,6 @@ export interface EnergyPart {
  */
 export function energyLines(
   energy: BilanEnergy,
-  selfConsumedWh: number,
   hasProduction: boolean,
   locale: string,
   t: T,
@@ -222,22 +221,23 @@ export function energyLines(
     label,
     value: formatWh(wh, locale),
   });
+  // Short labels: three columns fit a 390 px phone.
   const parts = [
-    part("hp", energy.gridHpWh, t("energy.peakHours")),
-    part("hc", energy.gridHcWh, t("energy.offPeakHours")),
-    ...(hasProduction ? [part("solar", selfConsumedWh, t("energy.bilan.energy.solar"))] : []),
+    part("hp", energy.gridHpWh, t("energy.bilan.energy.peak")),
+    part("hc", energy.gridHcWh, t("energy.bilan.energy.offPeak")),
+    ...(hasProduction ? [part("solar", energy.solarWh, t("energy.bilan.energy.solar"))] : []),
   ];
   const grid = formatWh(gridWh, locale);
   if (!hasProduction) {
     return { total: grid, parts, sentence: t("energy.bilan.energy.gridOnly", { grid }) };
   }
-  const share = energy.consumedWh > 0 ? (selfConsumedWh / energy.consumedWh) * 100 : 0;
+  const share = energy.consumedWh > 0 ? (energy.solarWh / energy.consumedWh) * 100 : 0;
   return {
     total: formatWh(energy.consumedWh, locale),
     parts,
     sentence: t("energy.bilan.energy.split", {
       grid,
-      solar: formatWh(selfConsumedWh, locale),
+      solar: formatWh(energy.solarWh, locale),
       share: formatPercent(share, { locale }),
     }),
   };
@@ -246,7 +246,7 @@ export function energyLines(
 /**
  * The kWh comparison (FR3), built like the € one, on the kWh bought from the
  * grid. `gridWh` is the period's own; the same month a year earlier carries
- * a change in percent once the month is over.
+ * a change in percent once the month is over and both months are covered.
  */
 export function energyComparisonLines(
   c: BilanComparison | null,
@@ -304,7 +304,7 @@ function energyComparisonText(
               }),
               amount: formatWh(c.previousYearGridWh, locale),
             }),
-            over ? change(gridWh, c.previousYearGridWh, locale) : null,
+            over && c.comparable ? change(gridWh, c.previousYearGridWh, locale) : null,
           )
         : undefined;
     if (c.projectedGridWh !== null) {
@@ -343,8 +343,8 @@ function energyComparisonText(
 
 /**
  * The average price paid per kWh bought from the grid (FR3): the bill, and
- * the bill with the fee when there is one, over the grid kWh. Null without
- * grid kWh.
+ * the bill with the fee when there is one for every day counted, over the
+ * grid kWh. Null without grid kWh.
  */
 export function averagePrice(
   bill: number,
@@ -356,7 +356,7 @@ export function averagePrice(
   const kwh = (energy.gridHpWh + energy.gridHcWh) / 1000;
   if (kwh <= 0) return null;
   const perKwh = (eur: number) => `${formatCurrency(eur / kwh, { locale, decimals: 3 })}/kWh`;
-  return fee
+  return fee && fee.daysWithoutFee === 0
     ? t("energy.bilan.energyCompare.averagePriceFee", {
         price: perKwh(bill),
         withFee: perKwh(bill + fee.total),

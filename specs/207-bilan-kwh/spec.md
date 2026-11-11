@@ -28,13 +28,16 @@ The Bilan response gains `energy`:
 
 - `gridHpWh`, `gridHcWh`: kWh bought from the grid at peak and off-peak, the same figures as the
   `/energy/history` totals (`total_hp`, `total_hc`);
-- `consumedWh`: grid plus self-consumed solar (`selfConsumedWh`, already in the response).
+- `solarWh`: self-consumed solar, each point clamped to its consumption (`min(autoconso, hp + hc)`, so a meter
+  skew never counts more solar than the house used);
+- `consumedWh`: grid plus `solarWh`.
 
 Each comparison kind gains its kWh counterpart, on grid kWh, the figure the euro comparison compares:
 
 - `days`: `averageGridWh` (average per day over the same days as `averageBill`);
-- `month`: `projectedGridWh` (same pace rule as `projectedBill`, null when it is null) and `previousYearGridWh`
-  (null when `previousYearBill` is);
+- `month`: `projectedGridWh` (same pace rule as `projectedBill`, null when it is null), `previousYearGridWh`
+  (null when `previousYearBill` is) and `comparable` (both months have data on all days but two, the year view's
+  rule; the kWh line carries a percent only then);
 - `year`: `gridWh` and `previousYearGridWh` over the same comparable months as `bill` / `previousYearBill`.
 
 ### FR2 — Bill card, left (euros)
@@ -55,7 +58,8 @@ Replaces the « Électricité consommée, en euros » block and its paid / avoid
   pace (« Au même rythme, novembre consommera environ 1 120 kWh achetés. »), the 7-day average, the year's
   comparable months;
 - in the same box, « Prix moyen payé : 0,194 €/kWh, 0,223 €/kWh avec l'abonnement. » (bill / grid kWh, and
-  bill + fee / grid kWh; the second part only when a fee is shown; nothing without grid kWh).
+  bill + fee / grid kWh; the second part only when a fee is shown and no counted day lacks one; nothing without
+  grid kWh).
 
 Without production the solar part, its legend item and the second half of the sentence are left out: the bar
 has the two grid parts and the total is the grid kWh.
@@ -74,7 +78,7 @@ the two columns of one card, separated by a vertical rule.
 ## Acceptance Criteria
 
 - [x] The response carries `energy` and the kWh counterparts; `gridHpWh + gridHcWh` equals the history totals.
-- [ ] October 2026 on the shadow: 920 kWh consumed, 446 / 260 / 214, 706 bought, - 32 % against 1 036 kWh, average
+- [x] October 2026 on the shadow: 920 kWh consumed, 446 / 260 / 214, 706 bought, - 32 % against 1 036 kWh, average
       0,194 and 0,223 €/kWh.
 - [x] Day, month and year views each show the kWh comparison of their kind.
 - [x] Without production: two-part bar, no solar wording.

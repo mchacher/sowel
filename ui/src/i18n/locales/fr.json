@@ -1572,6 +1572,8 @@
   "energy.bilan.energy.day": "Électricité consommée le {{date}}",
   "energy.bilan.energy.month": "Électricité consommée en {{month}}",
   "energy.bilan.energy.year": "Électricité consommée en {{year}}",
+  "energy.bilan.energy.peak": "H. pleines",
+  "energy.bilan.energy.offPeak": "H. creuses",
   "energy.bilan.energy.solar": "Solaire",
   "energy.bilan.energy.split": "{{grid}} achetés au réseau, {{solar}} produits et consommés sur place ({{share}}).",
   "energy.bilan.energy.gridOnly": "{{grid}} achetés au réseau.",

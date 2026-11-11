@@ -40,6 +40,7 @@ function response(over: Partial<EnergyBilanResponse> = {}): EnergyBilanResponse 
       previousYearBill: 199.83,
       projectedGridWh: null,
       previousYearGridWh: 1_036_000,
+      comparable: true,
     },
     usage: [],
     arbiter: { enabled: false, since: null, measured: "none", solarWh: 0, avoided: 0, loads: [] },
@@ -54,7 +55,7 @@ function response(over: Partial<EnergyBilanResponse> = {}): EnergyBilanResponse 
         kva: 9,
       },
     ],
-    energy: { gridHpWh: 446_000, gridHcWh: 260_000, consumedWh: 706_000 },
+    energy: { gridHpWh: 446_000, gridHcWh: 260_000, solarWh: 0, consumedWh: 706_000 },
     ...over,
   };
 }
@@ -115,7 +116,7 @@ describe("BilanPage kWh column (spec 207)", () => {
     hasProduction: true,
     avoided: 41.76,
     selfConsumedWh: 214_000,
-    energy: { gridHpWh: 446_000, gridHcWh: 260_000, consumedWh: 920_000 },
+    energy: { gridHpWh: 446_000, gridHcWh: 260_000, solarWh: 214_000, consumedWh: 920_000 },
   };
 
   it("shows a two-part bar and no solar wording without production", async () => {

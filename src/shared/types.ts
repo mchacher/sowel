@@ -2586,6 +2586,9 @@ export type BilanComparison =
       previousYearBill: number | null;
       projectedGridWh: number | null;
       previousYearGridWh: number | null;
+      /** Both months have data on all days but two (the year view's rule):
+       *  only then does the kWh line carry a change in percent. */
+      comparable: boolean;
     }
   /** Year: the months fully elapsed with consumption in both years ("YYYY-MM"). */
   | {
@@ -2602,6 +2605,8 @@ export interface BilanEnergy {
   /** Wh bought from the grid, peak and off-peak (the /energy/history totals). */
   gridHpWh: number;
   gridHcWh: number;
+  /** Self-consumed solar, each point clamped to its consumption. */
+  solarWh: number;
   /** Grid plus self-consumed solar. */
   consumedWh: number;
 }

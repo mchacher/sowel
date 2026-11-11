@@ -2293,7 +2293,8 @@ describe("Spec 200 — /api/v1/energy/bilan", () => {
     expect(body.energy.gridHpWh).toBe(history.totals.total_hp);
     expect(body.energy.gridHcWh).toBe(history.totals.total_hc);
     expect(body.energy.gridHpWh + body.energy.gridHcWh).toBe(14_000);
-    expect(body.energy.consumedWh).toBe(14_000 + body.selfConsumedWh);
+    expect(body.energy.solarWh).toBe(0);
+    expect(body.energy.consumedWh).toBe(14_000);
     expect(body.comparison).toMatchObject({ kind: "month", previousYearGridWh: null });
   });
 

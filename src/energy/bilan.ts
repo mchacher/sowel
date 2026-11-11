@@ -85,6 +85,18 @@ function hasData(points: EnergyPoint[]): boolean {
   return points.some((p) => consumptionOf(p) > 0);
 }
 
+/** Spec 207 — the self-consumed solar Wh, each point clamped to its consumption
+ *  (a meter skew never counts more solar than the house used). */
+export function solarWhOf(points: EnergyPoint[]): number {
+  return points.reduce((s, p) => s + Math.min(Math.max(0, p.autoconso), consumptionOf(p)), 0);
+}
+
+/** Do these daily points cover the month starting `start`, but for MAX_MISSING_DAYS? */
+function coversMonth(daily: EnergyPoint[], start: Date): boolean {
+  const length = new Date(start.getFullYear(), start.getMonth() + 1, 0).getDate();
+  return daily.filter((p) => consumptionOf(p) > 0).length >= length - MAX_MISSING_DAYS;
+}
+
 /** Day view: the average bill of the reference days that have consumption. */
 export function dayComparison(previousDays: EnergyPoint[]): BilanComparison | null {
   const days = previousDays.filter((p) => consumptionOf(p) > 0);
@@ -130,6 +142,11 @@ export function monthComparison(
     previousYearBill: previous ? round4(billOf(previousYear)) : null,
     projectedGridWh: projects ? Math.round(gridWh * pace) : null,
     previousYearGridWh: previous ? Math.round(gridWhOf(previousYear)) : null,
+    // The year view's rule: both months have data on all days but two.
+    comparable:
+      previous &&
+      coversMonth(points, from) &&
+      coversMonth(previousYear, new Date(from.getFullYear() - 1, from.getMonth(), 1)),
   };
 }
 
@@ -345,6 +362,7 @@ export function computeBilan(input: BilanInput): EnergyBilanResponse {
     );
   else comparison = yearComparison(points, reference, coverage, now);
 
+  const solarWh = solarWhOf(points);
   return {
     period,
     from: input.from.toISOString(),
@@ -366,7 +384,8 @@ export function computeBilan(input: BilanInput): EnergyBilanResponse {
     energy: {
       gridHpWh: Math.round(totals.total_hp),
       gridHcWh: Math.round(totals.total_hc),
-      consumedWh: Math.round(totals.total_hp + totals.total_hc + totals.total_autoconso),
+      solarWh: Math.round(solarWh),
+      consumedWh: Math.round(totals.total_hp + totals.total_hc + solarWh),
     },
   };
 }

@@ -62,6 +62,7 @@ const month = (projectedBill: number | null, previousYearBill: number | null): B
   previousYearBill,
   projectedGridWh: null,
   previousYearGridWh: null,
+  comparable: false,
 });
 const year = (months: string[], bill: number, previousYearBill: number): BilanComparison => ({
   kind: "year",
@@ -313,10 +314,10 @@ describe("energyLabel", () => {
 });
 
 describe("energyLines", () => {
-  const october = { gridHpWh: 446_000, gridHcWh: 260_000, consumedWh: 920_000 };
+  const october = { gridHpWh: 446_000, gridHcWh: 260_000, solarWh: 214_000, consumedWh: 920_000 };
 
   it("gives the three parts and the sentence with production", () => {
-    const e = energyLines(october, 214_000, true, FR, t);
+    const e = energyLines(october, true, FR, t);
     expect(n(e.total)).toBe("920 kWh");
     expect(e.parts.map((p) => [p.key, n(p.value)])).toEqual([
       ["hp", "446 kWh"],
@@ -327,13 +328,27 @@ describe("energyLines", () => {
     expect(n(e.sentence)).toBe(
       "706 kWh achetés au réseau, 214 kWh produits et consommés sur place (23 %).",
     );
-    expect(n(energyLines(october, 214_000, true, EN, tEn).sentence)).toBe(
+    const en = energyLines(october, true, EN, tEn);
+    expect(n(en.sentence)).toBe(
       "706 kWh bought from the grid, 214 kWh produced and used on site (23%).",
     );
   });
 
+  it("uses short legend labels, so three columns fit a phone", () => {
+    expect(energyLines(october, true, EN, tEn).parts.map((p) => p.label)).toEqual([
+      "Peak",
+      "Off-peak",
+      "Solar",
+    ]);
+    expect(energyLines(october, true, FR, t).parts.map((p) => p.label)).toEqual([
+      "H. pleines",
+      "H. creuses",
+      "Solaire",
+    ]);
+  });
+
   it("leaves the solar part and its half of the sentence out without production", () => {
-    const e = energyLines({ ...october, consumedWh: 706_000 }, 0, false, FR, t);
+    const e = energyLines({ ...october, solarWh: 0, consumedWh: 706_000 }, false, FR, t);
     expect(n(e.total)).toBe("706 kWh");
     expect(e.parts.map((p) => p.key)).toEqual(["hp", "hc"]);
     expect(n(e.sentence)).toBe("706 kWh achetés au réseau.");
@@ -341,8 +356,7 @@ describe("energyLines", () => {
 
   it("shows one decimal below 100 kWh", () => {
     const e = energyLines(
-      { gridHpWh: 9_400, gridHcWh: 5_000, consumedWh: 18_600 },
-      4_200,
+      { gridHpWh: 9_400, gridHcWh: 5_000, solarWh: 4_200, consumedWh: 18_600 },
       true,
       FR,
       t,
@@ -352,10 +366,15 @@ describe("energyLines", () => {
 });
 
 describe("energyComparisonLines", () => {
-  const monthWh = (projectedGridWh: number | null, previousYearGridWh: number | null) => ({
+  const monthWh = (
+    projectedGridWh: number | null,
+    previousYearGridWh: number | null,
+    comparable = true,
+  ) => ({
     ...month(null, null),
     projectedGridWh,
     previousYearGridWh,
+    comparable,
   });
 
   it("states the same month a year earlier with the change, once the month is over", () => {
@@ -377,6 +396,19 @@ describe("energyComparisonLines", () => {
       tEn,
     );
     expect(n(en!.main)).toBe("October 2025: 1,036 kWh bought (-32%).");
+  });
+
+  it("gives no change when either month is short of data", () => {
+    // A meter installed late in October 2025: 50 kWh, no « +1 312 % ».
+    const c = energyComparisonLines(
+      monthWh(null, 50_000, false),
+      706_000,
+      "2026-10-15",
+      "2026-11-11",
+      FR,
+      t,
+    );
+    expect(n(c!.main)).toBe("Octobre 2025 : 50 kWh achetés.");
   });
 
   it("states the pace of the current month, then the previous year without a change", () => {
@@ -424,7 +456,7 @@ describe("energyComparisonLines", () => {
 });
 
 describe("averagePrice", () => {
-  const october = { gridHpWh: 446_000, gridHcWh: 260_000, consumedWh: 920_000 };
+  const october = { gridHpWh: 446_000, gridHcWh: 260_000, solarWh: 214_000, consumedWh: 920_000 };
   const fee: BilanFee = { total: 20.37, days: 31, daysWithoutFee: 0, kva: 9 };
 
   it("states the price with and without the fee", () => {
@@ -440,9 +472,21 @@ describe("averagePrice", () => {
     expect(n(averagePrice(136.86, october, null, FR, t)!)).toBe("Prix moyen payé : 0,194 €/kWh.");
   });
 
+  it("leaves the subscription half out when some days have no fee", () => {
+    expect(n(averagePrice(136.86, october, { ...fee, daysWithoutFee: 10 }, FR, t)!)).toBe(
+      "Prix moyen payé : 0,194 €/kWh.",
+    );
+  });
+
   it("is null without grid kWh", () => {
     expect(
-      averagePrice(0, { gridHpWh: 0, gridHcWh: 0, consumedWh: 12_000 }, fee, FR, t),
+      averagePrice(
+        0,
+        { gridHpWh: 0, gridHcWh: 0, solarWh: 12_000, consumedWh: 12_000 },
+        fee,
+        FR,
+        t,
+      ),
     ).toBeNull();
   });
 });

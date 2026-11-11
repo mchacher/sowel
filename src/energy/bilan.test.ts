@@ -189,6 +189,26 @@ describe("monthComparison", () => {
       previousYearBill: 2,
       projectedGridWh: null,
       previousYearGridWh: 10_000,
+      // One day of data in November 2025: not comparable.
+      comparable: false,
+    });
+  });
+
+  it("is comparable when both months have data on all days but two (spec 207)", () => {
+    const now = new Date(2027, 0, 5).getTime();
+    const november2025 = (n: number) =>
+      Array.from({ length: 30 }, (_, i) => point(new Date(2025, 10, i + 1), i < n ? 1000 : 0, 0));
+    expect(monthComparison(6, days(30), from, to, now, november2025(28))).toMatchObject({
+      comparable: true,
+    });
+    // A meter installed late in November 2025: data on 27 days only.
+    expect(monthComparison(6, days(30), from, to, now, november2025(27))).toMatchObject({
+      previousYearGridWh: 27_000,
+      comparable: false,
+    });
+    // The current month short of data: not comparable either.
+    expect(monthComparison(6, days(27), from, to, now, november2025(30))).toMatchObject({
+      comparable: false,
     });
   });
 });
@@ -500,6 +520,8 @@ describe("computeBilan", () => {
   });
 
   it("fills the energy from the totals, solar added (spec 207)", () => {
+    // October 2026: 920 kWh used, 214 of them from the sun.
+    const points = [point(day(10), 660_000, 260_000, 214_000)];
     const totals = {
       total_consumption: 706_000,
       total_hp: 446_000,
@@ -511,17 +533,39 @@ describe("computeBilan", () => {
       cost_hc: 37,
       cost_total: 137,
     };
-    expect(computeBilan(input({ totals })).energy).toEqual({
+    expect(computeBilan(input({ points, totals })).energy).toEqual({
       gridHpWh: 446_000,
       gridHcWh: 260_000,
+      solarWh: 214_000,
       consumedWh: 920_000,
+    });
+  });
+
+  it("clamps the solar to each point's consumption on a meter skew (spec 207)", () => {
+    const points = [point(day(10, 12), 1000, 0, 1500)];
+    const totals = {
+      total_consumption: 0,
+      total_hp: 0,
+      total_hc: 0,
+      total_production: 1500,
+      total_autoconso: 1500,
+      total_injection: 0,
+      cost_hp: 0,
+      cost_hc: 0,
+      cost_total: 0,
+    };
+    expect(computeBilan(input({ points, totals })).energy).toEqual({
+      gridHpWh: 0,
+      gridHcWh: 0,
+      solarWh: 1000,
+      consumedWh: 1000,
     });
   });
 
   it("adds energy and the comparison's Wh, every other field as before (spec 207)", () => {
     const b = computeBilan(input());
     const { energy, ...rest } = b;
-    expect(energy).toEqual({ gridHpWh: 1000, gridHcWh: 1200, consumedWh: 4800 });
+    expect(energy).toEqual({ gridHpWh: 1000, gridHcWh: 1200, solarWh: 2600, consumedWh: 4800 });
     expect(Object.keys(rest).sort()).toEqual(
       [
         "period",

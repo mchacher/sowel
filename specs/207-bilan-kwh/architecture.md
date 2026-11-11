@@ -8,6 +8,8 @@ export interface BilanEnergy {
   /** Wh bought from the grid, peak and off-peak (the /energy/history totals). */
   gridHpWh: number;
   gridHcWh: number;
+  /** Self-consumed solar, each point clamped to its consumption. */
+  solarWh: number;
   /** Grid plus self-consumed solar. */
   consumedWh: number;
 }
@@ -20,6 +22,8 @@ export type BilanComparison =
       previousYearBill: number | null;
       projectedGridWh: number | null;
       previousYearGridWh: number | null;
+      /** Both months covered, but for MAX_MISSING_DAYS (the year view's rule). */
+      comparable: boolean;
     }
   | {
       kind: "year";
@@ -44,7 +48,8 @@ export interface EnergyBilanResponse {
   already computes (history points carry the whole house's consumption; totals are grid-only).
 - `dayComparison`, `monthComparison`, `yearComparison` compute the Wh fields next to the € ones, over the same
   points and the same rules (the projection uses the same elapsed ratio).
-- `computeBilan` fills `energy` from `totals` (`total_hp`, `total_hc`, `total_autoconso`).
+- `computeBilan` fills `energy` from `totals` (`total_hp`, `total_hc`) and `solarWhOf(points)`, the per-point
+  `min(autoconso, hp + hc)`.
 
 No route change beyond the type: everything comes from data the route already reads.
 

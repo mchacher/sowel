@@ -9,7 +9,7 @@ Branch `feat/issue-1232-bilan-kwh`, one pull request, closes #1232.
 - [x] 3 — `gridWhOf`, kWh in the three comparisons, `energy` in `computeBilan`
 - [x] 4 — UI: kWh column, phone cards, solar tile, strings EN and FR
 - [x] 5 — Docs delta, EN and FR
-- [ ] 6 — Checked on the shadow seeded from production: October 2026, November so far, a day, the year 2026;
+- [x] 6 — Checked on the shadow seeded from production: October 2026, November so far, a day, the year 2026;
       1280 px and 390 px, light and dark
 
 ## Test Plan
