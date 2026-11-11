@@ -11,6 +11,21 @@ Cette page résume toutes les versions publiées, de la plus récente à la plus
 
 ---
 
+## 1.86.x : Les euros et les kWh, et une application plus légère
+
+### v1.86.0 — 2026-11-11 { #v1-86-0 }
+
+Le Bilan montre maintenant ce que vous avez consommé en kWh à côté de ce que vous avez payé en euros : un changement de prix ne masque plus un changement de consommation. L'application elle-même est trois fois plus légère à ouvrir : le premier écran charge environ 1,2 Mo au lieu de 3,6 Mo, et les autres pages se chargent à leur première visite.
+
+**Après la mise à jour :** un onglet resté ouvert depuis avant la mise à jour se recharge une fois de lui-même la première fois que vous y ouvrez une page. Rien à faire.
+
+- Nouveauté (énergie) : **la consommation en kWh dans le Bilan** (spec 207, #1232, #1235). La carte de facture montre les euros à gauche, inchangés, et les kWh à droite : le total consommé, une barre réseau heures pleines, réseau heures creuses et solaire consommé sur place, les kWh achetés au réseau, une comparaison en kWh pour chaque vue, et le prix moyen payé par kWh. Aucune ligne ne mélange les deux unités. `energy` dans `GET /api/v1/energy/bilan`, avec un équivalent en kWh réseau pour chaque comparaison.
+- Nouveauté (interface) : **un premier chargement plus léger** (#1187, #1236). Le premier chargement passe de 3,6 Mo (944 Ko compressés) à 1,2 Mo (324 Ko compressés). Les pages autres que le Tableau de bord et la Maison se chargent à la première visite ; le lecteur des caméras se charge au lancement du direct. Une application installée ouvre toujours toutes les pages hors ligne. Une page qui ne se charge pas n'emporte plus la navigation avec elle, et une coupure réseau pendant le chargement d'une page attend son retour au lieu de recharger. L'icône d'un plugin est désormais l'une de celles qu'utilisent les plugins officiels ; tout autre nom affiche une puce (`Cpu`).
+- Correctif (interface) : les symboles d'unité gardent leur casse dans les en-têtes de tableau en capitales (« €/kWh », pas « €/KWH ») (#1231, #1233).
+- Correctif (interface) : l'éditeur des heures creuses saisonnières empile l'hiver au-dessus de l'été, pour que chaque plage tienne sur une ligne, et les deux en-têtes de saison ont la même hauteur (#1230, #1234).
+
+---
+
 ## 1.85.x : Des prix qui suivent le calendrier
 
 ### v1.85.0 — 2026-11-11 { #v1-85-0 }

@@ -11,6 +11,21 @@ This page summarises every published version, newest first. For the full diff be
 
 ---
 
+## 1.86.x: Euros and kWh, and a lighter app
+
+### v1.86.0 — 2026-11-11 { #v1-86-0 }
+
+The Costs page now shows what you consumed in kWh next to what you paid in euros, so a change in price no longer hides a change in consumption. The app itself is three times lighter to open: the first screen loads about 1.2 MB instead of 3.6 MB, and the other pages load when you first visit them.
+
+**After the update:** a tab left open from before the update reloads once by itself the first time you open a page in it. Nothing to do.
+
+- Feat (energy): **consumption in kWh on the Costs page** (spec 207, #1232, #1235). The bill card shows euros on the left, unchanged, and kWh on the right: the total consumed, a bar of grid peak, grid off-peak and solar used on site, the kWh bought from the grid, a kWh comparison for each view, and the average price paid per kWh. No line mixes the two units. `energy` in `GET /api/v1/energy/bilan`, with a grid kWh counterpart for each comparison.
+- Feat (ui): **a lighter first load** (#1187, #1236). The first load goes from 3.6 MB (944 KB compressed) to 1.2 MB (324 KB compressed). Pages other than the Dashboard and Home load on first visit; the camera player loads when a live view starts. An installed app still opens every page offline. A page that fails to load no longer takes the navigation down, and losing the network while a page loads waits for it to come back instead of reloading. A plugin icon is now one of the icons the official plugins use; any other name shows a chip (`Cpu`).
+- Fix (ui): unit symbols keep their case in uppercase table headers (« €/kWh », not « €/KWH ») (#1231, #1233).
+- Fix (ui): the seasonal off-peak editor stacks winter above summer, so each slot stays on one line, and both season headers have the same height (#1230, #1234).
+
+---
+
 ## 1.85.x: Prices that follow the calendar
 
 ### v1.85.0 — 2026-11-11 { #v1-85-0 }
