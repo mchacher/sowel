@@ -306,8 +306,7 @@
         {"contractType":"hphc","kva":36,"startDate":"2024-02-01","hp":0.27,"hc":0.2068,"fixedFeeYear":546.71},
         {"contractType":"hphc","kva":36,"startDate":"2025-02-01","hp":0.2146,"hc":0.1696,"fixedFeeYear":591.98},
         {"contractType":"hphc","kva":36,"startDate":"2025-08-01","hp":0.2081,"hc":0.1635,"fixedFeeYear":661.41},
-        {"contractType":"hphc","kva":36,"startDate":"2026-02-01","hp":0.2065,"hc":0.1578,"fixedFeeYear":634.54},
-        {"contractType":"hphc","kva":36,"startDate":"2026-08-01","hp":0.2142,"hc":0.1589,"fixedFeeYear":650.69}
+        {"contractType":"hphc","kva":36,"startDate":"2026-02-01","hp":0.2065,"hc":0.1578,"fixedFeeYear":634.54}
       ]
     }
   ]
