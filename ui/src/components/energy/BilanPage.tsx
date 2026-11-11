@@ -10,12 +10,17 @@ import type { BilanPeriod, BilanUsageRow, EnergyBilanResponse } from "../../type
 import { BilanChart } from "./BilanChart";
 import {
   arbiterTileText,
+  averagePrice,
   billLabel,
   changeMarkers,
   comparisonLines,
+  energyComparisonLines,
+  energyLabel,
+  energyLines,
   feeLines,
   methodSpans,
   showArbiterTile,
+  type EnergyPart,
 } from "./bilan-format";
 import { EnergyMobileNav } from "./EnergyMobileNav";
 import { formatEur, formatWh } from "./format";
@@ -28,6 +33,12 @@ const BILAN_PERIODS = ["day", "month", "year"] as const;
 const PAID_COLOR = "var(--color-energy-hp)";
 const HC_COLOR = "var(--color-energy-hc)";
 const AVOIDED_COLOR = "var(--color-solar-auto)";
+/** Spec 207 — the kWh bar's parts, in the chart colours. */
+const PART_COLOR: Record<EnergyPart["key"], string> = {
+  hp: PAID_COLOR,
+  hc: HC_COLOR,
+  solar: AVOIDED_COLOR,
+};
 
 function Swatch({ color }: { color: string }) {
   return (
@@ -176,17 +187,16 @@ function BillCard({
   const comparison = comparisonLines(data.comparison, date, locale, t);
   // Spec 205 — the fixed fee, apart from the consumption the headline states.
   const fee = data.fee ? feeLines(data.fee, data.bill.total, locale, t) : null;
-  const value = data.bill.total + data.avoided;
-  const paid = formatEur(data.bill.total, locale);
-  const avoided = formatEur(data.avoided, locale);
+  // Spec 207 — euros on the left, kWh on the right: two cards on a phone, the
+  // two columns of one card from lg, a vertical rule between them.
   return (
-    <section className="card p-5 sm:p-7 grid gap-6 lg:grid-cols-[1fr_1.25fr] lg:gap-10">
-      <div className="flex flex-col gap-2 min-w-0">
+    <div className="flex flex-col gap-4 sm:gap-5 lg:card lg:grid lg:grid-cols-2 lg:gap-0 lg:p-7">
+      <section className="card p-5 sm:p-7 lg:p-0 lg:pr-6 lg:shadow-none flex flex-col gap-2 min-w-0">
         <span className="text-small font-medium text-text-secondary">
           {billLabel(data.period, date, today, locale, t)}
         </span>
         <span className="text-value font-semibold text-text tabular-nums leading-tight">
-          {paid}
+          {formatEur(data.bill.total, locale)}
         </span>
         <div className="flex flex-col sm:flex-row gap-1 sm:gap-5 text-small text-text-secondary tabular-nums">
           <span className="flex items-center gap-1.5">
@@ -243,43 +253,82 @@ function BillCard({
             )}
           </div>
         )}
-      </div>
-      {data.hasProduction && (
-        <div className="flex flex-col gap-3.5 min-w-0 border-t border-border-light pt-5 lg:border-t-0 lg:pt-0">
-          <div className="flex items-baseline justify-between gap-3">
-            <span className="text-small font-medium text-text-secondary">
-              {t("energy.bilan.value.title")}
-            </span>
-            <span className="text-title font-semibold text-text tabular-nums">
-              {formatEur(value, locale)}
-            </span>
-          </div>
-          <SplitBar
-            paid={data.bill.total}
-            avoided={data.avoided}
-            max={value}
-            className="h-6 sm:h-7 rounded-sm"
-            label={t("energy.bilan.value.aria", { paid, avoided })}
+      </section>
+      <EnergyColumn data={data} date={date} today={today} locale={locale} />
+    </div>
+  );
+}
+
+/** Spec 207 FR3 — what the period consumed, in kWh. */
+function EnergyColumn({
+  data,
+  date,
+  today,
+  locale,
+}: {
+  data: EnergyBilanResponse;
+  date: string;
+  today: string;
+  locale: string;
+}) {
+  const { t } = useTranslation();
+  const lines = energyLines(data.energy, data.selfConsumedWh, data.hasProduction, locale, t);
+  const gridWh = data.energy.gridHpWh + data.energy.gridHcWh;
+  const comparison = energyComparisonLines(data.comparison, gridWh, date, today, locale, t);
+  const price = averagePrice(data.bill.total, data.energy, data.fee, locale, t);
+  const max = lines.parts.reduce((s, p) => s + p.wh, 0);
+  const pct = (wh: number) => (max > 0 ? `${(wh / max) * 100}%` : "0%");
+  return (
+    <section
+      data-testid="bilan-energy"
+      className="card p-5 sm:p-7 lg:p-0 lg:pl-12 lg:shadow-none lg:border-l lg:border-border flex flex-col gap-2 min-w-0"
+    >
+      <span className="text-small font-medium text-text-secondary">
+        {energyLabel(data.period, date, today, locale, t)}
+      </span>
+      <span className="text-display lg:text-value font-semibold text-text tabular-nums leading-tight">
+        {lines.total}
+      </span>
+      <div
+        role="img"
+        aria-label={lines.parts.map((p) => `${p.label} ${p.value}`).join(", ")}
+        className="mt-1 flex h-3 overflow-hidden rounded-sm bg-border-light"
+      >
+        {lines.parts.map((p) => (
+          <div
+            key={p.key}
+            data-testid={`bilan-energy-${p.key}`}
+            style={{ width: pct(p.wh), backgroundColor: PART_COLOR[p.key] }}
           />
-          <div className="grid grid-cols-2 gap-4">
-            <div className="flex flex-col gap-0.5">
-              <span className="flex items-center gap-1.5 text-caption text-text-tertiary">
-                <Swatch color={PAID_COLOR} />
-                {t("energy.bilan.value.paid")}
-              </span>
-              <span className="text-lead font-semibold text-text tabular-nums">{paid}</span>
-            </div>
-            <div className="flex flex-col gap-0.5">
-              <span className="flex items-center gap-1.5 text-caption text-text-tertiary">
-                <Swatch color={AVOIDED_COLOR} />
-                {t("energy.bilan.value.avoided")}
-              </span>
-              <span className="text-lead font-semibold text-solar-ink tabular-nums">{avoided}</span>
-            </div>
+        ))}
+      </div>
+      <div
+        className={`mt-1 grid gap-2 sm:gap-3 ${lines.parts.length === 3 ? "grid-cols-3" : "grid-cols-2"}`}
+      >
+        {lines.parts.map((p) => (
+          <div key={p.key} className="flex flex-col gap-0.5 min-w-0">
+            <span className="flex items-center gap-1.5 text-caption text-text-tertiary">
+              <Swatch color={PART_COLOR[p.key]} />
+              {p.label}
+            </span>
+            <span
+              className={`text-lead font-semibold tabular-nums ${p.key === "solar" ? "text-solar-ink" : "text-text"}`}
+            >
+              {p.value}
+            </span>
           </div>
-          <span className="text-caption text-text-tertiary tabular-nums">
-            {t("energy.bilan.value.withoutSolar", { amount: formatEur(value, locale) })}
-          </span>
+        ))}
+      </div>
+      <span className="text-caption text-text-tertiary tabular-nums">{lines.sentence}</span>
+      {(comparison || price) && (
+        <div className="mt-1.5 rounded-sm bg-background px-3.5 py-3 flex flex-col gap-1">
+          {comparison && (
+            <span className="text-small text-text tabular-nums">{comparison.main}</span>
+          )}
+          {comparison?.sub && (
+            <span className="text-caption text-text-tertiary tabular-nums">{comparison.sub}</span>
+          )}
+          {price && <span className="text-caption text-text-tertiary tabular-nums">{price}</span>}
         </div>
       )}
     </section>
@@ -291,6 +340,7 @@ function Tiles({ data, locale }: { data: EnergyBilanResponse; locale: string }) 
   const showArbiter = showArbiterTile(data.arbiter);
   if (!data.hasProduction && !showArbiter) return null;
   const arbiter = arbiterTileText(data.arbiter, locale, t);
+  const withoutSolar = formatEur(data.bill.total + data.avoided, locale);
   return (
     <div className="grid grid-cols-2 gap-3 sm:gap-5">
       {data.hasProduction && (
@@ -301,8 +351,12 @@ function Tiles({ data, locale }: { data: EnergyBilanResponse; locale: string }) 
           <span className="text-title sm:text-display font-semibold text-solar-ink tabular-nums">
             {formatEur(data.avoided, locale)}
           </span>
-          <span className="text-micro sm:text-caption text-text-tertiary tabular-nums">
-            {t("energy.bilan.solar.caption", { energy: formatWh(data.selfConsumedWh, locale) })}
+          {/* Spec 207 FR4 — the bill without panels; its kWh moved to the kWh column. */}
+          <span className="hidden sm:block text-caption text-text-tertiary tabular-nums">
+            {t("energy.bilan.solar.withoutSolar", { amount: withoutSolar })}
+          </span>
+          <span className="sm:hidden text-micro text-text-tertiary tabular-nums">
+            {t("energy.bilan.solar.withoutSolarShort", { amount: withoutSolar })}
           </span>
         </section>
       )}

@@ -66,6 +66,13 @@ export function splitPoint(p: EnergyPoint): PointSplit {
   };
 }
 
+/** Spec 207 — the Wh bought from the grid over these points: each point's
+ *  consumption times its grid share (points carry the whole house, solar
+ *  included). Never negative: the share is clamped. */
+export function gridWhOf(points: EnergyPoint[]): number {
+  return points.reduce((s, p) => s + consumptionOf(p) * (1 - splitPoint(p).share), 0);
+}
+
 /** What the grid cost over these points, €. */
 export function billOf(points: EnergyPoint[]): number {
   return points.reduce((s, p) => {
@@ -86,10 +93,13 @@ export function dayComparison(previousDays: EnergyPoint[]): BilanComparison | nu
     kind: "days",
     days: days.length,
     averageBill: round4(billOf(days) / days.length),
+    averageGridWh: Math.round(gridWhOf(days) / days.length),
   };
 }
 
-/** Month view: the pace projection (current month) and the same month a year earlier. */
+/** Month view: the pace projection (current month) and the same month a year
+ *  earlier. `gridWh` is the period's grid Wh (the totals'), projected at the
+ *  bill's pace. */
 export function monthComparison(
   bill: number,
   points: EnergyPoint[],
@@ -97,6 +107,7 @@ export function monthComparison(
   to: Date,
   now: number,
   previousYear: EnergyPoint[],
+  gridWh: number = gridWhOf(points),
 ): BilanComparison {
   const start = from.getTime();
   const end = to.getTime();
@@ -110,14 +121,15 @@ export function monthComparison(
     covered = Math.max(covered, next.getTime());
   }
   const elapsed = Math.min(covered, now) - start;
-  const projectedBill =
-    now < end && elapsed >= PROJECTION_MIN_ELAPSED_MS
-      ? round4((bill * (end - start)) / elapsed)
-      : null;
+  const projects = now < end && elapsed >= PROJECTION_MIN_ELAPSED_MS;
+  const pace = (end - start) / elapsed;
+  const previous = hasData(previousYear);
   return {
     kind: "month",
-    projectedBill,
-    previousYearBill: hasData(previousYear) ? round4(billOf(previousYear)) : null,
+    projectedBill: projects ? round4(bill * pace) : null,
+    previousYearBill: previous ? round4(billOf(previousYear)) : null,
+    projectedGridWh: projects ? Math.round(gridWh * pace) : null,
+    previousYearGridWh: previous ? Math.round(gridWhOf(previousYear)) : null,
   };
 }
 
@@ -171,6 +183,8 @@ export function yearComparison(
   const months: string[] = [];
   let bill = 0;
   let previousYearBill = 0;
+  let gridWh = 0;
+  let previousYearGridWh = 0;
   points.forEach((p, i) => {
     const prev = previousYear[i];
     if (!prev || monthEnd(p.time) > now) return;
@@ -178,9 +192,18 @@ export function yearComparison(
     months.push(monthKey(p.time));
     bill += billOf([p]);
     previousYearBill += billOf([prev]);
+    gridWh += gridWhOf([p]);
+    previousYearGridWh += gridWhOf([prev]);
   });
   if (months.length === 0) return null;
-  return { kind: "year", months, bill: round4(bill), previousYearBill: round4(previousYearBill) };
+  return {
+    kind: "year",
+    months,
+    bill: round4(bill),
+    previousYearBill: round4(previousYearBill),
+    gridWh: Math.round(gridWh),
+    previousYearGridWh: Math.round(previousYearGridWh),
+  };
 }
 
 export interface UsageSeries {
@@ -311,7 +334,15 @@ export function computeBilan(input: BilanInput): EnergyBilanResponse {
   let comparison: BilanComparison | null;
   if (period === "day") comparison = dayComparison(reference);
   else if (period === "month")
-    comparison = monthComparison(totals.cost_total, points, input.from, input.to, now, reference);
+    comparison = monthComparison(
+      totals.cost_total,
+      points,
+      input.from,
+      input.to,
+      now,
+      reference,
+      totals.total_hp + totals.total_hc,
+    );
   else comparison = yearComparison(points, reference, coverage, now);
 
   return {
@@ -331,5 +362,11 @@ export function computeBilan(input: BilanInput): EnergyBilanResponse {
     arbiter: input.arbiter,
     fee: input.fee,
     priceSpans: input.priceSpans,
+    // Spec 207 — the totals are grid-only: add the self-consumed solar.
+    energy: {
+      gridHpWh: Math.round(totals.total_hp),
+      gridHcWh: Math.round(totals.total_hc),
+      consumedWh: Math.round(totals.total_hp + totals.total_hc + totals.total_autoconso),
+    },
   };
 }

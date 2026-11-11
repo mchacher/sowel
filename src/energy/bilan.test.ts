@@ -4,6 +4,7 @@ import {
   billOf,
   computeBilan,
   dayComparison,
+  gridWhOf,
   monthComparison,
   splitPoint,
   usageRows,
@@ -90,12 +91,39 @@ describe("billOf", () => {
   });
 });
 
+describe("gridWhOf (spec 207)", () => {
+  it("counts a point's consumption less what solar covered", () => {
+    expect(gridWhOf([point(day(10, 12), 1000, 0, 250)])).toBe(750);
+  });
+
+  it("sums points split between peak and off-peak", () => {
+    expect(gridWhOf([point(day(10, 2), 0, 800), point(day(10, 15), 400, 600, 300)])).toBe(1500);
+  });
+
+  it("is never negative when self-consumption exceeds consumption (meter skew)", () => {
+    expect(gridWhOf([point(day(10, 12), 1000, 0, 1500)])).toBe(0);
+  });
+});
+
 describe("dayComparison", () => {
   it("averages the days that have consumption", () => {
     const days = [1, 2, 3, 4, 5, 6, 7].map((d) =>
       d === 3 || d === 6 ? point(day(d), 0, 0) : point(day(d), 10_000, 0),
     );
-    expect(dayComparison(days)).toEqual({ kind: "days", days: 5, averageBill: 2 });
+    expect(dayComparison(days)).toEqual({
+      kind: "days",
+      days: 5,
+      averageBill: 2,
+      averageGridWh: 10_000,
+    });
+  });
+
+  it("averages the grid Wh over the same days, solar left out (spec 207)", () => {
+    // Five days of 10 kWh, 2 of them from the sun; two days without data.
+    const days = [1, 2, 3, 4, 5, 6, 7].map((d) =>
+      d === 3 || d === 6 ? point(day(d), 0, 0) : point(day(d), 10_000, 0, 2_000),
+    );
+    expect(dayComparison(days)).toMatchObject({ days: 5, averageGridWh: 8_000 });
   });
 
   it("is null when none of the days has data", () => {
@@ -120,6 +148,27 @@ describe("monthComparison", () => {
     expect(c.projectedBill).toBeCloseTo((30 * 30) / 9, 3);
   });
 
+  it("projects the grid Wh at the bill's pace (spec 207)", () => {
+    // Nov 11 at 22:00: Nov 1 to 10 are in, 10 kWh bought (the totals').
+    const now = new Date(2026, 10, 11, 22).getTime();
+    const c = monthComparison(2, days(10), from, to, now, [], 10_000);
+    if (c.kind !== "month") throw new Error("kind");
+    expect(c.projectedBill).toBeCloseTo(6, 4);
+    expect(c.projectedGridWh).toBe(30_000);
+    // Without totals, the grid Wh of the points.
+    const fromPoints = monthComparison(2, days(10), from, to, now, []);
+    expect(fromPoints).toMatchObject({ projectedGridWh: 30_000 });
+  });
+
+  it("leaves both previous-year fields null without data that year (spec 207)", () => {
+    const now = new Date(2026, 10, 11, 22).getTime();
+    const previousYear = [point(new Date(2025, 10, 1), 0, 0)];
+    expect(monthComparison(2, days(10), from, to, now, previousYear)).toMatchObject({
+      previousYearBill: null,
+      previousYearGridWh: null,
+    });
+  });
+
   it("starts projecting with two complete days of data", () => {
     // Nov 3 at 22:00: only Nov 1 and 2 are in, two days: the first projection.
     expect(
@@ -138,6 +187,8 @@ describe("monthComparison", () => {
       kind: "month",
       projectedBill: null,
       previousYearBill: 2,
+      projectedGridWh: null,
+      previousYearGridWh: 10_000,
     });
   });
 });
@@ -167,7 +218,23 @@ describe("yearComparison", () => {
       months: ["2026-05", "2026-06", "2026-07", "2026-08", "2026-09", "2026-10"],
       bill: 12,
       previousYearBill: 24,
+      gridWh: 60_000,
+      previousYearGridWh: 120_000,
     });
+  });
+
+  it("sums the grid Wh over the comparable months only (spec 207)", () => {
+    // Five comparable months, June to October; solar covers 4 kWh of each 2026 month.
+    const current = Array.from({ length: 12 }, (_, m) =>
+      point(new Date(2026, m, 1), 10_000, 0, 4_000),
+    );
+    const previous = months(2025, (m) => (m >= 5 ? 20_000 : 0));
+    const coverage = { current: daily(2026, 0), previous: daily(2025, 5) };
+    const c = yearComparison(current, previous, coverage, now);
+    if (c?.kind !== "year") throw new Error("kind");
+    expect(c.months).toHaveLength(5);
+    expect(c.gridWh).toBe(5 * 6_000);
+    expect(c.previousYearGridWh).toBe(5 * 20_000);
   });
 
   it("leaves out a month the previous year only partly covers", () => {
@@ -430,6 +497,53 @@ describe("computeBilan", () => {
     expect(withFee.fee).toEqual(fee);
     expect(withFee.priceSpans).toEqual(priceSpans);
     expect({ ...withFee, fee: null, priceSpans: [] }).toEqual(without);
+  });
+
+  it("fills the energy from the totals, solar added (spec 207)", () => {
+    const totals = {
+      total_consumption: 706_000,
+      total_hp: 446_000,
+      total_hc: 260_000,
+      total_production: 300_000,
+      total_autoconso: 214_000,
+      total_injection: 86_000,
+      cost_hp: 100,
+      cost_hc: 37,
+      cost_total: 137,
+    };
+    expect(computeBilan(input({ totals })).energy).toEqual({
+      gridHpWh: 446_000,
+      gridHcWh: 260_000,
+      consumedWh: 920_000,
+    });
+  });
+
+  it("adds energy and the comparison's Wh, every other field as before (spec 207)", () => {
+    const b = computeBilan(input());
+    const { energy, ...rest } = b;
+    expect(energy).toEqual({ gridHpWh: 1000, gridHcWh: 1200, consumedWh: 4800 });
+    expect(Object.keys(rest).sort()).toEqual(
+      [
+        "period",
+        "from",
+        "to",
+        "resolution",
+        "tariffConfigured",
+        "prices",
+        "hasProduction",
+        "bill",
+        "avoided",
+        "selfConsumedWh",
+        "points",
+        "comparison",
+        "usage",
+        "arbiter",
+        "fee",
+        "priceSpans",
+      ].sort(),
+    );
+    expect(rest.bill).toEqual({ total: 0.32, hp: 0.2, hc: 0.12 });
+    expect(rest.selfConsumedWh).toBe(2600);
   });
 
   it("leaves previousYearBill out of the day and month views", () => {

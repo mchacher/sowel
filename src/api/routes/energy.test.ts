@@ -2239,7 +2239,12 @@ describe("Spec 200 — /api/v1/energy/bilan", () => {
     expect(body.bill.total).toBeCloseTo(0.06, 6);
     expect(body.tariffConfigured).toBe(true);
     expect(body.hasProduction).toBe(false);
-    expect(body.comparison).toEqual({ kind: "days", days: 2, averageBill: 3 });
+    expect(body.comparison).toEqual({
+      kind: "days",
+      days: 2,
+      averageBill: 3,
+      averageGridWh: 15_000,
+    });
     expect(body.arbiter).toMatchObject({
       enabled: false,
       since: "2026-05-01",
@@ -2268,6 +2273,28 @@ describe("Spec 200 — /api/v1/energy/bilan", () => {
     expect(ids).toEqual([null, "sub-1"]);
     const paid = body.usage.reduce((s: number, u: { paid: number }) => s + u.paid, 0);
     expect(paid).toBeCloseTo(body.bill.total, 4);
+  });
+
+  it("carries the month's energy, equal to the history totals (spec 207)", async () => {
+    const rows = [
+      { _time: "2026-05-09T22:00:00Z", _value: 10_000, alias: "energy_hp" },
+      { _time: "2026-05-10T22:00:00Z", _value: 4_000, alias: "energy_hc" },
+    ];
+    app = await buildApp({ equipments, tariff, hpHcRows: rows });
+    const history = (
+      await app.inject({
+        method: "GET",
+        url: "/api/v1/energy/history?period=month&date=2026-05-10",
+      })
+    ).json();
+    const body = (
+      await app.inject({ method: "GET", url: "/api/v1/energy/bilan?period=month&date=2026-05-10" })
+    ).json();
+    expect(body.energy.gridHpWh).toBe(history.totals.total_hp);
+    expect(body.energy.gridHcWh).toBe(history.totals.total_hc);
+    expect(body.energy.gridHpWh + body.energy.gridHcWh).toBe(14_000);
+    expect(body.energy.consumedWh).toBe(14_000 + body.selfConsumedWh);
+    expect(body.comparison).toMatchObject({ kind: "month", previousYearGridWh: null });
   });
 
   it("reads 'not measured' for a period before the gain meter's first day", async () => {

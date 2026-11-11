@@ -73,12 +73,12 @@ the two columns of one card, separated by a vertical rule.
 
 ## Acceptance Criteria
 
-- [ ] The response carries `energy` and the kWh counterparts; `gridHpWh + gridHcWh` equals the history totals.
+- [x] The response carries `energy` and the kWh counterparts; `gridHpWh + gridHcWh` equals the history totals.
 - [ ] October 2026 on the shadow: 920 kWh consumed, 446 / 260 / 214, 706 bought, - 32 % against 1 036 kWh, average
       0,194 and 0,223 €/kWh.
-- [ ] Day, month and year views each show the kWh comparison of their kind.
-- [ ] Without production: two-part bar, no solar wording.
-- [ ] The headline, the euro comparison, the chart and the by-usage figures are unchanged.
+- [x] Day, month and year views each show the kWh comparison of their kind.
+- [x] Without production: two-part bar, no solar wording.
+- [x] The headline, the euro comparison, the chart and the by-usage figures are unchanged.
 
 ## Edge Cases
 
