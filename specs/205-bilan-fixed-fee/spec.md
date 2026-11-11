@@ -48,7 +48,11 @@ Under the HP/HC line, after a separator, the card shows:
 - « Total avec l'abonnement », consumption plus fee.
 
 The headline stays the consumption cost. When some days have no fee, the caption says « dont N jours sans
-abonnement renseigné » and links to the prices in Settings.
+abonnement renseigné » and links to the prices in Settings. When a fee is shown, the comparison block adds the
+caption « Comparaison sur la consommation seule. »
+
+Mockup (to scale, desktop month and year, phone month):
+https://claude.ai/artifact/XzxdKvbMjYzcgSnSWDWK1U, boards `Main`, `Year`, `Phone`.
 
 ### FR4 — Change markers
 
@@ -56,8 +60,12 @@ abonnement renseigné » and links to the prices in Settings.
   area or the axis (« Nouveaux prix »).
 - Year view: the same on the month a new version starts.
 - Day view: none (versions start at midnight).
-- The method card lists each part: « Du 1er au 31 juillet : HP 0,2065 € / HC 0,1578 € par kWh, abonnement
-  …€ par an » then the next one. One version over the whole period keeps today's single sentence, plus the fee.
+- The method card lists each part: « Les prix ont changé pendant la période. » then one item per span, « Du
+  1er février au 31 juillet : heures pleines 0,2065 €/kWh, heures creuses 0,1578 €/kWh, abonnement 235,92 € par
+  an. » One version over the whole period keeps today's single sentence, plus the fee and the power.
+- When a fee is shown, the method card adds: « Abonnement : la part fixe annuelle répartie par jour, comptée
+  jusqu'à aujourd'hui pour une période en cours. Il ne dépend pas de la consommation et n'entre pas dans les
+  comparaisons. »
 
 ## Acceptance Criteria
 
