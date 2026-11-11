@@ -18,10 +18,10 @@ ci.yml: npx tsx scripts/tariffs/check.ts (on a PR touching the file)            
                                                                                          ▼
                                                                     PriceFileSync.check()
                                                                       parsePriceFile()  (validates, refuses a newer format)
-                                                                      newPrices(file, contract, versions, dismissed)
+                                                                      newPrices(rows, versions, dismissed, seenLatest)
                                                                         ├─ automatic ─► TariffVersionStore.create(…, "file:<supplier>")
                                                                         │                └─ notification
-                                                                        └─ held ──────► status.pending ─► standing notice
+                                                                        └─ held ──────► status.pending ─► one notification
                                                                                          │
                                               Settings › Énergie ◄── GET status ─────────┘
                                                  « Ajouter ces prix » ─► POST apply ─► create()
@@ -132,19 +132,28 @@ A job step `npx tsx scripts/tariffs/check.ts`, next to the registry check.
 - `apply(startDates)` / `dismiss(startDates)`: from the held list of the last read. `apply` creates oldest first,
   so the first version of an empty instance is the oldest row (spec 202: the first version has no date).
 - `status()`: `{ following, lastCheckAt, lastSuccessAt, error, latestStartDate, noPriceForContract, pending }`.
-- Settings: `energy.priceFile.status` (the three dates and the error, so the card is right after a restart),
-  `energy.priceFile.dismissed` (JSON list of `"<supplier>|<type>|<kva>|<startDate>"`).
+- Settings: `energy.priceFile.status` (the dates of the last read and its error, so the card is right after a
+  restart), `energy.priceFile.dismissed` (JSON list of `"<supplier>|<type>|<kva>|<startDate>"`),
+  `energy.priceFile.seen` (per contract, the latest start date the file held at the last read: only what comes
+  after it can be added by itself), `energy.priceFile.pendingNotified`.
+- The contract is read again after the download: the one in force then decides what is added, never the one
+  read before it. After `stop()`, a download still running ends without writing anything.
+- `dismissVersion(version)`: called by the version `DELETE` route; keys on the version's own supplier (from its
+  origin), type and power.
 - The URL is a constant, as `REGISTRY_URL` is: an instance cannot be pointed at another file.
 
 ### Notifications
 
-Through the existing alarm events, which already reach the activity feed and the push channel:
+Through the alarm events, which already reach the activity feed and the push channel. Both use the
+`system.alarm.resolved` half alone, which the feed, the WebSocket layer, the UI store and the push all accept
+without a raise: an item and a push, nothing that stands.
 
-- prices held: `system.alarm.raised`, level `warning`, `alarmId: "price-file.pending"`, source `price-file`,
-  with a `messageKey`; resolved (`system.alarm.resolved`) when the list is empty again;
-- a price added by itself: a `system.alarm.resolved` event alone, `alarmId: "price-file.added.<startDate>"`,
-  which the feed and the push show as a done item. To confirm when implementing that the UI accepts a resolution
-  without a raise; if not, a raise followed by its resolution.
+- prices start to wait: `alarmId: "price-file.pending"`, source `price-file`, once; remembered in the setting
+  `energy.priceFile.pendingNotified` so a restart does not repeat it, cleared when the list is empty again;
+- a price added by itself: `alarmId: "price-file.added.<startDate>"`.
+
+The messages are the engine's English text, as for the PV health alarms: the UI only words order outcomes from a
+`messageKey`. The source is named in the viewer's language (`alarms.source.priceFile`).
 
 ### Changed: contract (`src/shared/types.ts`, `src/energy/pricing.ts`, routes, UI)
 
@@ -157,8 +166,14 @@ Admin only, same gating as the version routes:
 
 - `GET  /api/v1/settings/energy/price-file` → `PriceFileStatus`
 - `POST /api/v1/settings/energy/price-file/check` → runs a check, returns the status
-- `POST /api/v1/settings/energy/price-file/apply` body `{ startDates: string[] }` → the versions created
+- `POST /api/v1/settings/energy/price-file/apply` body `{ startDates: string[] }` → `{ created, status }`;
+  `400` when a date is not waiting, nothing created
 - `POST /api/v1/settings/energy/price-file/dismiss` body `{ startDates: string[] }` → the status
+- `POST /api/v1/settings/energy/price-file/restore-dismissed` → the status, the contract's set-aside prices
+  proposed again
+
+`DELETE …/tariff/versions/:id` also sets the deleted version's date aside when its origin is `file:…`:
+otherwise the next read would add it again.
 
 ### Changed: UI
 
@@ -177,7 +192,7 @@ Admin only, same gating as the version routes:
 | Energy  | `src/energy/price-file/{price-file,cre-csv,price-file-sync}.ts` (new)          | Format, CRE conversion, daily read             |
 | Energy  | `src/energy/pricing.ts`                                                        | `normalizeContract` with `autoUpdate`          |
 | Types   | `src/shared/types.ts`, `ui/src/types.ts`                                       | `TariffContract.autoUpdate`, `PriceFileStatus` |
-| API     | `src/api/routes/energy.ts`, `src/api/server.ts`                                | Four routes, wiring                            |
+| API     | `src/api/routes/energy.ts`, `src/api/server.ts`                                | Five routes, wiring                            |
 | Core    | `src/index.ts`                                                                 | Create, start and stop `PriceFileSync`         |
 | Scripts | `scripts/tariffs/update-edf-tarif-bleu.ts`, `scripts/tariffs/check.ts` (new)   | Produce and check the file                     |
 | CI      | `.github/workflows/tariffs.yml` (new), `.github/workflows/ci.yml`              | Nightly pull request, file check               |

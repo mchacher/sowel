@@ -2089,4 +2089,45 @@ export interface TariffContract {
   contractType: TariffContractType;
   /** Subscribed power, kVA. */
   kva: number | null;
+  /**
+   * Spec 203 — follow the price file. The server forces it to false for
+   * « Autre fournisseur » and turns it on for a supplier of the file.
+   */
+  autoUpdate: boolean;
+}
+
+// ============================================================
+// Spec 203 — electricity price file (mirror of src/shared/types.ts)
+// ============================================================
+
+/** One price of the file, for a contract type and a subscribed power. */
+export interface PriceFileRow {
+  contractType: TariffContractType;
+  kva: number;
+  /** Local `YYYY-MM-DD`. */
+  startDate: string;
+  /** € per kWh, tax included. A Base contract carries the same price twice. */
+  hp: number;
+  hc: number;
+  /** € per year, tax included. */
+  fixedFeeYear: number;
+}
+
+/** Where the read of the price file stands for the configured contract. */
+export interface PriceFileStatus {
+  /** The supplier is in the file, the option is on and the power is set. */
+  following: boolean;
+  /** ISO time of the last read, whatever its outcome. */
+  lastCheckAt: string | null;
+  lastSuccessAt: string | null;
+  /** Why the last read failed (engine text, English); null when it succeeded. */
+  error: string | null;
+  /** The start date of the latest price the file holds for the contract. */
+  latestStartDate: string | null;
+  /** The file was read and has no row for this contract type and power. */
+  noPriceForContract: boolean;
+  /** The prices waiting for a confirmation, newest first. */
+  pending: PriceFileRow[];
+  /** The prices the user set aside for this contract. */
+  dismissedCount: number;
 }

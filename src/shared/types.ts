@@ -2739,6 +2739,30 @@ export interface TariffContract {
   supplier: "edf-tarif-bleu" | "other";
   contractType: "hphc" | "base";
   kva: number | null;
+  /**
+   * Spec 203 — follow the price file: add the supplier's new prices as tariff
+   * versions. Always false for `other`, which the file does not hold.
+   */
+  autoUpdate: boolean;
+}
+
+/** Spec 203 — where the daily read of the price file stands, for the settings card. */
+export interface PriceFileStatus {
+  /** The contract follows the file: a supplier of the file, the option on, a power set. */
+  following: boolean;
+  /** ISO time of the last read attempted, and of the last one that succeeded. */
+  lastCheckAt: string | null;
+  lastSuccessAt: string | null;
+  /** Why the last read failed; null when it succeeded or none was made. */
+  error: string | null;
+  /** Start date of the latest price the file holds for the contract. */
+  latestStartDate: string | null;
+  /** The file was read and holds no price for this contract type and power. */
+  noPriceForContract: boolean;
+  /** Prices waiting for the user's confirmation, newest first. */
+  pending: PriceFileRow[];
+  /** Prices the user set aside for this contract. */
+  dismissedCount: number;
 }
 
 // ============================================================

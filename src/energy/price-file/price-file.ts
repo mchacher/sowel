@@ -12,6 +12,7 @@ import type {
   PriceFileRow,
   PriceFileSupplier,
   TariffContract,
+  TariffVersion,
 } from "../../shared/types.js";
 import { isLocalDate } from "../../shared/local-date.js";
 
@@ -89,7 +90,9 @@ function parseRow(value: unknown, where: string): PriceFileRow {
   if (!isRecord(value)) throw new PriceFileError(`${where} must be an object`);
   const { contractType, kva, startDate, hp, hc, fixedFeeYear } = value;
   if (contractType !== "hphc" && contractType !== "base") {
-    throw new PriceFileError(`${where}: unknown contract type ${JSON.stringify(contractType)}`);
+    throw new PriceFileError(
+      `${where}: unknown contract type ${String(JSON.stringify(contractType)).slice(0, 40)}`,
+    );
   }
   if (typeof kva !== "number" || !Number.isInteger(kva) || kva <= 0 || kva > MAX_FILE_KVA) {
     throw new PriceFileError(`${where}: kva must be a whole number from 1 to ${MAX_FILE_KVA}`);
@@ -195,6 +198,74 @@ export function rowsFor(
   return supplier.prices
     .filter((row) => row.contractType === contract.contractType && row.kva === contract.kva)
     .sort((a, b) => a.startDate.localeCompare(b.startDate));
+}
+
+/** A new price that moves the peak price by this much or more is not added by itself. */
+export const MAX_AUTO_CHANGE = 0.3;
+
+/**
+ * The rows of a contract that no version holds yet, split in two (spec 203 FR4).
+ *
+ * `automatic`: a price published since the file was last read for this
+ * contract (`seenLatest`, the latest start date the file held then), that
+ * starts after every existing version, on an instance that already has a
+ * dated version, and that moves the peak price by less than 30 % against the
+ * price just before it. Two new periods in one read chain: the second is
+ * compared with the first.
+ *
+ * `held`: everything else, for the user to confirm. That is every price the
+ * file already held the first time it was read for this contract (the
+ * retroactive fill: `seenLatest` is null then), a row published late that
+ * starts before a version entered meanwhile, a jump of 30 % or more, and
+ * whatever follows such a jump.
+ *
+ * `rows` are those of the contract, oldest first. Never proposed: a start
+ * date already used by a version, a date the user set aside, and the row the
+ * version without a date was created from (the first version of an instance
+ * has no date, so its row would otherwise come back for ever).
+ */
+export function newPrices(
+  rows: PriceFileRow[],
+  versions: TariffVersion[],
+  dismissed: ReadonlySet<string>,
+  seenLatest: string | null,
+): { automatic: PriceFileRow[]; held: PriceFileRow[] } {
+  const dated = versions
+    .filter((v): v is TariffVersion & { startDate: string } => v.startDate !== null)
+    .sort((a, b) => a.startDate.localeCompare(b.startDate));
+  const taken = new Set(dated.map((v) => v.startDate));
+  const undated = versions.find((v) => v.startDate === null) ?? null;
+  const becameUndated = (row: PriceFileRow) =>
+    undated !== null &&
+    undated.origin.startsWith("file:") &&
+    undated.prices.hp === row.hp &&
+    undated.prices.hc === row.hc &&
+    undated.fixedFeeYear === row.fixedFeeYear &&
+    undated.kva === row.kva &&
+    (dated.length === 0 || row.startDate < dated[0].startDate);
+  const latest = dated[dated.length - 1] ?? null;
+  const automatic: PriceFileRow[] = [];
+  const held: PriceFileRow[] = [];
+  let previousHp = latest?.prices.hp ?? 0;
+  let chain = latest !== null;
+  for (const row of rows) {
+    if (taken.has(row.startDate) || dismissed.has(row.startDate) || becameUndated(row)) continue;
+    const newer = latest !== null && row.startDate > latest.startDate;
+    const published = seenLatest !== null && row.startDate > seenLatest;
+    // Rounded, so that a move of exactly 30 % is held whatever the floats say.
+    const change = previousHp > 0 ? Math.abs(row.hp - previousHp) / previousHp : Infinity;
+    const steady = Math.round(change * 1e6) / 1e6 < MAX_AUTO_CHANGE;
+    if (chain && newer && published && steady) {
+      automatic.push(row);
+      previousHp = row.hp;
+    } else {
+      held.push(row);
+      // A newer price held back breaks the chain: what follows it cannot be
+      // compared with a price the user has not confirmed.
+      if (newer) chain = false;
+    }
+  }
+  return { automatic, held };
 }
 
 /**

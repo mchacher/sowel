@@ -89,8 +89,10 @@ describe("alarmSourceLabel", () => {
   it("names the core's own sources in the viewer's language", async () => {
     await i18n.changeLanguage("fr");
     expect(alarmSourceLabel(t, "order-confirmation")).toBe("Suivi des commandes");
+    expect(alarmSourceLabel(t, "price-file")).toBe("Fichier de prix");
     await i18n.changeLanguage("en");
     expect(alarmSourceLabel(t, "order-confirmation")).toBe("Order follow-up");
+    expect(alarmSourceLabel(t, "price-file")).toBe("Price file");
   });
 
   it("names a plugin by its label, and keeps any other source as it is", () => {

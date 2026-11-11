@@ -47,7 +47,8 @@ import { ArbiterMetricsRollup } from "./energy/arbiter-metrics-rollup.js";
 import { ArbiterGainStore } from "./energy/arbiter-gain-store.js";
 import { ArbiterGainMeter } from "./energy/arbiter-gain-meter.js";
 import { TariffVersionStore } from "./energy/tariff-version-store.js";
-import { pricesOnOrNull } from "./energy/pricing.js";
+import { CONTRACT_SETTING_KEY, pricesOnOrNull, resolveContract } from "./energy/pricing.js";
+import { PriceFileSync } from "./energy/price-file/price-file-sync.js";
 import { ActivityBuffer } from "./activity/activity-buffer.js";
 import { ActivityStore } from "./activity/activity-store.js";
 import { RecipeLoader } from "./recipes/recipe-loader.js";
@@ -445,6 +446,22 @@ async function main() {
   const tariffVersionStore = new TariffVersionStore(db, logger);
   tariffVersionStore.seedFromSetting(historyWriter.getTariffClassifier().getConfig());
 
+  // Spec 203 — the daily read of the electricity price file: the prices the
+  // contract's supplier publishes become tariff versions, the past ones after
+  // the user's confirmation. Started with the version checker, below.
+  const priceFileSync = new PriceFileSync({
+    settings: settingsManager,
+    versions: tariffVersionStore,
+    contract: () =>
+      resolveContract(
+        settingsManager.get(CONTRACT_SETTING_KEY),
+        historyWriter.getTariffClassifier().getConfig(),
+        tariffVersionStore.all(),
+      ),
+    eventBus,
+    logger,
+  });
+
   // Spec 200 — the arbiter's gain (solar used by the loads it switched on,
   // split by the tariff period of the minute), for the Energy Bilan page.
   // Reads the arbiter's public state only, like the metrics above.
@@ -671,6 +688,7 @@ async function main() {
     arbiterMetricsStore, // spec 158 — daily metrics read surface
     arbiterGain: { store: arbiterGainStore, meter: arbiterGainMeter }, // spec 200
     tariffVersions: tariffVersionStore, // spec 202
+    priceFileSync, // spec 203
     backupManager,
     versionChecker,
     updateManager,
@@ -721,6 +739,12 @@ async function main() {
   // 16b. Start version checker (polls GitHub releases for updates)
   // Spec 124 — skip in shadow mode (no outbound, including GitHub).
   await runUnlessShadow("versionChecker.start()", () => versionChecker.start());
+
+  // 16c. Spec 203 — the daily read of the price file. Its timers stay off in
+  // shadow mode like every other outbound poll; « Vérifier maintenant » in the
+  // settings still reads the file there, which is how a shadow is used to try
+  // the retroactive fill on a copy of production.
+  await runUnlessShadow("priceFileSync.start()", () => priceFileSync.start());
 
   // 17. Emit system started event (triggers zone aggregation compute)
   eventBus.emit({ type: "system.started" });
@@ -871,6 +895,11 @@ async function main() {
       sunlightManager.stop();
     } catch (err) {
       logger.error({ err }, "Error stopping sunlight manager");
+    }
+    try {
+      priceFileSync.stop();
+    } catch (err) {
+      logger.error({ err }, "Error stopping price file sync");
     }
     try {
       versionChecker.stop();

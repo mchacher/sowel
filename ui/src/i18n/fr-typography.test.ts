@@ -179,6 +179,8 @@ const SAME_AS_EN = new Set<string>([
   "sharedAccess.validity.dates",
   "sharedAccess.picker.minute",
   "tariff.prices.col.actions",
+  // Spec 203 — a supplier and its offer, proper nouns.
+  "tariff.proposals.suppliers.edf-tarif-bleu",
 ]);
 
 describe("French typography (fr.json)", () => {

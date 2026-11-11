@@ -63,11 +63,13 @@ Go to **Settings > Energy**, card **Energy tariffs**:
 
 ![Tariff configuration](../screenshots/energy-tariff-settings-en.png)
 
-1. **Contract.** Choose your supplier, the contract type (off-peak hours, or a single rate) and your subscribed power. They describe your contract; they price nothing by themselves.
+1. **Contract.** Choose your supplier, the contract type (off-peak hours, or a single rate) and your subscribed power. They describe your contract; they price nothing by themselves. With **EDF, Tarif Bleu**, tick **Update prices automatically**: Sowel then reads, once a day, the prices published by the French regulator (CRE) for your contract type and power, and the line under the option says when it last checked and the latest price it knows. **Check now** reads them at once.
 2. **Prices.** Prices are a history: each row is valid from its start date until the day before the next one, and each consumption is priced at the price in force on its date. So a price change never reprices the past.
    - **Add a price change** when your prices change: enter the date it starts, the peak and off-peak prices per kWh including tax, and optionally the fixed fee per year and the power. You can enter it ahead of time, or late: the days already measured are then repriced from that date.
    - The pencil corrects a row; the bin deletes it. The oldest row, **Origin**, covers everything before the first dated change: it can be corrected, not deleted.
    - The list shows the three latest prices and scrolls for the older ones.
+   - **Prices found for your contract.** With automatic prices on, a new period (each February and August) is added by itself, at its real start date, and you are notified. Everything else waits for you in a panel above the list: the past prices the first time (after an upgrade, or when you set your contract), a price published late that starts before a change you entered yourself, and a jump of 30 % or more. **Add these prices** adds them; **Ignore** sets them aside, and they are not proposed again unless you ask (**Offer them again**) or change your contract. Check your subscribed power first: it sets the fixed fee of every row.
+   - Automatic prices never change a row that exists. If you take the history for one power and then change your power, the dates are already used and nothing is proposed: correct the fees by hand, or delete the rows and take the list again. A row from the price file that you delete is set aside, so it does not come back the next day.
    - With a single-rate contract, one price is asked. Past rows that hold a peak and an off-peak price keep both.
 3. **Peak and off-peak hours.** Define your time slots: which hours are peak and which are off-peak, with as many slots as you need to cover the 24 hours of the day. **Save schedule** saves the hours only.
 

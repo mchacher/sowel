@@ -27,6 +27,7 @@ export const ORDER_OUTCOME_ALARM_SOURCE = "order-confirmation";
  */
 const CORE_ALARM_SOURCE_KEYS: Record<string, string> = {
   [ORDER_OUTCOME_ALARM_SOURCE]: "alarms.source.orderConfirmation",
+  "price-file": "alarms.source.priceFile",
   "shared-access": "alarms.source.sharedAccess",
   "timed-action": "alarms.source.timedAction",
 };

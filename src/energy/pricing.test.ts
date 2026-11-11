@@ -295,12 +295,24 @@ describe("normalizeContract", () => {
   it("rebuilds a known contract, and nothing else", () => {
     expect(
       normalizeContract({ supplier: "edf-tarif-bleu", contractType: "hphc", kva: 9, extra: "x" }),
-    ).toEqual({ supplier: "edf-tarif-bleu", contractType: "hphc", kva: 9 });
+    ).toEqual({ supplier: "edf-tarif-bleu", contractType: "hphc", kva: 9, autoUpdate: true });
     expect(normalizeContract({ supplier: "other", contractType: "base", kva: 0 })).toEqual({
       supplier: "other",
       contractType: "base",
       kva: null,
+      autoUpdate: false,
     });
+  });
+
+  it("follows the price file unless switched off, and never for another supplier (spec 203)", () => {
+    const edf = { supplier: "edf-tarif-bleu", contractType: "hphc", kva: 9 };
+    expect(normalizeContract(edf)?.autoUpdate).toBe(true);
+    expect(normalizeContract({ ...edf, autoUpdate: false })?.autoUpdate).toBe(false);
+    expect(normalizeContract({ ...edf, autoUpdate: "no" })?.autoUpdate).toBe(true);
+    expect(
+      normalizeContract({ supplier: "other", contractType: "hphc", kva: 9, autoUpdate: true })
+        ?.autoUpdate,
+    ).toBe(false);
   });
 
   it("refuses an unknown supplier or type, and anything that is not an object", () => {
@@ -323,6 +335,7 @@ describe("defaultContract", () => {
       supplier: "other",
       contractType: "hphc",
       kva: 9,
+      autoUpdate: false,
     });
   });
 
@@ -332,6 +345,7 @@ describe("defaultContract", () => {
       supplier: "other",
       contractType: "base",
       kva: null,
+      autoUpdate: false,
     });
   });
 });

@@ -263,10 +263,14 @@ export function normalizeContract(value: unknown): TariffContract | null {
     supplier === "edf-tarif-bleu" ? "edf-tarif-bleu" : supplier === "other" ? "other" : null;
   const knownType = contractType === "hphc" ? "hphc" : contractType === "base" ? "base" : null;
   if (!knownSupplier || !knownType) return null;
+  // Spec 203 — following the price file is on unless switched off, and
+  // meaningless for a supplier the file does not hold.
+  const { autoUpdate } = value as Record<string, unknown>;
   return {
     supplier: knownSupplier,
     contractType: knownType,
     kva: typeof kva === "number" && Number.isFinite(kva) && kva > 0 ? kva : null,
+    autoUpdate: knownSupplier !== "other" && autoUpdate !== false,
   };
 }
 
@@ -285,5 +289,32 @@ export function defaultContract(
     supplier: "other",
     contractType: hasOffPeak ? "hphc" : "base",
     kva: sorted[sorted.length - 1]?.kva ?? null,
+    autoUpdate: false,
   };
+}
+
+/** Setting that holds the contract (JSON `TariffContract`). */
+export const CONTRACT_SETTING_KEY = "energy.contract";
+
+/**
+ * The contract in force: the stored one when it is a known one, the default
+ * otherwise. `raw` is the setting's text; a broken or unknown value is
+ * reported through `onInvalid` and replaced by the default.
+ */
+export function resolveContract(
+  raw: string | undefined,
+  tariff: TariffConfig | null,
+  versions: TariffVersion[],
+  onInvalid?: (err: unknown) => void,
+): TariffContract {
+  if (raw) {
+    try {
+      const contract = normalizeContract(JSON.parse(raw));
+      if (contract) return contract;
+      onInvalid?.(new Error("unknown supplier or contract type"));
+    } catch (err) {
+      onInvalid?.(err);
+    }
+  }
+  return defaultContract(tariff, versions);
 }
