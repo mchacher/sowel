@@ -3,6 +3,12 @@ import type { ReactNode, ErrorInfo } from "react";
 
 interface Props {
   children: ReactNode;
+  /**
+   * When this value changes, a caught error is cleared and the children render
+   * again. The layout passes the pathname, so a page that failed does not take
+   * the navigation down with it: going to another page recovers (#1187).
+   */
+  resetKey?: unknown;
 }
 
 interface State {
@@ -15,6 +21,12 @@ export class ErrorBoundary extends Component<Props, State> {
 
   static getDerivedStateFromError(error: Error): State {
     return { hasError: true, error };
+  }
+
+  componentDidUpdate(prev: Props) {
+    if (this.state.hasError && prev.resetKey !== this.props.resetKey) {
+      this.setState({ hasError: false, error: null });
+    }
   }
 
   componentDidCatch(error: Error, info: ErrorInfo) {

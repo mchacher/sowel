@@ -95,16 +95,16 @@ Le fichier `manifest.json` décrit le plugin à Sowel. Il vit à la racine du r�
 
 ### Référence des champs
 
-| Champ          | Type                    | Requis | Description                                                                                                                                |
-| -------------- | ----------------------- | ------ | ------------------------------------------------------------------------------------------------------------------------------------------ |
-| `id`           | string                  | Oui    | Identifiant unique du plugin. Minuscules avec tirets (par ex. `weather-forecast`). Doit correspondre au nom du répertoire sous `plugins/`. |
-| `name`         | string                  | Oui    | Nom d'affichage lisible présenté dans l'UI.                                                                                                |
-| `version`      | string                  | Oui    | Version SemVer (par ex. `0.2.0`). **Doit être mise à jour à chaque release.** Voir [Versioning](#versioning).                              |
-| `description`  | string                  | Oui    | Courte description (une phrase) affichée dans le store de plugins et la page intégrations.                                                 |
-| `icon`         | string                  | Oui    | Nom d'icône Lucide (par ex. `CloudSun`, `Camera`). Utilisé dans l'UI pour la carte d'intégration.                                          |
-| `author`       | string                  | Non    | Nom de l'auteur ou organisation.                                                                                                           |
-| `sowelVersion` | string                  | Non    | Plage SemVer des versions Sowel compatibles (par ex. `>=0.10.0`).                                                                          |
-| `settings`     | IntegrationSettingDef[] | Non    | Tableau de définitions de réglages pour le formulaire de configuration UI. Voir [Réglages](#reglages).                                     |
+| Champ          | Type                    | Requis | Description                                                                                                                                                                                                                 |
+| -------------- | ----------------------- | ------ | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `id`           | string                  | Oui    | Identifiant unique du plugin. Minuscules avec tirets (par ex. `weather-forecast`). Doit correspondre au nom du répertoire sous `plugins/`.                                                                                  |
+| `name`         | string                  | Oui    | Nom d'affichage lisible présenté dans l'UI.                                                                                                                                                                                 |
+| `version`      | string                  | Oui    | Version SemVer (par ex. `0.2.0`). **Doit être mise à jour à chaque release.** Voir [Versioning](#versioning).                                                                                                               |
+| `description`  | string                  | Oui    | Courte description (une phrase) affichée dans le store de plugins et la page intégrations.                                                                                                                                  |
+| `icon`         | string                  | Oui    | Nom d'icône Lucide (par ex. `CloudSun`, `Camera`), affiché sur les pages Plugins et Intégrations. Liste fermée : les icônes du registre officiel, listées dans `ui/src/lib/plugin-icons.ts` ; tout autre nom affiche `Cpu`. |
+| `author`       | string                  | Non    | Nom de l'auteur ou organisation.                                                                                                                                                                                            |
+| `sowelVersion` | string                  | Non    | Plage SemVer des versions Sowel compatibles (par ex. `>=0.10.0`).                                                                                                                                                           |
+| `settings`     | IntegrationSettingDef[] | Non    | Tableau de définitions de réglages pour le formulaire de configuration UI. Voir [Réglages](#reglages).                                                                                                                      |
 
 **Champs qui n'existent PAS dans le manifest :** `entry`, `integrationId`, `license`, `repository`. Ne les incluez pas.
 
@@ -411,7 +411,7 @@ interface IntegrationPlugin {
   readonly id: string; // Unique integration ID (must match manifest.id)
   readonly name: string; // Human-readable name
   readonly description: string; // Short description for the UI
-  readonly icon: string; // Lucide icon name
+  readonly icon: string; // Lucide icon name, from the set in ui/src/lib/plugin-icons.ts
 
   getStatus(): IntegrationStatus;
   isConfigured(): boolean;
@@ -1142,17 +1142,17 @@ Pour que votre plugin apparaisse dans le store de plugins Sowel, soumettez une P
 
 #### Schéma d'entrée du registre
 
-| Champ         | Type     | Requis | Description                                                                               |
-| ------------- | -------- | ------ | ----------------------------------------------------------------------------------------- |
-| `id`          | string   | Oui    | Doit correspondre à l'`id` du `manifest.json` du plugin                                   |
-| `type`        | string   | Oui    | `integration` ou `recipe`, route vers PluginLoader ou RecipeLoader au moment de l'install |
-| `name`        | string   | Oui    | Nom affiché dans le store                                                                 |
-| `description` | string   | Oui    | Courte description                                                                        |
-| `icon`        | string   | Oui    | Nom d'icône Lucide                                                                        |
-| `author`      | string   | Oui    | Nom de l'auteur                                                                           |
-| `repo`        | string   | Oui    | Chemin GitHub `owner/repo` (utilisé pour récupérer les releases)                          |
-| `version`     | string   | Non    | Dernière version disponible (affichée dans l'onglet "Available" du store)                 |
-| `tags`        | string[] | Oui    | Tags cherchables (par ex. `["camera", "security"]`)                                       |
+| Champ         | Type     | Requis | Description                                                                                                                             |
+| ------------- | -------- | ------ | --------------------------------------------------------------------------------------------------------------------------------------- |
+| `id`          | string   | Oui    | Doit correspondre à l'`id` du `manifest.json` du plugin                                                                                 |
+| `type`        | string   | Oui    | `integration` ou `recipe`, route vers PluginLoader ou RecipeLoader au moment de l'install                                               |
+| `name`        | string   | Oui    | Nom affiché dans le store                                                                                                               |
+| `description` | string   | Oui    | Courte description                                                                                                                      |
+| `icon`        | string   | Oui    | Nom d'icône Lucide. Un nouveau nom s'ajoute à `ui/src/lib/plugin-icons.ts` dans la même PR de bump, sinon `plugin-icons.test.ts` échoue |
+| `author`      | string   | Oui    | Nom de l'auteur                                                                                                                         |
+| `repo`        | string   | Oui    | Chemin GitHub `owner/repo` (utilisé pour récupérer les releases)                                                                        |
+| `version`     | string   | Non    | Dernière version disponible (affichée dans l'onglet "Available" du store)                                                               |
+| `tags`        | string[] | Oui    | Tags cherchables (par ex. `["camera", "security"]`)                                                                                     |
 
 #### Récupération du registre distant
 

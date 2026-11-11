@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import { useTranslation } from "react-i18next";
-import { Play, Square, RefreshCw, Timer, ChevronRight, Cpu, Loader2, Power } from "lucide-react";
-import * as LucideIcons from "lucide-react";
+import { Play, Square, RefreshCw, Timer, ChevronRight, Loader2, Power } from "lucide-react";
+import { PluginIcon } from "../plugins/PluginIcon";
 import {
   startIntegration,
   stopIntegration,
@@ -25,9 +25,6 @@ export function IntegrationRow({ integration, onOpen, onRefresh }: IntegrationRo
   const isDisabled = integration.enabled === false;
   const isConnected = !isDisabled && integration.status === "connected";
   const hasRefresh = isConnected && !!integration.polling;
-
-  const IconComponent =
-    (LucideIcons as unknown as Record<string, LucideIcons.LucideIcon>)[integration.icon] ?? Cpu;
 
   const handleAction = async (
     e: React.MouseEvent,
@@ -56,7 +53,7 @@ export function IntegrationRow({ integration, onOpen, onRefresh }: IntegrationRo
     >
       {/* Icon */}
       <div className="w-9 h-9 bg-border-light rounded-md flex items-center justify-center shrink-0">
-        <IconComponent size={18} className="text-text-secondary" />
+        <PluginIcon name={integration.icon} size={18} className="text-text-secondary" />
       </div>
 
       {/* Name + status */}

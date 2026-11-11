@@ -10,13 +10,12 @@ import {
   RefreshCw,
   RotateCcw,
   Loader2,
-  Cpu,
   Timer,
   ExternalLink,
   CheckCircle,
   Power,
 } from "lucide-react";
-import * as LucideIcons from "lucide-react";
+import { PluginIcon } from "../plugins/PluginIcon";
 import {
   updateSettings,
   startIntegration,
@@ -96,9 +95,6 @@ export function IntegrationDrawer({ integration, onClose, onRefresh }: Integrati
   const isError = !isDisabled && integration.status === "error";
   const hasRefresh = !!integration.polling;
   const hasRequiredEmpty = integration.settings.some((s) => s.required && !values[s.key]?.trim());
-
-  const IconComponent =
-    (LucideIcons as unknown as Record<string, LucideIcons.LucideIcon>)[integration.icon] ?? Cpu;
 
   const handleFieldChange = (key: string, value: string) => {
     setValues((prev) => ({ ...prev, [key]: value }));
@@ -181,7 +177,7 @@ export function IntegrationDrawer({ integration, onClose, onRefresh }: Integrati
         <div className="flex items-center justify-between p-5 border-b border-border">
           <div className="flex items-center gap-3">
             <div className="w-9 h-9 bg-border-light rounded-md flex items-center justify-center">
-              <IconComponent size={18} className="text-text-secondary" />
+              <PluginIcon name={integration.icon} size={18} className="text-text-secondary" />
             </div>
             <div>
               <h2 className="text-lead font-semibold text-text">{integration.name}</h2>

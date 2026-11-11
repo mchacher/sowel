@@ -4,7 +4,6 @@ import {
   Package,
   Loader2,
   Download,
-  Cpu,
   ChevronRight,
   ArrowUpCircle,
   RefreshCw,
@@ -24,7 +23,7 @@ import {
   PersonalConfirmModal,
   type PersonalConfirmInfo,
 } from "../components/plugins/PersonalConfirm";
-import * as LucideIcons from "lucide-react";
+import { PluginIcon } from "../components/plugins/PluginIcon";
 import {
   getPlugins,
   getPluginStore,
@@ -444,9 +443,6 @@ function PluginRow({
     null,
   );
 
-  const IconComponent =
-    (LucideIcons as unknown as Record<string, LucideIcons.LucideIcon>)[plugin.manifest.icon] ?? Cpu;
-
   const hasUpdate = !!plugin.latestVersion;
   const isRecipe = getManifestType(plugin.manifest) === "recipe";
   const isPersonal = plugin.source === "personal";
@@ -545,7 +541,7 @@ function PluginRow({
         className="flex items-center gap-3 min-w-0 flex-1 px-4 py-3 text-left rounded-l-md hover:bg-border-light/40 transition-colors cursor-pointer"
       >
         <div className="w-9 h-9 bg-border-light rounded-md flex items-center justify-center shrink-0">
-          <IconComponent size={18} className="text-text-secondary" />
+          <PluginIcon name={plugin.manifest.icon} size={18} className="text-text-secondary" />
         </div>
         <div className="min-w-0 flex-1">
           <div className="flex items-center gap-2 min-w-0 flex-wrap">
@@ -644,7 +640,7 @@ function PluginRow({
         onClose={closeSheet}
         name={name}
         description={getLocalizedDescription(plugin.manifest, lang)}
-        icon={<IconComponent size={18} className="text-text-secondary" />}
+        icon={<PluginIcon name={plugin.manifest.icon} size={18} className="text-text-secondary" />}
         type={isRecipe ? "recipe" : "integration"}
         installedVersion={plugin.manifest.version}
         latestVersion={plugin.latestVersion}
@@ -765,9 +761,6 @@ function StoreRow({
   const isOfficial = manifest.isOfficial !== false;
   const tier: PackageTier = manifest.tier ?? (isOfficial ? "official" : "community");
 
-  const IconComponent =
-    (LucideIcons as unknown as Record<string, LucideIcons.LucideIcon>)[manifest.icon] ?? Cpu;
-
   const doInstall = async (confirmed: boolean, expectedSha256?: string) => {
     setInstalling(true);
     setInstallError(null);
@@ -804,7 +797,7 @@ function StoreRow({
       <div className="flex items-start gap-3 min-w-0 flex-1">
         {/* Icon */}
         <div className="w-9 h-9 bg-border-light rounded-md flex items-center justify-center shrink-0">
-          <IconComponent size={18} className="text-text-secondary" />
+          <PluginIcon name={manifest.icon} size={18} className="text-text-secondary" />
         </div>
 
         {/* Name + description */}

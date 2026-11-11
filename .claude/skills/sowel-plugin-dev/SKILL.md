@@ -183,6 +183,8 @@ Add entry to `plugins/registry.json` with **all** required fields:
 }
 ```
 
+`icon` is a Lucide name from the closed set in `ui/src/lib/plugin-icons.ts` (#1187). A name not yet there goes into that file in the same PR, or `plugin-icons.test.ts` fails the frontend job.
+
 **`sha256` and `owner` are mandatory** since spec 089. Compute the hash by running `node scripts/backfill-registry-sha256.mjs` after the plugin's GitHub release exists — the script fetches the latest tarball for every entry and writes the SHA256 in place. Idempotent unless `FORCE=1`.
 
 If `owner` is outside `OFFICIAL_OWNERS` (currently `["mchacher"]`, hard-coded in `src/packages/registry-types.ts`), the plugin will be flagged "community" in the UI with an explicit confirmation modal at install. That's the intended trust boundary — don't try to bypass it.

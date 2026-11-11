@@ -91,6 +91,18 @@ export default defineConfig([
           message:
             "new Intl.DateTimeFormat() follows the browser, not Sowel's language: pass currentLocale() from lib/format.",
         },
+        // #1187 — the two ways around the no-restricted-imports rule below
+        // that still pull every Lucide icon into a chunk.
+        {
+          selector: "ImportExpression[source.value='lucide-react']",
+          message:
+            'import("lucide-react") pulls every Lucide icon (#1187): import icons by name, or use lib/plugin-icons.',
+        },
+        {
+          selector: "ExportAllDeclaration[source.value='lucide-react']",
+          message:
+            'export * from "lucide-react" pulls every Lucide icon (#1187): re-export icons by name.',
+        },
       ],
     },
   },
@@ -124,6 +136,41 @@ export default defineConfig([
     plugins: { "sowel-chart": chartColors },
     rules: {
       "sowel-chart/no-hex-color": "error",
+    },
+  },
+  {
+    // #1187 — keep the first load small. Two imports undid the code splitting
+    // on their own: a namespace import of lucide-react (or its `icons` map)
+    // ships all ~1,600 icons, and a static import of hls.js puts the 560 KB
+    // camera player on every page. Plugin icons go through lib/plugin-icons;
+    // hls.js is loaded with import("hls.js") when a live view starts.
+    files: ["src/**/*.{ts,tsx}"],
+    ignores: ["**/*.test.{ts,tsx}"],
+    rules: {
+      "no-restricted-imports": [
+        "error",
+        {
+          paths: [
+            {
+              name: "lucide-react",
+              importNames: ["icons"],
+              message:
+                "This pulls every Lucide icon into the bundle (#1187): import icons by name, or resolve a manifest name with lib/plugin-icons.",
+            },
+            {
+              name: "lucide-react/dynamic",
+              message:
+                "Dynamic Lucide icons are not used (#1187): resolve a manifest name with lib/plugin-icons.",
+            },
+            {
+              name: "hls.js",
+              allowTypeImports: true,
+              message:
+                'hls.js is 560 KB and only the camera live view needs it (#1187): load it with import("hls.js").',
+            },
+          ],
+        },
+      ],
     },
   },
 ]);

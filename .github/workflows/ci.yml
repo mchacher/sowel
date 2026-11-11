@@ -74,6 +74,8 @@ jobs:
       # unchanged; see the note above.
       - run: cd ui && npm test
       - run: cd ui && npm run build
+      # #1187 — size budget of the first load (entry + preloaded chunks).
+      - run: cd ui && npm run check:bundle
 
   specs:
     name: Specs completeness
