@@ -95,16 +95,16 @@ Le fichier `manifest.json` décrit le plugin à Sowel. Il vit à la racine du r�
 
 ### Référence des champs
 
-| Champ          | Type                    | Requis | Description                                                                                                                                |
-| -------------- | ----------------------- | ------ | ------------------------------------------------------------------------------------------------------------------------------------------ |
-| `id`           | string                  | Oui    | Identifiant unique du plugin. Minuscules avec tirets (par ex. `weather-forecast`). Doit correspondre au nom du répertoire sous `plugins/`. |
-| `name`         | string                  | Oui    | Nom d'affichage lisible présenté dans l'UI.                                                                                                |
-| `version`      | string                  | Oui    | Version SemVer (par ex. `0.2.0`). **Doit être mise à jour à chaque release.** Voir [Versioning](#versioning).                              |
-| `description`  | string                  | Oui    | Courte description (une phrase) affichée dans le store de plugins et la page intégrations.                                                 |
-| `icon`         | string                  | Oui    | Nom d'icône Lucide (par ex. `CloudSun`, `Camera`). Utilisé dans l'UI pour la carte d'intégration.                                          |
-| `author`       | string                  | Non    | Nom de l'auteur ou organisation.                                                                                                           |
-| `sowelVersion` | string                  | Non    | Plage SemVer des versions Sowel compatibles (par ex. `>=0.10.0`).                                                                          |
-| `settings`     | IntegrationSettingDef[] | Non    | Tableau de définitions de réglages pour le formulaire de configuration UI. Voir [Réglages](#reglages).                                     |
+| Champ          | Type                    | Requis | Description                                                                                                                                                                                                                 |
+| -------------- | ----------------------- | ------ | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `id`           | string                  | Oui    | Identifiant unique du plugin. Minuscules avec tirets (par ex. `weather-forecast`). Doit correspondre au nom du répertoire sous `plugins/`.                                                                                  |
+| `name`         | string                  | Oui    | Nom d'affichage lisible présenté dans l'UI.                                                                                                                                                                                 |
+| `version`      | string                  | Oui    | Version SemVer (par ex. `0.2.0`). **Doit être mise à jour à chaque release.** Voir [Versioning](#versioning).                                                                                                               |
+| `description`  | string                  | Oui    | Courte description (une phrase) affichée dans le store de plugins et la page intégrations.                                                                                                                                  |
+| `icon`         | string                  | Oui    | Nom d'icône Lucide (par ex. `CloudSun`, `Camera`), affiché sur les pages Plugins et Intégrations. Liste fermée : les icônes du registre officiel, listées dans `ui/src/lib/plugin-icons.ts` ; tout autre nom affiche `Cpu`. |
+| `author`       | string                  | Non    | Nom de l'auteur ou organisation.                                                                                                                                                                                            |
+| `sowelVersion` | string                  | Non    | Plage SemVer des versions Sowel compatibles (par ex. `>=0.10.0`).                                                                                                                                                           |
+| `settings`     | IntegrationSettingDef[] | Non    | Tableau de définitions de réglages pour le formulaire de configuration UI. Voir [Réglages](#reglages).                                                                                                                      |
 
 **Champs qui n'existent PAS dans le manifest :** `entry`, `integrationId`, `license`, `repository`. Ne les incluez pas.
 

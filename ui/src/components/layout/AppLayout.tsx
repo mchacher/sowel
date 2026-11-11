@@ -1,5 +1,5 @@
 import { NavLink, Outlet, useLocation, useNavigate } from "react-router-dom";
-import { useEffect, useState } from "react";
+import { Suspense, useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { Sidebar } from "./Sidebar";
 import { ConnectionStatus } from "./ConnectionStatus";
@@ -46,6 +46,7 @@ function getInitials(name: string): string {
 }
 import { SowelLogo } from "./SowelLogo";
 import { OfflineBanner } from "./OfflineBanner";
+import { PageFallback } from "./PageFallback";
 import { HeaderPill } from "./HeaderPill";
 import { AlarmsSheet } from "./AlarmsSheet";
 import { UpdatesSheet } from "./UpdatesSheet";
@@ -245,7 +246,10 @@ export function AppLayout() {
           <OfflineBanner />
           {/* Page content */}
           <main className="relative flex-1 overflow-y-auto bg-background">
-            <Outlet />
+            {/* Most pages are lazy-loaded (#1187); the layout stays while one arrives. */}
+            <Suspense fallback={<PageFallback />}>
+              <Outlet />
+            </Suspense>
           </main>
 
           {/* Mobile bottom navigation */}

@@ -38,10 +38,11 @@ export default defineConfig({
         // Spec 127 — Web Push: pull in the push + notificationclick handlers
         // (the generated SW only does caching). File lives in public/.
         importScripts: ["push-handler.js"],
-        // Default precache cap is 2 MiB; the main bundle crossed that with the
-        // spec 114 rework + Recharts, so the build failed in CI. Raise the cap
-        // to 5 MiB until we split the bundle (manualChunks) in a follow-up.
-        maximumFileSizeToCacheInBytes: 5 * 1024 * 1024,
+        // The precache cap is Workbox's default, 2 MiB per file. The bundle is
+        // split since #1187 (lazy routes, hls.js on demand), so no chunk comes
+        // near it; a chunk that grows past it fails the build, on purpose.
+        // Every chunk is precached, lazy ones included, so an installed PWA
+        // opens any page offline.
         runtimeCaching: [
           {
             // A bare RegExp here is matched against the full request URL

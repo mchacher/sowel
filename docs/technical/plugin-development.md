@@ -95,19 +95,19 @@ The `manifest.json` file describes the plugin to Sowel. It lives at the root of 
 
 ### Field Reference
 
-| Field          | Type                    | Required | Description                                                                                                                 |
-| -------------- | ----------------------- | -------- | --------------------------------------------------------------------------------------------------------------------------- |
-| `id`           | string                  | Yes      | Unique plugin identifier. Lowercase with hyphens (e.g. `weather-forecast`). Must match the directory name under `plugins/`. |
-| `name`         | string                  | Yes      | Human-readable display name shown in the UI.                                                                                |
-| `version`      | string                  | Yes      | SemVer version (e.g. `0.2.0`). **Must be updated with each release.** See [Versioning](#versioning).                        |
-| `description`  | string                  | Yes      | Short description (one sentence) shown in the plugin store and integrations page.                                           |
-| `icon`         | string                  | Yes      | Lucide icon name (e.g. `CloudSun`, `Camera`). Used in the UI for the integration card.                                      |
-| `repo`         | string                  | Yes      | GitHub `owner/repo`. Install throws `Package manifest missing 'repo'` without it, and a backup restore reinstalls from it.  |
-| `author`       | string                  | No       | Author name or organization.                                                                                                |
-| `type`         | string                  | No       | `integration` (default) or `recipe`.                                                                                        |
-| `category`     | string                  | No       | Store category (spec 137). Recipes without one land in "Other" at the bottom of the store, with no error to explain it.     |
-| `sowelVersion` | string                  | No       | SemVer range of compatible Sowel versions (e.g. `>=0.10.0`). Outside the range, the store button is disabled.               |
-| `settings`     | IntegrationSettingDef[] | No       | Array of setting definitions for the UI configuration form. See [Settings](#settings).                                      |
+| Field          | Type                    | Required | Description                                                                                                                                                                                                      |
+| -------------- | ----------------------- | -------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `id`           | string                  | Yes      | Unique plugin identifier. Lowercase with hyphens (e.g. `weather-forecast`). Must match the directory name under `plugins/`.                                                                                      |
+| `name`         | string                  | Yes      | Human-readable display name shown in the UI.                                                                                                                                                                     |
+| `version`      | string                  | Yes      | SemVer version (e.g. `0.2.0`). **Must be updated with each release.** See [Versioning](#versioning).                                                                                                             |
+| `description`  | string                  | Yes      | Short description (one sentence) shown in the plugin store and integrations page.                                                                                                                                |
+| `icon`         | string                  | Yes      | Lucide icon name (e.g. `CloudSun`, `Camera`), shown on the Plugins and Integrations pages. Closed set: the icons the official registry uses, listed in `ui/src/lib/plugin-icons.ts`; any other name shows `Cpu`. |
+| `repo`         | string                  | Yes      | GitHub `owner/repo`. Install throws `Package manifest missing 'repo'` without it, and a backup restore reinstalls from it.                                                                                       |
+| `author`       | string                  | No       | Author name or organization.                                                                                                                                                                                     |
+| `type`         | string                  | No       | `integration` (default) or `recipe`.                                                                                                                                                                             |
+| `category`     | string                  | No       | Store category (spec 137). Recipes without one land in "Other" at the bottom of the store, with no error to explain it.                                                                                          |
+| `sowelVersion` | string                  | No       | SemVer range of compatible Sowel versions (e.g. `>=0.10.0`). Outside the range, the store button is disabled.                                                                                                    |
+| `settings`     | IntegrationSettingDef[] | No       | Array of setting definitions for the UI configuration form. See [Settings](#settings).                                                                                                                           |
 
 **Fields that do NOT exist in the manifest:** `entry`, `integrationId`, `license`, `repository`. Do not include these. Note `repo` above is required and is a different field from `repository`.
 

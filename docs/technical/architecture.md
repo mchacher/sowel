@@ -546,6 +546,14 @@ Details: [spec 181](https://github.com/mchacher/sowel/tree/main/specs/181-shared
 - Locale files: `ui/src/i18n/locales/en.json`, `ui/src/i18n/locales/fr.json`.
 - Recipe translations travel with the recipe class (see `i18n` field), not in platform locale files.
 
+### Code splitting (#1187)
+
+- The first load carries the public pages, the layout, Dashboard and Home. Every other page is a lazy chunk (`lazyPage` in `ui/src/lib/lazy-page.ts`), fetched on first visit while the layout shows a spinner.
+- A tab opened before an update may ask for a chunk the server no longer has; `lazyPage` then reloads the page once (at most once per 10 s), after which the error page applies.
+- `hls.js` loads when a camera live view starts; plugin icons resolve through the closed set of `ui/src/lib/plugin-icons.ts`. A lint rule rejects a namespace import of `lucide-react` and a static import of `hls.js`.
+- The service worker precaches every chunk, lazy ones included, under Workbox's 2 MiB per-file cap; an installed PWA opens any page offline.
+- CI checks the size of the first load after the build (`npm run check:bundle` in `ui/`: entry chunk ≤ 1,000,000 bytes, entry plus preloaded chunks ≤ 1,400,000 bytes).
+
 ---
 
 ## Design System

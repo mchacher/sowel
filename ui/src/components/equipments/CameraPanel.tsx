@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
-import Hls from "hls.js";
+import type Hls from "hls.js";
 import {
   Camera,
   RefreshCw,
@@ -35,11 +35,15 @@ const SNAPSHOT_REFRESH_MS = 30_000;
 // error — added 2026-08-04 after live view stayed on an indefinite black
 // frame on Android Chrome with no error signal at all.
 const LIVE_START_TIMEOUT_MS = 12_000;
-// Static browser capability check — doesn't change during the session, so
-// it's computed once at module scope rather than inside the effect (an
-// unsupported browser must not be reported via a synchronous setState in
-// an effect body — react-hooks/set-state-in-effect).
-const HLS_SUPPORTED = Hls.isSupported();
+
+/**
+ * hls.js (about 560 KB) is only fetched when a live view starts, never with
+ * the first page load (#1187). The import is memoised by the module system,
+ * so a second live view reuses it.
+ */
+function loadHls(): Promise<typeof Hls> {
+  return import("hls.js").then((m) => m.default);
+}
 
 export function CameraPanel({
   dataBindings,
@@ -193,40 +197,17 @@ function CameraView({ equipmentId, hasSnapshot, hasStream }: CameraViewProps) {
   } = useCameraSnapshot(equipmentId, hasSnapshot && !live, SNAPSHOT_REFRESH_MS);
 
   useEffect(() => {
-    if (!live || !videoRef.current || !HLS_SUPPORTED) return;
+    if (!live || !videoRef.current) return;
 
     const video = videoRef.current;
     let startedPlaying = false;
-
-    const hls = new Hls({
-      xhrSetup: (xhr) => {
-        const token = getAccessToken();
-        if (token) xhr.setRequestHeader("Authorization", `Bearer ${token}`);
-      },
-    });
-    hlsRef.current = hls;
-
-    // Log every hls.js error, not just fatal ones — on Android this
-    // reportedly stays on a black frame with no visible error at all,
-    // which only happens if hls.js is hitting something it doesn't
-    // consider fatal (or the video never starts for an unrelated
-    // reason the ERROR event never fires for). Logging non-fatal errors
-    // costs nothing and is the only lead we have without direct device
-    // console access.
-    hls.on(Hls.Events.ERROR, (_event, data) => {
-      console.warn("[camera] hls.js error", {
-        equipmentId,
-        type: data.type,
-        details: data.details,
-        fatal: data.fatal,
-        reason: (data as { response?: { code?: number } }).response?.code,
-      });
-      if (data.fatal) setLiveError(true);
-    });
+    let cancelled = false;
+    let hls: Hls | null = null;
+    let startTimeout: ReturnType<typeof setTimeout> | undefined;
 
     // The <video> element's own error event catches failures below
     // hls.js's abstraction (e.g. a codec/decode error MSE surfaces
-    // directly on the element) that the ERROR event above might not.
+    // directly on the element) that the ERROR event below might not.
     const onVideoError = () => {
       console.error("[camera] <video> element error", {
         equipmentId,
@@ -235,35 +216,81 @@ function CameraView({ equipmentId, hasSnapshot, hasStream }: CameraViewProps) {
       });
       setLiveError(true);
     };
-    video.addEventListener("error", onVideoError);
-
     const onPlaying = () => {
       startedPlaying = true;
     };
-    video.addEventListener("playing", onPlaying);
 
-    hls.loadSource(getCameraStreamUrl(equipmentId));
-    hls.attachMedia(video);
+    loadHls().then(
+      (HlsClass) => {
+        if (cancelled) return;
+        // Browser capability check, made once the library is here. An
+        // unsupported browser gets the same error and retry affordance as a
+        // failed stream.
+        if (!HlsClass.isSupported()) {
+          setLiveError(true);
+          return;
+        }
 
-    // Belt-and-suspenders: if nothing has actually started playing within
-    // this window, treat it as failed even if neither hls.js nor the
-    // <video> element ever raised an error — better an explicit retry
-    // affordance than an indefinite black frame.
-    const startTimeout = setTimeout(() => {
-      if (!startedPlaying) {
-        console.warn("[camera] live view: no frame started playing within timeout", {
-          equipmentId,
-          timeoutMs: LIVE_START_TIMEOUT_MS,
+        hls = new HlsClass({
+          xhrSetup: (xhr) => {
+            const token = getAccessToken();
+            if (token) xhr.setRequestHeader("Authorization", `Bearer ${token}`);
+          },
         });
+        hlsRef.current = hls;
+
+        // Log every hls.js error, not just fatal ones — on Android this
+        // reportedly stays on a black frame with no visible error at all,
+        // which only happens if hls.js is hitting something it doesn't
+        // consider fatal (or the video never starts for an unrelated
+        // reason the ERROR event never fires for). Logging non-fatal errors
+        // costs nothing and is the only lead we have without direct device
+        // console access.
+        hls.on(HlsClass.Events.ERROR, (_event, data) => {
+          console.warn("[camera] hls.js error", {
+            equipmentId,
+            type: data.type,
+            details: data.details,
+            fatal: data.fatal,
+            reason: (data as { response?: { code?: number } }).response?.code,
+          });
+          if (data.fatal) setLiveError(true);
+        });
+
+        video.addEventListener("error", onVideoError);
+        video.addEventListener("playing", onPlaying);
+
+        hls.loadSource(getCameraStreamUrl(equipmentId));
+        hls.attachMedia(video);
+
+        // Belt-and-suspenders: if nothing has actually started playing within
+        // this window, treat it as failed even if neither hls.js nor the
+        // <video> element ever raised an error — better an explicit retry
+        // affordance than an indefinite black frame.
+        startTimeout = setTimeout(() => {
+          if (!startedPlaying) {
+            console.warn("[camera] live view: no frame started playing within timeout", {
+              equipmentId,
+              timeoutMs: LIVE_START_TIMEOUT_MS,
+            });
+            setLiveError(true);
+          }
+        }, LIVE_START_TIMEOUT_MS);
+      },
+      (err: unknown) => {
+        // The chunk could not be fetched (offline, or a deploy replaced it).
+        if (cancelled) return;
+        console.warn("[camera] could not load hls.js", { equipmentId, err });
         setLiveError(true);
-      }
-    }, LIVE_START_TIMEOUT_MS);
+      },
+    );
 
     return () => {
+      cancelled = true;
       clearTimeout(startTimeout);
       video.removeEventListener("error", onVideoError);
       video.removeEventListener("playing", onPlaying);
-      hls.destroy();
+      hls?.destroy();
       hlsRef.current = null;
     };
   }, [equipmentId, live, liveRetryTick]);
@@ -272,7 +299,7 @@ function CameraView({ equipmentId, hasSnapshot, hasStream }: CameraViewProps) {
     <div className="space-y-2">
       <div className="relative bg-black rounded-sm overflow-hidden aspect-video flex items-center justify-center">
         {live ? (
-          liveError || !HLS_SUPPORTED ? (
+          liveError ? (
             <div className="flex flex-col items-center gap-2 px-4 text-center">
               <WifiOff size={28} strokeWidth={1.5} className="text-error" />
               <p className="text-small font-medium text-white">{t("cameras.live.error")}</p>

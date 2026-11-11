@@ -126,4 +126,39 @@ export default defineConfig([
       "sowel-chart/no-hex-color": "error",
     },
   },
+  {
+    // #1187 — keep the first load small. Two imports undid the code splitting
+    // on their own: a namespace import of lucide-react (or its `icons` map)
+    // ships all ~1,600 icons, and a static import of hls.js puts the 560 KB
+    // camera player on every page. Plugin icons go through lib/plugin-icons;
+    // hls.js is loaded with import("hls.js") when a live view starts.
+    files: ["src/**/*.{ts,tsx}"],
+    ignores: ["**/*.test.{ts,tsx}"],
+    rules: {
+      "no-restricted-imports": [
+        "error",
+        {
+          paths: [
+            {
+              name: "lucide-react",
+              importNames: ["icons"],
+              message:
+                "This pulls every Lucide icon into the bundle (#1187): import icons by name, or resolve a manifest name with lib/plugin-icons.",
+            },
+            {
+              name: "lucide-react/dynamic",
+              message:
+                "Dynamic Lucide icons are not used (#1187): resolve a manifest name with lib/plugin-icons.",
+            },
+            {
+              name: "hls.js",
+              allowTypeImports: true,
+              message:
+                'hls.js is 560 KB and only the camera live view needs it (#1187): load it with import("hls.js").',
+            },
+          ],
+        },
+      ],
+    },
+  },
 ]);

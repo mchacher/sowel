@@ -423,6 +423,14 @@ Détails : [spec 181](https://github.com/mchacher/sowel/tree/main/specs/181-shar
 - Fichiers de locale : `ui/src/i18n/locales/en.json`, `ui/src/i18n/locales/fr.json`.
 - Les traductions de recettes voyagent avec la classe de la recette (voir le champ `i18n`), pas dans les fichiers de locale de la plateforme.
 
+### Découpage du code (#1187)
+
+- Le premier chargement contient les pages publiques, le layout, le Tableau de bord et la Maison. Toutes les autres pages sont des chunks différés (`lazyPage` dans `ui/src/lib/lazy-page.ts`), chargés à la première visite pendant que le layout affiche un indicateur de chargement.
+- Un onglet ouvert avant une mise à jour peut demander un chunk que le serveur n'a plus ; `lazyPage` recharge alors la page une fois (au plus une fois toutes les 10 s), après quoi la page d'erreur s'affiche.
+- `hls.js` se charge au lancement du direct d'une caméra ; les icônes de plugins passent par la liste fermée de `ui/src/lib/plugin-icons.ts`. Une règle de lint refuse un import d'espace de noms de `lucide-react` et un import statique de `hls.js`.
+- Le service worker met en cache tous les chunks, différés compris, sous le plafond Workbox de 2 Mio par fichier ; une PWA installée ouvre n'importe quelle page hors ligne.
+- La CI vérifie la taille du premier chargement après le build (`npm run check:bundle` dans `ui/` : chunk d'entrée ≤ 1 000 000 octets, entrée et chunks préchargés ≤ 1 400 000 octets).
+
 ---
 
 ## Design system
