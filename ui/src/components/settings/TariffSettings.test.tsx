@@ -108,6 +108,24 @@ describe("TariffSettings schedule (spec 204)", () => {
     });
   });
 
+  it("stacks the seasons and keeps both headers the same height (#1230)", async () => {
+    mockedGet.mockResolvedValue(seasonal);
+    render(<TariffSettings />);
+    await box();
+    // One column at every width: a half-width season wrapped each slot.
+    const seasons = screen.getByTestId("seasons");
+    expect(seasons.className).toContain("flex-col");
+    expect(seasons.className).not.toMatch(/grid-cols-2/);
+    // The header row has a fixed height and the pill no vertical padding, so
+    // « Current » does not push the season in force lower than the other one.
+    const heads = screen.getAllByTestId("season-head");
+    expect(heads).toHaveLength(2);
+    for (const head of heads) expect(head.className).toContain("h-5");
+    const pill = screen.getByText("Current");
+    expect(pill.className).not.toMatch(/\bpy-/);
+    expect(pill.className).toContain("leading-4.5");
+  });
+
   it("marks winter in force in January", async () => {
     vi.setSystemTime(new Date(2027, 0, 15, 12));
     mockedGet.mockResolvedValue(seasonal);
