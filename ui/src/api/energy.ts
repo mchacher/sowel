@@ -2,6 +2,9 @@ import type {
   EnergyHistoryResponse,
   EnergyStatus,
   TariffConfig,
+  TariffContract,
+  TariffVersion,
+  TariffVersionInput,
   EnergyByUsageResponse,
   ActivityItem,
   BilanPeriod,
@@ -48,10 +51,56 @@ export async function getTariffConfig(): Promise<TariffConfig> {
   return fetchJSON<TariffConfig>(`${API_BASE}/settings/energy/tariff`);
 }
 
-export async function saveTariffConfig(config: TariffConfig): Promise<void> {
+/**
+ * Saves the HP/HC schedule only. Prices have their own history since spec 202
+ * (`createTariffVersion` and friends): sending `prices` here would edit the
+ * version in force today.
+ */
+export async function saveTariffConfig(config: Pick<TariffConfig, "schedules">): Promise<void> {
   await fetchJSON(`${API_BASE}/settings/energy/tariff`, {
     method: "PUT",
-    body: JSON.stringify(config),
+    body: JSON.stringify({ schedules: config.schedules }),
+  });
+}
+
+// ── Spec 202 — price versions and contract ──────────────────────────────
+
+/** The price versions, oldest first (the one without a start date first). */
+export async function getTariffVersions(): Promise<TariffVersion[]> {
+  return fetchJSON<TariffVersion[]>(`${API_BASE}/settings/energy/tariff/versions`);
+}
+
+export async function createTariffVersion(input: TariffVersionInput): Promise<TariffVersion> {
+  return fetchJSON<TariffVersion>(`${API_BASE}/settings/energy/tariff/versions`, {
+    method: "POST",
+    body: JSON.stringify(input),
+  });
+}
+
+export async function updateTariffVersion(
+  id: string,
+  input: TariffVersionInput,
+): Promise<TariffVersion> {
+  return fetchJSON<TariffVersion>(
+    `${API_BASE}/settings/energy/tariff/versions/${encodeURIComponent(id)}`,
+    { method: "PUT", body: JSON.stringify(input) },
+  );
+}
+
+export async function deleteTariffVersion(id: string): Promise<void> {
+  await fetchJSON(`${API_BASE}/settings/energy/tariff/versions/${encodeURIComponent(id)}`, {
+    method: "DELETE",
+  });
+}
+
+export async function getTariffContract(): Promise<TariffContract> {
+  return fetchJSON<TariffContract>(`${API_BASE}/settings/energy/contract`);
+}
+
+export async function saveTariffContract(contract: TariffContract): Promise<TariffContract> {
+  return fetchJSON<TariffContract>(`${API_BASE}/settings/energy/contract`, {
+    method: "PUT",
+    body: JSON.stringify(contract),
   });
 }
 

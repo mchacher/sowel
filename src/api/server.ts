@@ -119,6 +119,8 @@ interface ServerDeps {
     store: import("../energy/arbiter-gain-store.js").ArbiterGainStore;
     meter: import("../energy/arbiter-gain-meter.js").ArbiterGainMeter;
   };
+  /** Spec 202 — the dated electricity prices, read by the energy routes. */
+  tariffVersions: import("../energy/tariff-version-store.js").TariffVersionStore;
   /** Spec 191 — EV charge sessions. Absent in harnesses that do not exercise them. */
   evSessionTracker?: import("../energy/ev-sessions/ev-session-tracker.js").EvSessionTracker;
   pvForecaster: PvForecaster | null;
@@ -180,6 +182,7 @@ export async function createServer(deps: ServerDeps) {
     capacityArbiter,
     arbiterMetricsStore,
     arbiterGain,
+    tariffVersions,
     pvForecaster,
     backupManager,
     versionChecker,
@@ -384,6 +387,7 @@ export async function createServer(deps: ServerDeps) {
     influxClient,
     settingsManager,
     tariffClassifier: historyWriter.getTariffClassifier(),
+    tariffVersions,
     capacityArbiter,
     arbiterMetricsStore,
     arbiterGain: arbiterGain ?? null,

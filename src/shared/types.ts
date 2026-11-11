@@ -2664,6 +2664,41 @@ export interface TariffSplit {
   hc: number; // Wh attributed to HC
 }
 
+/**
+ * Spec 202 — one dated set of prices. A version is valid from its start date
+ * until the next one; every euro is computed at read time with the version in
+ * force at the date of the energy.
+ */
+export interface TariffVersion {
+  id: string;
+  /** Local date `YYYY-MM-DD`. Null for the first version, open backwards. */
+  startDate: string | null;
+  /** €/kWh incl. tax. A Base contract stores its one price in both. */
+  prices: TariffPrices;
+  /** Fixed fee, €/year incl. tax. */
+  fixedFeeYear: number | null;
+  /** Subscribed power. */
+  kva: number | null;
+  /** Who wrote it: `migration`, `manual`, later `<writer>:<id>`. Never read by pricing. */
+  origin: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface TariffVersionInput {
+  startDate?: string | null;
+  prices: TariffPrices;
+  fixedFeeYear?: number | null;
+  kva?: number | null;
+}
+
+/** Spec 202 — the current contract (setting `energy.contract`). */
+export interface TariffContract {
+  supplier: "edf-tarif-bleu" | "other";
+  contractType: "hphc" | "base";
+  kva: number | null;
+}
+
 // ============================================================
 // Spec 191 — EV charge sessions
 // ============================================================

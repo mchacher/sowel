@@ -158,6 +158,10 @@ export const BACKUP_TABLES = [
   // Spec 200 — the arbiter gain cannot be recomputed (the journal is purged
   // after 7 days). No foreign key, so its place in the order does not matter.
   "arbiter_daily_gain",
+  // Spec 202 — the dated electricity prices. No foreign key. A backup taken
+  // before it has no such table: the restore leaves it empty and the next
+  // startup creates the first version again from `energy.tariff`.
+  "tariff_versions",
 ] as const;
 
 // Reverse order for deletion (children first) + tables not exported but must be cleared

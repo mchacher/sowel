@@ -10,6 +10,7 @@ import type {
   EvChargeSession,
   EvPer100kmUnavailable,
   EvVehicleMonthSummary,
+  TariffPrices,
 } from "../../shared/types.js";
 
 export interface SessionSums {
@@ -17,8 +18,6 @@ export interface SessionSums {
   estCarWh: number;
   estGridHpWh: number;
   estGridHcWh: number;
-  estCostHpEur: number | null;
-  estCostHcEur: number | null;
 }
 
 export interface DerivedEnergy {
@@ -31,8 +30,15 @@ export interface DerivedEnergy {
   costEur: number | null;
 }
 
-/** Scale the window estimates to the meter. */
-export function deriveEnergy(s: SessionSums): DerivedEnergy {
+/**
+ * Scale the window estimates to the meter, and price the grid part.
+ *
+ * Spec 202 — the cost is computed here, at read time, with the prices in force
+ * when the session started (`prices`, null without a tariff). A session that
+ * crosses a price change is priced whole with the prices of its start; its
+ * peak / off-peak split stays exact.
+ */
+export function deriveEnergy(s: SessionSums, prices: TariffPrices | null): DerivedEnergy {
   const energy = s.energyWh > 0 ? s.energyWh : s.estCarWh;
   if (s.estCarWh <= 0) {
     // Energy without any estimate: never invent solar.
@@ -49,10 +55,9 @@ export function deriveEnergy(s: SessionSums): DerivedEnergy {
   const k = energy / s.estCarWh;
   const gridHpWh = s.estGridHpWh * k;
   const gridHcWh = s.estGridHcWh * k;
-  const costHpEur = s.estCostHpEur === null ? null : s.estCostHpEur * k;
-  const costHcEur = s.estCostHcEur === null ? null : s.estCostHcEur * k;
-  const costEur =
-    costHpEur === null && costHcEur === null ? null : (costHpEur ?? 0) + (costHcEur ?? 0);
+  const costHpEur = prices ? (gridHpWh / 1000) * prices.hp : null;
+  const costHcEur = prices ? (gridHcWh / 1000) * prices.hc : null;
+  const costEur = costHpEur === null || costHcEur === null ? null : costHpEur + costHcEur;
   return {
     energyWh: energy,
     gridHpWh,

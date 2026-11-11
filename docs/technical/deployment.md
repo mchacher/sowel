@@ -203,6 +203,8 @@ curl -s http://<host>:3000/api/v1/backup \
 
 Before every self-update, Sowel creates a backup in `data/backups/sowel-backup-pre-v<version>-<timestamp>.zip`. The three most recent are kept; older are rotated out.
 
+This backup is the way back to the previous version. A backup taken on a newer version may hold a table the older version does not know (`tariff_versions` since spec 202), and the older version refuses it (`Unknown table`): to roll back, reinstall the previous version and restore the pre-update backup, not a backup taken after the update.
+
 **Listing local backups**:
 
 - From the UI: Admin → Backup → "Local backups" section

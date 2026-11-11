@@ -57,19 +57,23 @@ Si vous avez une production locale (panneaux solaires en général), créez un �
 - **Injection réseau** : énergie produite renvoyée vers le réseau
 - **Consommation totale** : réseau + autoconsommation
 
-### Étape 4 : (facultatif) configurer les tarifs heures pleines / creuses
+### Étape 4 : (facultatif) configurer votre contrat, vos prix et vos heures creuses
 
-Si votre contrat d'électricité distingue les heures pleines des heures creuses, configurez la grille pour que Sowel puisse répartir votre consommation.
-
-Allez dans **Réglages > Administration > Tarifs énergie** :
+Allez dans **Réglages > Énergie**, carte **Tarifs énergie** :
 
 ![Configuration tarifaire](../screenshots/energy-tariff-settings-fr.png)
 
-1. Saisissez optionnellement vos prix HP et HC par kWh (utilisés pour les vues coût ; la classification fonctionne sans)
-2. Définissez vos créneaux horaires : quelles heures sont HP et lesquelles sont HC
-3. Vous pouvez ajouter autant de créneaux que nécessaire pour couvrir les 24 h de la journée
+1. **Contrat.** Choisissez votre fournisseur, le type de contrat (heures creuses, ou Base) et votre puissance souscrite. Ils décrivent votre contrat ; ils ne valorisent rien par eux-mêmes.
+2. **Prix.** Les prix sont un historique : chaque ligne vaut de sa date de début jusqu'à la veille de la suivante, et chaque consommation est valorisée au prix en vigueur à sa date. Un changement de prix ne revalorise donc jamais le passé.
+   - **Ajouter un changement de prix** quand vos prix changent : saisissez la date de début, les prix HP et HC par kWh TTC, et si vous le souhaitez l'abonnement annuel et la puissance. Vous pouvez le saisir à l'avance, ou en retard : les jours déjà mesurés sont alors revalorisés à partir de cette date.
+   - Le crayon corrige une ligne ; la corbeille la supprime. La ligne la plus ancienne, **Origine**, couvre tout ce qui précède le premier changement daté : elle se corrige, elle ne se supprime pas.
+   - La liste montre les trois derniers prix et défile pour les plus anciens.
+   - Avec un contrat Base, un seul prix est demandé.
+3. **Heures pleines et heures creuses.** Définissez vos créneaux horaires : quelles heures sont HP et lesquelles sont HC, avec autant de créneaux que nécessaire pour couvrir les 24 h de la journée. **Enregistrer les horaires** n'enregistre que les horaires.
 
-Sans configuration tarifaire, toute la consommation est classée en HP par défaut, vous ne voyez juste pas la répartition.
+Les prix servent aux vues en euros ; la répartition HP / HC fonctionne sans eux. Sans horaires configurés, toute la consommation est classée en HP par défaut, vous ne voyez juste pas la répartition.
+
+À la mise à jour depuis une version qui n'avait qu'un couple de prix, Sowel les conserve dans la ligne **Origine** : vos chiffres ne bougent pas tant que vous n'ajoutez ou ne corrigez pas un prix.
 
 ### Étape 5 : (facultatif) ajouter des sous-compteurs pour une répartition par usage
 
@@ -132,7 +136,7 @@ La page Bilan répond en euros, pour un **Jour**, un **Mois** ou une **Année** 
 - **Électricité consommée, en euros.** Avec un compteur de production, une barre découpe ce que valait l'électricité consommée entre ce que vous avez **payé** au fournisseur et ce que le solaire a **évité** : les kilowattheures solaires consommés sur place, au prix qu'ils auraient coûté à ce moment-là. « Sans panneaux, la facture aurait été de … » est la somme des deux.
 - **Économie solaire** et **Gain de l'arbitre.** Deux tuiles reprennent le montant évité avec l'énergie autoconsommée, et donnent la part de l'arbitre (voir [Ce que rapporte l'arbitre](#ce-que-rapporte-larbitre)). La tuile de l'arbitre apparaît lorsque l'arbitre est activé, ou lorsque la période contient un gain mesuré pendant qu'il l'était.
 - **Coût par heure, par jour ou par mois.** Des barres empilées : payé en heures pleines, payé en heures creuses, et évité par le solaire au-dessus. En vue Année, un trait pointillé marque la facture de l'année précédente pour le même mois.
-- **Par usage.** Une ligne par sous-compteur, plus **Autres** : ses kilowattheures, ce qu'il a coûté, ce que le solaire a évité pour lui, triés par montant payé. Chaque heure (vue Jour), chaque jour (vue Mois) ou chaque mois (vue Année), la part solaire de la maison est appliquée à chaque sous-compteur : ces montants sont donc un peu plus précis que les € par usage de la page Consommation, qui appliquent un prix moyen à toute la période.
+- **Par usage.** Une ligne par sous-compteur, plus **Autres** : ses kilowattheures, ce qu'il a coûté, ce que le solaire a évité pour lui, triés par montant payé. Chaque heure (vue Jour), chaque jour (vue Mois) ou chaque mois (vue Année), la part solaire de la maison est appliquée à chaque sous-compteur : ces montants sont donc un peu plus précis que les € par usage de la page Consommation, qui valorisent les kilowattheures de chaque sous-compteur en entier, solaire compris.
 - **Comment ces montants sont calculés.** La dernière carte (repliée sur un téléphone) donne les prix utilisés et ces règles.
 
 ### Vue Consommation
@@ -159,7 +163,7 @@ Le total compte tout ce que la maison a consommé, réseau et soleil ; la part a
 
 Un sélecteur segmenté **Wh / €** est placé à côté du sélecteur de période en haut de la page. En mode **€**, chaque valeur en kWh du graphique (axe Y, hauteur de barre, tooltip) et de l'en-tête est remplacée par le coût correspondant en euros, calculé à partir des prix saisis dans **Réglages > Tarifs énergie**. La bascule est désactivée — avec une tooltip qui renvoie vers les réglages — tant qu'au moins un des prix HP / HC n'est pas non nul.
 
-La valorisation est appliquée au moment de l'affichage : modifier votre tarif (après une renégociation, par exemple) revalorise la consommation passée avec les nouveaux prix. L'autoconsommation n'a pas de coût facturé, elle est donc masquée du graphique en mode € et laissée hors du total en € : l'en-tête donne alors la facture, répartie en heures pleines et heures creuses, la part autoconsommée restant un pourcentage d'énergie.
+La valorisation est appliquée au moment de l'affichage, chaque consommation au prix en vigueur à sa date ([historique des prix](#etape-4-facultatif-configurer-votre-contrat-vos-prix-et-vos-heures-creuses)) : un changement de prix s'applique à partir de sa date de début, et corriger un prix passé ne revalorise que la consommation de cette période. Dans les vues mois et année, la première heure ou les deux premières heures de la nuit d'un changement restent valorisées à l'ancien prix. L'autoconsommation n'a pas de coût facturé, elle est donc masquée du graphique en mode € et laissée hors du total en € : l'en-tête donne alors la facture, répartie en heures pleines et heures creuses, la part autoconsommée restant un pourcentage d'énergie.
 
 #### Bascule Total / Par usage
 
@@ -169,7 +173,7 @@ Quand au moins un sous-compteur est configuré, un bouton **Total / Par usage** 
 
 Les sous-compteurs prennent leurs couleurs dans une palette de huit couleurs de séries, dans un ordre fixe (trié par équipement), afin qu'un même circuit garde la même couleur d'un jour à l'autre, d'une vue à l'autre et dans la répartition En direct. La palette n'a ni rouge, ni orange, ni ambre, ni vert solaire, couleurs qui ont un sens ailleurs, et chaque couleur a une variante claire et une variante sombre. La page Analyse utilise la même palette ; un graphique enregistré avec l'ancienne palette affiche la nouvelle couleur à la même position. La pile "Autre" est bornée à zéro, donc un sous-compteur qui dépasserait brièvement le compteur principal (à cause d'un décalage d'échantillonnage) ne peut pas la rendre négative.
 
-En €, chaque sous-compteur est valorisé au prix moyen de la période. Une borne de recharge est l'exception à connaître : elle charge surtout en heures creuses ou sur le surplus solaire, son coût réel est donc plus bas. Son coût exact, réparti heures pleines / heures creuses / solaire et par voiture, est sur les fiches de la borne et de la voiture ([recharges](equipments.md#recharges-et-cout-par-voiture)).
+En €, chaque sous-compteur est valorisé heure par heure (jour par jour dans les vues semaine et mois, mois par mois dans la vue année), au prix moyen payé par la maison sur cette même heure : une charge qui tourne en heures creuses est valorisée au prix des heures creuses. Les kilowattheures solaires restent comptés au prix du réseau : une borne de recharge qui charge sur le surplus solaire coûte donc moins que ce chiffre. Son coût exact, réparti heures pleines / heures creuses / solaire et par voiture, est sur les fiches de la borne et de la voiture ([recharges](equipments.md#recharges-et-cout-par-voiture)).
 
 ##### Quand un compteur en alimente un autre
 
@@ -292,7 +296,7 @@ Pointez l'historique à la souris pour lire un quart d'heure : son heure, l'impo
 
 ### Ce que rapporte l'arbitre
 
-Chaque minute, Sowel note l'énergie solaire consommée par les charges que l'arbitre a lancées, et la compte au tarif de cette minute. Les charges sont servies **en dernier** par le soleil : quand la maison importe, l'import leur est attribué d'abord, si bien que le chiffre ne revendique jamais le solaire que la maison a consommé elle-même. Le résultat s'accumule par jour et par charge et s'affiche sur la page Bilan, dans la tuile **Gain de l'arbitre**, avec les deux charges qui ont rapporté le plus. Il fait partie de l'économie solaire, il ne s'y ajoute pas. Une charge est comptée à sa puissance mesurée quand elle a son propre compteur ; sans compteur, à sa puissance apprise ou déclarée tant qu'elle est autorisée, si bien qu'une charge qui s'arrête d'elle-même (un chauffe-eau dont le thermostat coupe) est surestimée jusqu'à ce qu'elle soit libérée.
+Chaque minute, Sowel note l'énergie solaire consommée par les charges que l'arbitre a lancées, et si cette minute était en heures pleines ou en heures creuses. Sa valeur en euros est calculée à l'affichage, aux prix en vigueur ce jour-là. Les charges sont servies **en dernier** par le soleil : quand la maison importe, l'import leur est attribué d'abord, si bien que le chiffre ne revendique jamais le solaire que la maison a consommé elle-même. Le résultat s'accumule par jour et par charge et s'affiche sur la page Bilan, dans la tuile **Gain de l'arbitre**, avec les deux charges qui ont rapporté le plus. Il fait partie de l'économie solaire, il ne s'y ajoute pas. Une charge est comptée à sa puissance mesurée quand elle a son propre compteur ; sans compteur, à sa puissance apprise ou déclarée tant qu'elle est autorisée, si bien qu'une charge qui s'arrête d'elle-même (un chauffe-eau dont le thermostat coupe) est surestimée jusqu'à ce qu'elle soit libérée.
 
 La mesure commence le jour où la version qui l'apporte est installée : les périodes antérieures affichent « Pas encore mesuré ».
 
@@ -332,7 +336,7 @@ L'agrégateur garde aussi en mémoire les cumuls (heure, jour, mois, année) que
 
 ### La répartition HP / HC affiche tout en HP
 
-Cela signifie qu'aucune grille tarifaire n'est configurée. Allez dans **Réglages > Administration > Tarifs énergie** et définissez vos créneaux.
+Cela signifie qu'aucune grille tarifaire n'est configurée. Allez dans **Réglages > Énergie** et définissez vos créneaux.
 
 ### Les anciennes données sont manquantes
 

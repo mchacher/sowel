@@ -12,6 +12,7 @@ import type {
 } from "../shared/types.js";
 import { localDateStr } from "../shared/local-date.js";
 import type { ArbiterGainRow } from "./arbiter-gain-store.js";
+import { computeCost } from "./cost-calculator.js";
 
 // Spec 200 — the Energy Bilan, computed from what /energy/history and
 // /energy/by-usage already read. Pure: the route does the queries.
@@ -215,7 +216,13 @@ export function usageRows(series: UsageSeries[], points: EnergyPoint[]): BilanUs
   return rows.filter((r) => r.wh > 0).sort((a, b) => b.paid - a.paid);
 }
 
-/** The arbiter tile: the period's gain and how much of it was measured. */
+/**
+ * The arbiter tile: the period's gain and how much of it was measured.
+ *
+ * Spec 202 — the gain is booked in Wh, peak and off-peak, and priced here with
+ * the prices of each row's day (`pricesOf`). `avoidedEur` is what a row booked
+ * in euros before that, kept as booked: a row of the upgrade day holds both.
+ */
 export function arbiterTile(
   enabled: boolean,
   since: string | null,
@@ -223,6 +230,7 @@ export function arbiterTile(
   fromDay: string,
   toDay: string,
   nameOf: (equipmentId: string) => string | null,
+  pricesOf: (day: string) => TariffPrices,
 ): BilanArbiter {
   const measured: BilanArbiter["measured"] =
     since === null || since > toDay ? "none" : since <= fromDay ? "full" : "partial";
@@ -231,7 +239,7 @@ export function arbiterTile(
     if (r.day < fromDay || r.day > toDay) continue;
     const acc = byLoad.get(r.equipmentId) ?? { solarWh: 0, avoided: 0 };
     acc.solarWh += r.solarWh;
-    acc.avoided += r.avoidedEur;
+    acc.avoided += r.avoidedEur + computeCost(r.solarHpWh, r.solarHcWh, pricesOf(r.day)).cost_total;
     byLoad.set(r.equipmentId, acc);
   }
   const loads = [...byLoad.entries()]

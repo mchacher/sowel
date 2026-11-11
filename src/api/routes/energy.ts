@@ -8,7 +8,17 @@ import type { CapacityArbiter } from "../../energy/capacity-arbiter.js";
 import type { ArbiterMetricsStore } from "../../energy/arbiter-metrics-store.js";
 import type { ArbiterPublicState } from "../../shared/types.js";
 import { ARBITER_METRICS_RETENTION_DAYS } from "../../energy/arbiter-metrics-store.js";
-import { blendedRate, computeCost } from "../../energy/cost-calculator.js";
+import {
+  defaultContract,
+  gridSide,
+  isPriced,
+  monthlyNeedsDaily,
+  pricePoints,
+  pricesAt,
+  priceSeries,
+  priceTotals,
+} from "../../energy/pricing.js";
+import { TariffVersionError, type TariffVersionStore } from "../../energy/tariff-version-store.js";
 import { isSubmeterEquipment, NON_SUBMETER_TYPES } from "../../equipments/metering.js";
 import { childrenByParent, subtractChildren } from "../../energy/metering-nesting.js";
 import type { InfluxClient } from "../../core/influx-client.js";
@@ -17,8 +27,11 @@ import type {
   EnergyTotals,
   EnergyHistoryResponse,
   EnergyStatus,
-  TariffConfig,
+  DaySchedule,
+  TariffContract,
   TariffPrices,
+  TariffVersion,
+  TariffVersionInput,
   EnergyByUsageResponse,
   SubmeterSeries,
   EnergyByUsagePoint,
@@ -73,6 +86,7 @@ interface EnergyDeps {
   influxClient: InfluxClient;
   settingsManager: SettingsManager;
   tariffClassifier: TariffClassifier;
+  tariffVersions: TariffVersionStore; // spec 202 — the dated prices
   capacityArbiter: CapacityArbiter | null; // spec 140 — null in some tests
   arbiterMetricsStore: ArbiterMetricsStore | null; // spec 158 — null in some tests
   arbiterGain?: { store: ArbiterGainStore; meter: ArbiterGainMeter } | null; // spec 200
@@ -94,9 +108,13 @@ interface EnergyDeps {
 // value `getDay()` can never equal. `start`/`end` are non-empty strings, where
 // `!slot.start` accepted any truthy value including `5` and `true`. Neither was
 // a working input; both were silent nonsense.
+//
+// Spec 202 — `prices` is optional: the prices live in the tariff versions, and
+// the settings page sends the schedule alone. A client that still sends them
+// edits the version in force today, which is what this route always did.
 const tariffBodySchema = {
   type: "object",
-  required: ["schedules", "prices"],
+  required: ["schedules"],
   properties: {
     schedules: {
       type: "array",
@@ -128,12 +146,53 @@ const tariffBodySchema = {
   },
 } as const;
 
+// ── Tariff version and contract schemas (spec 202) ─────────────────────
+//
+// Structure only: the ranges (a real date, prices from 0 to 5 € per kWh, a fee
+// of 0 or more, a power above 0) are the store's rules, answered with a 400
+// that says which one failed.
+const nullableNumber = { type: ["number", "null"] } as const;
+const tariffVersionBodySchema = {
+  type: "object",
+  required: ["prices"],
+  properties: {
+    startDate: { type: ["string", "null"] },
+    prices: {
+      type: "object",
+      required: ["hp", "hc"],
+      properties: { hp: { type: "number" }, hc: { type: "number" } },
+    },
+    fixedFeeYear: nullableNumber,
+    kva: nullableNumber,
+  },
+} as const;
+
+const tariffContractBodySchema = {
+  type: "object",
+  required: ["supplier", "contractType", "kva"],
+  properties: {
+    supplier: { enum: ["edf-tarif-bleu", "other"] },
+    contractType: { enum: ["hphc", "base"] },
+    kva: { type: ["number", "null"], exclusiveMinimum: 0 },
+  },
+} as const;
+
+const CONTRACT_KEY = "energy.contract";
+
+/** The HTTP status of a tariff version rule that refused a write. */
+function versionErrorStatus(err: TariffVersionError): number {
+  if (err.code === "NotFound") return 404;
+  if (err.code === "Invalid") return 400;
+  return 409;
+}
+
 export function registerEnergyRoutes(app: FastifyInstance, deps: EnergyDeps): void {
   const {
     equipmentManager,
     influxClient,
     settingsManager,
     tariffClassifier,
+    tariffVersions,
     capacityArbiter,
     arbiterMetricsStore,
     arbiterGain,
@@ -156,11 +215,9 @@ export function registerEnergyRoutes(app: FastifyInstance, deps: EnergyDeps): vo
     const eqId = findEnergyEquipmentId(equipmentManager);
     const prodId = findProductionEquipmentId(equipmentManager);
     // Spec 123: a tariff is only "configured" (cost UI enabled) when at
-    // least one price is set. A schedule with prices 0/0 leaves cost
-    // valuation pointless, so the UnitToggle must stay disabled.
-    const tariff = tariffClassifier.getConfig();
-    const tariffConfigured =
-      tariff !== null && ((tariff.prices.hp ?? 0) > 0 || (tariff.prices.hc ?? 0) > 0);
+    // least one price is set. Prices 0/0 leave cost valuation pointless, so
+    // the UnitToggle must stay disabled. Spec 202: the prices in force today.
+    const tariffConfigured = isPriced(tariffVersions.all(), localDateStr());
     return {
       available: eqId !== null,
       hasProduction: prodId !== null,
@@ -207,16 +264,16 @@ export function registerEnergyRoutes(app: FastifyInstance, deps: EnergyDeps): vo
         buckets.push(`${config.bucket}-energy-hourly`);
       }
 
-      const prices: TariffPrices = tariffClassifier.getConfig()?.prices ?? { hp: 0, hc: 0 };
-      const points = await loadEnergyPoints(
-        { client, org: config.org, equipmentManager, equipmentId, productionEquipmentId, prices },
+      const versions = tariffVersions.all();
+      const { points, pricingPoints } = await loadPricedPoints(
+        { client, org: config.org, equipmentManager, equipmentId, productionEquipmentId, versions },
         buckets,
         from,
         to,
         resolution,
       );
 
-      const totals = computeTotals(points, prices);
+      const totals = computeTotals(points, pricingPoints, versions);
 
       const response: EnergyHistoryResponse = {
         period,
@@ -285,48 +342,38 @@ export function registerEnergyRoutes(app: FastifyInstance, deps: EnergyDeps): vo
       const totalSubmeters = Object.values(totalsByEquipment).reduce((a, b) => a + b, 0);
       const total = mainEquipmentId ? mainTotal : totalSubmeters;
 
-      // Spec 123 — derive a period-blended €/kWh from the main meter's
-      // HP/HC split for the same window, then value each submeter +
-      // "other" with that single rate. Submeters store only `energy`
-      // (no HP/HC channel), so a per-bucket split would require N×2
-      // extra Influx queries per submeter; the blended period rate
-      // gets us a single consistent number at the cost of slight
-      // attribution skew for equipments running exclusively in HC.
-      const prices: TariffPrices = tariffClassifier.getConfig()?.prices ?? { hp: 0, hc: 0 };
+      // Spec 202 — each series is priced point by point, at the blended
+      // price of the main meter's point of the same bucket (its € by its
+      // kWh). A load that only runs in off-peak hours then costs the off-peak
+      // price, where the period-blended rate of spec 123 charged it the
+      // period's average; the Bilan table already priced this way. Submeters
+      // store only `energy`, so the HP/HC split is the main meter's.
       const costByEquipment: Record<string, number> = {};
       let otherCost = 0;
       let totalCost = 0;
       if (mainEquipmentId) {
-        const consumptionTotalsWh = await sumConsumptionHpHc(
-          client,
-          config.org,
+        const { points: mainPoints } = await loadPricedPoints(
+          {
+            client,
+            org: config.org,
+            equipmentManager,
+            equipmentId: mainEquipmentId,
+            // The rate needs consumption only: skip the production reads.
+            productionEquipmentId: null,
+            versions: tariffVersions.all(),
+          },
           buckets,
-          mainEquipmentId,
           from,
           to,
           resolution,
         );
-        const { cost_total } = computeCost(consumptionTotalsWh.hp, consumptionTotalsWh.hc, prices);
-        const rate = blendedRate(consumptionTotalsWh.hp + consumptionTotalsWh.hc, cost_total);
-        if (rate > 0) {
-          for (const eq of submeters) {
-            const eqCost = round4((totalsByEquipment[eq.id] / 1000) * rate);
-            costByEquipment[eq.id] = eqCost;
-            eq.cost = eqCost;
-          }
-          otherCost = round4((otherTotal / 1000) * rate);
-          totalCost = round4((total / 1000) * rate);
-          logger.debug(
-            { rate, period, date: dateStr, mainEquipmentId },
-            "Computed by-usage blended €/kWh",
-          );
-        } else {
-          // Tariff missing or zero — fall through with empty cost maps.
-          for (const eq of submeters) {
-            costByEquipment[eq.id] = 0;
-            eq.cost = 0;
-          }
+        for (const eq of submeters) {
+          const eqCost = priceSeries(eq.points, mainPoints);
+          costByEquipment[eq.id] = eqCost;
+          eq.cost = eqCost;
         }
+        otherCost = priceSeries(otherPoints, mainPoints);
+        totalCost = round4(mainPoints.reduce((sum, p) => sum + p.cost_total, 0));
       } else {
         // No main meter → no aggregate HP/HC available → no cost.
         for (const eq of submeters) {
@@ -416,9 +463,12 @@ export function registerEnergyRoutes(app: FastifyInstance, deps: EnergyDeps): vo
       return reply.status(503).send({ error: "InfluxDB not configured" });
     }
 
-    const tariff = tariffClassifier.getConfig();
-    const prices: TariffPrices = tariff?.prices ?? { hp: 0, hc: 0 };
+    const versions = tariffVersions.all();
     const { from, to, resolution, bucket } = computeRange(period, dateStr, config.bucket);
+    // Spec 202 — the prices the method card states: those in force on the last
+    // day of the period, today for a period still running.
+    const pricesDay = new Date(Math.min(to.getTime() - 1, Date.now()));
+    const prices: TariffPrices = pricesAt(versions, pricesDay);
     const buckets = [bucket];
     if (period === "day" && !bucket.includes("-energy-")) {
       buckets.push(`${config.bucket}-energy-hourly`);
@@ -429,14 +479,14 @@ export function registerEnergyRoutes(app: FastifyInstance, deps: EnergyDeps): vo
       equipmentManager,
       equipmentId,
       productionEquipmentId,
-      prices,
+      versions,
     };
 
     try {
       const ref = bilanReferenceRange(period as BilanPeriod, from, config.bucket);
       const { submeterEquipments } = partitionEquipments(equipmentManager);
       // The reads are independent: run them together (the year view has six).
-      const [points, reference, currentDaily, previousDaily, partition] = await Promise.all([
+      const [rawPoints, rawReference, currentDaily, previousDaily, partition] = await Promise.all([
         loadEnergyPoints(ctx, buckets, from, to, resolution),
         loadEnergyPoints(ctx, [ref.bucket], ref.from, ref.to, ref.resolution),
         // Year: which months are complete, from the daily data of both years.
@@ -455,7 +505,17 @@ export function registerEnergyRoutes(app: FastifyInstance, deps: EnergyDeps): vo
             )
           : null,
       ]);
-      const totals = computeTotals(points, prices);
+      // Spec 202 — a month crossed by a price change is priced from its days,
+      // which the year view has already read for the coverage.
+      const monthly = resolution === "1mo";
+      const points = pricePoints(rawPoints, versions, { monthly, daily: currentDaily ?? [] });
+      const reference = pricePoints(rawReference, versions, {
+        monthly: ref.resolution === "1mo",
+        daily: previousDaily ?? [],
+      });
+      const pricingPoints =
+        monthly && currentDaily && monthlyNeedsDaily(versions, from, to) ? currentDaily : points;
+      const totals = computeTotals(points, pricingPoints, versions);
       const coverage =
         currentDaily && previousDaily
           ? { current: currentDaily, previous: previousDaily }
@@ -481,6 +541,7 @@ export function registerEnergyRoutes(app: FastifyInstance, deps: EnergyDeps): vo
         fromDay,
         toDay,
         (id) => equipmentManager.getById(id)?.name ?? null,
+        (day) => pricesAt(versions, new Date(`${day}T12:00:00`)),
       );
 
       const response: EnergyBilanResponse = computeBilan({
@@ -489,7 +550,7 @@ export function registerEnergyRoutes(app: FastifyInstance, deps: EnergyDeps): vo
         to,
         resolution: resolution as EnergyBilanResponse["resolution"],
         now: Date.now(),
-        tariffConfigured: tariff !== null && (prices.hp > 0 || prices.hc > 0),
+        tariffConfigured: prices.hp > 0 || prices.hc > 0,
         prices,
         hasProduction: productionEquipmentId !== null,
         points,
@@ -683,20 +744,134 @@ export function registerEnergyRoutes(app: FastifyInstance, deps: EnergyDeps): vo
       return reply.code(403).send({ error: "Admin access required" });
     }
 
-    const config = tariffClassifier.getConfig();
-    return config ?? { schedules: [], prices: { hp: 0, hc: 0 } };
+    // Spec 202 — the schedule from the setting, the prices in force today
+    // from the versions. An empty `schedules` still means "never saved".
+    return {
+      schedules: tariffClassifier.getConfig()?.schedules ?? [],
+      prices: tariffVersions.current()?.prices ?? { hp: 0, hc: 0 },
+    };
   });
 
   // ============================================================
   // PUT /api/v1/settings/energy/tariff
   // ============================================================
-  app.put<{ Body: TariffConfig }>(
+  app.put<{ Body: { schedules: DaySchedule[]; prices?: TariffPrices } }>(
     "/api/v1/settings/energy/tariff",
     { schema: { body: tariffBodySchema } },
-    async (request) => {
-      settingsManager.set("energy.tariff", JSON.stringify(request.body));
+    async (request, reply) => {
+      const { schedules, prices } = request.body;
+      // Spec 202 — prices sent here edit the version in force today (or create
+      // the first one), before the setting is written: a refused price must
+      // not leave a half-applied save. 0/0 with no version creates nothing.
+      if (prices && (tariffVersions.current() || prices.hp > 0 || prices.hc > 0)) {
+        try {
+          tariffVersions.upsertCurrentPrices(prices);
+        } catch (err) {
+          if (err instanceof TariffVersionError) {
+            return reply.code(versionErrorStatus(err)).send({ error: err.message });
+          }
+          throw err;
+        }
+      }
+      // The setting keeps its shape; its prices are no longer read once the
+      // first version exists.
+      const kept = prices ?? tariffClassifier.getConfig()?.prices ?? { hp: 0, hc: 0 };
+      settingsManager.set("energy.tariff", JSON.stringify({ schedules, prices: kept }));
       logger.info("Tariff configuration updated");
       return { ok: true };
+    },
+  );
+
+  // ============================================================
+  // Tariff versions — spec 202. Admin only: they carry prices. The mutating
+  // methods are refused to a non-admin by the global role gate; the GET needs
+  // its own check, like the legacy GET above (#381).
+  // ============================================================
+  app.get("/api/v1/settings/energy/tariff/versions", async (request, reply) => {
+    if (!request.auth || request.auth.role !== "admin") {
+      return reply.code(403).send({ error: "Admin access required" });
+    }
+    return tariffVersions.all();
+  });
+
+  app.post<{ Body: TariffVersionInput }>(
+    "/api/v1/settings/energy/tariff/versions",
+    { schema: { body: tariffVersionBodySchema } },
+    async (request, reply) => {
+      try {
+        const version: TariffVersion = tariffVersions.create(request.body, "manual");
+        return reply.code(201).send(version);
+      } catch (err) {
+        if (err instanceof TariffVersionError) {
+          return reply.code(versionErrorStatus(err)).send({ error: err.message });
+        }
+        throw err;
+      }
+    },
+  );
+
+  app.put<{ Params: { id: string }; Body: TariffVersionInput }>(
+    "/api/v1/settings/energy/tariff/versions/:id",
+    { schema: { body: tariffVersionBodySchema } },
+    async (request, reply) => {
+      try {
+        return tariffVersions.update(request.params.id, request.body);
+      } catch (err) {
+        if (err instanceof TariffVersionError) {
+          return reply.code(versionErrorStatus(err)).send({ error: err.message });
+        }
+        throw err;
+      }
+    },
+  );
+
+  app.delete<{ Params: { id: string } }>(
+    "/api/v1/settings/energy/tariff/versions/:id",
+    async (request, reply) => {
+      try {
+        tariffVersions.remove(request.params.id);
+        return { ok: true };
+      } catch (err) {
+        if (err instanceof TariffVersionError) {
+          return reply.code(versionErrorStatus(err)).send({ error: err.message });
+        }
+        throw err;
+      }
+    },
+  );
+
+  // ============================================================
+  // Contract — spec 202: supplier, contract type and subscribed power. What a
+  // price source will match its rows on; it prices nothing by itself.
+  // ============================================================
+  const readContract = (): TariffContract => {
+    const raw = settingsManager.get(CONTRACT_KEY);
+    if (raw) {
+      try {
+        return JSON.parse(raw) as TariffContract;
+      } catch (err) {
+        logger.warn({ err }, "Invalid contract in settings, using the default");
+      }
+    }
+    return defaultContract(tariffClassifier.getConfig(), tariffVersions.all());
+  };
+
+  app.get("/api/v1/settings/energy/contract", async (request, reply) => {
+    if (!request.auth || request.auth.role !== "admin") {
+      return reply.code(403).send({ error: "Admin access required" });
+    }
+    return readContract();
+  });
+
+  app.put<{ Body: TariffContract }>(
+    "/api/v1/settings/energy/contract",
+    { schema: { body: tariffContractBodySchema } },
+    async (request) => {
+      const { supplier, contractType, kva } = request.body;
+      const contract: TariffContract = { supplier, contractType, kva };
+      settingsManager.set(CONTRACT_KEY, JSON.stringify(contract));
+      logger.info({ supplier, contractType, kva }, "Energy contract updated");
+      return contract;
     },
   );
 
@@ -935,7 +1110,8 @@ interface EnergyReadCtx {
   equipmentManager: EquipmentManager;
   equipmentId: string;
   productionEquipmentId: string | null;
-  prices: TariffPrices;
+  /** Spec 202 — the dated prices, oldest first. */
+  versions: TariffVersion[];
 }
 
 /**
@@ -1049,7 +1225,7 @@ async function loadEnergyPoints(
   // grid-side hp/hc (autoconso-subtracted) to match the summary
   // card "grid consumption" semantics.
   const consoByTime = new Map(consumptionPoints.map((p) => [p.time, p]));
-  const points: EnergyPoint[] = [];
+  const points: Array<Omit<EnergyPoint, "cost_hp" | "cost_hc" | "cost_total">> = [];
   for (const time of expectedBucketTimes(from, to, resolution)) {
     const conso = consoByTime.get(time);
     const hp = conso?.hp ?? 0;
@@ -1058,11 +1234,35 @@ async function loadEnergyPoints(
     const prod = prodData?.prod ?? 0;
     const autoconso = prodData?.autoconso ?? 0;
     const injection = prodData?.injection ?? 0;
-    const cost = computeCost(hp, hc, ctx.prices);
-    points.push({ time, hp, hc, prod, autoconso, injection, ...cost });
+    points.push({ time, hp, hc, prod, autoconso, injection });
   }
 
-  return points;
+  // Spec 202 — each point at the prices in force at its start.
+  return pricePoints(points, ctx.versions);
+}
+
+/**
+ * The priced points of a range and the points its totals are priced on
+ * (spec 202). They are the same, except for a monthly range with a price
+ * change inside a month: the months crossed are then priced from their days,
+ * and so are the totals.
+ */
+async function loadPricedPoints(
+  ctx: EnergyReadCtx,
+  buckets: string[],
+  from: Date,
+  to: Date,
+  resolution: Resolution,
+): Promise<{ points: EnergyPoint[]; pricingPoints: EnergyPoint[] }> {
+  const points = await loadEnergyPoints(ctx, buckets, from, to, resolution);
+  if (resolution !== "1mo" || !monthlyNeedsDaily(ctx.versions, from, to)) {
+    return { points, pricingPoints: points };
+  }
+  const daily = await loadEnergyPoints(ctx, buckets, from, to, "1d");
+  return {
+    points: pricePoints(points, ctx.versions, { monthly: true, daily }),
+    pricingPoints: daily,
+  };
 }
 
 /** The partition of the main meter's consumption by sub-meter (spec 091,
@@ -1457,53 +1657,6 @@ from(bucket: "${bucket}")
 }
 
 /**
- * Spec 123 — sum HP/HC consumption over a window using the same
- * bucket-fallback strategy as /energy/history. Used by /energy/by-usage
- * to derive a blended period €/kWh without re-implementing the merge.
- */
-async function sumConsumptionHpHc(
-  client: import("@influxdata/influxdb-client").InfluxDB,
-  org: string,
-  buckets: string[],
-  equipmentId: string,
-  from: Date,
-  to: Date,
-  resolution: Resolution,
-): Promise<{ hp: number; hc: number }> {
-  let hpHcPoints: Array<{ time: string; hp: number; hc: number }> = [];
-  let legacyPoints: Array<{ time: string; hp: number; hc: number }> = [];
-  for (const b of buckets) {
-    if (hpHcPoints.length === 0) {
-      hpHcPoints = await queryEnergyHpHcPoints(client, org, b, equipmentId, from, to, resolution);
-    }
-    if (legacyPoints.length === 0) {
-      legacyPoints = await queryEnergyLegacyPoints(
-        client,
-        org,
-        b,
-        equipmentId,
-        from,
-        to,
-        resolution,
-      );
-    }
-    if (hpHcPoints.length > 0 || legacyPoints.length > 0) break;
-  }
-  const hpHcByTime = new Map(hpHcPoints.map((p) => [p.time, p]));
-  let hp = 0;
-  let hc = 0;
-  const allTimes = new Set([...hpHcPoints.map((p) => p.time), ...legacyPoints.map((p) => p.time)]);
-  for (const time of allTimes) {
-    const p = hpHcByTime.get(time) ?? legacyPoints.find((lp) => lp.time === time);
-    if (p) {
-      hp += p.hp;
-      hc += p.hc;
-    }
-  }
-  return { hp, hc };
-}
-
-/**
  * Query production energy points from InfluxDB.
  * Production Equipment stores 3 aliases: "energy" (total), "autoconso", "injection".
  * Spec 195 — each local producer (a submeter flagged `localProduction`) adds its
@@ -1712,7 +1865,15 @@ function pickPaletteColor(index: number): string {
   return SUBMETER_PALETTE[index % SUBMETER_PALETTE.length];
 }
 
-function computeTotals(points: EnergyPoint[], prices: TariffPrices): EnergyTotals {
+/**
+ * The Wh totals of the points, and the grid bill priced on `pricingPoints`
+ * with the version of each point's date (spec 202).
+ */
+function computeTotals(
+  points: EnergyPoint[],
+  pricingPoints: EnergyPoint[],
+  versions: TariffVersion[],
+): EnergyTotals {
   let totalHp = 0;
   let totalHc = 0;
   let totalProduction = 0;
@@ -1722,14 +1883,9 @@ function computeTotals(points: EnergyPoint[], prices: TariffPrices): EnergyTotal
     // hp and hc include autoconsumption (total household consumption split by tariff).
     // Subtract autoconso per-point to get grid-only HP/HC, distributing proportionally
     // when a point straddles a tariff boundary (both hp and hc > 0).
-    const conso = p.hp + p.hc;
-    if (conso > 0 && p.autoconso > 0) {
-      totalHp += Math.max(0, p.hp - p.autoconso * (p.hp / conso));
-      totalHc += Math.max(0, p.hc - p.autoconso * (p.hc / conso));
-    } else {
-      totalHp += p.hp;
-      totalHc += p.hc;
-    }
+    const grid = gridSide(p);
+    totalHp += grid.hp;
+    totalHc += grid.hc;
     totalProduction += p.prod;
     totalAutoconso += p.autoconso;
     totalInjection += p.injection;
@@ -1737,7 +1893,7 @@ function computeTotals(points: EnergyPoint[], prices: TariffPrices): EnergyTotal
   // Spec 123 — totals cost reflects the grid-side hp/hc (post autoconso
   // subtraction) so the summary card matches what the user actually
   // pays the utility.
-  const totalsCost = computeCost(totalHp, totalHc, prices);
+  const totalsCost = priceTotals(pricingPoints, versions);
   return {
     total_consumption: totalHp + totalHc,
     total_hp: totalHp,

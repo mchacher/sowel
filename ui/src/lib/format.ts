@@ -522,6 +522,22 @@ export function formatClockTime(when: Date | number, opts: { locale?: Locale } =
 }
 
 /**
+ * A local `YYYY-MM-DD` day as a short numeric date: « 01/08/2026 » in French,
+ * « 08/01/2026 » in English. Built at local noon, so the day never slips with
+ * the timezone (see `localDayToDate`).
+ */
+export function formatDay(day: string | null | undefined, opts: { locale?: Locale } = {}): string {
+  if (!day) return EMPTY;
+  const date = new Date(`${day}T12:00:00`);
+  if (Number.isNaN(date.getTime())) return EMPTY;
+  return date.toLocaleDateString(resolve(opts.locale), {
+    day: "2-digit",
+    month: "2-digit",
+    year: "numeric",
+  });
+}
+
+/**
  * How long ago, in Sowel's language: « à l'instant », « il y a 15 s »,
  * « il y a 12 min », « il y a 3 h 05 », then the date and time for anything
  * older than a day. Seconds go by steps of five, as `RelativeTime` re-renders

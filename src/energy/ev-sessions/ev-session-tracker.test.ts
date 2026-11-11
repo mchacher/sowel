@@ -4,6 +4,7 @@ import { EventBus } from "../../core/event-bus.js";
 import type { Logger } from "../../core/logger.js";
 import type { EquipmentManager } from "../../equipments/equipment-manager.js";
 import type { EngineEvent, Equipment, EquipmentType } from "../../shared/types.js";
+import { localDateStr } from "../../shared/local-date.js";
 import { createMigratedTestDb } from "../../test-helpers/migrations.js";
 import type { TariffClassifier } from "../tariff-classifier.js";
 import { EvSessionStore, type SessionRecord } from "./ev-session-store.js";
@@ -72,10 +73,13 @@ class FakeEquipments {
 }
 
 let hcShare = 0;
+// Spec 202 — the tracker asks for the prices of a session's start day when the
+// session is read. `prices` is what the tariff versions answer; `pricedDays`
+// records the days asked.
 let prices: { hp: number; hc: number } | null = { hp: 0.2, hc: 0.1 };
+let pricedDays: string[] = [];
 const classifier = {
   classify: (wh: number) => ({ hp: wh * (1 - hcShare), hc: wh * hcShare }),
-  getConfig: () => (prices ? { schedules: [], prices } : null),
 } as unknown as TariffClassifier;
 
 let db: Database.Database;
@@ -93,7 +97,13 @@ function makeTracker(): EvSessionTracker {
     classifier,
     store,
     makeLogger(),
-    { now: () => now },
+    {
+      now: () => now,
+      pricesOn: (day) => {
+        pricedDays.push(day);
+        return prices;
+      },
+    },
   );
   t.start();
   return t;
@@ -144,6 +154,7 @@ beforeEach(() => {
   store = new EvSessionStore(db);
   hcShare = 0;
   prices = { hp: 0.2, hc: 0.1 };
+  pricedDays = [];
   events = [];
   bus.on((e) => {
     if (e.type.startsWith("energy.ev_session")) events.push(e);
@@ -192,17 +203,16 @@ describe("session lifecycle", () => {
     expect(s.solarWh / s.energyWh).toBeCloseTo(5 / 7, 2);
   });
 
-  it("prices each window at the prices in force when it closed", () => {
+  it("prices a session when it is read, at the prices of the day it started (spec 202)", () => {
     data("charger", "vehicle", "charging");
-    run(30, 2000, 5000); // all grid, 1 kWh at 0.2
-    tracker.tick(); // the 30 s timer closes the due window before the change
-    prices = { hp: 0.4, hc: 0.1 };
-    run(30, 2000, 5000); // 1 kWh at 0.4
+    run(60, 2000, 5000); // all grid, 2 kWh
     data("charger", "vehicle", "disconnected");
-    const before = sessions()[0].costEur!;
-    expect(before).toBeCloseTo(0.6, 2);
-    prices = { hp: 1, hc: 1 };
-    expect(sessions()[0].costEur).toBeCloseTo(before, 9);
+    const [s] = sessions();
+    expect(s.costEur).toBeCloseTo(0.4, 2);
+    expect(pricedDays.at(-1)).toBe(localDateStr(new Date(s.startedAt)));
+    // Nothing was frozen: a corrected price reprices the session.
+    prices = { hp: 0.4, hc: 0.1 };
+    expect(sessions()[0].costEur).toBeCloseTo(0.8, 2);
   });
 
   it("prices off-peak windows at the HC price", () => {

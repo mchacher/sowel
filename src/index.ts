@@ -46,6 +46,8 @@ import { ArbiterMetricsStore } from "./energy/arbiter-metrics-store.js";
 import { ArbiterMetricsRollup } from "./energy/arbiter-metrics-rollup.js";
 import { ArbiterGainStore } from "./energy/arbiter-gain-store.js";
 import { ArbiterGainMeter } from "./energy/arbiter-gain-meter.js";
+import { TariffVersionStore } from "./energy/tariff-version-store.js";
+import { pricesOnOrNull } from "./energy/pricing.js";
 import { ActivityBuffer } from "./activity/activity-buffer.js";
 import { ActivityStore } from "./activity/activity-store.js";
 import { RecipeLoader } from "./recipes/recipe-loader.js";
@@ -436,9 +438,16 @@ async function main() {
   );
   arbiterMetricsRollup.start();
 
-  // Spec 200 — the arbiter's gain (solar used by the loads it switched on, at
-  // the tariff of the minute), for the Energy Bilan page. Reads the arbiter's
-  // public state only, like the metrics above.
+  // Spec 202 — the dated electricity prices. Every euro is computed at read
+  // time from these versions. The first one is created here from the legacy
+  // `energy.tariff` setting when the table is empty: at the upgrade, and after
+  // the restore of a backup taken before spec 202.
+  const tariffVersionStore = new TariffVersionStore(db, logger);
+  tariffVersionStore.seedFromSetting(historyWriter.getTariffClassifier().getConfig());
+
+  // Spec 200 — the arbiter's gain (solar used by the loads it switched on,
+  // split by the tariff period of the minute), for the Energy Bilan page.
+  // Reads the arbiter's public state only, like the metrics above.
   const arbiterGainStore = new ArbiterGainStore(db, logger);
   const arbiterGainMeter = new ArbiterGainMeter({
     arbiter: capacityArbiter,
@@ -622,6 +631,8 @@ async function main() {
     historyWriter.getTariffClassifier(),
     new EvSessionStore(db),
     logger,
+    // Spec 202 — a session is priced at read time, at the prices of its start day.
+    { pricesOn: (day) => pricesOnOrNull(tariffVersionStore.all(), day) },
   );
 
   const server = await createServer({
@@ -659,6 +670,7 @@ async function main() {
     capacityArbiter,
     arbiterMetricsStore, // spec 158 — daily metrics read surface
     arbiterGain: { store: arbiterGainStore, meter: arbiterGainMeter }, // spec 200
+    tariffVersions: tariffVersionStore, // spec 202
     backupManager,
     versionChecker,
     updateManager,

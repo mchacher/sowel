@@ -3,7 +3,9 @@ import { useTranslation } from "react-i18next";
 import { Zap, Plus, Trash2, Loader2, Info } from "lucide-react";
 import { getTariffConfig, saveTariffConfig } from "../../api";
 import { isTariffSaved } from "../../lib/tariff";
-import type { TariffConfig, TariffSlot } from "../../types";
+import type { TariffConfig, TariffContract, TariffSlot } from "../../types";
+import { TariffContractBlock } from "./TariffContractBlock";
+import { TariffPriceHistory } from "./TariffPriceHistory";
 
 const ALL_DAYS = [0, 1, 2, 3, 4, 5, 6];
 // Spec 196 (FR-E) — the energy chart tokens, so the tariff strip follows the theme.
@@ -175,6 +177,9 @@ export function TariffSettings() {
   // proposal and warns that nothing is saved (issue #384). The server returns
   // an empty `schedules` array when `energy.tariff` is absent.
   const [configured, setConfigured] = useState(false);
+  // Spec 202 — the contract block reports what it read and saved: the price
+  // block needs the contract type (one price or two) and the subscribed power.
+  const [contract, setContract] = useState<TariffContract | null>(null);
 
   useEffect(() => {
     getTariffConfig()
@@ -196,12 +201,9 @@ export function TariffSettings() {
     setSaved(false);
     setError(null);
     try {
-      // Ensure all days are included in the single schedule
-      const toSave: TariffConfig = {
-        ...config,
-        schedules: [{ days: [...ALL_DAYS], slots }],
-      };
-      await saveTariffConfig(toSave);
+      // The schedule only (spec 202: prices have their own history), with all
+      // days included in the single schedule.
+      await saveTariffConfig({ schedules: [{ days: [...ALL_DAYS], slots }] });
       setConfigured(true);
       setSaved(true);
       setTimeout(() => setSaved(false), 2000);
@@ -261,6 +263,19 @@ export function TariffSettings() {
         <h2 className="text-lead font-semibold text-text">{t("tariff.title")}</h2>
       </div>
 
+      <TariffContractBlock onContract={setContract} />
+
+      <hr className="border-0 border-t border-border-light my-5" />
+
+      <TariffPriceHistory
+        contractType={contract?.contractType ?? "hphc"}
+        contractKva={contract?.kva ?? null}
+      />
+
+      <hr className="border-0 border-t border-border-light my-5" />
+
+      <h3 className="text-small font-medium text-text mb-2">{t("tariff.schedule.title")}</h3>
+
       {/* Issue #384 — the form is pre-filled with the standard schedule as a
           proposal; without this banner an unsaved default looks identical to a
           persisted tariff. Shown only until a tariff is actually saved. */}
@@ -274,59 +289,12 @@ export function TariffSettings() {
         </div>
       )}
 
-      {/* Prices */}
-      <div className="grid grid-cols-2 gap-4 mb-5">
-        <div>
-          <label className="block text-caption text-text-secondary mb-1">
-            {t("tariff.priceHp")}
-          </label>
-          <input
-            type="number"
-            step="0.0001"
-            min="0"
-            value={config.prices.hp || ""}
-            onChange={(e) =>
-              setConfig((prev) => ({
-                ...prev,
-                prices: { ...prev.prices, hp: parseFloat(e.target.value) || 0 },
-              }))
-            }
-            className="w-full px-3 py-1.5 border border-border rounded-sm text-small text-text bg-background"
-          />
-        </div>
-        <div>
-          <label className="block text-caption text-text-secondary mb-1">
-            {t("tariff.priceHc")}
-          </label>
-          <input
-            type="number"
-            step="0.0001"
-            min="0"
-            value={config.prices.hc || ""}
-            onChange={(e) =>
-              setConfig((prev) => ({
-                ...prev,
-                prices: { ...prev.prices, hc: parseFloat(e.target.value) || 0 },
-              }))
-            }
-            className="w-full px-3 py-1.5 border border-border rounded-sm text-small text-text bg-background"
-          />
-        </div>
-      </div>
-
-      {/* Spec 123 — costs are applied to all historical data when the
-          Energy page is displayed in €; this hint warns the user that
-          changing prices retroactively re-values past consumption. */}
-      <p className="text-caption text-text-tertiary -mt-2 mb-5">
-        {t("tariff.priceRetroactiveHint")}
-      </p>
-
       {/* Visual timeline */}
       <TariffTimeline slots={slots} />
 
       {/* Time slots */}
       <div className="mb-5 bg-background rounded-md p-4">
-        <h3 className="text-small font-medium text-text mb-3">{t("tariff.timeSlots")}</h3>
+        <h4 className="text-small font-medium text-text mb-3">{t("tariff.timeSlots")}</h4>
 
         <div className="space-y-2">
           {slots.map((slot, slotIdx) => (
