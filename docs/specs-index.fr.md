@@ -334,6 +334,7 @@ Les specs sont regroupées par thème et annotées d'un statut :
 | 204 | Heures creuses saisonnières                                           | ✅     | `TariffConfig.summer` (été Enedis 04-01..10-31, stocké sans champ) : une plage d'heures creuses d'hiver et une d'été, lues par `TariffClassifier` et l'instantané des recettes ; amende 123, 202. Shipped in v1.85.0.                                                         |
 | 205 | Abonnement et changements de prix dans le Bilan                       | ✅     | Le Bilan montre l'abonnement au prorata (`fixedFeeYear`) à part de la consommation, le total, et marque les changements de prix (`priceSpans`) dans le graphique et la méthode ; amende 200, 202. Shipped in v1.85.0.                                                         |
 | 206 | Onglet Solaire des réglages                                           | ✅     | Onglet « Solaire » des réglages (`?tab=solar`) : installation solaire et arbitre de surplus, « Énergie » garde le tarif ; barre d'onglets défilante sur téléphone ; amende 163. Shipped in v1.85.0.                                                                           |
+| 207 | Consommation en kWh dans le Bilan                                     | 🚧     | Carte de facture du Bilan en deux : euros à gauche, kWh à droite (total consommé, réseau HP/HC et solaire, comparaisons en kWh, prix moyen du kWh) ; `energy` dans `/energy/bilan` ; issue #1232 ; amende 200, 205. Unreleased.                                               |
 
 ---
 
