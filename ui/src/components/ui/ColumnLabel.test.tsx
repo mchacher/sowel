@@ -30,10 +30,21 @@ describe("ColumnLabel", () => {
     expect(container.querySelector("span.normal-case")?.textContent).toBe("kWh");
   });
 
+  it("keeps a unit's prefix and suffix with it", () => {
+    const { container } = render(<ColumnLabel text="Conso kWh/an" />);
+    expect(container.querySelector("span.normal-case")?.textContent).toBe("kWh/an");
+  });
+
   it("finds unit symbols, not words that hold the same letters", () => {
     expect(hasUnit("Prix €/kWh")).toBe(true);
     expect(hasUnit("Puissance (kVA)")).toBe(true);
     expect(hasUnit("Température °C")).toBe(true);
+    expect(hasUnit("Puissance crête (Wc)")).toBe(true);
+    expect(hasUnit("Pression hPa")).toBe(true);
+    // An all-capital symbol keeps its case in an uppercase header.
+    expect(hasUnit("V1")).toBe(false);
+    expect(hasUnit("W")).toBe(false);
+    expect(hasUnit("A code is needed")).toBe(false);
     expect(hasUnit("Watt")).toBe(false);
     expect(hasUnit("What the load draws")).toBe(false);
     expect(hasUnit("Value")).toBe(false);

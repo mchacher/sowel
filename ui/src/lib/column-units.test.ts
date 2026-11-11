@@ -20,7 +20,7 @@ describe("uppercase column headers keep units in their own case (#1231)", () => 
     const bad: string[] = [];
     for (const file of files) {
       const src = readFileSync(join(srcRoot, file), "utf8");
-      for (const head of src.matchAll(/<thead>([\s\S]*?)<\/thead>/g)) {
+      for (const head of src.matchAll(/<thead\b[^>]*>([\s\S]*?)<\/thead>/g)) {
         for (const call of head[1].matchAll(/(<ColumnLabel text=\{|title=\{)?t\("([^"]+)"/g)) {
           const key = call[2];
           if (call[1] || !locales.some((l) => hasUnit(l[key] ?? ""))) continue;
