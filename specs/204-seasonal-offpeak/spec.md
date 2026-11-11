@@ -71,13 +71,13 @@ The block dates are written from the stored `from`/`to`, so a stored season and 
 
 ## Acceptance Criteria
 
-- [ ] With a summer schedule, a window on 15 July is split with the summer slots, one on 15 January with the
+- [x] With a summer schedule, a window on 15 July is split with the summer slots, one on 15 January with the
       winter slots; 31 March and 1 April, 31 October and 1 November fall on the right side.
-- [ ] Without `summer`, every split is identical to the current one (existing tests pass unchanged).
-- [ ] The recipe snapshot gives the off-peak slots of today's season.
-- [ ] The API stores the defaults when `from`/`to` are absent and refuses an invalid `MM-DD` or `from` after
+- [x] Without `summer`, every split is identical to the current one (existing tests pass unchanged).
+- [x] The recipe snapshot gives the off-peak slots of today's season.
+- [x] The API stores the defaults when `from`/`to` are absent and refuses an invalid `MM-DD` or `from` after
       `to`.
-- [ ] The screen saves two schedules when ticked and one when unticked, and marks the season in force.
+- [x] The screen saves two schedules when ticked and one when unticked, and marks the season in force.
 
 ## Edge Cases
 
@@ -89,12 +89,12 @@ The block dates are written from the stored `from`/`to`, so a stored season and 
 
 ## Docs Delta
 
-| Page (EN and FR)                             | Change                                                                           |
-| -------------------------------------------- | -------------------------------------------------------------------------------- |
-| `docs/user/energy.md` + `.fr.md`             | The schedule section: the seasonal checkbox, the two blocks, not retroactive     |
-| `docs/technical/api-reference.md` + `.fr.md` | `summer` in the tariff body and response                                         |
-| `docs/technical/architecture.md` + `.fr.md`  | `TariffClassifier`: the schedule of the day's season                             |
-| `docs/technical/data-model.md` (no FR copy)  | `energy.tariff`: the `summer` object                                             |
-| `docs/technical/recipe-development.md` + FR  | `offPeakToday` follows the season (only if the page describes the field)         |
+| Page (EN and FR)                             | Change                                                                       |
+| -------------------------------------------- | ---------------------------------------------------------------------------- |
+| `docs/user/energy.md` + `.fr.md`             | The schedule section: the seasonal checkbox, the two blocks, not retroactive |
+| `docs/technical/api-reference.md` + `.fr.md` | `summer` in the tariff body and response                                     |
+| `docs/technical/architecture.md` + `.fr.md`  | `TariffClassifier`: the schedule of the day's season                         |
+| `docs/technical/data-model.md` (no FR copy)  | `energy.tariff`: the `summer` object                                         |
+| `docs/technical/recipe-development.md` + FR  | `offPeakToday` follows the season (only if the page describes the field)     |
 
 Screenshots retaken: `energy-tariff-settings-en.png` and `-fr.png` if the schedule section is in the frame.
