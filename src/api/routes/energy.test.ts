@@ -1,5 +1,5 @@
 import Fastify from "fastify";
-import { describe, it, expect, beforeEach, afterEach } from "vitest";
+import { describe, it, expect, beforeEach, afterEach, vi } from "vitest";
 import { createLogger } from "../../core/logger.js";
 import { registerEnergyRoutes, trimToWindow, SUBMETER_PALETTE } from "./energy.js";
 import { EMPTY_ACCURACY } from "../../energy/pv/pv-accuracy.js";
@@ -2419,6 +2419,69 @@ describe("Spec 202 — pricing by tariff version", () => {
     expect(
       (await app.inject({ method: "GET", url: "/api/v1/energy/status" })).json(),
     ).toMatchObject({ tariffConfigured: true });
+  });
+});
+
+describe("Spec 205 — /api/v1/energy/bilan fee and price spans", () => {
+  let app: Awaited<ReturnType<typeof buildApp>> | null = null;
+  const main = [{ id: "meter-1", name: "Compteur", type: "main_energy_meter" as const }];
+  // The version seeded from `energy.tariff` has no fee; the dated ones do.
+  const versions: TariffVersionInput[] = [
+    { startDate: "2026-01-01", prices: { hp: 0.2, hc: 0.1 }, fixedFeeYear: 240, kva: 9 },
+    { startDate: "2026-07-16", prices: { hp: 0.3, hc: 0.1 }, fixedFeeYear: 300, kva: 9 },
+  ];
+  const bilan = async (query: string) =>
+    (await app!.inject({ method: "GET", url: `/api/v1/energy/bilan?${query}` })).json();
+
+  beforeEach(() => {
+    process.env.TZ = "Europe/Paris";
+    // Only the clock: Fastify's own timers keep running.
+    vi.useFakeTimers({ toFake: ["Date"] });
+    vi.setSystemTime(new Date(2026, 6, 11, 15, 0)); // 11 July 2026, local
+  });
+
+  afterEach(async () => {
+    vi.useRealTimers();
+    if (app) await app.close();
+    app = null;
+  });
+
+  it("counts the current month's days up to today, and lists the change still to come", async () => {
+    app = await buildApp({ equipments: main, tariff: TARIFF_20_10, versions });
+    const body = await bilan("period=month&date=2026-07-05");
+    expect(body.fee).toMatchObject({ days: 11, daysWithoutFee: 0, kva: 9 });
+    expect(body.fee.total).toBeCloseTo((11 * 240) / 365, 10);
+    expect(body.priceSpans.map((s: { from: string; to: string }) => [s.from, s.to])).toEqual([
+      ["2026-07-01", "2026-07-15"],
+      ["2026-07-16", "2026-07-31"],
+    ]);
+  });
+
+  it("gives no fee on the day view, and one price span", async () => {
+    app = await buildApp({ equipments: main, tariff: TARIFF_20_10, versions });
+    const body = await bilan("period=day&date=2026-07-10");
+    expect(body.fee).toBeNull();
+    expect(body.priceSpans).toHaveLength(1);
+    expect(body.priceSpans[0]).toMatchObject({ from: "2026-07-10", to: "2026-07-10" });
+  });
+
+  it("gives no fee for a month still to come", async () => {
+    app = await buildApp({ equipments: main, tariff: TARIFF_20_10, versions });
+    const body = await bilan("period=month&date=2026-08-10");
+    expect(body.fee).toBeNull();
+    expect(body.priceSpans).toHaveLength(1);
+  });
+
+  it("counts the days of the seeded version as without fee, in the year view", async () => {
+    app = await buildApp({
+      equipments: main,
+      tariff: TARIFF_20_10,
+      versions: [{ startDate: "2025-12-01", prices: { hp: 0.2, hc: 0.1 }, fixedFeeYear: 240 }],
+    });
+    const body = await bilan("period=year&date=2025-06-01");
+    expect(body.fee).toMatchObject({ days: 365, daysWithoutFee: 334, kva: null });
+    expect(body.fee.total).toBeCloseTo((31 * 240) / 365, 10);
+    expect(body.priceSpans).toHaveLength(2);
   });
 });
 

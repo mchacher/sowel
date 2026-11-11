@@ -1,8 +1,10 @@
 import type {
   BilanArbiter,
   BilanComparison,
+  BilanFee,
   BilanPeriod,
   BilanPoint,
+  BilanPriceSpan,
   BilanUsageRow,
   EnergyBilanResponse,
   EnergyByUsagePoint,
@@ -278,6 +280,10 @@ export interface BilanInput {
   coverage?: YearCoverage;
   usage: UsageSeries[];
   arbiter: BilanArbiter;
+  /** Spec 205 — the prorated fixed fee, passed through (the route computes it). */
+  fee: BilanFee | null;
+  /** Spec 205 — the versions over the period, passed through. */
+  priceSpans: BilanPriceSpan[];
 }
 
 export function computeBilan(input: BilanInput): EnergyBilanResponse {
@@ -323,5 +329,7 @@ export function computeBilan(input: BilanInput): EnergyBilanResponse {
     comparison,
     usage: usageRows(input.usage, points),
     arbiter: input.arbiter,
+    fee: input.fee,
+    priceSpans: input.priceSpans,
   };
 }
