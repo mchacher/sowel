@@ -37,6 +37,8 @@ The links to the solar installation (Production page setup hint, PV forecast pan
 Five tabs do not fit 390 px. The tab bar scrolls sideways, labels on one line, without a visible scrollbar
 track, and the active tab is scrolled into view when the page opens on it.
 
+Mockup (to scale): https://claude.ai/artifact/XzxdKvbMjYzcgSnSWDWK1U, boards `Settings` and `SettingsPhone`.
+
 ## Acceptance Criteria
 
 - [ ] « Énergie » shows the tariff card only; « Solaire » the installation then the arbiter.
