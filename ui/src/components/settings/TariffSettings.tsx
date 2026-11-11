@@ -274,17 +274,20 @@ function SeasonBlock({
       aria-label={t(`tariff.schedule.${which}`)}
       data-testid={`season-${which}`}
     >
-      <div className="flex items-center gap-2">
-        <h4 className="text-small font-medium text-text">{t(`tariff.schedule.${which}`)}</h4>
-        {current && (
-          <span className="px-2 py-0.5 rounded-full bg-surface text-primary text-caption font-medium">
-            {t("tariff.schedule.current")}
-          </span>
-        )}
+      {/* #1230 — name, « Current » and dates on one line. The pill sits on the
+          title's line height (18 px in a 20 px row), so the season in force has
+          the same header height as the other one. */}
+      <div className="flex flex-wrap items-center gap-x-2 gap-y-0.5 mb-3">
+        <div data-testid="season-head" className="flex items-center gap-2 h-5">
+          <h4 className="text-small font-medium text-text">{t(`tariff.schedule.${which}`)}</h4>
+          {current && (
+            <span className="px-2 leading-4.5 rounded-full bg-surface text-primary text-caption font-medium">
+              {t("tariff.schedule.current")}
+            </span>
+          )}
+        </div>
+        <p className="text-caption text-text-tertiary">{t("tariff.schedule.seasonDates", dates)}</p>
       </div>
-      <p className="text-caption text-text-tertiary mb-3">
-        {t("tariff.schedule.seasonDates", dates)}
-      </p>
       <TariffTimeline slots={slots} legend={false} />
       <SlotList slots={slots} onChange={onChange} />
     </section>
@@ -457,7 +460,9 @@ export function TariffSettings() {
 
       {seasonal && summerSlots ? (
         <>
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-3 items-start">
+          {/* #1230 — winter above summer at every width: side by side, a half-width
+              block wrapped every slot onto two lines. */}
+          <div data-testid="seasons" className="flex flex-col gap-3">
             <SeasonBlock
               which="winter"
               season={season}
