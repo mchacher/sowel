@@ -330,6 +330,7 @@ Les specs sont regroupées par thème et annotées d'un statut :
 | 200 | Page Bilan de l'énergie                                               | ✅     | Page Énergie > Bilan (jour, mois, année) : facture, coût évité par le solaire, comparaison, graphique des coûts, payé et évité par usage ; `GET /energy/bilan` ; compteur de gain de l'arbitre, table `arbiter_daily_gain`, migration 043. Shipped in v1.84.0.        |
 | 201 | Le mode d'une recette sur les cartes                                  | ✅     | `RecipeActionDef.targets` optionnel nomme les emplacements équipement auxquels s'applique un mode ; leurs cartes Dashboard affichent le mode en pastille (Cocoon sur le poêle), qui le change au clic, panneau téléphone compris. Shipped in v1.84.0.                 |
 | 202 | Prix de l'électricité datés                                           | 🚧     | Historique des prix `tariff_versions` (HP/HC, abonnement, kVA) créé depuis `energy.tariff` ; historique, Bilan, par usage, gain de l'arbitre et sessions VE valorisés à la lecture avec la version de la date du point ; migration 044 ; amende 123, 200. Unreleased. |
+| 203 | Fichier de prix de l'électricité                                      | 🚧     | Fichier de prix `tariffs/electricity-prices.json` (EDF Tarif Bleu depuis l'open data CRE, PR nocturne) ; `PriceFileSync` le lit chaque jour et ajoute les prix du contrat en versions tarifaires, les passés après confirmation ; amende 202. Unreleased.             |
 
 ---
 

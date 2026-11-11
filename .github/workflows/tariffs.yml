@@ -1,0 +1,81 @@
+name: Tariffs
+
+# Spec 203 — keep `tariffs/electricity-prices.json` in step with the CRE open
+# data. Every night the EDF Tarif Bleu rows are rebuilt from the two CRE files;
+# when they changed, a pull request is opened. NOTHING is merged here: the
+# instances read the file from `main`, so a maintainer reviews the rows first.
+
+on:
+  schedule:
+    - cron: "17 4 * * *" # 04:17 UTC, off the hour
+  workflow_dispatch:
+
+concurrency:
+  group: tariffs
+  cancel-in-progress: false
+
+permissions:
+  contents: write # push the update branch
+  pull-requests: write # open the pull request
+
+env:
+  BRANCH: chore/tariffs-update
+
+jobs:
+  update:
+    name: Update the price file
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          # A pull request opened with the default token does not start the CI
+          # workflows, so the checks `main` requires would never run on it.
+          # TARIFFS_PR_TOKEN (fine-grained, this repository, contents and pull
+          # requests: write) makes the push and the pull request count as a
+          # user's. Without it the default token is used and the pull request
+          # says the checks must be started by hand.
+          token: ${{ secrets.TARIFFS_PR_TOKEN || github.token }}
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7
+        with:
+          node-version: 24
+          cache: npm
+          cache-dependency-path: package-lock.json
+      - run: npm ci
+      - name: Rebuild the EDF Tarif Bleu rows from the CRE open data
+        run: npx tsx scripts/tariffs/update-edf-tarif-bleu.ts --summary "$RUNNER_TEMP/summary.md"
+      - name: Check the file an instance would read
+        run: npx tsx scripts/tariffs/check.ts
+      - name: Open or refresh the pull request
+        env:
+          GH_TOKEN: ${{ secrets.TARIFFS_PR_TOKEN || github.token }}
+          HAS_PR_TOKEN: ${{ secrets.TARIFFS_PR_TOKEN != '' }}
+        run: |
+          if git diff --quiet -- tariffs/; then
+            echo "The price file is up to date."
+            exit 0
+          fi
+          body="$RUNNER_TEMP/body.md"
+          {
+            cat "$RUNNER_TEMP/summary.md"
+            echo
+            echo "Opened by the nightly Tariffs workflow (spec 203). Instances read this file from \`main\`:"
+            echo "review the rows against the CRE publication before merging."
+            if [ "$HAS_PR_TOKEN" != "true" ]; then
+              echo
+              echo "**The required checks did not start**: this pull request was opened with the default"
+              echo "workflow token. Close and reopen it to run them, or set the secret \`TARIFFS_PR_TOKEN\`."
+            fi
+          } > "$body"
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git checkout -B "$BRANCH"
+          git add tariffs/
+          git commit -m "chore(energy): update the electricity price file from the CRE open data"
+          git push --force origin "$BRANCH"
+          if [ -n "$(gh pr list --head "$BRANCH" --state open --json number -q '.[].number')" ]; then
+            gh pr edit "$BRANCH" --body-file "$body"
+          else
+            gh pr create --base main --head "$BRANCH" \
+              --title "chore(energy): update the electricity price file from the CRE open data" \
+              --body-file "$body"
+          fi

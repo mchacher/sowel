@@ -265,6 +265,19 @@ When adding or modifying UI components, follow these design tokens:
 
 ---
 
+## Electricity price file
+
+`tariffs/electricity-prices.json` holds the electricity prices suppliers publish, per contract type, subscribed power and period (spec 203). Instances read it from `main`, so what is merged there is what households are priced with.
+
+- **Format.** `format` (the version instances check), `generatedAt`, and `suppliers`: each with an `id`, a `name`, its `source` and `sourceUrl`, and `prices`, one row per line: `contractType` (`hphc` or `base`), `kva`, `startDate` (`YYYY-MM-DD`), `hp` and `hc` in €/kWh including tax (a `base` row carries its one price in both), `fixedFeeYear` in €/year including tax. Rows are sorted and unique on contract type, power and start date. `src/energy/price-file/price-file.ts` is the one definition of a valid file.
+- **EDF Tarif Bleu** is rebuilt from the two CRE open data files by `npx tsx scripts/tariffs/update-edf-tarif-bleu.ts`. The script writes nothing when the rows did not change, and fails without writing when a CRE file is not as expected or when a published row would disappear.
+- **Every night** the `Tariffs` workflow runs that script and, when the file changed, opens a pull request listing the rows added and the rows whose figures moved. Nothing is merged automatically: check the rows against the CRE publication, then merge. A row that changed for a period already published deserves a second look, since instances that already took it keep the old figures.
+- **The check** `npx tsx scripts/tariffs/check.ts` runs in CI on every pull request. The file is in `.prettierignore`: keep its one-row-per-line layout.
+- **Adding a supplier** is a pull request that adds a block to `suppliers` (and, if its prices are published as data, a script next to the EDF one). A supplier in the file is not offered in the settings until its id is added to the contract's suppliers.
+- The workflow opens its pull request with the secret `TARIFFS_PR_TOKEN` (a fine-grained token for this repository, contents and pull requests: write), so that the required checks start. Without the secret it uses the default token and the pull request says the checks must be started by hand.
+
+---
+
 ## Environment Variables
 
 All settings are optional with sensible defaults -- Sowel runs zero-config out of the box. Override via `.env` if needed:

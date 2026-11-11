@@ -50,6 +50,9 @@ jobs:
       # the start, because it is at zero and the point is to keep it there.
       - run: npm run typecheck:tests
       - run: npm run format:check
+      # Spec 203 — the price file instances read from main: valid format, rows
+      # sorted and unique, prices in range, laid out one row per line.
+      - run: npx tsx scripts/tariffs/check.ts
       - run: npm test
 
   frontend:
