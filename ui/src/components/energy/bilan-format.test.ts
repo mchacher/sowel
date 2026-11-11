@@ -212,7 +212,7 @@ describe("methodSpans", () => {
 
   it("keeps the single sentence for one version, with the fee and the power", () => {
     const one = methodSpans(
-      [span("2026-10-01", "2026-10-31", { fixedFeeYear: 239.84 })],
+      [span("2026-10-01", "2026-10-31", { ...prices, fixedFeeYear: 239.84 })],
       prices,
       FR,
       t,
@@ -222,13 +222,27 @@ describe("methodSpans", () => {
     );
     expect(one.items).toEqual([]);
     const noFee = methodSpans(
-      [span("2026-10-01", "2026-10-31", { fixedFeeYear: null })],
+      [span("2026-10-01", "2026-10-31", { ...prices, fixedFeeYear: null })],
       prices,
       FR,
       t,
     );
     expect(n(noFee.intro)).toBe(
       "Tarif : heures pleines 0,2142 €/kWh, heures creuses 0,1589 €/kWh.",
+    );
+  });
+
+  it("states the prices of the one span, not those of the last day", () => {
+    // A single version starting 16 July, July read on the 11th: the response's
+    // `prices` (today) are 0/0, the span carries the version's own prices.
+    const one = methodSpans(
+      [span("2026-07-16", "2026-07-31", { fixedFeeYear: 300 })],
+      { hp: 0, hc: 0 },
+      FR,
+      t,
+    );
+    expect(n(one.intro)).toBe(
+      "Tarif : heures pleines 0,2065 €/kWh, heures creuses 0,1578 €/kWh, abonnement 300,00 € par an (9 kVA).",
     );
   });
 
@@ -262,9 +276,9 @@ describe("methodSpans", () => {
     );
     expect(m.intro).toBe("Prices changed during the period.");
     expect(m.items).toEqual([
-      "From January 1 to 31: peak €0.2065/kWh, off-peak €0.1578/kWh, subscription €235.92 a year.",
-      "From February 1 to July 31: peak €0.2065/kWh, off-peak €0.1578/kWh, subscription €235.92 a year.",
-      "On December 31: peak €0.2065/kWh, off-peak €0.1578/kWh, subscription €235.92 a year.",
+      "From January 1 to 31: peak hours €0.2065/kWh, off-peak hours €0.1578/kWh, subscription €235.92 a year.",
+      "From February 1 to July 31: peak hours €0.2065/kWh, off-peak hours €0.1578/kWh, subscription €235.92 a year.",
+      "On December 31: peak hours €0.2065/kWh, off-peak hours €0.1578/kWh, subscription €235.92 a year.",
     ]);
   });
 });

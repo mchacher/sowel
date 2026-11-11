@@ -281,8 +281,11 @@ export function methodSpans(
   const kwh = (v: number) => formatCurrency(v, { locale, decimals: 4 });
   const year = (v: number) => formatCurrency(v, { locale });
   if (spans.length <= 1) {
+    // The prices, the fee and the power of one and the same version.
     const span = spans[0];
-    const params = { hp: kwh(prices.hp), hc: kwh(prices.hc) };
+    const params = span
+      ? { hp: kwh(span.hp), hc: kwh(span.hc) }
+      : { hp: kwh(prices.hp), hc: kwh(prices.hc) };
     if (!span || span.fixedFeeYear === null) {
       return { intro: t("energy.bilan.method.tariff", params), items: [] };
     }

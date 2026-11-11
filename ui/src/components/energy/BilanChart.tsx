@@ -14,10 +14,9 @@ import {
 import type { DotItemDotProps } from "recharts/types/util/types";
 import { CHART_TICK_FONT, CHART_TOOLTIP_FONT } from "../../lib/chart-font";
 import { ENERGY_CHART_Y_AXIS_PX, xTickInterval } from "../../lib/chart-ticks";
-import { formatHourLabel, formatHourRange } from "../../lib/hour-label";
-import { localDateStr } from "../../lib/local-date";
 import { dateLocale } from "../../lib/locale";
 import type { BilanPeriod, BilanPoint } from "../../types";
+import { changeMarkerLayout, toData, type Datum } from "./bilan-chart-data";
 import { formatEur } from "./format";
 import { TooltipSeriesRow } from "./TooltipSeriesRow";
 
@@ -31,52 +30,26 @@ const HC_COLOR = "var(--color-energy-hc)";
 const AVOIDED_COLOR = "var(--color-solar-auto)";
 const PREVIOUS_COLOR = "var(--color-text-tertiary)";
 
-interface Datum {
-  /** The local day ("YYYY-MM-DD") or month ("YYYY-MM") of the bucket, for the markers. */
-  key: string;
-  label: string;
-  tooltipLabel: string;
-  paidHp: number;
-  paidHc: number;
-  avoided: number;
-  previousYearBill: number | null;
-}
-
-function capitalizeFirst(s: string): string {
-  return s.charAt(0).toUpperCase() + s.slice(1);
-}
-
-function toData(points: BilanPoint[], period: BilanPeriod, locale: string): Datum[] {
-  return points.map((p) => {
-    const d = new Date(p.time);
-    let label: string;
-    let tooltipLabel: string;
-    if (period === "day") {
-      label = formatHourLabel(d.getHours(), locale);
-      tooltipLabel = formatHourRange(d.getHours(), locale);
-    } else if (period === "month") {
-      label = String(d.getDate());
-      tooltipLabel = capitalizeFirst(
-        d.toLocaleDateString(locale, { weekday: "long", day: "numeric", month: "long" }),
-      );
-    } else {
-      label = capitalizeFirst(d.toLocaleDateString(locale, { month: "short" }));
-      tooltipLabel = capitalizeFirst(
-        d.toLocaleDateString(locale, { month: "long", year: "numeric" }),
-      );
-    }
-    // The buckets carry UTC instants: the local calendar names the day or month.
-    const day = localDateStr(d);
-    return {
-      key: period === "year" ? day.slice(0, 7) : day,
-      label,
-      tooltipLabel,
-      paidHp: p.paidHp,
-      paidHc: p.paidHc,
-      avoided: p.avoided,
-      previousYearBill: p.previousYearBill ?? null,
-    };
-  });
+/** The marker's label, beside the line's top (recharts passes the line's viewBox). */
+function MarkerLabel(props: {
+  viewBox?: { x?: number; y?: number };
+  text: string;
+  side: "right" | "left";
+  row: number;
+}) {
+  const { viewBox, text, side, row } = props;
+  if (viewBox?.x === undefined || viewBox.y === undefined) return null;
+  return (
+    <text
+      x={side === "right" ? viewBox.x + 4 : viewBox.x - 4}
+      y={viewBox.y + CHART_TICK_FONT + row * (CHART_TICK_FONT + 3)}
+      textAnchor={side === "right" ? "start" : "end"}
+      fontSize={CHART_TICK_FONT}
+      fill="var(--color-text-secondary)"
+    >
+      {text}
+    </text>
+  );
 }
 
 /** A short dashed line across the bar, at the previous year's bill. */
@@ -122,7 +95,9 @@ export function BilanChart({
   const plotWidth = Math.max(0, chartWidth - ENERGY_CHART_Y_AXIS_PX);
   const halfTick = data.length > 0 ? Math.max(4, Math.min(16, plotWidth / data.length / 2 - 2)) : 8;
   const hasPrevious = previousYear !== null && data.some((d) => d.previousYearBill !== null);
-  const markers = data.filter((d) => changes.includes(d.key)).map((d) => d.label);
+  const newPrices = t("energy.bilan.chart.newPrices");
+  // About 6 px per character at the tick font, plus the gap to the line.
+  const markers = changeMarkerLayout(data, changes, plotWidth, newPrices.length * 6 + 8);
 
   return (
     <div>
@@ -217,20 +192,15 @@ export function BilanChart({
               isAnimationActive={false}
             />
           )}
-          {markers.map((label) => (
+          {markers.map((m) => (
             <ReferenceLine
-              key={`change-${label}`}
-              x={label}
+              key={`change-${m.label}`}
+              x={m.label}
               position="start"
               stroke={PREVIOUS_COLOR}
               strokeWidth={1.5}
               strokeDasharray="4 3"
-              label={{
-                value: t("energy.bilan.chart.newPrices"),
-                position: "insideTopLeft",
-                fontSize: CHART_TICK_FONT,
-                fill: "var(--color-text-secondary)",
-              }}
+              label={<MarkerLabel text={newPrices} side={m.side} row={m.row} />}
             />
           ))}
           {hasPrevious && (
