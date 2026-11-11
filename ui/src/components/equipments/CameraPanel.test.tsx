@@ -1,13 +1,14 @@
 import { describe, expect, it, vi, beforeEach } from "vitest";
-import { render, screen, userEvent, waitFor } from "../../test-utils";
+import { act, fireEvent, render, screen, userEvent, waitFor } from "../../test-utils";
 import type { DataBindingWithValue } from "../../types";
 
-// #1187 — hls.js left the first load: it is imported when a live view starts.
+// #1187 — hls.js left the first load: it is imported when a live view starts
+// (a static import is rejected by the lint rule, see lib/bundle-lint.test.ts).
 // The live view must behave as before: auth header on every request, the
 // error and retry affordance for a browser hls.js does not support.
 
 const hls = vi.hoisted(() => ({
-  loaded: false,
+  supportChecks: 0,
   supported: true,
   instances: [] as {
     config: { xhrSetup?: (xhr: { setRequestHeader: (k: string, v: string) => void }) => void };
@@ -17,10 +18,10 @@ const hls = vi.hoisted(() => ({
 }));
 
 vi.mock("hls.js", () => {
-  hls.loaded = true;
   class FakeHls {
     static Events = { ERROR: "hlsError" };
     static isSupported() {
+      hls.supportChecks += 1;
       return hls.supported;
     }
     rec: (typeof hls.instances)[number];
@@ -71,17 +72,19 @@ function renderPanel() {
 describe("CameraPanel live view (hls.js on demand)", () => {
   beforeEach(() => {
     hls.supported = true;
+    hls.supportChecks = 0;
     hls.instances.length = 0;
   });
 
   it("does not load hls.js until the live view starts, then streams with the auth header", async () => {
     renderPanel();
-    expect(hls.loaded).toBe(false);
+    await act(async () => {});
+    expect(hls.supportChecks).toBe(0);
 
     await userEvent.click(screen.getByRole("button", { name: "Live view" }));
 
     await waitFor(() => expect(hls.instances).toHaveLength(1));
-    expect(hls.loaded).toBe(true);
+    expect(hls.supportChecks).toBe(1);
     const [instance] = hls.instances;
     expect(instance.source).toBe("/api/v1/equipments/eq-1/camera/stream.m3u8");
     const headers: Record<string, string> = {};
@@ -99,5 +102,21 @@ describe("CameraPanel live view (hls.js on demand)", () => {
     expect(await screen.findByText("Live view unavailable")).toBeTruthy();
     expect(screen.getByRole("button", { name: "Retry" })).toBeTruthy();
     expect(hls.instances).toHaveLength(0);
+  });
+
+  it("creates no player when the live view stops before hls.js arrives", async () => {
+    renderPanel();
+    // Start and stop in the same tick: the import has not resolved yet.
+    act(() => {
+      fireEvent.click(screen.getByRole("button", { name: "Live view" }));
+    });
+    act(() => {
+      fireEvent.click(screen.getByRole("button", { name: "Stop" }));
+    });
+    await act(async () => {
+      await new Promise((r) => setTimeout(r, 0));
+    });
+    expect(hls.instances).toHaveLength(0);
+    expect(screen.queryByText("Live view unavailable")).toBeNull();
   });
 });

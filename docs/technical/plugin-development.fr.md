@@ -411,7 +411,7 @@ interface IntegrationPlugin {
   readonly id: string; // Unique integration ID (must match manifest.id)
   readonly name: string; // Human-readable name
   readonly description: string; // Short description for the UI
-  readonly icon: string; // Lucide icon name
+  readonly icon: string; // Lucide icon name, from the set in ui/src/lib/plugin-icons.ts
 
   getStatus(): IntegrationStatus;
   isConfigured(): boolean;
@@ -1142,17 +1142,17 @@ Pour que votre plugin apparaisse dans le store de plugins Sowel, soumettez une P
 
 #### Schéma d'entrée du registre
 
-| Champ         | Type     | Requis | Description                                                                               |
-| ------------- | -------- | ------ | ----------------------------------------------------------------------------------------- |
-| `id`          | string   | Oui    | Doit correspondre à l'`id` du `manifest.json` du plugin                                   |
-| `type`        | string   | Oui    | `integration` ou `recipe`, route vers PluginLoader ou RecipeLoader au moment de l'install |
-| `name`        | string   | Oui    | Nom affiché dans le store                                                                 |
-| `description` | string   | Oui    | Courte description                                                                        |
-| `icon`        | string   | Oui    | Nom d'icône Lucide                                                                        |
-| `author`      | string   | Oui    | Nom de l'auteur                                                                           |
-| `repo`        | string   | Oui    | Chemin GitHub `owner/repo` (utilisé pour récupérer les releases)                          |
-| `version`     | string   | Non    | Dernière version disponible (affichée dans l'onglet "Available" du store)                 |
-| `tags`        | string[] | Oui    | Tags cherchables (par ex. `["camera", "security"]`)                                       |
+| Champ         | Type     | Requis | Description                                                                                                                             |
+| ------------- | -------- | ------ | --------------------------------------------------------------------------------------------------------------------------------------- |
+| `id`          | string   | Oui    | Doit correspondre à l'`id` du `manifest.json` du plugin                                                                                 |
+| `type`        | string   | Oui    | `integration` ou `recipe`, route vers PluginLoader ou RecipeLoader au moment de l'install                                               |
+| `name`        | string   | Oui    | Nom affiché dans le store                                                                                                               |
+| `description` | string   | Oui    | Courte description                                                                                                                      |
+| `icon`        | string   | Oui    | Nom d'icône Lucide. Un nouveau nom s'ajoute à `ui/src/lib/plugin-icons.ts` dans la même PR de bump, sinon `plugin-icons.test.ts` échoue |
+| `author`      | string   | Oui    | Nom de l'auteur                                                                                                                         |
+| `repo`        | string   | Oui    | Chemin GitHub `owner/repo` (utilisé pour récupérer les releases)                                                                        |
+| `version`     | string   | Non    | Dernière version disponible (affichée dans l'onglet "Available" du store)                                                               |
+| `tags`        | string[] | Oui    | Tags cherchables (par ex. `["camera", "security"]`)                                                                                     |
 
 #### Récupération du registre distant
 

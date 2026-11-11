@@ -13,10 +13,13 @@ import {
 
 function memoryDeps(now = 1_000_000): ChunkReloadDeps & {
   reload: Mock<() => void>;
+  waitToRetry: Mock<() => Promise<void>>;
   clock: { t: number };
+  net: { up: boolean };
 } {
   const m = new Map<string, string>();
   const clock = { t: now };
+  const net = { up: true };
   return {
     storage: {
       getItem: (k) => m.get(k) ?? null,
@@ -24,7 +27,10 @@ function memoryDeps(now = 1_000_000): ChunkReloadDeps & {
     },
     reload: vi.fn<() => void>(),
     now: () => clock.t,
+    serverReachable: async () => net.up,
+    waitToRetry: vi.fn<() => Promise<void>>(async () => {}),
     clock,
+    net,
   };
 }
 
@@ -79,6 +85,41 @@ describe("importWithReload", () => {
       /dynamically imported/,
     );
     expect(deps.reload).not.toHaveBeenCalled();
+  });
+});
+
+describe("importWithReload with the server unreachable", () => {
+  it("does not reload, and retries the chunk once the server answers again", async () => {
+    const deps = memoryDeps();
+    deps.net.up = false;
+    let calls = 0;
+    const load = () => {
+      calls += 1;
+      if (calls < 3) return Promise.reject(chunkError());
+      return Promise.resolve("module");
+    };
+    deps.waitToRetry.mockImplementation(async () => {
+      // Back online before the second retry.
+      if (deps.waitToRetry.mock.calls.length === 2) deps.net.up = true;
+    });
+    await expect(importWithReload(load, deps)).resolves.toBe("module");
+    expect(deps.reload).not.toHaveBeenCalled();
+    expect(calls).toBe(3);
+  });
+
+  it("keeps the spinner (never settles) while the server stays unreachable", async () => {
+    const deps = memoryDeps();
+    deps.net.up = false;
+    let release: () => void = () => {};
+    deps.waitToRetry.mockImplementation(() => new Promise<void>((r) => (release = r)));
+    let settled = false;
+    void importWithReload(() => Promise.reject(chunkError()), deps).finally(() => {
+      settled = true;
+    });
+    await new Promise((r) => setTimeout(r, 0));
+    expect(settled).toBe(false);
+    expect(deps.reload).not.toHaveBeenCalled();
+    release();
   });
 });
 

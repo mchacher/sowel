@@ -91,6 +91,18 @@ export default defineConfig([
           message:
             "new Intl.DateTimeFormat() follows the browser, not Sowel's language: pass currentLocale() from lib/format.",
         },
+        // #1187 — the two ways around the no-restricted-imports rule below
+        // that still pull every Lucide icon into a chunk.
+        {
+          selector: "ImportExpression[source.value='lucide-react']",
+          message:
+            'import("lucide-react") pulls every Lucide icon (#1187): import icons by name, or use lib/plugin-icons.',
+        },
+        {
+          selector: "ExportAllDeclaration[source.value='lucide-react']",
+          message:
+            'export * from "lucide-react" pulls every Lucide icon (#1187): re-export icons by name.',
+        },
       ],
     },
   },

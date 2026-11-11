@@ -47,6 +47,7 @@ function getInitials(name: string): string {
 import { SowelLogo } from "./SowelLogo";
 import { OfflineBanner } from "./OfflineBanner";
 import { PageFallback } from "./PageFallback";
+import { ErrorBoundary } from "../ErrorBoundary";
 import { HeaderPill } from "./HeaderPill";
 import { AlarmsSheet } from "./AlarmsSheet";
 import { UpdatesSheet } from "./UpdatesSheet";
@@ -65,6 +66,22 @@ import { useModes } from "../../store/useModes";
 import { getSettings } from "../../api";
 import { useSharedAccess } from "../../store/useSharedAccess";
 import { equipmentIdFromPath, isUsageEquipmentPage } from "../../lib/equipment-origin";
+
+/**
+ * The routed page. Most pages are lazy-loaded (#1187): the layout stays while
+ * one arrives, and a page that fails to load or render is caught here, so the
+ * navigation stays usable and leaving the page clears the error.
+ */
+function PageOutlet() {
+  const { pathname } = useLocation();
+  return (
+    <ErrorBoundary resetKey={pathname}>
+      <Suspense fallback={<PageFallback />}>
+        <Outlet />
+      </Suspense>
+    </ErrorBoundary>
+  );
+}
 
 export function AppLayout() {
   const { t } = useTranslation();
@@ -246,10 +263,7 @@ export function AppLayout() {
           <OfflineBanner />
           {/* Page content */}
           <main className="relative flex-1 overflow-y-auto bg-background">
-            {/* Most pages are lazy-loaded (#1187); the layout stays while one arrives. */}
-            <Suspense fallback={<PageFallback />}>
-              <Outlet />
-            </Suspense>
+            <PageOutlet />
           </main>
 
           {/* Mobile bottom navigation */}

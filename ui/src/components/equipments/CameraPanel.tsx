@@ -203,7 +203,6 @@ function CameraView({ equipmentId, hasSnapshot, hasStream }: CameraViewProps) {
     let startedPlaying = false;
     let cancelled = false;
     let hls: Hls | null = null;
-    let startTimeout: ReturnType<typeof setTimeout> | undefined;
 
     // The <video> element's own error event catches failures below
     // hls.js's abstraction (e.g. a codec/decode error MSE surfaces
@@ -219,6 +218,21 @@ function CameraView({ equipmentId, hasSnapshot, hasStream }: CameraViewProps) {
     const onPlaying = () => {
       startedPlaying = true;
     };
+
+    // Belt-and-suspenders: if nothing has actually started playing within
+    // this window, treat it as failed even if neither hls.js nor the
+    // <video> element ever raised an error — better an explicit retry
+    // affordance than an indefinite black frame. Started before hls.js is
+    // fetched, so a stalled download ends on the retry button too.
+    const startTimeout = setTimeout(() => {
+      if (!startedPlaying) {
+        console.warn("[camera] live view: no frame started playing within timeout", {
+          equipmentId,
+          timeoutMs: LIVE_START_TIMEOUT_MS,
+        });
+        setLiveError(true);
+      }
+    }, LIVE_START_TIMEOUT_MS);
 
     loadHls().then(
       (HlsClass) => {
@@ -262,20 +276,6 @@ function CameraView({ equipmentId, hasSnapshot, hasStream }: CameraViewProps) {
 
         hls.loadSource(getCameraStreamUrl(equipmentId));
         hls.attachMedia(video);
-
-        // Belt-and-suspenders: if nothing has actually started playing within
-        // this window, treat it as failed even if neither hls.js nor the
-        // <video> element ever raised an error — better an explicit retry
-        // affordance than an indefinite black frame.
-        startTimeout = setTimeout(() => {
-          if (!startedPlaying) {
-            console.warn("[camera] live view: no frame started playing within timeout", {
-              equipmentId,
-              timeoutMs: LIVE_START_TIMEOUT_MS,
-            });
-            setLiveError(true);
-          }
-        }, LIVE_START_TIMEOUT_MS);
       },
       (err: unknown) => {
         // The chunk could not be fetched (offline, or a deploy replaced it).

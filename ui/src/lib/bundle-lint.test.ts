@@ -41,6 +41,18 @@ describe("lint: imports that defeat code splitting", () => {
     expect(messages[0].message).toMatch(/import\("hls\.js"\)/);
   }, 30_000);
 
+  it("flags import() and export * of lucide-react", async () => {
+    const eslint = new ESLint({ cwd: uiRoot });
+    const [result] = await eslint.lintText(
+      `export * from "lucide-react";\nexport const load = () => import("lucide-react");\n`,
+      { filePath: "src/components/Fixture.tsx" },
+    );
+    const lucide = result.messages.filter(
+      (m) => m.ruleId === "no-restricted-syntax" && /lucide-react/.test(m.message),
+    );
+    expect(lucide.map((m) => m.line)).toEqual([1, 2]);
+  }, 30_000);
+
   it("leaves named icon imports alone", async () => {
     const messages = await restricted(
       `import { Cpu, House } from "lucide-react";\nexport const x = [Cpu, House];\n`,

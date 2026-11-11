@@ -457,7 +457,7 @@ interface IntegrationPlugin {
   readonly id: string; // Unique integration ID (must match manifest.id)
   readonly name: string; // Human-readable name
   readonly description: string; // Short description for the UI
-  readonly icon: string; // Lucide icon name
+  readonly icon: string; // Lucide icon name, from the set in ui/src/lib/plugin-icons.ts
 
   getStatus(): IntegrationStatus;
   isConfigured(): boolean;
@@ -1223,7 +1223,7 @@ To make your plugin appear in the Sowel plugin store, submit a PR to the Sowel r
 | `type`        | string   | Yes      | `integration` or `recipe` — routes to PluginLoader or RecipeLoader at install time                                                      |
 | `name`        | string   | Yes      | Display name in the store                                                                                                               |
 | `description` | string   | Yes      | Short description                                                                                                                       |
-| `icon`        | string   | Yes      | Lucide icon name                                                                                                                        |
+| `icon`        | string   | Yes      | Lucide icon name. A new name must be added to `ui/src/lib/plugin-icons.ts` in the same bump PR, or `plugin-icons.test.ts` fails         |
 | `author`      | string   | Yes      | Author name (free-form display)                                                                                                         |
 | `repo`        | string   | Yes      | GitHub `owner/repo` path (used to fetch releases)                                                                                       |
 | `owner`       | string   | Yes      | GitHub login that owns the repo. Used for the official-vs-community distinction (spec 089). Defaults to `repo.split("/")[0]` if absent. |
