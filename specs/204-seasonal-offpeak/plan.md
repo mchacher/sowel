@@ -10,7 +10,7 @@ Branch `feat/seasonal-offpeak`, one pull request.
 - [x] 4 — Route: schema, defaults, `from > to`, GET
 - [x] 5 — UI: checkbox, two blocks, « En cours », strings EN and FR (validated mockup of spec 202)
 - [x] 6 — Docs delta, EN and FR
-- [ ] 7 — Screenshots at 1280 px and 390 px, light and dark, on a scratch instance
+- [x] 7 — Screenshots at 1280 px and 390 px, light and dark, on a scratch instance
 
 ## Test Plan
 
