@@ -45,6 +45,14 @@ Each comparison kind gains its kWh counterpart, on grid kWh, the figure the euro
 Unchanged from v1.85.0: the headline, the HP / HC split, the subscription and the total, the euro comparison and
 « Comparaison sur la consommation seule. ».
 
+**Amended after v1.86.0 (mirrored columns).** The euro column takes the shape of the kWh column: under the
+headline, a thin bar split into peak and off-peak euros, the two amounts as label over value (the same short
+labels and column count as the kWh parts), then the average price paid (moved from the kWh box, see FR3). From
+`lg` the two columns share the card's seven rows (label, figure, bar, parts, sentence, subscription,
+comparison) through a CSS subgrid, so each row starts at the same height on both sides, and the vertical rule
+between them is straight (the columns are cards only below `lg`). Chosen from a to-scale mockup, option C:
+https://claude.ai/artifact/GtvgJMkFYntXMVMZwhjLgK.
+
 ### FR3 — Bill card, right (kWh)
 
 Replaces the « Électricité consommée, en euros » block and its paid / avoided bar:
@@ -59,7 +67,8 @@ Replaces the « Électricité consommée, en euros » block and its paid / avoid
   comparable months;
 - in the same box, « Prix moyen payé : 0,194 €/kWh, 0,223 €/kWh avec l'abonnement. » (bill / grid kWh, and
   bill + fee / grid kWh; the second part only when a fee is shown and no counted day lacks one; nothing without
-  grid kWh).
+  grid kWh). Amended after v1.86.0: this line moved to the euro column, under its parts (FR2); the kWh box keeps
+  the comparison only.
 
 Without production the solar part, its legend item and the second half of the sentence are left out: the bar
 has the two grid parts and the total is the grid kWh.
