@@ -2657,6 +2657,19 @@ describe("Spec 202 — tariff versions and contract routes", () => {
     });
   });
 
+  it("falls back on the default when the stored contract is not a known one", async () => {
+    app = await buildApp({
+      settings: {
+        "energy.contract": JSON.stringify({ supplier: "<b>x</b>", contractType: "hphc", kva: 6 }),
+      },
+    });
+    expect((await app.inject({ method: "GET", url: CONTRACT })).json()).toEqual({
+      supplier: "other",
+      contractType: "base",
+      kva: null,
+    });
+  });
+
   it("saves the contract and reads it back", async () => {
     app = await buildApp({ tariff: TARIFF_20_10 });
     const contract = { supplier: "edf-tarif-bleu", contractType: "hphc", kva: 6 };

@@ -252,6 +252,25 @@ export function priceSeries(
 }
 
 /**
+ * A contract rebuilt from an untrusted value (the stored setting, a request
+ * body): only the known suppliers and types, a power above 0 or none. Null
+ * when the supplier or the type is not one of them.
+ */
+export function normalizeContract(value: unknown): TariffContract | null {
+  if (typeof value !== "object" || value === null) return null;
+  const { supplier, contractType, kva } = value as Record<string, unknown>;
+  const knownSupplier =
+    supplier === "edf-tarif-bleu" ? "edf-tarif-bleu" : supplier === "other" ? "other" : null;
+  const knownType = contractType === "hphc" ? "hphc" : contractType === "base" ? "base" : null;
+  if (!knownSupplier || !knownType) return null;
+  return {
+    supplier: knownSupplier,
+    contractType: knownType,
+    kva: typeof kva === "number" && Number.isFinite(kva) && kva > 0 ? kva : null,
+  };
+}
+
+/**
  * The contract shown before one was ever saved: an unknown supplier, HP/HC
  * when the schedule has an off-peak slot, the power of the latest version.
  */

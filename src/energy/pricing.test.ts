@@ -8,6 +8,7 @@ import {
   isPriced,
   monthlyNeedsDaily,
   monthlyPricingPoints,
+  normalizeContract,
   pricePoints,
   pricesAt,
   pricesOnOrNull,
@@ -287,6 +288,26 @@ describe("priceSeries", () => {
     const main = pricePoints([wh(local(2026, 5, 25), 0, 0)], [OLD]);
     expect(priceSeries([{ time: main[0].time, wh: 500 }], main)).toBe(0);
     expect(priceSeries([{ time: "2026-01-01T00:00:00.000Z", wh: 500 }], main)).toBe(0);
+  });
+});
+
+describe("normalizeContract", () => {
+  it("rebuilds a known contract, and nothing else", () => {
+    expect(
+      normalizeContract({ supplier: "edf-tarif-bleu", contractType: "hphc", kva: 9, extra: "x" }),
+    ).toEqual({ supplier: "edf-tarif-bleu", contractType: "hphc", kva: 9 });
+    expect(normalizeContract({ supplier: "other", contractType: "base", kva: 0 })).toEqual({
+      supplier: "other",
+      contractType: "base",
+      kva: null,
+    });
+  });
+
+  it("refuses an unknown supplier or type, and anything that is not an object", () => {
+    expect(normalizeContract({ supplier: "<script>", contractType: "hphc", kva: 6 })).toBeNull();
+    expect(normalizeContract({ supplier: "other", contractType: "tempo", kva: 6 })).toBeNull();
+    expect(normalizeContract(null)).toBeNull();
+    expect(normalizeContract("other")).toBeNull();
   });
 });
 

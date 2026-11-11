@@ -14,6 +14,7 @@ import {
   isPriced,
   monthlyNeedsDaily,
   monthlyPricingPoints,
+  normalizeContract,
   pricePoints,
   pricesAt,
   priceSeries,
@@ -855,7 +856,10 @@ export function registerEnergyRoutes(app: FastifyInstance, deps: EnergyDeps): vo
     const raw = settingsManager.get(CONTRACT_KEY);
     if (raw) {
       try {
-        return JSON.parse(raw) as TariffContract;
+        // Rebuilt from the known values, never the stored blob as it is.
+        const contract = normalizeContract(JSON.parse(raw));
+        if (contract) return contract;
+        logger.warn("Unknown contract in settings, using the default");
       } catch (err) {
         logger.warn({ err }, "Invalid contract in settings, using the default");
       }
@@ -873,11 +877,13 @@ export function registerEnergyRoutes(app: FastifyInstance, deps: EnergyDeps): vo
   app.put<{ Body: TariffContract }>(
     "/api/v1/settings/energy/contract",
     { schema: { body: tariffContractBodySchema } },
-    async (request) => {
-      const { supplier, contractType, kva } = request.body;
-      const contract: TariffContract = { supplier, contractType, kva };
+    async (request, reply) => {
+      // The schema has checked the shape; the contract stored and answered is
+      // rebuilt from the known values.
+      const contract = normalizeContract(request.body);
+      if (!contract) return reply.code(400).send({ error: "Unknown supplier or contract type" });
       settingsManager.set(CONTRACT_KEY, JSON.stringify(contract));
-      logger.info({ supplier, contractType, kva }, "Energy contract updated");
+      logger.info({ ...contract }, "Energy contract updated");
       return contract;
     },
   );
