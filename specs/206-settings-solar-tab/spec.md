@@ -44,7 +44,7 @@ Mockup (to scale): https://claude.ai/artifact/XzxdKvbMjYzcgSnSWDWK1U, boards `Se
 - [x] « Énergie » shows the tariff card only; « Solaire » the installation then the arbiter.
 - [x] `?tab=solar` opens « Solaire » for an admin, « Compte » for a standard user.
 - [x] The Production and PV forecast links open « Solaire ».
-- [ ] At 390 px the bar scrolls and the page has no horizontal scroll; `?tab=admin` shows its tab in view.
+- [x] At 390 px the bar scrolls and the page has no horizontal scroll; `?tab=admin` shows its tab in view.
 
 ## Edge Cases
 

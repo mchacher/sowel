@@ -9,7 +9,7 @@ Branch `feat/settings-solar-tab`, one pull request.
 - [x] 3 — `SettingsPage.tsx`: the tab, the cards moved, the scrolling bar
 - [x] 4 — Links of Production and PV forecast
 - [x] 5 — Strings EN and FR, docs delta
-- [ ] 6 — Checked at 1280 px and 390 px, light and dark
+- [x] 6 — Checked at 1280 px and 390 px, light and dark
 
 ## Test Plan
 
