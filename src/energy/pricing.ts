@@ -173,6 +173,30 @@ export function pricePoints(
 }
 
 /**
+ * The points the totals of a monthly range are priced on: each month as it
+ * is, but for a month crossed by a price change, which gives way to its days.
+ * The months a change does not touch therefore keep their figures to the cent.
+ */
+export function monthlyPricingPoints<P extends UnpricedPoint>(
+  points: P[],
+  versions: TariffVersion[],
+  daily: P[],
+): P[] {
+  const sorted = sortVersions(versions);
+  const dailyByMonth = new Map<string, P[]>();
+  for (const d of daily) {
+    const key = monthKey(d.time);
+    const list = dailyByMonth.get(key);
+    if (list) list.push(d);
+    else dailyByMonth.set(key, [d]);
+  }
+  return points.flatMap((p) => {
+    const days = dailyByMonth.get(monthKey(p.time));
+    return days && days.length > 0 && monthCrossesChange(sorted, p.time) ? days : [p];
+  });
+}
+
+/**
  * The grid-side Wh of a point: its consumption less what solar covered,
  * taken from HP and HC in proportion (a point can straddle a tariff boundary).
  */
@@ -193,8 +217,8 @@ export function gridSide(p: { hp: number; hc: number; autoconso: number }): {
 /**
  * The € of the grid bill over these points: grid-side Wh summed per version,
  * each version priced once, the versions added. `pricingPoints` are the
- * points of the response, or the daily points of a `1mo` range crossed by a
- * price change.
+ * points of the response; for a `1mo` range with a price change inside a
+ * month, see `monthlyPricingPoints`.
  */
 export function priceTotals(
   pricingPoints: UnpricedPoint[],

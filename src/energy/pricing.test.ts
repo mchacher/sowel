@@ -7,6 +7,7 @@ import {
   gridSide,
   isPriced,
   monthlyNeedsDaily,
+  monthlyPricingPoints,
   pricePoints,
   pricesAt,
   pricesOnOrNull,
@@ -216,6 +217,29 @@ describe("several versions", () => {
     const [before, after] = pricePoints(points, [OLD, dst]);
     expect(before.cost_total).toBeCloseTo(0.2081, 4);
     expect(after.cost_total).toBeCloseTo(0.5, 4);
+  });
+});
+
+describe("monthlyPricingPoints", () => {
+  it("keeps each month, but gives a month crossed by a change to its days", () => {
+    const first = version("first", null, { hp: 0.2, hc: 0.1 });
+    const mid = version("mid", "2026-03-16", { hp: 0.3, hc: 0.1 });
+    const months = [wh(local(2026, 2, 1), 28_000, 0), wh(local(2026, 3, 1), 31_000, 0)];
+    const days = [
+      wh(local(2026, 2, 10), 999, 0), // disagrees with February on purpose
+      wh(local(2026, 3, 15), 1000, 0),
+      wh(local(2026, 3, 16), 1000, 0),
+    ];
+    const pricing = monthlyPricingPoints(months, [first, mid], days);
+    expect(pricing.map((p) => p.hp)).toEqual([28_000, 1000, 1000]);
+    // February at its monthly figure, March from its two days.
+    expect(priceTotals(pricing, [first, mid]).cost_total).toBeCloseTo(28 * 0.2 + 0.2 + 0.3, 4);
+  });
+
+  it("keeps a crossed month whose days are missing", () => {
+    const mid = version("mid", "2026-03-16", { hp: 0.3, hc: 0.1 });
+    const months = [wh(local(2026, 3, 1), 31_000, 0)];
+    expect(monthlyPricingPoints(months, [OLD, mid], [])).toEqual(months);
   });
 });
 

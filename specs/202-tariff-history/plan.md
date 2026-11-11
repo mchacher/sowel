@@ -7,51 +7,52 @@ the types and routes of A and D, so it can be written in parallel once A is on t
 
 ### Slice A — Versions
 
-- [ ] A.1 — `TariffVersion`, `TariffVersionInput` in `src/shared/types.ts`
-- [ ] A.2 — `migrations/044_tariff_versions.sql` (table, unique index, two arbiter columns)
-- [ ] A.3 — `src/energy/tariff-version-store.ts`: `all`, `create`, `update`, `remove`, `upsertCurrentPrices`,
+- [x] A.1 — `TariffVersion`, `TariffVersionInput` in `src/shared/types.ts`
+- [x] A.2 — `migrations/044_tariff_versions.sql` (table, unique index, two arbiter columns)
+- [x] A.3 — `src/energy/tariff-version-store.ts`: `all`, `create`, `update`, `remove`, `upsertCurrentPrices`,
       `seedFromSetting`, cache
-- [ ] A.4 — `src/index.ts`: create the store, seed after the migrations
-- [ ] A.5 — `tariff_versions` in `BACKUP_TABLES`
+- [x] A.4 — `src/index.ts`: create the store, seed after the migrations
+- [x] A.5 — `tariff_versions` in `BACKUP_TABLES`
 
 ### Slice B — Pricing by version
 
-- [ ] B.1 — `src/energy/pricing.ts`: `versionOn`, `pricesAt`, `crossesChange`, `pricePoints`, `priceTotals`
-- [ ] B.2 — Golden test first: the current `computeTotals` and per-point `computeCost` copied into the test file
+- [x] B.1 — `src/energy/pricing.ts`: `versionOn`, `pricesAt`, `crossesChange`, `pricePoints`, `priceTotals`
+- [x] B.2 — Golden test first: the current `computeTotals` and per-point `computeCost` copied into the test file
       as the reference, compared with the new functions on the fixtures, one version
-- [ ] B.3 — `energy.ts`: `EnergyReadCtx.versions`, `loadEnergyPoints`, `computeTotals`, the daily read of a year
+- [x] B.3 — `energy.ts`: `EnergyReadCtx.versions`, `loadEnergyPoints`, `computeTotals`, the daily read of a year
       crossed by a change (history and Bilan)
-- [ ] B.4 — `/energy/by-usage`: per-point rate; remove `sumConsumptionHpHc` if it has no other caller, and
+- [x] B.4 — `/energy/by-usage`: per-point rate; remove `sumConsumptionHpHc` if it has no other caller, and
       `blendedRate`
-- [ ] B.5 — `tariffConfigured` (status, Bilan) and the Bilan's `prices` from the store
-- [ ] B.6 — `grep -n "getConfig()?.prices\|\.prices" src/api/routes/energy.ts src/energy` shows no reader of the
+- [x] B.5 — `tariffConfigured` (status, Bilan) and the Bilan's `prices` from the store
+- [x] B.6 — `grep -n "getConfig()?.prices\|\.prices" src/api/routes/energy.ts src/energy` shows no reader of the
       setting's prices but the seed
 
 ### Slice C — Arbiter gain and EV sessions
 
-- [ ] C.1 — `arbiter-gain-store.ts`, `arbiter-gain-meter.ts`: Wh in HP/HC, no price read
-- [ ] C.2 — `bilan.ts` `arbiterTile(…, priceOf)`
-- [ ] C.3 — `window-accountant.ts`, `ev-session-tracker.ts`, `summary.ts`: cost at read time
+- [x] C.1 — `arbiter-gain-store.ts`, `arbiter-gain-meter.ts`: Wh in HP/HC, no price read
+- [x] C.2 — `bilan.ts` `arbiterTile(…, priceOf)`
+- [x] C.3 — `window-accountant.ts`, `ev-session-tracker.ts`, `summary.ts`: cost at read time
 
 ### Slice D — API
 
-- [ ] D.1 — The four version routes with Fastify body schemas, admin check on the `GET`
-- [ ] D.2 — Legacy `GET` (prices of today's version) and `PUT` (`prices` optional, `upsertCurrentPrices`)
-- [ ] D.3 — `GET` / `PUT /settings/energy/contract`, `defaultContract`
+- [x] D.1 — The four version routes with Fastify body schemas, admin check on the `GET`
+- [x] D.2 — Legacy `GET` (prices of today's version) and `PUT` (`prices` optional, `upsertCurrentPrices`)
+- [x] D.3 — `GET` / `PUT /settings/energy/contract`, `defaultContract`
 
 ### Slice E — UI
 
-- [ ] E.1 — `ui/src/types.ts`, `ui/src/api/energy.ts`
-- [ ] E.2 — `TariffContractBlock.tsx`, `TariffPriceHistory.tsx` and `lib/tariffVersions.ts`, wired into
+- [x] E.1 — `ui/src/types.ts`, `ui/src/api/energy.ts`
+- [x] E.2 — `TariffContractBlock.tsx`, `TariffPriceHistory.tsx` and `lib/tariffVersions.ts`, wired into
       `TariffSettings.tsx`; the schedule save sends no prices
-- [ ] E.3 — Strings EN and FR; `tariff.priceRetroactiveHint` removed
-- [ ] E.4 — Check at 375 px, 768 px and desktop, light and dark
+- [x] E.3 — Strings EN and FR; `tariff.priceRetroactiveHint` removed
+- [x] E.4 — Checked on a scratch instance at 390 px and 1280 px in light, and 1280 px in dark (768 px and the
+      phone in dark not checked)
 
 ### Slice F — Docs
 
-- [ ] F.1 — The docs delta of `spec.md`, EN and FR together
-- [ ] F.2 — Screenshot `energy-tariff-settings` EN and FR
-- [ ] F.3 — Specs index rows (done with the spec)
+- [x] F.1 — The docs delta of `spec.md`, EN and FR together
+- [x] F.2 — Screenshot `energy-tariff-settings` EN and FR
+- [x] F.3 — Specs index rows (done with the spec)
 
 ## Test Plan
 

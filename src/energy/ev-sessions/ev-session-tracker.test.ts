@@ -210,6 +210,9 @@ describe("session lifecycle", () => {
     const [s] = sessions();
     expect(s.costEur).toBeCloseTo(0.4, 2);
     expect(pricedDays.at(-1)).toBe(localDateStr(new Date(s.startedAt)));
+    // The event pushed to the UI carries the same priced session.
+    const updated = events.filter((e) => e.type === "energy.ev_session.updated").at(-1);
+    expect(updated && "session" in updated ? updated.session.costEur : null).toBeCloseTo(0.4, 2);
     // Nothing was frozen: a corrected price reprices the session.
     prices = { hp: 0.4, hc: 0.1 };
     expect(sessions()[0].costEur).toBeCloseTo(0.8, 2);

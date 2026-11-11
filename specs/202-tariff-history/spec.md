@@ -124,8 +124,10 @@ type (`hphc` or `base`) and the subscribed power in kVA. It is what the price fi
 - Without the setting, the contract reads `other`, `hphc` when the schedule has an off-peak slot and `base`
   otherwise, and the power of the latest version.
 - A new price version is pre-filled with the contract's power.
-- With a Base contract, the price form asks for one price and stores it as both the peak and the off-peak price,
-  so a consumption is priced the same whatever its split. The table shows one price column.
+- With a Base contract, a new price asks for one price and stores it as both the peak and the off-peak price, so
+  a consumption is priced the same whatever its split. A past version that holds two prices keeps them: the table
+  shows one price column only while every version holds a single price, and editing a two-price version shows
+  both fields, so correcting its fee never overwrites its off-peak price.
 - Changing the contract never changes an existing version.
 
 ### FR5 — API
@@ -135,7 +137,7 @@ type (`hphc` or `base`) and the subscribed power in kVA. It is what the price fi
 - `POST /api/v1/settings/energy/tariff/versions` (admin): add a version. The first version ever created has no
   start date, whatever is sent.
 - `PUT /api/v1/settings/energy/tariff/versions/:id` (admin): edit prices, fee, power, and the start date of a
-  dated version.
+  dated version. A start date, fee or power left out keeps its stored value; `null` clears the fee or the power.
 - `DELETE /api/v1/settings/energy/tariff/versions/:id` (admin): delete a dated version.
 - `GET /api/v1/settings/energy/tariff`: same shape; `prices` are those of the version in force today.
 - `PUT /api/v1/settings/energy/tariff`: `prices` becomes optional. When sent, they edit in place the version in
@@ -185,23 +187,23 @@ Origine      31/01/2024   0,2460     0,1828     155,97 €/an   6 kVA      [modi
 
 ## Acceptance Criteria
 
-- [ ] After the upgrade of an instance that had prices, one version without a date exists with those prices, and
+- [x] After the upgrade of an instance that had prices, one version without a date exists with those prices, and
       history, week, month, year and Bilan figures are unchanged.
-- [ ] Adding a version dated in the past changes the cost of the points on and after that date only.
-- [ ] A month crossed by a change shows, in the year view, the sum of its days priced on each side.
-- [ ] `/energy/history` totals equal the per-version sum; with one version they equal today's totals to the cent
+- [x] Adding a version dated in the past changes the cost of the points on and after that date only.
+- [x] A month crossed by a change shows, in the year view, the sum of its days priced on each side.
+- [x] `/energy/history` totals equal the per-version sum; with one version they equal today's totals to the cent
       (test against the current formula).
-- [ ] A meter that only runs in off-peak hours is priced at the off-peak price in by usage.
-- [ ] The arbiter tile reprices when a version covering its days is edited; rows booked before the upgrade keep
+- [x] A meter that only runs in off-peak hours is priced at the off-peak price in by usage.
+- [x] The arbiter tile reprices when a version covering its days is edited; rows booked before the upgrade keep
       their euros.
-- [ ] An EV session's cost follows the version of its start date; a session before any price reads no cost.
-- [ ] The version without a date cannot be deleted; a duplicate start date is refused.
-- [ ] An old client calling `PUT /settings/energy/tariff` with `prices` still changes today's prices.
-- [ ] Restoring a pre-202 backup and restarting gives one version from the restored setting.
-- [ ] The settings card shows the contract and the history with start and end dates, three versions at a time,
+- [x] An EV session's cost follows the version of its start date; a session before any price reads no cost.
+- [x] The version without a date cannot be deleted; a duplicate start date is refused.
+- [x] An old client calling `PUT /settings/energy/tariff` with `prices` still changes today's prices.
+- [x] Restoring a pre-202 backup and restarting gives one version from the restored setting.
+- [x] The settings card shows the contract and the history with start and end dates, three versions at a time,
       and no sentence about retroactive prices.
-- [ ] The contract is saved and read back; a Base contract asks for one price.
-- [ ] `tariff_versions` is in the backup.
+- [x] The contract is saved and read back; a Base contract asks for one price.
+- [x] `tariff_versions` is in the backup.
 
 ## Edge Cases
 
@@ -224,6 +226,8 @@ Origine      31/01/2024   0,2460     0,1828     155,97 €/an   6 kVA      [modi
 | `docs/technical/architecture.md` + `.fr.md`     | Energy: pricing by version, the two accepted approximations; arbiter gain in Wh                                                                                                                                                 |
 | `docs/technical/data-model.md` (no FR copy)     | Table `tariff_versions`; `arbiter_daily_gain.solar_hp_wh` / `solar_hc_wh`; `est_cost_*_eur` no longer written                                                                                                                   |
 | `docs/technical/deployment.md` + `.fr.md`       | Rollback: a backup taken after this version does not restore on an older one; use the pre-update backup                                                                                                                         |
+| `docs/user/equipments.md` + `.fr.md`            | Charging sessions: the cost is computed at read time at the prices of the session's start day, no longer frozen; by usage no longer uses the month's average price                                                              |
 | `docs/release-notes.md` + `.fr.md` (at release) | Price history; by usage figures change; rollback through the pre-update backup                                                                                                                                                  |
 
-Screenshots to retake: `energy-tariff-settings-en.png` and its French copy.
+Screenshots retaken: `energy-tariff-settings-en.png` and `energy-tariff-settings-fr.png`, on a scratch instance holding
+the CRE prices of a 6 kVA off-peak contract.

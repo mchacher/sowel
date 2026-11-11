@@ -522,19 +522,22 @@ export function formatClockTime(when: Date | number, opts: { locale?: Locale } =
 }
 
 /**
- * A local `YYYY-MM-DD` day as a short numeric date: « 01/08/2026 » in French,
- * « 08/01/2026 » in English. Built at local noon, so the day never slips with
- * the timezone (see `localDayToDate`).
+ * A local `YYYY-MM-DD` day as a short date: « 01/08/2026 » in French,
+ * « Aug 1, 2026 » in English, where a numeric date would leave the reader
+ * guessing which of the two numbers is the month. Built at local noon, so the
+ * day never slips with the timezone (see `localDayToDate`).
  */
 export function formatDay(day: string | null | undefined, opts: { locale?: Locale } = {}): string {
   if (!day) return EMPTY;
   const date = new Date(`${day}T12:00:00`);
   if (Number.isNaN(date.getTime())) return EMPTY;
-  return date.toLocaleDateString(resolve(opts.locale), {
-    day: "2-digit",
-    month: "2-digit",
-    year: "numeric",
-  });
+  const locale = resolve(opts.locale);
+  return date.toLocaleDateString(
+    locale,
+    isFr(locale)
+      ? { day: "2-digit", month: "2-digit", year: "numeric" }
+      : { day: "numeric", month: "short", year: "numeric" },
+  );
 }
 
 /**

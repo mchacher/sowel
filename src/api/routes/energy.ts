@@ -13,6 +13,7 @@ import {
   gridSide,
   isPriced,
   monthlyNeedsDaily,
+  monthlyPricingPoints,
   pricePoints,
   pricesAt,
   priceSeries,
@@ -141,7 +142,11 @@ const tariffBodySchema = {
     prices: {
       type: "object",
       required: ["hp", "hc"],
-      properties: { hp: { type: "number" }, hc: { type: "number" } },
+      // Spec 202 — the range the tariff versions accept (0 to 5 € per kWh).
+      properties: {
+        hp: { type: "number", minimum: 0, maximum: 5 },
+        hc: { type: "number", minimum: 0, maximum: 5 },
+      },
     },
   },
 } as const;
@@ -514,7 +519,9 @@ export function registerEnergyRoutes(app: FastifyInstance, deps: EnergyDeps): vo
         daily: previousDaily ?? [],
       });
       const pricingPoints =
-        monthly && currentDaily && monthlyNeedsDaily(versions, from, to) ? currentDaily : points;
+        monthly && currentDaily && monthlyNeedsDaily(versions, from, to)
+          ? monthlyPricingPoints(points, versions, currentDaily)
+          : points;
       const totals = computeTotals(points, pricingPoints, versions);
       const coverage =
         currentDaily && previousDaily
@@ -1244,8 +1251,8 @@ async function loadEnergyPoints(
 /**
  * The priced points of a range and the points its totals are priced on
  * (spec 202). They are the same, except for a monthly range with a price
- * change inside a month: the months crossed are then priced from their days,
- * and so are the totals.
+ * change inside a month: the month crossed is then priced from its days, in
+ * the points and in the totals; the other months keep their monthly point.
  */
 async function loadPricedPoints(
   ctx: EnergyReadCtx,
@@ -1259,9 +1266,10 @@ async function loadPricedPoints(
     return { points, pricingPoints: points };
   }
   const daily = await loadEnergyPoints(ctx, buckets, from, to, "1d");
+  const priced = pricePoints(points, ctx.versions, { monthly: true, daily });
   return {
-    points: pricePoints(points, ctx.versions, { monthly: true, daily }),
-    pricingPoints: daily,
+    points: priced,
+    pricingPoints: monthlyPricingPoints(priced, ctx.versions, daily),
   };
 }
 

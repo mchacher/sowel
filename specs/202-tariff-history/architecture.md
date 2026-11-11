@@ -115,7 +115,8 @@ Pure module, no I/O. It takes the versions as an argument.
 - `priceTotals(pricingPoints, versions): { cost_hp, cost_hc, cost_total }`: grid-side Wh (the autoconso
   subtraction moved from `computeTotals`, unchanged) grouped by version, `computeCost` per group, then
   `cost_hp = round4(Σ)`, `cost_hc = round4(Σ)`, `cost_total = round4(cost_hp + cost_hc)`. `pricingPoints` are
-  the response's points, or the daily points when a `1mo` range crosses a change.
+  the response's points; for a `1mo` range with a change inside a month, `monthlyPricingPoints` swaps the crossed
+  month for its days and keeps the other months, whose share of the total therefore does not move.
 
 `cost-calculator.ts` keeps `computeCost`; `blendedRate` is removed with its last caller.
 

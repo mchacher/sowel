@@ -77,8 +77,14 @@ export function TariffPriceHistory({
     return () => document.removeEventListener("pointerdown", disarm);
   }, [armed]);
 
-  const base = contractType === "base";
   const rows = buildTariffVersionRows(versions ?? [], localDateStr());
+  // One price column and one price field only while every version holds a
+  // single price. A household that moved from off-peak hours to Base keeps
+  // past versions with two prices: they stay visible and editable as two, so
+  // correcting a fee never overwrites an off-peak price (spec 202 FR4).
+  const singleRate = contractType === "base";
+  const onePrice = (v: TariffVersion) => v.prices.hp === v.prices.hc;
+  const base = singleRate && rows.every((r) => onePrice(r.version));
   const latest = rows[0]?.version ?? null;
 
   const save = async (input: TariffVersionInput) => {
@@ -218,7 +224,11 @@ export function TariffPriceHistory({
         // power a new change is pre-filled with changes.
         key={editing ? `${editing.id}-${contractType}` : `new-${contractType}-${contractKva}`}
         title={title}
-        base={base}
+        base={singleRate && (!editing || onePrice(editing))}
+        takenDates={rows
+          .map((r) => r.version)
+          .filter((v) => v.id !== editing?.id && v.startDate !== null)
+          .map((v) => v.startDate as string)}
         // The version without a date has no date; neither has the very first one.
         withDate={editing ? editing.startDate !== null : !first}
         initial={{
@@ -405,6 +415,7 @@ function fieldText(v: number | null, maxDecimals: number): string {
 function PriceForm({
   title,
   base,
+  takenDates,
   withDate,
   initial,
   autoFocus,
@@ -414,6 +425,8 @@ function PriceForm({
   /** Null for the first price ever: the block's own heading is enough. */
   title: string | null;
   base: boolean;
+  /** The start dates of the other versions: two cannot share one. */
+  takenDates: string[];
   withDate: boolean;
   initial: PriceFormValues;
   autoFocus: boolean;
@@ -435,6 +448,9 @@ function PriceForm({
   /** The input to send, or the message that says what to fix. */
   const read = (): TariffVersionInput | string => {
     if (withDate && !startDate) return t("tariff.prices.form.error.date");
+    if (withDate && takenDates.includes(startDate)) {
+      return t("tariff.prices.form.error.duplicate");
+    }
     const peak = parseDecimalInput(hp);
     const offPeak = base ? peak : parseDecimalInput(hc);
     if (peak === null || offPeak === null || peak > MAX_PRICE || offPeak > MAX_PRICE) {

@@ -55,6 +55,12 @@ describe("seedFromSetting", () => {
     expect(store.all()).toEqual([]);
   });
 
+  it("creates nothing from a price above the accepted range", () => {
+    // The setting had no upper bound before spec 202.
+    expect(store.seedFromSetting({ schedules: [], prices: { hp: 21.42, hc: 0.1589 } })).toBe(false);
+    expect(store.all()).toEqual([]);
+  });
+
   it("creates nothing when a version exists", () => {
     store.create({ prices: { hp: 0.3, hc: 0.2 } }, "manual");
     expect(store.seedFromSetting(TARIFF)).toBe(false);
@@ -143,6 +149,21 @@ describe("update", () => {
       prices: { hp: 0.21, hc: 0.11 },
       kva: 9,
     });
+  });
+
+  it("clears the fee or the power on null, and keeps them when they are left out", () => {
+    store.seedFromSetting(TARIFF);
+    const feb = store.create(
+      { startDate: "2026-02-01", prices: { hp: 0.2, hc: 0.1 }, fixedFeeYear: 188.24, kva: 6 },
+      "manual",
+    );
+    expect(store.update(feb.id, { prices: { hp: 0.21, hc: 0.11 } })).toMatchObject({
+      fixedFeeYear: 188.24,
+      kva: 6,
+    });
+    expect(
+      store.update(feb.id, { prices: { hp: 0.21, hc: 0.11 }, fixedFeeYear: null, kva: null }),
+    ).toMatchObject({ fixedFeeYear: null, kva: null });
   });
 
   it("edits the version without a date, which keeps none", () => {

@@ -145,7 +145,7 @@ The first supported charger is the dé portable charger, through the [Tuya (loca
 
 #### Charging sessions and cost per vehicle
 
-Every plug-in on a charger is a **charging session**, from plug-in to unplug: pauses and restarts inside it (solar surplus, clouds, off-peak) stay one session, and a session under 0.1 kWh is not kept. Its energy is what the charger measures, losses included, since that is what you pay. Each 5-minute window is priced at its own tariff (peak or off-peak), and **solar is free**: the car is served last by the sun, so it is charged only what the house had to buy from the grid because of it. The cost is frozen at the prices of the moment; changing your prices later does not change past sessions. A session can last several days (a car left plugged in over a weekend): its end then shows with its day, as in _Nov 7 12:11 PM → Nov 9 11:55 AM_.
+Every plug-in on a charger is a **charging session**, from plug-in to unplug: pauses and restarts inside it (solar surplus, clouds, off-peak) stay one session, and a session under 0.1 kWh is not kept. Its energy is what the charger measures, losses included, since that is what you pay. Each 5-minute window is priced at its own tariff (peak or off-peak), and **solar is free**: the car is served last by the sun, so it is charged only what the house had to buy from the grid because of it. The cost is computed when you read it, at the prices in force on the day the session started ([price history](energy.md#step-4-optional-configure-your-contract-prices-and-off-peak-hours)): a later price change does not touch past sessions, and correcting the price of that period does. A session that crosses a price change is priced whole at the prices of its start. A session can last several days (a car left plugged in over a weekend): its end then shows with its day, as in _Nov 7 12:11 PM → Nov 9 11:55 AM_.
 
 Sowel then works out **which car charged**, from what the cars report through their maker's cloud: plugged in, charging, battery rising, at home. A car that said it was charging or plugged in a few minutes before the session opened counts too, unless another session was in progress at that moment. Sowel waits two hours after the unplug, because a car's cloud often reports late, and decides only when it is sure; otherwise the session stays **To attribute**. Every car known to Sowel is a candidate on every charger.
 
@@ -160,7 +160,7 @@ Sowel then works out **which car charged**, from what the cars report through th
 
 The cost per 100 km is the price you paid per kWh at home, times the car's consumption, which Sowel measures itself: how much battery the car uses per km while driving, and how many kWh one battery point takes, learned from your home charges. Charging elsewhere (at work, on the motorway) does not distort it: a drive during which the battery rose is left out. It appears after a first home charge of at least 10 % and 50 measured km in the month. For a **plug-in hybrid** (a switch on its page, for an administrator), it is not shown: part of its km run on fuel.
 
-Sessions start when this feature is installed: earlier months are not rebuilt. Energy → By usage still shows the charger with the month's average price, so its € there differs from the sum of its sessions.
+Sessions start when this feature is installed: earlier months are not rebuilt. Energy → By usage counts all the charger's kilowatt-hours, solar included, at the price the house paid in each hour, so its € there differs from the sum of its sessions.
 
 ### Media
 

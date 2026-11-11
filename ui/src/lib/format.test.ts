@@ -331,10 +331,10 @@ describe("formatClockTime — one 24-hour clock in every language", () => {
 });
 
 // Spec 202 — the price history lists local days.
-describe("formatDay — a local day as a short numeric date", () => {
-  it("reads day first in French and month first in English", () => {
+describe("formatDay — a local day as a short date", () => {
+  it("is numeric in French and names the month in English", () => {
     expect(formatDay("2026-08-01", fr)).toBe("01/08/2026");
-    expect(formatDay("2026-08-01", en)).toBe("08/01/2026");
+    expect(formatDay("2026-08-01", en)).toBe("Aug 1, 2026");
   });
 
   it("reads a missing or broken day as a dash", () => {

@@ -2279,6 +2279,67 @@ describe("Spec 202 — pricing by tariff version", () => {
     expect(body.totals.totalCost).toBeCloseTo(0.3, 4);
   });
 
+  it("prices a crossed month from its days in the Bilan year view, this year and the previous one", async () => {
+    const days = (year: number, month: number, count: number) =>
+      Array.from({ length: count }, (_, i) => ({
+        _time: localDay(year, month, i + 1),
+        _value: 1000,
+        alias: "energy_hp",
+      }));
+    app = await buildApp({
+      equipments: main,
+      hpHcRowsByEvery: {
+        "1mo": [
+          { _time: localDay(2025, 3, 1), _value: 31_000, alias: "energy_hp" },
+          { _time: localDay(2026, 1, 1), _value: 10_000, alias: "energy_hp" },
+          { _time: localDay(2026, 10, 1), _value: 31_000, alias: "energy_hp" },
+        ],
+        "1d": [...days(2025, 3, 31), ...days(2026, 1, 10), ...days(2026, 10, 31)],
+      },
+      tariff: TARIFF_20_10,
+      versions: [
+        { startDate: "2025-03-16", prices: { hp: 0.3, hc: 0.1 } }, // inside March 2025
+        { startDate: "2026-10-16", prices: { hp: 0.4, hc: 0.1 } }, // inside October 2026
+      ],
+    });
+
+    const body = (
+      await app.inject({ method: "GET", url: "/api/v1/energy/bilan?period=year&date=2026-06-01" })
+    ).json();
+    // January 2026: one version, the monthly point as it is.
+    expect(body.points[0].paidHp).toBeCloseTo(10 * 0.3, 4);
+    // October 2026: 15 days at 0.30, 16 days at 0.40.
+    expect(body.points[9].paidHp).toBeCloseTo(15 * 0.3 + 16 * 0.4, 4);
+    expect(body.bill.total).toBeCloseTo(10 * 0.3 + 15 * 0.3 + 16 * 0.4, 4);
+    // March 2025, the reference: priced from its own days, 15 at 0.20 and 16 at 0.30.
+    expect(body.points[2].previousYearBill).toBeCloseTo(15 * 0.2 + 16 * 0.3, 4);
+  });
+
+  it("keeps the months a change does not touch on their monthly points in the year totals", async () => {
+    // The daily rows of January disagree with its monthly row on purpose: a
+    // change inside October must not move January's share of the total.
+    app = await buildApp({
+      equipments: main,
+      hpHcRowsByEvery: {
+        "1mo": [
+          { _time: localDay(2026, 1, 1), _value: 10_000, alias: "energy_hp" },
+          { _time: localDay(2026, 10, 1), _value: 2_000, alias: "energy_hp" },
+        ],
+        "1d": [
+          { _time: localDay(2026, 1, 5), _value: 999, alias: "energy_hp" },
+          { _time: localDay(2026, 10, 15), _value: 1000, alias: "energy_hp" },
+          { _time: localDay(2026, 10, 16), _value: 1000, alias: "energy_hp" },
+        ],
+      },
+      tariff: TARIFF_20_10,
+      versions: [{ startDate: "2026-10-16", prices: { hp: 0.4, hc: 0.1 } }],
+    });
+    const body = (
+      await app.inject({ method: "GET", url: "/api/v1/energy/history?period=year&date=2026-06-01" })
+    ).json();
+    expect(body.totals.cost_total).toBeCloseTo(10 * 0.2 + 0.2 + 0.4, 4);
+  });
+
   it("states the prices in force on the last day of a Bilan period", async () => {
     app = await buildApp({
       equipments: main,
@@ -2539,6 +2600,40 @@ describe("Spec 202 — tariff versions and contract routes", () => {
     expect(res.statusCode).toBe(400);
     const writes = (app as unknown as { settingsWrites: Array<[string, string]> }).settingsWrites;
     expect(writes).toEqual([]);
+  });
+
+  it("400s a legacy PUT with a negative price even when no version exists", async () => {
+    app = await buildApp({});
+    const res = await app.inject({
+      method: "PUT",
+      url: LEGACY,
+      payload: { schedules: [], prices: { hp: -1, hc: 0 } },
+    });
+    expect(res.statusCode).toBe(400);
+    const writes = (app as unknown as { settingsWrites: Array<[string, string]> }).settingsWrites;
+    expect(writes).toEqual([]);
+  });
+
+  it("keeps the fee and the power of a version edited without them", async () => {
+    app = await buildApp({
+      tariff: TARIFF_20_10,
+      versions: [
+        { startDate: "2026-08-01", prices: { hp: 0.2, hc: 0.1 }, fixedFeeYear: 190.81, kva: 6 },
+      ],
+    });
+    const [, august] = await list();
+    const kept = await app.inject({
+      method: "PUT",
+      url: `${VERSIONS}/${august.id}`,
+      payload: { prices: { hp: 0.2142, hc: 0.1589 } },
+    });
+    expect(kept.json()).toMatchObject({ startDate: "2026-08-01", fixedFeeYear: 190.81, kva: 6 });
+    const cleared = await app.inject({
+      method: "PUT",
+      url: `${VERSIONS}/${august.id}`,
+      payload: { prices: { hp: 0.2142, hc: 0.1589 }, fixedFeeYear: null },
+    });
+    expect(cleared.json()).toMatchObject({ fixedFeeYear: null, kva: 6 });
   });
 
   it("derives the contract before one is saved", async () => {

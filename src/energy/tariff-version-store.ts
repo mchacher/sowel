@@ -105,7 +105,15 @@ export class TariffVersionStore {
   seedFromSetting(tariff: TariffConfig | null): boolean {
     if (this.all().length > 0) return false;
     const prices = tariff?.prices;
-    if (!prices || !isPrice(prices.hp) || !isPrice(prices.hc)) return false;
+    if (!prices) return false;
+    if (!isPrice(prices.hp) || !isPrice(prices.hc)) {
+      // Before spec 202 the setting had no upper bound: say why costs read 0.
+      this.logger.warn(
+        { hp: prices.hp, hc: prices.hc, max: MAX_PRICE_EUR_KWH },
+        "energy.tariff prices are out of range: no tariff version created, enter the prices in Settings",
+      );
+      return false;
+    }
     if (prices.hp <= 0 && prices.hc <= 0) return false;
     const version = this.insert({ prices }, null, "migration");
     this.logger.info({ versionId: version.id }, "First tariff version created from energy.tariff");
@@ -123,7 +131,11 @@ export class TariffVersionStore {
     return this.insert(input, startDate, origin);
   }
 
-  /** Edit a version. The one without a date keeps none. */
+  /**
+   * Edit a version. The one without a date keeps none. A field left out
+   * (start date, fee, power) keeps its stored value; null clears the fee or
+   * the power.
+   */
   update(id: string, input: TariffVersionInput): TariffVersion {
     const existing = this.all().find((v) => v.id === id);
     if (!existing) throw new TariffVersionError("NotFound", "Tariff version not found");
@@ -146,8 +158,8 @@ export class TariffVersionStore {
         startDate,
         input.prices.hp,
         input.prices.hc,
-        input.fixedFeeYear ?? null,
-        input.kva ?? null,
+        input.fixedFeeYear === undefined ? existing.fixedFeeYear : input.fixedFeeYear,
+        input.kva === undefined ? existing.kva : input.kva,
         updatedAt,
         id,
       );
@@ -179,12 +191,7 @@ export class TariffVersionStore {
     const current = this.current();
     if (!current) return this.create({ prices }, "manual");
     if (current.prices.hp === prices.hp && current.prices.hc === prices.hc) return current;
-    return this.update(current.id, {
-      startDate: current.startDate,
-      prices,
-      fixedFeeYear: current.fixedFeeYear,
-      kva: current.kva,
-    });
+    return this.update(current.id, { prices });
   }
 
   private insert(

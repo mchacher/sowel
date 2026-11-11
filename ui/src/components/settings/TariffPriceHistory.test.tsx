@@ -50,6 +50,9 @@ const THREE = [
   }),
 ];
 
+// A household on a single rate: each version stores its one price in both.
+const SINGLE_RATE = THREE.map((v) => ({ ...v, prices: { hp: v.prices.hp, hc: v.prices.hp } }));
+
 /** The text of each cell of a table row, left to right. */
 const cells = (row: HTMLElement) =>
   within(row)
@@ -75,20 +78,20 @@ describe("TariffPriceHistory (spec 202)", () => {
     const rows = await screen.findAllByTestId("tariff-version-row");
     expect(rows).toHaveLength(3);
     expect(cells(rows[0]).slice(0, 6)).toEqual([
-      "03/01/2001",
+      "Mar 1, 2001",
       "Current",
       "0.2142",
       "0.1589",
       "€190.81/year",
       "6\u00A0kVA",
     ]);
-    expect(cells(rows[1]).slice(0, 2)).toEqual(["02/01/2000", "02/28/2001"]);
-    expect(cells(rows[2]).slice(0, 2)).toEqual(["Origin", "01/31/2000"]);
+    expect(cells(rows[1]).slice(0, 2)).toEqual(["Feb 1, 2000", "Feb 28, 2001"]);
+    expect(cells(rows[2]).slice(0, 2)).toEqual(["Origin", "Jan 31, 2000"]);
     // The phone list reads the same rows, the period on one line.
     const items = screen.getAllByTestId("tariff-version-item");
-    expect(within(items[0]).getByText("Since 03/01/2001")).toBeTruthy();
-    expect(within(items[1]).getByText("From 02/01/2000 to 02/28/2001")).toBeTruthy();
-    expect(within(items[2]).getByText("Until 01/31/2000")).toBeTruthy();
+    expect(within(items[0]).getByText("Since Mar 1, 2001")).toBeTruthy();
+    expect(within(items[1]).getByText("From Feb 1, 2000 to Feb 28, 2001")).toBeTruthy();
+    expect(within(items[2]).getByText("Until Jan 31, 2000")).toBeTruthy();
   });
 
   it("offers no delete on the version without a date", async () => {
@@ -98,11 +101,13 @@ describe("TariffPriceHistory (spec 202)", () => {
     expect(within(rows[0]).getByRole("button", { name: /^Delete the price/ })).toBeTruthy();
     expect(within(rows[2]).queryByRole("button", { name: /^Delete the price/ })).toBeNull();
     expect(
-      within(rows[2]).getByRole("button", { name: "Edit the price before 02/01/2000" }),
+      within(rows[2]).getByRole("button", { name: "Edit the price before Feb 1, 2000" }),
     ).toBeTruthy();
   });
 
-  it("shows one price column with a Base contract, and asks for one price", async () => {
+  it("keeps both prices of past off-peak versions under a Base contract", async () => {
+    // The household moved from off-peak hours to a single rate: its past
+    // versions hold two prices, which must stay visible and survive an edit.
     mockedList.mockResolvedValue(THREE);
     renderHistory("base");
     const table = await screen.findByRole("table");
@@ -110,7 +115,50 @@ describe("TariffPriceHistory (spec 202)", () => {
       within(table)
         .getAllByRole("columnheader")
         .map((h) => h.textContent),
-    ).toEqual(["Start", "End", "Price €/kWh", "Fixed fee", "Power", "Actions"]);
+    ).toEqual(["Start", "End", "Peak", "Off-peak", "Fixed fee", "Power", "Actions"]);
+
+    const rows = within(table).getAllByTestId("tariff-version-row");
+    await userEvent.click(
+      within(rows[1]).getByRole("button", { name: "Edit the price from Feb 1, 2000" }),
+    );
+    // Only the fee is corrected: the off-peak price is sent back untouched.
+    const fee = screen.getByLabelText("Fixed fee (€/year)");
+    await userEvent.clear(fee);
+    await userEvent.type(fee, "189");
+    await userEvent.click(screen.getByRole("button", { name: "Save" }));
+    expect(mockedUpdate).toHaveBeenCalledWith(
+      "y2000",
+      expect.objectContaining({ prices: { hp: 0.2065, hc: 0.1578 }, fixedFeeYear: 189 }),
+    );
+
+    // A new change under a Base contract still asks for one price.
+    await userEvent.click(await screen.findByRole("button", { name: "Add a price change" }));
+    expect(screen.queryByLabelText("Off-peak price (€/kWh)")).toBeNull();
+  });
+
+  it("says in its own words that a start date is already used, without calling the server", async () => {
+    mockedList.mockResolvedValue(THREE);
+    renderHistory();
+    await userEvent.click(await screen.findByRole("button", { name: "Add a price change" }));
+    await userEvent.type(screen.getByLabelText("Start date"), "2001-03-01");
+    await userEvent.type(screen.getByLabelText("Peak price (€/kWh)"), "0.2");
+    await userEvent.type(screen.getByLabelText("Off-peak price (€/kWh)"), "0.1");
+    await userEvent.click(screen.getByRole("button", { name: "Save" }));
+    expect(
+      screen.getByText("A price already starts on this date. Edit it, or pick another date."),
+    ).toBeTruthy();
+    expect(mockedCreate).not.toHaveBeenCalled();
+  });
+
+  it("shows one price column with a Base contract, and asks for one price", async () => {
+    mockedList.mockResolvedValue(SINGLE_RATE);
+    renderHistory("base");
+    const table = await screen.findByRole("table");
+    expect(
+      within(table)
+        .getAllByRole("columnheader")
+        .map((h) => h.textContent),
+    ).toEqual(["Start", "End", "Price", "Fixed fee", "Power", "Actions"]);
     const rows = within(table).getAllByTestId("tariff-version-row");
     expect(cells(rows[0]).slice(2, 4)).toEqual(["0.2142", "€190.81/year"]);
 
@@ -165,10 +213,11 @@ describe("TariffPriceHistory (spec 202)", () => {
 
   it("shows the server's refusal in the form and keeps it open", async () => {
     mockedList.mockResolvedValue(THREE);
+    // A refusal the form cannot foresee: another session took the date meanwhile.
     mockedCreate.mockRejectedValueOnce(new ApiError(409, "A version already starts on this date"));
     renderHistory();
     await userEvent.click(await screen.findByRole("button", { name: "Add a price change" }));
-    await userEvent.type(screen.getByLabelText("Start date"), "2001-03-01");
+    await userEvent.type(screen.getByLabelText("Start date"), "2001-08-01");
     await userEvent.type(screen.getByLabelText("Peak price (€/kWh)"), "0.2");
     await userEvent.type(screen.getByLabelText("Off-peak price (€/kWh)"), "0.1");
     await userEvent.click(screen.getByRole("button", { name: "Save" }));
@@ -193,12 +242,12 @@ describe("TariffPriceHistory (spec 202)", () => {
     renderHistory();
     const rows = await screen.findAllByTestId("tariff-version-row");
     await userEvent.click(
-      within(rows[1]).getByRole("button", { name: "Delete the price from 02/01/2000" }),
+      within(rows[1]).getByRole("button", { name: "Delete the price from Feb 1, 2000" }),
     );
     expect(mockedDelete).not.toHaveBeenCalled();
     await userEvent.click(
       within(rows[1]).getByRole("button", {
-        name: "Confirm deleting the price from 02/01/2000",
+        name: "Confirm deleting the price from Feb 1, 2000",
       }),
     );
     expect(mockedDelete).toHaveBeenCalledWith("y2000");
@@ -219,7 +268,7 @@ describe("TariffPriceHistory (spec 202)", () => {
     mockedList.mockResolvedValue([...THREE, version({ id: "far", startDate: "2999-02-01" })]);
     renderHistory();
     const rows = await screen.findAllByTestId("tariff-version-row");
-    expect(cells(rows[0]).slice(0, 2)).toEqual(["02/01/2999", "Upcoming"]);
-    expect(cells(rows[1]).slice(0, 2)).toEqual(["03/01/2001", "01/31/2999"]);
+    expect(cells(rows[0]).slice(0, 2)).toEqual(["Feb 1, 2999", "Upcoming"]);
+    expect(cells(rows[1]).slice(0, 2)).toEqual(["Mar 1, 2001", "Jan 31, 2999"]);
   });
 });

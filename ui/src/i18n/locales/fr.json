@@ -1654,6 +1654,7 @@
   "tariff.prices.form.fee": "Abonnement (€/an)",
   "tariff.prices.form.power": "Puissance (kVA)",
   "tariff.prices.form.error.date": "Saisissez une date de début.",
+  "tariff.prices.form.error.duplicate": "Un prix commence déjà à cette date. Modifiez-le, ou choisissez une autre date.",
   "tariff.prices.form.error.price": "Saisissez un prix entre 0 et 5 €/kWh.",
   "tariff.prices.form.error.fee": "L'abonnement doit être un nombre positif ou nul.",
   "tariff.prices.form.error.power": "La puissance doit être un nombre supérieur à 0.",

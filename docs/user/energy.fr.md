@@ -68,7 +68,7 @@ Allez dans **Réglages > Énergie**, carte **Tarifs énergie** :
    - **Ajouter un changement de prix** quand vos prix changent : saisissez la date de début, les prix HP et HC par kWh TTC, et si vous le souhaitez l'abonnement annuel et la puissance. Vous pouvez le saisir à l'avance, ou en retard : les jours déjà mesurés sont alors revalorisés à partir de cette date.
    - Le crayon corrige une ligne ; la corbeille la supprime. La ligne la plus ancienne, **Origine**, couvre tout ce qui précède le premier changement daté : elle se corrige, elle ne se supprime pas.
    - La liste montre les trois derniers prix et défile pour les plus anciens.
-   - Avec un contrat Base, un seul prix est demandé.
+   - Avec un contrat Base, un seul prix est demandé. Les lignes passées qui portent un prix HP et un prix HC gardent les deux.
 3. **Heures pleines et heures creuses.** Définissez vos créneaux horaires : quelles heures sont HP et lesquelles sont HC, avec autant de créneaux que nécessaire pour couvrir les 24 h de la journée. **Enregistrer les horaires** n'enregistre que les horaires.
 
 Les prix servent aux vues en euros ; la répartition HP / HC fonctionne sans eux. Sans horaires configurés, toute la consommation est classée en HP par défaut, vous ne voyez juste pas la répartition.

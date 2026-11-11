@@ -68,7 +68,7 @@ Go to **Settings > Energy**, card **Energy tariffs**:
    - **Add a price change** when your prices change: enter the date it starts, the peak and off-peak prices per kWh including tax, and optionally the fixed fee per year and the power. You can enter it ahead of time, or late: the days already measured are then repriced from that date.
    - The pencil corrects a row; the bin deletes it. The oldest row, **Origin**, covers everything before the first dated change: it can be corrected, not deleted.
    - The list shows the three latest prices and scrolls for the older ones.
-   - With a single-rate contract, one price is asked.
+   - With a single-rate contract, one price is asked. Past rows that hold a peak and an off-peak price keep both.
 3. **Peak and off-peak hours.** Define your time slots: which hours are peak and which are off-peak, with as many slots as you need to cover the 24 hours of the day. **Save schedule** saves the hours only.
 
 Prices are used for the cost views; the peak / off-peak split works without them. If no schedule is configured, all consumption is classified as peak by default — you simply do not see the split.
