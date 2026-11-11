@@ -53,7 +53,7 @@ import { ArbiterSettings } from "../components/settings/ArbiterSettings";
 import { SharedAccessSettings } from "../components/settings/SharedAccessSettings";
 import { SolarInstallationSettings } from "../components/settings/SolarInstallationSettings";
 import { PushNotificationsSection } from "../components/settings/PushNotificationsSection";
-import { initialSettingsTab } from "../lib/settings-tab";
+import { initialSettingsTab, revealScrollLeft } from "../lib/settings-tab";
 import type { SettingsTab } from "../lib/settings-tab";
 import { currentLocale } from "../lib/format";
 import { FIELD_LABEL } from "../components/ui/text-roles";
@@ -70,10 +70,22 @@ export function SettingsPage() {
     initialSettingsTab(searchParams.get("tab"), isAdmin),
   );
   // On a phone the five tabs overflow the bar (spec 206): the tab a link opened
-  // on may sit past the edge, so bring it into view once, on mount.
+  // on may sit past the edge, so scroll the bar (and only the bar) to it, once.
+  const tabBarRef = useRef<HTMLDivElement>(null);
   const activeTabRef = useRef<HTMLButtonElement>(null);
   useEffect(() => {
-    activeTabRef.current?.scrollIntoView?.({ inline: "nearest", block: "nearest" });
+    const bar = tabBarRef.current;
+    const tab = activeTabRef.current;
+    if (!bar || !tab) return;
+    const pad = parseFloat(getComputedStyle(bar).paddingRight) || 0;
+    const next = revealScrollLeft(
+      bar.scrollLeft,
+      bar.clientWidth,
+      tab.offsetLeft,
+      tab.offsetWidth,
+      pad,
+    );
+    if (next !== null) bar.scrollLeft = next;
   }, []);
 
   const tabs: { id: SettingsTab; label: string; adminOnly?: boolean }[] = [
@@ -94,27 +106,38 @@ export function SettingsPage() {
         {isAdmin && <VersionBadge />}
       </div>
 
-      {/* Tabs: on a phone the bar scrolls sideways to the screen edge, without a
-          visible scrollbar; the cut-off last label is the cue (spec 206). */}
-      <div className="flex items-center gap-1 mb-6 border-b border-border overflow-x-auto whitespace-nowrap -mr-4 pr-4 sm:mr-0 sm:pr-0 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
-        {visibleTabs.map((tab) => (
-          <button
-            key={tab.id}
-            ref={activeTab === tab.id ? activeTabRef : undefined}
-            onClick={() => setActiveTab(tab.id)}
-            className={`
+      {/* Tabs: on a phone the bar bleeds to both screen edges and scrolls
+          sideways, without a visible scrollbar; the cut-off last label is the
+          cue (spec 206). The grey line sits on the wrapper and the scroller
+          overlaps it by 1 px, so the active tab's underline replaces it while
+          nothing overflows the scroller vertically. */}
+      <div className="-mx-4 sm:mx-0 mb-6 border-b border-border">
+        <div
+          ref={tabBarRef}
+          role="tablist"
+          className="relative -mb-px flex items-center gap-1 px-4 sm:px-0 overflow-x-auto whitespace-nowrap [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+        >
+          {visibleTabs.map((tab) => (
+            <button
+              key={tab.id}
+              ref={activeTab === tab.id ? activeTabRef : undefined}
+              role="tab"
+              aria-selected={activeTab === tab.id}
+              onClick={() => setActiveTab(tab.id)}
+              className={`
               shrink-0 px-3 py-2 text-small font-medium transition-colors duration-150
-              border-b-2 -mb-px cursor-pointer
+              border-b-2 cursor-pointer
               ${
                 activeTab === tab.id
                   ? "border-primary text-primary"
                   : "border-transparent text-text-tertiary hover:text-text-secondary hover:border-border"
               }
             `}
-          >
-            {tab.label}
-          </button>
-        ))}
+            >
+              {tab.label}
+            </button>
+          ))}
+        </div>
       </div>
 
       {/* Tab content */}
