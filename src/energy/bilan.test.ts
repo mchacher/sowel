@@ -374,6 +374,8 @@ describe("computeBilan", () => {
         () => null,
         () => ({ hp: HP, hc: HC }),
       ),
+      fee: null,
+      priceSpans: [],
       ...over,
     };
   }
@@ -416,6 +418,18 @@ describe("computeBilan", () => {
     expect(b.points[3].previousYearBill).toBeNull(); // partial month: no tick
     expect(b.points[4].previousYearBill).toBe(4);
     expect(b.comparison).toMatchObject({ kind: "year", previousYearBill: 24 });
+  });
+
+  it("passes the fee and the price spans through, the rest unchanged (spec 205)", () => {
+    const fee = { total: 20.38, days: 31, daysWithoutFee: 0, kva: 9 };
+    const priceSpans = [
+      { from: "2026-11-10", to: "2026-11-10", hp: HP, hc: HC, fixedFeeYear: 240, kva: 9 },
+    ];
+    const without = computeBilan(input());
+    const withFee = computeBilan(input({ fee, priceSpans }));
+    expect(withFee.fee).toEqual(fee);
+    expect(withFee.priceSpans).toEqual(priceSpans);
+    expect({ ...withFee, fee: null, priceSpans: [] }).toEqual(without);
   });
 
   it("leaves previousYearBill out of the day and month views", () => {

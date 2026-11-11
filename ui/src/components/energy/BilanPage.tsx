@@ -2,13 +2,21 @@ import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { Link } from "react-router-dom";
 import { getEnergyBilan } from "../../api";
-import { formatCurrency, formatNumber } from "../../lib/format";
+import { formatNumber } from "../../lib/format";
 import { localDateStr } from "../../lib/local-date";
 import { dateLocale } from "../../lib/locale";
 import { useEnergy } from "../../store/useEnergy";
 import type { BilanPeriod, BilanUsageRow, EnergyBilanResponse } from "../../types";
 import { BilanChart } from "./BilanChart";
-import { arbiterTileText, billLabel, comparisonLines, showArbiterTile } from "./bilan-format";
+import {
+  arbiterTileText,
+  billLabel,
+  changeMarkers,
+  comparisonLines,
+  feeLines,
+  methodSpans,
+  showArbiterTile,
+} from "./bilan-format";
 import { EnergyMobileNav } from "./EnergyMobileNav";
 import { formatEur, formatWh } from "./format";
 import { PeriodSelector } from "./PeriodSelector";
@@ -139,6 +147,7 @@ export function BilanPage() {
               points={data.points}
               period={data.period}
               showAvoided={data.hasProduction}
+              changes={changeMarkers(data.period, data.priceSpans)}
               previousYear={
                 data.period === "year" ? new Date(date + "T12:00:00").getFullYear() - 1 : null
               }
@@ -165,6 +174,8 @@ function BillCard({
 }) {
   const { t } = useTranslation();
   const comparison = comparisonLines(data.comparison, date, locale, t);
+  // Spec 205 — the fixed fee, apart from the consumption the headline states.
+  const fee = data.fee ? feeLines(data.fee, data.bill.total, locale, t) : null;
   const value = data.bill.total + data.avoided;
   const paid = formatEur(data.bill.total, locale);
   const avoided = formatEur(data.avoided, locale);
@@ -187,11 +198,48 @@ function BillCard({
             {t("energy.offPeakHours")} {formatEur(data.bill.hc, locale)}
           </span>
         </div>
+        {fee && (
+          <div
+            data-testid="bilan-fee"
+            className="mt-2 pt-3.5 border-t border-border flex flex-col gap-2.5"
+          >
+            <div className="flex items-baseline justify-between gap-3">
+              <div className="flex flex-col gap-0.5 min-w-0">
+                <span className="text-small font-medium text-text">{fee.label}</span>
+                <span className="text-caption text-text-tertiary tabular-nums">
+                  {fee.caption}
+                  {fee.missing && (
+                    <>
+                      {" "}
+                      <Link to="/settings?tab=energy" className="text-primary hover:underline">
+                        {t("energy.bilan.method.tariffLink")}
+                      </Link>
+                    </>
+                  )}
+                </span>
+              </div>
+              <span className="text-lead font-semibold text-text tabular-nums">{fee.amount}</span>
+            </div>
+            <div className="flex items-baseline justify-between gap-3">
+              <span className="text-small font-medium text-text">
+                {t("energy.bilan.fee.total")}
+              </span>
+              <span className="text-title font-semibold text-text tabular-nums">{fee.total}</span>
+            </div>
+          </div>
+        )}
         {comparison && (
-          <div className="mt-2 rounded-sm bg-background px-3.5 py-3 flex flex-col gap-1">
+          <div
+            className={`${fee ? "mt-1.5" : "mt-2"} rounded-sm bg-background px-3.5 py-3 flex flex-col gap-1`}
+          >
             <span className="text-small text-text tabular-nums">{comparison.main}</span>
             {comparison.sub && (
               <span className="text-caption text-text-tertiary tabular-nums">{comparison.sub}</span>
+            )}
+            {fee && (
+              <span className="text-caption text-text-tertiary">
+                {t("energy.bilan.fee.comparison")}
+              </span>
             )}
           </div>
         )}
@@ -388,17 +436,24 @@ function UsageCard({ data, locale }: { data: EnergyBilanResponse; locale: string
 
 function MethodText({ data, locale }: { data: EnergyBilanResponse; locale: string }) {
   const { t } = useTranslation();
+  // Spec 205 — one sentence for one version, else one item per span.
+  const prices = methodSpans(data.priceSpans, data.prices, locale, t);
   return (
     <>
       <p>
-        {t("energy.bilan.method.tariff", {
-          hp: formatCurrency(data.prices.hp, { locale, decimals: 4 }),
-          hc: formatCurrency(data.prices.hc, { locale, decimals: 4 }),
-        })}{" "}
+        {prices.intro}{" "}
         <Link to="/settings?tab=energy" className="text-primary hover:underline">
           {t("energy.bilan.method.tariffLink")}
         </Link>
       </p>
+      {prices.items.length > 0 && (
+        <ul className="list-disc pl-4.5 flex flex-col gap-0.5">
+          {prices.items.map((item) => (
+            <li key={item}>{item}</li>
+          ))}
+        </ul>
+      )}
+      {data.fee && <p>{t("energy.bilan.method.fee")}</p>}
       <p>{t("energy.bilan.method.rule")}</p>
       {data.usage.length > 0 && <p>{t(`energy.bilan.method.${data.period}`)}</p>}
     </>

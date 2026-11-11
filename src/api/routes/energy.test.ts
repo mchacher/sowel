@@ -1,5 +1,5 @@
 import Fastify from "fastify";
-import { describe, it, expect, beforeEach, afterEach } from "vitest";
+import { describe, it, expect, beforeEach, afterEach, vi } from "vitest";
 import { createLogger } from "../../core/logger.js";
 import { registerEnergyRoutes, trimToWindow, SUBMETER_PALETTE } from "./energy.js";
 import { EMPTY_ACCURACY } from "../../energy/pv/pv-accuracy.js";
@@ -167,12 +167,18 @@ async function buildApp(opts: BuildOpts = {}) {
       opts.bindingsById?.[id] ?? [{ alias: "power", category: "power", type: "number", value: 0 }],
   } as never;
 
-  // tariffClassifier returns the injected config (spec 123 — used for cost wiring).
-  const tariffClassifier = { getConfig: () => opts.tariff ?? null } as never;
   // The tariff PUT writes through this; capture what it was handed so a test
   // can assert an accepted body actually reached the store.
   const settingsWrites: Array<[string, string]> = [];
   const settings = new Map(Object.entries(opts.settings ?? {}));
+  // tariffClassifier returns the injected config (spec 123 — used for cost
+  // wiring), or what a tariff PUT stored (spec 204 — a PUT then GET round trip).
+  const tariffClassifier = {
+    getConfig: () => {
+      const stored = settings.get("energy.tariff");
+      return stored ? (JSON.parse(stored) as TariffConfig) : (opts.tariff ?? null);
+    },
+  } as never;
   const settingsManager = {
     get: (key: string) => settings.get(key),
     set: (key: string, value: string) => {
@@ -1859,6 +1865,115 @@ describe("PUT /api/v1/settings/energy/tariff", () => {
     expect(res.statusCode).toBe(200);
   });
 
+  // Spec 204 — seasonal off-peak hours.
+  const WINTER = [
+    { days: [0, 1, 2, 3, 4, 5, 6], slots: [{ start: "22:00", end: "06:00", tariff: "hc" }] },
+  ];
+  const SUMMER = [
+    { days: [0, 1, 2, 3, 4, 5, 6], slots: [{ start: "12:00", end: "15:00", tariff: "hc" }] },
+  ];
+
+  it("stores a summer without dates with 04-01 / 10-31, and the GET returns it", async () => {
+    app = await buildApp({});
+    const res = await app.inject({
+      method: "PUT",
+      url: URL,
+      payload: { schedules: WINTER, summer: { schedules: SUMMER } },
+    });
+    expect(res.statusCode).toBe(200);
+    const summer = { from: "04-01", to: "10-31", schedules: SUMMER };
+    expect(JSON.parse(writes()[0][1])).toMatchObject({ schedules: WINTER, summer });
+    const got = (await app.inject({ method: "GET", url: URL })).json();
+    expect(got.schedules).toEqual(WINTER);
+    expect(got.summer).toEqual(summer);
+  });
+
+  it("keeps custom season dates", async () => {
+    app = await buildApp({});
+    const summer = { from: "05-15", to: "09-15", schedules: SUMMER };
+    const res = await app.inject({
+      method: "PUT",
+      url: URL,
+      payload: { schedules: WINTER, summer },
+    });
+    expect(res.statusCode).toBe(200);
+    expect(JSON.parse(writes()[0][1]).summer).toEqual(summer);
+  });
+
+  it.each([
+    ["a month out of range", { from: "13-01" }],
+    ["a day out of range", { to: "04-32" }],
+    ["a day past the end of April", { to: "04-31" }],
+    ["a day past the end of June", { from: "06-31" }],
+    ["a 30 February", { from: "02-30" }],
+    ["a date not MM-DD", { from: "4-1" }],
+  ])("400s a summer with %s, and writes nothing", async (_label, dates) => {
+    app = await buildApp({});
+    const res = await app.inject({
+      method: "PUT",
+      url: URL,
+      payload: { schedules: WINTER, summer: { ...dates, schedules: SUMMER } },
+    });
+    expect(res.statusCode).toBe(400);
+    expect(writes()).toEqual([]);
+  });
+
+  it("400s a summer whose start is after its end, and writes nothing", async () => {
+    app = await buildApp({});
+    const res = await app.inject({
+      method: "PUT",
+      url: URL,
+      payload: { schedules: WINTER, summer: { from: "10-31", to: "04-01", schedules: SUMMER } },
+    });
+    expect(res.statusCode).toBe(400);
+    expect(writes()).toEqual([]);
+  });
+
+  it("accepts 29 February as a season bound", async () => {
+    app = await buildApp({});
+    const res = await app.inject({
+      method: "PUT",
+      url: URL,
+      payload: { schedules: WINTER, summer: { from: "02-29", to: "10-31", schedules: SUMMER } },
+    });
+    expect(res.statusCode).toBe(200);
+  });
+
+  it("400s a summer with an empty winter schedule, and writes nothing", async () => {
+    app = await buildApp({});
+    const res = await app.inject({
+      method: "PUT",
+      url: URL,
+      payload: { schedules: [], summer: { schedules: SUMMER } },
+    });
+    expect(res.statusCode).toBe(400);
+    expect(writes()).toEqual([]);
+  });
+
+  it("400s a summer without schedules", async () => {
+    app = await buildApp({});
+    const res = await app.inject({
+      method: "PUT",
+      url: URL,
+      payload: { schedules: WINTER, summer: { from: "04-01", to: "10-31" } },
+    });
+    expect(res.statusCode).toBe(400);
+  });
+
+  it("stores a single schedule when a body without summer follows a seasonal one", async () => {
+    app = await buildApp({});
+    await app.inject({
+      method: "PUT",
+      url: URL,
+      payload: { schedules: WINTER, summer: { schedules: SUMMER } },
+    });
+    const res = await app.inject({ method: "PUT", url: URL, payload: { schedules: WINTER } });
+    expect(res.statusCode).toBe(200);
+    expect(JSON.parse(writes()[1][1])).not.toHaveProperty("summer");
+    const got = (await app.inject({ method: "GET", url: URL })).json();
+    expect(got).not.toHaveProperty("summer");
+  });
+
   const rejects: [string, unknown][] = [
     ["no body", undefined],
     ["missing schedules", { prices: { hp: 1, hc: 1 } }],
@@ -2419,6 +2534,69 @@ describe("Spec 202 — pricing by tariff version", () => {
     expect(
       (await app.inject({ method: "GET", url: "/api/v1/energy/status" })).json(),
     ).toMatchObject({ tariffConfigured: true });
+  });
+});
+
+describe("Spec 205 — /api/v1/energy/bilan fee and price spans", () => {
+  let app: Awaited<ReturnType<typeof buildApp>> | null = null;
+  const main = [{ id: "meter-1", name: "Compteur", type: "main_energy_meter" as const }];
+  // The version seeded from `energy.tariff` has no fee; the dated ones do.
+  const versions: TariffVersionInput[] = [
+    { startDate: "2026-01-01", prices: { hp: 0.2, hc: 0.1 }, fixedFeeYear: 240, kva: 9 },
+    { startDate: "2026-07-16", prices: { hp: 0.3, hc: 0.1 }, fixedFeeYear: 300, kva: 9 },
+  ];
+  const bilan = async (query: string) =>
+    (await app!.inject({ method: "GET", url: `/api/v1/energy/bilan?${query}` })).json();
+
+  beforeEach(() => {
+    process.env.TZ = "Europe/Paris";
+    // Only the clock: Fastify's own timers keep running.
+    vi.useFakeTimers({ toFake: ["Date"] });
+    vi.setSystemTime(new Date(2026, 6, 11, 15, 0)); // 11 July 2026, local
+  });
+
+  afterEach(async () => {
+    vi.useRealTimers();
+    if (app) await app.close();
+    app = null;
+  });
+
+  it("counts the current month's days up to today, and lists the change still to come", async () => {
+    app = await buildApp({ equipments: main, tariff: TARIFF_20_10, versions });
+    const body = await bilan("period=month&date=2026-07-05");
+    expect(body.fee).toMatchObject({ days: 11, daysWithoutFee: 0, kva: 9 });
+    expect(body.fee.total).toBeCloseTo((11 * 240) / 365, 10);
+    expect(body.priceSpans.map((s: { from: string; to: string }) => [s.from, s.to])).toEqual([
+      ["2026-07-01", "2026-07-15"],
+      ["2026-07-16", "2026-07-31"],
+    ]);
+  });
+
+  it("gives no fee on the day view, and one price span", async () => {
+    app = await buildApp({ equipments: main, tariff: TARIFF_20_10, versions });
+    const body = await bilan("period=day&date=2026-07-10");
+    expect(body.fee).toBeNull();
+    expect(body.priceSpans).toHaveLength(1);
+    expect(body.priceSpans[0]).toMatchObject({ from: "2026-07-10", to: "2026-07-10" });
+  });
+
+  it("gives no fee for a month still to come", async () => {
+    app = await buildApp({ equipments: main, tariff: TARIFF_20_10, versions });
+    const body = await bilan("period=month&date=2026-08-10");
+    expect(body.fee).toBeNull();
+    expect(body.priceSpans).toHaveLength(1);
+  });
+
+  it("counts the days of the seeded version as without fee, in the year view", async () => {
+    app = await buildApp({
+      equipments: main,
+      tariff: TARIFF_20_10,
+      versions: [{ startDate: "2025-12-01", prices: { hp: 0.2, hc: 0.1 }, fixedFeeYear: 240 }],
+    });
+    const body = await bilan("period=year&date=2025-06-01");
+    expect(body.fee).toMatchObject({ days: 365, daysWithoutFee: 334, kva: null });
+    expect(body.fee.total).toBeCloseTo((31 * 240) / 365, 10);
+    expect(body.priceSpans).toHaveLength(2);
   });
 });
 

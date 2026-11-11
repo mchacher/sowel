@@ -11,10 +11,51 @@
 
 import type { Logger } from "../core/logger.js";
 import type { SettingsManager } from "../core/settings-manager.js";
-import type { TariffConfig, TariffSlot, TariffSplit } from "../shared/types.js";
+import type {
+  DaySchedule,
+  TariffConfig,
+  TariffSeason,
+  TariffSlot,
+  TariffSplit,
+} from "../shared/types.js";
 
 const SETTINGS_KEY = "energy.tariff";
 const HALF_HOUR_S = 1800;
+
+/** Spec 204 — the Enedis summer: 1 April to 31 October, both inclusive. */
+export const SUMMER_DEFAULT: Readonly<Pick<TariffSeason, "from" | "to">> = {
+  from: "04-01",
+  to: "10-31",
+};
+
+/** The local `MM-DD` of a date (spec 061: the season is read on the local day). */
+function localMonthDay(at: Date): string {
+  const mm = String(at.getMonth() + 1).padStart(2, "0");
+  const dd = String(at.getDate()).padStart(2, "0");
+  return `${mm}-${dd}`;
+}
+
+/**
+ * Whether a local date falls in the stored summer, both ends inclusive.
+ * `MM-DD` strings compare as strings. A missing date (a hand-edited or
+ * restored setting) is the Enedis one, never a winter all year. Spec 204.
+ */
+export function isSummer(season: Partial<Pick<TariffSeason, "from" | "to">>, at: Date): boolean {
+  const md = localMonthDay(at);
+  const from = season.from ?? SUMMER_DEFAULT.from;
+  const to = season.to ?? SUMMER_DEFAULT.to;
+  return from <= md && md <= to;
+}
+
+/**
+ * The day schedules in force on a local date: the summer ones on a summer day
+ * when the config has a summer, `schedules` otherwise. Every reader of the
+ * schedule (classification, recipe snapshot) goes through this. Spec 204.
+ */
+export function schedulesOn(config: TariffConfig, at: Date): DaySchedule[] {
+  if (config.summer && isSummer(config.summer, at)) return config.summer.schedules ?? [];
+  return config.schedules ?? [];
+}
 
 /**
  * Expand a tariff slot into concrete `[startMinute, endMinute)` ranges within a
@@ -59,7 +100,8 @@ export class TariffClassifier {
 
   /**
    * Classify an energy window into HP/HC split.
-   * Uses the tariff schedule in effect for the window's day-of-week.
+   * Uses the tariff schedule in effect for the window's day-of-week, in the
+   * season of the window's start day (spec 204).
    * Applies linear prorata if the window straddles a tariff transition.
    *
    * @param totalWh Total energy in Wh for the window
@@ -79,8 +121,8 @@ export class TariffClassifier {
     const windowStart = new Date(windowStartEpoch * 1000);
     const dayOfWeek = windowStart.getDay(); // 0=Sunday..6=Saturday
 
-    // Find the schedule for this day
-    const daySchedule = config.schedules.find((s) => s.days.includes(dayOfWeek));
+    // Find the schedule for this day, in the season of the window's start day
+    const daySchedule = schedulesOn(config, windowStart).find((s) => s.days.includes(dayOfWeek));
     if (!daySchedule || daySchedule.slots.length === 0) {
       // No schedule for this day → everything is HP
       return { hp: totalWh, hc: 0 };
