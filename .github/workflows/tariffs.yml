@@ -14,12 +14,16 @@ concurrency:
   group: tariffs
   cancel-in-progress: false
 
+# The default token only reads. The pull request is opened with
+# TARIFFS_PR_TOKEN, handed to the last step alone (see there).
 permissions:
-  contents: write # push the update branch
-  pull-requests: write # open the pull request
+  contents: read
 
 env:
   BRANCH: chore/tariffs-update
+  # `npm ci` runs `prepare: husky`, which would install the repository's git
+  # hooks on the runner: the push below would then run `npm run validate`.
+  HUSKY: 0
 
 jobs:
   update:
@@ -28,13 +32,9 @@ jobs:
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
         with:
-          # A pull request opened with the default token does not start the CI
-          # workflows, so the checks `main` requires would never run on it.
-          # TARIFFS_PR_TOKEN (fine-grained, this repository, contents and pull
-          # requests: write) makes the push and the pull request count as a
-          # user's. Without it the default token is used and the pull request
-          # says the checks must be started by hand.
-          token: ${{ secrets.TARIFFS_PR_TOKEN || github.token }}
+          # No credential is left in .git/config while `npm ci` and the script
+          # run: the only token that can write is given to the last step.
+          persist-credentials: false
       - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7
         with:
           node-version: 24
@@ -47,35 +47,57 @@ jobs:
         run: npx tsx scripts/tariffs/check.ts
       - name: Open or refresh the pull request
         env:
-          GH_TOKEN: ${{ secrets.TARIFFS_PR_TOKEN || github.token }}
-          HAS_PR_TOKEN: ${{ secrets.TARIFFS_PR_TOKEN != '' }}
+          # Fine-grained, this repository only, contents and pull requests:
+          # write. Needed because a pull request opened with the default token
+          # does not start the CI workflows `main` requires, and because this
+          # repository does not let the default token open pull requests.
+          TARIFFS_PR_TOKEN: ${{ secrets.TARIFFS_PR_TOKEN }}
         run: |
           if git diff --quiet -- tariffs/; then
             echo "The price file is up to date."
             exit 0
           fi
+          if [ -z "$TARIFFS_PR_TOKEN" ]; then
+            cat "$RUNNER_TEMP/summary.md"
+            echo "::error::The price file changed, but the secret TARIFFS_PR_TOKEN is not set: no pull request can be opened. See docs/technical/contributing.md, section Electricity price file."
+            exit 1
+          fi
+          export GH_TOKEN="$TARIFFS_PR_TOKEN"
+          remote="https://x-access-token:${TARIFFS_PR_TOKEN}@github.com/${GITHUB_REPOSITORY}.git"
+
+          # The same rows are already on the update branch (a pull request
+          # waiting for review, or closed on purpose): leave it alone. Only the
+          # generation date differs from one night to the next.
+          rows() { grep -v '"generatedAt"' "$1"; }
+          if git fetch --quiet "$remote" "$BRANCH" 2>/dev/null; then
+            git show FETCH_HEAD:tariffs/electricity-prices.json > "$RUNNER_TEMP/proposed.json" 2>/dev/null || true
+            if [ -s "$RUNNER_TEMP/proposed.json" ] &&
+              diff <(rows "$RUNNER_TEMP/proposed.json") <(rows tariffs/electricity-prices.json) > /dev/null; then
+              echo "These rows are already proposed on $BRANCH."
+              exit 0
+            fi
+          fi
+
           body="$RUNNER_TEMP/body.md"
           {
             cat "$RUNNER_TEMP/summary.md"
             echo
             echo "Opened by the nightly Tariffs workflow (spec 203). Instances read this file from \`main\`:"
-            echo "review the rows against the CRE publication before merging."
-            if [ "$HAS_PR_TOKEN" != "true" ]; then
-              echo
-              echo "**The required checks did not start**: this pull request was opened with the default"
-              echo "workflow token. Close and reopen it to run them, or set the secret \`TARIFFS_PR_TOKEN\`."
-            fi
+            echo "review the rows against the CRE publication before merging. The branch is rewritten by"
+            echo "the workflow when the source changes again: fix the script or the source, not the branch."
           } > "$body"
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git checkout -B "$BRANCH"
           git add tariffs/
           git commit -m "chore(energy): update the electricity price file from the CRE open data"
-          git push --force origin "$BRANCH"
-          if [ -n "$(gh pr list --head "$BRANCH" --state open --json number -q '.[].number')" ]; then
-            gh pr edit "$BRANCH" --body-file "$body"
+          git push --force "$remote" "HEAD:refs/heads/$BRANCH"
+          open_pr="$(gh pr list --repo "$GITHUB_REPOSITORY" --head "$BRANCH" --state open \
+            --json number,isCrossRepository -q '[.[] | select(.isCrossRepository | not)][0].number // empty')"
+          if [ -n "$open_pr" ]; then
+            gh pr edit "$open_pr" --repo "$GITHUB_REPOSITORY" --body-file "$body"
           else
-            gh pr create --base main --head "$BRANCH" \
+            gh pr create --repo "$GITHUB_REPOSITORY" --base main --head "$BRANCH" \
               --title "chore(energy): update the electricity price file from the CRE open data" \
               --body-file "$body"
           fi

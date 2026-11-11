@@ -53,15 +53,15 @@ A power that does not exist for a period simply has no row: nothing is interpola
 A script reads the two CRE files (`Option_Base.csv`, `Option_HPHC.csv`: CRLF, `;` separator, decimal comma,
 dates `DD/MM/YYYY`, the columns including tax) and rewrites the supplier's rows in the file. It fails, without
 writing, when a file cannot be read as expected: an unknown column, a duplicate (date, power), a price that is
-not a number, fewer rows than the file already holds.
+not a number, a published row that would disappear (a maintainer can allow a removal after checking the source).
 
 A scheduled workflow runs it every night. When the file changes, it opens a pull request that states what
 changed (rows added, rows whose figures moved). **Nothing is merged automatically**: the maintainer reviews and
 merges. A row whose figures changed for a period already published is called out in the pull request, since
 instances that already took it will keep the old figures.
 
-A check runs on every pull request that touches the file: valid format, sorted and unique rows, prices and fees
-in range.
+A check runs on every pull request: valid format, sorted and unique rows, prices and fees in range and
+rounded, off-peak below peak, an https source link, one row per line.
 
 ### FR3 — The contract says whether to follow the file
 

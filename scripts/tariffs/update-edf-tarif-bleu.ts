@@ -5,33 +5,41 @@
  *   npx tsx scripts/tariffs/update-edf-tarif-bleu.ts
  *   npx tsx scripts/tariffs/update-edf-tarif-bleu.ts --base Option_Base.csv --hphc Option_HPHC.csv
  *   npx tsx scripts/tariffs/update-edf-tarif-bleu.ts --summary summary.md
+ *   npx tsx scripts/tariffs/update-edf-tarif-bleu.ts --allow-removal
  *
  * It writes nothing when the rows did not change, and fails without writing
  * when a CRE file cannot be read as expected or when a published row would
- * disappear. `--summary` receives what changed, in Markdown, for the pull
+ * disappear (`--allow-removal` accepts it, once a maintainer has checked the
+ * source). `--summary` receives what changed, in Markdown, for the pull
  * request body. Nothing is published by this script: the file reaches the
  * instances only once a maintainer has merged the pull request.
+ *
+ * The rules live in `src/energy/price-file/cre-csv.ts` (`planSupplierUpdate`),
+ * where they are tested; this file only reads and writes.
  */
 
 import { existsSync, readFileSync, writeFileSync } from "node:fs";
-import type { PriceFile, PriceFileRow } from "../../src/shared/types.js";
+import { resolve } from "node:path";
 import {
   CRE_BASE_URL,
   CRE_HPHC_URL,
   buildEdfTarifBleu,
-  diffRows,
+  planSupplierUpdate,
 } from "../../src/energy/price-file/cre-csv.js";
-import {
-  PRICE_FILE_FORMAT,
-  parsePriceFile,
-  serializePriceFile,
-} from "../../src/energy/price-file/price-file.js";
+import { parsePriceFile, serializePriceFile } from "../../src/energy/price-file/price-file.js";
 
-const FILE = "tariffs/electricity-prices.json";
+const FILE = resolve(import.meta.dirname, "../../tariffs/electricity-prices.json");
+
+function flag(name: string): boolean {
+  return process.argv.includes(`--${name}`);
+}
 
 function option(name: string): string | null {
   const index = process.argv.indexOf(`--${name}`);
-  return index >= 0 ? (process.argv[index + 1] ?? null) : null;
+  if (index < 0) return null;
+  const value = process.argv[index + 1];
+  if (!value || value.startsWith("--")) throw new Error(`--${name} needs a value`);
+  return value;
 }
 
 async function csv(localPath: string | null, url: string): Promise<string> {
@@ -41,68 +49,26 @@ async function csv(localPath: string | null, url: string): Promise<string> {
   return res.text();
 }
 
-function describe(row: PriceFileRow): string {
-  const prices =
-    row.contractType === "base" ? `${row.hp} €/kWh` : `HP ${row.hp}, HC ${row.hc} €/kWh`;
-  return `${row.startDate}, ${row.contractType}, ${row.kva} kVA: ${prices}, ${row.fixedFeeYear} €/year`;
-}
-
 async function main(): Promise<void> {
+  const summaryPath = option("summary");
   const [baseCsv, hphcCsv] = await Promise.all([
     csv(option("base"), CRE_BASE_URL),
     csv(option("hphc"), CRE_HPHC_URL),
   ]);
-  const supplier = buildEdfTarifBleu(baseCsv, hphcCsv);
-
-  const current: PriceFile = existsSync(FILE)
-    ? parsePriceFile(JSON.parse(readFileSync(FILE, "utf-8")))
-    : { format: PRICE_FILE_FORMAT, generatedAt: "1970-01-01", suppliers: [] };
-  const published = current.suppliers.find((s) => s.id === supplier.id)?.prices ?? [];
-  const changes = diffRows(published, supplier.prices);
-
-  if (changes.removed.length > 0) {
-    throw new Error(
-      `${changes.removed.length} published row(s) are no longer in the CRE files, first: ` +
-        `${describe(changes.removed[0])}. Not writing: check the source by hand.`,
-    );
-  }
-  if (changes.added.length === 0 && changes.changed.length === 0) {
-    console.log(`No change: ${supplier.prices.length} rows, as published.`);
+  const current = existsSync(FILE) ? parsePriceFile(JSON.parse(readFileSync(FILE, "utf-8"))) : null;
+  const update = planSupplierUpdate(
+    current,
+    buildEdfTarifBleu(baseCsv, hphcCsv),
+    new Date().toISOString().slice(0, 10),
+    { allowRemoval: flag("allow-removal") },
+  );
+  if (!update.next) {
+    console.log("No change: the rows are as published.");
     return;
   }
-
-  const next: PriceFile = {
-    format: PRICE_FILE_FORMAT,
-    generatedAt: new Date().toISOString().slice(0, 10),
-    suppliers: [...current.suppliers.filter((s) => s.id !== supplier.id), supplier].sort((a, b) =>
-      a.id.localeCompare(b.id),
-    ),
-  };
-  // What is written is read back through the same check the instances apply.
-  const text = serializePriceFile(next);
-  parsePriceFile(JSON.parse(text));
-  writeFileSync(FILE, text);
-
-  const summary = [
-    `EDF Tarif Bleu, from the CRE open data: ${changes.added.length} row(s) added, ` +
-      `${changes.changed.length} changed, ${supplier.prices.length} in all.`,
-    "",
-    ...(changes.changed.length > 0
-      ? [
-          "**Rows whose figures changed for a period already published.** Instances that already",
-          "took them keep the old figures: check the source before merging.",
-          "",
-          ...changes.changed.map((c) => `- was \`${describe(c.before)}\`, now \`${describe(c.after)}\``),
-          "",
-        ]
-      : []),
-    ...(changes.added.length > 0
-      ? ["**Added**", "", ...changes.added.map((row) => `- \`${describe(row)}\``), ""]
-      : []),
-  ].join("\n");
-  console.log(summary);
-  const summaryPath = option("summary");
-  if (summaryPath) writeFileSync(summaryPath, summary);
+  writeFileSync(FILE, serializePriceFile(update.next));
+  console.log(update.summary);
+  if (summaryPath) writeFileSync(summaryPath, update.summary);
 }
 
 main().catch((err: unknown) => {

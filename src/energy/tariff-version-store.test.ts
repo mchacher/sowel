@@ -2,7 +2,8 @@ import { beforeEach, describe, expect, it } from "vitest";
 import { createLogger } from "../core/logger.js";
 import { createMigratedTestDb } from "../test-helpers/migrations.js";
 import type { TariffConfig } from "../shared/types.js";
-import { TariffVersionError, TariffVersionStore, isLocalDate } from "./tariff-version-store.js";
+import { isLocalDate } from "../shared/local-date.js";
+import { TariffVersionError, TariffVersionStore } from "./tariff-version-store.js";
 
 // Spec 202 — the dated price versions and their rules.
 

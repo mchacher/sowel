@@ -37,6 +37,13 @@ const file = (prices: unknown[], over: Record<string, unknown> = {}) => ({
   ...over,
 });
 
+/** A one-row file whose supplier carries these fields instead. */
+const withSupplier = (over: Record<string, unknown>) => ({
+  format: 1,
+  generatedAt: "2026-11-11",
+  suppliers: [{ ...file([row()]).suppliers[0], ...over }],
+});
+
 describe("the committed price file", () => {
   const path = resolve(import.meta.dirname, "../../../tariffs/electricity-prices.json");
   const text = readFileSync(path, "utf-8");
@@ -94,6 +101,18 @@ describe("parsePriceFile", () => {
     ["a price of 0", file([row({ hc: 0 })])],
     ["a negative fee", file([row({ fixedFeeYear: -1 })])],
     ["a base row with two prices", file([row({ contractType: "base" })])],
+    ["a price written as text", file([row({ hp: "0.2142" as never })])],
+    ["a price with more than 4 decimals", file([row({ hp: 0.21420000001 })])],
+    ["an off-peak price at or above the peak price", file([row({ hc: 0.2142 })])],
+    ["a fee with more than 2 decimals", file([row({ fixedFeeYear: 239.841 })])],
+    ["a fee beyond any plausible one", file([row({ fixedFeeYear: 1e300 })])],
+    ["a power that is not a whole number", file([row({ kva: 9.5 })])],
+    ["a power beyond any plausible one", file([row({ kva: 1e300 })])],
+    ["a supplier with no row", file([])],
+    ["a link that is not https", withSupplier({ sourceUrl: "http://www.cre.fr" })],
+    ["a javascript: link", withSupplier({ sourceUrl: "javascript:alert(1)" })],
+    ["a name of a megabyte", withSupplier({ name: "x".repeat(1_000_000) })],
+    ["the reserved supplier id other", withSupplier({ id: "other" })],
     [
       "rows out of order",
       file([row({ startDate: "2026-08-01" }), row({ startDate: "2026-02-01" })]),
@@ -104,7 +123,7 @@ describe("parsePriceFile", () => {
       {
         format: 1,
         generatedAt: "2026-11-11",
-        suppliers: [{ ...file([]).suppliers[0], id: "EDF Bleu" }],
+        suppliers: [{ ...file([row()]).suppliers[0], id: "EDF Bleu" }],
       },
     ],
     [
@@ -112,7 +131,7 @@ describe("parsePriceFile", () => {
       {
         format: 1,
         generatedAt: "2026-11-11",
-        suppliers: [file([]).suppliers[0], file([]).suppliers[0]],
+        suppliers: [file([row()]).suppliers[0], file([row()]).suppliers[0]],
       },
     ],
   ])("refuses %s", (_label, value) => {
@@ -133,6 +152,12 @@ describe("rowsFor", () => {
   it("gives the rows of the contract's supplier, type and power, oldest first", () => {
     const rows = rowsFor(parsed, { supplier: "edf-tarif-bleu", contractType: "hphc", kva: 9 });
     expect(rows.map((r) => r.startDate)).toEqual(["2026-02-01", "2026-08-01"]);
+  });
+
+  it("accepts a file with no supplier at all", () => {
+    expect(
+      parsePriceFile({ format: 1, generatedAt: "2026-11-11", suppliers: [] }).suppliers,
+    ).toEqual([]);
   });
 
   it("gives nothing for a power without rows, no power, or another supplier", () => {

@@ -2727,6 +2727,13 @@ export interface PriceFile {
   suppliers: PriceFileSupplier[];
 }
 
+/** What a new list of price rows adds, changes and drops against the published one. */
+export interface PriceRowChanges {
+  added: PriceFileRow[];
+  changed: Array<{ before: PriceFileRow; after: PriceFileRow }>;
+  removed: PriceFileRow[];
+}
+
 /** Spec 202 — the current contract (setting `energy.contract`). */
 export interface TariffContract {
   supplier: "edf-tarif-bleu" | "other";

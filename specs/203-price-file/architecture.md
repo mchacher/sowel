@@ -93,20 +93,27 @@ figure. `buildEdfTarifBleu(baseCsv, hphcCsv): PriceFileSupplier`.
 
 ### New: `scripts/tariffs/update-edf-tarif-bleu.ts`, `scripts/tariffs/check.ts`
 
-Run with `npx tsx`. The update script fetches the two CSV, builds the supplier, refuses a result with fewer rows
-than the file holds, writes the file with one row per line, and prints a summary (added, changed) that the
-workflow puts in the pull request body. The check script runs `parsePriceFile` on the committed file.
+Run with `npx tsx`, and type-checked with the tests (`tsconfig.test.json`). The update script only reads and
+writes: it fetches the two CSV and hands them to `planSupplierUpdate` (`cre-csv.ts`, tested), which refuses a
+published row that disappeared (unless `--allow-removal`), returns nothing to write when the rows and the
+supplier's texts are as published, and gives the summary (added, changed, removed) the workflow puts in the pull
+request body. The check script runs `parsePriceFile` on the committed file and compares its layout with
+`serializePriceFile`.
 
 ### New: `.github/workflows/tariffs.yml`
 
-`schedule` (nightly) and `workflow_dispatch`. Steps: checkout, Node 24, `npm ci`, update script, and when
-`git diff --quiet tariffs/` fails: branch `chore/tariffs-<date>`, commit, `gh pr create`. It reuses an open
-tariffs pull request instead of opening a second one.
+`schedule` (nightly) and `workflow_dispatch`. Steps: checkout without persisted credentials, Node 24, `npm ci`
+with `HUSKY=0` (the repository's git hooks must not run on the runner: its pre-push is `npm run validate`),
+update script, check script, and when `git diff --quiet tariffs/` fails: commit on the fixed branch
+`chore/tariffs-update`, force-push, `gh pr create`, or `gh pr edit` when a pull request of this repository is
+already open. When the update branch already holds the same rows (a pull request waiting, or closed on purpose),
+nothing is pushed: only the generation date would differ.
 
-A pull request opened with the default `GITHUB_TOKEN` does not trigger the CI workflows, so the required checks
-of `main` would never run on it. The workflow therefore uses a token stored as the secret `TARIFFS_PR_TOKEN`
-(fine-grained, this repository only, contents and pull requests: write). Without the secret it falls back on
-`GITHUB_TOKEN` and says in the pull request body that the checks must be started by hand (close and reopen).
+The secret `TARIFFS_PR_TOKEN` (fine-grained, this repository only, contents and pull requests: write) is
+required: a pull request opened with the default token does not start the CI workflows `main` requires, and this
+repository does not let the default token open pull requests. The default token is read-only here; the secret
+is given to the last step alone, after `npm ci` and the script have run, so no dependency code runs with a token
+that can write. Without the secret, a night when the file changed fails with a message; nothing is opened.
 
 ### Changed: `.github/workflows/ci.yml`, `scripts/README.md`
 
