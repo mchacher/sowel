@@ -51,8 +51,8 @@ No route change beyond the type: everything comes from data the route already re
 ## UI
 
 - `ui/src/types.ts`: the types.
-- `ui/src/components/energy/bilan-format.ts`: `energyLines(data, …)` (the sentence, the share), `energyComparison
-Lines(comparison, …)` (kWh lines per kind), `averagePrice(data)` (null without grid kWh). Pure, tested.
+- `ui/src/components/energy/bilan-format.ts`: `energyLines(data, …)` (the sentence, the share),
+  `energyComparisonLines(comparison, …)` (kWh lines per kind), `averagePrice(data)` (null without grid kWh). Pure, tested.
 - `BilanPage.tsx`: `BillCard` splits into a euro column and an `EnergyColumn`; on phone two `card` sections;
   the `Tiles` solar tile takes « Sans panneaux… ».
 - Strings EN and FR.
