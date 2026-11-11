@@ -2574,14 +2574,42 @@ export interface BilanPoint {
   previousYearBill?: number | null;
 }
 
+/** Each kind carries its € figures and, since spec 207, the grid Wh they price. */
 export type BilanComparison =
   /** Day: the average bill of the 7 days before, over those with consumption. */
-  | { kind: "days"; days: number; averageBill: number }
+  | { kind: "days"; days: number; averageBill: number; averageGridWh: number }
   /** Month: the projection (current month from day 3 on) and the same month a
    *  year earlier (when it has data). */
-  | { kind: "month"; projectedBill: number | null; previousYearBill: number | null }
+  | {
+      kind: "month";
+      projectedBill: number | null;
+      previousYearBill: number | null;
+      projectedGridWh: number | null;
+      previousYearGridWh: number | null;
+      /** Both months have data on all days but two (the year view's rule):
+       *  only then does the kWh line carry a change in percent. */
+      comparable: boolean;
+    }
   /** Year: the months fully elapsed with consumption in both years ("YYYY-MM"). */
-  | { kind: "year"; months: string[]; bill: number; previousYearBill: number };
+  | {
+      kind: "year";
+      months: string[];
+      bill: number;
+      previousYearBill: number;
+      gridWh: number;
+      previousYearGridWh: number;
+    };
+
+/** Spec 207 — what the Bilan period consumed, in Wh. */
+export interface BilanEnergy {
+  /** Wh bought from the grid, peak and off-peak (the /energy/history totals). */
+  gridHpWh: number;
+  gridHcWh: number;
+  /** Self-consumed solar, each point clamped to its consumption. */
+  solarWh: number;
+  /** Grid plus self-consumed solar. */
+  consumedWh: number;
+}
 
 export interface BilanUsageRow {
   /** Equipment id, null for "other" (what no sub-meter accounts for). */
@@ -2659,6 +2687,8 @@ export interface EnergyBilanResponse {
   fee: BilanFee | null;
   /** Spec 205 — versions in force over the period, oldest first; one entry when nothing changes. */
   priceSpans: BilanPriceSpan[];
+  /** Spec 207 — the period's consumption, in Wh. */
+  energy: BilanEnergy;
 }
 
 // ============================================================

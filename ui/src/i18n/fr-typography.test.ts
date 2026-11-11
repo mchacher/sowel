@@ -141,6 +141,7 @@ const SAME_AS_EN = new Set<string>([
   "energy.unit.wh",
   "energy.unit.eur",
   "energy.bilan.compare.withPercent",
+  "energy.bilan.energyCompare.end",
   "energy.bilan.arbiter.load",
   "energy.bilan.usage.usage",
   "energy.bilan.usage.energy",

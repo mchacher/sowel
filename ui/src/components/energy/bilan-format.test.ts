@@ -1,11 +1,15 @@
 import { describe, it, expect, beforeAll } from "vitest";
 import i18n from "../../i18n";
-import type { BilanArbiter, BilanFee, BilanPriceSpan } from "../../types";
+import type { BilanArbiter, BilanComparison, BilanFee, BilanPriceSpan } from "../../types";
 import {
   arbiterTileText,
+  averagePrice,
   billLabel,
   changeMarkers,
   comparisonLines,
+  energyComparisonLines,
+  energyLabel,
+  energyLines,
   feeLines,
   methodSpans,
   showArbiterTile,
@@ -45,52 +49,52 @@ describe("billLabel", () => {
   });
 });
 
+// The € comparisons below do not read the Wh fields (spec 207): zeros.
+const days = (d: number, averageBill: number): BilanComparison => ({
+  kind: "days",
+  days: d,
+  averageBill,
+  averageGridWh: 0,
+});
+const month = (projectedBill: number | null, previousYearBill: number | null): BilanComparison => ({
+  kind: "month",
+  projectedBill,
+  previousYearBill,
+  projectedGridWh: null,
+  previousYearGridWh: null,
+  comparable: false,
+});
+const year = (months: string[], bill: number, previousYearBill: number): BilanComparison => ({
+  kind: "year",
+  months,
+  bill,
+  previousYearBill,
+  gridWh: 0,
+  previousYearGridWh: 0,
+});
+
 describe("comparisonLines", () => {
   it("states the average of the previous days", () => {
-    const c = comparisonLines({ kind: "days", days: 7, averageBill: 4.2 }, "2026-11-10", FR, t);
+    const c = comparisonLines(days(7, 4.2), "2026-11-10", FR, t);
     expect(n(c!.main)).toBe("Moyenne des 7 jours précédents : 4,20 € par jour.");
   });
 
   it("states the projection, then the same month a year earlier", () => {
-    const c = comparisonLines(
-      { kind: "month", projectedBill: 127.3, previousYearBill: 241.6 },
-      "2026-11-10",
-      FR,
-      t,
-    );
+    const c = comparisonLines(month(127.3, 241.6), "2026-11-10", FR, t);
     expect(n(c!.main)).toBe("Au même rythme, novembre coûtera environ 127,30 €.");
     expect(n(c!.sub!)).toBe("Novembre 2025 : 241,60 €.");
   });
 
   it("keeps the previous year alone for a past month, and nothing without data", () => {
-    expect(
-      n(
-        comparisonLines(
-          { kind: "month", projectedBill: null, previousYearBill: 100 },
-          "2026-10-10",
-          FR,
-          t,
-        )!.main,
-      ),
-    ).toBe("Octobre 2025 : 100,00 €.");
-    expect(
-      comparisonLines(
-        { kind: "month", projectedBill: null, previousYearBill: null },
-        "2026-10-10",
-        FR,
-        t,
-      ),
-    ).toBeNull();
+    expect(n(comparisonLines(month(null, 100), "2026-10-10", FR, t)!.main)).toBe(
+      "Octobre 2025 : 100,00 €.",
+    );
+    expect(comparisonLines(month(null, null), "2026-10-10", FR, t)).toBeNull();
   });
 
   it("names a range of contiguous months with the change in percent", () => {
     const c = comparisonLines(
-      {
-        kind: "year",
-        months: ["2026-05", "2026-06", "2026-07", "2026-08", "2026-09", "2026-10"],
-        bill: 474,
-        previousYearBill: 948,
-      },
+      year(["2026-05", "2026-06", "2026-07", "2026-08", "2026-09", "2026-10"], 474, 948),
       "2026-11-10",
       FR,
       t,
@@ -99,22 +103,12 @@ describe("comparisonLines", () => {
   });
 
   it("elides « de » before a month that starts with a vowel", () => {
-    const c = comparisonLines(
-      { kind: "year", months: ["2026-04", "2026-05"], bill: 100, previousYearBill: 100 },
-      "2026-11-10",
-      FR,
-      t,
-    );
+    const c = comparisonLines(year(["2026-04", "2026-05"], 100, 100), "2026-11-10", FR, t);
     expect(n(c!.main)).toBe("D'avril à mai : 100,00 €, contre 100,00 € en 2025 (0 %).");
   });
 
   it("counts the months when they are not contiguous", () => {
-    const c = comparisonLines(
-      { kind: "year", months: ["2026-05", "2026-07"], bill: 120, previousYearBill: 100 },
-      "2026-11-10",
-      FR,
-      t,
-    );
+    const c = comparisonLines(year(["2026-05", "2026-07"], 120, 100), "2026-11-10", FR, t);
     expect(n(c!.main)).toBe("Sur 2 mois comparables : 120,00 €, contre 100,00 € en 2025 (+20 %).");
   });
 });
@@ -294,5 +288,205 @@ describe("changeMarkers", () => {
     expect(changeMarkers("year", spans)).toEqual(["2026-07"]);
     expect(changeMarkers("day", spans)).toEqual([]);
     expect(changeMarkers("month", spans.slice(0, 1))).toEqual([]);
+  });
+});
+
+// ── Spec 207 — the consumption in kWh ───────────────────────────────────
+
+describe("energyLabel", () => {
+  it("names the period after « Électricité consommée »", () => {
+    expect(energyLabel("month", "2026-10-03", "2026-11-10", FR, t)).toBe(
+      "Électricité consommée en octobre",
+    );
+    expect(energyLabel("day", "2026-11-09", "2026-11-10", FR, t)).toBe(
+      "Électricité consommée le 9 novembre",
+    );
+    expect(energyLabel("day", "2026-11-10", "2026-11-10", FR, t)).toBe(
+      "Électricité consommée aujourd'hui",
+    );
+    expect(energyLabel("year", "2026-03-01", "2026-11-10", FR, t)).toBe(
+      "Électricité consommée en 2026",
+    );
+    expect(energyLabel("month", "2026-10-03", "2026-11-10", EN, tEn)).toBe(
+      "Electricity used in October",
+    );
+  });
+});
+
+describe("energyLines", () => {
+  const october = { gridHpWh: 446_000, gridHcWh: 260_000, solarWh: 214_000, consumedWh: 920_000 };
+
+  it("gives the three parts and the sentence with production", () => {
+    const e = energyLines(october, true, FR, t);
+    expect(n(e.total)).toBe("920 kWh");
+    expect(e.parts.map((p) => [p.key, n(p.value)])).toEqual([
+      ["hp", "446 kWh"],
+      ["hc", "260 kWh"],
+      ["solar", "214 kWh"],
+    ]);
+    // 214 / 920 = 23.3 %: rounded to the percent.
+    expect(n(e.sentence)).toBe(
+      "706 kWh achetés au réseau, 214 kWh produits et consommés sur place (23 %).",
+    );
+    const en = energyLines(october, true, EN, tEn);
+    expect(n(en.sentence)).toBe(
+      "706 kWh bought from the grid, 214 kWh produced and used on site (23%).",
+    );
+  });
+
+  it("uses short legend labels, so three columns fit a phone", () => {
+    expect(energyLines(october, true, EN, tEn).parts.map((p) => p.label)).toEqual([
+      "Peak",
+      "Off-peak",
+      "Solar",
+    ]);
+    expect(energyLines(october, true, FR, t).parts.map((p) => p.label)).toEqual([
+      "H. pleines",
+      "H. creuses",
+      "Solaire",
+    ]);
+  });
+
+  it("leaves the solar part and its half of the sentence out without production", () => {
+    const e = energyLines({ ...october, solarWh: 0, consumedWh: 706_000 }, false, FR, t);
+    expect(n(e.total)).toBe("706 kWh");
+    expect(e.parts.map((p) => p.key)).toEqual(["hp", "hc"]);
+    expect(n(e.sentence)).toBe("706 kWh achetés au réseau.");
+  });
+
+  it("shows one decimal below 100 kWh", () => {
+    const e = energyLines(
+      { gridHpWh: 9_400, gridHcWh: 5_000, solarWh: 4_200, consumedWh: 18_600 },
+      true,
+      FR,
+      t,
+    );
+    expect(n(e.total)).toBe("18,6 kWh");
+  });
+});
+
+describe("energyComparisonLines", () => {
+  const monthWh = (
+    projectedGridWh: number | null,
+    previousYearGridWh: number | null,
+    comparable = true,
+  ) => ({
+    ...month(null, null),
+    projectedGridWh,
+    previousYearGridWh,
+    comparable,
+  });
+
+  it("states the same month a year earlier with the change, once the month is over", () => {
+    const c = energyComparisonLines(
+      monthWh(null, 1_036_000),
+      706_000,
+      "2026-10-15",
+      "2026-11-11",
+      FR,
+      t,
+    );
+    expect(n(c!.main)).toBe("Octobre 2025 : 1 036 kWh achetés (−32 %).");
+    const en = energyComparisonLines(
+      monthWh(null, 1_036_000),
+      706_000,
+      "2026-10-15",
+      "2026-11-11",
+      EN,
+      tEn,
+    );
+    expect(n(en!.main)).toBe("October 2025: 1,036 kWh bought (-32%).");
+  });
+
+  it("gives no change when either month is short of data", () => {
+    // A meter installed late in October 2025: 50 kWh, no « +1 312 % ».
+    const c = energyComparisonLines(
+      monthWh(null, 50_000, false),
+      706_000,
+      "2026-10-15",
+      "2026-11-11",
+      FR,
+      t,
+    );
+    expect(n(c!.main)).toBe("Octobre 2025 : 50 kWh achetés.");
+  });
+
+  it("states the pace of the current month, then the previous year without a change", () => {
+    const c = energyComparisonLines(
+      monthWh(1_120_000, 1_036_000),
+      400_000,
+      "2026-11-05",
+      "2026-11-11",
+      FR,
+      t,
+    );
+    expect(n(c!.main)).toBe("Au même rythme, novembre consommera environ 1 120 kWh achetés.");
+    expect(n(c!.sub!)).toBe("Novembre 2025 : 1 036 kWh achetés.");
+  });
+
+  it("gives no line when the previous year has no data", () => {
+    expect(
+      energyComparisonLines(monthWh(null, null), 706_000, "2026-10-15", "2026-11-11", FR, t),
+    ).toBeNull();
+  });
+
+  it("states the 7-day average, in French and in English", () => {
+    const c = { ...days(5, 4.2), averageGridWh: 24_100 };
+    expect(n(energyComparisonLines(c, 0, "2026-11-10", "2026-11-11", FR, t)!.main)).toBe(
+      "Moyenne des 5 jours précédents : 24,1 kWh achetés par jour.",
+    );
+    expect(n(energyComparisonLines(c, 0, "2026-11-10", "2026-11-11", EN, tEn)!.main)).toBe(
+      "Average of the previous 5 days: 24.1 kWh bought a day.",
+    );
+  });
+
+  it("states the comparable months of the year with the change", () => {
+    const c = {
+      ...year(["2026-05", "2026-06", "2026-07", "2026-08", "2026-09", "2026-10"], 0, 0),
+      gridWh: 3_210_000,
+      previousYearGridWh: 4_012_500,
+    };
+    expect(n(energyComparisonLines(c, 0, "2026-11-10", "2026-11-11", FR, t)!.main)).toBe(
+      "De mai à octobre : 3 210 kWh achetés, contre 4 013 kWh en 2025 (−20 %).",
+    );
+    expect(n(energyComparisonLines(c, 0, "2026-11-10", "2026-11-11", EN, tEn)!.main)).toBe(
+      "May to October: 3,210 kWh bought, against 4,013 kWh in 2025 (-20%).",
+    );
+  });
+});
+
+describe("averagePrice", () => {
+  const october = { gridHpWh: 446_000, gridHcWh: 260_000, solarWh: 214_000, consumedWh: 920_000 };
+  const fee: BilanFee = { total: 20.37, days: 31, daysWithoutFee: 0, kva: 9 };
+
+  it("states the price with and without the fee", () => {
+    expect(n(averagePrice(136.86, october, fee, FR, t)!)).toBe(
+      "Prix moyen payé : 0,194 €/kWh, 0,223 €/kWh avec l'abonnement.",
+    );
+    expect(averagePrice(136.86, october, fee, EN, tEn)).toBe(
+      "Average price paid: €0.194/kWh, €0.223/kWh with the subscription.",
+    );
+  });
+
+  it("states one part without a fee", () => {
+    expect(n(averagePrice(136.86, october, null, FR, t)!)).toBe("Prix moyen payé : 0,194 €/kWh.");
+  });
+
+  it("leaves the subscription half out when some days have no fee", () => {
+    expect(n(averagePrice(136.86, october, { ...fee, daysWithoutFee: 10 }, FR, t)!)).toBe(
+      "Prix moyen payé : 0,194 €/kWh.",
+    );
+  });
+
+  it("is null without grid kWh", () => {
+    expect(
+      averagePrice(
+        0,
+        { gridHpWh: 0, gridHcWh: 0, solarWh: 12_000, consumedWh: 12_000 },
+        fee,
+        FR,
+        t,
+      ),
+    ).toBeNull();
   });
 });
