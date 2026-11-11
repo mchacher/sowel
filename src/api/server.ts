@@ -121,6 +121,8 @@ interface ServerDeps {
   };
   /** Spec 202 — the dated electricity prices, read by the energy routes. */
   tariffVersions: import("../energy/tariff-version-store.js").TariffVersionStore;
+  /** Spec 203 — the daily read of the price file. Absent in harnesses that do not exercise it. */
+  priceFileSync?: import("../energy/price-file/price-file-sync.js").PriceFileSync;
   /** Spec 191 — EV charge sessions. Absent in harnesses that do not exercise them. */
   evSessionTracker?: import("../energy/ev-sessions/ev-session-tracker.js").EvSessionTracker;
   pvForecaster: PvForecaster | null;
@@ -183,6 +185,7 @@ export async function createServer(deps: ServerDeps) {
     arbiterMetricsStore,
     arbiterGain,
     tariffVersions,
+    priceFileSync,
     pvForecaster,
     backupManager,
     versionChecker,
@@ -388,6 +391,7 @@ export async function createServer(deps: ServerDeps) {
     settingsManager,
     tariffClassifier: historyWriter.getTariffClassifier(),
     tariffVersions,
+    priceFileSync: priceFileSync ?? null,
     capacityArbiter,
     arbiterMetricsStore,
     arbiterGain: arbiterGain ?? null,

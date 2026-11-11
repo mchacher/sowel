@@ -39,11 +39,20 @@ type FormState = { mode: "add" } | { mode: "edit"; version: TariffVersion };
 export function TariffPriceHistory({
   contractType,
   contractKva,
+  reloadKey = 0,
+  notice = null,
+  onVersionsChange,
 }: {
   /** A Base contract asks for one price and shows one price column. */
   contractType: TariffContractType;
   /** The contract's subscribed power: pre-fills a new price change. */
   contractKva: number | null;
+  /** Spec 203 — a new value reads the versions again: the price file added some. */
+  reloadKey?: number;
+  /** Spec 203 — shown under the hint, above the list: the prices of the file to confirm. */
+  notice?: ReactNode;
+  /** Spec 203 — a version was added, corrected or deleted here: the prices to confirm follow. */
+  onVersionsChange?: () => void;
 }) {
   const { t } = useTranslation();
   const id = useId();
@@ -64,7 +73,7 @@ export function TariffPriceHistory({
 
   useEffect(() => {
     void load();
-  }, [load]);
+  }, [load, reloadKey]);
 
   // An armed delete is given up by pressing anywhere else.
   useEffect(() => {
@@ -92,6 +101,7 @@ export function TariffPriceHistory({
     else await createTariffVersion(input);
     setForm(null);
     await load();
+    onVersionsChange?.();
   };
 
   const remove = async (version: TariffVersion) => {
@@ -102,6 +112,7 @@ export function TariffPriceHistory({
       await deleteTariffVersion(version.id);
       if (form?.mode === "edit" && form.version.id === version.id) setForm(null);
       await load();
+      onVersionsChange?.();
     } catch (err) {
       setError(apiErrorText(err, t));
     } finally {
@@ -254,6 +265,8 @@ export function TariffPriceHistory({
       <p className="text-caption leading-4.5 text-text-tertiary mb-1 sm:mb-3">
         {t("tariff.prices.hint")}
       </p>
+
+      {notice}
 
       {versions === null && !error && (
         <Loader2 size={16} className="animate-spin text-text-tertiary" />

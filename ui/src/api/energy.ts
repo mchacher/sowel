@@ -1,6 +1,7 @@
 import type {
   EnergyHistoryResponse,
   EnergyStatus,
+  PriceFileStatus,
   TariffConfig,
   TariffContract,
   TariffVersion,
@@ -97,10 +98,55 @@ export async function getTariffContract(): Promise<TariffContract> {
   return fetchJSON<TariffContract>(`${API_BASE}/settings/energy/contract`);
 }
 
-export async function saveTariffContract(contract: TariffContract): Promise<TariffContract> {
+/**
+ * `autoUpdate` left out lets the server decide: on for a supplier of the price
+ * file, off for « Autre fournisseur » (spec 203).
+ */
+export async function saveTariffContract(
+  contract: Omit<TariffContract, "autoUpdate"> & { autoUpdate?: boolean },
+): Promise<TariffContract> {
   return fetchJSON<TariffContract>(`${API_BASE}/settings/energy/contract`, {
     method: "PUT",
     body: JSON.stringify(contract),
+  });
+}
+
+// Spec 203 — the price file: where its read stands, and the prices it holds
+// for the contract that wait for a confirmation.
+
+export async function getPriceFileStatus(): Promise<PriceFileStatus> {
+  return fetchJSON<PriceFileStatus>(`${API_BASE}/settings/energy/price-file`);
+}
+
+/** Reads the file now: the answer can take a few seconds. */
+export async function checkPriceFile(): Promise<PriceFileStatus> {
+  return fetchJSON<PriceFileStatus>(`${API_BASE}/settings/energy/price-file/check`, {
+    method: "POST",
+  });
+}
+
+/** Adds the waiting prices that start on these dates as price versions. */
+export async function applyPriceFilePrices(
+  startDates: string[],
+): Promise<{ created: TariffVersion[]; status: PriceFileStatus }> {
+  return fetchJSON(`${API_BASE}/settings/energy/price-file/apply`, {
+    method: "POST",
+    body: JSON.stringify({ startDates }),
+  });
+}
+
+/** Sets the waiting prices that start on these dates aside: not proposed again. */
+export async function dismissPriceFilePrices(startDates: string[]): Promise<PriceFileStatus> {
+  return fetchJSON<PriceFileStatus>(`${API_BASE}/settings/energy/price-file/dismiss`, {
+    method: "POST",
+    body: JSON.stringify({ startDates }),
+  });
+}
+
+/** Proposes again every price set aside for the contract. */
+export async function restoreDismissedPriceFilePrices(): Promise<PriceFileStatus> {
+  return fetchJSON<PriceFileStatus>(`${API_BASE}/settings/energy/price-file/restore-dismissed`, {
+    method: "POST",
   });
 }
 

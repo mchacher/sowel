@@ -157,8 +157,14 @@ Admin only, same gating as the version routes:
 
 - `GET  /api/v1/settings/energy/price-file` → `PriceFileStatus`
 - `POST /api/v1/settings/energy/price-file/check` → runs a check, returns the status
-- `POST /api/v1/settings/energy/price-file/apply` body `{ startDates: string[] }` → the versions created
+- `POST /api/v1/settings/energy/price-file/apply` body `{ startDates: string[] }` → `{ created, status }`;
+  `400` when a date is not waiting, nothing created
 - `POST /api/v1/settings/energy/price-file/dismiss` body `{ startDates: string[] }` → the status
+- `POST /api/v1/settings/energy/price-file/restore-dismissed` → the status, the contract's set-aside prices
+  proposed again
+
+`DELETE …/tariff/versions/:id` also sets the deleted version's date aside when its origin is `file:…`:
+otherwise the next read would add it again.
 
 ### Changed: UI
 

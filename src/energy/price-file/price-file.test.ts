@@ -1,10 +1,11 @@
 import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
 import { describe, expect, it } from "vitest";
-import type { PriceFile, PriceFileRow } from "../../shared/types.js";
+import type { PriceFile, PriceFileRow, TariffVersion } from "../../shared/types.js";
 import {
   PRICE_FILE_FORMAT,
   PriceFileError,
+  newPrices,
   parsePriceFile,
   rowsFor,
   serializePriceFile,
@@ -168,5 +169,92 @@ describe("rowsFor", () => {
       rowsFor(parsed, { supplier: "edf-tarif-bleu", contractType: "hphc", kva: null }),
     ).toEqual([]);
     expect(rowsFor(parsed, { supplier: "other", contractType: "hphc", kva: 9 })).toEqual([]);
+  });
+});
+
+describe("newPrices — added by itself, or held for the user (FR4)", () => {
+  const version = (startDate: string | null, hp: number, origin = "manual"): TariffVersion => ({
+    id: startDate ?? "origin",
+    startDate,
+    prices: { hp, hc: hp / 2 },
+    fixedFeeYear: null,
+    kva: 9,
+    origin,
+    createdAt: "2026-11-11T00:00:00.000Z",
+    updatedAt: "2026-11-11T00:00:00.000Z",
+  });
+  // The contract's rows, oldest first, as `rowsFor` gives them.
+  const rows = [
+    row({ startDate: "2025-08-01", hp: 0.2081, hc: 0.1635 }),
+    row({ startDate: "2026-02-01", hp: 0.2065, hc: 0.1578 }),
+    row({ startDate: "2026-08-01", hp: 0.2142, hc: 0.1589 }),
+  ];
+  const none = new Set<string>();
+  const dates = (list: PriceFileRow[]) => list.map((r) => r.startDate);
+
+  it("holds every row on an instance that only has the version without a date", () => {
+    const split = newPrices(rows, [version(null, 0.246)], none);
+    expect(split.automatic).toEqual([]);
+    expect(dates(split.held)).toEqual(["2025-08-01", "2026-02-01", "2026-08-01"]);
+  });
+
+  it("holds every row on an instance without any version", () => {
+    expect(newPrices(rows, [], none)).toEqual({ automatic: [], held: rows });
+  });
+
+  it("adds by itself a new period that follows the history", () => {
+    const versions = [
+      version(null, 0.2),
+      version("2025-08-01", 0.2081),
+      version("2026-02-01", 0.2065),
+    ];
+    const split = newPrices(rows, versions, none);
+    expect(dates(split.automatic)).toEqual(["2026-08-01"]);
+    expect(split.held).toEqual([]);
+  });
+
+  it("chains two new periods found in one read", () => {
+    const split = newPrices(rows, [version(null, 0.2), version("2025-08-01", 0.2081)], none);
+    expect(dates(split.automatic)).toEqual(["2026-02-01", "2026-08-01"]);
+  });
+
+  it("holds a jump of 30 % or more, and what follows it", () => {
+    const jump = [
+      ...rows,
+      row({ startDate: "2027-02-01", hp: 0.2142 * 1.3, hc: 0.16 }),
+      row({ startDate: "2027-08-01", hp: 0.2142 * 1.31, hc: 0.16 }),
+    ];
+    const versions = [version(null, 0.2), version("2026-02-01", 0.2065)];
+    const split = newPrices(jump, versions, none);
+    expect(dates(split.automatic)).toEqual(["2026-08-01"]);
+    // 2025-08-01 is older than the latest version; the last two are the jump and its follower.
+    expect(dates(split.held)).toEqual(["2025-08-01", "2027-02-01", "2027-08-01"]);
+  });
+
+  it("adds a rise just under 30 %", () => {
+    const next = [row({ startDate: "2027-02-01", hp: 0.2142 * 1.29, hc: 0.16 })];
+    const split = newPrices(next, [version(null, 0.2), version("2026-08-01", 0.2142)], none);
+    expect(dates(split.automatic)).toEqual(["2027-02-01"]);
+  });
+
+  it("holds a row that starts before a version entered meanwhile", () => {
+    // The CRE row of 1 February arrives after the user recorded a change on the 10th.
+    const versions = [version(null, 0.2), version("2026-02-10", 0.2065)];
+    const split = newPrices(rows, versions, none);
+    expect(dates(split.held)).toEqual(["2025-08-01", "2026-02-01"]);
+    expect(dates(split.automatic)).toEqual(["2026-08-01"]);
+  });
+
+  it("never proposes a start date a version already uses, whatever its figures", () => {
+    const versions = [version(null, 0.2), version("2026-02-01", 0.9), version("2026-08-01", 0.9)];
+    const split = newPrices(rows, versions, none);
+    expect(dates(split.held)).toEqual(["2025-08-01"]);
+    expect(split.automatic).toEqual([]);
+  });
+
+  it("never proposes a row the user set aside", () => {
+    const versions = [version(null, 0.2), version("2026-02-01", 0.2065)];
+    const split = newPrices(rows, versions, new Set(["2025-08-01", "2026-08-01"]));
+    expect(split).toEqual({ automatic: [], held: [] });
   });
 });

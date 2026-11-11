@@ -9,18 +9,21 @@ import type { ArbiterMetricsStore } from "../../energy/arbiter-metrics-store.js"
 import type { ArbiterPublicState } from "../../shared/types.js";
 import { ARBITER_METRICS_RETENTION_DAYS } from "../../energy/arbiter-metrics-store.js";
 import {
-  defaultContract,
+  CONTRACT_SETTING_KEY,
   gridSide,
   isPriced,
   monthlyNeedsDaily,
   monthlyPricingPoints,
   normalizeContract,
+  resolveContract,
   pricePoints,
   pricesAt,
   priceSeries,
   priceTotals,
 } from "../../energy/pricing.js";
 import { TariffVersionError, type TariffVersionStore } from "../../energy/tariff-version-store.js";
+import { PriceFileError } from "../../energy/price-file/price-file.js";
+import type { PriceFileSync } from "../../energy/price-file/price-file-sync.js";
 import { isSubmeterEquipment, NON_SUBMETER_TYPES } from "../../equipments/metering.js";
 import { childrenByParent, subtractChildren } from "../../energy/metering-nesting.js";
 import type { InfluxClient } from "../../core/influx-client.js";
@@ -30,6 +33,7 @@ import type {
   EnergyHistoryResponse,
   EnergyStatus,
   DaySchedule,
+  PriceFileStatus,
   TariffContract,
   TariffPrices,
   TariffVersion,
@@ -89,6 +93,7 @@ interface EnergyDeps {
   settingsManager: SettingsManager;
   tariffClassifier: TariffClassifier;
   tariffVersions: TariffVersionStore; // spec 202 — the dated prices
+  priceFileSync?: PriceFileSync | null; // spec 203 — absent in harnesses that do not exercise it
   capacityArbiter: CapacityArbiter | null; // spec 140 — null in some tests
   arbiterMetricsStore: ArbiterMetricsStore | null; // spec 158 — null in some tests
   arbiterGain?: { store: ArbiterGainStore; meter: ArbiterGainMeter } | null; // spec 200
@@ -180,10 +185,19 @@ const tariffContractBodySchema = {
     supplier: { enum: ["edf-tarif-bleu", "other"] },
     contractType: { enum: ["hphc", "base"] },
     kva: { type: ["number", "null"], exclusiveMinimum: 0 },
+    // Spec 203 — optional: on unless switched off, for a supplier of the file.
+    autoUpdate: { type: "boolean" },
   },
 } as const;
 
-const CONTRACT_KEY = "energy.contract";
+/** Spec 203 — the start dates the user adds or sets aside. */
+const priceFileDatesBodySchema = {
+  type: "object",
+  required: ["startDates"],
+  properties: {
+    startDates: { type: "array", minItems: 1, maxItems: 500, items: nonEmptyString },
+  },
+} as const;
 
 /** The HTTP status of a tariff version rule that refused a write. */
 function versionErrorStatus(err: TariffVersionError): number {
@@ -199,6 +213,7 @@ export function registerEnergyRoutes(app: FastifyInstance, deps: EnergyDeps): vo
     settingsManager,
     tariffClassifier,
     tariffVersions,
+    priceFileSync,
     capacityArbiter,
     arbiterMetricsStore,
     arbiterGain,
@@ -837,7 +852,13 @@ export function registerEnergyRoutes(app: FastifyInstance, deps: EnergyDeps): vo
     "/api/v1/settings/energy/tariff/versions/:id",
     async (request, reply) => {
       try {
+        const removed = tariffVersions.all().find((v) => v.id === request.params.id);
         tariffVersions.remove(request.params.id);
+        // Spec 203 — a version that came from the price file and is deleted on
+        // purpose is set aside, or the next read would add it again.
+        if (removed?.startDate && removed.origin.startsWith("file:")) {
+          priceFileSync?.dismiss([removed.startDate]);
+        }
         return { ok: true };
       } catch (err) {
         if (err instanceof TariffVersionError) {
@@ -852,20 +873,14 @@ export function registerEnergyRoutes(app: FastifyInstance, deps: EnergyDeps): vo
   // Contract — spec 202: supplier, contract type and subscribed power. What a
   // price source will match its rows on; it prices nothing by itself.
   // ============================================================
-  const readContract = (): TariffContract => {
-    const raw = settingsManager.get(CONTRACT_KEY);
-    if (raw) {
-      try {
-        // Rebuilt from the known values, never the stored blob as it is.
-        const contract = normalizeContract(JSON.parse(raw));
-        if (contract) return contract;
-        logger.warn("Unknown contract in settings, using the default");
-      } catch (err) {
-        logger.warn({ err }, "Invalid contract in settings, using the default");
-      }
-    }
-    return defaultContract(tariffClassifier.getConfig(), tariffVersions.all());
-  };
+  const readContract = (): TariffContract =>
+    // Rebuilt from the known values, never the stored blob as it is.
+    resolveContract(
+      settingsManager.get(CONTRACT_SETTING_KEY),
+      tariffClassifier.getConfig(),
+      tariffVersions.all(),
+      (err) => logger.warn({ err }, "Invalid contract in settings, using the default"),
+    );
 
   app.get("/api/v1/settings/energy/contract", async (request, reply) => {
     if (!request.auth || request.auth.role !== "admin") {
@@ -882,11 +897,70 @@ export function registerEnergyRoutes(app: FastifyInstance, deps: EnergyDeps): vo
       // rebuilt from the known values.
       const contract = normalizeContract(request.body);
       if (!contract) return reply.code(400).send({ error: "Unknown supplier or contract type" });
-      settingsManager.set(CONTRACT_KEY, JSON.stringify(contract));
+      settingsManager.set(CONTRACT_SETTING_KEY, JSON.stringify(contract));
       logger.info({ ...contract }, "Energy contract updated");
+      // Spec 203 — another contract has other prices in the file: read it now,
+      // without making the save wait for the download.
+      void priceFileSync?.check();
       return contract;
     },
   );
+
+  // ============================================================
+  // Price file — spec 203. Where the daily read of the electricity price file
+  // stands, and the user's answers to the prices it holds back. Admin only,
+  // like the versions these routes create.
+  // ============================================================
+  const noPriceFile: PriceFileStatus = {
+    following: false,
+    lastCheckAt: null,
+    lastSuccessAt: null,
+    error: null,
+    latestStartDate: null,
+    noPriceForContract: false,
+    pending: [],
+    dismissedCount: 0,
+  };
+
+  app.get("/api/v1/settings/energy/price-file", async (request, reply) => {
+    if (!request.auth || request.auth.role !== "admin") {
+      return reply.code(403).send({ error: "Admin access required" });
+    }
+    return priceFileSync?.status() ?? noPriceFile;
+  });
+
+  app.post("/api/v1/settings/energy/price-file/check", async () => {
+    return (await priceFileSync?.check()) ?? noPriceFile;
+  });
+
+  app.post<{ Body: { startDates: string[] } }>(
+    "/api/v1/settings/energy/price-file/apply",
+    { schema: { body: priceFileDatesBodySchema } },
+    async (request, reply) => {
+      if (!priceFileSync) return reply.code(400).send({ error: "No price is waiting" });
+      try {
+        const created = priceFileSync.apply(request.body.startDates);
+        return { created, status: priceFileSync.status() };
+      } catch (err) {
+        if (err instanceof PriceFileError) return reply.code(400).send({ error: err.message });
+        throw err;
+      }
+    },
+  );
+
+  app.post<{ Body: { startDates: string[] } }>(
+    "/api/v1/settings/energy/price-file/dismiss",
+    { schema: { body: priceFileDatesBodySchema } },
+    async (request) => {
+      priceFileSync?.dismiss(request.body.startDates);
+      return priceFileSync?.status() ?? noPriceFile;
+    },
+  );
+
+  app.post("/api/v1/settings/energy/price-file/restore-dismissed", async () => {
+    priceFileSync?.restoreDismissed();
+    return priceFileSync?.status() ?? noPriceFile;
+  });
 
   // ============================================================
   // GET /api/v1/energy/pv-forecast/:equipmentId — spec 160.

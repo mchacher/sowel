@@ -12,6 +12,7 @@ import type {
   PriceFileRow,
   PriceFileSupplier,
   TariffContract,
+  TariffVersion,
 } from "../../shared/types.js";
 import { isLocalDate } from "../../shared/local-date.js";
 
@@ -195,6 +196,58 @@ export function rowsFor(
   return supplier.prices
     .filter((row) => row.contractType === contract.contractType && row.kva === contract.kva)
     .sort((a, b) => a.startDate.localeCompare(b.startDate));
+}
+
+/** A new price that moves the peak price by this much or more is not added by itself. */
+export const MAX_AUTO_CHANGE = 0.3;
+
+/**
+ * The rows of a contract that no version holds yet, split in two (spec 203 FR4).
+ *
+ * `automatic`: a price that starts after every existing version, on an
+ * instance that already has a dated version, and that moves the peak price by
+ * less than 30 % against the price just before it. Two new periods in one read
+ * chain: the second is compared with the first.
+ *
+ * `held`: everything else, for the user to confirm. That is the past prices of
+ * an instance that has none (the retroactive fill), a row published late that
+ * starts before a version entered meanwhile, a jump of 30 % or more, and
+ * whatever follows such a jump.
+ *
+ * `rows` are those of the contract, oldest first. A start date already used by
+ * a version, or set aside by the user, is never proposed.
+ */
+export function newPrices(
+  rows: PriceFileRow[],
+  versions: TariffVersion[],
+  dismissed: ReadonlySet<string>,
+): { automatic: PriceFileRow[]; held: PriceFileRow[] } {
+  const dated = versions
+    .filter((v): v is TariffVersion & { startDate: string } => v.startDate !== null)
+    .sort((a, b) => a.startDate.localeCompare(b.startDate));
+  const taken = new Set(dated.map((v) => v.startDate));
+  const latest = dated[dated.length - 1] ?? null;
+  const automatic: PriceFileRow[] = [];
+  const held: PriceFileRow[] = [];
+  let previousHp = latest?.prices.hp ?? 0;
+  let chain = latest !== null;
+  for (const row of rows) {
+    if (taken.has(row.startDate) || dismissed.has(row.startDate)) continue;
+    const newer = latest !== null && row.startDate > latest.startDate;
+    // Rounded, so that a move of exactly 30 % is held whatever the floats say.
+    const change = previousHp > 0 ? Math.abs(row.hp - previousHp) / previousHp : Infinity;
+    const steady = Math.round(change * 1e6) / 1e6 < MAX_AUTO_CHANGE;
+    if (chain && newer && steady) {
+      automatic.push(row);
+      previousHp = row.hp;
+    } else {
+      held.push(row);
+      // A newer price held back breaks the chain: what follows it cannot be
+      // compared with a price the user has not confirmed.
+      if (newer) chain = false;
+    }
+  }
+  return { automatic, held };
 }
 
 /**

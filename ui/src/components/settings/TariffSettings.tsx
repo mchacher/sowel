@@ -1,11 +1,12 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { useTranslation } from "react-i18next";
 import { Zap, Plus, Trash2, Loader2, Info } from "lucide-react";
-import { getTariffConfig, saveTariffConfig } from "../../api";
+import { getPriceFileStatus, getTariffConfig, saveTariffConfig } from "../../api";
 import { isTariffSaved } from "../../lib/tariff";
-import type { TariffConfig, TariffContract, TariffSlot } from "../../types";
+import type { PriceFileStatus, TariffConfig, TariffContract, TariffSlot } from "../../types";
 import { TariffContractBlock } from "./TariffContractBlock";
 import { TariffPriceHistory } from "./TariffPriceHistory";
+import { TariffPriceProposals } from "./TariffPriceProposals";
 
 const ALL_DAYS = [0, 1, 2, 3, 4, 5, 6];
 // Spec 196 (FR-E) — the energy chart tokens, so the tariff strip follows the theme.
@@ -180,6 +181,18 @@ export function TariffSettings() {
   // Spec 202 — the contract block reports what it read and saved: the price
   // block needs the contract type (one price or two) and the subscribed power.
   const [contract, setContract] = useState<TariffContract | null>(null);
+  // Spec 203 — where the read of the price file stands. Held here: the
+  // contract block says it, the price block lists the prices it left to confirm.
+  const [priceFile, setPriceFile] = useState<PriceFileStatus | null>(null);
+  // Bumped when the price file may have added versions: the price list reads again.
+  const [pricesKey, setPricesKey] = useState(0);
+  const reloadPrices = useCallback(() => setPricesKey((k) => k + 1), []);
+  // A version edited by hand changes which prices of the file are still new.
+  const rereadPriceFile = useCallback(() => {
+    getPriceFileStatus()
+      .then(setPriceFile)
+      .catch(() => {});
+  }, []);
 
   useEffect(() => {
     getTariffConfig()
@@ -263,13 +276,31 @@ export function TariffSettings() {
         <h2 className="text-lead font-semibold text-text">{t("tariff.title")}</h2>
       </div>
 
-      <TariffContractBlock onContract={setContract} />
+      <TariffContractBlock
+        onContract={setContract}
+        status={priceFile}
+        onStatus={setPriceFile}
+        onFileRead={reloadPrices}
+      />
 
       <hr className="border-0 border-t border-border-light my-5" />
 
       <TariffPriceHistory
         contractType={contract?.contractType ?? "hphc"}
         contractKva={contract?.kva ?? null}
+        reloadKey={pricesKey}
+        onVersionsChange={rereadPriceFile}
+        notice={
+          contract &&
+          priceFile && (
+            <TariffPriceProposals
+              supplier={contract.supplier}
+              status={priceFile}
+              onStatus={setPriceFile}
+              onApplied={reloadPrices}
+            />
+          )
+        }
       />
 
       <hr className="border-0 border-t border-border-light my-5" />

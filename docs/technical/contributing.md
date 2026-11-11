@@ -267,7 +267,7 @@ When adding or modifying UI components, follow these design tokens:
 
 ## Electricity price file
 
-`tariffs/electricity-prices.json` holds the electricity prices suppliers publish, per contract type, subscribed power and period (spec 203). Instances that follow the file read it from `main` (the daily read ships with part 2 of spec 203), so what is merged there is what households are priced with.
+`tariffs/electricity-prices.json` holds the electricity prices suppliers publish, per contract type, subscribed power and period (spec 203). Instances whose contract follows the file read it from `main` once a day, so what is merged there is what households are priced with.
 
 - **Format.** `format` (the version instances check), `generatedAt`, and `suppliers`: each with an `id`, a `name`, its `source` and `sourceUrl`, and `prices`, one row per line: `contractType` (`hphc` or `base`), `kva`, `startDate` (`YYYY-MM-DD`), `hp` and `hc` in €/kWh including tax (a `base` row carries its one price in both), `fixedFeeYear` in €/year including tax. Rows are sorted and unique on contract type, power and start date. `src/energy/price-file/price-file.ts` is the one definition of a valid file.
 - **EDF Tarif Bleu** is rebuilt from the two CRE open data files by `npx tsx scripts/tariffs/update-edf-tarif-bleu.ts`. The script writes nothing when the rows did not change, and fails without writing when a CRE file is not as expected or when a published row would disappear; `--allow-removal` accepts a removal once you have checked the source.

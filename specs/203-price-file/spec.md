@@ -129,6 +129,10 @@ of the file.
   dates of the existing versions, so nothing is proposed; the existing versions keep their fee. Stated in the
   docs: correct the versions by hand, or delete them and take the list again.
 - A row of the file changes after an instance took it: the instance keeps what it has.
+- The user deletes a version that came from the file: its date is set aside, so the next read does not add it
+  again.
+- Shadow mode: the daily timers are off, like every other outbound poll; « Vérifier maintenant » still reads
+  the file, so a shadow seeded from production can try the retroactive fill.
 - The option toggled twice in a row, or « Vérifier maintenant » pressed during a read: one read runs, not two.
 - The file's format version is higher than the one this Sowel knows: the read is refused and reported, nothing
   is added.

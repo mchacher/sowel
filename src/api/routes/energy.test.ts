@@ -5,6 +5,8 @@ import { registerEnergyRoutes, trimToWindow, SUBMETER_PALETTE } from "./energy.j
 import { EMPTY_ACCURACY } from "../../energy/pv/pv-accuracy.js";
 import { installValidationErrorHandler, validationAjvOptions } from "../error-handler.js";
 import { TariffVersionStore } from "../../energy/tariff-version-store.js";
+import { PriceFileSync } from "../../energy/price-file/price-file-sync.js";
+import { CONTRACT_SETTING_KEY, resolveContract } from "../../energy/pricing.js";
 import { createMigratedTestDb } from "../../test-helpers/migrations.js";
 import type {
   TariffConfig,
@@ -77,6 +79,8 @@ interface BuildOpts {
     readLoads: () => Omit<ArbiterDailyLoadMetrics, "equipmentName">[];
     readHome: () => ArbiterDailyHomeMetrics[];
   } | null;
+  /** Spec 203 — what the price file download answers. Absent = no price file sync wired. */
+  priceFile?: unknown;
   /** Spec 202 — dated versions created after the one seeded from `tariff`. */
   versions?: TariffVersionInput[];
   /** Spec 200 — stub the arbiter gain store and meter. Spec 202: a row may
@@ -184,10 +188,33 @@ async function buildApp(opts: BuildOpts = {}) {
   tariffVersions.seedFromSetting(opts.tariff ?? null);
   for (const version of opts.versions ?? []) tariffVersions.create(version, "manual");
 
+  // Spec 203 — the real sync, its download replaced by the test's file.
+  let priceFileFetches = 0;
+  const priceFileSync =
+    opts.priceFile === undefined
+      ? null
+      : new PriceFileSync({
+          settings: settingsManager,
+          versions: tariffVersions,
+          contract: () =>
+            resolveContract(
+              settings.get(CONTRACT_SETTING_KEY),
+              opts.tariff ?? null,
+              tariffVersions.all(),
+            ),
+          eventBus: { emit: () => undefined },
+          logger,
+          fetchFile: async () => {
+            priceFileFetches++;
+            return opts.priceFile;
+          },
+        });
+
   const app = Fastify({ logger: false, ajv: validationAjvOptions });
   installValidationErrorHandler(app);
   (app as unknown as { settingsWrites: typeof settingsWrites }).settingsWrites = settingsWrites;
   (app as unknown as { tariffVersions: TariffVersionStore }).tariffVersions = tariffVersions;
+  (app as unknown as { priceFileFetches: () => number }).priceFileFetches = () => priceFileFetches;
 
   // Stub auth: pre-decorate request.auth based on the test scenario (#381).
   const authRole = opts.authRole === undefined ? "admin" : opts.authRole;
@@ -203,6 +230,7 @@ async function buildApp(opts: BuildOpts = {}) {
     settingsManager,
     tariffClassifier,
     tariffVersions,
+    priceFileSync,
     capacityArbiter: null,
     arbiterMetricsStore: (opts.arbiterMetrics ?? null) as never,
     arbiterGain: opts.arbiterGain
@@ -2647,6 +2675,7 @@ describe("Spec 202 — tariff versions and contract routes", () => {
         ? "hphc"
         : "base",
       kva: 9,
+      autoUpdate: false,
     });
     await app.close();
     app = await buildApp({});
@@ -2654,6 +2683,7 @@ describe("Spec 202 — tariff versions and contract routes", () => {
       supplier: "other",
       contractType: "base",
       kva: null,
+      autoUpdate: false,
     });
   });
 
@@ -2667,6 +2697,7 @@ describe("Spec 202 — tariff versions and contract routes", () => {
       supplier: "other",
       contractType: "base",
       kva: null,
+      autoUpdate: false,
     });
   });
 
@@ -2675,8 +2706,18 @@ describe("Spec 202 — tariff versions and contract routes", () => {
     const contract = { supplier: "edf-tarif-bleu", contractType: "hphc", kva: 6 };
     const res = await app.inject({ method: "PUT", url: CONTRACT, payload: contract });
     expect(res.statusCode).toBe(200);
-    expect(res.json()).toEqual(contract);
-    expect((await app.inject({ method: "GET", url: CONTRACT })).json()).toEqual(contract);
+    // Spec 203 — a supplier of the price file follows it unless switched off.
+    expect(res.json()).toEqual({ ...contract, autoUpdate: true });
+    expect((await app.inject({ method: "GET", url: CONTRACT })).json()).toEqual({
+      ...contract,
+      autoUpdate: true,
+    });
+    const off = await app.inject({
+      method: "PUT",
+      url: CONTRACT,
+      payload: { ...contract, autoUpdate: false },
+    });
+    expect(off.json()).toEqual({ ...contract, autoUpdate: false });
   });
 
   it.each([
@@ -2687,5 +2728,154 @@ describe("Spec 202 — tariff versions and contract routes", () => {
   ])("400s a contract with %s", async (_label, payload) => {
     app = await buildApp({});
     expect((await app.inject({ method: "PUT", url: CONTRACT, payload })).statusCode).toBe(400);
+  });
+});
+
+describe("Spec 203 — price file routes", () => {
+  let app: Awaited<ReturnType<typeof buildApp>> | null = null;
+  const STATUS = "/api/v1/settings/energy/price-file";
+  const VERSIONS = "/api/v1/settings/energy/tariff/versions";
+  const CONTRACT = "/api/v1/settings/energy/contract";
+
+  const fileRow = (startDate: string, hp: number, hc: number, fixedFeeYear: number) => ({
+    contractType: "hphc",
+    kva: 9,
+    startDate,
+    hp,
+    hc,
+    fixedFeeYear,
+  });
+  const FILE = {
+    format: 1,
+    generatedAt: "2026-11-11",
+    suppliers: [
+      {
+        id: "edf-tarif-bleu",
+        name: "EDF, Tarif Bleu (tarif réglementé)",
+        source: "CRE",
+        sourceUrl: "https://www.cre.fr/documents/open-data",
+        prices: [
+          fileRow("2026-02-01", 0.2065, 0.1578, 235.92),
+          fileRow("2026-08-01", 0.2142, 0.1589, 239.84),
+        ],
+      },
+    ],
+  };
+  const EDF_9 = JSON.stringify({ supplier: "edf-tarif-bleu", contractType: "hphc", kva: 9 });
+
+  beforeEach(() => {
+    process.env.TZ = "Europe/Paris";
+  });
+
+  afterEach(async () => {
+    if (app) await app.close();
+    app = null;
+  });
+
+  const post = (path: string, payload?: Record<string, unknown>) =>
+    app!.inject({ method: "POST", url: `${STATUS}${path}`, ...(payload ? { payload } : {}) });
+  const versions = async () => (await app!.inject({ method: "GET", url: VERSIONS })).json();
+
+  it("refuses the status to a standard user", async () => {
+    app = await buildApp({ tariff: TARIFF_20_10, priceFile: FILE, authRole: "standard" });
+    expect((await app.inject({ method: "GET", url: STATUS })).statusCode).toBe(403);
+  });
+
+  it("answers an empty status when no contract follows the file", async () => {
+    app = await buildApp({ tariff: TARIFF_20_10, priceFile: FILE });
+    const status = (await post("/check")).json();
+    expect(status).toMatchObject({ following: false, pending: [], lastCheckAt: null });
+  });
+
+  it("reads the file on demand and holds the past prices", async () => {
+    app = await buildApp({
+      tariff: TARIFF_20_10,
+      priceFile: FILE,
+      settings: { "energy.contract": EDF_9 },
+    });
+    const status = (await post("/check")).json();
+    expect(status.following).toBe(true);
+    expect(status.pending.map((r: { startDate: string }) => r.startDate)).toEqual([
+      "2026-08-01",
+      "2026-02-01",
+    ]);
+    expect((await app.inject({ method: "GET", url: STATUS })).json().pending).toHaveLength(2);
+    expect(await versions()).toHaveLength(1);
+  });
+
+  it("adds the held prices, and refuses a date that is not waiting", async () => {
+    app = await buildApp({
+      tariff: TARIFF_20_10,
+      priceFile: FILE,
+      settings: { "energy.contract": EDF_9 },
+    });
+    await post("/check");
+
+    const refused = await post("/apply", { startDates: ["2026-08-01", "2020-01-01"] });
+    expect(refused.statusCode).toBe(400);
+    expect(await versions()).toHaveLength(1);
+
+    const applied = (await post("/apply", { startDates: ["2026-02-01", "2026-08-01"] })).json();
+    expect(applied.created).toHaveLength(2);
+    expect(applied.status.pending).toEqual([]);
+    expect(await versions()).toMatchObject([
+      { startDate: null, origin: "migration" },
+      { startDate: "2026-02-01", origin: "file:edf-tarif-bleu", kva: 9, fixedFeeYear: 235.92 },
+      {
+        startDate: "2026-08-01",
+        origin: "file:edf-tarif-bleu",
+        prices: { hp: 0.2142, hc: 0.1589 },
+      },
+    ]);
+  });
+
+  it("400s an apply or a dismiss without dates", async () => {
+    app = await buildApp({ tariff: TARIFF_20_10, priceFile: FILE });
+    expect((await post("/apply", { startDates: [] })).statusCode).toBe(400);
+    expect((await post("/dismiss", {})).statusCode).toBe(400);
+  });
+
+  it("sets prices aside, and proposes them again on request", async () => {
+    app = await buildApp({
+      tariff: TARIFF_20_10,
+      priceFile: FILE,
+      settings: { "energy.contract": EDF_9 },
+    });
+    await post("/check");
+    const dismissed = (await post("/dismiss", { startDates: ["2026-02-01", "2026-08-01"] })).json();
+    expect(dismissed).toMatchObject({ pending: [], dismissedCount: 2 });
+    expect((await post("/check")).json().pending).toEqual([]);
+    expect((await post("/restore-dismissed")).json().pending).toHaveLength(2);
+  });
+
+  it("reads the file when the contract is saved", async () => {
+    app = await buildApp({ tariff: TARIFF_20_10, priceFile: FILE });
+    const fetches = (app as unknown as { priceFileFetches: () => number }).priceFileFetches;
+    await app.inject({
+      method: "PUT",
+      url: CONTRACT,
+      payload: { supplier: "edf-tarif-bleu", contractType: "hphc", kva: 9 },
+    });
+    await new Promise((resolve) => setImmediate(resolve));
+    expect(fetches()).toBe(1);
+    expect((await app.inject({ method: "GET", url: STATUS })).json().pending).toHaveLength(2);
+  });
+
+  it("sets a deleted file version aside, so the next read does not add it again", async () => {
+    app = await buildApp({
+      tariff: TARIFF_20_10,
+      priceFile: FILE,
+      settings: { "energy.contract": EDF_9 },
+    });
+    await post("/check");
+    await post("/apply", { startDates: ["2026-02-01", "2026-08-01"] });
+    const august = (await versions()).find(
+      (v: { startDate: string | null }) => v.startDate === "2026-08-01",
+    );
+    await app.inject({ method: "DELETE", url: `${VERSIONS}/${august.id}` });
+
+    const status = (await post("/check")).json();
+    expect(await versions()).toHaveLength(2);
+    expect(status).toMatchObject({ pending: [], dismissedCount: 1 });
   });
 });

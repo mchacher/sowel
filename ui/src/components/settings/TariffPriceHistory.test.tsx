@@ -264,6 +264,36 @@ describe("TariffPriceHistory (spec 202)", () => {
     expect(mockedDelete).not.toHaveBeenCalled();
   });
 
+  it("reads the versions again when the price file added some, under the notice it is given", async () => {
+    // Spec 203 — the parent bumps `reloadKey` once prices of the file are added.
+    mockedList.mockResolvedValue(THREE);
+    const props = { contractType: "hphc" as const, contractKva: 9, notice: <p>Held prices</p> };
+    const view = render(<TariffPriceHistory {...props} reloadKey={0} />);
+    await screen.findAllByTestId("tariff-version-row");
+    expect(screen.getByText("Held prices")).toBeTruthy();
+    expect(mockedList).toHaveBeenCalledTimes(1);
+    view.rerender(<TariffPriceHistory {...props} reloadKey={1} />);
+    await vi.waitFor(() => expect(mockedList).toHaveBeenCalledTimes(2));
+  });
+
+  it("tells its parent when a version is added or deleted here", async () => {
+    // Spec 203 — which prices of the file are still new depends on the versions.
+    mockedList.mockResolvedValue(THREE);
+    const onVersionsChange = vi.fn();
+    render(
+      <TariffPriceHistory
+        contractType="hphc"
+        contractKva={9}
+        onVersionsChange={onVersionsChange}
+      />,
+    );
+    const rows = await screen.findAllByTestId("tariff-version-row");
+    expect(onVersionsChange).not.toHaveBeenCalled();
+    await userEvent.click(within(rows[1]).getByRole("button", { name: /^Delete the price/ }));
+    await userEvent.click(within(rows[1]).getByRole("button", { name: /^Confirm deleting/ }));
+    await vi.waitFor(() => expect(onVersionsChange).toHaveBeenCalledTimes(1));
+  });
+
   it("marks a last version that has not started as upcoming", async () => {
     mockedList.mockResolvedValue([...THREE, version({ id: "far", startDate: "2999-02-01" })]);
     renderHistory();
