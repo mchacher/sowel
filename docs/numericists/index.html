@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta name="robots" content="noindex, nofollow, noarchive">
-<meta name="description" content="Thirteen rules for building software with an AI, drawn from seven months on the Sowel home automation engine.">
+<meta name="description" content="Thirteen rules for building software with an AI, drawn from nine months on the Sowel home automation engine.">
 <title>The Sowel Method</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -189,10 +189,10 @@ ol.steps li>span{grid-column:2; grid-row:2; font-size:.91rem; line-height:1.55; 
 <!-- 01 TITLE -->
 <section class="s" data-phase="Opening">
   <div class="in">
-    <p class="eyebrow"><span>Field report</span><span class="dim">·</span><span class="dim">Sowel — home automation engine</span><span class="dim">·</span><span class="dim">19 Feb → 10 Sep 2026</span></p>
+    <p class="eyebrow"><span>Field report</span><span class="dim">·</span><span class="dim">Sowel — home automation engine</span><span class="dim">·</span><span class="dim">19 Feb → 10 Nov 2026</span></p>
     <h1>The Sowel Method</h1>
     <p class="lead">
-      Seven months. 217,000 lines of code across 37 repositories, running in a real house.
+      Nine months. 303,000 lines of code across 41 repositories, running in a real house.
       <b>Every line was written by an AI.</b> Thirteen rules, and the exact mechanism that
       makes each one hold.
     </p>
@@ -204,20 +204,20 @@ ol.steps li>span{grid-column:2; grid-row:2; font-size:.91rem; line-height:1.55; 
 <section class="s" data-phase="Opening">
   <div class="in">
     <p class="eyebrow"><span>The scale</span></p>
-    <h2>What seven months produced</h2>
+    <h2>What nine months produced</h2>
     <p class="lead">Built by one person directing an AI. Two friends have been contributing
-      since July: 1,463 commits from the author, 57 from them.</p>
+      since July: 1,613 commits from the author, 69 from them.</p>
     <dl class="figs">
-      <div><dt>144k</dt><dd>lines of source, across 37 repositories</dd></div>
-      <div><dt>73k</dt><dd>lines of tests</dd></div>
-      <div><dt>82k</dt><dd>lines of specs and documentation</dd></div>
-      <div><dt>178</dt><dd>specs written before their code</dd></div>
-      <div><dt>726</dt><dd>reviewed and merged batches</dd></div>
-      <div><dt>159</dt><dd>published releases</dd></div>
+      <div><dt>193k</dt><dd>lines of source, across 41 repositories</dd></div>
+      <div><dt>110k</dt><dd>lines of tests</dd></div>
+      <div><dt>92k</dt><dd>lines of specs and documentation</dd></div>
+      <div><dt>199</dt><dd>specs written before their code</dd></div>
+      <div><dt>939</dt><dd>reviewed and merged batches</dd></div>
+      <div><dt>181</dt><dd>published releases</dd></div>
     </dl>
     <p style="margin-top:1.2rem; font-size:.84rem; line-height:1.55; color:var(--ink-mute); max-width:70ch">
-      Core engine 109k · 34 plugins and recipes, one repository each, 31k · 3D house and demo
-      infrastructure 5k. The 82k of prose is not overhead. It is the reason the 144k holds together.
+      Core engine 141k · 38 plugins and recipes, one repository each, 42k · 3D house and demo
+      infrastructure 10k. The 92k of prose is not overhead. It is the reason the 193k holds together.
     </p>
   </div>
 </section>
@@ -228,26 +228,26 @@ ol.steps li>span{grid-column:2; grid-row:2; font-size:.91rem; line-height:1.55; 
     <p class="eyebrow"><span>The human equivalent</span><span class="dim">·</span><span class="dim">the question everybody asks</span></p>
     <h2>How long this would have taken me alone</h2>
     <p class="lead" style="margin-bottom:.4rem">
-      217,000 lines of code. One standard rule of thumb is enough: a developer sustains
+      303,000 lines of code. One standard rule of thumb is enough: a developer sustains
       50 to 100 lines of production code per working day, tests, review and rework included.
     </p>
     <dl class="figs">
-      <div><dt>2,170<br>4,340</dt><dd>person-days, at 100 then 50 lines per day</dd></div>
-      <div><dt>10 – 20</dt><dd>years of my own working life<br><span style="font-size:.72rem">at 220 working days a year</span></dd></div>
-      <div><dt>7</dt><dd>months it actually took<br><span style="font-size:.72rem">a compression of 17 to 34 times</span></dd></div>
-      <div><dt>723 h</dt><dd>merely to read the code once<br><span style="font-size:.72rem">at 300 lines/hour, the standard review rate</span></dd></div>
+      <div><dt>3,030<br>6,060</dt><dd>person-days, at 100 then 50 lines per day</dd></div>
+      <div><dt>14 – 28</dt><dd>years of my own working life<br><span style="font-size:.72rem">at 220 working days a year</span></dd></div>
+      <div><dt>9</dt><dd>months it actually took<br><span style="font-size:.72rem">a compression of 19 to 37 times</span></dd></div>
+      <div><dt>1,010 h</dt><dd>merely to read the code once<br><span style="font-size:.72rem">at 300 lines/hour, the standard review rate</span></dd></div>
     </dl>
     <p class="verdict">
-      Between <b>ten and twenty years</b> of one person's working life, delivered in seven months.
+      Between <b>fourteen and twenty-eight years</b> of one person's working life, delivered in nine months.
       The same arithmetic explains why I cannot simply check it all myself: at the conservative
-      end of the review range, 200 lines an hour, reading this code once takes <b>7.2 months of
+      end of the review range, 200 lines an hour, reading this code once takes <b>10 months of
       full-time work</b> — longer than it took to produce. A lone reviewer does not fall behind
       gradually. They are behind on day one.
     </p>
     <p style="margin-top:1.1rem; font-size:.84rem; line-height:1.55; color:var(--ink-mute); max-width:72ch">
       Rules of thumb, not measurements: 50–100 lines of production code per person-day sustained,
       and 200–400 lines per hour of effective review before comprehension collapses. Halve them or
-      double them — the conclusion does not move. And this counts code only: the 82,000 lines of
+      double them — the conclusion does not move. And this counts code only: the 92,000 lines of
       specifications and documentation are on top.
     </p>
   </div>
@@ -343,7 +343,7 @@ ol.steps li>span{grid-column:2; grid-row:2; font-size:.91rem; line-height:1.55; 
       <p class="takeaway"><b>For a numericist</b>Write it once, or re-explain it every morning for the rest of the project.</p>
     </div>
     <div class="impl">
-      <div class="tab"><span class="dot"></span>CLAUDE.md<span class="kind">excerpt · 395 lines</span></div>
+      <div class="tab"><span class="dot"></span>CLAUDE.md<span class="kind">excerpt · 283 lines</span></div>
 <pre><span class="c"># CLAUDE.md</span>
 Guidance for Claude Code (and any AI agent) working on
 Sowel. This is the <span class="w">**first file to read**</span> when starting
@@ -360,7 +360,7 @@ a session.
 - <span class="w">Always</span> use pino structured logging, <span class="w">never</span> `console.*`
 - Structured context first, message second:
   `logger.info({ deviceId }, "Device status changed")`</pre>
-      <div class="note"><b>164 lines on day one, 395 today.</b> It grows by incident, never by anticipation.</div>
+      <div class="note"><b>164 lines on day one, 283 today.</b> It grows by incident, never by anticipation.</div>
       <div class="xover"><span class="lbl">Copilot</span><span><code>.github/copilot-instructions.md</code> for the repository, plus <code>.github/instructions/*.instructions.md</code> with an <code>applyTo:</code> glob when a convention only concerns part of the tree. <code>AGENTS.md</code> works for both tools.</span></div>
     </div>
   </div>
@@ -424,7 +424,7 @@ every claim — <span class="r">which is exactly what the audit found.</span></p
       <p class="takeaway"><b>For a numericist</b>Approve the derivation, not the loop. It is the only review you can still perform at this speed.</p>
     </div>
     <div class="impl">
-      <div class="tab"><span class="dot"></span>specs/167-documentation-currency/<span class="kind">1 folder of 178</span></div>
+      <div class="tab"><span class="dot"></span>specs/167-documentation-currency/<span class="kind">1 folder of 199</span></div>
 <pre><span class="k">├─</span> spec.md          <span class="c">requirements, acceptance, scope</span>
 <span class="k">├─</span> architecture.md  <span class="c">data model, flows, API contracts</span>
 <span class="k">└─</span> plan.md          <span class="c">implementation steps + test plan</span>
@@ -438,7 +438,7 @@ that migration 004 removed [...]
 
 <span class="k">Same repository, same authors, same pace.</span>
 <span class="k">The difference is enforcement.</span></pre>
-      <div class="note"><b>57,500 lines of specification.</b> Numbered, never rewritten: together they are the decision log of the project.</div>
+      <div class="note"><b>63,100 lines of specification.</b> Numbered, never rewritten: together they are the decision log of the project.</div>
       <div class="xover"><span class="lbl">Copilot</span><span>Plain Markdown in the repo — no tool required. Point Copilot at the folder from your instructions file so it reads the spec before proposing code.</span></div>
     </div>
   </div>
@@ -493,23 +493,23 @@ that migration 004 removed [...]
       <p class="eyebrow"><span>Rule 05</span></p>
       <h3>Increments you can throw away, a direction you cannot</h3>
       <p>A wide request — “build me the engine” — returns a great deal of <strong>plausible, uncheckable code</strong>. Your only options are to accept it whole or lose all of it. The right size is what you read in one sitting and discard without pain if it went wrong.</p>
-      <p>But small steps with no bearing simply wander, and 726 locally sensible decisions make an incoherent product. <strong>Every increment is measured against a destination written down in advance</strong> — the architecture, the roadmap, and above all a one-line invariant that has arbitrated hundreds of decisions since month one.</p>
+      <p>But small steps with no bearing simply wander, and 939 locally sensible decisions make an incoherent product. <strong>Every increment is measured against a destination written down in advance</strong> — the architecture, the roadmap, and above all a one-line invariant that has arbitrated hundreds of decisions since month one.</p>
       <p>When a proposal does not serve that line it is dropped, however good it looks on its own. In practice: one spec, one branch, one batch, one day — each one a step <strong>towards the stated end state</strong>, not merely a step.</p>
       <p class="takeaway"><b>Two warning signs</b>If you are not looking forward to opening the result, it is too big. If you cannot say what it moves you towards, it is drift.</p>
     </div>
     <div class="impl">
-      <div class="tab"><span class="dot"></span>git log<span class="kind">7 months</span></div>
-<pre><span class="k">1,556</span> commits
-<span class="k">  726</span> batches reviewed and merged
-<span class="k">  178</span> specifications
-<span class="k">  159</span> published releases
+      <div class="tab"><span class="dot"></span>git log<span class="kind">9 months</span></div>
+<pre><span class="k">1,771</span> commits
+<span class="k">  939</span> batches reviewed and merged
+<span class="k">  199</span> specifications
+<span class="k">  181</span> published releases
 
 <span class="c">── by kind ─────────────────────────────────</span>
-  433  fix
-  318  feat
-  173  chore
-  172  docs
-   40  refactor
+  485  fix
+  355  feat
+  262  chore
+  182  docs
+   41  refactor
 
 <span class="c">More fixes than features: the loop is short,</span>
 <span class="c">so being wrong is cheap.</span></pre>
@@ -583,8 +583,8 @@ that migration 004 removed [...]
 
 <span class="c">── invoked with one word ───────────────────</span>
 $ <span class="k">/sowel-feature</span> add a five-day forecast widget
-  <span class="c">→ 402 lines of procedure load themselves</span></pre>
-      <div class="note"><b>2,034 lines of frozen method.</b> Written by the AI, from the human noticing the same instruction being repeated.</div>
+  <span class="c">→ 386 lines of procedure load themselves</span></pre>
+      <div class="note"><b>2,019 lines of frozen method.</b> Written by the AI, from the human noticing the same instruction being repeated.</div>
       <div class="xover"><span class="lbl">Copilot</span><span><code>.github/prompts/*.prompt.md</code> gives you the same <code>/name</code> invocation in VS Code. For a standing role rather than a one-shot task, use <code>.github/chatmodes/*.chatmode.md</code>.</span></div>
     </div>
   </div>
@@ -605,7 +605,7 @@ $ <span class="k">/sowel-feature</span> add a five-day forecast widget
     <div class="narr">
       <p class="eyebrow"><span>Rule 08</span></p>
       <h3>Spend your attention on decisions, not on lines</h3>
-      <p>Human attention is the scarce resource — 723 hours to read this code once. It is spent on the spec and the architecture, where a mistake propagates everywhere. <strong>Not on line-by-line review</strong>, which goes to a second agent that did not write the code and has no stake in liking it.</p>
+      <p>Human attention is the scarce resource — 1,010 hours to read this code once. It is spent on the spec and the architecture, where a mistake propagates everywhere. <strong>Not on line-by-line review</strong>, which goes to a second agent that did not write the code and has no stake in liking it.</p>
       <p>One decision is never delegated: nothing enters the main branch without explicit human approval. That is the last line of defence, and it has never been automated.</p>
       <p class="takeaway"><b>For a numericist</b>Peer review plus conservation checks. Both, not one or the other.</p>
     </div>
@@ -636,7 +636,7 @@ and a <span class="w">concrete failure scenario</span> — not vague style notes
     <div class="narr">
       <p class="eyebrow"><span>Rule 09</span></p>
       <h3>One line of test for every two of source</h3>
-      <p>73,000 lines of test against 144,000 of source. In the backend, where the logic actually lives, it is very nearly one to one: 42,312 lines of source, 41,058 of test. The AI writes both — and that is <strong>exactly why</strong> you need that many.</p>
+      <p>110,000 lines of test against 193,000 of source. In the backend, where the logic actually lives, it is very nearly one to one: 54,277 lines of source, 53,140 of test. The AI writes both — and that is <strong>exactly why</strong> you need that many.</p>
       <p>An agent will tell you something works with total confidence whether it does or not. A suite that runs in three minutes is the only contradictory answer that costs nothing to replay, and the only one still valid in six months when nobody remembers the context.</p>
       <p class="takeaway"><b>For a numericist</b>The manufactured solution. You do not validate a solver by checking that the output looks about right.</p>
     </div>
@@ -647,18 +647,18 @@ and a <span class="w">concrete failure scenario</span> — not vague style notes
   <span class="g">✔</span> eslint src/ ui/         <span class="c">conventions</span>
   <span class="g">✔</span> tsc --noEmit            <span class="c">types, backend</span>
   <span class="g">✔</span> tsc -b --noEmit (ui)    <span class="c">types, interface</span>
-  <span class="g">✔</span> vitest run              <span class="c">235 test files</span>
+  <span class="g">✔</span> vitest run              <span class="c">360 test files</span>
   <span class="g">✔</span> vite build              <span class="c">the UI compiles</span>
 
-<span class="c">── across all 37 repositories ──────────────</span>
-  <span class="k">144,117</span>  lines of source
-  <span class="k"> 72,862</span>  lines of test       <span class="c">1 : 0.51</span>
+<span class="c">── across all 41 repositories ──────────────</span>
+  <span class="k">193,458</span>  lines of source
+  <span class="k">109,669</span>  lines of test       <span class="c">1 : 0.57</span>
 
 <span class="c">── where the logic actually lives ──────────</span>
-   42,312  backend source
-   <span class="g">41,058</span>  backend test        <span class="g">1 : 0.97</span>
-   59,005  interface source
-   16,258  interface test      <span class="c">1 : 0.28</span></pre>
+   54,277  backend source
+   <span class="g">53,140</span>  backend test        <span class="g">1 : 0.98</span>
+   78,155  interface source
+   30,971  interface test      <span class="c">1 : 0.40</span></pre>
       <div class="note"><b>One command, one verdict.</b> That is what lets the agent correct itself before showing you anything at all. The interface ratio is low on purpose: a rendered component is checked by looking at it, a tariff classifier is not.</div>
       <div class="xover"><span class="lbl">Copilot</span><span>Identical — it is an npm script. Name it in your instructions file so the agent runs it before proposing a diff.</span></div>
     </div>
@@ -672,7 +672,7 @@ and a <span class="w">concrete failure scenario</span> — not vague style notes
       <p class="eyebrow"><span>Rule 10</span></p>
       <h3>Documentation is a deliverable, in two registers</h3>
       <p>It is written in the same batch as the code, by the same AI, and reviewed like everything else. Crucially it is <strong>split into two registers that never mix</strong>: a user guide, task-oriented and jargon-free, and a technical guide with signatures and examples.</p>
-      <p>This is where an AI is most spectacularly worth having. Writing 70 coherent pages in two languages stops being a trade-off and becomes a reflex.</p>
+      <p>This is where an AI is most spectacularly worth having. Writing 72 coherent pages in two languages stops being a trade-off and becomes a reflex.</p>
       <p class="takeaway"><b>The real payoff</b>Documentation becomes the place where you read back what the system actually does. That reading finds bugs.</p>
     </div>
     <div class="impl">
@@ -694,7 +694,7 @@ and a <span class="w">concrete failure scenario</span> — not vague style notes
 - 1920x1080, fullPage, surrounding context visible
 - <span class="r">Never shoot on a real production instance</span>
   <span class="c">→ throwaway container + anonymised fixture</span></pre>
-      <div class="note"><b>12 user pages, 14 technical pages, 70 files, 66 screenshots</b> — plus a rule that keeps a real household's data out of public docs.</div>
+      <div class="note"><b>13 user pages, 14 technical pages, 72 files, 70 screenshots</b> — plus a rule that keeps a real household's data out of public docs.</div>
       <div class="xover"><span class="lbl">Copilot</span><span>A <code>/docs</code> prompt file with the same routing table. The path-to-page mapping is the valuable part, and it is plain text either way.</span></div>
     </div>
   </div>
@@ -742,8 +742,8 @@ and a <span class="w">concrete failure scenario</span> — not vague style notes
       <div class="col ok">
         <span class="state">Automated check</span>
         <h4>The release notes</h4>
-        <p class="big">166 entries<br>0 divergence</p>
-        <p>Publishing fails if the entry is missing, in English or in French. Across 166 releases both files are exactly 1,192 lines long.</p>
+        <p class="big">188 entries<br>0 divergence</p>
+        <p>Publishing fails if the entry is missing, in English or in French. Across 188 releases both files are exactly 1,536 lines long.</p>
       </div>
       <div class="col ko">
         <span class="state">Written instruction only</span>
@@ -765,7 +765,7 @@ and a <span class="w">concrete failure scenario</span> — not vague style notes
     <div class="narr">
       <p class="eyebrow"><span>Rule 12</span></p>
       <h3>Every incident becomes a rule, then a check</h3>
-      <p>A real one: a file extension left off an import. It compiles, it passes the linter, it passes all 235 test files — <strong>and it refuses to start in production</strong>.</p>
+      <p>A real one: a file extension left off an import. It compiles, it passes the linter, it passes all 360 test files — <strong>and it refuses to start in production</strong>.</p>
       <p>The fix was not “be careful next time”. A sentence in the framing document, plus an automated check that now rejects the case, with a message explaining why.</p>
       <p class="takeaway"><b>For a numericist</b>Post-mortem to regression case. An incident that yields only a lesson will happen again.</p>
     </div>
@@ -802,13 +802,13 @@ An eslint rule blocks it now.</pre>
       <p class="takeaway"><b>The compounding part</b>Every hour spent on the process is repaid by every batch after it. Nothing else in the method compounds like this.</p>
     </div>
     <div class="impl">
-      <div class="tab"><span class="dot"></span>The toolchain, day one to month seven<span class="kind">all AI-built</span></div>
-<pre>                        <span class="c">Feb</span>        <span class="c">Sep</span>
+      <div class="tab"><span class="dot"></span>The toolchain, day one to month nine<span class="kind">all AI-built</span></div>
+<pre>                        <span class="c">Feb</span>        <span class="c">Nov</span>
   CI jobs               <span class="r">2</span>    <span class="k">──→</span>    <span class="g">5</span>
   workflow files        <span class="r">1</span>    <span class="k">──→</span>    <span class="g">5</span>
   helper scripts        <span class="r">0</span>    <span class="k">──→</span>   <span class="g">38</span>
   frozen procedures     <span class="r">0</span>    <span class="k">──→</span>    <span class="g">7</span>
-  framing doc, lines  <span class="r">164</span>    <span class="k">──→</span>  <span class="g">395</span>
+  framing doc, lines  <span class="r">164</span>    <span class="k">──→</span>  <span class="g">283</span>
 
 <span class="c">── two tools that came out of the loop ─────</span>
 <span class="k">shadow instance</span>  a second engine seeded from a
@@ -879,7 +879,7 @@ An eslint rule blocks it now.</pre>
       <li><b>Ask for three options before the first spec.</b><span>On something you already know well, so you can judge the answer. This is the habit that turns the AI from a typist into a colleague.</span></li>
       <li><b>The first spec, approved before any code.</b><span>Have it written, correct it, then measure the time saved during implementation. That is what will convince you, not this deck.</span></li>
       <li><b>One automated check, on your known weak point.</b><span>Pick the thing that always drifts in your work. Make violating it fail the build. Exactly one, to start.</span></li>
-      <li><b>After every incident, one more line.</b><span>A rule in the document, a check in the machine. That cycle, repeated for seven months, built everything else here.</span></li>
+      <li><b>After every incident, one more line.</b><span>A rule in the document, a check in the machine. That cycle, repeated for nine months, built everything else here.</span></li>
     </ol>
   </div>
 </section>
@@ -893,10 +893,10 @@ An eslint rule blocks it now.</pre>
       implementation of that sentence.
     </p>
     <p class="colophon">
-      Figures measured on the Sowel repositories, 11 September 2026.<br>
-      37 repositories · 144,117 lines of source · 72,862 lines of test<br>
-      82,085 lines of specs and documentation · 1,556 commits · 726 batches<br>
-      178 specifications · 159 releases · 70 documentation pages<br><br>
+      Figures measured on the Sowel repositories, 11 November 2026.<br>
+      41 repositories · 193,458 lines of source · 109,669 lines of test<br>
+      91,787 lines of specs and documentation · 1,771 commits · 939 batches<br>
+      199 specifications · 181 releases · 72 documentation pages<br><br>
       Open-source home automation engine · docs.sowel.org
     </p>
   </div>
