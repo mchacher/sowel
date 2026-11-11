@@ -106,6 +106,7 @@ p:last-child{margin-bottom:0}
 .impl .xover .lbl{font-family:var(--mono); font-size:.6rem; font-weight:700; letter-spacing:.1em;
   text-transform:uppercase; color:var(--cop); white-space:nowrap}
 .impl .xover code{font-family:var(--mono); font-weight:500; color:var(--ink)}
+.impl .xover.hood .lbl{color:var(--accent)}
 
 .figs{display:grid; grid-template-columns:repeat(auto-fit,minmax(9.5rem,1fr)); gap:1px;
   background:var(--rule); border:1px solid var(--rule); border-radius:8px; overflow:hidden; margin-top:1.8rem}
@@ -293,6 +294,7 @@ ol.steps li>span{grid-column:2; grid-row:2; font-size:.91rem; line-height:1.55; 
       So the human effort moves <b>upstream</b>, into the specification, and <b>downstream</b>,
       into automated checks. Almost nothing is left in the middle.
     </p>
+    <p class="takeaway" style="max-width:62ch"><b>Under the hood</b>An agent is a model with tools, in a loop: it reads files, runs a command, reads the output and tries again. That loop is why checks pay: every check you write is one the agent runs on itself, before you see anything.</p>
   </div>
 </section>
 
@@ -361,6 +363,7 @@ a session.
 - Structured context first, message second:
   `logger.info({ deviceId }, "Device status changed")`</pre>
       <div class="note"><b>164 lines on day one, 283 today.</b> It grows by incident, never by anticipation.</div>
+      <div class="xover hood"><span class="lbl">Under the hood</span><span>The agent starts every session with no memory. Claude Code loads <code>CLAUDE.md</code> into its context before your first message, and that context is finite: every line takes room the agent needs to think. That is why the file points rather than explains, and why it was cut from 396 to 281 lines in October.</span></div>
       <div class="xover"><span class="lbl">Copilot</span><span><code>.github/copilot-instructions.md</code> for the repository, plus <code>.github/instructions/*.instructions.md</code> with an <code>applyTo:</code> glob when a convention only concerns part of the tree. <code>AGENTS.md</code> works for both tools.</span></div>
     </div>
   </div>
@@ -439,6 +442,7 @@ that migration 004 removed [...]
 <span class="k">Same repository, same authors, same pace.</span>
 <span class="k">The difference is enforcement.</span></pre>
       <div class="note"><b>63,100 lines of specification.</b> Numbered, never rewritten: together they are the decision log of the project.</div>
+      <div class="xover hood"><span class="lbl">Under the hood</span><span>A fresh session knows nothing of last week. It rebuilds the project from three memories: the code says what the system is, the docs what it does, the spec why it was built that way. Only the spec keeps the decisions and their reasons, so it is written before the code, not after.</span></div>
       <div class="xover"><span class="lbl">Copilot</span><span>Plain Markdown in the repo — no tool required. Point Copilot at the folder from your instructions file so it reads the spec before proposing code.</span></div>
     </div>
   </div>
@@ -505,11 +509,7 @@ that migration 004 removed [...]
 <span class="k">  181</span> published releases
 
 <span class="c">── by kind ─────────────────────────────────</span>
-  485  fix
-  355  feat
-  262  chore
-  182  docs
-   41  refactor
+  485 fix · 355 feat · 262 chore · 182 docs · 41 refactor
 
 <span class="c">More fixes than features: the loop is short,</span>
 <span class="c">so being wrong is cheap.</span></pre>
@@ -522,6 +522,7 @@ that migration 004 removed [...]
 <span class="c">boundary has been settled by that sentence — and</span>
 <span class="c">not re-argued from scratch each time.</span></pre>
       <div class="note"><b>One branch per batch, prefix enforced:</b> <code>feat/</code>, <code>fix/</code>, <code>refactor/</code>, <code>docs/</code>. Never straight onto the main branch.</div>
+      <div class="xover hood"><span class="lbl">Under the hood</span><span>A batch is what fits in one conversation: as it grows, older turns are summarised and detail is lost. Hence the skill's rule, one feature per conversation; a new idea on the way becomes an issue.</span></div>
       <div class="xover"><span class="lbl">Copilot</span><span>Same discipline. With the Copilot coding agent, one issue equals one pull request — write issues at the size you are willing to read.</span></div>
     </div>
   </div>
@@ -556,6 +557,7 @@ that migration 004 removed [...]
 &gt; - [ ] All rules respected (strict TS, no any,
 &gt;       pino logger, try/catch)</pre>
       <div class="note"><b>The build order is imposed too:</b> types first, interface last. The agent does not get to choose where to start.</div>
+      <div class="xover hood"><span class="lbl">Under the hood</span><span>A gate is text, not code: the agent reads its checklist and ticks it itself. Written as blocking steps it works, because the model stops where it is told to. But a gate the agent checks on its own is still a promise, which is why the ones that matter are checked again by CI (rule 11).</span></div>
       <div class="xover"><span class="lbl">Copilot</span><span>Put the phases and their checklists in a <code>.github/prompts/feature.prompt.md</code> file, invoked as <code>/feature</code> in chat. A custom chat mode holds the same rules for a whole session.</span></div>
     </div>
   </div>
@@ -566,25 +568,29 @@ that migration 004 removed [...]
   <div class="in two">
     <div class="narr">
       <p class="eyebrow"><span>Rule 07</span></p>
-      <h3>Freeze the procedures you repeat</h3>
-      <p>Seven procedures come up again and again. Each is written once, named, and invoked with a single word. You never re-explain how you work.</p>
-      <p>The gain is not typing time. It is that the procedure <strong>does not degrade on a tired day</strong>, and that it improves cumulatively instead of being reinvented each session.</p>
+      <h3>Freeze your workflow into skills</h3>
+      <p>A skill is a workflow written down: <strong>phases in order, each closed by a gate</strong> — a checklist the agent must satisfy before moving on, and at the decisive points a human “ok”. Invoked with one word, it runs the same way every time.</p>
+      <p>Four of them carry the project, and none is specific to it: build a feature, handle an issue, fix a bug, cut a release. <strong>Every software project has those four loops.</strong> Write them first; the domain helpers come later.</p>
+      <p>The gain is not typing time. The procedure <strong>does not degrade on a tired day</strong>, and it improves cumulatively instead of being reinvented each session.</p>
       <p class="takeaway"><b>For a numericist</b>The difference between a post-processing script and redrawing the figures by hand for every study.</p>
     </div>
     <div class="impl">
-      <div class="tab"><span class="dot"></span>.claude/skills/<span class="kind">7 frozen procedures</span></div>
-<pre><span class="k">├─</span> sowel-feature/     <span class="c">build a feature</span>
-<span class="k">├─</span> sowel-debug/       <span class="c">investigate a bug</span>
-<span class="k">├─</span> sowel-release/     <span class="c">cut a release</span>
-<span class="k">├─</span> sowel-plugin-dev/  <span class="c">write an integration</span>
-<span class="k">├─</span> sowel-recipe-dev/  <span class="c">write an automation</span>
-<span class="k">├─</span> sowel-docs/        <span class="c">update the documentation</span>
-<span class="k">└─</span> sowel-issue/       <span class="c">take a ticket end to end</span>
+      <div class="tab"><span class="dot"></span>.claude/skills/<span class="kind">4 loops · 3 helpers</span></div>
+<pre><span class="k">feature</span>  understand → spec <span class="k">✋</span> → build + tests
+         → validate → agent review → merge <span class="k">✋</span>
+<span class="k">issue</span>    qualify <span class="k">✋</span> → rewrite <span class="k">✋</span> → route <span class="k">✋</span>
+         → implement → agent review → merge <span class="k">✋</span> → close
+<span class="k">debug</span>    symptom → logs → root cause → diagnosis <span class="k">✋</span>
+         → fix + validate → merge <span class="k">✋</span>
+<span class="k">release</span>  pre-flight → release notes → PR → merge <span class="k">✋</span>
+         → tag → watch CI → verify
 
-<span class="c">── invoked with one word ───────────────────</span>
-$ <span class="k">/sowel-feature</span> add a five-day forecast widget
-  <span class="c">→ 386 lines of procedure load themselves</span></pre>
+<span class="c">── domain helpers ──────────────────────────</span>
+plugin-dev · recipe-dev · docs
+<span class="c">── ✋ waits for a human “ok” ────────────────</span>
+$ <span class="k">/sowel-issue</span> 1210</pre>
       <div class="note"><b>2,019 lines of frozen method.</b> Written by the AI, from the human noticing the same instruction being repeated.</div>
+      <div class="xover hood"><span class="lbl">Under the hood</span><span>A skill is a Markdown file. At startup the agent holds only each one's name and description, 400 words for all seven; the full procedure loads when you call it, or when the agent recognises the task. Release, debug and plugin carry <code>disable-model-invocation</code>: only you can start those.</span></div>
       <div class="xover"><span class="lbl">Copilot</span><span><code>.github/prompts/*.prompt.md</code> gives you the same <code>/name</code> invocation in VS Code. For a standing role rather than a one-shot task, use <code>.github/chatmodes/*.chatmode.md</code>.</span></div>
     </div>
   </div>
@@ -625,6 +631,7 @@ and a <span class="w">concrete failure scenario</span> — not vague style notes
 <span class="k">Tests</span>        every planned scenario has a test
 <span class="k">Security</span>     no leak, no weakened isolation gate</pre>
       <div class="note"><b>And in CLAUDE.md:</b> “Never merge a PR without explicit user approval. Present the PR, wait for ‘oui’ / ‘merge’ / ‘go’.”</div>
+      <div class="xover hood"><span class="lbl">Under the hood</span><span>The reviewer is a second agent, started with a fresh context: it sees the diff and the rules, not the reasoning that produced them, so it has nothing to defend. Its definition gives it no edit tool. It reports; fixing stays with the first agent, approving with you.</span></div>
       <div class="xover"><span class="lbl">Copilot</span><span>Copilot code review does this natively on the pull request, and it reads your <code>copilot-instructions.md</code>. Keep the human approval as a branch protection rule — that part is not a model's job.</span></div>
     </div>
   </div>
@@ -660,6 +667,7 @@ and a <span class="w">concrete failure scenario</span> — not vague style notes
    78,155  interface source
    30,971  interface test      <span class="c">1 : 0.40</span></pre>
       <div class="note"><b>One command, one verdict.</b> That is what lets the agent correct itself before showing you anything at all. The interface ratio is low on purpose: a rendered component is checked by looking at it, a tariff classifier is not.</div>
+      <div class="xover hood"><span class="lbl">Under the hood</span><span>The agent runs <code>npm run validate</code> itself, reads the failures and fixes them before showing you anything. One rule keeps the loop honest: every test must first be seen failing on broken code. A test the agent never saw fail may be testing nothing.</span></div>
       <div class="xover"><span class="lbl">Copilot</span><span>Identical — it is an npm script. Name it in your instructions file so the agent runs it before proposing a diff.</span></div>
     </div>
   </div>
@@ -785,6 +793,7 @@ and a <span class="w">concrete failure scenario</span> — not vague style notes
 <pre>a missing extension compiles, lints, passes the whole
 suite and <span class="r">then throws ERR_MODULE_NOT_FOUND at startup</span>.
 An eslint rule blocks it now.</pre>
+      <div class="xover hood"><span class="lbl">Under the hood</span><span>The lint message is written for the agent, not for you. When the check fires, the agent reads why the import is refused and fixes the cause on its own. A check's error message is a prompt: write it like one.</span></div>
       <div class="xover"><span class="lbl">Copilot</span><span>Same two moves: one paragraph in <code>copilot-instructions.md</code>, one lint rule. The instruction stops most of it; the lint rule stops the rest.</span></div>
     </div>
   </div>
