@@ -34,7 +34,7 @@ Trois points de contact, par ordre croissant de « vous n'en aurez probablement 
 
 ![Le profil énergie par équipement](../screenshots/arbiter-energy-profile-fr.png)
 
-**2. Ordonner vos priorités.** Dans Réglages › Énergie, classez vos charges dans l'ordre qui correspond à votre vie. La charge du haut reçoit le surplus en premier ; celle du bas s'éteint en premier. Cette liste est la décision la plus importante que vous prenez, et elle est à vous, pas à un algorithme :
+**2. Ordonner vos priorités.** Dans Réglages › Solaire, classez vos charges dans l'ordre qui correspond à votre vie. La charge du haut reçoit le surplus en premier ; celle du bas s'éteint en premier. Cette liste est la décision la plus importante que vous prenez, et elle est à vous, pas à un algorithme :
 
 ![Les réglages de l'arbitre : ordre de priorité et seuils avancés](../screenshots/arbiter-settings-fr.png)
 
@@ -95,7 +95,7 @@ La priorité est stricte et vôtre : la liste des Réglages, le haut d'abord pou
 | Arrêt mini (min)         | 0      | Une fois retirée, la charge se repose au moins cette durée avant le prochain octroi.                                                                                                                                                             |
 | Délai d'extinction (min) | global | Le temps que la charge met à réellement s'arrêter après un retrait, par exemple la tempo de 30 minutes d'un chauffe-eau thermodynamique. L'arbitre continue de budgéter cette puissance au lieu de l'allouer deux fois.                          |
 
-**Globaux** (Réglages › Énergie › Arbitre de surplus › Seuils avancés) :
+**Globaux** (Réglages › Solaire › Arbitre de surplus › Seuils avancés) :
 
 | Réglage                       | Défaut | Ce qu'il fait                                                                                                                                     |
 | ----------------------------- | ------ | ------------------------------------------------------------------------------------------------------------------------------------------------- |

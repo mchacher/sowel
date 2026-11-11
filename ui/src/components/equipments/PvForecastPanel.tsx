@@ -164,7 +164,7 @@ export function PvForecastPanel({ equipmentId, onLoaded }: PvForecastPanelProps)
             it: the same figure, linking to the section that edits it. */}
         {isAdmin ? (
           <Link
-            to="/settings?tab=energy"
+            to="/settings?tab=solar"
             className="ml-auto text-micro text-text-tertiary tabular-nums hover:text-primary hover:underline"
           >
             {t("equipments.pv.declared", {

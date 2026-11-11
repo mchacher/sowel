@@ -229,7 +229,7 @@ La page Production regroupe tout ce qui concerne vos panneaux. Sa carte s'ouvre 
 Depuis la v1.57.0 elle porte aussi deux panneaux, tous deux nourris par votre propre installation plutôt que par un modèle générique :
 
 - **Prévision**, une courbe horaire de production attendue jusqu'à cinq jours (« Attendu » en pointillé gris, la production mesurée « Réalisé » en trait plein vert, le vert des barres au-dessus), apprise sur votre historique. Elle réclame le plugin `weather-forecast` en 2.3.0 ou plus, et environ six semaines de production avant que le modèle ne se stabilise. En attendant, Sowel affiche une estimation ciel clair provisoire et le dit.
-- **Santé**, qui signale quand les panneaux cessent de produire ce que votre propre historique laisse attendre. Déclarer un nouveau pan de toiture, ou changer la puissance crête, ré-estime le gain sur les jours qui suivent au lieu d'attendre que la fenêtre glisse.
+- **Santé**, qui signale quand les panneaux cessent de produire ce que votre propre historique laisse attendre. Déclarer un nouveau pan de toiture dans **Réglages > Solaire**, ou changer la puissance crête, ré-estime le gain sur les jours qui suivent au lieu d'attendre que la fenêtre glisse.
 
 Les deux sont détaillés dans [Suivre sa production solaire](../deep-dives/pv-health.md).
 
@@ -266,7 +266,7 @@ Activer ceci ne fait que _déclarer_ la charge. Rien ne la pilote tant que l'arb
 
 ### Activer l'arbitre et définir la priorité
 
-Allez dans **Réglages > Administration > Énergie**, activez l'**Arbitre de surplus**, et ordonnez vos charges pilotables dans la liste de priorité. La liste se lit dans les deux sens : le surplus est offert de haut en bas, et quand il manque, la charge du bas s'efface la première. Les seuils de temporisation avancés sont derrière un repli, avec des valeurs par défaut raisonnables.
+Allez dans **Réglages > Solaire**, activez l'**Arbitre de surplus**, et ordonnez vos charges pilotables dans la liste de priorité. La liste se lit dans les deux sens : le surplus est offert de haut en bas, et quand il manque, la charge du bas s'efface la première. Les seuils de temporisation avancés sont derrière un repli, avec des valeurs par défaut raisonnables.
 
 ### La lire sur la page En direct
 

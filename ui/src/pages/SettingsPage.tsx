@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useSearchParams } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import {
@@ -53,7 +53,7 @@ import { ArbiterSettings } from "../components/settings/ArbiterSettings";
 import { SharedAccessSettings } from "../components/settings/SharedAccessSettings";
 import { SolarInstallationSettings } from "../components/settings/SolarInstallationSettings";
 import { PushNotificationsSection } from "../components/settings/PushNotificationsSection";
-import { initialSettingsTab } from "../lib/settings-tab";
+import { initialSettingsTab, revealScrollLeft } from "../lib/settings-tab";
 import type { SettingsTab } from "../lib/settings-tab";
 import { currentLocale } from "../lib/format";
 import { FIELD_LABEL } from "../components/ui/text-roles";
@@ -69,11 +69,30 @@ export function SettingsPage() {
   const [activeTab, setActiveTab] = useState<SettingsTab>(() =>
     initialSettingsTab(searchParams.get("tab"), isAdmin),
   );
+  // On a phone the five tabs overflow the bar (spec 206): the tab a link opened
+  // on may sit past the edge, so scroll the bar (and only the bar) to it, once.
+  const tabBarRef = useRef<HTMLDivElement>(null);
+  const activeTabRef = useRef<HTMLButtonElement>(null);
+  useEffect(() => {
+    const bar = tabBarRef.current;
+    const tab = activeTabRef.current;
+    if (!bar || !tab) return;
+    const pad = parseFloat(getComputedStyle(bar).paddingRight) || 0;
+    const next = revealScrollLeft(
+      bar.scrollLeft,
+      bar.clientWidth,
+      tab.offsetLeft,
+      tab.offsetWidth,
+      pad,
+    );
+    if (next !== null) bar.scrollLeft = next;
+  }, []);
 
   const tabs: { id: SettingsTab; label: string; adminOnly?: boolean }[] = [
     { id: "general", label: t("settings.tabs.general"), adminOnly: true },
     { id: "account", label: t("settings.tabs.account") },
     { id: "energy", label: t("settings.tabs.energy"), adminOnly: true },
+    { id: "solar", label: t("settings.tabs.solar"), adminOnly: true },
     { id: "admin", label: t("settings.tabs.admin"), adminOnly: true },
   ];
 
@@ -87,25 +106,38 @@ export function SettingsPage() {
         {isAdmin && <VersionBadge />}
       </div>
 
-      {/* Tabs */}
-      <div className="flex items-center gap-1 mb-6 border-b border-border">
-        {visibleTabs.map((tab) => (
-          <button
-            key={tab.id}
-            onClick={() => setActiveTab(tab.id)}
-            className={`
-              px-3 py-2 text-small font-medium transition-colors duration-150
-              border-b-2 -mb-px cursor-pointer
+      {/* Tabs: on a phone the bar bleeds to both screen edges and scrolls
+          sideways, without a visible scrollbar; the cut-off last label is the
+          cue (spec 206). The grey line sits on the wrapper and the scroller
+          overlaps it by 1 px, so the active tab's underline replaces it while
+          nothing overflows the scroller vertically. */}
+      <div className="-mx-4 sm:mx-0 mb-6 border-b border-border">
+        <div
+          ref={tabBarRef}
+          role="tablist"
+          className="relative -mb-px flex items-center gap-1 px-4 sm:px-0 overflow-x-auto whitespace-nowrap [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+        >
+          {visibleTabs.map((tab) => (
+            <button
+              key={tab.id}
+              ref={activeTab === tab.id ? activeTabRef : undefined}
+              role="tab"
+              aria-selected={activeTab === tab.id}
+              onClick={() => setActiveTab(tab.id)}
+              className={`
+              shrink-0 px-3 py-2 text-small font-medium transition-colors duration-150
+              border-b-2 cursor-pointer
               ${
                 activeTab === tab.id
                   ? "border-primary text-primary"
                   : "border-transparent text-text-tertiary hover:text-text-secondary hover:border-border"
               }
             `}
-          >
-            {tab.label}
-          </button>
-        ))}
+            >
+              {tab.label}
+            </button>
+          ))}
+        </div>
       </div>
 
       {/* Tab content */}
@@ -159,8 +191,13 @@ export function SettingsPage() {
         {activeTab === "energy" && isAdmin && (
           <div className="space-y-6">
             <TariffSettings />
-            <ArbiterSettings />
+          </div>
+        )}
+
+        {activeTab === "solar" && isAdmin && (
+          <div className="space-y-6">
             <SolarInstallationSettings />
+            <ArbiterSettings />
           </div>
         )}
 

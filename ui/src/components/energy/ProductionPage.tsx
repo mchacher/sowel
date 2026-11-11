@@ -172,7 +172,7 @@ export function ProductionPage() {
           this page cannot create equipment. */}
       {meters.length > 0 && declaredMeters.length === 0 && isAdmin && (
         <p className="mt-6 text-small text-text-secondary">
-          <Link to="/settings?tab=energy" className="text-primary hover:underline">
+          <Link to="/settings?tab=solar" className="text-primary hover:underline">
             {t("energy.pv.setupHint")}
           </Link>
         </p>

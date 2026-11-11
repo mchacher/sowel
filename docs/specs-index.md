@@ -354,6 +354,7 @@ Specs are grouped by theme and annotated with status:
 | 203 | Electricity price file                                                  | 🚧     | Price file `tariffs/electricity-prices.json` (EDF Tarif Bleu from the CRE open data, nightly PR); `PriceFileSync` reads it daily and adds the contract's prices as tariff versions, past ones after confirmation; amends 202. Unreleased.                             |
 | 204 | Seasonal off-peak hours                                                 | 🚧     | `TariffConfig.summer` (Enedis summer 04-01..10-31, stored not shown): a winter and a summer off-peak schedule, used by `TariffClassifier` and the recipe snapshot; amends 123, 202. Unreleased.                                                                       |
 | 205 | Fixed fee and price changes on the Bilan                                | 🚧     | Bilan shows the prorated fixed fee (`fixedFeeYear`) apart from consumption, the total, and marks price changes (`priceSpans`) in the chart and method card; amends 200, 202. Unreleased.                                                                              |
+| 206 | Solar settings tab                                                      | 🚧     | Settings tab « Solaire » (`?tab=solar`) holds the solar installation and the surplus arbiter, « Énergie » keeps the tariff; scrolling tab bar on phones; amends 163. Unreleased.                                                                                      |
 
 ---
 

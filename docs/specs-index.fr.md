@@ -333,6 +333,7 @@ Les specs sont regroupées par thème et annotées d'un statut :
 | 203 | Fichier de prix de l'électricité                                      | 🚧     | Fichier de prix `tariffs/electricity-prices.json` (EDF Tarif Bleu depuis l'open data CRE, PR nocturne) ; `PriceFileSync` le lit chaque jour et ajoute les prix du contrat en versions tarifaires, les passés après confirmation ; amende 202. Unreleased.             |
 | 204 | Heures creuses saisonnières                                           | 🚧     | `TariffConfig.summer` (été Enedis 04-01..10-31, stocké sans champ) : une plage d'heures creuses d'hiver et une d'été, lues par `TariffClassifier` et l'instantané des recettes ; amende 123, 202. Unreleased.                                                         |
 | 205 | Abonnement et changements de prix dans le Bilan                       | 🚧     | Le Bilan montre l'abonnement au prorata (`fixedFeeYear`) à part de la consommation, le total, et marque les changements de prix (`priceSpans`) dans le graphique et la méthode ; amende 200, 202. Unreleased.                                                         |
+| 206 | Onglet Solaire des réglages                                           | 🚧     | Onglet « Solaire » des réglages (`?tab=solar`) : installation solaire et arbitre de surplus, « Énergie » garde le tarif ; barre d'onglets défilante sur téléphone ; amende 163. Unreleased.                                                                           |
 
 ---
 
