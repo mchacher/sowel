@@ -69,14 +69,14 @@ https://claude.ai/artifact/XzxdKvbMjYzcgSnSWDWK1U, boards `Main`, `Year`, `Phone
 
 ## Acceptance Criteria
 
-- [ ] Month of 31 days, one version at 240 €/year in a non-leap year: fee = 31 × 240 / 365.
-- [ ] A month crossed by a change of fee on day 16: the sum of both parts, each at its own daily rate.
-- [ ] The current month counts the days up to today included; a future period counts nothing.
-- [ ] A version without fee: its days are counted as without fee; no fee at all: no fee block.
-- [ ] Year view: days of the year up to today, each at the rate of its year length (366 in 2028).
-- [ ] The response lists the versions of the period with clamped spans; the chart marks a change inside the
+- [x] Month of 31 days, one version at 240 €/year in a non-leap year: fee = 31 × 240 / 365.
+- [x] A month crossed by a change of fee on day 16: the sum of both parts, each at its own daily rate.
+- [x] The current month counts the days up to today included; a future period counts nothing.
+- [x] A version without fee: its days are counted as without fee; no fee at all: no fee block.
+- [x] Year view: days of the year up to today, each at the rate of its year length (366 in 2028).
+- [x] The response lists the versions of the period with clamped spans; the chart marks a change inside the
       period, never the first part.
-- [ ] The headline, comparisons, chart bars and by-usage figures are unchanged.
+- [x] The headline, comparisons, chart bars and by-usage figures are unchanged.
 
 ## Edge Cases
 
@@ -88,9 +88,9 @@ https://claude.ai/artifact/XzxdKvbMjYzcgSnSWDWK1U, boards `Main`, `Year`, `Phone
 
 ## Docs Delta
 
-| Page (EN and FR)                             | Change                                                              |
-| -------------------------------------------- | ------------------------------------------------------------------- |
-| `docs/user/energy.md` + `.fr.md`             | Bilan: the fee line, the total, the markers, the method card        |
-| `docs/technical/api-reference.md` + `.fr.md` | `/energy/bilan`: `fee`, `priceSpans`                                |
+| Page (EN and FR)                             | Change                                                       |
+| -------------------------------------------- | ------------------------------------------------------------ |
+| `docs/user/energy.md` + `.fr.md`             | Bilan: the fee line, the total, the markers, the method card |
+| `docs/technical/api-reference.md` + `.fr.md` | `/energy/bilan`: `fee`, `priceSpans`                         |
 
 Screenshots retaken: the Bilan screenshots of `docs/user/energy`, if the bill card is in the frame.

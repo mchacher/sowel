@@ -2,8 +2,15 @@
 // be tested without rendering. Every function takes the locale and `t` rather
 // than reading i18n itself (the #730 lesson).
 
-import type { BilanArbiter, BilanComparison, BilanPeriod } from "../../types";
-import { formatPercent } from "../../lib/format";
+import type {
+  BilanArbiter,
+  BilanComparison,
+  BilanFee,
+  BilanPeriod,
+  BilanPriceSpan,
+  TariffPrices,
+} from "../../types";
+import { formatCurrency, formatNumber, formatPercent } from "../../lib/format";
 import { formatEur, formatWh } from "./format";
 
 type T = (key: string, opts?: Record<string, unknown>) => string;
@@ -204,4 +211,107 @@ export function arbiterTileText(
       ? t("energy.bilan.arbiter.since", { date: fullDate(at(a.since), locale) })
       : undefined;
   return { value: formatEur(a.avoided, locale), caption, note };
+}
+
+/** Spec 205 FR3 — the fee block of the bill card. */
+export function feeLines(
+  fee: BilanFee,
+  bill: number,
+  locale: string,
+  t: T,
+): { label: string; amount: string; caption: string; missing: boolean; total: string } {
+  const label =
+    fee.kva !== null
+      ? t("energy.bilan.fee.labelKva", { kva: formatNumber(fee.kva, { maxDecimals: 1, locale }) })
+      : t("energy.bilan.fee.label");
+  const prorata = t("energy.bilan.fee.prorata", { count: fee.days });
+  const caption =
+    fee.daysWithoutFee > 0
+      ? t("energy.bilan.fee.missing", { caption: prorata, count: fee.daysWithoutFee })
+      : prorata;
+  return {
+    label,
+    amount: formatEur(fee.total, locale),
+    caption,
+    missing: fee.daysWithoutFee > 0,
+    total: formatEur(bill + fee.total, locale),
+  };
+}
+
+function isFrench(locale: string): boolean {
+  return locale.toLowerCase().startsWith("fr");
+}
+
+/** « 1er février », « 31 juillet » / "February 1"; the day alone without the month. */
+function spanDay(day: string, locale: string, withMonth: boolean): string {
+  const d = at(day);
+  if (isFrench(locale)) {
+    const n = d.getDate() === 1 ? "1er" : String(d.getDate());
+    return withMonth ? `${n} ${monthName(d, locale)}` : n;
+  }
+  return withMonth ? dayMonth(d, locale) : String(d.getDate());
+}
+
+/** « Du 1er au 31 janvier », « Du 1er février au 31 juillet », « Le 31 mars ». */
+function spanRange(span: BilanPriceSpan, locale: string, t: T): string {
+  if (span.from === span.to) {
+    return t("energy.bilan.method.rangeDay", { date: spanDay(span.from, locale, true) });
+  }
+  // Within one month the month is said once: after the last day in French
+  // (« Du 1er au 31 janvier »), after the first in English ("From January 1 to 31").
+  const sameMonth = span.from.slice(0, 7) === span.to.slice(0, 7);
+  const fr = isFrench(locale);
+  return t("energy.bilan.method.range", {
+    from: spanDay(span.from, locale, !sameMonth || !fr),
+    to: spanDay(span.to, locale, !sameMonth || fr),
+  });
+}
+
+/**
+ * Spec 205 FR4 — the prices of the method card: today's single sentence (with
+ * the fee and the power when known) for one version over the period, else an
+ * intro and one item per span.
+ */
+export function methodSpans(
+  spans: BilanPriceSpan[],
+  prices: TariffPrices,
+  locale: string,
+  t: T,
+): { intro: string; items: string[] } {
+  const kwh = (v: number) => formatCurrency(v, { locale, decimals: 4 });
+  const year = (v: number) => formatCurrency(v, { locale });
+  if (spans.length <= 1) {
+    const span = spans[0];
+    const params = { hp: kwh(prices.hp), hc: kwh(prices.hc) };
+    if (!span || span.fixedFeeYear === null) {
+      return { intro: t("energy.bilan.method.tariff", params), items: [] };
+    }
+    const fee = year(span.fixedFeeYear);
+    const intro =
+      span.kva !== null
+        ? t("energy.bilan.method.tariffFeeKva", {
+            ...params,
+            fee,
+            kva: formatNumber(span.kva, { maxDecimals: 1, locale }),
+          })
+        : t("energy.bilan.method.tariffFee", { ...params, fee });
+    return { intro, items: [] };
+  }
+  const items = spans.map((span) => {
+    const params = { range: spanRange(span, locale, t), hp: kwh(span.hp), hc: kwh(span.hc) };
+    return span.fixedFeeYear === null
+      ? t("energy.bilan.method.span", params)
+      : t("energy.bilan.method.spanFee", { ...params, fee: year(span.fixedFeeYear) });
+  });
+  return { intro: t("energy.bilan.method.changed"), items };
+}
+
+/**
+ * Spec 205 FR4 — where the chart marks a price change: the local day (month
+ * view) or month ("YYYY-MM", year view) each span after the first starts.
+ * None on the day view.
+ */
+export function changeMarkers(period: BilanPeriod, spans: BilanPriceSpan[]): string[] {
+  if (period === "day") return [];
+  return spans.slice(1).map((s) => (period === "month" ? s.from : s.from.slice(0, 7)));
 }

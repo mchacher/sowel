@@ -5,6 +5,7 @@ import {
   CartesianGrid,
   ComposedChart,
   Line,
+  ReferenceLine,
   ResponsiveContainer,
   Tooltip,
   XAxis,
@@ -14,6 +15,7 @@ import type { DotItemDotProps } from "recharts/types/util/types";
 import { CHART_TICK_FONT, CHART_TOOLTIP_FONT } from "../../lib/chart-font";
 import { ENERGY_CHART_Y_AXIS_PX, xTickInterval } from "../../lib/chart-ticks";
 import { formatHourLabel, formatHourRange } from "../../lib/hour-label";
+import { localDateStr } from "../../lib/local-date";
 import { dateLocale } from "../../lib/locale";
 import type { BilanPeriod, BilanPoint } from "../../types";
 import { formatEur } from "./format";
@@ -21,7 +23,8 @@ import { TooltipSeriesRow } from "./TooltipSeriesRow";
 
 // Spec 200 (FR6) — the Bilan's cost bars: paid at peak, paid off-peak, and what
 // solar avoided on top. The year view adds the previous year's bill for the
-// same month as a dashed tick.
+// same month as a dashed tick. Spec 205: a dashed marker where a price change
+// starts, on its day (month view) or its month (year view).
 
 const HP_COLOR = "var(--color-energy-hp)";
 const HC_COLOR = "var(--color-energy-hc)";
@@ -29,6 +32,8 @@ const AVOIDED_COLOR = "var(--color-solar-auto)";
 const PREVIOUS_COLOR = "var(--color-text-tertiary)";
 
 interface Datum {
+  /** The local day ("YYYY-MM-DD") or month ("YYYY-MM") of the bucket, for the markers. */
+  key: string;
   label: string;
   tooltipLabel: string;
   paidHp: number;
@@ -60,7 +65,10 @@ function toData(points: BilanPoint[], period: BilanPeriod, locale: string): Datu
         d.toLocaleDateString(locale, { month: "long", year: "numeric" }),
       );
     }
+    // The buckets carry UTC instants: the local calendar names the day or month.
+    const day = localDateStr(d);
     return {
+      key: period === "year" ? day.slice(0, 7) : day,
       label,
       tooltipLabel,
       paidHp: p.paidHp,
@@ -93,11 +101,14 @@ export function BilanChart({
   period,
   showAvoided,
   previousYear,
+  changes = [],
   height = 260,
 }: {
   points: BilanPoint[];
   period: BilanPeriod;
   showAvoided: boolean;
+  /** Spec 205 — the day or month keys where new prices start (none on the day view). */
+  changes?: string[];
   /** The previous year, for the year view's legend; null elsewhere. */
   previousYear: number | null;
   height?: number;
@@ -111,6 +122,7 @@ export function BilanChart({
   const plotWidth = Math.max(0, chartWidth - ENERGY_CHART_Y_AXIS_PX);
   const halfTick = data.length > 0 ? Math.max(4, Math.min(16, plotWidth / data.length / 2 - 2)) : 8;
   const hasPrevious = previousYear !== null && data.some((d) => d.previousYearBill !== null);
+  const markers = data.filter((d) => changes.includes(d.key)).map((d) => d.label);
 
   return (
     <div>
@@ -205,6 +217,22 @@ export function BilanChart({
               isAnimationActive={false}
             />
           )}
+          {markers.map((label) => (
+            <ReferenceLine
+              key={`change-${label}`}
+              x={label}
+              position="start"
+              stroke={PREVIOUS_COLOR}
+              strokeWidth={1.5}
+              strokeDasharray="4 3"
+              label={{
+                value: t("energy.bilan.chart.newPrices"),
+                position: "insideTopLeft",
+                fontSize: CHART_TICK_FONT,
+                fill: "var(--color-text-secondary)",
+              }}
+            />
+          ))}
           {hasPrevious && (
             <Line
               dataKey="previousYearBill"

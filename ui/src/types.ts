@@ -1942,6 +1942,29 @@ export interface BilanArbiter {
   loads: BilanArbiterLoad[];
 }
 
+/** Spec 205 — the fixed fee of a Bilan period, prorated by day. */
+export interface BilanFee {
+  /** € over the days counted (unrounded). */
+  total: number;
+  /** Local days counted, from the period start to min(period end, today). */
+  days: number;
+  /** Days among them whose version has no fee. */
+  daysWithoutFee: number;
+  /** Power of the version in force on the last day counted, null when unknown. */
+  kva: number | null;
+}
+
+/** Spec 205 — one tariff version over the part of a Bilan period it covers. */
+export interface BilanPriceSpan {
+  /** First and last local day the version covers inside the period, "YYYY-MM-DD". */
+  from: string;
+  to: string;
+  hp: number;
+  hc: number;
+  fixedFeeYear: number | null;
+  kva: number | null;
+}
+
 export interface EnergyBilanResponse {
   period: BilanPeriod;
   from: string;
@@ -1961,6 +1984,10 @@ export interface EnergyBilanResponse {
   /** Empty without sub-meters. */
   usage: BilanUsageRow[];
   arbiter: BilanArbiter;
+  /** Spec 205 — null on the day view, and when no counted day has a fee. */
+  fee: BilanFee | null;
+  /** Spec 205 — versions in force over the period, oldest first; one entry when nothing changes. */
+  priceSpans: BilanPriceSpan[];
 }
 
 export interface TariffSlot {
