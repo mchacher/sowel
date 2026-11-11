@@ -121,9 +121,13 @@ describe("TariffSettings schedule (spec 204)", () => {
     const heads = screen.getAllByTestId("season-head");
     expect(heads).toHaveLength(2);
     for (const head of heads) expect(head.className).toContain("h-5");
+    // The real check is the height: the h4 inherits the body's 20 px line,
+    // which `h-5` holds; jsdom has no layout, so the classes stand in for it.
     const pill = screen.getByText("Current");
-    expect(pill.className).not.toMatch(/\bpy-/);
+    expect(heads.some((head) => head.contains(pill))).toBe(true);
+    expect(pill.className).not.toMatch(/\b(p|py|pt|pb|my|mt|mb)-/);
     expect(pill.className).toContain("leading-4.5");
+    for (const head of heads) expect(head.querySelector("h4")!.className).not.toMatch(/leading-/);
   });
 
   it("marks winter in force in January", async () => {
