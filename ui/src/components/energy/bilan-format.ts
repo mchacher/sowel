@@ -13,8 +13,7 @@ import type {
 } from "../../types";
 import { formatCurrency, formatNumber, formatPercent } from "../../lib/format";
 import { formatEur, formatWh } from "./format";
-
-type T = (key: string, opts?: Record<string, unknown>) => string;
+import type { Translate } from "../../i18n/translate";
 
 function at(date: string): Date {
   return new Date(date + "T12:00:00");
@@ -45,7 +44,7 @@ export function billLabel(
   date: string,
   today: string,
   locale: string,
-  t: T,
+  t: Translate,
 ): string {
   const d = at(date);
   const now = at(today);
@@ -93,7 +92,7 @@ export function comparisonLines(
   c: BilanComparison | null,
   date: string,
   locale: string,
-  t: T,
+  t: Translate,
 ): { main: string; sub?: string } | null {
   const lines = comparisonText(c, date, locale, t);
   if (!lines) return null;
@@ -108,7 +107,7 @@ function comparisonText(
   c: BilanComparison | null,
   date: string,
   locale: string,
-  t: T,
+  t: Translate,
 ): { main: string; sub?: string } | null {
   if (!c) return null;
   const d = at(date);
@@ -184,7 +183,7 @@ export function energyLabel(
   date: string,
   today: string,
   locale: string,
-  t: T,
+  t: Translate,
 ): string {
   const d = at(date);
   if (period === "day") {
@@ -212,7 +211,7 @@ export function energyLines(
   energy: BilanEnergy,
   hasProduction: boolean,
   locale: string,
-  t: T,
+  t: Translate,
 ): { total: string; parts: EnergyPart[]; sentence: string } {
   const gridWh = energy.gridHpWh + energy.gridHcWh;
   const part = (key: EnergyPart["key"], wh: number, label: string): EnergyPart => ({
@@ -254,7 +253,7 @@ export function energyComparisonLines(
   date: string,
   today: string,
   locale: string,
-  t: T,
+  t: Translate,
 ): { main: string; sub?: string } | null {
   const lines = energyComparisonText(c, gridWh, date, today, locale, t);
   if (!lines) return null;
@@ -276,7 +275,7 @@ function energyComparisonText(
   date: string,
   today: string,
   locale: string,
-  t: T,
+  t: Translate,
 ): { main: string; sub?: string } | null {
   if (!c) return null;
   const d = at(date);
@@ -351,7 +350,7 @@ export function averagePrice(
   energy: BilanEnergy,
   fee: BilanFee | null,
   locale: string,
-  t: T,
+  t: Translate,
 ): string | null {
   const kwh = (energy.gridHpWh + energy.gridHcWh) / 1000;
   if (kwh <= 0) return null;
@@ -373,7 +372,7 @@ export function showArbiterTile(a: BilanArbiter): boolean {
 export function arbiterTileText(
   a: BilanArbiter,
   locale: string,
-  t: T,
+  t: Translate,
 ): { value: string | null; caption: string; note?: string } {
   if (a.measured === "none") {
     return {
@@ -407,7 +406,7 @@ export function feeLines(
   fee: BilanFee,
   bill: number,
   locale: string,
-  t: T,
+  t: Translate,
 ): { label: string; amount: string; caption: string; missing: boolean; total: string } {
   const label =
     fee.kva !== null
@@ -442,7 +441,7 @@ function spanDay(day: string, locale: string, withMonth: boolean): string {
 }
 
 /** « Du 1er au 31 janvier », « Du 1er février au 31 juillet », « Le 31 mars ». */
-function spanRange(span: BilanPriceSpan, locale: string, t: T): string {
+function spanRange(span: BilanPriceSpan, locale: string, t: Translate): string {
   if (span.from === span.to) {
     return t("energy.bilan.method.rangeDay", { date: spanDay(span.from, locale, true) });
   }
@@ -465,7 +464,7 @@ export function methodSpans(
   spans: BilanPriceSpan[],
   prices: TariffPrices,
   locale: string,
-  t: T,
+  t: Translate,
 ): { intro: string; items: string[] } {
   const kwh = (v: number) => formatCurrency(v, { locale, decimals: 4 });
   const year = (v: number) => formatCurrency(v, { locale });

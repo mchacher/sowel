@@ -13,6 +13,7 @@ import { VmcControl } from "./VmcControl";
 import { useEquipmentState } from "./useEquipmentState";
 import { TYPE_LABELS } from "./equipment-type-meta";
 import { equipmentLinkState } from "../../lib/equipment-origin";
+import type { Translate } from "../../i18n/translate";
 
 interface EquipmentCardProps {
   equipment: EquipmentWithDetails;
@@ -25,10 +26,7 @@ interface EquipmentCardProps {
  * is asleep (`Off`) or lit (`<pct> %`).  Returns null when the data
  * binding is missing or the value is not numeric.
  */
-function displayBrightnessSummary(
-  equipment: EquipmentWithDetails,
-  t: (key: string, opts?: Record<string, unknown>) => string,
-): string | null {
+function displayBrightnessSummary(equipment: EquipmentWithDetails, t: Translate): string | null {
   const binding = equipment.dataBindings.find((b) => b.category === "display_brightness");
   if (!binding) return null;
   const v = binding.value;

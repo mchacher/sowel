@@ -12,6 +12,7 @@ import { formatClockTime, formatNumber, formatTemperature } from "./format";
  */
 
 import type { ActivityItem } from "../types";
+import type { Translate } from "../i18n/translate";
 
 export type DayPart = "night" | "morning" | "afternoon" | "evening";
 
@@ -83,8 +84,6 @@ export function groupActivityLog<T extends { timestamp: number } = ActivityItem>
   return groups;
 }
 
-type Translate = (key: string, opts?: Record<string, unknown>) => string;
-
 /**
  * The separator label of a period: « Cet après-midi », « Hier soir »,
  * « Lundi matin », « 2 novembre, dans la nuit »…
@@ -131,11 +130,7 @@ export function logSpanLabel(
  * An order's raw value as the activity log shows it (spec 196): « Marche / Arrêt »
  * for ON/OFF, numbers through lib/format, a setpoint or temperature in degrees.
  */
-export function displayValue(
-  raw: string,
-  alias: string,
-  t: (key: string, opts?: Record<string, unknown>) => string,
-): string {
+export function displayValue(raw: string, alias: string, t: Translate): string {
   const v = raw.trim();
   // A VMC speed change (issue #1122) reads « V1 / V2 », as on the equipment.
   if (alias === "speed" && (v === "v1" || v === "v2")) return t(`equipments.vmc.${v}`);

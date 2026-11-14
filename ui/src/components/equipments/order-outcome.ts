@@ -1,5 +1,6 @@
 import { createContext } from "react";
 import { useOrderOutcomes, type OrderOutcomeEntry } from "../../store/useOrderOutcomes";
+import type { Translate } from "../../i18n/translate";
 
 /**
  * Spec 188 — the equipment a dashboard tile belongs to. `EquipmentWidget`
@@ -17,10 +18,7 @@ export function useOrderOutcome(equipmentId: string | null) {
 const KNOWN_FAULTS = new Set(["BOTTOM", "WIRING"]);
 
 /** The line's text, in the viewer's language. */
-export function outcomeText(
-  t: (key: string, o?: Record<string, string>) => string,
-  e: OrderOutcomeEntry,
-): string {
+export function outcomeText(t: Translate, e: OrderOutcomeEntry): string {
   switch (e.status) {
     case "pending":
       return t("orderOutcome.pending");

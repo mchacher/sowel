@@ -1,4 +1,5 @@
 import { parseReadingTime } from "../../../src/shared/reading-freshness";
+import type { Translate } from "../i18n/translate";
 
 /**
  * "how long ago", compactly: `45s`, `12 min`, `3 h`, `2 j`.
@@ -17,10 +18,7 @@ import { parseReadingTime } from "../../../src/shared/reading-freshness";
  * Called without it the output is byte-identical to before, so no existing
  * surface moves — those are the i18n pass this still defers to.
  */
-export function formatRelative(
-  iso: string | null,
-  t?: (key: string, opts?: Record<string, unknown>) => string,
-): string {
+export function formatRelative(iso: string | null, t?: Translate): string {
   const ms = parseReadingTime(iso);
   if (ms === null) return "";
   const unit = (key: string, fallback: string, value: number): string =>

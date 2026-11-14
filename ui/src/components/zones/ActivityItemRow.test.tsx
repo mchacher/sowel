@@ -5,6 +5,7 @@ import { ActivityItemRow } from "./ActivityItemRow";
 import { displayValue } from "../../lib/activity-log";
 import type { ActivityItem } from "../../types";
 import { useZones } from "../../store/useZones";
+import type { Translate } from "../../i18n/translate";
 
 // Spec 188 O6 — an order-outcome alarm reads in the viewer's language in the
 // activity feed too; any other alarm keeps the engine's text.
@@ -95,7 +96,7 @@ describe("ActivityItemRow — order values", () => {
 
   it("reads ON / OFF as Marche / Arrêt, numbers the French way, setpoints in degrees", async () => {
     await i18n.changeLanguage("fr");
-    const t = i18n.t.bind(i18n) as (k: string, o?: Record<string, unknown>) => string;
+    const t: Translate = i18n.t.bind(i18n);
     expect(displayValue("ON", "state", t)).toBe("Marche");
     expect(displayValue("OFF", "state", t)).toBe("Arrêt");
     expect(displayValue("20.5", "setpoint", t)).toBe("20,5°");

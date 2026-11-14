@@ -34,6 +34,7 @@ import { detectLiveStaleness, type LiveStalenessEntry } from "./live-staleness";
 import { liveHeadline, BALANCE_THRESHOLD_W, type LiveHeadline } from "./live-headline";
 import type { FlowHeadline, FlowShareBar } from "../flow/flow-geometry";
 import { useStalenessClock } from "../../hooks/useStalenessClock";
+import type { Translate } from "../../i18n/translate";
 
 // Sowel energy palette (matches EnergyBarChart.tsx + extends with grid colours)
 // Spec 148 — energy palette tokens (dark-mode correct), shared across energy UI.
@@ -359,8 +360,6 @@ function LiveDiagram({
   );
 }
 
-type T = (key: string, opts?: Record<string, unknown>) => string;
-
 /**
  * A share bar from the watts on each route, in order. Whole percentages that
  * add up to 100: the last part is rounded, the first takes the remainder, so
@@ -400,7 +399,7 @@ const HEADLINE_DOT: Record<LiveHeadline["kind"], string> = {
 };
 
 /** The balance line's words, from the pure verdict (spec 197, FR-E1.1). */
-function buildHeadline(h: LiveHeadline, t: T): FlowHeadline {
+function buildHeadline(h: LiveHeadline, t: Translate): FlowHeadline {
   const value = nodePower(h.valueW);
   const consumption = formatPower(h.consumptionW, { step: 5 });
   let sentence: string | null = null;
@@ -448,7 +447,7 @@ function buildAriaLabel(
   h: LiveHeadline,
   gridPower: number | null,
   solarPower: number | null,
-  t: T,
+  t: Translate,
   solarBar?: FlowShareBar,
 ): string {
   const power = (w: number | null) => formatPower(w === null ? null : Math.abs(w), { step: 5 });
