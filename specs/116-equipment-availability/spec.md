@@ -97,7 +97,7 @@ export const STREAMING_CATEGORIES: ReadonlySet<DataCategory> = new Set([
   "co2",
   "voc",
   "noise",
-  "battery",
+  "battery", // removed by #1242
   "setpoint",
   "pool_water_temperature",
   "pool_temperature_setpoint",
@@ -118,7 +118,7 @@ export const STREAMING_TIMEOUT_MS: Record<string, number> = {
   co2: 65 * 60 * 1000,
   voc: 65 * 60 * 1000,
   noise: 65 * 60 * 1000,
-  battery: 2 * 60 * 60 * 1000, // 2 h — battery reports are sparse
+  battery: 2 * 60 * 60 * 1000, // 2 h — battery reports are sparse (removed by #1242)
   setpoint: 60 * 60 * 1000, // 1 h
   pool_water_temperature: 65 * 60 * 1000,
   pool_temperature_setpoint: 60 * 60 * 1000,

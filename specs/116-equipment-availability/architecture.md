@@ -105,7 +105,7 @@ export const STREAMING_CATEGORIES: ReadonlySet<DataCategory> = new Set([
   "co2",
   "voc",
   "noise",
-  "battery",
+  "battery", // removed by #1242
   "setpoint",
   "pool_water_temperature",
   "pool_temperature_setpoint",
@@ -125,7 +125,7 @@ export const STREAMING_TIMEOUT_MS: Partial<Record<DataCategory, number>> = {
   co2: 15 * 60 * 1000,
   voc: 15 * 60 * 1000,
   noise: 15 * 60 * 1000,
-  battery: 2 * 60 * 60 * 1000,
+  battery: 2 * 60 * 60 * 1000, // removed by #1242
   setpoint: 60 * 60 * 1000,
   pool_water_temperature: 15 * 60 * 1000,
   pool_temperature_setpoint: 60 * 60 * 1000,

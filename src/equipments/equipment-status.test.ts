@@ -369,20 +369,22 @@ describe("deriveEquipmentStatus — button silence exemption (issue #348)", () =
     expect(result.reason).toBeNull();
   });
 
-  it("button: stale battery binding does not degrade", () => {
+  it("button: stale streaming binding does not degrade", () => {
+    // A streaming category that is still judged on freshness: `battery` no
+    // longer is (#1242), so it would pass without the button exemption.
     const action = makeBinding({ id: "b1", category: "action" });
-    const battery = makeBinding({
+    const temperature = makeBinding({
       id: "b2",
-      alias: "battery",
-      category: "battery",
-      lastUpdated: "2026-05-25 08:00:00Z", // > 2h old
+      alias: "temperature",
+      category: "temperature",
+      lastUpdated: "2026-05-25 08:00:00Z", // > 65 min old
     });
     const device = makeDevice({ status: "online" });
     const map = new Map([
       [action.id, device],
-      [battery.id, device],
+      [temperature.id, device],
     ]);
-    const result = deriveEquipmentStatus([action, battery], map, NOW, "button");
+    const result = deriveEquipmentStatus([action, temperature], map, NOW, "button");
     expect(result.status).toBe("online");
   });
 
