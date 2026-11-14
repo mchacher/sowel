@@ -1,5 +1,7 @@
 import type { ReactNode } from "react";
 import { Plus } from "lucide-react";
+import type { EquipmentFamily } from "../../types";
+import { FAMILY_CLASSES } from "../../lib/equipment-family";
 
 /**
  * A Maison panel (Équipements, Comportements, Activité) as slices under a lid
@@ -47,10 +49,11 @@ export function Panel({
 }
 
 /**
- * The header of one slice of a panel body (a category: Thermostat, Énergie…;
- * or Modes, Recettes): icon, label in text colour, count at the right, then
- * the slice's own action when it has one. `solo` is a slice with no rows
- * under its header.
+ * The header of one slice of a panel body (an equipment section: Éclairages,
+ * Énergie…; or Modes, Recettes): icon, label, count at the right, then the
+ * slice's own action when it has one. `solo` is a slice with no rows under its
+ * header. With a `family` (spec 208) the label and the icon take the family's
+ * ink and the icon sits on a square of its pale; without one, text colour.
  */
 export function SliceHeader({
   icon,
@@ -58,19 +61,33 @@ export function SliceHeader({
   count,
   action,
   solo = false,
+  family = null,
 }: {
   icon: ReactNode;
   label: string;
   count?: ReactNode;
   action?: ReactNode;
   solo?: boolean;
+  family?: EquipmentFamily | null;
 }) {
+  const tone = family ? FAMILY_CLASSES[family] : null;
   return (
     <div
       className={`flex items-center gap-2 px-[1.1rem] pt-3 ${solo ? "pb-3 min-h-[48px]" : "pb-0.5 min-h-[40px]"}`}
     >
-      <span className="text-text-secondary flex-shrink-0">{icon}</span>
-      <span className="text-body font-semibold text-text truncate">{label}</span>
+      {tone ? (
+        <span
+          aria-hidden="true"
+          className={`flex-shrink-0 inline-flex items-center justify-center size-6.5 rounded-sm ${tone.tile}`}
+        >
+          {icon}
+        </span>
+      ) : (
+        <span className="text-text-secondary flex-shrink-0">{icon}</span>
+      )}
+      <span className={`text-body font-semibold truncate ${tone ? tone.ink : "text-text"}`}>
+        {label}
+      </span>
       {count !== undefined && (
         <span className="ml-auto text-small font-medium text-text-tertiary tabular-nums whitespace-nowrap">
           {count}

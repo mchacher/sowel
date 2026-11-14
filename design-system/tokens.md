@@ -48,11 +48,12 @@ One colour, one meaning (spec 196). Use the Tailwind role, never a raw hue. Ever
 
 Who may use what:
 
-- **Amber** only for something on or running now: light, switch, plug, water heater heating, VMC, pump, compressor, appliance in a cycle, timer running, charger charging, valve open (water flows), solar command on. Not for alerts, energy, plugins, decoration, links or action buttons. On a fill, the content is `on-active`; as text, `active-ink`. The sun glyph (sunrise, sunny weather) is the one tolerated amber icon; its text stays neutral.
+- **Amber** only for something on or running now: light, switch, plug, water heater heating, VMC, pump, compressor, appliance in a cycle, timer running, charger charging, valve open (water flows), solar command on. Not for alerts, energy, plugins, decoration, links or action buttons. On a fill, the content is `on-active`; as text, `active-ink`. The sun glyph (sunrise, sunny weather) is the one tolerated amber icon; its text stays neutral. On an equipment **control** (power button, dimmer) amber says « on » whatever the family; the equipment **tile** of a running equipment takes its family fill instead (§1.5), which for the lighting family is amber itself.
 - **Orange** (`warning`, `warning-ink`) when something asks for attention but is not a fault: low battery, degraded, connecting, partly offline, waiting for surplus, stale reading, fallback time zone, fairly reliable forecast, unconfirmed order.
 - **Red** (`error`) for faults: failure, offline, leak, smoke, critical battery, delete, restore a backup, surplus revoked. **`heat`** for heating.
 - **Green** (`success`) for what works as expected: connected, online, saved, mode active, access armed. Not for open, closed, changed or solar production (energy palette).
-- **Neutral** (`text`, `text-secondary`, icons `text-tertiary`) for positions and openings (open and closed alike: the word and the icon say it), meters and energy values, plugins, equipment categories, decoration.
+- **Neutral** (`text`, `text-secondary`, icons `text-tertiary`) for positions and openings (open and closed alike: the word and the icon say it), meters and energy values, plugins, the neutral equipment sections (§1.5), decoration.
+- **Family colours** (§1.5) only on the equipment tile and on the title of its Maison section. Never on a pill, a control, a chart or a link: a family says what the equipment is about, not its state.
 - **Primary** for selection, links, the main action, a changed field, and motion detected (activity). A filled control takes `primary-fill` (see §1.1), text and icons take `primary`.
 - **Info** (`info`, `info-ink`) for informational categories (humidity, contacts) in the device data table.
 - Tinted status backgrounds stop at `/10`: at `/15` `success` and `warning-ink` drop under 4.5:1.
@@ -124,17 +125,40 @@ These are NOT decorative. Each maps to a specific state.
 --red-50:#FBE9E1     --red-500:#B42318
 ```
 
-### 1.5 Equipment category tints
+### 1.5 Equipment families (spec 208)
 
-Used **only** on equipment row icons (`.eq__icon--{type}`). They give a glanceable visual cue per category. **Do not propagate** these colors to category headers (the user explicitly rejected that — sub-cat headers stay neutral).
+An equipment belongs to the family of what it acts on or measures. The family colours the **tile** of the equipment (Maison rows, the Equipments page, the equipment page header) and the **title** of its section in the Maison view; nothing else. This reverses the spec 196 rule of neutral category headers, on the maintainer's decision of 2026-11-14 (spec 208, design canvas boards Y0–Y7).
 
-| Type     | `--{type}-50`  | `--{type}-500`  | Hex (Hybrid)          | Hex (Dark)            |
-| -------- | -------------- | --------------- | --------------------- | --------------------- |
-| Shutters | `--shutter-50` | `--shutter-500` | `#E8EBEE` / `#4F5763` | `#222C3A` / `#94A3B8` |
-| Sensors  | `--sensor-50`  | `--sensor-500`  | `#EBF2EC` / `#4F7559` | `#203024` / `#6BCF8C` |
-| Media    | `--media-50`   | `--media-500`   | `#EAE9F2` / `#5759A5` | `#282A3A` / `#9D9FE6` |
+| Family     | Section (FR / EN)                                         | Types                                                            |
+| ---------- | --------------------------------------------------------- | ---------------------------------------------------------------- |
+| `lighting` | Éclairages / Lights                                       | the three light types                                            |
+| `openings` | Ouvrants / Openings                                       | shutter, awning, door, gate, pool cover                          |
+| `climate`  | Climat / Climate                                          | thermostat, heater, VMC                                          |
+| `water`    | Eau / Water                                               | water valve, pool pump, pool heat pump, water heater             |
+| `energy`   | Énergie / Energy                                          | the three meters, solar panel, UPS, EV charger, electric vehicle |
+| `sensors`  | Capteurs / Sensors                                        | sensor, weather station, forecast, camera                        |
+| none       | Multimédia, Électroménager, Prises, Commandes, Afficheurs | media player, appliance, switch, button, display                 |
 
-The dark squares take the lightness of `--n-100` with the category's hue: 1.14:1 on the ocean night card, the icon at 5.5:1 or more on them (`ui/src/lib/color-roles.test.ts`).
+A switch can be given a family (`Equipment.family`): a plug that drives a radiator sits in Climat. The rule and the classes live in `ui/src/lib/equipment-family.ts`.
+
+Four tokens per family, `--fam-<family>-50 | -ink | -fill | -on`, exposed as `bg-fam-<family>-50`, `text-fam-<family>-ink`, `bg-fam-<family>-fill`, `text-fam-<family>-on`:
+
+| Family     | `-50` (hybrid / dark) | `-ink`                | `-fill`               | `-on`                 |
+| ---------- | --------------------- | --------------------- | --------------------- | --------------------- |
+| `lighting` | `#FFF3CC` / `#372A16` | `#8A6100` / `#F2BC6E` | `#F2C035` / `#F2BC6E` | `#1C1A14` / `#1C1A14` |
+| `openings` | `#E7EBF8` / `#212949` | `#3D55A3` / `#A3B3F0` | `#4F67BA` / `#7F95E0` | `#FFFFFF` / `#0E191F` |
+| `climate`  | `#FBE7DF` / `#3E241B` | `#A8441C` / `#F0936B` | `#C4572E` / `#E07A52` | `#FFFFFF` / `#0E191F` |
+| `water`    | `#DDF3F1` / `#10302D` | `#00756B` / `#5FC9BC` | `#00867A` / `#3DAA9E` | `#FFFFFF` / `#0E191F` |
+| `energy`   | `#E3F2E7` / `#16301E` | `#1E7B34` / `#74C77F` | `#2D8F3E` / `#4CA85C` | `#FFFFFF` / `#0E191F` |
+| `sensors`  | `#EEE8F8` / `#2F2545` | `#6A4BA6` / `#B9A3EC` | `#7C61A8` / `#9A82D6` | `#FFFFFF` / `#0E191F` |
+
+- **At rest** a tile is `-50` with the `-ink` icon; **while the equipment runs** (a light or relay on, a radiator in comfort, a thermostat on, a pool heat pump not off, a VMC at any speed, a charger or a car charging) it is `-fill` with the `-on` icon. A lit light keeps its glow. Openings, meters and sensors never run: a position or a reading is said by the row's pill.
+- A **neutral** tile is `bg-border-light text-text-secondary` and never changes; the state is on the control (the amber power button) and the pills.
+- The **section title** and its icon are `-ink`; the icon sits on a 26 px `-50` square with the 6 px control radius. A neutral section keeps a text-colour title.
+- **Lighting is the amber role** (`-fill` = `--a-500`, `-ink` = `--a-ink`, `-on` = `--a-on`); **energy is the solar green** of the energy palette. Openings are indigo because the brand blue and the info blue sit 5° from a plain blue; climate is brick, 12° from the warning orange and the error red, told apart by lightness and context.
+- Checked by `ui/src/lib/color-roles.test.ts`, both themes: `-ink` ≥ 4.5:1 on the card and on `-50`, `-on` ≥ 3:1 on `-fill`, the dark `-50` ≥ 1.1:1 on the night card.
+
+`--shutter-50` / `--shutter-500` stay for the shutter state pill (« Fermé ») and the shutter slider; the old `--sensor-*` and `--media-*` tints are gone.
 
 ### 1.5b Illustrations
 
@@ -384,3 +408,4 @@ See [migration.md](migration.md) for the broader strategy.
 | 2026-11-07 | Radii 6 / 10 / 16, cards without border (`card`), wells, dark category tints (7b)   |
 | 2026-11-07 | Energy palette: dark values told apart, series palette `--series-1…8` (slice E)     |
 | 2026-11-08 | `--solar-ink` for solar words; flow ribbons `flow-wave`, `--flow-tint` (spec 197)   |
+| 2026-11-14 | Equipment families `--fam-*` replace the category tints; coloured titles (spec 208) |

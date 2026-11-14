@@ -336,6 +336,10 @@ export type EquipmentType =
   // src/shared/electric-vehicle-contract.ts.
   | "electric_vehicle";
 
+/** Spec 208 — what an equipment acts on or measures. Only a `switch` stores
+ *  one (`Equipment.family`); every other type has a fixed family, or none. */
+export type EquipmentFamily = "lighting" | "openings" | "climate" | "water" | "energy" | "sensors";
+
 /** Spec 160 — one coplanar group of panels. */
 export interface SolarPlane {
   tiltDeg: number;
@@ -436,6 +440,8 @@ export interface Equipment {
   /** Spec 195 — negative power on this meter is local production (a panel
    *  wired behind it), not consumption. Default false. */
   localProduction?: boolean;
+  /** Spec 208 — a switch's family; absent / null = the plugs. */
+  family?: EquipmentFamily | null;
   /** Spec 191 — a plug-in hybrid shows no cost per 100 km. */
   plugInHybrid?: boolean;
   /** Spec 193 — an EV charger's usual vehicle: breaks a tie when several

@@ -9,17 +9,14 @@ import {
   isDoorOpenForCount,
   type DoorState,
 } from "../../../../src/shared/door-state";
-import {
-  getSensorIcon,
-  getSensorIconColor,
-  getSensorBindings,
-  getAllBatteryBindings,
-} from "./sensorUtils";
+import { getSensorIcon, getSensorBindings, getAllBatteryBindings } from "./sensorUtils";
 import { findDataByCategory, findOrderByCategory } from "./bindingUtils";
 import { thermostatPowerStateBinding } from "../../lib/thermostat-state";
 import { useWebSocket } from "../../store/useWebSocket";
 import { formatDataValue, formatDuration } from "../../lib/format";
 import { gateStateOf } from "../dashboard/gate-confirm";
+import { familyOf, tileClasses } from "../../lib/equipment-family";
+import { isRunning } from "./equipment-running";
 
 export function useEquipmentState(equipment: EquipmentWithDetails) {
   // Classification
@@ -134,42 +131,12 @@ export function useEquipmentState(equipment: EquipmentWithDetails) {
           ? createElement(shutterIsOpen ? DoorOpen : DoorClosed, { size: 18, strokeWidth: 1.5 })
           : TYPE_ICONS[equipment.type];
 
-  // Gate state for icon color — by category, like GateControl (spec 196).
+  // Gate state, by category, like GateControl (spec 196).
   const gateIsOpen = isGate && gateStateOf(equipment) === "open";
 
-  const iconColor = isMediaPlayer
-    ? isOn
-      ? "bg-primary/10 text-primary"
-      : "bg-border-light text-text-tertiary"
-    : isAppliance
-      ? isOn
-        ? "bg-active-bg text-active-ink"
-        : "bg-border-light text-text-tertiary"
-      : isEnergyMeter
-        ? "bg-primary/10 text-primary"
-        : isSensor
-          ? getSensorIconColor(equipment.dataBindings)
-          : isThermostat || isPoolHeatPump
-            ? isOn
-              ? "bg-heat/10 text-heat"
-              : "bg-border-light text-text-tertiary"
-            : isHeater
-              ? !isOn // fil pilote: relay OFF = comfort (warm)
-                ? "bg-heat/10 text-heat"
-                : "bg-border-light text-text-tertiary"
-              : isShutterFamily
-                ? shutterIsOpen
-                  ? "bg-primary/10 text-primary"
-                  : "bg-border-light text-text-tertiary"
-                : isGate
-                  ? gateIsOpen
-                    ? "bg-primary/10 text-primary"
-                    : "bg-border-light text-text-tertiary"
-                  : isLight && isOn
-                    ? "bg-active-bg text-active-ink"
-                    : isOn
-                      ? "bg-primary/10 text-primary"
-                      : "bg-border-light text-text-tertiary";
+  // Spec 208 — the tile takes its family's pale at rest and its fill while the
+  // equipment runs; a neutral tile never changes.
+  const iconColor = tileClasses(familyOf(equipment), isRunning(equipment));
 
   return {
     isLight,

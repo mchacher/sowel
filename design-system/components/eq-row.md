@@ -20,23 +20,23 @@
 
 ## Variants
 
-The equipment type drives the **icon** (background tint + icon glyph) and the **right-side controls**. The base grid is the same.
+The equipment type drives the **icon glyph** and the **right-side controls**; its **family** (spec 208, [tokens.md §1.5](../tokens.md)) drives the icon square's colours: the family pale and ink at rest, the family fill and on colour while the equipment runs, a neutral square for Multimédia, Électroménager, Prises, Commandes and Afficheurs. The `.eq__icon--{type}` classes below are the mockup's; production uses `tileClasses(family, running)` from `ui/src/lib/equipment-family.ts`. The base grid is the same.
 
-| Type               | Icon class                                                                      | Right controls                                          | Example                   |
-| ------------------ | ------------------------------------------------------------------------------- | ------------------------------------------------------- | ------------------------- |
-| `light_onoff`      | `.eq__icon--light` (or `--light-on` when on)                                    | `.power-btn`                                            | `Spots` row               |
-| `light_dimmable`   | `.eq__icon--light` / `--light-on`                                               | `.eq__slider` + `.eq__value` + `.power-btn`             | `Appliques x 2`           |
-| `shutter`          | `.eq__icon--shutter`                                                            | `.eq__slider--shutter` + `.chip-state` + `.shutter-grp` | `Volet Ouest`             |
-| `sensor`           | `.eq__icon--sensor`                                                             | `.sensor-val` + `.chip-state`                           | `PIRL · 2548 lx · RAS`    |
-| `media_player`     | `.eq__icon--media`                                                              | `.chip-state` ("OFF")                                   | `TV`                      |
-| `thermostat`       | inline-styled icon (info color, or amber when heating — `.therm-icon--heating`) | `.therm-current` + `.therm-target` (±) + `.power-btn`   | `PAC`                     |
-| `energy_meter`     | inline-styled icon (amber)                                                      | `.energy-val` + meta                                    | `Shelly Grid · 13.19 kWh` |
-| `weather_forecast` | inline-styled icon (info)                                                       | `.forecast-row` (5 days inline)                         | `Prévisions Météo`        |
-| `button` (remote)  | neutral icon                                                                    | `.chip-state--press` ("single 14h27")                   | `Remote Marc`             |
-| `gate`             | green-tinted icon                                                               | `.chip-state` + single `.gate-cmd` button               | `Portail jardin`          |
-| `water_valve`      | cyan-tinted icon                                                                | `.water-val` + `.chip-state` + `.power-btn`             | `Vanne potager`           |
+| Type               | Family of the icon square          | Right controls                                          | Example                  |
+| ------------------ | ---------------------------------- | ------------------------------------------------------- | ------------------------ |
+| `light_onoff`      | `lighting` (fill and glow when on) | `.power-btn`                                            | `Spots` row              |
+| `light_dimmable`   | `lighting`                         | `.eq__slider` + `.eq__value` + `.power-btn`             | `Appliques x 2`          |
+| `shutter`          | `openings` (never fills)           | `.eq__slider--shutter` + `.chip-state` + `.shutter-grp` | `Volet Ouest`            |
+| `sensor`           | `sensors` (never fills)            | `.sensor-val` + `.chip-state`                           | `PIRL, 2548 lx, RAS`     |
+| `media_player`     | none (Multimédia)                  | `.chip-state` ("OFF")                                   | `TV`                     |
+| `thermostat`       | `climate` (fill when on)           | `.therm-current` + `.therm-target` (±) + `.power-btn`   | `PAC`                    |
+| `energy_meter`     | `energy` (never fills)             | `.energy-val` + meta                                    | `Shelly Grid, 13.19 kWh` |
+| `weather_forecast` | `sensors`                          | `.forecast-row` (5 days inline)                         | `Prévisions Météo`       |
+| `button` (remote)  | none (Commandes)                   | `.chip-state--press` ("single 14h27")                   | `Remote Marc`            |
+| `gate`             | `openings`                         | `.chip-state` + single `.gate-cmd` button               | `Portail jardin`         |
+| `water_valve`      | `water` (fill when open)           | `.water-val` + `.chip-state` + `.power-btn`             | `Vanne potager`          |
 
-The full list of 21 equipment types maps to one of these visual shapes — see [components.md § Equipment type coverage](../components.md).
+Every equipment type maps to one of these visual shapes — see [components.md § Equipment type coverage](../components.md).
 
 ---
 
@@ -52,14 +52,16 @@ The full list of 21 equipment types maps to one of these visual shapes — see [
 
 ### Icon-level (the "live" cue)
 
-| State           | Class                                                  | Effect                                                                        |
-| --------------- | ------------------------------------------------------ | ----------------------------------------------------------------------------- |
-| Off             | base `--icon-bg` (light tint) + `--icon-fg` (mid tint) | calm, neutral                                                                 |
-| **Light on**    | `.eq__icon--light-on`                                  | bg switches to `var(--a-500)` (amber), fg becomes `--a-on`, **animated glow** |
-| Shutter closed  | (data-driven slider position)                          | slider knob navy, chip-state shows "Fermé"                                    |
-| Sensor detected | `.chip-state--detected`                                | green tinted "Détecté Xs"                                                     |
+| State           | Classes (spec 208)                          | Effect                                                                         |
+| --------------- | ------------------------------------------- | ------------------------------------------------------------------------------ |
+| At rest         | `bg-fam-<family>-50 text-fam-<family>-ink`  | the family's pale square, its ink icon                                         |
+| **Running**     | `bg-fam-<family>-fill text-fam-<family>-on` | the family's full colour; a lit light (amber fill) keeps its **animated glow** |
+| Neutral section | `bg-border-light text-text-secondary`       | never changes: the state is on the power button and the pills                  |
+| Offline         | the at-rest classes, 55 % opacity           | muted                                                                          |
+| Shutter closed  | (data-driven slider position)               | slider knob navy, chip-state shows "Fermé"                                     |
+| Sensor detected | `.chip-state--detected`                     | "Détecté Xs" pill; the sensor's tile stays at rest                             |
 
-The light-on state is the **single accent moment** of the entire UI. Reserved exclusively to "a light is on right now."
+Running means: a light, plug, valve, pump or water heater on; a pilot-wire radiator in comfort; a thermostat on; a pool heat pump not off; a VMC at any speed; a charger or a car charging (`ui/src/components/equipments/equipment-running.ts`). Openings, meters and sensors never run.
 
 ---
 
@@ -85,7 +87,7 @@ Empty slots collapse to 0 px due to `grid-template-columns: 32px 1fr auto auto a
 
 ```html
 <div class="eq">
-  <div class="eq__icon eq__icon--light-on">
+  <div class="eq__icon eq__icon--lighting eq__icon--running">
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
       <path
         d="M15 14c.2-1 .7-1.7 1.5-2.5 1-.9 1.5-2.2 1.5-3.5A6 6 0 0 0 6 8c0 1 .2 2.2 1.5 3.5.7.7 1.3 1.5 1.5 2.5"
@@ -112,7 +114,7 @@ Empty slots collapse to 0 px due to `grid-template-columns: 32px 1fr auto auto a
 
 ```html
 <div class="eq">
-  <div class="eq__icon eq__icon--shutter">
+  <div class="eq__icon eq__icon--openings">
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
       <rect x="3" y="3" width="18" height="18" rx="2" />
       <path d="M3 9h18M3 15h18" />
@@ -164,27 +166,30 @@ Empty slots collapse to 0 px due to `grid-template-columns: 32px 1fr auto auto a
   width: 15px;
   height: 15px;
 }
-.eq__icon--light {
-  /* Off is neutral: amber appears only while the light is on (spec 196). */
+.eq__icon {
+  /* Neutral sections (Multimédia, Électroménager, Prises, Commandes, Afficheurs). */
   --icon-bg: var(--n-50);
-  --icon-fg: var(--n-400);
+  --icon-fg: var(--n-600);
 }
-.eq__icon--light-on {
-  --icon-bg: var(--a-500);
-  --icon-fg: var(--a-on); /* never white on amber: 1.70:1 */
-  animation: glow 3.2s ease-in-out infinite;
+/* One modifier per family (spec 208): pale at rest… */
+.eq__icon--lighting {
+  --icon-bg: var(--fam-lighting-50);
+  --icon-fg: var(--fam-lighting-ink);
 }
-.eq__icon--shutter {
-  --icon-bg: var(--shutter-50);
-  --icon-fg: var(--shutter-500);
+.eq__icon--openings {
+  --icon-bg: var(--fam-openings-50);
+  --icon-fg: var(--fam-openings-ink);
 }
-.eq__icon--sensor {
-  --icon-bg: var(--sensor-50);
-  --icon-fg: var(--sensor-500);
+/* …and so on for climate, water, energy, sensors. */
+/* …full colour while the equipment runs. */
+.eq__icon--lighting.eq__icon--running {
+  --icon-bg: var(--fam-lighting-fill);
+  --icon-fg: var(--fam-lighting-on); /* never white on amber: 1.70:1 */
+  animation: glow 3.2s ease-in-out infinite; /* a lit light only */
 }
-.eq__icon--media {
-  --icon-bg: var(--media-50);
-  --icon-fg: var(--media-500);
+.eq__icon--climate.eq__icon--running {
+  --icon-bg: var(--fam-climate-fill);
+  --icon-fg: var(--fam-climate-on);
 }
 
 .eq__name {
@@ -205,7 +210,7 @@ Empty slots collapse to 0 px due to `grid-template-columns: 32px 1fr auto auto a
 | Slider             | Production uses `<input type="range">` underneath the visual slider for keyboard control. The mock shows the visual only.                                                                           |
 | Color contrast     | `--n-800` text on `--n-0` bg: AAA. `--a-ink` (`#8A6100`) on white: 5.54:1 for the value of something on; `--a-600` is not a text colour (2.30:1). Use `--n-800` for primary text wherever possible. |
 | Touch target       | `.power-btn` is 32 × 26 px. Below Apple HIG 44 × 44. **Action: production should keep the visual 32×26 but add `padding` to expand the clickable area** (e.g. negative margins + larger hit zone).  |
-| Reduced motion     | `.eq__icon--light-on` glow animation is disabled by `prefers-reduced-motion: reduce` (see [motion.md](../motion.md)).                                                                               |
+| Reduced motion     | `.eq__icon--lighting.eq__icon--running` glow animation is disabled by `prefers-reduced-motion: reduce` (see [motion.md](../motion.md)).                                                             |
 
 ---
 
@@ -239,7 +244,7 @@ type EqRowProps = {
 };
 ```
 
-The icon modifier is computed from `type` + `state`. For lights, `state === 'on'` → `eq__icon--light-on`.
+The icon modifier is the equipment's family (`familyOf`), plus `eq__icon--running` while it runs (`isRunning`); production writes the same thing as Tailwind classes through `tileClasses(family, running)`.
 
 ---
 

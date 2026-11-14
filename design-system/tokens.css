@@ -78,11 +78,22 @@
   --illu-ink:#1A4F6E; --illu-ink-2:#13405A; --illu-fill:#E6F0F6; --illu-fill-2:#D6E5EF;
   --illu-water:#247EB5;
 
-  /* Equipment category tints — used on .eq__icon backgrounds. No "light"
-     tint: a light takes amber only while it is on (spec 196). */
+  /* Shutter state tint — the « Fermé » pill and the shutter slider fill. */
   --shutter-50:#E8EBEE;  --shutter-500:#4F5763;
-  --sensor-50:#EBF2EC;   --sensor-500:#4F7559;
-  --media-50:#EAE9F2;    --media-500:#5759A5;
+
+  /* Equipment families (spec 208) — what an equipment acts on or measures.
+     50 = the tile and the title chip at rest, ink = the section title and the
+     icon, fill = the tile while the equipment runs, on = the icon on the fill.
+     Lighting IS the amber role: its ink, fill and on are a-ink, a-500 and
+     a-on (repeated here as hex for the contrast test); its pale is close to
+     a-50. Energy is the solar green in light (solar-ink, solar-injection).
+     Ratios: ui/src/lib/color-roles.test.ts. */
+  --fam-lighting-50:#FFF3CC; --fam-lighting-ink:#8A6100; --fam-lighting-fill:#F2C035; --fam-lighting-on:#1C1A14;
+  --fam-openings-50:#E7EBF8; --fam-openings-ink:#3D55A3; --fam-openings-fill:#4F67BA; --fam-openings-on:#FFFFFF;
+  --fam-climate-50:#FBE7DF;  --fam-climate-ink:#A8441C;  --fam-climate-fill:#C4572E;  --fam-climate-on:#FFFFFF;
+  --fam-water-50:#DDF3F1;    --fam-water-ink:#00756B;    --fam-water-fill:#00867A;    --fam-water-on:#FFFFFF;
+  --fam-energy-50:#E3F2E7;   --fam-energy-ink:#1E7B34;   --fam-energy-fill:#2D8F3E;   --fam-energy-on:#FFFFFF;
+  --fam-sensors-50:#EEE8F8;  --fam-sensors-ink:#6A4BA6;  --fam-sensors-fill:#7C61A8;  --fam-sensors-on:#FFFFFF;
 
   /* Borders / dividers */
   --line:rgba(17,23,27,.08);
@@ -131,12 +142,16 @@
   --energy-other:#78726B; /* subdued on the night card, still 3.4:1; was #6E7A82, 1.46:1 and 15 deg from series 5 */
   --series-1:#7CC0E3; --series-2:#ACBE74; --series-3:#5FC9BC; --series-4:#BEA6EB;
   --series-5:#44A1B1; --series-6:#E59ABD; --series-7:#95B3F5; --series-8:#D59ED8;
-  /* Category tints on the ocean night: the n-100 lightness (1.14:1 on a
-     card) with each category's hue, so a tinted icon square still reads on
-     a card (spec 196, slice 7b). */
+  /* Shutter state tint on the ocean night (spec 196, slice 7b). */
   --shutter-50:#222C3A; --shutter-500:#94A3B8;
-  --sensor-50:#203024;  --sensor-500:#6BCF8C;
-  --media-50:#282A3A;   --media-500:#9D9FE6;
+  /* Equipment families on the ocean night (spec 208): a night pale that still
+     reads on the card, a light ink, a fill that carries the night ink. */
+  --fam-lighting-50:#372A16; --fam-lighting-ink:#F2BC6E; --fam-lighting-fill:#F2BC6E; --fam-lighting-on:#1C1A14;
+  --fam-openings-50:#212949; --fam-openings-ink:#A3B3F0; --fam-openings-fill:#7F95E0; --fam-openings-on:#0E191F;
+  --fam-climate-50:#3E241B;  --fam-climate-ink:#F0936B;  --fam-climate-fill:#E07A52;  --fam-climate-on:#0E191F;
+  --fam-water-50:#10302D;    --fam-water-ink:#5FC9BC;    --fam-water-fill:#3DAA9E;    --fam-water-on:#0E191F;
+  --fam-energy-50:#16301E;   --fam-energy-ink:#74C77F;   --fam-energy-fill:#4CA85C;   --fam-energy-on:#0E191F;
+  --fam-sensors-50:#2F2545;  --fam-sensors-ink:#B9A3EC;  --fam-sensors-fill:#9A82D6;  --fam-sensors-on:#0E191F;
   --line:rgba(255,255,255,.06);
   --line-2:rgba(255,255,255,.14);
   --sh-1: 0 1px 2px rgba(0,0,0,.4),  0 1px 3px rgba(0,0,0,.5);

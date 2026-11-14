@@ -7,7 +7,7 @@ import {
   upsStatusOf,
 } from "../equipments/upsStatus";
 import { Camera } from "lucide-react";
-import type { EquipmentType, EquipmentWithDetails } from "../../types";
+import type { EquipmentWithDetails } from "../../types";
 import { useCameraSnapshot } from "../../hooks/useCameraSnapshot";
 import { useEquipmentState, formatValue } from "../equipments/useEquipmentState";
 import { SensorValues } from "../equipments/SensorValues";
@@ -37,6 +37,8 @@ import {
 } from "../equipments/weatherForecastUtils";
 import { syntheticBindingFromComputed } from "../equipments/weather-utils";
 import { EquipmentStatusBadge } from "../equipments/EquipmentStatusBadge";
+import { isRunning } from "../equipments/equipment-running";
+import { familyOf, tileClasses } from "../../lib/equipment-family";
 import { equipmentLinkState } from "../../lib/equipment-origin";
 import { hasRowStateIcon, rowStateOf } from "./row-state-icon";
 import { EquipmentRow, RowControls, RowName, RowReadings, RowSpacer } from "./equipment-row-layout";
@@ -60,53 +62,6 @@ interface CompactEquipmentCardProps {
   onExecuteOrder: (equipmentId: string, alias: string, value: unknown) => Promise<void>;
   zoneName?: string;
 }
-
-// Per-type icon tint mapping (spec 099 — eq-row category tints).
-// Light-on state is handled as an override at render time.
-type Tint = { bg: string; text: string };
-
-const TYPE_TINTS: Record<EquipmentType, Tint> = {
-  // A light off is neutral: amber appears only while it is on (spec 196).
-  light_onoff: { bg: "bg-border-light", text: "text-text-tertiary" },
-  light_dimmable: { bg: "bg-border-light", text: "text-text-tertiary" },
-  light_color: { bg: "bg-border-light", text: "text-text-tertiary" },
-  shutter: { bg: "bg-shutter-50", text: "text-shutter-500" },
-  // Awning uses the Sowel primary-light backdrop — the V3 illustration is
-  // already colored (primary blue + primary light) and harmonises with it.
-  awning: { bg: "bg-primary-light", text: "text-primary" },
-  pool_cover: { bg: "bg-shutter-50", text: "text-shutter-500" },
-  door: { bg: "bg-shutter-50", text: "text-shutter-500" },
-  sensor: { bg: "bg-sensor-50", text: "text-sensor-500" },
-  button: { bg: "bg-sensor-50", text: "text-sensor-500" },
-  switch: { bg: "bg-sensor-50", text: "text-sensor-500" },
-  media_player: { bg: "bg-media-50", text: "text-media-500" },
-  thermostat: { bg: "bg-primary-light", text: "text-primary" },
-  water_valve: { bg: "bg-primary-light", text: "text-primary" },
-  weather: { bg: "bg-primary-light", text: "text-primary" },
-  weather_forecast: { bg: "bg-primary-light", text: "text-primary" },
-  pool_pump: { bg: "bg-primary-light", text: "text-primary" },
-  gate: { bg: "bg-shutter-50", text: "text-shutter-500" },
-  energy_production_meter: { bg: "bg-success/10", text: "text-success" },
-  solar_panel: { bg: "bg-primary-light", text: "text-primary" },
-  heater: { bg: "bg-heat/10", text: "text-heat" },
-  water_heater: { bg: "bg-primary-light", text: "text-primary" },
-  pool_heat_pump: { bg: "bg-heat/10", text: "text-heat" },
-  energy_meter: { bg: "bg-primary-light", text: "text-primary" },
-  main_energy_meter: { bg: "bg-primary-light", text: "text-primary" },
-  appliance: { bg: "bg-border-light", text: "text-text-secondary" },
-  // Spec 120 — displays use the muted "info-only" tint, matching sensors.
-  display: { bg: "bg-sensor-50", text: "text-sensor-500" },
-  // Spec 133 — cameras use the same muted "info-only" tint.
-  camera: { bg: "bg-sensor-50", text: "text-sensor-500" },
-  // Spec 153 — VMC uses the primary-light backdrop (air/comfort).
-  vmc: { bg: "bg-primary-light", text: "text-primary" },
-  // Spec 156 — a UPS is infrastructure, not an actuator: the muted
-  // "info-only" tint, like sensors and displays. Its own status badge carries
-  // the alarm colour, so the tile itself stays quiet.
-  ups: { bg: "bg-sensor-50", text: "text-sensor-500" },
-  ev_charger: { bg: "bg-primary-light", text: "text-primary" },
-  electric_vehicle: { bg: "bg-primary-light", text: "text-primary" },
-};
 
 export function CompactEquipmentCard({
   equipment,
@@ -207,15 +162,12 @@ export function CompactEquipmentCard({
     : null;
   const primaryBinding = !isKnownType ? (equipment.dataBindings[0] ?? null) : null;
 
-  // Icon tinting — light-on overrides to amber + glow, everything else uses TYPE_TINTS.
-  const isLightOn = isLight && isOn;
-  const baseTint = TYPE_TINTS[equipment.type] ?? {
-    bg: "bg-border-light",
-    text: "text-text-tertiary",
-  };
-  const iconBg = isLightOn ? "bg-active" : baseTint.bg;
-  const iconText = isLightOn ? "text-on-active" : baseTint.text;
-  const iconAnimation = isLightOn ? "animate-glow" : "";
+  // Spec 208 — the tile carries the equipment's family: its pale at rest, its
+  // fill while it runs. A lit light keeps its glow.
+  const family = familyOf(equipment);
+  const running = isRunning(equipment);
+  const iconTile = tileClasses(family, running);
+  const iconAnimation = isLight && running ? "animate-glow" : "";
 
   const linkTo = `/equipments/${equipment.id}`;
   const linkState = zoneName
@@ -229,7 +181,7 @@ export function CompactEquipmentCard({
     return (
       <EquipmentRow>
         <div
-          className={`w-8 h-8 rounded-md flex items-center justify-center flex-shrink-0 opacity-55 ${baseTint.bg} ${baseTint.text}`}
+          className={`w-8 h-8 rounded-md flex items-center justify-center flex-shrink-0 opacity-55 ${tileClasses(family, false)}`}
         >
           {iconElement}
         </div>
@@ -258,7 +210,7 @@ export function CompactEquipmentCard({
           it, named for screen readers (#1163): on a phone it is the only place
           that state shows. */}
       <div
-        className={`w-8 h-8 rounded-md flex items-center justify-center flex-shrink-0 ${iconBg} ${iconText} ${iconAnimation}`}
+        className={`w-8 h-8 rounded-md flex items-center justify-center flex-shrink-0 ${iconTile} ${iconAnimation}`}
         data-row-state={rowState ? rowState.label : undefined}
         role={rowState ? "img" : undefined}
         aria-label={rowState?.label}

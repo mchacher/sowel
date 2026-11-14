@@ -867,6 +867,76 @@ describe("PUT /api/v1/equipments/:id — separate supply (spec 179)", () => {
   });
 });
 
+describe("PUT /api/v1/equipments/:id — family (spec 208)", () => {
+  let app: ReturnType<typeof Fastify>;
+  let received: Record<string, unknown> | null;
+
+  // A plug wired to a radiator, and a light.
+  const graph = [
+    { id: "plug", name: "Radiateur Bureau", type: "switch" },
+    { id: "lamp", name: "Spots", type: "light_onoff" },
+  ];
+
+  beforeEach(async () => {
+    received = null;
+    app = Fastify({ logger: false, ajv: validationAjvOptions });
+    installValidationErrorHandler(app);
+    registerEquipmentRoutes(app, {
+      equipmentManager: {
+        getById: (id: string) => graph.find((e) => e.id === id) ?? null,
+        getByIdWithDetails: (id: string) => graph.find((e) => e.id === id) ?? null,
+        getAll: () => graph,
+        update: (_id: string, input: Record<string, unknown>) => {
+          received = input;
+          return { id: _id, family: input.family };
+        },
+      } as unknown as Parameters<typeof registerEquipmentRoutes>[1]["equipmentManager"],
+      logger: createLogger("silent").logger,
+    });
+    await app.ready();
+  });
+
+  afterEach(async () => {
+    await app.close();
+  });
+
+  const put = (id: string, payload: unknown) =>
+    app.inject({ method: "PUT", url: `/api/v1/equipments/${id}`, payload });
+
+  it("forwards a switch's family, and its clearing", async () => {
+    expect((await put("plug", { family: "climate" })).statusCode).toBe(200);
+    expect(received?.family).toBe("climate");
+    expect((await put("plug", { family: null })).statusCode).toBe(200);
+    expect(received?.family).toBeNull();
+  });
+
+  it("refuses a family on any other type", async () => {
+    const res = await put("lamp", { family: "climate" });
+    expect(res.statusCode).toBe(400);
+    expect(res.json().error).toBe("FamilyNotApplicable");
+    expect(received).toBeNull();
+    // Clearing is always accepted: there is nothing to refuse.
+    expect((await put("lamp", { family: null })).statusCode).toBe(200);
+  });
+
+  it("refuses a family on a switch retyped in the same request", async () => {
+    const res = await put("plug", { type: "light_onoff", family: "climate" });
+    expect(res.statusCode).toBe(400);
+    expect(res.json().error).toBe("FamilyNotApplicable");
+  });
+
+  it("refuses a value that is not a family", async () => {
+    const res = await put("plug", { family: "kitchen" });
+    expect(res.statusCode).toBe(400);
+    expect(received).toBeNull();
+  });
+
+  it("leaves it untouched when the body does not mention it", async () => {
+    expect((await put("plug", { name: "Prise" })).statusCode).toBe(200);
+    expect(received?.family).toBeUndefined();
+  });
+});
+
 // ── #832 — the feed must not serve a leftover as a current measurement ──
 //
 // The energy display is this feed's consumer and cannot work a reading's age

@@ -885,3 +885,17 @@ export async function removeAllBindings(
     }
   }
 }
+
+/**
+ * Whether a relay-style equipment (light, heater, plug, valve, pump) is on: the
+ * first binding with alias `state` or category `light_state`, `true` or « ON »
+ * in any case. The controls and the row's tile (spec 208) read it here, so they
+ * never disagree. False when there is no such binding.
+ */
+export function relayStateOn(
+  bindings: readonly (MinimalDataBinding & { value?: unknown })[],
+): boolean {
+  const state = bindings.find((b) => b.alias === "state" || b.category === "light_state");
+  if (!state) return false;
+  return state.value === true || String(state.value).toUpperCase() === "ON";
+}

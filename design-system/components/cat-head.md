@@ -1,6 +1,6 @@
 # Sub-category header (`cat-head`)
 
-> The thin band that visually groups rows of the same kind inside a [panel](panel.md). Examples: "Éclairages" / "Volets" / "Capteurs" inside Équipements, "Modes" / "Recettes" inside Comportements.
+> The thin band that visually groups rows of the same kind inside a [panel](panel.md). Examples: "Éclairages" / "Ouvrants" / "Capteurs" inside Équipements, "Modes" / "Recettes" inside Comportements.
 
 ---
 
@@ -11,7 +11,7 @@
 │ [icon] ÉCLAIRAGES                            [+]    │   .cat-head (36 px)
 └─────────────────────────────────────────────────────┘
         ↑                                        ↑
-        14×14 muted icon                         optional add button
+        icon: 14×14 muted, or on a 26 px family square                         optional add button
 ```
 
 **Fixed height**: 36 px. Critical for cross-panel row alignment (Éclairages on the left lines up with Modes on the right).
@@ -20,7 +20,9 @@
 
 ## Variants
 
-There are no visual variants. Two optional elements:
+**Family tone (spec 208).** A section of the Équipements panel that is an equipment family (Éclairages, Ouvrants, Climat, Eau, Énergie, Capteurs) titles itself in the family ink, and its icon sits on a 26 px square of the family pale with the 6 px control radius (`SliceHeader` `family` prop, `ui/src/components/home/Panel.tsx`; tokens in [tokens.md §1.5](../tokens.md)). A neutral section (Multimédia, Électroménager, Prises, Commandes, Afficheurs) and the Comportements slices (Modes, Recettes) keep the text-colour title and the bare icon.
+
+Two optional elements:
 
 | Element                            | When                                                                                                                                         |
 | ---------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------- |
@@ -110,20 +112,22 @@ The cat-head itself has no hover state — it's a label, not interactive.
 
 ## Icon usage
 
-| Sub-category | Icon (Lucide)                                        |
-| ------------ | ---------------------------------------------------- |
-| Éclairages   | `Lightbulb`                                          |
-| Volets       | rect+lines (custom, matches production ShutterIcons) |
-| Capteurs     | `Gauge`                                              |
-| Multimédia   | `Tv`                                                 |
-| Autres       | `Eye` (or category-specific)                         |
-| Modes        | `Layers`                                             |
-| Recettes     | `ChefHat`                                            |
-| Thermostat   | `Thermometer`                                        |
-| Énergie      | `Zap`                                                |
-| Météo        | `CloudSun`                                           |
-| Eau          | water drop (custom)                                  |
-| Piscine      | `Waves`                                              |
+| Section (spec 208) | Icon (Lucide)                                        |
+| ------------------ | ---------------------------------------------------- |
+| Éclairages         | `Lightbulb`                                          |
+| Ouvrants           | rect+lines (custom, matches production ShutterIcons) |
+| Climat             | `Thermometer`                                        |
+| Eau                | `Droplet`                                            |
+| Énergie            | `Zap`                                                |
+| Capteurs           | `Gauge`                                              |
+| Multimédia         | `Tv`                                                 |
+| Électroménager     | `WashingMachine`                                     |
+| Prises             | `ToggleRight`                                        |
+| Commandes          | `CircleDot`                                          |
+| Afficheurs         | `Monitor`                                            |
+| Autres             | `Box` (a type this UI does not know yet)             |
+| Modes              | `Layers`                                             |
+| Recettes           | `ChefHat`                                            |
 
 ---
 
@@ -142,10 +146,10 @@ The cat-head itself has no hover state — it's a label, not interactive.
 ## Do / Don't
 
 ✅ **Do**: keep cat-head heights identical across panels (36 px min-height).
-✅ **Do**: use neutral background (`--n-25`). The user explicitly rejected category-tinted backgrounds.
+✅ **Do**: colour the title and the icon square of an equipment family, and nothing else of the header (spec 208). The header band itself stays neutral: a tinted band was mocked up (board W, « A3 / A4 ») and not retained.
 ✅ **Do**: add the + button only where adding is contextually sensible (Modes, Recettes — not Capteurs or Météo where equipment is bound to a device).
 
-❌ **Don't**: add a category-colored stripe or border to cat-heads. The icon carries the category visual cue.
+❌ **Don't**: add a family-coloured stripe, border or background band to cat-heads; the title and the icon square carry the family.
 ❌ **Don't**: show count badges next to the label. The user removed them; data is repeated elsewhere (e.g. the strip pills count "1/3 lights on").
 
 ---

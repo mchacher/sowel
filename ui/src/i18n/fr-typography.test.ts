@@ -63,7 +63,6 @@ const SAME_AS_EN = new Set<string>([
   "cameras.lightMode.auto",
   "water.minutes",
   "water.status.normal_state",
-  "equipments.group.ventilation",
   "binding.alias",
   "controls.stop",
   "controls.position",
