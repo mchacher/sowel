@@ -1,4 +1,4 @@
-import webpush from "web-push";
+import { sendNotification } from "web-push";
 import type { Logger } from "../../core/logger.js";
 import type { NotificationChannel, NotificationContent } from "./channel.js";
 import type { PushSubscriptionManager } from "../push-subscription-manager.js";
@@ -71,7 +71,7 @@ export class WebPushChannel implements NotificationChannel {
     await Promise.all(
       subs.map(async (s) => {
         try {
-          await webpush.sendNotification(
+          await sendNotification(
             { endpoint: s.endpoint, keys: { p256dh: s.p256dh, auth: s.auth } },
             payloadFor(s.userId),
             { vapidDetails },
