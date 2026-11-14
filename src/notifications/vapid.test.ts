@@ -2,11 +2,9 @@ import { describe, it, expect, beforeEach, afterEach, vi } from "vitest";
 
 let generateCalls = 0;
 vi.mock("web-push", () => ({
-  default: {
-    generateVAPIDKeys: () => {
-      generateCalls += 1;
-      return { publicKey: `pub-${generateCalls}`, privateKey: `priv-${generateCalls}` };
-    },
+  generateVAPIDKeys: () => {
+    generateCalls += 1;
+    return { publicKey: `pub-${generateCalls}`, privateKey: `priv-${generateCalls}` };
   },
 }));
 

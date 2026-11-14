@@ -2,11 +2,11 @@ import { describe, it, expect, beforeEach, vi } from "vitest";
 
 // Mock the web-push library before importing the channel.
 const sendNotification = vi.fn();
+// web-push 4 is ESM with named exports only: no default (a default import
+// passes against a mock and throws at startup).
 vi.mock("web-push", () => ({
-  default: {
-    sendNotification: (...args: unknown[]) => sendNotification(...args),
-    generateVAPIDKeys: () => ({ publicKey: "pub", privateKey: "priv" }),
-  },
+  sendNotification: (...args: unknown[]) => sendNotification(...args),
+  generateVAPIDKeys: () => ({ publicKey: "pub", privateKey: "priv" }),
 }));
 
 import { WebPushChannel, MAX_CONSECUTIVE_FAILURES } from "./web-push.js";
