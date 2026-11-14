@@ -11,6 +11,21 @@ Cette page résume toutes les versions publiées, de la plus récente à la plus
 
 ---
 
+## 1.87.x : Des familles qui colorent la maison
+
+### v1.87.0 — 2026-11-14 { #v1-87-0 }
+
+La vue Maison prend des couleurs : chaque équipement appartient à une famille (éclairages, ouvrants, climat, eau, énergie, capteurs), et sa section comme sa tuile prennent la couleur de cette famille. Dix-neuf sections deviennent onze. Les détecteurs de mouvement en bonne santé et une borne au repos ne s'affichent plus comme dégradés.
+
+**Après la mise à jour :** sur zigbee2mqtt, un capteur à pile qui meurt n'est plus repéré que par la fonction `availability` de Z2M. Vérifiez qu'elle est activée (le plugin écrit `Z2M availability feature enabled` dans ses journaux au démarrage).
+
+- Nouveauté (interface) : **les familles d'équipements colorent la vue Maison** (spec 208, #1253). Un équipement appartient à la famille de ce qu'il commande ou mesure : Éclairages (ambre), Ouvrants (indigo), Climat (brique), Eau (sarcelle), Énergie (vert), Capteurs (violet). Lecteurs multimédia, électroménager, prises, boutons et afficheurs gardent des sections neutres. Une section s'intitule dans la couleur de sa famille, et chaque tuile d'équipement (Maison, page Équipements, en-tête de la page d'un équipement) prend la teinte pâle de sa famille au repos et sa couleur pleine quand il fonctionne. Un mouvement détecté, un contact ou un portail ouvert, un lecteur ou un appareil allumé ne colorent plus la tuile : cet état reste sur les pastilles et les commandes. Une prise ou un relais peut rejoindre une famille depuis sa page (Configuration, Famille) : une prise de radiateur se range dans Climat. Sur téléphone, la barre du bas montre l'onglet choisi sur une pastille. Libellés de types : « Portail », « Prise ou relais », « Bouton ou télécommande ». `family` dans `PUT /api/v1/equipments/:id`, prises et relais seulement.
+- Correctif (équipements) : **un détecteur de mouvement au calme ou une borne au repos ne s'affichent plus comme dégradés** (#1242, #1254). La pile d'un appareil et sa température interne ne sont plus jugées sur leur fraîcheur : un détecteur Tuya n'envoie sa pile qu'avec un mouvement, et une borne au repos n'envoie sa température que quand elle change. Une pile faible reste signalée par sa valeur, un appareil mort par son statut. Une température ou une humidité de pièce qui ne se met plus à jour dégrade toujours son équipement.
+- Correctif (interface) : l'interface française appelle le mode de chauffage « Cocoon », et non « Cocon » (#1241, #1256).
+- Maintenance (dépendances) : les mises à jour hebdomadaires des bibliothèques, de l'outillage et des GitHub Actions (#1243, #1244, #1245, #1246, #1249, #1250, #1251), `web-push` 4 (#1252) et `i18next` 27 avec `react-i18next` 18 (#1255).
+
+---
+
 ## 1.86.x : Les euros et les kWh, et une application plus légère
 
 ### v1.86.1 — 2026-11-11 { #v1-86-1 }

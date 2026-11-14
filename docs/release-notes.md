@@ -11,6 +11,21 @@ This page summarises every published version, newest first. For the full diff be
 
 ---
 
+## 1.87.x: Families that colour the house
+
+### v1.87.0 — 2026-11-14 { #v1-87-0 }
+
+The Maison view gets its colours: every equipment belongs to a family (lights, openings, climate, water, energy, sensors), and its section and tile take that family's colour. Nineteen sections become eleven. Healthy motion sensors and an idle charger no longer show as degraded.
+
+**After the update:** on zigbee2mqtt, a battery sensor that dies is now caught only through Z2M's `availability` feature. Check that it is enabled (the plugin logs `Z2M availability feature enabled` at startup).
+
+- Feat (ui): **equipment families colour the Maison view** (spec 208, #1253). An equipment belongs to the family of what it acts on or measures: Lights (amber), Openings (indigo), Climate (brick), Water (teal), Energy (green), Sensors (violet). Media players, appliances, plugs, buttons and displays keep neutral sections. A section titles itself in its family's colour, and every equipment tile (Maison, Equipments page, equipment page header) takes the family's pale tint at rest and its full colour while running. A detected motion, an open contact or gate, or a media player or appliance that is on no longer colours its tile: that state stays on the pills and controls. A plug or relay can join a family from its page (Configuration, Family), so a radiator plug sits in Climate. On a phone, the bottom bar shows the selected tab on a pill. Type labels: « Gate », « Plug or relay », « Button or remote ». `family` in `PUT /api/v1/equipments/:id`, plugs and relays only.
+- Fix (equipments): **a quiet motion sensor or an idle charger no longer shows as degraded** (#1242, #1254). A device's battery and its internal temperature are no longer judged on freshness: a Tuya motion sensor sends its battery only along with a motion, and a charger at rest sends its temperature only when it changes. A low battery is still flagged by its value, a dead device by its status. A stale room temperature or humidity still marks its equipment degraded.
+- Fix (ui): the French interface calls the heating mode « Cocoon », not « Cocon » (#1241, #1256).
+- Maintenance (deps): the weekly library, toolchain and GitHub Actions updates (#1243, #1244, #1245, #1246, #1249, #1250, #1251), `web-push` 4 (#1252) and `i18next` 27 with `react-i18next` 18 (#1255).
+
+---
+
 ## 1.86.x: Euros and kWh, and a lighter app
 
 ### v1.86.1 — 2026-11-11 { #v1-86-1 }
