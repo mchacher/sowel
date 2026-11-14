@@ -260,7 +260,7 @@ hide:
   </div>
   <pre class="sowel-terminal-mock__code"><span class="prompt">$</span> curl -fsSL <span class="url">https://raw.githubusercontent.com/mchacher/sowel/main/scripts/install.sh</span> | sh
 <span class="ok">✓</span> Docker detected
-<span class="ok">✓</span> Pulling sowel:1.5.10 and influxdb:2.7…
+<span class="ok">✓</span> Pulling sowel:latest and influxdb:2.7…
 <span class="ok">✓</span> Volumes initialised, settings seeded
 <span class="ok">✓</span> Sowel is running on <span class="url">http://localhost:3000</span></pre>
 </div>
