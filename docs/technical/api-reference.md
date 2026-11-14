@@ -237,7 +237,7 @@ PUT /api/v1/equipments/eq-gate
 
 - `status: "online" | "degraded" | "offline"` — computed in memory from the backing devices' `status` and the freshness of streaming bindings.
   - `offline`: every bound device is `offline`, OR the equipment has no device bindings.
-  - `degraded`: at least one device is `offline`, OR at least one streaming binding (`power`, `temperature`, etc.) has not been refreshed within its category timeout.
+  - `degraded`: at least one device is `offline`, OR at least one streaming binding (`power`, `temperature`, etc.) has not been refreshed within its category timeout. A device's own `battery` and internal `temperature_device` are not judged on freshness (#1242): they arrive with other events or on change only, so their age says nothing about the equipment.
   - `online`: everything healthy.
 - `statusReason?: { offlineDevices: string[]; staleBindings: string[]; offlineSince: string | null }` — present only when status ≠ `online`. Used by the UI tooltip.
 

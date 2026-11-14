@@ -106,8 +106,8 @@ export function isStaleBinding(
  * Equipment types whose devices are event-driven battery hardware (remotes,
  * wireless buttons): they only transmit when actuated, so radio silence is
  * their NORMAL operating mode. Deriving "offline" (integration availability
- * timeouts fire on silence) or "degraded" (their sparse battery reports miss
- * every streaming window) from that silence produces permanent false alarms
+ * timeouts fire on silence) or "degraded" (any streaming reading they carry
+ * misses its window) from that silence produces permanent false alarms
  * — see issue #348, observed with both lora2mqtt (5 min timeout) and
  * Zigbee2MQTT (25 h passive timeout). For these types the only honest
  * derivation from silence is "online"; real health comes out of band
