@@ -357,6 +357,7 @@ Specs are grouped by theme and annotated with status:
 | 206 | Solar settings tab                                                      | ✅     | Settings tab « Solaire » (`?tab=solar`) holds the solar installation and the surplus arbiter, « Énergie » keeps the tariff; scrolling tab bar on phones; amends 163. Shipped in v1.85.0.                                                                              |
 | 207 | Consumption in kWh on the Bilan                                         | ✅     | Bilan bill card split into euros (left) and kWh (right): consumed total, grid peak/off-peak and solar, kWh comparisons, average price per kWh; `energy` in `/energy/bilan`; issue #1232; amends 200, 205. Shipped in v1.86.0.                                         |
 | 208 | Equipment families: grouping, colours, bottom bar                       | ✅     | Six equipment families (lighting, openings, climate, water, energy, sensors) colour Maison sections and tiles; `Equipment.family` for a switch; tab bar selection; amends 196 (neutral headers). Shipped in v1.87.0.                                                  |
+| 210 | Logo refresh: one drawing in two weights                                | 🟡     | One logo drawing in two weights (master, small) with a tighter face and the « sowel » Nunito wordmark; app, splash, favicons, PWA icons and docs landing updated; drift test. Unreleased.                                                                             |
 
 ---
 

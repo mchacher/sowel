@@ -1,13 +1,16 @@
+import { HOUSE, MASTER, SMALL, SMALL_BELOW_PX, type LogoWeight } from "../../lib/logo";
+
 interface SowelLogoProps {
   size?: number;
   className?: string;
-  /** Show "SOWEL" text below the house */
+  /** Show "sowel" text below the house */
   showText?: boolean;
   /** Animate the face (wink) */
   animated?: boolean;
 }
 
-const MID_BLUE = "var(--color-primary-mid)";
+const INK = "var(--color-primary)";
+const FACE = "var(--color-primary-mid)";
 
 /** SVG native wink animation on a single eye */
 function WinkAnimation() {
@@ -24,6 +27,46 @@ function WinkAnimation() {
   );
 }
 
+/** One drawing (spec 210); the weight only changes the strokes and the face placement. */
+function Mark({ weight, animated }: { weight: LogoWeight; animated: boolean }) {
+  return (
+    <>
+      <path
+        d={HOUSE}
+        fill="none"
+        stroke={INK}
+        strokeWidth={weight.house}
+        strokeLinejoin="round"
+        strokeLinecap="round"
+      />
+      <path
+        d={weight.leftEye}
+        fill="none"
+        stroke={FACE}
+        strokeWidth={weight.eye}
+        strokeLinecap="round"
+      />
+      <g transform={`translate(${weight.wink.origin})`}>
+        {animated && <WinkAnimation />}
+        <path
+          d={weight.wink.path}
+          fill="none"
+          stroke={FACE}
+          strokeWidth={weight.eye}
+          strokeLinecap="round"
+        />
+      </g>
+      <path
+        d={weight.smilePath}
+        fill="none"
+        stroke={FACE}
+        strokeWidth={weight.smile}
+        strokeLinecap="round"
+      />
+    </>
+  );
+}
+
 export function SowelLogo({
   size = 32,
   className = "",
@@ -34,101 +77,39 @@ export function SowelLogo({
     return (
       <svg
         xmlns="http://www.w3.org/2000/svg"
-        viewBox="25 15 150 190"
+        viewBox="20 10 160 205"
         width={size}
-        height={size * 1.3}
+        height={size * 1.28}
         fill="none"
         className={className}
       >
-        <path
-          d="M100 30 L160 90 Q165 95 160 100 L160 150 Q160 158 152 158 L48 158 Q40 158 40 150 L40 100 Q35 95 40 90 Z"
-          fill="none"
-          stroke="var(--color-primary)"
-          strokeWidth="8"
-          strokeLinejoin="round"
-          strokeLinecap="round"
-        />
-        <path
-          d="M75 115 Q100 140 125 115"
-          fill="none"
-          stroke={MID_BLUE}
-          strokeWidth="6"
-          strokeLinecap="round"
-        />
-        {/* Left eye — static */}
-        <path
-          d="M78 95 Q83 87 88 95"
-          fill="none"
-          stroke={MID_BLUE}
-          strokeWidth="5"
-          strokeLinecap="round"
-        />
-        {/* Right eye — winks */}
-        <g transform="translate(117, 91)">
-          {animated && <WinkAnimation />}
-          <path
-            d="M-5 4 Q0 -4 5 4"
-            fill="none"
-            stroke={MID_BLUE}
-            strokeWidth="5"
-            strokeLinecap="round"
-          />
-        </g>
+        <Mark weight={MASTER} animated={animated} />
         <text
           x="100"
-          y="195"
+          y="200"
           textAnchor="middle"
           fontFamily="Nunito, sans-serif"
-          fontWeight="800"
-          fontSize="24"
-          fill="var(--color-primary)"
-          letterSpacing="4"
+          fontWeight="700"
+          fontSize="40"
+          fill={INK}
+          letterSpacing="-0.4"
         >
-          SOWEL
+          sowel
         </text>
       </svg>
     );
   }
 
-  const MONO = "var(--color-primary)";
-
   return (
     <svg
       xmlns="http://www.w3.org/2000/svg"
-      viewBox="25 15 150 155"
+      viewBox="20 10 160 165"
       width={size}
       height={size}
       fill="none"
       className={className}
     >
-      <path
-        d="M100 30 L160 90 Q165 95 160 100 L160 150 Q160 158 152 158 L48 158 Q40 158 40 150 L40 100 Q35 95 40 90 Z"
-        fill="none"
-        stroke={MONO}
-        strokeWidth="12"
-        strokeLinejoin="round"
-        strokeLinecap="round"
-      />
-      <path
-        d="M75 115 Q100 140 125 115"
-        fill="none"
-        stroke={MONO}
-        strokeWidth="9"
-        strokeLinecap="round"
-      />
-      {/* Left eye — static */}
-      <path
-        d="M78 95 Q83 87 88 95"
-        fill="none"
-        stroke={MONO}
-        strokeWidth="8"
-        strokeLinecap="round"
-      />
-      {/* Right eye — winks */}
-      <g transform="translate(117, 91)">
-        {animated && <WinkAnimation />}
-        <path d="M-5 4 Q0 -4 5 4" fill="none" stroke={MONO} strokeWidth="8" strokeLinecap="round" />
-      </g>
+      <Mark weight={size < SMALL_BELOW_PX ? SMALL : MASTER} animated={animated} />
     </svg>
   );
 }
