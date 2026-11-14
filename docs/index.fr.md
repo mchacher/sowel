@@ -258,9 +258,9 @@ hide:
     <span></span><span></span><span></span>
     <em>sowel · installation</em>
   </div>
-  <pre class="sowel-terminal-mock__code"><span class="prompt">$</span> curl -fsSL <span class="url">https://sowel.org/install.sh</span> | sh
+  <pre class="sowel-terminal-mock__code"><span class="prompt">$</span> curl -fsSL <span class="url">https://raw.githubusercontent.com/mchacher/sowel/main/scripts/install.sh</span> | sh
 <span class="ok">✓</span> Docker détecté
-<span class="ok">✓</span> Téléchargement de sowel:1.5.10 et influxdb:2.7…
+<span class="ok">✓</span> Téléchargement de sowel:latest et influxdb:2.7…
 <span class="ok">✓</span> Volumes initialisés, paramètres semés
 <span class="ok">✓</span> Sowel tourne sur <span class="url">http://localhost:3000</span></pre>
 </div>
