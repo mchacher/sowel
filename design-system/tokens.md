@@ -23,6 +23,8 @@ The Sowel signature color. Used for navigation active states, links, focus rings
 | `--p-on`         | `#FFFFFF`     | `#FFFFFF`     | text and icons on the fill                                     |
 | `--p-mid`        | `#7FB8D4`     | `#7FB8D4`     | logo mid-blue (smile, eyes), soft border of a selection header |
 
+**The logo** (spec 210) is one drawing in two weights, defined in `ui/src/lib/logo.ts`: the master from 32 px (outline 9, eyes 7, smile 7.5) and a heavier one below (14.5, 11.5, 12.5) so the face still reads in a tab or the mobile header. The outline is the ink (`--p-500`), the face the mid-blue (`--p-mid`). Every static copy (splash, favicons, PWA icons, docs landing) is checked against it by `ui/src/lib/logo-sync.test.ts`.
+
 **Fill and ink are two roles** (spec 196, slice 4b). In light they are the same ocean; in dark the ink turns light blue so links and icons read on the night surface, while the fill stays a deep ocean that white text reads on (5.29:1, 5.86:1 hovered; the light blue under white was 2.73:1). In components: `bg-primary-fill text-white hover:bg-primary-fill-hover` for anything that carries text or an icon, `border-primary-fill` on a checked box; `bg-primary` only for a dot, a bar or a line, never under text. `color-roles.test.ts` fails on `bg-primary` with `text-white` and on `bg-primary-hover`.
 
 ### 1.2 Colour roles
@@ -229,7 +231,7 @@ The energy charts, the Live diagram and the arbiter paint from these tokens (`--
 
 Inter is the variable build (`@fontsource-variable/inter/opsz.css`): every weight is real, and the optical-size axis gives large sizes the display cut. Fontsource registers it as **`'Inter Variable'`**; a stack that starts with `'Inter'` silently falls back to `system-ui`. JetBrains Mono is loaded at 400 only.
 
-Weights: 400, 500 and 600. There is no 700 in the interface (`font-bold` became `font-semibold`); the only exception is the « SOWEL » wordmark in Nunito 800.
+Weights: 400, 500 and 600. There is no 700 in the interface (`font-bold` became `font-semibold`); the only exception is the « sowel » wordmark (lowercase) in Nunito 700.
 
 The text of a number (separators, unit spacing, precision per unit) comes from `ui/src/lib/format.ts`, never from `toFixed` (spec 196).
 

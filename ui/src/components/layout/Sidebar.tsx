@@ -102,10 +102,10 @@ export function Sidebar() {
           <SowelLogo size={40} className="flex-shrink-0" />
           {!collapsed && (
             <span
-              className="font-extrabold text-title tracking-[0.18em] text-primary ml-2.5 mt-1"
-              style={{ fontFamily: "Nunito, sans-serif" }}
+              className="text-title text-primary ml-2.5 mt-1"
+              style={{ fontFamily: "Nunito, sans-serif", fontWeight: 700 }}
             >
-              SOWEL
+              sowel
             </span>
           )}
         </div>

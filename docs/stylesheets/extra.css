@@ -1,3 +1,5 @@
+@import url("https://fonts.googleapis.com/css2?family=Nunito:wght@700&display=swap");
+
 /* ============================================================
    Sowel docs — themed to match the Sowel app design system
    Body / display: Inter (loaded via mkdocs theme.font.text)
@@ -602,9 +604,9 @@
 /* House in deep ocean blue; eyes + smile in the soft logo blue.
  * Independent from the page accent (which can change). */
 .sowel-logo .house     { stroke: var(--md-primary-fg-color); stroke-width: 9; }
-.sowel-logo .smile     { stroke: #6FB3D9; stroke-width: 9; }
+.sowel-logo .smile     { stroke: #6FB3D9; stroke-width: 7.5; }
 .sowel-logo .left-eye,
-.sowel-logo .right-eye { stroke: #6FB3D9; stroke-width: 8; }
+.sowel-logo .right-eye { stroke: #6FB3D9; stroke-width: 7; }
 
 [data-md-color-scheme="slate"] .sowel-logo .house { stroke: #C9DCE7; }
 
@@ -881,10 +883,10 @@ html:has(.sowel-flip) .md-header__topic:first-child {
   filter: drop-shadow(0 6px 14px rgba(26, 79, 110, 0.18));
 }
 .md-typeset .sowel-hero__wordmark {
-  font-family: var(--sowel-display);
+  font-family: "Nunito", var(--sowel-display);
   font-size: 2.4rem;
-  font-weight: 800;
-  letter-spacing: -0.03em;
+  font-weight: 700;
+  letter-spacing: -0.01em;
   color: var(--md-primary-fg-color);
   line-height: 1;
 }
