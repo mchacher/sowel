@@ -336,6 +336,7 @@ Les specs sont regroupées par thème et annotées d'un statut :
 | 206 | Onglet Solaire des réglages                                           | ✅     | Onglet « Solaire » des réglages (`?tab=solar`) : installation solaire et arbitre de surplus, « Énergie » garde le tarif ; barre d'onglets défilante sur téléphone ; amende 163. Shipped in v1.85.0.                                                                           |
 | 207 | Consommation en kWh dans le Bilan                                     | ✅     | Carte de facture du Bilan en deux : euros à gauche, kWh à droite (total consommé, réseau HP/HC et solaire, comparaisons en kWh, prix moyen du kWh) ; `energy` dans `/energy/bilan` ; issue #1232 ; amende 200, 205. Shipped in v1.86.0.                                       |
 | 208 | Familles d'équipements : regroupement, couleurs, barre du bas         | ✅     | Six familles (éclairages, ouvrants, climat, eau, énergie, capteurs) colorent sections et tuiles de la vue Maison ; `Equipment.family` pour une prise ; onglet actif visible ; amende 196. Livrée en v1.87.0.                                                                  |
+| 209 | Plan de lancement : identité, vitrine, preuves, lancement             | 🟡     | Plan pour toucher les utilisateurs finaux : nouveau logo, site vitrine bilingue dans son propre dépôt, vidéo et cas réel, lancement échelonné ; aucun changement produit. En cours.                                                                                           |
 
 ---
 
