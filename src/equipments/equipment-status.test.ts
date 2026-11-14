@@ -80,9 +80,16 @@ describe("isStaleBinding", () => {
     expect(isStaleBinding("temperature", null, NOW)).toBe(false);
   });
 
-  it("streaming 'battery' stale only after 2h (sparse reports)", () => {
-    expect(isStaleBinding("battery", "2026-05-26 08:01:00Z", NOW)).toBe(false);
-    expect(isStaleBinding("battery", "2026-05-26 07:59:00Z", NOW)).toBe(true);
+  it("'battery' is never stale — its timestamp dates the last event, not the battery (#1242)", () => {
+    // Tuya PIR: battery rides along with occupancy, replayed from the Z2M
+    // cache, so a quiet room leaves it hours old on a healthy device.
+    expect(isStaleBinding("battery", "2026-05-26 07:59:00Z", NOW)).toBe(false);
+    expect(isStaleBinding("battery", "2026-05-20 00:00:00Z", NOW)).toBe(false);
+  });
+
+  it("'temperature_device' is never stale — published on change only (#1242)", () => {
+    // EV charger asleep at a steady 24 °C: nothing arrives while it is healthy.
+    expect(isStaleBinding("temperature_device", "2026-05-26 08:54:00Z", NOW)).toBe(false);
   });
 
   it("unparseable timestamp is treated as no value — not stale", () => {
@@ -235,6 +242,59 @@ describe("deriveEquipmentStatus", () => {
     ]);
     const result = deriveEquipmentStatus([power, temperature], map, NOW);
     expect(result.status).toBe("online");
+  });
+
+  it("a PIR whose only stale binding is its battery stays 'online' (#1242)", () => {
+    const motion = makeBinding({
+      id: "b-motion",
+      category: "motion",
+      type: "boolean",
+      value: false,
+      lastUpdated: "2026-05-26 06:00:00Z",
+      alias: "motion",
+    });
+    const battery = makeBinding({
+      id: "b-battery",
+      category: "battery",
+      value: 100,
+      lastUpdated: "2026-05-26 06:00:00Z",
+      alias: "battery",
+    });
+    const device = makeDevice({ status: "online" });
+    const map = new Map([
+      [motion.id, device],
+      [battery.id, device],
+    ]);
+    const result = deriveEquipmentStatus([motion, battery], map, NOW, "sensor");
+    expect(result.status).toBe("online");
+    expect(result.reason).toBeNull();
+  });
+
+  it("a charger whose only stale binding is its internal temperature stays 'online' (#1242)", () => {
+    const binding = makeBinding({
+      category: "temperature_device",
+      value: 24,
+      lastUpdated: "2026-05-26 08:30:00Z",
+      alias: "charger_temperature",
+    });
+    const device = makeDevice({ status: "online" });
+    const map = new Map([[binding.id, device]]);
+    const result = deriveEquipmentStatus([binding], map, NOW, "ev_charger");
+    expect(result.status).toBe("online");
+  });
+
+  it("a stale ambient 'temperature' still degrades its equipment (#1242 guard)", () => {
+    const binding = makeBinding({
+      category: "temperature",
+      value: 21,
+      lastUpdated: "2026-05-26 08:30:00Z",
+      alias: "temperature",
+    });
+    const device = makeDevice({ status: "online" });
+    const map = new Map([[binding.id, device]]);
+    const result = deriveEquipmentStatus([binding], map, NOW, "sensor");
+    expect(result.status).toBe("degraded");
+    expect(result.reason?.staleBindings).toEqual(["temperature"]);
   });
 
   it("device 'unknown' is treated as online — no degradation alone", () => {
