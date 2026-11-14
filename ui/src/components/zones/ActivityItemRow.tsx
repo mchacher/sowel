@@ -16,6 +16,7 @@ import { alarmSourceLabel, ORDER_OUTCOME_ALARM_SOURCE } from "../../lib/alarm-me
 import { displayValue } from "../../lib/activity-log";
 import { formatClockTime } from "../../lib/format";
 import { useZoneLabels } from "../../hooks/useZoneLabels";
+import type { Translate } from "../../i18n/translate";
 
 /** A recipe's name in the UI language, from its manifest i18n; else the name the server sent. */
 type RecipeLabel = (recipeId: string | undefined, fallback: string) => string;
@@ -91,7 +92,7 @@ function Message({ item, recipeLabel }: { item: ActivityItem; recipeLabel: Recip
 
 function interpolation(
   item: ActivityItem,
-  t: (key: string, opts?: Record<string, unknown>) => string,
+  t: Translate,
   recipeLabel: RecipeLabel,
 ): Record<string, string | number> {
   const m = item.message;
@@ -178,11 +179,7 @@ function CategoryIcon({
   }
 }
 
-function formatSource(
-  source: OrderSource,
-  t: (key: string, opts?: Record<string, unknown>) => string,
-  recipeLabel: RecipeLabel,
-): string {
+function formatSource(source: OrderSource, t: Translate, recipeLabel: RecipeLabel): string {
   switch (source.kind) {
     case "recipe":
       return t("activity.source.recipe", {

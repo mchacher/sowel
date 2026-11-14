@@ -16,6 +16,7 @@ import i18n from "../i18n";
 import { dateLocale } from "./locale";
 import { localDayToDate } from "./local-date";
 import { INTEGRATION_LABELS } from "../constants";
+import type { Translate } from "../i18n/translate";
 
 /** The only alarm source whose `messageKey` the UI honours (spec 188 order outcomes). */
 export const ORDER_OUTCOME_ALARM_SOURCE = "order-confirmation";
@@ -85,10 +86,7 @@ function resolveParams(params: AlarmParams): Record<string, string | number> {
  * caller's `useTranslation` subscription drives the re-render on a language
  * switch.
  */
-export function alarmText(
-  t: (key: string, params?: Record<string, string | number>) => string,
-  wording: AlarmWording,
-): string {
+export function alarmText(t: Translate, wording: AlarmWording): string {
   if (!wording.messageKey) return wording.message ?? "";
   return t(wording.messageKey, wording.messageParams ? resolveParams(wording.messageParams) : {});
 }

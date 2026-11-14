@@ -10,6 +10,7 @@ import { AlertTriangle, WifiOff } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import type { EquipmentStatus, EquipmentStatusReason } from "../../types";
 import { formatRelative } from "../../lib/format-relative";
+import type { Translate } from "../../i18n/translate";
 
 type Size = "sm" | "md";
 
@@ -32,7 +33,7 @@ const ICON_SIZE: Record<Size, number> = { sm: 11, md: 13 };
 function buildTooltip(
   status: EquipmentStatus,
   reason: EquipmentStatusReason | undefined,
-  t: (k: string, params?: Record<string, unknown>) => string,
+  t: Translate,
 ): string {
   if (!reason) return t(`equipment.status.${status}`);
   const lines: string[] = [t(`equipment.status.${status}`)];

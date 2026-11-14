@@ -16,6 +16,7 @@ import {
   surplusScale,
 } from "./arbiter-timeline-geometry";
 import { currentLocale, formatPower, formatRange } from "../../lib/format";
+import type { Translate } from "../../i18n/translate";
 
 // Spec 148 (Phase B) — the redesigned Energy → arbitrage timeline: a signed
 // surplus/deficit curve above per-load quarter-hour ribbons, paged back to 48h,
@@ -727,7 +728,7 @@ export function ArbiterTimeline() {
   );
 }
 
-function dayLabel(ms: number, t: (k: string, o?: Record<string, unknown>) => string): string {
+function dayLabel(ms: number, t: Translate): string {
   const startOfDay = (d: Date) => new Date(d.getFullYear(), d.getMonth(), d.getDate()).getTime();
   const diff = Math.floor((startOfDay(new Date()) - startOfDay(new Date(ms))) / 86_400_000);
   if (diff <= 0) return t("arbiter.timeline.today");

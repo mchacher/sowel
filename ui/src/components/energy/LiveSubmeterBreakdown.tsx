@@ -24,6 +24,7 @@ import { formatRelative } from "../../lib/format-relative";
 import { formatPercent, formatPower, formatPowerParts } from "../../lib/format";
 import { SectionHeader } from "./SectionHeader";
 import { useStalenessClock } from "../../hooks/useStalenessClock";
+import type { Translate } from "../../i18n/translate";
 
 const OTHER_COLOR = "var(--color-energy-other)"; // neutral grey, one value per theme (tokens.css)
 
@@ -317,7 +318,7 @@ function LegendRow({
   row: SubmeterRow;
   /** Spec 179 — null for a separate-supply row: no whole, so no share. */
   total: number | null;
-  t: (key: string, opts?: Record<string, unknown>) => string;
+  t: Translate;
 }) {
   const isOffline = row.status === "offline";
   const isStale = row.unknown === "stale";
@@ -365,7 +366,7 @@ function LegendRow({
 }
 
 function buildAriaLabel(
-  t: (key: string, opts?: Record<string, unknown>) => string,
+  t: Translate,
   rows: SubmeterRow[],
   other: number,
   total: number,

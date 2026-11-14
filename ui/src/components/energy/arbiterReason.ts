@@ -7,8 +7,7 @@
 
 import { formatPower } from "../../lib/format";
 import type { ArbiterDecision, ArbiterQuarterState } from "../../types";
-
-type Translate = (key: string, opts?: Record<string, unknown>) => string;
+import type { Translate } from "../../i18n/translate";
 
 // Backend reason string → i18n slug, for reasons that ADD information the kind
 // does not carry. Kebab codes (CapacityRevokeReason / CapacityDenyReason /
