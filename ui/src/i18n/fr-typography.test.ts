@@ -86,6 +86,8 @@ const SAME_AS_EN = new Set<string>([
   "modes.description",
   "modes.impacts",
   "recipes.actions.set_mode.auto",
+  // #1241 — the heating mode is a product name: « Cocoon » in French too.
+  "recipes.actions.set_mode.cocoon",
   "setup.home.latitude",
   "setup.home.longitude",
   "settings.languageEn",
@@ -227,6 +229,11 @@ describe("French typography (fr.json)", () => {
   it("lists no key that no longer exists or now differs", () => {
     const stale = [...SAME_AS_EN].filter((k) => !(k in fr_) || fr_[k] !== en_[k]);
     expect(stale).toEqual([]);
+  });
+
+  it("calls the heating mode « Cocoon », never « Cocon » (#1241)", () => {
+    expect(fr_["recipes.actions.set_mode.cocoon"]).toBe("Cocoon");
+    expect(offenders((v) => /\bcocons?\b/i.test(v))).toEqual([]);
   });
 
   it("formats the shared colon as narrow space, colon, space", () => {
