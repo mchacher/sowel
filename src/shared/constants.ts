@@ -2,6 +2,7 @@ import type {
   DataCategory,
   DataType,
   EnergyLoadClass,
+  EquipmentFamily,
   EquipmentType,
   WidgetFamily,
 } from "./types.js";
@@ -245,6 +246,16 @@ export const LIGHT_INDICATOR_PROPERTIES = new Set([
 // ============================================================
 // Widget Family → EquipmentType mapping
 // ============================================================
+
+/** Spec 208 — the equipment families a switch may be given (`Equipment.family`). */
+export const EQUIPMENT_FAMILIES: readonly EquipmentFamily[] = [
+  "lighting",
+  "openings",
+  "climate",
+  "water",
+  "energy",
+  "sensors",
+];
 
 export const WIDGET_FAMILY_TYPES: Record<WidgetFamily, EquipmentType[]> = {
   lights: ["light_onoff", "light_dimmable", "light_color"],

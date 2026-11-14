@@ -379,6 +379,13 @@ export type EquipmentType =
   | "electric_vehicle";
 
 /**
+ * Spec 208 — the family an equipment belongs to: what it acts on or measures.
+ * Each type has a fixed family (or none) in the UI; only a `switch` stores one,
+ * so a plug that drives a radiator can sit with the climate.
+ */
+export type EquipmentFamily = "lighting" | "openings" | "climate" | "water" | "energy" | "sensors";
+
+/**
  * One coplanar group of panels (spec 160).
  *
  * A list of planes, not a list of panels: the panel count adds nothing the peak
@@ -444,6 +451,10 @@ export interface Equipment {
    *  `production` and added to the house's solar in the self-consumption split.
    *  Default `false` — a negative reading stays a clamp wired backwards. */
   localProduction?: boolean;
+  /** Spec 208 — a switch's family (a plug that drives a radiator is `climate`).
+   *  Absent / `null` = no family: the switch sits with the plugs. Only a
+   *  `switch` carries one; every other type has a fixed family. */
+  family?: EquipmentFamily | null;
   /** Spec 191 — an electric vehicle that also runs on fuel: its cost per
    *  100 km is not shown (part of its km are not electric). Default `false`. */
   plugInHybrid?: boolean;

@@ -192,7 +192,7 @@ The zone tree appears on the left. Click any zone to see:
 
 - **Aggregated status** -- temperature, humidity, luminosity, motion, lights count, shutter positions
 - **Zone commands** -- batch actions (all lights on/off, all shutters open/close)
-- **Equipment cards** -- grouped by type (Thermostat, Energy, Weather, etc.) with inline controls
+- **Equipment cards** -- grouped by [family](equipments.md#families) (Lights, Openings, Climate, Energy, Sensors, etc.), each in its colour, with inline controls
 - **Behaviors** -- recipes and modes configured for this zone
 
 ### Step 7: Customize the dashboard

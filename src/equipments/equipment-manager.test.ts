@@ -497,6 +497,31 @@ describe("EquipmentManager", () => {
     });
   });
 
+  describe("family (spec 208)", () => {
+    it("stores a switch's family, returns it, and clears it on null", () => {
+      const zone = zoneManager.create({ name: "Bureau" });
+      const eq = manager.create({ name: "Radiateur Bureau", type: "switch", zoneId: zone.id });
+      expect(manager.getById(eq.id)!.family).toBeUndefined();
+
+      manager.update(eq.id, { family: "climate" });
+      expect(manager.getById(eq.id)!.family).toBe("climate");
+      // An update that does not mention it keeps it.
+      manager.update(eq.id, { name: "Radiateur" });
+      expect(manager.getById(eq.id)!.family).toBe("climate");
+
+      manager.update(eq.id, { family: null });
+      expect(manager.getById(eq.id)!.family).toBeUndefined();
+    });
+
+    it("drops the family of a switch that stops being one", () => {
+      const zone = zoneManager.create({ name: "Garage" });
+      const eq = manager.create({ name: "Prise", type: "switch", zoneId: zone.id });
+      manager.update(eq.id, { family: "water" });
+      manager.update(eq.id, { type: "light_onoff" });
+      expect(manager.getById(eq.id)!.family).toBeUndefined();
+    });
+  });
+
   // Spec 188 O10 — null is the type's default; true / false the admin's choice.
   describe("track order outcome", () => {
     it("starts at the type's default and round-trips true, false and null", () => {

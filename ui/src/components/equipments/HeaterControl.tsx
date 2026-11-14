@@ -2,7 +2,7 @@ import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import { Flame, Snowflake, Loader2 } from "lucide-react";
 import type { EquipmentWithDetails } from "../../types";
-import { findOrderByCategory } from "./bindingUtils";
+import { findOrderByCategory, relayStateOn } from "./bindingUtils";
 
 interface HeaterControlProps {
   equipment: EquipmentWithDetails;
@@ -17,12 +17,7 @@ interface HeaterControlProps {
 
 /** Whether the pilot-wire relay is on — which means éco (fil pilote convention). */
 function heaterRelayOn(equipment: EquipmentWithDetails): boolean {
-  const stateBinding = equipment.dataBindings.find(
-    (db) => db.alias === "state" || db.category === "light_state",
-  );
-  return stateBinding
-    ? stateBinding.value === true || String(stateBinding.value).toUpperCase() === "ON"
-    : false;
+  return relayStateOn(equipment.dataBindings);
 }
 
 /** The Confort / Éco pill, as the compact rows show it. */

@@ -165,7 +165,7 @@ The **panel\_\_head** has one optional element: a `+` button (`.panel__add`) for
 
 ❌ **Don't**: drop the panel head if there's nothing to put in it — the head is the only visual anchor that signals "this is a section".
 ❌ **Don't**: put a colored accent border on the panel itself. Accents go on rows or sub-cats.
-❌ **Don't**: tint the panel head by category (e.g. amber for Équipements). The user explicitly rejected this — sub-cats use neutral, parent panels use primary.
+❌ **Don't**: tint the panel head by category (e.g. amber for Équipements). The user explicitly rejected this — sub-cats use neutral (an equipment family's title and icon square excepted, spec 208), parent panels use primary.
 
 ---
 

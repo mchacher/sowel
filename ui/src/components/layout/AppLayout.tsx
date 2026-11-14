@@ -35,6 +35,7 @@ import {
   RefreshCw,
   Power,
   KeyRound,
+  type LucideIcon,
 } from "lucide-react";
 
 // Display name → 1-2 uppercase initials for the avatar pill.
@@ -555,38 +556,19 @@ function MobileNav({
   return (
     <>
       <nav className="flex lg:hidden flex-col border-t border-border bg-surface">
-        {/* 49px, the height of a native iOS tab bar: a taller row lifts the labels
-            away from the screen's foot. Each button fills its column and the row. */}
-        <div className="flex items-stretch justify-around min-h-[49px] px-2">
-          <MobileNavLink
-            to="/dashboard"
-            label={t("nav.dashboard")}
-            icon={<LayoutDashboard size={18} strokeWidth={1.5} />}
-          />
-          <MobileNavLink
-            to="/home"
-            label={t("nav.maison")}
-            icon={<Home size={18} strokeWidth={1.5} />}
-          />
-          {energyAvailable && (
-            <MobileNavLink
-              to="/energy"
-              label={t("nav.energy")}
-              icon={<Zap size={18} strokeWidth={1.5} />}
-            />
-          )}
-          <MobileNavLink
-            to="/modes"
-            label={t("nav.modes")}
-            icon={<Layers size={18} strokeWidth={1.5} />}
-          />
+        {/* 60px before the safe area (spec 208, FR7): the selected tab's pill
+            needs the room a 49px iOS bar does not leave. Each button fills its
+            column and the row. */}
+        <div className="flex items-stretch justify-around min-h-[60px] pt-1.5 pb-1 px-2">
+          <MobileNavLink to="/dashboard" label={t("nav.dashboard")} icon={LayoutDashboard} />
+          <MobileNavLink to="/home" label={t("nav.maison")} icon={Home} />
+          {energyAvailable && <MobileNavLink to="/energy" label={t("nav.energy")} icon={Zap} />}
+          <MobileNavLink to="/modes" label={t("nav.modes")} icon={Layers} />
           <button
             onClick={() => setDrawerOpen(true)}
-            className="flex-1 flex flex-col items-center justify-center py-1 px-1 rounded-sm text-micro font-medium text-text-secondary"
+            className="flex-1 flex flex-col items-center justify-center px-1 text-micro font-medium text-text-secondary"
           >
-            <span className="mb-0.5">
-              <Menu size={18} strokeWidth={1.5} />
-            </span>
+            <MobileNavIcon icon={Menu} active={false} />
             <span className="text-micro">{t("nav.more", "Plus")}</span>
           </button>
         </div>
@@ -770,18 +752,40 @@ function DrawerLink({
   );
 }
 
-function MobileNavLink({ to, label, icon }: { to: string; label: string; icon?: React.ReactNode }) {
+/**
+ * The selected tab reads at a glance (spec 208, FR7): its icon sits on a pill
+ * of the primary ink at 15 %, with a heavier stroke, and its label is
+ * semibold; the other tabs are secondary text.
+ */
+function MobileNavLink({ to, label, icon }: { to: string; label: string; icon: LucideIcon }) {
   return (
     <NavLink
       to={to}
       className={({ isActive }) =>
-        `flex-1 flex flex-col items-center justify-center py-1 px-1 rounded-sm text-micro font-medium ${
-          isActive ? "text-primary" : "text-text-secondary"
+        `flex-1 flex flex-col items-center justify-center px-1 text-micro ${
+          isActive ? "text-primary font-semibold" : "text-text-secondary font-medium"
         }`
       }
     >
-      {icon && <span className="mb-0.5">{icon}</span>}
-      <span className="text-micro">{label}</span>
+      {({ isActive }) => (
+        <>
+          <MobileNavIcon icon={icon} active={isActive} />
+          <span className="text-micro">{label}</span>
+        </>
+      )}
     </NavLink>
+  );
+}
+
+function MobileNavIcon({ icon: Icon, active }: { icon: LucideIcon; active: boolean }) {
+  return (
+    <span
+      aria-hidden="true"
+      className={`flex items-center justify-center w-14 h-7.5 mb-0.5 rounded-full ${
+        active ? "bg-primary/15" : ""
+      }`}
+    >
+      <Icon size={22} strokeWidth={active ? 2 : 1.5} />
+    </span>
   );
 }

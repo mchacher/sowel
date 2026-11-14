@@ -7,6 +7,7 @@ import type { DeviceManager } from "../devices/device-manager.js";
 import { toISOUtc } from "../core/database.js";
 import type {
   Equipment,
+  EquipmentFamily,
   EquipmentType,
   EquipmentWithDetails,
   ComputedDataEntry,
@@ -131,6 +132,8 @@ interface UpdateEquipmentInput {
   separateSupply?: boolean;
   /** Spec 195 — negative power on this meter is local production. */
   localProduction?: boolean;
+  /** Spec 208 — a switch's family. `null` clears it. */
+  family?: EquipmentFamily | null;
   /** Spec 191 — this electric vehicle is a plug-in hybrid. */
   plugInHybrid?: boolean;
   /** Spec 193 — an EV charger's usual vehicle. `null` clears it. */
@@ -261,7 +264,7 @@ export class EquipmentManager {
          invert_direction = @invertDirection, solar_profile = @solarProfile,
          track_order_outcome = @trackOrderOutcome,
          metering_parent_id = @meteringParentId, separate_supply = @separateSupply,
-         local_production = @localProduction,
+         local_production = @localProduction, family = @family,
          plug_in_hybrid = @plugInHybrid, usual_vehicle_id = @usualVehicleId,
          timed_command = @timedCommand,
          updated_at = datetime('now') WHERE id = @id`,
@@ -680,6 +683,10 @@ export class EquipmentManager {
             ? 1
             : 0
           : existing.local_production,
+      // Spec 208 — only a switch carries a family: one that stops being a switch
+      // takes its new type's fixed family, so the stored value goes.
+      family:
+        newType !== "switch" ? null : input.family !== undefined ? input.family : existing.family,
       plugInHybrid:
         input.plugInHybrid !== undefined ? (input.plugInHybrid ? 1 : 0) : existing.plug_in_hybrid,
       usualVehicleId,
@@ -1918,6 +1925,7 @@ interface EquipmentRow {
   metering_parent_id: string | null;
   separate_supply: number;
   local_production: number;
+  family: string | null;
   plug_in_hybrid: number;
   usual_vehicle_id: string | null;
   timed_command: string | null;
@@ -2090,6 +2098,7 @@ function rowToEquipment(row: EquipmentRow): Equipment {
     meteringParentId: row.metering_parent_id ?? null,
     separateSupply: row.separate_supply === 1,
     ...(row.local_production === 1 && { localProduction: true }),
+    ...(row.family !== null && { family: row.family as EquipmentFamily }),
     ...(row.plug_in_hybrid === 1 && { plugInHybrid: true }),
     ...(row.usual_vehicle_id !== null && { usualVehicleId: row.usual_vehicle_id }),
     timedCommand: parseTimedCommand(row.timed_command),

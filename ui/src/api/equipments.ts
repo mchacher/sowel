@@ -1,5 +1,6 @@
 import type {
   Equipment,
+  EquipmentFamily,
   EquipmentType,
   EnergyLoadProfile,
   ArbiterPublicState,
@@ -63,6 +64,8 @@ export async function updateEquipment(
     separateSupply?: boolean;
     /** Spec 195 — negative power on this meter is local production. */
     localProduction?: boolean;
+    /** Spec 208 — a switch's family; null puts it back with the plugs. */
+    family?: EquipmentFamily | null;
     /** Spec 191 — this electric vehicle is a plug-in hybrid. */
     plugInHybrid?: boolean;
     /** Spec 193 — an EV charger's usual vehicle; null clears it. */

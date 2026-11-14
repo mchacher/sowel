@@ -1,135 +1,40 @@
 import {
   Box,
-  CloudSun,
-  DoorClosed,
-  Lightbulb,
+  CircleDot,
+  Droplet,
   Gauge,
-  ToggleRight,
-  Thermometer,
-  Zap,
-  Tv,
+  Lightbulb,
   Monitor,
+  Thermometer,
+  ToggleRight,
+  Tv,
   WashingMachine,
-  Waves,
-  Camera,
-  Car,
-  BatteryCharging,
-  Fan,
+  Zap,
 } from "lucide-react";
 import { ShutterClosedIcon } from "../icons/ShutterIcons";
-import { WaterValveIcon } from "../icons/WaterValveIcon";
-import { AwningIcon } from "../icons/AwningIcon";
-import { SolarPanelIcon } from "../icons/SolarPanelIcon";
 import { useTranslation } from "react-i18next";
-import type { EquipmentType, EquipmentWithDetails } from "../../types";
+import type { EquipmentWithDetails } from "../../types";
+import { SECTIONS, sectionOf, type SectionId } from "../../lib/equipment-family";
 import { CompactEquipmentCard } from "./CompactEquipmentCard";
 import { SliceHeader } from "./Panel";
 
-interface EquipmentGroup {
-  labelKey: string;
-  types: EquipmentType[];
-  icon: React.ReactNode;
-}
-
-// One neutral header per category (spec 196, slice 7c): the icon glyph alone
-// conveys the category, no per-group tint.
-const EQUIPMENT_GROUPS: EquipmentGroup[] = [
-  {
-    labelKey: "equipments.group.lights",
-    types: ["light_onoff", "light_dimmable", "light_color"],
-    icon: <Lightbulb size={16} strokeWidth={1.5} />,
-  },
-  {
-    labelKey: "equipments.group.shutters",
-    types: ["shutter"],
-    icon: <ShutterClosedIcon size={16} strokeWidth={1.5} />,
-  },
-  {
-    labelKey: "equipments.group.awnings",
-    types: ["awning"],
-    icon: <AwningIcon size={16} strokeWidth={1.5} />,
-  },
-  {
-    labelKey: "equipments.group.doors",
-    types: ["door"],
-    icon: <DoorClosed size={16} strokeWidth={1.5} />,
-  },
-  {
-    labelKey: "equipments.group.climate",
-    types: ["thermostat", "heater"],
-    icon: <Thermometer size={16} strokeWidth={1.5} />,
-  },
-  {
-    labelKey: "equipments.group.energy",
-    types: ["energy_meter", "main_energy_meter", "energy_production_meter"],
-    icon: <Zap size={16} strokeWidth={1.5} />,
-  },
-  {
-    labelKey: "equipments.group.solar",
-    types: ["solar_panel"],
-    icon: <SolarPanelIcon size={16} strokeWidth={1.5} />,
-  },
-  {
-    labelKey: "equipments.group.sensors",
-    types: ["sensor"],
-    icon: <Gauge size={16} strokeWidth={1.5} />,
-  },
-  {
-    labelKey: "equipments.group.weather",
-    types: ["weather", "weather_forecast"],
-    icon: <CloudSun size={16} strokeWidth={1.5} />,
-  },
-  {
-    labelKey: "equipments.group.media",
-    types: ["media_player"],
-    icon: <Tv size={16} strokeWidth={1.5} />,
-  },
-  {
-    labelKey: "equipments.group.appliances",
-    types: ["appliance"],
-    icon: <WashingMachine size={16} strokeWidth={1.5} />,
-  },
-  {
-    labelKey: "equipments.group.water",
-    types: ["water_valve", "water_heater"],
-    icon: <WaterValveIcon size={16} strokeWidth={1.5} />,
-  },
-  {
-    labelKey: "equipments.group.pool",
-    types: ["pool_pump", "pool_cover", "pool_heat_pump"],
-    icon: <Waves size={16} strokeWidth={1.5} />,
-  },
-  {
-    labelKey: "equipments.group.ventilation",
-    types: ["vmc"],
-    icon: <Fan size={16} strokeWidth={1.5} />,
-  },
-  {
-    labelKey: "equipments.group.displays",
-    types: ["display"],
-    icon: <Monitor size={16} strokeWidth={1.5} />,
-  },
-  {
-    labelKey: "equipments.group.cameras",
-    types: ["camera"],
-    icon: <Camera size={16} strokeWidth={1.5} />,
-  },
-  {
-    labelKey: "equipments.group.power",
-    types: ["ups", "ev_charger"],
-    icon: <BatteryCharging size={16} strokeWidth={1.5} />,
-  },
-  {
-    labelKey: "equipments.group.vehicles",
-    types: ["electric_vehicle"],
-    icon: <Car size={16} strokeWidth={1.5} />,
-  },
-  {
-    labelKey: "equipments.group.other",
-    types: ["switch", "button", "gate"],
-    icon: <ToggleRight size={16} strokeWidth={1.5} />,
-  },
-];
+// Spec 208 — one section per equipment family (coloured title) or neutral
+// section, in the order of SECTIONS; the membership rule lives in
+// lib/equipment-family.ts.
+const SECTION_ICONS: Record<SectionId, React.ReactNode> = {
+  lighting: <Lightbulb size={16} strokeWidth={1.5} />,
+  openings: <ShutterClosedIcon size={16} strokeWidth={1.5} />,
+  climate: <Thermometer size={16} strokeWidth={1.5} />,
+  water: <Droplet size={16} strokeWidth={1.5} />,
+  energy: <Zap size={16} strokeWidth={1.5} />,
+  sensors: <Gauge size={16} strokeWidth={1.5} />,
+  media: <Tv size={16} strokeWidth={1.5} />,
+  appliances: <WashingMachine size={16} strokeWidth={1.5} />,
+  plugs: <ToggleRight size={16} strokeWidth={1.5} />,
+  controls: <CircleDot size={16} strokeWidth={1.5} />,
+  displays: <Monitor size={16} strokeWidth={1.5} />,
+  other: <Box size={16} strokeWidth={1.5} />,
+};
 
 interface ZoneEquipmentsViewProps {
   zoneName: string;
@@ -150,22 +55,22 @@ export function ZoneEquipmentsView({
     return <EmptyZone zoneName={zoneName} onAdd={onAdd} />;
   }
 
-  // Group equipments by type category
-  const grouped = EQUIPMENT_GROUPS.map((group) => ({
-    ...group,
-    equipments: equipments.filter((eq) => group.types.includes(eq.type)),
+  const grouped = SECTIONS.map((section) => ({
+    ...section,
+    equipments: equipments.filter((eq) => sectionOf(eq) === section.id),
   })).filter((g) => g.equipments.length > 0);
 
-  // Each category is a slice of the panel body (spec 196, slice 7c): the
+  // Each section is a slice of the panel body (spec 196, slice 7c): the
   // fragment's children are the direct children of the Panel's `slices`.
   return (
     <>
       {grouped.map((group) => (
-        <div key={group.labelKey}>
+        <div key={group.id}>
           <SliceHeader
-            icon={group.icon}
+            icon={SECTION_ICONS[group.id]}
             label={t(group.labelKey)}
             count={group.equipments.length}
+            family={group.family}
           />
           <div className="slice-rows">
             {group.equipments.map((eq) => (

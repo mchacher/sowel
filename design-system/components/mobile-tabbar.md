@@ -13,8 +13,8 @@
 │  (page content scrolls above)                        │
 │                                                      │
 ├──────────────────────────────────────────────────────┤  border-top
-│ ▢▢▢▢   🏠   ⚡   ▦   ☰                                │
-│ Dash    Maison  Énergie  Modes  Plus                 │  76 px (incl. 18 px safe-area)
+│ ▢▢▢▢  (🏠)   ⚡   ▦   ☰                                │  (…) = the active tab's pill
+│ Dash    Maison  Énergie  Modes  Plus                 │  60 px + half the safe area
 └──────────────────────────────────────────────────────┘
 ```
 
@@ -24,12 +24,12 @@ Order matters: **Dashboard / Maison / Énergie / Modes / Plus** — confirmed by
 
 ## States
 
-| State   | Class               | Effect                    |
-| ------- | ------------------- | ------------------------- |
-| Default | `.mob__tab`         | icon + label in `--n-400` |
-| Active  | `.mob__tab--active` | icon + label in `--p-500` |
+| State   | Class               | Effect                                                                                                                |
+| ------- | ------------------- | --------------------------------------------------------------------------------------------------------------------- |
+| Default | `.mob__tab`         | icon (22 px, stroke 1.5) + label in `text-secondary`, medium                                                          |
+| Active  | `.mob__tab--active` | icon on a 56 × 30 px pill of the primary ink at 15 % (`bg-primary/15`), stroke 2; icon + label in `--p-500`, semibold |
 
-Only one tab is `--active` at a time. The active tab matches the current route.
+Only one tab is `--active` at a time. The active tab matches the current route. Spec 208 added the pill: the colour change alone did not show the selection on a phone. The row is 60 px high before the safe area (`MobileNav` in `ui/src/components/layout/AppLayout.tsx`). The heavier stroke of the active icon is the one exception to the 1.5 px Lucide stroke.
 
 ---
 
@@ -66,8 +66,8 @@ Only one tab is `--active` at a time. The active tab matches the current route.
   left: 0;
   right: 0;
   bottom: 0;
-  height: 76px;
-  padding-bottom: 18px; /* iOS safe-area */
+  min-height: 60px;
+  padding-bottom: calc(env(safe-area-inset-bottom, 0px) / 2); /* half the home indicator */
   background: var(--n-0);
   border-top: 1px solid var(--line);
   display: grid;
@@ -81,12 +81,20 @@ Only one tab is `--active` at a time. The active tab matches the current route.
   align-items: center;
   justify-content: center;
   gap: 3px;
-  color: var(--n-400);
+  color: var(--n-600); /* text-secondary */
   cursor: pointer;
 }
+.mob__tab-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 56px;
+  height: 30px;
+  border-radius: var(--r-full);
+}
 .mob__tab svg {
-  width: 20px;
-  height: 20px;
+  width: 22px;
+  height: 22px;
 }
 .mob__tab-label {
   font-size: var(--fs-micro);
@@ -96,6 +104,13 @@ Only one tab is `--active` at a time. The active tab matches the current route.
 
 .mob__tab--active {
   color: var(--p-500);
+  font-weight: 600;
+}
+.mob__tab--active .mob__tab-icon {
+  background: color-mix(in srgb, var(--p-500) 15%, transparent);
+}
+.mob__tab--active svg {
+  stroke-width: 2;
 }
 ```
 
@@ -125,14 +140,14 @@ This ordering reflects **usage frequency** on mobile (Dashboard glance > Zone co
 
 ## Accessibility
 
-| Concern        | Implementation                                                                       |
-| -------------- | ------------------------------------------------------------------------------------ |
-| Landmark       | `<nav role="navigation" aria-label="Navigation principale">` in production.          |
-| Tab role       | Each tab is a `<Link>` or `<button>` — focusable and keyboard-activatable.           |
-| Active state   | Use `aria-current="page"` on the active tab in addition to the `--active` class.     |
-| Touch target   | 76 × ~(viewport/5) px — each tab is ~78 × 76 on a 390 px viewport. **Passes 44×44**. |
-| Color contrast | `--n-400` on `--n-0`: 5.6:1 — AA (large text). Active `--p-500`: 9.8:1 — AAA.        |
-| iOS safe-area  | The 18 px bottom padding accounts for the home indicator on modern iPhones.          |
+| Concern        | Implementation                                                                                                 |
+| -------------- | -------------------------------------------------------------------------------------------------------------- |
+| Landmark       | `<nav role="navigation" aria-label="Navigation principale">` in production.                                    |
+| Tab role       | Each tab is a `<Link>` or `<button>` — focusable and keyboard-activatable.                                     |
+| Active state   | Use `aria-current="page"` on the active tab in addition to the `--active` class.                               |
+| Touch target   | 60 × ~(viewport/5) px — each tab is ~78 × 60 on a 390 px viewport. **Passes 44×44**.                           |
+| Color contrast | `--n-600` on `--n-0`: 10.25:1. Active `--p-500`: 9.8:1 — AAA; on its 15 % pill 6.9:1 (light) and 4.6:1 (dark). |
+| iOS safe-area  | Half the home indicator's inset sits under the labels: the full 34 pt read as an empty band.                   |
 
 ---
 

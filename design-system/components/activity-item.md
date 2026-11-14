@@ -206,7 +206,7 @@ Identical structure, slightly tighter:
   background: var(--a-500);
 }
 .mob__act-dot--motion {
-  background: var(--sensor-500);
+  background: var(--fam-sensors-ink);
 }
 .mob__act-dot--shutter {
   background: var(--shutter-500);
