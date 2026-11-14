@@ -269,8 +269,12 @@ describe("FlowDiagram nodes", () => {
     );
     for (const slot of ["focal", "left", "right"] as const) {
       const el = container.querySelector<HTMLElement>(`[data-slot="${slot}"]`)!;
-      expect(el.style.left).toBe(`${SLOT_ANCHOR[slot].left}%`);
-      expect(el.style.top).toBe(`${SLOT_ANCHOR[slot].top}%`);
+      // Read as numbers: jsdom 31 serialises a percentage to 6 significant
+      // digits (22.4138%), where the browser keeps the full value.
+      expect(el.style.left).toMatch(/%$/);
+      expect(el.style.top).toMatch(/%$/);
+      expect(parseFloat(el.style.left)).toBeCloseTo(SLOT_ANCHOR[slot].left, 3);
+      expect(parseFloat(el.style.top)).toBeCloseTo(SLOT_ANCHOR[slot].top, 3);
       expect(el.className).toContain("-translate-y-1/2");
     }
     // The routes' corners: x 60 / 480 of 540, y 65 (focal) and 180 of 290.

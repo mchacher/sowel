@@ -1,4 +1,4 @@
-import webpush from "web-push";
+import { generateVAPIDKeys } from "web-push";
 import type { SettingsManager } from "../core/settings-manager.js";
 import type { Logger } from "../core/logger.js";
 
@@ -51,7 +51,7 @@ export function ensureVapidKeys(settings: SettingsManager, logger: Logger): Vapi
     return { publicKey, privateKey, subject };
   }
 
-  const generated = webpush.generateVAPIDKeys();
+  const generated = generateVAPIDKeys();
   settings.setMany({
     [KEY_PUBLIC]: generated.publicKey,
     [KEY_PRIVATE]: generated.privateKey,
