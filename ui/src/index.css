@@ -84,13 +84,37 @@
   --shadow-md: var(--sh-2);
   --shadow-lg: var(--sh-3);
 
-  /* Equipment category tints — from design-system/tokens.css (spec 099) */
+  /* Shutter state tint — the « Fermé » pill and the shutter slider. */
   --color-shutter-50: var(--shutter-50);
   --color-shutter-500: var(--shutter-500);
-  --color-sensor-50: var(--sensor-50);
-  --color-sensor-500: var(--sensor-500);
-  --color-media-50: var(--media-50);
-  --color-media-500: var(--media-500);
+
+  /* Equipment families (spec 208): bg-fam-<family>-50, text-fam-<family>-ink,
+     bg-fam-<family>-fill, text-fam-<family>-on. Class strings live in
+     ui/src/lib/equipment-family.ts. */
+  --color-fam-lighting-50: var(--fam-lighting-50);
+  --color-fam-lighting-ink: var(--fam-lighting-ink);
+  --color-fam-lighting-fill: var(--fam-lighting-fill);
+  --color-fam-lighting-on: var(--fam-lighting-on);
+  --color-fam-openings-50: var(--fam-openings-50);
+  --color-fam-openings-ink: var(--fam-openings-ink);
+  --color-fam-openings-fill: var(--fam-openings-fill);
+  --color-fam-openings-on: var(--fam-openings-on);
+  --color-fam-climate-50: var(--fam-climate-50);
+  --color-fam-climate-ink: var(--fam-climate-ink);
+  --color-fam-climate-fill: var(--fam-climate-fill);
+  --color-fam-climate-on: var(--fam-climate-on);
+  --color-fam-water-50: var(--fam-water-50);
+  --color-fam-water-ink: var(--fam-water-ink);
+  --color-fam-water-fill: var(--fam-water-fill);
+  --color-fam-water-on: var(--fam-water-on);
+  --color-fam-energy-50: var(--fam-energy-50);
+  --color-fam-energy-ink: var(--fam-energy-ink);
+  --color-fam-energy-fill: var(--fam-energy-fill);
+  --color-fam-energy-on: var(--fam-energy-on);
+  --color-fam-sensors-50: var(--fam-sensors-50);
+  --color-fam-sensors-ink: var(--fam-sensors-ink);
+  --color-fam-sensors-fill: var(--fam-sensors-fill);
+  --color-fam-sensors-on: var(--fam-sensors-on);
 
   /* Compact top bar (phones and tablets): the bar's height (h-topbar) and the
      spacer that holds its place under the fixed bar (TopBarFrame). */

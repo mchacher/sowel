@@ -112,6 +112,8 @@ const PAIRS: [string, string, number][] = [
   ["on-status", "error", TEXT],
   ["heat", "heat/10", TEXT],
   ["primary", "primary/10", TEXT],
+  // Spec 208 — the selected tab of the bottom bar: its label and icon on their pill.
+  ["primary", "primary/15", TEXT],
   ["text-secondary", "border-light-solid", TEXT],
   // Off switch: its outline on the surface, its thumb on its track.
   ["text-tertiary", "surface", GRAPHIC],
@@ -208,21 +210,49 @@ describe("colour role tokens", () => {
     expect(luminance(surface)).toBeGreaterThan(luminance(page));
   });
 
-  it.each(["shutter", "sensor", "media"])(
-    "draws the %s icon square on the theme's card (slice 7b)",
-    (cat) => {
-      for (const theme of ["light", "dark"] as Theme[]) {
-        expect(ratio(hex(theme, `--${cat}-500`), hex(theme, `--${cat}-50`))).toBeGreaterThanOrEqual(
-          GRAPHIC,
-        );
-      }
-      // The dark tints were calibrated for the old #16181E card, on which the
-      // new one painted them 1.00:1 to 1.04:1: an icon with no square.
-      expect(ratio(hex("dark", `--${cat}-50`), resolve("dark", "surface"))).toBeGreaterThanOrEqual(
-        1.1,
+  it("draws the shutter state pill on the theme's card (slice 7b)", () => {
+    for (const theme of ["light", "dark"] as Theme[]) {
+      expect(ratio(hex(theme, "--shutter-500"), hex(theme, "--shutter-50"))).toBeGreaterThanOrEqual(
+        GRAPHIC,
       );
+    }
+    expect(ratio(hex("dark", "--shutter-50"), resolve("dark", "surface"))).toBeGreaterThanOrEqual(
+      1.1,
+    );
+  });
+
+  // Spec 208 — equipment families: the title and the icon in ink, on the card
+  // and on the family's pale; the icon on the running fill; a pale that still
+  // reads as a square on the night card.
+  describe.each(["lighting", "openings", "climate", "water", "energy", "sensors"])(
+    "family %s",
+    (family) => {
+      it.each(["light", "dark"] as Theme[])("reads in %s", (theme) => {
+        const ink = hex(theme, `--fam-${family}-ink`);
+        const pale = hex(theme, `--fam-${family}-50`);
+        expect(ratio(ink, resolve(theme, "surface"))).toBeGreaterThanOrEqual(TEXT);
+        expect(ratio(ink, pale)).toBeGreaterThanOrEqual(TEXT);
+        expect(
+          ratio(hex(theme, `--fam-${family}-on`), hex(theme, `--fam-${family}-fill`)),
+        ).toBeGreaterThanOrEqual(GRAPHIC);
+        expect(themeColor(`fam-${family}-ink`)).toBe(`--fam-${family}-ink`);
+      });
+
+      it("keeps a visible pale square on the night card", () => {
+        expect(
+          ratio(hex("dark", `--fam-${family}-50`), resolve("dark", "surface")),
+        ).toBeGreaterThanOrEqual(1.1);
+      });
     },
   );
+
+  it("makes the lighting family the amber role (spec 208)", () => {
+    for (const theme of ["light", "dark"] as Theme[]) {
+      expect(hex(theme, "--fam-lighting-fill")).toBe(hex(theme, "--a-500"));
+      expect(hex(theme, "--fam-lighting-ink")).toBe(hex(theme, "--a-ink"));
+      expect(hex(theme, "--fam-lighting-on")).toBe(hex(theme, "--a-on"));
+    }
+  });
 
   it("gives dark illustrations ocean night fills that read on a card (slice 7b)", () => {
     expect(ratio(hex("dark", "--illu-fill"), resolve("dark", "surface"))).toBeGreaterThanOrEqual(

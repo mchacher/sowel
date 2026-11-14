@@ -218,6 +218,8 @@ Rules worth knowing before calling it:
 
 `PUT /api/v1/equipments/:id` accepts `localProduction` (spec 195, migration `041`): negative power on that power-only submeter is local production. Its integrated energy then keeps the positive part as `energy` (the by-usage slice) and writes the negative part as a separate `production` series, added to the house's solar in the self-consumption split. Refused with `400 LocalProductionNotApplicable` on a `main_energy_meter` / production type and together with `separateSupply`, checked on the resulting state, and with `400 LocalProductionNotPowerOnly` on a meter that reports its own energy counter.
 
+`PUT /api/v1/equipments/:id` accepts `family` (spec 208, migration `045`): one of `lighting`, `openings`, `climate`, `water`, `energy`, `sensors`, or `null` to clear it. Only a `switch` carries one (a plug that drives a radiator is `climate`); a non-null family on any other resulting type is refused with `400 FamilyNotApplicable`, and a switch retyped to something else loses it. `GET` returns it only when set.
+
 `PUT /api/v1/equipments/:id` accepts `trackOrderOutcome` (`true` / `false`, or `null` for the type's default: on for `gate` and `door`, off for `shutter` and `awning`; spec 188 O10, migration `038`). It accepts `type`. The server checks only that the type exists; the edit form offers a change only between `shutter`, `awning` and `door` (spec 190), whose bindings stay valid. Zone aggregated data carries `doorsOpen` / `doorsTotal` for `door` equipments (spec 190).
 
 `PUT /api/v1/equipments/:id` accepts `timedCommand` and validates it against the equipment's own bindings, so a configuration naming an order it does not carry is refused where it is written rather than where it is fired:
@@ -235,7 +237,7 @@ PUT /api/v1/equipments/eq-gate
 
 - `status: "online" | "degraded" | "offline"` — computed in memory from the backing devices' `status` and the freshness of streaming bindings.
   - `offline`: every bound device is `offline`, OR the equipment has no device bindings.
-  - `degraded`: at least one device is `offline`, OR at least one streaming binding (`power`, `temperature`, etc.) has not been refreshed within its category timeout.
+  - `degraded`: at least one device is `offline`, OR at least one streaming binding (`power`, `temperature`, etc.) has not been refreshed within its category timeout. A device's own `battery` and internal `temperature_device` are not judged on freshness (#1242): they arrive with other events or on change only, so their age says nothing about the equipment.
   - `online`: everything healthy.
 - `statusReason?: { offlineDevices: string[]; staleBindings: string[]; offlineSince: string | null }` — present only when status ≠ `online`. Used by the UI tooltip.
 

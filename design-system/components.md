@@ -29,7 +29,7 @@ The system has **two component layers**:
 | Component         | Purpose                                                                                                                     | Spec                                                       |
 | ----------------- | --------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------- |
 | **Panel**         | Card container for a top-level section (Équipements, Comportements, Activité). Has a tinted head + body with rows.          | [components/panel.md](components/panel.md)                 |
-| **Cat-head**      | Sub-category header inside a panel (Éclairages, Modes, Recettes). Neutral background, optional `+` button.                  | [components/cat-head.md](components/cat-head.md)           |
+| **Cat-head**      | Sub-category header inside a panel (Éclairages, Modes, Recettes). Family-coloured title for an equipment family (spec 208). | [components/cat-head.md](components/cat-head.md)           |
 | **Hero**          | Zone title block — title + lead synthesizing state. Lives above the strip.                                                  | [components/hero.md](components/hero.md)                   |
 | **Strip**         | Horizontal row of state pills with three soft groups (sensors / counters / alerts). Stays single-line, scrolls if overflow. | [components/strip.md](components/strip.md)                 |
 | **Zone commands** | Inline toolbar below the strip with 5 icon buttons (lights on/off + shutter ↑■↓).                                           | [components/zone-commands.md](components/zone-commands.md) |

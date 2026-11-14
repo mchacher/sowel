@@ -44,6 +44,25 @@ Un seul équipement peut se lier à **plusieurs devices**. C'est une des fonctio
 
 ## Types d'équipements
 
+### Familles { #families }
+
+Chaque type appartient à une **famille** : ce sur quoi l'équipement agit ou ce qu'il mesure. La vue d'une pièce regroupe les équipements par famille, une section chacune, qui porte son nom, et la famille colore le titre de la section et le carré de l'icône de l'équipement.
+
+| Famille (couleur)      | Types                                                                                         |
+| ---------------------- | --------------------------------------------------------------------------------------------- |
+| **Éclairages** (ambre) | lumières marche/arrêt, à variateur et couleur                                                 |
+| **Ouvrants** (indigo)  | volet, store banne, porte, portail, volet de piscine                                          |
+| **Climat** (brique)    | thermostat, radiateur, VMC                                                                    |
+| **Eau** (turquoise)    | vanne d'eau, pompe de piscine, pompe à chaleur de piscine, chauffe-eau                        |
+| **Énergie** (vert)     | compteurs d'énergie, panneau photovoltaïque, onduleur, borne de recharge, véhicule électrique |
+| **Capteurs** (violet)  | capteur, station météo, prévisions météo, caméra                                              |
+
+Les lecteurs multimédia, l'électroménager, les prises et relais, les boutons et télécommandes, et les afficheurs n'ont pas de famille : ils ont leurs propres sections (**Multimédia**, **Électroménager**, **Prises**, **Commandes**, **Afficheurs**), sans couleur.
+
+Au repos, le carré de l'icône prend la teinte pâle de sa famille. Quand l'équipement **est en marche**, il prend la couleur pleine : une lumière allumée, un radiateur qui chauffe (confort), un thermostat ou une VMC en marche, une vanne ouverte, une pompe ou un chauffe-eau en marche, une borne ou une voiture qui charge. Les ouvrants, les compteurs et les capteurs ne se remplissent jamais : leur état est la pastille de la ligne. Le carré d'un équipement sans famille ne change jamais ; son état se lit sur ses commandes.
+
+Une **prise ou un relais** peut recevoir une famille, parce que la même prise alimente un radiateur dans une pièce et une box dans une autre : sur la page de la prise, **Configuration → Famille** (administrateurs). Une prise mise en **Climat** rejoint la section Climat, à ses couleurs, et se remplit quand elle est allumée. **Aucune** la laisse avec les prises.
+
 ### Lumières
 
 #### Lumière (On/Off)
@@ -182,7 +201,7 @@ Prévision météo sur plusieurs jours depuis une intégration API (par ex. plug
 - **Contrôles :** Cartes de prévisions jour par jour avec icônes des conditions
 - **Données par jour (J+1 à J+5) :** condition météo, températures min/max, probabilité de pluie, rafales de vent
 
-#### Bouton / Télécommande
+#### Bouton ou télécommande
 
 Bouton physique ou télécommande. Pas piloté directement, utilisé comme déclencheur d'automatisations.
 
@@ -311,12 +330,14 @@ L'aperçu et le flux en direct passent par le backend de Sowel — votre navigat
 
 ### Autre
 
-#### Interrupteur / Prise
+#### Prise ou relais
 
-Simple interrupteur on/off ou prise connectée.
+Simple relais marche/arrêt ou prise connectée.
 
 - **Contrôles :** Bascule Marche / Arrêt avec badge d'état
 - **Données attendues :** état (on/off)
+
+Une prise reste dans la section **Prises** tant que vous ne lui donnez pas de [famille](#families) (**Configuration → Famille**) : une prise qui alimente un radiateur va dans **Climat**.
 
 #### Onduleur
 

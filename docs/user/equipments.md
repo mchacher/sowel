@@ -46,6 +46,25 @@ A single equipment can bind to **multiple devices**. This is one of Sowel's most
 
 Sowel ships a closed catalogue of equipment types. Every equipment in your home is one of these, and the type drives both the UI controls and the expected data shape.
 
+### Families { #families }
+
+Every type belongs to a **family**: what the equipment acts on or measures. The room view groups equipments by family, one section each, named after it, and the family colours the section title and the equipment's icon square.
+
+| Family (colour)       | Types                                                         |
+| --------------------- | ------------------------------------------------------------- |
+| **Lights** (amber)    | on/off, dimmable and colour lights                            |
+| **Openings** (indigo) | shutter, awning, door, gate, pool cover                       |
+| **Climate** (brick)   | thermostat, radiator, VMC                                     |
+| **Water** (teal)      | water valve, pool pump, pool heat pump, water heater          |
+| **Energy** (green)    | energy meters, solar panel, UPS, EV charger, electric vehicle |
+| **Sensors** (violet)  | sensor, weather station, weather forecast, camera             |
+
+Media players, appliances, plugs and relays, buttons and remotes, and displays have no family: they sit in sections of their own (**Media**, **Appliances**, **Plugs**, **Controls**, **Displays**), without a colour.
+
+At rest an equipment's icon square takes the pale shade of its family. While the equipment **runs**, it takes the full colour: a light on, a radiator heating (comfort), a thermostat or a VMC on, a valve open, a pump or a water heater on, a charger or a car charging. Openings, meters and sensors never fill: their state is the pill on the row. The icon square of an equipment without a family never changes; its state is on its controls.
+
+A **plug or relay** can be given a family, because the same plug drives a radiator in one room and a router in another: on the plug's page, **Configuration → Family** (administrators). A plug set to **Climate** sits in the Climate section, in its colours, and fills while it is on. **None** keeps it with the plugs.
+
 ### Lights
 
 | Type                 | Controls                             | Expected data                               |
@@ -112,7 +131,7 @@ A shutter, an awning and a door can be switched into one another from the equipm
 | **Sensor**           | Read-only multi-value display, auto-adapted                                                            | temperature, humidity, pressure, CO2, VOC, luminosity, noise, battery, motion, contact, water leak, smoke                                                                                                                                                           |
 | **Weather Station**  | Multi-value display; a gauge that measures only rain gets a [rain tile](dashboard.md#equipment-widget) | temperature (with today's measured min/max shown underneath), humidity, pressure, rain (1 h and 24 h totals, plus _Rain today_ since midnight when the station reports it; history bars per hour and per day, each day cut at local midnight), wind, noise, battery |
 | **Weather Forecast** | Day-by-day forecast cards (J+1 to J+5)                                                                 | weather condition, temperature min/max, rain probability, wind gusts                                                                                                                                                                                                |
-| **Button / Remote**  | Not directly controlled (used as trigger)                                                              | action events (single press, double press, long press)                                                                                                                                                                                                              |
+| **Button or remote** | Not directly controlled (used as trigger)                                                              | action events (single press, double press, long press)                                                                                                                                                                                                              |
 
 The generic **Sensor** type adapts its display automatically. Boolean sensors (motion, contact, water leak, smoke) get appropriate badges; numeric sensors get values with the right unit and icon.
 
@@ -215,14 +234,16 @@ never talks to the camera directly, and never learns its network address.
 
 | Type              | Controls                    | Expected data                         |
 | ----------------- | --------------------------- | ------------------------------------- |
-| **Switch / Plug** | Toggle On/Off + state badge | state (on/off); optional power/energy |
+| **Plug or relay** | Toggle On/Off + state badge | state (on/off); optional power/energy |
 
-A **metering plug** (e.g. SONOFF S60ZBTPF) is a `Switch / Plug` that also
+A **metering plug** (e.g. SONOFF S60ZBTPF) is a `Plug or relay` that also
 reports `power`/`energy`. Bind it as a switch and Sowel automatically captures
 the metering: the card shows live power next to the toggle, the consumption
 feeds the energy dashboard (history, HP/HC), and the plug appears in the live
 submeter breakdown — while keeping its ON/OFF control. A basic relay with no
 metering data behaves as a plain switch.
+
+A plug sits in the **Plugs** section until you give it a [family](#families) (**Configuration → Family**): a plug that drives a radiator belongs in **Climate**.
 
 #### UPS
 

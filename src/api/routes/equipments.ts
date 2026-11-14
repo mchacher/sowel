@@ -13,8 +13,10 @@ import {
   METERING_RELAY_TYPES,
 } from "../../equipments/metering.js";
 import { isTimedCommandEligible, validateDurationSteps } from "../../shared/timed-command.js";
+import { EQUIPMENT_FAMILIES } from "../../shared/constants.js";
 import type {
   EnergyLoadProfile,
+  EquipmentFamily,
   EquipmentType,
   SolarProfile,
   TimedCommand,
@@ -84,6 +86,8 @@ const updateEquipmentBodySchema = {
     separateSupply: { type: "boolean" },
     // Spec 195 — negative power on this meter is local production.
     localProduction: { type: "boolean" },
+    // Spec 208 — a switch's family, or null for none (the plugs).
+    family: { type: ["string", "null"], enum: [...EQUIPMENT_FAMILIES, null] },
     // Spec 191 — this electric vehicle is a plug-in hybrid (no cost per 100 km).
     plugInHybrid: { type: "boolean" },
     // Spec 193 — an EV charger's usual vehicle (an electric_vehicle id), or null.
@@ -339,6 +343,7 @@ export function registerEquipmentRoutes(app: FastifyInstance, deps: EquipmentsDe
       meteringParentId?: string | null;
       separateSupply?: boolean;
       localProduction?: boolean;
+      family?: EquipmentFamily | null;
       plugInHybrid?: boolean;
       usualVehicleId?: string | null;
       timedCommand?: TimedCommand | null;
@@ -490,6 +495,23 @@ export function registerEquipmentRoutes(app: FastifyInstance, deps: EquipmentsDe
         }
       }
 
+      // Spec 208 — only a switch carries a family: every other type has a fixed
+      // one, and a stored value it could never show would only confuse the
+      // next reader. Checked on the resulting type, like the flags above.
+      if (body.family !== undefined && body.family !== null) {
+        const current = equipmentManager.getById(request.params.id);
+        if (!current) {
+          return reply.status(404).send({ error: "Equipment not found" });
+        }
+        const resultingType = body.type ?? current.type;
+        if (resultingType !== "switch") {
+          return reply.status(400).send({
+            error: "FamilyNotApplicable",
+            message: `${current.name} is a ${resultingType} — only a switch can be given a family`,
+          });
+        }
+      }
+
       // Spec 174 phase 2 — a timed command is validated where it is WRITTEN, not
       // where it is fired: a configuration naming an order the equipment does not
       // carry would otherwise sit there until somebody pressed the control.
@@ -549,6 +571,7 @@ export function registerEquipmentRoutes(app: FastifyInstance, deps: EquipmentsDe
           meteringParentId: body.meteringParentId,
           separateSupply: body.separateSupply,
           localProduction: body.localProduction,
+          family: body.family,
           plugInHybrid: body.plugInHybrid,
           usualVehicleId: body.usualVehicleId,
           timedCommand: body.timedCommand,

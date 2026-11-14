@@ -55,6 +55,7 @@ import { TimedCommandPanel } from "../components/equipments/TimedCommandPanel";
 import { TimedCommandControl } from "../components/equipments/TimedCommandControl";
 import { hasTimedCommandCandidate } from "../../../src/shared/timed-command";
 import { InvertDirectionPanel } from "../components/equipments/InvertDirectionPanel";
+import { FamilyPanel } from "../components/equipments/FamilyPanel";
 import { MediaPlayerPanel } from "../components/equipments/MediaPlayerPanel";
 import { AppliancePanel } from "../components/equipments/AppliancePanel";
 import {
@@ -307,7 +308,10 @@ export function EquipmentDetailPage() {
           (issue #950) wraps instead of widening the page on a phone. */}
       <div className="flex items-start justify-between gap-3 mb-4 sm:mb-8">
         <div className="flex items-center gap-3 min-w-0">
-          <div className="w-10 h-10 shrink-0 rounded-md bg-primary-light flex items-center justify-center text-primary">
+          {/* Spec 208 — the tile of its family, as in the Maison rows. */}
+          <div
+            className={`w-10 h-10 shrink-0 rounded-md flex items-center justify-center ${equipmentState.iconColor}`}
+          >
             {equipmentState.iconElement}
           </div>
           <div className="min-w-0">
@@ -650,6 +654,11 @@ export function EquipmentDetailPage() {
             to boolean gate triggers per issue #627) */}
           {(isShutterFamily || equipment.type === "pool_cover" || isGate) && (
             <InvertDirectionPanel equipment={equipment} onUpdated={() => void fetchEquipments()} />
+          )}
+
+          {/* A plug or relay — the family it belongs to (spec 208) */}
+          {equipment.type === "switch" && (
+            <FamilyPanel equipment={equipment} onUpdated={() => void fetchEquipments()} />
           )}
 
           {/* Nested submeters — "already counted by that meter" (spec 173) */}

@@ -41,6 +41,10 @@ type EquipmentType =
   | "ev_charger" // Spec 182 — EV charger (contract: src/shared/ev-charger-contract.ts)
   | "electric_vehicle"; // Spec 183 — electric or plug-in hybrid car (contract: src/shared/electric-vehicle-contract.ts)
 
+// Spec 208 — what an equipment acts on or measures. Every type has a fixed family
+// in the UI (or none); only a switch stores one.
+type EquipmentFamily = "lighting" | "openings" | "climate" | "water" | "energy" | "sensors";
+
 interface Equipment {
   id: string; // UUID v4
   name: string;
@@ -51,11 +55,26 @@ interface Equipment {
   enabled: boolean; // Disabled equipments are ignored by the engine
   energyProfile?: EnergyLoadProfile; // Spec 140 — flexible-load declaration (class, nominal W, min-on/off, tolerated import W, learned)
   plugInHybrid?: boolean; // Spec 191 — electric_vehicle only: no cost per 100 km. Present only when true
+  family?: EquipmentFamily; // Spec 208 — switch only: the family it sits in (a plug driving a radiator is climate). Present only when set
   usualVehicleId?: string; // Spec 193 — ev_charger only: breaks a tie between matching cars. Present only when set
   createdAt: string;
   updatedAt: string;
 }
 ```
+
+### 1b Families (spec 208)
+
+The UI groups equipments by **family**, the family of what the equipment acts on or measures, and colours the tile and the section title with it. The type-to-family table and the rule live in `ui/src/lib/equipment-family.ts`; the backend only stores the one exception, a switch's `family`:
+
+| Family     | Types                                                                                                                  |
+| ---------- | ---------------------------------------------------------------------------------------------------------------------- |
+| `lighting` | `light_onoff`, `light_dimmable`, `light_color`                                                                         |
+| `openings` | `shutter`, `awning`, `door`, `gate`, `pool_cover`                                                                      |
+| `climate`  | `thermostat`, `heater`, `vmc`                                                                                          |
+| `water`    | `water_valve`, `pool_pump`, `pool_heat_pump`, `water_heater`                                                           |
+| `energy`   | `main_energy_meter`, `energy_meter`, `energy_production_meter`, `solar_panel`, `ups`, `ev_charger`, `electric_vehicle` |
+| `sensors`  | `sensor`, `weather`, `weather_forecast`, `camera`                                                                      |
+| none       | `media_player`, `appliance`, `switch` (unless it carries a family), `button`, `display`                                |
 
 ### 2 Equipment vs Device
 
@@ -130,6 +149,8 @@ CREATE TABLE equipments (
   plug_in_hybrid INTEGER NOT NULL DEFAULT 0,
                                   -- Spec 191: a plug-in hybrid shows no cost per 100 km
   usual_vehicle_id TEXT,          -- Spec 193: an ev_charger's usual vehicle (cleared on its removal)
+  family TEXT,                    -- Spec 208 (migration 045): a switch's family, NULL = the plugs;
+                                  -- cleared when the equipment stops being a switch
   created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
   updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
 );

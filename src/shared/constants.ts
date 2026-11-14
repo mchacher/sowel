@@ -2,6 +2,7 @@ import type {
   DataCategory,
   DataType,
   EnergyLoadClass,
+  EquipmentFamily,
   EquipmentType,
   WidgetFamily,
 } from "./types.js";
@@ -246,6 +247,16 @@ export const LIGHT_INDICATOR_PROPERTIES = new Set([
 // Widget Family → EquipmentType mapping
 // ============================================================
 
+/** Spec 208 — the equipment families a switch may be given (`Equipment.family`). */
+export const EQUIPMENT_FAMILIES: readonly EquipmentFamily[] = [
+  "lighting",
+  "openings",
+  "climate",
+  "water",
+  "energy",
+  "sensors",
+];
+
 export const WIDGET_FAMILY_TYPES: Record<WidgetFamily, EquipmentType[]> = {
   lights: ["light_onoff", "light_dimmable", "light_color"],
   shutters: ["shutter"],
@@ -271,6 +282,13 @@ export const WIDGET_FAMILY_TYPES: Record<WidgetFamily, EquipmentType[]> = {
  * unchanged. Absence of update past the timeout = anomaly. Event-based
  * categories (motion, contact_door, action, light_state, shutter_position…)
  * are intentionally NOT here: a PIR not firing for 3 weeks is normal.
+ *
+ * `battery` and `temperature_device` are not here either (#1242). A device's
+ * battery often rides along with another message (a Tuya PIR replays it from
+ * the Z2M cache on each motion), so its timestamp dates the last event, not the
+ * battery; and an appliance's internal temperature is published on change only.
+ * Neither is ever the equipment's job: a low battery is caught by its value
+ * (spec 143), a dead device by `device.status`.
  */
 export const STREAMING_CATEGORIES: ReadonlySet<DataCategory> = new Set<DataCategory>([
   "power",
@@ -279,7 +297,6 @@ export const STREAMING_CATEGORIES: ReadonlySet<DataCategory> = new Set<DataCateg
   "current",
   "temperature",
   "temperature_outdoor",
-  "temperature_device",
   "humidity",
   "humidity_outdoor",
   "pressure",
@@ -287,7 +304,6 @@ export const STREAMING_CATEGORIES: ReadonlySet<DataCategory> = new Set<DataCateg
   "co2",
   "voc",
   "noise",
-  "battery",
   // Spec 156 — a UPS plugin polls, so silence is an anomaly rather than a
   // quiet sensor. `ups_status` included on purpose: a status that stops
   // refreshing is exactly the case where it must not be trusted.
@@ -361,7 +377,6 @@ export const STREAMING_TIMEOUT_MS: Partial<Record<DataCategory, number>> = {
   current: 5 * 60 * 1000,
   temperature: 65 * 60 * 1000, // > Zigbee's 1 h max_report_interval
   temperature_outdoor: 65 * 60 * 1000,
-  temperature_device: 65 * 60 * 1000,
   humidity: 65 * 60 * 1000,
   humidity_outdoor: 65 * 60 * 1000,
   pressure: 65 * 60 * 1000,
@@ -369,7 +384,6 @@ export const STREAMING_TIMEOUT_MS: Partial<Record<DataCategory, number>> = {
   co2: 65 * 60 * 1000,
   voc: 65 * 60 * 1000,
   noise: 65 * 60 * 1000,
-  battery: 2 * 60 * 60 * 1000, // 2 h — battery reports are sparse
   setpoint: 60 * 60 * 1000, // 1 h
   pool_water_temperature: 65 * 60 * 1000,
   pool_temperature_setpoint: 60 * 60 * 1000,

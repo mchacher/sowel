@@ -236,24 +236,6 @@ export function isContactOpen(bindings: DataBindingWithValue[]): boolean {
   );
 }
 
-/** Determine the icon background/text color class for a sensor. */
-export function getSensorIconColor(bindings: DataBindingWithValue[]): string {
-  const primaryCat = getPrimarySensorCategory(bindings);
-  if (primaryCat === "motion" && isMotionDetected(bindings)) {
-    return booleanSensorTone("motion", true).pill;
-  }
-  if (primaryCat === "action") {
-    return "bg-primary/10 text-primary";
-  }
-  if (
-    (primaryCat === "contact_door" || primaryCat === "contact_window") &&
-    isContactOpen(bindings)
-  ) {
-    return booleanSensorTone(primaryCat, true).pill;
-  }
-  return "bg-border-light text-text-tertiary";
-}
-
 /** Format a sensor value for compact display (rows, tiles): « 16,5° », « 1 021 mbar ». */
 export function formatSensorValue(value: unknown, unit?: string, t?: TFunction): string {
   if (value === null || value === undefined) return "\u2014";

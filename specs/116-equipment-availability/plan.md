@@ -112,7 +112,7 @@ Follow the standard Sowel order (types → constants → core logic → backend 
 | `isStaleBinding("power", "2026-05-24T10:00:00Z")` with now = 2026-05-24T10:05:00Z   | `true` — exceeds 2 min                                                                         |
 | `isStaleBinding("temperature", null)`                                               | `false` — never updated ≠ stale                                                                |
 | `isStaleBinding("contact_door", "2025-01-01")`                                      | `false` — event-based, never stale                                                             |
-| `isStaleBinding("battery", 3h ago)` with timeout 2h                                 | `true`                                                                                         |
+| `isStaleBinding("battery", 3h ago)` with timeout 2h (removed by #1242: now `false`) | `true`                                                                                         |
 | Unknown future category not in `STREAMING_TIMEOUT_MS` but in `STREAMING_CATEGORIES` | Uses `DEFAULT_STREAMING_TIMEOUT_MS`                                                            |
 | `deriveEquipmentStatus([], new Map())` (no bindings)                                | `{ status: "offline", reason: { offlineDevices: [], staleBindings: [], offlineSince: null } }` |
 | 1 binding, device online, fresh                                                     | `{ status: "online", reason: null }`                                                           |

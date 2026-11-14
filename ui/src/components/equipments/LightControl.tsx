@@ -3,7 +3,7 @@ import { useTranslation } from "react-i18next";
 import { Power } from "lucide-react";
 import type { EquipmentWithDetails } from "../../types";
 import { useSliderOverride } from "../../hooks/useSliderOverride";
-import { findOrderByCategory, findMainOnOffOrder } from "./bindingUtils";
+import { findOrderByCategory, findMainOnOffOrder, relayStateOn } from "./bindingUtils";
 import { brightnessPercent, brightnessScale } from "../../lib/brightness";
 import { formatPercent } from "../../lib/format";
 
@@ -25,16 +25,11 @@ export function LightControl({
   const [executing, setExecuting] = useState(false);
   const slider = useSliderOverride();
 
-  const stateBinding = equipment.dataBindings.find(
-    (db) => db.alias === "state" || db.category === "light_state",
-  );
   const brightnessBinding = equipment.dataBindings.find(
     (db) => db.alias === "brightness" || db.category === "light_brightness",
   );
 
-  const isOn = stateBinding
-    ? stateBinding.value === true || String(stateBinding.value).toUpperCase() === "ON"
-    : false;
+  const isOn = relayStateOn(equipment.dataBindings);
 
   const deviceBrightness = brightnessBinding
     ? typeof brightnessBinding.value === "number"

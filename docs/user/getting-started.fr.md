@@ -192,7 +192,7 @@ L'arbre des zones apparaît à gauche. Cliquez sur n'importe quelle zone pour vo
 
 - **L'état agrégé** : température, humidité, luminosité, mouvement, nombre de lumières, position des volets
 - **Les commandes de zone** : actions groupées (toutes lumières on/off, tous volets ouverts/fermés)
-- **Les cartes d'équipement** : groupées par type (Thermostat, Énergie, Météo, etc.) avec contrôles intégrés
+- **Les cartes d'équipement** : groupées par [famille](equipments.md#families) (Éclairages, Ouvrants, Climat, Énergie, Capteurs, etc.), chacune à sa couleur, avec contrôles intégrés
 - **Les comportements** : recettes et modes configurés pour cette zone
 
 ### Étape 7 : Personnaliser l'Accueil
