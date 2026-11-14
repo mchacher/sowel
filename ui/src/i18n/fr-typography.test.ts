@@ -233,7 +233,7 @@ describe("French typography (fr.json)", () => {
 
   it("calls the heating mode « Cocoon », never « Cocon » (#1241)", () => {
     expect(fr_["recipes.actions.set_mode.cocoon"]).toBe("Cocoon");
-    expect(offenders((v) => /\bcocon\b/i.test(v))).toEqual([]);
+    expect(offenders((v) => /\bcocons?\b/i.test(v))).toEqual([]);
   });
 
   it("formats the shared colon as narrow space, colon, space", () => {
