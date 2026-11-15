@@ -21,15 +21,57 @@ energy arbiter) but has no public face and no communication strategy. A read-onl
 
 ## Decisions (maintainer, 2026-11-14)
 
-| Topic       | Decision                                                                                                                                                                       |
-| ----------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| Goal        | **End users**: households that install Sowel. Success is installs, not stars.                                                                                                  |
-| Target      | **Any home automation user**, not a niche. The message must hold in one sentence for a beginner and for a Home Assistant regular.                                              |
-| Market      | **French and English in parallel.** Doubles content and moderation load; keep few pages.                                                                                       |
-| Time        | About 2 hours a week, more at the start.                                                                                                                                       |
-| Public demo | **Not a launch gate.** Launch with a video and screenshots from the local demo; `demo.sowel.org` is a second wave.                                                             |
-| Voice       | **Mixed**: site and docs in the name of Sowel; background pieces (real case, method) signed by the maintainer.                                                                 |
-| Promise     | Recommended and to be validated: **a house that runs itself, zero code**. Result first, recipes and energy as proof. Two variants read by about five people before the launch. |
+| Topic       | Decision                                                                                                                                                                                                                        |
+| ----------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Goal        | **End users**: households that install Sowel. Success is installs, not stars.                                                                                                                                                   |
+| Target      | **Any home automation user**, not a niche. The message must hold in one sentence for a beginner and for a Home Assistant regular.                                                                                               |
+| Market      | **French and English in parallel.** Doubles content and moderation load; keep few pages.                                                                                                                                        |
+| Time        | About 2 hours a week, more at the start.                                                                                                                                                                                        |
+| Public demo | **Not a launch gate.** Launch with a video and screenshots from the local demo; `demo.sowel.org` is a second wave.                                                                                                              |
+| Voice       | **Mixed**: site and docs in the name of Sowel; background pieces (real case, method) signed by the maintainer.                                                                                                                  |
+| Promise     | **Axis fixed on 2026-11-15** (see « Message architecture » and [pitch.md](pitch.md)): Sowel knows your home, so it runs itself and is set up in a few clicks. The wording is still read by about five people before the launch. |
+
+## Message architecture (maintainer, 2026-11-15)
+
+One message. Everything else is a corollary of it, never a second headline. The reference text is the French
+pitch in [pitch.md](pitch.md); every storefront (GitHub, README, site, video) is cut from it.
+
+**Promise.** Sowel knows your home: it runs itself, is set up in a few clicks, and your data stays at home.
+
+**The core idea: everything starts from the home's topology.** The user first describes the home (floors, rooms,
+garden, garage), then places each equipment where it really is. An equipment rests on one or more devices (« a
+device is what is on the network, an equipment is what is in the room »). The topology says _where_ each
+equipment is, the data model says _what_ it is (about thirty equipment types, each with what it measures and
+what it accepts). Integrations adapt to the model, never the reverse. This is what sets Sowel apart from Home
+Assistant: domain knowledge, not a longer feature list.
+
+**What follows from it, in the order of the pitch:**
+
+1. Rooms that know: zone aggregation in the core (average temperature and humidity, luminosity, presence and
+   since when, open doors and windows, leak, smoke, lights on, shutters and their average position, power),
+   zone commands, nested zones, modes over the whole home. Automatic, nothing to configure.
+2. Integrations: about twenty, and the list grows with real users' needs; installed from the app.
+3. Recipes: placed on a room, they already know its equipments; each is a real program (preheat, cocoon, manual
+   override, rain skip, runtime guard), far beyond an if-this-then-that rule or a blueprint. Energy is the
+   strongest proof: the arbiter sends the solar surplus to the water heater then the car, with no rule to write.
+4. AI: today a user who is not a developer can create a recipe with an AI assistant, because Sowel presents a
+   well-described home rather than thousands of entities. A dedicated tool will simplify it later.
+5. Guarantee, edge first: runs at home, no account, no Sowel cloud, no telemetry, data stays at home; plugins
+   checked before install.
+
+**Wording rules.**
+
+- « natively, with nothing to configure », never « unique » (not checked against community solar projects).
+- AI: « possible today with an AI assistant »; no « one-click generator » until the tool exists.
+- Privacy: « no Sowel cloud, no telemetry, your data stays at home », never « no network traffic ». Cloud-only
+  hardware talks to its vendor, notifications go through the channel the user picks, plugin and update checks
+  read GitHub.
+- Plugins are hash-checked (spec 089) and scoped (spec 111): never « sandboxed ».
+- « about twenty integrations », not an exact count that ages (one of them is the demo simulator).
+- The energy figure comes from the maintainer's home in step 3; the maintainer decides what is shown.
+
+**Shown, not stated.** « A few clicks » is demonstrated end to end, from install to a first recipe running. Step
+1's clean-machine test also times it.
 
 ## Non-Goals
 
@@ -98,6 +140,6 @@ not guessed now.
 
 ## Open points
 
-- Promise: choose after the two-variant reading.
+- Promise wording: read by about five people (the axis is fixed, see « Message architecture »).
 - Community channel beyond GitHub Discussions (Discord or none).
 - Site stack for `sowel-site` (decided in its own spec).
