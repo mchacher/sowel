@@ -548,6 +548,8 @@ export interface ArbiterLoadInfo {
   toleratedImportW: number | null;
   sinceIso?: string;
   reasonWaiting?: string;
+  /** #1262 — pending and covered: when the engage hold ends. */
+  engageAtIso?: string;
   untilIso?: string;
   instanceId?: string;
   note?: string;
@@ -569,6 +571,8 @@ export interface ArbiterPublicState {
   dormant: boolean;
   /** #807 - the configured engage margin, stated under the roster table. */
   engageMarginW: number;
+  /** #1262 — the configured engage hold, the length of the countdown bar. */
+  engageHoldS?: number;
   /** @deprecated Spec 165 — superseded by `loads`. */
   grants: Array<{
     equipmentId: string;

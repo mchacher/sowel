@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
-import { render, screen } from "../../test-utils";
+import { act, render, screen } from "../../test-utils";
 import { ArbitrationSurface } from "./ArbitrationSurface";
 import { useArbiter } from "../../store/useArbiter";
 import { useEquipments } from "../../store/useEquipments";
@@ -627,5 +627,44 @@ describe("ArbitrationSurface need and gap columns (#807)", () => {
 
     expect(screen.queryByText("Next to switch")).toBeNull();
     expect(screen.getAllByText("not requested")).toHaveLength(1);
+  });
+
+  it("counts down a covered claim's engage hold, with its progress, and does not repeat it aside (#1262)", () => {
+    vi.useFakeTimers();
+    try {
+      vi.setSystemTime(new Date("2026-11-15T12:00:00Z"));
+      seed({
+        availableSurplusW: 2500,
+        engageHoldS: 300,
+        loads: [
+          load({
+            equipmentId: "washer",
+            equipmentName: "Lave-linge",
+            state: "pending",
+            watts: 2000,
+            needW: 2100,
+            shortfallW: 0,
+            reasonWaiting: "insufficient-surplus:2500",
+            engageAtIso: "2026-11-15T12:03:20Z", // 200 s left of 300
+          }),
+        ],
+      });
+      const { container } = render(<ArbitrationSurface />);
+
+      expect(screen.getByText("3:20")).toBeTruthy();
+      expect(screen.queryByText("confirming")).toBeNull();
+      const bar = container.querySelector<HTMLElement>("td span.bg-warning");
+      expect(parseFloat(bar?.style.width ?? "")).toBeCloseTo(33.33, 1); // 100 s of 300
+      // The aside names the load without repeating the time.
+      expect(screen.getByText("Need covered, hold in progress")).toBeTruthy();
+      expect(screen.getAllByText("3:20")).toHaveLength(1);
+
+      act(() => {
+        vi.advanceTimersByTime(5_000);
+      });
+      expect(screen.getByText("3:15")).toBeTruthy();
+    } finally {
+      vi.useRealTimers();
+    }
   });
 });

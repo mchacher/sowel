@@ -2924,6 +2924,44 @@ describe("roster need and shortfall (#807)", () => {
     expect(r?.shortfallW).toBe(0);
   });
 
+  it("publishes when a covered claim's engage hold ends, and nothing while it is short (#1262)", () => {
+    const h = makeHarness();
+    h.claim("i1", { equipmentId: "heater", watts: 2200 });
+    h.run(-1000, 30); // short of a 2300 W need: no hold running
+    expect(row(h, "heater")?.engageAtIso).toBeUndefined();
+    h.run(-5000, 10); // covered from this sample on
+    const coveredAt = Date.now();
+    expect(row(h, "heater")?.engageAtIso).toBe(new Date(coveredAt + 120_000).toISOString());
+    expect(h.arbiter.getPublicState().engageHoldS).toBe(120);
+    h.run(-1000, 10); // the surplus drops: the hold resets
+    expect(row(h, "heater")?.engageAtIso).toBeUndefined();
+  });
+
+  it("grants at the hold's deadline, not at the next tick or meter sample (#1262)", () => {
+    const h = makeHarness();
+    h.claim("i1", { equipmentId: "pump" });
+    // Cover the claim between two 10 s ticks, then feed no more samples: only
+    // ticks would run the grant pass, landing it up to 10 s late.
+    vi.advanceTimersByTime(5_000);
+    h.feedMeter(-1000);
+    vi.advanceTimersByTime(119_000);
+    expect(h.grantedEvents()).toHaveLength(0);
+    vi.advanceTimersByTime(1_000); // exactly 120 s after the hold started
+    expect(h.grantedEvents()).toHaveLength(1);
+  });
+
+  it("emits a status event when a claim starts its hold with no surplus move (#1262)", () => {
+    // The roster refetches on status events, which fire on a 25 W move; a
+    // claim starting its countdown under a steady surplus must count too.
+    const h = makeHarness();
+    h.run(-1000, 30);
+    const statusCount = () => h.events.filter((e) => e.type === "energy.arbiter.status").length;
+    const before = statusCount();
+    h.claim("i1", { equipmentId: "pump" });
+    expect(statusCount()).toBe(before + 1);
+    expect(row(h, "pump")?.engageAtIso).toBeDefined();
+  });
+
   it("measures a claimant's shortfall against what the claims ahead of it will take", () => {
     // pac is served first and will spend 2000 W of the 2200 W headroom, so
     // pump is 500 W short — not covered, which is what dividing the global
