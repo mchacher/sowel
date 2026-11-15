@@ -2924,7 +2924,7 @@ describe("roster need and shortfall (#807)", () => {
     expect(r?.shortfallW).toBe(0);
   });
 
-  it("publishes when a covered claim's engage hold ends, and nothing while it is short (#1262)", () => {
+  it("exposes when a covered claim's engage hold ends, and no deadline while it is short (#1262)", () => {
     const h = makeHarness();
     h.claim("i1", { equipmentId: "heater", watts: 2200 });
     h.run(-1000, 30); // short of a 2300 W need: no hold running
@@ -2948,6 +2948,20 @@ describe("roster need and shortfall (#807)", () => {
     expect(h.grantedEvents()).toHaveLength(0);
     vi.advanceTimersByTime(1_000); // exactly 120 s after the hold started
     expect(h.grantedEvents()).toHaveLength(1);
+  });
+
+  it("drops a hold through a meter outage and restarts it when data returns (#1262)", () => {
+    // A hold longer than staleAfterS (300 s), so the meter goes stale before
+    // it matures — production runs both at 300 s.
+    const h = makeHarness({ settings: { "energy.arbiter.engageHoldS": "600" } });
+    h.claim("i1", { equipmentId: "pump" });
+    h.run(-1000, 60); // holding, 60 s of 600 served
+    expect(row(h, "pump")?.engageAtIso).toBeDefined();
+    vi.advanceTimersByTime(310_000); // > staleAfterS with no meter data
+    expect(row(h, "pump")?.engageAtIso).toBeUndefined();
+    h.feedMeter(-1000); // data returns: the hold starts over, no instant grant
+    expect(h.grantedEvents()).toHaveLength(0);
+    expect(row(h, "pump")?.engageAtIso).toBe(new Date(Date.now() + 600_000).toISOString());
   });
 
   it("emits a status event when a claim starts its hold with no surplus move (#1262)", () => {

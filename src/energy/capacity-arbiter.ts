@@ -1475,6 +1475,13 @@ export class CapacityArbiter {
       // and fire a spurious `revoke-not-honored` the instant data returns
       // (review #9). A stale meter revoked everything anyway.
       this.watchdogs = [];
+      // #1262 — a hold proves the surplus lasted; through an outage nothing
+      // does. Left armed, the roster froze at 0:00 for the whole outage and
+      // the first sample back granted at once on a pre-outage surplus.
+      for (const c of this.claims.values()) {
+        if (c.status === "pending") c.engageSince = null;
+      }
+      this.clearEngageTimer();
       this.emitStatus();
       return;
     }
