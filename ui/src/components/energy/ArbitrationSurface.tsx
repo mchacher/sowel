@@ -1,4 +1,4 @@
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import type { ArbiterLoadInfo, ArbiterLoadState } from "../../types";
 import { useTranslation } from "react-i18next";
 import { Moon } from "lucide-react";
@@ -17,6 +17,7 @@ import { useArbiter } from "../../store/useArbiter";
 import { useZoneAggregation } from "../../store/useZoneAggregation";
 import { ROOT_ZONE_ID } from "../../lib/constants";
 import { formatPower } from "../../lib/format";
+import { formatRemaining, remainingMs } from "../../lib/timed-countdown";
 
 /**
  * Spec 140 / FR-10 — the arbitration surface on Energy → Live. Two stacked
@@ -56,6 +57,44 @@ const GAP_REASON_KEY: Record<string, string> = {
   unresponsive: "unresponsive",
   "override-active": "override",
 };
+
+/**
+ * #1262 — a covered claim serving its engage hold: the time left before the
+ * grant pass serves it, and a bar of the hold already spent. Derived from the
+ * engine's deadline on every tick, like `TimedCountdown` (spec 174), so a tab
+ * that slept reads what is left, not what a local counter believes. At zero it
+ * stops: the arbiter grants on the deadline and the roster refetches.
+ */
+function HoldCountdown({ engageAtIso, holdS }: { engageAtIso: string; holdS?: number }) {
+  const { t } = useTranslation();
+  const [now, setNow] = useState(() => Date.now());
+  useEffect(() => {
+    const id = setInterval(() => {
+      const at = Date.now();
+      setNow(at);
+      if (remainingMs(engageAtIso, at) <= 0) clearInterval(id);
+    }, 1000);
+    return () => clearInterval(id);
+  }, [engageAtIso]);
+  const left = remainingMs(engageAtIso, now);
+  const spent = holdS && holdS > 0 ? Math.min(1, Math.max(0, 1 - left / (holdS * 1000))) : null;
+  return (
+    <span
+      className="inline-flex flex-col items-end gap-1 align-middle"
+      title={t("arbiter.gap.holdingHint")}
+    >
+      <span className="text-warning-ink font-semibold">{formatRemaining(left)}</span>
+      {spent !== null && (
+        <span
+          className="block w-14 h-[3px] rounded-full bg-warning/20 overflow-hidden"
+          aria-hidden="true"
+        >
+          <span className="block h-full bg-warning" style={{ width: `${spent * 100}%` }} />
+        </span>
+      )}
+    </span>
+  );
+}
 
 /**
  * Spec 165 — the state pill. Its label and colour come from the same two
@@ -100,7 +139,15 @@ function StatePill({ state }: { state: ArbiterLoadState }) {
  * thing five times, in the attention colour. The word « déficit » says it
  * once per row, calmly; the watts come back as soon as there is a surplus.
  */
-function GapCell({ row, deficit }: { row: ArbiterLoadInfo; deficit: boolean }) {
+function GapCell({
+  row,
+  deficit,
+  holdS,
+}: {
+  row: ArbiterLoadInfo;
+  deficit: boolean;
+  holdS?: number;
+}) {
   const { t } = useTranslation();
   const word = (key: string) => <span className="text-caption">{t(`arbiter.gap.${key}`)}</span>;
   switch (row.state) {
@@ -116,8 +163,10 @@ function GapCell({ row, deficit }: { row: ArbiterLoadInfo; deficit: boolean }) {
         if (deficit) return word("deficit");
         return <span className="text-warning-ink font-semibold">{fmtW(row.shortfallW)}</span>;
       }
-      // Covered, yet still not granted: the engage hold has not matured, or
-      // something other than surplus holds it back. `reasonWaiting` knows which.
+      // Covered, yet still not granted: the engage hold has not matured (the
+      // engine says until when, #1262), or something other than surplus holds
+      // it back. `reasonWaiting` knows which.
+      if (row.engageAtIso) return <HoldCountdown engageAtIso={row.engageAtIso} holdS={holdS} />;
       return word(GAP_REASON_KEY[row.reasonWaiting?.split(":")[0] ?? ""] ?? "holding");
     default:
       return word("notRequested");
@@ -302,7 +351,7 @@ export function ArbitrationSurface() {
                             sideways scroll. From there, one line (spec 197):
                             wrapped words doubled every row's height. */}
                         <td className="text-right py-2.5 px-3 tabular-nums text-text-tertiary lg:whitespace-nowrap">
-                          <GapCell row={r} deficit={deficit} />
+                          <GapCell row={r} deficit={deficit} holdS={state.engageHoldS} />
                         </td>
                         <td className="hidden lg:table-cell text-right py-2.5 px-3 tabular-nums text-text-secondary whitespace-nowrap">
                           {fmtW(r.state === "suspended" ? null : r.watts)}
@@ -344,9 +393,13 @@ export function ArbitrationSurface() {
               <div className="text-caption text-text-tertiary mt-1">
                 {/* The shortfall stays in the roster: « Démarrera dès 600 W
                     de surplus » is the threshold, not the load's draw. */}
+                {/* #1262 — the countdown is in the roster; this line does not
+                    repeat it. */}
                 {(nextUp.shortfallW ?? 0) > 0
                   ? t("arbiter.aside.nextHint", { need: fmtNeed(nextUp.needW) })
-                  : t("arbiter.aside.nextCovered")}
+                  : nextUp.engageAtIso
+                    ? t("arbiter.aside.nextHolding")
+                    : t("arbiter.aside.nextCovered")}
               </div>
             </aside>
           )}

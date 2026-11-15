@@ -1221,6 +1221,10 @@ export interface ArbiterLoadInfo {
   sinceIso?: string;
   /** Pending: the stable reason code the UI translates. */
   reasonWaiting?: string;
+  /** #1262 — pending and covered: when its engage hold ends and the grant
+   *  pass serves it. Absent while the claim is short of surplus or held back
+   *  by something else (cooldown, override, unresponsive). */
+  engageAtIso?: string;
   /** Suspended: when the arbiter takes the load back. */
   untilIso?: string;
   /** Granted / pending: the claiming recipe instance. */
@@ -1252,6 +1256,9 @@ export interface ArbiterPublicState {
   /** #807 - the configured engage margin, so the roster can state the
    *  arithmetic behind `needW` instead of hiding it in a tooltip. */
   engageMarginW: number;
+  /** #1262 — the configured engage hold, the length the roster's countdown
+   *  bar is drawn against. */
+  engageHoldS: number;
   /** @deprecated Spec 165 — superseded by `loads`, kept one minor version for
    *  external readers. Removed in the follow-up spec. */
   grants: ArbiterGrantInfo[];
