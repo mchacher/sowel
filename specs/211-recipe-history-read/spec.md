@@ -41,8 +41,9 @@ Today two of those figures exist in Sowel but are out of a recipe's reach:
 
 1. **Which bindings.** `weather` equipments are unchanged (every binding of a spec 134 tracked
    category). On **any other equipment type**, the tracker follows the bindings the core already
-   treats as a room temperature in `zone-aggregator.ts` (`:657`, `:785`): category `temperature`
-   **with alias `temperature`**, plus any binding of category `temperature_outdoor`. A
+   treats as a room temperature — category `temperature` **with alias `temperature`** (the rule of
+   `zone-aggregator.ts:657`, `:785`, which itself leaves outdoor temperature aside) — plus any
+   binding of category `temperature_outdoor`, the second category spec 134 tracks. A
    thermostat's or heater's setpoint (category `temperature`, another alias) is therefore never
    tracked; a room measured only by a `thermostat` whose reading is aliased `temperature` gets its
    extremes like a `sensor`.
@@ -84,21 +85,45 @@ Today two of those figures exist in Sowel but are out of a recipe's reach:
    `raw`, with up to 2000 points and a carry-in query, `history-query.ts:379-383`, `:419-449`), an
    `aggregation` other than `"1h"` / `"1d"` (external recipes are plain JS, `RecipeCtx = any`) →
    `{ points: [], ok: true }`.
-5. **Window.** `from` and `to` accept what `/api/v1/history` accepts: ISO-8601 or a relative form
-   (`-30m`, `-24h`, `-7d`), parsed by `parseFrom`, which `history-query.ts` exports for this.
-   `to` defaults to now. The window is then **aligned**: down to the whole hour (`1h`), or to the
-   midnight of the day as the core cuts it for that category (`1d`: local for rain, UTC for energy
-   and continuous measures today, FR2.9), for `from`; and down to the start of the running hour /
-   day for `to` — so the result holds **complete periods only**, never the running hour or day.
-   A recipe that needs local days for energy reads `1h` and keeps the hours it wants. `from` is
-   no earlier than **now − 7 days** (clamped, logged once per instance at `warn`). An unparsable
-   `from` / `to`, or a `to` not after the clamped `from` → `{ points: [], ok: true }` without
-   querying.
-6. **Time stamps — one convention.** Every point is stamped at the **start of its period**, in
-   UTC ISO-8601, whatever the category: the wrapper normalises per category the stamping
-   `queryHistory` produces today (FR2.9). Normalising a stamp never changes which day a `1d` point
-   covers: it is stamped at the start of the core's day for that category. Points are **sparse**: a period without samples has no
-   point; nothing is zero-filled.
+5. **Window.** The wrapper parses both `from` and `to` with `parseFrom`, which `history-query.ts`
+   exports for this: ISO-8601 or a relative form (`-30m`, `-24h`, `-7d`). A relative `to` is
+   therefore specific to the recipe path — the REST route reads `to` with `new Date(params.to)`
+   (`history-query.ts:375`). `to` defaults to now. Then, in this order:
+   1. `to = min(to, now)` — a future `to` never brings in the running period;
+   2. `from = max(from, now − 7 days)` — clamped, logged once per instance at `warn`;
+   3. `from` is rounded **up** to the next period boundary and `to` **down** to the start of its
+      period, the boundaries being whole hours (`1h`) or the midnights of the day as the core cuts
+      it for that category (`1d`: local for rain, UTC for energy and continuous measures, FR2.9);
+   4. `queryHistory` is called with `to = alignedTo + 1 period` — Flux's `range` stop is
+      exclusive, and a store stamping its periods at their end (the hourly bucket stores the hour
+      14:00–15:00 at 15:00) would otherwise lose the last complete period;
+   5. after FR2.6's normalisation, only the points with `alignedFrom ≤ t < alignedTo` are kept:
+      the running period, which the extra period brings in, is stamped `alignedTo` and dropped.
+
+   So the result holds **complete periods only**, never the running hour or day, and the first
+   period is never cut by the 7-day clamp. A recipe that needs local days for energy reads `1h` and
+   keeps the hours it wants. An unparsable `from` / `to`, or an aligned `to` not after the aligned
+   `from` → `{ points: [], ok: true }` without querying.
+
+6. **Time stamps — one convention.** Every point is stamped at the **start of its period**, in UTC
+   ISO-8601. Since the stamping depends on **which bucket answered**, not only on the category,
+   `queryHistory` also returns `source: "downsampled" | "raw"`, and the wrapper normalises on the
+   couple (category, source):
+
+   | Category   | Source        | Stored stamp (today, FR2.9) | Normalisation  |
+   | ---------- | ------------- | --------------------------- | -------------- |
+   | energy     | `downsampled` | start (`timeSrc: "_start"`) | none           |
+   | energy     | `raw`         | end                         | `− one period` |
+   | continuous | either        | end                         | `− one period` |
+   | rain       | either        | start (`timeShift(-1h)`)    | none           |
+
+   The energy `downsampled` row is unused today (FR2.9's pre-existing defect) and correct the day
+   that defect is fixed. **Exception — `1d` of continuous measures:** the daily task's day runs
+   23:00 → 23:00 UTC (FR2.9); the normalised point is labelled by its UTC date, approximately (it
+   covers the hour before that midnight and not the last hour of the date). This spec does not
+   promise a start-of-day stamp for it; a recipe wanting today's extremes reads FR1, not `1d`
+   history. Points are **sparse**: a period without samples has no point; nothing is zero-filled.
+
 7. **Bounds.** At most **10 calls per rolling minute per instance**, counting only the calls that
    reach Influx (calls answered by FR2.3-FR2.5 are free). Beyond: the promise rejects with
    `Error("history rate limit")`. One call may run up to 3 Flux queries inside `queryHistory`
@@ -136,9 +161,10 @@ Today two of those figures exist in Sowel but are out of a recipe's reach:
      partial. Today's extremes therefore come from FR1, never from `1d` history.
 
    The energy `value_number` / `mean` mismatch is a **pre-existing defect** (it also affects the
-   UI charts, which read the raw fallback): out of scope here, to be filed as its own issue. The
-   tests of FR2.6 pin the normalisation per category, so fixing that defect later fails them
-   loudly instead of shifting every recipe's buckets by an hour.
+   UI charts, which read the raw fallback): out of scope here, to be filed as its own issue. FR2.6
+   already normalises on the bucket that answered, so fixing it does not shift recipes' buckets;
+   and a test in `history-query.test.ts`, citing 211 FR2.6, pins today's `_field == "mean"` filter
+   on the energy downsampled buckets, so whoever fixes the defect is sent to FR2.6's table.
 
 10. **Security.** No new exposure: a recipe already holds the whole `equipmentManager` (every
     equipment's live values); history reads the same equipments' past values, read-only.
@@ -157,7 +183,8 @@ hour** — two pairs on Adrien's instance (gîte energy, rain), far under FR2.7.
 - [ ] Their `lastUpdated` follows every sample, even when the envelope does not move.
 - [ ] A thermostat setpoint is never tracked; a `weather` station behaves exactly as under spec 134.
 - [ ] `ctx.helpers.history.query({ aggregation: "1h", from: "-24h" })` on an energy equipment and
-      on a rain gauge returns complete hours only, each stamped at the start of its hour, for both.
+      on a rain gauge returns complete hours only, each stamped at the start of its hour, the same
+      hours for both — the last complete hour included.
 - [ ] Unknown alias, boolean binding, invalid aggregation or window → `{ points: [], ok: true }`
       with no Influx call.
 - [ ] Influx not configured, unreachable or failing → `{ points: [], ok: false }`.
@@ -173,7 +200,10 @@ hour** — two pairs on Adrien's instance (gîte energy, rain), far under FR2.7.
 - DST change: the extremes reset at spec 061's local midnight (23- or 25-hour days); `1d` history
   of rain keeps whole local days, energy and continuous measures UTC days (FR2.5).
 - An hour without samples: no point for it (FR2.6).
-- A window clamped to 7 days: one `warn` per instance, not per call.
+- A window clamped to 7 days: one `warn` per instance, not per call; `from` is then rounded up to
+  the next period boundary, so the first period is complete (and, for energy `1d`, inside the raw
+  bucket's 7-day retention).
+- A `to` in the future: brought back to now before alignment (FR2.5).
 - `validate()` runs on a temporary context (`recipe-manager.ts:323`, `:406`); it gets its own
   counter and is not expected to query.
 - "A `1d` query never returns today" holds for the recipe path only because FR2.5 cuts the window
@@ -181,10 +211,10 @@ hour** — two pairs on Adrien's instance (gîte energy, rain), far under FR2.7.
 
 ## Docs Delta
 
-| Page (EN and FR)                                                 | Change                                                                                                                                                                                                                                                      |
-| ---------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `docs/technical/recipe-development.md` + `.fr.md`, `ctx.helpers` | Row `history?` and a subsection "Reading history": the call, `ok`, the start-of-period stamping, complete periods only, sparse points, the limit and its budget, "on a rate rejection keep what was already read and resume at the next tick", FR1.5 events |
-| `docs/technical/recipe-development.md` + `.fr.md`, computed data | `_min_today` / `_max_today` now on every thermometer (FR1.1), and their `lastUpdated` (FR1.3)                                                                                                                                                               |
-| `specs/134-*/`                                                   | A line pointing to spec 211 for the widened scope                                                                                                                                                                                                           |
+| Page (EN and FR)                                                                                      | Change                                                                                                                                                                                                                                                      |
+| ----------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `docs/technical/recipe-development.md` + `.fr.md`, `ctx.helpers`                                      | Row `history?` and a subsection "Reading history": the call, `ok`, the start-of-period stamping, complete periods only, sparse points, the limit and its budget, "on a rate rejection keep what was already read and resume at the next tick", FR1.5 events |
+| `docs/technical/recipe-development.md` + `.fr.md`, a new subsection under `## RecipeContext` (`:349`) | `_min_today` / `_max_today` now on every thermometer (FR1.1), and their `lastUpdated` (FR1.3)                                                                                                                                                               |
+| `specs/134-*/`                                                                                        | A line pointing to spec 211 for the widened scope                                                                                                                                                                                                           |
 
 Screenshots to retake: none.

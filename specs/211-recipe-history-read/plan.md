@@ -12,11 +12,13 @@
 
 ### Slice B — History for recipes (FR2)
 
-- B.1 — `history-query.ts`: export `parseFrom`; optional `onError`.
-- B.2 — `recipe-history.ts`: validation, alignment, clamp, resolution, `isConnected`, rate limit,
-  query, per-category normalisation, error mapping.
-- B.3 — `RecipeHelpers.history?` in `recipe.ts`; `RecipeManager` optional `influxClient`,
-  per-context `history`; `src/index.ts` passes the client.
+- B.1 — `history-query.ts`: export `parseFrom`; optional `onError`; `source` in the result.
+- B.2 — `recipe-history.ts`: validation, `to ≤ now`, clamp, alignment (`from` up, `to` down),
+  resolution, `isConnected`, rate limit, query to `alignedTo + 1 period`, normalisation on
+  (category, source), window filter, error mapping.
+- B.3 — `RecipeHelpers.history?` in `src/shared/types.ts`; `RecipeManager` optional
+  `influxClient`, `Omit<RecipeHelpers, "energy" | "history">` at `:620`, per-context `history`;
+  `src/index.ts` passes the client.
 
 ### Slice C — Docs
 
@@ -40,12 +42,17 @@
 | recipe-history   | energy 1h, raw-fallback rows stamped at the end + a partial last row    | points at hour starts, complete hours only                            |
 | recipe-history   | rain 1h, rows stamped at the start; rain 1d                             | stamps unchanged, local days, running hour / day absent               |
 | recipe-history   | temperature 1h, rows stamped at the end                                 | points at hour starts                                                 |
+| recipe-history   | rain 1h and temperature 1h with an aligned `to`                         | the last complete hour is present (query ran to `to` + 1 h)           |
+| recipe-history   | energy 1h, `source: "downsampled"`, rows stamped at the start           | stamps unchanged                                                      |
+| recipe-history   | temperature 1d                                                          | labelled by UTC date; no start-of-day promise (FR2.6 exception)       |
+| recipe-history   | `to` one hour in the future                                             | treated as now: running hour absent                                   |
+| recipe-history   | `from` = `-7d` at 15:42                                                 | rounded up to the next hour; first point complete                     |
 | recipe-history   | energy 1d with a partial running day                                    | UTC days stamped at their start, running day absent                   |
 | recipe-history   | an hour without rows                                                    | no point for it (no zero)                                             |
 | recipe-history   | alias that is a `computedData` entry with category `energy`             | queried as energy                                                     |
 | recipe-history   | unknown alias / unknown equipment                                       | `{ points: [], ok: true }`, no Influx call                            |
 | recipe-history   | boolean / enum binding; aggregation `"raw"` or `"5m"`                   | `{ points: [], ok: true }`, no Influx call                            |
-| recipe-history   | `from` unparsable; `to` before the clamped `from`                       | `{ points: [], ok: true }`, no Influx call                            |
+| recipe-history   | `from` unparsable; aligned `to` not after aligned `from`                | `{ points: [], ok: true }`, no Influx call                            |
 | recipe-history   | `from` = `-30d`                                                         | clamped to now − 7 d, one `warn` per instance                         |
 | recipe-history   | Influx not configured                                                   | `{ points: [], ok: false }`, no query                                 |
 | recipe-history   | `queryHistory` calls `onError` (partial rows)                           | `{ points: [], ok: false }`                                           |
@@ -54,12 +61,15 @@
 | recipe-history   | 20 calls answered without Influx, then 10 real ones                     | all accepted                                                          |
 | recipe-history   | 10 calls, 61 s later one more; two contexts with 10 calls each          | accepted                                                              |
 | history-query    | `onError` absent (REST route)                                           | behaviour unchanged                                                   |
+| history-query    | `source` on a downsampled hit and on the raw fallback                   | `"downsampled"` / `"raw"`                                             |
+| history-query    | energy downsampled bucket query (cites 211 FR2.6)                       | filters `_field == "mean"` — pins today's defect                      |
 | recipe-manager   | without / with `influxClient`                                           | `ctx.helpers.history` undefined / a `query` function                  |
 | recipe-manager   | `validate()` temporary context                                          | its own counter, an instance's budget untouched                       |
 | history route    | existing route tests                                                    | unchanged                                                             |
 
-The four per-category stamping cases pin today's `queryHistory` output on purpose: fixing the
-pre-existing energy-bucket defect (spec FR2.9) must update them, never silently shift recipes'
+The per-category stamping cases pin today's `queryHistory` output on purpose, and the
+`history-query` case pinning the energy `mean` filter sends whoever fixes the pre-existing defect
+(spec FR2.9) to FR2.6's (category, source) table: the fix must not silently shift recipes'
 buckets.
 
 ## Validation Plan
