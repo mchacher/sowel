@@ -27,6 +27,8 @@ interface BuildOpts {
   personalSources?: string[];
   addSource?: (repo: string) => Promise<unknown>;
   removeSource?: (repo: string) => void;
+  /** Integrations the OAuth callback can reach (spec 212). */
+  integrations?: Record<string, unknown>;
 }
 
 /** What each stub was asked to do, so a test can prove the handler ran. */
@@ -85,7 +87,7 @@ async function buildApp(opts: BuildOpts = {}): Promise<FastifyInstance> {
         calls.push(["recipeLoader.update", id, o]);
       },
     },
-    integrationRegistry: { getById: () => undefined },
+    integrationRegistry: { getById: (id: string) => opts.integrations?.[id] },
     auditLogger: { log: () => {} },
     userManager: { getById: () => ({ username: "admin" }) },
     logger,
@@ -393,5 +395,42 @@ describe("POST /api/v1/plugins/:id/update", () => {
     app = await buildApp({ role: "standard" });
     const res = await app.inject({ method: "POST", url: UPDATE });
     expect(res.statusCode).toBe(403);
+  });
+});
+
+describe("GET /api/v1/plugins/:id/oauth/callback (spec 212)", () => {
+  it("names the plugin in the success redirect", async () => {
+    const codes: string[] = [];
+    app = await buildApp({
+      role: null,
+      integrations: { tesla: { handleOAuthCallback: async (c: string) => void codes.push(c) } },
+    });
+    const res = await app.inject({
+      method: "GET",
+      url: "/api/v1/plugins/tesla/oauth/callback?code=abc",
+    });
+    expect(res.statusCode).toBe(302);
+    expect(res.headers.location).toBe("/settings/integrations?oauth_success=1&plugin=tesla");
+    expect(codes).toEqual(["abc"]);
+  });
+
+  it("keeps the error redirect unchanged", async () => {
+    app = await buildApp({
+      role: null,
+      integrations: {
+        tesla: {
+          handleOAuthCallback: async () => {
+            throw new Error("Cliquez d'abord sur Connecter");
+          },
+        },
+      },
+    });
+    const res = await app.inject({
+      method: "GET",
+      url: "/api/v1/plugins/tesla/oauth/callback?code=abc",
+    });
+    expect(res.headers.location).toBe(
+      "/settings/integrations?oauth_error=" + encodeURIComponent("Cliquez d'abord sur Connecter"),
+    );
   });
 });

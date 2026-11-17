@@ -16,6 +16,7 @@ export function IntegrationsPage() {
     type: "success" | "error";
     text: string;
   } | null>(null);
+  const [oauthPlugin, setOauthPlugin] = useState<string | null>(null);
 
   const load = useCallback(async () => {
     try {
@@ -35,7 +36,9 @@ export function IntegrationsPage() {
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
     if (params.has("oauth_success")) {
-      setOauthMessage({ type: "success", text: t("integrations.oauthSuccess") });
+      // Spec 212: the callback names the plugin; its name is read once loaded.
+      setOauthPlugin(params.get("plugin"));
+      setOauthMessage({ type: "success", text: "" });
       window.history.replaceState({}, "", window.location.pathname);
       load();
       setTimeout(() => setOauthMessage(null), 5000);
@@ -51,6 +54,10 @@ export function IntegrationsPage() {
   }, [t, load]);
 
   const selectedIntegration = integrations.find((i) => i.id === selectedId) ?? null;
+  const oauthName = integrations.find((i) => i.id === oauthPlugin)?.name;
+  const oauthSuccessText = oauthName
+    ? t("integrations.oauthSuccess", { name: oauthName })
+    : t("integrations.oauthSuccessGeneric");
 
   if (loading) {
     return (
@@ -74,7 +81,7 @@ export function IntegrationsPage() {
               : "bg-error/10 border border-error/20 text-error"
           }`}
         >
-          {oauthMessage.text}
+          {oauthMessage.type === "success" ? oauthSuccessText : oauthMessage.text}
         </div>
       )}
 
