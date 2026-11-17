@@ -14,7 +14,7 @@ Today two of those figures exist in Sowel but are out of a recipe's reach:
 1. **Today's min/max.** Spec 134 tracks them from local midnight, as computed data
    `<alias>_min_today` / `<alias>_max_today`, but **only on `weather` equipments**. A room or
    outdoor thermometer is a `sensor` (on Adrien's instance, the outdoor probe in zone
-   *Extérieur* is a `sensor` too), so it has none.
+   _Extérieur_ is a `sensor` too), so it has none.
 2. **Hourly buckets.** `GET /api/v1/history/:equipmentId/:alias?aggregation=1h` returns them, but
    a recipe only receives `RecipeContext`, which has no history access. The recipe works around
    it today by sampling the live value every hour and storing its own buckets — a second, worse
@@ -61,7 +61,7 @@ Today two of those figures exist in Sowel but are out of a recipe's reach:
    - continuous measures (temperature…): `1h` buckets carry mean/min/max stamped at the **end** of
      the hour; `1d` buckets come from the `sowel-downsample-daily` task, which aggregates on **UTC
      days** stamped at the **end** (UTC midnight), and only for **finished** days. So a `1d` query
-     never returns *today*, and its day is the UTC one. **Today's extremes come from R1, not from
+     never returns _today_, and its day is the UTC one. **Today's extremes come from R1, not from
      `1d` history.** This is written in the recipe-development doc.
 10. Security: no new exposure. A recipe already holds the whole `equipmentManager` (every
     equipment's live values); history reads the same equipments' past values, read-only.

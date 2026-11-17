@@ -14,6 +14,7 @@ UI: none. The equipment detail already lists computed data; the `sensor` tile is
 ## R2 — `ctx.history`
 
 ### Types — `src/recipes/engine/recipe.ts` (and the mirrored external `RecipeContext` in
+
 `src/shared/types.ts` / the recipe SDK typings, wherever `dispatchOrder` is declared for
 external recipes)
 

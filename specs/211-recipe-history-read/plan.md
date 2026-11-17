@@ -16,23 +16,23 @@
 
 ## Test Plan
 
-| Module                     | Scenario                                                        | Expected                                                     |
-| -------------------------- | --------------------------------------------------------------- | ------------------------------------------------------------ |
-| extremes tracker           | `sensor` with `temperature` binding, two samples 15 / 18        | `_min_today` 15, `_max_today` 18                              |
-| extremes tracker           | `sensor`, sample yesterday only                                 | no computed entries today                                    |
-| extremes tracker           | `sensor` with `humidity` binding only                           | no entries                                                   |
-| extremes tracker           | `weather` station (retro-compat, spec 134 cases)                | unchanged                                                    |
-| extremes tracker           | `light_onoff` with a temperature binding                        | ignored                                                      |
-| extremes tracker           | restart (rows reloaded from SQLite) for a `sensor`              | envelope restored                                            |
-| resolveHistoryBinding      | known alias / unknown alias                                     | binding type+category / `number`, undefined                  |
-| recipe-history             | 1h query on energy equipment                                    | calls `queryHistory` with category `energy`, returns points  |
-| recipe-history             | unknown equipment                                               | `{ points: [] }`, no Influx call                             |
-| recipe-history             | Influx not connected                                            | `{ points: [] }`                                             |
-| recipe-history             | `queryHistory` throws                                           | `{ points: [] }`, debug log                                  |
-| recipe-history             | `from` = -30d                                                   | clamped to -7d, one warn per instance                        |
-| recipe-history             | 11 queries within 60 s                                          | 11th rejects `history rate limit`                            |
-| recipe-history             | 10 queries, 61 s later one more                                 | accepted                                                     |
-| recipe-history             | two instances, 10 queries each                                  | both accepted                                                |
-| recipe-manager             | built without `influxClient`                                    | `ctx.history` undefined                                      |
-| recipe-manager             | built with `influxClient`                                       | `ctx.history.query` is a function                            |
-| history route (retro)      | existing route tests after the extraction                       | unchanged                                                    |
+| Module                | Scenario                                                 | Expected                                                    |
+| --------------------- | -------------------------------------------------------- | ----------------------------------------------------------- |
+| extremes tracker      | `sensor` with `temperature` binding, two samples 15 / 18 | `_min_today` 15, `_max_today` 18                            |
+| extremes tracker      | `sensor`, sample yesterday only                          | no computed entries today                                   |
+| extremes tracker      | `sensor` with `humidity` binding only                    | no entries                                                  |
+| extremes tracker      | `weather` station (retro-compat, spec 134 cases)         | unchanged                                                   |
+| extremes tracker      | `light_onoff` with a temperature binding                 | ignored                                                     |
+| extremes tracker      | restart (rows reloaded from SQLite) for a `sensor`       | envelope restored                                           |
+| resolveHistoryBinding | known alias / unknown alias                              | binding type+category / `number`, undefined                 |
+| recipe-history        | 1h query on energy equipment                             | calls `queryHistory` with category `energy`, returns points |
+| recipe-history        | unknown equipment                                        | `{ points: [] }`, no Influx call                            |
+| recipe-history        | Influx not connected                                     | `{ points: [] }`                                            |
+| recipe-history        | `queryHistory` throws                                    | `{ points: [] }`, debug log                                 |
+| recipe-history        | `from` = -30d                                            | clamped to -7d, one warn per instance                       |
+| recipe-history        | 11 queries within 60 s                                   | 11th rejects `history rate limit`                           |
+| recipe-history        | 10 queries, 61 s later one more                          | accepted                                                    |
+| recipe-history        | two instances, 10 queries each                           | both accepted                                               |
+| recipe-manager        | built without `influxClient`                             | `ctx.history` undefined                                     |
+| recipe-manager        | built with `influxClient`                                | `ctx.history.query` is a function                           |
+| history route (retro) | existing route tests after the extraction                | unchanged                                                   |
