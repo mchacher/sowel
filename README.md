@@ -8,8 +8,6 @@ Describe your rooms once, pick ready-made recipes instead of writing rules, and 
 
 <!-- FILM: the 1:43 launch film, uploaded through the GitHub editor so it plays inline -->
 
-
-
 ![The living room in Sowel: its lights, shutters and sensors, the modes and the recipe that run it, and what just happened](docs/assets/readme/living-room.png)
 
 ## How it works
