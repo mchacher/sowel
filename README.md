@@ -4,7 +4,7 @@
 
 Home automation that starts from your home, not your devices.
 
-Describe your rooms once, pick ready-made recipes instead of writing rules, and let AI build the rest. Sowel runs on your own hardware, with no account and no Sowel cloud.
+Describe your rooms once and pick ready-made recipes instead of writing rules. Sowel runs on your own hardware, with no account and no Sowel cloud.
 
 <!-- FILM: the 1:43 launch film, uploaded through the GitHub editor so it plays inline -->
 
@@ -16,7 +16,7 @@ You describe the house once, as zones: floors, rooms, the garden. Each equipment
 
 Then you set behaviors. A recipe is a ready-made automation: you drop it on a room, a floor or the whole house, fill in a few settings, and the tricky cases are already handled. A mode says how the home lives right now (day, night, away), and each recipe follows it. If you have solar panels, the energy arbiter shares the surplus between the car, the water heater and other loads, in the order you chose.
 
-When no recipe fits, describe what you want in plain words. An AI agent writes and tests a custom recipe built on your zones and equipments, and you install it.
+When no recipe fits, you will soon describe what you need in plain words and let an AI assistant build and test a recipe on your zones and equipments, ready to install. Coming soon.
 
 ## Install
 
