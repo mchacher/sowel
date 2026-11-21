@@ -1,4 +1,4 @@
-<p align="center"><img src="docs/assets/logo.svg" width="96" alt="Sowel logo"></p>
+<p align="center"><img src="docs/assets/logo-master.svg" width="96" alt="Sowel logo"></p>
 
 # Sowel
 
