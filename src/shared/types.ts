@@ -803,12 +803,32 @@ export interface RecipeTileDef {
   confirmFrom?: string;
 }
 
+/**
+ * Spec 214 — data a recipe publishes on the equipment of one of its
+ * `equipment` slots. It shows as a virtual binding of that equipment
+ * (`virtual:recipe:<instanceId>:<alias>`), read by surfaces, history and other
+ * recipes like a device binding. Declared, so the core can refuse what was not.
+ */
+export interface RecipePublishDef {
+  /** Id of an `equipment` slot of this recipe. */
+  slot: string;
+  /** The alias the data takes on the equipment. */
+  alias: string;
+  type: "number" | "boolean" | "enum" | "text";
+  category: DataCategory;
+  /** Required when `type` is `enum`. */
+  enumValues?: string[];
+  unit?: string;
+}
+
 export interface RecipeInfo {
   id: string;
   name: string;
   description: string;
   slots: RecipeSlotDef[];
   actions?: RecipeActionDef[];
+  /** Spec 214 — present only when the recipe publishes data on an equipment. */
+  publishes?: RecipePublishDef[];
   /** Spec 169 — present only when the package declares a Dashboard tile. */
   tile?: RecipeTileDef;
   i18n?: Record<string, RecipeLangPack>;
@@ -848,6 +868,8 @@ export interface RecipeDefinition {
   description: string;
   slots: RecipeSlotDef[];
   actions?: RecipeActionDef[];
+  /** Spec 214 — data this recipe publishes on its equipments. */
+  publishes?: RecipePublishDef[];
   /** Spec 169 — declare a Dashboard tile. Absent = this recipe is not pinnable. */
   tile?: RecipeTileDef;
   i18n?: Record<string, RecipeLangPack>;
@@ -906,6 +928,23 @@ export interface RecipeHelpers {
    *  "absent" (older core, `ctx.helpers.energy === undefined`) from "present
    *  but off" without probing. */
   energy: RecipeEnergyHelpers;
+  /** Spec 214 — publish the data this recipe declares in `publishes`.
+   *  Absent on an older core. */
+  equipmentData: RecipeEquipmentDataHelpers;
+}
+
+/** Spec 214 — the per-instance publishing channel. */
+export interface RecipeEquipmentDataHelpers {
+  /**
+   * Set a declared alias on an equipment of the declaring slot. `null` means
+   * unknown. Never throws: a refusal comes back as `{ ok: false, reason }` and
+   * is logged.
+   */
+  publish(
+    equipmentId: string,
+    alias: string,
+    value: unknown,
+  ): { ok: true } | { ok: false; reason: string };
 }
 
 // ============================================================

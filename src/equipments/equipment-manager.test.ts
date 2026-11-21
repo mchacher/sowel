@@ -522,6 +522,133 @@ describe("EquipmentManager", () => {
     });
   });
 
+  // Spec 214 — data a recipe publishes on an equipment.
+  describe("recipe outputs (spec 214)", () => {
+    const STATE = {
+      slot: "equipment",
+      alias: "state",
+      type: "enum" as const,
+      category: "appliance_state" as const,
+      enumValues: ["off", "ready", "running", "finished"],
+    };
+
+    function appliance(name = "Lave-linge"): string {
+      const zone = zoneManager.create({ name: "Buanderie" });
+      return manager.create({ name, type: "appliance", zoneId: zone.id }).id;
+    }
+
+    const state = (equipmentId: string) =>
+      manager.getDataBindingsWithValues(equipmentId).find((b) => b.alias === "state");
+
+    it("shows an attached output first, null until published", () => {
+      const eq = appliance();
+      events = [];
+      manager.attachRecipeOutputs("i1", "Cycle", [{ equipmentId: eq, def: STATE }]);
+      expect(manager.getDataBindingsWithValues(eq)[0]).toMatchObject({
+        id: "virtual:recipe:i1:state",
+        alias: "state",
+        category: "appliance_state",
+        value: null,
+      });
+      expect(events.some((e) => e.type === "equipment.updated")).toBe(true);
+    });
+
+    it("emits one change per new value, none for the same value", () => {
+      const eq = appliance();
+      manager.attachRecipeOutputs("i1", "Cycle", [{ equipmentId: eq, def: STATE }]);
+      events = [];
+      manager.publishRecipeData("i1", eq, "state", "running");
+      manager.publishRecipeData("i1", eq, "state", "running");
+      const changes = events.filter((e) => e.type === "equipment.data.changed");
+      expect(changes).toHaveLength(1);
+      expect(changes[0]).toMatchObject({ alias: "state", value: "running", previous: null });
+      expect(state(eq)?.value).toBe("running");
+    });
+
+    it("denies an undeclared alias, another equipment, a value outside the enum", () => {
+      const eq = appliance();
+      const other = appliance("Sèche-linge");
+      manager.attachRecipeOutputs("i1", "Cycle", [{ equipmentId: eq, def: STATE }]);
+      events = [];
+      expect(manager.publishRecipeData("i1", eq, "phase", "wash").ok).toBe(false);
+      expect(manager.publishRecipeData("i1", other, "state", "running").ok).toBe(false);
+      expect(manager.publishRecipeData("i1", eq, "state", "spinning").ok).toBe(false);
+      expect(manager.publishRecipeData("i2", eq, "state", "running").ok).toBe(false);
+      expect(events.filter((e) => e.type === "equipment.data.changed")).toEqual([]);
+    });
+
+    it("lets a device binding added later win", () => {
+      const eq = appliance();
+      manager.attachRecipeOutputs("i1", "Cycle", [{ equipmentId: eq, def: STATE }]);
+      const { dataIds } = seedDevice(db, {
+        dataKeys: [{ key: "state", type: "enum", category: "appliance_state", value: '"run"' }],
+      });
+      manager.addDataBinding(eq, dataIds[0]!, "state");
+      expect(state(eq)?.id.startsWith("virtual:")).toBe(false);
+      expect(manager.publishRecipeData("i1", eq, "state", "running").ok).toBe(false);
+    });
+
+    it("refuses a device-bound alias and an alias another instance publishes", () => {
+      const eq = appliance();
+      manager.attachRecipeOutputs("i1", "Cycle", [{ equipmentId: eq, def: STATE }]);
+      expect(() => manager.checkPublishable("i2", [{ equipmentId: eq, def: STATE }])).toThrow(
+        /already gets "state" from recipe instance i1/,
+      );
+      expect(() => manager.checkPublishable("i1", [{ equipmentId: eq, def: STATE }])).not.toThrow();
+
+      const bound = appliance("Lave-vaisselle");
+      const { dataIds } = seedDevice(db, {
+        dataKeys: [{ key: "state", type: "enum", category: "appliance_state" }],
+      });
+      manager.addDataBinding(bound, dataIds[0]!, "state");
+      expect(() => manager.checkPublishable("i3", [{ equipmentId: bound, def: STATE }])).toThrow(
+        /from a device/,
+      );
+    });
+
+    it("drops every output on detach", () => {
+      const eq = appliance();
+      const other = appliance("Sèche-linge");
+      manager.attachRecipeOutputs("i1", "Cycle", [
+        { equipmentId: eq, def: STATE },
+        { equipmentId: other, def: STATE },
+      ]);
+      events = [];
+      manager.detachRecipeOutputs("i1");
+      expect(state(eq)).toBeUndefined();
+      expect(state(other)).toBeUndefined();
+      expect(events.filter((e) => e.type === "equipment.updated")).toHaveLength(2);
+    });
+
+    it("skips an equipment that no longer exists, keeps the others", () => {
+      const eq = appliance();
+      const kept = manager.checkPublishable("i1", [
+        { equipmentId: "gone", def: STATE },
+        { equipmentId: eq, def: STATE },
+      ]);
+      expect(kept.map((t) => t.equipmentId)).toEqual([eq]);
+    });
+
+    it("refuses the same alias twice on one equipment from one instance", () => {
+      const eq = appliance();
+      expect(() =>
+        manager.checkPublishable("i1", [
+          { equipmentId: eq, def: STATE },
+          { equipmentId: eq, def: { ...STATE, slot: "other" } },
+        ]),
+      ).toThrow(/twice/);
+    });
+
+    it("denies publishing an alias the core derives (a gate's state)", () => {
+      const zone = zoneManager.create({ name: "Allée" });
+      const gate = manager.create({ name: "Portail", type: "gate", zoneId: zone.id }).id;
+      manager.attachRecipeOutputs("i1", "Cycle", [{ equipmentId: gate, def: STATE }]);
+      expect(manager.publishRecipeData("i1", gate, "state", "running").ok).toBe(false);
+      const states = manager.getDataBindingsWithValues(gate).filter((b) => b.alias === "state");
+      expect(states.every((b) => !b.id.startsWith("virtual:recipe:"))).toBe(true);
+    });
+  });
+
   // Spec 188 O10 — null is the type's default; true / false the admin's choice.
   describe("track order outcome", () => {
     it("starts at the type's default and round-trips true, false and null", () => {

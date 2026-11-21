@@ -773,6 +773,10 @@ export interface HistoryBindingState {
   type: string; // "number" | "boolean" | "enum"
   historize: number | null;
   effectiveOn: boolean;
+  /** Spec 214 — published by a recipe, not a device: always historized. */
+  virtual?: boolean;
+  /** Declared values of an enum series, in their charted order. */
+  enumValues?: string[];
 }
 
 export interface HistoryPoint {

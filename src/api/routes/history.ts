@@ -8,6 +8,7 @@ import {
   queryZoneSparkline,
 } from "../../history/history-query.js";
 import type { EquipmentManager } from "../../equipments/equipment-manager.js";
+import { RECIPE_OUTPUT_BINDING_PREFIX } from "../../equipments/recipe-outputs.js";
 import type { InfluxClient } from "../../core/influx-client.js";
 import type { EventBus } from "../../core/event-bus.js";
 import type { DataCategory } from "../../shared/types.js";
@@ -68,21 +69,32 @@ export function registerHistoryRoutes(
       }
 
       const bindings = equipmentManager.getDataBindingsWithValues(equipmentId);
+      // Virtual bindings stay hidden (gate, cover), except data a recipe
+      // publishes (spec 214): historized, listed, not toggleable.
       const result = bindings
-        .filter((b) => !b.id.startsWith("virtual:"))
-        .map((b) => ({
-          bindingId: b.id,
-          alias: b.alias,
-          category: b.category,
-          deviceName: b.deviceName,
-          type: b.type,
-          historize: b.historize ?? null,
-          effectiveOn: HistoryWriter.resolveHistorize(
-            b.historize ?? null,
-            b.alias,
-            b.category as DataCategory,
-          ),
-        }));
+        .filter(
+          (b) => !b.id.startsWith("virtual:") || b.id.startsWith(RECIPE_OUTPUT_BINDING_PREFIX),
+        )
+        .map((b) => {
+          const virtual = b.id.startsWith("virtual:");
+          return {
+            bindingId: b.id,
+            alias: b.alias,
+            category: b.category,
+            deviceName: b.deviceName,
+            type: b.type,
+            historize: b.historize ?? null,
+            effectiveOn:
+              virtual ||
+              HistoryWriter.resolveHistorize(
+                b.historize ?? null,
+                b.alias,
+                b.category as DataCategory,
+              ),
+            ...(virtual && { virtual: true }),
+            ...(b.enumValues && { enumValues: b.enumValues }),
+          };
+        });
 
       return result;
     },

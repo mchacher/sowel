@@ -472,6 +472,87 @@ describe("HistoryWriter — enum state charting (#434)", () => {
 });
 
 // ============================================================
+// Data a recipe publishes (spec 214)
+// ============================================================
+
+describe("HistoryWriter — data a recipe publishes (spec 214)", () => {
+  const logger = createLogger("silent").logger;
+  let bus: EventBus;
+  let influx: StubInfluxClient;
+  let writer: HistoryWriter;
+  const GATE_ID = "gate-uuid";
+
+  beforeEach(() => {
+    vi.useFakeTimers();
+    vi.setSystemTime(T0_MS);
+    bus = new EventBus(logger);
+    influx = new StubInfluxClient();
+    const equipmentManager = {
+      getAll: () => [
+        { id: EQUIPMENT_ID, enabled: true, zoneId: ZONE_ID },
+        { id: GATE_ID, enabled: true, zoneId: ZONE_ID },
+      ],
+      getDataBindingsWithValues: (equipmentId: string) =>
+        equipmentId === EQUIPMENT_ID
+          ? [
+              {
+                id: "virtual:recipe:instance-1:state",
+                alias: "state",
+                category: "appliance_state",
+                type: "enum",
+                enumValues: ["off", "ready", "running", "finished"],
+                historize: null,
+              },
+            ]
+          : [
+              {
+                id: `virtual:gate_state:${GATE_ID}`,
+                alias: "state",
+                category: "gate_state",
+                type: "enum",
+                historize: null,
+              },
+            ],
+    } as unknown as EquipmentManager;
+    writer = new HistoryWriter(
+      {} as Database.Database,
+      bus,
+      { get: () => undefined } as unknown as SettingsManager,
+      equipmentManager,
+      influx as unknown as InfluxClient,
+      logger,
+    );
+    writer.init();
+  });
+
+  afterEach(() => {
+    writer.destroy();
+    vi.useRealTimers();
+  });
+
+  function emitState(equipmentId: string, value: string, previous: unknown): void {
+    bus.emit({
+      type: "equipment.data.changed",
+      equipmentId,
+      alias: "state",
+      value,
+      previous,
+    } as never);
+  }
+
+  it("writes a published enum with its declared index", () => {
+    emitState(EQUIPMENT_ID, "running", "ready");
+    emitState(EQUIPMENT_ID, "finished", "running");
+    expect(influx.written.filter((p) => p.alias === "state").map((p) => p.value)).toEqual([2, 3]);
+  });
+
+  it("still skips a gate's virtual state", () => {
+    emitState(GATE_ID, "open", "closed");
+    expect(influx.written).toEqual([]);
+  });
+});
+
+// ============================================================
 // Late rain hours (#1036)
 // ============================================================
 

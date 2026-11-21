@@ -422,6 +422,18 @@ Current providers in the codebase:
 
 Computed entries appear in `EquipmentWithDetails.computedData` and can be referenced from MQTT publishers, notifications, and chart series like any other binding alias.
 
+### Virtual data bindings
+
+A few values no device reports are injected at read time into `dataBindings` itself, so recipes, surfaces and pickers read them as ordinary bindings. Their id starts with `virtual:`:
+
+| Id                                    | Equipment                                 | Alias / category              | Historized |
+| ------------------------------------- | ----------------------------------------- | ----------------------------- | ---------- |
+| `virtual:gate_state:<id>`             | `gate`                                    | `state` / `gate_state`        | no         |
+| `virtual:cover_state:<id>`            | `pool_cover`                              | `cover_state` / `cover_state` | no         |
+| `virtual:recipe:<instanceId>:<alias>` | the equipment of a recipe slot (spec 214) | declared by the recipe        | yes        |
+
+The recipe ones live in memory (`src/equipments/recipe-outputs.ts`) from the instance's start to its stop, `null` until the recipe publishes; a device binding with the same alias wins. Each publish that changes the value emits `equipment.data.changed`. See [recipe development](../recipe-development.md#publishing-data-on-an-equipment-spec-214).
+
 > **Removed from the data model**: the legacy expression language (`OR()`, `AVG()`, `IF()`, `binding.<alias>`, etc.) and the `internal_rules` table mentioned in earlier versions of this document. They were never implemented. Automation logic now lives in **Recipes** (section 10).
 
 ---

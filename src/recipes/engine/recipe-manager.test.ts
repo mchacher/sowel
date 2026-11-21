@@ -278,6 +278,237 @@ describe("RecipeManager", () => {
   });
 
   // ============================================================
+  // Spec 214 — a recipe publishes data on an equipment
+  // ============================================================
+
+  describe("publishing data on an equipment (spec 214)", () => {
+    const RUN_STATES = ["off", "ready", "running", "finished"];
+    let publishFromStart: unknown;
+    let lastPublish: ((value: unknown) => unknown) | null;
+
+    function cycleDef(id = "cycle"): RecipeDefinition {
+      return {
+        id,
+        name: "Appliance cycle",
+        description: "",
+        slots: [
+          { id: "equipment", name: "Machine", description: "", type: "equipment", required: true },
+        ],
+        publishes: [
+          {
+            slot: "equipment",
+            alias: "state",
+            type: "enum",
+            category: "appliance_state",
+            enumValues: RUN_STATES,
+          },
+        ],
+        validate: () => {},
+        createInstance: (params, ctx) => {
+          const eq = params.equipment as string;
+          lastPublish = (value) => ctx.helpers.equipmentData.publish(eq, "state", value);
+          if (publishFromStart !== undefined) lastPublish(publishFromStart);
+          return { stop: () => {} };
+        },
+      };
+    }
+
+    function washer(withDeviceState = false): string {
+      const zone = zoneManager.create({ name: "Buanderie" });
+      const eq = equipmentManager.create({
+        name: "Lave-linge",
+        type: "appliance",
+        zoneId: zone.id,
+      });
+      if (withDeviceState) {
+        const deviceId = crypto.randomUUID();
+        const dataId = crypto.randomUUID();
+        db.prepare(
+          `INSERT INTO devices (id, mqtt_base_topic, mqtt_name, name, source, status, integration_id, source_device_id)
+           VALUES (?, 'z/w', 'w', 'Washer', 'zigbee2mqtt', 'online', 'zigbee2mqtt', 'w')`,
+        ).run(deviceId);
+        db.prepare(
+          `INSERT INTO device_data (id, device_id, key, type, category, value) VALUES (?, ?, 'state', 'enum', 'appliance_state', '"run"')`,
+        ).run(dataId, deviceId);
+        equipmentManager.addDataBinding(eq.id, dataId, "state");
+      }
+      return eq.id;
+    }
+
+    const stateOf = (equipmentId: string) =>
+      equipmentManager.getDataBindingsWithValues(equipmentId).find((b) => b.alias === "state");
+
+    beforeEach(() => {
+      publishFromStart = undefined;
+      lastPublish = null;
+    });
+
+    it("refuses a declaration on a slot that is not an equipment slot", () => {
+      expect(() =>
+        manager.registerExternal({
+          ...cycleDef("bad"),
+          publishes: [{ ...cycleDef().publishes![0]!, slot: "delay" }],
+        }),
+      ).toThrow(/not an equipment slot/);
+      expect(manager.getRecipeById("bad")).toBeNull();
+    });
+
+    it("carries the declaration into RecipeInfo", () => {
+      manager.registerExternal(cycleDef());
+      expect(manager.getRecipeById("cycle")?.publishes?.[0]?.alias).toBe("state");
+    });
+
+    it("shows the published value as a binding of the equipment", () => {
+      manager.registerExternal(cycleDef());
+      const eqId = washer();
+      publishFromStart = "ready";
+      const instance = manager.createInstance("cycle", { equipment: eqId });
+      expect(stateOf(eqId)).toMatchObject({
+        id: `virtual:recipe:${instance.id}:state`,
+        value: "ready",
+        enumValues: RUN_STATES,
+        deviceName: "Appliance cycle",
+      });
+      events = [];
+      expect(lastPublish!("running")).toEqual({ ok: true });
+      const changes = events.filter(
+        (e) => e.type === "equipment.data.changed" && e.alias === "state",
+      );
+      expect(changes).toHaveLength(1);
+      expect(lastPublish!("spinning")).toMatchObject({ ok: false });
+    });
+
+    it("refuses an instance over a device-bound alias", () => {
+      manager.registerExternal(cycleDef());
+      const eqId = washer(true);
+      expect(() => manager.createInstance("cycle", { equipment: eqId })).toThrow(RecipeError);
+      expect(() => manager.createInstance("cycle", { equipment: eqId })).toThrow(/from a device/);
+    });
+
+    it("refuses a second instance publishing the same alias", () => {
+      manager.registerExternal(cycleDef());
+      const eqId = washer();
+      manager.createInstance("cycle", { equipment: eqId });
+      expect(() => manager.createInstance("cycle", { equipment: eqId })).toThrow(/already gets/);
+    });
+
+    it("removes the binding when the instance stops, and moves it on update", () => {
+      manager.registerExternal(cycleDef());
+      const eqId = washer();
+      const other = washer();
+      const instance = manager.createInstance("cycle", { equipment: eqId });
+      expect(stateOf(eqId)).toBeDefined();
+      manager.updateInstance(instance.id, { equipment: other });
+      expect(stateOf(eqId)).toBeUndefined();
+      expect(stateOf(other)).toBeDefined();
+      manager.disableInstance(instance.id);
+      expect(stateOf(other)).toBeUndefined();
+    });
+
+    it("leaves nothing behind when start throws", () => {
+      manager.registerExternal({
+        ...cycleDef("boom"),
+        createInstance: () => {
+          throw new Error("boom");
+        },
+      });
+      const eqId = washer();
+      manager.createInstance("boom", { equipment: eqId });
+      expect(stateOf(eqId)).toBeUndefined();
+    });
+
+    it("removes the binding when the instance is deleted", () => {
+      manager.registerExternal(cycleDef());
+      const eqId = washer();
+      const instance = manager.createInstance("cycle", { equipment: eqId });
+      manager.deleteInstance(instance.id);
+      expect(stateOf(eqId)).toBeUndefined();
+    });
+
+    it("publishes on every equipment of a list slot", () => {
+      const def = cycleDef("list");
+      def.slots[0] = { ...def.slots[0]!, list: true };
+      manager.registerExternal(def);
+      const a = washer();
+      const b = washer();
+      manager.createInstance("list", { equipment: [a, b] });
+      expect(stateOf(a)?.value).toBeNull();
+      expect(stateOf(b)?.value).toBeNull();
+    });
+
+    it("refuses to enable an instance over an alias an enabled instance publishes", () => {
+      manager.registerExternal(cycleDef());
+      const eqId = washer();
+      const first = manager.createInstance("cycle", { equipment: eqId });
+      manager.disableInstance(first.id);
+      manager.createInstance("cycle", { equipment: eqId });
+      expect(() => manager.enableInstance(first.id)).toThrow(/already gets/);
+      expect(manager.getInstances().find((i) => i.id === first.id)?.enabled).toBe(false);
+    });
+
+    it("refuses an instance over an alias an enabled but stopped instance publishes", () => {
+      manager.registerExternal({
+        ...cycleDef("broken"),
+        createInstance: () => {
+          throw new Error("start fails");
+        },
+      });
+      manager.registerExternal(cycleDef());
+      const eqId = washer();
+      manager.createInstance("broken", { equipment: eqId }); // enabled, not running
+      expect(() => manager.createInstance("cycle", { equipment: eqId })).toThrow(/already gets/);
+    });
+
+    it("denies a closure left over from an earlier start of the same instance", () => {
+      manager.registerExternal(cycleDef());
+      const eqId = washer();
+      const instance = manager.createInstance("cycle", { equipment: eqId });
+      const oldPublish = lastPublish!;
+      manager.restartInstancesOfRecipe("cycle");
+      expect(stateOf(eqId)?.value).toBeNull(); // back, null until the new start publishes
+      expect(oldPublish("running")).toMatchObject({ ok: false });
+      expect(lastPublish!("running")).toEqual({ ok: true });
+      expect(stateOf(eqId)?.id).toBe(`virtual:recipe:${instance.id}:state`);
+    });
+
+    it("refuses an alias the core derives on the equipment (a gate's state)", () => {
+      manager.registerExternal(cycleDef());
+      const zone = zoneManager.create({ name: "Allée" });
+      const gate = equipmentManager.create({ name: "Portail", type: "gate", zoneId: zone.id });
+      expect(() => manager.createInstance("cycle", { equipment: gate.id })).toThrow(
+        /derives "state" itself/,
+      );
+    });
+
+    it("clears the last value for live consumers when the instance stops", () => {
+      manager.registerExternal(cycleDef());
+      const eqId = washer();
+      publishFromStart = "running";
+      const instance = manager.createInstance("cycle", { equipment: eqId });
+      events = [];
+      manager.disableInstance(instance.id);
+      const cleared = events.filter(
+        (e) => e.type === "equipment.data.changed" && e.alias === "state",
+      );
+      expect(cleared).toHaveLength(1);
+      expect(cleared[0]).toMatchObject({ value: null, previous: "running" });
+    });
+
+    it("publishes nothing from the validation context", () => {
+      let fromValidate: unknown;
+      manager.registerExternal({
+        ...cycleDef("probe"),
+        validate: (params, ctx) => {
+          fromValidate = ctx.helpers.equipmentData.publish(params.equipment, "state", "ready");
+        },
+      });
+      const eqId = washer();
+      manager.createInstance("probe", { equipment: eqId });
+      expect(fromValidate).toMatchObject({ ok: false });
+    });
+  });
+
+  // ============================================================
   // Spec 138 — read-only getTariff helper
   // ============================================================
 

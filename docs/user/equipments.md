@@ -193,8 +193,10 @@ Sessions start when this feature is installed: earlier months are not rebuilt. E
 | ------------- | ------------------------ | ------------------------------------------------------------------------------------------------------------- |
 | **Appliance** | Read-only status display | power state, operating state (ready/running/paused), current phase, progress (%), remaining time, energy used |
 
+**Run state from a metering plug.** An appliance that reports no state of its own (a washing machine behind a metering plug) can get one from a recipe that reads its power and publishes the state on the equipment, for instance `off` / `ready` / `running` / `finished`. The card, the panel and the history then show it like a state from the machine. With a plug, the card shows the machine on from 1 W, even without a state.
+
 !!! tip "End-of-cycle notification"
-Use a `state-watch` recipe to get notified when the operating state changes from `running` to `ready`.
+Use a `state-watch` recipe on the operating state: `ready` for a SmartThings washer, `finished` for a state a recipe derives from power.
 
 ### Water
 

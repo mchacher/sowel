@@ -397,16 +397,16 @@ Mises à jour en direct sur le topic WebSocket `energy` : `energy.ev_session.upd
 
 ## History
 
-| Method | Path                                               | Description                                                                                                                    |
-| ------ | -------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------ |
-| `GET`  | `/api/v1/history/status`                           | Statut du module historique (connexion, nombre de bindings historisés, stats).                                                 |
-| `GET`  | `/api/v1/history/retention`                        | Statut de rétention et de downsampling pour tous les buckets/tâches InfluxDB.                                                  |
-| `GET`  | `/api/v1/history/bindings/:equipmentId`            | Liste les réglages d'historisation des data bindings d'un équipement.                                                          |
-| `PUT`  | `/api/v1/history/bindings/:equipmentId/:bindingId` | Définit le flag d'historisation. Body : `{ historize }` (null, 0 ou 1).                                                        |
-| `GET`  | `/api/v1/history/sparkline/zone/:zoneId/:category` | Données de sparkline 24 h au niveau zone (par ex. tendance de température).                                                    |
-| `GET`  | `/api/v1/history/sparkline/:equipmentId/:alias`    | Données de sparkline 24 h au niveau équipement.                                                                                |
-| `GET`  | `/api/v1/history/:equipmentId`                     | Liste les alias historisés pour un équipement.                                                                                 |
-| `GET`  | `/api/v1/history/:equipmentId/:alias`              | Interroge les données de série temporelle. Query : `?from=-24h&to=&aggregation=auto`. Agrégations : `raw`, `1h`, `1d`, `auto`. |
+| Method | Path                                               | Description                                                                                                                                                                                            |
+| ------ | -------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `GET`  | `/api/v1/history/status`                           | Statut du module historique (connexion, nombre de bindings historisés, stats).                                                                                                                         |
+| `GET`  | `/api/v1/history/retention`                        | Statut de rétention et de downsampling pour tous les buckets/tâches InfluxDB.                                                                                                                          |
+| `GET`  | `/api/v1/history/bindings/:equipmentId`            | Liste les réglages d'historisation des data bindings d'un équipement, avec `enumValues` sur un enum. Une donnée publiée par une recette (spec 214) y figure avec `virtual: true`, toujours historisée. |
+| `PUT`  | `/api/v1/history/bindings/:equipmentId/:bindingId` | Définit le flag d'historisation. Body : `{ historize }` (null, 0 ou 1).                                                                                                                                |
+| `GET`  | `/api/v1/history/sparkline/zone/:zoneId/:category` | Données de sparkline 24 h au niveau zone (par ex. tendance de température).                                                                                                                            |
+| `GET`  | `/api/v1/history/sparkline/:equipmentId/:alias`    | Données de sparkline 24 h au niveau équipement.                                                                                                                                                        |
+| `GET`  | `/api/v1/history/:equipmentId`                     | Liste les alias historisés pour un équipement.                                                                                                                                                         |
+| `GET`  | `/api/v1/history/:equipmentId/:alias`              | Interroge les données de série temporelle. Query : `?from=-24h&to=&aggregation=auto`. Agrégations : `raw`, `1h`, `1d`, `auto`.                                                                         |
 
 ---
 

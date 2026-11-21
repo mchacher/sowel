@@ -8,6 +8,7 @@ import { TariffClassifier } from "../energy/tariff-classifier.js";
 import type { InfluxClient } from "../core/influx-client.js";
 import { DEFAULT_RETENTION, Point } from "../core/influx-client.js";
 import { resolveHistorize } from "../shared/history-defaults.js";
+import { RECIPE_OUTPUT_BINDING_PREFIX } from "../equipments/recipe-outputs.js";
 
 // ============================================================
 // Write filtering
@@ -238,12 +239,12 @@ export class HistoryWriter {
       if (!eq.enabled) continue;
       const bindings = this.equipmentManager.getDataBindingsWithValues(eq.id);
       for (const b of bindings) {
-        if (b.id.startsWith("virtual:")) continue; // Skip virtual bindings (gate state)
-        const effectiveOn = HistoryWriter.resolveHistorize(
-          b.historize ?? null,
-          b.alias,
-          b.category,
-        );
+        // Virtual bindings are skipped (gate, cover), except data a recipe
+        // publishes (spec 214): always historized, it has no stored flag.
+        const recipeOutput = b.id.startsWith(RECIPE_OUTPUT_BINDING_PREFIX);
+        if (b.id.startsWith("virtual:") && !recipeOutput) continue;
+        const effectiveOn =
+          recipeOutput || HistoryWriter.resolveHistorize(b.historize ?? null, b.alias, b.category);
         if (effectiveOn) {
           this.historizedBindings.add(b.id);
         }
