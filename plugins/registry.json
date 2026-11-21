@@ -592,7 +592,7 @@
     "icon": "BatteryCharging",
     "author": "mchacher",
     "repo": "mchacher/sowel-recipe-ev-charge-smart",
-    "version": "0.1.4",
+    "version": "0.1.5",
     "tags": ["ev", "charging", "solar", "energy", "automation"],
     "i18n": {
       "fr": {
@@ -602,7 +602,7 @@
     },
     "sowelVersion": ">=1.73.0",
     "owner": "mchacher",
-    "sha256": "23b2e5c495262a0854667c1305cf1f67a4cf4bd50b09b603779438b256e99ad2"
+    "sha256": "5a96a993809abe3e0000f39320f8edd55bc507dd5d310a13102e6f3126236b30"
   },
   {
     "id": "nut",
