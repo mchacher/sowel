@@ -93,6 +93,7 @@ plugins:
         - locale: fr
           name: Français
           build: true
+          site_name: Documentation Sowel
           nav_translations:
             Home: Accueil
             In Depth: En profondeur
@@ -107,12 +108,15 @@ plugins:
             Recipe Development: Développement de recettes
             Data Model: Modèle de données
             Contributing: Contribuer
+            Dependency Management: Gestion des dépendances
+            Overview: Vue d'ensemble
             Specs Index: Index des specs
             User Guide: Guide utilisateur
+            Preparing the Host: Préparer l'hôte
             Getting Started: Premiers pas
-            Devices: Devices
+            Devices: Appareils
             Equipments: Équipements
-            Dashboard: Page Accueil
+            Dashboard: Tableau de bord
             Zones & Rooms: Zones et pièces
             Modes & Calendar: Modes et calendrier
             Recipes: Recettes
@@ -132,7 +136,7 @@ nav:
     - Plugin Development: technical/plugin-development.md
     - Recipe Development: technical/recipe-development.md
     - Data Model:
-      - technical/data-model.md
+      - Overview: technical/data-model.md
       - Devices: technical/data-model/devices.md
       - Equipments: technical/data-model/equipments.md
       - Zones: technical/data-model/zones.md
