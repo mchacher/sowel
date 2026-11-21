@@ -1,0 +1,262 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Spec 212 — Le bouton Connecter d'une intégration</title>
+<style>
+  :root{
+    --primary:#1A4F6E;--primary-hover:#144159;--fill:#1A4F6E;--fill-hover:#144159;--primary-light:#EEF5F8;
+    --bg:#ECF2F7;--surface:#FFFFFF;--text:#21282D;--text-2:#394249;--text-3:#626C73;
+    --border:rgba(17,23,27,.14);--success:#13794A;--success-bg:#E6F7EE;--error:#B42318;--error-bg:#FBE9E1;
+    --r-sm:6px;--r-md:10px;--r-lg:16px;
+    color-scheme:light;
+  }
+  @media (prefers-color-scheme:dark){:root{
+    --primary:#5BA5CC;--primary-hover:#82BCDD;--fill:#2B7299;--fill-hover:#276B8F;--primary-light:#1D303D;
+    --bg:#0E191F;--surface:#17232B;--text:#E6EDF1;--text-2:#C2CCD2;--text-3:#94A0A8;
+    --border:rgba(255,255,255,.14);--success:#4CC38A;--success-bg:#14301F;--error:#FF8A7A;--error-bg:#3A1B17;
+    color-scheme:dark;
+  }}
+  *{box-sizing:border-box}
+  ::selection{background:var(--fill);color:#fff}
+  body{margin:0;background:var(--bg);color:var(--text);font:14px/1.45 Inter,-apple-system,BlinkMacSystemFont,"Segoe UI",system-ui,sans-serif;-webkit-font-smoothing:antialiased}
+  main{max-width:1180px;margin:0 auto;padding:40px 24px 72px}
+  h1{font-size:28px;line-height:1.15;letter-spacing:-.02em;margin:0 0 8px}
+  .lead{font-size:16px;color:var(--text-2);margin:0 0 28px;max-width:70ch}
+  .scenarios{display:flex;flex-wrap:wrap;gap:8px;margin:0 0 28px;align-items:center}
+  .scenarios span{font-size:13px;color:var(--text-3);margin-right:4px}
+  .chip{font:inherit;font-size:13px;padding:6px 12px;border-radius:999px;border:1px solid var(--border);background:var(--surface);color:var(--text-2);cursor:pointer}
+  .chip[aria-pressed=true]{background:var(--fill);border-color:var(--fill);color:#fff}
+  .cols{display:grid;grid-template-columns:1fr 1fr;gap:28px;align-items:start}
+  @media (max-width:880px){.cols{grid-template-columns:1fr}}
+  .col h2{font-size:16px;margin:0 0 4px}
+  .col p.sub{font-size:13px;color:var(--text-3);margin:0 0 12px}
+  .drawer{background:var(--surface);border-radius:var(--r-lg);box-shadow:0 12px 32px rgba(17,23,27,.12),0 2px 6px rgba(17,23,27,.06);overflow:hidden;display:flex;flex-direction:column}
+  .head{display:flex;gap:12px;align-items:center;padding:18px 20px;border-bottom:1px solid var(--border)}
+  .icon{width:36px;height:36px;border-radius:var(--r-sm);background:var(--bg);display:grid;place-items:center;color:var(--text-2)}
+  .head b{font-size:16px;display:block}
+  .head small{font-size:12px;color:var(--text-3)}
+  .body{padding:20px;display:grid;gap:22px}
+  .status{display:grid;grid-template-columns:repeat(3,1fr);gap:10px}
+  .status div{background:var(--bg);border-radius:var(--r-md);padding:10px;text-align:center;font-size:13px;font-weight:500;color:var(--text-3)}
+  .status div.ok{color:var(--success)}
+  .status b{display:block;line-height:1.3;font-size:20px;color:var(--text);font-variant-numeric:tabular-nums}
+  .status em{display:block;font-style:normal;font-size:11px;color:var(--text-3);font-weight:400}
+  .actions{display:flex;gap:8px}
+  .btn{font:inherit;font-size:13px;font-weight:500;display:inline-flex;align-items:center;justify-content:center;gap:6px;padding:8px 12px;border-radius:var(--r-sm);border:1px solid var(--border);background:var(--surface);color:var(--text);cursor:pointer;flex:1;transition:background-color .15s,opacity .15s,transform .1s}
+  .btn:active:not(:disabled){transform:scale(.98)}
+  .btn.primary{background:var(--fill);border-color:var(--fill);color:#fff}
+  .btn.primary:hover:not(:disabled){background:var(--fill-hover)}
+  .btn:disabled{opacity:.5;cursor:default}
+  .btn.big{padding:12px 16px;font-size:14px;width:100%}
+  .btn:focus-visible,.chip:focus-visible,input:focus-visible,.link:focus-visible{outline:2px solid var(--primary);outline-offset:2px}
+  h2,h3{line-height:1.3}
+  h3{font-size:16px;margin:0 0 10px;font-weight:600}
+  .fields{display:grid;gap:12px}
+  label{display:block;font-size:13px;font-weight:500;color:var(--text-2);margin-bottom:4px}
+  label .req{color:var(--error);margin-left:2px}
+  label .opt{color:var(--text-3);margin-left:4px;font-weight:400}
+  input{width:100%;font:inherit;padding:8px 12px;border-radius:var(--r-sm);border:1px solid var(--border);background:var(--bg);color:var(--text);caret-color:var(--primary)}
+  input::placeholder{color:var(--text-3)}
+  input:focus{outline:none;border-color:var(--primary)}
+  input.invalid{border-color:var(--error);background:var(--error-bg)}
+  .help{font-size:12px;margin-top:4px;color:var(--error);display:flex;gap:4px;align-items:center}
+  .hint{font-size:12px;color:var(--text-3);margin-top:8px}
+  .missing{font-size:12px;color:var(--error);margin-top:8px}
+  .link{background:none;border:0;padding:0;font:inherit;color:inherit;text-decoration:underline;text-underline-offset:2px;cursor:pointer}
+  .authorized{display:flex;justify-content:space-between;align-items:center;background:var(--success-bg);border-radius:var(--r-sm);padding:12px 14px;color:var(--success);font-size:13px;font-weight:500}
+  .authorized .link{color:var(--text-3);font-weight:400;font-size:12px}
+  .foot{padding:16px 20px;border-top:1px solid var(--border)}
+  .toast{font-size:13px;border-radius:var(--r-sm);padding:10px 12px;background:var(--success-bg);color:var(--success)}
+  .toast.err{background:var(--error-bg);color:var(--error)}
+  .notes{margin-top:36px;display:grid;grid-template-columns:repeat(3,1fr);gap:20px}
+  @media (max-width:880px){.notes{grid-template-columns:1fr}}
+  .notes section{background:var(--surface);border-radius:var(--r-md);padding:16px 18px}
+  .notes h3.note-h{margin:0 0 8px;font-size:14px}
+  .notes ul{margin:0;padding-left:18px;color:var(--text-2);font-size:13px}
+  .notes li{margin:4px 0}
+  .before .drawer{filter:saturate(.85)}
+  .spin{width:14px;height:14px;border:2px solid currentColor;border-right-color:transparent;border-radius:50%;animation:spin .7s linear infinite}
+  @keyframes spin{to{transform:rotate(360deg)}}
+  @media (prefers-reduced-motion:reduce){.spin{animation-duration:2s}.btn{transition:none}}
+</style>
+</head>
+<body>
+<main>
+  <h1>Le bouton « Connecter » d'une intégration</h1>
+  <p class="lead">Deux défauts vus en branchant un plugin Tesla : le bouton s'appelle « Connecter avec Samsung » pour tous les plugins, et « Démarrer » devient « Remplir les champs requis » sans dire lequel. À gauche ce qui existe, à droite la proposition. Les deux panneaux sont manipulables : tape dans les champs, enregistre, connecte.</p>
+
+  <div class="scenarios" role="group" aria-label="Situation de départ">
+    <span>Partir de :</span>
+    <button class="chip" data-sc="adrien" aria-pressed="true">Domaine saisi dans le champ Borne</button>
+    <button class="chip" data-sc="empty" aria-pressed="false">Plugin tout juste installé</button>
+    <button class="chip" data-sc="full" aria-pressed="false">Tout est rempli</button>
+  </div>
+
+  <div class="cols">
+    <div class="col before">
+      <h2>Aujourd'hui</h2>
+      <p class="sub">Le libellé est celui de SmartThings ; le champ manquant n'est nommé nulle part.</p>
+      <div id="before"></div>
+    </div>
+    <div class="col after">
+      <h2>Proposé</h2>
+      <p class="sub">Le nom du plugin dans le bouton ; le champ manquant nommé et marqué ; « Connecter » enregistre d'abord.</p>
+      <div id="after"></div>
+    </div>
+  </div>
+
+  <div class="notes">
+    <section>
+      <h3 class="note-h">Ce qu'on change</h3>
+      <ul>
+        <li>« Connecter à Tesla » : le nom vient du plugin, pour tous les plugins OAuth.</li>
+        <li>« Démarrer » garde son nom. Sous les boutons : « Il manque : Domaine », cliquable, qui amène au champ.</li>
+        <li>Le champ obligatoire vide est bordé de rouge dès qu'on a enregistré ou quitté le champ.</li>
+        <li>Des modifications non enregistrées ? Le bouton devient « Enregistrer et connecter à Tesla ».</li>
+      </ul>
+    </section>
+    <section>
+      <h3 class="note-h">Ce qu'on ne change pas</h3>
+      <ul>
+        <li>La disposition du panneau, les cartes d'état, le bouton Enregistrer.</li>
+        <li>Les règles de validation propres à un plugin (l'identifiant de la borne est vérifié par le plugin, qui lève une alarme).</li>
+        <li>SmartThings : son bouton devient « Connecter à SmartThings ».</li>
+      </ul>
+    </section>
+    <section>
+      <h3 class="note-h">Arbitrages</h3>
+      <ul>
+        <li><b>A1</b> — « Enregistrer et connecter » quand le formulaire a changé, plutôt que de griser le bouton ? Recommandé : oui.</li>
+        <li><b>A2</b> — Marquer en rouge seulement après un enregistrement ou une sortie de champ (pas à l'ouverture) ? Recommandé : oui.</li>
+      </ul>
+    </section>
+  </div>
+</main>
+
+<script>
+(function(){
+  const PLUGIN = "Tesla";
+  const FIELDS = [
+    {key:"client_id",label:"Client ID de l'application Tesla",req:true},
+    {key:"client_secret",label:"Client Secret de l'application Tesla",req:true,type:"password"},
+    {key:"domain",label:"Domaine de ton Sowel",req:true,ph:"domotique.exemple.fr"},
+    {key:"charger",label:"Identifiant de la borne",req:false,ph:"a1b2c3d4-…"},
+  ];
+  const SCENARIOS = {
+    adrien:{client_id:"3f2a9c10-…",client_secret:"••••••••",domain:"",charger:"domotique.example.org"},
+    empty:{client_id:"",client_secret:"",domain:"",charger:""},
+    full:{client_id:"3f2a9c10-…",client_secret:"••••••••",domain:"domotique.example.org",charger:"5b1e0c2d-7a44-4f1e-9c3b-2d8e6f1a9b07"},
+  };
+  const ICON = {
+    car:'<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M19 17h2c.6 0 1-.4 1-1v-3c0-.9-.7-1.7-1.5-1.9C18.7 10.6 16 10 16 10s-1.3-1.4-2.2-2.3c-.5-.4-1.1-.7-1.8-.7H5c-.6 0-1.1.4-1.4.9l-1.4 2.9A3.7 3.7 0 0 0 2 12v4c0 .6.4 1 1 1h2"/><circle cx="7" cy="17" r="2"/><path d="M9 17h6"/><circle cx="17" cy="17" r="2"/></svg>',
+    ext:'<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M15 3h6v6"/><path d="M10 14 21 3"/><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/></svg>',
+    play:'<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><polygon points="6 3 20 12 6 21 6 3"/></svg>',
+    power:'<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2v10"/><path d="M18.4 6.6a9 9 0 1 1-12.77.04"/></svg>',
+    check:'<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M21.8 10A10 10 0 1 1 17 3.3"/><path d="m9 11 3 3L22 4"/></svg>',
+    alert:'<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M12 8v4"/><path d="M12 16h.01"/></svg>',
+  };
+  const esc = s => String(s).replace(/[&<>"]/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
+
+  function makePanel(root, variant){
+    const st = {saved:{}, values:{}, touched:{}, triedSave:false, connected:false, busy:false, toast:null};
+    function load(sc){
+      st.saved = {...SCENARIOS[sc]}; st.values = {...SCENARIOS[sc]};
+      st.touched = {}; st.triedSave = false; st.connected = false; st.busy = false; st.toast = null; render();
+    }
+    const dirty = () => FIELDS.some(f => (st.values[f.key]||"") !== (st.saved[f.key]||""));
+    const missing = () => FIELDS.filter(f => f.req && !(st.values[f.key]||"").trim());
+    const showInvalid = f => variant==="after" && f.req && !(st.values[f.key]||"").trim() && (st.touched[f.key] || st.triedSave);
+
+    function render(){
+      const miss = missing();
+      const isDirty = dirty();
+      const after = variant === "after";
+      const startLabel = !after && miss.length ? "Remplir les champs requis" : "Démarrer";
+      const connectLabel = after ? (isDirty && !miss.length ? `Enregistrer et connecter à ${PLUGIN}` : `Connecter à ${PLUGIN}`) : "Connecter avec Samsung";
+      const missLine = after && miss.length
+        ? `<p class="missing" role="status">Il manque : ${miss.map(f=>`<button class="link" data-goto="${f.key}">${esc(f.label.replace(/ de l'application Tesla| de ton Sowel/,""))}</button>`).join(", ")}.</p>` : "";
+      root.innerHTML = `
+      <div class="drawer">
+        <div class="head"><div class="icon">${ICON.car}</div><div><b>Tesla</b><small>Tesla through the official Fleet API</small></div></div>
+        <div class="body">
+          <div class="status">
+            <div class="${st.connected?'ok':''}">${st.connected?"Connecté":"Déconnecté"}</div>
+            <div><b>${st.connected?1:0}</b><em>appareils</em></div>
+            <div><b>12h</b><em>cadence</em></div>
+          </div>
+          <div>
+            <div class="actions">
+              <button class="btn primary" data-act="start" ${miss.length?"disabled":""}>${ICON.play}${startLabel}</button>
+              <button class="btn" data-act="disable">${ICON.power}Désactiver</button>
+            </div>
+            ${missLine}
+          </div>
+          <div>
+            <h3>Configuration</h3>
+            <div class="fields">
+              ${FIELDS.map(f=>`
+                <div>
+                  <label for="${variant}-${f.key}">${esc(f.label)}${f.req?'<span class="req">*</span>':'<span class="opt">(opt.)</span>'}</label>
+                  <input id="${variant}-${f.key}" data-key="${f.key}" type="${f.type||"text"}" value="${esc(st.values[f.key]||"")}" placeholder="${esc(f.ph||"")}" class="${showInvalid(f)?"invalid":""}" ${showInvalid(f)?'aria-invalid="true" aria-describedby="'+variant+'-'+f.key+'-err"':""}>
+                  ${showInvalid(f)?`<div class="help" id="${variant}-${f.key}-err">${ICON.alert}Obligatoire pour démarrer et se connecter.</div>`:""}
+                </div>`).join("")}
+            </div>
+          </div>
+          <div>
+            <h3>Autorisation</h3>
+            ${st.connected
+              ? `<div class="authorized"><span style="display:flex;gap:8px;align-items:center">${ICON.check}${after?`Autorisé sur le compte ${PLUGIN}`:"Autorisé"}</span><button class="link" data-act="connect">${after?"Reconnecter":"Ré-autoriser"}</button></div>`
+              : `<button class="btn primary big" data-act="connect" ${(miss.length||st.busy)?"disabled":""}>${st.busy?'<span class="spin" aria-hidden="true"></span>':ICON.ext}${st.busy?(after?`Ouverture de la page ${PLUGIN}…`:"Redirection…"):connectLabel}</button>
+                 ${miss.length ? (after
+                    ? `<p class="hint">Remplis d'abord : ${miss.map(f=>esc(f.label.replace(/ de l'application Tesla| de ton Sowel/,""))).join(", ")}.</p>`
+                    : `<p class="hint">Remplissez les champs ci-dessus avant de connecter.</p>`) : ""}`}
+          </div>
+          ${st.toast?`<div class="toast ${st.toast.err?"err":""}" role="status">${esc(st.toast.text)}</div>`:""}
+        </div>
+        <div class="foot"><button class="btn primary big" data-act="save" ${isDirty?"":"disabled"}>Enregistrer</button></div>
+      </div>`;
+    }
+
+    root.addEventListener("input", e => {
+      const k = e.target.dataset.key; if (!k) return;
+      st.values[k] = e.target.value; st.toast = null;
+      const pos = e.target.selectionStart; render();
+      const el = root.querySelector(`[data-key="${k}"]`); el.focus(); try{el.setSelectionRange(pos,pos)}catch{}
+    });
+    root.addEventListener("focusout", e => {
+      const k = e.target.dataset && e.target.dataset.key; if (!k || st.touched[k]) return;
+      st.touched[k] = true;
+      if (variant === "after" && !(st.values[k]||"").trim()) setTimeout(render, 0);
+    });
+    root.addEventListener("click", e => {
+      const goto = e.target.closest("[data-goto]");
+      if (goto){ const el = root.querySelector(`[data-key="${goto.dataset.goto}"]`); el.focus(); el.scrollIntoView({block:"center",behavior:matchMedia("(prefers-reduced-motion: reduce)").matches?"auto":"smooth"}); return; }
+      const b = e.target.closest("[data-act]"); if (!b || b.disabled) return;
+      const act = b.dataset.act;
+      if (act === "save"){
+        st.triedSave = true; st.saved = {...st.values};
+        st.toast = {text: missing().length && variant==="after" ? "Enregistré. Il reste un champ obligatoire à remplir." : "Paramètres enregistrés."};
+        render();
+      } else if (act === "connect"){
+        if (variant === "after" && dirty()) st.saved = {...st.values};
+        st.busy = true; st.toast = null; render();
+        setTimeout(()=>{ st.busy=false; st.connected=true; st.toast={text: variant==="after" ? `Compte ${PLUGIN} connecté.` : "Compte Samsung connecté avec succès."}; render(); }, 1100);
+      } else if (act === "start"){
+        st.toast = {text:"Intégration démarrée."}; render();
+      }
+    });
+    return {load};
+  }
+
+  const panels = [makePanel(document.getElementById("before"),"before"), makePanel(document.getElementById("after"),"after")];
+  document.querySelectorAll(".chip").forEach(c => c.addEventListener("click", () => {
+    document.querySelectorAll(".chip").forEach(x => x.setAttribute("aria-pressed", String(x===c)));
+    panels.forEach(p => p.load(c.dataset.sc));
+  }));
+  panels.forEach(p => p.load("adrien"));
+})();
+</script>
+</body>
+</html>

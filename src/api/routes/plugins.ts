@@ -600,7 +600,10 @@ export function registerPluginRoutes(app: FastifyInstance, deps: PluginsDeps): v
       try {
         await plugin.handleOAuthCallback(code);
         logger.info({ pluginId: request.params.id }, "OAuth callback handled successfully");
-        return reply.redirect("/settings/integrations?oauth_success=1");
+        // Spec 212: the page names the plugin in its success message.
+        return reply.redirect(
+          "/settings/integrations?oauth_success=1&plugin=" + encodeURIComponent(request.params.id),
+        );
       } catch (err) {
         logger.error({ err, pluginId: request.params.id }, "OAuth callback failed");
         const msg = err instanceof Error ? err.message : "OAuth failed";
