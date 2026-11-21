@@ -58,7 +58,6 @@ import { InvertDirectionPanel } from "../components/equipments/InvertDirectionPa
 import { FamilyPanel } from "../components/equipments/FamilyPanel";
 import { MediaPlayerPanel } from "../components/equipments/MediaPlayerPanel";
 import { AppliancePanel } from "../components/equipments/AppliancePanel";
-import { ApplianceCyclePanel } from "../components/equipments/ApplianceCyclePanel";
 import {
   ArrowLeft,
   Loader2,
@@ -662,11 +661,6 @@ export function EquipmentDetailPage() {
             <FamilyPanel equipment={equipment} onUpdated={() => void fetchEquipments()} />
           )}
 
-          {/* Appliance — run state read on its power (spec 213) */}
-          {equipment.type === "appliance" && (
-            <ApplianceCyclePanel equipment={equipment} onUpdated={() => void fetchEquipments()} />
-          )}
-
           {/* Nested submeters — "already counted by that meter" (spec 173) */}
           {isSubmeterEquipment(equipment) && (
             <MeteringParentPanel
@@ -1059,29 +1053,23 @@ function HistorySection({
                   <span className="font-mono font-medium text-primary">{b.alias}</span>
                   <span className="text-text-tertiary">({b.category})</span>
                 </div>
-                {/* Spec 213 — a series Sowel derives (an appliance's run state)
-                    is always historized: no toggle to offer. */}
-                {b.virtual ? (
-                  <span className="text-micro text-text-tertiary">{t("history.derived")}</span>
-                ) : (
-                  <div className="flex items-center gap-2">
-                    <span className="text-micro text-text-tertiary">
-                      {b.historize === null
-                        ? `(${t("history.default")})`
-                        : `(${t("history.override")})`}
-                    </span>
-                    <button
-                      onClick={() => handleToggle(b)}
-                      className={`px-2 py-0.5 rounded-sm text-micro font-medium cursor-pointer transition-colors ${
-                        b.effectiveOn
-                          ? "bg-success/10 text-success hover:bg-success/20"
-                          : "bg-border-light text-text-tertiary hover:bg-border"
-                      }`}
-                    >
-                      {b.effectiveOn ? t("history.on") : t("history.off")}
-                    </button>
-                  </div>
-                )}
+                <div className="flex items-center gap-2">
+                  <span className="text-micro text-text-tertiary">
+                    {b.historize === null
+                      ? `(${t("history.default")})`
+                      : `(${t("history.override")})`}
+                  </span>
+                  <button
+                    onClick={() => handleToggle(b)}
+                    className={`px-2 py-0.5 rounded-sm text-micro font-medium cursor-pointer transition-colors ${
+                      b.effectiveOn
+                        ? "bg-success/10 text-success hover:bg-success/20"
+                        : "bg-border-light text-text-tertiary hover:bg-border"
+                    }`}
+                  >
+                    {b.effectiveOn ? t("history.on") : t("history.off")}
+                  </button>
+                </div>
               </div>
             ))}
           </div>

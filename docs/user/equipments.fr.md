@@ -297,19 +297,8 @@ Appareil électroménager connecté tel que lave-linge, sèche-linge ou lave-vai
 - **Contrôles :** Affichage de statut en lecture seule
 - **Données attendues :** état d'alimentation, état de fonctionnement (prêt/en cours/en pause), phase courante (lavage/rinçage/essorage), progression (%), temps restant, consommation d'énergie
 
-**État de marche depuis une prise mesurée.** Un appareil qui ne fournit pas lui-même son état (un lave-linge derrière une prise mesurée, par exemple) le reçoit de sa puissance. Liez la puissance en watts de la prise et Sowel en déduit quatre valeurs :
-
-| État       | Quand                                                                        |
-| ---------- | ---------------------------------------------------------------------------- |
-| `off`      | sous 1 W : la machine est éteinte                                            |
-| `ready`    | allumée sans tourner (écran allumé, départ différé)                          |
-| `running`  | au-dessus du seuil de départ (15 W par défaut)                               |
-| `finished` | la puissance est restée sous le seuil de fin (10 W) pendant le délai (5 min) |
-
-Une machine qui s'éteint seule pendant ce délai passe quand même par `finished`. Les seuils se règlent dans **Configuration → Détection de cycle** sur la page de l'équipement (admin). Un état fourni par un appareil a toujours la priorité : l'état déduit apparaît quand ce binding est retiré. L'état déduit est historisé.
-
 !!! tip "Notification de fin de cycle"
-Utilisez une recette de surveillance d'état pour être notifié à la fin d'un cycle : surveillez `finished` pour un état déduit de la puissance, ou `ready` pour un état fourni par SmartThings.
+Utilisez une recette de surveillance d'état pour être notifié quand l'état de fonctionnement passe de `running` à `ready`.
 
 ---
 

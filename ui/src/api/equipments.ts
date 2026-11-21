@@ -11,7 +11,6 @@ import type {
   SolarProfile,
   TimedAction,
   TimedCommand,
-  ApplianceCycleThresholds,
 } from "../types";
 import { fetchJSON, API_BASE, getAccessToken } from "./client";
 
@@ -73,8 +72,6 @@ export async function updateEquipment(
     usualVehicleId?: string | null;
     /** Spec 174 phase 2 — the timed command this equipment offers; null clears it. */
     timedCommand?: TimedCommand | null;
-    /** Spec 213 — an appliance's cycle thresholds; null restores the defaults. */
-    applianceCycle?: ApplianceCycleThresholds | null;
   },
 ): Promise<Equipment> {
   return fetchJSON<Equipment>(`${API_BASE}/equipments/${id}`, {

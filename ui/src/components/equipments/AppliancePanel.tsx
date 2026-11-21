@@ -2,7 +2,6 @@ import { useTranslation } from "react-i18next";
 import { WashingMachine, Timer, Zap } from "lucide-react";
 import type { EquipmentWithDetails } from "../../types";
 import { formatDuration, formatEnergyParts, formatPercent } from "../../lib/format";
-import { applianceIsOn, applianceState, applianceStateLabelKey } from "../../lib/appliance";
 
 interface AppliancePanelProps {
   equipment: EquipmentWithDetails;
@@ -11,6 +10,8 @@ interface AppliancePanelProps {
 export function AppliancePanel({ equipment }: AppliancePanelProps) {
   const { t } = useTranslation();
 
+  const powerBinding = equipment.dataBindings.find((b) => b.alias === "power");
+  const stateBinding = equipment.dataBindings.find((b) => b.alias === "state");
   const jobPhaseBinding = equipment.dataBindings.find((b) => b.alias === "job_phase");
   const progressBinding = equipment.dataBindings.find((b) => b.alias === "progress");
   const remainingTimeBinding = equipment.dataBindings.find((b) => b.alias === "remaining_time");
@@ -19,11 +20,8 @@ export function AppliancePanel({ equipment }: AppliancePanelProps) {
   );
   const energyBinding = equipment.dataBindings.find((b) => b.alias === "energy");
 
-  // Spec 213 — on/off from the run state when there is one (reported, or
-  // derived from a metering plug's watts), else from the power reading.
-  const isOn = applianceIsOn(equipment.dataBindings);
-  const state = applianceState(equipment.dataBindings) ?? "off";
-  const stateLabelKey = applianceStateLabelKey(state);
+  const isOn = powerBinding?.value === true;
+  const state = typeof stateBinding?.value === "string" ? stateBinding.value : "off";
   const jobPhase = typeof jobPhaseBinding?.value === "string" ? jobPhaseBinding.value : null;
   const progress = typeof progressBinding?.value === "number" ? progressBinding.value : 0;
   const remainingTimeStr =
@@ -71,7 +69,7 @@ export function AppliancePanel({ equipment }: AppliancePanelProps) {
                     : "bg-border-light text-text-secondary"
               }`}
             >
-              {stateLabelKey ? t(stateLabelKey) : state}
+              {isRunning ? t("common.running") : isPaused ? t("common.paused") : state}
             </span>
             {jobPhase && jobPhase !== "none" && (
               <span className="text-small text-text-secondary">

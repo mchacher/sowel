@@ -185,8 +185,6 @@ Les règles à connaître avant d'appeler :
 
 `PUT /api/v1/equipments/:id` accepte `localProduction` (spec 195, migration `041`) : la puissance négative de ce sous-compteur (puissance seule) est une production locale. Son énergie intégrée garde alors la partie positive en `energy` (la part de la répartition par usage) et écrit la partie négative dans une série `production` distincte, ajoutée au solaire de la maison dans le calcul d'autoconsommation. Refusé en `400 LocalProductionNotApplicable` sur un `main_energy_meter` / un type de production et avec `separateSupply`, vérifié sur l'état résultant, et en `400 LocalProductionNotPowerOnly` sur un compteur qui remonte son propre index d'énergie.
 
-`PUT /api/v1/equipments/:id` accepte `applianceCycle` (spec 213, migration `046`) : `{ startW, endW, endDelayS }`, ou `null` pour les valeurs par défaut (15 W, 10 W, 300 s). Les règles sont `1 < endW ≤ startW ≤ 5000` et un `endDelayS` entier entre 30 et 3600 ; un jeu qui les enfreint, ou envoyé à un équipement qui n'est pas un `appliance`, est refusé en `400` avec un message qui nomme le champ. Un équipement retypé hors `appliance` le perd. `GET` ne le renvoie que s'il est posé.
-
 `PUT /api/v1/equipments/:id` accepte `family` (spec 208, migration `045`) : `lighting`, `openings`, `climate`, `water`, `energy`, `sensors`, ou `null` pour l'effacer. Seul un `switch` en porte une (une prise qui alimente un radiateur est `climate`) ; une famille non nulle sur tout autre type résultant est refusée en `400 FamilyNotApplicable`, et un switch retypé la perd. `GET` ne la renvoie que si elle est posée.
 
 `PUT /api/v1/equipments/:id` accepte `trackOrderOutcome` (`true` / `false`, ou `null` pour le défaut du type : actif sur `gate` et `door`, inactif sur `shutter` et `awning` ; spec 188 O10, migration `038`). Il accepte `type`. Le serveur vérifie seulement que le type existe ; le formulaire d'édition ne propose un changement qu'entre `shutter`, `awning` et `door` (spec 190), dont les liaisons restent valides. Les données agrégées de zone portent `doorsOpen` / `doorsTotal` pour les équipements `door` (spec 190).
@@ -399,16 +397,16 @@ Mises à jour en direct sur le topic WebSocket `energy` : `energy.ev_session.upd
 
 ## History
 
-| Method | Path                                               | Description                                                                                                                                                                                              |
-| ------ | -------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `GET`  | `/api/v1/history/status`                           | Statut du module historique (connexion, nombre de bindings historisés, stats).                                                                                                                           |
-| `GET`  | `/api/v1/history/retention`                        | Statut de rétention et de downsampling pour tous les buckets/tâches InfluxDB.                                                                                                                            |
-| `GET`  | `/api/v1/history/bindings/:equipmentId`            | Liste les réglages d'historisation des data bindings d'un équipement, avec `enumValues` sur un enum. L'état de marche déduit d'un appareil (spec 213) y figure avec `virtual: true`, toujours historisé. |
-| `PUT`  | `/api/v1/history/bindings/:equipmentId/:bindingId` | Définit le flag d'historisation. Body : `{ historize }` (null, 0 ou 1).                                                                                                                                  |
-| `GET`  | `/api/v1/history/sparkline/zone/:zoneId/:category` | Données de sparkline 24 h au niveau zone (par ex. tendance de température).                                                                                                                              |
-| `GET`  | `/api/v1/history/sparkline/:equipmentId/:alias`    | Données de sparkline 24 h au niveau équipement.                                                                                                                                                          |
-| `GET`  | `/api/v1/history/:equipmentId`                     | Liste les alias historisés pour un équipement.                                                                                                                                                           |
-| `GET`  | `/api/v1/history/:equipmentId/:alias`              | Interroge les données de série temporelle. Query : `?from=-24h&to=&aggregation=auto`. Agrégations : `raw`, `1h`, `1d`, `auto`.                                                                           |
+| Method | Path                                               | Description                                                                                                                    |
+| ------ | -------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------ |
+| `GET`  | `/api/v1/history/status`                           | Statut du module historique (connexion, nombre de bindings historisés, stats).                                                 |
+| `GET`  | `/api/v1/history/retention`                        | Statut de rétention et de downsampling pour tous les buckets/tâches InfluxDB.                                                  |
+| `GET`  | `/api/v1/history/bindings/:equipmentId`            | Liste les réglages d'historisation des data bindings d'un équipement.                                                          |
+| `PUT`  | `/api/v1/history/bindings/:equipmentId/:bindingId` | Définit le flag d'historisation. Body : `{ historize }` (null, 0 ou 1).                                                        |
+| `GET`  | `/api/v1/history/sparkline/zone/:zoneId/:category` | Données de sparkline 24 h au niveau zone (par ex. tendance de température).                                                    |
+| `GET`  | `/api/v1/history/sparkline/:equipmentId/:alias`    | Données de sparkline 24 h au niveau équipement.                                                                                |
+| `GET`  | `/api/v1/history/:equipmentId`                     | Liste les alias historisés pour un équipement.                                                                                 |
+| `GET`  | `/api/v1/history/:equipmentId/:alias`              | Interroge les données de série temporelle. Query : `?from=-24h&to=&aggregation=auto`. Agrégations : `raw`, `1h`, `1d`, `auto`. |
 
 ---
 

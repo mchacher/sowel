@@ -59,7 +59,6 @@ import {
 } from "../../lib/format";
 import { useStalenessClock } from "../../hooks/useStalenessClock";
 import { brightnessPercent, brightnessScale } from "../../lib/brightness";
-import { applianceIsOn, applianceState, applianceStateLabelKey } from "../../lib/appliance";
 import {
   LightBulbIcon,
   ShutterWidgetIcon,
@@ -1721,15 +1720,15 @@ function ApplianceEquipmentWidget({
 }) {
   const { t } = useTranslation();
 
+  const powerBinding = equipment.dataBindings.find((b) => b.alias === "power");
+  const stateBinding = equipment.dataBindings.find((b) => b.alias === "state");
   const remainingTimeStrBinding = equipment.dataBindings.find(
     (b) => b.alias === "remaining_time_str",
   );
   const progressBinding = equipment.dataBindings.find((b) => b.alias === "progress");
 
-  // Spec 213 — on/off from the run state, reported or derived from watts.
-  const isOn = applianceIsOn(equipment.dataBindings);
-  const state = applianceState(equipment.dataBindings) ?? "off";
-  const stateLabelKey = applianceStateLabelKey(state);
+  const isOn = powerBinding?.value === true;
+  const state = typeof stateBinding?.value === "string" ? stateBinding.value : "off";
   const remainingStr =
     typeof remainingTimeStrBinding?.value === "string" ? remainingTimeStrBinding.value : null;
   const progress = typeof progressBinding?.value === "number" ? progressBinding.value : 0;
@@ -1771,7 +1770,7 @@ function ApplianceEquipmentWidget({
           </div>
         ) : (
           <span className="text-caption text-text-secondary">
-            {stateLabelKey ? t(stateLabelKey) : state}
+            {state === "paused" ? t("common.paused") : state === "ready" ? "Ready" : state}
           </span>
         )}
       </div>
