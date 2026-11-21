@@ -10,6 +10,7 @@
   "nav.calendar": "Calendar",
   "nav.settings": "Settings",
   "nav.more": "More",
+  "nav.main": "Main navigation",
   "nav.mqttPublishers": "MQTT Publishers",
   "nav.maison": "Home",
   "auth.login": "Log in",

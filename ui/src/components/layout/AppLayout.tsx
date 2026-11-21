@@ -173,8 +173,8 @@ export function AppLayout() {
           <Sidebar />
         </div>
 
-        {/* Main content */}
-        <div className="flex-1 flex flex-col min-w-0">
+        {/* Main content — positioned: the phone tab bar floats over its bottom */}
+        <div className="relative flex-1 flex flex-col min-w-0">
           <TopBarFrame>
             {/* Top bar — compact on phones and tablets (below lg, spec 196 decision
               pr1-tablette: one switch point with the sidebar and bottom bar), full on desktop */}
@@ -262,8 +262,10 @@ export function AppLayout() {
 
           {/* Offline banner */}
           <OfflineBanner />
-          {/* Page content */}
-          <main className="relative flex-1 overflow-y-auto bg-background">
+          {/* Page content — below lg it scrolls under the floating tab bar and keeps
+            the bar's room free under its last line (#1264). A sticky bottom bar
+            (dashboard edit) stops at that padding, just above the pill. */}
+          <main className="relative flex-1 overflow-y-auto bg-background pb-(--tabbar-clearance) lg:pb-0">
             <PageOutlet />
           </main>
 
@@ -555,29 +557,27 @@ function MobileNav({
 
   return (
     <>
-      <nav className="flex lg:hidden flex-col border-t border-border bg-surface">
-        {/* 60px before the safe area (spec 208, FR7): the selected tab's pill
-            needs the room a 49px iOS bar does not leave. Each button fills its
-            column and the row. */}
-        <div className="flex items-stretch justify-around min-h-[60px] pt-1.5 pb-1 px-2">
-          <MobileNavLink to="/dashboard" label={t("nav.dashboard")} icon={LayoutDashboard} />
-          <MobileNavLink to="/home" label={t("nav.maison")} icon={Home} />
-          {energyAvailable && <MobileNavLink to="/energy" label={t("nav.energy")} icon={Zap} />}
-          <MobileNavLink to="/modes" label={t("nav.modes")} icon={Layers} />
-          <button
-            onClick={() => setDrawerOpen(true)}
-            className="flex-1 flex flex-col items-center justify-center px-1 text-micro font-medium text-text-secondary"
-          >
-            <MobileNavIcon icon={Menu} active={false} />
-            <span className="text-micro">{t("nav.more", "Plus")}</span>
-          </button>
-        </div>
-        {/* Half the home indicator's safe area: the full 34pt leaves a band under the
-            labels that reads as empty, half keeps the buttons clear of the swipe. */}
-        <div
-          className="bg-surface flex-shrink-0"
-          style={{ height: "calc(env(safe-area-inset-bottom, 0px) / 2)" }}
-        />
+      {/* A floating pill (#1264, amends spec 208 FR7), the iOS 26 tab bar shape:
+          16 px from the sides, --tabbar-offset above the bottom edge, 62 px high,
+          translucent and blurred so the page shows through as it scrolls under.
+          The selected tab is a grey pill around its icon and label. A floating
+          layer: border and shadow-lg, like the menus and sheets. */}
+      <nav
+        aria-label={t("nav.main")}
+        className="lg:hidden absolute inset-x-4 bottom-(--tabbar-offset) z-40 flex h-(--tabbar-height) p-1 rounded-full border border-border-light bg-surface/75 backdrop-blur-xl backdrop-saturate-150 shadow-lg"
+      >
+        <MobileNavLink to="/dashboard" label={t("nav.dashboard")} icon={LayoutDashboard} />
+        <MobileNavLink to="/home" label={t("nav.maison")} icon={Home} />
+        {energyAvailable && <MobileNavLink to="/energy" label={t("nav.energy")} icon={Zap} />}
+        <MobileNavLink to="/modes" label={t("nav.modes")} icon={Layers} />
+        <button
+          type="button"
+          onClick={() => setDrawerOpen(true)}
+          className={`${TAB_CLASS} text-text-secondary font-medium`}
+        >
+          <MobileNavIcon icon={Menu} active={false} />
+          <span className="text-micro">{t("nav.more", "Plus")}</span>
+        </button>
       </nav>
 
       {/* Drawer overlay */}
@@ -757,13 +757,17 @@ function DrawerLink({
  * of the primary ink at 15 %, with a heavier stroke, and its label is
  * semibold; the other tabs are secondary text.
  */
+/** One tab of the floating bar: an equal share of the pill, its full height. */
+const TAB_CLASS =
+  "flex-1 min-w-0 flex flex-col items-center justify-center gap-0.5 px-0.5 rounded-full text-micro";
+
 function MobileNavLink({ to, label, icon }: { to: string; label: string; icon: LucideIcon }) {
   return (
     <NavLink
       to={to}
       className={({ isActive }) =>
-        `flex-1 flex flex-col items-center justify-center px-1 text-micro ${
-          isActive ? "text-primary font-semibold" : "text-text-secondary font-medium"
+        `${TAB_CLASS} ${
+          isActive ? "bg-text/8 text-primary font-semibold" : "text-text-secondary font-medium"
         }`
       }
     >
@@ -779,12 +783,7 @@ function MobileNavLink({ to, label, icon }: { to: string; label: string; icon: L
 
 function MobileNavIcon({ icon: Icon, active }: { icon: LucideIcon; active: boolean }) {
   return (
-    <span
-      aria-hidden="true"
-      className={`flex items-center justify-center w-14 h-7.5 mb-0.5 rounded-full ${
-        active ? "bg-primary/15" : ""
-      }`}
-    >
+    <span aria-hidden="true" className="flex items-center justify-center w-7 h-6.5">
       <Icon size={22} strokeWidth={active ? 2 : 1.5} />
     </span>
   );
