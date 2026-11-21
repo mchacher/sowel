@@ -209,6 +209,18 @@ export class EquipmentManager {
         } catch (err) {
           this.logger.error({ err }, "Error handling device.data.updated for equipment bindings");
         }
+      } else if (event.type === "device.removed") {
+        // Spec 213 — a removed plug takes its power binding with it (ON DELETE
+        // CASCADE, no removeDataBinding): stop tracking what lost its source.
+        try {
+          for (const equipmentId of this.applianceCycle.trackedIds()) {
+            if (this.applianceCycleSource(equipmentId) === null) {
+              this.applianceCycle.forget(equipmentId);
+            }
+          }
+        } catch (err) {
+          this.logger.error({ err }, "Error re-checking appliance cycles after a device removal");
+        }
       }
     });
   }
@@ -898,6 +910,7 @@ export class EquipmentManager {
     const categoryOverride = inferDataBindingCategory(equipment.type, alias);
 
     const id = randomUUID();
+    const cycleSourceBefore = this.applianceCycleSource(equipmentId);
     try {
       this.stmts.insertDataBinding.run({ id, equipmentId, deviceDataId, alias, categoryOverride });
     } catch (err) {
@@ -908,8 +921,7 @@ export class EquipmentManager {
     }
 
     this.logger.info({ equipmentId, alias, deviceDataId }, "DataBinding added");
-    // Spec 213 — a bound state or another power changes what the derived state reads.
-    this.applianceCycle.forget(equipmentId);
+    this.forgetCycleIfSourceChanged(equipmentId, cycleSourceBefore);
     this.emitEquipmentUpdated(equipmentId);
     return { id, equipmentId, deviceDataId, alias };
   }
@@ -920,10 +932,20 @@ export class EquipmentManager {
       throw new EquipmentError("DataBinding not found", 404);
     }
 
+    const cycleSourceBefore = this.applianceCycleSource(equipmentId);
     this.stmts.deleteDataBinding.run(bindingId);
     this.logger.info({ equipmentId, bindingId }, "DataBinding removed");
-    this.applianceCycle.forget(equipmentId);
+    this.forgetCycleIfSourceChanged(equipmentId, cycleSourceBefore);
     this.emitEquipmentUpdated(equipmentId);
+  }
+
+  /**
+   * Spec 213 — the derived run state starts over only when what it reads
+   * changes (another power binding, a state now reported by a device). Binding
+   * the plug's energy mid-cycle must not reset a running cycle.
+   */
+  private forgetCycleIfSourceChanged(equipmentId: string, before: string | null): void {
+    if (this.applianceCycleSource(equipmentId) !== before) this.applianceCycle.forget(equipmentId);
   }
 
   getDataBindingsWithValues(equipmentId: string): DataBindingWithValue[] {
@@ -945,12 +967,8 @@ export class EquipmentManager {
     }
 
     // Spec 213 — an appliance with a measured power and no reported state gets
-    // one derived from that power.
+    // one derived from that power, injected once the power's staleness is known.
     const cyclePower = equipment ? applianceCyclePowerBinding(equipment, bindings) : null;
-    const applianceState = cyclePower
-      ? this.buildApplianceStateBinding(equipmentId, cyclePower)
-      : null;
-    if (applianceState) bindings.unshift(applianceState);
 
     // Annotate staleness on streaming bindings (spec 116).
     const now = Date.now();
@@ -981,10 +999,27 @@ export class EquipmentManager {
         );
       }
     }
-    // The derived state is as fresh as the power it is read on.
-    if (applianceState && cyclePower) applianceState.stale = cyclePower.stale;
+    if (cyclePower) {
+      // As fresh as the power it is read on.
+      const applianceState = this.buildApplianceStateBinding(equipmentId, cyclePower);
+      applianceState.stale = cyclePower.stale;
+      bindings.unshift(applianceState);
+    }
 
     return bindings;
+  }
+
+  /** Spec 213 — the power binding the derived run state reads, or `null` when none applies. */
+  private applianceCyclePowerOf(equipmentId: string): DataBindingWithValue | null {
+    const equipment = this.getById(equipmentId);
+    if (!equipment) return null;
+    const rows = this.stmts.getDataBindingsWithValues.all(equipmentId) as DataBindingJoinRow[];
+    return applianceCyclePowerBinding(equipment, rows.map(rowToDataBindingWithValue));
+  }
+
+  /** Spec 213 — the id of that power binding: what the tracked state was built on. */
+  private applianceCycleSource(equipmentId: string): string | null {
+    return this.applianceCyclePowerOf(equipmentId)?.id ?? null;
   }
 
   /**
@@ -992,10 +1027,7 @@ export class EquipmentManager {
    * from it, or `null` (not such an equipment, or no reading yet).
    */
   private applianceCyclePower(equipmentId: string): number | null {
-    const equipment = this.getById(equipmentId);
-    if (!equipment) return null;
-    const rows = this.stmts.getDataBindingsWithValues.all(equipmentId) as DataBindingJoinRow[];
-    const power = applianceCyclePowerBinding(equipment, rows.map(rowToDataBindingWithValue));
+    const power = this.applianceCyclePowerOf(equipmentId);
     return power && typeof power.value === "number" ? power.value : null;
   }
 
@@ -1864,7 +1896,16 @@ export class EquipmentManager {
     equipmentId: string,
     power: DataBindingWithValue,
   ): DataBindingWithValue {
-    const watts = typeof power.value === "number" ? power.value : null;
+    // An outdated reading (plug offline across a restart) is no ground to start
+    // from: the state stays unknown until the plug reports again. Outdated by
+    // the power's own freshness budget (spec 175); the spec 116 `stale` flag
+    // never applies to an appliance's power.
+    const updatedMs = power.lastUpdated ? Date.parse(power.lastUpdated) : NaN;
+    const outdated =
+      power.freshnessBudgetMs !== undefined &&
+      !Number.isNaN(updatedMs) &&
+      Date.now() - updatedMs > power.freshnessBudgetMs;
+    const watts = typeof power.value === "number" && !outdated ? power.value : null;
     const state = this.applianceCycle.getState(equipmentId, watts);
     const since = this.applianceCycle.getSince(equipmentId);
     return {
@@ -1882,7 +1923,7 @@ export class EquipmentManager {
       unit: undefined,
       lastUpdated: power.lastUpdated,
       lastChanged: since !== null ? new Date(since).toISOString() : power.lastUpdated,
-      stale: false, // replaced by the power binding's staleness once annotated
+      stale: power.stale,
     };
   }
 
@@ -1961,10 +2002,7 @@ export class EquipmentManager {
         typeof value === "number" &&
         sourceTimestamp === undefined
       ) {
-        const rows = this.stmts.getDataBindingsWithValues.all(
-          binding.equipment_id,
-        ) as DataBindingJoinRow[];
-        if (applianceCyclePowerBinding(equipment, rows.map(rowToDataBindingWithValue))) {
+        if (this.applianceCycleSource(binding.equipment_id) !== null) {
           this.applianceCycle.onPower(binding.equipment_id, value);
         }
       }
@@ -2135,14 +2173,6 @@ function parseEnergyProfile(json: string | null): EnergyLoadProfile | undefined 
 }
 
 /**
- * Parse the timed_command JSON column (spec 174 phase 2).
- *
- * A row written by an older core, or by hand, can hold anything; a malformed
- * value reads as "no timed command" rather than throwing on every equipment
- * read. The shape is checked, not just the parse: a configuration missing its
- * alias or its duration would offer a control that cannot be armed.
- */
-/**
  * Spec 213 — the power binding an appliance's run state is derived from, or
  * `null` when the derived state does not apply: not an appliance, no numeric
  * `power`, or a `state` reported by a device (it always wins).
@@ -2167,6 +2197,14 @@ function parseApplianceCycle(json: string | null): ApplianceCycleThresholds | nu
   }
 }
 
+/**
+ * Parse the timed_command JSON column (spec 174 phase 2).
+ *
+ * A row written by an older core, or by hand, can hold anything; a malformed
+ * value reads as "no timed command" rather than throwing on every equipment
+ * read. The shape is checked, not just the parse: a configuration missing its
+ * alias or its duration would offer a control that cannot be armed.
+ */
 function parseTimedCommand(json: string | null): TimedCommand | undefined {
   if (!json) return undefined;
   try {

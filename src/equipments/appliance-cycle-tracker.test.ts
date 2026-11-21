@@ -5,6 +5,7 @@ import type { ApplianceCycleThresholds, EngineEvent } from "../shared/types.js";
 import {
   APPLIANCE_CYCLE_DEFAULTS,
   ApplianceCycleTracker,
+  FINISHED_HOLD_MS,
   coldCycleState,
   nextCycleState,
   validateCycleThresholds,
@@ -92,7 +93,7 @@ describe("validateCycleThresholds", () => {
 
 describe("ApplianceCycleTracker", () => {
   let bus: EventBus;
-  let events: { value: unknown; previous: unknown }[];
+  let events: { value: unknown; previous: unknown; at: number }[];
   let thresholds: ApplianceCycleThresholds | null;
   let tracker: ApplianceCycleTracker;
 
@@ -103,7 +104,7 @@ describe("ApplianceCycleTracker", () => {
     thresholds = null;
     bus.on((e: EngineEvent) => {
       if (e.type === "equipment.data.changed" && e.alias === "state") {
-        events.push({ value: e.value, previous: e.previous });
+        events.push({ value: e.value, previous: e.previous, at: Date.now() });
       }
     });
     tracker = new ApplianceCycleTracker({
@@ -162,7 +163,7 @@ describe("ApplianceCycleTracker", () => {
     vi.advanceTimersByTime(299_000);
     expect(tracker.getState(EQ, null)).toBe("running");
     vi.advanceTimersByTime(1_000);
-    expect(events.at(-1)).toEqual({ value: "finished", previous: "running" });
+    expect(events.at(-1)).toMatchObject({ value: "finished", previous: "running" });
     expect(states().filter((s) => s === "finished")).toHaveLength(1);
   });
 
@@ -179,6 +180,31 @@ describe("ApplianceCycleTracker", () => {
   it("replays the 2026-11-13 cycle: one run, announced, then off", () => {
     replay(CYCLE_2026_11_13);
     expect(states()).toEqual(["running", "finished", "off"]);
+  });
+
+  it("holds finished before off when switched off during the end delay", () => {
+    tracker.onPower(EQ, 6);
+    tracker.onPower(EQ, 90);
+    tracker.onPower(EQ, 5);
+    vi.advanceTimersByTime(160_000);
+    tracker.onPower(EQ, 0);
+    expect(states()).toEqual(["running", "finished"]);
+    tracker.onPower(EQ, 0); // another 0 W sample during the hold changes nothing
+    vi.advanceTimersByTime(FINISHED_HOLD_MS);
+    expect(states()).toEqual(["running", "finished", "off"]);
+    // Past the 1 s burst dedup of recipe notifications and InfluxDB's 1 s precision.
+    const [finished, off] = events.slice(-2);
+    expect(off!.at - finished!.at).toBeGreaterThan(1_000);
+  });
+
+  it("drops the hold when the machine reads again", () => {
+    tracker.onPower(EQ, 6);
+    tracker.onPower(EQ, 90);
+    tracker.onPower(EQ, 5);
+    tracker.onPower(EQ, 0);
+    tracker.onPower(EQ, 1900);
+    vi.advanceTimersByTime(FINISHED_HOLD_MS * 2);
+    expect(states()).toEqual(["running", "finished", "running"]);
   });
 
   it("replays the 2026-11-11 cycle: the 100 s dip does not split it", () => {
@@ -198,7 +224,7 @@ describe("ApplianceCycleTracker", () => {
     expect(events.at(-1)?.value).toBe("finished");
   });
 
-  it("a cold start in the tail of a cycle still ends it", () => {
+  it("custom thresholds start and end a cycle", () => {
     thresholds = { startW: 3, endW: 2, endDelayS: 60 };
     tracker.onPower(EQ, 4); // running (> startW)
     tracker.onPower(EQ, 1.5); // tail
@@ -214,6 +240,16 @@ describe("ApplianceCycleTracker", () => {
     vi.advanceTimersByTime(600_000);
     expect(states()).toEqual(["running"]);
     expect(tracker.getState(EQ, null)).toBeNull();
+  });
+
+  it("forget during the hold: no late off", () => {
+    tracker.onPower(EQ, 6);
+    tracker.onPower(EQ, 90);
+    tracker.onPower(EQ, 5);
+    tracker.onPower(EQ, 0);
+    tracker.forget(EQ);
+    vi.advanceTimersByTime(FINISHED_HOLD_MS * 2);
+    expect(states()).toEqual(["running", "finished"]);
   });
 
   it("destroy clears an armed timer: no late event", () => {

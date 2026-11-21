@@ -15,8 +15,12 @@
  * A washing machine switches itself off 3 to 5 min after its cycle, sometimes
  * before the end delay runs out (160 s on a recorded cycle). Switched off while
  * the end delay runs, the machine therefore goes through `finished` on its way
- * to `off`, so every completed cycle is announced. Switched off mid-cycle (no
- * delay running), it goes straight to `off`.
+ * to `off`, so every completed cycle is announced. `finished` is held
+ * `FINISHED_HOLD_MS` before `off`: two state events in the same second would
+ * lose the second one twice over, to the 1 s burst dedup of recipe
+ * notifications (the alarm never resets) and to InfluxDB's 1 s precision (the
+ * `finished` point is overwritten). Switched off mid-cycle (no delay running),
+ * it goes straight to `off`.
  *
  * Nothing is persisted. After a restart the state is rebuilt from the current
  * power and never comes back as `finished`: the end of a cycle that straddles a
@@ -47,6 +51,9 @@ export const APPLIANCE_CYCLE_DEFAULTS: ApplianceCycleThresholds = {
  * bindings, this one is historized and listed by the history API.
  */
 export const APPLIANCE_STATE_BINDING_PREFIX = "virtual:appliance_state:";
+
+/** How long `finished` is held before `off` when the machine switches itself off during the end delay. */
+export const FINISHED_HOLD_MS = 5_000;
 
 /** Below this the machine is switched off (a plug reads 0 W, an idle display ~6 W). */
 export const APPLIANCE_OFF_W = 1;
@@ -131,6 +138,8 @@ interface TrackedAppliance {
   /** Epoch ms the current cycle started, for the end log. */
   runningSince: number | null;
   endTimer: ReturnType<typeof setTimeout> | null;
+  /** Pending `finished → off` after a switch-off during the end delay. */
+  offTimer: ReturnType<typeof setTimeout> | null;
 }
 
 export interface ApplianceCycleTrackerDeps {
@@ -166,6 +175,11 @@ export class ApplianceCycleTracker {
     return this.coldStart(equipmentId, power).state;
   }
 
+  /** Ids of the equipments tracked now. */
+  trackedIds(): string[] {
+    return [...this.tracked.keys()];
+  }
+
   /** Epoch ms of the last transition, or `null` when not tracked. */
   getSince(equipmentId: string): number | null {
     return this.tracked.get(equipmentId)?.since ?? null;
@@ -186,13 +200,16 @@ export class ApplianceCycleTracker {
     }
   }
 
-  /** The thresholds changed: apply them to the current power at once (FR3.5). */
+  /**
+   * The thresholds changed: apply them to the current power at once (FR3.5).
+   * An end delay already running keeps its length; one the new `endW` cancels
+   * or starts is cancelled or started now.
+   */
   reevaluate(equipmentId: string, power: number | null): void {
     if (power === null) return;
     const t = this.tracked.get(equipmentId);
     if (!t) return;
     try {
-      this.clearTimer(t);
       this.apply(equipmentId, t, power);
     } catch (err) {
       this.logger.error({ err, equipmentId }, "Appliance cycle re-evaluation failed");
@@ -203,12 +220,12 @@ export class ApplianceCycleTracker {
   forget(equipmentId: string): void {
     const t = this.tracked.get(equipmentId);
     if (!t) return;
-    this.clearTimer(t);
+    this.clearAllTimers(t);
     this.tracked.delete(equipmentId);
   }
 
   destroy(): void {
-    for (const t of this.tracked.values()) this.clearTimer(t);
+    for (const t of this.tracked.values()) this.clearAllTimers(t);
     this.tracked.clear();
   }
 
@@ -221,20 +238,44 @@ export class ApplianceCycleTracker {
       since: now,
       runningSince: state === "running" ? now : null,
       endTimer: null,
+      offTimer: null,
     };
     this.tracked.set(equipmentId, t);
-    // A cold start inside the tail of a cycle still has to end it.
-    if (state === "running" && power < thresholds.endW) this.armTimer(equipmentId, t, thresholds);
     return t;
   }
 
   private apply(equipmentId: string, t: TrackedAppliance, power: number): void {
+    // While `finished` is held before `off`, another 0 W sample changes
+    // nothing; a reading again means the machine is on: the hold is dropped.
+    if (t.offTimer) {
+      if (power < APPLIANCE_OFF_W) return;
+      clearTimeout(t.offTimer);
+      t.offTimer = null;
+    }
     const thresholds = resolveCycleThresholds(this.getThresholds(equipmentId));
     const step = nextCycleState(t.state, power, thresholds, t.endTimer !== null);
     if (step.cancelEndDelay) this.clearTimer(t);
     if (step.armEndDelay && !t.endTimer) this.armTimer(equipmentId, t, thresholds);
-    if (step.finishedFirst) this.transition(equipmentId, t, "finished");
+    if (step.finishedFirst) {
+      this.transition(equipmentId, t, "finished");
+      this.holdFinished(equipmentId, t);
+      return;
+    }
     if (step.state !== t.state) this.transition(equipmentId, t, step.state);
+  }
+
+  private holdFinished(equipmentId: string, t: TrackedAppliance): void {
+    t.offTimer = setTimeout(() => {
+      t.offTimer = null;
+      try {
+        if (t.state === "finished" && this.tracked.get(equipmentId) === t) {
+          this.transition(equipmentId, t, "off");
+        }
+      } catch (err) {
+        this.logger.error({ err, equipmentId }, "Appliance switch-off after cycle failed");
+      }
+    }, FINISHED_HOLD_MS);
+    t.offTimer.unref?.();
   }
 
   private armTimer(
@@ -259,6 +300,14 @@ export class ApplianceCycleTracker {
     if (t.endTimer) {
       clearTimeout(t.endTimer);
       t.endTimer = null;
+    }
+  }
+
+  private clearAllTimers(t: TrackedAppliance): void {
+    this.clearTimer(t);
+    if (t.offTimer) {
+      clearTimeout(t.offTimer);
+      t.offTimer = null;
     }
   }
 

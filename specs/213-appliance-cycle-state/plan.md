@@ -4,26 +4,26 @@
 
 ### Slice A — State machine and virtual binding
 
-- [ ] `appliance-cycle-tracker.ts`: `nextCycleState`, tracker with timers, tests.
-- [ ] Types, migration 046, row mapper and `update()` for `applianceCycle`.
-- [ ] `equipment-manager.ts`: FR1 test, virtual binding, power hook, forget paths, tests.
-- [ ] `equipments.ts` route: schema and FR3.2 validation.
+- [x] `appliance-cycle-tracker.ts`: `nextCycleState`, tracker with timers, tests.
+- [x] Types, migration 046, row mapper and `update()` for `applianceCycle`.
+- [x] `equipment-manager.ts`: FR1 test, virtual binding, power hook, forget paths, tests.
+- [x] `equipments.ts` route: schema and FR3.2 validation.
 
 ### Slice B — History
 
-- [ ] HistoryWriter historizes `virtual:appliance_state:*`, test.
-- [ ] `/history/bindings` lists it with `virtual` and `enumValues`.
-- [ ] `history-utils.ts` cardinality rule, test; no toggle on a virtual row.
+- [x] HistoryWriter historizes `virtual:appliance_state:*`, test.
+- [x] `/history/bindings` lists it with `virtual` and `enumValues`.
+- [x] `history-utils.ts` cardinality rule, test; no toggle on a virtual row.
 
 ### Slice C — Surfaces
 
-- [ ] `ui/src/lib/appliance.ts` `applianceIsOn`, test.
-- [ ] `AppliancePanel`, `MobileWidgetCard`: on rule and the `ready` / `finished` labels.
-- [ ] `ApplianceCyclePanel` + mount + i18n EN/FR.
+- [x] `ui/src/lib/appliance.ts` `applianceIsOn`, test.
+- [x] `AppliancePanel`, `MobileWidgetCard`: on rule and the `ready` / `finished` labels.
+- [x] `ApplianceCyclePanel` + mount + i18n EN/FR.
 
 ### Slice D — Docs
 
-- [ ] Docs delta of the spec, EN and FR.
+- [x] Docs delta of the spec, EN and FR.
 
 ## Test Plan
 
@@ -47,6 +47,9 @@
 | appliance-cycle-tracker | `finished`, P = 0 W                                                   | `off`                                                     |
 | appliance-cycle-tracker | `running`, P = 0 W                                                    | `off`, no `finished`                                      |
 | appliance-cycle-tracker | `running`, end delay armed, P = 0 W (switched off at 160 s)           | `finished` then `off`, two events                         |
+| appliance-cycle-tracker | Switched off during the delay                                         | `off` 5 s after `finished`, more than 1 s apart           |
+| appliance-cycle-tracker | A reading of 1900 W during the hold                                   | hold dropped, `running`                                   |
+| appliance-cycle-tracker | `forget` during the hold                                              | no late `off`                                             |
 | appliance-cycle-tracker | `finished`, P = 5 W                                                   | stays `finished`, no event                                |
 | appliance-cycle-tracker | Replay of the recorded 2026-11-13 07:28 cycle (fixture from prod)     | `running → finished → off`, finished at the switch-off    |
 | appliance-cycle-tracker | Replay of the 2026-11-11 cycle (100 s dip at 14:04 UTC)               | one `running` only                                        |
@@ -61,6 +64,9 @@
 | equipment-manager       | appliance whose power has no value yet                                | virtual binding with a `null` value                       |
 | equipment-manager       | power update on an FR1 appliance                                      | `equipment.data.changed` alias `state` on transition      |
 | equipment-manager       | type changed to `switch`                                              | `applianceCycle` cleared, no virtual binding              |
+| equipment-manager       | `energy` bound mid-cycle                                              | still `running`                                           |
+| equipment-manager       | plug device removed while the end delay runs                          | no late event                                             |
+| equipment-manager       | cold start on a power older than its freshness budget                 | `null` until the plug reports                             |
 | equipments route        | `endW > startW`, `endDelayS = 10`, `endW = 0.5`                       | 400, field named                                          |
 | equipments route        | `applianceCycle` on a `switch`                                        | 400                                                       |
 | equipments route        | `applianceCycle: null`                                                | saved, defaults apply                                     |

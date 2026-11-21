@@ -99,8 +99,12 @@ Inputs: the live `power` value `P` (W) and three thresholds per equipment (FR3):
 3. **Switched off during the end delay.** The recorded cycles show the machine switching itself
    off 160 s to 5 min after its end, so often before a 5 min delay runs out (2026-11-13 07:28:
    off 160 s after the last sample above 10 W). Switched off while the delay runs, the machine
-   passes through `finished` (one event) and then `off` (a second event), so every completed
-   cycle is announced. Switched off with no delay running (mid-cycle, by hand), it goes straight
+   passes through `finished` and then, after `FINISHED_HOLD_MS` = 5 s, `off`, so every completed
+   cycle is announced. The hold matters: two state events in the same second lose the second one
+   to the 1 s burst dedup of recipe notifications (the alarm never resets, the next cycle is not
+   notified) and to InfluxDB's 1 s precision (the `finished` point is overwritten). A 0 W sample
+   during the hold changes nothing; a reading of 1 W or more drops it and applies normally.
+   (Hold added after the agent review.) Switched off with no delay running (mid-cycle, by hand), it goes straight
    to `off`. (Found while replaying the fixtures; the first draft lost those ends.)
 4. Every transition emits `equipment.data.changed` with alias `state`, the new value and the
    previous one. No event when the state does not change.
@@ -119,7 +123,9 @@ Inputs: the live `power` value `P` (W) and three thresholds per equipment (FR3):
    saved on blur, and a reset to the defaults when a set is stored.
 4. While the equipment has a bound `state`, the section stays editable and says the derived
    state is inactive because a device reports one.
-5. A change of thresholds re-evaluates the state at once from the current power.
+5. A change of thresholds re-evaluates the state at once from the current power. An end delay
+   already running keeps its length; one the new `endW` cancels or starts is cancelled or
+   started at once.
 
 ### FR4 — History
 
@@ -144,18 +150,20 @@ Inputs: the live `power` value `P` (W) and three thresholds per equipment (FR3):
 
 ## Acceptance Criteria
 
-- [ ] An `appliance` with a numeric `power` and no `state` binding exposes a virtual `state`
+- [x] An `appliance` with a numeric `power` and no `state` binding exposes a virtual `state`
       in `dataBindings`, with the four declared values.
-- [ ] An `appliance` with a bound `state` exposes only the bound one.
-- [ ] Replaying the recorded 2026-11-13 07:28 cycle yields `running → finished → off` (the plug
+- [x] An `appliance` with a bound `state` exposes only the bound one.
+- [x] Replaying the recorded 2026-11-13 07:28 cycle yields `running → finished → off` (the plug
       jumps from 0 W straight above 15 W), `finished` arriving when the machine switches off.
-- [ ] Replaying the 2026-11-11 cycle (100 s dip at 14:04 UTC) yields one `running` only.
-- [ ] A mid-cycle dip below `endW` shorter than `endDelayS` does not end the cycle.
-- [ ] The thresholds are saved, validated (400 on a bad set), and change detection at once.
-- [ ] The derived `state` is written to InfluxDB and listed by `/history/bindings`.
-- [ ] The four appliance surfaces show the machine on mid-cycle with plug power.
+- [x] Replaying the 2026-11-11 cycle (100 s dip at 14:04 UTC) yields one `running` only.
+- [x] A mid-cycle dip below `endW` shorter than `endDelayS` does not end the cycle.
+- [x] The thresholds are saved, validated (400 on a bad set), and change detection at once.
+- [x] The derived `state` is written to InfluxDB and listed by `/history/bindings`.
+- [x] The four appliance surfaces show the machine on mid-cycle with plug power.
 - [ ] A `state-watch` instance on `state == finished` raises once at the end of a cycle and
       clears when the machine switches off.
+      _(Checked in production after the release: the derived state stays inactive until the
+      SmartThings binding is removed.)_
 
 ## Edge Cases
 
@@ -169,6 +177,12 @@ Inputs: the live `power` value `P` (W) and three thresholds per equipment (FR3):
 - **Delayed start.** The machine waits at about 6 W → `ready`, until the cycle draws.
 - **Power binding goes stale** (plug offline). The state keeps its last value; the binding is
   marked stale like its source. No transition is invented.
+- **Restart with an outdated reading** (older than the power's spec 175 freshness budget): no
+  cold start from it, the state is `null` until the plug reports again.
+- **A binding added or removed mid-cycle** (the plug's `energy`, say) keeps the state. It starts
+  over only when what it reads changes: another `power` binding, or a `state` bound by a device.
+- **Plug device removed** (its bindings go by cascade): the equipment stops being tracked, no
+  late `finished`.
 - **Equipment type changed away from `appliance`, or `power` unbound.** The virtual binding
   disappears at the next read; the tracker forgets the equipment.
 - **`power` bound as a boolean** (a smart appliance reporting on/off). FR1 does not apply.

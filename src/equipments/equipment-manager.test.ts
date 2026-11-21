@@ -664,6 +664,69 @@ describe("EquipmentManager", () => {
       expect(manager.getById(equipmentId)!.applianceCycle).toBeUndefined();
     });
 
+    it("keeps a running cycle when another binding is added", () => {
+      const { equipmentId, powerId } = seedWasher({ power: "6" });
+      const { dataIds } = seedDevice(db, {
+        name: "Plug energy",
+        dataKeys: [{ key: "energy", type: "number", category: "energy", value: "0" }],
+      });
+      stateBinding(equipmentId);
+      pushPower(powerId, 90, 6);
+      manager.addDataBinding(equipmentId, dataIds[0]!, "energy");
+      expect(stateBinding(equipmentId)?.value).toBe("running");
+    });
+
+    it("starts over when a device state gets bound", () => {
+      const { equipmentId, powerId } = seedWasher({ power: "6" });
+      stateBinding(equipmentId);
+      pushPower(powerId, 90, 6);
+      const { dataIds } = seedDevice(db, {
+        name: "Washer cloud",
+        dataKeys: [{ key: "state", type: "enum", category: "appliance_state", value: '"run"' }],
+      });
+      const bound = manager.addDataBinding(equipmentId, dataIds[0]!, "state");
+      manager.removeDataBinding(equipmentId, bound.id);
+      // Tracked anew from the stored power, not carried over.
+      expect(stateBinding(equipmentId)?.value).toBe("running");
+      events = [];
+      pushPower(powerId, 6, 90);
+      expect(stateEvents()).toEqual([]);
+    });
+
+    it("stops tracking when the plug device is removed", () => {
+      vi.useFakeTimers();
+      try {
+        const { equipmentId, powerId } = seedWasher({ power: "6" });
+        stateBinding(equipmentId);
+        pushPower(powerId, 90, 6);
+        pushPower(powerId, 5, 90); // end delay armed
+        const deviceId = (
+          db.prepare("SELECT device_id FROM device_data WHERE id = ?").get(powerId) as {
+            device_id: string;
+          }
+        ).device_id;
+        db.prepare("DELETE FROM devices WHERE id = ?").run(deviceId);
+        eventBus.emit({ type: "device.removed", deviceId, deviceName: "Plug" });
+        events = [];
+        vi.advanceTimersByTime(600_000);
+        expect(stateEvents()).toEqual([]);
+      } finally {
+        vi.useRealTimers();
+      }
+    });
+
+    it("does not start from an outdated power reading", () => {
+      const { equipmentId, powerId } = seedWasher({ power: "1900" });
+      db.prepare("UPDATE device_data SET last_updated = ? WHERE id = ?").run(
+        "2026-01-01T00:00:00.000Z",
+        powerId,
+      );
+      expect(stateBinding(equipmentId)?.value).toBeNull();
+      // Once the plug reports again, the state starts from that reading.
+      pushPower(powerId, 6, 1900);
+      expect(stateBinding(equipmentId)?.value).toBe("ready");
+    });
+
     it("re-evaluates at once when the thresholds change", () => {
       const { equipmentId, powerId } = seedWasher({ power: "6" });
       stateBinding(equipmentId);
