@@ -196,6 +196,27 @@
     "sha256": "6f38ee30c1424f3cfa82b3ca209cf8d4cd7b533feb11729a4245a70fb2fbf3c6"
   },
   {
+    "id": "appliance-cycle",
+    "type": "recipe",
+    "category": "safety",
+    "name": "Appliance cycle",
+    "description": "Reads an appliance's cycle on its measured power, publishes its run state on the equipment and raises an alarm when a cycle ends",
+    "icon": "WashingMachine",
+    "author": "mchacher",
+    "repo": "mchacher/sowel-recipe-appliance-cycle",
+    "version": "0.1.0",
+    "tags": ["automation", "appliance", "energy", "alarm"],
+    "i18n": {
+      "fr": {
+        "name": "Cycle d'appareil",
+        "description": "Lit le cycle d'un appareil sur sa puissance mesurée, publie son état de marche sur l'équipement et lève une alarme à la fin d'un cycle"
+      }
+    },
+    "sowelVersion": ">=1.88.0",
+    "owner": "mchacher",
+    "sha256": "8e98d7aaa63a7ca255c46271ae2ca63df77da60c854c5ff228552f756155f3eb"
+  },
+  {
     "id": "presence-heater",
     "type": "recipe",
     "category": "climate",

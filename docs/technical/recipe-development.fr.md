@@ -536,11 +536,12 @@ Règles pour les auteurs (spec 140, tenues par convention et auditées par le co
 
 Le catalogue vivant est `plugins/registry.json` dans le repo Sowel (chaque entrée `"type": "recipe"`, un dépôt GitHub par recette). Bons exemples à copier :
 
-| Dépôt                          | Illustre                                                           |
-| ------------------------------ | ------------------------------------------------------------------ |
-| `sowel-recipe-schedule-on-off` | Timers, bornes solaires (`getSunlight`), slots select, i18n, tests |
-| `sowel-recipe-state-watch`     | Surveillance générique d'une clé de donnée avec alarme             |
-| `sowel-recipe-motion-light`    | Pattern classique capteur vers actionneur avec délai               |
+| Dépôt                          | Illustre                                                              |
+| ------------------------------ | --------------------------------------------------------------------- |
+| `sowel-recipe-schedule-on-off` | Timers, bornes solaires (`getSunlight`), slots select, i18n, tests    |
+| `sowel-recipe-state-watch`     | Surveillance générique d'une clé de donnée avec alarme                |
+| `sowel-recipe-appliance-cycle` | Publie une valeur sur un équipement (spec 214), lève sa propre alarme |
+| `sowel-recipe-motion-light`    | Pattern classique capteur vers actionneur avec délai                  |
 
 ## Checklist
 

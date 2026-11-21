@@ -542,6 +542,7 @@ The live catalog is `plugins/registry.json` in the Sowel repo (every `"type": "r
 | ------------------------------ | ----------------------------------------------------------------------- |
 | `sowel-recipe-schedule-on-off` | Timers, sun-aware boundaries (`getSunlight`), select slots, i18n, tests |
 | `sowel-recipe-state-watch`     | Generic data-key watch raising alarms                                   |
+| `sowel-recipe-appliance-cycle` | Publishes a value on an equipment (spec 214), raises its own alarm      |
 | `sowel-recipe-motion-light`    | Classic sensor to actuator pattern with timeout                         |
 
 ## Checklist
