@@ -8,7 +8,6 @@ import {
   queryZoneSparkline,
 } from "../../history/history-query.js";
 import type { EquipmentManager } from "../../equipments/equipment-manager.js";
-import { APPLIANCE_STATE_BINDING_PREFIX } from "../../equipments/appliance-cycle-tracker.js";
 import type { InfluxClient } from "../../core/influx-client.js";
 import type { EventBus } from "../../core/event-bus.js";
 import type { DataCategory } from "../../shared/types.js";
@@ -69,32 +68,21 @@ export function registerHistoryRoutes(
       }
 
       const bindings = equipmentManager.getDataBindingsWithValues(equipmentId);
-      // Virtual bindings stay hidden (gate, cover), except an appliance's
-      // derived run state (spec 213): historized, listed, not toggleable.
       const result = bindings
-        .filter(
-          (b) => !b.id.startsWith("virtual:") || b.id.startsWith(APPLIANCE_STATE_BINDING_PREFIX),
-        )
-        .map((b) => {
-          const virtual = b.id.startsWith("virtual:");
-          return {
-            bindingId: b.id,
-            alias: b.alias,
-            category: b.category,
-            deviceName: b.deviceName,
-            type: b.type,
-            historize: b.historize ?? null,
-            effectiveOn:
-              virtual ||
-              HistoryWriter.resolveHistorize(
-                b.historize ?? null,
-                b.alias,
-                b.category as DataCategory,
-              ),
-            ...(virtual && { virtual: true }),
-            ...(b.enumValues && { enumValues: b.enumValues }),
-          };
-        });
+        .filter((b) => !b.id.startsWith("virtual:"))
+        .map((b) => ({
+          bindingId: b.id,
+          alias: b.alias,
+          category: b.category,
+          deviceName: b.deviceName,
+          type: b.type,
+          historize: b.historize ?? null,
+          effectiveOn: HistoryWriter.resolveHistorize(
+            b.historize ?? null,
+            b.alias,
+            b.category as DataCategory,
+          ),
+        }));
 
       return result;
     },

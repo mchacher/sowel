@@ -2,7 +2,6 @@ import { describe, it, expect, beforeEach, afterEach } from "vitest";
 import Fastify from "fastify";
 import { createLogger } from "../../core/logger.js";
 import { registerEquipmentRoutes } from "./equipments.js";
-import { EquipmentError } from "../../equipments/equipment-manager.js";
 import { installValidationErrorHandler, validationAjvOptions } from "../error-handler.js";
 
 // The ?type / ?role filter is the only logic worth exercising at the route
@@ -935,64 +934,6 @@ describe("PUT /api/v1/equipments/:id — family (spec 208)", () => {
   it("leaves it untouched when the body does not mention it", async () => {
     expect((await put("plug", { name: "Prise" })).statusCode).toBe(200);
     expect(received?.family).toBeUndefined();
-  });
-});
-
-describe("PUT /api/v1/equipments/:id — appliance cycle thresholds (spec 213)", () => {
-  let app: ReturnType<typeof Fastify>;
-  let received: Record<string, unknown> | null;
-
-  beforeEach(async () => {
-    received = null;
-    app = Fastify({ logger: false, ajv: validationAjvOptions });
-    installValidationErrorHandler(app);
-    registerEquipmentRoutes(app, {
-      equipmentManager: {
-        getById: (id: string) => ({ id, name: "Lave-linge", type: "appliance" }),
-        getByIdWithDetails: (id: string) => ({ id, name: "Lave-linge", type: "appliance" }),
-        getAll: () => [],
-        update: (id: string, input: Record<string, unknown>) => {
-          const t = input.applianceCycle as { endW: number; startW: number } | null | undefined;
-          // The manager owns the cross-field rules; stand in for one of them.
-          if (t && t.endW > t.startW) {
-            throw new EquipmentError("applianceCycle.endW must not exceed startW", 400);
-          }
-          received = input;
-          return { id, applianceCycle: input.applianceCycle };
-        },
-      } as unknown as Parameters<typeof registerEquipmentRoutes>[1]["equipmentManager"],
-      logger: createLogger("silent").logger,
-    });
-    await app.ready();
-  });
-
-  afterEach(async () => {
-    await app.close();
-  });
-
-  const put = (payload: unknown) =>
-    app.inject({ method: "PUT", url: "/api/v1/equipments/washer", payload });
-
-  it("forwards the thresholds, and null for the defaults", async () => {
-    const t = { startW: 20, endW: 8, endDelayS: 240 };
-    expect((await put({ applianceCycle: t })).statusCode).toBe(200);
-    expect(received?.applianceCycle).toEqual(t);
-    expect((await put({ applianceCycle: null })).statusCode).toBe(200);
-    expect(received?.applianceCycle).toBeNull();
-  });
-
-  it("refuses a partial object at the schema, and strips an unknown key", async () => {
-    expect((await put({ applianceCycle: { startW: 20, endW: 8 } })).statusCode).toBe(400);
-    expect(received).toBeNull();
-    const padded = { startW: 20, endW: 8, endDelayS: 240, offW: 1 };
-    expect((await put({ applianceCycle: padded })).statusCode).toBe(200);
-    expect(received?.applianceCycle).toEqual({ startW: 20, endW: 8, endDelayS: 240 });
-  });
-
-  it("answers 400 with the field named when the manager refuses the set", async () => {
-    const res = await put({ applianceCycle: { startW: 10, endW: 20, endDelayS: 300 } });
-    expect(res.statusCode).toBe(400);
-    expect(JSON.stringify(res.json())).toContain("endW");
   });
 });
 

@@ -126,22 +126,6 @@ describe("hasEnvelope", () => {
   });
 });
 
-describe("enum cardinality (spec 213)", () => {
-  const RUN_STATES = ["off", "ready", "running", "finished"];
-
-  it("keeps a two-value or undeclared appliance_state on the 0/1 axis", () => {
-    expect(familyOf("appliance_state")).toBe("states");
-    expect(familyOf("appliance_state", ["ON", "OFF"])).toBe("states");
-    expect(isBooleanCategory("appliance_state", ["ON", "OFF"])).toBe(true);
-  });
-
-  it("takes a four-value appliance_state off the 0/1 axis, like a cover", () => {
-    expect(isBooleanCategory("appliance_state", RUN_STATES)).toBe(false);
-    expect(familyOf("appliance_state", RUN_STATES)).toBeNull();
-    expect(axisForCategory("appliance_state", ["W"], RUN_STATES)).toBe("left");
-  });
-});
-
 describe("isBooleanCategory", () => {
   it("identifies state categories", () => {
     expect(isBooleanCategory("motion")).toBe(true);

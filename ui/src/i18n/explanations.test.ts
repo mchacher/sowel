@@ -21,7 +21,6 @@ const EXPLANATION = /(hint|help|caption|subtitle|context|description|intro|instr
 const IN_A_TOOLTIP: RegExp[] = [
   /^equipments\.metering\.[a-zA-Z]+\.hint$/,
   /^equipments\.gateConfirm\.hint$/,
-  /^equipments\.applianceCycle\.hint$/,
   /^equipments\.invertDirection(Gate)?\.hint$/,
   /^equipments\.timed\.(ladder)?[hH]int$/,
   /^equipments\.pv\.backfillHint$/,

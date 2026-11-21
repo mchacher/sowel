@@ -34,10 +34,9 @@ export const BOOLEAN_CATEGORIES = new Set<string>([
   // third value (a cover's OPEN/CLOSED/STOP), which HistoryWriter encodes by
   // declared index (#434), so forcing them onto a two-label [0,1] axis would
   // clip and mislabel them. They chart as a plain numeric series instead.
-  // appliance_state is binary only while it declares at most two values: an
-  // appliance's derived run state (spec 213) declares four and charts like a
-  // cover (see `isBooleanCategory`). An undeclared multi-value state (a
-  // plugin that sends four values without saying so, #936) still clips.
+  // appliance_state is likewise ASSUMED strictly binary here; a plugin that
+  // declares it as a >2-value enum would clip the same way — the robust fix is
+  // to classify by enum cardinality rather than category name (deferred).
   "light_state",
   "appliance_state",
   // Spec 152 — the solar command channel state is a strictly binary ON/OFF.
@@ -80,9 +79,9 @@ export const ENVELOPE_CATEGORIES = new Set<string>([
 ]);
 
 /** Return the chart family for a DataCategory, or null if not chartable. */
-export function familyOf(category: string, enumValues?: readonly string[]): ChartFamily | null {
+export function familyOf(category: string): ChartFamily | null {
   if (CUMULATIVE_CATEGORIES.has(category)) return "cumulative";
-  if (isBooleanCategory(category, enumValues)) return "states";
+  if (BOOLEAN_CATEGORIES.has(category)) return "states";
   if (MEASUREMENT_CATEGORIES.has(category)) return "measurements";
   return null;
 }
@@ -151,12 +150,8 @@ export function measurementUnits(categories: string[]): string[] {
  * 60 % one. Three or more would need three scales for two sides, so they stay
  * on the shared left axis as before.
  */
-export function axisForCategory(
-  category: string,
-  units: string[],
-  enumValues?: readonly string[],
-): ChartAxisId {
-  if (isBooleanCategory(category, enumValues)) return "state";
+export function axisForCategory(category: string, units: string[]): ChartAxisId {
+  if (isBooleanCategory(category)) return "state";
   if (units.length !== 2) return "left";
   return (CATEGORY_UNITS[category] ?? "") === units[1] ? "right" : "left";
 }
@@ -166,13 +161,8 @@ export function hasEnvelope(category: string): boolean {
   return ENVELOPE_CATEGORIES.has(category);
 }
 
-/**
- * Whether `category` is a boolean/state series rendered as a step chart on the
- * 0/1 axis. A series declaring more than two values never is, whatever its
- * category: it would clip (spec 213, an appliance's four run states).
- */
-export function isBooleanCategory(category: string, enumValues?: readonly string[]): boolean {
-  if (enumValues && enumValues.length > 2) return false;
+/** Whether `category` is a boolean/state series rendered as a step chart. */
+export function isBooleanCategory(category: string): boolean {
   return BOOLEAN_CATEGORIES.has(category);
 }
 
