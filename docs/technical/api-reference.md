@@ -470,16 +470,16 @@ Live updates on the `energy` WebSocket topic: `energy.ev_session.updated` (`{ se
 
 ## History
 
-| Method | Path                                               | Description                                                                                                |
-| ------ | -------------------------------------------------- | ---------------------------------------------------------------------------------------------------------- |
-| `GET`  | `/api/v1/history/status`                           | History module status (connected, historized bindings count, stats).                                       |
-| `GET`  | `/api/v1/history/retention`                        | Retention and downsampling status for all InfluxDB buckets/tasks.                                          |
-| `GET`  | `/api/v1/history/bindings/:equipmentId`            | List historize settings for an equipment's data bindings.                                                  |
-| `PUT`  | `/api/v1/history/bindings/:equipmentId/:bindingId` | Set historize flag. Body: `{ historize }` (null, 0, or 1).                                                 |
-| `GET`  | `/api/v1/history/sparkline/zone/:zoneId/:category` | Zone-level 24h sparkline data (e.g. temperature trend).                                                    |
-| `GET`  | `/api/v1/history/sparkline/:equipmentId/:alias`    | Equipment-level 24h sparkline data.                                                                        |
-| `GET`  | `/api/v1/history/:equipmentId`                     | List historized aliases for an equipment.                                                                  |
-| `GET`  | `/api/v1/history/:equipmentId/:alias`              | Query time-series data. Query: `?from=-24h&to=&aggregation=auto`. Aggregations: `raw`, `1h`, `1d`, `auto`. |
+| Method | Path                                               | Description                                                                                                                                                                   |
+| ------ | -------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `GET`  | `/api/v1/history/status`                           | History module status (connected, historized bindings count, stats).                                                                                                          |
+| `GET`  | `/api/v1/history/retention`                        | Retention and downsampling status for all InfluxDB buckets/tasks.                                                                                                             |
+| `GET`  | `/api/v1/history/bindings/:equipmentId`            | List historize settings for an equipment's data bindings, with `enumValues` on an enum. Data a recipe publishes (spec 214) is listed with `virtual: true`, always historized. |
+| `PUT`  | `/api/v1/history/bindings/:equipmentId/:bindingId` | Set historize flag. Body: `{ historize }` (null, 0, or 1).                                                                                                                    |
+| `GET`  | `/api/v1/history/sparkline/zone/:zoneId/:category` | Zone-level 24h sparkline data (e.g. temperature trend).                                                                                                                       |
+| `GET`  | `/api/v1/history/sparkline/:equipmentId/:alias`    | Equipment-level 24h sparkline data.                                                                                                                                           |
+| `GET`  | `/api/v1/history/:equipmentId`                     | List historized aliases for an equipment.                                                                                                                                     |
+| `GET`  | `/api/v1/history/:equipmentId/:alias`              | Query time-series data. Query: `?from=-24h&to=&aggregation=auto`. Aggregations: `raw`, `1h`, `1d`, `auto`.                                                                    |
 
 ---
 

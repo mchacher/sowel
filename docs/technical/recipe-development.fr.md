@@ -342,6 +342,36 @@ options: [
 
 Chaque contrôle de mode (la tuile, la page de zone, la ligne de recette, les cartes d'équipement) la saute alors tant que ce paramètre est absent, `null`, une chaîne vide ou une liste vide ; `0` et `false` comptent comme réglés. Le cœur ne filtre sur rien d'autre : il ne connaît aucun slot de votre recette par son nom, donc une option sans `requiresParam` est toujours proposée. Ignorez quand même ce mode dans `onAction` quand son réglage manque, puisque l'API peut l'envoyer, et avant tout ce que l'action changerait d'autre. Un cœur antérieur à #1210 ignore le champ et cache encore, par son nom, une option `cocoon` sans `cocoonTemp` ou `night` sans `nightTemp`.
 
+## Publier une donnée sur un équipement (spec 214)
+
+Une recette peut donner à un équipement une valeur qu'aucun appareil ne fournit, par exemple l'état de marche d'un lave-linge lu sur une prise mesurée. La valeur apparaît comme un binding de l'équipement : sa carte, son panneau, son historique, les sélecteurs de binding et les autres recettes (`state-watch`) la lisent comme les autres. On la déclare, puis on la publie :
+
+```typescript
+slots: [{ id: "equipment", name: "Machine", type: "equipment", required: true, description: "" }],
+publishes: [
+  {
+    slot: "equipment", // un de vos slots `equipment`
+    alias: "state",
+    type: "enum", // "number" | "boolean" | "enum" | "text"
+    category: "appliance_state",
+    enumValues: ["off", "ready", "running", "finished"],
+  },
+],
+createInstance(params, ctx) {
+  const eq = params.equipment as string;
+  ctx.helpers.equipmentData.publish(eq, "state", ctx.state.get("cycle") ?? null);
+  // … puis, à chaque changement :
+  ctx.helpers.equipmentData.publish(eq, "state", "running");
+  return { stop() {} };
+},
+```
+
+- **Le binding.** Tant que l'instance tourne, l'équipement porte `virtual:recipe:<instanceId>:<alias>`, avec votre type, votre catégorie et vos valeurs, et le nom de la recette là où un écran nomme la source d'un binding. Il vaut `null` jusqu'à la première publication, et disparaît quand l'instance s'arrête (désactivée, supprimée, modifiée, paquet mis à jour). Il est toujours historisé.
+- **Publier au démarrage.** Le cœur ne garde rien d'un redémarrage à l'autre : republiez depuis votre `ctx.state` au début de `createInstance`, sinon la valeur reste `null` jusqu'au prochain changement.
+- **Les règles.** Le cœur refuse une déclaration sur un slot qui n'est pas un slot `equipment`, un `enum` sans `enumValues` ou un doublon (la recette ne se charge pas). Il refuse une instance dont l'équipement a déjà cet alias venant d'un appareil, ou d'une autre instance active (`400` qui nomme le conflit). `publish` renvoie `{ ok: false, reason }`, sans jamais lever d'exception, pour un alias non déclaré, un équipement hors du slot, une valeur qui ne correspond pas au type, ou un alias qu'un binding d'appareil a pris depuis. `null` est toujours accepté. Chaque refus est journalisé une fois par instance.
+- **Un appareil a la priorité.** Un binding d'appareil ajouté plus tard sous le même alias remplace le vôtre.
+- **Cœurs plus anciens.** `ctx.helpers.equipmentData` n'existe pas avant la spec 214 : exigez-le avec le `sowelVersion` du paquet, ou vérifiez sa présence.
+
 ## RecipeContext
 
 L'objet `ctx` injecté dans `validate()` et `createInstance()` fournit :

@@ -29,7 +29,12 @@ import type {
   TariffConfig,
   TariffSlot,
   OrderSource,
+  RecipeEquipmentDataHelpers,
 } from "../../shared/types.js";
+import {
+  checkPublishDeclaration,
+  type RecipeOutputTarget,
+} from "../../equipments/recipe-outputs.js";
 import { Recipe, type RecipeContext } from "./recipe.js";
 import { toISOUtc } from "../../core/database.js";
 import { RecipeStateStore } from "./recipe-state-store.js";
@@ -150,6 +155,15 @@ export class RecipeManager {
    * Wraps the RecipeDefinition factory into the internal RegisteredRecipe format.
    */
   registerExternal(definition: RecipeDefinition, meta: { icon?: string } = {}): void {
+    // Spec 214 — a declaration the core cannot honour keeps the recipe out,
+    // rather than failing on every instance later.
+    if (definition.publishes && definition.publishes.length > 0) {
+      const equipmentSlots = new Set(
+        definition.slots.filter((slot) => slot.type === "equipment").map((slot) => slot.id),
+      );
+      const invalid = checkPublishDeclaration(definition.publishes, equipmentSlots);
+      if (invalid) throw new Error(`Recipe "${definition.id}" ${invalid}`);
+    }
     this.registry.set(definition.id, {
       info: {
         id: definition.id,
@@ -158,6 +172,9 @@ export class RecipeManager {
         slots: definition.slots,
         ...(definition.actions && definition.actions.length > 0
           ? { actions: definition.actions }
+          : {}),
+        ...(definition.publishes && definition.publishes.length > 0
+          ? { publishes: definition.publishes }
           : {}),
         // Spec 169 — carried verbatim, and only when declared: its absence is
         // what tells the Dashboard this recipe is not pinnable.
@@ -330,6 +347,7 @@ export class RecipeManager {
         400,
       );
     }
+    this.assertPublishable(null, registered.info, params);
 
     const id = randomUUID();
     this.stmts.insertInstance.run({
@@ -412,6 +430,7 @@ export class RecipeManager {
         400,
       );
     }
+    this.assertPublishable(instanceId, registered.info, params);
 
     // Stop running instance
     this.stopInstance(instanceId);
@@ -565,14 +584,23 @@ export class RecipeManager {
     this.capacityArbiter?.releaseAllFor(instance.id);
 
     const ctx = this.buildContext(instance.id, instance.recipeId);
+    const info = this.registry.get(instance.recipeId)?.info;
+    // Spec 214 — refused here too on the enable and boot paths, which have no
+    // request to answer: the caller logs it and the instance stays stopped.
+    const outputs = info ? this.assertPublishable(instance.id, info, instance.params) : [];
 
     try {
       recipe.validate(instance.params, ctx);
+      if (outputs.length > 0) {
+        this.equipmentManager.attachRecipeOutputs(instance.id, info?.name ?? "", outputs);
+      }
       recipe.start(instance.params, ctx);
     } catch (err) {
       // A recipe that claimed capacity in start() and then threw must not
       // leak the claim (which would block the equipment until restart).
       this.capacityArbiter?.releaseAllFor(instance.id);
+      // Nor leave data on its equipments (spec 214).
+      if (outputs.length > 0) this.equipmentManager.detachRecipeOutputs(instance.id);
       throw err;
     }
 
@@ -601,6 +629,9 @@ export class RecipeManager {
     } catch (err) {
       this.logger.error({ err, instanceId }, "Error stopping recipe instance");
     }
+    // Spec 214 — a stopped instance publishes nothing any more. Unconditional:
+    // a package update may have dropped the declaration the outputs came from.
+    this.equipmentManager.detachRecipeOutputs(instanceId);
 
     this.running.delete(instanceId);
     const stoppedRecipeName = this.registry.get(running.instance.recipeId)?.info.name;
@@ -617,7 +648,7 @@ export class RecipeManager {
 
   // `energy` is per-instance (the claim must be owned, spec 140), so the
   // shared object carries everything BUT it; buildContext adds it.
-  private readonly helpers: Omit<RecipeHelpers, "energy"> = {
+  private readonly helpers: Omit<RecipeHelpers, "energy" | "equipmentData"> = {
     isAnyLightOn,
     turnOnLights,
     turnOffLights,
@@ -732,10 +763,58 @@ export class RecipeManager {
         const childLogger = this.logger.child({ instanceId, recipeId, recipeName });
         childLogger[level]({ instanceId, recipeId, recipeName }, message);
       },
-      helpers: { ...this.helpers, energy: this.buildEnergyHelpers(instanceId) },
+      helpers: {
+        ...this.helpers,
+        energy: this.buildEnergyHelpers(instanceId),
+        equipmentData: this.buildEquipmentDataHelpers(instanceId),
+      },
       dispatchOrder: (equipmentId, alias, value) =>
         this.equipmentManager.executeOrder(equipmentId, alias, value, orderSource),
     };
+  }
+
+  /**
+   * Spec 214 — the instance's publishing channel. The validation context
+   * (`temp`) publishes nothing.
+   */
+  private buildEquipmentDataHelpers(instanceId: string): RecipeEquipmentDataHelpers {
+    return {
+      publish: (equipmentId, alias, value) =>
+        instanceId === "temp"
+          ? { ok: false, reason: "not running" }
+          : this.equipmentManager.publishRecipeData(instanceId, equipmentId, alias, value),
+    };
+  }
+
+  /**
+   * Spec 214 — the equipments and aliases an instance would publish on, from
+   * its params, checked against device bindings and other instances (FR2).
+   * Throws a 400 RecipeError naming the conflict.
+   */
+  private assertPublishable(
+    instanceId: string | null,
+    info: RecipeInfo,
+    params: Record<string, unknown>,
+  ): RecipeOutputTarget[] {
+    if (!info.publishes || info.publishes.length === 0) return [];
+    const targets: RecipeOutputTarget[] = [];
+    for (const def of info.publishes) {
+      const value = params[def.slot];
+      const ids = Array.isArray(value)
+        ? value
+        : value === undefined || value === null
+          ? []
+          : [value];
+      for (const id of ids) {
+        if (typeof id === "string" && id !== "") targets.push({ equipmentId: id, def });
+      }
+    }
+    try {
+      this.equipmentManager.checkPublishable(instanceId ?? "", targets);
+    } catch (err) {
+      throw new RecipeError(err instanceof Error ? err.message : String(err), 400);
+    }
+    return targets;
   }
 
   private writeLog(

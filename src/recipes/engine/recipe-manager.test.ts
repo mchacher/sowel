@@ -278,6 +278,160 @@ describe("RecipeManager", () => {
   });
 
   // ============================================================
+  // Spec 214 — a recipe publishes data on an equipment
+  // ============================================================
+
+  describe("publishing data on an equipment (spec 214)", () => {
+    const RUN_STATES = ["off", "ready", "running", "finished"];
+    let publishFromStart: unknown;
+    let lastPublish: ((value: unknown) => unknown) | null;
+
+    function cycleDef(id = "cycle"): RecipeDefinition {
+      return {
+        id,
+        name: "Appliance cycle",
+        description: "",
+        slots: [
+          { id: "equipment", name: "Machine", description: "", type: "equipment", required: true },
+        ],
+        publishes: [
+          {
+            slot: "equipment",
+            alias: "state",
+            type: "enum",
+            category: "appliance_state",
+            enumValues: RUN_STATES,
+          },
+        ],
+        validate: () => {},
+        createInstance: (params, ctx) => {
+          const eq = params.equipment as string;
+          lastPublish = (value) => ctx.helpers.equipmentData.publish(eq, "state", value);
+          if (publishFromStart !== undefined) lastPublish(publishFromStart);
+          return { stop: () => {} };
+        },
+      };
+    }
+
+    function washer(withDeviceState = false): string {
+      const zone = zoneManager.create({ name: "Buanderie" });
+      const eq = equipmentManager.create({
+        name: "Lave-linge",
+        type: "appliance",
+        zoneId: zone.id,
+      });
+      if (withDeviceState) {
+        const deviceId = crypto.randomUUID();
+        const dataId = crypto.randomUUID();
+        db.prepare(
+          `INSERT INTO devices (id, mqtt_base_topic, mqtt_name, name, source, status, integration_id, source_device_id)
+           VALUES (?, 'z/w', 'w', 'Washer', 'zigbee2mqtt', 'online', 'zigbee2mqtt', 'w')`,
+        ).run(deviceId);
+        db.prepare(
+          `INSERT INTO device_data (id, device_id, key, type, category, value) VALUES (?, ?, 'state', 'enum', 'appliance_state', '"run"')`,
+        ).run(dataId, deviceId);
+        equipmentManager.addDataBinding(eq.id, dataId, "state");
+      }
+      return eq.id;
+    }
+
+    const stateOf = (equipmentId: string) =>
+      equipmentManager.getDataBindingsWithValues(equipmentId).find((b) => b.alias === "state");
+
+    beforeEach(() => {
+      publishFromStart = undefined;
+      lastPublish = null;
+    });
+
+    it("refuses a declaration on a slot that is not an equipment slot", () => {
+      expect(() =>
+        manager.registerExternal({
+          ...cycleDef("bad"),
+          publishes: [{ ...cycleDef().publishes![0]!, slot: "delay" }],
+        }),
+      ).toThrow(/not an equipment slot/);
+      expect(manager.getRecipeById("bad")).toBeNull();
+    });
+
+    it("carries the declaration into RecipeInfo", () => {
+      manager.registerExternal(cycleDef());
+      expect(manager.getRecipeById("cycle")?.publishes?.[0]?.alias).toBe("state");
+    });
+
+    it("shows the published value as a binding of the equipment", () => {
+      manager.registerExternal(cycleDef());
+      const eqId = washer();
+      publishFromStart = "ready";
+      const instance = manager.createInstance("cycle", { equipment: eqId });
+      expect(stateOf(eqId)).toMatchObject({
+        id: `virtual:recipe:${instance.id}:state`,
+        value: "ready",
+        enumValues: RUN_STATES,
+        deviceName: "Appliance cycle",
+      });
+      events = [];
+      expect(lastPublish!("running")).toEqual({ ok: true });
+      const changes = events.filter(
+        (e) => e.type === "equipment.data.changed" && e.alias === "state",
+      );
+      expect(changes).toHaveLength(1);
+      expect(lastPublish!("spinning")).toMatchObject({ ok: false });
+    });
+
+    it("refuses an instance over a device-bound alias", () => {
+      manager.registerExternal(cycleDef());
+      const eqId = washer(true);
+      expect(() => manager.createInstance("cycle", { equipment: eqId })).toThrow(RecipeError);
+      expect(() => manager.createInstance("cycle", { equipment: eqId })).toThrow(/from a device/);
+    });
+
+    it("refuses a second instance publishing the same alias", () => {
+      manager.registerExternal(cycleDef());
+      const eqId = washer();
+      manager.createInstance("cycle", { equipment: eqId });
+      expect(() => manager.createInstance("cycle", { equipment: eqId })).toThrow(/already gets/);
+    });
+
+    it("removes the binding when the instance stops, and moves it on update", () => {
+      manager.registerExternal(cycleDef());
+      const eqId = washer();
+      const other = washer();
+      const instance = manager.createInstance("cycle", { equipment: eqId });
+      expect(stateOf(eqId)).toBeDefined();
+      manager.updateInstance(instance.id, { equipment: other });
+      expect(stateOf(eqId)).toBeUndefined();
+      expect(stateOf(other)).toBeDefined();
+      manager.disableInstance(instance.id);
+      expect(stateOf(other)).toBeUndefined();
+    });
+
+    it("leaves nothing behind when start throws", () => {
+      manager.registerExternal({
+        ...cycleDef("boom"),
+        createInstance: () => {
+          throw new Error("boom");
+        },
+      });
+      const eqId = washer();
+      manager.createInstance("boom", { equipment: eqId });
+      expect(stateOf(eqId)).toBeUndefined();
+    });
+
+    it("publishes nothing from the validation context", () => {
+      let fromValidate: unknown;
+      manager.registerExternal({
+        ...cycleDef("probe"),
+        validate: (params, ctx) => {
+          fromValidate = ctx.helpers.equipmentData.publish(params.equipment, "state", "ready");
+        },
+      });
+      const eqId = washer();
+      manager.createInstance("probe", { equipment: eqId });
+      expect(fromValidate).toMatchObject({ ok: false });
+    });
+  });
+
+  // ============================================================
   // Spec 138 — read-only getTariff helper
   // ============================================================
 

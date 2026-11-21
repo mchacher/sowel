@@ -1053,23 +1053,29 @@ function HistorySection({
                   <span className="font-mono font-medium text-primary">{b.alias}</span>
                   <span className="text-text-tertiary">({b.category})</span>
                 </div>
-                <div className="flex items-center gap-2">
-                  <span className="text-micro text-text-tertiary">
-                    {b.historize === null
-                      ? `(${t("history.default")})`
-                      : `(${t("history.override")})`}
-                  </span>
-                  <button
-                    onClick={() => handleToggle(b)}
-                    className={`px-2 py-0.5 rounded-sm text-micro font-medium cursor-pointer transition-colors ${
-                      b.effectiveOn
-                        ? "bg-success/10 text-success hover:bg-success/20"
-                        : "bg-border-light text-text-tertiary hover:bg-border"
-                    }`}
-                  >
-                    {b.effectiveOn ? t("history.on") : t("history.off")}
-                  </button>
-                </div>
+                {/* Spec 214 — a series a recipe publishes has no stored flag:
+                    always historized, no toggle to offer. */}
+                {b.virtual ? (
+                  <span className="text-micro text-text-tertiary">{t("history.derived")}</span>
+                ) : (
+                  <div className="flex items-center gap-2">
+                    <span className="text-micro text-text-tertiary">
+                      {b.historize === null
+                        ? `(${t("history.default")})`
+                        : `(${t("history.override")})`}
+                    </span>
+                    <button
+                      onClick={() => handleToggle(b)}
+                      className={`px-2 py-0.5 rounded-sm text-micro font-medium cursor-pointer transition-colors ${
+                        b.effectiveOn
+                          ? "bg-success/10 text-success hover:bg-success/20"
+                          : "bg-border-light text-text-tertiary hover:bg-border"
+                      }`}
+                    >
+                      {b.effectiveOn ? t("history.on") : t("history.off")}
+                    </button>
+                  </div>
+                )}
               </div>
             ))}
           </div>

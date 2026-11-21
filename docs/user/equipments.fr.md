@@ -297,8 +297,10 @@ Appareil électroménager connecté tel que lave-linge, sèche-linge ou lave-vai
 - **Contrôles :** Affichage de statut en lecture seule
 - **Données attendues :** état d'alimentation, état de fonctionnement (prêt/en cours/en pause), phase courante (lavage/rinçage/essorage), progression (%), temps restant, consommation d'énergie
 
+**État de marche depuis une prise mesurée.** Un appareil qui ne fournit pas son état (un lave-linge derrière une prise mesurée) peut en recevoir un d'une recette qui lit sa puissance et publie l'état sur l'équipement, par exemple `off` / `ready` / `running` / `finished`. La carte, le panneau et l'historique l'affichent alors comme un état venu de la machine. Avec une prise, la carte montre la machine allumée dès 1 W, même sans état.
+
 !!! tip "Notification de fin de cycle"
-Utilisez une recette de surveillance d'état pour être notifié quand l'état de fonctionnement passe de `running` à `ready`.
+Utilisez une recette de surveillance d'état sur l'état de fonctionnement : `ready` pour un lave-linge SmartThings, `finished` pour un état qu'une recette déduit de la puissance.
 
 ---
 

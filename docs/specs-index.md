@@ -360,6 +360,7 @@ Specs are grouped by theme and annotated with status:
 | 209 | Launch plan: identity, showcase, proof, launch                          | 🟡     | Plan to reach end users: new logo, bilingual showcase site in its own repo, video and real case, staggered launch; no product change. In progress.                                                                                                                    |
 | 210 | Logo refresh: one drawing in two weights                                | 🟡     | One logo drawing in two weights (master, small) with a tighter face and the « sowel » Nunito wordmark; app, splash, favicons, PWA icons and docs landing updated; drift test. Unreleased.                                                                             |
 | 211 | Today's extremes for thermometers + recipe history read                 | 🟡     | Widens spec 134 daily min/max to `sensor` equipments and gives recipes a bounded read-only `ctx.helpers.history.query` (1h/1d) over `queryHistory`, complete periods stamped at their start; for the guest-home recipe. Unreleased.                                   |
+| 214 | A recipe publishes data on an equipment                                 | 🟡     | A recipe declares `publishes` on an `equipment` slot and calls `ctx.helpers.equipmentData.publish`; shown as a `virtual:recipe:` binding, historized; appliance surfaces read a plug's watts. Unreleased.                                                             |
 
 ---
 

@@ -80,6 +80,9 @@ interface SeriesConfig {
   zoneName: string;
   alias: string;
   category: string;
+  /** Declared values of an enum series: more than two keeps it off the 0/1
+   *  state axis (spec 213). */
+  enumValues?: string[];
   /** Backing physical device name. Empty for saved charts loaded from
    * `chart.config.series` (which only carries equipmentId + alias) until
    * the bindings have been refetched. */
@@ -312,6 +315,7 @@ export function AnalyseView() {
             zoneName: eq?.zoneId ? (zoneNameById.get(eq.zoneId) ?? "") : "",
             alias: sc.alias,
             category: binding?.category ?? "",
+            enumValues: binding?.enumValues,
             deviceName: binding?.deviceName ?? "",
             sameCategoryCount,
             deleted: !eq,
@@ -413,6 +417,7 @@ export function AnalyseView() {
       zoneName: zoneNameById.get(equipment.zoneId ?? "") ?? "",
       alias: binding.alias,
       category: binding.category,
+      enumValues: binding.enumValues,
       deviceName: binding.deviceName,
       sameCategoryCount,
     };
@@ -592,18 +597,24 @@ export function AnalyseView() {
   const chartFamilies = useMemo(() => {
     const families = new Set<ChartFamily>();
     for (const s of series) {
-      const f = familyOf(s.category);
+      const f = familyOf(s.category, s.enumValues);
       if (f) families.add(f);
     }
     return families;
   }, [series]);
 
-  const hasStateSeries = useMemo(() => series.some((s) => isBooleanCategory(s.category)), [series]);
+  const hasStateSeries = useMemo(
+    () => series.some((s) => isBooleanCategory(s.category, s.enumValues)),
+    [series],
+  );
   // Anything that is neither a state nor a bar series lands on the left axis,
   // including unclassified categories (family `null`).
   const hasMeasurementSeries = useMemo(
     () =>
-      series.some((s) => familyOf(s.category) === null || familyOf(s.category) === "measurements"),
+      series.some((s) => {
+        const f = familyOf(s.category, s.enumValues);
+        return f === null || f === "measurements";
+      }),
     [series],
   );
 
@@ -638,7 +649,8 @@ export function AnalyseView() {
   const splitAxes = chartUnits.length === 2;
 
   const axisIdOf = useCallback(
-    (category: string) => axisForCategory(category, chartUnits),
+    (category: string, enumValues?: readonly string[]) =>
+      axisForCategory(category, chartUnits, enumValues),
     [chartUnits],
   );
 
@@ -649,7 +661,7 @@ export function AnalyseView() {
   const axisColors = useMemo(() => {
     const colorOf = (target: "left" | "right") => {
       if (!splitAxes) return null;
-      const onAxis = styledSeries.filter((s) => axisIdOf(s.category) === target);
+      const onAxis = styledSeries.filter((s) => axisIdOf(s.category, s.enumValues) === target);
       return onAxis.length === 1 ? onAxis[0].color : null;
     };
     return { left: colorOf("left"), right: colorOf("right") };
@@ -664,7 +676,7 @@ export function AnalyseView() {
 
       const keys: string[] = [];
       for (const s of series) {
-        if (axisIdOf(s.category) !== target) continue;
+        if (axisIdOf(s.category, s.enumValues) !== target) continue;
         keys.push(s.id);
         if (showBand && hasEnvelope(s.category)) keys.push(`${s.id}:min`, `${s.id}:max`);
       }
@@ -691,7 +703,7 @@ export function AnalyseView() {
       if (fitted) return Math.max(Math.abs(fitted.domain[0]), Math.abs(fitted.domain[1]));
       let m = 0;
       for (const s of series) {
-        if (axisIdOf(s.category) !== target) continue;
+        if (axisIdOf(s.category, s.enumValues) !== target) continue;
         for (const row of chartData) {
           for (const key of [s.id, `${s.id}:min`, `${s.id}:max`]) {
             const v = row[key];
@@ -1043,7 +1055,7 @@ export function AnalyseView() {
                     // F7 — family lock, relaxed by spec 144: a binding is
                     // rejected only when it cannot share a chart with one of
                     // the families already plotted (i.e. cumulative vs rest).
-                    const bindingFamily = familyOf(b.category);
+                    const bindingFamily = familyOf(b.category, b.enumValues);
                     const familyMismatch = [...chartFamilies].some(
                       (f) => !familiesCompatible(f, bindingFamily),
                     );
@@ -1192,7 +1204,9 @@ export function AnalyseView() {
 
                 // Tick labels of the 0/1 axis come from the first state series'
                 // category — every state series shares that axis.
-                const stateSeries = series.filter((s) => isBooleanCategory(s.category));
+                const stateSeries = series.filter((s) =>
+                  isBooleanCategory(s.category, s.enumValues),
+                );
                 const [stateOffKey, stateOnKey] = booleanTickLabels(stateSeries[0]?.category ?? "");
 
                 if (hasStateSeries && !hasMeasurementSeries) {
@@ -1306,7 +1320,7 @@ export function AnalyseView() {
                           return (
                             <Area
                               key={`${s.id}:band`}
-                              yAxisId={axisIdOf(s.category)}
+                              yAxisId={axisIdOf(s.category, s.enumValues)}
                               type="monotone"
                               dataKey={(d: Record<string, number>) => {
                                 const lo = d[minKey];
@@ -1328,11 +1342,11 @@ export function AnalyseView() {
                           );
                         })}
                     {styledSeries.map((s) => {
-                      const isState = isBooleanCategory(s.category);
+                      const isState = isBooleanCategory(s.category, s.enumValues);
                       return (
                         <Line
                           key={s.id}
-                          yAxisId={axisIdOf(s.category)}
+                          yAxisId={axisIdOf(s.category, s.enumValues)}
                           type={isState ? "stepAfter" : "monotone"}
                           dataKey={s.id}
                           name={s.id}

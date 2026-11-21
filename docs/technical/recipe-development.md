@@ -346,6 +346,36 @@ options: [
 
 Every mode control (the tile, the zone page, the recipe row, the equipment cards) then skips it while that parameter is absent, `null`, an empty string or an empty list; `0` and `false` count as set. The core filters on nothing else: it knows no slot of your recipe by name, so an option without `requiresParam` is always offered. Still ignore such a mode in `onAction` when its setting is missing, since the API can send it anyway, and do so before anything else the action would change. A core older than #1210 ignores the field and still hides, by name, an option `cocoon` without `cocoonTemp` or `night` without `nightTemp`.
 
+## Publishing data on an equipment (spec 214)
+
+A recipe can give an equipment a value no device reports: a washing machine's run state read on a metering plug, say. The value shows as a binding of the equipment, so its card, its panel, its history, the binding pickers and other recipes (`state-watch`) read it like any other. Declare it, then publish it:
+
+```typescript
+slots: [{ id: "equipment", name: "Machine", type: "equipment", required: true, description: "" }],
+publishes: [
+  {
+    slot: "equipment", // one of your `equipment` slots
+    alias: "state",
+    type: "enum", // "number" | "boolean" | "enum" | "text"
+    category: "appliance_state",
+    enumValues: ["off", "ready", "running", "finished"],
+  },
+],
+createInstance(params, ctx) {
+  const eq = params.equipment as string;
+  ctx.helpers.equipmentData.publish(eq, "state", ctx.state.get("cycle") ?? null);
+  // … later, on each change:
+  ctx.helpers.equipmentData.publish(eq, "state", "running");
+  return { stop() {} };
+},
+```
+
+- **The binding.** While the instance runs, the equipment carries `virtual:recipe:<instanceId>:<alias>`, with your type, category and values, and your recipe's name where a surface names a binding's source. It is `null` until your first publish, and goes when the instance stops (disabled, deleted, updated, package updated). It is always historized.
+- **Publish at start.** The core keeps nothing across a restart: republish from your own `ctx.state` at the start of `createInstance`, or the value stays `null` until the next change.
+- **The rules.** The core refuses a declaration on a slot that is not an `equipment` slot, an `enum` without `enumValues` or a duplicate (the recipe does not load). It refuses an instance whose equipment already has that alias from a device, or from another enabled instance (`400` naming the conflict). `publish` returns `{ ok: false, reason }`, never throws, for an alias you did not declare, an equipment outside the slot, a value that does not fit the type, or an alias a device binding took since. `null` always fits. Each refusal is logged once per instance.
+- **A device wins.** A device binding added later with the same alias replaces yours.
+- **Older cores.** `ctx.helpers.equipmentData` is absent before spec 214: require it with your package's `sowelVersion`, or check for it.
+
 ## RecipeContext
 
 The `ctx` object injected into `validate()` and `createInstance()` provides:

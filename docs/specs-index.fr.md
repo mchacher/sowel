@@ -339,6 +339,7 @@ Les specs sont regroupées par thème et annotées d'un statut :
 | 209 | Plan de lancement : identité, vitrine, preuves, lancement             | 🟡     | Plan pour toucher les utilisateurs finaux : nouveau logo, site vitrine bilingue dans son propre dépôt, vidéo et cas réel, lancement échelonné ; aucun changement produit. En cours.                                                                                           |
 | 210 | Logo : un seul dessin en deux graisses                                | 🟡     | Un seul dessin du logo en deux graisses (maître, petit) avec un visage resserré et le mot « sowel » en Nunito ; app, splash, favicons, icônes PWA et landing de la doc mis à jour ; test anti-dérive. Non livré.                                                              |
 | 211 | Extrêmes du jour des thermomètres + historique pour les recettes      | 🟡     | Étend le min/max du jour de la spec 134 aux équipements `sensor` et donne aux recettes une lecture bornée `ctx.helpers.history.query` (1h/1d) sur `queryHistory`, périodes complètes horodatées à leur début ; pour la recette guest-home. Unreleased.                        |
+| 214 | Une recette publie une donnée sur un équipement                       | 🟡     | Une recette déclare `publishes` sur un slot `equipment` et appelle `ctx.helpers.equipmentData.publish` ; vu comme un binding `virtual:recipe:`, historisé ; les écrans d'appareil lisent les watts d'une prise. Unreleased.                                                   |
 
 ---
 
