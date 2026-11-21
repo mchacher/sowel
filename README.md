@@ -7,7 +7,7 @@ Home automation that starts from your home, not your devices.
 Describe your rooms once, pick ready-made recipes instead of writing rules, and let AI build the rest. Sowel runs on your own hardware, with no account and no Sowel cloud.
 
 <!-- FILM: the 1:43 launch film, uploaded through the GitHub editor so it plays inline -->
-<!-- SCREENSHOT: Home view, current UI, retaken under #1127 -->
+![The living room in Sowel: its lights, shutters and sensors, the modes and the recipe that run it, and what just happened](docs/assets/readme/living-room.png)
 
 ## How it works
 
