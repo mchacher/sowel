@@ -57,7 +57,8 @@ default. The change reaches the app, the PWA icons and the docs in one coordinat
 - Retake the screenshots after the refresh (#1127); fix the French navigation labels.
 - GitHub: description, topics, homepage URL, social preview image; Discussions on; issue templates.
 - README rewritten as a storefront (promise, screenshot, one install command, three links).
-- Cloudflare: `sowel.org` record and a redirect for `install.sh`.
+- Dropped (2026-11-21, maintainer): the short `sowel.org/install.sh` (Cloudflare record and redirect). The long
+  `raw.githubusercontent.com` command works and stays; the short URL is polish, not a launch gate.
 - Install on a clean machine, following only the public pages; fix whatever fails. A launch spends its one
   chance on the first install.
 

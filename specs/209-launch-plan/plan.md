@@ -14,7 +14,6 @@ The steps and their content are in [spec.md](spec.md). This file tracks them.
   - [x] French navigation labels (#1279)
   - [x] Clean-machine install test (2026-11-21, Docker Desktop on macOS, not a clean Linux host). It found
         that the InfluxDB buckets and tasks were never created on a first start (#1284), fixed in v1.88.1
-  - [ ] `sowel.org` DNS and `install.sh` redirect (Cloudflare, by the maintainer)
   - [ ] Launch film upload
 - [ ] Step 2 — Showcase: spec and repository `sowel-site`; `docs.sowel.org` back to the manual
 - [ ] Step 3 — Proof: 60 to 90 second video, one numbered real case, two articles (FR and EN)
