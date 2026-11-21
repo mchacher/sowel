@@ -47,17 +47,19 @@ describe("logo copies stay on the shared drawing (spec 210)", () => {
     ["ui/public/favicon.svg", "small", SMALL],
     ["docs/assets/favicon.svg", "small", SMALL],
     ["docs/assets/logo.svg", "small", SMALL],
+    ["docs/assets/logo-master.svg", "master", MASTER],
     ["ui/public/pwa-icon.svg", "master", MASTER],
     ["ui/public/pwa-maskable.svg", "master", MASTER],
   ] as const)("%s draws every path of the %s weight at its width", (path, _name, weight) => {
     expect(mismatches(read(path), expected(weight))).toEqual([]);
   });
 
-  it("the favicons and the docs header logo share one viewBox", () => {
+  it("the favicons and the docs logos share one viewBox", () => {
     for (const path of [
       "ui/public/favicon.svg",
       "docs/assets/favicon.svg",
       "docs/assets/logo.svg",
+      "docs/assets/logo-master.svg",
     ]) {
       expect(read(path), path).toContain('viewBox="20 10 160 165"');
     }
