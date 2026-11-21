@@ -185,6 +185,37 @@ export class InfluxClient {
     }
   }
 
+  /**
+   * Wait until InfluxDB answers the org lookup the setup methods start with.
+   *
+   * On a fresh `docker compose up`, `depends_on` only waits for the container to
+   * start: Sowel boots a few seconds before InfluxDB accepts requests, every
+   * `ensure*` call then finds no org and skips, and nothing retries (#1284).
+   * Returns true as soon as the org resolves, false once `timeoutMs` has passed.
+   * Never throws.
+   */
+  async waitUntilReady(
+    options: { timeoutMs?: number; intervalMs?: number } = {},
+  ): Promise<boolean> {
+    const timeoutMs = options.timeoutMs ?? 120_000;
+    const intervalMs = options.intervalMs ?? 2_000;
+    const deadline = Date.now() + timeoutMs;
+    let waiting = false;
+    for (;;) {
+      if (!this.config) return false;
+      if ((await this.getOrgId()) !== null) {
+        if (waiting) this.logger.info("InfluxDB is ready");
+        return true;
+      }
+      if (Date.now() + intervalMs > deadline) return false;
+      if (!waiting) {
+        waiting = true;
+        this.logger.info("Waiting for InfluxDB to accept requests before the bucket setup");
+      }
+      await new Promise((resolve) => setTimeout(resolve, intervalMs));
+    }
+  }
+
   /** Buffer a single data point. Non-blocking, fire-and-forget. */
   writePoint(point: Point): void {
     if (!this.writeApi) {
