@@ -382,7 +382,7 @@ async function main() {
     .then((ready) => {
       if (!ready) {
         logger.warn(
-          "InfluxDB did not answer in time — bucket/task setup skipped until next restart",
+          "InfluxDB did not answer, or its org did not resolve, within 120 s — bucket/task setup skipped until next restart",
         );
         return;
       }
