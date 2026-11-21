@@ -375,15 +375,27 @@ async function main() {
   const influxClient = new InfluxClient(logger);
   influxClient.connect(config.influx);
 
-  // Setup downsampling buckets and tasks (fire-and-forget)
-  Promise.all([
-    // Rain copies from the hourly bucket, so it waits for that bucket to exist.
-    influxClient.ensureBuckets().then(() => influxClient.ensureRainBuckets()),
-    influxClient.ensureDownsamplingTasks(),
-    influxClient.ensureEnergyBuckets(),
-  ]).catch((err) => {
-    logger.warn({ err }, "InfluxDB bucket/task setup failed — will retry on next restart");
-  });
+  // Setup downsampling buckets and tasks (fire-and-forget). On a fresh install
+  // InfluxDB is often not answering yet, so wait for it first (#1284).
+  influxClient
+    .waitUntilReady()
+    .then((ready) => {
+      if (!ready) {
+        logger.warn(
+          "InfluxDB did not answer, or its org did not resolve, within 120 s — bucket/task setup skipped until next restart",
+        );
+        return;
+      }
+      return Promise.all([
+        // Rain copies from the hourly bucket, so it waits for that bucket to exist.
+        influxClient.ensureBuckets().then(() => influxClient.ensureRainBuckets()),
+        influxClient.ensureDownsamplingTasks(),
+        influxClient.ensureEnergyBuckets(),
+      ]);
+    })
+    .catch((err) => {
+      logger.warn({ err }, "InfluxDB bucket/task setup failed — will retry on next restart");
+    });
 
   // 11a. Create History Writer (passive observer — subscribes to events, writes to InfluxDB)
   const historyWriter = new HistoryWriter(
