@@ -11,6 +11,25 @@ This page summarises every published version, newest first. For the full diff be
 
 ---
 
+## 1.88.x: A new logo, and recipes that publish data
+
+### v1.88.0 — 2026-11-21 { #v1-88-0 }
+
+Sowel has a new logo: one drawing used everywhere (app, splash, icons, docs), and the name written « sowel » in lowercase. A recipe can now publish a value on an equipment, as if a device had reported it. On a phone, the tab bar floats as a pill over the page.
+
+**After the update:** an installed app keeps its old home-screen icon until you add it to the home screen again.
+
+- Feat (ui): **one logo drawing in two weights** (spec 210, #1260). The mark existed as three slightly different drawings and the name as `SOWEL`, `Sowel` or nothing. It is now one drawing, with a tighter face, in a master weight from 32 px and a thicker one below. The wordmark is `sowel` in Nunito 700, the desktop sidebar included. Splash, favicons, app icons and the docs landing follow.
+- Feat (recipes): **a recipe publishes data on an equipment** (spec 214, #1273). A recipe declares `publishes` on an `equipment` slot and calls `ctx.helpers.equipmentData.publish(equipmentId, alias, value)`. The value shows as a `virtual:recipe:` binding of the equipment: card, panel, history, binding pickers and other recipes read it like a device binding. An alias already bound to a device, derived by the core or published by another instance is refused with a `400`. Appliance cards now take on and off from the power first: a washer on a metering plug no longer shows Off mid-cycle. See [Recipe development](technical/recipe-development.md).
+- Feat (ui): **the phone tab bar floats as a pill** (#1264, #1277). Below 1024 px the bottom bar becomes a rounded, translucent pill above the content, clear of the iPhone home indicator. The selected tab sits on a grey pill. The page keeps enough space at the bottom for its last line, and the install banner and restart toast sit above the pill.
+- Feat (energy): **the arbiter counts down a claim's engage hold** (#1262, #1263). A covered claim waiting out its hold shows the time left (`m:ss`) and a bar of the hold already spent in the arbitration roster, and is granted when the hold ends rather than at the next tick. A meter outage restarts the hold. `loads[].engageAtIso` and `engageHoldS` in `GET /api/v1/energy/arbiter`.
+- Fix (ui): **the integration Connect button names the plugin and the missing field** (spec 212, #1266). It read « Connect with Samsung » for every plugin; it now reads « Connect to <plugin> ». Start keeps its name, the empty required fields are listed under the buttons and marked on the form, and Connect saves unsaved edits first.
+- Feat (ui): a washing machine among the recipe icons, for the upcoming appliance-cycle recipe (#1274).
+- Fix (docs): the install command on the docs home page points at the script that exists (#1258).
+- Maintenance (deps): the weekly library and toolchain updates (#1267, #1268, #1269, #1270).
+
+---
+
 ## 1.87.x: Families that colour the house
 
 ### v1.87.0 — 2026-11-14 { #v1-87-0 }

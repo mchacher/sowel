@@ -11,6 +11,25 @@ Cette page résume toutes les versions publiées, de la plus récente à la plus
 
 ---
 
+## 1.88.x : Un nouveau logo, et des recettes qui publient des données
+
+### v1.88.0 — 2026-11-21 { #v1-88-0 }
+
+Sowel a un nouveau logo : un seul dessin partout (app, écran de démarrage, icônes, doc), et le nom écrit « sowel » en minuscules. Une recette peut maintenant publier une valeur sur un équipement, comme si un appareil l'avait remontée. Sur téléphone, la barre d'onglets flotte en pastille au-dessus de la page.
+
+**Après la mise à jour :** une app installée garde son ancienne icône sur l'écran d'accueil tant que vous ne l'y ajoutez pas de nouveau.
+
+- Nouveauté (interface) : **un seul dessin du logo en deux graisses** (spec 210, #1260). Le logo existait en trois dessins légèrement différents et le nom en `SOWEL`, `Sowel` ou rien. C'est maintenant un seul dessin, au visage resserré, en graisse maître à partir de 32 px et plus épaisse en dessous. Le nom s'écrit `sowel` en Nunito 700, barre latérale comprise. Écran de démarrage, favicons, icônes de l'app et page d'accueil de la doc suivent.
+- Nouveauté (recettes) : **une recette publie une donnée sur un équipement** (spec 214, #1273). Une recette déclare `publishes` sur un slot `equipment` et appelle `ctx.helpers.equipmentData.publish(equipmentId, alias, value)`. La valeur apparaît comme un binding `virtual:recipe:` de l'équipement : carte, panneau, historique, sélecteurs de binding et autres recettes la lisent comme un binding d'appareil. Un alias déjà lié à un appareil, calculé par le cœur ou publié par une autre instance est refusé avec un `400`. Les cartes d'électroménager tirent maintenant marche et arrêt de la puissance d'abord : un lave-linge sur une prise mesurée ne s'affiche plus arrêté en plein cycle. Voir [Développement de recettes](technical/recipe-development.md).
+- Nouveauté (interface) : **la barre d'onglets du téléphone flotte en pastille** (#1264, #1277). Sous 1024 px, la barre du bas devient une pastille arrondie et translucide au-dessus du contenu, à l'écart de la barre d'accueil de l'iPhone. L'onglet choisi est posé sur une pastille grise. La page garde assez de place en bas pour sa dernière ligne, et la bannière d'installation comme l'annonce de redémarrage passent au-dessus de la pastille.
+- Nouveauté (énergie) : **l'arbitre décompte la temporisation d'une demande** (#1262, #1263). Une demande couverte qui attend la fin de sa temporisation affiche le temps restant (`m:ss`) et une barre du temps déjà écoulé dans le tableau d'arbitrage, et elle est accordée à la fin de la temporisation au lieu du tick suivant. Une coupure du compteur relance la temporisation. `loads[].engageAtIso` et `engageHoldS` dans `GET /api/v1/energy/arbiter`.
+- Correctif (interface) : **le bouton Connecter d'une intégration nomme le plugin et le champ manquant** (spec 212, #1266). Il disait « Connecter avec Samsung » pour tous les plugins ; il dit maintenant « Connecter à <plugin> ». Démarrer garde son nom, les champs obligatoires vides sont listés sous les boutons et marqués dans le formulaire, et Connecter enregistre d'abord les modifications en cours.
+- Nouveauté (interface) : un lave-linge parmi les icônes de recettes, pour la future recette de cycle d'appareil (#1274).
+- Correctif (doc) : la commande d'installation de la page d'accueil de la doc pointe vers le script qui existe (#1258).
+- Maintenance (dépendances) : les mises à jour hebdomadaires des bibliothèques et de l'outillage (#1267, #1268, #1269, #1270).
+
+---
+
 ## 1.87.x : Des familles qui colorent la maison
 
 ### v1.87.0 — 2026-11-14 { #v1-87-0 }
