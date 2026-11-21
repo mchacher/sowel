@@ -13,6 +13,16 @@ Cette page résume toutes les versions publiées, de la plus récente à la plus
 
 ## 1.88.x : Un nouveau logo, et des recettes qui publient des données
 
+### v1.88.1 — 2026-11-21 { #v1-88-1 }
+
+Une installation neuve prépare maintenant son historique d'énergie à long terme. Le README et les captures de la documentation ont été refaits.
+
+**Après la mise à jour :** une instance installée avec l'installateur en une commande avant cette version peut ne pas avoir les buckets horaire et journalier. Redémarrez-la une fois et ils sont créés.
+
+- Correctif (core) : **Sowel attend InfluxDB avant de créer ses buckets et ses tâches de downsampling** (#1284, #1285). Au premier `docker compose up`, Sowel démarrait quelques secondes avant qu'InfluxDB réponde, ne trouvait aucune organisation et sautait toute la mise en place sans réessayer. Une installation neuve n'avait ni bucket horaire, journalier, énergie ou pluie, ni tâche de downsampling, jusqu'à son premier redémarrage. La mise en place attend désormais InfluxDB, jusqu'à 120 secondes, puis s'exécute ; si InfluxDB ne répond jamais, elle journalise un avertissement et le démarrage n'est pas bloqué.
+- Docs : le README devient une vitrine avec une image issue de données réelles (#1276, #1282), les captures énergie, arbitre et appareils sont refaites (#1278) et les libellés de navigation français sont tous en français (#1279).
+- Maintenance (registre) : appliance-cycle 0.1.0 ajouté (#1283).
+
 ### v1.88.0 — 2026-11-21 { #v1-88-0 }
 
 Sowel a un nouveau logo : un seul dessin partout (app, écran de démarrage, icônes, doc), et le nom écrit « sowel » en minuscules. Une recette peut maintenant publier une valeur sur un équipement, comme si un appareil l'avait remontée. Sur téléphone, la barre d'onglets flotte en pastille au-dessus de la page.

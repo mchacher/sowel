@@ -13,6 +13,16 @@ This page summarises every published version, newest first. For the full diff be
 
 ## 1.88.x: A new logo, and recipes that publish data
 
+### v1.88.1 — 2026-11-21 { #v1-88-1 }
+
+A fresh install now sets up its long-term energy history. The README and the docs screenshots were redone.
+
+**After the update:** an instance installed with the one-command installer before this version may lack the hourly and daily buckets. Restart it once and they are created.
+
+- Fix (core): **Sowel waits for InfluxDB before creating its buckets and downsampling tasks** (#1284, #1285). On a first `docker compose up`, Sowel started a few seconds before InfluxDB answered, found no organisation and skipped the whole setup without trying again. A new install had no hourly, daily, energy or rain bucket and no downsampling task until its first restart. The setup now waits for InfluxDB, up to 120 seconds, then runs; if InfluxDB never answers, it logs one warning and startup is not blocked.
+- Docs: the README is a storefront with a live-data hero (#1276, #1282), the energy, arbiter and devices screenshots are retaken (#1278) and the French navigation labels are all in French (#1279).
+- Maintenance (registry): appliance-cycle 0.1.0 added (#1283).
+
 ### v1.88.0 — 2026-11-21 { #v1-88-0 }
 
 Sowel has a new logo: one drawing used everywhere (app, splash, icons, docs), and the name written « sowel » in lowercase. A recipe can now publish a value on an equipment, as if a device had reported it. On a phone, the tab bar floats as a pill over the page.
