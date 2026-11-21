@@ -57,6 +57,7 @@ interface Equipment {
   plugInHybrid?: boolean; // Spec 191 — electric_vehicle only: no cost per 100 km. Present only when true
   family?: EquipmentFamily; // Spec 208 — switch only: the family it sits in (a plug driving a radiator is climate). Present only when set
   usualVehicleId?: string; // Spec 193 — ev_charger only: breaks a tie between matching cars. Present only when set
+  applianceCycle?: { startW: number; endW: number; endDelayS: number }; // Spec 213 — appliance only: thresholds of the run state derived from power. Absent = 15 W / 10 W / 300 s
   createdAt: string;
   updatedAt: string;
 }
@@ -151,6 +152,8 @@ CREATE TABLE equipments (
   usual_vehicle_id TEXT,          -- Spec 193: an ev_charger's usual vehicle (cleared on its removal)
   family TEXT,                    -- Spec 208 (migration 045): a switch's family, NULL = the plugs;
                                   -- cleared when the equipment stops being a switch
+  appliance_cycle TEXT,           -- Spec 213 (migration 046): JSON { startW, endW, endDelayS } of an
+                                  -- appliance, NULL = the defaults; cleared when it stops being one
   created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
   updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
 );
@@ -421,6 +424,18 @@ Current providers in the codebase:
 - **Pool water temperature tracker** (`src/equipments/pool-water-temp-tracker.ts`) -- last active water temperature on `pool_heat_pump` (state in `pool_water_temp_state`).
 
 Computed entries appear in `EquipmentWithDetails.computedData` and can be referenced from MQTT publishers, notifications, and chart series like any other binding alias.
+
+### Virtual data bindings
+
+A few states no device reports are derived by the EquipmentManager and injected at read time into `dataBindings` itself, so recipes, surfaces and pickers read them as ordinary bindings. Their id starts with `virtual:`:
+
+| Id                             | Equipment                                                          | Alias / category              | Values                                | Historized |
+| ------------------------------ | ------------------------------------------------------------------ | ----------------------------- | ------------------------------------- | ---------- |
+| `virtual:gate_state:<id>`      | `gate`                                                             | `state` / `gate_state`        | `open`, `closed`, `unknown`           | no         |
+| `virtual:cover_state:<id>`     | `pool_cover`                                                       | `cover_state` / `cover_state` | `OPEN`, `CLOSED`, `PARTIAL`           | no         |
+| `virtual:appliance_state:<id>` | `appliance` with a numeric `power` and no bound `state` (spec 213) | `state` / `appliance_state`   | `off`, `ready`, `running`, `finished` | yes        |
+
+The appliance state is a state machine (`src/equipments/appliance-cycle-tracker.ts`): `running` above `startW`, `finished` once the power stayed below `endW` for `endDelayS` (a timer, so a plug that stops reporting still ends the cycle), `off` below 1 W, passing through `finished` when switched off during the end delay. Nothing is persisted: after a restart it restarts from the current power and never as `finished`. Each transition emits `equipment.data.changed` with alias `state`.
 
 > **Removed from the data model**: the legacy expression language (`OR()`, `AVG()`, `IF()`, `binding.<alias>`, etc.) and the `internal_rules` table mentioned in earlier versions of this document. They were never implemented. Automation logic now lives in **Recipes** (section 10).
 

@@ -44,6 +44,7 @@ import { hasRowStateIcon, rowStateOf } from "./row-state-icon";
 import { EquipmentRow, RowControls, RowName, RowReadings, RowSpacer } from "./equipment-row-layout";
 import { pickLivePowerBinding, formatWatts } from "../../lib/energy-meter-display";
 import { resolvePowerReading } from "../../lib/power-reading";
+import { applianceIsOn, applianceState, applianceStateLabelKey } from "../../lib/appliance";
 import { formatRelative } from "../../lib/format-relative";
 import { useStalenessClock } from "../../hooks/useStalenessClock";
 import type { DataBindingWithValue } from "../../types";
@@ -793,13 +794,13 @@ function CompactUps({ equipment }: { equipment: EquipmentWithDetails }) {
 
 function CompactAppliance({ equipment }: { equipment: EquipmentWithDetails }) {
   const { t } = useTranslation();
-  const powerBinding = equipment.dataBindings.find((b) => b.alias === "power");
-  const stateBinding = equipment.dataBindings.find((b) => b.alias === "state");
   const remainingBinding = equipment.dataBindings.find((b) => b.alias === "remaining_time_str");
   const progressBinding = equipment.dataBindings.find((b) => b.alias === "progress");
 
-  const isOn = powerBinding?.value === true;
-  const state = typeof stateBinding?.value === "string" ? stateBinding.value : null;
+  // Spec 213 — on/off from the run state, reported or derived from watts.
+  const isOn = applianceIsOn(equipment.dataBindings);
+  const state = applianceState(equipment.dataBindings);
+  const stateLabelKey = state ? applianceStateLabelKey(state) : null;
   const remainingStr = typeof remainingBinding?.value === "string" ? remainingBinding.value : null;
   const progress = typeof progressBinding?.value === "number" ? progressBinding.value : null;
 
@@ -819,11 +820,7 @@ function CompactAppliance({ equipment }: { equipment: EquipmentWithDetails }) {
         isRunning ? "bg-active-bg text-active-ink" : "bg-border-light text-text-tertiary"
       }`}
     >
-      {state === "running"
-        ? t("common.running")
-        : state === "paused"
-          ? t("common.paused")
-          : (state ?? "—")}
+      {stateLabelKey ? t(stateLabelKey) : (state ?? "—")}
     </span>,
     isRunning && remainingStr && (
       <span

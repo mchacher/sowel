@@ -8,6 +8,7 @@ import { TariffClassifier } from "../energy/tariff-classifier.js";
 import type { InfluxClient } from "../core/influx-client.js";
 import { DEFAULT_RETENTION, Point } from "../core/influx-client.js";
 import { resolveHistorize } from "../shared/history-defaults.js";
+import { APPLIANCE_STATE_BINDING_PREFIX } from "../equipments/appliance-cycle-tracker.js";
 
 // ============================================================
 // Write filtering
@@ -238,12 +239,14 @@ export class HistoryWriter {
       if (!eq.enabled) continue;
       const bindings = this.equipmentManager.getDataBindingsWithValues(eq.id);
       for (const b of bindings) {
-        if (b.id.startsWith("virtual:")) continue; // Skip virtual bindings (gate state)
-        const effectiveOn = HistoryWriter.resolveHistorize(
-          b.historize ?? null,
-          b.alias,
-          b.category,
-        );
+        // Virtual bindings are skipped (gate, cover), except an appliance's
+        // derived run state (spec 213), always historized: it replaces a
+        // reported state whose history the user had.
+        const derivedApplianceState = b.id.startsWith(APPLIANCE_STATE_BINDING_PREFIX);
+        if (b.id.startsWith("virtual:") && !derivedApplianceState) continue;
+        const effectiveOn =
+          derivedApplianceState ||
+          HistoryWriter.resolveHistorize(b.historize ?? null, b.alias, b.category);
         if (effectiveOn) {
           this.historizedBindings.add(b.id);
         }

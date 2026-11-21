@@ -193,8 +193,19 @@ Sessions start when this feature is installed: earlier months are not rebuilt. E
 | ------------- | ------------------------ | ------------------------------------------------------------------------------------------------------------- |
 | **Appliance** | Read-only status display | power state, operating state (ready/running/paused), current phase, progress (%), remaining time, energy used |
 
+**Run state from a metering plug.** An appliance with no connected state of its own (a washing machine behind a metering plug, for example) gets its state from its power. Bind the plug's power in watts and Sowel derives four values:
+
+| State      | When                                                                  |
+| ---------- | --------------------------------------------------------------------- |
+| `off`      | below 1 W: the machine is switched off                                |
+| `ready`    | switched on, not running (display on, delayed start)                  |
+| `running`  | above the start threshold (15 W by default)                           |
+| `finished` | the power stayed below the end threshold (10 W) for the delay (5 min) |
+
+A machine that switches itself off during that delay still goes through `finished`. The thresholds are set in **Configuration → Cycle detection** on the equipment page (admin). A state reported by a device always wins: the derived one appears once that binding is removed. The derived state is historized.
+
 !!! tip "End-of-cycle notification"
-Use a `state-watch` recipe to get notified when the operating state changes from `running` to `ready`.
+Use a `state-watch` recipe to get notified at the end of a cycle: watch `finished` for a state derived from power, or `ready` for a state reported by SmartThings.
 
 ### Water
 
