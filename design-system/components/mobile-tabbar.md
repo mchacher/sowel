@@ -1,6 +1,6 @@
 # Mobile bottom tab bar (`mob__tabs`)
 
-> Fixed bottom navigation on mobile. 5 tabs, the last one being "Plus" (overflow menu) — matching production exactly.
+> Bottom navigation below `lg`: a pill floating over the page, the iOS 26 shape (#1264, amends spec 208 FR7). 5 tabs, the last one being "Plus" (overflow menu).
 
 ---
 
@@ -10,12 +10,13 @@
 ┌──────────────────────────────────────────────────────┐
 │                                                      │
 │                                                      │
-│  (page content scrolls above)                        │
-│                                                      │
-├──────────────────────────────────────────────────────┤  border-top
-│ ▢▢▢▢  (🏠)   ⚡   ▦   ☰                                │  (…) = the active tab's pill
-│ Dash    Maison  Énergie  Modes  Plus                 │  60 px + half the safe area
-└──────────────────────────────────────────────────────┘
+│  (page content scrolls under the pill)               │
+│   ╭──────────────────────────────────────────────╮   │  16 px from the sides
+│   │ ▢▢▢▢ (🏠    )  ⚡     ▦      ☰               │   │  62 px, rounded-full, glass
+│   │ Dash (Maison)  Énergie Modes  Plus           │   │  (…) = the active tab's grey pill
+│   ╰──────────────────────────────────────────────╯   │
+│                                                      │  20 px over the home indicator,
+└──────────────────────────────────────────────────────┘  12 px with no safe area
 ```
 
 Order matters: **Dashboard / Maison / Énergie / Modes / Plus** — confirmed by production via Playwright inspection. Énergie is the SECOND most accessed scope after Maison, so it sits right next to Maison.
@@ -24,12 +25,14 @@ Order matters: **Dashboard / Maison / Énergie / Modes / Plus** — confirmed by
 
 ## States
 
-| State   | Class               | Effect                                                                                                                |
-| ------- | ------------------- | --------------------------------------------------------------------------------------------------------------------- |
-| Default | `.mob__tab`         | icon (22 px, stroke 1.5) + label in `text-secondary`, medium                                                          |
-| Active  | `.mob__tab--active` | icon on a 56 × 30 px pill of the primary ink at 15 % (`bg-primary/15`), stroke 2; icon + label in `--p-500`, semibold |
+| State   | Class               | Effect                                                                                                                           |
+| ------- | ------------------- | -------------------------------------------------------------------------------------------------------------------------------- |
+| Default | `.mob__tab`         | icon (22 px, stroke 1.5) + label in `text-secondary`, medium                                                                     |
+| Active  | `.mob__tab--active` | the whole tab (icon + label) on a grey pill, the text colour at 8 % (`bg-text/8`), stroke 2; icon + label in `--p-500`, semibold |
 
-Only one tab is `--active` at a time. The active tab matches the current route. Spec 208 added the pill: the colour change alone did not show the selection on a phone. The row is 60 px high before the safe area (`MobileNav` in `ui/src/components/layout/AppLayout.tsx`). The heavier stroke of the active icon is the one exception to the 1.5 px Lucide stroke.
+Only one tab is `--active` at a time. The active tab matches the current route. Spec 208 added a pill because the colour change alone did not show the selection on a phone; #1264 made it the grey pill of the iOS 26 tab bar.
+
+The bar (`MobileNav` in `ui/src/components/layout/AppLayout.tsx`) is `absolute` over the content column, `inset-x-4`, `bottom-(--tabbar-offset)`, `h-(--tabbar-height)` (62 px), `p-1`, `rounded-full`, a hairline border, the glass `--tabbar-glass` (the surface at 75 %, 85 % in dark) with `backdrop-blur-xl backdrop-saturate-150`, and `shadow-lg` as a floating layer. It is `z-30`, like the top bar, so page menus (z-40) and drawers draw over it. The variables live in `ui/src/index.css`: `--tabbar-offset` is `max(12px, safe-area − 14px)`, and `--tabbar-clearance` (pill + offset + 12 px) is the padding under `<main>` and the lift of the install banner and the restart toast on phones. The heavier stroke of the active icon is the one exception to the 1.5 px Lucide stroke.
 
 ---
 
@@ -63,34 +66,30 @@ Only one tab is `--active` at a time. The active tab matches the current route. 
 ```css
 .mob__tabs {
   position: absolute;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  min-height: 60px;
-  padding-bottom: calc(env(safe-area-inset-bottom, 0px) / 2); /* half the home indicator */
-  background: var(--n-0);
-  border-top: 1px solid var(--line);
-  display: grid;
-  grid-template-columns: repeat(5, 1fr);
-  backdrop-filter: blur(8px);
+  left: 16px;
+  right: 16px;
+  bottom: var(--tabbar-offset); /* max(12px, safe area - 14px) */
+  height: 62px;
+  padding: 4px;
+  display: flex;
+  border-radius: 9999px;
+  border: 1px solid var(--line);
+  background: var(--tabbar-glass); /* surface at 75 %, 85 % in dark */
+  backdrop-filter: blur(24px) saturate(150%);
+  box-shadow: var(--sh-3);
 }
 
 .mob__tab {
+  flex: 1 1 0;
+  min-width: 0;
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  gap: 3px;
+  gap: 2px;
+  border-radius: 9999px;
   color: var(--n-600); /* text-secondary */
   cursor: pointer;
-}
-.mob__tab-icon {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  width: 56px;
-  height: 30px;
-  border-radius: var(--r-full);
 }
 .mob__tab svg {
   width: 22px;
@@ -98,16 +97,13 @@ Only one tab is `--active` at a time. The active tab matches the current route. 
 }
 .mob__tab-label {
   font-size: var(--fs-micro);
-  font-weight: 600;
-  letter-spacing: 0.02em;
+  font-weight: 500;
 }
 
 .mob__tab--active {
+  background: color-mix(in oklab, var(--n-700) 8%, transparent); /* bg-text/8 */
   color: var(--p-500);
   font-weight: 600;
-}
-.mob__tab--active .mob__tab-icon {
-  background: color-mix(in srgb, var(--p-500) 15%, transparent);
 }
 .mob__tab--active svg {
   stroke-width: 2;
@@ -140,14 +136,14 @@ This ordering reflects **usage frequency** on mobile (Dashboard glance > Zone co
 
 ## Accessibility
 
-| Concern        | Implementation                                                                                                 |
-| -------------- | -------------------------------------------------------------------------------------------------------------- |
-| Landmark       | `<nav role="navigation" aria-label="Navigation principale">` in production.                                    |
-| Tab role       | Each tab is a `<Link>` or `<button>` — focusable and keyboard-activatable.                                     |
-| Active state   | Use `aria-current="page"` on the active tab in addition to the `--active` class.                               |
-| Touch target   | 60 × ~(viewport/5) px — each tab is ~78 × 60 on a 390 px viewport. **Passes 44×44**.                           |
-| Color contrast | `--n-600` on `--n-0`: 10.25:1. Active `--p-500`: 9.8:1 — AAA; on its 15 % pill 6.9:1 (light) and 4.6:1 (dark). |
-| iOS safe-area  | Half the home indicator's inset sits under the labels: the full 34 pt read as an empty band.                   |
+| Concern        | Implementation                                                                                                         |
+| -------------- | ---------------------------------------------------------------------------------------------------------------------- |
+| Landmark       | `<nav aria-label="Navigation principale">` (`nav.main`, "Main navigation" in English).                                 |
+| Tab role       | Each tab is a `<Link>` or `<button>` — focusable and keyboard-activatable.                                             |
+| Active state   | Use `aria-current="page"` on the active tab in addition to the `--active` class.                                       |
+| Touch target   | 52 px high, an equal share of the pill: ~70 × 52 at 390 px, ~56 × 52 at 320 px. **Passes 44×44**.                      |
+| Color contrast | `--n-600` on `--n-0`: 10.25:1. Active `--p-500` on its grey pill: 7.6:1 (light), 4.75:1 (dark), `color-roles.test.ts`. |
+| iOS safe-area  | The pill floats 20 px above the edge over a 34 pt inset (12 px with none), clear of the home indicator swipe.          |
 
 ---
 

@@ -20,9 +20,10 @@ describe("phone tab bar (#1264)", () => {
       "absolute",
       "inset-x-4",
       "bottom-(--tabbar-offset)",
+      "z-30",
       "h-(--tabbar-height)",
       "rounded-full",
-      "bg-surface/75",
+      "bg-(--tabbar-glass)",
       "backdrop-blur-xl",
       "border",
       "shadow-lg",
@@ -48,6 +49,23 @@ describe("phone tab bar (#1264)", () => {
     const body = src.slice(at, src.indexOf("\n}\n", at));
     expect(body).toMatch(/isActive\s*\?\s*"bg-text\/8 text-primary font-semibold"/);
     expect(body).toMatch(/:\s*"text-text-secondary font-medium"/);
+  });
+
+  it("draws its glass more opaque in dark, where bright content would wash out the labels", () => {
+    expect(css).toMatch(
+      /:root\s*\{[^}]*--tabbar-glass:\s*color-mix\(in oklab, var\(--color-surface\) 75%, transparent\);/,
+    );
+    expect(css).toMatch(
+      /\.dark\s*\{[^}]*--tabbar-glass:\s*color-mix\(in oklab, var\(--color-surface\) 85%, transparent\);/,
+    );
+  });
+
+  it("lifts the install banner and the restart toast above the bar on phones", () => {
+    const read = (rel: string) => readFileSync(new URL(rel, import.meta.url), "utf8");
+    expect(read("./InstallPrompt.tsx")).toMatch(/fixed bottom-\(--tabbar-clearance\) lg:bottom-0/);
+    expect(read("../system/RestartToast.tsx")).toMatch(
+      /fixed bottom-\(--tabbar-clearance\) lg:bottom-4/,
+    );
   });
 
   it("sits 20 px over the iOS home indicator, 12 px where there is none", () => {

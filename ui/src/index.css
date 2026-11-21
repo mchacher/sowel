@@ -258,6 +258,12 @@
   --tabbar-height: 62px;
   --tabbar-offset: max(12px, calc(env(safe-area-inset-bottom, 0px) - 14px));
   --tabbar-clearance: calc(var(--tabbar-height) + var(--tabbar-offset) + 12px);
+  /* The pill's glass: the surface at 75 %, 85 % in dark, where a bright tile or
+     a camera image under it would otherwise wash out the labels. */
+  --tabbar-glass: color-mix(in oklab, var(--color-surface) 75%, transparent);
+}
+.dark {
+  --tabbar-glass: color-mix(in oklab, var(--color-surface) 85%, transparent);
 }
 
 body {

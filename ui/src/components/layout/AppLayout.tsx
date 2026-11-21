@@ -561,10 +561,11 @@ function MobileNav({
           16 px from the sides, --tabbar-offset above the bottom edge, 62 px high,
           translucent and blurred so the page shows through as it scrolls under.
           The selected tab is a grey pill around its icon and label. A floating
-          layer: border and shadow-lg, like the menus and sheets. */}
+          layer: border and shadow-lg, like the menus and sheets. z-30, as the top
+          bar: page menus (z-40) and drawer backdrops draw over it. */}
       <nav
         aria-label={t("nav.main")}
-        className="lg:hidden absolute inset-x-4 bottom-(--tabbar-offset) z-40 flex h-(--tabbar-height) p-1 rounded-full border border-border-light bg-surface/75 backdrop-blur-xl backdrop-saturate-150 shadow-lg"
+        className="lg:hidden absolute inset-x-4 bottom-(--tabbar-offset) z-30 flex h-(--tabbar-height) p-1 rounded-full border border-border-light bg-(--tabbar-glass) backdrop-blur-xl backdrop-saturate-150 shadow-lg"
       >
         <MobileNavLink to="/dashboard" label={t("nav.dashboard")} icon={LayoutDashboard} />
         <MobileNavLink to="/home" label={t("nav.maison")} icon={Home} />
@@ -753,11 +754,11 @@ function DrawerLink({
 }
 
 /**
- * The selected tab reads at a glance (spec 208, FR7): its icon sits on a pill
- * of the primary ink at 15 %, with a heavier stroke, and its label is
- * semibold; the other tabs are secondary text.
+ * One tab of the floating bar: an equal share of the pill, its full height.
+ * The selected tab reads at a glance (spec 208 FR7, amended by #1264): a grey
+ * pill around its icon and label, a heavier stroke, a semibold label in the
+ * primary ink; the other tabs are secondary text.
  */
-/** One tab of the floating bar: an equal share of the pill, its full height. */
 const TAB_CLASS =
   "flex-1 min-w-0 flex flex-col items-center justify-center gap-0.5 px-0.5 rounded-full text-micro";
 
