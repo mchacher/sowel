@@ -8,30 +8,30 @@ function bindings(values: Record<string, unknown>): DataBindingWithValue[] {
   );
 }
 
-describe("applianceIsOn (spec 213)", () => {
-  it("follows a known state", () => {
-    expect(applianceIsOn(bindings({ state: "running", power: 0 }))).toBe(true);
-    expect(applianceIsOn(bindings({ state: "off", power: 6 }))).toBe(false);
-  });
-
-  it("is on mid-cycle with plug watts and a reported state", () => {
+describe("applianceIsOn (spec 214)", () => {
+  it("is on mid-cycle with plug watts, whatever the state says", () => {
     expect(applianceIsOn(bindings({ state: "running", power: 1900 }))).toBe(true);
+    expect(applianceIsOn(bindings({ state: "finished", power: 5 }))).toBe(true);
   });
 
-  it("falls back to a boolean power without a state", () => {
-    expect(applianceIsOn(bindings({ power: true }))).toBe(true);
-    expect(applianceIsOn(bindings({ power: false }))).toBe(false);
+  it("is off when the plug reads 0 W, even on a resting SmartThings state", () => {
+    expect(applianceIsOn(bindings({ state: "ready", power: 0 }))).toBe(false);
   });
 
-  it("falls back to watts without a state", () => {
-    expect(applianceIsOn(bindings({ power: 6.5 }))).toBe(true);
-    expect(applianceIsOn(bindings({ power: 0.4 }))).toBe(false);
+  it("follows a boolean power first (a SmartThings washer switched off keeps `ready`)", () => {
+    expect(applianceIsOn(bindings({ power: false, state: "ready" }))).toBe(false);
+    expect(applianceIsOn(bindings({ power: true, state: "ready" }))).toBe(true);
   });
 
-  it("reads a null derived state as no state", () => {
-    expect(applianceState(bindings({ state: null, power: 6.5 }))).toBeNull();
-    expect(applianceIsOn(bindings({ state: null, power: 6.5 }))).toBe(true);
+  it("falls back to the state without a power", () => {
+    expect(applianceIsOn(bindings({ state: "running" }))).toBe(true);
+    expect(applianceIsOn(bindings({ state: "off" }))).toBe(false);
+    expect(applianceIsOn(bindings({ state: null }))).toBe(false);
     expect(applianceIsOn(bindings({}))).toBe(false);
+  });
+
+  it("reads a null state as no state", () => {
+    expect(applianceState(bindings({ state: null, power: 6.5 }))).toBeNull();
   });
 });
 

@@ -63,6 +63,8 @@ interface RunningInstance {
 
 export class RecipeManager {
   private registry = new Map<string, RegisteredRecipe>();
+  /** Spec 214 — the publishing token of each instance's current start. */
+  private publishTokens = new Map<string, object>();
   private running = new Map<string, RunningInstance>();
   private db: Database.Database;
   private eventBus: EventBus;
@@ -471,6 +473,11 @@ export class RecipeManager {
     if (!row) throw new RecipeError("Instance not found", 404);
     if (row.enabled === 1) return;
 
+    // Spec 214 — refused before the flag is written, so the caller gets the 400
+    // and the instance does not stay enabled-but-stopped.
+    const enablingInfo = this.registry.get(row.recipe_id)?.info;
+    if (enablingInfo) this.assertPublishable(instanceId, enablingInfo, rowToInstance(row).params);
+
     this.stmts.setInstanceEnabled.run(1, instanceId);
     const instance = rowToInstance({ ...row, enabled: 1 });
 
@@ -583,11 +590,15 @@ export class RecipeManager {
     // early-return in that case and never release it).
     this.capacityArbiter?.releaseAllFor(instance.id);
 
-    const ctx = this.buildContext(instance.id, instance.recipeId);
+    // Spec 214 — this start's publishing token: a closure left over from a
+    // previous start of the same instance publishes nothing.
+    const publishToken = {};
+    this.publishTokens.set(instance.id, publishToken);
+    const ctx = this.buildContext(instance.id, instance.recipeId, publishToken);
     const info = this.registry.get(instance.recipeId)?.info;
     // Spec 214 — refused here too on the enable and boot paths, which have no
     // request to answer: the caller logs it and the instance stays stopped.
-    const outputs = info ? this.assertPublishable(instance.id, info, instance.params) : [];
+    const outputs = info ? this.assertPublishable(instance.id, info, instance.params, false) : [];
 
     try {
       recipe.validate(instance.params, ctx);
@@ -631,6 +642,7 @@ export class RecipeManager {
     }
     // Spec 214 — a stopped instance publishes nothing any more. Unconditional:
     // a package update may have dropped the declaration the outputs came from.
+    this.publishTokens.delete(instanceId);
     this.equipmentManager.detachRecipeOutputs(instanceId);
 
     this.running.delete(instanceId);
@@ -744,7 +756,7 @@ export class RecipeManager {
     };
   }
 
-  private buildContext(instanceId: string, recipeId: string): RecipeContext {
+  private buildContext(instanceId: string, recipeId: string, publishToken?: object): RecipeContext {
     const onChanged = () => {
       this.eventBus.emit({ type: "recipe.instance.state.changed", instanceId, recipeId });
     };
@@ -766,7 +778,7 @@ export class RecipeManager {
       helpers: {
         ...this.helpers,
         energy: this.buildEnergyHelpers(instanceId),
-        equipmentData: this.buildEquipmentDataHelpers(instanceId),
+        equipmentData: this.buildEquipmentDataHelpers(instanceId, publishToken),
       },
       dispatchOrder: (equipmentId, alias, value) =>
         this.equipmentManager.executeOrder(equipmentId, alias, value, orderSource),
@@ -774,47 +786,82 @@ export class RecipeManager {
   }
 
   /**
-   * Spec 214 — the instance's publishing channel. The validation context
-   * (`temp`) publishes nothing.
+   * Spec 214 — the instance's publishing channel, bound to one start. A
+   * validation context (no token) or a closure from an earlier start of the
+   * same instance publishes nothing.
    */
-  private buildEquipmentDataHelpers(instanceId: string): RecipeEquipmentDataHelpers {
+  private buildEquipmentDataHelpers(
+    instanceId: string,
+    publishToken: object | undefined,
+  ): RecipeEquipmentDataHelpers {
     return {
       publish: (equipmentId, alias, value) =>
-        instanceId === "temp"
+        publishToken === undefined || this.publishTokens.get(instanceId) !== publishToken
           ? { ok: false, reason: "not running" }
           : this.equipmentManager.publishRecipeData(instanceId, equipmentId, alias, value),
     };
   }
 
+  /** Spec 214 — declarations × the equipment ids their slot holds in `params`. */
+  private resolvePublishTargets(
+    info: RecipeInfo,
+    params: Record<string, unknown>,
+  ): RecipeOutputTarget[] {
+    const targets: RecipeOutputTarget[] = [];
+    for (const def of info.publishes ?? []) {
+      const value = params[def.slot];
+      const ids = Array.isArray(value) ? value : [value];
+      for (const id of ids) {
+        if (typeof id === "string" && id !== "") targets.push({ equipmentId: id, def });
+      }
+    }
+    return targets;
+  }
+
   /**
-   * Spec 214 — the equipments and aliases an instance would publish on, from
-   * its params, checked against device bindings and other instances (FR2).
-   * Throws a 400 RecipeError naming the conflict.
+   * Spec 214 FR2 — the outputs an instance may take, or a 400 RecipeError
+   * naming the conflict: devices, the core's own derived aliases, running
+   * instances, and — on a user's request (create, update, enable) — every
+   * other ENABLED instance in the database, running or not. A start (boot,
+   * restart) checks only what runs: two enabled instances left in conflict
+   * (a package update that added a declaration) keep the first one started,
+   * rather than refusing both.
    */
   private assertPublishable(
     instanceId: string | null,
     info: RecipeInfo,
     params: Record<string, unknown>,
+    againstEnabled = true,
   ): RecipeOutputTarget[] {
-    if (!info.publishes || info.publishes.length === 0) return [];
-    const targets: RecipeOutputTarget[] = [];
-    for (const def of info.publishes) {
-      const value = params[def.slot];
-      const ids = Array.isArray(value)
-        ? value
-        : value === undefined || value === null
-          ? []
-          : [value];
-      for (const id of ids) {
-        if (typeof id === "string" && id !== "") targets.push({ equipmentId: id, def });
-      }
-    }
+    const targets = this.resolvePublishTargets(info, params);
+    if (targets.length === 0) return [];
+    if (againstEnabled) this.assertNoEnabledConflict(instanceId, targets);
     try {
-      this.equipmentManager.checkPublishable(instanceId ?? "", targets);
+      return this.equipmentManager.checkPublishable(instanceId ?? "", targets);
     } catch (err) {
       throw new RecipeError(err instanceof Error ? err.message : String(err), 400);
     }
-    return targets;
+  }
+
+  private assertNoEnabledConflict(
+    instanceId: string | null,
+    targets: readonly RecipeOutputTarget[],
+  ): void {
+    const wanted = new Set(targets.map((t) => `${t.equipmentId}\u0000${t.def.alias}`));
+    for (const row of this.stmts.getAllInstances.all() as InstanceRow[]) {
+      if (row.id === instanceId || row.enabled !== 1) continue;
+      const other = this.registry.get(row.recipe_id)?.info;
+      if (!other?.publishes) continue;
+      for (const t of this.resolvePublishTargets(other, rowToInstance(row).params)) {
+        if (wanted.has(`${t.equipmentId}\u0000${t.def.alias}`)) {
+          const name = this.equipmentManager.getById(t.equipmentId)?.name ?? t.equipmentId;
+          throw new RecipeError(
+            `"${name}" already gets "${t.def.alias}" from recipe instance ${row.id} (${other.name})`,
+            400,
+          );
+        }
+      }
+    }
   }
 
   private writeLog(

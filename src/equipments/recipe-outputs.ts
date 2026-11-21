@@ -12,6 +12,20 @@ import type { RecipePublishDef } from "../shared/types.js";
 
 export const RECIPE_OUTPUT_BINDING_PREFIX = "virtual:recipe:";
 
+/**
+ * Aliases the core itself derives on some equipment types (a gate's `state`
+ * from its contacts, a pool cover's `cover_state`): a recipe may not publish
+ * them, or the equipment would carry two values under one alias.
+ */
+export const CORE_VIRTUAL_ALIASES: Readonly<Record<string, readonly string[]>> = {
+  gate: ["state"],
+  pool_cover: ["cover_state"],
+};
+
+export function isCoreVirtualAlias(equipmentType: string, alias: string): boolean {
+  return CORE_VIRTUAL_ALIASES[equipmentType]?.includes(alias) ?? false;
+}
+
 export function recipeOutputBindingId(instanceId: string, alias: string): string {
   return `${RECIPE_OUTPUT_BINDING_PREFIX}${instanceId}:${alias}`;
 }
@@ -100,19 +114,19 @@ export class RecipeOutputs {
     return [...touched];
   }
 
-  /** Drop every output of an instance. Returns the equipments touched. */
-  detach(instanceId: string): string[] {
-    const touched: string[] = [];
+  /** Drop every output of an instance. Returns the outputs removed. */
+  detach(instanceId: string): RecipeOutput[] {
+    const removed: RecipeOutput[] = [];
     for (const [equipmentId, aliases] of this.byEquipment) {
       for (const [alias, output] of aliases) {
         if (output.instanceId === instanceId) {
           aliases.delete(alias);
-          if (!touched.includes(equipmentId)) touched.push(equipmentId);
+          removed.push(output);
         }
       }
       if (aliases.size === 0) this.byEquipment.delete(equipmentId);
     }
-    return touched;
+    return removed;
   }
 
   forEquipment(equipmentId: string): RecipeOutput[] {

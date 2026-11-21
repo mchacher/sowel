@@ -369,7 +369,8 @@ createInstance(params, ctx) {
 - **Le binding.** Tant que l'instance tourne, l'équipement porte `virtual:recipe:<instanceId>:<alias>`, avec votre type, votre catégorie et vos valeurs, et le nom de la recette là où un écran nomme la source d'un binding. Il vaut `null` jusqu'à la première publication, et disparaît quand l'instance s'arrête (désactivée, supprimée, modifiée, paquet mis à jour). Il est toujours historisé.
 - **Publier au démarrage.** Le cœur ne garde rien d'un redémarrage à l'autre : republiez depuis votre `ctx.state` au début de `createInstance`, sinon la valeur reste `null` jusqu'au prochain changement.
 - **Les règles.** Le cœur refuse une déclaration sur un slot qui n'est pas un slot `equipment`, un `enum` sans `enumValues` ou un doublon (la recette ne se charge pas). Il refuse une instance dont l'équipement a déjà cet alias venant d'un appareil, ou d'une autre instance active (`400` qui nomme le conflit). `publish` renvoie `{ ok: false, reason }`, sans jamais lever d'exception, pour un alias non déclaré, un équipement hors du slot, une valeur qui ne correspond pas au type, ou un alias qu'un binding d'appareil a pris depuis. `null` est toujours accepté. Chaque refus est journalisé une fois par instance.
-- **Un appareil a la priorité.** Un binding d'appareil ajouté plus tard sous le même alias remplace le vôtre.
+- **Un appareil a la priorité.** Un binding d'appareil ajouté plus tard sous le même alias remplace le vôtre. Un alias que le cœur calcule lui-même (le `state` d'un portail, le `cover_state` d'une couverture de piscine) ne peut pas être publié.
+- **Arrêt.** Quand l'instance s'arrête, la valeur qu'elle laisse repasse à `null` pour les consommateurs en direct. Une closure d'un démarrage précédent (un timer oublié par `stop()`) ne publie plus rien.
 - **Cœurs plus anciens.** `ctx.helpers.equipmentData` n'existe pas avant la spec 214 : exigez-le avec le `sowelVersion` du paquet, ou vérifiez sa présence.
 
 ## RecipeContext
@@ -399,6 +400,7 @@ Les packages de recettes accèdent aux utilitaires partagés via `ctx.helpers` (
 | `getSunlight()`                                                                | Programmation solaire (spec 126), voir ci-dessous       |
 | `getTariff()`                                                                  | Programmation tarifaire (spec 138), voir ci-dessous     |
 | `energy.claimCapacity()` / `energy.getCapacityState()`                         | Demandes de surplus solaire (spec 140), voir ci-dessous |
+| `equipmentData.publish()`                                                      | Donnée sur un équipement (spec 214), voir plus haut     |
 
 `getSunlight(): { sunrise, sunset, isDaylight }` retourne les heures de soleil courantes (`"HH:MM"`, offsets spec 023 appliqués). À coupler avec l'événement `sunlight.changed` pour se resynchroniser d'un jour à l'autre ; les champs sont `null` tant que les heures ne sont pas calculées ou sans coordonnées maison.
 

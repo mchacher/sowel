@@ -620,13 +620,32 @@ describe("EquipmentManager", () => {
       expect(events.filter((e) => e.type === "equipment.updated")).toHaveLength(2);
     });
 
-    it("gives no state to an appliance with a numeric power and no recipe", () => {
+    it("skips an equipment that no longer exists, keeps the others", () => {
       const eq = appliance();
-      const { dataIds } = seedDevice(db, {
-        dataKeys: [{ key: "power", type: "number", category: "power", value: "6" }],
-      });
-      manager.addDataBinding(eq, dataIds[0]!, "power");
-      expect(state(eq)).toBeUndefined();
+      const kept = manager.checkPublishable("i1", [
+        { equipmentId: "gone", def: STATE },
+        { equipmentId: eq, def: STATE },
+      ]);
+      expect(kept.map((t) => t.equipmentId)).toEqual([eq]);
+    });
+
+    it("refuses the same alias twice on one equipment from one instance", () => {
+      const eq = appliance();
+      expect(() =>
+        manager.checkPublishable("i1", [
+          { equipmentId: eq, def: STATE },
+          { equipmentId: eq, def: { ...STATE, slot: "other" } },
+        ]),
+      ).toThrow(/twice/);
+    });
+
+    it("denies publishing an alias the core derives (a gate's state)", () => {
+      const zone = zoneManager.create({ name: "Allée" });
+      const gate = manager.create({ name: "Portail", type: "gate", zoneId: zone.id }).id;
+      manager.attachRecipeOutputs("i1", "Cycle", [{ equipmentId: gate, def: STATE }]);
+      expect(manager.publishRecipeData("i1", gate, "state", "running").ok).toBe(false);
+      const states = manager.getDataBindingsWithValues(gate).filter((b) => b.alias === "state");
+      expect(states.every((b) => !b.id.startsWith("virtual:recipe:"))).toBe(true);
     });
   });
 

@@ -373,7 +373,8 @@ createInstance(params, ctx) {
 - **The binding.** While the instance runs, the equipment carries `virtual:recipe:<instanceId>:<alias>`, with your type, category and values, and your recipe's name where a surface names a binding's source. It is `null` until your first publish, and goes when the instance stops (disabled, deleted, updated, package updated). It is always historized.
 - **Publish at start.** The core keeps nothing across a restart: republish from your own `ctx.state` at the start of `createInstance`, or the value stays `null` until the next change.
 - **The rules.** The core refuses a declaration on a slot that is not an `equipment` slot, an `enum` without `enumValues` or a duplicate (the recipe does not load). It refuses an instance whose equipment already has that alias from a device, or from another enabled instance (`400` naming the conflict). `publish` returns `{ ok: false, reason }`, never throws, for an alias you did not declare, an equipment outside the slot, a value that does not fit the type, or an alias a device binding took since. `null` always fits. Each refusal is logged once per instance.
-- **A device wins.** A device binding added later with the same alias replaces yours.
+- **A device wins.** A device binding added later with the same alias replaces yours. An alias the core derives itself (a gate's `state`, a pool cover's `cover_state`) cannot be published.
+- **Stop.** When the instance stops, a value it left is cleared to `null` for live consumers. A closure from an earlier start (a timer `stop()` missed) publishes nothing.
 - **Older cores.** `ctx.helpers.equipmentData` is absent before spec 214: require it with your package's `sowelVersion`, or check for it.
 
 ## RecipeContext
@@ -403,6 +404,7 @@ Recipe packages reach shared utilities through `ctx.helpers` (the `RecipeHelpers
 | `getSunlight()`                                                                | Sun-aware scheduling (spec 126) — see below    |
 | `getTariff()`                                                                  | Tariff-aware scheduling (spec 138) — see below |
 | `energy.claimCapacity()` / `energy.getCapacityState()`                         | Solar-surplus claims (spec 140) — see below    |
+| `equipmentData.publish()`                                                      | Data on an equipment (spec 214) — see above    |
 
 `getSunlight(): { sunrise, sunset, isDaylight }` returns the current sun times (`"HH:MM"`, spec 023 offsets applied). Pair it with the `sunlight.changed` event to re-sync across days; fields are `null` when sun times are not yet computed or no home coordinates are configured.
 

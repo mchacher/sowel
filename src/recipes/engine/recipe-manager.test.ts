@@ -417,6 +417,83 @@ describe("RecipeManager", () => {
       expect(stateOf(eqId)).toBeUndefined();
     });
 
+    it("removes the binding when the instance is deleted", () => {
+      manager.registerExternal(cycleDef());
+      const eqId = washer();
+      const instance = manager.createInstance("cycle", { equipment: eqId });
+      manager.deleteInstance(instance.id);
+      expect(stateOf(eqId)).toBeUndefined();
+    });
+
+    it("publishes on every equipment of a list slot", () => {
+      const def = cycleDef("list");
+      def.slots[0] = { ...def.slots[0]!, list: true };
+      manager.registerExternal(def);
+      const a = washer();
+      const b = washer();
+      manager.createInstance("list", { equipment: [a, b] });
+      expect(stateOf(a)?.value).toBeNull();
+      expect(stateOf(b)?.value).toBeNull();
+    });
+
+    it("refuses to enable an instance over an alias an enabled instance publishes", () => {
+      manager.registerExternal(cycleDef());
+      const eqId = washer();
+      const first = manager.createInstance("cycle", { equipment: eqId });
+      manager.disableInstance(first.id);
+      manager.createInstance("cycle", { equipment: eqId });
+      expect(() => manager.enableInstance(first.id)).toThrow(/already gets/);
+      expect(manager.getInstances().find((i) => i.id === first.id)?.enabled).toBe(false);
+    });
+
+    it("refuses an instance over an alias an enabled but stopped instance publishes", () => {
+      manager.registerExternal({
+        ...cycleDef("broken"),
+        createInstance: () => {
+          throw new Error("start fails");
+        },
+      });
+      manager.registerExternal(cycleDef());
+      const eqId = washer();
+      manager.createInstance("broken", { equipment: eqId }); // enabled, not running
+      expect(() => manager.createInstance("cycle", { equipment: eqId })).toThrow(/already gets/);
+    });
+
+    it("denies a closure left over from an earlier start of the same instance", () => {
+      manager.registerExternal(cycleDef());
+      const eqId = washer();
+      const instance = manager.createInstance("cycle", { equipment: eqId });
+      const oldPublish = lastPublish!;
+      manager.restartInstancesOfRecipe("cycle");
+      expect(stateOf(eqId)?.value).toBeNull(); // back, null until the new start publishes
+      expect(oldPublish("running")).toMatchObject({ ok: false });
+      expect(lastPublish!("running")).toEqual({ ok: true });
+      expect(stateOf(eqId)?.id).toBe(`virtual:recipe:${instance.id}:state`);
+    });
+
+    it("refuses an alias the core derives on the equipment (a gate's state)", () => {
+      manager.registerExternal(cycleDef());
+      const zone = zoneManager.create({ name: "Allée" });
+      const gate = equipmentManager.create({ name: "Portail", type: "gate", zoneId: zone.id });
+      expect(() => manager.createInstance("cycle", { equipment: gate.id })).toThrow(
+        /derives "state" itself/,
+      );
+    });
+
+    it("clears the last value for live consumers when the instance stops", () => {
+      manager.registerExternal(cycleDef());
+      const eqId = washer();
+      publishFromStart = "running";
+      const instance = manager.createInstance("cycle", { equipment: eqId });
+      events = [];
+      manager.disableInstance(instance.id);
+      const cleared = events.filter(
+        (e) => e.type === "equipment.data.changed" && e.alias === "state",
+      );
+      expect(cleared).toHaveLength(1);
+      expect(cleared[0]).toMatchObject({ value: null, previous: "running" });
+    });
+
     it("publishes nothing from the validation context", () => {
       let fromValidate: unknown;
       manager.registerExternal({

@@ -4,20 +4,20 @@
 
 ### Slice A — Re-apply the generic UI fixes from PR #1271
 
-- [ ] `ui/src/lib/appliance.ts` (+ test) and the four appliance surfaces, strings.
-- [ ] History chart enum cardinality (+ test), `AnalyseView`, `tooltip-format`, no virtual toggle.
+- [x] `ui/src/lib/appliance.ts` (+ test) and the four appliance surfaces, strings.
+- [x] History chart enum cardinality (+ test), `AnalyseView`, `tooltip-format`, no virtual toggle.
 
 ### Slice B — Recipe outputs in the core
 
-- [ ] Types: `RecipePublishDef`, `publishes`, `RecipeEquipmentDataHelpers`.
-- [ ] `recipe-outputs.ts` + tests.
-- [ ] EquipmentManager: check, attach, detach, publish, virtual binding; tests.
-- [ ] RecipeManager: declaration check, targets, lifecycle, `ctx.helpers.equipmentData`; tests.
-- [ ] HistoryWriter and `/history/bindings`: `virtual:recipe:` prefix; tests.
+- [x] Types: `RecipePublishDef`, `publishes`, `RecipeEquipmentDataHelpers`.
+- [x] `recipe-outputs.ts` + tests.
+- [x] EquipmentManager: check, attach, detach, publish, virtual binding; tests.
+- [x] RecipeManager: declaration check, targets, lifecycle, `ctx.helpers.equipmentData`; tests.
+- [x] HistoryWriter and `/history/bindings`: `virtual:recipe:` prefix; tests.
 
 ### Slice C — Docs
 
-- [ ] Docs delta of the spec, EN and FR.
+- [x] Docs delta of the spec, EN and FR.
 
 ## Test Plan
 
@@ -43,13 +43,20 @@
 | equipment-manager | `checkPublishable` over an alias another instance publishes                                     | throws 400 naming the other instance                           |
 | equipment-manager | detach                                                                                          | binding gone, `equipment.updated` per equipment                |
 | equipment-manager | `list` slot with two equipments                                                                 | one virtual binding on each                                    |
-| equipment-manager | appliance with numeric power, no state, no recipe                                               | no virtual `state`                                             |
 | recipe-manager    | `registerExternal` with a `publishes` on a non-equipment slot / enum without values / duplicate | throws, recipe not registered                                  |
 | recipe-manager    | create an instance whose target alias is device-bound                                           | `RecipeError` 400                                              |
 | recipe-manager    | instance publishes in `start`                                                                   | value visible on the equipment, event emitted                  |
 | recipe-manager    | disable, delete, update to another equipment                                                    | binding removed / moved                                        |
 | recipe-manager    | `start` throws after attach                                                                     | outputs detached                                               |
 | recipe-manager    | validation context `publish`                                                                    | denied, nothing stored                                         |
+| recipe-manager    | delete; list slot with two equipments                                                           | binding gone; one binding on each                              |
+| recipe-manager    | enable A over an alias B (enabled) publishes                                                    | 400, A stays disabled                                          |
+| recipe-manager    | create over an alias an enabled but stopped instance publishes                                  | 400                                                            |
+| recipe-manager    | old closure publishes after `restartInstancesOfRecipe`                                          | denied; new closure accepted; binding back at `null`           |
+| recipe-manager    | instance on a gate declaring `state`                                                            | 400, the core derives it                                       |
+| recipe-manager    | instance stopped while it published `running`                                                   | one `equipment.data.changed` to `null`                         |
+| equipment-manager | a missing equipment among the targets                                                           | skipped, the others kept                                       |
+| equipment-manager | same alias twice on one equipment from one instance                                             | 400                                                            |
 | history-writer    | `virtual:recipe:` enum change                                                                   | point written with index                                       |
 | history-writer    | gate virtual `state` change                                                                     | not written (retro-compat)                                     |
 

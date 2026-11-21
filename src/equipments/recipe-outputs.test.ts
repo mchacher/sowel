@@ -82,7 +82,12 @@ describe("RecipeOutputs", () => {
       { equipmentId: "e2", def: STATE },
     ]);
     outputs.attach("i2", "Other", [{ equipmentId: "e3", def: STATE }]);
-    expect(outputs.detach("i1").sort()).toEqual(["e1", "e2"]);
+    expect(
+      outputs
+        .detach("i1")
+        .map((o) => o.equipmentId)
+        .sort(),
+    ).toEqual(["e1", "e2"]);
     expect(outputs.forEquipment("e1")).toEqual([]);
     expect(outputs.forEquipment("e3")).toHaveLength(1);
   });

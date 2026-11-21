@@ -58,6 +58,10 @@ them to show at all.
 
 - The `appliance-cycle` recipe itself: its own repository and spec, built on this one.
 - Publishing on a zone, or on an equipment outside the recipe's slots.
+- Closing `ctx.equipmentManager`: recipes still receive the raw manager (and the event bus), as
+  before this spec, so a recipe could reach the output methods directly. The channel is closed
+  through `ctx.helpers.equipmentData`; hardening the raw handles is a recipe-isolation question of
+  its own, like spec 111 for plugins.
 - Publishing orders (a recipe-defined order alias).
 - Persisting published values in the core across a restart: the recipe republishes from its own
   persisted state (`ctx.state`).
@@ -87,14 +91,22 @@ them to show at all.
 
 ### FR2 — Validation of an instance
 
-When an instance is created, updated or enabled, for each declaration and each equipment the
-slot resolves to (one, or several for a `list` slot), the instance is refused (`400` on create /
-update, a logged error and no start on enable or at boot) when:
+For each declaration and each equipment the slot resolves to (one, or several for a `list` slot),
+the instance is refused with a `400` naming the equipment, the alias and, for 4, the other
+instance, when:
 
-1. the equipment already has a **device-bound** data binding with that alias, or
-2. another **enabled** instance already publishes that alias on that equipment.
+1. the equipment already has a **device-bound** data binding with that alias;
+2. the core derives that alias itself on that equipment type (a `gate`'s `state`, a
+   `pool_cover`'s `cover_state`), or two slots of the instance put the same alias on one
+   equipment;
+3. another **running** instance publishes that alias on that equipment;
+4. on create, update and enable only: another **enabled** instance does, running or not. Enable
+   checks before writing the flag, so a refused instance stays disabled.
 
-The message names the equipment, the alias and, for 2, the other instance.
+A start without a request (boot, package update) checks 1 to 3 only: two enabled instances left in
+conflict keep the one started first, rather than both refused. An equipment of the slot that no
+longer exists is skipped, so one deleted member of a list does not stop the instance.
+(Amended after the agent review.)
 
 ### FR3 — Publishing
 
@@ -118,9 +130,13 @@ The message names the equipment, the alias and, for 2, the other instance.
    a surface can say where the value comes from.
 2. A device binding with the same alias added later wins: the virtual binding is no longer
    injected and `publish` is denied for that alias (FR3.2), with one `warn` log per instance.
-3. When the instance stops (disabled, deleted, updated, recipe package updated, core shutdown), its virtual bindings disappear and `equipment.updated` is emitted for each equipment
-   concerned. No value is left behind.
-4. When the instance starts, `equipment.updated` is emitted for each equipment concerned, so
+3. When the instance stops (disabled, deleted, updated, recipe package updated, core shutdown), its
+   virtual bindings disappear and `equipment.updated` is emitted for each equipment concerned. A
+   value it left is first cleared with `equipment.data.changed` to `null`, so live consumers
+   (a `state-watch`, the UI) do not keep it. History keeps the last point written.
+4. Each start gets its own publishing token: a closure left over from an earlier start of the same
+   instance (a timer `stop()` forgot) is denied, so two versions never write the same alias.
+5. When the instance starts, `equipment.updated` is emitted for each equipment concerned, so
    caches (history) pick the binding up before the first value.
 
 ### FR5 — History
@@ -136,8 +152,9 @@ The message names the equipment, the alias and, for 2, the other instance.
 1. **Appliance surfaces.** `AppliancePanel`, the appliance cases of `MobileWidgetCard`,
    `EquipmentWidget` and `CompactEquipmentCard` take the machine as on only when
    `power === true`. With a metering plug, `power` is a number of watts, so all four show **Off**
-   mid-cycle today. They read on/off from `state` when it is known and not `off`, else a boolean
-   `power`, else a numeric `power ≥ 1` W, through one helper `ui/src/lib/appliance.ts`, and label
+   mid-cycle today. They read on/off from the power when there is one (a boolean `power`, else a
+   numeric `power ≥ 1` W), else from `state` (known and not `off`), through one helper
+   `ui/src/lib/appliance.ts`, and label
    `ready` / `finished` ("Prêt" / "Terminé").
 2. **History chart.** An `appliance_state` series is drawn on the 0/1 states axis, which clips
    more than two values. A series declaring more than two `enumValues` is charted like the
@@ -149,18 +166,19 @@ These, with FR5.2 and FR5.3, were written and reviewed in PR #1271 and are re-ap
 
 ## Acceptance Criteria
 
-- [ ] A recipe declaring `publishes` on its `equipment` slot exposes a `virtual:recipe:…` binding
+- [x] A recipe declaring `publishes` on its `equipment` slot exposes a `virtual:recipe:…` binding
       on that equipment while it runs, `null` before its first publish.
-- [ ] `publish` of a declared alias on the slot's equipment emits `equipment.data.changed` once
+- [x] `publish` of a declared alias on the slot's equipment emits `equipment.data.changed` once
       per change; an undeclared alias, another equipment or a wrong value is denied and logged.
-- [ ] Creating an instance over a device-bound alias, or over an alias another enabled instance
+- [x] Creating an instance over a device-bound alias, or over an alias another enabled instance
       publishes, is refused with `400`.
-- [ ] Disabling or deleting the instance removes the virtual binding.
-- [ ] A published enum is written to InfluxDB and listed by `/history/bindings` with `virtual`.
+- [x] Disabling or deleting the instance removes the virtual binding.
+- [x] A published enum is written to InfluxDB and listed by `/history/bindings` with `virtual`.
 - [ ] A `state-watch` instance on a published `state` raises its alarm on the published value.
-- [ ] The four appliance surfaces show a metered machine on mid-cycle, and label `ready` /
+- [x] The four appliance surfaces show a metered machine on mid-cycle, and label `ready` /
       `finished`.
-- [ ] A published enum of four values is charted off the 0/1 axis.
+- [x] A published enum of four values is charted off the 0/1 axis.
+      _(Checked with the `appliance-cycle` recipe: no recipe publishes yet.)_
 
 ## Edge Cases
 

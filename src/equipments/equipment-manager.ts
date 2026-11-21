@@ -45,6 +45,7 @@ import { ELECTRIC_VEHICLE_CATEGORY_ALIASES } from "../shared/electric-vehicle-co
 import type { Device } from "../shared/types.js";
 import {
   RecipeOutputs,
+  isCoreVirtualAlias,
   recipeOutputBindingId,
   type RecipeOutput,
   type RecipeOutputTarget,
@@ -906,7 +907,10 @@ export class EquipmentManager {
     // binding carries the same alias (a device always wins).
     const deviceAliases = new Set(rows.map((r) => r.alias));
     for (const output of this.recipeOutputs.forEquipment(equipmentId)) {
-      if (!deviceAliases.has(output.def.alias)) {
+      if (
+        !deviceAliases.has(output.def.alias) &&
+        !(equipment && isCoreVirtualAlias(equipment.type, output.def.alias))
+      ) {
         bindings.unshift(this.buildRecipeOutputBinding(output));
       }
     }
@@ -1838,13 +1842,37 @@ export class EquipmentManager {
   }
 
   /**
-   * Refuse an instance whose outputs would sit on a device-bound alias, or on
-   * one another instance already publishes (spec 214 FR2). Throws a 400.
+   * The outputs an instance may take, from what its params name (spec 214
+   * FR2). An equipment that no longer exists is skipped, so one deleted member
+   * of a list slot does not stop the instance. Throws a 400 when an output
+   * would sit on a device-bound alias, an alias the core derives itself, an
+   * alias another running instance publishes, or twice on one equipment.
+   * Conflicts with instances enabled but not running are the RecipeManager's.
    */
-  checkPublishable(instanceId: string, targets: readonly RecipeOutputTarget[]): void {
-    for (const { equipmentId, def } of targets) {
+  checkPublishable(
+    instanceId: string,
+    targets: readonly RecipeOutputTarget[],
+  ): RecipeOutputTarget[] {
+    const kept: RecipeOutputTarget[] = [];
+    const seen = new Set<string>();
+    for (const target of targets) {
+      const { equipmentId, def } = target;
       const equipment = this.getById(equipmentId);
-      if (!equipment) throw new EquipmentError(`Equipment not found: ${equipmentId}`, 400);
+      if (!equipment) continue;
+      const key = `${equipmentId}\u0000${def.alias}`;
+      if (seen.has(key)) {
+        throw new EquipmentError(
+          `"${equipment.name}" would get "${def.alias}" twice from this instance`,
+          400,
+        );
+      }
+      seen.add(key);
+      if (isCoreVirtualAlias(equipment.type, def.alias)) {
+        throw new EquipmentError(
+          `"${equipment.name}" derives "${def.alias}" itself: a recipe cannot publish it`,
+          400,
+        );
+      }
       if (this.deviceBoundAliases(equipmentId).has(def.alias)) {
         throw new EquipmentError(
           `"${equipment.name}" already has "${def.alias}" from a device: a recipe cannot publish it`,
@@ -1858,7 +1886,9 @@ export class EquipmentManager {
           400,
         );
       }
+      kept.push(target);
     }
+    return kept;
   }
 
   /** An instance starts: its outputs appear, `null` until published (FR4.4). */
@@ -1872,12 +1902,27 @@ export class EquipmentManager {
     }
   }
 
-  /** An instance stops: its outputs go (FR4.3). */
+  /**
+   * An instance stops: its outputs go (FR4.3). A value it left is cleared for
+   * live consumers (`null`), so a running state does not outlive its recipe.
+   */
   detachRecipeOutputs(instanceId: string): void {
     for (const key of this.recipeDenialsLogged) {
       if (key.startsWith(`${instanceId}\u0000`)) this.recipeDenialsLogged.delete(key);
     }
-    for (const equipmentId of this.recipeOutputs.detach(instanceId)) {
+    const removed = this.recipeOutputs.detach(instanceId);
+    for (const output of removed) {
+      if (output.value !== null) {
+        this.eventBus.emit({
+          type: "equipment.data.changed",
+          equipmentId: output.equipmentId,
+          alias: output.def.alias,
+          value: null,
+          previous: output.value,
+        });
+      }
+    }
+    for (const equipmentId of new Set(removed.map((o) => o.equipmentId))) {
       this.emitEquipmentUpdated(equipmentId);
     }
   }
@@ -1895,6 +1940,8 @@ export class EquipmentManager {
     const deny = (reason: string) => {
       const key = `${instanceId}\u0000${equipmentId}\u0000${alias}\u0000${reason}`;
       if (!this.recipeDenialsLogged.has(key)) {
+        // Bounded: a recipe building aliases on the fly cannot grow it forever.
+        if (this.recipeDenialsLogged.size >= 1000) this.recipeDenialsLogged.clear();
         this.recipeDenialsLogged.add(key);
         this.logger.warn(
           { instanceId, equipmentId, alias, reason },
@@ -1904,7 +1951,11 @@ export class EquipmentManager {
       return { ok: false as const, reason };
     };
     try {
-      if (!this.getById(equipmentId)) return deny("no such equipment");
+      const equipment = this.getById(equipmentId);
+      if (!equipment) return deny("no such equipment");
+      if (isCoreVirtualAlias(equipment.type, alias)) {
+        return deny(`"${alias}" is derived by the core on this equipment`);
+      }
       if (this.deviceBoundAliases(equipmentId).has(alias)) {
         return deny(`"${alias}" is bound to a device on this equipment`);
       }
