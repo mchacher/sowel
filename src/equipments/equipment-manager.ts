@@ -24,6 +24,7 @@ import type {
   SolarProfile,
   TimedCommand,
   TimedAction,
+  ApplianceCycleThresholds,
 } from "../shared/types.js";
 import {
   computeBindingCandidates,
@@ -43,6 +44,12 @@ import { RETRY_CHANNEL } from "./order-confirmation-tracker.js";
 import { EV_CHARGER_CATEGORY_ALIASES } from "../shared/ev-charger-contract.js";
 import { ELECTRIC_VEHICLE_CATEGORY_ALIASES } from "../shared/electric-vehicle-contract.js";
 import type { Device } from "../shared/types.js";
+import {
+  APPLIANCE_CYCLE_STATES,
+  APPLIANCE_STATE_BINDING_PREFIX,
+  ApplianceCycleTracker,
+  validateCycleThresholds,
+} from "./appliance-cycle-tracker.js";
 
 /**
  * Equipment types whose contract binds points by category (specs 182, 183):
@@ -140,6 +147,8 @@ interface UpdateEquipmentInput {
   usualVehicleId?: string | null;
   /** Spec 174 phase 2 — the timed command this equipment offers. `null` clears it. */
   timedCommand?: TimedCommand | null;
+  /** Spec 213 — an appliance's cycle thresholds. `null` restores the defaults. */
+  applianceCycle?: ApplianceCycleThresholds | null;
 }
 
 // ============================================================
@@ -165,6 +174,9 @@ export class EquipmentManager {
   /** Tracks integrations with recent order failures — for alarm raise/resolve. */
   private failedIntegrations = new Set<string>();
 
+  /** Spec 213 — run state of appliances read on their power. */
+  private applianceCycle: ApplianceCycleTracker;
+
   constructor(
     db: Database.Database,
     eventBus: EventBus,
@@ -178,6 +190,11 @@ export class EquipmentManager {
     this.deviceManager = deviceManager;
     this.logger = logger.child({ module: "equipment-manager" });
     this.stmts = this.prepareStatements();
+    this.applianceCycle = new ApplianceCycleTracker({
+      eventBus,
+      logger: this.logger,
+      getThresholds: (equipmentId) => this.getById(equipmentId)?.applianceCycle,
+    });
 
     // Listen for device data changes to propagate to equipment bindings
     this.unsubscribe = this.eventBus.on((event) => {
@@ -192,6 +209,18 @@ export class EquipmentManager {
         } catch (err) {
           this.logger.error({ err }, "Error handling device.data.updated for equipment bindings");
         }
+      } else if (event.type === "device.removed") {
+        // Spec 213 — a removed plug takes its power binding with it (ON DELETE
+        // CASCADE, no removeDataBinding): stop tracking what lost its source.
+        try {
+          for (const equipmentId of this.applianceCycle.trackedIds()) {
+            if (this.applianceCycleSource(equipmentId) === null) {
+              this.applianceCycle.forget(equipmentId);
+            }
+          }
+        } catch (err) {
+          this.logger.error({ err }, "Error re-checking appliance cycles after a device removal");
+        }
       }
     });
   }
@@ -199,6 +228,7 @@ export class EquipmentManager {
   destroy(): void {
     this.unsubscribe?.();
     this.unsubscribe = null;
+    this.applianceCycle.destroy();
   }
 
   /** Register a provider that supplies computed data entries for equipments. */
@@ -266,7 +296,7 @@ export class EquipmentManager {
          metering_parent_id = @meteringParentId, separate_supply = @separateSupply,
          local_production = @localProduction, family = @family,
          plug_in_hybrid = @plugInHybrid, usual_vehicle_id = @usualVehicleId,
-         timed_command = @timedCommand,
+         timed_command = @timedCommand, appliance_cycle = @applianceCycle,
          updated_at = datetime('now') WHERE id = @id`,
       ),
       updateEquipmentEnergyProfile: this.db.prepare(
@@ -614,6 +644,28 @@ export class EquipmentManager {
           ? input.usualVehicleId
           : existing.usual_vehicle_id;
 
+    // Spec 213 — only an appliance derives a run state from its power. A type
+    // change away from appliance clears the thresholds.
+    if (input.applianceCycle !== undefined && input.applianceCycle !== null) {
+      if (newType !== "appliance") {
+        throw new EquipmentError("Only an appliance has cycle detection thresholds", 400);
+      }
+      const invalid = validateCycleThresholds(input.applianceCycle);
+      if (invalid) throw new EquipmentError(invalid, 400);
+    }
+    const applianceCycle =
+      newType !== "appliance"
+        ? null
+        : input.applianceCycle !== undefined
+          ? input.applianceCycle === null
+            ? null
+            : JSON.stringify({
+                startW: input.applianceCycle.startW,
+                endW: input.applianceCycle.endW,
+                endDelayS: input.applianceCycle.endDelayS,
+              })
+          : existing.appliance_cycle;
+
     this.stmts.updateEquipment.run({
       id,
       name: input.name ?? existing.name,
@@ -690,6 +742,7 @@ export class EquipmentManager {
       plugInHybrid:
         input.plugInHybrid !== undefined ? (input.plugInHybrid ? 1 : 0) : existing.plug_in_hybrid,
       usualVehicleId,
+      applianceCycle,
     });
 
     // Spec 193 — a vehicle that stops being one is nobody's usual vehicle.
@@ -703,6 +756,14 @@ export class EquipmentManager {
     if (input.type !== undefined && input.type !== existing.type) {
       this.retagOrderBindingOverrides(id, equipment.type);
       this.retagDataBindingOverrides(id, equipment.type);
+    }
+
+    // Spec 213 — new thresholds apply to the current power at once; a type
+    // change starts the derived state over (or ends it).
+    if (newType !== existing.type) {
+      this.applianceCycle.forget(id);
+    } else if (applianceCycle !== existing.appliance_cycle) {
+      this.applianceCycle.reevaluate(id, this.applianceCyclePower(id));
     }
 
     this.logger.info({ equipmentId: id, name: equipment.name }, "Equipment updated");
@@ -801,6 +862,7 @@ export class EquipmentManager {
     }
 
     this.stmts.deleteEquipment.run(id);
+    this.applianceCycle.forget(id);
     // Spec 193 — the chargers naming a removed vehicle lose it.
     const chargers = this.releaseUsualVehicle(id);
     this.logger.info({ equipmentId: id, name: existing.name }, "Equipment deleted");
@@ -848,6 +910,7 @@ export class EquipmentManager {
     const categoryOverride = inferDataBindingCategory(equipment.type, alias);
 
     const id = randomUUID();
+    const cycleSourceBefore = this.applianceCycleSource(equipmentId);
     try {
       this.stmts.insertDataBinding.run({ id, equipmentId, deviceDataId, alias, categoryOverride });
     } catch (err) {
@@ -858,6 +921,7 @@ export class EquipmentManager {
     }
 
     this.logger.info({ equipmentId, alias, deviceDataId }, "DataBinding added");
+    this.forgetCycleIfSourceChanged(equipmentId, cycleSourceBefore);
     this.emitEquipmentUpdated(equipmentId);
     return { id, equipmentId, deviceDataId, alias };
   }
@@ -868,9 +932,20 @@ export class EquipmentManager {
       throw new EquipmentError("DataBinding not found", 404);
     }
 
+    const cycleSourceBefore = this.applianceCycleSource(equipmentId);
     this.stmts.deleteDataBinding.run(bindingId);
     this.logger.info({ equipmentId, bindingId }, "DataBinding removed");
+    this.forgetCycleIfSourceChanged(equipmentId, cycleSourceBefore);
     this.emitEquipmentUpdated(equipmentId);
+  }
+
+  /**
+   * Spec 213 — the derived run state starts over only when what it reads
+   * changes (another power binding, a state now reported by a device). Binding
+   * the plug's energy mid-cycle must not reset a running cycle.
+   */
+  private forgetCycleIfSourceChanged(equipmentId: string, before: string | null): void {
+    if (this.applianceCycleSource(equipmentId) !== before) this.applianceCycle.forget(equipmentId);
   }
 
   getDataBindingsWithValues(equipmentId: string): DataBindingWithValue[] {
@@ -890,6 +965,10 @@ export class EquipmentManager {
       const state = deriveCoverState(positionBinding);
       bindings.unshift(this.buildCoverStateBinding(equipmentId, state));
     }
+
+    // Spec 213 — an appliance with a measured power and no reported state gets
+    // one derived from that power, injected once the power's staleness is known.
+    const cyclePower = equipment ? applianceCyclePowerBinding(equipment, bindings) : null;
 
     // Annotate staleness on streaming bindings (spec 116).
     const now = Date.now();
@@ -920,8 +999,36 @@ export class EquipmentManager {
         );
       }
     }
+    if (cyclePower) {
+      // As fresh as the power it is read on.
+      const applianceState = this.buildApplianceStateBinding(equipmentId, cyclePower);
+      applianceState.stale = cyclePower.stale;
+      bindings.unshift(applianceState);
+    }
 
     return bindings;
+  }
+
+  /** Spec 213 — the power binding the derived run state reads, or `null` when none applies. */
+  private applianceCyclePowerOf(equipmentId: string): DataBindingWithValue | null {
+    const equipment = this.getById(equipmentId);
+    if (!equipment) return null;
+    const rows = this.stmts.getDataBindingsWithValues.all(equipmentId) as DataBindingJoinRow[];
+    return applianceCyclePowerBinding(equipment, rows.map(rowToDataBindingWithValue));
+  }
+
+  /** Spec 213 — the id of that power binding: what the tracked state was built on. */
+  private applianceCycleSource(equipmentId: string): string | null {
+    return this.applianceCyclePowerOf(equipmentId)?.id ?? null;
+  }
+
+  /**
+   * Spec 213 — the current power of an equipment whose run state is derived
+   * from it, or `null` (not such an equipment, or no reading yet).
+   */
+  private applianceCyclePower(equipmentId: string): number | null {
+    const power = this.applianceCyclePowerOf(equipmentId);
+    return power && typeof power.value === "number" ? power.value : null;
   }
 
   /**
@@ -1784,6 +1891,42 @@ export class EquipmentManager {
     };
   }
 
+  /** Spec 213 — the virtual `state` of an appliance, read on its power. */
+  private buildApplianceStateBinding(
+    equipmentId: string,
+    power: DataBindingWithValue,
+  ): DataBindingWithValue {
+    // An outdated reading (plug offline across a restart) is no ground to start
+    // from: the state stays unknown until the plug reports again. Outdated by
+    // the power's own freshness budget (spec 175); the spec 116 `stale` flag
+    // never applies to an appliance's power.
+    const updatedMs = power.lastUpdated ? Date.parse(power.lastUpdated) : NaN;
+    const outdated =
+      power.freshnessBudgetMs !== undefined &&
+      !Number.isNaN(updatedMs) &&
+      Date.now() - updatedMs > power.freshnessBudgetMs;
+    const watts = typeof power.value === "number" && !outdated ? power.value : null;
+    const state = this.applianceCycle.getState(equipmentId, watts);
+    const since = this.applianceCycle.getSince(equipmentId);
+    return {
+      id: `${APPLIANCE_STATE_BINDING_PREFIX}${equipmentId}`,
+      equipmentId,
+      deviceDataId: "",
+      alias: "state",
+      deviceId: "",
+      deviceName: "",
+      key: "appliance_state",
+      type: "enum" as DataType,
+      category: "appliance_state" as DataCategory,
+      enumValues: [...APPLIANCE_CYCLE_STATES],
+      value: state,
+      unit: undefined,
+      lastUpdated: power.lastUpdated,
+      lastChanged: since !== null ? new Date(since).toISOString() : power.lastUpdated,
+      stale: power.stale,
+    };
+  }
+
   /** Build a virtual DataBindingWithValue for pool cover state. */
   private buildCoverStateBinding(
     equipmentId: string,
@@ -1851,6 +1994,18 @@ export class EquipmentManager {
         previous,
         ...(sourceTimestamp !== undefined && { sourceTimestamp }),
       });
+
+      // Spec 213 — an appliance's power drives its derived run state.
+      if (
+        equipment?.type === "appliance" &&
+        binding.alias === "power" &&
+        typeof value === "number" &&
+        sourceTimestamp === undefined
+      ) {
+        if (this.applianceCycleSource(binding.equipment_id) !== null) {
+          this.applianceCycle.onPower(binding.equipment_id, value);
+        }
+      }
 
       // For gates, also emit derived abstract state
       if (equipment?.type === "gate") {
@@ -1929,6 +2084,7 @@ interface EquipmentRow {
   plug_in_hybrid: number;
   usual_vehicle_id: string | null;
   timed_command: string | null;
+  appliance_cycle: string | null;
   created_at: string;
   updated_at: string;
 }
@@ -2013,6 +2169,31 @@ function parseEnergyProfile(json: string | null): EnergyLoadProfile | undefined 
     return undefined;
   } catch {
     return undefined;
+  }
+}
+
+/**
+ * Spec 213 — the power binding an appliance's run state is derived from, or
+ * `null` when the derived state does not apply: not an appliance, no numeric
+ * `power`, or a `state` reported by a device (it always wins).
+ */
+export function applianceCyclePowerBinding(
+  equipment: Equipment,
+  bindings: readonly DataBindingWithValue[],
+): DataBindingWithValue | null {
+  if (equipment.type !== "appliance") return null;
+  if (bindings.some((b) => b.alias === "state" && !b.id.startsWith("virtual:"))) return null;
+  return bindings.find((b) => b.alias === "power" && b.type === "number") ?? null;
+}
+
+/** Parse the appliance_cycle JSON column (spec 213). A corrupt row reads as the defaults. */
+function parseApplianceCycle(json: string | null): ApplianceCycleThresholds | null {
+  if (!json) return null;
+  try {
+    const parsed = JSON.parse(json) as ApplianceCycleThresholds;
+    return validateCycleThresholds(parsed) === null ? parsed : null;
+  } catch {
+    return null;
   }
 }
 
@@ -2102,6 +2283,9 @@ function rowToEquipment(row: EquipmentRow): Equipment {
     ...(row.plug_in_hybrid === 1 && { plugInHybrid: true }),
     ...(row.usual_vehicle_id !== null && { usualVehicleId: row.usual_vehicle_id }),
     timedCommand: parseTimedCommand(row.timed_command),
+    ...(row.appliance_cycle !== null && {
+      applianceCycle: parseApplianceCycle(row.appliance_cycle),
+    }),
     createdAt: toISOUtc(row.created_at),
     updatedAt: toISOUtc(row.updated_at),
   };

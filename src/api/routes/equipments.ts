@@ -20,6 +20,7 @@ import type {
   EquipmentType,
   SolarProfile,
   TimedCommand,
+  ApplianceCycleThresholds,
 } from "../../shared/types.js";
 import { BUDGET_LEARNING_MS, classifyPowerReading } from "../../shared/reading-freshness.js";
 import type { Logger } from "../../core/logger.js";
@@ -92,6 +93,19 @@ const updateEquipmentBodySchema = {
     plugInHybrid: { type: "boolean" },
     // Spec 193 — an EV charger's usual vehicle (an electric_vehicle id), or null.
     usualVehicleId: { type: ["string", "null"], minLength: 1 },
+    // Spec 213 — an appliance's cycle detection thresholds, or null for the
+    // defaults. Cross-field rules (endW ≤ startW, delay range) are the
+    // manager's, which answers 400 naming the field.
+    applianceCycle: {
+      type: ["object", "null"],
+      properties: {
+        startW: { type: "number" },
+        endW: { type: "number" },
+        endDelayS: { type: "number" },
+      },
+      required: ["startW", "endW", "endDelayS"],
+      additionalProperties: false,
+    },
     // Spec 174 phase 2 — the timed command this equipment offers, or null to
     // clear it. `value` and `revertValue` are deliberately unconstrained: an
     // order carries a boolean, an enum string, a number or nothing at all
@@ -347,6 +361,7 @@ export function registerEquipmentRoutes(app: FastifyInstance, deps: EquipmentsDe
       plugInHybrid?: boolean;
       usualVehicleId?: string | null;
       timedCommand?: TimedCommand | null;
+      applianceCycle?: ApplianceCycleThresholds | null;
     };
   }>(
     "/api/v1/equipments/:id",
@@ -575,6 +590,7 @@ export function registerEquipmentRoutes(app: FastifyInstance, deps: EquipmentsDe
           plugInHybrid: body.plugInHybrid,
           usualVehicleId: body.usualVehicleId,
           timedCommand: body.timedCommand,
+          applianceCycle: body.applianceCycle,
         });
         if (!equipment) {
           return reply.code(404).send({ error: "Equipment not found" });

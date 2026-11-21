@@ -220,6 +220,8 @@ Rules worth knowing before calling it:
 
 `PUT /api/v1/equipments/:id` accepts `family` (spec 208, migration `045`): one of `lighting`, `openings`, `climate`, `water`, `energy`, `sensors`, or `null` to clear it. Only a `switch` carries one (a plug that drives a radiator is `climate`); a non-null family on any other resulting type is refused with `400 FamilyNotApplicable`, and a switch retyped to something else loses it. `GET` returns it only when set.
 
+`PUT /api/v1/equipments/:id` accepts `applianceCycle` (spec 213, migration `046`): `{ startW, endW, endDelayS }`, or `null` for the defaults (15 W, 10 W, 300 s). The rules are `1 < endW ≤ startW ≤ 5000` and a whole `endDelayS` between 30 and 3600; a set that breaks them, or one sent to an equipment that is not an `appliance`, is refused with `400` and a message naming the field. An equipment retyped away from `appliance` loses it. `GET` returns it only when set.
+
 `PUT /api/v1/equipments/:id` accepts `trackOrderOutcome` (`true` / `false`, or `null` for the type's default: on for `gate` and `door`, off for `shutter` and `awning`; spec 188 O10, migration `038`). It accepts `type`. The server checks only that the type exists; the edit form offers a change only between `shutter`, `awning` and `door` (spec 190), whose bindings stay valid. Zone aggregated data carries `doorsOpen` / `doorsTotal` for `door` equipments (spec 190).
 
 `PUT /api/v1/equipments/:id` accepts `timedCommand` and validates it against the equipment's own bindings, so a configuration naming an order it does not carry is refused where it is written rather than where it is fired:
@@ -470,16 +472,16 @@ Live updates on the `energy` WebSocket topic: `energy.ev_session.updated` (`{ se
 
 ## History
 
-| Method | Path                                               | Description                                                                                                |
-| ------ | -------------------------------------------------- | ---------------------------------------------------------------------------------------------------------- |
-| `GET`  | `/api/v1/history/status`                           | History module status (connected, historized bindings count, stats).                                       |
-| `GET`  | `/api/v1/history/retention`                        | Retention and downsampling status for all InfluxDB buckets/tasks.                                          |
-| `GET`  | `/api/v1/history/bindings/:equipmentId`            | List historize settings for an equipment's data bindings.                                                  |
-| `PUT`  | `/api/v1/history/bindings/:equipmentId/:bindingId` | Set historize flag. Body: `{ historize }` (null, 0, or 1).                                                 |
-| `GET`  | `/api/v1/history/sparkline/zone/:zoneId/:category` | Zone-level 24h sparkline data (e.g. temperature trend).                                                    |
-| `GET`  | `/api/v1/history/sparkline/:equipmentId/:alias`    | Equipment-level 24h sparkline data.                                                                        |
-| `GET`  | `/api/v1/history/:equipmentId`                     | List historized aliases for an equipment.                                                                  |
-| `GET`  | `/api/v1/history/:equipmentId/:alias`              | Query time-series data. Query: `?from=-24h&to=&aggregation=auto`. Aggregations: `raw`, `1h`, `1d`, `auto`. |
+| Method | Path                                               | Description                                                                                                                                                                            |
+| ------ | -------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `GET`  | `/api/v1/history/status`                           | History module status (connected, historized bindings count, stats).                                                                                                                   |
+| `GET`  | `/api/v1/history/retention`                        | Retention and downsampling status for all InfluxDB buckets/tasks.                                                                                                                      |
+| `GET`  | `/api/v1/history/bindings/:equipmentId`            | List historize settings for an equipment's data bindings, with `enumValues` on an enum. An appliance's derived run state (spec 213) is listed with `virtual: true`, always historized. |
+| `PUT`  | `/api/v1/history/bindings/:equipmentId/:bindingId` | Set historize flag. Body: `{ historize }` (null, 0, or 1).                                                                                                                             |
+| `GET`  | `/api/v1/history/sparkline/zone/:zoneId/:category` | Zone-level 24h sparkline data (e.g. temperature trend).                                                                                                                                |
+| `GET`  | `/api/v1/history/sparkline/:equipmentId/:alias`    | Equipment-level 24h sparkline data.                                                                                                                                                    |
+| `GET`  | `/api/v1/history/:equipmentId`                     | List historized aliases for an equipment.                                                                                                                                              |
+| `GET`  | `/api/v1/history/:equipmentId/:alias`              | Query time-series data. Query: `?from=-24h&to=&aggregation=auto`. Aggregations: `raw`, `1h`, `1d`, `auto`.                                                                             |
 
 ---
 

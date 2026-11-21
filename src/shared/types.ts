@@ -476,6 +476,21 @@ export interface Equipment {
    * asks two questions: draw the control at all, and is it counting down.
    */
   timedCommand?: TimedCommand | null;
+  /** Spec 213 — thresholds of the run state an `appliance` derives from its
+   *  measured power. Absent / `null` = `APPLIANCE_CYCLE_DEFAULTS`. Only an
+   *  appliance carries one. */
+  applianceCycle?: ApplianceCycleThresholds | null;
+}
+
+/**
+ * Spec 213 — when an appliance is running and when its cycle is over, read on
+ * its power. Running above `startW`; finished once the power has stayed below
+ * `endW` for `endDelayS` seconds.
+ */
+export interface ApplianceCycleThresholds {
+  startW: number;
+  endW: number;
+  endDelayS: number;
 }
 
 /**

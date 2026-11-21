@@ -454,6 +454,8 @@ export interface Equipment {
   /** Spec 174 phase 2 — the timed command this equipment offers, absent when it
    *  offers none. Configuration; the window running is `timedAction`. */
   timedCommand?: TimedCommand | null;
+  /** Spec 213 — an appliance's cycle detection thresholds. Absent = the defaults. */
+  applianceCycle?: ApplianceCycleThresholds | null;
   /** Spec 160 — declared array geometry. */
   solarProfile?: SolarProfile;
 }
@@ -763,6 +765,13 @@ export interface HistoryStatus {
   stats: { pointsWritten24h: number; errors24h: number };
 }
 
+/** Spec 213 — when an appliance read on its power is running, and when it is done. */
+export interface ApplianceCycleThresholds {
+  startW: number;
+  endW: number;
+  endDelayS: number;
+}
+
 export interface HistoryBindingState {
   bindingId: string;
   alias: string;
@@ -773,6 +782,10 @@ export interface HistoryBindingState {
   type: string; // "number" | "boolean" | "enum"
   historize: number | null;
   effectiveOn: boolean;
+  /** Spec 213 — derived by Sowel (an appliance's run state): always historized. */
+  virtual?: boolean;
+  /** Declared values of an enum series, in their charted order. */
+  enumValues?: string[];
 }
 
 export interface HistoryPoint {
