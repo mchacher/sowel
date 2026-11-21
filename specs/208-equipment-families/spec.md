@@ -123,6 +123,14 @@ On phones and tablets (below `lg`): each tab's icon is 22 px in a 56 × 30 px ar
 area as a pill of the primary ink at 15 %, its icon stroke goes to 2 and its label to semibold; the other tabs
 are secondary text. The bar is 60 px high before the safe area.
 
+> **Amended by #1264 (2026-11-21).** The bar is now a pill floating over the page, the iOS 26 shape: 16 px
+> from the sides, 62 px high, `rounded-full`, the surface at 75 % with a backdrop blur, a hairline border and
+> `shadow-lg` (a floating layer). It sits 20 px above the bottom edge under the iOS home indicator, 12 px where
+> there is no safe area (`--tabbar-offset` in `ui/src/index.css`), and the page scrolls under it, keeping the
+> bar's room free under its last line (`--tabbar-clearance`). The selected tab is a grey pill (text colour at
+> 8 %) around its icon and label, its icon stroke 2, its label semibold in the primary ink. Mockup chosen by
+> the maintainer, variant B: https://claude.ai/artifact/MUXMU6rmpegqNBg4PR2Ta5
+
 ## Acceptance Criteria
 
 - [x] Every `EquipmentType` maps to exactly one section; the mapping is the FR1 table (test).
