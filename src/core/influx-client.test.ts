@@ -227,6 +227,45 @@ describe("InfluxClient.ensureRainBuckets", () => {
   });
 });
 
+// #1284 — a fresh install starts Sowel before InfluxDB answers.
+describe("InfluxClient.waitUntilReady", () => {
+  const logger = createLogger("silent").logger;
+
+  function withOrgLookups(results: Array<string | null>) {
+    const client = new InfluxClient(logger);
+    const inner = client as unknown as { config: unknown; getOrgId: () => Promise<string | null> };
+    inner.config = { url: "http://x", org: "o", bucket: "sowel", token: "t" };
+    const getOrgId = vi.fn();
+    for (const r of results) getOrgId.mockResolvedValueOnce(r);
+    inner.getOrgId = getOrgId;
+    return { client, getOrgId };
+  }
+
+  it("retries until the org resolves", async () => {
+    const { client, getOrgId } = withOrgLookups([null, null, "org-1"]);
+    await expect(client.waitUntilReady({ intervalMs: 1, timeoutMs: 1000 })).resolves.toBe(true);
+    expect(getOrgId).toHaveBeenCalledTimes(3);
+  });
+
+  it("answers at once when InfluxDB is already up", async () => {
+    const { client, getOrgId } = withOrgLookups(["org-1"]);
+    await expect(client.waitUntilReady({ intervalMs: 1, timeoutMs: 1000 })).resolves.toBe(true);
+    expect(getOrgId).toHaveBeenCalledOnce();
+  });
+
+  it("gives up after the timeout instead of blocking", async () => {
+    const { client, getOrgId } = withOrgLookups([]);
+    getOrgId.mockResolvedValue(null);
+    await expect(client.waitUntilReady({ intervalMs: 5, timeoutMs: 30 })).resolves.toBe(false);
+    expect(getOrgId.mock.calls.length).toBeGreaterThan(1);
+  });
+
+  it("returns false without a config", async () => {
+    const client = new InfluxClient(logger);
+    await expect(client.waitUntilReady({ intervalMs: 1, timeoutMs: 10 })).resolves.toBe(false);
+  });
+});
+
 // #1036 — a late rain hour goes straight to the hourly buckets, each within its retention.
 describe("InfluxClient.writeLateRainHour", () => {
   const logger = createLogger("silent").logger;
