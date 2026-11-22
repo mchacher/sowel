@@ -47,6 +47,33 @@ describe("config — CORS defaults", () => {
 });
 
 // Spec 124 — SOWEL_SHADOW_MODE resolution truth table.
+describe("config — SOWEL_TRUSTED_PROXIES (#1302)", () => {
+  let tmpDataDir: string;
+  const originalEnv = { ...process.env };
+
+  beforeEach(() => {
+    tmpDataDir = mkdtempSync(join(tmpdir(), "sowel-config-test-"));
+    process.env["SQLITE_PATH"] = join(tmpDataDir, "sowel.db");
+    delete process.env["SOWEL_TRUSTED_PROXIES"];
+  });
+
+  afterEach(() => {
+    process.env = { ...originalEnv };
+    rmSync(tmpDataDir, { recursive: true, force: true });
+  });
+
+  it("trusts nobody when unset or empty", () => {
+    expect(loadConfig().api.trustedProxies).toEqual([]);
+    process.env["SOWEL_TRUSTED_PROXIES"] = "";
+    expect(loadConfig().api.trustedProxies).toEqual([]);
+  });
+
+  it("splits, trims and drops empty entries", () => {
+    process.env["SOWEL_TRUSTED_PROXIES"] = " 172.18.0.1 , ,10.0.0.0/8,";
+    expect(loadConfig().api.trustedProxies).toEqual(["172.18.0.1", "10.0.0.0/8"]);
+  });
+});
+
 describe("config — SOWEL_SHADOW_MODE", () => {
   let tmpDataDir: string;
   const originalEnv = { ...process.env };
