@@ -11,6 +11,27 @@ This page summarises every published version, newest first. For the full diff be
 
 ---
 
+## 1.89.x: Security hardening
+
+### v1.89.0 — 2026-11-22 { #v1-89-0 }
+
+A security release. Update every instance, first of all one reachable from the internet. The API check now applies however a request spells its path, sessions end when an account changes, an instance behind a tunnel sees its real clients, and an order can no longer carry device settings.
+
+**After the update:**
+
+- **Behind a reverse proxy or a tunnel** (Cloudflare Tunnel, Caddy, nginx), set `SOWEL_TRUSTED_PROXIES` to the address the proxy connects from, usually the Docker gateway `172.18.0.1` when `cloudflared` runs on the host. Without it, login limits stay shared by every remote client. See [Deployment](technical/deployment.md#behind-a-reverse-proxy-or-a-tunnel).
+- **Changing a password now logs out every other browser** signed in to that account. API tokens are not affected: review them in Settings → Account.
+- **A migration adds `users.token_version`.** Nobody is logged out by the upgrade.
+
+- Fix (auth): **the authentication check applies to every spelling of an API path** (#1301). A path written with percent-encoded characters could reach some protected endpoints without a login. The check now decides on the route the server actually matched. An instance behind Cloudflare can also turn on URL normalization to origin.
+- Fix (api): **login and MFA limits see the real client behind a tunnel** (#1302, #1304). Every request through a tunnel came from the same local address, so ten failed logins a minute from anyone locked out everyone, and the audit log recorded the proxy. The new `SOWEL_TRUSTED_PROXIES` (IPs or CIDRs, empty by default) lists the proxies whose `X-Forwarded-For` is believed; nobody else can choose their address. An invalid entry stops startup with a message that names the setting.
+- Fix (auth): **sessions end when the account changes** (#1305, #1306). A password change ends every session of the account at once and hands the browser that made it a fresh one. A disable, a role change or an admin MFA reset ends that user's sessions. Every request re-reads the account, so a disabled account is refused and a demotion applies on the next request. `PUT /api/v1/me/password` now returns the new token pair.
+- Fix (equipments): **an order value can no longer write device attributes** (#1310, #1311). Unless an order is typed `json`, its value is a string, number, boolean or empty, or, on an on/off order, the timed composite `{ <order key>, on_time?, off_wait_time? }` used by timed watering. Anything else answers `400` and nothing reaches the device. A timed action's revert is checked when it is armed. A mode, button or calendar action configured with an object value of another shape is now refused; none is known.
+- Fix (ui): the phone tab bar is tighter, the icon closer to its label (#1290, #1293), and the selected tab keeps its label inside its bubble (#1294, #1295).
+- Docs: the manual is a plain manual again, themed like the showcase site, user guide first (spec 209, #1287, #1288, #1289, #1292, #1296, #1297, #1298); the README links the showcase site (#1299); Netatmo API review notes (#1300, #1303).
+
+---
+
 ## 1.88.x: A new logo, and recipes that publish data
 
 ### v1.88.1 — 2026-11-21 { #v1-88-1 }
