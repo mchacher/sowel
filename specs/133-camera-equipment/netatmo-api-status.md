@@ -42,6 +42,40 @@ No fix in the field yet, but Netatmo has one in progress.
 - **`NOC2`**: mentioned nowhere, neither in pyatmo nor in the Home
   Assistant thread. It looks further behind than the Advance.
 
+## 2026-11-08 — review
+
+The end-of-October firmware has not shipped.
+
+- **Netatmo.** No word from the contributor since 2026-09-09. On
+  2026-11-08 users in
+  [home-assistant/core#140629](https://github.com/home-assistant/core/issues/140629)
+  ask for news and note that the Advance's last firmware dates from
+  October 2025; a release note quoted as new turned out to be that 2025
+  one.
+- **pyatmo**: no release since 9.9.1 (2026-08-26). Nothing about `NPC`,
+  `NOC2` or WebRTC since the last review.
+- **Home Assistant**: plenty of Netatmo PRs since 2026-10-15 (siren
+  control, camera attributes, error handling), all for the existing
+  models. None adds `NPC` or `NOC2`.
+- **`NOC2`**: still mentioned nowhere.
+
+## 2026-11-22 — review
+
+The firmware change is moving, but no public rollout yet.
+
+- **Netatmo.** On 2026-11-11 the contributor in
+  [home-assistant/core#140629](https://github.com/home-assistant/core/issues/140629)
+  writes that the release is awaiting QV validation, expected to start the
+  week of 2026-11-16, and that his own camera already runs the new
+  firmware. So the end-of-October date slipped by about three weeks.
+- **A first user report.** On 2026-11-13 a user says that after logging in
+  again on a Netatmo plugin (not named) the Advance appeared. Single
+  unverified report, no scope or plugin given, nothing since.
+- **pyatmo**: still 9.9.1 (2026-08-26); only a webhook fix and dependency
+  bumps since 2026-11-08. **Home Assistant**: Netatmo PRs since 2026-11-08
+  are enum clean-ups, climate and preset fixes; none adds `NPC` or `NOC2`.
+- **`NOC2`**: still mentioned nowhere.
+
 ## What stays blocked on the Sowel side
 
 Even once Netatmo opens access, the Advance's live view is WebRTC, and
@@ -52,6 +86,8 @@ work.
 
 ## Next check
 
-Re-run `homesdata` in mid-November 2026, once the firmware has had time to
-roll out. It needs a token from the account that owns the `NPC` and `NOC2`
+Re-run `homesdata` now that the firmware is out of validation (worth doing
+once the official rollout is confirmed in #140629, or earlier if a fresh
+token and re-authorisation are cheap to get: the 2026-11-13 user report
+says a new login may be enough). It needs a token from the account that owns the `NPC` and `NOC2`
 (Romain's).
