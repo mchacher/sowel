@@ -47,6 +47,7 @@ Recipes cover lights on motion, presence heating, a water heater on solar surplu
 
 ## Learn more
 
+- [Website](https://sowel.org), in English and [in French](https://sowel.org/fr/)
 - [Documentation](https://docs.sowel.org), in English and [in French](https://docs.sowel.org/fr/)
 - [Discussions](https://github.com/mchacher/sowel/discussions) for questions and ideas
 - [Issues](https://github.com/mchacher/sowel/issues) for bugs
