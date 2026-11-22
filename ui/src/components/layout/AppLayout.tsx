@@ -759,17 +759,22 @@ function DrawerLink({
  * pill around its icon and label, a heavier stroke, a semibold label in the
  * primary ink; the other tabs are secondary text.
  */
-const TAB_CLASS =
-  "flex-1 min-w-0 flex flex-col items-center justify-center gap-px px-0.5 rounded-full text-micro";
+const TAB_BASE =
+  "min-w-0 flex flex-col items-center justify-center gap-px px-0.5 rounded-full text-micro transition-[flex-grow] duration-200 motion-reduce:transition-none";
+const TAB_CLASS = `flex-1 ${TAB_BASE}`;
+// The selected tab takes 40 % more of the bar (the others lose about 5 px each, eased by the
+// transition): the curve of its 44 px bubble needs about 9 px on each side of the label and an
+// equal share left it 6; measured on the glyph, 40 % keeps it inside from 320 to 430 px (#1294).
+const TAB_SELECTED_CLASS = `flex-[1.4] ${TAB_BASE}`;
 
 function MobileNavLink({ to, label, icon }: { to: string; label: string; icon: LucideIcon }) {
   return (
     <NavLink
       to={to}
       className={({ isActive }) =>
-        `${TAB_CLASS} ${
-          isActive ? "bg-text/8 text-primary font-semibold" : "text-text-secondary font-medium"
-        }`
+        isActive
+          ? `${TAB_SELECTED_CLASS} bg-text/8 text-primary font-semibold`
+          : `${TAB_CLASS} text-text-secondary font-medium`
       }
     >
       {({ isActive }) => (
