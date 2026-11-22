@@ -47,8 +47,10 @@ describe("phone tab bar (#1264)", () => {
   it("paints the selected tab as a grey pill and the others as plain text", () => {
     const at = src.indexOf("function MobileNavLink");
     const body = src.slice(at, src.indexOf("\n}\n", at));
-    expect(body).toMatch(/isActive\s*\?\s*"bg-text\/8 text-primary font-semibold"/);
-    expect(body).toMatch(/:\s*"text-text-secondary font-medium"/);
+    expect(body).toMatch(
+      /isActive\s*\?\s*`\$\{TAB_SELECTED_CLASS\} bg-text\/8 text-primary font-semibold`/,
+    );
+    expect(body).toMatch(/:\s*`\$\{TAB_CLASS\} text-text-secondary font-medium`/);
   });
 
   it("draws its glass more opaque in dark, where bright content would wash out the labels", () => {
@@ -63,8 +65,12 @@ describe("phone tab bar (#1264)", () => {
   it("keeps the icon close to its label and the selected bubble 44 px high (#1290)", () => {
     const nav = src.indexOf('<nav\n        aria-label={t("nav.main")}');
     expect(classesOf(nav)).toContain("p-1.25");
-    const tab = src.slice(src.indexOf("const TAB_CLASS"), src.indexOf("function MobileNavLink"));
+    const tab = src.slice(src.indexOf("const TAB_BASE"), src.indexOf("function MobileNavLink"));
     expect(tab).toContain("gap-px");
+    // the selected tab takes 40 % more of the bar so its label stays inside the curve of its bubble (#1294)
+    expect(tab).toContain("transition-[flex-grow] duration-200 motion-reduce:transition-none");
+    expect(tab).toContain("const TAB_CLASS = `flex-1 ${TAB_BASE}`;");
+    expect(tab).toContain("const TAB_SELECTED_CLASS = `flex-[1.4] ${TAB_BASE}`;");
     const icon = src.slice(src.indexOf("function MobileNavIcon"));
     expect(icon).toContain("w-7 h-5.5");
     // the body's 20 px line height would eat the bubble's room: 22 + 1 + 20 = 43 of 44 px
