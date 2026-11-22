@@ -63,7 +63,7 @@ function clearTokens(): void {
   useAuth.setState({ accessToken: null });
 }
 
-function getStoredRefreshToken(): string | null {
+export function getStoredRefreshToken(): string | null {
   return localStorage.getItem(STORAGE_KEY_REFRESH);
 }
 

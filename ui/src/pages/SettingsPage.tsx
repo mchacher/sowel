@@ -15,7 +15,7 @@ import {
   ShieldCheck,
   Smartphone,
 } from "lucide-react";
-import { useAuth } from "../store/useAuth";
+import { useAuth, getStoredRefreshToken } from "../store/useAuth";
 import { useWebSocket } from "../store/useWebSocket";
 import { useTimezone } from "../store/useTimezone";
 import { RestartToast } from "../components/system/RestartToast";
@@ -560,7 +560,7 @@ function ChangePasswordSection() {
     }
     setSaving(true);
     try {
-      await changeMyPassword(currentPassword, newPassword);
+      await changeMyPassword(currentPassword, newPassword, getStoredRefreshToken());
       setSuccess(true);
       reset();
       setTimeout(() => {

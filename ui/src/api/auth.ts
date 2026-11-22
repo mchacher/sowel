@@ -101,13 +101,22 @@ export async function updateMyPreferences(preferences: UserPreferences): Promise
   });
 }
 
+/**
+ * Issue #1305 — the server ends every other session of the account. Passing
+ * this browser's refresh token keeps this session alive.
+ */
 export async function changeMyPassword(
   currentPassword: string,
   newPassword: string,
+  refreshToken?: string | null,
 ): Promise<void> {
   return fetchJSON<void>(`${API_BASE}/me/password`, {
     method: "PUT",
-    body: JSON.stringify({ currentPassword, newPassword }),
+    body: JSON.stringify({
+      currentPassword,
+      newPassword,
+      ...(refreshToken ? { refreshToken } : {}),
+    }),
   });
 }
 

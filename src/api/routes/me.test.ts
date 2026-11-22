@@ -36,8 +36,13 @@ async function buildApp(opts: BuildOpts = {}) {
   }
 
   const created: unknown[] = [];
+  const revoked: Array<[string, string | undefined]> = [];
   registerMeRoutes(app, {
     authService: {
+      revokeUserSessions: (userId: string, keep?: string) => {
+        revoked.push([userId, keep]);
+        return 1;
+      },
       getUserApiTokens: () => [],
       createApiToken: (_userId: string, name: string) => {
         created.push(name);
@@ -63,7 +68,7 @@ async function buildApp(opts: BuildOpts = {}) {
     logger,
   });
   await app.ready();
-  return { app, created };
+  return { app, created, revoked };
 }
 
 describe("me routes (schema validation, #482)", () => {
@@ -174,5 +179,41 @@ describe("me routes (schema validation, #482)", () => {
     });
     expect(res.statusCode).toBe(201);
     expect(built.created).toEqual(["my-token"]);
+  });
+
+  describe("PUT /me/password ends the other sessions (issue #1305)", () => {
+    it("revokes every other session and keeps the caller's", async () => {
+      const built = await buildApp({ authed: true });
+      app = built.app;
+      const res = await app.inject({
+        method: "PUT",
+        url: "/api/v1/me/password",
+        payload: { currentPassword: "correct", newPassword: "new-password", refreshToken: "rt-me" },
+      });
+      expect(res.statusCode).toBe(200);
+      expect(built.revoked).toEqual([["u1", "rt-me"]]);
+    });
+
+    it("revokes every session when the caller sends no refresh token", async () => {
+      const built = await buildApp({ authed: true });
+      app = built.app;
+      await app.inject({
+        method: "PUT",
+        url: "/api/v1/me/password",
+        payload: { currentPassword: "correct", newPassword: "new-password" },
+      });
+      expect(built.revoked).toEqual([["u1", undefined]]);
+    });
+
+    it("revokes nothing when the current password is wrong", async () => {
+      const built = await buildApp({ authed: true });
+      app = built.app;
+      await app.inject({
+        method: "PUT",
+        url: "/api/v1/me/password",
+        payload: { currentPassword: "wrong", newPassword: "new-password", refreshToken: "rt-me" },
+      });
+      expect(built.revoked).toEqual([]);
+    });
   });
 });

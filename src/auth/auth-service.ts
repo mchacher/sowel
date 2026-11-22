@@ -83,6 +83,9 @@ export class AuthService {
       ),
       deleteRefresh: db.prepare("DELETE FROM refresh_tokens WHERE token_hash = ?"),
       deleteUserRefreshTokens: db.prepare("DELETE FROM refresh_tokens WHERE user_id = ?"),
+      deleteUserRefreshTokensExcept: db.prepare(
+        "DELETE FROM refresh_tokens WHERE user_id = ? AND token_hash != ?",
+      ),
       cleanExpiredRefresh: db.prepare(
         "DELETE FROM refresh_tokens WHERE expires_at <= datetime('now')",
       ),
@@ -198,6 +201,29 @@ export class AuthService {
     this.stmts.deleteRefresh.run(hash);
   }
 
+  /**
+   * Issue #1305 — end a user's sessions by deleting their refresh tokens.
+   *
+   * `keepRefreshToken` spares the caller's own session (password change made
+   * from this browser). It only spares a token that belongs to `userId`: a
+   * foreign or unknown value simply matches nothing and every row goes.
+   * Access tokens already issued stay valid until they expire, but
+   * `verifyAccessToken` re-reads the user, so disable and demotion bite at
+   * once; only a password change leaves that short window.
+   */
+  revokeUserSessions(userId: string, keepRefreshToken?: string): number {
+    const result = keepRefreshToken
+      ? this.stmts.deleteUserRefreshTokensExcept.run(userId, sha256(keepRefreshToken))
+      : this.stmts.deleteUserRefreshTokens.run(userId);
+    if (result.changes > 0) {
+      this.logger.info(
+        { userId, revoked: result.changes, keptCaller: Boolean(keepRefreshToken) },
+        "User sessions revoked",
+      );
+    }
+    return result.changes;
+  }
+
   verifyAccessToken(token: string): JwtPayload {
     let payload: JwtPayload;
     try {
@@ -210,7 +236,15 @@ export class AuthService {
     if (payload.purpose === "mfa_pending") {
       throw new AuthError("Invalid or expired token", 401);
     }
-    return payload;
+    // Issue #1305 — the token proves who the caller was at issue time, not what
+    // they may do now. A deleted or disabled account is refused, and the role
+    // is the stored one, so a demotion takes effect on the next request rather
+    // than when the token expires. Same lookup verifyApiToken already does.
+    const user = this.userManager.getById(payload.userId);
+    if (!user || !user.enabled) {
+      throw new AuthError("Invalid or expired token", 401);
+    }
+    return { ...payload, role: user.role };
   }
 
   private generateTokens(user: User): AuthTokens {

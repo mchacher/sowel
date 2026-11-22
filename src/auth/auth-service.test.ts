@@ -138,4 +138,62 @@ describe("AuthService", () => {
       expect(tokens.user.id).toBe(userId);
     });
   });
+  describe("session revocation (issue #1305)", () => {
+    type Tokens = { accessToken: string; refreshToken: string };
+    const login = async () => (await auth.login("alice", "test-fixture-password")) as Tokens;
+
+    it("ends every session but the caller's when a token is kept", async () => {
+      const caller = await login();
+      const other = await login();
+      expect(auth.revokeUserSessions(userId, caller.refreshToken)).toBe(1);
+      await expect(auth.refresh(other.refreshToken)).rejects.toThrow(AuthError);
+      await expect(auth.refresh(caller.refreshToken)).resolves.toHaveProperty("accessToken");
+    });
+
+    it("ends every session when no token is kept", async () => {
+      const a = await login();
+      const b = await login();
+      expect(auth.revokeUserSessions(userId)).toBe(2);
+      await expect(auth.refresh(a.refreshToken)).rejects.toThrow(AuthError);
+      await expect(auth.refresh(b.refreshToken)).rejects.toThrow(AuthError);
+    });
+
+    it("does not spare a session when the kept token belongs to someone else", async () => {
+      await userManager.createUser({
+        username: "bob",
+        displayName: "Bob",
+        password: "test-fixture-password",
+        role: "standard",
+      });
+      const bob = (await auth.login("bob", "test-fixture-password")) as Tokens;
+      const alice = await login();
+      expect(auth.revokeUserSessions(userId, bob.refreshToken)).toBe(1);
+      await expect(auth.refresh(alice.refreshToken)).rejects.toThrow(AuthError);
+      // Bob's own session is untouched: revocation is scoped to the user.
+      await expect(auth.refresh(bob.refreshToken)).resolves.toHaveProperty("accessToken");
+    });
+  });
+
+  describe("verifyAccessToken — reads the account as it is now (issue #1305)", () => {
+    const accessToken = async () =>
+      ((await auth.login("alice", "test-fixture-password")) as { accessToken: string }).accessToken;
+
+    it("refuses the token of a disabled account", async () => {
+      const token = await accessToken();
+      userManager.updateUser(userId, { displayName: "Alice", role: "admin", enabled: false });
+      expect(() => auth.verifyAccessToken(token)).toThrow(AuthError);
+    });
+
+    it("refuses the token of a deleted account", async () => {
+      const token = await accessToken();
+      userManager.deleteUser(userId);
+      expect(() => auth.verifyAccessToken(token)).toThrow(AuthError);
+    });
+
+    it("applies the stored role, not the one signed into the token", async () => {
+      const token = await accessToken();
+      userManager.updateUser(userId, { displayName: "Alice", role: "standard", enabled: true });
+      expect(auth.verifyAccessToken(token).role).toBe("standard");
+    });
+  });
 });
