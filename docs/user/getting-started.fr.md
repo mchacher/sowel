@@ -213,16 +213,17 @@ Votre maison est maintenant configurée. À partir de là, vous pouvez :
 
 Sowel fonctionne d'emblée avec des valeurs par défaut raisonnables. Pour une configuration avancée, vous pouvez définir des variables d'environnement dans un fichier `.env` à la racine du projet :
 
-| Variable        | Défaut                  | Description                                      |
-| --------------- | ----------------------- | ------------------------------------------------ |
-| `SQLITE_PATH`   | `./data/sowel.db`       | Emplacement du fichier de base de données        |
-| `API_PORT`      | `3000`                  | Port du serveur HTTP                             |
-| `API_HOST`      | `0.0.0.0`               | Adresse de bind                                  |
-| `LOG_LEVEL`     | `info`                  | Niveau de log (`debug`, `info`, `warn`, `error`) |
-| `CORS_ORIGINS`  | `*`                     | Origines CORS autorisées                         |
-| `INFLUX_URL`    | `http://localhost:8086` | URL InfluxDB                                     |
-| `INFLUX_ORG`    | `sowel`                 | Organisation InfluxDB                            |
-| `INFLUX_BUCKET` | `sowel`                 | Bucket principal InfluxDB                        |
+| Variable                | Défaut                  | Description                                                     |
+| ----------------------- | ----------------------- | --------------------------------------------------------------- |
+| `SQLITE_PATH`           | `./data/sowel.db`       | Emplacement du fichier de base de données                       |
+| `API_PORT`              | `3000`                  | Port du serveur HTTP                                            |
+| `API_HOST`              | `0.0.0.0`               | Adresse de bind                                                 |
+| `LOG_LEVEL`             | `info`                  | Niveau de log (`debug`, `info`, `warn`, `error`)                |
+| `CORS_ORIGINS`          | `*`                     | Origines CORS autorisées                                        |
+| `SOWEL_TRUSTED_PROXIES` | (vide)                  | Adresse du reverse proxy / tunnel, voir le guide de déploiement |
+| `INFLUX_URL`            | `http://localhost:8086` | URL InfluxDB                                                    |
+| `INFLUX_ORG`            | `sowel`                 | Organisation InfluxDB                                           |
+| `INFLUX_BUCKET`         | `sowel`                 | Bucket principal InfluxDB                                       |
 
 !!! note
 `JWT_SECRET` et `INFLUX_TOKEN` sont auto-générés au premier lancement et persistés dans le répertoire `data/`. Vous n'avez pas besoin de les définir manuellement.

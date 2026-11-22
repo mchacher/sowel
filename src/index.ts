@@ -713,6 +713,7 @@ async function main() {
     auditLogger,
     logger,
     corsOrigins: config.cors.origins,
+    trustedProxies: config.api.trustedProxies,
     shadowMode: config.shadowMode,
     takeoverPending: shouldPromptTakeover({
       takeoverPending: identity.takeoverPending,

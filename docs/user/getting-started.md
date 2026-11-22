@@ -213,16 +213,17 @@ Your home is now set up. From here, you can:
 
 Sowel works out of the box with sensible defaults. For advanced configuration, you can set environment variables in a `.env` file at the project root:
 
-| Variable        | Default                 | Description                                      |
-| --------------- | ----------------------- | ------------------------------------------------ |
-| `SQLITE_PATH`   | `./data/sowel.db`       | Database file location                           |
-| `API_PORT`      | `3000`                  | HTTP server port                                 |
-| `API_HOST`      | `0.0.0.0`               | Bind address                                     |
-| `LOG_LEVEL`     | `info`                  | Logging level (`debug`, `info`, `warn`, `error`) |
-| `CORS_ORIGINS`  | `*`                     | Allowed CORS origins                             |
-| `INFLUX_URL`    | `http://localhost:8086` | InfluxDB URL                                     |
-| `INFLUX_ORG`    | `sowel`                 | InfluxDB organization                            |
-| `INFLUX_BUCKET` | `sowel`                 | InfluxDB primary bucket                          |
+| Variable                | Default                 | Description                                          |
+| ----------------------- | ----------------------- | ---------------------------------------------------- |
+| `SQLITE_PATH`           | `./data/sowel.db`       | Database file location                               |
+| `API_PORT`              | `3000`                  | HTTP server port                                     |
+| `API_HOST`              | `0.0.0.0`               | Bind address                                         |
+| `LOG_LEVEL`             | `info`                  | Logging level (`debug`, `info`, `warn`, `error`)     |
+| `CORS_ORIGINS`          | `*`                     | Allowed CORS origins                                 |
+| `SOWEL_TRUSTED_PROXIES` | (empty)                 | Reverse proxy / tunnel address, see deployment guide |
+| `INFLUX_URL`            | `http://localhost:8086` | InfluxDB URL                                         |
+| `INFLUX_ORG`            | `sowel`                 | InfluxDB organization                                |
+| `INFLUX_BUCKET`         | `sowel`                 | InfluxDB primary bucket                              |
 
 !!! note
 `JWT_SECRET` and `INFLUX_TOKEN` are auto-generated on first launch and persisted in the `data/` directory. You do not need to set them manually.

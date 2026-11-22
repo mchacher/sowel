@@ -2488,6 +2488,11 @@ export interface AppConfig {
   api: {
     port: number;
     host: string;
+    /**
+     * Socket peers whose `X-Forwarded-For` is believed (SOWEL_TRUSTED_PROXIES).
+     * Empty = trust nobody: `request.ip` is the socket peer.
+     */
+    trustedProxies: string[];
   };
   jwt: {
     secret: string;
