@@ -43,6 +43,7 @@ import { RETRY_CHANNEL } from "./order-confirmation-tracker.js";
 import { EV_CHARGER_CATEGORY_ALIASES } from "../shared/ev-charger-contract.js";
 import { ELECTRIC_VEHICLE_CATEGORY_ALIASES } from "../shared/electric-vehicle-contract.js";
 import type { Device } from "../shared/types.js";
+import { orderValueShapeError } from "./order-value-shape.js";
 import {
   RecipeOutputs,
   isCoreVirtualAlias,
@@ -1103,6 +1104,23 @@ export class EquipmentManager {
   }
 
   /**
+   * Issue #1310 — the same shape check runOrder applies, without sending
+   * anything. For a caller that stores a value to send later (a timed
+   * action's revert), so a value that would be refused at the deadline is
+   * refused now, while the user is still there to see it. Throws
+   * EquipmentError 400; an alias with no binding (the VMC `speed` logical
+   * order) is left to runOrder, which validates it on its own path.
+   */
+  validateOrderValue(equipmentId: string, alias: string, value: unknown): void {
+    const bindings = this.stmts.getOrderBindingsByAlias.all(
+      equipmentId,
+      alias,
+    ) as OrderBindingJoinRow[];
+    const shapeError = orderValueShapeError(bindings, value);
+    if (shapeError) throw new EquipmentError(shapeError, 400);
+  }
+
+  /**
    * `partOf` names the logical order this one is a step of (a VMC `speed`
    * decomposed into relay orders). It rides on the step's outcome event so
    * the activity feed shows the logical order once instead of every step
@@ -1137,6 +1155,15 @@ export class EquipmentManager {
 
     if (bindings.length === 0) {
       throw new EquipmentError(`Order alias not found: ${alias}`, 404);
+    }
+
+    // Issue #1310 — refuse a value whose shape would let a plugin write device
+    // attributes beyond this order (an arbitrary object becomes a whole z2m
+    // payload). One gate for every caller: UI, zone orders, recipes, timed
+    // actions and delivery retries all come through here.
+    const shapeError = orderValueShapeError(bindings, value);
+    if (shapeError) {
+      throw new EquipmentError(shapeError, 400);
     }
 
     // Spec 154 — per-equipment command inversion for a shutter-family motor

@@ -129,8 +129,11 @@ export function WaterValveControl({
       // Composite payload: state + on_time published in a single MQTT
       // message. The z2m plugin (v1.2.0+) detects an object value and
       // publishes it directly instead of wrapping under `payloadKey`.
+      // Keyed by the bound device order (`state`, or `state_l1` on a
+      // multi-channel relay): the core accepts a timed composite only on the
+      // order's own key, since z2m publishes the object as is (issue #1310).
       await onExecuteOrder(stateOrderBinding.alias, {
-        state: stateValue(true),
+        [stateOrderBinding.key]: stateValue(true),
         on_time: duration * 60,
       });
     } finally {
