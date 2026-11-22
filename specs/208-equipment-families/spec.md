@@ -119,7 +119,7 @@ with a family is shown, coloured and counted in that family's section.
 
 ### FR7 — Bottom tab bar
 
-On phones and tablets (below `lg`): each tab's icon is 22 px in a 56 × 30 px area; the selected tab paints that
+On phones and tablets (below `lg`): each tab's icon is 22 px in a 28 × 22 px area; the selected tab paints that
 area as a pill of the primary ink at 15 %, its icon stroke goes to 2 and its label to semibold; the other tabs
 are secondary text. The bar is 60 px high before the safe area.
 

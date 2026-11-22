@@ -577,7 +577,7 @@ function MobileNav({
           className={`${TAB_CLASS} text-text-secondary font-medium`}
         >
           <MobileNavIcon icon={Menu} active={false} />
-          <span className="text-micro">{t("nav.more", "Plus")}</span>
+          <span className="text-micro leading-3">{t("nav.more", "Plus")}</span>
         </button>
       </nav>
 
@@ -775,7 +775,7 @@ function MobileNavLink({ to, label, icon }: { to: string; label: string; icon: L
       {({ isActive }) => (
         <>
           <MobileNavIcon icon={icon} active={isActive} />
-          <span className="text-micro">{label}</span>
+          <span className="text-micro leading-3">{label}</span>
         </>
       )}
     </NavLink>

@@ -67,6 +67,8 @@ describe("phone tab bar (#1264)", () => {
     expect(tab).toContain("gap-px");
     const icon = src.slice(src.indexOf("function MobileNavIcon"));
     expect(icon).toContain("w-7 h-5.5");
+    // the body's 20 px line height would eat the bubble's room: 22 + 1 + 20 = 43 of 44 px
+    expect(src.match(/<span className="text-micro leading-3">/g)).toHaveLength(2);
   });
 
   it("lifts the install banner and the restart toast above the bar on phones", () => {
