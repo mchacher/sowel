@@ -68,6 +68,7 @@ describe("phone tab bar (#1264)", () => {
     const tab = src.slice(src.indexOf("const TAB_BASE"), src.indexOf("function MobileNavLink"));
     expect(tab).toContain("gap-px");
     // the selected tab takes 40 % more of the bar so its label stays inside the curve of its bubble (#1294)
+    expect(tab).toContain("transition-[flex-grow] duration-200 motion-reduce:transition-none");
     expect(tab).toContain("const TAB_CLASS = `flex-1 ${TAB_BASE}`;");
     expect(tab).toContain("const TAB_SELECTED_CLASS = `flex-[1.4] ${TAB_BASE}`;");
     const icon = src.slice(src.indexOf("function MobileNavIcon"));
