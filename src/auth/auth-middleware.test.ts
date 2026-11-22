@@ -443,4 +443,79 @@ describe("auth-middleware", () => {
       ).toBe(200);
     });
   });
+  describe("global gate resists a percent-encoded /api prefix", () => {
+    // The hook used to test the RAW request target (`startsWith("/api/")`)
+    // while find-my-way decodes before matching, so `/%61pi/v1/...` reached
+    // the `/api/v1/...` handler with no token at all.
+    let app: ReturnType<typeof Fastify>;
+    let role: "admin" | "standard";
+
+    beforeEach(async () => {
+      role = "standard";
+      const userManager = { hasUsers: () => true } as unknown as UserManager;
+      const authService = {
+        verifyAccessToken: () => ({ userId: "u1", role }),
+        verifyApiToken: () => ({ userId: "u1", role }),
+      } as unknown as AuthService;
+      app = Fastify({ logger: false });
+      registerAuthMiddleware(app, { authService, userManager, logger });
+      app.get("/api/v1/devices/:id", async () => ({ secret: true }));
+      app.post("/api/v1/equipments/:id/orders/:alias", async () => ({ ok: true }));
+      app.post("/api/v1/recipes", async () => ({ ok: true }));
+      app.get("/api/v1/health", async () => ({ status: "ok" }));
+      await app.ready();
+    });
+
+    afterEach(async () => {
+      await app.close();
+    });
+
+    const spellings = [
+      "/%61pi/v1/devices/d1",
+      "/a%70i/v1/devices/d1",
+      "/ap%69/v1/devices/d1",
+      "/api/%761/devices/d1",
+      "/%61%70%69/v1/devices/d1",
+    ];
+
+    it("401s an anonymous request however the prefix is spelled", async () => {
+      for (const url of spellings) {
+        const res = await app.inject({ method: "GET", url });
+        expect(res.statusCode, url).toBe(401);
+      }
+    });
+
+    it("401s an anonymous encoded order and an encoded config write", async () => {
+      for (const [method, url] of [
+        ["POST", "/%61pi/v1/equipments/e1/orders/state"],
+        ["POST", "/%61pi/v1/recipes"],
+      ] as const) {
+        expect((await app.inject({ method, url })).statusCode, url).toBe(401);
+      }
+    });
+
+    it("still applies the role gate to an encoded config write", async () => {
+      const res = await app.inject({
+        method: "POST",
+        url: "/%61pi/v1/recipes",
+        headers: { authorization: "Bearer header.payload.sig" },
+      });
+      expect(res.statusCode).toBe(403);
+    });
+
+    it("still serves an authenticated request on an encoded path", async () => {
+      const res = await app.inject({
+        method: "GET",
+        url: "/%61pi/v1/devices/d1",
+        headers: { authorization: "Bearer header.payload.sig" },
+      });
+      expect(res.statusCode).toBe(200);
+    });
+
+    it("keeps public routes public, encoded or not", async () => {
+      for (const url of ["/api/v1/health", "/%61pi/v1/health"]) {
+        expect((await app.inject({ method: "GET", url })).statusCode, url).toBe(200);
+      }
+    });
+  });
 });
