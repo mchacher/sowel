@@ -558,14 +558,14 @@ function MobileNav({
   return (
     <>
       {/* A floating pill (#1264, amends spec 208 FR7), the iOS 26 tab bar shape:
-          16 px from the sides, --tabbar-offset above the bottom edge, 62 px high,
+          16 px from the sides, --tabbar-offset above the bottom edge, 56 px high,
           translucent and blurred so the page shows through as it scrolls under.
           The selected tab is a grey pill around its icon and label. A floating
           layer: border and shadow-lg, like the menus and sheets. z-30, as the top
           bar: page menus (z-40) and drawer backdrops draw over it. */}
       <nav
         aria-label={t("nav.main")}
-        className="lg:hidden absolute inset-x-4 bottom-(--tabbar-offset) z-30 flex h-(--tabbar-height) p-1 rounded-full border border-border-light bg-(--tabbar-glass) backdrop-blur-xl backdrop-saturate-150 shadow-lg"
+        className="lg:hidden absolute inset-x-4 bottom-(--tabbar-offset) z-30 flex h-(--tabbar-height) p-1.25 rounded-full border border-border-light bg-(--tabbar-glass) backdrop-blur-xl backdrop-saturate-150 shadow-lg"
       >
         <MobileNavLink to="/dashboard" label={t("nav.dashboard")} icon={LayoutDashboard} />
         <MobileNavLink to="/home" label={t("nav.maison")} icon={Home} />
@@ -760,7 +760,7 @@ function DrawerLink({
  * primary ink; the other tabs are secondary text.
  */
 const TAB_CLASS =
-  "flex-1 min-w-0 flex flex-col items-center justify-center gap-0.5 px-0.5 rounded-full text-micro";
+  "flex-1 min-w-0 flex flex-col items-center justify-center gap-px px-0.5 rounded-full text-micro";
 
 function MobileNavLink({ to, label, icon }: { to: string; label: string; icon: LucideIcon }) {
   return (
@@ -784,7 +784,7 @@ function MobileNavLink({ to, label, icon }: { to: string; label: string; icon: L
 
 function MobileNavIcon({ icon: Icon, active }: { icon: LucideIcon; active: boolean }) {
   return (
-    <span aria-hidden="true" className="flex items-center justify-center w-7 h-6.5">
+    <span aria-hidden="true" className="flex items-center justify-center w-7 h-5.5">
       <Icon size={22} strokeWidth={active ? 2 : 1.5} />
     </span>
   );

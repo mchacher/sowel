@@ -60,6 +60,15 @@ describe("phone tab bar (#1264)", () => {
     );
   });
 
+  it("keeps the icon close to its label and the selected bubble 44 px high (#1290)", () => {
+    const nav = src.indexOf('<nav\n        aria-label={t("nav.main")}');
+    expect(classesOf(nav)).toContain("p-1.25");
+    const tab = src.slice(src.indexOf("const TAB_CLASS"), src.indexOf("function MobileNavLink"));
+    expect(tab).toContain("gap-px");
+    const icon = src.slice(src.indexOf("function MobileNavIcon"));
+    expect(icon).toContain("w-7 h-5.5");
+  });
+
   it("lifts the install banner and the restart toast above the bar on phones", () => {
     const read = (rel: string) => readFileSync(new URL(rel, import.meta.url), "utf8");
     expect(read("./InstallPrompt.tsx")).toMatch(/fixed bottom-\(--tabbar-clearance\) lg:bottom-0/);
@@ -69,7 +78,7 @@ describe("phone tab bar (#1264)", () => {
   });
 
   it("sits 20 px over the iOS home indicator, 12 px where there is none", () => {
-    expect(css).toMatch(/--tabbar-height:\s*62px;/);
+    expect(css).toMatch(/--tabbar-height:\s*56px;/);
     expect(css).toMatch(
       /--tabbar-offset:\s*max\(12px,\s*calc\(env\(safe-area-inset-bottom,\s*0px\)\s*-\s*14px\)\);/,
     );

@@ -252,10 +252,10 @@
 /* The phone tab bar (below lg) is a pill floating over the page (#1264,
    amends spec 208 FR7). It sits 20 px above the bottom edge under the iOS home
    indicator (a 34 px safe area), 12 px where there is none (Android, a browser
-   tab); the page keeps the pill's 62 px, its offset and a 12 px gap free under
+   tab); the page keeps the pill's 56 px, its offset and a 12 px gap free under
    its last line, so nothing ends hidden behind the bar. */
 :root {
-  --tabbar-height: 62px;
+  --tabbar-height: 56px;
   --tabbar-offset: max(12px, calc(env(safe-area-inset-bottom, 0px) - 14px));
   --tabbar-clearance: calc(var(--tabbar-height) + var(--tabbar-offset) + 12px);
   /* The pill's glass: the surface at 75 %, 85 % in dark, where a bright tile or
