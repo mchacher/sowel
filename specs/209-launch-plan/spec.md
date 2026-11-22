@@ -64,10 +64,11 @@ default. The change reaches the app, the PWA icons and the docs in one coordinat
 
 ### Step 2 — Showcase (weeks 2 to 5)
 
-- `sowel-site`: one bilingual page: promise, video, install, honest comparison with Home Assistant and Jeedom,
-  community links. Spec first.
-- `docs.sowel.org` goes back to being the manual (sober Material theme); the scroll-flip landing
-  (`docs/stylesheets/extra.css`, `docs/javascripts/landing.js`) is retired once the site replaces it.
+- `sowel-site`: one bilingual page: promise, video, install, community links. It is built and live at
+  https://sowel.org. The comparison with Home Assistant and Jeedom was dropped by the maintainer.
+- `docs.sowel.org` is the plain manual again: the scroll-flip landing (`docs/stylesheets/extra.css`,
+  `docs/javascripts/landing.js`) is retired, the home page is a short list of entry cards, and the Material theme
+  uses the showcase site's tokens (ocean blue, one mid-blue accent, night header, light and dark).
 
 ### Step 3 — Proof (weeks 3 to 6)
 

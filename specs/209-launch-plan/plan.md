@@ -15,7 +15,9 @@ The steps and their content are in [spec.md](spec.md). This file tracks them.
   - [x] Clean-machine install test (2026-11-21, Docker Desktop on macOS, not a clean Linux host). It found
         that the InfluxDB buckets and tasks were never created on a first start (#1284), fixed in v1.88.1
   - [ ] Launch film upload
-- [ ] Step 2 — Showcase: spec and repository `sowel-site`; `docs.sowel.org` back to the manual
+- [x] Step 2 — Showcase
+  - [x] `sowel-site` is live at https://sowel.org (one bilingual page, no comparison section)
+  - [x] `docs.sowel.org` is a plain manual again: scroll-flip landing retired, Material theme on the site's tokens
 - [ ] Step 3 — Proof: 60 to 90 second video, one numbered real case, two articles (FR and EN)
 - [ ] Step 4 — Launch (week 7, staggered): French channels, English channels, awesome-selfhosted PR
 - [ ] Step 5 — Upkeep: reply within 24 hours, one piece a month, `demo.sowel.org` as second wave
