@@ -359,7 +359,7 @@ export async function createServer(deps: ServerDeps) {
   registerAuthRoutes(app, { authService, userManager, auditLogger, logger });
   registerMeRoutes(app, { authService, mfaService, userManager, auditLogger, logger });
   registerMfaRoutes(app, { authService, mfaService, userManager, auditLogger, logger });
-  registerUserRoutes(app, { userManager, mfaService, auditLogger, logger });
+  registerUserRoutes(app, { userManager, authService, mfaService, auditLogger, logger });
   registerDeviceRoutes(app, { deviceManager, batteryMonitor, logger });
   registerZoneRoutes(app, { zoneManager, zoneAggregator, equipmentManager, logger });
   registerEquipmentRoutes(app, { equipmentManager, timedActionManager, logger });

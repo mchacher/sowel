@@ -471,6 +471,7 @@ Every change is saved whole; a 30 s tick closes due windows, prices those whose 
 - **Auth-by-default** (spec 105): a global Fastify `onRequest` hook enforces authentication on every `/api/v1/*` route. The list of public routes is the `PUBLIC_ROUTES` constant in `src/auth/auth-middleware.ts` (`/health`, `/auth/status`, `/auth/setup`, `/auth/login`, `/auth/refresh`, `/auth/mfa/verify`) plus OAuth callback paths. Any new route is protected unless explicitly added to that whitelist.
 - **Roles**: `admin` > `standard` > `viewer` (hierarchical permissions).
 - **First-run setup**: `POST /api/v1/auth/setup` creates the first admin user.
+- **Session revocation** (issue #1305): `verifyAccessToken` re-reads the account on every HTTP request, so a disabled or deleted account is refused and the stored role applies, not the one signed into the token. A password change deletes every refresh token of the account, bumps `users.token_version`, carried in every access token as the `tv` claim, so that access tokens issued earlier are refused, and hands the caller a fresh pair. A role change, a disable or an admin MFA reset deletes the user's refresh tokens. WebSockets are checked at connect time only.
 
 ### Two-factor authentication (spec 151)
 

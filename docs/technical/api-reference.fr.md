@@ -4,7 +4,7 @@ Sowel expose une API REST sous `/api/v1/` et un endpoint WebSocket à `/ws`. Tou
 
 **Base URL** : `http://<host>:3000`
 
-**Authentification** : passez un token d'accès JWT en header `Authorization: Bearer <token>`, ou un token d'API en `Authorization: Bearer swl_<token>`.
+**Authentification** : passez un token d'accès JWT en header `Authorization: Bearer <token>`, ou un token d'API en `Authorization: Bearer swl_<token>`. Les deux sont vérifiés contre le compte à chaque requête HTTP : un compte désactivé ou supprimé est refusé, et le rôle appliqué est celui enregistré actuellement. Un WebSocket est vérifié une seule fois, à la connexion.
 
 ---
 
@@ -99,15 +99,15 @@ physique lié à un mode, qui ne portent aucun rôle.
 
 Profil et tokens de l'utilisateur authentifié.
 
-| Method   | Path                     | Description                                                                                          |
-| -------- | ------------------------ | ---------------------------------------------------------------------------------------------------- |
-| `GET`    | `/api/v1/me`             | Récupère le profil de l'utilisateur courant.                                                         |
-| `PUT`    | `/api/v1/me`             | Met à jour le nom d'affichage. Body : `{ displayName }`.                                             |
-| `PUT`    | `/api/v1/me/preferences` | Met à jour les préférences (langue, thème, etc.). Body : `{ preferences }`.                          |
-| `PUT`    | `/api/v1/me/password`    | Change le mot de passe. Body : `{ currentPassword, newPassword }`.                                   |
-| `GET`    | `/api/v1/me/tokens`      | Liste les tokens d'API personnels.                                                                   |
-| `POST`   | `/api/v1/me/tokens`      | Crée un token d'API. Body : `{ name, expiresAt? }`. Retourne la chaîne de token (affichée une fois). |
-| `DELETE` | `/api/v1/me/tokens/:id`  | Révoque un token d'API. Retourne 204.                                                                |
+| Method   | Path                     | Description                                                                                                                                                                                                                                                                                                                                                                                                                         |
+| -------- | ------------------------ | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `GET`    | `/api/v1/me`             | Récupère le profil de l'utilisateur courant.                                                                                                                                                                                                                                                                                                                                                                                        |
+| `PUT`    | `/api/v1/me`             | Met à jour le nom d'affichage. Body : `{ displayName }`.                                                                                                                                                                                                                                                                                                                                                                            |
+| `PUT`    | `/api/v1/me/preferences` | Met à jour les préférences (langue, thème, etc.). Body : `{ preferences }`.                                                                                                                                                                                                                                                                                                                                                         |
+| `PUT`    | `/api/v1/me/password`    | Change le mot de passe. Body : `{ currentPassword, newPassword }`. Ferme aussitôt toutes les sessions du compte (refresh tokens supprimés, tokens d'accès émis avant le changement refusés) et, appelé avec une session (JWT), retourne un nouveau `{ accessToken, refreshToken, expiresIn, user }` que le client doit adopter. Appelé avec un token d'API, il ne retourne que `{ success: true }`, et le token d'API reste valide. |
+| `GET`    | `/api/v1/me/tokens`      | Liste les tokens d'API personnels.                                                                                                                                                                                                                                                                                                                                                                                                  |
+| `POST`   | `/api/v1/me/tokens`      | Crée un token d'API. Body : `{ name, expiresAt? }`. Retourne la chaîne de token (affichée une fois).                                                                                                                                                                                                                                                                                                                                |
+| `DELETE` | `/api/v1/me/tokens/:id`  | Révoque un token d'API. Retourne 204.                                                                                                                                                                                                                                                                                                                                                                                               |
 
 ---
 
@@ -115,12 +115,13 @@ Profil et tokens de l'utilisateur authentifié.
 
 Toutes les routes de gestion des utilisateurs nécessitent le rôle admin.
 
-| Method   | Path                | Description                                                                                         |
-| -------- | ------------------- | --------------------------------------------------------------------------------------------------- |
-| `GET`    | `/api/v1/users`     | Liste tous les utilisateurs.                                                                        |
-| `POST`   | `/api/v1/users`     | Crée un utilisateur. Body : `{ username, password, displayName, role }`.                            |
-| `PUT`    | `/api/v1/users/:id` | Met à jour un utilisateur. Body : `{ displayName?, role?, enabled? }`.                              |
-| `DELETE` | `/api/v1/users/:id` | Supprime un utilisateur. Impossible de se supprimer ou de supprimer le dernier admin. Retourne 204. |
+| Method   | Path                    | Description                                                                                                                                                                                                                                                                                                 |
+| -------- | ----------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `GET`    | `/api/v1/users`         | Liste tous les utilisateurs.                                                                                                                                                                                                                                                                                |
+| `POST`   | `/api/v1/users`         | Crée un utilisateur. Body : `{ username, password, displayName, role }`.                                                                                                                                                                                                                                    |
+| `PUT`    | `/api/v1/users/:id`     | Met à jour un utilisateur. Body : `{ displayName?, role?, enabled? }`. Un changement de rôle ou une désactivation ferme toutes les sessions de l'utilisateur.                                                                                                                                               |
+| `DELETE` | `/api/v1/users/:id`     | Supprime un utilisateur. Impossible de se supprimer ou de supprimer le dernier admin. Retourne 204.                                                                                                                                                                                                         |
+| `DELETE` | `/api/v1/users/:id/mfa` | Désactive de force la MFA d'un autre utilisateur (spec 151 FR6), chemin de récupération quand il a perdu son appareil TOTP et ses codes de secours. Aucune vérification demandée à l'admin. Ferme aussi toutes les sessions de l'utilisateur, l'appareil perdu pouvant encore en détenir une. Retourne 204. |
 
 ---
 

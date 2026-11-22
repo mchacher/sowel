@@ -9,6 +9,7 @@ import {
   authLogout,
   getMe,
   updateMyPreferences,
+  changeMyPassword,
   setAccessToken,
   setOnUnauthorized,
 } from "../api";
@@ -43,6 +44,12 @@ interface AuthState {
   refreshSession: () => Promise<boolean>;
   updatePreferences: (prefs: UserPreferences) => Promise<void>;
   fetchMe: () => Promise<void>;
+  /**
+   * Issue #1305 — change the password and adopt the fresh session the server
+   * returns: every previous session of the account, this one's included, is
+   * refused from now on.
+   */
+  changePassword: (currentPassword: string, newPassword: string) => Promise<void>;
 }
 
 const STORAGE_KEY_ACCESS = "sowel_access_token";
@@ -165,6 +172,14 @@ export const useAuth = create<AuthState>((set, get) => {
       set({ mfaChallenge: null });
     },
 
+    changePassword: async (currentPassword, newPassword) => {
+      const tokens = await changeMyPassword(currentPassword, newPassword);
+      saveTokens(tokens.accessToken, tokens.refreshToken);
+      // A request still in flight with the old token may have bounced to the
+      // login screen in the meantime; the fresh session is valid, so stay in.
+      set({ user: tokens.user, isAuthenticated: true });
+    },
+
     setup: async (data) => {
       const tokens = await authSetup(data);
       saveTokens(tokens.accessToken, tokens.refreshToken);
@@ -194,6 +209,11 @@ export const useAuth = create<AuthState>((set, get) => {
         set({ user: tokens.user, isAuthenticated: true, loading: false });
         return true;
       } catch {
+        // Issue #1305 — the refresh token we sent may have been replaced while
+        // the call was out (a password change reissued the session, another tab
+        // rotated it). Only a failure of the token still stored ends the
+        // session; otherwise the newer one is live, and the caller can retry.
+        if (getStoredRefreshToken() !== refreshToken) return true;
         clearTokens();
         set({ user: null, isAuthenticated: false, loading: false });
         return false;

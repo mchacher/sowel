@@ -116,6 +116,22 @@ describe("scripts/auth/reset-mfa.mjs (spec 151 FR7 — break-glass CLI)", () => 
     expect(countRows("mfa_trusted_devices", userId)).toBe(0);
   });
 
+  it("ends the user's sessions too, the lost-device path (issue #1305)", async () => {
+    const { userId } = await seedUserWithMfa("alice");
+    const db = new Database(dbPath);
+    db.prepare(
+      `INSERT INTO refresh_tokens (id, user_id, token_hash, expires_at)
+       VALUES ('rt-1', ?, 'h1', datetime('now', '+1 day')), ('rt-2', ?, 'h2', datetime('now', '+1 day'))`,
+    ).run(userId, userId);
+    db.close();
+
+    const result = runScript(dbPath, ["alice"]);
+
+    expect(result.status).toBe(0);
+    expect(result.stdout).toContain("Sessions ended: 2");
+    expect(countRows("refresh_tokens", userId)).toBe(0);
+  });
+
   it("does not touch another user's MFA state", async () => {
     const { userId: aliceId } = await seedUserWithMfa("alice");
     const { userId: bobId } = await seedUserWithMfa("bob");

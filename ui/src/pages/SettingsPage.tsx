@@ -21,7 +21,6 @@ import { useTimezone } from "../store/useTimezone";
 import { RestartToast } from "../components/system/RestartToast";
 import {
   updateMe,
-  changeMyPassword,
   getMyTokens,
   createMyToken,
   deleteMyToken,
@@ -560,7 +559,7 @@ function ChangePasswordSection() {
     }
     setSaving(true);
     try {
-      await changeMyPassword(currentPassword, newPassword);
+      await useAuth.getState().changePassword(currentPassword, newPassword);
       setSuccess(true);
       reset();
       setTimeout(() => {
