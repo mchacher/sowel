@@ -11,6 +11,27 @@ Cette page résume toutes les versions publiées, de la plus récente à la plus
 
 ---
 
+## 1.89.x : Durcissement de la sécurité
+
+### v1.89.0 — 2026-11-22 { #v1-89-0 }
+
+Une version de sécurité. Mettez à jour toutes les instances, en premier celle joignable depuis Internet. Le contrôle de l'API s'applique désormais quelle que soit l'écriture du chemin, les sessions se ferment quand un compte change, une instance derrière un tunnel voit ses vrais clients, et un ordre ne peut plus transporter de réglages d'appareil.
+
+**Après la mise à jour :**
+
+- **Derrière un reverse proxy ou un tunnel** (Cloudflare Tunnel, Caddy, nginx), renseignez `SOWEL_TRUSTED_PROXIES` avec l'adresse depuis laquelle le proxy se connecte, en général la passerelle Docker `172.18.0.1` quand `cloudflared` tourne sur l'hôte. Sans elle, les limites de connexion restent partagées par tous les clients distants. Voir [Déploiement](technical/deployment.md#derriere-un-reverse-proxy-ou-un-tunnel).
+- **Changer un mot de passe déconnecte désormais tous les autres navigateurs** connectés à ce compte. Les tokens d'API ne sont pas touchés : vérifiez-les dans Réglages → Compte.
+- **Une migration ajoute `users.token_version`.** Personne n'est déconnecté par la mise à jour.
+
+- Correctif (auth) : **le contrôle d'authentification s'applique à toutes les écritures d'un chemin d'API** (#1301). Un chemin écrit avec des caractères encodés en pourcentage pouvait atteindre certains endpoints protégés sans connexion. Le contrôle se fonde désormais sur la route réellement reconnue par le serveur. Une instance derrière Cloudflare peut aussi activer la normalisation des URL vers l'origine.
+- Correctif (api) : **les limites de connexion et de MFA voient le vrai client derrière un tunnel** (#1302, #1304). Toutes les requêtes passées par un tunnel venaient de la même adresse locale : dix connexions ratées par minute, de n'importe qui, bloquaient tout le monde, et le journal d'audit enregistrait le proxy. La nouvelle variable `SOWEL_TRUSTED_PROXIES` (IP ou CIDR, vide par défaut) liste les proxies dont `X-Forwarded-For` est cru ; personne d'autre ne peut choisir son adresse. Une entrée invalide arrête le démarrage avec un message qui nomme la variable.
+- Correctif (auth) : **les sessions se ferment quand le compte change** (#1305, #1306). Un changement de mot de passe ferme aussitôt toutes les sessions du compte et en remet une neuve au navigateur qui l'a fait. Une désactivation, un changement de rôle ou une réinitialisation MFA par un admin ferme les sessions de l'utilisateur. Chaque requête relit le compte : un compte désactivé est refusé et une rétrogradation s'applique dès la requête suivante. `PUT /api/v1/me/password` retourne désormais la nouvelle paire de tokens.
+- Correctif (équipements) : **une valeur d'ordre ne peut plus écrire d'attributs d'appareil** (#1310, #1311). Sauf pour un ordre typé `json`, la valeur est une chaîne, un nombre, un booléen ou vide, ou, sur un ordre on/off, le composite minuté `{ <clé de l'ordre>, on_time?, off_wait_time? }` utilisé par l'arrosage minuté. Toute autre forme répond `400` et rien n'atteint l'appareil. Le retour d'une action minutée est vérifié dès l'armement. Une action de mode, de bouton ou de calendrier configurée avec une valeur objet d'une autre forme est désormais refusée ; aucune n'est connue.
+- Correctif (ui) : la barre d'onglets mobile est plus resserrée, l'icône plus proche de son libellé (#1290, #1293), et l'onglet sélectionné garde son libellé dans sa bulle (#1294, #1295).
+- Docs : le manuel redevient un manuel simple, au thème du site vitrine, guide utilisateur en tête (spec 209, #1287, #1288, #1289, #1292, #1296, #1297, #1298) ; le README renvoie au site vitrine (#1299) ; notes de revue de l'API Netatmo (#1300, #1303).
+
+---
+
 ## 1.88.x : Un nouveau logo, et des recettes qui publient des données
 
 ### v1.88.1 — 2026-11-21 { #v1-88-1 }
