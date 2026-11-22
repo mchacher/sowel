@@ -173,14 +173,14 @@ All user management routes require admin role.
 
 ## Equipments
 
-| Method   | Path                                   | Description                                                                                                                                                                                                                                                                         |
-| -------- | -------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `GET`    | `/api/v1/equipments`                   | List all equipments with bindings, current data, and derived `status` (see [Equipment status](#equipment-status-spec-116)). Optional `?type=<EquipmentType>` narrows to a single type (e.g. `energy_meter`). Unknown values return an empty list.                                   |
-| `GET`    | `/api/v1/equipments/:id`               | Get equipment with bindings, current data, and derived `status`.                                                                                                                                                                                                                    |
-| `POST`   | `/api/v1/equipments`                   | Create equipment. Body: `{ name, type, zoneId, icon?, description?, deviceIds? }`. If `deviceIds` provided, auto-bindings are created.                                                                                                                                              |
-| `PUT`    | `/api/v1/equipments/:id`               | Update equipment. Body: `{ name?, type?, zoneId?, icon?, description?, enabled? }`.                                                                                                                                                                                                 |
-| `DELETE` | `/api/v1/equipments/:id`               | Delete equipment. Returns 204.                                                                                                                                                                                                                                                      |
-| `POST`   | `/api/v1/equipments/:id/orders/:alias` | Execute an equipment order. Body: `{ value }`. Unless the order is typed `json`, `value` is a string, number, boolean or empty, or the timed composite `{ <order key>: <value>, on_time?, off_wait_time? }` (seconds); anything else answers 400 and nothing is sent to the device. |
+| Method   | Path                                   | Description                                                                                                                                                                                                                                                                                                                |
+| -------- | -------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `GET`    | `/api/v1/equipments`                   | List all equipments with bindings, current data, and derived `status` (see [Equipment status](#equipment-status-spec-116)). Optional `?type=<EquipmentType>` narrows to a single type (e.g. `energy_meter`). Unknown values return an empty list.                                                                          |
+| `GET`    | `/api/v1/equipments/:id`               | Get equipment with bindings, current data, and derived `status`.                                                                                                                                                                                                                                                           |
+| `POST`   | `/api/v1/equipments`                   | Create equipment. Body: `{ name, type, zoneId, icon?, description?, deviceIds? }`. If `deviceIds` provided, auto-bindings are created.                                                                                                                                                                                     |
+| `PUT`    | `/api/v1/equipments/:id`               | Update equipment. Body: `{ name?, type?, zoneId?, icon?, description?, enabled? }`.                                                                                                                                                                                                                                        |
+| `DELETE` | `/api/v1/equipments/:id`               | Delete equipment. Returns 204.                                                                                                                                                                                                                                                                                             |
+| `POST`   | `/api/v1/equipments/:id/orders/:alias` | Execute an equipment order. Body: `{ value }`. Unless the order is typed `json`, `value` is a string, number, boolean or empty, or, on an on/off (boolean or enum) order, the timed composite `{ <order key>: <value>, on_time?, off_wait_time? }` (seconds); anything else answers 400 and nothing is sent to the device. |
 
 ### Timed actions (spec 174)
 
@@ -213,6 +213,7 @@ Rules worth knowing before calling it:
 - **A revert that could not be sent alarms and stops.** It is never replayed: the engine cannot know whether sending it again would put the equipment back or act on it a second time.
 - `durationMs` is between 10 s and 24 h. An action and its revert **may carry the same value**: a sliding gate on a sequential impulse is opened and closed by one command.
 - **Not every equipment can be armed.** It must carry the order and a state reading tied to it (the order's own alias, or a reading in `light_state`, `gate_state`, `cover_state`, `lock_state`, `appliance_state`). Without one, a revert done by hand could never end the window, so the call is refused with `400 TimedCommandNotEligible`.
+- **`value` and `revertValue` follow the order value rule** of `POST /equipments/:id/orders/:alias`, and both are checked when the action is armed: a revert the order would refuse answers 400 then, rather than failing at the deadline.
 - **An empty body arms the equipment's own configuration** (`timedCommand`), so a surface does not have to restate three values it does not own: `POST /equipments/:id/timed-action` with `{}`. `409` when nothing is configured.
 - `GET /equipments` and `GET /equipments/:id` carry `timedAction` while a window is running, with `expiresAt` as an ISO-8601 instant, and `timedCommand` when one is configured.
 
@@ -304,16 +305,16 @@ The verdict comes from `classifyPowerReading` in `src/shared/reading-freshness.t
 
 ## Zones
 
-| Method   | Path                                 | Description                                                                             |
-| -------- | ------------------------------------ | --------------------------------------------------------------------------------------- |
-| `GET`    | `/api/v1/zones`                      | List all zones as a tree structure.                                                     |
-| `GET`    | `/api/v1/zones/:id`                  | Get zone with children.                                                                 |
-| `POST`   | `/api/v1/zones`                      | Create zone. Body: `{ name, parentId?, icon?, description?, displayOrder? }`.           |
-| `PUT`    | `/api/v1/zones/:id`                  | Update zone. Body: `{ name?, parentId?, icon?, description?, displayOrder? }`.          |
-| `DELETE` | `/api/v1/zones/:id`                  | Delete zone. Returns 204.                                                               |
-| `PUT`    | `/api/v1/zones/reorder`              | Reorder sibling zones. Body: `{ parentId, orderedIds }`. Returns 204.                   |
-| `GET`    | `/api/v1/zones/aggregation`          | Get aggregated data for all zones (temperature, motion, lightsOn, etc.).                |
-| `POST`   | `/api/v1/zones/:id/orders/:orderKey` | Execute zone-level order (e.g. `allLightsOff`, `allShuttersClose`). Body: `{ value? }`. |
+| Method   | Path                                 | Description                                                                                                                                                                                                                |
+| -------- | ------------------------------------ | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `GET`    | `/api/v1/zones`                      | List all zones as a tree structure.                                                                                                                                                                                        |
+| `GET`    | `/api/v1/zones/:id`                  | Get zone with children.                                                                                                                                                                                                    |
+| `POST`   | `/api/v1/zones`                      | Create zone. Body: `{ name, parentId?, icon?, description?, displayOrder? }`.                                                                                                                                              |
+| `PUT`    | `/api/v1/zones/:id`                  | Update zone. Body: `{ name?, parentId?, icon?, description?, displayOrder? }`.                                                                                                                                             |
+| `DELETE` | `/api/v1/zones/:id`                  | Delete zone. Returns 204.                                                                                                                                                                                                  |
+| `PUT`    | `/api/v1/zones/reorder`              | Reorder sibling zones. Body: `{ parentId, orderedIds }`. Returns 204.                                                                                                                                                      |
+| `GET`    | `/api/v1/zones/aggregation`          | Get aggregated data for all zones (temperature, motion, lightsOn, etc.).                                                                                                                                                   |
+| `POST`   | `/api/v1/zones/:id/orders/:orderKey` | Execute zone-level order (e.g. `allLightsOff`, `allShuttersClose`). Body: `{ value? }`, which follows the order value rule of `POST /equipments/:id/orders/:alias`; a refused value counts as an error for that equipment. |
 
 ---
 

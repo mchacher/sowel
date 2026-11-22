@@ -40,6 +40,18 @@ describe("orderValueShapeError (issue #1310)", () => {
     expect(orderValueShapeError(state, v)).toMatch(/unexpected field '__proto__'/);
   });
 
+  it("accepts the timed composite only on an on/off order", () => {
+    expect(
+      orderValueShapeError([{ key: "state", type: "enum" }], { state: "ON", on_time: 5 }),
+    ).toBeNull();
+    expect(
+      orderValueShapeError([{ key: "brightness", type: "number" }], {
+        brightness: 200,
+        on_time: 5,
+      }),
+    ).toMatch(/expected a number value/);
+  });
+
   it("leaves json orders free to take an object", () => {
     expect(orderValueShapeError([{ key: "color", type: "json" }], { x: 0.3, y: 0.4 })).toBeNull();
   });

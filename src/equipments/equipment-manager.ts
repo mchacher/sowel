@@ -1104,6 +1104,23 @@ export class EquipmentManager {
   }
 
   /**
+   * Issue #1310 — the same shape check runOrder applies, without sending
+   * anything. For a caller that stores a value to send later (a timed
+   * action's revert), so a value that would be refused at the deadline is
+   * refused now, while the user is still there to see it. Throws
+   * EquipmentError 400; an alias with no binding (the VMC `speed` logical
+   * order) is left to runOrder, which validates it on its own path.
+   */
+  validateOrderValue(equipmentId: string, alias: string, value: unknown): void {
+    const bindings = this.stmts.getOrderBindingsByAlias.all(
+      equipmentId,
+      alias,
+    ) as OrderBindingJoinRow[];
+    const shapeError = orderValueShapeError(bindings, value);
+    if (shapeError) throw new EquipmentError(shapeError, 400);
+  }
+
+  /**
    * `partOf` names the logical order this one is a step of (a VMC `speed`
    * decomposed into relay orders). It rides on the step's outcome event so
    * the activity feed shows the logical order once instead of every step

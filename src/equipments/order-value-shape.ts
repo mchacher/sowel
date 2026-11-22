@@ -8,7 +8,8 @@
  * configuration. So, unless the bound order is declared `json`, a value is a
  * primitive, or the one composite kept on purpose: z2m's "on with timed off",
  * `{ <order key>: <primitive>, on_time?, off_wait_time? }`, used by the water
- * valve control and the auto-watering recipe.
+ * valve control and the auto-watering recipe. That composite is an on/off
+ * switch's, so it is only accepted on a boolean or enum order.
  *
  * Range and enum membership are not checked here: an out-of-range or unknown
  * primitive still reaches the device under the order's own key, where the
@@ -17,6 +18,9 @@
 
 /** Keys a timed composite may carry besides the order's own key. */
 const TIMED_KEYS: ReadonlySet<string> = new Set(["on_time", "off_wait_time"]);
+
+/** Order types the timed composite may target: on/off switches. */
+const TIMED_ORDER_TYPES: ReadonlySet<string> = new Set(["boolean", "enum"]);
 
 export interface OrderShape {
   /** Device-side order key, e.g. `state`. */
@@ -53,7 +57,7 @@ export function orderValueShapeError(
   if (isPrimitive(value)) return null;
   for (const binding of bindings) {
     if (binding.type === "json") continue;
-    if (!isPlainObject(value)) {
+    if (!isPlainObject(value) || !TIMED_ORDER_TYPES.has(binding.type)) {
       return `Invalid value for order '${binding.key}': expected a ${binding.type} value`;
     }
     const keys = Object.keys(value);

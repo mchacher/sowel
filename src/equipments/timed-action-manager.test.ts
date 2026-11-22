@@ -48,6 +48,9 @@ function buildHarness() {
     // FR-11 asks the real bindings: eligibility is the guard that replaced the
     // identical-value refusal, so it has to see the gate's contact.
     getByIdWithDetails: (id: string) => realEquipments.getByIdWithDetails(id),
+    // Issue #1310 — the real shape check, against the real bindings.
+    validateOrderValue: (id: string, alias: string, value: unknown) =>
+      realEquipments.validateOrderValue(id, alias, value),
     executeOrder: async (equipmentId: string, alias: string, value: unknown, source?: never) => {
       dispatches.push({ equipmentId, alias, value, source });
       if (throws) throw throws;
@@ -158,6 +161,19 @@ describe("TimedActionManager", () => {
         /Duration must be/,
       );
       expect(h.dispatches).toHaveLength(0);
+    });
+
+    // Issue #1310 — the revert is only sent at the deadline. Refusing it then
+    // would leave the gate open; it is refused now, before anything moves.
+    it("refuses a value or a revert the order would refuse, before sending anything", async () => {
+      await expect(
+        h.manager.arm(h.gateId, { ...ARM, revertValue: { child_lock: "LOCK" } }),
+      ).rejects.toMatchObject({ statusCode: 400 });
+      await expect(
+        h.manager.arm(h.gateId, { ...ARM, value: { overload_protection: 0 } }),
+      ).rejects.toMatchObject({ statusCode: 400 });
+      expect(h.dispatches).toHaveLength(0);
+      expect(h.rows()).toHaveLength(0);
     });
 
     // FR-9b + FR-11 — what replaced the identical-value refusal.
