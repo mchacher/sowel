@@ -14,6 +14,7 @@ const logger = createLogger("silent").logger;
 
 interface BuildOpts {
   authed?: boolean;
+  tokenKind?: "jwt" | "api_token";
 }
 
 const currentUser = {
@@ -32,6 +33,7 @@ async function buildApp(opts: BuildOpts = {}) {
   if (opts.authed) {
     app.addHook("onRequest", async (request) => {
       request.auth = { userId: "u1", role: "standard" };
+      request.tokenKind = opts.tokenKind ?? "jwt";
     });
   }
 
@@ -199,6 +201,19 @@ describe("me routes (schema validation, #482)", () => {
         accessToken: "at-new",
         refreshToken: "rt-new",
       });
+    });
+
+    it("gives an API-token caller no session, but still ends the browser ones", async () => {
+      const built = await buildApp({ authed: true, tokenKind: "api_token" });
+      app = built.app;
+      const res = await app.inject({
+        method: "PUT",
+        url: "/api/v1/me/password",
+        payload: { currentPassword: "correct", newPassword: "new-password" },
+      });
+      expect(res.statusCode).toBe(200);
+      expect(built.revoked).toEqual(["u1"]);
+      expect(res.json()).toEqual({ success: true });
     });
 
     it("revokes nothing when the current password is wrong", async () => {

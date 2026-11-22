@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeEach, afterEach, vi } from "vitest";
+import { describe, it, expect, beforeEach, afterEach } from "vitest";
 import type Database from "better-sqlite3";
 import jwt from "jsonwebtoken";
 import { OTP } from "otplib";
@@ -142,10 +142,6 @@ describe("AuthService", () => {
     type Tokens = { accessToken: string; refreshToken: string };
     const login = async () => (await auth.login("alice", "test-fixture-password")) as Tokens;
 
-    afterEach(() => {
-      vi.useRealTimers();
-    });
-
     it("ends every refresh token of the user, and only theirs", async () => {
       await userManager.createUser({
         username: "bob",
@@ -163,12 +159,11 @@ describe("AuthService", () => {
     });
 
     it("refuses access tokens issued before a password change, accepts the reissued one", async () => {
-      vi.useFakeTimers({ toFake: ["Date"] });
-      vi.setSystemTime(new Date("2026-11-22T10:00:00.000Z"));
+      // No clock involved: login and change land in the same second here, the
+      // case a timestamp check could not tell apart.
       const before = await login();
       expect(() => auth.verifyAccessToken(before.accessToken)).not.toThrow();
 
-      vi.setSystemTime(new Date("2026-11-22T10:05:00.000Z"));
       await userManager.updatePassword(userId, "a-new-password");
       auth.revokeUserSessions(userId);
       const fresh = auth.reissueSession(userId);
@@ -177,6 +172,13 @@ describe("AuthService", () => {
       await expect(auth.refresh(before.refreshToken)).rejects.toThrow(AuthError);
       expect(auth.verifyAccessToken(fresh.accessToken).userId).toBe(userId);
       await expect(auth.refresh(fresh.refreshToken)).resolves.toHaveProperty("accessToken");
+    });
+
+    it("still accepts a token issued before the upgrade (no version claim)", () => {
+      const legacy = jwt.sign({ userId, role: "admin", purpose: "access" }, JWT_SECRET, {
+        expiresIn: 900,
+      });
+      expect(auth.verifyAccessToken(legacy).userId).toBe(userId);
     });
 
     it("does not reissue a session for a disabled account", () => {

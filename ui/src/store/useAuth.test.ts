@@ -391,6 +391,32 @@ describe("changePassword (issue #1305)", () => {
     expect(localStorage.getItem(REFRESH_KEY)).toBe("ref-new");
     expect(api.setAccessToken).toHaveBeenLastCalledWith("acc-new");
     expect(useAuth.getState().accessToken).toBe("acc-new");
+    expect(useAuth.getState().isAuthenticated).toBe(true);
+  });
+
+  it("is not logged out by a request that bounced on the old token meanwhile", async () => {
+    globalThis.localStorage.setItem(ACCESS_KEY, "acc-old");
+    globalThis.localStorage.setItem(REFRESH_KEY, "ref-old");
+    await loadStore();
+    // The in-flight request's refresh of the revoked token fails only after the
+    // password reply has already stored the fresh session.
+    let rejectRefresh: (e: Error) => void = () => {};
+    api.authRefresh.mockReturnValue(
+      new Promise((_, reject) => {
+        rejectRefresh = reject;
+      }),
+    );
+    api.changeMyPassword.mockResolvedValue(
+      tokens({ accessToken: "acc-new", refreshToken: "ref-new" }),
+    );
+
+    const bounced = useAuth.getState().refreshSession();
+    await useAuth.getState().changePassword("old-pw", "new-password");
+    rejectRefresh(new Error("Invalid refresh token"));
+
+    expect(await bounced).toBe(true);
+    expect(localStorage.getItem(REFRESH_KEY)).toBe("ref-new");
+    expect(useAuth.getState().isAuthenticated).toBe(true);
   });
 
   it("keeps the current session untouched when the change is refused", async () => {

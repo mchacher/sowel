@@ -25,6 +25,8 @@ export interface JwtPayload {
   userId: string;
   role: UserRole;
   purpose?: TokenPurpose;
+  /** Issue #1305 — `users.token_version` at issue time. Absent = 0. */
+  tv?: number;
 }
 
 interface MfaPendingPayload {
@@ -84,9 +86,7 @@ export class AuthService {
       deleteRefresh: db.prepare("DELETE FROM refresh_tokens WHERE token_hash = ?"),
       deleteUserRefreshTokens: db.prepare("DELETE FROM refresh_tokens WHERE user_id = ?"),
       // Issue #1305 — what an access token may do right now.
-      getSessionState: db.prepare(
-        "SELECT role, enabled, password_changed_at FROM users WHERE id = ?",
-      ),
+      getSessionState: db.prepare("SELECT role, enabled, token_version FROM users WHERE id = ?"),
       cleanExpiredRefresh: db.prepare(
         "DELETE FROM refresh_tokens WHERE expires_at <= datetime('now')",
       ),
@@ -208,7 +208,7 @@ export class AuthService {
    * Access tokens already issued are not listed anywhere, but none outlives
    * this for long: `verifyAccessToken` re-reads the account on every request,
    * so a disable or a role change applies at once, and a password change
-   * refuses every token issued before it (`password_changed_at`).
+   * bumps `users.token_version`, which refuses every token issued before it.
    */
   revokeUserSessions(userId: string): number {
     const result = this.stmts.deleteUserRefreshTokens.run(userId);
@@ -244,28 +244,27 @@ export class AuthService {
       throw new AuthError("Invalid or expired token", 401);
     }
     // Issue #1305 — the token proves who the caller was at issue time, not what
-    // they may do now. A deleted or disabled account is refused, a token issued
-    // before the last password change is refused, and the role is the stored
-    // one, so a demotion takes effect on the next request rather than when the
-    // token expires. `iat` is in whole seconds, hence the floor: a token issued
-    // in the same second as the change, the caller's fresh one, still passes.
+    // they may do now. A deleted or disabled account is refused, a token from
+    // before the last password change (older `tv`) is refused, and the role is
+    // the stored one, so a demotion takes effect on the next request rather
+    // than when the token expires.
     const state = this.stmts.getSessionState.get(payload.userId) as
-      { role: UserRole; enabled: number; password_changed_at: number | null } | undefined;
-    if (!state || !state.enabled) {
-      throw new AuthError("Invalid or expired token", 401);
-    }
-    const issuedAt = (payload as JwtPayload & { iat?: number }).iat;
-    if (
-      state.password_changed_at !== null &&
-      (issuedAt === undefined || issuedAt < Math.floor(state.password_changed_at / 1000))
-    ) {
+      { role: UserRole; enabled: number; token_version: number } | undefined;
+    if (!state || !state.enabled || (payload.tv ?? 0) !== state.token_version) {
       throw new AuthError("Invalid or expired token", 401);
     }
     return { ...payload, role: state.role };
   }
 
   private generateTokens(user: User): AuthTokens {
-    const payload: JwtPayload = { userId: user.id, role: user.role, purpose: "access" };
+    const version = this.stmts.getSessionState.get(user.id) as
+      { token_version: number } | undefined;
+    const payload: JwtPayload = {
+      userId: user.id,
+      role: user.role,
+      purpose: "access",
+      tv: version?.token_version ?? 0,
+    };
     const accessToken = jwt.sign(payload, this.config.secret, {
       expiresIn: this.config.accessTtl,
     });

@@ -1,0 +1,12 @@
+-- Issue #1305 — the generation of the account's access tokens.
+--
+-- An access token is a signed JWT that stays valid until it expires, so
+-- deleting refresh tokens alone left every other device in for up to 15 min
+-- after a password change. Each token carries the version it was issued
+-- under (`tv` claim); a password change bumps the version, and the auth check
+-- refuses any token from an older one. A counter, not a timestamp, so neither
+-- the clock's resolution nor the clock stepping backwards can let an old token
+-- through or lock a fresh one out. Tokens issued before this column existed
+-- carry no claim and count as version 0, the default, so nobody is logged out
+-- by the upgrade.
+ALTER TABLE users ADD COLUMN token_version INTEGER NOT NULL DEFAULT 0;

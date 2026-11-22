@@ -127,11 +127,13 @@ export function registerMeRoutes(app: FastifyInstance, deps: MeDeps): void {
       // previously trusted to skip the MFA step.
       mfaService.revokeAllTrustedDevices(request.auth.userId);
       // Issue #1305 — a new password ends every session of the account: the
-      // refresh tokens go, and the access tokens issued before now are refused
-      // (password_changed_at). The caller gets a fresh session in the reply so
-      // the browser that made the change stays in.
+      // refresh tokens go, and access tokens from before the change are refused
+      // (token_version). A browser caller gets a fresh session in the reply so
+      // it stays in. An API-token caller keeps its token and gets no session:
+      // handing it one would turn a revocable token into a 30-day login.
       const sessionsRevoked = authService.revokeUserSessions(request.auth.userId);
-      const session = authService.reissueSession(request.auth.userId);
+      const session =
+        request.tokenKind === "jwt" ? authService.reissueSession(request.auth.userId) : {};
       auditLogger.log({
         ...buildActor(request, userManager),
         action: "user.password_change",

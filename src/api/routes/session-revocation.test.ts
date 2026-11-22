@@ -3,7 +3,7 @@
  * database, real AuthService, real auth middleware (bearer check + role gate)
  * and the real /me and /users routes.
  */
-import { describe, it, expect, beforeEach, afterEach, vi } from "vitest";
+import { describe, it, expect, beforeEach, afterEach } from "vitest";
 import Fastify, { type FastifyInstance } from "fastify";
 import type Database from "better-sqlite3";
 import { createLogger } from "../../core/logger.js";
@@ -56,7 +56,6 @@ beforeEach(async () => {
 });
 
 afterEach(async () => {
-  vi.useRealTimers();
   await app.close();
   db.close();
 });
@@ -82,12 +81,9 @@ const me = (t: Tokens) => app.inject({ method: "GET", url: "/api/v1/me", headers
 
 describe("session revocation end to end (issue #1305)", () => {
   it("a password change logs every other device out at once, and keeps the caller in", async () => {
-    vi.useFakeTimers({ toFake: ["Date"] });
-    vi.setSystemTime(new Date("2026-11-22T10:00:00.000Z"));
     const laptop = await login("alice");
     const phone = await login("alice");
 
-    vi.setSystemTime(new Date("2026-11-22T10:05:00.000Z"));
     const res = await app.inject({
       method: "PUT",
       url: "/api/v1/me/password",
