@@ -1787,6 +1787,42 @@ describe("EquipmentManager", () => {
   // Zone orders with order categories
   // ============================================================
 
+  describe("order value shape (issue #1310)", () => {
+    function seedValve() {
+      const zone = zoneManager.create({ name: "Jardin" });
+      const eq = manager.create({ name: "Vanne", type: "water_valve", zoneId: zone.id });
+      const { orderIds } = seedDevice(db, {
+        name: "SWV",
+        orderKeys: [{ key: "state", type: "boolean", category: "valve_toggle" }],
+      });
+      manager.addOrderBinding(eq.id, orderIds[0], "state");
+      return eq;
+    }
+
+    it("refuses device attributes sent as an object, before any plugin call", async () => {
+      const eq = seedValve();
+      await expect(
+        manager.executeOrder(eq.id, "state", { overload_protection: 0, child_lock: "LOCK" }),
+      ).rejects.toMatchObject({ status: 400 });
+      expect(mockPublished).toHaveLength(0);
+    });
+
+    it("still dispatches the timed watering composite unchanged", async () => {
+      const eq = seedValve();
+      await manager.executeOrder(eq.id, "state", { state: "ON", on_time: 600 });
+      expect(mockPublished).toHaveLength(1);
+      expect(JSON.parse(mockPublished[0].payload)).toEqual({
+        state: { state: "ON", on_time: 600 },
+      });
+    });
+
+    it("leaves primitive orders exactly as before", async () => {
+      const eq = seedValve();
+      await manager.executeOrder(eq.id, "state", "ON");
+      expect(JSON.parse(mockPublished[0].payload)).toEqual({ state: "ON" });
+    });
+  });
+
   describe("zone orders with order categories", () => {
     it("finds order binding by order category (light_toggle)", async () => {
       const zone = zoneManager.create({ name: "Salon" });

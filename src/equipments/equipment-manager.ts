@@ -43,6 +43,7 @@ import { RETRY_CHANNEL } from "./order-confirmation-tracker.js";
 import { EV_CHARGER_CATEGORY_ALIASES } from "../shared/ev-charger-contract.js";
 import { ELECTRIC_VEHICLE_CATEGORY_ALIASES } from "../shared/electric-vehicle-contract.js";
 import type { Device } from "../shared/types.js";
+import { orderValueShapeError } from "./order-value-shape.js";
 import {
   RecipeOutputs,
   isCoreVirtualAlias,
@@ -1137,6 +1138,15 @@ export class EquipmentManager {
 
     if (bindings.length === 0) {
       throw new EquipmentError(`Order alias not found: ${alias}`, 404);
+    }
+
+    // Issue #1310 — refuse a value whose shape would let a plugin write device
+    // attributes beyond this order (an arbitrary object becomes a whole z2m
+    // payload). One gate for every caller: UI, zone orders, recipes, timed
+    // actions and delivery retries all come through here.
+    const shapeError = orderValueShapeError(bindings, value);
+    if (shapeError) {
+      throw new EquipmentError(shapeError, 400);
     }
 
     // Spec 154 — per-equipment command inversion for a shutter-family motor
