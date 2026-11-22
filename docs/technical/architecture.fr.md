@@ -700,20 +700,21 @@ Voir la spec 061 sur [github.com/mchacher/sowel/tree/main/specs/061-timezone-fro
 
 Tous les réglages sont optionnels avec des valeurs par défaut raisonnables, Sowel tourne sans configuration prête à l'emploi. Surchargez via `.env` au besoin :
 
-| Variable          | Défaut                         | Notes                                                                                      |
-| ----------------- | ------------------------------ | ------------------------------------------------------------------------------------------ |
-| `SQLITE_PATH`     | `./data/sowel.db`              | Chemin de la base SQLite                                                                   |
-| `API_PORT`        | `3000`                         | Port du serveur HTTP                                                                       |
-| `API_HOST`        | `0.0.0.0`                      | Adresse de bind                                                                            |
-| `JWT_SECRET`      | auto-généré                    | Persisté dans `data/.jwt-secret` au premier lancement                                      |
-| `JWT_ACCESS_TTL`  | `900`                          | TTL de l'access token en secondes (15 min)                                                 |
-| `JWT_REFRESH_TTL` | `2592000`                      | TTL du refresh token en secondes (30 jours)                                                |
-| `LOG_LEVEL`       | `info`                         | Niveau de log pino                                                                         |
-| `CORS_ORIGINS`    | `*`                            | Origines autorisées séparées par des virgules                                              |
-| `INFLUX_URL`      | `http://localhost:8086`        | URL InfluxDB 2.x                                                                           |
-| `INFLUX_TOKEN`    | auto-généré                    | Persisté dans `data/.influx-token` au premier lancement                                    |
-| `INFLUX_ORG`      | `sowel`                        | Organisation InfluxDB                                                                      |
-| `INFLUX_BUCKET`   | `sowel`                        | Bucket principal InfluxDB                                                                  |
-| `TZ`              | défaut système (UTC en Docker) | Fuseau IANA. À fixer explicitement dans docker-compose pour fiabiliser la logique horaire. |
+| Variable                | Défaut                         | Notes                                                                                       |
+| ----------------------- | ------------------------------ | ------------------------------------------------------------------------------------------- |
+| `SQLITE_PATH`           | `./data/sowel.db`              | Chemin de la base SQLite                                                                    |
+| `API_PORT`              | `3000`                         | Port du serveur HTTP                                                                        |
+| `API_HOST`              | `0.0.0.0`                      | Adresse de bind                                                                             |
+| `JWT_SECRET`            | auto-généré                    | Persisté dans `data/.jwt-secret` au premier lancement                                       |
+| `JWT_ACCESS_TTL`        | `900`                          | TTL de l'access token en secondes (15 min)                                                  |
+| `JWT_REFRESH_TTL`       | `2592000`                      | TTL du refresh token en secondes (30 jours)                                                 |
+| `LOG_LEVEL`             | `info`                         | Niveau de log pino                                                                          |
+| `CORS_ORIGINS`          | `*`                            | Origines autorisées séparées par des virgules                                               |
+| `SOWEL_TRUSTED_PROXIES` | (vide)                         | Adresses de proxy (IP ou CIDR) dont `X-Forwarded-For` est cru. Voir le guide de déploiement |
+| `INFLUX_URL`            | `http://localhost:8086`        | URL InfluxDB 2.x                                                                            |
+| `INFLUX_TOKEN`          | auto-généré                    | Persisté dans `data/.influx-token` au premier lancement                                     |
+| `INFLUX_ORG`            | `sowel`                        | Organisation InfluxDB                                                                       |
+| `INFLUX_BUCKET`         | `sowel`                        | Bucket principal InfluxDB                                                                   |
+| `TZ`                    | défaut système (UTC en Docker) | Fuseau IANA. À fixer explicitement dans docker-compose pour fiabiliser la logique horaire.  |
 
 Les réglages d'intégration (MQTT, identifiants cloud, intervalles de polling) sont configurés depuis l'UI, pas depuis `.env`.

@@ -6,6 +6,7 @@ import cors from "@fastify/cors";
 import helmet from "@fastify/helmet";
 import multipart from "@fastify/multipart";
 import rateLimit from "@fastify/rate-limit";
+import { trustProxySetting } from "./trusted-proxy.js";
 import fastifyStatic from "@fastify/static";
 import websocket from "@fastify/websocket";
 import swagger from "@fastify/swagger";
@@ -142,6 +143,11 @@ interface ServerDeps {
   auditLogger: AuditLogger;
   logger: Logger;
   corsOrigins: string[];
+  /**
+   * Socket peers allowed to state the client address through
+   * `X-Forwarded-For` (reverse proxy, tunnel connector). Empty = none.
+   */
+  trustedProxies?: string[];
   /** Spec 124 — exposed by GET /api/v1/system/mode for the UI banner. */
   shadowMode: boolean;
   /** Issue #401 — restored-data guardrail state + takeover confirm hooks. */
@@ -199,6 +205,7 @@ export async function createServer(deps: ServerDeps) {
     auditLogger,
     logger,
     corsOrigins,
+    trustedProxies = [],
     shadowMode,
     takeoverPending,
     confirmTakeover,
@@ -208,7 +215,14 @@ export async function createServer(deps: ServerDeps) {
   const app = Fastify({
     logger: false,
     ajv: validationAjvOptions,
+    trustProxy: trustProxySetting(trustedProxies),
   });
+  if (trustedProxies.length > 0) {
+    logger.info(
+      { trustedProxies },
+      "Client address taken from X-Forwarded-For for trusted proxies",
+    );
+  }
 
   // Schema-validation failures answer as { error } / 400 (issue #452).
   installValidationErrorHandler(app);

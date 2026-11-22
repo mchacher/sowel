@@ -97,6 +97,21 @@ docker compose pull && docker compose up -d sowel
 
 This default was changed in v1.15.3, reversing the v1.7.0 (spec 105) decision after field feedback showed that nearly all installs hit the "update unavailable" message without realising they needed to copy an override file.
 
+### Behind a reverse proxy or a tunnel
+
+When Sowel is reached through a reverse proxy or a tunnel connector (Cloudflare Tunnel, Caddy, nginx), every request arrives from the proxy's local address. Sowel then sees one single client: the per-address limits on login and MFA attempts are shared by everyone, so a stranger hammering the login page also locks you out, and the audit log records the proxy's address instead of the client's.
+
+Set `SOWEL_TRUSTED_PROXIES` to the address the proxy connects from, and Sowel takes the client address from the `X-Forwarded-For` header that proxy adds:
+
+```yaml
+environment:
+  - SOWEL_TRUSTED_PROXIES=172.18.0.1
+```
+
+- The value is a comma-separated list of IPs or CIDR ranges. Empty (the default) trusts nobody.
+- To find the right address, look at the IP on recent `auth.login.success` entries in the audit log for logins made through the proxy. With `cloudflared` running on the Docker host and pointed at `localhost:3000`, it is the Docker bridge gateway, usually `172.18.0.1` or `172.17.0.1`.
+- List only the proxy. `X-Forwarded-For` is believed solely when the connection comes from a listed address, so a device on your LAN cannot pick its own address. Listing a whole LAN range would hand that choice back to every device on it.
+
 ---
 
 ## Operations

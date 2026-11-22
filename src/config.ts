@@ -101,6 +101,10 @@ export function loadConfig(): AppConfig {
     api: {
       port: envInt("API_PORT", 3000),
       host: env("API_HOST", "0.0.0.0"),
+      trustedProxies: env("SOWEL_TRUSTED_PROXIES", "")
+        .split(",")
+        .map((s) => s.trim())
+        .filter((s) => s.length > 0),
     },
     jwt: {
       secret: resolveJwtSecret(dataDir),

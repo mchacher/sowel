@@ -823,20 +823,21 @@ See spec 061 at [github.com/mchacher/sowel/tree/main/specs/061-timezone-from-hom
 
 All settings are optional with sensible defaults -- Sowel runs zero-config out of the box. Override via `.env` if needed:
 
-| Variable          | Default                         | Notes                                                                                |
-| ----------------- | ------------------------------- | ------------------------------------------------------------------------------------ |
-| `SQLITE_PATH`     | `./data/sowel.db`               | SQLite database path                                                                 |
-| `API_PORT`        | `3000`                          | HTTP server port                                                                     |
-| `API_HOST`        | `0.0.0.0`                       | Bind address                                                                         |
-| `JWT_SECRET`      | auto-generated                  | Persisted in `data/.jwt-secret` on first launch                                      |
-| `JWT_ACCESS_TTL`  | `900`                           | Access token TTL in seconds (15 min)                                                 |
-| `JWT_REFRESH_TTL` | `2592000`                       | Refresh token TTL in seconds (30 days)                                               |
-| `LOG_LEVEL`       | `info`                          | Pino log level                                                                       |
-| `CORS_ORIGINS`    | `localhost:3000,localhost:5173` | Comma-separated allowed origins. `*` is permitted but warns at startup               |
-| `INFLUX_URL`      | `http://localhost:8086`         | InfluxDB 2.x URL                                                                     |
-| `INFLUX_TOKEN`    | shared default constant         | Matches `docker-compose.yml`. `data/.influx-token` is read if present, never written |
-| `INFLUX_ORG`      | `sowel`                         | InfluxDB organization                                                                |
-| `INFLUX_BUCKET`   | `sowel`                         | InfluxDB primary bucket                                                              |
-| `TZ`              | system default (UTC in Docker)  | IANA timezone. Set explicitly in docker-compose to fix time-based logic.             |
+| Variable                | Default                         | Notes                                                                                    |
+| ----------------------- | ------------------------------- | ---------------------------------------------------------------------------------------- |
+| `SQLITE_PATH`           | `./data/sowel.db`               | SQLite database path                                                                     |
+| `API_PORT`              | `3000`                          | HTTP server port                                                                         |
+| `API_HOST`              | `0.0.0.0`                       | Bind address                                                                             |
+| `JWT_SECRET`            | auto-generated                  | Persisted in `data/.jwt-secret` on first launch                                          |
+| `JWT_ACCESS_TTL`        | `900`                           | Access token TTL in seconds (15 min)                                                     |
+| `JWT_REFRESH_TTL`       | `2592000`                       | Refresh token TTL in seconds (30 days)                                                   |
+| `LOG_LEVEL`             | `info`                          | Pino log level                                                                           |
+| `CORS_ORIGINS`          | `localhost:3000,localhost:5173` | Comma-separated allowed origins. `*` is permitted but warns at startup                   |
+| `SOWEL_TRUSTED_PROXIES` | (empty)                         | Proxy addresses (IPs or CIDRs) whose `X-Forwarded-For` is believed. See deployment guide |
+| `INFLUX_URL`            | `http://localhost:8086`         | InfluxDB 2.x URL                                                                         |
+| `INFLUX_TOKEN`          | shared default constant         | Matches `docker-compose.yml`. `data/.influx-token` is read if present, never written     |
+| `INFLUX_ORG`            | `sowel`                         | InfluxDB organization                                                                    |
+| `INFLUX_BUCKET`         | `sowel`                         | InfluxDB primary bucket                                                                  |
+| `TZ`                    | system default (UTC in Docker)  | IANA timezone. Set explicitly in docker-compose to fix time-based logic.                 |
 
 Integration settings (MQTT, cloud credentials, polling intervals) are configured from the UI, not from `.env`.
