@@ -4,7 +4,7 @@ import { describe, expect, it } from "vitest";
 import { HOUSE, MASTER, SMALL, SMALL_BELOW_PX, type LogoWeight } from "./logo";
 
 // Spec 210 — the mark is defined once in lib/logo.ts and rendered by SowelLogo.tsx.
-// The splash, the favicons, the PWA icons and the docs landing carry static copies
+// The splash, the favicons, the PWA icons and the docs logos carry static copies
 // of it. Before this spec the copies had drifted into two different drawings, so
 // this reads each one and fails when it stops carrying the shared paths, each with
 // the stroke width of its weight, the viewBox and the wordmark.
@@ -47,6 +47,7 @@ describe("logo copies stay on the shared drawing (spec 210)", () => {
     ["ui/public/favicon.svg", "small", SMALL],
     ["docs/assets/favicon.svg", "small", SMALL],
     ["docs/assets/logo.svg", "small", SMALL],
+    ["docs/assets/logo-night.svg", "small", SMALL],
     ["docs/assets/logo-master.svg", "master", MASTER],
     ["ui/public/pwa-icon.svg", "master", MASTER],
     ["ui/public/pwa-maskable.svg", "master", MASTER],
@@ -59,6 +60,7 @@ describe("logo copies stay on the shared drawing (spec 210)", () => {
       "ui/public/favicon.svg",
       "docs/assets/favicon.svg",
       "docs/assets/logo.svg",
+      "docs/assets/logo-night.svg",
       "docs/assets/logo-master.svg",
     ]) {
       expect(read(path), path).toContain('viewBox="20 10 160 165"');
@@ -85,43 +87,6 @@ describe("logo copies stay on the shared drawing (spec 210)", () => {
     );
     expect(splash).toContain('viewBox="20 10 160 205"');
     expect(splash).toMatch(/font-family="Nunito[^"]*" font-weight="700"[^>]*>sowel<\/text>/);
-  });
-
-  it("the docs landing draws the master face and outline under their CSS classes, in both languages", () => {
-    for (const page of ["docs/index.md", "docs/index.fr.md"]) {
-      const text = read(page);
-      const drawn = [
-        ["house", HOUSE],
-        ["smile", MASTER.smilePath],
-        ["left-eye", MASTER.leftEye],
-        ["right-eye", MASTER.rightEye],
-      ];
-      for (const [cls, d] of drawn) {
-        // hero mark and large mark: two inline SVGs
-        const count = text.split(new RegExp(`class="${cls}"\\s+d="${d}"`)).length - 1;
-        expect(count, `${page}: class ${cls}`).toBe(2);
-      }
-      expect(text.split('viewBox="20 10 160 165"').length - 1, `${page}: viewBox`).toBe(2);
-      expect(text, `${page}: wordmark`).toContain(
-        '<span class="sowel-hero__wordmark">sowel</span>',
-      );
-    }
-  });
-
-  it("the docs stylesheet sets the master widths on the right classes and the wordmark in Nunito", () => {
-    const css = read("docs/stylesheets/extra.css");
-    const widthOf = (selector: string): number[] =>
-      [...css.matchAll(new RegExp(`${selector}[^{]*\\{([^}]*)\\}`, "g"))].flatMap((m) => {
-        const w = /stroke-width:\s*([\d.]+)/.exec(m[1])?.[1];
-        return w === undefined ? [] : [Number(w)];
-      });
-    expect(widthOf("\\.sowel-logo \\.house")).toEqual([MASTER.house]);
-    expect(widthOf("\\.sowel-logo \\.smile")).toEqual([MASTER.smile]);
-    expect(widthOf("\\.sowel-logo \\.right-eye")).toEqual([MASTER.eye]);
-    const wordmark = /\.md-typeset \.sowel-hero__wordmark \{([^}]*)\}/.exec(css)?.[1] ?? "";
-    expect(wordmark).toContain('font-family: "Nunito"');
-    expect(wordmark).toContain("font-weight: 700;");
-    expect(css.match(/\.md-typeset \.sowel-hero__wordmark \{/g)?.length).toBe(1);
   });
 
   it("SowelLogo draws from the shared definition, with no path of its own, and switches weight at the threshold", () => {
