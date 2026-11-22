@@ -134,22 +134,9 @@ Rules enforced by the host, not by trust:
 5. The card shows "ready". The user clicks **Observe**, then **Activate** a few days later.
 6. To change it, the user asks again in the same chat; a new version goes through the same steps.
 
-## Architecture sketch
+## Architecture and phases
 
-- `src/script-recipes/`: QuickJS host, API bindings, scenario runner, `RecipeDefinition` adapter, store.
-- `src/ai-builder/`: agent loop against the provider API, with tools `describe_home`,
-  `describe_api`, `submit_script`, `run_scenarios`. The same tools can later be exposed as an MCP
-  server for users who prefer their own Claude or ChatGPT (needs a scoped API token; Sowel reachable
-  from the provider for web clients).
-- `ui/`: the page, the key in Settings, the draft and observing states on recipe rows.
-
-## Phases
-
-1. QuickJS host and script API, with two existing recipes rewritten as scripts to prove the API
-   (motion light, state watch). No AI.
-2. Storage, statuses, observing mode, the card in the UI.
-3. Agent loop and the Create a recipe page (one provider first).
-4. MCP exposure, second provider.
+Sketch in [architecture.md](architecture.md), phases in [plan.md](plan.md).
 
 ## Open questions
 
