@@ -26,38 +26,42 @@ Cette séparation vous permet de penser en termes de _pièces et de fonctions_, 
 
 ## Sections du guide
 
+<!-- prettier-ignore-start -->
+
 <div class="grid cards" markdown>
 
-- **[Préparer l'hôte](host-setup.md)**
+-   **[Préparer l'hôte](host-setup.md)**
 
-  Installation de Docker et Mosquitto sur Raspberry Pi, Debian ou Ubuntu. À sauter si vous avez déjà les deux.
+    Installation de Docker et Mosquitto sur Raspberry Pi, Debian ou Ubuntu. À sauter si vous avez déjà les deux.
 
-- **[Premiers pas](getting-started.md)**
+-   **[Premiers pas](getting-started.md)**
 
-  Installation, première connexion et configuration initiale.
+    Installation, première connexion et configuration initiale.
 
-- **[Équipements](equipments.md)**
+-   **[Équipements](equipments.md)**
 
-  Création et gestion des équipements, liaison aux devices, types d'équipements.
+    Création et gestion des équipements, liaison aux devices, types d'équipements.
 
-- **[Accueil](dashboard.md)**
+-   **[Accueil](dashboard.md)**
 
-  Widgets, personnalisation, mode édition.
+    Widgets, personnalisation, mode édition.
 
-- **[Zones](zones.md)**
+-   **[Zones](zones.md)**
 
-  Création de zones, affectation des équipements, agrégation automatique.
+    Création de zones, affectation des équipements, agrégation automatique.
 
-- **[Modes](modes.md)**
+-   **[Modes](modes.md)**
 
-  Profils de fonctionnement, impacts, planification calendaire.
+    Profils de fonctionnement, impacts, planification calendaire.
 
-- **[Suivi énergétique](energy.md)**
+-   **[Suivi énergétique](energy.md)**
 
-  Suivi de la consommation, tarifs HP/HC, autoconsommation.
+    Suivi de la consommation, tarifs HP/HC, autoconsommation.
 
-- **[Accès distant](remote-access.md)**
+-   **[Accès distant](remote-access.md)**
 
-  Accès sécurisé depuis l'extérieur de votre réseau domestique.
+    Accès sécurisé depuis l'extérieur de votre réseau domestique.
 
 </div>
+
+<!-- prettier-ignore-end -->
