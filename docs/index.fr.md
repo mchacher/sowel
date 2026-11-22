@@ -44,12 +44,12 @@ Sowel est un moteur domotique open source. Il regroupe vos appareils en équipem
 
     Pour les développeurs : architecture, API, modèle de données, et comment écrire un plugin ou une recette.
 
--   **[Site vitrine](https://sowel.org)**
+-   **[Articles](https://sowel.org/fr/articles/)**
 
-    Ce qu'est Sowel, en images, avec un court film.
+    Les idées derrière Sowel, sur le site vitrine.
 
 </div>
 
 <!-- prettier-ignore-end -->
 
-Le code source et le suivi des tickets sont sur [GitHub](https://github.com/mchacher/sowel).
+Le site vitrine, [sowel.org](https://sowel.org/fr/), montre ce qu'est Sowel, en images et avec un court film. Le code source et le suivi des tickets sont sur [GitHub](https://github.com/mchacher/sowel).
