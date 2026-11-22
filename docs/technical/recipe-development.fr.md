@@ -342,7 +342,7 @@ options: [
 
 Chaque contrôle de mode (la tuile, la page de zone, la ligne de recette, les cartes d'équipement) la saute alors tant que ce paramètre est absent, `null`, une chaîne vide ou une liste vide ; `0` et `false` comptent comme réglés. Le cœur ne filtre sur rien d'autre : il ne connaît aucun slot de votre recette par son nom, donc une option sans `requiresParam` est toujours proposée. Ignorez quand même ce mode dans `onAction` quand son réglage manque, puisque l'API peut l'envoyer, et avant tout ce que l'action changerait d'autre. Un cœur antérieur à #1210 ignore le champ et cache encore, par son nom, une option `cocoon` sans `cocoonTemp` ou `night` sans `nightTemp`.
 
-## Publier une donnée sur un équipement (spec 214)
+## Publier une donnée sur un équipement (spec 214) { #publishing-data-on-an-equipment-spec-214 }
 
 Une recette peut donner à un équipement une valeur qu'aucun appareil ne fournit, par exemple l'état de marche d'un lave-linge lu sur une prise mesurée. La valeur apparaît comme un binding de l'équipement : sa carte, son panneau, son historique, les sélecteurs de binding et les autres recettes (`state-watch`) la lisent comme les autres. On la déclare, puis on la publie :
 
